@@ -1,0 +1,47 @@
+import { describe, expect, it } from 'vitest';
+import { CONTACT, bodyRadius, closingSpeed, contact, sweptSpheres } from './contact';
+
+describe('contact', () => {
+  it('is a glance under soft and a ram from it', () => {
+    expect(contact(1.29, 0.3)).toEqual({ kind: 'glance', damage: 0, punch: 0, keep: CONTACT.glance });
+    const r = contact(1.31, 0.3);
+    expect(r.kind).toBe('ram');
+    expect(r.keep).toBe(CONTACT.slow);
+  });
+  it('hurts by the other ship’s size and the closing speed, capped', () => {
+    expect(contact(14, 0.3).damage).toBeCloseTo(6 + 2.1 + 0.5 * (14 - 1.3), 5);
+    expect(contact(12, 0.7).damage).toBeCloseTo(6 + 4.9 + 0.5 * (12 - 1.3), 5);
+    expect(contact(300, 2).damage).toBe(CONTACT.most);
+  });
+  it('is worth one hit on the other ship, one more every punchEvery past soft, at most punchMost', () => {
+    expect(contact(1.3, 0.3).punch).toBe(1);
+    expect(contact(6.3, 0.3).punch).toBe(2);
+    expect(contact(14, 0.3).punch).toBe(3);
+    expect(contact(30, 0.3).punch).toBe(CONTACT.punchMost);
+  });
+  it('bodyRadius is tighter than a laser’s hit radius', () => {
+    expect(bodyRadius(0.3)).toBeCloseTo(0.23, 5);
+  });
+});
+
+describe('closingSpeed', () => {
+  it('is how fast the two close along the normal, and 0 when they part', () => {
+    // normal points from them toward you; you fly at them (−x) at 6, they at you (+x) at 8
+    expect(closingSpeed({ x: -6, y: 0, z: 0 }, { x: 8, y: 0, z: 0 }, { x: 1, y: 0, z: 0 })).toBeCloseTo(14, 5);
+    expect(closingSpeed({ x: 6, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 })).toBe(0);
+  });
+});
+
+describe('sweptSpheres', () => {
+  // targeting.test.js's sweptHit cases, in both point forms
+  it('meets a target crossing the way, in arrays and in objects', () => {
+    expect(sweptSpheres([0, 0, 0], [0, 0, -1], [-0.5, 0, -0.5], [0.5, 0, -0.5], 0.3)).toBeCloseTo(0.5, 6);
+    expect(sweptSpheres({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, { x: -0.5, y: 0, z: -0.5 }, { x: 0.5, y: 0, z: -0.5 }, 0.3)).toBeCloseTo(0.5, 6);
+  });
+  it('misses one that leaves before the way reaches it', () => {
+    expect(sweptSpheres([0, 0, 0], [0, 0, -1], [0, 0, -0.4], [0, 2, -0.4], 0.3)).toBeNull();
+  });
+  it('counts two that close head on faster than a frame', () => {
+    expect(sweptSpheres([0, 0, 0], [0, 0, -1], [0, 0.1, -1.2], [0, 0.1, -0.1], 0.3)).not.toBeNull();
+  });
+});
