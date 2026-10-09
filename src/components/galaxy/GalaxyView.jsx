@@ -14,6 +14,7 @@ import WarHud from './WarHud';
 import LoadingVeil from '../worlds/LoadingVeil';
 import BattleEnd from './BattleEnd';
 import FlightCluster from './FlightCluster';
+import KeysCard from './KeysCard';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -29,7 +30,7 @@ import FlightCluster from './FlightCluster';
 // While the 3D loads the box says so; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
-export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap, oath = null, found = [] }) {
+export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap, oath = null, found = [], course = null }) {
   const labels = useRef({});
   const stars = useRef({});
   const [aim, setAim] = useState(null); // the star the nose is on
@@ -41,6 +42,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const powers = useRef(null); // (the crew's ship powers' bar, inside it: the scene writes that too)
   const hud = useRef(null);
   const [flown, setFlown] = useState(false);
+  const [keysOpen, setKeysOpen] = useState(false); // (the keys card, over the first flight and again from its chip)
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const setControls = (c) => {
@@ -71,6 +73,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       net,
       tags,
       frozen,
+      course,
       allegiance: oath,
       onArrive,
       onAt,
@@ -135,6 +138,10 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const aimed = aim && aim !== hereSys.id ? systemById(aim) : null;
   const jump = (id) => view.current?.jump?.(id);
   const onPower = (slot) => view.current?.power?.(slot);
+  // (the card is open over the first flight, and from its chip after; the chip shuts it either way)
+  const showKeys = !flown || keysOpen;
+  const closeKeys = useCallback(() => (setFlown(true), setKeysOpen(false)), []);
+  const toggleKeys = () => (showKeys ? closeKeys() : setKeysOpen(true));
 
   const hold = (down) => (e) => (e.preventDefault(), view.current?.boost?.(down));
   const trigger = (down) => (e) => (e.preventDefault(), view.current?.fire?.(down));
@@ -262,12 +269,12 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
                 </button>
               )}
               <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />
+              <button type="button" className="galaxy-keysbtn" onClick={toggleKeys} aria-expanded={showKeys}>
+                Keys
+              </button>
+              <KeysCard open={showKeys} onClose={closeKeys} />
               {!flown && (
-                <p className="universe-hint">
-                  <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>G</kbd> your crew’s power and <kbd>X</kbd> the big one once it’s charged, <kbd>V</kbd> cockpit. The named stars are other systems: put the nose on one and <kbd>J</kbd> to jump, or <kbd>M</kbd> for the galaxy map
-                    <GuideCue />
-                  </span>
+                <p className="universe-hint galaxy-hint-touch">
                   <span className="universe-hint-touch">Drag to fly, hold Boost and Fire, tap your crew’s power; point at a star and tap Jump to go to lightspeed<GuideCue touch /></span>
                 </p>
               )}

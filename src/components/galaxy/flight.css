@@ -1,21 +1,26 @@
 /* The flight cluster (FlightCluster.jsx): bottom centre of the space left of
-   the panel, over the 3D. Its blocks are glass at 0.8 (text over 3D reads on
-   it), nothing in it is under 0.7rem, and the scene writes its numbers
-   (cluster.js, radarDraw.js). The crew's power tiles are in it (powers.css's
-   data-place="cluster"); on a touch screen they stay round buttons beside
-   Fire and View, and the cluster keeps to the left column, clear of them. */
+   the panel, over the 3D, clear of the corner's buttons (the flight settings'
+   and the multiplayer pill, 176px) and of the panel (24px). Its blocks are
+   glass at 0.8 (text over 3D reads on it), nothing in it is under 0.7rem, and
+   the scene writes its numbers (cluster.js, radarDraw.js). The crew's power
+   tiles are in it (powers.css's data-place="cluster"); on a touch screen they
+   stay round buttons beside Fire and View, and the cluster keeps to the left
+   column, clear of them. */
+.galaxy-page {
+  --fc-left: 176px;
+  --fc-right: calc(var(--panel-w, 0px) + 24px);
+}
 .fc {
   --fc-glass: rgb(3 6 14 / 0.8);
   --fc-line: rgb(127 214 255 / 0.28);
   position: absolute;
   z-index: 2;
-  left: 50%;
+  left: var(--fc-left);
+  right: var(--fc-right);
   bottom: calc(var(--hud-pad-b, 12px) + 10px);
-  translate: calc(-50% - (var(--panel-w, 0px) + 24px) / 2) 0;
   display: grid;
   justify-items: center;
   gap: 6px;
-  max-width: calc(100% - var(--panel-w, 0px) - 40px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
@@ -23,7 +28,7 @@
   font-family: var(--font-mono);
 }
 .fc[data-on] { opacity: 1; }
-.fc-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: 8px; }
+.fc-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; max-width: 100%; gap: 8px; }
 .fc-glass { display: grid; gap: 4px; min-width: 170px; padding: 8px 10px; border: 1px solid var(--fc-line); border-radius: 12px; background: var(--fc-glass); }
 .fc-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .fc-label { color: rgb(217 243 255 / 0.85); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -47,12 +52,15 @@
 .fc-target:not([data-on]) > :not(.fc-none):not(.fc-label) { display: none; }
 .fc-target[data-on] .fc-none { display: none; }
 .fc-none { color: rgb(217 243 255 / 0.85); font-size: 0.74rem; }
+.fc-shield-icon { display: none; }
 .fc-radar { width: 132px; height: 132px; border: 1px solid var(--fc-line); border-radius: 50%; background: radial-gradient(circle, rgb(10 30 50 / 0.82), rgb(3 6 14 / 0.86)); }
 /* (the pickups' effects, over the row: PR 3 fills it) */
 .fc-buffs { display: flex; gap: 6px; }
 .fc-buffs:empty { display: none; }
-/* the jump button, when the nose is on a star, sits over the cluster */
-.galaxy-page .galaxy-jumpbtn { bottom: calc(var(--hud-pad-b, 12px) + 168px); }
+/* the jump button, when the nose is on a star, sits over the cluster, in the middle of the same space */
+@media (min-width: 768px) {
+  .galaxy-page .galaxy-jumpbtn { left: calc(var(--fc-left) + (100% - var(--fc-left) - var(--fc-right)) / 2); translate: -50% 0; bottom: calc(var(--hud-pad-b, 12px) + 168px); }
+}
 
 /* the reticle's kill flash: a white X through the ring for a third of a second (the scene sets data-kill) */
 .universe-reticle[data-kill] {
@@ -62,33 +70,99 @@
   box-shadow: 0 0 14px rgb(255 255 255 / 0.8);
 }
 
+/* a laptop's width: the blocks a little narrower, to fit the space left of the panel */
+@media (max-width: 1320px) {
+  .fc-glass { min-width: 150px; }
+  .fc-target { min-width: 170px; }
+  .fc-radar { width: 112px; height: 112px; }
+}
 @media (max-height: 700px), (max-width: 1100px) {
   .fc-glass { min-width: 140px; padding: 6px 8px; }
+  .fc-target { min-width: 170px; }
   .fc-radar { width: 104px; height: 104px; }
   .fc-keys { display: none; }
 }
 @media (min-width: 768px) and (max-height: 700px) {
   .galaxy-page .galaxy-jumpbtn { bottom: calc(var(--hud-pad-b, 12px) + 138px); }
 }
+/* (a narrow window with the panel open: no room for the target as well; the lock's own mark over the 3D says it) */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .galaxy-page:not([data-tucked]) .fc-target { display: none; }
+}
 
 /* a touch screen, or a phone's width: the cluster is the whole map's box (it
    takes no clicks) so the power tiles, which keep their own place as round
    buttons beside Fire and View on the right, are placed against the map as
-   they are without it; the radar and the ship's block keep to the left
-   column, over the flight settings' button (which has the bottom corner),
-   the ship's over the radar since the open part of the map is narrow there */
+   they are without it; the radar and the deflectors keep to the left column,
+   over the flight settings' button (which has the bottom corner), clear of
+   View and the tiles. There's no room there for the rest (speed, kills, the
+   target: the lock's own mark over the 3D names it). Under the comms and the
+   war's lines, which a battle puts over the same corner of a small phone. */
 @media (pointer: coarse), (max-width: 767px) {
-  .fc { inset: 0; translate: none; max-width: none; display: block; }
+  .fc { inset: 0; z-index: 1; display: block; }
   .fc-row { display: contents; }
-  .fc-target, .fc-speed, .fc-speed-n { display: none; }
-  .fc-radar, .fc-ship { position: absolute; left: var(--hud-edge, 12px); }
-  .fc-radar { bottom: 120px; width: 96px; height: 96px; }
-  .fc-ship { bottom: 222px; width: 124px; min-width: 0; padding: 6px; }
-  .fc-label { letter-spacing: 0.06em; }
+  .fc-target, .fc-speed, .fc-sub, .fc-ship .fc-label { display: none; }
+  .fc-radar, .fc-ship { position: absolute; bottom: 120px; }
+  .fc-radar { left: var(--hud-edge, 12px); width: 84px; height: 84px; }
+  .fc-ship { left: calc(var(--hud-edge, 12px) + 90px); width: 62px; min-width: 0; padding: 5px 6px; gap: 3px; }
+  .fc-shield-icon { display: block; width: 14px; height: 14px; flex: none; color: #9ef3ff; }
+  .fc-ship .fc-line { justify-content: flex-start; gap: 4px; align-items: center; }
 }
 @media (max-width: 767px) {
-  .fc-radar { bottom: calc(var(--sheet-h, 0px) + 120px); }
-  .fc-ship { bottom: calc(var(--sheet-h, 0px) + 222px); }
+  .fc-radar, .fc-ship { bottom: calc(var(--sheet-h, 0px) + 120px); }
   /* (the first-flight line goes over the cluster, not under it) */
-  .galaxy-page .universe-hint { bottom: calc(var(--sheet-h, 0px) + 290px); }
+  .galaxy-page .universe-hint { bottom: calc(var(--sheet-h, 0px) + 224px); }
 }
+
+/* The flying keys (KeysCard.jsx): over the cluster, in the middle of the open
+   part of the map, for the first flight and from the Keys chip. A desktop's:
+   a touch screen has its buttons (and the touch line in the hint). */
+.galaxy-keys {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--fc-left) + (100% - var(--fc-left) - var(--fc-right)) / 2);
+  bottom: calc(var(--hud-pad-b, 12px) + 224px);
+  translate: -50% 0;
+  width: max-content;
+  max-width: calc(100% - var(--fc-left) - var(--fc-right));
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 6px 18px;
+  padding: 12px 40px 12px 16px;
+  border: 1px solid rgb(127 214 255 / 0.3);
+  border-radius: 14px;
+  background: rgb(3 6 14 / 0.88);
+  color: #e8f4ff;
+  pointer-events: auto;
+}
+.galaxy-keys h3 { margin: 0 0 6px; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.galaxy-keys dl { display: grid; gap: 4px; margin: 0; }
+.galaxy-keys dl > div { display: flex; align-items: center; gap: 8px; }
+.galaxy-keys dt { display: flex; flex: none; gap: 3px; min-width: 64px; }
+.galaxy-keys dd { margin: 0; font-size: 0.78rem; }
+.galaxy-keys-more { grid-column: 1 / -1; margin: 0; color: rgb(217 243 255 / 0.85); font-size: 0.78rem; }
+.galaxy-keys-close { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #bfeaff; }
+.galaxy-keys-close:hover { background: rgb(255 255 255 / 0.1); }
+.galaxy-keys-close:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
+/* the Keys chip, beside the Galaxy map button */
+.galaxy-keysbtn {
+  position: absolute;
+  z-index: 1;
+  left: 134px;
+  top: calc(var(--nav-h) + 16px);
+  padding: 0.45rem 0.8rem;
+  border: 1px solid rgb(127 214 255 / 0.45);
+  border-radius: 999px;
+  background: rgb(3 8 20 / 0.7);
+  color: #bfeaff;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.galaxy-keysbtn:hover, .galaxy-keysbtn[aria-expanded='true'] { background: rgb(20 50 90 / 0.75); }
+.galaxy-keysbtn:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
+@media (min-width: 768px) and (max-height: 700px) { .galaxy-keys { bottom: calc(var(--hud-pad-b, 12px) + 194px); } }
+@media (pointer: coarse), (max-width: 767px) { .galaxy-keys, .galaxy-keysbtn { display: none; } }
+/* (a desktop has the keys card; the touch line is for a touch screen) */
+@media (pointer: fine) { .galaxy-page .galaxy-hint-touch { display: none; } }

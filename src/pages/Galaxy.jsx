@@ -192,6 +192,9 @@ export default function Galaxy() {
   // as transitions, so for a render or two after an arrival it still names
   // the system just left, and the scene would jump straight back there.
   const [wanted, setWanted] = useState(current);
+  // the course plotted on the galaxy map (a system's id, or none): the flight HUD points the way and J jumps to it
+  const [course, setCourse] = useState(null);
+  useEffect(() => setCourse(null), [current]);
   const seen = useRef(param);
   useEffect(() => {
     if (!param || param === seen.current) return;
@@ -305,6 +308,17 @@ export default function Galaxy() {
   };
   useEffect(() => letGo, []);
 
+  // a course plotted on the map, or J with one: away you go
+  const jumpTo = useCallback(
+    (id) => {
+      setMapOpen(false);
+      setCourse(null);
+      audioContext();
+      if (!view.current.jump(id)) navigate(`/galaxy/${id}`, { replace: true });
+    },
+    [navigate],
+  );
+
   // what the scene says: to the comms, and to the page
   const onEvent = useCallback(
     (e) => {
@@ -329,7 +343,9 @@ export default function Galaxy() {
         return;
       }
       if (e.type === 'jumpKey') {
-        setMapOpen(true);
+        // J with the nose on no star: to the course plotted on the map, if there is one, else the map to plot it on
+        if (course && course !== current) jumpTo(course);
+        else setMapOpen(true);
         return;
       }
       if (e.type === 'jump') {
@@ -397,7 +413,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock, crew, pay, notePilot, follow],
+    [current, leave, navigate, land, unlock, crew, pay, notePilot, follow, course, jumpTo],
   );
   const onArrive = useCallback(
     (id) => {
@@ -411,13 +427,6 @@ export default function Galaxy() {
     [navigate],
   );
   const onBoard = useCallback((path) => leave(path), [leave]);
-
-  // a course plotted on the map: away you go
-  const jumpTo = (id) => {
-    setMapOpen(false);
-    audioContext();
-    if (!view.current.jump(id)) navigate(`/galaxy/${id}`, { replace: true });
-  };
 
   // Escape: stop coming round for a jump or flying itself (the map has its own
   // Escape, HoloMap.jsx: it takes the key first, and a dialog open stands this down)
@@ -456,6 +465,7 @@ export default function Galaxy() {
         onCrash={onCrash}
         onMap={() => setMapOpen(true)}
         oath={oath}
+        course={course}
       />
       {crew && <Comms control={comms} crew={galaxyCrew(crew)} reduced={reduced} />}
       <EarnNote note={earned} />
@@ -485,7 +495,7 @@ export default function Galaxy() {
         suggested={suggested}
         onSwear={onSwear}
       />
-      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} oath={oath} oaths={oathKept.oaths} suggested={suggested} onSwear={onSwear} onTheatre={onTheatre} />}
+      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onCourse={setCourse} course={course} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} oath={oath} oaths={oathKept.oaths} suggested={suggested} onSwear={onSwear} onTheatre={onTheatre} />}
       {intro && (
         <GalaxyIntro
           onDone={() => {

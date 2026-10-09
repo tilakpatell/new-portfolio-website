@@ -1905,6 +1905,15 @@ export async function create(canvas, ctx) {
       const g = (state.auto.space ?? state.space).goals[state.auto.id];
       if (g) goal = { at: g.at, name: g.name ?? state.auto.name ?? '', dist: range(apart(g.at[0], g.at[1], g.at[2], s.x, s.y, s.z)), reach: g.reach ?? g.r, way: false };
     }
+    // (else the course plotted on the galaxy map: the way to jump, as the jump's own bearing, till J goes)
+    else if (on && props.course && props.course !== state.sys?.id) {
+      const to = systemById(props.course);
+      if (to && state.sys) {
+        const d = courseTo(state.sys, to);
+        goal = { at: [s.x + d[0] * 2000, s.y + d[1] * 2000, s.z + d[2] * 2000], name: `Course: ${to.name} · J`, dist: `${lightYears(state.sys, to).toLocaleString('en-US')} ly`, reach: 0, way: true };
+      }
+    }
+    state.navGoal = goal ? goal.at : null;
     setOn(h, h.nav, Boolean(goal));
     if (goal) {
       toScreen(goal.at[0], goal.at[1], goal.at[2], hudAt);

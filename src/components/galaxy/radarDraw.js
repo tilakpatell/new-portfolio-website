@@ -3,7 +3,8 @@
 // per contact (radar.js placed them): red for hostiles (bigger when they're
 // on you), green allies, gold the way to go, cyan a pickup, the lock in a
 // white ring; a tick above or below a dot for a contact over or under you;
-// the range in the corner.
+// the range in the lower part, between the rings (the canvas is clipped to
+// its round border, which took a corner's number).
 const INK = { hostile: '#ff5a4a', threat: '#ff3b2f', ally: '#6dff9a', goal: '#ffd36a', pickup: '#6fe7ff' };
 
 export function drawRadar(canvas, points, { range, dpr = 1 } = {}) {
@@ -62,6 +63,6 @@ export function drawRadar(canvas, points, { range, dpr = 1 } = {}) {
   g.fillStyle = 'rgba(217,243,255,0.9)';
   // (12 px: nothing a player reads is under 0.7 rem)
   g.font = `600 12px ${getComputedStyle(canvas).fontFamily || 'monospace'}`;
-  g.textAlign = 'right';
-  g.fillText(String(range), size - 8, size - 8);
+  g.textAlign = 'center';
+  g.fillText(String(range), c, c + r * 0.75 + 4);
 }
