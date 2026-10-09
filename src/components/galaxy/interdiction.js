@@ -21,6 +21,7 @@
 // dropPoint(arrival, far, edge) → where you drop out: the arrival pushed out along its own bearing
 // interdictorPlace(ship, side, rand) → { at, heading, drift, hangar }: ahead and off to one side, broadside on
 // inWell(ship, at, r); holdLifts({ since, now, pack, inWell }) → why it's let go, or null
+// interdictorSolids(state, at) → the cruiser as ship.js's solids once it's here, or none
 
 import { forward } from '../universe/ship';
 import { EDGE } from './space';
@@ -143,6 +144,12 @@ export function interdictorPlace(ship, side = 1, rand = Math.random) {
   const drift = [dx * 1.2, 0, dz * 1.2];
   return { at, heading, drift, hangar: [at[0], at[1] - INTERDICTION.size * 0.14, at[2]] };
 }
+
+// one sphere at its middle, SOLID of its length (INTERDICTION.size) across:
+// too big to move, so flying into it is a planet's bump or crash
+// (lib/combat/contact.js); nothing while it jumps in or out (a smear)
+const SOLID = 0.3;
+export const interdictorSolids = (state, at) => (state === 'here' && at ? [{ id: 'interdictor', at, r: INTERDICTION.size * SOLID, reach: INTERDICTION.size * SOLID, ship: true }] : []);
 
 export const inWell = (ship, at, r = INTERDICTION.well) => Math.hypot(ship.x - at[0], ship.y - at[1], ship.z - at[2]) <= r;
 

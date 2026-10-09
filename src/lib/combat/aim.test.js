@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aimPoint, assist, friction, lead, coneFor, ASSIST, rayCapsule } from './aim';
+import { aimPoint, assist, friction, lead, coneFor, snapped, ASSIST, rayCapsule } from './aim';
 
 const angle = (a, b) => {
   const d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -112,5 +112,22 @@ describe('coneFor', () => {
     expect(coneFor({ mode: 'drag' })).toBe(ASSIST.pad);
     expect(coneFor({ mode: 'lock' })).toBe(ASSIST.mouse);
     expect(coneFor({})).toBe(ASSIST.mouse);
+  });
+});
+
+describe('snapped', () => {
+  it('pulls a touch tap all the way onto a target anywhere in its cone', () => {
+    // 0.2 rad off: inside touch's outer cone, where the plain pull is next to nothing
+    const t = body(20, Math.tan(0.2) * 20);
+    const bent = assist(off(0), [0, 0.9, 0], [t], snapped(ASSIST.touch));
+    expect(aimPoint({ from: [0, 0.9, 0], dir: bent }, null, [t]).target?.id).toBe('a');
+    const plain = assist(off(0), [0, 0.9, 0], [t], ASSIST.touch);
+    expect(aimPoint({ from: [0, 0.9, 0], dir: plain }, null, [t]).target).toBe(null);
+  });
+  it('leaves a cone without snap as it is, and nothing outside the cone is taken', () => {
+    expect(snapped(ASSIST.mouse)).toBe(ASSIST.mouse);
+    const far = body(20, Math.tan(0.3) * 20);
+    const bent = assist(off(0), [0, 0.9, 0], [far], snapped(ASSIST.touch));
+    expect(bent).toEqual(off(0));
   });
 });

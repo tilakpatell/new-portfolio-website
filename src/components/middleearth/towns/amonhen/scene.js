@@ -31,6 +31,8 @@ import { stoneAt } from './rules';
 import { BOATS, CAMP, CAST, COLLIDERS, DECOY_RUN, KINGS, LAKE_Y, PILLARS, SEAT, SHORE_SPOT, SKIPPERS, SKIPPING, STAIR, STICKS, TREES, height, shoreX, toPath } from './layout';
 import { attend, castDo, castPlay, drawWatcher, releaseCast, tickCast, upgrade } from '../../cast3d';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -96,7 +98,7 @@ const RING_FOG = new THREE.Color(0x5a5a5e);
 export function createAmonHenWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 1200, bloom: { strength: 0.55, radius: 0.55, threshold: 0.85 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 1200, bloom: BLOOMS.amonhen, onLost });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; the moods move it
@@ -380,7 +382,8 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, ring: 0, gaze: 0, motes: 0, first: true };
-  const shake = createShake({ title: 'Amon Hen' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const HITSTOP = { grab: 60 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();

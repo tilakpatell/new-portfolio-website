@@ -16,6 +16,7 @@
 // x = 400) so a door is a jump.
 
 import { seeded } from '../../../lib/seeded';
+import { springStep } from '../../../lib/spring';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
 import { DESTINATIONS, GARAGE_BACK, isBigPlanet, isPlanet } from './dimensions/destinations';
 
@@ -931,8 +932,12 @@ export const CRUISER = { radius: 1.7, hover: 1.2, top: 22, accel: 9, turn: 1.8, 
 export const FLY = { x0: -400, x1: 400, z0: -260, z1: 260 };
 const EDGE = 2; // it keeps this far in from the edge of where it flies
 const BANK = 0.45; // how far it leans, at most
+// the lean is a spring (lib/spring.js): it comes into a turn about as quickly
+// as the old 6-a-second ease did, and let go, it swings a hair past level and
+// settles, which reads as the weight of the thing
+const BANK_SPRING = { k: 60, c: 10 };
 
-export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
+export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0, bankV: 0 });
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // what it flies over: each building's footprint, the school's as its parts (flat roofs at their own heights)
@@ -969,8 +974,8 @@ export function stepCruiser(c, { throttle = 0, steer = 0, lift = 0 } = {}, dt) {
     bump += Math.abs(vy);
     vy = 0;
   }
-  const bank = c.bank + (turn * clamp(speed / CRUISER.top, -1, 1) * BANK - c.bank) * Math.min(1, dt * 6);
-  return { x, z, y, yaw, speed, vy, bank, bump };
+  const [bank, bankV] = springStep(c.bank ?? 0, c.bankV ?? 0, turn * clamp(speed / CRUISER.top, -1, 1) * BANK, BANK_SPRING.k, BANK_SPRING.c, dt);
+  return { x, z, y, yaw, speed, vy, bank, bankV, bump };
 }
 
 // Slow, over open ground in the street: not a roof, a fenced back yard, a tree

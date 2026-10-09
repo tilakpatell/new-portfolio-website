@@ -10,8 +10,12 @@
 //   LAYERS[type](x, z, layer, seed) → metres
 //   fieldAt(spec, x, z) → the sum of spec.relief, layer i seeded spec.seed + i,
 //     each times its weight (1 when left out), on spec.base (0)
+//   noise2(x, z, seed) → the galaxy's value noise, −1…1, a bump a unit
+//     (passed on: cell.js clumps the flora by it)
 
 import { fbm, noise2, ridged, smoothstep } from '../../components/galaxy/surface/noise.js';
+
+export { noise2 };
 
 export const LAYERS = {
   // broad rises and falls, ±height

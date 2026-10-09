@@ -130,8 +130,9 @@ describe('a hostile’s body in the world', () => {
   });
   const DT = 1 / 30;
   const world = { heightAt: () => 0, solids: null };
-  const settle = async () => {
-    for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
+  // (until its figure's in: the model loads off disk, slower with the whole suite running beside it)
+  const settle = async (a) => {
+    for (let i = 0; i < 2000 && !a.debug().every((t) => t.fig); i++) await new Promise((r) => setTimeout(r, 1));
   };
   const out = (kind, over = {}) => {
     const a = createActivity({ parent: new THREE.Group(), world });
@@ -152,7 +153,7 @@ describe('a hostile’s body in the world', () => {
 
   it('a rigged Tusken raises its rifle on you and fires from the muzzle; shot, it goes down the way the shot went, lies, and is gone', async () => {
     const a = out('tusken');
-    await settle();
+    await settle(a);
     const t = a.targets[0];
     expect(t.gp?.kind).toBe('sniper');
     const you = { x: 0, y: 0, z: 0 };
@@ -190,14 +191,19 @@ describe('a hostile’s body in the world', () => {
 
   it('a duellist holds its saber in its own hand; one built from shapes holds no gun and goes down as before, without its clip', async () => {
     const v = out('vader', { hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.5, damage: 16, parry: 0.8, guard: 4, blade: { color: '#ff3b3b' } } });
-    await settle();
+    await settle(v);
     expect(v.debug()[0].body.gun).toBe('saber:hand');
     const hand = v.targets[0].blade.gun.parent;
     expect(hand.isBone && hand.name).toBe('RightHand');
-    run(v, { x: 0, y: 0, z: 0 }, 0, 1);
+    // it fences you (duellists.js): closes from 12 m, circles at its reach, strokes; nothing lands on the decision
+    const seen = new Set();
+    const fought = run(v, { x: 0, y: 0, z: 0 }, 0, 8, () => seen.add(v.debug()[0].body.duel)).shots;
+    expect([...seen]).toEqual(expect.arrayContaining(['approach', 'circle', 'attack']));
+    expect(Math.hypot(v.targets[0].b.x, v.targets[0].b.z)).toBeLessThan(5);
+    expect(fought.filter((x) => x.melee && !x.blade)).toEqual([]);
     v.dispose();
     const s = out('stormtrooper');
-    await settle();
+    await settle(s);
     const t = s.targets[0];
     expect(s.debug()[0].body.gun).toBe(null);
     const { shots } = run(s, { x: 0, y: 0, z: 0 }, 0, 3);

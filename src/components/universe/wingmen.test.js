@@ -55,3 +55,25 @@ describe('the wingmen, drawn', () => {
     wingmen.dispose();
   });
 });
+
+describe('the wingmen, as bodies for ship contact', () => {
+  it('answers each one flying as a friend to bounce off, who never takes a hit', () => {
+    const wingmen = createWingmen(new THREE.Group(), { fleet: fakeFleet() });
+    wingmen.join('ywing', ship, 2);
+    wingmen.update(1 / 60, 0, ship, []);
+    const bodies = wingmen.bodies;
+    expect(bodies).toHaveLength(2);
+    for (const b of bodies) {
+      expect(b.key).toBe(`w:${b.id}`);
+      expect(b.kind).toBe('ywing');
+      expect(b.side).toBe('friend');
+      expect(b.size).toBeGreaterThan(0);
+      expect(Object.keys(b.prev).sort()).toEqual(['x', 'y', 'z']);
+      expect(b.hit(3)).toBeNull();
+    }
+    expect(wingmen.bodies).toHaveLength(2); // (and is still there)
+    wingmen.clear();
+    expect(wingmen.bodies).toEqual([]);
+    wingmen.dispose();
+  });
+});

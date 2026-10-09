@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PATROL, sectorShips } from './sectorFleet';
+import { PATROL, sectorShips, sectorSolids } from './sectorFleet';
 import { SECTORS, sectorOf } from './layout';
 import { SOLIDS, forward } from './ship';
 import { PORTALS } from './portals';
@@ -41,6 +41,21 @@ describe('the Rick and Morty sector’s standing ships', () => {
     for (const s of ships.slice(1)) {
       expect(apart(s.at, ships[0].at)).toBeGreaterThan(ships[0].size + s.size);
       expect(apart(s.at, ships[0].at)).toBeLessThan(400);
+    }
+  });
+});
+
+describe('the sector’s standing ships as solids', () => {
+  it('is one sphere a ship, at its middle, a little of its length across, so flying into one is a bump or a crash', () => {
+    for (const t of [0, 77]) {
+      const ships = sectorShips(t);
+      const solids = sectorSolids(t);
+      expect(solids).toHaveLength(ships.length);
+      solids.forEach((o, i) => {
+        expect(o).toMatchObject({ id: ships[i].id, at: ships[i].at, ship: true });
+        expect(o.r).toBeCloseTo(ships[i].size * 0.16, 6);
+        expect(o.reach).toBe(o.r);
+      });
     }
   });
 });

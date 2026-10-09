@@ -471,6 +471,7 @@ export function step(g, input = {}, dt = STEP) {
   // you, standing still while a talk is open
   const was = { x: you.x, z: you.z, room: you.room };
   // (holding your father up, you walk; in a grip, nothing; thrown by a push, you go the way it threw you)
+  // (the jump's buffer and coyote time are walker.js's: the press is passed on as it came)
   const walk = g.talk || duel.gripped(g) ? {} : plot.held(g, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch });
   const shove = duel.shoveOf(g, dt);
   for (const w of shove ? [walk, { dir: shove, run: true }] : [walk]) {

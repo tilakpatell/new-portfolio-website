@@ -40,6 +40,10 @@ export const BODY = Object.freeze({
   step: 0.4,
   // a fall further than this is one nobody walks away from
   drop: 6,
+  // a press that lands: seconds off a ledge a jump still goes (coyote
+  // time), and seconds a jump pressed in the air is kept for the landing
+  coyote: 0.1,
+  buffer: 0.12,
 });
 
 const EPS = 1e-6;
@@ -312,13 +316,19 @@ export function stepBody(body, input, dt, { layout, open, solids = [] }) {
   const events = [];
   const world = { layout, index: indexOf(layout), open, solids: solids.map(solidOf) };
   crouchOrStand(body, input.crouch, world.index, open, world.solids);
-  if (input.jump && body.ground && !body.crouch) {
+  // (both clocks on the body, as plain numbers: the rules' state stays data)
+  body.wantJump = input.jump ? BODY.buffer : Math.max(0, (body.wantJump ?? 0) - dt);
+  const footing = body.ground || (body.offGround ?? Infinity) <= BODY.coyote;
+  if (body.wantJump > 0 && footing && !body.crouch) {
     body.vy = BODY.jump;
     body.ground = false;
+    body.wantJump = 0;
+    body.offGround = Infinity; // (no second jump from the same footing)
   }
   walkAcross(body, input, dt, world, events);
   if (!body.ground) airborne(body, dt, world, events);
   if (body.ground) Object.assign(body.safe, { x: body.x, y: body.y, z: body.z, room: body.room });
+  body.offGround = body.ground ? 0 : (body.offGround ?? 0) + dt;
   return events;
 }
 
