@@ -17,7 +17,7 @@ import { pixelRatio } from '../../../lib/device';
 import { disposeTree, quiet, releaseContext } from '../../../lib/three/renderer';
 import { cloneScene, loadGLTF } from '../../../lib/three/gltfCache';
 import { dropTransmission } from '../../../lib/three/glass';
-import { BUILT, LENGTH, SHIP_MODELS, buildShip } from '../shipModels';
+import { CREW_INK, LENGTH, SHIP_MODELS, buildShip } from '../shipModels';
 import { paintById } from '../paint';
 import { writeBuild } from './build';
 import { BUILD_SLOTS } from './parts';
@@ -126,7 +126,7 @@ export function createShowroom(canvas, { reduced = false } = {}) {
         .catch(() => {});
     else
       import('../../rickmorty/cruiser3d')
-        .then((mod) => mod.buildCruiser({ ink: BUILT / 2.7 }))
+        .then((mod) => mod.buildCruiser({ ink: LENGTH / 2.7, crewInk: CREW_INK }))
         .then((c) => {
           if (!c) return;
           if (!still() || !shown.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint, setLooks: c.setLooks })) {
