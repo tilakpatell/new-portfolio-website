@@ -77,10 +77,13 @@ export const distanceFor = (tier, level = 0) => Math.min(BY_TIER[tier] ?? 6, BY_
 // Development: the parity check's named views (scripts/gpu-parity.mjs), each
 // a world, a time and a way of looking, held still once it's there: 'title'
 // as the game opens on it, 'day' stood at the spawn at noon, looking a
-// little down, at the land, the water and the sky over the horizon.
+// little down, at the land, the water and the sky over the horizon;
+// 'night' there at midnight, looking up at the stars, the moon and the
+// clouds.
 export const VIEWS = {
   title: { seed: 1, play: false, time: 6000, ticks: 2400, yaw: 0.6, pitch: -0.22 },
   day: { seed: 1, play: true, time: 6000, ticks: 2400, yaw: 2.2, pitch: -0.3 },
+  night: { seed: 1, play: true, time: 18000, ticks: 2400, yaw: 2.2, pitch: 0.9 },
 };
 
 // every chunk the place wants is in, and nothing is in flight or being meshed again

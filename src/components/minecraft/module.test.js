@@ -36,15 +36,16 @@ describe('Minecraft, the world module', () => {
     expect(r.left).toBeCloseTo(0.02, 10);
   });
 
-  it('the parity check’s views: seed 1 at noon, the title held still and a day in the world', () => {
-    expect(Object.keys(VIEWS)).toEqual(['title', 'day']);
+  it('the parity check’s views: seed 1, the title and a day at noon, a night at midnight', () => {
+    expect(Object.keys(VIEWS)).toEqual(['title', 'day', 'night']);
     for (const v of Object.values(VIEWS)) {
       expect(v.seed).toBe(1);
-      expect(v.time).toBe(6000); // noon
       expect(Number.isFinite(v.ticks) && Number.isFinite(v.yaw) && Number.isFinite(v.pitch)).toBe(true);
     }
+    expect([VIEWS.title.time, VIEWS.day.time, VIEWS.night.time]).toEqual([6000, 6000, 18000]); // noon, noon, midnight
     expect(VIEWS.title.play).toBe(false);
-    expect(VIEWS.day.play).toBe(true);
+    expect(VIEWS.day.play && VIEWS.night.play).toBe(true);
+    expect(VIEWS.night.pitch).toBeGreaterThan(0); // (looking up)
   });
 
   it('settled: every chunk wanted is in, none in flight or being meshed again', () => {
