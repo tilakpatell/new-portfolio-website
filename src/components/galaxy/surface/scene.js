@@ -394,7 +394,7 @@ export async function create(canvas, ctx) {
   // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
   // otherwise made when it's first wanted, as it always was
   let cast = ctx.figures ? createMeshyCast(withWardrobe()) : null;
-  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null });
+  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops, site.uniforms ?? null), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null, only: site.cast === 'models' });
 
   await breathe();
   // ── The places you go into (zones): built high over the world, out of
@@ -484,7 +484,8 @@ export async function create(canvas, ctx) {
       scene.add(holder);
       const ridee = { spec, kind: x.kind, state, holder, fig: null, body: null, solid: null };
       if (spec.figure) {
-        const fig = buildFigure(spec.figure);
+        // (a world that takes models only waits for the model: surface/cast.js)
+        const fig = site.cast === 'models' ? null : buildFigure(spec.figure);
         if (fig) {
           holder.add(fig.model);
           ridee.fig = fig;

@@ -489,7 +489,7 @@ const LEAP = 4; // metres moved between two steps that's no step: put somewhere 
 const EYES = 1.6; // metres: your eyes over your feet, for a head turned to you
 const FLOOR = 4; // metres up or down: someone on another floor isn't greeting you
 
-export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS }) {
+export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS, only = false }) {
   const group = new THREE.Group();
   group.name = 'life';
   parent.add(group);
@@ -511,7 +511,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
 
   // (a page's own maker first, the Rick and Morty cast; what it has nothing
   // for, or fails to make, is made as any other kind)
-  const anyOf = (kind, spec, i) => anyFigure(kind, spec, kit, i, models);
+  const anyOf = (kind, spec, i) => anyFigure(kind, spec, kit, i, models, { only });
   const figureOf = figure
     ? (kind, spec, i) =>
         Promise.resolve(figure(kind, spec, i))
