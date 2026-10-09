@@ -57,6 +57,7 @@ import {
 import { LEG, WALKER_STRIDE, boxEmote, createNotice, createStride, legAngle, stepAt, walkerStride } from './life';
 import { sway } from '../../lib/three/gait';
 import { createFeel, feelGroups } from '../../lib/three/feel';
+import { createSpring, springGroups } from '../../lib/spring';
 import { debugOn, debugPanel } from '../../lib/debugPanel';
 
 // a grey as it should look (0 black, 1 white), in the linear working space
@@ -118,6 +119,11 @@ const blockFace = (face, mark) =>
 const HURT_SHAKE = 0.5;
 const STOMP_SHAKE = 0.25;
 const SHAKE_OFFSET = 0.3;
+// his landing's squash, on a spring: kicked by how fast he came down, it
+// squashes and rings back through a little stretch; at a full jump's 8.9 m/s
+// it reaches the 16% the old sine had
+const SQUASH = { k: 120, c: 8, max: 0.3 };
+const SQUASH_KICK = 0.36;
 const QUESTION = ['0111100', '1100110', '0000110', '0001100', '0011000', '0000000', '0011000'];
 const glyph = (rows, x0, y0, colour) => (g) => {
   g.fillStyle = colour;
@@ -1334,7 +1340,8 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const cam = { x: 0, y: 0, z: 0, ready: false };
   let idleT = 0;
   let air = 0; // 0 on the ground, 1 in a jump, eased
-  let landT = 9; // seconds since he last came down
+  const squash = createSpring(SQUASH); // + squashed, − stretched
+  let fall = 0; // how fast he's coming down, while he's in the air
   let wasGround = true;
   let knock = 0; // thrown back by a hurt, eased
   let disposed = false;
@@ -1357,9 +1364,12 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     const sp = Math.min(1, h.moving / HERO.speed);
     poseStride(hero, heroStride.step(dt, h.moving), now); // (on in the air, under the jump's pose, so he lands mid-stride)
     air += ((h.ground ? 0 : 1) - air) * (1 - Math.exp(-16 * dt));
-    if (h.ground && !wasGround) landT = 0;
+    if (!h.ground) fall = Math.max(fall, -(h.vy ?? 0));
+    else if (!wasGround) {
+      squash.kick(fall * SQUASH_KICK);
+      fall = 0;
+    }
     wasGround = h.ground;
-    landT += dt;
     const mix = (o, key, to) => (o.rotation[key] += (to - o.rotation[key]) * air);
     mix(hero.legL, 'x', 0.6);
     mix(hero.legR, 'x', -0.35);
@@ -1390,8 +1400,8 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     }
     // squeezing into a pipe, or out of one; and the squash of a landing
     const squeeze = fx.warp > 0 ? (fx.warpDir < 0 ? fx.warp : 1 - fx.warp) : 1;
-    const land = landT < 0.16 ? Math.sin((landT / 0.16) * Math.PI) : 0;
-    hero.group.scale.set(1.15 * (1 + land * 0.08), 1.15 * Math.max(0.02, squeeze) * (1 - land * 0.16), 1.15 * (1 + land * 0.08));
+    const land = squash.step(dt);
+    hero.group.scale.set(1.15 * (1 + land / 2), 1.15 * Math.max(0.02, squeeze) * (1 - land), 1.15 * (1 + land / 2));
     if (fx.warp > 0) fx.warp = Math.max(0, fx.warp - dt / 0.45);
     hero.group.visible = (game.hurt <= 0 || Math.floor(now * 14) % 2 === 0) && game.over <= 0 && squeeze > 0.03;
     const floor = floorAt(h.x, h.z, h.y + 0.05);
@@ -1635,7 +1645,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     tune(groups = []) {
       if (!debugOn()) return;
       panel ??= debugPanel({ title: 'Dot Matrix' });
-      panel.open([...feelGroups(feel), ...groups], { title: 'Dot Matrix', id: 'dot-matrix' });
+      panel.open([...feelGroups(feel), ...springGroups(squash, 'landing squash'), ...groups], { title: 'Dot Matrix', id: 'dot-matrix' });
     },
     dispose() {
       disposed = true;
