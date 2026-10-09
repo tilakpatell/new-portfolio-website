@@ -1,8 +1,8 @@
-/* global window, document, innerWidth, innerHeight, MutationObserver */
+/* global window, document, getComputedStyle, innerWidth, innerHeight, MutationObserver */
 // The galaxy map check's whole suite for a window of a given size (scripts/galaxy-map-check.mjs): names, zoom and drag, find,
 // layers, eras and films, Tab, the key and the side panel's wheel, the hover card, sharpness, the M key, the jump. See the
 // runner's header for the list.
-import { check, edgeEnergy, hasMap, headerAndFilms, J, namesProblems, open, out, overlayProblems, settle, smallText, still } from './lib.mjs';
+import { check, easedNames, edgeEnergy, hasMap, headerAndFilms, J, namesProblems, open, out, overlayProblems, settle, smallText, still } from './lib.mjs';
 
 export const suite = async (viewport, { full = true } = {}) => {
   const size = `${viewport.width}x${viewport.height}`;
@@ -113,6 +113,19 @@ export const suite = async (viewport, { full = true } = {}) => {
   await page.keyboard.press('-');
   await settle(page);
   say((await J(page, () => window.__mc.view())).k === 1, '- zooms out a step');
+
+  // ── a zoom eases the stage and the names' counter-scale together: no name changes size on the way ──
+  const eased = await easedNames(page, '+');
+  say(eased.frames >= 8 && eased.worst < 0.5, `through a + zoom's easing no name changes size (${eased.frames} frames; the widest change ${eased.worst.toFixed(2)} px${eased.name ? `, ${eased.name}` : ''})`);
+  await settle(page);
+  const easedBack = await easedNames(page, '-');
+  say(easedBack.worst < 0.5, `nor through a - zoom's (${easedBack.worst.toFixed(2)} px)`);
+  await settle(page);
+  // (with motion reduced nothing's eased at all: the page's own reset leaves a transition 1 microsecond long, which is none)
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const still0 = await J(page, () => [document.querySelector('.holomap-stage'), document.querySelector('.holomap-systems > li')].map((el) => getComputedStyle(el).transitionDuration.split(', ').every((d) => parseFloat(d) < 0.001)));
+  say(still0.every(Boolean), 'with reduced motion the stage and the systems have no transition');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   // ── find: "endo" + Enter picks Endor and has it on view; the YOU tag; J jumps (last) ──
   const find = page.locator('input[type=search][aria-label="Find a system"]');

@@ -333,6 +333,12 @@
    the war's strip and key, and the zoom buttons, sit over it and stay put ── */
 .holomap-map { touch-action: none; cursor: grab; }
 .holomap-map[data-zoomed]:active { cursor: grabbing; }
+/* The view's three numbers are registered, so a transition can ease them: the stage's transform and the counter-scale
+   of every name, crest and tag read the same eased value on the same frame (easing the transform alone left the
+   counter-scales at their end value from the first frame, so the names shrank and then grew back on every zoom) */
+@property --k { syntax: '<number>'; inherits: true; initial-value: 1; }
+@property --vx { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --vy { syntax: '<number>'; inherits: true; initial-value: 0; }
 .holomap-stage {
   position: absolute;
   inset: 0;
@@ -341,7 +347,7 @@
   will-change: transform;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .holomap-stage { transition: transform 0.18s ease-out; }
+  .holomap-stage { transition: --k 0.18s ease-out, --vx 0.18s ease-out, --vy 0.18s ease-out; }
 }
 .holomap-map:active .holomap-stage { transition: none; }
 /* names, badges and crests keep their size while the map scales, each about its
@@ -473,6 +479,7 @@
 @media (prefers-reduced-motion: reduce) {
   .holomap-system[aria-current='location'] .holomap-dot,
   .holomap-course { animation: none; }
+  .holomap-systems > li { transition: none; }
 }
 .holomap-system[aria-pressed='true'] .holomap-name { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }
 .holomap-system:is(:hover, :focus-visible) .holomap-name { color: var(--c); }

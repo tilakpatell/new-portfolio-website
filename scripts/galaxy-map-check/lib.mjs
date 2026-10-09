@@ -1,4 +1,4 @@
-/* global window, document, getComputedStyle, innerHeight, createImageBitmap, OffscreenCanvas, SVGElement */
+/* global window, document, getComputedStyle, innerHeight, createImageBitmap, OffscreenCanvas, SVGElement, KeyboardEvent, requestAnimationFrame */
 // The galaxy map check's shared parts (scripts/galaxy-map-check.mjs runs it; suite.mjs and phone.mjs are its checks): the
 // browser, the page and how it's opened, what's measured on the map (names, small text, overlays, the header row), and the
 // check's ok/FAIL line.
@@ -90,6 +90,31 @@ export const still = async (page) => {
   }
 };
 export const J = (page, fn, arg) => page.evaluate(fn, arg);
+
+// every name's width on each frame of a zoom's easing (a key pressed in the page, sampled for 320 ms): the stage and the names'
+// counter-scale ease together, so a name keeps its size all the way (the stage's transform alone eased left them at the end
+// value's scale from the first frame, and they shrank and then grew back)
+export const easedNames = (page, key) =>
+  J(
+    page,
+    async (k) => {
+      const names = [...document.querySelectorAll('.holomap-name[data-id]')];
+      const widths = names.map(() => []);
+      const t0 = performance.now();
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+      await new Promise((done) => {
+        const tick = () => {
+          names.forEach((el, i) => widths[i].push(el.getBoundingClientRect().width));
+          if (performance.now() - t0 < 320) requestAnimationFrame(tick);
+          else done();
+        };
+        requestAnimationFrame(tick);
+      });
+      const spread = widths.map((w) => Math.max(...w) - Math.min(...w));
+      return { frames: widths[0].length, worst: Math.max(...spread), name: names[spread.indexOf(Math.max(...spread))]?.dataset.id };
+    },
+    key,
+  );
 export const hasMap = (page) => page.locator('.holomap').count().then((n) => n > 0);
 
 // the names on view: any two meeting, any outside the map

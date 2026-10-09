@@ -67,7 +67,9 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // the middle, and picking a system with an end of its course off the view
 // zooms to show the course. The canvas, SVG, fleets, grid letters and systems
 // are one stage that's scaled and moved (their names, dots and crests keep
-// their size); the war's strip and key, the layers' switches (mapLayers.js:
+// their size, through the 0.18 s the zoom eases in too: the view's k, x and y
+// are registered custom properties, galaxy.css, so the stage and the
+// counter-scale of everything in it ease together); the war's strip and key, the layers' switches (mapLayers.js:
 // territory, fronts, lanes, regions, grid, each kept in this browser) and the
 // zoom buttons stay put. Each system's name goes in
 // the place round its dot where it covers least (labelPlace.js, in screen
