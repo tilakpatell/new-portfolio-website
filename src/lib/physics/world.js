@@ -44,7 +44,7 @@
 //     onError(err) }) (a timeScale, maxSubsteps or maxSpeed that isn't a
 //     sensible number is its default)
 //     → Promise<{ RAPIER, world, step(dt) → substeps taken, add(desc) → Body,
-//       remove(body), onSubstep(fn(dt)) → off, awake(fn(Body)) (every awake
+//       remove(body), tagOf(collider), onSubstep(fn(dt)) → off, awake(fn(Body)) (every awake
 //       body), alpha (how far into the next step the clock is, 0…1, to draw
 //       between steps), onOrigin([x, y, z]) (every body, and the planet's
 //       centre, moved by −shift, velocities kept), onOriginShift(fn(shift))
@@ -55,12 +55,17 @@
 //     'kinematicVelocityBased', position, rotation ([x, y, z, w]), canSleep,
 //     sleeping, enabled, linearDamping = 0.1, angularDamping = 0.1, mass,
 //     friction = 0.2, restitution = 0.15, group = 'object', onHit(force, at),
-//     hitThreshold = 15, colliders: [{ shape: 'cuboid' | 'ball' | 'cylinder'
+//     hitThreshold = 15, onEnter(other, tag, otherTag), onLeave(other, tag, otherTag), colliders: [{ shape: 'cuboid' | 'ball' | 'cylinder'
 //     | 'capsule' (args [half height, radius]) | 'hull' | 'trimesh' |
 //     'heightfield', args, position, rotation, mass,
-//     centreOfMass, friction, restitution, group }] }; a body's mass is
-//     shared among the colliders that don't name their own; a moving body
-//     can't be a trimesh (it falls through the ground: use a hull)
+//     centreOfMass, friction, restitution, group, sensor, tag }] }; a body's
+//     mass is shared among the colliders that don't name their own; a moving
+//     body can't be a trimesh (it falls through the ground: use a hull); a
+//     `sensor` collider pushes nothing and reports what crosses it (a
+//     kinematic figure included) through the body's onEnter(other, tag,
+//     otherTag) and onLeave(other, tag, otherTag) (other: the Body, or null
+//     for one this world didn't add); `tag` names a collider (a hurtbox's
+//     region) for the queries: tagOf(collider) → tag | null
 //   Body: { body, colliders, desc, initial, reset(), resets (how many times
 //     it's been put back), enable(on) (off on purpose: the sweep leaves it),
 //     wake() (on purpose, so not put back to sleep after its first step),
@@ -172,12 +177,14 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
   world.timestep = STEP;
   const events = new RAPIER.EventQueue(true);
   const owners = new Map(); // collider handle → Body
+  const tags = new Map(); // collider handle → its tag (only the tagged)
   const bodies = new Set();
   const hooks = new Set();
   let hookList = []; // (a copy to run: a hook added while hooks run waits for the next substep)
   const shifts = new Set();
   const settle = new Set(); // bodies to be asleep again after the next step
   const fired = []; // a substep's hits, as numbers, sent once Rapier's loop is done
+  const crossed = []; // a substep's sensor crossings (collider, collider, started), likewise
   let pending = []; // bodies reset last step, re-enabled this one
   let doomed = []; // bodies removed mid-step, gone once it's done
   let backlog = 0;
@@ -220,6 +227,12 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
       cd.setFriction(c.friction ?? desc.friction ?? 0.2);
       cd.setRestitution(c.restitution ?? desc.restitution ?? 0.15);
       cd.setCollisionGroups(GROUPS[name]);
+      if (c.sensor) {
+        // (a sensor meets kinematic figures too: Rapier's default pairs only count a dynamic body)
+        cd.setSensor(true);
+        cd.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+        cd.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.KINEMATIC_FIXED | RAPIER.ActiveCollisionTypes.KINEMATIC_KINEMATIC);
+      }
       if (desc.onHit) {
         cd.setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS);
         cd.setContactForceEventThreshold(desc.hitThreshold ?? 15);
@@ -249,6 +262,8 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
       colliders: [],
       desc,
       onHit: desc.onHit ?? null,
+      onEnter: desc.onEnter ?? null,
+      onLeave: desc.onLeave ?? null,
       initial: { position: [...last.position], rotation: [...last.rotation], sleeping: !!desc.sleeping },
       resets: 0,
       removed: false,
@@ -341,6 +356,7 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
         throw new Error(`physics: a '${c.shape}' collider wouldn't build (${err?.message ?? err})`);
       }
       owners.set(collider.handle, handle);
+      if (c.tag != null) tags.set(collider.handle, c.tag);
       handle.colliders.push(collider);
     });
     handle.mass = handle.dynamic ? body.mass() : 0;
@@ -351,7 +367,10 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
 
   function drop(handle) {
     handle.keep();
-    for (const c of handle.colliders) owners.delete(c.handle);
+    for (const c of handle.colliders) {
+      owners.delete(c.handle);
+      tags.delete(c.handle);
+    }
     world.removeRigidBody(handle.body);
     handle.removed = true;
     pending = pending.filter((p) => p !== handle);
@@ -387,6 +406,25 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
   };
   const collect = (e) => {
     fired.push(e.collider1(), e.collider2(), e.maxForceMagnitude());
+  };
+  // a sensor crossing: each side that listens hears it, with the other's
+  // Body (null for one this world didn't add, or one gone this step)
+  const crossing = (c1, c2, started) => {
+    const a = owners.get(c1) ?? null;
+    const b = owners.get(c2) ?? null;
+    for (const [self, other, sc, oc] of [
+      [a, b, c1, c2],
+      [b, a, c2, c1],
+    ]) {
+      const fn = started ? self?.onEnter : self?.onLeave;
+      if (!fn || self.removed || doomed.includes(self)) continue;
+      if (other && (other.removed || doomed.includes(other))) continue;
+      try {
+        fn(other, tags.get(sc) ?? null, tags.get(oc) ?? null);
+      } catch (err) {
+        report(err);
+      }
+    }
   };
 
   const bad = (t, v) => !(Number.isFinite(t.x + t.y + t.z) && Number.isFinite(v.x + v.y + v.z));
@@ -485,8 +523,11 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
           settle.clear();
         }
         events.drainContactForceEvents(collect);
+        events.drainCollisionEvents((c1, c2, started) => crossed.push(c1, c2, started));
         for (let k = 0; k < fired.length; k += 3) hit(fired[k], fired[k + 1], fired[k + 2]);
         fired.length = 0;
+        for (let k = 0; k < crossed.length; k += 3) crossing(crossed[k], crossed[k + 1], crossed[k + 2]);
+        crossed.length = 0;
         world.forEachActiveRigidBody(after);
         if (++sweep >= SWEEP) {
           sweep = 0;
@@ -496,6 +537,7 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
     } finally {
       stepping = false;
       fired.length = 0;
+      crossed.length = 0;
       if (doomed.length) {
         const gone = doomed;
         doomed = [];
@@ -514,6 +556,7 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
     }
     bodies.clear();
     owners.clear();
+    tags.clear();
     hooks.clear();
     hookList = [];
     shifts.clear();
@@ -530,6 +573,7 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
     step,
     add,
     remove,
+    tagOf: (collider) => (collider ? (tags.get(collider.handle) ?? null) : null),
     get disposed() {
       return disposed || dying;
     },
