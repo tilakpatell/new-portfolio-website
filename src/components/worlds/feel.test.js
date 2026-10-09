@@ -41,7 +41,6 @@ export const OWN_SHAKE = [
   { file: 'cybertron/game/scene.js', pattern: RANDOM },
   { file: 'universe/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
   { file: 'galaxy/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
-  { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
   { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
   { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
   { file: 'office/world/scene.js', pattern: RANDOM },
@@ -68,7 +67,6 @@ export const NO_PRESS = [
   { file: 'invincible/world/flight.js', pattern: /\{ \.\.\.input, jump: false \}/ },
   { file: 'cybertron/game/rules.js', pattern: /input\.jump && p\.mode === 'robot' && p\.grounded/ },
   { file: 'avengers/world/rules.js', pattern: /function stepGround\(h, \{[^}]*\bjump\b/ },
-  { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
   { file: 'rickmorty/world/rules.js', pattern: /vy = move\.jump \? MORTY\.jump/ },
   { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
@@ -156,10 +154,12 @@ describe('the feel ratchet', () => {
     });
   }
 
+  // (at most: each lane that empties a line shrinks its list, and no lane
+  // need touch these numbers to do it)
   it('holds the audit’s counts', () => {
-    expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/'))).toHaveLength(16);
-    expect(DEAD_HITSTOP).toHaveLength(3);
-    expect(NO_PRESS).toHaveLength(11);
-    expect(UNANSWERED).toHaveLength(5);
+    expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/')).length).toBeLessThanOrEqual(16);
+    expect(DEAD_HITSTOP.length).toBeLessThanOrEqual(3);
+    expect(NO_PRESS.length).toBeLessThanOrEqual(11);
+    expect(UNANSWERED.length).toBeLessThanOrEqual(5);
   });
 });

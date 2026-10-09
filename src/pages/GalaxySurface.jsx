@@ -22,6 +22,8 @@ import surfaceModule from '../components/galaxy/surface/module';
 import galaxyModule from '../components/galaxy/module';
 import { FOUND_KEY, LAUNCH_KEY, QUESTS_KEY, readDone, readFound } from '../components/galaxy/travel';
 import { runtime } from '../runtime';
+import { thud } from '../lib/sfx';
+import { createImpacts } from '../lib/impact';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
@@ -47,6 +49,11 @@ import { EMOTES, wheelAngle } from '../lib/emote';
 import '../components/universe/universe.css';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/surface/surface.css';
+
+// a ride's knock, by the hit law (lib/impact.js): its force is the speed into
+// what it hit × BUMP_MASS, so a scrape at 6 m/s is quiet and 20 m/s is full
+const BUMP_MASS = 6;
+const bumpLaw = createImpacts();
 
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
 const CLIMB = 3400; // ms of the climb out seen before space takes over: the ship lifting, then shooting up under the sky's glare (surface.css .surface-exit rises from 2.5 s to here)
@@ -394,7 +401,12 @@ export default function GalaxySurface() {
         later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') goUp();
       else if (e.type === 'go') navigate(e.to);
-      else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
+      else if (e.type === 'bump') {
+        comms.current?.handle({ type: 'bump', hard: e.hard });
+        // and a thud as hard as the knock (the hit law: a scrape quiet, a tree head-on full)
+        const k = bumpLaw.hit((e.speed ?? 0) * BUMP_MASS, 'ride');
+        if (k) thud({ gain: k.gain, pitch: k.pitch });
+      }
       else if (e.type === 'mission') {
         for (const f of chaseFeed.current) f(e.view);
         const v = e.view;

@@ -169,12 +169,22 @@ export function groundAt(world, x, z, y = Infinity, step = WALK.step) {
 
 // ── On foot ──
 
+// a jump asked for: `true` (pressed this step, on the ground), or a press
+// (lib/press.js's createPress, aged by the scene each step with whether you
+// stood): a jump pressed a moment before the feet touch lands, and one a
+// moment after running off an edge still goes (the coyote time); a press is
+// taken once
+function jumpNow(s, jump) {
+  if (jump && typeof jump.take === 'function') return jump.take();
+  return s.grounded && Boolean(jump);
+}
+
 export function walker(x = 0, z = 0, y = 0, yaw = 0) {
   return { x, y, z, vx: 0, vy: 0, vz: 0, yaw, grounded: true, speed: 0, air: 0, wading: 0 };
 }
 
 // input: { x (strafe, -1 left … 1 right), y (-1 back … 1 forward), run,
-// jump (pressed this frame), heading (the camera's yaw: forward is
+// jump (pressed this frame, or a press: jumpNow), heading (the camera's yaw: forward is
 // (sin, cos) of it) }; returns what happened: { landed (the speed you hit
 // the ground at), jumped, bumped }
 export function walk(s, input, dt, world, rules = WALK) {
@@ -264,7 +274,7 @@ export function walk(s, input, dt, world, rules = WALK) {
 
   // up and down
   const g = Math.max(groundAt(world, s.x, s.z, s.y, rules.step), solidTop(world, s.x, s.z, s.y, rules));
-  if (s.grounded && input.jump) {
+  if (jumpNow(s, input.jump)) {
     s.vy = rules.jump;
     s.grounded = false;
     out.jumped = true;
@@ -411,7 +421,7 @@ export function ride(s, input, dt, world, spec) {
     s.grounded = s.y <= low + 0.01;
   } else {
     // on its feet: on the ground, jumping when asked
-    if (s.grounded && input.jump) {
+    if (jumpNow(s, input.jump)) {
       s.vy = 5.2;
       s.grounded = false;
     }
