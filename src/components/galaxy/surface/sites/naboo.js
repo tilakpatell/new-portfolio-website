@@ -31,6 +31,21 @@ const GORGE = [
   ...run([-79, 308], [60, 330], 18, -22),
 ];
 
+// The Lake Country's shore: a strip 24 m wide, level at 1.5 m, laid on the
+// lake's north shore where the ground meets the water today, from
+// (262, 178) to (336, 290). None of it lies more than 15 m out into the
+// lake, and it stops 75 m short of Padmé's island, 45 m of that open water
+// over 3 m deep, so the island stays one.
+const SHORE = [[262, 178], [296, 200], [316, 232], [333, 262], [336, 290]];
+// flats every `step` metres along a polyline, each `r` across, `edge` to ease
+// out over, level at `h`
+const strip = (points, h, r, edge, step = 8) =>
+  points.slice(1).flatMap((b, i) => {
+    const a = points[i];
+    const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step);
+    return Array.from({ length: n + (i === points.length - 2 ? 1 : 0) }, (_, j) => ({ at: [Math.round(a[0] + ((b[0] - a[0]) * j) / n), Math.round(a[1] + ((b[1] - a[1]) * j) / n)], r, edge, h }));
+  });
+
 export const SITE = {
   place: 'The Great Grass Plains',
   line: 'Green hills, still lakes, and Theed’s domes over the falls.',
@@ -63,12 +78,12 @@ export const SITE = {
       { type: 'island', at: [100, 330], r: 290, height: -38, core: 0.5, ragged: 0.25 },
       { type: 'island', at: [300, 420], r: 56, height: 43, core: 0.55, ragged: 0.3 },
       // the swamp round the Gungans' sacred place, standing water at its middle
-      { type: 'island', at: [-360, -280], r: 70, height: -18, core: 0.5, ragged: 0.4 },
+      { type: 'island', at: [-360, -280], r: 70, height: -13.5, core: 0.5, ragged: 0.4 },
       { type: 'mountains', from: 800, to: 3200, height: 460, scale: 1200 },
     ],
     // the road up to Theed, and the Lake Country's shore, level for its
     // road and its cypress rows
-    flats: [...ramp([-104, 38], [-196, 148], 15, 39.5, 16, 7), { at: [290, 300], r: 95, edge: 20, h: 1.5 }],
+    flats: [...ramp([-104, 38], [-196, 148], 15, 39.5, 16, 7), ...strip(SHORE, 1.5, 12, 8)],
     pits: GORGE,
     // (the Great Grass Plains as filmed: a warm, yellow-leaning green)
     palette: {
