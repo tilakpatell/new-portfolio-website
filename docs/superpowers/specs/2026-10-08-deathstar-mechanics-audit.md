@@ -35,6 +35,27 @@ This document records what the audit measured, the root cause of each problem, a
 | 13 | DS1, the chasm | Shots kept landing while the swing scene had the keys, and you died in it. | Nobody is shot while a scene plays. |
 | 14 | DS2, Vader's duel | Vader's blade stayed unlit and he stood in no stance, because a scripted fighter never counted as raised. | His blade is lit and his stance held while `duel.js` has him fighting. |
 
+## Second round (9 October)
+
+The owner reported: "In free roam, when I go up the stairs to the room and press E, it doesn't work." That room is Docking Control 327, up the stair from Bay 327. Its consoles had no tag, so E was never offered at them. The second round measured every prop and every member of the crew in free roam, every story scene's camera, and ten minutes of free roam on each station.
+
+| # | What was measured | Root cause | Fix |
+|---|---|---|---|
+| 15 | In free roam, E did nothing at any console, bank, terminal, crew station, screen or intercom. That includes Docking Control's consoles up the bay's stair. | Only tagged things could be used, and furnished consoles carry no tag. | `rules/play/readouts.js`: such a console reads out lines about its room (a bay's traffic, a block's cells, the command centre's fleet), in turn. It reports the section's security when the section isn't calm. |
+| 16 | E did nothing in front of 40 of the crew: officers, the superlaser's gunners, Death Star troopers, TIE pilots, the Royal Guards, the Gonk and mouse droids, and Leia in free roam. | A talk was found only for stormtroopers, technicians and the archivist, or for anyone the story names. | `rules/talks/crew.js` gives small talk to anyone who passes for one of the crew's own. The Royal Guards say nothing, and the droids answer anyone. In free roam, Leia walks with you once she is rescued. |
+| 17 | A patrolling trooper you talked to walked off mid-sentence. | The talk didn't reach the crew's minds. | Whoever you talk to stops, turns to you and plays the talk clip until the talk ends (`stepCrew`'s `talking`). |
+| 18 | At the superlaser's switch, E read out the crew station beside it. With an operator standing at the switch, E opened small talk instead. | The nearest thing won, whatever it was, and people always came before things. | A tagged thing is reached before a console that only reads out, and before a seat. A tagged thing as squarely before you as a person comes before small talk with them. Among equals, a thing in front of you comes before one behind you. |
+| 19 | E sometimes missed what the crosshair was on. | E reached along the body's facing. While you stand, a glance of up to a radian doesn't turn the body. | E reaches along where the camera looks (`you.look`). |
+| 20 | No seat could be sat in. The officers at the conference table sat with their hips through their chairs' backs, and the throne's sitter sank into its seat. | Sitters were placed at the seat's middle, while the sit clip puts the knees over its origin and the hips 0.33 m behind. | E sits you in an empty chair, bench, throne or meditation chamber, and E or a step stands you up. `rules/seats.js` puts every sitter's figure at the seat's front edge, lifted to its top. The throne's seat is now as deep as one sits in. |
+| 21 | Luke's saber stayed on the throne's armrest after you took it, or after the Emperor pulled it to Luke. E kept offering it. | The saber was merged into the room's mesh, and nothing checked whether it had been taken. | The saber is drawn on its own and hidden once `saber` is carried (and shown again if a checkpoint goes back). E isn't offered there once you have it. |
+| 22 | The talk box and the subtitle under it showed the same line twice. | Both showed every line said. | A line the talk box shows isn't repeated in the subtitles. |
+
+Measured and found sound:
+
+- **Every story scene's camera** (all four stories played by autoplay, every shot sampled every half second): every camera stands in a room. The only lines to the subject that a wall cuts are into the command centre's window (the superlaser's shot, which looks out through the glass) and over the chasm (where the line dips past the ledge's floor height).
+- **Ten minutes of free roam** on each station, touring rooms at random: nobody walked on the spot in your room, and nobody stood outside a room or inside furniture, apart from sitters in their seats.
+- **The second station's Imperial procession**: Vader kneels, the Emperor says "Rise, my friend" and walks the aisle, and his guards follow him.
+
 ## Not changed
 
 - Searchers sometimes stand a few seconds in a cell doorway before going on, and free-roam patrols walk as they should. The 400 s or so of "walking without moving" in the first walker audit was people who were asleep (more than three doors from you), not stuck.
@@ -50,4 +71,8 @@ This document records what the audit measured, the root cause of each problem, a
 - `rules/play/duel.test.js`: Vader closes in and cuts, a guard turns his strokes, your blade beats him down, the story's Vader yields at half health, the Royal Guard fights, and the Emperor's lightning burns but never kills.
 - `rules/route.test.js`: the way to the compactor goes by the chute.
 - `rules/walker.test.js`: one taller than a man stoops through an open low door.
-- `rules/play/autoplay.test.js` (opt-in: `DS_AUTOPLAY=1`): all four stories played start to end with the keys alone. All four finish.
+- `rules/play/autoplay.test.js` (opt-in: `DS_AUTOPLAY=1`, and `DS_AUTOPLAY_SEEDS=1,2,3` for more seeds): all four stories played start to end with the keys alone. All four finish.
+- `rules/play/act.test.js`: in free roam E does something wherever it is offered (consoles' readouts and seats included); the crew talk; the one you talk to stops and turns to you; E reaches along the look; the superlaser's switch beats the console beside it; a seat is sat in, held and stood up from, and isn't offered while someone sits in it.
+- `rules/seats.test.js`: a sitter is drawn with the knees at the seat's front edge, at the seat's height, anywhere along a bench.
+- `rules/talk.test.js`: the crew's small talk, by who you pass for.
+- `scene/clips.test.js`: every clip the scene asks for is in the library.

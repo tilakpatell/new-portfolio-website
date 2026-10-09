@@ -36,6 +36,7 @@ The explorable interior of both Death Stars at `/deathstar/inside`, and HD exter
   - The camera stops at furniture and ships. Nobody is shot while a scene plays.
   - Blade and Force fighters duel you (`rules/play/duel.js`, on `saber.js` and `force.js`).
   - Every story can be finished with the keys alone: `DS_AUTOPLAY=1 npx vitest run src/components/deathstar/inside/rules/play/autoplay.test.js`.
+  - The second round (the audit's findings 15 to 22): in free roam the consoles read out (`rules/play/readouts.js`), the whole crew talks (`rules/talks/crew.js`), the one you talk to stops for you, and E reaches where the camera looks. Seats can be sat in, and every sitter is drawn on the seat (`rules/seats.js`). Luke's saber leaves the armrest when it is taken.
 
 ## Left
 
