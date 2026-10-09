@@ -20,7 +20,7 @@ describe('the planets seeded', () => {
   });
 
   it('put every POI on a planet the seed lists, in seed.sql as in the fixture', () => {
-    const planetIds = new Set([...seed.matchAll(/insert into public\.planets \(id, name, type, seed\) values \('([^']+)'/g)].map((m) => m[1]));
+    const planetIds = new Set([...seed.matchAll(/insert into public\.planets \(id, name, type, seed, terrain_version\) values \('([^']+)'/g)].map((m) => m[1]));
     expect(planetIds.size).toBe(50);
     const poiPlanets = [...seed.matchAll(/insert into public\.pois \(id, planet_id, name, x, z, r\) values \('[^']+', '([^']+)'/g)].map((m) => m[1]);
     expect(poiPlanets.length).toBeGreaterThan(0);
@@ -39,6 +39,14 @@ describe('the planets seeded', () => {
     expect(seed).toBe(seedSql(fixture, 'scripts/fixtures/planets.json'));
     expect(seed.match(/insert into public\.planets/g)).toHaveLength(50);
     expect(seed.match(/insert into public\.pois/g)).toHaveLength(1);
+  });
+
+  it('say the ground each planet is on now, the first where the list doesn’t say', () => {
+    const two = { planets: [{ id: 'a', name: 'A', type: 'ice', seed: '1', terrainVersion: 3 }, { id: 'b', name: 'B', type: 'ice', seed: '2' }], pois: [] };
+    const sql = seedSql(two, 'x');
+    expect(sql).toContain("values ('a', 'A', 'ice', '1', 3) on conflict (id) do update set name = excluded.name, type = excluded.type, seed = excluded.seed, terrain_version = excluded.terrain_version;");
+    expect(sql).toContain("values ('b', 'B', 'ice', '2', 1)");
+    expect(() => seedSql({ planets: [{ ...two.planets[0], terrainVersion: 0 }], pois: [] }, 'x')).toThrow(/version/);
   });
 
   it('quote a name with an apostrophe, and refuse a list the table would', () => {

@@ -14,6 +14,7 @@
 //     the Expanse's from sectors (1,0), (0,1), (−1,0), (0,−1), (1,1) in order)
 //   TYPE_BIOMES[type] → biomes ({ id, at, reach, base, relief })
 //   planetSpecOf(id) → { id, name, seed, type, climate, biomes, pois, palette, clutter } | null
+//   TERRAIN_VERSION → the ground's version (what's built is put back on a newer one)
 
 import { makeSector } from '../../../components/expanse/gen/sector.js';
 import { UNIVERSE, hash64 } from '../../../components/expanse/gen/seed.js';
@@ -21,6 +22,13 @@ import { fold } from './fnl.js';
 import { CLUTTER, PALETTES, TYPE_BIOMES, expand } from './tables.js';
 
 const CLIMATE = { frequency: 0.00025, warp: 400 };
+
+// The ground's version, for what's built on it (the shared world's
+// terrain_version): bumped by hand whenever this file or ./tables.js changes
+// a planet's ground, so a turret stored on the old ground's height is put
+// back on the new one's. planetSpec.test.js hashes the ground and fails when
+// it moves without this.
+export const TERRAIN_VERSION = 1;
 
 export { TYPE_BIOMES };
 
