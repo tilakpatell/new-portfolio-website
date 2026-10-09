@@ -19,9 +19,9 @@
 //     barrel round each stack, clear of it, seeded by where it is
 //   createKnocks({ parent, dev, impacts, places, ground }) → Promise<{
 //     step(dt, you, ride), physical, dispose() }>: `you` { x, y, z } your
-//     feet; `ride` null on foot, else { radius }
+//     feet; `ride` null on foot, else what you ride (a wider capsule)
 
-import { createKnockables, knockablesWanted } from '../../../lib/three/knockables';
+import { KINDS, createKnockables, knockablesWanted } from '../../../lib/three/knockables';
 
 export const STACKED = new Set(['barrel', 'crates', 'bevelcrate', 'cratecube', 'empirecrate', 'hothcrate']);
 const GATHER = 4; // metres: things this close are one stack
@@ -72,7 +72,8 @@ export async function createKnocks({ parent, dev, impacts, places, ground, thing
       physics = null; // (offline, or the engine wouldn't start: they stand)
     }
   }
-  const loose = createKnockables({ physics, impacts, parent, count: Math.max(8, places.length) });
+  // (only the crate and the barrel: a pool a kind is a draw a kind)
+  const loose = createKnockables({ physics, kinds: { crate: KINDS.crate, barrel: KINDS.barrel }, impacts, parent, count: Math.max(8, places.length) });
   let foot = null;
   let rider = null;
   if (physics) {
