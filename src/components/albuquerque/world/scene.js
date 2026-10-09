@@ -62,6 +62,7 @@ import { attachVehicleBody } from '../../../lib/three/vehicleBody';
 import { wireImpacts } from '../../../lib/three/impacts';
 import { createDust } from '../../../lib/three/dust';
 import { createStreetProps } from './roadside';
+import { LOOK } from './look';
 import { createImpacts, impactGroups } from '../../../lib/impact';
 import { GRADE } from '../../../lib/stage3d';
 import { createGhosts } from '../../middleearth/towns/ghosts';
@@ -229,7 +230,7 @@ const GLYPH = { home: 'W', rv: 'Me', saul: 'Sa', pollos: 'Po', superlab: 'Bl', c
 // device's fit), how much of it goes after dark, its radius, the threshold
 // and how soft the edge over it is, the weight of each blur level (the
 // widest last, and least), and the brightest a pixel counts for.
-const BLOOM = { strength: 0.32, night: 0.4, radius: 0.3, threshold: 1.05, soft: 0.35, levels: [1, 0.65, 0.35, 0.12, 0.04], clamp: 4 };
+const BLOOM = { ...LOOK.bloom, night: 0.4, soft: 0.35, levels: [1, 0.65, 0.35, 0.12, 0.04], clamp: 4 };
 
 // ── shapes standing in for a model that didn't load ──
 function standIn(name) {

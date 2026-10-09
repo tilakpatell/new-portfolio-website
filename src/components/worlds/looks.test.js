@@ -16,15 +16,6 @@ const EXPECTED_MISSING = [
   'universe/landings',
   'universe/shipyard',
   'cockpit',
-  'albuquerque/world',
-  'albuquerque/casa',
-  'albuquerque/metherria',
-  'office',
-  'office/world',
-  'cybertron',
-  'cybertron/world',
-  'cybertron/game',
-  'cybertron/rollout',
 ];
 
 const looks = import.meta.glob('../**/look.js');
