@@ -181,6 +181,8 @@ export function drain(g) {
 // behind turns rather than flicks.
 function face(you, input, dt) {
   if (Number.isFinite(input.pitch)) you.pitch = input.pitch;
+  // (where the camera looks, which E reaches along: act.js)
+  if (Number.isFinite(input.yaw)) you.look = wrap(input.yaw);
   if ((input.aim || input.fire) && Number.isFinite(input.yaw)) {
     you.yaw = wrap(input.yaw);
     return;
@@ -510,7 +512,7 @@ export function step(g, input = {}, dt = STEP) {
   // through a hide or a still, those with you lie low as well
   const lying = ['hide', 'still'].includes(currentStep(g)?.type);
   for (const p of g.crew.people) if (p.tag?.startsWith('with:')) p.hidden = lying;
-  for (const e of stepCrew(g.crew, dt, { you: seenBy, alarm: g.alarm, doors, combat: g.combat, flags: g.flags, now: g.time, open, stims, awake: (p) => awake(g, p) })) {
+  for (const e of stepCrew(g.crew, dt, { you: seenBy, alarm: g.alarm, doors, combat: g.combat, flags: g.flags, now: g.time, open, stims, awake: (p) => awake(g, p), talking: g.talk?.npc ?? null })) {
     if (e.type === 'call') raise(g.alarm, e.section, e.how, e.at, g.time);
     else if (e.type === 'shoot') {
       if (fire(g.combat, e, g.rand)) g.events.push({ type: 'shot', by: e.owner, weapon: e.weapon, at: e.from });

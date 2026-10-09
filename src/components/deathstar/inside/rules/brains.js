@@ -25,8 +25,9 @@
 //       (scripted for Vader, the Emperor and the Royal Guard, droid for droids, else a post)
 //     hostile: the story’s word on whether they fight you, whatever your disguise (and while the flag
 //       `prisoner` is set, nobody of the Empire’s fights you unless the story says so)
-//   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims?, awake? }) → events
+//   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims?, awake?, talking? }) → events
 //     awake(person) → bool: who thinks and moves this step (all when absent); the rest sleep where they are
+//     talking: the id of the one you talk to, who stops and turns to you while you do
 //     you: your walker body & { id?, side, armour, helmet, doubt?, hp }; doors: doors.js’s state;
 //     flags: the story’s, whose floors drawn back (layout.offTags) the legs’ ways are worked out under;
 //     open(doorId) → bool, as the walker takes it; combat: its fresh bolts are heard as shots
@@ -255,12 +256,12 @@ export function removePerson(crew, id) {
 
 // ── a step ──
 
-export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [], awake = null } = {}) {
+export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [], awake = null, talking = null } = {}) {
   crew.clock = now ?? crew.clock + dt;
   crew.out = [];
   crew.routes = 0;
   // a way remembered with the chasm’s bridge in isn’t one once it is drawn back
-  crew.world = { you, alarm, doors, combat, flags, open, dt, ways: [...offTags(crew.layout, flags)].join(',') };
+  crew.world = { you, alarm, doors, combat, flags, open, dt, talking, ways: [...offTags(crew.layout, flags)].join(',') };
   const heard = gather(crew, stims);
   const watchers = [];
   for (const p of [...crew.people]) vitals(crew, p);
@@ -448,6 +449,13 @@ function calm(crew, p, threat) {
   const m = p.mind;
   const you = crew.world.you;
   if (threat?.visible && threat.confidence >= 1) return armed(p) ? engage(crew, p, threat) : frighten(crew, p, threat.at, 'fight');
+  // the one you talk to stops where they are and turns to you while you talk (one sat down stays sat)
+  if (you && crew.world.talking === p.id) {
+    m.legs.want.yaw = yawTo(p, you);
+    m.legs.want.lock = true;
+    if (m.pose !== 'sit') m.pose = 'talk';
+    return;
+  }
   // a watcher who doubts you enough stops what he is doing to look you over
   const watched = m.eye.beliefs[youId(you)];
   if (watched?.visible && !watched.hostile && (you.doubt ?? 0) >= CHALLENGE && p.side === 'imperial') {

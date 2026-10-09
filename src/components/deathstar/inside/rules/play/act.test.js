@@ -171,6 +171,78 @@ describe('what E is at', () => {
   });
 });
 
+describe('the crew in free roam', () => {
+  it('talk to one of their own: the superlaser’s gunners, a TIE pilot, the Royal Guard (who says nothing)', () => {
+    for (const [station, kind] of [['ds1', 'gunner'], ['ds1', 'tiepilot'], ['ds2', 'royalguard']]) {
+      const g = newGame({ station, side: 'imperial', mode: 'roam', seed: 5 });
+      const p = g.crew.people.find((q) => q.kind === kind);
+      // (from whichever side of them is on their room's floor, looking at them)
+      for (let k = 0; k < 8 && !g.talk; k++) {
+        const a = p.yaw + (k * Math.PI) / 4;
+        teleport(g, p.room, p.x + Math.sin(a) * 1.4, p.z - Math.cos(a) * 1.4);
+        if (g.you.room !== p.room) continue;
+        const yaw = Math.atan2(p.x - g.you.x, -(p.z - g.you.z));
+        step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+        step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0, use: true });
+      }
+      expect(g.talk?.who, kind).toBe(kind);
+    }
+  });
+
+  it('stop what they are doing and turn to you while you talk, and go back to it after', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 5 });
+    // a trooper on his patrol, caught as he walks
+    let p = null;
+    for (let k = 0; k < 600 && !p; k++) {
+      step(g, { dir: { x: 0, z: 0 }, yaw: g.you.yaw, pitch: 0 });
+      drain(g);
+      p = g.crew.people.find((q) => q.kind === 'stormtrooper' && q.anim === 'walk' && q.room === g.you.room && q.role?.type === 'patrol') ?? null;
+      if (!p) {
+        const q = g.crew.people.find((r) => r.kind === 'stormtrooper' && r.anim === 'walk' && r.role?.type === 'patrol');
+        if (q) teleport(g, q.room, q.x + Math.sin(q.yaw) * 1.5, q.z - Math.cos(q.yaw) * 1.5);
+      }
+    }
+    const look = () => Math.atan2(p.x - g.you.x, -(p.z - g.you.z));
+    step(g, { dir: { x: 0, z: 0 }, yaw: look(), pitch: 0, use: true });
+    expect(g.talk?.npc).toBe(p.id);
+    const at = { x: p.x, z: p.z };
+    for (let k = 0; k < 45; k++) step(g, { dir: { x: 0, z: 0 }, yaw: look(), pitch: 0 });
+    expect(Math.hypot(p.x - at.x, p.z - at.z)).toBeLessThan(0.3);
+    const toYou = Math.atan2(g.you.x - p.x, -(g.you.z - p.z));
+    expect(Math.abs(Math.atan2(Math.sin(p.yaw - toYou), Math.cos(p.yaw - toYou)))).toBeLessThan(0.2);
+    expect(p.anim).toBe('talk');
+    // (the talk ended, he walks on)
+    for (let k = 0; k < 6 && g.talk; k++) step(g, { dir: { x: 0, z: 0 }, yaw: look(), pitch: 0, choice: g.talk.choices.length - 1 });
+    for (let k = 0; k < 6 && g.talk; k++) step(g, { dir: { x: 0, z: 0 }, yaw: look(), pitch: 0, use: true });
+    expect(g.talk).toBeNull();
+    for (let k = 0; k < 240; k++) step(g, { dir: { x: 0, z: 0 }, yaw: look(), pitch: 0 });
+    expect(Math.hypot(p.x - at.x, p.z - at.z)).toBeGreaterThan(1);
+  });
+
+  it('reach along where you look, though a glance hasn’t turned you', () => {
+    const g = newGame({ station: 'ds2', side: 'imperial', mode: 'roam', seed: 5 });
+    const p = g.crew.people.find((q) => q.kind === 'royalguard');
+    teleport(g, p.room, p.x, p.z + 1.4, 0.8);
+    const yaw = Math.atan2(p.x - g.you.x, -(p.z - g.you.z));
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+    expect(g.you.yaw).toBeCloseTo(0.8);
+    expect(promptOf(g)).toMatchObject({ use: true, text: 'talk to them' });
+  });
+
+  it('has Leia walk with you from her cell once she is told she’s rescued', () => {
+    const g = newGame({ station: 'ds1', side: 'rebel', mode: 'roam', seed: 5 });
+    const leia = g.crew.people.find((q) => q.kind === 'leia');
+    teleport(g, leia.room, leia.x + Math.sin(leia.yaw) * 1.1, leia.z - Math.cos(leia.yaw) * 1.1);
+    const yaw = Math.atan2(leia.x - g.you.x, -(leia.z - g.you.z));
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0, use: true });
+    expect(g.talk?.who).toBe('leia');
+    for (let k = 0; k < 6 && g.talk; k++) step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0, choice: Math.max(0, g.talk.choices.length - 1) });
+    expect(leia.tag).toBe('with:leia');
+    expect(leia.role.type).toBe('follow');
+  });
+});
+
 describe('a seat', () => {
   const still = (yaw, o = {}) => ({ dir: { x: 0, z: 0 }, yaw, pitch: 0, ...o });
   function beside(g, room, kind) {

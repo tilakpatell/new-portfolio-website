@@ -11,11 +11,15 @@
 //   useHere(g) → bool                        E: the first thing within reach, in that order; false: nothing
 //   chooseHere(g, i) → bool                  a line picked in the open talk (or a number on a keypad)
 //   openStoryTalk(g) → void                  a talk the story’s step brings to you (a call, the intercom)
-//   reachable(g) → { kind: 'step' | 'talk' | 'jump' | 'thing' | 'keypad', … } | null   what E would act on;
+//   reachable(g) → { kind: 'step' | 'stand' | 'talk' | 'jump' | 'thing' | 'keypad', … } | null   what E would act on;
 //     'step': what the story's use, talk or choose step names (someone, a tagged thing, a place on a
 //     wall or a hull by its spot's name, or a thing you carry), which E does the step's work at:
-//     its talk opened, or its `used` told
+//     its talk opened, or its `used` told; 'stand': up out of the seat you sit in; then someone to
+//     talk to, unless a tagged thing is as squarely before you; a jump; a thing (a tagged one before
+//     a console that only reads out, readouts.js, or an empty seat)
+//   standUp(g) → bool                        out of your seat, stood in front of it
 //   KEYPAD                                   the numbers a hatch’s keypad offers
+//   SEATS                                    what can be sat in, and what E says there
 //   FREE                                     what each tagged thing does where no story is under way;
 //     E is offered at a thing only where it does something: a sign, a seat, the saber and the keypad
 //     anywhere, the rest where the story's step names them, or in free roam where FREE has a use
@@ -25,6 +29,7 @@
 import { furnish } from '../furnish';
 import { unlock } from '../doors';
 import { raise } from '../alarm';
+import { assign } from '../brains';
 import { choose, openTalk, talkFor, WHO } from '../talk';
 import { bringAlong, feedPlot } from './plot';
 import { READS, readoutOf } from './readouts';
@@ -154,10 +159,13 @@ function offered(g, t) {
 
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const free = (g, seat) => !g.crew.people.some((p) => p.hp > 0 && p.room === g.you.room && flat(p, seat) < TAKEN);
+// how squarely before you something is, along where you look (the camera's way: standing, a glance
+// doesn't turn your body), 1 dead ahead
 function ahead(you, at) {
   const [dx, dz] = [at.x - you.x, at.z - you.z];
   const d = Math.hypot(dx, dz) || 1;
-  return (Math.sin(you.yaw) * dx - Math.cos(you.yaw) * dz) / d;
+  const yaw = you.look ?? you.yaw;
+  return (Math.sin(yaw) * dx - Math.cos(yaw) * dz) / d;
 }
 
 export const talkCtx = (g) => ({
@@ -235,18 +243,22 @@ export function reachable(g) {
     const id = talkFor(p, ctx);
     if (id) best = { kind: 'talk', d, talk: id, npc: p };
   }
-  if (best) return best;
-  for (const j of g.layout.jumps ?? []) {
-    if (j.from === you.room && flat(j, you) <= (j.r ?? 1.5) && lockOpen(g, j.lock)) return { kind: 'jump', jump: j };
-  }
   // (a thing with a use of its own before a console that only reads out or a seat: the superlaser's
   // switch, not the crew station beside it)
   let near = null;
   for (const t of things(g)) {
     const d = flat(t, you);
     if (d > USE_REACH + Math.max(t.w ?? 0, t.d ?? 0) / 2 || g.broken?.has(t.tag) || !offered(g, t)) continue;
-    const it = { kind: t.tag === 'compactor-hatch' ? 'keypad' : 'thing', d, thing: t };
-    if (!near || (Boolean(t.tag) !== Boolean(near.thing.tag) ? Boolean(t.tag) : d < near.d)) near = it;
+    // (and of those, one before you before one behind, then the nearest)
+    const it = { kind: t.tag === 'compactor-hatch' ? 'keypad' : 'thing', d, thing: t, front: d < CLOSE || ahead(you, t) >= FRONT };
+    if (!near || (Boolean(t.tag) !== Boolean(near.thing.tag) ? Boolean(t.tag) : it.front !== near.front ? it.front : d < near.d)) near = it;
+  }
+  // someone to talk to before a thing, unless it is a thing with a use of its own and you face it
+  // as squarely as them (the superlaser's switch, its operator before it)
+  const facing = (q) => (q.d < CLOSE ? 1 : ahead(you, q.npc ?? q.thing));
+  if (best && !(near?.thing.tag && facing(near) >= facing(best) - 0.02)) return best;
+  for (const j of g.layout.jumps ?? []) {
+    if (j.from === you.room && flat(j, you) <= (j.r ?? 1.5) && lockOpen(g, j.lock)) return { kind: 'jump', jump: j };
   }
   return near;
 }
@@ -255,7 +267,7 @@ export function reachable(g) {
 export function useText(r) {
   if (!r) return null;
   if (r.kind === 'step') return NOUNS[r.tag] ?? (r.npc ? `talk to ${WHO[r.npc.kind] ?? r.npc.kind}` : `use the ${r.tag.replace(/-/g, ' ')}`);
-  if (r.kind === 'talk') return `talk to ${r.npc.kind === 'mouse' ? 'the droid' : (WHO[r.npc.tag] ?? 'them')}`;
+  if (r.kind === 'talk') return `talk to ${r.npc.kind === 'mouse' || r.npc.kind === 'gonk' ? 'the droid' : (WHO[r.npc.tag] ?? 'them')}`;
   if (r.kind === 'jump') return r.jump.prompt ?? 'go';
   if (r.kind === 'keypad') return 'dial the hatch’s keypad';
   if (r.kind === 'stand') return 'stand up';
@@ -394,6 +406,11 @@ function does(g, name, npc = null) {
     g.events.push({ type: 'choked', by: 'vader' });
   } else if (name === 'leia-joins') {
     feedPlot(g, { type: 'used', tag: 'leia' });
+    // (in free roam, as in the story, she walks with you from her cell)
+    if (!storyOn(g) && npc && crew.byId.has(npc)) {
+      assign(crew, npc, { type: 'follow', who: 'you' });
+      crew.byId.get(npc).tag = 'with:leia';
+    }
   } else if (name === 'officer-comes') {
     const p = crew.byId.get(npc);
     if (p) p.hostile = true;
