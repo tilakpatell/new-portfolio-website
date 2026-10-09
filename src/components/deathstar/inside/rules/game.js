@@ -509,7 +509,8 @@ export function step(g, input = {}, dt = STEP) {
 
   plot.holdUp(g, moved);
   battle.stepBattle(g, dt, open, { guard: Boolean(you.blade && input.aim) });
-  if (!g.talk && !g.scene) duel.duelStep(g, input, dt);
+  // (the jump key dodges a blade; its buffer and coyote time are the walker's, not the duel's)
+  if (!g.talk && !g.scene) duel.duelStep(g, { ...input, dodge: input.jump }, dt);
   const quake = stepBreach(g, dt);
   if (quake) g.events.push(quake);
 

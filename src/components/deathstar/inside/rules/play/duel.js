@@ -8,7 +8,7 @@
 // choices never come up. emperorMind throws the Emperor's lightning and
 // his taunts. When you hold a blade you fight back on the same rules:
 // fire strokes light, fire with your guard up strokes heavy, your guard
-// (aim) blocks and parries, and a jump dodges. A blow on them goes
+// (aim) blocks and parries, and a dodge (the jump key, passed as `dodge`) dodges. A blow on them goes
 // through combat.hurt, so the crew's minds see the hit and the stagger.
 // A blow on you comes off your health. A push throws you back, a grip
 // lifts you and chokes you for 2 s, and lightning burns, half as much
@@ -22,7 +22,7 @@
 // killed: at half his health he gives ground, which the story hears as his
 // tag put down, and he stops fighting. Pure apart from the game it changes.
 //
-//   duelStep(g, input, dt) → void   after the crew's step; input: rules/game.js's
+//   duelStep(g, input, dt) → void   after the crew's step; input: rules/game.js's, its jump as `dodge`
 //   foesOf(g) → [person]            who is duelling you this step
 
 import { CAST } from '../cast';
@@ -92,7 +92,7 @@ export function duelStep(g, input, dt) {
   // you: a blade or your raised arms against the Emperor
   const guarding = Boolean(input.aim) && (Boolean(you.blade) || foes.some(caster));
   const me = fighterOf(state, 'you', you, you.side);
-  const mine = you.blade && !you.gun ? saberStep(me, { strike: input.fire ? (guarding ? 'heavy' : 'light') : null, guard: guarding && !input.fire, dodge: Boolean(input.jump) && foes.length > 0 }, dt) : saberStep(me, { guard: guarding }, dt);
+  const mine = you.blade && !you.gun ? saberStep(me, { strike: input.fire ? (guarding ? 'heavy' : 'light') : null, guard: guarding && !input.fire, dodge: Boolean(input.dodge) && foes.length > 0 }, dt) : saberStep(me, { guard: guarding }, dt);
   for (const e of mine) if (e.type === 'stroke') g.events.push({ type: 'swing', by: 'you', colour: you.blade, kind: e.kind });
 
   const all = [...mine.map((e) => ({ e, f: me, p: null }))];
