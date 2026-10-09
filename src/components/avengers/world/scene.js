@@ -26,6 +26,10 @@ import { logoTexture, scatter, trees } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
 import { createFeel, feelGroups } from '../hq/feel';
 import { createSpring, springGroups } from '../../../lib/spring';
+import { device } from '../../../lib/device';
+import { createDust } from '../../../lib/three/dust';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createLawnProps } from './lawnProps';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
 import { buildShield } from '../ricochet/models';
 import { buildCape, buildMjolnir, buildPortal, craterTexture } from '../lawn/models';
@@ -1800,6 +1804,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     waterN.offset.set(clock * 0.006, clock * 0.009);
     placeJet(clock + 6, dt);
     placeHero(s.hero, dt, s.say);
+    // the lawn's props, moved by the engine where it's loaded, and their knocks heard
+    lawnProps?.step(dt, s.hero);
+    knocks.update(dt);
     placePeople(s, dt);
     ghosts.update(s.travellers ?? [], clock, dt);
     placeMarkers(s);
@@ -2091,6 +2098,20 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     auto: true,
   });
 
+
+  // ── things to knock over (the game-feel design's Tier 3): slaloms of
+  // cones, crates and a barrel on the lawn (./lawnProps.js), each knock a
+  // thud by how hard, from where it was (lib/three/impacts), a puff of the
+  // lawn's dust there and a nudge of the feel ──
+  const knockDust = createDust({ count: 48, colour: 0xb8b4a4, size: 0.9 });
+  scene.add(knockDust.mesh);
+  const ear = new THREE.Vector3();
+  const knocks = wireImpacts({
+    dust: knockDust,
+    shake: feel.trauma,
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
+  });
+  const lawnProps = await createLawnProps({ parent: scene, dev: device(), impacts: knocks }).catch(() => null);
   return {
     engine,
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
@@ -2122,6 +2143,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       moves?.dispose();
       spidey?.dispose();
       swing.dispose();
+      lawnProps?.dispose();
+      knocks.dispose();
       flags.dispose();
       grass?.dispose();
       rings.dispose();
