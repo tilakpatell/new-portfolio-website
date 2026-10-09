@@ -20,7 +20,9 @@
 // again.
 //
 // Only the frame itself is held back: a Scene drawn to the canvas, or to a
-// buffer the canvas's size (a composer's), with no override material. Left
+// buffer the canvas's size (a composer's) or one its owner says is the
+// frame's (`frames`: a composer drawn softer than the canvas, its last pass
+// drawing it up), with no override material. Left
 // alone: the shadow pass (no scene: its depth shaders are small and
 // shared), anything drawn outside a Scene (a post pass's quad: leaving it
 // out would leave its picture undrawn), the drawings a world makes for
@@ -38,7 +40,7 @@
 // The pictures it waits for are a patch's too (gpuWork's picturesIn: a
 // scan's, the look's), not only the material's own.
 //
-// guard(renderer, { uploadMB, compileMs, frame, invalidate }) → { enabled,
+// guard(renderer, { uploadMB, compileMs, frame, invalidate, frames(target) }) → { enabled,
 //   invalidate, adopt(scene, fn) → undo, pending(), dispose() }, one per renderer (asked again, the same).
 // In development, a frame in which three still compiled a shader mid-draw
 // says so in the console, so what's still slipping through can be found.
@@ -84,7 +86,7 @@ const inScene = (object, scene) => {
   return o === scene;
 };
 
-export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame, invalidate = null } = {}) {
+export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame, invalidate = null, frames = null } = {}) {
   if (guards.has(renderer)) return guards.get(renderer);
   const state = new WeakMap(); // material → READY | QUEUED
   const shapes = new WeakMap(); // a ready material → what its shader was made for (shapeOf)
@@ -274,9 +276,10 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
     }
   };
 
-  // the canvas, or a buffer its size (where a composer draws the frame)
+  // the canvas, or a buffer its size (where a composer draws the frame), or
+  // one the owner names
   const frameTarget = (t) => {
-    if (!t) return true;
+    if (!t || frames?.(t)) return true;
     const c = renderer.domElement;
     if (c) {
       drawn.x = c.width;
