@@ -822,7 +822,11 @@ export async function create(canvas, ctx) {
   // what's left of it is shared with everyone online, and comes back
   const CITADEL = wonderById('citadel');
   const citadelGeo = CITADEL ? citadelGeometry(CITADEL) : null;
-  const siege = createSiege();
+  // (your siege id: this page's, or the save's from before a reload, kept with your shares so a reload counts once)
+  const SIEGE_KEY = 'tp-citadel-siege';
+  const siegeSaves = runtime().saves;
+  const siege = createSiege({ id: [...globalThis.crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('') });
+  siege.load(siegeSaves?.get(SIEGE_KEY, null), Date.now());
   const siegeView = citadelGeo ? createCitadelSiege({ parent: map, model: deep.groupOf('citadel'), geo: citadelGeo, small }) : null;
   const SOLIDS_OPEN = SOLIDS.filter((o) => o.id !== 'citadel' && !o.id.startsWith('citadel-')); // (with it gone, there's nothing there to hit)
   let siegeSt = siege.state();
@@ -5024,6 +5028,7 @@ export async function create(canvas, ctx) {
     const sieging = siegeView ? siegeView.update(t, dt, camLocal, siegeSt) : false;
     if (net?.siege && ((siegeOwed && wallMs - siegeSent > 350) || (siege.active && net.peers.size > 0 && wallMs - siegeSent > 5000))) {
       net.siege(siege.message());
+      siegeSaves?.set(SIEGE_KEY, siege.save(wallMs)); // (kept with the shares it told)
       siegeSent = wallMs;
       siegeOwed = false;
     }

@@ -11,7 +11,7 @@
 
 import * as THREE from 'three';
 import { createEngine } from '../../avengers/hq/engine';
-import { createFeel } from '../../avengers/hq/feel';
+import { createFeel, feelGroups } from '../../avengers/hq/feel';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { CAST, asset } from '../cast';
 import { createGhosts } from '../../middleearth/towns/ghosts';
@@ -843,14 +843,15 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         // the villains (./foes.js): coming through, hit, knocked out, hitting him
         villains.fx(e);
         // (the camera's knock goes by their size; a punch that lands stops the
-        // game 70 ms, none of it under reduced motion)
+        // game 70 ms, ./InvWorld.jsx's loop slowed by timeScale: the stop
+        // stays under reduced motion, where the knock is the feel's to hold)
         if (e.type === 'ko') {
           feel.trauma(e.kind === 'mauler' ? 0.5 : e.kind === 'seismic' ? 0.4 : 0.3);
-          if (!calm) feel.hitstop(70);
+          feel.hitstop(70);
           scare.push({ x: e.at[0], z: e.at[2], r: 30 });
         } else if (e.type === 'hit') {
           feel.trauma(e.kind === 'mauler' ? 0.25 : 0.15);
-          if (!calm) feel.hitstop(70);
+          feel.hitstop(70);
         } else if (e.type === 'hurt') feel.trauma(e.by === 'car' || e.by === 'mauler' ? 0.5 : 0.35);
         else if (e.type === 'shake') feel.trauma(clamp(0.9 - Math.hypot(e.at[0] - h.p[0], e.at[2] - h.p[2]) / 200, 0.2, 0.9));
         else if (e.type === 'carHit' || e.type === 'carDown') scare.push({ x: e.at[0], z: e.at[2], r: 25 });
@@ -992,6 +993,10 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     engine,
     world,
     frame,
+    // how much of a real frame the game goes on by (a hitstop: ./InvWorld.jsx's loop)
+    timeScale: feel.timeScale,
+    // ?debug: the feel's numbers, and ./InvWorld.jsx's (the hits, the jump's press)
+    tune: (more = []) => engine.tune([...feelGroups(feel), ...more], 'invincible'),
     setTime,
     project,
     talkers,

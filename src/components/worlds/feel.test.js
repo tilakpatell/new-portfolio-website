@@ -36,23 +36,15 @@ export const OWN_SHAKE = [
   { file: 'galaxy/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
   { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
   { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
-  { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
 ];
 
 export const DEAD_HITSTOP = [
-  { file: 'invincible/world/scene.js', pattern: /feel\.hitstop\(/, loop: 'invincible/world/InvWorld.jsx', without: /\btimeScale\(|feel\.(step|scale)\(/ },
-  { file: 'avengers/widow/scene.js', pattern: /feel\.hitstop\(/, loop: 'avengers/widow/Infiltration.jsx', without: /\btimeScale\(|feel\.(step|scale)\(/ },
-  // (a feel whose scale already runs the snap, and no hitstop to slow it)
-  { file: 'avengers/titan/scene.js', pattern: /createFeel\(/, loop: 'avengers/titan/scene.js', without: /\.hitstop\(/ },
 ];
 
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
-  { file: 'invincible/world/flight.js', pattern: /\{ \.\.\.input, jump: false \}/ },
-  { file: 'avengers/world/rules.js', pattern: /function stepGround\(h, \{[^}]*\bjump\b/ },
   { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
-  { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
 ];
 
@@ -60,7 +52,6 @@ export const NO_PRESS = [
 const CUT_EASE = /= jump\b[^;]*\? 1 : Math\.min\(1, dt \* \(/;
 
 export const LINEAR_CAMERA = [
-  { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },
 ];
 
 export const UNANSWERED = [
