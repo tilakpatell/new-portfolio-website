@@ -108,10 +108,12 @@ describe('galaxySide, by who holds the system in the war', () => {
     expect(rep.capitalShip).toBe('venator');
     expect(pick(galaxySide(systemById('kamino'), fx('clone', 'kamino', 'separatists', 'republic')), 'hunt', seeded())).toBe('separatists');
   });
-  it('a separatist world’s droids come for you whoever holds it, your side or not', () => {
-    const side = galaxySide(systemById('geonosis'), fx('gcw', 'geonosis', 'rebel', 'rebel'));
+  it('a separatist world’s droids come for you whoever holds it, your side or not, in the Clone Wars', () => {
+    const side = galaxySide(systemById('geonosis'), fx('clone', 'geonosis', 'republic', 'republic'));
     expect(pick(side, 'hunt', seeded())).toBe('separatists');
     expect(can(side)).toContain('escort');
+    // (and none after it: a Rebel-held Geonosis in the Civil War is your own space)
+    expect(can(galaxySide(systemById('geonosis'), fx('gcw', 'geonosis', 'rebel', 'rebel')))).not.toContain('hunt');
   });
   it('Hutt space hunts nobody, but the bounty hunters come twice as keen', () => {
     const side = galaxySide(systemById('tatooine'), fx('gcw', 'tatooine', 'hutt', 'rebel'));
