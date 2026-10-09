@@ -123,4 +123,40 @@ describe('pickups', () => {
     expect(p.list.length).toBe(0);
     expect(p.mods().boost).toBe(1);
   });
+  // (the scene hands step `live: false` through a jump, a crash and a dive, and clears them as it commits to a jump, crashes or lands)
+  it('applies nothing taken mid-jump or mid-crash, even right on top of the ship', () => {
+    const p = createPickups({ rand: () => 0 });
+    p.drop({ x: 0, y: 0, z: 0 }, { ace: true, kind: 'repair' });
+    p.drop({ x: 0, y: 0, z: 0 }, { ace: true, kind: 'rapid' });
+    p.drop({ x: 0, y: 0, z: 0 }, { ace: true, kind: 'bubble' });
+    for (let i = 0; i < 120; i++) expect(p.step(1 / 60, ship(), { live: false })).toEqual([]);
+    expect(p.list.length).toBe(3);
+    expect(p.mods()).toMatchObject({ delay: 1, bubble: 0 });
+    expect(p.buffs()).toEqual([]);
+    expect(p.absorb(30)).toBe(30);
+  });
+  it('leaves none for the next system: what was out and what was on is gone after a clear', () => {
+    const p = createPickups({ rand: () => 0 });
+    p.drop({ x: 3, y: 0, z: 0 }, { ace: true, kind: 'overcharge' });
+    p.give('rapid');
+    p.give('bubble');
+    p.clear();
+    expect(p.step(0.5, ship(), { live: true })).toEqual([]);
+    expect(p.list).toEqual([]);
+    expect(p.buffs()).toEqual([]);
+    expect(p.mods()).toMatchObject({ boost: 1, accel: 1, delay: 1, bubble: 0 });
+    expect(p.absorb(10)).toBe(10);
+    // (and the one after is a fresh pickup, taken as any is)
+    p.drop({ x: 1, y: 0, z: 0 }, { ace: true, kind: 'repair' });
+    expect(p.step(0.016, ship(), { live: true })).toHaveLength(1);
+  });
+  it('hands back the same list and mods while nothing changes: nothing is made each frame', () => {
+    const p = createPickups({ rand: () => 0 });
+    expect(p.step(0.016, ship(), { live: true })).toBe(p.step(0.016, ship(), { live: true }));
+    expect(p.mods()).toBe(p.mods());
+    p.give('rapid');
+    expect(p.mods()).toBe(p.mods());
+    expect(p.buffs()).toBe(p.buffs());
+    expect(p.buffs()[0]).toBe(p.buffs()[0]);
+  });
 });

@@ -19,13 +19,19 @@ export const PICKUPS = {
 };
 const KINDS = Object.keys(PICKUPS);
 const NONE = Object.freeze({ boost: 1, accel: 1, delay: 1, bubble: 0 });
+const NOTHING = Object.freeze([]);
 
 const xyz = (a) => (Array.isArray(a) ? { x: a[0], y: a[1], z: a[2] } : { x: a.x, y: a.y, z: a.z });
 
+// The scene asks every frame (step, mods, buffs), so what they return is kept
+// and reused, never made again while nothing has changed: the lists and the
+// mods are valid till the next call.
 export function createPickups({ rand = Math.random } = {}) {
   let list = [];
   let next = 1;
-  const effects = new Map(); // kind → { left, of, points? }
+  const effects = new Map(); // kind → { left, of, points?, view }
+  const cur = { boost: 1, accel: 1, delay: 1, bubble: 0 }; // (what mods() hands out while an effect is on)
+  const shown = []; // (what buffs() hands out)
 
   const pick = (shield) => {
     const w = KINDS.map((k) => PICKUPS[k].weight * (k === 'repair' && shield < 50 ? 3 : 1));
@@ -61,21 +67,24 @@ export function createPickups({ rand = Math.random } = {}) {
     },
     give,
     step(dt, ship, { live = true } = {}) {
-      const taken = [];
+      let taken = NOTHING;
       for (const [kind, e] of effects) {
         e.left -= dt;
         if (e.left <= 0 || (PICKUPS[kind].bubble && e.points <= 0)) effects.delete(kind);
       }
-      list = list.filter((p) => {
+      let kept = 0;
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
         p.age += dt;
-        if (p.age >= p.life) return false;
+        if (p.age >= p.life) continue;
         const dx = ship.x - p.at.x;
         const dy = ship.y - p.at.y;
         const dz = ship.z - p.at.z;
         const d = Math.hypot(dx, dy, dz);
         if (live && d <= PICKUP_RULES.take) {
+          if (taken === NOTHING) taken = [];
           taken.push({ id: p.id, kind: p.kind, ...give(p.kind) });
-          return false;
+          continue;
         }
         if (live && d <= PICKUP_RULES.pull && d > 0) {
           const m = Math.min(d, PICKUP_RULES.pullSpeed * dt) / d;
@@ -83,19 +92,23 @@ export function createPickups({ rand = Math.random } = {}) {
           p.at.y += dy * m;
           p.at.z += dz * m;
         }
-        return true;
-      });
+        list[kept++] = p;
+      }
+      list.length = kept;
       return taken;
     },
     mods() {
       if (!effects.size) return NONE;
-      const m = { ...NONE };
+      cur.boost = 1;
+      cur.accel = 1;
+      cur.delay = 1;
+      cur.bubble = 0;
       for (const [kind, e] of effects) {
         const p = PICKUPS[kind];
-        if (p.mods) for (const [k, v] of Object.entries(p.mods)) m[k] *= v;
-        if (p.bubble) m.bubble = e.points;
+        if (p.mods) for (const k in p.mods) cur[k] *= p.mods[k];
+        if (p.bubble) cur.bubble = e.points;
       }
-      return m;
+      return cur;
     },
     absorb(damage) {
       const e = effects.get('bubble');
@@ -106,7 +119,14 @@ export function createPickups({ rand = Math.random } = {}) {
       return damage - took;
     },
     buffs() {
-      return [...effects].map(([kind, e]) => ({ kind, name: PICKUPS[kind].name, left: Math.max(0, e.left), of: e.of, points: e.points ?? null }));
+      shown.length = 0;
+      for (const [kind, e] of effects) {
+        const b = (e.view ??= { kind, name: PICKUPS[kind].name, left: 0, of: e.of, points: null });
+        b.left = Math.max(0, e.left);
+        b.points = e.points ?? null;
+        shown.push(b);
+      }
+      return shown;
     },
     clear() {
       list = [];

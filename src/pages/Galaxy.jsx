@@ -90,6 +90,15 @@ export default function Galaxy() {
     setPilotNote(text);
     noteTimer.current = setTimeout(() => setPilotNote(null), 3500);
   }, []);
+  // what a pickup gave, said for a moment over the flight cluster (the scene's 'pickup' event: pickups.js's name and line)
+  const [pickupNote, setPickupNote] = useState(null);
+  const pickupTimer = useRef(0);
+  useEffect(() => () => clearTimeout(pickupTimer.current), []);
+  const notePickup = useCallback((text) => {
+    clearTimeout(pickupTimer.current);
+    setPickupNote(text);
+    pickupTimer.current = setTimeout(() => setPickupNote(null), 2200);
+  }, []);
   useEffect(() => {
     if (!followId || !ship) return undefined;
     const go = () => {
@@ -336,6 +345,10 @@ export default function Galaxy() {
         if (followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
         return;
       }
+      if (e.type === 'pickup') {
+        notePickup(`${e.name} · ${e.line}`);
+        return;
+      }
       if (e.type === 'dove') {
         dove.current?.();
         dove.current = null;
@@ -417,7 +430,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock, crew, pay, notePilot, follow, course, jumpTo],
+    [current, leave, navigate, land, unlock, crew, pay, notePilot, notePickup, follow, course, jumpTo],
   );
   const onArrive = useCallback(
     (id) => {
@@ -476,6 +489,11 @@ export default function Galaxy() {
       {pilotNote && !leaving && (
         <p className="universe-prompt galaxy-note" data-on="" data-plain="" role="status">
           {pilotNote}
+        </p>
+      )}
+      {pickupNote && !leaving && (
+        <p className="galaxy-pickup-note" role="status">
+          {pickupNote}
         </p>
       )}
       {!leaving && <Online online={online} ship={ship} />}
