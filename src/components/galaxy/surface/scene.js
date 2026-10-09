@@ -422,7 +422,6 @@ export async function create(canvas, ctx) {
     } else gadgetSound(how, ev);
   };
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
-  if (site.cast === 'models') activity.modelsOnly();
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
@@ -446,6 +445,8 @@ export async function create(canvas, ctx) {
   });
   const fwdV = new V();
   const rightV = new V();
+  // (a world that takes models only: its quests' spawns too, cast.js)
+  if (site.cast === 'models') activity.modelsOnly();
   // (scratch for the bodies: a fall's turn, the mate's aim, a sitter's hips)
   const _fall = new THREE.Quaternion();
   const _mateDir = new V();
