@@ -12,14 +12,13 @@
       grid, the clips held at one phase. Through the dev server (npx vite):
         /scripts/preview/heroes.html                     the saber lit at guard, the guns carried
         …?mode=carry | guard | aim | swing | heavy | block | charge
-        …&i=0&k=0.5                                      which stroke and how far through (swing, heavy)
+        …&dir=up&k=0.5                                   which stroke (a way: up, left, right, rise; else the combo's first) and how far through (swing, heavy)
         …&view=three | front | side | back | left | top  from where
         …&only=luke,han                                  some of them
         …&move=0.5                                       walking (0…1)
         …&phase=0.3                                      where in its clips each figure is (0…1)
         …&zoom=2                                         closer
-        …&body=0                                         without the body under the saber (saberBody.js): as before it
-      window.__pose({ mode, i, k, move, phase }) and window.__view(name, zoom) for a script;
+      window.__pose({ mode, dir, k, move, phase }) and window.__view(name, zoom) for a script;
       body[data-metrics] holds, per hero, the hand, the blade's direction and the arms.
     -->
     <style>
@@ -57,14 +56,13 @@
       import { METRE } from '/src/components/universe/foot.js';
       import { createGunplay } from '/src/components/universe/gunplay.js';
       import { createSaber } from '/src/components/galaxy/surface/saber.js';
-      import { loadSaberBody } from '/src/components/galaxy/surface/saberBody.js';
+      import { preload, loadClip } from '/src/lib/three/clipLibrary.js';
       import { HEROES, heroSpec, readHero } from '/src/components/galaxy/heroes.js';
-      import { HEAVY } from '/src/components/galaxy/surface/combatRules.js';
+      import { BLOCK_CLIP, DIRS, HEAVY, STANCES, strokeFor } from '/src/components/galaxy/surface/combatRules.js';
 
       const q = new URLSearchParams(location.search);
       const num = (k, d) => Number(q.get(k) ?? d);
       const only = (q.get('only') ?? 'luke,han,bobafett,leia,ahsoka,chewie').split(',');
-      const withBody = q.get('body') !== '0';
       const status = document.getElementById('status');
       const V = THREE.Vector3;
       const deg = (r) => +((r * 180) / Math.PI).toFixed(1);
@@ -101,11 +99,13 @@
         holder.position.x = x;
         holder.updateMatrixWorld(true);
         const gp = fig ? createGunplay(fig, fig.gun ?? spec.gun, { unit: 1, who: fig.built ? 'built' : spec.id }) : null;
-        const saber = gp && spec.saber ? createSaber(gp, { color: spec.saber.color, hilt: spec.saber.hilt, stance: spec.saber.stance, parent: scene, fig: withBody ? fig : null }) : null;
+        const saber = gp && spec.saber ? createSaber(gp, { color: spec.saber.color, hilt: spec.saber.hilt, stance: spec.saber.stance, parent: scene, fig }) : null;
         placed.push({ id: h.id, spec, fig, gp, saber, holder, at: x });
         x += 1.6;
       }
-      await loadSaberBody(); // (the sabers' bodies in before the first pose)
+      // (the strokes' clips in before the first pose)
+      await preload([...new Set([...Object.values(STANCES).flatMap((s) => s.strokes.map((k) => k.clip)), ...HEAVY.clips, ...Object.values(DIRS).map((d) => d.clip), BLOCK_CLIP])]);
+      await new Promise((r) => setTimeout(r, 50));
       const span = Math.max(0, x - 1.6);
       const grid = new THREE.GridHelper(Math.ceil(span + 20), Math.ceil(span + 20), '#5a6270', '#363c46');
       grid.position.x = span / 2;
@@ -120,7 +120,7 @@
       let clock = 0; // (one clock across poses, moved on between them so a stroke left going ends)
       // as scene.js runs them each frame: the clip, gunplay's pose (a lit saber
       // held at 0.75 of the way up at least), the saber's over it
-      const pose = (o = {}) => {
+      const pose = async (o = {}) => {
         const mode = o.mode ?? 'guard';
         const move = o.move ?? 0;
         const phase = o.phase ?? 0.25;
@@ -147,10 +147,12 @@
             if (!p.fig) continue;
             const s = p.saber;
             if (s && stroke && !swung.has(p)) {
-              const dur = mode === 'heavy' ? HEAVY.dur : s.stance.swings[(o.i ?? 0) % s.stance.swings.length].dur;
+              const k = strokeFor(s.stance, { heavy: mode === 'heavy', dir: o.dir ?? null });
+              const clip = await loadClip(k.clip);
+              const dur = (clip?.duration ?? 0.6) / k.speed;
               const t0 = end - (o.k ?? 0.5) * dur;
               if (t >= t0) {
-                s.swing(t0, { heavy: mode === 'heavy' });
+                s.swing(t0, { heavy: mode === 'heavy', dir: o.dir ?? null });
                 swung.add(p);
               }
             }
@@ -279,7 +281,7 @@
       };
       window.__sheet = { THREE, placed, scene };
 
-      pose({ mode: q.get('mode') ?? 'guard', i: num('i', 0), k: num('k', 0.5), move: num('move', 0), phase: num('phase', 0.25) });
+      await pose({ mode: q.get('mode') ?? 'guard', dir: q.get('dir'), k: num('k', 0.5), move: num('move', 0), phase: num('phase', 0.25) });
       if (q.get('tiles')) window.__tiles(q.get('tiles').split(','), (q.get('views') ?? 'front,three,side').split(','), num('zoom', 1.4));
       else view(q.get('view') ?? 'three', num('zoom', 1), q.get('focus'));
       document.body.dataset.ready = '1';

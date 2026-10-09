@@ -154,7 +154,7 @@ describe('bake.mjs', () => {
       return JSON.parse(b.subarray(20, 20 + b.readUInt32LE(12)).toString('utf8'));
     };
     const mine = json(r.file);
-    const library = json(join(OUT, 'ual-sword.heavy.glb'));
+    const library = json(join(OUT, 'ual-sword.heavy.a.glb'));
     expect(mine.nodes.map((n) => n.name)).toEqual(library.nodes.map((n) => n.name));
     const [anim] = mine.animations;
     expect(anim.name).toBe('gen.test-strike');

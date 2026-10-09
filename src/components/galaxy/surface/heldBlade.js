@@ -51,10 +51,8 @@ export function bladeInHand(fig, { color = '#ff3b3b', hilt = null } = {}, { pare
   fig.model.updateMatrixWorld(true);
   const gp = createGunplay({ model: fig.model, bones: fig.bones }, 'saber', { unit: 1, who });
   if (!gp) return null;
-  // (the body sinking into its guard: saberBody.js, laid after the clips and
-  // before the figure's own bones go on, so only on one that lays them after)
-  const body = fig.bones?.Hips && fig.hipsY && fig.after ? fig : null;
-  const saber = createSaber(gp, { color, hilt, stance, parent, fig: body });
+  // (its strokes are clips on the figure: played on its animator where it has one, the arms laid by saber.js)
+  const saber = createSaber(gp, { color, hilt, stance, parent, fig });
   saber.light(true);
   return {
     gun: gp.gun,
