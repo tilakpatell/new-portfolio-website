@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { STALE_MS, createEntityLoader } from './entityLoader';
-import { bboxOf } from './entities';
-import { fakeClient, settle } from './fixtures/fakeClient';
+import { bboxOf, cellsAround } from './entities';
+import { EXPIRED, OFFLINE, fakeClient, fakeTimers, settle } from './fixtures/fakeClient';
+
+// cellsAround as it is, watched: update() must not ask for it every frame
+vi.mock('./entities', async (load) => {
+  const real = await load();
+  return { ...real, cellsAround: vi.fn(real.cellsAround) };
+});
 
 // a row as the table sends it
 let n = 0;
@@ -14,10 +20,12 @@ const cellOfCall = (call) => `${call.args.min_x / 2048},${call.args.min_z / 2048
 function setup(opts = {}) {
   const client = 'client' in opts ? opts.client : fakeClient();
   const clock = { t: 0 };
-  const loader = createEntityLoader({ client, planetId: 'hoth', now: () => clock.t, ...opts });
+  const timers = fakeTimers();
+  const signIn = vi.fn(async () => 'me');
+  const loader = createEntityLoader({ client, planetId: 'hoth', now: () => clock.t, timers, signIn, ...opts });
   const events = [];
   loader.on((e) => events.push(e));
-  return { client, clock, loader, events };
+  return { client, clock, loader, events, timers, signIn };
 }
 const rpcs = (client) => client.calls.filter((c) => c.name === 'get_entities_in_bounding_box');
 
@@ -102,17 +110,80 @@ describe('the entity loader', () => {
     expect(events).toEqual([]);
   });
 
-  it('on a failed ask, says so once and asks again on the next update', async () => {
-    const { client, loader, events } = setup({ radius: 0 });
+  it('on a refused ask, says so once and asks again on an update a second later, not every frame', async () => {
+    const { client, loader, events, timers } = setup({ radius: 0 });
     loader.update(0, 0);
-    await client.answer(0, { data: null, error: { message: 'offline' } });
-    expect(events).toEqual([{ type: 'error', where: 'fetch', error: { message: 'offline' } }]);
+    const refused = { message: 'envelope too large or inverted', code: '23514' };
+    await client.answer(0, { data: null, error: refused, status: 400 });
+    expect(events).toEqual([{ type: 'error', where: 'fetch', error: refused }]);
+    loader.update(0, 0);
+    expect(client.pending).toHaveLength(0); // cooling: a refusal is not asked again each frame
+    await timers.tick(1000);
+    expect(client.pending).toHaveLength(0); // nor by itself: a refusal is not the network's
     loader.update(0, 0);
     expect(client.pending).toHaveLength(1);
-    await client.answer(0, new Error('network down')); // a rejected call frees its slot too
-    expect(events.filter((e) => e.type === 'error')).toHaveLength(2);
+  });
+
+  it('retries a network failure after 1, 2 and 4 seconds, then waits for an update', async () => {
+    const { client, loader, events, timers } = setup({ radius: 0 });
     loader.update(0, 0);
+    await client.answer(0, OFFLINE);
+    for (const ms of [1000, 2000, 4000]) {
+      loader.update(0, 0);
+      expect(client.pending).toHaveLength(0); // the retry is the timer's, not the frame's
+      await timers.tick(ms - 1);
+      expect(client.pending).toHaveLength(0);
+      await timers.tick(1);
+      expect(client.pending).toHaveLength(1);
+      await client.answer(0, OFFLINE);
+    }
+    expect(events.filter((e) => e.type === 'error')).toHaveLength(4); // one a failure
+    await timers.tick(60000);
+    expect(client.pending).toHaveLength(0); // given up
+    loader.update(0, 0);
+    expect(client.pending).toHaveLength(1); // until the next update
+    await client.answer(0, { data: [row(1, 1)], error: null });
+    expect(events.at(-1)).toMatchObject({ type: 'add' });
+  });
+
+  it('treats a thrown call as the network failing, and frees its slot', async () => {
+    const { client, loader, events, timers } = setup({ radius: 0 });
+    loader.update(0, 0);
+    await client.answer(0, new Error('network down'));
+    expect(events).toMatchObject([{ type: 'error', where: 'fetch' }]);
+    await timers.tick(1000);
     expect(client.pending).toHaveLength(1);
+  });
+
+  it('signs in again once when the session has expired, and asks once more', async () => {
+    const { client, loader, events, signIn } = setup({ radius: 0 });
+    loader.update(0, 0);
+    await client.answer(0, EXPIRED);
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expect(signIn).toHaveBeenCalledWith(client);
+    expect(client.pending).toHaveLength(1);
+    const a = row(1, 1);
+    await client.answer(0, { data: [a], error: null });
+    expect(events).toEqual([{ type: 'add', entity: expect.objectContaining({ id: a.id }) }]);
+  });
+
+  it('says so when the session is still refused after signing in again', async () => {
+    const { client, loader, events, signIn } = setup({ radius: 0 });
+    loader.update(0, 0);
+    await client.answer(0, EXPIRED);
+    await client.answer(0, EXPIRED);
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expect(client.pending).toHaveLength(0);
+    expect(events).toEqual([{ type: 'error', where: 'fetch', error: EXPIRED.error }]);
+  });
+
+  it('asks for the grid round the ship only when the ship changes cell', () => {
+    const { loader } = setup();
+    cellsAround.mockClear();
+    for (let i = 0; i < 100; i++) loader.update(10 + i, 20 + i); // a hundred frames in one cell
+    expect(cellsAround).toHaveBeenCalledTimes(1);
+    loader.update(2048 + 5, 20);
+    expect(cellsAround).toHaveBeenCalledTimes(2);
   });
 
   it('folds realtime changes into the cells it holds and ignores the rest', async () => {
@@ -174,6 +245,44 @@ describe('the entity loader', () => {
     expect(insert.args).toEqual({ planet_id: 'hoth', entity_type: 'turret', x: 30, y: 2, z: 40, rot_x: 0, rot_y: 1, rot_z: 0 });
     expect(placed).toMatchObject({ id: 'new-1', owner: 'me', planetId: 'hoth', x: 30 });
     expect(events.at(-1)).toMatchObject({ type: 'add', entity: { id: 'new-1' } });
+  });
+
+  it('retries a place the network lost, after 1 s, then 2 s', async () => {
+    const { client, loader, events, timers } = setup({ radius: 0 });
+    loader.update(0, 0);
+    await client.answerAll();
+    const answers = [OFFLINE, OFFLINE];
+    client.insert = (row) => answers.shift() ?? { data: { id: 'p1', owner: 'me', version: 1, updated_at: 't', ...row }, error: null };
+    const placing = loader.place({ type: 'beacon', x: 5, y: 0, z: 5 });
+    await settle();
+    expect(events).toMatchObject([{ type: 'error', where: 'place' }]);
+    await timers.tick(1000);
+    expect(events.filter((e) => e.type === 'error')).toHaveLength(2);
+    await timers.tick(2000);
+    expect(await placing).toMatchObject({ id: 'p1' });
+    expect(client.calls.filter((c) => c.name === 'world_entities.insert')).toHaveLength(3);
+    expect(events.at(-1)).toMatchObject({ type: 'add', entity: { id: 'p1' } });
+  });
+
+  it('gives a lost place up after three retries', async () => {
+    const { client, loader, events, timers } = setup({ radius: 0 });
+    client.insert = () => OFFLINE;
+    const placing = loader.place({ type: 'beacon', x: 5, y: 0, z: 5 });
+    await settle(); // the first try fails and sets its wait
+    await timers.tick(1000);
+    await timers.tick(2000);
+    await timers.tick(4000);
+    expect(await placing).toBeNull();
+    expect(events.filter((e) => e.type === 'error')).toHaveLength(4);
+    expect(timers.count).toBe(0);
+  });
+
+  it('signs in again once when a place finds the session expired', async () => {
+    const { client, loader, signIn } = setup({ radius: 0 });
+    const answers = [EXPIRED];
+    client.insert = (row) => answers.shift() ?? { data: { id: 'p2', owner: 'me', version: 1, updated_at: 't', ...row }, error: null };
+    expect(await loader.place({ type: 'beacon', x: 5, y: 0, z: 5 })).toMatchObject({ id: 'p2' });
+    expect(signIn).toHaveBeenCalledTimes(1);
   });
 
   it('draws nothing when the database refuses a place', async () => {
@@ -242,14 +351,55 @@ describe('the entity loader', () => {
     expect(client.channels).toEqual([]);
   });
 
+  it('resubscribes a channel that fails, and asks every held cell for what it missed', async () => {
+    const { client, loader, events, timers } = setup({ radius: 0 });
+    loader.update(0, 0);
+    const a = row(1, 1);
+    await client.answer(0, { data: [a], error: null });
+    client.channels[0].report('SUBSCRIBED');
+    client.channels[0].report('CHANNEL_ERROR');
+    expect(events.at(-1)).toMatchObject({ type: 'error', where: 'realtime' });
+    expect(client.channels[0].unsubscribed).toBe(true);
+    loader.update(0, 0);
+    expect(client.channels).toHaveLength(1); // the retry is the timer's, not the frame's
+    await timers.tick(1000);
+    expect(client.channels).toHaveLength(2);
+    client.channels[1].report('CLOSED');
+    await timers.tick(2000);
+    expect(client.channels).toHaveLength(3);
+    expect(client.pending).toHaveLength(0);
+    client.channels[2].report('SUBSCRIBED');
+    expect(client.pending).toHaveLength(1);
+    expect(client.pending[0].args).toMatchObject({ min_x: 0, min_z: 0, since: a.updated_at });
+  });
+
+  it('after three failed resubscriptions, waits, then subscribes again on an update', async () => {
+    const { client, loader, timers } = setup({ radius: 0 });
+    loader.update(0, 0);
+    client.channels[0].report('TIMED_OUT');
+    for (const ms of [1000, 2000, 4000]) {
+      await timers.tick(ms);
+      client.channels.at(-1).report('CHANNEL_ERROR');
+    }
+    expect(client.channels).toHaveLength(4);
+    loader.update(0, 0);
+    expect(client.channels).toHaveLength(4); // not every frame
+    await timers.tick(4000);
+    expect(client.channels).toHaveLength(4); // nor by itself
+    loader.update(0, 0);
+    expect(client.channels).toHaveLength(5);
+  });
+
   it('on dispose, leaves the channel and hears no late answer', async () => {
-    const { client, loader, events } = setup({ radius: 0 });
+    const { client, loader, events, timers } = setup({ radius: 0 });
     loader.update(0, 0);
     expect(client.channels).toHaveLength(1);
     loader.update(0, 0);
     expect(client.channels).toHaveLength(1); // one channel a loader
     loader.dispose();
     expect(client.channels[0].unsubscribed).toBe(true);
+    expect(client.channels).toHaveLength(1); // leaving on purpose is not a failure to retry
+    expect(timers.count).toBe(0);
     await client.answer(0, { data: [row(1, 1)], error: null });
     client.realtime({ eventType: 'INSERT', new: row(2, 2) });
     expect(events).toEqual([]);
