@@ -1470,3 +1470,20 @@ body:has(.universe-panel) .guide-btn { display: none; }
 @media (max-width: 767px) {
   .universe-earn { bottom: calc(var(--sheet-h, 0px) + 104px); translate: -50% 0; max-width: calc(100% - 32px); }
 }
+
+/* on foot, the look's prompt (the world kit's Prompt, runtime/look.js): top
+   middle, clear of the stack of prompts and buttons over the hint, in the
+   map's own glass; a click on it locks the pointer too */
+.universe-look {
+  --hud-ink: var(--ink, #f2efe8);
+  --hud-muted: var(--muted);
+  --hud-glass-hi: rgb(3 4 10 / 0.85);
+  --hud-border: 1px solid rgb(255 255 255 / 0.16);
+  --hud-shadow: 0 6px 22px rgb(0 0 0 / 0.32);
+  --hud-face: var(--font-sans);
+  position: absolute;
+  left: 50%;
+  top: calc(var(--nav-h, 64px) + 24px);
+  translate: -50% 0;
+  font-size: 0.82rem;
+}
