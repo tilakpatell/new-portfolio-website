@@ -322,7 +322,8 @@ const worldPage = (route, { ready = canvasUp, move = 'KeyW' } = {}) =>
 
 const JOURNEYS = {
   // the planet flight (/fly/hoth): the ground streamed in at the start, then
-  // 300 m/s north over Echo Base and on across the snowfields, and a long
+  // 300 m/s north for 14 s, from the ridges onto the plains (a biome boundary
+  // at z ≈ 1050), over Echo Base (z −800) and into the glacier, and a long
   // bank round (the ship's dev hook, expanse/flight/module.js's __FLIGHT__)
   async fly(page, mark) {
     mark('load');
@@ -336,7 +337,7 @@ const JOURNEYS = {
     mark('fly');
     await page.evaluate(() => (window.__FLIGHT__.ship = { speed: 300, pitch: 0, roll: 0 }));
     await page.keyboard.down('ShiftLeft');
-    await wait(page, 10000);
+    await wait(page, 14000);
     mark('bank');
     await hold(page, 'KeyD', 1200);
     await wait(page, 6000);

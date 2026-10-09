@@ -14,9 +14,18 @@
 // shows and hides with the leaf, so a parent's spires and its children's
 // never stand twice.
 //
-//   createGroundCore({ workers, sink, spec, tier }) → { update(ship, { uploads }),
+// An answer that isn't whole (a buffer the wrong length, a number not
+// finite) is dropped and the leaf asked once more, then given up on; a
+// worker that dies (the pool replaces it and settles its job with null) costs
+// the leaf a try, and three in a row give it up with one warning. A leaf
+// given up on is never asked again until a reset, and the coarser leaf over
+// its ground stays drawn (stream.js's rule), so a broken leaf is never a
+// hole.
+//
+//   createGroundCore({ workers, sink, spec, tier, warn }) → { update(ship, { uploads }),
 //     heightUnder(x, z) → metres | NaN, origin(at), setTier(tier), stats() →
-//     { leaves, flying, pending, clutter }, dispose() }
+//     { leaves, flying, pending, clutter, failed }, dispose() }
+//   wholeAnswer(answer, n) → whether a worker's answer can become a mesh
 //   sink: { add(leaf, answer) → mesh, show(mesh, on), remove(mesh),
 //     clutterAdd(rows) → slots, clutterFree(slots), moveTo(at) }
 
@@ -31,8 +40,27 @@ export const UPLOADS_PER_FRAME = { low: 1, mid: 2, high: 3, ultra: 3 };
 export const gridFor = (tier) => (tier === 'high' || tier === 'ultra' ? 65 : 33);
 
 const CELL = sizeAt(MAX_DEPTH);
+// tries a leaf gets: an answer not whole is asked once more; a dead worker, three times
+export const TRIES = { bad: 2, error: 3 };
 
-export function createGroundCore({ workers, sink, spec, tier = 'mid' }) {
+const finite = (a) => {
+  for (let i = 0; i < a.length; i++) if (!Number.isFinite(a[i])) return false;
+  return true;
+};
+export function wholeAnswer(a, n) {
+  if (!a || a.n !== n) return false;
+  const verts = n * n + 4 * n - 4;
+  const { positions, normals, indices, heights, clutter } = a;
+  if (!(positions instanceof Float32Array) || positions.length !== verts * 3) return false;
+  if (!(normals instanceof Float32Array) || normals.length !== verts * 3) return false;
+  if (!(indices instanceof Uint32Array) || indices.length !== ((n - 1) * (n - 1) + 4 * n - 4) * 6) return false;
+  if (!(heights instanceof Float32Array) || heights.length !== n * n) return false;
+  if (!(clutter instanceof Float32Array) || clutter.length % 6) return false;
+  for (let i = 0; i < indices.length; i++) if (indices[i] >= verts) return false;
+  return finite(positions) && finite(normals) && finite(heights) && finite(clutter);
+}
+
+export function createGroundCore({ workers, sink, spec, tier = 'mid', warn = (...a) => console.warn(...a) }) {
   const stream = createLeafStream({ inFlight: IN_FLIGHT, keep: 2 });
   const n = gridFor(tier);
   let uploads = UPLOADS_PER_FRAME[tier] ?? 2;
@@ -43,6 +71,7 @@ export function createGroundCore({ workers, sink, spec, tier = 'mid' }) {
   const meshes = new Map(); // key → { leaf, mesh, answer, shown, slots }
   const tickets = new Map(); // key → the ask its answer must match
   let ticket = 0;
+  const fails = new Map(); // key → tries failed in a row
   let clutter = 0;
   let disposed = false;
 
@@ -67,6 +96,16 @@ export function createGroundCore({ workers, sink, spec, tier = 'mid' }) {
     meshes.delete(key);
   };
 
+  // a try failed: asked again at the next update, or given up on
+  const failure = (key, gen, kind) => {
+    const n = (fails.get(key) ?? 0) + 1;
+    fails.set(key, n);
+    stream.failed(key, gen);
+    if (n < TRIES[kind]) return;
+    stream.block(key);
+    warn(`[flight] the ground at ${key} failed ${n} times (${kind === 'bad' ? 'an answer not whole' : 'its worker died'}); the coarser ground stays under it`);
+  };
+
   const ask = (key) => {
     const leaf = leaves.get(key);
     const gen = stream.gen;
@@ -77,14 +116,21 @@ export function createGroundCore({ workers, sink, spec, tier = 'mid' }) {
     // ground, which covers the most, comes first, as the streamer asks)
     workers.request(WORKER, { key, priority: leaf.d, spec, leaf, n, tier: leafTier }).then(
       (answer) => {
+        // (not ours any more: cancelled, or asked again since)
         if (disposed || tickets.get(key) !== mine) return;
         tickets.delete(key);
-        if (answer) pending.push({ gen, leaf, answer });
-        else stream.failed(key, gen);
+        // (null while still ours: the worker died, and the pool made another)
+        if (!answer) failure(key, gen, 'error');
+        else if (!wholeAnswer(answer, n)) failure(key, gen, 'bad');
+        else {
+          fails.delete(key);
+          pending.push({ gen, leaf, answer });
+        }
       },
       () => {
-        if (tickets.get(key) === mine) tickets.delete(key);
-        stream.failed(key, gen);
+        if (tickets.get(key) !== mine) return;
+        tickets.delete(key);
+        failure(key, gen, 'error');
       },
     );
   };
@@ -138,13 +184,14 @@ export function createGroundCore({ workers, sink, spec, tier = 'mid' }) {
       uploads = UPLOADS_PER_FRAME[t] ?? uploads;
     },
 
-    stats: () => ({ leaves: meshes.size, flying: stream.flying.size, pending: pending.length, clutter }),
+    stats: () => ({ leaves: meshes.size, flying: stream.flying.size, pending: pending.length, clutter, failed: stream.blocked.size }),
 
     dispose() {
       disposed = true;
       for (const key of stream.flying.keys()) workers.cancel(WORKER, key);
       for (const key of [...meshes.keys()]) free(key);
       pending.length = 0;
+      fails.clear();
       stream.reset();
       workers.close?.(WORKER);
     },

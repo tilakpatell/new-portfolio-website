@@ -8,8 +8,9 @@
 // kind (lib/three/pool.js), its slots taken as a leaf shows and freed as it
 // hides.
 //
-//   createGround(scene, { rt, spec, tier }) → { update(ship), heightUnder(x, z),
-//     stats(), setTier(tier), materials, dispose() }
+//   createGround(scene, { rt, spec, tier, palette, warn }) → { update(ship),
+//     heightUnder(x, z), stats() (groundCore's, and `geometries`: made and
+//     not yet disposed), setTier(tier), materials, dispose() }
 
 import * as THREE from 'three';
 import { pool } from '../../../lib/three/pool';
@@ -90,8 +91,10 @@ function three(scene, spec, tier, palette) {
   const pos = [0, 0, 0];
   const q = [0, 0, 0, 1];
 
+  let live = 0; // geometries made and not yet disposed
   return {
     root,
+    live: () => live,
     materials: [material, ...pools.map((p) => p.mesh.material)],
     add(leaf, a) {
       const g = new THREE.BufferGeometry();
@@ -114,6 +117,7 @@ function three(scene, spec, tier, palette) {
       mesh.updateMatrix();
       mesh.visible = false;
       root.add(mesh);
+      live++;
       return mesh;
     },
     show(mesh, on) {
@@ -122,6 +126,7 @@ function three(scene, spec, tier, palette) {
     remove(mesh) {
       root.remove(mesh);
       mesh.geometry.dispose();
+      live--;
     },
     clutterAdd(rows) {
       const slots = [];
@@ -138,12 +143,13 @@ function three(scene, spec, tier, palette) {
         q[1] = Math.sin(rows[r + 3] / 2);
         q[3] = Math.cos(rows[r + 3] / 2);
         p.place(i, pos, q, rows[r + 4]);
-        slots.push(kind, i);
+        // (one slot an entry: the core counts the clutter by them)
+        slots.push([kind, i]);
       }
       return slots;
     },
     clutterFree(slots) {
-      for (let s = 0; s < slots.length; s += 2) pools[slots[s]].free(slots[s + 1]);
+      for (const [kind, i] of slots) pools[kind].free(i);
     },
     moveTo(at) {
       root.position.set(-at[0], -at[1], -at[2]);
@@ -156,10 +162,10 @@ function three(scene, spec, tier, palette) {
   };
 }
 
-export function createGround(scene, { rt, spec, tier = 'mid', palette }) {
+export function createGround(scene, { rt, spec, tier = 'mid', palette, warn }) {
   rt.workers.define(WORKER, () => new Worker(new URL('./terrain.worker.js', import.meta.url), { type: 'module' }));
   const sink = three(scene, spec, tier, palette);
-  const core = createGroundCore({ workers: rt.workers, sink, spec, tier });
+  const core = createGroundCore({ workers: rt.workers, sink, spec, tier, warn });
   core.origin(rt.origin?.at ?? [0, 0, 0]);
   return {
     root: sink.root,
@@ -168,7 +174,7 @@ export function createGround(scene, { rt, spec, tier = 'mid', palette }) {
     heightUnder: (x, z) => core.heightUnder(x, z),
     origin: (at) => core.origin(at),
     setTier: (t) => core.setTier(t),
-    stats: () => core.stats(),
+    stats: () => ({ ...core.stats(), geometries: sink.live() }),
     dispose() {
       core.dispose();
       sink.dispose();

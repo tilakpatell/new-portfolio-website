@@ -126,4 +126,30 @@ describe('createLeafStream', () => {
       expect(s.shows(parent)).toBe(true);
     });
   });
+
+  describe('a leaf that keeps failing', () => {
+    const parent = keyOf(4, 2, 3);
+    const children = kids(4, 2, 3);
+
+    it('is not asked again until a reset, and its parent stays drawn over it', () => {
+      const s = createLeafStream({ keep: 1, inFlight: 6 });
+      settle(s, want(parent));
+      const split = want(...children);
+      for (const k of s.update(split).ask) s.began(k, s.gen);
+      for (const k of children.slice(0, 3)) s.done(k, s.gen);
+      s.failed(children[3], s.gen);
+      s.block(children[3]);
+      for (let i = 0; i < 5; i++) {
+        const { ask, drop } = s.update(split);
+        expect(ask).toEqual([]);
+        expect(drop).toEqual([]);
+      }
+      // the parent, never a hole: its children wait unseen
+      expect(s.shows(parent)).toBe(true);
+      for (const k of children.slice(0, 3)) expect(s.shows(k)).toBe(false);
+      s.reset();
+      expect(s.blocked.size).toBe(0);
+      expect(s.update(split).ask).toContain(children[3]);
+    });
+  });
 });

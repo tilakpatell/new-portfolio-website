@@ -9,14 +9,16 @@
 // stays drawn until all four children are in and they swap in one frame (no
 // hole), and the two never draw the same ground at once (no double, the
 // depth fight the spec's decision 2 refuses). A stale leaf over no wanted
-// ground goes after `keep` updates.
+// ground goes after `keep` updates. A leaf that keeps failing is `block`ed:
+// never asked again until a reset, and since it never comes in, the coarser
+// leaf over its ground stays drawn instead of a hole.
 //
 // Pure: keys are quadtree.js's 'd:ix:iz'; the caller makes and frees meshes.
 //
 //   createLeafStream({ inFlight, keep }) → { update(leaves: Map) → { ask,
 //     drop, cancel }, began(key, gen), done(key, gen) → boolean,
-//     failed(key, gen), shows(key) → boolean, reset() → { drop, cancel },
-//     loaded: Set, flying: Map<key, gen>, gen }
+//     failed(key, gen), block(key), shows(key) → boolean, reset() → { drop,
+//     cancel }, loaded: Set, flying: Map<key, gen>, blocked: Set, gen }
 
 const parse = (key) => key.split(':').map(Number);
 
@@ -44,6 +46,7 @@ export function createLeafStream({ inFlight = 6, keep = 2 } = {}) {
   const s = {
     loaded: new Set(),
     flying: new Map(),
+    blocked: new Set(),
     gen: 0,
 
     update(leaves) {
@@ -82,7 +85,7 @@ export function createLeafStream({ inFlight = 6, keep = 2 } = {}) {
       const room = Math.max(0, inFlight - s.flying.size);
       if (room > 0) {
         for (const key of wanted.keys()) {
-          if (s.loaded.has(key) || s.flying.has(key)) continue;
+          if (s.loaded.has(key) || s.flying.has(key) || s.blocked.has(key)) continue;
           ask.push(key);
           if (ask.length >= room) break;
         }
@@ -108,6 +111,11 @@ export function createLeafStream({ inFlight = 6, keep = 2 } = {}) {
       if (gen === undefined || s.flying.get(key) === gen) s.flying.delete(key);
     },
 
+    block(key) {
+      s.blocked.add(key);
+      s.flying.delete(key);
+    },
+
     // a loaded leaf is drawn unless it is wanted and a stale leaf still
     // covers its ground (that one is drawn until this one's siblings are in)
     shows(key) {
@@ -124,6 +132,7 @@ export function createLeafStream({ inFlight = 6, keep = 2 } = {}) {
       s.loaded.clear();
       s.flying.clear();
       misses.clear();
+      s.blocked.clear();
       stale = [];
       s.gen++;
       return { drop, cancel };

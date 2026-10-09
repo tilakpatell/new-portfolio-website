@@ -98,6 +98,7 @@ export default {
     rt.input.bind(KEYS, { axes: AXES });
     let ship = spawnOf(spec, groundAt);
     let hudIn = 0;
+    let down = false; // crashed: put back up once the ground under it is in
     let touchThrottle = 0; // the touch buttons' (FlightHud), −1, 0 or 1
     const tell = (type, data) => rt.events?.emit(type, data);
     const unOrigin =
@@ -114,6 +115,10 @@ export default {
         ship = { ...ship, ...s };
       },
       anchor: () => [ship.x, ship.y, ship.z],
+      // put the ship back up over the ground (a crash does; the checks may)
+      respawn() {
+        down = true;
+      },
       throttle(v) {
         touchThrottle = v;
       },
@@ -121,6 +126,18 @@ export default {
         view.resize(w, h);
       },
       step(dt, snap) {
+        // after a crash, back up 200 m over the ground drawn, never under it:
+        // where that isn't in yet, the ship holds still a frame and asks again
+        if (down) {
+          ground.update(ship);
+          const h = ground.heightUnder(ship.x, ship.z);
+          if (Number.isFinite(h)) {
+            ship = { ...ship, y: h + RESPAWN_UP, pitch: 0, roll: 0, speed: Math.max(SHIP.speedMin, 120) };
+            down = false;
+          }
+          view.place(ship, rt.origin?.at ?? [0, 0, 0], dt);
+          return;
+        }
         const input = inputOf(snap);
         input.throttle = Math.max(-1, Math.min(1, input.throttle + touchThrottle));
         ship = stepShip(ship, input, dt);
@@ -148,6 +165,8 @@ export default {
         ground.setTier(tierAt(tier, level));
       },
       stats: () => ground.stats(),
+      // the height of the ground drawn under the ship (NaN: none in yet)
+      groundUnder: () => ground.heightUnder(ship.x, ship.z),
       tune: () => [
         {
           name: 'Ground',
