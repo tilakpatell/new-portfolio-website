@@ -46,7 +46,7 @@ Start A, B and C together. D starts when the three are on `main`.
 
 | Lane | Done | Left | Checking it |
 |---|---|---|---|
-| A | Tasks 1 to 9, in its pull request (`claude/flight-terrain`): `/fly/:planet` over streamed leaves, `lib/land/flats.js` (the surface pixel for pixel), `fastnoise-lite` with its page, fifty planets in `planetSpec.js`'s `PLANETS` (Expanse ids lowered: `e:sx,sz:i:j`) | its merge; on a GPU, the perf probe's worst frame (SwiftShader here: the flight's own work per frame is 5 ms at most) | `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /fly/hoth,/galaxy/hoth/surface`; `node scripts/perf-probe.mjs fly` |
+| A | Tasks 1 to 9 in #784 (`claude/flight-terrain`): `/fly/:planet` over streamed leaves, three to five biomes a planet type (`lib/land/flight/tables.js`), a bad answer or a dead worker never a hole, `lib/land/flats.js` (the surface pixel for pixel), `fastnoise-lite` with its page, fifty planets in `planetSpec.js`'s `PLANETS` (Expanse ids lowered: `e:sx,sz:i:j`) | its merge; on a GPU, the perf probe's worst frame (here, SwiftShader: 524 ms of software raster, the flight's own work 9.3 ms at most) | `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /fly/hoth,/galaxy/hoth/surface`; `node scripts/perf-probe.mjs fly` |
 | B | the schema file `supabase/migrations/20261009000000_world_entities.sql`, `supabase/README.md`, `.env.example`, the decision entry | the plan from Task 1; the schema applied to the project | `node scripts/supabase-check.mjs` |
 | C | nothing yet | the plan from Task 1 | `npx vitest run src/components/universe/online src/lib/net`; `node scripts/online-check.mjs` |
 | D | nothing yet | after A, B, C | `node scripts/online-check.mjs --fly` |
