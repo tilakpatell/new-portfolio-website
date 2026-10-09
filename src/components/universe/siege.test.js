@@ -75,6 +75,85 @@ describe('siege', () => {
     expect(a.state().hp[1]).toBe(1);
   });
 
+  it('a pilot who reloads (the same peer id, the saved shares back) and strikes again has every hit counted once', () => {
+    const a = createSiege({ id: 'pilotaaaaaaaaaaa' });
+    const b = createSiege({ id: 'pilotbbbbbbbbbbb' });
+    for (let i = 0; i < 6; i++) a.strike(0, 1, false, T);
+    for (let i = 0; i < 4; i++) b.strike(0, 1, false, T);
+    b.receive('a1', readSiege(a.message(), T), T);
+    a.receive('b1', readSiege(b.message(), T), T);
+    // the reload: the page made again, its save back, under the same peer id (a key that lasts)
+    const saved = JSON.parse(JSON.stringify(a.save(T)));
+    const back = createSiege({ id: 'freshffffffffff1' });
+    back.load(saved, T + 1000);
+    expect(back.id).toBe('pilotaaaaaaaaaaa');
+    back.receive('b1', readSiege(b.message(), T + 1000), T + 1000);
+    for (let i = 0; i < 3; i++) back.strike(0, 1, false, T + 1000);
+    b.receive('a1', readSiege(back.message(), T + 1000), T + 1000);
+    // 13 struck: 6 and 3 by the pilot who reloaded, 4 by the other, each counted once on both screens
+    expect(b.state(T + 1000).hp[0]).toBeCloseTo(1 - 13 / GEN_HP);
+    expect(back.state(T + 1000).hp[0]).toBeCloseTo(1 - 13 / GEN_HP);
+  });
+
+  it('a pilot back after their save has gone (the same peer id, a new siege id) while the siege goes on has every hit counted once', () => {
+    const a = createSiege({ id: 'pilotaaaaaaaaaaa' });
+    const b = createSiege({ id: 'pilotbbbbbbbbbbb' });
+    for (let i = 0; i < 6; i++) a.strike(0, 1, false, T);
+    b.receive('a1', readSiege(a.message(), T), T);
+    // the other pilot keeps it going, a hit inside every REPAIR_MS
+    const M = T + 3 * 60000;
+    const L = T + RESPAWN_MS + 1000;
+    expect(b.tick(M)).toBeNull();
+    for (let i = 0; i < 2; i++) b.strike(0, 1, false, M);
+    expect(b.tick(L)).toBeNull();
+    for (let i = 0; i < 2; i++) b.strike(0, 1, false, L);
+    // back after RESPAWN_MS: the save's too old to take, so a new siege id, under the same peer id
+    const back = createSiege({ id: 'freshffffffffff1' });
+    back.load(JSON.parse(JSON.stringify(a.save(T))), L);
+    expect(back.id).toBe('freshffffffffff1');
+    back.receive('b1', readSiege(b.message(), L), L);
+    for (let i = 0; i < 3; i++) back.strike(0, 1, false, L);
+    b.receive('a1', readSiege(back.message(), L), L);
+    back.receive('b1', readSiege(b.message(), L), L);
+    // 13 struck: 6 before, 4 by the other pilot, 3 after, each counted once on both screens
+    expect(b.state(L).hp[0]).toBeCloseTo(1 - 13 / GEN_HP);
+    expect(back.state(L).hp[0]).toBeCloseTo(1 - 13 / GEN_HP);
+  });
+
+  it('takes back no save older than RESPAWN_MS, nor one that isn’t one', () => {
+    const a = createSiege({ id: 'pilotaaaaaaaaaaa' });
+    a.strike(0, 5, false, T);
+    const saved = a.save(T);
+    const late = createSiege({ id: 'freshffffffffff1' });
+    late.load(saved, T + RESPAWN_MS + 1);
+    expect(late.id).toBe('freshffffffffff1');
+    expect(late.state(T + RESPAWN_MS + 1).hp[0]).toBe(1);
+    for (const junk of [null, 'x', { ...saved, at: 'now' }, { ...saved, m: [1] }, { ...saved, i: 'NOT AN ID' }, { ...saved, i: undefined }, { ...saved, at: T + 10 * 60000 }]) {
+      const s = createSiege({ id: 'freshffffffffff1' });
+      s.load(junk, T);
+      expect(s.state(T).hp[0]).toBe(1);
+      expect(s.id).toBe('freshffffffffff1');
+    }
+  });
+
+  it('counts what a peer tells under each siege id it comes to speak for, and takes a word under your own id (another tab of yours) as yours already', () => {
+    const a = createSiege({ id: 'pilotaaaaaaaaaaa' });
+    a.receive('p', readSiege({ e: 0, i: 'pilot00000000001', m: [3, 0, 0, 0, 0], t: [3, 0, 0, 0, 0] }, T), T);
+    a.receive('p', readSiege({ e: 0, i: 'pilot00000000002', m: [4, 0, 0, 0, 0], t: [7, 0, 0, 0, 0] }, T), T);
+    expect(a.state(T).hp[0]).toBeCloseTo(1 - 7 / GEN_HP);
+    a.receive('q', readSiege({ e: 0, i: 'pilotaaaaaaaaaaa', m: [5, 0, 0, 0, 0], t: [9, 0, 0, 0, 0] }, T), T);
+    expect(a.state(T).hp[0]).toBeCloseTo(1 - 9 / GEN_HP); // (its total, not its share again)
+  });
+
+  it('tells its id with its word, and reads a pilot’s, turning away one that isn’t one', () => {
+    const z = [0, 0, 0, 0, 0];
+    expect(createSiege({ id: 'pilotaaaaaaaaaaa' }).message().i).toBe('pilotaaaaaaaaaaa');
+    expect('i' in createSiege().message()).toBe(false);
+    expect(readSiege({ e: 0, m: z, t: z, i: 'pilot00000000001' }, T).i).toBe('pilot00000000001');
+    expect('i' in readSiege({ e: 0, m: z, t: z }, T)).toBe(false);
+    expect(readSiege({ e: 0, m: z, t: z, i: '<script>' }, T)).toBeNull();
+  });
+
   it('reads only well-formed messages', () => {
     expect(readSiege(null)).toBeNull();
     expect(readSiege({ e: 0, m: [1], t: [1] })).toBeNull();

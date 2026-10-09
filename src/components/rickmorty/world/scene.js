@@ -58,6 +58,9 @@ import { buildDiner } from './interiors/diner';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { applyEmote } from '../../../lib/emote';
 import { EYES as EYE_H, createGlance, stepMotion } from './living';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createImpacts, impactGroups } from '../../../lib/impact';
 
 export { kitMaterials };
 
@@ -147,6 +150,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const CUT_ON_MOVE = new Set(['cheer', 'happy', 'scared', 'hit', 'taunt', 'shoot', 'wave', 'dance', 'drink']);
 const V = new THREE.Vector3();
 const TMP = new THREE.Vector3();
+const EAR_DIR = new THREE.Vector3(); // (the way the camera looks, for where a knock is heard from)
 
 // looks: the wardrobe's ({ rick, morty }): Morty's is the one he wears here
 export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
@@ -154,6 +158,23 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const tier = dev.tier;
   const fit = budget();
   const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
+  // the shake (lib/three/feel: trauma², still under reduced motion) and the
+  // knocks (a hard landing, the cruiser's bump) by the hit law, a thud where
+  // it was, heard from the camera
+  const feel = createFeel({ baseFov: 55 });
+  const hits = createImpacts();
+  const EAR = { position: [0, 0, 0], forward: [0, 0, -1] };
+  const knocks = wireImpacts({
+    rules: hits,
+    shake: (k) => feel.trauma(k),
+    listener: () => {
+      const cam = stage.camera;
+      cam.getWorldDirection(EAR_DIR);
+      EAR.position = [cam.position.x, cam.position.y, cam.position.z];
+      EAR.forward = [EAR_DIR.x, EAR_DIR.y, EAR_DIR.z];
+      return EAR;
+    },
+  });
   const { renderer, scene, camera } = stage;
   // a tone map that keeps the show's flat bright colours bright (the house
   // tone mapper: the exposure was tuned under it, so the house's own
@@ -668,6 +689,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     cam.flying = !!state.flying;
     camera.position.copy(cam.at);
     camera.lookAt(cam.look);
+    feel.update(dt, camera);
 
     // the sun's shadows follow whoever you are
     const focus = state.flying && c ? V.set(c.x, 0, c.z) : V.set(m.x, 0, m.z);
@@ -756,6 +778,11 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     resize,
     fx: fxEvent,
+    // a knock of `force` at [x, y, z] (the hit law: a thud, and its shake); a shake of its own
+    hit: (force, at) => knocks.onHit(force, at),
+    shake: (k) => feel.trauma(k),
+    // behind ?debug: the stage's bloom, the feel, the hit law, and what the page adds (the jump's press)
+    tune: (groups = []) => stage.tune([...feelGroups(feel), ...impactGroups(hits), ...groups]),
     setLooks,
     ensureArea,
     hasArea: (id) => Boolean(areas[id]),

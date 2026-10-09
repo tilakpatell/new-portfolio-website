@@ -12,7 +12,7 @@ import { readPad, typing } from '../games/pad';
 import { useTravellers } from '../middleearth/towns/useTravellers';
 import { PALETTES } from './dither';
 import { cartInfo, readFound, saveFound, useFound } from './found';
-import { CARTRIDGES, COINS, SIGNS, ZOOM, cameraMove, islanderStep, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
+import { CARTRIDGES, COINS, HERO, SIGNS, ZOOM, cameraMove, islanderStep, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
 import { VOICE } from './voicelines';
 import './dotmatrix.css';
 import { Exit } from '../../runtime/hud';
@@ -64,6 +64,15 @@ const CODES = {
   Minus: 'zoomOut',
   NumpadSubtract: 'zoomOut',
 };
+
+// the jump's numbers on the ?debug panel (rules.js's HERO, read as it plays)
+const heroItem = (key, label, min, max, step) => ({ key, label, type: 'range', min, max, step, get: () => HERO[key], set: (v) => (HERO[key] = v) });
+const HERO_GROUPS = [
+  {
+    name: 'jump',
+    items: [heroItem('speed', 'walk (m/s)', 1, 10, 0.1), heroItem('jump', 'jump (m/s)', 4, 14, 0.1), heroItem('gravity', 'gravity', 10, 50, 0.5), heroItem('coyote', 'coyote (s)', 0, 0.3, 0.005), heroItem('buffer', 'buffer (s)', 0, 0.3, 0.005)],
+  },
+];
 
 export default function DotMatrixWorld() {
   const three = use3D();
@@ -155,6 +164,7 @@ function World({ gl, setGl }) {
         if (!a) return;
         if (dead) return a.dispose();
         api.current = a;
+        a.tune?.(HERO_GROUPS); // (behind ?debug: the feel's numbers and the jump's)
         a.setPalette(palette);
         fit();
         await a.warm(view());
