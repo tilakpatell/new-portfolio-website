@@ -17,14 +17,18 @@
 //     person's own `reach` beats it: a Hutt on his dais) and within `floor`
 //     of your height (when both have one); facing (else you.yaw): the one
 //     nearest the line you face, within `cone` of it, else the nearest.
-//   onTalk(person, you, { lines = person.lines, said = person.said ?? 0 })
-//     → { line, n, react: { event: 'say', hold, target: { x, y, z } } | null, face }
-//     line: the next of the lines, round and round (with a count, its
-//     index); n: said + 1, for the caller to keep on the person; hold: the
-//     line's length over 14, 1.5 to 6 s; target: your eyes (you.y + you.eyes,
-//     1.55 unless said); react null for a line in brackets (what they do, not
-//     say) or no line; face: you're more than 1.05 rad off their facing
-//     (person.face), past what the neck turns, so the body turns.
+//   onTalk(person, you, { lines = person.lines, said = person.said ?? 0,
+//     hold }) → { line, n, react: { event: 'say', hold, target } | null,
+//     look: { x, y, z }, face }
+//     line: the next of the lines, round and round; n: said + 1, for the
+//     caller to keep on the person; hold: the line's length over 14, 1.5 to
+//     6 s; look: your eyes (you.y + you.eyes, 1.55 unless said), on every
+//     result, so a line in brackets still looks at you; target: the same
+//     point; react null for a line in brackets (what they do, not say) or no
+//     line; face: you're more than 1.05 rad off their facing (person.face),
+//     past what the neck turns, so the body turns. With a count for `lines`
+//     (the text lives with the caller), `line` is the index and the hold is
+//     the caller's `hold` (it knows the text), else 2 s.
 //   createGreeter({ near = 2.8, far = 4.5 }) → (distance) → true the moment
 //     someone comes within `near`, armed again once they're further than
 //     `far` (the map's greeting: a wave once as you come near).
@@ -33,6 +37,7 @@ const NECK = 1.05; // the most a neck turns before the body does (rad)
 const HOLD = [1.5, 6]; // a line's hold (s)
 const PER_SECOND = 14; // characters read a second
 const EYES = 1.55; // your eyes' height above your feet (m)
+const COUNTED = 2; // a counted line's hold when the caller gives none (s)
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -66,17 +71,21 @@ export function talkTarget(people, you, { reach = 3, cone = 1.2, facing = null, 
   return faced ?? nearest;
 }
 
-export function onTalk(person, you, { lines = person?.lines, said = person?.said ?? 0 } = {}) {
+export function onTalk(person, you, { lines = person?.lines, said = person?.said ?? 0, hold } = {}) {
   const k = count(lines);
   const i = k ? ((Math.floor(said) % k) + k) % k : 0;
-  const line = !k ? null : Array.isArray(lines) ? lines[i] : i;
+  const listed = Array.isArray(lines);
+  const line = !k ? null : listed ? lines[i] : i;
   const n = said + 1;
-  const words = typeof line === 'string' ? line : line == null ? '' : String(line);
-  const silent = line == null || words.trimStart().startsWith('(');
-  const at = { x: you?.x ?? 0, y: (you?.y ?? 0) + (you?.eyes ?? EYES), z: you?.z ?? 0 };
-  const react = silent ? null : { event: 'say', hold: clamp(words.length / PER_SECOND, HOLD[0], HOLD[1]), target: at };
+  const look = { x: you?.x ?? 0, y: (you?.y ?? 0) + (you?.eyes ?? EYES), z: you?.z ?? 0 };
+  let react = null;
+  if (line != null && !listed) react = { event: 'say', hold: Number.isFinite(hold) ? hold : COUNTED, target: { ...look } };
+  else if (line != null) {
+    const words = typeof line === 'string' ? line : String(line);
+    if (!words.trimStart().startsWith('(')) react = { event: 'say', hold: clamp(words.length / PER_SECOND, HOLD[0], HOLD[1]), target: { ...look } };
+  }
   const face = Boolean(person && you && Number.isFinite(person.face) && Math.hypot(you.x - person.x, you.z - person.z) > 1e-6 && Math.abs(wrap(yawTo(person, you) - person.face)) > NECK);
-  return { line, n, react, face };
+  return { line, n, react, look, face };
 }
 
 export function createGreeter({ near = 2.8, far = 4.5 } = {}) {

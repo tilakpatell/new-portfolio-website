@@ -80,6 +80,24 @@ describe('onTalk: the line, and what the body does', () => {
     expect(r.line).toBe('(nods)');
     expect(r.react).toBe(null);
     expect(r.face).toBe(true);
+    expect(r.look).toEqual({ x: 0, y: 1.55, z: 0 });
+  });
+
+  it('looks at your eyes on every line, beside the reaction', () => {
+    const r = onTalk(person, { x: 0.5, z: -1, y: 0.5 });
+    expect(r.look).toEqual({ x: 0.5, y: 2.05, z: -1 });
+    expect(r.react.target).toEqual(r.look);
+    expect(onTalk({ id: 'mute', x: 1, z: 0 }, you).look).toEqual({ x: 0, y: 1.55, z: 0 });
+  });
+
+  it('a count of lines: the index for the line, the caller’s hold, else 2 s', () => {
+    const counted = { id: 'n', x: 1, z: 0, lines: 3 };
+    const a = onTalk(counted, you, { said: 4 });
+    expect(a.line).toBe(1);
+    expect(a.react).toEqual({ event: 'say', hold: 2, target: { x: 0, y: 1.55, z: 0 } });
+    expect(onTalk(counted, you, { hold: 4.5 }).react.hold).toBe(4.5);
+    // a list's hold is its line's, whatever the caller says
+    expect(onTalk({ ...counted, lines: ['Hi.'] }, you, { hold: 4.5 }).react.hold).toBe(1.5);
   });
 
   it('faces you past what the neck can turn', () => {
