@@ -102,6 +102,10 @@ export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {
     get leaving() {
       return wing.leaving;
     },
+    // the live wingmen as the rules hold them (to read each frame without a copy: don't keep or change them)
+    get ships() {
+      return wing.live;
+    },
     get bodies() {
       return wing.live.filter((w) => w.alive).map((w) => ({ key: `w:${w.id}`, id: w.id, kind: w.kind, at: w.pos, prev: w.prev, vel: w.vel, size: w.type.size, side: 'friend', hit: () => null }));
     },

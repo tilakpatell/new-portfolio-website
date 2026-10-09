@@ -60,6 +60,27 @@ describe('flying the ship', () => {
     expect(Math.abs(settled.lean)).toBeLessThan(0.02);
   });
 
+  it('leans into a turn on a spring: past where it settles, and back', () => {
+    // (held at a steady turn the lean's target stands still; the lean
+    // overshoots it a little and rings back, which reads as the ship's weight)
+    const s = { ...spawn(null), x: 0, z: 0, heading: 0, speed: SHIP.cruise };
+    let w = s;
+    let peak = 0;
+    for (let t = 0; t < 3; t += 1 / 60) {
+      w = step(w, { throttle: 1, turn: 1 }, 1 / 60, []).ship;
+      peak = Math.max(peak, Math.abs(w.lean));
+    }
+    const rest = Math.abs(w.lean);
+    expect(rest).toBeGreaterThan(0.3);
+    expect(peak).toBeGreaterThan(rest * 1.02);
+    expect(peak).toBeLessThan(rest * 1.25);
+    expect(Math.abs(w.leanV)).toBeLessThan(0.01);
+    // and the same at 30 Hz: bounded, settling where 60 Hz did
+    let h = s;
+    for (let t = 0; t < 3; t += 1 / 30) h = step(h, { throttle: 1, turn: 1 }, 1 / 30, []).ship;
+    expect(Math.abs(h.lean)).toBeCloseTo(rest, 2);
+  });
+
   it('turns wider the faster it goes', () => {
     expect(turnAt(0)).toBe(1);
     expect(turnAt(SHIP.cruise)).toBe(1);

@@ -23,6 +23,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { LOOK } from './look';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { budget, device } from '../../lib/device';
 import { noiseAtlas } from '../../lib/texture';
@@ -385,7 +386,7 @@ export async function create(canvas, ctx) {
   const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: B.samples }));
   composer.addPass(new RenderPass(scene, camera));
   // (only what's brighter than lit metal gets it)
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.8, 0.5, 1.0);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.threshold);
   bloom.enabled = B.bloom > 0;
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
