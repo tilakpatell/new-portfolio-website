@@ -65,7 +65,7 @@
 ### Task 3: Biomes and the planet field
 
 **Files:**
-- Create: `src/lib/land/flight/biomes.js`, `biomes.test.js`, `field.js`, `field.test.js`, `planetSpec.js`, `planetSpec.test.js`
+- Create: `src/lib/land/flight/biomes.js`, `biomes.test.js`, `field.js`, `field.test.js`, `planetSpec.js`, `planetSpec.test.js`, `tables.js` (the per-type biome tables, three to five biomes a type over every layer of `lib/land/layers.js`, craters and islands scattered per planet by `expand`; `field.test.js` holds every type finite, within −200…1200 m and under 60 m in 4 m)
 
 **Interfaces:**
 - Consumes: `noiseFor` (Task 2), `flatten` (Task 1), `fieldAt` and `LAYERS` from `src/lib/land/layers.js`.

@@ -16,7 +16,7 @@ describe('biomeWeights', () => {
 
   it('falls back to the first biome outside every reach', () => {
     const far = { ...hoth, biomes: hoth.biomes.map((b) => ({ ...b, at: [5, 5], reach: 0.01 })) };
-    expect(biomeWeights(far, 100, 100)).toEqual([1, 0, 0]);
+    expect(biomeWeights(far, 100, 100)).toEqual(hoth.biomes.map((_, i) => (i === 0 ? 1 : 0)));
   });
 
   it('gives every biome somewhere on the planet', () => {

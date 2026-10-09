@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { planetField } from './field';
-import { PLANETS, planetSpecOf } from './planetSpec';
+import { PLANETS, TYPE_BIOMES, planetSpecOf } from './planetSpec';
+import { seeded } from '../../seeded.js';
 
 describe('planetField', () => {
   const hoth = planetSpecOf('hoth');
@@ -47,6 +48,26 @@ describe('planetField', () => {
     for (const p of PLANETS) {
       const g = planetField(planetSpecOf(p.id));
       for (const [x, z] of [[0, 0], [5000, -3000], [-12000, 9000]]) expect(Number.isFinite(g.heightAt(x, z))).toBe(true);
+    }
+  });
+
+  // every type, on a planet of it: 2,000 points over 40 km, each with a
+  // neighbour 4 m off; the ship at its slowest clears 60 m in 4 m
+  it.each(Object.keys(TYPE_BIOMES))('%s: finite, within −200…1200 m, never more than 60 m in 4 m', (type) => {
+    const p = type === 'ice' ? PLANETS[0] : PLANETS.find((q) => q.type === type);
+    const spec = planetSpecOf(p.id);
+    const g = planetField(spec);
+    const rnd = seeded(7);
+    const nearPoi = (x, z) => spec.pois.some((q) => Math.hypot(x - q.at[0], z - q.at[1]) < q.r + q.edge + 8);
+    for (let i = 0; i < 2000; i++) {
+      const x = (rnd() * 2 - 1) * 20000, z = (rnd() * 2 - 1) * 20000;
+      const h = g.heightAt(x, z);
+      expect(Number.isFinite(h)).toBe(true);
+      expect(h).toBeGreaterThanOrEqual(-200);
+      expect(h).toBeLessThanOrEqual(1200);
+      if (nearPoi(x, z)) continue;
+      const a = rnd() * Math.PI * 2;
+      expect(Math.abs(g.heightAt(x + Math.cos(a) * 4, z + Math.sin(a) * 4) - h), `${p.id} at ${x}, ${z}`).toBeLessThanOrEqual(60);
     }
   });
 });

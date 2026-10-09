@@ -20,8 +20,8 @@ export { noise2 };
 export const LAYERS = {
   // broad rises and falls, ±height
   swell: (x, z, l, seed) => fbm(x / l.scale, z / l.scale, { octaves: 4, seed }) * l.height,
-  // rolling hills, 0…height
-  hills: (x, z, l, seed) => (fbm(x / l.scale, z / l.scale, { octaves: l.octaves ?? 5, seed }) * 0.5 + 0.5) * l.height,
+  // rolling hills, 0…height (`gain` under 0.5: rounder, the cartoon kind)
+  hills: (x, z, l, seed) => (fbm(x / l.scale, z / l.scale, { octaves: l.octaves ?? 5, gain: l.gain ?? 0.5, seed }) * 0.5 + 0.5) * l.height,
   // dunes: crests across the wind, sharp on top, strung out along it; 0…height
   dunes: (x, z, l, seed) => {
     const a = l.wind ?? 0;

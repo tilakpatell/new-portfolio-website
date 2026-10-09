@@ -1,7 +1,8 @@
-// The flight's planets: what a planet id flies over. Hoth is written out (the
-// spec's example, Echo Base and all); the other authored planets and the
-// Expanse's generated ones take their type's biome stacks (TYPE_BIOMES),
-// their own seed and no POIs.
+// The flight's planets: what a planet id flies over. Hoth is written out
+// (Echo Base and all); the other authored planets and the Expanse's
+// generated ones take their type's biomes, colours and clutter (./tables.js:
+// TYPE_BIOMES, its craters and islands scattered from the planet's own
+// seed), their own seed and no POIs.
 //
 // Ids are lower case because the shared world's database takes nothing else
 // (supabase/migrations' planets check); an Expanse planet is its sector.js id
@@ -17,66 +18,11 @@
 import { makeSector } from '../../../components/expanse/gen/sector.js';
 import { UNIVERSE, hash64 } from '../../../components/expanse/gen/seed.js';
 import { fold } from './fnl.js';
+import { CLUTTER, PALETTES, TYPE_BIOMES, expand } from './tables.js';
 
 const CLIMATE = { frequency: 0.00025, warp: 400 };
 
-// the stylised planets' ground: FastNoiseLite warped hard and folded
-const toon = (height, frequency = 0.0012) => ({ type: 'fnl', noise: { type: 'simplex', fractal: 'pingpong', frequency, octaves: 3, warp: 600 }, height });
-
-export const TYPE_BIOMES = {
-  ice: [
-    { id: 'plain', at: [0.2, 0.5], reach: 0.35, base: 0, relief: [{ type: 'swell', scale: 900, height: 24 }, { type: 'hills', scale: 180, height: 7 }] },
-    { id: 'ridge', at: [0.8, 0.3], reach: 0.3, base: 40, relief: [{ type: 'ridges', scale: 700, height: 160 }, { type: 'hills', scale: 120, height: 10 }] },
-    { id: 'glacier', at: [0.3, 0.9], reach: 0.3, base: 10, relief: [{ type: 'dunes', scale: 300, height: 14, wind: 0.4 }] },
-  ],
-  rock: [
-    { id: 'flats', at: [0.3, 0.4], reach: 0.4, base: 0, relief: [{ type: 'swell', scale: 1200, height: 30 }, { type: 'hills', scale: 200, height: 12 }] },
-    { id: 'crags', at: [0.75, 0.6], reach: 0.35, base: 30, relief: [{ type: 'ridges', scale: 600, height: 180 }] },
-  ],
-  lava: [
-    { id: 'basalt', at: [0.4, 0.4], reach: 0.4, base: 0, relief: [{ type: 'swell', scale: 800, height: 20 }, { type: 'mesas', scale: 400, height: 40, cover: 0.2 }] },
-    { id: 'cones', at: [0.8, 0.7], reach: 0.3, base: 20, relief: [{ type: 'ridges', scale: 500, height: 140 }] },
-  ],
-  ocean: [
-    { id: 'shelf', at: [0.5, 0.5], reach: 0.5, base: 0, relief: [{ type: 'swell', scale: 1400, height: 12 }, { type: 'hills', scale: 260, height: 5 }] },
-    { id: 'reef', at: [0.2, 0.8], reach: 0.3, base: 6, relief: [{ type: 'hills', scale: 90, height: 8 }] },
-  ],
-  gas: [
-    // a gas giant's cloud deck, flown over as if it were ground
-    { id: 'deck', at: [0.5, 0.5], reach: 0.6, base: 0, relief: [{ type: 'swell', scale: 2400, height: 60 }, { type: 'dunes', scale: 600, height: 18, wind: 1.1 }] },
-  ],
-  forest: [
-    { id: 'meadow', at: [0.3, 0.6], reach: 0.4, base: 0, relief: [{ type: 'hills', scale: 300, height: 18 }] },
-    { id: 'knolls', at: [0.7, 0.4], reach: 0.35, base: 10, relief: [toon(70)] },
-  ],
-  desert: [
-    { id: 'erg', at: [0.3, 0.3], reach: 0.4, base: 0, relief: [{ type: 'dunes', scale: 260, height: 26, wind: 0.7 }] },
-    { id: 'buttes', at: [0.75, 0.7], reach: 0.35, base: 5, relief: [toon(60, 0.0009), { type: 'mesas', scale: 500, height: 50, cover: 0.25 }] },
-  ],
-};
-TYPE_BIOMES.ringed = TYPE_BIOMES.gas;
-
-const PALETTES = {
-  ice: { low: '#e9f0f7', high: '#ffffff', rock: '#6b7a8c', accent: '#9fb7d1' },
-  rock: { low: '#8a7f73', high: '#a39383', rock: '#5c544c', accent: '#6f6a64' },
-  lava: { low: '#2a2220', high: '#4a3a34', rock: '#1a1514', accent: '#ff6b4a' },
-  ocean: { low: '#2f6f8f', high: '#9fd3c7', rock: '#3b5a66', accent: '#e8f4f0' },
-  gas: { low: '#c9a77a', high: '#f0dcb4', rock: '#a07850', accent: '#fff2d8' },
-  forest: { low: '#4f8f3a', high: '#9bd06a', rock: '#6b5a44', accent: '#e3f2b0' },
-  desert: { low: '#e0b878', high: '#f4d9a2', rock: '#b07a4a', accent: '#fff1cf' },
-};
-PALETTES.ringed = PALETTES.gas;
-
-const CLUTTER = {
-  ice: [{ kind: 'rock', perKm2: 60 }, { kind: 'spire', perKm2: 6, depth: 5 }, { kind: 'debris', perKm2: 20 }],
-  rock: [{ kind: 'rock', perKm2: 90 }, { kind: 'spire', perKm2: 4, depth: 5 }],
-  lava: [{ kind: 'rock', perKm2: 70 }, { kind: 'spire', perKm2: 8, depth: 5 }],
-  ocean: [{ kind: 'rock', perKm2: 20 }],
-  gas: [],
-  forest: [{ kind: 'rock', perKm2: 30 }, { kind: 'spire', perKm2: 10, depth: 5 }],
-  desert: [{ kind: 'rock', perKm2: 40 }, { kind: 'debris', perKm2: 10 }],
-};
-CLUTTER.ringed = CLUTTER.gas;
+export { TYPE_BIOMES };
 
 // the authored eight; Hoth's seed is the spec's, the rest are their ids hashed
 const AUTHORED = [
@@ -106,7 +52,7 @@ const specOf = (p, pois) => ({
   seed: p.seed,
   type: p.type,
   climate: CLIMATE,
-  biomes: TYPE_BIOMES[p.type],
+  biomes: expand(TYPE_BIOMES[p.type], p.seed),
   pois,
   palette: PALETTES[p.type],
   clutter: CLUTTER[p.type],
