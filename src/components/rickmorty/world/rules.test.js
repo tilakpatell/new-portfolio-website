@@ -1924,7 +1924,7 @@ describe('C-137: the cruiser', () => {
   };
 
   it('starts parked on its spot, at hover height, at rest', () => {
-    expect(newCruiser()).toEqual({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
+    expect(newCruiser()).toEqual({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0, bankV: 0 });
   });
 
   it('reaches its top speed under full throttle, and never leaves where it flies (well past the street)', () => {
@@ -1993,6 +1993,22 @@ describe('C-137: the cruiser', () => {
     expect(fast.bank).toBeGreaterThan(0.2);
     const other = fly({ ...newCruiser(), x: -40, z: -30, yaw: Math.PI / 2, speed: CRUISER.top }, { throttle: 1, steer: -1 }, 0.5);
     expect(other.bank).toBeLessThan(-0.2);
+  });
+
+  it('leans on a spring: let go of the turn and it swings a little past level, then settles', () => {
+    let c = fly({ ...newCruiser(), x: -40, z: -30, yaw: Math.PI / 2, speed: CRUISER.top }, { throttle: 1, steer: 1 }, 1);
+    let least = Infinity;
+    for (let t = 0; t < 2; t += DT) {
+      c = stepCruiser(c, { throttle: 1 }, DT);
+      least = Math.min(least, c.bank);
+    }
+    expect(least).toBeLessThan(-0.005);
+    expect(least).toBeGreaterThan(-0.1);
+    expect(Math.abs(c.bank)).toBeLessThan(0.01);
+    // as steady at a 30th of a second
+    let slow = { ...newCruiser(), x: -40, z: -30, yaw: Math.PI / 2, speed: CRUISER.top };
+    for (let t = 0; t < 3; t += 1 / 30) slow = stepCruiser(slow, { throttle: 1, steer: t < 1 ? 1 : 0 }, 1 / 30);
+    expect(Math.abs(slow.bank)).toBeLessThan(0.02);
   });
 
   it('climbs under lift and stops at the ceiling', () => {

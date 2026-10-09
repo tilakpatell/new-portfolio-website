@@ -35,6 +35,8 @@ import { BRAND, MARK_LINES, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from '
 import { sharpen } from '../../../../lib/three/textures';
 import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -123,7 +125,7 @@ function rideHeight(s, lat) {
 export function createWeathertopWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 520, bloom: { strength: 0.7, radius: 0.55, threshold: 0.82 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 520, bloom: BLOOMS.weathertop, onLost });
   stage.grade({ contrast: 0.14, saturation: 0.86, vignette: 0.32, grain: 0.016, shadow: [0.0, 0.01, 0.04], high: [0.03, 0.016, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -538,7 +540,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 30, 60), look: V(0, 20, 0) }, mode: 'walk', climbT: 0, flash: 0, flame: 0 };
-  const shake = createShake({ title: 'Weathertop' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const HITSTOP = { hit: 70, stabbed: 90 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();

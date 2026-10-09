@@ -67,6 +67,8 @@ import {
 import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 import { turn as easeYaw } from '../../../../lib/three/gait';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // where each place is drawn
@@ -198,7 +200,7 @@ function makeLand(renderer, seg) {
 export function createMinasWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 6000, bloom: { strength: 0.7, radius: 0.5, threshold: 0.85 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 6000, bloom: BLOOMS.minastirith, onLost });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; it follows the moods below
@@ -414,7 +416,8 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   for (const k of NUMBERS) cur[k] = MOODS.ride[k];
   const sunDir = V(...MOODS.ride.sun).normalize();
   const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 30, 0) }, mode: '', first: true, fov: 50, mood: '', shake: 0, knock: 0, loosed: 0, lit: 0, fires: 0, flames: 0, chain: -1, dread: 0, bloom: 0, fireT: 1, hornT: 0 };
-  const shake = createShake({ title: 'Minas Tirith' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const HITSTOP = { knock: 60 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();

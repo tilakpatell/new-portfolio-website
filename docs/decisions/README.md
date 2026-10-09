@@ -15,3 +15,4 @@ The record of choices the site has made, so the next session that asks “why no
 | date | decision |
 | --- | --- |
 | 2026-10-08 | [three.js over Babylon.js](2026-10-08-three-over-babylon.md): three.js stays the renderer; WebGPU through `three/webgpu` and TSL |
+| 2026-10-08 | [Fingers added to the Meshy skeleton](2026-10-08-fingers-on-the-meshy-skeleton.md): finger and twist bones written into each figure by its geometry; no re-rig; one skeleton, every clip kept |

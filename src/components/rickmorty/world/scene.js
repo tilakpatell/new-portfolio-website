@@ -61,6 +61,7 @@ import { EYES as EYE_H, createGlance, stepMotion } from './living';
 import { createFeel, feelGroups } from '../../../lib/three/feel';
 import { wireImpacts } from '../../../lib/three/impacts';
 import { createImpacts, impactGroups } from '../../../lib/impact';
+import { createSpring, springGroups } from '../../../lib/spring';
 
 export { kitMaterials };
 
@@ -162,6 +163,12 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   // knocks (a hard landing, the cruiser's bump) by the hit law, a thud where
   // it was, heard from the camera
   const feel = createFeel({ baseFov: 55 });
+  // his landing's squash, on a spring kicked by how fast he came down (his
+  // own hop's 5.4 m/s squashes him about 6%), on top of the crouch his
+  // locomotion gives a landing; about his feet
+  const squash = createSpring({ k: 120, c: 8, max: 0.3 });
+  const SQUASH_KICK = 0.25;
+  let landed = null; // the step he last landed on, so a frame drawn twice kicks once
   const hits = createImpacts();
   const EAR = { position: [0, 0, 0], forward: [0, 0, -1] };
   const knocks = wireImpacts({
@@ -550,7 +557,14 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     eyeY = groundY + standY;
     ghosts.update(state.travellers ?? [], t, dt);
     morty.group.visible = !state.flying;
-    const mk = morty.group.scale.x || 1; // (his figure's units to the world's)
+    // (his figure's units to the world's: its own scale, kept before the squash first moves it)
+    const mk = (morty.group.userData.unsquashed ??= morty.group.scale.y) || 1;
+    if (m.land > 0 && m !== landed) {
+      landed = m;
+      squash.kick(m.land * SQUASH_KICK);
+    }
+    const sq = state.flying ? 0 : squash.step(dt);
+    morty.group.scale.set(mk * (1 + sq / 2), mk * (1 - sq), mk * (1 + sq / 2));
     // (lowered for the crouch his landing's put him in: locomotion bends his knees, this keeps his feet down)
     morty.group.position.set(m.x, mortyY - (morty.anim?.loco.drop ?? 0) * mk, m.z);
     morty.group.rotation.y = (m.face ?? 0) + Math.PI / 2;
@@ -782,7 +796,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     hit: (force, at) => knocks.onHit(force, at),
     shake: (k) => feel.trauma(k),
     // behind ?debug: the stage's bloom, the feel, the hit law, and what the page adds (the jump's press)
-    tune: (groups = []) => stage.tune([...feelGroups(feel), ...impactGroups(hits), ...groups]),
+    tune: (groups = []) => stage.tune([...feelGroups(feel), ...impactGroups(hits), ...springGroups(squash, 'landing squash'), ...groups]),
     setLooks,
     ensureArea,
     hasArea: (id) => Boolean(areas[id]),
