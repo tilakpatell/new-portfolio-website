@@ -34,6 +34,9 @@ import { createGollum } from '../marshes/props';
 import { AMBUSH, BANK, BOARDS, BUTTS, CAST, CITY, COLLIDERS, GALADHRIM, LANDING, MALLORNS, MIRROR, PATHS, RANGE, RIVER_Y, STAIR, TABLE, TREE, WOOD, groundHeight, nearPath, streamX, woodHeight } from './layout';
 import { RIVER, aimDir, riverBend, riverWide } from './rules';
 import { attend, castDo, castPlay, followDrawn, releaseCast, tickCast } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const X_AXIS = new THREE.Vector3(1, 0, 0);
@@ -172,7 +175,7 @@ function instanceModel(model, list) {
 export function createLorienWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 900, bloom: { strength: 0.7, radius: 0.6, threshold: 0.8 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 900, bloom: BLOOMS.lorien, onLost });
   stage.grade({ contrast: 0.08, saturation: 1.04, vignette: 0.26, grain: 0.012, shadow: [0.02, 0.02, 0.04], high: [0.05, 0.035, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -651,6 +654,9 @@ export function createLorienWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, night: 0, dawn: 0, first: true, leaves: 0, tempt: 0, eye: 0, sight: V(), sightD: 20 };
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
+  const HITSTOP = { hit: 50 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   // where the cast's eyes go: down into the Mirror, along the range to the butts
@@ -1035,15 +1041,12 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'river' || s.mode === 'climb';
-    const k = jump || s.mode === 'archery' ? 1 : Math.min(1, dt * (follow ? 7 : 2.4));
+    const k = jump || s.mode === 'archery' ? 1 : byFrame(follow ? 7 : 2.4, dt);
     A.cam.at.lerp(camAt, k);
     A.cam.look.lerp(camLook, k);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
@@ -1056,6 +1059,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type, id) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'hit') A.shake = Math.max(A.shake, 0.22);
     else if (type === 'eye') A.shake = Math.max(A.shake, 0.06);
     else if (type === 'touched') A.shake = 0.3;
@@ -1093,6 +1097,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     screenOf,
     resize: stage.resize,
     get info() {
@@ -1106,6 +1111,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      shake.dispose();
       ground.dispose();
       ghosts.dispose();
       disposeTree(scene);

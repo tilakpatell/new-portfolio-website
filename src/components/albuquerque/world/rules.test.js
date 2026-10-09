@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAR, CITY, COLLIDERS, DRIVING, DRIVING_DEFAULTS, EDGES, GRID, HANK_ROUTE, NODES, PLACES, ROADS, SIGNAL, SPAWN, WORLD_RADIUS, collidersNear, createStreets, nearPlace, onBlock, onRoad, progress, readDriving, signalAt, slipOf, stepCar, stepHeat, stepSteer, stepTraffic, surfaceHeight } from './rules';
+import { CAR, CITY, COLLIDERS, DRIVING, DRIVING_DEFAULTS, EDGES, GRID, HANK_ROUTE, NODES, PLACES, ROADS, SIGNAL, SPAWN, WORLD_RADIUS, collidersNear, createSafeSpot, STREET_PROPS, createStreets, nearPlace, onBlock, onRoad, progress, readDriving, signalAt, slipOf, stepCar, stepHeat, stepSteer, stepTraffic, surfaceHeight } from './rules';
 
 const fresh = { served: 0, points: 0, money: 0, upgrades: [], visited: [] };
 const drive = (car, input, seconds) => {
@@ -168,6 +168,32 @@ describe('Albuquerque, the world: driving', () => {
     }
     expect(bumped).toBe(true);
     expect(car.z).toBeGreaterThan(wall.z + wall.d / 2);
+  });
+
+  it('says how hard the bump was as a force, and where it touched', () => {
+    const wall = COLLIDERS.find((c) => c.id === 'pollos');
+    const face = wall.z + wall.d / 2;
+    const at = (speed) => {
+      let car = { x: wall.x, z: face + CAR.radius + 0.05, yaw: Math.PI, speed };
+      for (let i = 0; i < 10; i++) {
+        const r = stepCar(car, { throttle: 0, steer: 0 }, 1 / 60);
+        if (r.bump > 0) return r;
+        car = r.car;
+      }
+      return null;
+    };
+    const soft = at(5);
+    const hard = at(20);
+    expect(hard.force).toBeCloseTo(hard.bump * CAR.mass, 6);
+    expect(hard.force).toBeGreaterThan(soft.force);
+    // the old shake was full at 20 m/s into a wall: the hit law is full there too
+    expect(hard.force).toBeGreaterThanOrEqual(110);
+    expect(hard.at.z).toBeCloseTo(face, 1);
+    expect(Math.abs(hard.at.x - wall.x)).toBeLessThan(0.5);
+    // (no bump, no force and nowhere)
+    const r = stepCar({ x: 0, z: 0, yaw: 0, speed: 5 }, {}, 1 / 60);
+    expect(r.force).toBe(0);
+    expect(r.at).toBe(null);
   });
 
   it('bumps off the traffic', () => {
@@ -684,5 +710,64 @@ describe('the rest of town', () => {
         if (Math.hypot(apart, across) <= r.w / 2 + 0.5) bad.push(`${b.id} on ${r.id}`);
       }
     expect(bad).toEqual([]);
+  });
+});
+
+describe('Albuquerque, the world: the way out', () => {
+  const step = (safe, car, bump, seconds) => {
+    for (let t = 0; t < seconds - 1e-9; t += 0.05) safe.step(car, bump, 0.05);
+  };
+
+  it('starts where you start, and keeps the spot every half second of clean driving', () => {
+    const safe = createSafeSpot({ x: 1, z: 2, yaw: 0.5 });
+    expect(safe.spot).toEqual({ x: 1, z: 2, yaw: 0.5 });
+    step(safe, { x: 10, z: 0, yaw: 1, speed: 8 }, 0, 0.45);
+    expect(safe.spot.x).toBe(1);
+    step(safe, { x: 10, z: 0, yaw: 1, speed: 8 }, 0, 0.05);
+    expect(safe.spot).toEqual({ x: 10, z: 0, yaw: 1 });
+  });
+
+  it('never keeps a spot within half a second of a bump, or parked', () => {
+    const safe = createSafeSpot({ x: 0, z: 0, yaw: 0 });
+    step(safe, { x: 5, z: 5, yaw: 0, speed: 8 }, 0, 0.4);
+    safe.step({ x: 6, z: 5, yaw: 0, speed: 3 }, 6, 0.05);
+    step(safe, { x: 6, z: 5, yaw: 0, speed: 3 }, 0, 0.4);
+    expect(safe.spot.x).toBe(0);
+    // stood still (wedged, or parked) for any time: not a spot to come back to
+    step(safe, { x: 7, z: 5, yaw: 0, speed: 0.2 }, 0, 3);
+    expect(safe.spot.x).toBe(0);
+  });
+
+  it('puts the car back there stopped, facing the way it went', () => {
+    const safe = createSafeSpot({ x: 3, z: 4, yaw: 2 });
+    expect(safe.back()).toEqual({ x: 3, z: 4, yaw: 2, speed: 0, slide: 0, yawRate: 0 });
+    const car = safe.back();
+    car.x = 99;
+    expect(safe.spot.x).toBe(3);
+  });
+
+  it('keeps nothing broken: a frame with no time, or none at all, changes nothing', () => {
+    const safe = createSafeSpot({ x: 0, z: 0, yaw: 0 });
+    safe.step({ x: 9, z: 9, yaw: 0, speed: 9 }, 0, NaN);
+    safe.step({ x: 9, z: 9, yaw: 0, speed: 9 }, 0, 0);
+    expect(safe.spot.x).toBe(0);
+    safe.step({ x: NaN, z: 9, yaw: 0, speed: 9 }, 0, 1);
+    expect(safe.spot.x).toBe(0);
+  });
+});
+
+describe('Albuquerque, the world: the street’s props', () => {
+  it('stands every prop on Central’s asphalt, clear of the buildings and the junctions', () => {
+    expect(STREET_PROPS.length).toBeGreaterThan(20);
+    for (const p of STREET_PROPS) {
+      expect(onRoad(p.x, p.z), `${p.kind} at ${p.x}`).toBe(true);
+      for (const c of COLLIDERS) expect(reach(c, p.x, p.z), `${p.kind} at ${p.x} by ${c.id}`).toBeGreaterThan(1);
+      expect(Math.min(...GRID.xs.map((x) => Math.abs(p.x - x))), `${p.kind} at ${p.x}`).toBeGreaterThan(10);
+    }
+  });
+
+  it('keeps them out of the traffic’s lanes', () => {
+    // (a lane on Central runs 2.2 and 5.8 m either side of the middle, a car 2 m wide)
+    for (const p of STREET_PROPS) expect(Math.abs(p.z)).toBeGreaterThan(5.8 + 1);
   });
 });

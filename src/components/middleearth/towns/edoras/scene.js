@@ -33,6 +33,9 @@ import { createEdorasFolk } from './folk';
 import { BRAWL } from './rules';
 import { DAIS, DOOR_GUARDS, DOORS, FEAST, FLOWERS, GANDALF, GATE, GRAVE, GRIMA, HAMA, MEDUSELD, ROAD, THRONE, WATCH, clearView, faceTo, groundAt, hillHeight, inHall } from './layout';
 import { castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // where each place is drawn
@@ -102,7 +105,7 @@ const SEATS = [
 export function createEdorasWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 6000, bloom: { strength: 0.6, radius: 0.5, threshold: 0.86 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 6000, bloom: BLOOMS.edoras, onLost });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; it follows the moods below
@@ -277,6 +280,9 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   for (const k of NUMBERS) cur[k] = MOODS.day[k];
   const sunDir = V(...MOODS.day.sun).normalize();
   const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 20, 0) }, mode: '', first: true, fov: 50, mood: '', day: 1, shake: 0, flash: 0, bashT: 0, beacon: 0, roll: 0 };
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
+  const HITSTOP = { bash: 70 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -687,7 +693,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'brawl' || s.mode === 'muster' || s.mode === 'watch';
-    const ke = jump ? 1 : Math.min(1, dt * (follow ? 6 : 2));
+    const ke = jump ? 1 : byFrame(follow ? 6 : 2, dt);
     A.cam.at.lerp(camAt, ke);
     A.cam.look.lerp(camLook, ke);
     A.fov += (fov - A.fov) * (jump ? 1 : Math.min(1, dt * 3));
@@ -696,11 +702,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       camera.updateProjectionMatrix();
     }
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     if (Math.abs(A.roll) > 0.001) camera.rotateZ(A.roll);
     sky.dome.position.copy(camera.position);
@@ -722,6 +725,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'bash') {
       A.bashT = 1;
       // (on the cast: a dwarf's blow)
@@ -746,6 +750,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     resize: stage.resize,
     get info() {
       const i = renderer.info;
@@ -755,6 +760,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       return stage.lost;
     },
     dispose() {
+      shake.dispose();
       ground.dispose();
       ghosts.dispose();
       disposeTree(scene);

@@ -1,6 +1,6 @@
 // The sectors past the loaded 3×3, as star specks: every system in the
 // ring of sectors two and three out (Chebyshev) is a point of light on the
-// sky (farPlaces.js), one Points for them all, a little dimmer and a little
+// sky (farStars.js), one Points for them all, a little dimmer and a little
 // bigger than a loaded sector's, so they read as the distant field. Sector
 // (0, 0) is the authored map and is never one of them. The positions sit
 // in a frame centred on the middle sector, moved to it relative to the
@@ -13,7 +13,7 @@
 
 import * as THREE from 'three';
 import { SKY_FAR } from '../../universe/deepspace';
-import { createFarPlaces } from '../../universe/farPlaces';
+import { createFarStars } from '../../universe/farStars';
 import { sectorCentre } from '../gen/grid';
 import { makeSector } from '../gen/sector';
 
@@ -64,7 +64,7 @@ export function createStarfield(parent, { skyFar = SKY_FAR } = {}) {
       centre = sectorCentre(sx, sz);
       const places = beyondPlaces(universe, sx, sz).map((p) => ({ ...p, at: [p.at[0] - centre[0], p.at[1] - centre[1], p.at[2] - centre[2]] }));
       n = places.length;
-      far = createFarPlaces(group, { places, skyFar });
+      far = createFarStars(group, { places, skyFar });
       api.reanchor(at);
     },
     update(camera, dt) {

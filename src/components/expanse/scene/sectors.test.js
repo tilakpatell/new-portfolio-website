@@ -65,7 +65,7 @@ describe('a generated sector, drawn', () => {
     expect(s.group.name).toBe('sector:E:2,-1');
     expect(s.sector).toBe(sector);
     expect(named(s.group, 'star:')).toHaveLength(sector.systems.length);
-    expect(named(s.group, 'far-places')).toHaveLength(1);
+    expect(named(s.group, 'far-stars')).toHaveLength(1);
     expect(named(s.group, 'wonder:')).toHaveLength(sector.wonders.length);
     expect(s.count()).toBeGreaterThan(sector.systems.length);
     s.dispose();
@@ -93,15 +93,6 @@ describe('a generated sector, drawn', () => {
     expect(s.group.position.toArray()).toEqual([10000, -10, 5]);
     expect(s.group.children.map((c) => c.position.toArray())).toEqual(before);
     s.dispose();
-  });
-
-  it('draws its lanes as a ribbon', () => {
-    const lanes = [{ id: 'l1', tier: 'local', from: 'a', to: 'b', pts: [[390000, 0, 0], [400000, 0, 10000], [425000, 0, 20000]], length: 40000, name: 'L1' }];
-    const s = createSector(HAND, { lanes });
-    expect(named(s.group, 'laneRibbons')).toHaveLength(1);
-    expect(() => s.update(1, 1 / 60, camAt([400000, 0, 0]))).not.toThrow();
-    s.dispose();
-    expect(createSector(HAND).group.getObjectByName('laneRibbons')).toBeUndefined();
   });
 
   it('builds a system’s planets when the camera comes near, and lets them go when it leaves', () => {

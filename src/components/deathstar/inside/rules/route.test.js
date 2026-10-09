@@ -38,6 +38,9 @@ describe('routeTo', () => {
     const r = routeTo(g, at(g, 'corr327', 10, -38));
     expect(r.next.kind).toBe('door');
     expect(r.next.z).toBeCloseTo(-40, 1);
+    // the way, for the map: from you to the target
+    expect(r.points[0]).toMatchObject({ x: 10, z: -44 });
+    expect(r.points.at(-1)).toMatchObject({ x: 10, z: -38 });
   });
 
   it('heads for the lift when the target is on another level, never through the floor', () => {

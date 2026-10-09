@@ -22,6 +22,8 @@ import surfaceModule from '../components/galaxy/surface/module';
 import galaxyModule from '../components/galaxy/module';
 import { FOUND_KEY, LAUNCH_KEY, QUESTS_KEY, readDone, readFound } from '../components/galaxy/travel';
 import { runtime } from '../runtime';
+import { thud } from '../lib/sfx';
+import { createImpacts } from '../lib/impact';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
@@ -30,10 +32,9 @@ import { missionOf } from '../components/galaxy/surface/missions';
 import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
 import { GCW, campaignAt, scoresAt } from '../components/galaxy/gcw';
-import { warOfSide } from '../components/galaxy/sides';
-import { effectsFor } from '../components/galaxy/warEffects';
-import { addPoints, addWin, mine, warNow, warVersion } from '../components/galaxy/warState';
-import { RANKS, rankOf } from '../components/galaxy/ranks';
+import { SIDES, warOfSide } from '../components/galaxy/sides';
+import { groundEffects } from '../components/galaxy/siteWar';
+import { addPoints, addWin, warNow, warVersion } from '../components/galaxy/warState';
 import ModelCredits from '../components/ModelCredits';
 import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
@@ -41,13 +42,18 @@ import { createCarry, createPayLedger } from '../components/universe/earnRules';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { toggleGuide } from '../lib/palette';
-import { Menu } from '../runtime/hud';
+import { Menu, MenuItem, Prompt, Reticle, reticleState } from '../runtime/hud';
 import { wayOut } from '../components/worlds/worlds';
 import GuideCue from '../components/guide/GuideCue';
 import { EMOTES, wheelAngle } from '../lib/emote';
 import '../components/universe/universe.css';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/surface/surface.css';
+
+// a ride's knock, by the hit law (lib/impact.js): its force is the speed into
+// what it hit × BUMP_MASS, so a scrape at 6 m/s is quiet and 20 m/s is full
+const BUMP_MASS = 6;
+const bumpLaw = createImpacts();
 
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
 const CLIMB = 3400; // ms of the climb out seen before space takes over: the ship lifting, then shooting up under the sky's glare (surface.css .surface-exit rises from 2.5 s to here)
@@ -122,14 +128,9 @@ export default function GalaxySurface() {
   // this world (warEffects.js: the troopers you meet are theirs); an assault
   // here is that war's, fought for one of its sides
   const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
-  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
   // (and, for the people's talk: the side you swore to, and your rank in it, as a step up its ladder)
-  const effects = useMemo(() => {
-    const e = effectsFor(id, warNow(Date.now(), oath.war), oath);
-    if (!e) return e;
-    const rank = oath.side ? rankOf(oath.side, mine(oath.war).points) : null;
-    return { ...e, side: oath.side ?? null, rank: rank ? (RANKS[oath.side]?.findIndex((r) => r.id === rank.id) ?? 0) : 0 };
-  }, [id, oath]);
+  // (in the ground's war, its film's: siteWar.js)
+  const effects = useMemo(() => groundEffects(id, oathKept, Date.now()), [id, oathKept]);
   const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
   const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
   const onAssaultSide = (k) => {
@@ -186,6 +187,7 @@ export default function GalaxySurface() {
   const [aiming, setAiming] = useState(false);
   const [combat, setCombat] = useState(null); // the fight's numbers (scene.js's 'combat' event): guard or heat, abilities, the lock
   const [hitMark, setHitMark] = useState(null); // { n, kill }
+  const [looking, setLooking] = useState(null); // the look's mode and lock (scene.js's 'look' event, runtime/look.js)
   const [hurtFlash, setHurtFlash] = useState(0);
   const [parryNote, setParryNote] = useState(0);
   // the emote wheel, as the scene says it is (its 'emote' event: open, the
@@ -320,6 +322,10 @@ export default function GalaxySurface() {
         setToast((t) => ({ title: place.name, text: place.about, n: (t?.n ?? 0) + 1 }));
         later('toast', 7000, () => setToast(null));
         comms.current?.handle({ type: 'event', id: `surface:${e.id}` });
+      } else if (e.type === 'war') {
+        // the ground war's news (ground/director.js): a raid, a post lost or held, a hunt, one line at a time
+        setToast((t) => ({ title: SIDES[e.side]?.short ?? 'The ground war', text: e.text, n: (t?.n ?? 0) + 1 }));
+        later('toast', 5000, () => setToast(null));
       } else if (e.type === 'edge') {
         setToast((t) => ({ title: 'Nothing out there', text: site?.edge ?? 'Just more of the same, as far as you can see. Better turn back.', n: (t?.n ?? 0) + 1 }));
         later('toast', 4000, () => setToast(null));
@@ -366,6 +372,7 @@ export default function GalaxySurface() {
         lastHealth.current = e.value;
         setHealth(e.value);
       } else if (e.type === 'combat') setCombat(e);
+      else if (e.type === 'look') setLooking(e);
       else if (e.type === 'emote') {
         wheelOpen.current = Boolean(e.open);
         setEmote(e);
@@ -396,7 +403,12 @@ export default function GalaxySurface() {
         later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') goUp();
       else if (e.type === 'go') navigate(e.to);
-      else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
+      else if (e.type === 'bump') {
+        comms.current?.handle({ type: 'bump', hard: e.hard });
+        // and a thud as hard as the knock (the hit law: a scrape quiet, a tree head-on full)
+        const k = bumpLaw.hit((e.speed ?? 0) * BUMP_MASS, 'ride');
+        if (k) thud({ gain: k.gain, pitch: k.pitch });
+      }
       else if (e.type === 'mission') {
         for (const f of chaseFeed.current) f(e.view);
         const v = e.view;
@@ -635,7 +647,17 @@ export default function GalaxySurface() {
         </p>
       )}
       {hurtFlash > 0 && <div key={`hurt-${hurtFlash}`} className="surface-hurt" aria-hidden="true" />}
-      {(((aiming || quest?.shoot) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk')) && <span className="surface-crosshair" aria-hidden="true" />}
+      {/* the reticle (the world kit's): up whenever a gun is, or the sights, or a shot's just gone */}
+      <Reticle
+        className="surface-reticle"
+        state={reticleState(null, {
+          gun: ((aiming || quest?.shoot || (combat && !combat.saber)) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk'),
+          sights: Boolean(combat?.ads && !combat.saber && phase === 'walk'),
+          hitAt: hitMark ? 0 : null,
+          lock: combat?.lock,
+        })}
+      />
+      {looking?.prompt && phase === 'walk' && !leaving && !emote?.open && <Prompt k="" verb={looking.prompt} className="surface-look" onClick={() => view.current?.input?.('lookLock')} />}
       {/* the emote wheel (B held, or the Emote button on a phone): the five
           round the middle of the view, clockwise from the top, the one pointed
           at lit; let go over it, or click or tap it, or its number */}
@@ -696,7 +718,13 @@ export default function GalaxySurface() {
         <button type="button" className="surface-help-btn" onClick={takeOff}>
           Back to orbit
         </button>
-        <Menu className="surface-menu" todo={site.quests.length > 0 ? { onOpen: () => setList(true), done: done.length, total: site.quests.length } : null} way={wayOut(pathname)} />
+        <Menu className="surface-menu" todo={site.quests.length > 0 ? { onOpen: () => setList(true), done: done.length, total: site.quests.length } : null} way={wayOut(pathname)}>
+          {looking && looking.mode !== 'touch' && (
+            <MenuItem keep onClick={() => view.current?.input?.('lookMode', looking.mode === 'lock' ? 'drag' : 'lock')}>
+              Look: {looking.mode === 'lock' ? 'Click to lock' : 'Drag'}
+            </MenuItem>
+          )}
+        </Menu>
         <ModelCredits where="galaxy-surface" only={kinds} className="surface-credits-corner" />
       </div>
       {picking && <HeroPanel hero={hero} onChange={pickHero} onClose={() => setPicking(false)} />}

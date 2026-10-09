@@ -36,6 +36,8 @@ const CHOKE = 1.6; // seconds the ripple stays at your throat
 const FIGHTING = new Set(['fight', 'wary', 'search']);
 // where a blade’s hilt is held, from the feet: to the right, up and forward of whoever holds it
 const GRIP = { right: 0.28, up: 1.02, forward: 0.3, crouch: 0.4 };
+// the way out of the fist along a Meshy right hand's own axes: across the palm, by the thumb
+const HILT_AXIS = { x: 0, y: 0, z: 1 };
 
 const YAWS = { north: 0, south: Math.PI, east: -Math.PI / 2, west: Math.PI / 2 };
 export const wallYaw = (wall) => YAWS[wall] ?? 0;
@@ -89,6 +91,15 @@ export function effectsOf(e) {
       ];
     case 'blast':
       return [{ kind: 'explode', at: { x: e.at.x, y: e.at.y + 1.2, z: e.at.z }, size: 1.2 }];
+    // the station coming apart: a panel bursting off the wall, sparks raining off it, and the smoke after
+    case 'quake':
+      return e.at
+        ? [
+            { kind: 'explode', at: point(e.at), size: 0.5 + 0.7 * (e.size ?? 1) },
+            { kind: 'spark', at: point(e.at), n: 10, normal: null },
+            { kind: 'smoke', at: { x: e.at.x, y: e.at.y + 0.4, z: e.at.z }, size: 0.9 },
+          ]
+        : [];
     default:
       return [];
   }
@@ -109,7 +120,7 @@ export function createShow(scene, { renderer, tier = 'high', layout, people, fx 
     if (!b) {
       const anchor = new THREE.Object3D();
       scene.add(anchor);
-      b = { anchor, handle: sabers.blade(id, colour).attach(anchor) };
+      b = { anchor, on: anchor, handle: sabers.blade(id, colour).attach(anchor) };
       blades.set(id, b);
     }
     return b;
@@ -120,7 +131,22 @@ export function createShow(scene, { renderer, tier = 'high', layout, people, fx 
     b.anchor.removeFromParent();
     blades.delete(id);
   }
-  function hold(b, at, yaw, low, dir, lit) {
+  // In its owner's fist when the figure has one (its right hand's bone, the hilt along the hand's
+  // HILT_AXIS, swung by the figure's own sabre clips); else at the grip in front of the body, aimed
+  // as bladeDir has it
+  function hold(b, at, yaw, low, dir, lit, hand = null) {
+    if (hand) {
+      if (b.on !== hand) {
+        b.on = hand;
+        b.handle.attach(hand, HILT_AXIS);
+      }
+      b.handle.aim(null).on(lit);
+      return;
+    }
+    if (b.on !== b.anchor) {
+      b.on = b.anchor;
+      b.handle.attach(b.anchor);
+    }
     const [s, c] = [Math.sin(yaw), Math.cos(yaw)];
     b.anchor.position.set(at.x + GRIP.right * c + GRIP.forward * s, at.y + GRIP.up - (low ? GRIP.crouch : 0), at.z + GRIP.right * s - GRIP.forward * c);
     b.handle.aim(dir).on(lit);
@@ -166,11 +192,11 @@ export function createShow(scene, { renderer, tier = 'high', layout, people, fx 
     }
   }
 
-  function sync({ g, at, yaw, crouch = false, rooms, dt = 0, t = 0 }) {
+  function sync({ g, at, yaw, crouch = false, rooms, dt = 0, t = 0, hand = null }) {
     clock += dt;
     const you = g.you;
     const k = clock - swungAt < SWING ? (clock - swungAt) / SWING : null;
-    if (you.blade && you.hp > 0) hold(bladeFor('you', bladeColour(you.blade)), at, yaw, crouch, bladeDir(yaw, k), true);
+    if (you.blade && you.hp > 0) hold(bladeFor('you', bladeColour(you.blade)), at, yaw, crouch, bladeDir(yaw, k), true, hand);
     else if (blades.has('you')) dropBlade('you');
     const seen = new Set(['you']);
     const duel = g.scene?.id === 'duel' || g.scene?.id === 'throw';
@@ -178,7 +204,7 @@ export function createShow(scene, { renderer, tier = 'high', layout, people, fx 
       const blade = CAST[p.kind]?.blade;
       if (blade?.type !== 'saber' || p.hp <= 0 || !rooms.shown(p.room)) continue;
       seen.add(p.id);
-      hold(bladeFor(p.id, bladeColour(blade.colour)), p, p.yaw ?? 0, false, bladeDir(p.yaw ?? 0, null), FIGHTING.has(p.mode) || duel);
+      hold(bladeFor(p.id, bladeColour(blade.colour)), p, p.yaw ?? 0, false, bladeDir(p.yaw ?? 0, null), FIGHTING.has(p.mode) || duel, people.handOf?.(p.id) ?? null);
     }
     for (const id of [...blades.keys()]) if (!seen.has(id)) dropBlade(id);
     sabers.choke({ x: at.x, y: at.y + 1.6, z: at.z }, clock < chokeUntil);
@@ -189,6 +215,8 @@ export function createShow(scene, { renderer, tier = 'high', layout, people, fx 
   return {
     hear,
     sync,
+    // the Emperor's lightning from a point (or his two hands) to another, for a scene (cinematics.js)
+    lightning: (from, to, on = true) => sabers.lightning(from, to, on),
     warm: (r, camera, target = null) => sabers.warm(r, camera, target),
     dispose() {
       for (const id of [...blades.keys()]) dropBlade(id);

@@ -14,6 +14,8 @@ An arrow points from a module at who may import it. `src/lib` knows no React and
 
 A world (`src/components/<world>/`) imports from `src/lib`, `src/runtime`, `src/data`, its own files, and another world only through that world's `index.js` or `shared/` folder. Something two worlds need moves down to `src/lib` or `src/runtime`. A world that reaches into another world's props can't be split, lazy-loaded or deleted on its own.
 
+One art a world. Each world and page game says in a `look.js` beside its scene what it is drawn as (`painted`: flat colours on the house look, its code-built props from one palette strip, `lib/three/palette.js`; `scanned`: the core kit's and the CC0 sets' PBR on the house look; `own`: a renderer of its own kind, with its why), which tone mapper it takes and which bloom (`src/components/worlds/looks.js`; `looks.test.js` holds every folder to it). It doesn't wear two: a scan is an import of `lib/three/core`, `lib/cc0` or `lib/hdri`'s `loadPbr`, a ramp is a `MeshToonMaterial` or a `gradientMap`, and a world whose scenes reach both (its whole import closure, other worlds' files included) counts in `art-mix`.
+
 ## Size
 
 A file stays under 800 lines; 1,500 is the ceiling the measure counts (`big-files`). A prop file over that splits by what it draws:
@@ -34,6 +36,10 @@ A game's rules live in a pure `rules.js` with tests; a scene file composes and d
 ## Tests go beside the file
 
 `x.js` has `x.test.js`. A test runs under a second and touches no network. A fixture lives in a `fixtures/` folder beside the test.
+
+## A dependency has a page
+
+Every package in `package.json` has a row in `docs/stack/README.md` and a page under `docs/stack/` made from `_template.md`, written before the package is first imported. The measure’s `stack-pages` counts the packages with no row and is budgeted at 0, so a new dependency fails CI until it has one. `node scripts/stack-census.mjs --write` rewrites the index’s counts; `docs/stack/stack.test.js` fails when a page names a file that no longer exists.
 
 ## A repair changes no pixel
 

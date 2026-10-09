@@ -273,6 +273,8 @@ export default {
         prompt: mode === 'play' && !mapOpen ? promptOf(g) : null,
         talk: mode === 'play' && g.talk ? { who: speaker(g.talk.who), line: g.talk.say ?? null, choices: [...(g.talk.choices ?? [])] } : null,
         map: { open: mode === 'play' && mapOpen, seen: play ? [...g.seen] : [...save[g.station].seen] },
+        // a story's scene playing: the HUD steps back to letterbox it
+        scene: play ? (g.scene?.id ?? null) : null,
         settings: { ...save.settings },
         saved: Object.fromEntries(Object.keys(STATIONS).map((id) => [id, { rebel: Boolean(save[id]?.story.rebel), imperial: Boolean(save[id]?.story.imperial) }])),
       };
@@ -301,6 +303,8 @@ export default {
         roomName: room?.name ?? null,
         at: { x: round(you.x), z: round(you.z), yaw: round(you.yaw) },
         aim: aiming,
+        // the way to the story's target, for the map (to the half metre, so it changes only as it moves)
+        route: save.settings.guide !== false && way ? way.points.map((p) => [round(p.x, 2), round(p.z, 2)]) : null,
       };
       const h = JSON.stringify(hud);
       if (h !== lastHud) {
@@ -447,6 +451,8 @@ export default {
         return g;
       },
       ready: view.ready,
+      // the ?debug panel's groups: the feel's numbers (runtime/debug.js)
+      tune: () => view.tune?.() ?? [],
       resize(w, h) {
         size.w = w;
         size.h = h;
@@ -469,7 +475,8 @@ export default {
             look.yaw += pad.rx * PAD_TURN * dt;
             look.pitch = clamp(look.pitch - pad.ry * PAD_TURN * dt, -PITCH, PITCH);
           }
-          const { ticks, left } = ticksFor(dt, acc);
+          // (a hit's hitstop slows the steps: the scene's feel says by how much, once a frame)
+          const { ticks, left } = ticksFor(dt * (view.timeScale?.(dt) ?? 1), acc);
           acc = left;
           if (ticks) {
             const input = mapOpen ? still() : intent(snap);
@@ -540,6 +547,7 @@ export default {
         if (s.sound === false) silence();
         if (typeof s.subtitles === 'boolean') save.settings.subtitles = s.subtitles;
         if (typeof s.guide === 'boolean') save.settings.guide = s.guide;
+        if (typeof s.tips === 'boolean') save.settings.tips = s.tips;
         persist();
       },
       quit() {

@@ -42,10 +42,17 @@
 //   invalidate, adopt(scene, fn) → undo, pending(), dispose() }, one per renderer (asked again, the same).
 // In development, a frame in which three still compiled a shader mid-draw
 // says so in the console, so what's still slipping through can be found.
+// heldBack() → what every live guard is still readying, the sum of their
+// pending(); in development it's window.__tpGuardPending too, for the
+// scripts that shoot a world (scripts/gpu-parity.mjs) to know it's all on
+// screen.
 
 import { fence, knownLinked, markLinked, nextFrame, picturesIn, textureBytes, uploaded } from './gpuWork';
 
 const guards = new WeakMap();
+// (heldBack's, as weak references: a WeakMap can't be counted, and a guard
+// is seldom disposed, so a renderer let go mustn't be kept for this)
+const live = new Set();
 const READY = 1;
 const QUEUED = 2;
 const MB = 1048576;
@@ -173,6 +180,7 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
       queue.clear();
       linking.clear();
       guards.delete(renderer);
+      live.delete(ref);
     },
   };
 
@@ -293,7 +301,12 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
           }
         }
       } else if (s === undefined && knownLinked(props(material).currentProgram) && picturesUp(material)) ready(material);
-      else {
+      else if (s === undefined && (!object || !inScene(object, scn))) {
+        // three's own drawing for the scene, from outside it (its background
+        // box or plane): drawn as it is, as anything outside a scene is. Held,
+        // it was dropped behind the frame as gone from the world, and held
+        // again the next, so a world's sky never showed.
+      } else {
         if (s === undefined) hold(material, object);
         return undefined;
       }
@@ -343,8 +356,21 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
   };
 
   guards.set(renderer, g);
+  const ref = new WeakRef(g);
+  live.add(ref);
   return g;
 }
+
+export const heldBack = () => {
+  let n = 0;
+  for (const ref of live) {
+    const g = ref.deref();
+    if (g) n += g.pending();
+    else live.delete(ref);
+  }
+  return n;
+};
+if (import.meta.env?.DEV && typeof window !== 'undefined') window.__tpGuardPending = heldBack;
 
 // The guard on `renderer`, if it has one.
 export const guardOf = (renderer) => guards.get(renderer) ?? null;

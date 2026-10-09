@@ -28,6 +28,7 @@ import { createWind } from '../../../lib/three/wind';
 import { floorShadow } from '../../../lib/three/grounding';
 import { FIGURE, groundTown } from '../towns/grounded';
 import { MOODS, makeAtmosphere, makeSky } from './sky';
+import { LOOK } from './look';
 import { SHIRE_CORE } from './dress';
 import { shireTuning } from './tune';
 import { createFx } from './fx';
@@ -74,6 +75,7 @@ import {
 } from './rules';
 import { attend, castDo, releaseCast, tickCast } from '../cast3d';
 import { nextFrame as breathe } from '../../../lib/three/gpuWork';
+import { byFrame, createShake } from '../feel';
 
 const val = (x, ...args) => (typeof x === 'function' ? x(...args) : x);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -86,7 +88,7 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
-  const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.55, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, bloom: LOOK.bloom, onLost });
   stage.grade({ contrast: 0.1, saturation: 1.1, vignette: 0.22, grain: 0.012, shadow: [0.0, 0.01, 0.03], high: [0.03, 0.015, 0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false; // counted over the whole frame, every pass
@@ -484,6 +486,7 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   await breathe();
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', last: null, smoke: 0, dogHop: [0, 0, 0], sniff: 0 };
+  const shake = createShake(); // one shake, the site's (../feel.js)
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const WRAITH_FOG = new THREE.Color(0.32, 0.35, 0.42);
@@ -770,9 +773,9 @@ export async function createShireWorld(canvas, { onLost } = {}) {
       camAt = tmp.set(...s.debugCam.at);
       camLook = look.set(...s.debugCam.look);
     }
-    const jump = A.mode !== s.mode;
+    const jump = A.mode !== s.mode || Boolean(s.cut);
     A.mode = s.mode;
-    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' ? 8 : 2.5));
+    const ease = jump ? 1 : byFrame(s.mode === 'walk' ? 8 : 2.5, dt);
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
@@ -781,11 +784,8 @@ export async function createShireWorld(canvas, { onLost } = {}) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     // the grass's patch a little ahead of the eye, where the view lands
@@ -881,8 +881,8 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   // (last, over the floor light's own tints: one shadow colour everywhere)
   house.adopt(scene);
 
-  // ?debug: the look, the grass, the wind and the lens on sliders (lib/debugPanel)
-  const panel = debugOn() ? debugPanel({ title: 'The Shire', groups: shireTuning({ house, grass, wind, lens, moods: MOODS }) }) : null;
+  // ?debug: the look, the grass, the wind, the lens and the shake on sliders (lib/debugPanel)
+  const panel = debugOn() ? debugPanel({ title: 'The Shire', groups: [...shireTuning({ house, grass, wind, lens, moods: MOODS }), ...shake.groups()] }) : null;
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
@@ -905,6 +905,7 @@ export async function createShireWorld(canvas, { onLost } = {}) {
       return stage.lost;
     },
     dispose() {
+      shake.dispose();
       gone = true;
       panel?.dispose();
       ground.dispose();

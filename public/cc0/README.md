@@ -17,7 +17,8 @@ Everything in this folder is CC0 (public domain): free to use, no credit require
 
 Elsewhere, also CC0:
 
-- `../games/meshy/ual-saber.glb`: two clips from Quaternius's [Universal Animation Library](https://quaternius.itch.io/universal-animation-library) (the free Standard pack), `Sword_Idle` and `Sword_Attack`, retargeted onto the Meshy rig and cut to the hips, spine, neck and legs by `scripts/ual-bake.mjs`: the body under a lit lightsaber (`src/components/galaxy/surface/saberBody.js`).
+- `../games/meshy/ual-sword.*.glb`: the thirty-one sword clips of Quaternius's [Universal Animation Library 2](https://quaternius.itch.io/universal-animation-library-2), retargeted whole-body onto the Meshy rig by `scripts/ual-bake.mjs --set sword`, each with its contact window and its root's travel (from the pack's root-motion file): a lightsaber's strokes (`src/components/galaxy/surface/saber.js`).
+- `../models/galaxy/surface/{qfern,qclover,qmushroom,qpebble,qgrass,qpine,qdeadtree}.glb` (and `qpine.lod1.glb`, its far-off copy): ferns, clover, mushrooms, a pebble, tall grass, a giant pine and a dead tree from Quaternius's [Stylized Nature MegaKit](https://quaternius.com) (CC0), cut down by `scripts/quaternius-import.mjs` as the galaxy's ground cover and far trees. Listed in `src/components/galaxy/surface/catalog/quaternius.js`.
 
 ## Not CC0: made for this site
 

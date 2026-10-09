@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import CREDITS from '../../../../data/modelCredits.json';
 import { ULTRA } from '../../../../../scripts/gen3d/budget.mjs';
 import { ULTRA as CUT } from './ultra';
-import { GROUPS, SURFACE_MODELS, madeKinds, modelUrlFor, surfaceLodUrl, surfaceUltraUrl, surfaceUrl, wantsLod } from './index';
+import { GROUPS, SURFACE_MODELS, lodUrlFor, madeKinds, modelUrlFor, surfaceLodUrl, surfaceUltraUrl, surfaceUrl, wantsLod } from './index';
 
 const file = (kind) => new URL(`../../../../../public${surfaceUrl(kind)}`, import.meta.url);
 const ultraFile = (kind) => new URL(`../../../../../public${surfaceUltraUrl(kind)}`, import.meta.url);
@@ -42,13 +42,22 @@ describe('the surface models', () => {
         expect(CREDITS[`surface-${kind}`]?.license, `${kind}'s credit`).toBe('permission');
         expect(CREDITS[`surface-${kind}`]?.permission, `${kind}'s permission`).toBeTruthy();
       } else if (m.made) {
-        expect(m.made, kind).toBe('meshy');
+        expect(['meshy', 'quaternius', 'gen3d'], kind).toContain(m.made);
         expect(m.uid, kind).toBeUndefined();
         expect(made.has(kind), `${kind} in public/cc0/README.md`).toBe(true);
       } else {
         expect(m.uid, kind).toMatch(/^[0-9a-f]{32}$/);
         expect(CREDITS[`surface-${kind}`]?.file, `${kind}'s credit`).toBe(surfaceUrl(kind));
       }
+    }
+  });
+
+  it('has every clip a row names in its file (else the figure sways where it should walk)', () => {
+    const glbJson = (buf) => JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+    for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
+      if (!m.anim || m.cluster) continue;
+      const names = (glbJson(readFileSync(file(kind))).animations ?? []).map((a) => a.name);
+      for (const [use, clip] of Object.entries(m.anim)) expect(names, `${kind}'s ${use}: ${clip}`).toContain(clip);
     }
   });
 
@@ -110,5 +119,24 @@ describe('which file a level loads, and whether it swaps to the light one far of
     expect(wantsLod('plain', 'high', models)).toBe(true);
     expect(wantsLod('plain', 'low', models)).toBe(true);
     expect(wantsLod('small', 'high', models)).toBe(false);
+  });
+});
+
+// a book of models outside the galaxy's folder (the Rick and Morty planets')
+// names each file by its own url
+describe('a model from its own url', () => {
+  it('loads the url at every level, its cuts only where it names them', () => {
+    expect(modelUrlFor('x', 'high', { x: { url: '/models/c137/rm/x.glb' } })).toBe('/models/c137/rm/x.glb');
+    expect(modelUrlFor('x', 'ultra', { x: { url: '/a.glb', ultra: {} } })).toBe('/a.glb');
+    expect(modelUrlFor('x', 'ultra', { x: { url: '/a.glb', ultraUrl: '/a.ultra.glb' } })).toBe('/a.ultra.glb');
+    expect(modelUrlFor('x', 'high', { x: { url: '/a.glb', ultraUrl: '/a.ultra.glb' } })).toBe('/a.glb');
+  });
+
+  it('swaps to a light model far off only where it names one', () => {
+    expect(wantsLod('x', 'high', { x: { url: '/a.glb' } })).toBe(false);
+    expect(wantsLod('x', 'high', { x: { url: '/a.glb', lod: true } })).toBe(false);
+    expect(wantsLod('x', 'high', { x: { url: '/a.glb', lodUrl: '/a.lod1.glb' } })).toBe(true);
+    expect(lodUrlFor('x', { x: { url: '/a.glb', lodUrl: '/a.lod1.glb' } })).toBe('/a.lod1.glb');
+    expect(lodUrlFor('plain', { plain: { lod: true } })).toBe(surfaceLodUrl('plain'));
   });
 });

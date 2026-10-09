@@ -110,9 +110,8 @@ describe('the crews', () => {
       if (Object.values(side.factions).some((f) => f.ace)) said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
       for (const event of ['hit', 'shields', 'destroyed', 'escaped', 'cleared', 'interdicted']) said(linesFor(crew, event), crew, event);
       for (const into of ['star', 'giant', 'citadel']) said(linesFor(crew, 'crashInto', into), crew, `crashInto ${into}`);
-      // the director's events the side can have (the Council's and the bounty hunters' arrivals are their hunted lines; the lane's own are
-      // played as others, laneEvents.js: an interdiction is the capital ship's and 'interdicted', a lane jam the minefield's, an ambush a hunt's), rescuing someone, going out into deep space
-      const playedAsOthers = new Set(['hunt', 'council', 'bounty', 'interdiction', 'lanejam', 'ambush']);
+      // the director's events the side can have (the Council's and the bounty hunters' arrivals are their hunted lines), rescuing someone, going out into deep space
+      const playedAsOthers = new Set(['hunt', 'council', 'bounty']);
       for (const [id, e] of Object.entries(EVENTS)) if (canHave(side, e) && !playedAsOthers.has(id)) said(linesFor(crew, 'event', id), crew, `event ${id}`);
       said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
       // (and what comes where you are rather than with your side: an eclipse, wherever there's a sun)

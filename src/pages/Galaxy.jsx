@@ -21,7 +21,7 @@ import { runtime, usePrepareProgress } from '../runtime';
 import LoadingVeil from '../components/worlds/LoadingVeil';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { battleSay } from '../components/galaxy/warVoice';
-import { effectsFor } from '../components/galaxy/warEffects';
+import { groundEffects } from '../components/galaxy/siteWar';
 import { mine, onWar, warNow } from '../components/galaxy/warState';
 import { SIDE_KEY, current as currentOath, readAllegiance, setTheatre, suggestSide, swear } from '../components/galaxy/allegiance';
 import { HERO_KEY, readHero } from '../components/galaxy/heroes';
@@ -33,6 +33,11 @@ import HoloMap from '../components/galaxy/HoloMap';
 import { readFound } from '../components/galaxy/places';
 import GalaxyIntro from '../components/galaxy/GalaxyIntro';
 import '../components/galaxy/galaxy.css';
+import { thud } from '../lib/sfx';
+import { createImpacts } from '../lib/impact';
+
+// a bump's and a crash's thud, by the hit law (lib/impact.js)
+const knockLaw = createImpacts();
 
 const FOUND_KEY = 'tp-galaxy-found'; // the places found out in the open, per system (places.js; the scene writes it)
 const LAST_KEY = 'tp-galaxy-system'; // the system you were last in
@@ -271,7 +276,7 @@ export default function Galaxy() {
         timer.current = setTimeout(() => dove.current?.(), DIVE_MAX); // (a dive that never ends still lands)
       };
       runtime()
-        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced, effects: effectsFor(id, warNow(Date.now(), oath.war), oath) }), host, { fade: 900, held: true, after, onBuilt })
+        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced, effects: groundEffects(id, oathKept, Date.now()) }), host, { fade: 900, held: true, after, onBuilt })
         .catch(() => false)
         .then(() => after)
         .then(() => {
@@ -279,7 +284,7 @@ export default function Galaxy() {
           navigate(to); // (not handed over: the page makes its own)
         });
     },
-    [leave, leaving, navigate, ship, loadout, build, online.client, reduced, oath],
+    [leave, leaving, navigate, ship, loadout, build, online.client, reduced, oathKept],
   );
   // near a planet you can land on: the surface's code, and its page's, come ahead
   useEffect(() => {
@@ -384,6 +389,11 @@ export default function Galaxy() {
         else if ((e.id === 'planet' || e.id === 'cloudcity') && canLand(s.id)) land(s.id);
         else if (e.id === 'planet' || e.id === 'cloudcity') navigate(s.game.status === 'live' && s.game.to ? s.game.to : `/galaxy/${s.id}/mission`);
         return;
+      }
+      // a knock as hard as it was (galaxy/mapFeel.js's force, the hit law's gain)
+      if ((e.type === 'bump' || e.type === 'crash') && e.force) {
+        const k = knockLaw.hit(e.force, e.type);
+        if (k) thud({ gain: k.gain, pitch: k.pitch });
       }
       comms.current?.handle(e);
     },

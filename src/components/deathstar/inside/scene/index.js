@@ -25,7 +25,7 @@
 //   roomsOf(stream) → { shown(roomId), built(roomId), dt }   what people.js is told of the rooms: drawn
 //     while the stream shows them, standing from when they are built until the stream frees them (a
 //     body is let go only then, so the two mustn’t be swapped: a door shut on the dead would take them)
-//   createScene(renderer, { tier, small, station }) → { scene, camera, layout, ready, sync, hear, warm, resize, render, dispose }
+//   createScene(renderer, { tier, small, station }) → { scene, camera, layout, ready, sync, hear, warm, resize, render, timeScale, tune, dispose }
 //     sync(g, alpha, look?)   once a frame, after the game’s steps: g as rules/game.js keeps it
 //       ({ side, you: body & { room, crouch, hp, gun, armour, hero, pitch? }, doors, time, crew?, combat? }),
 //       alpha how far the frame is from the last step to the next; look: { yaw, pitch, view, aim } as
@@ -44,6 +44,7 @@ import { passable } from '../rules/doors';
 import { buildLayout, offTags } from '../rules/layout';
 import { STATIONS } from '../rules/stations';
 import { CAMERA, cameraPose, wallHits } from './camera';
+import { createCinematics } from './cinematics';
 import { colliderFor } from './fall';
 import { loadPerson, motionOf, playerKind } from './figures';
 import { createFx } from './fx';
@@ -51,6 +52,9 @@ import { createKit } from './kit';
 import { createPeople } from './people';
 import { createShow } from './show';
 import { createStream } from './stream';
+import { createFeel, feelGroups } from '../../../../lib/three/feel';
+import { createSpring } from '../../../../lib/spring';
+import { prefersReducedMotion } from '../../../../lib/hooks';
 
 const STEP = 1 / 30; // the game’s step (rules/game.js)
 const JUMP = 3; // metres between two steps that are a ride or a teleport, not a stride
@@ -114,9 +118,22 @@ export function createTrack() {
 }
 
 const SHOT = 0.35; // seconds the player’s figure fires for after a shot
+const AHEAD = 2.6; // metres past you in the view a friend standing in it is faded
 const STROKE = 0.55; // seconds a blade’s stroke plays for after a swing
 const STROKES = ['sword.a', 'sword.b', 'sword.c']; // the strokes, in turn
 const CROUCH_PACE = 1.0; // metres a second the crouch walk covers at its own speed
+// the station shaking while it comes apart (rules/breach.js): a tremor's jolt, easing off, over a
+// tremble that never stops while it goes
+const QUAKE_MOST = 0.07; // metres the biggest tremor moves the camera
+const QUAKE_FOR = 1.3; // seconds a tremor shakes it
+const TREMBLE = 0.006; // metres it trembles by all the while
+// a hit on you this hard (combat.js's knock: the DL-44's) jolts the view and
+// holds the game a moment
+export const HEAVY = { from: 25, stop: 70 };
+// a landing's squat: set at once by the speed it hit at (× per, to max),
+// rung back on a spring (the plan's k 120, c 8); a step down under `from`
+// m/s is nothing
+export const SQUAT = { per: 0.025, max: 0.3, from: 3 };
 
 export function playerAct({ crouch = false, moving = false, aim = false, gun = null, blade = null, shotAgo = Infinity, swungAgo = Infinity } = {}) {
   const base = crouch ? (moving ? 'crouch.walk' : 'crouch') : null;
@@ -153,6 +170,8 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   const people = createPeople(scene, kit, { tier, renderer, adopt: house.adopt, layout });
   const fx = createFx(scene, { small });
   const show = createShow(scene, { renderer, tier, layout, people, fx });
+  // (the stories' scenes: `person` is the player's figure as it is when one plays)
+  const cine = createCinematics({ people, layout, show, fx, scene, you: () => person });
   const leafMat = new THREE.MeshStandardMaterial(LEAF);
   // every leaf’s body and edge, a unit cube scaled to its part
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
@@ -167,6 +186,14 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   const played = { base: undefined, upper: undefined, stroke: 0 };
   let shotAt = -Infinity;
   let swungAt = -Infinity;
+  let quake = 0; // metres of shake a tremor has left
+  // every shake (a tremor, the tremble, a heavy hit on you) on the one feel:
+  // trauma², at most QUAKE_MOST metres, held still under reduced motion (the
+  // feel reads it), and the hitstop the module's loop slows its steps by
+  const feel = createFeel({ offset: QUAKE_MOST, baseFov: camera.fov });
+  const squat = createSpring({ k: 120, c: 8, max: SQUAT.max });
+  const still = prefersReducedMotion(); // (no squat under reduced motion)
+  let inScene = false; // whether a scene had the camera last frame
   const vel = { x: 0, z: 0 };
   let shown = -1; // the last displayed time
   let frames = 0;
@@ -285,14 +312,36 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     held = view === 'first' ? 0 : pose.dist;
     camera.position.set(pose.pos.x, pose.pos.y, pose.pos.z);
     camera.lookAt(pose.look.x, pose.look.y, pose.look.z);
+    // a story's scene takes the camera for its shots
+    const shot = cine.sync(g, dt);
+    // (a scene over: whatever it had your figure play, it takes up again what you are doing)
+    if (inScene && !shot) played.base = played.upper = undefined;
+    inScene = Boolean(shot);
+    if (shot) {
+      camera.position.set(shot.pos.x, shot.pos.y, shot.pos.z);
+      camera.lookAt(shot.look.x, shot.look.y, shot.look.z);
+    }
+    // (metres of shake as the trauma that moves the camera that far: held at least that)
+    const shake = quake + (g.flags?.has('breach') ? TREMBLE : 0);
+    const want = Math.sqrt(Math.min(1, shake / QUAKE_MOST));
+    const has = feel.state().trauma;
+    if (want > has) feel.trauma(want - has);
+    feel.setBaseFov(camera.fov);
+    feel.update(dt, camera);
+    quake = Math.max(0, quake - (QUAKE_MOST / QUAKE_FOR) * dt);
 
     becomes(playerKind({ side: g.side ?? you.side, hero: you.hero, armour: you.armour }));
     if (person) {
       const o = person.object;
-      o.position.set(at.x, at.y, at.z);
-      o.rotation.y = -at.yaw;
-      // (in first person the eye is inside the head)
-      o.visible = view !== 'first';
+      // (where you stand, or where a scene has swung you)
+      const drawn = cine.youAt ?? at;
+      o.position.set(drawn.x, drawn.y, drawn.z);
+      o.rotation.y = -drawn.yaw;
+      // (its feet at its origin: the squat is about them)
+      const q = squat.step(dt);
+      o.scale.set(1 + q / 2, 1 - q, 1 + q / 2);
+      // (in first person the eye is inside the head; a scene's camera sees you)
+      o.visible = (view !== 'first' || Boolean(shot)) && !cine.hidesYou;
       person.hold(you.gun ?? null);
       person.setAim(wrap(yaw - at.yaw), pitch, aim || now - shotAt < SHOT);
       if ((you.hp ?? 1) <= 0 && !downed) {
@@ -333,10 +382,15 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     // (the doors and the bridges as they are, for the dead to fall against)
     rooms.open = (id) => passable(g.doors, id);
     rooms.off = offTags(layout, g.flags ?? new Set());
+    // (and the camera and your chest, so anyone between them is faded out of the way; none in first person)
+    rooms.camera = view === 'first' && !shot ? null : camera.position;
+    rooms.focus = { x: at.x, y: at.y + (you.crouch ? 0.9 : 1.3), z: at.z };
+    rooms.ahead = { x: at.x + Math.sin(yaw) * AHEAD, y: rooms.focus.y, z: at.z - Math.cos(yaw) * AHEAD };
+    rooms.side = g.side ?? you.side;
     if (g.crew) people.sync(g.crew, alpha, camera.position, rooms);
     for (const b of g.combat?.bolts ?? []) fx.bolt(b);
     fx.update(dt);
-    show.sync({ g, at, yaw, crouch: you.crouch, rooms, dt, t: now });
+    show.sync({ g, at, yaw, crouch: you.crouch, rooms, dt, t: now, hand: person && person.object.visible && !person.fallen ? person.hand : null });
     // a room just built, the Falcon berthed late, a reflection made again:
     // each brings materials the house look hasn’t met (adopting is once a material)
     if (frames++ % 30 === 0 || stream.built.size !== seenRooms) {
@@ -360,6 +414,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     disposed = true;
     person?.dispose();
     person = null;
+    cine.dispose();
     people.dispose();
     show.dispose();
     fx.dispose();
@@ -380,11 +435,19 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     show.hear(events);
     people.hear(events);
     for (const e of events ?? []) {
+      if (e.type === 'quake') quake = Math.max(quake, QUAKE_MOST * (e.size ?? 1));
+      if (e.type === 'land' && !still && e.speed > SQUAT.from) squat.x = Math.min(SQUAT.max, e.speed * SQUAT.per);
+      if (e.type === 'hurt' && (e.amount ?? 0) >= HEAVY.from) {
+        feel.trauma(Math.min(0.8, e.amount / 60));
+        feel.hitstop(HEAVY.stop);
+      }
       if (e.by !== 'you') continue;
       if (e.type === 'shot') shotAt = shown;
       else if (e.type === 'swing') swungAt = shown;
     }
   };
 
-  return { scene, camera, layout, ready: stream.ready, sync, hear, warm, resize, render: () => renderer.render(scene, camera), dispose };
+  // timeScale(dt): the share of a frame the game runs (the module's loop takes it, once a frame: a
+  // hitstop slows the steps); tune(): the ?debug panel's groups
+  return { scene, camera, layout, ready: stream.ready, sync, hear, warm, resize, render: () => renderer.render(scene, camera), timeScale: (dt) => feel.timeScale(dt), tune: () => feelGroups(feel), dispose };
 }

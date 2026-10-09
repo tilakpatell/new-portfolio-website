@@ -1,16 +1,18 @@
 // A lit lightsaber in a figure's right hand. A rigged figure holds it in
 // its own hand (bladeInHand): the hilt a child of the RightHand bone, set in
 // the grip gunplay.js works out from the hand, held at guard in both hands
-// and swung in a stance's strokes by saber.js, as yours is. One that isn't
-// rigged holds it where the hand of a figure that tall hangs (heldBlade),
-// the blade up and a little forward, held out. activity.js's duellists swing
-// it (their `hostile.blade`); actors.js's standing Jedi and Sith hold it lit
-// (a life entry's `blade`), as the figures built in code did.
+// and swung in a stance's strokes by saber.js, as yours is: activity.js's
+// duellists (duellists.js) fence with it, and what its strokes hit is what
+// its blade sweeps. One that isn't rigged holds it where the hand of a
+// figure that tall hangs (heldBlade), the blade up and a little forward,
+// held out: actors.js's standing Jedi and Sith (a life entry's `blade`),
+// who hold it lit and never fight with it.
 //
 // heldBlade({ color, hilt }, tall) → { arm (add it to the figure's holder),
 //   gun, owned (to dispose) }
 // bladeInHand(fig, { color, hilt }, { parent, stance, who }) → { gun, gp,
-//   saber, stand(dt, now, move), pose(dt, now, { forward, up, me, dir }),
+//   saber, stand(dt, now, move), pose(dt, now, { forward, up, me, dir,
+//   targets, hit }) (what its strokes may hit, as saber.js's update has them),
 //   out(dt, now, { forward, up }) (in pose's place, going down), swing(now,
 //   { heavy }), block(on), light(on), busy, lit, dispose() }, or
 //   null for a figure with no hand bone to hold it (heldBlade's arm then).
@@ -51,10 +53,8 @@ export function bladeInHand(fig, { color = '#ff3b3b', hilt = null } = {}, { pare
   fig.model.updateMatrixWorld(true);
   const gp = createGunplay({ model: fig.model, bones: fig.bones }, 'saber', { unit: 1, who });
   if (!gp) return null;
-  // (the body sinking into its guard: saberBody.js, laid after the clips and
-  // before the figure's own bones go on, so only on one that lays them after)
-  const body = fig.bones?.Hips && fig.hipsY && fig.after ? fig : null;
-  const saber = createSaber(gp, { color, hilt, stance, parent, fig: body });
+  // (its strokes are clips on the figure: played on its animator where it has one, the arms laid by saber.js)
+  const saber = createSaber(gp, { color, hilt, stance, parent, fig });
   saber.light(true);
   return {
     gun: gp.gun,
@@ -67,9 +67,9 @@ export function bladeInHand(fig, { color = '#ff3b3b', hilt = null } = {}, { pare
       return saber.lit;
     },
     stand: (dt, now, move = 0) => saber.stand(dt, now, move),
-    pose(dt, now, { forward, up, me = null, dir = null }) {
+    pose(dt, now, { forward, up, me = null, dir = null, targets = [], hit = null }) {
       gp.set(dt, { aim: saber.lit ? GUARD_AIM : 0, look: dir ? 1 : 0, dir, forward, up });
-      saber.update(dt, now, { forward, up, me, targets: [] });
+      saber.update(dt, now, { forward, up, me, targets, hit });
     },
     // going down: put out, and the arms left to the clip it falls on (the
     // stroke it was in played out, the blade drawn back in)

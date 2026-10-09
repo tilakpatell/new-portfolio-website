@@ -127,6 +127,7 @@ What the films' games do, borrowed: Battlefront II's block stamina, its 5.5 m do
 ### Left
 - More duellists: a Magnaguard on Kashyyyk, an Inquisitor on Lothal (the `inquisitor` kind isn't catalogued yet), Maul on Naboo; each a `blade` and a `guard` on a spawn.
 - The duellist's arm is a fixed pose that swings; a rigged duellist (a Meshy-rigged Vader) would let `gunplay.js` hold the saber properly.
+- (Both since done: the combat revamp's Lane D made every duellist a rigged figure fencing on the saber module, with Maul on Naboo and an Inquisitor on Lothal. `HANDOFF-combat.md`, Lane D.)
 - Perks are picked, not earned; the missions' stars could unlock them.
 
 ## Heroes from everywhere, each with their own abilities (7 October 2026)
@@ -178,3 +179,17 @@ The plan: `docs/superpowers/plans/2026-10-07-three-worlds.md` (Tasks 7–22); th
 
 ### Checking it
 - `OUT=lab/shots ZONE=<zone> node scripts/surface-shot.mjs <world> <x,z,dist,deg,label>` (a zone's views relative to its origin), `BUDGET=lab/baseline/surface-high.json node scripts/galaxy-check.mjs surface coruscant,yavin,bespin`, `OUT=lab/check node scripts/assault-check.mjs coruscant,yavin,bespin`, and the git-ignored checks in `lab/checks/` (`bespin-quests.mjs` plays the three Bespin quests through, `coruscant-people.mjs` watches the commuters, `garrison-probe.mjs` counts who meets you at the landing; each needs `localStorage['tp-worlds'] = '"load"'`, or the 3D never starts headless).
+
+## The ground war (8 October 2026, three PRs)
+
+The design: `docs/superpowers/specs/2026-10-08-ground-factions-design.md`; the plan: `docs/superpowers/plans/2026-10-08-ground-factions.md`. A fourth NPC stack, `src/components/galaxy/surface/ground/`, beside the quest hostiles, the garrison and the Battlefront assaults (those three are untouched but for the garrison's landing party, which is the pad turf's soldiers now).
+
+- **Who's who.** `galaxy/siteWar.js` stages each world in its film's war, and your oath there is the one that counts (`groundEffects`, used by the page and the flown landing). `ground/standing.js` says what any two sides are to each other; the Hutts fight everyone but hunt nobody.
+- **Where you set down.** On the other side's world the ship lands out of sight of the pad's posts, 150 to 220 m out (`landing.js`), and says so as you step out.
+- **Turf and people.** `turf.js` derives the pad's turf (and, on a front or an attack, the other side's far turf 220 to 300 m out, with a front between); `population.js` makes their soldiers round you in 48 m cells (radius 3) and lets them go behind you, the dead staying dead; `POP` caps how many live at once by tier.
+- **The fight.** `fight.js` steps every soldier within 120 m on `hostiles.js`'s head with the ground's gates (line, facing, range, aim error, suppression, the squad's nerve, tokens per target). Bolts between soldiers fly (`bolts.js`), past 60 m from you a fight is settled by `farExchange`; bolts at you go through `blaster.enemy` as the quests' do. Your shot that hits or passes within 2 m of an unsworn you's soldier gives its squad a grudge for 90 s.
+- **The director.** `director.js`: raids every 150 s ÷ the far turf's strength, posts lost and reinforced (walked in from another post, never within 60 m of you), hunts once you're seen on an enemy's world; its news reaches the scene as `{ type: 'war', what, side, text }` events, a line at most every 12 s.
+
+How to check it. `npx vitest run src/components/galaxy/surface/ground src/components/galaxy/surface/sites` (the rules, and every landable world's turf, covert landing and roster standing on dry ground); `npm run test:ai -- ground` (five scenes played through for simulated minutes). In the browser (dev server): `window.__surfaceScene.groundWar.debug()` lists the soldiers (side, role, mode, target, `rag` while a ragdoll), `.posted()` the director's posts, `.ms` the update's cost; `__surfaceScene.put(x, z)` sets you down (skipping the landing), `__surfaceScene.you()` reads where you are and your health. `scripts/galaxy-check.mjs` takes `OATH='<allegiance JSON>'` to land sworn and prints `ground N ms` beside the frame times.
+
+What's next: the spec's section 9 migrations, each its own PR — the quest hostiles onto `troops.js`/`fight.js` (and the 45% roll in `scene.js`'s shooters goes), the companion as a soldier of your side, the assaults on the shared bolts and troops (Kashyyyk's far turf and map with them), and talk and quests by side (the ground soldiers don't talk yet; `garrison.js`'s `garrisonLines` waits for them).

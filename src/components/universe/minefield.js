@@ -10,18 +10,13 @@
 // layMines({ lane, n, seed, solids }) → [{ at: [x, y, z], r }]: along the
 //   lane, a little either side of it and above and below, none on top of
 //   another, none inside anything solid; the same field for the same seed
-// bandAcross(pts, s, r, { n, seed, solids }) → [{ at, r }]: a lane jam, the
-//   band laid across a hyperlane's carriageway (its three points, hyperlanes.js)
-//   at s along it, every mine inside the tube (r × 1.2 of its middle, so
-//   inside laneAt's r × 1.3) and a little either side of s along it, none
-//   on another, none inside anything solid; the same band for the same seed
 // mineHit(ship, mines, dt) → indices of the mines the ship came close
 //   enough to this step (its whole way since the last, at any speed)
 // chainFrom(mines, i) → indices: mine i and every one it sets off, and theirs
 // mineBlast(d) → the shields a blast takes from a ship d away
 
 import { SOLIDS, forward, noseOf } from './ship';
-import { bezier, clearance, tangent } from './lanes';
+import { clearance } from './lanes';
 
 export const MINE = {
   n: 14,
@@ -81,36 +76,6 @@ export function layMines({ lane: [a, b], n = MINE.n, seed = 1, solids = [] }) {
       const side = (rand() * 2 - 1) * MINE.depth;
       const up = (rand() * 2 - 1) * MINE.up;
       const p = [a[0] + d[0] * t + across[0] * side, a[1] + d[1] * t + up, a[2] + d[2] * t + across[2] * side];
-      if (fits(p, mines)) {
-        mines.push({ at: p, r: MINE.r });
-        break;
-      }
-    }
-  }
-  return mines;
-}
-
-export function bandAcross(pts, s, r, { n = MINE.n, seed = 1, solids = [] } = {}) {
-  const rand = seeded(seed);
-  const c = bezier(pts, s);
-  const t = tangent(pts, s);
-  const tl = Math.hypot(t[0], t[1], t[2]) || 1;
-  const along = [t[0] / tl, t[1] / tl, t[2] / tl];
-  // across the tube: right (level) and up, square to the way along it
-  const rl = Math.hypot(along[0], along[2]) || 1;
-  const right = [-along[2] / rl, 0, along[0] / rl];
-  const up = [right[1] * along[2] - right[2] * along[1], right[2] * along[0] - right[0] * along[2], right[0] * along[1] - right[1] * along[0]];
-  const fits = (p, mines) => mines.every((m) => dist(m.at, p) > MINE.apart) && solids.every((o) => dist(o.at, p) - o.r > MINE.r + 1);
-  const mines = [];
-  for (let i = 0; i < n; i++) {
-    for (let tries = 0; tries < 18; tries++) {
-      // (evenly over the tube's round: the square root spreads them out to its rim)
-      const a = rand() * Math.PI * 2;
-      const d = Math.sqrt(rand()) * r * 1.2;
-      const u = Math.cos(a) * d;
-      const v = Math.sin(a) * d;
-      const w = (rand() * 2 - 1) * MINE.depth;
-      const p = [0, 1, 2].map((k) => c[k] + right[k] * u + up[k] * v + along[k] * w);
       if (fits(p, mines)) {
         mines.push({ at: p, r: MINE.r });
         break;

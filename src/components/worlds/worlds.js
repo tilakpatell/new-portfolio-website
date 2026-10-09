@@ -15,10 +15,10 @@ export const WORLD_MB = {
   '/universe': 6, // not a world (nothing gates it), but the map's own download, for the tour's "Open the universe map · N MB" on a phone: the planets' textures, the stations and ships, from /home at a phone's size (5.8 measured)
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
   '/invincible': 4, // the three HD figures and the city's three skies
-  '/cybertron': 36, // Iacon at war's robots, Metroplex and the city's kit (the world at the top), and below it Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
+  '/cybertron': 38, // Iacon at war's robots, Metroplex and the city's kit (the world at the top), and below it Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation; and Rapier (1.7 MB) for Iacon's loose crates, on a computer that loads it (never a phone)
   '/avengers': 11, // the walkable compound's sky, scanned ground and trees, Spider-Man and the people from Sketchfab (each building's game more as you go in)
   '/c-137': 16, // about: the Smiths' street, the house, the school and Blips and Chitz, the Smiths and the cruiser; Portal panic's cast; the Citadel inside, its cast, the Council and the crowd's light copies (partly added up from the files). Mortytown is about 11 more, fetched when the lift goes down
-  '/albuquerque': 20, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
+  '/albuquerque': 22, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab; and Rapier (1.7 MB) for the street's props, on a computer that loads it (never a phone)
   '/scranton': 5, // the office cast and set (the walkable office and the one from above share them)
   '/galaxy': 8, // drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon; and down on a world, its models (its people, walkers, landmarks: a few MB a world)
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
@@ -29,19 +29,14 @@ export const WORLD_MB = {
   '/dot-matrix/64': 7, // the castle's and Bob-omb Ridge's texture sets at phone size, two skies, and Mario, the cast and the props (fan-made Sketchfab models, 2 MB)
   '/earth': 2, // NASA's globe at phone size, the stars and the plane
   '/dot-matrix/minecraft': 2, // drawn in code from the pack's tiles: the block strip, the skins and the sky's and HUD's sprites (under a tenth of an MB today)
-  '/universe/expanse': 2, // a planet of the Expanse, driven: the physics engine (Rapier, about 0.6 MB compressed) and the land made from its seed, nothing else to fetch
 };
 
 // The world a path is in: '/middle-earth/moria' is Middle-earth. Some
 // worlds sit inside another's address ('/dot-matrix/64' inside
 // '/dot-matrix'), so the longest match wins: each gets its own download size
 // and its own phone gate, not its parent's.
-// The worlds made from a seed (a planet of the Expanse), not on the map's
-// list but gated as the others: a phone asks before it downloads one.
-export const SEEDED = [{ to: '/universe/expanse', label: 'A planet of the Expanse', from: 'The Expanse' }];
-
 export const worldAt = (pathname) =>
-  [...WORLDS, ...SEEDED].filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
+  WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
 
 // The way out of a world, for the view the visitor is in (the glossary's
 // last row): "Universe map", back to this world's place on the map, or

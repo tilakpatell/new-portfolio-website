@@ -49,7 +49,18 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 | Phase | Branch | Merged |
 |---|---|---|
 | design | `claude/rm-worlds-design` | this PR |
+| 0: the engine's seams, Gazorpazorp bare | `claude/rm-worlds-p0` | #676 |
+| 1: the planets' kit | `claude/rm-worlds-p1` | #682 |
 
 ## Left
 
 (Filled by each phase: what the engine lacked, one line and a proposal each.)
+
+- **A talk bubble over the speaker** (0): the scene says who talks but not where they are on screen, so `RmSurface` pins the kit's `Bubble` above the foot. Proposal: the scene writes the speaker's screen spot to a `talkAt` ref the page hands in, as it does the compass.
+- **The touch buttons are the galaxy's** (0): `SurfaceView` draws Vent, Aim and the hero's two powers whatever the page; a planet has no heroes. Proposal: `SurfaceView` takes a `buttons` list, the galaxy's by default.
+- **`BIG` grows by phase** (0): `destinations.js`'s `BIG` holds only the planets with a site (Gazorpazorp so far). Each planet's phase adds its id there and its site to `PLANET_SITES` together (the test holds them equal); its old box task leaves C-137's `TASKS` with it.
+- **Headless landings are slow** (0): software GL draws about a frame a second, so the flight check moves the scene's clock on with `window.__surfaceDo('advance', s)` (12 s for the landing; W and Shift held through another `advance` to walk) and sets `tp-quality` to `low`; screenshots need a 180 s timeout.
+- **A flyer over deep water sinks to the bed** (1): `walker.js`'s `ride` holds a hover over the water (so the sled, the bike and the skiff are never lost in the oil or a lake: `rides.test.js`), but a `fly` ride with `hover: 0` (the glider) takes the ground under the water as its floor. Proposal: `ride`'s flyer takes `max(ground, world.water)` as its low, as the hover does.
+- **One seat a ride** (1): the skiff "seats two" in the spec, but the engine sits only the rider; the mate walks. Proposal: a ride's `seats: [[x, y, z]…]`, the mate sat in the second while the rider rides.
+- **The Cronenbergs aren't rigged** (1): the cast's `cronenberg` has no skeleton, so the catalogue has it as a plain model that sways in its step. Proposal: a `gen3d` issue for a rigged Cronenberg (Phase 10 files it).
+- **What the kit added to the engine** (1): a catalogue row with `tall`, `wide` or `long` is sized once in `placer.js`'s `squared` (the planets' files aren't in metres as the galaxy's are); a built thing that `follows` is updated with where you are (`applyBuilt`'s `follows` sink: the shelling); `__surface()` lists `rides` (built or not) and each person's `fig` and `rigged`, for the flight check.

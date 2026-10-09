@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findLegs, legGait, legPose, legWeights } from './legRig';
+import { findLegs, legGait, legPose, legWeights, standPose, surfacePoints } from './legRig';
 
 // a stick person 1.8 m tall: two legs 0.24 m apart up to the crotch at
 // 0.85 m, a body over them as wide as both, arms hanging at its sides
@@ -67,5 +67,55 @@ describe('legRig', () => {
     expect(g.phase).toBeCloseTo((1.4 / (1.6 * (l.hip - l.bottom))) % 1, 6);
     for (let i = 0; i < 120; i++) legGait(g, 1 / 30, 0, l);
     expect(Math.abs(legPose(g, 0, l).thigh)).toBeLessThan(0.01);
+  });
+
+  it('finds a low-poly figure\'s legs from points on its surface, where its vertices are only at the ends', () => {
+    // two leg boxes 0–0.85 m and a body box 0.85–1.8 m: eight corners each, nothing between
+    const pos = [];
+    const box = (x0, x1, y0, y1, z0, z1) => {
+      const c = [];
+      for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) c.push([x, y, z]);
+      // the twelve triangles of its six faces
+      for (const [a, b, d, e] of [
+        [0, 1, 3, 2],
+        [4, 5, 7, 6],
+        [0, 1, 5, 4],
+        [2, 3, 7, 6],
+        [0, 2, 6, 4],
+        [1, 3, 7, 5],
+      ])
+        pos.push(...c[a], ...c[b], ...c[d], ...c[a], ...c[d], ...c[e]);
+    };
+    box(0.06, 0.18, 0, 0.85, -0.06, 0.06);
+    box(-0.18, -0.06, 0, 0.85, -0.06, 0.06);
+    box(-0.15, 0.15, 0.85, 1.8, -0.03, 0.03);
+    const verts = [];
+    for (let i = 0; i < pos.length; i += 3) verts.push([pos[i], pos[i + 1], pos[i + 2]]);
+    expect(findLegs(verts)).toBeNull();
+    const pts = surfacePoints(new Float32Array(pos), null, 6000);
+    expect(pts.length).toBeGreaterThan(5000);
+    const l = findLegs(pts);
+    expect(l).not.toBeNull();
+    expect(l.crotch).toBeCloseTo(0.85, 1);
+    expect(l.legs[0].x).toBeCloseTo(0.12, 1);
+    // (the same each time: no randomness)
+    expect(surfacePoints(new Float32Array(pos), null, 6000)).toEqual(pts);
+  });
+
+  it('shifts its weight standing, a knee at a time, the foot kept under the hip and level; walking, not at all', () => {
+    const seen = new Set();
+    for (let t = 0; t < 20; t += 0.5) {
+      const [l, r] = [0, 1].map((i) => standPose(t, 3, i, 0));
+      for (const p of [l, r]) {
+        expect(p.knee).toBeGreaterThanOrEqual(0);
+        expect(p.knee).toBeCloseTo(-2 * p.thigh, 6);
+        expect(p.thigh + p.knee + p.foot).toBeCloseTo(0, 6);
+        expect(p.knee).toBeLessThan(0.2);
+      }
+      seen.add(l.knee > r.knee);
+    }
+    expect(seen.size).toBe(2);
+    expect(Math.max(...[0, 1, 2, 3].map((t) => standPose(t, 3, 0, 0).knee))).toBeGreaterThan(0.02);
+    expect(standPose(5, 3, 0, 1)).toEqual({ thigh: -0, knee: 0, foot: 0 });
   });
 });

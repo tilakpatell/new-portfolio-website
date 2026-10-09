@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../rules/game';
-import { heardOf } from './hear';
+import { HURT, heardOf } from './hear';
 
 const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 1 });
 const door = [...g.layout.doors.values()].find((d) => d.kind === 'blast');
@@ -19,6 +19,21 @@ describe('what the game’s events sound like', () => {
     expect(heardOf({ type: 'impact', x: 1, y: 2, z: 3 }, g)).toEqual([['hit', { x: 1, y: 2, z: 3 }]]);
     expect(heardOf({ type: 'deflect', x: 1, y: 2, z: 3 }, g)).toEqual([['clash', { x: 1, y: 2, z: 3 }]]);
     expect(heardOf({ type: 'hit', x: 1, y: 2, z: 3, by: 'blade' }, g)).toEqual([['clash', { x: 1, y: 2, z: 3 }]]);
+    // (a tremor rumbles under you, and booms where a panel bursts)
+    expect(heardOf({ type: 'quake', size: 0.6, at }, g)).toEqual([['quake', at, 0.6]]);
+    expect(heardOf({ type: 'quake', size: 0.6, at: null }, g)).toEqual([['quake', undefined, 0.6]]);
+  });
+
+  it('hurts at your own ear, louder the harder the hit, and always heard', () => {
+    const [[name, gain, pitch]] = heardOf({ type: 'hurt', amount: 30, what: 'hurt' }, g);
+    expect(name).toBe('hurt');
+    expect(pitch).toBeGreaterThan(0.8);
+    const of = (amount) => heardOf({ type: 'hurt', amount }, g)[0][1];
+    expect(of(40)).toBe(1);
+    expect(of(80)).toBe(1);
+    expect(of(25)).toBeGreaterThan(of(10));
+    expect(of(1)).toBeCloseTo(HURT.least, 9);
+    expect(gain).toBeGreaterThan(of(10));
   });
 
   it('sounds the klaxon only for your own section, with the music to match', () => {

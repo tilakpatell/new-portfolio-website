@@ -21,7 +21,8 @@
 //          (G there opens the planet's page) or a line to say ([{ n, r,
 //          label?, say? }], r how near you have to be, map units)
 //   bodies with `physical`, what can be knocked about (./bodies.js names
-//          which), once it's open: [{ object | meshes + index + locals (a
+//          which; a model made with physical nodes is its own,
+//          lib/three/colliders.js), once it's open: [{ object | meshes + index + locals (a
 //          scatter's instance: its cell's meshes, and where it is among
 //          them), position, quaternion, scale, box (metres, its own
 //          frame), body, solids }]; their circles are in each one's own
@@ -59,6 +60,7 @@ import { createBeacon } from './beacon';
 import { keepDark } from './lamps';
 import { bodyOf } from './bodies';
 import { biomeAt } from './biomes';
+import { collidersOf } from '../../../lib/three/colliders';
 import { byId } from '../universes';
 
 // each planet's builders, loaded when you land there
@@ -332,13 +334,17 @@ export function crownsOf(parts) {
 const CROWN_MIN = 2.5;
 
 // a built thing's meshes as instancing parts (scattering a built kind, or a model)
-function partsOf(object) {
+export function partsOf(object) {
   const out = [];
   object.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(object.matrixWorld).invert();
-  object.traverse((o) => {
+  // (a model's physical nodes, and their colliders, are never drawn: not instanced either)
+  const walk = (o) => {
+    if (/physical/i.test(o.name ?? '')) return;
     if (o.isMesh && !o.isSkinnedMesh) out.push({ geometry: o.geometry, material: o.material, local: inv.clone().multiply(o.matrixWorld) });
-  });
+    for (const c of o.children) walk(c);
+  };
+  walk(object);
   return out;
 }
 
@@ -403,8 +409,10 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
   const thing = async (planet, t) => {
     const spec = specs[t.kind];
     let made = null;
+    let own = null; // (a model's physical nodes' bodies: hidden whether or not they're used)
     if (spec) {
       const object = await models.get(spec);
+      if (object) own = collidersOf(object).bodies;
       made = object && { object, solids: t.solid === false || !t.r ? [] : [{ circle: [0, 0, t.r * 0.8] }] };
     } else if (t.kind === 'figure') made = await (await import('./people.js')).figure(kit, t.opts ?? {});
     else if (planet.PROPS?.[t.kind]) made = await planet.PROPS[t.kind](kit, t.opts ?? {});
@@ -414,7 +422,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     scaleLights(o, METRE);
     o.matrixAutoUpdate = false;
     // (one that can be knocked about: its own box, before it's stood)
-    const body = physical ? bodyOf(t.kind, spec) : null;
+    const body = physical ? bodyOf(t.kind, spec, own) : null;
     const box = body ? ownBox(o) : null;
     standMatrix(spot, R, sinkFor(t.r ?? 0), METRE, o.matrix);
     o.matrixWorldNeedsUpdate = true;
@@ -443,9 +451,11 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     let tints = null;
     let shared = false; // (a model's: its geometry and materials are the loader's cache's)
     let made = null;
+    let own = null; // (a model's physical nodes' bodies, as for a thing)
     if (spec) {
       const object = await models.get(spec);
       if (!object) return;
+      own = collidersOf(object).bodies;
       parts = partsOf(object);
       shared = true;
       reach = entry.reach ?? spec.reach ?? object.userData.footprint * 0.7;
@@ -469,7 +479,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       return { spot, m: standMatrix(spot, R, 0, METRE * p.s), r: reach * p.s, s: p.s };
     });
     // (a kind that can be knocked about: a body an instance)
-    const body = physical ? bodyOf(entry.kind, spec) : null;
+    const body = physical ? bodyOf(entry.kind, spec, own) : null;
     const box = body ? partsBox(parts) : null;
     // (in cells, each with bounds of its own, so what's behind you isn't
     // drawn: a kind of few or small things stays whole, its instances drawn

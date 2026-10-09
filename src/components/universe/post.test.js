@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { aberrationFor, bloomSize, createPost } from './post';
+import { MAP_LENS, aberrationFor, bloomSize, createPost, edgeWeight, toe } from './post';
 
 // just enough of a renderer for the composer to be built (nothing is drawn)
 const renderer = () => ({
@@ -119,5 +119,77 @@ describe('the finished render', () => {
     post.render(800, 600);
     post.render(1200, 700);
     expect(bloomOf(post)).toBe(bloom);
+  });
+});
+
+describe('the toe', () => {
+  it('takes what is under 0.02 to black and leaves 0.08 and over as drawn', () => {
+    expect(toe(0.02, 0.02, 0.08)).toBe(0);
+    expect(toe(0.01, 0.02, 0.08)).toBe(0);
+    expect(toe(0.08, 0.02, 0.08)).toBeCloseTo(0.08, 4);
+    expect(Math.abs(toe(0.08, 0.02, 0.08) - 0.08) / 0.08).toBeLessThan(0.01);
+    expect(toe(0.5, 0.02, 0.08)).toBe(0.5);
+  });
+
+  it('is monotone', () => {
+    let last = -1;
+    for (let l = 0; l <= 0.2; l += 0.001) {
+      const v = toe(l, 0.02, 0.08);
+      expect(v).toBeGreaterThanOrEqual(last);
+      last = v;
+    }
+  });
+
+  it('is off by default (the galaxy keeps its picture), and the universe map turns it on with its contrast', () => {
+    const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera());
+    const u = gradeOf(post).uniforms;
+    expect(u.uToe.value.toArray()).toEqual([0, 0]);
+    expect(u.uContrast.value).toBe(0.07);
+    post.setToe(0.02, 0.08);
+    post.contrast(0.18);
+    expect(u.uToe.value.toArray()).toEqual([0.02, 0.08]);
+    expect(u.uContrast.value).toBe(0.18);
+  });
+});
+
+describe('the soft edge', () => {
+  it('is nothing at the centre and whole at a corner, at any aspect', () => {
+    for (const aspect of [16 / 9, 1, 9 / 16]) {
+      expect(edgeWeight([0.5, 0.5], aspect)).toBe(0);
+      expect(edgeWeight([0.6, 0.55], aspect)).toBe(0);
+      expect(edgeWeight([0, 0], aspect)).toBe(1);
+      expect(edgeWeight([1, 1], aspect)).toBe(1);
+    }
+  });
+
+  it('is off by default, held off from pace step 3, and kept by lite()', () => {
+    const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera());
+    const u = gradeOf(post).uniforms;
+    expect(u.uDefocus.value).toBe(0);
+    post.defocus(1);
+    expect(u.uDefocus.value).toBe(1);
+    post.lite();
+    expect(u.uDefocus.value).toBe(1);
+    post.setLevel(3);
+    expect(u.uDefocus.value).toBe(0);
+    post.setLevel(1);
+    expect(u.uDefocus.value).toBe(1);
+  });
+});
+
+// the map's own lens: the toe takes only the black between the stars. A
+// rock or a ship in shadow, a planet's night side, sit at 0.01 to 0.08
+// linear (10 to 30 % grey on screen) and must come through as drawn
+describe("the map's lens", () => {
+  const [lo, hi] = MAP_LENS.toe;
+  it('blacks out the empty sky', () => {
+    expect(toe(0.001, lo, hi)).toBe(0);
+  });
+  it('leaves a dim lit surface and a night side as they are', () => {
+    for (const l of [0.012, 0.02, 0.05, 0.08]) expect(toe(l, lo, hi)).toBe(l);
+    expect(toe(0.008, lo, hi) / 0.008).toBeGreaterThan(0.6);
+  });
+  it('keeps the contrast gentle', () => {
+    expect(MAP_LENS.contrast).toBeLessThanOrEqual(0.1);
   });
 });

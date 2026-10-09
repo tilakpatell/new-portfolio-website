@@ -48,7 +48,9 @@
 // on it), and until it's there (or if it won't load) they stand as solid
 // as ever. You and your mate and the troops shove what you walk into,
 // shots knock what they hit, what's knocked stops at the landing's fixed
-// things and the parked ship, and a hard knock is heard ('impact').
+// things and the parked ship, and a hard knock is heard where it was, puffs
+// dust and nudges the camera (lib/three/impacts.js; a shot's own knock is
+// still 'impact').
 //
 // The leaves: a landing with trees has its fallen leaves round you
 // (landings/litter.js, Bruno's: kicked along as you walk through them,
@@ -61,7 +63,7 @@
 // createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind),
 //   prefetchAt(id, { light, near, entry }), begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
-//   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
+//   board(), look(dx, dy) (px), turn(dx, dy) (radians), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
 
 import * as THREE from 'three';
@@ -73,6 +75,7 @@ import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
 import { breathe, createGait, sway } from '../../lib/three/gait';
 import { seeded } from '../../lib/seeded';
+import { createBolts } from '../../lib/combat/bolt';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { RICK_HIPS, borrowClips, faceForward, heading as headingOf, retarget } from '../rickmorty/portal/clips';
 import { EVERYONE, LOOK_KEY, defaultLook, readLooks, writeLook } from '../rickmorty/wardrobe/looks';
@@ -87,8 +90,14 @@ import { applyEmote, createEmoteWheel, heardEmote, keepEmote, readEmote, readEmo
 import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
 import { createGadgetFx } from '../../lib/three/gadgetFx';
 import { frameFrom, spring } from '../../lib/three/ik';
+import { createDust } from '../../lib/three/dust';
+import { createKnocks } from './landings/knocks';
+import { impactGroups } from '../../lib/impact';
+import { pressGroups } from '../../lib/press';
 import { SIDES, sideFor, squadKinds } from './sides';
-import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, flat, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
+import { ASSIST, friction } from '../../lib/combat/aim';
+import { footAim } from './footAim';
+import { BOLT, FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, byTrench, createJump, facingAlong, flat, footBodies, footSolids, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
@@ -338,7 +347,7 @@ function rigScene(model, clips, tall, { shared = false, seed, key = null } = {})
       const ahead = headingOf(own.walk, up);
       if (ahead != null) for (const n of ['idle', 'run']) if (own[n]) faceForward(own[n], up, ahead);
     }
-    // (the hips' height at rest goes with it, for clips laid over these: galaxy/surface/saberBody.js)
+    // (the hips' height at rest goes with it, for the library's clips scaled to it)
     return Object.assign(rigged(model, own, tall, owned, { seed, key, up, hipsY: hips ? hipsY : null }), { hipsY: hips ? hipsY : null });
   }
 }
@@ -1442,7 +1451,7 @@ const blobMat = () => new THREE.MeshBasicMaterial({ map: blobTexture(), transpar
 // (`prepare(roots, alive)`: the map's way of readying a landing before it's
 // shown, its look put on, its pictures sent and its shaders made, a slice at
 // a time; a promise)
-export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, prepare = null }) {
+export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, prepare = null, cone = () => ASSIST.mouse }) {
   const root = new THREE.Group(); // at the planet's middle, in the map
   root.name = 'foot';
   root.visible = false;
@@ -1514,6 +1523,16 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(m);
     return m;
   });
+  // their flight: the one step every blaster on the site flies by (lib/combat/bolt.js)
+  const boltStep = createBolts({ pool: boltPool.length });
+  // a mesh no bolt in the air holds; with none free, the oldest in the air gives way
+  const takeMesh = () => {
+    const free = boltPool.find((m) => !S.bolts.some((o) => o.mesh === m));
+    if (free) return free;
+    const old = S.bolts.shift();
+    old.b.alive = false;
+    return old.mesh;
+  };
   const paintBolt = (mesh, color) => {
     const mats = boltMat(color);
     mesh.material = mats.core;
@@ -1680,7 +1699,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     mateAim: 0,
     mateTarget: null, // the trooper the mate's gun is on
     knock: null, // which way the last shot that hit you was going
-    lock: null, // the trooper the shot goes at
+    lock: null, // the trooper the shot bends to, while it's in the input's cone (footAim.js)
+    aimed: null, // where a shot would go now (footAim's), this frame
+    landed: null, // when your last shot hit someone (S.clock), for the reticle
     cam: { pos: null, look: null, pitch: 0.18, first: false, kick: { x: 0, v: 0 } },
     done: null,
     // the leaves: the ship down on them yet (its blast), the wind's strength
@@ -1955,6 +1976,22 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     return shotAt(p, target).sub(new V(...from)).normalize();
   };
 
+  // where your shot goes now (footAim.js): the camera's ray through the
+  // reticle, bent within the input's cone (`snap` for a tap of the fire
+  // button), stopped by the first trooper or solid; with `slow`, the look's
+  // friction over a trooper. Null with no camera yet.
+  const aimNow = (c = cone()) => {
+    if (!S.me || !S.cam.pos || !S.cam.look) return null;
+    const me = meP();
+    const cam = arr(S.cam.pos.clone().sub(S.c));
+    const dir = arr(S.cam.look.clone().sub(S.cam.pos).normalize());
+    const from = vec.add(at(S.me, S.R), S.me.n, (me?.spec.tall ?? 1.8) * METRE * 0.62);
+    const targets = footBodies({ troops: S.troops, R: S.R });
+    const r = footAim({ cam, dir, from, targets, solids: footSolids(obstacles(), S.R), cone: c, lock: S.lock, range: BOLT.range, min: 1.5 * METRE });
+    r.slow = friction(r.ray.dir, r.ray.from, targets, c);
+    return r;
+  };
+
   // a shot by p at `target` (a trooper, or null for straight ahead): the
   // gun kicks and the bolt leaves its muzzle for the mark
   const shoot = (p, target, owner, damage, jitter = 0, mark = null) => {
@@ -1967,12 +2004,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const from = r ? toMap(r.muzzle).sub(S.c) : handAt(p, new V()).sub(S.c).addScaledVector(shotDir(p, target), 0.35 * METRE);
     const dir = (mark ? mark.clone() : shotAt(p, target)).sub(from).normalize();
     if (jitter) dir.add(new V((rand() - 0.5) * jitter, (rand() - 0.5) * jitter, (rand() - 0.5) * jitter)).normalize();
-    const b = makeBolt(arr(from), arr(dir), owner, damage);
-    const mesh = boltPool.find((m) => !m.visible) ?? boltPool[0];
+    const b = boltStep.fire({ from: arr(from), dir: arr(dir), speed: BOLT.speed, range: BOLT.range, owner, side: 'you', damage });
+    const mesh = takeMesh();
     const color = GUNS[gunOf(p)]?.bolt ?? p.spec.bolt ?? '#ffffff';
     paintBolt(mesh, color);
     mesh.visible = true;
-    S.bolts = S.bolts.filter((o) => o.mesh !== mesh);
+    S.bolts = S.bolts.filter((o) => (o.b === b && o.mesh !== mesh ? (o.mesh.visible = false) : o.mesh !== mesh)); // (a slot or a mesh taken back: the old bolt's gone)
     const near = owner === 'me' && S.cam.first;
     S.bolts.push({ b, mesh, color, flown: 0, hide: near ? 1.6 * METRE : 0, gun: gunOf(p) });
     if (near) mesh.visible = false;
@@ -2129,7 +2166,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         preloadPhysics().catch(() => {});
         // (its floor capped round where it's laid out, so what's knocked
         // there sleeps again)
-        createLandingPhysics({ R: S.R, onHit: heard, spot: anchor.n })
+        createLandingPhysics({ R: S.R, threshold: knocks.rules.values().threshold, onHit: heard, spot: anchor.n })
           .then((made) => {
             if (rocks !== mine) made.dispose();
             else lp = made;
@@ -2382,6 +2419,16 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...unfed(), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : [])), ...(S.band ? [{ band: S.band }] : [])];
 
   const troopsAlive = () => S.troops.filter((t) => t.alive);
+  // a turn round (dx) and up or down (dy), radians: a drag's or a locked pointer's
+  const turnBy = (dx, dy) => {
+    if (!S.me || S.phase !== 'walk') return;
+    // (slower over a trooper with a gun in hand: aim.js's friction)
+    const k = meP()?.spec.gun ? (S.aimed?.slow ?? 1) : 1;
+    dx *= k;
+    dy *= k;
+    S.me = { ...S.me, f: vec.unit(rotateAbout(S.me.f, S.me.n, -dx)) };
+    S.cam.pitch = Math.min(CAM.pitch[1], Math.max(CAM.pitch[0], S.cam.pitch + dy));
+  };
 
   // the nearest of the landing's spots you're within reach of (a door, someone to talk to)
   const nearSpot = () => {
@@ -2599,13 +2646,27 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       return false;
     }
   };
-  // a hard knock on a loose thing, heard as near as it is
-  const heard = ({ force, at: p }) => {
-    if (!S.me) return;
-    const d = vec.len(vec.add(p, at(S.me, S.R), -1)) / METRE;
-    const near = (1 - d / 30) * Math.min(1, Math.max(0.3, force / 40));
-    if (near > 0.1) emit({ type: 'impact', near });
-  };
+  // a hard knock on a loose thing (landings/knocks.js, lib/three/impacts.js):
+  // a thud where it was round your ears, a puff of dust rising off the
+  // ground there, and a nudge of the camera's own kick for a near one. All
+  // of it in metres in the planet's space (the dust's mesh is scaled to the
+  // map), so the hit law's numbers are a barrel's.
+  const knocks = createKnocks({
+    dust: (() => {
+      const d = createDust({ count: small ? 96 : 192 });
+      d.mesh.scale.setScalar(METRE);
+      root.add(d.mesh);
+      return d;
+    })(),
+    listener: () => (S.me ? { position: at(S.me, S.R).map((a) => a / METRE), forward: S.me.f, up: S.me.n } : null),
+    toWorld: (p) => p.map((a) => a / METRE),
+    up: (p) => vec.unit(p),
+    me: () => (S.me ? at(S.me, S.R) : null),
+    metre: METRE,
+    kick: (v) => (S.cam.kick.v += v),
+    reduced,
+  });
+  const heard = knocks.heard;
   // the landing's bodies, a frame: any new ones in, the people where the
   // walk has them, a step, and what moved stood where it went
   const physicsFrame = (dt) => {
@@ -2772,6 +2833,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     fx.update(dt);
     pfx.update(dt);
     gfx.update(dt);
+    knocks.update(dt);
     leavesFrame(dt);
     spring(S.cam.kick, dt, 240, 22);
     for (const s of puffs) {
@@ -2826,11 +2888,14 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     }
   };
 
+  const jumpKey = createJump();
   const walkFrame = (dt, input) => {
     const me = meP();
     stepBody(input);
-    // you: walking, turning, running, jumping
-    S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: input.jump }, dt, S.R, obstacles());
+    // you: walking, turning, running, jumping (the jump a press, lib/press.js's createPress through
+    // foot.js's createJump: once a key-down, and a hair early still lands)
+    jumpKey.hold(input.jump);
+    S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: jumpKey.press }, dt, S.R, obstacles());
     // (down from a jump of any height: the leaves under you thrown out)
     if (S.me.h > 0) S.airH = Math.max(S.airH, S.me.h);
     else {
@@ -2841,6 +2906,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const alive = troopsAlive();
     if (S.lock && !alive.find((o) => o.id === S.lock)) S.lock = null;
     if (!S.lock) S.lock = aimAt(S.me, alive, S.R, { cone: 0.5 })?.id ?? null;
+    // where a shot would go now: the gun in your hands points there, the reticle rings the lock if it's in the cone
+    S.aimed = aimNow();
     // whoever's with you: follows a step behind, and shoots at what's close
     if (S.mate) {
       const mate = mateP();
@@ -2889,7 +2956,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const m = mateP();
       if (m && SCARED.has(m.spec.id) && S.mateSt.downAt == null) m.fig.react?.('gunfire', { target: at(fresh[0], S.R) });
     }
-    const targets = [{ id: 'me', n: S.me.n, h: S.me.h }, ...(S.mate ? [{ id: 'mate', n: S.mate.n, h: S.mate.h }] : [])];
+    // (with the way each faces and how fast they go, so a shot leads them)
+    const mover = (id, w) => ({ id, n: w.n, h: w.h, f: w.f, speed: w.speed, side: w.side });
+    const targets = [mover('me', S.me), ...(S.mate ? [mover('mate', S.mate)] : [])];
     const r = march(S.troops, targets, dt, S.R, rand, obstacles());
     S.troops = r.troops.filter((o) => o.alive || o.dead < 4);
     for (const id of [...troopFigs.keys()]) if (!S.troops.find((o) => o.id === id)) dropTroop(id);
@@ -2904,11 +2973,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         dir = vec.unit(vec.add(vec.add(s.from, s.dir, s.range), from, -1));
         fx.flash(new V(...from), new V(...dir), got.gp.spec.flash);
       }
-      const b = makeBolt(from, dir, 'troop', s.damage);
-      const mesh = boltPool.find((m) => !m.visible) ?? boltPool[0];
+      const b = boltStep.fire({ from, dir, speed: BOLT.speed, range: BOLT.range, owner: s.by, side: 'troop', damage: s.damage });
+      const mesh = takeMesh();
       paintBolt(mesh, TROOP_BOLT);
       mesh.visible = true;
-      S.bolts = S.bolts.filter((o) => o.mesh !== mesh);
+      S.bolts = S.bolts.filter((o) => (o.b === b && o.mesh !== mesh ? (o.mesh.visible = false) : o.mesh !== mesh)); // (a slot or a mesh taken back: the old bolt's gone)
       S.bolts.push({ b, mesh, color: TROOP_BOLT, flown: 0 });
       emit({ type: 'shot' });
     }
@@ -2989,68 +3058,77 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     }
   };
 
+  // the bolts on the one step: the ground, what stands on it (obstacles())
+  // and the loose things as solids, the people as capsules; what each ends
+  // on, when it gets there
   const moveBolts = (dt) => {
-    const people = [];
-    if (S.phase === 'walk') {
-      people.push({ id: 'me', p: vec.add(at(S.me, S.R), S.me.n, METRE) });
-      if (S.mate) people.push({ id: 'mate', p: vec.add(at(S.mate, S.R), S.mate.n, METRE) });
+    const walking = S.phase === 'walk';
+    const bodies = footBodies({ me: walking ? S.me : null, mate: walking ? S.mate : null, troops: S.troops, R: S.R });
+    const ground = footSolids(obstacles(), S.R);
+    // (a loose thing in its way, short of the ground, stops it and is knocked)
+    // (a fixed one stops it too, unmoved; by the ground, the leaves round it thrown)
+    const solids = (a, b) => {
+      const g = ground(a, b);
+      const knocked = lp ? lp.shot(a, g?.at ?? b) : null;
+      if (knocked && vec.len(knocked.at) - S.R < METRE) leaves.blast(knocked.at, 1.5, 12);
+      return knocked ? { at: knocked.at, normal: null } : g;
+    };
+    // (through a crown: a few of its leaves shaken loose, once a bolt)
+    for (const o of S.bolts) if (!o.shook && o.b.alive) o.shook = leaves.shake(o.b.pos, o.b.dir);
+    const ended = new Set();
+    for (const e of boltStep.step(dt, { solids, bodies, blades: [] })) {
+      const o = S.bolts.find((x) => x.b === e.bolt);
+      ended.add(e.bolt);
+      if (!o) continue;
+      o.mesh.visible = false;
+      if (e.type === 'gone') continue;
+      const p = e.at;
+      // (the ground: the planet's own sphere, its normal straight up out of it)
+      const onGround = e.type === 'solid' && e.normal && Math.abs(vec.len(p) - S.R) < 0.02 * METRE;
+      const hitId = e.type === 'hit' ? e.body.id : null;
+      puff(p, onGround ? '#ffcf8a' : o.color ?? '#ffffff', onGround ? 0.7 : 1.2);
+      const along = tmp.set(...e.bolt.dir);
+      if (onGround) {
+        // on the ground: where it went in, sparks off it and a burn
+        const n = new V(...vec.unit(p));
+        const spot = n.clone().multiplyScalar(S.R);
+        fx.sparks(spot, n.clone().addScaledVector(along, 0.6).normalize(), o.color ?? '#ffd0a0', 12);
+        fx.scorch(spot, n);
+        leaves.blast(spot, 3);
+      } else fx.sparks(new V(...p), along.clone().negate(), o.color ?? '#ffd0a0', 9); // off whoever or whatever it hit, back the way it came
+      // how near you: for the sound of it
+      if (S.me) {
+        const d = vec.len(vec.add(p, at(S.me, S.R), -1)) / METRE;
+        if (d < 40) emit({ type: 'impact', near: Math.max(0.15, 1 - d / 40) });
+      }
+      if (typeof hitId === 'number') {
+        const t = S.troops.find((x) => x.id === hitId);
+        if (t?.alive) {
+          t.hp -= e.bolt.damage;
+          t.hitAt = S.clock;
+          if (e.bolt.owner === 'me') S.landed = S.clock; // (the reticle's flash)
+          t.knock = [...e.bolt.dir]; // which way the shot pushed them
+          // (how hard, for the fall it's in: drawTroops)
+          const got = troopFigs.get(t.id);
+          if (got) got.blow = e.bolt.damage;
+          if (t.hp <= 0) {
+            t.alive = false;
+            t.dead = 0;
+            t.fallSide = rand() < 0.5 ? -1 : 1;
+            t.how = GADGETS.includes(o.gun) ? o.gun : null; // (Rick's guns' kills: through a portal, frozen, shrunk: drawTroops)
+            emit({ type: 'foot', id: 'kill', kind: t.kind, by: e.bolt.owner, how: t.how });
+          } else got?.body.react('hit', { where: troopHitWhere(t, p, S.R), moving: true }); // (on their upper half: they keep coming)
+        }
+      } else if (hitId === 'me') hurt(e.bolt.damage, [...e.bolt.dir]);
+      else if (hitId === 'mate') hurtMate(e.bolt.damage, [...e.bolt.dir]);
     }
-    for (const t of S.troops) if (t.alive) people.push({ id: t.id, p: vec.add(at(t, S.R), t.n, TROOPS[t.kind].tall * 0.5), r: TROOPS[t.kind].tall * 0.24 });
     const keep = [];
     for (const o of S.bolts) {
-      const mine = o.b.owner !== 'troop';
-      // (through a crown: a few of its leaves shaken loose, once)
-      if (!o.shook) o.shook = leaves.shake(o.b.p, o.b.v);
-      // (a thing in its way this frame stops it: a loose one is knocked, a
-      // fixed one only stops it; by the ground, the leaves round it thrown)
-      const knocked = lp ? lp.shot(o.b.p, vec.add(o.b.p, o.b.v, dt)) : null;
-      if (knocked && vec.len(knocked.at) - S.R < METRE) leaves.blast(knocked.at, 1.5, 12);
-      const r = knocked ? { bolt: { ...o.b, p: knocked.at }, hit: 'prop' } : flyBolt(o.b, dt, S.R, people.filter((p) => (mine ? typeof p.id === 'number' : typeof p.id === 'string')));
-      o.b = r.bolt;
-      if (r.hit || o.b.life <= 0) {
-        o.mesh.visible = false;
-        if (r.hit) {
-          puff(o.b.p, r.hit === 'ground' ? '#ffcf8a' : o.color ?? '#ffffff', r.hit === 'ground' ? 0.7 : 1.2);
-          const along = tmp.set(...o.b.v).normalize();
-          if (r.hit === 'ground') {
-            // on the ground: where it went in, sparks off it and a burn
-            const n = new V(...vec.unit(o.b.p));
-            const spot = n.clone().multiplyScalar(S.R);
-            fx.sparks(spot, n.clone().addScaledVector(along, 0.6).normalize(), o.color ?? '#ffd0a0', 12);
-            fx.scorch(spot, n);
-            leaves.blast(spot, 3);
-          } else fx.sparks(new V(...o.b.p), along.clone().negate(), o.color ?? '#ffd0a0', 9); // off whoever it hit, back the way it came
-          // how near you: for the sound of it
-          if (S.me) {
-            const d = vec.len(vec.add(o.b.p, at(S.me, S.R), -1)) / METRE;
-            if (d < 40) emit({ type: 'impact', near: Math.max(0.15, 1 - d / 40) });
-          }
-        }
-        if (typeof r.hit === 'number') {
-          const t = S.troops.find((x) => x.id === r.hit);
-          if (t?.alive) {
-            t.hp -= o.b.damage;
-            t.hitAt = S.clock;
-            t.knock = vec.unit(o.b.v); // which way the shot pushed them
-            // (how hard, for the fall it's in: drawTroops)
-            const got = troopFigs.get(t.id);
-            if (got) got.blow = o.b.damage;
-            if (t.hp <= 0) {
-              t.alive = false;
-              t.dead = 0;
-              t.fallSide = rand() < 0.5 ? -1 : 1;
-              t.how = GADGETS.includes(o.gun) ? o.gun : null; // (Rick's guns' kills: through a portal, frozen, shrunk: drawTroops)
-              emit({ type: 'foot', id: 'kill', kind: t.kind, by: o.b.owner, how: t.how });
-            } else got?.body.react('hit', { where: troopHitWhere(t, o.b.p, S.R), moving: true }); // (on their upper half: they keep coming)
-          }
-        } else if (r.hit === 'me') hurt(o.b.damage, vec.unit(o.b.v));
-        else if (r.hit === 'mate') hurtMate(o.b.damage, vec.unit(o.b.v));
-        continue;
-      }
-      o.mesh.position.set(...o.b.p);
-      o.mesh.quaternion.setFromUnitVectors(new V(0, 0, 1), tmp.set(...o.b.v).normalize());
+      if (ended.has(o.b) || !o.b.alive) continue;
+      o.mesh.position.set(...o.b.pos);
+      o.mesh.quaternion.setFromUnitVectors(new V(0, 0, 1), tmp.set(...o.b.dir));
       // grown out of the muzzle to its full length
-      o.flown += vec.len(o.b.v) * dt;
+      o.flown = o.b.flown;
       o.mesh.scale.z = Math.min(1, Math.max(0.02, (o.flown - o.hide) / BOLT_LEN));
       if (o.hide && !o.mesh.visible && o.flown > o.hide) o.mesh.visible = true;
       keep.push(o);
@@ -3097,7 +3175,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         const mine = i === S.lead;
         const target = mine ? S.troops.find((o) => o.id === S.lock && o.alive) : S.mateTarget;
         const aim = mine ? S.aim : S.mateAim;
-        p.gp.set(dt, { aim: down ? 0 : aim, look: target && !down ? Math.max(aim, 0.8) : aim, dir: target ? dirToWorld(shotDir(p, target)) : null, forward: frame.forward, up: frame.up, move });
+        // (yours at the aim point while it's up, where the bolt will go; the lock's only if it's in the cone)
+        const mark = mine && S.aimed && aim > 0.05 ? S.aimed.at : null;
+        const dir = mark ? dirToWorld(new V(...mark).sub(new V(...vec.add(at(p.w, S.R), p.w.n, p.spec.tall * METRE * 0.62))).normalize()) : target && (!mine || S.aimed?.locked) ? dirToWorld(shotDir(p, target)) : null;
+        p.gp.set(dt, { aim: down ? 0 : aim, look: target && !down ? Math.max(aim, 0.8) : aim, dir, forward: frame.forward, up: frame.up, move });
       }
     });
   };
@@ -3227,10 +3308,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     vmF.copy(S.cam.look).sub(S.cam.pos).normalize();
     vmU.copy(S.cam.up).addScaledVector(vmF, -S.cam.up.dot(vmF)).normalize();
     vmR.crossVectors(vmF, vmU).normalize();
-    // what it's pointed at: the lock's chest while there's shooting, else a little low ahead
-    const lock = S.troops.find((o) => o.id === S.lock && o.alive);
+    // what it's pointed at: where the bolt will go while there's shooting (footAim's), else a little low ahead
     const up = Math.min(1, S.aim * 1.4);
-    const mark = lock && up > 0.05 ? new V(...vec.add(at(lock, S.R), lock.n, TROOPS[lock.kind].tall * 0.55)) : pos.clone().addScaledVector(vmF, 20 * METRE).addScaledVector(vmU, -(1 - up) * 6 * METRE).addScaledVector(vmR, -(1 - up) * 2.5 * METRE);
+    const mark = S.aimed && up > 0.05 ? new V(...S.aimed.at) : pos.clone().addScaledVector(vmF, 20 * METRE).addScaledVector(vmU, -(1 - up) * 6 * METRE).addScaledVector(vmR, -(1 - up) * 2.5 * METRE);
     // held: lower and further right at ease, up toward the middle of the view to shoot
     const k = S.cam.kick.x;
     v.bob += dt * (2 + Math.min(1, Math.abs(S.me.speed) / FOOT.run) * 9);
@@ -3440,24 +3520,19 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       haze.mat.uniforms.uDay.value = (haze.set ? k : 0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high)) * S.sky;
       haze.set?.({ sun: light });
     },
-    // F: a shot at the lock, or straight ahead; the gun it was (gunplay.js's kind), or false
-    fire() {
+    // F: a shot where the reticle is, bent toward a trooper (the lock first)
+    // within the input's cone and no further (footAim.js); `cone` for this
+    // one shot (a touch tap's, which snaps). The gun it was (gunplay.js's
+    // kind), or false
+    fire({ cone: c = cone() } = {}) {
       if (S.phase !== 'walk' || S.cool > 0) return false;
       const me = meP();
       if (!me?.spec.gun) return false;
       S.cool = me.spec.gun === 'bowcaster' ? 0.55 : 0.28;
-      let target = S.troops.find((o) => o.id === S.lock && o.alive) ?? null;
-      let mark = null;
-      if (S.cam.first && S.cam.pos) {
-        // out of your own eyes, the shot goes where you're looking, unless the lock's near it
-        const look = S.cam.look.clone().sub(S.cam.pos).normalize();
-        const to = target && new V(...vec.add(at(target, S.R), target.n, TROOPS[target.kind].tall * 0.55)).add(S.c).sub(S.cam.pos).normalize();
-        if (!to || to.angleTo(look) > 0.12) {
-          target = null;
-          mark = S.cam.pos.clone().sub(S.c).addScaledVector(look, 40 * METRE);
-        }
-      }
-      shoot(me, target, 'me', damageOf(me), 0, mark);
+      const aimed = aimNow(c);
+      const target = aimed?.target ? S.troops.find((o) => o.id === aimed.target.id && o.alive) ?? null : null;
+      if (aimed) S.aimed = aimed;
+      shoot(me, target, 'me', damageOf(me), 0, aimed ? new V(...aimed.at) : null);
       S.acted = true;
       S.aim = 1;
       if (!reduced) S.cam.kick.v += GUNS[gunOf(me)]?.kick.up ?? 1.5;
@@ -3518,15 +3593,17 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     },
     // a drag: turn (dx, px) and look up or down (dy, px)
     look(dx, dy) {
-      if (!S.me || S.phase !== 'walk') return;
-      S.me = { ...S.me, f: vec.unit(rotateAbout(S.me.f, S.me.n, -dx * 0.006)) };
-      S.cam.pitch = Math.min(CAM.pitch[1], Math.max(CAM.pitch[0], S.cam.pitch + dy * 0.004));
+      turnBy(dx * 0.006, dy * 0.004);
     },
+    // the same in radians (runtime/look.js's turn, from a locked pointer)
+    turn: (dx, dy) => turnBy(dx, dy),
     // V on foot: out of your own eyes, or back over the shoulder
     first() {
       S.cam.first = !S.cam.first;
       return S.cam.first;
     },
+    // the ?debug panel's groups (lib/debugPanel): the knocks' law and the jump's press
+    tune: () => [...impactGroups(knocks.rules), ...pressGroups(jumpKey.press)],
     // a door you're at (a landing's: G there goes into the planet's page): { id, label } or null
     door() {
       const s = S.phase === 'walk' ? nearSpot() : null;
@@ -3543,6 +3620,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       return {
         aim: chest(S.me, (me?.spec.tall ?? 1.8) * METRE).addScaledVector(new V(...S.me.f), 14 * METRE),
         lock: lock && { id: lock.id, kind: lock.kind, at: chest(lock, TROOPS[lock.kind].tall / 1), size: TROOPS[lock.kind].tall, dist: apart(S.me, lock, S.R) / METRE },
+        // the reticle (runtime/hud's): a gun in hand, the lock in the cone (where the shot would go), how long ago your last shot landed (ms)
+        gun: Boolean(me?.spec.gun),
+        locked: Boolean(S.aimed?.locked),
+        landed: S.landed != null ? (S.clock - S.landed) * 1000 : null,
         ship: { at: new V(...S.spot.n).multiplyScalar(S.R + S.rest).add(S.c), dist: apart(S.me, S.spot, S.R) / METRE, near: apart(S.me, S.spot, S.R) <= FOOT.board + 0.26 * (PARKED[S.kind] ?? 1) * 0.6 },
         health: S.health / FOOT.health,
         hurt: Math.max(0, 1 - (S.clock - S.hitAt) / 0.4),
@@ -3674,6 +3755,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       for (const key of [...blobs.keys()]) dropShadow(key);
       for (const o of S.bolts) o.mesh.visible = false;
       S.bolts = [];
+      boltStep.clear();
       fx.clear();
       if (vm) vm.gun.visible = false;
       if (lp) lp.dispose();
@@ -3714,6 +3796,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       fx.dispose();
       pfx.dispose();
       gfx.dispose();
+      knocks.dispose();
       flare?.removeFromParent();
       lamps.dispose();
       if (vm) for (const o of vm.owned) o.dispose?.();

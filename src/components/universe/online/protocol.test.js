@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
+import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readAlly, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 import { STOCK_BUILD, writeBuild } from '../shipyard/build';
 import { defaultLook, readLook, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
@@ -290,6 +290,14 @@ describe('shots', () => {
     expect(readShot([1, 2, 3, 0, 0, -20, 7]).w).toBe(0);
     expect(readShot([1, 2, 3, 0, 0, -20, 'x']).w).toBe(0);
   });
+
+  it('a shot code past the table reads as the blaster', () => {
+    expect(readShot([0, 0, 0, 1, 0, 0, 40]).w).toBe(0);
+    expect(readShot([0, 0, 0, 1, 0, 0, 6]).w).toBe(6);
+    expect(readShot([0, 0, 0, 1, 0, 0, 2]).w).toBe(2); // (an old peer's heavy round is still one)
+    expect(readShot([0, 0, 0, 1, 0, 0, 2.5]).w).toBe(0);
+    expect(readShot([0, 0, 0, 1, 0, 0, -1]).w).toBe(0);
+  });
   it('refuses one from far off where the pilot was, or impossibly fast', () => {
     expect(readShot([50, 0, 0, 0, 0, -20], { x: 0, y: 0, z: 0 })).toBeNull();
     expect(readShot([0, 0, 0, 0, 0, -5000])).toBeNull();
@@ -473,6 +481,17 @@ describe('allyStep', () => {
   });
 });
 
+describe('readAlly', () => {
+  it('reads each word of an alliance, and keeps the k of an ask from a pilot who has you saved', () => {
+    for (const t of ['ask', 'yes', 'no', 'end']) expect(readAlly({ t })).toEqual({ t, k: 0 });
+    expect(readAlly({ t: 'ask', k: 1 })).toEqual({ t: 'ask', k: 1 });
+  });
+  it('turns away what isn’t one, and a k that isn’t 1 is none', () => {
+    for (const junk of [null, undefined, 'ask', ['ask'], {}, { t: 'bogus' }, { t: 'ASK' }, { t: ['ask'] }]) expect(readAlly(junk)).toBeNull();
+    for (const k of [2, '1', true, -1, 0.5, null]) expect(readAlly({ t: 'ask', k })).toEqual({ t: 'ask', k: 0 });
+  });
+});
+
 describe('sample', () => {
   const snap = (at, x, heading = 0) => ({ at, x, y: 0, z: 0, heading, pitch: 0, bank: 0, speed: 0, vy: 0, hidden: false, boost: false });
   it('draws between the poses either side, a little in the past', () => {
@@ -530,6 +549,21 @@ describe('down on a world in the galaxy', () => {
     expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0] }).lead.arms).toBeNull(); // (an older pilot)
     expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0, ['rocket', 1]] }).lead.arms).toBeNull(); // (no such gun)
     expect(readWalk({ w: 'hoth', a: ['leia', 1, 2, 3, 0, 0, 0, ['saber', 1, 'javascript:', 'nope', 1]] }).lead.arms).toEqual({ gun: 'saber', lit: true, color: '#4aa8ff', stance: 'single', swing: true });
+  });
+
+  it('says which clip a stroke is, after the old five, so a peer plays the same one; an older packet still reads', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const sent = writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'luke', x: 1, y: 2, z: 3, yaw: 0, speed: 0, arms: { gun: 'saber', lit: true, color: '#4aa8ff', stance: 'single', swing: true, stroke: 'sword.light.b' } } });
+    expect(sent.a[7]).toHaveLength(6);
+    expect(sent.a[7].slice(0, 5)).toEqual(['saber', 1, '#4aa8ff', 'single', 1]);
+    const got = readWalk(JSON.parse(JSON.stringify(sent)));
+    expect(got.lead.arms.stroke).toBe('sword.light.b');
+    // (five items, as an older pilot sends: no stroke, the rest as ever)
+    expect(readWalk({ w: 'hoth', a: ['luke', 1, 2, 3, 0, 0, 0, ['saber', 1, '#4aa8ff', 'heavy', 1]] }).lead.arms).toEqual({ gun: 'saber', lit: true, color: '#4aa8ff', stance: 'heavy', swing: true });
+    // (only a sword clip's name: anything else is no stroke)
+    for (const bad of ['dance', 'sword.<b>', 'x'.repeat(80), 7]) expect(readWalk({ w: 'hoth', a: ['luke', 1, 2, 3, 0, 0, 0, ['saber', 1, '#4aa8ff', 'single', 1, bad]] }).lead.arms.stroke).toBeUndefined();
+    // (no stroke, nothing sent for it)
+    expect(writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, arms: { gun: 'shotgun' } } }).a[7]).toHaveLength(5);
   });
 
   it('says the lead’s emote and how each moves, and an older pilot’s message (without them) reads as none', async () => {

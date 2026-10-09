@@ -12,15 +12,21 @@
 // trimesh's points, each collider's offset) and its mass by the cube, unless
 // the kind says `scales: false` (a tree's trunk keeps its own).
 //
+// A prop may carry its own size (a kit model's, from its manifest): in
+// metres as it stands, its scale not applied again, `radius` is a ball's or
+// a cylinder's radius and `height` a cylinder's whole height, its foot on
+// the ground (its middle half of it up its up, in place of the kind's lift).
+// Only a cylinder kind takes a height: a ball given one keeps its own lift.
+//
 //   KINDS: crate, barrel, rock, tree (his numbers: a crate is a 0.5 m
 //     half-cube of 0.02 that any touch sets off; a tree a fixed cylinder
 //     (2.5, 0.15), friction 0.7)
 //   kind: { type, mass, lift (metres up its up to its middle), friction,
 //     restitution, linearDamping, angularDamping, canSleep, group, onHit,
 //     hitThreshold, colliders, scales }
-//   addProps(physics, list ([{ kind, x, y, z, yaw?, rotation?, up?, scale?
-//     }]), kinds = KINDS) → { bodies, sync(write(i, position, quaternion)),
-//     wake(i), reset(), remove() }
+//   addProps(physics, list ([{ kind, x, y, z, yaw?, rotation?, up?, scale?,
+//     radius?, height? }]), kinds = KINDS) → { bodies, sync(write(i,
+//     position, quaternion)), wake(i), reset(), remove() }
 // (a kind it doesn't know throws before anything is added; once the world
 // is disposed, every call is nothing)
 
@@ -46,6 +52,13 @@ function scaled(c, s) {
   else if (c.shape === 'heightfield') throw new Error('physics: a prop is never a heightfield');
   else out.args = c.args.map((a) => a * s);
   return out;
+}
+
+// a ball or a cylinder at the prop's own size, where it gives one
+function sized(c, p) {
+  if (c.shape === 'ball' && p.radius != null) return { ...c, args: [p.radius] };
+  if (c.shape === 'cylinder' && (p.radius != null || p.height != null)) return { ...c, args: [p.height != null ? p.height / 2 : c.args[0], p.radius ?? c.args[1]] };
+  return c;
 }
 
 // the turn that takes +y to `up`, then `yaw` about it
@@ -76,7 +89,7 @@ export function addProps(physics, list, kinds = KINDS) {
       const s = k.scales === false ? 1 : (p.scale ?? 1);
       const up = p.up ?? [0, 1, 0];
       const l = Math.hypot(up[0], up[1], up[2]) || 1;
-      const lift = (k.lift ?? 0) * s;
+      const lift = p.height != null && k.colliders.some((c) => c.shape === 'cylinder') ? p.height / 2 : (k.lift ?? 0) * s;
       bodies.push(
         physics.add({
           type: k.type,
@@ -92,7 +105,7 @@ export function addProps(physics, list, kinds = KINDS) {
           group: k.group,
           onHit: k.onHit,
           hitThreshold: k.hitThreshold,
-          colliders: k.colliders.map((c) => scaled(c, s)),
+          colliders: k.colliders.map((c) => sized(scaled(c, s), p)),
         }),
       );
     }

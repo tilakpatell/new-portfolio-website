@@ -8,8 +8,8 @@
 // passed in, so this runs in Node: index.js wires the real ones.
 //
 // createRuntime({ makeBackend, loop, input, quality, saves, assets, audio,
-//   workers, origin, events, now, gpu, override, visible, calibrate }) → rt
-// rt: { gfx, input, quality, saves, assets, audio, workers, origin, events, host, status,
+//   workers, origin, events, now, gpu, override, visible, calibrate, debug }) → rt
+// rt: { gfx, input, quality, saves, assets, audio, workers, origin, events, debug, host, status,
 //   current, loading, on(fn), invalidate(), resize(w, h), setVisible(on), lost(),
 //   mount(module, props, host) → shown, handover(module, props, host, { fade, held, after }) → shown,
 //   adopt(module, host), unmount(), dispose(), requality(level) → 'tuned' |
@@ -22,6 +22,9 @@
 // A world with an `anchor()` (the player's world position) has the floating
 // origin moved after it before each step; a shift is the event 'origin'
 // { shift }, for the world to re-anchor its objects and camera that frame.
+// With ?debug in the address (`debug`, ./debug.js), a world placed and ready
+// is asked for its tuning groups (`world.tune?.()`) and they open the one
+// panel under its module's id; the world let go closes it.
 // (`shown`: true once the module's world is the one drawing; false when it
 // failed, or something newer was asked for meanwhile)
 
@@ -32,6 +35,7 @@ import { createHandover } from './handover';
 import { calibrate, calibrationKey, recall, remember } from '../lib/three/calibrate';
 import { createOrigin } from './origin';
 import { validateModule, validateWorld } from './module';
+import { createDebug } from './debug';
 
 const READY_WAIT = 4000; // ms at most a world's `ready` holds back its first frame
 const MAX_DT = 0.05; // s: a tab coming back doesn't leap
@@ -60,7 +64,7 @@ export function createEvents() {
   };
 }
 
-export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, store = null, assets, audio, workers = null, origin = createOrigin(), events = createEvents(), gpu = false, override = null, visible = () => true, calibrate: calibrating = true }) {
+export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, store = null, assets, audio, workers = null, origin = createOrigin(), events = createEvents(), gpu = false, override = null, visible = () => true, calibrate: calibrating = true, debug = createDebug() }) {
   let gfx = null;
   let kind = null; // the backend asked for
   let coming = null; // { kind, promise }: a backend still being made, for every mount that asks meanwhile
@@ -189,6 +193,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
 
   const letGo = (entry) => {
     if (!entry) return;
+    debug.hide();
     try {
       entry.world.dispose();
     } catch (err) {
@@ -396,6 +401,17 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     // (the pace's step so far, for a world that draws at it itself)
     if (module.sharpness === 'own' && quality.level > 0) world.lowerQuality?.(quality.level);
     world.setVisible?.(shown);
+    // its tuning panel, behind ?debug (a world's tune() that throws costs
+    // the panel, never the world)
+    if (debug.on) {
+      let groups = null;
+      try {
+        groups = world.tune?.();
+      } catch (err) {
+        if (dev) console.warn(`[${module.id}] tune failed`, err);
+      }
+      debug.show(module.id, groups);
+    }
     last = 0;
     setStatus('ready');
     loop.kick();
@@ -414,6 +430,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     workers,
     origin,
     events,
+    debug,
     host: null,
     get status() {
       return status;

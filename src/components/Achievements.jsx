@@ -296,14 +296,14 @@ const newThemes = (themeId) => {
   if (names.length < 2) return `New colours: ${names[0] ?? THEMES[themeId].company}.`;
   return `New colours: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
 };
-// "New in the hangar: …": the paint jobs and ship parts an achievement opens
+// "New in your shipyard: …": the paint jobs and ship parts an achievement opens
 // on the universe map (universe/outfit.js), or null.
 const list = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 const newInHangar = (id) => {
   const paints = paintsFor(id).map((p) => p.name);
   const parts = partsUnlockedBy(id).map((p) => p.name);
   const said = [paints.length ? `${list(paints)} ${paints.length === 1 ? 'paint' : 'paints'}` : null, parts.length ? list(parts) : null].filter(Boolean);
-  return said.length ? `New in your ship’s hangar: ${said.join('; ')}.` : null;
+  return said.length ? `New in your shipyard: ${said.join('; ')}.` : null;
 };
 const KEY = 'tp-achievements';
 

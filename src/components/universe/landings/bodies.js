@@ -10,8 +10,14 @@
 // landings), and a bolt's knock goes by them (knockOf, below): a pebble
 // goes a few metres, a crate slides, a shove moves the heavy ones.
 //
+// A model that was made with its physics (physical nodes: lib/three/
+// colliders.js reads them, docs/assets/colliders.md says how) is its own
+// body before anything named for it: { shape: 'model', bodies } (its
+// physical nodes' bodies, made one, as the thing is one).
+//
 //   BODIES       body by kind, for the planets' own builders' things and scatter
-//   bodyOf(kind, spec?) → body | null (a model's own first)
+//   bodyOf(kind, spec?, model? (collidersOf's bodies)) → body | null (a
+//     model's own nodes first, then its spec's, then the kind's)
 //   shapeFor(body, box ({ min, max }, metres, the thing's own frame), s = 1)
 //     → { type, colliders, mass } | null, for lib/physics's add()
 //   KNOCK, knockOf(mass) → a bolt's push, N·s (0 for a fixed thing)
@@ -38,12 +44,29 @@ export const BODIES = {
   diyas: { shape: 'cylinder', mass: 0.1 },
 };
 
+import { colliderIn } from '../../../lib/physics/fromModel';
+
 const SHAPES = new Set(['box', 'cylinder', 'ball']);
 const THIN = 0.02; // (no half-size under 2 cm: thinner tunnels through the ground)
 
-export const bodyOf = (kind, spec = null) => spec?.body ?? BODIES[kind] ?? null;
+export const bodyOf = (kind, spec = null, model = null) => (model?.length ? { shape: 'model', bodies: model } : (spec?.body ?? BODIES[kind] ?? null));
+
+// every length in a collider at scale s: its size, its points, its offset
+function scaled(c, s) {
+  const args = c.shape === 'hull' || c.shape === 'trimesh' ? [c.args[0].map((v) => v * s), ...c.args.slice(1)] : c.args.map((v) => v * s);
+  return { ...c, args, position: c.position.map((v) => v * s) };
+}
+
+// a model's bodies as one: the first's type, every one's colliders, their masses summed
+function modelShape(bodies, s) {
+  const [first] = bodies;
+  const colliders = bodies.flatMap(({ desc }) => desc.colliders.map((c) => scaled(colliderIn(desc, c), s)));
+  if (first.desc.type !== 'dynamic') return { type: 'fixed', colliders };
+  return { type: 'dynamic', colliders, mass: bodies.reduce((m, b) => m + (b.desc.mass ?? 0), 0) * s * s * s };
+}
 
 export function shapeFor(body, box, s = 1) {
+  if (body?.shape === 'model' && body.bodies?.length) return modelShape(body.bodies, s);
   if (!body || !SHAPES.has(body.shape)) return null;
   const { min, max } = box;
   const size = [0, 1, 2].map((i) => (max[i] - min[i]) * s);

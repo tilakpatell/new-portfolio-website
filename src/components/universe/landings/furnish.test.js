@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { builderUrls, cellsOf, crownsOf, kindUrls, modelUrls, viewUrls, within } from './furnish';
+import { builderUrls, cellsOf, crownsOf, kindUrls, modelUrls, partsOf, viewUrls, within } from './furnish';
 import { LANDINGS } from './landings';
 import { biomeAt, viewOf } from './biomes';
 
@@ -159,5 +159,22 @@ describe('crownsOf', () => {
     expect(crownsOf(tree(new THREE.MeshStandardMaterial({ name: 'Leaves_Pine' })))).toBeNull();
     const hedge = [{ geometry: new THREE.BoxGeometry(1.6, 1.1, 1.6).translate(0, 0.55, 0), material: leaves, local: null }];
     expect(crownsOf(hedge).hi).toBeLessThan(2.5);
+  });
+});
+
+describe('partsOf', () => {
+  it('instances what a model draws, never its physical nodes or their colliders', () => {
+    const mat = new THREE.MeshBasicMaterial();
+    const model = new THREE.Group();
+    const look = new THREE.Mesh(new THREE.BoxGeometry(), mat);
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(), mat);
+    crate.name = 'crate_physical_dynamic';
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(), mat);
+    hull.name = 'hull';
+    crate.add(hull);
+    model.add(look, crate);
+    const parts = partsOf(model);
+    expect(parts).toHaveLength(1);
+    expect(parts[0].geometry).toBe(look.geometry);
   });
 });

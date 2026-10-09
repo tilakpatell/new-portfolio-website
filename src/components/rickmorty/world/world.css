@@ -158,13 +158,10 @@
 .rm-lift button { display: grid; place-items: center; width: 54px; height: 54px; border: 2px solid var(--rm-ink); border-radius: 50%; background: var(--rm-glass); color: #fff; font-size: 1.5rem; box-shadow: 0 3px 0 var(--rm-ink); touch-action: none; -webkit-tap-highlight-color: transparent; }
 .rm-lift button:active { background: var(--rm-green); color: var(--rm-ink); }
 
-/* Total Rickall: the crosshair in the middle, lime when someone's in it; a
+/* Total Rickall: the crosshair in the middle (the kit's Reticle, .rm-reticle
+   at the foot), ringed lime when someone's in it; a
    memory card over whoever it's about (moved there each frame); the clock;
    Remember and Shoot; and how it ended */
-.rm-crosshair { position: absolute; left: 50%; top: 50%; z-index: 3; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50%; box-shadow: 0 0 0 2px var(--rm-ink), inset 0 0 0 2px var(--rm-ink); pointer-events: none; transition: transform 0.12s ease, border-color 0.12s ease; }
-.rm-crosshair::before { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px var(--rm-ink); }
-.rm-crosshair[data-on] { border-color: var(--rm-lime); transform: scale(0.8); }
-.rm-crosshair[data-on]::before { background: var(--rm-lime); }
 .rm-recall { position: absolute; left: 0; top: 0; z-index: 4; width: max-content; max-width: min(18rem, calc(100% - 2rem)); padding: 0.6rem 0.85rem 0.7rem; border: 2px solid var(--rm-ink); border-radius: 16px; background: var(--rm-paper); color: var(--rm-ink); box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), 0 0 26px rgba(255, 220, 140, 0.55); visibility: hidden; pointer-events: none; will-change: transform; animation: rm-recall-in 0.2s ease-out both; }
 .rm-recall::after { content: ''; position: absolute; left: calc(50% - 9px); bottom: -11px; width: 16px; height: 16px; border-right: 2px solid var(--rm-ink); border-bottom: 2px solid var(--rm-ink); background: var(--rm-paper); transform: rotate(45deg); }
 .rm-recall p { margin: 0; }
@@ -316,7 +313,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .rm-swirl, .rm-toast, .rm-prompt, .rm-list, .rm-place, .rm-shipline, .rm-shipline-eyes i, .rm-memory, .rm-recall, .rm-ending { animation: none; }
-  .rm-crosshair { transition: none; }
   .rm-fade, .rm-fade[data-kind] { transition-duration: 0.1s; }
 }
 
@@ -461,6 +457,10 @@
   font-size: 22px;
 }
 
+/* the lock-on under it (Tab on a keyboard): a word, not a glyph; lime while it's on */
+.rm-lift .rm-lock { font: 700 0.72rem/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.rm-lift .rm-lock[data-on] { background: var(--rm-lime); color: var(--rm-ink); }
+
 /* the emote wheel (B held, or its button on a touch screen): five round the middle of the view */
 .rm-wheel { position: absolute; left: 50%; top: 50%; z-index: 5; width: 0; height: 0; }
 .rm-wheel-mid { position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 92px; height: 92px; padding: 0.4rem; border: 2px solid var(--rm-ink); border-radius: 50%; background: var(--rm-glass); color: rgba(255, 255, 255, 0.78); font: 600 0.7rem/1.25 var(--font-sans); text-align: center; box-shadow: 0 3px 0 rgba(27, 20, 36, 0.6); transform: translate(-50%, -50%); cursor: pointer; animation: rm-wheel-in 0.14s ease-out both; }
@@ -470,3 +470,10 @@
 .rm-wheel-item:focus-visible, .rm-wheel-mid:focus-visible { outline: 3px solid var(--rm-gold); outline-offset: 2px; }
 @keyframes rm-wheel-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .rm-wheel-item, .rm-wheel-mid { animation: none; transition: none; } }
+
+/* the reticle and the look's prompt (the world kit's, runtime/hud): white
+   ticks with the ink's edge, lime round whoever's in Total Rickall's sights;
+   the prompt in the prompt's own glass, over the first hint's place */
+.rm-reticle, .rm-look { --hud-ink: #fff; --hud-accent: var(--rm-lime); --hud-glass-hi: var(--rm-glass); --hud-border: 2px solid var(--rm-ink); --hud-shadow: 0 4px 0 rgba(27, 20, 36, 0.6); }
+.rm-reticle { z-index: 3; }
+.rm-look { position: absolute; left: 50%; bottom: calc(clamp(5rem, 13%, 7rem) + 4.5rem); z-index: 3; transform: translateX(-50%); font-size: 0.9rem; }
