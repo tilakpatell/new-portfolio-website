@@ -71,6 +71,13 @@ describe('createQueries', () => {
     expect(q.sweep({ shape: 'capsule', args: [0.6, 0.4] }, [-5, 1, 0], [-5, 1, 0], { groups: filterOf('object') })).toBeNull();
   });
 
+  it('omit passes over the bodies in the set, for a ray and a sweep', () => {
+    const omit = new Set([wall]);
+    expect(q.ray([0, 1, 0], [1, 0, 0], 100, { omit }).body).toBe(figure);
+    expect(q.sweep({ shape: 'capsule', args: [0.6, 0.4] }, [-2, 1, 0], [4, 1, 0], { omit }).body).toBe(figure);
+    expect(q.ray([0, 1, 0], [1, 0, 0], 100, { omit: new Set() }).body).toBe(wall);
+  });
+
   it('an overlap of a ball r 1 at the figure finds it and not the wall', () => {
     const found = q.overlap({ shape: 'ball', args: [1] }, [3, 1, 0], { groups: filterOf('object', 'character') });
     expect(found.map((f) => f.body)).toEqual([figure]);

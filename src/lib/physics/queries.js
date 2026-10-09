@@ -11,16 +11,17 @@
 // through a wall. Shapes are built once per size and kept. No three.js.
 //
 //   createQueries(phys, { budget = createBudget() }) → {
-//     ray(from, dir, max, { groups = sight's, exclude, solid = true })
+//     ray(from, dir, max, { groups = sight's, exclude, omit, solid = true })
 //       → { dist, at, normal, body, tag } | null | undefined
-//     sweep(shape, from, to, { groups, exclude }) → { toi (0…1 of from → to), at, normal, body, tag } | null | undefined
+//     sweep(shape, from, to, { groups, exclude, omit }) → { toi (0…1 of from → to), at, normal, body, tag } | null | undefined
 //       (shape: { shape: 'capsule' | 'ball', args, rotation? }; a motion under 1 mm is a resting overlap, toi 0)
 //     overlap(shape, at, { groups, exclude }) → [{ body, tag }] (empty when refused)
 //     floorAt(x, z, { from = 3, down = 6, groups = floor | object }) → { y, normal } | null | undefined
 //     project(point, { groups }) → { at, inside } | null (never budgeted)
 //     frame() (the next frame's budget), stats() (the budget's)
 //   }
-//   from, dir, at, to: [x, y, z]; groups: groups.js's filterOf(...); exclude: a Body handle (world.js's)
+//   from, dir, at, to: [x, y, z]; groups: groups.js's filterOf(...); exclude: a Body handle (world.js's);
+//   omit: a Set of Body handles to pass over (a strike's victims already hit)
 //   body: the Body handle a hit collider belongs to (null for one the world didn't add);
 //   tag: the collider's tag (world.js's `tagOf`), or null
 
@@ -44,6 +45,7 @@ export function createQueries(phys, { budget = createBudget() } = {}) {
   const SENSORS = MEMBERS.zone | MEMBERS.hurtbox;
   const flags = (groups) => (groups & SENSORS ? 0 : RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
   const excluded = (exclude) => exclude?.body ?? undefined;
+  const omitting = (omit) => (omit?.size ? (c) => !omit.has(bodyOf(c)) : undefined);
   const shapeOf = (s) => {
     const key = `${s.shape}:${s.args.join(',')}`;
     let made = shapes.get(key);
@@ -63,21 +65,21 @@ export function createQueries(phys, { budget = createBudget() } = {}) {
     return o;
   };
 
-  function cast(from, dir, max, groups, exclude, solid) {
+  function cast(from, dir, max, groups, exclude, solid, omit = null) {
     set(ray.origin, from);
     set(ray.dir, dir);
-    const h = world.castRayAndGetNormal(ray, max, solid, flags(groups), groups, undefined, excluded(exclude));
+    const h = world.castRayAndGetNormal(ray, max, solid, flags(groups), groups, undefined, excluded(exclude), omitting(omit));
     if (!h) return null;
     const t = h.timeOfImpact;
     return { dist: t, at: [from[0] + dir[0] * t, from[1] + dir[1] * t, from[2] + dir[2] * t], normal: [h.normal.x, h.normal.y, h.normal.z], body: bodyOf(h.collider), tag: tagOf(h.collider) };
   }
 
   return {
-    ray(from, dir, max, { groups = SIGHT, exclude = null, solid = true } = {}) {
+    ray(from, dir, max, { groups = SIGHT, exclude = null, omit = null, solid = true } = {}) {
       if (!budget.take('rays')) return undefined;
-      return cast(from, dir, max, groups, exclude, solid);
+      return cast(from, dir, max, groups, exclude, solid, omit);
     },
-    sweep(shape, from, to, { groups = SIGHT, exclude = null } = {}) {
+    sweep(shape, from, to, { groups = SIGHT, exclude = null, omit = null } = {}) {
       if (!budget.take('sweeps')) return undefined;
       const s = shapeOf(shape);
       const motion = set(v2, [to[0] - from[0], to[1] - from[1], to[2] - from[2]]);
@@ -86,10 +88,10 @@ export function createQueries(phys, { budget = createBudget() } = {}) {
         world.intersectionsWithShape(set(v, from), rot(shape), s, (c) => {
           found = c;
           return false;
-        }, flags(groups), groups, undefined, excluded(exclude));
+        }, flags(groups), groups, undefined, excluded(exclude), omitting(omit));
         return found ? { toi: 0, at: [...from], normal: [0, 0, 0], body: bodyOf(found), tag: tagOf(found) } : null;
       }
-      const h = world.castShape(set(v, from), rot(shape), motion, s, 0, 1, true, flags(groups), groups, undefined, excluded(exclude));
+      const h = world.castShape(set(v, from), rot(shape), motion, s, 0, 1, true, flags(groups), groups, undefined, excluded(exclude), omitting(omit));
       if (!h) return null;
       return { toi: h.time_of_impact, at: [h.witness1.x, h.witness1.y, h.witness1.z], normal: [h.normal1.x, h.normal1.y, h.normal1.z], body: bodyOf(h.collider), tag: tagOf(h.collider) };
     },
