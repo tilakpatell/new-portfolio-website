@@ -12,9 +12,6 @@ const COMPONENTS = fileURLToPath(new URL('..', import.meta.url));
 // exactly what is missing: a lane that adds a look takes its folder off,
 // and a folder that loses one fails until it is put back.
 const EXPECTED_MISSING = [
-  'universe',
-  'universe/landings',
-  'universe/shipyard',
   'galaxy',
   'galaxy/surface', // (its look.js is the house’s look from a site’s sky, with no LOOK yet)
   'deathstar',
