@@ -1,13 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // supabase.js keeps the one client it made for the page; a fresh module per
-// test keeps one test's client out of the next
+// test keeps one test's client out of the next. The env is stubbed empty, so
+// a machine with a .env.local tests the same as CI
 let client;
 let signIn;
 beforeEach(async () => {
+  vi.stubEnv('VITE_SUPABASE_URL', '');
+  vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
   vi.resetModules();
   ({ client, signIn } = await import('./supabase'));
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe('the durable client', () => {
   it('is null without a URL or a key, and makes nothing', () => {
@@ -18,14 +22,7 @@ describe('the durable client', () => {
   });
 
   it('is null in a build with no environment', () => {
-    // stubbed, so a machine with a .env.local tests the same as CI
-    vi.stubEnv('VITE_SUPABASE_URL', '');
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
-    try {
-      expect(client({ make: vi.fn() })).toBeNull();
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    expect(client({ make: vi.fn() })).toBeNull();
   });
 
   it('is made once a page, keeping its session', () => {
