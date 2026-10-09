@@ -14,5 +14,7 @@ export { default as QuestList } from './QuestList';
 export { default as PlayersChip } from './PlayersChip';
 export { default as Stick } from './Stick';
 export { default as TouchButton } from './TouchButton';
+export { default as Reticle } from './Reticle.jsx'; // (named in full: ./reticle.js is beside it)
+export { reticleState, HIT_MS } from './reticle.js';
 export * from './hud';
 export { fitCanvas } from './canvas';
