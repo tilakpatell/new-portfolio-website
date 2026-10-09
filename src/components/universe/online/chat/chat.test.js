@@ -61,6 +61,8 @@ describe('createChat', () => {
     expect(chat.add('here', { from: 'A', name: 'Han', phrase: 3 })).toBe(true);
     expect(chat.lines('here')[0]).toMatchObject({ from: 'A', name: 'Han', text: 'Need help' });
     expect(chat.add('here', { from: 'A', name: 'Han', phrase: 99 })).toBe(false);
+    // (the repeat rule is for typed words: a phrase has its rate on the wire)
+    expect([3, 3].map((phrase) => chat.add('here', { from: 'A', name: 'Han', phrase }))).toEqual([true, true]);
   });
 
   it('tells its listeners of each line', () => {

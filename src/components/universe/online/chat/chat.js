@@ -8,9 +8,10 @@
 // channel's cap), whoever cleaned it before; a phrase is kept as its words.
 // Mute hides a pilot's words, those kept and those to come, without
 // blocking their ship (a block hides both: client.js). On 'here' and 'all'
-// the same words three times from one pilot inside CHAT.repeatMs are
+// the same typed words three times from one pilot inside CHAT.repeatMs are
 // dropped from the third on (allow(), which counts every try, so a pilot
-// saying it over and over isn't heard again till they stop).
+// saying it over and over isn't heard again till they stop); a phrase has
+// its own rate on the wire.
 //
 // createChat({ now }) → { add(channel, { from, name, text, phrase }) → kept
 // (true or false), lines(channel) → [{ id, from, name, text, at }], muted(id),
@@ -46,8 +47,9 @@ export function createChat({ now = () => Date.now() } = {}) {
     add(channel, line) {
       const cap = Object.hasOwn(CHANNELS, channel) ? CHANNELS[channel] : 0;
       if (!cap || !line || typeof line !== 'object' || typeof line.from !== 'string' || !line.from || mutes.has(line.from)) return false;
-      const text = line.phrase !== undefined ? phraseOf(line.phrase) : cleanText(line.text, cap);
-      if (!text || (channel !== 'squad' && !allow(line.from, text))) return false;
+      const said = line.phrase === undefined;
+      const text = said ? cleanText(line.text, cap) : phraseOf(line.phrase);
+      if (!text || (said && channel !== 'squad' && !allow(line.from, text))) return false;
       const kept = { id: made++, from: line.from, name: typeof line.name === 'string' ? line.name : null, text, at: now() };
       const log = logs[channel];
       log.push(kept);
