@@ -8,7 +8,7 @@
 import { fileURLToPath } from 'node:url';
 import { gh, ghCommand, gpuFree, labelled, repoName, sh, trusted } from './lib.mjs';
 
-const PIPELINES = ['gen3d', 'voices'];
+const PIPELINES = ['gen3d', 'voices', 'motion'];
 
 // An open job's state, from its labels.
 export function stateOf(issue, label) {

@@ -1,5 +1,5 @@
-// Is this machine ready to make the desktop's jobs? Every thing a gen3d or
-// voices job needs, checked from where this runs (run it from the runner's
+// Is this machine ready to make the desktop's jobs? Every thing a gen3d,
+// voices or motion job needs, checked from where this runs (run it from the runner's
 // side, outside the Claude app, to see what the runner sees), each with
 // what to do when it's missing. Exits 1 when something a job can't do
 // without is missing.
@@ -65,7 +65,7 @@ export async function checks() {
   } catch {
     /* not in a checkout */
   }
-  if (root) for (const s of ['gen3d', 'voices']) add('machine', `${s} checkout`, existsSync(join(`${root}-${s}`, '.git')), `${root}-${s}`, 'made by the first job (git worktree add)', false);
+  if (root) for (const s of ['gen3d', 'voices', 'motion']) add('machine', `${s} checkout`, existsSync(join(`${root}-${s}`, '.git')), `${root}-${s}`, 'made by the first job (git worktree add)', false);
   const edge = process.env.CHROME ?? 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
   add('gen3d', 'Edge or Chrome (judging sheets)', existsSync(edge), edge, 'set CHROME to a Chromium browser', false);
 
@@ -85,6 +85,10 @@ export async function checks() {
   const { PYTHON, STORE } = await import('../voices/runner.mjs');
   add('voices', 'the voices venv', existsSync(PYTHON), PYTHON, 'scripts/voices/README.md, Setup');
   add('voices', 'reference voices', existsSync(join(STORE.refs, 'rick.wav')), STORE.refs, 'scripts/voices/README.md, References (or set VOICES_REFS)');
+
+  const motion = await import('../motion/runner.mjs');
+  const hy = motion.ready();
+  add('motion', 'HY-Motion 1.0 in WSL (env, weights, skeleton)', hy, hy ?? `${motion.WSL.distro}: ${motion.WSL.repo} in the ${motion.WSL.env} env`, 'scripts/motion/README.md, Setting it up', false);
 
   return list;
 }

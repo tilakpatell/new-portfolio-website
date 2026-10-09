@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { FOOT, METRE, TROOPS, aimAt, apart, at, bearing, bolt, byTrench, facingAlong, fly, inTrench, landingSpot, march, offset, person, place, rightOf, solidsOn, squad, vec, walk } from './foot';
+import { createBolts } from '../../lib/combat/bolt';
+import { FIRST } from '../../lib/combat/accuracy';
+import { BOLT, FOOT, METRE, TROOPS, aimAt, apart, at, bearing, byTrench, facingAlong, footBodies, footSolids, inTrench, landingSpot, march, offset, person, place, rightOf, solidsOn, squad, vec, velOf, walk } from './foot';
 
 const R = 18;
 const seeded = (seed = 1) => () => {
@@ -183,6 +185,35 @@ describe('a squad', () => {
     expect(near.length).toBeGreaterThan(shots.length * 0.3);
   });
 
+  it('never shoots through a rock between, and leads you walking across', () => {
+    const rand = seeded(5);
+    let troops = squad(rand, me, R, { count: 1, kinds: ['cop'], dist: 10 * METRE });
+    // (it stands where it is, the rock square between)
+    const block = [{ n: vec.unit(vec.add(troops[0].n, me.n)), r: 2 * METRE }];
+    let shots = 0;
+    for (let t = 0; t < 10; t += 1 / 30) {
+      const r = march(troops, [me], 1 / 30, R, rand, block);
+      troops = r.troops.map((o) => ({ ...o, n: troops[0].n }));
+      shots += r.shots.length;
+    }
+    expect(shots).toBe(0);
+    // across its view at a run: aimed ahead of you
+    const runner = { ...me, f: rightOf(me), speed: FOOT.run };
+    const v = velOf(runner);
+    expect(vec.len(v)).toBeCloseTo(FOOT.run);
+    let shot = null;
+    let them = squad(seeded(3), me, R, { count: 1, kinds: ['cop'], dist: 10 * METRE });
+    for (let t = 0; t < 20 && !shot; t += 1 / 30) {
+      const r = march(them, [runner], 1 / 30, R, seeded(3));
+      them = r.troops;
+      shot = r.shots[0] ?? null;
+    }
+    expect(shot).not.toBeNull();
+    expect(shot.lead).toBeGreaterThan(0.2 * METRE);
+    // the first goes wider on purpose
+    expect(shot.spread).toBeCloseTo(TROOPS.cop.spread * 0.6 * FIRST);
+  });
+
   it('raises its gun as it comes into range, and lowers it out of range', () => {
     const rand = seeded(7);
     let troops = squad(rand, me, R, { count: 1, kinds: ['cop'] });
@@ -268,23 +299,52 @@ describe('a probe droid', () => {
 });
 
 describe('a bolt', () => {
+  // fly a bolt on the one step till it's done: what it ended on
+  const flyOut = (spec, world) => {
+    const bolts = createBolts();
+    bolts.fire({ speed: BOLT.speed, range: BOLT.range, ...spec });
+    for (let i = 0; i < 240 && bolts.live().length; i++) {
+      const ev = bolts.step(1 / 60, { blades: [], ...world });
+      if (ev.length) return ev[0];
+    }
+    return null;
+  };
+
   it('flies straight, and hits whoever it passes close to first', () => {
-    const from = [0, R + METRE, 0];
-    let b = bolt(from, [0, 0, -1], 'me');
-    const people = [
-      { id: 'far', p: [0, R + METRE, -20 * METRE] },
-      { id: 'near', p: [0.2 * METRE, R + METRE, -10 * METRE] },
-    ];
-    let hit = null;
-    for (let i = 0; i < 120 && !hit; i++) ({ bolt: b, hit } = fly(b, 1 / 60, R, people));
-    expect(hit).toBe('near');
+    const me = { id: 'me', ...person([0, 1, 0], [0, 0, -1]) };
+    const far = { ...person(offset(me, 20 * METRE, 0, R).n, [0, 0, 1]), id: 1, kind: 'cop', alive: true };
+    const near = { ...person(offset(me, 10 * METRE, 0.2 * METRE, R).n, [0, 0, 1]), id: 2, kind: 'cop', alive: true };
+    const e = flyOut({ from: vec.add(at(me, R), me.n, METRE), dir: me.f, side: 'you', owner: 'me' }, { solids: footSolids([], R), bodies: footBodies({ troops: [far, near], R }) });
+    expect(e.type).toBe('hit');
+    expect(e.body.id).toBe(2);
   });
 
   it('goes into the ground', () => {
-    let b = bolt([0, R + METRE, 0], vec.unit([0, -1, -1]), 'me');
-    let hit = null;
-    for (let i = 0; i < 60 && !hit; i++) ({ bolt: b, hit } = fly(b, 1 / 60, R, []));
-    expect(hit).toBe('ground');
+    const e = flyOut({ from: [0, R + METRE, 0], dir: vec.unit([0, -1, -1]), side: 'you' }, { solids: footSolids([], R), bodies: [] });
+    expect(e.type).toBe('solid');
+    expect(vec.len(e.at)).toBeCloseTo(R, 4);
+  });
+
+  it('stops at a rock in the way, and goes over a small one', () => {
+    const me = { id: 'me', ...person([0, 1, 0], [0, 0, -1]) };
+    const t = { ...person(offset(me, 12 * METRE, 0, R).n, [0, 0, 1]), id: 1, kind: 'cop', alive: true };
+    const rock = { n: offset(me, 6 * METRE, 0, R).n, r: 1.2 * METRE };
+    const from = vec.add(at(me, R), me.n, 1.3 * METRE);
+    const e = flyOut({ from, dir: me.f, side: 'you', owner: 'me' }, { solids: footSolids([rock], R), bodies: footBodies({ troops: [t], R }) });
+    expect(e.type).toBe('solid');
+    expect(apart({ n: vec.unit(e.at) }, me, R)).toBeLessThan(6 * METRE);
+    const pebble = { n: rock.n, r: 0.3 * METRE, top: 0.5 * METRE };
+    expect(flyOut({ from, dir: me.f, side: 'you', owner: 'me' }, { solids: footSolids([pebble], R), bodies: footBodies({ troops: [t], R }) }).type).toBe('hit');
+  });
+
+  it('theirs hits you and your mate, never each other', () => {
+    const me = { id: 'me', ...person([0, 1, 0], [0, 0, -1]) };
+    const t = { ...person(offset(me, 10 * METRE, 0, R).n, [0, 0, 1]), id: 1, kind: 'cop', alive: true };
+    const mid = { ...person(offset(me, 5 * METRE, 0, R).n, [0, 0, 1]), id: 2, kind: 'cop', alive: true };
+    const from = vec.add(at(t, R), t.n, METRE);
+    const e = flyOut({ from, dir: vec.unit(vec.add(vec.add(at(me, R), me.n, METRE), from, -1)), side: 'troop', owner: 1 }, { solids: footSolids([], R), bodies: footBodies({ me, troops: [t, mid], R }) });
+    expect(e.type).toBe('hit');
+    expect(e.body.id).toBe('me');
   });
 
   it('is aimed at the nearest trooper round the way you face', () => {
