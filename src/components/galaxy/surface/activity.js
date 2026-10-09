@@ -292,7 +292,7 @@ export function markMaterials() {
   };
 }
 
-export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null, only = false }) {
+export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null }) {
   const group = new THREE.Group();
   group.name = 'activity';
   parent.add(group);
@@ -355,6 +355,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     targets = [];
   };
 
+  // (a world that takes models only: api.modelsOnly(), cast.js)
+  let only = false;
   const figure = async (kind, spec) => {
     if (SPECIAL[kind]) return SPECIAL[kind]();
     // (a world that takes models only: a model, a stand-in or nothing; cast.js)
@@ -613,6 +615,10 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   };
 
   const api = {
+    // a world that takes models only: what's spawned is a model, a stand-in or nothing (cast.js)
+    modelsOnly() {
+      only = true;
+    },
     group,
     show(quest, progress) {
       const key = quest && progress ? `${quest.id}:${progress.step}` : null;

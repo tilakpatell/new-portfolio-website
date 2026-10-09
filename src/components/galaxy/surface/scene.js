@@ -421,7 +421,8 @@ export async function create(canvas, ctx) {
       else if (ev === 'cut') popSound();
     } else gadgetSound(how, ev);
   };
-  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound, only: site.cast === 'models' });
+  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
+  if (site.cast === 'models') activity.modelsOnly();
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
