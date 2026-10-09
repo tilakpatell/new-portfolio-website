@@ -69,7 +69,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2B | | | | |
 | 2C | | | | |
 | 2D | | | | |
-| 2E | | | | |
+| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: (opening) | |
 | 2F | | | | |
 
 ## Findings (for the owner and the next lane)
@@ -98,3 +98,9 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1D, for the galaxy surfaces (2B):** `galaxy/surface/scene.js` still makes its own panel from `tune.js` (it is outside 1D’s files); moving it onto `tune()` through the module makes it the one panel the runtime opens and closes. Until then it is the only panel on that route (the galaxy’s module has no `tune()`), so nothing doubles.
 - **1D, for 1A:** `lib/stage3d.js` has `stageBloomGroups(pass)` for the stage’s bloom group, since `lib/three/bloom.js` is 1A’s; once `bloomGroups(pass)` lands, `stageTune` can take it in its place (the same shape: `threshold`, `strength`, `radius`).
 - **1D, for the owner:** `stage.tune`’s title is the canvas’s nearest `[data-route]`, but no page sets one yet, so every stage game is titled by the document’s title (and keeps its values under it); a page that wants its own key sets `data-route` on the game’s box.
+- **2E, for 2A–2F:** the ratchet’s “holds the audit’s counts” pinned each list’s exact length, so the first lane to empty an entry broke it; it is “no more than” the counts now (`feel.test.js`). A lane that lands the same change merges clean.
+- **2E, for 2A–2F:** the HQ engine (`avengers/hq/engine.js`) has `engine.tune(groups, name)`, lib/stage3d’s `stageTune` with the game’s name as its title, so the page of HQ games keeps one game’s values apart from the next; Invincible uses it too.
+- **2E, a rule read narrowly:** Lawn’s i-frames (0.8 s) guard Thor against bolts only; a breach is the lawn crossed, not him hit, and Cull Obsidian’s breach must still end the game. Say so if you want breaches inside them too.
+- **2E, where the audit missed one:** Invincible’s `orbit.js` (on the Moon and Mars) dropped a jump pressed in the step’s later slices, as `flight.js` did; it takes the same press now.
+- **2E, for the owner:** R in Invincible took a radio call already; it still does, first, and lets go of the water only when no call waits. The compound’s fov punch was not held under reduced motion; on the feel it is.
+- **2E, for the owner:** `node scripts/autopilot-check.mjs --routes /caribbean` fails on `main` with “no canvas: the 3D never started”: without a graphics chip the tide asks for hardware acceleration and waits on “Play anyway”, so the headless check never sees a canvas there.
