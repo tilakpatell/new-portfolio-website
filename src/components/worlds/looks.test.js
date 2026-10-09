@@ -39,19 +39,6 @@ const EXPECTED_MISSING = [
   'invincible/thinkmark',
   'invincible/viewer',
   'caribbean/tide',
-  'dotmatrix',
-  'mario64',
-  'minecraft',
-  'earth',
-  'music/world',
-  'projects/cartridges',
-  'contact/plane',
-  'ambience',
-  'experience/motif3d',
-  'mist',
-  'peace',
-  'travel/akd3d',
-  'travel/globe3d',
 ];
 
 const looks = import.meta.glob('../**/look.js');
