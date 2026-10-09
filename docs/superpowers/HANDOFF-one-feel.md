@@ -68,7 +68,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2A | | | | |
 | 2B | | | | |
 | 2C | | | | |
-| 2D | | | | |
+| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: (opening) | |
 | 2E | | | | |
 | 2F | | | | |
 
@@ -98,3 +98,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1D, for the galaxy surfaces (2B):** `galaxy/surface/scene.js` still makes its own panel from `tune.js` (it is outside 1D’s files); moving it onto `tune()` through the module makes it the one panel the runtime opens and closes. Until then it is the only panel on that route (the galaxy’s module has no `tune()`), so nothing doubles.
 - **1D, for 1A:** `lib/stage3d.js` has `stageBloomGroups(pass)` for the stage’s bloom group, since `lib/three/bloom.js` is 1A’s; once `bloomGroups(pass)` lands, `stageTune` can take it in its place (the same shape: `threshold`, `strength`, `radius`).
 - **1D, for the owner:** `stage.tune`’s title is the canvas’s nearest `[data-route]`, but no page sets one yet, so every stage game is titled by the document’s title (and keeps its values under it); a page that wants its own key sets `data-route` on the game’s box.
+- **2D, for 2A–2F:** the ratchet’s “holds the audit’s counts” pinned each list’s length, so every lane that took a file off would change the same four lines; it now holds them at no more than the audit’s counts (the lists only shrink). Take the same edit if you meet it.
+- **2D, for 2A–2F:** a shake whose old k was a size in metres (Cybertron’s jolts reach 2.4, the office’s 0.18) keeps that size at its peak as `feel.trauma(√(k / kmax))` with `offset` kmax / 2; `feel.update` sets `camera.fov` to its base, so a scene that eases its own fov calls `feel.setBaseFov(camera.fov)` first.
+- **2D, for the owner:** `games/pad.js`’s `readPad` has no Back (button 8): Albuquerque’s way out is Y on a pad, B on the keys (R is its delivery). A `back: b(8)` there would let a lane use the spec’s button.
+- **2D:** Cybertron’s fuzz found Optimus 0.05 m into the crack between two of Kaon’s seat blocks once the jump forgave (a new path, an old gap): `resolve` takes six passes, not three.
