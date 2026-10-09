@@ -34,8 +34,9 @@ function throne({ w, d, h }) {
   const seat = 0.55;
   return [
     box(w, 0.2, d, 0, 0.1, 0, 'black'),
-    box(w - 0.3, seat - 0.2, d - 0.3, 0, 0.2 + (seat - 0.2) / 2, 0.05, 'trim'),
-    box(w - 0.5, 0.12, d - 0.5, 0, seat + 0.06, 0.1, 'black'),
+    // (the seat as deep as one sits in, from the back to its edge 0.25 m before the middle: rules/seats.js)
+    box(w - 0.3, seat - 0.2, d / 2 - 0.2 + 0.25, 0, 0.2 + (seat - 0.2) / 2, (0.25 - d / 2 + 0.2) / 2, 'trim'),
+    box(w - 0.5, 0.12, d / 2 - 0.325 + 0.25, 0, seat + 0.06, (0.25 - d / 2 + 0.325) / 2, 'black'),
     box(w - 0.4, h - seat - 0.1, 0.25, 0, (seat + h) / 2, -d / 2 + 0.2, 'black'),
     box(w, 0.35, 0.3, 0, h - 0.175, -d / 2 + 0.15, 'trim'),
     ...[-1, 1].flatMap((s) => [box(0.22, 0.32, d - 0.4, s * (w / 2 - 0.11), seat + 0.16, 0.05, 'trim'), plate(0.14, d - 0.6, s * (w / 2 - 0.11), seat + 0.321, 0.05, 'console', 'up')]),

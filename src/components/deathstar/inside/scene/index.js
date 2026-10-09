@@ -19,8 +19,8 @@
 //     a hatch’s one leaf is always whole, turned `swing` radians on its x0 edge
 //   createTrack() → { push(time, body), at(alpha) → { x, y, z, yaw }, speed(), velocity(out?), turn() }   pure:
 //     a body between its last two steps; a jump of more than 3 m (a lift ride, a teleport) is drawn where it lands
-//   playerAct({ crouch, moving, aim, gun, blade, shotAgo, swungAgo }) → { base, upper }   pure: what the
-//     player’s figure plays: crouched still or crouch-walking, the gun held out while aiming and fired
+//   playerAct({ crouch, sit, moving, aim, gun, blade, shotAgo, swungAgo }) → { base, upper }   pure: what the
+//     player’s figure plays: sat in a seat, crouched still or crouch-walking, the gun held out while aiming and fired
 //     for a moment after each shot, a blade’s stroke for a moment after each swing
 //   roomsOf(stream) → { shown(roomId), built(roomId), dt }   what people.js is told of the rooms: drawn
 //     while the stream shows them, standing from when they are built until the stream frees them (a
@@ -42,6 +42,7 @@ import * as THREE from 'three';
 import { houseOn } from '../../../../lib/three/house';
 import { passable } from '../rules/doors';
 import { buildLayout, offTags } from '../rules/layout';
+import { seatOf } from '../rules/seats';
 import { STATIONS } from '../rules/stations';
 import { CAMERA, cameraPose, wallHits } from './camera';
 import { createCinematics } from './cinematics';
@@ -135,7 +136,8 @@ export const HEAVY = { from: 25, stop: 70 };
 // m/s is nothing
 export const SQUAT = { per: 0.025, max: 0.3, from: 3 };
 
-export function playerAct({ crouch = false, moving = false, aim = false, gun = null, blade = null, shotAgo = Infinity, swungAgo = Infinity } = {}) {
+export function playerAct({ crouch = false, sit = false, moving = false, aim = false, gun = null, blade = null, shotAgo = Infinity, swungAgo = Infinity } = {}) {
+  if (sit) return { base: 'sit.idle', upper: null };
   const base = crouch ? (moving ? 'crouch.walk' : 'crouch') : null;
   let upper = null;
   if (blade && !gun) upper = swungAgo < STROKE ? 'stroke' : null;
@@ -309,7 +311,9 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
 
     // the camera: snapped in to a wall at once, eased back out after it
     const hits = wallHits(layout, (id) => passable(g.doors, id), (room) => g.solidsOf?.(room) ?? []);
-    const pose = cameraPose({ ...at, crouch: you.crouch }, { view, yaw, pitch, aim, reach: view === 'first' ? Infinity : held + EASE_OUT * dt }, hits);
+    // (sat down, the eyes are about as low as crouched)
+    const low = Boolean(you.crouch || you.seat);
+    const pose = cameraPose({ ...at, crouch: low }, { view, yaw, pitch, aim, reach: view === 'first' ? Infinity : held + EASE_OUT * dt }, hits);
     held = view === 'first' ? 0 : pose.dist;
     camera.position.set(pose.pos.x, pose.pos.y, pose.pos.z);
     camera.lookAt(pose.look.x, pose.look.y, pose.look.z);
@@ -366,7 +370,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
       }
       downed = (you.hp ?? 1) <= 0;
       const speed = track.speed();
-      const want = playerAct({ crouch: you.crouch, moving: speed > 0.3, aim, gun: you.gun ?? null, blade: you.blade ?? null, shotAgo: now - shotAt, swungAgo: now - swungAt });
+      const want = playerAct({ crouch: you.crouch, sit: Boolean(you.seat), moving: speed > 0.3, aim, gun: you.gun ?? null, blade: you.blade ?? null, shotAgo: now - shotAt, swungAgo: now - swungAt });
       if (want.base !== played.base) person.base(want.base);
       if (want.base === 'crouch.walk' && person.anim?.actions['crouch.walk']) person.anim.actions['crouch.walk'].timeScale = speed / CROUCH_PACE;
       if (want.upper !== played.upper || (want.upper === 'stroke' && played.stroke !== swungAt)) {
@@ -394,9 +398,10 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     rooms.off = offTags(layout, g.flags ?? new Set());
     // (and the camera and your chest, so anyone between them is faded out of the way; none in first person)
     rooms.camera = view === 'first' && !shot ? null : camera.position;
-    rooms.focus = { x: at.x, y: at.y + (you.crouch ? 0.9 : 1.3), z: at.z };
+    rooms.focus = { x: at.x, y: at.y + (low ? 0.9 : 1.3), z: at.z };
     rooms.ahead = { x: at.x + Math.sin(yaw) * AHEAD, y: rooms.focus.y, z: at.z - Math.cos(yaw) * AHEAD };
     rooms.side = g.side ?? you.side;
+    rooms.seatOf = (p) => seatOf(g, p);
     if (g.crew) people.sync(g.crew, alpha, camera.position, rooms);
     for (const b of g.combat?.bolts ?? []) fx.bolt(b);
     fx.update(dt);

@@ -4,9 +4,11 @@
 import { describe, expect, it } from 'vitest';
 import { furnish } from '../furnish';
 import { drain, newGame, promptOf, step, teleport } from '../game';
+import { SEATS } from './act';
 import { storySteps } from './plot';
 import { toStep } from './beats';
 import { READS, readoutOf } from './readouts';
+import { seatedAt } from '../seats';
 
 const STORIES = [
   ['ds1', 'rebel'],
@@ -80,13 +82,13 @@ describe('E at what the story names', () => {
 // seat, the saber), and the things the story alone has a use for aren't offered at all.
 describe('E in free roam', () => {
   const seen = (g, before, events) =>
-    Boolean(g.talk || g.scene || g.you.room !== before.room || events.some((e) => ['say', 'sat', 'pulled', 'read'].includes(e.type)) || [...g.flags].join() !== before.flags);
+    Boolean(g.talk || g.scene || g.you.room !== before.room || events.some((e) => ['say', 'sat', 'sit', 'pulled', 'read'].includes(e.type)) || [...g.flags].join() !== before.flags);
   for (const [station, side] of STORIES) {
     it(`does something wherever it is offered, on ${station} as ${side === 'rebel' ? 'a Rebel' : 'an Imperial'}`, () => {
       const base = newGame({ station, side, mode: 'roam', seed: 5 });
       const quiet = [];
       for (const room of base.layout.rooms.values()) {
-        for (const t of furnish(room, base.layout.station).props.filter((p) => p.tag || READS.has(p.kind))) {
+        for (const t of furnish(room, base.layout.station).props.filter((p) => p.tag || READS.has(p.kind) || Object.hasOwn(SEATS, p.kind))) {
           const g = newGame({ station, side, mode: 'roam', seed: 5 });
           const r = 0.9 + Math.max(t.w ?? 0, t.d ?? 0) / 2;
           for (let k = 0; k < 8; k++) {
@@ -155,6 +157,51 @@ describe('E in free roam', () => {
     const yaw = Math.atan2(mark.x - g.you.x, -(mark.z - g.you.z));
     step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
     expect(promptOf(g)?.use ?? false).toBe(false);
+  });
+});
+
+describe('a seat', () => {
+  const still = (yaw, o = {}) => ({ dir: { x: 0, z: 0 }, yaw, pitch: 0, ...o });
+  function beside(g, room, kind) {
+    const t = furnish(g.layout.rooms.get(room), g.layout.station).props.find((p) => p.kind === kind);
+    const out = t.d / 2 + 0.6;
+    teleport(g, room, t.x + Math.sin(t.yaw) * out, t.z - Math.cos(t.yaw) * out);
+    const yaw = Math.atan2(t.x - g.you.x, -(t.z - g.you.z));
+    step(g, still(yaw));
+    drain(g);
+    return { t, yaw };
+  }
+
+  it('is sat in with E, held in facing its way, and stood up from with E, in front of it', () => {
+    const g = newGame({ station: 'ds2', side: 'imperial', mode: 'roam', seed: 5 });
+    const { t, yaw } = beside(g, 'throne', 'throne');
+    expect(promptOf(g)).toMatchObject({ use: true, text: 'sit on the throne' });
+    step(g, still(yaw, { use: true }));
+    expect(drain(g).some((e) => e.type === 'sit')).toBe(true);
+    for (let k = 0; k < 30; k++) step(g, still(yaw + 1));
+    // (on the seat as the sit clip needs: seats.js)
+    expect(g.you).toMatchObject(seatedAt(t));
+    expect(promptOf(g)).toMatchObject({ use: true, text: 'stand up' });
+    step(g, still(yaw, { use: true }));
+    expect(g.you.seat).toBeNull();
+    expect(Math.hypot(g.you.x - t.x, g.you.z - t.z)).toBeGreaterThan(t.d / 2);
+    expect(g.you.room).toBe('throne');
+    // (and up the moment you walk)
+    step(g, still(yaw));
+    step(g, still(yaw, { use: true }));
+    expect(g.you.seat).toBeTruthy();
+    for (let k = 0; k < 10; k++) step(g, { dir: { x: 0, z: 1 }, yaw, pitch: 0 });
+    expect(g.you.seat).toBeNull();
+    expect(Math.hypot(g.you.x - t.x, g.you.z - t.z)).toBeGreaterThan(t.d / 2);
+  });
+
+  it('isn’t offered while someone sits in it', () => {
+    const g = newGame({ station: 'ds2', side: 'imperial', mode: 'roam', seed: 5 });
+    const { t, yaw } = beside(g, 'throne', 'throne');
+    const p = g.crew.people.find((q) => q.hp > 0);
+    Object.assign(p, { room: 'throne', x: t.x, z: t.z, y: t.y });
+    step(g, still(yaw));
+    expect(promptOf(g)?.text).not.toBe('sit on the throne');
   });
 });
 

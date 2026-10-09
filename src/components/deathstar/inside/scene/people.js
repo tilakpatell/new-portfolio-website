@@ -53,7 +53,8 @@
 //     layout: the station's (rules/layout.js), for the dead to fall against as ragdolls (without it
 //     they fall on their clips); rooms.open(doorId) and rooms.off (layout.offTags's): its doors and
 //     floors as they are now; rooms.camera and rooms.focus (your chest): anyone between them is faded,
-//     and rooms.ahead (a little way past you in the view) with rooms.side: a friend before it too
+//     and rooms.ahead (a little way past you in the view) with rooms.side: a friend before it too;
+//     rooms.seatOf(person) (rules/seats.js): where one sat down is drawn, on the seat
 //     adopt(object): handed each figure and gun as it goes into the scene (the house look’s adopt)
 //     crew: { people: Map | [person] } (or the people themselves); alpha: how far the frame is from the
 //     last step to the next; cameraAt: { x, y, z }
@@ -672,8 +673,10 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       if (fall && r.fallFor < FALL && (r.fallFor += dt) >= FALL) r.posed = false;
       return;
     }
-    // (a scene may carry someone where the rules don't: swung across the chasm)
-    const at = r.staged?.at ? { ...r.track.at(alpha), ...r.staged.at } : r.track.at(alpha);
+    // (a scene may carry someone where the rules don't: swung across the chasm; and one sat down is
+    // drawn on the seat, not in it: rules/seats.js)
+    const sat = want.base === 'sit.idle' && !r.staged?.at ? world?.seatOf?.(p) : null;
+    const at = r.staged?.at ? { ...r.track.at(alpha), ...r.staged.at } : sat ? { ...r.track.at(alpha), ...sat } : r.track.at(alpha);
     o.position.set(at.x, at.y, at.z);
     o.rotation.y = -(r.staged?.yaw ?? at.yaw);
     // (one held up leans in to whoever holds him: rules/play/plot.js's holdUp)

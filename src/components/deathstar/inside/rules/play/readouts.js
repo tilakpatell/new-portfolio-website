@@ -11,7 +11,7 @@
 
 import { levelOf } from '../alarm';
 
-export const READS = new Set(['console', 'bank', 'terminal', 'button-bank', 'fire-console', 'pentagon-screen', 'desk', 'intercom', 'door-panel']);
+export const READS = new Set(['console', 'bank', 'terminal', 'button-bank', 'fire-console', 'pentagon-screen', 'desk', 'intercom', 'door-panel', 'station', 'screen', 'junction-box']);
 
 // by the room's kind; a kind not here reads its room's name and that all is well
 const LINES = {
@@ -32,6 +32,7 @@ const LINES = {
   gallery: ['Construction in this sector continues on schedule.'],
   superstructure: ['Construction in this sector continues on schedule.'],
   meditation: ['Do not disturb.'],
+  maintenance: ['Power junction: carrying the detention level’s load.', 'Waste disposal: the compactors on their cycle.', 'Magnetically sealed. Maintenance crews only.'],
 };
 
 function securityOf(g, roomId) {

@@ -28,6 +28,7 @@ import { raise } from '../alarm';
 import { choose, openTalk, talkFor, WHO } from '../talk';
 import { bringAlong, feedPlot } from './plot';
 import { READS, readoutOf } from './readouts';
+import { seatedAt } from '../seats';
 
 const TALK_REACH = 2.6; // metres you can talk across
 const USE_REACH = 1.9; // metres you can reach a thing from
@@ -49,6 +50,10 @@ const READ = new Set(['exhaust-note', 'plans']);
 // what is offered to E whatever the story: a sign read, a seat sat in, a saber pulled, a keypad
 const ALWAYS = new Set(['krennic-chair', 'armrest-saber', 'compactor-hatch', ...READ]);
 const FIRE_AGAIN = 30; // seconds before the superlaser can be fired again in free roam
+// what you can sit in, and what E says it will do there: a seat nobody else is in
+export const SEATS = { chair: 'sit down', bench: 'sit on the bench', throne: 'sit on the throne', 'meditation-pod': 'sit in the meditation chamber' };
+const SEAT_OUT = 0.45; // metres in front of a seat's edge you stand up to
+const TAKEN = 0.6; // metres: someone this near a seat's middle sits in it
 
 // What a tagged thing does where no story is under way (free roam, or a story played out): a lever
 // thrown, a bridge run out, the station's plans read off a socket. Anything not here, and not
@@ -125,7 +130,7 @@ const storyOn = (g) => Boolean(g.plot && !g.plot.done);
 // whether E is offered at a tagged thing: what the story's step names, what is always offered, and in
 // free roam whatever has a use there
 function offered(g, t) {
-  if (!t.tag) return READS.has(t.kind);
+  if (!t.tag) return READS.has(t.kind) || (Object.hasOwn(SEATS, t.kind) && free(g, t));
   if (ALWAYS.has(t.tag) || t.text) return true;
   if (!storyOn(g)) return Boolean(FREE[t.tag]);
   const step = g.plot.story.steps.find((q) => q.id === g.plot.progress.step);
@@ -134,6 +139,7 @@ function offered(g, t) {
 }
 
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const free = (g, seat) => !g.crew.people.some((p) => p.hp > 0 && p.room === g.you.room && flat(p, seat) < TAKEN);
 function ahead(you, at) {
   const [dx, dz] = [at.x - you.x, at.z - you.z];
   const d = Math.hypot(dx, dz) || 1;
@@ -162,8 +168,8 @@ function things(g) {
   const room = g.layout.rooms.get(g.you.room);
   if (!room) return [];
   if (!g.furnished.has(room.id)) g.furnished.set(room.id, furnish(room, g.layout.station));
-  // (the tagged things, and the consoles and intercoms that read out: readouts.js)
-  return g.furnished.get(room.id).props.filter((p) => p.tag || READS.has(p.kind));
+  // (the tagged things, the consoles and intercoms that read out (readouts.js), and the seats)
+  return g.furnished.get(room.id).props.filter((p) => p.tag || READS.has(p.kind) || Object.hasOwn(SEATS, p.kind));
 }
 
 const lockOpen = (g, lock) => !lock || (lock.startsWith('flag:') && g.flags.has(lock.slice(5)));
@@ -204,6 +210,8 @@ export function reachable(g) {
   // (what the story's step names comes first, so the comlink in your hand isn't lost to the hatch's keypad)
   const named = stepAt(g);
   if (named) return named;
+  // (sat down, E stands you up)
+  if (you.seat) return { kind: 'stand' };
   const ctx = talkCtx(g);
   let best = null;
   for (const p of g.crew.people) {
@@ -234,6 +242,8 @@ export function useText(r) {
   if (r.kind === 'talk') return `talk to ${r.npc.kind === 'mouse' ? 'the droid' : (WHO[r.npc.tag] ?? 'them')}`;
   if (r.kind === 'jump') return r.jump.prompt ?? 'go';
   if (r.kind === 'keypad') return 'dial the hatch’s keypad';
+  if (r.kind === 'stand') return 'stand up';
+  if (!r.thing.tag && SEATS[r.thing.kind]) return SEATS[r.thing.kind];
   if (!r.thing.tag) return r.thing.kind === 'intercom' ? 'call on the intercom' : r.thing.kind === 'door-panel' ? 'read the cell door’s panel' : `read the ${r.thing.kind.replace(/-/g, ' ')}`;
   return r.thing.text ? `read “${r.thing.text}”` : (DOES[r.thing.tag] ?? `use the ${r.thing.kind.replace(/-/g, ' ')}`);
 }
@@ -268,11 +278,13 @@ export function useHere(g) {
     bringAlong(g);
     return true;
   }
+  if (r.kind === 'stand') return standUp(g);
   if (r.kind === 'keypad') {
     g.talk = { id: 'keypad', tag: r.thing.tag, who: 'keypad', say: 'The hatch’s keypad asks for the unit’s number.', choices: KEYPAD, end: false, npc: null };
     return true;
   }
   const tag = r.thing.tag;
+  if (!tag && SEATS[r.thing.kind]) return sit(g, r.thing);
   if (!tag) {
     // (a console with nothing else to do reads out what it shows)
     const out = readoutOf(g, r.thing, g.you.room);
@@ -283,9 +295,33 @@ export function useHere(g) {
   if (READ.has(tag)) g.events.push({ type: 'read', tag });
   // (what is written on it, read out in the subtitles, however long)
   if (r.thing.text) line(g, 'sign', r.thing.text);
-  if (tag === 'krennic-chair') g.events.push({ type: 'sat', tag });
+  if (tag === 'krennic-chair') {
+    g.events.push({ type: 'sat', tag });
+    sit(g, r.thing);
+  }
   if (tag === 'armrest-saber') does(g, 'pull-saber');
   if (!storyOn(g)) FREE[tag]?.(g);
+  return true;
+}
+
+// Sat down: held in the seat, facing the way it faces, until E, or a key that walks, aims or fires,
+// stands you up in front of it (game.js). The seat's middle is in its solid, so you are put there and
+// taken out again, not walked.
+function sit(g, t) {
+  const you = g.you;
+  const out = t.d / 2 + SEAT_OUT;
+  // (where you are: put so that the sit clip has you on the seat, not in it: seats.js)
+  you.seat = { ...seatedAt(t, you), kind: t.kind, hp: you.hp, out: { x: t.x + Math.sin(t.yaw) * out, z: t.z - Math.cos(t.yaw) * out } };
+  g.events.push({ type: 'sit', kind: t.kind });
+  return true;
+}
+
+export function standUp(g) {
+  const s = g.you.seat;
+  if (!s) return false;
+  g.you.seat = null;
+  g.teleport(g.you.room, s.out.x, s.out.z, s.yaw);
+  g.events.push({ type: 'stood', kind: s.kind });
   return true;
 }
 

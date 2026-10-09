@@ -211,6 +211,8 @@ export function teleport(g, where, x, z, yaw) {
   const room = g.layout.rooms.get(id);
   if (!room) return false;
   const you = g.you;
+  // (out of any seat: wherever you are put, you stand there)
+  you.seat = null;
   const { x: px, z: pz } = standAt(g, id, x ?? spot?.x ?? room.x, z ?? spot?.z ?? room.z);
   const floor = g.layout.floorAt(id, px, pz);
   Object.assign(you, { x: px, y: floor ?? room.y, z: pz, vy: 0, ground: floor !== null });
@@ -427,6 +429,19 @@ function storyEvents(g, was) {
   if (g.still > 0) plot.feedPlot(g, { type: 'still', seconds: g.still });
 }
 
+// Sat down (act.js): held in the seat, facing the way it faces. A key that walks, aims or fires
+// stands you up in front of it, and so do a hurt, a scene, a lift and the Emperor's grip.
+function seated(g, input) {
+  const { you } = g;
+  const s = you.seat;
+  const d = input.dir;
+  if ((d && Math.hypot(d.x, d.z) > 0.1) || input.jump || input.aim || input.fire || you.hp < s.hp || g.scene || g.lift || duel.gripped(g)) {
+    act.standUp(g);
+    return;
+  }
+  Object.assign(you, { x: s.x, y: s.y, z: s.z, yaw: s.yaw, vy: 0, ground: true });
+}
+
 // While a story's scene plays you watch it: no walking, shooting, using or talking; the look stays yours
 const watching = (input) => ({ dir: { x: 0, z: 0 }, yaw: input.yaw, pitch: input.pitch });
 
@@ -437,6 +452,7 @@ export function step(g, input = {}, dt = STEP) {
   g.fired = false;
   const mark = g.events.length;
   face(you, input, dt);
+  if (you.seat) seated(g, input);
   if (input.helmet && you.armour) {
     you.helmet = !you.helmet;
     g.events.push({ type: 'helmet', on: you.helmet });
@@ -474,7 +490,7 @@ export function step(g, input = {}, dt = STEP) {
   // (the jump's buffer and coyote time are walker.js's: the press is passed on as it came)
   const walk = g.talk || duel.gripped(g) ? {} : plot.held(g, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch });
   const shove = duel.shoveOf(g, dt);
-  for (const w of shove ? [walk, { dir: shove, run: true }] : [walk]) {
+  for (const w of you.seat ? [] : shove ? [walk, { dir: shove, run: true }] : [walk]) {
     for (const e of stepBody(you, w, dt, { layout, open, solids: g.solidsOf(you.room) })) {
       g.events.push(e);
       if (e.type === 'room') g.seen.add(e.to);
