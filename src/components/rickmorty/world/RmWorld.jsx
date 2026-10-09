@@ -792,7 +792,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     const s = sim.current;
     s.flying = false;
     s.landing = false;
-    s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
+    s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0, bankV: 0 };
     const out = exitCruiser(s.c, { motorcade: !doneRef.current.includes('president') });
     s.m = newMorty(out);
     s.yaw = behindYaw(out.face);
@@ -1024,7 +1024,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           // a jump to anywhere, and a trip anywhere the way a door makes it
           const s = sim.current;
           const land = () => {
-            if (s.flying) s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
+            if (s.flying) s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0, bankV: 0 };
             s.flying = false;
             s.landing = false;
           };
