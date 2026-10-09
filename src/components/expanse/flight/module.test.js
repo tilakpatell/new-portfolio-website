@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import flight, { AXES, KEYS, inputOf, spawnOf, tierAt } from './module';
+import { SHARED_KEYS } from './shared';
 import { WORLD_MB } from '../../worlds/worlds';
 import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
 import { createOrigin } from '../../../runtime/origin';
@@ -34,7 +35,8 @@ describe('the flight module', () => {
   it('binds its keys, and flies the ship from them', async () => {
     const rt = fakeRt();
     const world = await flight.create(rt, { spec: planetSpecOf('hoth') });
-    expect(rt.bound.keys).toEqual(KEYS);
+    // (the flight's own, and the shared world's: build, take down, fire)
+    expect(rt.bound.keys).toEqual({ ...KEYS, ...SHARED_KEYS });
     expect(rt.bound.axes).toEqual(AXES);
     const z0 = world.ship.z;
     for (let i = 0; i < 30; i++) world.step(1 / 30, snap({ throttle: 1 }));

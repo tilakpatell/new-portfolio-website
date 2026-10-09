@@ -16,7 +16,8 @@
 //   status ('connecting' | 'online' | 'failed' | 'off'), update(ship) (each
 //   frame: the cell kept current, a pose POSE_MS apart at most), peers() →
 //   [{ id, name, pose: { x, y, z, pitch, yaw, roll, speed }, at }],
-//   shot(p, v), built(id, cellTag), gone(id), on(fn) → off, stats(), leave() }
+//   shot(p, v), built(id, cellTag), gone(id), cell(), selfId(), on(fn) → off,
+//   stats(), leave() }
 // events: { type: 'shot', id, p, v }, { type: 'built', id, cell, key },
 //   { type: 'gone', id }
 
@@ -189,6 +190,8 @@ export function createFlightOnline({ planetId, name, kind = 'wedge', load = load
     },
     // the cell you're in as the room tags it (null before the first update)
     cell: () => (key ? cellTag(planetId, key) : null),
+    // your id in the room (the visit's key: a turret you build carries it, so it never fires at you)
+    selfId: () => room?.selfId ?? null,
     on(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
