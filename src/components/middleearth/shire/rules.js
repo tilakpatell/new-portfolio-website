@@ -131,8 +131,9 @@ export function bridgeY(z) {
   const k = Math.max(0, Math.min(1, (z - BRIDGE.z0) / (BRIDGE.z1 - BRIDGE.z0)));
   return 0.35 + Math.sin(k * Math.PI) * BRIDGE.rise;
 }
-// where a foot lands
-export const groundY = (x, z) => (onBridge(x, z) ? bridgeY(z) : Math.max(height(x, z), WATER_Y));
+// where a foot lands (or anything else: `at` the ground's height, the
+// terrain's as drawn for a leaf, ./ground.js's drawnHeight)
+export const groundY = (x, z, at = height) => (onBridge(x, z) ? bridgeY(z) : Math.max(at(x, z), WATER_Y));
 
 // ── what's in the way ──
 

@@ -24,7 +24,7 @@ import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
 import { loadDoorLeaf } from './models';
-import { instances, makeFlowers, makeTerrain, makeWater, shireGroundMap } from './ground';
+import { drawnHeight, instances, makeFlowers, makeTerrain, makeWater, shireGroundMap } from './ground';
 import { createGrass } from '../../../lib/three/grass';
 import { createWind } from '../../../lib/three/wind';
 import { createFlatLitter } from '../../../lib/three/flatLitter';
@@ -143,12 +143,14 @@ export async function createShireWorld(canvas, { onLost, reduced = false } = {})
   const grass = createGrass({ ground: groundMap, wind, side: tier === 'high' ? 280 : tier === 'mid' ? 200 : 120, size: 44 });
   outdoors.add(grass.mesh);
   // and Bruno's fallen leaves (lib/three/flatLitter): a few hundred round
-  // Frodo, lying where the ground is (rules.js's groundY: the bridge's deck,
-  // the pond's top), kicked along as he walks through them, let go by the
-  // same gusts, and shed by the oaks, the Party Tree and the old tree by
-  // the road (their crowns, `leafCrowns`, filled in as each is put up)
+  // Frodo, lying where the ground is (groundY: the bridge's deck, the
+  // pond's top, and the terrain as it's drawn, ./ground.js's drawnHeight),
+  // kicked along as he walks through them, let go by the same gusts, and
+  // shed by the oaks, the Party Tree and the old tree by the road (their
+  // crowns, `leafCrowns`, filled in as each is put up)
   const leafCrowns = [];
-  const leaves = createFlatLitter({ max: tier === 'high' ? 512 : tier === 'mid' ? 256 : 128, half: 14, spec: LEAVES, wind, floorAt: groundY, crowns: leafCrowns, reduced, seed: 22 });
+  const drawn = drawnHeight(terrain);
+  const leaves = createFlatLitter({ max: tier === 'high' ? 512 : tier === 'mid' ? 256 : 128, half: 14, spec: LEAVES, wind, floorAt: (x, z) => groundY(x, z, drawn), crowns: leafCrowns, reduced, seed: 22 });
   outdoors.add(leaves.mesh);
 
   const kit = createShireKit(renderer);
@@ -513,7 +515,7 @@ export async function createShireWorld(canvas, { onLost, reduced = false } = {})
   const leafFocus = { x: 0, z: 0 };
   const leafWalkers = [];
   const frodoWalks = { key: 'frodo', x: 0, z: 0, y: 0 };
-  const dogWalks = DOG_ROUNDS.map((_, i) => ({ key: `dog${i}`, x: 0, z: 0, y: 0 }));
+  const dogWalks = dogs.map((_, i) => ({ key: `dog${i}`, x: 0, z: 0, y: 0 }));
   const riderWalks = { key: 'rider', x: 0, z: 0, y: 0 };
 
   const render = (s, ms, fast = 1) => {
@@ -521,30 +523,6 @@ export async function createShireWorld(canvas, { onLost, reduced = false } = {})
     A.t += dt;
     const t = A.t;
     wind.update(dt);
-    // the leaves, round Frodo and 4 m ahead the way he faces (where the
-    // camera looks); not while he's in Bag End and the Shire's put away
-    if (s.mode !== 'inside') {
-      const h = s.hobbit;
-      leafFocus.x = h.x + Math.cos(h.face) * 4;
-      leafFocus.z = h.z - Math.sin(h.face) * 4;
-      leafWalkers.length = 0;
-      frodoWalks.x = h.x;
-      frodoWalks.z = h.z;
-      leafWalkers.push(frodoWalks);
-      (s.hunt?.dogs ?? []).forEach((d, i) => {
-        if (!dogWalks[i]) return;
-        dogWalks[i].x = d.x;
-        dogWalks[i].z = d.z;
-        leafWalkers.push(dogWalks[i]);
-      });
-      if (s.rider && ['coming', 'sniff', 'leaving'].includes(s.rider.phase)) {
-        const p = riderAt(s.rider.s);
-        riderWalks.x = p.x;
-        riderWalks.z = p.z;
-        leafWalkers.push(riderWalks);
-      }
-      leaves.update(dt, { focus: leafFocus, walkers: leafWalkers });
-    }
     water.material.uniforms.uTime.value = t;
     sky.uniforms.uTime.value = t;
 
@@ -727,6 +705,30 @@ export async function createShireWorld(canvas, { onLost, reduced = false } = {})
       }
       if (r.phase === 'sniff') A.shake = Math.max(A.shake, 0.03);
       riderLight.intensity = 6 + Math.sin(t * 2.3) * 1.5;
+    }
+
+    // ── the leaves on the ground ──
+    // (round Frodo and 4 m ahead the way he faces, where the camera looks;
+    // kicked by him, the dogs and the horse where they are this frame; not
+    // while he's in Bag End and the Shire's put away)
+    if (s.mode !== 'inside') {
+      leafFocus.x = h.x + Math.cos(h.face) * 4;
+      leafFocus.z = h.z - Math.sin(h.face) * 4;
+      leafWalkers.length = 0;
+      frodoWalks.x = h.x;
+      frodoWalks.z = h.z;
+      leafWalkers.push(frodoWalks);
+      for (let i = 0; i < dogs.length; i++) {
+        dogWalks[i].x = dogs[i].group.position.x;
+        dogWalks[i].z = dogs[i].group.position.z;
+        leafWalkers.push(dogWalks[i]);
+      }
+      if (rider.group.visible) {
+        riderWalks.x = rider.group.position.x;
+        riderWalks.z = rider.group.position.z;
+        leafWalkers.push(riderWalks);
+      }
+      leaves.update(dt, { focus: leafFocus, walkers: leafWalkers });
     }
 
     // ── markers, and the ring at your feet ──
