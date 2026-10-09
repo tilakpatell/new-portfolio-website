@@ -27,7 +27,7 @@
 // does (a walker: an AT-AT, an AT-ST, its legs going as it goes). `model:
 // false` builds it even where there's a model (a walker that should walk).
 //
-// site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still,
+// site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still, hang (metres: hung upside down, the feet that high),
 //   face, y (hovering: a probe droid), name, says: [line…] (a line: text,
 //   or [who, text]), voice (the voice their own lines are said in, where it
 //   isn't their name's: voicelines.js; `says` can be talk.js's tree, by
@@ -800,8 +800,9 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
           if (a.under != null && a.under !== dv.y < 0 && d < 500) water.splash(b.x, b.z, 1.4);
           a.under = dv.y < 0;
         }
-        a.holder.position.set(b.x, y, b.z);
-        a.holder.rotation.set(pitch, b.yaw, 0, 'YXZ');
+        // (one hung by the ankles, `hang` metres up: upside down, the feet at that height)
+        a.holder.position.set(b.x, spec.hang != null ? g + spec.hang : y, b.z);
+        a.holder.rotation.set(pitch, b.yaw, spec.hang != null ? Math.PI : 0, 'YXZ');
         if (a.fig) stepFigure(a, dt, d, you, e);
       }
     },
