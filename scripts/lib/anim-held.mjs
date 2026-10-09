@@ -17,10 +17,11 @@
 // its upper layer, else its animator's, looking whether its head's on
 // you) and move you
 // (window.__teleport(x, z, { face: { x, z } })); for each, you're put 1.5 m
-// off facing them, the prompt is read ([data-prompt], "E Talk · Name"), E is
-// pressed, and for half a second of world time the upper layer's clip and
-// the head's look are watched. A route without the hooks says so and is
-// skipped.
+// off facing them, the prompt is read (the [data-prompt] that names them,
+// "E Talk · Name", else the first), the key it names is pressed (E, or
+// the world's own: Dot Matrix's X), and for half a second of world time
+// the upper layer's clip and the head's look are watched. A route without
+// the hooks says so and is skipped.
 //
 //   heldVerdict(samples, { scale = 1 }) → { ok, worst, items }   (pure)
 //     samples: [{ id, kind, carry, grip, axis, up, arm, moving }] a frame
@@ -29,12 +30,22 @@
 //   swingOf(quats) → half the widest turn between any two (rad)  (pure)
 //   talkVerdict(sample) → { ok, at, why }                        (pure)
 //     sample: { prompt, frames: [{ t, upper, look }] }, t seconds of world
-//     time since E
+//     time since the key; the prompt "<key> Talk", its key its first word
+//   keyOf(prompt) → { key, code } | null: the key a prompt names, as a
+//     KeyboardEvent has it                                        (pure)
+//   promptFor(prompts, name) → { prompt, theirs, of }: the prompt whose
+//     words after the dot are `name`, else the first (theirs false); of:
+//     how many there were                                         (pure)
+//   emptyFails(opts, held, talk) → [why]: --held that sampled nothing and
+//     --talk that visited no one, unless opts.allowEmpty           (pure)
 //   sampleHeld(roots, up) → [{ id, kind, carry, grip, axis, up, arm, hips }]
 //     the held things under the roots now (in the page, and in the tests)
 //   heldPageScript() → the page's half as one script: window.__animHeld {
 //     start(), stop() → samples }
-//   talkCheck(page, { wait }) → { skipped } | { talkers: [{ id, name, … }] }
+//   talkCheck(page, { off }) → { skipped } | { talkers: [{ id, name, ok,
+//     at, why, prompt, theirs, prompts, key }] } (prompt: the one read;
+//     theirs: whether it named them; prompts: how many were up; key: the
+//     code pressed)
 
 export const HELD_LIMITS = { grip: 0.03, axis: (15 * Math.PI) / 180, swing: 0.25, up: (25 * Math.PI) / 180 };
 export const TALK_WITHIN = 0.5; // seconds of world time for the body to answer E
@@ -71,9 +82,33 @@ export function heldVerdict(samples, { scale = 1 } = {}) {
   return { ok: items.every((it) => it.ok), worst: { grip: most('grip'), axis: most('axis'), swing: most('swing'), up: most('up') }, items };
 }
 
+export function keyOf(prompt) {
+  const k = typeof prompt === 'string' ? prompt.trim().split(/\s+/)[0] : '';
+  if (!k) return null;
+  if (/^[a-z]$/i.test(k)) return { key: k.toLowerCase(), code: `Key${k.toUpperCase()}` };
+  if (/^\d$/.test(k)) return { key: k, code: `Digit${k}` };
+  return { key: k, code: k };
+}
+
+export function promptFor(prompts, name) {
+  const list = (prompts ?? []).filter((p) => typeof p === 'string' && p);
+  const named = list.find((p) => p.includes('·') && p.slice(p.indexOf('·') + 1).trim() === name);
+  return { prompt: named ?? list[0] ?? null, theirs: Boolean(named), of: list.length };
+}
+
+export function emptyFails(opts, held, talk) {
+  if (opts?.allowEmpty) return [];
+  const out = [];
+  if (opts?.held && !held?.items?.length) out.push('--held sampled nothing');
+  if (opts?.talk && !talk?.talkers?.length) out.push('--talk visited no one');
+  return out;
+}
+
 export function talkVerdict(sample) {
   const prompt = sample?.prompt ?? null;
-  if (!prompt || !/^E Talk\b/.test(prompt)) return { ok: false, at: null, why: prompt ? `the prompt says “${prompt}”` : 'no prompt' };
+  const key = prompt?.trim().split(/\s+/)[0] ?? '';
+  const talks = prompt && new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} Talk\\b`).test(prompt.trim());
+  if (!talks) return { ok: false, at: null, why: prompt ? `the prompt says “${prompt}”` : 'no prompt' };
   const hit = (sample.frames ?? []).find((f) => f.t <= TALK_WITHIN && f.upper && f.look);
   if (!hit) return { ok: false, at: null, why: `no clip on the upper layer and look within ${TALK_WITHIN} s of E` };
   return { ok: true, at: hit.t, why: null };
@@ -157,15 +192,23 @@ export async function talkCheck(page, { off = 1.5 } = {}) {
   if (!talkers) return { skipped: 'the route names no talkers (window.__talkers and window.__teleport)' };
   const out = [];
   for (const t of talkers) {
-    const sample = await page.evaluate(
-      async ({ t, off, within }) => {
+    const prompts = await page.evaluate(
+      async ({ t, off }) => {
         const frame = () => new Promise((r) => window.requestAnimationFrame(r));
         // beside them, facing them (from the side the world's origin is on, so not in a wall)
         const d = Math.hypot(t.x, t.z) || 1;
         window.__teleport(t.x - (t.x / d) * off, t.z - (t.z / d) * off, { face: { x: t.x, z: t.z } });
         for (let i = 0; i < 20; i++) await frame();
-        const prompt = document.querySelector('[data-prompt]')?.getAttribute('data-prompt') ?? null;
-        const key = (type) => window.dispatchEvent(new KeyboardEvent(type, { code: 'KeyE', key: 'e', bubbles: true }));
+        return [...document.querySelectorAll('[data-prompt]')].map((e) => e.getAttribute('data-prompt'));
+      },
+      { t, off },
+    );
+    const read = promptFor(prompts, t.name);
+    const press = keyOf(read.prompt) ?? { key: 'e', code: 'KeyE' };
+    const frames = await page.evaluate(
+      async ({ t, within, press }) => {
+        const frame = () => new Promise((r) => window.requestAnimationFrame(r));
+        const key = (type) => window.dispatchEvent(new KeyboardEvent(type, { code: press.code, key: press.key, bubbles: true }));
         key('keydown');
         await frame();
         key('keyup');
@@ -184,11 +227,11 @@ export async function talkCheck(page, { off = 1.5 } = {}) {
           const look = Boolean(p?.looking?.());
           frames.push({ t: world, upper, look });
         }
-        return { prompt, frames };
+        return frames;
       },
-      { t, off, within: TALK_WITHIN },
+      { t, within: TALK_WITHIN, press },
     );
-    out.push({ id: t.id, name: t.name, ...talkVerdict(sample), prompt: sample.prompt });
+    out.push({ id: t.id, name: t.name, ...talkVerdict({ prompt: read.prompt, frames }), prompt: read.prompt, theirs: read.theirs, prompts: read.of, key: press.code });
   }
   return { talkers: out };
 }

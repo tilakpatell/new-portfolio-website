@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { meshyRig, MESHY_BONES } from '../src/lib/three/meshyRig.fixture.js';
-import { analyse, atBindPose, BIND_EPS, browserPath, figureName, heldPageScript, heldTalkLines, heldVerdict, inView, LIMIT, lockstep, mul4, pageScript, parseArgs, phaseSpread, routeOf, sampleHeld, skinDeviation, report, swingOf, TALK_WITHIN, talkVerdict, toeDrift, toesOf, worldTimes } from './anim-check.mjs';
+import { analyse, atBindPose, BIND_EPS, browserPath, emptyFails, figureName, heldPageScript, heldTalkLines, heldVerdict, inView, keyOf, LIMIT, lockstep, mul4, pageScript, parseArgs, phaseSpread, promptFor, routeOf, sampleHeld, skinDeviation, report, swingOf, TALK_WITHIN, talkCheck, talkVerdict, toeDrift, toesOf, worldTimes } from './anim-check.mjs';
 
 // a toe's track, `fps` samples a second for `seconds`: at(t) → [x, y, z] or null (hidden)
 const track = (seconds, fps, at) => {
@@ -429,10 +429,83 @@ describe('--talk: E and the body’s answer', () => {
     expect(talkVerdict({ prompt: 'E Talk · Sam', frames: [{ t: 0.2, upper: 'talk', look: false }] }).ok).toBe(false);
   });
 
-  it('takes --held and --talk, and reports a route without talkers as skipped', () => {
+  it('reads the key from the prompt: another world’s letter is as good as E', () => {
+    const on = [{ t: 0.2, upper: 'talk', look: true }];
+    expect(talkVerdict({ prompt: 'X Talk · Mr Poopybutthole', frames: on }).ok).toBe(true);
+    expect(talkVerdict({ prompt: 'X Read · Sign', frames: on }).why).toMatch(/X Read/);
+    expect(keyOf('X Talk · Mr Poopybutthole')).toEqual({ key: 'x', code: 'KeyX' });
+    expect(keyOf('E Talk · Sam')).toEqual({ key: 'e', code: 'KeyE' });
+    expect(keyOf('5 Talk')).toEqual({ key: '5', code: 'Digit5' });
+    expect(keyOf('Enter Talk · Sam')).toEqual({ key: 'Enter', code: 'Enter' });
+    expect(keyOf(null)).toBe(null);
+  });
+
+  it('reads the prompt that names the talker, else the first, and says which', () => {
+    const prompts = ['E Go in · Door', 'E Talk · Sam', 'E Talk · Rosie'];
+    expect(promptFor(prompts, 'Rosie')).toEqual({ prompt: 'E Talk · Rosie', theirs: true, of: 3 });
+    expect(promptFor(prompts, 'Gaffer')).toEqual({ prompt: 'E Go in · Door', theirs: false, of: 3 });
+    expect(promptFor([], 'Sam')).toEqual({ prompt: null, theirs: false, of: 0 });
+  });
+
+  it('visits each talker, presses the key its prompt names and reports the prompt it read', async () => {
+    const pressed = [];
+    const said = new Map();
+    const g = globalThis;
+    const saved = { window: g.window, document: g.document, KeyboardEvent: g.KeyboardEvent };
+    g.KeyboardEvent = class {
+      constructor(type, o) {
+        Object.assign(this, o, { type });
+      }
+    };
+    let now = 0;
+    g.window = {
+      __talkers: () => [
+        { id: 'a', name: 'Rick', x: 3, z: 0, upper: () => (said.get('a') ? 'talk' : null), looking: () => said.has('a') },
+        { id: 'b', name: 'Morty', x: 0, z: 4, upper: () => null, looking: () => false },
+      ],
+      __teleport: () => {},
+      requestAnimationFrame: (f) => {
+        now += 50;
+        setTimeout(() => f(now), 0);
+      },
+      dispatchEvent: (e) => {
+        if (e.type === 'keydown') {
+          pressed.push(e.code);
+          if (e.code === 'KeyX') said.set('a', true);
+        }
+      },
+    };
+    g.document = { querySelectorAll: () => ['Morty', 'Rick'].map((n) => ({ getAttribute: () => `X Talk · ${n}` })) };
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    try {
+      const page = { evaluate: (fn, arg) => fn(arg) };
+      const out = await talkCheck(page);
+      expect(pressed).toEqual(['KeyX', 'KeyX']);
+      expect(out.talkers[0]).toMatchObject({ id: 'a', ok: true, prompt: 'X Talk · Rick', theirs: true });
+      expect(out.talkers[1]).toMatchObject({ id: 'b', ok: false, prompt: 'X Talk · Morty', theirs: true });
+      expect(heldTalkLines(null, out).at(-1)).toMatch(/FAIL Morty: .* \(read “X Talk · Morty”\)$/);
+    } finally {
+      Object.assign(g, saved);
+    }
+  });
+
+  it('says --held and --talk were not run when they sampled nothing, and fails them unless --allow-empty', () => {
+    expect(parseArgs(['--allow-empty'], {})).toMatchObject({ allowEmpty: true });
+    expect(parseArgs([], {})).toMatchObject({ allowEmpty: false });
+    const none = heldVerdict([]);
+    expect(heldTalkLines(none, { talkers: [] })).toEqual(['held: not run (nothing held was sampled)', 'talk: not run (no talkers)']);
+    const asked = { held: true, talk: true, allowEmpty: false };
+    expect(emptyFails(asked, none, { skipped: 'no hooks' })).toEqual(['--held sampled nothing', '--talk visited no one']);
+    expect(emptyFails({ ...asked, allowEmpty: true }, none, { skipped: 'no hooks' })).toEqual([]);
+    expect(emptyFails({ held: false, talk: false }, null, null)).toEqual([]);
+    const one = heldVerdict([{ id: 'a', kind: 'staff', carry: {}, grip: 0, axis: 0, up: 0, arm: null, moving: false }]);
+    expect(emptyFails(asked, one, { talkers: [{ name: 'Sam', ok: true, at: 0.2 }] })).toEqual([]);
+  });
+
+  it('takes --held and --talk, and reports a route without talkers as not run', () => {
     expect(parseArgs(['--held', '--talk'], {})).toMatchObject({ held: true, talk: true });
     expect(parseArgs([], {})).toMatchObject({ held: false, talk: false });
-    expect(heldTalkLines(null, { skipped: 'no hooks' })).toEqual(['talk: skipped (no hooks)']);
+    expect(heldTalkLines(null, { skipped: 'no hooks' })).toEqual(['talk: not run (no hooks)']);
     const lines = heldTalkLines(heldVerdict([{ id: 'a', kind: 'staff', carry: {}, grip: 0.05, axis: 0, up: 0, arm: null, moving: false }]), { talkers: [{ name: 'Sam', ok: true, at: 0.2 }] });
     expect(lines[1]).toMatch(/^ {2}OVER staff/);
     expect(lines.at(-1)).toBe('  ok   Sam: answered in 0.20 s');

@@ -1,17 +1,34 @@
 import { Document, NodeIO } from '@gltf-transform/core';
 import { describe, expect, it } from 'vitest';
-import { HELD } from '../src/lib/three/held.js';
+import * as THREE from 'three';
+import { HELD, handSkinCount, skinStep } from '../src/lib/three/held.js';
 import { strideOf } from '../src/lib/three/locomotion.js';
 import { meshyRig, withHands } from '../src/lib/three/meshyRig.fixture.js';
 import { findBones } from '../src/lib/three/rig.js';
 import { failing, rowOf, table } from './cast-audit.mjs';
 
-const lib = { findBones, strideOf, HELD };
+const lib = { findBones, strideOf, HELD, skinStep };
 
 // a figure as a GLB would have it, read back: the rig's bones, its hands'
-// skin (when it has hands), its walk
-async function glb({ without = [], verts = 60, walk = true } = {}) {
+// skin (when it has hands), its walk; `pad` more vertices on the hips, after
+// the hands' (a body)
+async function glb({ without = [], verts = 60, walk = true, pad = 0 } = {}) {
   const rig = withHands(meshyRig({ without }), { verts });
+  if (pad) {
+    const g = rig.hands.geometry;
+    const n = g.attributes.position.count;
+    const grow = (a, size, fill) => {
+      const out = new a.array.constructor((n + pad) * size).fill(0);
+      out.set(a.array);
+      for (let i = n; i < n + pad; i++) out[i * size] = fill;
+      return out;
+    };
+    const big = new THREE.BufferGeometry();
+    big.setAttribute('position', new THREE.Float32BufferAttribute(grow(g.attributes.position, 3, 0), 3));
+    big.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(grow(g.attributes.skinIndex, 4, 0), 4));
+    big.setAttribute('skinWeight', new THREE.Float32BufferAttribute(grow(g.attributes.skinWeight, 4, 1), 4));
+    rig.hands.geometry = big;
+  }
   const doc = new Document();
   const buffer = doc.createBuffer();
   const scene = doc.createScene();
@@ -50,7 +67,7 @@ async function glb({ without = [], verts = 60, walk = true } = {}) {
     }
   }
   const bytes = await new NodeIO().writeBinary(doc);
-  return { doc: await new NodeIO().readBinary(bytes), bytes: bytes.byteLength };
+  return { doc: await new NodeIO().readBinary(bytes), bytes: bytes.byteLength, rig };
 }
 
 describe('the cast audit', () => {
@@ -79,6 +96,26 @@ describe('the cast audit', () => {
     expect(bad[0].why).toMatch(/holds staff/);
     // (holding nothing, the same figure passes with its warning)
     expect(failing([{ ...row, holds: null }], lib)).toEqual([]);
+  });
+
+  it('counts a hand’s skin as held.js reads it: on a mesh of over 16,000 vertices, a sample', async () => {
+    const got = await glb({ pad: 16000 });
+    const row = rowOf({ name: 'troll', file: '/x/troll.glb', holds: 'staff' }, got, lib);
+    expect(row.handSkin.r).toBe(handSkinCount(got.rig.model, got.rig.bones.RightHand));
+    expect(row.handSkin.l).toBe(handSkinCount(got.rig.model, got.rig.bones.LeftHand));
+    expect(row.handSkin.r).toBe(30);
+    expect(row.warn).toContain('right hand skin 30');
+  });
+
+  it('a two-handed kind needs the other hand too', async () => {
+    const row = rowOf({ name: 'tusken', file: '/x/tusken.glb', holds: 'gaffi' }, await glb(), lib);
+    expect(failing([row], lib)).toEqual([]);
+    const one = { ...row, bones: { ...row.bones, handL: false } };
+    expect(failing([one], lib)).toEqual([{ name: 'tusken', why: 'holds gaffi, but its left hand can’t take it (no hand bone)' }]);
+    const thin = { ...row, handSkin: { r: 60, l: 12 }, forearm: { r: true, l: false } };
+    expect(failing([thin], lib)[0].why).toMatch(/holds gaffi, but its left hand can’t take it \(12 vertices, no forearm\)/);
+    // a one-handed kind asks nothing of the other
+    expect(failing([{ ...one, holds: 'staff' }], lib)).toEqual([]);
   });
 
   it('a hand with little skin but a forearm warns and passes; a missing file fails', async () => {

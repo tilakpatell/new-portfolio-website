@@ -10,16 +10,19 @@
 //
 // Exit 1 on a figure whose file is missing, or one the world says holds
 // something whose hand can't take it (under 40 vertices of skin and no
-// forearm to fall back on).
+// forearm to fall back on; both hands for a two-handed kind).
 //
-//   figureOf(doc) → { root, skins: [{ joints, counts }], clips }   (a GLB read by
-//     @gltf-transform, as three.js bones and clips; counts: per joint, the
-//     vertices skinned to it at 0.6 or more, as held.js reads a hand)
+//   figureOf(doc, skinStep) → { root, skins: [{ joints, counts }], clips }
+//     (a GLB read by @gltf-transform, as three.js bones and clips; counts:
+//     per joint, the vertices skinned to it at 0.6 or more, as held.js
+//     reads a hand: every skinStep(n)th of a primitive's n, held.js's own
+//     sample, so a hand that passes here gives a frame there; every one
+//     when no skinStep is given)
 //   rowOf(entry, got, lib) → a row: { name, file, bytes, bones, handSkin,
 //     clips, stride, holds, warn }. entry: { name, file, holds?, clips? }
 //     (clips: { idle, walk, run } the files beside it, if any); got: { doc,
 //     bytes, clipDocs: { idle, walk, run } }, a doc null when the file's
-//     missing; lib: { findBones, strideOf, HELD }
+//     missing; lib: { findBones, strideOf, HELD, skinStep } (held.js's)
 //   failing(rows, lib) → [{ name, why }]: the rows that fail the audit
 //   table(rows, world) → Markdown
 
@@ -50,7 +53,7 @@ function floats(acc) {
   return Float32Array.from(a, (v) => Math.max(v / max, -1));
 }
 
-export function figureOf(doc) {
+export function figureOf(doc, skinStep = () => 1) {
   const root = new THREE.Group();
   const made = new Map();
   const skinned = new Set();
@@ -82,7 +85,8 @@ export function figureOf(doc) {
       const ji = J.getArray();
       const w = floats(W);
       const n = J.getCount();
-      for (let i = 0; i < n; i++) {
+      const step = skinStep(n);
+      for (let i = 0; i < n; i += step) {
         const per = new Map();
         for (let k = 0; k < 4; k++) per.set(ji[i * 4 + k], (per.get(ji[i * 4 + k]) ?? 0) + w[i * 4 + k]);
         for (const [j, sum] of per) if (sum >= FIRM && j < counts.length) counts[j]++;
@@ -129,13 +133,13 @@ function strideFrom(fig, walk, toes, strideOf) {
   }
 }
 
-export function rowOf(entry, got, { findBones, strideOf }) {
+export function rowOf(entry, got, { findBones, strideOf, skinStep }) {
   const row = { name: entry.name, file: entry.file, bytes: got.bytes ?? 0, bones: { hips: false, handR: false, handL: false, toes: false, head: false }, handSkin: { r: 0, l: 0 }, forearm: { r: false, l: false }, clips: { own: [], borrowed: false }, stride: false, holds: entry.holds ?? null, warn: [] };
   if (!got.doc) {
     row.warn.push('missing file');
     return row;
   }
-  const fig = figureOf(got.doc);
+  const fig = figureOf(got.doc, skinStep);
   const { bones } = findBones(fig.root);
   row.bones = { hips: Boolean(bones.hips), handR: Boolean(bones.handR), handL: Boolean(bones.handL), toes: Boolean(bones.toeL && bones.toeR), head: Boolean(bones.head) };
   row.handSkin = { r: skinOn(fig, bones.handR), l: skinOn(fig, bones.handL) };
@@ -171,9 +175,13 @@ export function failing(rows, { HELD = {} } = {}) {
       continue;
     }
     if (!r.holds) continue;
-    const side = HELD[r.holds]?.hand === 'left' ? 'l' : 'r';
-    const hand = side === 'r' ? r.bones.handR : r.bones.handL;
-    if (!hand || (r.handSkin[side] < MIN_SKIN && !r.forearm[side])) out.push({ name: r.name, why: `holds ${r.holds}, but its ${side === 'r' ? 'right' : 'left'} hand can't take it (${hand ? `${r.handSkin[side]} vertices, no forearm` : 'no hand bone'})` });
+    const kind = HELD[r.holds];
+    const first = kind?.hand === 'left' ? 'l' : 'r';
+    const sides = kind?.hands === 2 ? [first, first === 'r' ? 'l' : 'r'] : [first];
+    for (const side of sides) {
+      const hand = side === 'r' ? r.bones.handR : r.bones.handL;
+      if (!hand || (r.handSkin[side] < MIN_SKIN && !r.forearm[side])) out.push({ name: r.name, why: `holds ${r.holds}, but its ${side === 'r' ? 'right' : 'left'} hand can’t take it (${hand ? `${r.handSkin[side]} vertices, no forearm` : 'no hand bone'})` });
+    }
   }
   return out;
 }
@@ -246,8 +254,8 @@ async function main() {
     const load = (p) => vite.ssrLoadModule(p);
     const { findBones } = await load('/src/lib/three/rig.js');
     const { strideOf } = await load('/src/lib/three/locomotion.js');
-    const { HELD } = await load('/src/lib/three/held.js');
-    const lib = { findBones, strideOf, HELD };
+    const { HELD, skinStep } = await load('/src/lib/three/held.js');
+    const lib = { findBones, strideOf, HELD, skinStep };
     const rows = [];
     for (const e of await manifest(world, load)) {
       const doc = await read(e.file);
