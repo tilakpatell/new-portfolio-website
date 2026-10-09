@@ -62,7 +62,6 @@ export const DEAD_HITSTOP = [
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
   { file: 'cybertron/game/rules.js', pattern: /input\.jump && p\.mode === 'robot' && p\.grounded/ },
-  { file: 'avengers/world/rules.js', pattern: /function stepGround\(h, \{[^}]*\bjump\b/ },
   { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
   { file: 'rickmorty/world/rules.js', pattern: /vy = move\.jump \? MORTY\.jump/ },
