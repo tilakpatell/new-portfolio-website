@@ -378,6 +378,17 @@ describe('createSounds', () => {
     expect(a.sources().length).toBeGreaterThan(quiet);
   });
 
+  it('thumps a hurt at your ear, and nothing for a hurt of no weight', () => {
+    const a = fakeAudio();
+    const s = createSounds(a.bus, a.ctx);
+    s.update(near);
+    const quiet = a.sources().length;
+    s.hurt(0);
+    expect(a.sources().length).toBe(quiet);
+    s.hurt(0.6);
+    expect(a.sources().length).toBeGreaterThan(quiet);
+  });
+
   it('opens a sliding door with a hiss, and an arch with nothing', () => {
     const a = fakeAudio();
     const s = createSounds(a.bus, a.ctx);
