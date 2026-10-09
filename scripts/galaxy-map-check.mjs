@@ -3,7 +3,8 @@
 //   BASE=http://127.0.0.1:5188 OUT=/tmp/map node scripts/galaxy-map-check.mjs
 // It starts nothing itself. Opens #/galaxy, flies the X-wing, presses M, and at 1440x900, 1280x720 and 390x844 (the suite,
 // galaxy-map-check/suite.mjs) and then at phone widths (phone.mjs: 375x667 with the side panel, 375x667, 390x844 and 360x640 with
-// a touch screen's zoom buttons, 360x640). Shared parts are in galaxy-map-check/lib.mjs.
+// a touch screen's zoom buttons, 360x640). Shared parts are in galaxy-map-check/lib.mjs, the controls' checks (the find, Escape,
+// double clicks, the picked system's marks) in controls.mjs.
 //   names: no two system names meet, none is out of the map, none is over another system's dot (whole, zoomed in twice over Hoth,
 //     framed on Endor; on a desktop window none at all, on a phone a graze of up to 3 px, each listed: Hoth's, Bespin's, Mustafar's
 //     and Nevarro's dots are a few px apart and no place round Bespin's is clear at 360 px); none is under the strip's board, the
@@ -14,15 +15,22 @@
 //     reduced motion nothing is eased
 //   header: the title, era chips, Films, find and close buttons meet nowhere and sit inside the frame; the Films panel, a popover
 //     that may cover the map's controls while open, is shut by a press on the map outside it, the zoom buttons pressable again
-//   find: "endo" + Enter picks Endor and has it on view; J then jumps; a YOU tag on the system you're at
+//   find: "endo" + Enter picks Endor and has it on view; J then jumps; a YOU tag on the system you're at; the list is plain buttons
+//     (no listbox or option roles), says "No system called" for none, and is shut by Escape (which empties the field), a press
+//     outside it and Tab out of it (controls.mjs)
 //   zoom: the wheel zooms about the pointer, + - 0, a drag (pressed on a system's button, checked) pans and never picks the
-//     system it starts on or ends over; Tab through the systems zoomed in keeps the box from scrolling and frames each one
+//     system it starts on or ends over; Tab through the systems zoomed in keeps the box from scrolling and brings each one into
+//     view at the zoom the map has; the cursor is a grab only once zoomed; the whole-galaxy button is aria-disabled, not
+//     disabled, and keeps the focus
+//   pick: the picked system has a ring and a brighter dot, and the panel's details read "More about <name>"; the second press of a
+//     double click landing on another system picks it and starts no jump
 //   panels: the layers (and the chip on a phone), the era chips dim what isn't of the era, the films' panel (Escape shuts it,
 //     not the map), the key (a wheel over it scrolls it and not the page behind; on a phone it sits under the zoom row), the side
 //     panel's wheel, the hover card staying inside the map, the side panel on a short phone still showing the jump
 //   phone: the zoom buttons a row in the top right corner (36 px; on touch 44 over a 337 px map, 40 over 327, else 36), clear of
 //     the strip's title and the names
-//   keys: M (held, too) and Escape close it, / finds
+//   keys: M (held, too) and Escape close it, / finds; Escape shuts the innermost open thing first: the find's list, the films' panel,
+//     the key, a phone's layers, and then the map; a film's pick leaves the focus on the Films chip
 //   sharp: zoomed in to k=3.4, the stage is as sharp as without will-change
 // Prints a line per check, ok or FAIL, and exits 1 on any FAIL. Shots are in OUT (map-<size>-<what>.png).
 import { browser, check, problems } from './galaxy-map-check/lib.mjs';

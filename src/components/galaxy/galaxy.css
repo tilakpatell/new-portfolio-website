@@ -281,7 +281,9 @@
 .holomap-find { position: relative; margin-left: auto; }
 .holomap-find input { width: min(260px, 42vw); padding: 0.4rem 0.75rem; border: 1px solid rgb(127 214 255 / 0.35); border-radius: 999px; background: rgb(2 8 20 / 0.9); color: #fff; font-size: 0.82rem; }
 .holomap-find input:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 1px; }
-.holomap-find-list { position: absolute; z-index: 6; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 0.3rem; list-style: none; border: 1px solid rgb(127 214 255 / 0.3); border-radius: 12px; background: rgb(2 6 16 / 0.97); }
+.holomap-find-list { position: absolute; z-index: 6; top: calc(100% + 4px); left: 0; right: 0; padding: 0.3rem; border: 1px solid rgb(127 214 255 / 0.3); border-radius: 12px; background: rgb(2 6 16 / 0.97); }
+.holomap-find-list ul { margin: 0; padding: 0; list-style: none; }
+.holomap-find-none { margin: 0; padding: 0.35rem 0.5rem; color: rgb(217 243 255 / 0.75); font-size: 0.78rem; }
 .holomap-find-list button { display: flex; justify-content: space-between; gap: 0.5rem; width: 100%; padding: 0.35rem 0.5rem; border-radius: 8px; color: var(--c); font-size: 0.82rem; text-align: left; }
 .holomap-find-list button span { color: rgb(217 243 255 / 0.6); font-size: 0.72rem; }
 .holomap-find-list button:hover, .holomap-find-list button:focus-visible { background: rgb(127 214 255 / 0.12); }
@@ -331,7 +333,8 @@
 /* ── Zoom and pan (useMapView.js): the stage holds everything that moves with
    the map and is drawn at the view's k, x and y (mapView.js), from its top-left;
    the war's strip and key, and the zoom buttons, sit over it and stay put ── */
-.holomap-map { touch-action: none; cursor: grab; }
+.holomap-map { touch-action: none; }
+.holomap-map[data-zoomed] { cursor: grab; } /* (there's nothing to drag at the whole galaxy: the cursor says so) */
 .holomap-map[data-zoomed]:active { cursor: grabbing; }
 /* The view's three numbers are registered, so a transition can ease them: the stage's transform and the counter-scale
    of every name, crest and tag read the same eased value on the same frame (easing the transform alone left the
@@ -367,7 +370,7 @@
   color: #d9f3ff;
   font-size: 1.1rem;
 }
-.holomap-zoom button:disabled { opacity: 0.4; }
+.holomap-zoom button[aria-disabled='true'] { opacity: 0.4; cursor: default; } /* (not :disabled: a disabled button drops the focus it has when it's pressed) */
 @media (pointer: coarse) {
   .holomap-zoom button { width: 44px; height: 44px; }
 }
@@ -488,6 +491,9 @@
   .holomap-systems > li { transition: none; }
 }
 .holomap-system[aria-pressed='true'] .holomap-name { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }
+/* the picked system: its dot brighter (a white core, a fuller glow) and a ring of its own colour round it, outside the war's (warmap.css) */
+.holomap-system[aria-pressed='true'] .holomap-dot { background: radial-gradient(circle, #fff 0 3px, var(--c) 3.5px 5px, color-mix(in srgb, var(--c) 45%, transparent) 6px, transparent 8px); }
+.holomap-system[aria-pressed='true']::before { content: ''; position: absolute; inset: -6px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 12px 1px color-mix(in srgb, var(--c) 70%, transparent); pointer-events: none; }
 .holomap-system:is(:hover, :focus-visible) .holomap-name { color: var(--c); }
 .holomap-pilots {
   display: grid;

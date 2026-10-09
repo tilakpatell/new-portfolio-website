@@ -49,3 +49,11 @@ export function frameUnits(points, { size = 21, margin = 1.6, kMax = 3 } = {}) {
   const cz = (z0 + z1) / 2 / size;
   return clampView({ k, x: 0.5 - k * cx, y: 0.5 - k * cz });
 }
+
+// the view with a map point in the middle of the box, at the zoom it has (or `kMin`, when that's less: a point is only worth
+// centring on once there's a view to move); the square still covers the box, so a point near its edge is as near the middle as that
+// allows
+export function centreOn(v, [px, pz], { size = 21, kMin = K_MIN } = {}) {
+  const k = clamp(Math.max(v.k, kMin), K_MIN, K_MAX);
+  return clampView({ k, x: 0.5 - (k * px) / size, y: 0.5 - (k * pz) / size });
+}

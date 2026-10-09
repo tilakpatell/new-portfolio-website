@@ -15,7 +15,7 @@ import { onView } from './mapView';
 import { LAYERS, LAYERS_KEY, LAYER_LABEL, readLayers, warForEra } from './mapLayers';
 import { estimateWidth, hangOf, placeLabels, sideOf } from './labelPlace';
 import { REGION_FONT, regionAngle, regionNamesShown, unknownNameX } from './regionNames';
-import { findSystems, mapKeyAction } from './mapKeys';
+import { courseOf, findSystems, mapKeyAction, pickAction, seedPick } from './mapKeys';
 import { useMapView } from './useMapView';
 import { local } from '../../lib/hooks';
 import './warmap.css';
@@ -55,12 +55,14 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // is its own stacking context).
 //
 // It has its own keys (mapKeys.js, taken at the window's capture): M or
-// Escape close it (Escape shuts the films' panel first, when that's open), /
-// goes to the find field in its header (a system by name: it picks it and
-// frames the course), J jumps to the course, + − 0 zoom (a held M acts once:
-// its repeats neither close the map nor open it again). The mouse over a
-// system shows a card for it, to the dot's left where the right would run out
-// of the map; onCourse tells the page which system is the course.
+// Escape close it (Escape shuts the innermost open thing first: the find's
+// list, the films' panel, the key, a phone's layers), / goes to the find
+// field in its header (a system by name: it picks it and frames the course),
+// J jumps to the course, + − 0 zoom (a held M acts once: its repeats neither
+// close the map nor open it again). The mouse over a system shows a card for
+// it, to the dot's left where the right would run out of the map; onCourse
+// tells the page which system is the course when it changes, and `course`,
+// the one the page kept, is the pick the map opens with.
 //
 // It zooms and pans (useMapView.js, on mapView.js's view): the wheel zooms
 // about the pointer, a drag pans, two fingers pinch, the buttons zoom about
@@ -178,28 +180,36 @@ const unknown = (() => {
   return pts.map(([x, z], i) => `${i ? 'L' : 'M'}${x.toFixed(3)} ${z.toFixed(3)}`).join(' ') + 'Z';
 })();
 
-export default function HoloMap({ current, online, onJump, onClose, onLeave, oath = { war: 'gcw', side: null, sworn: 0, turncoat: false }, oaths = {}, suggested = null, onSwear, onTheatre, onCourse }) {
+export default function HoloMap({ current, online, onJump, onClose, onLeave, oath = { war: 'gcw', side: null, sworn: 0, turncoat: false }, oaths = {}, suggested = null, onSwear, onTheatre, onCourse, course = null }) {
   const here = systemById(current);
-  const [pick, setPick] = useState(null);
+  // the course the page keeps (it stays when the map closes) is the pick when the map opens, unless it's where you are
+  const [pick, setPick] = useState(() => seedPick(course, current, SYSTEMS));
   const [era, setEra] = useState('all');
   const [film, setFilm] = useState(null);
   // what the map draws (mapLayers.js), each switch kept in this browser (on a
   // small map they fold behind a chip, so they don't cover the names)
   const [layers, setLayersState] = useState(() => readLayers(local.get(LAYERS_KEY)));
   const [layersOpen, setLayersOpen] = useState(false);
-  const toggle = (id) =>
-    setLayersState((l) => {
-      const next = { ...l, [id]: !l[id] };
-      local.set(LAYERS_KEY, next);
-      return next;
-    });
-  // the films' panel: shut by a pick, an era chip, Escape inside it, or a press anywhere outside it
+  const toggle = (id) => {
+    const next = { ...layers, [id]: !layers[id] };
+    local.set(LAYERS_KEY, next); // (not in the state's updater: it can run twice)
+    setLayersState(next);
+  };
+  const [keyOpen, setKeyOpen] = useState(false); // (the war's key)
+  // the films' panel: shut by a pick, an era chip, Escape inside it, or a press anywhere outside it (and the find's list the same)
   const films = useRef(null);
   const shutFilms = () => films.current && (films.current.open = false);
+  // (a film's pick shuts the panel its button was in: the focus goes to the chip that opened it, not to nothing)
+  const pickFilm = (id) => {
+    setFilm((f) => (f === id ? null : id));
+    shutFilms();
+    films.current?.querySelector('summary')?.focus();
+  };
   useEffect(() => {
     const away = (e) => {
       const el = films.current;
       if (el?.open && !el.contains(e.target)) el.open = false;
+      if (!findBox.current?.contains(e.target)) setListOpen(false); // (and the find's list, with the words left in its field)
     };
     document.addEventListener('pointerdown', away);
     return () => document.removeEventListener('pointerdown', away);
@@ -211,6 +221,8 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const find = useRef(null);
   const jumpBtn = useRef(null);
   const [q, setQ] = useState('');
+  const [listOpen, setListOpen] = useState(false); // (the find's matches: shown while the field has focus and words in it)
+  const findBox = useRef(null);
   const [hover, setHover] = useState(null); // (the system the mouse is over: its card)
   const picked = pick ? systemById(pick) : null;
   // the course to it: along the lanes where they join, straight where they don't (and where its tag goes: the middle)
@@ -378,21 +390,29 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     const s = systemById(id);
     if (s && here && (!onView(mv.view, s.pos) || !onView(mv.view, here.pos))) mv.frame([s.pos, here.pos]);
   };
-  // Tab to a system that's off the view brings it into view (a click on one never does: it's already there)
+  // Tab to a system that's off the view brings it into view, at the zoom the map has (a click on one never does: it's already there)
   const reveal = (sys, e) => {
-    if (e.currentTarget.matches(':focus-visible') && !onView(mv.view, sys.pos)) mv.frame([sys.pos]);
+    if (mv.view.k > 1.01 && e.currentTarget.matches(':focus-visible') && !onView(mv.view, sys.pos)) mv.reveal(sys.pos);
   };
   // pick a system to plot a course to it, then again to jump; the one you're
-  // at shows its own card (no course to plot), and again the war's
+  // at shows its own card (no course to plot), and again the war's. (A
+  // double click is this twice, so it jumps only if the second press lands on
+  // the system the first picked: the map can have moved under the pointer.)
   const choose = (id) => {
-    if (pick !== id) plot(id);
-    else if (id === current) setPick(null);
+    const act = pickAction(pick, id, current);
+    if (act === 'pick') plot(id);
+    else if (act === 'clear') setPick(null);
     else onJump(id);
   };
   const away = picked && picked.id !== current;
-  // (the page is told which system is the course, or none: its flight HUD can show it)
+  // (the page is told which system is the course, or none: its flight HUD can show it. Only when it changes from what it has: the
+  // map opening on the course the page keeps tells it nothing, and a kept course that's where you are now is cleared)
+  const told = useRef(course);
   useEffect(() => {
-    onCourse?.(pick && pick !== current ? pick : null);
+    const now = courseOf(pick, current);
+    if (now === told.current) return;
+    told.current = now;
+    onCourse?.(now);
   }, [pick, current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // a find picks the system (it never jumps: a second find of the one picked would, through choose) and
@@ -400,26 +420,41 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const matches = findSystems(q, SYSTEMS);
   const go = (s) => {
     setQ('');
+    setListOpen(false);
     setPick(s.id);
     mv.frame(here ? [s.pos, here.pos] : [s.pos]);
     setTimeout(() => jumpBtn.current?.focus(), 0);
   };
 
-  // the map's own keys (mapKeys.js): M or Escape close it, / finds, J jumps, + − 0 zoom. They're taken at
-  // the window's capture, before the page's and the scene's (which stand down for a modal anyway), so the
-  // films' panel is looked at here: Escape shuts it first, and the map stays
+  // the map's own keys (mapKeys.js): M closes it; Escape shuts the innermost open thing (the find's list, the films' panel, the key, a
+  // phone's layers) and then it; / finds, J jumps, + − 0 zoom. They're taken at the window's capture, before the page's and the
+  // scene's (which stand down for a modal anyway), so what's open is looked at here
   useEffect(() => {
     const onKey = (e) => {
       const el = e.target;
       if (el instanceof Element && el.closest('[aria-modal="true"]:not(.holomap)')) return; // (the guide's or the palette's own)
       const typing = el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-      const act = mapKeyAction({ key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, repeat: e.repeat }, { typing, canJump: Boolean(picked && picked.id !== current), filmsOpen: Boolean(films.current?.open) });
+      const chip = box.current?.querySelector('.holomap-layers-toggle'); // (the layers' switches fold behind it on a small map only)
+      const act = mapKeyAction(
+        { key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, repeat: e.repeat },
+        { typing, canJump: Boolean(picked && picked.id !== current), findOpen: listOpen && q.trim() !== '', filmsOpen: Boolean(films.current?.open), keyOpen, layersOpen: layersOpen && Boolean(chip?.getClientRects().length) },
+      );
       if (!act) return;
       e.preventDefault();
       e.stopPropagation();
-      if (act === 'closeFilms') {
+      if (act === 'clearFind') {
+        setQ('');
+        setListOpen(false);
+        find.current?.focus();
+      } else if (act === 'closeFilms') {
         shutFilms();
         films.current?.querySelector('summary')?.focus();
+      } else if (act === 'closeKey') {
+        setKeyOpen(false);
+        box.current?.querySelector('.holomap-legend-toggle')?.focus();
+      } else if (act === 'closeLayers') {
+        setLayersOpen(false);
+        chip?.focus();
       } else if (act === 'close') onClose();
       else if (act === 'find') (find.current?.focus(), find.current?.select());
       else if (act === 'jump') {
@@ -430,12 +465,16 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [picked, current, onClose, onJump]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [picked, current, onClose, onJump, q, listOpen, keyOpen, layersOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const pct = (v) => `${(v / SIZE) * 100}%`;
   const unitPx = (boxPx * mv.view.k) / SIZE; // (screen px per map unit)
   const regionFont = REGION_FONT / unitPx; // (11.5 px on screen at any zoom)
   const regionShown = regionNamesShown(REGIONS, unitPx); // (the ones with the room: the inner ones as you zoom)
   const wide = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(min-width: 761px)').matches); // (the panel's rest is open where there's room)
+  // (focus leaving the find for another control shuts its list; a press on a button in it has none yet, in Safari, so it's let be)
+  const leaveFind = (e) => {
+    if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setListOpen(false);
+  };
   const hovered = hover ? systemById(hover) : null;
   const hoveredRow = hovered ? war.byId[hovered.id] : null;
   // the hover card sits to the right of the dot, and to its left where it'd run out of the map
@@ -459,14 +498,15 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
               Plot a course
             </h2>
           </div>
-          <div className="holomap-find">
+          <div ref={findBox} className="holomap-find" onBlur={leaveFind}>
             <input
               ref={find}
               type="search"
               aria-label="Find a system"
               placeholder="Find a system  /"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => (setQ(e.target.value), setListOpen(true))}
+              onFocus={() => setListOpen(true)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && matches[0]) {
                   e.preventDefault();
@@ -474,16 +514,24 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                 }
               }}
             />
-            {matches.length > 0 && (
-              <ul className="holomap-find-list" role="listbox" aria-label="Systems found">
-                {matches.map((s) => (
-                  <li key={s.id} role="presentation">
-                    <button type="button" role="option" aria-selected="false" onClick={() => go(s)} style={{ '--c': s.accent }}>
-                      {s.name} <span>{s.region}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            {listOpen && q.trim() !== '' && (
+              <div className="holomap-find-list">
+                {matches.length > 0 ? (
+                  <ul aria-label="Systems found">
+                    {matches.map((s) => (
+                      <li key={s.id}>
+                        <button type="button" onClick={() => go(s)} style={{ '--c': s.accent }}>
+                          {s.name} <span>{s.region}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="holomap-find-none" role="status">
+                    No system called “{q.trim()}”
+                  </p>
+                )}
+              </div>
             )}
           </div>
           <button ref={close} type="button" className="holomap-close" onClick={onClose} aria-label="Close the galaxy map">
@@ -515,7 +563,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   type="button"
                   aria-pressed={film === id}
                   style={{ '--era': eraById(FILMS[id].era).color }}
-                  onClick={() => (setFilm(film === id ? null : id), shutFilms())}
+                  onClick={() => pickFilm(id)}
                   title={`${filmLabel(id)} · ${yearLabel(FILMS[id].year)}`}
                 >
                   {filmShort(id)} <span>{filmLabel(id)}</span>
@@ -529,7 +577,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
           <div ref={box} className="holomap-map" data-zoomed={mv.view.k > 1.01 || undefined} data-fronts={layers.fronts || undefined} {...mv.handlers}>
             {/* the war at a glance, and its key (they stay put while the map moves) */}
             <WarStrip table={war} fighting={oath.war} />
-            <WarLegend war={view} />
+            <WarLegend war={view} open={keyOpen} onToggle={setKeyOpen} />
             <div className="holomap-layers" data-open={layersOpen || undefined}>
               <button type="button" className="holomap-layers-toggle" aria-expanded={layersOpen} aria-controls="holomap-layers-set" onClick={() => setLayersOpen((o) => !o)}>
                 <RiStackLine aria-hidden="true" /> Layers
@@ -629,7 +677,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   const you = row && fought.has(s.id);
                   return (
                   <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-place={sideOf(places[s.id])} data-hang={hangOf(places[s.id])} data-badge={row ? badges[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
-                    <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onFocus={(e) => reveal(s, e)} onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(s.id)} onPointerLeave={() => setHover(null)} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? systemLabel(row, now, you) : undefined}>
+                    <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onFocus={(e) => reveal(s, e)} onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(s.id)} onPointerLeave={() => setHover(null)} onClick={() => choose(s.id)} aria-label={row ? systemLabel(row, now, you) : undefined}>
                       <span className="holomap-dot" aria-hidden="true">
                         {you && <i className="holomap-you" />}
                       </span>
@@ -674,7 +722,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
               <button type="button" onClick={mv.zoomOut} aria-label="Zoom out" title="Zoom out (−)">
                 −
               </button>
-              <button type="button" onClick={mv.fit} aria-label="Show the whole galaxy" title="The whole galaxy (0)" disabled={mv.view.k <= 1.01}>
+              <button type="button" onClick={mv.fit} aria-label="Show the whole galaxy" title="The whole galaxy (0)" aria-disabled={mv.view.k <= 1.01 || undefined}>
                 <RiFullscreenExitLine aria-hidden="true" />
               </button>
             </div>
@@ -721,7 +769,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   </dl>
                 )}
                 <details className="holomap-more" open={wide}>
-                  <summary>Era, mission, war</summary>
+                  <summary>More about {picked.name}</summary>
                   <p className="holomap-meta">
                     {eraById(eraOf(picked)).name} · {picked.films.map((f) => FILMS[f].episode ?? FILMS[f].title).join(', ')}
                   </p>

@@ -131,7 +131,7 @@ export const PAGES = {
   },
   '/galaxy': {
     about: ABOUT['/galaxy'],
-    keys: [{ label: 'Flying', rows: [...fly(POWERS), ['M', 'The galaxy map: plot a course'], ['J', 'Jump to lightspeed, to the star on your nose'], ['E / Enter', 'Land on the planet (or board the Death Star)']] }, { label: 'On the galaxy map', rows: [['M', 'Close the galaxy map'], ['/', 'Find a system'], ['J', 'Jump to the course you plotted'], ['+ − 0', 'Zoom in, out, the whole galaxy; drag to pan']] }],
+    keys: [{ label: 'Flying', rows: [...fly(POWERS), ['M', 'The galaxy map: plot a course'], ['J', 'Jump to lightspeed, to the star on your nose'], ['E / Enter', 'Land on the planet (or board the Death Star)']] }, { label: 'On the galaxy map', rows: [['M / Esc', 'Close the galaxy map'], ['/', 'Find a system'], ['J', 'Jump to the course you plotted'], ['+ − 0', 'Zoom in, out, the whole galaxy; drag to pan']] }],
     touch: [{ rows: [['Drag', 'Fly'], ['Tap', 'A star’s name to plot a course'], ['Jump', 'Lightspeed, to the star on your nose'], ['Power', 'Your crew’s power'], ['Big one', 'Once your kills have charged it']] }],
     tips: [
       ['Jumping', 'Turn the nose toward a star and its name comes up; press J, or fly out of the system toward it. The galaxy map (M) filters by era or film, and its layers switch off what you don’t need.'],

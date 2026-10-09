@@ -1,13 +1,12 @@
-import { useState } from 'react';
 import { RiCloseLine, RiInformationLine } from 'react-icons/ri';
 import Emblem from './Emblem';
 import { SIDES, WARS } from './sides';
 import { whose } from './warText';
 
 // The holotable's key to its war (WarLayers.jsx and the systems' rings),
-// shut till it's asked for: a picture of each mark in the shown war's own
-// colours, and what it means, in three groups: the systems', the war's and
-// the routes'.
+// shut till it's asked for (HoloMap.jsx keeps whether it's open, so Escape
+// can shut it): a picture of each mark in the shown war's own colours, and
+// what it means, in three groups: the systems', the war's and the routes'.
 
 // a mark's picture, 28 by 14
 const Mark = ({ children }) => (
@@ -16,8 +15,7 @@ const Mark = ({ children }) => (
   </svg>
 );
 
-export default function WarLegend({ war }) {
-  const [open, setOpen] = useState(false);
+export default function WarLegend({ war, open = false, onToggle }) {
   const w = WARS[war];
   const lib = SIDES[w.liberator];
   const raid = SIDES[w.raider];
@@ -148,7 +146,7 @@ export default function WarLegend({ war }) {
   ];
   return (
     <div className="holomap-legend" data-open={open || undefined}>
-      <button type="button" className="holomap-legend-toggle" aria-expanded={open} aria-controls="holomap-legend-panel" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="holomap-legend-toggle" aria-expanded={open} aria-controls="holomap-legend-panel" onClick={() => onToggle?.(!open)}>
         {open ? <RiCloseLine aria-hidden="true" /> : <RiInformationLine aria-hidden="true" />} {open ? 'Close the key' : 'Key'}
       </button>
       <div id="holomap-legend-panel" className="holomap-legend-panel" hidden={!open}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FIT, K_MAX, clampView, frameUnits, onView, panBy, toBox, zoomAt } from './mapView';
+import { FIT, K_MAX, centreOn, clampView, frameUnits, onView, panBy, toBox, zoomAt } from './mapView';
 
 describe('mapView', () => {
   it('keeps the point under the cursor where it was when it zooms', () => {
@@ -37,5 +37,23 @@ describe('mapView', () => {
     const v = { k: 2, x: -0.5, y: 0 };
     expect(toBox(v, [10.5, 0])[0]).toBeCloseTo(0.5);
     expect(onView(v, [1, 1])).toBe(false);
+  });
+  it('centres on a point at the zoom it has, and zooms in only as far as kMin', () => {
+    const v = { k: 2.5, x: -0.2, y: -0.1 };
+    const c = centreOn(v, [10, 8]);
+    expect(c.k).toBe(2.5); // (not a jump to a framing zoom)
+    expect(toBox(c, [10, 8])[0]).toBeCloseTo(0.5);
+    expect(toBox(c, [10, 8])[1]).toBeCloseTo(0.5);
+    // from the whole map: kMin
+    const z = centreOn(FIT, [10, 8], { kMin: 1.5 });
+    expect(z.k).toBe(1.5);
+    expect(toBox(z, [10, 8])[0]).toBeCloseTo(0.5);
+    expect(centreOn(FIT, [10, 8]).k).toBe(1);
+    expect(centreOn({ k: 1.7, x: 0, y: 0 }, [3, 3], { kMin: 1.5 }).k).toBe(1.7);
+    // a point near the edge: as near the middle as the square allows, and on view
+    const e = centreOn({ k: 2, x: 0, y: 0 }, [0.5, 20.5]);
+    expect(e.x).toBe(0);
+    expect(e.y).toBe(-1);
+    expect(onView(e, [0.5, 20.5], { pad: 0.01 })).toBe(true);
   });
 });

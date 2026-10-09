@@ -2,6 +2,7 @@
 // The galaxy map check's whole suite for a window of a given size (scripts/galaxy-map-check.mjs): names, zoom and drag, find,
 // layers, eras and films, Tab, the key and the side panel's wheel, the hover card, sharpness, the M key, the jump. See the
 // runner's header for the list.
+import { cursorFor, doubleClickElsewhere, escapeOrder, findList, fitButton, pickedMarks } from './controls.mjs';
 import { PHONE_GRAZE, check, dotsCheck, easedNames, edgeEnergy, hasMap, headerAndFilms, J, namesProblems, open, out, overlayProblems, settle, smallText, still } from './lib.mjs';
 
 export const suite = async (viewport, { full = true } = {}) => {
@@ -50,6 +51,8 @@ export const suite = async (viewport, { full = true } = {}) => {
   small.push(...(await smallText(page)));
   say(small.length === 0, `nothing under 0.7 rem (11.2 px)${small.length ? `: ${[...new Set(small)].slice(0, 5).join('; ')}` : ''}`);
   await page.locator('.holomap-legend-toggle').click();
+  await settle(page, 300);
+  await escapeOrder(page, say);
   await settle(page, 300);
 
   // ── zoom: the wheel about the pointer, twice over Hoth ──
@@ -108,14 +111,22 @@ export const suite = async (viewport, { full = true } = {}) => {
   const d = await J(page, (id) => window.__mc.dot(id), again);
   await page.mouse.click(d.x, d.y);
   say((await J(page, () => window.__mc.picked())).includes(again), `a click on ${again} picks it`);
+  await pickedMarks(page, say, again);
+  await cursorFor(page, say, true);
+  // (a system that isn't picked, pressed first: its press may reframe the map, and the second press of a double click lands elsewhere)
+  await doubleClickElsewhere(page, say, (await J(page, () => window.__mc.free())).find((id) => id !== again));
 
   // ── keys: + − 0 zoom ──
   await page.keyboard.press('0');
   await settle(page);
   say((await J(page, () => window.__mc.view())).k === 1, '0 shows the whole galaxy');
+  await cursorFor(page, say, false);
   await page.keyboard.press('+');
   await settle(page);
   say(Math.abs((await J(page, () => window.__mc.view())).k - 1.5) < 0.01, '+ zooms in a step');
+  await fitButton(page, say);
+  await page.keyboard.press('+');
+  await settle(page);
   await page.keyboard.press('-');
   await settle(page);
   say((await J(page, () => window.__mc.view())).k === 1, '- zooms out a step');
@@ -154,6 +165,8 @@ export const suite = async (viewport, { full = true } = {}) => {
   const tags = await J(page, () => document.querySelectorAll('.holomap-youtag').length);
   say(tags === 1, 'and only the one');
 
+  await findList(page, say);
+
   // ── layers ──
   const toggle = page.locator('.holomap-layers-toggle');
   const chip = await toggle.isVisible();
@@ -187,6 +200,7 @@ export const suite = async (viewport, { full = true } = {}) => {
   });
   say(panel.open && panel.l >= 0 && panel.r <= panel.w && panel.b <= panel.h, `the films panel opens inside the window (${Math.round(panel.l)}-${Math.round(panel.r)} of ${panel.w})`);
   await page.locator('.holomap-films button').first().click();
+  say(await J(page, () => document.activeElement === document.querySelector('.holomap-filmpick summary')), "a film's pick leaves the focus on the Films chip");
   const filmState = await J(page, () => ({ open: document.querySelector('details.holomap-filmpick').open, label: document.querySelector('.holomap-filmpick summary').textContent, active: document.querySelector('.holomap-filmpick').hasAttribute('data-active') }));
   const filmDim = await dimmed();
   say(!filmState.open && filmState.active && /^Films: /.test(filmState.label), `a film's pick shuts the panel and names it ("${filmState.label}")`);
@@ -220,6 +234,8 @@ export const suite = async (viewport, { full = true } = {}) => {
       }),
     );
   }
+  const kAfter = (await J(page, () => window.__mc.view())).k;
+  say(Math.abs(kAfter - k3) < 0.01, `Tab through the systems brings them in at the zoom the map has (k ${k3.toFixed(2)} then ${kAfter.toFixed(2)}), not a jump to a framing zoom`);
   const tabbed = tabs.filter((t) => t.id);
   say(k3 > 3 && tabbed.length === 14, `Tab through 14 systems at k=${k3.toFixed(2)} stays on the systems`);
   say(tabs.every((t) => !t.scrolled), 'Tab through the systems zoomed in never scrolls the map, its body or its frame');

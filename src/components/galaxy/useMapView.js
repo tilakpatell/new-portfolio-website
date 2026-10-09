@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FIT, frameUnits, panBy, zoomAt } from './mapView';
+import { FIT, centreOn, frameUnits, panBy, zoomAt } from './mapView';
 import { createGesture } from './gesture';
 
 // The galaxy map's view (mapView.js) and the hands on it (gesture.js): the
 // wheel or a trackpad zooms about the pointer, a drag pans, two fingers
 // pinch, and the page's buttons and keys zoom about the middle.
 const STEP = 1.5; // (a button's or a key's zoom)
+const REVEAL_K = 1.5; // (the least zoom a system brought into view is shown at)
 const LINE = { 0: 1, 1: 16, 2: 120 }; // (a wheel's delta in px, lines or pages: Firefox's wheel is in lines)
 // the controls over the map (WarStrip, WarLegend, the layers, the zoom buttons): a press or a wheel on them is theirs, not the map's
 const OVERLAYS = '.holomap-strip, .holomap-legend, .holomap-layers, .holomap-zoom';
@@ -24,6 +25,8 @@ export function useMapView(boxRef) {
   const zoomOut = useCallback(() => zoom(1 / STEP), [zoom]);
   const fit = useCallback(() => setView((v) => keepIfSame(v, FIT)), []);
   const frame = useCallback((points) => setView((v) => keepIfSame(v, frameUnits(points))), []);
+  // (a point brought into the middle at the zoom the view has: it only zooms in from the whole galaxy's, to REVEAL_K)
+  const reveal = useCallback((point) => setView((v) => keepIfSame(v, centreOn(v, point, { kMin: REVEAL_K }))), []);
 
   useEffect(() => {
     const el = boxRef.current;
@@ -67,5 +70,5 @@ export function useMapView(boxRef) {
     },
   };
 
-  return { view, setView, zoom, zoomIn, zoomOut, fit, frame, handlers };
+  return { view, setView, zoom, zoomIn, zoomOut, fit, frame, reveal, handlers };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from './systems';
-import { findSystems, mapKeyAction } from './mapKeys';
+import { courseOf, findSystems, mapKeyAction, pickAction, seedPick } from './mapKeys';
 
 const k = (key, o = {}) => ({ key, meta: false, ctrl: false, alt: false, ...o });
 
@@ -17,6 +17,38 @@ describe('mapKeys', () => {
     expect(mapKeyAction(k('Escape'), { typing: false, filmsOpen: false })).toBe('close');
     // (only Escape shuts it: M still closes the map, the panel goes with it)
     expect(mapKeyAction(k('m'), { typing: false, filmsOpen: true })).toBe('close');
+  });
+  it('shuts the innermost open thing first: the find, the films, the key, the layers, then the map', () => {
+    const open = { findOpen: true, filmsOpen: true, keyOpen: true, layersOpen: true };
+    const esc = (o) => mapKeyAction(k('Escape'), { typing: false, ...o });
+    expect(esc(open)).toBe('clearFind');
+    expect(esc({ ...open, findOpen: false })).toBe('closeFilms');
+    expect(esc({ ...open, findOpen: false, filmsOpen: false })).toBe('closeKey');
+    expect(esc({ ...open, findOpen: false, filmsOpen: false, keyOpen: false })).toBe('closeLayers');
+    expect(esc({})).toBe('close');
+    // (from the find field too, typing or not)
+    expect(mapKeyAction(k('Escape'), { typing: true, findOpen: true, keyOpen: true })).toBe('clearFind');
+    expect(mapKeyAction(k('Escape'), { typing: true, keyOpen: true })).toBe('closeKey');
+    expect(mapKeyAction(k('Escape'), { typing: true })).toBe('close');
+    // (M still closes the map outright, whatever's open)
+    expect(mapKeyAction(k('m'), { typing: false, ...open })).toBe('close');
+  });
+  it('picks a system, then jumps to it, and clears the pick of where you are', () => {
+    expect(pickAction(null, 'endor', 'tatooine')).toBe('pick');
+    expect(pickAction('hoth', 'endor', 'tatooine')).toBe('pick'); // (the second press of a double click, landing on another system)
+    expect(pickAction('endor', 'endor', 'tatooine')).toBe('jump');
+    expect(pickAction('tatooine', 'tatooine', 'tatooine')).toBe('clear');
+    expect(pickAction(null, 'tatooine', 'tatooine')).toBe('pick');
+  });
+  it('has a course to a pick that is not where you are, and opens on the one the page kept', () => {
+    expect(courseOf('endor', 'tatooine')).toBe('endor');
+    expect(courseOf('tatooine', 'tatooine')).toBeNull();
+    expect(courseOf(null, 'tatooine')).toBeNull();
+    expect(seedPick('endor', 'tatooine', SYSTEMS)).toBe('endor');
+    expect(seedPick(null, 'tatooine', SYSTEMS)).toBeNull();
+    expect(seedPick(undefined, 'tatooine', SYSTEMS)).toBeNull();
+    expect(seedPick('tatooine', 'tatooine', SYSTEMS)).toBeNull(); // (arrived: nothing to go to)
+    expect(seedPick('nowhere', 'tatooine', SYSTEMS)).toBeNull();
   });
   it('jumps only with a course to jump to', () => {
     expect(mapKeyAction(k('j'), { typing: false, canJump: true })).toBe('jump');
