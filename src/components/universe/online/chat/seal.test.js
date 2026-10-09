@@ -42,4 +42,22 @@ describe('a squad’s text, sealed', () => {
     expect(sealed.length).toBeLessThanOrEqual(SEALED_MAX);
     expect(await unseal(key, sealed)).toBe('🚀'.repeat(185));
   });
+
+  it('draws another key for another use of the sid: the room’s', async () => {
+    const room = await sealKey(SID, 'tp-squad-room');
+    const sealed = await seal(room, '["hi",{}]');
+    expect(await unseal(room, sealed)).toBe('["hi",{}]');
+    expect(await unseal(await sealKey(SID), sealed)).toBeNull();
+    expect(await unseal(await sealKey(SID, 'tp-squad-chat'), await seal(await sealKey(SID), 'hello'))).toBe('hello');
+  });
+
+  it('takes a cap of its own, for seal and unseal alike', async () => {
+    const key = await sealKey(SID, 'tp-squad-room');
+    const long = 'x'.repeat(5000);
+    const sealed = await seal(key, long, 12000);
+    expect(sealed.length).toBeGreaterThan(SEALED_MAX);
+    expect(await unseal(key, sealed)).toBeNull(); // (past the default's 1,024)
+    expect(await unseal(key, sealed, 12000)).toBe(long);
+    expect((await seal(key, 'y'.repeat(20000), 12000)).length).toBeLessThanOrEqual(12000);
+  });
 });
