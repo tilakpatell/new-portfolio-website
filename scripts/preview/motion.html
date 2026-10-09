@@ -29,7 +29,7 @@
          Luke beside one of the library's, to judge whether it reads as what
          it was asked for. Through the dev server:
 
-           /scripts/preview/motion.html?clip=overhead-strike                the made clip (left) beside sword.heavy (right), looping
+           /scripts/preview/motion.html?clip=overhead-strike                the made clip (left) beside sword.heavy.a (right), looping
            …&with=sword.a                                                   beside another of the library's (public/games/meshy/ual-NAME.glb)
            …&slow=4                                                         a quarter speed
            …&sheet=1&w=240&h=320                                            four moments of each, a row a clip, for scripts/motion/sheet.mjs
@@ -42,7 +42,7 @@
 
       const q = new URLSearchParams(location.search);
       const NAME = q.get('clip') ?? 'overhead-strike';
-      const WITH = q.get('with') ?? 'sword.heavy';
+      const WITH = q.get('with') ?? 'sword.heavy.a';
       const SHEET = q.has('sheet');
       const say = (t) => (document.getElementById('say').textContent = t);
       const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);

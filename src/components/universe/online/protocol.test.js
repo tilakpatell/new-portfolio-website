@@ -540,6 +540,21 @@ describe('down on a world in the galaxy', () => {
     expect(readWalk({ w: 'hoth', a: ['leia', 1, 2, 3, 0, 0, 0, ['saber', 1, 'javascript:', 'nope', 1]] }).lead.arms).toEqual({ gun: 'saber', lit: true, color: '#4aa8ff', stance: 'single', swing: true });
   });
 
+  it('says which clip a stroke is, after the old five, so a peer plays the same one; an older packet still reads', async () => {
+    const { readWalk, writeWalk } = await import('./protocol');
+    const sent = writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'luke', x: 1, y: 2, z: 3, yaw: 0, speed: 0, arms: { gun: 'saber', lit: true, color: '#4aa8ff', stance: 'single', swing: true, stroke: 'sword.light.b' } } });
+    expect(sent.a[7]).toHaveLength(6);
+    expect(sent.a[7].slice(0, 5)).toEqual(['saber', 1, '#4aa8ff', 'single', 1]);
+    const got = readWalk(JSON.parse(JSON.stringify(sent)));
+    expect(got.lead.arms.stroke).toBe('sword.light.b');
+    // (five items, as an older pilot sends: no stroke, the rest as ever)
+    expect(readWalk({ w: 'hoth', a: ['luke', 1, 2, 3, 0, 0, 0, ['saber', 1, '#4aa8ff', 'heavy', 1]] }).lead.arms).toEqual({ gun: 'saber', lit: true, color: '#4aa8ff', stance: 'heavy', swing: true });
+    // (only a sword clip's name: anything else is no stroke)
+    for (const bad of ['dance', 'sword.<b>', 'x'.repeat(80), 7]) expect(readWalk({ w: 'hoth', a: ['luke', 1, 2, 3, 0, 0, 0, ['saber', 1, '#4aa8ff', 'single', 1, bad]] }).lead.arms.stroke).toBeUndefined();
+    // (no stroke, nothing sent for it)
+    expect(writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, arms: { gun: 'shotgun' } } }).a[7]).toHaveLength(5);
+  });
+
   it('says the lead’s emote and how each moves, and an older pilot’s message (without them) reads as none', async () => {
     const { readWalk, writeWalk } = await import('./protocol');
     const sent = writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'luke', x: 1, y: 2, z: 3, yaw: 0, speed: 3, emote: ['wave', 1.3], motion: { speed: 3.04, side: -0.26, turn: 1.23 } }, mate: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, motion: { speed: 0, side: 0, turn: 0 } } });

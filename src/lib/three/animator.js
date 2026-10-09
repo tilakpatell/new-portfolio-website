@@ -4,8 +4,7 @@
 // run (locomotion.js, paced to the ground), or a base state in their place
 // (sitting, crouching, swimming), and over both a full-body one-shot. An
 // upper or lower layer (a wave while walking, a stance under a stroke) is
-// laid over the mixer's result by hand, as saberBody.js lays the saber's
-// body: the layer's clip sampled through its own interpolants at its own
+// laid over the mixer's result by hand: the layer's clip sampled through its own interpolants at its own
 // time, each masked bone slerped `w` of the way from where the mixer put it
 // toward where the layer has it. Then the head turns to look.
 // (docs/superpowers/specs/2026-10-07-living-characters-design.md, animator.js)
