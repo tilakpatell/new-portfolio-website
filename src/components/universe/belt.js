@@ -11,9 +11,10 @@
 // rock's own shape is 80 faces, its boulder 320): the same place, size,
 // turn and colour, its extent on each axis its own shape's, so nothing
 // shows as a rock goes from one to the other. Which rocks are far is sorted
-// again every half second, or once the camera has come 20 units
-// (lib/three/lod.js's cadence and its lodBand, the edge held a tenth either
-// way), from where it is in the belt's own turn.
+// again every half second, or once the camera has come 20 units (more, the
+// further it is from the band) (lib/three/lod.js's cadence and its lodBand,
+// the edge held a tenth either way), from where it is in the belt's own
+// turn; only the rocks that change move, and each mesh is bounded once.
 //
 // The dust: specks drifting in a box that rides with the camera, so they
 // stream past while you fly (and you can feel how fast you're going), fading
@@ -27,6 +28,7 @@
 // beltRocks({ small, band, seed, scale, count }) → where each of its rocks is (pure)
 // rockBands(rocks, cam, { fov, height, bands }) → how many rocks changed band:
 //   each one's 0 (its own shape) or 1 (the far one), in `bands`, in place (pure)
+// bandDistance(p, band) → how far a point is from a ring's band (pure)
 // rock(seed, { craters }) → a lumpy rock's geometry, about a unit across
 //   (lib/three/rock; meteors.js uses it too)
 // createDust({ small }) → { points, update(cameraInParent, amount) }
@@ -99,6 +101,12 @@ export function beltRocks({ small = false, band = BELT, seed = 1977, scale = 1, 
   return rocks;
 }
 
+// How far a point is from a ring's band (inside it, 0)
+export function bandDistance(p, band) {
+  const r = Math.hypot(p.x, p.z);
+  return Math.hypot(Math.max(0, band.inner - r, r - band.outer), Math.max(0, Math.abs(p.y) - band.height / 2));
+}
+
 // Which shape each rock is drawn in from `cam` (in the rocks' own space):
 // its own while it's FAR_PX tall or more (a rock's own shape is about a
 // unit out from its middle, times its size), the far one under that, each
@@ -164,6 +172,8 @@ export function createBelt({ small = false, band = BELT, seed = 1977, tones = TO
   const gone = new Uint8Array(N);
   const inMesh = new Uint8Array(N); // each rock's mesh (in `all`) and instance there
   const inSlot = new Uint32Array(N);
+  const who = all.map((mesh) => new Int32Array(mesh.instanceMatrix.count)); // each mesh's instances' rocks
+  const stats = { sorts: 0 };
   const put = (i) => {
     const mesh = all[inMesh[i]];
     const a = mesh.instanceMatrix.array;
@@ -173,23 +183,42 @@ export function createBelt({ small = false, band = BELT, seed = 1977, tones = TO
     if (gone[i]) for (const j of [0, 1, 2, 4, 5, 6, 8, 9, 10]) a[k + j] = 0;
     mesh.instanceMatrix.needsUpdate = true;
   };
-  const pack = () => {
-    const n = [0, 0, 0, 0, 0];
-    for (let i = 0; i < N; i++) {
-      const mi = bands[i] === 1 ? 4 : rocks[i].shape;
-      inMesh[i] = mi;
-      inSlot[i] = n[mi]++;
-      put(i);
-      all[mi].instanceColor.array.set(colour.subarray(i * 3, i * 3 + 3), inSlot[i] * 3);
-    }
-    all.forEach((mesh, mi) => {
-      mesh.count = n[mi];
-      mesh.visible = n[mi] > 0; // (an empty one not drawn at all)
-      mesh.instanceColor.needsUpdate = true;
-      mesh.computeBoundingSphere();
-    });
+  // rock i into mesh mi's next instance
+  const add = (i, mi) => {
+    const mesh = all[mi];
+    const k = mesh.count++;
+    who[mi][k] = i;
+    inMesh[i] = mi;
+    inSlot[i] = k;
+    put(i);
+    mesh.instanceColor.array.set(colour.subarray(i * 3, i * 3 + 3), k * 3);
+    mesh.instanceColor.needsUpdate = true;
   };
-  pack();
+  // and out of the one it's in, its last instance moved into its place
+  const take = (i) => {
+    const mi = inMesh[i];
+    const mesh = all[mi];
+    const k = inSlot[i];
+    const last = --mesh.count;
+    const j = who[mi][last];
+    if (j !== i) {
+      who[mi][k] = j;
+      inSlot[j] = k;
+      put(j);
+      mesh.instanceColor.array.set(colour.subarray(j * 3, j * 3 + 3), k * 3);
+      mesh.instanceColor.needsUpdate = true;
+    }
+  };
+  // (an empty one not drawn at all)
+  const shown = () => all.forEach((mesh) => (mesh.visible = mesh.count > 0));
+  for (const mesh of all) mesh.count = 0;
+  for (let i = 0; i < N; i++) add(i, rocks[i].shape);
+  // each mesh bounded once, round every rock it could ever hold (the rocks
+  // never move: only which mesh draws each): a shape's round all its own,
+  // the far one's round them all
+  for (const mesh of all.slice(0, 4)) mesh.computeBoundingSphere();
+  all[4].boundingSphere = all.slice(0, 4).reduce((b, mesh) => (mesh.count ? b.union(mesh.boundingSphere) : b), new THREE.Sphere().makeEmpty());
+  shown();
   const cam = new THREE.Vector3();
   const last = new THREE.Vector3(Infinity, Infinity, Infinity);
   let wait = 0;
@@ -209,16 +238,28 @@ export function createBelt({ small = false, band = BELT, seed = 1977, tones = TO
       gone[i] = 0;
       put(i);
     },
+    stats,
     update(t, camera = null, { fov = 50, height = 720, dt = 0 } = {}) {
       group.rotation.y = t * spin; // slowly round the sun
       if (!camera) return;
       // (the camera in the rocks' own space: the belt's turn undone)
       cam.set(camera.x, camera.y, camera.z).sub(group.position).applyAxisAngle(Y, -group.rotation.y);
       wait -= dt;
-      if (wait > 0 && cam.distanceTo(last) < MOVE) return;
+      // (from further off the band a move changes the rocks' sizes less: it
+      // takes a longer one, a twentieth of the way, to call for a re-sort)
+      if (wait > 0 && cam.distanceTo(last) < Math.max(MOVE, (HOLD / 2) * bandDistance(cam, band))) return;
       wait = EVERY;
       last.copy(cam);
-      if (rockBands(rocks, cam, { fov, height, bands })) pack();
+      stats.sorts++;
+      if (!rockBands(rocks, cam, { fov, height, bands })) return;
+      // only the rocks that changed shape move
+      for (let i = 0; i < N; i++) {
+        const mi = bands[i] === 1 ? 4 : rocks[i].shape;
+        if (mi === inMesh[i]) continue;
+        take(i);
+        add(i, mi);
+      }
+      shown();
     },
   };
 }

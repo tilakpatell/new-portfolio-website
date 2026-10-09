@@ -1163,10 +1163,10 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   // light instead). A station is drawn in full whatever its size: its hull
   // is all it has to show, its sign says where to click, and frozen at a
   // halo it stopped turning to you, its torches stuck lit and its tiles
-  // didn't come up when it was picked. What the halo hides it keeps a list
-  // of and shows again only those, so what the pace or the foot scene hid
-  // stays theirs to show; and the air is the pace's choice (setAir) and the
-  // halo's together.
+  // didn't come up when it was picked. What the halo hides is drawn hidden
+  // while it lasts and then as its owner last said (drop, below), so what
+  // the pace, a tick or the foot scene hid stays theirs to show; and the air
+  // is the pace's choice (setAir) and the halo's together.
   let lod = 'full';
   let far = false; // (farPlaces': past FAR_REAL, its light instead)
   let shellWanted = Boolean(shell); // (the pace's: the real air, or the old halo)
@@ -1185,7 +1185,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
       for (const c of o.children) if (!keep.has(c)) (over(c) ? walk(c) : out.push(c));
     };
     walk(group);
-    return out;
+    return [...new Set(out)];
   };
   const showAir = () => {
     if (!shell) return;
@@ -1196,6 +1196,24 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     const g = rimGlow();
     if (g) g.uRimStrength.value = on ? 0 : RIM.idle * 0.8;
   };
+  // one thing hidden by the halo: drawn hidden while it lasts, but its own
+  // say (as it was, or what its owner sets meanwhile: a tick that fades it
+  // out, the foot scene) kept and put back when it's over → the putting back
+  const drop = (o) => {
+    let want = o.visible;
+    Object.defineProperty(o, 'visible', {
+      configurable: true,
+      enumerable: true,
+      get: () => false,
+      set: (v) => {
+        want = v;
+      },
+    });
+    return () => {
+      delete o.visible;
+      o.visible = want;
+    };
+  };
   const showGroup = () => (group.visible = !(far || lod === 'hidden'));
   const setLod = (want) => {
     const next = core ? 'full' : want;
@@ -1203,12 +1221,8 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     const was = lod;
     lod = next;
     if (was === 'full') {
-      for (const o of extras()) {
-        if (!o.visible) continue;
-        o.visible = false;
-        dropped.push(o);
-      }
-    } else if (next === 'full') for (const o of dropped.splice(0)) o.visible = true;
+      for (const o of extras()) dropped.push(drop(o));
+    } else if (next === 'full') for (const back of dropped.splice(0)) back();
     if (was === 'full' || next === 'full') showAir();
     showGroup();
   };

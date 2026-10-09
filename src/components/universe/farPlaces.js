@@ -16,11 +16,18 @@
 // (planets.js's setLod); the sun and the wonders this hides, as it does
 // once they're far.
 //
-// The rules (blend, spriteSize, pointsFor and the list of places) are pure
-// and tested; createFarPlaces draws them: one Points for the whole
+// A place is sized for that by what it draws (`drawn`: the sun's corona, a
+// wonder's widest part, drawnOf), not by its light's core (`r`): the
+// Lantern's star is 24 across, its beams 720.
+//
+// The rules (blend, spriteSize, pointsFor, lightLod and the list of places)
+// are pure and tested; createFarPlaces draws them: one Points for the whole
 // universe, so one draw call, no textures, on every tier.
 //
-// createFarPlaces(parent, { places: [{ id, at, r, color, group | hide(on) }], skyFar })
+//   lightLod(drawn, dist, { fov, height, was }) → { lod: 'full' | 'hidden', small }:
+//       what a place farPlaces hides draws for its size, and how much its
+//       light stands in for it (planetLod.js; no halo: a wonder has none)
+// createFarPlaces(parent, { places: [{ id, at, r, drawn, color, group | hide(on) }], skyFar })
 //   → { points, update(camera, dt, destinationId, small(id) → 0 … 1), dispose() }
 // `at` is in the parent’s space (the map’s), and the points are added to it.
 // Once it's all light a place's `group` is hidden, or, where it hides itself
@@ -28,8 +35,10 @@
 // called, for its distance alone.
 
 import * as THREE from 'three';
-import { WONDERS } from './deep';
+import { WONDERS, drawnOf } from './deep';
 import { POSITIONS, SUN } from './layout';
+import { lodOf, pxOf, standIn } from './planetLod';
+import { CORONA_REACH } from './sun';
 import { MOONS, UNIVERSES } from './universes';
 
 export const FAR_REAL = 24000; // past this from the camera, a place is its light
@@ -72,10 +81,17 @@ export function pointsFor(places, cam, skyFar = FAR_REAL, small = null) {
 // light is a smaller core than its whole width; the Maw is its disc.
 const wonderR = (w) => (w.kind === 'nebula' ? w.r * 0.4 : (w.disk ?? w.r));
 export const FAR_PLACES = [
-  { id: 'sun', at: SUN.at, r: SUN.r, color: '#ffcf6a' },
-  ...[...UNIVERSES.filter((u) => u.kind !== 'core'), ...MOONS].map((u) => ({ id: u.id, at: POSITIONS[u.id], r: u.size, color: u.swatch })),
-  ...WONDERS.map((w) => ({ id: w.id, at: w.at, r: wonderR(w), color: w.color ?? w.colors?.[0] ?? '#ffb47a' })),
+  { id: 'sun', at: SUN.at, r: SUN.r, drawn: SUN.r * CORONA_REACH, color: '#ffcf6a' },
+  ...[...UNIVERSES.filter((u) => u.kind !== 'core'), ...MOONS].map((u) => ({ id: u.id, at: POSITIONS[u.id], r: u.size, drawn: u.size, color: u.swatch })),
+  ...WONDERS.map((w) => ({ id: w.id, at: w.at, r: wonderR(w), drawn: drawnOf(w), color: w.color ?? w.colors?.[0] ?? '#ffb47a' })),
 ];
+
+// (planetLod's, two-way: a far place is drawn whole or not at all)
+export function lightLod(drawn, dist, { fov, height, was = null }) {
+  const px = pxOf(drawn, dist, fov, height);
+  const lod = lodOf(px, was) === 'hidden' ? 'hidden' : 'full';
+  return { lod, small: standIn(px, lod) };
+}
 
 const VERT = /* glsl */ `
   attribute float aSize;
@@ -155,6 +171,10 @@ export function createFarPlaces(parent, { places, skyFar }) {
   parent.add(points);
 
   const hidden = places.map(() => false); // (what this has done to each group, so it only ever undoes its own)
+  // (its light stands in for a small place only where the place can be
+  // hidden for it: one with neither a group nor its own hiding, a portal,
+  // draws itself elsewhere)
+  const canHide = new Set(places.filter((p) => p.group || p.hide).map((p) => p.id));
   const show = (p, on) => {
     if (p.hide) p.hide(!on);
     else if (p.group) p.group.visible = on;
@@ -170,7 +190,7 @@ export function createFarPlaces(parent, { places, skyFar }) {
       cam[0] = camAt.x;
       cam[1] = camAt.y;
       cam[2] = camAt.z;
-      const pts = pointsFor(places, cam, skyFar, small);
+      const pts = pointsFor(places, cam, skyFar, small && ((id) => (canHide.has(id) ? small(id) : 0)));
       const ease = Math.min(1, dt * 3);
       pts.forEach((p, i) => {
         pos[i * 3] = cam[0] + p.dir[0] * skyFar;

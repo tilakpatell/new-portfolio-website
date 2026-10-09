@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { FAR_PX, beltRocks, createBelt, rockBands } from './belt';
+import { FAR_PX, bandDistance, beltRocks, createBelt, rockBands } from './belt';
 import { pxDistance, pxOf } from './planetLod';
 import { DEBRIS_DRIFT, debrisRocks } from './deepspace';
 import { BELT, RIM } from './layout';
@@ -208,6 +208,48 @@ describe('the belt drawn for its rocks’ size on screen', () => {
     b.update(0, at(o.x + 1, o.y + 5, o.z), { ...VIEW, dt: 0.1 });
     b.update(0, at(o.x + 1, o.y + 5, o.z), { ...VIEW, dt: 0.5 });
     expect(b.slotOf(9)[0]).toBe(b.meshes[o.shape]);
+  });
+
+  it('re-sorts on a camera’s travel less often the further it is from the band', () => {
+    const band = { inner: 100, outer: 200, height: 20 };
+    expect(bandDistance({ x: 150, y: 0, z: 0 }, band)).toBe(0);
+    expect(bandDistance({ x: 0, y: 5, z: 250 }, band)).toBeCloseTo(50, 9);
+    expect(bandDistance({ x: 40, y: 0, z: 0 }, band)).toBeCloseTo(60, 9);
+    expect(bandDistance({ x: 150, y: 40, z: 0 }, band)).toBeCloseTo(30, 9);
+    const b = createBelt({ count: 120, tier: 'low' });
+    const o = b.rocks[9];
+    // far off: a hundred units' travel isn't enough, the half second is
+    b.update(0, at(0, 1e5, 0), { ...VIEW, dt: 0 });
+    const n = b.stats.sorts;
+    b.update(0, at(0, 1e5 - 100, 0), { ...VIEW, dt: 0.1 });
+    expect(b.stats.sorts).toBe(n);
+    b.update(0, at(0, 1e5 - 100, 0), { ...VIEW, dt: 0.45 });
+    expect(b.stats.sorts).toBe(n + 1);
+    // in the band: 20 units is
+    b.update(0, at(o.x, o.y, o.z + 1), { ...VIEW, dt: 0 });
+    const m = b.stats.sorts;
+    b.update(0, at(o.x, o.y, o.z + 22), { ...VIEW, dt: 0.01 });
+    expect(b.stats.sorts).toBe(m + 1);
+  });
+
+  it('bounds each mesh once, round every rock it could hold, and moves only the rocks that change', () => {
+    const b = createBelt({ count: 200, tier: 'low' });
+    const spheres = b.meshes.map((mesh) => mesh.boundingSphere);
+    const far = b.meshes[4];
+    for (const o of b.rocks) expect(far.boundingSphere.containsPoint(new THREE.Vector3(o.x, o.y, o.z))).toBe(true);
+    for (const [s, mesh] of b.meshes.slice(0, 4).entries()) for (const o of b.rocks.filter((x) => x.shape === s)) expect(mesh.boundingSphere.containsPoint(new THREE.Vector3(o.x, o.y, o.z))).toBe(true);
+    b.update(0, at(0, 1e6, 0), { ...VIEW, dt: 0 });
+    const o = b.rocks[7];
+    b.update(0, at(o.x + 1, o.y, o.z), { ...VIEW, dt: 1 });
+    b.meshes.forEach((mesh, i) => expect(mesh.boundingSphere).toBe(spheres[i]));
+    // (every rock in exactly one slot, its own)
+    const seen = new Set();
+    b.rocks.forEach((r, i) => {
+      const [mesh, k] = b.slotOf(i);
+      expect(k).toBeLessThan(mesh.count);
+      seen.add(`${b.meshes.indexOf(mesh)}:${k}`);
+    });
+    expect(seen.size).toBe(200);
   });
 
   it('turns about the sun, the camera taken into its own turn', () => {

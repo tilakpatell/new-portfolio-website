@@ -133,8 +133,8 @@ import { createMeteors } from './meteors';
 import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, SKY_FAR, buildDeepSpace } from './deepspace';
-import { FAR_PLACES, createFarPlaces } from './farPlaces';
-import { lodOf, pxOf, standIn } from './planetLod';
+import { FAR_PLACES, createFarPlaces, lightLod } from './farPlaces';
+import { pxOf, standIn } from './planetLod';
 import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
 import { createGunPortal } from './gunPortalFx';
@@ -723,17 +723,16 @@ export async function create(canvas, ctx) {
     },
   });
   // (a planet hides itself, for that and for being too small to draw: planets.js's setFar, setLod)
-  const farPlaces = createFarPlaces(map, {
-    places: FAR_PLACES.map((p) => (planetOf[p.id] ? { ...p, hide: (on) => planetOf[p.id].setFar(on) } : { ...p, group: deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })),
-    skyFar: SKY_FAR,
-  });
+  const farList = FAR_PLACES.map((p) => (planetOf[p.id] ? { ...p, hide: (on) => planetOf[p.id].setFar(on) } : { ...p, group: deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) }));
+  const farPlaces = createFarPlaces(map, { places: farList, skyFar: SKY_FAR });
   // how much of each place farPlaces' light stands in for, it being too
   // small to draw (planetLod.js's standIn): a planet's set as it's updated,
   // below; the sun's and the wonders' (`lit`, which farPlaces hides) each
-  // frame from the map's own space, by the size of their light
+  // frame from the map's own space, by how far out each draws (`drawn`:
+  // the sun's corona, a wonder's widest part, not its light's core)
   const asLight = new Map();
   const lightFor = (id) => asLight.get(id) ?? 0;
-  const lit = FAR_PLACES.filter((p) => !planetOf[p.id]).map((p) => ({ id: p.id, at: new THREE.Vector3(...p.at), r: p.r, lod: 'full' }));
+  const lit = farList.filter((p) => p.group).map((p) => ({ id: p.id, at: new THREE.Vector3(...p.at), drawn: p.drawn, lod: 'full' }));
   // each planet's maps by how near it is (nearMaps.js), on every device:
   // what it was stood in for, in the background once the first frame's
   // drawn; its standard set within twelve radii; its near set and finer
@@ -4949,13 +4948,15 @@ export async function create(canvas, ctx) {
     // each place drawn for its size on screen (planetLod.js: in full from
     // 24 px, its halo only under that, under 6 farPlaces' light instead),
     // and its own motion (a station's lights, particles, its screen) only
-    // while it's in view and drawn in full
+    // while it's in view, more than a speck (what it and its orbits take up
+    // over 4 px tall) and drawn in full
     viewFrustum.setFromProjectionMatrix(viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
     for (const p of planets) {
       p.group.getWorldPosition(placeBound.center);
       placeBound.radius = p.radius * 2.6; // (out past its moons and what orbits it)
-      const px = pxOf(p.radius, camera.position.distanceTo(placeBound.center), camera.fov, size.h);
-      p.update(t, camera, viewFrustum.intersectsSphere(placeBound), px);
+      const d = camera.position.distanceTo(placeBound.center);
+      const px = pxOf(p.radius, d, camera.fov, size.h);
+      p.update(t, camera, pxOf(placeBound.radius, d, camera.fov, size.h) > 4 && viewFrustum.intersectsSphere(placeBound), px);
       asLight.set(p.id, standIn(px, p.lod));
     }
     near.update(camera.position, nearBodies);
@@ -4988,9 +4989,9 @@ export async function create(canvas, ctx) {
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     for (const o of lit) {
-      const px = pxOf(o.r, camLocal.distanceTo(o.at), camera.fov, size.h);
-      o.lod = lodOf(px, o.lod);
-      asLight.set(o.id, standIn(px, o.lod));
+      const { lod, small } = lightLod(o.drawn, camLocal.distanceTo(o.at), { fov: camera.fov, height: size.h, was: o.lod });
+      o.lod = lod;
+      asLight.set(o.id, small);
     }
     farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null, lightFor);
     expanse.update({ ship: flying() && !state.dive ? state.ship : null, camera, t, dt });

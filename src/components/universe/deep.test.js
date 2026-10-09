@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEEP, DEEP_SOLIDS, PLACES, STARS, WONDERS, beyondOf, binaryAt, moveBinaries, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
+import { DEEP, DEEP_SOLIDS, GLARE, PLACES, STARS, WONDERS, beyondOf, binaryAt, drawnOf, moveBinaries, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
 import { GOALS } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, SECTOR_OF, inSector, sectorOf } from './layout';
 import { MOONS, byId } from './universes';
@@ -245,5 +245,21 @@ describe('deep space, spread (scale.js’s SPREAD)', () => {
         expect(d, `${w.id} and ${p.id}`).toBeGreaterThan(1.5 * reachOf(w));
       }
     }
+  });
+});
+
+describe('how far out a wonder draws (drawnOf), for its size on screen', () => {
+  const w = (id) => wonderById(id);
+  it('reaches as far as its widest part: its beams, its corona, its glow, its hulls, its disc', () => {
+    expect(drawnOf(w('lantern'))).toBe(w('lantern').r * GLARE.pulsar);
+    expect(GLARE.pulsar).toBe(30);
+    expect(drawnOf(w('graveyard'))).toBe(Math.max(w('graveyard').field, w('graveyard').r * GLARE.graveyard));
+    for (const id of ['ember', 'halcyon']) expect(drawnOf(w(id)), id).toBe(Math.max(reachOf(w(id)), w(id).r * GLARE.star));
+    expect(drawnOf(w('maw'))).toBe(Math.max(w('maw').disk, w('maw').r * GLARE['black-hole']));
+    expect(drawnOf(w('twins'))).toBeGreaterThan(reachOf(w('twins')));
+    expect(drawnOf(w('veil'))).toBe(reachOf(w('veil')));
+  });
+  it('is never less than where it is solid, for any wonder', () => {
+    for (const x of WONDERS) expect(drawnOf(x), x.id).toBeGreaterThanOrEqual(reachOf(x));
   });
 });

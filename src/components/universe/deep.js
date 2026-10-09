@@ -175,6 +175,25 @@ export function reachOf(w) {
   return w.r;
 }
 
+// How far each kind's glare reaches, in its radii: the face-on quad
+// deepspace.js lights it with (a sun's corona, the pulsar's beams, the
+// binary's two coronas, the wreck field's white dwarf, the black hole's
+// bent light), half its width. Further than it's solid, so drawnOf (and not
+// reachOf) says how big it is on screen.
+export const GLARE = { star: 13, pulsar: 30, binary: 11, graveyard: 9, 'black-hole': 2.6 };
+
+// how far out from its middle a wonder draws anything: its widest part, its
+// glare or what reachOf counts (farPlaces.js stands its light in for it
+// only once that is a few pixels tall: planetLod.js)
+export function drawnOf(w) {
+  const reach = reachOf(w);
+  if (w.kind === 'binary') {
+    const { ra, rb } = swings(w);
+    return Math.max(reach, ra + w.r * GLARE.binary, rb + w.pair.r * GLARE.binary);
+  }
+  return GLARE[w.kind] ? Math.max(reach, w.r * GLARE[w.kind]) : reach;
+}
+
 // what's solid out here, as ship.js's solids: { id, at, r, reach, swallow }.
 // A black hole is solid out past its shadow, where the light bends round
 // it, and it swallows: nothing bounces off it, whatever the speed (ship.js)

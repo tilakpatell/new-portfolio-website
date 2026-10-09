@@ -130,7 +130,7 @@ void main() {
   gl_FragColor = vec4(col * glow, 1.0);
 }`;
 
-const REACH = 4; // the corona's reach, in the sun's radii
+export const CORONA_REACH = 4; // the corona's reach, in the sun's radii (farPlaces.js sizes the sun by it)
 
 export function buildSun(T = {}) {
   const group = new THREE.Group();
@@ -144,12 +144,12 @@ export function buildSun(T = {}) {
   const coronaMat = new THREE.ShaderMaterial({
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: CORONA_FRAG,
-    uniforms: { uTime: { value: 0 }, uReach: { value: REACH }, uColor: { value: new THREE.Color(2.4, 1.5, 0.75) } },
+    uniforms: { uTime: { value: 0 }, uReach: { value: CORONA_REACH }, uColor: { value: new THREE.Color(2.4, 1.5, 0.75) } },
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   });
-  const corona = new THREE.Mesh(new THREE.PlaneGeometry(SUN.r * REACH * 2, SUN.r * REACH * 2), coronaMat);
+  const corona = new THREE.Mesh(new THREE.PlaneGeometry(SUN.r * CORONA_REACH * 2, SUN.r * CORONA_REACH * 2), coronaMat);
   corona.renderOrder = 1;
   group.add(surface, corona);
   const q = new THREE.Quaternion();

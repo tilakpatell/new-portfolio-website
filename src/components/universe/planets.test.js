@@ -621,6 +621,18 @@ describe('a body drawn for its size on screen (planetLod.js)', () => {
     p.setLod('halo');
     p.setLod('full');
     expect(clouds.visible).toBe(false);
+    // and one its owner hides while it's at its halo stays hidden too
+    clouds.visible = true;
+    p.setLod('halo');
+    clouds.visible = false;
+    p.setLod('full');
+    expect(clouds.visible).toBe(false);
+    // one its owner shows meanwhile isn't drawn till the halo's over, then is
+    p.setLod('halo');
+    clouds.visible = true;
+    expect(clouds.visible).toBe(false);
+    p.setLod('full');
+    expect(clouds.visible).toBe(true);
     vi.unstubAllGlobals();
   });
 

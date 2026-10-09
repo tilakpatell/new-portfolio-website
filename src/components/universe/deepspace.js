@@ -52,7 +52,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DEEP, WONDERS, binaryAt, planetAt, reachOf } from './deep';
+import { DEEP, GLARE, WONDERS, binaryAt, planetAt, reachOf } from './deep';
 import { TILT } from './maw';
 import { rng } from './kit';
 import { NOISE_GLSL } from './sun';
@@ -665,7 +665,7 @@ export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
     const light = { value: new THREE.Vector3() };
     lightOf.set(w.id, light);
     const surface = mesh(new THREE.SphereGeometry(w.r, seg(96, 56), seg(64, 36)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: color }, uSeed: { value: w.r * 0.37 } }), g);
-    const reach = 13;
+    const reach = GLARE.star;
     facingQuad(w.r * reach, GLOW_FRAG, { uR: { value: w.r }, uColor: { value: color }, uSeed: { value: w.r }, uReach: { value: reach } }, g);
     // the light it gives its planets: its colour, toward white
     const lightColor = color.clone().lerp(new THREE.Color(1, 1, 1), 0.55).multiplyScalar(1.6);
@@ -698,7 +698,7 @@ export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
     tilt.rotation.set(...TILT); // (maw.js: its pull goes round the way the disk does)
     g.add(tilt);
     mesh(new THREE.SphereGeometry(w.r, 48, 32), new THREE.MeshBasicMaterial({ color: 0x000000 }), g);
-    const reach = 2.6;
+    const reach = GLARE['black-hole'];
     const diskN = new THREE.Vector3(0, 1, 0).applyEuler(tilt.rotation);
     mesh(new THREE.PlaneGeometry(w.r * reach * 2, w.r * reach * 2), shader(PHOTON_VERT, PHOTON_FRAG, { uR: { value: w.r }, uDiskN: { value: diskN }, uReach: { value: reach } }, additive), g, 2);
     const inner = w.r * 1.6;
@@ -1114,7 +1114,7 @@ export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
     const light = { value: new THREE.Vector3() };
     lightOf.set(w.id, light);
     const star = mesh(new THREE.SphereGeometry(w.r, seg(32, 20), seg(20, 14)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: color.clone().multiplyScalar(1.5) }, uSeed: { value: 9.1 } }), g);
-    const reach = 30;
+    const reach = GLARE.pulsar;
     const beams = facingQuad(w.r * reach, PULSAR_FRAG, { uR: { value: w.r * reach }, uT: { value: 0 }, uK: { value: 1.2 } }, g);
     ticks.push((t) => {
       beams.material.uniforms.uT.value = t;
@@ -1142,7 +1142,7 @@ export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
       g.add(holder);
       holders.push([holder, sn.which]);
       const surface = mesh(new THREE.SphereGeometry(sn.r, seg(72, 44), seg(48, 28)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: c }, uSeed: { value: sn.seed } }), holder);
-      const reach = 11;
+      const reach = GLARE.binary;
       facingQuad(sn.r * reach, GLOW_FRAG, { uR: { value: sn.r }, uColor: { value: c }, uSeed: { value: sn.r }, uReach: { value: reach } }, holder);
       ticks.push((t) => (surface.rotation.y = t * 0.03 + sn.seed));
     }
@@ -1197,7 +1197,7 @@ export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
     const light = { value: new THREE.Vector3() };
     lightOf.set(w.id, light);
     const dwarf = mesh(new THREE.SphereGeometry(w.r, seg(48, 28), seg(32, 20)), shader(WORLD_VERT, STAR_FRAG, { uColor: { value: c.clone().multiplyScalar(1.3) }, uSeed: { value: 2.7 } }), g);
-    const reach = 9;
+    const reach = GLARE.graveyard;
     facingQuad(w.r * reach, GLOW_FRAG, { uR: { value: w.r }, uColor: { value: c }, uSeed: { value: w.r }, uReach: { value: reach } }, g);
     const field = new THREE.Group();
     g.add(field);

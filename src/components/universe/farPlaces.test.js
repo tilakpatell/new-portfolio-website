@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { FAR_PLACES, FAR_REAL, blend, createFarPlaces, pointsFor, spriteSize } from './farPlaces';
-import { WONDERS } from './deep';
+import { FAR_PLACES, FAR_REAL, blend, createFarPlaces, lightLod, pointsFor, spriteSize } from './farPlaces';
+import { DEEP, WONDERS, drawnOf } from './deep';
+import { FOV } from './flight';
+import { SUN } from './layout';
+import { CORONA_REACH } from './sun';
 import { MOONS, UNIVERSES } from './universes';
 
 describe('far places as light', () => {
@@ -126,5 +129,70 @@ describe('far places as light', () => {
     expect(k.array[0]).toBe(0);
     expect(group.visible).toBe(true);
     far.dispose();
+  });
+
+  it('stands in only for a place it can hide: one with neither a group nor its own hiding draws itself (a portal)', () => {
+    const parent = new THREE.Group();
+    const camera = new THREE.PerspectiveCamera(60, 16 / 9, 1, 1e6);
+    camera.updateMatrixWorld(true);
+    const far = createFarPlaces(parent, { places: [{ id: 'portal', at: [0, 0, -5000], r: 10, color: '#7dff9a' }], skyFar: 24000 });
+    far.update(camera, 1 / 60, null, () => 1);
+    expect(far.points.geometry.getAttribute('aK').array[0]).toBe(0);
+    far.dispose();
+  });
+});
+
+describe('a far place sized by what it draws (planetLod.js, drawnOf)', () => {
+  const place = (id) => FAR_PLACES.find((p) => p.id === id);
+  // (the home system: anywhere within DEEP.system of the sun, nearest and furthest)
+  const fromHome = (p) => {
+    const d = Math.hypot(p.at[0] - SUN.at[0], p.at[1] - SUN.at[1], p.at[2] - SUN.at[2]);
+    return [Math.max(1, d - DEEP.system), d + DEEP.system];
+  };
+  const HEIGHTS = { desktop: 720, phone: 390 }; // (a phone on its side: the shortest a frame gets)
+
+  it('knows how far out each one draws: the sun its corona, a wonder its widest part, a planet its size', () => {
+    expect(place('sun').drawn).toBe(SUN.r * CORONA_REACH);
+    for (const w of WONDERS) expect(place(w.id).drawn, w.id).toBe(drawnOf(w));
+    expect(place('middleearth').drawn).toBe(place('middleearth').r);
+    for (const p of FAR_PLACES) expect(p.drawn, p.id).toBeGreaterThanOrEqual(p.r);
+  });
+
+  it('is drawn in full, or hidden under 6 px with its light all there, held a tenth past the edge', () => {
+    const at = (px) => (100 * HEIGHTS.desktop) / (px * Math.tan((FOV * Math.PI) / 360)); // (where something 100 out is px tall)
+    expect(lightLod(100, at(30), { fov: FOV, height: HEIGHTS.desktop })).toEqual({ lod: 'full', small: 0 });
+    expect(lightLod(100, at(10), { fov: FOV, height: HEIGHTS.desktop }).lod).toBe('full'); // (no halo: a wonder has none)
+    expect(lightLod(100, at(5), { fov: FOV, height: HEIGHTS.desktop })).toEqual({ lod: 'hidden', small: 1 });
+    expect(lightLod(100, at(6.3), { fov: FOV, height: HEIGHTS.desktop, was: 'hidden' }).lod).toBe('hidden');
+    const back = lightLod(100, at(6.7), { fov: FOV, height: HEIGHTS.desktop, was: 'hidden' });
+    expect(back.lod).toBe('full');
+    expect(back.small).toBeGreaterThan(0.8);
+  });
+
+  it('the Lantern and the Graveyard: from the home system neither is hidden or fading to light by its size, on a desktop or a phone', () => {
+    for (const id of ['lantern', 'graveyard']) {
+      const p = place(id);
+      for (const [name, height] of Object.entries(HEIGHTS)) {
+        for (const d of fromHome(p)) expect(lightLod(p.drawn, d, { fov: FOV, height }), `${id} ${name} ${Math.round(d)}`).toEqual({ lod: 'full', small: 0 });
+      }
+      // (from there both are past FAR_REAL, so farPlaces' distance has them as light, as it always had)
+      expect(fromHome(p)[0]).toBeGreaterThan(FAR_REAL);
+      // and nearer, anywhere inside FAR_REAL, their size never hides them
+      for (let d = 500; d <= FAR_REAL; d += 500) for (const height of Object.values(HEIGHTS)) expect(lightLod(p.drawn, d, { fov: FOV, height }).lod, `${id} ${d}`).toBe('full');
+    }
+  });
+
+  it('no wonder in reach of the home system is hidden by its size from there, on a desktop or a phone', () => {
+    for (const w of WONDERS.filter((x) => x.kind !== 'portal')) {
+      const p = place(w.id);
+      for (const height of Object.values(HEIGHTS)) {
+        for (const d of fromHome(p)) {
+          if (d > FAR_REAL) continue; // (light by its distance there, whatever its size)
+          expect(lightLod(p.drawn, d, { fov: FOV, height }).lod, `${w.id} ${height} ${Math.round(d)}`).toBe('full');
+        }
+      }
+    }
+    // (nor the sun, from anywhere inside FAR_REAL)
+    for (const height of Object.values(HEIGHTS)) expect(lightLod(place('sun').drawn, FAR_REAL, { fov: FOV, height }).lod).toBe('full');
   });
 });
