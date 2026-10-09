@@ -458,3 +458,26 @@ describe('as bodies for ship contact', () => {
     expect(traffic.bodies(ship, 40).some((o) => o.key === b.key)).toBe(false);
   });
 });
+
+describe('its big ships as solids', () => {
+  it('answers a ship too big to bring down near you as a solid, and never a small one', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    let found = null;
+    for (let t = 0; t < 600 && !found; t += DT) {
+      if (t % 30 < DT / 2) traffic.soon('destroyer');
+      traffic.update(DT, t, ship, {});
+      const solids = traffic.solids(ship, 1e5);
+      const small = new Set(traffic.bodies(ship, 1e5).map((b) => b.key));
+      for (const o of solids) expect(small.has(o.id)).toBe(false);
+      found = solids[0] ?? null;
+    }
+    expect(found).toBeTruthy();
+    expect(found.id).toMatch(/^t:\d+:\d+$/);
+    expect(found.ship).toBe(true);
+    expect(found.at).toHaveLength(3);
+    expect(found.r).toBeGreaterThan(2 * 0.3);
+    expect(found.reach).toBe(found.r);
+    expect(traffic.solids(ship, 0)).toEqual([]);
+  });
+});

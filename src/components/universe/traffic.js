@@ -39,7 +39,7 @@
 //
 // createTraffic(parent, { small, engines }) → { setCrew(id), update(dt, t, ship, { fight, feared, wanted }) → events,
 //   hit(from, to) → hit or null, near(p, r) → ships, bodies(p, r) → shipHits.js's bodies (the small
-//   ships), convoy(ship, side), distress(ship, side) → the one in
+//   ships), solids(p, r) → ship.js's solids (the big ones), convoy(ship, side), distress(ship, side) → the one in
 //   distress (an Object3D) or null, clear(), dispose() }
 // Points are in `parent`'s space (the map's). `engines` (engines.js), when
 // given, lights each ship's engines, brighter as it runs from a fight.
@@ -473,6 +473,23 @@ export function createTraffic(parent, { small = false, fleet = createFleet(), en
             return { down: true, at, size: m.size, kind: m.kind, civil };
           };
           out.push({ key: `t:${g.id}:${i}`, id: `${g.id}:${i}`, kind: m.kind, at: q, size: m.size, side, hit });
+        });
+      }
+      return out;
+    },
+
+    // the ships too big to bring down within `r` of `p` (a Star Destroyer, a
+    // corvette), as ship.js's solids: flying into one is a planet's bump or crash
+    solids(p, r) {
+      const out = [];
+      for (const g of live) {
+        if ((g.grow ?? 1) < HIDDEN) continue;
+        g.members.forEach((m, i) => {
+          if (!m.alive || !(TYPES[m.kind].big || m.size > 2)) return;
+          const q = m.model.group.position;
+          const rr = m.size * 0.3;
+          if ((q.x - p.x) ** 2 + (q.y - p.y) ** 2 + (q.z - p.z) ** 2 > (r + rr) ** 2) return;
+          out.push({ id: `t:${g.id}:${i}`, at: [q.x, q.y, q.z], r: rr, reach: rr, ship: true });
         });
       }
       return out;
