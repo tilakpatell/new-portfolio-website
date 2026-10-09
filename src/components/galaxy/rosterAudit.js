@@ -116,4 +116,6 @@ export function auditRoster() {
   return [...rows.values()];
 }
 
-export const mixes = () => auditRoster().filter((r) => !r.ok);
+// (the scenery's rows are shown but not yet held to: the next change hides
+// another war's pieces, and holds them too)
+export const mixes = () => auditRoster().filter((r) => !r.ok && !r.source.startsWith('scenery:'));

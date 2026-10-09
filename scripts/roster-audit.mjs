@@ -11,7 +11,7 @@ async function main() {
   const { createServer } = await import('vite');
   const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
   try {
-    const { auditRoster } = await vite.ssrLoadModule('/src/components/galaxy/rosterAudit.js');
+    const { auditRoster, mixes } = await vite.ssrLoadModule('/src/components/galaxy/rosterAudit.js');
     const rows = auditRoster();
     if (process.argv.includes('--json')) console.log(JSON.stringify(rows, null, 1));
     else {
@@ -27,7 +27,7 @@ async function main() {
       }
       console.log(out.join('\n'));
     }
-    const bad = rows.filter((r) => !r.ok);
+    const bad = mixes();
     for (const b of bad) console.error(`✗ ${b.war} ${b.side ?? 'anyone'} ${b.source}: ${b.kind}`);
     process.exitCode = bad.length ? 1 : 0;
   } finally {

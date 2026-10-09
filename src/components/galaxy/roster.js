@@ -115,7 +115,7 @@ const REBEL = { laser: [5.8, 0.75, 0.55], turbo: [6.5, 1.1, 0.6] };
 const IMPERIAL = { laser: [0.5, 5.5, 0.9], turbo: [0.7, 6.5, 1.2] };
 export const LOOKS = {
   republic: { laser: [5.8, 0.75, 0.55], turbo: [0.6, 2.2, 6.5] },
-  separatists: { laser: [6.0, 2.5, 0.5], turbo: [6.2, 0.7, 0.4] },
+  separatists: { laser: [6.2, 0.7, 0.4], turbo: [6.2, 0.7, 0.4] },
   rebel: REBEL,
   empire: IMPERIAL,
   newrepublic: REBEL,
