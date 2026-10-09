@@ -696,6 +696,64 @@ describe('createPool', () => {
     }
   });
 
+  it('frees a key at its own slots, every level at once: the level’s last instance moved into each, nothing else written and nothing sorted', async () => {
+    const puff = { geometry: new THREE.BufferGeometry(), material: new THREE.MeshLambertMaterial() };
+    const pool = await poolOf('Birch_1', { puff });
+    const mix = [20, 120, 320].map((x) => ({ x, y: 0, z: 5, yaw: 0.3 }));
+    pool.set('a', ring(10, 10));
+    pool.set('b', ring(10, 100));
+    pool.set('mix', mix); // (one at each level, behind the near rings and ahead of the far one)
+    pool.set('c', ring(10, 300));
+    const cam = camAt(0, 0);
+    pool.update(cam, 0);
+    expect(pool.stats.levels).toEqual([11, 11, 11]);
+    const sorts = pool.stats.sorts;
+    // (a mark in slots the free has no business with: a whole rewrite would clear it)
+    const marked = [
+      [meshesAt(pool, 0)[0], 0],
+      [meshesAt(pool, 1)[1], 3],
+      [meshesAt(pool, 2)[0], 5],
+    ];
+    for (const [m, i] of marked) m.instanceMatrix.array[i * 16 + 3] = 7;
+    const [far] = meshesAt(pool, 2);
+    const version = far.instanceMatrix.version;
+    pool.free('mix');
+    expect(far.instanceMatrix.version).toBeGreaterThan(version); // (its slot 0 written: sent again)
+    expect(pool.stats).toMatchObject({ total: 30, levels: [10, 10, 10] });
+    for (const [m, i] of marked) expect(m.instanceMatrix.array[i * 16 + 3]).toBe(7);
+    for (const [m, i] of marked) m.instanceMatrix.array[i * 16 + 3] = 0;
+    // every level packed from the front with exactly what's left, nothing of the key's
+    const at = (l) => meshesAt(pool, l).map((m) => Array.from({ length: m.count }, (_, i) => where(m, i)));
+    const rings = { 0: 10, 1: 100, 2: 300 };
+    for (const l of [0, 1, 2])
+      for (const list of at(l)) {
+        expect(list).toHaveLength(10);
+        for (const p of list) expect(Math.abs(Math.hypot(p.x, p.z) - rings[l])).toBeLessThan(1);
+        expect(new Set(list.map((p) => `${p.x.toFixed(3)},${p.z.toFixed(3)}`)).size).toBe(10);
+      }
+    // (the far one's stand-in, moved into the freed slot, still faces the camera)
+    facing(pool, cam.position);
+    // nothing to sort for it, at the next update or after
+    pool.update(cam, 0);
+    expect(pool.stats.sorts).toBe(sorts);
+    pool.update(cam, 0.5);
+    expect(pool.stats.levels).toEqual([10, 10, 10]);
+  });
+
+  it('leaves nothing of a key drawn that was set again and freed before the next sort', async () => {
+    const pool = await poolOf();
+    threeRings(pool);
+    pool.set('b', ring(4, 300)); // (its old ten drawn at the LOD1 level till now)
+    expect(pool.stats.levels).toEqual([10, 0, 10]);
+    for (const m of meshesAt(pool, 1)) expect(m.count).toBe(0);
+    pool.free('b');
+    expect(pool.stats).toMatchObject({ total: 20, levels: [10, 0, 10] });
+    for (const m of meshesAt(pool, 1)) expect(m.count).toBe(0);
+    for (const m of meshesAt(pool, 2)) for (let i = 0; i < m.count; i++) expect(Math.abs(Math.hypot(where(m, i).x, where(m, i).z) - 300)).toBeLessThan(1);
+    pool.update(camAt(0, 0), 0.5);
+    expect(pool.stats.levels).toEqual([10, 0, 10]);
+  });
+
   it('takes a key set to nothing out at once, as a free does', async () => {
     const pool = await poolOf();
     threeRings(pool);

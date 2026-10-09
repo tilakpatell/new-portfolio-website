@@ -126,10 +126,11 @@ export default {
         remesh: (key, mesh, step) => scene.remesh(key, mesh, step),
         unbuild(key) {
           const v = visuals.get(key);
-          scene.unbuild(key, v?.cell);
-          if (!v) return;
-          for (const [i] of v.crates) scene.crates.free(i);
           visuals.delete(key);
+          // (gone: the scene went first, its cells and pools whole)
+          if (gone) return;
+          scene.unbuild(key, v?.cell);
+          if (v) for (const [i] of v.crates) scene.crates.free(i);
         },
         solid(key, cell) {
           const [x, , z] = toLocal(cell.cx * CELL, 0, cell.cz * CELL);
@@ -152,7 +153,7 @@ export default {
           solids.delete(key);
           // (its crates back where they were placed)
           const v = visuals.get(key);
-          if (v) for (const [i, p] of v.crates) scene.crates.place(i, [p.x, p.y + 0.5, p.z], [0, Math.sin(p.yaw / 2), 0, Math.cos(p.yaw / 2)], 1);
+          if (v && !gone) for (const [i, p] of v.crates) scene.crates.place(i, [p.x, p.y + 0.5, p.z], [0, Math.sin(p.yaw / 2), 0, Math.cos(p.yaw / 2)], 1);
         },
       },
     });
@@ -322,6 +323,9 @@ export default {
         if (gone) return;
         gone = true;
         offOrigin?.();
+        // (the scene first: its pools go whole, where the stream letting
+        // its cells go would free each one's flora pool by pool)
+        scene.dispose();
         stream.dispose();
         for (const key of [...solids.keys()]) {
           const s = solids.get(key);
@@ -331,7 +335,6 @@ export default {
         solids.clear();
         vehicle.remove();
         physics.dispose();
-        scene.dispose();
         if (globalThis.window && globalThis.window.__EXPANSE__?.vehicle === vehicle) delete globalThis.window.__EXPANSE__;
       },
     };

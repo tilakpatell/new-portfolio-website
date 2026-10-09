@@ -56,19 +56,23 @@ const sum = (by) => [...by.values()].reduce((a, b) => a + b, 0);
 const held = (scene) => new Map([...scene.pools].filter(([, p]) => p.stats.total).map(([name, p]) => [name, p.stats.total]));
 const builtCells = (world) => [...world.stream.cells().values()].map((b) => b.cell);
 
-const fakeRenderer = () => ({
-  toneMapping: THREE.NoToneMapping,
-  toneMappingExposure: 1,
-  shadowMap: { enabled: false, type: THREE.PCFShadowMap },
-  render: vi.fn(),
-  setRenderTarget: vi.fn(),
-  getRenderTarget: () => null,
-  getClearColor: (c) => c,
-  getClearAlpha: () => 1,
-  setClearColor: () => {},
-  clear: () => {},
-  getDrawingBufferSize: (v) => v.set(640, 360),
-});
+const fakeRenderer = () => {
+  const r = {
+    toneMapping: THREE.NoToneMapping,
+    toneMappingExposure: 1,
+    shadowMap: { enabled: false, type: THREE.PCFShadowMap, autoUpdate: true, needsUpdate: false },
+    target: null, // (the render target set last)
+    render: vi.fn(),
+    setRenderTarget: vi.fn((t) => (r.target = t)),
+    getRenderTarget: () => r.target,
+    getClearColor: (c) => c,
+    getClearAlpha: () => 1,
+    setClearColor: () => {},
+    clear: () => {},
+    getDrawingBufferSize: (v) => v.set(640, 360),
+  };
+  return r;
+};
 const fakeRt = ({ tier = 'mid' } = {}) => {
   const emitted = [];
   const defined = [];
@@ -356,6 +360,9 @@ describe('the Expanse surface module, drawn through the kit', () => {
     for (const [name, p] of pools) {
       const d = p.dispose;
       p.dispose = () => (order.push(name), d());
+      // (the pools go before the cells do: no cell's free, pool by pool, as the stream lets go)
+      const f = p.free;
+      p.free = (key) => (order.push(`free ${name} ${key}`), f(key));
     }
     const kd = kit.dispose;
     kit.dispose = () => (order.push('kit'), kd());
@@ -364,5 +371,51 @@ describe('the Expanse surface module, drawn through the kit', () => {
     for (const g of groups) expect(g.parent).toBeNull();
     // (the kit gone: it makes no puff now)
     expect(kit.puff(names[0])).toBeNull();
+    expect(world.scene.cells()).toBe(0);
+    expect(world.stream.stats().built).toBe(0);
+  }, 30000);
+
+  it('draws the shallows’ opaque pass without the flora, the crates or the leaves, and the shadow map once a frame, in the frame', async () => {
+    const rt = fakeRt({ tier: 'high' });
+    const world = await expanse.create(rt, { seed: 7, ...KIT });
+    await run(world, 0.5);
+    const { scene } = world;
+    const r = rt.gfx.renderer;
+    expect(r.shadowMap.enabled).toBe(true);
+    const groups = [...scene.pools.values()].map((p) => p.group);
+    expect(groups.length).toBeGreaterThan(0);
+    const shown = () => ({ water: scene.water.group.visible, crates: scene.crates.mesh.visible, leaves: scene.leaves.mesh.visible, pools: groups.map((g) => g.visible) });
+    const seen = [];
+    r.render.mockImplementation((s) => {
+      if (s !== scene.scene) return; // (the tracks' own)
+      const sm = r.shadowMap;
+      const shadows = sm.enabled && (sm.autoUpdate || sm.needsUpdate);
+      seen.push({ target: r.target, shown: shown(), shadows });
+      if (shadows) sm.needsUpdate = false; // (as three's does, once it has drawn the map)
+    });
+    const all = (v) => ({ water: v, crates: v, leaves: v, pools: groups.map(() => v) });
+    for (let f = 0; f < 3; f++) world.draw({});
+    expect(seen).toHaveLength(6);
+    for (let f = 0; f < 3; f++) {
+      const [opaque, frame] = seen.slice(2 * f, 2 * f + 2);
+      // the bed for the shallows: no water, no trees, crates or leaves, the shadow map as it was
+      expect(opaque.target).not.toBeNull();
+      expect(opaque.shown).toEqual(all(false));
+      expect(opaque.shadows).toBe(false);
+      // then the frame: everything, and the shadow map drawn for it
+      expect(frame.target).toBeNull();
+      expect(frame.shown).toEqual(all(true));
+      expect(frame.shadows).toBe(true);
+    }
+    // (and the renderer's own updating as it was between frames)
+    expect(shown()).toEqual(all(true));
+    expect(r.shadowMap.autoUpdate).toBe(true);
+    // the blur dropped: one pass a frame, its shadow map drawn in it
+    world.lowerQuality(1);
+    seen.length = 0;
+    world.draw({});
+    expect(seen).toEqual([{ target: null, shown: all(true), shadows: true }]);
+    world.dispose();
+    expect(r.shadowMap.autoUpdate).toBe(true);
   }, 30000);
 });

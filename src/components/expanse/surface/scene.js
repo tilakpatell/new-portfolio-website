@@ -26,9 +26,13 @@
 // the kit's manifest in (`ready`); without it the land draws none.
 //
 // draw: the tracks into their target; on high and ultra the opaque frame
-// into a half-size target (the water hidden) for the water's shallows; then
-// the frame. lowerQuality drops the water's blur, then the shadows, then
-// draws every pool's levels nearer by a quarter.
+// into a half-size target for the water's shallows, the bed they sample
+// (the water, the pools, the crates and the leaves hidden); then the frame,
+// the one pass the shadow map is drawn for (three would draw it again for
+// every render: the shallows' pass reads last frame's). lowerQuality drops
+// the water's blur, then the shadows, then draws every pool's levels nearer
+// by a quarter. dispose wants to come before the stream lets its cells go:
+// the pools go whole, not a cell at a time.
 //
 //   createScene({ renderer, spec, tier, radius, small, kit (loadKit's
 //     options over the scene's: a test's `load` and `manifest`) }) → { scene,
@@ -193,6 +197,9 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
   // the opaque frame, half size, for the water's shallows on high and ultra
   let opaque = water.blur ? new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType }) : null;
   let blur = water.blur;
+  // (what that pass leaves out besides the pools' groups, and a list kept for them all)
+  const bedless = [water.group, crates.mesh, leaves.mesh].filter(Boolean);
+  const hidden = [];
   let origin = [0, 0, 0];
 
   function geometryOf(mesh) {
@@ -302,20 +309,36 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
       house.follow();
     },
     draw() {
-      tracks.render(renderer, { x: view.focus.x, z: view.focus.z });
-      if (blur && opaque) {
-        const size = renderer.getDrawingBufferSize?.(new THREE.Vector2()) ?? new THREE.Vector2(2, 2);
-        const w = Math.max(2, Math.floor(size.x / 2));
-        const h = Math.max(2, Math.floor(size.y / 2));
-        if (opaque.width !== w || opaque.height !== h) opaque.setSize(w, h);
-        water.group.visible = false;
-        renderer.setRenderTarget(opaque);
+      // (the shadow map drawn once, for the frame: not for the tracks, nor
+      // for the shallows' pass, which has the trees out and reads last
+      // frame's; the renderer's own setting back after, as toon.js does)
+      const shadows = renderer.shadowMap;
+      const auto = shadows?.autoUpdate;
+      if (shadows) shadows.autoUpdate = shadows.needsUpdate = false;
+      try {
+        tracks.render(renderer, { x: view.focus.x, z: view.focus.z });
+        if (blur && opaque) {
+          const size = renderer.getDrawingBufferSize?.(new THREE.Vector2()) ?? new THREE.Vector2(2, 2);
+          const w = Math.max(2, Math.floor(size.x / 2));
+          const h = Math.max(2, Math.floor(size.y / 2));
+          if (opaque.width !== w || opaque.height !== h) opaque.setSize(w, h);
+          // (the bed under the water is what the shallows sample: the water,
+          // the flora, the crates and the leaves out of it)
+          hidden.length = 0;
+          for (const o of bedless) if (o.visible) hidden.push(o);
+          for (const got of pools.values()) if (got.group.visible) hidden.push(got.group);
+          for (const o of hidden) o.visible = false;
+          renderer.setRenderTarget(opaque);
+          renderer.render(scene, camera);
+          renderer.setRenderTarget(null);
+          for (const o of hidden) o.visible = true;
+          water.setOpaque(opaque.texture, size.x, size.y);
+        }
+        if (shadows) shadows.needsUpdate = true;
         renderer.render(scene, camera);
-        renderer.setRenderTarget(null);
-        water.group.visible = true;
-        water.setOpaque(opaque.texture, size.x, size.y);
+      } finally {
+        if (shadows) shadows.autoUpdate = auto;
       }
-      renderer.render(scene, camera);
     },
     resize(w, h) {
       view.resize(w, h);
