@@ -64,8 +64,9 @@ describe('addProps', () => {
       { kind: 'tree', x: 20, y: 0, z: 0, scale: 1.2, radius: 0.4 },
       { kind: 'tree', x: 30, y: 0, z: 0, scale: 1.2 },
       { kind: 'rock', x: 40, y: 0, z: 0, scale: 1.1 },
+      { kind: 'rock', x: 50, y: 0, z: 0, scale: 1.1, radius: 1.5, height: 6 },
     ]);
-    const [tree, rock, thin, his, plain] = props.bodies;
+    const [tree, rock, thin, his, plain, tall] = props.bodies;
     // a tree: a cylinder of its radius and its height, its foot on the ground
     expect(tree.desc.colliders).toEqual([{ shape: 'cylinder', args: [4, 0.9] }]);
     expect(tree.colliders[0].shape.halfHeight).toBeCloseTo(4, 5);
@@ -82,6 +83,9 @@ describe('addProps', () => {
     expect(his.position()).toEqual([30, 2.5, 0]);
     expect(plain.desc.colliders[0].args[0]).toBeCloseTo(1.1, 9);
     expect(plain.position()[1]).toBeCloseTo(0.33, 5);
+    // (a height is a cylinder's: a ball given one keeps its size and its lift)
+    expect(tall.desc.colliders[0]).toMatchObject({ shape: 'ball', args: [1.5] });
+    expect(tall.position()[1]).toBeCloseTo(0.33, 5);
     // (the kinds' own colliders untouched)
     expect(KINDS.tree.colliders[0].args).toEqual([2.5, 0.15]);
     expect(KINDS.rock.colliders[0].args).toEqual([1]);

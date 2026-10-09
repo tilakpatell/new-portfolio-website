@@ -16,6 +16,7 @@
 // metres as it stands, its scale not applied again, `radius` is a ball's or
 // a cylinder's radius and `height` a cylinder's whole height, its foot on
 // the ground (its middle half of it up its up, in place of the kind's lift).
+// Only a cylinder kind takes a height: a ball given one keeps its own lift.
 //
 //   KINDS: crate, barrel, rock, tree (his numbers: a crate is a 0.5 m
 //     half-cube of 0.02 that any touch sets off; a tree a fixed cylinder
@@ -88,7 +89,7 @@ export function addProps(physics, list, kinds = KINDS) {
       const s = k.scales === false ? 1 : (p.scale ?? 1);
       const up = p.up ?? [0, 1, 0];
       const l = Math.hypot(up[0], up[1], up[2]) || 1;
-      const lift = p.height != null ? p.height / 2 : (k.lift ?? 0) * s;
+      const lift = p.height != null && k.colliders.some((c) => c.shape === 'cylinder') ? p.height / 2 : (k.lift ?? 0) * s;
       bodies.push(
         physics.add({
           type: k.type,

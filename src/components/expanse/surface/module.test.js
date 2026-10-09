@@ -323,6 +323,25 @@ describe('the Expanse surface module, drawn through the kit', () => {
     world.dispose();
   }, 30000);
 
+  it('casts shadows from its trees, bushes and rocks up close, and none from the cover', async () => {
+    const rt = fakeRt({ tier: 'high' });
+    const world = await expanse.create(rt, { seed: 7, ...KIT });
+    await run(world, 0.5);
+    const seen = { cover: 0, species: 0 };
+    for (const [name, p] of world.scene.pools) {
+      await p.ready;
+      const cover = COVER.has(MANIFEST.models[name].kind);
+      seen[cover ? 'cover' : 'species']++;
+      const full = p.group.children.filter((m) => m.userData.level === 0);
+      expect(full.length).toBeGreaterThan(0);
+      for (const m of full) expect(m.castShadow, name).toBe(!cover);
+      for (const m of p.group.children.filter((m) => m.userData.level > 0)) expect(m.castShadow, name).toBe(false);
+    }
+    expect(seen.cover).toBeGreaterThan(0);
+    expect(seen.species).toBeGreaterThan(0);
+    world.dispose();
+  }, 30000);
+
   it('frees its pools, then the kit, when disposed of', async () => {
     const rt = fakeRt({ tier: 'low' });
     const world = await expanse.create(rt, { seed: 7, ...KIT });

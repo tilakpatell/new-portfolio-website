@@ -19,8 +19,9 @@
 // first time a cell has one, under the cell's key), as many as the level's
 // share of the budget's props (`kept`: a hash of the prop, so the cells stay
 // the same on every device and the thinning is the draw's). Trees, bushes
-// and rocks take the level's bands; the cover (plants, flowers, grass tufts,
-// mushrooms, pebbles, stepping stones) four tenths of them. The flora wants
+// and rocks take the level's bands and cast shadows up close; the cover
+// (plants, flowers, grass tufts, mushrooms, pebbles, stepping stones) four
+// tenths of the bands and no shadow. The flora wants
 // the kit's manifest in (`ready`); without it the land draws none.
 //
 // draw: the tracks into their target; on high and ultra the opaque frame
@@ -159,7 +160,9 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
   function poolOf(name) {
     let got = pools.get(name);
     if (!got) {
-      got = createPool(kit, name, { bands: bandsOf(kit.info(name).kind), lod1: limits.lod1 });
+      const { kind } = kit.info(name);
+      // (the cover casts no shadow: a shadow pass's draw each, for little on the ground)
+      got = createPool(kit, name, { bands: bandsOf(kind), lod1: limits.lod1, shadows: !COVER.has(kind) });
       land.add(got.group);
       pools.set(name, got);
     }
