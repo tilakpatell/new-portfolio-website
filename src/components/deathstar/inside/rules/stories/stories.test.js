@@ -14,7 +14,7 @@ import { STORIES, storyFor } from './index';
 // station’s stories are checked against its rooms as soon as they come.
 const STATION = { ds1: DS1, ds2: DS2 };
 // the routines a spawned person may be given (rules/brains.js’s role types)
-const ROLES = ['patrol', 'post', 'work', 'chat', 'march', 'droid', 'follow', 'scripted'];
+const ROLES = ['patrol', 'post', 'work', 'chat', 'march', 'droid', 'follow', 'lead', 'scripted'];
 const ITEMS = ['armour', 'helmet', 'comlink', 'beacon', 'saber', ...Object.keys(WEAPONS).map((id) => `gun:${id}`)];
 const EFFECTS = ['flag', 'unflag', 'unlock', 'lock', 'spawn', 'despawn', 'alarm', 'say', 'intercom', 'scene', 'hero', 'give', 'take', 'companion', 'to', 'achievement', 'music', 'walls', 'bridge', 'end'];
 
@@ -272,14 +272,14 @@ describe('what the steps name', () => {
         // the step’s own start has run by the time it is acted on
         for (const e of step.start) {
           if (e.spawn) spawned.add(e.spawn.tag);
-          if (e.spawn?.role === 'follow') followers.add(e.spawn.tag);
+          if (e.spawn?.role === 'follow' || e.spawn?.role === 'lead') followers.add(e.spawn.tag);
           if (e.give) given.add(e.give);
         }
         if (thing && step.type !== 'fight') {
           const known = spawned.has(thing) || thing in st.spots || `${thing}-1` in st.spots || jumps.has(thing) || given.has(thing);
           expect(known, `${where}: ${thing}`).toBe(true);
         }
-        // someone walked must keep up with you, to be with you as you arrive (one carried is a companion the step takes up)
+        // someone walked must keep up with you, or lead you there, to be with you as you arrive (one carried is a companion the step takes up)
         const takenUp = step.start.some((e) => e.companion === step.need && e.follow);
         if (step.type === 'escort') expect(step.checkpoint.companions.includes(step.need) || followers.has(step.need) || takenUp, `${where}: ${step.need}`).toBe(true);
         for (const e of [...step.start, ...step.end]) if (e.despawn) expect(spawned.has(e.despawn), `${where}: ${e.despawn}`).toBe(true);
@@ -410,7 +410,7 @@ describe('failing', () => {
     const { progress } = playThrough(story, wait(20));
     const { progress: after, effects } = storyStep(progress, story, { type: 'caught' });
     expect(after).toMatchObject({ step: 'scan', t: 0 });
-    expect(effects).toContainEqual({ checkpoint: { step: 'scan', spot: 'scan-hide', hero: 'luke', armour: false, helmet: false, companions: ['han', 'chewie', 'obiwan', 'threepio', 'artoo'], flags: [], gun: 'e11' } });
+    expect(effects).toContainEqual({ checkpoint: { step: 'scan', spot: 'scan-hide', hero: 'luke', armour: false, helmet: false, companions: ['han', 'chewie', 'obiwan', 'threepio', 'artoo'], flags: [], gun: 'e11', items: [] } });
   });
 
   it('starts Ben’s walk to the tractor beam again, as Ben, if the guards see him', () => {
@@ -434,7 +434,7 @@ describe('failing', () => {
     expect(crushed.progress.step).toBe('compactor');
     expect(crushed.effects).toContainEqual({ walls: 'open' });
     expect(crushed.effects).toContainEqual({
-      checkpoint: { step: 'compactor', spot: 'chute-slide', hero: 'luke', armour: true, helmet: true, companions: ['han', 'chewie', 'leia'], flags: ['tk421', 'tractor-found', 'leia-found', 'tractor-off', 'grate'], gun: 'e11' },
+      checkpoint: { step: 'compactor', spot: 'chute-slide', hero: 'luke', armour: true, helmet: true, companions: ['han', 'chewie', 'leia'], flags: ['tk421', 'tractor-found', 'leia-found', 'tractor-off', 'grate'], gun: 'e11', items: ['comlink'] },
     });
   });
 
@@ -695,14 +695,14 @@ describe('carrying Vader', () => {
     expect(playThroughFrom(story, progress, wait(120))).toEqual({ step: 'carry', failed: true });
     const { progress: after, effects } = run(story, progress, wait(120));
     expect(after).toMatchObject({ step: 'carry', t: 0 });
-    expect(effects).toContainEqual({ checkpoint: { step: 'carry', spot: 'under-stairs', hero: 'luke', armour: false, helmet: false, companions: [], flags: [], gun: null } });
+    expect(effects).toContainEqual({ checkpoint: { step: 'carry', spot: 'under-stairs', hero: 'luke', armour: false, helmet: false, companions: [], flags: ['prisoner'], gun: null, items: [] } });
     expect(effects).toContainEqual({ companion: 'vader', follow: true });
     expect(effects).toContainEqual({ flag: 'carrying' });
   });
 
   it('sets him down at the ramp before the mask comes off, a save there finding him still carried', () => {
     const mask = story.steps.find((s) => s.id === 'mask');
-    expect(mask.checkpoint).toMatchObject({ spot: 'shuttle-ramp', companions: ['vader'], flags: ['carrying', 'breach'] });
+    expect(mask.checkpoint).toMatchObject({ spot: 'shuttle-ramp', companions: ['vader'], flags: ['prisoner', 'carrying', 'breach'] });
     expect(mask.start).toEqual(expect.arrayContaining([{ unflag: 'carrying' }, { companion: 'vader', follow: false }]));
   });
 });

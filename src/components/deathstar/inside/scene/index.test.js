@@ -130,6 +130,10 @@ describe('what the player’s figure plays', () => {
     expect(playerAct({ moving: true }).base).toBeNull();
   });
 
+  it('sits in a seat, the gun put up', () => {
+    expect(playerAct({ sit: true, gun: 'e11', aim: true })).toEqual({ base: 'sit.idle', upper: null });
+  });
+
   it('holds the gun out while aiming, fires it for a moment after each shot, and carries it otherwise', () => {
     expect(playerAct({ gun: 'e11', aim: true }).upper).toBe('aim.pistol');
     expect(playerAct({ gun: 'e11', shotAgo: 0.1 }).upper).toBe('shoot.pistol');
