@@ -16,7 +16,8 @@
 // name can't go on: spaces round a dot count, but a dot with a space only
 // after it is a sentence ending, not a link); each word names.js calls rude
 // becomes •••; cut to max characters (a [link] or a ••• the cut falls in
-// goes whole, so none's left half shown); nothing left, nothing.
+// goes whole, so none's left half shown, and a joiner it leaves at the end
+// goes); nothing left, nothing.
 
 import { isRude, stripControls } from '../names';
 
@@ -59,6 +60,7 @@ export function cleanText(raw, max) {
   let end = Math.min(max, said.length);
   // (one the cut falls in: from its start)
   for (const w of WHOLE) for (let i = Math.max(0, end - w.length + 1); i < end; i++) if (said.slice(i, i + w.length).join('') === w) end = i;
-  const text = said.slice(0, end).join('').trim();
+  // (nor on a joiner the cut left)
+  const text = said.slice(0, end).join('').replace(/[\u200c\u200d]+$/, '').trim();
   return text || null;
 }

@@ -34,6 +34,9 @@ describe('what may be said', () => {
     // in any script before it, and whoever typed it
     expect(cleanText('🚀🚀 [link] ok', 6)).toBe('🚀🚀');
     expect(cleanText('ok ••• fine', 4)).toBe('ok');
+    // nor on a joiner, a sequence cut short
+    expect(cleanText('👩‍🚀'.repeat(3), 5)).toBe('👩‍🚀👩');
+    expect(cleanText('ب\u200cب\u200cب', 4)).toBe('ب\u200cب');
   });
 
   it('takes out control and direction characters', () => {

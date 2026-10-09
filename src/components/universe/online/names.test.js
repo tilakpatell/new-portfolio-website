@@ -40,6 +40,11 @@ describe('cleanName, with what stripControls keeps', () => {
     expect([...cleanName(`Z${'\u0351'.repeat(40)}`)]).toHaveLength(4);
   });
 
+  it('never ends on a joiner where the cap cut a sequence short', () => {
+    expect(cleanName(`ab${'👩‍🚀'.repeat(5)}`)).toBe(`ab${'👩‍🚀'.repeat(4)}👩`);
+    expect(cleanName(`ب${ZWNJ}`.repeat(10))).toBe(`${`ب${ZWNJ}`.repeat(7)}ب`);
+  });
+
   it('still catches a rude one split by a joiner', () => {
     for (const bad of [`sh${ZWJ}1t lord`, `a${ZWNJ}ss`, `KK${ZWJ}K`]) expect(cleanName(bad), bad).toBeNull();
   });

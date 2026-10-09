@@ -61,11 +61,12 @@ export const stripControls = (s) =>
 
 // A name as it may be shown: no control or direction-override characters
 // (which could flip the text round it), spaces collapsed, NAME_MAX
-// characters at most. Empty, rude (isRude), or not a string: null.
+// characters at most (and not ending on a joiner the cut left). Empty, rude
+// (isRude), or not a string: null.
 export function cleanName(raw) {
   if (typeof raw !== 'string') return null;
   raw = raw.slice(0, NAME_MAX * 8); // (a huge one costs nothing to look at)
   const bare = stripControls(raw);
-  const name = [...bare.replace(/\s+/g, ' ').trim()].slice(0, NAME_MAX).join('').trim();
+  const name = [...bare.replace(/\s+/g, ' ').trim()].slice(0, NAME_MAX).join('').replace(/[\u200c\u200d]+$/, '').trim();
   return name && !isRude(name) ? name : null;
 }
