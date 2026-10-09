@@ -39,6 +39,7 @@ One page per library, engine or framework the site is built on, and this index o
 | `watlas` | ^1.0.1 | [assets-pipeline.md](assets-pipeline.md) | 1 |
 | `@eslint/js` | ^9.39.5 | [build.md](build.md) | 0 |
 | `@fontsource/noto-sans-runic` | ^5.3.0 | [fonts.md](fonts.md) | 0 |
+| `@supabase/supabase-js` | ^2.117.3 | [supabase.md](supabase.md) | 0 |
 | `@types/react` | ^19.3.0 | [react.md](react.md) | 0 |
 | `@types/react-dom` | ^19.3.0 | [react.md](react.md) | 0 |
 | `@vitejs/plugin-react` | ^6.1.2 | [build.md](build.md) | 0 |

@@ -9,7 +9,7 @@ create extension if not exists btree_gist;
 
 -- the planets a thing may be built on (50 at launch: supabase/seed.sql)
 create table if not exists public.planets (
-  id   text primary key check (id ~ '^[a-z0-9:_,-]{1,64}$'),
+  id   text primary key check (id ~ '^[A-Za-z0-9:_,-]{1,64}$'),
   name text not null,
   type text not null,
   seed text not null
