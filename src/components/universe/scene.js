@@ -163,7 +163,7 @@ import { createWingmen } from './wingmen';
 import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
-import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
+import { CREW_INK, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { HERO_ENGINES, capPlume, createEngines } from './engines';
 import { paintById } from './paint';
 import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
@@ -2068,10 +2068,11 @@ export async function create(canvas, ctx) {
           ctx.invalidate();
         });
     } else if (kind === 'cruiser') {
-      // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's 2.7 across there)
+      // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's
+      // 2.7 across there, LENGTH here), theirs finer (they're drawn big)
       const model = state.model;
       import('../rickmorty/cruiser3d')
-        .then((m) => m.buildCruiser({ ink: BUILT / 2.7 }))
+        .then((m) => m.buildCruiser({ ink: LENGTH / 2.7, crewInk: CREW_INK }))
         .then((c) => {
           if (!c) return;
           if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint, setLooks: c.setLooks })) {
