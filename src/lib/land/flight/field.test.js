@@ -22,6 +22,18 @@ describe('planetField', () => {
     expect(h).not.toBe(12);
   });
 
+  it('has no step anywhere: no cliff where one biome gives way to another', () => {
+    // a 3 km line a metre at a time, twice, across the ridges' reach
+    for (const [x0, z0, dx, dz] of [[-20000, 4000, 1, 0], [6000, -15000, 0.6, 0.8]]) {
+      let was = f.heightAt(x0, z0);
+      for (let i = 1; i <= 3000; i++) {
+        const h = f.heightAt(x0 + dx * i, z0 + dz * i);
+        expect(Math.abs(h - was), `${x0 + dx * i}, ${z0 + dz * i}`).toBeLessThan(3);
+        was = h;
+      }
+    }
+  });
+
   it('names a biome by index', () => {
     for (let i = 0; i < 20; i++) {
       const b = f.biomeAt(i * 1700, -i * 900);

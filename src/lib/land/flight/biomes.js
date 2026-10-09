@@ -2,8 +2,9 @@
 // noises (temperature t and moisture m, each 0…1) place every point in a
 // climate square; a biome sits at a point of that square with a reach, and
 // its weight falls off over the outer 40 % of the reach, so two biomes blend
-// across a band instead of meeting at a cliff. The weights sum to 1; a point
-// outside every reach belongs wholly to the first biome.
+// across a band instead of meeting at a cliff. The weights sum to 1; the
+// first biome is the ground between the others, taking whatever weight they
+// leave, so a point outside every reach is wholly the first biome's.
 //
 // Pure: runs in Node and in the flight's terrain worker.
 //
@@ -33,7 +34,15 @@ export function climateOf(spec) {
 export function biomeWeights(spec, x, z) {
   const [t, m] = climateOf(spec)(x, z);
   const w = spec.biomes.map((b) => 1 - smoothstep(b.reach * 0.6, b.reach, Math.hypot(t - b.at[0], m - b.at[1])));
-  const sum = w.reduce((a, b) => a + b, 0);
-  if (sum <= 0) return w.map((_, i) => (i === 0 ? 1 : 0));
+  // The first biome takes what the others leave of 1, so where they fade
+  // out it fades in. Normalising alone would make one biome's last sliver
+  // of weight a whole 1 at the edge of its reach, and the land would step
+  // from its stack to the first's in a metre: a cliff a hundred metres high.
+  let sum = 0;
+  for (const v of w) sum += v;
+  if (sum < 1) {
+    w[0] += 1 - sum;
+    sum = 1;
+  }
   return w.map((v) => v / sum);
 }
