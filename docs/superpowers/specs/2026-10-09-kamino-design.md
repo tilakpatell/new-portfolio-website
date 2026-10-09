@@ -72,7 +72,7 @@ Each new figure is made with Meshy on the third account (concept image, image-to
 | `lamasu` | the Prime Minister: taller, the head-fin, a longer white-grey robe | 2.65 m | Meshy (new) | Lama Su |
 | `nalase` | the chief medical scientist: a fitted dark-grey medical robe and the Kaminoan face | 2.5 m | Meshy (new) | the growth hall (Phase 3), the facility |
 | `clonecadet` | a clone cadet: grey training fatigues with blue piping and pads, bare head, the clones' face | 1.83 m | Meshy (new) | the cadets drilling, the barracks, the training run |
-| `clonephase1` | the Phase I trooper, from the Sketchfab statue it is today | 1.83 m | Meshy rig of the statue (`bake` → `rigurl`, 5 credits); if the arms-down pose won't rig (as Anakin's didn't), a Meshy figure from words | the pad's guard, the assault |
+| `clonephase1` | the Phase I trooper: the white armour, the helmet's crest and fin | 1.83 m | Meshy (new; the Sketchfab statue stays as its fallback) | the pad's guard, the assault |
 | `shaakti` | Shaak Ti, who oversaw the clones' training | 1.88 m | crew already (`crew/shaakti.glb`) | the parade ground |
 
 Prompts describe how a figure looks, never its name (the image step turns names down, `meshy-galaxy.mjs`'s header). The concept image is checked before the 30-credit model step and the model before the 5-credit rig (the plan's review gates), so a bad concept costs 9 credits, not 44.
@@ -92,7 +92,7 @@ The Kamino batch is its own lane file, `scripts/meshy-kamino.mjs`, exporting `AS
 
 Two halves, one at run time and one in the tests, so the rule holds without anyone looking.
 
-**At run time.** A site may say `figures: 'models'` (Kamino does). `anyFigure(kind, spec, kit, i, models, { built })` takes a last option; `createActors`, the ground war's `groundFigures.js`, the quest spawns and the assault pass `built: site.figures !== 'models'`. With `built: false` the chain is: walker → crew GLB → catalogue GLB → nothing, and `buildFigure` is never called for a person (`propFigure` stays, for the humanoid props that are models already). A GLB load that fails on the network is tried once more after 2 s (`placer.js`'s `loadGlb`, a `retry` option the actors pass); a file that is missing or bad is not retried. An actor with no figure is not drawn and can't be talked to (as today), and a quest giver with none is logged once with its kind, so a hole is loud in the console and in the check below, not a blob on screen.
+**At run time.** A site may say `figures: 'models'` (Kamino does). `anyFigure(kind, spec, kit, i, models, { built })` takes a last option; `createActors`, the ground war's `groundFigures.js`, the quest spawns and the assault pass `built: site.figures !== 'models'`. With `built: false` the chain is: walker → crew GLB → catalogue GLB → nothing, and `buildFigure` is never called for a person (`propFigure` stays, for the humanoid props that are models already). A kind whose models all fail to load is tried once more after 2 s (in `anyFigure`, so the crew's loader and the catalogue's both get the second try). An actor with no figure is not drawn and can't be talked to (as today), and a quest giver with none is logged once with its kind, so a hole is loud in the console and in the check below, not a blob on screen.
 
 **In the tests.** `scripts/galaxy-figures-audit.mjs` grows from the site's `life` to every source a figure can come from on a world: the site's and its zones' `life`, the quests' `life` and every step's `spawn` (`sites/quests.js`), the ground war's sides for that world (`siteWar.js` → `troops.js`), the garrison's swaps (`garrison.js`), and the assault's sides and `hideLife` (`missions/assaults.js`). Its pure `sources(world, tables)` returns `[{ kind, from }]`; `audit` counts them by how they are drawn as now. A new `MODELS_ONLY` list (`['kamino']`) fails the audit for any kind there drawn `built`, `none`, or, for a person (not a machine or creature listed in `STILL_OK`: `r5`, `aiwha`, `probe`), `still`. `src/components/galaxy/surface/sites/kamino.cast.test.js` runs the same `sources` and `drawnAs` over the real tables under `npm test`, so CI fails the moment a Kamino row names a kind with no model; and `crew.figure.test.js`'s pattern checks every new crew file exists, is skinned on Meshy's bones and stands at its height ±5%.
 
@@ -110,7 +110,7 @@ First the move (no pixel changes, the rules' recipe): Kamino's site out of `site
 
 - **Slave I** becomes a catalogue row on the site's own credited GLB (`public/models/universe/slave1.glb`, upright, 21.5 m along its length, `solid` its hull's footprint), placed on the platform where the built one stands; the built `slave1` stays as its fallback. Its departure is Phase 4's.
 - **The pads** (`kpad`), rebuilt in code as the audit asks, because a deck walked on at radii 16–40 m can't be a scaled model: dark wet steel (`#2b3238`, roughness 0.35, the rain's sheen), a ring of amber strip lights round the rim (emissive, one draw: an instanced strip), radial seams, a flared underside and the pylon's hanging pods under the larger pads. The walk floor, solids and stilts (`water.legs`) are unchanged.
-- **The towers** (`tipoca`, `style: 'tower'`): a Meshy model from the film's shot (the buildings lane's format, `scripts/meshy-galaxy-audit.mjs`'s row as the audit wrote it: 64 m, `hero: true`, a `.lod1`), replacing the Sketchfab drum; the Prime Minister's tower gets its height.
+- **The towers** (`tipoca`, `style: 'tower'`) were remade by the audit lane already (`catalog/audit.js:28`, a Meshy model with a `.lod1`): they stay. The Prime Minister's tower is checked in the shots for its height over the pad, and only its placement moves if it reads short.
 - **The storm**: puddles of rain rings on the decks (`decals.js`, a ripple sheet), and the clones' and Kaminoans' materials a touch wetter in the rain (roughness −0.15, applied by the site's `wet: 0.15` through the look, the same for every figure on a wet world).
 
 ## 3. Tipoca City, inside
@@ -155,9 +155,9 @@ The mission's second half, a set piece of its own (`galaxy/warpieces/kamino.js`,
 
 ## 8. What it costs
 
-- **Downloads**: six crew figures at ~1–1.5 MB each (Meshy, 30 k triangles, 1024 maps, meshopt), one tower model (~1.5 MB), the aqua droid (~1 MB), 99. Kamino's models are held to `galaxy-check.mjs BUDGET=1`'s row for its tier, against `lab/baseline/surface-<tier>.json`.
+- **Downloads**: six crew figures at ~1–1.5 MB each (Meshy, 30 k triangles, 1024 maps, meshopt), the Slave I already in the page's cache from orbit, the aqua droid (~1 MB), 99. Kamino's models are held to `galaxy-check.mjs BUDGET=1`'s row for its tier, against `lab/baseline/surface-<tier>.json`.
 - **Frame**: no more people than today on the surface but for Shaak Ti and the cadets' swap; the zones are drawn only when you are in them. The aiwha's bend is a few shader instructions on four models.
-- **Credits** (third account, said before each batch): Phase 1 ≈ 5 × 44 + 5 = 225; Phase 2 ≈ 39; Phase 3 ≈ 44; Phase 5 ≈ 39. About 350 in all, of 2,760.
+- **Credits** (third account, said before each batch): Phase 1 ≈ 6 × 44 = 264 (the Phase I trooper made from words, not rigged from the statue: an arms-down statue is the pose the rigger broke on before); Phase 3 ≈ 44; Phase 5 ≈ 39. About 350 in all, of 2,760.
 
 ## 9. Checks
 
