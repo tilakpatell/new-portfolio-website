@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { memo } from 'react';
 import { RiCloseLine, RiInformationLine } from 'react-icons/ri';
 import Emblem from './Emblem';
 import { SIDES, WARS } from './sides';
 import { whose } from './warText';
 
 // The holotable's key to its war (WarLayers.jsx and the systems' rings),
-// shut till it's asked for: a picture of each mark in the shown war's own
-// colours, and what it means.
+// shut till it's asked for (HoloMap.jsx keeps whether it's open, so Escape
+// can shut it): a picture of each mark in the shown war's own colours, and
+// what it means, in three groups: the systems', the war's and the routes'.
 
 // a mark's picture, 28 by 14
 const Mark = ({ children }) => (
@@ -15,12 +16,46 @@ const Mark = ({ children }) => (
   </svg>
 );
 
-export default function WarLegend({ war }) {
-  const [open, setOpen] = useState(false);
+const WarLegend = memo(function WarLegend({ war, open = false, onToggle }) {
   const w = WARS[war];
   const lib = SIDES[w.liberator];
   const raid = SIDES[w.raider];
-  const entries = [
+  // each mark and what it means, in three groups: the systems', the war's, the routes'
+  const systems = [
+    [
+      <span key="m" className="holomap-key-here" style={{ '--held': lib.colour }} />,
+      'You are here, tagged YOU',
+    ],
+    [
+      <span key="m" className="holomap-key-dot" style={{ '--held': lib.colour }} />,
+      'A system: ringed in its holder’s colour, named in its own',
+    ],
+    [
+      <span key="m" className="holomap-key-glyphs" aria-hidden="true">
+        <b className="holomap-fight">⚔</b>
+      </span>,
+      'A battle on now',
+    ],
+    [
+      <span key="m" className="holomap-key-glyphs" aria-hidden="true">
+        <b className="holomap-star">★</b>
+      </span>,
+      'The major order',
+    ],
+    [
+      <span key="m" className="holomap-key-glyphs" aria-hidden="true">
+        <span className="holomap-pilots">3</span>
+      </span>,
+      'Pilots online there now',
+    ],
+    [
+      <span key="m" className="holomap-key-glyphs" aria-hidden="true">
+        <i className="holomap-key-you" />
+      </span>,
+      'You fought there',
+    ],
+  ];
+  const warMarks = [
     [
       <Mark key="m">
         <rect x="1" y="1" width="26" height="12" rx="2" fill={lib.colour} fillOpacity="0.24" stroke={lib.colour} strokeOpacity="0.5" />
@@ -45,14 +80,6 @@ export default function WarLegend({ war }) {
         <line x1="2" y1="7" x2="26" y2="7" stroke="#fff" strokeWidth="1.2" />
       </Mark>,
       'Where two powers meet (dashed and moving where they fight)',
-    ],
-    [
-      <Mark key="m">
-        <line x1="1" y1="3" x2="27" y2="3" stroke={lib.colour} strokeOpacity="0.55" strokeWidth="1.4" />
-        <line x1="1" y1="7" x2="27" y2="7" stroke="#fff" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="2.5 2.5" />
-        <line x1="1" y1="11" x2="27" y2="11" stroke="#ffb347" strokeWidth="1.4" strokeDasharray="4 2.5" />
-      </Mark>,
-      'The lanes the war runs along: held, contested, fought along',
     ],
     [
       <Mark key="m">
@@ -95,33 +122,52 @@ export default function WarLegend({ war }) {
       <span key="m" className="holomap-key-cut" style={{ '--held': raid.colour }} />,
       'Cut off from supply: joined to neither its capital nor a stronghold, it holds less well and doesn’t mend',
     ],
+  ];
+  const routes = [
     [
-      <span key="m" className="holomap-key-here" style={{ '--held': lib.colour }} />,
-      'You are here',
+      <Mark key="m">
+        <line x1="1" y1="3" x2="27" y2="3" stroke={lib.colour} strokeOpacity="0.55" strokeWidth="1.4" />
+        <line x1="1" y1="7" x2="27" y2="7" stroke="#fff" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="2.5 2.5" />
+        <line x1="1" y1="11" x2="27" y2="11" stroke="#ffb347" strokeWidth="1.4" strokeDasharray="4 2.5" />
+      </Mark>,
+      'The lanes the war runs along: held, contested, fought along',
     ],
     [
-      <span key="m" className="holomap-key-glyphs" aria-hidden="true">
-        <b className="holomap-fight">⚔</b> <b className="holomap-star">★</b> <i className="holomap-key-you" />
-      </span>,
-      'A battle on now · the major order · you fought there',
+      <Mark key="m">
+        <line x1="2" y1="7" x2="26" y2="7" stroke="#7fd6ff" strokeOpacity="0.28" strokeWidth="5" />
+        <line x1="2" y1="7" x2="26" y2="7" stroke="#fff" strokeWidth="1.6" strokeDasharray="3.6 2.4" />
+      </Mark>,
+      'Your course: the way a jump to the system picked goes, with its length and time',
     ],
+  ];
+  const groups = [
+    ['Systems', systems],
+    ['The war', warMarks],
+    ['Routes', routes],
   ];
   return (
     <div className="holomap-legend" data-open={open || undefined}>
-      <button type="button" className="holomap-legend-toggle" aria-expanded={open} aria-controls="holomap-legend-panel" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="holomap-legend-toggle" aria-expanded={open} aria-controls="holomap-legend-panel" onClick={() => onToggle?.(!open)}>
         {open ? <RiCloseLine aria-hidden="true" /> : <RiInformationLine aria-hidden="true" />} {open ? 'Close the key' : 'Key'}
       </button>
       <div id="holomap-legend-panel" className="holomap-legend-panel" hidden={!open}>
         <p className="holomap-kicker">{w.name}</p>
-        <ul>
-          {entries.map(([mark, text]) => (
-            <li key={text}>
-              {mark}
-              <span>{text}</span>
-            </li>
-          ))}
-        </ul>
+        {groups.map(([name, entries]) => (
+          <div key={name}>
+            <h4 className="holomap-key-h">{name}</h4>
+            <ul>
+              {entries.map(([mark, text]) => (
+                <li key={text}>
+                  {mark}
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );
-}
+});
+
+export default WarLegend;

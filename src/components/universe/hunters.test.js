@@ -83,3 +83,44 @@ describe('the hunters, drawn', () => {
     hunters.dispose();
   });
 });
+
+describe('the hunters, as bodies for ship contact', () => {
+  it('answers each one in the fight as a foe, where it is and where it was', () => {
+    const hunters = createHunters(new THREE.Group(), { fleet: fakeFleet() });
+    hunters.pack('empire', ship, { size: 2, ace: false, kinds: ['tie', 'tie'] });
+    hunters.update(1 / 60, 0, ship);
+    const bodies = hunters.bodies;
+    expect(bodies).toHaveLength(2);
+    const [b] = bodies;
+    expect(b.key).toBe(`h:${b.id}`);
+    expect(b.kind).toBe('tie');
+    expect(b.side).toBe('foe');
+    expect(b.size).toBe(0.3);
+    for (const p of [b.at, b.prev, b.vel]) expect(Object.keys(p).sort()).toEqual(['x', 'y', 'z']);
+    hunters.dispose();
+  });
+
+  it('leaves out a rammer, whose own burst on you stands, and one flickered out of sight', () => {
+    const hunters = createHunters(new THREE.Group(), { fleet: fakeFleet() });
+    hunters.pack('empire', ship, { size: 1, ace: false, kinds: ['wardrone'] });
+    expect(hunters.bodies).toEqual([]);
+    hunters.clear();
+    hunters.pack('empire', ship, { size: 1, ace: false, kinds: ['zigerion'] });
+    const [z] = hunters.bodies;
+    expect(z.hit(1).down).toBe(false); // (hit, it flickers out of sight a moment)
+    expect(hunters.bodies).toEqual([]);
+    hunters.dispose();
+  });
+
+  it('takes a ram’s punch as hits, as a shot does: a TIE goes down, Vader comes on', () => {
+    const hunters = createHunters(new THREE.Group(), { fleet: fakeFleet() });
+    hunters.pack('empire', ship, { size: 2, ace: false, kinds: ['tie', 'tieadvanced'] });
+    const [tie, vader] = ['tie', 'tieadvanced'].map((k) => hunters.bodies.find((b) => b.kind === k));
+    const down = tie.hit(1);
+    expect(down).toMatchObject({ id: tie.id, kind: 'tie', down: true, faction: 'empire' });
+    expect(down.at).toBeInstanceOf(THREE.Vector3);
+    expect(vader.hit(1)).toMatchObject({ kind: 'tieadvanced', down: false });
+    expect(hunters.bodies.map((b) => b.kind)).toEqual(['tieadvanced']);
+    hunters.dispose();
+  });
+});

@@ -37,6 +37,10 @@ import { LENGTH } from './scale';
 // (small against the planets, and much smaller than the stations: scale.js)
 export { LENGTH };
 export const BUILT = 0.36; // the length the ships below are built at
+// the line round Rick and Morty in the cruiser (rickmorty/cruiser3d.js's
+// crewInk, in the saucer's units): drawn as big as the map draws them, the
+// C-137 page's would be wider than their fingers and Rick's spikes of hair
+export const CREW_INK = 0.012;
 
 // Geometries placed by [position, rotation, scale], merged into one.
 function parts(list) {

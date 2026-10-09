@@ -28,6 +28,7 @@ import { houseOn } from '../../lib/three/house';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
 import { createFeel, feelGroups } from '../../lib/three/feel';
+import { BLOOMS } from './look';
 
 const LENGTH = 340; // how much station to build, in units
 const SHIP_AHEAD = 0.55; // the X-wing sits this far ahead of the simulation's z
@@ -333,7 +334,8 @@ function buildTieAdvanced(P) {
 export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // (the tone is the house’s: houseOn, below, maps it Neutral and lifts this
+  // exposure by its 1.4, as bright as ACES had it; ./look.js)
   renderer.toneMappingExposure = 1.05;
   const maxRatio = pixelRatio(1.75); // lib/device: lower on a phone or a weak device
   let ratio = maxRatio;
@@ -759,7 +761,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   // ── post: bloom for everything that glows ──
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.7, 0.38, 0.9);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOMS.trench.strength, BLOOMS.trench.radius, BLOOMS.trench.threshold);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   let useBloom = true;

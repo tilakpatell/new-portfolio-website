@@ -1018,7 +1018,8 @@ html[data-menu] .guide-nudge { visibility: hidden; }
 @keyframes wm-pay { from { opacity: 0; transform: translateY(8px) scale(1.4); } }
 
 /* ─── The map behind Middle-earth, and the opening on it ─── */
-@keyframes me-opening { 0% { opacity: 0; transform: scale(0.97); } 22% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes me-title-in { from { opacity: 0; transform: scale(0.97); } }
+@keyframes me-title-out { to { opacity: 0; } }
 
 /* ─── Rick and Morty themes: Portal (Rick), Morty, Summer, Beth ────────────── */
 [data-theme='portal'] {

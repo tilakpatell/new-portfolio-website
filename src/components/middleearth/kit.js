@@ -475,6 +475,11 @@ export function makeGandalf() {
   body.add(limb([-0.04, 1.4, 0.24], [-0.4, 1.28, 0.36], 0.11, 0.07, cloth));
   const staff = new THREE.Group();
   staff.position.set(-0.42, 1.26, 0.37);
+  // (a staff in a hand, gripped at its origin: lib/three/held.js's kinds)
+  staff.userData.held = { kind: 'staff' };
+  const grip = new THREE.Object3D();
+  grip.name = 'grip';
+  staff.add(grip);
   staff.add(solid(new THREE.CylinderGeometry(0.022, 0.03, 2.3, 7), wood, 0, -0.1, 0));
   const gnarl = solid(new THREE.TorusGeometry(0.07, 0.022, 6, 10), wood, 0, 1.06, 0);
   gnarl.rotation.y = Math.PI / 2;

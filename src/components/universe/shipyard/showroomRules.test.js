@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FPS, fitDistance, heroOf, pulseAt, yawFromDrag } from './showroomRules';
+import { FLING, FPS, createFling, fitDistance, heroOf, pulseAt, yawFromDrag } from './showroomRules';
 
 describe('the showroom’s sums', () => {
   it('the camera backs off on a tall canvas', () => {
@@ -31,5 +31,44 @@ describe('the ship the showroom shows', () => {
     expect(heroOf('cruiser', null, MODELS)).toEqual({ cruiser: true });
     expect(heroOf('xwing', { hull: 'dart' }, MODELS)).toBeNull(); // (a build is whole as it is)
     expect(heroOf('nonsense', null, MODELS)).toBeNull();
+  });
+});
+
+describe('the showroom’s fling', () => {
+  it('keeps turning a drag let go at speed, slowing to a stop', () => {
+    const f = createFling();
+    // a drag across, a pixel a millisecond for a tenth of a second
+    for (let t = 0; t < 0.1; t += 1 / 60) f.track(yawFromDrag(1000 / 60), 1 / 60);
+    const v0 = f.release(0);
+    expect(v0).toBeGreaterThan(5);
+    expect(v0).toBeLessThanOrEqual(FLING.max);
+    let turned = 0;
+    let t = 0;
+    while (f.moving && t < 10) {
+      turned += f.coast(1 / 30);
+      t += 1 / 30;
+    }
+    expect(turned).toBeGreaterThan(0.5);
+    expect(t).toBeLessThan(3);
+    expect(f.moving).toBe(false);
+  });
+
+  it('stays put when the drag stood still before letting go, or was slow', () => {
+    const f = createFling();
+    for (let i = 0; i < 6; i++) f.track(yawFromDrag(20), 1 / 60);
+    expect(f.release(0.2)).toBe(0); // (held there a fifth of a second first)
+    const g = createFling();
+    g.track(yawFromDrag(0.1), 1 / 60);
+    expect(g.release(0)).toBe(0);
+    expect(g.coast(1 / 30)).toBe(0);
+  });
+
+  it('a new grab stops it at once', () => {
+    const f = createFling();
+    for (let i = 0; i < 6; i++) f.track(yawFromDrag(1000 / 60), 1 / 60);
+    f.release(0);
+    f.grab();
+    expect(f.moving).toBe(false);
+    expect(f.coast(1 / 30)).toBe(0);
   });
 });
