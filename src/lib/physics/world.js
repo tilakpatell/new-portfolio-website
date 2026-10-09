@@ -75,18 +75,11 @@
 // substep, and every SWEEP substeps a body the engine turned off, not one
 // turned off on purpose, is put back.)
 
+import { GROUPS } from './groups';
+
+export { GROUPS };
 export const STEP = 1 / 60;
 const SWEEP = 60; // substeps between looks for bodies the engine turned off
-const ALL = 1;
-const OBJECT = 2;
-const BUMPER = 4;
-const group = (member, filter) => ((member << 16) | filter) >>> 0;
-export const GROUPS = {
-  floor: group(ALL, ALL),
-  object: group(ALL | OBJECT, ALL | BUMPER),
-  bumper: group(BUMPER, OBJECT),
-};
-
 const TYPES = new Set(['dynamic', 'fixed', 'kinematicPositionBased', 'kinematicVelocityBased']);
 
 let engine = null;
