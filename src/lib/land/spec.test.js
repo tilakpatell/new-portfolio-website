@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { LAND_TYPES, landSpec } from './spec';
+import { floraFor } from './flora';
 
 describe('landSpec', () => {
-  it('knows five types', () => {
-    expect(LAND_TYPES).toEqual(['temperate', 'desert', 'ice', 'ocean', 'volcanic']);
+  it('knows six types', () => {
+    expect(LAND_TYPES).toEqual(['temperate', 'desert', 'ice', 'ocean', 'volcanic', 'forest']);
   });
 
-  it.each(['temperate', 'desert', 'ice', 'ocean', 'volcanic'])('%s: rivers 0..3 a region, seven linear colours', (type) => {
+  it.each(['temperate', 'desert', 'ice', 'ocean', 'volcanic', 'forest'])('%s: rivers 0..3 a region, seven linear colours', (type) => {
     const s = landSpec('seven', type);
     expect(s.type).toBe(type);
     expect(s.rivers.perRegion).toBeGreaterThanOrEqual(0);
@@ -18,7 +19,8 @@ describe('landSpec', () => {
     }
     expect(s.relief.length).toBeGreaterThan(0);
     expect(typeof s.sea).toBe('number');
-    expect(s.kit.perCell).toBeGreaterThanOrEqual(0);
+    expect(s.flora).toEqual(floraFor(type));
+    expect(s.flora.species.length).toBeGreaterThanOrEqual(3);
   });
 
   it('is the same for the same seed, and differs by seed', () => {
@@ -31,7 +33,9 @@ describe('landSpec', () => {
     const s = landSpec('seven');
     expect(s.sea).toBe(0);
     expect(s.rivers).toEqual({ perRegion: 2, width: 6, depth: 2, meander: 0.35 });
-    expect(s.kit).toEqual({ perCell: 24, kinds: ['tree', 'rock', 'crate'] });
+    expect(s.flora).toEqual(floraFor('temperate'));
+    // (its trees, its rocks and its crates, as before; and now bushes)
+    expect([...new Set(s.flora.species.map((r) => r.kind))].sort()).toEqual(['bush', 'crate', 'rock', 'tree']);
     expect(s.gravity).toBe(-9.81);
     expect(s.wind.angle).toBeCloseTo(0.6 * Math.PI);
     expect(s.wind.strength).toBe(0.4);

@@ -121,6 +121,7 @@ import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, 
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, lineClear, pushOut, ride, rider, turnToward, walk, walker } from './walker';
 import { aimDir, lookFriction } from './aimShot';
+import { createSurfaceLockOn } from './surfaceLockOn';
 import { surfaceLook } from './surfaceLook';
 import { coneFor } from '../../../lib/combat/aim';
 import { rng } from './noise';
@@ -1829,6 +1830,8 @@ export async function create(canvas, ctx) {
     lockRing.material.color.set(me().spec.bolt ?? '#ffffff');
     lockTicks.material.color.copy(lockRing.material.color);
   }
+  // the lock-on (./surfaceLockOn.js): the camera kept on the lock while it's on
+  const lockOn = createSurfaceLockOn({ coarse: window.matchMedia?.('(pointer: coarse)').matches ?? false, emit });
   // the one your strokes home on: the nearest in front, within LOCK
   function pickLock() {
     const p = me().st;
@@ -2873,6 +2876,7 @@ export async function create(canvas, ctx) {
       state.lock = null;
       emit({ type: 'lock', name: null });
     }
+    lockOn.step(state, me().st, dt);
     stepLockRing(dt);
     stepHud();
     // the chase: on with it, and a shove when you ride into one
@@ -3289,6 +3293,11 @@ export async function create(canvas, ctx) {
       },
       lookLock() {
         looker.request();
+      },
+      // the Lock button and L: the lock-on, on or off
+      lockOn() {
+        lockOn.toggle();
+        ctx.invalidate();
       },
       press(name) {
         sounds.start();

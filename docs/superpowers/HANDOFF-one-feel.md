@@ -70,7 +70,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2C | | | | |
 | 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740 | Tiers 1 and 2 |
 | 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733 | |
-| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1) | |
+| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2) | #731 yes |
 
 ## Findings (for the owner and the next lane)
 
@@ -91,6 +91,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1E, for 2A–2F:** `collidersOf(model).bodies` gives descs relative to the model’s root; a world that stands the model somewhere adds that place to each body’s `position` and `rotation` (`fromModel.js`’s `colliderIn` composes a collider into its body’s frame). A `physical` node is hidden, so a body that is also the visible mesh vanishes: model the shapes beside the look. three.js’s loader strips `.` from node names (`cuboid.001` loads as `cuboid001`), which the prefix rules allow for.
 - **1E, for the landings’ owner:** a model’s physical nodes become one landing body (the first’s type, every collider, the masses summed): `landings/physics.js` sets its own friction, restitution and damping, so a node’s `userData.friction` and `restitution` are not used there yet, and a `kinematic` node stands fixed. `landings/models.js` sizes a model by `Box3.setFromObject`, which counts hidden objects: a physical mesh larger than the look would shrink the look a little (the web cut strips the meshes of the shapes sized by scale, so only a body’s own mesh, a hull or a trimesh can).
 - **2F, for 2A–2E:** the ratchet’s count test asserted the audit’s exact lengths, so the first fix in any lane failed it; it now holds them at most (`toBeLessThanOrEqual`). A lane that merges after 2F keeps that line.
+- **2F, for 2A–2E (Tier 2):** a landing’s squash kicked by `landingSpeed × 0.05` on `createSpring({ k: 120, c: 8 })` peaks near 2%: too little to see. A kick of `0.36 ×` gives Dot Matrix’s old 16% at its 8.9 m/s; C-137 uses `0.25 ×` (about 6% at Morty’s 5.4 m/s, on top of his locomotion’s crouch). The plan’s line now says so.
 - **2F, for the owner (the kit):** `createFeel` has one `offset` for x and y. Roy’s shake had 0.28 across and 0.22 up; on the feel both are 0.28. A per-axis offset in `lib/three/feel.js` would keep it exactly. Where a game’s old shake was linear in its value (the sewer, the Citadel, Portal panic), its k is kept as the trauma and the feel’s `offset` is the old amplitude at full, so a small knock is now smaller (trauma²), as the feel intends.
 - **2F, for the owner:** `lib/sfx.js` gains three short sounds for the Minecraft tribute (`crunch`, `splash`, `oof`, about 80 lines); it was over the ceiling already (the 1F line above).
 - **2F:** Roy plays inside C-137’s page and both are `createStage` games, so behind `?debug` Roy’s panel opens beside C-137’s while Roy plays. Dot Matrix draws on `lib/three/renderer`, not a stage, so its scene makes its panel with `debugPanel` itself (`api.tune(groups)`).
