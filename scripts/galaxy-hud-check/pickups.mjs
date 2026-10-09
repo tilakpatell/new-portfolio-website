@@ -5,6 +5,7 @@
 //   taken: flown through, a rapid-fire pickup gives its chip (name, seconds left, nothing under 0.7 rem), a repair kit the
 //     deflectors back, a bubble the points (and a hit it takes comes off them, not off the deflectors), a power cell the big one's
 //     charge; the pickup's gone from the list
+//   guns: rapid fire on the X-wing, whose guns are at the quickest they may fire, is no quicker in shots and hits ×1.5 as hard
 //   motion: it turns while motion's on, and sits still (and is there) with reduced motion
 //   jump: with the jump under way, a pickup on top of the ship isn't taken (nothing applies), and once it's committed, none is left
 // Shots are in OUT/pickups-*.png.
@@ -44,6 +45,33 @@ const place = (page) =>
   });
 // (till nobody's speaking on the comms: a line is up for a few seconds)
 const quiet = (page) => page.waitForFunction(() => !document.querySelector('.universe-comms .universe-line'), null, { timeout: 20000 }).catch(() => {});
+// the trigger held a second: the shots made (the guns' last-shot time moving on) and the hardest bolt in the air (its punch)
+const firing = async (page) => {
+  await page.evaluate(() => document.activeElement?.blur?.());
+  await page.keyboard.down('f');
+  const r = await page.evaluate(
+    () =>
+      new Promise((done) => {
+        const d = window.__galaxyDebug;
+        let last = d.state.lastShot;
+        let shots = 0;
+        const t0 = performance.now();
+        const tick = setInterval(() => {
+          if (d.state.lastShot !== last) {
+            last = d.state.lastShot;
+            shots++;
+          }
+          if (performance.now() - t0 < 1000) return;
+          clearInterval(tick);
+          let punch = 0;
+          d.scene.traverse((o) => o.visible && o.userData?.v && o.userData.punch && (punch = Math.max(punch, o.userData.punch)));
+          done({ shots, punch });
+        }, 4);
+      }),
+  );
+  await page.keyboard.up('f');
+  return r;
+};
 const got = (page) => page.evaluate(() => ({ pickups: window.__galaxy().pickups, buffs: window.__galaxy().buffs, shield: window.__galaxy().shield }));
 
 export async function pickups() {
@@ -124,6 +152,19 @@ export async function pickups() {
     const charged = await G(() => window.__galaxyDebug.powers.info?.ultimate?.charge ?? null);
     say(before !== null && charged !== null && charged - before > 0.2, `a power cell charged the big one (${before} → ${charged})`);
     await page.screenshot({ path: `${out}/pickups-taken.png` });
+
+    // rapid fire on the X-wing: its guns are at the quickest they may fire already, so the shots come no quicker and each hits harder
+    // (the cut the limit ate, made up in punch: pickups.js's gunsUnder, to ×1.5)
+    await place(page);
+    await G(() => window.__galaxyDebug.pickups.clear());
+    const off = await firing(page);
+    await G(() => window.__galaxyDebug.pickups.give('rapid'));
+    await settle(page, 300);
+    const on = await firing(page);
+    say(off.shots >= 4 && on.shots >= 4, `the guns fire (${off.shots} shots a second off, ${on.shots} on)`);
+    say(on.shots <= off.shots * 1.2, 'rapid fire on the X-wing is no quicker in shots (the guns are at the limit)');
+    say(off.punch === 1 && Math.abs(on.punch - 1.5) < 0.01, `and the bolts hit ×${on.punch.toFixed(2)} as hard, against ×${off.punch.toFixed(2)}`);
+    await G(() => window.__galaxyDebug.pickups.clear());
 
     // a repair kit, the deflectors down
     await place(page);

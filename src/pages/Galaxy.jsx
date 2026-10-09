@@ -191,6 +191,19 @@ export default function Galaxy() {
   });
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
+  // The Shipyard's doors (its corner button, the panel's link and H) all come through here: shut under the galaxy map, while a jump is
+  // on and in the first moments. Open, it holds the scene still, so a jump that begins under it (the course, a star, a link asked for)
+  // shuts it: otherwise the jump would stall behind it.
+  const openYard = useCallback(
+    (on) => {
+      if (on && (mapOpen || jumping || intro || leaving)) return;
+      setYard(on);
+    },
+    [setYard, mapOpen, jumping, intro, leaving],
+  );
+  useEffect(() => {
+    if (jumping && yard) setYard(false);
+  }, [jumping, yard, setYard]);
 
   // the URL is the system you're in: put it right as you come in
   useEffect(() => {
@@ -355,6 +368,8 @@ export default function Galaxy() {
         dove.current = null;
         return;
       }
+      // (the Shipyard's open: its own keys are the ones that count, and the map and the jump wait)
+      if (yard && (e.type === 'map' || e.type === 'jumpKey')) return;
       if (e.type === 'map') {
         setMapOpen((o) => !o);
         return;
@@ -431,7 +446,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock, crew, pay, notePilot, notePickup, follow, course, jumpTo],
+    [current, leave, navigate, land, unlock, crew, pay, notePilot, notePickup, follow, course, jumpTo, yard],
   );
   const onArrive = useCallback(
     (id) => {
@@ -476,7 +491,7 @@ export default function Galaxy() {
         net={online.client}
         frozen={Boolean(leaving) || intro || yard}
         hangar={yard}
-        onHangar={setYard}
+        onHangar={jumping ? null : openYard}
         onEvent={onEvent}
         onArrive={onArrive}
         onAt={setAt}
@@ -493,8 +508,8 @@ export default function Galaxy() {
         <Suspense fallback={null}>
           <Shipyard
             open={yard}
-            onOpen={setYard}
-            enabled={!mapOpen && !jumping && !intro}
+            onOpen={openYard}
+            enabled={yard || (!mapOpen && !jumping && !intro)}
             ship={ship}
             shipName={crew?.ship ?? ''}
             live={live}
@@ -523,7 +538,7 @@ export default function Galaxy() {
         at={at}
         ship={ship}
         onShip={pickShip}
-        onHangar={ship ? () => setYard(true) : null}
+        onHangar={ship && !jumping ? () => openYard(true) : null}
         onMap={() => setMapOpen(true)}
         onGo={(id) => view.current.goTo(id)}
         onLeave={() => leave('/universe/starwars', { jump: true })}

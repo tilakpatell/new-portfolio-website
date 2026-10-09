@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PICKUP_RULES, PICKUPS, createPickups } from './pickups';
+import { PICKUP_RULES, PICKUPS, RAPID_PUNCH_CAP, createPickups, gunsUnder } from './pickups';
 
 const seeded = (seed = 7) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const ship = (x = 0) => ({ x, y: 0, z: 0 });
@@ -158,5 +158,46 @@ describe('pickups', () => {
     expect(p.mods()).toBe(p.mods());
     expect(p.buffs()).toBe(p.buffs());
     expect(p.buffs()[0]).toBe(p.buffs()[0]);
+  });
+});
+
+describe('rapid fire under the quickest the guns may go', () => {
+  const FASTEST = 0.12; // (outfit.js's)
+  // shots and damage a second, against the same guns with it off
+  const worth = (base, delay) => {
+    const off = gunsUnder(base, 1, FASTEST);
+    const on = gunsUnder(base, delay, FASTEST);
+    return (off.gap / on.gap) * on.punch;
+  };
+  it('changes nothing with no buff on', () => {
+    expect(gunsUnder(0.16, 1, FASTEST)).toEqual({ gap: 0.16, punch: 1 });
+    expect(gunsUnder(0.06, 1, FASTEST)).toEqual({ gap: FASTEST, punch: 1 }); // (guns fitted quicker than they may go: held already)
+  });
+  it('is all in shots where the guns have room', () => {
+    const g = gunsUnder(0.4, 0.6, FASTEST);
+    expect(g.gap).toBeCloseTo(0.24);
+    expect(g.punch).toBe(1);
+  });
+  it('makes up in punch what the clamp ate: the X-wing’s guns are at the limit, the Falcon’s halfway there', () => {
+    const xwing = gunsUnder(0.12, 0.6, FASTEST);
+    expect(xwing.gap).toBe(FASTEST);
+    expect(xwing.punch).toBe(RAPID_PUNCH_CAP); // (1 / 0.6 would be 1.67: held to the cap)
+    const falcon = gunsUnder(0.16, 0.6, FASTEST);
+    expect(falcon.gap).toBe(FASTEST);
+    expect(falcon.punch).toBeCloseTo(0.12 / 0.096);
+    const cruiser = gunsUnder(0.19, 0.6, FASTEST);
+    expect(cruiser.punch).toBeCloseTo(0.12 / 0.114);
+    expect(gunsUnder(0.2, 0.6, FASTEST).punch).toBeCloseTo(1); // (the RV's: shots alone get there)
+  });
+  it('is worth about the same a second on every ship, to the cap', () => {
+    for (const base of [0.16, 0.19, 0.2, 0.3, 0.5]) expect(worth(base, 0.6)).toBeCloseTo(1 / 0.6, 5);
+    expect(worth(0.12, 0.6)).toBeCloseTo(RAPID_PUNCH_CAP); // (the X-wing's, at the cap: 1.5 where 1.67 was asked)
+    expect(worth(0.12, 0.6)).toBeGreaterThan(1.4);
+  });
+  it('never hits harder than the cap, and writes into the record it is given', () => {
+    const out = { gap: 0, punch: 0 };
+    expect(gunsUnder(0.06, 0.2, FASTEST, out)).toBe(out);
+    expect(out.punch).toBe(RAPID_PUNCH_CAP);
+    expect(out.gap).toBe(FASTEST);
   });
 });

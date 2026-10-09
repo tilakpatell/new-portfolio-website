@@ -113,7 +113,7 @@ import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
 import { createCluster } from './cluster';
-import { PICKUPS, createPickups } from './pickups';
+import { PICKUPS, createPickups, gunsUnder } from './pickups';
 import { createPickupFx } from './pickupFx';
 import { createRadar } from './radar';
 import { drawRadar } from './radarDraw';
@@ -412,14 +412,7 @@ export async function create(canvas, ctx) {
   // what a kill leaves behind (pickups.js: the rules, pickupFx.js: the drawing); none online, and none survive a jump, a landing or a crash
   const pickups = createPickups();
   const pickupFx = createPickupFx(scene, { prepare: (o) => warm(o), reduced });
-  const tuneNow = {}; // (the guns' and the drive's tuning with a pickup's on it: one record, written over)
-  const tuneWith = (s, m) => {
-    if (m.boost === 1 && m.accel === 1) return s;
-    Object.assign(tuneNow, s);
-    tuneNow.boost = (s.boost ?? 1) * m.boost;
-    tuneNow.accel = (s.accel ?? 1) * m.accel;
-    return tuneNow;
-  };
+  const gun = { gap: 0, punch: 1 }; // (the guns' delay and punch with rapid fire on, as gunsUnder writes them)
 
   // ── The system you're in ──
   const followDrawn = followRatio(post, (r) => (sky.setRatio(r), state.world?.setRatio(r))); // (the ratio the points are sized by: ./drawnAt.js)
@@ -886,15 +879,16 @@ export async function create(canvas, ctx) {
       roll += d.roll;
     }
     const m = powers.mods; // (a power's hand on the stick: the death ray's heavy, the corkscrew's quick)
-    return { throttle: clamp(throttle, -1, 1), turn: clamp(turn, -1, 1) * m.turn, climb: clamp(climb, -1, 1) * m.turn, roll: clamp(roll, -1, 1) * m.turn, boost: Boolean(state.keys.boost || state.boostBtn), turnRate: c.turn * m.agility, pitchRate: c.pitch * m.agility, rollRate: c.roll * m.agility, level: c.level, tune: tuneWith(state.stats, pickups.mods()) };
+    return { throttle: clamp(throttle, -1, 1), turn: clamp(turn, -1, 1) * m.turn, climb: clamp(climb, -1, 1) * m.turn, roll: clamp(roll, -1, 1) * m.turn, boost: Boolean(state.keys.boost || state.boostBtn), turnRate: c.turn * m.agility, pitchRate: c.pitch * m.agility, rollRate: c.roll * m.agility, level: c.level, tune: state.stats };
   };
 
   // ── The guns ──
   const fire = () => {
     const s = state.ship;
     const now = performance.now();
-    const g = state.stats; // (the guns fitted in the hangar: how fast, how hard; a rapid-fire pickup quicker still)
-    if (!s || props.frozen || state.crash || state.jump || now - state.lastShot < Math.max(FASTEST, (CADENCE[state.kind] ?? 0.18) * g.cadence * pickups.mods().delay) * 1000) return;
+    const g = state.stats; // (the guns fitted in the hangar: how fast, how hard; a rapid-fire pickup quicker still, and harder where the quickest they may fire holds it back)
+    gunsUnder((CADENCE[state.kind] ?? 0.18) * g.cadence, pickups.mods().delay, FASTEST, gun);
+    if (!s || props.frozen || state.crash || state.jump || now - state.lastShot < gun.gap * 1000) return;
     state.lastShot = now;
     state.lastInput = now;
     const b = myBolts.find((m) => !m.visible) ?? myBolts[0];
@@ -915,7 +909,7 @@ export async function create(canvas, ctx) {
     b.rotation.set(pitch, heading, 0);
     b.scale.set(g.bolt, g.bolt, 1 + (g.bolt - 1) * 0.4);
     const v = AIM.bolt + Math.max(0, s.speed);
-    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v], punch: g.punch };
+    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v], punch: g.punch * gun.punch };
     b.visible = true;
     net?.shot(b.position, b.userData.v);
     emit({ type: 'fire' });
@@ -1437,6 +1431,7 @@ export async function create(canvas, ctx) {
         input.climb = clamp(input.climb + n.climb, -1, 1);
       }
     }
+    input.surge = pickups.mods().boost; // (Overcharge: the boost and the pull-up both, ×1.35, on top of what's fitted, whoever's flying)
     if (state.keys.fire || state.fireBtn) fire();
     // super speed: boosting well out from everything, the drive opens into the overdrive (space.js wideAlong)
     if (input.boost && input.throttle > 0 && !state.auto) {
@@ -1702,7 +1697,7 @@ export async function create(canvas, ctx) {
     }
     powers.frame(dt, live);
     // the pickups: aged and drawn always, taken only while the ship's flying free (not in a jump, a crash or a dive: those clear them)
-    const taken = pickups.step(dt, state.ship ?? ORIGIN, { live: Boolean(live) && !state.dive });
+    const taken = pickups.step(props.frozen ? 0 : dt, state.ship ?? ORIGIN, { live: Boolean(live) && !state.dive });
     for (const k of taken) takeOne(k);
     pickupFx.sync(pickups.list, state.clock);
     if (pickupFx.busy) busy = true;
@@ -1775,7 +1770,7 @@ export async function create(canvas, ctx) {
     v.shield = state.shield;
     v.low = state.shield < 35;
     v.speed = s?.speed ?? 0;
-    v.top = SHIP.boost * clamp((state.stats.boost ?? 1) * pickups.mods().boost, TUNE.boost[0], TUNE.boost[1]);
+    v.top = SHIP.boost * clamp(state.stats.boost ?? 1, TUNE.boost[0], TUNE.boost[1]) * pickups.mods().boost;
     v.boosting = Boolean(state.keys.boost || state.boostBtn) && v.speed > SHIP.cruise;
     v.kills = state.kills;
     if (t) {

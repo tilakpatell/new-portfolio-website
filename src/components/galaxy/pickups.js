@@ -10,6 +10,7 @@
 
 export const PICKUP_RULES = { chance: 0.35, max: 4, life: 25, blink: 5, take: 4, pull: 14, pullSpeed: 9 };
 
+// (Overcharge lifts the boost and the pull-up by one factor: ship.js's `surge`, which the scene hands in after the fit is held to what it can do)
 export const PICKUPS = {
   repair: { name: 'Repair kit', line: '+40 deflectors', weight: 1, heal: 40 },
   overcharge: { name: 'Overcharge', line: 'boost ×1.35 for 12 s', weight: 1, dur: 12, mods: { boost: 1.35, accel: 1.35 } },
@@ -20,6 +21,22 @@ export const PICKUPS = {
 const KINDS = Object.keys(PICKUPS);
 const NONE = Object.freeze({ boost: 1, accel: 1, delay: 1, bubble: 0 });
 const NOTHING = Object.freeze([]);
+
+// Rapid fire's cut to the guns' delay (`delay`, ×0.6) can't take them under
+// `fastest`, the quickest any gun may fire. Where that holds it back (the
+// X-wing's own are at it already), what it couldn't give in shots it gives in
+// punch, so the buff is worth the same a second on every ship: the bolts hit
+// `punch` times as hard, up to `cap`. `base` is the seconds between shots as
+// the guns are fitted. → { gap: seconds between shots, punch } written into
+// `out` (this is asked every frame the trigger is down).
+export const RAPID_PUNCH_CAP = 1.5;
+export function gunsUnder(base, delay, fastest, out = { gap: 0, punch: 1 }) {
+  const own = Math.max(fastest, base); // (what they fire at without it)
+  const wanted = own * delay;
+  out.gap = Math.max(fastest, wanted);
+  out.punch = Math.min(RAPID_PUNCH_CAP, out.gap / wanted);
+  return out;
+}
 
 const xyz = (a) => (Array.isArray(a) ? { x: a[0], y: a[1], z: a[2] } : { x: a.x, y: a.y, z: a.z });
 
