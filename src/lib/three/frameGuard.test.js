@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { guard, heldBack } from './frameGuard';
-import { markLinked } from './gpuWork';
+import { markLinked, warmDraw } from './gpuWork';
 import { fakeGl, fakeRenderer, now } from './gpuFake.fixture';
 import { wear } from './core';
 
@@ -83,23 +83,49 @@ describe('frameGuard', () => {
     expect(r.draws).toEqual([m]);
   });
 
-  it('keeps drawing what three drew while the frame went ungated, once the frame is gated (a step that evens the buffer out)', async () => {
+  it('keeps drawing what three drew while the frame went ungated, once the frame is gated', async () => {
     const { r, g, scene } = setup({ linkAfter: 5 });
     const m = new THREE.MeshStandardMaterial({ map: picture() });
     scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
-    // a composer's buffer at a fractional size (1470 wide at 1.75 is 2572.5
-    // to the canvas's 2572): not the canvas's, so three draws it all as it is
-    r.target = { width: 100.5, height: 100.5 };
+    // switched off (or a renderer's first frame, drawn whole: below), so
+    // three draws it all as it is
+    g.enabled = false;
     await frames(r, scene, 2);
     expect(r.draws).toEqual([m]);
     r.initTexture(m.map); // (three sent it with that first draw)
-    // the stage's watchdog drops the ratio to 1: the buffer is the canvas's
-    // size now, so the frame is gated, and what's on screen stays on it
-    r.target = { width: 100, height: 100 };
+    // gated again: what's on screen stays on it
+    g.enabled = true;
     for (let i = 0; i < 3; i++) {
       await frames(r, scene);
       expect(r.draws).toEqual([m]);
     }
+    expect(g.pending()).toBe(0);
+  });
+
+  it("draws a renderer's first frame whole when asked (a world not prepared), and holds back what's late from then on", async () => {
+    const { r, g, scene } = setup({ linkAfter: 5, guard: { firstWhole: true } });
+    const m = new THREE.MeshStandardMaterial({ map: picture() });
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene);
+    expect(r.draws).toEqual([m]); // compiled in the frame, as three does unguarded
+    r.initTexture(m.map); // (three sent it with that draw)
+    const late = new THREE.MeshStandardMaterial({ color: 0x334455 });
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), late));
+    await frames(r, scene);
+    expect(r.draws).toEqual([m]);
+    expect(g.pending()).toBe(1);
+    await frames(r, scene, 8);
+    expect(r.draws).toEqual([m, late]);
+  });
+
+  it("draws a warm draw whole (gpuWork's warmDraw: there to send everything before it's seen), and what it drew at once after", async () => {
+    const { r, g, scene } = setup({ linkAfter: 5 });
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await warmDraw(r, () => r.render(scene, camera), [scene], { frame: now });
+    expect(r.draws).toEqual([m]);
+    await frames(r, scene);
+    expect(r.draws).toEqual([m]);
     expect(g.pending()).toBe(0);
   });
 
@@ -138,6 +164,27 @@ describe('frameGuard', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(r.compiledInto).toEqual([buffer]);
     expect(r.target).toBe(null);
+  });
+
+  it("gates a composer's buffer at any pixel ratio: 1470 wide at 1.75 is 2572.5, the canvas's 2572 in whole pixels", async () => {
+    const { r, scene } = setup({ linkAfter: 1 });
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    r.target = { width: 100.5, height: 100.75 };
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    expect(r.compiled).toEqual([m]); // compiled after the frame, not in it
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it("leaves a buffer alone that's a pixel short of the canvas once truncated (99.5 is 99)", () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    r.target = { width: 99.5, height: 100 };
+    r.render(scene, camera);
+    expect(r.draws).toEqual([m]);
   });
 
   it("leaves a world's own drawings alone: a bake's override material, a buffer of its own size", () => {

@@ -21,6 +21,7 @@
 // drawables(roots) → one object per material and kind of mesh, hidden ones too
 // compileSlices(renderer, roots, camera, scene, { sliceMs, batch, onStep, frame, alive, cap, target }) → the materials
 // warmDraw(renderer, render, roots, { frame }) → everything drawn once, out of sight
+// warming() → whether a warm draw is being drawn (the frame guard draws it whole)
 // prepareScene({ renderer, roots, scene, camera, render, onProgress, frame, alive, target })
 //
 // `frame` is how to wait for the next frame (requestAnimationFrame by
@@ -324,12 +325,18 @@ export function revealAll(...roots) {
 }
 
 
+// (lib/three/frameGuard draws a warm draw whole: what it held back there
+// would be left out of the first frames seen, which is what it's for)
+let warm = 0;
+export const warming = () => warm > 0;
+
 // Everything under `roots` drawn once by the world's own `render` (passes
 // and all), hidden things too and nothing culled, into one pixel: what's
 // sent the first time a thing is drawn (its buffers, the chip's own state
 // for each shader) goes now, not on the first frame that's seen.
 export async function warmDraw(renderer, render, roots, { frame = nextFrame } = {}) {
   const undo = revealAll(...roots);
+  warm += 1;
   try {
     renderer.setScissor?.(0, 0, 1, 1);
     renderer.setScissorTest?.(true);
@@ -337,6 +344,7 @@ export async function warmDraw(renderer, render, roots, { frame = nextFrame } = 
   } catch (err) {
     if (import.meta.env?.DEV) console.warn('[gpuWork] warm draw failed', err);
   } finally {
+    warm -= 1;
     undo();
     try {
       renderer.setScissorTest?.(false);

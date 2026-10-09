@@ -131,8 +131,11 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
   // less multisampling, a weak device without shadows or bloom
   const fit = budget();
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false }));
-  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
-  guard(renderer);
+  // (what arrives late is held back until it's ready, not waited for:
+  // lib/three/frameGuard; but the first frame is drawn whole, for a world
+  // that isn't prepared below, which would otherwise come up as its sky
+  // alone and fill in a few materials a frame)
+  guard(renderer, { firstWhole: true });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = exposure;
