@@ -45,6 +45,10 @@ export const TRENCH = {
   lined: { x: 0.45, y: 0.1 }, // and how centred and low the ship must be
   forceBonus: 1.5,
   vaderAt: 46, // Vader joins this far from the port
+  // seconds a hit leaves the ship clear (a rule change, the game-feel
+  // design's: a catwalk straight after the bolt that rocked you, or a TIE's
+  // pair of shots, cost one shield, not two)
+  iframes: 1,
   hanAt: 15, // and Han clears him off here
 };
 
@@ -170,6 +174,12 @@ export const RADIO = {
   han: 'Han: “You’re all clear, kid. Now blow this thing.”',
   r2: 'Luke: “I’m hit, but not bad. R2, see what you can do with it.” Shields up.',
 };
+// How hard each kind of hit is, for the hit law (lib/impact.js: quiet
+// under 15, full at 120): flying into the trench's iron, a TIE rammed, a
+// bolt (Vader's too). The 'hit' event carries it, and TrenchRun.jsx plays
+// its sound at that
+export const HURT = { crash: 120, ram: 105, bolt: 70 };
+
 export const WON = { computer: 'Great shot, kid. That was one in a million.', force: 'The Force is strong with this one. Great shot.' };
 
 const emit = (g, type, extra = {}) => g.events.push({ type, ...extra });
@@ -186,13 +196,15 @@ function lose(g, message) {
   emit(g, 'lost', { text: message });
 }
 
-function damage(g, why) {
+function damage(g, why, force = HURT.crash) {
   if (g.status !== 'running' || g.shields <= 0) return;
+  if (g.t - (g.hurtAt ?? -Infinity) < TRENCH.iframes) return;
+  g.hurtAt = g.t;
   g.shields -= 1;
   g.flash = 0.35;
   g.shake = 0.3;
   if (g.r2.at == null) g.r2.at = g.t + TRENCH.r2Delay;
-  emit(g, 'hit', { why, shields: g.shields });
+  emit(g, 'hit', { why, shields: g.shields, force });
   if (g.shields <= 0) lose(g, why === 'vader' ? 'Vader got you. Pull up, and try again.' : why === 'tie' ? 'The TIEs got you. Pull up, and try again.' : 'Shields are gone. Pull up, and try again.');
 }
 
@@ -418,7 +430,7 @@ function stepOnce(g, dt) {
     if (before > 0 && ahead <= 0) {
       if (Math.hypot(t.x - g.px, t.y - g.py) < TRENCH.tie.ram) {
         t.alive = false;
-        damage(g, 'tie');
+        damage(g, 'tie', HURT.ram);
       }
     }
     if (ahead < -3) t.alive = false;
@@ -522,7 +534,7 @@ function stepOnce(g, dt) {
     const now = bo.z - g.z;
     if (!bo.done && before > 0 && now <= 0) {
       bo.done = true;
-      if (Math.hypot(bo.x - g.px, bo.y - g.py) < TRENCH.boltHit) damage(g, bo.from);
+      if (Math.hypot(bo.x - g.px, bo.y - g.py) < TRENCH.boltHit) damage(g, bo.from, HURT.bolt);
     }
     if (now < -4) bo.done = true;
   }
@@ -557,7 +569,7 @@ function stepOnce(g, dt) {
     r.z += (g.speed + 16) * dt;
     if (!r.checked && r.z >= g.z) {
       r.checked = true;
-      if (Math.hypot(r.x - g.px, r.y - g.py) < 0.18) damage(g, 'vader');
+      if (Math.hypot(r.x - g.px, r.y - g.py) < 0.18) damage(g, 'vader', HURT.bolt);
     }
   }
   if (g.rear.length) g.rear = g.rear.filter((r) => r.z - g.z < TRENCH.far);

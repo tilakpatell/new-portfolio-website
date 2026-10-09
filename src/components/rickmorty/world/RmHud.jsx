@@ -84,6 +84,8 @@ export default function RmHud({
   onJump,
   onLift,
   onFire,
+  locked = false,
+  onLock,
   closeList,
 }) {
   // Where the top row ends (the taller of the title's column and the map's),
@@ -348,6 +350,22 @@ export default function RmHud({
                       }}
                     >
                       ✦
+                    </TouchButton>
+                  )}
+                  {/* the lock-on, in a fight (Tab on a keyboard): the sights kept on who they're on */}
+                  {(duel || game) && (
+                    <TouchButton
+                      className="rm-lock"
+                      size={52}
+                      aria-label="Lock on"
+                      aria-pressed={locked}
+                      data-on={locked || undefined}
+                      onPress={(e) => {
+                        e.preventDefault();
+                        onLock?.();
+                      }}
+                    >
+                      Lock
                     </TouchButton>
                   )}
                 </div>

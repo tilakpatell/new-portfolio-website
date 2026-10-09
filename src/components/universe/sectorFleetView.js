@@ -4,10 +4,11 @@
 // models, so the files are the ones the fleet war already loads. Nothing is
 // loaded till the ship's first in the sector (`update`'s `here`).
 //
-// createSectorFleet(parent, models: () => createModels()) → { update(t, here), dispose() }
+// createSectorFleet(parent, models: () => createModels()) → { update(t, here), solids
+//   (sectorFleet.js's sectorSolids while the ship's in the sector, else none), dispose() }
 
 import * as THREE from 'three';
-import { sectorShips } from './sectorFleet';
+import { sectorShips, sectorSolids } from './sectorFleet';
 
 export function createSectorFleet(parent, models) {
   const group = new THREE.Group();
@@ -15,8 +16,12 @@ export function createSectorFleet(parent, models) {
   group.visible = false;
   parent.add(group);
   let slots = null;
+  let now = 0;
+  let inSector = false;
   return {
     update(t, here) {
+      now = t;
+      inSector = here;
       group.visible = here;
       if (!here && !slots) return;
       if (!slots) {
@@ -36,6 +41,9 @@ export function createSectorFleet(parent, models) {
         // (a slot's model points its nose along +z; ship.js's heading 0 is −z)
         slots[i].holder.rotation.set(0, s.heading + Math.PI, 0);
       }
+    },
+    get solids() {
+      return inSector ? sectorSolids(now) : [];
     },
     dispose() {
       parent.remove(group);
