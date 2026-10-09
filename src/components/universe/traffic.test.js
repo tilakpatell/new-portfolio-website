@@ -412,3 +412,49 @@ describe('your standing', () => {
     expect(traffic.near(ship, 0)).toEqual([]);
   });
 });
+
+describe('as bodies for ship contact', () => {
+  // flies traffic past you until one of `pick` is near, and answers the bodies then
+  const until = (traffic, ship, pick) => {
+    for (let t = 0; t < 120; t += DT) {
+      if (t % 10 < DT / 2) traffic.soon(t % 20 < 10 ? 'tie' : 'freighter');
+      traffic.update(DT, t, ship, {});
+      const bodies = traffic.bodies(ship, 40);
+      if (bodies.some(pick)) return bodies;
+    }
+    return [];
+  };
+
+  it('answers the small ships near you, the law among them, as near tells them', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    const law = until(traffic, ship, (b) => b.side === 'law').find((b) => b.side === 'law');
+    expect(law).toBeTruthy();
+    expect(law.key).toMatch(/^t:\d+:\d+$/);
+    expect(SIDES.starwars.factions.empire.kinds.map(([k]) => k)).toContain(law.kind);
+    expect(law.size).toBeLessThanOrEqual(2);
+    for (const k of 'xyz') expect(law.at[k]).toEqual(expect.any(Number));
+    const civil = until(traffic, ship, (b) => b.side === 'civil').find((b) => b.side === 'civil');
+    expect(civil).toBeTruthy();
+    expect(traffic.bodies(ship, 0)).toEqual([]);
+  });
+
+  it('never answers a ship too big to bring down: that is a solid', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    for (let t = 0; t < 120; t += DT) {
+      traffic.update(DT, t, ship, {});
+      for (const b of traffic.bodies(ship, 1e5)) expect(b.size).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('takes a ram as a shot: the ship goes down, and is gone from the bodies', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    const b = until(traffic, ship, (o) => o.side === 'civil').find((o) => o.side === 'civil');
+    const r = b.hit(1);
+    expect(r).toMatchObject({ down: true, kind: b.kind, size: b.size, civil: true });
+    expect(r.at).toBeInstanceOf(THREE.Vector3);
+    expect(traffic.bodies(ship, 40).some((o) => o.key === b.key)).toBe(false);
+  });
+});
