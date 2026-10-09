@@ -216,6 +216,29 @@ export const BRIEFS = {
     },
     help('the Death Star'),
   ],
+  '/fly': [
+    {
+      id: 'hello',
+      title: 'Planet flight',
+      text: ABOUT['/fly'],
+    },
+    {
+      id: 'fly',
+      title: 'Flying',
+      text: 'Lean the ship and it turns the way it leans; let go and the wings come level. Keep off the ground: touch it and you’re put back up.',
+      keys: [
+        ['W S', 'Nose down and up'],
+        ['A D', 'Bank'],
+        ['Q E', 'Turn'],
+        ['Shift / F', 'Faster and slower'],
+      ],
+      touch: [
+        ['Stick', 'Fly'],
+        ['+ −', 'Faster and slower'],
+      ],
+    },
+    help('the flight'),
+  ],
   '/deathstar/inside': [
     {
       id: 'hello',

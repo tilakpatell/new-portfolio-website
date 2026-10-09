@@ -123,6 +123,7 @@ const FANDOMS = [
     pages: [
       { to: '/deathstar', world: 'Death Star' },
       { to: '/deathstar/inside', world: 'Aboard the Death Star' },
+      { to: '/fly', world: 'Planet flight' },
     ],
     portal: true, // (flown into, it's through, not a crash: universe/scene.js)
     swatch: '#ffe81f',
