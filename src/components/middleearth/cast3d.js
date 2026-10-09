@@ -506,10 +506,10 @@ export function upgrade(f, name, { look = null, role = 'cast', seed = null, tint
     _frame.up.set(0, 1, 0).applyQuaternion(_q);
     anim.after(dt, motion, _frame);
     // what's in its hands carried over that: the arm still under a staff,
-    // a tankard level; left to the clip on the whole body, sat or down, or
-    // a drink at its lips
+    // a tankard level (sat, too); left to the clip on the whole body, down,
+    // or a drink at its lips
     if (c.holds.length) {
-      const busy = Boolean(st.busy.full || st.at.full || st.down || SITS.has(base) || /drink/.test(st.busy.upper ?? st.at.upper ?? ''));
+      const busy = Boolean(st.busy.full || st.at.full || st.down || /drink/.test(st.busy.upper ?? st.at.upper ?? ''));
       for (const h of c.holds) h.update(dt, { moving, busy });
     }
   }

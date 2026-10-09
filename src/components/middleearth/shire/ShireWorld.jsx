@@ -7,10 +7,10 @@ import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { useVoiced } from '../../../lib/useVoiced';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf, ownButton } from '../towns/keys';
-import { Bubble, QuestList, Stick, Travellers } from '../towns/TownHud';
+import { Bubble, QuestList, Stick, TalkPrompt, Travellers } from '../towns/TownHud';
+import { chatFrame, chatTo, talkHooks } from '../towns/chat';
 import { useTravellers } from '../towns/useTravellers';
 import {
-  CAST,
   COLOURS,
   FADE,
   FIELD,
@@ -44,7 +44,7 @@ import {
   inField,
   launch,
   lobeliaNow,
-  nearCast,
+  castFor,
   nearSpot,
   newHobbit,
   newHunt,
@@ -164,6 +164,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const [fading, setFading] = useState(false); // caught or found: the screen goes dark while he's put back
   const lines = useRef({});
+  const [towho, setTowho] = useState(null); // whom E would talk to (../towns/chat.js)
   const bubbleRef = useRef(null);
   // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
   const say = useCallback((text, bad = false, who = null) => {
@@ -216,6 +217,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         }
         api.current = a;
         if (import.meta.env.DEV) window.__SHIRE__ = { api: a, sim: sim.current, complete }; // for the QA scripts
+        talkHooks(sim, (id) => api.current?.figure(id), { behind: behindYaw }); // (DEV: whom E talks to, for anim-check --talk)
         fit();
         // everything on the graphics chip before Hobbiton's shown, behind the loading screen
         await a.prepare?.(throttled(setPrep), { alive: () => !dead });
@@ -259,6 +261,17 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   }, [live]);
 
   // ── the activities: in and out ──
+  // E to whom the prompt names: their next line, in the bubble and their voice, and the body's answer
+  const talkNow = useCallback(() => {
+    const s = sim.current;
+    const said = chatTo(s, lines.current, api.current?.figure(s.towho?.id));
+    if (!said) return;
+    s.talk = s.chat;
+    setBubble(said.bubble);
+    if (SPOKEN[said.line]) clip(SPOKEN[said.line]);
+    else sayVoiced(said.bubble.id, said.line);
+  }, []);
+
   const enter = useCallback(
     (id) => {
       const s = sim.current;
@@ -399,6 +412,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if ((k === 'e' || k === 'E' || k === 'Enter') && s.near && !ownButton(e, box.current)) {
           e.preventDefault();
           enter(s.near);
+        } else if ((k === 'e' || k === 'E' || k === 'Enter') && s.towho && !ownButton(e, box.current)) {
+          e.preventDefault();
+          talkNow();
         } else if (k === 'r' || k === 'R') putRing(!s.wearing);
         else if (k === 'm' || k === 'M') setList((v) => !v);
         return;
@@ -424,7 +440,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [box, live, near, enter, leave, act, putRing]);
+  }, [box, live, near, enter, leave, act, putRing, talkNow]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -653,28 +669,33 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     const spot = s.mode === 'walk' ? nearSpot(s.h.x, s.h.z) : null;
     s.near = spot && (spot.id !== 'leave' || p.finished) && (spot.id !== 'rings' || p.sky === 'day') && (spot.id !== 'spoons' || !s.spoons) ? spot.id : null;
     const sky = p.sky;
-    const person = s.mode === 'walk' ? nearCast(s.h.x, s.h.z, sky === 'day' ? 'day' : 'night') : null;
-    let talk = person?.id ?? null;
-    if (!talk && s.mode === 'walk' && !s.spoons && Math.hypot(s.h.x - LOBELIA.x, s.h.z - LOBELIA.z) < 3.2) talk = 'lobelia';
-    if (!talk && s.mode === 'walk') {
-      // Gandalf on the bench by day, at the road's end at dawn
-      const g = sky === 'day' ? { x: SPOTS[0].x + 0.6, z: SPOTS[0].z - 1 } : sky === 'dawn' ? { x: SPOTS[3].x - 1.5, z: SPOTS[3].z - 2 } : null;
-      if (g && Math.hypot(s.h.x - g.x, s.h.z - g.z) < 3.4) talk = 'gandalf';
-    }
+    // the story's beats start as you come by, as they always did: Lobelia at
+    // the foot of Bag End's path, Gandalf on the bench by day and at the
+    // road's end at dawn; after that, and with everyone else, E talks
+    // (walking by, you get their greeting: cast3d's attend)
+    const walk = s.mode === 'walk';
+    const g = sky === 'day' ? { x: SPOTS[0].x + 0.6, z: SPOTS[0].z - 1 } : sky === 'dawn' ? { x: SPOTS[3].x - 1.5, z: SPOTS[3].z - 2 } : null;
+    let beat = null;
+    if (walk && !s.spoons && Math.hypot(s.h.x - LOBELIA.x, s.h.z - LOBELIA.z) < 3.2) beat = 'lobelia';
+    if (!beat && walk && g && Math.hypot(s.h.x - g.x, s.h.z - g.z) < 3.4) beat = 'gandalf';
+    // (Lobelia's E is her spoons, and Gandalf's on the bench his smoke rings:
+    // their spots; at dawn, E talks to him)
+    const talkable = walk ? [...castFor(sky === 'day' ? 'day' : 'night'), ...(sky === 'dawn' && g ? [{ id: 'gandalf', name: 'Gandalf', ...g, lines: GANDALF_LINES }] : [])] : [];
+    chatFrame(s, talkable, { walking: walk, spot: s.near ? spot.d : null, onWho: setTowho });
+    const talk = beat ?? s.chat ?? null;
     if (talk !== s.talk) {
       s.talk = talk;
-      if (talk) {
-        const c = CAST.find((x) => x.id === talk);
+      if (talk && talk === beat) {
         const lob = talk === 'lobelia';
-        const pool = c ? c.lines : lob ? LOBELIA_LINES[sideRef.current ? 'after' : 'before'] : GANDALF_LINES;
+        const pool = lob ? LOBELIA_LINES[sideRef.current ? 'after' : 'before'] : GANDALF_LINES;
         const n = lines.current[talk] ?? 0;
         lines.current[talk] = n + 1;
         const line = pool[n % pool.length];
-        setBubble({ id: talk, name: c ? c.name : lob ? 'Lobelia Sackville-Baggins' : 'Gandalf', line });
+        setBubble({ id: talk, name: lob ? 'Lobelia Sackville-Baggins' : 'Gandalf', line });
         // the films' own recording, or the speaker's made voice (./voicelines.js)
         if (SPOKEN[line]) clip(SPOKEN[line]);
         else sayVoiced(talk, line);
-      } else setBubble(null);
+      } else if (!talk) setBubble(null);
     }
 
     // the markers: what's open and not yet done
@@ -885,7 +906,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {gl === 'on' && walking && !hud.moved && !here && (
+      {!here && walking && towho && <TalkPrompt who={towho} touch={touch} onTalk={talkNow} />}
+
+      {gl === 'on' && walking && !hud.moved && !here && !towho && (
         <p className="shire-hint">{touch ? 'Drag the stick to walk, push it all the way to run. Swipe the view to look round.' : 'W A S D or the arrows to walk, Shift to run. Drag to look round. E to do things, M for the list.'}<GuideCue touch={touch} /></p>
       )}
 

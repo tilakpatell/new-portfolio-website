@@ -1,0 +1,434 @@
+{
+ "route": "#/middle-earth/shire",
+ "rows": [
+  {
+   "id": 0,
+   "name": "cast:frodo",
+   "by": "toe",
+   "drift": 0.011893591607512402,
+   "left": 0.011893591607512402,
+   "right": 0.010605179468739501,
+   "shown": 20,
+   "inView": true,
+   "dev": 57.25302093619709,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.1964682680783384,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 1,
+   "name": "cast:sam",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 0,
+   "inView": false,
+   "dev": 55.98529294591251,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.296063045039773,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 2,
+   "name": "cast:merry",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 0,
+   "inView": false,
+   "dev": 56.590856754382244,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5873852740041912,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 3,
+   "name": "cast:pippin",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 0,
+   "inView": false,
+   "dev": 54.89242174294986,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.713171818293631,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 4,
+   "name": "cast:frodo",
+   "by": "toe",
+   "drift": 0.045650284397733734,
+   "left": 0.045650284397733734,
+   "right": 0.04018794089619008,
+   "shown": 20,
+   "inView": true,
+   "dev": 57.44194248307781,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.3340233775051081,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 5,
+   "name": "cast:sam",
+   "by": "toe",
+   "drift": 0.01451617087018368,
+   "left": 0.010921154113022956,
+   "right": 0.01451617087018368,
+   "shown": 20,
+   "inView": true,
+   "dev": 54.99029616844942,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.036120018130733934,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 6,
+   "name": "cast:bilbo",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 54.99373182497851,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9508502902463077,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 7,
+   "name": "cast:merry",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 55.98324652056324,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5257685477845371,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 8,
+   "name": "cast:pippin",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 54.94797694020246,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5311152324844934,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 9,
+   "name": "cast:rosie",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 53.886978924310334,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.6847360120154917,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 10,
+   "name": "cast:hobbit",
+   "by": "toe",
+   "drift": 0.0482368476320218,
+   "left": 0.0482368476320218,
+   "right": 0.03366844492712642,
+   "shown": 20,
+   "inView": false,
+   "dev": 54.99051834576031,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.8628199625765971,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 11,
+   "name": "cast:hobbit",
+   "by": "toe",
+   "drift": 0.034454407730935006,
+   "left": 0.018472929034982093,
+   "right": 0.034454407730935006,
+   "shown": 20,
+   "inView": false,
+   "dev": 55.815054233505855,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2115321447147126,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 12,
+   "name": "cast:gandalf",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.40857682231282,
+   "bind": false,
+   "act": {
+    "clip": "sit.idle",
+    "phase": 0.06370135943964281,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 13,
+   "name": "cast:rosie",
+   "by": "toe",
+   "drift": 0.034678222670291435,
+   "left": 0.02239658612379602,
+   "right": 0.034678222670291435,
+   "shown": 20,
+   "inView": true,
+   "dev": 53.21251289548054,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5137903096230844,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 14,
+   "name": "cast:gandalf",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 0,
+   "inView": false,
+   "dev": 91.27235025627684,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.37901947274804115,
+    "loop": true,
+    "weight": 1
+   }
+  }
+ ],
+ "over": [],
+ "bind": [],
+ "locked": {
+  "count": 0,
+  "groups": []
+ },
+ "spread": [
+  {
+   "clip": "Armature|Idle|baselayer",
+   "n": 10,
+   "r": 0.09248876215026772
+  }
+ ],
+ "time": {
+  "dt": [
+   0,
+   0.051524691913279366,
+   0.0481154987856454,
+   0.047247458846810905,
+   0.048934064945578545,
+   0.044724296123060794,
+   0.04409462984617707,
+   0.05024736889448352,
+   0.04421606548529672,
+   0.045799226410004515,
+   0.047895115588733495,
+   0.053535126383018765,
+   0.05452460196096245,
+   0.05122784923990254,
+   0.05085004947377231,
+   0.05478996132049772,
+   0.050355311684810944,
+   0.05133129441396239,
+   0.04939731942070882,
+   0.061190069263290084
+  ],
+  "from": "mixers",
+  "total": 0.9499999999999966
+ },
+ "fail": false,
+ "held": {
+  "ok": true,
+  "worst": {
+   "grip": 4.070144838902081e-15,
+   "axis": 2.1073424255447017e-8,
+   "swing": null,
+   "up": 0.000003674518789759619
+  },
+  "items": [
+   {
+    "id": "173459eb-c0e8-4bd6-96a8-131622c0a2d1",
+    "kind": "staff",
+    "carry": {
+     "still": true,
+     "upright": true
+    },
+    "grip": 4.070144838902081e-15,
+    "axis": 1.4901161193847656e-8,
+    "up": 0.000003674518789759619,
+    "swing": null,
+    "ok": true,
+    "why": []
+   },
+   {
+    "id": "cc86e951-c103-4b60-a990-2c25aeb6b512",
+    "kind": "umbrella",
+    "carry": {
+     "upright": true
+    },
+    "grip": 2.0350724194510405e-15,
+    "axis": 2.1073424255447017e-8,
+    "up": 2.850759993450203e-7,
+    "swing": null,
+    "ok": true,
+    "why": []
+   }
+  ]
+ },
+ "talk": {
+  "talkers": [
+   {
+    "id": "sam",
+    "name": "Samwise Gamgee",
+    "ok": true,
+    "at": 0.1,
+    "why": null,
+    "prompt": "E Talk · Samwise Gamgee",
+    "theirs": true,
+    "prompts": 1,
+    "key": "KeyE"
+   },
+   {
+    "id": "bilbo",
+    "name": "Bilbo Baggins",
+    "ok": true,
+    "at": 0.1,
+    "why": null,
+    "prompt": "E Talk · Bilbo Baggins",
+    "theirs": true,
+    "prompts": 1,
+    "key": "KeyE"
+   },
+   {
+    "id": "merry",
+    "name": "Merry Brandybuck",
+    "ok": true,
+    "at": 0.1,
+    "why": null,
+    "prompt": "E Talk · Merry Brandybuck",
+    "theirs": true,
+    "prompts": 1,
+    "key": "KeyE"
+   },
+   {
+    "id": "pippin",
+    "name": "Pippin Took",
+    "ok": true,
+    "at": 0.1,
+    "why": null,
+    "prompt": "E Talk · Pippin Took",
+    "theirs": true,
+    "prompts": 1,
+    "key": "KeyE"
+   },
+   {
+    "id": "rosie",
+    "name": "Rosie Cotton",
+    "ok": true,
+    "at": 0.1,
+    "why": null,
+    "prompt": "E Talk · Rosie Cotton",
+    "theirs": true,
+    "prompts": 1,
+    "key": "KeyE"
+   },
+   {
+    "id": "maggot",
+    "name": "Farmer Maggot",
+    "ok": true,
+    "at": 0.1,
+    "why": null,
+    "prompt": "E Talk · Farmer Maggot",
+    "theirs": true,
+    "prompts": 1,
+    "key": "KeyE"
+   },
+   {
+    "id": "gaffer",
+    "name": "The Gaffer",
+    "ok": true,
+    "at": 0.1,
+    "why": null,
+    "prompt": "E Talk · The Gaffer",
+    "theirs": true,
+    "prompts": 1,
+    "key": "KeyE"
+   }
+  ]
+ }
+}

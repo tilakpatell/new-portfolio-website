@@ -437,7 +437,8 @@ export function nearSpot(x, z) {
   return best;
 }
 
-// Who's about, and what they say when you come by. Their lines go round in
+// Who's about, and what they say when you talk to them (E; walking by gets
+// their greeting). Their lines go round in
 // turn. `when` keeps someone to part of the evening.
 export const CAST = [
   { id: 'sam', name: 'Samwise Gamgee', x: -24, z: -6.6, face: -Math.PI / 2, look: 'sam', lines: ['I ain’t been dropping no eaves, sir, honest!', 'Mr. Frodo, if I take one more step, it’ll be the farthest away from home I’ve ever been.', 'Rosie Cotton’s dancing tonight. I might ask her. I might.'] },

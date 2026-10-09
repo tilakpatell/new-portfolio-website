@@ -1,7 +1,8 @@
 import { forwardRef } from 'react';
 import { audioContext } from '../../../lib/audio';
 import { useVoiced } from '../../../lib/useVoiced';
-import { Bubble as KitBubble, Exit, QuestList as KitQuestList, Stick as KitStick } from '../../../runtime/hud';
+import { Bubble as KitBubble, Exit, Prompt, QuestList as KitQuestList, Stick as KitStick } from '../../../runtime/hud';
+import { promptFor } from '../castTalk';
 import { nodeVoice, personVoice } from './talk';
 import '../../../styles/lazy/middleearth.css';
 
@@ -27,6 +28,19 @@ export function QuestList({ title, ...rest }) {
 export const Bubble = forwardRef(function Bubble({ who = null, name, line }, ref) {
   return <KitBubble ref={ref} className="shire-bubble" voice={personVoice(who)} name={name} line={line} />;
 });
+
+// Whom E talks to here (../castTalk.js), on the kit's prompt, key first
+// (“E Talk · Samwise Gamgee”), in the town's door card; on touch, the
+// button itself.
+export function TalkPrompt({ who, touch, onTalk }) {
+  const p = promptFor(who);
+  if (!p) return null;
+  return (
+    <div className="shire-door">
+      <Prompt verb={p.verb} thing={p.thing} touch={touch} onClick={onTalk} className="btn btn-primary" />
+    </div>
+  );
+}
 
 // A conversation: who says it, what they say, and the replies to pick (with
 // their number keys), or a button to go on; and, given onLeave, a way out

@@ -9,7 +9,9 @@
 // activity in hand, the camera) and decides nothing; ./rules.js has the rules.
 //
 // createShireWorld(canvas) returns { render(state, ms), fx(type, data),
-// aim(kind, ndcX, ndcY), screenOf(kind, id), resize, dispose, lost, info }.
+// aim(kind, ndcX, ndcY), screenOf(kind, id), figure(id), resize, dispose,
+// lost, info }. figure: one of the cast's figures by id, Gandalf's and
+// Lobelia's too.
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
@@ -895,6 +897,7 @@ export async function createShireWorld(canvas, { onLost } = {}) {
     fx: fxEvent,
     aim,
     screenOf,
+    figure: (id) => people[id] ?? (id === 'gandalf' ? gandalf : id === 'lobelia' ? lobelia : null), // (whom E talks to: their figure, for the body's answer)
     pipe,
     resize: stage.resize,
     get info() {
