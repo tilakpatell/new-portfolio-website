@@ -31,9 +31,6 @@ function walk(at = '') {
   return out;
 }
 
-// a camera nudged by Math.random() times a shake
-const RANDOM = /Math\.random\(\) - 0\.5\) \* [\w.]*shake/;
-
 export const OWN_SHAKE = [
   { file: 'universe/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
   { file: 'galaxy/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
