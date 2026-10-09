@@ -27,6 +27,7 @@ import { unlock } from '../doors';
 import { raise } from '../alarm';
 import { choose, openTalk, talkFor, WHO } from '../talk';
 import { bringAlong, feedPlot } from './plot';
+import { READS, readoutOf } from './readouts';
 
 const TALK_REACH = 2.6; // metres you can talk across
 const USE_REACH = 1.9; // metres you can reach a thing from
@@ -124,6 +125,7 @@ const storyOn = (g) => Boolean(g.plot && !g.plot.done);
 // whether E is offered at a tagged thing: what the story's step names, what is always offered, and in
 // free roam whatever has a use there
 function offered(g, t) {
+  if (!t.tag) return READS.has(t.kind);
   if (ALWAYS.has(t.tag) || t.text) return true;
   if (!storyOn(g)) return Boolean(FREE[t.tag]);
   const step = g.plot.story.steps.find((q) => q.id === g.plot.progress.step);
@@ -160,7 +162,8 @@ function things(g) {
   const room = g.layout.rooms.get(g.you.room);
   if (!room) return [];
   if (!g.furnished.has(room.id)) g.furnished.set(room.id, furnish(room, g.layout.station));
-  return g.furnished.get(room.id).props.filter((p) => p.tag);
+  // (the tagged things, and the consoles and intercoms that read out: readouts.js)
+  return g.furnished.get(room.id).props.filter((p) => p.tag || READS.has(p.kind));
 }
 
 const lockOpen = (g, lock) => !lock || (lock.startsWith('flag:') && g.flags.has(lock.slice(5)));
@@ -231,6 +234,7 @@ export function useText(r) {
   if (r.kind === 'talk') return `talk to ${r.npc.kind === 'mouse' ? 'the droid' : (WHO[r.npc.tag] ?? 'them')}`;
   if (r.kind === 'jump') return r.jump.prompt ?? 'go';
   if (r.kind === 'keypad') return 'dial the hatch’s keypad';
+  if (!r.thing.tag) return r.thing.kind === 'intercom' ? 'call on the intercom' : r.thing.kind === 'door-panel' ? 'read the cell door’s panel' : `read the ${r.thing.kind.replace(/-/g, ' ')}`;
   return r.thing.text ? `read “${r.thing.text}”` : (DOES[r.thing.tag] ?? `use the ${r.thing.kind.replace(/-/g, ' ')}`);
 }
 
@@ -269,6 +273,12 @@ export function useHere(g) {
     return true;
   }
   const tag = r.thing.tag;
+  if (!tag) {
+    // (a console with nothing else to do reads out what it shows)
+    const out = readoutOf(g, r.thing, g.you.room);
+    line(g, out.who, out.text);
+    return true;
+  }
   tell(g, { type: 'used', tag });
   if (READ.has(tag)) g.events.push({ type: 'read', tag });
   // (what is written on it, read out in the subtitles, however long)

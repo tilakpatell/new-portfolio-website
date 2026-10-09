@@ -6,6 +6,7 @@ import { furnish } from '../furnish';
 import { drain, newGame, promptOf, step, teleport } from '../game';
 import { storySteps } from './plot';
 import { toStep } from './beats';
+import { READS, readoutOf } from './readouts';
 
 const STORIES = [
   ['ds1', 'rebel'],
@@ -85,7 +86,7 @@ describe('E in free roam', () => {
       const base = newGame({ station, side, mode: 'roam', seed: 5 });
       const quiet = [];
       for (const room of base.layout.rooms.values()) {
-        for (const t of furnish(room, base.layout.station).props.filter((p) => p.tag)) {
+        for (const t of furnish(room, base.layout.station).props.filter((p) => p.tag || READS.has(p.kind))) {
           const g = newGame({ station, side, mode: 'roam', seed: 5 });
           const r = 0.9 + Math.max(t.w ?? 0, t.d ?? 0) / 2;
           for (let k = 0; k < 8; k++) {
@@ -154,5 +155,28 @@ describe('E in free roam', () => {
     const yaw = Math.atan2(mark.x - g.you.x, -(mark.z - g.you.z));
     step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
     expect(promptOf(g)?.use ?? false).toBe(false);
+  });
+});
+
+describe('the consoles’ readouts', () => {
+  it('read out Docking Control’s lines in turn at its consoles, and the section’s security once it isn’t calm', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 5 });
+    const console = furnish(g.layout.rooms.get('ctl327'), g.layout.station).props.find((p) => p.kind === 'console');
+    const first = readoutOf(g, console, 'ctl327').text;
+    const second = readoutOf(g, console, 'ctl327').text;
+    expect(first).toMatch(/Bay 327/);
+    expect(second).not.toBe(first);
+    g.alarm.sections.bay327.level = 'alert';
+    expect(readoutOf(g, console, 'ctl327').text).toMatch(/security alert/);
+  });
+
+  it('say what they say in the house style: curly quotes, a real ellipsis', () => {
+    const g = newGame({ station: 'ds2', side: 'imperial', mode: 'roam', seed: 5 });
+    for (const room of [...g.layout.rooms.values(), ...newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 5 }).layout.rooms.values()]) {
+      for (let k = 0; k < 4; k++) {
+        const { text } = readoutOf(g, { kind: 'console' }, room.id);
+        expect(text, room.id).not.toMatch(/['"]|\.\.\./);
+      }
+    }
   });
 });
