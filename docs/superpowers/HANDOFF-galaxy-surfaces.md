@@ -127,6 +127,7 @@ What the films' games do, borrowed: Battlefront II's block stamina, its 5.5 m do
 ### Left
 - More duellists: a Magnaguard on Kashyyyk, an Inquisitor on Lothal (the `inquisitor` kind isn't catalogued yet), Maul on Naboo; each a `blade` and a `guard` on a spawn.
 - The duellist's arm is a fixed pose that swings; a rigged duellist (a Meshy-rigged Vader) would let `gunplay.js` hold the saber properly.
+- (Both since done: the combat revamp's Lane D made every duellist a rigged figure fencing on the saber module, with Maul on Naboo and an Inquisitor on Lothal. `HANDOFF-combat.md`, Lane D.)
 - Perks are picked, not earned; the missions' stars could unlock them.
 
 ## Heroes from everywhere, each with their own abilities (7 October 2026)

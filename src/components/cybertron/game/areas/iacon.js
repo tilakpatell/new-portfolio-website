@@ -94,6 +94,21 @@ export const IACON = {
   era: 'foc',
   player: { robot: 'optimus-wfc', vehicle: 'cybertruck' },
   bounds: { minX: -420, maxX: 420, minZ: -420, maxZ: 420 },
+  // energon crates, loose, on the way to the gate: knocked flying by a
+  // stride or the truck (./loose.js), where the computer runs the engine
+  loose: [
+    [4, 246, 0.1],
+    [6, 246.3, -0.2],
+    [5, 248, 0.5],
+    [-8, 210, 0.3],
+    [-6, 211, -0.4],
+    [-34, 300, 0],
+    [-32, 300.2, 0.3],
+    [-33, 302, -0.6],
+    [30, 350, 0.2],
+    [32, 349.4, -0.1],
+    [31, 351.6, 0.4],
+  ].map(([x, z, yaw]) => ({ kind: 'energon', x, y: 0, z, yaw })),
   spawn: { x: 0, z: -200, yaw: 0 },
   spawns: {
     start: { x: 0, z: -200, yaw: 0 },

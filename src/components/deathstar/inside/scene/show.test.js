@@ -73,6 +73,9 @@ describe('what the game’s events look like', () => {
     expect(effectsOf({ type: 'hit', x: 0, y: 1, z: 0, by: 'tk-1' }).map((f) => f.kind)).toEqual(['spark']);
     expect(effectsOf({ type: 'deflect', x: 0, y: 1, z: 0 })).toEqual([{ kind: 'clash', at: { x: 0, y: 1, z: 0 }, how: 'deflect' }]);
     expect(effectsOf({ type: 'broke', x: 0, y: 2, z: 0 }).map((f) => f.kind)).toEqual(['explode', 'smoke']);
+    // (the station coming apart: a panel bursting where it says, and nothing where it doesn't)
+    expect(effectsOf({ type: 'quake', size: 1, at: { x: 0, y: 2, z: 0 } }).map((f) => f.kind)).toEqual(['explode', 'spark', 'smoke']);
+    expect(effectsOf({ type: 'quake', size: 0.5, at: null })).toEqual([]);
     expect(effectsOf({ type: 'say', text: 'hello' })).toEqual([]);
   });
 });
