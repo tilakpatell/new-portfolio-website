@@ -113,6 +113,8 @@ import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
 import { createCluster } from './cluster';
+import { radarPoints, rangeFor } from './radar';
+import { drawRadar } from './radarDraw';
 import { chargeFor } from '../universe/shipPowers';
 import { effectsFor } from './warEffects';
 import { warNow } from './warState';
@@ -361,6 +363,7 @@ export async function create(canvas, ctx) {
     lowSaid: false,
     heat: 0,
     kills: 0, // this flight's, for the cluster
+    navGoal: null, // where the way to go is, for the radar (placeHud's)
     killMark: 0, // the reticle's kill flash, 1 → 0
     jump: null, // { to, from, phase, age, dir, dur }
     aim: null, // { id, angle }: the star the nose is on, if it's on one
@@ -1708,6 +1711,7 @@ export async function create(canvas, ctx) {
     }
     post.hit(state.hurt);
     placeShield();
+    placeRadar();
     powers.place(props.powers?.current ?? null, flying() && !state.crash && !state.dive && !props.frozen && !state.jump);
     return busy || Boolean(hunters?.count);
   };
@@ -1731,6 +1735,31 @@ export async function create(canvas, ctx) {
       kills: state.kills,
       lock: t && { name: t.name ?? NAMES[t.kind] ?? SHIP_INFO[t.kind]?.name ?? t.kind, dist: range(apart(t.at.x, t.at.y, t.at.z, s.x, s.y, s.z)), hp: (t.hpMax ?? 1) > 1 ? t.hp / t.hpMax : null },
     });
+  };
+  // the radar: its contacts gathered and drawn, at most 20 times a second
+  const contacts = [];
+  let radarAt = 0;
+  const placeRadar = () => {
+    const cv = props.radar?.current;
+    if (!cv || !flying() || state.crash || props.frozen || (state.jump && state.jump.phase !== 'align')) return;
+    if (state.clock - radarAt < 0.05) return;
+    radarAt = state.clock;
+    const s = state.ship;
+    const lockId = state.lockTarget?.id;
+    contacts.length = 0;
+    const hostile = (c) => contacts.push({ id: c.id, kind: c.threat ? 'threat' : 'hostile', at: c.at, lock: c.id === lockId });
+    for (const c of hunters?.targets ?? NO_TARGETS) hostile(c);
+    for (const c of war?.targets ?? NO_TARGETS) hostile(c);
+    if (pilots.count) {
+      for (const c of pilots.targets) if (c.threat) hostile(c);
+      for (const c of pilots.mates) contacts.push({ id: c.id, kind: 'ally', at: c.at });
+    }
+    if (wingmen?.active) for (const c of wingmen.bodies) contacts.push({ id: c.key, kind: 'ally', at: c.at });
+    const b = war?.battle;
+    if (b && b.you?.team !== null && !b.over) for (const f of b.fighters) if (f.alive && f.team === b.you.team) contacts.push({ id: f.id, kind: 'ally', at: f.seen ?? f.pos });
+    if (state.navGoal) contacts.push({ id: 'nav', kind: 'goal', at: state.navGoal });
+    const range = rangeFor(s, contacts.filter((c) => c.kind === 'hostile' || c.kind === 'threat'));
+    drawRadar(cv, radarPoints(s, contacts, range), { range, dpr: Math.min(2, window.devicePixelRatio || 1) });
   };
   const placeStick = () => {
     const el = props.stick?.current;
