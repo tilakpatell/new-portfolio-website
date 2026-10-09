@@ -8,6 +8,7 @@ import {
   HOLES,
   HOLLOW,
   HUNT,
+  LEAVES,
   LOBELIA,
   LOBELIA_LEN,
   MAGGOT_GATE,
@@ -55,6 +56,7 @@ import {
   stepShow,
   stepSpoons,
 } from './rules';
+import { LANDINGS } from '../../universe/landings/landings';
 
 const DT = 1 / 60;
 const walk = (h, move, seconds) => {
@@ -90,6 +92,10 @@ describe('Hobbiton: the lie of the land', () => {
       expect(onRoad(t.x, t.z)).toBe(false);
       expect(inWater(t.x, t.z)).toBe(false);
     }
+  });
+
+  it('has the leaves under the trees the Shire’s landing has', () => {
+    expect(LEAVES).toEqual(LANDINGS.middleearth.leaves);
   });
 
   it('grows all ten mushrooms inside Maggot’s fence, clear of everything', () => {

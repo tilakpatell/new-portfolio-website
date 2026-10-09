@@ -189,6 +189,13 @@ export const TREES = (() => {
   return out;
 })();
 
+// The leaves under them, the day of Bilbo's party, 22 September (the
+// Shire's landing has the same: universe/landings/landings.js's
+// LEAVES.shire): olive going gold, one in seven russet; how many a square
+// metre, how big (a share of a metre's quad), and how many a second the
+// trees round you let go (lib/three/flatLitter.js)
+export const LEAVES = { colours: ['#a39c34', '#d8a83c', '#b4622c'], density: 0.55, size: 0.28, shed: 0.7 };
+
 // Farmer Maggot's fence, with the gate on the north side and a stile on
 // the south: [x0, z0, x1, z1] runs of rail.
 export const FENCES = [
