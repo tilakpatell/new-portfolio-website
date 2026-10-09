@@ -86,12 +86,14 @@ export default function Comms({ crew, reduced, control }) {
       const least = clip ? 1200 + text.length * 32 : 1500 + text.length * 42; // time to read it
       const started = performance.now();
       // their own voice: the recording, or the line made in their voice (a
-      // caller on the radio's: speakers.js)
-      let h = clip ? await playClip(clip, { voice: true }) : null;
+      // caller on the radio's: speakers.js), when nobody else is talking
+      // (lib/speech.js: it waits its turn, and isn't said if it waits too long)
+      const aloud = { voice: true, mode: 'queue', tag: 'comms' };
+      let h = clip ? await playClip(clip, aloud) : null;
       const voice = voiceOf(speaker.voiced ?? who);
       if (!h && voice) {
         const src = await voicedSrc(voice, text);
-        if (src && alive.current) h = await playFile(src, { voice: true });
+        if (src && alive.current) h = await playFile(src, aloud);
       }
       if (h) {
         // the line stays up while it plays
@@ -186,7 +188,8 @@ export default function Comms({ crew, reduced, control }) {
           }
         } else if (e.type === 'kill') {
           popSound();
-          if (often('kill', now)) say(linesFor(crew, 'kill', e.kind), { urgent: true });
+          // (rammed down: the crew's ram line, not a gun's)
+          if (often('kill', now)) say((e.ram && linesFor(crew, 'ram', 'kill')) || linesFor(crew, 'kill', e.kind), { urgent: true });
         } else if (e.type === 'edge') {
           if (often('edge', now)) say(linesFor(crew, 'edge'));
         } else if (e.type === 'idle') {
@@ -249,7 +252,7 @@ export default function Comms({ crew, reduced, control }) {
           crashSound();
           say(linesFor(crew, 'destroyed'), { urgent: true });
         } else if (e.type === 'escaped' || e.type === 'cleared') {
-          say(linesFor(crew, e.type), { urgent: true });
+          say((e.ram && linesFor(crew, 'ram', 'cleared')) || linesFor(crew, e.type), { urgent: true });
         } else if (e.type === 'event') {
           if (e.id === 'destroyer') jumpSound();
           else if (e.id === 'flare') flareSound();

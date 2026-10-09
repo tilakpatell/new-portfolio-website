@@ -136,14 +136,14 @@
   padding: 0.45rem 0.8rem;
   border: 1px solid rgb(127 214 255 / 0.45);
   border-radius: 999px;
-  background: rgb(3 8 20 / 0.7);
+  background: rgb(3 8 20 / 0.8);
   color: #bfeaff;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.galaxy-mapbtn:hover { background: rgb(20 50 90 / 0.75); }
+.galaxy-mapbtn:hover { background: rgb(20 50 90 / 0.88); }
 .galaxy-mapbtn:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
 .galaxy-page .universe-comms { top: calc(var(--nav-h) + 56px); }
 .galaxy-flat { padding: 2rem; max-width: 32rem; color: var(--muted); }
