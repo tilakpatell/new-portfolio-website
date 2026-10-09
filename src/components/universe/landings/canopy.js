@@ -48,13 +48,13 @@ export const CANOPY = {
     Grass: [0.2, 0.01, 9, 0],
     other: [0.08, 0.005, 12, 0],
   },
-  keep: { tree: 0.2, bush: 0.3, pine: 0.3 }, // how much of a crown's own normals it keeps (a pine's middle 0.4 of its height below its box's)
+  keep: { tree: 0.35, bush: 0.4, pine: 0.4 }, // how much of a crown's own normals it keeps (a pine's middle 0.4 of its height below its box's)
   crawl: 2.2, // (Bruno's |wind| · 2.2, at most crawlMax)
   crawlMax: 0.6,
   near: [0.4, 1.5], // metres from the lens a card goes over
   seeEdge: [0.9, 2.6], // metres round the line to you a crown opens over
   // the two tones (multiplying the leaf's own colour) and how much darker inside
-  look: { lit: [1.06, 1.03, 0.9], shade: [0.86, 0.93, 1.0], depth: 0.3 },
+  look: { lit: [1.06, 1.03, 0.9], shade: [0.9, 0.95, 1.0], depth: 0.22 },
 };
 
 export const familyOf = (node = '') => (/^CommonTree_/.test(node) ? 'tree' : /^Bush_/.test(node) ? 'bush' : /^Pine_/.test(node) ? 'pine' : /^Grass_/.test(node) ? 'grass' : /^(Flower_|Fern_)/.test(node) ? 'flower' : 'other');

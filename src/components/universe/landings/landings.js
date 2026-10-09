@@ -143,12 +143,12 @@ const onTortuga = (at) => {
 // with a few gone russet; the old forest's Bruno's rust and orange, muted
 // under the eaves; Lothlórien's gold
 const LEAVES = {
-  shire: { colours: ['#7f8a2e', '#d1a23c', '#b4622c'], density: 0.35, size: 0.2, shed: 0.7 },
-  forest: { colours: ['#8a4a2e', '#d8762e', '#c9a23a'], density: 0.75, size: 0.2, shed: 2, crown: { lit: [1.04, 1.0, 0.86], shade: [0.78, 0.86, 0.92], depth: 0.42 } },
-  lorien: { colours: ['#b8862a', '#f2cf55', '#e8b04a'], density: 0.75, size: 0.2, shed: 2.5, crown: { lit: [1.12, 1.05, 0.8], shade: [0.86, 0.9, 0.9], depth: 0.3 } },
-  lawn: { colours: ['#6b8a2a', '#a9b53a', '#c08a2e'], density: 0.12, size: 0.18, shed: 0.4 },
-  earth: { colours: ['#6f9a30', '#b9b844', '#c47a2c'], density: 0.15, size: 0.18, shed: 0.5 },
-  dusk: { colours: ['#c2582a', '#f0a04c', '#f2c25a'], density: 0.15, size: 0.15, shed: 0.5, crown: { lit: [1.12, 0.98, 0.84], shade: [0.8, 0.82, 0.98], depth: 0.3 } },
+  shire: { colours: ['#a39c34', '#d8a83c', '#b4622c'], density: 0.55, size: 0.28, shed: 0.7 },
+  forest: { colours: ['#8a4a2e', '#d8762e', '#c9a23a'], density: 0.9, size: 0.28, shed: 2, crown: { lit: [1.06, 1.02, 0.88], shade: [0.86, 0.92, 0.98], depth: 0.28 } },
+  lorien: { colours: ['#b8862a', '#f2cf55', '#e8b04a'], density: 0.9, size: 0.28, shed: 2.5, crown: { lit: [1.12, 1.05, 0.8], shade: [0.9, 0.92, 0.9], depth: 0.22 } },
+  lawn: { colours: ['#6b8a2a', '#a9b53a', '#c08a2e'], density: 0.2, size: 0.24, shed: 0.4 },
+  earth: { colours: ['#6f9a30', '#b9b844', '#c47a2c'], density: 0.25, size: 0.24, shed: 0.5 },
+  dusk: { colours: ['#c2582a', '#f0a04c', '#f2c25a'], density: 0.2, size: 0.22, shed: 0.5, crown: { lit: [1.12, 0.98, 0.84], shade: [0.86, 0.86, 0.98], depth: 0.22 } },
 };
 
 // Middle-earth's woods: its forest biome, found by colour and (Lothlórien,
@@ -269,7 +269,8 @@ export const LANDINGS = {
           { kind: 'embers', n: 60, from: 6, to: 90, scale: range(1), solid: false },
         ],
       },
-      // (Lothlórien's gold canopy reads as grass from orbit: by place)
+      // (Lothlórien's gold canopy reads as grass from orbit: by place; its
+      // leaves on the ground gold)
       { id: 'forest', near: [36.9, 3.4, 1.6], ...ME_FOREST, leaves: LEAVES.lorien },
       {
         id: 'forest',

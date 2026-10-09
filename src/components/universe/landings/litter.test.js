@@ -141,6 +141,24 @@ describe('the leaves on a landing', () => {
     expect(l.info().airborne).toBeGreaterThan(0);
   });
 
+  it('lays them again round you when you’ve jumped (out of the ship’s door), not as you walk', () => {
+    const l = begun();
+    // (the ship down: a patch cleared round it)
+    l.blast(ground(0, 0), 7, 12);
+    for (let k = 0; k < 600; k++) l.update(1 / 30, { focusN: frame.n });
+    expect(l.info(ground(0, 0), 3).near).toBe(0);
+    // (walked a step: where each leaf lies kept)
+    const was = l.sim.p.slice();
+    l.update(1 / 60, { focusN: place(frame, 0, 0.3, R).n });
+    let kept = 0;
+    for (let i = 0; i < l.sim.count; i++) if (Math.hypot(l.sim.p[4 * i] - was[4 * i], l.sim.p[4 * i + 2] - was[4 * i + 2]) < 0.1) kept += 1;
+    expect(kept / l.sim.count).toBeGreaterThan(0.9);
+    // (out of the door 24 m off, a box away: not the cleared patch, wrapped, round you)
+    const door = place(frame, 0, 24, R).n;
+    l.update(1 / 60, { focusN: door });
+    expect(l.info(door.map((a) => a * R), 3).near).toBeGreaterThan(0);
+  });
+
   it('with motion turned down lies still where it was laid, kept round you', () => {
     const l = begun({ reduced: true });
     walk(l, 120);

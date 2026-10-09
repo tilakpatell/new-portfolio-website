@@ -3629,13 +3629,14 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       };
     },
     // the fallen leaves, for a check in a browser (scripts/leaves-check.mjs):
-    // how many and where they are (lib/three/leafSim's), whether the
-    // landing's in, the crowns' shader, and blast(r), a blast at your feet
+    // how many and where they are (landings/litter.js's info, round you),
+    // whether the landing's in, the crowns' shader, and blast(r), a blast
+    // at your feet
     leaves() {
       if (!import.meta.env.DEV) return null;
       let key = null;
       rocks?.mesh.traverse((o) => (key ??= o.material?.name === 'Leaves_NormalTree' ? o.material.customProgramCacheKey() : null));
-      return { ...leaves.info(), ready: Boolean(rocks?.ready), canopy: key, blast: (r = 3) => (S.me ? leaves.blast(at(S.me, S.R), r) : 0) };
+      return { ...leaves.info(S.me ? at(S.me, S.R) : null), ready: Boolean(rocks?.ready), canopy: key, blast: (r = 3) => (S.me ? leaves.blast(at(S.me, S.R), r) : 0) };
     },
     // the ship's numbers to fly on from, once it's up (null until then)
     takeoff() {

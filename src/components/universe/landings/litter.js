@@ -45,6 +45,11 @@ export const leafCount = (density, { max, half }) => Math.min(max, Math.max(32, 
 const GROUND_LIFT = 0.025; // the ground's own lift (footScene.js's PATCH): leaves lie on what's drawn
 const RECHART = 0.2; // (of the planet's radius: how far you go before the chart's laid again)
 const FAST = 8; // m/s: no walker's quicker (a respawn, a jump across, isn't a kick)
+// (of half: the box moved further than this in a frame has jumped, out of
+// the ship's door or back to it, and its leaves are laid again round where
+// it's gone: else the patch the ship's landing cleared, wrapped, lies
+// round you as you step out)
+const JUMP = 0.5;
 
 const V = THREE.Vector3;
 const of = (p) => (Array.isArray(p) ? p : [p.x, p.y, p.z]);
@@ -98,6 +103,7 @@ uniform vec3 uLeafFocus; // where the box is (x, z) and its half
 uniform float uLeafClock;
 uniform vec3 uLeafHole; // none at (x, z) within its r (the parked ship)
 varying float vLeafMix;
+varying vec2 vLeafUv;
 vec2 leafTurn(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c * v.x - s * v.y, s * v.x + c * v.y); }
 `;
 // up where the leaf is on the sphere, and Bruno's static random normal
@@ -126,9 +132,18 @@ transformed *= 1.0 - smoothstep(uLeafFocus.z * 0.8, uLeafFocus.z, max(lfOff.x, l
 transformed *= step(uLeafHole.z, length(aLeaf.xz - uLeafHole.xy));
 transformed = lfBasis * (transformed * uLeafPlanet.z) + lfUp * (uLeafPlanet.x + aLeaf.y * uLeafPlanet.z);
 vLeafMix = aLeaf.w;
+vLeafUv = vec2(position.x + 0.3 * position.z, -position.z); // (the quad unskewed, -0.5…0.5)
 `;
+// a leaf cut out of the quad (broad toward its stalk, pointed at its tip,
+// skewed with the quad), its colour its own, a little darker at its edge
 const COLOUR = /* glsl */ `
-diffuseColor.rgb = vLeafMix > 1.5 ? uLeafC : mix(uLeafA, uLeafB, vLeafMix);
+{
+  float lfT = vLeafUv.x + 0.5;
+  float lfW = 0.46 * pow(max(sin(3.14159265 * pow(lfT, 0.8)), 0.0), 0.8);
+  float lfV = abs(vLeafUv.y);
+  if (lfV > lfW) discard;
+  diffuseColor.rgb = (vLeafMix > 1.5 ? uLeafC : mix(uLeafA, uLeafB, vLeafMix)) * mix(1.0, 0.78, smoothstep(0.5 * lfW, lfW, lfV));
+}
 `;
 
 // The rewrite, as pure strings (a Lambert's shaders): each leaf stood where
@@ -142,7 +157,7 @@ export function litterShader({ vertexShader, fragmentShader }) {
     swapped.leaf = true;
   }
   if (swapped.leaf && fs.includes('#include <common>') && fs.includes('#include <color_fragment>')) {
-    fs = fs.replace('#include <common>', '#include <common>\nvarying float vLeafMix;\nuniform vec3 uLeafA;\nuniform vec3 uLeafB;\nuniform vec3 uLeafC;').replace('#include <color_fragment>', `#include <color_fragment>\n${COLOUR}`);
+    fs = fs.replace('#include <common>', '#include <common>\nvarying float vLeafMix;\nvarying vec2 vLeafUv;\nuniform vec3 uLeafA;\nuniform vec3 uLeafB;\nuniform vec3 uLeafC;').replace('#include <color_fragment>', `#include <color_fragment>\n${COLOUR}`);
     swapped.colour = true;
   }
   const f = facelessShader({ vertexShader: vs, fragmentShader: fs });
@@ -204,8 +219,9 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
   let rand = Math.random;
   let shed = 0;
   const focus = { x: 0, z: 0 };
-  const seen = new Map(); // a walker's key → { x, z, frame }: where they were, when
-  let frame = 0;
+  const last = { x: 0, z: 0 }; // (the focus last frame)
+  const seen = new Map(); // a walker's key → { x, z, tick }: where they were, when
+  let tick = 0;
   const walkers = [];
   const near = []; // (crowns in the box: one picked to shed)
   const at = { x: 0, y: 0, z: 0 };
@@ -250,6 +266,13 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
     return sampleNoise(u.uWindNoise.value.image, q.x * LEAF.wind.frequency - d.x * t, q.z * LEAF.wind.frequency - d.y * t);
   };
   const wind = { strength: 0, dir: [1, 0], gate };
+  // `count` laid round the focus, in his clumps (the canopy's noise)
+  const lay = (count) => {
+    const img = canopy().uniforms.uWindNoise.value.image;
+    layLeaves(sim, count, { half: L.half, focus, rand, clump: (u, v) => sampleNoise(img, u, v) - 0.5 });
+    last.x = focus.x;
+    last.z = focus.z;
+  };
   const send = () => {
     uniforms.uLeafFocus.value.set(focus.x, focus.z, L.half);
     aLeaf.clearUpdateRanges();
@@ -288,8 +311,7 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
       shed = 0;
       seen.clear();
       focusOn(n, null);
-      const img = canopy().uniforms.uWindNoise.value.image;
-      layLeaves(sim, leafCount(s.density ?? 0.3, L), { half: L.half, focus, rand, clump: (u, v) => sampleNoise(img, u, v) - 0.5 });
+      lay(leafCount(s.density ?? 0.3, L));
       const [a, b, c] = s.colours ?? ['#8a6a2e', '#c89a3c', '#b4622c'];
       uniforms.uLeafA.value.set(a);
       uniforms.uLeafB.value.set(b);
@@ -314,7 +336,12 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
         seen.clear();
         aim();
         focusOn(focusN, facing);
+        last.x = focus.x;
+        last.z = focus.z;
       }
+      if (Math.hypot(focus.x - last.x, focus.z - last.z) > JUMP * L.half) lay(sim.count);
+      last.x = focus.x;
+      last.z = focus.z;
       if (reduced || !(dt > 0)) {
         if (reduced) wrapLeaves(sim, focus, L.half);
         send();
@@ -322,7 +349,7 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
       }
       // who's walking, and how fast (from where they were last frame)
       walkers.length = 0;
-      frame += 1;
+      tick += 1;
       for (const w of who) {
         toChart(chart, w.n, at);
         const was = seen.get(w.key);
@@ -339,12 +366,12 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
           }
           was.x = at.x;
           was.z = at.z;
-          was.frame = frame;
-        } else seen.set(w.key, { x: at.x, z: at.z, frame });
+          was.tick = tick;
+        } else seen.set(w.key, { x: at.x, z: at.z, tick });
         walkers.push({ x: at.x, z: at.z, y: (w.h ?? 0) / METRE, vx, vz });
       }
       // (those not seen this frame forgotten)
-      for (const [key, w] of seen) if (w.frame !== frame) seen.delete(key);
+      for (const [key, w] of seen) if (w.tick !== tick) seen.delete(key);
       const u = canopy().uniforms;
       wind.strength = u.uWindStrength.value;
       wind.dir[0] = u.uWindDir.value.x;
@@ -398,14 +425,20 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
       }
       return false;
     },
-    info() {
+    // how many there are, in the air, asleep; and (with p, a point of the
+    // planet's space) how many lie within r metres of it, and where it and
+    // the box's middle are on the chart
+    info(p = null, r = 3) {
       let airborne = 0;
       let asleep = 0;
+      let near = 0;
+      const q = p && on ? toChart(chart, p, { x: 0, y: 0, z: 0 }) : null;
       for (let i = 0; i < sim.count; i++) {
         if (sim.p[4 * i + 1] > LEAF.floor + 0.005) airborne += 1;
         if (sim.rest[i]) asleep += 1;
+        if (q && Math.hypot(sim.p[4 * i] - q.x, sim.p[4 * i + 2] - q.z) <= r) near += 1;
       }
-      return { on, level, count: on ? sim.count : 0, half: L.half, airborne, asleep };
+      return { on, level, count: on ? sim.count : 0, half: L.half, airborne, asleep, ...(q && { near, at: [q.x, q.z], focus: [focus.x, focus.z] }) };
     },
     end() {
       on = false;
