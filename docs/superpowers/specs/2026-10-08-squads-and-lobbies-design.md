@@ -46,8 +46,11 @@ play together on purpose.
    a world and a Rush room each open their own four WebSockets (twelve at
    worst). A blocked traveller still holds one of a world's 24 places. The
    war front's battle tally has no id of its own (`warfront.js`), so a
-   reload may be counted as a second pilot. The siege's and the battle's
-   tallies never forget a pilot who left. The two-browser checks
+   reload may be counted as a second pilot. (Neither the siege's tally nor
+   the battle's forgets a pilot who left, and neither should: forgetting
+   folds a share into the floor and hides the new work of those who stay;
+   a pilot back after a reload is matched by tally id instead.) The
+   two-browser checks
    (`scripts/online-check.mjs`) need the public relays, so CI can't run
    them.
 
@@ -134,9 +137,13 @@ fresh for each visit” to say what is kept.
   first, then those saved and away (“last seen 3 days ago”, from `seen`,
   with Remove).
 
-**What the audit found broken.** The battle tally gets a tally id
-(`warfront.js`), after a failing test shows the double count; the siege and
-the battle forget a pilot who leaves; the stale `./net.js` comment in
+**What the audit found broken.** The battle tally gets a tally id kept
+with the battle's save (`warfront.js`), after a failing test shows the
+double count, and the siege's gets one too (`siege.js`): a key that lasts
+makes a reload the same peer id, and only an id and shares kept in a save
+count a pilot back after a reload once, their new work on top of the old.
+Nothing forgets a pilot who leaves: forgetting folds a share into the floor
+and hides the new work of those who stay. The stale `./net.js` comment in
 `rush/protocol.js` goes.
 
 ### Part 2: squads and talking (PR 2)

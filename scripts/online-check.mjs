@@ -23,9 +23,14 @@
 // (BASE=http://127.0.0.1:5188/?quality=low# for a dev server elsewhere)
 // (behind a proxy: HTTPS_PROXY, and BRIDGE=1 NODE_USE_ENV_PROXY=1 if the
 // browser's WebSockets can't get through it)
-// The relays are public, so anyone else online at the time is counted too:
-// it checks for at least one. Headless Chromium draws in software, slowly.
+// RELAY=fake: no public relays at all, but one faked in here for each
+// (lib/fake-relays.mjs), which every context is attached to, so it runs with
+// no network (CI's Multiplayer job runs it so) and only Alpha and Bravo meet:
+// each must see exactly one other pilot. On the public relays anyone else
+// online at the time is counted too: there it checks for at least one.
+// Headless Chromium draws in software, slowly.
 import { chromium } from 'playwright-core';
+import { fakeRelays } from './lib/fake-relays.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -46,6 +51,7 @@ const BASE = process.env.BASE ?? `http://localhost:${process.env.PORT ?? 5173}/?
 const proxy = process.env.HTTPS_PROXY ? [`--proxy-server=${process.env.HTTPS_PROXY}`, '--proxy-bypass-list=localhost;127.0.0.1'] : [];
 if (process.env.PROXY_CA_SPKI) proxy.push(`--ignore-certificate-errors-spki-list=${process.env.PROXY_CA_SPKI}`, '--disable-http2');
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: [...proxy, '--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+const relays = process.env.RELAY === 'fake' ? fakeRelays() : null;
 
 const errors = [];
 async function visitor(name, ship = null, viewport = { width: 1280, height: 800 }) {
@@ -60,10 +66,12 @@ async function visitor(name, ship = null, viewport = { width: 1280, height: 800 
     window.localStorage.setItem('tp-worlds', JSON.stringify('load'));
     window.sessionStorage.setItem('tp-gl-anyway', 'true');
   }, [name, ship]);
+  // RELAY=fake: the relays faked in here, for every context alike
+  if (relays) await relays.attach(ctx);
   // BRIDGE=1: the relays reached from here (Node, which goes through a proxy
   // with NODE_USE_ENV_PROXY=1) rather than from the browser, for a proxy
   // that won't pass a browser's WebSocket upgrade
-  if (process.env.BRIDGE)
+  else if (process.env.BRIDGE)
     await ctx.routeWebSocket(/^wss:\/\//, (ws) => {
       const up = new WebSocket(ws.url());
       const waiting = [];
@@ -170,6 +178,15 @@ if (universe) {
     for (const p of [a, b]) await p.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 180000 });
     await waitFor(() => a.evaluate(() => [...(window.__universeDebug.net()?.peers.values() ?? [])].some((p) => p.name === 'Bravo' && p.snaps.length)), 120000, 'Alpha hears Bravo on the map');
     console.log('ok   Alpha hears Bravo on the map');
+    // (on the fake relay there's nobody else: each sees exactly one other pilot)
+    if (relays) {
+      const named = (p) => p.evaluate(() => [...(window.__universeDebug.net()?.peers.values() ?? [])].filter((q) => q.name).map((q) => q.name));
+      const seen = await waitFor(async () => {
+        const [x, y] = [await named(a), await named(b)];
+        return x.length && y.length ? [x, y] : null;
+      }, 60000, 'each sees the other');
+      check(seen[0].join() === 'Bravo' && seen[1].join() === 'Alpha', `exactly one other pilot each: Alpha sees ${JSON.stringify(seen[0])}, Bravo ${JSON.stringify(seen[1])}`);
+    }
     await placeBravo(300);
     const far = await waitFor(async () => {
       await placeBravo(300);
@@ -217,11 +234,14 @@ if (universe) {
       }, 150000, `the ally's tag at ${dist}`);
       check(t.opacity === '1' && t.px >= 12 && t.inside, `ally's tag at ${dist} units: ${JSON.stringify(t)}`);
     }
+    // (put 20 off a kilometre away, Bravo comes in over a few frames as his
+    // poses arrive, and his tag passes through the near band that shows a
+    // distance, 40 to 140 units, on its way: it's read once he's in)
     const near = await waitFor(async () => {
       await placeBravo(20);
       const t = await tagOf(a, 'Bravo');
-      return t?.mode === 'near' ? t : null;
-    }, 150000, 'the near tag');
+      return t?.mode === 'near' && t.dist === '' ? t : null;
+    }, 150000, 'the near tag, Bravo in from where he was');
     check(/^Lv \d+$/.test(near.level ?? '') && near.dist === '', `near tag at 20 units: ${JSON.stringify(near)}`);
     if (out) await a.screenshot({ path: `${out}/tags-near.png`, timeout: 120000 });
     const mate = await waitFor(async () => {
@@ -256,6 +276,8 @@ for (const w of universe ? [] : worlds) {
     }, 150000, `${w}: each sees the other`);
     const pointers = await a.locator('.presence-pilot').count();
     console.log(`ok   ${w}: chips ${n.join(' / ')}, page pointers drawn: ${pointers}`);
+    // (on the fake relay there's nobody else: exactly one each)
+    if (relays) check(n[0] === 1 && n[1] === 1, `${w}: exactly one other traveller each (${n.join(' / ')})`);
     if (pointers) {
       failed++;
       console.log(`FAIL ${w}: page pointers over the world`);

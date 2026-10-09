@@ -5,6 +5,7 @@ import { systemById } from './systems';
 import { createWarFront } from './warfront';
 import { resetWar, warTally } from './warState';
 import { shotAt } from '../universe/shipPowers';
+import { createSaves } from '../../runtime/saves';
 
 // a moment in the first campaign with a battle on at its first front, a minute in
 const MS = GCW.start + 24 * 60e3 + 60e3;
@@ -16,7 +17,7 @@ const sworn = (side) => {
   return { war: a.war, side: a.oaths[a.war]?.side ?? null };
 };
 
-const kit = (side = 'rebel') => {
+const kit = (side = 'rebel', opts = {}) => {
   let allegiance = sworn(side);
   const drawn = { show: vi.fn(), hide: vi.fn(), update: vi.fn(), dispose: vi.fn() };
   const said = [];
@@ -31,6 +32,7 @@ const kit = (side = 'rebel') => {
     now: () => ms,
     onSolids: (s) => solids.push(s.length),
     allegiance: () => allegiance,
+    ...opts,
   });
   front.setNet({ fight: (m) => sent.fight.push(m), war: (m) => sent.war.push(m) });
   return { front, drawn, said, sent, world, solids, at: (v) => (ms = v), swear: (x) => (allegiance = sworn(x)), get ms() { return ms; } };
@@ -135,6 +137,50 @@ describe('the war’s battle in the system you’re in', () => {
     k.front.update(1 / 30, 0, camera, null);
     expect(k.world.quiet).toHaveBeenLastCalledWith(false);
     expect(k.drawn.hide).toHaveBeenCalled();
+  });
+});
+
+describe('a pilot who reloads', () => {
+  // a browser's storage in memory, for the battle's save
+  const memory = () => {
+    const m = new Map();
+    return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
+  };
+  const into = (k) => {
+    k.front.enter(systemById(FRONT_ID), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    return k;
+  };
+  const hpOf = (k, key) => {
+    k.front.update(1 / 30, 0, camera, null);
+    return k.front.battle.objectives.find((o) => o.key === key).hp;
+  };
+
+  it('is counted once: a new peer id telling the same again is the same pilot, by the tally id kept with the battle’s save', () => {
+    const saves = createSaves({ local: memory(), session: memory() });
+    const pilot = into(kit('rebel', { saves }));
+    const other = into(kit('rebel')); // (a pilot who stays)
+    const g = firstOpen(pilot.front.battle);
+    for (let i = 0; i < 5; i++) shoot(pilot.front, g.pos, 3);
+    pilot.front.update(1, 0, camera, null);
+    const told = pilot.sent.fight.at(-1);
+    expect(told.m[g.key]).toBeGreaterThan(0);
+    const before = hpOf(other, g.key);
+    other.front.onNet({ type: 'fight', from: 'peer-1', msg: told });
+    const once = hpOf(other, g.key);
+    expect(once).toBeLessThan(before);
+    // the same word again, from a new peer id (a reload; a new identity): the same pilot
+    other.front.onNet({ type: 'fight', from: 'peer-2', msg: told });
+    expect(hpOf(other, g.key)).toBe(once);
+    // and the page made again on the same save tells what it did under the same id
+    const back = into(kit('rebel', { saves }));
+    back.front.update(1, 0, camera, null);
+    const again = back.sent.fight.at(-1);
+    expect(again.i).toBeTruthy();
+    expect(again.i).toBe(told.i);
+    expect(again.m[g.key]).toBe(told.m[g.key]);
+    other.front.onNet({ type: 'fight', from: 'peer-3', msg: again });
+    expect(hpOf(other, g.key)).toBe(once);
   });
 });
 
