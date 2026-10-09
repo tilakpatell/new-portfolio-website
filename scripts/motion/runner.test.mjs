@@ -3,7 +3,7 @@ import { ask, inputs } from '../desktop/ask.mjs';
 import { command, parseIssue, pipeline, request } from './runner.mjs';
 
 describe('a motion issue, read', () => {
-  it('takes the prompt and the defaults: three seconds, seed 42, cfg 5, the 1B, beside sword.heavy', () => {
+  it('takes the prompt and the defaults: three seconds, seed 42, cfg 5, the 1B, beside sword.heavy.a', () => {
     expect(parseIssue({ number: 3, title: 'Overhead Strike', body: 'prompt: a two-handed overhead sword strike, stepping forward' })).toEqual({
       number: 3,
       name: 'overhead-strike',
@@ -12,7 +12,7 @@ describe('a motion issue, read', () => {
       seed: 42,
       cfg: 5,
       lite: false,
-      with: 'sword.heavy',
+      with: 'sword.heavy.a',
     });
   });
 
