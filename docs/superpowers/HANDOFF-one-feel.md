@@ -69,7 +69,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2B | | | | |
 | 2C | | | | |
 | 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | #730 (Tier 1) | |
-| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733 | |
+| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: (opening) | Tier 1 yes |
 | 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1) | |
 
 ## Findings (for the owner and the next lane)
