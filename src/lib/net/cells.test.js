@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { NET_CELL, cellTag, netCellOf, netCellsAround, parseTag, sameCells } from './cells';
 
+// The durable world fetches by the same grid (the spec: one constant, said
+// here). Its module lands from another lane; wherever it's on the branch,
+// its CELL is held to NET_CELL, so whoever merges second is told.
+const durable = import.meta.glob('../durable/entities.js', { eager: true });
+
 describe('the net’s grid', () => {
   it('is 2,048 m a cell, floored, so a cell’s west and south edges are its own', () => {
     expect(NET_CELL).toBe(2048);
@@ -34,5 +39,11 @@ describe('the net’s grid', () => {
     expect(sameCells([], [])).toBe(true);
     expect(sameCells(null, null)).toBe(true);
     expect(sameCells(null, [])).toBe(false);
+  });
+});
+
+describe('one grid', () => {
+  it('the durable world’s CELL, where its module is on this branch, is NET_CELL', () => {
+    for (const m of Object.values(durable)) expect(m.CELL).toBe(NET_CELL);
   });
 });

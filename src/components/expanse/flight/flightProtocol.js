@@ -51,11 +51,12 @@ export function readHi(data) {
 
 export const writePose = (s) => [r2(s.x), r2(s.y), r2(s.z), r2(wrap(s.pitch || 0)), r2(wrap(s.yaw || 0)), r2(wrap(s.roll || 0)), r2(s.speed), (s.flags | 0) & 255];
 
-// a pose as it came in, with its event's cell tag: { x, y, z, pitch, yaw,
-// roll, speed, flags }, or null
-export function readPose(data, tag) {
+// a pose as it came in, with its event's cell tag (and the planet it must
+// name, when given): { x, y, z, pitch, yaw, roll, speed, flags }, or null
+export function readPose(data, tag, planetId = null) {
   if (!Array.isArray(data) || data.length < 8) return null;
   const at = parseTag(tag);
+  if (planetId !== null && at?.planetId !== planetId) return null;
   const n = [num(data[0], -FAR, FAR), num(data[1], ...ALT), num(data[2], -FAR, FAR), ...data.slice(3, 8).map((v) => num(v, -1e3, 1e3))];
   if (!at || n.some((v) => v === null)) return null;
   const [x, y, z, pitch, yaw, roll, speed, flags] = n;

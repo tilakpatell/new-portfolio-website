@@ -63,6 +63,10 @@ function createRelays(urls) {
     made: () => made, // sockets opened to the relays, all told
     // an event straight to the listeners, unchecked (a relay up to no good)
     inject: (url, ev) => pass(relays[url], ev),
+    // an event to every listening, whatever its filter (a relay that ignores '#g')
+    leak(url, ev) {
+      for (const c of relays[url].clients) for (const [id] of c.subs) c.deliver(['EVENT', id, ev]);
+    },
     setDown(url, down) {
       relays[url].down = down;
       if (down) for (const c of [...relays[url].clients]) c.close();
@@ -336,8 +340,10 @@ describe('a room heard by cell', () => {
     await until(() => net.relays[URLS[0]].log.some((ev) => ev.content.includes('"hi"')));
     for (const ev of net.relays[URLS[0]].log) expect(gOf(ev)).toEqual(['hoth/0,0']);
     a.setCells(['hoth/1,0', 'hoth/0,0']); // (the same set: the relays count REQs)
+    await settle(20);
     expect(reqs(net)).toHaveLength(1);
     a.setCells(['hoth/1,0', 'hoth/2,0']);
+    await settle(20); // (asked on the next tick, once however often it's said in a frame)
     expect(reqs(net)).toHaveLength(2);
     expect(reqs(net)[1][1]).toBe(reqs(net)[0][1]); // (under the same id: it replaces the first)
     expect(reqs(net)[1][2]['#g']).toEqual(['hoth/1,0', 'hoth/2,0']);
@@ -415,7 +421,51 @@ describe('a room heard by cell', () => {
     await a.ready;
     a.setCells([]);
     a.setCells(null);
+    await settle(20);
     expect(reqs(net)).toHaveLength(1);
+  });
+
+  it('setCells many times in a frame asks each relay once, and not at all when it ends where it began', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0'] });
+    await a.ready;
+    for (let i = 1; i <= 5; i++) a.setCells([`hoth/${i},0`]);
+    await settle(20);
+    expect(reqs(net)).toHaveLength(2);
+    expect(reqs(net)[1][2]['#g']).toEqual(['hoth/5,0']);
+    a.setCells(['hoth/9,9']);
+    a.setCells(['hoth/5,0']);
+    await settle(20);
+    expect(reqs(net)).toHaveLength(2);
+  });
+
+  it('an event from a cell not listened for (a relay that ignores #g, or a REQ not yet replaced) is dropped and counted', async () => {
+    const net = createRelays(URLS);
+    const b = join(net, { cells: () => ['hoth/0,0'] });
+    await b.ready;
+    const { secretKey, publicKey } = schnorr.keygen();
+    const x = hex(publicKey);
+    const say = (g, n) => signEvent(secretKey, x, { tags: [['x', 'test-app/room-1'], ...(g ? [['g', g]] : [])], content: JSON.stringify([['hi', { n }]]) });
+    net.leak(URLS[0], await say('hoth/9,9', 'Far'));
+    net.leak(URLS[0], await say(null, 'Nowhere'));
+    await settle();
+    expect(b.got).toEqual([]);
+    expect(b.stats().offCell).toBe(2);
+    net.leak(URLS[0], await say('hoth/0,0', 'Near'));
+    await until(() => b.got.some((m) => m.data.n === 'Near'));
+    expect(b.stats().offCell).toBe(2);
+  });
+
+  it('a message for a pilot whose cell isn’t known goes out with the sender’s own', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    a.setCell('hoth/0,0');
+    const b = join(net);
+    await until(() => a.joined.includes(b.selfId) && b.joined.includes(a.selfId));
+    a.action('ally').send({ t: 'ask' }, { target: b.selfId });
+    await until(() => b.got.some((m) => m.ns === 'ally'));
+    const sent = net.relays[URLS[0]].log.find((ev) => ev.pubkey === a.selfId && ev.content.includes('"ally"'));
+    expect(gOf(sent)).toEqual(['hoth/0,0']);
   });
 
   it('a message for a pilot whose words carry no cell goes as it always did', async () => {

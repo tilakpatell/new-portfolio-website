@@ -47,8 +47,11 @@
 // tags to listen for, or null for all), its REQ asks for '#g' too, so the
 // relays pass on only the events of pilots near you. setCell(tag) is what
 // your own events carry from then (['g', tag]); setCells(tags) is what you
-// listen for, asked of the relays again (one REQ each, under the same id)
-// only when the set changed, since the relays count REQs. A message for one
+// listen for, asked of the relays again (one REQ each, under the same id) on
+// the next tick and only when the set changed, since the relays count REQs
+// (said ten times in a frame, it's one REQ). An event from a cell not
+// listened for (a relay that ignores '#g', or one still on the REQ before)
+// is dropped here and counted (stats().offCell). A message for one
 // pilot carries their cell as well, the one their last words carried, so a
 // hit or an ask from cells away still passes their filter. A room joined
 // without `cells`, and never told otherwise, asks and sends exactly what it
@@ -169,11 +172,16 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   let bye = null; // the goodbye, signed ahead so it can go out as the page closes
   let cell = null; // the tag your own events carry (setCell)
   let want; // the cells listened for once setCells has said (till then, cells()'s)
+  let reask = 0; // setCells said something new: the relays asked on the next tick
+  let offCell = 0; // events dropped for a cell not listened for
   // (an empty list is no list: all)
   const listening = () => {
     const g = want !== undefined ? want : cells?.();
     return g?.length ? g : null;
   };
+  // the cells the room last asked for (at joining, or on a change; not each
+  // socket's reopening, which only asks for what's listened for then)
+  let asked = listening();
   // what your events are tagged with: the room, the visit, your cell
   const ownTags = () => (cell ? [...tags, ['g', cell]] : tags);
 
@@ -209,6 +217,11 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   const onEvent = (ev) => {
     if (left || !ev || typeof ev !== 'object' || ev.kind !== KIND || !isHex(ev.id, 64) || !isHex(ev.pubkey, 64) || !isHex(ev.sig, 128)) return;
     if (ev.pubkey === self || seen.has(ev.id)) return;
+    const near = listening();
+    if (near && !ev.tags?.some?.((t) => Array.isArray(t) && t[0] === 'g' && near.includes(t[1]))) {
+      offCell += 1;
+      return;
+    }
     if (!Number.isInteger(ev.created_at) || typeof ev.content !== 'string' || ev.content.length > CONTENT_MAX) return;
     if (!Array.isArray(ev.tags) || !ev.tags.some((t) => Array.isArray(t) && t[0] === 'x' && t[1] === topic)) return;
     let msgs;
@@ -348,12 +361,19 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
       const g = next?.length ? [...next] : null;
       if (left || sameCells(listening(), g)) return;
       want = g;
-      sub.refresh();
+      reask ||= setTimeout(() => {
+        reask = 0;
+        if (left || sameCells(asked, listening())) return;
+        asked = listening();
+        sub.refresh();
+      }, 0);
     },
+    stats: () => ({ offCell }),
     leave() {
       if (left) return Promise.resolve();
       left = true;
       clearTimeout(timer);
+      clearTimeout(reask);
       clearInterval(sweep);
       if (bye) broadcast(bye);
       sub.close();

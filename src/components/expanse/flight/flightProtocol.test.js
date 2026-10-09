@@ -36,6 +36,18 @@ describe('the flight’s wire', () => {
     expect(readPose({ 0: 1 }, 'hoth/0,0')).toBeNull();
   });
 
+  it('a pose with NaN or Infinity in any slot, or tagged for another planet, is nothing', () => {
+    const out = writePose(ship);
+    for (let i = 0; i < 8; i++)
+      for (const bad of [NaN, Infinity, -Infinity]) {
+        const p = [...out];
+        p[i] = bad;
+        expect(readPose(p, 'hoth/0,-1', 'hoth')).toBeNull();
+      }
+    expect(readPose(out, 'hoth/0,-1', 'hoth')).not.toBeNull();
+    expect(readPose(out, 'endor/0,-1', 'hoth')).toBeNull();
+  });
+
   it('a pose’s speed is clamped, and its flags a byte', () => {
     expect(readPose([0, 0, 0, 0, 0, 0, 9000, 2], 'hoth/0,0').speed).toBe(400);
     expect(readPose([0, 0, 0, 0, 0, 0, -50, 2], 'hoth/0,0').speed).toBe(0);
