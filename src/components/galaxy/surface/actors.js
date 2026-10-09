@@ -27,7 +27,7 @@
 // does (a walker: an AT-AT, an AT-ST, its legs going as it goes). `model:
 // false` builds it even where there's a model (a walker that should walk).
 //
-// site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still,
+// site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still, hang (metres: hung upside down, the feet that high),
 //   face, y (hovering: a probe droid), name, says: [line…] (a line: text,
 //   or [who, text]), voice (the voice their own lines are said in, where it
 //   isn't their name's: voicelines.js; `says` can be talk.js's tree, by
@@ -53,6 +53,7 @@
 
 import * as THREE from 'three';
 import { SURFACE_MODELS, modelUrlFor } from './catalog';
+import { markBuilt, resolveFigure } from './cast';
 import { buildFigure } from './figures';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
@@ -437,7 +438,7 @@ function propFigure(kind, spec, kit, i = 0) {
   kit.moving?.(made.object);
   let t = rng(seedOf(kind, i))() * 10; // (each of them somewhere of its own in its stride)
   const box = new THREE.Box3().setFromObject(made.object);
-  return {
+  return markBuilt({
     model: made.object,
     tall: box.max.y - box.min.y,
     update(dt, move) {
@@ -445,18 +446,35 @@ function propFigure(kind, spec, kit, i = 0) {
       made.update?.(t, dt, move);
     },
     dispose() {},
-  };
+  });
 }
 // A figure for any kind there is one of, by name: a crew model (crew.js), a
 // catalogue model walking with its clips or a bob (modelFigure), a built
 // figure (figures.js) or a humanoid prop (props/*.js, given the kit); null
 // for a kind that's none of those. `spec.model: false` builds it even where
 // there's a model; i is which of the entry's figures (a crew kind's face).
-export async function anyFigure(kind, spec = {}, kit = null, i = 0, models = SURFACE_MODELS) {
-  if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
-  // (a machine on legs its model came without: cut at its joints and walked, its rider up top; walkers.js)
-  const walker = WALKERS[kind] ? await walkerFigure(kind, i, models).catch(() => null) : null;
-  return walker ?? (await crewFigure(kind, i)) ?? (await modelFigure(kind, models)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+// `only`: a world that takes models only (a site's `cast: 'models'`): never
+// built, its files tried twice, then a stand-in, then nothing (cast.js).
+const warned = new Set();
+const warnOnce = (kind) => {
+  if (!import.meta.env?.DEV || warned.has(kind)) return;
+  warned.add(kind);
+  console.warn('[surface] no model for', kind);
+};
+export async function anyFigure(kind, spec = {}, kit = null, i = 0, models = SURFACE_MODELS, { only = false } = {}) {
+  if (spec.model === false && !only) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+  return resolveFigure(
+    kind,
+    {
+      // (a machine on legs its model came without: cut at its joints and walked, its rider up top; walkers.js)
+      walker: (k) => (WALKERS[k] ? walkerFigure(k, i, models) : null),
+      crew: (k) => crewFigure(k, i),
+      model: (k) => modelFigure(k, models),
+      built: (k) => buildFigure(k),
+      prop: (k) => propFigure(k, spec, kit, i),
+    },
+    { only, warn: warnOnce },
+  );
 }
 
 // How far off the fog has someone all but gone (97% fog, FogExp2's
@@ -471,7 +489,7 @@ const LEAP = 4; // metres moved between two steps that's no step: put somewhere 
 const EYES = 1.6; // metres: your eyes over your feet, for a head turned to you
 const FLOOR = 4; // metres up or down: someone on another floor isn't greeting you
 
-export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS }) {
+export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS, only = false }) {
   const group = new THREE.Group();
   group.name = 'life';
   parent.add(group);
@@ -493,7 +511,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
 
   // (a page's own maker first, the Rick and Morty cast; what it has nothing
   // for, or fails to make, is made as any other kind)
-  const anyOf = (kind, spec, i) => anyFigure(kind, spec, kit, i, models);
+  const anyOf = (kind, spec, i) => anyFigure(kind, spec, kit, i, models, { only });
   const figureOf = figure
     ? (kind, spec, i) =>
         Promise.resolve(figure(kind, spec, i))
@@ -782,8 +800,9 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
           if (a.under != null && a.under !== dv.y < 0 && d < 500) water.splash(b.x, b.z, 1.4);
           a.under = dv.y < 0;
         }
-        a.holder.position.set(b.x, y, b.z);
-        a.holder.rotation.set(pitch, b.yaw, 0, 'YXZ');
+        // (one hung by the ankles, `hang` metres up: upside down, the feet at that height)
+        a.holder.position.set(b.x, spec.hang != null ? g + spec.hang : y, b.z);
+        a.holder.rotation.set(pitch, b.yaw, spec.hang != null ? Math.PI : 0, 'YXZ');
         if (a.fig) stepFigure(a, dt, d, you, e);
       }
     },
