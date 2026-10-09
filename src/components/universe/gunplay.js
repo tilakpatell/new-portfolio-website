@@ -35,7 +35,7 @@
 
 import * as THREE from 'three';
 import { frameFrom, palmFrame, reach, rotateWorld, setWorldQuaternion, spring } from '../../lib/three/ik';
-import { gripMorphs, ungrip } from './grip';
+import { gripMorphs, ungrip } from '../../lib/three/grip';
 
 const V = THREE.Vector3;
 const Q = THREE.Quaternion;
