@@ -10,7 +10,7 @@ import { loadSet, pbr, preload } from '../hq/assets';
 import { buildCompound, fbm, scatter, trees } from '../hq/kit/world';
 import { canvasTexture } from '../hq/kit/shapes';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { lightningPool } from '../lawn/models';
 import { CABLE, CASE, GANTRY, HANGAR, JET, LEGS, PADS, TREES, caseHeight, groundAt, hookAt, inHangar, pitchOf, ringAt, windAt } from './rules';
@@ -510,6 +510,8 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
 
   const vfx = createVfx(scene, { calm, ground: 0.05, maxSparks: small ? 500 : 900, maxPuffs: small ? 160 : 260 });
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.9 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'tesseract');
 
   // ── state for drawing ──
   const v3 = new THREE.Vector3();

@@ -9,7 +9,7 @@ import { buildCompound, buildGround, fbm, scatter, trees } from '../hq/kit/world
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { canvasTexture, rbox } from '../hq/kit/shapes';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { EYE, LANES, PRIME_SCALE } from './rules';
 import { boltGeometry, buildGauntlet, discGeometries, droneGeometries, instanced, missileGeometries, plateGeometry, repulsorMaterials } from './models';
@@ -385,6 +385,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     timers.add(id);
   };
   const feel = createFeel({ seed: 5, calm, baseFov: 62 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'repulsor');
 
   // ── per frame ──
   const m4 = new THREE.Matrix4();

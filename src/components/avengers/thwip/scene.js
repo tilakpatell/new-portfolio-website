@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { createEngine, hot } from '../hq/engine';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { instanced } from '../hq/kit/instanced';
 import { canvasTexture } from '../hq/kit/shapes';
 import { CAR_COLOURS, CAR_KINDS, carGeometries, carMaterials } from '../smash/models';
@@ -150,6 +150,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   scene.add(web);
   const vfx = createVfx(scene, { calm, maxSparks: small ? 300 : 600, maxPuffs: small ? 80 : 140, maxDebris: 40 });
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.2 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'thwip');
 
   const Y = new THREE.Vector3(0, 1, 0);
   const q = new THREE.Quaternion();

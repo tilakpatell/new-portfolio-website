@@ -57,9 +57,6 @@ export const OWN_SHAKE = [
 ];
 
 export const DEAD_HITSTOP = [
-  { file: 'avengers/widow/scene.js', pattern: /feel\.hitstop\(/, loop: 'avengers/widow/Infiltration.jsx', without: /\btimeScale\(|feel\.(step|scale)\(/ },
-  // (a feel whose scale already runs the snap, and no hitstop to slow it)
-  { file: 'avengers/titan/scene.js', pattern: /createFeel\(/, loop: 'avengers/titan/scene.js', without: /\.hitstop\(/ },
 ];
 
 // each without createPress or createCooldownPress in the same file
