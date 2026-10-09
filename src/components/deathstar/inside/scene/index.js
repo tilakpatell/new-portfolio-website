@@ -53,6 +53,8 @@ import { createPeople } from './people';
 import { createShow } from './show';
 import { createStream } from './stream';
 import { createFeel, feelGroups } from '../../../../lib/three/feel';
+import { createSpring } from '../../../../lib/spring';
+import { prefersReducedMotion } from '../../../../lib/hooks';
 
 const STEP = 1 / 30; // the game’s step (rules/game.js)
 const JUMP = 3; // metres between two steps that are a ride or a teleport, not a stride
@@ -128,6 +130,10 @@ const TREMBLE = 0.006; // metres it trembles by all the while
 // a hit on you this hard (combat.js's knock: the DL-44's) jolts the view and
 // holds the game a moment
 export const HEAVY = { from: 25, stop: 70 };
+// a landing's squat: set at once by the speed it hit at (× per, to max),
+// rung back on a spring (the plan's k 120, c 8); a step down under `from`
+// m/s is nothing
+export const SQUAT = { per: 0.025, max: 0.3, from: 3 };
 
 export function playerAct({ crouch = false, moving = false, aim = false, gun = null, blade = null, shotAgo = Infinity, swungAgo = Infinity } = {}) {
   const base = crouch ? (moving ? 'crouch.walk' : 'crouch') : null;
@@ -185,6 +191,8 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   // trauma², at most QUAKE_MOST metres, held still under reduced motion (the
   // feel reads it), and the hitstop the module's loop slows its steps by
   const feel = createFeel({ offset: QUAKE_MOST, baseFov: camera.fov });
+  const squat = createSpring({ k: 120, c: 8, max: SQUAT.max });
+  const still = prefersReducedMotion(); // (no squat under reduced motion)
   let inScene = false; // whether a scene had the camera last frame
   const vel = { x: 0, z: 0 };
   let shown = -1; // the last displayed time
@@ -329,6 +337,9 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
       const drawn = cine.youAt ?? at;
       o.position.set(drawn.x, drawn.y, drawn.z);
       o.rotation.y = -drawn.yaw;
+      // (its feet at its origin: the squat is about them)
+      const q = squat.step(dt);
+      o.scale.set(1 + q / 2, 1 - q, 1 + q / 2);
       // (in first person the eye is inside the head; a scene's camera sees you)
       o.visible = (view !== 'first' || Boolean(shot)) && !cine.hidesYou;
       person.hold(you.gun ?? null);
@@ -425,6 +436,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     people.hear(events);
     for (const e of events ?? []) {
       if (e.type === 'quake') quake = Math.max(quake, QUAKE_MOST * (e.size ?? 1));
+      if (e.type === 'land' && !still && e.speed > SQUAT.from) squat.x = Math.min(SQUAT.max, e.speed * SQUAT.per);
       if (e.type === 'hurt' && (e.amount ?? 0) >= HEAVY.from) {
         feel.trauma(Math.min(0.8, e.amount / 60));
         feel.hitstop(HEAVY.stop);
