@@ -71,7 +71,7 @@
 //   addRunner({ team, kind, size, hp, from, to, speed })):
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
 //   attacker, ahead, stageOpen, opensIn, setYou(team | null), update(dt, you) → events, hit(from, to,
-//   damage) → hit | null, fire(team, from, dir, kind, target), targets,
+//   damage) → hit | null, strike(id, damage) → hit | null (a ram on a fighter), fire(team, from, dir, kind, target), targets,
 //   info, end(winner, why, ago), setDifficulty(d), tactics, fleet }
 // `you`: { x, y, z, alive } (the ship, as the scene has it), or null.
 // update(dt) steps the battle BATTLE.step at a time, whatever the frame
@@ -493,6 +493,20 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // drawn, over the frame: back along its way from there by the frame's length)
   const back = v3();
   const drawnBack = (o) => set(back, o.seen.x - o.vel.x * frame, o.seen.y - o.vel.y * frame, o.seen.z - o.vel.z * frame);
+  // one of the other side's fighters hit by you, worth `damage`
+  const hitFighter = (f, damage) => {
+    if (stages?.isAce(f)) return { id: f.id, kind: f.kind, at: copy(v3(), f.seen), size: f.size, down: stages.hitAce(f, damage, pending) };
+    f.hp -= damage;
+    const down = f.hp <= 0;
+    if (down) pending.push(kill(f, true));
+    return { id: f.id, kind: f.kind, at: copy(v3(), f.seen), size: f.size, down };
+  };
+  // the same for one you rammed (shipHits.js), by its id
+  b.strike = (id, damage = 1) => {
+    if (b.you.team === null || b.over) return null;
+    const f = b.fighters.find((o) => o.id === id && o.alive && o.team !== b.you.team);
+    return f ? hitFighter(f, damage) : null;
+  };
   b.hit = (from, to, damage = 1) => {
     if (b.you.team === null || b.over) return null;
     let hitF = null;
@@ -565,13 +579,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       }
       return { id: hitR.id, kind: hitR.kind, at: copy(v3(), hitR.seen), size: hitR.size, down };
     }
-    if (hitF && (!h || first <= h.k)) {
-      if (stages?.isAce(hitF)) return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down: stages.hitAce(hitF, damage, pending) };
-      hitF.hp -= damage;
-      const down = hitF.hp <= 0;
-      if (down) pending.push(kill(hitF, true));
-      return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down };
-    }
+    if (hitF && (!h || first <= h.k)) return hitFighter(hitF, damage);
     if (!h) return null;
     // (with a director a hit's a punch of the objective's hp: what it's worth is shared out by the director)
     if (h.sub && subHit(h.sub, damage * (stages ? 1 : BATTLE.youShare), true, pending)) return { id: h.sub.num, kind: 'subsystem', sub: h.sub.id, at: h.at, size: 1, down: !h.sub.alive };

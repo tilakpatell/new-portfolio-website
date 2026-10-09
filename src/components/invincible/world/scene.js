@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { createEngine } from '../../avengers/hq/engine';
 import { createFeel, feelGroups } from '../../avengers/hq/feel';
+import { createSpring, springGroups } from '../../../lib/spring';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { CAST, asset } from '../cast';
 import { createGhosts } from '../../middleearth/towns/ghosts';
@@ -36,6 +37,7 @@ import { BODIES, altitudeOf } from './orbit';
 import { castMaterial, loadCast, personFor, setCastRim } from './people';
 import { buildSpace } from './space';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { LOOK as ART } from './look';
 
 const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -292,7 +294,7 @@ function createCourse(scene) {
 }
 
 export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = {}) {
-  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.3, far: 26000, bloom: { strength: 0.5, radius: 0.5, threshold: 0.92 }, onLost, onSlow });
+  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.3, far: 26000, bloom: ART.bloom, onLost, onSlow });
   const { scene, camera } = engine;
   const small = engine.small;
   const world = buildWorld();
@@ -400,6 +402,10 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const marker = createMarker(scene);
   const course = createCourse(scene);
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.4 });
+  // a slam's squash (the game-feel design's Tier 2): a spring kicked by how
+  // hard he came down, rung out about his feet, never more than 0.3
+  const squash = createSpring({ k: 120, c: 8, max: 0.3 });
+  const SQUASH = { per: 0.05, most: 4 }; // the kick a m/s of landing, and its cap (a slam from flat out is 260)
 
   // ── the time of day ──
   let look = null;
@@ -824,6 +830,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         feel.punch(6);
       } else if (e.type === 'slam') {
         fx.slam(e.at, e.speed);
+        squash.kick(Math.min(SQUASH.most, e.speed * SQUASH.per));
         feel.trauma(clamp(e.speed / 150, 0.3, 1));
       } else if (e.type === 'impact') {
         fx.impact(e.at, e.n, e.speed);
@@ -901,6 +908,11 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       else mark.act('hover', { fade: 0.4 }) || mark.pose(POSES.hover(t), dt, 9);
     }
     mark.tick(dt);
+    // (on his feet only: off them the squash is let go)
+    const sq = h.mode === 'ground' ? squash.step(dt) : 0;
+    if (h.mode !== 'ground') squash.reset();
+    mark.holder.scale.set(1 + sq / 2, 1 - sq, 1 + sq / 2);
+    if (sq) mark.holder.position.y -= mark.hipHeight * sq;
 
     if (zone === 'city') {
       // his father, keeping an eye on things
@@ -996,7 +1008,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     // how much of a real frame the game goes on by (a hitstop: ./InvWorld.jsx's loop)
     timeScale: feel.timeScale,
     // ?debug: the feel's numbers, and ./InvWorld.jsx's (the hits, the jump's press)
-    tune: (more = []) => engine.tune([...feelGroups(feel), ...more], 'invincible'),
+    tune: (more = []) => engine.tune([...feelGroups(feel), ...springGroups(squash, 'squash'), ...more], 'invincible'),
     setTime,
     project,
     talkers,

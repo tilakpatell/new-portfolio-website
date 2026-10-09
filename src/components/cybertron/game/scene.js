@@ -16,7 +16,8 @@
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { budget } from '../../../lib/device';
+import { budget, device } from '../../../lib/device';
+import { createLoose } from './loose';
 import { createPace } from '../../../lib/three/pace';
 import { guard } from '../../../lib/three/frameGuard';
 import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
@@ -121,6 +122,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     o.scale.set(k.x * (1 + s / 2), k.y * (1 - s), k.z * (1 + s / 2));
   };
   const jolts = { landed: 0, hit: 0 };
+  let loose = null; // the area's loose crates (./loose.js)
   // a bump or a landing: a thud by how hard, from where, and a puff there
   const knockDust = createDust({ count: 64, colour: 0x9aa3ad, size: 1.4 });
   scene.add(knockDust.mesh);
@@ -228,6 +230,11 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       scene.environmentIntensity = look.env ?? 0.45;
       scene.background = new THREE.Color(fog[0]);
       effects.energon(look.energon);
+      loose?.dispose();
+      loose = null;
+      createLoose({ area, parent: scene, dev: device(), impacts: knocks })
+        .then((l) => (my === generation ? (loose = l) : l.dispose()))
+        .catch(() => {});
       const make = (STAGES[area.id] ?? plainStage)();
       const [mod] = await Promise.all([make, loadPlayer(area.player.robot, area.player.vehicle)]);
       if (my !== generation) return;
@@ -436,6 +443,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     if (lost) return;
     clock += dt;
     const p = sim.player;
+    loose?.step(dt, p);
     // Optimus
     player.root.position.set(p.x, p.y, p.z);
     player.root.rotation.y = p.yaw;
@@ -730,6 +738,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       }
       player.robot?.dispose();
       effects.dispose();
+      loose?.dispose();
       knocks.dispose();
       beaconGeo.dispose();
       beaconMat.dispose();
