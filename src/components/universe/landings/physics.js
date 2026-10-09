@@ -11,8 +11,8 @@
 // layout is every pilot's (seeded), but what's been knocked about isn't
 // sent: each pilot's props are their own.
 //
-// createLandingPhysics({ R, metre = METRE, g = 9.81, onHit({ entry, force,
-//   at }) }) → Promise<{ add({ position, quaternion, scale, box (metres,
+// createLandingPhysics({ R, metre = METRE, g = 9.81, threshold = 15, onHit(force, at,
+//   entry) }) → Promise<{ add({ position, quaternion, scale, box (metres,
 //   its own frame), body, awake?, user }) → entry | null, walls([{ n, r }])
 //   (the landing's fixed things, as walk() has them: a circle along the
 //   ground round n, r map units; each a fixed post 3 m tall, so what's
@@ -25,15 +25,19 @@
 // (whole 1/60 s substeps), not the frame's own time: at 144 Hz most frames
 // step nothing, and a capsule sent at the frame's speed would run ahead of
 // its walker and fling what it meets.
-//   (onHit only for a hit over three times the thing's own weight, and not
-//   again within HIT_GAP s; position and at in map units)
+//   (onHit for every contact over `threshold`, the hit law's
+//   (lib/impact.js): lib/physics tells a hit's force a kilogram, so a thing
+//   lying there (its weight, g a kilogram) is never a knock, however heavy,
+//   and a diya's knock and a chest's are on the one law. The law decides
+//   how loud, and its gap is the one throttle. Position and at in map units;
+//   its arguments are lib/three/impacts.js's onHit's, the entry the key, so
+//   it can be handed the wiring's own)
 
 import { STEP, createPhysics } from '../../../lib/physics/world';
 import { addPusher } from '../../../lib/physics/pusher';
 import { METRE } from '../foot';
 import { shapeFor } from './bodies';
 
-const HIT_GAP = 0.25; // seconds between one thing's hits told
 const SHOT = 4; // a bolt's push (N·s), at most
 const SHOT_KICK = 10; // m/s it gives anything light, at most
 const PERSON = { radius: 0.35, half: 0.55 }; // (a capsule 1.8 m tall)
@@ -49,7 +53,7 @@ function upTurn(u) {
   return [q[0] / n, q[1] / n, q[2] / n, q[3] / n];
 }
 
-export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit = null } = {}) {
+export async function createLandingPhysics({ R, metre = METRE, g = 9.81, threshold = 15, onHit = null } = {}) {
   const Rm = R / metre;
   const physics = await createPhysics({
     gravity: { centre: [0, 0, 0], g },
@@ -67,7 +71,6 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
   physics.add({ type: 'fixed', group: 'floor', friction: 0.8, colliders: [{ shape: 'ball', args: [Rm] }] });
   const entries = new Map(); // Body → entry
   const pushers = new Map(); // key → pusher
-  let clock = 0;
   let gone = false;
 
   function add({ position, quaternion, scale = 1, box, body, awake = false, user = null }) {
@@ -77,7 +80,7 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
       if (import.meta.env?.DEV) console.warn('landing physics: no body for', { body, box, scale, position });
       return null;
     }
-    const entry = { user, handle: null, scale, told: -Infinity };
+    const entry = { user, handle: null, scale };
     try {
       entry.handle = physics.add({
         type: shape.type,
@@ -90,15 +93,10 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
         linearDamping: 0.3,
         angularDamping: 0.6,
         colliders: shape.colliders,
-        // (three times its own weight: a knock or a fall, not lying there)
-        hitThreshold: (shape.mass ?? 1) * g * 3,
-        onHit: onHit
-          ? (force, at) => {
-              if (clock - entry.told < HIT_GAP) return;
-              entry.told = clock;
-              onHit({ entry, force, at: at.map((a) => a * metre) });
-            }
-          : null,
+        // (Rapier's gate is the contact's whole force, in newtons: the law's
+        // threshold a kilogram, times the thing's kilograms)
+        hitThreshold: (shape.mass ?? 1) * threshold,
+        onHit: onHit ? (force, at) => onHit(force, at.map((a) => a * metre), entry) : null,
       });
     } catch (err) {
       if (import.meta.env?.DEV) console.warn('landing physics: no body,', err?.message ?? err);
@@ -186,7 +184,6 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
     shot,
     step(dt) {
       if (gone) return 0;
-      clock += Math.max(0, dt || 0);
       return physics.step(dt);
     },
     // (the ones awake, and once, any a reset has moved)

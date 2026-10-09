@@ -27,6 +27,7 @@ import { pixelRatio } from '../../lib/device';
 import { houseOn } from '../../lib/three/house';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
+import { createFeel, feelGroups } from '../../lib/three/feel';
 
 const LENGTH = 340; // how much station to build, in units
 const SHIP_AHEAD = 0.55; // the X-wing sits this far ahead of the simulation's z
@@ -816,7 +817,11 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   const tmp = new THREE.Vector3();
   const dir = new THREE.Vector3();
   const zAxis = new THREE.Vector3(0, 0, 1);
-  const shakeV = new THREE.Vector3();
+  // the shake: the run's (a hit 0.3, a torpedo's blast 0.22, the station
+  // going up) as the feel's trauma, held at least that while the run holds
+  // it; `calm` (reduced motion) is the caller's, a frame at a time
+  const feel = createFeel({ calm: false, baseFov: camera.fov, offset: 0.2 });
+  let feelT = 0;
 
   // (the frame time is measured here, not taken from the caller)
   // eslint-disable-next-line no-unused-vars
@@ -827,14 +832,16 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     const z = g.z;
     // camera, just behind and above the X-wing, easing with it
     const bank = (g.tx - g.px) * 1.5;
-    shakeV.set(0, 0, 0);
-    if (!calm) {
-      const k = (g.shake ?? 0) * 0.12 + (g.win?.boom ? Math.max(0, 0.9 - (g.win.t - 0.6)) * 0.08 : 0);
-      if (k) shakeV.set((Math.random() - 0.5) * k, (Math.random() - 0.5) * k, 0);
-    }
-    camera.position.set(g.px * 0.9 + shakeV.x, g.py * 0.92 + 0.42 + shakeV.y, -z + CAM_BACK);
+    camera.position.set(g.px * 0.9, g.py * 0.92 + 0.42, -z + CAM_BACK);
     camera.lookAt(g.px * 0.7, g.py * 0.86 + 0.28, -z - 9);
     camera.rotateZ(-bank * 0.12);
+    const want = (g.shake ?? 0) + (g.win?.boom ? Math.max(0, 0.9 - (g.win.t - 0.6)) * 0.67 : 0);
+    const has = feel.state().trauma;
+    if (want > has) feel.trauma(want - has);
+    // (by the run's clock: still while it's paused, none across a new run)
+    const fdt = Math.max(0, Math.min(0.1, t - feelT));
+    feelT = t;
+    if (!calm) feel.update(fdt, camera);
     stars.position.copy(camera.position);
     sky.position.set(camera.position.x * 0.2, 0, camera.position.z);
     sun.position.set(camera.position.x - 4, 7, camera.position.z + 3);
@@ -1069,5 +1076,6 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     renderer.dispose();
   };
 
-  return { render, resize, project, dispose, ready, get lost() { return lost; } };
+  // tune(): the ?debug panel's groups (the feel's numbers)
+  return { render, resize, project, dispose, ready, tune: () => feelGroups(feel), get lost() { return lost; } };
 }

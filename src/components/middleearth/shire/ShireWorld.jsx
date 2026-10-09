@@ -12,6 +12,7 @@ import { useTravellers } from '../towns/useTravellers';
 import {
   CAST,
   COLOURS,
+  FADE,
   FIELD,
   GANDALF_LINES,
   HOLLOW,
@@ -35,6 +36,7 @@ import {
   SPOTS,
   START,
   STREAM,
+  STRIDE,
   WORLD,
   behindYaw,
   cameraMove,
@@ -51,6 +53,7 @@ import {
   newShow,
   newSpoons,
   nextRingStep,
+  onRoad,
   progress,
   puff,
   riderTrigger,
@@ -62,6 +65,8 @@ import {
   stepRings,
   stepShow,
   stepSpoons,
+  stepFade,
+  stepStride,
 } from './rules';
 import { SWATCH } from './fx';
 import './shire.css';
@@ -157,6 +162,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [toast, setToast] = useState(null);
   const [bubble, setBubble] = useState(null);
   const [list, setList] = useState(false);
+  const [fading, setFading] = useState(false); // caught or found: the screen goes dark while he's put back
   const lines = useRef({});
   const bubbleRef = useRef(null);
   // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
@@ -436,8 +442,27 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
+    // put back where he starts again, under a fade rather than a cut (./rules.js)
+    const putBack = (at) => {
+      s.fade = FADE;
+      s.putBack = () => {
+        s.h = newHobbit(at);
+        s.yaw = behindYaw(s.h.face);
+        s.cut = true; // (the camera cuts to him, in the dark, rather than swing across)
+      };
+      setFading(true);
+    };
+    if (s.fade != null) {
+      const [left, move] = stepFade(s.fade, dt);
+      s.fade = left;
+      if (move) {
+        s.putBack?.();
+        s.putBack = null;
+        setFading(false);
+      }
+    }
 
-    if (s.mode === 'walk' || s.mode === 'rider') {
+    if ((s.mode === 'walk' || s.mode === 'rider') && s.fade == null) {
       let fwd = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - s.stick.y;
       let side = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + s.stick.x;
       if (pad) {
@@ -454,6 +479,10 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
       s.h = stepHobbit(s.h, { x: mv.x, z: mv.z, run }, dt);
+      // his footsteps, a stride of ground apart, on the grass or the road
+      const [stride, foot] = stepStride(s.stride ?? STRIDE.first, s.h, dt);
+      s.stride = stride;
+      if (foot) sounds().then((x) => x.step({ run: s.h.running, road: onRoad(s.h.x, s.h.z) }));
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
       // the camera drifts round behind him as he walks, unless you've just turned it
       if (s.h.speed > 0.5 && s.t - s.dragAt > 1.4) {
@@ -465,7 +494,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
 
     // Maggot's dogs walk their rounds whatever you're doing
     const huntDone = doneRef.current.includes('maggot');
-    const hEv = stepHunt(s.hunt, huntDone || s.mode !== 'walk' ? { x: 0, z: -40, running: false } : { x: s.h.x, z: s.h.z, running: s.h.running }, dt);
+    const hEv = stepHunt(s.hunt, huntDone || s.mode !== 'walk' || s.fade != null ? { x: 0, z: -40, running: false } : { x: s.h.x, z: s.h.z, running: s.h.running }, dt);
     for (const e of hEv) {
       if (e.type === 'pick') {
         a.fx('pick', e);
@@ -479,8 +508,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         a.fx('caught');
         say('Caught! Farmer Maggot marches you back to his gate, and takes his mushrooms back.', true);
         s.hunt = newHunt([]);
-        s.h = newHobbit(MAGGOT_GATE);
-        s.yaw = behindYaw(s.h.face);
+        putBack(MAGGOT_GATE);
         break;
       } else if (e.type === 'lost') say('It’s lost you.');
       else if (e.type === 'all') {
@@ -497,7 +525,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     }
 
     // the Rider
-    if (s.mode === 'walk' && p.hasRing && !doneRef.current.includes('rider') && riderTrigger(s.h)) {
+    if (s.mode === 'walk' && s.fade == null && p.hasRing && !doneRef.current.includes('rider') && riderTrigger(s.h)) {
       s.mode = 'rider';
       s.rider = newRider();
       sounds().then((x) => {
@@ -524,8 +552,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           say(e.why === 'ring' ? 'The Ring calls to it, and it screams. Try again, and leave the Ring be.' : e.why === 'moved' ? 'You moved, and it screams. Try again, and keep still.' : 'It sees you, and screams. Get off the road and under the roots, quick.', true);
           s.rider = null;
           s.mode = 'walk';
-          s.h = newHobbit(RIDER_RETRY);
-          s.yaw = behindYaw(s.h.face);
+          putBack(RIDER_RETRY);
         } else if (e.type === 'leaving') a.fx('leaving');
         else if (e.type === 'gone') {
           s.hoof?.stop();
@@ -685,10 +712,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           talk: s.talk,
           markers,
           debugCam: s.debugCam,
+          cut: s.cut,
         },
         ms * fast,
         fast,
       );
+      s.cut = false;
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -801,6 +830,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     <div ref={box} className="shire-stage" data-touch={touch || undefined} data-mode={mode} data-wearing={hud.wearing || undefined} data-sky={prog.sky}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Hobbiton in 3D: the Hill and Bag End, the Party Field, the pond and the mill, and Frodo on the lane" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Walking into Hobbiton" />
+      <div className="shire-fade" data-on={fading || undefined} aria-hidden="true" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">

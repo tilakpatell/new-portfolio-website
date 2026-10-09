@@ -13,8 +13,9 @@
 // A step's spawn: { kind, n, at, spread, roam, speed, hp, tag, scale,
 // model, still, face, y, level (the height it's on, where there are
 // floors over floors: a pit under a throne room), leash, hostile: { range, every, spread, damage,
-// burst, strafe, shield, parry (hostiles.js's: bursts of fire, circling you, a shield that soaks hits, a blade that turns your swings),
-// blade ({ color, hilt? }: a lit saber in its hand, swung with its swipes), guard (strokes it turns before its guard breaks and it reels),
+// burst, strafe, shield (hostiles.js's: bursts of fire, circling you, a shield that soaks hits),
+// blade ({ color, hilt?, stance? }: a lit saber in its hand, and it fences: duellists.js), parry (the share of your strokes a
+// duellist blocks), riposte (the share of those it parries), guard (strokes it turns before its guard breaks and it reels),
 // delay (before its first shot), chase (m/s: it comes for you), melee,
 // reach (how close it has to be to hit), cone, far, smell, memory (what it
 // perceives: hostiles.js's sensesFor), force ({ every, push }: a duellist's
@@ -42,8 +43,10 @@
 // there, standing to fire. A rigged one holds its gun in its hand and
 // raises it to aim and fire from the muzzle (universe/gunplay.js, as
 // yours), or plays the pistol's aim and shot on its upper half; a
-// duellist's saber is in its own hand, held at guard and swung
-// (heldBlade.js's bladeInHand). It flinches by where it's hit, goes down by
+// duellist's saber is in its own hand, held at guard and swung in its
+// strokes (heldBlade.js's bladeInHand; duellists.js fences with it: what
+// lands on you is what its blade sweeps, handed to the scene through
+// shooters as a melee contact). It flinches by where it's hit, goes down by
 // the way the shot went (die.fwd, die.back, die.blown) and lies a while
 // before it goes; one with no clips falls over about its feet that way. A
 // Tusken brandishes its rifle over its head when it sees you. Bodies never
@@ -100,23 +103,7 @@ export function hostileAim(t, you, targets) {
 // DC-15As, the battle droids' E-5s, a Rebel's A280; a blaster pistol for
 // anyone else with a gun (a spawn's own `gun` first). A duellist carries
 // its saber; a brawler, a beast or a target that doesn't fight back, nothing.
-export const ARMS = {
-  tusken: 'sniper',
-  jango: 'westar',
-  greedo: 'blaster',
-  aqualish: 'blaster',
-  scouttrooper: 'blaster',
-  stormtrooper: 'e11',
-  sandtrooper: 'e11',
-  snowtrooper: 'e11',
-  shoretrooper: 'e11',
-  deathtrooper: 'e11',
-  clone: 'dc15',
-  battledroid: 'e5',
-  mercenary: 'rifle',
-  hothtrooper: 'a280',
-  rebel: 'a280',
-};
+export { ARMS }; // (ground/troops.js's: the one table)
 export function armsOf(s) {
   const h = s?.hostile;
   if (!h) return null;
@@ -153,8 +140,11 @@ import { fallTurn } from '../../../lib/three/locomotion';
 import { preload } from '../../../lib/three/clipLibrary';
 import { createGunplay } from '../../universe/gunplay';
 import { SHOW_KILLS } from './weaponRules';
-import { bladeInHand, heldBlade } from './heldBlade';
+import { bladeInHand } from './heldBlade';
+import { asTarget, clashes, duelFor, fence, landed, reeling, stun, turnOf } from './duellists';
+import { onHit } from '../../../lib/combat/duel';
 import { sharpen } from '../../../lib/three/textures';
+import { ARMS } from './ground/troops';
 
 const SHOTS = 3; // enemies firing at you at once, across a world (the rest move)
 const UP = new THREE.Vector3(0, 1, 0);
@@ -233,7 +223,7 @@ const SPECIAL = { remote };
 
 // A health bar over a hostile's head: a sprite with a small canvas, red
 // for what's left, blue over it for a shield, redrawn only when they change
-function healthBar() {
+export function healthBar() {
   const canvas = document.createElement('canvas');
   canvas.width = 64;
   canvas.height = 10;
@@ -272,7 +262,7 @@ function healthBar() {
 
 // The marks over a hostile's head: '?' while it looks for you, '!' when it
 // has you again. One canvas each, shared by every head that shows it.
-function markMaterials() {
+export function markMaterials() {
   const made = {};
   return {
     of(ch) {
@@ -330,7 +320,6 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     return searches.get(tag);
   };
   const marks = markMaterials();
-  let clock = 0; // (the world's time at the last update: for what a call between them starts)
 
   // (the pickups and gates are made here for the step, each its own
   // geometry and materials: gone with it)
@@ -346,7 +335,6 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     for (const t of targets) {
       t.show?.dispose();
       t.bar?.dispose();
-      t.saber?.owned.forEach((o) => o.dispose?.());
       t.blade?.dispose();
       t.gp?.dispose();
     }
@@ -392,19 +380,17 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
 
   // what it carries, in its hand: a rigged figure's gun in its own right
   // hand (gunplay.js, raised to aim), its lightsaber lit there (heldBlade.js's
-  // bladeInHand); a figure without hand bones holds a lightsaber where its
-  // hand would hang (heldBlade), and a gun not at all
+  // bladeInHand) and a duellist's mind to fence with it (duellists.js); a
+  // figure without hand bones carries neither (every duellist is a rigged
+  // crew figure: crewList.js)
   const armed = (t, fig) => {
     const s = t.spec;
     const kind = armsOf(s);
     if (!kind) return;
     t.holder.updateMatrixWorld(true);
     if (kind === 'saber') {
-      t.blade = bladeInHand(fig, s.hostile.blade, { parent: group, who: s.kind });
-      if (!t.blade) {
-        t.saber = heldBlade(s.hostile.blade, (fig.tall ?? 1.8) * (s.scale ?? 1));
-        t.holder.add(t.saber.arm);
-      }
+      t.blade = bladeInHand(fig, s.hostile.blade, { parent: group, stance: s.hostile.blade.stance ?? 'single', who: s.kind });
+      if (t.blade) t.duel = duelFor(s, Math.round(t.home[0] * 13) * 31 + Math.round(t.home[1] * 17) + targets.indexOf(t) * 7919 + 1);
       return;
     }
     if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones }, kind, { unit: 1, who: s.kind });
@@ -442,9 +428,9 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           const holder = new THREE.Group();
           holder.visible = false;
           group.add(holder);
-          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null, guard: s.hostile?.guard ?? 0, guardAt: -99, saber: null, swingAt: -99 };
+          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null, guard: s.hostile?.guard ?? 0, guardAt: -99 };
           // its body's own (no draw from r: the spawns and their heads are as they were)
-          Object.assign(t, { posture: createPosture({ seed: targets.length * 7919 + Math.round(home[0] * 13) * 31 + Math.round(home[1] * 17) }), pose: null, gp: null, blade: null, firedAt: -99, kick: 0, death: null, reacted: false, mark: null, based: null, looked: null });
+          Object.assign(t, { posture: createPosture({ seed: targets.length * 7919 + Math.round(home[0] * 13) * 31 + Math.round(home[1] * 17) }), pose: null, gp: null, blade: null, firedAt: -99, kick: 0, death: null, reacted: false, mark: null, based: null, looked: null, duel: null, duelMark: null, engaged: false, blocking: false, contacts: [] });
           targets.push(t);
           if (t.shield) {
             // its shield: a bubble round it, bright for a moment where it's hit
@@ -474,6 +460,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   let lastYou = null;
   const fell = (t, { push = null, blown = false } = {}) => {
     t.down = 0.001;
+    if (t.duel) onHit(t.duel, { dead: true });
     t.death = { dir: fallOf({ push, from: lastYou, at: t.b, yaw: t.b.yaw }), force: blown || t.knock ? 1 : 0.3, clip: null, started: false, y: null };
   };
   // hit and still up: a flinch by where (the head, high up; else the chest),
@@ -482,6 +469,13 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     if (t.down) return;
     const tall = (t.fig?.tall ?? 1.8) * (t.spec.scale ?? 1);
     if (t.fig?.react?.('hit', { where: whereHit(at?.y, t.holder.position.y, tall), moving: true })) t.reacted = true;
+  };
+
+  // its guard broken by a heavy stroke, or spent: it reels 2 s
+  const broke = (t) => {
+    t.stagger = Math.max(t.stagger, 2);
+    stun(t, t.stagger);
+    flinched(t);
   };
 
   // the line from its chest to a point (y: the point's height, else level)
@@ -498,6 +492,15 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     fetched = true;
     preload(['die.fwd', 'die.back', 'die.blown', 'hit.chest', 'hit.head', 'crouch', 'shoot.pistol', 'aim.pistol', 'jab', 'cheer']).catch(() => {});
   };
+
+  // a duellist's blade through someone: you, for the scene (shooters hands
+  // it on, and your block decides it); a friend of yours, as any hit
+  const struckBy = (t, x, damage, at, o) => {
+    const c = landed(t, x, damage, at, o);
+    if (c) t.contacts.push(c);
+    else if (!x.down && targets.includes(x)) api.hit(x, damage, { at });
+  };
+  const youT = asTarget();
 
   // A figure's body for its step, once the step's placed its holder: its
   // feet on the ground the step covers, its crouch, its head, its start on
@@ -540,8 +543,9 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     const dir = want ? lineTo(t, want) : null;
     if (t.gp && !(time < (t.startUntil ?? 0))) t.gp.set(dt, { aim: pose.aim, look: dir ? 1 : 0, dir, forward: _fwd, up: UP });
     if (t.blade) {
-      t.blade.block(time - (t.blockAt ?? -99) < 0.35);
-      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: { x: b.x, z: b.z, yaw: b.yaw }, dir });
+      // (its stroke's root travel and its turn to its lock write into its own walk: b)
+      t.blade.block(t.blocking);
+      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: b, dir, targets: t.duelMark ? [t.duelMark] : [], hit: (x, damage, at, o) => struckBy(t, x, damage, at, o) });
     }
     // the pistol's aim, held on its upper half since its last shot (a rigged
     // one with no gun of its own to raise), let down a while after
@@ -606,7 +610,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     if (f.gone) t.holder.visible = false;
   };
 
-  return {
+  const api = {
     group,
     show(quest, progress) {
       const key = quest && progress ? `${quest.id}:${progress.step}` : null;
@@ -647,43 +651,34 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       t.hp -= damage;
       t.flinch = 0.25;
       if (t.hp <= 0 && !t.down) fell(t, { push, blown: breaks });
-      else flinched(t, at);
+      else {
+        if (t.duel) onHit(t.duel, {});
+        flinched(t, at);
+      }
     },
-    // your stroke on one with a blade: turned (its parry chance, while its
-    // guard holds; each turned stroke drains the guard, a heavy one breaks
-    // it) or landing. Returns { parried, broke }
-    parry(t, { heavy = false, roll = Math.random() } = {}) {
-      const h = t.hostile;
-      if (!h?.parry || t.down || t.stagger > 0 || t.knock) return { parried: false, broke: false };
-      if (h.guard && t.guard <= 0) return { parried: false, broke: false }; // (its guard's down: everything lands)
-      if (heavy) {
-        if (h.guard) {
-          t.guard = 0;
-          t.guardAt = -99;
-          t.stagger = Math.max(t.stagger, 2);
-          flinched(t);
-          return { parried: false, broke: true };
-        }
-        return { parried: false, broke: false };
-      }
-      if (roll >= h.parry) return { parried: false, broke: false };
-      // (turned: its blade up across the stroke a moment)
-      t.blockAt = clock;
-      if (h.guard) {
-        t.guard--;
-        if (t.guard <= 0) {
-          t.stagger = Math.max(t.stagger, 2);
-          flinched(t);
-          return { parried: true, broke: true };
-        }
-      }
-      return { parried: true, broke: false };
+    // your stroke on a duellist: turned by its blade when it's up (its mind's
+    // block or parry, raised as your stroke began: duellists.js's turnOf);
+    // its guard gone, it reels. Returns { parried, broke, perfect }
+    parry(t, { heavy = false } = {}) {
+      const turn = turnOf(t, { heavy });
+      if (turn.broke) broke(t);
+      return turn;
+    },
+    // its stroke parried by you: it reels (a duellist PARRY's 0.6 s, then
+    // comes again; anything else `secs`)
+    parried(t, secs) {
+      if (t.down) return;
+      if (t.duel) stun(t, 0.6, 'attack');
+      t.stagger = Math.max(t.stagger, t.duel ? 0.6 : secs);
+      t.burst = null;
+      flinched(t);
     },
     // shoved (the Force, a blast): off its feet along `v` ({ vx, vz, vy })
     knock(t, v) {
       if (t.down) return;
       t.knock = { vx: v.vx, vz: v.vz, vy: v.vy ?? 0, y: 0 };
       t.stagger = Math.max(t.stagger, 1.4);
+      if (t.duel) stun(t, t.stagger);
       t.burst = null;
       flinched(t);
     },
@@ -691,6 +686,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     stagger(t, secs) {
       if (t.down) return;
       t.stagger = Math.max(t.stagger, secs);
+      if (t.duel) stun(t, t.stagger);
       t.burst = null;
       flinched(t);
     },
@@ -698,7 +694,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     kill(tag) {
       for (const t of targets) if (t.tag === tag && !t.down) fell(t);
     },
-    update(dt, you, time, { actors, door } = {}) {
+    // swinging: your stroke (duellists.js's swingingOf), for the duellists to read
+    update(dt, you, time, { actors, door, swinging = null } = {}) {
       const events = [];
       const { quest, progress } = shown;
       const step = quest?.steps[progress?.step];
@@ -732,11 +729,12 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         m.rotation.z = time * (next ? 1.5 : 0.3);
       });
       // targets: about their business, or going down
-      clock = time;
       lastYou = you ? { x: you.x, z: you.z } : lastYou;
+      if (you) youT.at(you);
       let downed = false; // (a hostile counted down this frame)
       for (const t of targets) {
         const b = t.b;
+        t.contacts.length = 0; // (last frame's, handed on by shooters)
         if (t.down && t.how) {
           // the show owns the figure from the moment it starts
           t.down += dt;
@@ -745,7 +743,6 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             const up = new THREE.Vector3(0, 1, 0);
             const push = t.push ?? new THREE.Vector3(Math.sin(b.yaw), 0, Math.cos(b.yaw)).negate();
             const on = (ev) => onShow?.(t.how, ev);
-            if (t.saber) t.saber.arm.visible = false;
             if (t.blade) t.blade.gun.visible = false;
             if (t.bubble) t.bubble.visible = false;
             if (t.bar) t.bar.sprite.visible = false;
@@ -790,6 +787,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         } else if (t.stagger > 0) {
           // reeling: it stands where it is
           t.stagger -= dt;
+          reeling(t, dt);
         } else {
           // its head: what it knows of you, and what it does about it (hostiles.js)
           const tag = t.tag ?? '';
@@ -799,19 +797,24 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           const aim = t.hostile ? (mark ? { x: mark.b.x, z: mark.b.z, victim: mark } : hostileAim(t, you, targets)) : you && { x: you.x, z: you.z, victim: null };
           t.victim = t.hostile && aim?.victim ? aim.victim : null;
           const seen = t.victim ? { x: aim.x, z: aim.z } : you ? { x: you.x, z: you.z, vel: Number.isFinite(you.vx) ? { x: you.vx, z: you.vz } : null } : null;
-          const step = hostileStep(t, { you: t.spec.side === 'yours' && !mark ? null : seen, allies, seesThrough, tokens: t.hostile ? tokens : null, who: t, search: t.hostile ? searchFor(tag) : null, stims }, dt, r);
-          // (a droid doesn't wade out into the deep water after you: it holds at the shallows)
-          const held = shoreStep(world, b, step.x, step.z);
-          b.x = held ? held[0] : step.x;
-          b.z = held ? held[1] : step.z;
-          b.yaw = step.yaw;
-          moving = step.moving;
-          t.aim = step.aim;
-          t.guessed = step.guessed;
-          if (step.mode === 'search' && !t.searchSaid) {
-            t.searchSaid = true;
-            events.push({ type: 'search', tag: t.tag });
-          } else if (step.mode !== 'search') t.searchSaid = false;
+          // a duellist with its mark near fences it (duellists.js); otherwise it hunts as the rest do
+          const fenced = fence(t, aim, { you: youT, swinging }, dt, time, world);
+          if (fenced != null) moving = fenced;
+          else {
+            const step = hostileStep(t, { you: t.spec.side === 'yours' && !mark ? null : seen, allies, seesThrough, tokens: t.hostile ? tokens : null, who: t, search: t.hostile ? searchFor(tag) : null, stims }, dt, r);
+            // (a droid doesn't wade out into the deep water after you: it holds at the shallows)
+            const held = shoreStep(world, b, step.x, step.z);
+            b.x = held ? held[0] : step.x;
+            b.z = held ? held[1] : step.z;
+            b.yaw = step.yaw;
+            moving = step.moving;
+            t.aim = step.aim;
+            t.guessed = step.guessed;
+            if (step.mode === 'search' && !t.searchSaid) {
+              t.searchSaid = true;
+              events.push({ type: 'search', tag: t.tag });
+            } else if (step.mode !== 'search') t.searchSaid = false;
+          }
         }
         // what that step looks like (hostiles.js's hostileBody): off its feet
         // or reeling, it's going nowhere on them
@@ -832,13 +835,6 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             t.guard = t.hostile.guard;
             t.guardAt = -99;
           }
-        }
-        // its blade: up at the ready, swung across on a swipe
-        if (t.saber) {
-          const k = Math.min(1, (time - t.swingAt) / 0.4);
-          const sw = k < 1 ? Math.sin(k * Math.PI) : 0;
-          t.saber.arm.rotation.set(-0.2 - sw * 0.9, sw * -1.6, 0.25 - sw * 0.5);
-          t.saber.gun.getObjectByName('sleeve').material.opacity = 0.5 + 0.1 * Math.sin(time * 37);
         }
         // its health over its head, while you're near and it's been hurt
         const hpMax = s.hp ?? 1;
@@ -898,6 +894,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     // you to be (to: [x, z]; guessed: it can only guess), so many at once
     shooters(dt, you, time = 0) {
       const out = [];
+      // a duellist's blade on you this frame (struckBy's), as a melee contact
+      for (const t of targets) out.push(...t.contacts);
       for (const t of targets) {
         if (t.down || !t.hostile || !t.fig || !you || t.stagger > 0 || t.knock) continue;
         const at = t.aim;
@@ -909,6 +907,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           out.push({ force: true, push: t.hostile.force.push ?? 9, from: [t.b.x, t.holder.position.y, t.b.z], who: t });
           continue;
         }
+        if (t.duel) continue; // (its strokes land through its blade, above)
         if (!at || d > (t.hostile.melee ? t.hostile.reach ?? 2 : t.hostile.range)) {
           if (t.hostile.melee) t.cool = Math.max(t.cool, 0.4);
           continue;
@@ -942,11 +941,9 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         t.cool = t.hostile.every * (0.7 + r() * 0.6);
         // in arm's reach, a swipe (a rancor's, a blade's), or a shot from where it stands
         if (t.hostile.melee) {
-          // (the swing: a blade's stroke, in its hand or held out; a brawler's jab, react.js's caught)
-          if (t.saber) t.swingAt = time;
-          if (t.blade) t.blade.swing(time);
-          else if (!t.saber) t.fig.react?.('caught', { target: { x: at.x, z: at.z } });
-          out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t, blade: Boolean(t.saber || t.blade), at: v ? [v.b.x, v.holder.position.y + 1.1, v.b.z] : null, victim: v });
+          // (a brawler's jab, react.js's caught: it lands as it's decided)
+          t.fig.react?.('caught', { target: { x: at.x, z: at.z } });
+          out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t, at: v ? [v.b.x, v.holder.position.y + 1.1, v.b.z] : null, victim: v });
         }
         else if (t.hostile.burst) {
           t.burst = startBurst(t.hostile);
@@ -957,9 +954,11 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       return out;
     },
     clear: clearStep,
+    // your blade crossing a duellist's (duellists.js's clashes)
+    clashes: (saber, now) => clashes(saber, targets, now),
     // (for tests: who's out, and what each is at)
     // (body: how it's drawn, crouched, its gun up, its mark, what it carries, the clip it went down on)
-    debug: () => targets.map((t) => ({ tag: t.tag, side: t.spec.side ?? null, hp: t.hp, down: t.down > 0, fig: Boolean(t.fig), aim: Boolean(t.aim), victim: t.victim?.tag ?? null, mode: t.mind?.mode ?? null, at: [+t.b.x.toFixed(1), +t.b.z.toFixed(1)], body: { base: t.pose?.base ?? null, gun: t.gp ? t.gp.kind : t.blade ? 'saber:hand' : t.saber ? 'saber:held' : null, up: t.gp ? +t.gp.aim.toFixed(2) : null, mark: t.pose?.mark ?? null, rigged: Boolean(t.fig?.anim), death: t.death?.clip ?? null } })),
+    debug: () => targets.map((t) => ({ tag: t.tag, side: t.spec.side ?? null, hp: t.hp, down: t.down > 0, fig: Boolean(t.fig), aim: Boolean(t.aim), victim: t.victim?.tag ?? null, mode: t.mind?.mode ?? null, at: [+t.b.x.toFixed(1), +t.b.z.toFixed(1)], body: { base: t.pose?.base ?? null, gun: t.gp ? t.gp.kind : t.blade ? 'saber:hand' : null, duel: t.duel?.state ?? null, up: t.gp ? +t.gp.aim.toFixed(2) : null, mark: t.pose?.mark ?? null, rigged: Boolean(t.fig?.anim), death: t.death?.clip ?? null } })),
     // your shot, for the enemies to hear (lib/ai/perception's stims): from where, aimed where
     heard(from, aim) {
       stims.push({ type: 'shot', at: { x: from.x, y: 0, z: from.z }, aim: { x: aim.x, y: 0, z: aim.z }, radius: 60, from: 'you', loudness: 1 });
@@ -973,4 +972,5 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       group.removeFromParent();
     },
   };
+  return api;
 }

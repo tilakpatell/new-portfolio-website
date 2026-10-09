@@ -3,12 +3,11 @@
 // tabla, tanpura) and the brass lamps are the music room's own models
 // (landings.js names them); here are the rest: the recital laid out on the
 // gaddi, a fountain with lotuses, screens of jali with arches through them,
-// trees, marigolds, petals and diyas.
+// marigolds, petals and diyas. Its trees are Quaternius's.
 
 import * as THREE from 'three';
 import { box, cyl, part } from '../../galaxy/surface/kit';
 import { rng } from '../../galaxy/surface/noise';
-import { canopyGeometry } from '../../avengers/compound/models';
 import { METRE } from '../foot';
 import { sharpen } from '../../../lib/three/textures';
 
@@ -154,17 +153,6 @@ export const PROPS = {
 };
 
 export const SCATTER = {
-  // a neem: a stout trunk, a broad crown
-  tree(k, { seed = 6 } = {}) {
-    const crown = canopyGeometry(seed, 1).scale(7, 4.5, 7).translate(0, 3, 0);
-    return {
-      parts: [
-        { geometry: k.geometry([part(new THREE.CylinderGeometry(0.3, 0.45, 3.4, 9).translate(0, 1.7, 0), { color: '#5a4632', to: 'bark' })]), material: k.mats.bark },
-        { geometry: k.own(crown), material: k.own(new THREE.MeshStandardMaterial({ vertexColors: true, color: '#4f7a34', roughness: 0.9 })) },
-      ],
-      radius: 0.6,
-    };
-  },
   // marigolds: a puff of petals on a stem
   marigolds(k) {
     const head = new THREE.IcosahedronGeometry(0.07, 1).scale(1, 0.7, 1).translate(0, 0.32, 0);

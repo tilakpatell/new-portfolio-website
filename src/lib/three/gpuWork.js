@@ -17,6 +17,7 @@
 // uploaded(renderer, texture) → whether it's been sent (or never waits on it)
 // textureBytes(texture) → about how big it is on the chip
 // uploadSlices(renderer, textures, { sliceMB, sliceMs, onStep, frame, alive }) → how many were sent
+// picturesIn(material) → the pictures it draws with, a patch's included
 // drawables(roots) → one object per material and kind of mesh, hidden ones too
 // compileSlices(renderer, roots, camera, scene, { sliceMs, batch, onStep, frame, alive, cap, target }) → the materials
 // warmDraw(renderer, render, roots, { frame }) → everything drawn once, out of sight
@@ -137,6 +138,22 @@ const send = (renderer, t) => {
     /* it goes up on its first frame instead */
   }
 };
+
+// The pictures a material draws with: its own, its uniforms', and those a
+// patch hands three as the shader's made, kept on it out of sight (a scan,
+// lib/three/core's wear; the look's ground, lib/three/house), which three
+// would otherwise send in the middle of the first draw.
+const PATCHES = ['core', 'house'];
+export function picturesIn(m, into = []) {
+  if (!m) return into;
+  for (const v of Object.values(m)) if (v?.isTexture) into.push(v);
+  if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u?.value?.isTexture) into.push(u.value);
+  for (const k of PATCHES) {
+    const uniforms = m.userData?.[k];
+    if (uniforms && typeof uniforms === 'object') for (const u of Object.values(uniforms)) if (u?.value?.isTexture) into.push(u.value);
+  }
+  return into;
+}
 
 // (a slice ends at `sliceMB` of pictures or `sliceMs` of the page's time,
 // whichever comes first: many small pictures cost more than their size says)
@@ -344,10 +361,7 @@ export async function prepareScene({ renderer, roots, scene, camera, render = nu
   const textures = new Set();
   for (const root of roots) {
     root?.traverse?.((o) => {
-      for (const m of materialsOf(o)) {
-        for (const v of Object.values(m)) if (v?.isTexture) textures.add(v);
-        if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u?.value?.isTexture) textures.add(u.value);
-      }
+      for (const m of materialsOf(o)) for (const t of picturesIn(m)) textures.add(t);
     });
   }
   tell('pictures')(0);

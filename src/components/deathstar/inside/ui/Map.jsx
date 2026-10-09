@@ -11,9 +11,10 @@ import './map.css';
 // small one sits under the security readout, follows you and opens the
 // whole sheet (M or Tab does too); the whole one fits every room drawn.
 //
-//   <MiniMap station seen here at onOpen />       data-tour="ds-map"
-//   <MapPanel station seen here at onClose />     the whole sheet, a dialog
-//     seen: [roomId]; here: the room you are in; at: { x, z, yaw } where you stand, if the world says
+//   <MiniMap station seen here at route onOpen />       data-tour="ds-map"
+//   <MapPanel station seen here at route onClose />     the whole sheet, a dialog
+//     seen: [roomId]; here: the room you are in; at: { x, z, yaw } where you stand, if the world says;
+//     route: [[x, z]] the way to the story's target, drawn dashed to a diamond at its end
 
 const SPAN = 44; // metres across the small map
 const layouts = new Map(); // station → its layout, built once: the map redraws as often as the HUD
@@ -36,7 +37,7 @@ function viewOf(plan, { at, span }) {
   return b ? { x: b.x0, z: b.z0, w: b.x1 - b.x0, h: b.z1 - b.z0 } : { x: -20, z: -20, w: 40, h: 40 };
 }
 
-function Sheet({ station, seen, here, at, span = null, labels = false }) {
+function Sheet({ station, seen, here, at, route = null, span = null, labels = false }) {
   const plan = useMemo(() => blueprint(layoutOf(station), { seen, here }), [station, seen, here]);
   const view = viewOf(plan, { at, span });
   // sizes in metres, so they keep to the sheet’s scale
@@ -72,6 +73,12 @@ function Sheet({ station, seen, here, at, span = null, labels = false }) {
               {r.name}
             </text>
           ))}
+      {route?.length > 1 && (
+        <>
+          <polyline className="ds-route" points={route.map(([x, z]) => `${x},${z}`).join(' ')} vectorEffect="non-scaling-stroke" />
+          <rect className="ds-route-end" x={-0.7} y={-0.7} width={1.4} height={1.4} transform={`translate(${route.at(-1)[0]} ${route.at(-1)[1]}) rotate(45) scale(${unit})`} />
+        </>
+      )}
       {at && (
         <polygon
           className="ds-you"
@@ -84,7 +91,7 @@ function Sheet({ station, seen, here, at, span = null, labels = false }) {
   );
 }
 
-export function MiniMap({ station, seen, here, at, onOpen }) {
+export function MiniMap({ station, seen, here, at, route, onOpen }) {
   const name = layoutOf(station).rooms.get(here)?.name;
   return (
     <button
@@ -94,7 +101,7 @@ export function MiniMap({ station, seen, here, at, onOpen }) {
       onClick={onOpen}
       aria-label={name ? `Station map: you are in ${name}. Open the map` : 'Station map: the rooms you’ve seen are drawn in as you go. Open the map'}
     >
-      <Sheet station={station} seen={seen} here={here} at={at} span={SPAN} />
+      <Sheet station={station} seen={seen} here={here} at={at} route={route} span={SPAN} />
       {!seen?.length && !here && <span className="ds-mini-empty">No rooms seen yet</span>}
       <span className="ds-mini-key" aria-hidden="true">
         M
@@ -103,7 +110,7 @@ export function MiniMap({ station, seen, here, at, onOpen }) {
   );
 }
 
-export default function MapPanel({ station, seen, here, at, onClose }) {
+export default function MapPanel({ station, seen, here, at, route, onClose }) {
   const layout = layoutOf(station);
   const room = layout.rooms.get(here);
   return (
@@ -125,9 +132,9 @@ export default function MapPanel({ station, seen, here, at, onClose }) {
           </button>
         </header>
         <div className="ds-map-sheet">
-          <Sheet station={station} seen={seen} here={here} at={at} labels />
+          <Sheet station={station} seen={seen} here={here} at={at} route={route} labels />
         </div>
-        <p className="ds-map-foot">The rooms you’ve seen on this deck. The rest are drawn in as you find them.</p>
+        <p className="ds-map-foot">The rooms you’ve seen on this deck. The rest are drawn in as you find them.{route?.length > 1 ? ' The dashed line is the way to your objective.' : ''}</p>
       </div>
     </div>
   );

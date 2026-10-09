@@ -10,6 +10,10 @@
 // whose legs never part (a Jawa's robe to the ground) gets none: it's left
 // to its sway (actors.js).
 //
+// surfacePoints(positions, index, count) → about `count` points spread over
+//   the triangles by their area (pure, the same each time): a low-poly
+//   model's legs have vertices only at the hip and the ankle, so a slice
+//   through them finds none of its vertices
 // findLegs(points, { bottom, top }) → { crotch, hip, knee, ankle, legs:
 //   [{ x, z }, { x, z }] } (left, +x, first) or null (pure)
 // legWeights(p, legs) → [[bone, w] …] (pure)
@@ -23,6 +27,45 @@ import { NO_CALLS } from '../../../lib/three/figureCalls';
 
 const SLICE = 0.015; // of its height: how thick a slice through it is
 const GAP = 0.015; // of its height: an empty band this wide between the legs keeps them apart
+
+export function surfacePoints(positions, index, count) {
+  const tri = index ? index.length / 3 : positions.length / 9;
+  const at = (t, k) => (index ? index[t * 3 + k] : t * 3 + k) * 3;
+  const area = new Float64Array(tri);
+  let total = 0;
+  for (let t = 0; t < tri; t++) {
+    const a = at(t, 0);
+    const b = at(t, 1);
+    const c = at(t, 2);
+    const ux = positions[b] - positions[a];
+    const uy = positions[b + 1] - positions[a + 1];
+    const uz = positions[b + 2] - positions[a + 2];
+    const vx = positions[c] - positions[a];
+    const vy = positions[c + 1] - positions[a + 1];
+    const vz = positions[c + 2] - positions[a + 2];
+    area[t] = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2;
+    total += area[t];
+  }
+  const out = [];
+  if (!(total > 0)) return out;
+  let carry = 0;
+  let i = 0;
+  for (let t = 0; t < tri; t++) {
+    carry += (area[t] / total) * count;
+    const a = at(t, 0);
+    const b = at(t, 1);
+    const c = at(t, 2);
+    for (; carry >= 1; carry -= 1, i++) {
+      // (a low-discrepancy pair, folded into the triangle)
+      let r = (0.5 + i * 0.7548776662466927) % 1;
+      let q = (0.5 + i * 0.5698402909980532) % 1;
+      if (r + q > 1) [r, q] = [1 - r, 1 - q];
+      const p = 1 - r - q;
+      out.push([0, 1, 2].map((k) => positions[a + k] * p + positions[b + k] * r + positions[c + k] * q));
+    }
+  }
+  return out;
+}
 
 // two clusters of points in the ground plane (k-means, seeded from the
 // two points furthest apart): [{ x, z, n }, { x, z, n }]
@@ -170,6 +213,14 @@ export function legPose(g, i, legs) {
   return { thigh, knee, foot: -(thigh + knee) };
 }
 
+// standing, the weight shifted from foot to foot: one knee eased, the
+// thigh forward half as far and the foot level, so the ankle stays under
+// the hip; none of it while it walks (amount 1)
+export function standPose(clock, seed, i, amount) {
+  const bend = (1 - amount) * 0.1 * (0.5 + 0.5 * Math.sin(clock * 0.45 + seed + i * Math.PI));
+  return { thigh: -bend / 2, knee: bend, foot: 0 - bend / 2 };
+}
+
 // every vertex of the model, as floats in its own frame: [{ mesh, positions }]
 function baked(scene) {
   scene.updateMatrixWorld(true);
@@ -200,6 +251,12 @@ function templateOf(scene, given = {}) {
     const p = geometry.attributes.position;
     const step = Math.max(1, Math.floor(p.count / 6000));
     for (let k = 0; k < p.count; k += step) pts.push([p.getX(k), p.getY(k), p.getZ(k)]);
+  }
+  // (and points over the surface, for legs too low-poly for their vertices to show)
+  const tris = parts.reduce((n, { geometry: g }) => n + (g.index ? g.index.count : g.attributes.position.count) / 3, 0);
+  for (const { geometry: g } of parts) {
+    const n = (g.index ? g.index.count : g.attributes.position.count) / 3;
+    pts.push(...surfacePoints(g.attributes.position.array, g.index?.array ?? null, Math.round((12000 * n) / Math.max(1, tris))));
   }
   const bottom = pts.reduce((a, p) => Math.min(a, p[1]), Infinity);
   const legs = findLegs(pts, { bottom, ...given });
@@ -283,9 +340,10 @@ export function leggedFigure(scene, { seed = 0, legs = {} } = {}) {
       legGait(g, dt, speed, t.legs);
       sides.forEach((s, i) => {
         const p = legPose(g, i, t.legs);
-        s.thigh.rotation.x = p.thigh;
-        s.shin.rotation.x = p.knee;
-        s.foot.rotation.x = p.foot;
+        const w = standPose(clock, seed, i, g.amount);
+        s.thigh.rotation.x = p.thigh + w.thigh;
+        s.shin.rotation.x = p.knee + w.knee;
+        s.foot.rotation.x = p.foot + w.foot;
       });
       // (the hips dip as each foot passes under them, and breathe standing)
       const legLen = t.legs.hip - t.legs.bottom;

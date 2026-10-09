@@ -60,7 +60,8 @@ function swing(g, yaw) {
   const p = best.p;
   p.hurtBy = 'you';
   hurt(p, BLADE.hurt, g.time);
-  g.events.push({ type: 'hit', target: p.id, x: p.x, y: p.y + 1.2, z: p.z, damage: BLADE.hurt, by: 'blade' });
+  // (the way the blade went, for how the one it cut reels: from you to them)
+  g.events.push({ type: 'hit', target: p.id, x: p.x, y: p.y + 1.2, z: p.z, damage: BLADE.hurt, by: 'blade', dir: { x: (p.x - you.x) / best.d, y: 0, z: (p.z - you.z) / best.d } });
   return true;
 }
 
@@ -122,7 +123,7 @@ export function stepBattle(g, dt, open, { guard = false } = {}) {
           p.hurtBy = e.owner;
           hurt(p, e.damage, g.time);
         }
-        g.events.push({ type: 'hit', target: e.target, x: e.x, y: e.y, z: e.z, damage: e.damage, by: e.owner });
+        g.events.push({ type: 'hit', target: e.target, x: e.x, y: e.y, z: e.z, damage: e.damage, by: e.owner, dir: e.dir });
       }
     } else if (e.type === 'wall') {
       g.events.push({ type: 'impact', x: e.x, y: e.y, z: e.z, normal: e.normal });

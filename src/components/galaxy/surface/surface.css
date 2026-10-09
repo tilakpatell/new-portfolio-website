@@ -217,9 +217,11 @@
 }
 .surface-help-btn:hover { border-color: var(--accent); color: var(--accent); }
 .surface-help-k { margin-right: 0.3em; color: rgba(242, 239, 232, 0.6); }
-/* the world's one Menu (runtime/hud's), in the corner's own pills and glass */
-.surface-menu {
+/* the world's one Menu, its look prompt and its reticle (runtime/hud's), in the corner's own pills and glass */
+.surface-menu, .surface-look, .surface-reticle {
   --hud-ink: #f2efe8;
+  --hud-muted: rgba(242, 239, 232, 0.72);
+  --hud-bad: #ff6a5a;
   --hud-glass-hi: rgba(6, 8, 14, 0.92);
   --hud-line: var(--line);
   --hud-border: 1px solid var(--line);
@@ -450,20 +452,8 @@
 .surface-health span { display: block; height: 100%; background: linear-gradient(90deg, #ff4a3d, #ffd36a); transition: width 0.2s; }
 
 /* the crosshair, while you're shooting */
-.surface-crosshair {
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: 50%;
-  width: 18px;
-  height: 18px;
-  margin: -9px 0 0 -9px;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-  pointer-events: none;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-}
-.surface-crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: #fff; }
+/* the look's prompt (the kit's Prompt, runtime/look.js): under the action prompt, a click on it locks too */
+.surface-look { position: absolute; z-index: 2; left: 50%; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font-size: 0.86rem; }
 
 /* through a door: a moment's black */
 .surface-door { position: absolute; z-index: 3; inset: 0; background: #000; pointer-events: none; transition: opacity 0.35s; }
@@ -918,6 +908,9 @@
 .surface-btn-dodge { border-color: #b8ffd0; color: #dafff0; }
 .surface-btn-aim.is-on { background: rgba(255, 255, 255, 0.25); }
 .surface-btn-emote { border-color: #ffd36a; color: #fff0c4; }
+/* the lock-on (the kit's TouchButton, skinned as the rest): lit while it's on */
+.surface-btn-lock { border-color: #7fd0ff; color: #d6f0ff; font: inherit; font-size: 0.7rem; font-weight: 600; letter-spacing: normal; text-transform: none; }
+.surface-btn-lock[data-on] { background: rgba(127, 208, 255, 0.3); }
 /* the emote wheel (B held; the Emote button on a phone): the five round the
    middle of the view, as C-137's and the Citadel's are, in this page's dark
    glass, the one pointed at lit in the world's colour */

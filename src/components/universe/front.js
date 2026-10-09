@@ -11,12 +11,12 @@
 // is fought in the galaxy, galaxy/gcw.js, not here; Rick and Morty's and
 // Breaking Bad's are here.)
 //
-// Since the spread (scale.js's SPREAD) a war's front can sit at a junction
-// of the lanes instead (the design:
+// Since the spread (scale.js's SPREAD) a war's front can sit at a waypoint
+// instead (waypoints.js, once the hyperlanes' nodes) (the design:
 // docs/superpowers/specs/2026-10-07-universe-scale-hyperlanes-design.md,
 // decision 9): the beacon nearest the middle of the war's own places, its
-// first sector and its last (frontAt), so the war is somewhere the lanes go,
-// seen from them as a far fight, not met by accident. Given `beacons`,
+// first sector and its last (frontAt), so the war is somewhere to go,
+// seen from afar as a far fight, not met by accident. Given `beacons`,
 // createFront fights every battle there; the sectors are still what's fought
 // over, by name, and still move on as they're won.
 //
@@ -26,7 +26,7 @@
 //   storage, emit, makeBattle, makeScene }) → null (the side has no war, or
 //   it isn't ready; `war` in place of the side's own, for the tests)
 //   or { update(dt, t, camera, camLocal, live) → { busy, hurt }, join(team),
-//   hit(from, to, damage), targets, inZone, holdAt(x, y, z, f), near, joined, info, where(),
+//   hit(from, to, damage), bodies (shipHits.js's), targets, inZone, holdAt(x, y, z, f), near, joined, info, where(),
 //   goal(), win(team), dispose() }
 // Points are in `map`'s space.
 
@@ -36,7 +36,7 @@ import { createBattleScene } from './battleScene';
 import { contested, loadWar, newWar, owner, resolve, saveWar } from './war';
 import { warFor } from './wars';
 import { DEEP, easeOpen, gapAlong } from './deep';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { sharpen } from '../../lib/three/textures';
 
 export const ZONE = {
@@ -51,7 +51,7 @@ export function zoneOf(dist, was) {
   return dist < ZONE.near ? 'near' : 'out';
 }
 
-// the lanes' beacons, where a war's front can be (hyperlanes.js)
+// the waypoints' beacons, where a war's front can be (waypoints.js)
 export const BEACONS = NODES.filter((n) => n.kind === 'beacon');
 
 // the beacon nearest the middle of the war's own places: the first side's
@@ -117,7 +117,7 @@ export function createFront(map, { side, war: given = null, beacons = null, mode
     return [dx / l, dz / l];
   })();
   const sector = () => war.sectors[Math.max(0, Math.min(war.sectors.length - 1, contested(state)))];
-  // where the battles are: the war's beacon, given the lanes' (it doesn't
+  // where the battles are: the war's beacon, given the waypoints' (it doesn't
   // move), else the sector fought over
   const post = beacons ? frontAt(war, beacons) : null;
   const spot = () => post?.at ?? sector().at;
@@ -142,6 +142,12 @@ export function createFront(map, { side, war: given = null, beacons = null, mode
   glow.scale.setScalar(70);
   beacon.add(glow);
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, depthWrite: false, transparent: true, sizeAttenuation: false, toneMapped: false }));
+  // (drawn over everything, so never cut by the far plane: on foot it's at
+  // the landing's sky, footScene's far(), which the front is well past)
+  label.material.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <logdepthbuf_vertex>', '#include <logdepthbuf_vertex>\n\tgl_Position.z = min( gl_Position.z, gl_Position.w * 0.999999 );');
+  };
+  label.material.customProgramCacheKey = () => 'front-label';
   label.center.set(0.5, -0.4);
   label.scale.set(0.3, 0.056, 1);
   label.renderOrder = 9;
@@ -256,6 +262,17 @@ export function createFront(map, { side, war: given = null, beacons = null, mode
     },
 
     hit: (from, to, damage) => (battle && joined !== null && !battle.over ? battle.hit(from, to, damage) : null),
+    // the other side's fighters, once you're in it, as shipHits.js's bodies
+    // (a ram on one the battle's strike; the capital ships are solids)
+    get bodies() {
+      if (!battle || joined === null || battle.over) return [];
+      const out = [];
+      for (const f of battle.fighters) {
+        if (!f.alive || f.team === joined) continue;
+        out.push({ key: `f:${f.id}`, id: f.id, kind: f.kind, at: f.seen, vel: f.vel, size: f.size, side: 'foe', hit: (punch) => battle?.strike(f.id, punch) ?? null });
+      }
+      return out;
+    },
     get targets() {
       return battle && joined !== null && zone !== 'out' ? battle.targets : [];
     },

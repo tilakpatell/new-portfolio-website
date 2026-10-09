@@ -13,6 +13,9 @@
 //   stepPlot(g, dt) → void         the step’s clock: a tick to the story, a scene timed out
 //   spawnOne(g, { kind, spot, tag, role, squad, hostile, script }, n) → person | null
 //   setHero(g, kind) → void        who you are: their gun, their blade
+//   heldUp(g) → person | null      the father you hold up through the carry
+//   holdUp(g, moved) → void        keeps him at your side, after the crew's step (moved: metres you went)
+//   held(g, walk) → walk           the walk asked of you, without the run, jump and crouch while you hold him
 //   storySteps(g) → [step]         the steps of the story a new game on this station and side runs
 //   SCENE_SECONDS                  how long each scene lasts when nothing draws it
 //
@@ -21,6 +24,7 @@
 import { CAST } from '../cast';
 import { raise } from '../alarm';
 import { addPerson, removePerson } from '../brains';
+import { legsOf } from '../routines';
 import { FRESH } from '../disguise';
 import { WHO } from '../talk';
 import { checkpointOf, startStory, storyStep } from '../story';
@@ -76,11 +80,91 @@ function companion(g, kind, follow) {
   }
   if (have || !CAST[kind]) return;
   const you = g.you;
-  const k = g.crew.people.filter((p) => p.tag?.startsWith('with:')).length + 1;
-  const [x, z] = [you.x - Math.sin(you.yaw) * 1.4 + Math.cos(you.yaw) * (k % 2 ? 1 : -1) * 0.8 * Math.ceil(k / 2), you.z + Math.cos(you.yaw) * 1.4 + Math.sin(you.yaw) * (k % 2 ? 1 : -1) * 0.8 * Math.ceil(k / 2)];
-  const room = g.layout.floorAt(you.room, x, z) === null ? null : you.room;
-  addPerson(g.crew, { id: `with-${kind}`, kind, room: room ?? you.room, x: room ? x : you.x, z: room ? z : you.z, yaw: you.yaw, role: { type: 'follow', who: 'you' }, hostile: false, tag: `with:${kind}` });
+  const at = besideYou(g) ?? { x: you.x, z: you.z };
+  addPerson(g.crew, { id: `with-${kind}`, kind, room: you.room, x: at.x, z: at.z, yaw: you.yaw, role: { type: 'follow', who: 'you' }, hostile: false, tag: `with:${kind}` });
 }
+
+// Free floor beside you for someone to stand on: rings out from your back and
+// sides (in front is where you look), each place on your room's floor at your
+// level, clear of the room's walls and furniture and a body's width from
+// anyone there already. Null when the room has no such place.
+const RINGS = [1.1, 1.7, 2.3, 2.9];
+const AROUND = 14; // places tried on a ring
+const CLEAR = 0.42; // metres a place keeps from a wall or a solid
+const APART = 0.7; // metres a place keeps from anyone standing there
+// whether a body may stand at x, z in your room: its floor at your level, clear of its walls and solids
+function standsBy(g, x, z, solids, clear = CLEAR) {
+  const you = g.you;
+  const room = g.layout.rooms.get(you.room);
+  if (!room) return false;
+  const floor = g.layout.floorAt(you.room, x, z);
+  if (floor === null || Math.abs(floor - you.y) > 0.3) return false;
+  const box = room.box;
+  if (box && (x < box.x0 + clear || x > box.x1 - clear || z < box.z0 + clear || z > box.z1 - clear)) return false;
+  if (room.round && Math.hypot(x - room.x, z - room.z) > room.w / 2 - clear) return false;
+  return !solids.some((s) => (s.box ? x > s.box.x0 - clear && x < s.box.x1 + clear && z > s.box.z0 - clear && z < s.box.z1 + clear : s.circle && Math.hypot(x - s.circle.x, z - s.circle.z) < s.circle.r + clear));
+}
+
+function besideYou(g) {
+  const you = g.you;
+  if (!g.layout.rooms.get(you.room)) return null;
+  const solids = g.solidsOf?.(you.room) ?? [];
+  const others = [you, ...g.crew.people.filter((p) => p.room === you.room && p.mode !== 'dead')];
+  for (const r of RINGS) {
+    for (let i = 0; i < AROUND; i++) {
+      // from straight behind, out to either side in turn, and round to the front last
+      const turn = Math.PI + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * ((2 * Math.PI) / AROUND);
+      const a = you.yaw + turn;
+      const x = you.x + Math.sin(a) * r;
+      const z = you.z - Math.cos(a) * r;
+      if (!standsBy(g, x, z, solids)) continue;
+      if (others.some((o) => Math.hypot(o.x - x, o.z - z) < APART)) continue;
+      return { x, z };
+    }
+  }
+  return null;
+}
+
+// Those who walk with you, put where you are put (across the chasm with you, off the lift), each
+// on free floor beside you, their old way forgotten
+function bringAlong(g) {
+  for (const p of g.crew.people) {
+    if (!p.tag?.startsWith('with:') || p.hp <= 0) continue;
+    const at = besideYou(g) ?? { x: g.you.x, z: g.you.z };
+    Object.assign(p, { x: at.x, y: g.you.y, z: at.z, room: g.you.room, vy: 0 });
+    Object.assign(p.safe, { x: p.x, y: p.y, z: p.z, room: p.room });
+    if (p.mind) p.mind.legs = legsOf(p);
+  }
+}
+
+// Your father held up through the carry (the flag `carrying`): the one walking
+// with you under `with:vader` is kept at your left side (clear of the camera
+// over your right shoulder), his arm over your shoulders, facing as you face
+// and limping as you walk (at your right where your left is wall, and else
+// right on you); `held` says which side he leans from, for the figure to lean
+// in to you (-1 your left, 1 your right). Called after the crew's step, so his
+// own legs never take him from you; you walk with him, never run, jump or
+// crouch (held).
+const HOLD = 0.55; // metres from your middle to his
+const HOLD_CLEAR = 0.25; // metres he keeps from a wall
+export function heldUp(g) {
+  return g.flags?.has('carrying') ? (g.crew.people.find((p) => p.tag === 'with:vader' && p.hp > 0) ?? null) : null;
+}
+
+export function holdUp(g, moved) {
+  const p = heldUp(g);
+  for (const q of g.crew.people) if (q.held && q !== p) q.held = 0;
+  if (!p) return;
+  const you = g.you;
+  const solids = g.solidsOf?.(you.room) ?? [];
+  const [c, s] = [Math.cos(you.yaw), Math.sin(you.yaw)];
+  const side = [-1, 1].find((k) => standsBy(g, you.x + c * HOLD * k, you.z + s * HOLD * k, solids, HOLD_CLEAR)) ?? 0;
+  Object.assign(p, { x: you.x + c * HOLD * side, z: you.z + s * HOLD * side, y: you.y, room: you.room, yaw: you.yaw, vy: 0, held: side });
+  p.anim = moved > 0.01 ? 'limp' : 'idle';
+}
+
+// the walk asked of you, while you hold him up: no run, no jump, no crouch
+export const held = (g, walk) => (heldUp(g) ? { ...walk, run: false, jump: false, crouch: false } : walk);
 
 function restore(g, cp) {
   if (!cp) return;
@@ -121,7 +205,10 @@ function apply(g, e) {
   else if ('give' in e) give(g, e.give);
   else if ('take' in e) take(g, e.take);
   else if ('companion' in e) companion(g, e.companion, e.follow !== false);
-  else if ('to' in e) g.teleport(e.to);
+  else if ('to' in e) {
+    g.teleport(e.to);
+    bringAlong(g);
+  }
   else if ('achievement' in e) tell({ type: 'achievement', id: e.achievement });
   else if ('music' in e) tell({ type: 'music', mood: e.music });
   else if ('walls' in e) (e.walls === 'close' ? g.flags.add('walls-closing') : g.flags.delete('walls-closing'));
@@ -172,6 +259,9 @@ export function startPlot(g, at = null) {
   }
   const { progress, effects } = startStory(story, at);
   g.plot = { story, progress, done: false };
+  // (a story begun again drops whatever scene or talk was going before)
+  g.scene = null;
+  g.talk = null;
   // the story starts from its beat’s checkpoint: where you stand, who you are and who is with you
   restore(g, checkpointOf(story, progress));
   applyAll(g, effects.filter((e) => !('checkpoint' in e)));

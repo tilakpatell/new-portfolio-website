@@ -126,3 +126,33 @@ describe('what the hangar says a lock needs', () => {
     }
   });
 });
+
+describe('the weapon lines', () => {
+  it('the new weapons are priced between 400 and 1000', () => {
+    for (const [slot, id] of [
+      ['secondary', 'ion'],
+      ['secondary', 'flak'],
+      ['ordnance', 'missiles'],
+      ['ordnance', 'mk2'],
+    ]) {
+      const item = itemFor('part', slot, id);
+      expect(item.stock, id).toBe(false);
+      expect(item.price, id).toBeGreaterThanOrEqual(400);
+      expect(item.price, id).toBeLessThanOrEqual(1000);
+    }
+  });
+
+  it('stock weapons are free and owned', () => {
+    for (const slot of ['secondary', 'ordnance']) {
+      expect(itemFor('part', slot, 'stock').stock).toBe(true);
+      expect(itemFor('part', slot, 'stock').price).toBe(0);
+    }
+  });
+
+  it('flak needs level 4 and missiles level 3, and the earned ones their achievement', () => {
+    expect(itemFor('part', 'secondary', 'flak').needs).toEqual({ level: 4 });
+    expect(itemFor('part', 'ordnance', 'missiles').needs).toEqual({ level: 3 });
+    expect(itemFor('part', 'secondary', 'ion').needs).toEqual({ achievement: 'rebels' });
+    expect(itemFor('part', 'ordnance', 'mk2').needs).toEqual({ achievement: 'trench' });
+  });
+});

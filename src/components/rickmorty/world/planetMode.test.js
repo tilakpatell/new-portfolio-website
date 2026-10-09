@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AREAS, HOTSPOTS, LINKS, PLANET_TASKS, TASKS, areaAt, progress } from './rules';
-import { DESTINATIONS, PLANETS, destinationById, isPlanet, isWayHome } from './dimensions/destinations';
+import { DESTINATIONS, PLANETS, destinationById, isBigPlanet, isPlanet, isWayHome } from './dimensions/destinations';
 import { ALL_DONE_HERE, WAY_HOME, backLink, boundOf, hereHint, inLine, listOf, planetOf, planetPage, planetProgress, relabel } from './planetMode';
 
 const prompt = (l) => ({ kind: 'link', id: l.id, name: l.label, verb: 'Step through', link: l });
@@ -35,11 +35,12 @@ describe('C-137: a planet played on its own', () => {
     const done = planetProgress(squanch, ['squanch', 'cable']);
     expect(done).toMatchObject({ next: null, objective: ALL_DONE_HERE, count: 2 });
     expect(ALL_DONE_HERE).not.toMatch(/!/);
-    // every planet's things to do are planet tasks, and what's next is one of its own
+    // every planet's things to do are planet tasks (but a big planet's,
+    // retired: it's a surface world now), and what's next is one of its own
     for (const id of PLANETS) {
       const p = planetOf(id);
       for (const t of p.tasks) {
-        expect(PLANET_TASKS.has(t.id), t.id).toBe(true);
+        expect(PLANET_TASKS.has(t.id), t.id).toBe(!isBigPlanet(id));
         // (every one's hint loses its landing there, and still says what to do)
         const here = hereHint(t.hint);
         expect(here, t.id).not.toMatch(/^Land |Rick and Morty sector|^and /i);
@@ -132,9 +133,11 @@ describe('C-137: the planets’ things to do, left to the planets', () => {
   });
 
   it('leaves the planets’ things to the planets in C-137, and says where they are once the rest are done', () => {
-    const planets = DESTINATIONS.filter((d) => isPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id));
+    // (the small planets' box tasks: a big planet's are retired)
+    const planets = DESTINATIONS.filter((d) => isPlanet(d.id) && !isBigPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id));
     expect([...PLANET_TASKS].sort()).toEqual(planets.sort());
-    expect(PLANET_TASKS.size).toBe(10);
+    expect(PLANET_TASKS.size).toBe(PLANETS.filter((id) => !isBigPlanet(id)).length);
+    expect(PLANET_TASKS.size).toBeGreaterThanOrEqual(2);
     // customs is done: next is Fantasy World, not Planet Squanch
     const before = TASKS.slice(0, TASKS.findIndex((t) => t.id === 'customs') + 1).map((t) => t.id);
     expect(progress(before).next.id).toBe('squanch');

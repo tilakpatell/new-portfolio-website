@@ -3,7 +3,7 @@ import { SAVE, SAVE_VERSION, blank, clean } from './save';
 
 // blank()'s shape, written out by hand so a change to blank() can't pass unseen
 const BLANK = {
-  settings: { view: 'third', sound: true, subtitles: true },
+  settings: { view: 'third', sound: true, subtitles: true, guide: true, tips: true },
   ds1: { story: { rebel: null, imperial: null }, seen: [], eggs: [] },
   ds2: { story: { rebel: null, imperial: null }, seen: [], eggs: [] },
 };
@@ -37,14 +37,14 @@ describe('the save', () => {
       ds3: { seen: ['nowhere'] },
     };
     expect(clean(v0)).toEqual({
-      settings: { view: 'first', sound: false, subtitles: true },
+      settings: { view: 'first', sound: false, subtitles: true, guide: true, tips: true },
       ds1: { story: { rebel: 'compactor', imperial: null }, seen: ['bay327', 'hold'], eggs: ['tk421'] },
       ds2: { story: { rebel: null, imperial: null }, seen: [], eggs: [] },
     });
   });
 
   it('reads the runtime’s wrapped form ({ v, data }) as the data inside it', () => {
-    expect(clean({ v: 1, data: { settings: { subtitles: false } } }).settings).toEqual({ view: 'third', sound: true, subtitles: false });
+    expect(clean({ v: 1, data: { settings: { subtitles: false } } }).settings).toEqual({ view: 'third', sound: true, subtitles: false, guide: true, tips: true });
   });
 
   it('cleans garbage into a blank save', () => {

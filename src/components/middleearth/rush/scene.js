@@ -23,6 +23,8 @@ import { STATIONS, TOP, V, crate, innCounter, innPot, shelf, stream } from './th
 import { themeOf } from './themes';
 import { castDo, castPlay, releaseCast, tickCast } from '../cast3d';
 import { turn as easeYaw } from '../../../lib/three/gait';
+import { RUSH_BLOOM } from './look';
+import { houseGroups } from '../../../lib/three/houseTuning';
 
 const SCALE = 0.92; // the hobbits, to the tiles
 const BIG = 1.7; // things, chunky enough to read from up here
@@ -52,7 +54,7 @@ function ringMaterial() {
 }
 
 export function createRushScene(canvas, level, { onLost } = {}) {
-  const stage = createStage(canvas, { shadows: true, fov: 38, near: 0.1, far: 80, bloom: { strength: 0.5, radius: 0.45, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 38, near: 0.1, far: 80, bloom: RUSH_BLOOM, onLost });
   stage.grade({ contrast: 0.1, saturation: 1.02, vignette: 0.26, grain: 0.012, shadow: [0.02, 0.012, 0.0], high: [0.03, 0.02, 0.0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false; // (counted over the whole frame, for the QA scripts)
@@ -346,7 +348,8 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   let last = 0;
   // the house look (lib/three/house), as in Middle-earth's towns: the house
   // tone mapper, the shade one colour from the kitchen's sky light; its own fog kept
-  const house = houseOn({ renderer, scene, sun: sun, hemi, look: { fog: false } });
+  // (the stage starts at the house's exposure already: lifting it again would wash the kitchen out)
+  const house = houseOn({ renderer, scene, sun: sun, hemi, keepExposure: true, look: { fog: false } });
   let houseFrames = 0;
 
   const render = (view, ms = 16) => {
@@ -557,7 +560,10 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * h };
   };
 
+  // ?debug: the bloom, the look, and whatever the page adds (the dash’s press), on one panel
+  const tune = (more = []) => stage.tune([...houseGroups(house), ...more]);
   return {
+    tune,
     render,
     fx,
     resize,

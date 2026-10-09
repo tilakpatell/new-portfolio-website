@@ -481,7 +481,7 @@ export const nevarro = {
     { kind: 'armorer', id: 'armorer', at: tw(polar(COVERT.to + 1, COVERT.ang + 0.06)), still: true, face: r1(TOWN.yaw + facing(-cos(COVERT.ang), -sin(COVERT.ang))), name: 'The Armorer', named: true, says: ['This is the Way.', 'The river of fire runs below these streets. The forge is beside it.', 'We survive by remaining hidden. You were not invited.'] },
     { kind: 'mando', n: 2, at: tw(polar(COVERT.to - 4, COVERT.ang)), spread: 3, roam: 3, speed: 0.8, name: 'Mandalorian', says: ['This is the Way.'] },
     // the yard: a New Republic pilot by the X-wing
-    { kind: 'pilot', at: [30, -42], still: true, face: 2.6, name: 'New Republic pilot', says: ['The Republic likes to keep an eye on Nevarro.', 'Watch where you park. The last Mandalorian set down on my fuel line.'] },
+    { kind: 'rebelpilot', at: [30, -42], still: true, face: 2.6, name: 'New Republic pilot', says: ['The Republic likes to keep an eye on Nevarro.', 'Watch where you park. The last Mandalorian set down on my fuel line.'] },
     // the base: its garrison in the yard (the puck quest's troops spawn
     // there too), and a pair walking the canyon's lip
     { kind: 'stormtrooper', n: 4, at: BASE.at, spread: 20, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Move along. This area is restricted.'] },

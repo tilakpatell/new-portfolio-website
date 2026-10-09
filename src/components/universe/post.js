@@ -53,6 +53,16 @@
 // (bloomSize). setLevel(level) follows lib/three/pace: the sun's flare
 // (flareOn, drawn by the scene) goes at step 2, the aberration at 3, and
 // both come back as the frames do.
+//
+// And a lens, the universe map's alone (off by default, so the galaxy's
+// picture is as it was): a toe (setToe(lo, hi)) that takes what's darker
+// than `lo` to black and leaves what's brighter than `hi` exactly as drawn,
+// smooth between, so the sky between the stars has a floor while the faint
+// things above it (the Milky Way's band, a night side's city lights, a
+// sign's colour, all over 0.08) keep theirs; more contrast (contrast(k)); and
+// a soft edge (defocus(k)): the fine detail toward the corners blurred over
+// five reads, nothing in the middle third where the ship is, so the eye
+// stays on it. The soft edge goes at pace step 3 with the aberration.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -87,6 +97,27 @@ export function bloomSize(w, h, { small = false, cap = 640 } = {}) {
 // how far red and blue read apart at the frame's edge: none on a low tier,
 // a hair at rest (more and the sky's stars out toward the edges had
 // coloured fringes, softening them), more in the boost's rush and a hit
+const smooth = (a, b, x) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+// The universe map's lens (scene.js sets it). The toe is on linear light
+// after exposure, where 0.08 is already 30 % grey on screen: wide, it took
+// rocks and ships in shadow and planets' night sides down to black with the
+// sky. So it takes only what's under about 3 % grey on screen (the black
+// between the stars) and leaves anything lit, however dimly; the contrast
+// stays gentle, since it darkens what's under mid-grey too.
+export const MAP_LENS = { toe: [0.002, 0.012], contrast: 0.1 };
+
+// The toe, as the last pass works it out on a luminance (`hi` 0: off)
+export const toe = (l, lo, hi) => (hi > 0 ? l * smooth(lo, hi, l) : l);
+
+// How much of the soft edge a pixel at uv (0…1) gets on a frame `aspect`
+// wide: by its distance from the centre over the corner's, so a corner is
+// whole and the middle untouched at any shape of screen
+export const edgeWeight = ([u, v], aspect) => smooth(0.55, 1, Math.hypot((u - 0.5) * aspect, v - 0.5) / (0.5 * Math.hypot(aspect, 1)));
+
 export const aberrationFor = ({ rush = 0, hit = 0, tier = 'high' } = {}) => (tier === 'low' ? 0 : 0.0006 + 0.0054 * rush + 0.0034 * hit);
 
 // NaN and infinity both have every exponent bit set; tested on the bits,
@@ -122,6 +153,10 @@ const FINAL = {
     uGrain: { value: 0 },
     uAberration: { value: 0 },
     uExposure: { value: 1 },
+    // the lens (the universe map's: off by default)
+    uToe: { value: new THREE.Vector2(0, 0) },
+    uDefocus: { value: 0 },
+    uTexel: { value: new THREE.Vector2(1, 1) }, // (a pixel of what's read, as uv)
   },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `
@@ -135,6 +170,8 @@ const FINAL = {
     uniform sampler2D tNoise;
     uniform vec2 uFrame;
     uniform float uNoiseSize, uGrain, uAberration, uExposure;
+    uniform vec2 uToe, uTexel;
+    uniform float uDefocus;
     varying vec2 vUv;
     // the blue noise at this pixel, moved by shift texels (0…1)
     float noise(vec2 shift) { return texture2D(tNoise, (gl_FragCoord.xy + shift) / uNoiseSize).r; }
@@ -182,6 +219,17 @@ const FINAL = {
         lin.r = scene(uv + off).r * shadow;
         lin.b = scene(uv - off).b * shadow;
       }
+      if (uDefocus > 0.0) {
+        // the soft edge: four more reads 1.5 px round, only where it shows
+        // (out past the middle), mixed in toward the corners
+        vec2 qd = (vUv - 0.5) * vec2(uAspect, 1.0);
+        float w = uDefocus * smoothstep(0.55, 1.0, length(qd) / (0.5 * length(vec2(uAspect, 1.0))));
+        if (w > 0.0) {
+          vec2 o = uTexel * 1.5;
+          vec3 soft = lin + (scene(uv + vec2(o.x, 0.0)) + scene(uv - vec2(o.x, 0.0)) + scene(uv + vec2(0.0, o.y)) + scene(uv - vec2(0.0, o.y))) * shadow;
+          lin = mix(lin, soft / 5.0, w);
+        }
+      }
       if (uRush > 0.001) {
         // a few taps back toward the ship, more smeared the further out
         vec2 d = uv - uCenter;
@@ -193,6 +241,8 @@ const FINAL = {
       lin *= uExposure;
       // grain: on the light, before the tone map, moving each frame
       if (uGrain > 0.0) lin *= 1.0 + (noise(uFrame) - 0.5) * 2.0 * uGrain;
+      // the toe: the colour scaled by its luminance's share, so its hue holds
+      if (uToe.y > 0.0) lin *= smoothstep(uToe.x, uToe.y, dot(lin, vec3(0.2126, 0.7152, 0.0722)));
       vec3 c = srgb(clamp(shoulder(lin), 0.0, 1.0));
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = max(mix(vec3(l), c, uSat), 0.0);
@@ -242,6 +292,7 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   let frame = 0;
   let level = 0; // lib/three/pace's step
   let aberrationWant = 0;
+  let defocusWant = 0;
 
   let on = true;
   let glow = true; // bloom, until lite() takes it off
@@ -296,6 +347,7 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
         const [bw, bh] = bloomSize(w * ratio, h * ratio, { small });
         bloom.setSize(bw * 2, bh * 2);
         grade.uniforms.uAspect.value = w / h;
+        grade.uniforms.uTexel.value.set(1 / Math.max(1, w * ratio), 1 / Math.max(1, h * ratio));
       }
       // the scene draws into the composer's read buffer, and the last pass reads it there
       grade.uniforms.tDepth.value = composer.readBuffer.depthTexture;
@@ -339,10 +391,24 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     exposure(k) {
       grade.uniforms.uExposure.value = k;
     },
+    // the toe: under lo to black, over hi as drawn (hi 0: off, the default)
+    setToe(lo, hi) {
+      grade.uniforms.uToe.value.set(lo, hi);
+    },
+    // the grade's contrast (0.07 by default)
+    contrast(k) {
+      grade.uniforms.uContrast.value = k;
+    },
+    // the soft edge, 0…1 (0 by default), held at none from pace step 3
+    defocus(k) {
+      defocusWant = k;
+      grade.uniforms.uDefocus.value = level >= 3 ? 0 : k;
+    },
     // lib/three/pace's step: what's dropped as frames run long, and back
     setLevel(l) {
       level = l;
       grade.uniforms.uAberration.value = level >= 3 ? 0 : aberrationWant;
+      grade.uniforms.uDefocus.value = level >= 3 ? 0 : defocusWant;
     },
     // whether the scene's sun flare is wanted at this pace
     get flareOn() {

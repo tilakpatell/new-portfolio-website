@@ -8,7 +8,9 @@ import { useOnline } from '../../universe/online/useOnline';
 // with ref.current?.pose(h, flags) and draws ref.current?.list(). `opts`
 // go to the link (./travellers.js): `bound` for a town bigger than 200 m
 // from its middle, `motion` for one where people run and jump. Anyone the
-// site's roster has blocked isn't shown (their id's the same in every room),
+// site's roster has blocked, or whom a block kept in this browser holds
+// (whether or not the roster has met them yet), isn't shown or given a place
+// (their id's the same in every room),
 // and while the world's up the site draws no page pointers over it, unless
 // it's part of a page you scroll (`pointers`, the Middle-earth map).
 export function useTravellers(town, up, { bound, motion, pointers = false } = {}) {
@@ -21,6 +23,8 @@ export function useTravellers(town, up, { bound, motion, pointers = false } = {}
   nameRef.current = name;
   const clientRef = useRef(null);
   clientRef.current = online?.client ?? null;
+  const blockedRef = useRef(null); // (the blocks kept in this browser: useOnline's isBlocked)
+  blockedRef.current = online?.isBlocked ?? null;
   const enterWorld = online?.enterWorld;
 
   useEffect(() => (up && !pointers && enterWorld ? enterWorld() : undefined), [up, pointers, enterWorld]);
@@ -33,7 +37,7 @@ export function useTravellers(town, up, { bound, motion, pointers = false } = {}
       if (gone) return;
       // (the QA scripts can hand in a room of their own, in development only)
       const relay = import.meta.env.DEV && window.__TOWN_RELAY__ ? { load: window.__TOWN_RELAY__ } : {};
-      const hidden = (id) => clientRef.current?.peers.get(id)?.blocked === true;
+      const hidden = (id) => clientRef.current?.peers.get(id)?.blocked === true || Boolean(blockedRef.current?.(id));
       link = createTravellers({ town, name: nameRef.current, ...(bound ? { bound } : {}), motion: Boolean(motion), hidden, ...relay });
       ref.current = link;
     });

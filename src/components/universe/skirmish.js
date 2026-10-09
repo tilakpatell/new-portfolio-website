@@ -24,9 +24,8 @@
 // A skirmish that drags on (SKIRMISH.longest) ends with the freighter
 // jumping away.
 //
-// placeAt(node, solids) → { x, y, z }: where one goes at a node of the lanes
-// (hyperlanes.js's NODES, a ramp or a beacon), so it's seen from far off and
-// a lane takes you to it.
+// placeAt(node, solids) → { x, y, z }: where one goes at a waypoint
+// (waypoints.js's NODES, a ramp or a beacon), so it's seen from far off.
 
 import { FACTIONS, HUNTER_KINDS, clearOf, createHunt, hasTrait } from './hunterRules';
 import { sweptHit } from './targeting';
@@ -58,7 +57,7 @@ export const SKIRMISH = {
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
 // A skirmish at a node sits PLACE_OFF above it (or below, or to a side,
-// should that be in something), out of the ramp ring and the lanes coming
+// should that be in something), out of the ramp's ring and the way coming
 // in level to it, and PLACE_GAP clear of anything solid (the freighter goes
 // round in a ring some 26 across, and jumps away if it comes within
 // SKIRMISH.clear of one). Never more than PLACE_NEAR from the node.

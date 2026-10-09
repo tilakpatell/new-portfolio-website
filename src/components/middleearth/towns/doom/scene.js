@@ -31,6 +31,9 @@ import { createDoomKit } from './props';
 import { BARAD, CAMP, CROSS, CROSS_START, DOOM, EDGE, EYE_AT, FOOT, MARCH_LEN, REFUGE, ROCKS, alongMarch, groundHeight } from './layout';
 import { BURSTS, CARRY, EYE, FLIGHT } from './rules';
 import { castDo, castPlay, releaseCast, tickCast, upgrade } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -88,7 +91,7 @@ function marchAt(d) {
 export function createDoomWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 4200, bloom: { strength: 0.8, radius: 0.6, threshold: 0.8 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 4200, bloom: BLOOMS.doom, onLost });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; it follows the moods below
@@ -292,6 +295,9 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   for (const k of NUMBERS) cur[k] = MOODS.plain[k];
   const sunDir = V(...MOODS.plain.sun).normalize();
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, mood: '', erupt: 0, fall: 0, lash: 0, hit: 0, ash: 0, sparks: 0, gollumT: 0, ringK: 0, fov: 52, sink: 0, shire: 0 };
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
+  const HITSTOP = { lash: 60, hit: 70 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const tmp3 = V();
@@ -787,15 +793,12 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'march' || s.mode === 'carry' || s.mode === 'flight';
-    const ke = jump ? 1 : Math.min(1, dt * (follow ? 7 : 2.4));
+    const ke = jump ? 1 : byFrame(follow ? 7 : 2.4, dt);
     A.cam.at.lerp(camAt, ke);
     A.cam.look.lerp(camLook, ke);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     const fov = s.mode === 'hang' ? 46 : 52;
     A.fov += (fov - A.fov) * Math.min(1, dt * 3);
@@ -816,6 +819,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'lash') {
       A.lash = 1;
       castPlay(slaver, 'cross', { layer: 'upper', fade: 0.06 });
@@ -849,6 +853,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     screenOf: () => null,
     resize: stage.resize,
     get info() {
@@ -862,6 +867,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      shake.dispose();
       for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);

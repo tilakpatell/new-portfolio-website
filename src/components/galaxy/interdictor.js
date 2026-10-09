@@ -9,12 +9,12 @@
 // says its fighters are gone.
 //
 // createInterdictor(parent, { models, small }) → { arrive(place) → true | false, leave(), hide(),
-//   update(dt, t) → busy, here, at, dispose() }
+//   update(dt, t) → busy, here, at, solids (interdiction.js's interdictorSolids), dispose() }
 // `place` is interdiction.js's interdictorPlace(): { at, heading, drift }.
 // Everything's in `parent`'s space (the system's).
 
 import * as THREE from 'three';
-import { INTERDICTION } from './interdiction';
+import { INTERDICTION, interdictorSolids } from './interdiction';
 import { JUMP, jumpSmear } from '../universe/capitalRules';
 import { sharpen } from '../../lib/three/textures';
 
@@ -142,6 +142,9 @@ export function createInterdictor(parent, { models, small = false } = {}) {
     },
     get at() {
       return piece.state ? [piece.at.x, piece.at.y, piece.at.z] : null;
+    },
+    get solids() {
+      return interdictorSolids(piece.state, this.at);
     },
 
     update(dt, t) {

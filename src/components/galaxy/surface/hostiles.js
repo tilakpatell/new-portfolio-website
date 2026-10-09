@@ -1,20 +1,18 @@
 // How the worlds' enemies fight, beyond standing and shooting (activity.js
 // runs these on its targets each frame; the site's spawn says which, in
 // `hostile`): bursts of fire, strafing round you, a shield that soaks hits
-// before any land, and a blade that parries yours. Pure, so it's tested in
-// Node.
+// before any land (a blade's spawn fences instead: duellists.js). Pure, so
+// it's tested in Node.
 //
 //   hostile.burst   { n, gap }: n shots, `gap` seconds apart, each time it fires
 //   hostile.strafe  { speed, every, keep }: it circles you at `speed` m/s, turning about every `every` seconds, holding about `keep` metres off
 //   hostile.shield  n: hits it soaks before it's hurt (a droideka's bubble)
-//   hostile.parry   0…1: the share of your swings its blade turns away
 //
 //   startBurst(hostile) → the shots left and the wait: { left, wait }
 //   stepBurst(burst, dt) → how many shots fall due this frame (the burst
 //     counted down; 0 once it's spent)
 //   strafeStep(b, you, hostile, dt, time) → the new { x, z, yaw } (yaw: facing you)
 //   absorb(t, damage) → { shield, hp } after a hit: the shield first, then the body
-//   parries(hostile, roll) → whether a swing is turned away, `roll` 0…1
 
 export const startBurst = (hostile) => ({ left: Math.max(1, hostile?.burst?.n ?? 1), wait: 0 });
 
@@ -53,7 +51,6 @@ export function absorb(t, damage) {
   return { shield, hp: t.hp - through };
 }
 
-export const parries = (hostile, roll) => Boolean(hostile?.parry) && roll < hostile.parry;
 
 // ── An enemy's head (lib/ai) ──
 //
@@ -77,9 +74,11 @@ export const parries = (hostile, roll) => Boolean(hostile?.parry) && roll < host
 //   sensesFor(hostile) → lib/ai/perception's senses
 //   hostileStep(t, world, dt, r) → { x, z, yaw, mode, moving, aim: { x, z } | null }
 //     t: { b: { x, z, yaw, to, wait }, hostile, spec, home: [x, z], hp, hpMax, flinch, me?, mind?, belief?, sees? }
-//     world: { you: { x, z } | null, allies: [{ x, z }], seesThrough(a, b) | null, tokens?, who?, search?, stims? }
+//     world: { you: { x, z } | null, allies: [{ x, z }], seesThrough(a, b) | null, tokens?, who?, search?, stims?, options? }
 //     (who: this one's id for the tokens and the search)
 
+import { lead } from '../../../lib/combat/accuracy';
+import { BOLT_SPEED } from '../../../lib/combat/bolt';
 import { belief, createSenses, sense } from '../../../lib/ai/perception';
 import { consider, pick, runtime } from '../../../lib/ai/utility';
 import { apart as awayFromAll, candidates, cover, nearTo, offLine, pickPlace, visible } from '../../../lib/ai/spatial';
@@ -111,7 +110,7 @@ const leashed = (t, x, z) => {
   const leash = t.spec?.leash ?? (t.spec?.roam ?? 8) + (t.hostile?.strafe ? 10 : 0);
   return Math.hypot(x - t.home[0], z - t.home[1]) <= leash;
 };
-const walkTo = (b, goal, pace, dt, turn = 4) => {
+export const walkTo = (b, goal, pace, dt, turn = 4) => {
   const dx = goal.x - b.x;
   const dz = goal.z - b.z;
   const d = Math.hypot(dx, dz);
@@ -120,7 +119,7 @@ const walkTo = (b, goal, pace, dt, turn = 4) => {
   const step = Math.min(d, pace * dt);
   return { x: b.x + (dx / d) * step, z: b.z + (dz / d) * step, yaw, moving: 1, there: false };
 };
-const turnToward = (from, to, max) => {
+export const turnToward = (from, to, max) => {
   let d = to - from;
   d = Math.atan2(Math.sin(d), Math.cos(d));
   return from + Math.max(-max, Math.min(max, d));
@@ -161,7 +160,8 @@ export function hostileStep(t, world, dt, r = Math.random) {
   if (m.clock >= m.thinkAt || m.done) {
     m.thinkAt = m.clock + STEP.rethink;
     m.done = false;
-    const choice = pick(OPTIONS, ctx, { current: m.mode, momentum: 0.2, rand: r, spread: 0.1 });
+    // (world.options: only these, a squad's posture's gate: ground/fight.js)
+    const choice = pick(world.options ? OPTIONS.filter((o) => world.options.includes(o.id)) : OPTIONS, ctx, { current: m.mode, momentum: 0.2, rand: r, spread: 0.1 });
     const mode = choice?.id ?? 'wander';
     if (mode !== m.mode) m.since = m.clock;
     m.mode = mode;
@@ -264,7 +264,9 @@ export function hostileStep(t, world, dt, r = Math.random) {
     }
   }
   out.mode = m.mode;
-  out.aim = target && near ? { x: target.x, z: target.z } : null;
+  // (you in sight and moving: led, where you'll be when its bolt gets there)
+  const led = target && near && t.sees && you?.vel ? lead([target.x, 0, target.z], [you.vel.x ?? 0, 0, you.vel.z ?? 0], [out.x, 0, out.z], BOLT_SPEED) : null;
+  out.aim = led ? { x: led[0], z: led[2] } : target && near ? { x: target.x, z: target.z } : null;
   out.guessed = lost;
   return out;
 }
@@ -289,7 +291,7 @@ export function hostileStep(t, world, dt, r = Math.random) {
 //   HOSTILE_BODY: lib/ai/body's MODE_BODY with the hostiles' own modes
 //   createPosture({ seed }) → what a figure's body carries from frame to
 //     frame (one each; seed: where in its sweep its head starts)
-//   hostileBody(posture, step, dt, { t, firing }) → { motion, look, base,
+//   hostileBody(posture, step, dt, { t, firing, table }) → { motion, look, base,
 //     action, scan, aim (0 or 1: the gun down or up), mark ('?' | '!' |
 //     null), alert (it has just seen you) }
 //     step: hostileStep's, plus `belief` (its belief of you, t.belief) and
@@ -328,9 +330,9 @@ const AGAIN = 3; // seconds out of its sight before it starts at you again (so a
 
 export const createPosture = ({ seed = 0 } = {}) => ({ prev: null, still: 0, seenAt: -Infinity, startAt: -Infinity, phase: seeded(seed)() * Math.PI * 2 });
 
-export function hostileBody(posture, step, dt, { t = 0, firing = false } = {}) {
+export function hostileBody(posture, step, dt, { t = 0, firing = false, table = HOSTILE_BODY } = {}) {
   const prev = posture.prev;
-  const body = bodyFrom(prev, { ...step, fire: firing }, dt, { table: HOSTILE_BODY });
+  const body = bodyFrom(prev, { ...step, fire: firing }, dt, { table });
   posture.prev = { x: step.x, z: step.z, yaw: step.yaw };
   const motion = body.motion;
   let speed = Math.hypot(motion.speed, motion.side);

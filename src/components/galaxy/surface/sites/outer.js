@@ -68,7 +68,7 @@ export const SITES = {
       { id: 'spires', name: 'The Jedi temple', at: [-140, 230], r: 50, flat: { r: 34 }, about: 'A great cone of banded stone in the grass, older than the Empire, older than the Republic. The way in only opens to the Force.', things: [{ kind: 'lothtemple', at: [0, -12], yaw: 0.4, sink: 1 }, { kind: 'lothtemple', at: [30, 6], yaw: 2, scale: 0.26, sink: 0.5 }, { kind: 'lothtemple', at: [-28, 2], yaw: 4, scale: 0.32, sink: 0.5 }, { kind: 'lothtemple', at: [-20, -40], yaw: 1, scale: 0.22, sink: 0.5 }, { kind: 'lothtemple', at: [24, -38], yaw: 3, scale: 0.18, sink: 0.5 }] },
     ],
     life: [
-      { kind: 'ahsoka', id: 'ahsoka', at: [-130, 220], still: true, face: 3, name: 'Ahsoka Tano', named: true, quest: 'starmap', says: ['I’m no Jedi.', 'The Force will show you the way.'] },
+      { kind: 'ahsoka', id: 'ahsoka', at: [-130, 220], still: true, face: 3, name: 'Ahsoka Tano', named: true, quest: ['starmap', 'inquisitor'], says: ['I’m no Jedi.', 'The Force will show you the way.'] },
       { kind: 'farmer', id: 'ryder', at: [250, -50], still: true, face: 2, name: 'Governor Azadi', named: true, quest: 'factory', says: ['Lothal is free. Let’s keep it that way.'] },
       { kind: 'stormtrooper', n: 4, at: [-220, -200], spread: 18, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Back away from the factory.'] },
       { kind: 'villager', n: 5, at: [260, -60], spread: 30, roam: 15, speed: 1, name: 'Lothal farmer', says: ['The loth-wolves came back. That has to mean something.'] },
@@ -80,10 +80,15 @@ export const SITES = {
     ],
     quests: [
       { id: 'starmap', name: 'The star map', giver: 'ahsoka', intro: [['Ahsoka Tano', 'The map to Thrawn is in pieces, hidden in the old temple stones. Find them.']], steps: [{ type: 'collect', item: 'shard', n: 3, spots: [[-150, 240], [-128, 218], [-146, 214]], text: 'Find the pieces of the star map' }, { type: 'use', id: 'map', at: [-140, 230], r: 6, prompt: 'Fit the pieces together', text: 'Open the star map', end: [{ shake: 0.4 }, { say: [[null, '(Points of light fill the air: a route to another galaxy.)']] }] }], done: [['Ahsoka Tano', 'Peridea. So that’s where they went.']] },
+      // one of the Empire's hunters, left behind in the grass: a duellist with a staff that blocks, parries and ripostes (duellists.js)
+      { id: 'inquisitor', name: 'The Inquisitor', giver: 'ahsoka', intro: [['Ahsoka Tano', 'Someone followed the map here. An Inquisitor: he’s waiting in the grass south of the temple.']], steps: [{ type: 'reach', at: [-150, 180], r: 20, text: 'Find the Inquisitor in the grass south of the temple' }, { type: 'shoot', tag: 'inquisitor', n: 1, text: 'Face the Inquisitor', lines: [[null, '(A grey figure in black rises out of the straw. His blade lights at both ends.)']], spawn: { kind: 'inquisitor', at: [-152, 172], hp: 7, leash: 26, roam: 3, tag: 'inquisitor', hostile: { range: 16, chase: 2.2, melee: true, reach: 2.8, every: 1.5, damage: 14, delay: 1, parry: 0.65, riposte: 0.3, guard: 3, blade: { color: '#ff3b3b', stance: 'double' } } } }], done: [['Ahsoka Tano', 'The Empire’s hunters never did know when to stop.']] },
       { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', at: [-220, -200], n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
     ],
     // (the plains' tall grass is the grass field round you: `grass`)
-    scatter: [],
+    scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.9, 1.6], solid: false },
+    ],
     rides: [{ kind: 'speederbike', at: [12, -10], yaw: -1.2 }],
     // a haulier's truck at the landing, its load beside it
     things: [
@@ -122,6 +127,9 @@ export const SITES = {
       { kind: 'log', at: [12, -14], yaw: 0.8 },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
+      { kind: 'qclover', n: 120, within: [4, 90], scale: [0.8, 1.6], solid: false },
       { kind: 'rock', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
       // (the woods as the episode has them: a wall of dark conifers round
       // the clearings)

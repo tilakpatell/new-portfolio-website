@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MiniMap } from './Map';
 import { bladeName, doubtLine, gunName, promptLine, sectionName, security } from './state';
 
@@ -12,15 +12,33 @@ import { bladeName, doubtLine, gunName, promptLine, sectionName, security } from
 // objective and the map stay up on the start screen too, so the tour’s
 // marks are there from the first moment.
 //
-//   <Hud ui hud say hurt hit touch playing onMap onPause onChoose />
+//   <Hud ui hud say hurt hit touch playing onMap onPause onChoose onSet />
+//     the first time you play (until you say you have it, through onSet({ tips: false })), a card
+//     of the few keys that matter, for TIPS_FOR seconds
 //     ui, hud: the world’s last 'ui' and 'hud' events (Inside.jsx lists their shape)
 //     say: { who, text } a subtitle, or null
 //     hurt: { angle, key } the last hit on you, an arc on the side it came from (all round when
 //       `angle` is null), drawn again for each new key; hit: a count of hits you landed, the
 //       reticle’s mark flashing for each
-//   <Pause ui touch onResume onSet onQuit onExit />   onSet({ view | sound | subtitles })
+//   <Pause ui touch onResume onSet onQuit onExit />   onSet({ view | sound | subtitles | guide })
 
 const LOW = 30; // health at which the bar goes red
+const TIPS_FOR = 30; // seconds the first game's tips stay up
+// the few keys that matter first, and the touch screen's
+const TIPS = [
+  ['W A S D', 'walk'],
+  ['Mouse', 'look'],
+  ['Click', 'fire'],
+  ['E', 'use'],
+  ['C', 'crouch'],
+  ['M', 'map'],
+  ['Esc', 'pause'],
+];
+const TOUCH_TIPS = [
+  ['Left pad', 'walk'],
+  ['Right side', 'look'],
+  ['Buttons', 'fire, use, crouch'],
+];
 
 const KEYS = [
   ['W A S D / ← ↑ ↓ →', 'Walk'],
@@ -61,7 +79,40 @@ function Bar({ label, value, of = 1, red, readout, segments = 0 }) {
   );
 }
 
-export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing, onMap, onPause, onChoose }) {
+// The first game's card: the keys that matter, and the diamond to follow
+function Tips({ touch, story, onDone }) {
+  return (
+    <section className="ds-panel ds-tips" aria-label="How to play">
+      <p className="ds-kicker">How to play</p>
+      <ul>
+        {(touch ? TOUCH_TIPS : TIPS).map(([k, v]) => (
+          <li key={k}>
+            {touch ? <span className="ds-tip-key">{k}</span> : <kbd className="kbd">{k}</kbd>} {v}
+          </li>
+        ))}
+      </ul>
+      {story && (
+        <p className="ds-tips-way">
+          <span className="ds-tips-diamond" aria-hidden="true" /> Follow the diamond to the next objective.
+        </p>
+      )}
+      <button type="button" className="ds-btn ds-btn-ghost" onClick={onDone}>
+        Got it
+      </button>
+    </section>
+  );
+}
+
+export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing, onMap, onPause, onChoose, onSet }) {
+  // the tips: up from the first moment of a game, for a while, until you say you have them
+  const [tipsUp, setTipsUp] = useState(false);
+  const wantTips = playing && ui.settings?.tips !== false;
+  useEffect(() => {
+    if (!wantTips) return undefined;
+    setTipsUp(true);
+    const t = setTimeout(() => setTipsUp(false), TIPS_FOR * 1000);
+    return () => clearTimeout(t);
+  }, [wantTips]);
   const station = ui.station ?? 'ds1';
   const sec = security(hud?.alert);
   const doubt = doubtLine(hud?.doubt);
@@ -88,7 +139,9 @@ export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing
     </section>
   );
   return (
-    <div className="ds-hud" data-touch={touch || undefined} data-start={ui.mode === 'start' || ui.mode === 'loading' || undefined}>
+    <div className="ds-hud" data-touch={touch || undefined} data-start={ui.mode === 'start' || ui.mode === 'loading' || undefined} data-scene={(playing && ui.scene) || undefined}>
+      {playing && ui.scene && <div className="ds-letterbox" aria-hidden="true" />}
+      {wantTips && tipsUp && !ui.talk && !ui.map?.open && <Tips touch={touch} story={ui.play === 'story'} onDone={() => onSet?.({ tips: false })} />}
       <div className="ds-top">
         <div className="ds-top-left">
           <section className="ds-panel ds-objective" data-tour="ds-objective" aria-label="Objective">
@@ -117,7 +170,7 @@ export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing
               {doubt && <Bar label="Disguise" value={doubt.k} red={doubt.red} readout={doubt.label} />}
             </section>
           )}
-          <MiniMap station={station} seen={ui.map?.seen ?? []} here={aboard ? hud?.room : null} at={aboard ? hud?.at : null} onOpen={onMap} />
+          <MiniMap station={station} seen={ui.map?.seen ?? []} here={aboard ? hud?.room : null} at={aboard ? hud?.at : null} route={aboard ? hud?.route : null} onOpen={onMap} />
         </div>
         {playing && (
           <button type="button" className="ds-pause-btn" aria-label="Pause" onClick={onPause}>
@@ -216,6 +269,9 @@ export function Pause({ ui, touch, onResume, onSet, onQuit, onExit }) {
           </Toggle>
           <Toggle on={s.subtitles} onClick={() => onSet({ subtitles: !s.subtitles })}>
             Subtitles {s.subtitles ? 'on' : 'off'}
+          </Toggle>
+          <Toggle on={s.guide !== false} onClick={() => onSet({ guide: s.guide === false })}>
+            Guide {s.guide !== false ? 'on' : 'off'}
           </Toggle>
           <Toggle on={help} onClick={() => setHelp((v) => !v)}>
             Controls

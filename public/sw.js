@@ -11,7 +11,7 @@
 
 const PREFIX = 'tp-pack-';
 const INDEX_TTL = 5 * 60 * 1000;
-const POSSIBLE = /^\/(assets|models|textures|audio|hdri|hq|cc0|mc|n64|games|eagler|albuquerque)\//;
+const POSSIBLE = /^\/(assets|models|textures|audio|hdri|hq|cc0|mc|n64|games|eagler|albuquerque|kit)\//;
 
 let files = null; // pathname → cache name, for every installed pack
 let reading = null;

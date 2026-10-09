@@ -1,7 +1,7 @@
 // The universe map's sky (public/textures/universe/sky-glow.webp and
-// sky-glow-sm.webp): the light of the Milky Way, for skyShader.js, which
-// draws the stars and the fine detail itself, at the screen's own
-// resolution. So all its file has to give is the band's light, clean.
+// sky-glow-sm.webp): the light of the Milky Way, which the map now uses only
+// to light what it draws (scene.js's spaceEnvironment); the sky itself is
+// galaxy/sky.js's. So all its file has to give is the band's light, clean.
 //
 // It's baked from a real photograph: ESO's all-sky panorama by Serge Brunier
 // (eso0932a, https://www.eso.org/public/images/eso0932a/, CC BY 4.0), the
@@ -10,7 +10,7 @@
 // tinted blue and smeared; sky-hq.webp and sky.webp, which
 // build-universe-textures.py makes from it, stay as they were for the Earth's
 // background.) The photo:
-// - is brought to the true sky, where the stars are (starCatalog.js): the
+// - is brought to the true sky, where the stars are (the Hipparcos catalogue): the
 //   mosaic is turned 3.8° off the galactic frame and bent a little where it
 //   was stitched; scripts/fit-universe-sky.py measures both against the
 //   Hipparcos stars (scripts/data/universe-sky-fit.json), and the photo is
@@ -33,7 +33,10 @@
 import sharp from 'sharp';
 import { existsSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { SKY_TURN } from '../src/components/universe/starCatalog.js';
+
+// how far round the photo's frame is turned (in its width) to put its stars
+// where the true ones are; the star catalogue that shared it is gone
+const SKY_TURN = 50 / 6000;
 
 const DIR = 'public/textures/universe';
 const SOURCE_URL = 'https://cdn.eso.org/images/original/eso0932a.tif';
@@ -71,7 +74,7 @@ const toLinear = new Float32Array(256).map((_, i) => {
 const photo = [0, 1, 2].map((c) => Float32Array.from({ length: N }, (_, i) => toLinear[data[i * C + c]]));
 
 // brought to the true sky, the frame the stars are in: each texel of the sky
-// (skyShader.js's frame, starCatalog.js's skyDir: upside down, SKY_TURN
+// (the frame the map's old photo sky drew in: upside down, SKY_TURN
 // round) is the true place it shows, turned and bent the way the photo has
 // it (FIT), read from the photo between its four nearest pixels
 const FIT = JSON.parse(await readFile('scripts/data/universe-sky-fit.json', 'utf8'));

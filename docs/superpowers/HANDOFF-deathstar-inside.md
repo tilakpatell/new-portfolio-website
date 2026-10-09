@@ -14,17 +14,34 @@ The explorable interior of both Death Stars at `/deathstar/inside`, and HD exter
 - HD exteriors: `death-star.hq.glb` and `deathstar2.hq.glb` (4096 maps), loaded on ultra only (`withHq` in `src/components/galaxy/models.js`); the window views use them on ultra too.
 - Ways in: the `/deathstar` page’s “Go aboard”, the terminal’s `aboard` and `board`, and flying into the second Death Star at Endor once its shield is down (its dock, as a Rebel).
 - `scripts/deathstar-check.mjs`: every room of both stations drawn in Chromium, screenshotted and held to the frame budget.
+- The cast, made right (8 October; tilakpatell/tilakpatell.com#668, #680, #684; spec `docs/superpowers/specs/2026-10-08-deathstar-cast-design.md`):
+  - Obi-Wan is the first film’s old Ben, `public/models/deathstar/obiwan.glb`, made with Meshy and rigged on the crew’s skeleton by `scripts/rig-transfer.mjs` (weights moved from `jedi3`). C-3PO is rigged again the same way from the officer (`deathstar/c3po.glb`), baked at rest first.
+  - The black-clad crew and the Royal Guard are dyed (`lib/three/dye.js`, re-exported from `scene/dye.js`).
+  - Everyone moves on `lib/three/animator.js`. `scene/people.js`’s `actOf` maps the rules’ poses, fights and hits to the library’s clips; the player crouches, aims, fires and strokes.
+  - The dead fall as ragdolls: `lib/three/ragdollPhysics.js`, against the station’s floors and walls through `scene/fall.js`.
+  - Lightsabres ride their owner’s right-hand bone.
+  - Anyone between the camera and you, or a friend just ahead of you, is faded.
+  - Companions stand on free floor round you. Anyone standing still shuffles out of a body’s way. Seat posts sit. Teleports land on clear floor.
+  - `rules/route.js` routes to the story’s target; the HUD marker (`ui/waymark.js`) and the maps show the way. There are first-game tips and a Guide toggle.
+  - Every story scene is drawn (`scene/cinematics.js`): camera shots on the story’s spots, actors’ clips, the Falcon and the Lambda flown, flashes, a letterbox. The rules hold you still while a scene plays.
+  - A story’s end shows its card (`ui/End.jsx`).
+  - Only the Empire’s people bark.
+  - Standing and looking well round turns you on the spot.
+  - The second station’s Rebel ending plays through: Vader is held up at Luke’s side through the carry, leaning on him and limping, and Luke only walks (`plot.js`’s `holdUp`). The station shakes and panels burst off the walls in fire and smoke while it comes apart (`rules/breach.js`, the camera’s shake in `scene/index.js`, a rumble in `scene/sounds.js`). At the ramp Vader sits for the mask with Luke kneeling, and lies there after the talk.
+  - The chasm swing is drawn: Luke and Leia swing across on the grapple’s line (the `swing` act in `scene/cinematics.js`). A story that moves you (`{ to }`) brings your companions with you.
 
 ## Left
 
 - The final whole-branch review’s deferred minors, if any (the ledger at `.superpowers/sdd/2026-10-07-deathstar-inside/progress.md`, git-ignored, lists them).
 - Alderaan’s tractor beam and Yavin still board the `/deathstar` page (the superlaser and the trench run), as before; the page’s “Go aboard” takes you inside from there.
-- The crew and the surfaces’ droids use the site’s shared rig and models; Chewbacca, the IT-O, the dianoga and the Death Star trooper’s helmet are built in code until gen3d models replace them.
+- The IT-O, the dianoga and the Death Star trooper’s helmet are still built in code. `scripts/meshy-deathstar.mjs` will make them (122 credits); every Meshy account had 1 to 3 credits on 8 October.
+- Voices for Tarkin, the Emperor, Jerjerrod, Motti and Tagge. Tarkin and Jerjerrod have sources in `scripts/voices/sources/warcast.json`, but the interior has no `voicelines.js` for the voices pipeline to read.
+- Every scene’s shots have been judged by eye in headless Chromium. The tower lift doesn’t move while its scene plays: the camera stays on the four of you in the car.
 
 ## Checking it
 
 - `npx vitest run src/components/deathstar/inside` for the rules, the scene’s pure parts and the module.
-- `npx vite --port 5197` and open `/#/deathstar/inside?station=ds1&side=rebel&mode=roam` (or `station=ds2`, `side=imperial`, `mode=story`, `at=<room or spot>`). In development `window.__deathstar` has `g`, `teleport(room, x, z)`, `do(name, arg)` and `info()`.
+- `npx vite --port 5197` and open `/#/deathstar/inside?station=ds1&side=rebel&mode=roam` (or `station=ds2`, `side=imperial`, `mode=story`, `at=<room or spot>`). In development `window.__deathstar` has `g`, `view` (the scene and camera), `teleport(room, x, z)`, `do(name, arg)` and `info()`. To reach a story beat, import `rules/play/plot.js` in the page and call `startPlot(__deathstar.g, '<step id>')`: it starts from that beat’s checkpoint.
 - `OUT=<dir> node scripts/deathstar-check.mjs [station:room …]` with the dev server up.
 
 ## Rulings made on the owner’s behalf

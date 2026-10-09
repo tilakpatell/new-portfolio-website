@@ -91,6 +91,7 @@ describe('the status, over gh’s answers (subprocesses, up to 10 s)', () => {
     box.fixture('api', {
       'issues?labels=gen3d&state=open&per_page=50': [issue(1, ['gen3d']), issue(2, ['gen3d', 'gen3d:running']), issue(3, ['gen3d', 'gen3d:failed']), issue(4, ['gen3d'], { author_association: 'NONE', user: { login: 'stranger' } })],
       'issues?labels=voices&state=open&per_page=50': [issue(5, ['voices', 'voices:waiting'])],
+      'issues?labels=motion&state=open&per_page=50': [issue(6, ['motion'])],
       'actions/runners': { runners: [{ name: 'tilak-gpu', status: 'offline', busy: false, labels: [{ name: 'gpu' }] }] },
     });
     box.fixture('run-list', [{ status: 'completed', conclusion: 'success', url: 'https://x/runs/1', createdAt: '2026-10-07T04:00:00Z', displayTitle: 'ai health' }]);
@@ -100,6 +101,7 @@ describe('the status, over gh’s answers (subprocesses, up to 10 s)', () => {
     expect(s.runners).toEqual([{ name: 'tilak-gpu', status: 'offline', busy: false }]);
     expect(s.pipelines.gen3d.jobs.map((j) => j.state)).toEqual(['queued', 'running', 'failed', 'ignored (not from the owner or a collaborator)']);
     expect(s.pipelines.voices.jobs.map((j) => j.state)).toEqual(['waiting for the GPU']);
+    expect(s.pipelines.motion.jobs.map((j) => j.state)).toEqual(['queued']);
     expect(s.aiHealth).toMatchObject({ conclusion: 'success' });
     // and nothing went to GitHub itself
     expect(box.gh().length).toBeGreaterThan(0);

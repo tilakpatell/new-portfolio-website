@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SKIRMISH, createSkirmish, placeAt } from './skirmish';
 import { createHunt } from './hunterRules';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { SOLIDS } from './ship';
 
 // a seeded random, so a skirmish is the same every time; the seed is mixed
