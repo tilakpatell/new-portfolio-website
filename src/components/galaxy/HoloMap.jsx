@@ -13,7 +13,7 @@ import { mine, onWar, warNow } from './warState';
 import { jumpTime, routeBetween, routeMid, viaLanes } from './routes';
 import { onView } from './mapView';
 import { LAYERS, LAYERS_KEY, LAYER_LABEL, readLayers, warForEra } from './mapLayers';
-import { estimateWidth, placeLabels } from './labelPlace';
+import { estimateWidth, hangOf, placeLabels, sideOf } from './labelPlace';
 import { REGION_FONT, regionAngle, regionNamesShown, unknownNameX } from './regionNames';
 import { findSystems, mapKeyAction } from './mapKeys';
 import { useMapView } from './useMapView';
@@ -73,8 +73,10 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // territory, fronts, lanes, regions, grid, each kept in this browser) and the
 // zoom buttons stay put. Each system's name goes in
 // the place round its dot where it covers least (labelPlace.js, in screen
-// pixels, from the names' measured widths), so at any zoom they keep clear of
-// one another and the dots as far as there's room; the map's own text is no
+// pixels, from the names' measured sizes), so at any zoom they keep clear of
+// one another, the dots, the controls and the course's tag as far as there's
+// room (on a phone's map a few dots are too close for it: a graze of a pixel
+// or two is what's left); the map's own text is no
 // smaller than 0.7 rem, and the regions' names (11.5 px on screen at any
 // zoom) are spread round their rings, each shown once its ring has the room
 // (regionNames.js: the inner ones come in as you zoom).
@@ -86,6 +88,7 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 const SIZE = 21; // the map is GRID squares across, in its own units
 const TAU = Math.PI * 2;
 const HOVER_GAP = 14; // (the hover card's distance from its dot, screen px: galaxy.css's)
+const TAG_GUESS = { w: 130, h: 24 }; // (the course tag's size on screen before it's been measured)
 const SEEN_KEY = 'tp-gcw-seen';
 const readSeen = () => {
   try {
@@ -210,8 +213,9 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const [q, setQ] = useState('');
   const [hover, setHover] = useState(null); // (the system the mouse is over: its card)
   const picked = pick ? systemById(pick) : null;
-  // the course to it: along the lanes where they join, straight where they don't
-  const route = picked && here && picked.id !== here.id ? routeBetween(here.id, picked.id) : null;
+  // the course to it: along the lanes where they join, straight where they don't (and where its tag goes: the middle)
+  const route = useMemo(() => (picked && here && picked.id !== here.id ? routeBetween(here.id, picked.id) : null), [picked, here]);
+  const mid = useMemo(() => (route ? routeMid(route) : null), [route]);
   // the war the map shows: the picked era's (or film's), and with every era lit
   // the one you fight in; as it stands this second (and when what the players
   // did changes)
@@ -283,7 +287,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   }, [online?.room]);
 
   // where each system's name goes (labelPlace.js), in screen pixels: from the
-  // map's width, the view, and the names' own widths (measured once drawn,
+  // map's width, the view, and the names' own sizes (measured once drawn,
   // guessed till then). The stage is scaled by k and each system by 1/k, so a
   // name is its own size on screen; its offsetWidth is that, and unlike its
   // bounding box isn't bent by the stage's zoom easing in
@@ -300,18 +304,20 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const widths = useRef({}); // id → measured px, from the DOM
+  const sizes = useRef({}); // id → { w, h } measured px, from the DOM
   const [measured, setMeasured] = useState(0);
   useLayoutEffect(() => {
     let changed = false;
     for (const el of box.current?.querySelectorAll('.holomap-name[data-id]') ?? []) {
       const w = el.offsetWidth + 1; // (it rounds; a pixel to spare)
-      if (w > 1 && widths.current[el.dataset.id] !== w) (widths.current[el.dataset.id] = w), (changed = true);
+      const h = el.offsetHeight;
+      const was = sizes.current[el.dataset.id];
+      if (w > 1 && h > 0 && (was?.w !== w || was?.h !== h)) (sizes.current[el.dataset.id] = { w, h }), (changed = true);
     }
     if (changed) setMeasured((n) => n + 1);
   }, [war, boxPx, pilots]);
-  // the controls drawn over the map that stay put (the war's board, the Layers chip, the Key chip; the layers' own switches
-  // where there's no chip), as boxes from the map's top left: a name goes clear of them as of a dot (labelPlace.js's
+  // the controls drawn over the map that stay put (the war's board, the Layers chip, the Key chip, the zoom buttons; the layers' own
+  // switches where there's no chip), as boxes from the map's top left: a name goes clear of them as of a dot (labelPlace.js's
   // `blocks`). Measured once drawn, and again when the map or any of them changes size (the board with the war)
   const [blocks, setBlocks] = useState([]);
   useLayoutEffect(() => {
@@ -320,7 +326,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     const measure = () => {
       const m = el.getBoundingClientRect();
       const chip = el.querySelector('.holomap-layers-toggle');
-      const parts = [el.querySelector('.holomap-strip-board'), chip, el.querySelector('.holomap-legend-toggle'), ...(chip?.getClientRects().length ? [] : el.querySelectorAll('.holomap-layers-set button'))];
+      const parts = [el.querySelector('.holomap-strip-board'), chip, el.querySelector('.holomap-legend-toggle'), el.querySelector('.holomap-zoom'), ...(chip?.getClientRects().length ? [] : el.querySelectorAll('.holomap-layers-set button'))];
       const found = [];
       for (const n of parts) {
         if (!n?.getClientRects().length) continue; // (not shown)
@@ -332,24 +338,37 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(measure);
-    for (const n of [el, ...el.querySelectorAll('.holomap-strip-board, .holomap-layers-toggle, .holomap-layers-set, .holomap-legend-toggle')]) ro.observe(n);
+    for (const n of [el, ...el.querySelectorAll('.holomap-strip-board, .holomap-layers-toggle, .holomap-layers-set, .holomap-legend-toggle, .holomap-zoom')]) ro.observe(n);
     return () => ro.disconnect();
   }, [view]); // (the war's board is another size with another war)
+  // the course's tag, drawn over the map at the middle of the course (it keeps its size on screen: measured once drawn, guessed till
+  // then): a name goes clear of it as of the controls
+  const tag = useRef(null);
+  const [tagPx, setTagPx] = useState(null);
+  useLayoutEffect(() => {
+    const el = tag.current;
+    const next = el ? { w: el.offsetWidth, h: el.offsetHeight } : null;
+    setTagPx((was) => (was?.w === next?.w && was?.h === next?.h ? was : next));
+  }, [pick, current]);
   const places = useMemo(() => {
     const { k, x, y } = mv.view;
+    // (centred on the middle, and raised its own height less a tenth: galaxy.css's translate)
+    const t = mid ? { w: tagPx?.w ?? TAG_GUESS.w, h: tagPx?.h ?? TAG_GUESS.h } : null;
+    const [tx, ty] = mid ? [(x + (k * mid[0]) / SIZE) * boxPx, (y + (k * mid[1]) / SIZE) * boxPx - 0.9 * t.h] : [0, 0];
+    const tagBlock = t ? [{ x0: tx - t.w / 2 - 2, y0: ty - t.h / 2 - 2, x1: tx + t.w / 2 + 2, y1: ty + t.h / 2 + 2 }] : [];
     const items = SYSTEMS.map((s) => {
       const row = war.byId[s.id];
       const prio = s.id === current ? 100 : s.id === pick ? 90 : row?.battle?.fighting ? 50 : row?.major ? 40 : 0;
       const extras = (row?.major ? 14 : 0) + (row?.battle?.fighting ? 14 : 0) + (pilots[s.id] ? 20 : 0) + (s.id === current ? 32 : 0); // (the YOU tag)
-      const w = widths.current[s.id];
-      return { id: s.id, x: (x + (k * s.pos[0]) / SIZE) * boxPx, y: (y + (k * s.pos[1]) / SIZE) * boxPx, w: Number.isFinite(w) && w > 0 ? w : estimateWidth(s.name, 12.5, extras), h: 20, prio };
+      const z = sizes.current[s.id];
+      return { id: s.id, x: (x + (k * s.pos[0]) / SIZE) * boxPx, y: (y + (k * s.pos[1]) / SIZE) * boxPx, w: z ? z.w : estimateWidth(s.name, 12.5, extras), h: z ? z.h : 20, prio };
     });
     // (a view gone wrong must not take the map down with it: every name on the right, as it was)
     if (items.some((i) => !Number.isFinite(i.x) || !Number.isFinite(i.y))) return {};
-    return placeLabels(items, { bounds: { x0: 0, y0: 0, x1: boxPx, y1: boxPx }, blocks });
-    // (`measured` is what says widths.current has changed)
+    return placeLabels(items, { bounds: { x0: 0, y0: 0, x1: boxPx, y1: boxPx }, blocks: [...blocks, ...tagBlock] });
+    // (`measured` is what says sizes.current has changed)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mv.view, boxPx, war, current, pick, pilots, measured, blocks]);
+  }, [mv.view, boxPx, war, current, pick, pilots, measured, blocks, mid, tagPx]);
 
   const lit = (s) => (film ? s.films.includes(film) : era === 'all' || erasOf(s).includes(era));
   // plot a course to a system (the war card's picks too); with an end of it
@@ -417,7 +436,6 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const regionFont = REGION_FONT / unitPx; // (11.5 px on screen at any zoom)
   const regionShown = regionNamesShown(REGIONS, unitPx); // (the ones with the room: the inner ones as you zoom)
   const wide = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(min-width: 761px)').matches); // (the panel's rest is open where there's room)
-  const mid = route ? routeMid(route) : null; // (where the course's tag goes)
   const hovered = hover ? systemById(hover) : null;
   const hoveredRow = hovered ? war.byId[hovered.id] : null;
   // the hover card sits to the right of the dot, and to its left where it'd run out of the map
@@ -610,7 +628,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   const ring = row ? { '--held': SIDES[row.owner].colour, ...(by && { '--by': SIDES[by].colour, '--take': 1 - row.control }) } : {};
                   const you = row && fought.has(s.id);
                   return (
-                  <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-place={places[s.id]} data-badge={row ? badges[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
+                  <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-place={sideOf(places[s.id])} data-hang={hangOf(places[s.id])} data-badge={row ? badges[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
                     <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onFocus={(e) => reveal(s, e)} onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(s.id)} onPointerLeave={() => setHover(null)} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? systemLabel(row, now, you) : undefined}>
                       <span className="holomap-dot" aria-hidden="true">
                         {you && <i className="holomap-you" />}
@@ -637,7 +655,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
               </ul>
               {/* the course's own tag, at its middle, and the card of the system the mouse is over (both keep their size, and never take a press) */}
               {route && (
-                <span className="holomap-course-tag" style={{ left: pct(mid[0]), top: pct(mid[1]) }}>
+                <span ref={tag} className="holomap-course-tag" style={{ left: pct(mid[0]), top: pct(mid[1]) }}>
                   {lightYears(here, picked).toLocaleString('en-US')} ly · {jumpTime(route).toFixed(1)} s
                 </span>
               )}

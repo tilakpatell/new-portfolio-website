@@ -453,8 +453,10 @@
   border-radius: 50%;
   background: radial-gradient(circle, var(--c) 0 3px, color-mix(in srgb, var(--c) 30%, transparent) 4px, transparent 7px);
 }
-/* a name sits in the place round its dot that HoloMap.jsx gave it (labelPlace.js's boxAt: right by default; the
-   corners start 80% of the way across the dot, near enough boxAt's 5 px off the middle) */
+/* a name sits in the place round its dot that HoloMap.jsx gave it, to the pixel (labelPlace.js's boxAt: right by default; a
+   corner's box is 5.4 px, CORNER, off the dot's middle each way; above or below it can hang from the dot's left or right
+   edge, data-hang s or e, where the dot has neighbours: data-place is then its b or t). The names are placed by their boxes, so
+   they keep clear of one another and the dots as far as there's room; the war's marks on a dot (warmap.css) go by data-place */
 .holomap-name {
   position: absolute;
   display: inline-flex;
@@ -469,10 +471,14 @@
 .holomap-systems > li[data-place='l'] .holomap-name { left: auto; right: calc(100% + 2px); }
 .holomap-systems > li[data-place='t'] .holomap-name { left: 50%; top: auto; bottom: calc(100% + 2px); translate: -50% 0; }
 .holomap-systems > li[data-place='b'] .holomap-name { left: 50%; top: calc(100% + 2px); translate: -50% 0; }
-.holomap-systems > li[data-place='tr'] .holomap-name { left: 80%; top: auto; bottom: 80%; translate: 0 0; }
-.holomap-systems > li[data-place='br'] .holomap-name { left: 80%; top: 80%; translate: 0 0; }
-.holomap-systems > li[data-place='tl'] .holomap-name { left: auto; right: 80%; top: auto; bottom: 80%; translate: 0 0; }
-.holomap-systems > li[data-place='bl'] .holomap-name { left: auto; right: 80%; top: 80%; translate: 0 0; }
+.holomap-systems > li[data-place='t'][data-hang='s'] .holomap-name,
+.holomap-systems > li[data-place='b'][data-hang='s'] .holomap-name { left: 0; translate: 0 0; }
+.holomap-systems > li[data-place='t'][data-hang='e'] .holomap-name,
+.holomap-systems > li[data-place='b'][data-hang='e'] .holomap-name { left: auto; right: 0; translate: 0 0; }
+.holomap-systems > li[data-place='tr'] .holomap-name { left: calc(50% + 5.4px); top: auto; bottom: calc(50% + 5.4px); translate: 0 0; }
+.holomap-systems > li[data-place='br'] .holomap-name { left: calc(50% + 5.4px); top: calc(50% + 5.4px); translate: 0 0; }
+.holomap-systems > li[data-place='tl'] .holomap-name { left: auto; right: calc(50% + 5.4px); top: auto; bottom: calc(50% + 5.4px); translate: 0 0; }
+.holomap-systems > li[data-place='bl'] .holomap-name { left: auto; right: calc(50% + 5.4px); top: calc(50% + 5.4px); translate: 0 0; }
 .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #fff; animation: holomap-here 1.6s ease-in-out infinite; }
 @keyframes holomap-here { 50% { box-shadow: 0 0 0 5px rgb(255 255 255 / 0.25); } }
 /* (still, for prefers-reduced-motion: the war's marks stop in warmap.css, but this file comes after it, so here) */

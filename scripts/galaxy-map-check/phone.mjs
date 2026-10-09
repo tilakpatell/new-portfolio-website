@@ -2,7 +2,7 @@
 // The galaxy map check's phone runs (scripts/galaxy-map-check.mjs): at a phone's width, with the mouse's or a touch screen's zoom
 // buttons, the names apart, inside and clear of every control; nothing under 0.7 rem; the header row and the Films panel; the
 // key under the zoom row; on a short phone the side panel's jump.
-import { asTouch, check, headerAndFilms, J, namesProblems, open, out, overlayProblems, settle, smallText } from './lib.mjs';
+import { PHONE_GRAZE, asTouch, check, dotsCheck, headerAndFilms, J, namesProblems, open, out, overlayProblems, settle, smallText } from './lib.mjs';
 
 // a phone: the names apart, inside and clear of the controls, nothing under 0.7 rem, the strip, layers, key and zoom row clear of one
 // another, the key under the zoom row; on a short phone (side) the side panel showing the jump without scrolling the frame; with touch
@@ -19,6 +19,8 @@ export const phone = async (viewport, { touch = false, side = false } = {}) => {
   say(w === want, `the zoom buttons are ${w} px on a ${mapW.toFixed(0)} px map${touch ? ' with touch' : ''} (${want} wanted)`);
   const names = await namesProblems(page);
   say(names.meets.length === 0 && names.outside.length === 0, `names apart and inside${names.meets.length ? ` (${names.meets.slice(0, 5).join(', ')})` : ''}${names.outside.length ? ` (outside: ${names.outside.slice(0, 5).join(', ')})` : ''}`);
+  const dots = dotsCheck(names.dots, viewport.width);
+  say(dots.ok, `no name over another system's dot deeper than ${PHONE_GRAZE} px${dots.text}`);
   say(names.under.length === 0, `no name under the strip's board, the layers chip, the key chip or the zoom buttons${names.under.length ? ` (${names.under.slice(0, 6).join(', ')})` : ''}`);
   const meets = await overlayProblems(page);
   say(meets.length === 0, `the strip's title and board clear of the zoom row, and the layers and key${meets.length ? ` (${meets.join(', ')})` : ''}`);

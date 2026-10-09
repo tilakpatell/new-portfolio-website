@@ -2,7 +2,7 @@
 // The galaxy map check's whole suite for a window of a given size (scripts/galaxy-map-check.mjs): names, zoom and drag, find,
 // layers, eras and films, Tab, the key and the side panel's wheel, the hover card, sharpness, the M key, the jump. See the
 // runner's header for the list.
-import { check, easedNames, edgeEnergy, hasMap, headerAndFilms, J, namesProblems, open, out, overlayProblems, settle, smallText, still } from './lib.mjs';
+import { PHONE_GRAZE, check, dotsCheck, easedNames, edgeEnergy, hasMap, headerAndFilms, J, namesProblems, open, out, overlayProblems, settle, smallText, still } from './lib.mjs';
 
 export const suite = async (viewport, { full = true } = {}) => {
   const size = `${viewport.width}x${viewport.height}`;
@@ -18,8 +18,14 @@ export const suite = async (viewport, { full = true } = {}) => {
     const total = await J(page, () => document.querySelectorAll('.holomap-name[data-id]').length);
     say(all ? r.n === total : r.n >= 3, `${when}: ${r.n} of ${total} names on view`);
     say(r.meets.length === 0, `${when}: no two names meet${r.meets.length ? ` (${r.meets.slice(0, 6).join(', ')})` : ''}`);
+    const dots = dotsCheck(r.dots, viewport.width);
+    say(dots.ok, `${when}: no name over another system's dot${viewport.width <= 560 ? ` deeper than ${PHONE_GRAZE} px` : ''}${dots.text}`);
     say(r.outside.length === 0, `${when}: every name inside the map${r.outside.length ? ` (${r.outside.slice(0, 6).join(', ')})` : ''}`);
     if (all) say(r.under.length === 0, `${when}: no name under the strip, layers, key or zoom buttons${r.under.length ? ` (${r.under.slice(0, 6).join(', ')})` : ''}`);
+    else {
+      const tag = r.under.filter((u) => u.endsWith('/tag')); // (the course's tag: drawn with a course, so not at the whole map's check above)
+      say(tag.length === 0, `${when}: no name under the course's tag${tag.length ? ` (${tag.join(', ')})` : ''}`);
+    }
   };
   const phone = viewport.width <= 560;
 

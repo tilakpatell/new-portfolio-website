@@ -117,7 +117,7 @@ export const easedNames = (page, key) =>
   );
 export const hasMap = (page) => page.locator('.holomap').count().then((n) => n > 0);
 
-// the names on view: any two meeting, any outside the map
+// the names on view: any two meeting, any over another system's dot, any outside the map
 export const namesProblems = (page) =>
   J(page, () => {
     const map = window.__mc.map();
@@ -132,6 +132,20 @@ export const namesProblems = (page) =>
         const b = rows[j].r;
         if (a.left < b.right - tol && b.left < a.right - tol && a.top < b.bottom - tol && b.top < a.bottom - tol) meets.push(`${rows[i].id}/${rows[j].id}`);
       }
+    // (a name over another system's dot: its box, 14 px, is what labelPlace.js keeps names off. Dots on the map only)
+    const onMap = (r) => r.left + r.width / 2 >= map.left && r.left + r.width / 2 <= map.right && r.top + r.height / 2 >= map.top && r.top + r.height / 2 <= map.bottom;
+    const dots = [];
+    for (const el of document.querySelectorAll('.holomap-dot')) {
+      const d = el.getBoundingClientRect();
+      const owner = el.closest('li').querySelector('.holomap-name').dataset.id;
+      if (!onMap(d)) continue;
+      for (const n of rows)
+        if (n.id !== owner && n.r.left < d.right - tol && d.left < n.r.right - tol && n.r.top < d.bottom - tol && d.top < n.r.bottom - tol) {
+          // (how far in: the smaller of the two ways the boxes overlap)
+          const depth = Math.min(Math.min(n.r.right, d.right) - Math.max(n.r.left, d.left), Math.min(n.r.bottom, d.bottom) - Math.max(n.r.top, d.top));
+          dots.push({ pair: `${n.id}/${owner}`, depth: Math.round(depth * 10) / 10 });
+        }
+    }
     // (the controls over the map, by what's drawn: the strip's title by its words)
     const textBox = (el) => {
       const r = document.createRange();
@@ -141,13 +155,22 @@ export const namesProblems = (page) =>
     const controls = [];
     for (const el of document.querySelectorAll('.holomap-strip-war')) if (window.__mc.shown(el)) controls.push({ what: 'strip', r: textBox(el) });
     const kind = (el) => (el.closest('.holomap-zoom') ? 'zoom' : el.closest('.holomap-layers') ? 'layers' : el.closest('.holomap-legend') ? 'key' : 'strip');
-    for (const el of document.querySelectorAll('.holomap-strip-board, .holomap-layers-toggle, .holomap-layers-set button, .holomap-legend-toggle, .holomap-zoom button')) if (window.__mc.shown(el)) controls.push({ what: kind(el), r: el.getBoundingClientRect() });
+    for (const el of document.querySelectorAll('.holomap-strip-board, .holomap-layers-toggle, .holomap-layers-set button, .holomap-legend-toggle, .holomap-zoom button, .holomap-course-tag')) if (window.__mc.shown(el)) controls.push({ what: el.matches('.holomap-course-tag') ? 'tag' : kind(el), r: el.getBoundingClientRect() });
     const under = [];
     for (const n of rows)
       for (const c of controls) if (n.r.left < c.r.right - 1 && c.r.left < n.r.right - 1 && n.r.top < c.r.bottom - 1 && c.r.top < n.r.bottom - 1) under.push(`${n.id}/${c.what}`);
     const outside = rows.filter(({ r }) => r.left < map.left - tol || r.right > map.right + tol || r.top < map.top - tol || r.bottom > map.bottom + tol).map((n) => n.id);
-    return { n: rows.length, meets, outside, under };
+    return { n: rows.length, meets, outside, under, dots };
   });
+
+// a name over another system's dot: none at all on a desktop window. On a phone Hoth's, Bespin's, Mustafar's and Nevarro's dots are
+// a few px apart, and at 360 px no place round Bespin's is clear of them all, so a graze no deeper than PHONE_GRAZE px is allowed
+// there (and listed with the rest, with how deep each is)
+export const PHONE_GRAZE = 3;
+export const dotsCheck = (dots, width) => ({
+  ok: dots.every((d) => d.depth <= (width <= 560 ? PHONE_GRAZE : 0)),
+  text: dots.length ? ` (${dots.slice(0, 6).map((d) => `${d.pair} ${d.depth} px`).join(', ')})` : '',
+});
 
 // text in the map under 0.7 rem (11.2 px); the SVG's by what it renders at
 export const smallText = (page) =>

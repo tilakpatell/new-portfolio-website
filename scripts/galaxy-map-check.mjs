@@ -4,9 +4,14 @@
 // It starts nothing itself. Opens #/galaxy, flies the X-wing, presses M, and at 1440x900, 1280x720 and 390x844 (the suite,
 // galaxy-map-check/suite.mjs) and then at phone widths (phone.mjs: 375x667 with the side panel, 375x667, 390x844 and 360x640 with
 // a touch screen's zoom buttons, 360x640). Shared parts are in galaxy-map-check/lib.mjs.
-//   names: no two system names meet, none is out of the map (whole, zoomed in twice over Hoth, framed on Endor); none is under
-//     the strip's board, the layers, the key chip or the zoom buttons (at the whole map, at every width); nothing a player reads
-//     is under 0.7 rem (11.2 px; the SVG's text by its rendered size); the strip, layers, key and zoom buttons clear of one another
+//   names: no two system names meet, none is out of the map, none is over another system's dot (whole, zoomed in twice over Hoth,
+//     framed on Endor; on a desktop window none at all, on a phone a graze of up to 3 px, each listed: Hoth's, Bespin's, Mustafar's
+//     and Nevarro's dots are a few px apart and no place round Bespin's is clear at 360 px); none is under the strip's board, the
+//     layers, the key chip or the zoom buttons (at the whole map, at every width), or the course's tag (framed on Endor); nothing a
+//     player reads is under 0.7 rem (11.2 px; the SVG's text by its rendered size); the strip, layers, key and zoom buttons clear
+//     of one another
+//   easing: through a + and a - zoom no name changes size on any frame (the stage and the counter-scale ease together); with
+//     reduced motion nothing is eased
 //   header: the title, era chips, Films, find and close buttons meet nowhere and sit inside the frame; the Films panel, a popover
 //     that may cover the map's controls while open, is shut by a press on the map outside it, the zoom buttons pressable again
 //   find: "endo" + Enter picks Endor and has it on view; J then jumps; a YOU tag on the system you're at

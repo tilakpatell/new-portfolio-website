@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from './systems';
-import { DOT, boxAt, estimateWidth, overlapArea, placeLabels } from './labelPlace';
+import { DOT, PLACES, boxAt, estimateWidth, hangOf, overlapArea, placeLabels, sideOf } from './labelPlace';
 
 const at = (box) => SYSTEMS.map((s) => ({ id: s.id, x: (s.pos[0] / 21) * box, y: (s.pos[1] / 21) * box, w: estimateWidth(s.name), h: 18, prio: 0 }));
 const boxesOf = (items, places) => items.map((it) => ({ id: it.id, ...boxAt(places[it.id], it.x, it.y, it.w, it.h) }));
+
+// a box shrunk by `tol` all round: overlaps no deeper than that don't count (the browser check's half pixel)
+const inner = (b, tol) => ({ ...b, x0: b.x0 + tol, y0: b.y0 + tol, x1: b.x1 - tol, y1: b.y1 - tol });
+// the names, other than `id`'s own, whose dot the name of `id` covers
+const boxOver = (items, places, id, tol = 0) => {
+  const me = items.find((i) => i.id === id);
+  const b = inner(boxAt(places[id], me.x, me.y, me.w, me.h), tol);
+  return items.filter((o) => o.id !== id && overlapArea([b, { x0: o.x - DOT, y0: o.y - DOT, x1: o.x + DOT, y1: o.y + DOT }]) > 0).map((o) => o.id);
+};
 
 describe('labelPlace', () => {
   it('puts a lone name on the right', () => {
@@ -18,7 +27,7 @@ describe('labelPlace', () => {
     const boxes = boxesOf([{ id: 'a', x: 100, y: 100, w: 80, h: 18 }, { id: 'b', x: 140, y: 102, w: 60, h: 18 }], p);
     expect(overlapArea(boxes)).toBe(0);
     // neither name's label covers the other's dot
-    const dot = (i) => ({ x0: i.x - 7, y0: i.y - 7, x1: i.x + 7, y1: i.y + 7 });
+    const dot = (i) => ({ x0: i.x - DOT, y0: i.y - DOT, x1: i.x + DOT, y1: i.y + DOT });
     const a = { x: 100, y: 100, w: 80, h: 18 };
     const b = { x: 140, y: 102, w: 60, h: 18 };
     expect(overlapArea([boxAt(p.a, a.x, a.y, a.w, a.h), dot(b)])).toBe(0);
@@ -93,5 +102,59 @@ describe('labelPlace', () => {
     const b = two(0, 100);
     expect(b.low).toBe('r');
     expect(b.here).not.toBe('r');
+  });
+
+  it('has the edge-hung places: above or below, from the dot’s left or right edge', () => {
+    expect(PLACES).toEqual(expect.arrayContaining(['bs', 'be', 'ts', 'te']));
+    const bs = boxAt('bs', 100, 100, 60, 16);
+    expect(bs.x0).toBe(100 - DOT);
+    expect(bs.y0).toBeGreaterThan(100 + DOT);
+    const be = boxAt('be', 100, 100, 60, 16);
+    expect(be.x1).toBe(100 + DOT);
+    expect(boxAt('ts', 100, 100, 60, 16).y1).toBeLessThan(100 - DOT);
+    expect(boxAt('te', 100, 100, 60, 16).x1).toBe(100 + DOT);
+    // (the war's marks on a dot see them as above and below, hung from the left or the right)
+    expect(['bs', 'be', 'b', 'ts', 'te', 't', 'r', 'tl'].map(sideOf)).toEqual(['b', 'b', 'b', 't', 't', 't', 'r', 'tl']);
+    expect(['bs', 'be', 'ts', 'te', 'b', 't', 'r', 'tl'].map(hangOf)).toEqual(['s', 'e', 's', 'e', undefined, undefined, undefined, undefined]);
+  });
+  // three names 40 x 16, the first of the highest priority
+  const three = (dots) => dots.map(([id, x, y], i) => ({ id, x, y, w: 40, h: 16, prio: 3 - i }));
+  const clear = (items, p) => items.every((it) => boxOver(items, p, it.id, 0.5).length === 0) && overlapArea(boxesOf(items, p).map((b) => inner(b, 0.5))) === 0;
+  it('moves a name placed early when a later one would be left with nowhere', () => {
+    // a above b's dot, c's dot between them: greedy gives c the right, and it covers b's dot; a name that looks again moves
+    const items = three([['a', 76, 68], ['b', 76, 82], ['c', 77, 77]]);
+    const p = placeLabels(items);
+    expect(clear(items, p)).toBe(true);
+  });
+  it('takes a place hung from the dot’s edge when it is the one that is clear', () => {
+    // a's and b's dots 2 px apart, and c's near them: b's name goes below, hung from the dot's left edge, and covers no dot
+    const items = three([['a', 90, 72], ['b', 90, 70], ['c', 96, 61]]);
+    const p = placeLabels(items);
+    expect(clear(items, p)).toBe(true);
+    expect(Object.values(p).some((place) => ['bs', 'be', 'ts', 'te'].includes(place))).toBe(true);
+  });
+  it('is the same for the same input, and keeps the right where nothing is near', () => {
+    const items = three([['a', 60, 60], ['b', 300, 60], ['c', 60, 300]]);
+    expect(placeLabels(items)).toEqual({ a: 'r', b: 'r', c: 'r' });
+    expect(placeLabels(items)).toEqual(placeLabels(items));
+  });
+  it('puts every system clear of every name and dot on a phone-sized map, with the controls over it', () => {
+    // the names' widths on a phone (11.2 px type), the war's board, the Layers chip and the key chip as they sit on the map
+    const W = { tatooine: 89, hoth: 48, endor: 54, yavin: 46, alderaan: 55, bespin: 45, dagobah: 56, mustafar: 54, coruscant: 94, naboo: 57, kashyyyk: 59, kamino: 62, geonosis: 59, scarif: 39, nevarro: 50, mandalore: 64, lothal: 41, sorgan: 47 };
+    const blocks = [{ x0: 16, y0: 43, x1: 170, y1: 130 }, { x0: 6, y0: 236, x1: 102, y1: 272 }, { x0: 6, y0: 274, x1: 79, y1: 310 }];
+    const worst = [];
+    for (let box = 331; box <= 560; box += 3) {
+      const items = SYSTEMS.map((s) => ({ id: s.id, x: (s.pos[0] / 21) * box, y: (s.pos[1] / 21) * box, w: W[s.id], h: 16, prio: s.id === 'tatooine' ? 100 : s.id === 'coruscant' ? 50 : 0 }));
+      const p = placeLabels(items, { bounds: { x0: 0, y0: 0, x1: box, y1: box }, blocks });
+      const boxes = boxesOf(items, p);
+      const bad = [];
+      // (as the check measures: a graze under half a pixel is none)
+      for (const it of items) bad.push(...boxOver(items, p, it.id, 0.5).map((o) => `${it.id} over ${o}`));
+      if (overlapArea(boxes.map((b) => inner(b, 0.5))) > 0) bad.push('names meet');
+      if (boxes.some((b) => b.x0 < 0 || b.y0 < 0 || b.x1 > box || b.y1 > box)) bad.push('off the map');
+      for (const b of boxes) for (const k of blocks) if (overlapArea([inner(b, 0.5), k]) > 0) bad.push(`${b.id} under a control`);
+      if (bad.length) worst.push(`${box}: ${bad.join(', ')}`);
+    }
+    expect(worst).toEqual([]);
   });
 });
