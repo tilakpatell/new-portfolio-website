@@ -182,7 +182,8 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
   quad.dispose();
   const aLeaf = new THREE.InstancedBufferAttribute(sim.p, 4).setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('aLeaf', aLeaf);
-  geometry.setAttribute('aLeafSeed', new THREE.InstancedBufferAttribute(sim.seed, 4));
+  const aSeed = new THREE.InstancedBufferAttribute(sim.seed, 4);
+  geometry.setAttribute('aLeafSeed', aSeed);
   geometry.instanceCount = 0;
   const uniforms = {
     uLeafN: { value: new V(0, 1, 0) },
@@ -219,7 +220,9 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
   let rand = Math.random;
   let shed = 0;
   const focus = { x: 0, z: 0 };
-  const last = { x: 0, z: 0 }; // (the focus last frame)
+  const here = { x: 0, z: 0 }; // (where you are on the chart, not looking ahead)
+  const last = { x: 0, z: 0 }; // (and where you were last frame)
+  const blasts = []; // (this frame's, kept to throw again if the box is laid again)
   const seen = new Map(); // a walker's key → { x, z, tick }: where they were, when
   let tick = 0;
   const walkers = [];
@@ -267,11 +270,14 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
   };
   const wind = { strength: 0, dir: [1, 0], gate };
   // `count` laid round the focus, in his clumps (the canopy's noise)
+  // (each leaf's turn and size sent again: the page's warm-up may have
+  // drawn them before they were laid, and they're sent only when told)
   const lay = (count) => {
     const img = canopy().uniforms.uWindNoise.value.image;
     layLeaves(sim, count, { half: L.half, focus, rand, clump: (u, v) => sampleNoise(img, u, v) - 0.5 });
-    last.x = focus.x;
-    last.z = focus.z;
+    aSeed.needsUpdate = true;
+    last.x = here.x;
+    last.z = here.z;
   };
   const send = () => {
     uniforms.uLeafFocus.value.set(focus.x, focus.z, L.half);
@@ -288,8 +294,8 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
   // the box's middle: where you are, a little ahead the way you face (the camera's behind you)
   const focusOn = (n, f) => {
     toChart(chart, n, at);
-    focus.x = at.x;
-    focus.z = at.z;
+    here.x = focus.x = at.x;
+    here.z = focus.z = at.z;
     if (f) {
       const [fx, fy, fz] = of(f);
       focus.x += 0.3 * L.half * (fx * chart.e1.x + fy * chart.e1.y + fz * chart.e1.z);
@@ -334,14 +340,28 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
         rechart(sim, chart, next);
         chart = next;
         seen.clear();
+        blasts.length = 0;
         aim();
         focusOn(focusN, facing);
-        last.x = focus.x;
-        last.z = focus.z;
+        last.x = here.x;
+        last.z = here.z;
       }
-      if (Math.hypot(focus.x - last.x, focus.z - last.z) > JUMP * L.half) lay(sim.count);
-      last.x = focus.x;
-      last.z = focus.z;
+      // (moved further than a walk could in a frame, out of the ship to its
+      // door or back: laid again round you, and this frame's blasts thrown
+      // again, which the laying would have put back on the ground; a turn
+      // that swings the look-ahead isn't a move)
+      if (Math.hypot(here.x - last.x, here.z - last.z) > JUMP * L.half) {
+        lay(sim.count);
+        for (const b of blasts) blastLeaves(sim, ...b, rand);
+      }
+      blasts.length = 0;
+      last.x = here.x;
+      last.z = here.z;
+      // (and none under the parked ship)
+      if (hole) {
+        toChart(chart, hole.n, at);
+        uniforms.uLeafHole.value.set(at.x, at.z, hole.r / METRE);
+      } else uniforms.uLeafHole.value.set(0, 0, 0);
       if (reduced || !(dt > 0)) {
         if (reduced) wrapLeaves(sim, focus, L.half);
         send();
@@ -389,11 +409,6 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
         }
       }
       uniforms.uLeafClock.value += dt;
-      // (and none under the parked ship)
-      if (hole) {
-        toChart(chart, hole.n, at);
-        uniforms.uLeafHole.value.set(at.x, at.z, hole.r / METRE);
-      } else uniforms.uLeafHole.value.set(0, 0, 0);
       send();
     },
     // thrown out from p (on or near the ground) within r metres, at most
@@ -402,6 +417,7 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
       if (!on || reduced) return 0;
       toChart(chart, p, at);
       if (!(Math.max(Math.abs(at.x - focus.x), Math.abs(at.z - focus.z)) <= L.half + r)) return 0;
+      blasts.push([at.x, at.z, r, strength]);
       return blastLeaves(sim, at.x, at.z, r, strength, rand);
     },
     // a bolt at p, going v (the planet's space): through a crown in the box,
@@ -446,6 +462,7 @@ export function createLitter({ level = 'high', reduced = false } = {}) {
       mesh.visible = false;
       crowns = null;
       seen.clear();
+      blasts.length = 0;
     },
     dispose() {
       geometry.dispose();

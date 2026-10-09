@@ -40,7 +40,7 @@ const COUNTS = {
   music: { high: 160, mid: 128, low: 96 },
 };
 // (the level the page picks: litter.js's leafLevel, a 1280 × 800 window not small at high)
-const level = quality === 'low' ? 'low' : quality === 'mid' ? 'mid' : 'high';
+const level = quality === 'low' ? 'low' : quality === 'mid' || phone ? 'mid' : 'high'; // (a phone's screen is small: no higher than mid)
 const URL = `http://localhost:${process.env.PORT ?? 5173}/?quality=${quality}${spot ? `&spot=${spot}` : ''}#/universe`;
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
 const errors = [];

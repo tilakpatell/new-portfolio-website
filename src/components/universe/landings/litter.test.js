@@ -159,6 +159,46 @@ describe('the leaves on a landing', () => {
     expect(l.info(door.map((a) => a * R), 3).near).toBeGreaterThan(0);
   });
 
+  it('sends each leaf’s turn and size whenever they’re laid, not only the first time', () => {
+    const l = createLitter({ level: 'high' });
+    const seed = l.mesh.geometry.attributes.aLeafSeed;
+    expect(seed.array).toBe(l.sim.seed);
+    const v0 = seed.version;
+    l.begin({ spec: SPEC, R, frame, seed: 7, crowns: [], focus: frame.n });
+    const v1 = seed.version;
+    expect(v1).toBeGreaterThan(v0);
+    l.update(1 / 60, { focusN: place(frame, 0, 24, R).n });
+    expect(seed.version).toBeGreaterThan(v1);
+  });
+
+  it('keeps a blast thrown in the frame the box is laid again (the ship down as you step out)', () => {
+    const l = begun();
+    expect(l.blast(ground(0, 4), 3)).toBeGreaterThan(0);
+    l.update(1 / 60, { focusN: place(frame, 0, 10, R).n });
+    for (let k = 0; k < 10; k++) l.update(1 / 60, { focusN: place(frame, 0, 10, R).n });
+    expect(l.info().airborne).toBeGreaterThan(0);
+  });
+
+  it('isn’t laid again by a turn, which swings the look-ahead, only by a move', () => {
+    const l = begun();
+    const was = l.sim.p.slice();
+    l.update(1 / 60, { focusN: frame.n, facing: frame.f });
+    l.update(1 / 60, { focusN: frame.n, facing: frame.f.map((a) => -a) });
+    let kept = 0;
+    for (let i = 0; i < l.sim.count; i++) if (Math.hypot(l.sim.p[4 * i] - was[4 * i], l.sim.p[4 * i + 2] - was[4 * i + 2]) < 1e-6) kept += 1;
+    // (a few wrapped round to the new side of the box, none laid again)
+    expect(kept / l.sim.count).toBeGreaterThan(0.6);
+  });
+
+  it('leaves the parked ship’s ground clear with motion turned down too', () => {
+    const l = begun({ reduced: true });
+    l.update(1 / 60, { focusN: frame.n, hole: { n: frame.n, r: 4 * METRE } });
+    expect(l.mesh.material.onBeforeCompile).toBeTypeOf('function');
+    const sh = { uniforms: {}, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
+    l.mesh.material.onBeforeCompile(sh);
+    expect(sh.uniforms.uLeafHole.value.z).toBeCloseTo(4, 6);
+  });
+
   it('with motion turned down lies still where it was laid, kept round you', () => {
     const l = begun({ reduced: true });
     walk(l, 120);

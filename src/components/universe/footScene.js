@@ -2399,6 +2399,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const startOut = () => {
     const [a, b] = party;
     S.me = { id: 'me', ...doorSpot(1) };
+    S.airH = 0;
     S.mate = b ? { id: 'mate', ...offset(S.me, -0.9 * METRE, 1.1 * METRE, S.R), f: S.me.f, h: 0, vh: 0, speed: 0, side: 0 } : null;
     if (S.mate) S.mate = { ...person(S.mate.n, S.me.f), id: 'mate' };
     a.w = S.me;
@@ -2723,8 +2724,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const out = Boolean(S.me) && OUT_PHASES.includes(S.phase);
     leafWalkers.length = 0;
     if (out) {
-      leafWalkers.push({ key: 'me', n: S.me.n, h: S.me.h ?? 0 });
-      if (S.mate) leafWalkers.push({ key: 'mate', n: S.mate.n, h: S.mate.h ?? 0 });
+      // (each by who they are, not by who you play: a swap isn't a run)
+      leafWalkers.push({ key: party?.[S.lead]?.spec.id ?? 'me', n: S.me.n, h: S.me.h ?? 0 });
+      if (S.mate) leafWalkers.push({ key: party?.[1 - S.lead]?.spec.id ?? 'mate', n: S.mate.n, h: S.mate.h ?? 0 });
     }
     for (const t of S.troops) if (t.alive) leafWalkers.push({ key: t.id, n: t.n, h: t.h ?? 0 });
     for (const g of guests.values()) g.walkers.forEach((wk, i) => wk?.w && wk.group?.visible && leafWalkers.push({ key: `g${g.id}:${i}`, n: wk.w.n, h: wk.w.h ?? 0 }));
@@ -2800,6 +2802,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (S.t > LAND.fall) {
         // back on your feet by the ship
         S.me = { ...doorSpot(1), id: 'me' };
+        S.airH = 0;
         if (S.mate) S.mate = { ...person(offset(S.me, -0.9 * METRE, 1.1 * METRE, S.R).n, S.me.f), id: 'mate' };
         S.health = FOOT.health;
         S.phase = 'walk';
@@ -3591,6 +3594,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (S.phase !== 'walk' || !party?.[1] || !S.mate) return false;
       [S.me, S.mate] = [{ ...S.mate, id: 'me' }, { ...S.me, id: 'mate' }];
       S.lead = 1 - S.lead;
+      S.airH = 0; // (the other one's feet were never off the ground)
       return party[S.lead].spec.id;
     },
     // G: back in the ship, if you're by it
