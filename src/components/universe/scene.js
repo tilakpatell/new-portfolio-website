@@ -112,10 +112,12 @@ import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
+import { houseGroups } from '../../lib/three/houseTuning';
 import { createFeel, feelGroups } from '../../lib/three/feel';
+import { bloomGroups } from '../../lib/three/bloom';
 import { createImpacts, impactGroups } from '../../lib/impact';
 import { debugOn, debugPanel } from '../../lib/debugPanel';
-import { OPEN_SPACE, PLANETS, SHIP, SOLIDS, SPACE, autopilot, crashLoud, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { LEAN, OPEN_SPACE, PLANETS, SHIP, SOLIDS, SPACE, autopilot, crashLoud, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit, shortDistance } from './nav';
 import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
@@ -163,7 +165,7 @@ import { createWingmen } from './wingmen';
 import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
-import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
+import { CREW_INK, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { HERO_ENGINES, capPlume, createEngines } from './engines';
 import { paintById } from './paint';
 import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
@@ -808,7 +810,9 @@ export async function create(canvas, ctx) {
   // ?debug: the shake and the hitstop, the bumps' law, and on foot the
   // knocks' law and the jump's press, on sliders (lib/debugPanel)
   const titled = (name) => (g) => ({ ...g, name });
-  const panel = debugOn() ? debugPanel({ title: 'The universe', id: 'universe', groups: [...feelGroups(feel), ...impactGroups(bumpLaw).map(titled('bumps')), ...foot.tune().map((g) => (g.name === 'hits' ? titled('knocks, on foot')(g) : g))] }) : null;
+  // (the ship's lean, ship.js's spring: shared with the galaxy map, set here for both)
+  const leanGroups = () => [{ name: 'lean', items: [['k', 'stiffness', 0, 300, 1], ['c', 'damping', 0, 40, 0.1]].map(([key, label, min, max, step]) => ({ key, label, type: 'range', min, max, step, get: () => LEAN[key], set: (v) => (LEAN[key] = v) })) }];
+  const panel = debugOn() ? debugPanel({ title: 'The universe', id: 'universe', groups: [...bloomGroups(post.bloom), ...houseGroups(house), ...feelGroups(feel), ...leanGroups(), ...impactGroups(bumpLaw).map(titled('bumps')), ...foot.tune().map((g) => (g.name === 'hits' ? titled('knocks, on foot')(g) : g))] }) : null;
   // and what's shot down burns: a fireball, shards and (bigger than a
   // fighter) a ring, pooled (lib/three/explosions); just the pop on a weak
   // device, once the quality's been lowered, or from the pace's step 2
@@ -2068,10 +2072,11 @@ export async function create(canvas, ctx) {
           ctx.invalidate();
         });
     } else if (kind === 'cruiser') {
-      // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's 2.7 across there)
+      // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's
+      // 2.7 across there, LENGTH here), theirs finer (they're drawn big)
       const model = state.model;
       import('../rickmorty/cruiser3d')
-        .then((m) => m.buildCruiser({ ink: BUILT / 2.7 }))
+        .then((m) => m.buildCruiser({ ink: LENGTH / 2.7, crewInk: CREW_INK }))
         .then((c) => {
           if (!c) return;
           if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint, setLooks: c.setLooks })) {
@@ -5623,7 +5628,7 @@ export async function create(canvas, ctx) {
     dropEclipse();
     burst.clear();
     const [x, y, z] = p.at;
-    state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+    state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, leanV: 0, edge: false };
     // (the map turned the way the ship faces, as arriveAt does, so the
     // key light falls the same way every time, not wherever the turn's ease got to)
     state.yaw = -p.heading;

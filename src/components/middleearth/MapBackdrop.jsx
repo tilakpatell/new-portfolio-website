@@ -1,27 +1,36 @@
 import { useEffect, useRef, useState } from 'react';
 import { use3D } from '../../lib/gpu';
 import { settle } from '../../lib/settle';
+import { prefersReducedMotion } from '../../lib/hooks';
 import { opened } from './opening';
 import { SHEET } from './mapData';
+import { FLIGHT_MS, TITLE } from './mapFlight.js';
+import { mapFont, paintMap } from './mapPaint.js';
 import '../../styles/lazy/middleearth.css';
 
-// The map of Middle-earth behind the whole page. With a graphics chip it is
-// in WebGL (./MapBackdrop3D.js): the sheet on a table, a camera gliding over
-// it. Without one, the painted sheet is drawn flat, and pans and zooms the
-// same way. On the hub (`spot` null) it shows the whole sheet and leans
-// towards the pointer; with a `spot` ([x, y] on the sheet) it flies down to
-// it and stays there, close, behind the chapter.
+// The map of Middle-earth behind the whole page. The painted sheet is drawn
+// flat from the first frame, on every device, and pans and zooms. With a
+// graphics chip the WebGL map (./MapBackdrop3D.js), the sheet on a table and
+// a camera gliding over it, fades in over the flat one once its first frame
+// is drawn, and takes over from it. On the hub (`spot` null) it shows the
+// whole sheet and leans towards the pointer; with a `spot` ([x, y] on the
+// sheet) it flies down to it and stays there, close, behind the chapter.
 //
 // `opening` is the films' beginning: the map alone, with the title over it,
-// before the page comes in. Any key, click, tap or scroll ends it early.
+// before the page comes in; in WebGL the camera flies down the road while it
+// lasts (./mapFlight.js). Any key, click, tap or scroll ends it early.
 // `api` is a ref the hub keeps, to ask where places are on the screen
-// (`api.current.project(x, y)`); `onFrame` is called after every frame drawn,
+// (`api.current.project(x, y)`): it is the flat sheet's until the WebGL one
+// shows, then the WebGL one's. `onFrame` is called after every frame drawn,
 // so the hub can move its markers with the camera.
 
+// how long the opening holds on a map that doesn't fly: the flat sheet, or
+// for someone who has asked for less motion
 const HOLD = 3000;
+const HOLD_STILL = 1500;
 
-// The flat sheet, for browsers without a graphics chip: drawn into the canvas
-// at a scale and offset that ease towards where they should be.
+// The flat sheet: drawn into the canvas at a scale and offset that ease
+// towards where they should be.
 function createFlat(canvas, sheet) {
   const ctx = canvas.getContext('2d');
   let W = 1;
@@ -73,8 +82,11 @@ function createFlat(canvas, sheet) {
       ratio = Math.min(2, window.devicePixelRatio || 1);
       W = Math.max(1, w);
       H = Math.max(1, h);
-      canvas.width = Math.round(W * ratio);
-      canvas.height = Math.round(H * ratio);
+      // (a canvas given a size, even its own, is wiped: only when it changes)
+      const cw = Math.round(W * ratio);
+      const ch = Math.round(H * ratio);
+      if (canvas.width !== cw) canvas.width = cw;
+      if (canvas.height !== ch) canvas.height = ch;
       first = true;
     },
     project(x, y) {
@@ -102,6 +114,11 @@ function createFlat(canvas, sheet) {
       ctx.drawImage(sheet, 0, 0);
       return true;
     },
+    // the sheet again, once the page's font is in to write its names
+    repaint(next) {
+      sheet = next;
+      first = true;
+    },
     dispose() {},
     lost: false,
   };
@@ -119,7 +136,8 @@ const forced = () => {
 export default function MapBackdrop({ spot = null, zoom = null, hover = null, mordor = false, dark = false, hub = false, opening = false, onOpened, api: outer, onFrame }) {
   const three = use3D();
   const gl = three.on && (!three.info.software || forced());
-  const canvas = useRef(null);
+  const flatCanvas = useRef(null);
+  const glCanvas = useRef(null);
   const api = useRef(null);
   const state = useRef({});
   state.current = { spot, zoom, hover, mordor, dark, hub, opening };
@@ -129,28 +147,68 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
   const frame = useRef(onFrame);
   frame.current = onFrame;
   const kick = useRef(() => {});
-  const [on, setOn] = useState(false);
+  // the opening has ended (or been skipped), so the flight is over even
+  // before the page says so
+  const landed = useRef(false);
+  const [painted, setPainted] = useState(false); // the flat sheet is drawn
+  const [on, setOn] = useState(false); // the WebGL map has drawn its first frame, and shows
 
   useEffect(() => {
     let dead = false;
     let raf = 0;
     let last = 0;
+    let flat = null; // the painted sheet, drawn flat
+    let deep = null; // the WebGL map, once its shaders are in
+    let shown = false; // the WebGL map is over the flat one
+    let t0 = 0; // when the opening's flight began
+    let flying = false;
+    const still = prefersReducedMotion();
+    const both = () => [flat, deep && !deep.lost ? deep : null].filter(Boolean);
+    // the one the hub and the page ask: the WebGL map once it shows
+    const publish = () => {
+      const a = shown ? deep : flat;
+      api.current = a;
+      if (outer) outer.current = a;
+      if (import.meta.env.DEV) window.__ME__ = { ...window.__ME__, map: a }; // for the browser tests
+    };
     const size = () => {
-      const c = canvas.current;
-      if (c && api.current) api.current.resize(c.clientWidth, c.clientHeight);
+      const c = flatCanvas.current;
+      if (c) both().forEach((a) => a.resize(c.clientWidth, c.clientHeight));
     };
     const view = () => {
       const s = state.current;
-      api.current?.setView({ at: s.spot, zoom: s.zoom, hover: s.hover, mordor: s.mordor, dark: s.dark, alive: s.hub, lean: s.hub ? lean.current : [0, 0] });
+      both().forEach((a) => a.setView({ at: s.spot, zoom: s.zoom, hover: s.hover, mordor: s.mordor, dark: s.dark, alive: s.hub, lean: s.hub ? lean.current : [0, 0] }));
     };
     // draw while the camera is on its way, then stop until something changes
     const loop = (now) => {
       raf = 0;
-      const a = api.current;
-      if (!a || dead) return;
+      if (dead) return;
       const ms = last ? Math.min(50, now - last) : 16;
       last = now;
-      if (a.render(ms, state.current.opening ? 0.3 : 1)) {
+      const s = state.current;
+      // the flat sheet draws until the WebGL map is over it, and in the frame
+      // it comes on too, so the WebGL fades in over the sheet
+      let drew = Boolean(flat && !shown && flat.render(ms));
+      if (deep && !deep.lost) {
+        // the opening flies the WebGL camera down the road, from its first frame
+        if (s.opening && !landed.current && !still) {
+          t0 = t0 || now;
+          deep.flight(now - t0);
+          flying = true;
+        } else if (flying) {
+          deep.flight(null);
+          flying = false;
+        }
+        if (deep.render(ms, s.opening && !flying ? 0.3 : 1)) {
+          drew = true;
+          if (!shown) {
+            shown = true;
+            publish();
+            setOn(true);
+          }
+        }
+      }
+      if (drew) {
         frame.current?.();
         if (!raf) raf = requestAnimationFrame(loop); // (unless something in the frame kicked already)
       } else last = 0;
@@ -163,36 +221,53 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
       size();
       kick.current();
     };
-    const ready = (a) => {
-      api.current = a;
-      if (outer) outer.current = a;
-      if (import.meta.env.DEV) window.__ME__ = { ...window.__ME__, map: a }; // for the browser tests
+    // The sheet at once, in Georgia if Cinzel isn't in yet, and again in
+    // Cinzel when it is: a page waiting on a font shows nothing.
+    let fontIn = false;
+    const font = mapFont().then(() => {
+      fontIn = true;
+    });
+    const paint = () => {
+      if (dead || !flatCanvas.current) return;
+      const sheet = paintMap(1024);
+      if (flat) flat.repaint(sheet);
+      else {
+        flat = createFlat(flatCanvas.current, sheet);
+        if (!shown) publish();
+        setPainted(true);
+      }
       fit();
-      setOn(true);
     };
-    const flat = async () => {
-      // no graphics chip: the sheet itself, drawn flat
-      const { mapFont, paintMap } = await import('./mapPaint');
-      await mapFont();
-      if (dead || !canvas.current) return;
-      canvas.current.dataset.flat = 'true';
-      ready(createFlat(canvas.current, paintMap(2048)));
+    Promise.race([font, new Promise((r) => setTimeout(r, 0))])
+      .then(() => {
+        paint();
+        if (!fontIn) return font.then(paint);
+      })
+      .catch(() => {});
+    // the WebGL map gone (its context lost): the flat sheet takes over again
+    const lose = () => {
+      shown = false;
+      flying = false;
+      publish();
+      setOn(false);
+      fit();
     };
     if (gl) {
       import('./MapBackdrop3D')
-        .then(async ({ createMapBackdrop, mapFont }) => {
-          await mapFont();
+        .then(async ({ createMapBackdrop }) => {
+          await font;
           // only now, and only if still wanted: a canvas has one context to give
-          if (dead || !canvas.current) return;
-          const a = createMapBackdrop(canvas.current, { onLost: () => setOn(false) });
-          // its shaders link in the background (the page's own map meanwhile),
+          if (dead || !glCanvas.current) return;
+          const a = createMapBackdrop(glCanvas.current, { onLost: () => !dead && lose() });
+          // its shaders link in the background (the flat sheet meanwhile),
           // so its first frame doesn't stop the page
           await settle(a.ready);
           if (dead || a.lost) return a.dispose();
-          ready(a);
+          deep = a;
+          fit();
         })
-        .catch(() => !dead && setOn(false));
-    } else flat().catch(() => {});
+        .catch(() => {});
+    }
     // anything the visitor does to the map wakes the loop
     const onMove = () => kick.current();
     window.addEventListener('pointermove', onMove, { passive: true });
@@ -204,7 +279,8 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('resize', fit);
       document.removeEventListener('visibilitychange', kick.current);
-      api.current?.dispose();
+      flat?.dispose();
+      deep?.dispose();
       api.current = null;
       if (outer) outer.current = null;
     };
@@ -217,28 +293,42 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
     kick.current();
   }, [spot, zoom, hover, mordor, dark, hub, opening]);
 
-  // the opening: hold on the map, then let the page in
+  // The map is up for the opening: the WebGL map's first frame, or without
+  // a graphics chip the flat sheet. In WebGL the camera flies down the road
+  // and the opening lasts the flight; otherwise it holds on the map.
+  const up = gl ? on : painted;
+  const still = prefersReducedMotion();
+  const flies = gl && !still;
+  const hold = flies ? FLIGHT_MS : still ? HOLD_STILL : HOLD;
+  // the title's timings: over the flight, its own; on a held map, in as the
+  // old 3 s opening had it (at once for less motion), out as the hold ends
+  const title = flies ? TITLE : { inMs: still ? 0 : 660, outMs: hold };
+
+  // the opening: on the map, then let the page in
   useEffect(() => {
     if (!opening) return undefined;
     const end = () => {
+      landed.current = true;
+      api.current?.flight?.(null);
       opened();
       done.current?.();
     };
     // if the map hasn't come up in a moment, don't keep the page waiting for it
-    const timer = setTimeout(end, on ? HOLD : 1800);
+    const timer = setTimeout(end, up ? hold : 1800);
     const skip = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
     skip.forEach((e) => window.addEventListener(e, end, { passive: true, once: true }));
     return () => {
       clearTimeout(timer);
       skip.forEach((e) => window.removeEventListener(e, end));
     };
-  }, [opening, on]);
+  }, [opening, up, hold]);
 
   return (
-    <div className="me-atlas" data-on={on || undefined} data-hub={hub || undefined} data-opening={(opening && on) || undefined} aria-hidden="true">
-      <canvas ref={canvas} />
-      {opening && on && (
-        <div className="me-atlas-title">
+    <div className="me-atlas" data-hub={hub || undefined} data-opening={(opening && up) || undefined} aria-hidden="true">
+      <canvas ref={flatCanvas} data-layer="flat" />
+      {gl && <canvas ref={glCanvas} data-layer="gl" data-on={on || undefined} />}
+      {opening && up && (
+        <div className="me-atlas-title" style={{ '--me-title-in': `${title.inMs}ms`, '--me-title-out': `${title.outMs}ms` }}>
           <p>The Third Age</p>
           <strong>Middle-earth</strong>
           <span>A map, a road, and a ring</span>

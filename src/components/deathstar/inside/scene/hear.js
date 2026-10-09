@@ -12,10 +12,10 @@ import { createImpacts } from '../../../../lib/impact';
 
 // a hit on you: full at HURT.full damage (the DL-44's knock-down and over),
 // and never quieter than `least`, so even a graze is heard
-export const HURT = { full: 40, least: 0.25 };
+export const HURT = { from: 0, full: 40, least: 0.25 };
 // (no gap: the rules emit one hurt a hit; the pitch kept steady, so the
 // answer is the same for the same hit)
-const hurtLaw = createImpacts({ threshold: 0, full: HURT.full, gap: 0, random: () => 0.5, now: () => 0 });
+const hurtLaw = createImpacts({ threshold: HURT.from, full: HURT.full, gap: 0, random: () => 0.5, now: () => 0 });
 
 const DOOR_EAR = 1.2; // metres up a door’s middle is heard from
 const UP = new Set(['alert', 'lockdown', 'hunt']);
