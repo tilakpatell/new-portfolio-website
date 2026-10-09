@@ -146,8 +146,8 @@ const LEAVES = {
   shire: { colours: ['#a39c34', '#d8a83c', '#b4622c'], density: 0.55, size: 0.28, shed: 0.7 },
   forest: { colours: ['#8a4a2e', '#d8762e', '#c9a23a'], density: 0.9, size: 0.28, shed: 2, crown: { lit: [1.06, 1.02, 0.88], shade: [0.86, 0.92, 0.98], depth: 0.28 } },
   lorien: { colours: ['#b8862a', '#f2cf55', '#e8b04a'], density: 0.9, size: 0.28, shed: 2.5, crown: { lit: [1.12, 1.05, 0.8], shade: [0.9, 0.92, 0.9], depth: 0.22 } },
-  lawn: { colours: ['#6b8a2a', '#a9b53a', '#c08a2e'], density: 0.2, size: 0.24, shed: 0.4 },
-  earth: { colours: ['#6f9a30', '#b9b844', '#c47a2c'], density: 0.25, size: 0.24, shed: 0.5 },
+  lawn: { colours: ['#a3a23a', '#c9b544', '#c08a2e'], density: 0.2, size: 0.24, shed: 0.4 },
+  earth: { colours: ['#a6a83c', '#cdb84a', '#c47a2c'], density: 0.25, size: 0.24, shed: 0.5 },
   dusk: { colours: ['#c2582a', '#f0a04c', '#f2c25a'], density: 0.2, size: 0.22, shed: 0.5, crown: { lit: [1.12, 0.98, 0.84], shade: [0.86, 0.86, 0.98], depth: 0.22 } },
 };
 
