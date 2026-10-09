@@ -731,6 +731,8 @@ export async function createMusicWorld(el, { onLost } = {}) {
     render,
     prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     resize: fitTo,
+    // behind ?debug: the stage's bloom and what the page adds (the walk's numbers)
+    tune: (groups = []) => stage.tune(groups),
     dispose: () => {
       ground?.dispose();
       ghosts.dispose();

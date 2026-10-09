@@ -9,7 +9,10 @@ import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { PORTAL, newFoes, portalOpen, spawnFoes, standing, startInvasion, stepFoes } from './foes';
-import { FLY, newHero, stepHero } from './flight';
+import { FLY, jumpPress, newHero, onWater, stepHero } from './flight';
+import { createHits } from './hits';
+import { impactGroups } from '../../../lib/impact';
+import { pressGroups } from '../../../lib/press';
 import { getawayAt, newGetaway, stepGetaway, stopGetaway } from './getaway';
 import { CALLS, RINGS_DONE } from './lines';
 import { RADIO, feedMission, keepStory, loadStory, markerOf, missionOf, newRadio, nextRadioCall, nextStory, placeOf as missionPlace, startMission as beginMission, stepOf } from './missions';
@@ -32,6 +35,12 @@ import { throttled } from '../../worlds/loadingSteps';
 // the places as cards.
 
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
+// a hit's sound at the hit law's gain and pitch (./hits.js); none within its gap
+const hits = createHits();
+const sfxHit = (name, key, force) => {
+  const voice = hits.voice(key, force);
+  if (voice) import('../../../lib/sfx').then((s) => s.play(name, voice)).catch(() => null);
+};
 const sound = (name, ...args) => import('./sounds').then((m) => m[name]?.(...args)).catch(() => null);
 const AT = 'tp-inv-world-at';
 const TIME = 'tp-inv-world-time';
@@ -184,7 +193,7 @@ function World({ gl, setGl, thinkMark }) {
   if (!sim.current) {
     // (he's put on the lawn for now: where he really starts waits on the
     // world, which the scene makes, and nothing moves before it's there)
-    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, mission: null, story: keptStory(), getaway: null, wave: null, swing: null, marker: null, gates: null, photo: null, hangarHp: 100, radio: newRadio(), call: null, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
+    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, mission: null, story: keptStory(), getaway: null, wave: null, swing: null, marker: null, gates: null, photo: null, hangarHp: 100, radio: newRadio(), call: null, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, press: jumpPress(), free: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
   }
 
   // (`who`, for a line someone says: in their own voice where it's been made;
@@ -246,6 +255,8 @@ function World({ gl, setGl, thinkMark }) {
           return;
         }
         api.current = a;
+        // ?debug: the feel's numbers, the hits' law and the jump's press on the one panel
+        a.tune([...impactGroups(hits.rules), ...pressGroups(sim.current.press)]);
         // (once: a scene made again, by a hot reload, takes over where he is)
         if (!sim.current.world) placeHero(sim.current, a.world);
         sim.current.world = a.world;
@@ -570,7 +581,11 @@ function World({ gl, setGl, thinkMark }) {
       } else if (e.code === 'KeyT') cycleTime();
       // (H was the world's own list of keys: it's the site's guide now, which ? opens too)
       else if (e.code === 'KeyH') toggleGuide();
-      else if (e.code === 'KeyR' && !e.repeat) take();
+      else if (e.code === 'KeyR' && !e.repeat) {
+        // a call to take first; else, hanging at the water, let go of it
+        if (s.call && !s.mission) take();
+        else if (onWater(s.h, s.world)) s.free = true;
+      }
       else if (e.code === 'KeyQ' && !e.repeat) {
         // a mission called off: asked first, on its card
         if (cardRef.current?.kind === 'abandon') abandon();
@@ -640,7 +655,9 @@ function World({ gl, setGl, thinkMark }) {
     const s = sim.current;
     if (!a || a.lost || !s.world) return;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a hitstop: the scene's feel slows the game a moment on a punch that lands)
+    const real = Math.min(0.05, ms / 1000) * fast;
+    const dt = real * a.timeScale(real);
     s.t += dt;
     const k = s.keys;
     const pad = readPad();
@@ -677,7 +694,9 @@ function World({ gl, setGl, thinkMark }) {
     if (pressed('y')) act();
     if (pressed('start')) cycleTime();
     const look = [Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), Math.cos(s.yaw) * Math.cos(s.pitch)];
-    let input = { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look };
+    // the jump through its press (./flight.js): a moment early or late still goes
+    if (s.jump) s.press.press();
+    let input = { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look, press: s.press, free: s.free };
     if (s.intro) {
       // the drop: straight down, flat out, the camera above him, until the ground stops him
       input = { fwd: 0, side: 0, up: 0, down: 1, boost: true, run: false, jump: false, look };
@@ -687,6 +706,7 @@ function World({ gl, setGl, thinkMark }) {
     }
     s.h = s.h.zone === 'space' ? stepSpace(s.h, input, dt) : stepHero(s.h, input, dt, s.world);
     s.jump = false;
+    s.free = false;
     // up through the top of the sky, or back down into it: the other world takes over
     if (s.h.ev.some((e) => e.type === 'exit')) {
       for (const e of s.h.ev) s.events.push(e);
@@ -779,7 +799,7 @@ function World({ gl, setGl, thinkMark }) {
           s.punchT = 0.25;
           sfx('zip');
         } else if (e.type === 'ko') {
-          sfx('blast');
+          sfxHit('blast', 'ko', hits.foeForce(e.kind));
           feed({ type: 'ko', kind: e.kind ?? 'flaxan' });
         } else if (e.type === 'swing' && s.mission && Math.hypot(e.at[0] - HANGAR[0], e.at[2] - HANGAR[2]) < 32) {
           // a Mauler's swing by the hangar: the hangar takes it (the last-but-one episode)
@@ -792,7 +812,7 @@ function World({ gl, setGl, thinkMark }) {
           s.missionFaller = true;
           sfx('warn');
           say('A student, on the roof’s edge. Get under them.', 3200);
-        } else if (e.type === 'hit') sfx('thunk');
+        } else if (e.type === 'hit') sfxHit('thunk', 'foe', hits.foeForce(e.kind));
         else if (e.type === 'bolt' || e.type === 'blast') sfx('laser');
         else if (e.type === 'hurt') sfx('hit');
         else if (e.type === 'spawn') sfx('pop');
@@ -841,9 +861,9 @@ function World({ gl, setGl, thinkMark }) {
           say('The sound barrier. Keep going.');
         }
       } else if (e.type === 'slam') {
-        sfx(e.speed > 80 ? 'crumble' : 'thunk');
+        sfxHit(e.speed > 80 ? 'crumble' : 'thunk', 'slam', e.speed);
         if (e.speed > 80) sfx('boom');
-      } else if (e.type === 'impact') sfx('crumble');
+      } else if (e.type === 'impact') sfxHit('crumble', 'impact', e.speed);
       else if (e.type === 'takeoff') sfx('zip');
       else if (e.type === 'splash') {
         // a slam's sound, lighter (water gives): spray, and a thud under it
@@ -851,10 +871,10 @@ function World({ gl, setGl, thinkMark }) {
         if (s.t - (s.splashAt ?? -1) >= 0.4) {
           s.splashAt = s.t;
           sound('splashSound', e.speed);
-          if (e.speed > 80) sfx('thunk');
+          if (e.speed > 80) sfxHit('thunk', 'splash', e.speed);
         }
       } else if (e.type === 'land') {
-        sfx(e.speed > 300 ? 'crumble' : 'thunk');
+        sfxHit(e.speed > 300 ? 'crumble' : 'thunk', 'land', e.speed);
         // on the Moon, or Mars (./orbit.js names which; a soft landing in the city names none)
         if (e.body) {
           unlock(e.body === 'moon' ? 'moonwalk' : 'redplanet');

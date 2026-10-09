@@ -50,6 +50,7 @@
 
 import { seeded } from '../../../../lib/seeded';
 import { createAlarm, levelOf, lockdowns, raise, stepAlarm } from './alarm';
+import { stepBreach } from './breach';
 import { addPerson, createCrew, stepCrew } from './brains';
 import { createCombat, fire } from './combat';
 import { doubtStep, disguised, FRESH } from './disguise';
@@ -463,7 +464,8 @@ export function step(g, input = {}, dt = STEP) {
 
   // you, standing still while a talk is open
   const was = { x: you.x, z: you.z, room: you.room };
-  const walk = g.talk ? {} : { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch };
+  // (holding your father up, you walk)
+  const walk = g.talk ? {} : plot.held(g, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch });
   for (const e of stepBody(you, walk, dt, { layout, open, solids: g.solidsOf(you.room) })) {
     g.events.push(e);
     if (e.type === 'room') g.seen.add(e.to);
@@ -474,7 +476,7 @@ export function step(g, input = {}, dt = STEP) {
 
   // the crew
   const stims = [];
-  if (input.run && moved > 0.05) stims.push({ type: 'steps', at: pos(you), from: 'you' });
+  if (walk.run && moved > 0.05) stims.push({ type: 'steps', at: pos(you), from: 'you' });
   if (input.roar) roar(g, stims);
   if (input.alt) force(g, input, stims);
   let watched = null;
@@ -495,7 +497,10 @@ export function step(g, input = {}, dt = STEP) {
     }
   }
 
+  plot.holdUp(g, moved);
   battle.stepBattle(g, dt, open, { guard: Boolean(you.blade && input.aim) });
+  const quake = stepBreach(g, dt);
+  if (quake) g.events.push(quake);
 
   for (const e of stepAlarm(g.alarm, dt, g.time)) {
     if (e.type === 'intercom') g.events.push({ type: 'say', who: 'intercom', name: 'Intercom', text: e.text, key: e.key });

@@ -21,9 +21,24 @@
 // message from an older epoch is ignored, one from a newer starts this
 // pilot's over too.
 //
-// createSiege() → { state(now), strike(part, punch, heavy, now) → event or
-//   null, receive(peer, msg, now) → [events], tick(now) → event or null,
-//   message() → the wire form, active, forget(peer) }
+// A pilot's shares are known by the siege id they tell (`i`: the page's,
+// kept in their save with their shares, as the galaxy's war and battle keep
+// theirs), or by their peer id if they tell none (an older client). A
+// reload, under the same peer id now that a pilot's key lasts, brings the
+// save back: the same id and the same shares, told again, so the hits after
+// it count on top of those before, not under them. A save lasts RESPAWN_MS
+// and a siege as long as it's hit, so a pilot can be back, under the same
+// peer id, with a new siege id: what a peer tells under each id it comes to
+// speak for counts (they're different hits; and a peer's totals are taken
+// as told anyway, so more ids gain them nothing). A word under your own id
+// (another tab of yours) is yours already: only its totals count.
+//
+// createSiege({ id }) → { id, state(now), strike(part, punch, heavy, now) →
+//   event or null, receive(peer, msg, now) → [events], tick(now) → event or
+//   null, message() → the wire form, active, save(now) → what to keep,
+//   load(saved, now) (before anything's struck: a save older than
+//   RESPAWN_MS, or one that tells no id, is nothing),
+//   forget(peer) }
 // readSiege(data, now) → a message, or null if it's not one.
 // citadelGeometry(w) → where its parts are, in map units.
 // blastShape(age, core) → how big each part of the blast is `age` seconds
@@ -44,8 +59,11 @@ const SKEW = 60 * 1000; // ms either way a pilot's clock may be from this one's
 
 const zero = () => Array(PARTS).fill(0);
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
+const ID = /^[a-z0-9]{8,32}$/; // a siege id (tally.js's shape)
+const isId = (s) => typeof s === 'string' && ID.test(s);
 
-// a message as it came in: { e, m: [shares], t: [totals], x: when it went up (ms) or 0, l: the last hit (ms) or 0 }
+// a message as it came in: { e, m: [shares], t: [totals], x: when it went
+// up (ms) or 0, l: the last hit (ms) or 0, i?: the pilot's siege id }
 export function readSiege(data, now = Date.now()) {
   if (!data || typeof data !== 'object') return null;
   const e = num(data.e, 0, Number.MAX_SAFE_INTEGER);
@@ -60,13 +78,17 @@ export function readSiege(data, now = Date.now()) {
     // (a time from the future, or long before anything here could matter, isn't believed)
     return ms !== null && ms <= now + SKEW && ms >= now - RESPAWN_MS - REPAIR_MS - SKEW ? ms : 0;
   };
-  return { e, m, t, x: time(data.x), l: time(data.l) };
+  const msg = { e, m, t, x: time(data.x), l: time(data.l) };
+  if (data.i === undefined) return msg;
+  return isId(data.i) ? { ...msg, i: data.i } : null;
 }
 
-export function createSiege() {
+export function createSiege({ id = null } = {}) {
+  let me = isId(id) ? id : null; // the siege id you tell (a save taken back brings its own)
   let epoch = 0;
   let mine = zero();
-  let others = new Map(); // peer → their shares
+  let others = new Map(); // pilot (`i:` their siege id, or `p:` their peer id) → their shares
+  const speaks = new Map(); // peer → the pilot they last spoke for (to forget)
   let floor = zero();
   let downAt = 0;
   let lastAt = 0;
@@ -75,6 +97,7 @@ export function createSiege() {
     epoch = e;
     mine = zero();
     others = new Map();
+    speaks.clear();
     floor = zero();
     downAt = 0;
     lastAt = 0;
@@ -103,10 +126,15 @@ export function createSiege() {
     if (p.down && !was.down) out.push({ type: 'down', at: downAt, rebuildIn: Math.max(0, downAt + RESPAWN_MS - now) });
     return out;
   };
+  // your word on it: your shares, the totals you know, when it went up, the last hit, and your id
+  const word = () => ({ e: epoch, m: [...mine], t: Array.from({ length: PARTS }, (_, i) => total(i)), x: downAt, l: lastAt, ...(me ? { i: me } : {}) });
 
   return {
     get epoch() {
       return epoch;
+    },
+    get id() {
+      return me;
     },
     // anything to tell (pristine, there's nothing)
     get active() {
@@ -152,13 +180,18 @@ export function createSiege() {
     // a message from another pilot (read with readSiege) → what it changed
     receive(peer, msg, now = Date.now()) {
       if (!msg || msg.e < epoch || msg.e > epoch + EPOCH_JUMP) return [];
+      // whose shares (the id they tell, or the peer), and none to take if they're yours
+      const who = msg.i ? `i:${msg.i}` : `p:${peer}`;
       const was = picture();
       if (msg.e > epoch) fresh(msg.e);
-      const had = others.get(peer) ?? zero();
-      others.set(
-        peer,
-        had.map((v, i) => Math.max(v, msg.m[i])),
-      );
+      speaks.set(peer, who);
+      if (!(me && msg.i === me)) {
+        const had = others.get(who) ?? zero();
+        others.set(
+          who,
+          had.map((v, i) => Math.max(v, msg.m[i])),
+        );
+      }
       floor = floor.map((v, i) => Math.max(v, msg.t[i]));
       if (msg.x) downAt = downAt ? Math.min(downAt, msg.x) : msg.x;
       else if (!downAt && total(CORE) >= CORE_HP && gensLeft() === 0) downAt = now;
@@ -177,15 +210,32 @@ export function createSiege() {
       }
       return null;
     },
-    message() {
-      return { e: epoch, m: [...mine], t: Array.from({ length: PARTS }, (_, i) => total(i)), x: downAt, l: lastAt };
+    message: () => word(),
+    // what to keep for a reload: the word as it would go out, and when
+    save: (now = Date.now()) => ({ ...word(), at: now }),
+    // a save taken back (before anything's struck): its id, its epoch, your
+    // shares and the totals it knew, unless it's older than RESPAWN_MS (or
+    // tells no id: shares under another id than they were told would count twice)
+    load(saved, now = Date.now()) {
+      const at = num(saved?.at, 0, Number.MAX_SAFE_INTEGER);
+      if (at === null || at > now + SKEW || now - at > RESPAWN_MS) return;
+      const back = readSiege(saved, now);
+      if (!back?.i) return;
+      fresh(back.e);
+      me = back.i;
+      mine = back.m.slice();
+      floor = back.t.slice();
+      downAt = back.x;
+      lastAt = back.l;
     },
     // a pilot gone: their share stays in the floor (it was in a total)
     forget(peer) {
-      const s = others.get(peer);
+      const who = speaks.get(peer) ?? `p:${peer}`;
+      speaks.delete(peer);
+      const s = others.get(who);
       if (!s) return;
       for (let i = 0; i < PARTS; i++) floor[i] = Math.max(floor[i], total(i));
-      others.delete(peer);
+      others.delete(who);
     },
   };
 }

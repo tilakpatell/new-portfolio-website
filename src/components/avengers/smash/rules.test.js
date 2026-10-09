@@ -338,3 +338,54 @@ describe('Smash Run: the run', () => {
     expect(g.obstacles.every((o) => !o.broken)).toBe(true);
   });
 });
+
+describe('Smash Run: a press that lands (lib/press.js)', () => {
+  const DT = 1 / 120;
+  const go = () => {
+    const g = newRun({ seed: 3 });
+    startRun(g);
+    g.obstacles = [];
+    g.chariots = [];
+    g.built = 1e9; // nothing in his way
+    return g;
+  };
+  const steps = (g, secs) => {
+    const ev = [];
+    for (let t = 0; t < secs - 1e-9; t += DT) ev.push(...stepRun(g, DT));
+    return ev;
+  };
+  it('a smash pressed just before he lands from a leap swings as he lands', () => {
+    const g = go();
+    expect(leap(g)).toBe(true);
+    steps(g, RUN.leapTime - 0.08);
+    expect(smash(g)).toBe(false); // still in the air
+    const ev = steps(g, 0.2);
+    expect(ev.filter((e) => e.type === 'swing')).toHaveLength(1);
+  });
+  it('one pressed long before is dropped, as it was', () => {
+    const g = go();
+    leap(g);
+    steps(g, 0.05);
+    smash(g);
+    const ev = steps(g, RUN.leapTime + 0.3);
+    expect(ev.filter((e) => e.type === 'swing')).toHaveLength(0);
+  });
+  it('a leap pressed at the end of a swing leaps as it ends', () => {
+    // how long a swing keeps him from leaping
+    const g = go();
+    expect(smash(g)).toBe(true);
+    let t = 0;
+    while (g.hulk.smash >= 0 && t < 2) {
+      stepRun(g, DT);
+      t += DT;
+    }
+    expect(t).toBeGreaterThan(0.1);
+    // again, pressing 0.08 s before the swing would end
+    const g2 = go();
+    smash(g2);
+    steps(g2, t - 0.08);
+    expect(leap(g2)).toBe(false);
+    const ev = steps(g2, 0.2);
+    expect(ev.filter((e) => e.type === 'leap')).toHaveLength(1);
+  });
+});

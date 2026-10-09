@@ -24,6 +24,7 @@ import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { instanced } from '../hq/kit/instanced';
 import { logoTexture, scatter, trees } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
+import { createFeel, feelGroups } from '../hq/feel';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
 import { buildShield } from '../ricochet/models';
 import { buildCape, buildMjolnir, buildPortal, craterTexture } from '../lawn/models';
@@ -1471,6 +1472,10 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // ── the camera ──
   const A = { at: new THREE.Vector3(), look: new THREE.Vector3(), hx: 0, hz: 0, intro: calm ? 0 : 1, gait: 0, landed: 1, flash: 0, started: false, aim: null, aimN: 0, aimed: false, perch: null, hand: new THREE.Vector3(), dist: 0, fov: 52, punch: 0, floor: 0, ly: 0, arc: 0, lx: 0, lz: 0, bank: 0 };
   const swing = createSwing(scene, { calm });
+  // the fov's punch through the house's feel (lib/three/feel.js): eased out
+  // by its τ, and none under reduced motion; its numbers on ?debug
+  const feel = createFeel({ calm, baseFov: 52 });
+  engine.tune(feelGroups(feel), 'compound');
   const flags = createFlags(scene);
   const rings = createRings(scene);
   const packs = createPacks(scene);
@@ -1855,6 +1860,12 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     // further back the faster he goes, and wider
     A.dist += ((flying ? Math.min(4.5, speed * 0.11) : h.mode === 'wall' ? 2.2 : 0) - A.dist) * damp(2.5);
     const dist = (s.camDist ?? 7.5) + A.dist;
+    // (a punch the events asked for goes to the feel, at the settings' shake:
+    // up to it, as the max it was, not added on)
+    if (A.punch > 0) {
+      feel.punch(Math.max(0, A.punch * (s.shake ?? 1) - feel.state().fov));
+      A.punch = 0;
+    }
     const fov = 52 + (flying ? Math.min(13, Math.max(0, speed - 11) * 0.45) : 0) + A.punch * (s.shake ?? 1);
     A.fov += (fov - A.fov) * damp(4);
     A.punch = Math.max(0, A.punch - dt * 9);
@@ -1862,6 +1873,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       camera.fov = A.fov;
       camera.updateProjectionMatrix();
     }
+    feel.setBaseFov(A.fov);
+    feel.update(dt, camera);
     // a little over his head, so the buildings and the sky get the screen, not
     // the grass: his own height, but only some of a hop's (it would bob the view)
     if (h.mode === 'ground') A.floor = h.y;
