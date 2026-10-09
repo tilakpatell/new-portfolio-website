@@ -64,11 +64,11 @@ export default function SurfaceView({ system = null, site = null, mission = null
       if (e.key.toLowerCase() !== 'l' || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
-      view.current?.input?.lockOn?.();
+      (rt?.current?.module === surfaceModule ? rt.current.world.scene : null)?.input?.lockOn?.();
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [on]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [on, rt]);
 
   // the stick: where the thumb is from where it came down
   const stick = useRef({ id: null, x: 0, y: 0 });
