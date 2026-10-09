@@ -325,6 +325,54 @@ describe('createClient', () => {
     expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(1);
   });
 
+  it('a hit is not sent at a squadmate, nor taken from one', async () => {
+    const { a, b, seen, tick } = await pair();
+    const hits = () => seen.b.filter((e) => e.type === 'hit');
+    lineUp(a, b);
+    a.setSquad(['B']);
+    a.hit('B');
+    expect(hits()).toHaveLength(0);
+    // one who doesn't know you're squadmates: their hit doesn't count with you
+    a.setSquad([]);
+    b.setSquad(['A']);
+    tick(300);
+    a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0]);
+    a.hit('B');
+    expect(hits()).toHaveLength(0);
+    // out of the squad, it's a hit again
+    b.setSquad([]);
+    tick(300);
+    a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0]);
+    a.hit('B');
+    expect(hits()).toHaveLength(1);
+  });
+
+  it('an invite arrives once and a refusal holds 60 s', async () => {
+    const { a, b, bus, seen, tick } = await pair({ three: true });
+    const SID = 'BCDFGHJKLMNP';
+    const invites = (who) => seen[who].filter((e) => e.type === 'invite');
+    a.invite('B', SID);
+    expect(invites('b')).toEqual([{ type: 'invite', from: 'A', sid: SID }]);
+    expect(invites('c')).toEqual([]); // (to them alone)
+    // the same again: once is enough
+    tick(6000);
+    a.invite('B', SID);
+    expect(invites('b')).toHaveLength(1);
+    // turned down: not again for a minute
+    b.declineInvite('A');
+    tick(6000);
+    a.invite('B', SID);
+    expect(invites('b')).toHaveLength(1);
+    tick(55000);
+    a.invite('B', SID);
+    expect(invites('b')).toHaveLength(2);
+    // junk is no invite, from a client or anyone else
+    tick(6000);
+    a.invite('B', 'nope');
+    bus.room('X').makeAction('inv').send({ s: 'AEIOUAEIOUAE' }, { target: 'B' });
+    expect(invites('b')).toHaveLength(2);
+  });
+
   it('a heavy round hits harder, and its shot carries the weapon', async () => {
     const { a, b, seen } = await pair();
     b.pose(ship(0));

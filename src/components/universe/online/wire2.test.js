@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { readPoint, writePoint } from './wire2';
+import { CLIENT_RATES, RATES2, readInvite, readPoint, writePoint } from './wire2';
+import { RATES } from './protocol';
+
+describe('the site’s new words', () => {
+  it('have rates of their own, beside the old ones', () => {
+    expect(RATES2).toEqual({ inv: [0.2, 2], say: [0.5, 3], qc: [1, 3] });
+    expect(CLIENT_RATES).toEqual({ ...RATES, ...RATES2 });
+  });
+
+  it('an invite carries a squad’s sid, and junk is none', () => {
+    expect(readInvite({ s: 'BCDFGHJKLMNP' })).toEqual({ sid: 'BCDFGHJKLMNP' });
+    for (const junk of [null, undefined, 'BCDFGHJKLMNP', [], {}, { s: 'AEIOUAEIOUAE' }, { s: 42 }, { s: 'BCDFGHJKLMNPQ' }]) expect(readInvite(junk)).toBeNull();
+  });
+});
 
 describe('a point on the map, as it goes over the wire', () => {
   it('round-trips, rounded as a pose is', () => {

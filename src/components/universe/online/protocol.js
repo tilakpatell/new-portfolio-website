@@ -7,7 +7,7 @@
 // (and only ever set as text), numbers are checked and clamped, each pilot
 // may send only so much of each kind of message (createLimiter: past that
 // it's dropped, and a flood gets them muted), and a hit is believed only
-// from someone who isn't an ally, fired a shot that would have passed near
+// from someone who isn't an ally (or a squadmate), fired a shot that would have passed near
 // you a moment ago (aimedAt), was close enough, and isn't hitting faster
 // than the guns fire. The hunters after a pilot are theirs to fly: what they
 // say of them is only drawn, and a hit on one of yours by someone else is
@@ -464,11 +464,11 @@ export function aimedAt(shots, me, now) {
 }
 
 // Should a hit from this pilot count? `peer` is what's known of them: { ally,
-// blocked, shots (their last few, as they came in), hitAt (ms, their last
-// hit that counted), pose (where they were) }; `me` is where you are (or
-// null, not flying); `now` in ms.
+// squad (a squadmate's are an ally's), blocked, shots (their last few, as
+// they came in), hitAt (ms, their last hit that counted), pose (where they
+// were) }; `me` is where you are (or null, not flying); `now` in ms.
 export function hitCounts(peer, me, now) {
-  if (!peer || !me || peer.blocked || peer.ally === 'ally') return false;
+  if (!peer || !me || peer.blocked || peer.ally === 'ally' || peer.squad) return false;
   if (!aimedAt(peer.shots, me, now)) return false;
   if (now - (peer.hitAt ?? -Infinity) < GUARD.gap) return false;
   const p = peer.pose;

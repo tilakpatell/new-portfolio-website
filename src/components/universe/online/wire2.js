@@ -3,13 +3,28 @@
 // peer sent, untrusted, and giving back what may be believed, or null for
 // junk. Tested in Node (wire2.test.js).
 //
+// In the site's room (client.js), beside protocol.js's words, with rates of
+// their own (RATES2: [a second, at most at once], merged into the client's
+// limiter as CLIENT_RATES):
+//   inv  { s: sid }        to one pilot: come and fly with my squad (invite.js's sid)
+//
 // A point on the map goes as a pose's place does (protocol.js's writePose
 // and readPose: the same rounding and the same clamps, and out in the
 // Expanse x and z from its sector's middle, with the sector): [x, y, z,
 // sector?]. writePoint({ x, y, z }) → that; readPoint(data) → { x, y, z,
 // sec? } or null.
 
-import { readPose, writePose } from './protocol';
+import { RATES, readPose, writePose } from './protocol';
+import { cleanSid } from './squad/invite';
+
+export const RATES2 = { inv: [0.2, 2], say: [0.5, 3], qc: [1, 3] };
+export const CLIENT_RATES = { ...RATES, ...RATES2 };
+
+// an invite as it came in: { sid }, or null
+export function readInvite(data) {
+  const sid = data && typeof data === 'object' ? cleanSid(data.s) : null;
+  return sid ? { sid } : null;
+}
 
 export function writePoint({ x, y, z }) {
   const w = writePose({ x, y, z });
