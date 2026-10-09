@@ -66,6 +66,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { capturePointer } from '../../lib/pointer';
+import { createFeel, feelGroups } from '../../lib/three/feel';
+import { HITSTOP, MAP_FEEL, atLeast, deadZone, knockForce } from './mapFeel';
 import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
@@ -209,6 +211,10 @@ function takeOff(sys) {
 export async function create(canvas, ctx) {
   const { reduced, rt } = ctx;
   let props = ctx;
+  // the feel: the shake (trauma², held still under reduced motion) and the
+  // hitstop on a kill and a crash (mapFeel.js)
+  const feel = createFeel({ calm: reduced, offset: MAP_FEEL.offset });
+  feel.set({ decay: MAP_FEEL.decay });
   let disposed = false;
   // the runtime's renderer: shared with whatever world comes next, so what's
   // changed on it here goes back as it was at dispose
@@ -842,7 +848,9 @@ export async function create(canvas, ctx) {
     climb += state.climbBtn;
     const st = state.stick;
     if (st?.on) {
-      const d = stickInput(st.dx, st.dy, c, st.pointer);
+      // (a tenth of the throw is no drag: a thumb at rest on the glass doesn't drift the nose)
+      const [ddx, ddy] = deadZone(st.dx, st.dy, STICK / (c.drag || 1));
+      const d = stickInput(ddx, ddy, c, st.pointer);
       throttle += d.throttle;
       turn += d.turn;
       climb += d.climb;
@@ -928,6 +936,7 @@ export async function create(canvas, ctx) {
       if (src === 'hunters') pay(hunterEarn(FACTIONS, hit));
       state.heat += 1;
       if (!reduced) state.shake = Math.max(state.shake, 0.2);
+      if (!by) feel.hitstop(HITSTOP.kill);
     }
     return hit;
   };
@@ -955,6 +964,7 @@ export async function create(canvas, ctx) {
         emit({ type: 'kill', kind: ph.kind });
         if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
+        if (!by) feel.hitstop(HITSTOP.kill);
       }
     } else net?.hit(ph.id);
     return ph;
@@ -1001,6 +1011,7 @@ export async function create(canvas, ctx) {
       impact: false,
       back: false,
       planet: Boolean(solid?.planet),
+      speed: e.speed,
     };
     state.auto = null;
     engine?.set({ speed: 0, boost: false, on: false });
@@ -1053,7 +1064,8 @@ export async function create(canvas, ctx) {
       crashFx.hit({ point: c.point, normal: c.normal, body: body?.surface ?? null, radius: c.radius, colour: null });
       state.shake = reduced ? 0 : 1;
       state.flare = reduced ? 1 : 2;
-      if (!c.shot) emit({ type: 'crash', id: c.id });
+      feel.hitstop(HITSTOP.crash);
+      if (!c.shot) emit({ type: 'crash', id: c.id, force: knockForce({ type: 'crash', speed: c.speed }, SHIP.crash) });
       if (c.board) {
         c.through = true;
         props.onBoard?.(c.board);
@@ -1410,7 +1422,8 @@ export async function create(canvas, ctx) {
     }
     for (const e of events) {
       if (e.type === 'bump' && e.id === 'ds2-shield') state.world.shieldHit?.();
-      if (e.type !== 'crash') emit(e);
+      if (e.type === 'bump') emit({ ...e, force: knockForce(e, SHIP.crash) });
+      else if (e.type !== 'crash') emit(e);
       else if (!state.crash) startCrash(e);
     }
     if (state.crash) return true;
@@ -1835,6 +1848,7 @@ export async function create(canvas, ctx) {
         emit({ type: 'kill', kind: 'pilot' });
         pay('killPilot');
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
+        feel.hitstop(HITSTOP.kill);
       }
     }
     ctx.invalidate();
@@ -1888,7 +1902,8 @@ export async function create(canvas, ctx) {
       detail = wanted;
       state.world?.setDetail(detail);
     }
-    const dt = ms / 1000;
+    // (the frame as the game runs it: slowed through a hitstop)
+    const dt = feel.step(ms / 1000);
     const t = reduced ? 0 : (now - t0) / 1000;
     const wt = wall();
     if (!flying() && props.ship) setShip(props.ship);
@@ -1949,13 +1964,14 @@ export async function create(canvas, ctx) {
       tanHalf = Math.tan((fov * Math.PI) / 360);
     }
     if (state.kick > 0) state.kick = Math.max(0, state.kick - dt * 1.8);
-    if (state.shake > 0) {
-      const k = state.shake * state.shake * 0.09;
-      camera.position.x += Math.sin(now * 0.047) * k + Math.sin(now * 0.091) * k * 0.5;
-      camera.position.y += Math.sin(now * 0.061 + 1) * k;
-      camera.updateMatrixWorld();
-      state.shake = Math.max(0, state.shake - dt * 1.4);
-    }
+    // every shake asked for this frame, as the feel's trauma (held at least
+    // that: the map's shakes were a floor, held while a thing goes on)
+    if (state.shake > 0) atLeast(feel, state.shake);
+    state.shake = 0;
+    feel.setBaseFov(fov);
+    feel.update(dt, camera);
+    camera.updateMatrixWorld();
+    tanHalf = Math.tan((camera.fov * Math.PI) / 360);
     if (state.flare > 1) {
       state.flare = 1 + (state.flare - 1) * Math.exp(-dt * 2.5);
       if (state.flare < 1.01) state.flare = 1;
@@ -2395,6 +2411,8 @@ export async function create(canvas, ctx) {
     },
     // the war's battle here as warfront.js has it (WarHud.jsx, BattleEnd.jsx), or null
     warInfo: () => war?.info ?? null,
+    // the ?debug panel's groups: the feel's numbers (runtime/module.js)
+    tune: () => feelGroups(feel),
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);

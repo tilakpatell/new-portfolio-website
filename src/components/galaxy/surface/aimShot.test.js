@@ -53,4 +53,15 @@ describe('aimShot', () => {
     expect(lookFriction({ cam, dir: fwd, targets: [trooper(0, 20)], cone: ASSIST.mouse })).toBeLessThan(1);
     expect(lookFriction({ cam, dir: fwd, targets: [trooper(8, 20)], cone: ASSIST.mouse })).toBe(1);
   });
+
+  it('a touch tap snaps onto a trooper anywhere in the touch cone', () => {
+    // 0.19 rad off the ray (which starts level with the figure): the plain pull barely moves it
+    const t = trooper(Math.tan(0.19) * 20, 20);
+    const d = aimDir({ cam, dir: fwd, from: muzzle, targets: [t], world: flat, cone: ASSIST.touch });
+    const at = [muzzle.x + (d[0] * (20 - muzzle.z)) / d[2], 20];
+    expect(Math.abs(at[0] - t.holder.position.x)).toBeLessThan(0.5);
+    // (a mouse's cone doesn't reach it)
+    const m = aimDir({ cam, dir: fwd, from: muzzle, targets: [t], world: flat, cone: ASSIST.mouse });
+    expect(Math.abs(muzzle.x + (m[0] * (20 - muzzle.z)) / m[2] - t.holder.position.x)).toBeGreaterThan(2);
+  });
 });

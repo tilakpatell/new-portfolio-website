@@ -26,3 +26,16 @@ export const RIDES = {
   kaadu: { name: 'the kaadu', figure: 'kaadu', top: 9, boost: 14, accel: 7, brake: 12, turn: 2.2, hover: 0, bank: 0.08, radius: 0.8, grip: 1, seat: [0, 2.0, 0], cam: [6.5, 2.6] },
   bantha: { name: 'the bantha', figure: 'bantha', top: 4.5, boost: 7, accel: 3, brake: 6, turn: 1.1, hover: 0, bank: 0, radius: 1.6, grip: 1, seat: [0, 2.6, 0.65], cam: [9, 3.6] },
 };
+
+// The field widens with the ride's speed, so going fast reads as fast: the
+// share of FAST it's doing, squared (a bantha's plod barely moves it, a
+// speeder bike's boost opens it all the way), up to RIDE_FOV degrees over
+// the base. Held at the base under reduced motion, as every fov change is.
+export const RIDE_FOV = 10;
+export const FAST = 50; // m/s: the speeder bike's boost and the airspeeder's
+
+export function rideFov(base, speed, spec, { calm = false } = {}) {
+  if (calm || !spec) return base;
+  const k = Math.min(1, Math.abs(speed) / FAST);
+  return base + RIDE_FOV * k * k;
+}

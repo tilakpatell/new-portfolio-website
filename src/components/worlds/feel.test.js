@@ -33,9 +33,6 @@ function walk(at = '') {
 
 export const OWN_SHAKE = [
   { file: 'universe/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
-  { file: 'galaxy/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
-  { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
-  { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
 ];
 
 export const DEAD_HITSTOP = [
@@ -43,7 +40,6 @@ export const DEAD_HITSTOP = [
 
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
-  { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
 ];
