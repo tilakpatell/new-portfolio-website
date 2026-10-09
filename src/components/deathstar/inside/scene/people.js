@@ -100,8 +100,9 @@ const hashOf = (s) => {
 };
 
 // what a pose the rules name looks like, from the clip library: at attention, working a console,
-// talking with their hands, sat, kneeling
-const POSES = { attention: 'idle.calm', work: 'counter.idle', talk: 'talk', sit: 'sit.idle', kneel: 'kneel' };
+// talking with their hands, sat, kneeling, sat on the floor, lying there, limping along held up
+const LEAN = 0.14; // radians one held up leans in to whoever holds him
+const POSES = { attention: 'idle.calm', work: 'counter.idle', talk: 'talk', sit: 'sit.idle', kneel: 'kneel', ground: 'sit.ground', lie: 'lie', limp: 'walk.injured' };
 
 export function actOf(p, { blade = false, armed = true } = {}) {
   const raised = p.mode === 'fight' || p.mode === 'search' || p.anim === 'aim' || p.anim === 'shoot';
@@ -664,9 +665,13 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       if (fall && r.fallFor < FALL && (r.fallFor += dt) >= FALL) r.posed = false;
       return;
     }
-    const at = r.track.at(alpha);
+    // (a scene may carry someone where the rules don't: swung across the chasm)
+    const at = r.staged?.at ? { ...r.track.at(alpha), ...r.staged.at } : r.track.at(alpha);
     o.position.set(at.x, at.y, at.z);
     o.rotation.y = -(r.staged?.yaw ?? at.yaw);
+    // (one held up leans in to whoever holds him: rules/play/plot.js's holdUp)
+    if (p.held || r.leant) o.rotation.z = (p.held ?? 0) * LEAN;
+    r.leant = Boolean(p.held);
     // (a scene can take someone out of it: Ben, gone in the duel)
     if (r.staged?.hidden) o.visible = false;
     // faded while it stands between the camera and you, eased in and out
@@ -775,6 +780,8 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       if (r) {
         r.staged = now;
         staging.delete(id);
+        // (let go by a scene: whatever it played over them, they take up again what the rules have them doing)
+        if (!now) r.base = r.full = r.upper = undefined;
       } else if (now) staging.set(id, now);
       else staging.delete(id);
     },

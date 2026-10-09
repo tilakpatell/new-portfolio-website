@@ -351,7 +351,7 @@ function slice(p, input, h, world, events) {
   }
   const floor = world.floorAt(p.x, p.z, Math.max(p.y, p.y - p.vy * h), step);
   if (p.y <= floor) {
-    if (!p.grounded && p.fell > 0.15) events.push({ type: 'land', speed: -p.vy, force: -p.vy * (p.mode === 'vehicle' ? VEHICLE.mass : ROBOT.mass) });
+    if (!p.grounded && p.fell > 0.15) events.push({ type: 'land', speed: -p.vy, force: -p.vy * (p.mode === 'vehicle' ? VEHICLE.mass : ROBOT.mass), mode: p.mode });
     p.y = floor;
     p.vy = 0;
     p.grounded = true;
