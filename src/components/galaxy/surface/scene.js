@@ -358,6 +358,9 @@ export async function create(canvas, ctx) {
     // (how deep the water can be before you're turned back: the lagoon on Kashyyyk)
     wadeMax: wade != null ? site.water.wadeMax : undefined,
   };
+  // the bodies' world (surfacePhysics.js): the ground and the solids as Rapier sees them, for
+  // the player's body, the hostiles' and every line of sight (a failed load, offline, keeps the walker)
+  const sp = oldBody ? null : await createSurfacePhysics(world, { tier }).catch((err) => (console.warn('surface physics:', err), null));
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
 
@@ -427,7 +430,7 @@ export async function create(canvas, ctx) {
       else if (ev === 'cut') popSound();
     } else gadgetSound(how, ev);
   };
-  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
+  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound, sp });
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
@@ -657,8 +660,6 @@ export async function create(canvas, ctx) {
   const you = walker(spawnAt[0], spawnAt[1], groundAt(world, ...spawnAt), onFoot ? mission.yaw : site.land.yaw + 0.5);
   const mateAt = [spawnAt[0] + out.x * 1.6, spawnAt[1] + out.z * 1.6];
   const mate = walker(mateAt[0], mateAt[1], groundAt(world, ...mateAt), you.yaw);
-  // (a failed load, offline, keeps the walker too)
-  const sp = oldBody ? null : await createSurfacePhysics(world, { tier }).catch((err) => (console.warn('surface physics:', err), null));
   const pb = sp ? createPlayerBody(sp, you) : null;
   const people = [
     { spec: party[0], st: you, holder: new THREE.Group(), fig: null, fitting: 0 },
@@ -2399,6 +2400,16 @@ export async function create(canvas, ctx) {
     }
   }
 
+  // the physics world's step, once a frame (the player's intent and the hostiles' plans held for
+  // it), then every body read back: yours into its walk state, theirs into their figures
+  function stepPhysics(dt, p) {
+    if (!sp) return 0;
+    sp.step(dt);
+    const landed = p && pb ? pb.sync(p) : 0;
+    activity.sync();
+    return landed;
+  }
+
   function stepWalk(dt) {
     const inp = input();
     const p = me().st;
@@ -2412,8 +2423,7 @@ export async function create(canvas, ctx) {
       // (the body on Rapier: the ask held for the substeps, the world stepped, the state read back)
       if (pb.st !== p) pb.bind(p);
       o = pb.step(ask, dt, rules);
-      sp.step(dt);
-      o.landed = pb.sync(p);
+      o.landed = stepPhysics(dt, p);
     } else o = walk(p, ask, dt, world, rules);
     stepJet(dt);
     life.shove(p, WALK.radius);
@@ -2494,6 +2504,7 @@ export async function create(canvas, ctx) {
   }
 
   function stepRide(dt) {
+    stepPhysics(dt, null);
     const x = state.riding;
     const inp = chase?.stalled() ? { x: 0, y: 0, run: false } : input();
     // (a flyer climbs while jump is held, not only on the press)

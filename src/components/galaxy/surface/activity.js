@@ -59,6 +59,7 @@ import { buildFigure } from './figures';
 import { modelFigure } from './actors';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
+import { createHostileBody } from './hostileBodies';
 import { groundAt, shoreStep, turnToward } from './walker';
 import { stepTarget } from './quests';
 import { rng } from './noise';
@@ -292,7 +293,7 @@ export function markMaterials() {
   };
 }
 
-export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null }) {
+export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null, sp = null }) {
   const group = new THREE.Group();
   group.name = 'activity';
   parent.add(group);
@@ -312,7 +313,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   const tokens = createTokens({ pools: { shot: SHOTS, melee: 1 }, timeout: 0.9 }); // (a shot's token frees itself a moment after the shot)
   const searches = new Map(); // tag → the group's search (lib/ai/search)
   const stims = []; // (your shots, heard: the scene may push them; cleared each update)
-  const seesThrough = (a, b) => lineClear(world.solids, a, b);
+  // (a line of sight: the physics world's ray where there is one, else the solids' 2D line)
+  const seesThrough = sp ? (a, b) => sp.seesThrough(a, b) : (a, b) => lineClear(world.solids, a, b);
   // the spots a search looks in: round where you were lost, out of sight of it
   const hidingSpots = (b) => [...candidates(b.at, { ring: 8, n: 8 }), ...candidates(b.at, { ring: 16, n: 12 })].filter((p) => !seesThrough(b.at, p));
   const searchFor = (tag) => {
@@ -349,6 +351,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     for (const t of targets) {
       t.holder.removeFromParent();
       t.fig?.dispose?.();
+      t.hb?.dispose();
     }
     pickups = [];
     gates = [];
@@ -430,7 +433,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           group.add(holder);
           const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null, guard: s.hostile?.guard ?? 0, guardAt: -99 };
           // its body's own (no draw from r: the spawns and their heads are as they were)
-          Object.assign(t, { posture: createPosture({ seed: targets.length * 7919 + Math.round(home[0] * 13) * 31 + Math.round(home[1] * 17) }), pose: null, gp: null, blade: null, firedAt: -99, kick: 0, death: null, reacted: false, mark: null, based: null, looked: null, duel: null, duelMark: null, engaged: false, blocking: false, contacts: [] });
+          Object.assign(t, { posture: createPosture({ seed: targets.length * 7919 + Math.round(home[0] * 13) * 31 + Math.round(home[1] * 17) }), pose: null, gp: null, blade: null, firedAt: -99, kick: 0, death: null, reacted: false, mark: null, based: null, looked: null, duel: null, duelMark: null, engaged: false, blocking: false, contacts: [], hb: null });
           targets.push(t);
           if (t.shield) {
             // its shield: a bubble round it, bright for a moment where it's hit
@@ -448,6 +451,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             holder.add(fig.model);
             t.fig = fig;
             armed(t, fig);
+            // its body on Rapier (hostileBodies.js): its capsule, its hurtboxes from its bones, its mind
+            if (sp) t.hb = createHostileBody(sp, t, { root: fig.model, tall: fig.tall ?? 1.8, seed: targets.indexOf(t) + 1 });
             fetchFight(fig);
             warm(holder).then(() => (holder.visible = true));
           });
@@ -460,6 +465,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   let lastYou = null;
   const fell = (t, { push = null, blown = false } = {}) => {
     t.down = 0.001;
+    t.hb?.dead();
     if (t.duel) onHit(t.duel, { dead: true });
     t.death = { dir: fallOf({ push, from: lastYou, at: t.b, yaw: t.b.yaw }), force: blown || t.knock ? 1 : 0.3, clip: null, started: false, y: null };
   };
@@ -474,6 +480,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   // its guard broken by a heavy stroke, or spent: it reels 2 s
   const broke = (t) => {
     t.stagger = Math.max(t.stagger, 2);
+    t.hb?.stun(2);
     stun(t, t.stagger);
     flinched(t);
   };
@@ -670,6 +677,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       if (t.down) return;
       if (t.duel) stun(t, 0.6, 'attack');
       t.stagger = Math.max(t.stagger, t.duel ? 0.6 : secs);
+      t.hb?.stun(t.duel ? 0.6 : secs);
       t.burst = null;
       flinched(t);
     },
@@ -677,6 +685,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     knock(t, v) {
       if (t.down) return;
       t.knock = { vx: v.vx, vz: v.vz, vy: v.vy ?? 0, y: 0 };
+      t.hb?.knock(v);
       t.stagger = Math.max(t.stagger, 1.4);
       if (t.duel) stun(t, t.stagger);
       t.burst = null;
@@ -686,9 +695,20 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     stagger(t, secs) {
       if (t.down) return;
       t.stagger = Math.max(t.stagger, secs);
+      t.hb?.stun(secs);
       if (t.duel) stun(t, t.stagger);
       t.burst = null;
       flinched(t);
+    },
+    // after the physics step: each body read back into its figure's walk, and its holder with it
+    sync() {
+      for (const t of targets) {
+        if (!t.hb || t.down) continue;
+        t.hb.sync(t.b);
+        t.holder.position.x = t.b.x;
+        t.holder.position.z = t.b.z;
+        t.holder.rotation.y = t.b.yaw;
+      }
     },
     // everything tagged so, down at once (a gate dropped on it)
     kill(tag) {
@@ -773,7 +793,11 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         const dYou = you ? Math.hypot(you.x - b.x, you.z - b.z) : Infinity;
         const near = Boolean(t.aim); // (it has you, as it believes, in range)
         let moving = 0;
-        if (t.knock) {
+        const was = { x: b.x, z: b.z, yaw: b.yaw }; // (where its feet were: the plan is driven from here)
+        if (t.knock && t.hb) {
+          // off its feet: the body carries the shove; back on them once it's spent
+          if (!t.hb.knocked()) t.knock = null;
+        } else if (t.knock) {
           // off its feet: along the shove, up and down again, slowing
           const k = t.knock;
           b.x += k.vx * dt;
@@ -816,13 +840,22 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             } else if (step.mode !== 'search') t.searchSaid = false;
           }
         }
+        if (t.hb) {
+          // (the plan to the body: it moves on it a substep at a time, stopped by
+          // what's solid; the walk is read back after the step, sync())
+          t.hb.drive(b, was, dt);
+          b.x = was.x;
+          b.z = was.z;
+          b.yaw = was.yaw;
+        }
         // what that step looks like (hostiles.js's hostileBody): off its feet
         // or reeling, it's going nowhere on them
         if (t.knock || t.stagger > 0) t.posture.prev = null;
         const pose = hostileBody(t.posture, { x: b.x, z: b.z, yaw: b.yaw, mode: t.mind?.mode ?? 'wander', aim: t.aim ?? null, guessed: Boolean(t.guessed), belief: t.belief ?? null, sees: Boolean(t.sees) }, dt, { t: time, firing: Boolean(t.hostile) && upToFire(t, time) });
         t.pose = pose;
         const hover = t.fig?.hover ?? s.y ?? 0;
-        t.holder.position.set(b.x, groundAt(world, b.x, b.z, s.level ?? Infinity) + hover + (hover ? Math.sin(time * 3 + t.home[0]) * 0.2 : 0) + (t.knock?.y ?? 0), b.z);
+        const feet = t.hb ? t.hb.y : groundAt(world, b.x, b.z, s.level ?? Infinity) + (t.knock?.y ?? 0);
+        t.holder.position.set(b.x, feet + hover + (hover ? Math.sin(time * 3 + t.home[0]) * 0.2 : 0), b.z);
         t.holder.rotation.y = b.yaw;
         // (knocked: tipped back off its feet; staggered: bent back, straightening;
         // a shot from one with no arms to raise: a little kick back)
@@ -875,6 +908,12 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.holder.rotation.z = t.reacted ? 0 : Math.sin(t.flinch * 60) * t.flinch * 0.3;
         } else t.holder.rotation.z = 0;
         if (t.fig) body(t, pose, moving || (b.to && !near) ? 0.6 : 0, dt, time, you);
+        if (t.hb) {
+          // (its bones read into its hurtboxes, its mind ticked, at a rate by its distance)
+          t.hb.step(dt, {});
+          t.hb.saw(Boolean(t.sees));
+          t.hb.rate(dYou);
+        }
         if (t.bubble?.visible) {
           const f = t.bubble.userData;
           f.flash = Math.max(0, f.flash - dt);
@@ -958,7 +997,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     clashes: (saber, now) => clashes(saber, targets, now),
     // (for tests: who's out, and what each is at)
     // (body: how it's drawn, crouched, its gun up, its mark, what it carries, the clip it went down on)
-    debug: () => targets.map((t) => ({ tag: t.tag, side: t.spec.side ?? null, hp: t.hp, down: t.down > 0, fig: Boolean(t.fig), aim: Boolean(t.aim), victim: t.victim?.tag ?? null, mode: t.mind?.mode ?? null, at: [+t.b.x.toFixed(1), +t.b.z.toFixed(1)], body: { base: t.pose?.base ?? null, gun: t.gp ? t.gp.kind : t.blade ? 'saber:hand' : null, duel: t.duel?.state ?? null, up: t.gp ? +t.gp.aim.toFixed(2) : null, mark: t.pose?.mark ?? null, rigged: Boolean(t.fig?.anim), death: t.death?.clip ?? null } })),
+    debug: () => targets.map((t) => ({ tag: t.tag, side: t.spec.side ?? null, hp: t.hp, mind: t.hb?.mind.state ?? null, down: t.down > 0, fig: Boolean(t.fig), aim: Boolean(t.aim), victim: t.victim?.tag ?? null, mode: t.mind?.mode ?? null, at: [+t.b.x.toFixed(1), +t.b.z.toFixed(1)], body: { base: t.pose?.base ?? null, gun: t.gp ? t.gp.kind : t.blade ? 'saber:hand' : null, duel: t.duel?.state ?? null, up: t.gp ? +t.gp.aim.toFixed(2) : null, mark: t.pose?.mark ?? null, rigged: Boolean(t.fig?.anim), death: t.death?.clip ?? null } })),
     // your shot, for the enemies to hear (lib/ai/perception's stims): from where, aimed where
     heard(from, aim) {
       stims.push({ type: 'shot', at: { x: from.x, y: 0, z: from.z }, aim: { x: aim.x, y: 0, z: aim.z }, radius: 60, from: 'you', loudness: 1 });

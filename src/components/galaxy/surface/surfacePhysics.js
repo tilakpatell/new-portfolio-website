@@ -102,9 +102,10 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
   const keyOf = (a, b) => `${Math.round(a.x * 2)},${Math.round(a.z * 2)}:${Math.round(b.x * 2)},${Math.round(b.z * 2)}`;
   const from = [0, 0, 0];
   const dir = [0, 0, 0];
+  // (from the ground under each: the brains' points carry y 0 as a placeholder, lib/ai's way)
   function seesThrough(a, b) {
-    const ay = (a.y ?? ground(a.x, a.z)) + EYES;
-    const by = (b.y ?? ground(b.x, b.z)) + CHEST;
+    const ay = ground(a.x, a.z) + EYES;
+    const by = ground(b.x, b.z) + CHEST;
     from[0] = a.x;
     from[1] = ay;
     from[2] = a.z;
