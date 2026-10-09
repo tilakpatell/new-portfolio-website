@@ -131,6 +131,19 @@ const DOES = {
   plans: 'open the station’s plans',
 };
 
+// who E says you will talk to, of the crew nobody names
+const CREW_AS = {
+  stormtrooper: 'the stormtrooper',
+  officer: 'the officer',
+  gunner: 'the gunner',
+  dstrooper: 'the Death Star trooper',
+  tiepilot: 'the TIE pilot',
+  royalguard: 'the Royal Guard',
+  technician: 'the technician',
+  mouse: 'the droid',
+  gonk: 'the droid',
+};
+
 // what E says at a console that reads out, where its kind's name wouldn't say it
 const READS_AS = {
   intercom: 'call on the intercom',
@@ -267,7 +280,7 @@ export function reachable(g) {
 export function useText(r) {
   if (!r) return null;
   if (r.kind === 'step') return NOUNS[r.tag] ?? (r.npc ? `talk to ${WHO[r.npc.kind] ?? r.npc.kind}` : `use the ${r.tag.replace(/-/g, ' ')}`);
-  if (r.kind === 'talk') return `talk to ${r.npc.kind === 'mouse' || r.npc.kind === 'gonk' ? 'the droid' : (WHO[r.npc.tag] ?? 'them')}`;
+  if (r.kind === 'talk') return `talk to ${WHO[r.npc.tag] ?? CREW_AS[r.npc.kind] ?? 'them'}`;
   if (r.kind === 'jump') return r.jump.prompt ?? 'go';
   if (r.kind === 'keypad') return 'dial the hatch’s keypad';
   if (r.kind === 'stand') return 'stand up';

@@ -226,7 +226,7 @@ describe('the crew in free roam', () => {
     const yaw = Math.atan2(p.x - g.you.x, -(p.z - g.you.z));
     step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
     expect(g.you.yaw).toBeCloseTo(0.8);
-    expect(promptOf(g)).toMatchObject({ use: true, text: 'talk to them' });
+    expect(promptOf(g)).toMatchObject({ use: true, text: 'talk to the Royal Guard' });
   });
 
   it('has Leia walk with you from her cell once she is told she’s rescued', () => {
