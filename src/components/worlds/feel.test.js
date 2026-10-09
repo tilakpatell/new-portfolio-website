@@ -51,7 +51,6 @@ export const OWN_SHAKE = [
   { file: 'rickmorty/citadel/scene.js', pattern: RANDOM },
   { file: 'rickmorty/portal/Portal3D.js', pattern: /\(Math\.random\(\) - 0\.5\) \* sh\b/ },
   { file: 'rickmorty/world/sewer/scene.js', pattern: /Math\.sin\(t \* 31\) \* shake/ },
-  { file: 'rickmorty/world/roy/scene.js', pattern: /const s = trauma \* trauma/ },
   { file: 'middleearth/Bridge3D.js', pattern: /A\.shake \* A\.shake \* 0\.7/ },
   { file: 'middleearth/Gorgoroth3D.js', pattern: /A\.shake \* A\.shake \* 0\.5/ },
 ];
