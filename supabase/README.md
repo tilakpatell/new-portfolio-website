@@ -10,7 +10,11 @@ The schema in `migrations/` is the one source of truth for what players build on
 
 ## Checking it
 
-`node scripts/supabase-check.mjs` against a linked project: signs in anonymously, places three entities, asks the envelope round them, is refused inside a POI, damages one to nothing and sees it gone. It runs by hand (it needs a project); CI tests the client against a fake.
+`node scripts/supabase-check.mjs` with the project in `.env.local`: signs in anonymously, places three entities on `hoth`, asks the envelope round them (and is refused one 9 km wide), is refused inside Echo Base, damages one to nothing and sees it gone, and checks a second anonymous visitor cannot remove the other two before their owner does. Six lines, each `ok`; exit 1 on a failure, 2 with no project set. It runs by hand (it needs a project; each run makes two anonymous users); CI tests the client against a fake.
+
+## The seed
+
+`seed.sql` is written by `node scripts/supabase-seed.mjs`, never by hand: the 50 planets a thing may be built on and the places on them where nothing may be (Echo Base on `hoth`, its `r` the flat's `r + edge`). It reads lane A's `src/lib/land/flight/planetSpec.js` when that is in the tree, else `scripts/fixtures/planets.json` (the same ids; `--fixture` rebuilds it from the Expanse's `makeSector`). It upserts, so applying it again after the list changes is safe.
 
 ## Rules
 

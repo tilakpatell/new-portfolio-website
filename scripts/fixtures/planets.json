@@ -1,0 +1,314 @@
+{
+  "planets": [
+    {
+      "id": "hoth",
+      "name": "Hoth",
+      "type": "ice",
+      "seed": "1223795395"
+    },
+    {
+      "id": "tatooine",
+      "name": "Tatooine",
+      "type": "desert",
+      "seed": "8647508281676935542"
+    },
+    {
+      "id": "endor",
+      "name": "Endor",
+      "type": "forest",
+      "seed": "17936333477305376403"
+    },
+    {
+      "id": "yavin",
+      "name": "Yavin",
+      "type": "jungle",
+      "seed": "1927579065696738100"
+    },
+    {
+      "id": "bespin",
+      "name": "Bespin",
+      "type": "gas",
+      "seed": "5485698255689101500"
+    },
+    {
+      "id": "mustafar",
+      "name": "Mustafar",
+      "type": "lava",
+      "seed": "1127027023069150644"
+    },
+    {
+      "id": "kamino",
+      "name": "Kamino",
+      "type": "ocean",
+      "seed": "16829253035778520168"
+    },
+    {
+      "id": "dagobah",
+      "name": "Dagobah",
+      "type": "swamp",
+      "seed": "1702958522028571207"
+    },
+    {
+      "id": "E:1,0:0:0",
+      "name": "Lithialsur",
+      "type": "gas",
+      "seed": "9214131500749537690"
+    },
+    {
+      "id": "E:1,0:0:1",
+      "name": "Selimo",
+      "type": "forest",
+      "seed": "9214132600261165901"
+    },
+    {
+      "id": "E:1,0:0:2",
+      "name": "Ramsaex",
+      "type": "lava",
+      "seed": "9214129301726281268"
+    },
+    {
+      "id": "E:1,0:0:3",
+      "name": "Taecle",
+      "type": "ice",
+      "seed": "9214130401237909479"
+    },
+    {
+      "id": "E:1,0:0:4",
+      "name": "Taedixa",
+      "type": "rock",
+      "seed": "9214127102703024846"
+    },
+    {
+      "id": "E:1,0:0:5",
+      "name": "Deapho",
+      "type": "ice",
+      "seed": "9214128202214653057"
+    },
+    {
+      "id": "E:1,0:0:6",
+      "name": "Vaemalo",
+      "type": "desert",
+      "seed": "9214124903679768424"
+    },
+    {
+      "id": "E:1,0:1:0",
+      "name": "Miace",
+      "type": "desert",
+      "seed": "5034333057882641216"
+    },
+    {
+      "id": "E:1,0:1:1",
+      "name": "Seritiai",
+      "type": "ocean",
+      "seed": "5034334157394269427"
+    },
+    {
+      "id": "E:1,0:1:2",
+      "name": "Tephaemom",
+      "type": "rock",
+      "seed": "5034335256905897638"
+    },
+    {
+      "id": "E:1,0:2:0",
+      "name": "Cunano",
+      "type": "gas",
+      "seed": "9427996514885272807"
+    },
+    {
+      "id": "E:1,0:2:1",
+      "name": "Nole",
+      "type": "ocean",
+      "seed": "9427995415373644596"
+    },
+    {
+      "id": "E:1,0:2:2",
+      "name": "Niathia",
+      "type": "rock",
+      "seed": "9427998713908529229"
+    },
+    {
+      "id": "E:1,0:2:3",
+      "name": "Lesela",
+      "type": "ringed",
+      "seed": "9427997614396901018"
+    },
+    {
+      "id": "E:1,0:2:4",
+      "name": "Mipheselun",
+      "type": "lava",
+      "seed": "9427992116838759963"
+    },
+    {
+      "id": "E:1,0:2:5",
+      "name": "Cusnul",
+      "type": "ice",
+      "seed": "9427991017327131752"
+    },
+    {
+      "id": "E:1,0:3:0",
+      "name": "Riamseliacim",
+      "type": "rock",
+      "seed": "15974992389582672884"
+    },
+    {
+      "id": "E:1,0:3:1",
+      "name": "Seraeala",
+      "type": "rock",
+      "seed": "15974993489094301095"
+    },
+    {
+      "id": "E:1,0:3:2",
+      "name": "Siapho",
+      "type": "forest",
+      "seed": "15974994588605929306"
+    },
+    {
+      "id": "E:1,0:4:0",
+      "name": "Alissede",
+      "type": "forest",
+      "seed": "16154647539614666734"
+    },
+    {
+      "id": "E:1,0:4:1",
+      "name": "Viarae",
+      "type": "rock",
+      "seed": "16154648639126294945"
+    },
+    {
+      "id": "E:1,0:4:2",
+      "name": "Pheniamnal",
+      "type": "ocean",
+      "seed": "16154645340591410312"
+    },
+    {
+      "id": "E:1,0:4:3",
+      "name": "Rapho",
+      "type": "gas",
+      "seed": "16154646440103038523"
+    },
+    {
+      "id": "E:1,0:4:4",
+      "name": "Tasthu",
+      "type": "gas",
+      "seed": "16154651937661179578"
+    },
+    {
+      "id": "E:1,0:4:5",
+      "name": "Niaselabe",
+      "type": "ice",
+      "seed": "16154653037172807789"
+    },
+    {
+      "id": "E:1,0:5:0",
+      "name": "Thisax",
+      "type": "ocean",
+      "seed": "12669389782091427312"
+    },
+    {
+      "id": "E:1,0:5:1",
+      "name": "Liaclel",
+      "type": "desert",
+      "seed": "12669390881603055523"
+    },
+    {
+      "id": "E:1,0:5:2",
+      "name": "Seluserasera",
+      "type": "lava",
+      "seed": "12669391981114683734"
+    },
+    {
+      "id": "E:1,0:5:3",
+      "name": "Rothaesalal",
+      "type": "desert",
+      "seed": "12669393080626311945"
+    },
+    {
+      "id": "E:1,0:5:4",
+      "name": "Cuvaemi",
+      "type": "ringed",
+      "seed": "12669394180137940156"
+    },
+    {
+      "id": "E:1,0:5:5",
+      "name": "Aluxlo",
+      "type": "ringed",
+      "seed": "12669395279649568367"
+    },
+    {
+      "id": "E:1,0:6:0",
+      "name": "Vaeselil",
+      "type": "desert",
+      "seed": "11249089252094924317"
+    },
+    {
+      "id": "E:1,0:6:1",
+      "name": "Diserum",
+      "type": "gas",
+      "seed": "11249088152583296106"
+    },
+    {
+      "id": "E:1,0:6:2",
+      "name": "Themvi",
+      "type": "ocean",
+      "seed": "11249087053071667895"
+    },
+    {
+      "id": "E:1,0:6:3",
+      "name": "Tiame",
+      "type": "gas",
+      "seed": "11249085953560039684"
+    },
+    {
+      "id": "E:1,0:6:4",
+      "name": "Leina",
+      "type": "ice",
+      "seed": "11249084854048411473"
+    },
+    {
+      "id": "E:1,0:6:5",
+      "name": "Seraclibe",
+      "type": "rock",
+      "seed": "11249083754536783262"
+    },
+    {
+      "id": "E:1,0:7:0",
+      "name": "Sedavu",
+      "type": "forest",
+      "seed": "3908632022139464156"
+    },
+    {
+      "id": "E:1,0:7:1",
+      "name": "Cacia",
+      "type": "gas",
+      "seed": "3908633121651092367"
+    },
+    {
+      "id": "E:1,0:7:2",
+      "name": "Siasaeda",
+      "type": "rock",
+      "seed": "3908634221162720578"
+    },
+    {
+      "id": "E:1,0:7:3",
+      "name": "Diasur",
+      "type": "rock",
+      "seed": "3908635320674348789"
+    },
+    {
+      "id": "E:1,0:7:4",
+      "name": "Vorselia",
+      "type": "lava",
+      "seed": "3908627624092951312"
+    }
+  ],
+  "pois": [
+    {
+      "id": "hoth:echo-base",
+      "planetId": "hoth",
+      "name": "Echo Base",
+      "x": 1200,
+      "z": -800,
+      "r": 380
+    }
+  ]
+}
