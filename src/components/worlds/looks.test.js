@@ -39,7 +39,6 @@ const EXPECTED_MISSING = [
   'invincible/thinkmark',
   'invincible/viewer',
   'rickmorty',
-  'rickmorty/world',
   'rickmorty/citadel',
   'rickmorty/portal',
   'rickmorty/wardrobe',
