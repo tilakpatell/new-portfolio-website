@@ -31,4 +31,19 @@ describe('pool', () => {
     expect(s.setFromMatrixScale(m).length()).toBe(0);
     p.dispose();
   });
+
+  it('lets its bounds be found again when a slot is placed or freed, so a slot placed after a draw isn’t culled', () => {
+    const p = pool(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 4, 'crates');
+    // (as three finds them for its first draw, every slot at nothing)
+    p.mesh.computeBoundingSphere();
+    expect(p.mesh.boundingSphere.radius).toBe(0);
+    const i = p.take();
+    p.place(i, [100, 2, 0], [0, 0, 0, 1], 1);
+    expect(p.mesh.boundingSphere).toBeNull();
+    p.mesh.computeBoundingSphere();
+    expect(p.mesh.boundingSphere.containsPoint(new THREE.Vector3(100, 2, 0))).toBe(true);
+    p.free(i);
+    expect(p.mesh.boundingSphere).toBeNull();
+    p.dispose();
+  });
 });
