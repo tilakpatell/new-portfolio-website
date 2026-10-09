@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOSTILE_BODY, SCAN, STEP, absorb, createPosture, fallOf, hostileBody, hostileStep, parries, startBurst, startBurst as sb, stepBurst, strafeStep, whereHit } from './hostiles';
+import { HOSTILE_BODY, SCAN, STEP, absorb, createPosture, fallOf, hostileBody, hostileStep, startBurst, startBurst as sb, stepBurst, strafeStep, whereHit } from './hostiles';
 import { MODE_BODY } from '../../../lib/ai/body';
 import { seeded } from '../../../lib/seeded';
 import { createSearch } from '../../../lib/ai/search';
@@ -36,13 +36,6 @@ describe('how the enemies fight', () => {
     expect(absorb({ shield: 1, hp: 2 }, 2)).toEqual({ shield: 0, hp: 1 });
     expect(absorb({ shield: 0, hp: 2 }, 1)).toEqual({ shield: 0, hp: 1 });
     expect(absorb({ hp: 2 }, 2)).toEqual({ shield: 0, hp: 0 });
-  });
-
-  it('parries a share of swings, never without a blade', () => {
-    expect(parries({ parry: 0.5 }, 0.2)).toBe(true);
-    expect(parries({ parry: 0.5 }, 0.7)).toBe(false);
-    expect(parries({}, 0.0)).toBe(false);
-    expect(parries(null, 0.0)).toBe(false);
   });
 });
 

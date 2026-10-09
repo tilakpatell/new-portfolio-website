@@ -20,6 +20,7 @@
 import * as THREE from 'three';
 import { canvasTexture, createStage } from '../../../lib/stage3d';
 import { houseOn } from '../../../lib/three/house';
+import { LOOK as PANIC_LOOK } from './look';
 import { createModels } from '../../../lib/models';
 import { turn } from '../../../lib/three/gait';
 import { bodyFrom } from '../../../lib/ai/body';
@@ -347,7 +348,7 @@ class Fx {
 }
 
 export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'rick', alive = () => true, onLost, onSlow, onProgress } = {}) {
-  const stage = createStage(canvas, { soft, shadows: true, bloom: { strength: 0.55, radius: 0.4, threshold: 0.92 }, exposure: 1, fov: 40, near: 0.5, far: 400, onLost, onSlow });
+  const stage = createStage(canvas, { soft, shadows: true, bloom: PANIC_LOOK.bloom, exposure: 1, fov: 40, near: 0.5, far: 400, onLost, onSlow });
   const { renderer, scene, camera } = stage;
   const big = !soft && Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
   const progress = (k, label) => alive() && onProgress?.(k, label);

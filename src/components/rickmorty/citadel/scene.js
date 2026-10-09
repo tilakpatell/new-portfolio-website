@@ -24,6 +24,7 @@ import { createAnimBudget } from '../../../lib/three/animBudget';
 import { applyEmote } from '../../../lib/emote';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { houseOn } from '../../../lib/three/house';
+import { LOOK } from './look';
 import { createFeel, feelGroups } from '../../../lib/three/feel';
 import { damp } from '../../../lib/ease';
 import { createMeshyCast } from '../portal/meshyCast';
@@ -97,7 +98,7 @@ function clearance(from, to, inside = insideAt) {
 export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
-  const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.42, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: LOOK.bloom, onLost });
   // the shake (lib/three/feel: trauma², none under reduced motion) at the
   // Citadel's own numbers: a decay of 0.8 a second, 0.5 off at full, no roll
   const feel = createFeel({ baseFov: 52, offset: 0.5 });
