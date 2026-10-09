@@ -32,7 +32,6 @@ function walk(at = '') {
 }
 
 export const OWN_SHAKE = [
-  { file: 'universe/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
 ];
 
 export const DEAD_HITSTOP = [
@@ -40,8 +39,6 @@ export const DEAD_HITSTOP = [
 
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
-  { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
-  { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
 ];
 
 // the walkers’ camera: at once on a cut, else `min(1, dt × k)` a frame
@@ -51,8 +48,6 @@ export const LINEAR_CAMERA = [
 ];
 
 export const UNANSWERED = [
-  { file: 'universe/Comms.jsx', lacks: /\b(thud|onHit)\(/ },
-  { file: 'deathstar/inside/scene/hear.js', lacks: /case 'hurt'/ },
 ];
 
 // The sweeps for a file that starts anew. A shake decaying by dt beside a

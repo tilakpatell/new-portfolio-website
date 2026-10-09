@@ -31,7 +31,9 @@
 //   active, wire() (the ones in the fight, for the other pilots to see),
 //   targets: the ones still after you (or their prey), for the guns to lock
 //   on to: [{ id, at, vel, size, kind, hp, hpMax, faction, threat }] (targeting.js;
-//   threat is 1 for one on an attack run at you) }
+//   threat is 1 for one on an attack run at you),
+//   bodies: the ones in the fight as shipHits.js's bodies (a rammer is not
+//   one: its own burst on you stands), a ram taken as damage(id, punch) }
 // `solids` is what they fly round: ship.js's, or a function giving them (the
 // galaxy's change from system to system).
 // A pack sent in `ahead` drops in ahead of you (an ambush on the way
@@ -51,7 +53,7 @@
 import * as THREE from 'three';
 import { packSkill } from './difficulty';
 import { createFleet } from './glbFleet';
-import { FACTIONS, HUNTER_KINDS, LASER, NAMES, createHunt } from './hunterRules';
+import { FACTIONS, HUNTER_KINDS, LASER, NAMES, createHunt, hasTrait } from './hunterRules';
 
 export { FACTIONS, HUNTER_KINDS, NAMES };
 
@@ -229,6 +231,14 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     },
     get active() {
       return hunt.active;
+    },
+    get bodies() {
+      const out = [];
+      for (const h of hunt.live) {
+        if (!h.alive || h.pack.gone || h.hidden > 0 || hasTrait(h.type, 'rammer')) continue;
+        out.push({ key: `h:${h.id}`, id: h.id, kind: h.kind, at: h.pos, prev: h.prev, vel: h.vel, size: h.type.size, side: 'foe', hit: (punch) => answer(hunt.damage(h.id, punch)) });
+      }
+      return out;
     },
     // the law's eyes and numbers (wanted.js), and one faction sent off
     sees: (factions, range) => hunt.sees(factions, range),
