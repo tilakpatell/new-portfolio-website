@@ -209,7 +209,7 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Produces: `contactWindow(rows, { widen = 0.06 }) → [t0, t1]` (the hand's fastest span, widened, clamped to `[0.05, duration − 0.05]`); `rootTravel(rmClip) → [[t, dx, dz]…]` at 30 fps from `UAL2_RM.glb`'s hips; clip extras readable at runtime as `clip.userData.contact`, `clip.userData.root`.
 
-- [ ] **Step 1:** Fetch the pack: `node scripts/assets-fetch.mjs ual2` (or `--repo`). **Step 2:** Tests in `ual-bake.test.mjs`: `contactWindow` on a synthetic row set (fast in the middle) returns the middle; a flat row set still returns a window inside `[0.05, d − 0.05]`; `rootTravel` sums to the hips' displacement. **Step 3:** FAIL → implement → PASS. **Step 4:** `node scripts/ual-bake.mjs --set sword --report`: 31 files, drift under the report's limit. **Step 5:** Commit the script, the registry and the GLBs — `"The sword set: every UAL2 sword clip full-body, with its contact window and root travel"`.
+- [x] **Step 1:** Fetch the pack: `node scripts/assets-fetch.mjs ual2` (or `--repo`). **Step 2:** Tests in `ual-bake.test.mjs`: `contactWindow` on a synthetic row set (fast in the middle) returns the middle; a flat row set still returns a window inside `[0.05, d − 0.05]`; `rootTravel` sums to the hips' displacement. **Step 3:** FAIL → implement → PASS. **Step 4:** `node scripts/ual-bake.mjs --set sword --report`: 31 files, drift under the report's limit. **Step 5:** Commit the script, the registry and the GLBs — `"The sword set: every UAL2 sword clip full-body, with its contact window and root travel"`.
 
 ### Task C2: `src/lib/combat/blade.js`
 
@@ -219,14 +219,14 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Produces: `createBlade({ r = 0.12, keep = 8 }) → { push(base, tip, t), sweep(targets, { steps }) → [{ target, at, dist }], clash(other) → { at } | null, crosses(a, b) → { at } | null, history() → [{ base, tip, t }] }`. Sub-steps `steps = max(4, ceil(tipTravel / 0.25))`. Uses B1's `segCapsule`, `segSeg` (import from `./bolt.js`; if Lane B isn't merged yet, write them here and let B import from here: say which in the handoff).
 
-- [ ] **Step 1:** Tests: a sweep whose segment crosses a capsule hits it at the nearest point; a sweep 0.3 m above a capsule's top misses; a tip that moved 2 m in one frame is sub-sampled and still hits a 0.4 m capsule in the middle of the arc; `clash` finds two blades crossing; `crosses` finds a bolt segment through the blade and not one 0.5 m beside it. **Steps 2–5.** Commit — `"The blade: its swept segment against capsules, blades and bolts"`.
+- [x] **Step 1:** Tests: a sweep whose segment crosses a capsule hits it at the nearest point; a sweep 0.3 m above a capsule's top misses; a tip that moved 2 m in one frame is sub-sampled and still hits a 0.4 m capsule in the middle of the arc; `clash` finds two blades crossing; `crosses` finds a bolt segment through the blade and not one 0.5 m beside it. **Steps 2–5.** Commit — `"The blade: its swept segment against capsules, blades and bolts"`.
 
 ### Task C3: the trail from the ring buffer
 
 **Files:**
 - Create: `src/lib/three/combat/trail.js` (from `saber.js`'s trail ribbon, moved; reads `blade.history()`); both blades of a double or dual.
 
-- [ ] One step; commit.
+- [x] One step; commit.
 
 ### Task C4: strokes as clips
 
@@ -236,22 +236,22 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Consumes: C1's clip extras, C2's `createBlade`, A1's `onButton` if merged (else F and C as now).
 
-- [ ] **Step 1:** Tests in `combatRules.test.js` for `strokeFor`: the combo in order within 0.45 s; `dir: 'up'` → the overhead (`sword.heavy.a`); `'left'`/`'right'` → the side cuts; `'rise'` → `sword.uppercut`; the heavy chain. **Step 2:** FAIL → implement → PASS.
-- [ ] **Step 2b: The block, a deliverable of its own.** Held on C (the right button through Lane A's `onButton(2)` once merged, the Block touch button): `BLOCK_CLIP` on the upper layer while held, the blade up in front; a tap under 0.1 s still shows it for `PARRY.window`. An arriving enemy bolt whose flown segment `blade.crosses` is turned back along its line toward its shooter with its side swapped (sparks, the clash sound, the guard spent as today); one passing beside the blade is not, cone or no cone. An enemy's melee contact into the raised blade spends the guard and deals nothing; a block begun within `PARRY.window` before the contact is a parry (the enemy staggered, "Perfect"). Tests: `blade.test.js`'s crosses; a scenario where a bolt at the chest is turned with the block up and lands with it down; the parry inside and outside the window. Once Lane B is merged, B's `deflect` event does the turn and this only wires the sparks, the sound and the guard.
-- [ ] **Step 3:** A scenario test `galaxy/surface/saber.scenario.test.js` (headless, no canvas: the animator on Luke's rest skeleton fixture, `meshyRig.fixture.js`): a stroke at a capsule 1.8 m ahead hits once; the same capsule 2 m to the side is missed; a target already in the stroke's `hits` is not hit twice; no hit outside `contact`.
-- [ ] **Step 4:** `autopilot-check --routes '/galaxy/tatooine'`; shoot the before on `main` first; the after shows a stroke mid-clip (the DEV hook that triggers a swing, as the handoff's checks do).
-- [ ] **Step 5: Commit** — `"A stroke is a clip; the blade's sweep decides the hit"`.
+- [x] **Step 1:** Tests in `combatRules.test.js` for `strokeFor`: the combo in order within 0.45 s; `dir: 'up'` → the overhead (`sword.heavy.a`); `'left'`/`'right'` → the side cuts; `'rise'` → `sword.uppercut`; the heavy chain. **Step 2:** FAIL → implement → PASS.
+- [x] **Step 2b: The block, a deliverable of its own.** Held on C (the right button through Lane A's `onButton(2)` once merged, the Block touch button): `BLOCK_CLIP` on the upper layer while held, the blade up in front; a tap under 0.1 s still shows it for `PARRY.window`. An arriving enemy bolt whose flown segment `blade.crosses` is turned back along its line toward its shooter with its side swapped (sparks, the clash sound, the guard spent as today); one passing beside the blade is not, cone or no cone. An enemy's melee contact into the raised blade spends the guard and deals nothing; a block begun within `PARRY.window` before the contact is a parry (the enemy staggered, "Perfect"). Tests: `blade.test.js`'s crosses; a scenario where a bolt at the chest is turned with the block up and lands with it down; the parry inside and outside the window. Once Lane B is merged, B's `deflect` event does the turn and this only wires the sparks, the sound and the guard.
+- [x] **Step 3:** A scenario test `galaxy/surface/saber.scenario.test.js` (headless, no canvas: the animator on Luke's rest skeleton fixture, `meshyRig.fixture.js`): a stroke at a capsule 1.8 m ahead hits once; the same capsule 2 m to the side is missed; a target already in the stroke's `hits` is not hit twice; no hit outside `contact`. (Built as `galaxy/surface/saber.test.js`, so it runs in `npm test`: the scenario files are left out of it.)
+- [x] **Step 4:** `autopilot-check --routes '/galaxy/tatooine'`; shoot the before on `main` first; the after shows a stroke mid-clip (the DEV hook that triggers a swing, as the handoff's checks do).
+- [x] **Step 5: Commit** — `"A stroke is a clip; the blade's sweep decides the hit"`.
 
 ### Task C5: online peers play the same clip
 
 **Files:**
 - Modify: `src/components/universe/online/protocol.js` (`arms` gains a sixth item, the stroke's clip name, after the old five; `STANCES_SEEN` read from `combatRules.STANCE_IDS`), `protocol.test.js`, `galaxy/surface/peers.js` (plays the named clip; `targets: []` stays, peers' strokes are cosmetic).
 
-- [ ] Tests: an old packet (five items) still validates; a new one carries the clip. Commit.
+- [x] Tests: an old packet (five items) still validates; a new one carries the clip. Commit.
 
 ### Task C6: handoff and PR
 
-- [ ] The lane's section; PR; merge on green.
+- [x] The lane's section; PR; merge on green.
 
 ## Lane D: duellists
 
