@@ -16,6 +16,9 @@
 //   lead(target, vel, from, speed) → where to aim so a bolt meets a walker.
 //   ASSIST, coneFor({ coarse, mode }): the cones for a mouse, a trackpad or
 //   a drag, and touch.
+//   snapped(cone) → the cone for a tap of a touch fire button: one with
+//   `snap` pulls all the way onto a target anywhere inside its outer cone,
+//   at once; any other comes back as it is.
 //
 // A target is a capsule { id, a, b, r, ref }: the segment a–b (feet to
 // head, less the radius) and its radius.
@@ -168,6 +171,10 @@ export function lead(target, vel, from, speed) {
     }
   }
   return t == null ? [...target] : add(target, scale(vel, t));
+}
+
+export function snapped(cone) {
+  return cone?.snap ? { inner: cone.outer, outer: cone.outer + 1e-6, cap: Math.PI } : cone;
 }
 
 export function coneFor({ coarse = false, mode = 'lock' } = {}) {
