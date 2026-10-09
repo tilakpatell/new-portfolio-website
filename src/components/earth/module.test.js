@@ -58,6 +58,41 @@ describe('earth module', () => {
     expect(api.dispose).toHaveBeenCalled();
   });
 
+  it('tunes behind ?debug: the exposure, the sun and the camera, read and written live', async () => {
+    const rt = fakeRt();
+    rt.gfx.renderer.toneMappingExposure = 1.05;
+    const world = await earth.create(rt, {});
+    const groups = world.tune();
+    expect(groups.map((g) => g.name)).toEqual(['earth', 'flight', 'look']);
+    const item = (k) => groups[0].items.find((i) => i.key === k);
+    expect(item('exposure').get()).toBe(1.05);
+    item('exposure').set(1.4);
+    expect(rt.gfx.renderer.toneMappingExposure).toBe(1.4);
+    expect(item('sun')).toMatchObject({ type: 'select', options: ['day', 'real'] });
+    expect(item('sun').get()).toBe('day');
+    item('sun').set('real');
+    expect(rt.saves.get(SUN)).toBe('real');
+    item('sun').set('real'); // (the same choice again changes nothing)
+    expect(item('sun').get()).toBe('real');
+    expect(item('cockpit')).toMatchObject({ type: 'bool' });
+    expect(item('cockpit').get()).toBe(false);
+    item('cockpit').set(true);
+    expect(rt.saves.get(CAM)).toBe('cockpit');
+    expect(item('cockpit').get()).toBe(true);
+    world.dispose();
+  });
+
+  it('puts the flight’s own numbers on the panel, read and written live', async () => {
+    const world = await earth.create(fakeRt(), {});
+    const cruise = world.tune()[1].items.find((i) => i.key === 'cruise');
+    const was = cruise.get();
+    expect(was).toBeGreaterThan(0);
+    cruise.set(was * 2);
+    expect(cruise.get()).toBe(was * 2);
+    cruise.set(was);
+    world.dispose();
+  });
+
   it('dives on its own after a moment over the globe, unless touched', async () => {
     const rt = fakeRt();
     const world = await earth.create(rt, {});

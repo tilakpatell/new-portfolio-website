@@ -7,16 +7,23 @@
 // stances and its small parry window, Movie Battles II's fast / medium /
 // strong triangle.
 //
-//   STANCES              by id: { name, about, swings: [{ dur, yaw: [a, b], pitch: [a, b], lead, damage }], reach, half, block (how much of a hit the guard takes), cost (guard spent a block), lunge (metres a stroke closes) }
-//   HEAVY                the charged overhead: { hold (seconds F is held to make one), dur, damage, breaks (shields and guards) }
+//   STANCES              by id: { name, about, strokes: [{ clip, speed, damage }] (the combo, in turn: each a sword clip from the
+//                        clip library, played full-body at `speed`), reach, block (how much of a hit the guard takes), cost (guard spent a block),
+//                        lunge (metres a stroke's step may grow to, to reach the one you're locked on) }
+//   HEAVY                the charged strokes: { hold (seconds F is held to make one), clips (in turn, while they chain), speed, damage, breaks (shields and guards) }
+//   DIRS                 a stroke with a way held: up (W, overhead), left and right (A, D: a cut from that side), rise (S): { clip, damage }
+//   BLOCK_CLIP, DASH_CLIP   the raised blade and the dash's lunge
+//   STRIKE               metres from the one you're locked on that a stroke's step ends
 //   GUARD                { max, regen (a second), wait (seconds after a hit before it regrows), broken (seconds staggered when it's gone) }
 //   PARRY                { window }: seconds after C goes down in which a swipe is parried outright
 //   DODGE                { dist, dur, safe (seconds of it nothing lands), cool }
 //   FORCE                push / pull: { range, cone, force, cool, damage }
 //   stanceOf(id)         the stance, 'single' when unknown
-//   swingPose(stance, i, k)   the arm `k` (0…1) through swing i: { yaw, pitch }, eased, exact at the ends
-//   nextSwing(stance, last, now, combo)   the swing to make now: the next of the combo within `combo` seconds of the last ending
-//   arcHit(me, t, reach, half)   whether t ({ x, z, r? }) is within reach and inside the arc
+//   strokeFor(stance, { last, now, dir, heavy, combo })   the stroke to make now: { clip, speed, damage, lunge, heavy, kind, i };
+//                        a way held (dir) its own, a heavy one the next of HEAVY's while they chain, else the next of the combo
+//                        within `combo` seconds of the last ending (`last`: the stroke before, with its endedAt)
+//   rootScale(travel, dist, lunge)   how much of a clip's step (`travel` metres ahead) to take: to land STRIKE short of the
+//                        one you're locked on (`dist` away; null with no lock: the clip's own), never more than `lunge`
 //   lungeTo(me, t, stance)       metres to step toward t for a stroke to land (0 if it already does, or t's too far)
 //   guardHit(g, cost, now)       the guard after a block: { value, brokenAt } (brokenAt set when it's spent)
 //   guardStep(g, dt, now, max?)  the guard a frame on: regrowing after GUARD.wait toward `max` (GUARD.max), back from broken after GUARD.broken
@@ -26,100 +33,106 @@
 //   pushVelocity(me, t, k)       the shove a push gives t: { vx, vz, vy }
 //   hitStop(damage, killed)      seconds the frame holds on a hit
 
-const ease = (k) => k * k * (3 - 2 * k);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export const STANCES = {
   single: {
     name: 'Single blade',
-    about: 'Luke’s, Obi-Wan’s: balanced, three strokes that chain.',
+    about: 'Luke’s, Obi-Wan’s: balanced, four strokes that chain.',
     reach: 2.6,
-    half: 1.1,
     block: 1,
     cost: 1,
     lunge: 3.5,
-    swings: [
-      { dur: 0.38, yaw: [-1.25, 1.15], pitch: [0.35, -0.25], lead: 0.5, damage: 2 },
-      { dur: 0.38, yaw: [1.2, -1.2], pitch: [-0.15, 0.3], lead: 0.5, damage: 2 },
-      { dur: 0.46, yaw: [0.25, -0.2], pitch: [1.25, -0.75], lead: 0.55, damage: 3 },
+    strokes: [
+      { clip: 'sword.light.a', speed: 1.1, damage: 2 },
+      { clip: 'sword.light.b', speed: 1.1, damage: 2 },
+      { clip: 'sword.light.c', speed: 1.15, damage: 2 },
+      { clip: 'sword.a', speed: 1, damage: 3 },
     ],
   },
   double: {
     name: 'Double blade',
     about: 'Maul’s staff: fast, wide, light; it clears a crowd.',
     reach: 3,
-    half: 1.5,
     block: 0.8,
     cost: 1.1,
     lunge: 3,
-    swings: [
-      { dur: 0.3, yaw: [-1.6, 1.5], pitch: [0.1, 0], lead: 0.5, damage: 1 },
-      { dur: 0.3, yaw: [1.5, -1.6], pitch: [0, 0.1], lead: 0.5, damage: 1 },
-      { dur: 0.34, yaw: [-1.4, 1.4], pitch: [-0.3, 0.2], lead: 0.5, damage: 1 },
-      { dur: 0.4, yaw: [0.2, -0.3], pitch: [1.1, -0.6], lead: 0.55, damage: 2 },
+    strokes: [
+      { clip: 'sword.light.a', speed: 1.3, damage: 1 },
+      { clip: 'sword.light.b', speed: 1.3, damage: 1 },
+      { clip: 'sword.b', speed: 1.25, damage: 1 },
+      { clip: 'sword.a', speed: 1.2, damage: 2 },
     ],
   },
   dual: {
     name: 'Dual wield',
     about: 'Ahsoka’s pair: quick strokes, a parry built in.',
     reach: 2.4,
-    half: 1.2,
     block: 1.2,
     cost: 0.8,
     lunge: 4,
-    swings: [
-      { dur: 0.28, yaw: [-1.1, 0.9], pitch: [0.3, -0.2], lead: 0.5, damage: 1 },
-      { dur: 0.28, yaw: [1.0, -1.0], pitch: [0.2, -0.3], lead: 0.5, damage: 1 },
-      { dur: 0.28, yaw: [-0.9, 1.0], pitch: [-0.2, 0.4], lead: 0.5, damage: 1 },
-      { dur: 0.34, yaw: [0.2, -0.2], pitch: [1.0, -0.6], lead: 0.55, damage: 2 },
+    strokes: [
+      { clip: 'sword.light.a', speed: 1.4, damage: 1 },
+      { clip: 'sword.light.b', speed: 1.4, damage: 1 },
+      { clip: 'sword.light.c', speed: 1.35, damage: 1 },
+      { clip: 'sword.b', speed: 1.3, damage: 2 },
     ],
   },
   heavy: {
     name: 'Crossguard',
     about: 'Slow and heavy: each stroke lands hard and breaks a guard.',
     reach: 2.8,
-    half: 1.0,
     block: 1,
     cost: 1.2,
     lunge: 3,
-    swings: [
-      { dur: 0.6, yaw: [-1.3, 1.1], pitch: [0.5, -0.3], lead: 0.55, damage: 4 },
-      { dur: 0.7, yaw: [0.3, -0.3], pitch: [1.3, -0.8], lead: 0.6, damage: 5 },
+    strokes: [
+      { clip: 'sword.heavy.b', speed: 0.9, damage: 4 },
+      { clip: 'sword.heavy.c', speed: 0.9, damage: 5 },
     ],
   },
 };
 export const STANCE_IDS = Object.keys(STANCES);
 export const stanceOf = (id) => STANCES[id] ?? STANCES.single;
 
-export const HEAVY = { hold: 0.35, dur: 0.75, damage: 5, breaks: true, yaw: [0.1, -0.1], pitch: [1.4, -0.9], lead: 0.62 };
+export const HEAVY = { hold: 0.35, clips: ['sword.heavy.a', 'sword.heavy.b', 'sword.heavy.c', 'sword.heavy.d'], speed: 1, damage: 5, breaks: true };
+export const DIRS = {
+  up: { clip: 'sword.heavy.a', damage: 3 },
+  left: { clip: 'sword.b', damage: 2 },
+  right: { clip: 'sword.a', damage: 2 },
+  rise: { clip: 'sword.uppercut', damage: 3 },
+};
+export const BLOCK_CLIP = 'sword.block';
+export const DASH_CLIP = 'sword.dash';
+export const STRIKE = 1; // (a light cut passes about a metre ahead of the chest)
+const COMBO = 0.45;
 export const GUARD = { max: 100, regen: 28, wait: 1.1, broken: 1.6 };
-export const PARRY = { window: 0.22, stagger: 2.2 };
+export const PARRY = { window: 0.25, stagger: 2.2 };
 export const DODGE = { dist: 5.5, dur: 0.42, safe: 0.3, cool: 0.9 };
 export const FORCE = {
   push: { range: 9, cone: 0.75, force: 11, lift: 3.5, cool: 9, damage: 1 },
   pull: { range: 14, cone: 0.5, force: 9, lift: 2, cool: 7, damage: 0 },
 };
 
-export function swingPose(stance, i, k) {
-  const sw = stance.swings[i % stance.swings.length];
-  const e = ease(clamp(k, 0, 1));
-  return { yaw: sw.yaw[0] * (1 - e) + sw.yaw[1] * e, pitch: sw.pitch[0] * (1 - e) + sw.pitch[1] * e };
+// last: the stroke before ({ kind, i, endedAt }) or null
+export function strokeFor(stance, { last = null, now = 0, dir = null, heavy = false, combo = COMBO } = {}) {
+  const chain = (kind) => last?.kind === kind && now - last.endedAt <= combo;
+  const base = { lunge: stance.lunge, heavy: false };
+  if (heavy) {
+    const i = chain('heavy') ? (last.i + 1) % HEAVY.clips.length : 0;
+    return { ...base, kind: 'heavy', i, clip: HEAVY.clips[i], speed: HEAVY.speed, damage: HEAVY.damage, heavy: true };
+  }
+  const way = DIRS[dir];
+  if (way) return { ...base, kind: 'dir', i: 0, clip: way.clip, speed: stance.strokes[0].speed, damage: way.damage };
+  const i = chain('combo') ? (last.i + 1) % stance.strokes.length : 0;
+  return { ...base, kind: 'combo', i, ...stance.strokes[i] };
 }
 
-// last: { i, endedAt } or null
-export function nextSwing(stance, last, now, combo = 0.45) {
-  if (!last || now - last.endedAt > combo) return 0;
-  return (last.i + 1) % stance.swings.length;
-}
-
-export function arcHit(me, t, reach, half) {
-  const dx = t.x - me.x;
-  const dz = t.z - me.z;
-  const d = Math.hypot(dx, dz);
-  if (d > reach + (t.r ?? 0)) return false;
-  if (d < 1e-6) return true;
-  return Math.abs(wrap(Math.atan2(dx, dz) - me.yaw)) <= half;
+export function rootScale(travel, dist, lunge) {
+  if (!(travel > 1e-3)) return 0;
+  const most = lunge / travel;
+  if (dist == null) return Math.min(1, most);
+  return clamp((dist - STRIKE) / travel, 0, most);
 }
 
 // (a stroke steps you in to where it lands; past the stance's lunge it doesn't)

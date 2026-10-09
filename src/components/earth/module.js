@@ -11,11 +11,14 @@
 // arrow (the HUD's arrow element), travellers (a ref to the other pilots'
 // link, middleearth/towns/useTravellers) }. The world adds: dive(), rise(),
 // goTo(id), clearTarget(), toggleSun(), toggleCam(), roll(), setBoost(on),
-// setPaused(on), touched(), and `sim` for the QA scripts.
+// setPaused(on), touched(), and `sim` for the QA scripts; tune() gives the
+// ?debug panel its values (runtime/debug.js): the exposure the globe's
+// shaders are seen at, the sun (kept over your shoulder, or where it is
+// now) and the camera, the last two as the N and V keys set them.
 
 import { HOME_CITY } from '../../data/places';
 import { countryName, globeData } from '../travel/globe3d/data';
-import { ALT, AROUND_KM, HOME_V, KM, STAMPS, add, angle, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, packPose, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
+import { ALT, AROUND_KM, HOME_V, LOOK, ROLL, SPEED, KM, STAMPS, add, angle, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, packPose, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
 import { addFlown, addStamp, readFlown, readStamps } from './stamps';
 
 const sounds = () => import('./sounds');
@@ -373,6 +376,15 @@ export default {
       }
     };
 
+    // behind ?debug, after the look: the flight's own numbers (rules.js reads them live)
+    const num = (o, key, label, min, max, step) => ({ key, label, type: 'range', min, max, step, get: () => o[key], set: (v) => {
+      o[key] = v;
+    } });
+    const groups = [
+      { name: 'flight', items: [num(SPEED, 'cruise', 'cruise (rad/s)', 0.01, 0.6, 0.005), num(SPEED, 'slow', 'slow', 0.01, 0.3, 0.005), num(SPEED, 'fast', 'fast', 0.05, 1, 0.01), num(SPEED, 'ease', 'speed ease /s', 0.2, 6, 0.1), num(ALT, 'climb', 'climb', 0.005, 0.1, 0.001)] },
+      { name: 'look', items: [num(LOOK, 'settle', 'look settles /s', 0.5, 10, 0.1), num(ROLL, 'time', 'barrel roll (s)', 0.4, 3, 0.05)] },
+    ];
+
     const world = {
       sim: s,
       api,
@@ -405,6 +417,18 @@ export default {
         s.touched = true;
       },
       handoff: () => ({ flight: { ...f }, sun: [...s.sun], mode: s.mode, cockpit: s.cockpit }),
+      tune: () => [
+        {
+          name: 'earth',
+          items: [
+            // (read off the renderer each time: scene.js sets it, and the renderer reads it each frame)
+            { key: 'exposure', type: 'range', min: 0.4, max: 3, get: () => rt.gfx?.renderer?.toneMappingExposure ?? 1, set: (v) => rt.gfx?.renderer && (rt.gfx.renderer.toneMappingExposure = v) },
+            { key: 'sun', type: 'select', options: ['day', 'real'], get: () => s.sunMode, set: (v) => v !== s.sunMode && toggleSun() },
+            { key: 'cockpit', type: 'bool', get: () => s.cockpit, set: (v) => Boolean(v) !== s.cockpit && toggleCam() },
+          ],
+        },
+        ...groups,
+      ],
       dispose() {
         disposed = true;
         if (s.engine && s.engine !== 'coming') s.engine.stop();

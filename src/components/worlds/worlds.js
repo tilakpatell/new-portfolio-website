@@ -9,9 +9,6 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).flatMap((u) => [{ to: u.t
 // What each world downloads when it opens (models, textures, skies,
 // sound), in MB, measured on a phone-sized screen and rounded up: a phone
 // asks before loading the heavy ones (WorldGate, lib/device's worldCheck).
-// The Expanse's row is the exception: it counts its whole built pack (the
-// nature kit's files with the engine and the code), not what a phone
-// measured fetching.
 // A world on the world runtime (src/runtime) says the same in its module's
 // `mb` (its test checks they agree).
 export const WORLD_MB = {
@@ -32,19 +29,14 @@ export const WORLD_MB = {
   '/dot-matrix/64': 7, // the castle's and Bob-omb Ridge's texture sets at phone size, two skies, and Mario, the cast and the props (fan-made Sketchfab models, 2 MB)
   '/earth': 2, // NASA's globe at phone size, the stars and the plane
   '/dot-matrix/minecraft': 2, // drawn in code from the pack's tiles: the block strip, the skins and the sky's and HUD's sprites (under a tenth of an MB today)
-  '/universe/expanse': 16, // a planet of the Expanse, driven: its whole install (its pack, 15.4 MB built): the nature kit's manifest and the family files its lands' flora draws (8.0 MB, expanse/pack.js), the physics engine (Rapier, 4.1 MB), three.js and the page's code (3.3 MB); the land itself is made from its seed
 };
 
 // The world a path is in: '/middle-earth/moria' is Middle-earth. Some
 // worlds sit inside another's address ('/dot-matrix/64' inside
 // '/dot-matrix'), so the longest match wins: each gets its own download size
 // and its own phone gate, not its parent's.
-// The worlds made from a seed (a planet of the Expanse), not on the map's
-// list but gated as the others: a phone asks before it downloads one.
-export const SEEDED = [{ to: '/universe/expanse', label: 'A planet of the Expanse', from: 'The Expanse' }];
-
 export const worldAt = (pathname) =>
-  [...WORLDS, ...SEEDED].filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
+  WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
 
 // The way out of a world, for the view the visitor is in (the glossary's
 // last row): "Universe map", back to this world's place on the map, or

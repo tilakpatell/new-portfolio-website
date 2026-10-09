@@ -189,6 +189,21 @@ async function shoot(browser, base, leg) {
         say(`  note: ${leg}: the world has no view('${view}') hook; skipped`);
         continue;
       }
+      // A world that streams what it shows (Minecraft's chunks, made in
+      // workers) says when it's all in (`settled()`, development's): frames,
+      // each with real time behind it, till it has been for ten in a row. The
+      // view holds the world still, so how many it took doesn't show.
+      const settles = await page.evaluate(() => typeof window.__RUNTIME__.current?.world?.settled === 'function');
+      if (settles) {
+        let calm = 0;
+        let n = 0;
+        for (; calm < 10 && n < 1500; n++) {
+          await page.clock.runFor(16);
+          await page.waitForTimeout(60);
+          calm = (await page.evaluate(() => window.__RUNTIME__.current.world.settled())) ? calm + 1 : 0;
+        }
+        if (calm < 10) say(`  note: ${leg}: '${view}' never settled in ${n} frames; its picture may be part-loaded`);
+      }
     }
     await frames(100);
     // (the frames drawn in that 100 ms reach the screen on the compositor's

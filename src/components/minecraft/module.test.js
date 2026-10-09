@@ -3,7 +3,7 @@ import { WORLD_MB } from '../worlds/worlds';
 import { IDBFactory } from 'fake-indexeddb';
 import { createStore } from '../../runtime/store';
 import { createRegistry } from '../worlds/registry';
-import mc, { KEYS, distanceFor, ticksFor } from './module';
+import mc, { KEYS, VIEWS, distanceFor, settledOf, ticksFor } from './module';
 import { newGame, wantedChunks } from './rules/game.js';
 import { createStream } from './stream.js';
 import { hashSeed } from './rules/noise.js';
@@ -11,8 +11,8 @@ import { SAVE } from './rules/save.js';
 import { FIRST_NAME, HELD, holdWorld, keepWorld, openWorld } from './worlds';
 
 describe('Minecraft, the world module', () => {
-  it('the module has id minecraft, glsl, mb 2 matching WORLD_MB', () => {
-    expect(mc).toMatchObject({ id: 'minecraft', shading: 'glsl', mb: 2 });
+  it('the module has id minecraft, nodes, mb 2 matching WORLD_MB', () => {
+    expect(mc).toMatchObject({ id: 'minecraft', shading: 'nodes', mb: 2 });
     expect(WORLD_MB['/dot-matrix/minecraft']).toBe(2);
     expect(typeof mc.create).toBe('function');
     expect(mc.label).toMatch(/Minecraft/);
@@ -34,6 +34,28 @@ describe('Minecraft, the world module', () => {
     const r = ticksFor(0.12);
     expect(r.ticks).toBe(2);
     expect(r.left).toBeCloseTo(0.02, 10);
+  });
+
+  it('the parity check’s views: seed 1, the title and a day at noon, a night at midnight', () => {
+    expect(Object.keys(VIEWS)).toEqual(['title', 'day', 'night']);
+    for (const v of Object.values(VIEWS)) {
+      expect(v.seed).toBe(1);
+      expect(Number.isFinite(v.ticks) && Number.isFinite(v.yaw) && Number.isFinite(v.pitch)).toBe(true);
+    }
+    expect([VIEWS.title.time, VIEWS.day.time, VIEWS.night.time]).toEqual([6000, 6000, 18000]); // noon, noon, midnight
+    expect(VIEWS.title.play).toBe(false);
+    expect(VIEWS.day.play && VIEWS.night.play).toBe(true);
+    expect(VIEWS.night.pitch).toBeGreaterThan(0); // (looking up)
+  });
+
+  it('settled: every chunk wanted is in, none in flight or being meshed again', () => {
+    const loaded = new Set(['0,0', '1,0']);
+    const at = (o) => settledOf({ wanted: ['0,0', '1,0'], has: (k) => loaded.has(k), flying: 0, remeshing: 0, ...o });
+    expect(at()).toBe(true);
+    expect(at({ flying: 1 })).toBe(false);
+    expect(at({ remeshing: 2 })).toBe(false);
+    expect(at({ wanted: ['0,0', '1,0', '2,0'] })).toBe(false);
+    expect(at({ wanted: [] })).toBe(true);
   });
 
   it('the render distance follows the tier and steps down with the quality', () => {

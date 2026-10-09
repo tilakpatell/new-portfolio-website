@@ -20,26 +20,9 @@
 // prints a table: a row per phase (load, idle, move...), with the frame
 // times' spread, the hitches (frames over 50 and 100 ms), and what the
 // worst frames were spent on.
-//
-// A journey that holds a world to its budget (expanseDrive) reads three's
-// own count of a whole frame (renderer.info, every pass in it, as
-// scripts/galaxy-check.mjs does) at the end of each leg, and the worst leg's
-// draw calls and triangles against src/lib/budgets.js's row for QUALITY
-// (high unset): pass or FAIL, and a FAIL exits 1, as does no count (a
-// journey stopped short of one, or a leg that counted no draw at all: a
-// frame of nothing is no pass). expanseDrive drives the planet of
-// EXPANSE_SEED and EXPANSE_TYPE (7 and temperate unset: a type is one of
-// lib/land's, temperate desert ice ocean volcanic forest). The table's
-// own draws and ktris are a frame's mean at the GL, a different count. The
-// runtime steps a slow GL's quality down as it runs (a software one's within
-// seconds), so each count says the level it was drawn at; SHARPEST=1 holds
-// it at the sharpest step (no calibration walk, ?calibrate=off, and the
-// pace's judging held off once the world is up), the tier's own counts
-// whatever the frames cost.
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { budget } from '../src/lib/budgets.js';
 
 const argv = process.argv.slice(2);
 const profile = Boolean(process.env.PROFILE);
@@ -47,8 +30,6 @@ const trace = Boolean(process.env.TRACE);
 const out = process.env.OUT ?? '.';
 const quality = process.env.QUALITY ?? '';
 const gpu = ['webgl', 'webgpu'].includes(process.env.GPU) ? process.env.GPU : null;
-const sharpest = Boolean(process.env.SHARPEST);
-const expanse = { seed: process.env.EXPANSE_SEED || '7', type: process.env.EXPANSE_TYPE || 'temperate' };
 const [vw, vh, vdpr] = (process.env.VIEW ?? '1470x956@2').match(/(\d+)x(\d+)(?:@([\d.]+))?/).slice(1).map(Number);
 
 // ── what's recorded in the page ──
@@ -285,40 +266,6 @@ const hold = async (page, key, ms) => {
   await wait(page, ms);
   await page.keyboard.up(key);
 };
-// One whole frame's draw calls and triangles as three counts them, every
-// pass in it (the shadows, a target drawn before the frame), as
-// scripts/galaxy-check.mjs reads them: the most over `ms` of frames (three
-// at least), with the tier and the step the runtime drew them at
-const frameCounts = (page, ms = 1500) =>
-  page.evaluate(
-    (ms) =>
-      new Promise((done) => {
-        const rt = window.__RUNTIME__;
-        const info = rt.gfx.renderer.info;
-        const wasAuto = info.autoReset;
-        info.autoReset = false;
-        let calls = 0;
-        let triangles = 0;
-        let frames = -1; // (what the first tick finds is part of a frame)
-        const t0 = performance.now();
-        const tick = (now) => {
-          rt.invalidate?.();
-          if (frames >= 0) {
-            calls = Math.max(calls, info.render.calls);
-            triangles = Math.max(triangles, info.render.triangles);
-          }
-          info.reset();
-          frames += 1;
-          if (now - t0 < ms || frames < 3) requestAnimationFrame(tick);
-          else {
-            info.autoReset = wasAuto;
-            done({ calls, triangles, frames, tier: rt.quality.tier, level: rt.quality.level, scale: rt.quality.scale });
-          }
-        };
-        requestAnimationFrame(tick);
-      }),
-    ms,
-  );
 const canvasUp = (page, timeout = 180000) => page.waitForFunction(() => [...document.querySelectorAll('canvas')].some((c) => c.width > 300 && c.height > 200), null, { timeout });
 
 // a world page: the load (from the address to its first frames), resting, then walking about
@@ -508,71 +455,12 @@ const JOURNEYS = {
     }
     mark('end');
   },
-  // a planet of the Expanse (EXPANSE_SEED, EXPANSE_TYPE: 7 and temperate
-  // unset) driven flat out along +x with the boost and back again, so cells
-  // keep arriving ahead and going behind; each leg's last frame counted,
-  // still driving, for its budget
-  async expanseDrive(page, mark) {
-    this.counts = [];
-    mark('load');
-    console.log(`  expanseDrive: seed ${expanse.seed}, ${expanse.type}`);
-    await page.goto(`${this.base}/${this.q}#/universe/expanse/${expanse.seed}${expanse.type === 'temperate' ? '' : `?type=${expanse.type}`}`, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.__RUNTIME__?.status === 'on' && window.__EXPANSE__, null, { timeout: 180000 });
-    // (still in the world's first unjudged seconds)
-    if (sharpest) await page.evaluate(() => window.__RUNTIME__.quality.hold(Infinity));
-    mark('settle');
-    await wait(page, 4000);
-    for (const [name, yaw] of [['out', 0], ['back', Math.PI]]) {
-      // (turned round where it stands, still, so both legs are the same drive)
-      await page.evaluate((y) => {
-        const [x, h, z] = window.__EXPANSE__.vehicle.chassis.position();
-        window.__EXPANSE__.vehicle.moveTo(x, h + 0.5, z, y);
-      }, yaw);
-      mark(name);
-      await page.keyboard.down('ShiftLeft');
-      await page.keyboard.down('KeyW');
-      await wait(page, 12000);
-      this.counts.push({ leg: name, ...(await frameCounts(page)) });
-      await page.keyboard.up('KeyW');
-      await page.keyboard.up('ShiftLeft');
-    }
-    mark('end');
-  },
   music: worldPage('/music'),
   scranton: worldPage('/scranton'),
   citadel: worldPage('/c-137/citadel'),
   dotmatrix: worldPage('/dot-matrix'),
   caribbean: worldPage('/caribbean'),
 };
-
-// a journey's counts against its budget row: the worst leg's calls and
-// triangles, printed, pass or FAIL (exit 1, as for a journey stopped short
-// of its counts, or a leg that counted no draw calls)
-function held(counts, failed) {
-  const level = quality || 'high';
-  const row = budget(level);
-  const at = (c) => `${c.leg} ${c.calls} calls, ${(c.triangles / 1e6).toFixed(2)}M tris (${c.tier} at step ${c.level}, ×${c.scale}, ${c.frames} frames)`;
-  if (failed || !counts.length) {
-    console.log(`  budget (${level}): FAIL, ${counts.length} legs counted before it stopped`);
-    process.exitCode = 1;
-    return { level, pass: false, counts };
-  }
-  // (a leg that counted no draw drew nothing three saw: no count, not a pass)
-  const empty = counts.filter((c) => !(c.calls > 0));
-  if (empty.length) {
-    console.log(`  frames counted: ${counts.map(at).join('; ')}`);
-    console.log(`  budget (${level}): FAIL, no count: ${empty.map((c) => c.leg).join(', ')} counted no draw calls`);
-    process.exitCode = 1;
-    return { level, pass: false, counts };
-  }
-  const calls = Math.max(...counts.map((c) => c.calls));
-  const triangles = Math.max(...counts.map((c) => c.triangles));
-  const pass = calls <= row.calls && triangles <= row.tris;
-  console.log(`  frames counted: ${counts.map(at).join('; ')}`);
-  console.log(`  budget (${level}): worst ${calls} calls of ${row.calls}, ${(triangles / 1e6).toFixed(2)}M of ${row.tris / 1e6}M triangles: ${pass ? 'pass' : 'FAIL'}`);
-  if (!pass) process.exitCode = 1;
-  return { level, calls, triangles, limits: { calls: row.calls, tris: row.tris }, pass, counts };
-}
 
 if (argv.includes('--list')) {
   console.log(Object.keys(JOURNEYS).join('\n'));
@@ -648,7 +536,7 @@ try {
       await cdp.send('Profiler.enable');
       await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
     }
-    const h = { base, q: `?${[quality && `quality=${quality}`, gpu && `gpu=${gpu}`, sharpest && 'calibrate=off'].filter(Boolean).join('&')}`.replace(/^\?$/, '') };
+    const h = { base, q: `?${[quality && `quality=${quality}`, gpu && `gpu=${gpu}`].filter(Boolean).join('&')}`.replace(/^\?$/, '') };
     const t0 = Date.now();
     let failed = null;
     try {
@@ -690,7 +578,6 @@ try {
       for (const [t, n] of [...slips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) console.log(`    ${n}× ${t.slice(13)}`);
     }
     report[name].slips = Object.fromEntries(slips);
-    if (h.counts) report[name].budget = held(h.counts, failed);
     await ctx.close();
   }
 } finally {

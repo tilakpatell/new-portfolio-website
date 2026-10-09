@@ -104,7 +104,7 @@ export const PAGES = {
     about: ABOUT['/universe'],
     keys: [
       { label: 'Flying', rows: [...fly(WEAPONS), ['hold S', 'Drop out of a lane'], ['hold W', 'Carry on through a junction'], ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole universe']] },
-      { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['B', 'Rick’s next gadget: the portal gun, the freeze ray, the shrink ray'], ['V', 'Out of their eyes'], ['G', 'Through a door, or back into the ship'], ['Enter', 'Into the planet’s page']] },
+      { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['Click, then the mouse', 'Look round (Esc lets go)'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['B', 'Rick’s next gadget: the portal gun, the freeze ray, the shrink ray'], ['V', 'Out of their eyes'], ['G', 'Through a door, or back into the ship'], ['Enter', 'Into the planet’s page']] },
     ],
     touch: [
       {
@@ -150,11 +150,11 @@ export const PAGES = {
           ['W A S D', 'Walk (the way the camera faces); on a ride, throttle and steer'],
           ['Shift', 'Run (or boost)'],
           ['Space', 'Jump'],
-          ['Drag', 'Look round'],
+          ['Click, then the mouse', 'Look round (Esc lets go; the Menu’s Look: Drag to drag instead)'],
           ['Scroll', 'Zoom'],
           ['E', 'Talk, ride (and get off), go in, get in the ship'],
-          ['F', 'Fire your blaster (bursts and pellets as the gun has them); with a lightsaber, a stroke on release: strokes chain, and F held is the heavy one, which breaks shields'],
-          ['Right button', 'Hold to aim down the sights (the weapon’s zoom; a steadier shot)'],
+          ['F / Left button', 'Fire your blaster (bursts and pellets as the gun has them); with a lightsaber, a stroke on release: strokes chain, and held is the heavy one, which breaks shields'],
+          ['Right button', 'Hold to aim down the sights (the weapon’s zoom; a steadier shot); with a lightsaber, hold to block'],
           ['C', 'Hold to block with the lightsaber: bolts come off the blade, swipes cost your guard; a block as a swipe lands is a parry'],
           ['R', 'Throw the lightsaber (it comes back); with a gun, vent the heat (overheated, hit the blue band)'],
           ['X', 'Dodge: a roll the way you’re going, nothing landing through its start'],
@@ -436,6 +436,7 @@ export const PAGES = {
           ['E / Enter', 'Go in (or wash the Aztek at A1A)'],
           ['M', 'Things to do: the places, as each one opens'],
           ['R', 'Run a delivery'],
+          ['B', 'Stuck? Back to where you last drove clear (Y on a pad)'],
           ['T', 'The time of day'],
           ['P', 'Throw a pizza on the roof (at Walt’s house)'],
           ['H', 'The horn'],
@@ -455,10 +456,10 @@ export const PAGES = {
   '/c-137': {
     about: ABOUT['/c-137'],
     keys: [
-      { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Doors, the cruiser, the games, the portal gun on Rick’s bench'], ['P', 'The portal gun, from anywhere'], ['M', 'Things to do']] },
+      { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Click, then the mouse', 'Look round (Esc lets go)'], ['E', 'Doors, the cruiser, the games, the portal gun on Rick’s bench'], ['P', 'The portal gun, from anywhere'], ['M', 'Things to do']] },
       { label: 'In the cruiser', rows: [['W A S D', 'Fly'], ['Space', 'Climb'], ['Shift', 'Drop'], ['E', 'Land (slow, over open ground)']] },
       { label: 'Portal panic', rows: [['W A S D', 'Move'], ['Mouse', 'Aim: the gun fires on its own'], ['F', 'Auto-fire off (then hold the mouse to fire)'], ['Space / Shift', 'Portal-dash'], ['1 2 3', 'Take a gadget'], ['P', 'Pause']] },
-      { label: 'Total Rickall', rows: [['Drag', 'Aim'], ['E', 'Remember the one in the crosshair'], ['F / Click', 'Shoot them'], ['Esc', 'Stop the game']] },
+      { label: 'Total Rickall', rows: [['Mouse', 'Aim (click first to hold the pointer)'], ['E', 'Remember the one in the crosshair'], ['F / Click', 'Shoot them'], ['Esc', 'Stop the game']] },
       { label: 'Through the portal', rows: [['E', 'Talk, take, look, free: whatever the prompt says'], ['F', 'Fire, in a fight (Evil Rick’s lair, the Blood Dome)'], ['Run', 'From whoever’s after you: the map shows them red']] },
     ],
     touch: [
@@ -625,16 +626,6 @@ export const PAGES = {
     tips: [
       ['From orbit', 'The Earth right now: the sun where it is, so the night side is the real night.'],
       ['The passport', 'Fly over a place to stamp it and get its postcard. Fly here sets the autopilot along the great circle; the arrow at the bottom points at the next place.'],
-      ['A controller', 'Works too.'],
-    ],
-  },
-  '/universe/expanse': {
-    about: ABOUT['/universe/expanse'],
-    keys: [{ label: 'Driving', rows: [['W / ↑', 'Drive'], ['S / ↓', 'Brake, then reverse'], ['A D / ← →', 'Steer'], ['Shift', 'Boost'], ['Space', 'Jump'], ['R', 'Back to dry land']] }],
-    touch: [{ label: 'Driving', rows: [['Stick', 'Drive and steer'], ['Jump', 'Jump'], ['Boost', 'Hold to go faster'], ['Back', 'Back to dry land']] }],
-    tips: [
-      ['Water', 'The compass at the top points at the nearest water. Rivers run downhill into lakes and the sea; drive in and the car slows, and after four seconds under it comes back to dry land.'],
-      ['Another planet', 'Every seed is a different planet: change the number at the end of the address. ?type=forest, desert, ice, ocean or volcanic changes its kind.'],
       ['A controller', 'Works too.'],
     ],
   },

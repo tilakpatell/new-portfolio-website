@@ -6,13 +6,13 @@
 // other bone's length, since a turn doesn't care how long the bone is).
 // This was rickmorty/portal/clips.js, Rick's clips lent to the figures
 // without their own; it re-exports from here, so its callers (meshyCast.js,
-// universe/footScene.js, the cockpits, saberBody.js) are as they were.
+// universe/footScene.js, the cockpits) are as they were.
 //
-//   CLIPS: { name: { url, take?, hips?, loop?, mask? } }   the registry: the
+//   CLIPS: { name: { url, take?, hips?, loop?, mask?, alias? } }   the registry: the
 //     GLB, the clip's name in it (else its first), the hips' height it was
 //     made for (else read from the file), whether it repeats, and the bones
 //     it may move when played as a layer ('upper', 'lower', 'full'; full
-//     when it doesn't say)
+//     when it doesn't say); `alias`: another name for the same file's clip
 //   loadClip(name, { loader }) → Promise<clip | null>   fetched once, for
 //     everyone, with clip.userData.hips; a file that won't load is null
 //   forFigure(name, { hipsY, up, key, ahead }) → Promise<clip | null>   a
@@ -171,15 +171,42 @@ export const CLIPS = {
   lantern: { url: `${BASE}/ual-lantern.glb`, loop: true }, // Idle_Lantern_Loop
   'lean.rail': { url: `${BASE}/ual-lean.rail.glb`, loop: true }, // Idle_Rail_Loop
   'open.chest': { url: `${BASE}/ual-open.chest.glb` }, // Chest_Open
+  // the strokes (`--set sword`: every UAL2 sword clip, the whole body, each
+  // with its contact window and its root's travel in its extras, read as
+  // clip.userData.contact, .root and .rootHips; galaxy/surface/saber.js)
   'sword.a': { url: `${BASE}/ual-sword.a.glb` }, // Sword_Regular_A
+  'sword.a.rec': { url: `${BASE}/ual-sword.a.rec.glb` }, // Sword_Regular_A_Rec
   'sword.b': { url: `${BASE}/ual-sword.b.glb` }, // Sword_Regular_B
+  'sword.b.rec': { url: `${BASE}/ual-sword.b.rec.glb` }, // Sword_Regular_B_Rec
   'sword.c': { url: `${BASE}/ual-sword.c.glb` }, // Sword_Regular_C
+  'sword.combo': { url: `${BASE}/ual-sword.combo.glb` }, // Sword_Regular_Combo
   'sword.light.a': { url: `${BASE}/ual-sword.light.a.glb` }, // Sword_Light_A
+  'sword.light.a.rec': { url: `${BASE}/ual-sword.light.a.rec.glb` }, // Sword_Light_A_Rec
   'sword.light.b': { url: `${BASE}/ual-sword.light.b.glb` }, // Sword_Light_B
+  'sword.light.b.rec': { url: `${BASE}/ual-sword.light.b.rec.glb` }, // Sword_Light_B_Rec
   'sword.light.c': { url: `${BASE}/ual-sword.light.c.glb` }, // Sword_Light_C
-  'sword.heavy': { url: `${BASE}/ual-sword.heavy.glb` }, // Sword_Heavy_A
+  'sword.light.c.rec': { url: `${BASE}/ual-sword.light.c.rec.glb` }, // Sword_Light_C_Rec
+  'sword.light.d': { url: `${BASE}/ual-sword.light.d.glb` }, // Sword_Light_D
+  'sword.light.combo': { url: `${BASE}/ual-sword.light.combo.glb` }, // Sword_Light_Combo
+  'sword.heavy.a': { url: `${BASE}/ual-sword.heavy.a.glb` }, // Sword_Heavy_A
+  'sword.heavy.a.rec': { url: `${BASE}/ual-sword.heavy.a.rec.glb` }, // Sword_Heavy_A_Rec
+  'sword.heavy.b': { url: `${BASE}/ual-sword.heavy.b.glb` }, // Sword_Heavy_B
+  'sword.heavy.b.rec': { url: `${BASE}/ual-sword.heavy.b.rec.glb` }, // Sword_Heavy_B_Rec
+  'sword.heavy.c': { url: `${BASE}/ual-sword.heavy.c.glb` }, // Sword_Heavy_C
+  'sword.heavy.c.rec': { url: `${BASE}/ual-sword.heavy.c.rec.glb` }, // Sword_Heavy_C_Rec
+  'sword.heavy.d': { url: `${BASE}/ual-sword.heavy.d.glb` }, // Sword_Heavy_D
+  'sword.heavy.combo': { url: `${BASE}/ual-sword.heavy.combo.glb` }, // Sword_Heavy_Combo
+  'sword.aerial.a': { url: `${BASE}/ual-sword.aerial.a.glb` }, // Sword_Aerial_A
+  'sword.aerial.a.rec': { url: `${BASE}/ual-sword.aerial.a.rec.glb` }, // Sword_Aerial_A_Rec
+  'sword.aerial.b': { url: `${BASE}/ual-sword.aerial.b.glb` }, // Sword_Aerial_B
+  'sword.aerial.combo': { url: `${BASE}/ual-sword.aerial.combo.glb`, loop: true }, // Sword_Aerial_Combo_Loop
+  'sword.aerial.idle': { url: `${BASE}/ual-sword.aerial.idle.glb`, loop: true }, // Sword_Aerial_Idle_Loop
   'sword.block': { url: `${BASE}/ual-sword.block.glb` }, // Sword_Block
   'sword.dash': { url: `${BASE}/ual-sword.dash.glb` }, // Sword_Dash
+  'sword.pound': { url: `${BASE}/ual-sword.pound.glb` }, // Sword_GroundPound
+  'sword.uppercut': { url: `${BASE}/ual-sword.uppercut.glb` }, // Sword_UpperCut
+  // (Heavy_A by the name the Death Star's duel has always played it under)
+  'sword.heavy': { url: `${BASE}/ual-sword.heavy.a.glb`, alias: 'sword.heavy.a' },
   lifted: { url: `${BASE}/ual-lifted.glb`, loop: true }, // LiftAir_Idle_Loop
   'lifted.fall': { url: `${BASE}/ual-lifted.fall.glb` }, // LiftAir_Fall
   'lifted.land': { url: `${BASE}/ual-lifted.land.glb` }, // LiftAir_Fall_Impact

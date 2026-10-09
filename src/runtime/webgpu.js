@@ -7,12 +7,15 @@
 // neither can run a ShaderMaterial, an onBeforeCompile patch or an
 // EffectComposer, so a 'shader' pass is refused here. A lost device, or a
 // lost WebGL 2 context, is reported through onLost; the runtime comes back
-// on 'nodes-webgl'.
+// on 'nodes-webgl'. Tone-mapped the house’s way (Neutral) and bloomed by
+// the house’s numbers (lib/three/bloom) unless a world says otherwise, as
+// the WebGL backend is.
 //
 // createWebGPU(canvas, { budget, onLost, alpha, toneMapping, exposure, forceWebGL }) → Promise<gfx>
 
 import * as THREE from 'three';
 import { settle } from '../lib/settle';
+import { BLOOM } from '../lib/three/bloom';
 import { makeGfx } from './gfx';
 
 export const hasWebGPU = () => typeof navigator !== 'undefined' && Boolean(navigator.gpu);
@@ -31,7 +34,7 @@ export function buildPostProcessing(renderer, passes) {
         node = scenePass.getTextureNode();
       } else if (p.kind === 'bloom') {
         if (!node) throw new Error('a bloom pass needs a render pass first');
-        node = node.add(bloomMod.bloom(node, p.strength ?? 0.5, p.radius ?? 0.4, p.threshold ?? 0.85));
+        node = node.add(bloomMod.bloom(node, p.strength ?? BLOOM.strength, p.radius ?? BLOOM.radius, p.threshold ?? BLOOM.threshold));
       } else if (p.kind === 'output') {
         // (the output transform is the renderer's own on this backend)
       } else if (p.kind === 'shader') throw new Error('a shader pass needs the webgl backend');
@@ -55,7 +58,7 @@ export function buildPostProcessing(renderer, passes) {
   };
 }
 
-export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneMapping = THREE.NoToneMapping, exposure = 1, forceWebGL = false } = {}) {
+export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneMapping = THREE.NeutralToneMapping, exposure = 1, forceWebGL = false } = {}) {
   const { WebGPURenderer } = await import('three/webgpu');
   const renderer = new WebGPURenderer({ canvas, alpha, antialias: budget?.antialias ?? true, powerPreference: 'high-performance', forceWebGL });
   renderer.outputColorSpace = THREE.SRGBColorSpace;

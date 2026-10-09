@@ -37,13 +37,16 @@
 //   pack  [[id, kind, x, y, z, vx, vy, vz, hits left], …] five times a second while hunters are
 //                                                       after you and someone's there to see ([]: gone)
 //   hhit  { i: hunter id, d: damage }                    to the pilot a hunter's after, when a bolt of yours hit it
-//   ally  { t: 'ask' | 'yes' | 'no' | 'end' }            to one pilot
+//   ally  { t: 'ask' | 'yes' | 'no' | 'end', k?: 1 }     to one pilot (k: an ask from a pilot who has
+//                                                       you saved as an ally, allies.js: one who has
+//                                                       them saved too says yes without asking)
 //   foot  { p: planet, k: ship kind, s: [n, f] where it's parked, a: walker, b: walker or null }
 //         ten times a second while your crew are down on a planet ({ p: null }: back in);
 //         a walker is [who, n (3), f (3), h, speed, side, aim] (footScene.js, foot.js)
-//   siege { e, m, t, x, l }                              the Citadel's siege (siege.js): its epoch,
+//   siege { e, m, t, x, l, i }                           the Citadel's siege (siege.js): its epoch,
 //                                                       your share of each part's damage, the
-//                                                       totals you know, when it went up, the last hit
+//                                                       totals you know, when it went up, the last
+//                                                       hit; your siege id, the same through a reload
 //   war   { e, m, t, i }                               the galaxy's war (galaxy/gcw.js, a tally.js
 //                                                       message): the campaign, your points and the
 //                                                       totals you know, a page of TALLY.keys at a
@@ -73,6 +76,7 @@ import { SIDES } from '../sides';
 import { AXES, LEVELS as STANDING_LEVELS } from '../standing';
 import { SIDES as WAR_SIDES, WARS, warOfSide } from '../../galaxy/sides';
 import { RANKS } from '../../galaxy/ranks';
+import { STANCE_IDS } from '../../galaxy/surface/combatRules';
 import { NO_FACTIONS } from './relations';
 import { motionPacket, readEmoteWire, readMotion } from '../../../lib/emote';
 import { WEAPONS, byCode } from '../weaponTable';
@@ -382,7 +386,9 @@ export function readFoot(data) {
 // emote, motion], ride the kind they're on (or null); or null once
 // they've taken off again. `arms` (newer pilots; older readers stop before
 // it) is what's in the hand: [gun kind, lit (a saber: 0 | 1), blade colour
-// (#rrggbb), stance, swinging (0 | 1)]; `emote` and `motion` (newer still,
+// (#rrggbb), stance, swinging (0 | 1), and, newer, the stroke's clip
+// ('sword.light.a': the clip library's name, so a peer plays the one
+// they're playing; an older reader stops at the five)]; `emote` and `motion` (newer still,
 // and only when there's one: lib/emote.js's emotePacket and motionPacket)
 // what they're doing ([id, seconds on]) and how they're moving ([speed,
 // side, turn] in metres and radians a second), so their feet keep pace
@@ -391,8 +397,14 @@ const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']
 const r2 = (v) => Math.round((v || 0) * 100) / 100;
 // (the gun up, 0…1, then the arms: an older reader stops at the speed)
 export const ARMS_GUNS = ['blaster', 'laser', 'portal', 'revolver', 'pistol', 'bowcaster', 'rifle', 'coppistol', 'saber', 'a280', 'dlt19', 'ee3', 'westar', 'shotgun', 'sniper', 'smg']; // universe/gunplay.js's GUNS
-const STANCES_SEEN = ['single', 'double', 'dual', 'heavy']; // galaxy/surface/combatRules.js's
-const writeArms = (a) => (a && ARMS_GUNS.includes(a.gun) ? [a.gun, a.lit ? 1 : 0, typeof a.color === 'string' ? a.color.slice(0, 7) : '', STANCES_SEEN.includes(a.stance) ? a.stance : 'single', a.swing ? 1 : 0] : null);
+const STANCES_SEEN = STANCE_IDS;
+const strokeOf = (s) => (typeof s === 'string' && s.length <= 32 && /^sword(\.[a-z]+)+$/.test(s) ? s : null);
+const writeArms = (a) => {
+  if (!a || !ARMS_GUNS.includes(a.gun)) return null;
+  const out = [a.gun, a.lit ? 1 : 0, typeof a.color === 'string' ? a.color.slice(0, 7) : '', STANCES_SEEN.includes(a.stance) ? a.stance : 'single', a.swing ? 1 : 0];
+  if (strokeOf(a.stroke)) out.push(a.stroke);
+  return out;
+};
 const writeStroller = (w) => {
   if (!w) return null;
   const out = [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100];
@@ -405,7 +417,8 @@ const writeStroller = (w) => {
 };
 const readArms = (a) => {
   if (!Array.isArray(a) || !ARMS_GUNS.includes(a[0])) return null;
-  return { gun: a[0], lit: a[1] === 1, color: typeof a[2] === 'string' && /^#[0-9a-fA-F]{6}$/.test(a[2]) ? a[2] : '#4aa8ff', stance: STANCES_SEEN.includes(a[3]) ? a[3] : 'single', swing: a[4] === 1 };
+  const stroke = strokeOf(a[5]);
+  return { gun: a[0], lit: a[1] === 1, color: typeof a[2] === 'string' && /^#[0-9a-fA-F]{6}$/.test(a[2]) ? a[2] : '#4aa8ff', stance: STANCES_SEEN.includes(a[3]) ? a[3] : 'single', swing: a[4] === 1, ...(stroke ? { stroke } : {}) };
 };
 export function writeWalk(w) {
   if (!w) return { w: null };
@@ -491,6 +504,14 @@ export function createLimiter(rates = RATES) {
       return denied.length > FLOOD.denied;
     },
   };
+}
+
+// an alliance's word as it came in: { t: 'ask' | 'yes' | 'no' | 'end', k:
+// 1 (an ask from a pilot who has you saved) or 0 }, or null if it isn't one
+const ALLY_WORDS = ['ask', 'yes', 'no', 'end'];
+export function readAlly(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !ALLY_WORDS.includes(data.t)) return null;
+  return { t: data.t, k: data.k === 1 ? 1 : 0 };
 }
 
 // An alliance between you and one pilot, one step on. States: 'none',

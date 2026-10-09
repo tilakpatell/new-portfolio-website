@@ -18,7 +18,9 @@
 // The world adds: look(dx, dy), press(name, down) (forward…, jump, sneak,
 // attack, use), stick(x, y), scroll(dir), select(slot), click(where) on a
 // screen, closeScreen(), icon(item) → a picture's URL, start(), pause(on),
-// newWorld(seed), toTitle(), and `game`, `scene`, `debug` for the checks.
+// newWorld(seed), toTitle(), tune() (the ?debug panel's groups), and `game`,
+// `scene`, `debug` for the checks; in development, view(name) and settled()
+// for the parity check (VIEWS). The sim's events are heard (./sounds.js).
 
 import * as THREE from 'three';
 import { BLOCKS, byName } from './rules/blocks.js';
@@ -33,6 +35,7 @@ import { WORKER, createStream } from './stream.js';
 import { createStore } from '../../runtime/store.js';
 import { createRegistry } from '../worlds/registry.js';
 import { holdWorld, keepWorld, openWorld, randomSeed } from './worlds.js';
+import { createSounds } from './sounds.js';
 
 export { SAVE, SAVE_VERSION };
 
@@ -73,12 +76,27 @@ const BY_TIER = { high: 10, mid: 6, low: 4 };
 const BY_LEVEL = [10, 8, 6, 4, 4];
 export const distanceFor = (tier, level = 0) => Math.min(BY_TIER[tier] ?? 6, BY_LEVEL[Math.min(level, BY_LEVEL.length - 1)]);
 
+// Development: the parity check's named views (scripts/gpu-parity.mjs), each
+// a world, a time and a way of looking, held still once it's there: 'title'
+// as the game opens on it, 'day' stood at the spawn at noon, looking a
+// little down, at the land, the water and the sky over the horizon;
+// 'night' there at midnight, looking up at the stars, the moon and the
+// clouds.
+export const VIEWS = {
+  title: { seed: 1, play: false, time: 6000, ticks: 2400, yaw: 0.6, pitch: -0.22 },
+  day: { seed: 1, play: true, time: 6000, ticks: 2400, yaw: 2.2, pitch: -0.3 },
+  night: { seed: 1, play: true, time: 18000, ticks: 2400, yaw: 2.2, pitch: 0.9 },
+};
+
+// every chunk the place wants is in, and nothing is in flight or being meshed again
+export const settledOf = ({ wanted, has, flying, remeshing }) => flying === 0 && remeshing === 0 && wanted.every(has);
+
 // the modes with a screen open over the world
 const SCREENS = new Set(['inventory', 'table', 'chest', 'furnace']);
 
 export default {
   id: 'minecraft',
-  shading: 'glsl',
+  shading: 'nodes',
   mb: 2,
   label: 'Minecraft, a fan tribute: an endless blocky world to dig and build in',
   async create(rt, props = {}) {
@@ -90,14 +108,16 @@ export default {
     const take = (r) => {
       if (r === renderer) return;
       if (renderer && was) {
-        Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure });
+        Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure, outputColorSpace: was.colourSpace });
         renderer.shadowMap.enabled = was.shadows;
       }
       renderer = r;
-      was = { toneMapping: r.toneMapping, exposure: r.toneMappingExposure, shadows: r.shadowMap.enabled };
-      // the game's flat light: no tone mapping, no shadows
+      was = { toneMapping: r.toneMapping, exposure: r.toneMappingExposure, colourSpace: r.outputColorSpace, shadows: r.shadowMap.enabled };
+      // the game's flat light: no tone mapping, no shadows, and the colour
+      // its materials make written as it is (scene/nodes.js says why)
       r.toneMapping = THREE.NoToneMapping;
       r.toneMappingExposure = 1;
+      r.outputColorSpace = THREE.LinearSRGBColorSpace;
       r.shadowMap.enabled = false;
     };
     take(rt.gfx.renderer);
@@ -114,7 +134,9 @@ export default {
     const tier = rt.quality?.tier ?? 'high';
     let distance = distanceFor(tier, 0);
     let g = null;
+    const sounds = createSounds(); // what the sim's events sound like (./sounds.js)
     let mode = 'title';
+    let held = false; // a development view, held still (VIEWS)
     let screen = null;
     let gone = false;
     rt.workers.define(WORKER, () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }));
@@ -297,6 +319,8 @@ export default {
       get game() {
         return g;
       },
+      // behind ?debug: the sounds' levels (the game's own numbers stay the game's)
+      tune: () => sounds.groups(),
       scene,
       debug: {
         teleport(x, y, z) {
@@ -368,6 +392,13 @@ export default {
       },
       step(dt, snap) {
         load();
+        // (a development view held: the chunks still come in, and the page is
+        // told how many, so its 'Building terrain' screen goes; nothing moves)
+        if (held) {
+          remesh();
+          report(dt);
+          return;
+        }
         const p = g.player;
         const playing = mode === 'play';
         const screenOpen = SCREENS.has(mode);
@@ -399,7 +430,10 @@ export default {
               touch.pressed.clear();
             }
           }
-          for (const e of drain(g)) {
+          const happened = drain(g);
+          // (heard: the steps, the blocks, a hurt, a splash; ./sounds.js)
+          sounds.hear(happened, g.player);
+          for (const e of happened) {
             if (e.type === 'open' && mode === 'play') {
               if (e.what === 'table') openScreen(3);
               else openContainer(e.what, e);
@@ -514,6 +548,7 @@ export default {
         scene.dispose();
         renderer.toneMapping = was.toneMapping;
         renderer.toneMappingExposure = was.exposure;
+        renderer.outputColorSpace = was.colourSpace;
         renderer.shadowMap.enabled = was.shadows;
       },
     };
@@ -521,6 +556,21 @@ export default {
     const p0 = () => {
       g.player.pitch = 0;
     };
+    if (import.meta.env.DEV) {
+      world.view = async (name) => {
+        const v = VIEWS[name];
+        if (!v) throw new Error(`no view ${name}`);
+        held = false;
+        await world.newWorld(v.seed, { play: v.play });
+        Object.assign(g, { time: v.time, ticks: v.ticks });
+        Object.assign(g.player, { yaw: v.yaw, pitch: v.pitch });
+        g.prev = { x: g.player.x, y: g.player.y, z: g.player.z };
+        acc = 0;
+        held = true;
+        report(0, true); // (the page told the mode: the step that would is held)
+      };
+      world.settled = () => Boolean(g) && settledOf({ wanted: wanted(), has: (k) => g.world.chunks.has(k), ...stream.stats() });
+    }
     rt.input.bind(KEYS);
     return world;
   },

@@ -22,11 +22,15 @@ export async function prepare(file, out, { size = 1024, room = 0.08, background 
   const trimmed = await sharp(file).flatten({ background }).trim({ background, threshold: 24 }).toBuffer();
   const { width: w, height: h } = await sharp(trimmed).metadata();
   const [side, left, top] = frame(w, h, room);
-  await sharp({ create: { width: side, height: side, channels: 3, background } })
+  // composited, then scaled in a second pass: sharp resizes before it
+  // composites whatever order the calls are written in, so one pass shrinks
+  // the square first and a subject bigger than `size` can't fit on it
+  // ("Image to composite must have same dimensions or smaller")
+  const square = await sharp({ create: { width: side, height: side, channels: 3, background } })
     .composite([{ input: trimmed, left, top }])
-    .resize(size, size, { kernel: 'lanczos3' })
     .png()
-    .toFile(out);
+    .toBuffer();
+  await sharp(square).resize(size, size, { kernel: 'lanczos3' }).png().toFile(out);
   return { width: size, height: size, subject: [w, h] };
 }
 
