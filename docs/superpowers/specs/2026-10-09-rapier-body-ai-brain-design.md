@@ -1,6 +1,6 @@
 # Rapier as the body, the AI as the brain. The design
 
-Date: 2026-10-09. Status: a conceptual blueprint, designed from the owner’s brief, waiting for the owner’s review before a plan is written. No code changes with it. The plan, once approved, goes to `docs/superpowers/plans/2026-10-09-rapier-body-ai-brain.md`; the decision entry to `docs/decisions/2026-10-09-rapier-as-the-body.md`.
+Date: 2026-10-09. Status: approved by the owner on 2026-10-09 with the three answers at the end; implementation follows the plan. The plan, once approved, goes to `docs/superpowers/plans/2026-10-09-rapier-body-ai-brain.md`; the decision entry to `docs/decisions/2026-10-09-rapier-as-the-body.md`.
 
 ## What the owner asked
 
@@ -295,8 +295,10 @@ Every pure module has its test beside it, in Node against the real engine:
 6. `zones.js` where the surface has a volume to want (the rancor’s bite).
 7. The decision entry, the stack page’s “Where it is used”, the hand-off.
 
-## Open questions for the owner
+## The owner’s answers
 
-- **The player on the controller.** The design puts the player’s figure on the same character controller as the NPCs (one body for everyone). The surface’s current walker has feel the visitors know; moving it is the largest single change in the adoption. The alternative is NPCs on Rapier and the player on the walker, with the player’s hurtbox a kinematic capsule set from the walker each frame. The design recommends the first; the second is the smaller first lane.
-- **Hurtbox detail.** One capsule a figure (this design) or head, chest and limbs on the one body with offsets from bones (a later row in `hitboxRig.js`, needed only when a headshot should count).
-- **Which world first.** The galaxy surface (recommended: it has the most on the toolkit) or the Death Star inside (smaller, indoor, already has the richest saber effects).
+Asked as open questions in the first draft; answered on 2026-10-09.
+
+- **The player is on the same controller.** One body for everyone: the player’s figure is a `character.js` capsule driven by an intent the input makes. The surface’s walker becomes the maker of that intent (its feel: acceleration, turn rate, the jump) and nothing else moves the player.
+- **Hurtboxes are head, chest and limbs**, mapped from the figure’s bones. Each figure carries a set of capsule colliders on its one kinematic body (the `hurtbox` group), one per region (`head`, `chest`, `upperArm.L/R`, `foreArm.L/R`, `thigh.L/R`, `shin.L/R`), each placed relative to the body every frame from the bone pair it spans (`hitboxRig.js`, `setTranslationWrtParent` and `setRotationWrtParent`). The mapping is checked by a test that poses the figure and asserts every region sits on its bones within a tolerance, and by a sheet that draws the hurtboxes over the figure in dev (`?debug`), so a wrong mapping is seen, not guessed. A strike or bolt reports the region it hit; `damage.js` reads `where` from it (head counts more; a limb is a limb hit for dismemberment later).
+- **First the galaxy surface, then the universe’s worlds.** The galaxy surface is lane one (it has the most on the toolkit and `placer`’s solids map straight onto fixed colliders). Then, one world a lane as the runtime’s migration went: Rick and Morty (`c137`), Middle-earth’s towns, and the rest of the worlds with figures that fight or chase. Each lane moves that world’s figures onto `character.js`, its solids into Rapier, its hostiles onto `mind.js`, and leaves its gameplay as it was.
