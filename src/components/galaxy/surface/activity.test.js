@@ -151,6 +151,20 @@ describe('a hostile’s body in the world', () => {
     return { events, shots };
   };
 
+  it('a hit says where: the head counts double, a limb less, the body as before', async () => {
+    const a = out('stormtrooper', { hp: 10 });
+    await settle(a);
+    const t = a.targets[0];
+    a.hit(t, 1, { where: 'head' });
+    expect(t.hp).toBe(8);
+    a.hit(t, 1, { where: 'foreArmL' });
+    expect(t.hp).toBe(7.5);
+    a.hit(t, 1);
+    expect(t.hp).toBe(6.5);
+    a.hit(t, 1, { where: 'whole' });
+    expect(t.hp).toBe(5.5);
+  });
+
   it('a rigged Tusken raises its rifle on you and fires from the muzzle; shot, it goes down the way the shot went, lies, and is gone', async () => {
     const a = out('tusken');
     await settle(a);

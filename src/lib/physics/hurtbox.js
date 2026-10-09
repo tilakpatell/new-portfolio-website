@@ -16,8 +16,8 @@
 //     set(region, a, b)  (world [x, y, z] ends; an unknown region is ignored), regions, remove() }
 
 export const REGIONS = {
-  head: { bones: ['neck', 'head_end'], r: 0.11 },
-  chest: { bones: ['Hips', 'neck'], r: 0.16 },
+  head: { bones: ['neck', 'head_end'], r: 0.12 },
+  chest: { bones: ['Hips', 'neck'], r: 0.2 },
   upperArmL: { bones: ['LeftArm', 'LeftForeArm'], r: 0.07 },
   foreArmL: { bones: ['LeftForeArm', 'LeftHand'], r: 0.06 },
   upperArmR: { bones: ['RightArm', 'RightForeArm'], r: 0.07 },

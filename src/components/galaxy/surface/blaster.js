@@ -6,7 +6,7 @@
 // (solids.js), the bodies' capsules and a raised blade; what it hit comes
 // back as an event when it gets there, never decided when it's fired.
 //
-// createBlaster({ parent, world, pool }) → { bolts (the pool), solids (the
+// createBlaster({ parent, world, pool, sp }) → { bolts (the pool), solids (the
 // world's raycast), aim(from, dir, targets, reach) → { target, at },
 // fire(from, dir, targets, color, reach, muzzle, tag) → { target, at, bolt }
 // (`target`: what the eyes' line meets first, for the flash's way; the hit
@@ -30,6 +30,20 @@ const POOL = 48;
 const arr = (v) => (Array.isArray(v) ? v : [v.x, v.y, v.z]);
 
 // a figure's body: feet to crown, as wide as a person of its height
+// A figure's hurtboxes as the bolts and a blade's sweep test them: one
+// capsule a region from its rig (hostileBodies.js's, bone-mapped), each
+// with its region as `tag`; a figure without one capsule, `whole`.
+export function capsulesOf(t) {
+  const segs = t.hb?.rig?.segments;
+  if (!segs || t.hb.rig.single) return [{ ...capsuleOf(t), ref: t, tag: 'whole' }];
+  const out = [];
+  for (const [tag, seg] of segs) out.push({ a: seg.a, b: seg.b, r: seg.r + HURT_PAD, ref: t, tag });
+  return out;
+}
+// (a region a little fatter than its collider, for the bolts and the blades:
+// a graze counts, as it did on the one wide capsule; the physics stays exact)
+const HURT_PAD = 0.08;
+
 export function capsuleOf(t) {
   const p = t.holder.position;
   const tall = (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1);
@@ -37,10 +51,10 @@ export function capsuleOf(t) {
   return { a: [p.x, p.y + r, p.z], b: [p.x, p.y + Math.max(r, tall - r), p.z], r };
 }
 
-export function createBlaster({ parent, world, pool = POOL }) {
+export function createBlaster({ parent, world, pool = POOL, sp = null }) {
   const bolts = createBolts({ pool });
   const draw = createBoltMeshes(parent, { pool });
-  const solids = boltSolids(world);
+  const solids = boltSolids(world, { sp });
   const flat = { solids, bodies: [], blades: [] };
 
   // the first thing along a ray: a target's body or a solid (the aim point)

@@ -432,7 +432,7 @@ export async function create(canvas, ctx) {
   };
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound, sp });
   // (a battle fills the air with bolts: room for them)
-  const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
+  const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined, sp });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
   const groundWar = createGround({ parent: scene, world, site, effects: mission ? null : ctx.effects, tier, kit, warm, blaster, sparks: (at, c) => fx.sparks(new V(...at), UP, c, 8), standable: (p) => standable(site, p), seesThrough: (a, b) => lineClear(world.solids, a, b) });
   const boltPlay = createBoltPlay({ blaster, ground: groundWar });
@@ -1078,7 +1078,7 @@ export async function create(canvas, ctx) {
   const _aimDir = new V();
   function aimed(from) {
     camera.getWorldDirection(_aimDir);
-    const d = aimDir({ cam: camera.position, dir: _aimDir, from, targets: shootable(), world, cone: coneFor({ mode: looker.mode }), range: weapon().range });
+    const d = aimDir({ cam: camera.position, dir: _aimDir, from, targets: shootable(), world, cone: coneFor({ mode: looker.mode }), range: weapon().range, sp });
     return _aimDir.set(d[0], d[1], d[2]);
   }
 
@@ -1627,7 +1627,7 @@ export async function create(canvas, ctx) {
     else {
       const t = hit.target;
       const was = t.hp;
-      on(t).hit(t, dealt(damage), { breaks, how, push, at: hit.at }); // (`at`: where it landed, the head or the chest, for its flinch)
+      on(t).hit(t, dealt(damage), { breaks, how, push, at: hit.at, where: hit.where ?? null }); // (`at`: where it landed, the head or the chest, for its flinch; `where`: the region, a hurtbox's)
       const killed = was > 0 && t.hp <= 0;
       emit({ type: 'hit', kill: killed });
       sounds.combat?.(killed ? 'kill' : 'hit');
@@ -2070,7 +2070,7 @@ export async function create(canvas, ctx) {
   }
   // the blade through one of them: their blade turns it (sparks, a clash)
   // or it lands
-  function saberHit(t, damage, at, { heavy = false, thrown = false } = {}) {
+  function saberHit(t, damage, at, { heavy = false, thrown = false, where = null } = {}) {
     // their blade on yours: turned while it's up (each turned stroke drains
     // their guard, a heavy one breaks it and they reel); parried, you reel
     const turn = thrown ? { parried: false, broke: false } : on(t).parry(t, { heavy });
@@ -2096,7 +2096,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const was = t.hp;
-    on(t).hit(t, dealt(damage), { breaks: heavy, at });
+    on(t).hit(t, dealt(damage), { breaks: heavy, at, where });
     if (heavy) on(t).stagger(t, 1.2);
     const killed = was > 0 && t.hp <= 0;
     emit({ type: 'hit', kill: killed });
@@ -2218,7 +2218,7 @@ export async function create(canvas, ctx) {
       yours(e) {
         const t = e.body.ref;
         const tag = e.bolt.tag ?? {};
-        const hit = { target: t, at: new V(...e.at) };
+        const hit = { target: t, at: new V(...e.at), where: e.body.tag ?? null };
         if (tag.yours) {
           struck(hit, tag.damage, { how: tag.how, push: tag.push });
           impacts.push({ t: state.t, at: hit.at, dir: new V(...e.bolt.dir), ground: false });

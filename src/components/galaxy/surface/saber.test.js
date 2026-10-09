@@ -49,7 +49,7 @@ function duellist() {
     scene.updateMatrixWorld(true);
     const forward = new THREE.Vector3(Math.sin(me.yaw), 0, Math.cos(me.yaw));
     gp.set(dt, { aim: 0.75, look: 0, dir: null, forward, up: UP });
-    saber.update(dt, now, { forward, up: UP, me, targets, hit: (t, damage, at) => hits.push({ t, damage, at: at.clone(), clip: (now - saber.swinging.t0) * saber.swinging.speed, contact: saber.swinging.contact }) });
+    saber.update(dt, now, { forward, up: UP, me, targets, hit: (t, damage, at, o) => hits.push({ t, damage, at: at.clone(), where: o?.where ?? null, clip: (now - saber.swinging.t0) * saber.swinging.speed, contact: saber.swinging.contact }) });
   };
   return { saber, me, hits, frame, get now() {
     return now;
@@ -158,5 +158,25 @@ describe('a stroke from a clip, a hit from the blade', () => {
     d.saber.light(false);
     for (let i = 0; i < 120 && d.saber.swinging; i++) d.frame([target(0, 1.8)]);
     expect(d.hits).toEqual([]);
+  });
+
+  // Rapier's bodies: a figure with hurtboxes by region is hit by the region, once a stroke, and the hit says which
+  it('a stroke on a figure with regions lands once and says where', () => {
+    const plain = duellist();
+    plain.saber.light(true);
+    strokeAt(plain, [target(0, 1.8)]);
+    expect(plain.hits[0].where).toBe('whole');
+    const d = duellist();
+    d.saber.light(true);
+    // (a figure facing you 1.5 m off, its regions where a body's are: the stroke
+    // meets a shoulder, the chest or the head, not a capsule half a metre wide)
+    const t = target(0, 1.5);
+    const col = (y0, y1, r, x = 0) => ({ a: [x, y0, 1.5], b: [x, y1, 1.5], r });
+    const arm = (x) => ({ a: [x * 0.2, 1.45, 1.5], b: [x * 0.45, 1.25, 1.5], r: 0.07 });
+    t.hb = { rig: { single: false, segments: new Map([['head', col(1.6, 1.8, 0.12)], ['chest', col(0.9, 1.45, 0.2)], ['upperArmL', arm(1)], ['upperArmR', arm(-1)], ['thighL', col(0.45, 0.9, 0.09, 0.1)], ['thighR', col(0.45, 0.9, 0.09, -0.1)]]) } };
+    strokeAt(d, [t]);
+    expect(d.hits).toHaveLength(1);
+    expect(d.hits[0].t).toBe(t);
+    expect(['head', 'chest', 'upperArmL', 'upperArmR', 'thighL', 'thighR']).toContain(d.hits[0].where);
   });
 });

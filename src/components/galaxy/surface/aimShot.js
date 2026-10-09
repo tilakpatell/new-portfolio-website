@@ -41,10 +41,10 @@ function rayFrom(cam, dir, from) {
   return { from: [c[0] + d[0] * s, c[1] + d[1] * s, c[2] + d[2] * s], dir: d };
 }
 
-export function aimDir({ cam, dir, from, targets, world, cone, range = 90 }) {
+export function aimDir({ cam, dir, from, targets, world, cone, range = 90, sp = null }) {
   const ray = rayFrom(cam, dir, from);
   const caps = live(targets);
-  const solids = boltSolids(world);
+  const solids = boltSolids(world, { sp });
   // (touch's cone snaps: a tap of the fire button goes onto whoever's in it)
   const bent = cone ? assist(ray.dir, ray.from, caps, snapped(cone)) : ray.dir;
   const { at } = aimPoint({ from: ray.from, dir: bent }, solids, caps, { max: range });

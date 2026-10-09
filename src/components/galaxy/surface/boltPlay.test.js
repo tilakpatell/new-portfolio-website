@@ -77,4 +77,22 @@ describe('the surface’s bolts', () => {
     expect(home[0].damage).toBe(spec.hostile.damage);
     expect(trooper.hp).toBeLessThanOrEqual(0);
   });
+
+  // Rapier's bodies: a figure with hurtboxes by region is hit by the region, and says which
+  it('a bolt through a rigged figure’s head reports its region', () => {
+    const { blaster, play } = setup();
+    const head = { a: [8, 1.6, 0], b: [8, 1.8, 0], r: 0.12 };
+    const chest = { a: [8, 0.9, 0], b: [8, 1.45, 0], r: 0.2 };
+    const t = { holder: { position: new THREE.Vector3(8, 0, 0) }, fig: { tall: 1.8 }, spec: {}, hp: 3, hb: { rig: { single: false, segments: new Map([['head', head], ['chest', chest]]) } } };
+    const yours = [];
+    blaster.fire(new THREE.Vector3(0, 1.7, 0), new THREE.Vector3(1, 0, 0), [], '#ffffff', 90, null, { yours: true });
+    fly(play, { you: you(0), targets: [t] }, { yours: (e) => yours.push(e) });
+    expect(yours).toHaveLength(1);
+    expect(yours[0].body.ref).toBe(t);
+    expect(yours[0].body.tag).toBe('head');
+    // (one at the knees finds nothing: no region there)
+    blaster.fire(new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(1, 0, 0), [], '#ffffff', 90, null, { yours: true });
+    fly(play, { you: you(0), targets: [t] }, { yours: (e) => yours.push(e) });
+    expect(yours).toHaveLength(1);
+  });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aimDir, capsuleOf, lookFriction } from './aimShot';
 import { createSolids } from './walker';
+import { createSurfacePhysics } from './surfacePhysics';
 import { ASSIST } from '../../../lib/combat/aim';
 
 const flat = { heightAt: () => 0 };
@@ -63,5 +64,19 @@ describe('aimShot', () => {
     // (a mouse's cone doesn't reach it)
     const m = aimDir({ cam, dir: fwd, from: muzzle, targets: [t], world: flat, cone: ASSIST.mouse });
     expect(Math.abs(muzzle.x + (m[0] * (20 - muzzle.z)) / m[2] - t.holder.position.x)).toBeGreaterThan(2);
+  });
+
+  it('through the physics world, the aim point on the wall is where it was', async () => {
+    const walled = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids: createSolids(), floors: [], reach: 32 };
+    walled.solids.box(0, 10, 4, 0.5);
+    const sp = await createSurfacePhysics(walled);
+    // (a world with no solids of its own: the wall is the physics world's alone)
+    const bare = { heightAt: () => 0, solids: createSolids(), floors: [] };
+    const open = aimDir({ cam, dir: fwd, from: muzzle, targets: [trooper(0, 20)], world: bare, cone: null });
+    const blocked = aimDir({ cam, dir: fwd, from: muzzle, targets: [trooper(0, 20)], world: walled, cone: null });
+    const now = aimDir({ cam, dir: fwd, from: muzzle, targets: [trooper(0, 20)], world: bare, cone: null, sp });
+    expect(now[0]).toBeGreaterThan(open[0] * 1.5);
+    for (let i = 0; i < 3; i++) expect(now[i]).toBeCloseTo(blocked[i], 3);
+    sp.dispose();
   });
 });

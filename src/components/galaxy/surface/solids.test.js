@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createBolts } from '../../../lib/combat/bolt';
 import { boltSolids } from './solids';
 import { createSolids } from './walker';
+import { createSurfacePhysics } from './surfacePhysics';
 
 // a flat world at y = 0 with a tall wall across x = 10, a waist-high wall
 // across x = 20 and a pillar at (0, 30)
@@ -65,5 +66,21 @@ describe('what a bolt stops at on a galaxy surface', () => {
     const over = [];
     for (let i = 0; i < 60 && bolts.live().length; i++) over.push(...bolts.step(1 / 60, { solids: cast, bodies: [{ ...you, a: [24, 0.3, 0], b: [24, 1.5, 0] }], blades: [] }));
     expect(over.map((e) => e.type)).toEqual(['hit']);
+  });
+
+  it('through the physics world, a bolt stops where it did, passes the low wall, and lands on the ground', async () => {
+    const sp = await createSurfacePhysics({ ...fixture(), reach: 40 });
+    // (a world with no solids of its own: every stop below is the physics world's)
+    const cast = boltSolids({ heightAt: () => 0, normalAt: () => [0, 1, 0], solids: createSolids(), floors: [] }, { sp });
+    const k = cast([0, 1.2, 0], [15, 1.2, 0]);
+    expect(k.at[0]).toBeCloseTo(9.5, 1);
+    expect(k.at[1]).toBeCloseTo(1.2, 1);
+    expect(k.normal[0]).toBeCloseTo(-1, 3);
+    expect(cast([15, 1.5, 0], [25, 1.5, 0])).toBeNull();
+    expect(cast([15, 0.8, 0], [25, 0.8, 0]).at[0]).toBeCloseTo(19.5, 1);
+    expect(cast([0, 2, -5], [0, -1, -2]).at[1]).toBeCloseTo(0, 1);
+    // (a muzzle pressed into the wall: stopped where it starts)
+    expect(cast([10, 1, 0], [12, 1, 0]).at[0]).toBeCloseTo(10, 3);
+    sp.dispose();
   });
 });

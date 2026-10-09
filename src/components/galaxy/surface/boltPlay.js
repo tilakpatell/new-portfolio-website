@@ -21,7 +21,7 @@
 //     landed(e) } (e: the step's event)
 
 import { FIRST, freshAim, missBy, shotStep } from '../../../lib/combat/accuracy';
-import { capsuleOf } from './blaster';
+import { capsulesOf } from './blaster';
 
 const CHEST = 1.1; // m over your feet: where they aim
 const FRESH = 6; // s without a shot at you and you're a fresh target again
@@ -34,13 +34,20 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
   const aims = new WeakMap(); // who → { streak, fresh, wide, at }
   const bodies = [];
   const blades = [];
-  const kept = new Map();
-  const bodyOf = (t) => {
-    let b = kept.get(t);
-    if (!b) kept.set(t, (b = { id: t, ref: t }));
-    Object.assign(b, capsuleOf(t));
-    b.side = t.spec?.side === 'yours' ? 'you' : (t.side ?? 'them');
-    return b;
+  const kept = new Map(); // who → its bodies by region (one, `whole`, for a figure with no rig)
+  const bodiesOf = (t, into) => {
+    let by = kept.get(t);
+    if (!by) kept.set(t, (by = new Map()));
+    const side = t.spec?.side === 'yours' ? 'you' : (t.side ?? 'them');
+    for (const c of capsulesOf(t)) {
+      let b = by.get(c.tag);
+      if (!b) by.set(c.tag, (b = { id: t, ref: t, tag: c.tag }));
+      b.a = c.a;
+      b.b = c.b;
+      b.r = c.r;
+      b.side = side;
+      into.push(b);
+    }
   };
 
   return {
@@ -74,7 +81,7 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
       if (ctx.you) bodies.push(personAt('you', ctx.you, allies));
       if (ctx.mate) bodies.push(personAt('mate', ctx.mate, allies));
       if (ground) for (const b of ground.bodies()) bodies.push(b);
-      for (const t of ctx.targets ?? []) if (t?.holder && !t.down && !t.ground) bodies.push(bodyOf(t));
+      for (const t of ctx.targets ?? []) if (t?.holder && !t.down && !t.ground) bodiesOf(t, bodies);
       if (ctx.guard) blades.push(ctx.guard);
       for (const e of blaster.update(dt, { bodies, blades })) {
         ground?.bolt(e);

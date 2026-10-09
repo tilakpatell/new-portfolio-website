@@ -49,7 +49,7 @@ import { createBlade } from '../../../lib/combat/blade';
 import { loadClip } from '../../../lib/three/clipLibrary';
 import { createTrail } from '../../../lib/three/combat/trail';
 import { frameFrom, reach, rotateWorld, setWorldQuaternion } from '../../../lib/three/ik';
-import { capsuleOf } from './blaster';
+import { capsulesOf } from './blaster';
 import { BLOCK_CLIP, DIRS, HEAVY, PARRY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
 import { SABER, throwAt } from './saberRules';
 
@@ -397,12 +397,12 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     }
     pushBlades(now);
     if (inside && st.lit > 0.5) {
-      const caps = (p.targets ?? []).filter((x) => !sw.hits.has(x) && x.holder).map((x) => ({ ...capsuleOf(x), ref: x })); // (a body as the bolts see it: blaster.js's)
+      const caps = (p.targets ?? []).filter((x) => !sw.hits.has(x) && x.holder).flatMap(capsulesOf); // (a body as the bolts see it: blaster.js's; by region on a figure with a rig)
       for (const seg of segs)
         for (const h of seg.sweep(caps)) {
           if (sw.hits.has(h.target.ref)) continue;
           sw.hits.add(h.target.ref);
-          p.hit?.(h.target.ref, sw.damage, _hit.fromArray(h.at), { heavy: sw.heavy });
+          p.hit?.(h.target.ref, sw.damage, _hit.fromArray(h.at), { heavy: sw.heavy, where: h.target.tag ?? 'whole' });
         }
     }
     drawTrails(true);

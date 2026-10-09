@@ -4,12 +4,18 @@
 // knees and lets one over your head go by) and the ground under them. The
 // world's half of lib/combat/bolt.js's step, and of the aim's ray.
 //
-// boltSolids(world, { step = 1 }) → (a, b) → { at, normal } | null: the
-// first solid along the segment a → b ([x, y, z] arrays). A segment that
-// starts inside one stops where it starts (a muzzle pressed into a wall).
-// world: { heightAt, normalAt?, solids (walker's createSolids), floors? }.
+// boltSolids(world, { step = 1, sp = null }) → (a, b) → { at, normal } | null:
+// the first solid along the segment a → b ([x, y, z] arrays). A segment
+// that starts inside one stops where it starts (a muzzle pressed into a
+// wall). world: { heightAt, normalAt?, solids (walker's createSolids),
+// floors? }. With `sp` (surfacePhysics.js), the segment is a ray through
+// the physics world (the same ground, the same solids, as colliders), and
+// the maths below answers only a ray its budget refused.
 
 import { groundAt } from './walker';
+import { filterOf } from '../../../lib/physics/groups';
+
+const STOPS = filterOf('floor', 'object');
 
 const BIG = 1e9;
 const CHUNK = 24; // m: a long ray asks the solids' grid a piece at a time
@@ -88,8 +94,23 @@ function enter(s, a, b) {
   return { t, normal };
 }
 
-export function boltSolids(world, { step = 1 } = {}) {
+export function boltSolids(world, { step = 1, sp = null } = {}) {
   const solids = world.solids;
+  const dir = [0, 0, 0];
+  // the ray through the physics world: undefined when its budget refused it
+  const cast = (a, b) => {
+    dir[0] = b[0] - a[0];
+    dir[1] = b[1] - a[1];
+    dir[2] = b[2] - a[2];
+    const len = Math.hypot(dir[0], dir[1], dir[2]);
+    if (len < 1e-6) return null;
+    dir[0] /= len;
+    dir[1] /= len;
+    dir[2] /= len;
+    const h = sp.qb.ray(a, dir, len, { groups: STOPS });
+    if (h === undefined) return undefined;
+    return h ? { at: h.at, normal: h.normal } : null;
+  };
   const under = (p) => p[1] < groundAt(world, p[0], p[2], p[1]);
   const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
@@ -118,7 +139,7 @@ export function boltSolids(world, { step = 1 } = {}) {
     return null;
   };
 
-  return (a, b) => {
+  const maths = (a, b) => {
     let best = 1;
     let normal = null;
     if (solids?.near) {
@@ -145,5 +166,11 @@ export function boltSolids(world, { step = 1 } = {}) {
     }
     if (normal === null) return null;
     return { at: best === 0 ? [...a] : lerp(a, b, best), normal };
+  };
+
+  if (!sp) return maths;
+  return (a, b) => {
+    const h = cast(a, b);
+    return h === undefined ? maths(a, b) : h;
   };
 }

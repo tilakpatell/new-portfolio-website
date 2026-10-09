@@ -15,7 +15,7 @@
 //
 //   createSurfacePhysics(world, { reach = world.reach ?? 160, spacing = 2, tier, budget }) → Promise<sp>
 //     world: scene.js's { heightAt, normalAt, solids (walker's createSolids), floors, reach }
-//   sp: { world, phys, q, SIGHT, step(dt), seesThrough(a, b) → bool, addSolid(s) → Body, byTag (Map tag → [Body]),
+//   sp: { world, phys, q, qb (the bolts' queries, 96 rays a frame), SIGHT, step(dt), seesThrough(a, b) → bool, addSolid(s) → Body, byTag (Map tag → [Body]),
 //     toggle(tag, on), dispose() }
 //   budgetFor(tier) → { rays, sweeps, overlaps }
 
@@ -35,6 +35,7 @@ const CHEST = 1.1;
 const KEPT = 256; // sight answers remembered for refused rays
 const FRICTION = 0.6;
 const SIGHT = filterOf('floor', 'object');
+const BOLT_RAYS = 96; // a frame: every live bolt's, and the aim's
 const BUDGETS = { high: { rays: 24, sweeps: 8, overlaps: 4 }, mid: { rays: 16, sweeps: 6, overlaps: 3 }, low: { rays: 10, sweeps: 4, overlaps: 2 } };
 
 export const budgetFor = (tier) => ({ ...(BUDGETS[tier] ?? BUDGETS.mid) });
@@ -43,6 +44,8 @@ const yawQ = (yaw) => [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)];
 export async function createSurfacePhysics(world, { reach = world.reach ?? 160, spacing = 2, tier = 'mid', budget = null } = {}) {
   const phys = await createPhysics({ gravity: -CHARACTER.gravity, maxSubsteps: 4, lost: (p) => p[1] < world.heightAt(p[0], p[2]) - 50 });
   const q = createQueries(phys, { budget: createBudget(budget ?? budgetFor(tier)) });
+  // (the bolts' own rays, on their own budget: a bolt's flight is never refused for a brain's look)
+  const qb = createQueries(phys, { budget: createBudget({ rays: BOLT_RAYS, sweeps: 0, overlaps: 0 }) });
   const byTag = new Map();
   const tagged = (tag, body) => {
     if (tag == null) return;
@@ -130,12 +133,14 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
     world,
     phys,
     q,
+    qb,
     SIGHT,
     byTag,
     addSolid,
     seesThrough,
     step(dt) {
       q.frame();
+      qb.frame();
       return phys.step(dt);
     },
     toggle(tag, on) {

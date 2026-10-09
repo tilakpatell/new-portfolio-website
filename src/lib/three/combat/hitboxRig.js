@@ -11,6 +11,8 @@
 //
 //   createHitboxRig(root, hurtboxes | null, { regions = REGIONS, tall = 1.8, blade = null }) → {
 //     attach(hurtboxes), update(), regions, single,
+//     segments: Map region → { a, b, r } (the latest, world [x, y, z]: the capsules the bolts and a blade's
+//       sweep test in plain maths; `whole` for a single figure)
 //     blade() → { base: [x, y, z], tip } | null   (blade: { bone, length, offset = 0 })
 //     debug(parent | null) → Group | null }
 //   (made before the hurtboxes, since `single` decides how they are made; then attached)
@@ -35,6 +37,9 @@ export function createHitboxRig(root, hurtboxes = null, { regions = REGIONS, tal
   const single = kept.length < MIN_REGIONS;
   if (single) kept.length = 0;
   const hand = blade ? root.getObjectByName(blade.bone) : null;
+  const segments = new Map();
+  if (single) segments.set('whole', { a: [0, 0, 0], b: [0, tall, 0], r: Math.max(0.4, tall * 0.25) });
+  else for (const [region, , , r] of kept) segments.set(region, { a: [0, 0, 0], b: [0, 0, 0], r });
   let boxes = hurtboxes;
   let wire = null; // { group, parent, meshes: Map }
 
@@ -51,6 +56,7 @@ export function createHitboxRig(root, hurtboxes = null, { regions = REGIONS, tal
   return {
     regions: kept.map((k) => k[0]),
     single,
+    segments,
     attach(h) {
       boxes = h;
     },
@@ -59,6 +65,9 @@ export function createHitboxRig(root, hurtboxes = null, { regions = REGIONS, tal
         root.getWorldPosition(_a);
         const a = [_a.x, _a.y, _a.z];
         const b = [_a.x, _a.y + tall, _a.z];
+        const seg = segments.get('whole');
+        seg.a = a;
+        seg.b = b;
         boxes?.set('whole', a, b);
         place('whole', a, b);
         return;
@@ -68,6 +77,9 @@ export function createHitboxRig(root, hurtboxes = null, { regions = REGIONS, tal
         bb.getWorldPosition(_b);
         const a = [_a.x, _a.y, _a.z];
         const b = [_b.x, _b.y, _b.z];
+        const seg = segments.get(region);
+        seg.a = a;
+        seg.b = b;
         boxes?.set(region, a, b);
         place(region, a, b);
       }

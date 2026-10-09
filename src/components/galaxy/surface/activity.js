@@ -60,6 +60,7 @@ import { modelFigure } from './actors';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
 import { createHostileBody } from './hostileBodies';
+import { resolve } from '../../../lib/combat/damage';
 import { groundAt, shoreStep, turnToward } from './walker';
 import { stepTarget } from './quests';
 import { rng } from './noise';
@@ -634,7 +635,13 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     },
     // `how`: the gun (a kill by one of SHOW_KILLS plays its show), `push` the
     // way the shot went, `at` where it landed (a point in the world)
-    hit(t, damage = 1, { breaks = false, how = null, push = null, at = null } = {}) {
+    // `where`: the region hit (a hurtbox's tag: the head counts double, a limb
+    // less, lib/combat/damage.js's WHERE); the body takes the hit's knock and,
+    // for a heavy one, its stun (a light hit flinches, as ever, feet going)
+    hit(t, damage = 1, { breaks = false, how = null, push = null, at = null, where = null } = {}) {
+      const dir = push ? [push.x, push.y, push.z] : lastYou ? [t.b.x - lastYou.x, 0, t.b.z - lastYou.z] : [0, 0, 0];
+      const r = resolve({ victim: t, tag: where ?? 'whole', at, dir }, { damage, kind: breaks ? 'heavy' : 'light' }, { hp: t.hp });
+      damage = r.damage;
       if (SHOW_KILLS.includes(how) && t.hp - damage <= 0 && !t.down && t.fig) {
         t.how = how;
         t.push = push?.clone() ?? null;
@@ -661,6 +668,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       else {
         if (t.duel) onHit(t.duel, {});
         flinched(t, at);
+        t.hb?.struck({ dir: r.dir, force: r.force, kind: r.kind, stun: r.kind === 'heavy' ? r.stun : 0 });
       }
     },
     // your stroke on a duellist: turned by its blade when it's up (its mind's
