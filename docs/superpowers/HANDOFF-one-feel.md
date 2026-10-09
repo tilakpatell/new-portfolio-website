@@ -59,10 +59,10 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | lane | session | branch | pull request | merged |
 |---|---|---|---|---|
 | design | the architecting session | `claude/lucid-hawking-78yzz5` | | |
-| 1A | `session_018TPUBuBVbG9Xbm68QY6rAd` | `claude/one-feel-art` | #701 | |
-| 1B | session_0125kUpviRHiF3dVxbGM3odg | `claude/one-feel-hits` | #699 | |
-| 1C | session_01ALnkhhCHveAZqkCSpnBLq2 | `claude/one-feel-car` | #700, closed at the owner’s word: the Expanse car game is removed (`claude/remove-expanse`); the pure pieces stay on the branch for Phase 2 | no |
-| 1D | `session_01Y9gSEa16P9tye2wPhYum7h` | `claude/one-feel-panel` | #702 | |
+| 1A | session_018TPUBuBVbG9Xbm68QY6rAd | `claude/one-feel-art` | #701 | yes |
+| 1B | session_0125kUpviRHiF3dVxbGM3odg | `claude/one-feel-hits` | #699 | yes |
+| 1C | session_01ALnkhhCHveAZqkCSpnBLq2 | `claude/one-feel-car` | #700, closed at the owner’s word: the Expanse car game is removed (#705); the pure pieces stay on the branch and lane 1F carries them over | no |
+| 1D | session_01Y9gSEa16P9tye2wPhYum7h | `claude/one-feel-panel` | #702 | yes |
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
 | 2A | | | | |
