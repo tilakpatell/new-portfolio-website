@@ -178,6 +178,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   let swungAt = -Infinity;
   let quake = 0; // metres of shake a tremor has left
   let inScene = false; // whether a scene had the camera last frame
+  let lit = false; // whether the Emperor's lightning was drawn on you last frame
   const vel = { x: 0, z: 0 };
   let shown = -1; // the last displayed time
   let frames = 0;
@@ -291,7 +292,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     const aim = Boolean(look.aim);
 
     // the camera: snapped in to a wall at once, eased back out after it
-    const hits = wallHits(layout, (id) => passable(g.doors, id));
+    const hits = wallHits(layout, (id) => passable(g.doors, id), (room) => g.solidsOf?.(room) ?? []);
     const pose = cameraPose({ ...at, crouch: you.crouch }, { view, yaw, pitch, aim, reach: view === 'first' ? Infinity : held + EASE_OUT * dt }, hits);
     held = view === 'first' ? 0 : pose.dist;
     camera.position.set(pose.pos.x, pose.pos.y, pose.pos.z);
@@ -304,6 +305,15 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     if (shot) {
       camera.position.set(shot.pos.x, shot.pos.y, shot.pos.z);
       camera.lookAt(shot.look.x, shot.look.y, shot.look.z);
+    }
+    // the Emperor's lightning on you in a fight (rules/play/duel.js), from his hands to your chest
+    const caster = !shot && g.duel?.lit ? g.crew?.byId.get(g.duel.lit) : null;
+    if (caster) {
+      show.lightning?.({ x: caster.x, y: caster.y + 1.3, z: caster.z }, { x: you.x, y: you.y + 1.2, z: you.z }, true);
+      lit = true;
+    } else if (lit) {
+      show.lightning?.(null, null, false);
+      lit = false;
     }
     const shake = quake + (g.flags?.has('breach') ? TREMBLE : 0);
     if (shake > 0) {

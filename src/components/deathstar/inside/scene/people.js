@@ -102,7 +102,12 @@ const hashOf = (s) => {
 // what a pose the rules name looks like, from the clip library: at attention, working a console,
 // talking with their hands, sat, kneeling, sat on the floor, lying there, limping along held up
 const LEAN = 0.14; // radians one held up leans in to whoever holds him
-const POSES = { attention: 'idle.calm', work: 'counter.idle', talk: 'talk', sit: 'sit.idle', kneel: 'kneel', ground: 'sit.ground', lie: 'lie', limp: 'walk.injured' };
+const POSES = { attention: 'idle.calm', work: 'counter.idle', talk: 'talk', sit: 'sit.idle', kneel: 'kneel', ground: 'sit.ground', lie: 'lie', limp: 'walk.injured', guard: 'stance', lightning: 'cast.double' };
+// a duellist's strokes, light and heavy, taken in turn (rules/play/duel.js counts them on the person)
+const SWORD = {
+  strike: ['sword.light.a', 'sword.light.b', 'sword.light.c', 'sword.light.d'],
+  heavy: ['sword.heavy.a', 'sword.heavy.b', 'sword.heavy.c'],
+};
 
 export function actOf(p, { blade = false, armed = true } = {}) {
   const raised = p.mode === 'fight' || p.mode === 'search' || p.anim === 'aim' || p.anim === 'shoot';
@@ -111,7 +116,9 @@ export function actOf(p, { blade = false, armed = true } = {}) {
   if (p.mode === 'down') return { base: 'kneel', full: p.anim === 'hit' ? 'hit.knock' : null, upper: null, raised: false, dead: false };
   const moving = p.anim === 'walk' || p.anim === 'run';
   const base = moving ? null : (POSES[p.anim] ?? (blade && raised ? 'stance' : null));
-  const full = p.anim === 'hit' ? 'hit' : null;
+  // (a stroke, or the Force reached out with a hand)
+  const strokes = SWORD[p.anim];
+  const full = p.anim === 'hit' ? 'hit' : strokes ? strokes[(p.strokes ?? 0) % strokes.length] : p.anim === 'cast' ? 'cast' : null;
   // a gun up is held out at the aim, the legs still walking under it
   const upper = armed && !blade && raised ? (p.anim === 'shoot' ? 'shoot.pistol' : 'aim.pistol') : null;
   return { base, full, upper, raised, dead: false };

@@ -39,7 +39,9 @@
 import { chain, say, spawn } from '../story';
 
 // Down the ramp of Vader’s shuttle, with nothing in his hands.
-const BEGIN = { spot: 'dock-ramp', hero: 'luke', armour: false, helmet: false, companions: [], flags: [], gun: null };
+// (he is Vader's prisoner from the first: the garrison lets him walk, and only those the story sets
+// on him fight him)
+const BEGIN = { spot: 'dock-ramp', hero: 'luke', armour: false, helmet: false, companions: [], flags: ['prisoner'], gun: null };
 
 const bring = (kind, spot, tag, opts, n) => [{ despawn: tag }, ...spawn(kind, spot, tag, opts, n)];
 
@@ -52,7 +54,8 @@ const ESCORT = [
     type: 'scene',
     text: 'Vader’s shuttle sets down in the dock with you aboard.',
     need: { scene: 'arrive2' },
-    start: [{ music: 'quiet' }, ...spawn('vader', 'vader-arrive', 'vader', { role: 'follow' }), ...spawn('royalguard', 'dock-ramp', 'guards', { role: 'follow' }, 2), { scene: 'arrive2' }],
+    // (Vader walks his prisoner to the lift, and his guards keep close behind)
+    start: [{ music: 'quiet' }, ...spawn('vader', 'vader-arrive', 'vader', { role: 'lead', to: 'holding-lift' }), ...spawn('royalguard', 'dock-ramp', 'guards', { role: 'follow' }, 2), { scene: 'arrive2' }],
   },
   {
     id: 'escort-walk',

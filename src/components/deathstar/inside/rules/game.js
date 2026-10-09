@@ -60,7 +60,7 @@ import { furnish } from './furnish';
 import { CAST } from './cast';
 import { buildLayout, offTags } from './layout';
 import { createNav } from './nav';
-import { act, battle, garrison, plot } from './play';
+import { act, battle, duel, garrison, plot } from './play';
 import { ESCORT } from './story';
 import { STATIONS } from './stations';
 import { WHO } from './talk';
@@ -416,8 +416,12 @@ function storyEvents(g, was) {
   for (const [name, s] of Object.entries(g.layout.station.spots ?? {})) {
     if (s.room === you.room && flat(s, you) <= SPOT && (!spot || flat(s, you) < flat(g.layout.station.spots[spot], you))) spot = name;
   }
-  if (you.room !== was.room || spot !== g.atSpot) {
+  // told on arriving, and again while you wait there as whoever is with you changes (an escort
+  // done once the one you walk with comes up, though you came first)
+  const company = withYou.join(' ');
+  if (you.room !== was.room || spot !== g.atSpot || (spot && company !== g.atWith)) {
     g.atSpot = spot;
+    g.atWith = company;
     plot.feedPlot(g, { type: 'at', room: you.room, spot, with: withYou });
   }
   if (g.still > 0) plot.feedPlot(g, { type: 'still', seconds: g.still });
@@ -455,7 +459,9 @@ export function step(g, input = {}, dt = STEP) {
   const bodies = [you, ...g.bodies, ...people];
   const held = holdCars(g, bodies);
   // the people aboard are the Empire’s unless they say; a Rebel in armour and helmet passes for one
-  const near = bodies.map((b) => ({ x: b.x, y: b.y, z: b.z, side: b.side ?? 'imperial', disguised: Boolean(b.armour && b.helmet) }));
+  // (one who walks with you opens what you may open: your prisoner through the doors your armour does)
+  const yours = you.side === 'imperial' || Boolean(you.armour && you.helmet);
+  const near = bodies.map((b) => ({ x: b.x, y: b.y, z: b.z, side: b.side ?? 'imperial', disguised: Boolean(b.armour && b.helmet) || (yours && Boolean(b.tag?.startsWith('with:'))) }));
   for (const e of stepDoors(doors, layout, dt, { near, flags: g.flags, lockdown: lockdowns(g.alarm) })) {
     // (a car holding its doors for a ride refuses nobody)
     if (!(e.type === 'denied' && held.has(e.door))) g.events.push({ type: 'door', what: e.type, door: e.door });
@@ -464,11 +470,14 @@ export function step(g, input = {}, dt = STEP) {
 
   // you, standing still while a talk is open
   const was = { x: you.x, z: you.z, room: you.room };
-  // (holding your father up, you walk)
-  const walk = g.talk ? {} : plot.held(g, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch });
-  for (const e of stepBody(you, walk, dt, { layout, open, solids: g.solidsOf(you.room) })) {
-    g.events.push(e);
-    if (e.type === 'room') g.seen.add(e.to);
+  // (holding your father up, you walk; in a grip, nothing; thrown by a push, you go the way it threw you)
+  const walk = g.talk || duel.gripped(g) ? {} : plot.held(g, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch });
+  const shove = duel.shoveOf(g, dt);
+  for (const w of shove ? [walk, { dir: shove, run: true }] : [walk]) {
+    for (const e of stepBody(you, w, dt, { layout, open, solids: g.solidsOf(you.room) })) {
+      g.events.push(e);
+      if (e.type === 'room') g.seen.add(e.to);
+    }
   }
   const moved = Math.hypot(you.x - was.x, you.z - was.z);
   g.still = moved < 0.01 ? (g.still ?? 0) + dt : 0;
@@ -499,6 +508,7 @@ export function step(g, input = {}, dt = STEP) {
 
   plot.holdUp(g, moved);
   battle.stepBattle(g, dt, open, { guard: Boolean(you.blade && input.aim) });
+  if (!g.talk && !g.scene) duel.duelStep(g, input, dt);
   const quake = stepBreach(g, dt);
   if (quake) g.events.push(quake);
 

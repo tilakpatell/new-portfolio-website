@@ -19,7 +19,8 @@
 //     canPass(doorId, door) → bool   whether this walker may go through a door (absent: every door)
 //     solidsOf(roomId) → [{ box: { x0, x1, z0, z1 } } | { circle: { x, z, r } }]   what stands on its floor
 //     point: { x, z, room, door?, lift? }, from first and to last; each point’s room is the one the
-//       leg to it is walked in, so a door’s point names the room before it. `lift` marks the middle
+//       leg to it is walked in, so a door’s point names the room before it. A leg along a door's own
+//       wall meets it square, from a point 0.8 m out (aprons). `lift` marks the middle
 //       of the car where a ride starts, and the next point is the middle of the car it ends in.
 //     null when no way is left; a single point when from and to are the same place in one room
 
@@ -126,7 +127,7 @@ export function route(nav, from, to, { canPass = () => true, solidsOf = () => []
       const fc = g.get(c.key) + guess(c);
       if (!n || fc < f) [n, f] = [c, fc];
     }
-    if (n === goal) return trace(came, goal, from);
+    if (n === goal) return aprons(trace(came, goal, from), layout);
     frontier.delete(n.key);
     done.add(n.key);
     for (const step of next(n)) {
@@ -167,6 +168,49 @@ function trace(came, goal, from) {
   return points;
 }
 
+// A leg into a door or out of one that runs along the door's own wall (to
+// or from another door in that wall, 12 m along the bay's back wall) is
+// walked along the wall's line, where a body meets the doorway's jamb end
+// on and can't slide past it: such a leg is made to meet the door square,
+// from a point APRON out in the room, and to leave it the same way. A point
+// that would be off its room's floor is left out.
+const APRON = 0.8; // metres out from a door a leg along its wall turns in to it, or out of it
+const ALONG = 0.35; // a leg crossing a door's wall by less than this share of its length runs along it
+function aprons(points, layout) {
+  const out = [];
+  // (on whichever side of the door is the room's own: a room nested in another has its parent's
+  // middle inside it, so it is the point itself that is asked which room it is in)
+  const apronOf = (door, room) => {
+    const d = layout.doors.get(door);
+    if (!d) return null;
+    const n = d.axis === 'x' ? { x: 0, z: 1 } : { x: 1, z: 0 };
+    for (const side of [1, -1]) {
+      const a = { x: d.x + n.x * side * APRON, z: d.z + n.z * side * APRON, room };
+      if (layout.roomAt(a.x, (d.y ?? 0) + 1, a.z) === room && layout.floorAt(room, a.x, a.z) !== null) return { a, n };
+    }
+    return null;
+  };
+  const along = (p, q, n) => {
+    const len = apart(p, q);
+    return len > APRON * 1.5 && Math.abs((q.x - p.x) * n.x + (q.z - p.z) * n.z) < ALONG * len;
+  };
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const prev = out.at(-1);
+    if (p.door && prev && !prev.lift) {
+      const ap = apronOf(p.door, p.room);
+      if (ap && along(prev, p, ap.n)) out.push(ap.a);
+    }
+    out.push(p);
+    const q = points[i + 1];
+    if (p.door && q && !p.lift) {
+      const ap = apronOf(p.door, q.room);
+      if (ap && along(p, q, ap.n)) out.push(ap.a);
+    }
+  }
+  return out;
+}
+
 // The shortest way from p to q across a room: straight when nothing is in
 // the way, else from corner to corner (Dijkstra over the corners of the
 // grown solids and, on an uneven floor, the ground’s own turning points,
@@ -183,9 +227,9 @@ function bend(room, solids, p, q, ground) {
   if (ground) forget(ground);
   const kept = solids.filter((s) => (s.box || s.circle) && !holds(s, p) && !holds(s, q));
   const full = kept.map((s) => grown(s, GROW));
-  const near = kept.map((s) => grown(s, Math.max(0, Math.min(GROW, toSolid(s, p) - HAIR, toSolid(s, q) - HAIR))));
-  const ends = ground ? [p, q].map((e) => ({ e, y: ground.at(e.x, e.z) })).filter(({ y }) => y !== null) : [];
-  const clearOf = (r, y) => ends.reduce((g, end) => (Math.abs(y - end.y) <= STEP + TINY ? Math.min(g, Math.max(0, toBox(r, end.e) - HAIR)) : g), GROW);
+  const near = kept.map((s) => grown(s, Math.max(0, Math.min(GROW, outOf(s, p) - HAIR, outOf(s, q) - HAIR))));
+  const ends = ground ? [p, q].map((e) => ({ e, y: endAt(ground, e) })).filter(({ y }) => y !== null) : [];
+  const clearOf = (r, y) => ends.reduce((g, end) => (Math.abs(y - end.y) <= STEP + TINY ? Math.min(g, Math.max(0, outOfBox(r, end.e) - HAIR)) : g), GROW);
   const clear = (a, b) => {
     const end = a === p || a === q || b === p || b === q;
     if ((end ? near : full).some((s) => crosses(s, a, b))) return false;
@@ -227,7 +271,11 @@ function bend(room, solids, p, q, ground) {
 }
 
 const toBox = (b, p) => Math.hypot(Math.max(b.x0 - p.x, 0, p.x - b.x1), Math.max(b.z0 - p.z, 0, p.z - b.z1));
-const toSolid = (s, p) => (s.box ? toBox(s.box, p) : Math.max(0, Math.hypot(p.x - s.circle.x, p.z - s.circle.z) - s.circle.r));
+// How far a box may be grown square and still leave p outside it: how far p stands out beyond it
+// on the side it is furthest out. (Its straight-line distance, toBox, is more off a corner, where a
+// box grown square by that much would take p in, and no leg could leave it.) A circle grows round.
+const outOfBox = (b, p) => Math.max(0, b.x0 - p.x, p.x - b.x1, b.z0 - p.z, p.z - b.z1);
+const outOf = (s, p) => (s.box ? outOfBox(s.box, p) : Math.max(0, Math.hypot(p.x - s.circle.x, p.z - s.circle.z) - s.circle.r));
 const growBox = (b, g) => ({ x0: b.x0 - g, x1: b.x1 + g, z0: b.z0 - g, z1: b.z1 + g });
 const grown = (s, g) => (s.box ? { box: growBox(s.box, g) } : { circle: { x: s.circle.x, z: s.circle.z, r: s.circle.r + g } });
 
@@ -430,9 +478,22 @@ function forget(ground) {
 // (the height can change only where the leg crosses one of the floors’
 // lines), and while at each height y never nearer than `clearOf(box, y)`
 // to anything it must keep clear of there.
+// The floor under an end of a leg. A door's point stands on its room's wall,
+// and a floor box's far edges are outside it, so a door in a room's far wall
+// would have no floor under it there (the gantry's door at the top of its
+// stair): an end on the room's edge reads the floor a hair inside.
+function endAt(ground, p) {
+  const y = ground.at(p.x, p.z);
+  if (y !== null) return y;
+  const b = ground.room.box;
+  const x = Math.min(Math.max(p.x, b.x0 + PEEK), b.x1 - PEEK);
+  const z = Math.min(Math.max(p.z, b.z0 + PEEK), b.z1 - PEEK);
+  return Math.hypot(x - p.x, z - p.z) <= 2 * PEEK ? ground.at(x, z) : null;
+}
+
 function onFoot(ground, a, b, clearOf) {
   const { at } = ground;
-  const first = at(a.x, a.z);
+  const first = endAt(ground, a);
   if (first === null) return false;
   const dx = b.x - a.x;
   const dz = b.z - a.z;
@@ -452,7 +513,7 @@ function onFoot(ground, a, b, clearOf) {
     if (was && was.y === y) was.t1 = t1;
     else runs.push({ y, t0, t1 });
   }
-  const end = at(b.x, b.z);
+  const end = endAt(ground, b);
   if (end === null || Math.abs(end - (runs.at(-1)?.y ?? first)) > STEP + TINY) return false;
   return runs.every(({ y, t0, t1 }) => {
     const from = { x: a.x + dx * t0, z: a.z + dz * t0 };

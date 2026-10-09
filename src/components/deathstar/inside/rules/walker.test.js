@@ -168,6 +168,18 @@ describe('doors', () => {
     }
   });
 
+  // (Chewbacca is 2.28 m and Vader 2.03 m; the control room's door is 2 m)
+  it('one taller than a man stoops through an open doorway lower than his head, but no lower than a man stands', () => {
+    const low = station([room('south', 0, 3, 6, 6), room('north', 0, -3, 6, 6)], [{ id: 'low', a: 'south', b: 'north', x: 0, z: 0, axis: 'x', w: 1.4, h: 2, kind: 'slide' }]);
+    const wookiee = createBody({ x: 0, y: 0, z: 2, room: 'south', h: 2.28 });
+    walk(wookiee, { dir: { x: 0, z: -1 } }, 3, world(low, { open: ajar }));
+    expect(wookiee.room).toBe('north');
+    // (shut, it stops him as it stops anyone)
+    const shutOut = createBody({ x: 0, y: 0, z: 2, room: 'south', h: 2.28 });
+    walk(shutOut, { dir: { x: 0, z: -1 } }, 3, world(low, { open: shut }));
+    expect(shutOut.room).toBe('south');
+  });
+
   it('a door lower than your head stops you standing and lets you through crouched', () => {
     const w = world(DUCT, { open: ajar });
     const standing = createBody({ x: 0, y: 0, z: 0, room: 'hall' });

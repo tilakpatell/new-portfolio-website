@@ -78,13 +78,14 @@ const RANKS = [
     start: [
       ...spawn('stormtrooper', 'ranks272', 'ranks', {}, 6),
       ...spawn('officer', 'ranks272', 'ranks'),
-      ...spawn('emperor', 'emperor-ramp', 'procession', { role: 'scripted' }),
-      ...spawn('vader', 'emperor-ramp', 'procession', { role: 'scripted' }),
-      ...spawn('royalguard', 'emperor-ramp', 'procession', { role: 'scripted' }, 4),
+      // down the ramp and the aisle at his own slow pace, once Vader has knelt to him at its foot; his
+      // guards a pace behind, two and two
+      ...spawn('emperor', 'emperor-ramp', 'procession', { role: 'scripted', script: [{ wait: 5 }, { say: 'Rise, my friend.' }, { wait: 1 }, { to: 'aisle-end' }, { face: 'aisle-end' }] }),
+      ...spawn('vader', 'emperor-ramp', 'procession', { role: 'scripted', script: [{ anim: 'kneel', s: 6 }, { to: 'aisle-vader' }, { face: 'aisle-vader' }] }),
+      ...spawn('royalguard', 'emperor-ramp', 'procession', { role: 'scripted', script: [{ wait: 7 }, { to: 'aisle-guard-l' }, { face: 'aisle-guard-l' }] }, 2),
+      ...spawn('royalguard', 'emperor-ramp', 'procession', { role: 'scripted', script: [{ wait: 7 }, { to: 'aisle-guard-r' }, { face: 'aisle-guard-r' }] }, 2),
       { scene: 'emperor' },
     ],
-    // Vader kneels at the foot of the aisle
-    end: [say('emperor', 'Rise, my friend.')],
     fail: [say('officer', 'Eyes front, trooper. Not a muscle while His Majesty is on the deck.')],
   },
 ];

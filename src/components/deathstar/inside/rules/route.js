@@ -6,9 +6,9 @@
 // way is worked out as anyone may walk it, locks and all aside: a locked
 // door on the way is the story’s to open. Pure.
 //
-//   targetOf(g) → { x, y, z, room, what } | null   where the current story step points; what:
+//   targetOf(g) → { x, y, z, room, what, at? } | null   where the current story step points; what:
 //     'spot' | 'room' | 'npc' | 'thing' | 'jump'; null in free roam, between steps, or for a step
-//     with no target (one that comes to you)
+//     with no target (one that comes to you); at: a thing's own height (a camera on the ceiling)
 //   routeTo(g, target) → { next: { x, y, z, room, kind: 'door' | 'lift' | 'goal' }, goal, metres } | null
 //     next: where to head now; metres: the whole way’s length; null when no way is left
 
@@ -25,15 +25,20 @@ function stepOf(g) {
 
 const lift = (g, room, x, z) => ({ x, z, room, y: (g.layout.floorAt(room, x, z) ?? g.layout.rooms.get(room)?.y ?? 0) + AIM });
 
-// a tagged thing, furnished in some room: the room it stands in and where
+// a tagged thing, furnished in some room: the room it stands in and where. A tag names one thing, or
+// the things numbered under it (AA-23's cameras, `aa23-camera-1` and `-2`), the nearest not yet broken
 function thingOf(g, tag) {
   g.furnished ??= new Map();
+  let best = null;
   for (const room of g.layout.rooms.values()) {
     if (!g.furnished.has(room.id)) g.furnished.set(room.id, furnish(room, g.layout.station));
-    const t = g.furnished.get(room.id).props.find((p) => p.tag === tag);
-    if (t) return { room: room.id, x: t.x, z: t.z };
+    for (const t of g.furnished.get(room.id).props) {
+      if (!(t.tag === tag || t.tag?.startsWith(`${tag}-`)) || g.broken?.has(t.tag)) continue;
+      const d = Math.hypot(t.x - g.you.x, t.z - g.you.z) + (room.id === g.you.room ? 0 : 1000);
+      if (!best || d < best.d) best = { room: room.id, x: t.x, z: t.z, y: t.y, d };
+    }
   }
-  return null;
+  return best && { room: best.room, x: best.x, z: best.z, y: best.y };
 }
 
 export function targetOf(g) {
@@ -52,7 +57,7 @@ export function targetOf(g) {
   const who = g.crew?.people.find((p) => p.tag === tag && p.hp > 0) ?? g.crew?.people.find((p) => p.tag === tag);
   if (who) return { x: who.x, y: (who.y ?? 0) + AIM, z: who.z, room: who.room, what: 'npc' };
   const thing = thingOf(g, tag);
-  if (thing) return { ...lift(g, thing.room, thing.x, thing.z), what: 'thing' };
+  if (thing) return { ...lift(g, thing.room, thing.x, thing.z), what: 'thing', at: thing.y };
   const jump = layout.jumps?.find((j) => j.id === tag);
   if (jump) return { ...lift(g, jump.from, jump.x, jump.z), what: 'jump' };
   const spot = layout.station.spots?.[tag];

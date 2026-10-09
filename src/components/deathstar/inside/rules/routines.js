@@ -29,7 +29,9 @@
 //   routineFor(role, script?) → node       the tree for a role (a typo throws)
 //     role: { type: 'patrol', spots } | { type: 'post', spot } | { type: 'work', spot }
 //       | { type: 'chat', with } | { type: 'march', spots } | { type: 'droid' }
-//       | { type: 'follow', who } | { type: 'scripted' }
+//       | { type: 'follow', who } | { type: 'lead', spot, who } | { type: 'scripted' }
+//       lead: on ahead to the spot, stopping turned to `who` whenever they fall LEAD_GAP behind, and
+//       waiting there for them
 //     script (scripted only): [{ to, run? } | { face } | { say, key? } | { anim, s? } | { wait }]
 //       { anim } with no s is the pose kept from then on; with s, held that long
 //   runRoutine(node, bb, dt) → 'running' | 'done' | 'failed'
@@ -46,7 +48,8 @@
 //     the station’s or a furnished one’s { name, room, x, z, yaw })
 //   faceTo(crew, person, target)
 //   placeOf(crew, person, where) → { x, z, room, y?, yaw? } | null
-//   canPass(crew, person, doorId, door) → bool   not sealed, and not locked against them
+//   canPass(crew, person, doorId, door) → bool   not sealed, and not locked against them (one with you
+//     goes where you may)
 //   wayBetween(nav, from, to, { canPass, solidsOf, state, fresh }) → route | null   nav.route’s way, remembered;
 //     the same way again from the same metre cells, with the same doors shut and the same state (a string:
 //     whatever else the way depends on), has its ends moved to the new ones (fresh: worked out anew
@@ -66,7 +69,8 @@ import { CAST } from './cast';
 import { route } from './nav';
 import { BODY, lineClear, stepBody } from './walker';
 
-export const ROLES = Object.freeze(['patrol', 'post', 'work', 'chat', 'march', 'droid', 'follow', 'scripted']);
+export const ROLES = Object.freeze(['patrol', 'post', 'work', 'chat', 'march', 'droid', 'follow', 'lead', 'scripted']);
+const LEAD_GAP = 5; // metres one led may fall behind before the one leading stops for them
 
 // Each timed leaf keeps its end time in the blackboard under its own key,
 // since a tree is shared by everyone with the role and a leaf has no state.
@@ -122,6 +126,15 @@ const TREES = {
   },
   march: (role) => repeat(sequence(...role.spots.map((s) => go(s)))),
   droid: () => repeat(sequence(go({ wander: true }), wait([0.5, 2.5], 'idle'))),
+  lead: (role) => {
+    const who = { who: role.who };
+    return repeat(
+      select(
+        guard((bb) => !bb.near(who, LEAD_GAP), sequence(face(who), wait(0.4, 'idle'))),
+        sequence(go(role.spot, { near: 1.2 }), face(who), wait(0.5, 'idle')),
+      ),
+    );
+  },
   follow: (role) => {
     const who = { who: role.who };
     return repeat(
@@ -199,7 +212,10 @@ export function canPass(crew, p, id, door) {
   if (!s) return true;
   if (s.sealed) return false;
   if (!s.locked) return true;
-  return door.kind !== 'hatch' && door.lock === 'side:imperial' && p.side === 'imperial';
+  // (one who walks with you goes where you may: your prisoner through the doors your armour opens)
+  const you = crew.world.you;
+  const yours = p.tag?.startsWith('with:') && you && (you.side === 'imperial' || Boolean(you.armour && you.helmet));
+  return door.kind !== 'hatch' && door.lock === 'side:imperial' && (p.side === 'imperial' || yours);
 }
 
 export function placeOf(crew, p, where) {
