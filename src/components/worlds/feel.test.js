@@ -57,7 +57,6 @@ export const OWN_SHAKE = [
 ];
 
 export const DEAD_HITSTOP = [
-  { file: 'invincible/world/scene.js', pattern: /feel\.hitstop\(/, loop: 'invincible/world/InvWorld.jsx', without: /\btimeScale\(|feel\.(step|scale)\(/ },
   { file: 'avengers/widow/scene.js', pattern: /feel\.hitstop\(/, loop: 'avengers/widow/Infiltration.jsx', without: /\btimeScale\(|feel\.(step|scale)\(/ },
   // (a feel whose scale already runs the snap, and no hitstop to slow it)
   { file: 'avengers/titan/scene.js', pattern: /createFeel\(/, loop: 'avengers/titan/scene.js', without: /\.hitstop\(/ },
@@ -65,7 +64,6 @@ export const DEAD_HITSTOP = [
 
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
-  { file: 'invincible/world/flight.js', pattern: /\{ \.\.\.input, jump: false \}/ },
   { file: 'cybertron/game/rules.js', pattern: /input\.jump && p\.mode === 'robot' && p\.grounded/ },
   { file: 'avengers/world/rules.js', pattern: /function stepGround\(h, \{[^}]*\bjump\b/ },
   { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
@@ -156,10 +154,11 @@ describe('the feel ratchet', () => {
     });
   }
 
-  it('holds the audit’s counts', () => {
-    expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/'))).toHaveLength(16);
-    expect(DEAD_HITSTOP).toHaveLength(3);
-    expect(NO_PRESS).toHaveLength(11);
-    expect(UNANSWERED).toHaveLength(5);
+  // (at most: each list only shrinks, as the lanes empty it)
+  it('holds no more than the audit’s counts', () => {
+    expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/')).length).toBeLessThanOrEqual(16);
+    expect(DEAD_HITSTOP.length).toBeLessThanOrEqual(3);
+    expect(NO_PRESS.length).toBeLessThanOrEqual(11);
+    expect(UNANSWERED.length).toBeLessThanOrEqual(5);
   });
 });

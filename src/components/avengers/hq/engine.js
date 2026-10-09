@@ -13,6 +13,7 @@ import { loadSky } from './assets';
 import { houseOn } from '../../../lib/three/house';
 import { guard } from '../../../lib/three/frameGuard';
 import { prepareScene } from '../../../lib/three/gpuWork';
+import { stageTune } from '../../../lib/stage3d';
 import { device } from '../../../lib/device';
 import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
@@ -291,7 +292,18 @@ export function createEngine(canvas, opts = {}) {
     });
   };
 
+  // ?debug: the one panel (lib/stage3d's stageTune), the bloom first and the
+  // game's numbers after, titled and kept by the game's name (a page of HQ
+  // games has one document title for all of them); without ?debug, nothing
+  let tuneName = null;
+  const tuning = stageTune({ bloomPass, title: () => tuneName || canvas.closest?.('[data-route]')?.dataset.route || (typeof document !== 'undefined' ? document.title : null) });
+  const tune = (groups = [], name = null) => {
+    tuneName = name ?? tuneName;
+    tuning.tune(groups);
+  };
+
   const dispose = () => {
+    tuning.close();
     canvas.removeEventListener('webglcontextlost', onContextLost);
     disposeObject(scene);
     skyAssets?.env?.dispose();
@@ -353,6 +365,7 @@ export function createEngine(canvas, opts = {}) {
     info,
     dispose,
     precompile,
+    tune,
     get size() {
       return size;
     },

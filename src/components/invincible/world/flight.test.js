@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FLY, newHero, speedOf, stepHero } from './flight';
+import { FLY, JUMP, jumpPress, newHero, onWater, speedOf, stepHero } from './flight';
 import { BRIDGES, RIVER, SPAWN, WATER_Y, WORLD, buildWorld, groundAt } from './map';
 
 const W = buildWorld();
@@ -196,5 +196,78 @@ describe('frame rate', () => {
     const h0 = { ...newHero({ x: tower.x - tower.w / 2 - 5, y: tower.h / 2, z: tower.z, face: Math.PI / 2 }), mode: 'air', v: [260, 0, 0], spd: 260, dir: [1, 0, 0] };
     const h = stepHero(h0, { ...still, boost: true, look: [1, 0, 0] }, 0.25, W);
     expect(h.p[0]).toBeLessThan(tower.x - tower.w / 2);
+  });
+});
+
+describe('a press that lands (lib/press.js)', () => {
+  const takeoffs = (ev) => ev.filter((e) => e.type === 'takeoff').length;
+  // a slam onto the street: he crouches FLY.crouch before he can go again
+  const slammed = () => {
+    let h = { ...newHero(SPAWN), mode: 'air', p: [SPAWN.x, groundAt(SPAWN.x, SPAWN.z) + 2, SPAWN.z], v: [0, -40, 0], spd: 40, dir: [0, -1, 0] };
+    while (h.mode === 'air') h = stepHero(h, { ...still, down: 1 }, 1 / 60, W);
+    return h;
+  };
+  it('takes off on a press made while he was still getting up from a slam', () => {
+    const press = jumpPress();
+    let h = slammed();
+    expect(h.crouch).toBeGreaterThan(0);
+    const early = h.crouch - 0.08;
+    let ev = [];
+    ({ h, ev } = fly(h, { ...still, press }, early));
+    press.press(); // 0.08 s before he is up
+    ({ h, ev } = fly(h, { ...still, press }, 0.3));
+    expect(takeoffs(ev)).toBe(1);
+    expect(h.mode).toBe('air');
+  });
+  it('drops one made too long before (the old flag drops any)', () => {
+    const press = jumpPress();
+    let h = slammed();
+    press.press();
+    const { ev } = fly(h, { ...still, press }, FLY.crouch + 0.3);
+    expect(takeoffs(ev)).toBe(0);
+    h = slammed();
+    expect(takeoffs(fly(h, (_, s) => ({ ...still, jump: s === 0 }), FLY.crouch + 0.3).ev)).toBe(0);
+  });
+  it('jumps on a press just after he went over an edge (coyote time), not a moment later', () => {
+    const go = (after) => {
+      const press = jumpPress();
+      // on his feet, then off: in the air over the park
+      fly(newHero(SPAWN), { ...still, press }, 0.1);
+      let { h, ev } = fly(airborne(), { ...still, press }, after);
+      press.press();
+      ({ ev } = fly(h, { ...still, press }, 0.1));
+      return takeoffs(ev);
+    };
+    expect(JUMP.coyote).toBeGreaterThan(0.08);
+    expect(go(0.05)).toBe(1);
+    expect(go(0.2)).toBe(0);
+  });
+  it('one press, one takeoff, even with up held too', () => {
+    const press = jumpPress();
+    press.press();
+    const { ev } = fly(newHero(SPAWN), { ...still, up: 1, press }, 0.5);
+    expect(takeoffs(ev)).toBe(1);
+  });
+});
+
+describe('R lets go of the water', () => {
+  const MID = (RIVER.x0 + RIVER.x1) / 2;
+  const hanging = () => fly({ ...newHero({ x: MID, y: WATER_Y + 3, z: -800, face: 0 }), mode: 'air' }, { ...still, down: 1 }, 2).h;
+  it('hangs there with nothing held', () => {
+    const h = fly(hanging(), still, 2).h;
+    expect(onWater(h, W)).toBe(true);
+    expect(h.p[1]).toBeCloseTo(WATER_Y, 6);
+  });
+  it('lifts him off it on R, as a jump would off the ground', () => {
+    const h0 = hanging();
+    expect(onWater(h0, W)).toBe(true);
+    const { h, ev } = fly(h0, (_, s) => ({ ...still, free: s === 0 }), 0.5);
+    expect(ev.filter((e) => e.type === 'takeoff')).toHaveLength(1);
+    expect(h.p[1]).toBeGreaterThan(WATER_Y + 3);
+    expect(onWater(h, W)).toBe(false);
+  });
+  it('does nothing away from the water', () => {
+    const { ev } = fly(airborne(), (_, s) => ({ ...still, free: s === 0 }), 0.2);
+    expect(ev.filter((e) => e.type === 'takeoff')).toHaveLength(0);
   });
 });
