@@ -6,48 +6,48 @@
   ],
   "poses": {
     "overview": {
-      "calls": 105,
-      "triangles": 332956,
-      "frameMs": 2078.8,
-      "frameMsMedian": 2070.9,
+      "calls": 104,
+      "triangles": 339826,
+      "frameMs": 2088.8,
+      "frameMsMedian": 2194,
       "memory": {
-        "geometries": 426,
-        "textures": 246
+        "geometries": 423,
+        "textures": 244
       },
       "metrics": {
         "colorBuckets": 177,
-        "colorEntropyBits": 3.31,
-        "edgeDensity": 0.091,
+        "colorEntropyBits": 3.25,
+        "edgeDensity": 0.097,
         "luminance": {
           "mean": 31.4,
           "p5": 11.9,
-          "p95": 92.8,
-          "contrast": 80.8
+          "p95": 93.6,
+          "contrast": 81.6
         },
-        "dominantColorShare": 0.374
+        "dominantColorShare": 0.386
       },
       "errors": []
     },
     "falcon-sun": {
-      "calls": 95,
-      "triangles": 492562,
-      "frameMs": 3159.9,
-      "frameMsMedian": 3103.6,
+      "calls": 97,
+      "triangles": 491586,
+      "frameMs": 3206.1,
+      "frameMsMedian": 3256.8,
       "memory": {
-        "geometries": 435,
-        "textures": 249
+        "geometries": 418,
+        "textures": 244
       },
       "metrics": {
-        "colorBuckets": 327,
-        "colorEntropyBits": 6.75,
-        "edgeDensity": 0.255,
+        "colorBuckets": 326,
+        "colorEntropyBits": 6.82,
+        "edgeDensity": 0.236,
         "luminance": {
-          "mean": 127.3,
-          "p5": 40.4,
-          "p95": 205.8,
-          "contrast": 165.4
+          "mean": 129.1,
+          "p5": 42.8,
+          "p95": 210.3,
+          "contrast": 167.5
         },
-        "dominantColorShare": 0.039
+        "dominantColorShare": 0.034
       },
       "errors": []
     },
@@ -191,22 +191,22 @@
     },
     "office": {
       "calls": 50,
-      "triangles": 103802,
-      "frameMs": 2112.1,
-      "frameMsMedian": 2098.6,
+      "triangles": 103800,
+      "frameMs": 2190.6,
+      "frameMsMedian": 2180.6,
       "memory": {
         "geometries": 418,
         "textures": 246
       },
       "metrics": {
-        "colorBuckets": 156,
-        "colorEntropyBits": 5.82,
-        "edgeDensity": 0.083,
+        "colorBuckets": 144,
+        "colorEntropyBits": 5.86,
+        "edgeDensity": 0.072,
         "luminance": {
-          "mean": 115.1,
-          "p5": 48.1,
-          "p95": 192.2,
-          "contrast": 144.1
+          "mean": 116.6,
+          "p5": 48.2,
+          "p95": 193,
+          "contrast": 144.9
         },
         "dominantColorShare": 0.061
       },
@@ -214,47 +214,47 @@
     },
     "belt": {
       "calls": 56,
-      "triangles": 437970,
-      "frameMs": 2294.4,
-      "frameMsMedian": 2773.3,
+      "triangles": 437976,
+      "frameMs": 2706.3,
+      "frameMsMedian": 2686.3,
       "memory": {
         "geometries": 418,
-        "textures": 243
+        "textures": 244
       },
       "metrics": {
-        "colorBuckets": 153,
-        "colorEntropyBits": 5.2,
-        "edgeDensity": 0.324,
+        "colorBuckets": 138,
+        "colorEntropyBits": 5.16,
+        "edgeDensity": 0.368,
         "luminance": {
-          "mean": 62.8,
-          "p5": 25.4,
-          "p95": 119.5,
-          "contrast": 94
+          "mean": 66.6,
+          "p5": 28.7,
+          "p95": 115.3,
+          "contrast": 86.6
         },
-        "dominantColorShare": 0.102
+        "dominantColorShare": 0.108
       },
       "errors": []
     },
     "maw": {
       "calls": 52,
-      "triangles": 99638,
-      "frameMs": 1633.1,
-      "frameMsMedian": 1911.3,
+      "triangles": 99606,
+      "frameMs": 1274,
+      "frameMsMedian": 1286.3,
       "memory": {
-        "geometries": 418,
-        "textures": 240
+        "geometries": 426,
+        "textures": 245
       },
       "metrics": {
-        "colorBuckets": 179,
-        "colorEntropyBits": 4.59,
-        "edgeDensity": 0.073,
+        "colorBuckets": 185,
+        "colorEntropyBits": 4.6,
+        "edgeDensity": 0.074,
         "luminance": {
           "mean": 57.6,
           "p5": 0,
-          "p95": 105.1,
-          "contrast": 105.1
+          "p95": 105.2,
+          "contrast": 105.2
         },
-        "dominantColorShare": 0.117
+        "dominantColorShare": 0.118
       },
       "errors": []
     },
@@ -283,24 +283,24 @@
     },
     "station": {
       "calls": 78,
-      "triangles": 466892,
-      "frameMs": 2563.9,
-      "frameMsMedian": 2566.3,
+      "triangles": 469760,
+      "frameMs": 3163,
+      "frameMsMedian": 3171.5,
       "memory": {
-        "geometries": 418,
-        "textures": 243
+        "geometries": 426,
+        "textures": 245
       },
       "metrics": {
-        "colorBuckets": 357,
-        "colorEntropyBits": 7.22,
-        "edgeDensity": 0.296,
+        "colorBuckets": 377,
+        "colorEntropyBits": 7.21,
+        "edgeDensity": 0.3,
         "luminance": {
-          "mean": 134.4,
-          "p5": 74.1,
-          "p95": 201.1,
-          "contrast": 127
+          "mean": 132.5,
+          "p5": 72.2,
+          "p95": 200.5,
+          "contrast": 128.3
         },
-        "dominantColorShare": 0.035
+        "dominantColorShare": 0.033
       },
       "errors": []
     },
@@ -328,25 +328,25 @@
       "errors": []
     },
     "lane-ride": {
-      "calls": 106,
-      "triangles": 350204,
-      "frameMs": 1541.6,
-      "frameMsMedian": 1518.7,
+      "calls": 107,
+      "triangles": 350280,
+      "frameMs": 2512.4,
+      "frameMsMedian": 1333.4,
       "memory": {
-        "geometries": 463,
-        "textures": 258
+        "geometries": 470,
+        "textures": 262
       },
       "metrics": {
-        "colorBuckets": 163,
-        "colorEntropyBits": 5.52,
-        "edgeDensity": 0.075,
+        "colorBuckets": 166,
+        "colorEntropyBits": 5.56,
+        "edgeDensity": 0.074,
         "luminance": {
-          "mean": 113.6,
-          "p5": 49,
-          "p95": 174,
-          "contrast": 125
+          "mean": 114.2,
+          "p5": 50.1,
+          "p95": 173.9,
+          "contrast": 123.8
         },
-        "dominantColorShare": 0.074
+        "dominantColorShare": 0.073
       },
       "errors": []
     }
