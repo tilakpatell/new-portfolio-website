@@ -473,6 +473,48 @@ export const FLAGS = [
   [49, 91.4],
 ].map(([x, y]) => ({ x: x * S, z: y * S }));
 
+// ── things to knock over (the game-feel design’s Tier 3) ──
+
+// Out on the lawn near where you start: a few sets of a slalom of five
+// cones, and behind it two crates and a barrel, each where there's room
+// (clear of the buildings, the drives, the lamps, benches and planters, and
+// everything clearOfThings keeps clear). Data only: ./lawnProps.js puts
+// them through lib/three/knockables, light bodies where the computer can
+// afford the engine and standing still where it can't. { kind, x, y, z, yaw }
+const PROP_CLEAR = 1.2;
+const propRoom = (x, z) =>
+  openAt(x, z, 2) &&
+  clearOfThings(x, z, 1) &&
+  roadGap(x, z) > ROAD_HALF + PROP_CLEAR &&
+  ![...LAMPS, ...BENCHES, ...PLANTERS].some((o) => Math.hypot(o.x - x, o.z - z) < 2 + PROP_CLEAR) &&
+  Math.hypot(START.x - x, START.z - z) > 6;
+function propSet(x, z, a) {
+  const ax = Math.cos(a);
+  const az = Math.sin(a);
+  // across the way out from the start, 1.6 m apart; the rest 3 m behind
+  const at = (along, back) => ({ x: x - az * along + ax * back, z: z + ax * along + az * back });
+  return [
+    ...[-2, -1, 0, 1, 2].map((k) => ({ kind: 'cone', ...at(k * 1.6, 0), yaw: k * 0.4 })),
+    { kind: 'crate', ...at(-0.6, 3), yaw: 0.2 },
+    { kind: 'crate', ...at(0.4, 3.1), yaw: -0.3 },
+    { kind: 'barrel', ...at(1.6, 3), yaw: 0 },
+  ].map((p) => ({ ...p, y: 0 }));
+}
+export const LAWN_PROPS = (() => {
+  const sets = [];
+  for (let r = 12; r <= 70 && sets.length < 3; r += 4) {
+    for (let i = 0; i < 24 && sets.length < 3; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const x = START.x + Math.cos(a) * r;
+      const z = START.z + Math.sin(a) * r;
+      if (sets.some((s) => Math.hypot(s[2].x - x, s[2].z - z) < 25)) continue;
+      const set = propSet(x, z, a);
+      if (set.every((p) => propRoom(p.x, p.z))) sets.push(set);
+    }
+  }
+  return sets.flat();
+})();
+
 // ── bumping into things ──
 
 // Everything round the hero bumps into, besides the buildings.
