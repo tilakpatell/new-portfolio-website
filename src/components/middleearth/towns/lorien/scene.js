@@ -34,6 +34,7 @@ import { createGollum } from '../marshes/props';
 import { AMBUSH, BANK, BOARDS, BUTTS, CAST, CITY, COLLIDERS, GALADHRIM, LANDING, MALLORNS, MIRROR, PATHS, RANGE, RIVER_Y, STAIR, TABLE, TREE, WOOD, groundHeight, nearPath, streamX, woodHeight } from './layout';
 import { RIVER, aimDir, riverBend, riverWide } from './rules';
 import { attend, castDo, castPlay, followDrawn, releaseCast, tickCast } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const X_AXIS = new THREE.Vector3(1, 0, 0);
@@ -651,6 +652,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, night: 0, dawn: 0, first: true, leaves: 0, tempt: 0, eye: 0, sight: V(), sightD: 20 };
+  const shake = createShake({ title: 'Lothlórien' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
   const tmp = V();
   const tmp2 = V();
   // where the cast's eyes go: down into the Mirror, along the range to the butts
@@ -1035,15 +1037,12 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'river' || s.mode === 'climb';
-    const k = jump || s.mode === 'archery' ? 1 : Math.min(1, dt * (follow ? 7 : 2.4));
+    const k = jump || s.mode === 'archery' ? 1 : byFrame(follow ? 7 : 2.4, dt);
     A.cam.at.lerp(camAt, k);
     A.cam.look.lerp(camLook, k);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
@@ -1106,6 +1105,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      shake.dispose();
       ground.dispose();
       ghosts.dispose();
       disposeTree(scene);

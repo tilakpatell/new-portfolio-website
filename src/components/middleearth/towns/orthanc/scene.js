@@ -32,6 +32,7 @@ import { makeRain } from '../rain';
 import { createOrthancKit, insideTop } from './props';
 import { DUEL_AT, HOST, LEAF, LECTERN, MOTH_AT, PALANTIR, PITS, PIN, PIN_IN, RING, SARUMAN_AT, STAIR, STAIR_LEN, TOWER_H, clearView, indoors, stairAngle, stairAt, stairFace } from './layout';
 import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -398,6 +399,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   for (const k of NUMBERS) cur[k] = MOODS.hall[k];
   const sunDir = V(...MOODS.hall.sun).normalize();
   const A = { t: 0, cam: { at: V(0, 3, 16), look: V(0, 2, 0) }, mode: '', shake: 0, first: true, fov: 50, mood: '', flash: 0, block: 0, push: 0, hit: 0, cast: 0, sx: DUEL_AT.saruman.x, gx: DUEL_AT.gandalf.x, down: 0, jump: 0, ring: -1, ring2: -1, eyeLook: 0, flames: 0, smoke: 0, wake: 0, eye: 0 };
+  const shake = createShake({ title: 'Orthanc' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -966,7 +968,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'climb' || s.mode === 'flight' || s.mode === 'moth';
-    const ke = jump ? 1 : Math.min(1, dt * (follow ? 6 : 2.6));
+    const ke = jump ? 1 : byFrame(follow ? 6 : 2.6, dt);
     A.cam.at.lerp(camAt, ke);
     A.cam.look.lerp(camLook, ke);
     A.fov += (fov - A.fov) * (jump ? 1 : Math.min(1, dt * 3));
@@ -975,11 +977,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       camera.updateProjectionMatrix();
     }
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
@@ -1055,6 +1054,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
       return stage.lost;
     },
     dispose() {
+      shake.dispose();
       for (const g of grounds) g.dispose();
       for (const [o, m] of robes) o.material = m;
       manyColours.dispose();

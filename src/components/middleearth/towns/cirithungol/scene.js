@@ -33,6 +33,7 @@ import { createCirithKit } from './props';
 import { BRAWL, BRIDGE, CITY_YAW, COURT, HIDE, LAIR_OUT, MORGUL_ROAD, PASS, TOWER_DOOR, TOWER_PILLARS, TUNNELS, roughHeight, stairAt } from './layout';
 import { CRUMBS, PHIAL, STAIRS, cloakLift } from './rules';
 import { castDo, castPlay, drawWatcher, fight, releaseCast, tickCast, upgrade } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -367,6 +368,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   for (const k of NUMBERS) cur[k] = MOODS.vale[k];
   const sunDir = V(...MOODS.vale.sun).normalize();
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, beam: 0, stab: 0, dodge: 0, hit: 0, embers: 0, dust: 0, fov: 52, mood: '', near: 0 };
+  const shake = createShake({ title: 'Cirith Ungol' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -827,7 +829,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'climb' || s.mode === 'morgul';
-    const ke = jump ? 1 : Math.min(1, dt * (follow ? 7 : 2.4));
+    const ke = jump ? 1 : byFrame(follow ? 7 : 2.4, dt);
     A.cam.at.lerp(camAt, ke);
     A.cam.look.lerp(camLook, ke);
     A.fov += (fov - A.fov) * Math.min(1, dt * 3);
@@ -836,11 +838,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       camera.updateProjectionMatrix();
     }
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
@@ -912,6 +911,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      shake.dispose();
       for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
