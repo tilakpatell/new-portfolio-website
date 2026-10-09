@@ -66,7 +66,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
 | 2A | | | | |
-| 2B | | | | |
+| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars` | Tier 1 (the surface, the map, the trench; the inside waits on #694) | |
 | 2C | | | | |
 | 2D | | | | |
 | 2E | | | | |
@@ -97,4 +97,10 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1D, for 2A–2F:** a world gives the panel its groups with `tune() → groups` on the world (`rt.debug` asks once it is placed and ready, behind `?debug`, and shows them under the module’s id; the values are kept for the tab under `tp-tune-<id>`). A `fromScene` world gets it from its scene’s `tune()`, passed through; a `createStage` game calls `stage.tune(groups)` once its groups exist (the stage’s bloom comes first, for free). `houseGroups(house, { exposure: { get, set } })` is the look in one line; swap any item a world keeps its own way, as the galaxy surface does its fog. Items may be `bool` and `select` (`options`) now.
 - **1D, for the galaxy surfaces (2B):** `galaxy/surface/scene.js` still makes its own panel from `tune.js` (it is outside 1D’s files); moving it onto `tune()` through the module makes it the one panel the runtime opens and closes. Until then it is the only panel on that route (the galaxy’s module has no `tune()`), so nothing doubles.
 - **1D, for 1A:** `lib/stage3d.js` has `stageBloomGroups(pass)` for the stage’s bloom group, since `lib/three/bloom.js` is 1A’s; once `bloomGroups(pass)` lands, `stageTune` can take it in its place (the same shape: `threshold`, `strength`, `radius`).
+- **2B, for every Phase 2 lane:** `feel.test.js`’s “holds the audit’s counts” is “at most” now, so a lane that empties a line takes the entry off and need not touch the numbers (the lanes would otherwise all collide on that one line).
+- **2B, for the owner:** the Death Star inside’s Tier 1 (a `hurt` case in `hear.js`, a shake and hitstop on a hit of 25+, reduced motion) waits for #694, which was still open when 2B’s Tier 1 went up; it rides 2B’s Tier 2 pull request, or the next lane’s once #694 is in.
+- **2B, for 2C:** `universe/ship.js`’s `bump` event says only `hard`; the galaxy map guesses its speed from that (`galaxy/mapFeel.js`’s `knockForce`, which reads `e.into` first). Carrying `into` on the bump (as the crash carries `speed`) makes the map’s bump thud exactly as hard as it was; the universe map would want the same.
+- **2B, for 2C:** `galaxy/mapFeel.js`’s `deadZone(dx, dy, full)` is the drag stick’s dead zone (a tenth of the throw, rescaled); `universe/scene.js`’s stick wants the same, and it could go down to `lib/` once two worlds use it.
+- **2B, for the owner:** the trench’s 2D canvas (`TrenchRun.jsx`, the no-GPU fallback) keeps its own pixel shake, gated by `calm`; the ratchet named only the 3D one (`Trench3D.js`), which is on the feel now.
+- **2B, for the combat lanes:** the surface’s shake still collects in `state.shake` (the saber, the blaster, the bombs set it where they always did); `follow()` hands it to the feel each frame as trauma. Nothing in the combat paths changed; a new shake there is `state.shake = Math.min(1, state.shake + k)` as before.
 - **1D, for the owner:** `stage.tune`’s title is the canvas’s nearest `[data-route]`, but no page sets one yet, so every stage game is titled by the document’s title (and keeps its values under it); a page that wants its own key sets `data-route` on the game’s box.
