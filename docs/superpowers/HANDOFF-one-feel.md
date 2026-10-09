@@ -67,7 +67,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
 | 2A | | | | |
 | 2B | | | | |
-| 2C | | | | |
+| 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1 | |
 | 2D | | | | |
 | 2E | | | | |
 | 2F | | | | |
@@ -98,3 +98,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1D, for the galaxy surfaces (2B):** `galaxy/surface/scene.js` still makes its own panel from `tune.js` (it is outside 1D’s files); moving it onto `tune()` through the module makes it the one panel the runtime opens and closes. Until then it is the only panel on that route (the galaxy’s module has no `tune()`), so nothing doubles.
 - **1D, for 1A:** `lib/stage3d.js` has `stageBloomGroups(pass)` for the stage’s bloom group, since `lib/three/bloom.js` is 1A’s; once `bloomGroups(pass)` lands, `stageTune` can take it in its place (the same shape: `threshold`, `strength`, `radius`).
 - **1D, for the owner:** `stage.tune`’s title is the canvas’s nearest `[data-route]`, but no page sets one yet, so every stage game is titled by the document’s title (and keeps its values under it); a page that wants its own key sets `data-route` on the game’s box.
+- **2C, for the owner and 2B:** `lib/physics/world.js` tells a hit’s force a kilogram (`magnitude / m`), while Rapier’s `hitThreshold` is the whole contact force in newtons: a world that gates in newtons and hears per kilogram mixes the two. The landings now gate at `mass × threshold` (the law’s threshold a kilogram) with the law’s gap the one throttle (`landings/physics.js` takes `threshold`). The panel’s threshold below 15 can’t hear quieter knocks than the gate set at the landing’s start.
+- **2C, for 2B:** `universe/controls.js`’s `stickInput` has a dead zone now (`DEAD` 0.1 of the stick, each way, rescaled), so the galaxy map’s drag stick has it too; and `ship.js`’s bump carries `speed`, `force` (`speed × SHIP.mass`, 50: full on the law just under a crash), `at` and `normal`, which `universe/Comms.jsx` thuds by on both maps. The galaxy map’s own shake (`galaxy/scene.js`) is still its own: 2B’s.
+- **2C, for the combat lanes:** nothing of theirs edited; the foot’s jump went through `foot.js`’s `walk()` only (a `createJump()` press beside it), and `footScene.js`’s knock wiring moved to `landings/knocks.js`.
+- **2C, left for a later round:** the landing’s dust in the biome’s ground colour, and the dust in `prepare`’s warm-up (1B’s two findings).
