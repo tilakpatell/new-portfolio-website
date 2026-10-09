@@ -16,14 +16,14 @@
 // pack an Interdictor launches), ace:remnant (the Remnant's planned ace),
 // scenery:<system> (every piece the war shows, for each of its holders).
 
-import { allowed } from './roster';
+import { allowed, runnerOf } from './roster';
 import { BATTLE_KINDS, HUTTS, templateFor } from './battles';
 import { WAR_SYSTEMS } from './gcw';
 import { OWNERS, effectsFor, piecesShown } from './warEffects';
 import { ESCORTS, ROLES } from './roamRules';
 import { FACTIONS } from './hunted';
 import { GIDEON } from './battlePlans';
-import { SIDES, WARS } from './sides';
+import { WARS } from './sides';
 import { SYSTEMS } from './systems';
 
 export function kindsOfPiece(p) {
@@ -78,7 +78,7 @@ export function auditRoster() {
     for (const f of HUTTS.fighters) add(war, 'hutt', 'hutts', f.kind);
     // who runs an evacuation or a blockade
     for (const k of Object.values(BATTLE_KINDS))
-      if (k.runners) for (const side of [...sides, 'hutt']) add(war, side, `runners:${k.id}`, k.runners.kind[SIDES[side].stance]);
+      if (k.runners) for (const side of [...sides, 'hutt']) add(war, side, `runners:${k.id}`, runnerOf(k.id, side));
     // what each holder drops in, flies by, parks, and who hunts for it
     for (const side of [...sides, 'hutt']) {
       const o = OWNERS[side];
