@@ -23,7 +23,7 @@
 // shades blue, a sunset violet.
 
 import * as THREE from 'three';
-import { LOOK } from '../../../lib/three/house';
+import { LOOK as HOUSE } from '../../../lib/three/house';
 
 const SHADOW_MIX = 1 / 3;
 const SHADOW_DARK = 0.55;
@@ -39,14 +39,14 @@ export function lookOf(site) {
   const shadow = zenith.clone().lerp(horizon, SHADOW_MIX).multiplyScalar(SHADOW_DARK);
   const own = site?.look && typeof site.look === 'object' ? site.look : {};
   return {
-    ...LOOK,
+    ...HOUSE,
     shadow: isColour(own.shadow) ? toInt(own.shadow) : shadow.getHex(),
-    edge: Array.isArray(own.edge) && own.edge.length === 2 && own.edge.every(isUnit) ? [own.edge[0], own.edge[1]] : LOOK.edge,
+    edge: Array.isArray(own.edge) && own.edge.length === 2 && own.edge.every(isUnit) ? [own.edge[0], own.edge[1]] : HOUSE.edge,
     fogLow: horizon.getHex(),
     fogHigh: zenith.getHex(),
-    fogBelow: isUnit(own.fogBelow) ? own.fogBelow : LOOK.fogBelow,
-    halo: isColour(own.halo) ? toInt(own.halo) : LOOK.halo,
-    exposure: exposureOf(site, LOOK.exposure),
+    fogBelow: isUnit(own.fogBelow) ? own.fogBelow : HOUSE.fogBelow,
+    halo: isColour(own.halo) ? toInt(own.halo) : HOUSE.halo,
+    exposure: exposureOf(site, HOUSE.exposure),
   };
 }
 

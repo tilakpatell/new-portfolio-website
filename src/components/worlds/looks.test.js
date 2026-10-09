@@ -15,7 +15,6 @@ const EXPECTED_MISSING = [
   'universe',
   'universe/landings',
   'universe/shipyard',
-  'deathstar',
   'cockpit',
   'albuquerque/world',
   'albuquerque/casa',
