@@ -21,6 +21,7 @@ import { runtime, usePrepareProgress } from '../runtime';
 import LoadingVeil from '../components/worlds/LoadingVeil';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { battleSay } from '../components/galaxy/warVoice';
+import { garrisonSay } from '../components/galaxy/garrisonLines';
 import { groundEffects } from '../components/galaxy/siteWar';
 import { mine, onWar, warNow } from '../components/galaxy/warState';
 import { SIDE_KEY, current as currentOath, readAllegiance, setTheatre, suggestSide, swear } from '../components/galaxy/allegiance';
@@ -376,6 +377,16 @@ export default function Galaxy() {
         if (e.sub === 'won' && record.major) unlock('gcwMajor');
         const lines = battleSay(e, crew?.id, record);
         if (lines.length) comms.current?.handle({ type: 'lines', lines });
+        return;
+      }
+      // the planet's fleet taking notice (its commander, then the crew), and
+      // the capital ship that drops in on you (the crew), in words that fit
+      // the galaxy's ships (garrisonLines.js); being thanked for leaving
+      // doesn't cut in
+      if (e.type === 'event' && (e.id === 'garrison' || e.id === 'capital')) {
+        if (e.id === 'garrison' && e.sub === 'warn') notePilot('Restricted space · turn back');
+        const lines = garrisonSay(e, crew?.id);
+        if (lines.length) comms.current?.handle({ type: 'lines', lines, urgent: e.sub !== 'clear' });
         return;
       }
       if (e.type === 'action') {
