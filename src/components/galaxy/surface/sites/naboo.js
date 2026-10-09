@@ -4,19 +4,44 @@
 // as Coruscant's and Yavin's are. (sites/index.js has what a site is;
 // core.js has the other core worlds, and the ramp Theed's road climbs by.)
 //
+// The river's gorge under Theed is dug, not summed: a run of pits
+// (terrain.js's `dug`, as Beggar's Canyon is dug on Tatooine), each down to
+// 22 m under the plain. The `channels` layer can't carry it: it draws rivers
+// where noise crosses zero, with no ends to put at the falls and the lake.
+// Nor can an `island` with a negative height: it sums with the lake bed it
+// runs into, and the falls' flat, levelled after the layers, fills its head
+// back in; pits come after both, and go no deeper than their floor.
+//
 //   SITE                the site
 //   SITES               { naboo: SITE }, for index.js to spread
 
 import { ramp } from './core';
 
+// pits every `step` metres from a to b, each `r` across and down to `floor`
+const run = (a, b, r, floor, step = 8) => {
+  const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step);
+  return Array.from({ length: n + 1 }, (_, i) => ({ at: [Math.round(a[0] + ((b[0] - a[0]) * i) / n), Math.round(a[1] + ((b[1] - a[1]) * i) / n)], r, floor }));
+};
+
+// The gorge: its head a bowl under the three falls (a pit where each one's
+// water lands, 13 m out from its lip, and one between, none reaching back
+// to a lip), then 36 m wide east-south-east down to the lake at (60, 330)
+const GORGE = [
+  ...[[-95, 281], [-90, 300], [-94, 309], [-95, 319]].map((at) => ({ at, r: 12, floor: -22 })),
+  ...run([-79, 308], [60, 330], 18, -22),
+];
+
 export const SITE = {
   place: 'The Great Grass Plains',
   line: 'Green hills, still lakes, and Theed’s domes over the falls.',
+  // the look (look.js) and the air, the foliage design's: blue-grey shade,
+  // a soft haze over the lake
+  look: { shadow: '#2a3a4a', edge: [0.42, 0.9] },
   sky: {
-    zenith: '#3f82cf',
+    zenith: '#79a2c9',
     horizon: '#cfe4ef',
     haze: 0.7,
-    hazeColor: '#e2eef0',
+    hazeColor: '#8ca5b2',
     suns: [{ az: -2.4, el: 0.62, color: '#fff4dc', size: 0.016, glow: 1.1 }],
     clouds: { cover: 0.34, color: '#ffffff', shade: '#c6d2dc', scale: 0.7, speed: 0.005 },
     bodies: [
@@ -28,21 +53,23 @@ export const SITE = {
   light: { sun: 3.0, sky: '#b8d4f0', ground: '#6e8a4a', ambient: 0.75 },
   ground: { detail: 'grass', detailLook: { color: 0.7, normal: 0.6 },
     seed: 21,
-    wind: 0.3,
+    wind: 0.5,
     layers: [
       { type: 'swell', scale: 520, height: 6 },
       { type: 'hills', scale: 240, height: 14 },
-      // Theed's plateau, its east edge a cliff over the lake
-      { type: 'island', at: [-330, 300], r: 250, height: 30, core: 0.9, ragged: 0.1 },
+      // Theed's plateau, its east edge a cliff over the gorge and the lake
+      { type: 'island', at: [-330, 300], r: 250, height: 30, core: 0.9, ragged: 0.06 },
       // the lake, and Padmé's island in it
       { type: 'island', at: [100, 330], r: 290, height: -38, core: 0.5, ragged: 0.25 },
       { type: 'island', at: [300, 420], r: 56, height: 43, core: 0.55, ragged: 0.3 },
-      // the swamp round the Gungans' sacred place
-      { type: 'island', at: [-360, -280], r: 70, height: -16, core: 0.4, ragged: 0.4 },
+      // the swamp round the Gungans' sacred place, standing water at its middle
+      { type: 'island', at: [-360, -280], r: 70, height: -18, core: 0.5, ragged: 0.4 },
       { type: 'mountains', from: 800, to: 3200, height: 460, scale: 1200 },
     ],
-    // the road up to Theed
-    flats: ramp([-104, 38], [-196, 148], 15, 39.5, 16, 7),
+    // the road up to Theed, and the Lake Country's shore, level for its
+    // road and its cypress rows
+    flats: [...ramp([-104, 38], [-196, 148], 15, 39.5, 16, 7), { at: [290, 300], r: 95, edge: 20, h: 1.5 }],
+    pits: GORGE,
     // (the Great Grass Plains as filmed: a warm, yellow-leaning green)
     palette: {
       low: '#5f7034',
@@ -59,7 +86,7 @@ export const SITE = {
       wet: { level: 0.5, band: 2.5, color: '#6a6248' },
     },
   },
-  water: { level: 0, color: '#3c7f88', deep: '#1f4a58', kind: 'sea', foam: 0.12 },
+  water: { level: 0, color: '#2c3d3e', deep: '#172526', kind: 'sea', foam: 0.12 },
   // the meadow round you, yellow flowers in it here and there
   grass: { h: [0.22, 0.5], w: 0.05, root: '#55693a', mid: '#7a903e', tip: '#a9b656', dry: '#aaa45c', cover: 0.8, scale: 120, wind: 0.5, flower: { color: '#f4e27a', share: 0.03 } },
   weather: [{ kind: 'motes', count: 260, color: '#fffbe0' }],
