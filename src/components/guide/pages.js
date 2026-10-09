@@ -436,6 +436,7 @@ export const PAGES = {
           ['E / Enter', 'Go in (or wash the Aztek at A1A)'],
           ['M', 'Things to do: the places, as each one opens'],
           ['R', 'Run a delivery'],
+          ['B', 'Stuck? Back to where you last drove clear (Y on a pad)'],
           ['T', 'The time of day'],
           ['P', 'Throw a pizza on the roof (at Walt’s house)'],
           ['H', 'The horn'],
