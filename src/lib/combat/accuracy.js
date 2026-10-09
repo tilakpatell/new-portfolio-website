@@ -13,8 +13,8 @@
 // misses a body that wide at that range; lead(target, vel, from, speed) →
 // where to aim. Pure: plain [x, y, z] arrays.
 //
-// lead() is here until the shared aim (lib/combat/aim.js) lands; then the
-// callers take its lead and this one goes.
+// lead() is the shared aim's (lib/combat/aim.js), re-exported: one
+// implementation, and fight.js, hostiles.js and foot.js keep their import.
 
 export const FIRST = 2.5; // the first volley at a fresh target
 export const MOVING = 1.6; // while the shooter walks
@@ -60,25 +60,6 @@ export function missBy(range, girth = 0.6) {
   return Math.atan((girth * 1.2) / Math.max(1, range));
 }
 
-// Where to aim so a bolt at `speed` from `from` meets a target at `target`
-// moving at `vel`: the earliest t with |target + vel·t − from| = speed·t.
-export function lead(target, vel, from, speed) {
-  const d = [target[0] - from[0], target[1] - from[1], target[2] - from[2]];
-  const a = vel[0] * vel[0] + vel[1] * vel[1] + vel[2] * vel[2] - speed * speed;
-  const b = 2 * (d[0] * vel[0] + d[1] * vel[1] + d[2] * vel[2]);
-  const c = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
-  let t = -1;
-  if (Math.abs(a) < 1e-9) {
-    if (Math.abs(b) > 1e-9) t = -c / b;
-  } else {
-    const disc = b * b - 4 * a * c;
-    if (disc >= 0) {
-      const r = Math.sqrt(disc);
-      const t1 = (-b - r) / (2 * a);
-      const t2 = (-b + r) / (2 * a);
-      t = Math.min(t1, t2) > 0 ? Math.min(t1, t2) : Math.max(t1, t2);
-    }
-  }
-  if (!(t > 0)) return [target[0], target[1], target[2]];
-  return [target[0] + vel[0] * t, target[1] + vel[1] * t, target[2] + vel[2] * t];
-}
+// Where to aim so a bolt at `speed` from `from` meets a mover: the shared
+// aim's (./aim.js), here too so the enemies' callers keep their import.
+export { lead } from './aim.js';

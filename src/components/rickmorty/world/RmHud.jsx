@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiEmotionLaughLine, RiListCheck2, RiShirtLine, RiTyphoonLine } from 'react-icons/ri';
 import { EMOTES, wheelAngle } from '../../../lib/emote';
-import { Stick, TouchButton } from '../../../runtime/hud';
+import { Prompt, Reticle, Stick, TouchButton, reticleState } from '../../../runtime/hud';
+import { PROMPT as LOOK_PROMPT } from '../../../runtime/look';
 import GuideCue from '../../guide/GuideCue';
 import Wardrobe from '../wardrobe/Wardrobe';
 import { DIAL } from './dimensions/destinations';
@@ -78,6 +79,8 @@ export default function RmHud({
   onCloseWheel,
   onToggleWheel,
   onStick,
+  looking,
+  onLookLock,
   onJump,
   onLift,
   onFire,
@@ -246,7 +249,9 @@ export default function RmHud({
       )}
 
       {/* Total Rickall: the crosshair, whoever's in it, what's remembered of them, how it ended */}
-      {gl === 'on' && game?.phase === 'on' && <div className="rm-crosshair" data-on={game.aim ? true : undefined} aria-hidden="true" />}
+      {gl === 'on' && <Reticle className="rm-reticle" state={reticleState(null, { gun: game?.phase === 'on', lock: game?.aim })} />}
+      {/* the look's prompt (runtime/look.js), while the pointer isn't locked and nothing else is asked */}
+      {gl === 'on' && !touch && looking?.mode === 'lock' && !looking.locked && !here && !(game?.phase === 'on' && game.aim) && <Prompt k="" verb={LOOK_PROMPT} className="rm-look" onClick={onLookLock} />}
       {gl === 'on' && game?.told && (
         <div ref={recall} className="rm-recall" role="status" key={game.told.n}>
           <p className="rm-recall-head">
