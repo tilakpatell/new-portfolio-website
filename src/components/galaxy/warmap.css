@@ -191,8 +191,8 @@
   .holomap-strip-n { font-size: 0.7rem; }
   .holomap-legend { left: 8px; bottom: 8px; }
   .holomap-layers { left: 8px; bottom: 46px; }
-  /* (the open key covers the map, clear of the zoom buttons; the war's board under it would only show through, so it steps aside) */
-  .holomap-legend-panel { width: min(340px, calc(100cqw - 68px)); max-height: calc(100cqw - 56px); }
+  /* (the open key covers the map, under the zoom buttons' row in the top right corner (galaxy.css: 44 px and the 8 beside them, and a gap); the war's board under it would only show through, so it steps aside) */
+  .holomap-legend-panel { width: min(340px, calc(100cqw - 68px)); max-height: calc(100cqw - 112px); }
   .holomap-map:has(.holomap-legend[data-open]) .holomap-strip { visibility: hidden; }
   /* (the rings tighter: at 390 px Mustafar's star and swords ran into Nevarro's ring, and the south's rings together) */
   :where(.holomap-map[data-fronts]) .holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 1.5px #020611, 0 0 0 3px var(--held); }

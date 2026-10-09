@@ -20,6 +20,8 @@
 //     the zoom buttons), the hover card staying inside the map, the side panel
 //     on a short phone still showing the jump
 //   keys: M (held, too) and Escape close it, / finds
+//   phone: at 375x667, 360x640 and, with the zoom buttons' touch sizes, 390x844 too: the zoom buttons a row in the
+//     top right corner, clear of the strip's title and the names; the open key under them; the jump in the side panel
 //   sharp: zoomed in, the stage is as sharp as without will-change
 // Prints a line per check, ok or FAIL, and exits 1 on any FAIL. Shots are in
 // OUT (map-<size>-<what>.png).
@@ -136,7 +138,8 @@ const namesProblems = (page) =>
     };
     const controls = [];
     for (const el of document.querySelectorAll('.holomap-strip-war')) if (window.__mc.shown(el)) controls.push({ what: 'strip', r: textBox(el) });
-    for (const el of document.querySelectorAll('.holomap-strip-board, .holomap-layers-toggle, .holomap-layers-set button, .holomap-legend-toggle, .holomap-zoom button')) if (window.__mc.shown(el)) controls.push({ what: el.className.split(' ')[0].replace('holomap-', '') || el.tagName.toLowerCase(), r: el.getBoundingClientRect() });
+    const kind = (el) => (el.closest('.holomap-zoom') ? 'zoom' : el.closest('.holomap-layers') ? 'layers' : el.closest('.holomap-legend') ? 'key' : 'strip');
+    for (const el of document.querySelectorAll('.holomap-strip-board, .holomap-layers-toggle, .holomap-layers-set button, .holomap-legend-toggle, .holomap-zoom button')) if (window.__mc.shown(el)) controls.push({ what: kind(el), r: el.getBoundingClientRect() });
     const under = [];
     for (const n of rows)
       for (const c of controls) if (n.r.left < c.r.right - 1 && c.r.left < n.r.right - 1 && n.r.top < c.r.bottom - 1 && c.r.top < n.r.bottom - 1) under.push(`${n.id}/${c.what}`);
@@ -223,8 +226,7 @@ const suite = async (viewport, { full = true } = {}) => {
     say(all ? r.n === total : r.n >= 3, `${when}: ${r.n} of ${total} names on view`);
     say(r.meets.length === 0, `${when}: no two names meet${r.meets.length ? ` (${r.meets.slice(0, 6).join(', ')})` : ''}`);
     say(r.outside.length === 0, `${when}: every name inside the map${r.outside.length ? ` (${r.outside.slice(0, 6).join(', ')})` : ''}`);
-    // (not on a phone: the lower right's too crowded to clear the zoom buttons there; Kamino and Geonosis run under them at 390 wide)
-    if (all && !phone) say(r.under.length === 0, `${when}: no name under the strip, layers, key or zoom buttons${r.under.length ? ` (${r.under.slice(0, 6).join(', ')})` : ''}`);
+    if (all) say(r.under.length === 0, `${when}: no name under the strip, layers, key or zoom buttons${r.under.length ? ` (${r.under.slice(0, 6).join(', ')})` : ''}`);
   };
   const phone = viewport.width <= 560;
 
@@ -579,28 +581,76 @@ const suite = async (viewport, { full = true } = {}) => {
   await ctx.close();
 };
 
-// the phone's side panel, on a short phone: the jump shows without scrolling the frame
-const shortPhone = async () => {
-  const viewport = { width: 375, height: 667 };
-  const say = (ok, what) => check(ok, `375x667: ${what}`);
+// what a touch screen gets from the zoom buttons' (pointer: coarse) rules (44, 40 or 36 px by the map's width): the same
+// rules with their media query off, as Chromium won't emulate the pointer
+const asTouch = (page) =>
+  J(page, () => {
+    const css = [];
+    for (const sheet of document.styleSheets) {
+      let rules = [];
+      try {
+        rules = [...sheet.cssRules];
+      } catch {
+        continue; // (a sheet from another origin)
+      }
+      for (const r of rules) if (r.cssText.includes('pointer: coarse') && r.cssText.includes('.holomap-zoom')) css.push(r.cssText.replaceAll('(pointer: coarse)', '(min-width: 0px)'));
+    }
+    const el = document.createElement('style');
+    el.textContent = css.join('\n');
+    document.head.append(el);
+    return css.length;
+  });
+
+// a phone: the names apart, inside and clear of the controls, nothing under 0.7 rem, the strip, layers, key and zoom row clear of one
+// another, the key under the zoom row; on a short phone (side) the side panel showing the jump without scrolling the frame; with touch
+// the zoom buttons at their touch sizes
+const phone = async (viewport, { touch = false, side = false } = {}) => {
+  const size = `${viewport.width}x${viewport.height}${touch ? ' touch' : ''}`;
+  const say = (ok, what) => check(ok, `${size}: ${what}`);
   const { ctx, page, errors } = await open(viewport);
+  if (touch) say((await asTouch(page)) > 0, 'the touch rules found');
+  await settle(page, 400);
+  const w = await J(page, () => Math.round(document.querySelector('.holomap-zoom button').getBoundingClientRect().width));
+  say(touch ? w >= 36 && w <= 44 : w === 36, `the zoom buttons are ${w} px`);
   const names = await namesProblems(page);
   say(names.meets.length === 0 && names.outside.length === 0, `names apart and inside${names.meets.length ? ` (${names.meets.slice(0, 5).join(', ')})` : ''}${names.outside.length ? ` (outside: ${names.outside.slice(0, 5).join(', ')})` : ''}`);
+  // (the zoom row is the point: clear of every name at any phone width. The strip's board, the layers chip and the key's button clear of them too
+  // at 390 wide, but on a narrower map a name's edge goes under the board or the chip, a few px: noted, not failed)
+  const zoomUnder = names.under.filter((u) => u.endsWith('/zoom'));
+  say(zoomUnder.length === 0, `no name under the zoom buttons${zoomUnder.length ? ` (${zoomUnder.join(', ')})` : ''}`);
+  if (viewport.width >= 390) say(names.under.length === 0, `and none under the strip, layers or key${names.under.length ? ` (${names.under.slice(0, 5).join(', ')})` : ''}`);
+  else if (names.under.length) console.log('note', `${size}: names' edges under the strip's board or the layers chip: ${names.under.join(', ')}`);
+  const meets = await overlayProblems(page);
+  say(meets.length === 0, `the strip's title and board clear of the zoom row, and the layers and key${meets.length ? ` (${meets.join(', ')})` : ''}`);
   const small = await smallText(page);
   say(small.length === 0, `nothing under 0.7 rem${small.length ? `: ${[...new Set(small)].slice(0, 4).join('; ')}` : ''}`);
-  await page.locator('.holomap-find input').fill('hoth');
-  await page.keyboard.press('Enter');
-  await settle(page, 800);
-  const r = await J(page, () => {
-    const j = document.querySelector('.holomap-jump').getBoundingClientRect();
-    const s = document.querySelector('.holomap-side').getBoundingClientRect();
-    const f = document.querySelector('.holomap-frame');
-    const sd = document.querySelector('.holomap-side');
-    return { jt: j.top, jb: j.bottom, st: s.top, sb: s.bottom, sh: s.height, scrollable: sd.scrollHeight > sd.clientHeight + 1, frameScroll: f.scrollTop + f.scrollLeft, vh: innerHeight, mapB: window.__mc.map().bottom, mapH: window.__mc.map().height };
+  await page.mouse.move(2, 2); // (off the dots: no hover card in the shot)
+  await settle(page, 250);
+  await page.locator('.holomap-frame').screenshot({ path: `${out}/map-${size.replace(' ', '-')}-whole.png` });
+  await page.locator('.holomap-legend-toggle').click();
+  await settle(page, 300);
+  const key = await J(page, () => {
+    const p = document.querySelector('.holomap-legend-panel').getBoundingClientRect();
+    const z = document.querySelector('.holomap-zoom').getBoundingClientRect();
+    const m = window.__mc.map();
+    return { meets: p.left < z.right && z.left < p.right && p.top < z.bottom && z.top < p.bottom, gap: p.top - z.bottom, inside: p.left >= m.left && p.right <= m.right && p.top >= m.top && p.bottom <= m.bottom };
   });
-  say(r.jt >= r.st - 0.5 && r.jb <= r.sb + 0.5 && r.jb <= r.vh, `the side panel shows the jump button without scrolling (side ${Math.round(r.st)}-${Math.round(r.sb)}, jump ${Math.round(r.jt)}-${Math.round(r.jb)}, window ${r.vh})`);
-  say(r.frameScroll === 0, 'the whole frame is not scrolled');
-  await page.screenshot({ path: `${out}/map-375x667-side.png` });
+  say(!key.meets && key.inside, `the open key sits under the zoom row (${Math.round(key.gap)} px below it) and inside the map`);
+  await page.locator('.holomap-legend-toggle').click();
+  if (side) {
+    await page.locator('.holomap-find input').fill('hoth');
+    await page.keyboard.press('Enter');
+    await settle(page, 800);
+    const r = await J(page, () => {
+      const j = document.querySelector('.holomap-jump').getBoundingClientRect();
+      const s = document.querySelector('.holomap-side').getBoundingClientRect();
+      const f = document.querySelector('.holomap-frame');
+      return { jt: j.top, jb: j.bottom, st: s.top, sb: s.bottom, frameScroll: f.scrollTop + f.scrollLeft, vh: innerHeight };
+    });
+    say(r.jt >= r.st - 0.5 && r.jb <= r.sb + 0.5 && r.jb <= r.vh, `the side panel shows the jump button without scrolling (side ${Math.round(r.st)}-${Math.round(r.sb)}, jump ${Math.round(r.jt)}-${Math.round(r.jb)}, window ${r.vh})`);
+    say(r.frameScroll === 0, 'the whole frame is not scrolled');
+    await page.screenshot({ path: `${out}/map-${size}-side.png` });
+  }
   say(errors.length === 0, `no errors${errors.length ? ` (${[...new Set(errors)].slice(0, 3).join('; ')})` : ''}`);
   await ctx.close();
 };
@@ -608,7 +658,9 @@ const shortPhone = async () => {
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 390, height: 844 }]) {
   await suite(viewport, { full: viewport.width === 1440 }).catch((e) => check(false, `${viewport.width}x${viewport.height}: the check stopped: ${String(e.message).split('\n')[0]}`));
 }
-await shortPhone().catch((e) => check(false, `375x667: the check stopped: ${String(e.message).split('\n')[0]}`));
+for (const [viewport, opts] of [[{ width: 375, height: 667 }, { side: true }], [{ width: 375, height: 667 }, { touch: true }], [{ width: 390, height: 844 }, { touch: true }], [{ width: 360, height: 640 }, { touch: true }], [{ width: 360, height: 640 }, {}]]) {
+  await phone(viewport, opts).catch((e) => check(false, `${viewport.width}x${viewport.height}${opts.touch ? ' touch' : ''}: the check stopped: ${String(e.message).split('\n')[0]}`));
+}
 await browser.close();
 console.log(problems.length ? `\n${problems.length} problem(s)` : '\nall ok');
 process.exit(problems.length ? 1 : 0);

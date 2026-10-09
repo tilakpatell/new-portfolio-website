@@ -365,6 +365,26 @@
 @media (pointer: coarse) {
   .holomap-zoom button { width: 44px; height: 44px; }
 }
+/* On a phone-wide map (the Layers chip's breakpoint) they're a row in the top right corner, where the map is empty
+   past Scarif, not a column over the lower right's names (Kamino, Geonosis); the strip's title ends near 200 px of a
+   390 px window, so the touch size (44) gives way to 40 where the map is under 338 px wide, and 36 under 328 */
+@container holomap-map (max-width: 560px) {
+  .holomap-zoom { top: 8px; right: 8px; bottom: auto; grid-auto-flow: column; }
+  .holomap-zoom button { width: 36px; height: 36px; }
+  @media (pointer: coarse) {
+    .holomap-zoom button { width: 44px; height: 44px; }
+  }
+}
+@container holomap-map (max-width: 337px) {
+  @media (pointer: coarse) {
+    .holomap-zoom button { width: 40px; height: 40px; }
+  }
+}
+@container holomap-map (max-width: 327px) {
+  @media (pointer: coarse) {
+    .holomap-zoom button { width: 36px; height: 36px; }
+  }
+}
 .holomap-body { container-type: size; }
 .holomap-canvas,
 .holomap-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
