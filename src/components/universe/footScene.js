@@ -54,7 +54,7 @@
 //
 // createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind), begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
-//   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
+//   board(), look(dx, dy) (px), turn(dx, dy) (radians), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
 
 import * as THREE from 'three';
@@ -333,7 +333,7 @@ function rigScene(model, clips, tall, { shared = false, seed, key = null } = {})
       const ahead = headingOf(own.walk, up);
       if (ahead != null) for (const n of ['idle', 'run']) if (own[n]) faceForward(own[n], up, ahead);
     }
-    // (the hips' height at rest goes with it, for clips laid over these: galaxy/surface/saberBody.js)
+    // (the hips' height at rest goes with it, for the library's clips scaled to it)
     return Object.assign(rigged(model, own, tall, owned, { seed, key, up, hipsY: hips ? hipsY : null }), { hipsY: hips ? hipsY : null });
   }
 }
@@ -2372,6 +2372,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...unfed(), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : [])), ...(S.band ? [{ band: S.band }] : [])];
 
   const troopsAlive = () => S.troops.filter((t) => t.alive);
+  // a turn round (dx) and up or down (dy), radians: a drag's or a locked pointer's
+  const turnBy = (dx, dy) => {
+    if (!S.me || S.phase !== 'walk') return;
+    S.me = { ...S.me, f: vec.unit(rotateAbout(S.me.f, S.me.n, -dx)) };
+    S.cam.pitch = Math.min(CAM.pitch[1], Math.max(CAM.pitch[0], S.cam.pitch + dy));
+  };
 
   // the nearest of the landing's spots you're within reach of (a door, someone to talk to)
   const nearSpot = () => {
@@ -3450,10 +3456,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     },
     // a drag: turn (dx, px) and look up or down (dy, px)
     look(dx, dy) {
-      if (!S.me || S.phase !== 'walk') return;
-      S.me = { ...S.me, f: vec.unit(rotateAbout(S.me.f, S.me.n, -dx * 0.006)) };
-      S.cam.pitch = Math.min(CAM.pitch[1], Math.max(CAM.pitch[0], S.cam.pitch + dy * 0.004));
+      turnBy(dx * 0.006, dy * 0.004);
     },
+    // the same in radians (runtime/look.js's turn, from a locked pointer)
+    turn: (dx, dy) => turnBy(dx, dy),
     // V on foot: out of your own eyes, or back over the shoulder
     first() {
       S.cam.first = !S.cam.first;

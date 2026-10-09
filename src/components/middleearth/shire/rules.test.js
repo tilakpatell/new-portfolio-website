@@ -54,6 +54,10 @@ import {
   stepRings,
   stepShow,
   stepSpoons,
+  stepStride,
+  STRIDE,
+  stepFade,
+  FADE,
 } from './rules';
 
 const DT = 1 / 60;
@@ -556,5 +560,54 @@ describe('Hobbiton: the camera', () => {
     const face = 1.1;
     const b = behindYaw(face);
     expect(Math.sin(b) * Math.cos(face) + Math.cos(b) * -Math.sin(face)).toBeCloseTo(-1);
+  });
+});
+
+describe('footsteps', () => {
+  const steps = (h, seconds, hz = 60) => {
+    let acc = STRIDE.first;
+    let n = 0;
+    for (let i = 0; i < seconds * hz; i++) {
+      let foot;
+      [acc, foot] = stepStride(acc, h, 1 / hz);
+      if (foot) n++;
+    }
+    return n;
+  };
+
+  it('falls a stride of ground apart, whatever the frame rate', () => {
+    const h = { speed: HOBBIT.walk, running: false };
+    const n = steps(h, 2);
+    expect(n).toBe(Math.floor((HOBBIT.walk * 2) / STRIDE.walk + STRIDE.first));
+    expect(steps(h, 2, 144)).toBe(n);
+  });
+
+  it('starts soon after setting off, and is silent standing still', () => {
+    const h = { speed: HOBBIT.walk, running: false };
+    expect(steps(h, (STRIDE.walk * (1 - STRIDE.first)) / HOBBIT.walk + 0.02)).toBe(1);
+    expect(steps({ speed: 0, running: false }, 3)).toBe(0);
+  });
+
+  it('takes longer strides running', () => {
+    expect(STRIDE.run).toBeGreaterThan(STRIDE.walk);
+    expect(steps({ speed: HOBBIT.run, running: true }, 2)).toBeLessThan((HOBBIT.run * 2) / STRIDE.walk);
+  });
+});
+
+describe('the fade when he’s put back', () => {
+  it('moves him once the screen is dark, 260 ms on, and only once', () => {
+    expect(FADE).toBe(0.26);
+    let left = FADE;
+    let moved = 0;
+    let frames = 0;
+    while (left != null) {
+      let done;
+      [left, done] = stepFade(left, 1 / 60);
+      if (done) moved++;
+      frames++;
+    }
+    expect(moved).toBe(1);
+    expect(frames).toBe(Math.ceil(FADE * 60 - 1e-9));
+    expect(stepFade(null, 1 / 60)).toEqual([null, false]);
   });
 });

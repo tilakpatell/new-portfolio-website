@@ -170,7 +170,7 @@ const REBEL2 = [
   at('dock', 'shuttle-ramp', ['vader']),
   done('mask'),
   talk('unmasking', 'But you’ll die', '(Lift', 'I’ve got to save'),
-  at('dock', 'escape-shuttle'),
+  at('dock', 'escape-board'),
   done('escape2'),
 ];
 

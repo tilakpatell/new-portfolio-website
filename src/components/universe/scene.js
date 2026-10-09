@@ -187,6 +187,7 @@ import { CORE, GENS, citadelGeometry, createSiege, segmentSphere } from './siege
 import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
+import { createLook } from '../../runtime/look';
 import { flownInto, wayIn, worldName } from './landings/wayin';
 import { figureVoice } from './landings/voicelines';
 import { sayVoiced, stopVoiced } from '../../lib/voiced';
@@ -845,7 +846,11 @@ export async function create(canvas, ctx) {
   // what's left of it is shared with everyone online, and comes back
   const CITADEL = wonderById('citadel');
   const citadelGeo = CITADEL ? citadelGeometry(CITADEL) : null;
-  const siege = createSiege();
+  // (your siege id: this page's, or the save's from before a reload, kept with your shares so a reload counts once)
+  const SIEGE_KEY = 'tp-citadel-siege';
+  const siegeSaves = runtime().saves;
+  const siege = createSiege({ id: [...globalThis.crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('') });
+  siege.load(siegeSaves?.get(SIEGE_KEY, null), Date.now());
   const siegeView = citadelGeo ? createCitadelSiege({ parent: map, model: deep.groupOf('citadel'), geo: citadelGeo, small }) : null;
   const SOLIDS_OPEN = SOLIDS.filter((o) => o.id !== 'citadel' && !o.id.startsWith('citadel-')); // (with it gone, there's nothing there to hit)
   let siegeSt = siege.state();
@@ -5059,6 +5064,7 @@ export async function create(canvas, ctx) {
     const sieging = siegeView ? siegeView.update(t, dt, camLocal, siegeSt) : false;
     if (net?.siege && ((siegeOwed && wallMs - siegeSent > 350) || (siege.active && net.peers.size > 0 && wallMs - siegeSent > 5000))) {
       net.siege(siege.message());
+      siegeSaves?.set(SIEGE_KEY, siege.save(wallMs)); // (kept with the shares it told)
       siegeSent = wallMs;
       siegeOwed = false;
     }
@@ -5312,6 +5318,30 @@ export async function create(canvas, ctx) {
     const r = canvas.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
   };
+  // on foot, the look (runtime/look.js): a click locks the pointer and the
+  // mouse or the trackpad turns you, Esc lets go, a drag where the lock's
+  // refused or Drag was picked (the galaxy's Menu keeps the pick for every
+  // world); the click that asks for the lock doesn't also fire
+  const looker = createLook({
+    host: canvas,
+    active: () => onFoot(),
+    drag: { yaw: 0.006, pitch: 0.004 },
+    onTurn: (dx, dy) => {
+      foot.turn(dx, dy);
+      ctx.invalidate();
+    },
+    onLock: () => sendLook(),
+  });
+  looker.attach();
+  // (the page shows the look's prompt on foot from these)
+  let lookSent = '';
+  const sendLook = () => {
+    const now = `${looker.mode}:${looker.locked}`;
+    if (now === lookSent) return;
+    lookSent = now;
+    emit({ type: 'look', mode: looker.mode, locked: looker.locked });
+  };
+  sendLook();
   const onDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (state.drag || state.dive || props.frozen) return;
@@ -5319,7 +5349,8 @@ export async function create(canvas, ctx) {
     capturePointer(e, canvas);
     heard();
     state.vel = 0;
-    state.drag = { id: e.pointerId, x, y, yaw: state.yaw, moved: 0, lastX: x, lastT: performance.now() };
+    const asks = onFoot() && e.pointerType === 'mouse' && looker.mode === 'lock' && !looker.locked && !looker.refused;
+    state.drag = { id: e.pointerId, x, y, yaw: state.yaw, moved: 0, lastX: x, lastT: performance.now(), asks };
     ctx.invalidate();
   };
   const onMove = (e) => {
@@ -5329,10 +5360,7 @@ export async function create(canvas, ctx) {
       d.moved = Math.max(d.moved, Math.hypot(x - d.x, y - d.y));
       if (d.moved < DRAG) return;
       if (onFoot() && e.pointerType === 'mouse') {
-        // on foot, a mouse drag looks about: round (turning you) and up or down
-        foot.look(x - d.lastX, y - (d.lastY ?? d.y));
-        d.lastX = x;
-        d.lastY = y;
+        // on foot, a mouse drag looks about: the look's (above), not the map's
       } else if (flying()) {
         // a stick wherever the press began (not on a laptop: dragSteers)
         if (!steersByDrag) return;
@@ -5379,7 +5407,9 @@ export async function create(canvas, ctx) {
     if (!d || d.id !== e.pointerId) return;
     endDrag();
     if (d.moved < DRAG && onFoot()) {
-      // on foot, a click fires (at a trooper, if it's on one)
+      // on foot, a click fires (at a trooper, if it's on one); not the one
+      // that asked for the lock
+      if (d.asks) return sendLook();
       const [x, y] = local(e);
       const tid = pickTrooper(x, y);
       if (tid) foot.lockOn(tid);
@@ -5735,6 +5765,10 @@ export async function create(canvas, ctx) {
       // (a door you're at first: a big ship's reach can take in one near it)
       if (onFoot() && !intoDoor() && !foot.board()) emit({ type: 'foot', id: 'far' });
     },
+    // the look prompt's click, on foot: lock the pointer (runtime/look.js)
+    lookLock() {
+      looker.request();
+    },
     // the HUD's “Enter Albuquerque” button: into the world you're down on
     enter() {
       heard();
@@ -5845,6 +5879,7 @@ export async function create(canvas, ctx) {
       window.removeEventListener('blur', onBlur);
       document.removeEventListener('visibilitychange', onHidden);
       canvas.removeEventListener('pointerdown', onDown);
+      looker.detach();
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onCancel);

@@ -56,7 +56,7 @@ The plan is six lanes. Each lane is one session, one branch `claude/combat-<lane
 **Interfaces:**
 - Produces: `createLook({ host, win = window, onTurn, onButton, onLock, sensitivity = { yaw: 0.0022, pitch: 0.0018 }, mode }) → { attach(), detach(), request(), release(), locked (bool), mode, set(mode), prompt (string | null) }`. `mode` is `'lock' | 'drag' | 'touch'`; `defaultMode({ coarse, safariNoMouse })` picks `'touch'` for coarse, `'drag'` for Safari without a mouse, else `'lock'`. `prompt` is `"Click to look · Esc to release"` in `lock` mode while not locked, else `null`. Constants: `SPIKE = 60` (px, clamp per event), `RELOCK = 1.25` (s), `TP_LOOK = 'tp-look'` (localStorage key).
 
-- [ ] **Step 1: Write the failing tests** in `look.test.js` with a fake host (an `EventTarget` with `requestPointerLock`, `getBoundingClientRect`) and a fake document (`pointerLockElement`, `exitPointerLock`):
+- [x] **Step 1: Write the failing tests** in `look.test.js` with a fake host (an `EventTarget` with `requestPointerLock`, `getBoundingClientRect`) and a fake document (`pointerLockElement`, `exitPointerLock`):
 
 ```js
 test('a click in lock mode asks for pointer lock with unadjusted movement, then plainly when that is refused', …)
@@ -70,10 +70,10 @@ test('touch mode never requests a lock and never turns', …)
 test('defaultMode: coarse → touch, Safari with no mouse → drag, else lock; set(mode) is kept under tp-look', …)
 ```
 
-- [ ] **Step 2: Run them** — `npx vitest run src/runtime/look.test.js` — expected: FAIL, module not found.
-- [ ] **Step 3: Implement `look.js`** with the header comment in the runtime's voice (what it does, the signature, the modes). `request()` calls `host.requestPointerLock({ unadjustedMovement: true })`, catches `NotSupportedError` and retries without options; any other rejection sets nothing and resolves. Read `movementX/Y` from `pointermove` only.
-- [ ] **Step 4: Run** `npx vitest run src/runtime/look.test.js` — PASS.
-- [ ] **Step 5: Commit** — `git commit -m "The look: pointer lock for a mouse or a trackpad, drag and touch as fallbacks"`.
+- [x] **Step 2: Run them** — `npx vitest run src/runtime/look.test.js` — expected: FAIL, module not found.
+- [x] **Step 3: Implement `look.js`** with the header comment in the runtime's voice (what it does, the signature, the modes). `request()` calls `host.requestPointerLock({ unadjustedMovement: true })`, catches `NotSupportedError` and retries without options; any other rejection sets nothing and resolves. Read `movementX/Y` from `pointermove` only.
+- [x] **Step 4: Run** `npx vitest run src/runtime/look.test.js` — PASS.
+- [x] **Step 5: Commit** — `git commit -m "The look: pointer lock for a mouse or a trackpad, drag and touch as fallbacks"`.
 
 ### Task A2: `src/lib/combat/aim.js`
 
@@ -83,7 +83,7 @@ test('defaultMode: coarse → touch, Safari with no mouse → drag, else lock; s
 **Interfaces:**
 - Produces: `aimPoint(ray, solids, targets, { min = 1.5, max = 120 }) → { at: [x,y,z], target: T | null, dist }` where `ray = { from: [x,y,z], dir: [x,y,z] }`, `solids(from, to) → { at, normal } | null`, `targets = [{ id, a: [x,y,z], b: [x,y,z], r, ref }]` (capsules). `assist(dir, from, targets, cone) → dir'`; `friction(dir, from, targets, cone) → 1 | 0.55`; `lead(target, vel, from, speed) → [x,y,z]`; `ASSIST = { mouse: { inner: 0.02, outer: 0.05, cap: 0.01 }, pad: { inner: 0.05, outer: 0.14, cap: 0.03 }, touch: { inner: 0.09, outer: 0.21, cap: 0.05, snap: true } }`; `coneFor({ coarse, mode }) → ASSIST.touch | pad | mouse` (coarse → touch; mode `'drag'` → pad; else mouse). Vector maths as plain arrays (no three.js).
 
-- [ ] **Step 1: Write the failing tests**:
+- [x] **Step 1: Write the failing tests**:
 
 ```js
 test('aimPoint stops at a solid before a target and at a target before a solid', …)
@@ -95,7 +95,7 @@ test('lead meets a target walking 2.3 m/s across at 30 m with a bolt at 90 m/s (
 test('coneFor picks touch on coarse, pad for drag, mouse otherwise', …)
 ```
 
-- [ ] **Step 2: Run** — FAIL. **Step 3: Implement.** `lead` solves the quadratic for the meeting time and falls back to the target's position when there is no real root. **Step 4: Run** — PASS. **Step 5: Commit** — `"Where a shot goes: the aim point, the assist's cones, friction, lead"`.
+- [x] **Step 2: Run** — FAIL. **Step 3: Implement.** `lead` solves the quadratic for the meeting time and falls back to the target's position when there is no real root. **Step 4: Run** — PASS. **Step 5: Commit** — `"Where a shot goes: the aim point, the assist's cones, friction, lead"`.
 
 ### Task A3: `src/runtime/hud/Reticle.jsx`
 
@@ -106,7 +106,7 @@ test('coneFor picks touch on coarse, pad for drag, mouse otherwise', …)
 **Interfaces:**
 - Produces: `<Reticle state={{ shown, tight (0…1), hit (ms since a hit | null), locked (bool) }} />`, drawn at the centre, four ticks that close with `tight`, a flash on `hit`, a ring when `locked`; `reticleState(prev, { gun, sights, hitAt, now, lock })` pure.
 
-- [ ] **Step 1: Write `reticle.test.js`** (`reticleState`: shown while `gun`; `tight` 1 with sights; `hit` set for 180 ms). **Step 2–4:** FAIL, implement, PASS. The part is pointer-events none; it reads `--hud-*` tokens; nothing under 0.7 rem. **Step 5: Commit.**
+- [x] **Step 1: Write `reticle.test.js`** (`reticleState`: shown while `gun`; `tight` 1 with sights; `hit` set for 180 ms). **Step 2–4:** FAIL, implement, PASS. The part is pointer-events none; it reads `--hud-*` tokens; nothing under 0.7 rem. **Step 5: Commit.**
 
 ### Task A4: wire the galaxy surface
 
@@ -116,18 +116,18 @@ test('coneFor picks touch on coarse, pad for drag, mouse otherwise', …)
 **Interfaces:**
 - Consumes: A1's `createLook`, A2's `aimPoint`, `assist`, `friction`, `coneFor`, A3's `Reticle`.
 
-- [ ] **Step 1:** Replace the drag handlers with `createLook({ host, onTurn: look, onButton })`; `onButton(0, true)` → `fire()` with a gun or `swing()` with a saber (the existing functions), `onButton(2, down)` → `state.ads = down` with a gun, the block with a saber. `look()`'s sensitivity is multiplied by `friction(...)`. The Menu gets Look: Click to lock / Drag (`look.set`). The kit's `Prompt` shows `look.prompt`.
-- [ ] **Step 2:** The shot's direction: `aimPoint` from the camera's ray with the world's ground (`groundAt`) as `solids` until lane B lands (then B's `world.solids`), `assist` by `coneFor`; the bolt still goes through `blaster.fire` from the muzzle to `at` (its `end`).
-- [ ] **Step 3:** `Reticle` shown whenever `state.aim > 0` or a gun is up, `tight` from `state.ads`, `hit` from the `hit` event, `locked` from `state.lock`.
-- [ ] **Step 4:** `node scripts/autopilot-check.mjs --routes '/galaxy/tatooine'` (the route the handoff names) — green, and the screenshot shows the reticle. Also `--phone`.
-- [ ] **Step 5: Commit** — `"The galaxy surface looks by pointer lock, fires on the button and shows its reticle"`.
+- [x] **Step 1:** Replace the drag handlers with `createLook({ host, onTurn: look, onButton })`; `onButton(0, true)` → `fire()` with a gun or `swing()` with a saber (the existing functions), `onButton(2, down)` → `state.ads = down` with a gun, the block with a saber. `look()`'s sensitivity is multiplied by `friction(...)`. The Menu gets Look: Click to lock / Drag (`look.set`). The kit's `Prompt` shows `look.prompt`.
+- [x] **Step 2:** The shot's direction: `aimPoint` from the camera's ray with the world's ground (`groundAt`) as `solids` until lane B lands (then B's `world.solids`), `assist` by `coneFor`; the bolt still goes through `blaster.fire` from the muzzle to `at` (its `end`).
+- [x] **Step 3:** `Reticle` shown whenever `state.aim > 0` or a gun is up, `tight` from `state.ads`, `hit` from the `hit` event, `locked` from `state.lock`.
+- [x] **Step 4:** `node scripts/autopilot-check.mjs --routes '/galaxy/tatooine'` (the route the handoff names) — green, and the screenshot shows the reticle. Also `--phone`.
+- [x] **Step 5: Commit** — `"The galaxy surface looks by pointer lock, fires on the button and shows its reticle"`.
 
 ### Task A5: wire the universe foot scene and Rick and Morty
 
 **Files:**
 - Modify: `src/components/universe/scene.js` (5297: the mouse-only drag), `src/components/universe/footScene.js` (`look`, the reticle at 3431), `src/components/rickmorty/world/RmWorld.jsx` (1518–1537), `RmHud.jsx` (its crosshair → `Reticle`).
 
-- [ ] **Step 1:** The same `createLook` in each; left button fires where it fired; Total Rickall's click-to-shoot becomes `onButton(0)`. **Step 2:** `autopilot-check` on a universe planet route and `#/c-137` (Total Rickall); screenshots. **Step 3: Commit.**
+- [x] **Step 1:** The same `createLook` in each; left button fires where it fired; Total Rickall's click-to-shoot becomes `onButton(0)`. **Step 2:** `autopilot-check` on a universe planet route and `#/c-137` (Total Rickall); screenshots. **Step 3: Commit.**
 
 ### Task A6: the lane's handoff and PR
 
@@ -209,7 +209,7 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Produces: `contactWindow(rows, { widen = 0.06 }) → [t0, t1]` (the hand's fastest span, widened, clamped to `[0.05, duration − 0.05]`); `rootTravel(rmClip) → [[t, dx, dz]…]` at 30 fps from `UAL2_RM.glb`'s hips; clip extras readable at runtime as `clip.userData.contact`, `clip.userData.root`.
 
-- [ ] **Step 1:** Fetch the pack: `node scripts/assets-fetch.mjs ual2` (or `--repo`). **Step 2:** Tests in `ual-bake.test.mjs`: `contactWindow` on a synthetic row set (fast in the middle) returns the middle; a flat row set still returns a window inside `[0.05, d − 0.05]`; `rootTravel` sums to the hips' displacement. **Step 3:** FAIL → implement → PASS. **Step 4:** `node scripts/ual-bake.mjs --set sword --report`: 31 files, drift under the report's limit. **Step 5:** Commit the script, the registry and the GLBs — `"The sword set: every UAL2 sword clip full-body, with its contact window and root travel"`.
+- [x] **Step 1:** Fetch the pack: `node scripts/assets-fetch.mjs ual2` (or `--repo`). **Step 2:** Tests in `ual-bake.test.mjs`: `contactWindow` on a synthetic row set (fast in the middle) returns the middle; a flat row set still returns a window inside `[0.05, d − 0.05]`; `rootTravel` sums to the hips' displacement. **Step 3:** FAIL → implement → PASS. **Step 4:** `node scripts/ual-bake.mjs --set sword --report`: 31 files, drift under the report's limit. **Step 5:** Commit the script, the registry and the GLBs — `"The sword set: every UAL2 sword clip full-body, with its contact window and root travel"`.
 
 ### Task C2: `src/lib/combat/blade.js`
 
@@ -219,14 +219,14 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Produces: `createBlade({ r = 0.12, keep = 8 }) → { push(base, tip, t), sweep(targets, { steps }) → [{ target, at, dist }], clash(other) → { at } | null, crosses(a, b) → { at } | null, history() → [{ base, tip, t }] }`. Sub-steps `steps = max(4, ceil(tipTravel / 0.25))`. Uses B1's `segCapsule`, `segSeg` (import from `./bolt.js`; if Lane B isn't merged yet, write them here and let B import from here: say which in the handoff).
 
-- [ ] **Step 1:** Tests: a sweep whose segment crosses a capsule hits it at the nearest point; a sweep 0.3 m above a capsule's top misses; a tip that moved 2 m in one frame is sub-sampled and still hits a 0.4 m capsule in the middle of the arc; `clash` finds two blades crossing; `crosses` finds a bolt segment through the blade and not one 0.5 m beside it. **Steps 2–5.** Commit — `"The blade: its swept segment against capsules, blades and bolts"`.
+- [x] **Step 1:** Tests: a sweep whose segment crosses a capsule hits it at the nearest point; a sweep 0.3 m above a capsule's top misses; a tip that moved 2 m in one frame is sub-sampled and still hits a 0.4 m capsule in the middle of the arc; `clash` finds two blades crossing; `crosses` finds a bolt segment through the blade and not one 0.5 m beside it. **Steps 2–5.** Commit — `"The blade: its swept segment against capsules, blades and bolts"`.
 
 ### Task C3: the trail from the ring buffer
 
 **Files:**
 - Create: `src/lib/three/combat/trail.js` (from `saber.js`'s trail ribbon, moved; reads `blade.history()`); both blades of a double or dual.
 
-- [ ] One step; commit.
+- [x] One step; commit.
 
 ### Task C4: strokes as clips
 
@@ -236,22 +236,22 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Consumes: C1's clip extras, C2's `createBlade`, A1's `onButton` if merged (else F and C as now).
 
-- [ ] **Step 1:** Tests in `combatRules.test.js` for `strokeFor`: the combo in order within 0.45 s; `dir: 'up'` → the overhead (`sword.heavy.a`); `'left'`/`'right'` → the side cuts; `'rise'` → `sword.uppercut`; the heavy chain. **Step 2:** FAIL → implement → PASS.
-- [ ] **Step 2b: The block, a deliverable of its own.** Held on C (the right button through Lane A's `onButton(2)` once merged, the Block touch button): `BLOCK_CLIP` on the upper layer while held, the blade up in front; a tap under 0.1 s still shows it for `PARRY.window`. An arriving enemy bolt whose flown segment `blade.crosses` is turned back along its line toward its shooter with its side swapped (sparks, the clash sound, the guard spent as today); one passing beside the blade is not, cone or no cone. An enemy's melee contact into the raised blade spends the guard and deals nothing; a block begun within `PARRY.window` before the contact is a parry (the enemy staggered, "Perfect"). Tests: `blade.test.js`'s crosses; a scenario where a bolt at the chest is turned with the block up and lands with it down; the parry inside and outside the window. Once Lane B is merged, B's `deflect` event does the turn and this only wires the sparks, the sound and the guard.
-- [ ] **Step 3:** A scenario test `galaxy/surface/saber.scenario.test.js` (headless, no canvas: the animator on Luke's rest skeleton fixture, `meshyRig.fixture.js`): a stroke at a capsule 1.8 m ahead hits once; the same capsule 2 m to the side is missed; a target already in the stroke's `hits` is not hit twice; no hit outside `contact`.
-- [ ] **Step 4:** `autopilot-check --routes '/galaxy/tatooine'`; shoot the before on `main` first; the after shows a stroke mid-clip (the DEV hook that triggers a swing, as the handoff's checks do).
-- [ ] **Step 5: Commit** — `"A stroke is a clip; the blade's sweep decides the hit"`.
+- [x] **Step 1:** Tests in `combatRules.test.js` for `strokeFor`: the combo in order within 0.45 s; `dir: 'up'` → the overhead (`sword.heavy.a`); `'left'`/`'right'` → the side cuts; `'rise'` → `sword.uppercut`; the heavy chain. **Step 2:** FAIL → implement → PASS.
+- [x] **Step 2b: The block, a deliverable of its own.** Held on C (the right button through Lane A's `onButton(2)` once merged, the Block touch button): `BLOCK_CLIP` on the upper layer while held, the blade up in front; a tap under 0.1 s still shows it for `PARRY.window`. An arriving enemy bolt whose flown segment `blade.crosses` is turned back along its line toward its shooter with its side swapped (sparks, the clash sound, the guard spent as today); one passing beside the blade is not, cone or no cone. An enemy's melee contact into the raised blade spends the guard and deals nothing; a block begun within `PARRY.window` before the contact is a parry (the enemy staggered, "Perfect"). Tests: `blade.test.js`'s crosses; a scenario where a bolt at the chest is turned with the block up and lands with it down; the parry inside and outside the window. Once Lane B is merged, B's `deflect` event does the turn and this only wires the sparks, the sound and the guard.
+- [x] **Step 3:** A scenario test `galaxy/surface/saber.scenario.test.js` (headless, no canvas: the animator on Luke's rest skeleton fixture, `meshyRig.fixture.js`): a stroke at a capsule 1.8 m ahead hits once; the same capsule 2 m to the side is missed; a target already in the stroke's `hits` is not hit twice; no hit outside `contact`. (Built as `galaxy/surface/saber.test.js`, so it runs in `npm test`: the scenario files are left out of it.)
+- [x] **Step 4:** `autopilot-check --routes '/galaxy/tatooine'`; shoot the before on `main` first; the after shows a stroke mid-clip (the DEV hook that triggers a swing, as the handoff's checks do).
+- [x] **Step 5: Commit** — `"A stroke is a clip; the blade's sweep decides the hit"`.
 
 ### Task C5: online peers play the same clip
 
 **Files:**
 - Modify: `src/components/universe/online/protocol.js` (`arms` gains a sixth item, the stroke's clip name, after the old five; `STANCES_SEEN` read from `combatRules.STANCE_IDS`), `protocol.test.js`, `galaxy/surface/peers.js` (plays the named clip; `targets: []` stays, peers' strokes are cosmetic).
 
-- [ ] Tests: an old packet (five items) still validates; a new one carries the clip. Commit.
+- [x] Tests: an old packet (five items) still validates; a new one carries the clip. Commit.
 
 ### Task C6: handoff and PR
 
-- [ ] The lane's section; PR; merge on green.
+- [x] The lane's section; PR; merge on green.
 
 ## Lane D: duellists
 

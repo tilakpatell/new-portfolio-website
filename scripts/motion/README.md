@@ -19,7 +19,7 @@ how to judge a clip.
 issue (prompt)  →  motion.yml  →  self-hosted runner (gpu)  →  runner.mjs --auto
                 →  generate.py in WSL: HY-Motion 1.0 → SMPL-H's 22 body joints → NAME.bvh
                 →  bake.mjs: bvh-map.mjs (DEF-* names) → retargetUal onto Luke → ual-gen.NAME.glb
-                →  sheet.mjs: four moments of it above four of sword.heavy (preview/motion.html)
+                →  sheet.mjs: four moments of it above four of sword.heavy.a (preview/motion.html)
                 →  pull request: the clip, its BVH, its sheet, its credit
 ```
 
@@ -40,7 +40,7 @@ Add `--dry-run` to see the issue first. The fields (`runner.mjs` has them):
 | `seed` | another take | 42 |
 | `cfg` | how closely to follow the words (HY-Motion's guidance scale) | 5 |
 | `model` | `lite`: HY-Motion-1.0-Lite (0.46B, 24 GB) | the 1B |
-| `with` | the library clip the sheet puts it beside | `sword.heavy` |
+| `with` | the library clip the sheet puts it beside | `sword.heavy.a` |
 
 **What makes a good prompt** (HY-Motion's guide): the body's movement, the
 limbs and the torso, in order ("raises the sword over the head with both
@@ -57,7 +57,7 @@ the log's tail). `node scripts/desktop/status.mjs` shows the queue.
 
 ```
 npx vite --port 5188
-open http://127.0.0.1:5188/scripts/preview/motion.html?clip=overhead-strike          # beside sword.heavy, looping
+open http://127.0.0.1:5188/scripts/preview/motion.html?clip=overhead-strike          # beside sword.heavy.a, looping
      …&with=sword.a  …&slow=4                                                       # another library clip; a quarter speed
 node scripts/motion/sheet.mjs overhead-strike out.png                               # the four-moment sheet the PR carries
 ```

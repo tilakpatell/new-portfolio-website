@@ -110,7 +110,7 @@ import { applyEmote, createEmoteWheel, emotePacket, keepEmote, readEmote } from 
 import { preload } from '../../../lib/three/clipLibrary';
 import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
-import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
+import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, parried, pushVelocity } from './combatRules';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
 import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
@@ -118,6 +118,9 @@ import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
 import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, lineClear, pushOut, ride, rider, turnToward, walk, walker } from './walker';
+import { aimDir, lookFriction } from './aimShot';
+import { surfaceLook } from './surfaceLook';
+import { coneFor } from '../../../lib/combat/aim';
 import { rng } from './noise';
 import { endRun, newRun, tickRun, worldOf } from './missions';
 import { createChaseMission } from './missions/chaseScene';
@@ -805,7 +808,6 @@ export async function create(canvas, ctx) {
     pressAt: null, // when F went down with a saber (held, it's the heavy stroke)
     dodge: null, // { t0, dx, dz }
     dodgedAt: -99,
-    lunge: null, // { t0, dur, dx, dz }: a stroke stepping in to its target
     lock: null, // the enemy a stroke homes on
     cool: { power: -99, second: -99 }, // when each ability is ready again
     overcharge: -99, // until when the gun runs hot-free
@@ -975,37 +977,29 @@ export async function create(canvas, ctx) {
     emotes.cancel();
   };
   window.addEventListener('blur', blur);
-  // a drag looks round
-  let dragging = null;
+  // the look (surfaceLook.js): a click locks the pointer, a drag where it
+  // can't; its buttons are F and C's
+  const wake = () => {
+    sounds.start();
+    if (state.phase === 'landing') skipLanding();
+  };
+  const looker = surfaceLook({ canvas, state, me: () => me(), wake, turn: (dx, dy) => turn(dx, dy), emit, invalidate: () => ctx.invalidate() });
+  // a click wakes the sound and skips the landing, whatever else it does
   const down = (e) => {
     if (e.pointerType === 'touch') return; // (the page's own look pad, on a phone)
-    if (e.button === 2) {
-      // the right button: down the sights while it's held
-      state.ads = true;
-      sounds.start();
-      ctx.invalidate();
-      return;
-    }
-    dragging = { x: e.clientX, y: e.clientY, id: e.pointerId };
-    sounds.start();
-    canvas.setPointerCapture?.(e.pointerId);
-    if (state.phase === 'landing') skipLanding();
+    wake();
   };
   const move = (e) => {
     // (the wheel's pointed at by the pointer that last went down: on a
-    // phone the thumb on the Emote button, not one on the stick or the pad)
-    if (pointer.id == null || e.pointerId === pointer.id || e.pointerType === 'mouse') {
+    // phone the thumb on the Emote button, not one on the stick or the pad;
+    // under the lock there's no cursor, so its movement is summed instead)
+    if (looker.locked && e.pointerType === 'mouse') {
+      pointer.x += e.movementX || 0;
+      pointer.y += e.movementY || 0;
+    } else if (pointer.id == null || e.pointerId === pointer.id || e.pointerType === 'mouse') {
       pointer.x = e.clientX;
       pointer.y = e.clientY;
     }
-    if (!dragging || e.pointerId !== dragging.id) return;
-    look(e.clientX - dragging.x, e.clientY - dragging.y);
-    dragging.x = e.clientX;
-    dragging.y = e.clientY;
-  };
-  const up = (e) => {
-    if (dragging && e.pointerId === dragging.id) dragging = null;
-    if (e.button === 2) state.ads = false;
   };
   // where a pointer goes down, anywhere on the page (ahead of what it lands
   // on): a thumb that holds the Emote button and slides off it points at a
@@ -1025,13 +1019,34 @@ export async function create(canvas, ctx) {
   };
   canvas.addEventListener('pointerdown', down);
   window.addEventListener('pointermove', move);
-  window.addEventListener('pointerup', up);
   canvas.addEventListener('wheel', wheel, { passive: false });
+  // a drag of the page's look pad, in pixels
   function look(dx, dy) {
-    state.cam.yaw -= dx * 0.0055;
-    state.cam.pitch = clamp(state.cam.pitch + dy * 0.0045, CAM.pitch[0], CAM.pitch[1]);
+    turn(dx * 0.0055, dy * 0.0045);
+  }
+  // a turn in radians; slower over a target with a gun up (the assist's
+  // friction, lib/combat/aim.js), and none while the emote wheel's open
+  // (the locked pointer is pointing at a slice)
+  function turn(dx, dy) {
+    if (emotes.open) return;
+    let k = 1;
+    if (state.phase === 'walk' && !me().saber) {
+      camera.getWorldDirection(_lookDir);
+      k = lookFriction({ cam: camera.position, dir: _lookDir, targets: shootable(), cone: coneFor({ mode: looker.mode }) });
+    }
+    state.cam.yaw -= dx * k;
+    state.cam.pitch = clamp(state.cam.pitch + dy * k, CAM.pitch[0], CAM.pitch[1]);
     state.cam.drag = state.t;
     ctx.invalidate();
+  }
+  const _lookDir = new V();
+  // where a shot from `from` goes: to what the crosshair's on (aimShot.js),
+  // the camera's ray bent by the assist's cone for this input
+  const _aimDir = new V();
+  function aimed(from) {
+    camera.getWorldDirection(_aimDir);
+    const d = aimDir({ cam: camera.position, dir: _aimDir, from, targets: shootable(), world, cone: coneFor({ mode: looker.mode }), range: weapon().range });
+    return _aimDir.set(d[0], d[1], d[2]);
   }
 
   // ── Doing things ──
@@ -1673,9 +1688,10 @@ export async function create(canvas, ctx) {
     p.yaw = Math.atan2(camDir.x, camDir.z);
     const right = new V(-Math.cos(p.yaw), 0, Math.sin(p.yaw));
     const from = new V(p.x, p.y + 1.35, p.z).addScaledVector(right, -0.25).addScaledVector(camDir, 0.5);
-    // (what it hits is decided now, from your eyes' line; the bolt leaves the
-    // muzzle once you've turned to it this frame, place() then shot(); what
-  // it hits is the bolt's, when it gets there: boltPlay's yours)
+    // (aimed at what the crosshair's on, from your eyes' line; the bolt
+    // leaves the muzzle once you've turned to it this frame, place() then
+    // shot(); what it hits is the bolt's, when it gets there: boltPlay's yours)
+    camDir.copy(aimed(from));
     const gp = me().gp;
     state.aim = 1;
     state.aimDir.copy(camDir);
@@ -1704,6 +1720,7 @@ export async function create(canvas, ctx) {
     camera.getWorldDirection(camDir);
     const right = new V(-Math.cos(p.yaw), 0, Math.sin(p.yaw));
     const from = new V(p.x, p.y + 1.35, p.z).addScaledVector(right, -0.25).addScaledVector(camDir, 0.5);
+    camDir.copy(aimed(from));
     state.aim = 1;
     state.aimDir.copy(camDir);
     if (me().gp) state.shot = { from, dir: camDir.clone() };
@@ -1715,32 +1732,20 @@ export async function create(canvas, ctx) {
     const p = me();
     if (state.guard.brokenAt != null || state.dodge) return;
     camera.getWorldDirection(camDir);
-    p.st.yaw = Math.atan2(camDir.x, camDir.z);
+    // homing on the one you're facing: the stroke turns you to them over its
+    // wind-up and its own step carries you in (saber.js); with no one, you
+    // face where the camera looks
+    const t = state.lock && !state.lock.down ? state.lock : null;
+    if (!t) p.st.yaw = Math.atan2(camDir.x, camDir.z);
     state.aim = 1;
     state.aimDir.copy(camDir);
     state.saberAt = state.t;
-    const sw = p.saber.swing(state.t, { heavy });
+    // the way held at the click: W overhead, A or D a cut from that side, S rising
+    const inp = input();
+    const dir = Math.abs(inp.y) >= Math.abs(inp.x) ? (inp.y > 0.5 ? 'up' : inp.y < -0.5 ? 'rise' : null) : inp.x > 0.5 ? 'right' : inp.x < -0.5 ? 'left' : null;
+    const sw = p.saber.swing(state.t, { heavy, dir, lock: t, lunge: perks.lunge });
     if (!sw) return;
     emit({ type: 'fire' });
-    // homing on the one you're facing: turned to them, stepped in if they're a little out of reach
-    const t = state.lock;
-    if (t && !t.down) {
-      const q = t.holder.position;
-      p.st.yaw = Math.atan2(q.x - p.st.x, q.z - p.st.z);
-      const d = lungeTo(p.st, { x: q.x, z: q.z, r: 0.5 }, { ...p.saber.stance, lunge: p.saber.stance.lunge * perks.lunge });
-      if (d > 0) state.lunge = { t0: state.t, dur: Math.min(0.2, sw.dur * 0.4), dx: Math.sin(p.st.yaw) * d, dz: Math.cos(p.st.yaw) * d };
-    }
-  }
-  // the lunge: the step in, over its first moments
-  function stepLunge(dt) {
-    const l = state.lunge;
-    if (!l) return;
-    // (the whole step spread evenly over the lunge's duration)
-    const k = Math.min(1, dt / l.dur);
-    const p = me().st;
-    p.x += l.dx * k;
-    p.z += l.dz * k;
-    if (state.t - l.t0 >= l.dur) state.lunge = null;
   }
   // the dodge (X): a roll the way you're going (back, if you're still),
   // nothing landing through its first moments
@@ -2075,7 +2080,9 @@ export async function create(canvas, ctx) {
       state.shake = Math.min(1, state.shake + 0.5);
     }
     const broken = state.guard.brokenAt != null;
-    const blocking = Boolean(state.keys.block || state.buttons.block) && state.phase === 'walk' && !broken && !state.dodge;
+    // (a press that went down and up inside one frame, a quick click, still raises it: saber.js holds it up for the parry window)
+    const tapped = state.blockAt != null && state.t - state.blockAt <= dt;
+    const blocking = Boolean(state.keys.block || state.buttons.block || tapped) && state.phase === 'walk' && !broken && !state.dodge;
     sab.block(blocking);
     if (blocking) state.saberAt = state.t;
     // F held: the heavy stroke winding up; let go: the stroke
@@ -2104,6 +2111,7 @@ export async function create(canvas, ctx) {
     const w = p.saber ? null : weapon();
     const ab = abilitiesOf(p.spec);
     const lock = state.lock && !state.lock.down ? state.lock : null;
+    looker.send();
     emit({
       type: 'combat',
       saber: Boolean(p.saber),
@@ -2156,13 +2164,12 @@ export async function create(canvas, ctx) {
   function stepBolts(dt) {
     const up = (state.phase === 'walk' || state.phase === 'ride') && !state.off;
     const p = me();
-    const ahead = [p.st.x + Math.sin(p.st.yaw), 0, p.st.z + Math.cos(p.st.yaw)];
     boltPlay.step(dt, {
       you: up && !state.safe ? p.st : null,
       mate: state.phase === 'walk' && mateFight.down === 0 ? other().st : null,
       allies: ctx.effects?.side ? [ctx.effects.side] : [],
       targets: assaultOn() ? assault.targets : activity.targets,
-      guard: up && p.saber ? boltPlay.guardOf(p.st, p.saber.deflecting(ahead)) : null,
+      guard: up && p.saber ? p.saber.guard() : null, // (the raised blade itself, while the block shows: saber.js)
     }, {
       yours(e) {
         const t = e.body.ref;
@@ -2849,7 +2856,6 @@ export async function create(canvas, ctx) {
     state.powerQueued = state.secondQueued = false;
     stepSaber(dt);
     state.throwQueued = false;
-    stepLunge(dt);
     stepBombs(dt);
     if (state.phase === 'walk') pickLock();
     else if (state.lock) {
@@ -3049,7 +3055,7 @@ export async function create(canvas, ctx) {
     const net = props.net;
     if (!net) return;
     const out = state.phase === 'walk' || state.phase === 'ride' || state.phase === 'out';
-    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging) } : null, emote: p === me() ? emotePacket(state.emote, state.t) : null, motion: p.motion ?? null });
+    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging), stroke: p.saber?.swinging?.name ?? null } : null, emote: p === me() ? emotePacket(state.emote, state.t) : null, motion: p.motion ?? null });
     net.walk?.(out ? { world: site.id, kind: shipKind, lead: w(me()), mate: w(other()), ride: state.riding?.kind ?? null } : null);
     peers.update(net, site.id, dt);
   }
@@ -3118,6 +3124,8 @@ export async function create(canvas, ctx) {
       groundWar,
       put: (x, z) => (state.phase === 'landing' || state.phase === 'out' ? (state.phase = 'walk') : null, putAt(me().st, x, z)), // (you, set down somewhere, out of the ship: the ground war's QA)
       you: () => ({ x: me().st.x, z: me().st.z, health: state.health, phase: state.phase }),
+      // (a stroke now, as the button makes one, for the QA scripts: { heavy, dir, lock } as saber.js takes them)
+      swing: (o = {}) => me().saber?.swing(state.t, { lock: state.lock, ...o }) ?? null,
       view(from, at) {
         qaView = from ? { from: [from[0], world.heightAt(from[0], from[2]) + from[1], from[2]], at: [at[0], world.heightAt(at[0], at[2]) + at[1], at[2]] } : null;
       },
@@ -3252,6 +3260,14 @@ export async function create(canvas, ctx) {
         ctx.invalidate();
       },
       look,
+      // the Menu's Look (Click to lock or Drag), and the prompt's click
+      lookMode(mode) {
+        looker.set(mode);
+        looker.send();
+      },
+      lookLock() {
+        looker.request();
+      },
       press(name) {
         sounds.start();
         if (state.phase === 'landing') skipLanding();
@@ -3505,8 +3521,8 @@ export async function create(canvas, ctx) {
       window.removeEventListener('keyup', keyUp);
       window.removeEventListener('blur', blur);
       window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
       window.removeEventListener('pointerdown', spot, true);
+      looker.detach();
       canvas.removeEventListener('pointerdown', down);
       canvas.removeEventListener('wheel', wheel);
       canvas.removeEventListener('contextmenu', noMenu);
