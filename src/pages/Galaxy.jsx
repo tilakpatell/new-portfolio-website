@@ -91,15 +91,6 @@ export default function Galaxy() {
     setPilotNote(text);
     noteTimer.current = setTimeout(() => setPilotNote(null), 3500);
   }, []);
-  // what a pickup gave, said for a moment over the flight cluster (the scene's 'pickup' event: pickups.js's name and line)
-  const [pickupNote, setPickupNote] = useState(null);
-  const pickupTimer = useRef(0);
-  useEffect(() => () => clearTimeout(pickupTimer.current), []);
-  const notePickup = useCallback((text) => {
-    clearTimeout(pickupTimer.current);
-    setPickupNote(text);
-    pickupTimer.current = setTimeout(() => setPickupNote(null), 2200);
-  }, []);
   useEffect(() => {
     if (!followId || !ship) return undefined;
     const go = () => {
@@ -191,6 +182,15 @@ export default function Galaxy() {
   });
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
+  // what a pickup gave, said for a moment over the flight cluster (the scene's 'pickup' event: pickups.js's name and line)
+  const [pickupNote, setPickupNote] = useState(null);
+  const pickupTimer = useRef(0);
+  useEffect(() => () => clearTimeout(pickupTimer.current), []);
+  const notePickup = useCallback((text) => {
+    clearTimeout(pickupTimer.current);
+    setPickupNote(text);
+    pickupTimer.current = setTimeout(() => setPickupNote(null), 2200);
+  }, []);
   // The Shipyard's doors (its corner button, the panel's link and H) all come through here: shut under the galaxy map, while a jump is
   // on and in the first moments. Open, it holds the scene still, so a jump that begins under it (the course, a star, a link asked for)
   // shuts it: otherwise the jump would stall behind it.
