@@ -271,7 +271,9 @@ export default function Infiltration({ fallback }) {
       const view = stage.view.current;
       if (!view) return;
       const g = game.current;
-      const dt = Math.min(0.05, dtMs / 1000);
+      // (a takedown's hitstop: the scene's feel slows her and the guards a moment)
+      const real = Math.min(0.05, dtMs / 1000);
+      const dt = real * view.timeScale(real);
       if (queued.current && performance.now() >= busyUntil.current) {
         const a = queued.current;
         queued.current = null;

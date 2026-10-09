@@ -69,7 +69,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2B | | | | |
 | 2C | | | | |
 | 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | #730 (Tier 1) | |
-| 2E | | | | |
+| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733 | |
 | 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1) | |
 
 ## Findings (for the owner and the next lane)
@@ -109,3 +109,8 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **2D, for 2A–2F:** a shake whose old k was a size in metres (Cybertron’s jolts reach 2.4, the office’s 0.18) keeps that size at its peak as `feel.trauma(√(k / kmax))` with `offset` kmax / 2; `feel.update` sets `camera.fov` to its base, so a scene that eases its own fov calls `feel.setBaseFov(camera.fov)` first.
 - **2D, for the owner:** `games/pad.js`’s `readPad` has no Back (button 8): Albuquerque’s way out is Y on a pad, B on the keys (R is its delivery). A `back: b(8)` there would let a lane use the spec’s button.
 - **2D:** Cybertron’s fuzz found Optimus 0.05 m into the crack between two of Kaon’s seat blocks once the jump forgave (a new path, an old gap): `resolve` takes six passes, not three.
+- **2E, for 2A–2F:** the HQ engine (`avengers/hq/engine.js`) has `engine.tune(groups, name)`, lib/stage3d’s `stageTune` with the game’s name as its title, so the page of HQ games keeps one game’s values apart from the next; Invincible uses it too.
+- **2E, a rule read narrowly:** Lawn’s i-frames (0.8 s) guard Thor against bolts only; a breach is the lawn crossed, not him hit, and Cull Obsidian’s breach must still end the game. Say so if you want breaches inside them too.
+- **2E, where the audit missed one:** Invincible’s `orbit.js` (on the Moon and Mars) dropped a jump pressed in the step’s later slices, as `flight.js` did; it takes the same press now.
+- **2E, for the owner:** R in Invincible took a radio call already; it still does, first, and lets go of the water only when no call waits. The compound’s fov punch was not held under reduced motion; on the feel it is.
+- **2E, for the owner:** `node scripts/autopilot-check.mjs --routes /caribbean` fails on `main` with “no canvas: the 3D never started”: without a graphics chip the tide asks for hardware acceleration and waits on “Play anyway”, so the headless check never sees a canvas there.
