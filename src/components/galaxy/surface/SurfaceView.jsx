@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from '../../../lib/hooks';
 import { WorldHost, useWorld } from '../../../runtime';
+import { TouchButton } from '../../../runtime/hud';
 import surfaceModule from './module';
 import { heroById, heroSpec } from '../heroes';
 import { ABILITIES, abilitiesOf } from './abilityRules';
@@ -27,12 +28,17 @@ export default function SurfaceView({ system = null, site = null, mission = null
   events.current = onEvent;
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const reduced = useReducedMotion();
+  // the lock-on (./surfaceLockOn.js): whether it's on, for the Lock button
+  const [lockOn, setLockOn] = useState(false);
   // (a hero picked goes on in the world as it is: scene.js's setHero; another
   // mission is another world, made again)
   const { host, on, meant, rt, progress } = useWorld(surfaceModule, {
     props: { system, site, mission, missionSpec, models, rides, props: built, scatter, figures, ship, hero, loadout, build, found, done, compass, net, reduced, effects },
     rebuild: missionSpec?.id ?? mission ?? 'explore',
-    onEvent: (e) => events.current?.(e),
+    onEvent: (e) => {
+      if (e.type === 'lockOn') setLockOn(e.on);
+      events.current?.(e);
+    },
   });
   // the scene itself, while it's the world on the runtime
   const view = { get current() { return rt?.current?.module === surfaceModule ? rt.current.world.scene : null; } };
@@ -49,6 +55,20 @@ export default function SurfaceView({ system = null, site = null, mission = null
       delete window.__surfaceDo;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // L on a keyboard: the lock-on, as the Lock button (Tab here is the
+  // crewmate swap, scene.js's; not while a field of the page's has the keys)
+  useEffect(() => {
+    if (!on) return undefined;
+    const key = (e) => {
+      if (e.key.toLowerCase() !== 'l' || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
+      view.current?.input?.lockOn?.();
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [on]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // the stick: where the thumb is from where it came down
   const stick = useRef({ id: null, x: 0, y: 0 });
@@ -96,6 +116,10 @@ export default function SurfaceView({ system = null, site = null, mission = null
   const press = (name) => (e) => {
     e.preventDefault();
     view.current?.input?.press(name);
+  };
+  const toggleLock = (e) => {
+    e.preventDefault();
+    view.current?.input?.lockOn?.();
   };
   const release = (name) => (e) => {
     e.preventDefault();
@@ -164,6 +188,10 @@ export default function SurfaceView({ system = null, site = null, mission = null
             <button type="button" className="surface-btn surface-btn-emote" onPointerDown={press('emote')} onPointerUp={release('emote')} onPointerCancel={release('emote')} onContextMenu={(e) => e.preventDefault()} aria-haspopup="menu">
               Emote
             </button>
+            {/* the lock-on (L on a keyboard): the camera kept on the one you're squared up to; on by itself near a hostile */}
+            <TouchButton className="surface-btn surface-btn-lock" aria-pressed={lockOn} data-on={lockOn || undefined} onPress={toggleLock}>
+              Lock
+            </TouchButton>
           </div>
         </div>
       )}

@@ -19,7 +19,7 @@
 // The muzzle then flies its bolt to `at`, and the gun in your hands
 // points there too, so the reticle, the gun and the bolt agree.
 
-import { aimPoint, assist } from '../../lib/combat/aim';
+import { aimPoint, assist, snapped } from '../../lib/combat/aim';
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -50,8 +50,8 @@ export function footAim({ cam, dir, from, targets = [], solids = null, cone, loc
   const locked = Boolean(held && cone && offAngle(ray.from, d, held) <= cone.outer);
   // (the lock alone while it's in the cone; else whoever's nearest the line)
   const pool = locked ? [held] : targets;
-  // a snap is the whole pull anywhere in the cone, at once
-  const pull = cone?.snap ? { inner: cone.outer, outer: cone.outer + 1e-6, cap: Math.PI } : cone;
+  // (a snap is the whole pull anywhere in the cone, at once: aim.js's snapped)
+  const pull = snapped(cone);
   const bent = pull ? assist(d, ray.from, pool, pull) : d;
   const r = aimPoint({ from: ray.from, dir: bent }, solids, targets, { min, max: range });
   return { at: r.at, target: r.target, locked, dist: r.dist, ray };

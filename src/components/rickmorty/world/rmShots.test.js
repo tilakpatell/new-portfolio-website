@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sight } from './interiors/rickall';
+import { ASSIST } from '../../../lib/combat/aim';
 import { createShots, rickallBodies } from './rmShots';
 
 // An open floor, Morty at the origin and the camera looking east (+x, a
@@ -45,6 +46,19 @@ describe('Total Rickall’s shot', () => {
     shots.rickall({ m, sight: sight(m, yaw), aim: null, game: g, solids: wall });
     const evs = run(shots, { solids: wall, bodies: [] });
     expect(evs.find((e) => e.type === 'solid')?.at[0]).toBeCloseTo(2, 6);
+  });
+
+  it('a tap on touch snaps onto someone just off the line; a mouse’s shot doesn’t', () => {
+    // 10° off the sight line at 5 m: nobody in the sights
+    const off = 10 * (Math.PI / 180);
+    const g = game([person('pencilvester', 5 * Math.cos(off), 0.55 + 5 * Math.sin(off))]);
+    const world = { solids: floor, bodies: rickallBodies(g, []) };
+    const tap = createShots();
+    tap.rickall({ m, sight: sight(m, yaw), aim: null, game: g, solids: floor, cone: ASSIST.touch, bodies: world.bodies });
+    expect(run(tap, world).find((e) => e.type === 'hit')?.body.ref.id).toBe('pencilvester');
+    const click = createShots();
+    click.rickall({ m, sight: sight(m, yaw), aim: null, game: g, solids: floor, cone: ASSIST.mouse, bodies: world.bodies });
+    expect(run(click, world).find((e) => e.type === 'hit')).toBe(undefined);
   });
 
   it('can’t hit anyone shot already or left out of the picture', () => {

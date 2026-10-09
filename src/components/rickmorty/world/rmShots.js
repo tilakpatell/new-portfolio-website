@@ -5,14 +5,14 @@
 // someone who's stepped out of the line isn't hit. Pure: plain arrays, no
 // React, no three.js (./rmBoltsView.js draws them).
 //
-//   createShots({ pool }) → { rickall({ m, sight, aim, game, solids }),
+//   createShots({ pool }) → { rickall({ m, sight, aim, game, solids, cone, bodies }),
 //     duel({ m, at }), step(dt, { solids, bodies }) → events, live(), clear() }
 //   rickallBodies(game, hide) → the crowd's cylinders as bodies (side 'them')
 //
 // A bolt's `tag` says whose ('rickall' or 'duel'); a hit's `body.ref` is
 // the person in Total Rickall's game, or 'duel' for a duel's hunter.
 
-import { aimPoint, rayCapsule } from '../../../lib/combat/aim';
+import { aimPoint, assist, rayCapsule, snapped } from '../../../lib/combat/aim';
 import { BOLT_SPEED, createBolts } from '../../../lib/combat/bolt';
 import { AIM, aimR } from './interiors/rickall';
 import { SHOT } from './dimensions/duel';
@@ -51,8 +51,10 @@ export function createShots({ pool = 16 } = {}) {
   return {
     // Total Rickall: at whoever's in the sights (rickall.js's aimAt), where
     // the line meets them (or, for someone small it passes over, their
-    // head); with nobody in them, down the line to the first thing it meets
-    rickall({ m, sight: s, aim = null, game, solids = null }) {
+    // head); with nobody in them, down the line to the first thing it meets,
+    // bent within the input's `cone` (aim.js's: a touch tap snaps onto
+    // someone just off the line) toward `bodies` (rickallBodies)
+    rickall({ m, sight: s, aim = null, game, solids = null, cone = null, bodies = null }) {
       const o = [s.x, s.y, s.z];
       const d = unit([s.dx, s.dy, s.dz]);
       const flat = unit([s.dx, 0, s.dz]);
@@ -62,7 +64,11 @@ export function createShots({ pool = 16 } = {}) {
         const c = cylinder(p);
         const t = rayCapsule(o, d, c.a, c.b, c.r);
         to = t != null ? [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t] : [p.x, p.h * 0.8, p.z];
-      } else to = aimPoint({ from: o, dir: d }, solids, [], { min: 0.5, max: AIM.reach }).at;
+      } else {
+        const crowd = bodies ?? rickallBodies(game);
+        const bent = cone ? assist(d, o, crowd, snapped(cone)) : d;
+        to = aimPoint({ from: o, dir: bent }, solids, crowd, { min: 0.5, max: AIM.reach }).at;
+      }
       return send(hand(m, [flat[0], flat[2]]), to, AIM.reach, 'rickall');
     },
     // a duel: at the hunter in the cone (npc.js's fire: his middle), or
