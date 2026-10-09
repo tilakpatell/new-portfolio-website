@@ -73,7 +73,8 @@
 //     at a point if given, waking it),
 //     removed, dirty (moved by a reset or a shift since it was last drawn),
 //     sleeping, position(out) → [x, y, z], quaternion(out) → [x, y, z, w],
-//     onHit }
+//     onHit, attach(collider desc) → Collider (another collider on the body,
+//     after the fact), detach(collider) }
 //
 // (Rapier itself turns off a body whose velocity goes NaN in a step, and it
 // drops out of the awake set; so the numbers are looked at before each
@@ -165,6 +166,35 @@ function shapeOf(RAPIER, c) {
   }
 }
 
+// one collider's description from its data (a body's `colliders[i]`), with
+// the body's defaults; wrong data throws here, before anything is added
+function describe(RAPIER, c, desc, share) {
+  const name = c.group ?? desc.group ?? 'object';
+  if (!(name in GROUPS)) throw new Error(`physics: no group '${name}'`);
+  const cd = shapeOf(RAPIER, c);
+  if (c.position) cd.setTranslation(c.position[0], c.position[1], c.position[2]);
+  if (c.rotation) cd.setRotation(q4(c.rotation));
+  cd.setDensity(0.1);
+  if (c.mass !== undefined) {
+    if (c.centreOfMass) cd.setMassProperties(c.mass, v3(c.centreOfMass), { x: 1, y: 1, z: 1 }, { x: 0, y: 0, z: 0, w: 1 });
+    else cd.setMass(c.mass);
+  } else if (share !== undefined) cd.setMass(share);
+  cd.setFriction(c.friction ?? desc.friction ?? 0.2);
+  cd.setRestitution(c.restitution ?? desc.restitution ?? 0.15);
+  cd.setCollisionGroups(GROUPS[name]);
+  if (c.sensor) {
+    // (a sensor meets kinematic figures too: Rapier's default pairs only count a dynamic body)
+    cd.setSensor(true);
+    cd.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    cd.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.KINEMATIC_FIXED | RAPIER.ActiveCollisionTypes.KINEMATIC_KINEMATIC);
+  }
+  if (desc.onHit) {
+    cd.setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS);
+    cd.setContactForceEventThreshold(desc.hitThreshold ?? 15);
+  }
+  return cd;
+}
+
 export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubsteps = 4, maxSpeed = 200, lost = null, onError = (err) => console.error('physics:', err) } = {}) {
   const RAPIER = await load();
   const scale = sane(timeScale, (v) => v >= 0, 1);
@@ -213,32 +243,7 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
     const share = desc.mass !== undefined && unnamed ? Math.max(0, desc.mass - named) / unnamed : undefined;
     // (every collider's description first: one that's wrong throws before
     // anything is in the world)
-    const descs = list.map((c) => {
-      const name = c.group ?? desc.group ?? 'object';
-      if (!(name in GROUPS)) throw new Error(`physics: no group '${name}'`);
-      const cd = shapeOf(RAPIER, c);
-      if (c.position) cd.setTranslation(c.position[0], c.position[1], c.position[2]);
-      if (c.rotation) cd.setRotation(q4(c.rotation));
-      cd.setDensity(0.1);
-      if (c.mass !== undefined) {
-        if (c.centreOfMass) cd.setMassProperties(c.mass, v3(c.centreOfMass), { x: 1, y: 1, z: 1 }, { x: 0, y: 0, z: 0, w: 1 });
-        else cd.setMass(c.mass);
-      } else if (share !== undefined) cd.setMass(share);
-      cd.setFriction(c.friction ?? desc.friction ?? 0.2);
-      cd.setRestitution(c.restitution ?? desc.restitution ?? 0.15);
-      cd.setCollisionGroups(GROUPS[name]);
-      if (c.sensor) {
-        // (a sensor meets kinematic figures too: Rapier's default pairs only count a dynamic body)
-        cd.setSensor(true);
-        cd.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-        cd.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.KINEMATIC_FIXED | RAPIER.ActiveCollisionTypes.KINEMATIC_KINEMATIC);
-      }
-      if (desc.onHit) {
-        cd.setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS);
-        cd.setContactForceEventThreshold(desc.hitThreshold ?? 15);
-      }
-      return cd;
-    });
+    const descs = list.map((c) => describe(RAPIER, c, desc, share));
     const bd =
       type === 'fixed'
         ? RAPIER.RigidBodyDesc.fixed()
@@ -341,6 +346,23 @@ export async function createPhysics({ gravity = -9.81, timeScale = 1, maxSubstep
       keep() {
         handle.position(last.position);
         handle.quaternion(last.rotation);
+      },
+      // another collider on this body, after the fact (a hurtbox), and off again
+      attach(c) {
+        if (handle.removed) return null;
+        const cd = describe(RAPIER, c, desc, undefined);
+        const collider = world.createCollider(cd, body);
+        owners.set(collider.handle, handle);
+        if (c.tag != null) tags.set(collider.handle, c.tag);
+        handle.colliders.push(collider);
+        return collider;
+      },
+      detach(collider) {
+        if (handle.removed || !handle.colliders.includes(collider)) return;
+        owners.delete(collider.handle);
+        tags.delete(collider.handle);
+        handle.colliders = handle.colliders.filter((x) => x !== collider);
+        world.removeCollider(collider, false);
       },
     };
     body.userData = handle;

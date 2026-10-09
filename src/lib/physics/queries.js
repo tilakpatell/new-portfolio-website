@@ -5,7 +5,7 @@
 // Force push, a pound), a floor probe and a point projection (the
 // ragdoll's floor). Every one asks the world as it was after its last
 // step (Rapier answers nothing before the first), skips sensors unless
-// the filter names zones, and all but `project` spend the budget
+// the filter names zones or hurtboxes, and all but `project` spend the budget
 // (budget.js): a refused call answers `undefined`, which is not `null`
 // (nothing hit), so a caller keeps its last answer instead of seeing
 // through a wall. Shapes are built once per size and kept. No three.js.
@@ -25,7 +25,7 @@
 //   tag: the collider's tag (world.js's `tagOf`), or null
 
 import { createBudget } from './budget';
-import { filterOf } from './groups';
+import { MEMBERS, filterOf } from './groups';
 
 const SIGHT = filterOf('floor', 'object', 'character');
 const FLOOR = filterOf('floor', 'object');
@@ -40,7 +40,9 @@ export function createQueries(phys, { budget = createBudget() } = {}) {
   const ray = new RAPIER.Ray(v, v2);
   const bodyOf = (c) => c?.parent()?.userData ?? null;
   const tagOf = (c) => (phys.tagOf ? phys.tagOf(c) : null);
-  const flags = (groups) => ((groups & 0xffff) & 32 ? 0 : RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
+  // (sensors are skipped unless the filter names what is a sensor: a zone, a hurtbox)
+  const SENSORS = MEMBERS.zone | MEMBERS.hurtbox;
+  const flags = (groups) => (groups & SENSORS ? 0 : RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
   const excluded = (exclude) => exclude?.body ?? undefined;
   const shapeOf = (s) => {
     const key = `${s.shape}:${s.args.join(',')}`;
