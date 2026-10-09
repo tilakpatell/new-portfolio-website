@@ -36,7 +36,7 @@
 .holomap-op[data-kind='raid'] .holomap-op-line { stroke-dasharray: calc(0.001 * var(--u)) calc(0.229 * var(--u)); }
 .holomap-op-outer { fill: none; stroke: var(--by); stroke-opacity: 0.9; stroke-width: calc(var(--w) * 3.4 * var(--u)); }
 .holomap-op-inner { fill: none; stroke: #020611; stroke-width: calc(var(--w) * 1.5 * var(--u)); }
-.holomap-op-head { fill: var(--by); stroke: #020611; stroke-width: calc(0.03 * var(--u)); stroke-linejoin: round; transform: scale(calc(1 / var(--k, 1))); } /* (about its tip: set on it, WarLayers.jsx) */
+.holomap-op-head { fill: var(--by); stroke: #020611; stroke-width: 0.03px; stroke-linejoin: round; transform: scale(calc(1 / var(--holomap-k, 1))); } /* (about its tip: set on it, WarLayers.jsx) */
 @keyframes holomap-flow { to { stroke-dashoffset: calc(-0.46 * var(--u)); } }
 
 /* ── Fleets: a side's crest on its arrow, closing in ── */

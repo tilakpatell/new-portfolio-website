@@ -578,7 +578,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
               </div>
             </div>
             {/* everything that moves with the map: zoomed and panned as one (galaxy.css) */}
-            <div className="holomap-stage" style={{ '--k': mv.view.k, '--vx': mv.view.x, '--vy': mv.view.y }}>
+            <div className="holomap-stage" style={{ '--holomap-k': mv.view.k, '--holomap-vx': mv.view.x, '--holomap-vy': mv.view.y }}>
               <canvas ref={canvas} className="holomap-canvas" aria-hidden="true" />
               <MapSvg layers={layers} war={war} ops={ops} route={route} unitPx={unitPx} />
               {layers.fronts && <Fleets ops={ops} />}

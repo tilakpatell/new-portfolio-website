@@ -70,8 +70,8 @@ export const WarLines = memo(function WarLines({ table, ops }) {
         <g key={op.id} className="holomap-op" data-kind={op.kind} data-major={op.major || undefined} style={{ '--by': op.colour, '--w': op.width }}>
           {op.kind === 'decisive' && (
             <>
-              <path d={op.line} className="holomap-op-outer" />
-              <path d={op.line} className="holomap-op-inner" />
+              <path d={op.d} className="holomap-op-outer" />
+              <path d={op.d} className="holomap-op-inner" />
             </>
           )}
           <path d={op.line} className="holomap-op-line" />

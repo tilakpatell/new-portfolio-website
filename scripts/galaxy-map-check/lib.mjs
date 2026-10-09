@@ -31,7 +31,7 @@ const pageHelpers = () => {
     // (the stage's zoom and where it's moved to)
     view() {
       const cs = getComputedStyle(document.querySelector('.holomap-stage'));
-      return { k: parseFloat(cs.getPropertyValue('--k')), x: parseFloat(cs.getPropertyValue('--vx')), y: parseFloat(cs.getPropertyValue('--vy')) };
+      return { k: parseFloat(cs.getPropertyValue('--holomap-k')), x: parseFloat(cs.getPropertyValue('--holomap-vx')), y: parseFloat(cs.getPropertyValue('--holomap-vy')) };
     },
     onView(p, pad = 0.04) {
       const m = this.map();
