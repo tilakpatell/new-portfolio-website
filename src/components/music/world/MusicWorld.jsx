@@ -5,7 +5,7 @@ import { useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { capturePointer } from '../../../lib/pointer';
 import { keyDown, keyUp } from '../../middleearth/towns/keys';
 import { SWARA_NAME, bolLabel, onHarmoniumNote, onSitarChikari, onSitarPluck, onTablaBol, onTanpuraPluck, swaraOf } from '../engine';
-import { INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove, walker } from './layout';
+import { BODY, INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove, walker } from './layout';
 import './world.css';
 import '../../../styles/lazy/music.css';
 import GuideCue from '../../guide/GuideCue';
@@ -30,6 +30,12 @@ const ROOM = { bound: 80, motion: true };
 
 const label = (ratio) => SWARA_NAME[swaraOf(ratio).s];
 const TURN = 1.9; // radians a second, from the arrow keys
+
+// the walk's numbers on the ?debug panel (layout.js's BODY, which the walker reads as it goes)
+const walkItem = (key, label, min, max, step) => ({ key, label, type: 'range', min, max, step, get: () => BODY[key], set: (v) => {
+  BODY[key] = v;
+} });
+const WALK_GROUPS = [{ name: 'walk', items: [walkItem('walk', 'walk (m/s)', 0.5, 6, 0.1), walkItem('run', 'run (m/s)', 1, 10, 0.1), walkItem('accel', 'accel', 2, 40, 0.5), walkItem('turn', 'turn', 2, 30, 0.5)] }];
 
 export default function MusicWorld({ panel }) {
   const three = use3D();
@@ -68,6 +74,7 @@ export default function MusicWorld({ panel }) {
           return;
         }
         api.current = a;
+        a.tune?.(WALK_GROUPS); // (behind ?debug: the walk's numbers)
         if (import.meta.env.DEV) window.__MUSIC_WORLD__ = { api: a, sim: sim.current }; // for the QA scripts
         fit();
         // everything on the graphics chip before it's shown, behind the loading screen
