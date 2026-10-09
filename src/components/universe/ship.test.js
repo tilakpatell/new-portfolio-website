@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, holdReach, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
+import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, crashLoud, driveAt, forward, holdReach, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
 import { DEEP, WONDERS, easeOpen, gapAlong, trenchBand } from './deep';
 import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
@@ -95,6 +95,28 @@ describe('flying the ship', () => {
     const slow = fly(at, { throttle: 0.3 }, gap / (0.3 * SHIP.cruise) + 6).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
+    // a bump says how hard it was, and where, for its thud and its puff (Comms.jsx, scene.js)
+    const bump = slow.find((e) => e.type === 'bump');
+    expect(bump.speed).toBeGreaterThan(0);
+    expect(bump.speed).toBeLessThanOrEqual(SHIP.crash);
+    expect(bump.force).toBeCloseTo(bump.speed * SHIP.mass, 9);
+    expect(bump.at).toHaveLength(3);
+    expect(Math.hypot(...bump.normal)).toBeCloseTo(1, 6);
+  });
+
+  it('says how loud a crash is by how fast it went in', () => {
+    expect(crashLoud(SHIP.crash)).toBeCloseTo(0.45, 9);
+    expect(crashLoud(SHIP.boost)).toBe(1);
+    expect(crashLoud(SHIP.boost * 3)).toBe(1);
+    expect(crashLoud((SHIP.crash + SHIP.boost) / 2)).toBeGreaterThan(crashLoud(SHIP.crash));
+    // (a crash with no speed, shot down or into the sun, is as loud as ever)
+    expect(crashLoud(undefined)).toBe(1);
+  });
+
+  it('bumps at the crash speed as hard as the hit law’s full', () => {
+    // (lib/impact.js: quiet under 15, full at 120; a bump just under a crash is full)
+    expect(SHIP.crash * SHIP.mass).toBeGreaterThanOrEqual(120);
+    expect(SHIP.crash * SHIP.mass).toBeLessThan(150);
   });
 
   it('turns, pitches and rolls quicker with the sensitivity turned up', () => {

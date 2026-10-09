@@ -82,11 +82,13 @@ import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
 import { createGadgetFx } from '../../lib/three/gadgetFx';
 import { frameFrom, spring } from '../../lib/three/ik';
 import { createDust } from '../../lib/three/dust';
-import { wireImpacts } from '../../lib/three/impacts';
+import { createKnocks } from './landings/knocks';
+import { impactGroups } from '../../lib/impact';
+import { pressGroups } from '../../lib/press';
 import { SIDES, sideFor, squadKinds } from './sides';
 import { ASSIST, friction } from '../../lib/combat/aim';
 import { footAim } from './footAim';
-import { BOLT, FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, byTrench, facingAlong, flat, footBodies, footSolids, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
+import { BOLT, FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, byTrench, createJump, facingAlong, flat, footBodies, footSolids, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
@@ -2140,7 +2142,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (physical) {
         const mine = rocks;
         preloadPhysics().catch(() => {});
-        createLandingPhysics({ R: S.R, onHit: heard })
+        createLandingPhysics({ R: S.R, threshold: knocks.rules.values().threshold, onHit: heard })
           .then((made) => {
             if (rocks !== mine) made.dispose();
             else lp = made;
@@ -2617,12 +2619,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       return false;
     }
   };
-  // a hard knock on a loose thing (lib/three/impacts.js): a thud where it
-  // was round your ears, a puff of dust rising off the ground there, and a
-  // nudge of the camera's own kick for a near one. All of it in metres in
-  // the planet's space (the dust's mesh is scaled to the map), so the hit
-  // law's numbers are a barrel's.
-  const knocks = wireImpacts({
+  // a hard knock on a loose thing (landings/knocks.js, lib/three/impacts.js):
+  // a thud where it was round your ears, a puff of dust rising off the
+  // ground there, and a nudge of the camera's own kick for a near one. All
+  // of it in metres in the planet's space (the dust's mesh is scaled to the
+  // map), so the hit law's numbers are a barrel's.
+  const knocks = createKnocks({
     dust: (() => {
       const d = createDust({ count: small ? 96 : 192 });
       d.mesh.scale.setScalar(METRE);
@@ -2632,18 +2634,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     listener: () => (S.me ? { position: at(S.me, S.R).map((a) => a / METRE), forward: S.me.f, up: S.me.n } : null),
     toWorld: (p) => p.map((a) => a / METRE),
     up: (p) => vec.unit(p),
-    shake: (k) => {
-      // (a hit by you, not one over the field; none with reduced motion)
-      const d = knocked && S.me ? vec.len(vec.add(knocked, at(S.me, S.R), -1)) / METRE : Infinity;
-      if (!reduced && d < 12) S.cam.kick.v += k * 6 * (1 - d / 12);
-    },
+    me: () => (S.me ? at(S.me, S.R) : null),
+    metre: METRE,
+    kick: (v) => (S.cam.kick.v += v),
+    reduced,
   });
-  let knocked = null; // (where the hit being told was, map units)
-  const heard = (force, p, entry) => {
-    if (!S.me) return;
-    knocked = p;
-    knocks.onHit(force, p, entry);
-  };
+  const heard = knocks.heard;
   // the landing's bodies, a frame: any new ones in, the people where the
   // walk has them, a step, and what moved stood where it went
   const physicsFrame = (dt) => {
@@ -2823,11 +2819,14 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     }
   };
 
+  const jumpKey = createJump();
   const walkFrame = (dt, input) => {
     const me = meP();
     stepBody(input);
-    // you: walking, turning, running, jumping
-    S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: input.jump }, dt, S.R, obstacles());
+    // you: walking, turning, running, jumping (the jump a press, lib/press.js's createPress through
+    // foot.js's createJump: once a key-down, and a hair early still lands)
+    jumpKey.hold(input.jump);
+    S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: jumpKey.press }, dt, S.R, obstacles());
     // the lock: the nearest trooper round the way you face (kept while it's still there)
     const alive = troopsAlive();
     if (S.lock && !alive.find((o) => o.id === S.lock)) S.lock = null;
@@ -3490,6 +3489,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.first = !S.cam.first;
       return S.cam.first;
     },
+    // the ?debug panel's groups (lib/debugPanel): the knocks' law and the jump's press
+    tune: () => [...impactGroups(knocks.rules), ...pressGroups(jumpKey.press)],
     // a door you're at (a landing's: G there goes into the planet's page): { id, label } or null
     door() {
       const s = S.phase === 'walk' ? nearSpot() : null;
