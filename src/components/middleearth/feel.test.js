@@ -74,6 +74,11 @@ describe('createShake', () => {
     expect(cam.fov).toBe(38);
   });
 
+  it('takes a scene’s own numbers', () => {
+    const shake = createShake({ calm: true, offset: 0.7, decay: 1.8 });
+    expect(shake.feel.values()).toMatchObject({ offset: 0.7, decay: 1.8 });
+  });
+
   it('makes hitstop real through step()', () => {
     const shake = createShake({ calm: true });
     expect(shake.step(1 / 60)).toBe(1 / 60);
