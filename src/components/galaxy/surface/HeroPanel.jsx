@@ -138,9 +138,9 @@ export default function HeroPanel({ hero, onChange, onClose }) {
                     <span className="surface-hero-name">{STANCES[id].name}</span>
                     <span className="surface-hero-blurb">{STANCES[id].about}</span>
                     <span className="surface-stats">
-                      <i>{STANCES[id].swings.length} strokes</i>
+                      <i>{STANCES[id].strokes.length} strokes</i>
                       <i>reach {num(STANCES[id].reach, 1)} m</i>
-                      <i>{STANCES[id].swings.reduce((a, s) => a + s.damage, 0)} hits a combo</i>
+                      <i>{STANCES[id].strokes.reduce((a, s) => a + s.damage, 0)} hits a combo</i>
                     </span>
                   </button>
                 </li>

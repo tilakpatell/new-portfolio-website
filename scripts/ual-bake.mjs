@@ -2,12 +2,19 @@
 // Standard pack's Godot GLB), retargeted onto the Meshy rig every figure
 // the site made with Meshy stands on, and baked into small GLBs, in sets:
 //
-//   saber  The body under a lit lightsaber, in one file,
-//          public/games/meshy/ual-saber.glb. Sword_Idle is the guard's
-//          crouch, Sword_Attack the lunge under a stroke. Only the body goes
-//          out: the hips (their turn and travel), the spine, the neck and
-//          both legs. The arms stay gunplay's and saber.js's, which pose
-//          them over it.
+//   sword  Every UAL2 sword clip (thirty-one: the regular, light and heavy
+//          strokes and combos, their recoveries, the aerials, the block,
+//          the dash, the ground pound, the uppercut), the whole body, a
+//          file per clip, public/games/meshy/ual-sword.<name>.glb. Each
+//          says in its extras where its blade lands (`contact`: [t0, t1],
+//          seconds: the blade's fastest span ahead of the body, widened
+//          60 ms either side) and how far the root travels through it (`root`:
+//          [[t, dx, dz]…] at 30 a second, from UAL2_RM.glb, the pack's
+//          root-motion twin: metres on Luke, faced his way, +z ahead and
+//          +x to his left, from where the clip starts; `rootHips` the
+//          height of his hips over his toes it was measured on), read at
+//          runtime as clip.userData.contact, .root and .rootHips. A stroke is one of these
+//          (galaxy/surface/saber.js).
 //   life   What a figure does that Meshy's library doesn't (talking,
 //          sitting, crouching, hits, a death, a pistol, punches, jumps, a
 //          spell, swimming, driving, a calm idle), a file per clip,
@@ -21,9 +28,6 @@
 // by a clip). A clip baked on him plays on any Meshy figure through
 // clipLibrary.js retarget(), as Rick's do; each carries the hips' height it
 // was made for (extras.hips → clip.userData.hips) to scale by.
-// Sword_Attack's extras also say where in it the blade strikes (`strike`,
-// seconds: the swinging hand at its fastest) and where the lunge comes back
-// up (`back`), for saberBody.js to lay a stroke over.
 //
 // --report prints how far each bake is from the mannequin it came off: the
 // file read back and played on Luke beside the UAL clip on its own, at each
@@ -39,7 +43,7 @@
 // put its Godot/AnimationLibrary_Godot_Standard.glb at
 // scripts/preview/.ual/ual.glb (git-ignored), or pass its path.
 //
-//   node scripts/ual-bake.mjs [ual.glb] [--set saber|life|pro|ual2] [--report]
+//   node scripts/ual-bake.mjs [ual.glb] [--set life|pro|ual2|sword] [--report]
 //     (every set but core, when --set doesn't name one)
 //
 // Into a figure: a set's clips retargeted onto the figure's own skeleton
@@ -54,6 +58,8 @@
 //     findBones: rig.js's (the CLI loads it through Vite)
 //   bakeFiles(setName, names, outDir) → [{ file, kb }]: a set's per-clip files
 //     baked into outDir as they are into public/games/meshy (the byte test)
+//   contactWindow(rows, { widen }) → [t0, t1]; rows: [{ t, hand: [x, y, z], ahead? }]
+//   rootTravel(rows, { face, k }) → [[t, dx, dz]…]; rows: [{ t, at: [x, y, z] }]
 
 import { Document, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extensions';
@@ -75,8 +81,6 @@ const REPORT = args.includes('--report');
 const RIG = join(ROOT, 'public', 'models', 'galaxy', 'crew', 'luke.glb');
 const OUT = join(ROOT, 'public', 'games', 'meshy');
 const FPS = 30;
-// the body: what goes out of each clip (the arms, the head and the hands stay out)
-const BODY = ['Hips', 'Spine02', 'Spine01', 'Spine', 'neck', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase'];
 // The sets: one file for the set (`file`) or one per clip (ual-<name>.glb),
 // its clips as UAL names them → the names they go out under, the bones that
 // go out (every bone the retarget maps, where it doesn't say), and whether
@@ -94,7 +98,6 @@ export const SETS = [
     fps: 24, // (thirty a second came to just over 60 KB a figure)
     clips: { Idle_Loop: 'idle', Walk_Loop: 'walk', Jog_Fwd_Loop: 'run', Idle_Talking_Loop: 'talk', Hit_Chest: 'hit.chest', Death01: 'die', Sitting_Idle_Loop: 'sit.idle' },
   },
-  { name: 'saber', file: 'ual-saber.glb', bones: BODY, clips: { Sword_Idle: 'Sword_Idle', Sword_Attack: 'Sword_Attack' } },
   {
     name: 'life',
     short: true,
@@ -210,15 +213,6 @@ export const SETS = [
       Idle_Lantern_Loop: 'lantern',
       Idle_Rail_Loop: 'lean.rail',
       Chest_Open: 'open.chest',
-      Sword_Regular_A: 'sword.a',
-      Sword_Regular_B: 'sword.b',
-      Sword_Regular_C: 'sword.c',
-      Sword_Light_A: 'sword.light.a',
-      Sword_Light_B: 'sword.light.b',
-      Sword_Light_C: 'sword.light.c',
-      Sword_Heavy_A: 'sword.heavy',
-      Sword_Block: 'sword.block',
-      Sword_Dash: 'sword.dash',
       LiftAir_Idle_Loop: 'lifted',
       LiftAir_Fall: 'lifted.fall',
       LiftAir_Fall_Impact: 'lifted.land',
@@ -235,9 +229,52 @@ export const SETS = [
       Turn180_L: 'turn.around',
     },
   },
+  // the strokes (see `sword` above): every bone the retarget maps, with
+  // where the blade lands and how far the root goes (`strokes`)
+  {
+    name: 'sword',
+    pack: 'ual2',
+    short: true,
+    strokes: true,
+    clips: {
+      Sword_Regular_A: 'sword.a',
+      Sword_Regular_A_Rec: 'sword.a.rec',
+      Sword_Regular_B: 'sword.b',
+      Sword_Regular_B_Rec: 'sword.b.rec',
+      Sword_Regular_C: 'sword.c',
+      Sword_Regular_Combo: 'sword.combo',
+      Sword_Light_A: 'sword.light.a',
+      Sword_Light_A_Rec: 'sword.light.a.rec',
+      Sword_Light_B: 'sword.light.b',
+      Sword_Light_B_Rec: 'sword.light.b.rec',
+      Sword_Light_C: 'sword.light.c',
+      Sword_Light_C_Rec: 'sword.light.c.rec',
+      Sword_Light_D: 'sword.light.d',
+      Sword_Light_Combo: 'sword.light.combo',
+      Sword_Heavy_A: 'sword.heavy.a',
+      Sword_Heavy_A_Rec: 'sword.heavy.a.rec',
+      Sword_Heavy_B: 'sword.heavy.b',
+      Sword_Heavy_B_Rec: 'sword.heavy.b.rec',
+      Sword_Heavy_C: 'sword.heavy.c',
+      Sword_Heavy_C_Rec: 'sword.heavy.c.rec',
+      Sword_Heavy_D: 'sword.heavy.d',
+      Sword_Heavy_Combo: 'sword.heavy.combo',
+      Sword_Aerial_A: 'sword.aerial.a',
+      Sword_Aerial_A_Rec: 'sword.aerial.a.rec',
+      Sword_Aerial_B: 'sword.aerial.b',
+      Sword_Aerial_Combo_Loop: 'sword.aerial.combo',
+      Sword_Aerial_Idle_Loop: 'sword.aerial.idle',
+      Sword_Block: 'sword.block',
+      Sword_Dash: 'sword.dash',
+      Sword_GroundPound: 'sword.pound',
+      Sword_UpperCut: 'sword.uppercut',
+    },
+  },
 ];
 // where a set's pack's GLB is, fetched (scripts/assets-fetch.mjs)
 const PACK_GLB = { ual1: join(ROOT, 'lab', 'assets', 'ual1', 'Unreal-Godot', 'UAL1.glb'), ual2: join(ROOT, 'lab', 'assets', 'ual2', 'Unreal-Godot', 'UAL2.glb') };
+// and its root-motion twin: the same clips with the root carried along
+const PACK_RM = { ual2: join(ROOT, 'lab', 'assets', 'ual2', 'Unreal-Godot', 'UAL2_RM.glb') };
 
 // a GLB's JSON chunk
 const glbJson = (buf) => JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
@@ -267,38 +304,108 @@ const parseGlb = (buf) => {
 };
 const loadUal = async (file) => parseGlb(await readFile(file));
 
-// where in Sword_Attack the blade strikes (the right hand at its fastest)
-// and where the lunge is back up (the hips as high again as they start)
-function attackTimes(src, clip) {
-  const mixer = new THREE.AnimationMixer(src.scene);
-  const a = mixer.clipAction(clip).play();
-  const hand = src.bones['DEF-handR'];
-  const hips = src.bones['DEF-hips'];
-  const rows = [];
-  const p = new THREE.Vector3();
-  for (let f = 0, n = Math.round(clip.duration * FPS); f <= n; f++) {
-    a.time = Math.min(clip.duration, f / FPS);
-    mixer.update(0);
-    src.scene.updateMatrixWorld(true);
-    rows.push({ t: a.time, hand: hand.getWorldPosition(p).clone(), hips: hips.getWorldPosition(p).clone() });
+// Where a stroke's blade lands: the span the blade moves fastest through
+// (every frame at least 0.6 of its fastest, around the fastest) while it's
+// ahead of the body (a row `ahead: false` doesn't count: the strokes wind
+// the blade round behind the back first, as fast as they cut), widened
+// `widen` either side, and kept off the clip's very ends so a window is
+// never empty or outside the clip (a clip the blade barely moves in still
+// gets one, round its middle). rows: [{ t, hand: [x, y, z], ahead? }]: the
+// point to time (the bake gives it the blade's tip)
+export function contactWindow(rows, { widen = 0.06 } = {}) {
+  const d = rows.at(-1).t;
+  const lo = Math.min(0.05, d * 0.25);
+  const hi = d - lo;
+  const speed = rows.map((r, i) => (i && r.ahead !== false ? Math.hypot(...r.hand.map((v, j) => v - rows[i - 1].hand[j])) / Math.max(1e-6, r.t - rows[i - 1].t) : 0));
+  let peak = 0;
+  speed.forEach((v, i) => v > speed[peak] && (peak = i));
+  let t0 = d / 2 - 0.1;
+  let t1 = d / 2 + 0.1;
+  if (speed[peak] > 1e-6) {
+    let a = peak;
+    let b = peak;
+    while (a > 1 && speed[a - 1] >= speed[peak] * 0.6) a--;
+    while (b < rows.length - 1 && speed[b + 1] >= speed[peak] * 0.6) b++;
+    // (a speed is the frame before's to this one's: the span starts a frame back)
+    t0 = rows[a - 1].t - widen;
+    t1 = rows[b].t + widen;
   }
-  a.stop();
-  mixer.uncacheRoot(src.scene);
-  let strike = 0;
-  let best = 0;
-  rows.forEach((r, i) => {
-    if (!i) return;
-    const v = r.hand.distanceTo(rows[i - 1].hand) / (r.t - rows[i - 1].t);
-    r.speed = v;
-    if (v > best) [best, strike] = [v, r.t];
+  t0 = Math.min(Math.max(t0, lo), hi - 0.02);
+  t1 = Math.max(Math.min(t1, hi), t0 + 0.02);
+  // (rounded to the millisecond inward, so rounding never puts it past an end)
+  return [Math.ceil(t0 * 1000 - 1e-6) / 1000, Math.floor(t1 * 1000 + 1e-6) / 1000];
+}
+
+// How far the root goes through a clip, from where it starts: each row's
+// point less the first's, turned by `face` (the source's facing onto the
+// figure's) and scaled by `k` (its hips onto the figure's), on the ground.
+// rows: [{ t, at: [x, y, z] }]
+export function rootTravel(rows, { face = (v) => v, k = 1 } = {}) {
+  const [x0, , z0] = rows[0].at;
+  return rows.map((r) => {
+    const [dx, , dz] = face([r.at[0] - x0, 0, r.at[2] - z0]);
+    return [+r.t.toFixed(4), +(dx * k).toFixed(4), +(dz * k).toFixed(4)];
   });
-  const low = rows.reduce((m, r) => (r.hips.y < m.hips.y ? r : m), rows[0]);
-  const top = rows[0].hips.y;
-  const back = rows.find((r) => r.t > low.t && r.hips.y >= top - (top - low.hips.y) * 0.15)?.t ?? clip.duration;
-  if (REPORT)
-    for (const r of rows)
-      console.log(r.t.toFixed(2), 'hips', r.hips.toArray().map((v) => v.toFixed(3)).join(' '), 'hand speed', (r.speed ?? 0).toFixed(2));
-  return { strike: +strike.toFixed(3), low: +low.t.toFixed(3), back: +back.toFixed(3) };
+}
+
+// the blade through a baked clip, on Luke: its tip a metre out of the
+// right fist the way the site's hilt sits there (gunplay.js's grip puts the
+// blade along the hand's +z on the Meshy rig; UAL's sword idles forward and
+// up on that axis, and its block holds it up across), and whether the tip
+// is ahead of the hips (Luke faces +z)
+function bladeRows(baked) {
+  const fig = rig.clone(true);
+  const hand = fig.getObjectByName('RightHand');
+  const hips = fig.getObjectByName('Hips');
+  const mixer = new THREE.AnimationMixer(fig);
+  const a = mixer.clipAction(baked).play();
+  const inv = fig.matrixWorld.clone().invert();
+  const rows = [];
+  const q = new THREE.Quaternion();
+  for (let f = 0, n = Math.round(baked.duration * FPS); f <= n; f++) {
+    a.time = Math.min(baked.duration, f / FPS);
+    mixer.update(0);
+    fig.updateMatrixWorld(true);
+    const tip = new THREE.Vector3(0, 0, 1).applyQuaternion(hand.getWorldQuaternion(q)).add(hand.getWorldPosition(new THREE.Vector3())).applyMatrix4(inv);
+    const h = hips.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);
+    rows.push({ t: a.time, hand: tip.toArray(), ahead: tip.z > h.z + 0.15 });
+  }
+  mixer.uncacheRoot(fig);
+  return rows;
+}
+
+// a clip's extras for a stroke: the blade through the baked clip (the
+// contact window) and the root through the root-motion twin's (its
+// travel), sampled at the bake's rate
+function strokeExtras(src, rm, from, prep, baked) {
+  const sample = (s, clip, read) => {
+    const mixer = new THREE.AnimationMixer(s.scene);
+    const a = mixer.clipAction(clip).play();
+    const inv = s.scene.matrixWorld.clone().invert();
+    const rows = [];
+    const p = new THREE.Vector3();
+    for (let f = 0, n = Math.round(clip.duration * FPS); f <= n; f++) {
+      a.time = Math.min(clip.duration, f / FPS);
+      mixer.update(0);
+      s.scene.updateMatrixWorld(true);
+      rows.push({ t: a.time, v: read(s).getWorldPosition(p).applyMatrix4(inv).toArray() });
+    }
+    a.stop();
+    mixer.uncacheRoot(s.scene);
+    toRest(s);
+    return rows;
+  };
+  const contact = contactWindow(bladeRows(baked));
+  const out = { contact };
+  if (rm?.clips[from]) {
+    const turn = (v) => new THREE.Vector3(...v).applyQuaternion(prep.face).toArray();
+    out.root = rootTravel(sample(rm, rm.clips[from], (s) => s.bones.root).map((r) => ({ t: r.t, at: r.v })), { face: turn, k: prep.hipsK });
+    // (the hips' height above the toes it was measured on, in metres: a
+    // figure scales the travel by its own over this)
+    const { tRest } = prep;
+    out.rootHips = +(tRest.Hips.p.y - Math.min(tRest.LeftToeBase.p.y, tRest.RightToeBase.p.y)).toFixed(4);
+  }
+  return out;
 }
 
 // How far a baked file is from the mannequin (see --report, above): for each
@@ -366,7 +473,7 @@ async function drift(bytes, takes) {
 // channels name, and the hips' height to scale their travel by), and its
 // clips (`takes`: [UAL's name, the name it goes out under]) on the bones
 // the set sends out, as its set has them
-async function bake(file, takes, { bones = null, short = false }, out = OUT) {
+async function bake(file, takes, { bones = null, short = false, strokes = false }, out = OUT) {
   const doc = new Document();
   const buffer = doc.createBuffer();
   const scene = doc.createScene(file.replace(/\.glb$/, ''));
@@ -385,7 +492,10 @@ async function bake(file, takes, { bones = null, short = false }, out = OUT) {
   for (const [from, name] of takes) {
     const baked = retargetUal(src, src.clips[from], rig, { fps: FPS });
     const extras = { hips: +baked.userData.hips.toFixed(4), source: `Quaternius UAL ${from}` };
-    if (from === 'Sword_Attack') Object.assign(extras, attackTimes(src, src.clips[from]));
+    if (strokes) {
+      toRest(src);
+      Object.assign(extras, strokeExtras(src, rmOf, from, prepareUal(src, rig), baked));
+    }
     const anim = doc.createAnimation(name).setExtras(extras);
     const times = acc(baked.tracks[0].times, 'SCALAR');
     for (const tr of baked.tracks) {
@@ -415,6 +525,9 @@ const sourceOf = async (set) => {
   return sources.get(file);
 };
 let src = null;
+// the root-motion twin of the set's pack, for a set of strokes
+let rmOf = null;
+const rmFor = async (set) => (set.strokes && PACK_RM[set.pack] ? keepRest(ualRig(await loadUal(PACK_RM[set.pack]))) : null);
 const setOf = (name) => {
   const set = SETS.find((s) => s.name === name);
   if (!set) throw new Error(`no set ${name} (${SETS.map((s) => s.name).join(', ')})`);
@@ -425,6 +538,7 @@ export async function bakeFiles(setName, names, outDir) {
   const set = setOf(setName);
   rig ??= restRig(glbJson(await readFile(RIG)));
   src = await sourceOf(set);
+  rmOf = await rmFor(set);
   toRest(src);
   const made = [];
   for (const take of Object.entries(set.clips).filter(([, n]) => names.includes(n))) made.push(await bake(`ual-${take[1]}.glb`, [take], set, outDir));
@@ -517,6 +631,7 @@ async function main() {
   const made = [];
   for (const set of sets) {
     src = await sourceOf(set);
+    rmOf = await rmFor(set);
     toRest(src);
     const takes = Object.entries(set.clips);
     if (set.file) made.push(await bake(set.file, takes, set));

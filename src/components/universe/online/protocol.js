@@ -73,6 +73,7 @@ import { SIDES } from '../sides';
 import { AXES, LEVELS as STANDING_LEVELS } from '../standing';
 import { SIDES as WAR_SIDES, WARS, warOfSide } from '../../galaxy/sides';
 import { RANKS } from '../../galaxy/ranks';
+import { STANCE_IDS } from '../../galaxy/surface/combatRules';
 import { NO_FACTIONS } from './relations';
 import { motionPacket, readEmoteWire, readMotion } from '../../../lib/emote';
 import { WEAPONS, byCode } from '../weaponTable';
@@ -382,7 +383,9 @@ export function readFoot(data) {
 // emote, motion], ride the kind they're on (or null); or null once
 // they've taken off again. `arms` (newer pilots; older readers stop before
 // it) is what's in the hand: [gun kind, lit (a saber: 0 | 1), blade colour
-// (#rrggbb), stance, swinging (0 | 1)]; `emote` and `motion` (newer still,
+// (#rrggbb), stance, swinging (0 | 1), and, newer, the stroke's clip
+// ('sword.light.a': the clip library's name, so a peer plays the one
+// they're playing; an older reader stops at the five)]; `emote` and `motion` (newer still,
 // and only when there's one: lib/emote.js's emotePacket and motionPacket)
 // what they're doing ([id, seconds on]) and how they're moving ([speed,
 // side, turn] in metres and radians a second), so their feet keep pace
@@ -391,8 +394,14 @@ const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']
 const r2 = (v) => Math.round((v || 0) * 100) / 100;
 // (the gun up, 0…1, then the arms: an older reader stops at the speed)
 export const ARMS_GUNS = ['blaster', 'laser', 'portal', 'revolver', 'pistol', 'bowcaster', 'rifle', 'coppistol', 'saber', 'a280', 'dlt19', 'ee3', 'westar', 'shotgun', 'sniper', 'smg']; // universe/gunplay.js's GUNS
-const STANCES_SEEN = ['single', 'double', 'dual', 'heavy']; // galaxy/surface/combatRules.js's
-const writeArms = (a) => (a && ARMS_GUNS.includes(a.gun) ? [a.gun, a.lit ? 1 : 0, typeof a.color === 'string' ? a.color.slice(0, 7) : '', STANCES_SEEN.includes(a.stance) ? a.stance : 'single', a.swing ? 1 : 0] : null);
+const STANCES_SEEN = STANCE_IDS;
+const strokeOf = (s) => (typeof s === 'string' && s.length <= 32 && /^sword(\.[a-z]+)+$/.test(s) ? s : null);
+const writeArms = (a) => {
+  if (!a || !ARMS_GUNS.includes(a.gun)) return null;
+  const out = [a.gun, a.lit ? 1 : 0, typeof a.color === 'string' ? a.color.slice(0, 7) : '', STANCES_SEEN.includes(a.stance) ? a.stance : 'single', a.swing ? 1 : 0];
+  if (strokeOf(a.stroke)) out.push(a.stroke);
+  return out;
+};
 const writeStroller = (w) => {
   if (!w) return null;
   const out = [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100];
@@ -405,7 +414,8 @@ const writeStroller = (w) => {
 };
 const readArms = (a) => {
   if (!Array.isArray(a) || !ARMS_GUNS.includes(a[0])) return null;
-  return { gun: a[0], lit: a[1] === 1, color: typeof a[2] === 'string' && /^#[0-9a-fA-F]{6}$/.test(a[2]) ? a[2] : '#4aa8ff', stance: STANCES_SEEN.includes(a[3]) ? a[3] : 'single', swing: a[4] === 1 };
+  const stroke = strokeOf(a[5]);
+  return { gun: a[0], lit: a[1] === 1, color: typeof a[2] === 'string' && /^#[0-9a-fA-F]{6}$/.test(a[2]) ? a[2] : '#4aa8ff', stance: STANCES_SEEN.includes(a[3]) ? a[3] : 'single', swing: a[4] === 1, ...(stroke ? { stroke } : {}) };
 };
 export function writeWalk(w) {
   if (!w) return { w: null };
