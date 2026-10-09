@@ -133,6 +133,11 @@ async function main() {
     for (const id of rest) must(await loader.remove(id), errors.at(-1)?.error?.message ?? 'not removed');
   });
 
+  // a failed damage step leaves its target standing, owned by a visitor no
+  // one can be again: taken out here so a failed run leaves nothing behind
+  // (the loader holds no cell here, so the table is asked directly; a delete
+  // of a row already gone deletes nothing)
+  if (placed[0]) await c.from('world_entities').delete().eq('id', placed[0].id);
   loader.dispose();
   process.exit(failed ? 1 : 0);
 }
