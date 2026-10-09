@@ -37,7 +37,6 @@ const TOWNS = ['amonhen', 'bree', 'cirithungol', 'doom', 'edoras', 'lorien', 'ma
 const RANDOM = /Math\.random\(\) - 0\.5\) \* [\w.]*shake/;
 
 export const OWN_SHAKE = [
-  { file: 'cybertron/game/scene.js', pattern: RANDOM },
   { file: 'universe/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
   { file: 'galaxy/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
   { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
@@ -65,7 +64,6 @@ export const DEAD_HITSTOP = [
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
   { file: 'invincible/world/flight.js', pattern: /\{ \.\.\.input, jump: false \}/ },
-  { file: 'cybertron/game/rules.js', pattern: /input\.jump && p\.mode === 'robot' && p\.grounded/ },
   { file: 'avengers/world/rules.js', pattern: /function stepGround\(h, \{[^}]*\bjump\b/ },
   { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
@@ -91,7 +89,6 @@ export const LINEAR_CAMERA = [
 ];
 
 export const UNANSWERED = [
-  { file: 'cybertron/game/GameWorld.jsx', lacks: /'bump'/ },
   { file: 'universe/Comms.jsx', lacks: /\b(thud|onHit)\(/ },
   { file: 'deathstar/inside/scene/hear.js', lacks: /case 'hurt'/ },
   { file: 'minecraft/module.js', lacks: /from '[^']*(sfx|sounds?|audio)[^']*'/ },
