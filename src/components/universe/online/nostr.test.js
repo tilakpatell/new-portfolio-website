@@ -6,7 +6,7 @@ import { KIND, checkEvent, hex, joinAsVisitor, joinRoom, setIdentity, signEvent,
 // id and signature, answer OK, and pass it on to every matching listener
 // (the sender included); a CLOSE ends one listening.
 function createRelays(urls) {
-  const relays = Object.fromEntries(urls.map((u) => [u, { clients: new Set(), down: false, log: [] }]));
+  const relays = Object.fromEntries(urls.map((u) => [u, { clients: new Set(), down: false, log: [], reqs: [] }]));
   let made = 0;
   class FakeSocket {
     constructor(url) {
@@ -30,7 +30,10 @@ function createRelays(urls) {
     }
     send(s) {
       const msg = JSON.parse(s);
-      if (msg[0] === 'REQ') this.subs.set(msg[1], msg[2]);
+      if (msg[0] === 'REQ') {
+        this.subs.set(msg[1], msg[2]);
+        this.relay?.reqs.push(msg);
+      }
       if (msg[0] === 'CLOSE') this.subs.delete(msg[1]);
       if (msg[0] !== 'EVENT') return;
       const ev = msg[1];
@@ -48,9 +51,11 @@ function createRelays(urls) {
       setTimeout(() => this.onclose?.(), 0);
     }
   }
+  // (a filter with '#g' passes only events tagged with one of its cells; one without, any)
+  const inCells = (f, ev) => !f['#g'] || ev.tags.some((t) => t[0] === 'g' && f['#g'].includes(t[1]));
   const pass = (relay, ev) => {
     for (const c of relay.clients)
-      for (const [id, f] of c.subs) if (f.kinds.includes(ev.kind) && ev.tags.some((t) => t[0] === 'x' && f['#x'].includes(t[1]))) c.deliver(['EVENT', id, ev]);
+      for (const [id, f] of c.subs) if (f.kinds.includes(ev.kind) && ev.tags.some((t) => t[0] === 'x' && f['#x'].includes(t[1])) && inCells(f, ev)) c.deliver(['EVENT', id, ev]);
   };
   return {
     relays,
@@ -300,5 +305,127 @@ describe('joinRoom over Nostr relays', () => {
     await expect(a.ready).rejects.toThrow();
     net.setDown(URLS[1], false);
     await until(() => statuses.includes('online'), 4000); // (it tries again, a second on)
+  });
+});
+
+describe('a room heard by cell', () => {
+  const reqs = (net) => net.relays[URLS[0]].reqs;
+  const gOf = (ev) => ev.tags.filter((t) => t[0] === 'g').map((t) => t[1]);
+
+  it('a room joined without cells asks for exactly what it always did', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    await a.ready;
+    const [req] = reqs(net);
+    expect(req[0]).toBe('REQ');
+    expect(Object.keys(req[2])).toEqual(['kinds', '#x', 'since']);
+    expect(req[2]).toEqual({ kinds: [KIND], '#x': ['test-app/room-1'], since: expect.any(Number) });
+    a.action('hi').send({ n: 'Han' });
+    await until(() => net.relays[URLS[0]].log.some((ev) => ev.content.includes('"hi"')));
+    for (const ev of net.relays[URLS[0]].log) expect(gOf(ev)).toEqual([]);
+  });
+
+  it('asks for its cells, says its own, and asks again only when the set changes', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0', 'hoth/1,0'] });
+    a.setCell('hoth/0,0');
+    await a.ready;
+    expect(reqs(net)).toHaveLength(1);
+    expect(reqs(net)[0][2]).toEqual({ kinds: [KIND], '#x': ['test-app/room-1'], '#g': ['hoth/0,0', 'hoth/1,0'], since: expect.any(Number) });
+    a.action('hi').send({ n: 'Han' });
+    await until(() => net.relays[URLS[0]].log.some((ev) => ev.content.includes('"hi"')));
+    for (const ev of net.relays[URLS[0]].log) expect(gOf(ev)).toEqual(['hoth/0,0']);
+    a.setCells(['hoth/1,0', 'hoth/0,0']); // (the same set: the relays count REQs)
+    expect(reqs(net)).toHaveLength(1);
+    a.setCells(['hoth/1,0', 'hoth/2,0']);
+    expect(reqs(net)).toHaveLength(2);
+    expect(reqs(net)[1][1]).toBe(reqs(net)[0][1]); // (under the same id: it replaces the first)
+    expect(reqs(net)[1][2]['#g']).toEqual(['hoth/1,0', 'hoth/2,0']);
+  });
+
+  it('a relay that drops asks, when it’s back, for the cells of the moment', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0'] });
+    await a.ready;
+    net.setDown(URLS[0], true);
+    await settle(20); // (the socket's closed, and waiting to try again)
+    a.setCells(['hoth/7,7']);
+    net.setDown(URLS[0], false);
+    join(net); // (a room joining tries a relay that's down at once)
+    const mine = () => reqs(net).filter((r) => r[1] === reqs(net)[0][1]);
+    await until(() => mine().length === 2);
+    expect(mine()[1][2]['#g']).toEqual(['hoth/7,7']);
+  });
+
+  it('a pilot crossing into the next cell is heard by a watcher round both, not by one round the old', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0'] });
+    a.setCell('hoth/0,0');
+    const both = join(net, { cells: () => ['hoth/0,0', 'hoth/1,0'] });
+    const old = join(net, { cells: () => ['hoth/0,0'] });
+    await Promise.all([a.ready, both.ready, old.ready]);
+    a.action('pose').send([1, 0, 0]);
+    await until(() => both.got.some((m) => m.ns === 'pose') && old.got.some((m) => m.ns === 'pose'));
+    a.setCell('hoth/1,0');
+    a.setCells(['hoth/1,0', 'hoth/0,0']);
+    a.action('pose').send([2049, 0, 0]);
+    await until(() => both.got.some((m) => m.ns === 'pose' && m.data[0] === 2049));
+    await settle();
+    expect(both.got.filter((m) => m.ns === 'pose').map((m) => m.data[0])).toEqual([1, 2049]);
+    expect(old.got.filter((m) => m.ns === 'pose').map((m) => m.data[0])).toEqual([1]);
+  });
+
+  it('a message for a pilot cells away carries their cell, so it passes their filter', async () => {
+    const net = createRelays(URLS);
+    const a = join(net); // (hears everyone)
+    a.setCell('hoth/0,0');
+    const b = join(net, { cells: () => ['hoth/5,5'] });
+    b.setCell('hoth/5,5');
+    await Promise.all([a.ready, b.ready]);
+    b.action('pose').send([10240, 0, 10240]);
+    await until(() => a.got.some((m) => m.ns === 'pose' && m.from === b.selfId));
+    a.action('ally').send({ t: 'ask' }, { target: b.selfId });
+    await until(() => b.got.some((m) => m.ns === 'ally'));
+    const sent = net.relays[URLS[0]].log.find((ev) => ev.pubkey === a.selfId && ev.content.includes('"ally"'));
+    expect(gOf(sent)).toEqual(['hoth/0,0', 'hoth/5,5']);
+    // and what isn't for them, from cells away, they don't hear
+    a.action('hi').send({ n: 'Han' });
+    await settle();
+    expect(b.got.some((m) => m.ns === 'hi')).toBe(false);
+  });
+
+  it('a pilot’s goodbye carries the cell they’re in, so those round them hear they’ve gone', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0'] });
+    a.setCell('hoth/3,3');
+    const b = join(net, { cells: () => ['hoth/0,0'] });
+    await Promise.all([a.ready, b.ready]);
+    await settle(); // (the goodbye's signed ahead, in 3,3)
+    a.setCell('hoth/0,0'); // (and signed again for the cell they're in now)
+    a.action('hi').send({ n: 'Han' }); // (a word that's checked: a goodbye is believed only after one)
+    await until(() => b.got.some((m) => m.ns === 'hi'));
+    await settle();
+    await a.leave();
+    await until(() => b.left.includes(a.selfId));
+  });
+
+  it('setCells with nothing, after none, asks nothing again (all is all)', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    await a.ready;
+    a.setCells([]);
+    a.setCells(null);
+    expect(reqs(net)).toHaveLength(1);
+  });
+
+  it('a message for a pilot whose words carry no cell goes as it always did', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    const b = join(net);
+    await until(() => a.joined.includes(b.selfId) && b.joined.includes(a.selfId));
+    a.action('ally').send({ t: 'ask' }, { target: b.selfId });
+    await until(() => b.got.some((m) => m.ns === 'ally'));
+    const sent = net.relays[URLS[0]].log.find((ev) => ev.pubkey === a.selfId && ev.content.includes('"ally"'));
+    expect(gOf(sent)).toEqual([]);
   });
 });

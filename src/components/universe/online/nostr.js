@@ -41,12 +41,25 @@
 // client.js takes. (Other games pass `latest`, the kinds of message of
 // which only the newest in a bundle matters, and `cheap`, those trusted to
 // the relays' own check of the signature.)
+//
+// A room can be heard by cell (src/lib/net/cells.js), for a world too big
+// for everyone to hear everyone: joined with `cells` (a function giving the
+// tags to listen for, or null for all), its REQ asks for '#g' too, so the
+// relays pass on only the events of pilots near you. setCell(tag) is what
+// your own events carry from then (['g', tag]); setCells(tags) is what you
+// listen for, asked of the relays again (one REQ each, under the same id)
+// only when the set changed, since the relays count REQs. A message for one
+// pilot carries their cell as well, the one their last words carried, so a
+// hit or an ask from cells away still passes their filter. A room joined
+// without `cells`, and never told otherwise, asks and sends exactly what it
+// always did.
 
 import { schnorr } from '@noble/secp256k1';
 import { KIND, checkEvent, hex, signEvent } from './events';
 import { createIdentity } from './identity';
 import { poolFor } from './pool';
 import { localSaves } from '../../../runtime/local';
+import { sameCells } from '../../../lib/net/cells';
 
 export { KIND, checkEvent, eventId, hex, signEvent } from './events';
 // relays that took ten events a second for a minute without dropping any
@@ -66,6 +79,7 @@ const QUEUE_MAX = 64; // messages waiting, at most
 const LATEST = new Set(['pose', 'foot', 'walk', 'cur', 'pack']); // only the newest of these in a bundle
 const CHEAP = new Set(['pose', 'foot', 'walk', 'cur', 'shot', 'pack']); // trusted to the relay's own check of the signature
 
+const TAG_MAX = 80; // characters of a pilot's cell tag kept
 const isHex = (s, n) => typeof s === 'string' && s.length === n && /^[0-9a-f]+$/.test(s);
 
 // Who signs (identity.js): one for the page, made as this module loads, on
@@ -134,7 +148,7 @@ const offPage = (op, payload, here) => {
 const signAway = (key, pubkey, ev) => offPage('sign', { key, pubkey, ev }, () => signEvent(key, pubkey, ev));
 const checkAway = (ev) => offPage('check', { ev }, () => checkEvent(ev));
 
-export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSocket, pool = poolFor(WebSocket, relays), flushMs = FLUSH_MS, readyMs = READY_MS, latest = LATEST, cheap = CHEAP, keys = schnorr.keygen() }, roomId) {
+export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSocket, pool = poolFor(WebSocket, relays), flushMs = FLUSH_MS, readyMs = READY_MS, latest = LATEST, cheap = CHEAP, keys = schnorr.keygen(), cells = null }, roomId) {
   const { secretKey, publicKey } = keys;
   const self = hex(publicKey);
   const topic = `${appId}/${roomId}`;
@@ -153,6 +167,15 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   let left = false;
   let status = 'connecting';
   let bye = null; // the goodbye, signed ahead so it can go out as the page closes
+  let cell = null; // the tag your own events carry (setCell)
+  let want; // the cells listened for once setCells has said (till then, cells()'s)
+  // (an empty list is no list: all)
+  const listening = () => {
+    const g = want !== undefined ? want : cells?.();
+    return g?.length ? g : null;
+  };
+  // what your events are tagged with: the room, the visit, your cell
+  const ownTags = () => (cell ? [...tags, ['g', cell]] : tags);
 
   const nowS = () => Math.floor(Date.now() / 1000);
 
@@ -210,6 +233,9 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
     // (a goodbye's signed ahead of time, so it may be old: its visit tag says whether it's this visit's)
     if (!leaving && nowS() - ev.created_at - p.skew > STALE_S) return;
     p.heard = Date.now();
+    // (where they are, for a message to them to carry: their last words' cell, or none)
+    const g = ev.tags.find((t) => Array.isArray(t) && t[0] === 'g');
+    p.cell = typeof g?.[1] === 'string' && g[1].length <= TAG_MAX ? g[1] : null;
     const check = msgs.some((m) => !cheap.has(m[0]));
     const tagged = ev.tags.find((t) => Array.isArray(t) && t[0] === 'visit' && typeof t[1] === 'string' && t[1].length <= 32);
     // in order, per pilot (a check takes a moment)
@@ -223,7 +249,12 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   };
 
   // the room's listening, on the pool's sockets (asked for afresh each time one opens)
-  const sub = pool.subscribe({ filter: () => ({ kinds: [KIND], '#x': [topic], since: nowS() - 10 }), onEvent, onChange: () => setStatus() });
+  // (with cells, only theirs: '#g' between the topic and `since`, so a room without asks exactly as before)
+  const filter = () => {
+    const g = listening();
+    return g ? { kinds: [KIND], '#x': [topic], '#g': [...g], since: nowS() - 10 } : { kinds: [KIND], '#x': [topic], since: nowS() - 10 };
+  };
+  const sub = pool.subscribe({ filter, onEvent, onChange: () => setStatus() });
   const setStatus = () => {
     const next = sub.up() > 0 ? 'online' : 'connecting';
     if (left || next === status) return;
@@ -256,7 +287,11 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
       else out.push(m);
     }
     out.push(...Object.values(last));
-    broadcast(await signAway(secretKey, self, { tags, content: JSON.stringify(out) }));
+    // your cell, and the cell of each pilot a message is for (so it passes their filter)
+    const g = new Set();
+    for (const m of out) if (m[2] !== undefined && known.get(m[2])?.cell) g.add(known.get(m[2]).cell);
+    if (cell) g.delete(cell);
+    broadcast(await signAway(secretKey, self, { tags: [...ownTags(), ...[...g].map((t) => ['g', t])], content: JSON.stringify(out) }));
   };
   const post = (m) => {
     if (left) return;
@@ -268,7 +303,14 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   // goodbye's signed now, ready for when you go)
   const announce = () => {
     post(['@join']);
-    if (!bye) signAway(secretKey, self, { tags, content: JSON.stringify([['@bye']]) }).then((ev) => (bye = ev));
+    if (!bye) signBye();
+  };
+  // (signed again when your cell changes, so it passes the filters of those round you now;
+  // only the newest signing is kept, whichever finishes first)
+  let byes = 0;
+  const signBye = () => {
+    const n = ++byes;
+    signAway(secretKey, self, { tags: ownTags(), content: JSON.stringify([['@bye']]) }).then((ev) => n === byes && (bye = ev));
   };
 
   // pilots not heard from in a while are forgotten (met again if they're back)
@@ -295,6 +337,18 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
       };
       actions[ns] = a;
       return a;
+    },
+    setCell(tag) {
+      const next = typeof tag === 'string' && tag ? tag : null;
+      if (left || next === cell) return;
+      cell = next;
+      if (byes) signBye();
+    },
+    setCells(next) {
+      const g = next?.length ? [...next] : null;
+      if (left || sameCells(listening(), g)) return;
+      want = g;
+      sub.refresh();
     },
     leave() {
       if (left) return Promise.resolve();
