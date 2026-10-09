@@ -587,6 +587,15 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   // E for a memory of whoever's in it, F or a click to shoot them, till it
   // ends (a card) or he stops (Esc, or the button).
   const rkRules = useRef(null);
+  // Morty's shots as bolts (./rmShots.js), loaded with Total Rickall's rules or a duel's start: { mod, shots, area }
+  const shots = useRef(null);
+  const loadShots = useCallback(async () => {
+    if (!shots.current) {
+      const mod = await import('./rmShots');
+      shots.current ??= { mod, shots: mod.createShots(), area: null };
+    }
+    return shots.current;
+  }, []);
   const [game, setGame] = useState(null); // what the HUD shows of it: { phase, left, secs, aim, told, end }
   const gameKey = useRef('');
   const recall = useRef(null); // the memory card, moved over whoever it's about each frame
@@ -612,6 +621,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       sound('splat');
       try {
         rkRules.current ??= await import('./interiors/rickall');
+        await loadShots();
         const { newRickall } = rkRules.current;
         let absent = ['morty'];
         let g = null;
@@ -645,7 +655,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         return false;
       }
     },
-    [api, say, stopRickall],
+    [api, say, stopRickall, loadShots],
   );
   // how it ended: a card, and if it's won, the thing to do done
   const endRickall = useCallback(
@@ -660,23 +670,35 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     },
     [complete, unlock],
   );
-  // F, or a click: a shot at whoever's in the sights (a zap at nobody, if nobody is)
+  // F, or a click: a bolt at whoever's in the sights, or down the line to
+  // whatever it meets (./rmShots.js); what it does is landRickall's, when it gets there
   const shootRickall = useCallback(() => {
-    const run = sim.current.rickall;
-    if (run?.phase !== 'on') return;
+    const s = sim.current;
+    const run = s.rickall;
+    if (run?.phase !== 'on' || !shots.current) return;
     audioContext();
     sound('zap');
     // (Morty's arm comes up with the shot, his feet left as they are)
-    sim.current.acted = true;
+    s.acted = true;
     api.current?.play('shoot', { layer: 'upper' });
-    const p = run.aim && run.game.people.find((o) => o.id === run.aim);
-    const hit = p ? rkRules.current.shoot(run.game, p.id) : null;
-    if (!hit) return;
-    api.current?.fx('shot', { x: p.x, y: p.h * 0.6, z: p.z, parasite: p.parasite });
-    if (run.told?.id === p.id) run.told = null;
-    if (hit === 'parasite') sound('splat');
-    else endRickall(run);
-  }, [api, endRickall]);
+    const R = rkRules.current;
+    shots.current.shots.rickall({ m: s.m, sight: R.sight(s.m, s.yaw, s.pitch), aim: run.aim, game: run.game, solids: shots.current.mod.roomSolids('house') });
+  }, [api]);
+  // a bolt of his has hit someone in the crowd
+  const landRickall = useCallback(
+    (id) => {
+      const run = sim.current.rickall;
+      if (run?.phase !== 'on') return;
+      const p = run.game.people.find((o) => o.id === id);
+      const hit = p ? rkRules.current.shoot(run.game, p.id) : null;
+      if (!hit) return;
+      api.current?.fx('shot', { x: p.x, y: p.h * 0.6, z: p.z, parasite: p.parasite });
+      if (run.told?.id === p.id) run.told = null;
+      if (hit === 'parasite') sound('splat');
+      else endRickall(run);
+    },
+    [api, endRickall],
+  );
   // E: what Morty remembers of whoever's in the sights, the next memory of them each time
   const tellRickall = useCallback(() => {
     const run = sim.current.rickall;
@@ -928,7 +950,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         sound('alarm');
         say({ kind: 'say', who: SAY[e.who]?.who ?? null, text: e.text ?? 'They’ve seen you.' });
       } else if (name === 'duel') {
-        // the fight's on: the hearts show, and F fires
+        // the fight's on: the hearts show, and F fires (its bolts loaded now)
+        loadShots();
         s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
         setDuel({ ...s.duel });
         sound('zap');
@@ -964,33 +987,42 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         } else api.current?.play('hit', { layer: 'auto' });
       }
     },
-    [api, say, complete, later],
+    [api, say, complete, later, loadShots],
   );
-  // Morty's shot in a duel (F): the place says whether it landed
+  // Morty's shot in a duel (F): a bolt at the hunter if he's in the cone
+  // (the place says where), else along his facing; the arena's walls stop
+  // it, and landDuel hears what it did if it gets to him
   const fire = useCallback(() => {
     const s = sim.current;
-    if (!s?.duel || s.fading || s.t - (s.firedAt ?? -1e9) < 0.5) return;
+    if (!s?.duel || s.fading || s.t - (s.firedAt ?? -1e9) < 0.5 || !shots.current) return;
     s.firedAt = s.t;
     s.acted = true;
     // (his arm comes up with the shot; his feet keep doing what they were)
     api.current?.play('shoot', { hold: 0, layer: 'upper' });
     sound('zap');
     const r = api.current?.act(s.area, 'fire', { x: s.m.x, z: s.m.z, face: s.m.face });
-    if (!r) return;
-    s.duel = { ...s.duel, hp: r.hp, max: r.max };
-    setDuel({ ...s.duel });
-    if (r.down) {
-      sound('splat');
-      if (r.task) complete(r.task);
-      if (r.won) later(() => say({ kind: 'say', ...r.won }), 900);
-      later(() => {
-        s.duel = null;
-        setDuel(null);
-      }, 2500);
-    }
-  }, [api, complete, say, later]);
+    shots.current.shots.duel({ m: s.m, at: r?.at ?? null });
+  }, [api]);
+  const landDuel = useCallback(
+    (r) => {
+      const s = sim.current;
+      if (!r || !s?.duel) return;
+      s.duel = { ...s.duel, hp: r.hp, max: r.max };
+      setDuel({ ...s.duel });
+      if (r.down) {
+        sound('splat');
+        if (r.task) complete(r.task);
+        if (r.won) later(() => say({ kind: 'say', ...r.won }), 900);
+        later(() => {
+          s.duel = null;
+          setDuel(null);
+        }, 2500);
+      }
+    },
+    [complete, say, later],
+  );
   const fns = useRef({});
-  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall, npc, fire, gun: openDial };
+  fns.current = { act, go, shoot: shootRickall, landRickall, stop: stopRickall, start: startRickall, end: endRickall, npc, fire, landDuel, gun: openDial };
 
   // ── the world: made once, kept while something's open over it ──
   useEffect(() => {
@@ -1412,6 +1444,24 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (run.told && (performance.now() - run.told.at > RECALL_MS || run.game.shot.includes(run.told.id))) run.told = null;
     }
 
+    // Morty's bolts in flight (./rmShots.js): the room's solids, the crowd
+    // and a duel's hunter as bodies; where each ends, and what it did
+    const sh = shots.current;
+    let boltHits = null;
+    if (sh && sh.area !== s.area) {
+      sh.shots.clear();
+      sh.area = s.area;
+    }
+    if (sh?.shots.live().length) {
+      const bodies = [...(run?.game ? sh.mod.rickallBodies(run.game, run.hide) : []), ...((s.duel && a.act(s.area, 'bodies')) || [])];
+      for (const e of sh.shots.step(dt, { solids: sh.mod.roomSolids(s.area), bodies })) {
+        if (e.type === 'hit' || e.type === 'solid') (boltHits ??= []).push(e.at);
+        if (e.type !== 'hit') continue;
+        if (e.bolt.tag === 'rickall') fns.current.landRickall(e.body.ref.id);
+        else if (e.body.ref === 'duel') fns.current.landDuel(a.act(s.area, 'hit', e.body.id));
+      }
+    }
+
     s.emit ??= (name, e) => s.events.push([name, e]);
     try {
       a.render(
@@ -1433,6 +1483,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           // (Morty's word to someone, while it plays, in the area he said it in; his emote)
           talk: s.talk && s.talk.area === s.area && s.t - s.talk.at < s.talk.hold ? s.talk : null,
           emote: readEmote(s, s.t),
+          bolts: sh ? sh.shots.live() : null,
+          boltHits,
         },
         ms,
       );

@@ -21,8 +21,9 @@
 // sight(): the camera goes on it, `back` behind its start, as that file's
 // view() has it) and rickall ({ game, aim, hide }, for the house to draw),
 // talk ({ id, n, hold, x, z }: Morty's word to someone, while it plays; his
-// head turns to them, and theirs to him) and emote (lib/emote.js's readEmote
-// of his: played on him once) }.
+// head turns to them, and theirs to him), emote (lib/emote.js's readEmote
+// of his: played on him once) and bolts, boltHits (his shots in flight,
+// ./rmShots.js's, and where any ended this frame) }.
 //
 // Morty's body: his feet paced to the ground he covers, tucked up in a jump
 // (./living.js's stepMotion, locomotion.js), a glance about now and then
@@ -49,6 +50,7 @@ import { gentleRamp, kitMaterials } from './kit';
 import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
 import { ANNEX_LIGHT, ANNEX_SKY, STREET_SKY, SUN_DIR, makeSky } from './sky';
 import { createFx, portalMaterial } from './fx';
+import { createBoltMeshes } from '../../../lib/three/combat/bolts';
 import { buildArcade } from './arcade';
 import { buildGarage, buildHouse, buildSchoolRoom, buildUpstairs } from './interiors';
 import { buildBasement } from './interiors/basement';
@@ -179,6 +181,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   scene.add(hemi, sun, sun.target);
 
   const fx = createFx();
+  const bolts = createBoltMeshes(scene, { pool: 16, flashes: 6 }); // Morty's shots (./rmShots.js): state.bolts, and state.boltHits where they ended
   scene.add(fx.group);
   const mats = kitMaterials(renderer);
 
@@ -681,6 +684,9 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     areas[area].update?.(t, dt, state, camera);
     if (fx.portal.visible) fx.portal.rotation.y = Math.atan2(camera.position.x - fx.portal.position.x, camera.position.z - fx.portal.position.z);
     fx.update(dt, t);
+    bolts.sync(state.bolts ?? []);
+    for (const at of state.boltHits ?? []) bolts.flash(at);
+    bolts.update(dt);
     floorLight?.update();
     renderer.info.reset();
     stage.render(ms);
@@ -791,6 +797,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       // models a builder never put in the scene
       for (const o of models.values()) if (o && !o.parent) disposeTree(o);
       fx.dispose();
+      bolts.dispose();
       ink.dispose(); // (the composer doesn't free its passes)
       glowMat.dispose();
       saucer?.traverse((o) => o.userData.glass?.dispose());
