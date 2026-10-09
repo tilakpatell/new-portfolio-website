@@ -93,6 +93,9 @@ import { createPress, pressGroups } from '../../../lib/press';
 import { rideFov } from './rides';
 import { downAt } from './respawn';
 import { createSquash } from './squash';
+import { createKnocks, loosePlaces } from './knocks';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createDust } from '../../../lib/three/dust';
 import { createGrass } from '../../../lib/three/grass';
 import { amountsFor } from './amounts';
 import { createWind } from '../../../lib/three/wind';
@@ -2298,6 +2301,24 @@ export async function create(canvas, ctx) {
     camInit = false;
   }
 
+  // loose crates and barrels by the site's stacks, for you to shove and a
+  // speeder to scatter (knocks.js): each hit a thud there, a puff, a nudge
+  const knockDust = createDust({ count: 48, size: 0.9 });
+  scene.add(knockDust.mesh);
+  const knockHits = wireImpacts({
+    dust: knockDust,
+    shake: (k) => feel.trauma(k),
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(new V()).toArray() }),
+    toWorld: (at) => (Array.isArray(at) ? at : [at.x, at.y, at.z]),
+  });
+  let knocks = null;
+  createKnocks({ parent: scene, dev: device(), impacts: knockHits, places: loosePlaces(site.things, (x, z) => groundAt(world, x, z)), ground: (x, z) => groundAt(world, x, z), things: site.things })
+    .then((k) => {
+      if (disposed) k.dispose();
+      else knocks = k;
+    })
+    .catch(() => {});
+
   // ── Each frame ──
   const tmp = new V();
   const flash = { k: 0 };
@@ -3046,6 +3067,8 @@ export async function create(canvas, ctx) {
     place(dt);
     shot();
     stepImpacts();
+    knocks?.step(dt, me().st, state.phase === 'ride' ? state.riding : null);
+    knockHits.update(dt);
     fx.update(dt);
     spring(state.kick, dt, 240, 22);
     state.aim = Math.max(0, state.aim - dt / 2.5);
@@ -3561,6 +3584,9 @@ export async function create(canvas, ctx) {
     dispose() {
       disposed = true;
       lit?.dispose();
+      knocks?.dispose();
+      knockHits.dispose();
+      scene.remove(knockDust.mesh);
       for (const p of people) p.saber?.dispose();
       for (const b of state.bombs) scene.remove(b.m);
       lockRing.geometry.dispose();
