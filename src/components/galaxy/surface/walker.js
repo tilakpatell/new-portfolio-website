@@ -39,9 +39,11 @@ export const turnToward = (from, to, max) => from + clamp(wrapAngle(to - from), 
 export function createSolids(cell = 16) {
   const cells = new Map();
   const all = [];
+  const added = new Set(); // (who hears a solid added: the physics world, after it's built)
   const key = (i, j) => i * 73856093 + j * 19349663;
   const put = (s, minX, minZ, maxX, maxZ) => {
     all.push(s);
+    for (const fn of added) fn(s);
     for (let i = Math.floor(minX / cell); i <= Math.floor(maxX / cell); i++)
       for (let j = Math.floor(minZ / cell); j <= Math.floor(maxZ / cell); j++) {
         const k = key(i, j);
@@ -54,6 +56,10 @@ export function createSolids(cell = 16) {
   const seen = new Set(); // (one for every call: near() runs many times a frame)
   return {
     all,
+    onAdd(fn) {
+      added.add(fn);
+      return () => added.delete(fn);
+    },
     circle(x, z, r, { top = null, base = null, tag = null } = {}) {
       return put({ type: 'circle', x, z, r, top, base, tag }, x - r, z - r, x + r, z + r);
     },
