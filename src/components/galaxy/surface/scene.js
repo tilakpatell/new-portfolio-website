@@ -92,6 +92,7 @@ import { createFeel, feelGroups } from '../../../lib/three/feel';
 import { createPress, pressGroups } from '../../../lib/press';
 import { rideFov } from './rides';
 import { downAt } from './respawn';
+import { createSquash } from './squash';
 import { createGrass } from '../../../lib/three/grass';
 import { amountsFor } from './amounts';
 import { createWind } from '../../../lib/three/wind';
@@ -375,6 +376,8 @@ export async function create(canvas, ctx) {
   // trauma², held still under reduced motion), and the jump's press
   const feel = createFeel({ calm: reduced, offset: 0.3 });
   const jumpPress = createPress();
+  // your landing's squat, on a spring (squash.js)
+  const squash = createSquash({ calm: reduced });
   const panel = debugOn() ? debugPanel({ title: site.id, groups: [...surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), ...feelGroups(feel), ...pressGroups(jumpPress)], code: siteCode }) : null;
   // the Meshy cast (the cruiser's two, the peers'): made here, before the
   // people, where a page's figure maker draws on it too (ctx.figures(cast)
@@ -2429,6 +2432,7 @@ export async function create(canvas, ctx) {
       }
     }
     if (o.landed > 3) sounds.step(1.6);
+    squash.land(o.landed);
   }
 
   function stepRide(dt) {
@@ -2529,6 +2533,10 @@ export async function create(canvas, ctx) {
       const mine = i === lead;
       pp.holder.position.set(st.x, st.y, st.z);
       pp.holder.rotation.y = st.yaw;
+      if (mine) {
+        squash.step(dt);
+        pp.holder.scale.set(...squash.scale());
+      }
       // sat on what you ride, or stood off it (the figure's base state:
       // a vehicle's controls, a creature's back)
       const riding = state.phase === 'ride' && mine;
