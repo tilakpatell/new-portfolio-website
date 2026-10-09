@@ -50,7 +50,6 @@ export const OWN_SHAKE = [
   ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: RANDOM })),
   { file: 'rickmorty/citadel/scene.js', pattern: RANDOM },
   { file: 'rickmorty/portal/Portal3D.js', pattern: /\(Math\.random\(\) - 0\.5\) \* sh\b/ },
-  { file: 'rickmorty/world/sewer/scene.js', pattern: /Math\.sin\(t \* 31\) \* shake/ },
   { file: 'middleearth/Bridge3D.js', pattern: /A\.shake \* A\.shake \* 0\.7/ },
   { file: 'middleearth/Gorgoroth3D.js', pattern: /A\.shake \* A\.shake \* 0\.5/ },
 ];
@@ -70,7 +69,6 @@ export const NO_PRESS = [
   { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
   { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
-  { file: 'rickmorty/world/sewer/rules.js', pattern: /input\.hop && r\.hop <= 0/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
   { file: 'middleearth/rush/Rush.jsx', pattern: /sm\.dash = false/ },
   { file: 'rickmorty/portal/rules.js', pattern: /p\.dashes < 1 \|\| p\.dashT > 0\) return false/ },
