@@ -277,6 +277,11 @@ Rotating the cutout UV by wind magnitude makes the canopy edge "crawl". Colour: 
 
 **Falling leaves** (`Leaves.js`) are a TSL **compute** particle system: `count = 2^round(remap(yearCycles.leaves, 0.25,1, 7,11))` (128 in spring … 2048 in fall), `instancedArray` position/velocity buffers, skewed quads (`±0.15`), scale `0.25 × (0.5..1)`, colours `0x95513a → 0xf56a3a` by hash. Per-frame compute (`171-254`): vehicle push (`pushSideways 20`, `pushVelocity 100`, within 0.5–2 m, × speed), wind `max(0, wind.strength − perlin(xz*0.005 + dir*t)) * weight * 0.5`, explosion impulse, lift `v.y = min(|v.xz|,2) * remapClamp(y,0,6,1,0)`, damping `1.5` on land / `0.75` on water / `1.5` airborne, gravity `9.807 * weight(0.1–0.2)`, clamp to `floorY = remapClamp(B, 0.02,0.13, 0, −0.3) + 0.02` (they float on water), toroidal wrap. Vertex flutter: `rotateUV(xy, sin(x*3)*h)`, `rotateUV(yz, sin(z*3)*h)`.
 
+Read again against the source (for `lib/three/leafSim.js` and `universe/landings/litter.js`, which port it):
+- The leaf is `0.25 × (0.5..1)` of a **1 m** quad (`Leaves.js:42-52, 87, 133`): 12.5 to 25 cm.
+- The count's `remap` is unclamped: spring (`leaves` 0) gives `2^round(5.67)` = 64, not 128; the 128 holds only clamped.
+- The lift is assigned each tick, not added (`:231`), and gravity is a fall speed taken off once a tick (`:240`), both at his time-scaled frame; so is the vehicle push, whose `velocity` is a displacement per tick (`PhysicsVehicle.js:519`), not m/s.
+
 **Wind lines** (`WindLines.js`, `Geometries/WindLineGeometry.js`): pool of 4 ribbons; a CatmullRom through 4 handles over 10 m with ±0.5 zigzag, 30 divisions, expanded in the vertex shader along tangent `(0,1,−1)` by `thickness(0.1) × bell(ratio) × window(|ratio − (progress*3−1)|)`, so a short white streak slides along the curve; mesh at `y = 2`, rotated to `wind.angle`, translated 1 m downwind over `duration = remapClamp(weather.wind, 0,1, 8,2)` s, spawned every 300–2000 ms. No fog/shadows.
 
 **Wind field** (`Game/Wind.js:20-43`): `angle = π·0.6`, `direction = (sin,cos)`, `strength = remapClamp(weather.wind,0,1,0.1,1)`, `localTime += dt * 0.1 * strength`:
