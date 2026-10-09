@@ -10,10 +10,11 @@
 
 import * as THREE from 'three';
 import { seeded } from '../../../lib/seeded.js';
+import { instancedBufferAttribute } from 'three/tsl';
+import { cloudMaterial as cloudLook, domeMaterial, spriteMaterial, starsMaterial } from './nodes.js';
 import { moonPhase, skyColours, starBrightness, sunAngle, sunrise } from '../rules/time.js';
 
 export const CLOUDS_Y = 128;
-const CELL = 12;
 const SUN_DISTANCE = 300;
 const SUN_SIZE = 90; // the game's 30 at 100
 const MOON_SIZE = 60; // the game's 20 at 100
@@ -33,92 +34,6 @@ function hsb(h, s, v) {
   return [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][((i % 6) + 6) % 6];
 }
 
-const domeVertex = /* glsl */ `
-out vec3 vDir;
-void main() {
-  vDir = normalize(position);
-  vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  gl_Position = p.xyww;
-}
-`;
-const domeFragment = /* glsl */ `
-layout(location = 0) out highp vec4 outColour;
-uniform vec3 sky;
-uniform vec3 fog;
-uniform vec4 glow; // the sunrise's colour and strength
-uniform vec3 sunDir;
-in vec3 vDir;
-void main() {
-  float t = smoothstep(-0.02, 0.32, vDir.y);
-  vec3 c = mix(fog, sky, t);
-  // the glow: low in the sky, on the sun's side
-  vec2 h = normalize(vDir.xz + 1e-5);
-  vec2 s = normalize(sunDir.xz + 1e-5);
-  float side = smoothstep(0.2, 1.0, dot(h, s));
-  float low = 1.0 - smoothstep(-0.1, 0.45, abs(vDir.y - 0.05));
-  c = mix(c, glow.rgb, glow.a * side * low);
-  outColour = vec4(c, 1.0);
-}
-`;
-const cloudVertex = /* glsl */ `
-uniform vec2 offset;
-out vec2 vCell;
-out float vDist;
-void main() {
-  vec4 world = modelMatrix * vec4(position, 1.0);
-  vCell = (world.xz + offset) / ${CELL.toFixed(1)};
-  vDist = length(world.xz - cameraPosition.xz);
-  gl_Position = projectionMatrix * viewMatrix * world;
-}
-`;
-const cloudFragment = /* glsl */ `
-layout(location = 0) out highp vec4 outColour;
-uniform sampler2D map;
-uniform vec3 fog;
-uniform vec3 tint;
-uniform float far;
-in vec2 vCell;
-in float vDist;
-void main() {
-  vec4 t = texture(map, fract(vCell / 256.0));
-  if (t.a < 0.5) discard;
-  float fade = 1.0 - smoothstep(far * 0.6, far, vDist);
-  outColour = vec4(mix(fog, tint, fade), 0.8 * fade);
-}
-`;
-const spriteVertex = /* glsl */ `
-out vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-const spriteFragment = /* glsl */ `
-layout(location = 0) out highp vec4 outColour;
-uniform sampler2D map;
-uniform vec4 frame; // the part of the picture: u, v, width, height
-uniform float strength;
-in vec2 vUv;
-void main() {
-  vec2 uv = frame.xy + vec2(vUv.x, 1.0 - vUv.y) * frame.zw;
-  outColour = vec4(texture(map, uv).rgb * strength, 1.0);
-}
-`;
-const starVertex = /* glsl */ `
-void main() {
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  gl_Position.z = gl_Position.w;
-  gl_PointSize = 2.0;
-}
-`;
-const starFragment = /* glsl */ `
-layout(location = 0) out highp vec4 outColour;
-uniform float strength;
-void main() {
-  outColour = vec4(vec3(strength), 1.0);
-}
-`;
-
 export function createSky(scene, { sun, moon, clouds }) {
   const sky = new THREE.Vector3(...skyColour());
   const fog = new THREE.Vector3();
@@ -127,18 +42,8 @@ export function createSky(scene, { sun, moon, clouds }) {
   scene.add(group);
   let distance = 10;
 
-  const dome = new THREE.Mesh(
-    new THREE.SphereGeometry(500, 24, 12),
-    new THREE.ShaderMaterial({
-      glslVersion: THREE.GLSL3,
-      vertexShader: domeVertex,
-      fragmentShader: domeFragment,
-      uniforms: { sky: { value: new THREE.Vector3() }, fog: { value: fog }, glow: { value: new THREE.Vector4() }, sunDir: { value: new THREE.Vector3(0, 1, 0) } },
-      side: THREE.BackSide,
-      depthWrite: false,
-      depthTest: false,
-    }),
-  );
+  const domeLook = domeMaterial({ fog });
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 12), domeLook.material);
   dome.renderOrder = -4;
   dome.frustumCulled = false;
   group.add(dome);
@@ -152,16 +57,19 @@ export function createSky(scene, { sun, moon, clouds }) {
     const r = Math.sqrt(1 - u * u);
     pts.push(r * Math.cos(a) * 400, u * 400, r * Math.sin(a) * 400);
   }
-  const stars = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)), new THREE.ShaderMaterial({ glslVersion: THREE.GLSL3, vertexShader: starVertex, fragmentShader: starFragment, uniforms: { strength: { value: 0 } }, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true }));
+  // (a sprite drawn once a star, two pixels across: nodes.js's starsMaterial says why not points)
+  const starLook = starsMaterial();
+  starLook.material.positionNode = instancedBufferAttribute(new THREE.InstancedBufferAttribute(new Float32Array(pts), 3));
+  const stars = new THREE.Sprite(starLook.material);
+  stars.count = pts.length / 3;
   stars.renderOrder = -3;
   stars.frustumCulled = false;
   group.add(stars);
 
   const sprite = (map, size) => {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(size, size),
-      new THREE.ShaderMaterial({ glslVersion: THREE.GLSL3, vertexShader: spriteVertex, fragmentShader: spriteFragment, uniforms: { map: { value: map }, frame: { value: new THREE.Vector4(0, 0, 1, 1) }, strength: { value: 1 } }, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true }),
-    );
+    const look = spriteMaterial(map);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), look.material);
+    m.userData.u = look.u;
     m.renderOrder = -2;
     m.frustumCulled = false;
     m.visible = Boolean(map);
@@ -171,15 +79,7 @@ export function createSky(scene, { sun, moon, clouds }) {
   const sunMesh = sprite(sun, SUN_SIZE);
   const moonMesh = sprite(moon, MOON_SIZE);
 
-  const cloudMaterial = new THREE.ShaderMaterial({
-    glslVersion: THREE.GLSL3,
-    vertexShader: cloudVertex,
-    fragmentShader: cloudFragment,
-    uniforms: { map: { value: clouds }, offset: { value: new THREE.Vector2() }, fog: { value: fog }, tint: { value: new THREE.Vector3(1, 1, 1) }, far: { value: 300 } },
-    transparent: true,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
+  const { material: cloudMaterial, u: cloudU } = cloudLook({ map: clouds, fog });
   if (clouds) {
     clouds.wrapS = clouds.wrapT = THREE.RepeatWrapping;
     clouds.needsUpdate = true;
@@ -196,43 +96,45 @@ export function createSky(scene, { sun, moon, clouds }) {
     // the time of day in ticks, the camera, the render distance in blocks, the ticks for the clouds' drift
     update(time, camera, far, ticks) {
       const c = skyColours(time, [sky.x, sky.y, sky.z], distance);
-      dome.material.uniforms.sky.value.set(...c.sky);
+      domeLook.u.sky.value.set(...c.sky);
       fog.set(...c.fog);
       const glow = sunrise(time);
-      dome.material.uniforms.glow.value.set(...(glow ?? [0, 0, 0, 0]));
+      domeLook.u.glow.value.set(...(glow ?? [0, 0, 0, 0]));
       dome.position.copy(camera.position);
       stars.position.copy(camera.position);
-      stars.material.uniforms.strength.value = starBrightness(time);
+      starLook.u.strength.value = starBrightness(time);
       // the sky turns about the north–south axis: the sun up in the east, down in the west
       const a = sunAngle(time);
       dir.set(-Math.sin(a), Math.cos(a), 0);
       stars.rotation.z = a;
-      dome.material.uniforms.sunDir.value.copy(dir);
+      domeLook.u.sunDir.value.copy(dir);
       sunMesh.position.copy(camera.position).addScaledVector(dir, SUN_DISTANCE);
       sunMesh.lookAt(camera.position);
       moonMesh.position.copy(camera.position).addScaledVector(dir, -SUN_DISTANCE);
       moonMesh.lookAt(camera.position);
       // the moon's picture is four by two phases
       const phase = moonPhase(time);
-      moonMesh.material.uniforms.frame.value.set((phase % 4) / 4, Math.floor(phase / 4) / 2, 0.25, 0.5);
+      moonMesh.userData.u.frame.value.set((phase % 4) / 4, Math.floor(phase / 4) / 2, 0.25, 0.5);
       // clouds grey with the night, as the game's
       const f = Math.max(0, Math.min(1, Math.cos(a) * 2 + 0.5));
-      cloudMaterial.uniforms.tint.value.set(f * 0.9 + 0.1, f * 0.9 + 0.1, f * 0.85 + 0.15);
+      cloudU.tint.value.set(f * 0.9 + 0.1, f * 0.9 + 0.1, f * 0.85 + 0.15);
       const size = Math.max(far * 2.2, 400);
       cloudPlane.scale.set(size, 1, size);
       cloudPlane.position.set(camera.position.x, CLOUDS_Y, camera.position.z);
-      cloudMaterial.uniforms.offset.value.set(ticks * 0.03, 0);
-      cloudMaterial.uniforms.far.value = size / 2;
+      cloudU.offset.value.set(ticks * 0.03, 0);
+      cloudU.far.value = size / 2;
     },
     setFog(n) {
       distance = n;
     },
     dispose() {
       scene.remove(group);
-      for (const m of [dome, stars, sunMesh, moonMesh, cloudPlane]) {
+      for (const m of [dome, sunMesh, moonMesh, cloudPlane]) {
         m.geometry.dispose();
         m.material.dispose();
       }
+      // (a sprite's quad is every sprite's: only the stars' material goes)
+      stars.material.dispose();
     },
   };
 }
