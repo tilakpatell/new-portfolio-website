@@ -68,7 +68,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth`, `claude/feel-middleearth-look` | Tier 1: #728 (Tier 2: none in the roster); the look: #732 | yes, both |
 | 2B | | | | |
 | 2C | | | | |
-| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: (opening) | Tiers 1 and 2 |
+| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740 | Tiers 1 and 2 |
 | 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733 | |
 | 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1) | |
 
