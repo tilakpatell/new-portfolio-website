@@ -752,3 +752,29 @@ describe('every kind of battle', () => {
     expect(k.sent.fight.at(-1).m[`c:${r.slot}`]).toBeGreaterThan(0);
   });
 });
+
+describe('the battle, as bodies for ship contact', () => {
+  it('answers the other side’s fighters, never a hull (those are solids), a ram on one the battle’s strike', () => {
+    const k = kit();
+    k.front.enter(systemById(FRONT_ID), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    const b = k.front.battle;
+    const bodies = k.front.bodies;
+    const theirs = b.fighters.filter((f) => f.alive && f.team !== b.you.team);
+    expect(bodies.map((o) => o.key).sort()).toEqual(theirs.map((f) => `f:${f.id}`).sort());
+    expect(bodies.every((o) => o.side === 'foe')).toBe(true);
+    const capitals = new Set(b.capitals.map((c) => c.kind));
+    expect(bodies.some((o) => capitals.has(o.kind) && o.size > 2)).toBe(false);
+    const one = bodies.find((o) => !theirs.find((f) => f.id === o.id).ace);
+    const f = theirs.find((o) => o.id === one.id);
+    expect(one.at).toBe(f.seen);
+    expect(one.hit(f.hp)).toMatchObject({ id: f.id, down: true });
+    expect(k.front.bodies.some((o) => o.key === one.key)).toBe(false);
+  });
+  it('answers nothing for one who’s sworn to nobody', () => {
+    const k = kit(null);
+    k.front.enter(systemById(FRONT_ID), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(k.front.bodies).toEqual([]);
+  });
+});

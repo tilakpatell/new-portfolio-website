@@ -20,6 +20,8 @@
 // reach (how far from the middle you can go), water? (a level you wade
 // in and can't go under) }
 
+import { springStep } from '../../../lib/spring';
+
 export const WALK = { walk: 3.3, run: 7.4, accel: 26, air: 5, turn: 11, jump: 5.4, gravity: 15.5, step: 0.55, steep: 0.6, radius: 0.38, wade: 0.85 };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -347,8 +349,12 @@ function solidTop(world, x, z, y, rules) {
 // (m over the ground; 0 runs on it), fly? ({ alt, climb, floor }: it flies,
 // jump climbing it at climb m/s to alt over the ground, never under floor),
 // bank, radius, grip (0…1: how much it keeps going the way it's pointed) }
+// the rides' bank spring: about the old ease's pace (it settled in a fifth
+// of a second), damped to ring once (ζ ≈ 0.7, a few per cent over)
+export const BANK = { k: 60, c: 11 };
+
 export function rider(x, z, y, yaw = 0) {
-  return { x, y, z, yaw, speed: 0, vx: 0, vz: 0, vy: 0, bank: 0, pitch: 0, grounded: true };
+  return { x, y, z, yaw, speed: 0, vx: 0, vz: 0, vy: 0, bank: 0, bankV: 0, pitch: 0, grounded: true };
 }
 
 export function ride(s, input, dt, world, spec) {
@@ -360,7 +366,9 @@ export function ride(s, input, dt, world, spec) {
   // turning: sharper slow, steadier fast
   const turn = spec.turn * (0.35 + 0.65 * Math.min(1, Math.abs(s.speed) / 6)) * (s.speed < 0 ? -1 : 1);
   s.yaw -= input.x * turn * dt;
-  s.bank += (input.x * Math.min(1, Math.abs(s.speed) / spec.top) * spec.bank - s.bank) * Math.min(1, dt * 5);
+  // the bank into the turn, on a spring: it leans a touch past and rings
+  // back, which reads as weight (a first-order ease only ever follows)
+  [s.bank, s.bankV] = springStep(s.bank, s.bankV ?? 0, input.x * Math.min(1, Math.abs(s.speed) / spec.top) * spec.bank, BANK.k, BANK.c, dt);
   // its velocity swings round to where it's pointed (a hover vehicle drifts)
   const fx = Math.sin(s.yaw) * s.speed;
   const fz = Math.cos(s.yaw) * s.speed;

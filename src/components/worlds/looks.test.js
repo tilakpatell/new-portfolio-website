@@ -30,12 +30,6 @@ const EXPECTED_MISSING = [
   'cybertron/world',
   'cybertron/game',
   'cybertron/rollout',
-  'avengers/world',
-  'avengers/hq',
-  'invincible/world',
-  'invincible/thinkmark',
-  'invincible/viewer',
-  'caribbean/tide',
 ];
 
 const looks = import.meta.glob('../**/look.js');

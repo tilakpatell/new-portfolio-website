@@ -465,6 +465,7 @@ export function step(g, input = {}, dt = STEP) {
   // you, standing still while a talk is open
   const was = { x: you.x, z: you.z, room: you.room };
   // (holding your father up, you walk)
+  // (the jump's buffer and coyote time are walker.js's: the press is passed on as it came)
   const walk = g.talk ? {} : plot.held(g, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch });
   for (const e of stepBody(you, walk, dt, { layout, open, solids: g.solidsOf(you.room) })) {
     g.events.push(e);

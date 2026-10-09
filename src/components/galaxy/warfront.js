@@ -48,7 +48,7 @@
 // createWarFront(scene, { models, small, reduced, tier, emit, makeScene,
 //   now, allegiance, saves }) → { enter(sys, world), update(dt, t, camera, live, you) → { busy, hurt,
 //   ship?, speedCap?, kill? },
-//   hit(from, to, damage), targets, solids, setNet(client), onNet(e), battle,
+//   hit(from, to, damage), targets, solids, bodies (shipHits.js's: the other side's fighters), setNet(client), onNet(e), battle,
 //   director, info, win(team), dispose() }
 // `allegiance()` → { war, side } (allegiance.js's current). `saves`: the
 // browser's (runtime/saves.js), for the battle's save. `live`: the ship ({ x, y, z }) while it's flying, or null;
@@ -611,6 +611,17 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     },
     get solids() {
       return solids;
+    },
+    // the other side's fighters, while you're in it on a side, as
+    // shipHits.js's bodies (a ram on one the battle's strike; the hulls are solids)
+    get bodies() {
+      if (!battle || battle.over || team === null) return [];
+      const out = [];
+      for (const f of battle.fighters) {
+        if (!f.alive || f.team === team) continue;
+        out.push({ key: `f:${f.id}`, id: f.id, kind: f.kind, at: f.seen, vel: f.vel, size: f.size, side: 'foe', hit: (punch) => battle?.strike(f.id, punch) ?? null });
+      }
+      return out;
     },
     get battle() {
       return battle;

@@ -349,10 +349,12 @@ export function fireSound(kind) {
 }
 
 // Into a planet too fast: a deep boom, the blast and the bits coming down
-export function crashSound() {
+// k: how loud, 0…1 (ship.js's crashLoud, by the speed it went in at); 1 as it always was
+export function crashSound(k = 1) {
   const ac = audioContext();
   const out = ac ? output() : null;
-  if (!ac || !out) return;
+  if (!ac || !out || !(k > 0)) return;
+  const v = Math.min(1, k);
   const t = ac.currentTime + 0.01;
   const o = ac.createOscillator();
   o.type = 'sine';
@@ -360,19 +362,19 @@ export function crashSound() {
   o.frequency.exponentialRampToValueAtTime(32, t + 1.1);
   const g = ac.createGain();
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.5 * v, t + 0.02);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
   o.connect(g).connect(out);
   o.start(t);
   o.stop(t + 1.4);
-  whoosh(1.4, 1600, 90, 0.32);
+  whoosh(1.4, 1600, 90, 0.32 * v);
   tones(
     [
       [180, 0.05, 0.12],
       [120, 0.2, 0.1],
       [210, 0.38, 0.08],
     ],
-    { type: 'square', gain: 0.03 },
+    { type: 'square', gain: 0.03 * v },
   );
 }
 
