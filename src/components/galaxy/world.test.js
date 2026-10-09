@@ -5,6 +5,7 @@ import { placesOf } from './places';
 import { makeSpace } from './space';
 import { buildSystem } from './world';
 import { LASER } from './fx';
+import { TURRETS } from '../universe/wars';
 
 // the parts that draw (the planets' shaders, the rocks, the ships) stood in
 // for: these are about what's built, where, and what it does over time
@@ -242,6 +243,86 @@ describe('buildSystem', () => {
     const w = buildSystem(systemById('endor'), { ...k, small: false });
     for (let i = 0; i < 120; i++) w.update(T0 + i / 30, 1 / 30, camera, null);
     expect(k.bolts.fire.mock.calls.length).toBeGreaterThan(20);
+    w.dispose();
+  });
+
+  // the parked capitals as the garrison's mind sees them (garrisonRules.js's posts)
+  it('Hoth’s fleet stands as posts', () => {
+    const w = buildSystem(systemById('hoth'), { ...kit(), small: false });
+    w.update(T0, 0, camera, null);
+    const posts = w.posts();
+    expect(posts.map((p) => p.kind)).toEqual(['executor', 'destroyer', 'destroyer', 'destroyer', 'destroyer']);
+    for (const p of posts) {
+      expect(p.id).toMatch(/^fleet-0-/);
+      expect(p.side).toBe('empire');
+      expect(p.batteries.length, p.id).toBe(TURRETS[p.kind].length);
+      // (its hull where the solids have it, but for its ride at anchor)
+      const hull = w.solids.filter((o) => o.hull === p.id.replace(/^fleet-\d+-/, 'fleet-'));
+      expect(p.spheres.length, p.id).toBe(hull.length);
+      p.spheres.forEach((s, i) => {
+        expect(Math.hypot(s.c.x - hull[i].at[0], s.c.y - hull[i].at[1], s.c.z - hull[i].at[2]), p.id).toBeLessThanOrEqual(p.size * 0.012 + 1e-9);
+        expect(s.r).toBeCloseTo(hull[i].r);
+      });
+    }
+    w.dispose();
+  });
+
+  it('a garrison’s escorts stand as posts', () => {
+    const w = buildSystem(systemById('mustafar'), { ...kit(), small: false });
+    w.setEffects({ fleet: 'rebel', heat: 0 });
+    const posts = w.posts();
+    expect(posts.length).toBe(2); // (and the Empire's fleet, hidden, none)
+    expect(posts.every((p) => /^garrison-/.test(p.id) && p.side === 'rebel')).toBe(true);
+    expect(posts.map((p) => p.kind).sort()).toEqual(['corvette', 'nebulon']);
+    w.setEffects(null);
+    expect(w.posts().some((p) => /^garrison-/.test(p.id))).toBe(false);
+    expect(w.posts().map((p) => p.side)).toEqual(['empire']);
+    w.dispose();
+    // the Remnant's garrison where the Empire's stood, the same ships: the Remnant's posts
+    const endor = buildSystem(systemById('endor'), { ...kit(), small: false });
+    endor.setEffects({ fleet: 'empire', heat: 0 });
+    endor.setEffects({ fleet: 'remnant', heat: 0 });
+    expect(endor.posts().map((p) => p.side)).toEqual(['remnant', 'remnant']);
+    endor.dispose();
+  });
+
+  it('no posts while the battle is on', () => {
+    const w = buildSystem(systemById('hoth'), { ...kit(), small: false });
+    expect(w.posts().length).toBe(5);
+    w.quiet(true);
+    expect(w.posts()).toEqual([]);
+    w.quiet(false);
+    expect(w.posts().length).toBe(5);
+    w.dispose();
+    const mustafar = buildSystem(systemById('mustafar'), { ...kit(), small: false });
+    mustafar.setEffects({ fleet: 'rebel', heat: 0 });
+    mustafar.quiet(true);
+    expect(mustafar.posts()).toEqual([]);
+    mustafar.dispose();
+  });
+
+  it('a post rides with its ship', () => {
+    const k = kit();
+    const slots = [];
+    const slot = k.models.slot;
+    k.models.slot = (kind, size) => {
+      const s = slot(kind, size);
+      slots.push(s);
+      return s;
+    };
+    // (Naboo's Lucrehulks bob at anchor and turn)
+    const w = buildSystem(systemById('naboo'), { ...k, small: false });
+    w.update(T0, 0, camera, null);
+    const [post] = w.posts();
+    const holder = slots.find((s) => s.holder.position.x === post.at.x && s.holder.position.z === post.at.z).holder;
+    const was = { y: post.at.y, yaw: post.yaw };
+    w.update(T0 + 30, 1, camera, null);
+    expect(w.posts()[0]).toBe(post); // (kept, and refreshed)
+    expect(post.at.y).toBe(holder.position.y);
+    expect(post.yaw).toBe(holder.rotation.y);
+    expect(post.at.y).not.toBe(was.y);
+    expect(post.yaw).not.toBe(was.yaw);
+    expect(post.side).toBe('separatists');
     w.dispose();
   });
 });

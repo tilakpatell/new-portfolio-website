@@ -19,13 +19,18 @@
 // buildSystem(sys, { models, bolts, flashes, small, ratio }) → { group, solids,
 //   goals, body, shield, tractor, update(t, dt, camera, ship) → busy,
 //   setDetail(k), setRatio(r), events (drained by the scene), wake(ship),
-//   quiet(on), setEffects(effects), garrison, war: { holdShield(up),
+//   quiet(on), setEffects(effects), garrison, posts(), war: { holdShield(up),
 //   station(kind, shown), planetShield(on) }, dispose() }
 // setEffects(effects): who holds the system in the galaxy's war
 // (warEffects.js): a fleet piece is drawn only for its holder, a standing
 // battle only while the system's fought over, and where the holder has no
 // fleet here, two of its ships stand in orbit (`garrison`); null puts it
 // back as the system's own.
+// posts(): the capital ships parked here and shown now (the fleet pieces'
+// and the garrison's) as the garrison's mind sees them: garrisonRules.js's
+// postOf, where each rides this frame, its batteries, hangar and hull, and
+// its side as the war spells it (`separatists`). None while the war's battle
+// is on here. The list and its posts are kept, and refreshed at each call.
 // quiet(on): the system's own fleets and battle (and Hoth's ion cannon) stand
 // aside, hidden and not in the way, while the war's battle is on there
 // (galaxy/warfront.js). war: the battle's set pieces' hold on the system
@@ -49,6 +54,7 @@ import { DEATHSTAR_REACH, STATION_NAMES, TRACTOR_REACH, reachOf } from './system
 import { LASER } from './fx';
 import { HULLS } from '../universe/wars';
 import { garrisonFleet, piecesShown } from './warEffects';
+import { postOf } from './garrisonRules';
 
 const TAU = Math.PI * 2;
 const SPIN = TAU / 900; // a planet turns once in fifteen minutes
@@ -103,6 +109,9 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
   const dpr = []; // the uniforms that hold the pixel ratio, for setRatio
   const events = [];
   const capitals = []; // the big ships, for the ion cannon and the battles: { slot, side, size }
+  // and for the garrison's mind (out.posts): { id, kind, side, size, at (the
+  // holder's position), yaw, slot, piece (-1: the garrison's), post (kept) }
+  const posts = [];
   // what stands aside while the war's battle is on here: the holders, the solids, and whether it is
   const ambient = { holders: [], solids: [], on: false };
   // and what the war's holder doesn't have here (setEffects: another side's
@@ -133,6 +142,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     if (o.goal) out.goals.push(o);
     return o;
   };
+  const addPost = (slot, id, side, piece) => posts.push({ id, kind: slot.kind, side, size: slot.size, at: slot.holder.position, yaw: 0, slot, piece, post: {} });
   const body = (look, r) => {
     const b = buildBody(look, { r, small });
     b.setSuns(sunLights);
@@ -247,10 +257,11 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     },
 
     // capital ships on station, riding a little at anchor (or turning, a battleship's ring)
-    fleet(p) {
+    fleet(p, i) {
       p.ships.forEach((s, j) => {
         const slot = place(models.slot(s.kind, s.size, { tint: s.tint }), s.at, { yaw: s.yaw, pitch: s.pitch, roll: s.roll });
         capitals.push({ slot, side: p.side, size: s.size });
+        addPost(slot, `fleet-${i}-${s.kind}-${j}`, p.side === 'separatist' ? 'separatists' : p.side, i); // (the war's spelling)
         ambient.holders.push(slot.holder);
         hull(slot, `fleet-${s.kind}-${j}`, true);
         const y0 = s.at[1];
@@ -863,6 +874,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
         models.drop(slot);
       }
       for (const x of garrison.solids) solids.splice(solids.indexOf(x.o), 1);
+      for (let k = posts.length - 1; k >= 0; k--) if (posts[k].piece < 0) posts.splice(k, 1);
       garrison.slots = [];
       garrison.solids = [];
       garrison.ships = want;
@@ -875,10 +887,27 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
         const before = solids.length;
         hull(slot, `garrison-${g.kind}-${j}`);
         for (const o of solids.slice(before)) garrison.solids.push({ o, r: o.r });
+        addPost(slot, `garrison-${g.kind}-${j}`, effects.fleet, -1);
       });
       out.garrison = want;
+    } else {
+      // (the same ships under another flag: the Empire's escorts are the Remnant's)
+      for (const p of posts) if (p.piece < 0) p.side = effects.fleet;
     }
     refresh();
+  };
+  // the capitals shown now, where they ride this frame (a bob at anchor, a
+  // Lucrehulk's turn)
+  const shownPosts = [];
+  out.posts = () => {
+    shownPosts.length = 0;
+    if (ambient.on) return shownPosts;
+    for (const p of posts) {
+      if (p.piece >= 0 && hidden[p.piece]) continue;
+      p.yaw = p.slot.holder.rotation.y;
+      shownPosts.push(postOf(p, p.post));
+    }
+    return shownPosts;
   };
   out.war = {
     holdShield(up) {
