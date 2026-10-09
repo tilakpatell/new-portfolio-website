@@ -1,16 +1,17 @@
 // A squad's link: its pilots in a room of their own on the relays (nostr.js's,
 // app APP_ID, the room invite.js's roomOf names, so the relays never see the
 // secret), each saying hello and the leader saying the squad's word, all of it
-// fed to squadRules.js's steps as it's heard and once a second. Loaded once
+// fed to squadRules.js's steps as it's heard and twice a second. Loaded once
 // you're online, as client.js is, and kept apart from it: the site's room
 // is public, a squad's isn't.
 //
 // Every word in the room is signature-checked (none comes often), each pilot
-// may send only so much of each kind (RATES: past that it's dropped), and
-// only a seated member is heard: a ping, a phrase or a line from anyone else
-// (turned out, not seated yet, someone else with the sid) goes nowhere. A
-// pilot you've blocked (`blocked(id)`) isn't seated while you lead, and
-// isn't heard.
+// may send only so much of each kind (RATES: past that it's dropped; PILOTS
+// are kept track of, and one new makes room by forgetting whoever's been
+// heard least lately and isn't seated), and only a seated member is heard: a
+// ping, a phrase or a line from anyone else (turned out, not seated yet,
+// someone else with the sid) goes nowhere. A pilot you've blocked
+// (`blocked(id)`) isn't seated while you lead, and isn't heard.
 //
 // Talking (wire2.js has the words): a ping (pg, onPing(ping, from): its kind,
 // where, the point and what it marks), a quick-chat phrase (qc, onQuick(i,
@@ -20,22 +21,32 @@
 // quick() and text() say whether it went: only while seated, and no faster
 // than the others take it.
 //
-// A hello comes in once you're online, then every SQUAD.helloMs (seekMs till
+// A hello goes each time the room is online (at first, and again whenever
+// the relays are back in reach: you're back, as someone who's been away, and
+// believe whatever moved on meanwhile), then every SQUAD.helloMs (seekMs till
 // you're seated), and to each pilot new in the room at once; leading, the
 // squad's word goes to them too, and to anyone asking in who won't be seated
-// (turned out, the squad full), so they're told at once. The ticks stop
-// while the relays are out of reach, so the rules see the gap and you come
-// back as someone who's been away.
+// (turned out, the squad full), so they're told at once: each at most once
+// in SQUAD.stateMs, and TELLS of them at most in that time. The ticks stop
+// while the relays are out of reach. Asked in from the roster, `via` is the
+// inviter (client.js's invite event's `from`): only the inviter's squad is
+// heard (squadRules.js's joining).
 //
 // Through a reload: `keep(word)` is handed the squad's word as it changes (and
 // null once it's over), for the page to keep with the sid; handed back as
-// `saved`, the squad's picked up where it was (squadRules.js's resume). leave()
-// says goodbye (the seat's freed at once, and leading, the next seat takes
-// over); close() goes without a word, as a page does when it's closed or
-// reloaded (the seat held SQUAD.goneMs).
+// `saved`, the squad's picked up where it was (squadRules.js's resume).
 //
-// createSquad({ sid, lead, card, load, now, blocked, saved, keep }) → { status
-// ('connecting' | 'online' | 'failed' | 'left'), selfId, view()
+// What the page calls when: leave() when the pilot leaves the squad (a
+// goodbye: the seat's freed at once, and leading, the next seat takes over);
+// close() once it's done with it: the page closing or reloading (no word: the
+// seat's held SQUAD.goneMs), or once it's over. It's over at status 'left'
+// (left, turned out, not let in, or the squad gone: view().why says which,
+// for the page to say so; asking in again, by the link once more, is a new
+// one), or 'failed' (no relay answered in time: nothing more runs, and the
+// room's left; a new one, handed what was kept as `saved`, tries again).
+//
+// createSquad({ sid, lead, via, card, load, now, blocked, saved, keep }) →
+// { status ('connecting' | 'online' | 'failed' | 'left'), selfId, view()
 // (squadRules.js's), on(fn) → off (fn({ type: 'squad' }) on any change of
 // view() or status), leave(), close(), kick(id), rally({ w, p } | null),
 // open(yes), lobby(lobby | null), instance(i | null), ping(p), quick(i),
@@ -50,16 +61,18 @@ import { CHAT, cleanText } from '../chat/text';
 import { seal, sealKey, unseal } from '../chat/seal';
 
 export const APP_ID = 'tilakpatel-portfolio-squad';
-const TICK_MS = 1000;
+const TICK_MS = 500; // (a hello till seated goes every SQUAD.seekMs, 1.5 s)
 const BYE_MS = 500; // a goodbye goes in the room's next bundle: the room's left after it
 const PILOTS = 32; // pilots in the room kept track of, at most
+const TELLS = 4; // pilots told the squad's word on its own in any SQUAD.stateMs, at most (a crowd asking in can't swell the leader's words past what a relay takes)
 // how many of each word one pilot may send: [a second, at most at once]
 const RATES = { st: [2, 8], hi: [2, 6], bye: [0.2, 2], pg: [1, 3], qc: [1, 3], ch: [0.5, 3] };
 const loadRoom = () => import('../nostr').then((m) => m.joinAsVisitor);
 
-export function createSquad({ sid, lead = false, card = () => null, load = loadRoom, now = () => Date.now(), blocked = () => false, saved = null, keep = null }) {
+export function createSquad({ sid, lead = false, via = null, card = () => null, load = loadRoom, now = () => Date.now(), blocked = () => false, saved = null, keep = null }) {
   const listeners = new Set();
-  const limits = new Map(); // pilot → { limit, at }
+  const limits = new Map(); // pilot → { limit, at (last heard) }
+  const told = new Map(); // pilot → when last told the squad's word on its own
   let status = 'connecting';
   let room = null;
   let acts = {};
@@ -92,9 +105,15 @@ export function createSquad({ sid, lead = false, card = () => null, load = loadR
     keep(word);
   };
   const setStatus = (s) => {
-    if (status === 'left' || status === s) return;
+    if (status === 'left' || status === 'failed' || status === s) return;
     status = s;
     changed();
+  };
+  // no relay answered in time: nothing more runs, and the room's left (it never was online)
+  const failed = () => {
+    clearInterval(timer);
+    room?.leave();
+    setStatus('failed');
   };
   // over (left, turned out, full, gone): no more ticks, and out of the room once a goodbye's had time to go
   const over = () => {
@@ -117,8 +136,12 @@ export function createSquad({ sid, lead = false, card = () => null, load = loadR
     const t = now();
     let l = limits.get(id);
     if (!l) {
-      if (limits.size >= PILOTS) for (const [k, v] of limits) if (t - v.at > SQUAD.goneMs) limits.delete(k);
-      if (limits.size >= PILOTS) return false;
+      // (a full table: the one heard least lately who isn't seated makes room)
+      if (limits.size >= PILOTS) {
+        let old = null;
+        for (const [k, v] of limits) if (!state.members.includes(k) && (old === null || v.at < limits.get(old).at)) old = k;
+        limits.delete(old);
+      }
       limits.set(id, (l = { limit: createLimiter(RATES), at: t }));
     }
     l.at = t;
@@ -136,7 +159,15 @@ export function createSquad({ sid, lead = false, card = () => null, load = loadR
     acts.hi.send(writeCard(c)).catch(() => {});
     step({ type: 'hello', from: me, card: c });
   };
-  const tell = (to) => leading() && acts.st.send(writeState(state), { target: to }).catch(() => {});
+  // leading: the squad's word to one pilot, at most once in SQUAD.stateMs, and to TELLS at most in that time
+  const tell = (to) => {
+    const t = now();
+    if (!leading() || t - (told.get(to) ?? -Infinity) < SQUAD.stateMs) return;
+    for (const [id, at] of told) if (t - at >= SQUAD.stateMs) told.delete(id);
+    if (told.size >= TELLS) return;
+    told.set(to, t);
+    acts.st.send(writeState(state), { target: to }).catch(() => {});
+  };
   const tick = () => {
     if (status !== 'online' || !state || state.gone) return;
     step({ type: 'tick' });
@@ -215,7 +246,7 @@ export function createSquad({ sid, lead = false, card = () => null, load = loadR
       room = joinRoom({ appId: APP_ID, cheap: new Set() }, name);
       me = room.selfId;
       const t = now();
-      state = lead ? newSquad(sid, me, t) : saved ? resume(sid, me, saved, t) : joining(sid, me, t);
+      state = lead ? newSquad(sid, me, t) : saved ? resume(sid, me, saved, t) : joining(sid, me, t, via);
       for (const ns of ['st', 'hi', 'bye', 'pg', 'qc', 'ch']) acts[ns] = room.makeAction(ns);
       acts.st.onMessage = (data, { peerId }) => {
         if (allow(peerId, 'st')) step({ type: 'state', from: peerId, wire: data });
@@ -252,19 +283,23 @@ export function createSquad({ sid, lead = false, card = () => null, load = loadR
         hello(id);
         tell(id);
       };
-      room.onStatus = (s) => setStatus(s === 'online' ? 'online' : 'connecting');
-      const up = () => {
+      // online, at first or again: back, as someone who's been away, and a hello at once
+      const online = () => {
+        if (status === 'online' || status === 'left' || status === 'failed') return;
         setStatus('online');
-        if (status === 'online' && !state.gone) hello();
+        if (state.gone) return;
+        step({ type: 'back' });
+        hello();
       };
-      if (room.ready) room.ready.then(up, () => setStatus('failed'));
-      else up();
+      room.onStatus = (s) => (s === 'online' ? online() : setStatus('connecting'));
+      if (room.ready) room.ready.then(online, failed);
+      else online();
       timer = setInterval(tick, TICK_MS);
       if (state.gone) over(); // (resumed into a squad that had turned you out)
       remember();
       changed();
     })
-    .catch(() => setStatus('failed'));
+    .catch(failed);
 
   return api;
 }

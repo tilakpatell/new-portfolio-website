@@ -55,6 +55,52 @@ async function three() {
   return { ...sk, a, b, c };
 }
 
+// A room of the test's own, no relays and nothing signed: what the squad
+// sends is kept with the time it went, and the test speaks for everyone else
+// (from(id, ns, data)). Its time passes half a second at a time.
+const ME = 'a'.repeat(64);
+const [L, A, B, J, X] = ['1', '2', '3', '4', 'e'].map((c) => c.repeat(64));
+const HELLO = { n: 'Biggs', k: 'falcon', w: '/universe', sh: 100, lv: 1, rd: 0 };
+const word = (patch = {}) => ({ e: 1, v: 1, l: L, m: [L, ME], x: [], o: 0, r: null, lb: null, i: null, ...patch });
+function bench({ ready = Promise.resolve(), ...opts } = {}) {
+  let t = 1000;
+  const sent = [];
+  const room = {
+    selfId: ME,
+    ready,
+    left: false,
+    acts: {},
+    onPeerJoin: null,
+    onStatus: null,
+    makeAction(ns) {
+      const a = { onMessage: null, send: (data, o) => (sent.push({ ns, data, to: o?.target ?? null, t }), Promise.resolve()) };
+      room.acts[ns] = a;
+      return a;
+    },
+    leave() {
+      room.left = true;
+    },
+  };
+  const s = createSquad({ sid: SID, card: () => ({ name: 'Alpha', kind: 'falcon', where: '/universe', shield: 100, level: 1, ready: false }), load: () => Promise.resolve(() => room), now: () => t, ...opts });
+  squads.push(s);
+  return {
+    s,
+    room,
+    sent,
+    get t() {
+      return t;
+    },
+    from: (id, ns, data) => room.acts[ns].onMessage(data, { peerId: id }),
+    pass(ms) {
+      for (let i = 0; i < ms; i += 500) {
+        t += 500;
+        vi.advanceTimersByTime(500);
+      }
+    },
+  };
+}
+const throwaway = (n) => Array.from({ length: n }, (_, i) => (i + 16).toString(16).padStart(64, '0'));
+
 afterEach(() => {
   for (const s of squads.splice(0)) s.close();
   vi.useRealTimers();
@@ -87,14 +133,17 @@ describe('createSquad, on the relays', () => {
 
   it('kick removes and keeps out', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    const { a, b, c, fly } = await three();
+    const { a, b, c, fly, net, pass } = await three();
     a.kick(c.id);
     await until(() => c.view().gone && b.view().members.length === 2);
     expect(c.view().why).toBe('out');
     expect(b.view().members.map((m) => m.id)).toEqual([a.id, b.id]);
-    // back by the link again, on the same key: told so, and not seated
+    // back by the link again, on the same key: told so at once, and not seated;
+    // an answer that holds once nothing has seated them in 15 s
     const again = fly('Charlie', { keys: c.keys });
-    await until(() => again.view().gone);
+    const told = () => net.relays[URLS[0]].log.some((ev) => ev.pubkey === a.id && JSON.parse(ev.content).some(([ns, , to]) => ns === 'st' && to === again.id));
+    await until(told);
+    await until(() => (pass(1000), again.view().gone));
     expect(again.view()).toMatchObject({ why: 'out', mine: null });
     expect(a.view().members.map((m) => m.id)).toEqual([a.id, b.id]);
   });
@@ -161,5 +210,107 @@ describe('createSquad, on the relays', () => {
     expect(b.view()).toMatchObject({ leader: a.id, mine: 1 });
     back.leave();
     expect(kept).toBeNull();
+  });
+});
+
+describe('createSquad, in a room of the test’s own', () => {
+  const online = (b) => until(() => b.s.status === 'online');
+
+  it('says hello every 1.5 s till seated, then every 3 s', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const b = bench();
+    await online(b);
+    const hellos = () => b.sent.filter((m) => m.ns === 'hi' && !m.to).map((m) => m.t);
+    const t0 = b.t;
+    b.pass(6000);
+    expect(hellos()).toEqual([t0, t0 + 1500, t0 + 3000, t0 + 4500, t0 + 6000]);
+    b.from(L, 'st', word());
+    expect(b.s.view()).toMatchObject({ leader: L, mine: 1 });
+    b.pass(6000);
+    expect(hellos().filter((t) => t > t0 + 6000)).toEqual([t0 + 9000, t0 + 12000]);
+  });
+
+  it('asked in from the roster, hears only the inviter’s squad', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const b = bench({ via: A });
+    await online(b);
+    b.from(X, 'st', word({ l: X, m: [X, ME] }));
+    expect(b.s.view()).toMatchObject({ leader: null, mine: null });
+    b.from(L, 'st', word({ m: [L, A, ME] }));
+    expect(b.s.view()).toMatchObject({ leader: L, mine: 2 });
+  });
+
+  it('is back when the room comes online, not when it’s made: a leader reloaded on slow relays follows the one who took over', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    let open;
+    const b = bench({ ready: new Promise((r) => (open = r)), saved: word({ l: ME, m: [ME, A] }) });
+    await until(() => b.s.view().leader === ME); // (picked up from what was kept)
+    b.pass(7000); // (the relays slow to answer)
+    open();
+    await online(b);
+    b.from(A, 'st', word({ e: 2, v: 0, l: A, m: [ME, A] })); // (A took the lead meanwhile)
+    expect(b.s.view()).toMatchObject({ leader: A, mine: 0 });
+    // and back again each time the relays return after being out of reach
+    const c = bench({ lead: true });
+    await online(c);
+    c.from(A, 'hi', HELLO);
+    c.pass(3000);
+    c.room.onStatus('connecting');
+    c.pass(5000);
+    c.room.onStatus('online');
+    expect(c.sent.at(-1)).toMatchObject({ ns: 'hi', to: null, t: c.t }); // (a hello at once)
+    c.from(A, 'st', word({ e: 2, v: 0, l: A, m: [ME, A] }));
+    expect(c.s.view()).toMatchObject({ leader: A, mine: 0 });
+  });
+
+  it('a room full of pilots heard lately still lets a new one be heard, and seated', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const b = bench({ lead: true });
+    await online(b);
+    for (const id of [L, A, B]) b.from(id, 'hi', HELLO);
+    expect(b.s.view().members).toHaveLength(4);
+    // 32 more with the sid, on keys of their own, saying hello: no seat for them
+    for (const id of throwaway(32)) b.from(id, 'hi', HELLO);
+    b.from(B, 'bye', null);
+    b.from(J, 'hi', HELLO);
+    expect(b.s.view().members.map((m) => m.id)).toEqual([ME, L, A, J]);
+  });
+
+  it('the leader tells a pilot it won’t seat at most once in 2 s, and 4 pilots at most in that time', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const b = bench({ lead: true, blocked: () => true });
+    await online(b);
+    const told = (id) => b.sent.filter((m) => m.ns === 'st' && m.to === id).length;
+    b.room.onPeerJoin(X);
+    for (let i = 0; i < 6; i++) b.from(X, 'hi', HELLO);
+    expect(told(X)).toBe(1);
+    b.pass(1500);
+    b.from(X, 'hi', HELLO);
+    expect(told(X)).toBe(1);
+    b.pass(500);
+    b.from(X, 'hi', HELLO);
+    expect(told(X)).toBe(2);
+    // a crowd at once: four told in those 2 s (X among them), the rest on a later hello
+    const crowd = throwaway(5);
+    for (const id of crowd) b.from(id, 'hi', HELLO);
+    expect(crowd.map((id) => told(id))).toEqual([1, 1, 1, 0, 0]);
+    b.pass(2000);
+    for (const id of crowd.slice(3)) b.from(id, 'hi', HELLO);
+    expect(crowd.map((id) => told(id))).toEqual([1, 1, 1, 1, 1]);
+    expect(b.s.view().members).toHaveLength(1);
+  });
+
+  it('no relay answering in time: failed, its ticks stopped and the room left, for good', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const ready = Promise.reject(new Error('no relay answered'));
+    ready.catch(() => {});
+    const b = bench({ ready });
+    await until(() => b.s.status === 'failed');
+    expect(vi.getTimerCount()).toBe(0);
+    expect(b.room.left).toBe(true);
+    for (const s of ['connecting', 'online']) {
+      b.room.onStatus?.(s);
+      expect(b.s.status).toBe('failed');
+    }
   });
 });
