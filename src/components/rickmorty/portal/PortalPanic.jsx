@@ -39,6 +39,7 @@ const buzz = (ms) => {
 
 const BEST = 'tp-portal-best';
 const PREFS = 'tp-portal-prefs';
+const STICK_DEAD = 0.1; // the touch stick's dead zone, a share of its throw
 const LEVELS = Object.keys(PANIC.levels);
 const HEROES = Object.keys(PANIC.heroes);
 const FACE = { rick: RickFace, morty: MortyFace, pickle: PickleFace };
@@ -122,6 +123,7 @@ function Game({ soft, fail }) {
           return;
         }
         gl.current = r;
+        r.tune?.(); // (behind ?debug: the shake's and the hitstop's numbers)
         if (import.meta.env.DEV) window.__PP3D__ = r; // for the browser tests
         r.resize(el.clientWidth, el.clientHeight);
         setPhase('ready');
@@ -339,6 +341,8 @@ function Game({ soft, fail }) {
       if (!onScreen.current || document.hidden || !gl.current) return;
       const running = phaseRef.current === 'running';
       let g = game.current;
+      // the game's dt this frame, slowed through a hitstop (a boss down): the feel's rule
+      const dt = gl.current.step ? gl.current.step(ms / 1000) : ms / 1000;
       if (running && g) {
         const inp = g.input;
         const pad = readPad();
@@ -358,8 +362,15 @@ function Game({ soft, fail }) {
         }
         const mv = sticks.current.move;
         if (mv) {
-          mx = Math.max(-1, Math.min(1, (mv.x - mv.ox) / 50));
-          my = Math.max(-1, Math.min(1, (mv.y - mv.oy) / 50));
+          // (a thumb resting near where it went down reads as still: the
+          // touch stick's dead zone, a tenth of its 50 px throw, as the HUD's
+          // stick has, the rest rescaled so its edge is still full speed)
+          const tx = (mv.x - mv.ox) / 50;
+          const ty = (mv.y - mv.oy) / 50;
+          const tm = Math.hypot(tx, ty);
+          const out = tm <= STICK_DEAD ? 0 : (tm - STICK_DEAD) / (1 - STICK_DEAD) / tm;
+          mx = Math.max(-1, Math.min(1, tx * out));
+          my = Math.max(-1, Math.min(1, ty * out));
         }
         inp.mx = mx;
         inp.my = my;
@@ -392,7 +403,7 @@ function Game({ soft, fail }) {
         }
         if (pe.a || pe.rb || pe.lb) dash(g);
         if (pe.start) pause(true);
-        step(g, ms / 1000);
+        step(g, dt);
       } else if (!g || phaseRef.current === 'ready') {
         // the ready screen: the autopilot plays
         if (!demo.current || demo.current.status === 'lost' || demo.current.status === 'won' || demo.current.t > 150) {
@@ -401,7 +412,7 @@ function Game({ soft, fail }) {
         g = demo.current;
         if (g.status === 'pick') choose(g, g.offer[0]);
         autopilot(g);
-        step(g, ms / 1000);
+        step(g, dt);
       }
       try {
         gl.current.render(g, ms, { calm });

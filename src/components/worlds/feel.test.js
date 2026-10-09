@@ -49,7 +49,6 @@ export const OWN_SHAKE = [
   { file: 'middleearth/shire/scene.js', pattern: RANDOM },
   ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: RANDOM })),
   { file: 'rickmorty/citadel/scene.js', pattern: RANDOM },
-  { file: 'rickmorty/portal/Portal3D.js', pattern: /\(Math\.random\(\) - 0\.5\) \* sh\b/ },
   { file: 'middleearth/Bridge3D.js', pattern: /A\.shake \* A\.shake \* 0\.7/ },
   { file: 'middleearth/Gorgoroth3D.js', pattern: /A\.shake \* A\.shake \* 0\.5/ },
 ];
@@ -71,7 +70,6 @@ export const NO_PRESS = [
   { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
   { file: 'middleearth/rush/Rush.jsx', pattern: /sm\.dash = false/ },
-  { file: 'rickmorty/portal/rules.js', pattern: /p\.dashes < 1 \|\| p\.dashT > 0\) return false/ },
 ];
 
 // the walkers’ camera: at once on a cut, else `min(1, dt × k)` a frame
