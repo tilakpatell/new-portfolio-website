@@ -146,11 +146,12 @@ const cartel = {
 // side's home to the second's. The numbers are where the lines were before
 // the spread (scale.js's SPREAD), beside their planets; the line moves as far
 // as its planet, `by`, moved (the planet's place now, less where it
-// was: x and z by SPREAD, its height by half), so a war is still fought
-// round its own world and keeps its length
+// was: x and z by SPREAD, its height twice what it was, as the spread to
+// four made it and the spread to six left it: layout.js's HEIGHT), so a war
+// is still fought round its own world and keeps its length
 const moved = (id, p) => {
   const [x, y, z] = POSITIONS[id];
-  return [p[0] + x - x / SPREAD, p[1] + y - y / (SPREAD / 2), p[2] + z - z / SPREAD];
+  return [p[0] + x - x / SPREAD, p[1] + y - y / 2, p[2] + z - z / SPREAD];
 };
 const line = (a, b, names, by) => {
   const [from, to] = [moved(by, a), moved(by, b)];

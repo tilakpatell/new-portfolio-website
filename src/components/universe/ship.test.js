@@ -781,7 +781,7 @@ describe('where a new ship starts', () => {
 
 // (the autopilot's trips are minutes of flight since the spread, scale.js's
 // SPREAD, flown at 60 steps a second: more than vitest's 5 s under load)
-const LONG = 30000;
+const LONG = 60000;
 
 describe('clearPark', () => {
   const park = { x: 10, y: 0, z: 0, heading: 1 };

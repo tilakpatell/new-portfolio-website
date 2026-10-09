@@ -118,7 +118,7 @@ describe('the drives', () => {
       expect(quick.t, id).toBeLessThan(60); // (about 1.5 times the 34 s it took the Caribbean, the furthest, at the spread to four: scale.js's SPREAD, six since 2026-10-09; under 20 before either)
       if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * (inMain(id) ? 2 : 1)); // (well past the pulse drive; the gate's close to home, and the sector's first worlds to the Citadel)
     }
-  }, 30000); // (every world twice over, minutes of flight at 60 steps a second)
+  }, 60000); // (every world twice over, minutes of flight at 60 steps a second)
 
   it('flies out to every wonder on super speed, and from world to world all the way round, without touching anything', () => {
     for (const w of WONDERS.filter((w) => w.id !== MAW.id)) {
@@ -134,7 +134,7 @@ describe('the drives', () => {
       expect(r.hits, id).toBe(0);
       s = r.s;
     }
-  });
+  }, 60000); // (every wonder and all the way round: minutes of flight at 60 steps a second)
 
   it('is no slower between the home system’s stations (it doesn’t kick in there)', () => {
     for (const id of stations.slice(1)) expect(fly(spawn('home'), id, OVERDRIVE).t, id).toBeCloseTo(fly(spawn('home'), id, 1).t, 5);
