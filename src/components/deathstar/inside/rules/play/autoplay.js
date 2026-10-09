@@ -61,6 +61,11 @@ export function lineTo(id, node, want, ctx) {
 function steer(g, to, mem) {
   const r = routeTo(g, to);
   if (!r) return { ...STILL, yaw: g.you.yaw };
+  // at the jump the way goes by (the chute's drop): E
+  if (r.next.kind === 'jump' && r.next.room === g.you.room && Math.hypot(r.next.x - g.you.x, r.next.z - g.you.z) < 1) {
+    mem.jump = !mem.jump;
+    return { ...STILL, yaw: g.you.yaw, use: mem.jump };
+  }
   const pts = r.points;
   let i = 1;
   // (a corner passed is passed; a door only once you are through it)
@@ -86,6 +91,11 @@ function steer(g, to, mem) {
 // at the person or thing a step names: face it, and E every other step
 function pressAt(g, step, mem) {
   const t = targetOf(g);
+  // (something you carry is used where you stand)
+  if (!t && g.items?.has(step.target?.tag)) {
+    mem.press = !mem.press;
+    return { ...STILL, yaw: g.you.yaw, use: mem.press };
+  }
   if (!t) return { ...STILL, yaw: g.you.yaw };
   const r = reachable(g);
   const tag = step.target?.npc ?? step.target?.tag;
@@ -120,6 +130,17 @@ function attack(g, step, mem) {
   return steer(g, { x: foe.x, y: foe.y, z: foe.z, room: foe.room }, mem);
 }
 
+function fightBack(g) {
+  const you = g.you;
+  if (!you.gun) return null;
+  const foe = g.crew.people
+    .filter((p) => p.hp > 0 && p.mode === 'fight' && p.mind?.fight?.target === 'you' && p.room === you.room && Math.hypot(p.x - you.x, p.z - you.z) < SHOOT)
+    .sort((a, b) => Math.hypot(a.x - you.x, a.z - you.z) - Math.hypot(b.x - you.x, b.z - you.z))[0];
+  if (!foe) return null;
+  const d = Math.hypot(foe.x - you.x, foe.z - you.z);
+  return { ...STILL, yaw: yawTo(you, foe), pitch: Math.atan2(foe.y + AIM_AT - (you.y + 1.45), d), aim: true, fire: true };
+}
+
 export function autoInput(g, mem = {}) {
   const step = stepOf(g);
   if (g.talk) {
@@ -130,6 +151,11 @@ export function autoInput(g, mem = {}) {
     return { ...STILL, yaw: g.you.yaw, choice: i };
   }
   if (!step || g.scene) return { ...STILL, yaw: g.you.yaw };
+  // (anyone shooting at you in your room is shot back at first, as a player would, but not while lying low)
+  if (step.type !== 'hide' && step.type !== 'still') {
+    const back = fightBack(g);
+    if (back) return back;
+  }
   switch (step.type) {
     case 'hide':
     case 'still':

@@ -23,7 +23,7 @@ import { furnish } from '../furnish';
 import { unlock } from '../doors';
 import { raise } from '../alarm';
 import { choose, openTalk, talkFor, WHO } from '../talk';
-import { feedPlot } from './plot';
+import { bringAlong, feedPlot } from './plot';
 
 const TALK_REACH = 2.6; // metres you can talk across
 const USE_REACH = 1.9; // metres you can reach a thing from
@@ -110,9 +110,9 @@ export function stepAt(g) {
 
 export function reachable(g) {
   const you = g.you;
+  // (what the story's step names comes first, so the comlink in your hand isn't lost to the hatch's keypad)
   const named = stepAt(g);
-  if (named && named.npc !== undefined) return named;
-  if (named && (named.thing || g.layout.station.spots?.[named.tag])) return named;
+  if (named) return named;
   const ctx = talkCtx(g);
   let best = null;
   for (const p of g.crew.people) {
@@ -133,8 +133,7 @@ export function reachable(g) {
     if (g.broken?.has(t.tag)) continue;
     near = { kind: t.tag === 'compactor-hatch' ? 'keypad' : 'thing', d, thing: t };
   }
-  // (something you carry is the last thing E is for, so it never takes the place of what is in front of you)
-  return near ?? named;
+  return near;
 }
 
 // what E says it will do, for the prompt
@@ -173,6 +172,8 @@ export function useHere(g) {
   if (r.kind === 'jump') {
     tell(g, { type: 'used', tag: r.jump.id });
     g.teleport(r.jump.to);
+    // (and those with you after you: down the chute, across the chasm)
+    bringAlong(g);
     return true;
   }
   if (r.kind === 'keypad') {

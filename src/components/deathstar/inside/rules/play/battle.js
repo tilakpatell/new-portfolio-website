@@ -131,6 +131,8 @@ export function stepBattle(g, dt, open, { guard = false } = {}) {
         const t = countedIn(g, g.you.room).find((q) => `thing:${q.tag}` === e.target);
         if (t) breakThing(g, t, e);
       } else if (e.target === 'you') {
+        // (a scene has the keys: nobody is shot in one, whose hands aren't on them)
+        if (g.scene) continue;
         const shooter = g.crew.byId.get(e.owner);
         const what = hurt(you, e.damage, g.time);
         g.events.push({ type: 'hurt', amount: e.damage, from: shooter ? { x: shooter.x, z: shooter.z } : null, what });

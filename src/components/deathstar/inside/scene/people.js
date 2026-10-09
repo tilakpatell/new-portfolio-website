@@ -110,7 +110,7 @@ const SWORD = {
 };
 
 export function actOf(p, { blade = false, armed = true } = {}) {
-  const raised = p.mode === 'fight' || p.mode === 'search' || p.anim === 'aim' || p.anim === 'shoot';
+  const raised = p.mode === 'fight' || p.mode === 'search' || p.anim === 'aim' || p.anim === 'shoot' || Boolean(p.mind?.duel);
   if (p.mode === 'dead') return { base: null, full: null, upper: null, raised: false, dead: true };
   // knocked down: thrown back, then on one knee until they are up
   if (p.mode === 'down') return { base: 'kneel', full: p.anim === 'hit' ? 'hit.knock' : null, upper: null, raised: false, dead: false };

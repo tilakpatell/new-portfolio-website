@@ -14,6 +14,7 @@
 //   spawnOne(g, { kind, spot, tag, role, squad, hostile, script, to }, n) → person | null   role 'lead'
 //     walks you to the spot `to`
 //   setHero(g, kind) → void        who you are: their gun, their blade
+//   bringAlong(g) → void           those with you put beside you where you have been put
 //   heldUp(g) → person | null      the father you hold up through the carry
 //   holdUp(g, moved) → void        keeps him at your side, after the crew's step (moved: metres you went)
 //   held(g, walk) → walk           the walk asked of you, without the run, jump and crouch while you hold him
@@ -127,9 +128,9 @@ function besideYou(g) {
   return null;
 }
 
-// Those who walk with you, put where you are put (across the chasm with you, off the lift), each
-// on free floor beside you, their old way forgotten
-function bringAlong(g) {
+// Those who walk with you, put where you are put (across the chasm with you, down the chute after
+// you), each on free floor beside you, their old way forgotten
+export function bringAlong(g) {
   for (const p of g.crew.people) {
     if (!p.tag?.startsWith('with:') || p.hp <= 0) continue;
     const at = besideYou(g) ?? { x: g.you.x, z: g.you.z };

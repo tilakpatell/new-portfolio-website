@@ -9,7 +9,7 @@
 //     ({ x, y, off, angle, kind, metres, goal } | null); left and top in % of the stage
 //   placeMarker(el, m)   the element as markerStyle has it
 
-const WHAT = { door: 'Door', lift: 'Lift', goal: 'Objective' };
+const WHAT = { door: 'Door', lift: 'Lift', jump: 'Way on', goal: 'Objective' };
 
 export function markerStyle(m) {
   if (!m) return { hidden: true };

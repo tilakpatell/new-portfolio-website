@@ -3,13 +3,15 @@
 // jump to take), and the way there through the station’s doors and lifts
 // (nav.js’s A*, as the crew walk), so the HUD can mark the next door, the
 // lift to take, or the target itself once it is in the room with you. The
-// way is worked out as anyone may walk it, locks and all aside: a locked
-// door on the way is the story’s to open. Pure.
+// way goes by doors you can open (a locked one the Empire's only when you
+// pass for one), and failing that by a jump that lands where the target is
+// (the chute into the compactor); only when neither reaches it does it go
+// through a locked door, which is then the story's to open. Pure.
 //
 //   targetOf(g) → { x, y, z, room, what, at? } | null   where the current story step points; what:
 //     'spot' | 'room' | 'npc' | 'thing' | 'jump'; null in free roam, between steps, or for a step
 //     with no target (one that comes to you); at: a thing's own height (a camera on the ceiling)
-//   routeTo(g, target) → { next: { x, y, z, room, kind: 'door' | 'lift' | 'goal' }, goal, metres } | null
+//   routeTo(g, target) → { next: { x, y, z, room, kind: 'door' | 'lift' | 'jump' | 'goal' }, goal, metres } | null
 //     next: where to head now; metres: the whole way’s length; null when no way is left
 
 import { furnish } from './furnish';
@@ -64,13 +66,42 @@ export function targetOf(g) {
   return spot ? { ...lift(g, spot.room, spot.x, spot.z), what: 'spot' } : null;
 }
 
+// whether you may go through a door: any not locked (a seal lifts), the Empire's own when you pass for one
+function yours(g, id, door) {
+  const s = g.doors?.[id];
+  if (!s?.locked) return true;
+  const you = g.you;
+  return door.kind !== 'hatch' && door.lock === 'side:imperial' && (you.side === 'imperial' || Boolean(you.armour && you.helmet));
+}
+const lockOpen = (g, lock) => !lock || (lock.startsWith('flag:') && g.flags?.has(lock.slice(5)));
+const length = (way) => way.reduce((m, p, i) => (i ? m + Math.hypot(p.x - way[i - 1].x, p.z - way[i - 1].z) : 0), 0);
+
+function wayTo(g, target) {
+  const you = g.you;
+  const from = { x: you.x, z: you.z, room: you.room };
+  const to = { x: target.x, z: target.z, room: target.room };
+  const own = route(g.nav, from, to, { solidsOf: g.solidsOf, canPass: (id, door) => yours(g, id, door) });
+  if (own) return { way: own };
+  // by a jump that lands in the target's room, the nearest way round
+  let best = null;
+  for (const j of g.layout.jumps ?? []) {
+    const land = g.layout.station.spots?.[j.to];
+    if (!lockOpen(g, j.lock) || (land?.room ?? j.to) !== target.room) continue;
+    const way = route(g.nav, from, { x: j.x, z: j.z, room: j.from }, { solidsOf: g.solidsOf, canPass: (id, door) => yours(g, id, door) });
+    if (way && (!best || length(way) < length(best.way))) best = { way, jump: j };
+  }
+  if (best) return best;
+  const any = route(g.nav, from, to, { solidsOf: g.solidsOf });
+  return any ? { way: any } : null;
+}
+
 export function routeTo(g, target) {
   if (!target) return null;
   const you = g.you;
-  const way = route(g.nav, { x: you.x, z: you.z, room: you.room }, { x: target.x, z: target.z, room: target.room }, { solidsOf: g.solidsOf });
-  if (!way) return null;
-  let metres = 0;
-  for (let i = 1; i < way.length; i++) metres += Math.hypot(way[i].x - way[i - 1].x, way[i].z - way[i - 1].z);
+  const found = wayTo(g, target);
+  if (!found) return null;
+  const { way, jump } = found;
+  const metres = length(way);
   // the first door or lift car not yet passed, else the target itself
   let next = null;
   for (let i = 1; i < way.length - 1; i++) {
@@ -83,5 +114,6 @@ export function routeTo(g, target) {
     } else next = { ...lift(g, p.room, p.x, p.z), kind: 'lift' };
     break;
   }
-  return { next: next ?? { x: target.x, y: target.y, z: target.z, room: target.room, kind: 'goal' }, goal: target, metres, points: way.map((p) => ({ x: p.x, z: p.z, room: p.room })) };
+  const end = jump ? { ...lift(g, jump.from, jump.x, jump.z), kind: 'jump' } : { x: target.x, y: target.y, z: target.z, room: target.room, kind: 'goal' };
+  return { next: next ?? end, goal: target, metres, points: way.map((p) => ({ x: p.x, z: p.z, room: p.room })), ...(jump ? { jump: jump.id } : {}) };
 }

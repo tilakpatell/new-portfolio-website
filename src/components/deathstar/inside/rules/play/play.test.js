@@ -292,6 +292,17 @@ describe('the second station’s end, the Rebel’s', () => {
   });
 });
 
+describe('a scene', () => {
+  it('has nobody shot while it plays, since it has the keys', () => {
+    const g = newGame({ station: 'ds1', side: 'rebel', mode: 'roam', seed: 3 });
+    const trooper = g.crew.people.find((p) => p.kind === 'stormtrooper');
+    teleport(g, trooper.room, trooper.x + Math.sin(trooper.yaw) * 4, trooper.z - Math.cos(trooper.yaw) * 4, trooper.yaw + Math.PI);
+    g.scene = { id: 'tractor', t: 0 };
+    play(g, STILL, 6);
+    expect(g.you.hp).toBe(g.you.max ?? 100);
+  });
+});
+
 describe('where the story puts you', () => {
   it('brings those with you along: Han and Chewie back in Docking Control with Luke, at his side at once', () => {
     const g = newGame({ station: 'ds1', side: 'rebel', mode: 'story', seed: 5 });
