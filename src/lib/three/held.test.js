@@ -408,6 +408,17 @@ describe('holdItem', () => {
     expect(f.rig.bones.RightForeArm.quaternion.angleTo(fq)).toBeLessThanOrEqual(1.4 + 1e-6);
   });
 
+  it('busy (a drink to the lips, a fall) the upright carry lets the hand be where the clip put it', () => {
+    const f = make();
+    const h = holdItem(f.fig, staff(), 'tankard');
+    step(f, 0.2, STILL);
+    const hq = f.rig.bones.RightHand.quaternion.clone();
+    const fq = f.rig.bones.RightForeArm.quaternion.clone();
+    h.update(DT, { busy: true });
+    expect(f.rig.bones.RightHand.quaternion.equals(hq)).toBe(true);
+    expect(f.rig.bones.RightForeArm.quaternion.equals(fq)).toBe(true);
+  });
+
   it('two hands: the other reaches the second grip, and lets go while a full-body clip plays', () => {
     const f = make();
     const spear = staff();

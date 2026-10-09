@@ -71,7 +71,8 @@
 //   upright and puts the second hand on, once the animator has laid its
 //   layers over them. A caller that never calls after gets both from
 //   update, and calls it after the animator's after. busy (or a full-body
-//   clip playing) lets the second hand go. release: the item back under
+//   clip playing) lets the second hand go and leaves the wrist to the clip
+//   (a drink to the lips, a fall). release: the item back under
 //   its old parent as it was, and on a figure with no animator (nothing to
 //   pose them again) the arm's bones the carry turned put back as they
 //   were; hide(on): hidden while on. null: no hand bone, or no frame and
@@ -453,7 +454,7 @@ export function holdItem(fig, item, kindName, opts = {}) {
     reach(other.arm, other.fore, other.hand, T, new V(left ? 1 : -1, -1, -0.5).applyQuaternion(pole).normalize(), 1);
   }
   function carry() {
-    if (spec.carry.upright) upright();
+    if (spec.carry.upright && !st.full) upright();
     second(st.full);
     st.carried = true;
   }
