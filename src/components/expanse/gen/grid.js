@@ -7,7 +7,9 @@
 // sectorId(sx, sz) → 'E:sx,sz'; parseSector(id) → [sx, sz] or null
 // sectorCentre(sx, sz) → [x, 0, z]
 
-export const SECTOR = 80000;
+// (120,000 since the universe's spread to six, scale.js's SPREAD: the authored
+// map's edge is 54,000 out, so sector (0, 0) has to reach past it)
+export const SECTOR = 120000;
 
 // (+ 0 turns -0 into 0)
 export const sectorAt = (x, z) => [

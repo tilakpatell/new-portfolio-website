@@ -228,11 +228,11 @@ describe('deep space', () => {
 
 describe('deep space, spread (scale.js’s SPREAD)', () => {
   const main = WONDERS.filter((w) => !w.sector);
-  it('puts every main-sector wonder between 8,000 and 30,000 out', () => {
+  it('puts every main-sector wonder between 12,000 and 45,000 out', () => {
     for (const w of main) {
       const r = Math.hypot(w.at[0], w.at[2]);
-      expect(r, w.id).toBeGreaterThan(8000);
-      expect(r, w.id).toBeLessThan(30000);
+      expect(r, w.id).toBeGreaterThan(12000);
+      expect(r, w.id).toBeLessThan(45000);
     }
   });
 
@@ -240,7 +240,7 @@ describe('deep space, spread (scale.js’s SPREAD)', () => {
     // (a portal sits beside its own planet: its door, not a neighbour)
     for (const w of main.filter((x) => x.kind !== 'portal')) {
       for (const p of PLACES) {
-        if (p.id === w.id || p.kind === 'station' || p.kind === 'portal' || SECTOR_OF[p.id] === 'rickmorty' || p.at[2] < -40000) continue;
+        if (p.id === w.id || p.kind === 'station' || p.kind === 'portal' || SECTOR_OF[p.id] === 'rickmorty' || p.at[2] < -60000) continue;
         const d = Math.hypot(...w.at.map((v, i) => v - p.at[i]));
         expect(d, `${w.id} and ${p.id}`).toBeGreaterThan(1.5 * reachOf(w));
       }
