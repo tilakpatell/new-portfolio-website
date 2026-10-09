@@ -55,7 +55,7 @@
 - Modify: `src/lib/three/figureCalls.js` (its `LAYERS` and `holds` gain the two arm layers)
 - Test: `src/lib/three/animator.test.js`, `src/lib/three/figureCalls.test.js`
 
-**Interfaces:** Produces `MESHY_MASKS = { upper, lower, 'arm.r': ['RightShoulder','RightArm','RightForeArm','RightHand'], 'arm.l': ['LeftShoulder','LeftArm','LeftForeArm','LeftHand'] }`; `anim.play(name, { layer: 'arm.r' | 'arm.l' })`, `anim.stop('arm.r')`, `anim.playing('arm.r')`; a full-body play cuts the arm layers as it cuts the upper.
+**Interfaces:** Produces `MESHY_MASKS = { upper, lower, 'arm.r': ['RightShoulder','RightArm','RightForeArm','RightHand'], 'arm.l': ['LeftShoulder','LeftArm','LeftForeArm','LeftHand'] }`; `anim.play(name, { layer: 'arm.r' | 'arm.l' })`, `anim.stop('arm.r')`, `anim.playing('arm.r')`; a full-body play cuts the arm layers (the upper is not cut by one, and stays so); `anim.weight(layer, w)` scales how much of a layer is laid on, for the still carry's 0.85.
 
 - [ ] Write the failing tests on `meshyRig()`: `play('walk', { layer: 'arm.r', loop: true })` over a standing idle moves only the four right-arm bones (every other bone's quaternion equals the idle's to 1e-6); `arm.r` and `arm.l` hold different clips at once; `play('fall')` on `full` cuts both (their promises resolve `'cut'`, `playing('arm.r')` is null).
 - [ ] Run: `npx vitest run src/lib/three/animator.test.js -t arm` → FAIL (unknown layer).
@@ -67,7 +67,7 @@
 
 **Files:**
 - Create: `src/lib/three/held.js`, `src/lib/three/held.test.js`
-- Modify: `src/components/universe/gunplay.js:863-920` (`handFrame`, `handPoints` deleted there and imported from `../../lib/three/held`; `createGunplay` at `:1072-1081` calls the import), `src/lib/three/meshyRig.fixture.js` (a `withHands(rig, { verts = 60 })` helper that gives the model a `SkinnedMesh` whose vertices are skinned to each hand: a plate 8 cm long out the fingers along the bone's +y, 3 cm wide across x, 1 cm thick in z, plus a thumb nub at +x 2 cm; the mesh bound with `bind(skeleton)` at rest)
+- Modify: `src/components/universe/gunplay.js:863-920` (`handFrame`, `handPoints` deleted there and imported from `../../lib/three/held`; `createGunplay` at `:1072-1081` calls the import), `src/lib/three/meshyRig.fixture.js` (a `withHands(rig, { verts = 60 })` helper that gives the model a `SkinnedMesh` whose vertices are skinned to each hand: a plate 8 cm long out the fingers along the bone's +y, 1 cm thin across x, 3 cm wide along z, plus a thumb nub at +z 2 cm (on this rig at rest the hand bone's x is lateral and its z forward, so this is a palm facing in and a thumb forward); the mesh bound with `bind(skeleton)` at rest)
 - Test: `src/lib/three/held.test.js`, `src/components/universe/gunplay.test.js` (existing, must stay green)
 
 **Interfaces:**
