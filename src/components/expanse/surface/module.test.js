@@ -323,7 +323,7 @@ describe('the Expanse surface module, drawn through the kit', () => {
     world.dispose();
   }, 30000);
 
-  it('casts shadows from its trees, bushes and rocks up close, and none from the cover', async () => {
+  it('casts shadows from its trees, bushes and rocks up close, none from the cover, and shades them all', async () => {
     const rt = fakeRt({ tier: 'high' });
     const world = await expanse.create(rt, { seed: 7, ...KIT });
     await run(world, 0.5);
@@ -336,6 +336,8 @@ describe('the Expanse surface module, drawn through the kit', () => {
       expect(full.length).toBeGreaterThan(0);
       for (const m of full) expect(m.castShadow, name).toBe(!cover);
       for (const m of p.group.children.filter((m) => m.userData.level > 0)) expect(m.castShadow, name).toBe(false);
+      // (and every one lies in the others' shade, the cover's under a tree too)
+      for (const m of p.group.children) expect(m.receiveShadow, name).toBe(true);
     }
     expect(seen.cover).toBeGreaterThan(0);
     expect(seen.species).toBeGreaterThan(0);

@@ -888,12 +888,15 @@ describe('createPool', () => {
     expect(pool.stats.levels).toEqual([10, 300, 0]);
   });
 
-  it('casts shadows from the full level only, and none when told', async () => {
+  it('casts shadows from the full level only, and none when told; takes them at every level either way', async () => {
     const pool = await poolOf();
     for (const m of meshesAt(pool, 0)) expect(m.castShadow).toBe(true);
     for (const m of [...meshesAt(pool, 1), ...meshesAt(pool, 2)]) expect(m.castShadow).toBe(false);
+    for (const m of pool.group.children) expect(m.receiveShadow).toBe(true);
     const quiet = await poolOf('Birch_1', { shadows: false });
     for (const m of quiet.group.children) expect(m.castShadow).toBe(false);
+    // (ground cover casting none still lies in a tree's shade)
+    for (const m of quiet.group.children) expect(m.receiveShadow).toBe(true);
   });
 
   it('writes matrices for the graphics chip to take each sort, and lets the bounds be found again', async () => {

@@ -340,10 +340,12 @@ const itemOf = ({ x = 0, y = 0, z = 0, yaw = 0, scale = 1 }) => ({ x, y, z, c: M
 // re-bands nothing (`stats.sorts` counts the sorts). `cap` instances a
 // level to start, grown by half again whenever the items outnumber it
 // (geometry and materials shared; never shrunk). Only the full level casts
-// shadows, and only with `shadows`. The parts load in the background
-// (`ready`); items set before then are drawn once they're in, and a model
-// that won't load draws nothing, said once (`ready` rejects). Wants the
-// kit's manifest in, and refuses a rigged model: a pool draws still props.
+// shadows, and only with `shadows`; every level takes them, `shadows` or
+// not (ground cover casting none still lies in a tree's shade). The parts
+// load in the background (`ready`); items set before then are drawn once
+// they're in, and a model that won't load draws nothing, said once (`ready`
+// rejects). Wants the kit's manifest in, and refuses a rigged model: a pool
+// draws still props.
 export function createPool(kit, name, { bands = null, cap = 256, shadows = true, puff = null, lod1 = null, wait: start = Math.random() * EVERY } = {}) {
   const row = kit.info(name);
   if (!row) throw new Error(`createPool: kit ${kit.pack} has no model ${name}`);
@@ -372,7 +374,7 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
     mesh.count = 0;
     mesh.visible = false;
     mesh.castShadow = shadows && lvl === 0;
-    mesh.receiveShadow = shadows;
+    mesh.receiveShadow = true;
     mesh.name = `${name}:${lvl}:${i}`;
     mesh.userData.level = lvl;
     group.add(mesh);

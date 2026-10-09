@@ -21,7 +21,8 @@
 // the same on every device and the thinning is the draw's). Trees, bushes
 // and rocks take the level's bands and cast shadows up close; the cover
 // (plants, flowers, grass tufts, mushrooms, pebbles, stepping stones) four
-// tenths of the bands and no shadow. The flora wants
+// tenths of the bands and casts none, but lies in the others' shade like
+// everything else. The flora wants
 // the kit's manifest in (`ready`); without it the land draws none.
 //
 // draw: the tracks into their target; on high and ultra the opaque frame
@@ -161,7 +162,7 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
     let got = pools.get(name);
     if (!got) {
       const { kind } = kit.info(name);
-      // (the cover casts no shadow: a shadow pass's draw each, for little on the ground)
+      // (the cover casts no shadow: a shadow pass's draw each, for little on the ground; it still takes the trees')
       got = createPool(kit, name, { bands: bandsOf(kind), lod1: limits.lod1, shadows: !COVER.has(kind) });
       land.add(got.group);
       pools.set(name, got);
