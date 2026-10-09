@@ -774,3 +774,18 @@ the ground's reaction.
   ground war's turfs, and the test says where.
 - **Scope**: seven steps is a lot. Each is a whole on its own, and the
   order is by what the owner sees first.
+
+## Amendments (2026-10-09, during the build)
+
+- §2.1, §2.2, §6: the gorge is dug as a run of pits (the surface's canyon
+  tool) and its floor at −22 m lies under the sea plane, which nothing
+  masks out of a channel; so the gorge is an arm of the lake and the falls
+  land in it. The `pool` prop is not built; the falls' foam is the
+  `waterfall` builder's own disc at the water's level; the falls run's two
+  gorge gates sit at 8 m between the cliff walls, over the water.
+- §2.1: the Lake Country's shore flat follows the lake's own north shore,
+  never more than 30 m lakeward of it, so Padmé's island stays an island.
+- §2.4: main's `flora.js` recipe (the living-layer design, 2026-10-09)
+  dresses Naboo's cover and lays the kit's groves where no built species
+  stands; the five built species are placed as things beside it, and no
+  flower scatter of this design's own is added.
