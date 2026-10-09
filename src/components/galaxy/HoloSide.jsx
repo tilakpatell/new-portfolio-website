@@ -26,7 +26,7 @@ const HoloSide = memo(function HoloSide({ picked, here, route, war, pickedWar, v
           {/* the jump leads (a course away from here), then how far and how long; the rest folds (open on a wide screen) */}
           {away ? (
             <button ref={jumpBtn} type="button" className="btn btn-primary holomap-jump" onClick={() => onJump(picked.id)}>
-              <RiRocket2Fill className="h-4 w-4" aria-hidden="true" /> Jump to lightspeed <kbd className="hud-cap">J</kbd>
+              <RiRocket2Fill className="h-4 w-4" aria-hidden="true" /> Jump to lightspeed <kbd className="hud-cap ml-2 [@media(hover:none)]:hidden">J</kbd>
             </button>
           ) : (
             <button ref={jumpBtn} type="button" className="btn btn-primary holomap-jump" onClick={onBack}>
