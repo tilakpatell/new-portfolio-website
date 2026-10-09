@@ -11,7 +11,7 @@ import { BUILT_KINDS } from '../universe/trafficModels';
 import { WAR_SYSTEMS, teamsOf } from './gcw';
 import { SIDES, WARS, WAR_IDS } from './sides';
 import { systemById } from './systems';
-import { BATTLE_KINDS, HUTTS, SIZE, TEMPLATES, kindFor, layBattle, obstacles, templateFor } from './battles';
+import { BATTLE_KINDS, HUTTS, SIZE, TEMPLATES, TURBO, kindFor, layBattle, obstacles, templateFor } from './battles';
 
 const KNOWN = new Set([...Object.keys(MODELS), ...GALAXY_KINDS, ...BUILT_KINDS, ...Object.keys(STAND_IN)]);
 // a battle as gcw.js's battleAt has it
@@ -195,6 +195,11 @@ describe('layBattle', () => {
       expect(s.laser).toHaveLength(3);
       expect(s.turbo).toHaveLength(3);
     }
+  });
+  it('gives every side its turbolasers’ colour, the one its batteries fire in a battle (a garrison’s, too)', () => {
+    for (const id of Object.keys(SIDES)) expect(TURBO[id]).toHaveLength(3);
+    const o = layBattle(systemById('naboo'), fake('naboo', 'hutt', 'separatists'));
+    for (const s of o.war.sides) expect(TURBO[s.id]).toEqual(s.turbo);
   });
   it('an interdiction puts the objectives on the Interdictor when the dark side defends, on the flagship when the light does', () => {
     expect(layBattle(systemById('mandalore'), fake('mandalore', 'rebel')).objectivesOn).toBe('interdictor');

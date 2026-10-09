@@ -22,6 +22,7 @@
 // layBattle(sys, battle, { now, tier }) → createBattle's options for the
 // battle gcw.js has on there (its sides by team: battleAt's `sides`), with
 // its `kind`, and no ticket end (`tickets: false`).
+// TURBO[side]: each side's turbolasers' colour (fx.js's, an RGB to bloom).
 
 import { WARS as UNIVERSE_WARS } from '../universe/wars';
 import { WIDTH, createBattle, perSide } from '../universe/battle';
@@ -245,6 +246,9 @@ const LOOKS = {
   remnant: look('remnant', EMPIRE.laser, EMPIRE.turbo),
   hutt: look('hutt', [6.0, 3.0, 0.6], [6.5, 3.4, 0.8]),
 };
+// each side's turbolasers' colour, as its batteries fire in a battle (and its
+// garrison's at a planet: garrison.js)
+export const TURBO = Object.fromEntries(Object.entries(LOOKS).map(([id, l]) => [id, l.turbo]));
 
 const sideOf = (base, line, fighters, escorts = line.escorts) => ({
   ...base,
