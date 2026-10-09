@@ -297,7 +297,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     return () => ro.disconnect();
   }, []);
   const sizes = useRef({}); // id → { w, h } measured px, from the DOM
-  const [measured, setMeasured] = useState(0);
+  const [sized, setSized] = useState({}); // (a copy of it, taken when one changes: what the places are placed from)
   useLayoutEffect(() => {
     let changed = false;
     for (const el of box.current?.querySelectorAll('.holomap-name[data-id]') ?? []) {
@@ -306,7 +306,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
       const was = sizes.current[el.dataset.id];
       if (w > 1 && h > 0 && (was?.w !== w || was?.h !== h)) (sizes.current[el.dataset.id] = { w, h }), (changed = true);
     }
-    if (changed) setMeasured((n) => n + 1);
+    if (changed) setSized({ ...sizes.current });
   }, [war, boxPx, pilots]);
   // the controls drawn over the map that stay put (the war's board, the Layers chip, the Key chip, the zoom buttons; the layers' own
   // switches where there's no chip), as boxes from the map's top left: a name goes clear of them as of a dot (labelPlace.js's
@@ -352,15 +352,13 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
       const row = war.byId[s.id];
       const prio = s.id === current ? 100 : s.id === pick ? 90 : row?.battle?.fighting ? 50 : row?.major ? 40 : 0;
       const extras = (row?.major ? 14 : 0) + (row?.battle?.fighting ? 14 : 0) + (pilots[s.id] ? 20 : 0) + (s.id === current ? 32 : 0); // (the YOU tag)
-      const z = sizes.current[s.id];
+      const z = sized[s.id];
       return { id: s.id, x: (x + (k * s.pos[0]) / SIZE) * boxPx, y: (y + (k * s.pos[1]) / SIZE) * boxPx, w: z ? z.w : estimateWidth(s.name, 12.5, extras), h: z ? z.h : 20, prio };
     });
     // (a view gone wrong must not take the map down with it: every name on the right, as it was)
     if (items.some((i) => !Number.isFinite(i.x) || !Number.isFinite(i.y))) return {};
     return placeLabels(items, { bounds: { x0: 0, y0: 0, x1: boxPx, y1: boxPx }, blocks: [...blocks, ...tagBlock] });
-    // (`measured` is what says sizes.current has changed)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mv.view, boxPx, war, current, pick, pilots, measured, blocks, mid, tagPx]);
+  }, [mv.view, boxPx, war, current, pick, pilots, sized, blocks, mid, tagPx]);
 
   const lit = (s) => (film ? s.films.includes(film) : era === 'all' || erasOf(s).includes(era));
   // plot a course to a system (the war card's picks too); with an end of it
@@ -397,12 +395,16 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   // (the page is told which system is the course, or none: its flight HUD can show it. Only when it changes from what it has: the
   // map opening on the course the page keeps tells it nothing, and a kept course that's where you are now is cleared)
   const told = useRef(course);
+  const onCourseNow = useRef(onCourse); // (the latest, as viewNow: a page's new handler mustn't tell it the course again)
+  useLayoutEffect(() => {
+    onCourseNow.current = onCourse;
+  });
   useEffect(() => {
     const now = courseOf(pick, current);
     if (now === told.current) return;
     told.current = now;
-    onCourse?.(now);
-  }, [pick, current]); // eslint-disable-line react-hooks/exhaustive-deps
+    onCourseNow.current?.(now);
+  }, [pick, current]);
 
   // a find picks the system (it never jumps: a second find of the one picked would, through choose) and
   // frames the course to it; the focus goes to the jump, so J and Enter work at once
@@ -418,43 +420,49 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   // the map's own keys (mapKeys.js): M closes it; Escape shuts the innermost open thing (the find's list, the films' panel, the key, a
   // phone's layers) and then it; / finds, J jumps, + − 0 zoom. They're taken at the window's capture, before the page's and the
   // scene's (which stand down for a modal anyway), so what's open is looked at here
+  const onKey = (e) => {
+    const el = e.target;
+    if (el instanceof Element && el.closest('[aria-modal="true"]:not(.holomap)')) return; // (the guide's or the palette's own)
+    const typing = el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+    const chip = box.current?.querySelector('.holomap-layers-toggle'); // (the layers' switches fold behind it on a small map only)
+    const act = mapKeyAction(
+      { key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, repeat: e.repeat },
+      { typing, canJump: Boolean(picked && picked.id !== current), findOpen: listOpen && q.trim() !== '', filmsOpen: Boolean(films.current?.open), keyOpen, layersOpen: layersOpen && Boolean(chip?.getClientRects().length) },
+    );
+    if (!act) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (act === 'clearFind') {
+      setQ('');
+      setListOpen(false);
+      find.current?.focus();
+    } else if (act === 'closeFilms') {
+      shutFilms();
+      films.current?.querySelector('summary')?.focus();
+    } else if (act === 'closeKey') {
+      setKeyOpen(false);
+      box.current?.querySelector('.holomap-legend-toggle')?.focus();
+    } else if (act === 'closeLayers') {
+      setLayersOpen(false);
+      chip?.focus();
+    } else if (act === 'close') onClose();
+    else if (act === 'find') (find.current?.focus(), find.current?.select());
+    else if (act === 'jump') {
+      if (!e.repeat) onJump(picked.id);
+    } else if (act === 'zoomIn') mv.zoomIn();
+    else if (act === 'zoomOut') mv.zoomOut();
+    else mv.fit();
+  };
+  // (one listener for the map's life, calling the handler of the latest render: what's open is read there)
+  const onKeyNow = useRef(onKey);
+  useLayoutEffect(() => {
+    onKeyNow.current = onKey;
+  });
   useEffect(() => {
-    const onKey = (e) => {
-      const el = e.target;
-      if (el instanceof Element && el.closest('[aria-modal="true"]:not(.holomap)')) return; // (the guide's or the palette's own)
-      const typing = el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-      const chip = box.current?.querySelector('.holomap-layers-toggle'); // (the layers' switches fold behind it on a small map only)
-      const act = mapKeyAction(
-        { key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, repeat: e.repeat },
-        { typing, canJump: Boolean(picked && picked.id !== current), findOpen: listOpen && q.trim() !== '', filmsOpen: Boolean(films.current?.open), keyOpen, layersOpen: layersOpen && Boolean(chip?.getClientRects().length) },
-      );
-      if (!act) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (act === 'clearFind') {
-        setQ('');
-        setListOpen(false);
-        find.current?.focus();
-      } else if (act === 'closeFilms') {
-        shutFilms();
-        films.current?.querySelector('summary')?.focus();
-      } else if (act === 'closeKey') {
-        setKeyOpen(false);
-        box.current?.querySelector('.holomap-legend-toggle')?.focus();
-      } else if (act === 'closeLayers') {
-        setLayersOpen(false);
-        chip?.focus();
-      } else if (act === 'close') onClose();
-      else if (act === 'find') (find.current?.focus(), find.current?.select());
-      else if (act === 'jump') {
-        if (!e.repeat) onJump(picked.id);
-      } else if (act === 'zoomIn') mv.zoomIn();
-      else if (act === 'zoomOut') mv.zoomOut();
-      else mv.fit();
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [picked, current, onClose, onJump, q, listOpen, keyOpen, layersOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+    const h = (e) => onKeyNow.current(e);
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, []);
   const pct = (v) => `${(v / SIZE) * 100}%`;
   const unitPx = (boxPx * mv.view.k) / SIZE; // (screen px per map unit)
   const wide = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(min-width: 761px)').matches); // (the panel's rest is open where there's room)
