@@ -25,6 +25,7 @@ import { instanced } from '../hq/kit/instanced';
 import { logoTexture, scatter, trees } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
 import { createFeel, feelGroups } from '../hq/feel';
+import { createSpring, springGroups } from '../../../lib/spring';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
 import { buildShield } from '../ricochet/models';
 import { buildCape, buildMjolnir, buildPortal, craterTexture } from '../lawn/models';
@@ -1475,7 +1476,10 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // the fov's punch through the house's feel (lib/three/feel.js): eased out
   // by its τ, and none under reduced motion; its numbers on ?debug
   const feel = createFeel({ calm, baseFov: 52 });
-  engine.tune(feelGroups(feel), 'compound');
+  // his landing's squash (the game-feel design's Tier 2): a spring kicked by
+  // how hard he came down, rung out about his feet, never more than 0.3
+  const squash = createSpring({ k: 120, c: 8, max: 0.3 });
+  engine.tune([...feelGroups(feel), ...springGroups(squash, 'squash')], 'compound');
   const flags = createFlags(scene);
   const rings = createRings(scene);
   const packs = createPacks(scene);
@@ -1669,6 +1673,11 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       // in close to the wall
       hero.position.set(h.x - h.wall.nx * 0.16, h.y + spidey.hipHeight, h.z - h.wall.nz * 0.16);
     } else hero.position.set(h.x, h.y + spidey.hipHeight * (h.land > 0 || h.mode === 'perch' ? 0.62 : 1), h.z);
+    // (the squash on his feet only: off them it's let go)
+    const sq = h.mode === 'ground' ? squash.step(dt) : 0;
+    if (h.mode !== 'ground') squash.reset();
+    hero.scale.set(1 + sq / 2, 1 - sq, 1 + sq / 2);
+    if (sq) hero.position.y -= spidey.hipHeight * sq;
     bankFor(h, dt);
     const q = holderAt(h);
     if (!R.placed || R.w < 0.01) hero.quaternion.copy(q);
@@ -1989,6 +1998,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     } else if (type === 'land') {
       // a hard one beside them gets a look and a reaction (./castLife.js)
       for (const p of Object.values(people)) p.life.event('land', { x: d.x, z: d.z, impact: d.impact ?? 0 });
+      squash.kick((d.impact ?? 0) * 0.05);
       const hard = Math.max(0, Math.min(1, ((d.impact ?? 0) - 9) / 14));
       if (!calm) vfx.smoke(v3.set(d.x, (d.y ?? 0) + 0.1, d.z), { size: 1.2 + hard * 2.2, count: 5 + Math.round(hard * 10), life: 0.7 + hard * 0.6, rise: 0.4 + hard * 0.5, opacity: 0.25 + hard * 0.15, color: 0xb8b4a4, to: 0xd8d4c4, spread: 0.8 + hard * 2.4 });
       if (hard > 0.3) {
