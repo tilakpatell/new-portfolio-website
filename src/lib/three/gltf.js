@@ -25,6 +25,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { fitTextures, sharpenTree } from './textures';
+import { withFallback } from '../assetBase';
 
 let loader = null;
 let ktx2 = null; // the KTX2Loader, once something has needed it
@@ -130,7 +131,9 @@ const parsed = new Map(); // url → Promise<gltf | null>
 function fetchGltf(url, renderer) {
   const files = new THREE.FileLoader();
   files.setResponseType('arraybuffer');
-  return files.loadAsync(url).then(async (buffer) => {
+  // (the bucket's copy where it has one: the same bytes, so the same model;
+  // resolved against the site's path, as it always was)
+  return withFallback((u) => files.loadAsync(u))(url).then(async (buffer) => {
     if (renderer && usesBasisu(buffer)) await ktx2Loader({ renderer });
     const path = THREE.LoaderUtils.extractUrlBase(url);
     return gltfLoader().parseAsync(buffer, path);
