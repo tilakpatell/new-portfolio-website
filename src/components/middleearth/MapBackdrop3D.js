@@ -57,8 +57,6 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   for (let i = 0; i < lift.count; i++) lift.setY(i, lift.getY(i) + 0.15);
   const sheet = new THREE.Mesh(plane, new THREE.MeshStandardMaterial({ map, normalMap: relief, normalScale: new THREE.Vector2(1.5, 1.5), roughness: 0.94, ...room.sheetOptions }));
   sheet.receiveShadow = true;
-  // and it throws its torn shadow on the desk below, under the window light
-  sheet.castShadow = true;
   scene.add(sheet);
 
   const ambient = new THREE.AmbientLight(0xffe8c8, 0.8);
@@ -69,7 +67,8 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   // luminance of a 300 × 200 px patch round the corner, 0.18 or over
   // wanted), 900 + 1400 gave a pool of 0.746 and 200 + 600 one of 0.575,
   // both a glare that washed the names out; 60 + 140 gives about 0.31, a pool
-  // with the names legible in it. Low by day too, where the candle is unlit.
+  // with the names legible in it (0.35 with the night fill below raised).
+  // Low by day too, where the candle is unlit.
   const candle = new THREE.PointLight(0xffb870, 60, 0, 1.6);
   candle.position.copy(room.candle.position);
   const low = new THREE.DirectionalLight(0xffdcb0, 1.1);
@@ -221,7 +220,6 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     cur.lx += (goal.lx - cur.lx) * kl;
     cur.lz += (goal.lz - cur.lz) * kl;
     world.update(dt, t, { night: cur.n });
-    room.update(dt, t, { night: cur.n, m: cur.m });
     const z = cur.zoom * wide;
     // the pointer swings the camera a little round the point it looks at
     const sx = cur.lx * 1.6 * z;
@@ -232,12 +230,20 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     const q = reduced ? 0 : world.shake * world.shake * 0.12 * z;
     if (q) camera.position.add(v.set(Math.sin(t * 61) * q, Math.sin(t * 47) * q, Math.cos(t * 53) * q));
     const flick = candleLit ? 1 + 0.06 * Math.sin(t * 11.3) * Math.sin(t * 7.1 + 1.3) + 0.04 * Math.sin(t * 23.7) : 1;
+    room.update(dt, t, { night: cur.n, m: cur.m, flick });
     ambient.color.copy(tint.copy(day.ambient).lerp(night.ambient, cur.n)).lerp(fire.ambient, cur.m);
-    ambient.intensity = (0.85 - 0.35 * cur.n) * (1 - 0.45 * cur.m);
+    // The night fill: the candle lights only its corner, so the room and the
+    // moon at the window must let the rest of the sheet read. At full night
+    // the ambient is 0.70 and the window 0.75 (from 0.5 and 0.35, which left
+    // the names away from the candle unreadable): measured with
+    // `node lab/me/measure.mjs --dark [--phone]`, the sheet’s middle (a 300 ×
+    // 200 px patch round its centre, 0.12 or over wanted) is 0.195 on a phone
+    // and 0.182 on a desktop, from 0.145 and 0.144, and the candle’s pool 0.348.
+    ambient.intensity = (0.85 - 0.15 * cur.n) * (1 - 0.45 * cur.m);
     candle.color.copy(tint.copy(day.candle).lerp(night.candle, cur.n)).lerp(fire.candle, cur.m);
     candle.intensity = (60 + 140 * cur.n) * flick;
     low.color.copy(tint.copy(day.low).lerp(night.low, cur.n)).lerp(fire.low, cur.m);
-    low.intensity = (1.2 - 0.85 * cur.n) * (1 - 0.5 * cur.m);
+    low.intensity = (1.2 - 0.45 * cur.n) * (1 - 0.5 * cur.m);
     renderer.render(scene, camera);
     return true;
   };
@@ -367,7 +373,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
       if (lost) return;
       renderer.initTexture(map);
       renderer.initTexture(relief);
-      renderer.initTexture(room.sheetOptions.alphaMap);
+      for (const picture of room.textures) renderer.initTexture(picture);
     }),
     get lost() {
       return lost;

@@ -197,17 +197,13 @@ export function paintMap(width = 2048) {
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   ctx.restore();
 
-  // worn at the edges, and ruled round
+  // worn at the edges (the torn edge, ./mapRoom.js, is its frame: a ruled
+  // one would fall in the tear and survive only in pieces)
   const edge = ctx.createRadialGradient(c.width / 2, c.height / 2, c.height * 0.42, c.width / 2, c.height / 2, c.width * 0.62);
   edge.addColorStop(0, 'rgba(120, 84, 40, 0)');
   edge.addColorStop(1, 'rgba(96, 62, 26, 0.6)');
   ctx.fillStyle = edge;
   ctx.fillRect(0, 0, c.width, c.height);
-  ctx.strokeStyle = 'rgba(90, 62, 30, 0.8)';
-  ctx.lineWidth = 2 * k;
-  ctx.strokeRect(7 * k, 7 * k, c.width - 14 * k, c.height - 14 * k);
-  ctx.lineWidth = 0.6 * k;
-  ctx.strokeRect(11 * k, 11 * k, c.width - 22 * k, c.height - 22 * k);
   return c;
 }
 

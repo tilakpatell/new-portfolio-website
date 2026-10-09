@@ -12,6 +12,7 @@ Read `docs/superpowers/specs/2026-10-09-middle-earth-landing-design.md` (the des
 - `calls`, `triangles`: the backdrop’s `renderer.info.render` for its last frame (`window.__ME__.map.info()`).
 - `uiShare`: the screen the hub’s UI covers (the union of the boxes of `.me-hub-head`, `.me-pin-label`, `.me-mark-label`, `.me-ribbon`, `.me-route`, `.me-hub-links`, `.me-credit`, `.me-hint`, on a 4 px grid), over the screen.
 - `pool` (`--dark` only): the mean Rec. 709 luminance, 0 to 1, of a 300 × 200 px patch of the canvas centred on the sheet’s north-west corner (`project(60, 40)`), where the candle will stand. The patch is clipped to the canvas; `null` when the corner is off it, as it is on a phone today.
+- `mid` (`--dark` only, from Task 4’s fix): the same patch centred on the sheet’s middle (`project(400, 280)`), so the night is read away from the candle too; 0.12 or over wanted, phone included.
 
 Desktop is 1440 × 900, phone 390 × 844 with touch, both at a device pixel ratio of 1.
 
@@ -34,4 +35,4 @@ The scene moves, so the counts drift between runs. Over the ten runs taken (two 
 
 | task | calls | triangles | uiShare desktop | uiShare phone | pool dark |
 |---|---|---|---|---|---|
-| 4 · the room | 274 (263 dark) | 353,685 (340,704 dark) | 0.281 | 0.385 | 0.317 |
+| 4 · the room | 271 (277 dark) | 316,423 (366,167 dark) | 0.281 | 0.385 | 0.348 (the sheet’s middle: 0.182, phone 0.195) |

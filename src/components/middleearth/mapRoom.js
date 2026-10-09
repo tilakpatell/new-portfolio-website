@@ -6,10 +6,12 @@
 // Shire, a closed red book by the north-west, and a candle in a brass holder
 // on the north-west corner, whose flame is lit at night.
 //
-// buildRoom(scene, { W, H, tier }) → { candle, sheetOptions, update(dt, t,
-// { night, m }), dispose() }. `candle` is the flame’s base, where the
-// backdrop puts its candle light; W and H are the sheet’s size in scene
-// units. Everything is made in code: nothing is downloaded.
+// buildRoom(scene, { W, H, tier }) → { candle, sheetOptions, textures,
+// update(dt, t, { night, m, flick }), dispose() }. `candle` is the flame’s
+// base, where the backdrop puts its candle light; `textures` are the
+// pictures to send to the chip before the first frame; W and H are the
+// sheet’s size in scene units. Everything is made in code: nothing is
+// downloaded.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -21,6 +23,7 @@ import { REGIONS, SHEET } from './mapData';
 const DESK_Y = -0.3;
 // The sheet’s corners stand 0.15 up (MapBackdrop3D), and the weights and the
 // candle stand on the corners.
+// (they sit about 3 units in from the corners, so the subdivided sheet that comes next must keep 0.15 under them)
 const SHEET_Y = 0.15;
 
 // The props are many small shapes in three finishes. Each shape is painted
@@ -58,10 +61,10 @@ function place(parts, x, y, z, ry = 0) {
 // Dark planks, four to a tile, tiling both ways: each plank its own shade,
 // a grain bent by slow noise, and a dark joint between planks and one butt
 // joint along each.
-function paintDesk() {
+function paintDesk(size = 512) {
   const n = makeNoise(7);
   const PLANKS = 4;
-  return paintPixels(makeCanvas(512), (u, v, out) => {
+  return paintPixels(makeCanvas(size), (u, v, out) => {
     const p = Math.floor(v * PLANKS);
     const f = v * PLANKS - p;
     const shade = 0.8 + n(p * 3.7 + 0.5, 0.5) * 0.4;
@@ -113,7 +116,9 @@ export function buildRoom(scene, { W, H, tier = 'high' }) {
   };
 
   // ── the desk ──
-  const deskMap = new THREE.CanvasTexture(paintDesk());
+  // painted on the main thread: a weak device paints them at half the size
+  const low = tier === 'low';
+  const deskMap = new THREE.CanvasTexture(paintDesk(low ? 256 : 512));
   deskMap.wrapS = deskMap.wrapT = THREE.RepeatWrapping;
   deskMap.colorSpace = THREE.SRGBColorSpace;
   // a tile is 32 units, so a plank is 8: wide boards under an 80-unit sheet
@@ -123,8 +128,13 @@ export function buildRoom(scene, { W, H, tier = 'high' }) {
   desk.receiveShadow = true;
 
   // ── the sheet’s edge ──
-  const alphaMap = new THREE.CanvasTexture(paintEdge(1024));
+  const alphaMap = new THREE.CanvasTexture(paintEdge(low ? 512 : 1024));
   const sheetOptions = { alphaMap, alphaTest: 0.5 };
+  // and the paper’s shade on the desk, in the same torn shape, a little
+  // larger and to the south-east, away from the window: the sheet can’t
+  // throw it as a shadow (its back faces would, and they face the desk)
+  const shade = add(new THREE.Mesh(new THREE.PlaneGeometry(W + 1.4, H + 1.4).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0a0604, alphaMap, transparent: true, opacity: 0.5, depthWrite: false })));
+  shade.position.set(0.5, DESK_Y + 0.02, 0.6);
 
   // ── the props, in three finishes ──
   const polished = []; // brass, and the inkwell’s glass
@@ -257,15 +267,18 @@ export function buildRoom(scene, { W, H, tier = 'high' }) {
   return {
     candle,
     sheetOptions,
+    textures: [deskMap, alphaMap, flameMap],
     // the flame is lit at night only, and fades in and out with it; it
-    // stands a little taller in the dark, sways, and burns redder in Mordor
-    update(dt, t, { night = 0, m = 0 } = {}) {
+    // stands a little taller in the dark, sways, and burns redder in Mordor.
+    // `flick` is the candle light’s own flicker, so flame and light move as one
+    update(dt, t, { night = 0, m = 0, flick = 1 } = {}) {
       flame.visible = night > 0.02;
       glow.emissiveIntensity = flame.visible ? night * 0.35 : 0;
       if (!flame.visible) return;
       const s = 0.7 + night * 0.3;
-      const f = 1 + 0.12 * Math.sin(t * 9.7) * Math.sin(t * 5.3 + 1) + 0.05 * Math.sin(t * 23.1);
-      flame.scale.set(s * (1 + 0.06 * Math.sin(t * 13.1)), s * f, s);
+      // the light swings about ±10 %; the flame’s height twice that, its width a little
+      const f = 1 + (flick - 1) * 2;
+      flame.scale.set(s * (1 + (flick - 1) * 0.6), s * f, s);
       flame.rotation.set(0.05 * Math.sin(t * 3.7), 0.3 * Math.sin(t * 0.7), 0.06 * Math.sin(t * 4.3 + 2));
       flame.material.opacity = night;
       flame.material.color.copy(warm).lerp(red, m);
@@ -274,6 +287,8 @@ export function buildRoom(scene, { W, H, tier = 'high' }) {
       for (const obj of added) scene.remove(obj);
       desk.geometry.dispose();
       desk.material.dispose();
+      shade.geometry.dispose();
+      shade.material.dispose();
       for (const p of props) p.geometry.dispose();
       for (const f of finish) f.dispose();
       flameGeo.dispose();
