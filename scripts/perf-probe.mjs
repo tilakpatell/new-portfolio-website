@@ -491,8 +491,6 @@ const JOURNEYS = {
     }
     mark('end');
   },
-  // a planet of the Expanse (seed 7) driven flat out along +x with the boost
-  // and back again, so cells keep arriving ahead and going behind
   music: worldPage('/music'),
   scranton: worldPage('/scranton'),
   citadel: worldPage('/c-137/citadel'),

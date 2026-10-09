@@ -134,10 +134,12 @@ export async function ask(prompt, images = [], { maxTokens = 600 } = {}) {
   if (which() === 'claude') return askClaudeCode(prompt, images);
   await start();
   const content = [...images.map((f) => ({ type: 'image_url', image_url: { url: dataUrl(f) } })), { type: 'text', text: prompt }];
+  // an answer takes seconds; one that hasn't come in minutes never will (a GPU shared with a voices batch hung it for two hours)
   const r = await fetch(`${base()}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ messages: [{ role: 'user', content }], max_tokens: maxTokens, temperature: 0.1 }),
+    signal: AbortSignal.timeout(Number(process.env.VLM_TIMEOUT_MS) || 5 * 60000),
   });
   if (!r.ok) throw new Error(`llama-server: HTTP ${r.status} ${await r.text()}`);
   const j = await r.json();

@@ -3,8 +3,10 @@ import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { local, prefersReducedMotion } from '../../lib/hooks';
 import { SCRIPTS } from '../../fun/scripts';
-import { TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
+import { HURT, TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
 import { capturePointer } from '../../lib/pointer';
+import { createImpacts, impactGroups } from '../../lib/impact';
+import { debugOn, debugPanel } from '../../lib/debugPanel';
 import { use3D } from '../../lib/gpu';
 import { settle } from '../../lib/settle';
 import { sayVoiced } from '../../lib/voiced';
@@ -26,7 +28,9 @@ const hudFamily = () => {
   const script = SCRIPTS[document.documentElement.dataset.script];
   return script ? `${script.font}, monospace` : '"JetBrains Mono", monospace';
 };
-const play = (name) => sfx().then((s) => s[name]?.());
+const play = (name, voice) => sfx().then((s) => (voice ? s[name]?.(voice) : s[name]?.()));
+// a hit as hard as it was (trench.js's HURT, by the hit law: lib/impact.js)
+const hurtLaw = createImpacts();
 const buzz = (ms) => {
   try {
     navigator.vibrate?.(ms);
@@ -202,6 +206,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       if (!dead) setGlState(why);
     };
     glDrop.current = drop;
+    let panel = null;
     setGlState('loading');
     const start = () =>
       import('./Trench3D')
@@ -216,6 +221,8 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             settle(t3.ready).then(() => {
               if (dead || t3.lost) return t3.dispose();
               glRef.current = t3;
+              // ?debug: the feel's numbers and the hit law's
+              if (debugOn()) panel = debugPanel({ title: 'the trench', groups: [...t3.tune(), ...impactGroups(hurtLaw)], id: 'trench' });
               resizeRef.current?.();
               setGlState('on');
             });
@@ -244,6 +251,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     return () => {
       dead = true;
       near?.disconnect();
+      panel?.dispose();
       glRef.current?.dispose();
       glRef.current = null;
     };
@@ -287,12 +295,14 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             fx.current.near = g.t;
             changed = true;
             break;
-          case 'hit':
-            play('hit');
+          case 'hit': {
+            const k = hurtLaw.hit(e.force ?? HURT.crash, 'hit');
+            play('hit', k ? { gain: k.gain, pitch: k.pitch } : null);
             buzz(90);
             message = e.shields === 1 ? 'Shields failing. One more hit.' : e.shields > 1 ? 'Hit. Shields holding.' : message;
             changed = true;
             break;
+          }
           case 'torpedo':
             play('torpedo');
             changed = true;

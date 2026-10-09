@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, holdReach, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
+import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, clearPark, crashLoud, driveAt, forward, holdReach, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
 import { DEEP, WONDERS, easeOpen, gapAlong, trenchBand } from './deep';
 import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
@@ -60,6 +60,27 @@ describe('flying the ship', () => {
     expect(Math.abs(settled.lean)).toBeLessThan(0.02);
   });
 
+  it('leans into a turn on a spring: past where it settles, and back', () => {
+    // (held at a steady turn the lean's target stands still; the lean
+    // overshoots it a little and rings back, which reads as the ship's weight)
+    const s = { ...spawn(null), x: 0, z: 0, heading: 0, speed: SHIP.cruise };
+    let w = s;
+    let peak = 0;
+    for (let t = 0; t < 3; t += 1 / 60) {
+      w = step(w, { throttle: 1, turn: 1 }, 1 / 60, []).ship;
+      peak = Math.max(peak, Math.abs(w.lean));
+    }
+    const rest = Math.abs(w.lean);
+    expect(rest).toBeGreaterThan(0.3);
+    expect(peak).toBeGreaterThan(rest * 1.02);
+    expect(peak).toBeLessThan(rest * 1.25);
+    expect(Math.abs(w.leanV)).toBeLessThan(0.01);
+    // and the same at 30 Hz: bounded, settling where 60 Hz did
+    let h = s;
+    for (let t = 0; t < 3; t += 1 / 30) h = step(h, { throttle: 1, turn: 1 }, 1 / 30, []).ship;
+    expect(Math.abs(h.lean)).toBeCloseTo(rest, 2);
+  });
+
   it('turns wider the faster it goes', () => {
     expect(turnAt(0)).toBe(1);
     expect(turnAt(SHIP.cruise)).toBe(1);
@@ -95,6 +116,28 @@ describe('flying the ship', () => {
     const slow = fly(at, { throttle: 0.3 }, gap / (0.3 * SHIP.cruise) + 6).events;
     expect(slow.some((e) => e.type === 'bump' && e.id === 'marvel')).toBe(true);
     expect(slow.some((e) => e.type === 'crash')).toBe(false);
+    // a bump says how hard it was, and where, for its thud and its puff (Comms.jsx, scene.js)
+    const bump = slow.find((e) => e.type === 'bump');
+    expect(bump.speed).toBeGreaterThan(0);
+    expect(bump.speed).toBeLessThanOrEqual(SHIP.crash);
+    expect(bump.force).toBeCloseTo(bump.speed * SHIP.mass, 9);
+    expect(bump.at).toHaveLength(3);
+    expect(Math.hypot(...bump.normal)).toBeCloseTo(1, 6);
+  });
+
+  it('says how loud a crash is by how fast it went in', () => {
+    expect(crashLoud(SHIP.crash)).toBeCloseTo(0.45, 9);
+    expect(crashLoud(SHIP.boost)).toBe(1);
+    expect(crashLoud(SHIP.boost * 3)).toBe(1);
+    expect(crashLoud((SHIP.crash + SHIP.boost) / 2)).toBeGreaterThan(crashLoud(SHIP.crash));
+    // (a crash with no speed, shot down or into the sun, is as loud as ever)
+    expect(crashLoud(undefined)).toBe(1);
+  });
+
+  it('bumps at the crash speed as hard as the hit law’s full', () => {
+    // (lib/impact.js: quiet under 15, full at 120; a bump just under a crash is full)
+    expect(SHIP.crash * SHIP.mass).toBeGreaterThanOrEqual(120);
+    expect(SHIP.crash * SHIP.mass).toBeLessThan(150);
   });
 
   it('turns, pitches and rolls quicker with the sensitivity turned up', () => {
@@ -740,7 +783,59 @@ describe('where a new ship starts', () => {
 // SPREAD, flown at 60 steps a second: more than vitest's 5 s under load)
 const LONG = 20000;
 
+describe('clearPark', () => {
+  const park = { x: 10, y: 0, z: 0, heading: 1 };
+  it('leaves a stop no big ship has come down on', () => {
+    expect(clearPark(park, [])).toBe(park);
+    expect(clearPark(park, [{ at: [40, 0, 0], r: 3 }])).toBe(park);
+    expect(clearPark(park, [{ at: [10, 30, 0], r: 3 }])).toBe(park); // (well above it)
+  });
+  it('pushes a stop out level from the middle of one it’s inside, facing the same way', () => {
+    const p = clearPark(park, [{ at: [8, 0, 0], r: 3 }]);
+    expect(p.x).toBeCloseTo(8 + 3 + SHIP.radius + 1 + 1, 6);
+    expect(p.z).toBe(0);
+    expect(p.y).toBe(0);
+    expect(p.heading).toBe(1);
+  });
+});
+
 describe('autopilot', () => {
+  // a capital ship dropped in on the way (or on the stop): a big ship's
+  // solid, as capitalRules.js's chain is made of
+  const capital = (at, r = 2.7) => ({ id: 'capital', at, r, reach: r, ship: true });
+  const tripWith = (moving, { told = true, id = ORDER[0] } = {}) => {
+    let s = spawn(null);
+    const park = parkAt(id, [s.x, s.z]);
+    const ships = moving(s, park); // (where they are: put down once)
+    const solids = [...SOLIDS, ...ships];
+    let done = false;
+    let crashed = false;
+    for (let t = 0; t < 100 && !done && !crashed; t += 1 / 60) {
+      const a = autopilot(s, id, park, undefined, 1, null, told ? ships : undefined);
+      done = a.done;
+      const r = step(s, a.input, 1 / 60, solids);
+      s = r.ship;
+      crashed = r.events.some((e) => e.type === 'crash');
+    }
+    return { s, park, done, crashed };
+  };
+  it('steers round a big ship that’s come in across the way, told of it', () => {
+    // (on the straight line, two thirds of the way there, at the stop's height)
+    const across = (s, park) => [capital([s.x + (park.x - s.x) * 0.66, park.y ?? SHIP.height, s.z + (park.z - s.z) * 0.66])];
+    expect(tripWith(across, { told: false }).crashed).toBe(true);
+    const r = tripWith(across);
+    expect(r.crashed).toBe(false);
+    expect(r.done).toBe(true);
+  }, LONG);
+  it('stops clear of a big ship that’s come down on its stop', () => {
+    const on = (s, park) => [capital([park.x, park.y ?? SHIP.height, park.z])];
+    const r = tripWith(on);
+    expect(r.crashed).toBe(false);
+    expect(r.done).toBe(true);
+    const [o] = on(null, r.park);
+    expect(Math.hypot(r.s.x - o.at[0], r.s.z - o.at[2])).toBeGreaterThan(o.r + SHIP.radius);
+  }, LONG);
+
   it('flies from the edge to every universe without hitting anything', () => {
     for (const id of ORDER) {
       let s = spawn(null);

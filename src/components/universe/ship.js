@@ -60,6 +60,7 @@ import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles
 import { byId } from './universes';
 import { sunFor } from './lighting';
 import { REGIONS } from './regions';
+import { springStep } from '../../lib/spring';
 
 // (the speeds as they were till October 2026, cruise 5.5, boost 20 and the
 // pulse drive 420, got there in under a second and felt far too fast for a
@@ -91,6 +92,7 @@ export const SHIP = {
   hover: 1.5, // map units a second the autopilot can nudge it up or down, parking
   ceiling: 100, // how far above or below the disc it can go (the big ships' lanes start at 105; the sun's 75 across leaves room to fly over it)
   crash: 2.4, // flying into something faster than this is a crash, not a bump
+  mass: 50, // a bump's force is its speed times this: full on the hit law (lib/impact.js) just under a crash
   approach: 9, // its cruise coming in to a world to land, throttle all the way (approachAt): under what a landing allows, entry.js's ENTRY.fast
 };
 // How fast everything else flies for the ship's speeds: the hunters, the
@@ -114,6 +116,18 @@ export const pacedAll = (table) => Object.fromEntries(Object.entries(table).map(
 // held to what any fit flies with: [least, most] of each. A heavy hull's
 // slower cruise counts as much as a fast one's. The hangar's read-out shows
 // these too (tuned), so what it says is what it flies.
+// How loud a crash sounds (Comms.jsx's crashSound), 0…1, by how fast it went
+// in: just over a bump is a little under half, at the boost and over is all
+// of it. A crash with no speed (shot down, the sun) is as loud as it ever was.
+export function crashLoud(speed) {
+  if (!Number.isFinite(speed)) return 1;
+  const k = (speed - SHIP.crash) / (SHIP.boost - SHIP.crash);
+  return Math.min(1, Math.max(0, 0.45 + 0.55 * k));
+}
+
+// the lean's spring (step's lean, for the eye): stiffness and damping
+export const LEAN = { k: 80, c: 11 };
+
 export const TUNE = { boost: [1, 1.6], cruise: [0.9, 1.2], accel: [1, 1.8], agility: [0.6, 1.4], level: [1, 1.8] };
 export const tuned = (tune) => Object.fromEntries(Object.entries(TUNE).map(([k, [lo, hi]]) => [k, clamp(tune?.[k] ?? 1, lo, hi)]));
 // super speed: how many times the pulse drive's speed, at most
@@ -352,7 +366,7 @@ export function startAt(rand = Math.random) {
 // level, and still.
 export function spawn(id, start = HOME_EDGE) {
   const at = id && PLANET[id] ? parkAt(id) : start;
-  return { ...at, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+  return { ...at, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, leanV: 0, edge: false };
 }
 
 // The space the ship flies in: the universe map's, as this file has it
@@ -385,7 +399,7 @@ export function holdReach(s, { ramp = 2, solids = SOLIDS, space = SPACE, dt = 1 
 }
 
 // One step of `dt` seconds. Returns the new ship and what happened on the
-// way: { type: 'bump', id, hard }, { type: 'crash', id, at: [x, y, z],
+// way: { type: 'bump', id, hard, speed, force, at, normal }, { type: 'crash', id, at: [x, y, z],
 // normal: [x, y, z], speed, swallowed? } (into something too fast, or into
 // something that swallows at any speed: the scene plays it out) and
 // { type: 'edge' } (at the edge, the ceiling or the floor).
@@ -578,7 +592,7 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
     if (into > 0) {
       // too fast is a crash (the scene plays it out); otherwise a bump
       if (into > SHIP.crash) events.push({ type: 'crash', id: p.id, at: [x, y, z], normal: [nx, ny, nz], speed: into });
-      else events.push({ type: 'bump', id: p.id, hard: into > SHIP.crash * 0.55 });
+      else events.push({ type: 'bump', id: p.id, hard: into > SHIP.crash * 0.55, speed: into, force: into * SHIP.mass, at: [x, y, z], normal: [nx, ny, nz] });
       // a little bounce back: what it had toward the planet, the other way
       // and smaller (what's left of the ship's speed that it can still fly)
       v += 1.3 * into * ahead;
@@ -590,9 +604,11 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   // with the inertia), more the faster it goes: for the eye, on top of
   // the roll that's really there
   const steer = clamp(-rate / (SHIP.turn * agile), -1, 1);
-  const lean = ease(s.lean || 0, steer * (0.25 + 0.45 * clamp(Math.abs(v) / SHIP.cruise, 0, 1)), 6);
+  // (on a spring, lib/spring.js: a little past and back, as a weight would;
+  // LEAN's k and c give the old ease's pace, 1/6 s, with ζ about 0.6)
+  const [lean, leanV] = springStep(s.lean || 0, s.leanV || 0, steer * (0.25 + 0.45 * clamp(Math.abs(v) / SHIP.cruise, 0, 1)), LEAN.k, LEAN.c, dt);
   const vy = f[1] * v + lift;
-  return { ship: { x, y, z, heading, pitch, bank, speed: v, vy, lift, rate, tipRate, rollRate, lean, edge }, events };
+  return { ship: { x, y, z, heading, pitch, bank, speed: v, vy, lift, rate, tipRate, rollRate, lean, leanV, edge }, events };
 }
 
 // The universe the ship is at, if any. Once at one, it stays at it until
@@ -632,6 +648,32 @@ function stopFrom(s, park, far, space = SPACE, od = 1, hold = null) {
   return Math.sqrt(v2);
 }
 
+const NO_SOLIDS = [];
+
+// A stop (`park`) out of the way of the big ships moving through
+// (`moving`, solids): one that's come down on it pushes it out level from
+// its middle (as wide as it is at the stop's height, as the autopilot reads
+// a solid), to a unit past where the autopilot steers clear of it (so it
+// can settle there); facing the way it did. The stop itself when none has.
+export function clearPark(park, moving) {
+  let p = park;
+  for (const o of moving) {
+    const py = p.y ?? SHIP.height;
+    const need = o.r + SHIP.radius + Math.max(1, o.r * 0.3) + 1;
+    const dy = py - o.at[1];
+    const rr = need * need - dy * dy;
+    if (rr <= 0) continue;
+    const dx = p.x - o.at[0];
+    const dz = p.z - o.at[2];
+    const d = Math.sqrt(dx * dx + dz * dz);
+    const wide = Math.sqrt(rr);
+    if (d >= wide) continue;
+    const [ux, uz] = d > 1e-6 ? [dx / d, dz / d] : [1, 0];
+    p = { ...p, x: o.at[0] + ux * wide, z: o.at[2] + uz * wide };
+  }
+  return p;
+}
+
 // The stick that points the nose along `dir` (a unit vector, the map's
 // axes): the turn and the tip it's off by in the ship's own frame (with a
 // touch of damping, so their inertia doesn't swing it past), and the roll
@@ -663,10 +705,16 @@ export function stickToward(s, dir) {
 // that map's to give). `od`, super speed: the overdrive it flies on (1, none).
 // `hold`, if anything holds the drive down on the way ((x, y, z) → 0 … 1: a
 // battle's, as step's input.interdicted has it), so it plans its stop with
-// the brakes it will have.
-export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z]), space = SPACE, od = 1, hold = null) {
+// the brakes it will have. `moving`: the big ships moving through (the
+// frame's solids past the map's own: a capital that's dropped in, the
+// sector fleet, the big traffic, the Interdictor), steered round as the
+// planets are, and its stop moved out of any that's come down on it
+// (clearPark).
+export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z]), space = SPACE, od = 1, hold = null, moving = NO_SOLIDS) {
   const p = space.goals[id];
   if (!p || !park) return { input: { throttle: 0, turn: 0 }, done: true };
+  park = clearPark(park, moving);
+  const solids = moving.length ? [...space.solids, ...moving] : space.solids;
   // (a hop between two of the home system's stations is no quicker on it:
   // none. Coming home on it, it fades out as the ship comes in to the home
   // system, and the stop is planned for that, not for the overdrive's brakes
@@ -703,7 +751,7 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z]), spa
     const rr = (o.r + SHIP.radius + 0.5) ** 2 - dy * dy;
     return rr > 0 ? Math.sqrt(rr) : 0;
   };
-  for (const o of space.solids) {
+  for (const o of solids) {
     if (o.id === id) continue;
     const r = widthAt(o);
     if (r <= 0) continue;
@@ -732,7 +780,7 @@ export function autopilot(s, id, park = GOALS[id] && parkAt(id, [s.x, s.z]), spa
   const brakes = space.brakeAt(s.x, s.y, s.z, here) * (odHeld > 1 ? overdriveAt(here, odHeld) ** 2 : 1);
   const stopping = (s.speed * s.speed) / (2 * brakes) + 3;
   let danger = false;
-  for (const o of space.solids) {
+  for (const o of solids) {
     if (o.id === id) continue;
     const r = widthAt(o);
     if (r <= 0) continue;

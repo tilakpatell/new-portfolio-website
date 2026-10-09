@@ -139,8 +139,9 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
       );
     // (every place settles when Morty leaves it: its hunters go home. A
     // builder adds its own actions to these. `npcs`: where everyone is, for
-    // the QA scripts; `fire`: Morty's shot in a duel.)
-    area.actions = { calm: N.calm, npcs: N.list, fire: N.fire };
+    // the QA scripts; `fire`, `bodies` and `hit`: Morty's shot in a duel,
+    // where it aims, what it can hit, and what it did when it landed.)
+    area.actions = { calm: N.calm, npcs: N.list, fire: N.fire, bodies: N.bodies, hit: N.hit };
     return area;
   };
   return { R, d, A, cx, cz, P, figure, people, done, hunt: N.hunt, npcs: N.npcs, calm: N.calm };

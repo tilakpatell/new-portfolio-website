@@ -596,3 +596,30 @@ describe('a battle', () => {
     expect(r.hitBy).toBeGreaterThan(0);
   });
 });
+
+describe('a ram on one of the other side’s fighters', () => {
+  it('is a shot’s hit on that one: down at its hp, told as yours', () => {
+    const b = make();
+    b.setYou(0);
+    run(b, 1);
+    const f = b.fighters.find((o) => o.alive && o.team === 1 && !o.ace);
+    const hp = f.hp;
+    const r = b.strike(f.id, hp);
+    expect(r).toMatchObject({ id: f.id, kind: f.kind, size: f.size, down: true });
+    expect(f.alive).toBe(false);
+    const events = b.update(1 / 30, null);
+    expect(events.some((e) => e.type === 'down' && e.mine && e.kind === f.kind)).toBe(true);
+  });
+
+  it('is nothing on your own side’s, one already down, or before you have joined', () => {
+    const b = make();
+    run(b, 1);
+    const enemy = b.fighters.find((o) => o.alive && o.team === 1);
+    expect(b.strike(enemy.id, 1)).toBeNull(); // (not joined)
+    b.setYou(0);
+    const mine = b.fighters.find((o) => o.alive && o.team === 0);
+    expect(b.strike(mine.id, 1)).toBeNull();
+    enemy.alive = false;
+    expect(b.strike(enemy.id, 1)).toBeNull();
+  });
+});

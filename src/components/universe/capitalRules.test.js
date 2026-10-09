@@ -286,3 +286,32 @@ describe('the capital ship', () => {
     }
   });
 });
+
+describe('its hull as solids (ship.js’s), for flying into it', () => {
+  it('is one sphere a hull sphere, where the hull is, once it’s here, and follows it as it drifts', () => {
+    const cap = arrive();
+    expect(cap.solids).toEqual([]); // (jumping in: a smear, not solid)
+    settle(cap);
+    const s = cap.solids;
+    expect(s).toHaveLength(PARTS.destroyer.hull.length);
+    s.forEach((o, i) => {
+      expect(o.id).toBe(`cap:hull:${i}`);
+      expect(o.ship).toBe(true);
+      expect(o.r).toBeCloseTo(PARTS.destroyer.hull[i][3] * LENGTH.destroyer, 6);
+      expect(o.reach).toBe(o.r);
+    });
+    const was = [...s[0].at];
+    run(cap, 1);
+    expect(cap.solids[0].at).not.toEqual(was); // (it drifts, and its hull with it)
+    expect(Math.hypot(cap.solids[0].at[0] - cap.at[0], cap.solids[0].at[2] - cap.at[2])).toBeLessThan(LENGTH.destroyer);
+  });
+
+  it('is nothing once it’s jumping away', () => {
+    const cap = arrive();
+    settle(cap);
+    cap.leave();
+    run(cap, DT);
+    expect(cap.state).toBe('out');
+    expect(cap.solids).toEqual([]);
+  });
+});
