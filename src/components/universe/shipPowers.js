@@ -26,6 +26,7 @@
 //   press(st, slot)        → { ok, id } or { ok: false, why }
 //   step(st, dt, { flying }) → events ({ type: 'end' | 'ready', slot, id })
 //   gain(st, what, n, key) the big one charged (never while it's on); → true the moment it fills
+//   hasten(st, seconds)    the primary's cooldown cut (a power cell); → true when that made it ready
 //   chargeFor(hit, { war, ace })  what a hit charges it with, or null (a shield, a hull)
 //   finish(st, slot)       one power stops early, its work done (the last torpedo home)
 //   cancel(st)             whatever's on stops (shot down, crashed, jumping)
@@ -47,7 +48,7 @@ export const KEPT_KEY = 'tp:ship-powers'; // (the session's: the big one's charg
 // (an ace counts for more, a battle's objective more than a fighter), and a
 // little for a hit, but no more than `hitCap` from hits on any one thing (a
 // 120-hp objective takes thirty, and they'd have been most of a fill)
-export const CHARGE = { kill: 0.2, ace: 0.5, objective: 0.3, hit: 0.02, hitCap: 0.1, second: 1 / 150 };
+export const CHARGE = { kill: 0.2, ace: 0.5, objective: 0.3, hit: 0.02, hitCap: 0.1, second: 1 / 150, pickup: 0.25 };
 const HITS_KEPT = 64; // (the things hit lately whose share is counted: older ones forgotten)
 
 // The numbers come from fights flown in Node (hunterRules.js's): in a fight
@@ -158,6 +159,17 @@ export function gain(st, what, n = 1, key = null) {
   u.charge = Math.min(1, u.charge + add);
   if (u.charge < 1) return false;
   u.phase = 'ready';
+  return true;
+}
+
+// A power cell picked up in flight (galaxy/pickups.js): the cooldown on G
+// cut by `seconds`; true when that made it ready
+export function hasten(st, seconds) {
+  const s = st?.primary;
+  if (!s || s.phase !== 'cooling') return false;
+  s.left = Math.max(0, s.left - seconds);
+  if (s.left > 0) return false;
+  s.phase = 'ready';
   return true;
 }
 

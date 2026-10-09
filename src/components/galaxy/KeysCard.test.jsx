@@ -12,8 +12,10 @@ describe('KeysCard', () => {
     expect(html).toContain('<kbd class="hud-cap">J</kbd>');
     expect(html).toContain('aria-label="Close the keys"');
   });
-  it('leaves the hangar out until there is one to open', () => {
-    expect(renderToStaticMarkup(<KeysCard open onClose={() => {}} />)).not.toContain('Hangar');
+  it('has the shipyard’s key among the travel ones', () => {
+    const html = renderToStaticMarkup(<KeysCard open onClose={() => {}} />);
+    expect(html).toContain('<kbd class="hud-cap">H</kbd>');
+    expect(html).toContain('Shipyard');
   });
   it('is nothing when shut', () => {
     expect(renderToStaticMarkup(<KeysCard open={false} onClose={() => {}} />)).toBe('');

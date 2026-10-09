@@ -4632,6 +4632,16 @@
     "license": "CC0 1.0",
     "use": "In public/models/quaternius/props/space.glb, a kit of them (scripts/quaternius.mjs)"
   },
+  "quaternius-space/pickups": {
+    "source": "https://quaternius.com",
+    "id": "pickups",
+    "name": "Ultimate Space Kit: the five pickups (Pickup_Health, Pickup_Thunder, Pickup_Bullets, Pickup_Sphere, Pickup_Crate)",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "pickups.glb, the galaxy's pickups in flight, packed from the kit's glTF files by scripts/galaxy-pickups.mjs"
+  },
   "quaternius/CommonTree_4": {
     "source": "https://quaternius.com",
     "id": "CommonTree_4",
