@@ -9,6 +9,9 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).flatMap((u) => [{ to: u.t
 // What each world downloads when it opens (models, textures, skies,
 // sound), in MB, measured on a phone-sized screen and rounded up: a phone
 // asks before loading the heavy ones (WorldGate, lib/device's worldCheck).
+// The Expanse's row is the exception: it counts its whole built pack (the
+// nature kit's files with the engine and the code), not what a phone
+// measured fetching.
 // A world on the world runtime (src/runtime) says the same in its module's
 // `mb` (its test checks they agree).
 export const WORLD_MB = {

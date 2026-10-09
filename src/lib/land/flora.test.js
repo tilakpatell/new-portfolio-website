@@ -96,6 +96,32 @@ describe('floraFor', () => {
     ]);
   });
 
+  it('gives the forest the counts the high budget holds: thicker in trees than temperate, its world seen whole from above under 3M triangles', () => {
+    // (at 40 species a cell, seed 3's forest, every cell built and seen from
+    // 40 m up at high, drew 3.02M triangles of the budget's 3M; at 34, 2.7M)
+    const golden = (list) => list.map((r) => [r.kind, r.names[0] ?? null, r.on, r.perCell]);
+    const f = floraFor('forest');
+    expect(golden(f.species)).toEqual([
+      ['tree', 'GiantPine_1', 'grass', 10],
+      ['tree', 'Pine_1', 'grass', 10],
+      ['tree', 'CommonTree_1', 'grass', 5],
+      ['tree', 'Birch_1', 'grass', 2],
+      ['bush', 'Bush_Large', 'grass', 4],
+      ['rock', 'Rock_Medium_1', 'any', 2],
+      ['crate', null, 'grass', 3],
+    ]);
+    expect(golden(f.cover)).toEqual([
+      ['plant', 'Fern_1', 'grass', 27],
+      ['mushroom', 'Mushroom_Common', 'grass', 18],
+      ['plant', 'Plant_1', 'grass', 14],
+      ['plant', 'Clover_1', 'grass', 9],
+      ['grass', 'Grass_Common_Short', 'grass', 14],
+      ['pebble', 'Pebble_Round_1', 'any', 9],
+    ]);
+    const trees = (type) => floraFor(type).species.filter((r) => r.kind === 'tree').reduce((n, r) => n + r.perCell, 0);
+    expect(trees('forest')).toBeGreaterThan(trees('temperate'));
+  });
+
   it('is a fresh table each time, and temperate for a type it doesn’t know', () => {
     const a = floraFor('temperate');
     a.species[0].names.push('Nothing');

@@ -25,7 +25,11 @@
 // own count of a whole frame (renderer.info, every pass in it, as
 // scripts/galaxy-check.mjs does) at the end of each leg, and the worst leg's
 // draw calls and triangles against src/lib/budgets.js's row for QUALITY
-// (high unset): pass or FAIL, and a FAIL (or no count) exits 1. The table's
+// (high unset): pass or FAIL, and a FAIL exits 1, as does no count (a
+// journey stopped short of one, or a leg that counted no draw at all: a
+// frame of nothing is no pass). expanseDrive drives the planet of
+// EXPANSE_SEED and EXPANSE_TYPE (7 and temperate unset: a type is one of
+// lib/land's, temperate desert ice ocean volcanic forest). The table's
 // own draws and ktris are a frame's mean at the GL, a different count. The
 // runtime steps a slow GL's quality down as it runs (a software one's within
 // seconds), so each count says the level it was drawn at; SHARPEST=1 holds
@@ -44,6 +48,7 @@ const out = process.env.OUT ?? '.';
 const quality = process.env.QUALITY ?? '';
 const gpu = ['webgl', 'webgpu'].includes(process.env.GPU) ? process.env.GPU : null;
 const sharpest = Boolean(process.env.SHARPEST);
+const expanse = { seed: process.env.EXPANSE_SEED || '7', type: process.env.EXPANSE_TYPE || 'temperate' };
 const [vw, vh, vdpr] = (process.env.VIEW ?? '1470x956@2').match(/(\d+)x(\d+)(?:@([\d.]+))?/).slice(1).map(Number);
 
 // ── what's recorded in the page ──
@@ -503,13 +508,15 @@ const JOURNEYS = {
     }
     mark('end');
   },
-  // a planet of the Expanse (seed 7) driven flat out along +x with the boost
-  // and back again, so cells keep arriving ahead and going behind; each
-  // leg's last frame counted, still driving, for its budget
+  // a planet of the Expanse (EXPANSE_SEED, EXPANSE_TYPE: 7 and temperate
+  // unset) driven flat out along +x with the boost and back again, so cells
+  // keep arriving ahead and going behind; each leg's last frame counted,
+  // still driving, for its budget
   async expanseDrive(page, mark) {
     this.counts = [];
     mark('load');
-    await page.goto(`${this.base}/${this.q}#/universe/expanse/7`, { waitUntil: 'domcontentloaded' });
+    console.log(`  expanseDrive: seed ${expanse.seed}, ${expanse.type}`);
+    await page.goto(`${this.base}/${this.q}#/universe/expanse/${expanse.seed}${expanse.type === 'temperate' ? '' : `?type=${expanse.type}`}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__RUNTIME__?.status === 'on' && window.__EXPANSE__, null, { timeout: 180000 });
     // (still in the world's first unjudged seconds)
     if (sharpest) await page.evaluate(() => window.__RUNTIME__.quality.hold(Infinity));
@@ -540,13 +547,21 @@ const JOURNEYS = {
 
 // a journey's counts against its budget row: the worst leg's calls and
 // triangles, printed, pass or FAIL (exit 1, as for a journey stopped short
-// of its counts)
+// of its counts, or a leg that counted no draw calls)
 function held(counts, failed) {
   const level = quality || 'high';
   const row = budget(level);
   const at = (c) => `${c.leg} ${c.calls} calls, ${(c.triangles / 1e6).toFixed(2)}M tris (${c.tier} at step ${c.level}, ×${c.scale}, ${c.frames} frames)`;
   if (failed || !counts.length) {
     console.log(`  budget (${level}): FAIL, ${counts.length} legs counted before it stopped`);
+    process.exitCode = 1;
+    return { level, pass: false, counts };
+  }
+  // (a leg that counted no draw drew nothing three saw: no count, not a pass)
+  const empty = counts.filter((c) => !(c.calls > 0));
+  if (empty.length) {
+    console.log(`  frames counted: ${counts.map(at).join('; ')}`);
+    console.log(`  budget (${level}): FAIL, no count: ${empty.map((c) => c.leg).join(', ')} counted no draw calls`);
     process.exitCode = 1;
     return { level, pass: false, counts };
   }

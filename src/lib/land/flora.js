@@ -144,7 +144,10 @@ const TYPES = {
     ],
   },
   forest: {
-    count: [40, 90],
+    // (34 trees, bushes and rocks a cell, not 40: at 40 a whole world seen
+    // from above drew more than high's 3M triangles; thicker still than
+    // temperate in trees, 27 a cell to its 22)
+    count: [34, 90],
     species: [
       row('tree', GIANT, 0.3),
       row('tree', PINE, 0.3),

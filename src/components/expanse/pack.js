@@ -22,5 +22,5 @@ export const PACK = {
     '/kit/naturemega/rock.glb',
     '/kit/naturemega/rockpath.glb',
     '/kit/naturemega/twistedtree.glb',
-  ], // folders: `*` within a folder, `**` any depth
+  ], // exact files, no wildcards: a family the flora doesn't name stays out
 };

@@ -16,7 +16,7 @@ describe('spawnIn', () => {
     expect(s.x).toBeLessThanOrEqual(3 * CELL);
   });
 
-  it('takes the highest gentle dry point, never under water', () => {
+  it('takes the highest gentle dry point clear of the props with a body and of the cell’s edge, never under water', () => {
     const cell = makeCell(landSpec('seven'), 0, 0);
     const s = spawnIn(cell);
     const ix = Math.round(s.x);
