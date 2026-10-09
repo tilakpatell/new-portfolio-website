@@ -40,7 +40,6 @@ export const DEAD_HITSTOP = [
 
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
-  { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
 ];
 
@@ -52,7 +51,6 @@ export const LINEAR_CAMERA = [
 
 export const UNANSWERED = [
   { file: 'universe/Comms.jsx', lacks: /\b(thud|onHit)\(/ },
-  { file: 'deathstar/inside/scene/hear.js', lacks: /case 'hurt'/ },
 ];
 
 // The sweeps for a file that starts anew. A shake decaying by dt beside a

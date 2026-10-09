@@ -25,7 +25,7 @@
 //   roomsOf(stream) → { shown(roomId), built(roomId), dt }   what people.js is told of the rooms: drawn
 //     while the stream shows them, standing from when they are built until the stream frees them (a
 //     body is let go only then, so the two mustn’t be swapped: a door shut on the dead would take them)
-//   createScene(renderer, { tier, small, station }) → { scene, camera, layout, ready, sync, hear, warm, resize, render, dispose }
+//   createScene(renderer, { tier, small, station }) → { scene, camera, layout, ready, sync, hear, warm, resize, render, timeScale, tune, dispose }
 //     sync(g, alpha, look?)   once a frame, after the game’s steps: g as rules/game.js keeps it
 //       ({ side, you: body & { room, crouch, hp, gun, armour, hero, pitch? }, doors, time, crew?, combat? }),
 //       alpha how far the frame is from the last step to the next; look: { yaw, pitch, view, aim } as
@@ -52,6 +52,7 @@ import { createKit } from './kit';
 import { createPeople } from './people';
 import { createShow } from './show';
 import { createStream } from './stream';
+import { createFeel, feelGroups } from '../../../../lib/three/feel';
 
 const STEP = 1 / 30; // the game’s step (rules/game.js)
 const JUMP = 3; // metres between two steps that are a ride or a teleport, not a stride
@@ -124,6 +125,9 @@ const CROUCH_PACE = 1.0; // metres a second the crouch walk covers at its own sp
 const QUAKE_MOST = 0.07; // metres the biggest tremor moves the camera
 const QUAKE_FOR = 1.3; // seconds a tremor shakes it
 const TREMBLE = 0.006; // metres it trembles by all the while
+// a hit on you this hard (combat.js's knock: the DL-44's) jolts the view and
+// holds the game a moment
+export const HEAVY = { from: 25, stop: 70 };
 
 export function playerAct({ crouch = false, moving = false, aim = false, gun = null, blade = null, shotAgo = Infinity, swungAgo = Infinity } = {}) {
   const base = crouch ? (moving ? 'crouch.walk' : 'crouch') : null;
@@ -177,6 +181,10 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   let shotAt = -Infinity;
   let swungAt = -Infinity;
   let quake = 0; // metres of shake a tremor has left
+  // every shake (a tremor, the tremble, a heavy hit on you) on the one feel:
+  // trauma², at most QUAKE_MOST metres, held still under reduced motion (the
+  // feel reads it), and the hitstop the module's loop slows its steps by
+  const feel = createFeel({ offset: QUAKE_MOST, baseFov: camera.fov });
   let inScene = false; // whether a scene had the camera last frame
   const vel = { x: 0, z: 0 };
   let shown = -1; // the last displayed time
@@ -305,14 +313,13 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
       camera.position.set(shot.pos.x, shot.pos.y, shot.pos.z);
       camera.lookAt(shot.look.x, shot.look.y, shot.look.z);
     }
+    // (metres of shake as the trauma that moves the camera that far: held at least that)
     const shake = quake + (g.flags?.has('breach') ? TREMBLE : 0);
-    if (shake > 0) {
-      // (a few unrelated waves, so it judders and never swings)
-      camera.position.x += shake * (Math.sin(now * 53) + Math.sin(now * 31 + 1)) * 0.5;
-      camera.position.y += shake * (Math.sin(now * 47 + 2) + Math.sin(now * 23 + 3)) * 0.5;
-      camera.position.z += shake * (Math.sin(now * 41 + 4) + Math.sin(now * 29 + 5)) * 0.5;
-      camera.rotateZ?.(shake * 0.4 * Math.sin(now * 37 + 6));
-    }
+    const want = Math.sqrt(Math.min(1, shake / QUAKE_MOST));
+    const has = feel.state().trauma;
+    if (want > has) feel.trauma(want - has);
+    feel.setBaseFov(camera.fov);
+    feel.update(dt, camera);
     quake = Math.max(0, quake - (QUAKE_MOST / QUAKE_FOR) * dt);
 
     becomes(playerKind({ side: g.side ?? you.side, hero: you.hero, armour: you.armour }));
@@ -418,11 +425,17 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     people.hear(events);
     for (const e of events ?? []) {
       if (e.type === 'quake') quake = Math.max(quake, QUAKE_MOST * (e.size ?? 1));
+      if (e.type === 'hurt' && (e.amount ?? 0) >= HEAVY.from) {
+        feel.trauma(Math.min(0.8, e.amount / 60));
+        feel.hitstop(HEAVY.stop);
+      }
       if (e.by !== 'you') continue;
       if (e.type === 'shot') shotAt = shown;
       else if (e.type === 'swing') swungAt = shown;
     }
   };
 
-  return { scene, camera, layout, ready: stream.ready, sync, hear, warm, resize, render: () => renderer.render(scene, camera), dispose };
+  // timeScale(dt): the share of a frame the game runs (the module's loop takes it, once a frame: a
+  // hitstop slows the steps); tune(): the ?debug panel's groups
+  return { scene, camera, layout, ready: stream.ready, sync, hear, warm, resize, render: () => renderer.render(scene, camera), timeScale: (dt) => feel.timeScale(dt), tune: () => feelGroups(feel), dispose };
 }
