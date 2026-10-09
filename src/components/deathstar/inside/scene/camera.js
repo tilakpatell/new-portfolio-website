@@ -15,9 +15,12 @@
 //     a metre ahead of pos, the way yaw and pitch face); dist how far behind the shoulder it stands.
 //     third: 2.6 m behind, 0.55 m right, at 1.7 m (crouched, as much lower as the eyes are);
 //     aiming 1.4 m behind; never further than `reach` (the scene eases out from a wall with it)
-//   wallHits(layout, open) → hits(from, to) → metres along from → to to the first wall, or Infinity
+//   wallHits(layout, open, solidsOf?) → hits(from, to) → metres along from → to to the first wall, or Infinity
 //     open(doorId): whether a doorway is clear to see through (a shut door is wall); the ceiling
-//     and the floor of the room the line starts in stop it too
+//     and the floor of the room the line starts in stop it too, and so does whatever stands in the
+//     rooms it starts and ends in (solidsOf(roomId): rules/furnish.js's boxes, with their heights,
+//     and round solids, as tall as the room), so a ship on the deck or a console behind you is
+//     never looked out of from inside
 
 import { BODY } from '../rules/walker';
 
@@ -60,7 +63,44 @@ export function cameraPose(body, { view = 'third', yaw = body.yaw ?? 0, pitch = 
   return { pos, look: plus(pos, face, 1), dist };
 }
 
-export function wallHits(layout, open = () => false) {
+// how far along from → to (0…1) the line first goes into a solid, or Infinity
+function intoSolid(s, from, d) {
+  if (s.box) {
+    const b = s.box;
+    let t0 = 0;
+    let t1 = 1;
+    for (const [o, v, lo, hi] of [
+      [from.x, d.x, b.x0, b.x1],
+      [from.y, d.y, b.y0 ?? -Infinity, b.y1 ?? Infinity],
+      [from.z, d.z, b.z0, b.z1],
+    ]) {
+      if (Math.abs(v) < EPS) {
+        if (o < lo || o > hi) return Infinity;
+        continue;
+      }
+      const u = (lo - o) / v;
+      const w = (hi - o) / v;
+      t0 = Math.max(t0, Math.min(u, w));
+      t1 = Math.min(t1, Math.max(u, w));
+      if (t0 > t1) return Infinity;
+    }
+    // (one the line starts inside is not met: the eye starts where you are)
+    return t0 > 0 ? t0 : Infinity;
+  }
+  const c = s.circle;
+  const [ox, oz] = [from.x - c.x, from.z - c.z];
+  const a = d.x * d.x + d.z * d.z;
+  if (a < EPS) return Infinity;
+  const b2 = ox * d.x + oz * d.z;
+  const disc = b2 * b2 - a * (ox * ox + oz * oz - c.r * c.r);
+  if (disc < 0) return Infinity;
+  const t = (-b2 - Math.sqrt(disc)) / a;
+  if (t <= 0 || t > 1) return Infinity;
+  const y = from.y + d.y * t;
+  return y >= (s.y0 ?? -Infinity) && y <= (s.y1 ?? Infinity) ? t : Infinity;
+}
+
+export function wallHits(layout, open = () => false, solidsOf = null) {
   const walls = layout.walls;
   return (from, to) => {
     const dx = to.x - from.x;
@@ -94,6 +134,11 @@ export function wallHits(layout, open = () => false) {
       if (dy > EPS && from.y <= top && to.y > top) best = Math.min(best, (top - from.y) / dy);
       const floor = layout.floorAt(id, from.x, from.z);
       if (floor !== null && dy < -EPS && from.y >= floor && to.y < floor) best = Math.min(best, (floor - from.y) / dy);
+    }
+    if (solidsOf) {
+      const d = { x: dx, y: dy, z: dz };
+      const end = layout.roomAt(to.x, to.y, to.z);
+      for (const r of new Set([id, end].filter(Boolean))) for (const s of solidsOf(r) ?? []) best = Math.min(best, intoSolid(s, from, d));
     }
     return best === Infinity ? Infinity : best * len;
   };

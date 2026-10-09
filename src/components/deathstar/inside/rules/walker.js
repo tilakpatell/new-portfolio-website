@@ -83,7 +83,7 @@ function indexOf(layout) {
     }
   };
   for (const w of layout.walls) {
-    put({ kind: 'seg', ax: w.x0, az: w.z0, bx: w.x1, bz: w.z1, y0: w.y0, y1: w.y1, door: w.door, mark: 0 }, Math.min(w.x0, w.x1), Math.min(w.z0, w.z1), Math.max(w.x0, w.x1), Math.max(w.z0, w.z1));
+    put({ kind: 'seg', ax: w.x0, az: w.z0, bx: w.x1, bz: w.z1, y0: w.y0, y1: w.y1, door: w.door, over: w.over, mark: 0 }, Math.min(w.x0, w.x1), Math.min(w.z0, w.z1), Math.max(w.x0, w.x1), Math.max(w.z0, w.z1));
   }
   const ceilings = [];
   for (const room of layout.rooms.values()) {
@@ -156,8 +156,14 @@ function push(item, x, z, r) {
 const shutTo = (item, open) => item.door === undefined || !open(item.door);
 
 // Whether an item stands in a body’s way: above what it can step over and
-// below its head. A wall in an open doorway is no wall.
-const inWay = (item, feet, h, open) => item.y1 > feet + BODY.step + EPS && item.y0 < feet + h - EPS && shutTo(item, open);
+// below its head. A wall in an open doorway is no wall, and one taller
+// than a man stoops to a man’s height under the wall over it (Chewbacca
+// and Vader through the control room’s 2 m door); lower than that, a
+// doorway is to be crouched through.
+const inWay = (item, feet, h, open) => {
+  const head = item.over !== undefined && open(item.over) ? Math.min(h, BODY.h) : h;
+  return item.y1 > feet + BODY.step + EPS && item.y0 < feet + head - EPS && shutTo(item, open);
+};
 
 function gather(body, index, solids) {
   const reach = body.r + PAD;
@@ -204,6 +210,8 @@ function overhead(body, index, open, solids) {
   for (const c of index.ceilings) if (y >= c.lo - UNDER && y <= c.hi && c.hi < top && holds(c.room, x, z)) top = c.hi;
   for (const item of gather(body, index, solids)) {
     if (item.y0 <= y + BODY.step + EPS || item.y0 >= top || !shutTo(item, open)) continue;
+    // (one taller than a man, on his feet, stoops under the wall over an open doorway a man's height up)
+    if (item.over !== undefined && open(item.over) && body.ground && body.h > BODY.h + EPS && item.y0 >= y + BODY.h - EPS) continue;
     if (push(item, x, z, body.r)) top = item.y0;
   }
   return top;

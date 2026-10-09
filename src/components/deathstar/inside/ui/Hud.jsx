@@ -189,7 +189,8 @@ export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing
       {playing && hurt && <span key={hurt.key} className="ds-hurt" data-all={hurt.angle == null || undefined} style={{ '--a': `${hurt.angle ?? 0}rad` }} aria-hidden="true" />}
 
       <div className="ds-lines">
-        {say && (
+        {/* (a line the talk's panel already shows isn't said again under it) */}
+        {say && !(talk?.line && talk.line === say.text) && (
           <p className="ds-subtitle" role="status">
             {say.who && <span className="ds-subtitle-who">{say.who}</span>}
             {say.text}
