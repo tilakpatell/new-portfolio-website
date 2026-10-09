@@ -185,6 +185,8 @@ import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
 import { createLook } from '../../runtime/look';
+import { reticleState } from '../../runtime/hud/reticle';
+import { coneFor } from '../../lib/combat/aim';
 import { flownInto, wayIn, worldName } from './landings/wayin';
 import { figureVoice } from './landings/voicelines';
 import { sayVoiced, stopVoiced } from '../../lib/voiced';
@@ -762,7 +764,9 @@ export async function create(canvas, ctx) {
   const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
-  const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, prepare: (roots, alive) => prepareLanding(roots, alive) });
+  // (a shot's assist cone, aim.js's: the look's mode says a mouse, a drag or a finger)
+  const footCone = () => coneFor({ coarse, mode: looker.mode });
+  const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, prepare: (roots, alive) => prepareLanding(roots, alive), cone: () => footCone() });
   const onFoot = () => Boolean(foot.phase);
   // the other pilots whose crews are down on a planet now (the scene hands
   // the ones on yours to the foot scene)
@@ -2754,10 +2758,15 @@ export async function create(canvas, ctx) {
     }
     return best;
   };
+  let footReticle = null; // (the on-foot crosshair's last state: placeFootHud)
   const placeHud = () => {
     const h = hudEls();
     if (!h.root) return;
     if (onFoot()) return placeFootHud(h);
+    if (footReticle?.shown) {
+      footReticle = reticleState(footReticle, {});
+      emit({ type: 'reticle', state: footReticle });
+    }
     const s = state.ship;
     const on = flying() && state.view !== 'map' && !state.crash && !state.dive && !props.frozen;
     // the gun line: a little way out along the nose (not while it flies itself)
@@ -4468,15 +4477,17 @@ export async function create(canvas, ctx) {
   // the HUD on foot: the sights where the gun points, brackets on the
   // trooper it's on, the way back to the ship, and your health in the
   // shields' bar
+  // (the crosshair on foot is the kit's Reticle, in the middle where the
+  // camera's ray goes (footAim.js): the page draws it from 'reticle', sent
+  // only when it changes: footReticle, kept with placeHud)
   const placeFootHud = (h) => {
     const info = foot.info();
     const on = Boolean(info) && foot.phase === 'walk' && !props.frozen;
-    setOn(h, h.reticle, on && !info.first);
-    if (on && !info.first) {
-      toScreen(info.aim.x, info.aim.y, info.aim.z, hudAt);
-      h.reticle.style.transform = `translate3d(${hudAt.x.toFixed(1)}px, ${hudAt.y.toFixed(1)}px, 0)`;
-      h.reticle.toggleAttribute('data-hot', Boolean(info.lock));
-      h.reticle.toggleAttribute('data-hit', state.hitMark > 0);
+    setOn(h, h.reticle, false);
+    const ret = reticleState(footReticle, { gun: on && info.gun, hitAt: on && info.landed != null ? -info.landed : null, now: 0, lock: on && info.locked }); // (landed: ms ago)
+    if (ret !== footReticle) {
+      footReticle = ret;
+      emit({ type: 'reticle', state: ret });
     }
     const lock = on ? info.lock : null;
     setOn(h, h.lock, Boolean(lock));
