@@ -20,9 +20,12 @@
 // saying so, no error. The roster's button and the relays aren't in it.
 // PORT=5175 for a dev server on another port. Behind a proxy: HTTPS_PROXY,
 // and BRIDGE=1 NODE_USE_ENV_PROXY=1 if the browser's WebSockets can't get
-// through it (scripts/online-check.mjs has the same). The relays are
-// public: anyone else online at the time is ignored, by callsign.
+// through it (scripts/online-check.mjs has the same). RELAY=fake runs it
+// with no network: the relays faked in here (lib/fake-relays.mjs), each
+// context attached to them. The relays are public: anyone else online at
+// the time is ignored, by callsign.
 import { chromium } from 'playwright-core';
+import { fakeRelays } from './lib/fake-relays.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -44,6 +47,7 @@ const BRAVO = `Bravo${tag}`;
 const proxy = process.env.HTTPS_PROXY ? [`--proxy-server=${process.env.HTTPS_PROXY}`, '--proxy-bypass-list=localhost;127.0.0.1'] : [];
 if (process.env.PROXY_CA_SPKI) proxy.push(`--ignore-certificate-errors-spki-list=${process.env.PROXY_CA_SPKI}`, '--disable-http2');
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: [...proxy, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const relays = process.env.RELAY === 'fake' ? fakeRelays() : null;
 
 const errors = [];
 let failed = 0;
@@ -77,9 +81,11 @@ async function visitor(name, ship, viewport) {
     },
     [name, ship],
   );
+  // RELAY=fake: the relays faked in here, for every context alike
+  if (relays) await relays.attach(ctx);
   // BRIDGE=1: the relays reached from Node (through the proxy with
   // NODE_USE_ENV_PROXY=1) rather than from the browser
-  if (process.env.BRIDGE)
+  else if (process.env.BRIDGE)
     await ctx.routeWebSocket(/^wss:\/\//, (ws) => {
       const up = new WebSocket(ws.url());
       const waiting = [];

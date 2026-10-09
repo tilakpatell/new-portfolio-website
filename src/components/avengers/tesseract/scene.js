@@ -10,7 +10,7 @@ import { loadSet, pbr, preload } from '../hq/assets';
 import { buildCompound, fbm, scatter, trees } from '../hq/kit/world';
 import { canvasTexture } from '../hq/kit/shapes';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { lightningPool } from '../lawn/models';
 import { CABLE, CASE, GANTRY, HANGAR, JET, LEGS, PADS, TREES, caseHeight, groundAt, hookAt, inHangar, pitchOf, ringAt, windAt } from './rules';
@@ -510,6 +510,8 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
 
   const vfx = createVfx(scene, { calm, ground: 0.05, maxSparks: small ? 500 : 900, maxPuffs: small ? 160 : 260 });
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.9 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'tesseract');
 
   // ── state for drawing ──
   const v3 = new THREE.Vector3();
@@ -878,11 +880,14 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
             vfx.flash(at, { color: BLUE, intensity: 90, distance: 26, life: 0.6 });
             vfx.ring(at.clone().setY(groundAt(e.x) + 0.2), { color: BLUE, from: 0.5, to: 9, life: 0.6 });
             feel.trauma(0.55);
+            feel.hitstop(70);
           } else if (e.what === 'jet') {
             vfx.explode(at, { scale: 1.6 });
             vfx.debris(at, { count: 20, speed: 10, size: 0.2, color: 0x3a3e44 });
             feel.trauma(0.85);
             feel.punch(5);
+            // a crash stops the game a beat (the loop's timeScale), the camera and the fire don't
+            feel.hitstop(90);
           }
           break;
         }

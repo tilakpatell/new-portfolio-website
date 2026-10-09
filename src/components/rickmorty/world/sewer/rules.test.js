@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createCooldownPress } from '../../../../lib/press';
 import { TUNING, laneX, newRun, progress, stepRun } from './rules';
 
 const DT = 1 / 60;
@@ -79,5 +80,29 @@ describe('the sewer run', () => {
     const again = stepRun(r, { hop: true }, DT);
     expect(again.x).toBe(r.x);
     expect(again.events).toEqual([]);
+  });
+
+  it('hops on landing when the hop was pressed a moment before (a buffer), and not from long before', () => {
+    const press = createCooldownPress();
+    let r = stepRun(newRun(1), { hop: true }, DT, { press });
+    expect(r.hop).toBeGreaterThan(0);
+    // pressed again with 0.08 s of the hop to go: it waits, and hops as the wheels come down
+    while (r.hop > 0.08) r = stepRun(r, {}, DT, { press });
+    r = stepRun(r, { hop: true }, DT, { press });
+    let hops = 0;
+    for (let i = 0; i < 12; i++) {
+      r = stepRun(r, {}, DT, { press });
+      hops += r.events.filter((e) => e.type === 'hop').length;
+    }
+    expect(hops).toBe(1);
+    // pressed with 0.3 s to go: dropped, as before
+    while (r.hop > 0.3) r = stepRun(r, {}, DT, { press });
+    r = stepRun(r, { hop: true }, DT, { press });
+    hops = 0;
+    for (let i = 0; i < 40; i++) {
+      r = stepRun(r, {}, DT, { press });
+      hops += r.events.filter((e) => e.type === 'hop').length;
+    }
+    expect(hops).toBe(0);
   });
 });

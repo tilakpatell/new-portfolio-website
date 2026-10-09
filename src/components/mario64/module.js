@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { COURSES } from './courses/index';
 import { drain, enterArea, enterCourse, exitCourse, newGame, tick } from './rules/game';
 import { SAVE, SAVE_VERSION, blank, clean, starTotal } from './rules/save';
+import { ZOOMS } from './rules/camera';
 import { createScene } from './scene';
 
 export const KEYS = {
@@ -186,9 +187,22 @@ export default {
       if (s.track !== want) s.music(want);
     }
 
+    // behind ?debug: the Lakitu's three distances and the mix, the game's own
+    // numbers (the port's input and camera rules are the N64's and stay so)
+    const level = (key, label, was) => ({ key, label, type: 'range', min: 0, max: 1, step: 0.01, get: () => sounds?.mix[key].value ?? was, set: (v) => {
+        if (sounds) sounds.mix[key].value = v;
+      } });
+    const zoom = (i, label) => ({ key: `zoom${i}`, label, type: 'range', min: 300, max: 3000, step: 10, get: () => ZOOMS[i], set: (v) => {
+        ZOOMS[i] = v;
+      } });
+
     const world = {
       game: g,
       scene,
+      tune: () => [
+        { name: 'camera', items: [zoom(0, 'near'), zoom(1, 'middle'), zoom(2, 'far')] },
+        { name: 'mix', items: [level('music', 'music', 0.32), level('sfx', 'sounds', 0.6)] },
+      ],
       // for the browser checks: straight to an area or a course
       debug: {
         enterArea: (id, entry) => {

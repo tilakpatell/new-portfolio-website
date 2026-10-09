@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { readPad, typing } from '../../games/pad';
 import { fitCanvas } from '../../../runtime/hud';
 import Pollos from '../Pollos';
@@ -11,7 +12,7 @@ import { CAREER, readCareer } from './career';
 import { Home, Saul } from './places';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
-import { CRYSTALS, DRIVING_KEY, DROPS, PLACES, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, createStreets, crystalAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, stepTraffic, timeName } from './rules';
+import { CRYSTALS, DRIVING, DRIVING_KEY, DROPS, PLACES, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, createSafeSpot, createStreets, crystalAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, stepTraffic, timeName } from './rules';
 import { carSound } from './sounds';
 import AbqHud, { Title } from './AbqHud';
 import { drawMap } from './map';
@@ -156,7 +157,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     const car = { ...(ok ? { x: parked.x, z: parked.z, yaw: Number.isFinite(parked.yaw) ? parked.yaw : SPAWN.yaw } : SPAWN), speed: 0, slide: 0, yawRate: 0 };
     // the town's traffic (Hank first, in his SUV), none of it on top of you
     const traffic = createStreets(touch ? 18 : 34, { avoid: [car] });
-    sim.current = { car, traffic, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, hand: false, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id, sound: null };
+    sim.current = { car, safe: createSafeSpot(car), traffic, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, hand: false, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id, sound: null };
   }
   const { unlock } = useAchievements();
   // the other drivers online, as ghosts (towns/useTravellers)
@@ -211,6 +212,30 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     a.setTime(next.tod);
     setClock(next);
     sim.current.clock = next.id;
+  }, [api]);
+  // stuck (wedged between a wall and a truck, or up against the fence): back
+  // to the last place it drove clean from (rules.js createSafeSpot), stopped,
+  // through a quick fade so it isn't a jump cut
+  const recover = useCallback(() => {
+    const s = sim.current;
+    const a = api.current;
+    const c = canvas.current;
+    if (!a || s.recovering) return;
+    s.recovering = true;
+    if (c) {
+      c.style.transition = 'opacity 130ms ease-out';
+      c.style.opacity = '0';
+    }
+    setTimeout(() => {
+      s.car = s.safe.back();
+      s.steer = 0;
+      api.current?.settle();
+      if (c) c.style.opacity = '1';
+      setTimeout(() => {
+        if (c) c.style.transition = '';
+        s.recovering = false;
+      }, 130);
+    }, 130);
   }, [api]);
   const [list, setList] = useState(false);
   // the driving settings: live (the frame loop reads them) and kept
@@ -304,7 +329,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   const live = gl === 'on' && inView && !inside;
   const near = hud.near;
   const acts = useRef(null);
-  acts.current = { near, enter, nextTime, runDelivery, throwPizza, washCar };
+  acts.current = { near, enter, nextTime, runDelivery, throwPizza, washCar, recover };
   const liveRef = useRef(live);
   liveRef.current = live;
   // the engine starts with the first key or touch (a browser plays nothing before one)
@@ -342,6 +367,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       }
       if (key === 't') a.nextTime();
       if (key === 'r') a.runDelivery();
+      if (key === 'b') a.recover();
       if (key === 'p') a.throwPizza();
       if (key === 'h') honk();
       if (key === 'o') {
@@ -401,8 +427,11 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       if (pad.a && !s.padA && s.near) enter(s.near);
       // (a press of the pad's own is the nearest it has to a key: try the engine then, once)
       if ((pad.a && !s.padA) || (pad.rt && !s.padRt)) startSound();
+      // (Y: back on the road, as B is on the keys)
+      if (pad.y && !s.padY) recover();
       s.padA = pad.a;
       s.padRt = pad.rt;
+      s.padY = pad.y;
     }
     throttle = Math.max(-1, Math.min(1, throttle));
     const analog = keyed === 0 && stick !== 0;
@@ -413,8 +442,11 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     const movers = s.near3 ?? (s.near3 = []);
     movers.length = 0;
     for (const t of s.traffic) if (Math.abs(t.x - s.car.x) < 14 && Math.abs(t.z - s.car.z) < 14) movers.push({ x: t.x, z: t.z, r: t.route ? 1.7 : 1.5 });
-    const { car, bump, slip, surface } = stepCar(s.car, { throttle, steer: s.steer, handbrake, assist: set.assist }, dt, movers);
+    const { car, bump, force, at: hitAt, slip, surface } = stepCar(s.car, { throttle, steer: s.steer, handbrake, assist: set.assist }, dt, movers);
     s.car = car;
+    s.safe.step(car, bump, dt);
+    // a bump: a thud by how hard, and a puff where (the law keeps the scrapes quiet)
+    if (force > 0) a.hit(force, hitAt);
     if (s.frame % 2 === 0) s.sound?.set({ speed: Math.hypot(car.speed, car.slide), throttle, slip, road: surface === 'road' });
     if (Math.abs(throttle) > 0.1) s.moved = true;
     // the speedometer, written straight to the page (not through React, a
@@ -513,6 +545,17 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     }
     if (++s.frame % 4 === 0) drawMap(map.current, mapBox.current, s.car, hank, progRef.current, s.blue, s.run, s.others, s.traffic);
   }, live);
+
+  // ?debug: the feel's numbers (the shake, the hit law) and the driving
+  // settings, on the one tuning panel (lib/debugPanel); nothing without it
+  useEffect(() => {
+    const a = api.current;
+    if (gl !== 'on' || !a?.tune || !debugOn()) return undefined;
+    const item = (key) => ({ key, label: DRIVING[key].label.toLowerCase(), type: 'range', min: DRIVING[key].min, max: DRIVING[key].max, step: DRIVING[key].step, get: () => drivingRef.current[key], set: (v) => changeDriving({ ...drivingRef.current, [key]: v }) });
+    const panel = debugPanel({ title: 'Albuquerque' });
+    panel.open([...a.tune(), { name: 'driving', items: Object.keys(DRIVING).map(item) }], { title: 'Albuquerque', id: 'albuquerque' });
+    return () => panel.dispose();
+  }, [gl, api, changeDriving]);
 
   // the thumbs, on a phone: the kit's stick (read from where the thumb went
   // down), which wakes the engine on its first touch, and the handbrake under

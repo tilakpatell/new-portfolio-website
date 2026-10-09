@@ -56,6 +56,10 @@ import { createStage } from '../../office/stage3d';
 import { budget, device } from '../../../lib/device';
 import { loadTexture } from '../../../lib/hdri';
 import { prefersReducedMotion } from '../../../lib/hooks';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createDust } from '../../../lib/three/dust';
+import { createImpacts, impactGroups } from '../../../lib/impact';
 import { GRADE } from '../../../lib/stage3d';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { splitWord } from '../elements';
@@ -1017,7 +1021,22 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   let roll = 0;
   let pitch = 0;
   let lastSpeed = 0;
-  let shake = 0;
+  // the shake (lib/three/feel: still under reduced motion), as big as the
+  // old one's ±0.2 m and gone as quickly
+  const feel = createFeel({ offset: 0.2, baseFov: 58 });
+  feel.set({ decay: 2.5 });
+  // a bump into a wall, a car or the fence: a thud by how hard, from where
+  // it was, and a puff there (the shake is the bump's own, below)
+  const knockDust = createDust({ count: 48, colour: 0xd9bf98, size: 1.1 });
+  const ear = new THREE.Vector3();
+  scene.add(knockDust.mesh);
+  const knockRules = createImpacts();
+  const knocks = wireImpacts({
+    rules: knockRules,
+    dust: knockDust,
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
+    toWorld: (at) => [at.x, surfaceHeight(at.x, at.z) + 0.6, at.z],
+  });
   let fov = 58;
   let idle = 0; // seconds parked, before the camera wanders off round the car
   let orbit = 0;
@@ -1155,7 +1174,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     siren.forEach((s, i) => (s.material.opacity = flash * (Math.sin(clock * 14 + i * Math.PI) > 0 ? 1 : 0.15)));
     // dust off the sand, the dirt, and a bump; smoke off the tyres when
     // they slide on the road, and the rubber they leave on it
-    if (state.bump > 4) shake = Math.max(shake, Math.min(1, state.bump / 20));
+    if (state.bump > 4) feel.trauma(Math.min(1, state.bump / 20));
     const slip = going > 2.5 ? (state.slip ?? 0) : 0;
     const smoking = slip > 0.3;
     layMarks(c, gy, smoking && state.onRoad && gy < 0.01);
@@ -1210,7 +1229,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         f.m.position.copy(f.m.userData.rest);
         f.m.quaternion.copy(roof.q);
         flying.splice(i, 1);
-        shake = Math.max(shake, 0.12);
+        feel.trauma(0.12);
       }
     }
     // the car wash: water coming down in the bay, and suds all over the Aztek
@@ -1292,11 +1311,6 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       camera.position.z += (c.z - pz) * 0.22;
       camera.position.y += 0.9;
     }
-    if (shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * shake * 0.4;
-      camera.position.y += (Math.random() - 0.5) * shake * 0.3;
-      shake = Math.max(0, shake - dt * 2.5);
-    }
     camera.lookAt(camLook);
     // (the QA scripts' own view, if they've asked for one)
     if (peek) {
@@ -1309,6 +1323,10 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
+    // the shake, after the camera's placed (the fov is ours: the feel only keeps it)
+    knocks.update(dt);
+    feel.setBaseFov(camera.fov);
+    if (!peek) feel.update(dt, camera);
     // the sun (or the moon) shines from where it is
     sun.target.position.set(c.x, gy, c.z);
     sun.position.copy(sun.target.position).addScaledVector(L.key, 160);
@@ -1395,6 +1413,12 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     wash() {
       washing = 1;
     },
+    // a bump, as the rules tell it: { force, at: { x, z } }
+    hit(force, at) {
+      knocks.onHit(force, at, 'bump');
+    },
+    // the feel's numbers, for the ?debug panel
+    tune: () => [...feelGroups(feel), ...impactGroups(knockRules)],
     footprints,
     townFits: town.fits,
     // (for the QA scripts: what's drawn, to count, and a camera of their own)
@@ -1428,6 +1452,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       gone = true;
       for (const off of undress) off();
       people?.dispose();
+      knocks.dispose();
       ghosts.dispose();
       for (const o of owned) o.dispose?.();
       if (cloud) cloud.dispose();

@@ -8,6 +8,7 @@ import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { AREAS } from './areas';
 import { createSim } from './sim';
+import { JUMP, setJump } from './rules';
 import { createSounds } from './sounds';
 import { useVoiced } from '../../../lib/useVoiced';
 import { Exit, Menu, Prompt, Stick, Toast, TouchButton } from '../../../runtime/hud';
@@ -16,6 +17,7 @@ import { Keys } from '../../guide/KeyTable';
 import GuideCue from '../../guide/GuideCue';
 import { CYBERTRON_KEYS } from '../../guide/cybertron';
 import './game.css';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
 
 // Cybertron, the world: Iacon at war, and Team Prime's base and Jasper on
 // Earth, joined by bridges, walked and driven as Optimus Prime. This keeps
@@ -280,6 +282,17 @@ function World({ gl, setGl, side }) {
     if (import.meta.env.DEV && window.__CY__) window.__CY__.go = (to, at = 'start') => cross(to, at);
   }, [cross]);
 
+  // ?debug: the feel's numbers (the shake, the hitstop, the hit law) and the
+  // jump's forgiveness, on the one tuning panel; nothing without it
+  useEffect(() => {
+    const a = api.current;
+    if (gl !== 'on' || !a?.tune || !debugOn()) return undefined;
+    const item = (key) => ({ key, label: `${key} (s)`, type: 'range', min: 0, max: 0.3, step: 0.005, get: () => JUMP[key], set: (v) => setJump(sim.current.player, { [key]: v }) });
+    const panel = debugPanel({ title: 'Cybertron' });
+    panel.open([...a.tune(), { name: 'jump', items: Object.keys(JUMP).map(item) }], { title: 'Cybertron', id: 'cybertron' });
+    return () => panel.dispose();
+  }, [gl]);
+
   // ── a frame ──
   const loop = useRef(null);
   useEffect(() => {
@@ -356,7 +369,8 @@ function World({ gl, setGl, side }) {
       c.touchUse = false;
       c.pad = pad;
       c.edges.clear();
-      const events = s.step(input, dt);
+      // (a ram or a kill holds the game a moment: the feel's hitstop, by its dt)
+      const events = s.step(input, a.feel ? a.feel.step(dt) : dt);
       if (wantUse) events.push(...s.use());
       // what it sounds like
       const snd = sounds.current;
@@ -374,6 +388,9 @@ function World({ gl, setGl, side }) {
         else if (e.type === 'transform') snd?.transform();
         else if (e.type === 'pickup') snd?.pickup();
         else if (e.type === 'jump') snd?.jump();
+        // a wall, or the ground from a height: a thud by how hard, a puff, a jolt
+        else if (e.type === 'bump') a.knock?.(e.force, [e.x, e.y, e.z]);
+        else if (e.type === 'land') a.knock?.(e.force, [p.x, p.y + 0.3, p.z]);
         else if (e.type === 'start') setToast({ title: e.title, text: 'Mission started' });
         else if (e.type === 'failed') setToast({ title: 'Out of time', text: 'The step starts over' });
         else if (e.type === 'complete') {

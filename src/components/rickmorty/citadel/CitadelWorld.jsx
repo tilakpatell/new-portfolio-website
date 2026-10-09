@@ -213,6 +213,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
           return;
         }
         api.current = a;
+        a.tune?.(); // (behind ?debug: the shake's numbers)
         a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         // (cue: something for the people to react to, as the world would say it: { type: 'seen', id } …)
         if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete, down: () => liftRef.current?.down(true), up: () => liftRef.current?.up(), cue: (c) => sim.current?.cues.push(c), emote: (id) => sim.current && (sim.current.emote = { id, at: sim.current.t }) }; // for the QA scripts

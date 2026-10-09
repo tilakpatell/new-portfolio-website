@@ -4,6 +4,8 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { sayVoiced, stopVoiced } from '../../../lib/voiced';
+import { createCooldownPress, pressGroups } from '../../../lib/press';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
@@ -91,6 +93,14 @@ function Kitchen({ level, live, invite }) {
   const [, setTick] = useState(0);
   const sim = useRef(null);
   if (!sim.current) sim.current = { s: newRush(level, { players: 1 }), me: 0, phase: 'lobby', keys: new Set(), work: new Set(), stick: { x: 0, y: 0 }, grabs: [], dash: false, padBefore: {}, count: 0, tickAt: 11, lines: 0, t: 0, touchWork: false, sess: null, shown: {}, joinedAt: 0 };
+  // the dash's press (lib/press.js), and with ?debug its numbers on the panel
+  if (!sim.current.press) sim.current.press = createCooldownPress();
+  // (only while the kitchen is on screen: a town's own panel has the corner otherwise)
+  useEffect(() => {
+    if (!live || !debugOn()) return undefined;
+    const panel = debugPanel({ title: 'The rush', groups: pressGroups(sim.current.press) });
+    return () => panel.dispose();
+  }, [live]);
   const hudKey = useRef('');
   // the loop reads the phase from sim (set at once), the page from state
   const go = useCallback((p) => {
@@ -370,8 +380,11 @@ function Kitchen({ level, live, invite }) {
         if (pressed('b') || pressed('rb') || pressed('lb')) dash = true;
       }
       sm.dash = false;
-      if (dash && me.cool <= 0) sound('dash');
-      movePlayer(s, me, { x: Math.max(-1, Math.min(1, mx)), z: Math.max(-1, Math.min(1, mz)), dash }, dt, s.players.filter((p) => p !== me));
+      // a dash pressed a moment before the cooldown ends goes as it ends (lib/press.js)
+      if (dash) sm.press.press();
+      const cool = me.cool;
+      movePlayer(s, me, { x: Math.max(-1, Math.min(1, mx)), z: Math.max(-1, Math.min(1, mz)), press: sm.press }, dt, s.players.filter((p) => p !== me));
+      if (me.cool > cool) sound('dash');
       me.work = sm.work.size > 0 || sm.touchWork || Boolean(pad?.x);
       const grabs = sm.grabs.splice(0);
       if (role === 'guest') {

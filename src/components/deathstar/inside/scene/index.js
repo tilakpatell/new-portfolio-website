@@ -119,6 +119,11 @@ const AHEAD = 2.6; // metres past you in the view a friend standing in it is fad
 const STROKE = 0.55; // seconds a blade’s stroke plays for after a swing
 const STROKES = ['sword.a', 'sword.b', 'sword.c']; // the strokes, in turn
 const CROUCH_PACE = 1.0; // metres a second the crouch walk covers at its own speed
+// the station shaking while it comes apart (rules/breach.js): a tremor's jolt, easing off, over a
+// tremble that never stops while it goes
+const QUAKE_MOST = 0.07; // metres the biggest tremor moves the camera
+const QUAKE_FOR = 1.3; // seconds a tremor shakes it
+const TREMBLE = 0.006; // metres it trembles by all the while
 
 export function playerAct({ crouch = false, moving = false, aim = false, gun = null, blade = null, shotAgo = Infinity, swungAgo = Infinity } = {}) {
   const base = crouch ? (moving ? 'crouch.walk' : 'crouch') : null;
@@ -171,6 +176,8 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   const played = { base: undefined, upper: undefined, stroke: 0 };
   let shotAt = -Infinity;
   let swungAt = -Infinity;
+  let quake = 0; // metres of shake a tremor has left
+  let inScene = false; // whether a scene had the camera last frame
   const vel = { x: 0, z: 0 };
   let shown = -1; // the last displayed time
   let frames = 0;
@@ -291,16 +298,30 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     camera.lookAt(pose.look.x, pose.look.y, pose.look.z);
     // a story's scene takes the camera for its shots
     const shot = cine.sync(g, dt);
+    // (a scene over: whatever it had your figure play, it takes up again what you are doing)
+    if (inScene && !shot) played.base = played.upper = undefined;
+    inScene = Boolean(shot);
     if (shot) {
       camera.position.set(shot.pos.x, shot.pos.y, shot.pos.z);
       camera.lookAt(shot.look.x, shot.look.y, shot.look.z);
     }
+    const shake = quake + (g.flags?.has('breach') ? TREMBLE : 0);
+    if (shake > 0) {
+      // (a few unrelated waves, so it judders and never swings)
+      camera.position.x += shake * (Math.sin(now * 53) + Math.sin(now * 31 + 1)) * 0.5;
+      camera.position.y += shake * (Math.sin(now * 47 + 2) + Math.sin(now * 23 + 3)) * 0.5;
+      camera.position.z += shake * (Math.sin(now * 41 + 4) + Math.sin(now * 29 + 5)) * 0.5;
+      camera.rotateZ?.(shake * 0.4 * Math.sin(now * 37 + 6));
+    }
+    quake = Math.max(0, quake - (QUAKE_MOST / QUAKE_FOR) * dt);
 
     becomes(playerKind({ side: g.side ?? you.side, hero: you.hero, armour: you.armour }));
     if (person) {
       const o = person.object;
-      o.position.set(at.x, at.y, at.z);
-      o.rotation.y = -at.yaw;
+      // (where you stand, or where a scene has swung you)
+      const drawn = cine.youAt ?? at;
+      o.position.set(drawn.x, drawn.y, drawn.z);
+      o.rotation.y = -drawn.yaw;
       // (in first person the eye is inside the head; a scene's camera sees you)
       o.visible = (view !== 'first' || Boolean(shot)) && !cine.hidesYou;
       person.hold(you.gun ?? null);
@@ -396,6 +417,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     show.hear(events);
     people.hear(events);
     for (const e of events ?? []) {
+      if (e.type === 'quake') quake = Math.max(quake, QUAKE_MOST * (e.size ?? 1));
       if (e.by !== 'you') continue;
       if (e.type === 'shot') shotAt = shown;
       else if (e.type === 'swing') swungAt = shown;
