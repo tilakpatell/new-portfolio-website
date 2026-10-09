@@ -175,7 +175,7 @@ import { tells } from './npcRules';
 import { createStanding } from './standing';
 import { createWanted } from './wanted';
 import { createLaw } from './law';
-import { readBuildWire, writeBuild } from './shipyard/build';
+import { readBuildWire, readTune, tuneKey, writeBuild } from './shipyard/build';
 import { readLooks } from '../rickmorty/wardrobe/looks';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { entrySound, lockSound, shipEngine, wellSound } from './sounds';
@@ -1155,6 +1155,7 @@ export async function create(canvas, ctx) {
     barrel: 0, // and which of the fitted guns' barrels
     loadout: STOCK_LOADOUT, // what's fitted in the hangar (outfit.js)
     build: null, // the garage build flown in place of the stock hull (shipyard/), or null
+    tune: {}, // the crew's own ship tuned with modules ({ slot: module id }); applies while the hull is the stock one
     stats: statsOf(null, STOCK_LOADOUT), // and what it does
     lastShot: 0,
     crash: null, // { age, id, … } while a crash plays out (startCrash)
@@ -1969,7 +1970,7 @@ export async function create(canvas, ctx) {
     for (const pl of plumes) pl.trail.setColors(plumeColor(), look.core);
   };
   const refit = () => {
-    state.stats = statsOf(state.kind, state.loadout, state.build);
+    state.stats = statsOf(state.kind, state.loadout, state.build, state.tune);
     if (!state.kind || !state.model) return setBoosterPlumes();
     const mods = state.model.outfit(state.loadout);
     state.barrel = 0;
@@ -2000,6 +2001,15 @@ export async function create(canvas, ctx) {
     if (!disposed) state.model?.setLooks?.(readLooks(e.detail));
   };
   window.addEventListener('tp:looks', onLooks);
+
+  // The tune on the crew's own ship (shipyard/build.js's): only its numbers
+  // change, so the ship is not built again.
+  const setTune = (raw) => {
+    const next = readTune(raw);
+    if (tuneKey(next) === tuneKey(state.tune)) return;
+    state.tune = next;
+    state.stats = statsOf(state.kind, state.loadout, state.build, state.tune);
+  };
 
   // (force: the same crew, built again: its garage build changed)
   const setShip = (kind, force = false) => {
@@ -5588,6 +5598,7 @@ export async function create(canvas, ctx) {
   canvas.addEventListener('pointerleave', onLeave);
 
   state.loadout = readLoadout(props.loadout);
+  state.tune = readTune(props.tune);
   setShip(props.ship ?? null);
   setNet(props.net);
   paintStates();
@@ -5839,10 +5850,12 @@ export async function create(canvas, ctx) {
       if ((next.ship ?? null) !== state.kind) {
         state.loadout = readLoadout(next.loadout); // (a new ship comes fitted as it was left)
         state.build = sameBuild(next.build) ? state.build : readBuildWire(next.build ? writeBuild(next.build) : null); // (and on the hull it was left on)
+        state.tune = readTune(next.tune); // (and tuned as it was)
       }
       setShip(next.ship ?? null);
       setBuild(next.build ?? null);
       setLoadout(next.loadout);
+      setTune(next.tune);
       setNet(next.net);
       // the page's pick, only when it changes. The router moves the address
       // in a transition, so a render that comes first (the HUD's, as the
