@@ -1,0 +1,117 @@
+// One POI's buildings drawn: a group in the scene, relative to the floating
+// origin, its placements (./landmarks.js's) put by a galaxy placer
+// (galaxy/surface/placer.js: a catalog model, a kit model, or the kind's
+// code-built prop), and a plain block where nothing comes, so the POI never
+// stands empty for a file that won't load (said once a landmark, no retry:
+// the placer's loaders keep their own caches, and a file that failed isn't
+// asked for again till the page is).
+//
+// Freed whole: the placer's group out of the scene, its kits disposed of,
+// and the geometry it drew handed back to the graphics chip, unless another
+// landmark still draws it (the placer's model cache shares a file's
+// geometry between every copy, so a count is kept across landmarks). A
+// model that comes in after the landmark has gone is freed as it lands.
+//
+//   createLandmark(scene, { list, placer: (group) → placer, origin })
+//     → { group, ready, stats() → { placed, standIns }, update(t, dt),
+//         reanchor(at), dispose() }
+//   galaxyPlacer({ kit, house }) → (group) → a galaxy placer over it, its
+//     things stood at their own heights (`abs`), nothing solid
+
+import * as THREE from 'three';
+import { createPlacer } from '../../galaxy/surface/placer';
+
+const users = new Map(); // geometry → how many live landmarks draw it
+
+function own(object) {
+  const got = [];
+  object.traverse((o) => o.geometry && got.push(o.geometry));
+  for (const g of got) users.set(g, (users.get(g) ?? 0) + 1);
+  return got;
+}
+
+function letGo(geometries) {
+  for (const g of geometries) {
+    const n = (users.get(g) ?? 1) - 1;
+    if (n > 0) users.set(g, n);
+    else {
+      users.delete(g);
+      g.dispose();
+    }
+  }
+}
+
+// the stand-in: a grey block about a hut's size, its foot on the ground
+const BLOCK = { w: 8, h: 6 };
+
+export function createLandmark(scene, { list, placer: makePlacer, origin = [0, 0, 0], name = 'landmark' }) {
+  const group = new THREE.Group();
+  group.name = name;
+  scene.add(group);
+  const placer = makePlacer(group);
+  const geometries = []; // one entry a mesh drawn: the count is by draws, not files
+  const stats = { placed: 0, standIns: 0 };
+  let block = null; // { geometry, material }, made at the first stand-in
+  let gone = false;
+
+  const standIn = (p) => {
+    if (gone) return;
+    block ??= { geometry: new THREE.BoxGeometry(BLOCK.w, BLOCK.h, BLOCK.w).translate(0, BLOCK.h / 2, 0), material: new THREE.MeshLambertMaterial({ color: '#8a8f96', flatShading: true }) };
+    const m = new THREE.Mesh(block.geometry, block.material);
+    m.name = 'landmark-stand-in';
+    m.position.set(p.at[0], p.y, p.at[1]);
+    m.rotation.y = p.yaw ?? 0;
+    group.add(m);
+    stats.standIns++;
+  };
+
+  const reanchor = (at) => group.position.set(0 - at[0] || 0, 0 - at[1] || 0, 0 - at[2] || 0);
+  reanchor(origin);
+
+  const ready = Promise.all(
+    list.map((p) =>
+      Promise.resolve()
+        .then(() => placer.put(p))
+        .then(
+          (o) => {
+            if (!o) return standIn(p);
+            const got = own(o);
+            if (gone) return letGo(got);
+            geometries.push(...got);
+            stats.placed++;
+          },
+          () => standIn(p),
+        ),
+    ),
+  ).then(() => {
+    if (stats.standIns && !gone) console.warn(`${name}: ${stats.standIns} of ${list.length} things won't load; blocks stand in`);
+  });
+
+  return {
+    group,
+    ready,
+    stats: () => ({ ...stats }),
+    update(t, dt) {
+      if (!gone) placer.update?.(t, dt);
+    },
+    reanchor,
+    dispose() {
+      if (gone) return;
+      gone = true;
+      placer.dispose?.();
+      group.removeFromParent();
+      letGo(geometries);
+      geometries.length = 0;
+      block?.geometry.dispose();
+      block?.material.dispose();
+    },
+  };
+}
+
+// (a placer's world: the heights are the placements' own, nothing is walked on)
+const WORLD = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids: { circle() {}, box() {} }, floors: [] };
+
+export const galaxyPlacer =
+  ({ kit, house = null }) =>
+  (group) =>
+    createPlacer({ parent: group, kit, world: { ...WORLD, floors: [] }, house });
