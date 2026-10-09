@@ -44,9 +44,10 @@
 //   says where it was put ({ kind, hand, bone, palm, line, grip }, in the
 //   hand's and the item's spaces), for the checks. update: the carry, each
 //   frame after the animator's after; busy (or a full-body clip playing)
-//   lets the second hand go. release: the item back under its old parent
-//   as it was; hide(on): hidden while on. null: no hand bone, or no frame
-//   and no forearm; nothing attached.
+//   lets the second hand go and leaves the wrist to the clip (a drink to
+//   the lips, a fall). release: the item back under its old parent as it
+//   was; hide(on): hidden while on. null: no hand bone, or no frame and no
+//   forearm; nothing attached.
 
 import * as THREE from 'three';
 import { gripMorphs } from './grip';
@@ -361,7 +362,7 @@ export function holdItem(fig, item, kindName, opts = {}) {
       if (st.gone) return;
       const full = busy || Boolean(anim?.playing?.('full'));
       if (spec.carry.still) still(dt, moving, full);
-      if (spec.carry.upright) upright();
+      if (spec.carry.upright && !full) upright();
       second(full);
     },
     release() {
