@@ -11,6 +11,7 @@ What each folder under `docs/` holds, and where to start for a question. Every s
 | `superpowers/specs/` | designs, one per feature or lane, dated | you start on a feature and need the why and the shape |
 | `superpowers/plans/` | the task-by-task plans that carry a design out | you are carrying one out |
 | `superpowers/HANDOFF-*.md` | where a lane was left, for the session that picks it up | you continue another session’s work |
+| `superpowers/evidence/` | what a lane’s checks and audits found, a folder a lane, each with a README saying what its files are | you want the numbers behind a lane’s claims |
 | `research/` | dated notes on techniques, other sites and audits | a design cites one, or you are about to research the same thing |
 | `autopilot/` | the self-improvement loop’s readme, backlog and budget | you run or review the autopilot |
 | `assets/` | where third-party asset kits come from, and their licence | you add a model or texture someone else made |

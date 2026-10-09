@@ -6,7 +6,7 @@ import * as fromCast from '../../components/rickmorty/portal/meshyCast';
 // An animator as far as the calls see one: what's playing on each layer
 // (a play is on at once), and every call it's had
 function fakeAnim() {
-  const on = { full: null, upper: null, lower: null };
+  const on = { full: null, upper: null, lower: null, 'arm.r': null, 'arm.l': null };
   const calls = [];
   const anim = {
     actions: {},
@@ -62,6 +62,20 @@ describe('the calls a figure on an animator answers', () => {
     expect(anim.stop).toHaveBeenCalledWith('upper', 0.2);
     c.stop(0.4, 'full');
     expect(anim.stop).toHaveBeenLastCalledWith('full', 0.4);
+  });
+
+  it('play and lasts on an arm’s layer, each arm its own', async () => {
+    const anim = fakeAnim();
+    const c = animatorCalls(anim, { own: ['idle', 'walk', 'run'], loader });
+    expect(await c.play('idle', { layer: 'arm.r', loop: true, lasts: 1 })).toBe(true);
+    expect(await c.play('walk', { layer: 'arm.l', loop: true })).toBe(true);
+    expect(anim.playing('arm.r')).toBe('idle');
+    expect(anim.playing('arm.l')).toBe('walk');
+    c.tick(1.2);
+    expect(anim.stop).toHaveBeenCalledWith('arm.r', 0.2);
+    expect(anim.stop).not.toHaveBeenCalledWith('arm.l', expect.anything());
+    c.stop(0.3, 'arm.l');
+    expect(anim.stop).toHaveBeenLastCalledWith('arm.l', 0.3);
   });
 
   it('base: sat on its own sat clip, else the library’s through its way in; seated while it is', async () => {
