@@ -68,7 +68,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth` | Tier 1: #728 | |
 | 2B | | | | |
 | 2C | | | | |
-| 2D | | | | |
+| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | #730 (Tier 1) | |
 | 2E | | | | |
 | 2F | | | | |
 
@@ -101,3 +101,6 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **2A, for 2F (the Citadel):** the towns’ shake and camera are now `middleearth/feel.js`’s `createShake` (a level asked is the trauma it is raised to, so `A.shake = Math.max(A.shake, k)` every frame holds k rather than piling up; offset 1, fade 0.8 a second, as the jitter did) and `byFrame(k, dt)` (`middleearth/ease.js`: `min(1, dt·k)` as it moved at 60 Hz, by dt). The Citadel’s scene has the same four lines; middleearth has no `index.js`, so either copy them or ask the owner for an index that passes these on.
 - **2A, for the owner:** the 260 ms fade went on the Shire’s two respawns (Maggot’s gate, the Rider), as the roster names them; the twelve towns’ watchers still put you back at the door at once (a line in each town’s `*World.jsx` and a veil in its css: a Phase 2 look pass could share one through `towns/TownHud.jsx`). The towns’ blows (a troll’s hit, a stab, a bash) carry no force on their events, so their sounds stay at their own gain; the hitstop and the shake answer them.
 - **2A, for 2B–2F:** `feel.test.js`’s count check is now “no more than the audit’s counts”, so each lane takes its own entries off without editing the same count line as five others.
+- **2D, for 2A–2F:** a shake whose old k was a size in metres (Cybertron’s jolts reach 2.4, the office’s 0.18) keeps that size at its peak as `feel.trauma(√(k / kmax))` with `offset` kmax / 2; `feel.update` sets `camera.fov` to its base, so a scene that eases its own fov calls `feel.setBaseFov(camera.fov)` first.
+- **2D, for the owner:** `games/pad.js`’s `readPad` has no Back (button 8): Albuquerque’s way out is Y on a pad, B on the keys (R is its delivery). A `back: b(8)` there would let a lane use the spec’s button.
+- **2D:** Cybertron’s fuzz found Optimus 0.05 m into the crack between two of Kaon’s seat blocks once the jump forgave (a new path, an old gap): `resolve` takes six passes, not three.
