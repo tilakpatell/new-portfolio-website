@@ -1,18 +1,26 @@
 // The flight over a planet (/fly/:planet) as a world module on the runtime:
 // the ship under ./flightRules.js from the runtime's input snapshot, the
-// scene round it (./scene.js), drawn relative to the floating origin
-// (rt.origin, moved after anchor() before each step). The planet comes in
-// as props.spec (lib/land/flight/planetSpec.js's).
+// scene round it (./scene.js), the planet's ground streamed in under it
+// (./ground.js: leaves made in a worker through rt.workers), all drawn
+// relative to the floating origin (rt.origin, moved after anchor() before
+// each step). The planet comes in as props.spec
+// (lib/land/flight/planetSpec.js's). It starts at lib/device's tier (the
+// runtime's quality) and sheds uploads and clutter a tier at a time when
+// the pace says the frames run late (lowerQuality).
 //
 // It tells the page through rt.events:
 //   'hud' { speed, alt } (ten times a second at most)
 //   'toast' { text } (a crash)
-// and gives the page (and the checks) the world's `ship`, `stats()`.
+// and gives the page (and the checks) the world's `ship`, `stats()` and
+// `throttle(v)` (the touch buttons'); ?debug shows the ground's numbers.
 
 import * as THREE from 'three';
 import { houseOn } from '../../../lib/three/house';
+import { planetField } from '../../../lib/land/flight/field';
+import { LEVELS } from '../../../lib/device';
 import { SHIP, crashed, stepShip } from './flightRules';
 import { createFlightScene } from './scene';
+import { createGround } from './ground';
 import { LOOK } from './look';
 
 export const KEYS = {
@@ -32,6 +40,12 @@ export const AXES = { pitch: ['noseDown', 'noseUp'], roll: ['rollLeft', 'rollRig
 const HUD_EVERY = 0.1; // s
 const RESPAWN_UP = 200; // m over the ground, after a crash
 const START = { speed: 160, up: 300 };
+
+// the tier the ground keeps at a pace level: one lower from the third step on, two at the floor
+export function tierAt(tier, level = 0) {
+  const i = Math.max(0, LEVELS.indexOf(tier));
+  return LEVELS[Math.max(0, i - (level >= 4 ? 2 : level >= 2 ? 1 : 0))];
+}
 
 // where a planet's flight begins: south of its first POI, heading for it, or over the middle
 export function spawnOf(spec, groundAt) {
@@ -66,13 +80,19 @@ export default {
     renderer.shadowMap.enabled = false;
 
     const view = createFlightScene({ spec, palette: LOOK.palette });
-    // the ground, until the streamed one is in (Task 8 puts it in)
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(60000, 60000), new THREE.MeshStandardMaterial({ color: spec.palette.low, roughness: 0.95 }));
-    plane.rotation.x = -Math.PI / 2;
-    view.scene.add(plane);
-    const groundAt = () => 0;
+    const tier = LEVELS.includes(rt.quality?.tier) ? rt.quality.tier : 'mid';
+    const ground = createGround(view.scene, { rt, spec, tier, palette: LOOK.palette });
+    // the planet's own field, here on the page, for where to start and to come
+    // back up to before the ground under the ship is in (a few samples, not a mesh)
+    const field = planetField(spec);
+    const groundAt = (x, z) => {
+      const h = ground.heightUnder(x, z);
+      return Number.isFinite(h) ? h : field.heightAt(x, z);
+    };
 
     const house = houseOn({ renderer, scene: view.scene, sun: view.sun, hemi: view.hemi, look: { fog: true } });
+    // (the ground's and the clutter's materials, on no leaf yet: in the look before their first draw)
+    for (const m of ground.materials) house.adopt(new THREE.Mesh(undefined, m));
     house.sky({ low: new THREE.Color(spec.palette.low), high: new THREE.Color(LOOK.palette[3]), sunDir: view.sunDir });
 
     rt.input.bind(KEYS, { axes: AXES });
@@ -80,7 +100,11 @@ export default {
     let hudIn = 0;
     let touchThrottle = 0; // the touch buttons' (FlightHud), −1, 0 or 1
     const tell = (type, data) => rt.events?.emit(type, data);
-    const unOrigin = rt.origin?.on?.((shift) => view.shift(shift)) ?? (() => {});
+    const unOrigin =
+      rt.origin?.on?.((shift) => {
+        view.shift(shift);
+        ground.origin(rt.origin.at);
+      }) ?? (() => {});
 
     const world = {
       get ship() {
@@ -100,18 +124,19 @@ export default {
         const input = inputOf(snap);
         input.throttle = Math.max(-1, Math.min(1, input.throttle + touchThrottle));
         ship = stepShip(ship, input, dt);
-        const g = groundAt(ship.x, ship.z);
+        ground.update(ship);
+        // (a crash only on ground drawn: what isn't in yet can't be hit)
+        const g = ground.heightUnder(ship.x, ship.z);
         if (crashed(ship, g)) {
           tell('toast', { text: 'Too low: back up you go.' });
           ship = { ...ship, y: g + RESPAWN_UP, pitch: 0, roll: 0, speed: Math.max(SHIP.speedMin, 120) };
         }
         const at = rt.origin?.at ?? [0, 0, 0];
         view.place(ship, at, dt);
-        plane.position.set(-at[0], 0, -at[2]);
         hudIn -= dt;
         if (hudIn <= 0) {
           hudIn = HUD_EVERY;
-          tell('hud', { speed: ship.speed, alt: ship.y - (Number.isFinite(g) ? g : 0) });
+          tell('hud', { speed: ship.speed, alt: ship.y - groundAt(ship.x, ship.z) });
         }
       },
       draw(frame) {
@@ -119,18 +144,29 @@ export default {
         renderer.render(view.scene, view.camera);
       },
       wants: () => true,
+      lowerQuality(level) {
+        ground.setTier(tierAt(tier, level));
+      },
+      stats: () => ground.stats(),
+      tune: () => [
+        {
+          name: 'Ground',
+          items: ['leaves', 'flying', 'pending', 'clutter'].map((key) => ({ key, label: key, type: 'range', min: 0, max: 5000, step: 1, get: () => ground.stats()[key], set: () => {} })),
+        },
+      ],
       dispose() {
+        if (typeof window !== 'undefined' && window.__FLIGHT__ === world) delete window.__FLIGHT__;
         unOrigin();
         rt.input.unbind();
+        ground.dispose();
         view.dispose();
-        plane.geometry.dispose();
-        plane.material.dispose();
         Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure });
         renderer.shadowMap.enabled = was.shadows;
       },
     };
     view.place(ship, rt.origin?.at ?? [0, 0, 0]);
-    if (import.meta.env?.DEV) window.__FLIGHT__ = world;
+    // (the dev hook the checks fly by: scripts/autopilot-check's smoke, scripts/perf-probe's journey)
+    if (typeof window !== 'undefined') window.__FLIGHT__ = world;
     return world;
   },
 };
