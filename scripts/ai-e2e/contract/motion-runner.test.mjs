@@ -38,7 +38,7 @@ describe('a motion issue through the runner (subprocesses, a few seconds each)',
     expect(create[create.indexOf('--head') + 1]).toBe('motion/contract-strike');
     expect(body).toMatch(/"a two-handed overhead sword strike, stepping forward" \(2 s, seed 7, cfg 5\)/);
     expect(body).toMatch(/ual-gen\.contract-strike\.glb [\d.]+ KB, 2\.00 s, 61 frames/);
-    expect(body).toContain('motion.html?clip=contract-strike&with=sword.heavy');
+    expect(body).toContain('motion.html?clip=contract-strike&with=sword.heavy.a');
     // the fake model was asked what the issue asked
     const [model] = box.fakes('motion');
     expect(model.argv.join(' ')).toMatch(/^a two-handed overhead sword strike, stepping forward .*contract-strike\.bvh --seconds 2 --seed 7$/);

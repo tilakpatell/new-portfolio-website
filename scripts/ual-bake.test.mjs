@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { meshyRig } from '../src/lib/three/meshyRig.fixture.js';
 import { findBones } from '../src/lib/three/rig.js';
 import { UAL_MAP, keepRest, ualRig } from './preview/ualRetarget.js';
-import { SETS, bakeFiles, bakeInto } from './ual-bake.mjs';
+import { SETS, bakeFiles, bakeInto, contactWindow, rootTravel } from './ual-bake.mjs';
 
 const UAL1 = 'lab/assets/ual1/Unreal-Godot/UAL1.glb';
 const CORE = SETS.find((s) => s.name === 'core');
@@ -105,5 +105,58 @@ describe('bakeInto', () => {
     const src = mannequin();
     delete src.clips.Death01;
     await expect(bakeInto('x.glb', 'y.glb', { set: 'core', src, findBones })).rejects.toThrow(/no Death01/);
+  });
+});
+
+// rows as the bake samples them: a time and the sword hand where it is
+const handRows = (fast, d = 1, fps = 30) =>
+  Array.from({ length: Math.round(d * fps) + 1 }, (_, f) => {
+    const t = f / fps;
+    // (still, then quick between fast[0] and fast[1], then still)
+    const k = Math.min(1, Math.max(0, (t - fast[0]) / (fast[1] - fast[0])));
+    return { t, hand: [k * 1.5, 1.2, 0] };
+  });
+
+describe('contactWindow', () => {
+  it('finds the hand’s fastest span, widened either side', () => {
+    const [t0, t1] = contactWindow(handRows([0.4, 0.6]));
+    expect(t0).toBeGreaterThan(0.3);
+    expect(t0).toBeLessThan(0.4);
+    expect(t1).toBeGreaterThan(0.6);
+    expect(t1).toBeLessThan(0.7);
+  });
+  it('counts only the frames the blade is ahead of the body (`ahead`): a wind-up behind the back isn’t a hit', () => {
+    // (fast behind between 0.1 and 0.3, fast again, ahead, between 0.6 and 0.8)
+    const rows = handRows([0.1, 0.3]).map((r) => {
+      const t = r.t;
+      const k = Math.min(1, Math.max(0, (t - 0.6) / 0.2));
+      return { t, hand: [r.hand[0] + k * 1.5, 1.2, 0], ahead: t >= 0.55 };
+    });
+    const [t0, t1] = contactWindow(rows);
+    expect(t0).toBeGreaterThan(0.5);
+    expect(t1).toBeGreaterThan(0.8);
+  });
+  it('keeps a window inside [0.05, duration − 0.05] when the hand never moves, or moves at the very ends', () => {
+    for (const rows of [handRows([2, 3]), handRows([0, 0.05]), handRows([0.95, 1])]) {
+      const [t0, t1] = contactWindow(rows);
+      expect(t0).toBeGreaterThanOrEqual(0.05);
+      expect(t1).toBeLessThanOrEqual(0.95 + 1e-9);
+      expect(t1).toBeGreaterThan(t0);
+    }
+  });
+});
+
+describe('rootTravel', () => {
+  it('starts at nothing and ends at the root’s whole displacement, faced and scaled', () => {
+    const rows = Array.from({ length: 31 }, (_, f) => ({ t: f / 30, at: [0.5 + f * 0.01, 0.9, 2 + f * 0.1] }));
+    const r = rootTravel(rows, { k: 2 });
+    expect(r[0]).toEqual([0, 0, 0]);
+    expect(r.at(-1)[0]).toBeCloseTo(1);
+    expect(r.at(-1)[1]).toBeCloseTo(0.6);
+    expect(r.at(-1)[2]).toBeCloseTo(6);
+    // (a quarter turn about up: ahead becomes to the side)
+    const turned = rootTravel(rows, { face: ([x, , z]) => [z, 0, -x] });
+    expect(turned.at(-1)[1]).toBeCloseTo(3);
+    expect(turned.at(-1)[2]).toBeCloseTo(-0.3);
   });
 });
