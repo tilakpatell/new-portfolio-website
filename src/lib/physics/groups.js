@@ -10,7 +10,9 @@
 // (a sensor volume: characters), and two groups no collider wears, for
 // queries: a projectile's path (the floor, objects, hurtboxes) and a line
 // of sight (the floor, objects, characters). `filterOf` builds a query's
-// groups: every membership, and the named groups in its filter. Pure.
+// groups: every membership, and the named groups in its filter; since
+// objects and characters wear the floor's bit, a filter that names the
+// floor admits them too (there is no floor-only query). Pure.
 //
 //   MEMBERS: { [name]: bit }; GROUPS: { [name]: groups }; filterOf(...names) → groups
 
