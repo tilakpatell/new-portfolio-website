@@ -19,6 +19,7 @@ import { makeSector } from '../../../components/expanse/gen/sector.js';
 import { UNIVERSE, hash64 } from '../../../components/expanse/gen/seed.js';
 import { fold } from './fnl.js';
 import { CLUTTER, PALETTES, TYPE_BIOMES, expand } from './tables.js';
+import { POIS } from './landmarkTables.js';
 
 const CLIMATE = { frequency: 0.00025, warp: 400 };
 
@@ -34,7 +35,7 @@ const AUTHORED = [
   { id: 'mustafar', name: 'Mustafar', type: 'lava' },
   { id: 'kamino', name: 'Kamino', type: 'ocean' },
   { id: 'dagobah', name: 'Dagobah', type: 'forest' },
-].map((p) => ({ seed: fold(hash64('fly', p.id)), pois: [], ...p }));
+].map((p) => ({ seed: fold(hash64('fly', p.id)), pois: POIS[p.id] ?? [], ...p }));
 
 const SECTORS = [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1]];
 const EXPANSE = [];
