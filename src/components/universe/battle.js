@@ -544,19 +544,34 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // drawn, over the frame: back along its way from there by the frame's length)
   const back = v3();
   const drawnBack = (o) => set(back, o.seen.x - o.vel.x * frame, o.seen.y - o.vel.y * frame, o.seen.z - o.vel.z * frame);
+  // the first fighter a shot meets, but those `skip` lets be: { f, k } (k how far along; the one record, reused)
+  const met = { f: null, k: Infinity };
+  const firstFighter = (from, to, skip) => {
+    (met.f = null), (met.k = Infinity);
+    for (const f of b.fighters) {
+      if (!f.alive || skip(f)) continue;
+      const k = sweptHit(from, to, drawnBack(f), f.seen, Math.max(0.35, f.size * 0.9));
+      if (k !== null && k < met.k) (met.k = k), (met.f = f);
+    }
+    return met;
+  };
+  const yours = (f) => f.team === b.you.team;
+  const anAce = (f) => f.ace;
+  // what a shot comes to: on a fighter or a runner (where it's drawn), a shield, a hull (`h`: capitalHit's)
+  const shot = (o, down) => ({ id: o.id, kind: o.kind, at: copy(v3(), o.seen), size: o.size, down });
+  const warded = (id, at) => ({ id, kind: 'shield', at, size: 0.4, down: false, shield: true });
+  const onHull = (h, shield) => (shield ? warded(h.cap.id, h.at) : { id: h.cap.id, kind: h.cap.kind, at: h.at, size: 0.4, down: false, capital: true });
+  // a fighter hit for `damage`: down with no hp left, and yours
+  const hitFighter = (f, damage) => {
+    f.hp -= damage;
+    const down = f.hp <= 0;
+    if (down) pending.push(kill(f, true));
+    return shot(f, down);
+  };
   b.hit = (from, to, damage = 1) => {
     if (b.over) return null;
     if (b.you.team === null) return hitUnsworn(from, to, damage);
-    let hitF = null;
-    let first = Infinity;
-    for (const f of b.fighters) {
-      if (!f.alive || f.team === b.you.team) continue;
-      const k = sweptHit(from, to, drawnBack(f), f.seen, Math.max(0.35, f.size * 0.9));
-      if (k !== null && k < first) {
-        first = k;
-        hitF = f;
-      }
-    }
+    let { f: hitF, k: first } = firstFighter(from, to, yours);
     // (or a runner of the other side's, nearer)
     let hitR = null;
     for (const r of b.runners) {
@@ -589,14 +604,14 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       const at = v3(from.x + (to.x - from.x) * fo.k, from.y + (to.y - from.y) * fo.k, from.z + (to.z - from.z) * fo.k);
       if (stages.hit(fo.o, damage, true, pending)) return { id: fo.o.num, kind: 'subsystem', sub: fo.o.key, at, size: fo.o.r, down: !fo.o.alive };
       pending.push({ type: 'impact', at, size: 0.6, shield: true });
-      return { id: fo.o.num, kind: 'shield', at, size: 0.4, down: false, shield: true };
+      return warded(fo.o.num, at);
     }
     if (tu && tk <= first && (!h || tk <= h.k)) {
       // (one the plan has: its hp the director's, and only while its stage is open)
       if (tu.planned) {
         if (stages.hit(tu, damage, true, pending)) return { id: tu.num, kind: 'turret', sub: tu.key, at: copy(v3(), tu.at), size: tu.r, down: !tu.alive, turret: true };
         pending.push({ type: 'impact', at: copy(v3(), tu.at), size: 0.6, shield: true });
-        return { id: tu.num, kind: 'shield', at: copy(v3(), tu.at), size: 0.4, down: false, shield: true };
+        return warded(tu.num, copy(v3(), tu.at));
       }
       tu.hp -= damage;
       const down = tu.hp <= 0;
@@ -608,31 +623,25 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     }
     if (hitR && (!h || first <= h.k)) {
       hitR.hitBy += 1;
-      if (hitR.shared) return { id: hitR.id, kind: hitR.kind, at: copy(v3(), hitR.seen), size: hitR.size, down: runs.hit(hitR, damage, pending) };
+      if (hitR.shared) return shot(hitR, runs.hit(hitR, damage, pending));
       hitR.hp -= damage;
       const down = hitR.hp <= 0;
       if (down) {
         hitR.alive = false;
         pending.push({ type: 'runner', id: hitR.id, team: hitR.team, kind: hitR.kind, at: copy(v3(), hitR.pos), mine: true });
       }
-      return { id: hitR.id, kind: hitR.kind, at: copy(v3(), hitR.seen), size: hitR.size, down };
+      return shot(hitR, down);
     }
-    if (hitF && (!h || first <= h.k)) {
-      if (stages?.isAce(hitF)) return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down: stages.hitAce(hitF, damage, pending) };
-      hitF.hp -= damage;
-      const down = hitF.hp <= 0;
-      if (down) pending.push(kill(hitF, true));
-      return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down };
-    }
+    if (hitF && (!h || first <= h.k)) return stages?.isAce(hitF) ? shot(hitF, stages.hitAce(hitF, damage, pending)) : hitFighter(hitF, damage);
     if (!h) return null;
     // (with a director a hit's a punch of the objective's hp: what it's worth is shared out by the director)
     if (h.sub && subHit(h.sub, damage * (stages ? 1 : BATTLE.youShare), true, pending)) return { id: h.sub.num, kind: 'subsystem', sub: h.sub.id, at: h.at, size: 1, down: !h.sub.alive };
     if (shielded(h.cap)) {
       pending.push({ type: 'impact', at: h.at, size: 0.6, shield: true });
-      return { id: h.cap.id, kind: 'shield', at: h.at, size: 0.4, down: false, shield: true };
+      return onHull(h, true);
     }
     hullHit(h.cap, damage * BATTLE.youShare * BATTLE.youHull, pending);
-    return { id: h.cap.id, kind: h.cap.kind, at: h.at, size: 0.4, down: false, capital: true };
+    return onHull(h, false);
   };
 
   // an unsworn pilot's shot: the first fighter or hull of either side's it
@@ -640,29 +649,17 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // counts for the war: an ace, a runner, an objective and a battery are
   // let be, a hull's only lit up, and onMine's never told.
   const hitUnsworn = (from, to, damage) => {
-    let hitF = null;
-    let first = Infinity;
-    for (const f of b.fighters) {
-      if (!f.alive || f.ace) continue;
-      const k = sweptHit(from, to, drawnBack(f), f.seen, Math.max(0.35, f.size * 0.9));
-      if (k !== null && k < first) {
-        first = k;
-        hitF = f;
-      }
-    }
+    const { f, k: first } = firstFighter(from, to, anAce);
     const h = capitalHit(from, to, null);
-    if (hitF && (!h || first <= h.k)) {
-      b.you.angry[hitF.team] = BATTLE.grudge;
-      hitF.hp -= damage;
-      const down = hitF.hp <= 0;
-      if (down) pending.push(kill(hitF, true));
-      return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down };
+    if (f && (!h || first <= h.k)) {
+      b.you.angry[f.team] = BATTLE.grudge;
+      return hitFighter(f, damage);
     }
     if (!h) return null;
     b.you.angry[h.cap.team] = BATTLE.grudge;
     const shield = shielded(h.cap);
     pending.push({ type: 'impact', at: h.at, size: 0.6, shield });
-    return shield ? { id: h.cap.id, kind: 'shield', at: h.at, size: 0.4, down: false, shield: true } : { id: h.cap.id, kind: h.cap.kind, at: h.at, size: 0.4, down: false, capital: true };
+    return onHull(h, shield);
   };
 
   // what your guns can lock on to: the other side's fighters, then the

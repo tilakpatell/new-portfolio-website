@@ -705,6 +705,35 @@ describe('a pilot at the battle’s edge, and an unsworn one', () => {
     });
   }
 
+  it('an unsworn pilot’s shot downs a fighter of either side, and its side holds the grudge', () => {
+    const b = make();
+    b.update(1 / 30, middle);
+    const f = b.fighters.find((o) => o.alive && o.team === 0 && !o.ace);
+    expect(shotAt(b, f.seen, 99)).toMatchObject({ id: f.id, kind: f.kind, size: f.size, down: true });
+    expect(f.alive).toBe(false);
+    expect(b.you.angry).toEqual([BATTLE.grudge, 0]);
+    expect(b.update(1 / 30, middle).find((e) => e.type === 'down' && e.kind === f.kind && e.team === 0)).toMatchObject({ mine: true });
+  });
+
+  it('an unsworn pilot’s shot on a hull only lights it up: no damage, and that side’s grudge', () => {
+    const b = make({ perSide: 2 });
+    const shoot = (cap) => {
+      const sp = cap.spheres[0].c;
+      return b.hit({ x: sp.x, y: sp.y + 30, z: sp.z }, { x: sp.x, y: sp.y - 0.01, z: sp.z }, 1);
+    };
+    // (an escort’s bare hull, then the flagship that’s the objective, its shield up)
+    const esc = b.capitals.find((c) => c.team === 0 && c.role === 'escort');
+    const flag = flagOf(b, 1);
+    const hulls = [esc.hull, flag.hull];
+    expect(shoot(esc)).toEqual({ id: esc.id, kind: esc.kind, at: expect.any(Object), size: 0.4, down: false, capital: true });
+    expect(b.you.angry).toEqual([BATTLE.grudge, 0]);
+    expect(shoot(flag)).toEqual({ id: flag.id, kind: 'shield', at: expect.any(Object), size: 0.4, down: false, shield: true });
+    expect(b.you.angry).toEqual([BATTLE.grudge, BATTLE.grudge]);
+    expect([esc.hull, flag.hull]).toEqual(hulls);
+    const lit = b.update(1 / 30, null).filter((e) => e.type === 'impact' && e.size === 0.6);
+    expect(lit.map((e) => e.shield)).toEqual([false, true]);
+  });
+
   it('an unsworn pilot’s shot at an ace counts nothing: the tally’s never told', () => {
     const plan = { ...planFor({ id: 'edge.ace', kind: 'assault', attacker: 0 }), side: [{ id: 'ace-1', type: 'ace', team: 1, at: 0, hp: 64, kind: 'tieadvanced', name: 'Darth Vader' }] };
     const d = createDirector({ plan, seed: plan.id });
