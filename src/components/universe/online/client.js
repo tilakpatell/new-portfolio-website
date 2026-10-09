@@ -38,6 +38,12 @@
 // is told to you once (the same squad again within INVITE_AGAIN_MS isn't),
 // and one you've turned down (declineInvite) holds them off as long.
 //
+// Everyone's chat is said here too (say, qc: wire2.js), only while the
+// owner's switch is on (chat/text.js's CHAT.everyone), each line cleaned
+// again as it comes in; a line for here, or a quick-chat phrase, is told
+// only from someone in the same place. The blocked aren't heard, nor anyone
+// muted for a flood; chat.js's Mute is the page's, for words alone.
+//
 // The hunters after you are yours to fly (hunters.js), and the others see
 // them: while someone's in the same place, where they are goes out a few
 // times a second (pack), each pilot's come in as peer.hunters ({ at, list })
@@ -60,7 +66,7 @@
 //   damage), helped(peerId, what) (their shot took one of yours down),
 //   ally(peerId, 'ask' | 'accept' | 'decline' | 'end'), block(peerId, on),
 //   setSquad(ids), invite(peerId, sid), declineInvite(peerId),
-//   peers, takeShots(), leave() }
+//   say(text, all) → sent, quick(i) → sent, peers, takeShots(), leave() }
 // Events, to on(fn): { type: 'status' }, { type: 'roster' }, { type: 'feed',
 // text, tone }, { type: 'hit', from, damage }, { type: 'downed', id, by }
 // (someone was shot down: where they were, for the scene's pop; `by` is
@@ -71,7 +77,8 @@
 // word on the galaxy's war, from anywhere: tally.js's readTally), { type:
 // 'fight', from, msg } (another pilot's on the battle where you are), {
 // type: 'allied', id } (an alliance made with them), { type: 'invite', from,
-// sid } (asked into their squad).
+// sid } (asked into their squad), { type: 'say', from, text, all }, {
+// type: 'quick', from, i }.
 
 import { readBuildWire, writeBuild } from '../shipyard/build';
 import { EVERYONE, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
@@ -82,8 +89,9 @@ import { readSiege } from '../siege';
 import { readTally } from '../tally';
 import { NO_FACTIONS, factionsFrom } from './relations';
 import { sideOf } from '../sides';
-import { CLIENT_RATES, readInvite } from './wire2';
+import { CLIENT_RATES, readInvite, readQuick, readSay } from './wire2';
 import { cleanSid } from './squad/invite';
+import { CHAT, cleanText } from './chat/text';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
@@ -119,6 +127,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
   let heartbeat = 0;
   let shots = [];
   let squadIds = new Set(); // your squadmates (setSquad)
+  const mine = createLimiter(CLIENT_RATES); // your own words: never more than the others take
 
   const emit = (e) => {
     for (const fn of listeners) fn(e);
@@ -270,6 +279,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     const war = action('war');
     const fight = action('fight');
     const inv = action('inv');
+    const say = action('say');
+    const qc = action('qc');
     send = {
       pack: (data) => pack.send(data).catch(() => {}),
       hhit: (data, to) => hhit.send(data, { target: to }).catch(() => {}),
@@ -286,6 +297,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       war: (data) => war.send(data).catch(() => {}),
       fight: (data) => fight.send(data).catch(() => {}),
       inv: (data, to) => inv.send(data, { target: to }).catch(() => {}),
+      say: (data) => say.send(data).catch(() => {}),
+      qc: (data) => qc.send(data).catch(() => {}),
     };
 
     r.onPeerJoin = (id) => {
@@ -464,6 +477,17 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       if (!p || t - p.inviteNoAt < INVITE_AGAIN_MS || (p.invited?.sid === v.sid && t - p.invited.at < INVITE_AGAIN_MS)) return;
       p.invited = { sid: v.sid, at: t };
       emit({ type: 'invite', from: peerId, sid: v.sid });
+    };
+    say.onMessage = (data, { peerId }) => {
+      const s = readSay(data);
+      const p = s && admit('say', peerId);
+      if (!p || !CHAT.everyone || (!s.all && p.where !== self.where)) return;
+      emit({ type: 'say', from: peerId, text: s.text, all: s.all });
+    };
+    qc.onMessage = (data, { peerId }) => {
+      const i = readQuick(data);
+      const p = i !== null && admit('qc', peerId);
+      if (p && p.where === self.where) emit({ type: 'quick', from: peerId, i });
     };
 
     heartbeat = setInterval(() => {
@@ -689,6 +713,20 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       if (!p) return;
       p.invited = null;
       p.inviteNoAt = now();
+    },
+    // a line to everyone (all) or to those here: false if it can't go (the
+    // owner's switch off, nothing left once it's cleaned, or too many too fast)
+    say(text, all = false) {
+      const t = cleanText(text, CHAT.everyoneMax);
+      if (!send || !CHAT.everyone || !t || !mine.allow('say', now())) return false;
+      send.say({ t, s: all ? 1 : 0 });
+      return true;
+    },
+    // a quick-chat phrase, by id (chat/text.js's PHRASES), to those here
+    quick(i) {
+      if (!send || readQuick(i) === null || !mine.allow('qc', now())) return false;
+      send.qc(i);
+      return true;
     },
     // the shots that came in since last asked
     takeShots() {

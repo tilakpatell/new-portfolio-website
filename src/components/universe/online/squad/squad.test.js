@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { schnorr } from '@noble/secp256k1';
 import { hex, joinRoom } from '../nostr';
 import { createRelays } from '../fakeRelays.testkit';
-import { createSquad } from './squad';
+import { seal, sealKey } from '../chat/seal';
+import { roomOf } from './invite';
+import { APP_ID, createSquad } from './squad';
 
 const URLS = ['wss://one.example', 'wss://two.example'];
 const SID = 'BCDFGHJKLMNP';
@@ -25,7 +27,13 @@ function sky() {
       vi.advanceTimersByTime(1000);
     }
   };
-  return { fly, pass };
+  // a client of someone's own in the squad's room, on the keys given
+  const raw = async (keys) => {
+    const r = joinRoom({ appId: APP_ID, relays: URLS, WebSocket: net.WebSocket, keys, cheap: new Set() }, await roomOf(SID));
+    await r.ready;
+    return r;
+  };
+  return { net, fly, pass, raw };
 }
 // wait till fn() is true (signing, checking and the relays take real time)
 const until = async (fn, ms = 3000) => {
@@ -89,6 +97,49 @@ describe('createSquad, on the relays', () => {
     await until(() => again.view().gone);
     expect(again.view()).toMatchObject({ why: 'out', mine: null });
     expect(a.view().members.map((m) => m.id)).toEqual([a.id, b.id]);
+  });
+
+  it('squadmates hear each other’s pings, phrases and sealed lines, cleaned; nobody else is heard', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const { a, b, c, net, raw } = await three();
+    const got = [];
+    b.onPing = (ping, from) => got.push(['pg', from, ping]);
+    b.onQuick = (i, from) => got.push(['qc', from, i]);
+    b.onText = (text, from) => got.push(['ch', from, text]);
+    expect(a.ping({ kind: 'go', where: '/universe', p: [10, 0, -20] })).toBe(true);
+    expect(a.quick(6)).toBe(true);
+    expect(a.text('regroup, see https://bad.example now‮')).toBe(true);
+    await until(() => got.length === 3);
+    expect(got).toContainEqual(['pg', a.id, { kind: 'go', where: '/universe', p: [10, 0, -20], sec: null, target: null }]);
+    expect(got).toContainEqual(['qc', a.id, 6]);
+    expect(got).toContainEqual(['ch', a.id, 'regroup, see [link] now']);
+    // the relays carry the line sealed
+    expect(net.relays[URLS[0]].log.some((ev) => ev.content.includes('regroup'))).toBe(false);
+    // a squadmate's client of their own: what it seals is cleaned once it's opened
+    const out = await raw(c.keys);
+    const key = await sealKey(SID);
+    out.makeAction('ch').send({ c: await seal(key, 'go to evil . com ‮now') });
+    await until(() => got.length === 4);
+    expect(got[3]).toEqual(['ch', c.id, 'go to [link] now']);
+    // turned out, they still have the sid, and the key it makes: not heard
+    a.kick(c.id);
+    await until(() => b.view().members.length === 2);
+    out.makeAction('pg').send({ k: 'foe', w: '/universe' });
+    out.makeAction('qc').send(3);
+    out.makeAction('ch').send({ c: await seal(key, 'let me back in') });
+    // nor is a stranger with the sid who was never seated, nor junk from a squadmate
+    const stranger = await raw(schnorr.keygen());
+    stranger.makeAction('qc').send(4);
+    expect(a.ping({ kind: 'nuke', where: '/universe' })).toBe(false);
+    expect(a.text('   ')).toBe(false);
+    // (a word from a squadmate after all of them, and a moment more: by then they were all heard or dropped)
+    a.quick(0);
+    await until(() => got.length === 5);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(got).toHaveLength(5);
+    expect(got[4]).toEqual(['qc', a.id, 0]);
+    out.leave();
+    stranger.leave();
   });
 
   it('a reload picks the squad up from what it kept, and leaving forgets it', async () => {

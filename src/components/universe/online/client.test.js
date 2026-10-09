@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
+import { CHAT } from './chat/text';
 import { createAllies } from './allies';
 import { STOCK_LOADOUT } from '../outfit';
 import { PUNCH_MAX } from './protocol';
@@ -371,6 +372,53 @@ describe('createClient', () => {
     a.invite('B', 'nope');
     bus.room('X').makeAction('inv').send({ s: 'AEIOUAEIOUAE' }, { target: 'B' });
     expect(invites('b')).toHaveLength(2);
+  });
+
+  it('says a line to everyone, or to those in the same place, cleaned again on the way in', async () => {
+    const { a, b, c, bus, seen } = await pair({ three: true });
+    const says = (who) => seen[who].filter((e) => e.type === 'say');
+    expect(a.say('hello all  https://x.io/a', true)).toBe(true);
+    expect(says('b')).toEqual([{ type: 'say', from: 'A', text: 'hello all [link]', all: true }]);
+    // a line for here reaches only those in the same place
+    c.setProfile({ where: '/projects' });
+    expect(a.say('anyone here?')).toBe(true);
+    expect(says('b').at(-1)).toMatchObject({ text: 'anyone here?', all: false });
+    expect(says('c')).toHaveLength(1);
+    // a client of someone's own is read with suspicion: cleaned again, junk dropped
+    const x = bus.room('X');
+    x.makeAction('hi').send({ n: 'Spam', k: null, c: 0, w: '/universe' });
+    const say = x.makeAction('say');
+    say.send({ t: 'click‮ www.evil.example', s: 1 });
+    expect(says('b').at(-1)).toMatchObject({ from: 'X', text: 'click [link]' });
+    say.send({ t: { html: '<b>' }, s: 1 });
+    expect(says('b')).toHaveLength(3);
+    // nor heard from once blocked
+    b.block('X', true);
+    say.send({ t: 'hi again', s: 1 });
+    expect(says('b')).toHaveLength(3);
+    // nothing to say, or the owner's switch off: nothing goes, nothing's shown
+    expect(a.say('   ', true)).toBe(false);
+    CHAT.everyone = false;
+    try {
+      expect(a.say('hello?', true)).toBe(false);
+      bus.room('Y').makeAction('hi').send({ n: 'Yoda', k: null, c: 0, w: '/universe' });
+      bus.room('Y').makeAction('say').send({ t: 'hello', s: 1 });
+      expect(says('b')).toHaveLength(3);
+    } finally {
+      CHAT.everyone = true;
+    }
+  });
+
+  it('a quick-chat phrase reaches those in the same place', async () => {
+    const { a, c, seen } = await pair({ three: true });
+    c.setProfile({ where: '/projects' });
+    expect(a.quick(8)).toBe(true);
+    expect(seen.b.filter((e) => e.type === 'quick')).toEqual([{ type: 'quick', from: 'A', i: 8 }]);
+    expect(seen.c.filter((e) => e.type === 'quick')).toEqual([]);
+    expect(a.quick(16)).toBe(false);
+    expect(a.quick('8')).toBe(false);
+    // three at once, and then no faster than one a second
+    expect([a.quick(1), a.quick(2), a.quick(3)]).toEqual([true, true, false]);
   });
 
   it('a heavy round hits harder, and its shot carries the weapon', async () => {
