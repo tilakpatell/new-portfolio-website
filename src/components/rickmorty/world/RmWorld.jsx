@@ -76,6 +76,7 @@ import { createPress, pressGroups } from '../../../lib/press';
 import { lineHold } from './living';
 import LoadingVeil from '../../worlds/LoadingVeil';
 import { throttled } from '../../worlds/loadingSteps';
+import { createLook } from '../../../runtime/look';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -433,6 +434,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   const wheel = useRef(null);
   wheel.current ??= createEmoteWheel();
   const [wheelUi, setWheelUi] = useState(null); // { hover } while B holds it open
+  const [looking, setLooking] = useState(null); // the look (runtime/look.js): its mode, and whether the pointer's locked
   const [touchWheel, setTouchWheel] = useState(false);
   const wheelKey = useRef('');
   // an emote struck: on Morty from this frame (scene.js plays it), and on the wire
@@ -1525,13 +1527,45 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     knob?.style.removeProperty('--sy');
   }, [open]);
 
-  // ── the pointer: drag the view round (and in Total Rickall, up and down
-  // too, and a click that doesn't drag it is a shot) ──
+  // ── the pointer. A mouse or a trackpad looks through runtime/look.js: a
+  // click locks the pointer and its movement turns the view (and in Total
+  // Rickall a click is a shot), Esc lets go; a drag where the lock's refused
+  // or Drag was picked (the galaxy's Menu keeps the pick for every world).
+  // A finger drags the view round, as it always did. ──
+  const looker = useRef(null);
+  useEffect(() => {
+    const host = canvas.current;
+    if (!host) return undefined;
+    const sense = () => setLooking({ mode: l.mode, locked: l.locked });
+    const l = createLook({
+      host,
+      drag: { yaw: 0.0065, pitch: 0.004 },
+      onTurn: (dx, dy) => {
+        const s = sim.current;
+        s.yaw -= dx;
+        s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + dy));
+        s.dragAt = s.t;
+      },
+      onButton: (which, down) => {
+        if (which === 0 && down && sim.current.rickall) fns.current.shoot();
+      },
+      onLock: sense,
+    });
+    l.attach();
+    looker.current = l;
+    sense();
+    return () => {
+      l.detach();
+      looker.current = null;
+    };
+  }, []);
   const drag = useRef(null);
   const onPointer = (e) => {
     const s = sim.current;
+    if (e.type === 'pointerdown') audioContext();
+    // (a mouse's the look's, unless the look is touch's)
+    if (e.pointerType !== 'touch' && looker.current && looker.current.mode !== 'touch') return;
     if (e.type === 'pointerdown') {
-      audioContext();
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, x0: e.clientX, y0: e.clientY, at: performance.now() };
       e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -1655,6 +1689,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         }}
         onToggleWheel={() => setTouchWheel((v) => !v)}
         onStick={onStick}
+        looking={looking}
+        onLookLock={() => looker.current?.request()}
         onJump={onJump}
         onLift={onLift}
         onFire={() => fns.current.fire()}

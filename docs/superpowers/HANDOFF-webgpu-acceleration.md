@@ -37,11 +37,23 @@ The lane makes the runtime’s WebGPU backend reachable and safe for a visitor, 
 - Development views `world.view('orbit' | 'low')` hold the plane, the camera, the clouds’ drift and the beacons’ pulse still.
 - Parity, webgl leg: `orbit` 48.91 dB, 0.08 % off; `low` 42.30 dB, 0.28 % off. What’s left is edge antialiasing. The pictures are in `docs/superpowers/parity/earth/`.
 
+**Pull request 3: Minecraft on nodes** (the plan’s Tasks 9 to 11)
+
+- `src/components/minecraft/scene/nodes.js`: the block material in its three passes, the sky’s dome, stars, sun and moon and clouds, the drops and the crack, under the uniform names the scene wrote, now on `material.u`. `scene/shaders.js` is gone; `module.js` is `shading: 'nodes'`.
+- **The output is the GLSL’s, untouched.** The game’s light is arithmetic on the sRGB bytes as painted, written to the canvas as it is. So the module sets `NoToneMapping` and linear output (restored for the next world), and the materials write their colour with nothing on top. The atlas keeps `NoColorSpace`. The only built-in material is the block outline, which is black.
+- **Texture-array layers are rounded** (`layerOf`). GLSL’s `texture(sampler2DArray, …)` rounds the layer, but the node renderer cuts it off, and a layer through a varying arrives as 6.9999 as often as 7. That took whole tiles from the one before: 25.79 dB on the day view before the fix, 41.55 after. Any later port that samples a texture array needs the same.
+- **The stars are a sprite drawn once a star**, two device pixels across. The node renderer draws a `Points` object a pixel wide.
+- Development views `world.view('title' | 'day' | 'night')` (seed 1, at noon or midnight) hold the world still while its chunks come in. `world.settled()` says when they’re all in, and the parity script waits on it.
+- Parity, webgl leg: `title` 51.17 dB, 0.07 % off; `day` 41.55 dB, 0.37 %; `night` 51.81 dB, 0.03 %. What’s left is silhouette antialiasing. The pictures are in `docs/superpowers/parity/minecraft/`. The clouds, drops and crack aren’t in any view.
+
 ## Left, in order
 
-1. **The webgpu leg on a real chip.** In the container, SwiftShader’s WebGPU device is lost (“A valid external Instance reference no longer exists”) even under a bare `WebGPURenderer` cube, so neither Earth’s webgpu parity leg nor its WebGPU perf run was measured. On the desktop, make the base (`git branch earth-glsl 432eceb0`, then merge `main` into it on a worktree: GLSL Earth with its views and the sky fix), then run `node scripts/gpu-parity.mjs /earth --before earth-glsl --view orbit,low`, `node scripts/gpu-parity.mjs /earth --view orbit,low` and `GPU=webgpu node scripts/perf-probe.mjs earth`.
+1. **The webgpu leg on a real chip.** In the container, SwiftShader’s WebGPU device is lost (“A valid external Instance reference no longer exists”) even under a bare `WebGPURenderer` cube, so neither world’s webgpu parity leg nor its WebGPU perf run was measured. On the desktop:
+   - Earth: make the base (`git branch earth-glsl 432eceb0`, then merge `main` into it on a worktree: GLSL Earth with its views and the sky fix). Then run `node scripts/gpu-parity.mjs /earth --before earth-glsl --view orbit,low`, `node scripts/gpu-parity.mjs /earth --view orbit,low` and `GPU=webgpu node scripts/perf-probe.mjs earth`.
+   - Minecraft: the base is GLSL Minecraft with its views, the same way. Its views are `title,day,night`.
+   - One thing to watch on WebGPU: the chunk meshes are interleaved `Uint16` triples, and WebGPU has no 3-component 16-bit vertex format.
 2. **A WebGPU device lost while a world is being made** fails the mount (`runtime.js` `place()` reads `gfx.canvas` from a gfx that’s gone) instead of coming back on `nodes-webgl`. Open #531 (“a world whose context goes while it’s made is made again”) covers that case; check it once it’s in.
-3. **PR 3, Minecraft on nodes** (plan Tasks 9 to 11). The same shape. Colour first: the atlas is `NoColorSpace` and the arithmetic is on sRGB bytes.
+3. **The perf probe’s plain `minecraft` journey** never gets past the site’s gate, on either renderer; use `minecraftWalk`.
 4. **PR 4, Mario 64** (9 sites: `looks.js`, `models/things.js`, `scene.js`). Its plan is written from the spec’s “The ports, in order”.
 5. **PR 5, the Expanse surface**: the TSL twins of `lib/three`’s shared shaders as `<name>Nodes.js`, then the flip.
 6. **`docs/architecture.md`’s runtime bullet** needs a sentence on the three kinds and the parity check. It was left out of PR 1 because four open pull requests change that file. Add it once they’re in.
