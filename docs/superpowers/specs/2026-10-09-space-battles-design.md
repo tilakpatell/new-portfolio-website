@@ -176,6 +176,7 @@ A Clone Wars battle you join on the Republic's side starts you in a hangar bay o
 
 - No new models beyond the assets release; a kind with no model (a Hyena bomber, a V-19) is not added, and its role is filled from the roster.
 - No change to the player's own ship, its guns or the hangar's upgrades.
+- Places stay in every war: the Death Stars, the Shield Gate and Cloud City are not ships, and Endor's and Scarif's set pieces and obstacles hang on them. Whether the second Death Star should hang over Endor in the Clone Wars is a question for the owner, not this design.
 - No sound beyond what each effect already plays.
 - The universe map's Rick and Morty and Breaking Bad wars change only where they share the engine: arcs and salvos, wrecks and the ledger behave the same there, each piece checked on the Rick and Morty war (`scripts/universe-war-check.mjs`).
 
