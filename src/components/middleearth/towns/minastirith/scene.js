@@ -1152,7 +1152,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
-    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     resize: stage.resize,
     get info() {
       const i = renderer.info;
