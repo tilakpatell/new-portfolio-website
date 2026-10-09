@@ -112,7 +112,12 @@ import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
-import { OPEN_SPACE, PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { houseGroups } from '../../lib/three/houseTuning';
+import { createFeel, feelGroups } from '../../lib/three/feel';
+import { bloomGroups } from '../../lib/three/bloom';
+import { createImpacts, impactGroups } from '../../lib/impact';
+import { debugOn, debugPanel } from '../../lib/debugPanel';
+import { LEAN, OPEN_SPACE, PLANETS, SHIP, SOLIDS, SPACE, autopilot, crashLoud, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit, shortDistance } from './nav';
 import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
@@ -160,7 +165,7 @@ import { createWingmen } from './wingmen';
 import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
-import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
+import { CREW_INK, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { HERO_ENGINES, capPlume, createEngines } from './engines';
 import { paintById } from './paint';
 import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
@@ -787,6 +792,29 @@ export async function create(canvas, ctx) {
   let heroEngine = null;
   const traffic = reduced ? null : createTraffic(map, { small, fleet, engines });
   const pops = createCrash(map);
+  // the camera's shake and the hitstop (lib/three/feel.js): each place that
+  // shakes still says its k (state.shake, the most of them), and the feel
+  // takes it as trauma, decaying at 1.4 a second as the old shake did and as
+  // far (0.09 at 1), position only; a crash and a kill stop the game a moment
+  const feel = createFeel({ calm: reduced, offset: 0.09 });
+  feel.set({ decay: 1.4, roll: 0 });
+  const HITSTOP = { crash: 90, kill: 60 }; // ms
+  // a bump (ship.js's force; a rock's below): on the hit law (lib/impact.js)
+  // a puff where it touched and a nudge of the camera; its thud is Comms.jsx's
+  const bumpLaw = createImpacts();
+  const bumped = (force, point, normal) => {
+    const r = bumpLaw.hit(force, 'bump');
+    if (!r) return;
+    if (point) pops.hit({ point, normal, radius: 0.08 + 0.22 * r.gain }); // (a rock's has its own, where it was)
+    // (the law's 0.15 at full doesn't show at the chase's distance: the map's own shakes are a rock's 0.9, a laser's 0.3)
+    if (!reduced) state.shake = Math.max(state.shake, r.shake * 4);
+  };
+  // ?debug: the shake and the hitstop, the bumps' law, and on foot the
+  // knocks' law and the jump's press, on sliders (lib/debugPanel)
+  const titled = (name) => (g) => ({ ...g, name });
+  // (the ship's lean, ship.js's spring: shared with the galaxy map, set here for both)
+  const leanGroups = () => [{ name: 'lean', items: [['k', 'stiffness', 0, 300, 1], ['c', 'damping', 0, 40, 0.1]].map(([key, label, min, max, step]) => ({ key, label, type: 'range', min, max, step, get: () => LEAN[key], set: (v) => (LEAN[key] = v) })) }];
+  const panel = debugOn() ? debugPanel({ title: 'The universe', id: 'universe', groups: [...bloomGroups(post.bloom), ...houseGroups(house), ...feelGroups(feel), ...leanGroups(), ...impactGroups(bumpLaw).map(titled('bumps')), ...foot.tune().map((g) => (g.name === 'hits' ? titled('knocks, on foot')(g) : g))] }) : null;
   // and what's shot down burns: a fireball, shards and (bigger than a
   // fighter) a ring, pooled (lib/three/explosions); just the pop on a weak
   // device, once the quality's been lowered, or from the pace's step 2
@@ -1609,7 +1637,10 @@ export async function create(canvas, ctx) {
     ctx.invalidate();
   };
 
-  const emit = (e) => props.onEvent?.(e);
+  const emit = (e) => {
+    if (e.type === 'kill') feel.hitstop(HITSTOP.kill); // (yours: a hunter, a pilot, a ship of the traffic)
+    props.onEvent?.(e);
+  };
 
   // the camera eases from wherever it is to wherever it's going next
   const retarget = (dur) => {
@@ -2045,10 +2076,11 @@ export async function create(canvas, ctx) {
           ctx.invalidate();
         });
     } else if (kind === 'cruiser') {
-      // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's 2.7 across there)
+      // the C-137 page's cruiser, crew aboard; its ink drawn to our scale (it's
+      // 2.7 across there, LENGTH here), theirs finer (they're drawn big)
       const model = state.model;
       import('../rickmorty/cruiser3d')
-        .then((m) => m.buildCruiser({ ink: BUILT / 2.7 }))
+        .then((m) => m.buildCruiser({ ink: LENGTH / 2.7, crewInk: CREW_INK }))
         .then((c) => {
           if (!c) return;
           if (disposed || state.model !== model || !model.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint, setLooks: c.setLooks })) {
@@ -3088,7 +3120,10 @@ export async function create(canvas, ctx) {
     const speed = Math.abs(to.speed);
     const damage = rockDamage(speed, o.r);
     if (damage <= 0) {
-      emit({ type: 'bump', id: 'rock', hard: false });
+      // (as hard as the law's full at the speed a rock starts to hurt)
+      const force = (speed / ROCK_HIT.fast) * bumpLaw.values().full;
+      bumped(force);
+      emit({ type: 'bump', id: 'rock', hard: false, speed, force });
       return;
     }
     if (state.clock >= state.safeUntil) hurt(damage);
@@ -3984,7 +4019,8 @@ export async function create(canvas, ctx) {
       if (!c.sun) burn(c.point, LENGTH * 2);
       state.shake = reduced ? 0 : c.kind === 'giant' ? 1.4 : 1;
       state.flare = reduced ? 1 : c.sun ? 2.6 : 2;
-      if (!c.shot) emit({ type: 'crash', id: c.id, kind: c.kind ?? undefined }); // (shot down said so as it began)
+      feel.hitstop(HITSTOP.crash);
+      if (!c.shot) emit({ type: 'crash', id: c.id, kind: c.kind ?? undefined, speed: c.speed, loud: crashLoud(c.speed) }); // (shot down said so as it began)
     }
     if (age >= (c.swallow && reduced ? 0.3 : T.through) && !c.asked && !c.sun && !c.shot && (isPlace(c.id) || c.world || c.swallow)) {
       // the shockwave running out over the surface (or the ship gone into
@@ -4257,6 +4293,7 @@ export async function create(canvas, ctx) {
         state.through = e.id;
         continue;
       }
+      if (e.type === 'bump' && e.at) bumped(e.force, new THREE.Vector3(...e.at), new THREE.Vector3(...e.normal));
       if (e.type !== 'crash') emit(e);
       else if (!state.crash) startCrash(e);
     }
@@ -4910,7 +4947,7 @@ export async function create(canvas, ctx) {
       if (Math.abs(state.vel) < 2e-6) state.vel = 0;
     }
     let moving = false;
-    if (flying() && !state.dive && !props.frozen) moving = onFoot() ? footFrame(dt, t) : fly(dt, t);
+    if (flying() && !state.dive && !props.frozen) moving = onFoot() ? footFrame(dt, t) : fly(feel.step(dt), t); // (slowed a moment by a hitstop)
     else if (onFoot()) footFrame(0, t); // (frozen: held where it is)
     if (flying() && !state.dive && !onFoot()) follow(dt);
     // somewhere to land and step out: a planet you're at (not a station)
@@ -5009,14 +5046,18 @@ export async function create(canvas, ctx) {
       tanHalf = Math.tan((fov * Math.PI) / 360);
     }
     if (state.kick > 0) state.kick = Math.max(0, state.kick - dt * 1.8);
-    // a crash shakes the camera a moment (not with reduced motion), and the
-    // glare flares
+    // a crash shakes the camera a moment (not with reduced motion: the
+    // feel's calm), and the glare flares. The k said this frame is the
+    // feel's trauma if it's more than what's left
     if (state.shake > 0) {
-      const k = state.shake * state.shake * 0.09;
-      camera.position.x += Math.sin(now * 0.047) * k + Math.sin(now * 0.091) * k * 0.5;
-      camera.position.y += Math.sin(now * 0.061 + 1) * k;
+      const left = feel.state().trauma;
+      if (state.shake > left) feel.trauma(state.shake - left);
+      state.shake = 0;
+    }
+    if (feel.state().trauma > 0) {
+      feel.setBaseFov(camera.fov); // (the lens is the scene's: the feel only shakes)
+      feel.update(dt, camera);
       camera.updateMatrixWorld();
-      state.shake = Math.max(0, state.shake - dt * 1.4);
     }
     if (state.flare > 1) {
       state.flare = 1 + (state.flare - 1) * Math.exp(-dt * 2.5);
@@ -5627,7 +5668,7 @@ export async function create(canvas, ctx) {
     dropEclipse();
     burst.clear();
     const [x, y, z] = p.at;
-    state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+    state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, leanV: 0, edge: false };
     // (the map turned the way the ship faces, as arriveAt does, so the
     // key light falls the same way every time, not wherever the turn's ease got to)
     state.yaw = -p.heading;
@@ -5684,6 +5725,7 @@ export async function create(canvas, ctx) {
       seat: state.seat,
       cab: cab ? cab.kind : cabWanted ? `loading ${cabWanted}` : null,
       crash: state.crash && { id: state.crash.id, age: state.crash.age },
+      feel: feel.state(), // (the shake's trauma, the hitstop left, lib/three/feel.js)
       shield: +state.shield.toFixed(1),
       heat: +state.heat.toFixed(2),
       siege: { ...siegeSt },
@@ -5956,6 +5998,7 @@ export async function create(canvas, ctx) {
       quietRoar();
       infall?.dispose();
       foot.dispose();
+      panel?.dispose();
       near.dispose();
       dropCab();
       roomEnv?.dispose();

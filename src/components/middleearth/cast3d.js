@@ -28,7 +28,12 @@
 // f.cast: { name, ready, set({ base, full, upper, look, crouch, range }),
 //   play(clip, opts) → Promise, stop(layer), react(event, ctx), greet(),
 //   sit(on, how), dance(on), pose(opts), tick(dt, camera), onReady(fn),
-//   hold(object, bone), bone(name), showToy(on), dispose() }
+//   hold(object, bone), holds, bone(name), showToy(on), dispose() }
+//   hold: the toy's item into the cast's hand by lib/three/held.js's
+//   holdItem (its kind from the item's userData.held, its grip a child
+//   named `grip`; `bone` 'LeftHand' or 'RightHand' when the town says,
+//   else the kind's hand), carried every frame after the animator, let go
+//   back to the toy's arm on dispose; holds: what's held
 //   set: what a town wants of it, kept until changed: a base state
 //   ('sit', 'sit.floor', 'sleep', 'lie'), a loop on the whole body or the
 //   upper body, where its head looks (a point, an Object3D, a figure: its
@@ -52,6 +57,7 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { loadGLTF } from '../../lib/three/gltfCache';
 import { createAnimator } from '../../lib/three/animator';
+import { holdItem } from '../../lib/three/held';
 import { animatorCalls, seedOf } from '../../lib/three/figureCalls';
 import { faceAhead, heading } from '../../lib/three/clipLibrary';
 import { createAnimBudget } from '../../lib/three/animBudget';
@@ -215,6 +221,7 @@ export function upgrade(f, name, { look = null, role = 'cast', seed = null, tint
     greeter: createGreeter(),
     turning: false,
     waits: [],
+    holds: [], // what's in its hands (lib/three/held.js), once it's on the cast
   };
   const toy = hide ?? toyParts(f);
   const height = top ?? toyTop(f);
@@ -258,17 +265,20 @@ export function upgrade(f, name, { look = null, role = 'cast', seed = null, tint
   };
   c.react = (event, ctx = {}) => (st ? st.calls.react(event, ctx) : null);
   c.bone = (n) => st?.model.getObjectByName(n) ?? null;
-  // something the toy held (an umbrella, a carrot), into the cast's hand once it's here
-  c.hold = (obj, boneName = 'RightHand') =>
+  // something the toy held (an umbrella, a carrot), into the cast's hand
+  // once it's here, through lib/three/held.js: its kind from its
+  // userData.held (else a sword's grip), in the hand its kind says unless
+  // the town names one, as long as it was in the toy's
+  c.hold = (obj, boneName = null) =>
     c.onReady(() => {
-      const b = c.bone(boneName);
-      if (!b || !obj) return;
-      b.getWorldPosition(_t);
-      obj.removeFromParent();
-      f.group.add(obj);
-      obj.position.copy(f.group.worldToLocal(_t));
-      obj.rotation.set(0, 0, 0);
-      b.attach(obj);
+      if (!st || !obj) return;
+      const kind = obj.userData.held?.kind ?? 'sword';
+      obj.parent?.updateWorldMatrix(true, false);
+      const scale = obj.parent ? obj.parent.getWorldScale(_s).x : 1;
+      const side = boneName ? (/^Left/.test(boneName) ? 'left' : 'right') : undefined;
+      const h = holdItem({ model: st.model, anim: st.anim }, obj, kind, { hand: side, scale, curl: role === 'lead' || role === 'cast' });
+      if (!h) return;
+      c.holds.push(h);
       obj.visible = true;
     });
   c.greet = () => {
@@ -289,6 +299,7 @@ export function upgrade(f, name, { look = null, role = 'cast', seed = null, tint
     c.disposed = true;
     live.delete(c);
     if (!st) return;
+    for (const h of c.holds.splice(0)) h.release();
     st.anim.dispose();
     st.holder.removeFromParent();
     for (const mm of st.materials) mm.dispose();
@@ -359,7 +370,8 @@ export function upgrade(f, name, { look = null, role = 'cast', seed = null, tint
     for (const o of toy) o.visible = false;
     // what the toy held (a staff, a sword, a bow, a brand, a lantern): the
     // cast has none of its own, so they go to its hands
-    for (const [i, hand] of [[0, 'LeftHand'], [1, 'RightHand']]) for (const o of [...(f.arms?.[i]?.children ?? [])]) if (!o.isMesh && o.children.length) c.hold(o, hand);
+    // (each to the hand its kind says: an elf's bow to the left)
+    for (const arm of f.arms ?? []) for (const o of [...(arm?.children ?? [])]) if (!o.isMesh && o.children.length) c.hold(o);
     // its first pose now, so it's never seen in its bind pose
     anim.update(0);
     c.ready = true;
@@ -493,6 +505,13 @@ export function upgrade(f, name, { look = null, role = 'cast', seed = null, tint
     _frame.forward.set(0, 0, 1).applyQuaternion(_q);
     _frame.up.set(0, 1, 0).applyQuaternion(_q);
     anim.after(dt, motion, _frame);
+    // what's in its hands carried over that: the arm still under a staff,
+    // a tankard level; left to the clip on the whole body, sat or down, or
+    // a drink at its lips
+    if (c.holds.length) {
+      const busy = Boolean(st.busy.full || st.at.full || st.down || SITS.has(base) || /drink/.test(st.busy.upper ?? st.at.upper ?? ''));
+      for (const h of c.holds) h.update(dt, { moving, busy });
+    }
   }
   return f;
 }
