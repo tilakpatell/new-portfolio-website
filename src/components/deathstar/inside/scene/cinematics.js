@@ -14,11 +14,16 @@
 //       (its yaw: back is behind where it faces); look: the place looked at (at, else); lift: how
 //       high over it
 //     place: { spot } | { tag } (someone the story spawned, by tag) | { you: true }
-//     act: { tag, t, play?, base?, loop?, face?, fall?, gone?, hide? }: on everyone the story tags so
-//       (or 'you'), t seconds in; face: a tag to turn to; fall: let go as a ragdoll pushed { x, y, z }
-//       (up the way they face, +y up); gone: out of the scene for good; hide: out of sight, or back
+//     act: { tag, t, side?, play?, base?, loop?, face?, fall?, gone?, hide?, swing? }: on everyone the
+//       story tags so (or 'you'), t seconds in, in that side's story only if it says; face: a tag to turn to; fall: let go as a ragdoll pushed
+//       { x, y, z } (up the way they face, +y up); gone: out of the scene for good; hide: out of
+//       sight, or back; swing: { from?, to: place, s, sag, side?, apart? } across on a line from a
+//       pipe overhead, s seconds from `from` (where they stand, if it doesn't say: the jump that
+//       starts a swing has put you across already) to `to`, dipping `sag` metres at the bottom of
+//       it, `side` metres to the right of the way (and each one more after the first `apart` further)
 //     ship: name 'falcon' | 'lambda'; how 'in' (from out past its spot down onto it) | 'out' (off it
-//       and away) | 'down' (from above onto its pad) | 'up' (off its pad and away)
+//       and away) | 'down' (from above onto its pad) | 'up' (off its pad and away); near: the place
+//       whose ship it is, where there are more than one
 //     flash: { t, at: place, ahead?, colour, size }   a flare of light (and, with size, an explosion)
 //     beam: { t0, t1, at: place, from, to, colour, width }   a shaft of light from and to [right, up, back]
 //       in the place's frame, lit from t0 to t1 seconds in, flickering (the superlaser)
@@ -26,7 +31,9 @@
 //   offsetIn(frame, [right, up, back]) → { x, y, z }   pure
 //   shotAt(scene, t) → { shot, k } | null   pure: the shot t seconds in, and how far through it (0…1)
 //   ease(k) → 0…1   pure: in and out
-//   createCinematics({ people, layout, show, fx, scene, you }) → { sync(g, dt) → pose | null, playing, dispose() }
+//   swingAt(swing, t) → { x, y, z } | null   pure: where a swing has its swinger t seconds after it began
+//   createCinematics({ people, layout, show, fx, scene, you }) → { sync(g, dt) → pose | null, playing, youAt, hidesYou, dispose() }
+//     youAt: where your figure is drawn while a scene swings you across, null otherwise
 //     you() → the player's figure, for the acts tagged 'you'
 //     pose: { pos, look } the camera’s this frame while a scene plays, null otherwise
 
@@ -35,6 +42,11 @@ import * as THREE from 'three';
 const EYE = 1.5; // metres over a spot or a person a shot looks at, unless it says
 const SHIP_RISE = 14; // metres a ship comes down from or goes up to
 const SHIP_RUN = 70; // metres it travels out to or in from
+const PIPE = 3.2; // metres the pipe a swing's line hangs from is over the swingers' hands at the start
+const GRIP = 2.05; // metres over a swinger's feet their hands are, on the line
+const ROPE_R = 0.012; // metres: the line's thickness, a grapple's cord
+const UP = new THREE.Vector3(0, 1, 0);
+const ropeDir = new THREE.Vector3();
 
 export const SCENES = {
   // the freighter drawn in on the beam, seen from the ranks on the deck
@@ -69,7 +81,21 @@ export const SCENES = {
     ],
   },
   // across the chasm on the grapple’s line
-  swing: { shots: [{ s: 4, at: { spot: 'chasm-ledge' }, from: [6, 2, -3], to: [9, 1, -6], look: { spot: 'chasm-far' }, lift: 1 }] },
+  // (from the chasm's side, along it, as they swing out over it on Luke's line and up on to the far side)
+  swing: {
+    // (the room is narrow across the chasm: from behind the ledge, off to its side, as they go out
+    // over the drop, then from past the far ledge as they come up on to it)
+    shots: [
+      { s: 2.1, at: { spot: 'chasm-ledge' }, from: [3, 1.5, 1.8], to: [3.1, 1.1, 1.1], lookAhead: 5, lift: -0.6 },
+      { s: 1.9, at: { spot: 'chasm-far' }, from: [3.2, 1.1, -2.2], to: [3, 1.3, -2], lookAhead: -3, lift: 0.4 },
+    ],
+    acts: [
+      { tag: 'you', t: 0.5, side: 'rebel', swing: { from: { spot: 'chasm-ledge' }, to: { spot: 'chasm-far' }, s: 2.6, sag: 2.4 } },
+      { tag: 'with:leia', t: 0.5, swing: { from: { spot: 'chasm-ledge' }, to: { spot: 'chasm-far' }, s: 2.6, sag: 2.4, side: 0.35 } },
+      // (the Imperial story sees the two of them go across from the upper ledge)
+      { tag: 'chasm-pair', t: 0.5, swing: { from: { spot: 'chasm-ledge' }, to: { spot: 'chasm-far' }, s: 2.6, sag: 2.4, apart: 0.35 } },
+    ],
+  },
   // the freighter lifts off and goes out through the field
   escape: {
     shots: [
@@ -77,6 +103,8 @@ export const SCENES = {
       { s: 5, at: { spot: 'falcon' }, from: [8, 3, -24], to: [6, 2, -28], lift: 4 },
     ],
     ship: { name: 'falcon', how: 'out' },
+    // (a Rebel is aboard, and the crew with you; the Empire's man sees it go from the deck)
+    acts: [{ tag: 'you', t: 0, hide: true, side: 'rebel' }, ...['han', 'chewie', 'leia', 'luke', 'threepio', 'artoo'].map((k) => ({ tag: `with:${k}`, t: 0, hide: true }))],
   },
   // Vader's shuttle sets down in the dock
   arrive2: {
@@ -84,13 +112,14 @@ export const SCENES = {
       { s: 4, at: { spot: 'vader-arrive' }, from: [6, 1.5, 6], to: [4, 1.7, 8], look: { spot: 'dock-ramp' }, lift: 4 },
       { s: 4, at: { spot: 'dock-ramp' }, from: [3, 1.6, 4], to: [2, 1.6, 3] },
     ],
-    ship: { name: 'lambda', how: 'down' },
-    // (aboard while it comes down: out on the ramp once it is down)
+    ship: { name: 'lambda', how: 'down', near: { spot: 'dock-ramp' } },
+    // (aboard while it comes down: out on the ramp once it is down; the Empire's man is at his
+    // console, and sees Vader come out)
     acts: [
-      { tag: 'you', t: 0, hide: true },
+      { tag: 'you', t: 0, hide: true, side: 'rebel' },
       { tag: 'vader', t: 0, hide: true },
       { tag: 'guards', t: 0, hide: true },
-      { tag: 'you', t: 4, hide: false },
+      { tag: 'you', t: 4, hide: false, side: 'rebel' },
       { tag: 'vader', t: 4, hide: false },
       { tag: 'guards', t: 4, hide: false },
     ],
@@ -115,11 +144,16 @@ export const SCENES = {
   },
   // at the ramp's foot, the mask off
   mask: {
+    // (he sits on the ramp's foot facing out, you kneel in front of him, both under the shuttle's
+    // nose: the camera keeps low at their sides, first his right, then across from his left)
     shots: [
-      { s: 5, at: { tag: 'vader' }, from: [1.2, 1.1, 2], to: [0.9, 1, 1.5], lift: 0.8 },
-      { s: 5, at: { you: true }, from: [-1, 1.4, 1.8], to: [-0.8, 1.3, 1.4], look: { tag: 'vader' }, lift: 0.8 },
+      { s: 5, at: { tag: 'vader' }, from: [1.7, 0.8, -1.1], to: [1.3, 0.75, -0.8], lift: 0.75 },
+      { s: 5, at: { tag: 'vader' }, from: [-2.3, 1.1, -1.3], to: [-1.9, 1, -1.1], lift: 0.7 },
     ],
-    acts: [{ tag: 'vader', t: 0, base: 'sit.ground' }],
+    acts: [
+      { tag: 'vader', t: 0, base: 'sit.ground' },
+      { tag: 'you', t: 0, base: 'kneel' },
+    ],
   },
   // the Emperor comes down the aisle between the ranks
   emperor: {
@@ -140,8 +174,15 @@ export const SCENES = {
   },
   // out of the dock as the station goes up
   escape2: {
-    shots: [{ s: 8, at: { spot: 'shuttle-ramp' }, from: [8, 2, 10], to: [12, 3, 16], look: { spot: 'escape-shuttle' }, lift: 3 }],
-    ship: { name: 'lambda', how: 'up' },
+    // (from the dock's east side by its open mouth, clear of ST 321 on the next pad, as the
+    // shuttle lifts and goes out past)
+    shots: [{ s: 8, at: { spot: 'escape-shuttle' }, from: [-8, 3, -12], to: [-9, 4, -13], lift: 5 }],
+    ship: { name: 'lambda', how: 'up', near: { spot: 'escape-shuttle' } },
+    // (you're aboard, and your father with you)
+    acts: [
+      { tag: 'you', t: 0, hide: true },
+      { tag: 'vader', t: 0, gone: true },
+    ],
     flashes: [
       { t: 1, at: { spot: 'dock-ramp' }, colour: 0xffa040, size: 3 },
       { t: 3.2, at: { spot: 'vader-arrive' }, colour: 0xffd090, size: 4 },
@@ -176,9 +217,18 @@ export function shotAt(scene, t) {
 
 const lerp = (a, b, k) => a + (b - a) * k;
 
+// out from the ledge and up to the far one as a pendulum goes, fastest at the bottom of the dip
+export function swingAt(w, t) {
+  if (!w) return null;
+  const k = Math.min(1, Math.max(0, (t - w.t0) / w.s));
+  const u = (1 - Math.cos(Math.PI * k)) / 2;
+  return { x: lerp(w.from.x, w.to.x, u), y: lerp(w.from.y, w.to.y, u) - w.sag * Math.sin(Math.PI * u), z: lerp(w.from.z, w.to.z, u) };
+}
+
 export function createCinematics({ people, layout, show = null, fx = null, scene: world, you = null }) {
   let playing = null; // { id, spec, t, done: Set(act index), ship, flashes }
   let hidingYou = false; // a scene's say that your own figure is out of it (aboard the shuttle)
+  let swungYou = null; // where your figure is while a swing carries it, { x, y, z, yaw }
   const pose = { pos: { x: 0, y: 0, z: 0 }, look: { x: 0, y: 0, z: 0 } };
 
   // a place, in the station: a spot (on its floor), someone by tag (where they are drawn), or you
@@ -204,10 +254,35 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
   };
 
   // the ship's holder in the scene, and where it stood, to fly it from or to and put back
-  function shipOf(name) {
+  // A camera where the shot puts it, unless that is in a wall, a ship or the furniture: then
+  // pulled in towards what it looks at until it stands in a room and clear of every solid there
+  function clearOf(g, at, look) {
+    for (let k = 0; k <= 0.85; k += 0.05) {
+      const p = { x: lerp(at.x, look.x, k), y: lerp(at.y, look.y, k), z: lerp(at.z, look.z, k) };
+      const room = layout.roomAt(p.x, p.y, p.z);
+      if (!room) continue;
+      const solid = (g.solidsOf?.(room) ?? []).some((o) =>
+        o.box ? p.x > o.box.x0 - 0.3 && p.x < o.box.x1 + 0.3 && p.z > o.box.z0 - 0.3 && p.z < o.box.z1 + 0.3 && p.y > (o.box.y0 ?? -Infinity) - 0.3 && p.y < (o.box.y1 ?? Infinity) + 0.3 : o.circle && Math.hypot(p.x - o.circle.x, p.z - o.circle.z) < o.circle.r + 0.3,
+      );
+      if (!solid) return p;
+    }
+    return at;
+  }
+
+  // the ship by name, the one nearest the scene's own place when there are more than one (two
+  // Lambdas stand in the second station's dock)
+  function shipOf(name, near) {
     let found = null;
+    let best = Infinity;
+    const p = new THREE.Vector3();
     world.traverse((o) => {
-      if (!found && o.name === name) found = o;
+      if (o.name !== name) return;
+      o.getWorldPosition(p);
+      const d = near ? Math.hypot(p.x - near.x, p.z - near.z) : 0;
+      if (d < best) {
+        best = d;
+        found = o;
+      }
     });
     if (!found) return null;
     found.updateMatrixWorld(true);
@@ -248,9 +323,10 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     o.updateMatrixWorld(true);
   }
 
-  function begin(id) {
+  function begin(id, g) {
     const spec = SCENES[id];
-    playing = spec ? { id, spec, t: 0, done: new Set(), flashes: new Set(), beams: new Map(), ship: spec.ship ? shipOf(spec.ship.name) : null, lit: null } : null;
+    const near = spec?.ship?.near ? where(spec.ship.near, g) : null;
+    playing = spec ? { id, spec, t: 0, done: new Set(), flashes: new Set(), beams: new Map(), swings: [], ship: spec.ship ? shipOf(spec.ship.name, near) : null, lit: null } : null;
   }
 
   function end(g) {
@@ -265,11 +341,16 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     }
     if (playing.lit) show?.lightning?.(playing.lit.from, playing.lit.to, false);
     dropBeams();
+    dropRopes();
+    swungYou = null;
     // the actors back to what the rules have them doing
     for (const a of spec.acts ?? []) {
+      if (a.side && g.side !== a.side) continue;
       for (const it of figuresOf(a.tag, g)) {
         if (it.you) {
           hidingYou = false;
+          // (your figure's own base and upper body are put back by the scene's caller, as you are)
+          it.fig?.stop?.('full');
           continue;
         }
         if (!it.fig) continue;
@@ -287,13 +368,15 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     (spec.acts ?? []).forEach((a, i) => {
       if (done.has(i) || t < a.t) return;
       done.add(i);
-      for (const it of figuresOf(a.tag, g)) act(a, it, g);
+      if (a.side && g.side !== a.side) return;
+      figuresOf(a.tag, g).forEach((it, n) => act(a, it, g, n));
     });
     if (playing.lit) show?.lightning?.(playing.lit.from, playing.lit.to, true);
   }
 
-  // one act on one actor
-  function act(a, it, g) {
+  // one act on one actor (the n-th the tag has)
+  function act(a, it, g, n = 0) {
+    if (a.swing) swingFrom(a, it, g, n);
     if (a.hide !== undefined) {
       if (it.you) hidingYou = a.hide;
       else people.stage?.(it.p.id, { hidden: a.hide });
@@ -321,6 +404,68 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
         show?.lightning?.(playing.lit.from, playing.lit.to, false);
         playing.lit = null;
       }
+    }
+  }
+
+  // A swing begun: from where the actor stands to its place across (both put out to the side by
+  // `side`), on a line from a pipe over the middle of the way; the lead swinger's line is drawn
+  function swingFrom(a, it, g, n) {
+    const from = a.swing.from ? where(a.swing.from, g) : it.you ? where({ you: true }, g) : { x: it.p.x, y: it.p.y ?? 0, z: it.p.z };
+    const there = where(a.swing.to, g);
+    if (!from || !there) return;
+    const yaw = Math.atan2(there.x - from.x, -(there.z - from.z));
+    const side = (a.swing.side ?? 0) + (a.swing.apart ?? 0) * n;
+    const [c, s] = [Math.cos(yaw), Math.sin(yaw)];
+    const w = {
+      id: it.you ? null : it.p.id,
+      you: Boolean(it.you),
+      fig: it.fig,
+      t0: playing.t,
+      s: a.swing.s,
+      sag: a.swing.sag ?? 0,
+      yaw,
+      from: { x: from.x + c * side, y: from.y, z: from.z + s * side },
+      to: { x: there.x + c * side, y: there.y, z: there.z + s * side },
+      landed: false,
+      rope: null,
+    };
+    if (side === 0) {
+      // (a cord a couple of centimetres thick, one metre long, stretched to the line each frame)
+      w.rope = new THREE.Mesh(new THREE.CylinderGeometry(ROPE_R, ROPE_R, 1, 6, 1, true), new THREE.MeshStandardMaterial({ color: 0x8a8478, roughness: 0.9 }));
+      w.rope.name = 'cinematic-rope';
+      w.rope.frustumCulled = false;
+      w.pipe = { x: (w.from.x + w.to.x) / 2, y: Math.max(w.from.y, w.to.y) + GRIP + PIPE, z: (w.from.z + w.to.z) / 2 };
+      world.add(w.rope);
+    }
+    it.fig?.play?.('jump.loop', { loop: true });
+    playing.swings.push(w);
+  }
+
+  function swingsAt() {
+    for (const w of playing.swings) {
+      const p = swingAt(w, playing.t);
+      if (!w.landed && playing.t >= w.t0 + w.s) {
+        w.landed = true;
+        w.fig?.play?.('jump.land');
+      }
+      if (w.you) swungYou = { ...p, yaw: w.yaw };
+      else people.stage?.(w.id, { at: p, yaw: w.yaw });
+      if (w.rope) {
+        const d = ropeDir.set(p.x - w.pipe.x, p.y + GRIP - w.pipe.y, p.z - w.pipe.z);
+        w.rope.scale.set(1, d.length(), 1);
+        w.rope.position.set(w.pipe.x + d.x / 2, w.pipe.y + d.y / 2, w.pipe.z + d.z / 2);
+        w.rope.quaternion.setFromUnitVectors(UP, d.normalize());
+        // (let go of once across)
+        w.rope.visible = !w.landed;
+      }
+    }
+  }
+  function dropRopes() {
+    for (const w of playing?.swings ?? []) {
+      if (!w.rope) continue;
+      w.rope.removeFromParent();
+      w.rope.geometry.dispose();
+      w.rope.material.dispose();
     }
   }
 
@@ -378,6 +523,10 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     get playing() {
       return playing?.id ?? null;
     },
+    // where a swing has your figure, while it does
+    get youAt() {
+      return playing ? swungYou : null;
+    },
     // whether a scene has your figure out of sight (you're aboard the shuttle as it lands)
     get hidesYou() {
       return Boolean(playing) && hidingYou;
@@ -386,10 +535,11 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
       const id = g?.scene?.id ?? null;
       if (playing && playing.id !== id) end(g);
       if (!id) return null;
-      if (!playing) begin(id);
+      if (!playing) begin(id, g);
       if (!playing) return null;
       playing.t = g.scene.t ?? playing.t + dt;
       actsAt(g);
+      swingsAt();
       flashesAt(g);
       beamsAt(g);
       const { spec } = playing;
@@ -404,14 +554,15 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
       if (!f) return null;
       const e = ease(k);
       const off = shot.from.map((v, i) => lerp(v, shot.to[i], e));
-      Object.assign(pose.pos, offsetIn(f, off));
       const lf = frameOf(where(shot.look ?? shot.at, g)) ?? f;
       const look = shot.lookAhead ? offsetIn(lf, [0, 0, -shot.lookAhead]) : lf;
       Object.assign(pose.look, { x: look.x, y: look.y + (shot.lift ?? EYE), z: look.z });
+      Object.assign(pose.pos, clearOf(g, offsetIn(f, off), pose.look));
       return pose;
     },
     dispose() {
       dropBeams();
+      dropRopes();
       playing = null;
     },
   };

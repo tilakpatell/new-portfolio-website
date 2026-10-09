@@ -24,7 +24,10 @@
 // its own coordinates) says which one you're in with the pose's `area`, and
 // list() gives only those in the same one (a world without areas: everyone).
 // `hidden(id)` is true of anyone not to be shown (the site's roster has them
-// blocked: a traveller's id is their id there too, nostr.js's visitKeys).
+// blocked: a traveller's id is their id there too, nostr.js's visitKeys),
+// and it's asked before anyone's given a place, so the blocked don't take
+// any of a town's MAX (one blocked after they came gives theirs up as soon
+// as they're next heard).
 
 import { createLimiter } from '../../universe/online/protocol';
 import { cleanName } from '../../universe/online/names';
@@ -123,8 +126,14 @@ export function createTravellers({ town, name, load = loadRoom, now = () => Date
       if (left) return;
       room = joinRoom({ appId: APP_ID, latest: LATEST, cheap: CHEAP }, ROOM(town));
       acts = { hi: room.makeAction('hi'), p: room.makeAction('p') };
+      // (someone not to be shown takes no place)
+      const unseen = (id) => {
+        if (!hidden(id)) return false;
+        peers.delete(id);
+        return true;
+      };
       acts.hi.onMessage = (data, { peerId }) => {
-        if (!allow(peerId, 'hi')) return;
+        if (unseen(peerId) || !allow(peerId, 'hi')) return;
         const p = peers.get(peerId);
         const n = cleanName(typeof data === 'string' ? data : '') ?? 'Traveller';
         if (p) {
@@ -135,7 +144,7 @@ export function createTravellers({ town, name, load = loadRoom, now = () => Date
         if (!p && now() - lastHello > 1000) hello();
       };
       acts.p.onMessage = (data, { peerId }) => {
-        if (!allow(peerId, 'p')) return;
+        if (unseen(peerId) || !allow(peerId, 'p')) return;
         const step = readStep(data, bound);
         if (!step) return;
         let p = peers.get(peerId);

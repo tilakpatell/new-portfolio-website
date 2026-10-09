@@ -32,6 +32,8 @@ export function heardOf(e, g) {
       return [[e.by === 'blade' ? 'clash' : 'hit', point(e)]];
     case 'deflect':
       return [['clash', point(e)]];
+    case 'quake':
+      return [['quake', finite(e.at), e.size ?? 1]];
     case 'alert': {
       const here = g.layout.rooms.get(g.you.room)?.section;
       if (e.section !== here) return [];

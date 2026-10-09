@@ -1,6 +1,6 @@
 {
   "date": "2026-10-09",
-  "sha": "982e9886",
+  "sha": "2c568f1e",
   "metrics": {
     "big-files": {
       "value": 29,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5903
+          "n": 5892
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -21,11 +21,11 @@
         },
         {
           "file": "src/components/universe/footScene.js",
-          "n": 3701
+          "n": 3673
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 3581
+          "n": 3572
         },
         {
           "file": "src/components/middleearth/towns/doom/props.js",
@@ -92,12 +92,12 @@
           "n": 2078
         },
         {
-          "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2055
-        },
-        {
           "file": "src/lib/sfx.js",
           "n": 2000
+        },
+        {
+          "file": "src/components/rickmorty/world/RmWorld.jsx",
+          "n": 1969
         },
         {
           "file": "src/components/galaxy/surface/props/core.js",

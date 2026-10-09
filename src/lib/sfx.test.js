@@ -188,6 +188,19 @@ describe('play and hit', () => {
     expect(a.of('BufferSource')[0].playbackRate.value).toBe(2);
   });
 
+  it('plays the blocks’ sounds by name: a crunch, a splash, an oof, each short and quieter at a lower gain', () => {
+    for (const name of ['crunch', 'splash', 'oof']) {
+      fresh();
+      const long = play(name);
+      expect(long, name).toBeGreaterThan(0);
+      expect(long, name).toBeLessThan(1);
+      const whole = loudest(a.made);
+      fresh();
+      play(name, { gain: 0.5 });
+      expect(loudest(a.made), name).toBeCloseTo(whole / 2, 9);
+    }
+  });
+
   it('plays nothing for a tap under the law’s threshold, and says so', () => {
     expect(hit('thunk', 10)).toBe(false);
     expect(a.of('Oscillator')).toHaveLength(0);
