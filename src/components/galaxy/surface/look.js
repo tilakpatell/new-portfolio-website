@@ -14,6 +14,9 @@
 //   adoptLater(house, object) → how many lit materials of something added
 //     after the scene was adopted the house took on (0 for nothing)
 //
+//   LOOK: the world's look for components/worlds/looks.js (its art, tone and
+//     bloom, and why)
+//
 // A site's `look`: { shadow, edge: [from, to], fogBelow, halo } (colours as
 // '#rrggbb', as the sites write them); left out, the shadow is the sky a
 // third of the way from its zenith to its horizon, darkened: a blue sky
@@ -55,3 +58,22 @@ export function groundPieces(site) {
 }
 
 export const adoptLater = (house, object) => (object ? house.adopt(object) : 0);
+
+// The surfaces’ look (components/worlds/looks.js): scanned, the sites’
+// glTF people, walkers, landmarks and props under the house’s shade (above:
+// a site’s sky). Like the galaxy map they go through the universe’s lens
+// (universe/post.js, lane 2C’s), which tone-maps and grades in its last
+// pass and has its own bloom, so the renderer maps no tone and this owns no
+// bloom. What isn’t scanned: the crew’s and the people’s toon ramp comes in
+// with rickmorty/portal/meshyCast.js’s animator, and the core kit
+// (./kit.js, ./detail.js) draws some props in code.
+export const LOOK = {
+  art: 'scanned',
+  tone: 'none',
+  bloom: false,
+  why: {
+    art: 'the people’s animator (rickmorty/portal/meshyCast.js) brings a toon ramp, and the core kit draws some props in code',
+    tone: 'the universe’s lens (universe/post.js) tone-maps and grades the picture in its last pass, so the renderer maps none',
+    bloom: 'the lens’s own bloom (universe/post.js, a threshold of 1.7): only the sun, lamps, engines and bolts glow',
+  },
+};
