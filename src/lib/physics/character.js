@@ -13,32 +13,35 @@
 // takes no impulse, so a hit is a `knock`: a velocity the controller
 // carries along walls as it would a walk (the design's rule). No three.js.
 //
-//   CHARACTER: { offset, step: { height, minWidth }, slope: { climb, slide } (degrees), snap,
+//   CHARACTER: { offset, nudge (the controller's normal nudge: at Rapier's 1e-4 a run across a
+//     heightfield catches on its triangles' edges a frame now and then; 0.01 never does), step: { height, minWidth }, slope: { climb, slide } (degrees), snap,
 //     gravity (the walker's, so the feel is the same), knockDecay (a second) }
 //   createCharacter(phys, { position, radius = 0.38, halfHeight = 0.5, mass = 70, group = 'character',
 //     pushes = true, turn = 11 (rad/s), tag = null, ...CHARACTER's keys to override }) → {
 //     body (world.js's Body), collider, radius, halfHeight,
 //     move(intent, dt)   intent: { vel: { x, z } (m/s), face: yaw | null, jump?: m/s (only grounded) }
 //     knock([x, y, z])   adds a velocity (m/s); knockLeft() → what's left of it (m/s)
+//     jump(v)            sets the vertical speed outright, airborne (a press in its buffer, a jetpack)
 //     grounded, blocked, yaw, vy,
 //     position(out) → [x, y, z], quaternion(out) → [x, y, z, w], prev(out) → [x, y, z],
 //     teleport([x, y, z], yaw?), enable(on), remove() }
 
 import { filterOf } from './groups';
 
-export const CHARACTER = { offset: 0.02, step: { height: 0.35, minWidth: 0.2 }, slope: { climb: 50, slide: 60 }, snap: 0.3, gravity: 15.5, knockDecay: 6 };
+export const CHARACTER = { offset: 0.02, nudge: 0.01, step: { height: 0.35, minWidth: 0.2 }, slope: { climb: 50, slide: 60 }, snap: 0.3, gravity: 15.5, knockDecay: 6 };
 
 const RAD = Math.PI / 180;
 const SOLIDS = filterOf('floor', 'object', 'character');
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
-export function createCharacter(phys, { position, radius = 0.38, halfHeight = 0.5, mass = 70, group = 'character', pushes = true, turn = 11, tag = null, offset = CHARACTER.offset, step = CHARACTER.step, slope = CHARACTER.slope, snap = CHARACTER.snap, gravity = CHARACTER.gravity, knockDecay = CHARACTER.knockDecay } = {}) {
+export function createCharacter(phys, { position, radius = 0.38, halfHeight = 0.5, mass = 70, group = 'character', pushes = true, turn = 11, tag = null, offset = CHARACTER.offset, nudge = CHARACTER.nudge, step = CHARACTER.step, slope = CHARACTER.slope, snap = CHARACTER.snap, gravity = CHARACTER.gravity, knockDecay = CHARACTER.knockDecay } = {}) {
   const { RAPIER, world } = phys;
   const handle = phys.add({ type: 'kinematicPositionBased', position, group, colliders: [{ shape: 'capsule', args: [halfHeight, radius], tag }] });
   const rb = handle.body;
   const collider = handle.colliders[0];
   const ctl = world.createCharacterController(offset);
+  ctl.setNormalNudgeFactor(nudge);
   ctl.enableAutostep(step.height, step.minWidth, true);
   ctl.enableSnapToGround(snap);
   ctl.setMaxSlopeClimbAngle(slope.climb * RAD);
@@ -139,6 +142,12 @@ export function createCharacter(phys, { position, radius = 0.38, halfHeight = 0.
         const most = turn * dt;
         face(yaw + clamp(wrap(intent.face - yaw), -most, most));
       }
+    },
+    // a jump (or a jetpack's lift) set outright: the vertical speed, airborne
+    jump(v) {
+      if (!Number.isFinite(v)) return;
+      vy = v;
+      grounded = false;
     },
     knock(v) {
       if (!v || !Number.isFinite(v[0] + v[1] + v[2])) return;

@@ -128,6 +128,9 @@ import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
 import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, lineClear, pushOut, ride, rider, turnToward, walk, walker } from './walker';
+import { createSurfacePhysics } from './surfacePhysics';
+import { createPlayerBody } from './playerBody';
+import { preload as preloadPhysics } from '../../../lib/physics/world';
 import { aimDir, lookFriction } from './aimShot';
 import { createSurfaceLockOn } from './surfaceLockOn';
 import { surfaceLook } from './surfaceLook';
@@ -187,6 +190,9 @@ export async function create(canvas, ctx) {
   let props = ctx;
   let disposed = false;
   const tier = device().tier;
+  // the bodies on Rapier (surfacePhysics.js, playerBody.js); `?body=walker` keeps the old walker for comparison
+  const oldBody = typeof location !== 'undefined' && new URLSearchParams(location.search).get('body') === 'walker';
+  if (!oldBody) preloadPhysics().catch(() => {});
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   // how much it draws: the level's row of the budget table (amounts.js)
   const level = detailLevel();
@@ -651,6 +657,9 @@ export async function create(canvas, ctx) {
   const you = walker(spawnAt[0], spawnAt[1], groundAt(world, ...spawnAt), onFoot ? mission.yaw : site.land.yaw + 0.5);
   const mateAt = [spawnAt[0] + out.x * 1.6, spawnAt[1] + out.z * 1.6];
   const mate = walker(mateAt[0], mateAt[1], groundAt(world, ...mateAt), you.yaw);
+  // (a failed load, offline, keeps the walker too)
+  const sp = oldBody ? null : await createSurfacePhysics(world, { tier }).catch((err) => (console.warn('surface physics:', err), null));
+  const pb = sp ? createPlayerBody(sp, you) : null;
   const people = [
     { spec: party[0], st: you, holder: new THREE.Group(), fig: null, fitting: 0 },
     { spec: party[1], st: mate, holder: new THREE.Group(), fig: null, fitting: 0 },
@@ -1399,6 +1408,8 @@ export async function create(canvas, ctx) {
       if (e.signal) placer.signal(e.signal, e.on ?? true);
       if (e.floor) for (const f of world.floors) if (f.tag === e.floor) f.off = Boolean(e.off);
       if (e.solid) for (const x of world.solids.all) if (x.tag === e.solid) x.off = Boolean(e.off);
+      if (e.floor) sp?.toggle(e.floor, !e.off);
+      if (e.solid) sp?.toggle(e.solid, !e.off);
       if (e.kill) activity.kill(e.kill);
       if (e.hide) life.hide(e.hide, true);
       if (e.show) life.hide(e.show, false);
@@ -2395,7 +2406,15 @@ export async function create(canvas, ctx) {
     state.safe = safe;
     // (a sprint: abilityRules.js's, the walk and the run both quicker)
     const rules = state.t < state.sprint ? { ...WALK, walk: WALK.walk * ABILITIES.sprint.speed, run: WALK.run * ABILITIES.sprint.speed } : WALK;
-    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpPress }, dt, world, rules);
+    const ask = state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpPress };
+    let o;
+    if (pb) {
+      // (the body on Rapier: the ask held for the substeps, the world stepped, the state read back)
+      if (pb.st !== p) pb.bind(p);
+      o = pb.step(ask, dt, rules);
+      sp.step(dt);
+      o.landed = pb.sync(p);
+    } else o = walk(p, ask, dt, world, rules);
     stepJet(dt);
     life.shove(p, WALK.radius);
     // (and out of whatever's parked: a speeder, a tauntaun)
@@ -3587,6 +3606,8 @@ export async function create(canvas, ctx) {
     debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
+      pb?.dispose();
+      sp?.dispose();
       lit?.dispose();
       knocks?.dispose();
       knockHits.dispose();

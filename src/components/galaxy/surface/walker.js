@@ -195,8 +195,14 @@ export function walker(x = 0, z = 0, y = 0, yaw = 0) {
 // jump (pressed this frame, or a press: jumpNow), heading (the camera's yaw: forward is
 // (sin, cos) of it) }; returns what happened: { landed (the speed you hit
 // the ground at), jumped, bumped }
-export function walk(s, input, dt, world, rules = WALK) {
-  const out = { landed: 0, jumped: false, bumped: false };
+// What the stick asks of the feet, with no ground in it: the velocity
+// (the walker's own, eased by `accel` on the ground and `air` off it,
+// kept in s.vx and s.vz), the way to face (the way it's going, or null
+// stood still) and a jump (rules.jump m/s when asked: pressed this step
+// on the ground, or a press within its buffer). The intent a body moves
+// on (playerBody.js's character); walk() reads it too, so the two paths
+// ask the same of the same input.
+export function walkIntent(s, input, dt, rules = WALK) {
   const mag = Math.min(1, Math.hypot(input.x, input.y));
   const h = input.heading ?? 0;
   // the way the stick points, in the world
@@ -220,6 +226,12 @@ export function walk(s, input, dt, world, rules = WALK) {
   const k = tl > a ? a / tl : 1;
   s.vx += tx * k;
   s.vz += tz * k;
+  return { vel: { x: s.vx, z: s.vz }, face: mag > 0.08 && dl > 1e-6 ? Math.atan2(dx, dz) : null, jump: jumpNow(s, input.jump) ? rules.jump : 0 };
+}
+
+export function walk(s, input, dt, world, rules = WALK) {
+  const out = { landed: 0, jumped: false, bumped: false };
+  const it = walkIntent(s, input, dt, rules);
 
   // across the ground
   const was = { x: s.x, z: s.z };
@@ -282,8 +294,8 @@ export function walk(s, input, dt, world, rules = WALK) {
 
   // up and down
   const g = Math.max(groundAt(world, s.x, s.z, s.y, rules.step), solidTop(world, s.x, s.z, s.y, rules));
-  if (jumpNow(s, input.jump)) {
-    s.vy = rules.jump;
+  if (it.jump) {
+    s.vy = it.jump;
     s.grounded = false;
     out.jumped = true;
   }
@@ -314,7 +326,7 @@ export function walk(s, input, dt, world, rules = WALK) {
   }
 
   // face the way you're going
-  if (mag > 0.08 && dl > 1e-6) s.yaw = turnToward(s.yaw, Math.atan2(dx, dz), rules.turn * dt);
+  if (it.face != null) s.yaw = turnToward(s.yaw, it.face, rules.turn * dt);
   return out;
 }
 

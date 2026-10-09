@@ -2,7 +2,8 @@
 // sampled from the same `heightAt` the walker reads), every solid the
 // walker stops at (placer's circles as cylinders, its boxes as cuboids,
 // each standing from its base to its top), the floors over the land
-// (discs and boxes at their height), with the queries over them (the
+// (discs and boxes at their height), a floor at knee depth under any
+// water, with the queries over them (the
 // eyes: lib/physics/queries.js, on the tier's budget) and the one line of
 // sight every brain asks (`seesThrough`: a ray from eyes to chest; a ray
 // the budget refuses answers what it answered last for that pair, never
@@ -14,7 +15,7 @@
 //
 //   createSurfacePhysics(world, { reach = world.reach ?? 160, spacing = 2, tier, budget }) → Promise<sp>
 //     world: scene.js's { heightAt, normalAt, solids (walker's createSolids), floors, reach }
-//   sp: { phys, q, SIGHT, step(dt), seesThrough(a, b) → bool, addSolid(s) → Body, byTag (Map tag → [Body]),
+//   sp: { world, phys, q, SIGHT, step(dt), seesThrough(a, b) → bool, addSolid(s) → Body, byTag (Map tag → [Body]),
 //     toggle(tag, on), dispose() }
 //   budgetFor(tier) → { rays, sweeps, overlaps }
 
@@ -28,6 +29,7 @@ import { CHARACTER } from '../../../lib/physics/character';
 const TILE = 64; // m: a heightfield tile
 const TALL = 50; // m: a solid with no top stands this high
 const FLOOR_T = 0.05; // m: half a floor's thickness
+const WADE = 0.85; // m: how deep anyone wades (walker.js's WALK.wade)
 const EYES = 1.5;
 const CHEST = 1.1;
 const KEPT = 256; // sight answers remembered for refused rays
@@ -90,6 +92,8 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
   }
   for (const s of world.solids?.all ?? []) addSolid(s);
   for (const f of world.floors ?? []) addFloor(f);
+  // water: a floor at knee depth under it, so nobody walks the seabed (the walker's clamp)
+  if (world.water != null) phys.add({ type: 'fixed', position: [0, world.water - WADE - FLOOR_T, 0], group: 'floor', friction: FRICTION, colliders: [{ shape: 'cuboid', args: [tiles * TILE, FLOOR_T, tiles * TILE] }] });
   const offAdd = world.solids?.onAdd?.(addSolid) ?? null;
   phys.step(1 / 60);
 
@@ -122,6 +126,7 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
   }
 
   return {
+    world,
     phys,
     q,
     SIGHT,
