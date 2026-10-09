@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAR, CITY, COLLIDERS, DRIVING, DRIVING_DEFAULTS, EDGES, GRID, HANK_ROUTE, NODES, PLACES, ROADS, SIGNAL, SPAWN, WORLD_RADIUS, collidersNear, createSafeSpot, createStreets, nearPlace, onBlock, onRoad, progress, readDriving, signalAt, slipOf, stepCar, stepHeat, stepSteer, stepTraffic, surfaceHeight } from './rules';
+import { CAR, CITY, COLLIDERS, DRIVING, DRIVING_DEFAULTS, EDGES, GRID, HANK_ROUTE, NODES, PLACES, ROADS, SIGNAL, SPAWN, WORLD_RADIUS, collidersNear, createSafeSpot, STREET_PROPS, createStreets, nearPlace, onBlock, onRoad, progress, readDriving, signalAt, slipOf, stepCar, stepHeat, stepSteer, stepTraffic, surfaceHeight } from './rules';
 
 const fresh = { served: 0, points: 0, money: 0, upgrades: [], visited: [] };
 const drive = (car, input, seconds) => {
@@ -753,5 +753,21 @@ describe('Albuquerque, the world: the way out', () => {
     expect(safe.spot.x).toBe(0);
     safe.step({ x: NaN, z: 9, yaw: 0, speed: 9 }, 0, 1);
     expect(safe.spot.x).toBe(0);
+  });
+});
+
+describe('Albuquerque, the world: the street’s props', () => {
+  it('stands every prop on Central’s asphalt, clear of the buildings and the junctions', () => {
+    expect(STREET_PROPS.length).toBeGreaterThan(20);
+    for (const p of STREET_PROPS) {
+      expect(onRoad(p.x, p.z), `${p.kind} at ${p.x}`).toBe(true);
+      for (const c of COLLIDERS) expect(reach(c, p.x, p.z), `${p.kind} at ${p.x} by ${c.id}`).toBeGreaterThan(1);
+      expect(Math.min(...GRID.xs.map((x) => Math.abs(p.x - x))), `${p.kind} at ${p.x}`).toBeGreaterThan(10);
+    }
+  });
+
+  it('keeps them out of the traffic’s lanes', () => {
+    // (a lane on Central runs 2.2 and 5.8 m either side of the middle, a car 2 m wide)
+    for (const p of STREET_PROPS) expect(Math.abs(p.z)).toBeGreaterThan(5.8 + 1);
   });
 });

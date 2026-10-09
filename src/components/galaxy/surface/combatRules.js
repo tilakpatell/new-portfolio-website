@@ -15,7 +15,7 @@
 //   BLOCK_CLIP, DASH_CLIP   the raised blade and the dash's lunge
 //   STRIKE               metres from the one you're locked on that a stroke's step ends
 //   GUARD                { max, regen (a second), wait (seconds after a hit before it regrows), broken (seconds staggered when it's gone) }
-//   PARRY                { window }: seconds after C goes down in which a swipe is parried outright
+//   PARRY                { window }: seconds before their blade's contact in which a block begun is a parry
 //   DODGE                { dist, dur, safe (seconds of it nothing lands), cool }
 //   FORCE                push / pull: { range, cone, force, cool, damage }
 //   stanceOf(id)         the stance, 'single' when unknown
@@ -27,7 +27,9 @@
 //   lungeTo(me, t, stance)       metres to step toward t for a stroke to land (0 if it already does, or t's too far)
 //   guardHit(g, cost, now)       the guard after a block: { value, brokenAt } (brokenAt set when it's spent)
 //   guardStep(g, dt, now, max?)  the guard a frame on: regrowing after GUARD.wait toward `max` (GUARD.max), back from broken after GUARD.broken
-//   parried(blockAt, now, window?)   whether a swipe now meets a block begun within `window` (PARRY.window)
+//   blockOutcome({ shown, blockAt, contactAt, now, window })   their blade's contact on you now, met by your block:
+//                        'parry' (shown, begun within `window` (PARRY.window) before their contact began, or since),
+//                        'block' (shown, up from before) or 'hit' (not up); a swipe that lands as it's decided has contactAt now
 //   dodgeStep(k)                 the dodge `k` (0…1) of the way: { d (metres along), safe }
 //   forceAt(me, t, kind)         whether t is in the Force's reach: { hit, k (1 close … 0 at range) }
 //   pushVelocity(me, t, k)       the shove a push gives t: { vx, vz, vy }
@@ -157,7 +159,11 @@ export function guardStep(g, dt, now, max = GUARD.max) {
   return { ...g, value: Math.min(max, g.value + GUARD.regen * dt) };
 }
 
-export const parried = (blockAt, now, window = PARRY.window) => blockAt != null && now - blockAt >= 0 && now - blockAt <= window;
+// (anchored to their contact, not their stroke's start: the research's §2)
+export function blockOutcome({ shown, blockAt = null, contactAt, now, window = PARRY.window }) {
+  if (!shown) return 'hit';
+  return blockAt != null && blockAt >= contactAt - window && blockAt <= now ? 'parry' : 'block';
+}
 
 export function dodgeStep(k) {
   const x = clamp(k, 0, 1);
