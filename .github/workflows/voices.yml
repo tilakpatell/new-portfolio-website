@@ -77,7 +77,7 @@ jobs:
       always() && !cancelled() && (
         (github.event_name == 'workflow_dispatch' && needs.queue.result == 'success') ||
         (github.event_name == 'schedule' && needs.check.outputs.pending != '0' && needs.check.outputs.pending != '') ||
-        (github.event_name == 'issues' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) && (
+        (github.event_name == 'issues' && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) || github.event.issue.user.login == 'github-actions[bot]') && (
           ((github.event.action == 'opened' || github.event.action == 'reopened') && contains(github.event.issue.labels.*.name, 'voices')) ||
           (github.event.action == 'labeled' && github.event.label.name == 'voices') ||
           (github.event.action == 'unlabeled' && github.event.label.name == 'voices:failed' && contains(github.event.issue.labels.*.name, 'voices'))
