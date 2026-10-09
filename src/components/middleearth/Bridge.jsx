@@ -153,7 +153,9 @@ export default function Bridge() {
   useFrameLoop((ms) => {
     const d = duel.current;
     if (!d) return;
-    const ev = stepDuel(d, Math.min(0.05, ms / 1000));
+    // (a block or a lash holds the duel a moment: the scene's hitstop, ./feel.js)
+    const real = Math.min(0.05, ms / 1000);
+    const ev = stepDuel(d, real * (view.current?.timeScale?.(real) ?? 1));
     place(d.x);
     const k = (d.x - DUEL.start) / (DUEL.end - DUEL.start);
     for (const e of ev) {

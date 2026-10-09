@@ -31,6 +31,7 @@ import { makeFolk } from '../bree/props';
 import { createRivendellKit } from './props';
 import { BRIDGE, CAST, COLLIDERS, COLONNADE, COMPANIONS, COURT, FALLS, GATE, GORGE, HOUSE, INSIDE, LAMPS, PAVILION, SEATS, SPOTS, TREES, WORLD, boxDist, height, padY, pathAmount, riverX } from './layout';
 import { attend, castDo, castPlay, followDrawn, releaseCast, tickCast } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -413,6 +414,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 20, 50), look: V(0, 4, 0) }, mode: 'walk', leaf: 0, axe: -9, axeTimer: 0, eye: 0 };
+  const shake = createShake({ title: 'Rivendell' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { axe: 60 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -716,15 +719,12 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     }
     const jump = A.mode !== s.mode;
     A.mode = s.mode;
-    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' ? 7 : 2.2));
+    const ease = jump ? 1 : byFrame(s.mode === 'walk' ? 7 : 2.2, dt);
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 90);
@@ -738,6 +738,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
 
   // ── events ──
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'axe') {
       A.axe = A.t;
       A.shake = 0.25;
@@ -774,6 +775,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     screenOf,
     headOf,
     balcony,
@@ -789,6 +791,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      shake.dispose();
       ground.dispose();
       clearTimeout(A.axeTimer);
       ghosts.dispose();
