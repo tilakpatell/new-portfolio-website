@@ -93,7 +93,7 @@ export default {
     const house = houseOn({ renderer, scene: view.scene, sun: view.sun, hemi: view.hemi, look: { fog: true } });
     // (the ground's and the clutter's materials, on no leaf yet: in the look before their first draw)
     for (const m of ground.materials) house.adopt(new THREE.Mesh(undefined, m));
-    house.sky({ low: new THREE.Color(spec.palette.low), high: new THREE.Color(LOOK.palette[3]), sunDir: view.sunDir });
+    house.sky({ low: new THREE.Color(spec.palette.skyLow ?? spec.palette.low), high: new THREE.Color(spec.palette.skyHigh ?? LOOK.palette[3]), sunDir: view.sunDir });
 
     rt.input.bind(KEYS, { axes: AXES });
     let ship = spawnOf(spec, groundAt);

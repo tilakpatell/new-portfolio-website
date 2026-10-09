@@ -79,10 +79,10 @@ export function createFlightScene({ spec, palette }) {
   const p = spec.palette;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 1, SKY_R * 1.2);
-  const sky = skyDome(p.low, palette[3]);
+  const sky = skyDome(p.skyLow ?? p.low, p.skyHigh ?? palette[3]);
   scene.add(sky);
-  scene.fog = new THREE.Fog(new THREE.Color(p.low), FOG.near, FOG.far);
-  const hemi = new THREE.HemisphereLight(new THREE.Color(palette[3]), new THREE.Color(p.rock), 1.1);
+  scene.fog = new THREE.Fog(new THREE.Color(p.skyLow ?? p.low), FOG.near, FOG.far);
+  const hemi = new THREE.HemisphereLight(new THREE.Color(p.skyHigh ?? palette[3]).lerp(new THREE.Color('#ffffff'), 0.4), new THREE.Color(p.rock), 1.1);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(new THREE.Color(palette[5]).lerp(new THREE.Color('#ffffff'), 0.6), 2.4);
   // low and to one side: long light across the ridges

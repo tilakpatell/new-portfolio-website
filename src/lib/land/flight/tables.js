@@ -14,7 +14,8 @@
 //
 // Pure: plain data and one function, no three.js.
 //
-//   TYPE_BIOMES[type] → biomes; PALETTES[type]; CLUTTER[type]
+//   TYPE_BIOMES[type] → biomes; PALETTES[type] ({ low, high, rock, accent: the
+//     ground's; skyLow, skyHigh: the horizon and the zenith }); CLUTTER[type]
 //   expand(biomes, seed) → biomes with each scatter turned into island layers
 
 import { seeded } from '../../seeded.js';
@@ -91,13 +92,13 @@ export const TYPE_BIOMES = {
 TYPE_BIOMES.ringed = TYPE_BIOMES.gas;
 
 export const PALETTES = {
-  ice: { low: '#e9f0f7', high: '#ffffff', rock: '#6b7a8c', accent: '#9fb7d1' },
-  rock: { low: '#8a7f73', high: '#a39383', rock: '#5c544c', accent: '#6f6a64' },
-  lava: { low: '#2a2220', high: '#4a3a34', rock: '#1a1514', accent: '#ff6b4a' },
-  ocean: { low: '#2f6f8f', high: '#9fd3c7', rock: '#3b5a66', accent: '#e8f4f0' },
-  gas: { low: '#c9a77a', high: '#f0dcb4', rock: '#a07850', accent: '#fff2d8' },
-  forest: { low: '#4f8f3a', high: '#9bd06a', rock: '#6b5a44', accent: '#e3f2b0' },
-  desert: { low: '#e0b878', high: '#f4d9a2', rock: '#b07a4a', accent: '#fff1cf' },
+  ice: { low: '#e9f0f7', high: '#ffffff', rock: '#6b7a8c', accent: '#9fb7d1', skyLow: '#e9f0f7', skyHigh: '#9fb7d1' },
+  rock: { low: '#8a7f73', high: '#a39383', rock: '#5c544c', accent: '#6f6a64', skyLow: '#d9d2c8', skyHigh: '#7d8fa3' },
+  lava: { low: '#2a2220', high: '#4a3a34', rock: '#1a1514', accent: '#ff6b4a', skyLow: '#7a3a2a', skyHigh: '#1f1418' },
+  ocean: { low: '#2f6f8f', high: '#9fd3c7', rock: '#3b5a66', accent: '#e8f4f0', skyLow: '#e0f1f7', skyHigh: '#4f93c8' },
+  gas: { low: '#c9a77a', high: '#f0dcb4', rock: '#a07850', accent: '#fff2d8', skyLow: '#f3dfbf', skyHigh: '#b88a5a' },
+  forest: { low: '#4f8f3a', high: '#9bd06a', rock: '#6b5a44', accent: '#e3f2b0', skyLow: '#d8ecf2', skyHigh: '#5d9fd6' },
+  desert: { low: '#e0b878', high: '#f4d9a2', rock: '#b07a4a', accent: '#fff1cf', skyLow: '#f6dcb0', skyHigh: '#6fa6d8' },
 };
 PALETTES.ringed = PALETTES.gas;
 
