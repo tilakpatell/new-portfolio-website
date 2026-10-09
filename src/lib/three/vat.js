@@ -48,7 +48,7 @@
 //         setClip(i, { clip, phase?, speed? }), free(i), update(dt), dispose() }
 //     the material becomes the crowd's (skinned in place: a material keeps no
 //     copy of its hooks when cloned); the geometry is copied, the copy owned
-//   loadVat(jsonUrl, { load }) → Promise<{ texture, bones, frames, fps, clips }>
+//   loadVat(jsonUrl, { load }) → Promise<{ texture, bones, frames, fps, clips, names }>
 //     `<name>.vat.json` is { bones, frames, fps, clips, bin }, its bin beside
 //     it the texture's Uint16 half floats; `load(url)` an ArrayBuffer for a
 //     .bin, the parsed object otherwise (fetch by default)
@@ -314,7 +314,7 @@ const fetchVat = async (url) => {
 };
 
 export async function loadVat(jsonUrl, { load = fetchVat } = {}) {
-  const { bones, frames, fps, clips, bin } = await load(jsonUrl);
+  const { bones, frames, fps, clips, names, bin } = await load(jsonUrl);
   const binUrl = jsonUrl.slice(0, jsonUrl.lastIndexOf('/') + 1) + bin;
   const buffer = await load(binUrl);
   const layout = vatLayout(bones, frames);
@@ -325,5 +325,5 @@ export async function loadVat(jsonUrl, { load = fetchVat } = {}) {
   texture.generateMipmaps = false;
   texture.needsUpdate = true;
   texture.name = bin;
-  return { texture, bones, frames, fps, clips };
+  return { texture, bones, frames, fps, clips, names };
 }

@@ -363,7 +363,7 @@ describe('loading a baked texture', () => {
     const asked = [];
     const load = async (url) => {
       asked.push(url);
-      return url.endsWith('.json') ? { bones: 2, frames: 4, fps: 24, clips: { walk: [1, 3] }, bin: 'horse.vat.bin' } : half.buffer;
+      return url.endsWith('.json') ? { bones: 2, frames: 4, fps: 24, clips: { walk: [1, 3] }, names: ['Hips', 'RightHand'], bin: 'horse.vat.bin' } : half.buffer;
     };
     const vat = await loadVat('/kit/farm/horse.vat.json', { load });
     expect(asked).toEqual(['/kit/farm/horse.vat.json', '/kit/farm/horse.vat.bin']);
@@ -371,6 +371,7 @@ describe('loading a baked texture', () => {
     expect(vat.frames).toBe(4);
     expect(vat.fps).toBe(24);
     expect(vat.clips).toEqual({ walk: [1, 3] });
+    expect(vat.names).toEqual(['Hips', 'RightHand']);
     const t = vat.texture;
     expect(t).toBeInstanceOf(THREE.DataTexture);
     expect([t.image.width, t.image.height]).toEqual([6, 4]);
