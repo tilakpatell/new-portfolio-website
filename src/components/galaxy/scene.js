@@ -432,6 +432,7 @@ export async function create(canvas, ctx) {
     keys[1].intensity = world.sunLights[1] ? 1.1 : 0;
     if (!env) reflect(sys);
     hunters?.clear();
+    capitalGoes();
     state.auto = null;
     state.at = null;
     state.lock = null;
@@ -931,18 +932,32 @@ export async function create(canvas, ctx) {
     }
     return hit;
   };
+  // A hit on the capital ship that dropped in (setpieces.js's): a shield part
+  // or its bridge marks the reticle; a splash off its shield gets a word from
+  // the crew, once. Not a fighter: no kill said and nothing paid till it goes up
+  const capitalHit = (hit, normal) => {
+    landed(hit, normal);
+    if (hit.type === 'part' || hit.type === 'bridge') {
+      state.hitMark = 1;
+      if (capFight) capFight.hurt = true;
+    } else if (hit.type === 'shielded') capitalSay('shielded');
+    return hit;
+  };
   // A shot (a bolt, a torpedo, the death ray) from `from` to `to` this frame,
   // worth `punch` (`warPunch` on the war's battle): the first thing it hit,
   // and what that did; null for nothing. The hunters, then the war's battle
-  // (its fighters, its objectives, its capital ships' hulls), then another
-  // pilot or one of the hunters after them (it's theirs, so they're told):
-  // a bolt's only (`pilots`), never a power's
+  // (its fighters, its objectives, its capital ships' hulls), then the
+  // capital ship that dropped in, then another pilot or one of the hunters
+  // after them (it's theirs, so they're told): a bolt's only (`pilots`),
+  // never a power's
   const strike = (from, to, punch, { vel = null, pilots: atPilots = true, warPunch = punch, by = null } = {}) => {
     const normal = vel ? popDir.set(-vel[0], 3, -vel[2]).normalize() : popDir.set(0, 1, 0);
     const hh = hunters?.hit(from, to, punch);
     if (hh) return scored(hh, { src: 'hunters', normal, by });
     const wh = war?.hit(from, to, warPunch);
     if (wh) return scored(wh, { src: 'war', normal, by });
+    const ch = pieces?.destroyerHere ? pieces.hit(from, to, punch) : null;
+    if (ch) return capitalHit(ch, normal);
     if (!atPilots) return null;
     const ph = pilots.hit(from, to, punch);
     if (!ph) return null;
@@ -1259,6 +1274,7 @@ export async function create(canvas, ctx) {
         j.age = 0;
         state.world.group.visible = false;
         hunters?.clear();
+        capitalGoes();
         emit({ type: 'jump', phase: 'tunnel', to: j.to.id });
       }
       return;
@@ -1453,10 +1469,12 @@ export async function create(canvas, ctx) {
     // the guns: the lock, the lead, whether a shot would bend onto it
     let cands = hunters?.targets ?? NO_TARGETS;
     const warCands = war?.targets ?? NO_TARGETS;
-    if (pilots.count || warCands.length) {
+    const capCands = pieces?.destroyerHere ? pieces.targets : NO_TARGETS; // (the capital ship's shield parts, then its bridge)
+    if (pilots.count || warCands.length || capCands.length) {
       candBuf.length = 0;
       for (const c of cands) candBuf.push(c);
       for (const c of warCands) candBuf.push(c);
+      for (const c of capCands) candBuf.push(c);
       for (const c of pilots.targets) candBuf.push(c);
       cands = candBuf;
     }
@@ -1523,10 +1541,64 @@ export async function create(canvas, ctx) {
     else if (e.type === 'shot') emit(e);
     else if (e.type === 'escaped' || e.type === 'cleared') {
       emit(e);
-      if (pieces?.destroyerHere && !hunters.active) pieces.leave();
+      if (pieces?.destroyerHere && !hunters.active) pieces.cleared(); // (its second wave, or it goes)
     }
   };
-  const later = [];
+  // The fight with the capital ship that drops in (capitalRules.js's events,
+  // through setpieces.js), as the universe map has it: its fighters out of its
+  // belly, its turbolasers at you, its shield parts going, its bridge open,
+  // and it running or going up
+  let capFight = null; // { said, hurt, who } while one's here
+  // what the crew say of it, once each a visit
+  const capitalSay = (sub) => {
+    if (!capFight || capFight.said.has(sub)) return;
+    capFight.said.add(sub);
+    emit({ type: 'event', id: 'capital', sub });
+  };
+  const capitalEvent = (e, live) => {
+    if (e.type === 'launch') {
+      if (live && capFight) hunters.pack(capFight.who, live, { from: { x: e.from[0], y: e.from[1], z: e.from[2] }, size: e.wave > 1 ? 4 : 3, ace: Math.random() < 0.35 });
+      if (e.wave > 1) capitalSay('wave');
+    } else if (e.type === 'volley') {
+      emit({ type: 'shot' });
+      capitalSay('fired');
+    } else if (e.type === 'hit') {
+      if (!live) return;
+      hurt(e.damage);
+      if (!reduced) state.shake = Math.max(state.shake, 0.45);
+    } else if (e.type === 'part') {
+      if (e.left > 0) capitalSay('dome');
+    } else if (e.type === 'open') capitalSay('open');
+    else if (e.type === 'dying') {
+      capitalSay('bridge');
+      if (!reduced) state.shake = Math.max(state.shake, 0.5);
+    } else if (e.type === 'blast') {
+      pops.hit({ point: new THREE.Vector3(...e.at), normal: popDir.set(0, 1, 0), radius: e.size * 1.6 });
+      emit({ type: 'boom', big: e.size > 1.2 });
+      if (!reduced) state.shake = Math.max(state.shake, 0.25);
+    } else if (e.type === 'dead') {
+      pay('killCapital');
+      state.heat += 4;
+      state.flare = Math.max(state.flare, 2.4);
+      if (!reduced) {
+        state.shake = Math.max(state.shake, 1);
+        state.kick = 1;
+      }
+      emit({ type: 'boom', big: true });
+      capitalSay('dead');
+      capFight = null;
+    } else if (e.type === 'leaving' && capFight) {
+      emit({ type: 'event', id: 'leave' }); // (the jump's sound)
+      if (e.reason === 'fled') capitalSay('fled');
+      else if (capFight.hurt) capitalSay('gone');
+    } else if (e.type === 'gone') capFight = null;
+  };
+  // it goes when you jump, so it can't fire on you in the next system; and
+  // without a word (capitalEvent), as it's you who left
+  const capitalGoes = () => {
+    if (pieces?.destroyerHere) pieces.leave();
+    capFight = null;
+  };
   // on the way somewhere (out in the open at speed), a pack comes in ahead of you
   const travelling = (s) => state.space.openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 30;
   // the director's events, played out (the universe map's `happen`, for
@@ -1543,12 +1615,11 @@ export async function create(canvas, ctx) {
       hunters.pack(who, ship, { ...ambush, ...strength });
     } else if (id === 'destroyer') {
       if (!pieces || !side.capitalShip) return;
-      const d = pieces.destroyer(ship, side.capitalShip);
-      if (!d) return;
+      if (!pieces.destroyer(ship, side.capitalShip)) return;
       emit({ type: 'event', id: 'destroyer' });
-      // its fighters launch a moment after it's here
-      const who = pickFaction(side, 'capital') ?? pickFaction(side, 'hunt') ?? 'empire';
-      later.push({ at: state.clock + 2.4, run: () => state.ship && !state.crash && !state.jump && hunters.pack(who, state.ship, { from: d.hangar, size: 3, ace: Math.random() < 0.35 }) });
+      // its fighters launch when it says (capitalEvent), as the side that
+      // sent it: worked out now, as the side here may change by then
+      capFight = { said: new Set(), hurt: false, who: pickFaction(side, 'capital') ?? pickFaction(side, 'hunt') ?? 'empire' };
     } else if (id === 'escort') {
       // your side's wing, come to fly with you a while
       if (!wingmen || wingmen.active || !side.escort?.length) return;
@@ -1578,7 +1649,8 @@ export async function create(canvas, ctx) {
         if (got?.down) pops.hit({ point: got.at, normal: new THREE.Vector3(0, 1, 0), radius: got.size * 1.8 });
       }
     }
-    let busy = pieces ? pieces.update(dt, t, camera) : false;
+    let busy = pieces ? pieces.update(dt, t, camera, live) : false;
+    if (pieces) for (const e of pieces.drain()) capitalEvent(e, live);
     if (interdictor) busy = interdictor.update(dt, t) || busy;
     if (war) {
       const w = war.update(dt, t, camera, live, { shield: state.shield, down: Boolean(state.crash), ...powers.warOpts });
@@ -1626,15 +1698,7 @@ export async function create(canvas, ctx) {
         interdictor.leave();
         emit({ type: 'event', id: 'leave' });
       }
-      for (let i = 0; i < later.length; ) {
-        const l = later[i];
-        if (state.clock < l.at) i++;
-        else {
-          later.splice(i, 1);
-          l.run();
-        }
-      }
-    } else later.length = 0;
+    }
     if (state.hurt > 0) {
       state.hurt = Math.max(0, state.hurt - dt * 2.2);
       busy = true;
@@ -2377,7 +2441,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, flyTo, net: () => net, pin, interdiction, finds, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship), powers, power: (slot) => power(slot), charge: () => powers.fill() };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, flyTo, net: () => net, pin, interdiction, finds, interdictor, pieces, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship), powers, power: (slot) => power(slot), charge: () => powers.fill() };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
