@@ -11,6 +11,11 @@
 // colour is taken from B alone (grey, as the panels are); the normal and the
 // smoothness are left, their packing not being sure.
 //
+// An opaque colour map's alpha is the game's smoothness (`_cs`), which the
+// ORM map already carries: kept, it makes WebP and AVIF throw colour away
+// (33.7 dB against 48.6 dB on a hero's map: the pipeline design's section
+// 6), so it is stripped from every opaque material's colour map.
+//
 // isGlass(name) / isMarker(name) / isPacked(name) → bool
 // ncsColour(rgba, channels) → rgb (the colour of a packed map, B as grey)
 // GLASS: the glass's look (a dark tint, mostly see-through, a sharp shine)
@@ -38,6 +43,14 @@ export const dressed = ({ sharp = null } = {}) => async (doc) => {
       const png = await sharp(ncsColour(data, info.channels), { raw: { width: info.width, height: info.height, channels: 3 } }).png().toBuffer();
       const colour = doc.createTexture(tex.getName().replace(/_ncs/i, '_c')).setImage(new Uint8Array(png)).setMimeType('image/png');
       m.setBaseColorTexture(colour);
+    }
+  if (sharp)
+    for (const tex of doc.getRoot().listTextures()) {
+      const opaque = tex.listParents().filter((p) => p.propertyType === 'Material' && p.getBaseColorTexture() === tex);
+      if (!opaque.length || opaque.some((m) => m.getAlphaMode() !== 'OPAQUE') || !tex.getImage()) continue;
+      const img = sharp(Buffer.from(tex.getImage()));
+      if (!(await img.metadata()).hasAlpha) continue;
+      tex.setImage(new Uint8Array(await img.removeAlpha().png().toBuffer())).setMimeType('image/png');
     }
   for (const mesh of doc.getRoot().listMeshes())
     for (const prim of mesh.listPrimitives()) {

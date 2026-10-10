@@ -43,7 +43,7 @@ Tiers: **walker** (on the game's own rig, with its clip pack: `src/lib/three/rig
 
 ## Fighters and their cockpits
 
-Each with a cockpit is imported in the frame its manifest bounds give (`--keep-origin`), and its cockpit (`<kind>cockpit`, `…_cockpit_mesh`) in the same frame, so the seat is where the hull's cockpit is; the import says whether the cockpit lies inside the hull.
+Each with a cockpit is imported in the frame its manifest bounds give (`--hull-frame`), and its cockpit (`<kind>cockpit`, `…_cockpit_mesh`) in the same frame, so the seat is where the hull's cockpit is; the import says whether the cockpit lies inside the hull.
 
 | kind | the game's model | cockpit | tier | worlds |
 | --- | --- | --- | --- | --- |

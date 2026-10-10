@@ -19,7 +19,7 @@
 //     [--root lab/assets/bf2017] [--metres <m> | --asis] [--along y|x|z|max] [--yaw <rad>] [--up y|z|-z|x|-x|-y]
 //     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512]
 //     [--parts '<glob>,…'] [--grip <node>] [--out public/models/galaxy]
-//     [--vehicle] [--far] [--bind <skeleton>] [--keep-origin [<hull name>]]
+//     [--vehicle] [--far] [--bind <skeleton>] [--hull-frame [<hull name>]]
 //
 //   name       the model's `name` in the manifest (bf2017-fetch.mjs --list finds it)
 //   kind       the catalogue kind: one already in another group is taken over
@@ -53,7 +53,7 @@
 //              the skeleton is read at rest from one of its clips on disk
 //              (bf2017-rigclips.mjs fetches them), every bone kept, each
 //              vertex to one bone (scripts/lib/rig-bind.mjs)
-//   keep-origin  stand it where the manifest's bounds of the model (or of
+//   hull-frame  stand it where the manifest's bounds of the model (or of
 //              <hull name>) put it, not by its own cut's: a cockpit and its
 //              hull share their frame, so the seat sits in the hull
 //
@@ -337,9 +337,9 @@ export async function importModel(name, opts) {
     skeleton: typeof opts.bind === 'string' ? await skeletonOf(root, opts.bind) : null,
     frame: null,
   };
-  if (opts.keepOrigin) {
-    const hull = typeof opts.keepOrigin === 'string' ? manifest.get(opts.keepOrigin) : entry;
-    if (!hull) throw new Error(`--keep-origin: ${opts.keepOrigin} is not in the manifest`);
+  if (opts.hullFrame) {
+    const hull = typeof opts.hullFrame === 'string' ? manifest.get(opts.hullFrame) : entry;
+    if (!hull) throw new Error(`--hull-frame: ${opts.hullFrame} is not in the manifest`);
     spec.frame = { min: hull.min, max: hull.max, name: hull.name };
   }
   const cuts = cutsOf(entry, opts, rig);

@@ -125,7 +125,7 @@ describe('the 2017 import, for vehicles', () => {
   it('stands a cockpit in its hull’s frame and says it lies inside', { timeout: 15000 }, async () => {
     const { root, WALKER, COCKPIT } = await walkerDrop();
     const dir = await scratch();
-    const said = run(root, dir, COCKPIT, 'walkertestcockpit', ['--keep-origin', WALKER]);
+    const said = run(root, dir, COCKPIT, 'walkertestcockpit', ['--hull-frame', WALKER]);
     expect(said).toMatch(/inside walker_mesh: yes/);
     const doc = await (await reader()).read(join(dir, 'surface', 'walkertestcockpit.glb'));
     const { min, max } = (await import('./lib/surface-model.mjs')).bounds(doc, doc.getRoot().listScenes()[0]);

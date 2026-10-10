@@ -32,4 +32,17 @@ describe('the game’s materials, dressed for the site', () => {
     expect(isPacked('t_tiefighter_wings_01_cs.ktx2')).toBe(false);
     expect([...ncsColour(Buffer.from([128, 69, 40, 200, 120, 60, 90, 10]))]).toEqual([40, 40, 40, 90, 90, 90]);
   });
+
+  it('strips the smoothness alpha from an opaque material’s colour map, and keeps a blended one’s', async () => {
+    const sharp = (await import('sharp')).default;
+    const rgba = await sharp({ create: { width: 2, height: 2, channels: 4, background: { r: 200, g: 100, b: 50, alpha: 0.3 } } }).png().toBuffer();
+    const doc = new Document();
+    const mesh = doc.createMesh();
+    const hull = doc.createMaterial('M_Hull').setBaseColorTexture(doc.createTexture('hull').setImage(new Uint8Array(rgba)).setMimeType('image/png'));
+    const decal = doc.createMaterial('M_Decal').setAlphaMode('BLEND').setBaseColorTexture(doc.createTexture('decal').setImage(new Uint8Array(rgba)).setMimeType('image/png'));
+    mesh.addPrimitive(doc.createPrimitive().setMaterial(hull)).addPrimitive(doc.createPrimitive().setMaterial(decal));
+    await doc.transform(dressed({ sharp }));
+    expect((await sharp(Buffer.from(hull.getBaseColorTexture().getImage())).metadata()).hasAlpha).toBe(false);
+    expect((await sharp(Buffer.from(decal.getBaseColorTexture().getImage())).metadata()).hasAlpha).toBe(true);
+  });
 });
