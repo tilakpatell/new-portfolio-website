@@ -117,6 +117,26 @@ export function entryAhead(s, p, within = 2) {
   return { id: p.id, kind: speed > ENTRY.fast ? 'hot' : 'enter', speed, sink, n, h: top - p.r, vel, t };
 }
 
+// What the place the ship's coming down on is foreseen from (scene.js's
+// look-ahead, footScene.js's prefetchAt), at `p` (one of LANDABLE):
+// entryAhead's word while it's out of the air and heading in; once it's in
+// and nothing's taken it yet (too fast for now, or skimming the top),
+// entering()'s, or where it is and how it's going. Either way at the speed
+// it must be down to before the air will take it (no more than
+// ENTRY.fast): one too fast slows, as the HUD tells it to, and how far on
+// it comes down goes by the speed it goes in at (entrySpot). Null out of
+// the air and not into it within `within` seconds.
+export function entryGuess(s, p, within = 2) {
+  let e = entryAhead(s, p, within);
+  const off = add(posOf(s), p.at, -1);
+  const d = len(off);
+  if (!e && d < airTop(p) && d > 1e-9) {
+    const vel = velocityOf(s);
+    e = entering(s, [p]) ?? { id: p.id, kind: 'skim', speed: len(vel), sink: -dot(vel, off) / d, n: scale(off, 1 / d), h: d - p.r, vel };
+  }
+  return e && { ...e, speed: Math.min(e.speed, ENTRY.fast) };
+}
+
 // Where an entry comes down: on ahead along the ship's ground track from
 // where it went in (n), as far round as a ship slowing from `speed` to a
 // stop over the glide would go (held to ENTRY.arc), so you land roughly

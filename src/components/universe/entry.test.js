@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AIR, ENTRY, LANDABLE, airTop, entering, entryAhead, entryPath, entrySpot, fxAt, velocityOf } from './entry';
+import { AIR, ENTRY, LANDABLE, airTop, entering, entryAhead, entryGuess, entryPath, entrySpot, fxAt, velocityOf } from './entry';
 import { PLANETS, SHIP, headingTo, spawn, step } from './ship';
 import { NOSE, fromAngles, rotate } from './orient';
 import { flat, vec } from './foot';
@@ -197,6 +197,85 @@ describe('entryAhead', () => {
 
   it('calls it hot at the boost, as entering() does', () => {
     for (const p of LANDABLE) expect(entryAhead(flying(add(p.at, OUT, airTop(p) + 1), scale(OUT, -1), SHIP.boost), p), p.id).toMatchObject({ id: p.id, kind: 'hot' });
+  });
+});
+
+describe('entryGuess', () => {
+  it('is entryAhead’s word for a ship heading in at a speed it can land at', () => {
+    const p = first;
+    const s = flying(add(p.at, OUT, airTop(p) + 3), scale(OUT, -1), SHIP.cruise);
+    expect(entryGuess(s, p)).toEqual(entryAhead(s, p));
+  });
+
+  it('foresees one boosting in at the speed it must slow to, where it would go in', () => {
+    for (const p of LANDABLE) {
+      const s = flying(add(p.at, OUT, airTop(p) + 1), scale(OUT, -1), SHIP.boost);
+      const ahead = entryAhead(s, p);
+      const g = entryGuess(s, p);
+      expect(g, p.id).toMatchObject({ id: p.id, kind: 'hot', speed: ENTRY.fast, n: ahead.n, vel: ahead.vel });
+    }
+  });
+
+  it('foresees one in the air too fast, or skimming it, from where it is', () => {
+    const p = first;
+    const hot = inAir(p, OUT, scale(OUT, -1), SHIP.boost);
+    expect(entryAhead(hot, p)).toBe(null);
+    expect(entryGuess(hot, p)).toMatchObject({ ...entering(hot, [p]), speed: ENTRY.fast });
+    // (along the top, sinking slower than entering() takes: where it is now, at its own speed)
+    const skim = inAir(p, OUT, flat([0, 1, 0], OUT), SHIP.cruise);
+    expect(entering(skim, [p])).toBe(null);
+    const g = entryGuess(skim, p);
+    expect(g).toMatchObject({ id: p.id, kind: 'skim' });
+    expect(g.speed).toBeCloseTo(SHIP.cruise, 9);
+    for (let k = 0; k < 3; k++) expect(g.n[k]).toBeCloseTo(OUT[k], 9);
+    expect(g.h).toBeCloseTo(airTop(p) - 0.2 - p.r, 9);
+  });
+
+  it('is null out of the air and not heading into it soon', () => {
+    const p = first;
+    expect(entryGuess(flying(add(p.at, OUT, airTop(p) + 1), OUT, SHIP.cruise), p)).toBe(null);
+    expect(entryGuess(flying(add(p.at, OUT, airTop(p) + SHIP.cruise * 3), scale(OUT, -1), SHIP.cruise), p, 2)).toBe(null);
+  });
+
+  // (the way the HUD tells you: “Too fast to fly into …: ease off the boost”)
+  it('follows a ship boosted in that eases off in the air, every frame till the air takes it, and near where it comes down', () => {
+    // (the planets: a moon's air is too shallow to slow in from the boost)
+    const planets = LANDABLE.filter((p) => p.r > 20);
+    expect(planets.length).toBeGreaterThan(8);
+    for (const p of planets) {
+      const R = byId(p.id).size;
+      // (a second out, in at a slant, at the boost; off it once in the air)
+      const dir = unit(add(scale(OUT, -1), flat([0, 1, 0], OUT), 0.7));
+      let s = flying(add(p.at, OUT, airTop(p) + SHIP.boost), dir, SHIP.boost);
+      let boost = true;
+      let took = null;
+      let last = null;
+      let blind = 0;
+      let hot = 0;
+      let said = 0;
+      for (let i = 0; i < 600 && !took; i++) {
+        const e = entering(s, [p]);
+        if (e?.kind === 'enter') took = e;
+        if (took) break;
+        if (e?.kind === 'hot') hot++;
+        if (entryAhead(s, p, 2)?.kind === 'enter') said++;
+        const g = entryGuess(s, p, 2);
+        if (g) last = g;
+        else blind++;
+        if (distTo(s, p) < airTop(p)) boost = false;
+        s = step(s, { throttle: 1, boost }, 1 / 60).ship;
+      }
+      expect(took, p.id).not.toBe(null);
+      expect(hot, p.id).toBeGreaterThan(0); // (it was in the air too fast a while)
+      expect(said, p.id).toBe(0); // (and entryAhead never once called it a landing on the way)
+      expect(blind, p.id).toBe(0);
+      expect(last.speed, p.id).toBeLessThanOrEqual(ENTRY.fast);
+      const guessed = entrySpot({ n: last.n, track: last.vel, speed: last.speed, R });
+      const real = entrySpot({ n: took.n, track: took.vel, speed: took.speed, R });
+      expect(angle(guessed.n, real.n), p.id).toBeLessThan(0.02);
+      // (where the boost's speed would have put it: some 5° on, past a biome's edge)
+      expect(angle(entrySpot({ n: last.n, track: last.vel, speed: SHIP.boost, R }).n, real.n), p.id).toBeGreaterThan(0.05);
+    }
   });
 });
 

@@ -118,15 +118,21 @@ export function shireGroundMap({ size = 512 } = {}) {
   return createGroundMap({ area: { x0: -e, z0: -e, w: e * 2, d: e * 2 }, size, heightSize: Math.max(64, size / 2), paint: groundAt, height });
 }
 
-// The ground: a square of the world, shaped, and painted by the ground map
-// per point (sharper lanes than the old colour per vertex, a metre apart).
-// `seg` squares a side.
-export function makeTerrain(renderer, { seg = 200, map } = {}) {
+// The ground's shape: a square of the world, `seg` squares a side, its
+// corners on the height function.
+export function terrainGeometry(seg = 200) {
   const size = WORLD.edge * 2;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg).rotateX(-Math.PI / 2);
   const p = geo.attributes.position;
   for (let i = 0; i < p.count; i++) p.setY(i, height(p.getX(i), p.getZ(i)));
   geo.computeVertexNormals();
+  return geo;
+}
+
+// The ground: that shape, painted by the ground map per point (sharper
+// lanes than the old colour per vertex, a metre apart).
+export function makeTerrain(renderer, { seg = 200, map } = {}) {
+  const geo = terrainGeometry(seg);
   // (the map is the colour; a fine relief of blades and clover is the grain)
   const tex = grassTextures(renderer);
   const material = new THREE.MeshStandardMaterial({ normalMap: tex.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.96 });
@@ -135,6 +141,35 @@ export function makeTerrain(renderer, { seg = 200, map } = {}) {
   mesh.receiveShadow = true;
   mesh.name = 'terrain';
   return mesh;
+}
+
+// The ground as the terrain draws it: the height function at its corners,
+// straight between them as each square's two triangles are (what a thing
+// lying on the ground lies on: between the corners the height function
+// itself is a few centimetres off it, at a lane's worn edge most, and more
+// on a weak device's coarser ground). Cheaper than the height function, too.
+// `terrain` is makeTerrain's (or its terrainGeometry).
+export function drawnHeight(terrain) {
+  const g = terrain.geometry ?? terrain;
+  const { width, widthSegments: seg } = g.parameters;
+  const y = g.attributes.position.array;
+  const n = seg + 1;
+  const cell = width / seg;
+  const half = width / 2;
+  return (x, z) => {
+    const fx = Math.min(seg, Math.max(0, (x + half) / cell));
+    const fz = Math.min(seg, Math.max(0, (z + half) / cell));
+    const i = Math.min(seg - 1, Math.floor(fx));
+    const j = Math.min(seg - 1, Math.floor(fz));
+    const u = fx - i;
+    const v = fz - j;
+    // (the corners: i along x, j along z; each square cut from (i, j + 1) to (i + 1, j))
+    const a = y[3 * (i + n * j) + 1];
+    const b = y[3 * (i + n * (j + 1)) + 1];
+    const c = y[3 * (i + 1 + n * (j + 1)) + 1];
+    const d = y[3 * (i + 1 + n * j) + 1];
+    return u + v <= 1 ? a + (d - a) * u + (b - a) * v : c + (b - c) * (1 - u) + (d - c) * (1 - v);
+  };
 }
 
 // The water: one sheet at the water line (the ground hides it everywhere
