@@ -7,6 +7,15 @@
   "origin": [-466, -383, -1390],
   "sides": { "1": "republic", "2": "separatists" },
   "hides": [],
+  "area": {
+    "source": "hand",
+    "why": "the level is fought low over Tipoca City in the storm, not in orbit: an area of its own, its sky the level's panorama (Levels/Lighting/Kamino/Stormy_01/T_Kamino_Stormy_01_Panoramic_C), its sea under the city's stilts (the export has no water: the endless pillars run from -1,090 m down past -2,400 m)",
+    "radius": 9000,
+    "sea": -1400,
+    "sky": { "url": "/models/galaxy/bf2017/levels/sb_kamino/sky.webp", "gain": 1.35 },
+    "light": "kamino",
+    "fog": { "color": "#56636d", "density": 0.00018, "sea": "#3e525c", "deep": "#16262e", "dim": 0.38 }
+  },
   "ships": [
     { "id": "venator-return", "team": 1, "kind": "venator", "role": "flagship", "name": "Venator star destroyer", "placed": "venatorstardestroyer_hull_01#1" },
     { "id": "venator", "team": 1, "kind": "venator", "role": "escort", "name": "Venator star destroyer", "placed": "venatorstardestroyer_hull_01#0" },

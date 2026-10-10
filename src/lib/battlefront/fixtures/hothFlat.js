@@ -1,8 +1,9 @@
 // Hoth for the Node arena, until lane 5 ships the level's own `nav.bin`: the
 // map's real bounds, spawns and Galactic Assault volumes over a plane fitted
 // (least squares) through every spawn, with cover made up round the
-// volumes: a 2 m wall along each volume's edge with a 4 m door every 20 m,
-// and crates scattered round them from a fixed seed.
+// volumes: a 2 m wall along each volume's edge with a 4 m door every 20 m
+// (none round a volume too small for a door, such as an uplink's console,
+// which would wall it off), and crates scattered round them from a fixed seed.
 
 import { seeded } from '../../seeded.js';
 import { aiOf, mapOf } from '../rulebook.js';
@@ -11,6 +12,8 @@ import { buildNav } from '../nav.js';
 const WALL = 16; // metres of wall between doors
 const DOOR = 4;
 const CRATES = 40;
+// A volume whose edge is shorter than this all round has no door, so no wall.
+const SMALL = 2 * (WALL + DOOR);
 
 // y = a·x + b·z + c through the points, by the normal equations
 export function fitPlane(points) {
@@ -70,7 +73,8 @@ export function hothFlatNav(rb) {
   const plane = fitPlane(map.spawns.map((s) => s.at));
   const y = (x, z) => plane.a * x + plane.b * z + plane.c;
   const volumes = map.volumes.filter((v) => v.mode === 'galacticAssault' && v.points?.length >= 3);
-  const solids = volumes.flatMap((v) => wallsAlong(v.points, y));
+  const perimeter = (v) => v.points.reduce((n, p, i) => n + Math.hypot(v.points[(i + 1) % v.points.length][0] - p[0], v.points[(i + 1) % v.points.length][1] - p[1]), 0);
+  const solids = volumes.filter((v) => perimeter(v) >= SMALL).flatMap((v) => wallsAlong(v.points, y));
   const rand = seeded(2017);
   for (let i = 0; i < CRATES; i++) {
     const v = volumes[Math.floor(rand() * volumes.length)];

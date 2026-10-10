@@ -26,7 +26,11 @@ import { thud } from '../lib/sfx';
 import { createImpacts } from '../lib/impact';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
+import HvvHud from '../components/galaxy/surface/HvvHud';
+import BlastHud from '../components/galaxy/surface/BlastHud';
 import DeployPanel from '../components/galaxy/surface/DeployPanel';
+import { ABILITIES, abilitiesOf } from '../components/galaxy/surface/abilityRules';
+import { GameIcon } from '../runtime/hud';
 import { HERO_KEY, heroById, heroSpec, loadoutLine, readHero, writeHero } from '../components/galaxy/heroes';
 import { standInLine } from '../components/galaxy/surface/standIn';
 import { missionOf } from '../components/galaxy/surface/missions';
@@ -61,6 +65,8 @@ const bumpLaw = createImpacts();
 
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
 const CLIMB = 3400; // ms of the climb out seen before space takes over: the ship lifting, then shooting up under the sky's glare (surface.css .surface-exit rises from 2.5 s to here)
+// the mission kinds fought as a battle, each with its own HUD (AssaultHud, HvvHud, BlastHud)
+const BATTLES = new Set(['assault', 'hvv', 'blast']);
 export const MISSIONS_KEY = 'tp-galaxy-missions'; // { 'system/id': { t, stars } }: your best at each mission played down on a world
 
 // the emote wheel's slices, by name (lib/emote.js's EMOTES, clockwise from the top)
@@ -158,6 +164,8 @@ export default function GalaxySurface() {
   const posted = useRef(false);
   const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
   const tune = useMemo(() => (ship && readTunes(local.get(TUNE_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]); // (the crew's own ship, tuned: its parts must still be ones its plant runs)
+  // (the hero's two abilities by id, for the game's icons on the HUD's buttons)
+  const powerIds = useMemo(() => abilitiesOf(hero ? heroSpec(hero) : null), [hero]);
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build, tune), [ship, unlocked, build, tune]);
   // online: the other pilots down here with you
   const online = useOnline();
@@ -404,7 +412,7 @@ export default function GalaxySurface() {
       }
       else if (e.type === 'down') {
         // (in a battle the HUD's deploy card says it)
-        if (mission?.kind === 'assault') return;
+        if (BATTLES.has(mission?.kind)) return;
         setToast((t) => ({ title: 'Knocked down', text: 'Back on your feet. Try that again.', n: (t?.n ?? 0) + 1 }));
         later('toast', 3500, () => setToast(null));
       } else if (e.type === 'zone') {
@@ -567,10 +575,12 @@ export default function GalaxySurface() {
       </div>
 
       {/* the quest you're on, and the things to do here */}
-      {mission && mission.kind !== 'assault' && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
+      {mission && !BATTLES.has(mission.kind) && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
       {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={onAssaultSide} sworn={sworn} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
+      {mission?.kind === 'hvv' && <HvvHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} hero={hero?.id} onSide={(k) => view.current?.input?.('side', k)} onDeploy={() => view.current?.input?.('deploy')} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
+      {mission?.kind === 'blast' && <BlastHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(k) => view.current?.input?.('side', k)} onDeploy={(pid) => view.current?.input?.('deploy', pid)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
-      {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
+      {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || BATTLES.has(mission?.kind)) && chase && !chase.result) && (
         <div className={quest ? 'surface-quest surface-quest-on' : 'surface-quest'}>
           {quest ? (
             <>
@@ -645,16 +655,17 @@ export default function GalaxySurface() {
           )}
           <ul className="surface-powers">
             {[
-              ['G', combat.powers?.power ?? (combat.saber ? 'Push' : 'Detonator'), 'power'],
-              ['V', combat.powers?.second ?? (combat.saber ? 'Pull' : 'Overcharge'), 'second'],
+              ['G', combat.powers?.power ?? (combat.saber ? 'Push' : 'Detonator'), 'power', powerIds.power],
+              ['V', combat.powers?.second ?? (combat.saber ? 'Pull' : 'Overcharge'), 'second', powerIds.second],
               ['X', 'Dodge', 'dodge'],
               ['B', 'Emote', 'emote'],
-            ].map(([key, name, slot]) => {
+            ].map(([key, name, slot, ability]) => {
               const left = combat.cool?.[slot] ?? 0;
               const full = combat.cools?.[slot] ?? 1;
               return (
                 <li key={slot} className={left > 0 ? 'surface-power is-cooling' : 'surface-power'} style={{ '--k': left > 0 ? left / full : 0 }}>
                   <kbd>{key}</kbd>
+                  {ability && ABILITIES[ability]?.name === name && <GameIcon name={`ability:${ability}`} className="surface-game-icon" />}
                   <span>{name}</span>
                   {left > 0.05 && !(slot === 'power' && combat.powers?.hold) && <small>{left.toFixed(left < 10 ? 1 : 0)}</small>}
                 </li>
@@ -674,7 +685,7 @@ export default function GalaxySurface() {
       <Reticle
         className="surface-reticle"
         state={reticleState(null, {
-          gun: ((aiming || quest?.shoot || (combat && !combat.saber)) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk'),
+          gun: ((aiming || quest?.shoot || (combat && !combat.saber)) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (BATTLES.has(mission?.kind) && !(mission.kind === 'hvv' && combat?.saber) && chase?.phase === 'run' && chase.you?.up && phase === 'walk'),
           sights: Boolean(combat?.ads && !combat.saber && phase === 'walk'),
           hitAt: hitMark ? 0 : null,
           lock: combat?.lock,

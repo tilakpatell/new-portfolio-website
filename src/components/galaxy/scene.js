@@ -141,6 +141,8 @@ import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemB
 import { starfighterAt } from './surface/missions/starfighterMaps';
 import { levelOf } from './surface/missions/starfighter';
 import { drawSpaceLevel } from './spaceLevel';
+import { createAreaLook } from './areaLook';
+import { assetUrl } from '../../lib/assetBase';
 
 const BOLTS = 16;
 const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
@@ -261,6 +263,8 @@ export async function create(canvas, ctx) {
   const keys = [new THREE.DirectionalLight('#ffffff', 2.2), new THREE.DirectionalLight('#ffffff', 0)];
   for (const k of keys) scene.add(k, k.target);
   const ambient = new THREE.AmbientLight('#9fb0d8', 0.32);
+  // (inside a level's area of its own, the scene under its light: areaLook.js)
+  let areaLook = null;
   scene.add(ambient);
   // the house look (lib/three/house), as on the universe map: the ships'
   // and stations' shade one colour, from the space light; the post pass
@@ -835,7 +839,8 @@ export async function create(canvas, ctx) {
     const els = props.labels?.current;
     const world = state.world;
     if (!els || !world) return;
-    const inTunnel = Boolean(state.jump && state.jump.phase === 'tunnel');
+    // (inside a level's area of its own, the system's places are shut out: no names)
+    const inTunnel = Boolean(state.jump && state.jump.phase === 'tunnel') || state.enclosed;
     for (const g of world.goals) {
       const el = els[g.id];
       if (!el) continue;
@@ -865,7 +870,7 @@ export async function create(canvas, ctx) {
     const els = props.stars?.current;
     if (!els) return;
     const s = state.ship;
-    const on = flying() && !state.crash && !props.frozen && !(state.jump && state.jump.phase !== 'align');
+    const on = flying() && !state.crash && !props.frozen && !(state.jump && state.jump.phase !== 'align') && !state.enclosed;
     const [nx, ny, nz] = on ? nose(s) : [0, 0, 0];
     const target = state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null);
     for (const b of sky.beacons) {
@@ -2250,12 +2255,18 @@ export async function create(canvas, ctx) {
       ambient.intensity = 0.22 + 0.12 * light;
     }
     const inTunnel = state.jump?.phase === 'tunnel';
-    sky.group.visible = !inTunnel;
+    // (inside a level's area of its own, Kamino's storm, its dome is the sky: the galaxy's hidden)
+    state.enclosed = Boolean(war?.enclosed?.(camera.position));
+    sky.group.visible = !inTunnel && !state.enclosed;
+    if (state.enclosed || areaLook?.on) {
+      areaLook ??= createAreaLook({ scene, renderer, post, keys, ambient, url: assetUrl });
+      areaLook.apply(state.enclosed ? war.area : null, camera);
+    }
     if (state.aim && (!flying() || state.crash || state.jump || props.frozen)) aimAt(null);
     sky.focus(state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null));
     sky.update(camera, t);
     if (skyStreaks) {
-      skyStreaks.group.visible = !inTunnel;
+      skyStreaks.group.visible = !inTunnel && !state.enclosed;
       skyStreaks.update(dt);
     }
     models.update(t);
@@ -2802,8 +2813,9 @@ export async function create(canvas, ctx) {
       if (!war || !sf || state.sys?.id !== id || !state.ship) return false;
       sf.load().then(({ map, stages }) => {
         if (disposed || state.sys?.id !== id) return;
-        const draw = drawSpaceLevel(scene, { pack: sf.pack, origin: stages.origin, packOrigin: sf.packOrigin, tier, renderer });
-        if (!war.starfighter({ level: levelOf(map, stages), side, draw, name: sf.name })) return;
+        const lv = levelOf(map, stages);
+        const draw = drawSpaceLevel(scene, { pack: sf.pack, origin: stages.origin, packOrigin: sf.packOrigin, tier, renderer, area: stages.area ?? null, ships: lv.ships });
+        if (!war.starfighter({ level: lv, side, draw, name: sf.name })) return;
         const team = war.info.team;
         if (team === null || !state.ship) return;
         const { pos, fwd } = war.battle.homeFor(team);
@@ -2838,6 +2850,7 @@ export async function create(canvas, ctx) {
       pops.dispose();
       hunters?.dispose();
       wingmen?.dispose();
+      areaLook?.dispose();
       war?.dispose();
       pieces?.dispose();
       interdictor?.dispose();

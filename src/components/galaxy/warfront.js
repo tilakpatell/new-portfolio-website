@@ -404,7 +404,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     draw.show(battle, laid.war);
     for (const cap of battle.capitals) if (cap.gone) draw.setVisible?.(cap, false);
     // (a Starfighter Assault's ships the level's pack draws are drawn once: the game's)
-    if (sf) for (const t of [0, 1]) battle.capitals.filter((c) => c.team === t).forEach((cap, i) => sideShips(sf.level, t)[i]?.pack && draw.setVisible?.(cap, false));
+    // (and drawn by the battle again where the pack's tier leaves the ship out: Kamino's on low)
+    const capOf = sf ? new Map([0, 1].flatMap((t) => battle.capitals.filter((c) => c.team === t).map((cap, i) => [sideShips(sf.level, t)[i]?.id, cap]))) : null;
+    for (const s of sf?.level.ships ?? []) if (s.pack && capOf.get(s.id)) draw.setVisible?.(capOf.get(s.id), false);
     shown = true;
     world?.quiet?.(true);
     // (and the stations a level stands in place of, its Death Star's shield with it: quiet(false) puts them back)
@@ -414,7 +416,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     onSolids(solids);
     // (the set pieces are the films' own, the Civil War's; a Starfighter Assault's is the level's, its pack)
     pieces = b.war === 'gcw' && !sf ? piecesFor(sys.id).map((make) => make(ctx)) : [];
-    level = sf?.draw?.(laid) ?? null;
+    level = sf?.draw?.(laid, { unhide: (id) => capOf.get(id) && draw.setVisible?.(capOf.get(id), true) }) ?? null;
     say('front');
     if (team === null) {
       asked = true;
@@ -759,6 +761,15 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       forced = true;
       start({ id: `sf.${sys.id}.${Math.floor(ms / 1000)}`, war: warOfSide(sides[0]) ?? DEFAULT_WAR, sys: sys.id, step: campaignAt(ms).step, seed: Math.floor(ms / 1000), attacker: sides[lv.attacker], defender: sides[lv.defender], sides, attackerTeam: lv.attacker, start: ms, fightEnd: ms + 600000, end: ms + 660000, fighting: true, starfighter: { level: { ...lv, name: name ?? lv.name }, side: pick, draw } }, ms);
       return true;
+    },
+    // whether a point's inside a level's area of its own (Kamino's storm):
+    // the scene hides the galaxy's sky and names while the camera is
+    enclosed(p) {
+      return Boolean(level?.area?.inside(p));
+    },
+    // (and the area itself: its light, its flash, for the scene's look, areaLook.js)
+    get area() {
+      return level?.area ?? null;
     },
     get pieces() {
       return pieces;

@@ -188,6 +188,65 @@ export function nearestWalkable(nav, x, z, reach = 8) {
   return i < 0 ? null : centre(nav, i);
 }
 
+// the open cells' regions (four-neighbour), labelled once: each cell's region and the largest
+function regions(nav) {
+  if (nav.regions) return nav.regions;
+  const n = nav.cols * nav.rows;
+  const label = new Int32Array(n).fill(-1);
+  const sizes = [];
+  const stack = [];
+  for (let i = 0; i < n; i++) {
+    if (label[i] >= 0 || !open(nav, i, null)) continue;
+    const k = sizes.length;
+    let size = 0;
+    label[i] = k;
+    stack.push(i);
+    while (stack.length) {
+      const c = stack.pop();
+      size++;
+      const x = c % nav.cols;
+      const y = (c - x) / nav.cols;
+      for (const j of [x > 0 ? c - 1 : -1, x < nav.cols - 1 ? c + 1 : -1, y > 0 ? c - nav.cols : -1, y < nav.rows - 1 ? c + nav.cols : -1]) {
+        if (j < 0 || label[j] >= 0 || !open(nav, j, null)) continue;
+        label[j] = k;
+        stack.push(j);
+      }
+    }
+    sizes.push(size);
+  }
+  nav.regions = { label, main: sizes.indexOf(Math.max(...sizes)) };
+  return nav.regions;
+}
+
+// the nearest point of the largest open region to (x, z), so nothing is placed in a walled-off pocket
+export function nearestMainland(nav, x, z, reach = 12) {
+  const R = regions(nav);
+  const cr = cellAt(nav, x, z);
+  if (!cr) return null;
+  const [c0, r0] = cr;
+  if (R.label[r0 * nav.cols + c0] === R.main && walkable(nav, x, z)) return [x, z];
+  for (let ring = 0; ring <= reach; ring++) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let dr = -ring; dr <= ring; dr++)
+      for (let dc = -ring; dc <= ring; dc++) {
+        if (Math.max(Math.abs(dr), Math.abs(dc)) !== ring) continue;
+        const c = c0 + dc;
+        const r = r0 + dr;
+        if (c < 0 || r < 0 || c >= nav.cols || r >= nav.rows) continue;
+        const i = r * nav.cols + c;
+        if (R.label[i] !== R.main) continue;
+        const d = Math.hypot(dc, dr);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+    if (best >= 0) return centre(nav, best);
+  }
+  return null;
+}
+
 const centre = (nav, i) => [nav.origin[0] + ((i % nav.cols) + 0.5) * nav.cell, nav.origin[1] + (Math.floor(i / nav.cols) + 0.5) * nav.cell];
 
 // every cell a segment crosses is open (sampled at a quarter cell)
@@ -248,7 +307,7 @@ function scratchOf(nav) {
   return nav.scratch;
 }
 
-export function findPath(nav, from, to, { blocked = null } = {}) {
+export function findPath(nav, from, to, { blocked = null, max = MAX_EXPAND } = {}) {
   const s = nearestOpen(nav, from[0], from[1], blocked);
   const goal = nearestOpen(nav, to[0], to[1], blocked);
   if (s < 0 || goal < 0) return null;
@@ -278,7 +337,7 @@ export function findPath(nav, from, to, { blocked = null } = {}) {
       found = true;
       break;
     }
-    if (++expanded > MAX_EXPAND) return null;
+    if (++expanded > max) return null;
     const c = cur % cols;
     const r = Math.floor(cur / cols);
     for (let dr = -1; dr <= 1; dr++)
