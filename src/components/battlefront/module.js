@@ -10,11 +10,11 @@
 // snapshot a few times a second, and sends the deploy screen's choices
 // through world.do. `window.__battlefront` is the same door for
 // scripts/battlefront-check.mjs: { view(), do(action, arg) } with 'deploy'
-// { classId }, 'pick' id, 'advance' seconds, 'win', 'lose', 'weather' name,
-// 'gpu'.
+// { classId }, 'pick' id, 'spawn' a squadmate's id (null for the HQ),
+// 'advance' seconds, 'win', 'lose', 'weather' name, 'gpu'.
 
 import * as THREE from 'three';
-import { camerasOf, lightingOf, loadRulebook, mapOf } from '../../lib/battlefront/rulebook.js';
+import { camerasOf, lightingOf, loadRulebook, mapOf, squadsOf } from '../../lib/battlefront/rulebook.js';
 import { createLook } from '../../runtime/look.js';
 import { overviewPose, soldierPose } from './camera.js';
 import { createCameraRig } from './cameraRig.js';
@@ -63,6 +63,7 @@ export default {
     // the player's soldier in lane 1's sim, once deployed
     const body = () => (sim.player?.id ? sim.sim.entities.get(sim.player.id) : null);
     let picked = null;
+    let mate = null; // the squadmate the deploy screen would spawn the player on (null: the HQ)
     let lastAt = null; // the player's place before the last step
     let pose = null;
     let acc = 0;
@@ -92,11 +93,15 @@ export default {
     };
 
     const doDeploy = (classId = picked) => {
-      const r = deploy(sim, me, classId ? { classId } : {});
+      const base = classId ? { classId } : {};
+      let r = deploy(sim, me, mate ? { ...base, spawn: 'squad', mate } : base);
+      // (a mate who cannot be spawned on by now: the HQ, as the game falls back, SpawnOnSpawnEntityIfSpawnOnPlayerFails)
+      if (!r.ok && mate && squadsOf(rb).fallbackToPoint) r = deploy(sim, me, base);
       if (r.ok) {
         input.setLook(body().yaw, 0);
         // (the next life's deploy screen starts from its own highlight)
         picked = null;
+        mate = null;
         lastAt = null;
         input.swallow(false);
         pose = null;
@@ -118,7 +123,8 @@ export default {
       const markers = p?.state === 'alive' ? (v.mode?.objectives ?? []).map((o) => ({ id: o.id, label: o.name, dist: Math.hypot(o.at[0] - p.at[0], o.at[2] - p.at[2]), ...markerProjection(o.at, camera, size) })) : [];
       return {
         time: v.time,
-        deploy: { open: v.deploy.open, offers: v.deploy.offers, team: v.deploy.team },
+        deploy: { open: v.deploy.open, offers: v.deploy.offers, team: v.deploy.team, spawns: v.deploy.spawns },
+        squad: v.squad,
         points: v.points,
         player: p && { id: p.id, state: p.state, at: p.at.slice(), yaw: p.yaw, team: p.team, hp: p.hp, hpMax: p.hpMax, heat: p.heat, warning: p.warning, overheated: p.overheated, coolWindow: p.coolWindow, cls: p.cls, weapon: p.weapon, abilities: [1, 2, 3].map((slot) => ({ slot, recharge: 1, ready: true })) },
         mode: v.mode && { stageName: v.mode.stageName, objectives: v.mode.objectives.map((o) => ({ id: o.id, name: o.name, meter: o.meter, at: o.at })), tickets: v.mode.tickets, result: v.mode.result },
@@ -191,6 +197,9 @@ export default {
             return doDeploy(arg?.classId ?? picked);
           case 'pick':
             picked = arg;
+            return { ok: true };
+          case 'spawn':
+            mate = arg ?? null;
             return { ok: true };
           case 'advance': {
             const n = Math.round((arg ?? 1) / STEP);
