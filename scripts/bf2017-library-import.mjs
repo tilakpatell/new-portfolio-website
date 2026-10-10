@@ -14,6 +14,12 @@
 //   node scripts/bf2017-library-import.mjs --from <file>[,<file>…] [--publish]   (every `game:<name>` the files name)
 //     [--as '<what it is>'] [--tex 4096] [--light 512] [--far-tex 128] [--dry]
 //
+// A material the drop's GLB leaves bare (its shader preset binds the maps)
+// is dressed by its shader's name (scripts/lib/bf2017-dress.mjs): the
+// export's material dump (web/materials.jsonl) and the drop's texture names
+// (web/textures.jsonl) fetched once, the maps the bucket holds fetched with
+// the model.
+//
 //   tex     the plain cut's maps at most this (4096: the game's own, untouched)
 //   light   the light cut's colour (its other maps half that): a scattered
 //           kind's 512 and 256
@@ -24,10 +30,12 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { mapPath } from './lib/bf2017-paths.mjs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { inEra } from './lib/bf2017-library.mjs';
+import { dressingOf, indexTextures } from './lib/bf2017-dress.mjs';
 import { readLibrary } from './bf2017-library.mjs';
 import { importModel } from './bf2017-import.mjs';
 import { gameUrl, slugOf } from '../src/components/galaxy/surface/catalog/bf2017-slug.js';
@@ -59,6 +67,34 @@ export function namesFrom(args, rows) {
   return String(args._[0] ?? '')
     .split(',')
     .filter(Boolean);
+}
+
+// A bare object's dressing (scripts/lib/bf2017-dress.mjs): its materials
+// from the export's dump, its maps from the drop's texture names, held to
+// what the bucket holds where a walk of it is on disk (lane Z's
+// web/listing.tsv); each map fetched as the import reads it (a colour map's
+// KTX2, a normal's derived `__normal` KTX2), so the game's own pixels go in
+// untouched, as the native cut takes them.
+const LAB = join(ROOT, 'lab', 'assets', 'bf2017', 'web');
+const fetchRaw = (path) => spawnSync(process.execPath, [join(ROOT, 'scripts', 'bf2017-fetch.mjs'), '--raw', path], { stdio: ['ignore', 'ignore', 'inherit'] });
+let dressBook = null;
+function dressBookOf() {
+  if (dressBook) return dressBook;
+  for (const f of ['materials.jsonl', 'textures.jsonl']) if (!existsSync(join(LAB, f))) fetchRaw(f);
+  const lines = (f) => (existsSync(join(LAB, f)) ? readFileSync(join(LAB, f), 'utf8').split('\n').filter(Boolean) : []);
+  const materials = new Map(lines('materials.jsonl').map((l) => JSON.parse(l)).map((e) => [e.mesh, e.materials]));
+  const names = indexTextures(lines('textures.jsonl').map((l) => JSON.parse(l).name));
+  const listed = existsSync(join(LAB, 'listing.tsv')) ? new Set(lines('listing.tsv').map((l) => l.split('\t')[0])) : null;
+  const bucketPath = (name, slot) => (slot === 'normal' ? mapPath(name).replace(/\.png$/, '__normal.ktx2') : mapPath(name).replace(/\.png$/, '.ktx2'));
+  const uploaded = (name, slot) => !listed || listed.has(bucketPath(name, slot));
+  dressBook = { materials, names, uploaded, bucketPath };
+  return dressBook;
+}
+export function dressFor(name) {
+  const book = dressBookOf();
+  const dressing = dressingOf(book.materials.get(name), book);
+  for (const maps of Object.values(dressing)) for (const { name: map, slot } of maps) fetchRaw(book.bucketPath(map, slot).replace(/^web\//, ''));
+  return Object.keys(dressing).length ? dressing : null;
 }
 
 export function readUsed(file = USED) {
@@ -102,7 +138,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const tex = Number(args.tex ?? 4096);
     try {
       console.log(`${name} → ${gameUrl(name)}`);
-      const made = await importModel(name, { kind: slugOf(name), as, native: true, far: true, sub: 'surface/game', catalog: false, tex, maps: tex, lod1Tex: light, lod1Maps: light / 2, farTex: Number(args.farTex ?? 128) });
+      // (a bare material dressed in the maps its shader binds, where the bucket has them)
+      const textures = dressFor(name);
+      if (textures) console.log(`  dressed: ${Object.values(textures).flat().map((m) => m.name.split('/').pop()).join(', ')}`);
+      const made = await importModel(name, { kind: slugOf(name), as, native: true, far: true, sub: 'surface/game', catalog: false, tex, maps: tex, lod1Tex: light, lod1Maps: light / 2, farTex: Number(args.farTex ?? 128), textures });
       const plain = made.find(([cut]) => cut === 'plain')[2];
       used[name] = { set: row.set, kind: row.kind, size: row.size, tris: row.tris, as, metres: Number(plain.size[1].toFixed(3)), ...(row.rig ? { rig: true } : {}) };
     } catch (e) {

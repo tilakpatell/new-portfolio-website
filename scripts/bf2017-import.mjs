@@ -227,7 +227,9 @@ export async function readLod(io, file, { root, derived, unpackDir, said, eyes =
     m.setExtras(decalOf(shader) ? { decal: decalOf(shader) } : {});
     // a map the material's shader graph binds, given by --textures: found as
     // any other (the PNG, else unpacked), named for the native pass
-    for (const { slot, name } of textures?.[m.getName()] ?? []) {
+    // (or, keyed `shader:<preset>`, by the shader it names: the library's
+    // dressing of a bare material, scripts/lib/bf2017-dress.mjs)
+    for (const { slot, name } of textures?.[m.getName()] ?? textures?.[`shader:${shader}`] ?? []) {
       const at = overridePath(name, slot);
       const found = await resolveImage(at, { root, derived, unpackDir });
       if (!found) {
@@ -536,7 +538,7 @@ export async function importModel(name, opts) {
     // (a hero's own eye map, under web/textures/, for the eye shader's material)
     eyes: typeof opts.eyes === 'string' ? `web/textures/${opts.eyes.replace(/^web\/textures\//, '')}` : null,
     // (maps a shader graph binds, by material name: --textures)
-    textures: typeof opts.textures === 'string' ? parseTextures(opts.textures) : null,
+    textures: typeof opts.textures === 'string' ? parseTextures(opts.textures) : (opts.textures ?? null),
     // (WebP quality: colour, then the rest; a hero at the game's full maps takes more)
     quality: Number(opts.quality ?? 82),
     mapsQuality: Number(opts.mapsQuality ?? opts.quality ?? 80),
