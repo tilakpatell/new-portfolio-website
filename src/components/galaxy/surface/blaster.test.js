@@ -63,3 +63,28 @@ describe('the galaxy’s blaster on the one bolt step', () => {
     expect(ev.map((e) => e.type)).toEqual(['gone']);
   });
 });
+
+describe('on a physics world', () => {
+  it('flies against the world’s ray when it has one', async () => {
+    const { createPhysics } = await import('../../../lib/physics/world');
+    const { segmentRay } = await import('../../../lib/physics/blast');
+    const physics = await createPhysics({ gravity: 0 });
+    physics.add({ type: 'fixed', position: [6, 1, 0], colliders: [{ shape: 'cuboid', args: [0.2, 2, 2] }] });
+    physics.step(1 / 60);
+    const world = { ...worldOf(), physicsRay: segmentRay(physics) };
+    const blaster = createBlaster({ parent: new THREE.Scene(), world });
+    expect(blaster.solids([0, 1, 0], [20, 1, 0]).at[0]).toBeCloseTo(5.8, 4);
+    blaster.shoot({ from: [0, 1, 0], dir: [1, 0, 0], owner: 'you', side: 'you' });
+    const ev = fly(blaster, { bodies: [] });
+    expect(ev.map((e) => e.type)).toEqual(['solid']);
+    expect(ev[0].at[0]).toBeCloseTo(5.8, 4);
+    physics.dispose();
+  });
+
+  it('flies your bolts by a row when it is given one', () => {
+    const blaster = createBlaster({ parent: new THREE.Scene(), world: worldOf(), ballistic: { speed: 350, gravity: -9.8, drag: 0, ttl: 3 } });
+    const shot = blaster.fire(new THREE.Vector3(0, 1.4, 0), new THREE.Vector3(1, 0, 0), [], '#ff3b30', 90);
+    blaster.update(0.5, { bodies: [] });
+    expect(shot.bolt.pos[1]).toBeLessThan(1.4);
+  });
+});

@@ -1,10 +1,23 @@
-# The 2017 game’s physics rulebooks: what is by hand, and why
+# The physics rulebooks: notes
 
-Every number in these files has a `<key>_source` sibling naming `<asset>#<Type>.<Path>`, or sits under a row marked `source: "hand"` with a line here.
+Built from the Battlefront II (2017) export’s records by `scripts/lib/bf2017-physics-rules.mjs`. Every number has a `<key>_source` beside it; a source that starts with `#` is in the asset named by the nearest enclosing `_source` (the row’s, or a ragdoll body’s blueprint), so each asset’s path is written once a row.
 
-## materials.json (lane P4: surfaces)
+## Lane P2: projectiles, bones, ragdoll
 
-Built by `scripts/bf2017-materials.mjs` from a level’s `MaterialGridData` (`data/Levels/MP/<Level>/<Level>/materialgrid_win32`), for the material indices the level’s meshes’ Havok shapes declare (`web/physics.jsonl`’s `materials[].index` on the records the map manifest names). Keyed by level; Hoth (`hoth_01`) first, 17 materials and 156 pairs.
+Built on 2026-10-10 by `node scripts/bf2017-bolts-data.mjs --root <export>/web` from the desktop export (`C:\Users\tilak\Downloads\BF2_Extract\web`; the bucket’s `data/<Name>.json.gz` read the same).
+
+- **`projectiles.json`** (397 KB, 333 rows): the 114 `ProjectileBlueprint`s under `data/Gameplay/` (49 grenades, 42 missiles, 9 charges; 14 refused) and the bolts, which are not blueprints but `GameDataContainerAsset`s holding a `WSBulletEntityData` (233 rows; `InitialSpeed`, `Gravity`, `TimeToLive`, `StartDamage` → `damage`, `EndDamage` and the fall-off distances → `falloff`). The plan expected 150 KB for the blueprints alone; the bolts are the rest. No page imports the file whole.
+- **Refused** (the sequel era, as lane 0 refuses it: the models manifest’s `isSequel` and `NewEra`, `Crait`, `Kylo`, `Phasma`, `BB9E`, `AstromechBB`): 27 projectiles (Finn’s, Phasma’s, the First Order’s and the Resistance’s, the T-70’s, the Resurgent’s turrets, Jakku’s rocket), 9 bone sets and 7 ragdolls (Kylo Ren, Rey, Finn, Phasma, BB-9E, BB-8’s astromech set, the Resistance specials).
+- **Grenades carry no body**: `WSGrenadeEntityData` blueprints have no `RigidBodyData`, so `body` is `null` and a thrown grenade’s mass is the world’s choice. Their `InitialSpeed` is 350 for nearly all of them, which is not a throw: the throw’s speed is the weapon’s, so a caller passes its own `speed` to `launch`/`arc`.
+- **`−1` friction or restitution** means the material’s (the grid’s, lane P4) and is left out of `body`.
+- **`gravity`** is the record’s, signed along y (−9.8 for most grenades, −20 for the smoke screens, −3 for the Pillio creature’s spit); `drag` is per second (`v·e^(−k·dt)`), as `lib/combat/ballistics.js` reads it.
+- **`bones.json`** (112 KB, 10 sets): `SkeletonCollisionData` under `data/Gameplay/Characters/` (the soldier, its AI, B1, B1 droid, B2, hero and jetpack variants, the droideka, Yoda, the Pillio creature). `BoneAxis` is 0 (the bone’s x) in every set; a capsule runs from `CapsuleOffset` (in the bone’s frame) `CapsuleLength` along that axis (`lib/physics/boneCapsules.js`), which puts the soldier’s forearm capsule (0.25 m) from elbow to wrist and the head’s on the head. A zero-radius entry (the soldier’s third `Spine`, a material marker) is kept and skipped by `capsulesOf`.
+- **`ragdoll.json`** (144 KB, 48 rows): `WSEACharacterPhysicsComponentData` (`MaxImpulse` 1000 and `ImpulseLifetime` 10 in every row) with its blueprint’s fifteen bodies: the body index fields name the bones, `RagdollPhysicsComponentData.PhysicsBodies` the bodies, each `RigidBodyData` its `Mass` (the trooper 94 kg in all: hips 20, spine 22, head 7, thighs 8, shins 5, upper arms 4, forearms 2, hands 1 and, the gun hand, 4) and bind-pose position, the proxy’s `PartBoundingBoxes` a capsule (the longest side its length, the next its radius), and the constraints’ links (field `0xa7b321c9` the parent body, `0xf89af45f` the child) the tree. 39 heroes share the human’s bodies to the last digit, so a repeated set is written once and later rows carry `bodiesOf: <id>`.
+- **Partial ragdolls**: two components give one body to two bones (the Ewok hero all fifteen to body 1; the B1 skirmish AI the right shin and the hips both body 1). The first claim keeps the body, the rest are in `unassigned`, and the row is `partial`; `ragdollOf` falls back to the human’s bodies for a partial row. `BodiesNamesHashes` would name the bodies directly but is not a hash of the bone names under FNV-1, FNV-1a or djb2.
+
+## Lane P4: surfaces (materials.json)
+
+Built by `scripts/bf2017-materials.mjs` from a level’s `MaterialGridData` (`data/Levels/MP/<Level>/<Level>/materialgrid_win32`), for the material indices the level’s meshes’ Havok shapes declare (`web/physics.jsonl`’s `materials[].index` on the records the map manifest names). Every number has a `<key>_source` sibling, or sits under a row marked `source: "hand"` explained here. Keyed by level; Hoth (`hoth_01`) first, 17 materials and 156 pairs.
 
 - **How a tag finds its row.** A shape’s packed material declaration carries the index in bits 12..19 (the exporter’s `PhysicsExport.cs`; lane P0 writes it as the collider `tag`). The grid’s `MaterialIndexMap[index]` is the row (256 entries; an undeclared index maps to row 0, the default’s, and `DefaultMaterialIndex` is 0). `materials[i].row` keeps it.
 - **Pairs** are keyed `"<surface>,<striker>"` and read from the striker’s row of `InteractionGrid` first, the transpose if that cell is empty (Hoth’s grid differs from its transpose in 330 of 24,649 cells).
