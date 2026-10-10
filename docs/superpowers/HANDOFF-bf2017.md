@@ -22,6 +22,10 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 
 All nine sessions started 2026-10-10 20:15 UTC from `claude/bf2017-accuracy`; lane U's prompt leaves its PR for the owner (the classifier refused the self-merge wording once). Seams (the spec's §5): E0 keeps the `variations` slot; lane 5 and the screens and picture lanes share `src/components/battlefront/` (merge `origin/main` before the PR, keep both sides); lane M's fonts PR may land under the screens lane; lane S's saber engine is not touched by the bots lane. The desktop's part (§4): the per-instance variation hashes into the maps' `.bin`; the UI bitmaps and the sound stay lane D's.
 
+## The overhaul's sessions (2026-10-10, 23:45 UTC)
+
+Spawned by session_01282C5tuJnxtHN4SCrT1kct from `claude/bf2017-e0-factory-on-main` (E0 merged with `main`, PR #888) once its checks were green: E1 (`session_01NKhQZ93euwjJ5jaEre3jSY`), E2 (`session_01HrTPmQ9wFUvFYfdVLHxZ2q`), E3 (`session_0151EsRE5Sioz8bZWPSEzYeo`), E4 (`session_015ZTef1tZABeSq9E86wZKwv`), and the colour chain (`session_016MqzdEYrPgLbWg1mrpw1kG`, `claude/bf2017-colour-chain`, from `claude/bf2017-colours-everywhere` merged with E0), all Opus 5.5, each told to stop at once if the environment lacks `SUPABASE_URL` and `SUPA_KEY`. The bots lane is brought up to `main` by the same session (`claude/bf2017-bots-on-main`). Not spawned yet, in this order when the above land: E5 (the six new systems), the screens, fighters, maps and picture lanes of the sixth design, Q6, N, U.
+
 ## The fifth design: every object in the drop, used (2026-10-10, night)
 
 `docs/superpowers/specs/2026-10-10-bf2017-every-asset-design.md`, with eleven plans `docs/superpowers/plans/2026-10-10-bf2017-every-asset-lane{Z,E0,E1,E2,E3,E4,E5,O,Q,M,A}-*.md`. Written from a census of the desktop export's manifests, a live listing of the bucket and `origin/main` at `ff7bee49` (#842). The owner asked that every asset on the bucket be used by the site, added to all the worlds where it fits, and implemented by Opus 5.5.
@@ -32,10 +36,10 @@ All nine sessions started 2026-10-10 20:15 UTC from `claude/bf2017-accuracy`; la
 |---|---|---|---|---|---|
 | Z | the coverage ledger: `scripts/bf2017-coverage.mjs`, the owners table, `--check` in CI, the four counts in this table | nothing | `session_018HdseSL3U68899P3D9oWmP` | `claude/bf2017-z-ledger` | #853 |
 | E0 | the level factory: packs out of git, districts and interiors, every map part beside `level.json` (lights, decals, actors, vehicles, effects, tracks, probes, far shadow, scatter table, shapes, collision solids), the detail maps; Endor on Endor_01, Echo Base's inside | nothing | | `claude/bf2017-e0-factory` | |
-| E1 | Tatooine (Mos Eisley, the dunes, Jabba's palace and its inside), Yavin | E0 | | `claude/bf2017-e1-tatooine-yavin` | |
-| E2 | Naboo (Theed under its dusk and lanterns, the hangar, the plains, the palace), Kamino | E0 | | `claude/bf2017-e2-naboo-kamino` | |
-| E3 | Kashyyyk, Geonosis, Endor's village, research station and bunker | E0 | | `claude/bf2017-e3-kashyyyk-geonosis-endor` | |
-| E4 | Scarif, Cloud City, Hoth's outpost, the Death Star inside on DeathStar02_01 | E0 | | `claude/bf2017-e4-scarif-bespin-deathstar` | |
+| E1 | Tatooine (Mos Eisley, the dunes, Jabba's palace and its inside), Yavin | E0 | `session_01NKhQZ93euwjJ5jaEre3jSY` (spawned 2026-10-10 23:45 UTC from `claude/bf2017-e0-factory-on-main`, Opus 5.5) | `claude/bf2017-e1-tatooine-yavin` | |
+| E2 | Naboo (Theed under its dusk and lanterns, the hangar, the plains, the palace), Kamino | E0 | `session_01HrTPmQ9wFUvFYfdVLHxZ2q` (spawned 2026-10-10 23:45 UTC from `claude/bf2017-e0-factory-on-main`, Opus 5.5) | `claude/bf2017-e2-naboo-kamino` | |
+| E3 | Kashyyyk, Geonosis, Endor's village, research station and bunker | E0 | `session_0151EsRE5Sioz8bZWPSEzYeo` (spawned 2026-10-10 23:45 UTC from `claude/bf2017-e0-factory-on-main`, Opus 5.5) | `claude/bf2017-e3-kashyyyk-geonosis-endor` | |
+| E4 | Scarif, Cloud City, Hoth's outpost, the Death Star inside on DeathStar02_01 | E0 | `session_015ZTef1tZABeSq9E86wZKwv` (spawned 2026-10-10 23:45 UTC from `claude/bf2017-e0-factory-on-main`, Opus 5.5) | `claude/bf2017-e4-scarif-bespin-deathstar` | |
 | E5 | Felucia, Kessel, Sullust, Pillio, Vardos, Fondor as systems with skins and surfaces | E0 | | `claude/bf2017-e5-new-systems` | |
 | O | the object library (every placeable set indexed), the seven mapless worlds dressed by biome, `GAME_FOR` props, the game's clouds, the living world | nothing | `session_01HvykTJCK7Bb4cFUjiKN1jW` | `claude/bf2017-o-library` | #876 |
 | Q (the space lane) | the space levels as set pieces, the capitals, the asteroids on their tracks, the sky panoramas, the map's globes | nothing (#793 read) | session_01CiUP7QfUtHM1EEqgBJpKew | `claude/bf2017-q-space` | (this PR) |
