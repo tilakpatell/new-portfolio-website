@@ -33,6 +33,18 @@ describe('the map row', () => {
     expect(mapRow(dir, 'hoth_01').spawns).toHaveLength(12);
   });
 
+  it('a spawn or box without a transform is missing, never a throw', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bf2017-'));
+    cpSync(ROOT, dir, { recursive: true });
+    const file = join(dir, 'data', 'Levels/MP/Hoth_01/FantasyBattle_Logic.json');
+    const a = JSON.parse(readFileSync(file, 'utf8'));
+    delete a.objects.find((o) => o.$type === 'AlternateSpawnEntityData').Transform;
+    writeFileSync(file, JSON.stringify(a));
+    const m2 = mapRow(dir, 'hoth_01');
+    expect(m2.spawns).toHaveLength(11);
+    expect(m2._missing.some((x) => x.startsWith('transform:'))).toBe(true);
+  });
+
   it('reads the shapes', () => {
     expect(m.polygons).toHaveLength(54);
     expect(m.polygons[0]).toMatchObject({ team: 2, enabled: false });

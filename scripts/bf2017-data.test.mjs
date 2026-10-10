@@ -47,4 +47,11 @@ describe('the data CLI', () => {
     expect(written['weapons.json'].rows.a280c.firing.rof).toBe(600);
     expect(written['strings.json'].rows.ID_FANTASYBATTLES_HOTH_FUEL_SILO).toBe('FUEL PIPES');
   });
+
+  it('logs each record a row could not be built from, once', () => {
+    const lines = [];
+    run(plan(['all', '--root', ROOT, '--dry']), { write: () => {}, log: (l) => lines.push(l), copy: () => ({ icons: 0, fonts: 0, missing: [] }) });
+    const luke = lines.filter((l) => /missing: .*Kit_Hero_Luke$/.test(l));
+    expect(luke).toHaveLength(1);
+  });
 });

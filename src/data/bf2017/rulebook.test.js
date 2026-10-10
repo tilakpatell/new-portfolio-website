@@ -15,14 +15,15 @@ const rows = (f) => rb[f].rows ?? rb[f];
 // (copied from scripts/lib/bf2017-rulebook.mjs: src/data imports nothing from scripts)
 function checkSources(json) {
   const bad = [];
+  const real = (s) => typeof s === 'string' && /^(derived: \S|web\/\S|[^#\s]+#\S)/.test(s);
   const walk = (v, path, covered) => {
     if (typeof v === 'number') return covered || bad.push(path);
     if (!v || typeof v !== 'object') return;
     if (Array.isArray(v)) return v.forEach((x, i) => walk(x, `${path}.${i}`, covered));
-    const all = covered || v.source === 'hand' || typeof v._source === 'string';
+    const all = covered || v.source === 'hand' || real(v._source);
     for (const [k, x] of Object.entries(v)) {
       if (k.endsWith('_source') || k === '_from') continue;
-      walk(x, path ? `${path}.${k}` : k, all || typeof v[`${k}_source`] === 'string');
+      walk(x, path ? `${path}.${k}` : k, all || real(v[`${k}_source`]));
     }
   };
   walk(json, '', false);
@@ -69,6 +70,12 @@ describe('the Battlefront rulebooks', () => {
         for (const [key, book] of [['classes', 'classes'], ['heroes', 'heroes'], ['reinforcements', 'reinforcements'], ['vehicles', 'vehicles']])
           for (const id of side[key]) if (!rows(book)[id]) bad.push(`${side.team}: ${key} ${id}`);
     for (const cls of Object.values(rows('classes'))) if (cls.weapon && !rows('weapons')[cls.weapon]) bad.push(`${cls.id}: weapon ${cls.weapon}`);
+    expect(bad).toEqual([]);
+  });
+
+  it('every Battle Point cost names a vehicle the rulebook holds', () => {
+    const bad = Object.keys(rb.points.cost.vehicles).filter((id) => id !== 'default' && !rows('vehicles')[id]);
+    for (const stage of rb['maps/hoth.stages'].stages) for (const id of [...stage.vehicles, ...stage.objectives.map((o) => o.vehicle).filter(Boolean)]) if (!rows('vehicles')[id]) bad.push(`${stage.id}: ${id}`);
     expect(bad).toEqual([]);
   });
 

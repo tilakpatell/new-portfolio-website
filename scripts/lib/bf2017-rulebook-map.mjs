@@ -27,6 +27,7 @@ export const MODE_LAYERS = { galacticAssault: 'FantasyBattle', hvv: 'HeroArena',
 const RULE_LAYER = /_(Logic|Spawns|Spawns_Team\d|Shapes|Inf_Shapes_\w+|OOBTeam\d|Gameplay|Global|DefendAreas|CaptureAreas|Skirmish_DefendAreas)$/;
 const EXTRA_LAYERS = { Mode9: ['ModeDefend_Spawns_Team1', 'ModeDefend_Spawns_Team2'] };
 
+const PLACED = new Set(['AlternateSpawnEntityData', 'OBBData', 'LocatorEntityData', 'LocalLocatorEntityData', 'CameraEntityData']);
 const teamOf = (t) => Number(String(t ?? '').replace(/^Team/, '')) || 0;
 // (to a tenth of a millimetre)
 const r3 = (v) => Math.round(v * 10000) / 10000;
@@ -69,6 +70,11 @@ export function mapRow(root, level, { modes = MODE_LAYERS } = {}) {
         if (!o) return;
         const id = `${lay}:${i}`;
         const base = { id, mode, layer: lay, _source: where(ln, o) };
+        // (a placed object without a transform is listed missing, not read)
+        if (PLACED.has(o.$type) && !transformOf(o)) {
+          row._missing.push(`transform: ${id}`);
+          return;
+        }
         switch (o.$type) {
           case 'AlternateSpawnEntityData': {
             const t = transformOf(o);

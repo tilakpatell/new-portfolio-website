@@ -20,7 +20,7 @@ Battle Points are a logic graph too (`Prefabs/GameplaySupply/PF_Gameplay_BattleP
 - `earn.kill` 100, `assist` 50, `vehicleKill` 150, `heroKill` 250: the game as played.
 - `earn.objectiveTick` 10 a second on an objective, `objectiveDamage` 1 a point of damage to one, `squadSpawn` 25: the game as played.
 - `cost.aerial` 1000, `enforcer` 2000, `infiltrator` 2000: the deploy screen as played (the three kinds are the data’s `Class_Special_*`).
-- `cost.vehicles.default` 500, the AT-ST 1500, the AT-AT 0 (the mode gives it): as played.
+- `cost.vehicles.default` 500, the AT-ST (`Kit_Vehicle_ATST`) 1500, the AT-AT (`Vehicle_Ground_AT-AT_MP`, the map’s walker) 0 since the mode gives it: as played. Keys are `vehicles.json` row ids.
 - `cost.heroes.default` 4000: as played.
 - `limits.heroesPerTeam` 1, `reinforcementsPerTeam` 4: as played.
 - `bpRate` 1: the Instant Action option `InstantActionBPRate`’s default (“DEFAULT” of SLOW, DEFAULT, FAST; `ai.json`’s `instantAction`) as a multiplier.

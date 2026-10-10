@@ -161,7 +161,7 @@ export function pointsOf(shape) {
   if (shape.$type === 'SphereData') return { at: vec(shape.Position), r: shape.Radius };
   if (shape.$type === 'OBBData') {
     const t = transformOf(shape);
-    return { at: t.at, half: vec(shape.HalfExtents), yaw: t.yaw };
+    return t ? { at: t.at, half: vec(shape.HalfExtents ?? { x: 0, y: 0, z: 0 }), yaw: t.yaw } : null;
   }
   const points = (shape.Points ?? []).map((p) => [p.x, p.z]);
   return { points, y: shape.Points?.[0]?.y ?? 0, height: shape.Height ?? 0, closed: Boolean(shape.IsClosed) };

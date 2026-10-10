@@ -71,7 +71,7 @@ function lightOf(asset, o, layer, id) {
     at: t.at.map(r4),
     yaw: r4(t.yaw),
     pitch: r4(Math.asin(Math.max(-1, Math.min(1, o.Transform.forward.y)))),
-    colour: v3(o.Color).map(r4),
+    colour: (v3(o.Color) ?? [1, 1, 1]).map(r4),
     intensity: o.Intensity,
     radius: o.AttenuationRadius,
     ...(spot ? { inner: o.InnerAngle, outer: o.OuterAngle } : {}),
@@ -102,7 +102,7 @@ function prefabLights(root, name, frame = null, depth = 4, out = []) {
     if (!o) continue;
     const t = o.Transform ?? o.BlueprintTransform;
     const placed = frame && t ? compose(frame, t) : t;
-    if (o.$type === 'PbrSphereLightEntityData' || o.$type === 'PbrSpotLightEntityData') out.push(lightOf(asset, { ...o, Transform: placed }, shortName(name), `${shortName(name)}:${asset.objects.indexOf(o)}`));
+    if ((o.$type === 'PbrSphereLightEntityData' || o.$type === 'PbrSpotLightEntityData') && placed?.trans) out.push(lightOf(asset, { ...o, Transform: placed }, shortName(name), `${shortName(name)}:${asset.objects.indexOf(o)}`));
     else if (o.$type === 'SpatialPrefabReferenceObjectData' && o.Blueprint?.$asset) prefabLights(root, o.Blueprint.$asset, placed, depth - 1, out);
   }
   return out;
@@ -110,6 +110,7 @@ function prefabLights(root, name, frame = null, depth = 4, out = []) {
 
 export function lightingRow(root, level) {
   const name = levelName(root, level);
+  if (!name) return { level: null, weathers: {}, default: null, lights: [], volumetrics: [], probes: [], prefabs: [], prefabLights: {}, _missing: [`level: ${level}`] };
   const dir = name.slice(0, name.lastIndexOf('/') + 1);
   const row = { level: name, weathers: {}, default: null, lights: [], volumetrics: [], probes: [], prefabs: [], prefabLights: {}, _missing: [] };
   const manifest = readWebJson(root, `maps/${name.toLowerCase()}.json`);
@@ -129,6 +130,10 @@ export function lightingRow(root, level) {
     asset.objects.forEach((o, i) => {
       if (!o) return;
       const id = `${lay}:${i}`;
+      if (/^(PbrSphereLight|PbrSpotLight|SimpleVolumetrics)EntityData$|^LightProbeVolumeData$|^SpatialPrefabReferenceObjectData$/.test(o.$type) && !transformOf(o)) {
+        row._missing.push(`transform: ${id}`);
+        return;
+      }
       if (o.$type === 'PbrSphereLightEntityData' || o.$type === 'PbrSpotLightEntityData') row.lights.push(lightOf(asset, o, lay, id));
       else if (o.$type === 'SimpleVolumetricsEntityData') {
         const t = transformOf(o);

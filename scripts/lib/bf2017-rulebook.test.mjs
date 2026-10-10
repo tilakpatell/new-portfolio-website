@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { abilityRow, cardRow, checkSources, classRow, heroRow, reinforcementRow, teamRow, vehicleRow, weaponRow } from './bf2017-rulebook.mjs';
+import { abilityRow, cardRow, checkSources, classRow, heroRow, kitRow, reinforcementRow, teamRow, vehicleRow, weaponRow } from './bf2017-rulebook.mjs';
 
 const ROOT = join(import.meta.dirname, '..', 'fixtures', 'bf2017', 'data');
 const A280C = 'Gameplay/Equipment/Rifles/A280C/Ability_Weapon_BlasterRifle_A280C';
@@ -53,8 +53,8 @@ describe('the weapon row', () => {
 
   it('names every number’s source', () => {
     expect(checkSources(w)).toEqual([]);
-    expect(checkSources({ a: 1, b: { c: 2, c_source: 'x' }, d: { source: 'hand', e: 3 } })).toEqual(['a']);
-    expect(checkSources({ list: [1, 2], list_source: 'x', rows: [{ _source: 'y', n: 1 }] })).toEqual([]);
+    expect(checkSources({ a: 1, b: { c: 2, c_source: 'Gameplay/X#T.c' }, d: { source: 'hand', e: 3 } })).toEqual(['a']);
+    expect(checkSources({ list: [1, 2], list_source: 'Gameplay/X#T.list', rows: [{ _source: 'Gameplay/Y#T', n: 1 }] })).toEqual([]);
   });
 
   it('a weapon whose projectile is missing still has its firing row', () => {
@@ -150,5 +150,39 @@ describe('heroes, reinforcements, vehicles and teams', () => {
     expect(v.weapons.length).toBeGreaterThan(0);
     expect(v.weapons[0].rof).toBeGreaterThan(0);
     expect(checkSources(v)).toEqual([]);
+  });
+});
+
+describe('broken chains and sources, from the final review', () => {
+  it('a kit whose class weapons are missing still has its row, never a throw', () => {
+    const root = rootWith('Gameplay/Kits/MP/Assault/DefaultWeapon_L_Assault_Orig', (a) => {
+      a.objects[0].UnlockToCreate.$asset = 'Gameplay/Nope/U_Nope';
+      return a;
+    });
+    const k = kitRow(root, 'Gameplay/Kits/MP/Assault/Kit_L_Assault_Orig_HO');
+    expect(k.health).toBe(150);
+    expect(k._missing.some((m) => m.includes('Nope'))).toBe(true);
+  });
+
+  it('a weapon whose unlock is missing says so', () => {
+    const root = rootWith('Gameplay/Equipment/Rifles/A280C/Ability_Weapon_BlasterRifle_A280C', (a) => {
+      a.objects[0].Unlock.$asset = 'Gameplay/Nope/U_Nope';
+      return a;
+    });
+    const w = weaponRow(root, A280C);
+    expect(w._missing[0]).toContain('U_Nope');
+    expect(w.firing).toBeUndefined();
+  });
+
+  it('a reinforcement carries its primary weapon', () => {
+    const r = reinforcementRow(ROOT, 'Gameplay/Kits/Specials/RebelJumpTrooper/Kit_Special_RebelJumpTrooper');
+    expect(r.primaryAsset).toMatch(/RebelJumpTrooper/);
+  });
+
+  it('a source must name a record', () => {
+    expect(checkSources({ a: 1, a_source: '' })).toEqual(['a']);
+    expect(checkSources({ o: { _source: 'anything', n: 1 } })).toEqual(['o.n']);
+    expect(checkSources({ a: 1, a_source: 'Gameplay/X#Type.Path', b: { _source: 'derived: the spawns', n: 2 }, c: { source: 'hand', n: 3 } })).toEqual([]);
+    expect(heroRow(ROOT, 'Gameplay/Kits/Hero/DarthVader/Kit_Hero_DarthVader').armour_source).toMatch(/#MaxHealthAffectorAsset/);
   });
 });

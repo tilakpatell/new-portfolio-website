@@ -5,7 +5,7 @@
     "aerial": 1000,
     "enforcer": 2000,
     "infiltrator": 2000,
-    "vehicles": { "default": 500, "Vehicle_Ground_AT-ST_MP": 1500, "Vehicle_Ground_AT-AT_MP": 0 },
+    "vehicles": { "default": 500, "Kit_Vehicle_ATST": 1500, "Vehicle_Ground_AT-AT_MP": 0 },
     "heroes": { "default": 4000 }
   },
   "limits": { "heroesPerTeam": 1, "reinforcementsPerTeam": 4 },

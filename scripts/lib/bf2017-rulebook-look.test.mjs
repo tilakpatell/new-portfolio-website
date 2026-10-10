@@ -49,7 +49,7 @@ describe('the lighting row', () => {
 });
 
 describe('the cameras row', () => {
-  const c = camerasRow(ROOT, { soldier: 'Gameplay/Characters/StormTrooperShared', weapons: [{ id: 'a280c', zoom: [{ fov: 55, zoomIn: 1, zoomOut: 1, _source: 'x' }] }], vehicles: ['Gameplay/Vehicles/Ground/AT-AT_MP/Vehicle_Ground_AT-AT_MP'] });
+  const c = camerasRow(ROOT, { soldier: 'Gameplay/Characters/StormTrooperShared', weapons: [{ id: 'a280c', zoom: [{ fov: 55, zoomIn: 1, zoomOut: 1, _source: 'Gameplay/W#WeaponZoomLevelData.RenderFov' }] }], vehicles: ['Gameplay/Vehicles/Ground/AT-AT_MP/Vehicle_Ground_AT-AT_MP'] });
 
   it('reads the soldier’s third-person camera', () => {
     expect(c.soldier).toMatchObject({ arm: 1.2, maxPitch: 55, reducedArm: { length: 0.5, minPitch: 5, maxPitch: 70 } });

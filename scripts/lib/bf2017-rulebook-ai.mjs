@@ -157,7 +157,8 @@ function difficultyOf(root, name) {
 function instantActionOf(root) {
   const out = {};
   for (const n of named(root, /^Gameplay\/Profiles\/InstantActionParams\/[^/]+$/)) {
-    const o = rootOf(follow(root, n));
+    const a = follow(root, n);
+    const o = a && rootOf(a);
     if (!o) continue;
     out[shortName(n)] = { items: (o.Items ?? []).map((i) => i.DisplayName ?? null), default: (o.Items ?? []).findIndex((i) => i.Default), default_source: `${n}#${o.$type}.Items` };
   }
@@ -176,6 +177,7 @@ export function aiRulebook(root) {
       constants: constants ? group(constants, rootOf(constants), 3) : null,
       zones: Object.fromEntries(named(root, /^AI\/BattleAI\/Cover\/CoverZones\/[^/]+$/).map((n) => {
         const a = follow(root, n);
+        if (!a) return [shortName(n), { zones: [], _missing: [`cover zones: ${n}`] }];
         return [shortName(n), { zones: (rootOf(a).Zones ?? []).map((z) => Object.fromEntries(numbersOf(z))), _source: `${n}#CoverZoneDefinition.Zones` }];
       })),
       queries: short(/^AI\/BattleAI\/Cover\/Queries\/[^/]+$/, queryRow),

@@ -55,14 +55,16 @@ export function withSources(row, sources) {
 // `source: 'hand'` on an ancestor. (Copied into src/data/bf2017/rulebook.test.js.)
 export function checkSources(json) {
   const bad = [];
+  // (a source names a record and a path, `<asset>#<Type>…`, a web build file, or how it was derived)
+  const real = (s) => typeof s === 'string' && /^(derived: \S|web\/\S|[^#\s]+#\S)/.test(s);
   const walk = (v, path, covered) => {
     if (typeof v === 'number') return covered || bad.push(path);
     if (!v || typeof v !== 'object') return;
     if (Array.isArray(v)) return v.forEach((x, i) => walk(x, `${path}.${i}`, covered));
-    const all = covered || v.source === 'hand' || typeof v._source === 'string';
+    const all = covered || v.source === 'hand' || real(v._source);
     for (const [k, x] of Object.entries(v)) {
       if (k.endsWith('_source') || k === '_from') continue;
-      walk(x, path ? `${path}.${k}` : k, all || typeof v[`${k}_source`] === 'string');
+      walk(x, path ? `${path}.${k}` : k, all || real(v[`${k}_source`]));
     }
   };
   walk(json, '', false);
@@ -102,7 +104,7 @@ const colourIn = (name) => COLOURS.find((c) => new RegExp(`_${c}(_|$)`, 'i').tes
 
 // A weapon's blueprint from its ability, its unlock or itself.
 function weaponChain(root, name) {
-  const chain = { ability: null, unlock: null, blueprint: null };
+  const chain = { ability: null, unlock: null, blueprint: null, broken: null };
   let asset = follow(root, name);
   for (let hops = 0; asset && hops < 3; hops++) {
     const r = rootOf(asset);
@@ -110,13 +112,13 @@ function weaponChain(root, name) {
       chain.blueprint = asset;
       break;
     }
-    if (r.$type === 'SoldierWeaponUnlockAsset') {
-      chain.unlock = asset;
-      asset = follow(root, r.NonStreamedBlueprint);
-    } else if (r.Unlock?.$asset) {
-      chain.ability = asset;
-      asset = follow(root, r.Unlock);
-    } else break;
+    const next = r.$type === 'SoldierWeaponUnlockAsset' ? r.NonStreamedBlueprint : r.Unlock;
+    if (!next?.$asset) break;
+    if (r.$type === 'SoldierWeaponUnlockAsset') chain.unlock = asset;
+    else chain.ability = asset;
+    asset = follow(root, next);
+    // (a hop the export lacks: the chain stops there, and says where)
+    if (!asset) chain.broken = next.$asset;
   }
   return chain;
 }
@@ -126,8 +128,8 @@ const STANCES = ['stand', 'crouch', 'prone', 'moving', 'zoomStand', 'zoomCrouch'
 // ── weapons ──────────────────────────────────────────────────────────────
 
 export function weaponRow(root, name) {
-  const { blueprint } = weaponChain(root, name);
-  if (!blueprint) return null;
+  const { blueprint, broken } = weaponChain(root, name);
+  if (!blueprint) return broken ? { id: weaponId(name), asset: name, _missing: [`weapon chain: ${broken}`] } : null;
   const missing = [];
   const data = objectsOf(blueprint, 'SoldierWeaponData')[0];
   const row = { id: weaponId(blueprint.name), name: `ID_W_${weaponId(blueprint.name).toUpperCase()}`, family: familyOf(blueprint.name), blueprint: blueprint.name };
@@ -344,6 +346,9 @@ export function kitRow(root, kitName) {
     .filter(({ a }) => a && ['left', 'middle', 'right'].includes(slotOf(rootOf(a).Category)))
     .map(({ v, a }) => ({ slot: slotOf(rootOf(a).Category), id: shortName(v.$asset), asset: v.$asset }));
   row.abilities.sort((a, b) => ['left', 'middle', 'right'].indexOf(a.slot) - ['left', 'middle', 'right'].indexOf(b.slot));
+  // (the primary weapon a hero or a reinforcement spawns with: its default ability in the primary slot)
+  const primary = listed('DefaultAbilities').find((v) => slotOf(rootOf(follow(root, v) ?? { root: 0, objects: [{}] }).Category) === 'primary');
+  row.primaryAsset = primary ? primary.$asset : null;
   const extra = listed('AdditionalAbilities').map((v) => v.$asset);
   row.cards = extra.filter((n) => shortName(n).startsWith('SC_')).map(shortName);
   row.cardAssets = extra.filter((n) => shortName(n).startsWith('SC_'));
@@ -351,13 +356,23 @@ export function kitRow(root, kitName) {
   row.weaponAssets = extra.filter((n) => /\/Ability_Weapon_[^/]*$/.test(n));
   // (no DefaultWeapon_* on the kit: the weapon table's primary part, at its default index)
   if (!row.weapon) {
-    const unlocks = new Set(row.weaponAssets.map((n) => rootOf(follow(root, n))?.Unlock?.$asset).filter(Boolean));
+    const unlocks = new Set(
+      row.weaponAssets
+        .map((n) => {
+          const a = follow(root, n);
+          if (!a) missing.push(`weapon ability: ${n}`);
+          return a ? rootOf(a).Unlock?.$asset : null;
+        })
+        .filter(Boolean),
+    );
     const table = deref(kit, k.WeaponTable);
     for (const ref of table?.UnlockParts ?? []) {
       const part = deref(kit, ref);
       const pickd = part?.SelectableUnlocks?.[part.DefaultSelectionIndex ?? 0];
       if (!part?.SelectableUnlocks?.some((u) => unlocks.has(u?.$asset)) || !pickd) continue;
-      const bp = follow(root, pickd) && rootOf(follow(root, pickd)).NonStreamedBlueprint?.$asset;
+      const unlock = follow(root, pickd);
+      if (!unlock) missing.push(`weapon unlock: ${pickd.$asset}`);
+      const bp = unlock && rootOf(unlock).NonStreamedBlueprint?.$asset;
       if (bp) Object.assign(row, { weapon: weaponId(bp), weapon_source: `${kit.name}#CustomizationUnlockParts.SelectableUnlocks.${part.DefaultSelectionIndex ?? 0}`, weaponUnlock: pickd.$asset });
       break;
     }
@@ -400,12 +415,7 @@ export function heroRow(root, kitName, { side = null } = {}) {
   const armour = names.filter((n) => /\/Affector_Health_[^/]*Armor\d$/.test(n)).sort();
   const blueprint = rootOf(kit).Blueprint?.$asset ?? '';
   const deflect = names.find((n) => /\/U_Lightsaber_Deflect_[^/]*$/.test(n));
-  const primary = (() => {
-    const gp = follow(root, rootOf(kit).Gameplay);
-    const custom = gp && deref(gp, rootOf(gp).Abilities);
-    const v = (custom?.DefaultAbilities ?? []).find((x) => x?.$asset && slotOf(rootOf(follow(root, x) ?? { objects: [{}], root: 0 })?.Category) === 'primary');
-    return v ? v.$asset : null;
-  })();
+  const primary = base.primaryAsset;
   const id = folder.split('/')[3].toLowerCase();
   return {
     ...base,
@@ -413,7 +423,7 @@ export function heroRow(root, kitName, { side = null } = {}) {
     name: [`ID_CHAR_${id.toUpperCase()}`],
     side: side ?? sideOf(root, kit),
     armour: armour.map((n) => follow(root, n)).filter(Boolean).map((a) => rootOf(a).MaxHealth),
-    armour_source: armour.map((n) => `${n}#MaxHealthAffectorAsset.MaxHealth`).join(' '),
+    ...(armour.length ? { armour_source: armour.map((n) => `${n}#MaxHealthAffectorAsset.MaxHealth`).join(' ') } : {}),
     primary: primary ? shortName(primary) : null,
     primaryAsset: primary,
     saber: /Lightsaber/.test(blueprint) ? { blueprint: shortName(blueprint), deflect: deflect ? shortName(deflect) : null } : null,

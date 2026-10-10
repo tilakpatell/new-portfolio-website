@@ -84,6 +84,16 @@ function named(strings, rows) {
 }
 
 const byId = (rows) => Object.fromEntries(rows.filter(Boolean).map((r) => [r.id, r]));
+
+// Rows by id from records, each record that gives none listed as missing.
+const rowsOf = (ctx, names, fn) =>
+  byId(
+    names.map((n) => {
+      const r = fn(n);
+      if (!r) ctx.$nulls.push(`row: ${n}`);
+      return r;
+    }),
+  );
 const sides = (ctx) => Object.values(ctx.teams).flatMap((t) => [t.light, t.dark]).filter(Boolean);
 const uniq = (xs) => [...new Set(xs.filter(Boolean))];
 
@@ -115,21 +125,21 @@ const BUILD = {
       sides(ctx).flatMap((s) =>
         s.classKits.map((k) => {
           const [, , , cls] = k.split('/');
-          return classRow(p.root, cls, p.era, s.team.includes('_Light_') ? 'L' : 'D', { level: p.level });
+          return classRow(p.root, cls, p.era, s.team.includes('_Light_') ? 'L' : 'D', { level: p.level }) ?? (ctx.$nulls.push(`row: ${k}`), null);
         }),
       ),
     ),
-  heroes: (p, ctx) => byId(sides(ctx).flatMap((s) => s.heroKits.map((k) => heroRow(p.root, k, { side: s.team.includes('_Light_') ? 'light' : 'dark' })))),
-  reinforcements: (p, ctx) => byId(sides(ctx).flatMap((s) => s.reinforcementKits.map((k) => reinforcementRow(p.root, k)))),
-  vehicles: (p, ctx) => byId([...sides(ctx).flatMap((s) => s.vehicleKits), ...uniq((ctx.map.vehicleSpawns ?? []).map((v) => v.blueprint))].filter((n) => !isSequel(n)).map((n) => vehicleRow(p.root, n))),
+  heroes: (p, ctx) => byId(sides(ctx).flatMap((s) => s.heroKits.map((k) => heroRow(p.root, k, { side: s.team.includes('_Light_') ? 'light' : 'dark' }) ?? (ctx.$nulls.push(`row: ${k}`), null)))),
+  reinforcements: (p, ctx) => rowsOf(ctx, sides(ctx).flatMap((s) => s.reinforcementKits), (k) => reinforcementRow(p.root, k)),
+  vehicles: (p, ctx) => rowsOf(ctx, [...sides(ctx).flatMap((s) => s.vehicleKits), ...uniq((ctx.map.vehicleSpawns ?? []).map((v) => v.blueprint))].filter((n) => !isSequel(n)), (n) => vehicleRow(p.root, n)),
   weapons: (p, ctx) => {
     const kits = [...Object.values(ctx.classes), ...Object.values(ctx.heroes), ...Object.values(ctx.reinforcements)];
     const names = uniq(kits.flatMap((k) => [...(k.weaponAssets ?? []), k.weaponUnlock, k.primaryAsset]));
-    const rows = byId(names.map((n) => weaponRow(p.root, n)));
+    const rows = rowsOf(ctx, names, (n) => weaponRow(p.root, n));
     return p.only ? Object.fromEntries(Object.entries(rows).filter(([id]) => p.only.has(id))) : rows;
   },
-  abilities: (p, ctx) => byId(uniq([...Object.values(ctx.classes), ...Object.values(ctx.heroes), ...Object.values(ctx.reinforcements)].flatMap((k) => (k.abilities ?? []).map((a) => a.asset))).map((n) => abilityRow(p.root, n))),
-  cards: (p, ctx) => byId(uniq(Object.values(ctx.classes).flatMap((k) => k.cardAssets ?? [])).map((n) => cardRow(p.root, n))),
+  abilities: (p, ctx) => rowsOf(ctx, uniq([...Object.values(ctx.classes), ...Object.values(ctx.heroes), ...Object.values(ctx.reinforcements)].flatMap((k) => (k.abilities ?? []).map((a) => a.asset))), (n) => abilityRow(p.root, n)),
+  cards: (p, ctx) => rowsOf(ctx, uniq(Object.values(ctx.classes).flatMap((k) => k.cardAssets ?? [])), (n) => cardRow(p.root, n)),
   ai: (p) => aiRulebook(p.root),
   lighting: (p) => lightingRow(p.root, p.level),
   cameras: (p, ctx) => camerasRow(p.root, { weapons: Object.values(ctx.weapons), vehicles: uniq(Object.values(ctx.vehicles).map((v) => v.blueprint)).filter((b) => indexOf(p.root).has(`${b}_Camera`)) }),
@@ -170,12 +180,13 @@ function missingIn(v, out = new Set()) {
 export function run(p, { write, log = console.log, copy = (root, out, ui) => copyUiAssets(root, out, ui) } = {}) {
   const head = readFileSync(join(p.root, 'data.tsv')).subarray(0, 65536);
   const from = { export: EXPORT, date: new Date().toISOString().slice(0, 10), root: createHash('sha1').update(head).digest('hex') };
-  const ctx = { $strings: readWebJson(p.root, 'strings/English.json') };
+  const ctx = { $strings: readWebJson(p.root, 'strings/English.json'), $nulls: [] };
   const counts = {};
   for (const step of p.steps) {
+    ctx.$nulls = [];
     const rows = BUILD[step](p, ctx);
     ctx[step] = ['classes', 'heroes', 'reinforcements', 'weapons'].includes(step) ? named(ctx.$strings, rows) : rows;
-    const missing = [...missingIn(rows)];
+    const missing = [...new Set([...missingIn(rows), ...ctx.$nulls])];
     counts[step] = { ...(COUNT[step]?.(rows) ?? { rows: Object.keys(rows).length }), missing: missing.length };
     if (step === 'ui' && !p.dry) counts.ui.copied = copy(p.root, join(ROOT, 'public', 'battlefront'), rows);
     log(`${step.padEnd(15)} ${String(counts[step].rows).padStart(5)} rows${counts[step].refused ? `, ${counts[step].refused} refused` : ''}${missing.length ? `, ${missing.length} missing` : ''}`);
