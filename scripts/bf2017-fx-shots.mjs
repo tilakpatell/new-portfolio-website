@@ -31,6 +31,8 @@ await ctx.addInitScript(() => {
   window.localStorage.setItem('tp-worlds', JSON.stringify('load'));
 });
 const page = await ctx.newPage();
+// (a heavy world draws a frame in tens of seconds in software GL)
+page.setDefaultTimeout(180000);
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 300)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text().slice(0, 300)));
@@ -62,7 +64,7 @@ for (const name of list.split(',')) {
     const frames = Math.max(2, Math.round(after / 0.05) + 1);
     await page.waitForFunction(([from, n]) => window.__surfaceScene.renderer.info.render.frame >= from + n, [f0, frames], { timeout: 120000, polling: 50 });
     const file = join(out, `${world}-${name}-${look}.jpg`);
-    await page.screenshot({ path: file, type: 'jpeg', quality: 82 });
+    await page.screenshot({ path: file, type: 'jpeg', quality: 82, timeout: 180000 });
     const calls = await page.evaluate(() => window.__surfaceScene.renderer.info.render.calls);
     rows.push({ world, name, look, calls, file });
     console.log(world, name, look, 'calls', calls);
