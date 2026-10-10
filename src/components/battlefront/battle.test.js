@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { loadRulebook } from '../../lib/battlefront/rulebook.js';
 import { hothFlatNav } from '../../lib/battlefront/fixtures/hothFlat.js';
 import { STEP, addPlayer, createBattle, deploy, step, view, worldMove } from './battle.js';
+import { LEVEL_MODES, MODES } from './index.js';
+import naboo from '../../data/bf2017/maps/naboo.json';
 
 const rb = loadRulebook();
 const nav = hothFlatNav(rb);
@@ -62,5 +64,24 @@ describe('the battle on lane 1’s sim, with the deploy screen lane 2 will own',
     expect(view(b).entities).toHaveLength(4);
     b.force('win', 2);
     expect(view(b).mode.result).toEqual({ winner: 2, why: 'forced' });
+  });
+});
+
+describe('the other modes on the game world’s route (lane 6)', () => {
+  it('knows their ids; a level plays the modes its pack has (Hoth’s Galactic Assault today)', () => {
+    expect(MODES).toEqual(['galacticAssault', 'strike', 'extraction', 'ewokHunt', 'supremacy']);
+    expect(LEVEL_MODES).toEqual({ hoth: ['galacticAssault'] });
+  });
+  it('a battle in Strike takes the mode’s objectives from the level’s map rulebook', () => {
+    const book = { ...rb, maps: { ...rb.maps, naboo: { map: naboo.rows, stages: {} } } };
+    const t = rb.teams['Orig:hoth_01'];
+    const b = createBattle({ rulebook: book, level: 'naboo', mode: 'strike', nav, bots: { 1: 0, 2: 0 }, teams: { 1: t.light, 2: t.dark } });
+    expect(b.objectives.map((o) => [o.type, o.name, o.at.map(Math.round)])).toEqual([
+      ['arm', 'A', [696, 0, 1]],
+      ['arm', 'B', [758, 0, 9]],
+    ]);
+  });
+  it('refuses a mode it does not know', () => {
+    expect(() => createBattle({ rulebook: rb, level: 'hoth', mode: 'conquest', nav })).toThrow(/conquest/);
   });
 });
