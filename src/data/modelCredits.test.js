@@ -64,7 +64,9 @@ describe('the 3D models that are other people’s', () => {
         expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
       }
     }
-  });
+    // (it reads every source file under src: 3.5 s alone, past vitest's 5 s
+    // default when the machine is busy, so it gets a budget of its own)
+  }, 30000);
 
   it('worn in the wardrobe are credited wherever the crew wear them too', () => {
     // (the cruiser's seats in the universe and the galaxy; out of the ship on a planet)
