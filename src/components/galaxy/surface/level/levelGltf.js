@@ -2,7 +2,10 @@
 // through the asset base, parsed without its textures (levelPack.js's
 // splitTextures) and its maps bound from one cache, so a KTX2 the pack
 // shares is fetched, transcoded and uploaded once whatever names it, at the
-// tier's size (tex/<slug>.<size>.ktx2).
+// tier's size (tex/<slug>.<size>.ktx2). A colour or emissive map is sRGB
+// whatever its file says: the game stores its colour maps as sRGB (BC7_SRGB,
+// textures.jsonl's `format`), but many of the pack's KTX2s are labelled
+// linear, and read as linear they came out washed pale (bindSlot).
 //
 //   createLevelLoader({ world, tier, renderer, fetchBytes, sizes, recipes, materialFor }) → { load(glbPath) → Promise<{ scene } | null>, dispose() }
 //   (sizes: level.json's `tex`, each map's size per tier)
@@ -16,6 +19,7 @@
 //   recipes: { forGlb(glbPath) → recipe[] | null, maps: { name → 'tex/x.ktx2' | null }, tex: sizes }
 //   mapKeys: the recipe maps the tier draws (gameMaterial.js's TIER_MAPS), the rest never fetched
 
+import { SRGBColorSpace } from 'three';
 import { gltfLoader, ktx2Loader } from '../../../../lib/three/gltf.js';
 import { assetUrl, withFallback } from '../../../../lib/assetBase.js';
 import { packUrl, splitTextures, tierTexture } from './levelPack.js';
@@ -79,6 +83,22 @@ const MAP_KEYS = [
   ['aoSlice', (m) => m.aoSlice],
 ];
 
+// the slots whose texture is a colour, in sRGB (the rest are data: normals, roughness and metal)
+export const COLOUR_SLOTS = new Set(['map', 'emissiveMap']);
+
+// a pack texture bound to a material's slot, the colour ones read as sRGB
+export function bindSlot(mat, slot, tex) {
+  if (COLOUR_SLOTS.has(slot) && tex.colorSpace !== SRGBColorSpace) {
+    tex.colorSpace = SRGBColorSpace;
+    tex.needsUpdate = true;
+  }
+  if (slot === 'metalRough') {
+    mat.roughnessMap = tex;
+    mat.metalnessMap = tex;
+  } else mat[slot] = tex;
+  mat.needsUpdate = true;
+}
+
 // A recipe's maps as the material takes them, each through `texture(path)`
 // from the pack's `maps` (game name → 'tex/x.ktx2', or a detail array's
 // slices as a list); a map the pack has not got is null. keys: the map keys
@@ -125,11 +145,7 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
       slots.map(async ({ material, slot, uri }) => {
         const [mat, tex] = await Promise.all([gltf.parser.getDependency('material', material), texture(inPack(glbPath, uri))]);
         if (!tex || gone) return;
-        if (slot === 'metalRough') {
-          mat.roughnessMap = tex;
-          mat.metalnessMap = tex;
-        } else mat[slot] = tex;
-        mat.needsUpdate = true;
+        bindSlot(mat, slot, tex);
       }),
     );
   }
