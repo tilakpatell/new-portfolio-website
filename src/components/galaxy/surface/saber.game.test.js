@@ -69,6 +69,14 @@ describe('a 2017 hero’s saber', () => {
     expect(up.contact).toEqual(luke.strikes.find((s) => s.name === up.name).contact);
   });
 
+  it('times a stroke named outright (a duellist’s, a peer’s) by that stroke’s own window', async () => {
+    const { fig, world } = await figure();
+    const saber = createSaber(createGunplay(fig, 'saber', { unit: 1 }), { fig, parent: world, tier: 'low' });
+    const third = saber.swing(0, { clip: 'A_Luke_AttackLoop_Strike3' });
+    expect(third.name).toBe('A_Luke_AttackLoop_Strike3');
+    expect(third.contact).toEqual(strike('A_Luke_AttackLoop_Strike3').contact);
+  });
+
   it('brings its blade out of the hilt’s emitter, where the game’s rod starts', async () => {
     const { fig, world } = await figure();
     const gp = createGunplay(fig, 'saber', { unit: 1 });

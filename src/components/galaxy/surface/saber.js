@@ -512,6 +512,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       // (one named outright, as a peer's packet names theirs: that clip, fetched if it hasn't been)
       if (named && named !== k.clip) {
         k.clip = named;
+        // (its own window, where its stance measured one: not the one strokeFor's pick had)
+        k.contact = [...st_.strokes, ...(st_.heavies ?? [])].find((s) => s.clip === named)?.contact;
         if (!clips[named] && !given) loadClip(named).then((c) => c && !gone && (clips[named] = c));
       }
       const clip = clips[k.clip] ?? null;
