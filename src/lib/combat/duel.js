@@ -16,7 +16,7 @@
 //                        stagger { hit, heavy, parried, broken } (seconds)
 //   createDuellist({ reach, guard, parry, stance, strokes, cadence, seed }) → d (d.at = [x, z]: the caller keeps it);
 //                        cadence { stroke: { dur, back } } (a 2017 hero's, stanceFromTable.js's): a stroke held `dur`
-//                        until swung says, and the recovery after it its return's `back` seconds, in place of DUEL's
+//                        (whatever swung says), and the recovery after it its return's `back` seconds, in place of DUEL's
 //   duelStep(d, you, dt, rng = d's own) → { state, move: [dx, dz] (0…1 of its pace, world axes), face (yaw to you),
 //                        stroke (the clip while it attacks, else null), begin (the frame a stroke starts), block }
 //     you: { pos: [x, z], swinging: { contact: [t0, t1], t, speed? } | null (your stroke, t seconds into its clip),
@@ -194,7 +194,8 @@ export function duelStep(d, you, dt, rng = d.rng) {
 }
 
 export function swung(d, secs) {
-  if (d.state === 'attack' && secs > 0) d.timer = secs;
+  // (a 2017 hero's strike is over when its blade rests, though its clip holds the pose on)
+  if (d.state === 'attack' && secs > 0) d.timer = d.cadence?.[d.stroke]?.dur ?? secs;
 }
 
 export const guarding = (d) => (d.state === 'parry' ? 'parry' : d.state === 'block' ? 'block' : null);

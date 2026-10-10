@@ -12,19 +12,15 @@
 //     base: the site's stance it stands in for (its reach, guard and lunge are kept)
 //     dirs, heavy: combatRules.js's DIRS and HEAVY (their damage, and the ways there are)
 //   the stance adds to STANCES' fields: heavies [{ clip, speed, damage }], dirs { way: { clip, damage } },
-//   blocks { left, right, any }, blocked, cadence { clip: { dur, back } } (the duel's), game (the hero)
+//   blocks { left, right, any }, blocked, cadence { clip: { dur (till the blade rests), back (its return) } } (the duel's), game (the hero)
 
 // (the first three of a chain cut light, the rest land harder: the site's single stance's weights)
 const damageOf = (i) => (i < 3 ? 2 : 3);
 
 export function stanceFromTable(table, { base, dirs, heavy }) {
-  const chain = (table?.strikes ?? [])
-    .filter((s) => s.variant === 1)
-    .sort((a, b) => a.index - b.index);
+  const chain = (table?.strikes ?? []).filter((s) => s.variant === 1).sort((a, b) => a.index - b.index);
   if (!chain.length) return null;
-  const all = [...(table.strikes ?? [])].sort(
-    (a, b) => b.variant - a.variant || a.index - b.index,
-  );
+  const all = [...(table.strikes ?? [])].sort((a, b) => b.variant - a.variant || a.index - b.index);
   const strokes = chain.map((s, i) => ({
     clip: s.name,
     speed: 1,
@@ -50,12 +46,7 @@ export function stanceFromTable(table, { base, dirs, heavy }) {
       return [way, { clip: s.name, damage: d.damage }];
     }),
   );
-  const cadence = Object.fromEntries(
-    (table.strikes ?? []).map((s) => [
-      s.name,
-      { dur: s.duration, back: s.returnDuration },
-    ]),
-  );
+  const cadence = Object.fromEntries((table.strikes ?? []).map((s) => [s.name, { dur: s.settle ?? s.duration, back: s.returnDuration }]));
   return {
     ...base,
     about: `${base.about} The game’s own chain.`,

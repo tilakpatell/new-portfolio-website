@@ -16,51 +16,56 @@
 // at 0.76, 0.64, 0.13, up and across). The window is ual-bake.mjs's
 // contactWindow over that tip, carried by the clip's root travel (a thrust
 // lands with the lunge, the blade still in the hands), counting only the
-// frames where the tip is well before the body along the hips' own facing
-// (AHEAD): a strike starts with the blade snapped from the guard to the
-// wind-up as fast as it cuts, beside the head, and a window that counts it
-// lands every stroke early; and the game's strikes turn the body, so a
-// fixed +z counts the wrong frames mid-turn.
+// frames where the tip is before the hips on the way the figure goes (+z,
+// its root's way), and the frame before it too (a frame's speed is from the
+// one before), and none inside the clip's first key: the game blends into a
+// strike, so its first key is the guard and its second already the wind-up,
+// a jump as fast as the cut that a window counting it lands on (ual-bake's
+// rule, 0.15 m along +z, does: Luke's Strike1 at [0.05, 0.093]; along the
+// hips' own facing does worse, the game's guard holding them 50° to 170°
+// round). `settle` is when the blade comes to rest after the cut: the game
+// holds the pose there for the chain's next input, so the clip runs on.
 //
 //   classify(name) → { hero, kind, index, variant, dir? }  (kind: strike | return | block | blocked | stagger | dodge |
 //                    dash | jump | force | defeat | locomotion | other)
 //   rigOf(doc) → { scene, objs }: a clip document's skeleton (gltf-transform) as three.js objects at rest
 //   clipOf(anim) → { name, channels, end, traj, extras }: its channels by node name, the trajectory kept apart
-//   measure(clip, rig, { fps, blade, ahead }) → { duration, contact, dir, plane, root, tipPath ([t, x, y, z, ahead?]) }
+//   measure(clip, rig, { fps, blade, ahead }) → { duration, contact, settle, dir, plane, root, tipPath ([t, x, y, z, ahead?]) }
 //   tableFor(hero, clips) → the stroke table (clips: [{ name, site?, duration?, contact?, dir?, plane?, root? }])
-//   AHEAD, BLADE, GENERIC
+//   settleAfter(rows, after, end) → seconds
+//   AHEAD, BLADE, GENERIC, SETTLE
 
-import * as THREE from "three";
-import { contactWindow, rootTravel } from "../ual-bake.mjs";
+import * as THREE from 'three';
+import { contactWindow, rootTravel } from '../ual-bake.mjs';
 
 export const BLADE = 1; // metres out of the socket the tip is timed at (ual-bake's: a blade's length)
-export const AHEAD = 0.5; // metres before the hips, along their facing, the tip must be for a frame to count toward the window
+export const AHEAD = 0; // metres before the hips (along +z) the tip must be for a frame to count toward the window
+export const SETTLE = 2; // m/s: the tip slower than this for a tenth of a second after the cut is at rest
 // the game's helpers no measure reads, moved apart from the body: the
 // trajectory carries the figure (root travel, measured on its own), the rest
 // are cameras and targets
-const DROP =
-  /^(Reference|AITrajectory|Trajectory|TrajectoryEnd|CameraBase|CameraJoint|Camera3pDefPos_Rig|Camera3p_Rig|TrajChildDummy|TrajChildDummyCam|Wep_Aim_Target_Rig|Connect|ConnectEnd|Ground)$/;
-const TRAJ = "AITrajectory";
+const DROP = /^(Reference|AITrajectory|Trajectory|TrajectoryEnd|CameraBase|CameraJoint|Camera3pDefPos_Rig|Camera3p_Rig|TrajChildDummy|TrajChildDummyCam|Wep_Aim_Target_Rig|Connect|ConnectEnd|Ground)$/;
+const TRAJ = 'AITrajectory';
 const PATHS = {
-  translation: "position",
-  rotation: "quaternion",
-  scale: "scale",
+  translation: 'position',
+  rotation: 'quaternion',
+  scale: 'scale',
 };
 
 // what a hero's set falls back on where it has nothing of its own: the
 // game's generic humanoid (A_HM_*), never a clip from another library
 export const GENERIC = {
   dodges: {
-    back: "A_HM_Rifle_Dodge_Back_01",
-    front: "A_HM_Rifle_Dodge_Front_01",
-    left: "A_HM_Rifle_Dodge_Left_01",
-    right: "A_HM_Rifle_Dodge_Right_01",
+    back: 'A_HM_Rifle_Dodge_Back_01',
+    front: 'A_HM_Rifle_Dodge_Front_01',
+    left: 'A_HM_Rifle_Dodge_Left_01',
+    right: 'A_HM_Rifle_Dodge_Right_01',
   },
   staggers: {
-    front: ["A_HM_Rifle_Stagger_Bwd_01"],
-    back: ["A_HM_Rifle_Stagger_Fwd_01"],
+    front: ['A_HM_Rifle_Stagger_Bwd_01'],
+    back: ['A_HM_Rifle_Stagger_Fwd_01'],
   },
-  defeat: "A_HM_Death_Stand_Front_Melee_02",
+  defeat: 'A_HM_Death_Stand_Front_Melee_02',
 };
 
 const num = (s) => (s == null ? 1 : Number(s));
@@ -81,36 +86,24 @@ export function classify(name) {
   });
   let r;
   // (a return names its strike: Strike3_V2_BackToIdle, Strike4_V2_BackToIdle 1, Strike1_BackToIdle_02)
-  if ((r = /AttackLoop_Strike(\d+)(?:_V(\d+))?_BackToIdle/.exec(rest)))
-    return out("return", { index: num(r[1]), variant: num(r[2]) });
-  if ((r = /AttackLoop_Strike(\d+)(?:_V(\d+))?$/.exec(rest)))
-    return out("strike", { index: num(r[1]), variant: num(r[2]) });
-  if ((r = /LightAttack_Blocked_(\d+)/.exec(rest)))
-    return out("blocked", { index: num(r[1]) });
-  if (/Choke|Force|MindTrick|RagePowerUp|CatchSaber|Lightning/.test(rest))
-    return out("force");
-  if ((r = /Block(?:Saber)?_(?:Swing)?(Left|Right)(?:_(\d+))?/.exec(rest)))
-    return out("block", { dir: low(r[1]), variant: num(r[2]) });
-  if ((r = /Block_Stagger(?:_Fwd)?(?:_(\d+))?/.exec(rest)))
-    return out("block", { variant: num(r[1]) });
+  if ((r = /AttackLoop_Strike(\d+)(?:_V(\d+))?_BackToIdle/.exec(rest))) return out('return', { index: num(r[1]), variant: num(r[2]) });
+  if ((r = /AttackLoop_Strike(\d+)(?:_V(\d+))?$/.exec(rest))) return out('strike', { index: num(r[1]), variant: num(r[2]) });
+  if ((r = /LightAttack_Blocked_(\d+)/.exec(rest))) return out('blocked', { index: num(r[1]) });
+  if (/Choke|Force|MindTrick|RagePowerUp|CatchSaber|Lightning/.test(rest)) return out('force');
+  if ((r = /Block(?:Saber)?_(?:Swing)?(Left|Right)(?:_(\d+))?/.exec(rest))) return out('block', { dir: low(r[1]), variant: num(r[2]) });
+  if ((r = /Block_Stagger(?:_Fwd)?(?:_(\d+))?/.exec(rest))) return out('block', { variant: num(r[1]) });
   // (Luke's Stagger_Front is the others' Stagger_Bwd: hit from the front, a step back)
   if ((r = /^Stagger_(Front|Bwd|Back|Fwd)(?:_(\d+))?$/.exec(rest)))
-    return out("stagger", {
-      dir: r[1] === "Front" || r[1] === "Bwd" ? "front" : "back",
+    return out('stagger', {
+      dir: r[1] === 'Front' || r[1] === 'Bwd' ? 'front' : 'back',
       variant: num(r[2]),
     });
-  if ((r = /Dodge_(Back|Front|Left|Right)(?:_(\d+))?/.exec(rest)))
-    return out("dodge", { dir: low(r[1]), variant: num(r[2]) });
-  if (/SaberDash|^Dash_/.test(rest)) return out("dash");
-  if (/Jump_SaberAttack/.test(rest)) return out("jump");
-  if (/^Defeated/.test(rest)) return out("defeat");
-  if (
-    /(Stand_)?(Walk|Run|Sprint|TinySteps|Idle|IdleLoop)|StandTurn|Stand_Turn|Jump_Fwd/.test(
-      rest,
-    )
-  )
-    return out("locomotion");
-  return out("other");
+  if ((r = /Dodge_(Back|Front|Left|Right)(?:_(\d+))?/.exec(rest))) return out('dodge', { dir: low(r[1]), variant: num(r[2]) });
+  if (/SaberDash|^Dash_/.test(rest)) return out('dash');
+  if (/Jump_SaberAttack/.test(rest)) return out('jump');
+  if (/^Defeated/.test(rest)) return out('defeat');
+  if (/(Stand_)?(Walk|Run|Sprint|TinySteps|Idle|IdleLoop)|StandTurn|Stand_Turn|Jump_Fwd/.test(rest)) return out('locomotion');
+  return out('other');
 }
 
 // ── the skeleton and a clip, read ──
@@ -128,8 +121,7 @@ export function rigOf(doc) {
     return o;
   };
   const scene = new THREE.Group();
-  for (const n of doc.getRoot().listScenes()[0].listChildren())
-    scene.add(make(n));
+  for (const n of doc.getRoot().listScenes()[0].listChildren()) scene.add(make(n));
   scene.updateMatrixWorld(true);
   return { scene, objs };
 }
@@ -160,7 +152,7 @@ export function clipOf(anim) {
     const times = valuesOf(s.getInput());
     const values = valuesOf(s.getOutput());
     end = Math.max(end, times.at(-1) ?? 0);
-    if (node === TRAJ && path === "translation") traj = { times, values };
+    if (node === TRAJ && path === 'translation') traj = { times, values };
     if (!DROP.test(node)) channels.push({ node, path, times, values });
   }
   return {
@@ -175,50 +167,31 @@ export function clipOf(anim) {
 // ── a clip, measured ──
 
 // the tip (and the socket) through the clip, in place, at `fps`
-function tipRows(clip, rig, { fps, blade, ahead }) {
+function tipRows(clip, rig, { fps, blade, ahead, from = 0 }) {
   const tracks = clip.channels
     .filter((c) => rig.objs.has(c.node))
-    .map(
-      (c) =>
-        new (c.path === "rotation"
-          ? THREE.QuaternionKeyframeTrack
-          : THREE.VectorKeyframeTrack)(
-          `${c.node}.${PATHS[c.path]}`,
-          c.times,
-          c.values,
-        ),
-    );
+    .map((c) => new (c.path === 'rotation' ? THREE.QuaternionKeyframeTrack : THREE.VectorKeyframeTrack)(`${c.node}.${PATHS[c.path]}`, c.times, c.values));
   const { scene, objs } = rig;
-  const wep = objs.get("Wep_Root");
-  const hips = objs.get("Hips");
-  if (!wep || !hips) throw new Error("not the game’s rig: no Wep_Root or Hips");
+  const wep = objs.get('Wep_Root');
+  const hips = objs.get('Hips');
+  if (!wep || !hips) throw new Error('not the game’s rig: no Wep_Root or Hips');
   const mixer = new THREE.AnimationMixer(scene);
-  const action = mixer
-    .clipAction(new THREE.AnimationClip(clip.name ?? "m", clip.end, tracks))
-    .play();
+  const action = mixer.clipAction(new THREE.AnimationClip(clip.name ?? 'm', clip.end, tracks)).play();
   const rows = [];
   const q = new THREE.Quaternion();
-  // (the hips' own forward: the axis that points +z at rest, followed as the strike turns the body)
-  scene.updateMatrixWorld(true);
-  const fwdLocal = new THREE.Vector3(0, 0, 1).applyQuaternion(
-    hips.getWorldQuaternion(new THREE.Quaternion()).invert(),
-  );
+  // (the way a cut goes is read in the figure's own frame: +z where the clip
+  // starts, turned as the hips turn from there)
+  let fwdLocal = null;
   const fwd = new THREE.Vector3();
   for (let f = 0, n = Math.round(clip.end * fps); f <= n; f++) {
     action.time = Math.min(clip.end, f / fps);
     mixer.update(0);
     scene.updateMatrixWorld(true);
     const base = wep.getWorldPosition(new THREE.Vector3());
-    const tip = new THREE.Vector3(0, 1, 0)
-      .applyQuaternion(wep.getWorldQuaternion(q))
-      .multiplyScalar(blade)
-      .add(base);
+    const tip = new THREE.Vector3(0, 1, 0).applyQuaternion(wep.getWorldQuaternion(q)).multiplyScalar(blade).add(base);
     const h = hips.getWorldPosition(new THREE.Vector3());
-    fwd
-      .copy(fwdLocal)
-      .applyQuaternion(hips.getWorldQuaternion(q))
-      .setY(0)
-      .normalize();
+    fwdLocal ??= new THREE.Vector3(0, 0, 1).applyQuaternion(hips.getWorldQuaternion(new THREE.Quaternion()).invert());
+    fwd.copy(fwdLocal).applyQuaternion(hips.getWorldQuaternion(q)).setY(0).normalize();
     const rel = tip.clone().sub(h);
     // (+x is the figure's left when it faces +z: the left of its facing is up × forward)
     const left = new THREE.Vector3(fwd.z, 0, -fwd.x);
@@ -227,9 +200,12 @@ function tipRows(clip, rig, { fps, blade, ahead }) {
       hand: tip.toArray(),
       base: base.toArray(),
       body: [rel.dot(left), rel.y, rel.dot(fwd)],
-      ahead: rel.dot(fwd) > ahead,
+      ahead: action.time > from + 1e-6 && rel.z > ahead,
     });
   }
+  // (a frame's speed is from the frame before: it counts only when both do,
+  // so a tip coming round into the front doesn't bring its run-up with it)
+  for (let i = rows.length - 1; i > 0; i--) rows[i].ahead = rows[i].ahead && rows[i - 1].ahead;
   action.stop();
   mixer.uncacheRoot(scene);
   // (back to rest, so the next clip starts from the skeleton, not this one's end)
@@ -253,8 +229,8 @@ export function strokeDir(rows, [t0, t1]) {
   const inside = rows.filter((r) => r.t >= t0 && r.t <= t1);
   const span = inside.length > 1 ? inside : rows;
   const [dx, dy] = sub(span.at(-1).body, span[0].body);
-  if (Math.abs(dy) > Math.abs(dx)) return dy < 0 ? "up" : "rise";
-  return dx > 0 ? "right" : "left";
+  if (Math.abs(dy) > Math.abs(dx)) return dy < 0 ? 'up' : 'rise';
+  return dx > 0 ? 'right' : 'left';
 }
 
 // the plane the blade sweeps in its window: the normal of the turn from
@@ -288,11 +264,27 @@ function travelAt(root, t) {
   return [xa + (xb - xa) * k, za + (zb - za) * k];
 }
 
-export function measure(
-  clip,
-  rig,
-  { fps = 30, blade = BLADE, ahead = AHEAD } = {},
-) {
+// the clip's first key after its start (the header says why none before it counts)
+function firstKey(clip) {
+  const seconds = clip.channels.map((c) => c.times[1]).filter((t) => t > 0);
+  return seconds.length ? Math.min(...seconds) : 0;
+}
+
+// when the blade comes to rest after the window: the first frame of a tenth
+// of a second slower than SETTLE (the clip's end if it never does)
+export function settleAfter(rows, after, end) {
+  const speed = (i) => Math.hypot(...rows[i].hand.map((v, j) => v - rows[i - 1].hand[j])) / Math.max(1e-6, rows[i].t - rows[i - 1].t);
+  const hold = Math.max(1, Math.round(0.1 / Math.max(1e-6, rows[1]?.t - rows[0]?.t || 1)));
+  for (let i = 1; i < rows.length - hold; i++) {
+    if (rows[i].t < after) continue;
+    let still = true;
+    for (let k = 0; k < hold && still; k++) still = speed(i + k) < SETTLE;
+    if (still) return round(Math.max(after, rows[i - 1].t));
+  }
+  return round(end);
+}
+
+export function measure(clip, rig, { fps = 30, blade = BLADE, ahead = AHEAD } = {}) {
   for (const [, o] of rig.objs)
     o.userData.rest ??= {
       p: o.position.clone(),
@@ -303,12 +295,10 @@ export function measure(
   let root = null;
   if (clip.traj) {
     const tr = clip.traj;
-    root = rootTravel(
-      tr.times.map((t, i) => ({ t, at: tr.values.slice(i * 3, i * 3 + 3) })),
-    );
+    root = rootTravel(tr.times.map((t, i) => ({ t, at: tr.values.slice(i * 3, i * 3 + 3) })));
   } else if (clip.extras?.root) root = clip.extras.root;
   if (root && !root.some(([, x, z]) => Math.hypot(x, z) > 0.01)) root = null;
-  const rows = tipRows(clip, rig, { fps, blade, ahead });
+  const rows = tipRows(clip, rig, { fps, blade, ahead, from: firstKey(clip) });
   // the tip where it goes, the body's travel with it: a thrust's blade moves
   // little in the hands, and lands with the lunge
   const moving = rows.map((r) => {
@@ -319,35 +309,24 @@ export function measure(
   return {
     duration: round(clip.end),
     contact,
+    settle: settleAfter(moving, contact[1], clip.end),
     dir: strokeDir(rows, contact),
     plane: sweepPlane(rows, contact),
     root: root && root.map(([t, x, z]) => [round(t), round(x), round(z)]),
-    tipPath: rows.map((r) => [
-      round(r.t),
-      ...r.hand.map((v) => round(v)),
-      r.ahead ? 1 : 0,
-    ]),
+    tipPath: rows.map((r) => [round(r.t), ...r.hand.map((v) => round(v)), r.ahead ? 1 : 0]),
   };
 }
 
 // ── the table ──
 
-const variantOrder = (a, b) =>
-  a.c.index - b.c.index || a.c.variant - b.c.variant;
+const variantOrder = (a, b) => a.c.index - b.c.index || a.c.variant - b.c.variant;
 
 export function tableFor(hero, clips) {
-  const all = clips
-    .map((k) => ({ k, c: classify(k.name) }))
-    .filter(
-      ({ c }) => c.hero === null || c.hero === low(hero) || c.hero === "hm",
-    );
-  const of = (kind, f = () => true) =>
-    all.filter(({ c }) => c.kind === kind && f(c)).sort(variantOrder);
-  const returns = of("return");
-  const strikes = of("strike").map(({ k, c }) => {
-    const back = returns.find(
-      ({ c: r }) => r.index === c.index && r.variant === c.variant,
-    );
+  const all = clips.map((k) => ({ k, c: classify(k.name) })).filter(({ c }) => c.hero === null || c.hero === low(hero) || c.hero === 'hm');
+  const of = (kind, f = () => true) => all.filter(({ c }) => c.kind === kind && f(c)).sort(variantOrder);
+  const returns = of('return');
+  const strikes = of('strike').map(({ k, c }) => {
+    const back = returns.find(({ c: r }) => r.index === c.index && r.variant === c.variant);
     return {
       name: k.name,
       ...(k.site ? { site: k.site } : {}),
@@ -355,6 +334,7 @@ export function tableFor(hero, clips) {
       variant: c.variant,
       duration: k.duration ?? null,
       contact: k.contact ?? null,
+      settle: k.settle ?? null,
       dir: k.dir ?? null,
       plane: k.plane ?? null,
       root: k.root ?? null,
@@ -365,33 +345,19 @@ export function tableFor(hero, clips) {
   });
   const names = (kind, f) => of(kind, f).map(({ k }) => k.name);
   // a block turns a stroke to one side; a hero without the side blocks with what it has
-  const anyBlock =
-    names("block", (c) => !c.dir)[0] ??
-    names("block")[0] ??
-    names("blocked")[0] ??
-    null;
+  const anyBlock = names('block', (c) => !c.dir)[0] ?? names('block')[0] ?? names('blocked')[0] ?? null;
   const side = (d) => {
-    const own = names("block", (c) => c.dir === d);
+    const own = names('block', (c) => c.dir === d);
     return own.length ? own : anyBlock ? [anyBlock] : [];
   };
-  const blocked = [1, 2, 3, 4, 5, 6].map(
-    (i) =>
-      names("blocked", (c) => c.index === i)[0] ??
-      names("blocked")[0] ??
-      anyBlock,
-  );
+  const blocked = [1, 2, 3, 4, 5, 6].map((i) => names('blocked', (c) => c.index === i)[0] ?? names('blocked')[0] ?? anyBlock);
   const staggers = {
-    front: names("stagger", (c) => c.dir === "front"),
-    back: names("stagger", (c) => c.dir === "back"),
+    front: names('stagger', (c) => c.dir === 'front'),
+    back: names('stagger', (c) => c.dir === 'back'),
   };
   if (!staggers.front.length) staggers.front = GENERIC.staggers.front;
   if (!staggers.back.length) staggers.back = GENERIC.staggers.back;
-  const dodges = Object.fromEntries(
-    ["back", "front", "left", "right"].map((d) => [
-      d,
-      names("dodge", (c) => c.dir === d)[0] ?? GENERIC.dodges[d],
-    ]),
-  );
+  const dodges = Object.fromEntries(['back', 'front', 'left', 'right'].map((d) => [d, names('dodge', (c) => c.dir === d)[0] ?? GENERIC.dodges[d]]));
   const one = (kind) => {
     const hit = of(kind)[0];
     return hit
@@ -405,25 +371,16 @@ export function tableFor(hero, clips) {
         }
       : null;
   };
-  const sites = Object.fromEntries(
-    clips.filter((k) => k.site).map((k) => [k.name, k.site]),
-  );
   return {
     hero: low(hero),
     strikes,
-    blocks: { left: side("left"), right: side("right"), any: anyBlock },
+    blocks: { left: side('left'), right: side('right'), any: anyBlock },
     blocked,
     staggers,
     dodges,
-    dash: one("dash"),
-    jump: one("jump"),
-    defeat: names("defeat")[0] ?? GENERIC.defeat,
-    idle:
-      all.find(
-        ({ k, c }) =>
-          c.kind === "locomotion" &&
-          /Stand_Idle_01$|StandIdle_01$|Stand_IdleLoop_01$/.test(k.name),
-      )?.k.name ?? null,
-    sites,
+    dash: one('dash'),
+    jump: one('jump'),
+    defeat: names('defeat')[0] ?? GENERIC.defeat,
+    idle: all.find(({ k, c }) => c.kind === 'locomotion' && /Stand_Idle_01$|StandIdle_01$|Stand_IdleLoop_01$/.test(k.name))?.k.name ?? null,
   };
 }

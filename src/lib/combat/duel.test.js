@@ -264,6 +264,14 @@ describe('a duellist at the game’s cadence', () => {
     expect(d.timer + DT).toBeCloseTo(1.667, 5);
   });
 
+  it('keeps the game’s strike length when the saber says the whole clip runs longer', () => {
+    const d = createDuellist({ reach: 2.2, strokes: Object.keys(cadence), cadence });
+    d.at = [0, 0];
+    run(d, you(0, 2), always(0.99), { until: (o) => o.begin, walk: false });
+    swung(d, 4.8);
+    expect(d.timer).toBe(1.6);
+  });
+
   it('keeps the site’s own recovery without one', () => {
     const d = createDuellist({ reach: 2.2 });
     d.at = [0, 0];
