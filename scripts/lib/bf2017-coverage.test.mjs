@@ -79,8 +79,8 @@ describe('classify', () => {
     expect(classify(film('Cinematics/Story/A2/M1TAK/game/A2_M1TAK_DS01_S0100_FMV'), none)).toEqual({ state: 'excluded', by: 'era' });
     expect(classify(film('Cinematics/Story/A3/M1PIL/game/A3_M1PIL_DS01_S0100_FMV'), none)).toEqual({ state: 'excluded', by: 'era' });
     expect(classify(film('Cinematics/Story/A1/M1END/game/A1_M1END_DS01_S0100_FMV'), none).state).toBe('owned');
-    expect(classify(font('UI/Resources/Fonts/LinotypeUnivers-420Cn'), none)).toEqual({ state: 'excluded', by: 'licence' });
-    expect(classify(font('UI/Resources/Fonts/Aurebesh'), none)).toEqual({ state: 'excluded', by: 'licence' });
+    expect(classify(font('UI/Resources/Fonts/LinotypeUnivers-420Cn'), none)).toEqual({ state: 'excluded', by: 'licence-pending' });
+    expect(classify(font('UI/Resources/Fonts/Aurebesh'), none)).toEqual({ state: 'excluded', by: 'licence-pending' });
     expect(classify(font('UI/Resources/Fonts/Roboto-Regular'), none).state).toBe('owned');
   });
   it('keeps the sequel era out', () => {
@@ -94,7 +94,7 @@ describe('classify', () => {
     expect(c('maps:a3/levels/sp/rootlevel/rootlevel_a3/rootlevel_a3').by).toBe('scaffolding');
   });
   it('excludes the fonts licensed to EA, not the owner (the spec’s A5; lane M’s fontAllowed)', () => {
-    expect(c('fonts:ui/resources/fonts/linotypeunivers')).toEqual({ state: 'excluded', by: 'licence' });
+    expect(c('fonts:ui/resources/fonts/linotypeunivers')).toEqual({ state: 'excluded', by: 'licence-pending' });
   });
   it('keeps the uploader’s notes out as scaffolding', () => {
     expect(c('index:readme.md')).toEqual({ state: 'excluded', by: 'scaffolding' });
