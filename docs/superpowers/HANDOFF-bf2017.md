@@ -84,7 +84,7 @@ The detail maps are lane Q1's (`recipes.json`, `gameMaterial.js`). The design se
 A campaign map with no mode layers has no spawn: pass `--spot`.
 
 **Left.**
-- Decals wait on Q4 (above).
+- Decals wait on Q4 (#852, above). Its contract: `decalsOf(extras, pack, { subworlds })` returns `{ format: 1, cell, count, kinds, skipped, textures, files, cells }`. Run `scripts/bf2017-decals.mjs --fetch` from the parts writer so the KTX2s land in the pack's `tex/decals/` and are published with it. `createDecals` returns `{ cell(cx, cz, targets), drop, setVisible, stats, dispose }`, where `targets = [{ geometry, matrix }]` are the cell's static instances, so the `onCell` hook must hand over the cell's geometries and matrices from `levelScene.js`'s cell record. Decals draw on the node renderer only. Endor_01 will keep 12 of its 23: its 11 normal-only volume decals have no colour map.
 - The tracks drive nothing on Hoth or Endor: their packs hold no owner of a track, and `levelScene.js`'s instanced draws have no node to turn. Q's asteroids use `createTracks` on their own nodes.
 - Endor's bunker halls are E3's interior pack (the line above).
 - The engine join for the shapes (P0's Left).
