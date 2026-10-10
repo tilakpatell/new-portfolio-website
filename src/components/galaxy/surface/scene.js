@@ -142,6 +142,7 @@ import { garrisonLife, garrisonProbe } from './garrison';
 import { createGround, landingFor } from './ground/index';
 import { standable } from './sites/validity';
 import { floraTint } from './flora';
+import { groundFor, lightFor } from './engine';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -275,6 +276,9 @@ export async function create(canvas, ctx) {
   // (the look's sky is the dome's: its horizon and zenith, the sun's way)
   house.sky({ low: sky.uniforms.uHorizon.value, high: sky.uniforms.uZenith.value, sunDir });
   house.light({ sun, hemi });
+  // the game's light, where the site names an entry (engine.js): lane R's
+  // applyGameLight is handed in when it lands; until then, today's lights
+  lightFor(site, { scene, sun, hemi, second, renderer });
   // what shiny things reflect: the sky
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envSky = sky.envScene();
@@ -352,6 +356,10 @@ export async function create(canvas, ctx) {
     // (how deep the water can be before you're turned back: the lagoon on Kashyyyk)
     wadeMax: wade != null ? site.water.wadeMax : undefined,
   };
+  // the level's ground, where the site has one (engine.js): lane P's
+  // createLevelPhysics is handed in when it lands (its physics then
+  // given to the walker); until then, walker.js's
+  groundFor(site, { scene, world });
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
 
