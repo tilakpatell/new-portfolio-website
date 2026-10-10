@@ -110,7 +110,8 @@ export function deploy(b, _id, { classId } = {}) {
   return { ok: true };
 }
 
-const nameOf = (b, id) => b.names.get(id) ?? `Trooper ${String(id).replace(/\D/g, '')}`;
+// (a bot's name is its own from the game's lists, ai/names.js; yours is You)
+const nameOf = (b, id) => b.names.get(id) ?? b.sim.entities.get(id)?.name ?? `Trooper ${String(id).replace(/\D/g, '')}`;
 
 export function step(b, inputs = []) {
   const p = b.player;

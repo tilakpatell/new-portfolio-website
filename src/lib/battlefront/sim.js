@@ -19,7 +19,8 @@
 //   deploy(sim, id, { kind, id, spawn: 'point' | 'squad' }) → { ok, why }
 //   step(sim, inputs = []) → events     inputs: [{ id, move: [x, z], look, fire, aim: [x, y, z], crouch, sprint, roll, ability, vent, cool }]
 //   addPlayer(sim, { team, classId, at, yaw }) → id      removeEntity(sim, id)
-//   view(sim, { player }) → { time, teams, entities, bolts, mode, deploying, deploy }  (one object, refreshed in place)
+//   view(sim, { player }) → { time, teams, entities, bolts, mode, deploying, deploy }  (one object, refreshed in place;
+//     an entity row carries a bot's `name`, ai/names.js)
 //   drain(sim) → the event log so far, cleared
 
 import { seeded } from '../seeded.js';
@@ -505,6 +506,7 @@ export function view(sim, { player = null } = {}) {
     e.heat = s.gun?.heat ?? 0;
     e.mode = s.brain?.intent?.mode ?? null;
     e.unit = s.unit ?? null;
+    e.name = s.name ?? null;
     e.points = sim.bp ? balance(sim.bp, s.id) : 0;
     e.oob = s.oobSince != null ? Math.max(0, OOB_SECONDS - (sim.time - s.oobSince)) : null;
   }
