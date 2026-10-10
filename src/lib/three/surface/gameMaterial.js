@@ -30,7 +30,7 @@
 
 import { loadThree } from '../light/three.js';
 import { composeOverlays, overlayName } from './compose.js';
-import { EMISSIVE_EXPOSURE, EMISSIVE_MAX, METAL_CHANNEL, PAINT_CHANNEL, PARALLAX_STEPS } from './families.js';
+import { AOSLICE_LEVELS, EMISSIVE_EXPOSURE, EMISSIVE_MAX, METAL_CHANNEL, PAINT_CHANNEL, PARALLAX_STEPS } from './families.js';
 
 // ---- the site's weights where the recipe has a switch and no number
 
@@ -56,11 +56,14 @@ export const REFLECTANCE_TO_SPECULAR = 4;
 // the share of the sun a leaf passes through at SubsurfaceBackfaceScale 1
 export const TRANSLUCENCY_WEIGHT = 0.25;
 
+// the most slices a detail array is sampled at (the characters' have 3)
+export const MAX_SLICES = 4;
+
 const ON_MID = new Set(['detail', 'detailArray', 'emissive']);
 // the recipe maps each tier draws, for the loader to fetch no more (low: none)
 export const TIER_MAPS = {
   low: [],
-  mid: ['detail', 'emissive'],
+  mid: ['detail', 'aoSlice', 'emissive'],
   high: null,
   ultra: null,
 };
@@ -150,8 +153,7 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
 
   // (a tiling map repeats: the pack's KTX2 loads clamped, and the detail
   // tiles 20 times over a vehicle's panel)
-  for (const k of ['detail', 'grunge', 'breakupColor', 'breakupNormal', 'scorch']) {
-    const t = maps[k];
+  for (const t of [...['detail', 'grunge', 'breakupColor', 'breakupNormal', 'scorch'].map((k) => maps[k]), ...(maps.detailSlices ?? [])]) {
     if (t && (t.wrapS !== THREE.RepeatWrapping || t.wrapT !== THREE.RepeatWrapping)) {
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.needsUpdate = true;
@@ -218,9 +220,35 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
   // UDN: the detail's xy added to the base's at its weight, z kept
   const udn = (n, d, s) => normalize(vec3(n.xy.add(d.xy.mul(s)), n.z));
 
-  // ---- the detail normal
+  // ---- the detail normal: a detail array's every slice, each texel the one
+  // AOSlice's green names (four levels: three slices and none), each at its
+  // own tiling and weight; else one detail map
   const detailKind = recipe.maps?.detailArray ? 'detailArray' : 'detail';
-  if (want(detailKind, !!maps.detail && !!p.detail)) {
+  const slices = (maps.detailSlices ?? []).filter(Boolean).slice(0, MAX_SLICES);
+  const perTexel = slices.length && maps.aoSlice && recipe.maps?.detailSlice === 'aoSlice';
+  if (perTexel && want(detailKind, !!p.detail)) {
+    const per = p.detail.perSlice ?? {};
+    const level = texture(maps.aoSlice, uv0).g;
+    // (the level's index: a step at each midpoint between AOSLICE_LEVELS)
+    let k = float(0);
+    for (let j = 1; j < AOSLICE_LEVELS.length; j++) k = k.add(step(float((AOSLICE_LEVELS[j - 1] + AOSLICE_LEVELS[j]) / 2), level));
+    let xy = vec2(0, 0);
+    let smooth = float(0);
+    slices.forEach((t, i) => {
+      const w = saturate(float(1).sub(k.sub(i).abs()));
+      const tile = per.tiling?.[i] || p.detail.tiling?.[0] || 1;
+      const s = (per.normal?.[i] ?? p.detail.normal ?? 1) * (p.detail.strength ?? 1);
+      const d = texture(t, uvD.mul(vec2(tile, tile))).xy.mul(2).sub(1);
+      xy = xy.add(d.mul(w.mul(s)));
+      smooth = smooth.add(w.mul((per.smoothness?.[i] ?? p.detail.smoothness ?? 0) * (p.detail.strength ?? 1)));
+    });
+    tn = normalize(vec3(tn.xy.add(xy), tn.z));
+    tangentDirty = true;
+    roughness = roughness.mul(float(1).sub(saturate(smooth.mul(DETAIL_SMOOTHNESS_WEIGHT))));
+    game.slices = slices.length;
+  } else if (want(detailKind, !!(maps.detail ?? slices[0]) && !!p.detail)) {
+    maps = { ...maps, detail: maps.detail ?? slices[0] };
+    game.slices = 1;
     const [tu, tv] = p.detail.tiling ?? [1, 1];
     const d = texture(maps.detail, uvD.mul(vec2(tu, tv)))
       .xyz.mul(2)

@@ -13,13 +13,17 @@
 // light moves (no recompile), the frame time.
 //
 // rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only,
-//   materials, weather, decals }
+//   materials, weather, decals, particles }
 //
 // `materials` (lane Q1, scripts/light-fixture.mjs --materials): { mode:
 // 'game' | 'glb', list: [{ label, recipe, glb, maps: { detail: url, … } }] }:
 // the ring and its things set aside, a cube per recipe wearing the game
 // material over the GLB's own (mode 'glb': the GLB's material as it is) and
 // a wall under the first recipe, seen from probe.view('row' | 'wall').
+//
+// `particles` (fidelity lane X): the game's effects from their emitter
+// tables over the ring, and the GPU twin's parity (particleProbe.js), read
+// by scripts/light-fixture.mjs --particles as `probe.particles`.
 //
 // `weather` (lane Q4, seconds into Hoth's day): three crates at the front
 // under the snow contributor of src/lib/three/surface/weather.js, composed
@@ -103,6 +107,12 @@ export default {
     const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 800);
     camera.position.set(0, 7, 24);
     camera.lookAt(0, 1, 0);
+    // (closer for the particles: a flake is 3 to 5 cm)
+    if (opts.particles) {
+      camera.position.set(0, 2.2, 7);
+      camera.lookAt(0, 2.4, 0);
+    }
+    const camVel = new THREE.Vector3();
 
     const made = [];
     const mat = (o) => {
@@ -222,6 +232,15 @@ export default {
       }
       if (opts.weather != null) snow = await weatherCrates(scene, made, opts.weather);
       if (opts.decals) decals = await decalWall(scene, made, renderer, ground, opts.decals, opts.tier);
+      if (opts.particles) {
+        const { createParticleProbe } = await import('./particleProbe.js');
+        probe.particles = await createParticleProbe({ scene, renderer, camera, light, tier: opts.tier });
+        probe.particles.warm(6);
+        // a pan for the streaks: the camera moved sideways at `speed` m/s
+        probe.pan = (speed) => {
+          camVel.set(speed, 0, 0);
+        };
+      }
       envTex = scene.environment;
       probe.setEnv(opts.env);
       light.update(0, camera);
@@ -244,6 +263,8 @@ export default {
       },
       step(dt) {
         cube.rotation.y += dt;
+        if (camVel.x) camera.position.addScaledVector(camVel, dt);
+        probe.particles?.step(dt);
         light?.update(dt, camera);
       },
       draw({ renderer: r }) {
@@ -256,6 +277,7 @@ export default {
         grid?.dispose();
         light?.dispose();
         decals?.dispose();
+        probe.particles?.dispose();
         if (!opts.sky) envTex?.dispose();
         for (const m of made) m.dispose();
       },
@@ -304,7 +326,7 @@ async function recipeRow(scene, renderer, { mode = 'game', list = [] }, tier, ma
     const gltf = entry.glb ? await gltfLoader().loadAsync(entry.glb) : null;
     const glb = gltf ? glbMaterial(gltf, entry.recipe) : new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 0.6 });
     const maps = { glb };
-    for (const [k, url] of Object.entries(entry.maps ?? {})) maps[k] = url ? await ktx2.loadAsync(url) : null;
+    for (const [k, url] of Object.entries(entry.maps ?? {})) maps[k] = Array.isArray(url) ? await Promise.all(url.map((u) => ktx2.loadAsync(u))) : url ? await ktx2.loadAsync(url) : null;
     const material = mode === 'glb' ? glb : make(entry.recipe, maps, { tier, sun: SUN });
     made.push(material);
     const cube = new THREE.Mesh(box, material);
