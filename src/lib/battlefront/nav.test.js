@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aiOf, loadRulebook } from './rulebook.js';
 import { CRATE, HILL, WALL, field, fieldHeight } from './fixtures/field.js';
-import { buildNav, cellAt, coverSlots, findPath, firstSolid, heightAt, lineClear, nearestSlot, walkable } from './nav.js';
+import { buildNav, cellAt, coverSlots, findPath, firstSolid, heightAt, lineClear, nearestMainland, nearestSlot, walkable } from './nav.js';
 
 const cover = aiOf(loadRulebook()).cover.constants;
 const nav = buildNav({ ...field(), cover });
@@ -89,5 +89,21 @@ describe('the navgrid', () => {
     const s = nearestSlot(nav, [0, 0, 10], [0, 40]);
     expect(s.normal[1]).toBeLessThan(0);
     expect(s.at[2]).toBeLessThan(WALL.at[2]);
+  });
+
+  it('places a point in a walled-off pocket on the main region instead', () => {
+    // a 6 m pen of four walls round (40, -40)
+    const pen = [
+      { at: [40, 1, -44], half: [4, 1, 0.5], yaw: 0 },
+      { at: [40, 1, -36], half: [4, 1, 0.5], yaw: 0 },
+      { at: [36, 1, -40], half: [0.5, 1, 4], yaw: 0 },
+      { at: [44, 1, -40], half: [0.5, 1, 4], yaw: 0 },
+    ];
+    const n = buildNav({ ...field(), solids: [...field().solids, ...pen], cover });
+    expect(walkable(n, 40, -40)).toBe(true);
+    const p = nearestMainland(n, 40, -40);
+    expect(Math.max(Math.abs(p[0] - 40), Math.abs(p[1] + 40))).toBeGreaterThan(4);
+    expect(findPath(n, p, [0, 0])).not.toBe(null);
+    expect(nearestMainland(n, 0, 0)).toEqual([0, 0]);
   });
 });
