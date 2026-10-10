@@ -89,7 +89,14 @@ export function clipsFor(body, clips) {
     const has = new Set(c.tracks.map((t) => t.name));
     for (const [id, [bone, path]] of moved) if (!has.has(id)) c.tracks.push(restTrack(bone, path, c.duration));
   }
-  for (const [name, to] of Object.entries(CLIP_FALLBACK)) if (!own[name] && own[to]) own[name] = own[to];
+  // (each its own copy: the mixer keeps one action a clip, so a fallback
+  // sharing the idle's would have a dodge stop the idle for good)
+  for (const [name, to] of Object.entries(CLIP_FALLBACK))
+    if (!own[name] && own[to]) {
+      own[name] = own[to].clone();
+      own[name].name = name;
+      own[name].userData = { ...own[to].userData };
+    }
   return own;
 }
 

@@ -206,7 +206,9 @@ function rigged(model, clips, tall, owned, { seed = seedFor('rigged'), key = nul
   const own = Object.fromEntries(Object.entries(clips).filter(([, clip]) => clip));
   const anim = createAnimator(model, { clips: own, bones, hipsY, up, unit: METRE, seed, key: key == null ? null : `${key}:${tall}`, library });
   const act = Object.fromEntries(['idle', 'walk', 'run'].filter((n) => anim.actions[n]).map((n) => [n, anim.actions[n]]));
-  const calls = animatorCalls(anim, { model, seed, own: Object.keys(own), act });
+  // (library: false, and the calls too play only the figure's own: a 2017
+  // figure never takes a library clip, nor reacts with one)
+  const calls = animatorCalls(anim, { model, seed, own: Object.keys(own), act, library });
   return {
     model,
     bones,
@@ -320,7 +322,10 @@ async function loadModel(spec, cast, looks = null, { templates = null } = {}) {
 // (the saber's strokes come from these). Its materials are the copy's own.
 async function walrusFigure(spec) {
   // (the full figure on a high or ultra device, the light one below: lib/detail's level)
-  const { model, clips, sockets } = await loadWalrusBody(cutFor(spec.src.url, detailLevel()), { packs: spec.packs ?? packUrls(spec.pack) });
+  // (and the full one when the light one isn't there: a figure is never lost for want of a cut)
+  const packs = spec.packs ?? packUrls(spec.pack);
+  const cut = cutFor(spec.src.url, detailLevel());
+  const { model, clips, sockets } = await loadWalrusBody(cut, { packs }).catch((e) => (cut === spec.src.url ? Promise.reject(e) : loadWalrusBody(spec.src.url, { packs })));
   const owned = [];
   model.traverse((o) => {
     if (!o.isMesh) return;

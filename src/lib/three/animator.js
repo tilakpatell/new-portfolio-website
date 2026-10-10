@@ -74,7 +74,9 @@ import { rotateWorld } from './ik';
 import { createLocomotion } from './locomotion';
 
 export const MESHY_MASKS = {
-  upper: ['Spine02', 'Spine01', 'Spine', 'neck', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
+  // (and the 2017 game's chest and neck, Spine1, Spine2, Neck, Neck1: a body
+  // on its skeleton has none of Meshy's names, nor a Meshy body these)
+  upper: ['Spine02', 'Spine01', 'Spine', 'neck', 'Spine1', 'Spine2', 'Neck', 'Neck1', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
   lower: ['Hips', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase'],
   'arm.r': ['RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
   'arm.l': ['LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand'],

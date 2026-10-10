@@ -37,19 +37,33 @@ describe('a figure on the game’s skeleton', () => {
 
   it('puts a bone another clip moves back to rest in a clip that leaves it alone', () => {
     const b = body(BODY);
+    // (a rest of its own, so a track of identity would not pass for it)
+    const arm0 = b.getObjectByName('LeftArm');
+    arm0.quaternion.set(0.2, 0.1, 0, Math.sqrt(1 - 0.05));
     const set = clipsFor(b, new Map([
       ['walk', clip('walk', [q('Hips'), q('LeftArm', 0.8)])],
       ['idle', clip('idle', [q('Hips')])],
     ]));
     const arm = set.idle.tracks.find((t) => t.name === 'LeftArm.quaternion');
     expect(arm).toBeTruthy();
-    expect(Array.from(arm.values.slice(0, 4))).toEqual([0, 0, 0, 1]);
+    for (const [i, v] of arm0.quaternion.toArray().entries()) expect(arm.values[i]).toBeCloseTo(v, 6);
   });
 
   it('names the fallback for a role the pack lacks, and keeps a clip’s extras', () => {
     const set = clipsFor(body(BODY), new Map([['hit.chest', clip('hit.chest', [q('Spine')], { root: [[0, 0, 0]] })]]));
-    expect(set['hit.head']).toBe(set['hit.chest']);
+    expect(set['hit.head'].tracks).toEqual(set['hit.chest'].tracks);
+    expect(set['hit.head'].userData.root).toEqual([[0, 0, 0]]);
     expect(set['hit.chest'].userData.root).toEqual([[0, 0, 0]]);
+  });
+
+  it('gives a fallback its own clip, so playing it never stops the one it stands in for', () => {
+    const b = body(BODY);
+    const set = clipsFor(b, new Map([['idle', clip('idle', [q('Hips')])]]));
+    expect(set.roll).not.toBe(set.idle);
+    expect(set.roll.name).toBe('roll');
+    // (the mixer keeps one action a clip: shared, a dodge would stop the idle)
+    const mixer = new THREE.AnimationMixer(b);
+    expect(mixer.clipAction(set.roll)).not.toBe(mixer.clipAction(set.idle));
   });
 
   it('finds the sockets by the game’s names', () => {
