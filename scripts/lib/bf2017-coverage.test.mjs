@@ -93,6 +93,20 @@ describe('classify', () => {
     expect(c('test:test/web/models/test_cube.glb')).toEqual({ state: 'excluded', by: 'scaffolding' });
     expect(c('maps:a3/levels/sp/rootlevel/rootlevel_a3/rootlevel_a3').by).toBe('scaffolding');
   });
+  it('excludes the meshes the game never draws, and gives the uploader’s own GLBs, the planets and the unnamed maps their lanes', () => {
+    const none = { consumers: consumersOf({}), owners: OWNERS };
+    const r = (part, name, files = []) => ({ id: `${part}:${name.toLowerCase()}`, part, name, files, bytes: 0, keys: [normalise(name)] });
+    expect(classify(r('models', 'models/levels/mp/endor_01/objects/endor_terrainoccluder/endor_terrainoccluder_01_mesh.glb'), none)).toEqual({ state: 'excluded', by: 'helper' });
+    expect(classify(r('models', 'models/s2_2/levels/jabbaspalace_01/objects/palace_01_shadowmesh_mesh.glb'), none).by).toBe('helper');
+    expect(classify(r('models', 'models/objects/architecture/bespin/backdrop_02/clouds_billboard_building_01_mesh.glb'), none)).toEqual({ state: 'owned', by: 'E' });
+    // (a manifest's model is not the uploader's own because its files are under models/)
+    expect(classify(r('models', 'objects/nature/arctic/rock_01_mesh', ['models/objects/nature/arctic/rock_01_mesh.glb']), none).by).toBe('O');
+    expect(classify(r('models', 'objects/planets/naboo/planet_naboo_mesh'), none).by).toBe('space');
+    expect(classify(r('textures', 'Objects/Nature/Forest/_ForestBase/_TerrainTextures/T_ForestBase_Clover_02_H'), none).by).toBe('surfaces-Q2');
+    expect(classify(r('textures', 'Objects/Nature/Kashyyyk/_KashyyykBase/_Decals/T_KashyyykBase_Decal_Soot_01_N'), none).by).toBe('surfaces-Q4');
+    expect(classify(r('textures', 'Levels/MP/Endor_01/Objects/EndorBase/T_EndorBase_Logo_01_CS'), none).by).toBe('E');
+    expect(classify(r('textures', 'Objects/Architecture/Imperial/StarDestroyer_01/T_StarDestroyer_Greeble_01a_N'), none).by).toBe('surfaces-Q1');
+  });
   it('excludes the fonts licensed to EA, not the owner (the spec’s A5; lane M’s fontAllowed)', () => {
     expect(c('fonts:ui/resources/fonts/linotypeunivers')).toEqual({ state: 'excluded', by: 'licence-pending' });
   });

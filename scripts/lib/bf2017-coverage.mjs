@@ -8,7 +8,9 @@
 //                 campaign's mission codes and act 3), the uploader's
 //                 scaffolding and notes, or `licence-pending` (the fonts
 //                 licensed to EA, lane M's `fontAllowed`, until the owner
-//                 confirms a licence for them on the PR; then lifted)
+//                 confirms a licence for them on the PR; then lifted), or
+//                 `helper`: a mesh the game never draws (its occluders,
+//                 shadow meshes, colliders, light blockers, dummies)
 //   not-uploaded  a manifest lists it and the bucket's listing has none of
 //                 its files (`by`: the lane that uploads it, D for textures)
 //   owned         the owners table (bf2017-owners.mjs) names a lane for it
@@ -36,6 +38,8 @@ const EXTRAS = ['lights', 'decals', 'actors', 'vehicles', 'effects'];
 // The spec's §6, verbatim: the uploader's test files and ranges, its
 // placeholders, what it marked for deletion, the RootLevel dev maps, and the
 // paintball set (the sequel's Resistance and First Order art)
+// the engine's helper meshes, by their names: never drawn, so nothing to use
+export const HELPER = /(occluder|occlusion|shadowmesh|treeshadow|fakeshadow|gameplaycollision|_collider_|lightblocker|vistablocker|_invisible_|dummy)/;
 export const EXCLUDED_PREFIXES = ['test/', 'testranges', 'placeholders', 'tobedeleted_tempintransition', 'rootlevel', 'paintball'];
 // The uploader's own notes and viewers (README, GUIDE, the two viewer pages): not content
 const DOCS = /(^|\/)(readme\.md|guide\.md|viewer\.html|cloud_viewer\.html)$/;
@@ -177,7 +181,10 @@ function ownerOf(row, owners) {
     if (!o.match && !o.part) continue;
     if (o.part && row.part !== o.part) continue;
     if (!o.match) return o;
-    const ok = o.match instanceof RegExp ? ownerHit(row, (s) => o.match.test(s)) : ownerHit(row, (s) => s.startsWith(lower(o.match)));
+    // (`nameOnly`: the row's own name, not its files' paths: an object only
+    // the listing names is called by its bucket path)
+    const test = o.match instanceof RegExp ? (s) => o.match.test(s) : (s) => s.startsWith(lower(o.match));
+    const ok = o.nameOnly ? test(lower(row.name)) : ownerHit(row, test);
     if (ok) return o;
   }
   return null;
@@ -191,6 +198,7 @@ export function classify(row, { consumers, listing = null, owners = [] }) {
   if (row.part === 'fonts' && !fontAllowed(row.name)) return { state: 'excluded', by: 'licence-pending' };
   if (hit(row, (s) => EXCLUDED_PREFIXES.some((p) => (p.endsWith('/') ? s.startsWith(p) : s.includes(p))))) return { state: 'excluded', by: 'scaffolding' };
   if (DOCS.test(lower(row.name))) return { state: 'excluded', by: 'scaffolding' };
+  if (row.part === 'models' && HELPER.test(lower(row.name).split('/').pop())) return { state: 'excluded', by: 'helper' };
   if (listing && row.files.length && !row.files.some((f) => listing.has(pathKey(f)))) return { state: 'not-uploaded', by: row.part === 'textures' ? 'D' : 'listing' };
   const o = ownerOf(row, owners);
   if (o) return { state: 'owned', by: o.lane, ...(o.finding ? { finding: true } : {}) };

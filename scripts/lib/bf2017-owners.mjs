@@ -108,6 +108,35 @@ export const OWNERS = [
   { part: 'physics', lane: 'E' },
   { part: 'collision', lane: 'E' },
   { part: 'animtracks', lane: 'E' },
+  // the uploader's own GLBs (`models/…`, no manifest row: the meshes the
+  // maps place that the web build had skipped, HANDOFF-bf2017.md) are the
+  // level packs' (lane E)
+  { match: 'models/', part: 'models', nameOnly: true, lane: 'E' },
+  // a planet's globe and its maps: the space lane's (the map's globes)
+  { match: /(^|\/)objects\/planets?\//, lane: 'space' },
+  // the maps no model names, which a shader preset or a variation binds:
+  // the ground's terrain sets and its cloud shadows, flow maps and water
+  // (surfaces-Q2), the decals' sheets (Q4), and the materials' shared
+  // detail, tiling, mask and reflection maps and the presets' own (Q1); a
+  // level's own (lane E)
+  { match: /(_terraintextures|virtualterraintextures|cloudshadow|flowmap|caustics|watergradient|\/_ocean\/|_water_)/, part: 'textures', lane: 'surfaces-Q2' },
+  { match: /\/_decals?\//, part: 'textures', lane: 'surfaces-Q4' },
+  { match: /^(textures\/)?(levels|s\d[\d_]*\/levels)\//, part: 'textures', lane: 'E' },
+  { match: /(^|\/)objects\//, part: 'textures', lane: 'surfaces-Q1' },
+  // the objects' own records, by type: the blueprints are the library's
+  // (each used object's says whether it collides: library-used.json); the
+  // shader graphs, presets and variations are the materials' (Q1); the LOD
+  // groups, the spatial prefabs and the layers the level packs' (E), with the
+  // banners' cloth the levels hang; the vehicles' the game's lane 4; the
+  // skeletons and animation sets lane A's; the effects and emitters lane
+  // X's; the logic and schematics the game's lane 6
+  { match: /^objects\/objectblueprint$/, part: 'data', lane: 'O' },
+  { match: /^objects\/(shadergraph|objectvariation|surfaceshaderpreset|externalshaderbooleandescription|vertexshaderfragmentasset)$/, part: 'data', lane: 'surfaces-Q1' },
+  { match: /^objects\/(meshlodgroup|spatialprefabblueprint|layerdata|clothasset|clothobjectblueprint)$/, part: 'data', lane: 'E' },
+  { match: /^objects\/vehicleblueprint$/, part: 'data', lane: '4' },
+  { match: /^objects\/(skeletonasset|antanimationsetasset)$/, part: 'data', lane: 'A' },
+  { match: /^objects\/(effectblueprint|meshemitterasset)$/, part: 'data', lane: 'X' },
+  { match: /^objects\/(logicprefabblueprint|schematicchannelasset|schematicsasset|gamedatacontainerasset)$/, part: 'data', lane: '6' },
   // lane O: every placeable object
   { match: 'objects/', lane: 'O' },
 
