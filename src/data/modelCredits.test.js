@@ -65,7 +65,7 @@ describe('the 3D models that are other people’s', () => {
         expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
       }
     }
-  });
+  }, 30000); // (every credit looked for through the whole site's source: 25 MB, near 400 credits)
 
   it('worn in the wardrobe are credited wherever the crew wear them too', () => {
     // (the cruiser's seats in the universe and the galaxy; out of the ship on a planet)
