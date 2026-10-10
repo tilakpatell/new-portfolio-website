@@ -11,8 +11,10 @@
 //
 //   lightFor(site, { scene, sun, hemi, second, renderer, applyGameLight }) →
 //     { kind: 'site' } (today's lights, left as they are) | { kind: 'game', ...what applyGameLight gave }
-//   groundFor(site, { scene, world, createLevelPhysics }) →
-//     null (today's ground: the height grid and walker.js) | lane P's level physics
+//   groundFor(site, { world, pack, physics, loadBin, tier, state, row,
+//     createLevelCollision, createPlayerBody }) → null (today's ground: the
+//     height grid and walker.js) | Promise<{ collision, body }> (P0's
+//     collision for the level, P1's body on it when both are given)
 //   postFor({ shading, renderer, scene, camera, small, glsl, nodes }) →
 //     the post the backend draws: universe/post.js's (glsl) on the classic
 //     renderer, nodes/post.js's on the node renderer
@@ -25,9 +27,13 @@ export function lightFor(site, { scene = null, sun = null, hemi = null, second =
   return { kind: 'game', ...(got ?? {}) };
 }
 
-export function groundFor(site, { scene = null, world = null, createLevelPhysics = null } = {}) {
-  if (!site?.level || typeof createLevelPhysics !== 'function') return null;
-  return createLevelPhysics({ level: site.level, scene, heightAt: world?.heightAt ?? null });
+export function groundFor(site, { world = null, pack = null, physics = null, loadBin = null, tier = 'high', state = null, row = null, createLevelCollision = null, createPlayerBody = null } = {}) {
+  if (!site?.level || typeof createLevelCollision !== 'function') return null;
+  return Promise.resolve(createLevelCollision({ pack, physics, loadBin, tier })).then((collision) => ({
+    collision,
+    // (the soldier's body only where the level is in a physics world: P1 on P0's)
+    body: collision?.physics && typeof createPlayerBody === 'function' ? createPlayerBody({ physics: collision.physics, state, row, world }) : null,
+  }));
 }
 
 export function postFor({ shading = 'glsl', renderer, scene, camera, small = false, glsl, nodes }) {

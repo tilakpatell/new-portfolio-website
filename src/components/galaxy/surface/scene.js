@@ -356,9 +356,9 @@ export async function create(canvas, ctx) {
     // (how deep the water can be before you're turned back: the lagoon on Kashyyyk)
     wadeMax: wade != null ? site.water.wadeMax : undefined,
   };
-  // the level's ground, where the site has one (engine.js): lane P's
-  // createLevelPhysics is handed in when it lands (its physics then
-  // given to the walker); until then, walker.js's
+  // the level's ground, where the site has one (engine.js): the physics
+  // lanes' createLevelCollision (P0) and createPlayerBody (P1) are handed
+  // in when they land; until then, walker.js's
   groundFor(site, { scene, world });
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);

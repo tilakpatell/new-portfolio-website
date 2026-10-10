@@ -27,10 +27,10 @@ describe('the surface on the galaxy’s engine', () => {
     };
     expect(lightFor({ id: 'hoth' }, { ...w, applyGameLight })).toEqual({ kind: 'site' });
     expect(lights(w.scene)).toEqual(before);
-    expect(groundFor({ id: 'hoth' }, { createLevelPhysics: applyGameLight })).toBe(null);
+    expect(groundFor({ id: 'hoth' }, { createLevelCollision: applyGameLight, createPlayerBody: applyGameLight })).toBe(null);
   });
 
-  it('a site with both, before lanes R and P land, keeps today’s too', () => {
+  it('a site with both, before lane R and the physics lanes land, keeps today’s too', () => {
     const w = lit();
     const before = lights(w.scene);
     const site = { gameLight: 'hoth-echo-base', level: 'hoth' };
@@ -39,7 +39,7 @@ describe('the surface on the galaxy’s engine', () => {
     expect(groundFor(site, {})).toBe(null);
   });
 
-  it('a site with both takes lane R’s light and lane P’s ground once they’re handed in', () => {
+  it('a site with both takes lane R’s light, P0’s collision and P1’s body once they’re handed in', () => {
     const w = lit();
     const site = { gameLight: 'hoth-echo-base', level: 'hoth' };
     const asked = [];
@@ -52,8 +52,16 @@ describe('the surface on the galaxy’s engine', () => {
     expect(lightFor(site, { ...w, applyGameLight })).toEqual({ kind: 'game', passes: ['render', 'output'] });
     expect(asked).toEqual(['hoth-echo-base']);
     expect(lights(w.scene)).toEqual([['DirectionalLight', 5], ['DirectionalLight', 1]]);
-    const physics = { walk() {} };
-    expect(groundFor(site, { world: { heightAt: () => 0 }, createLevelPhysics: ({ level }) => (level === 'hoth' ? physics : null) })).toBe(physics);
+  });
+
+  it('the level’s ground: P0’s collision, and P1’s body only on a physics world', async () => {
+    const site = { level: 'hoth' };
+    const body = { step() {} };
+    const createPlayerBody = ({ physics }) => (physics === 'rapier' ? body : null);
+    const onPhysics = await groundFor(site, { physics: 'rapier', createLevelCollision: async ({ physics }) => ({ solids: [], physics }), createPlayerBody });
+    expect(onPhysics.body).toBe(body);
+    const solidsOnly = await groundFor(site, { createLevelCollision: async () => ({ solids: [{ type: 'circle' }], physics: null }), createPlayerBody });
+    expect(solidsOnly).toEqual({ collision: { solids: [{ type: 'circle' }], physics: null }, body: null });
   });
 
   it('draws through the post its backend can run', () => {
