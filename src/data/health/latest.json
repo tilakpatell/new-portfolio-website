@@ -1,6 +1,6 @@
 {
   "date": "2026-10-10",
-  "sha": "2a778cd8",
+  "sha": "4551e413",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -25,7 +25,7 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 3657
+          "n": 3665
         },
         {
           "file": "src/components/middleearth/towns/doom/props.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 489,
+      "value": 491,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
