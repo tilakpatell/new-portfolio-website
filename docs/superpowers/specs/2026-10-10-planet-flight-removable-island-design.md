@@ -109,3 +109,16 @@ The flight’s own code-built things (the player’s wedge, the turret, the bolt
 2. A world’s seams are comment-marked rows and `shared/` imports; the island script is the one place that knows them all, tested against the tree.
 3. `@supabase/supabase-js` is the site’s, not the flight’s; `fastnoise-lite` is the flight’s.
 4. Docs are never deleted by the remover: it adds a decision entry and leaves the history.
+
+## Departures
+
+Where lane J’s code went another way, one line each (the plan’s lines are fixed to match):
+
+- The faces lend two names more than move 1 lists: `PROPS` (`shared/models.js`) and `SITES` (`shared/ground.js`), which the flight’s tests read; the files they come from were already in the flight’s closure, which is unchanged file for file.
+- A fifteenth cross-world line the count above missed: `online.js` loaded `universe/online/nostr.js` lazily. It goes through `universe/shared/room.js` (`joinAsVisitor`), still lazily; the build gains a 67-byte chunk and an 88-byte facade for it.
+- `planetSpecOf` and `lifeFor` take the Expanse as rows *or a lookup*: the code on `main` flew any sector’s planet by a typed `/fly/e:…` URL, not only the thirteen, so `expanse/flight/planets.js` hands them `expanseRow(id)`. The named worlds’ seed hash (`hash64`, FNV-1a) is copied into `lib/land/flight/hash.js`, `planets.test.js` holding it equal to the generator’s. Row ids are lower case, as `PLANETS`’ always were.
+- `scripts/supabase-check.mjs` and `conflict-markers.mjs` are not the flight’s: the asset mirror reads the first’s `projectFrom`, and the second is a check of the whole repository. The durable walk moved out of `supabase-check.mjs` into `scripts/lib/durable-check.mjs`, which is the island’s.
+- `scripts/health/art-mix.mjs` names nothing of the flight on `main`, so it carries no marker.
+- The stack pages are docs a test holds to the tree (`docs/stack/stack.test.js`), so `docs/stack/supabase.md`’s flight rows are marked (`<!-- planet flight -->`) and go with the flight; the first proof found it. Every other doc is history and is never touched.
+- A marked row that uses a name a marked import binds (`packs.js`’s `fly`) counts as a reference, so it is not stale. Lines that named the flight among others were split so a removal drops only its own: `packs.js`’s list, `universes.test.js`’s, `online-check.mjs`’s `own` flag, CI’s log loop (now `*-check.log`).
+- The remover deletes itself, its test and its fixture tree with the flight, and the health gate line that runs it.
