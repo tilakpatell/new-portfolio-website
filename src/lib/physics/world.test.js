@@ -13,8 +13,9 @@ describe('createPhysics', () => {
   it('loads the engine and has his groups', () => {
     expect(physics.RAPIER).toBeTruthy();
     expect(physics.world).toBeTruthy();
-    expect(GROUPS.floor).toBe((1 << 16) | 1);
-    expect(GROUPS.object).toBe((3 << 16) | 5);
+    // (his values plus the character bit in the floor's and the object's filter: groups.js)
+    expect(GROUPS.floor).toBe((1 << 16) | 9);
+    expect(GROUPS.object).toBe((3 << 16) | 13);
     expect(GROUPS.bumper).toBe((4 << 16) | 2);
   });
 

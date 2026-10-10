@@ -117,4 +117,19 @@ describe('createHostileBody', () => {
     expect(() => frames(2, east)).not.toThrow();
     sp.dispose();
   });
+
+  it('a hostile spawned over a floor starts on the floor, not the ground under it', async () => {
+    const world = { ...fixture(), floors: [{ x: 0, z: 0, r: 4, y: 3 }] };
+    const sp = await createSurfacePhysics(world);
+    const t = target(0, 0);
+    const hb = createHostileBody(sp, t, { tall: 1.8 });
+    for (let i = 0; i < 30; i++) {
+      hb.step(STEP, {});
+      hb.drive({ x: 0, z: 0, yaw: 0 }, { x: 0, z: 0 }, STEP);
+      sp.step(STEP);
+      hb.sync(t.b);
+    }
+    expect(hb.y).toBeCloseTo(3, 1);
+    sp.dispose();
+  });
 });

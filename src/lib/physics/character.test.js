@@ -184,4 +184,25 @@ describe('createCharacter', () => {
     expect(() => c.move(STILL, STEP)).not.toThrow();
     p.dispose();
   });
+
+  it('face turns the body without touching the jump or the knock', () => {
+    const c = createCharacter(phys, { position: [0, 1, 0], turn: 100 });
+    run(phys, c, STILL, 1);
+    c.knock([3, 0, 0]);
+    c.jump(4);
+    c.face(1.2);
+    expect(c.yaw).toBeCloseTo(1.2, 5);
+    expect(c.vy).toBe(4);
+    expect(c.knockLeft()).toBeCloseTo(3, 5);
+    run(phys, c, STILL, STEP);
+    expect(c.grounded).toBe(false);
+    c.remove();
+  });
+
+  it('remove() after the world is disposed does not throw', async () => {
+    const p = await world();
+    const c = createCharacter(p, { position: [0, 1, 0] });
+    p.dispose();
+    expect(() => c.remove()).not.toThrow();
+  });
 });

@@ -12,8 +12,9 @@
 // edge are the walker's own rules on the intent. Wiring beside scene.js.
 //
 //   createPlayerBody(sp, st, { rules = WALK }) → {
-//     c (the character), st, step(input, dt, rules?) → { jumped, bumped }, sync(st) → landed (the speed it
-//     hit the ground at this frame, else 0), teleport(x, y, z, yaw?), bind(st), knock([x, y, z]), dispose() }
+//     c (the character), st, parked, step(input, dt, rules?) → { jumped, bumped }, sync(st) → landed (the speed it
+//     hit the ground at this frame, else 0), teleport(x, y, z, yaw?), bind(st), park() (on a ride: the body out of
+//     the world until the next step), knock([x, y, z]), dispose() }
 //   sp: surfacePhysics.js's; st: walker.js's walker()
 
 import { CHARACTER, createCharacter } from '../../../lib/physics/character';
@@ -35,10 +36,12 @@ export function createPlayerBody(sp, first, { rules = WALK } = {}) {
   const prev = [0, 0, 0];
   const here = { x: 0, z: 0 };
   let pending = 0; // a jump asked, m/s, until a substep takes it
+  let parked = false; // on a ride: the body out of the world
   let landed = 0;
   let wasGrounded = true;
   let lowest = 0; // the vertical speed just before landing
   const off = phys.onSubstep((dt) => {
+    if (parked) return;
     if (pending) {
       c.jump(pending);
       pending = 0;
@@ -73,8 +76,17 @@ export function createPlayerBody(sp, first, { rules = WALK } = {}) {
         wrote.y = st.y;
         wrote.z = st.z;
       }
+      if (parked) {
+        // (back from a ride: the body where the state is)
+        parked = false;
+        c.enable(true);
+        c.teleport([st.x, st.y + stand, st.z], st.yaw);
+        wrote.x = st.x;
+        wrote.y = st.y;
+        wrote.z = st.z;
+      }
       if (Math.abs(st.vy - wrote.vy) > MOVED) c.jump(st.vy);
-      if (Math.abs(st.yaw - wrote.yaw) > MOVED) c.teleport(c.position(pos), st.yaw);
+      if (Math.abs(st.yaw - wrote.yaw) > MOVED) c.face(st.yaw); // (a turn only: the jump and the knock go on)
       const it = walkIntent(st, input, dt, r);
       let vx = it.vel.x;
       let vz = it.vel.z;
@@ -137,6 +149,15 @@ export function createPlayerBody(sp, first, { rules = WALK } = {}) {
     teleport,
     get st() {
       return st;
+    },
+    get parked() {
+      return parked;
+    },
+    // on a ride: the body out of the world (nothing bumps a capsule stood where you mounted)
+    park() {
+      if (parked) return;
+      parked = true;
+      c.enable(false);
     },
     // another walker state to carry (you swapped with your crewmate): the body goes to it
     bind(s) {

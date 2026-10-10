@@ -125,7 +125,9 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
 
   // the line of sight, with what it last said for a pair the budget refuses
   const kept = new Map();
-  const keyOf = (a, b) => `${Math.round(a.x * 2)},${Math.round(a.z * 2)}:${Math.round(b.x * 2)},${Math.round(b.z * 2)}`;
+  // (keyed by the asker's place, to the metre, and the target's to two: a pair
+  // that moves keeps its answer for a few frames, stale, not blind)
+  const keyOf = (a, b) => `${Math.round(a.x)},${Math.round(a.z)}:${Math.round(b.x / 2)},${Math.round(b.z / 2)}`;
   const from = [0, 0, 0];
   const dir = [0, 0, 0];
   // (from the ground under each: the brains' points carry y 0 as a placeholder, lib/ai's way)

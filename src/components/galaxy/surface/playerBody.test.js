@@ -138,4 +138,42 @@ describe('createPlayerBody', () => {
     expect(Math.hypot(st.x, st.z)).toBeLessThanOrEqual(32.01);
     sp.dispose();
   });
+
+  it('a yaw written to the state turns the body without killing a jump or a knock', async () => {
+    const { sp, st, pb, frames } = await setup();
+    frames(still, 10);
+    pb.step({ ...still, jump: true }, STEP);
+    sp.step(STEP);
+    pb.sync(st);
+    let top = 0;
+    frames(still, 90, () => {
+      st.yaw += 0.01; // (the scene turns you to the shot every frame while you fire)
+      top = Math.max(top, st.y);
+    });
+    expect(top).toBeGreaterThan(0.6);
+    expect(st.yaw).toBeGreaterThan(0.8);
+    pb.knock([6, 0, 0]);
+    const x0 = st.x;
+    frames(still, 60, () => (st.yaw += 0.01));
+    expect(st.x - x0).toBeGreaterThan(0.6);
+    sp.dispose();
+  });
+
+  it('park() takes the body out of the world; the next step puts it back where the state is', async () => {
+    const { sp, st, pb, frames } = await setup();
+    frames(still, 5);
+    pb.park();
+    const other = createPlayerBody(sp, walker(0, 0, 0.5, 0));
+    frames(still, 5); // (your own body no longer stands in the way of the other's)
+    const o = other.c.position();
+    expect(Math.hypot(o[0], o[2])).toBeLessThan(0.1);
+    other.dispose();
+    st.x = 12;
+    st.z = 4;
+    frames(still, 5);
+    expect(st.x).toBeCloseTo(12, 1);
+    expect(st.z).toBeCloseTo(4, 1);
+    expect(pb.parked).toBe(false);
+    sp.dispose();
+  });
 });

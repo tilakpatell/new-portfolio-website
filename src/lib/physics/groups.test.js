@@ -6,10 +6,24 @@ const filter = (g) => g & 0xffff;
 const meets = (a, b) => (member(a) & filter(b)) !== 0 && (member(b) & filter(a)) !== 0;
 
 describe('GROUPS', () => {
-  it('the old three keep their values', () => {
-    expect(GROUPS.floor).toBe((1 << 16) | 1);
-    expect(GROUPS.object).toBe((3 << 16) | 5);
+  it('his three keep their meaning, with characters in the floor’s and the objects’ filters', () => {
+    // (the floor meets everything, an object everything and bumpers, a bumper objects only: as his;
+    // a character is in the floor's and the object's filter, not in their membership word, so a
+    // query for floor | object never admits a figure: a brain's sight, a bolt's flight)
+    expect(GROUPS.floor).toBe((1 << 16) | (1 | MEMBERS.character));
+    expect(GROUPS.object).toBe((3 << 16) | (5 | MEMBERS.character));
     expect(GROUPS.bumper).toBe((4 << 16) | 2);
+    expect(meets(GROUPS.floor, GROUPS.object)).toBe(true);
+    expect(meets(GROUPS.object, GROUPS.bumper)).toBe(true);
+    expect(meets(GROUPS.floor, GROUPS.bumper)).toBe(false);
+  });
+
+  it('a query for the floor and objects never admits a character', () => {
+    const f = filterOf('floor', 'object');
+    expect(member(GROUPS.character) & filter(f)).toBe(0);
+    expect(member(GROUPS.floor) & filter(f)).not.toBe(0);
+    expect(member(GROUPS.object) & filter(f)).not.toBe(0);
+    expect(member(GROUPS.character) & filter(filterOf('floor', 'object', 'character'))).not.toBe(0);
   });
 
   it('a character meets the floor and another character, not a hurtbox', () => {

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ARMS, DEATH, armsOf, createActivity, fallen, friendlyAim, hostileAim, nextForce, upToFire } from './activity';
 import { GUNS } from '../../universe/gunplay';
+import { createSurfacePhysics } from './surfacePhysics';
+import { createSolids } from './walker';
 
 // The figures, for the body's tests: a Tusken and Vader on Meshy's skeleton
 // (the fixture's, on the catalogue's animator, as a rigged crew figure
@@ -150,6 +152,33 @@ describe('a hostile’s body in the world', () => {
     }
     return { events, shots };
   };
+
+  it('through the physics world, a hostile that sees you chases, and one with a trunk in the way does not', async () => {
+    const sight = async (trunk) => {
+      const solids = createSolids();
+      if (trunk) solids.circle(0, 6, 1.2);
+      const w = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids, floors: [], reach: 40 };
+      const sp = await createSurfacePhysics(w);
+      const a = createActivity({ parent: new THREE.Group(), world: w, sp });
+      a.show({ id: 'q', steps: [{ type: 'shoot', tag: 'foe', n: 1, spawn: { kind: 'stormtrooper', at: [0, 12], hp: 2, tag: 'foe', face: Math.PI, hostile: { range: 40, every: 1.2, damage: 5, delay: 0.4, chase: 4, melee: true, reach: 1.6 } } }] }, { step: 0, count: 0 });
+      await settle(a);
+      const you = { x: 0, y: 0, z: 0, vx: 0, vz: 0 };
+      for (let t = 0; t < 3; t += DT) {
+        a.update(DT, you, t);
+        sp.step(DT);
+        a.sync();
+      }
+      const d = a.debug()[0];
+      a.dispose();
+      sp.dispose();
+      return d;
+    };
+    const open = await sight(false);
+    expect(open.mind).toBe('chase');
+    expect(open.at[1]).toBeLessThan(11); // (it came for you)
+    const blocked = await sight(true);
+    expect(blocked.mind).not.toBe('chase');
+  });
 
   it('a hit says where: the head counts double, a limb less, the body as before', async () => {
     const a = out('stormtrooper', { hp: 10 });

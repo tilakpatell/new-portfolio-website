@@ -4,6 +4,8 @@ import { createBlaster } from './blaster';
 import { createBoltPlay } from './boltPlay';
 import { createSolids } from './walker';
 import { troops } from './sites/outerKit';
+import { createSurfacePhysics } from './surfacePhysics';
+import { createCharacter } from '../../../lib/physics/character';
 
 // a flat world with a wall across x = 10
 const setup = () => {
@@ -94,5 +96,27 @@ describe('the surface’s bolts', () => {
     blaster.fire(new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(1, 0, 0), [], '#ffffff', 90, null, { yours: true });
     fly(play, { you: you(0), targets: [t] }, { yours: (e) => yours.push(e) });
     expect(yours).toHaveLength(1);
+  });
+
+  it('through the physics world, a bolt at a rigged hostile with its body in the world hits its chest, not a wall', async () => {
+    const world = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids: createSolids(), floors: [], reach: 32 };
+    const sp = await createSurfacePhysics(world);
+    const body = createCharacter(sp.phys, { position: [8, 0.9, 0], tag: 'hostile' });
+    sp.step(1 / 60);
+    const blaster = createBlaster({ parent: new THREE.Scene(), world, sp });
+    const play = createBoltPlay({ blaster, rng: () => 0.5 });
+    const chest = { a: [8, 0.9, 0], b: [8, 1.45, 0], r: 0.2 };
+    const t = { holder: { position: new THREE.Vector3(8, 0, 0) }, fig: { tall: 1.8 }, spec: {}, hp: 3, hb: { c: { body }, rig: { single: false, segments: new Map([['chest', chest]]) } } };
+    const yours = [];
+    const landed = [];
+    blaster.fire(new THREE.Vector3(0, 1.2, 0), new THREE.Vector3(1, 0, 0), [], '#ffffff', 90, null, { yours: true });
+    for (let i = 0; i < 120; i++) {
+      sp.step(1 / 60);
+      play.step(1 / 60, { you: you(0), targets: [t] }, { yours: (e) => yours.push(e), landed: (e) => landed.push(e) });
+    }
+    expect(landed).toEqual([]);
+    expect(yours).toHaveLength(1);
+    expect(yours[0].body.tag).toBe('chest');
+    sp.dispose();
   });
 });

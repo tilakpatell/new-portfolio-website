@@ -30,6 +30,7 @@ import { createHitboxRig } from '../../../lib/three/combat/hitboxRig';
 import { IDLE, createMind, mindStep } from '../../../lib/ai/mind';
 import { STATES } from '../../../lib/ai/states';
 import { CHARACTER } from '../../../lib/physics/character';
+import { groundAt } from './walker';
 
 const NEAR = 25;
 const MID = 60;
@@ -50,7 +51,7 @@ export function createHostileBody(sp, t, { root = null, tall = 1.8, radius = 0.3
   const r = radius * scale;
   const half = Math.max(HALF_MIN, (tall * scale) / 2 - r);
   const stand = half + r + CHARACTER.offset;
-  const ground = sp.world.heightAt(t.b.x, t.b.z);
+  const ground = groundAt(sp.world, t.b.x, t.b.z, t.spec?.level ?? Infinity); // (a floor over the land, a platform: as the walker stood it)
   const c = createCharacter(phys, { position: [t.b.x, ground + stand, t.b.z], radius: r, halfHeight: half, turn: 8, tag: 'hostile' });
   c.teleport([t.b.x, ground + stand, t.b.z], t.b.yaw);
   const rig = createHitboxRig(root ?? { getObjectByName: () => null, getWorldPosition: (v) => v.set(t.b.x, ground, t.b.z) }, null, { tall: tall * scale, blade });

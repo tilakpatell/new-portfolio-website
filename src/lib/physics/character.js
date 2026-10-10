@@ -22,6 +22,7 @@
 //     move(intent, dt)   intent: { vel: { x, z } (m/s), face: yaw | null, jump?: m/s (only grounded) }
 //     knock([x, y, z])   adds a velocity (m/s); knockLeft() → what's left of it (m/s)
 //     jump(v)            sets the vertical speed outright, airborne (a press in its buffer, a jetpack)
+//     face(yaw)          the facing outright, nothing else touched (a shot turns you)
 //     grounded, blocked, yaw, vy,
 //     position(out) → [x, y, z], quaternion(out) → [x, y, z, w], prev(out) → [x, y, z],
 //     teleport([x, y, z], yaw?), enable(on), remove() }
@@ -143,6 +144,11 @@ export function createCharacter(phys, { position, radius = 0.38, halfHeight = 0.
         face(yaw + clamp(wrap(intent.face - yaw), -most, most));
       }
     },
+    // turned to a yaw outright (the scene turns you to a shot): the facing and nothing else
+    face(to) {
+      if (removed || !Number.isFinite(to)) return;
+      face(to);
+    },
     // a jump (or a jetpack's lift) set outright: the vertical speed, airborne
     jump(v) {
       if (!Number.isFinite(v)) return;
@@ -183,7 +189,7 @@ export function createCharacter(phys, { position, radius = 0.38, halfHeight = 0.
     remove() {
       if (removed) return;
       removed = true;
-      world.removeCharacterController(ctl);
+      if (!phys.disposed) world.removeCharacterController(ctl); // (a world gone first took the controller with it)
       phys.remove(handle);
     },
   };

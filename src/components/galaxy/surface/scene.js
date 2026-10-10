@@ -2503,6 +2503,7 @@ export async function create(canvas, ctx) {
   }
 
   function stepRide(dt) {
+    pb?.park();
     stepPhysics(dt, null);
     const x = state.riding;
     const inp = chase?.stalled() ? { x: 0, y: 0, run: false } : input();
@@ -2908,9 +2909,11 @@ export async function create(canvas, ctx) {
 
     if (state.phase === 'landing') {
       stepLanding(dt);
+      stepPhysics(dt, null); // (the hostiles move through the landing, as they did on the walker)
       watch(dt, 1 - Math.exp(-dt * 3));
     } else if (state.phase === 'leaving') {
       stepLeaving(dt);
+      stepPhysics(dt, null);
       watch(dt, 1 - Math.exp(-dt * 1.5));
     } else {
       if (state.phase === 'out') {
@@ -3628,8 +3631,6 @@ export async function create(canvas, ctx) {
     debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
-      pb?.dispose();
-      sp?.dispose();
       lit?.dispose();
       knocks?.dispose();
       knockHits.dispose();
@@ -3660,6 +3661,8 @@ export async function create(canvas, ctx) {
       chase?.dispose();
       assault?.dispose();
       blaster.dispose();
+      pb?.dispose();
+      sp?.dispose(); // (after the activity, the ground war and the blaster, whose bodies and rays it holds)
       markMat.map.dispose();
       markMat.dispose();
       life.dispose();

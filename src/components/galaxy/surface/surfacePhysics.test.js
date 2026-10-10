@@ -129,4 +129,20 @@ describe('createSurfacePhysics', () => {
     expect(sp.q.floorAt(-10, -10, { from: 9, down: 8 }).y).toBeCloseTo(3, 1);
     sp.dispose();
   });
+
+  it('seesThrough with a hostile body and a player body in the world: clear in the open, blocked by the trunk', async () => {
+    const { createCharacter } = await import('../../../lib/physics/character');
+    const sp = await createSurfacePhysics(fixture());
+    const hostile = createCharacter(sp.phys, { position: [0, 1, 3], tag: 'hostile' });
+    const you = createCharacter(sp.phys, { position: [10, 1, 3], tag: 'you' });
+    sp.step(1 / 60);
+    // (from its own eyes, inside its own capsule, to your chest, inside yours)
+    expect(sp.seesThrough({ x: 0, z: 3 }, { x: 10, z: 3 })).toBe(true);
+    expect(sp.seesThrough({ x: 10, z: 3 }, { x: 0, z: 3 })).toBe(true);
+    hostile.teleport([0, 1, 0]);
+    you.teleport([10, 1, 0]);
+    sp.step(1 / 60);
+    expect(sp.seesThrough({ x: 0, z: 0 }, { x: 10, z: 0 })).toBe(false);
+    sp.dispose();
+  });
 });
