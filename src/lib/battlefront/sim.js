@@ -8,7 +8,8 @@
 // after `TimeForCorpse` and wait to deploy, bots on their team's wave as
 // their commander (`ai/commander.js`) spends their Battle Points, a player
 // by `deploy`; the walkers are bodies the bolts hit, open to damage while a
-// bombing run lasts. Out of bounds, where a team has bounds, kills in
+// bombing run lasts, and their gunners fire on the defenders (the mode's
+// `GUNNERS`, ai/vehicleBrain.js). Out of bounds, where a team has bounds, kills in
 // OOB_SECONDS. A difficulty (`ai/difficulty.js`: 'rookie', 'normal', 'expert'…)
 // sets the bots' reaction, aim and their damage to a player, and the
 // player's health; `pve` makes the bots the Skirmish (Instant Action) bots,
@@ -27,7 +28,7 @@ import { seeded } from '../seeded.js';
 import { aiOf, classOf, heroOf, mapOf, reinforcementOf, spawnsFor, teamsFor, weaponOf } from './rulebook.js';
 import { press } from './abilities.js';
 import { createBolts, fire as fireBolt, step as stepBolts } from './bolts.js';
-import { heightAt, nearestMainland, nearestWalkable } from './nav.js';
+import { heightAt, lineClear, nearestMainland, nearestWalkable } from './nav.js';
 import { STEP, clock, muzzleOf, profile, shoot } from './core.js';
 import { capsulesOf, chestOf, hurt, move, newSoldier, roll, tick as tickSoldier } from './soldier.js';
 import { coolPress, damageAt, vent } from './weapons.js';
@@ -36,8 +37,9 @@ import { assign, createCommander, spend, wave } from './ai/commander.js';
 import { squadOf } from './ai/squad.js';
 import { difficultyFor } from './ai/difficulty.js';
 import { abilitiesFor } from './ai/skirmish.js';
+import { createGunner } from './ai/vehicleBrain.js';
 import { balance, buy, createPoints, earn, hit as bpHit, kill as bpKill, offers } from './battlePoints.js';
-import { AIM_SCALE, createAssault, onEvent as modeEvent, sideOf, spawnSets, tick as tickMode, view as modeView, walkersOf } from './modes/galacticAssault.js';
+import { AIM_SCALE, GUNNERS, createAssault, onEvent as modeEvent, sideOf, spawnSets, tick as tickMode, view as modeView, walkersOf } from './modes/galacticAssault.js';
 import { insidePolygon } from './modes/objectives.js';
 import { isProtected, pickSpawn, protect, squadSpawn } from './spawn.js';
 
@@ -178,6 +180,8 @@ function addWalkers(sim) {
     Object.assign(w, { id: `w${sim.ga.stage + 1}.${i + 1}`, team: sim.ga.attack, state: 'walk', stance: 'stand', vel: [0, 0, 0] });
     if (sim.nav) w.at[1] = heightOf(sim, w.at);
     walkerCapsules(w);
+    const row = GUNNERS[w.kind] && aiOf(sim.rb).vehicles?.[GUNNERS[w.kind]];
+    if (row) w.gunner = createGunner(row, w, { ai: aiOf(sim.rb), rb: sim.rb, rand: sim.rand });
     sim.entities.set(w.id, w);
   });
 }
@@ -319,7 +323,9 @@ function downed(sim, target, by, part, why = null) {
   const killer = by ? sim.entities.get(by) : null;
   if (killer && killer.team !== target.team) {
     sim.score[killer.team].kills++;
-    sim.stats.get(killer.id).kills++;
+    // (a walker's gunner keeps no row of its own)
+    const row = sim.stats.get(killer.id);
+    if (row) row.kills++;
   }
   emit(sim, { type: 'kill', by, target: target.id, part, ...(why ? { why } : {}) });
   if (sim.ga) {
@@ -375,6 +381,7 @@ export function step(sim, inputs = []) {
   sim.steps++;
   for (const inp of inputs) applyInput(sim, inp);
   stepBrains(sim);
+  stepGunners(sim);
   for (const s of sim.entities.values()) {
     if (s.kind !== 'soldier') continue;
     if (s.state === 'roll' && s.alive) move(s, s.rollDir, STEP, sim.nav);
@@ -386,6 +393,21 @@ export function step(sim, inputs = []) {
   if (sim.oob) outOfBounds(sim);
   if (sim.ga) stepMode(sim);
   return sim.out;
+}
+
+// the walkers' gunners: a bolt from the turret when the pattern and the cannon's rate allow
+function stepGunners(sim) {
+  for (const w of sim.entities.values()) {
+    if (!w.gunner || !w.alive) continue;
+    const enemies = sim.cache?.all?.filter((e) => e.team !== w.team && e.kind === 'soldier') ?? [];
+    const shot = w.gunner.tick(sim.time, { enemies, lineClear: (a, b) => lineClear(sim.nav, a, b) });
+    if (!shot) continue;
+    const d = [shot.aim[0] - shot.from[0], shot.aim[1] - shot.from[1], shot.aim[2] - shot.from[2]];
+    const L = Math.hypot(...d) || 1;
+    const row = shot.weapon;
+    fireBolt(sim.bolts, { from: shot.from, dir: d.map((v) => v / L), speed: row.firing.speed, range: row.range, ttl: row.damage.timeToLive, team: w.team, owner: w.id, weapon: row, colour: row.colour, now: sim.time });
+    emit(sim, { type: 'shot', by: w.id });
+  }
 }
 
 function outOfBounds(sim) {
