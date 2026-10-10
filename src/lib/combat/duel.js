@@ -14,7 +14,9 @@
 //                        window (the parry window, s: combatRules.js's PARRY.window), jump (metres you
 //                        may move in a stroke before it's at air), near (how far past its reach it guards),
 //                        stagger { hit, heavy, parried, broken } (seconds)
-//   createDuellist({ reach, guard, parry, stance, strokes, seed }) → d (d.at = [x, z]: the caller keeps it)
+//   createDuellist({ reach, guard, parry, stance, strokes, cadence, seed }) → d (d.at = [x, z]: the caller keeps it);
+//                        cadence { stroke: { dur, back } } (a 2017 hero's, stanceFromTable.js's): a stroke held `dur`
+//                        until swung says, and the recovery after it its return's `back` seconds, in place of DUEL's
 //   duelStep(d, you, dt, rng = d's own) → { state, move: [dx, dz] (0…1 of its pace, world axes), face (yaw to you),
 //                        stroke (the clip while it attacks, else null), begin (the frame a stroke starts), block }
 //     you: { pos: [x, z], swinging: { contact: [t0, t1], t, speed? } | null (your stroke, t seconds into its clip),
@@ -48,13 +50,14 @@ const roller = (seed) => {
   };
 };
 
-export function createDuellist({ reach = 2.2, guard = 0.6, parry = 0.35, stance = 'single', strokes = null, seed = 1 } = {}) {
+export function createDuellist({ reach = 2.2, guard = 0.6, parry = 0.35, stance = 'single', strokes = null, cadence = null, seed = 1 } = {}) {
   return {
     reach,
     guard,
     parry,
     stance,
     strokes: strokes?.length ? strokes : STROKES,
+    cadence, // { stroke: { dur, back } }: the game's, where its strokes are (null: DUEL's)
     at: [0, 0],
     state: 'approach',
     timer: 0,
@@ -77,7 +80,7 @@ function attack(d, you) {
   d.state = 'attack';
   d.stroke = d.strokes[d.i % d.strokes.length];
   d.i++;
-  d.timer = DUEL.attack;
+  d.timer = d.cadence?.[d.stroke]?.dur ?? DUEL.attack;
   d.youAt = you ? [...you.pos] : null;
 }
 function enter(d, state, timer = 0) {
@@ -160,7 +163,9 @@ export function duelStep(d, you, dt, rng = d.rng) {
       attack(d, you);
       return out(d, STILL, { begin: true });
     }
-    enter(d, 'recover', within(DUEL.recover, rng()));
+    // (after the game's strike it's open as long as its way back to the guard takes: the punish window)
+    const back = d.cadence?.[d.stroke]?.back;
+    enter(d, 'recover', back ?? within(DUEL.recover, rng()));
   }
   if (d.state === 'recover') {
     d.timer -= dt;

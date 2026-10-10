@@ -18,9 +18,11 @@
 //   PARRY                { window }: seconds before their blade's contact in which a block begun is a parry
 //   DODGE                { dist, dur, safe (seconds of it nothing lands), cool }
 //   FORCE                push / pull: { range, cone, force, cool, damage }
-//   stanceOf(id)         the stance, 'single' when unknown
+//   stanceOf(id, hero?)  the stance, 'single' when unknown; for a hero on the 2017 game's rig ({ rig: 'walrus', pack })
+//                        with a stroke table, the game's strokes in its shape (stanceFromTable.js)
 //   strokeFor(stance, { last, now, dir, heavy, combo })   the stroke to make now: { clip, speed, damage, lunge, heavy, kind, i };
-//                        a way held (dir) its own, a heavy one the next of HEAVY's while they chain, else the next of the combo
+//                        a way held (dir) its own (the stance's `dirs`, else DIRS), a heavy one the next of the stance's
+//                        `heavies` (else HEAVY's) while they chain, else the next of the combo
 //                        within `combo` seconds of the last ending (`last`: the stroke before, with its endedAt)
 //   rootScale(travel, dist, lunge)   how much of a clip's step (`travel` metres ahead) to take: to land STRIKE short of the
 //                        one you're locked on (`dist` away; null with no lock: the clip's own), never more than `lunge`
@@ -34,6 +36,9 @@
 //   forceAt(me, t, kind)         whether t is in the Force's reach: { hit, k (1 close … 0 at range) }
 //   pushVelocity(me, t, k)       the shove a push gives t: { vx, vz, vy }
 //   hitStop(damage, killed)      seconds the frame holds on a hit
+
+import { strokeTable } from '../../../data/bf2017/strokes';
+import { stanceFromTable } from './stanceFromTable';
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -95,7 +100,17 @@ export const STANCES = {
   },
 };
 export const STANCE_IDS = Object.keys(STANCES);
-export const stanceOf = (id) => STANCES[id] ?? STANCES.single;
+// (a hero on the 2017 game's rig with a stroke table fences with the game's
+// strokes, the stance it was given standing behind them; built once a pair)
+const GAME = new Map();
+export function stanceOf(id, hero = null) {
+  const base = STANCES[id] ?? STANCES.single;
+  const table = hero?.rig === 'walrus' ? strokeTable(hero.pack) : null;
+  if (!table) return base;
+  const key = `${hero.pack}:${id}`;
+  if (!GAME.has(key)) GAME.set(key, stanceFromTable(table, { base, dirs: DIRS, heavy: HEAVY }) ?? base);
+  return GAME.get(key);
+}
 
 export const HEAVY = { hold: 0.35, clips: ['sword.heavy.a', 'sword.heavy.b', 'sword.heavy.c', 'sword.heavy.d'], speed: 1, damage: 5, breaks: true };
 export const DIRS = {
@@ -121,10 +136,13 @@ export function strokeFor(stance, { last = null, now = 0, dir = null, heavy = fa
   const chain = (kind) => last?.kind === kind && now - last.endedAt <= combo;
   const base = { lunge: stance.lunge, heavy: false };
   if (heavy) {
-    const i = chain('heavy') ? (last.i + 1) % HEAVY.clips.length : 0;
+    // (a stance of its own heavies, the game's, plays those: stanceFromTable.js)
+    const own = stance.heavies;
+    const i = chain('heavy') ? (last.i + 1) % (own?.length ?? HEAVY.clips.length) : 0;
+    if (own) return { ...base, kind: 'heavy', i, clip: own[i].clip, speed: own[i].speed, damage: own[i].damage, heavy: true };
     return { ...base, kind: 'heavy', i, clip: HEAVY.clips[i], speed: HEAVY.speed, damage: HEAVY.damage, heavy: true };
   }
-  const way = DIRS[dir];
+  const way = (stance.dirs ?? DIRS)[dir];
   if (way) return { ...base, kind: 'dir', i: 0, clip: way.clip, speed: stance.strokes[0].speed, damage: way.damage };
   const i = chain('combo') ? (last.i + 1) % stance.strokes.length : 0;
   return { ...base, kind: 'combo', i, ...stance.strokes[i] };
