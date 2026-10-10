@@ -43,6 +43,7 @@ function Flight({ spec }) {
   }, []);
   const { host, status, rt } = useWorld(flightModule, { props, onEvent });
   const api = useCallback(() => (rt?.current?.module === flightModule ? rt.current.world : null), [rt]);
+  const mapProps = useMemo(() => ({ spec, source: api }), [spec, api]);
 
   return (
     <div className="pt-[var(--nav-h)]">
@@ -58,6 +59,7 @@ function Flight({ spec }) {
           touch={touch}
           onStick={(x, y) => rt?.input?.setStick(x, y)}
           onThrottle={(v) => api()?.throttle?.(v)}
+          map={mapProps}
         />
       </WorldHost>
     </div>
