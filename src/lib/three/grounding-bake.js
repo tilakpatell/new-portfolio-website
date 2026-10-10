@@ -30,7 +30,7 @@
 //   at the times whose channel is 0, 1, 2; A the sky)
 
 import * as THREE from 'three';
-import { nextFrame } from './gpuWork';
+import { nextFrame as gpuFrame } from './gpuWork';
 
 const DEG = Math.PI / 180;
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -134,7 +134,7 @@ void main() {
 const nextFrame = () => new Promise((r) => setTimeout(r, 0));
 // (between a bake's chunks, the world's own frame: the world goes on drawing)
 // (a frame, or gpuWork's FRAME_WAIT in a background tab, which gets none)
-const nextPaint = nextFrame;
+const nextPaint = gpuFrame;
 
 // ── what a bake on arrival costs, by the device's tier ──
 
