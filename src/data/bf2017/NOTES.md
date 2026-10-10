@@ -57,3 +57,15 @@ Kamino’s space level (`Levels/Space/SB_Kamino_01`), read the same way: the Sep
 - The game’s Team1 is the light side’s in every level read so far (Hoth, Endor, Kamino), as the battle’s team 0 is.
 
 `maps/sb_fondor.json` and `maps/sb_droidbattleship.json` are the rulebooks alone (their systems are not in the galaxy yet): Fondor’s phases are Cruisers, Shields, Clamps and Reactor; the droid battleship’s Tractor Beams, Generators, Towers and Reactor.
+
+## Heroes vs Villains and Blast (`maps/arenas.json`, `surface/missions/hvv.js`, `blast.js`)
+
+`arenas.json` is cut from the five ground maps by `scripts/bf2017-arenas.mjs` (every number the rulebooks', checked by `arenas.test.js`). What the two modes add by hand, until lane D2 reads the `HeroArena` and `TeamDeathmatch` logic graphs (the HvV mods' and Instant Action Overhaul V2's):
+
+- **The teams**: team 1's spawns are the light side's, team 2's the dark's, team 0's either's to come back at: a reading of the layers (each of HvV's two four-spawn clusters a side, the many team 0 spawns spread over the ground). Swap them if the graph says otherwise.
+- **Geonosis_01's spawns** are all `Enabled: false` in the data (the mode's graph turns them on), so the cut takes every spawn, on or off.
+- **Endor_01's Blast** has no spawns and no ground volume, only its two `TeamDeathmatch_Skirmish_DefendAreas`: the ground is the box round both, each side's spawns its area's corners drawn halfway in.
+- **Where the grounds stand** (`arenas.js`'s `ARENA_AT`): Hoth's are inside Echo Base under the glacier (the level frame puts them 70 m up on the ice of the site), the other four worlds have no level pack, so each ground's middle goes on an open, level spot of the site: Hoth [320, 20], Endor [−40, 320], Tatooine [220, 100], Geonosis [110, −360], Kashyyyk [60, −400].
+- **HvV, the game as played**: a target a side, drawn at the start and again when one falls; only a target's death scores; **10 points** win; 4 a side; 10 s to come back; 10 s out of the arena and you're down.
+- **HvV, the bots' tuning** (measured, not the game's): a saber stroke takes 150 of a hero's health, lands 0.35 s into it; a blaster bot fires a burst at its gun's rate but no more often than every 1.2 s (the guns' trigger rates are a player's: Lando's 400 a minute out-shot everyone), hits 75 % point blank to 30 % at 60 m, a saber hero turns 70 % of what it sees; one of yours takes 100; the enemy's target counts 40 m nearer when a bot picks its mark. The heroes' health, healing and guns are the rulebooks' (`bf2017Abilities.json`, `heroes.json`'s regen, `weapons.json`).
+- **Blast, the game as played**: **100 kills**, 10 a side (the tier's soldiers cap it). Tuning: a soldier's hit takes 14 more than the assault's (three hits down, not four), they roam within 0.3 of the ground's middle, come back at the level's spawn nearest the middle with no enemy within 30 m.

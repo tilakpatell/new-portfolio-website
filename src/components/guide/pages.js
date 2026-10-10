@@ -190,6 +190,8 @@ export const PAGES = {
       ['The fight', 'Enemies show their health over their heads; the one you’re squared up to wears a ring and is named at the bottom, and your strokes step in to them. Blocking spends your guard: broken, you stagger. A duellist’s guard is the white line over his health: his blade turns your strokes until it breaks. Guns heat up; vent early or ride the lock.'],
       ['The places', 'The compass names the places from the films until you’ve found them, with what the crew have to say about each.'],
       ['Galactic assault', 'On Hoth, Geonosis, Scarif and Endor, a battle for the command posts (from the system’s mission page). Pick a side and a post to deploy at; stand in a post with more of yours than theirs and it turns; take every post of the phase and the next begins. Down, you deploy again for one of your side’s reinforcements.'],
+      ['Heroes vs Villains', 'On Hoth, Endor, Tatooine, Geonosis and Kashyyyk, four heroes against four villains in the level’s hero arena, you one of your side as the hero you’re playing. Each side has a target, marked over its head: only a target going down scores, ten points win. Down, you’re back in ten seconds; ten seconds outside the arena’s wall of light and you’re down.'],
+      ['Blast', 'On the same five worlds, ten a side on the level’s team-deathmatch ground: no posts, just the score bar. The first side to a hundred kills wins.'],
       ['Leaving', 'Get back in the ship (E by it, or Back to orbit) to take off.'],
     ],
   },
