@@ -1,20 +1,34 @@
 // One weather's light, read into the plain numbers this folder draws with.
 //
-// The input is lane G's entry for a level and weather. Its derived shape is
-// `siteLightFrom(entry)` in src/lib/three/gameLight.js (the bf2017 levels
-// design): { sky: { zenith, horizon, haze, hazeColor, suns: [{ az, el,
-// color }] }, light: { sun, second, sky, ground, ambient }, fog: { color,
-// density }, exposure, bloom, wind }. Beside it the entry may carry the
-// VisualEnvironment record's own fields under `record` (OutdoorLight, Sky,
-// Fog, Tonemap, ColorCorrection, DynamicAO), named as the game names them;
-// where it does, they win, since they are what the derived shape was made
-// from. Anything missing falls back to a named default, so a world with no
+// Two inputs, either or both:
+// - the game's VisualEnvironment record, as the bucket's map extras carry it
+//   (`web/maps/<level>.extras.json`, `environments[<name>]`: one array per
+//   component, `OutdoorLightComponentData`, `SkyComponentData`,
+//   `FogComponentData`, `TonemapComponentData`, `ColorCorrectionComponentData`),
+//   passed as `entry.record`; its field names are the game's, read from
+//   Hoth's three weathers;
+// - lane G's derived shape, `siteLightFrom(entry)` in
+//   src/lib/three/gameLight.js (the bf2017 levels design): { sky: { zenith,
+//   horizon, haze, hazeColor, suns: [{ az, el, color }] }, light: { sun,
+//   second, sky, ground, ambient }, fog: { color, density }, exposure, bloom,
+//   wind }. It is not on main yet (lane G waits on its calibration), so both
+//   are pinned in the test.
+// Where the record has a field it wins: the derived shape is made from it.
+// Anything missing falls back to a named default, so a world with no
 // record still lights.
 //
-// siteLightFrom is not on main yet (lane G waits on the bucket's keys), so
-// this reader takes either shape and pins both in its test.
+// Units. The record's are physical (the sun in lux, the sky's luminance in
+// nits, the lamps in lumens) and the game exposes them by EV. The site's
+// are three's, drawn at exposure 1, so one factor takes the game's to the
+// site's: 2^ExposureCompensation / (1.2 · 2^EV), the photometric exposure
+// at the EV the game settles on (MaxEV where it exposes automatically: a
+// bright scene clamps there). Hoth's sunny 128,000 lux becomes 9.2, its
+// sunset's 22,500 lux 28 (at EV 10.4: the game opens up at dusk). The
+// placed lights take the same factor (`gameToSite`), so a lamp is as bright
+// against the sun as the game made it. Lane G's calibration on Hoth, once
+// it lands as `entry.gameToSite`, replaces the factor.
 //
-// readEntry(entry) → { sun, ambient, sky, fog, shadow, exposure, bloom, ao, grade }
+// readEntry(entry, { origin }) → { sun, ambient, sky, fog, shadow, exposure, bloom, ao, grade, gameToSite }
 // lerpEntry(a, b, t) → the same shape, a weather crossfade at t in 0…1
 
 // Earth's sea-level scattering, per metre: the Rayleigh coefficients for
@@ -24,8 +38,8 @@ export const MIE = 21e-6;
 export const MIE_G = 0.76; // the forward lobe of a hazy sky
 export const SUN = { dir: [0.4, 0.75, 0.3], color: [1, 0.96, 0.9], intensity: 3 };
 export const AMBIENT = { sky: [0.55, 0.65, 0.8], ground: [0.3, 0.27, 0.24], intensity: 0.6 };
-export const FOG = { color: [0.7, 0.75, 0.82], density: 0.0012, heightBase: 0, heightFalloff: 0 };
-// GTAO's own defaults stand in for HBAO's when a record has none
+export const FOG = { color: [0.7, 0.75, 0.82], density: 0.0012 };
+// GTAO's own defaults: Hoth's records carry no DynamicAO component
 export const AO = { radius: 0.25, bias: 0, power: 1 };
 
 const rgb = (c, fallback) => {
@@ -50,81 +64,104 @@ export function sunDir(az, el) {
   return [Math.cos(e) * Math.sin(a), Math.sin(e), Math.cos(e) * Math.cos(a)];
 }
 
-export function readEntry(entry = {}) {
+const comp = (r, name) => r?.[`${name}ComponentData`]?.[0] ?? {};
+
+// the factor from the game's units to the site's, from the record's tone map
+export function exposureOf(tone) {
+  if (!tone || tone.EV == null) return null;
+  const ev = tone.AutomaticExposure && tone.MaxEV != null ? tone.MaxEV : tone.EV;
+  return 2 ** (tone.ExposureCompensation ?? 0) / (1.2 * 2 ** ev);
+}
+
+export function readEntry(entry = {}, { origin = [0, 0, 0] } = {}) {
   const e = entry ?? {};
-  const r = e.record ?? {};
-  const outdoor = r.OutdoorLight ?? {};
-  const skyRec = r.Sky ?? {};
-  const fogRec = r.Fog ?? {};
-  const tone = r.Tonemap ?? {};
-  const grade = r.ColorCorrection ?? {};
-  const aoRec = r.DynamicAO ?? {};
+  const r = e.record ?? null;
+  const outdoor = comp(r, 'OutdoorLight');
+  const skyRec = comp(r, 'Sky');
+  const fogRec = comp(r, 'Fog');
+  const tone = comp(r, 'Tonemap');
+  const grade = comp(r, 'ColorCorrection');
+  const k = num(e.gameToSite, exposureOf(tone) ?? 1);
 
   const s0 = e.sky?.suns?.[0];
   const sunLight = e.light?.sun;
   const sun = {
-    dir: unit(outdoor.SunDirection ? rgb(outdoor.SunDirection, SUN.dir) : s0 ? sunDir(num(s0.az, 0), num(s0.el, 45)) : SUN.dir),
+    dir: unit(outdoor.SunRotationX != null ? sunDir(outdoor.SunRotationX, outdoor.SunRotationY ?? 45) : s0 ? sunDir(num(s0.az, 0), num(s0.el, 45)) : SUN.dir),
     color: rgb(outdoor.SunColor ?? sunLight?.color ?? s0?.color, SUN.color),
-    intensity: num(typeof sunLight === 'number' ? sunLight : sunLight?.intensity, SUN.intensity),
+    intensity: outdoor.SunIntensity != null ? outdoor.SunIntensity * k : num(typeof sunLight === 'number' ? sunLight : sunLight?.intensity, SUN.intensity),
   };
+  // (a record's black sky and ground colours mean "from the sky", which the
+  // environment gives; the derived shape's or the defaults stand in)
+  const lit = (c) => (Array.isArray(c) && c.some((v) => v > 0) ? c : null);
   const lightSky = e.light?.sky;
   const lightGround = e.light?.ground;
   const ambient = {
-    sky: rgb(outdoor.SkyColor ?? lightSky?.color ?? lightSky, AMBIENT.sky),
-    ground: rgb(outdoor.GroundColor ?? lightGround?.color ?? lightGround, AMBIENT.ground),
+    sky: rgb(lit(outdoor.SkyColor) ?? lightSky?.color ?? lightSky, AMBIENT.sky),
+    ground: rgb(lit(outdoor.GroundColor) ?? lightGround?.color ?? lightGround, AMBIENT.ground),
     intensity: num(typeof e.light?.ambient === 'number' ? e.light.ambient : e.light?.ambient?.intensity, AMBIENT.intensity),
   };
+  const rayleigh = rgb(skyRec.RayleighScatteringCoefficient, RAYLEIGH).map((c) => c * num(skyRec.RayleighScatteringCoefficientScale, 1));
   const sky = {
-    rayleigh: rgb(skyRec.RayleighCoefficient, RAYLEIGH),
-    mie: num(skyRec.MieCoefficient, MIE),
-    mieG: num(skyRec.MieScatteringG ?? skyRec.MieG, MIE_G),
+    rayleigh,
+    mie: num(skyRec.MieScatteringCoefficient, MIE),
+    mieG: num(skyRec.MieG, MIE_G),
+    heightR: num(skyRec.ScaleHeightRayleigh, 8) * 1000, // m (the record's are km)
+    heightM: num(skyRec.ScaleHeightMie, 1.2) * 1000,
+    luminance: skyRec.LuminanceScale != null ? skyRec.LuminanceScale * k : 2.5,
+    sunSize: num(skyRec.SunSize, 0.004), // rad: the disc's angular radius
     zenith: rgb(e.sky?.zenith, [0.24, 0.42, 0.78]),
     horizon: rgb(e.sky?.horizon, [0.7, 0.78, 0.88]),
     cloud: rgb(skyRec.CloudLayer1Color ?? e.sky?.hazeColor, [1, 1, 1]),
-    cover: num(skyRec.CloudLayerCover ?? e.sky?.haze, 0),
+    cover: num(e.sky?.haze, 0),
     ground: ambient.ground.slice(),
   };
-  // (the record's curve is [[distance m, 0…1], …]; the derived shape has a
-  // density only, which is exponential fog)
-  const curve = Array.isArray(fogRec.Curve) && fogRec.Curve.length >= 2 ? fogRec.Curve.map(([d, f]) => [Number(d), Number(f)]) : null;
+  // The record's fog: a cubic over the distance from Start to End (its
+  // `Curve`, x t³ + y t² + z t + w), and below HeightFogAltitude a height
+  // fog fading out over HeightFogDepth above it, 95% opaque at
+  // HeightFogVisibilityRange. The derived shape has a density only, which
+  // is exponential fog.
+  const on = fogRec.Enable !== false && Object.keys(fogRec).length > 0;
   const fog = {
-    color: rgb(fogRec.FogColor ?? e.fog?.color, FOG.color),
-    start: num(fogRec.FogStart ?? e.fog?.start, null),
-    end: num(fogRec.FogEnd ?? e.fog?.end, null),
+    color: rgb(e.fog?.color ?? fogRec.FogColor, FOG.color),
     density: num(e.fog?.density, FOG.density),
-    curve,
-    heightBase: num(fogRec.HeightFogBase ?? e.fog?.heightBase, FOG.heightBase),
-    heightFalloff: num(fogRec.HeightFogFalloff ?? e.fog?.heightFalloff, FOG.heightFalloff),
+    curve: on && Array.isArray(fogRec.Curve) && fogRec.Curve.length === 4 ? fogRec.Curve.map(Number) : null,
+    start: on ? num(fogRec.Start, 0) : 0,
+    end: on ? num(fogRec.End, 1000) : 1000,
+    height:
+      on && fogRec.HeightFogEnable
+        ? { altitude: num(fogRec.HeightFogAltitude, 0) - origin[1], depth: Math.max(1e-3, num(fogRec.HeightFogDepth, 50)), visibility: Math.max(1, num(fogRec.HeightFogVisibilityRange, 3000)) }
+        : null,
   };
   const shadow = {
-    mapSize: num(outdoor.ShadowMapResolution ?? e.shadow?.mapSize, 2048),
-    bias: num(outdoor.ShadowDepthBias ?? e.shadow?.bias, -0.0004),
-    normalBias: num(outdoor.ShadowNormalBias ?? e.shadow?.normalBias, 0.02),
-    far: num(outdoor.ShadowDistance ?? e.shadow?.far, null),
+    mapSize: num(e.shadow?.mapSize, 2048),
+    bias: num(e.shadow?.bias, -0.0004),
+    normalBias: num(e.shadow?.normalBias, 0.02),
+    far: num(e.shadow?.far, null),
   };
+  const bloomScale = Array.isArray(tone.BloomScale) ? tone.BloomScale[0] : tone.BloomScale;
   return {
     sun,
     ambient,
     sky,
     fog,
     shadow,
-    exposure: num(e.exposure ?? (tone.ExposureCompensation != null ? 2 ** tone.ExposureCompensation : null), 1),
-    bloom: { scale: num(tone.BloomScale ?? (typeof e.bloom === 'number' ? e.bloom : e.bloom?.scale), 1) },
-    ao: {
-      radius: num(aoRec.HbaoRadius, AO.radius),
-      bias: num(aoRec.HbaoAngleBias, AO.bias),
-      power: num(aoRec.HbaoPowerExponent, AO.power),
-    },
-    grade: { maxHdr: num(grade.ColorGradingMaxHdrValue, 1), lut: e.lut ?? null },
-    gameToSite: num(e.gameToSite, 1),
+    exposure: num(e.exposure, 1),
+    // (the game's BloomScale is the share of the blurred image added back,
+    // 0.1 on Hoth's day; the site's bloom strength is its own, so the
+    // record's is kept as a ratio to the day's)
+    bloom: { scale: bloomScale != null ? bloomScale / 0.1 : num(typeof e.bloom === 'number' ? e.bloom : e.bloom?.scale, 1) },
+    ao: { ...AO, ...(e.ao ?? {}) },
+    grade: { maxHdr: num(grade.ColorGradingMaxHdrValue, 1), lutName: grade.HdrColorGradingLut ?? null, lut: e.lut ?? null },
+    gameToSite: k,
   };
 }
 
 const mix = (a, b, t) => a + (b - a) * t;
 const mixArr = (a, b, t) => a.map((v, i) => mix(v, b[i], t));
 
-// Every number eased from a to b; what cannot be blended (the fog's curve,
-// the LUT) is b's from the start of the crossfade, a's before it.
+// Every number eased from a to b; what cannot be blended (a fog curve on one
+// side only, the height fog's presence, the LUT) is b's from the start of
+// the crossfade, a's before it.
 export function lerpEntry(a, b, t) {
   const k = Math.min(1, Math.max(0, t));
   const walk = (x, y) => {

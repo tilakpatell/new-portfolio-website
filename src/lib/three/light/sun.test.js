@@ -30,8 +30,8 @@ describe('splitsFor', () => {
 });
 
 describe('createSun', () => {
-  it('a SunLight from the entry: its colour, strength and direction, its shadow from the record', async () => {
-    const sun = await createSun({ sky: { suns: [{ az: 90, el: 30, color: [1, 0.5, 0.25] }] }, light: { sun: 4 }, record: { OutdoorLight: { ShadowDistance: 250 } } }, { tier: 'ultra' });
+  it('a SunLight from the entry: its colour, strength and direction, its shadow from the entry', async () => {
+    const sun = await createSun({ sky: { suns: [{ az: 90, el: 30, color: [1, 0.5, 0.25] }] }, light: { sun: 4 }, shadow: { far: 250 } }, { tier: 'ultra' });
     expect(sun.light.isSunLight).toBe(true);
     expect(sun.light.intensity).toBe(4);
     expect(sun.light.color.g).toBeCloseTo(0.5);

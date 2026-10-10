@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MIE, RAYLEIGH, SUN, lerpEntry, readEntry, sunDir } from './entry';
+import hoth from './fixtures/hoth.ve.json';
 
 describe('readEntry', () => {
   it('a world with no record still lights, on the named defaults', () => {
@@ -28,25 +29,36 @@ describe('readEntry', () => {
     expect(p.exposure).toBe(1.2);
     expect(p.bloom.scale).toBe(0.5);
   });
-  it('the record’s own fields win', () => {
-    const p = readEntry({
-      light: { sun: 5 },
-      record: {
-        Sky: { RayleighCoefficient: [1e-6, 2e-6, 3e-6], MieCoefficient: 4e-6 },
-        Fog: { FogStart: 50, FogEnd: 900, Curve: [[0, 0], [500, 0.6], [900, 1]] },
-        Tonemap: { BloomScale: 0.3, ExposureCompensation: 1 },
-        DynamicAO: { HbaoRadius: 1.5, HbaoAngleBias: 0.1, HbaoPowerExponent: 2 },
-        ColorCorrection: { ColorGradingMaxHdrValue: 4 },
-      },
-    });
-    expect(p.sky.rayleigh).toEqual([1e-6, 2e-6, 3e-6]);
-    expect(p.sky.mie).toBe(4e-6);
-    expect(p.fog.curve).toHaveLength(3);
-    expect(p.fog.start).toBe(50);
-    expect(p.bloom.scale).toBe(0.3);
-    expect(p.exposure).toBe(2);
-    expect(p.ao).toEqual({ radius: 1.5, bias: 0.1, power: 2 });
-    expect(p.grade.maxHdr).toBe(4);
+  it('reads Hoth’s records as the bucket has them: the sun, the sky, the fog, the exposure', () => {
+    const p = readEntry({ ...hoth.sunny, light: { sun: 5 } });
+    // 128,000 lux at EV 15 with 1.5 stops of compensation
+    expect(p.gameToSite).toBeCloseTo(2 ** 1.5 / (1.2 * 2 ** 15), 9);
+    expect(p.sun.intensity).toBeCloseTo(9.2, 1);
+    expect(p.sun.color[2]).toBeCloseTo(0.91762);
+    expect(p.sun.dir[1]).toBeCloseTo(Math.sin((32.943 * Math.PI) / 180), 4);
+    expect(p.sky.rayleigh).toEqual([0.00001, 0.00001, 0.00003]);
+    expect(p.sky.mie).toBe(0);
+    expect(p.sky.mieG).toBe(0.785);
+    expect(p.sky.heightR).toBe(8000);
+    expect(p.sky.luminance).toBeCloseTo(35000 * p.gameToSite);
+    expect(p.fog.curve).toEqual([2.23109, -4.56547, 2.92437, -0.00879]);
+    expect([p.fog.start, p.fog.end]).toEqual([50, 10000]);
+    expect(p.fog.height).toEqual({ altitude: 320, depth: 50, visibility: 3000 });
+    expect(p.bloom.scale).toBeCloseTo(1);
+    expect(p.grade.lutName).toBe('Levels/Lighting/Hoth/Sunny_01/T_CC_Hoth_Sunny_01');
+    // (the record's black sky colour means "from the environment": the derived one stands)
+    expect(p.ambient.sky).toEqual(readEntry({}).ambient.sky);
+  });
+  it('the sunset opens up, the interior has its own ambient; the height fog in the pack’s frame', () => {
+    expect(readEntry(hoth.sunset).sun.intensity).toBeCloseTo(27.8, 1);
+    expect(readEntry(hoth.sunset).sun.color[1]).toBeCloseTo(0.28355);
+    const inside = readEntry(hoth.interior);
+    expect(inside.ambient.sky).toEqual([0.318, 0.341, 0.4]);
+    expect(inside.bloom.scale).toBeCloseTo(0.5);
+    expect(readEntry(hoth.sunny, { origin: [0, 300, 0] }).fog.height.altitude).toBe(20);
+  });
+  it('lane G’s factor wins over the exposure, once it is there', () => {
+    expect(readEntry({ ...hoth.sunny, gameToSite: 1e-4 }).sun.intensity).toBeCloseTo(12.8);
   });
 });
 
@@ -61,7 +73,7 @@ describe('sunDir', () => {
 describe('lerpEntry', () => {
   it('eases every number, keeps the sun a unit vector and swaps what cannot blend', () => {
     const a = readEntry({ light: { sun: 2 }, sky: { suns: [{ az: 0, el: 10 }] } });
-    const b = readEntry({ light: { sun: 6 }, sky: { suns: [{ az: 90, el: 10 }] }, record: { Fog: { Curve: [[0, 0], [100, 1]] } } });
+    const b = readEntry({ light: { sun: 6 }, sky: { suns: [{ az: 90, el: 10 }] }, record: { FogComponentData: [{ Curve: [1, 0, 0, 0], Start: 0, End: 100 }] } });
     expect(lerpEntry(a, b, 0).sun.intensity).toBe(2);
     const mid = lerpEntry(a, b, 0.5);
     expect(mid.sun.intensity).toBe(4);
