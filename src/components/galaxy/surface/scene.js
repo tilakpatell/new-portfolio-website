@@ -291,7 +291,7 @@ export async function create(canvas, ctx) {
 
   const sky = createSky(site, { clouds: amounts.clouds });
   // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
-  const skyFog = createSkyFog(sky, THREE.ShaderChunk);
+  const skyFog = createSkyFog(sky);
   // (the look's halo round the sun, and its haze below the horizon where the
   // site says: the fog is the surface's, so they go on it)
   skyFog.look({ halo: siteLook.halo, below: typeof site.look?.fogBelow === 'number' ? siteLook.fogBelow : null });

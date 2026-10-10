@@ -15,6 +15,7 @@
 
 import * as THREE from 'three';
 import { siteLightFrom, weatherEntry } from '../../../lib/three/gameLight';
+import { PMREMGenerator } from 'three/webgpu';
 import { createProbeEnv } from '../../../lib/three/probeEnv';
 import { loadLut } from '../../../lib/three/gameLut';
 import { assetUrl } from '../../../lib/assetBase';
@@ -78,7 +79,8 @@ export function createGameLit({
   url = assetUrl,
 } = {}) {
   if (!light?.weathers) return null;
-  const holder = probes ?? createProbeEnv({ renderer });
+  // (prefiltered by the node renderer's PMREM: the classic one's passes are GLSL)
+  const holder = probes ?? createProbeEnv({ renderer, pmrem: renderer ? new PMREMGenerator(renderer) : undefined });
   const luts = new Map();
   let disposed = false;
   let inZone = false;
