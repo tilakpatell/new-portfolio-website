@@ -23,6 +23,23 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-game-design.md`. Th
 
 Lanes 1, 3 and 5 run in parallel once 0 merges. Each lane adds its row's numbers here when it merges and a line to the spec's "Departures" for anything that went another way.
 
+## The flow and the mods (the fifth design, 2026-10-10 evening)
+
+The design: `docs/superpowers/specs/2026-10-10-battlefront-flow-and-mods-design.md`. The owner's ask: land on a planet and get the game's own menu (Galactic Assault, Starfighter Assault, Heroes vs Villains, Blast, the world's story, free roam), deploy as a hero or a class, and bring the mods' content in. Two bugs were found on the way and are in the design's first section:
+
+1. **The repo has no `ASSET_BASE` Actions variable**, so the live build never asks the bucket and every file in `src/data/galaxyAssets.json` (the 2017 heroes' bodies among them) returns 404: that is "it wouldn't let me switch to Luke". The owner sets the variable to `https://jzabcqboyemokwifmjmp.supabase.co/storage/v1/object/public/site-assets` and re-runs the deploy (`assets-check` passed 371 of 371 there on 2026-10-10). Lane F makes the page honest when a file is missing anyway.
+2. **The landing veil creeps at "Sending pictures to the graphics chip 33 %"** for minutes (live, and on local servers from `main`, fronted, on an RTX 5090, with and without the bucket base). Not root-caused; lane F's task 2, and decision 8 says what the veil must do whatever the cause.
+
+| lane | what | branch | plan | state |
+| --- | --- | --- | --- | --- |
+| F | the honest Equip and its fallback chain; the veil's rule and the stall; `modes.json` (the levels' mode layers); the landing mode menu, `?mode=`, the briefing's cards; the deploy screen (side, hero or class, outfit, weapon, perks) | `claude/bf-flow` | `plans/2026-10-10-bf-flow-laneF-landing-menu.md` | not started |
+| A | Starfighter Assault: the four space packs (`sb_endor_01` first), the `SpaceBattle` layer in the map rulebook, the mission on the Fleet Assault sim, the entry from the menu (`/galaxy/endor?battle=starfighter`) | `claude/bf-starfighter` | `-laneA-starfighter.md` | not started |
+| H | Heroes vs Villains (4 v 4, a target a team, the level's hero arena) and Blast (10 a side, kills to 100, the team-deathmatch spawns) as surface missions on Hoth, Endor, Tatooine, Geonosis, Kashyyyk | `claude/bf-hvv-blast` | `-laneH-hvv-blast.md` | not started |
+| D2 | **desktop, local session**: Frosty profile → `ModData` → `bf2export` → the diff → `bf2017-import`; Battlefront Expanded's heroes and reinforcements first, then the clones' looks, Realistic Overhaul's weapon table, the HvV mods' and Instant Action Overhaul V2's mode logic written up for lanes 2, 6 and H | `claude/bf-mods-desktop` | `-laneD2-mods-desktop.md` | not started; IAO V2 is not on the PC yet (the owner's Nexus account; the file is on their phone) |
+| 1, 5 | the game design's own lanes, started from this design's branch | `claude/bf-ai`, `claude/bf-world` | their plans above | started 2026-10-10 |
+
+The mod archives already on the owner's machine are listed in the design (Expanded's 141 `.fbmod`s, Saberfront, Realistic Overhaul, the HvV modes, the clone packs, Frosty Mod Manager). Each lane adds its row's numbers here when it merges and a line to the design's "Departures".
+
 ## Beside the asset lanes (PR #802 and PR #810)
 
 `HANDOFF-bf2017.md` is the assets' hand-off and its status table is theirs. What this game takes from them, so nobody builds it twice: lane 1's `walrus.js` (figures on the game's skeleton), lane L's level pack and loader (run on the whole map with `--frame map --no-fit`, spec decision 15), lane G's light from the level's sky records, lane X's stroke tables for the heroes, lane V's vehicle models, lane S's fetch pool. What this game adds that they do not: the rules, the modes, the bots, the Battle Points, the HUD, the route.
