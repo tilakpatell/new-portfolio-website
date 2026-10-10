@@ -47,7 +47,7 @@ export default function ModeMenu({ place, cards, onPick, onDeploy, onClose, ask 
           {cards.map((c, i) => (
             <li key={c.id}>
               <button type="button" className={`mode-card is-${c.state}`} tabIndex={i === at ? 0 : -1} aria-disabled={c.state !== 'live'} onFocus={() => setAt(i)} onClick={() => c.state === 'live' && pick.current?.(c)}>
-                <img className="mode-card-icon" src={c.icon} alt="" width="40" height="40" loading="lazy" />
+                <img className="mode-card-icon" src={c.icon} alt="" width="40" height="40" />
                 <span className="mode-card-name">{c.name}</span>
                 <span className="mode-card-about">{c.about}</span>
                 {c.state === 'live' ? <span className="mode-card-state">{c.id === 'free' ? 'Always open' : 'Play'}</span> : <span className="mode-card-why">{c.state === 'soon' ? 'Coming: ' : ''}{c.why}</span>}

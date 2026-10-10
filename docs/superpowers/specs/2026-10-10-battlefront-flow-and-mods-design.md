@@ -100,3 +100,7 @@ F, A, H, 1 and 5 run at once; they own different files (F: `pages/GalaxySurface.
 ## Departures
 
 Where a lane goes another way than this page, one line each, added by the lane when it merges.
+
+- **F**: the layer numbers are the game's own mode numbers (its rich-presence strings name each: Mode1 Supremacy, Mode3 Ewok Hunt, Mode5/Extraction, Mode6 Hero Showdown, Mode7 Hero Starfighters, Mode9 Co-op, ModeC Jetpack Cargo), so `modes.json` reads Mode6 and Mode9 as Hero Showdown and Co-op, not Extraction and Strike; lane 0's `MODE_LAYERS` is left as it is (lane A owns its `SpaceBattle` row) and the reading lives in `scripts/lib/bf2017-modes.mjs`. Hoth's ice is stood in by its own kit (Hoth troopers, snowtroopers) on the deploy screen.
+- **F**: the stall's measured cause is hypothesis 3, a background tab (no frames, so the bake and the pictures' fences never advance), fixed at `gpuWork.js`'s `nextFrame`; the live fronted RTX 5090 hold was not reproduced in SwiftShader, and the veil's Go in anyway covers whatever else it was. `?mode=` resolves in the page (`modes.js`'s `missionForMode`), so `missions/index.js` and `travel.js` are untouched; the Land button's line comes from the system's briefing (`surface/landLine.js`, held to `modes.js` by a test) so the galaxy map's bundle doesn't carry the missions.
+

@@ -72,7 +72,6 @@
 .mode-card-icon {
   width: 40px;
   height: 40px;
-  filter: invert(1);
   opacity: 0.9;
 }
 .mode-card-name {
@@ -136,7 +135,6 @@
 .deploy-class img {
   width: 28px;
   height: 28px;
-  filter: invert(1);
 }
 .deploy-note {
   margin: 6px 0 0;
