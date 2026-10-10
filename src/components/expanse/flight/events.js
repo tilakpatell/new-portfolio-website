@@ -16,8 +16,9 @@
 //   draw: { occurrences(list), fire({ from, to }), begin(ev), end(ev),
 //     step(ship, at, dt, ev | null), clear() }
 
-import { cap, occurrencesFor, placeOccurrences, applyRule } from '../../../lib/land/flight/occurrences';
+import { cap, placeOccurrences, applyRule } from '../../../lib/land/flight/occurrences';
 import { createFlightDirector } from '../../../lib/land/flight/director';
+import { eventsOf, occurrencesOf } from './planets';
 import { cellKeyOf } from '../../../lib/land/flight/routes';
 import { setEvent as setEventNews } from './eventNews';
 import { say as sayNews } from './lifeNews';
@@ -25,8 +26,8 @@ import { say as sayNews } from './lifeNews';
 const RING = 1200; // m: the biomes round you are sampled this far out, for what an event needs
 const NEAR = 1.5; // an occurrence's rule is asked within this many of its reach
 
-export function createOccurrences({ spec, field, draw, director = createFlightDirector({ spec }), say = sayNews, setEvent = setEventNews, radius = 1 }) {
-  const rows = occurrencesFor(spec);
+export function createOccurrences({ spec, field, draw, director = createFlightDirector({ spec, list: eventsOf(spec) }), say = sayNews, setEvent = setEventNews, radius = 1 }) {
+  const rows = occurrencesOf(spec);
   const cells = new Map(); // key → occurrences
   const states = new Map(); // id → its rule's visit state
   let list = [];

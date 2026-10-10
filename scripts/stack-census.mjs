@@ -28,7 +28,7 @@ export const PAGES = {
   ...group('physics-rapier.md', ['@dimforge/rapier3d-compat']),
   ...group('react.md', ['react', 'react-dom', 'react-router-dom', 'react-icons', '@types/react', '@types/react-dom']),
   ...group('multiplayer-nostr.md', ['@noble/secp256k1']),
-  ...group('fastnoise-lite.md', ['fastnoise-lite']),
+  ...group('fastnoise-lite.md', ['fastnoise-lite']), // planet flight (scripts/flight-island.mjs removes this row)
   ...group('supabase.md', ['@supabase/supabase-js']),
   ...group('fonts.md', [
     '@fontsource-variable/archivo', '@fontsource/bebas-neue', '@fontsource/cinzel', '@fontsource/cinzel-decorative',

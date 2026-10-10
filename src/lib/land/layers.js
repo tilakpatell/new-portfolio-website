@@ -3,7 +3,7 @@
 // channels, islands, a level. The galaxy's surfaces (galaxy/surface/terrain.js)
 // and the planets' land (this folder) both sum them, so they agree on what a
 // hill is. The flight's planets add a wind to the ridges, a range with no
-// `to` and the blocks of a city (lib/land/flight).
+// `to` and the blocks of a city (the planet flight's).
 //
 // Pure: imports nothing but the galaxy's noise (galaxy/surface/noise.js, a
 // pure module), and runs in Node and in a worker.

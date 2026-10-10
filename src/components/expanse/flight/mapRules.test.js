@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FULL_SCALES, FULL_START, MAP_KEEP, isTap, panBy, pinchStep, placeLabels, zoomStep, MINI, MAP_CELL, bearingOf, biomeColour, cellAddress, compassPoint, markersOf, miniScale, poiRows, project, unproject, visibleLeaves } from './mapRules';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { planetSpecOf } from './planets';
 import { forwardOf } from './flightRules';
 
 const cells = import.meta.glob('../../../lib/net/cells.js', { eager: true });
