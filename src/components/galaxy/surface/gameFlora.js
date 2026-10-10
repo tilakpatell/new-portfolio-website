@@ -1,6 +1,6 @@
 // The drop's own cover for the worlds with no game map that have room for
 // more (the fifth design, lane O): Mandalore's mud rocks, Sorgan's
-// undergrowth, Lothal's boulders. Each is a recipe of objects from the
+// undergrowth, Lothal's mud rocks. Each is a recipe of objects from the
 // drop's library (catalog/bf2017-library.js, `game:<name>`), by world and
 // biome as the design names them, written as scatter rows the placer
 // already draws (instanced, its light cut far off), added after the site's
@@ -40,11 +40,10 @@ export const RECIPES = {
     ['game:objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_smallbush_07/ms_yavinbase_smallbush_07_mesh', { ...COVER, n: 120, within: [6, 160], scale: [0.8, 1.3] }],
     ['game:objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_s_01_mesh', { ...MID, n: 40, within: [10, 320], scale: [0.8, 1.3], solid: false }],
   ],
-  // Lothal's prairie: its mud rocks and boulders out in the grass (the
-  // Empire's containers stand at its factory: sites/outer.js)
+  // Lothal's prairie: the desert's mud rocks out in the grass (the Empire's
+  // cargo about its towns is the game's crates: catalog/bf2017-game-for.js)
   'plains-imperial': [
     ['game:objects/nature/desert/_desertbase/desertbase_rockmudrockmedium_01/desertbase_rockmudrockmedium_01_mesh', { ...MID, n: 30, within: [16, 420], scale: [0.8, 1.8], sink: 0.15 }],
-    ['game:objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_03_mesh', { ...MID, n: 14, within: [40, 520], scale: [0.8, 1.4], sink: 0.3 }],
   ],
 };
 

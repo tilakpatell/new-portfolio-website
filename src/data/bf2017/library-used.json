@@ -39,14 +39,6 @@
   "as": "ms desertcanyon rock (Desert nature)",
   "metres": 0.858
  },
- "objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_03_mesh": {
-  "set": "desert",
-  "kind": "nature",
-  "size": "medium",
-  "tris": 2054,
-  "as": "rancorpit rocks cave rockmedium (Desert nature)",
-  "metres": 1.84
- },
  "objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_04_mesh": {
   "set": "desert",
   "kind": "nature",

@@ -1907,24 +1907,6 @@
     "from": "objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_smallbush_07/ms_yavinbase_smallbush_07_mesh",
     "tier": "surface"
   },
-  "models/galaxy/surface/game/rancorpitcaverockmedium030lecg2p.far.glb": {
-    "hash": "2d52a35f9341",
-    "bytes": 23920,
-    "from": "objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_03_mesh",
-    "tier": "surface"
-  },
-  "models/galaxy/surface/game/rancorpitcaverockmedium030lecg2p.glb": {
-    "hash": "2fdd50f302ce",
-    "bytes": 3194200,
-    "from": "objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_03_mesh",
-    "tier": "surface"
-  },
-  "models/galaxy/surface/game/rancorpitcaverockmedium030lecg2p.lod1.glb": {
-    "hash": "ae5bf9bb1ef7",
-    "bytes": 228472,
-    "from": "objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_03_mesh",
-    "tier": "surface"
-  },
   "models/galaxy/surface/game/rancorpitcaverockmedium041jc5x8i.far.glb": {
     "hash": "483e5ec564a9",
     "bytes": 30148,
