@@ -56,7 +56,7 @@
 
 ### Task 7: The dictionary filled (the names; the depots wait on the desktop)
 
-- [x] `materials.jsonl` and every `*Variation*` and `*Preset*` record fetched; `node scripts/bf2017-shader-names.mjs` writes `src/data/bf2017/shaderParams.json` (the count in the hand-off).
+- [x] `materials.jsonl` and every ObjectVariation and SurfaceShaderPreset record fetched by type (`data type:ObjectVariation type:SurfaceShaderPreset`); `node scripts/bf2017-shader-names.mjs` writes `src/data/bf2017/shaderParams.json`: 4,943 names.
 - [ ] `--depots <shaderdepots.jsonl>` on the desktop (`maps_work/`, not in the bucket): the resolved share (the gate: ≥ 90 % by count).
 
 ### Task 8: The variation chain (the colour lane’s tasks 2 to 6)
