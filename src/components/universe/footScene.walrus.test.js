@@ -13,8 +13,9 @@ const loader = vi.hoisted(() => ({
   },
 }));
 const fetched = vi.hoisted(() => []);
+const level = vi.hoisted(() => ({ now: 'low' }));
 vi.mock('../../lib/three/gltf', async (orig) => ({ ...(await orig()), gltfLoader: () => loader }));
-vi.mock('../../lib/detail', async (orig) => ({ ...(await orig()), detailLevel: () => 'low' }));
+vi.mock('../../lib/detail', async (orig) => ({ ...(await orig()), detailLevel: () => level.now }));
 vi.mock('../../lib/three/clipLibrary', async (orig) => ({ ...(await orig()), loadClip: (n) => (fetched.push(n), Promise.resolve(null)), forFigure: (n) => (fetched.push(n), Promise.resolve(null)) }));
 
 const body = () => {
@@ -32,7 +33,23 @@ const body = () => {
   return root;
 };
 const idle = new THREE.AnimationClip('idle', 1, [new THREE.QuaternionKeyframeTrack('Hips.quaternion', [0, 1], [0, 0, 0, 1, 0, 0, 0, 1])]);
+// (a skinned body, its material named for the cut it came from)
+const skinned = (cut) => {
+  const root = body();
+  const bones = [];
+  root.traverse((o) => o.isBone && bones.push(o));
+  const geo = new THREE.BoxGeometry(0.5, 1.7, 0.3);
+  const n = geo.attributes.position.count;
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Uint16Array(n * 4), 4));
+  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Float32Array(n * 4).map((_, i) => (i % 4 ? 0 : 1)), 4));
+  const mesh = new THREE.SkinnedMesh(geo, new THREE.MeshStandardMaterial({ name: cut }));
+  mesh.bind(new THREE.Skeleton(bones));
+  root.add(mesh);
+  return root;
+};
+const cuts = vi.hoisted(() => ({ light: false }));
 loader.load = async (url) => {
+  if (cuts.light && url.includes('/hero.')) return { scene: skinned(url.includes('.lod1.') ? 'light' : 'full'), animations: [] };
   if (url.endsWith('.lod1.glb')) throw new Error('404');
   if (url.includes('clips-humanoid')) return { scene: new THREE.Group(), animations: [idle] };
   if (url.includes('/clips-')) throw new Error('404');
@@ -61,5 +78,23 @@ describe('a 2017 hero out on foot', () => {
     await Promise.resolve();
     expect(fetched).toEqual([]);
     fig.dispose();
+  });
+
+  it('stands in its light cut first and puts on the full one as it lands', async () => {
+    level.now = 'high';
+    cuts.light = true;
+    const fig = await loadPartyFigure({ ...spec, id: 'hero', src: { url: '/models/galaxy/bf2017/crew/hero.glb' } }, null);
+    const worn = () => {
+      const names = [];
+      fig.model.traverse((o) => o.isSkinnedMesh && names.push(o.material.name));
+      return names;
+    };
+    expect(worn()).toEqual(['light']);
+    await vi.waitFor(() => expect(worn()).toEqual(['full']));
+    // (on the figure's own bones: the animator's, the sockets')
+    fig.model.traverse((o) => o.isSkinnedMesh && expect(fig.model.getObjectById(o.skeleton.bones[0].id)).toBeTruthy());
+    fig.dispose();
+    level.now = 'low';
+    cuts.light = false;
   });
 });
