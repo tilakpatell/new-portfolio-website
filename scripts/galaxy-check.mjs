@@ -216,7 +216,7 @@ for (const id of list.split(',')) {
       info.autoReset = true;
       return { all, out: out.filter((o) => o.calls > 0).sort((a, b) => b.calls - a.calls) };
     });
-    console.log(`${''.padEnd(10)} diag all ${parts.all.calls} calls: ${parts.out.map((o) => `${o.name} ${o.calls}`).join(', ')}`);
+    console.log(`${''.padEnd(10)} diag all ${parts.all.calls} calls: ${parts.out.map((o) => `${o.name} ${o.calls} (${Math.round(o.tris / 1000)}k)`).join(', ')}`);
   }
   const name = `${mode}-${id}-${quality}`;
   await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });

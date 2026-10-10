@@ -3341,8 +3341,10 @@ export async function create(canvas, ctx) {
   // you, in the game's look, or with { look: 'site' } the site's own alone:
   // impact.<metal|stone|snow|sand>, blast.<grenade|speeder|fighter|walker>,
   // push; `at` [x, z] puts it there instead)
+  // (onto the page's own window.__surface debug function, SurfaceView.jsx's,
+  // never in place of it: the shot and check scripts call it)
   if (import.meta.env.DEV)
-    window.__surface = {
+    window.__surface = Object.assign(window.__surface ?? {}, {
       fx(name, { look = 'game', ahead = 6, colour = me().spec.bolt ?? '#ff3b30', at: spot = null } = {}) {
         const st = me().st;
         const fwd = new V(Math.sin(st.yaw), 0, Math.cos(st.yaw));
@@ -3377,7 +3379,7 @@ export async function create(canvas, ctx) {
         return false;
       },
       gameFx,
-    };
+    });
   if (import.meta.env.DEV)
     window.__surfaceScene = {
       scene,

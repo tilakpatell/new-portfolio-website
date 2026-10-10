@@ -50,7 +50,8 @@ export default function SurfaceView({ system = null, site = null, mission = null
   // (for the page's own tests, in development)
   useEffect(() => {
     if (!import.meta.env.DEV) return undefined;
-    window.__surface = () => view.current?.debug?.();
+    // (keeping a hook the scene put on it before: its `fx`)
+    window.__surface = Object.assign(() => view.current?.debug?.(), window.__surface ?? {});
     window.__surfaceDo = (name, ...a) => view.current?.[name]?.(...a);
     return () => {
       delete window.__surface;
