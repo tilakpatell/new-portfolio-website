@@ -203,6 +203,8 @@ export function toesOf(names) {
   const roles = [
     ['toe', ['lefttoebase', 'ball_l', 'l_toebase', 'l_leg04_toes_xl2', 'lefttoe', 'toe_l', 'toe.l'], ['righttoebase', 'ball_r', 'r_toebase', 'r_leg04_toes_xl2', 'righttoe', 'toe_r', 'toe.r']],
     ['foot', ['leftfoot', 'foot_l', 'l_foot', 'l_leg03_ankle_xb', 'foot.l'], ['rightfoot', 'foot_r', 'r_foot', 'r_leg03_ankle_xb', 'foot.r']],
+    // (the game's walkers on their own rigs, lib/three/rigSets.js: the AT-AT's and AT-TE's front feet)
+    ['foot', ['leftfrontfoot'], ['rightfrontfoot']],
   ];
   const plain = names.map((n) => plainBone(n));
   for (const [by, left, right] of roles) {

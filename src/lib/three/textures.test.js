@@ -87,19 +87,30 @@ describe('decoding off the main thread', () => {
 });
 
 describe('a texture the bucket holds', () => {
-  it('is asked of the asset base when the build has one, and nowhere else', async () => {
+  it('is asked of the asset base when the build has one, and nowhere else, through the pool', async () => {
+    const { useAssetPool } = await import('../assetLoad');
+    const { createAssetFetch } = await import('../net/assetFetch');
     vi.stubEnv('VITE_ASSET_BASE', 'https://bucket.test/assets');
     const asked = [];
-    const spy = vi.spyOn(THREE.TextureLoader.prototype, 'loadAsync').mockImplementation((url) => {
-      asked.push(url);
-      return Promise.resolve(new THREE.Texture());
-    });
+    useAssetPool(
+      createAssetFetch({
+        fetch: async (url) => {
+          asked.push(url);
+          return new Response(new Uint8Array(url.includes('rock') ? 90000 : 10));
+        },
+        sleep: async () => {},
+      }),
+    );
+    const spy = vi.spyOn(THREE.TextureLoader.prototype, 'loadAsync').mockImplementation(() => Promise.resolve(new THREE.Texture()));
     try {
       await loadTexture('/hq/tex/rock.jpg');
       await loadTexture('/textures/plain.jpg');
       expect(asked).toEqual(['https://bucket.test/assets/bbbbbbbbbbbb/hq/tex/rock.jpg', '/textures/plain.jpg']);
+      // (decoded from the bytes already here, never fetched again by the decoder)
+      expect(spy.mock.calls.every(([u]) => u.startsWith('blob:'))).toBe(true);
     } finally {
       spy.mockRestore();
+      useAssetPool(null);
       vi.unstubAllEnvs();
     }
   });

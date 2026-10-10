@@ -78,3 +78,39 @@ describe('the surface’s bolts', () => {
     expect(trooper.hp).toBeLessThanOrEqual(0);
   });
 });
+
+describe('a figure on the game’s skeleton', () => {
+  // the game's bones run along their x: the head stands up at (5, 1.6, 0)
+  const bone = (t, up = true) => ({ matrixWorld: { elements: up ? [0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, ...t, 1] : [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...t, 1] } });
+  const bones = { Hips: bone([5, 1, 0], false), Spine: bone([5, 1.1, 0]), Spine1: bone([5, 1.25, 0], false), Neck: bone([5, 1.5, 0], false), Head: bone([5, 1.6, 0]) };
+  const set = { id: 'defaultsoldierbonecollision', bones: [{ bone: 'Head', length: 0.045, radius: 0.16, offset: [-0.01, 0.01, 0], axis: 0, reaction: 'HRT_Head', hiLod: true, lowLod: false }] };
+
+  it('is hit where the game’s capsules are, and the hit names the bone', () => {
+    const world = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids: createSolids(), floors: [] };
+    const blaster = createBlaster({ parent: new THREE.Scene(), world });
+    const play = createBoltPlay({ blaster, rng: () => 0.5, boneSets: { sets: [set] } });
+    const t = { holder: { position: new THREE.Vector3(5, 0, 0) }, fig: { tall: 1.8, bones }, side: 'them' };
+    const got = [];
+    // over the head's capsule (and through where the one big capsule would be): a miss
+    blaster.shoot({ from: [0, 1.0, 0], dir: [1, 0, 0], owner: 'you', side: 'you' });
+    fly(play, { you: null, targets: [t] }, { yours: (e) => got.push(e) }, 30);
+    expect(got).toHaveLength(0);
+    blaster.shoot({ from: [0, 1.62, 0], dir: [1, 0, 0], owner: 'you', side: 'you' });
+    fly(play, { you: null, targets: [t] }, { yours: (e) => got.push(e) }, 30);
+    expect(got).toHaveLength(1);
+    expect(got[0].body).toMatchObject({ ref: t, region: 'Head', reaction: 'HRT_Head' });
+  });
+
+  it('takes an own rig’s set by its skeleton, the B2’s for a B2, and none from the soldier’s', () => {
+    const world = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids: createSolids(), floors: [] };
+    const blaster = createBlaster({ parent: new THREE.Scene(), world });
+    const b2 = { id: 'b2bonecollision', skeleton: 'Characters/Hero/B2/B2_01/B2_01_Ske', bones: [{ ...set.bones[0], reaction: 'HRT_Torso' }] };
+    const play = createBoltPlay({ blaster, rng: () => 0.5, boneSets: { sets: [set, b2] } });
+    const t = { holder: { position: new THREE.Vector3(5, 0, 0) }, fig: { tall: 1.8, bones, rig: 'own', skeleton: 'B2_01_Ske' }, side: 'them' };
+    const got = [];
+    blaster.shoot({ from: [0, 1.62, 0], dir: [1, 0, 0], owner: 'you', side: 'you' });
+    fly(play, { you: null, targets: [t] }, { yours: (e) => got.push(e) }, 30);
+    expect(got).toHaveLength(1);
+    expect(got[0].body).toMatchObject({ ref: t, region: 'Head', reaction: 'HRT_Torso' });
+  });
+});

@@ -23,6 +23,8 @@
       import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
       import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
       import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+      // (the site's own loader: meshopt, and KTX2 when a file has it, as the 2017 game's maps are)
+      import { gltfLoader } from '/src/lib/three/gltf.js';
 
       const q = new URLSearchParams(location.search);
       const views = (q.get('views') ?? 'three,close').split(',');
@@ -41,7 +43,7 @@
       const sun = new THREE.DirectionalLight('#fff4e6', 2.6);
       sun.position.set(3, 4, 2);
       scene.add(sun, new THREE.HemisphereLight('#bbccdd', '#332211', 0.3));
-      const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(q.get('url'));
+      const gltf = await gltfLoader().loadAsync(q.get('url'));
       const root = gltf.scene;
       // &look=toon: as a Meshy figure or prop is drawn in the game
       // (rickmorty/portal/meshyCast.js): its colour map only, on three light

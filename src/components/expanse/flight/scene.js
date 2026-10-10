@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { forwardOf } from './flightRules';
 import { createLandmarks } from './landmarkScene';
 import { withLife } from './lifeScene';
+import { withOccurrences } from './occurrenceScene';
 
 const SKY_R = 40000; // m: inside the camera's far plane, round the camera
 export const FOG = { near: 1500, far: 21000 }; // m: the far ground melts into the sky before the last leaves end
@@ -104,8 +105,8 @@ export function createFlightScene({ spec, palette }) {
   let primed = false;
   const euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
-  // (the planet's life rides on the view: lifeScene.js)
-  return withLife(spec, {
+  // (the planet's life rides on the view: lifeScene.js; what happens round it: occurrenceScene.js)
+  return withOccurrences(spec, withLife(spec, {
     scene,
     camera,
     sun,
@@ -150,5 +151,5 @@ export function createFlightScene({ spec, palette }) {
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) m?.dispose();
       });
     },
-  });
+  }));
 }

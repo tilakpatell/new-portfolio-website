@@ -111,14 +111,19 @@ export async function flyCheck({ a, b, relays, durable, base, check, waitFor }) 
 
   // Alpha builds; Bravo has it
   await waitFor(() => hold(a, ...A, 20), 60000, 'the ground under Alpha');
-  const t2 = Date.now();
-  await a.evaluate(() => window.__FLIGHT__.shared.build(window.__FLIGHT__.ship));
-  await waitFor(async () => (await stats(a)).held > 0, 20000, 'Alpha holds the turret built');
-  await waitFor(async () => {
-    await hold(b, ...NEAR);
-    return (await stats(b)).held > 0;
-  }, 30000, 'Bravo has Alpha’s turret');
-  numbers.built = (Date.now() - t2) / 1000;
+  // timed in the pages, not round the harness: two software-drawn pages hold
+  // an evaluate for a long frame or two, which the old wall clock counted
+  await hold(b, ...NEAR);
+  const builtAt = await a.evaluate(() => {
+    const at = Date.now();
+    window.__FLIGHT__.shared.build(window.__FLIGHT__.ship);
+    return at;
+  });
+  const [heldAt] = await Promise.all([
+    b.waitForFunction(() => window.__FLIGHT__?.shared?.stats().held > 0 && Date.now(), null, { polling: 100, timeout: 30000 }).then((h) => h.jsonValue()),
+    waitFor(async () => (await stats(a)).held > 0, 20000, 'Alpha holds the turret built'),
+  ]);
+  numbers.built = (heldAt - builtAt) / 1000;
   check(numbers.built <= 3, `a turret built by Alpha is in Bravo’s world in ${numbers.built.toFixed(1)} s`);
   const turret = [...durable.store.rows.values()][0];
 

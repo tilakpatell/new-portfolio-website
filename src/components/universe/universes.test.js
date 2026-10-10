@@ -29,7 +29,11 @@ describe('the universes', () => {
   });
 
   it('give the world pages their list, in map order', () => {
-    expect(WORLDS.map((w) => w.to)).toEqual(['/galaxy', '/deathstar', '/deathstar/inside', '/fly', '/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/dot-matrix', '/dot-matrix/64', '/dot-matrix/minecraft', '/earth', '/caribbean', '/invincible']);
+    expect(WORLDS.map((w) => w.to)).toEqual([
+      ...['/galaxy', '/deathstar', '/deathstar/inside'],
+      '/fly', // planet flight (scripts/flight-island.mjs removes this row)
+      ...['/music', '/middle-earth', '/cybertron', '/avengers', '/albuquerque', '/scranton', '/c-137', '/dot-matrix', '/dot-matrix/64', '/dot-matrix/minecraft', '/earth', '/caribbean', '/invincible'],
+    ]);
     expect(WORLDS[0]).toMatchObject({ to: '/galaxy', label: 'A galaxy far, far away', from: 'Star Wars' });
     expect(WORLDS[1]).toMatchObject({ to: '/deathstar', label: 'Death Star', from: 'Star Wars' });
     expect(WORLDS[2]).toMatchObject({ to: '/deathstar/inside', label: 'Aboard the Death Star', from: 'Star Wars' });
@@ -41,7 +45,7 @@ describe('the universes', () => {
     expect(byPath('/deathstar/inside')?.id).toBe('starwars');
     expect(byPath('/dot-matrix/64')?.id).toBe('gaming');
     expect(byPath('/dot-matrix/minecraft')?.id).toBe('gaming');
-    expect(byPath('/fly')?.id).toBe('starwars');
+    expect(byPath('/fly')?.id).toBe('starwars'); // planet flight
     for (const u of UNIVERSES) for (const p of u.pages ?? []) expect(ROUTES.some((r) => matchPath(r, p.to)), p.to).toBe(true);
   });
 });

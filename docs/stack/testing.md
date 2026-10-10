@@ -13,6 +13,8 @@ Vitest runs the unit tests beside every file; `playwright-core` drives headless 
 - `vitest.render.config.js`: `npm run test:ai:render`, every model drawn in Chromium.
 - `scripts/autopilot-check.mjs`: lint, tests, build, then the routes in headless Chromium with software WebGL, failing on a page error or a blank canvas; with `--shots`, the screenshots for the changes log.
 - The other `scripts/*-check.mjs` files: route-by-route checks in Chromium (the census lists every `playwright-core` script).
+- `scripts/stream-check.mjs`: Hoth on a phone profile over throttled 3G (CDP `Network.emulateNetworkConditions`, 1.6 Mbit/s, 150 ms) against a built site; fails past the streaming plan’s numbers (first figure within 8 s of the scene mounting, the world up under 4 MB, no URL asked more than three times, no console errors).
+- `scripts/assets-check.mjs` (no browser): every entry of `src/data/galaxyAssets.json` and `assets-manifest.json` asked of the public bucket for one byte, its size and year’s cache held to the manifest; the deploy runs it before the build when `ASSET_BASE` is set.
 - `scripts/ai-e2e/README.md`: the tiers, from unit to the nightly GPU evals, and where each runs.
 
 ## How the site uses it

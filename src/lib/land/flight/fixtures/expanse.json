@@ -1,0 +1,171 @@
+[
+  {
+    "id": "e:1,0:0:0",
+    "name": "Lithialsur",
+    "type": "gas",
+    "seed": "9214131500749537690",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8047664006179988,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:0:1",
+    "name": "Selimo",
+    "type": "forest",
+    "seed": "9214132600261165901",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8047664006179988,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:0:2",
+    "name": "Ramsaex",
+    "type": "lava",
+    "seed": "9214129301726281268",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8047664006179988,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:0:3",
+    "name": "Taecle",
+    "type": "ice",
+    "seed": "9214130401237909479",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8047664006179988,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:0:4",
+    "name": "Taedixa",
+    "type": "rock",
+    "seed": "9214127102703024846",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8047664006179988,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:0:5",
+    "name": "Deapho",
+    "type": "ice",
+    "seed": "9214128202214653057",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8047664006179988,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:0:6",
+    "name": "Vaemalo",
+    "type": "desert",
+    "seed": "9214124903679768424",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8047664006179988,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:1:0",
+    "name": "Miace",
+    "type": "desert",
+    "seed": "5034333057882641216",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8586168136895715,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:1:1",
+    "name": "Seritiai",
+    "type": "ocean",
+    "seed": "5034334157394269427",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8586168136895715,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:1:2",
+    "name": "Tephaemom",
+    "type": "rock",
+    "seed": "5034335256905897638",
+    "system": {
+      "faction": {
+        "id": "dea"
+      },
+      "traffic": 0.8586168136895715,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:2:0",
+    "name": "Cunano",
+    "type": "gas",
+    "seed": "9427996514885272807",
+    "system": {
+      "faction": {
+        "id": "empire"
+      },
+      "traffic": 0.8551512316526781,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:2:1",
+    "name": "Nole",
+    "type": "ocean",
+    "seed": "9427995415373644596",
+    "system": {
+      "faction": {
+        "id": "empire"
+      },
+      "traffic": 0.8551512316526781,
+      "hazard": null
+    }
+  },
+  {
+    "id": "e:1,0:2:2",
+    "name": "Niathia",
+    "type": "rock",
+    "seed": "9427998713908529229",
+    "system": {
+      "faction": {
+        "id": "empire"
+      },
+      "traffic": 0.8551512316526781,
+      "hazard": null
+    }
+  }
+]
