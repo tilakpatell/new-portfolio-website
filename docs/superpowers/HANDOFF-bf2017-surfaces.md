@@ -36,11 +36,23 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 |---|---|---|---|
 | design | the architecting session | `claude/bf2017-render-beauty` | #844 |
 | Q1 | `session_01Ej9xiBYcqg7uoRPqsbKTtN` (Opus 5.5, env Website, started 2026-10-10 14:13 UTC) | `claude/surfaces-q1-materials` | |
-| Q2 | `session_01RyTcJLkhXuFkEEnUifdzLL` (the same) | `claude/surfaces-q2-ground` | |
+| Q2 | `session_01RyTcJLkhXuFkEEnUifdzLL` (the same) | `claude/surfaces-q2-ground` | #851 |
 | Q4 | `session_01UZN9iy457biyvcFRr7X39w` (the same) | `claude/surfaces-q4-weathering` | |
 | Q3 | | | after S |
 | Q5 | | | the desktop |
 | Q6 | | | after S and V |
+
+### Lane Q2: the ground's layers
+
+**Done** (the WebGL 2 leg; the WebGPU leg waits for the owner's laptop). `node scripts/bf2017-ground.mjs hoth --fetch` writes `levels/hoth/ground.json` and `ground/masks.png` and brings the layer maps into the pack's `tex/` (256 / 512 / 1,024 px; 1,024 is 4 mm a texel at the tile, so ultra takes 1,024 too). `src/lib/three/ground/layeredGround.js` is the TSL material; `levelScene.js` takes it on a node renderer when `createLevelScene` is handed `ground: { mesh, renderer, fetchBytes, urlOf, entry }` (lane T passes the ground's mesh when it flips the surface; nothing on the classic renderer changes). Shots, frame table and budgets: `docs/superpowers/evidence/bf2017-surfaces/Q2/`.
+
+- **The layers.** Hoth's terrain names 105 layer combinations over 11 normal maps; four carry the ground (by how many combinations name them: packed 71, rough 70, rocky 47, chunky 42): `T_ArcticBase_SnowPacked_04_N`, `SnowRoughPacked_03_N`, `SnowRockyPacked_04_N`, `SnowChunkyWind_01_N`, over `SnowSparkle_03_RGBM`. All five landed in the bucket during the lane (the desktop's encode, terrain first).
+- **The maps' channels**, decoded: R and G the normal, **B a height** (the combinations' `displacement2d`: blurred relief, spread 0.03 to 0.16), A a smoothness in the rocky, rough and packed maps (rock rougher) and a constant 255 in the chunky. So the blend is by height (`(mask × height)^4`, normalised), and the alpha moves each layer's named roughness by `SMOOTH_GAIN`.
+- **The masks' rules** (derived; `mask: 'derived'`): rocky where the slope is over 30°; chunky where the slope is under 15° and the ground 2 m or more under the field (the mean within 64 m); rough where the level places its meshes thickly (the hangar's apron); packed the rest. In order, the first that holds claims the pixel with a soft edge; the shares over the near map are rocky 8.5%, chunky 11.1%, rough 0.4%, packed 80%. The PNG is RGB at 2 m a texel: rocky, chunky, rough in the channels, packed what they leave (alpha is not used: a browser's decoder premultiplies it into the colour and lost the rock where packed was 0).
+- **The tile**, judged on the shot: 4 m for a 2,048 px map (`TILE_M.hoth`), the wind ripples of the packed snow at a believable scale at 2 m. The layer shader's own tiling would replace it.
+- **What a real mask would change**: `ground.json` says `mask: 'game'`, the PNG comes from the export's section 1, the rules stay as documentation; the material and lane N's import do not change.
+- **Lane N** imports `maskOf(layer, { heights, slope, field, density, frame, rules })` (or `masksOf(rules, ctx)` for all at once) from `src/lib/three/ground/masks.js`, with `rules` from `ground.json`; or reads `ground/masks.png`'s channels as above. Its rocks then grow on the same ridges the ground draws rocky.
+- **Left**: the WebGPU leg and the real frame cost on the laptop; the colour map (the far ground is `TerrainColor` × a tint per layer until then); the layer shader's tiling and smoothness; the other nine terrains (`RULES` per world).
 
 Findings for the next lane go here: families by count on Hoth and which fell to `glb`, the detail maps still missing at PR time, the ground's tile size as judged, what the Enlighten probe found, the PSNR table.
 
