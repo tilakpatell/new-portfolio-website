@@ -64,7 +64,7 @@ Start A, B and C together. D, E, F and G start when A is on `main` (D also needs
 | F | nothing yet | after A: the plan from Task 1 | smoke `/fly/hoth --phone` with the map open |
 | G | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/coruscant` |
 | H | nothing yet | after D, G: the plan from Task 1 | `node scripts/online-check.mjs --fly` (one storm, two browsers) |
-| I | nothing yet | after B: the plan from Task 1 | `node scripts/sw-check.mjs`; a build with and without `VITE_ASSET_BASE` |
+| I | PR from `claude/asset-hosting` (draft until #782 merges): `scripts/assets-upload.mjs` (by hash, a year's cache, no overwrite, `--dry`, `--prune`, refuses in CI, the key from the owner's shell only), `src/data/assets-manifest.json` (`{}` until the upload), `src/lib/assetBase.js` (bucket first, the site after one failure), the manifest filtered by disk hash at build, packs and the service worker carrying bucket files, `ASSET_BASE` in `deploy.yml`, CI building with and without it. Remote: 248 files, 83.1 MB (hq/models 7.9, hq/tex 31.5, cc0/galaxy 11.4, models/gen3d 16.1, kit 16.2); local: 7,708 files, 926.5 MB | the owner: `node scripts/assets-upload.mjs --dry`, then without, commit the manifest, set `ASSET_BASE` (`supabase/README.md`, “The asset bucket”); Pro before it is set for everyone (5 GB egress is a few hundred visits); `--prune` after each deploy that drops a file | `node scripts/sw-check.mjs --bucket`; `node scripts/sw-check.mjs`; a build with and without `VITE_ASSET_BASE` |
 
 ## When something in the plan is wrong
 
