@@ -3100,7 +3100,25 @@ export async function create(canvas, ctx) {
       for (const s of atYou) {
         // (a blade's stroke, or the arena's edge: on you, not a bolt)
         if (s.melee) {
-          if (!state.off) hurt(s.damage, s.from ? { x: s.from[0], z: s.from[1] } : null);
+          if (state.off) continue;
+          const from = s.from ? { x: s.from[0], z: s.from[1] } : null;
+          // (a blade's stroke meets your guard as a duellist's does: a parry staggers it, a block spends the guard)
+          const m = s.oob ? null : met(s, { saber: me().saber, blockAt: state.blockAt, now: state.t, window: PARRY.window * perks.parry, guard: state.guard, cost: me().saber?.stance.cost });
+          if (m && m.how !== 'hit') {
+            const p = me().st;
+            fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', m.how === 'parry' ? 26 : 14);
+            if (m.how === 'parry') {
+              sounds.combat?.('parry');
+              s.parried?.();
+              state.blockAt = null;
+              emit({ type: 'parry' });
+            } else {
+              sounds.saber?.('clash');
+              state.guard = m.guard;
+            }
+            continue;
+          }
+          hurt(s.damage, from);
           continue;
         }
         // (and where it came from, for the way you fall; one through your mate on the way hits it)

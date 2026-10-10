@@ -9,8 +9,9 @@
 // Its interface is assaultScene.js's, so the surface scene runs either the
 // same way: begin, restart, update(dt, you) → { atYou }, targets, hit,
 // running, started, view, target, chooseSide, deploy, youDown, force,
-// dispose. A saber's stroke on you comes back in atYou as `melee` (the
-// scene's hurt, not a bolt), and so does the out-of-bounds count's end.
+// dispose. A saber's stroke on you comes back in atYou as `melee` (met by
+// your guard as a duellist's is, then the scene's hurt, not a bolt; parried,
+// `parried()` staggers it), and so does the out-of-bounds count's end (`oob`).
 //
 // createHvvMission({ parent, world, blaster, mission, emit, say, sounds,
 // warm, who }) → that; who() is the hero you're playing (the scene's lead).
@@ -20,7 +21,7 @@ import * as THREE from 'three';
 import { disposeTree } from '../../../../lib/three/renderer';
 import { turn } from '../../../../lib/three/gait';
 import { sharpen } from '../../../../lib/three/textures';
-import { guarding } from '../../../../lib/combat/duel';
+import { DUEL, guarding, onStagger } from '../../../../lib/combat/duel';
 import { createGunplay } from '../../../universe/gunplay';
 import { crewFigure } from '../crew';
 import { bladeInHand } from '../heldBlade';
@@ -284,10 +285,14 @@ export function createHvvMission({ parent, world, blaster, mission, emit, say, s
         } else if (e.type === 'stroke') {
           const body = bodies.get(e.id);
           if (body?.blade && body.ready) body.blade.swing(t, { clip: e.clip, lock: null });
-        } else if (e.type === 'hit' && e.you) atYou.push({ melee: true, damage: yours(e.damage), from: e.from });
+        } else if (e.type === 'hit' && e.you) {
+          // (parried: it reels, as a duellist does, its stroke turned)
+          const f = b.fighters[e.id];
+          atYou.push({ melee: true, blade: true, damage: yours(e.damage), from: e.from, parried: () => f.mind && onStagger(f.mind, DUEL.stagger.parried) });
+        }
         else if (e.type === 'down') fell(e.id, e.from);
         else if (e.type === 'spawn') back(e.id);
-        else if (e.type === 'oob') atYou.push({ melee: true, damage: 1000, from: null });
+        else if (e.type === 'oob') atYou.push({ melee: true, oob: true, damage: 1000, from: null });
         else if (e.type === 'score' || e.type === 'target') tell(e);
         else if (e.type === 'end') {
           say(mission.lines?.[e.won ? 'won' : 'lost']);
