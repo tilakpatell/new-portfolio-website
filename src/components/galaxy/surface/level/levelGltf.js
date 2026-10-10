@@ -14,6 +14,7 @@
 // come from the same cache, a map the pack has not got as null. The GLB's
 // material is disposed (its maps are the cache's and stay).
 //   recipes: { forGlb(glbPath) → recipe[] | null, maps: { name → 'tex/x.ktx2' | null }, tex: sizes }
+//   mapKeys: the recipe maps the tier draws (gameMaterial.js's TIER_MAPS), the rest never fetched
 
 import { gltfLoader, ktx2Loader } from '../../../../lib/three/gltf.js';
 import { assetUrl, withFallback } from '../../../../lib/assetBase.js';
@@ -68,7 +69,9 @@ const MAP_KEYS = [
   ['mask', (m) => m.mask],
 ];
 
-export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {}, recipes = null, materialFor = null }) {
+export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {}, recipes = null, materialFor = null, mapKeys = null }) {
+  // (mapKeys: the recipe maps the tier draws; null, all of them)
+  const keys = mapKeys ? MAP_KEYS.filter(([k]) => mapKeys.includes(k)) : MAP_KEYS;
   if (recipes?.tex) sizes = { ...sizes, ...recipes.tex };
   const textures = new Map(); // pack path → Promise<Texture | null>
   const meshes = new Map(); // glb path → Promise<{ scene } | null>
@@ -122,7 +125,7 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
       [...used].map(async ([glb, recipe]) => {
         const maps = { glb };
         await Promise.all(
-          MAP_KEYS.map(async ([key, get]) => {
+          keys.map(async ([key, get]) => {
             const name = get(recipe.maps ?? {});
             if (typeof name !== 'string') return;
             const path = recipes.maps?.[name];

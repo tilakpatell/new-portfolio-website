@@ -109,7 +109,21 @@ export function recipeOf(row, i) {
     const slot = names.find((n) => slots.includes(n) && (n !== 'NS' || nsIsDetail));
     if (slot) set(`maps.${MAP_PATHS[key] ?? key}`, m.textures[slot], at(slot));
   }
-  if (recipe.maps.detailArray) set('maps.detailSlice', 'median', at(recipe.maps.aoSlice ? 'AOSlice' : 'NormalDetailTextureArray'));
+  // (one slice per material: the first; the spec's median of AOSlice's blue
+  // needs the AOSL map's pixels, which this pure step has not got)
+  if (recipe.maps.detailArray) set('maps.detailSlice', 0, at(recipe.maps.aoSlice ? 'AOSlice' : 'NormalDetailTextureArray'));
+  // An emissive slot holds what its texture's suffix says: an emissive (_E,
+  // _EM, _Emissive) is drawn as one, a mask (_M) as one channel; a colour
+  // map (_C, _CA, _CS) or a packed normal is not drawn (the base colour glows)
+  let emissiveKind = null;
+  if (recipe.maps.emissive) {
+    const name = recipe.maps.emissive;
+    emissiveKind = /_E(M)?$|_Emissive$/i.test(name) ? 'texture' : /_M(ask)?$/i.test(name) ? 'mask' : null;
+    if (!emissiveKind) {
+      delete recipe.maps.emissive;
+      delete recipe._source['maps.emissive'];
+    }
+  }
 
   // the detail normal
   const t = vec('detail.tiling');
@@ -151,12 +165,12 @@ export function recipeOf(row, i) {
     } else set('params.emissive.intensity', x, at(ei[0]));
   }
   scalar('emissive.blink');
-  if (ei || ec || recipe.maps.emissive) {
+  if (ei || ec || emissiveKind) {
     const mode = flagOf(m, FLAGS.emissiveMode);
     const from = flagOf(m, FLAGS.emissiveFrom);
-    if (mode === 'OneChannelMask') set('params.emissive.mode', 'mask', at(FLAGS.emissiveMode));
+    if (mode === 'OneChannelMask' && recipe.maps.emissive) set('params.emissive.mode', 'mask', at(FLAGS.emissiveMode));
     else if (from === 'FromBaseColor') set('params.emissive.mode', 'baseColor', at(FLAGS.emissiveFrom));
-    else if (recipe.maps.emissive) set('params.emissive.mode', 'texture', recipe._source['maps.emissive']);
+    else if (emissiveKind) set('params.emissive.mode', emissiveKind, recipe._source['maps.emissive']);
     else set('params.emissive.mode', 'baseColor', 'families.js:MAPS');
     orDefault('params.emissive.color', [1, 1, 1], 'EMISSIVE_WHITE');
     orDefault('params.emissive.intensity', 1, 'EMISSIVE_ONE');

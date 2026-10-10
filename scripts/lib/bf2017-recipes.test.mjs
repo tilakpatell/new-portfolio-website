@@ -48,7 +48,8 @@ describe('recipeOf', () => {
     const x = recipeOf(r, 0);
     expect(x.family).toBe('character');
     expect(x.maps.detailArray).toBe('Characters/DetailMaps/TA_CharacterDetail_17_NS');
-    expect(x.maps.detailSlice).toBe('median');
+    // (one slice per material: the first, until the CLI reads AOSlice's median)
+    expect(x.maps.detailSlice).toBe(0);
     expect(x.maps.aoSlice).toBe('Characters/Hero/Iden/Act3/Iden_Act3_01/Texture/T_Iden_Act3_01_AOSL');
     expect(x.maps.weathering).toBe('Characters/Hero/Iden/Act3/Iden_Act3_01/Texture/T_Iden_Act3_01_W');
     // (per slice: the slice's own component once the median is known; x until then)
@@ -157,5 +158,23 @@ describe('hair and heads', () => {
     expect(head._source['maps.sss']).toBe(src(r, 1, 'RSSSAO'));
     // (its NS is its own normal, not a detail map: no other normal slot names one)
     expect(head.maps.detail).toBeUndefined();
+  });
+});
+
+describe('emissive maps by what the slot holds', () => {
+  const one = (textures, vectors = { EmissiveIntensity: [1e7, 0, 0, 0] }) => recipeOf({ mesh: 'm', materials: [{ shader: 'X/SS_PropsPreset', textures: { _BaseColor: 'X/T_A_C', _Normal: 'X/T_A_N', ...textures }, vectors, conditionals: {} }] }, 0);
+  it('an _E map is drawn as the emissive', () => {
+    const x = one({ _E: 'X/T_Light_E' });
+    expect([x.maps.emissive, x.params.emissive.mode]).toEqual(['X/T_Light_E', 'texture']);
+  });
+  it('a mask in the slot is one channel', () => {
+    const x = one({ _Emissive: 'X/T_Post_M' });
+    expect([x.maps.emissive, x.params.emissive.mode]).toEqual(['X/T_Post_M', 'mask']);
+  });
+  it('a colour map in the slot glows its base colour; a packed normal is not drawn', () => {
+    const c = one({ _Emissive: 'X/T_Ceiling_CA' });
+    expect([c.maps.emissive, c.params.emissive.mode]).toEqual([undefined, 'baseColor']);
+    const n = one({ __NormalEmissiveAO: 'X/T_Metal_Linear_N' });
+    expect([n.maps.emissive, n.params.emissive.mode]).toEqual([undefined, 'baseColor']);
   });
 });

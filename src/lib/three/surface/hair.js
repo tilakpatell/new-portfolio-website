@@ -71,7 +71,7 @@ export function hairMaterial(recipe, maps = {}, { tier = 'high', three, sun = nu
   const uv0 = uv(0);
   const map = glb?.map ? texture(glb.map, uv0) : null;
   let color = (map ? map.rgb : vec3(1)).mul(vec3(m.color.r, m.color.g, m.color.b));
-  const alpha = map ? map.a.mul(float(m.opacity)) : float(m.opacity);
+  const alpha = map ? map.a : float(1);
   if (h.melanin && h.melaninOn !== false) {
     color = color.mul(vec3(...melaninColor(h.melanin[0], h.melanin[1])));
     f.push('melanin');

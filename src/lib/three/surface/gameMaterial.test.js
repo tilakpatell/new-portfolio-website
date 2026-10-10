@@ -93,6 +93,21 @@ describe('createGameMaterial', () => {
     expect(features(make(VEGETATION, {}, { tier: 'mid' }))).toEqual([]);
   });
 
+  it('keeps a blended GLB material blended: depth, blending and offsets, at every tier', () => {
+    const { THREE } = three;
+    for (const tier of ['low', 'ultra']) {
+      const g = new THREE.MeshStandardMaterial({ transparent: true, depthWrite: false, opacity: 0.5, polygonOffset: true, polygonOffsetFactor: -2, blending: THREE.AdditiveBlending });
+      const m = createGameMaterial(PROPS, { glb: g, detail: tex() }, { tier, three });
+      expect([m.transparent, m.depthWrite, m.opacity, m.polygonOffset, m.polygonOffsetFactor, m.blending]).toEqual([true, false, 0.5, true, -2, THREE.AdditiveBlending]);
+    }
+  });
+
+  it('applies opacity once (the material multiplies its own)', () => {
+    const m = make(PROPS);
+    expect(m.opacityNode).toBeNull();
+    expect(m.userData.game.alphaFromMap).toBe(true);
+  });
+
   it('a tiled map repeats', () => {
     const { THREE } = three;
     const detail = tex();

@@ -89,11 +89,12 @@ const recipesFor = (world, pack) =>
 
 // the game material for a tier, or null on the classic renderer
 async function gameMaterials(world, pack, renderer, tier) {
-  if (!renderer?.isWebGPURenderer) return { recipes: null, materialFor: null };
-  const [recipes, { loadSurfaceMaterial }] = await Promise.all([recipesFor(world, pack), import('../../../../lib/three/surface/hair.js')]);
+  // (low draws the GLB as it is: nothing to swap or fetch)
+  if (!renderer?.isWebGPURenderer || tier === 'low') return { recipes: null, materialFor: null };
+  const [recipes, { loadSurfaceMaterial }, { TIER_MAPS }] = await Promise.all([recipesFor(world, pack), import('../../../../lib/three/surface/hair.js'), import('../../../../lib/three/surface/gameMaterial.js')]);
   if (!recipes) return { recipes: null, materialFor: null };
   const make = await loadSurfaceMaterial();
-  return { recipes, materialFor: (recipe, maps) => make(recipe, maps, { tier }) };
+  return { recipes, materialFor: (recipe, maps) => make(recipe, maps, { tier }), mapKeys: TIER_MAPS[tier] ?? null };
 }
 
 export function createLevel({ scene, site, tier, renderer = null, walk = null }) {
@@ -108,9 +109,9 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null })
   const colliders = walk ? createColliders(walk, tier) : null;
   packOf(world)
     .then(async (pack) => {
-      const { recipes, materialFor } = await gameMaterials(world, pack, renderer, tier).catch(() => ({ recipes: null, materialFor: null }));
+      const { recipes, materialFor, mapKeys } = await gameMaterials(world, pack, renderer, tier).catch(() => ({ recipes: null, materialFor: null }));
       if (gone) return;
-      loader = createLevelLoader({ world, tier, renderer, fetchBytes, sizes: pack.tex, recipes, materialFor });
+      loader = createLevelLoader({ world, tier, renderer, fetchBytes, sizes: pack.tex, recipes, materialFor, mapKeys });
       level = createLevelScene({ scene, pack, loadGltf: loader.load, tier });
       // the far list is the whole arena's table; the cells round you bring
       // its collision (the walk world's solids and floors, switched off when

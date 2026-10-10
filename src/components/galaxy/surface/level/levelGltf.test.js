@@ -81,4 +81,14 @@ describe('createLevelLoader', () => {
     expect(materialFor.mock.calls.find(([r]) => r.shader === 'Shaders/SS_A')[1].detail).toBeNull();
     for (const m of made) expect(m.userData.dispose).toHaveBeenCalledTimes(1);
   });
+
+  it('fetches only the maps the tier draws (mapKeys)', async () => {
+    const materialFor = vi.fn(() => new THREE.MeshBasicMaterial());
+    const recipes = { forGlb: () => [{ shader: 'Shaders/SS_A', maps: { detail: 'T_D', grunge: 'T_G' } }], maps: { T_D: null, T_G: null }, tex: {} };
+    const loader = createLevelLoader({ world: 'hoth', tier: 'mid', renderer: null, fetchBytes, sizes, recipes, materialFor, mapKeys: ['detail', 'emissive'] });
+    await loader.load('meshes/y.lod0.glb');
+    const maps = materialFor.mock.calls[0][1];
+    expect('detail' in maps).toBe(true);
+    expect('grunge' in maps).toBe(false);
+  });
 });

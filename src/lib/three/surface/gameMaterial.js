@@ -56,6 +56,13 @@ export const REFLECTANCE_TO_SPECULAR = 4;
 export const TRANSLUCENCY_WEIGHT = 0.25;
 
 const ON_MID = new Set(['detail', 'detailArray', 'emissive']);
+// the recipe maps each tier draws, for the loader to fetch no more (low: none)
+export const TIER_MAPS = {
+  low: [],
+  mid: ['detail', 'emissive'],
+  high: null,
+  ultra: null,
+};
 
 export async function loadGameMaterial() {
   const three = await loadThree();
@@ -86,6 +93,13 @@ export function fromGlb(THREE, glb, physical) {
     'vertexColors',
     'flatShading',
     'name',
+    'depthWrite',
+    'depthTest',
+    'blending',
+    'polygonOffset',
+    'polygonOffsetFactor',
+    'polygonOffsetUnits',
+    'alphaToCoverage',
   ]) {
     if (glb[k] !== undefined) m[k] = glb[k];
   }
@@ -158,7 +172,9 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
   // ---- the base: the GLB's three maps and factors, at the (parallax) uv
   const map = glb?.map ? texture(glb.map, uv0) : null;
   let color = (map ? map.rgb : vec3(1)).mul(vec3(m.color.r, m.color.g, m.color.b));
-  const alpha = map ? map.a.mul(float(m.opacity)) : float(m.opacity);
+  // (the map's alpha only: the material multiplies its own opacity after)
+  const alpha = map ? map.a : float(1);
+  game.alphaFromMap = true;
   let roughness = glb?.roughnessMap ? texture(glb.roughnessMap, uv0).g.mul(float(m.roughness)) : float(m.roughness);
   let metalness = glb?.metalnessMap ? texture(glb.metalnessMap, uv0).b.mul(float(m.metalness)) : float(m.metalness);
   const ao = glb?.aoMap ? texture(glb.aoMap, uv(glb.aoMap.channel ?? 0)).r : float(1);
