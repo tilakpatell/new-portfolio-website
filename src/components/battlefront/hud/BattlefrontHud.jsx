@@ -28,7 +28,7 @@ export default function BattlefrontHud({ view, mine = 2, words, markers = [], sc
     <Hud className="bf-hud" touch={touch} tools={<Menu way={way} />} brand={<span className="bf-glass">{words.title}</span>}>
       <Toast toast={toast} />
       {mode && <ObjectiveBar stage={mode.stageName} objectives={mode.objectives ?? []} tickets={mode.tickets} />}
-      {!deploying && p && p.state === 'alive' && (
+      {!deploying && !mode?.result && p && p.state === 'alive' && (
         <>
           <Markers markers={markers} />
           <Heat heat={p.heat ?? 0} warning={p.warning ?? 0.75} overheated={Boolean(p.overheated)} window={p.coolWindow ?? null} />

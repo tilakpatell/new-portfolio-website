@@ -86,7 +86,15 @@ async function leg(kind) {
   const out = { leg: kind, quality: QUALITY ?? 'device', errors, shots: {} };
   const t0 = Date.now();
   await page.goto(`${base}/#${ROUTE}?gpu=${kind}`, { waitUntil: 'domcontentloaded', timeout: WAIT });
-  await page.waitForFunction(() => Boolean(window.__battlefront?.view), null, { timeout: WAIT });
+  // (the world up, or the runtime saying its 3D failed: a lost WebGPU
+  // device on SwiftShader ends the leg at once rather than at the wait)
+  for (const until = Date.now() + WAIT; ; ) {
+    const failed = errors.find((e) => /3D failed|device.*lost/i.test(e));
+    if (failed) throw new Error(failed.split('\n')[0]);
+    if (await page.evaluate(() => Boolean(window.__battlefront?.view))) break;
+    if (Date.now() > until) throw new Error('the world never came up');
+    await page.waitForTimeout(1000);
+  }
   out.backend = await page.evaluate(() => window.__battlefront.do('gpu'));
   await page.waitForFunction(() => window.__battlefront.view().level.loaded, null, { timeout: WAIT, polling: 1000 });
   out.loadedMs = Date.now() - t0;
