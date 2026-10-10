@@ -16,13 +16,16 @@
 import * as THREE from 'three';
 import { settle } from '../lib/settle';
 import { BLOOM } from '../lib/three/bloom';
+import { NODE_PASSES } from '../lib/three/light/post';
 import { makeGfx } from './gfx';
 
 export const hasWebGPU = () => typeof navigator !== 'undefined' && Boolean(navigator.gpu);
 
 // the chain as data → a PostProcessing graph; `ready` resolves once the
-// nodes are loaded, and render() draws nothing until then
+// nodes are loaded, and render() draws nothing until then. A chain with any
+// of the game light's passes goes to buildLitPost.
 export function buildPostProcessing(renderer, passes) {
+  if (passes.some((p) => NODE_PASSES.has(p.kind))) return buildLitPost(renderer, passes);
   let post = null;
   let scenePass = null;
   const ready = Promise.all([import('three/webgpu'), import('three/tsl'), import('three/addons/tsl/display/BloomNode.js')]).then(([webgpu, tsl, bloomMod]) => {
@@ -54,6 +57,36 @@ export function buildPostProcessing(renderer, passes) {
     dispose: () => {
       post?.dispose?.();
       scenePass?.dispose?.();
+    },
+  };
+}
+
+// The game light's chain (ssgi, denoise, ao, ssr, godrays, lensflare, lut,
+// traa, smaa beside render, bloom and output: lib/three/light/post.js),
+// built by lib/three/light/passes.js, the one place their addons are
+// imported; the same face as buildPostProcessing's.
+export function buildLitPost(renderer, passes) {
+  let chain = null;
+  let disposed = false;
+  const ready = import('../lib/three/light/passes.js')
+    .then(({ buildChain }) => buildChain(renderer, passes))
+    .then((c) => {
+      // (disposed before it was built: nothing of it is kept)
+      if (disposed) c.dispose();
+      else chain = c;
+      return c.pipeline;
+    });
+  return {
+    ready,
+    get passes() {
+      return passes;
+    },
+    render: () => chain?.pipeline.render(),
+    setSize: () => {},
+    compile: () => settle(ready, 4000),
+    dispose: () => {
+      disposed = true;
+      chain?.dispose();
     },
   };
 }

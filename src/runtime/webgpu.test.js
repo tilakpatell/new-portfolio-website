@@ -24,8 +24,17 @@ vi.mock('three/webgpu', () => ({
   },
 }));
 vi.mock('../lib/settle', () => ({ settle: (p) => p }));
+// the game light's chain is lib/three/light/passes.js's to build (its own test builds every kind)
+const built = [];
+vi.mock('../lib/three/light/passes.js', () => ({
+  buildChain: vi.fn(async (renderer, passes) => {
+    const chain = { pipeline: { render: vi.fn() }, dispose: vi.fn(), passes };
+    built.push(chain);
+    return chain;
+  }),
+}));
 
-const { createWebGPU } = await import('./webgpu');
+const { buildPostProcessing, createWebGPU } = await import('./webgpu');
 
 const fakeCanvas = () => ({ addEventListener: vi.fn(), removeEventListener: vi.fn() });
 
@@ -93,5 +102,19 @@ describe('createWebGPU', () => {
     expect(gfx.lost).toBe(true);
     gfx.dispose();
     expect(canvas.removeEventListener).toHaveBeenCalledWith('webglcontextlost', handler);
+  });
+});
+
+describe('buildPostProcessing', () => {
+  it('a chain with the game light’s passes is built by lib/three/light, drawn and disposed through it', async () => {
+    const passes = [{ kind: 'render' }, { kind: 'ssgi' }, { kind: 'ao' }, { kind: 'traa' }, { kind: 'output' }];
+    const post = buildPostProcessing({}, passes);
+    await post.ready;
+    const chain = built.at(-1);
+    expect(chain.passes).toBe(passes);
+    post.render();
+    expect(chain.pipeline.render).toHaveBeenCalledTimes(1);
+    post.dispose();
+    expect(chain.dispose).toHaveBeenCalled();
   });
 });

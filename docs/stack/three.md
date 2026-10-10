@@ -32,7 +32,7 @@ Go through the shared pieces in `src/lib/three/` rather than three directly; eac
 - **Pace** (`src/lib/three/pace.js`): watches the time between frames and draws a step softer when frames come late, sharper once they don’t; or never sharper (`climb: false`) where each step resizes the canvas, as on the world runtime. On a stage world (`src/lib/stage3d.js`, `stage.scale`) and the universe a step is the composer’s buffers drawn smaller and scaled up to the canvas, which keeps its size.
 - **Device tiers** (`src/lib/device.js`): `budget()` is the renderer’s numbers for this device (pixel ratio, multisampling, shadows, bloom, anisotropy); `src/lib/budgets.js` says how much a scene draws at each quality level (triangles, draw calls, props).
 
-Add-ons come from `three/examples/jsm/` (`src/runtime/webgl.js` is the example to copy). `three/addons/` is the same folder under another name; under `src/` only `src/runtime/webgpu.js` uses it, for the node renderer’s bloom, so a classic-renderer file follows the `examples/jsm` spelling the rest of the site uses.
+Add-ons come from `three/examples/jsm/` (`src/runtime/webgl.js` is the example to copy). `three/addons/` is the same folder under another name; under `src/` only the node renderer’s files use it, `src/runtime/webgpu.js` for its bloom and `src/lib/three/light/` for the game light’s lights and passes ([webgpu-tsl.md](webgpu-tsl.md)), so a classic-renderer file follows the `examples/jsm` spelling the rest of the site uses.
 
 ## What the site does not use, and why
 

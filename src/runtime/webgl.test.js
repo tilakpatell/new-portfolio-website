@@ -38,3 +38,14 @@ describe('the WebGL backend’s defaults', () => {
     expect([own.threshold, own.strength, own.radius]).toEqual([2.2, 0.6, BLOOM.radius]);
   });
 });
+
+describe('the game light’s passes', () => {
+  it('are refused by name: they need the node renderer', () => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera();
+    for (const kind of ['ssgi', 'ao', 'ssr', 'godrays', 'lensflare', 'lut', 'traa', 'smaa', 'denoise']) {
+      expect(() => buildComposer(stub(), [{ kind: 'render', scene, camera }, { kind }], { w: 64, h: 64 })).toThrow(`a ${kind} pass needs the node renderer`);
+    }
+    expect(() => buildComposer(stub(), [{ kind: 'vignette' }], { w: 64, h: 64 })).toThrow('unknown pass vignette');
+  });
+});
