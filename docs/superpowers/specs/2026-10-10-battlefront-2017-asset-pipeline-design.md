@@ -1,6 +1,6 @@
 # The Star Wars galaxy on Battlefront II (2017) assets. The design
 
-Date: 2026-10-10. Status: **design, revised with the owner's answers of 2026-10-10, awaiting the nod to plan**, written by an architecting session from the owner's brief and a count of the Supabase buckets; implementation sessions follow, one phase each. The evidence is `docs/superpowers/evidence/bf2017-assets/` (`inventory.md` has every number this page cites). The plans: `docs/superpowers/plans/2026-10-10-bf2017-phase0-tools.md`, `-phase1-heroes.md` and `-phase2-everyone.md`; later phases get theirs as they start.
+Date: 2026-10-10. Status: **design, revised with the owner's answers of 2026-10-10, awaiting the nod to plan**, written by an architecting session from the owner's brief and a count of the Supabase buckets; implementation sessions follow, one phase each. The evidence is `docs/superpowers/evidence/bf2017-assets/` (`inventory.md` has every number this page cites). The plans: `docs/superpowers/plans/2026-10-10-bf2017-phase0-tools.md`, `-phase1-heroes.md`, `-phase2-everyone.md` and `-phaseS-streaming.md` (a lane beside the others); later phases get theirs as they start.
 
 ## What the owner asked
 
@@ -161,18 +161,43 @@ The saber FX (`saberFx.js`, bloom, trail, sparks) and the rules (`lib/combat/*`)
 
 ### 8. Rules this design keeps
 
-- No run-time fetch; every asset is fetched ahead, imported, committed and credited (autopilot rules; the Supabase decision). The bucket key lives in `.env.local` only.
+- No run-time call to a service that makes anything; every asset is fetched ahead, imported and credited, and then either committed or published to the site's own public bucket by content hash with its manifest committed (section 10, the one exception to the standing rule, recorded in the decision entry). The private bucket's key lives in `.env.local` only; the public bucket needs none.
 - A dependency has a page before its import (`RULES.md`). This design adds none: fetch is Node's, textures go through `sharp` and `basisu` the site already holds, GLBs through `@gltf-transform`.
 - Scripts under `scripts/`, pure logic in tested files beside them, files under 800 lines; `catalog/bf2017.js` splits by world when it nears the limit, behind a barrel, like the others.
 - One art style per world: a world that takes 2017 pieces declares `scanned` in its `look.js`, and takes them for its people, buildings and vehicles together, not one of three, so `art-mix` does not count it.
 - No sequel-era model, place or name (the import refuses the paths).
 - Compare on the model sheet before replacing; put the sheets in evidence.
 
+### 10. Streaming, both ways: the bucket to the pipeline, and the site to the bucket
+
+The owner's direction (2026-10-10, 03:30): make the Supabase-to-game streaming robust, and make the site's loading from Supabase robust and performant on devices. The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseS-streaming.md`; it is its own lane and runs beside phases 1 and 2.
+
+**What changes in the rules, and why.** The standing rule is "no run-time call to an asset service; every asset is committed and served from the static site". Its purpose is that nothing a visitor sees depends on a paid service that makes things, and that no secret leaks. A public, read-only bucket of the site's *finished* files, served through Supabase's CDN with immutable cache headers, is a static host, the way GitHub Pages is: it makes nothing, it holds no secret (the anon read is the point), and the site falls back to its own origin when the bucket's URL is not set. What the rule still forbids stands: no raw game file is ever served, no key is in the client, nothing is generated or converted in the browser. The decision entry of phase 0 records this exception and its reason: eleven gigabytes of game-derived files cannot live in a git repository or a Pages deploy, and the site is better for being able to use them.
+
+**The bucket to the pipeline** (`scripts/bf2017-fetch.mjs`, phase 0's, made robust):
+- Every download goes to a `.part` file and is renamed when complete, so a cut-off run leaves no half file; a file whose bytes match the manifest's is kept, so a run resumes.
+- A pool of six concurrent fetches; each with a timeout of 30 s plus a second per megabyte; a failure (network, 429, 5xx, a short body) retried three times with waits of 1, 2 and 4 s, honouring `Retry-After`; a 404 is `missing` (the upload has not reached it), not a failure.
+- `--all '<glob>'` fetches a whole set with one summary line (fetched, kept, missing, failed, bytes, seconds) and exits 1 only on a failure, never on a `missing`; `--verify` re-reads sizes against the manifest and refetches a mismatch. A local index (`lab/assets/bf2017/.index.json`: path, bytes, when) makes a second pass cheap.
+- The pure pieces (the pool, the backoff schedule, the part-rename, the summary) are tested; the network is not.
+
+**The site to the bucket** (a new bucket, `site-assets`, public, read-only):
+- **What goes there**: the files the pipeline makes from the game (crew and surface GLBs, the clip packs, the ultra cuts), named by content hash (`models/galaxy/crew/luke.<hash8>.glb`), uploaded by `scripts/assets-publish.mjs` with `Cache-Control: public, max-age=31536000, immutable` and the right content type, skipping any hash the bucket already holds. Nothing raw; nothing from Meshy, Sketchfab or Quaternius moves (those stay committed and served as today until the game's replace them).
+- **What the repo holds instead of the files**: a manifest `src/data/galaxyAssets.json` (`{ "<site path>": { hash, bytes, from, tier } }`), written by the publish script and committed; the files themselves are git-ignored by the same rule (`scripts/assets-ignore.mjs` keeps `.gitignore`'s block in step with the manifest). Credits stay in `modelCredits.json`. Tests that today `stat` a file (`catalog.test.js`'s caps) read the manifest's `bytes` when the file is absent, so CI needs no download; the model sheets fetch what they show.
+- **How the site resolves a path** (`src/lib/net/assetUrl.js`, pure): `assetUrl(path, { base = import.meta.env.VITE_ASSET_BASE, manifest }) → string`: the bucket's hashed URL when `base` is set and the path is in the manifest, else the path on the site's own origin. One line to point the site at another host (Cloudflare R2, where egress is free, if Supabase's becomes the cost: Pro includes 250 GB a month, and a visit to Hoth at high is about 25 MB, so roughly ten thousand such visits).
+- **The loader, made robust and device-aware** (`src/lib/net/assetFetch.js`, used by `lib/three/gltf.js` and `textures.js`):
+  - a pool by tier (two fetches at once on a weak device or a saver connection, three on a phone, six on a desktop, eight at ultra) with a priority queue: the thing nearest the visitor first, a picked hero's pack ahead of the world's props;
+  - a timeout of 20 s plus a second per megabyte; a failure retried three times with 0.5, 1 and 2 s waits; a 429 honouring `Retry-After`; one in-flight request per URL;
+  - every world's fetches under one `AbortController`, aborted by its dispose, so leaving a world stops its downloads at once;
+  - **progressive figures**: a person's `.lod1` (a tenth of the plain) is fetched and shown first, the plain swapped in when it arrives; past the near distance the swap never happens, which is the far cut's whole saving;
+  - a fallback ladder that never hangs: the plain fails → the `.lod1` → the kind's previous figure (Meshy, Sketchfab, built) → nothing drawn and one warning in development;
+  - the HUD's loading line reads bytes from the pool ("Loading Hoth, 12 of 27 MB"), and `WorldGate`'s install uses the same URLs, so an installed world is served offline by the service worker from the bucket's files (`public/sw.js`'s "no other origin" rule admits the one asset origin `packs/index.json` names).
+- **Checks**: `scripts/assets-check.mjs` HEADs every manifest URL (200, `content-length` equal to `bytes`, the cache header present) and runs before deploy; `scripts/stream-check.mjs` opens Hoth through Playwright on a phone profile with a throttled 3G connection and measures time to the first figure, the bytes before the world is walkable, retries seen, and console errors, against numbers the plan sets and `galaxy-check.mjs` keeps.
+
 ### 9. What this design does not do
 
 - Does not touch nevarro, mandalore, sorgan, lothal or coruscant: nothing of theirs is in the 2017 game.
 - Does not extract textures, clips or audio from the game itself; it takes what the uploader puts in the bucket, in the shape the manifest describes.
-- Does not change the figure resolution order, `actors.js`, `placer.js`, `animator.js`, `clipLibrary.js` or the combat rules; `crew.js` gains one branch (a `rig: 'walrus'` row goes through the new loader) and the rest get better files under the same names.
+- Does not change the figure resolution order, `actors.js`, `placer.js`, `animator.js`, `clipLibrary.js` or the combat rules; `crew.js` gains one branch (a `rig: 'walrus'` row goes through the new loader), `gltf.js` and `textures.js` fetch through the pool, and the rest get better files under the same names.
 - Does not build the classic edition's path: `battlefront-import.mjs` is that, when `bf2-extract` fills.
 - Does not add a gate: the owner chose to deploy as today (answer 1).
 
