@@ -61,7 +61,8 @@ export async function buildManifest(pack, { dist, publicDir, chunksOf = () => []
     const path = [join(dist, url), join(publicDir, url)].find((p) => existsSync(p) && statSync(p).isFile());
     if (!path) {
       const far = remote?.base ? remotePath(url, remote.base, remote.manifest) : url;
-      return far === url ? [] : [{ url: far, bytes: remote.manifest[url.slice(1)].bytes, hash: remote.manifest[url.slice(1)].hash, local: url }];
+      // (`remoteOnly`: the site has no copy, so the installer keeps asking the bucket)
+      return far === url ? [] : [{ url: far, bytes: remote.manifest[url.slice(1)].bytes, hash: remote.manifest[url.slice(1)].hash, local: url, remoteOnly: true }];
     }
     const buf = readFileSync(path);
     // (a file the bucket holds: fetched from there, by the hash in its path,

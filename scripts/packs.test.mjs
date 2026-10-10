@@ -53,7 +53,7 @@ describe('the pack manifests', () => {
     const base = 'https://bucket.test/site-assets';
     const manifest = { 'models/w/luke.glb': { hash: 'cccccccccccc', bytes: 4321 } };
     const m = await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf, remote: { base, manifest } });
-    expect(m.files.find((f) => f.local === '/models/w/luke.glb')).toEqual({ url: `${base}/cccccccccccc/models/w/luke.glb`, bytes: 4321, hash: 'cccccccccccc', local: '/models/w/luke.glb' });
+    expect(m.files.find((f) => f.local === '/models/w/luke.glb')).toEqual({ url: `${base}/cccccccccccc/models/w/luke.glb`, bytes: 4321, hash: 'cccccccccccc', local: '/models/w/luke.glb', remoteOnly: true });
     const plain = await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf });
     expect(m.bytes).toBe(plain.bytes + 4321);
     expect((await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf, remote: { base: '', manifest } })).files.some((f) => f.url.includes('luke'))).toBe(false);
