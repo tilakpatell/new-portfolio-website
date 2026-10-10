@@ -192,14 +192,26 @@ Checking it: `npx vitest run scripts/lib/bf2017-ui.test.mjs src/lib/bf2017 src/r
 
 **Corrections to the spec** (§3, lane O):
 
-1. `levels/clouds` is Cloud City’s level (53 meshes: plazas, gangways), not the sky. The index files it as `cloudcity` architecture; it is E4’s Bespin pack’s to place.
-2. The drop’s cloud meshes are five `backdropcloud` cards of 45 to 65 triangles with no maps; the game’s shader draws them. `textures/levels/clouds` holds only Cloud City’s lighting. So there are no cloud sheets to draw, and task 5 (the sky’s clouds) was not done. The cards are in the index as `cloud`.
-3. Many nature meshes (roots, ferns, bones, scrap, crater rubble, the deflector dish’s wreck panels) carry no maps; the game’s terrain shades them. Imported, they draw bare, so no recipe uses them.
-4. The living world has no skeletons (the 18 rigged rows in the index are the skinned trees and bushes and two Sullust robot arms), so lane A has nothing to give it. The creatures elsewhere (crabs on Scarif, geejaws on Yavin and Endor, skitters on Tatooine) belong in the mapped worlds’ files, which are E0’s and E1 to E5’s; they are imported by name when those lanes want them.
+1. `levels/clouds` is Cloud City's level (53 meshes: plazas, gangways), not the sky. The index files it as `cloudcity` architecture; it is E4's Bespin pack's to place.
+2. The sky's clouds are the drop's five `backdropcloud` cards. Their sheets (`T_ForestBase_BackdropCloud_01_C`, `T_YavinBase_BackdropCloud_01_C`) are in the drop's texture manifest but not in the bucket; they are not under `textures/levels/clouds`, which holds only Cloud City's lighting.
 
-**Left**: the other 8,473 objects in the index, imported on demand by any world that names them; the 970 rows the ledger still gives lane O (the maps’ own meshes under `levels/`, the season 1 sets, the nature sets’ textures no indexed model names), so its owners row stays open (no `merged` in `scripts/lib/bf2017-owners.mjs`); the mapped worlds’ creatures, for E0 to E5; and the sky’s clouds, if the desktop exporter ever exports the cloud sheets.
+**The second pass** (PR #PRNUM2): what the first left undone.
 
-**Checking it**: `npx vitest run scripts/lib/bf2017-library.test.mjs scripts/bf2017-library-import.test.mjs src/components/galaxy/surface/catalog src/components/galaxy/surface/gameFlora.test.js src/components/galaxy/surface/sites`. The worlds’ before and after budget tables are in the PR; the shots are in `docs/superpowers/evidence/bf2017-library/`.
+- **A bare object dressed in its own maps**: many of the drop's meshes name no texture, because their shader preset binds the maps and neither the GLB nor the material dump carries the binding. `scripts/lib/bf2017-dress.mjs` finds them by the shader's name: the stem's colour map (`SS_MS_KashyyykBase_TreeGiant_01_Roots_01` → `T_KashyyykBase_Roots_01_C`, words dropped from a mesh-named preset's middle), else one of the same subject in the shader's folder, and the normal beside it. Only the bucket's own KTX2 is used, through the import's `--textures` hook keyed `shader:<preset>`. With the bucket as it stands, 166 of the index's 1,689 bare meshes are dressed, among them Sullust's crater rubble, Kashyyyk's and Yavin's roots, Yavin's grass and the arctic and forest backdrops. `docs/superpowers/evidence/bf2017-library/dress-wanted.tsv` lists the 207 maps the drop has and the bucket hasn't that would dress 597 more: the forest's roots and ferns, the bones, and both cloud sheets. A re-import dresses them once uploaded. The scrap's maps are not in the drop (its preset is a shared tiling one, Q1's).
+- **The sky's clouds**: `surface/gameClouds.js` draws the three cloud-card shapes, instanced (one draw a shape), twelve to sixteen of them in a ring on the far plane under the dome's own clouds. They are shaded from the card's own shape and the sky's noise in the site's cloud colours, lit from the sun's side, on high and ultra, for Bespin (a cloud sea below the horizon), Kamino, Scarif, Hoth and Endor (`clouds.game`). The cards' own sheet takes over when the bucket has it.
+- **The mapped worlds' creatures**, on high and up: Tatooine's sand skitters and rockmites, Yavin's geejaws, Endor's geejaws and lanternbirds. Dagobah gains Yavin's surface roots and Sorgan's grass is Yavin's, both dressed. The crabs and the whisperbird are out: the crabs are flipbook cards the game animates in their texture, the whisperbird is caught mid-flight. The Kashyyyk spider has no maps in the drop.
+- **Blueprints**: each used object's `ObjectBlueprint` (`scripts/lib/bf2017-blueprint.mjs`) says whether the game's object collides; `library-used.json` keeps it with its `_source`. A thing whose game object has no collision body (the cloud cards, the rockmite) is walk-through unless its site says otherwise.
+- **The ledger**: lane O owns nothing now.
+  - The index takes every level's own meshes (kind `level`, set the level: `tatooine_01`) and every season's object folder.
+  - The era rule takes season 1 whole (The Last Jedi's Crait and D'Qar) and Crait's code `cra`.
+  - The meshes the game never draws (occluders, shadow meshes, colliders, light blockers, dummies) are excluded as `helper`, and the uploader's other map-placed GLBs (`models/…`) are E's.
+  - The planets' globes are the space lane's.
+  - The maps no model names go to the lane whose job binds them: the ground's terrain sets to Q2, the decals' sheets to Q4, the materials' shared detail, mask and reflection maps to Q1, a level's own to E.
+  - The objects' `data/` records go by type, with the blueprints the library's.
+
+**Left**: the 207 maps of `dress-wanted.tsv` uploaded (asked of the desktop exporter, below); then `node scripts/bf2017-library-import.mjs --from src/components/galaxy/surface/gameClouds.js --publish` again, and the cards wear their sheets. The rest of the index's objects are imported on demand by any world that names them. The crabs and the other flipbook creatures want a sprite shader that plays their sheet; the Kashyyyk spider's maps are not in the drop.
+
+**Checking it**: `npx vitest run scripts/lib/bf2017-library.test.mjs scripts/lib/bf2017-dress.test.mjs scripts/lib/bf2017-blueprint.test.mjs scripts/lib/bf2017-coverage.test.mjs scripts/bf2017-library-import.test.mjs src/components/galaxy/surface/catalog src/components/galaxy/surface/gameClouds.test.js src/components/galaxy/surface/gameFlora.test.js src/components/galaxy/surface/sites`. The worlds’ before and after budget tables are in the PR; the shots are in `docs/superpowers/evidence/bf2017-library/`.
 
 ## The fourth design: what is left of the cast (2026-10-10, evening)
 
@@ -331,6 +343,8 @@ In order:
 ## Asked of the desktop exporter (not the site’s work)
 
 The export in `C:\Users\tilak\Downloads\BF2_Extract` (`tool\bf2export.csproj`, Frosty’s libraries):
+
+- **The bare objects' maps** (lane O, `docs/superpowers/evidence/bf2017-library/dress-wanted.tsv`): 207 maps in `textures.jsonl` and not in the bucket, which dress 597 objects whose shader presets bind them. They include the forest's roots and ferns (`T_ForestBase_Roots_01_*`, `T_MS_ForestBase_Fern_01_*`), the bones, and the two cloud sheets (`T_ForestBase_BackdropCloud_01_C`, `T_YavinBase_BackdropCloud_01_C`). Queue them as KTX2 (the normals' derived `__normal` too).
 
 - **Lights**: done, in `maps/<level>.extras.json` `lights[]` (not a separate `.lights.json`): type, position, quaternion, colour, intensity, range, cone, emitter size, cookie, per sub-level. Lane G gets the hangar’s lamps and Theed’s lanterns from there.
 - **Effects**: done, `effects[]` in the same file: the spawn transform and the effect’s `EffectBlueprint` name, for lane F.

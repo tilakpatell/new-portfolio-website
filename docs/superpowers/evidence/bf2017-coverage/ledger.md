@@ -1,18 +1,18 @@
 # The Battlefront II (2017) drop: the coverage ledger
 
-Written 2026-10-10 19:47 UTC from the bucket (113,478 objects listed) by `scripts/bf2017-coverage.mjs`. One row per object (a model with all its LOD files; a map and each of its five extras kinds; `data/` by top folder and record type), each in one state: used, owned, excluded, not-uploaded, unowned. `npm run coverage:bf2017` fails while any row is unowned, or owned by a lane that has merged.
+Written 2026-10-10 21:21 UTC from the bucket (113,478 objects listed) by `scripts/bf2017-coverage.mjs`. One row per object (a model with all its LOD files; a map and each of its five extras kinds; `data/` by top folder and record type), each in one state: used, owned, excluded, not-uploaded, unowned. `npm run coverage:bf2017` fails while any row is unowned, or owned by a lane that has merged.
 
-**Rows:** 80,837 · used 17,485 · owned 45,207 · excluded 13,925 · not-uploaded 4,220 · unowned 0
+**Rows:** 80,837 · used 17,818 · owned 44,201 · excluded 14,703 · not-uploaded 4,115 · unowned 0
 
 ## By part
 
 | part | rows | objects | MB | used | owned | excluded | not-uploaded | unowned |
 | --- | --: | --: | --: | --: | --: | --: | --: | --: |
-| models | 14,471 | 14,471 | 2,563 | 9,213 | 2,311 | 2,947 | 0 | 0 |
-| collision | 12,941 | 12,941 | 151 | 0 | 10,297 | 2,644 | 0 | 0 |
+| models | 14,471 | 14,471 | 2,563 | 9,481 | 1,797 | 3,193 | 0 | 0 |
+| collision | 12,941 | 12,941 | 151 | 0 | 10,108 | 2,833 | 0 | 0 |
 | anims | 10,270 | 10,270 | 1,110 | 734 | 8,981 | 555 | 0 | 0 |
-| textures | 29,836 | 29,836 | 21,854 | 6,680 | 13,774 | 5,162 | 4,220 | 0 |
-| physics | 10,530 | 10,530 | 125 | 0 | 8,173 | 2,357 | 0 | 0 |
+| textures | 29,836 | 29,836 | 21,854 | 6,745 | 13,606 | 5,370 | 4,115 | 0 |
+| physics | 10,530 | 10,530 | 125 | 0 | 8,038 | 2,492 | 0 | 0 |
 | terrain | 39 | 39 | 311 | 1 | 28 | 10 | 0 | 0 |
 | maps | 76 | 76 | 38 | 6 | 56 | 14 | 0 | 0 |
 | maps.lights | 74 | 74 | 0 | 0 | 61 | 13 | 0 | 0 |
@@ -36,31 +36,33 @@ Of each lane’s rows, those its plan did not name are the fifth design’s firs
 
 | lane | design | owned rows | of them, the first finding |
 | --- | --- | --: | --: |
-| E | #848 | 28,791 | 10,125 |
+| E | #848 | 29,036 | 2,984 |
 | A | #848 | 8,634 | 51 |
-| T | #839 | 1,753 | 1,753 |
+| T | #839 | 1,742 | 1,742 |
 | surfaces-Q6 | #844 | 1,394 | 0 |
-| O | #848 | 970 | 556 |
-| 5 | #812 | 662 | 662 |
-| 4 | #812 | 596 | 596 |
-| M | #848 | 591 | 538 |
-| space | #848 | 428 | 155 |
-| X | #836 | 405 | 345 |
+| 5 | #812 | 659 | 659 |
+| 4 | #812 | 434 | 434 |
+| space | #848 | 432 | 123 |
+| X | #836 | 365 | 305 |
 | Y | #839 | 310 | 0 |
+| surfaces-Q1 | #844 | 261 | 0 |
 | B | #839 | 172 | 0 |
 | 6 | #812 | 137 | 137 |
-| surfaces-Q4 | #844 | 124 | 0 |
+| M | #848 | 135 | 82 |
+| surfaces-Q4 | #844 | 126 | 0 |
+| surfaces-Q2 | #844 | 126 | 0 |
 | 7 | #812 | 80 | 80 |
-| surfaces-Q3 | #844 | 70 | 0 |
+| surfaces-Q3 | #844 | 68 | 0 |
 | N | #836 | 30 | 0 |
 | D | #839 | 27 | 0 |
-| surfaces-Q1 | #844 | 23 | 0 |
+| O | #848 | 23 | 0 |
 | W | #839 | 10 | 0 |
 
 ## Excluded, by rule
 
 | rule | rows |
 | --- | --: |
-| era | 11,674 |
-| scaffolding | 2,235 |
+| era | 12,393 |
+| scaffolding | 2,234 |
+| helper | 60 |
 | licence-pending | 16 |
