@@ -19,9 +19,7 @@
     "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
     "as": "hoth: the game's level",
-    "paths": [
-      "public/models/galaxy/bf2017/levels/hoth/"
-    ],
+    "paths": ["public/models/galaxy/bf2017/levels/hoth/"],
     "also": [
       "galaxy"
     ],
@@ -4972,7 +4970,9 @@
     "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "sb_endor: the game's level",
-    "paths": ["public/models/galaxy/bf2017/levels/sb_endor/"],
+    "paths": [
+      "public/models/galaxy/bf2017/levels/sb_endor/"
+    ],
     "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "level-sb_kamino": {
@@ -4984,7 +4984,9 @@
     "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "sb_kamino: the game's level, its storm sky the level's own panorama",
-    "paths": ["public/models/galaxy/bf2017/levels/sb_kamino/"],
+    "paths": [
+      "public/models/galaxy/bf2017/levels/sb_kamino/"
+    ],
     "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "space-endor": {
@@ -5432,6 +5434,51 @@
     ],
     "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
+  "surface-game-forestbasebackdropcloud01a143p1xx": {
+    "title": "Star Wars Battlefront II (2017): objects/nature/forest/_forestbase/forestbase_backdropcloud_01/forestbase_backdropcloud_01_a_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "forestbase backdropcloud (Forest cloud)",
+    "file": "/models/galaxy/surface/game/forestbasebackdropcloud01a143p1xx.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-game-forestbasebackdropcloud01b0gdiky2": {
+    "title": "Star Wars Battlefront II (2017): objects/nature/yavin/_yavinbase/yavinbase_backdropcloud_01/forestbase_backdropcloud_01_b_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "yavinbase backdropcloud forestbase (Yavin cloud)",
+    "file": "/models/galaxy/surface/game/forestbasebackdropcloud01b0gdiky2.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-game-forestbasebackdropcloud01d0uzny10": {
+    "title": "Star Wars Battlefront II (2017): objects/nature/forest/_forestbase/forestbase_backdropcloud_01/forestbase_backdropcloud_01_d_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "forestbase backdropcloud (Forest cloud)",
+    "file": "/models/galaxy/surface/game/forestbasebackdropcloud01d0uzny10.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "surface-game-forestbaselogsmall011y9w8zv": {
     "title": "Star Wars Battlefront II (2017): objects/nature/forest/_forestbase/forestbase_logsmall_01/forestbase_logsmall_01_mesh",
     "author": "EA DICE",
@@ -5492,6 +5539,36 @@
     ],
     "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
+  "surface-game-geejaw01sitting0po3alg": {
+    "title": "Star Wars Battlefront II (2017): objects/livingworld/geejaw_01/geejaw_01_sitting_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "geejaw sitting (Livingworld life)",
+    "file": "/models/galaxy/surface/game/geejaw01sitting0po3alg.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-game-geejaw01sittingspendor17o5frj": {
+    "title": "Star Wars Battlefront II (2017): objects/livingworld/geejaw_01/geejaw_01_sitting_sp_endor_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "geejaw sitting sp endor (Livingworld life)",
+    "file": "/models/galaxy/surface/game/geejaw01sittingspendor17o5frj.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "surface-game-lanternbird01sitting0me7hcs": {
     "title": "Star Wars Battlefront II (2017): objects/livingworld/lanternbird_01/lanternbird_01_sitting_mesh",
     "author": "EA DICE",
@@ -5502,6 +5579,21 @@
     "where": "galaxy-surface",
     "as": "lanternbird sitting (Livingworld life)",
     "file": "/models/galaxy/surface/game/lanternbird01sitting0me7hcs.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-game-lanternbird01sittingspendor0s9kidz": {
+    "title": "Star Wars Battlefront II (2017): objects/livingworld/lanternbird_01/lanternbird_01_sitting_sp_endor_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "lanternbird sitting sp endor (Livingworld life)",
+    "file": "/models/galaxy/surface/game/lanternbird01sittingspendor0s9kidz.glb",
     "also": [
       "galaxy"
     ],
@@ -5597,6 +5689,36 @@
     ],
     "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
+  "surface-game-msyavinbasegrasslarge021yoqudn": {
+    "title": "Star Wars Battlefront II (2017): objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_grass_large_01/ms_yavinbase_grass_large_02_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "ms yavinbase grass large (Yavin nature)",
+    "file": "/models/galaxy/surface/game/msyavinbasegrasslarge021yoqudn.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-game-msyavinbaseroots010fguhy8": {
+    "title": "Star Wars Battlefront II (2017): objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_roots_01/ms_yavinbase_roots_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "ms yavinbase roots (Yavin nature)",
+    "file": "/models/galaxy/surface/game/msyavinbaseroots010fguhy8.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "surface-game-msyavinbasesmallbush071s34dyg": {
     "title": "Star Wars Battlefront II (2017): objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_smallbush_07/ms_yavinbase_smallbush_07_mesh",
     "author": "EA DICE",
@@ -5622,6 +5744,36 @@
     "where": "galaxy-surface",
     "as": "rancorpit rocks cave rockmedium (Desert nature)",
     "file": "/models/galaxy/surface/game/rancorpitcaverockmedium041jc5x8i.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-game-rockmite010c6ou6p": {
+    "title": "Star Wars Battlefront II (2017): objects/livingworld/rockmite_01/rockmite_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "rockmite (Livingworld life)",
+    "file": "/models/galaxy/surface/game/rockmite010c6ou6p.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-game-sandskitter011av4fy5": {
+    "title": "Star Wars Battlefront II (2017): objects/livingworld/sand_skitter_01/sand_skitter_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "sand skitter (Livingworld life)",
+    "file": "/models/galaxy/surface/game/sandskitter011av4fy5.glb",
     "also": [
       "galaxy"
     ],

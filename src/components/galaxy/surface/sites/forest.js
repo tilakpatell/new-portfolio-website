@@ -63,7 +63,7 @@ export const SITES = {
       haze: 0.8,
       hazeColor: '#94aa9a',
       suns: [{ ...ENDOR_SUN, color: '#fff1d4', size: 0.014, glow: 1.1 }],
-      clouds: { cover: 0.28, color: '#ffffff', shade: '#b4c2c4', scale: 0.6, speed: 0.004 },
+      clouds: { cover: 0.28, color: '#ffffff', shade: '#b4c2c4', scale: 0.6, speed: 0.004, game: true },
       bodies: [
         // Endor itself, the gas giant the moon goes round
         { az: -2.3, el: 0.42, size: 0.26, color: '#7ea6aa', color2: '#4a6a7a', bands: 9, twist: 1.2 },
@@ -272,6 +272,9 @@ export const SITES = {
       { kind: 'lightshafts', at: [-90, 60], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 9 } },
     ],
     scatter: [
+      // (the game's living world, on high and up: geejaws and lanternbirds)
+      { kind: 'game', model: 'game:objects/livingworld/geejaw_01/geejaw_01_sitting_sp_endor_mesh', n: 10, within: [12, 260], scale: [0.9, 1.1], solid: false, shadow: false },
+      { kind: 'game', model: 'game:objects/livingworld/lanternbird_01/lanternbird_01_sitting_sp_endor_mesh', n: 10, within: [12, 260], scale: [0.9, 1.2], solid: false, shadow: false },
       // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
       { kind: 'qfern', n: 120, within: [5, 60], scale: [0.7, 1.4], solid: false },
       { kind: 'qmushroom', n: 30, within: [6, 60], scale: [0.6, 1.3], solid: false },
@@ -762,6 +765,8 @@ export const SITES = {
     // them, kept off the places (Yoda's hut, the X-wing, the cave, the camp)
     things: grove(31, 46, 30, 190, ['dagocypress', 'dagocypress', 'dagoroots'], [0.7, 1.25]).filter(({ at: [x, z] }) => [[-90, 60, 30], [40, 74, 34], [-70, -120, 30], [100, -60, 32], [-26, -46, 24], [130, 110, 30], [0, 0, 26]].every(([px, pz, r]) => Math.hypot(x - px, z - pz) > r)),
     scatter: [
+      // (the swamp's surface roots, Yavin's, dressed in their own map, on high and up)
+      { kind: 'game', model: 'game:objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_roots_01/ms_yavinbase_roots_01_mesh', n: 30, within: [8, 300], scale: [0.9, 1.5], solid: false, shadow: false, sink: 0.05 },
       // (the game's living world: skettos on the roots and the mud)
       { kind: 'game', model: 'game:objects/livingworld/cavesketto_01/cavesketto_01_sitting_mesh', n: 14, within: [12, 260], scale: [0.8, 1.2], solid: false, shadow: false },
       // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)

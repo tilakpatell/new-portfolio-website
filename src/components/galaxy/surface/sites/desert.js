@@ -318,6 +318,9 @@ export const SITES = {
       { kind: 'eopie', at: [130, 258], yaw: 0.9, scale: 0.9 },
     ],
     scatter: [
+      // (the game's living world, on high and up: sand skitters and rockmites)
+      { kind: 'game', model: 'game:objects/livingworld/sand_skitter_01/sand_skitter_01_mesh', n: 16, within: [10, 240], scale: [0.9, 1.2], solid: false, shadow: false },
+      { kind: 'game', model: 'game:objects/livingworld/rockmite_01/rockmite_01_mesh', n: 20, within: [8, 200], scale: [0.9, 1.3], solid: false, shadow: false },
       { kind: 'rock', n: 140, within: [30, 560], scale: [0.6, 3.2], opts: { color: '#9e7a56', sharp: 0.5 } },
       { kind: 'stones', n: 260, within: [10, 400], scale: [0.25, 0.7], solid: false, opts: { color: '#a68462' } },
     ],

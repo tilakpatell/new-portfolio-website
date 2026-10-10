@@ -136,7 +136,7 @@ export const SITES = {
       // (the game's living world: lanternbirds in the woods)
       { kind: 'game', model: 'game:objects/livingworld/lanternbird_01/lanternbird_01_sitting_mesh', n: 16, within: [10, 260], scale: [0.9, 1.2], solid: false, shadow: false },
       // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
-      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
+      { kind: 'qgrass', model: 'game:objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_grass_large_01/ms_yavinbase_grass_large_02_mesh', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
       { kind: 'qclover', n: 120, within: [4, 90], scale: [0.8, 1.6], solid: false },
       { kind: 'rock', model: 'game:objects/nature/forest/_forestbase/forestbase_rockmedium_02/forestbase_rockmedium_02_mesh', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
       // (the woods as the episode has them: a wall of dark conifers round

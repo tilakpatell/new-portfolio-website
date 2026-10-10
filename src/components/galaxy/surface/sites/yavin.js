@@ -215,6 +215,8 @@ export const SITE = {
     { kind: 'lamp', at: [16, -30], opts: { h: 5, light: '#ffe0a0' } },
   ],
   scatter: [
+    // (the game's living world, on high and up: geejaws)
+    { kind: 'game', model: 'game:objects/livingworld/geejaw_01/geejaw_01_sitting_mesh', n: 10, within: [12, 260], scale: [0.9, 1.1], solid: false, shadow: false },
     // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
     { kind: 'qfern', n: 80, within: [8, 120], scale: [0.8, 1.5], solid: false },
     { kind: 'qclover', n: 120, within: [4, 80], scale: [0.8, 1.6], solid: false },
