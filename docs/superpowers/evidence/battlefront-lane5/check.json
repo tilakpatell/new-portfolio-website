@@ -16,7 +16,7 @@
         "end": "docs/superpowers/evidence/battlefront-lane5/end-webgl.png"
       },
       "backend": "nodes-webgl",
-      "loadedMs": 74275,
+      "loadedMs": 76201,
       "deploy": {
         "ok": true
       },
@@ -76,10 +76,15 @@
       },
       "frame": {
         "frames": 3,
-        "mean": 4366.3,
-        "median": 4483.1,
-        "p95": 4483.2
+        "mean": 4605.5,
+        "median": 4566.7,
+        "p95": 4783.1
       }
+    },
+    {
+      "leg": "webgpu",
+      "failed": "Error: [battlefront] 3D failed TypeError: Failed to execute 'createView' on 'GPUTexture': Failed to read the 'swizzle' property from 'GPUTextureViewDescriptor': The provided value is not of type 'GPUTextureComponentSwizzle'.",
+      "gates": false
     }
   ]
 }
