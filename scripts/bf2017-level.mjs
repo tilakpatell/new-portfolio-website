@@ -45,7 +45,7 @@ import { parseArgs } from './lib/args.mjs';
 import { writeCredit } from './lib/catalog-write.mjs';
 import { isSequel } from './lib/bf2017-manifest.mjs';
 import { glbJson, imagePath, imageUris, inBucket } from './lib/bf2017-paths.mjs';
-import { buildPack, cropHeights, fillHoles, glbTriangles, heightsLayer, lodFile, mergeHeights, readMap, rewriteImageUris, terrainFrame } from './lib/bf2017-level.mjs';
+import { buildPack, cropHeights, emptyValue, fillEmpty, fillHoles, glbTriangles, heightsLayer, lodFile, mergeHeights, readMap, rewriteImageUris, terrainFrame } from './lib/bf2017-level.mjs';
 import { LOD, capIndex, texSizeFor } from '../src/lib/level/lod.js';
 import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
 import { encodePng16 } from './lib/png16.mjs';
@@ -92,7 +92,8 @@ async function pool(items, n, fn) {
 // arena and 256 m round it (the detail map where it has ground, the world
 // map under its holes and beyond it), far at 4 m over the whole world map;
 // heights rebased so the spot's ground is 0
-async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
+async function writeTerrain(env, record, { spot, groundY: givenY, arena, out, dry }) {
+  let groundY = givenY;
   const f = terrainFrame(record);
   const src = (await decodePng16(await need(env, inBucket(record.world.file), 'the world heightmap'))).data;
   const square = {
@@ -119,6 +120,14 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
     holeMask = Uint8Array.from(holes, (v) => (v === 0 ? 1 : 0));
     near.data = fillHoles(holes, near.w, near.h);
   }
+  // (ground the game never painted, Endor's outside its play area, takes its
+  // nearest painted ground; the spot's ground read again from it)
+  const empty = emptyValue(src);
+  if (empty !== null) {
+    near.data = fillEmpty(near.data, near.w, near.h, empty, { margin: 8 });
+    const mid = Math.floor(near.h / 2) * near.w + Math.floor(near.w / 2);
+    groundY = (near.data[mid] * f.scale) / 65536 + f.offset;
+  }
   // (the far map at 4 m a pixel: the ground's grid out there is coarser still,
   // and a 2 m map of the whole 8 km is 16 million samples for every visitor)
   const FAR_MPP = 4;
@@ -126,6 +135,7 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
   const pad = clamp ? 2048 : 0;
   const far = cropHeights(src, f, { minX: f.minX - pad, minZ: f.minZ - pad, size: (f.w - 1) * f.metresPerPixel + 2 * pad, metresPerPixel: FAR_MPP, clamp });
   const nearPng = encodePng16(near.data, near.w, near.h);
+  if (empty !== null) far.data = fillEmpty(far.data, far.w, far.h, empty, { margin: 2 });
   const farPng = encodePng16(far.data, far.w, far.h);
   if (!dry) {
     await mkdir(join(out, 'terrain'), { recursive: true });
@@ -164,7 +174,7 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
     const i = Math.round(z - json.near.min[1]) * near.w + Math.round(x - json.near.min[0]);
     return Boolean(holeMask?.[i]) && Math.abs(x - json.near.min[0] - near.w / 2) < near.w / 2 && Math.abs(z - json.near.min[1] - near.h / 2) < near.h / 2;
   };
-  return { json, layer, holeAt, bytes: { near: nearPng.length, far: farPng.length } };
+  return { json, layer, holeAt, groundY, bytes: { near: nearPng.length, far: farPng.length } };
 }
 
 // Each texture once, as the bucket encoded it, its mips dropped to each
@@ -273,7 +283,7 @@ async function main(args) {
   if (!record) console.log('no terrain: the ground stays the site’s');
   const ground = record ? await heightsLayer(record, await need(env, inBucket(record.world.file), 'the world heightmap')) : null;
   const detail = record?.detail?.file ? await heightsLayer(record, await need(env, inBucket(record.detail.file), 'the detail heightmap'), 'detail') : null;
-  const groundY = detail && LAYERS.image(spot[0], spot[1], detail) ? LAYERS.image(spot[0], spot[1], detail) : ground ? LAYERS.image(spot[0], spot[1], ground) : 0;
+  let groundY = detail && LAYERS.image(spot[0], spot[1], detail) ? LAYERS.image(spot[0], spot[1], detail) : ground ? LAYERS.image(spot[0], spot[1], ground) : 0;
 
   // the meshes: each one's LOD chain (the model manifest's, else counted
   // from its GLBs), its four cuts and their triangles
@@ -341,6 +351,7 @@ async function main(args) {
 
   // (an interior writes no ground of its own, but reads it: what is under it is the interior)
   const terrain = record ? await writeTerrain(env, record, { spot, groundY, arena, out, dry: dry || inside }) : null;
+  if (terrain) groundY = terrain.groundY;
   const pack = buildPack({
     world: packId,
     inside,

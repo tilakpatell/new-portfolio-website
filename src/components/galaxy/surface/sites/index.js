@@ -60,7 +60,9 @@
 //                  [{ id, name, level (a pack: '<world>/<district>'),
 //                  land: { at, yaw }, line, ground? (in place of the
 //                  site's: an interior's flat floor), door? { at, r,
-//                  prompt } (the way back to the main map) }]; the route's
+//                  prompt } (the way back to the main map), site? (any
+//                  of the site's own rows in place: an interior's fog, no
+//                  weather) }]; the route's
 //                  ?district=<id>, a zone's door `to: { district }`, the
 //                  system panel's "Land at" rows. The default (none, or an
 //                  id the site lacks) is the site as written
@@ -103,7 +105,7 @@ export function withDistrict(site, id) {
   const layers = (site.ground?.layers ?? []).map((l) => (l.type === 'image' && l.pack === site.level ? { ...l, pack: d.level } : l));
   // (the world's own zones are the main map's; a district's way back is its `door`)
   const zones = d.door ? [{ id: `${d.id}-out`, name: site.place, door: d.door, to: { district: 'main' } }] : [];
-  return { ...site, district: d.id, level: d.level, land: { ...site.land, ...d.land }, place: d.name ?? site.place, line: d.line ?? site.line, zones, ground: d.ground ? { ...site.ground, ...d.ground } : { ...site.ground, layers } };
+  return { ...site, ...(d.site ?? {}), district: d.id, level: d.level, land: { ...site.land, ...d.land }, place: d.name ?? site.place, line: d.line ?? site.line, zones, ground: d.ground ? { ...site.ground, ...d.ground } : { ...site.ground, layers } };
 }
 
 const turn = ([x, z], yaw = 0) => [x * Math.cos(yaw) + z * Math.sin(yaw), -x * Math.sin(yaw) + z * Math.cos(yaw)];

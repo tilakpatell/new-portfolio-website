@@ -437,3 +437,80 @@ export function fillHoles(data, w, h, hole = 0) {
   }
   return out;
 }
+
+// The value a map uses for ground it never painted (Endor_01's: 58% of its
+// pixels, the tiles outside the play area left at its floor): the map's
+// lowest non-zero value when that much of it is that value, else null.
+export function emptyValue(data, share = 0.25) {
+  let min = Infinity;
+  for (const v of data) if (v && v < min) min = v;
+  let n = 0;
+  for (const v of data) if (v === min) n++;
+  return n / data.length >= share ? min : null;
+}
+
+// Each empty pixel the mean of its nearest painted neighbours, spreading out
+// from the painted ground ring by ring: the floor runs on from the play
+// area's edge instead of dropping to the map's floor. Holes (0) stay.
+// (`margin`: pixels within that many of an empty one are empty too: the
+// painted ground's rim is blended down toward the floor value)
+export function fillEmpty(data, w, h, empty, { margin = 0 } = {}) {
+  const out = Uint16Array.from(data);
+  const done = new Uint8Array(data.length);
+  let ring = [];
+  for (let i = 0; i < data.length; i++) if (data[i] !== empty) done[i] = 1;
+  for (let step = 0; step < margin; step++) {
+    const grow = [];
+    for (let i = 0; i < data.length; i++) {
+      if (!done[i] || !out[i]) continue;
+      const x = i % w;
+      const y = (i - x) / w;
+      if ((x > 0 && !done[i - 1]) || (x < w - 1 && !done[i + 1]) || (y > 0 && !done[i - w]) || (y < h - 1 && !done[i + w])) grow.push(i);
+    }
+    for (const i of grow) done[i] = 0;
+  }
+  for (let i = 0; i < data.length; i++) {
+    if (done[i]) continue;
+    const x = i % w;
+    const y = (i - x) / w;
+    if ((x > 0 && done[i - 1]) || (x < w - 1 && done[i + 1]) || (y > 0 && done[i - w]) || (y < h - 1 && done[i + w])) ring.push(i);
+  }
+  while (ring.length) {
+    const vals = ring.map((i) => {
+      const x = i % w;
+      const y = (i - x) / w;
+      let sum = 0;
+      let n = 0;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (done[j] && out[j]) {
+          sum += out[j];
+          n++;
+        }
+      }
+      return n ? Math.round(sum / n) : empty;
+    });
+    const next = [];
+    ring.forEach((i, k) => {
+      out[i] = vals[k];
+      done[i] = 1;
+    });
+    for (const i of ring) {
+      const x = i % w;
+      const y = (i - x) / w;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (!done[j]) {
+          done[j] = 2;
+          next.push(j);
+        }
+      }
+    }
+    for (const j of next) done[j] = 0;
+    ring = next;
+  }
+  return out;
+}
+

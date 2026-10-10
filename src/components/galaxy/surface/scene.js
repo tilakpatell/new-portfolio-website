@@ -462,6 +462,7 @@ export async function create(canvas, ctx) {
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
   for (const z of site.zones) {
+    if (!z.inside) continue; // (a door to another of the world's maps: nothing built)
     placer.put({ kind: z.inside.build, at: [z.origin[0], z.origin[2]], y: z.origin[1], abs: true, model: false, opts: z.inside.opts, zone: true });
     for (const t of z.things) placer.put(t);
   }

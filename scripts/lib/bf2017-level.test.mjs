@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LAYERS } from '../../src/lib/land/layers.js';
 import { readInstances } from '../../src/lib/level/instances.js';
-import { arenaOf, buildPack, cropHeights, heightsLayer, mainSubs, fillHoles, glbTriangles, lodFile, meshCuts, mergeHeights, packCell, readMap, rebase, rewriteImageUris, subset, terrainFrame } from './bf2017-level.mjs';
+import { arenaOf, buildPack, cropHeights, emptyValue, fillEmpty, heightsLayer, mainSubs, fillHoles, glbTriangles, lodFile, meshCuts, mergeHeights, packCell, readMap, rebase, rewriteImageUris, subset, terrainFrame } from './bf2017-level.mjs';
 import { glbJson } from './bf2017-paths.mjs';
 import { cellsOf } from './level-cells.mjs';
 
@@ -234,3 +234,18 @@ describe('the files', () => {
     expect(world.json.inside).toBe(false);
   });
 });
+
+describe('the ground a map never painted', () => {
+  it('finds the empty value only where much of the map is it, and fills it from the painted edge', () => {
+    // 5 × 1: painted 300 and 500 at the left, empty (100) the rest
+    const row = Uint16Array.from([300, 500, 100, 100, 100]);
+    expect(emptyValue(row, 0.25)).toBe(100);
+    expect(emptyValue(Uint16Array.from([300, 500, 100, 400]), 0.5)).toBe(null);
+    expect(Array.from(fillEmpty(row, 5, 1, 100))).toEqual([300, 500, 500, 500, 500]);
+    // (a hole, 0, stays a hole)
+    expect(Array.from(fillEmpty(Uint16Array.from([0, 300, 100]), 3, 1, 100))).toEqual([0, 300, 300]);
+    // (the painted rim blended toward the floor, 200, is taken as empty with a margin)
+    expect(Array.from(fillEmpty(Uint16Array.from([500, 500, 200, 100, 100]), 5, 1, 100, { margin: 1 }))).toEqual([500, 500, 500, 500, 500]);
+  });
+});
+

@@ -237,6 +237,7 @@ describe('districts: more than one of the game’s maps on a world', () => {
     expect(d).toMatchObject({ level: 'tatooine/jabba', land: { at: [10, 0], yaw: 1 }, place: 'Jabba’s palace', line: 'The palace.', district: 'jabba' });
     // (the ground's own heightmap is the district's pack's)
     expect(d.ground.layers).toEqual([{ type: 'image', pack: 'tatooine/jabba' }]);
+    expect(withDistrict({ ...site, weather: [{ kind: 'snow' }], districts: [{ ...site.districts[0], site: { weather: [] } }] }, 'jabba').weather).toEqual([]);
     expect(withDistrict(site, 'nowhere')).toBe(site);
     expect(withDistrict(site, null)).toBe(site);
   });
