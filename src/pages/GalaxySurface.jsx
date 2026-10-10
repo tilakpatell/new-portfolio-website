@@ -28,6 +28,7 @@ import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
 import { HERO_KEY, heroById, heroSpec, loadoutLine, readHero, writeHero } from '../components/galaxy/heroes';
+import { standInLine } from '../components/galaxy/surface/standIn';
 import { missionOf } from '../components/galaxy/surface/missions';
 import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
@@ -117,6 +118,7 @@ export default function GalaxySurface() {
   const heroNow = useRef(hero);
   heroNow.current = hero;
   const worn = useRef(hero);
+  const saidStood = useRef(new Set()); // (the stand-ins already told of)
   const pickHero = (next) => {
     setHero(next);
     local.set(HERO_KEY, writeHero(next));
@@ -454,13 +456,22 @@ export default function GalaxySurface() {
       } else if (e.type === 'hero') {
         // a pick on in the world, or one that wouldn't load (back to what was on)
         const now = heroNow.current;
+        const name = (h) => heroById(h.id)?.name ?? '';
+        // (on, in another body than the game's: said once a hero, standIn.js)
+        const stood = e.ok && e.stoodIn && !saidStood.current.has(`${e.who}:${e.stoodIn}`) ? standInLine(heroById(e.who)?.name ?? '', e.stoodIn) : null;
+        if (stood) {
+          saidStood.current.add(`${e.who}:${e.stoodIn}`);
+          worn.current = now;
+          setToast((t) => ({ title: name(now), text: stood, kind: 'equipped', n: (t?.n ?? 0) + 1 }));
+          later('toast', 4200, () => setToast(null));
+          return;
+        }
         if (e.ok && writeHero(now) === writeHero(worn.current)) return; // (what was on, back on)
         if (e.ok) worn.current = now;
         else {
           setHero(worn.current);
           local.set(HERO_KEY, writeHero(worn.current));
         }
-        const name = (h) => heroById(h.id)?.name ?? '';
         setToast((t) => (e.ok ? { title: name(now), text: loadoutLine(now), kind: 'equipped', n: (t?.n ?? 0) + 1 } : { title: name(now), text: `Didn’t load. Still ${name(worn.current)}: try again in a moment.`, kind: 'failed', n: (t?.n ?? 0) + 1 }));
         later('toast', 3200, () => setToast(null));
       }

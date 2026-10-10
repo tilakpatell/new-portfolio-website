@@ -67,6 +67,7 @@ import { paintById } from '../../universe/paint';
 import { readLoadout, STOCK_LOADOUT } from '../../universe/outfit';
 import { flybySound, gadgetSound, gunSound, impactSound, popSound, portalSound, shipEngine } from '../../universe/sounds';
 import { PARTY, loadPartyFigure } from '../../universe/footScene';
+import { bodiesFor, firstBody } from './standIn';
 import { GUNS, createGunplay } from '../../universe/gunplay';
 import { createGameFx } from '../../../lib/three/fx/gameFx';
 import { createGunFx } from '../../universe/gunfx';
@@ -754,7 +755,10 @@ export async function create(canvas, ctx) {
     }
     // (one of the crew with a model of their own here: that, in metres)
     const own = CREW_MODELS[spec.id] ? await modelFigure(CREW_MODELS[spec.id]).catch(() => null) : null;
-    const fig = own ?? (await loadPartyFigure(spec, cast).catch(() => null));
+    // (a 2017 body that can't be fetched: the site's own figure of them, else
+    // a trooper of their side; the pick stands either way, standIn.js)
+    const got = own ? { fig: own, stoodIn: null } : await firstBody(bodiesFor(spec, heroById(spec.id)), (s) => loadPartyFigure(s, cast)).catch(() => null);
+    const fig = got?.fig;
     if (!fig) return null;
     const inner = new THREE.Group();
     if (!own) inner.scale.setScalar(1 / METRE);
@@ -765,7 +769,7 @@ export async function create(canvas, ctx) {
     inner.updateMatrixWorld(true);
     // (a model of their own reads its motion in metres a second, as the
     // world's people do; a party figure in the map's units)
-    const body = { spec, fig, inner, own: Boolean(own), ...armsFor(spec, fig, own) };
+    const body = { spec, fig, inner, own: Boolean(own), stoodIn: got.stoodIn, ...armsFor(spec, fig, own) };
     if (!disposed) await warm(inner).catch(() => {});
     return body;
   }
@@ -782,7 +786,7 @@ export async function create(canvas, ctx) {
     shed(p);
     p.holder.add(body.inner);
     // (a seat, a fall and a turn are the old body's: the new one takes them up afresh)
-    Object.assign(p, { spec: body.spec, fig: body.fig, inner: body.inner, own: body.own, gp: body.gp, saber: body.saber, weapon: body.weapon, seat: null, downed: null, prevYaw: null });
+    Object.assign(p, { spec: body.spec, fig: body.fig, inner: body.inner, own: body.own, stoodIn: body.stoodIn, gp: body.gp, saber: body.saber, weapon: body.weapon, seat: null, downed: null, prevYaw: null });
   }
   const dropBody = (body) => {
     if (!body) return;
@@ -820,6 +824,8 @@ export async function create(canvas, ctx) {
   }
   (async () => {
     await Promise.all(people.map((p) => fit(p, p.spec)));
+    // (the lead stood in by another body: the page says so once)
+    if (!disposed && people[0].stoodIn && people[0].spec.hero) emit({ type: 'hero', who: people[0].spec.id, ok: true, stoodIn: people[0].stoodIn });
     // (the clips the two of you react with, fetched now, so a roll or a
     // flinch starts on the frame it's asked for, not a fetch later)
     if (!disposed && people.some((p) => p.fig?.anim)) preload(['roll', 'hit.chest', 'hit.head', ...(mission?.kind === 'assault' ? ['die.fwd', 'die.back', 'die.blown'] : [])]).catch(() => {});
@@ -838,10 +844,11 @@ export async function create(canvas, ctx) {
     guardMax = GUARD.max * perks.guard;
     state.guard = { ...state.guard, value: share * guardMax };
     const [lead1, mate1] = partyFor(hero, crewOf).map(withAbilities);
-    // (the page hears once they're on: `ok` false when the body wouldn't load)
+    // (the page hears once they're on: `ok` false only when no body at all
+    // would load; `stoodIn` when another stands in for theirs, standIn.js)
     const was = picked;
     fit(me(), lead1).then((ok) => {
-      if (!disposed && picked === was) emit({ type: 'hero', who: lead1.id, ok });
+      if (!disposed && picked === was) emit({ type: 'hero', who: lead1.id, ok, stoodIn: ok ? (me().stoodIn ?? null) : null });
     });
     fit(other(), mate1);
     ctx.invalidate();
