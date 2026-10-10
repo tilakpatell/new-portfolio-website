@@ -4,7 +4,14 @@ The design: `docs/superpowers/specs/2026-10-10-galaxy-engine-design.md`. The dec
 
 ## Done
 
-- **The design, the decision and four plans** (this PR): lanes R, P, T and M below.
+- **The design, the decision and four plans** (#819): lanes R, P, T and M below.
+- **Lane T, tasks 1 to 3** (`claude/engine-t-surface`, draft PR): the shared twins the surface's closure needs and its own node materials, each a new file beside its GLSL original with the same exports, flags and uniform names; the wiring for lanes R and P; the browser check that compares each twin with its original.
+  - `src/lib/three/hookNodes.js`: what an `onBeforeCompile` chunk swap is on the node renderer: the material's own setup method wrapped and chained (`onPosition`, `onColor`, `onNormal`, `onDirect`, `onIndirect`, `onLight`, `onFog`), the program keyed by each hook's uniforms; `asNode` and `twinScene` put classic materials on their node twins.
+  - Twins (`src/lib/three/<name>Nodes.js`): grounding, groundingBake (the floor bake: depth pictures of its own, read back and resolved on the CPU), groundwork, foliage, groundLook, groundmap, core, scans, splat, puffs, ink, wind, house, recolour, dust, grass, matcap, kit.
+  - The surface's own (`src/components/galaxy/surface/nodes/`): sky, skyfog, weather (flakes as instanced sprites), water (the plane and the Gerstner sea), props (the towers' windows, the shield, the light shafts), activity (the beam), missions (the posts), post (universe/post.js's surface pass: the TSL bloom and the FINAL grade).
+  - `surface/engine.js`: `lightFor` behind `site.gameLight`, `groundFor` behind `site.level`, `postFor` by the backend; two calls in `scene.js` are the seams. Lanes R and P are not on any branch yet, so nothing is handed in and every site keeps today's light and ground.
+  - `scripts/twin-parity.mjs`: each twin against its original, drawn in Chromium through the same post. On SwiftShader every twin is 43 to 80 dB but dust (27 dB) and matcap (17 dB): `docs/superpowers/evidence/galaxy-engine/T/twin-parity.md`.
+  - The closure: 55 files with GLSL at the start (`evidence/galaxy-engine/T/closure-before.md`), 30 with the twins in place, all behind six imports (`closure-now.md`).
 
 ## The lanes
 
@@ -12,7 +19,7 @@ The design: `docs/superpowers/specs/2026-10-10-galaxy-engine-design.md`. The dec
 |---|---|---|---|---|
 | **R** | `2026-10-10-galaxy-engine-laneR-light.md` | the light as one stack: `SunLight` cascades, `ClusteredLighting` placed lights, probes and a probe grid, the TSL sky and fog, the post chain as data (SSGI, AO, SSR, bloom, god rays, flare, LUT, TRAA); `applyGameLight` | `main` | nothing (lane G's `gameLight.js` read from its branch) |
 | **P** | `2026-10-10-galaxy-engine-laneP-physics.md` | the level's ground, shapes, walker and bolts on Rapier: heightfields and Havok hulls per cell, the character controller, ray casts | `main` | nothing (lane L's pack format from its plan; `rapierShapes` shared with L) |
-| **T** | `2026-10-10-galaxy-engine-laneT-surface-port.md` | `galaxy-surface` to `'nodes'`: the `lib/three` twins, the surface's own nodes, the post as data, the light and the ground wired; the flip with parity | `main` | the flip waits for G, L, K merged; the light on R; the ground on P |
+| **T** | `2026-10-10-galaxy-engine-laneT-surface-port.md` | `galaxy-surface` to `'nodes'`: the `lib/three` twins, the surface's own nodes, the post as data, the light and the ground wired; the flip with parity | `main` | tasks 1–3 in a draft PR (`claude/engine-t-surface`); the flip waits for G, L, K merged and the six imports below; the light on R; the ground on P |
 | M | `2026-10-10-galaxy-engine-laneM-map-port.md` | `galaxy` (the map) to `'nodes'` on T's twins | `main` after T | T |
 
 One lane per session. R, P and T may run at once: they own different files (`src/lib/three/light/`, `src/lib/physics/`, `src/lib/three/*Nodes.js` and `surface/nodes.js`). `surface/scene.js` is touched by P (one call site) and T (the import lines and the light wiring) and by #810's lanes G and L now: merge `origin/main` before the PR and keep both sides.
@@ -27,7 +34,15 @@ One lane per session. R, P and T may run at once: they own different files (`src
 
 ## Left
 
-- R, P, T, M as above.
+- R, P, M as above.
+- **T, before the flip** (the six imports that keep 30 GLSL files in the surface's closure, `evidence/galaxy-engine/T/closure-now.md`):
+  - `loadModel` from `universe/planets.js`: take `loadGLTF` and `cloneScene` from `lib/three/gltfCache` instead (no twin needed); eleven files go.
+  - `PARTY`, `loadPartyFigure`, `loadSharedFigure` from `universe/footScene.js`: the figure-loading slice of footScene as a GLSL-free file, with twins of its two matte-figure patches and its ShaderMaterial; fifteen files go (footScene, portalFx, and furnish's landings).
+  - `rickmorty/portal/meshyCast.js` (with `toon.js` and `wardrobe/dress.js`), `rickmorty/cruiser3d.js`'s own patch, `universe/livery.js` (ships' paint), `universe/landings/models.js`'s `sizeFor` (pure), `lib/three/portalFx.js`: twins.
+  - Two twins under the line: **dust** (its cards smaller and softer; scaling by 1.4 gets 34 dB, so the instanced billboard's size differs somewhere) and **matcap** (the baked sphere brighter on the node renderer; the surface does not ask for matcaps).
+- **T, the flip** (Task 4), once G, L and K are merged: merge `origin/main`, move the surface's imports to the twins and `nodes/` (scene.js, ground.js, placer.js, kit.js, detail.js, props/*, sky.js, skyfog.js, water.js, weather.js, activity.js, assaultScene.js), `postFor` in place of `createPost`, `module.js` to `'nodes'`, `shading.test.js` green, the parity tables on the four routes and perf on both backends.
+- **Lane R, from lane T**: three's TSL `bloom` glows a third as much as `UnrealBloomPass` with the same numbers (Unreal's composite multiplies by `3.0 * bloomStrength`). `nodes/post.js` hands the strength over three times; `src/runtime/webgpu.js`'s bloom pass does not, so every `'nodes'` world on WebGPU glows a third as much as on WebGL: `passesFor` should settle it once.
+- **The natural-worlds lane and the WebGPU lane's step 4**: the twins of grounding, foliage, groundLook, wind, grass, puffs, house, core and the rest are on lane T's branch; read them there rather than writing others.
 - After M: `BundleGroup` round what never moves on a level (lane L's instances), measured on the perf probe; the WebGPU design names it.
 - `vxgi/` (voxel cone tracing) measured only if the probe grid is not enough for the hangar's indirect light.
 - The placed lights' cookies (the record's `cookie` textures) once lane R's pool draws without them.
