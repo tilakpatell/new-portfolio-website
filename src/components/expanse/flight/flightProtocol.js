@@ -20,8 +20,7 @@
 // NET_CELL × 2 from that cell's middle is dropped: a pilot who tags one cell
 // and flies in another would be heard where they aren't (a tag lie).
 
-import { createLimiter } from '../../universe/online/protocol';
-import { cleanName } from '../../universe/online/names';
+import { cleanName, createLimiter } from '../../universe/shared/online';
 import { NET_CELL, parseTag } from '../../../lib/net/cells';
 
 export const APP_ID = 'tilakpatel-portfolio-flight';

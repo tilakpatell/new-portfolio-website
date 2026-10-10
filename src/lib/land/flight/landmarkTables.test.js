@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { CLUTTER_KIT, CLUTTER_KIT_OF, LANDMARKS, SITE_PLACES, clutterKitOf } from './landmarkTables.js';
-import { PLANETS, planetSpecOf } from './planetSpec.js';
+import { PLANETS, planetSpecOf } from './fixtures/expanse.js';
 import { CLUTTER_KINDS } from './leafMesh.js';
 
 const manifest = (pack) => JSON.parse(readFileSync(new URL(`../../../../public/kit/${pack}/index.json`, import.meta.url), 'utf8'));
