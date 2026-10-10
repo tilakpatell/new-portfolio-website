@@ -95,8 +95,9 @@ export default {
     if (opts.hoth) opts.placed = false;
     let entry = opts.hoth ? hothVe.sunny : ENTRY;
     if (opts.lightSun) {
-      const [outdoor] = entry.record.OutdoorLightComponentData;
-      const { ShadowSunRotationX, ShadowSunRotationY, ...rest } = outdoor;
+      const rest = { ...entry.record.OutdoorLightComponentData[0] };
+      delete rest.ShadowSunRotationX;
+      delete rest.ShadowSunRotationY;
       entry = { ...entry, record: { ...entry.record, OutdoorLightComponentData: [rest] } };
     }
     const renderer = rt.gfx.renderer;
