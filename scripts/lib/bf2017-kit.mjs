@@ -2,8 +2,9 @@
 // a level's modular systems (Echo Base's hangar, its corridors, its walls)
 // in one file, so a world loads the system once and lays its pieces where
 // it likes. Each piece stays one node under its own name (the placement
-// picks it by name) at the origin the game gave it, a corner or an edge, so
-// pieces laid on the grid meet (src/components/galaxy/surface/kitGrid.js).
+// picks it by name) at the origin the game gave it, a corner or an edge (a
+// piece's name carries its size, hangarlargewall_01_3072x2048: the level
+// layouts place them, lane L's plan).
 // A piece's own parts are joined, one primitive per material, and the
 // pieces share the system's materials: a hangar of a hundred pieces is a
 // few materials and their maps, not a few hundred (the texture contract is
@@ -11,11 +12,14 @@
 //
 // mergeKit([{ name, doc }]) → one Document (each piece's scene under a node
 //   named `name`); kitIndex(doc) → { name: { min, max } } in metres, each
-//   piece's box in its own frame.
+//   piece's box in its own frame; pieceName(manifest name) → what the kit
+//   calls a piece (the name's last part, without the drop's `_mesh`).
 
 import { Document } from '@gltf-transform/core';
 import { dedup, flatten, join, mergeDocuments, prune, unpartition } from '@gltf-transform/functions';
 import { bounds } from './surface-model.mjs';
+
+export const pieceName = (name) => name.split('/').pop().replace(/_mesh$/, '');
 
 export async function mergeKit(pieces) {
   const out = new Document();

@@ -1,6 +1,6 @@
 import { Document } from '@gltf-transform/core';
 import { describe, expect, it } from 'vitest';
-import { kitIndex, mergeKit } from './bf2017-kit.mjs';
+import { kitIndex, mergeKit, pieceName } from './bf2017-kit.mjs';
 
 // a piece as the drop has one: its own document, a node or two, a mesh whose
 // material is the system's shared one (`M_Wall`), its origin at a corner
@@ -52,5 +52,10 @@ describe('a kit: the pieces of one system in one file', () => {
     const at = kitIndex(doc).wall_b;
     expect(at.min).toEqual([0, 0, 0]);
     expect(at.max).toEqual([5.12, 3, 1]);
+  });
+
+  it('names a piece as the kit file keeps it: the manifest name’s last part, without _mesh', () => {
+    expect(pieceName('objects/architecture/hoth/hangarsystem_01/new/hangarlargewall_01_3072x2048_mesh')).toBe('hangarlargewall_01_3072x2048');
+    expect(pieceName('wall_01_s_256x256')).toBe('wall_01_s_256x256');
   });
 });

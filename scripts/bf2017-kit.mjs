@@ -5,8 +5,8 @@
 // one file the world lays the pieces from (scripts/lib/bf2017-kit.mjs has
 // how they are kept: one node a piece, by name, at the game's own origin;
 // the pieces' parts joined by material, the materials shared). Unlike a
-// surface model, a piece is not grounded or turned: its origin is the
-// corner its grid is laid from (src/components/galaxy/surface/kitGrid.js).
+// surface model, a piece is not grounded or turned: its origin is where the
+// level's layout places it from.
 // Textures as bf2017-import.mjs makes them (WebP, colour at --tex, the
 // rest at --maps); a piece whose maps the drop has not got wears none, and
 // the world dresses it in its own look.
@@ -17,6 +17,7 @@
 //   kit      the kit's name, letters and digits (hothhangar): the file is
 //            public/models/galaxy/kits/<kit>.glb, its row in
 //            src/components/galaxy/surface/catalog/bf2017-<world>.js's KITS
+//            (`export const KITS = {};` to start one: --catalog to name it)
 //   pieces   globs over manifest names ('objects/architecture/hoth/
 //            hangarsystem_01/new/hangarlarge*'); sequel-era ones refused
 //   lod      which of each piece's cuts (its last where it has fewer)
@@ -36,11 +37,10 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { isSequel, readManifest } from './lib/bf2017-manifest.mjs';
 import { inBucket, localPath } from './lib/bf2017-paths.mjs';
-import { kitIndex, mergeKit } from './lib/bf2017-kit.mjs';
+import { kitIndex, mergeKit, pieceName } from './lib/bf2017-kit.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
 import { bareWhereUntextured, relit, triangles, unskinned } from './lib/surface-model.mjs';
 import { PERMISSION, readLod } from './bf2017-import.mjs';
-import { pieceName } from '../src/components/galaxy/surface/kitGrid.js';
 
 const sharp = createRequire(createRequire(import.meta.url).resolve('ndarray-pixels'))('sharp');
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
