@@ -82,7 +82,7 @@ The design: `docs/superpowers/specs/2026-10-10-battlefront-fidelity-design.md` (
 
 | Lane | Plan | What | Starts from | Blocked by |
 |---|---|---|---|---|
-| **S** | `2026-10-10-bf-fidelity-laneS-shadows.md` | calibration to the game's Hoth; four soft cascades (`CSMShadowNode`, PCSS from the sun's angular radius); the record's shadow sun; cloud and contact shadows; the shadow term shared with the particles | `main` | nothing |
+| **S** (#846, open) | `2026-10-10-bf-fidelity-laneS-shadows.md` | calibration to the game's Hoth; four soft cascades (`CSMShadowNode`, PCSS from the sun's angular radius); the record's shadow sun; cloud and contact shadows; the shadow term shared with the particles | `main` | nothing |
 | **V** | `2026-10-10-bf-fidelity-laneV-volumetrics.md` | the placed volumetric cones and the light-cone effects ray-marched; fog with the record's participating media; god rays off the real sun; the sun's and the explosions' flares from the records; motion blur and depth of field as data | `main` | S's cascade light for the god rays (reads its branch; `rays` until then). **Built** on `claude/fidelity-v-volumetrics`: see "Lane V" below |
 | **X** | `2026-10-10-bf-fidelity-laneX-particles.md` | the emitter reader (`ScalableEmitterDocument` → `src/data/bf2017/fx/`); particles on the GPU (compute) or the CPU (instanced) from the tables; a level's `effects.json` with its cells; exhaust and contrails on ships | `main` | nothing (the export on the desktop or the bucket by key) |
 | **C** (done, `claude/fidelity-c-cameras`) | `2026-10-10-bf-fidelity-laneC-cameras.md` | the soldier, aim, vehicle, overview and cinematic cameras from `cameras.json`, one rig with recoil and shake; Hoth's walker on it behind `site.level` | `main` | nothing: P0's `queries.ray` is on `main` (#834) and the arm casts through it |
@@ -90,6 +90,27 @@ The design: `docs/superpowers/specs/2026-10-10-battlefront-fidelity-design.md` (
 | U | `2026-10-10-bf-fidelity-laneU-headroom.md` | FSR1/TAAU upscaling as the pace's first step; `BatchedMesh` and bundles for the level's statics; occlusion | `main` after L | L; the owner's laptop for the tables |
 
 S, V, X and C run at once on disjoint files (`light/{calibrate,shadows,clouds,contact}.js` and `sun.js`; `light/{volumetrics,flare}.js` and `fog.js`, `post.js`, `passes.js`; `src/lib/three/particles/` and `scripts/bf2017-emitters.mjs`; `src/lib/three/camera/`). `light/apply.js` is touched by S and V (each additive): merge `origin/main` before the PR and keep both sides. `surface/scene.js` is touched by C (one call site) and by lanes L, T, P0 and P1: the same rule.
+
+### Lane S: done and left
+
+Done (#846, branch `claude/fidelity-s-shadows`, evidence in `docs/superpowers/evidence/galaxy-engine/S/`, WebGL 2 leg on SwiftShader):
+
+- **Calibration** (`light/calibrate.js`): the record's tone map goes through lane G's meter and `GAME_TO_SITE` / `SKY_TO_SITE` (`gameLight.js`, #833), so the node stack's Hoth Sunny sun is the classic stack's 0.79 and its sky and fill 0.61 (sunset: 2.37 on both). The fixture under Hoth's record (`--hoth`, snow, the house's exposure 1.4) has a mean luminance of 0.3686 against lane G's calibrated classic Hoth field's 0.3531 (+4.4 %; 0.3852 before PCSS and the clouds). The bloom threshold is the record's `ColorGradingMaxHdrValue` × the house's.
+- **SSGI is off on `'nodes-webgl'`** (`post.js` `CANNOT`): on the fixture the chain render → ssgi → output washed the frame to 0.787 whatever its GI intensity (0, 0.1, 0.25 and 1 alike). This was most of the washed picture; on WebGPU it stays.
+- **Four cascades** (`light/sun.js`): a `DirectionalLight` through `CSMShadowNode`, 4 on ultra and high, 2 on mid, out to the record's `SunShadowmapViewDistance` (30 m on low to high on Hoth; `ULTRA_SHADOW_FAR` 140 m on the site's ultra), each cascade's bias scaled with its texel, fitted along `ShadowSunRotationX/Y` while the light shines along `SunRotationX/Y`, the last 15 % faded into a far shadow term.
+- **Soft** (`light/shadows.js`): PCSS through `shadow.filterNode` (B1: yes, the hook is on r186), the record's 8 initial samples, its 5 % early-out, the penumbra from `SunAngularRadius` × `SunPenumbraSize`, 256 samples on ultra and 32 on high; PCF on mid; VSM only if the hook were gone.
+- **Cloud shadows** (`light/clouds.js`, the record's two layers, drifting on the record's speed or the weather's wind) and **contact shadows** (`light/contact.js`, a 2 m top-down pass under each tracked figure on ultra and high; `applyGameLight(...).track(object)`); `sunShadowNode(lit)` from `apply.js` is the shadow term for lane X's sprites (the cascades × the clouds, eased by `ParticleSunShadowFactor`).
+
+Left:
+
+- **The WebGPU column**: the cloud's software device dies on the fixture (B5); the owner's laptop runs `node scripts/light-fixture.mjs --hoth --tier ultra --post on` and `--shadows --clouds` on both legs, and checks there that the PCSS kernel's raw depth reads build on WebGPU (it turns the depth texture's comparison off and filters it nearest).
+- **The seam on a real chip**: on SwiftShader WebGL 2 a fragment past the cascades' far loses its image-based light (a hard step; the shader is right there), so the 15 % fade is judged on the laptop.
+- **The far shadow**: `shadowMask.js` is not on `main` (lane G left the distant shadow cache for lane L); `createSun`'s `farShadow` takes it as a node once it lands; until then the far is lit.
+- **The cloud texture**: not in the export; the density is MaterialX fractal noise, so the clouds are the record's size, coverage, exponent and drift on a noise of the site's.
+- **The clouds across a weather change**: `setWeather` turns the shadow sun with the weather, but the cloud node is built from the first weather's record (its layers' coverage and exponent are constants in the shader); a weather that changes them needs the node rebuilt or those numbers made uniforms.
+- **The depth bias**: the cascades scale the entry's bias (−0.0004, normalised depth, as lane R set it) with their texel; over the ultra shadow camera's 520 m depth that is about 16 cm along the light in the first cascade. The fixture's feet touch their shadows at 2 m (`contact-pair.webp`); a real chip may want it in metres.
+- **God rays with lane V**: the sun's `SunCSM` sets `isCSMShadowNode`, so `post.js`'s `raysLight` keeps the `rays` helper (B2's answer stands); a shim exposing cascade 0 as a `DirectionalLight` for `GodraysNode` is the next try.
+- **The world**: nothing under `src/components/` uses this yet; the Battlefront world's lane 5 takes it through `applyGameLight` and tracks its figures.
 
 ### Lane V: done and left
 

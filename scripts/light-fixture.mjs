@@ -7,8 +7,25 @@
 //     [--grid] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
 //     [--volume [on|off]] [--weather interior|sunny|felucia] [--view wide|edge|sun] [--pan]
 //     [--weather] [--decals] [--seconds 0,12.5,30]   (lane Q4: the weathering and the placed decals, without --volume)
+//     [--hoth] [--shadows [--light-sun] [--clouds]] [--filter pcss|pcf]
 //   node scripts/light-fixture.mjs --materials [--legs webgl]
 //   node scripts/light-fixture.mjs --camera [--size 1600x900] [--legs webgpu,webgl]
+//
+// Lane S (docs/superpowers/plans/2026-10-10-bf-fidelity-laneS-shadows.md):
+// --hoth draws the fixture under Hoth Sunny's record on snow at the house's
+// exposure (1.4, the classic stack's), its lamps off, and writes the frame's
+// mean linear luminance (`meanLum`, as lane G's README measures it) beside
+// the shot; lane S's runs write to evidence/galaxy-engine/S/.
+// --shadows draws lane S's shadow scene under Hoth's record (figures at 2,
+// 20 and 60 m, a wall, a post row to 200 m) and shoots it twice: the near
+// view (<label>-<leg>.png) and the cascades' far edge (<label>-<leg>-seam.png);
+// --light-sun casts along the light instead of the record's shadow sun;
+// the pen1 and pen10 shots frame a board's shadow 1 m and 10 m under it.
+// --filter pcf forces three's PCF on the sun (the PCSS cost's baseline).
+// The contact view frames the 2 m figure's feet, with its contact shadow
+// and without (-contact-off); --clouds adds the strip from 70 m up under
+// cloud shadows (the fixture's test layer: litWorld.js's CLOUD_TEST), and
+// again after 60 s of drift on Hoth's wind.
 //
 // --camera (lane C): scripts/light-fixture/camera.html instead, a figure
 // with a wall behind it and a corner beside it through the soldier camera
@@ -71,14 +88,24 @@ const argv = process.argv.slice(2);
 const volumeAt = argv.indexOf('--volume');
 const volume = volumeAt < 0 ? null : argv[volumeAt + 1] !== 'off';
 const q4Flags = volume == null && (argv.includes('--weather') || argv.includes('--decals'));
-const OUT = join(ROOT, q4Flags ? 'docs/superpowers/evidence/bf2017-surfaces/Q4' : join('docs/superpowers/evidence/galaxy-engine', volume == null ? 'R' : 'V'));
+const laneS = volume == null && ['--hoth', '--shadows', '--clouds'].some((f) => argv.includes(f));
+const OUT = join(ROOT, q4Flags ? 'docs/superpowers/evidence/bf2017-surfaces/Q4' : join('docs/superpowers/evidence/galaxy-engine', laneS ? 'S' : volume == null ? 'R' : 'V'));
 const arg = (k, d) => {
   const i = argv.indexOf(`--${k}`);
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d;
 };
 const tier = arg('tier', 'ultra');
 const post = volume != null ? arg('post', 'on') === 'on' : arg('post', 'off') === 'on';
-const label = arg('label', q4Flags && argv.includes('--weather') ? 'weather' : q4Flags ? 'decals' : volume != null ? `${volume ? 'volume' : 'novolume'}-${tier}` : post ? `post-${tier}` : `lit-${tier}`);
+const label = arg(
+  'label',
+  q4Flags && argv.includes('--weather')
+    ? 'weather'
+    : q4Flags
+      ? 'decals'
+      : volume != null
+        ? `${volume ? 'volume' : 'novolume'}-${tier}`
+        : `${arg('filter', null) ? `${arg('filter', null)}-` : ''}${argv.includes('--shadows') ? `shadows${argv.includes('--light-sun') ? '-lightsun' : ''}${argv.includes('--clouds') ? '-clouds' : ''}-` : argv.includes('--hoth') ? 'hoth-' : ''}${post ? `post-${tier}` : `lit-${tier}`}`,
+);
 const [W, H] = arg('size', '1600x900').split('x').map(Number);
 const ms = Number(arg('ms', 5000));
 const legs = arg('legs', 'webgpu,webgl').split(',');
@@ -91,7 +118,24 @@ const seconds = arg('seconds', '0,12.5,30').split(',').map(Number);
 const q4 = weather || decals;
 // metres the camera rises between the grazing pair's two frames
 const GRAZE_JITTER = 0.003;
-const fixture = { tier, post, sky, env: true, only, ...(volume != null ? { volume, weather: arg('weather', 'interior'), view: arg('view', 'wide') } : {}), ...(q4 ? { placed: false } : {}), ...(weather ? { weather: seconds[0] } : {}), ...(decals ? { decals: await decalPack() } : {}) };
+const shadows = volume == null && argv.includes('--shadows');
+const hoth = volume == null && (argv.includes('--hoth') || shadows);
+// the house tone mapper's exposure (src/lib/three/house.js LOOK.exposure): the classic stack's
+const HOUSE_EXPOSURE = 1.4;
+const fixture = {
+  tier,
+  post,
+  sky,
+  env: true,
+  only,
+  ...(volume != null ? { volume, weather: arg('weather', 'interior'), view: arg('view', 'wide') } : {}),
+  ...(q4 ? { placed: false } : {}),
+  ...(weather ? { weather: seconds[0] } : {}),
+  ...(decals ? { decals: await decalPack() } : {}),
+  ...(hoth ? { hoth: true, exposure: HOUSE_EXPOSURE } : {}),
+  ...(shadows ? { shadows: true, lightSun: argv.includes('--light-sun'), clouds: argv.includes('--clouds') } : {}),
+  ...(arg('filter', null) ? { filter: arg('filter', null) } : {}),
+};
 
 // The --decals pack: the decal fixtures' records (ten of Naboo_01's
 // projected, Endor_01's textured volume decal) read by
@@ -204,6 +248,15 @@ if (argv.includes('--camera')) {
 }
 
 const raw = async (png) => sharp(png).raw().toBuffer();
+// the mean linear luminance of a shot (sRGB decoded, Rec. 709 weights)
+const lin = (v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+const meanLum = async (png) => {
+  const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const LUT = Array.from({ length: 256 }, (_, i) => lin(i / 255));
+  let s = 0;
+  for (let i = 0; i < data.length; i += info.channels) s += 0.2126 * LUT[data[i]] + 0.7152 * LUT[data[i + 1]] + 0.0722 * LUT[data[i + 2]];
+  return s / (data.length / info.channels);
+};
 const meanDiff = (a, b) => {
   let s = 0;
   for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
@@ -285,6 +338,24 @@ for (const leg of legs) {
       const png = await shot();
       writeFileSync(join(OUT, `${label}-${leg}.png`), png);
       row.shot = `${label}-${leg}.png`;
+      row.meanLum = Number((await meanLum(png)).toFixed(4));
+      if (shadows) {
+        for (const v of ['seam', 'pen1', 'pen10', 'contact']) {
+          await page.evaluate((name) => (window.__lit.probe.view(name), window.__lit.draw(8)), v);
+          writeFileSync(join(OUT, `${label}-${leg}-${v}.png`), await shot());
+        }
+        await page.evaluate(() => (window.__lit.probe.contact(false), window.__lit.draw(4)));
+        writeFileSync(join(OUT, `${label}-${leg}-contact-off.png`), await shot());
+        await page.evaluate(() => (window.__lit.probe.contact(true), window.__lit.draw(4)));
+        if (argv.includes('--clouds')) {
+          // the cloud shadows, then 60 s of drift on the weather's wind
+          await page.evaluate(() => (window.__lit.probe.view('clouds'), window.__lit.draw(8)));
+          writeFileSync(join(OUT, `${label}-${leg}-clouds.png`), await shot());
+          await page.evaluate(() => (window.__lit.probe.advance(60), window.__lit.draw(8)));
+          writeFileSync(join(OUT, `${label}-${leg}-clouds-60s.png`), await shot());
+        }
+        await page.evaluate(() => (window.__lit.probe.view('near'), window.__lit.draw(8)));
+      }
       if (volume != null) {
         row.volumesLit = await page.evaluate(() => window.__lit.probe.lit());
         await page.evaluate(() => (window.__lit.probe.view('edge'), window.__lit.draw(8)));
@@ -343,11 +414,11 @@ if (q4) {
   for (const r of rows) if (r.errors) console.log(`  ${r.leg} errors: ${r.errors.join(' / ')}`);
   process.exit(rows.some((r) => r.error && r.leg !== 'webgpu') ? 1 : 0);
 }
-console.log(`| leg | backend | passes | clustered | env diff | programs before → after | mean ms | median ms | p95 ms | grid bake ms | mean with grid | volumes lit |`);
-console.log(`|---|---|---|---|---|---|---|---|---|---|---|---|`);
+console.log(`| leg | backend | passes | clustered | mean lum | env diff | programs before → after | mean ms | median ms | p95 ms | grid bake ms | mean with grid | volumes lit |`);
+console.log(`|---|---|---|---|---|---|---|---|---|---|---|---|---|`);
 for (const r of rows) {
   if (r.error) console.log(`| ${r.leg} | failed: ${r.error} |`);
-  else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.mean} | ${r.median} | ${r.p95} | ${r.gridBakeMs ?? '–'} | ${r.gridMean ?? '–'} | ${r.volumesLit ?? '–'} |`);
+  else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.meanLum} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.mean} | ${r.median} | ${r.p95} | ${r.gridBakeMs ?? '–'} | ${r.gridMean ?? '–'} | ${r.volumesLit ?? '–'} |`);
   if (r.errors) console.log(`  errors: ${r.errors.join(' / ')}`);
 }
 process.exit(rows.some((r) => r.error && r.leg !== 'webgpu') ? 1 : 0);
