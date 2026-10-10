@@ -56,7 +56,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 
 The plan is `docs/superpowers/plans/2026-10-10-bf2017-phase2-everyone.md`. The cast, kind by kind, is `docs/superpowers/evidence/bf2017-phase2/cast.md` (and `cast.json`). The sheets are in `docs/superpowers/evidence/bf2017-phase2/sheets/`: the figure it replaces, then the full cut, the light cut and the far cut. The costs are in `costs.md` beside them.
 
-### Done (PR #PHASE2PR, `claude/bf2017-phase2`)
+### Done (PR #832, `claude/bf2017-phase2`)
 
 - **25 kinds from the game, on the figure paths the worlds already use** (a 2017 row takes over a kind by name; no `sites/*.js` changed):
   - **On the game's humanoid skeleton (`rig: 'walrus'`)**: stormtrooper, sandtrooper, snowtrooper, scouttrooper, shoretrooper, deathtrooper, hothtrooper, rebel, clone (Phase II), clonephase1, wookiee, c3po, rebelpilot, rebeltech, officer, and the city's civilians civcity1 and civcity3.
