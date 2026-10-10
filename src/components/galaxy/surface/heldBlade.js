@@ -51,7 +51,7 @@ const GUARD_AIM = 0.75; // how far up gunplay holds the hilt while it's lit (the
 export function bladeInHand(fig, { color = '#ff3b3b', hilt = null } = {}, { parent = null, stance = 'single', who = null } = {}) {
   if (!fig?.model?.getObjectByName('RightHand')?.isBone) return null;
   fig.model.updateMatrixWorld(true);
-  const gp = createGunplay({ model: fig.model, bones: fig.bones }, 'saber', { unit: 1, who });
+  const gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets }, 'saber', { unit: 1, who });
   if (!gp) return null;
   // (its strokes are clips on the figure: played on its animator where it has one, the arms laid by saber.js)
   const saber = createSaber(gp, { color, hilt, stance, parent, fig });

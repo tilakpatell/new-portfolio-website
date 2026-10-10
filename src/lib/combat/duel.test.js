@@ -247,3 +247,36 @@ describe('a target lost mid-attack', () => {
     expect(duelStep(d, you(0, 11), DT, always(0.99)).stroke).not.toBe(null);
   });
 });
+
+describe('a duellist at the game’s cadence', () => {
+  const cadence = { 'A_Luke_AttackLoop_Strike1': { dur: 1.6, back: 1.667 }, 'A_Luke_AttackLoop_Strike2': { dur: 1.667, back: 0.9 } };
+
+  it('holds a stroke as long as the game’s strike, and is open for its return’s length after', () => {
+    const d = createDuellist({ reach: 2.2, strokes: Object.keys(cadence), cadence });
+    d.at = [0, 0];
+    // (no combo roll comes up: 0.99 beats nothing)
+    const outs = run(d, you(0, 2), always(0.99), { until: (o) => o.state === 'recover', walk: false });
+    const begun = outs.findIndex((o) => o.begin);
+    expect(outs[begun].stroke).toBe('A_Luke_AttackLoop_Strike1');
+    expect((outs.length - 1 - begun) * DT).toBeCloseTo(1.6, 1);
+    expect(d.state).toBe('recover');
+    // (the frame it goes into recovery counts toward it)
+    expect(d.timer + DT).toBeCloseTo(1.667, 5);
+  });
+
+  it('keeps the game’s strike length when the saber says the whole clip runs longer', () => {
+    const d = createDuellist({ reach: 2.2, strokes: Object.keys(cadence), cadence });
+    d.at = [0, 0];
+    run(d, you(0, 2), always(0.99), { until: (o) => o.begin, walk: false });
+    swung(d, 4.8);
+    expect(d.timer).toBe(1.6);
+  });
+
+  it('keeps the site’s own recovery without one', () => {
+    const d = createDuellist({ reach: 2.2 });
+    d.at = [0, 0];
+    run(d, you(0, 2), always(0.99), { until: (o) => o.state === 'recover', walk: false });
+    expect(d.timer).toBeGreaterThanOrEqual(DUEL.recover[0] - DT);
+    expect(d.timer).toBeLessThanOrEqual(DUEL.recover[1]);
+  });
+});

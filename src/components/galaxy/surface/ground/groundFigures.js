@@ -137,7 +137,7 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
     const gun = ARMS[t.soldier.kind];
     if (gun && fig.model.getObjectByName('RightHand')?.isBone) {
       t.holder.updateMatrixWorld(true);
-      t.gp = createGunplay({ model: fig.model, bones: fig.bones }, gun, {
+      t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets }, gun, {
         unit: 1,
         who: t.soldier.kind,
       });
@@ -244,6 +244,8 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
       const dYou = you ? Math.hypot(you.x - s.b.x, you.z - s.b.z) : Infinity;
       api.overhead(t, pose, dYou, time);
       if (!fig || !live) return;
+      // (a full-fidelity 2017 kind: the cut its distance wants, crew.js)
+      if (you) fig.cutAt?.(dYou);
       const by = t.tick(budget.rate(t.holder.position, camera), dt);
       if (!(by > 0)) return;
       if (pose.base !== t.based) {

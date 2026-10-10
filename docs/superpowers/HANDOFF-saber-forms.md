@@ -79,6 +79,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | D | | | |
 | E | | | |
 | F | | | |
+| bf2017 X | lane X’s session | `claude/bf2017-x-sabers` | the game’s stroke tables and stance: `HANDOFF-bf2017.md`, “Lane X” (lane B reads the tables) |
 
 Hilt issues (`gen3d`): Luke #, Vader #, Maul #, Ahsoka #, Dooku #.
 

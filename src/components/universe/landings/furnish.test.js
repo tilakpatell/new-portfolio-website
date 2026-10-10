@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { cellsOf, modelUrls, partsOf, within } from './furnish';
+import { builderUrls, cellsOf, crownsOf, kindUrls, modelUrls, partsOf, viewUrls, within } from './furnish';
+import { LANDINGS } from './landings';
+import { biomeAt, viewOf } from './biomes';
 
 describe('within', () => {
   it("is what the promise gives, when it's in time", async () => {
@@ -31,6 +33,62 @@ describe('modelUrls', () => {
   it('is none for a landing with no models', () => {
     expect(modelUrls({ things: [] })).toEqual([]);
     expect(modelUrls(null)).toEqual([]);
+  });
+});
+
+describe('the models a view stands about', () => {
+  // (a landing as it is on each of its biomes, and on its own)
+  const on = (l, b) => viewOf(l, biomeAt({ ...l, biomes: [b] }, [0, 0, 0]));
+  const viewsOf = (l) => [['own', l], ...(l.biomes ?? []).map((b) => [b.id, on(l, b)])];
+  const biome = (id, b) => on(LANDINGS[id], LANDINGS[id].biomes.find((x) => x.id === b));
+  const file = (u) => u.split('/').pop();
+
+  it("is the models its things' and its scatter's kinds name, each once", () => {
+    const view = {
+      models: { rv: { url: '/models/rv.glb' }, car: { url: '/models/car.glb' }, sign: { url: '/models/sign.glb' } },
+      things: [{ kind: 'rv' }, { kind: 'figure' }, { kind: 'car' }],
+      scatter: [{ kind: 'car' }, { kind: 'pebble' }],
+    };
+    expect(kindUrls(view)).toEqual(['/models/rv.glb', '/models/car.glb']);
+    expect(kindUrls({ things: [] })).toEqual([]);
+    expect(kindUrls(null)).toEqual([]);
+  });
+
+  it("has every model a kind of it names, and nothing that isn't the landing's, for every view of every landing", () => {
+    for (const [id, l] of Object.entries(LANDINGS)) {
+      const all = modelUrls(l);
+      for (const [name, v] of viewsOf(l)) {
+        const urls = viewUrls(l, v);
+        for (const t of [...(v.things ?? []), ...(v.scatter ?? [])]) if (v.models?.[t.kind]) expect(urls, `${id}/${name} ${t.kind}`).toContain(v.models[t.kind].url);
+        for (const u of urls) expect(all, `${id}/${name}`).toContain(u);
+        expect(new Set(urls).size, `${id}/${name}`).toBe(urls.length);
+      }
+    }
+  });
+
+  it("is the Shire's own on Middle-earth (no Mordor rocks), and Mordor's only rocks", () => {
+    const me = LANDINGS.middleearth;
+    expect(viewUrls(me).map(file).sort()).toEqual(['flowers.glb', 'grass.glb', 'mushrooms.glb', 'trees.glb']);
+    expect(viewUrls(me)).not.toContain('/models/quaternius/nature/rocks.glb');
+    expect(viewUrls(me, biome('middleearth', 'mordor')).map(file)).toEqual(['rocks.glb']);
+    // (the fallback biome is the landing's own)
+    expect(viewUrls(me, biome('middleearth', 'shire')).sort()).toEqual(viewUrls(me).sort());
+  });
+
+  it('keeps what a builder asks for by name in every view: the Pearl on the reef, the gaddi in the music room', () => {
+    expect(builderUrls(LANDINGS.middleearth)).toEqual([]);
+    expect(builderUrls(LANDINGS.caribbean).map(file)).toEqual(['pearl.glb']);
+    expect(viewUrls(LANDINGS.caribbean, biome('caribbean', 'reef')).map(file)).toContain('pearl.glb');
+    expect(viewUrls(LANDINGS.music).map(file)).toContain('gaddi.glb');
+    // (kit.specs' names, as each planet's builders ask for them)
+    const BY_NAME = { caribbean: ['ship'], marvel: ['gauntlet'], travel: ['plane'], gaming: ['piranha'], music: ['gaddi', 'harmonium', 'tabla', 'sitar', 'tanpura', 'lamp'] };
+    for (const [id, names] of Object.entries(BY_NAME)) {
+      for (const [b, v] of viewsOf(LANDINGS[id])) for (const name of names) expect(viewUrls(LANDINGS[id], v), `${id}/${b} ${name}`).toContain(v.models[name].url);
+    }
+  });
+
+  it("fetches less than every biome's models together where the views differ", () => {
+    for (const id of ['breakingbad', 'caribbean']) expect(viewUrls(LANDINGS[id]).length, id).toBeLessThan(modelUrls(LANDINGS[id]).length);
   });
 });
 
@@ -76,6 +134,31 @@ describe('cellsOf', () => {
     const before = JSON.stringify(spots);
     cellsOf(spots, { sectors: 8, inner: 20 });
     expect(JSON.stringify(spots)).toBe(before);
+  });
+});
+
+describe('crownsOf', () => {
+  // (a tree's parts as a scatter takes them: its bark, and its leaves scaled up 2 and lifted)
+  const leaves = new THREE.MeshStandardMaterial({ name: 'Leaves_NormalTree' });
+  const tree = (leafMaterial = leaves) => [
+    { geometry: new THREE.BoxGeometry(0.4, 4, 0.4).translate(0, 2, 0), material: new THREE.MeshStandardMaterial({ name: 'Bark_NormalTree' }), local: null },
+    { geometry: new THREE.BoxGeometry(2, 1, 1.5), material: leafMaterial, local: new THREE.Matrix4().compose(new THREE.Vector3(0, 5, 0), new THREE.Quaternion(), new THREE.Vector3(2, 2, 2)) },
+  ];
+
+  it('is the leaves’ reach round and how high they start and end, not the bark’s', () => {
+    const c = crownsOf(tree());
+    expect(c.r).toBeCloseTo(2, 9);
+    expect(c.lo).toBeCloseTo(4, 9);
+    expect(c.hi).toBeCloseTo(6, 9);
+    // (a tinted copy keeps the name, and is a crown too)
+    expect(crownsOf(tree(Object.assign(leaves.clone(), { name: 'Leaves_NormalTree.001' }))).hi).toBeCloseTo(6, 9);
+  });
+
+  it('is none for a thing with no leafy crown, and one too low to shed (a hedge) falls short', () => {
+    expect(crownsOf([tree()[0]])).toBeNull();
+    expect(crownsOf(tree(new THREE.MeshStandardMaterial({ name: 'Leaves_Pine' })))).toBeNull();
+    const hedge = [{ geometry: new THREE.BoxGeometry(1.6, 1.1, 1.6).translate(0, 0.55, 0), material: leaves, local: null }];
+    expect(crownsOf(hedge).hi).toBeLessThan(2.5);
   });
 });
 

@@ -204,9 +204,14 @@ const RECOLOR = `
   vec3 srgb = pow(max(lin, vec3(0.0)), vec3(1.0 / 2.2));
   vec3 hsv = rgHsv(srgb);
   float zone = floor(vZone + 0.5);
+  // (multisampled, an edge pixel is shaded at its centre, off the triangle:
+  // a blended zone goes on past its corners there, on a sliver far under 0,
+  // where exp2 of it is 0 and the bit read NaN, which the bloom spreads over
+  // the whole frame. A zone past 0 to 5 has no bit anyway: read only those.)
+  bool known = zone >= 0.0 && zone <= ${zoneOf('LeftHand')}.0;
   for (int i = 0; i < ${N}; i++) {
     if (rgOn[i] < 0.5) continue;
-    float m = mod(floor(rgZones[i] / exp2(zone)), 2.0) * rgHueIn(hsv.x, rgHue[i]) * rgIn(hsv.y, rgSat[i], 0.04) * rgIn(hsv.z, rgVal[i], 0.04)/*lower*/;
+    float m = (known ? mod(floor(rgZones[i] / exp2(zone)), 2.0) : 0.0) * rgHueIn(hsv.x, rgHue[i]) * rgIn(hsv.y, rgSat[i], 0.04) * rgIn(hsv.z, rgVal[i], 0.04)/*lower*/;
     float shade = clamp(hsv.z / rgRef[i], rgShade[i].x, rgShade[i].y);
     vec3 col = pow(clamp(rgSwatch[i] * shade, 0.0, 1.0), vec3(2.2));
     lin = mix(lin, col, m);

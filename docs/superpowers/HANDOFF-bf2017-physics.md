@@ -40,8 +40,8 @@ As built (PR #831 and lane P0): lane L’s `src/lib/level/collision.js` and `lev
 | lane | session | branch | PR | merged |
 | --- | --- | --- | --- | --- |
 | design | the architecting session | `claude/bf2017-physics` | (this PR) | |
-| P0 | the P0 session (local, Opus 5.5) | `claude/bf2017-p0-shapes` | (P0’s PR) | |
-| P1 | | `claude/bf2017-p1-body` | | |
+| P0 | the P0 session (local, Opus 5.5) | `claude/bf2017-p0-shapes` | #834 | |
+| P1 | the P1 session (Opus 5.5, the desktop) | `claude/bf2017-p1-body` | #822 | |
 | P2 | a desktop session (the export read locally) | `claude/bf2017-p2-bolts` | #820 | |
 | P3 | | `claude/bf2017-p3-vehicles` | | |
 | P4 | | `claude/bf2017-p4-surfaces` | | |
@@ -71,12 +71,32 @@ Each lane adds its Done and Left here when it merges: the pack’s physics bytes
 - **When both are on `main`** (lane L’s PR #831 and this; whoever merges second does it):
   1. Run `node scripts/bf2017-physics.mjs public/models/galaxy/bf2017/levels/hoth --from <web_opt>` (or with the keys) to fill `level.json`’s empty `physics` and write `physics/*.bin` (it reads `meshes[].name` and `cells[key].draws`); `bf2017-level.mjs` can call it after the meshes. Then `assets-upload.mjs` as lane L does.
   2. `level/index.js`: `createLevel({ …, physics })` takes the engine (`wantsEngine({ pack, small, tier }) ? await createPhysics({ gravity: -15.5 }) : null`, made in `scene.js` beside `createLevel`); once the pack is in, `const body = physics ? createLevelPhysics({ physics, pack, loadBin: fetchBytes, tier }) : null`; the stream’s `onCell: (key, bin) => { colliders?.add(key, pack, bin); body?.add(key, bin); }` and `onDrop: (key) => { colliders?.drop(key); body?.drop(key); }`; `update()` calls `body?.update(4)`; `dispose()` `body?.dispose()`; `stats()` gains `physics: body?.stats()`. `body.setTerrain((x, z) => LAYERS.image(x, z, layer))` with the layer `levelGround` decoded, so the floor is the ground drawn.
-  3. `scene.js`: `physics?.step(dt)` (timed into `body.timed(ms)`) before the walk; `__surfaceScene.physics = () => gameLevel?.stats().physics`. With an engine, the walk world takes no level boxes (the body is P1’s, and until P1 the walker still walks: keep `colliders` on until P1 puts the player on the controller).
+  3. `scene.js` (P1’s seam, on `main` since #822): where `createLevel` is made, the engine goes to the player with `api.usePhysics(physics, { drive: true })` (the body steps the world once a frame) and to the level (step 2’s `createLevelPhysics`); `body.update(4)` each frame from the level’s `update`; `__surfaceScene.physics = () => gameLevel?.stats().physics`. With an engine the walk world keeps lane L’s boxes until the crowds and the crewmate move to the body (P1’s Left): they still walk on `walker.js`.
   4. `colliders.js` without an engine: for the draws whose mesh has shapes, `shapeSolids(draws, bin, shapesByMesh)` (shapes read ahead with `shapeReader(pack, loadBin)`), and lane L’s bounds rule (`solidsOf`) only for `without`; the 15 m skip goes, since a glacier’s hulls are its own.
 - The walker’s fallback has no floors from trimeshes (a hangar’s shell isn’t a box): on a phone you walk on the heightmap and stop at hulls. Steep-triangle walls from the trimeshes are a later step if a mesh-only piece matters.
 - In the browser on Hoth (`galaxy-check.mjs surface hoth` under `BUDGET=1` with the physics row) waits for lane L’s pack and the scene.js lines.
 - Material friction and restitution: `physics.materials` lists each index used (`{ tag }`); P4 fills them and `collidersOf` already takes `materials[i].friction`/`restitution`.
 - **P2’s ask** (`world.physicsRay`): with an engine, `scene.js` sets `world.physicsRay = segmentRay(physics)` (P2’s `blast.js`) beside step 3 above, so bolts meet the level’s shapes; a budgeted `queries.ray` replaces it when P1’s library lands.
+
+### P1: the body
+
+**Done.**
+
+- **The library is back** from the closed `claude/wizardly-franklin-ws9uza`, as it was: `character.js`, `queries.js`, `groups.js`, `budget.js`, `zones.js` with their tests, and the branch’s `world.js` (sensors, tags, `onEnter`/`onLeave`, `Body.attach`/`detach`, `tagOf`; main’s `world.js` had not moved since). `hurtbox.js` and `cost.scenario.test.js` (which needs it) are left for P2. `docs/stack/physics-rapier.md` lists the pieces and the controller’s four gotchas.
+- **The soldier’s rulebook**: `src/data/bf2017/physics/soldier.json`, the 13 `CharacterPhysicsData` records (`scripts/bf2017-physics-rules.mjs soldier --root <export>`, builder `soldierRow`/`soldierRulebook` in `scripts/lib/bf2017-physics-rules.mjs` beside P2’s, on its shared `loadAsset`/`deref`/`refused`/`checkSources`). 341 KB, a row a line, every number with its `<asset>#<Type>.<path>` source; a lazy chunk of 13.8 KB gzipped, loaded only when a level hands over an engine. `rulebook.test.js` walks every file in the folder (P2, P3, P4 add theirs there).
+- **A correction to the spec’s survey**: the soldier walks at **3.8 m/s** (back × 0.8, strafe × 0.9, sprint × 1.57 = 5.97 m/s; crouch 2.5, no sprint), `OnGroundStateData`’s rows. The spec’s 5.0 / 7.5 / 3.0 are `AnimationControlledStateData`’s. **The jump row exists**: `JumpStateData.JumpHeight` 1.1 m for the soldier, 1.6 for Yoda and the Ewok, 0 for the heroes (their jump is an ability’s); a height jumps to it under the site’s 15.5 gravity, a 0 or a missing state (the Pillio creature) takes the walker’s 5.4 m/s as `source: "hand"`. The gains’ unit is not in the data: read as the fraction of the gap closed per 30 Hz frame (−15 is a stop within a substep). All in `NOTES.md`.
+- **`src/lib/physics/soldier.js`**: `controllerOptions` (stand half-height 0.55, crouch 0.275, step 0.4 / 0.3, slopes 45, snap 0.8 from `FallWithGravityDistanceFromGround`), `speedFor`, `accelFor`, `poseFor` (the transition times), `slideOn`, `eyeFor`, `jumpSpeed`; tested against the engine (a crouch passes under a 1.3 m beam, a stand does not).
+- **`playerBody.js`**: the player on the controller with the soldier’s row; every key `walk()` writes is written back, plus `pose`; anything that writes the state straight (the scene’s teleport, a respawn, a shove) is followed; a rejected engine leaves you on `walk()` with no gap. **Rapier’s autostep never climbs higher than the capsule’s radius** (the soldier’s 0.3 stops at a 0.35 kerb; measured), so the body takes the record’s 0.4 step itself when the controller reports a wall: lift, along, down, measured by two rays from the ground under you to the top past your front, so a 0.5 m edge never ratchets up. Crouch is **Z** (C is block, Ctrl is filtered by the scene’s keys and closes a tab) and the kit’s `crouch` press (no button drawn yet).
+- **`scene.js`**: one branch in `stepWalk`, the crouch input, `usePhysics(physics, { drive = true })` on the handle (`__surfaceDo('usePhysics', …)` in dev), the body in `debug()`; and `debug()`’s `lockStagger` no longer throws on a lock with no stagger.
+- **Seen in the browser** (`node scripts/physics-check.mjs hoth`, `ANGLE=d3d11`, the desktop’s graphics chip; in software GL Hoth draws one frame in 2.5 s, too few to walk on): on Hoth’s real surface, a course built beside you in the page, all five pass: a 0.5 m wall holds you, a 0.4 m step is climbed, a jump lands on a 0.9 m crate, a 1.3 m beam stops a stand and lets a crouch through. `docs/superpowers/evidence/bf2017-physics/p1/` (the JSON and four shots, the course drawn in orange). No console errors (on the merge with main).
+
+**Left.**
+
+- **The call site** (lane L’s seam, PR #831: `src/components/galaxy/surface/level/colliders.js`, wired from `level/index.js`; P0 builds `createLevelCollision` against it): once that gives an engine, `api.usePhysics(physics, { drive })`: `drive: true` (the default) lets the body step the world once a frame; pass `false` if the level steps it. Then `physics-check.mjs` waits for the body (`source: level`) and the course should become Hoth’s own spots (the hangar mouth, its ramp, a crate, a beam: add `--spot`), with P0’s `havok.test.js` fixture world for a test of the real shapes.
+- **The figures on the body** (`bodyFor` for lane 1’s walrus figures and #812’s lane 5); the crewmate still walks on the walker and sinks into what only the engine knows (seen in the step shot).
+- **The crouch’s clip** (the legs read `state.pose`; nothing plays a crouch yet) and its HUD button (the kit’s `crouch` press is wired, no button drawn).
+- **The sprint ability** (abilityRules’ multiplier) is not applied on the body; the jump penalty (`JumpPenaltyTime` 0.1 × 0.2), the uphill/downhill speed modifiers and the slide state’s gravity scale are in the row and not yet used.
+- **The Windows-only test failures** seen on the desktop (`health.test`, `shadingClosure.test`, `bf2017-paths.test`: path separators; `supabase-seed.test`: CRLF; `supabase-check.test`: the desktop’s keys) are as on main; CI is the gate.
 
 ### Lane P2: bolts, blasts, hit zones, ragdolls (2026-10-10)
 
