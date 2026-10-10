@@ -469,11 +469,11 @@ export default function GalaxySurface() {
         const name = (h) => heroById(h.id)?.name ?? '';
         if (e.ok) setStood(e.stoodIn ?? null);
         // (on, in another body than the game's: said once a hero, standIn.js)
-        const stood = e.ok && e.stoodIn && !saidStood.current.has(`${e.who}:${e.stoodIn}`) ? standInLine(heroById(e.who)?.name ?? '', e.stoodIn) : null;
-        if (stood) {
+        const standIn = e.ok && e.stoodIn && !saidStood.current.has(`${e.who}:${e.stoodIn}`) ? standInLine(heroById(e.who)?.name ?? '', e.stoodIn) : null;
+        if (standIn) {
           saidStood.current.add(`${e.who}:${e.stoodIn}`);
           worn.current = now;
-          setToast((t) => ({ title: name(now), text: stood, kind: 'equipped', n: (t?.n ?? 0) + 1 }));
+          setToast((t) => ({ title: name(now), text: standIn, kind: 'equipped', n: (t?.n ?? 0) + 1 }));
           later('toast', 4200, () => setToast(null));
           return;
         }
