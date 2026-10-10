@@ -201,6 +201,11 @@ scripts/gpu-parity/out/
 /public/models/galaxy/bf2017/crew/vader.glb
 /public/models/galaxy/bf2017/crew/vader.lod1.glb
 /public/models/galaxy/bf2017/crew/vader.ultra.glb
+/public/models/galaxy/bf2017/fx/blast.512.ktx2
+/public/models/galaxy/bf2017/fx/debris.metal.512.ktx2
+/public/models/galaxy/bf2017/fx/impact.256.ktx2
+/public/models/galaxy/bf2017/fx/impact.512.ktx2
+/public/models/galaxy/bf2017/fx/scorch.metal.512.ktx2
 /public/models/galaxy/cloudcar.glb
 /public/models/galaxy/n1.glb
 /public/models/galaxy/nebulon.glb
