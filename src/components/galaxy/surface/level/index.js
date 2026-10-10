@@ -9,6 +9,7 @@
 //     fetched and decoded (before the ground's grid is made)
 //   partOf(world, file, empty) → Promise<the part's JSON, or empty>
 //   levelPlaced(site) → Promise<{ life, rides, things }> (the map's actors and vehicles)
+//   levelBusy(site) → Promise<Set of cell keys the level fills>
 //   createLevel({ scene, site, tier, renderer, walk, camera, light, onProbe }) → null | { update(position), ready(), stats(), dispose() }
 //     (camera: the placed lights rank by it; light: the world's record, for their scale;
 //     onProbe: the reflection volume you stand in, for gameLit.js)
@@ -86,6 +87,16 @@ export async function levelPlaced(site) {
   if (!site?.level) return { life: [], rides: [], things: [] };
   const [a, v] = await Promise.all([partOf(site.level, 'actors.json', { life: [] }), partOf(site.level, 'vehicles.json', { rides: [], things: [] })]);
   return { life: a.life ?? [], rides: v.rides ?? [], things: v.things ?? [] };
+}
+
+// The pack's cells the game's level fills (BUSY pieces or more in a 128 m
+// cell): a world's own scattered trees and rocks keep out of them, so a
+// redwood never stands through the game's bunker. Empty without a level.
+export const BUSY = 40;
+export async function levelBusy(site) {
+  if (!site?.level) return new Set();
+  const pack = await packOf(site.level).catch(() => null);
+  return new Set(Object.entries(pack?.cells ?? {}).filter(([, c]) => (c.count ?? 0) >= BUSY).map(([k]) => k));
 }
 
 // The pack's terrain as an image layer: near and far decoded, in metres from

@@ -167,15 +167,21 @@ export async function heightsLayer(record, png, which = 'world') {
 // A square of a heightmap, resampled bilinearly to its own step, in the
 // source's 16-bit units; a hole stays a hole (any hole under a sample makes
 // the sample one), and so does anywhere outside the source
-export function cropHeights(src, frame, { minX, minZ, size, metresPerPixel }) {
+// (`clamp`: off the map, its nearest edge, for a level whose map is smaller
+// than its world, Endor's 2 km of 8: the forest floor runs on level)
+export function cropHeights(src, frame, { minX, minZ, size, metresPerPixel, clamp = false }) {
   const n = Math.round(size / metresPerPixel) + 1;
   const out = new Uint16Array(n * n);
   const hole = frame.hole ?? 0;
   const at = (i, j) => src[j * frame.w + i];
   for (let j = 0; j < n; j++) {
     for (let i = 0; i < n; i++) {
-      const gx = (minX + i * metresPerPixel - frame.minX) / frame.metresPerPixel;
-      const gz = (minZ + j * metresPerPixel - frame.minZ) / frame.metresPerPixel;
+      let gx = (minX + i * metresPerPixel - frame.minX) / frame.metresPerPixel;
+      let gz = (minZ + j * metresPerPixel - frame.minZ) / frame.metresPerPixel;
+      if (clamp) {
+        gx = Math.min(Math.max(gx, 0), frame.w - 1);
+        gz = Math.min(Math.max(gz, 0), frame.h - 1);
+      }
       if (gx < 0 || gz < 0 || gx > frame.w - 1 || gz > frame.h - 1) {
         out[j * n + i] = hole;
         continue;

@@ -242,3 +242,14 @@ describe('districts: more than one of the game’s maps on a world', () => {
   });
 });
 
+describe('the worlds drawn from the game’s levels', () => {
+  it('Endor stands on Endor_01, its ground the pack’s, its built bunker left to the level', () => {
+    const endor = SITES.endor;
+    expect(endor.level).toBe('endor');
+    expect(endor.ground.layers).toEqual([{ type: 'image', pack: 'endor' }]);
+    const bunker = endor.places.find((p) => p.id === 'bunker');
+    expect(bunker.flat.game).toBe(true);
+    expect(bunker.things.filter((t) => t.kind === 'bunker' || t.kind === 'bunkerbank').every((t) => t.game)).toBe(true);
+  });
+});
+

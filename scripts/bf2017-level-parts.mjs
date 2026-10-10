@@ -10,7 +10,7 @@
 // scripts/lib/bf2017-level-*.mjs; this fetches, cuts and writes. Called by
 // scripts/bf2017-level.mjs after the meshes, or alone with --parts.
 //
-//   writeParts({ env, cache, mapName, map, json, out, subs, mode, weather, dry, log })
+//   writeParts({ env, cache, mapName, base (the map's files' stem under web/), map, json, out, subs, mode, weather, dry, log })
 //     → { counts, lines (the README's section) }
 
 import { existsSync } from 'node:fs';
@@ -48,8 +48,7 @@ async function bytes(env, cache, path) {
   return HAVE.has(r.state) ? readFile(r.file) : null;
 }
 
-export async function writeParts({ env, cache, mapName, map, json, out, subs = null, mode = 'FantasyBattle', weather = 'sunny', dry = false, log = console.log }) {
-  const base = `web/maps/${mapName}/${lastOf(mapName)}`;
+export async function writeParts({ env, cache, mapName, base = `web/maps/${mapName}/${lastOf(mapName)}`, map, json, out, subs = null, mode = 'FantasyBattle', weather = 'sunny', dry = false, log = console.log }) {
   const extrasBuf = await bytes(env, cache, `${base}.extras.json`);
   const extras = extrasBuf ? JSON.parse(extrasBuf.toString('utf8')) : {};
   if (!extrasBuf) log(`${mapName}: no extras in the bucket; the parts are empty`);

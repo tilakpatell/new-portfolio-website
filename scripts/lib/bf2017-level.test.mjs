@@ -120,6 +120,9 @@ describe('cropHeights', () => {
     expect(edge.data[4]).toBe(0);
     expect(edge.data[8]).toBe(0);
     expect(edge.data[0]).toBeGreaterThan(0);
+    // (clamped, off the map is its edge's height)
+    const off = cropHeights(src, f, { minX: 600, minZ: 0, size: 64, metresPerPixel: 32, clamp: true });
+    expect(off.data[0]).toBe(src[1 * 9 + 8]);
   });
 });
 

@@ -101,7 +101,9 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
     size: 2 * (arena + 256),
     metresPerPixel: 1,
   };
-  const near = cropHeights(src, f, square);
+  // (a world map smaller than the world, Endor's: off it, its edge)
+  const clamp = (record.world.sizeX ?? Infinity) < (record.worldSizeX ?? 0);
+  const near = cropHeights(src, f, { ...square, clamp });
   let holeMask = null; // (the game's own holes in the near map, before they are filled)
   if (record.detail?.file) {
     const fd = terrainFrame(record, 'detail');
@@ -120,7 +122,9 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
   // (the far map at 4 m a pixel: the ground's grid out there is coarser still,
   // and a 2 m map of the whole 8 km is 16 million samples for every visitor)
   const FAR_MPP = 4;
-  const far = cropHeights(src, f, { minX: f.minX, minZ: f.minZ, size: (f.w - 1) * f.metresPerPixel, metresPerPixel: FAR_MPP });
+  // (and a clamped map's far ground runs 2 km past it, so the horizon is not a cliff)
+  const pad = clamp ? 2048 : 0;
+  const far = cropHeights(src, f, { minX: f.minX - pad, minZ: f.minZ - pad, size: (f.w - 1) * f.metresPerPixel + 2 * pad, metresPerPixel: FAR_MPP, clamp });
   const nearPng = encodePng16(near.data, near.w, near.h);
   const farPng = encodePng16(far.data, far.w, far.h);
   if (!dry) {
@@ -138,7 +142,7 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
     far: {
       png: 'terrain/far.png',
       metresPerPixel: FAR_MPP,
-      min: [f.minX - spot[0], f.minZ - spot[1]],
+      min: [f.minX - pad - spot[0], f.minZ - pad - spot[1]],
       size: [far.w, far.h],
     },
     scale: f.scale,
@@ -230,7 +234,10 @@ async function main(args) {
   const out = join(ROOT, 'public', 'models', 'galaxy', 'bf2017', 'levels', ...packId.split('/'));
   if (yaw) throw new Error('--yaw: the heightmaps are not turned yet; keep the level square to the site');
 
-  const base = `web/maps/${mapName}/${lastOf(mapName)}`;
+  // (the map's file by the bucket's index: a campaign map's is ds02_streamed, not its folder's name)
+  const index = JSON.parse((await need(env, 'web/maps/index.json', 'the maps’ index')).toString('utf8'));
+  const entry = (index.maps ?? index).find((m) => m.file.startsWith(`maps/${mapName}/`));
+  const base = `web/maps/${mapName}/${entry ? lastOf(entry.file).replace(/\.json$/, '') : lastOf(mapName)}`;
   const mapJson = JSON.parse((await need(env, `${base}.json`, 'the map')).toString('utf8'));
   const map = readMap(mapJson, await need(env, `${base}.bin`, 'the map’s instances'));
   console.log(`${mapName}: ${map.instances.count} instances, ${map.meshes.length} meshes, subs ${map.subworlds.map(lastOf).join(', ')}`);
@@ -249,7 +256,7 @@ async function main(args) {
   // (--parts: the map's other parts beside a pack already built, its frame from its level.json)
   if (args.parts) {
     const json = JSON.parse(await readFile(join(out, 'level.json'), 'utf8'));
-    const parts = await writeParts({ env, cache: CACHE, mapName, map, json, out, subs, mode: args.mode ?? 'FantasyBattle', weather: args.weather ?? 'sunny', dry });
+    const parts = await writeParts({ env, cache: CACHE, mapName, base, map, json, out, subs, mode: args.mode ?? 'FantasyBattle', weather: args.weather ?? 'sunny', dry });
     if (dry) return;
     json.shadowCache = parts.shadowCache;
     await writeFile(join(out, 'level.json'), `${JSON.stringify(json)}\n`);
@@ -440,7 +447,7 @@ async function main(args) {
   console.log(lines.join('\n'));
   if (dry) return;
 
-  const parts = await writeParts({ env, cache: CACHE, mapName, map, json: pack.json, out, subs, mode: args.mode ?? 'FantasyBattle', weather: args.weather ?? 'sunny' });
+  const parts = await writeParts({ env, cache: CACHE, mapName, base, map, json: pack.json, out, subs, mode: args.mode ?? 'FantasyBattle', weather: args.weather ?? 'sunny' });
   pack.json.shadowCache = parts.shadowCache;
   lines.push(...parts.lines);
   await mkdir(join(out, 'cells'), { recursive: true });

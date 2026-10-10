@@ -106,7 +106,7 @@ import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { createPlacer } from './placer';
-import { createLevel, levelGround, levelPlaced } from './level';
+import { createLevel, levelBusy, levelGround, levelPlaced } from './level';
 import { anyFigure, createActors, modelFigure } from './actors';
 import { RIDES as GALAXY_RIDES } from './rides';
 import { SEATS, poseRider } from './riders';
@@ -330,6 +330,9 @@ export async function create(canvas, ctx) {
   const height = makeHeight(await levelGround(site.ground), { relief: amounts.relief });
   // (and what the map itself places: its creatures, droids and vehicles where the game stood them)
   const placed = await levelPlaced(site);
+  // (and the cells its pieces fill, which the world's own solid scatter keeps out of)
+  const busy = await levelBusy(site);
+  const inBusy = (x, z) => busy.size > 0 && busy.has(`${Math.floor(x / 128)},${Math.floor(z / 128)}`);
   const grid = heightGrid(height, amounts.grid);
   // (water you wade in: not lava, not cloud, and not a sea far under a
   // platform with nothing else under it, which you'd fall into)
@@ -349,6 +352,7 @@ export async function create(canvas, ctx) {
       const x = Math.cos(a) * d;
       const z = Math.sin(a) * d;
       if (avoid.some((v) => Math.hypot(x - v.at[0], z - v.at[1]) < v.r + (s.clear ?? 4))) continue;
+      if (s.solid !== false && inBusy(x, z)) continue;
       if (s.flat && grid.normalAt(x, z)[1] < s.flat) continue;
       if (wade != null && s.dry !== false && grid.heightAt(x, z) < wade + (s.above ?? 0.2)) continue;
       const [lo, hi] = s.scale ?? [1, 1];

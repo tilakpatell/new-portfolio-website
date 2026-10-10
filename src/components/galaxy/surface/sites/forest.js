@@ -55,6 +55,12 @@ export const SITES = {
   endor: {
     // lit as the game lights its level (src/data/bf2017/light/endor.json, gameLit.js)
     gameLight: 'endor',
+    // drawn from the game's level (lane E0: /models/galaxy/bf2017/levels/endor/,
+    // `node scripts/bf2017-level.mjs levels/mp/endor_01 --world endor --spot
+    // 211.8 331`: the game's bunker door on this site's, so the bunker, its
+    // trenches, the AT-AT station and the forest round them stand as the game
+    // placed them; the site's built bunker is the flight's (`game`))
+    level: 'endor',
     place: 'The forest moon',
     line: 'Redwoods older than the Empire, and something small watching you from the ferns.',
     sky: {
@@ -80,12 +86,9 @@ export const SITES = {
       // (the redwood country as filmed: the floor rises and falls, folded
       // into ravines and spurs, the village and the bunker on their own
       // level ground; the forest moon's mountains far off, in the haze)
-      layers: [
-        { type: 'swell', scale: 420, height: 22 },
-        { type: 'hills', scale: 130, height: 14 },
-        { type: 'ridges', scale: 300, height: 8 },
-        { type: 'mountains', from: 900, to: 3200, height: 320, scale: 1300 },
-      ],
+      // (the game's own ground: Endor_01's heightmap, 0 at the landing, its
+      // edge carried on level past the 2 km the game drew)
+      layers: [{ type: 'image', pack: 'endor' }],
       palette: {
         // (the redwood floor as filmed: cinnamon duff and needles, the
         // fern beds darker olive, rust where the bark's fallen)
@@ -145,7 +148,7 @@ export const SITES = {
         name: 'The bunker',
         at: [250, -40],
         r: 34,
-        flat: { r: 28 },
+        flat: { r: 28, game: true },
         about: 'The back door to the shield generator: an armoured entrance dug into the hillside, where the strike team went in and a stolen AT-ST came back out with an Ewok at the controls.',
         lines: {
           xwing: [['luke', 'The bunker. If Han’s team hadn’t blown it, the fleet would’ve been wiped out.']],
@@ -154,10 +157,10 @@ export const SITES = {
           rv: [['walt', 'One entrance. Armoured. Out in the middle of nowhere.'], ['jesse', 'Yo, it’s like a superlab for space Nazis.']],
         },
         things: [
-          { kind: 'bunker', at: [0, -6], yaw: 0 },
-          { kind: 'bunkerbank', at: [0, -8.5], yaw: 0 },
-          { kind: 'redwood', at: [-7, -24], model: false, opts: { seed: 21, h: 60, r: 2.2 } },
-          { kind: 'redwood', at: [9, -27], model: false, opts: { seed: 22, h: 56, r: 2.0 } },
+          { kind: 'bunker', at: [0, -6], yaw: 0, game: true },
+          { kind: 'bunkerbank', at: [0, -8.5], yaw: 0, game: true },
+          { kind: 'redwood', at: [-7, -24], model: false, opts: { seed: 21, h: 60, r: 2.2 }, game: true },
+          { kind: 'redwood', at: [9, -27], model: false, opts: { seed: 22, h: 56, r: 2.0 }, game: true },
           { kind: 'crates', at: [-10, 4] },
           { kind: 'crates', at: [9, 6] },
           { kind: 'lamp', at: [-7, 6], opts: { h: 3.2, light: '#ffe0a0' } },
