@@ -84,7 +84,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | 0 | | | #805 |
 | second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
 | 1 | | | |
-| L | the lane L session | `claude/bf2017-l-hoth` | (Hoth's PR) |
+| L | the lane L session | `claude/bf2017-l-hoth` | #831 (open) |
 | G | | | |
 | K | | | |
 | X | | | |
