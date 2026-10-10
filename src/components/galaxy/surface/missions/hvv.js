@@ -276,7 +276,9 @@ function saberStep(b, f, m, h, env, out) {
     }
   }
   if (f.stroke && !f.sim.state.striking) f.stroke = null;
-  f.sim.block(o.block, b.t);
+  // (its block: up for a strike that would reach it, and while it's shot at and not striking, as the game's AI deflects)
+  const fired = b.t - (f.firedAt ?? -99) < 1.5;
+  f.sim.block(o.block || (fired && !f.stroke), b.t);
   // (the lunge: its clip's root, unscaled, no nearer its mark than the middle of the query's ring: saber.js's)
   const q = f.sim.rules.query;
   if (f.stroke?.root && m?.up) {
@@ -338,6 +340,7 @@ function blasterStep(b, f, m, h, env, out) {
       out.push({ type: 'shot', id: f.id, from: [f.x, f.z], to: [m.x, m.z], atYou: true, damage });
       continue;
     }
+    if (m.saber) m.firedAt = b.t;
     const [a0, a1] = R.accuracy;
     let hit = b.r() < a0 + (a1 - a0) * Math.min(1, d / R.range);
     // (a saber hero's raised block turns what meets its shield from the front: its stamina pays)
