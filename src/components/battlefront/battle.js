@@ -178,7 +178,20 @@ export function view(b) {
   for (const e of v.entities) {
     const s = b.sim.entities.get(e.id);
     e.vel = [s?.vel?.[0] ?? 0, s?.vel?.[2] ?? 0];
+    e.weapon = s?.gun?.row?.id ?? null;
     e.t = t;
+  }
+  // (each bolt's owner and start, for the drawing to leave from its gun:
+  // the sim's view lists them in the sim's order)
+  const list = b.sim.bolts.list;
+  for (let i = 0; i < v.bolts.length; i++) {
+    const o = v.bolts[i];
+    const sb = list[i];
+    o.id = sb?.id ?? null;
+    o.owner = sb?.owner ?? null;
+    o.from = sb?.from ?? o.at;
+    o.travelled = sb?.travelled ?? 0;
+    o.speed = sb?.speed ?? null;
   }
   const p = b.player;
   const me = p?.id ? b.sim.entities.get(p.id) : null;
