@@ -75,8 +75,9 @@ const GUARD = { yaw: 0.12, pitch: 1.0, at: { fwd: 0.48, up: -0.58, side: 0.05 } 
 const GUARD_DUAL = { yaw: -0.3, pitch: 0.7, at: { fwd: 0.45, up: -0.7, side: 0.38 } };
 const TRAIL = 8; // frames of the trail behind the blade (and the blade's memory of them)
 const radiusOf = (t) => Math.max(0.45, (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1) * 0.35);
-// what a stroke lays from its clip over gunplay's arms: the chest and both arms
-const ARMS = ['Spine02', 'Spine01', 'Spine', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'];
+// what a stroke lays from its clip over gunplay's arms: the chest and both
+// arms, under Meshy's spine names and the 2017 game's (Spine1, Spine2, Neck)
+export const ARMS = ['Spine02', 'Spine01', 'Spine', 'Spine1', 'Spine2', 'Neck', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'];
 const TURN = 0.4; // of the clip, the figure turning to the lock
 const CORRECT = 0.25; // radians the sword arm may be turned toward the lock in the contact window
 const IN = 0.08; // seconds a stroke's arms take to come on over the guard
@@ -141,10 +142,13 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   const segs = blades.map(() => createBlade({ keep: TRAIL }));
   const trails = blades.map(() => createTrail(parent ?? gun.parent?.parent, { color, length: TRAIL }));
   // the clips: the stance's, the heavy ones, the ways and the block, fetched now so the first stroke has its own
-  const clips = { ...(given ?? {}) };
+  // (a figure on the 2017 game's skeleton strokes with the game's own clips,
+  // its figure's: never the library's, which are made for other rigs)
+  const own = fig?.rig === 'walrus' ? (fig.clips ?? {}) : null;
+  const clips = { ...(given ?? own ?? {}) };
   const names = [...st_.strokes.map((k) => k.clip), ...HEAVY.clips, ...Object.values(DIRS).map((d) => d.clip), BLOCK_CLIP];
   let gone = false;
-  if (!given)
+  if (!given && !own)
     for (const n of new Set(names))
       loadClip(n).then((c) => {
         if (c && !gone) clips[n] = c;

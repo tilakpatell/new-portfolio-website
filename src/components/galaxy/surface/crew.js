@@ -24,6 +24,7 @@ import { loadPartyFigure, loadSharedFigure } from '../../universe/footScene';
 import { METRE } from '../../universe/foot';
 import { breathe } from '../../../lib/three/gait';
 import { NO_CALLS, seedOf } from '../../../lib/three/figureCalls';
+import { loadWalrusFigure } from '../../../lib/three/walrus';
 import { EVERYONE } from '../../rickmorty/wardrobe/looks';
 import { CREW, faceOf, fileOf } from './crewList';
 import { cloneModel, loadGlb } from './placer';
@@ -34,6 +35,11 @@ export { CREW, fileOf };
 // (the wardrobe's people come dressed as kept, each their own figure;
 // anyone else is a copy of their file's one: a battle's troopers share theirs)
 const DRESSED = new Set(EVERYONE);
+
+// which loader a row's figure comes through: the game's skeleton's for a
+// 2017 figure (rig: 'walrus'), the wardrobe's own for its people, else a
+// copy of the file's one figure
+export const figureLoaderFor = (row, kind) => (row.rig === 'walrus' ? 'walrus' : DRESSED.has(kind) ? 'party' : 'shared');
 
 const UP = new THREE.Vector3(0, 1, 0);
 const _q = new THREE.Quaternion();
@@ -63,9 +69,13 @@ export async function crewFigure(kind, i = 0) {
       dispose() {},
     };
   }
-  const fig = DRESSED.has(kind)
-    ? await loadPartyFigure({ id: kind, name: kind, tall: c.tall, src: { url: fileOf(c) } }, null).catch(() => null)
-    : await loadSharedFigure(fileOf(c), c.tall, { seed }).catch(() => null);
+  const how = figureLoaderFor(c, kind);
+  const fig =
+    how === 'walrus'
+      ? await loadWalrusFigure(fileOf(c), { tall: c.tall, unit: METRE, seed }).catch(() => null)
+      : how === 'party'
+        ? await loadPartyFigure({ id: kind, name: kind, tall: c.tall, src: { url: fileOf(c) } }, null).catch(() => null)
+        : await loadSharedFigure(fileOf(c), c.tall, { seed }).catch(() => null);
   if (!fig) return null;
   const model = new THREE.Group();
   model.scale.setScalar(1 / METRE);
@@ -80,6 +90,11 @@ export async function crewFigure(kind, i = 0) {
     anim: fig.anim ?? null,
     // (its bones by name: a rider's limbs are put on what it rides, riders.js)
     bones: fig.bones ?? null,
+    // (a 2017 figure's: the game's skeleton, its sockets and its clips, for
+    // the saber and the gun: saber.js, gunplay.js)
+    rig: fig.rig ?? null,
+    sockets: fig.sockets ?? null,
+    clips: fig.clips ?? null,
     update(dt, move, motion = null) {
       // (the figure reads its motion in the units it stands in, under this
       // group: metres over the group's scale, which is the map's units over

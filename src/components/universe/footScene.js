@@ -64,6 +64,7 @@ import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { NO_CALLS, animatorCalls, seedOf } from '../../lib/three/figureCalls';
 import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
+import { loadWalrusFigure } from '../../lib/three/walrus';
 import { breathe, createGait, sway } from '../../lib/three/gait';
 import { seeded } from '../../lib/seeded';
 import { createBolts } from '../../lib/combat/bolt';
@@ -380,6 +381,9 @@ export async function loadSharedFigure(url, tall, { seed, from = sharedModels } 
 // their own guns, as the cruiser’s two do: a bag of blue in the hand stays
 // in the wardrobe. Anyone else is loaded as they were.
 async function loadParty(spec, cast, looks = null, { templates = null } = {}) {
+  // (a figure on the 2017 game's skeleton, a galaxy hero's: its own loader
+  // and the game's own clips, never the wardrobe's or the library's)
+  if (spec.rig === 'walrus' && spec.src?.url) return loadWalrusFigure(spec.src.url, { tall: spec.tall, unit: METRE, seed: seedFor(spec.id ?? spec.src.url) });
   const look = spec.src.url ? lookFor(spec.id, looks) : null;
   if (!look) return loadModel(spec, cast, looks, { templates });
   const fig = await loadModel({ ...spec, src: { url: bodyAsset(look) } }, cast, looks, { templates });

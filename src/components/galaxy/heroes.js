@@ -100,7 +100,7 @@ export function heroSpec(hero) {
   const gun = saber ? 'saber' : WEAPONS[hero.gun] && hero.gun !== 'saber' ? hero.gun : h.weapon;
   // (a gun from elsewhere fires yellow; the galaxy's keep the hero's own colour)
   const bolt = saber ? saber.color : WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
-  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
+  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, ...(h.rig ? { rig: h.rig } : {}), gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
 }
 
 // the two who walk down here: the hero in the lead, and the ship's

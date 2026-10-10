@@ -25,7 +25,7 @@
 //     y = 0; refuses a body not on the game's skeleton, naming the bones it
 //     lacks. figure: { model, bones, loco, mixer, act, anim, update(dt,
 //     move, motion), after, play, stop, base, look, react, dispose,
-//     rig: 'walrus', sockets: { weapon, muzzle, aim, handL, handR } }
+//     rig: 'walrus', sockets: { weapon, muzzle, aim, handL, handR }, clips }
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -133,6 +133,8 @@ export async function loadWalrusFigure(url, { tall, unit = 1, seed = 0, clipSpee
     anim,
     rig: 'walrus',
     sockets,
+    // (its clips by the site's names, for the saber's strokes: saber.js)
+    clips: own,
     update(dt, move = 0, motion = null) {
       calls.tick(dt, motion ? Math.hypot(motion.speed ?? 0, motion.side ?? 0) > 0.05 * unit : move > 0.05);
       anim.locomote(motion ? { move, ...motion } : { move });
