@@ -1,0 +1,30 @@
+/* The flight's stage and HUD skin (the kit's parts, ../../../runtime/hud). */
+.fly-stage {
+  position: relative;
+  /* (the page's own height under the nav, as the other worlds' stages) */
+  height: calc(100svh - var(--nav-h, 64px));
+  overflow: hidden;
+  background: #e9f0f7;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fly-stage .world-canvas { position: absolute; inset: 0; touch-action: none; }
+.fly-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #2b3d55; font-size: var(--fs-sm); }
+.fly-hud { --hud-ink: #1a1f2b; color: #1a1f2b; }
+.fly-brand { padding: 0.5rem 0.75rem; border-radius: 0.75rem; background: rgb(255 255 255 / 0.8); }
+.fly-eyebrow { margin: 0; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: #2b3d55; }
+.fly-title { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
+.fly-gauge {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 0.8);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-base);
+}
+.fly-gauge small { margin-right: 0.6rem; font-size: 0.75rem; color: #2b3d55; }
+.fly-thumbs { display: flex; align-items: flex-end; justify-content: space-between; width: 100%; }
+.fly-throttle { display: flex; flex-direction: column; gap: 0.75rem; pointer-events: auto; }

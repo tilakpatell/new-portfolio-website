@@ -321,6 +321,30 @@ const worldPage = (route, { ready = canvasUp, move = 'KeyW' } = {}) =>
   };
 
 const JOURNEYS = {
+  // the planet flight (/fly/hoth): the ground streamed in at the start, then
+  // 300 m/s north for 14 s, from the range onto the plains (a biome boundary
+  // at z ≈ 1000), into the glacier (z ≈ −500), over Echo Base (z −800) and
+  // back onto the plains (z ≈ −1550), and a long
+  // bank round (the ship's dev hook, expanse/flight/module.js's __FLIGHT__)
+  async fly(page, mark) {
+    mark('load');
+    await page.goto(`${this.base}/${this.q}#/fly/hoth`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.__FLIGHT__ && window.__RUNTIME__?.status === 'on', null, { timeout: 240000 });
+    mark('settle');
+    await page.waitForFunction(() => window.__FLIGHT__.stats().leaves > 100, null, { timeout: 120000 }).catch(() => {});
+    await wait(page, 4000);
+    mark('idle');
+    await wait(page, 4000);
+    mark('fly');
+    await page.evaluate(() => (window.__FLIGHT__.ship = { speed: 300, pitch: 0, roll: 0 }));
+    await page.keyboard.down('ShiftLeft');
+    await wait(page, 14000);
+    mark('bank');
+    await hold(page, 'KeyD', 1200);
+    await wait(page, 6000);
+    await page.keyboard.up('ShiftLeft');
+    mark('end');
+  },
   async universe(page, mark) {
     mark('load');
     await page.goto(`${this.base}/${this.q}#/universe`, { waitUntil: 'domcontentloaded' });
