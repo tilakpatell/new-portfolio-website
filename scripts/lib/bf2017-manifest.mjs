@@ -8,18 +8,19 @@
 
 // The sequel era, which the site shows none of (.claude/skills/autopilot/
 // SKILL.md): the folder names the drop files it under.
-export const SEQUEL = ['kyloren', 'rey', 'finn', 'captainphasma', 'firstorder', 'starkiller', 'takodana', 'jakku', 'resurgent', 'xwing_t70', 'tiefighterfirstorder', 'tiefighterspecialforces', 'resistance', 'ep7', 'ep9', 'skytrooper', 'jump_cop', 'newera', 'kylo', 'phasma', 'bb8', 'bb9e', 'crait', 'spacebear'];
+export const SEQUEL = ['kyloren', 'rey', 'finn', 'captainphasma', 'firstorder', 'starkiller', 'takodana', 'jakku', 'resurgent', 'xwing_t70', 'tiefighterfirstorder', 'tiefighterspecialforces', 'resistance', 'ep7', 'ep9', 'skytrooper', 'jump_cop', 'newera', 'kylo', 'phasma', 'bb8', 'bb9e', 'crait', 'spacebear', 'cra', 'dqar'];
+// (the seasons the drop files whole under the sequel: season 1, The Last
+// Jedi's Crait and D'Qar, by its folder)
+export const SEQUEL_SEASONS = ['s1'];
 
 // (a short name is matched only between separators, so 'rey' never catches
-// 'grey' or 'osprey'; a long one anywhere in a segment, so 'firstorder'
-// catches 'stormtrooper_firstorder_01')
+// 'grey' or 'osprey' and 'cra', Crait's code, only `o_cra_…`; a long one
+// anywhere in a segment, so 'firstorder' catches 'stormtrooper_firstorder_01')
 const SEQUEL_TESTS = SEQUEL.map((s) => (s.length < 5 ? new RegExp(`(^|[_\\-.\\d])${s}($|[_\\-.\\d])`) : new RegExp(s.replace(/[_-]/g, '[_-]'))));
 
 export function isSequel(name) {
-  return name
-    .toLowerCase()
-    .split('/')
-    .some((seg) => SEQUEL_TESTS.some((re) => re.test(seg)));
+  const segs = name.toLowerCase().split('/');
+  return SEQUEL_SEASONS.includes(segs[0]) || segs.some((seg) => SEQUEL_TESTS.some((re) => re.test(seg)));
 }
 
 export function readManifest(text) {

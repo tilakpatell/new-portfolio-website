@@ -75,6 +75,12 @@ describe('the 2017 manifest', () => {
     expect(isSequel('characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh')).toBe(false);
     expect(isSequel('gameplay/vehicles/air/xwing_t70/x')).toBe(true);
     expect(isSequel('gameplay/vehicles/air/xwing_t65/x')).toBe(false);
+    // (Crait by its code, D'Qar, and season 1, The Last Jedi's, whole)
+    expect(isSequel('s9_3/crait/prefabs/o_cra_turret_b_01_nosmoke_mesh')).toBe(true);
+    expect(isSequel('s1/levels/space/objects/dreadnaught/o_sb_dreadnaught_mesh')).toBe(true);
+    expect(isSequel('S2/Objects/Planets/Dqar/T_PlanetFrontendDqar_01_CA')).toBe(true);
+    expect(isSequel('objects/props/objectsets/scarif/crate_01/x_mesh')).toBe(false);
+    expect(isSequel('s2/objects/props/x_mesh')).toBe(false);
     expect(isSequel('Characters/Hero/KyloRen/x')).toBe(true);
     expect(SEQUEL).toContain('jump_cop');
     // (the drop's sequel-era troopers sit under d_assault_newera and the like)
