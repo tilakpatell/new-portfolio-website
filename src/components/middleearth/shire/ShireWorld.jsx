@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
-import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { local, prefersReducedMotion, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { useVoiced } from '../../../lib/useVoiced';
 import { readPad, typing } from '../../games/pad';
@@ -206,7 +206,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     import('./scene')
       .then(({ createShireWorld }) => {
         if (dead || !canvas.current) return null;
-        return createShireWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
+        // (with motion turned down, the leaves lie as they fell)
+        return createShireWorld(canvas.current, { onLost: () => !dead && setGl('lost'), reduced: prefersReducedMotion() });
       })
       .then(async (a) => {
         if (!a) return;
