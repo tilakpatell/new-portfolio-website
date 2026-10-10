@@ -88,3 +88,14 @@ The game's navmesh (`PathfindingBlobAsset`) is opaque, so the navgrid's mask is 
 - **The mask's cover slots** come one to a navgrid cell along its edges (2 m apart, not `SlotSpacing`'s 2.2: the mask has no faces longer than a cell), set back `OcclusionCheckDist` 0.7 from the face, crouch or stand by `CrouchHeight` 0.94 and `StandHeight` 1.7 as the box slots are. The game's `CoverZones` are not exported.
 - **The camera's sweep radius** is `StormTrooperShared#SoldierCameraComponentData.CameraCullSphereRadius` 0.15, read as the ball swept along the arm; the records name no camera collision radius beyond `SoldierThirdPersonCameraData.CollisionWidthPadding` 0.17, which `camera.js` already takes off the hit. The ground march's 0.2 m step and 0.25 m clearance are the page's own, as before.
 - **A box solid blocks only above a step** (`nav.js`'s `STEP_UP`, the record's `StepHeight` 0.4): a box whose top is under the ground plus a step (13,000 of Hoth's 47,000 hull boxes are buried) blocks nothing.
+
+## Squads (`squads.json`, read by `lib/battlefront/ai/squad.js` and `spawn.js`)
+
+`squads.json` is read from the game (`scripts/lib/bf2017-rulebook-squads.mjs`); what the code around it adds by hand:
+
+- `IN_COMBAT` 5 s (`spawn.js`): how long a soldier hit, or hitting, cannot be spawned on. The game names what puts a soldier in combat (the killswitches `Online/Killswitches/SquadSpawn_InCombat_When*`, kept as `inCombat`) but keeps no time for it.
+- The leader (`ai/squad.js`): the first bot alive, else the first alive, so the bots keep to the commander’s order and not the player’s. The game’s squad leading is native code.
+- `joinSquad` (`ai/squad.js`): a player takes the team’s first squad with room; with every squad full, the last bot of the first squad moves to a new one. The game’s parties and auto-partners (`AutoPartnerEntityData`, `TacticalGroupManagerEntityData`) are native code.
+- The squad-spawn Battle Points stay `points.json`’s `earn.squadSpawn` 25: `UI/MetaData/ScoreUIMetaData` has the award “SQUAD SPAWN ON YOU” (identifier 2793359391) but `Persistence/Scoring/MPScoring` holds no score for it.
+- The palette picks’ roles (`hud.palette`): the picks are the records’, in order; which feeds the name and which the icon is read by hand from the cell’s hashed graph (`docs/superpowers/evidence/battlefront-lane5b/research-squad.md`).
+- An order’s letter is the objective’s place (A for the first), as the page names its objectives.

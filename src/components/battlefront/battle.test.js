@@ -76,6 +76,47 @@ describe('the battle on lane 1’s sim, with the deploy screen lane 2 will own',
     }
   });
 
+  it('puts the player in a squad, listed as “You” first and the bots by name', () => {
+    const b = make({ 1: 0, 2: 3 });
+    addPlayer(b, { team: 2 });
+    const v = view(b);
+    expect(v.squad.letter).toBe('A');
+    expect(v.squad.members.map((m) => m.name)).toEqual(['You', 'Trooper 1', 'Trooper 2', 'Trooper 3']);
+    expect(v.squad.members[0].local).toBe(true);
+    expect(v.squad.members[1]).toMatchObject({ alive: true, cls: 'assault' });
+  });
+
+  it('offers the HQ and each squadmate on the deploy screen, with why a mate cannot be spawned on', () => {
+    const b = make({ 1: 0, 2: 3 });
+    addPlayer(b, { team: 2 });
+    const [, hit] = view(b).squad.members;
+    b.sim.entities.get(hit.id).combatAt = b.sim.time;
+    const spawns = view(b).deploy.spawns;
+    expect(spawns[0]).toMatchObject({ kind: 'hq', name: 'IMPERIAL HQ' });
+    expect(spawns.slice(1).map((s) => s.kind)).toEqual(['mate', 'mate', 'mate']);
+    expect(spawns[1]).toMatchObject({ id: hit.id, name: 'Trooper 1', cls: 'assault', blocked: 'combat', reason: 'IN COMBAT' });
+    expect(spawns[2]).toMatchObject({ blocked: null, reason: null });
+  });
+
+  it('deploys the player on a squadmate, behind them, keeping the player’s id; and not on one just hit', () => {
+    const b = make({ 1: 0, 2: 3 });
+    addPlayer(b, { team: 2 });
+    const [, hit, mate] = view(b).squad.members;
+    b.sim.entities.get(hit.id).combatAt = b.sim.time;
+    expect(deploy(b, 'player', { classId: 'd-orig-heavy', spawn: 'squad', mate: hit.id })).toEqual({ ok: false, why: 'combat' });
+    expect(deploy(b, 'player', { classId: 'd-orig-heavy', spawn: 'squad', mate: mate.id })).toEqual({ ok: true });
+    const v = view(b);
+    const m = b.sim.entities.get(mate.id);
+    expect(Math.hypot(v.player.at[0] - m.at[0], v.player.at[2] - m.at[2])).toBeLessThan(8);
+    const id = v.player.id;
+    expect(v.squad.members[0]).toMatchObject({ id, name: 'You', alive: true, cls: 'heavy' });
+    expect(v.scoreboard[2].rows.find((r) => r.id === mate.id).points).toBe(rb.points.earn.squadSpawn);
+    b.sim.entities.get(id).alive = false;
+    b.player.state = 'deploying';
+    expect(deploy(b, 'player', { classId: 'd-orig-assault' }).ok).toBe(true);
+    expect(view(b).player.id).toBe(id);
+  });
+
   it('fields the bots and ends the round when told', () => {
     const b = make({ 1: 2, 2: 2 });
     addPlayer(b, { team: 2 });
