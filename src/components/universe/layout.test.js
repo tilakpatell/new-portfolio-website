@@ -95,48 +95,52 @@ describe('the asteroid belt', () => {
   });
 });
 
-// (scale.js's SPREAD: the places four times as far apart as they were on 2026-10-07)
+// (scale.js's SPREAD: the places six times as far apart as they were on 2026-10-07)
 describe('the spread', () => {
   const fandoms = ORDER.filter((id) => byId(id).kind !== 'core');
   const far = (id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]);
-  it('puts the nearest fandom 8,000 out and the main edge at 36,000', () => {
-    expect(Math.min(...fandoms.map(far))).toBeCloseTo(8000, 0);
-    expect(SECTORS.main.edge).toBe(36000);
-    expect(RIM.inner).toBe(32000);
-    expect(RIM.outer).toBe(34400);
+  it('puts the nearest fandom 12,000 out and the main edge at 54,000', () => {
+    expect(Math.min(...fandoms.map(far))).toBeCloseTo(12000, 0);
+    expect(SECTORS.main.edge).toBe(54000);
+    expect(RIM.inner).toBe(48000);
+    expect(RIM.outer).toBe(51600);
   });
 
-  it('keeps every fandom at least 2,600 from every other place, planets and wonders', () => {
+  it('keeps every fandom at least 3,900 from every other place, planets and wonders', () => {
     // (a portal is its planet's own door, beside it: not a place of its own)
     const others = [...ORDER.filter((id) => byId(id).kind !== 'core').map((id) => ({ id, at: POSITIONS[id] })), ...WONDERS.filter((w) => !w.sector && w.kind !== 'portal')];
     for (const id of fandoms) {
       for (const o of others) {
         if (o.id === id) continue;
         const d = Math.hypot(...POSITIONS[id].map((v, i) => v - o.at[i]));
-        expect(d, `${id} and ${o.id}`).toBeGreaterThanOrEqual(2600);
+        expect(d, `${id} and ${o.id}`).toBeGreaterThanOrEqual(3900);
       }
     }
   });
 
   it('moves the Rick and Morty sector out past the main edge, and the split with it', () => {
-    expect(SECTORS.rickmorty.origin).toEqual([0, 0, -48000]);
-    expect(sectorOf(0, 0, -48000)).toBe('rickmorty');
-    expect(sectorOf(0, 0, -36000)).toBe('main');
+    expect(SECTORS.rickmorty.origin).toEqual([0, 0, -66000]);
+    expect(sectorOf(0, 0, -66000)).toBe('rickmorty');
+    expect(sectorOf(0, 0, -54000)).toBe('main');
+    // (6,000 of open space between the two edges, as before the spread to six)
+    expect(-SECTORS.rickmorty.origin[2] - SECTORS.rickmorty.edge - SECTORS.main.edge).toBe(6000);
   });
 
-  it('puts the Expanse past both edges: E:sx,sz by the 80,000 grid, the authored sectors as they were', () => {
-    expect(sectorOf(36000, 0, 0)).toBe('main');
-    expect(sectorOf(36002, 0, 0)).toBe('E:0,0');
-    expect(sectorOf(40001, 0, 0)).toBe('E:1,0');
-    expect(sectorOf(-120001, 0, 200000)).toBe('E:-2,3');
-    expect(sectorOf(0, 0, -48000 - 6000)).toBe('rickmorty');
+  it('puts the Expanse past both edges: E:sx,sz by the 120,000 grid, the authored sectors as they were', () => {
+    expect(sectorOf(54000, 0, 0)).toBe('main');
+    expect(sectorOf(54002, 0, 0)).toBe('E:0,0');
+    expect(sectorOf(60001, 0, 0)).toBe('E:1,0');
+    expect(sectorOf(-180001, 0, 300000)).toBe('E:-2,3');
+    expect(sectorOf(0, 0, -66000 - 6000)).toBe('rickmorty');
     // (round the pocket, outside its edge, is the Expanse)
-    expect(sectorOf(0, 0, -48000 - 6003)).toBe('E:0,-1');
-    expect(sectorOf(30000, 0, -39500)).toBe('E:0,0');
-    expect(mapSectorOf(90000, 0, 0)).toBe('main');
-    expect(mapSectorOf(0, 0, -48000)).toBe('rickmorty');
+    expect(sectorOf(0, 0, -66000 - 6003)).toBe('E:0,-1');
+    expect(sectorOf(45000, 0, -59500)).toBe('E:0,0');
+    expect(mapSectorOf(135000, 0, 0)).toBe('main');
+    expect(mapSectorOf(0, 0, -66000)).toBe('rickmorty');
+    // (a point saved before the spread is still somewhere: the old pocket's middle is open main space now)
+    expect(sectorOf(0, 0, -48000)).toBe('main');
     const sec = sectorById('E:1,-2');
-    expect(sec.origin).toEqual([80000, 0, -160000]);
+    expect(sec.origin).toEqual([120000, 0, -240000]);
     expect(sec.edge).toBe(Infinity);
     expect(sectorById('main')).toBe(SECTORS.main);
     expect(sectorById('nowhere')).toBeNull();

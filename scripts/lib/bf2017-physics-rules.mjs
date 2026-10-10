@@ -29,6 +29,13 @@
 //     bodies carry their bones only)
 //   physicsRulebooks(root) → { projectiles, bones, ragdoll } (the three
 //     files' contents)
+//   soldierRow(asset) → the 2017 soldier's row (lane P1): mass, radius,
+//     slopes, rays, poses ({ height, step, eye, transitions } by pose),
+//     states (each state's numbers and its poses' speeds and gains); a record
+//     with no jump height takes the site's jump as `fallback` (source: hand)
+//   soldierRulebook(root, names = SOLDIER_RECORDS) → { default, rows,
+//     refused, missing } over the thirteen CharacterPhysicsData records
+//     (the walk is OnGroundStateData's rows, not AnimationControlled's)
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -356,6 +363,170 @@ export function ragdollRow(asset, follow = null) {
       return b;
     });
   return row;
+}
+
+// ── the soldier (lane P1) ──
+
+// the thirteen CharacterPhysicsData records the survey found
+export const SOLDIER_RECORDS = [
+  'Gameplay/Characters/DefaultSoldierPhysics',
+  'Gameplay/Characters/DefaultSoldierPhysics_AI',
+  'Gameplay/Characters/DefaultSoldierPhysics_B1Droid',
+  'Gameplay/Characters/Heroes/DefaultHeroPhysics',
+  'Gameplay/Characters/Heroes/DefaultHeroPhysics_Crouch',
+  'Gameplay/Characters/Heroes/DefaultHeroPhysics_Tall',
+  'Gameplay/Characters/Heroes/DefaultHeroPhysics_Crouch_Tall',
+  'Gameplay/Characters/Heroes/BBHeroPhysics',
+  'Gameplay/Characters/Heroes/Droideka/DroidekaPhysics',
+  'Gameplay/Characters/AI/Creature/DefaultPillioCreaturePhysics',
+  'Gameplay/Kits/Hero/Maul/MaulHeroPhysics',
+  'Gameplay/Kits/Hero/Yoda/YodaPhysics',
+  'Addons/Mode3/Gameplay/Kits/Specials/Ewok/EwokPhysics',
+];
+
+// the site's jump where the record gives none (a hero's jump is its ability's; a creature has no jump state)
+export const HAND_JUMP = 5.4;
+
+const POSES = { CharacterPoseType_Stand: 'stand', CharacterPoseType_Crouch: 'crouch', CharacterPoseType_Prone: 'prone' };
+const poseOf = (type) => POSES[type] ?? type.replace(/^CharacterPoseType_/, '').toLowerCase();
+const STATES = {
+  OnGroundStateData: 'onGround',
+  JumpStateData: 'jump',
+  InAirStateData: 'inAir',
+  FallingStateData: 'falling',
+  ParachuteStateData: 'parachute',
+  SwimmingStateData: 'swimming',
+  ClimbingStateData: 'climbing',
+  AnimationControlledStateData: 'animation',
+  SlidingStateData: 'sliding',
+};
+const stateOf = (type) => STATES[type] ?? type.replace(/StateData$/, '').replace(/^./, (c) => c.toLowerCase());
+const camel = (k) => k.replace(/^[A-Z]+(?=[A-Z][a-z]|$)|^[A-Z]/, (c) => c.toLowerCase());
+
+// a writer over one asset: put(row, key, value, type, path) sets the value and its source
+function writer(name) {
+  return (row, key, value, type, path) => {
+    if (!isNum(value) && !(Array.isArray(value) && value.every(isNum))) return;
+    row[key] = value;
+    row[`${key}_source`] = `${name}#${type}.${path}`;
+  };
+}
+
+// a CharacterStatePoseInfo: the pose's speed and how it gets there
+function poseInfoRow(put, info, type, path) {
+  const row = {};
+  const at = (p) => `${path}.${p}`;
+  put(row, 'velocity', info.Velocity, type, at('Velocity'));
+  const m = info.SpeedModifier ?? {};
+  put(row, 'forward', m.ForwardConstant, type, at('SpeedModifier.ForwardConstant'));
+  put(row, 'back', m.BackwardConstant, type, at('SpeedModifier.BackwardConstant'));
+  put(row, 'left', m.LeftConstant, type, at('SpeedModifier.LeftConstant'));
+  put(row, 'right', m.RightConstant, type, at('SpeedModifier.RightConstant'));
+  put(row, 'accelGain', info.AccelerationGain, type, at('AccelerationGain'));
+  put(row, 'decelGain', info.DecelerationGain, type, at('DecelerationGain'));
+  put(row, 'turnGain', info.DirectionChangeAccelerationGain, type, at('DirectionChangeAccelerationGain'));
+  put(row, 'turnThreshold', info.DirectionChangeThreshold, type, at('DirectionChangeThreshold'));
+  put(row, 'sprintGain', info.SprintGain, type, at('SprintGain'));
+  put(row, 'sprintMultiplier', info.SprintMultiplier, type, at('SprintMultiplier'));
+  put(row, 'water', info.ShallowWaterMultiplier, type, at('ShallowWaterMultiplier'));
+  return row;
+}
+
+// a state: its own numbers (camel-cased) and its PoseInfo by pose
+function stateRow(put, asset, state) {
+  const type = state.$type;
+  const row = {};
+  for (const [k, v] of Object.entries(state)) {
+    if (k.startsWith('$') || k === 'PoseInfo') continue;
+    put(row, camel(k), v, type, k);
+  }
+  const poses = {};
+  (state.PoseInfo ?? []).forEach((ref, i) => {
+    const info = deref(asset, ref);
+    if (info) poses[poseOf(info.PoseType)] = poseInfoRow(put, info, type, `PoseInfo[${i}]`);
+  });
+  if (Object.keys(poses).length) row.poses = poses;
+  return row;
+}
+
+// a CharacterPoseData: the capsule's height, the step, the eye, the transitions
+function poseRow(put, pose, i) {
+  const type = 'CharacterPhysicsData';
+  const path = (p) => `Poses[${i}].${p}`;
+  const row = {};
+  put(row, 'height', pose.Height, type, path('Height'));
+  put(row, 'step', pose.StepHeight, type, path('StepHeight'));
+  const e = pose.EyePosition;
+  if (e) put(row, 'eye', [e.x, e.y, e.z], type, path('EyePosition'));
+  const transitions = {};
+  (pose.TransitionTimes ?? []).forEach((t, k) => put(transitions, poseOf(t.ToPose), t.TransitionTime, type, path(`TransitionTimes[${k}].TransitionTime`)));
+  row.transitions = transitions;
+  return row;
+}
+
+// one CharacterPhysicsData asset as the soldier's row (spec §2)
+export function soldierRow(asset) {
+  const name = asset.name;
+  const put = writer(name);
+  const r = rootOf(asset);
+  const T = 'CharacterPhysicsData';
+  const row = { id: name.split('/').pop() };
+  put(row, 'mass', r.Mass, T, 'Mass');
+  put(row, 'radius', r.PhysicalRadius, T, 'PhysicalRadius');
+  put(row, 'ascend', r.MaxAscendAngle, T, 'MaxAscendAngle');
+  put(row, 'slide', r.SlideAngle, T, 'SlideAngle');
+  put(row, 'slideSpeed', r.SlideSpeedCondition, T, 'SlideSpeedCondition');
+  put(row, 'pushWeight', r.PushableObjectWeight, T, 'PushableObjectWeight');
+  row.jumpPenalty = {};
+  put(row.jumpPenalty, 'time', r.JumpPenaltyTime, T, 'JumpPenaltyTime');
+  put(row.jumpPenalty, 'factor', r.JumpPenaltyFactor, T, 'JumpPenaltyFactor');
+  row.rays = {};
+  put(row.rays, 'groundStart', r.RayStartHeightOnGround, T, 'RayStartHeightOnGround');
+  put(row.rays, 'groundEnd', r.RayEndHeightOnGround, T, 'RayEndHeightOnGround');
+  put(row.rays, 'airStart', r.RayStartHeightInAir, T, 'RayStartHeightInAir');
+  put(row.rays, 'airEnd', r.RayEndHeightInAir, T, 'RayEndHeightInAir');
+  put(row.rays, 'movingSpeed', r.SpeedForMovingRayCasts, T, 'SpeedForMovingRayCasts');
+  row.ladder = {};
+  put(row.ladder, 'angle', r.LadderAcceptAngle, T, 'LadderAcceptAngle');
+  put(row.ladder, 'pitch', r.LadderAcceptAnglePitch, T, 'LadderAcceptAnglePitch');
+  row.poses = {};
+  (r.Poses ?? []).forEach((ref, i) => {
+    const p = deref(asset, ref);
+    if (p) row.poses[poseOf(p.PoseType)] = poseRow(put, p, i);
+  });
+  row.states = {};
+  for (const ref of r.States ?? []) {
+    const s = deref(asset, ref);
+    if (s) row.states[stateOf(s.$type)] = stateRow(put, asset, s);
+  }
+  const swim = row.states.swimming ?? (row.states.swimming = {});
+  put(swim, 'enter', r.EnterSwimStateDepth, T, 'EnterSwimStateDepth');
+  put(swim, 'exit', r.ExitSwimStateDepth, T, 'ExitSwimStateDepth');
+  // the jump: the record's height when it gives one, else the site's speed
+  const jump = row.states.jump ?? (row.states.jump = {});
+  if (!(jump.jumpHeight > 0)) jump.fallback = { speed: HAND_JUMP, source: 'hand' };
+  return row;
+}
+
+// the thirteen records, read from <root>/data; the sequel era refused, the missing listed
+export function soldierRulebook(root, names = SOLDIER_RECORDS) {
+  const rows = {};
+  const out = [];
+  const missing = [];
+  for (const name of names) {
+    if (refused(name)) {
+      out.push(name);
+      continue;
+    }
+    const asset = loadAsset(root, name);
+    if (!asset || rootOf(asset)?.$type !== 'CharacterPhysicsData') {
+      missing.push(name);
+      continue;
+    }
+    const row = soldierRow(asset);
+    rows[row.id] = row;
+  }
+  return { default: 'DefaultSoldierPhysics', rows, refused: out, missing };
 }
 
 // ── all three, for scripts/bf2017-bolts-data.mjs ──

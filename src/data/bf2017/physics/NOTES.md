@@ -14,3 +14,20 @@ Built on 2026-10-10 by `node scripts/bf2017-bolts-data.mjs --root <export>/web` 
 - **`bones.json`** (112 KB, 10 sets): `SkeletonCollisionData` under `data/Gameplay/Characters/` (the soldier, its AI, B1, B1 droid, B2, hero and jetpack variants, the droideka, Yoda, the Pillio creature). `BoneAxis` is 0 (the bone’s x) in every set; a capsule runs from `CapsuleOffset` (in the bone’s frame) `CapsuleLength` along that axis (`lib/physics/boneCapsules.js`), which puts the soldier’s forearm capsule (0.25 m) from elbow to wrist and the head’s on the head. A zero-radius entry (the soldier’s third `Spine`, a material marker) is kept and skipped by `capsulesOf`.
 - **`ragdoll.json`** (144 KB, 48 rows): `WSEACharacterPhysicsComponentData` (`MaxImpulse` 1000 and `ImpulseLifetime` 10 in every row) with its blueprint’s fifteen bodies: the body index fields name the bones, `RagdollPhysicsComponentData.PhysicsBodies` the bodies, each `RigidBodyData` its `Mass` (the trooper 94 kg in all: hips 20, spine 22, head 7, thighs 8, shins 5, upper arms 4, forearms 2, hands 1 and, the gun hand, 4) and bind-pose position, the proxy’s `PartBoundingBoxes` a capsule (the longest side its length, the next its radius), and the constraints’ links (field `0xa7b321c9` the parent body, `0xf89af45f` the child) the tree. 39 heroes share the human’s bodies to the last digit, so a repeated set is written once and later rows carry `bodiesOf: <id>`.
 - **Partial ragdolls**: two components give one body to two bones (the Ewok hero all fifteen to body 1; the B1 skirmish AI the right shin and the hips both body 1). The first claim keeps the body, the rest are in `unassigned`, and the row is `partial`; `ragdollOf` falls back to the human’s bodies for a partial row. `BodiesNamesHashes` would name the bodies directly but is not a hash of the bone names under FNV-1, FNV-1a or djb2.
+
+## Lane P1: soldier.json
+
+The rulebooks here are the Battlefront II (2017) physics records read by `scripts/lib/bf2017-physics-rules.mjs` (the design: `docs/superpowers/specs/2026-10-10-bf2017-physics-design.md`). Every number carries a `_source` naming the record, the object’s type and the property’s path. A value the records do not give is marked `"source": "hand"` and has a line here; `rulebook.test.js` fails otherwise.
+
+Rebuild: `node scripts/bf2017-physics-rules.mjs soldier --root <export>` (the owner’s `C:\Users\tilak\Downloads\BF2_Extract\web`, or `lab/assets/bf2017` after a fetch of `data/Gameplay/Characters/**Physics*`).
+
+
+Thirteen `CharacterPhysicsData` records, one row each, the default `DefaultSoldierPhysics`.
+
+- **`states.jump.fallback`** (`source: "hand"`): a record whose `JumpStateData.JumpHeight` is 0 (every hero record: their jump is their ability’s) or that has no jump state (the Pillio creature) jumps at the site’s 5.4 m/s, `walker.js`’s `WALK.jump`. A record with a height (the soldier’s 1.1 m, Yoda’s and the Ewok’s 1.6 m) jumps to that height under the site’s gravity: `soldier.js` gives the speed as √(2 g h).
+- **The gravity** is not in these records (it is the level’s), so `soldier.js` keeps the site’s 15.5 m/s² (`CHARACTER.gravity`, the walker’s) so the galaxy feels one way everywhere; the jump height above is honoured under it.
+- **The gains’ unit** is not in the records. `soldier.js` reads `AccelerationGain` and `DecelerationGain` as the fraction of the gap to the wanted speed closed in one 30 Hz frame, by magnitude, never more than the whole gap: the soldier’s 0.4 closes 90% of a start in about a sixth of a second, its −15 stops within a substep and never reverses.
+
+### A correction to the design’s survey
+
+The design read the soldier’s walk as 5.0 m/s and the sprint as × 1.5 (7.5 m/s), the crouch as 3.0. Those are the **`AnimationControlledStateData`**’s pose rows. The walk on the ground is **`OnGroundStateData`**’s: stand 3.8 m/s, back × 0.8, strafe × 0.9, sprint × 1.57 (5.97 m/s), acceleration gain 0.4, deceleration −15; crouch 2.5 m/s, no sprint. The rulebook keeps both states; `soldier.js` walks on `onGround`.
