@@ -50,8 +50,9 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
-// basisu's binary for this machine (the package picks SSE where the chip has it)
-function basisuPath() {
+// basisu's binary for this machine (the package picks SSE where the chip has it);
+// exported for scripts/lib/bf2017-textures.mjs, which unpacks the 2017 drop's KTX2
+export function basisuPath() {
   const dir = dirname(require.resolve('basisu/package.json'));
   const platform = process.platform === 'win32' ? 'win' : process.platform;
   let arch = process.arch;
