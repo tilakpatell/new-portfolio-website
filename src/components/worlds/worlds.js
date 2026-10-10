@@ -24,10 +24,10 @@ export const WORLD_MB = {
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
   // planet flight: begin (scripts/flight-island.mjs removes this block)
   // the ground is made in a worker from the planet's seed and wears the galaxy's scans (a few at a planet, under 2 MB); Coruscant adds its film-made Senate, Temple and tower (2.2 MB);
-  // the POIs' buildings and the kit clutter round where it starts add the heaviest planet's 19.6 MB at mid (Naboo, its AAT, MTT, N-1 and droidekas
-  // the game's own, natively, at their light cut since lane V; Geonosis 11.2, Middle-earth 11.2, Yavin 9.1, Mustafar 7.8, Lothal 7.4, Hoth 7.0, the rest 5.9
-  // or less, an Expanse planet 1.5 at most: expanse/flight/landmarkFiles.test.js)
-  '/fly': 25,
+  // the POIs' buildings and the kit clutter round where it starts add the heaviest planet's 16.8 MB at mid (Naboo, its AAT, MTT, N-1 and droidekas
+  // the game's own, natively, at their light cut since lane V; Middle-earth 11.2, Geonosis 10.8, Mustafar 7.8, Yavin 7.5, Lothal 7.4, Tatooine 5.9,
+  // the rest 5.2 or less, an Expanse planet 1.5 at most: expanse/flight/landmarkFiles.test.js)
+  '/fly': 22,
   // planet flight: end
   '/deathstar/inside': 6, // aboard the station: the first room's kit and textures at phone size, and the cast it starts with (people, guns, the borrowed clips)
   '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)

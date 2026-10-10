@@ -263,11 +263,13 @@ scripts/gpu-parity/out/
 /public/models/galaxy/surface/dwarfspider.far.glb
 /public/models/galaxy/surface/dwarfspider.glb
 /public/models/galaxy/surface/dwarfspider.lod1.glb
+/public/models/galaxy/surface/dwarfspider.ultra.glb
 /public/models/galaxy/surface/ee3.glb
 /public/models/galaxy/surface/ee3.lod1.glb
 /public/models/galaxy/surface/eweb.far.glb
 /public/models/galaxy/surface/eweb.glb
 /public/models/galaxy/surface/eweb.lod1.glb
+/public/models/galaxy/surface/eweb.ultra.glb
 /public/models/galaxy/surface/falcon.far.glb
 /public/models/galaxy/surface/falcon.glb
 /public/models/galaxy/surface/falcon.lod1.glb
@@ -305,6 +307,7 @@ scripts/gpu-parity/out/
 /public/models/galaxy/surface/markii.far.glb
 /public/models/galaxy/surface/markii.glb
 /public/models/galaxy/surface/markii.lod1.glb
+/public/models/galaxy/surface/markii.ultra.glb
 /public/models/galaxy/surface/mtt.far.glb
 /public/models/galaxy/surface/mtt.glb
 /public/models/galaxy/surface/mtt.lod1.glb
@@ -371,6 +374,7 @@ scripts/gpu-parity/out/
 /public/models/galaxy/surface/turret.far.glb
 /public/models/galaxy/surface/turret.glb
 /public/models/galaxy/surface/turret.lod1.glb
+/public/models/galaxy/surface/turret.ultra.glb
 /public/models/galaxy/surface/uwing.far.glb
 /public/models/galaxy/surface/uwing.glb
 /public/models/galaxy/surface/uwing.lod1.glb

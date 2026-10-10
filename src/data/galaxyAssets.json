@@ -1,13 +1,13 @@
 {
   "models/galaxy/arc170.glb": {
-    "hash": "6dd6ba180932",
-    "bytes": 2083416,
+    "hash": "ceae5130daa4",
+    "bytes": 920576,
     "from": "gameplay/vehicles/air/arc170/vehicle_air_arc170_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/awing.glb": {
-    "hash": "bd80cae67568",
-    "bytes": 696584,
+    "hash": "61b425bc67b6",
+    "bytes": 280412,
     "from": "gameplay/vehicles/air/awing/vehicle_air_awing_01_static_donotuse_mesh",
     "tier": "surface"
   },
@@ -816,104 +816,104 @@
     "tier": "pack"
   },
   "models/galaxy/cloudcar.glb": {
-    "hash": "3cfcc1dbaaff",
-    "bytes": 637044,
+    "hash": "adae345cd1cb",
+    "bytes": 235424,
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/n1.glb": {
-    "hash": "0da6e723a1e9",
-    "bytes": 1405036,
+    "hash": "2f8b687e9d57",
+    "bytes": 694916,
     "from": "gameplay/vehicles/air/n1starfighter/vehicle_air_n1starfighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/nebulon.glb": {
-    "hash": "7168265bb344",
-    "bytes": 2568624,
+    "hash": "77308d92d72a",
+    "bytes": 2568712,
     "from": "objects/props/landmarks/_rebelalliance/bd_frigatenebulonb_01/frigatenebulonb_01_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/aat.far.glb": {
-    "hash": "58715db6840b",
-    "bytes": 50748,
+    "hash": "5a716d07ef9b",
+    "bytes": 50848,
     "from": "gameplay/vehicles/ground/aat/vehicle_ground_aat_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/aat.glb": {
-    "hash": "c4b6e1b4540a",
-    "bytes": 4887836,
+    "hash": "42b8a8659614",
+    "bytes": 1758592,
     "from": "gameplay/vehicles/ground/aat/vehicle_ground_aat_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/aat.lod1.glb": {
-    "hash": "74312d75cfe2",
-    "bytes": 1330476,
+    "hash": "7fdf7642cc32",
+    "bytes": 477460,
     "from": "gameplay/vehicles/ground/aat/vehicle_ground_aat_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/aat.ultra.glb": {
-    "hash": "5599109962aa",
-    "bytes": 18298956,
+    "hash": "09207bea41cf",
+    "bytes": 18299052,
     "from": "gameplay/vehicles/ground/aat/vehicle_ground_aat_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/aaturret.far.glb": {
-    "hash": "d6509a52a4d4",
-    "bytes": 25476,
+    "hash": "d58da9038eae",
+    "bytes": 25572,
     "from": "gameplay/vehicles/stationary/turretantiair_yavin/turretantiair_yavin_livingworld_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/aaturret.glb": {
-    "hash": "bf3abafee98f",
-    "bytes": 1867924,
+    "hash": "07b99daeca05",
+    "bytes": 715264,
     "from": "gameplay/vehicles/stationary/turretantiair_yavin/turretantiair_yavin_livingworld_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/aaturret.lod1.glb": {
-    "hash": "f12da576ce56",
-    "bytes": 607288,
+    "hash": "0921dc8229a5",
+    "bytes": 259896,
     "from": "gameplay/vehicles/stationary/turretantiair_yavin/turretantiair_yavin_livingworld_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/aaturret.ultra.glb": {
-    "hash": "102d6252f4bb",
-    "bytes": 6592476,
+    "hash": "e81d6b85070a",
+    "bytes": 6592572,
     "from": "gameplay/vehicles/stationary/turretantiair_yavin/turretantiair_yavin_livingworld_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/arc170.far.glb": {
-    "hash": "a3a374efd933",
-    "bytes": 149512,
+    "hash": "e2b0fce482e6",
+    "bytes": 149572,
     "from": "gameplay/vehicles/air/arc170/vehicle_air_arc170_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/arc170.glb": {
-    "hash": "901eebc67ebe",
-    "bytes": 5680776,
+    "hash": "fdd63a2056fe",
+    "bytes": 2818024,
     "from": "gameplay/vehicles/air/arc170/vehicle_air_arc170_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/arc170.lod1.glb": {
-    "hash": "f0a7a25ac8ef",
-    "bytes": 2080808,
+    "hash": "22bcb88e24b0",
+    "bytes": 917968,
     "from": "gameplay/vehicles/air/arc170/vehicle_air_arc170_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/arc170.ultra.glb": {
-    "hash": "ada44318e077",
-    "bytes": 17862948,
+    "hash": "dd5384c5e6f8",
+    "bytes": 17863012,
     "from": "gameplay/vehicles/air/arc170/vehicle_air_arc170_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/arc170cockpit.glb": {
-    "hash": "38b5c1e5ee36",
-    "bytes": 4237464,
+    "hash": "74e5d7309e0a",
+    "bytes": 1451072,
     "from": "gameplay/vehicles/air/arc170/vehicle_air_arc170_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/arc170cockpit.lod1.glb": {
-    "hash": "dc479ed2c716",
-    "bytes": 1184476,
+    "hash": "82a078980540",
+    "bytes": 400904,
     "from": "gameplay/vehicles/air/arc170/vehicle_air_arc170_cockpit_mesh",
     "tier": "surface"
   },
@@ -924,14 +924,14 @@
     "tier": "surface"
   },
   "models/galaxy/surface/atat.glb": {
-    "hash": "47cff7adc5c4",
-    "bytes": 16070460,
+    "hash": "066469e515f8",
+    "bytes": 12113756,
     "from": "gameplay/vehicles/ground/at-at/old/atat_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atat.lod1.glb": {
-    "hash": "07349d9f9fce",
-    "bytes": 550368,
+    "hash": "8cb460fd787f",
+    "bytes": 427780,
     "from": "gameplay/vehicles/ground/at-at/old/atat_mesh",
     "tier": "surface"
   },
@@ -942,158 +942,158 @@
     "tier": "ultra"
   },
   "models/galaxy/surface/atgar.far.glb": {
-    "hash": "d476ed9f8779",
-    "bytes": 16660,
+    "hash": "a925122986f3",
+    "bytes": 16760,
     "from": "gameplay/vehicles/stationary/atgar14fdptower/atgar14fdptower_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atgar.glb": {
-    "hash": "d575fa4f2562",
-    "bytes": 1915956,
+    "hash": "6e903d77c9a1",
+    "bytes": 758944,
     "from": "gameplay/vehicles/stationary/atgar14fdptower/atgar14fdptower_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atgar.lod1.glb": {
-    "hash": "2635c37a7922",
-    "bytes": 564756,
+    "hash": "7ae9a6706036",
+    "bytes": 232732,
     "from": "gameplay/vehicles/stationary/atgar14fdptower/atgar14fdptower_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atgar.ultra.glb": {
-    "hash": "69864ea63789",
-    "bytes": 7168824,
+    "hash": "58b7197111d6",
+    "bytes": 7168920,
     "from": "gameplay/vehicles/stationary/atgar14fdptower/atgar14fdptower_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/atrt.far.glb": {
-    "hash": "dbb8dd6b36b9",
-    "bytes": 110524,
+    "hash": "9e692ac382c8",
+    "bytes": 110624,
     "from": "gameplay/vehicles/ground/atrt/atrt_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atrt.glb": {
-    "hash": "49cfcedd50ab",
-    "bytes": 4079228,
+    "hash": "d41b55a60146",
+    "bytes": 2331500,
     "from": "gameplay/vehicles/ground/atrt/atrt_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atrt.lod1.glb": {
-    "hash": "051d041352a5",
-    "bytes": 1039840,
+    "hash": "295dddb6f2d1",
+    "bytes": 584456,
     "from": "gameplay/vehicles/ground/atrt/atrt_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atrt.ultra.glb": {
-    "hash": "c56b5221bdda",
-    "bytes": 13818372,
+    "hash": "81c69a24b34e",
+    "bytes": 13818476,
     "from": "gameplay/vehicles/ground/atrt/atrt_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/atst.far.glb": {
-    "hash": "38f3b9db959a",
-    "bytes": 206636,
+    "hash": "f05a0886de05",
+    "bytes": 206736,
     "from": "gameplay/vehicles/ground/atst/atst_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atst.glb": {
-    "hash": "a601dd88ae57",
-    "bytes": 7465352,
+    "hash": "e6859dd9dd80",
+    "bytes": 4292508,
     "from": "gameplay/vehicles/ground/atst/atst_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atst.lod1.glb": {
-    "hash": "372e1bd07199",
-    "bytes": 1933464,
+    "hash": "e86fde8dfd64",
+    "bytes": 1084184,
     "from": "gameplay/vehicles/ground/atst/atst_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atst.ultra.glb": {
-    "hash": "3497559db8eb",
-    "bytes": 25578572,
+    "hash": "09f822490bda",
+    "bytes": 25578672,
     "from": "gameplay/vehicles/ground/atst/atst_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/atte.far.glb": {
-    "hash": "2e5e9c0d4e93",
-    "bytes": 444580,
+    "hash": "bb9e272b3dfe",
+    "bytes": 444684,
     "from": "gameplay/vehicles/ground/at_te/at_te_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atte.glb": {
-    "hash": "86a849de3d8b",
-    "bytes": 16229172,
+    "hash": "c326e26e62ba",
+    "bytes": 9430528,
     "from": "gameplay/vehicles/ground/at_te/at_te_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atte.lod1.glb": {
-    "hash": "0cadc75d262e",
-    "bytes": 2898676,
+    "hash": "883cf4ef0577",
+    "bytes": 2898776,
     "from": "gameplay/vehicles/ground/at_te/at_te_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/atte.ultra.glb": {
-    "hash": "fa17912b36cf",
-    "bytes": 24678388,
+    "hash": "4b7030964a22",
+    "bytes": 24678492,
     "from": "gameplay/vehicles/ground/at_te/at_te_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/awing.far.glb": {
-    "hash": "5f552db75a66",
-    "bytes": 31228,
+    "hash": "9eb667fc9417",
+    "bytes": 31292,
     "from": "gameplay/vehicles/air/awing/vehicle_air_awing_01_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/awing.glb": {
-    "hash": "bfe3de9b0deb",
-    "bytes": 2642788,
+    "hash": "f8a1eefc9bff",
+    "bytes": 1119684,
     "from": "gameplay/vehicles/air/awing/vehicle_air_awing_01_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/awing.lod1.glb": {
-    "hash": "6071c952c200",
-    "bytes": 693140,
+    "hash": "6261d38a0f08",
+    "bytes": 276964,
     "from": "gameplay/vehicles/air/awing/vehicle_air_awing_01_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/awing.ultra.glb": {
-    "hash": "dfb16df5387d",
-    "bytes": 9272312,
+    "hash": "3c402d39d8db",
+    "bytes": 9272372,
     "from": "gameplay/vehicles/air/awing/vehicle_air_awing_01_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/awingcockpit.glb": {
-    "hash": "d8dbb721051e",
-    "bytes": 4563408,
+    "hash": "208e3aad7ad2",
+    "bytes": 1504816,
     "from": "gameplay/vehicles/air/awing/vehicle_air_awing_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/awingcockpit.lod1.glb": {
-    "hash": "ea37189aa705",
-    "bytes": 1216148,
+    "hash": "0e53834682b3",
+    "bytes": 406080,
     "from": "gameplay/vehicles/air/awing/vehicle_air_awing_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/barc.far.glb": {
-    "hash": "114c144b5744",
-    "bytes": 36472,
+    "hash": "17ebd2566880",
+    "bytes": 36572,
     "from": "gameplay/vehicles/ground/barc/barc_speeder_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/barc.glb": {
-    "hash": "435bb8bd7da1",
-    "bytes": 2712896,
+    "hash": "a4fea7ad26ee",
+    "bytes": 1038000,
     "from": "gameplay/vehicles/ground/barc/barc_speeder_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/barc.lod1.glb": {
-    "hash": "5d7fdc8b40fb",
-    "bytes": 761116,
+    "hash": "8a42e9ff6310",
+    "bytes": 309948,
     "from": "gameplay/vehicles/ground/barc/barc_speeder_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/barc.ultra.glb": {
-    "hash": "7947806d0a40",
-    "bytes": 9462504,
+    "hash": "e1ed61a96a3d",
+    "bytes": 9462604,
     "from": "gameplay/vehicles/ground/barc/barc_speeder_static_donotuse_mesh",
     "tier": "ultra"
   },
@@ -1104,38 +1104,38 @@
     "tier": "surface"
   },
   "models/galaxy/surface/cloudcar.far.glb": {
-    "hash": "cb328e3435bd",
-    "bytes": 20200,
+    "hash": "80f0c1fd80c8",
+    "bytes": 20260,
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/cloudcar.glb": {
-    "hash": "a531515cf670",
-    "bytes": 2339400,
+    "hash": "c20f24cb7141",
+    "bytes": 916844,
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/cloudcar.lod1.glb": {
-    "hash": "85d208a745b6",
-    "bytes": 634616,
+    "hash": "4d6e9a42efa2",
+    "bytes": 232996,
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/cloudcar.ultra.glb": {
-    "hash": "1c9cd4d3c275",
-    "bytes": 8253544,
+    "hash": "e6f6e3f34e58",
+    "bytes": 8253608,
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/cloudcarcockpit.glb": {
-    "hash": "5c0fc0b01b59",
-    "bytes": 4223128,
+    "hash": "fdb65660f7d1",
+    "bytes": 1294784,
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/cloudcarcockpit.lod1.glb": {
-    "hash": "980b591c12cd",
-    "bytes": 1138544,
+    "hash": "8ea258f03550",
+    "bytes": 355392,
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_cockpit_mesh",
     "tier": "surface"
   },
@@ -1146,46 +1146,52 @@
     "tier": "surface"
   },
   "models/galaxy/surface/droideka.far.glb": {
-    "hash": "e8fc0dc26654",
-    "bytes": 102972,
+    "hash": "262e9cf5b142",
+    "bytes": 103072,
     "from": "gameplay/vehicles/ground/droideka_01/droideka_01_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/droideka.glb": {
-    "hash": "1634ba9b6ba8",
-    "bytes": 3856704,
+    "hash": "c0f27edff031",
+    "bytes": 2173880,
     "from": "gameplay/vehicles/ground/droideka_01/droideka_01_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/droideka.lod1.glb": {
-    "hash": "d93928cdbf2b",
-    "bytes": 1019108,
+    "hash": "84e28343e49d",
+    "bytes": 560404,
     "from": "gameplay/vehicles/ground/droideka_01/droideka_01_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/droideka.ultra.glb": {
-    "hash": "40b3d823a9fa",
-    "bytes": 12691548,
+    "hash": "061b6eef4e16",
+    "bytes": 12691648,
     "from": "gameplay/vehicles/ground/droideka_01/droideka_01_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/dwarfspider.far.glb": {
-    "hash": "f50cbe93256e",
-    "bytes": 98516,
+    "hash": "63029fb7819a",
+    "bytes": 98612,
     "from": "gameplay/vehicles/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/dwarfspider.glb": {
-    "hash": "08ec62962958",
-    "bytes": 3808400,
+    "hash": "8a8723263d85",
+    "bytes": 2220964,
     "from": "gameplay/vehicles/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/dwarfspider.lod1.glb": {
-    "hash": "5b1f9ffca992",
-    "bytes": 1049776,
+    "hash": "cf595b5ea8cf",
+    "bytes": 596708,
     "from": "gameplay/vehicles/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh",
     "tier": "surface"
+  },
+  "models/galaxy/surface/dwarfspider.ultra.glb": {
+    "hash": "cac7945973ca",
+    "bytes": 3808500,
+    "from": "gameplay/vehicles/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh",
+    "tier": "ultra"
   },
   "models/galaxy/surface/ee3.glb": {
     "hash": "863b445523c2",
@@ -1200,56 +1206,62 @@
     "tier": "surface"
   },
   "models/galaxy/surface/eweb.far.glb": {
-    "hash": "2de5300fe939",
-    "bytes": 164380,
+    "hash": "7f90f396bf82",
+    "bytes": 164472,
     "from": "gameplay/vehicles/stationary/e-web/e-web_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/eweb.glb": {
-    "hash": "be949872f8ad",
-    "bytes": 6874088,
+    "hash": "e939ae9f627b",
+    "bytes": 3727272,
     "from": "gameplay/vehicles/stationary/e-web/e-web_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/eweb.lod1.glb": {
-    "hash": "86c6257fbd4d",
-    "bytes": 1821124,
+    "hash": "8809cef6a695",
+    "bytes": 972132,
     "from": "gameplay/vehicles/stationary/e-web/e-web_mesh",
     "tier": "surface"
   },
+  "models/galaxy/surface/eweb.ultra.glb": {
+    "hash": "522595c3109b",
+    "bytes": 6874180,
+    "from": "gameplay/vehicles/stationary/e-web/e-web_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/surface/falcon.far.glb": {
-    "hash": "bba7c380fb6b",
-    "bytes": 51568,
+    "hash": "d147b7624a04",
+    "bytes": 51636,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.glb": {
-    "hash": "5f72f82a986e",
-    "bytes": 2499776,
+    "hash": "4f0c4c37b7a1",
+    "bytes": 1131416,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.lod1.glb": {
-    "hash": "7007a9a44d32",
-    "bytes": 620064,
+    "hash": "2f0faa1710e2",
+    "bytes": 230256,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.ultra.glb": {
-    "hash": "373e57a6e478",
-    "bytes": 9181604,
+    "hash": "f63ad0c91646",
+    "bytes": 9181668,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/falconcockpit.glb": {
-    "hash": "9cae61362ec6",
-    "bytes": 2104844,
+    "hash": "611b31c3934a",
+    "bytes": 840760,
     "from": "gameplay/vehicles/air/millenniumfalcon/vehicle_air_millenniumfalcon_ot_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falconcockpit.lod1.glb": {
-    "hash": "5e2f5a76d402",
-    "bytes": 564976,
+    "hash": "0e4e3eb6f64b",
+    "bytes": 209024,
     "from": "gameplay/vehicles/air/millenniumfalcon/vehicle_air_millenniumfalcon_ot_cockpit_mesh",
     "tier": "surface"
   },
@@ -1314,716 +1326,728 @@
     "tier": "surface"
   },
   "models/galaxy/surface/homingspider.far.glb": {
-    "hash": "8a65981f520d",
-    "bytes": 45064,
+    "hash": "f6de9b20f2d7",
+    "bytes": 45164,
     "from": "gameplay/vehicles/ground/homingspiderdroid/geo_homingspiderdroid_anim_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/homingspider.glb": {
-    "hash": "aae66e4a0916",
-    "bytes": 4423976,
+    "hash": "8f4eec7cb92a",
+    "bytes": 1601900,
     "from": "gameplay/vehicles/ground/homingspiderdroid/geo_homingspiderdroid_anim_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/homingspider.lod1.glb": {
-    "hash": "714322329275",
-    "bytes": 1214488,
+    "hash": "fc84907588a8",
+    "bytes": 441220,
     "from": "gameplay/vehicles/ground/homingspiderdroid/geo_homingspiderdroid_anim_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/homingspider.ultra.glb": {
-    "hash": "9852c198813a",
-    "bytes": 16091520,
+    "hash": "f3679b7b0247",
+    "bytes": 16091616,
     "from": "gameplay/vehicles/ground/homingspiderdroid/geo_homingspiderdroid_anim_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/hyena.far.glb": {
-    "hash": "180e87a6a674",
-    "bytes": 42396,
+    "hash": "1acaddf24839",
+    "bytes": 42492,
     "from": "gameplay/vehicles/air/hyenabomber/vehicle_air_hyenabomber_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/hyena.glb": {
-    "hash": "3c3c528d0ea1",
-    "bytes": 4445152,
+    "hash": "afbb2d92bf3e",
+    "bytes": 1590564,
     "from": "gameplay/vehicles/air/hyenabomber/vehicle_air_hyenabomber_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/hyena.lod1.glb": {
-    "hash": "e20b386d7bee",
-    "bytes": 1221292,
+    "hash": "10341143b135",
+    "bytes": 430424,
     "from": "gameplay/vehicles/air/hyenabomber/vehicle_air_hyenabomber_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/hyena.ultra.glb": {
-    "hash": "a6ba598306d8",
-    "bytes": 16721804,
+    "hash": "091321e5a5fe",
+    "bytes": 16721904,
     "from": "gameplay/vehicles/air/hyenabomber/vehicle_air_hyenabomber_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/laat.far.glb": {
-    "hash": "63f4320f5fa9",
-    "bytes": 151700,
+    "hash": "63ec0ed34514",
+    "bytes": 151756,
     "from": "gameplay/vehicles/air/laat/vehicle_air_laat_gunship_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/laat.glb": {
-    "hash": "2af3f8cf0d33",
-    "bytes": 9407020,
+    "hash": "4be7eb829919",
+    "bytes": 4154644,
     "from": "gameplay/vehicles/air/laat/vehicle_air_laat_gunship_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/laat.lod1.glb": {
-    "hash": "0b87bacd66be",
-    "bytes": 2349872,
+    "hash": "789bbaa1548e",
+    "bytes": 974948,
     "from": "gameplay/vehicles/air/laat/vehicle_air_laat_gunship_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/laat.ultra.glb": {
-    "hash": "36b68e2f2d6a",
-    "bytes": 28119376,
+    "hash": "e94a367295e8",
+    "bytes": 28119432,
     "from": "gameplay/vehicles/air/laat/vehicle_air_laat_gunship_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/laatcockpit.glb": {
-    "hash": "d76e73c47fc1",
-    "bytes": 3034708,
+    "hash": "d76e60d47353",
+    "bytes": 931192,
     "from": "gameplay/vehicles/air/laat/vehicle_air_laat_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/laatcockpit.lod1.glb": {
-    "hash": "295e3cd935b5",
-    "bytes": 561924,
+    "hash": "6951cb7071a9",
+    "bytes": 184828,
     "from": "gameplay/vehicles/air/laat/vehicle_air_laat_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/landspeeder.far.glb": {
-    "hash": "24ecee3e0d24",
-    "bytes": 114044,
+    "hash": "04301b888270",
+    "bytes": 114140,
     "from": "gameplay/vehicles/ground/x34/vehicle_ground_x34_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/landspeeder.glb": {
-    "hash": "46d28215fc58",
-    "bytes": 5858872,
+    "hash": "395b85c9730a",
+    "bytes": 2795336,
     "from": "gameplay/vehicles/ground/x34/vehicle_ground_x34_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/landspeeder.lod1.glb": {
-    "hash": "94b3b4190d4a",
-    "bytes": 1593868,
+    "hash": "92f5ee39dee1",
+    "bytes": 759464,
     "from": "gameplay/vehicles/ground/x34/vehicle_ground_x34_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/landspeeder.ultra.glb": {
-    "hash": "08e468759707",
-    "bytes": 12200436,
+    "hash": "8530cc511eb0",
+    "bytes": 12200536,
     "from": "gameplay/vehicles/ground/x34/vehicle_ground_x34_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/markii.far.glb": {
-    "hash": "059e1cd2484c",
-    "bytes": 93804,
+    "hash": "fbefee0336f8",
+    "bytes": 93900,
     "from": "gameplay/vehicles/stationary/markii/vehicle_markii_deployed_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/markii.glb": {
-    "hash": "ad0abb452d09",
-    "bytes": 3691944,
+    "hash": "c9dac07c5a97",
+    "bytes": 2027188,
     "from": "gameplay/vehicles/stationary/markii/vehicle_markii_deployed_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/markii.lod1.glb": {
-    "hash": "b62679e088b6",
-    "bytes": 984324,
+    "hash": "7638d2ad7ceb",
+    "bytes": 528100,
     "from": "gameplay/vehicles/stationary/markii/vehicle_markii_deployed_mesh",
     "tier": "surface"
   },
+  "models/galaxy/surface/markii.ultra.glb": {
+    "hash": "c9431adcd8bc",
+    "bytes": 3692044,
+    "from": "gameplay/vehicles/stationary/markii/vehicle_markii_deployed_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/surface/mtt.far.glb": {
-    "hash": "647245814342",
-    "bytes": 39328,
+    "hash": "c58322c15f9d",
+    "bytes": 39420,
     "from": "gameplay/vehicles/ground/mtt/vehicle_ground_mtt_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/mtt.glb": {
-    "hash": "a1c2e9a1b633",
-    "bytes": 4362796,
+    "hash": "2593aaec304f",
+    "bytes": 1551196,
     "from": "gameplay/vehicles/ground/mtt/vehicle_ground_mtt_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/mtt.lod1.glb": {
-    "hash": "5fa16ae27532",
-    "bytes": 1187524,
+    "hash": "7e229598e1a1",
+    "bytes": 413480,
     "from": "gameplay/vehicles/ground/mtt/vehicle_ground_mtt_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/mtt.ultra.glb": {
-    "hash": "ac354fd8c250",
-    "bytes": 16685460,
+    "hash": "b36ab20c8b22",
+    "bytes": 16685552,
     "from": "gameplay/vehicles/ground/mtt/vehicle_ground_mtt_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/n1fighter.far.glb": {
-    "hash": "7d485053fb77",
-    "bytes": 106108,
+    "hash": "18fa67653a21",
+    "bytes": 106172,
     "from": "gameplay/vehicles/air/n1starfighter/vehicle_air_n1starfighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/n1fighter.glb": {
-    "hash": "eff26063528b",
-    "bytes": 2746428,
+    "hash": "e63002517111",
+    "bytes": 1563076,
     "from": "gameplay/vehicles/air/n1starfighter/vehicle_air_n1starfighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/n1fighter.lod1.glb": {
-    "hash": "a8b30a5bfc4f",
-    "bytes": 1402692,
+    "hash": "37cb909ccfbe",
+    "bytes": 692572,
     "from": "gameplay/vehicles/air/n1starfighter/vehicle_air_n1starfighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/n1fighter.ultra.glb": {
-    "hash": "9a8a2a062cf7",
-    "bytes": 7953600,
+    "hash": "50ea3734641c",
+    "bytes": 7953664,
     "from": "gameplay/vehicles/air/n1starfighter/vehicle_air_n1starfighter_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/n1fightercockpit.glb": {
-    "hash": "00f4334256b2",
-    "bytes": 4475124,
+    "hash": "f3ffe5eb5534",
+    "bytes": 1920048,
     "from": "gameplay/vehicles/air/n1starfighter/vehicle_air_n1starfighter_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/n1fightercockpit.lod1.glb": {
-    "hash": "2dd60363cdb5",
-    "bytes": 1298224,
+    "hash": "62fd97f730c1",
+    "bytes": 574964,
     "from": "gameplay/vehicles/air/n1starfighter/vehicle_air_n1starfighter_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/parkedxwing.far.glb": {
-    "hash": "1a911637e7ef",
-    "bytes": 57120,
+    "hash": "755b8a6284c9",
+    "bytes": 57216,
     "from": "gameplay/vehicles/air/xwing_red5/xwing_red5_landing_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/parkedxwing.glb": {
-    "hash": "117de57f2c5c",
-    "bytes": 7167620,
+    "hash": "37c2802f1a40",
+    "bytes": 2637256,
     "from": "gameplay/vehicles/air/xwing_red5/xwing_red5_landing_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/parkedxwing.lod1.glb": {
-    "hash": "7db08233791c",
-    "bytes": 1910276,
+    "hash": "ab0fc73e9b13",
+    "bytes": 666772,
     "from": "gameplay/vehicles/air/xwing_red5/xwing_red5_landing_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/parkedxwing.ultra.glb": {
-    "hash": "e1155cfb4623",
-    "bytes": 26796908,
+    "hash": "acb5860da486",
+    "bytes": 26797004,
     "from": "gameplay/vehicles/air/xwing_red5/xwing_red5_landing_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/slave1.far.glb": {
-    "hash": "76254339ec69",
-    "bytes": 44972,
+    "hash": "a3ea856e07ce",
+    "bytes": 45032,
     "from": "gameplay/vehicles/air/slave1/vehicle_air_slave1_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/slave1.glb": {
-    "hash": "a23979725a96",
-    "bytes": 4630448,
+    "hash": "be4ef365a45f",
+    "bytes": 1757908,
     "from": "gameplay/vehicles/air/slave1/vehicle_air_slave1_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/slave1.lod1.glb": {
-    "hash": "62cbe838c946",
-    "bytes": 1256432,
+    "hash": "33a67313dec3",
+    "bytes": 456920,
     "from": "gameplay/vehicles/air/slave1/vehicle_air_slave1_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/slave1.ultra.glb": {
-    "hash": "e330f609ec01",
-    "bytes": 17138376,
+    "hash": "35ef5531f828",
+    "bytes": 17138440,
     "from": "gameplay/vehicles/air/slave1/vehicle_air_slave1_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/slave1cockpit.glb": {
-    "hash": "eb1e5bdd5779",
-    "bytes": 2397852,
+    "hash": "2d09f8be6c78",
+    "bytes": 1039716,
     "from": "gameplay/vehicles/air/slave1/vehicle_air_slave1_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/snowspeeder.far.glb": {
-    "hash": "ef8b21cd760c",
-    "bytes": 19764,
+    "hash": "1af79e8a5cab",
+    "bytes": 19836,
     "from": "gameplay/vehicles/air/airspeeder/airspeeder_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/snowspeeder.glb": {
-    "hash": "441fd534e97e",
-    "bytes": 5006048,
+    "hash": "2ba46e3f9085",
+    "bytes": 2931896,
     "from": "gameplay/vehicles/air/airspeeder/airspeeder_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/snowspeeder.lod1.glb": {
-    "hash": "2104af012575",
-    "bytes": 659824,
+    "hash": "8908f9138bff",
+    "bytes": 253108,
     "from": "gameplay/vehicles/air/airspeeder/airspeeder_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/snowspeeder.ultra.glb": {
-    "hash": "8f9bf153f984",
-    "bytes": 13127184,
+    "hash": "3c09fceff071",
+    "bytes": 13127252,
     "from": "gameplay/vehicles/air/airspeeder/airspeeder_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/snowspeedercockpit.glb": {
-    "hash": "310d29577ef1",
-    "bytes": 5208876,
+    "hash": "f561cf279809",
+    "bytes": 1649780,
     "from": "gameplay/vehicles/air/airspeeder/airspeeder_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/snowspeedercockpit.lod1.glb": {
-    "hash": "9182f5d72ecc",
-    "bytes": 1421780,
+    "hash": "d156a256e0e2",
+    "bytes": 456564,
     "from": "gameplay/vehicles/air/airspeeder/airspeeder_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/speederbike.far.glb": {
-    "hash": "f80fb36e9087",
-    "bytes": 22084,
+    "hash": "a13e9bffde97",
+    "bytes": 22180,
     "from": "gameplay/vehicles/ground/74z/speederbike_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/speederbike.glb": {
-    "hash": "be5ce8bfdc17",
-    "bytes": 2687784,
+    "hash": "27eb8dd6e576",
+    "bytes": 992768,
     "from": "gameplay/vehicles/ground/74z/speederbike_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/speederbike.lod1.glb": {
-    "hash": "8000d96dda38",
-    "bytes": 700476,
+    "hash": "800596a1238c",
+    "bytes": 249296,
     "from": "gameplay/vehicles/ground/74z/speederbike_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/speederbike.ultra.glb": {
-    "hash": "ba4c08a84be9",
-    "bytes": 10039736,
+    "hash": "8bd42b99556a",
+    "bytes": 10039836,
     "from": "gameplay/vehicles/ground/74z/speederbike_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/stap.far.glb": {
-    "hash": "e32467cf5486",
-    "bytes": 32612,
+    "hash": "174bf9e30cf3",
+    "bytes": 32716,
     "from": "gameplay/vehicles/ground/stap/stap_static_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/stap.glb": {
-    "hash": "ce0c8f17d531",
-    "bytes": 2504136,
+    "hash": "455635f88860",
+    "bytes": 877628,
     "from": "gameplay/vehicles/ground/stap/stap_static_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/stap.lod1.glb": {
-    "hash": "5fe3d17193d7",
-    "bytes": 692556,
+    "hash": "68d0bb041e85",
+    "bytes": 257736,
     "from": "gameplay/vehicles/ground/stap/stap_static_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/stap.ultra.glb": {
-    "hash": "81762ddb175f",
-    "bytes": 9445584,
+    "hash": "e34a82ecc450",
+    "bytes": 9445688,
     "from": "gameplay/vehicles/ground/stap/stap_static_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/tieadvanced.far.glb": {
-    "hash": "9e0a52390782",
-    "bytes": 46428,
+    "hash": "7dc48b645209",
+    "bytes": 46492,
     "from": "gameplay/vehicles/air/tieadvancedx1/vehicle_air_tieadvancedx1_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tieadvanced.glb": {
-    "hash": "92ffba5aa28d",
-    "bytes": 5404484,
+    "hash": "7ca6fd89b1ca",
+    "bytes": 2119604,
     "from": "gameplay/vehicles/air/tieadvancedx1/vehicle_air_tieadvancedx1_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tieadvanced.lod1.glb": {
-    "hash": "26aa62921779",
-    "bytes": 1354852,
+    "hash": "759a84ead2a0",
+    "bytes": 499740,
     "from": "gameplay/vehicles/air/tieadvancedx1/vehicle_air_tieadvancedx1_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tieadvanced.ultra.glb": {
-    "hash": "e2830c9e7c9c",
-    "bytes": 20173720,
+    "hash": "821cfaba81db",
+    "bytes": 20173780,
     "from": "gameplay/vehicles/air/tieadvancedx1/vehicle_air_tieadvancedx1_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/tieadvancedcockpit.glb": {
-    "hash": "664efab609a7",
-    "bytes": 3151464,
+    "hash": "7f212ce4136a",
+    "bytes": 1001192,
     "from": "gameplay/vehicles/air/tieadvancedx1/vehicle_air_tieadvanced_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tieadvancedcockpit.lod1.glb": {
-    "hash": "b98dc6fa0fdf",
-    "bytes": 569016,
+    "hash": "d16d44771641",
+    "bytes": 197976,
     "from": "gameplay/vehicles/air/tieadvancedx1/vehicle_air_tieadvanced_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiebomber.far.glb": {
-    "hash": "e935c2aa21c3",
-    "bytes": 30904,
+    "hash": "67e568d5dec3",
+    "bytes": 30968,
     "from": "gameplay/vehicles/air/tiebomber/vehicle_air_tiebomber_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiebomber.glb": {
-    "hash": "0b82bcf7714a",
-    "bytes": 3671696,
+    "hash": "5da4dd7aa274",
+    "bytes": 1430756,
     "from": "gameplay/vehicles/air/tiebomber/vehicle_air_tiebomber_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiebomber.lod1.glb": {
-    "hash": "072d7643815e",
-    "bytes": 678592,
+    "hash": "3885d9513eaf",
+    "bytes": 276428,
     "from": "gameplay/vehicles/air/tiebomber/vehicle_air_tiebomber_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiebomber.ultra.glb": {
-    "hash": "2068d8a739c2",
-    "bytes": 12863896,
+    "hash": "67840ec8376b",
+    "bytes": 12863960,
     "from": "gameplay/vehicles/air/tiebomber/vehicle_air_tiebomber_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/tiebombercockpit.glb": {
-    "hash": "2bd6315db482",
-    "bytes": 3148168,
+    "hash": "61fcab34ab52",
+    "bytes": 997896,
     "from": "gameplay/vehicles/air/tiebomber/vehicle_air_tiebomber_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiebombercockpit.lod1.glb": {
-    "hash": "01dab71a56a3",
-    "bytes": 558352,
+    "hash": "a8e1836137be",
+    "bytes": 187312,
     "from": "gameplay/vehicles/air/tiebomber/vehicle_air_tiebomber_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiefighter.far.glb": {
-    "hash": "4e565416f065",
-    "bytes": 330848,
+    "hash": "4ee34068743b",
+    "bytes": 330908,
     "from": "gameplay/vehicles/air/tiefighter/vehicle_air_tiefighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiefighter.glb": {
-    "hash": "5e43e6f67227",
-    "bytes": 5151828,
+    "hash": "a3a86e5d04a9",
+    "bytes": 2204580,
     "from": "gameplay/vehicles/air/tiefighter/vehicle_air_tiefighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiefighter.lod1.glb": {
-    "hash": "0bb07071fecb",
-    "bytes": 1474600,
+    "hash": "bf31ff7312f9",
+    "bytes": 683540,
     "from": "gameplay/vehicles/air/tiefighter/vehicle_air_tiefighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiefighter.ultra.glb": {
-    "hash": "cec40e63f653",
-    "bytes": 18041680,
+    "hash": "a037e46d8091",
+    "bytes": 18041740,
     "from": "gameplay/vehicles/air/tiefighter/vehicle_air_tiefighter_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/tiefightercockpit.glb": {
-    "hash": "8ecc4b1459a9",
-    "bytes": 3151840,
+    "hash": "a9cd47fe1c34",
+    "bytes": 1001568,
     "from": "gameplay/vehicles/air/tiefighter/vehicle_air_tiefighter_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tiefightercockpit.lod1.glb": {
-    "hash": "bfd337ea89ef",
-    "bytes": 569020,
+    "hash": "1cf4897af8eb",
+    "bytes": 197980,
     "from": "gameplay/vehicles/air/tiefighter/vehicle_air_tiefighter_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tieinterceptor.far.glb": {
-    "hash": "a9145526d302",
-    "bytes": 286524,
+    "hash": "d0fbbe9a9732",
+    "bytes": 286620,
     "from": "gameplay/vehicles/air/tieinterceptor/vehicle_air_tieinterceptor_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tieinterceptor.glb": {
-    "hash": "a25575e1f097",
-    "bytes": 5243832,
+    "hash": "47f7fd08dce5",
+    "bytes": 2216044,
     "from": "gameplay/vehicles/air/tieinterceptor/vehicle_air_tieinterceptor_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tieinterceptor.lod1.glb": {
-    "hash": "6e733e1c1313",
-    "bytes": 1474672,
+    "hash": "800e014e8e2e",
+    "bytes": 652924,
     "from": "gameplay/vehicles/air/tieinterceptor/vehicle_air_tieinterceptor_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/tieinterceptor.ultra.glb": {
-    "hash": "4da4a9b7283a",
-    "bytes": 18395896,
+    "hash": "f56a2bb5224e",
+    "bytes": 18395992,
     "from": "gameplay/vehicles/air/tieinterceptor/vehicle_air_tieinterceptor_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/trifighter.far.glb": {
-    "hash": "8e40a9f9f138",
-    "bytes": 69404,
+    "hash": "379df4d40e07",
+    "bytes": 69500,
     "from": "gameplay/vehicles/air/droidtrifighter/vehicle_air_droidtrifighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/trifighter.glb": {
-    "hash": "159fc132fb09",
-    "bytes": 2736840,
+    "hash": "e0e5bf7f644b",
+    "bytes": 1089632,
     "from": "gameplay/vehicles/air/droidtrifighter/vehicle_air_droidtrifighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/trifighter.lod1.glb": {
-    "hash": "832d74ce8c3e",
-    "bytes": 832064,
+    "hash": "eb3577710f9f",
+    "bytes": 387580,
     "from": "gameplay/vehicles/air/droidtrifighter/vehicle_air_droidtrifighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/trifighter.ultra.glb": {
-    "hash": "860de93a5ae0",
-    "bytes": 9635216,
+    "hash": "1765b5caae09",
+    "bytes": 9635312,
     "from": "gameplay/vehicles/air/droidtrifighter/vehicle_air_droidtrifighter_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/turbolaser.far.glb": {
-    "hash": "b7d669f17685",
-    "bytes": 13704,
+    "hash": "13062064862d",
+    "bytes": 15668,
     "from": "gameplay/vehicles/stationary/turbolaser/turretturbolaser_01_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/turbolaser.glb": {
-    "hash": "a5a9d2c4b524",
-    "bytes": 2364516,
+    "hash": "435d7bcf4bb7",
+    "bytes": 999468,
     "from": "gameplay/vehicles/stationary/turbolaser/turretturbolaser_01_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/turbolaser.lod1.glb": {
-    "hash": "9e6683e82a33",
-    "bytes": 655520,
+    "hash": "3a2281b6df11",
+    "bytes": 251208,
     "from": "gameplay/vehicles/stationary/turbolaser/turretturbolaser_01_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/turbolaser.ultra.glb": {
-    "hash": "ae363ddf60e3",
-    "bytes": 5961604,
+    "hash": "3a727dad0303",
+    "bytes": 5961680,
     "from": "gameplay/vehicles/stationary/turbolaser/turretturbolaser_01_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/turret.far.glb": {
-    "hash": "2a753830d291",
-    "bytes": 184768,
+    "hash": "460e7a28f3e6",
+    "bytes": 188640,
     "from": "gameplay/vehicles/stationary/df9/old/df9_01_static_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/turret.glb": {
-    "hash": "e6277f2ea15d",
-    "bytes": 6071696,
+    "hash": "569bcf96e292",
+    "bytes": 3664392,
     "from": "gameplay/vehicles/stationary/df9/old/df9_01_static_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/turret.lod1.glb": {
-    "hash": "b942fb8e4bab",
-    "bytes": 1728140,
+    "hash": "fae53dc562db",
+    "bytes": 1008960,
     "from": "gameplay/vehicles/stationary/df9/old/df9_01_static_mesh",
     "tier": "surface"
   },
+  "models/galaxy/surface/turret.ultra.glb": {
+    "hash": "debe9ca2327b",
+    "bytes": 6071792,
+    "from": "gameplay/vehicles/stationary/df9/old/df9_01_static_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/surface/uwing.far.glb": {
-    "hash": "38467468a1a7",
-    "bytes": 35128,
+    "hash": "d71c12f2e48c",
+    "bytes": 35224,
     "from": "gameplay/vehicles/air/uwing/vehicle_air_uwing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/uwing.glb": {
-    "hash": "f59d3adc8738",
-    "bytes": 7265020,
+    "hash": "2641e63e0198",
+    "bytes": 3273920,
     "from": "gameplay/vehicles/air/uwing/vehicle_air_uwing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/uwing.lod1.glb": {
-    "hash": "008c106c5d06",
-    "bytes": 1228392,
+    "hash": "ab7edea6a62c",
+    "bytes": 443156,
     "from": "gameplay/vehicles/air/uwing/vehicle_air_uwing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/uwing.ultra.glb": {
-    "hash": "9da42e68df1c",
-    "bytes": 21750756,
+    "hash": "613f7c46c40d",
+    "bytes": 21750852,
     "from": "gameplay/vehicles/air/uwing/vehicle_air_uwing_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/vulture.far.glb": {
-    "hash": "5621e86171f7",
-    "bytes": 39060,
+    "hash": "ea762755d755",
+    "bytes": 39160,
     "from": "gameplay/vehicles/air/vulturedroid/vehicle_air_vulturedroid_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/vulture.glb": {
-    "hash": "a3e643984714",
-    "bytes": 2445200,
+    "hash": "460ab0756da7",
+    "bytes": 951432,
     "from": "gameplay/vehicles/air/vulturedroid/vehicle_air_vulturedroid_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/vulture.lod1.glb": {
-    "hash": "2e0e0ce935aa",
-    "bytes": 649588,
+    "hash": "42a7b7c90113",
+    "bytes": 238860,
     "from": "gameplay/vehicles/air/vulturedroid/vehicle_air_vulturedroid_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/vulture.ultra.glb": {
-    "hash": "f21484fed057",
-    "bytes": 8881192,
+    "hash": "35180d98e566",
+    "bytes": 8881288,
     "from": "gameplay/vehicles/air/vulturedroid/vehicle_air_vulturedroid_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/vwing.far.glb": {
-    "hash": "79ebc7d922d0",
-    "bytes": 77548,
+    "hash": "2cb2a3b4d20d",
+    "bytes": 77612,
     "from": "gameplay/vehicles/air/vwing/vehicle_air_vwing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/vwing.glb": {
-    "hash": "c38fcf44c4de",
-    "bytes": 2843020,
+    "hash": "df6b5c546960",
+    "bytes": 1396404,
     "from": "gameplay/vehicles/air/vwing/vehicle_air_vwing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/vwing.lod1.glb": {
-    "hash": "07d432683e56",
-    "bytes": 1144572,
+    "hash": "74b195d005ee",
+    "bytes": 538772,
     "from": "gameplay/vehicles/air/vwing/vehicle_air_vwing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/vwing.ultra.glb": {
-    "hash": "4b52732130e7",
-    "bytes": 8900220,
+    "hash": "8a5eaad3fac6",
+    "bytes": 8900284,
     "from": "gameplay/vehicles/air/vwing/vehicle_air_vwing_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/vwingcockpit.glb": {
-    "hash": "86bc984b85e8",
-    "bytes": 5140640,
+    "hash": "67df3ef9edf1",
+    "bytes": 2125112,
     "from": "gameplay/vehicles/air/vwing/vehicle_air_vwing_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/vwingcockpit.lod1.glb": {
-    "hash": "419e000cb99e",
-    "bytes": 1428936,
+    "hash": "c5cb08482a09",
+    "bytes": 620528,
     "from": "gameplay/vehicles/air/vwing/vehicle_air_vwing_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/xwing.far.glb": {
-    "hash": "9fdefe1aac4f",
-    "bytes": 42408,
+    "hash": "9d5919879fc6",
+    "bytes": 42464,
     "from": "gameplay/vehicles/air/xwing_t65/vehicle_air_xwing_t65_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/xwing.glb": {
-    "hash": "bb8aa8ada5d4",
-    "bytes": 8419496,
+    "hash": "d52b5452f05a",
+    "bytes": 3222108,
     "from": "gameplay/vehicles/air/xwing_t65/vehicle_air_xwing_t65_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/xwing.lod1.glb": {
-    "hash": "78fd8ff2f051",
-    "bytes": 1935068,
+    "hash": "553366b1b527",
+    "bytes": 688496,
     "from": "gameplay/vehicles/air/xwing_t65/vehicle_air_xwing_t65_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/xwing.ultra.glb": {
-    "hash": "2ab28c5304eb",
-    "bytes": 28107024,
+    "hash": "3c46d9239319",
+    "bytes": 28107080,
     "from": "gameplay/vehicles/air/xwing_t65/vehicle_air_xwing_t65_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/xwingcockpit.glb": {
-    "hash": "29031bb30b04",
-    "bytes": 1866312,
+    "hash": "a72bafc76b7e",
+    "bytes": 698088,
     "from": "gameplay/vehicles/air/xwing_t65/vehicle_air_xwing_t65_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/xwingcockpit.lod1.glb": {
-    "hash": "bb84559f0d2f",
-    "bytes": 498544,
+    "hash": "ca58a914af3c",
+    "bytes": 182392,
     "from": "gameplay/vehicles/air/xwing_t65/vehicle_air_xwing_t65_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/ywing.far.glb": {
-    "hash": "fa44fb7ff0aa",
-    "bytes": 45632,
+    "hash": "e04e77bddce7",
+    "bytes": 45688,
     "from": "gameplay/vehicles/air/ywing/vehicle_air_ywing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/ywing.glb": {
-    "hash": "4224b6f42596",
-    "bytes": 6795584,
+    "hash": "de80af933a1c",
+    "bytes": 3780692,
     "from": "gameplay/vehicles/air/ywing/vehicle_air_ywing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/ywing.lod1.glb": {
-    "hash": "e1c018993323",
-    "bytes": 3147624,
+    "hash": "0fc771d151d8",
+    "bytes": 1507000,
     "from": "gameplay/vehicles/air/ywing/vehicle_air_ywing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/ywing.ultra.glb": {
-    "hash": "2c36ece1474f",
-    "bytes": 19613580,
+    "hash": "0eb682632057",
+    "bytes": 19613640,
     "from": "gameplay/vehicles/air/ywing/vehicle_air_ywing_static_donotuse_mesh",
     "tier": "ultra"
   },
   "models/galaxy/surface/ywingcockpit.glb": {
-    "hash": "5ad3dd090821",
-    "bytes": 1784332,
+    "hash": "46c735455a31",
+    "bytes": 662164,
     "from": "gameplay/vehicles/air/ywing/vehicle_air_ywing_cockpit_mesh",
     "tier": "surface"
   },
   "models/galaxy/tie.glb": {
-    "hash": "60faacf48e28",
-    "bytes": 1475800,
+    "hash": "9a78a3d24efb",
+    "bytes": 684740,
     "from": "gameplay/vehicles/air/tiefighter/vehicle_air_tiefighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/tieadvanced.glb": {
-    "hash": "701f23faa1c7",
-    "bytes": 1359100,
+    "hash": "d36001a36107",
+    "bytes": 503988,
     "from": "gameplay/vehicles/air/tieadvancedx1/vehicle_air_tieadvancedx1_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/tiebomber.glb": {
-    "hash": "ddd0a9a8ed9f",
-    "bytes": 681308,
+    "hash": "81f540ee66b1",
+    "bytes": 279144,
     "from": "gameplay/vehicles/air/tiebomber/vehicle_air_tiebomber_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/trifighter.glb": {
-    "hash": "2c60e8ab952d",
-    "bytes": 837076,
+    "hash": "b999642a9cd4",
+    "bytes": 392596,
     "from": "gameplay/vehicles/air/droidtrifighter/vehicle_air_droidtrifighter_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/uwing.glb": {
-    "hash": "a4d99b612d99",
-    "bytes": 1232268,
+    "hash": "93687e24d5c1",
+    "bytes": 447032,
     "from": "gameplay/vehicles/air/uwing/vehicle_air_uwing_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/vulture.glb": {
-    "hash": "4056a41ebed8",
-    "bytes": 652328,
+    "hash": "f7c91fefcd7a",
+    "bytes": 241600,
     "from": "gameplay/vehicles/air/vulturedroid/vehicle_air_vulturedroid_static_donotuse_mesh",
     "tier": "surface"
   },
   "models/galaxy/ywing.glb": {
-    "hash": "0f7f5b6b5b86",
-    "bytes": 3151972,
+    "hash": "2d2fe9694540",
+    "bytes": 1511344,
     "from": "gameplay/vehicles/air/ywing/vehicle_air_ywing_static_donotuse_mesh",
     "tier": "surface"
   }
