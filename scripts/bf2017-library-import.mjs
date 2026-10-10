@@ -12,7 +12,7 @@
 //   node scripts/bf2017-library-import.mjs <name>[,<name>…] [--publish]
 //   node scripts/bf2017-library-import.mjs --set <set> [--kind prop] [--size small,medium] [--publish]
 //   node scripts/bf2017-library-import.mjs --from <file>[,<file>…] [--publish]   (every `game:<name>` the files name)
-//     [--as '<what it is>'] [--tex 4096] [--light 512] [--dry]
+//     [--as '<what it is>'] [--tex 4096] [--light 512] [--far-tex 128] [--dry]
 //
 //   tex     the plain cut's maps at most this (4096: the game's own, untouched)
 //   light   the light cut's colour (its other maps half that): a scattered
@@ -33,7 +33,7 @@ import { importModel } from './bf2017-import.mjs';
 import { gameUrl, slugOf } from '../src/components/galaxy/surface/catalog/bf2017-slug.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-export const USED = join(ROOT, 'src', 'data', 'bf2017', 'library-used.json');
+export const USED = process.env.LIBRARY_USED ?? join(ROOT, 'src', 'data', 'bf2017', 'library-used.json');
 const GAME_REF = /game:([a-z0-9_./-]+)/gi;
 
 // what a row is, for its credit: its name's words, and its set
@@ -102,7 +102,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const tex = Number(args.tex ?? 4096);
     try {
       console.log(`${name} → ${gameUrl(name)}`);
-      const made = await importModel(name, { kind: slugOf(name), as, native: true, far: true, sub: 'surface/game', catalog: false, tex, maps: tex, lod1Tex: light, lod1Maps: light / 2 });
+      const made = await importModel(name, { kind: slugOf(name), as, native: true, far: true, sub: 'surface/game', catalog: false, tex, maps: tex, lod1Tex: light, lod1Maps: light / 2, farTex: Number(args.farTex ?? 128) });
       const plain = made.find(([cut]) => cut === 'plain')[2];
       used[name] = { set: row.set, kind: row.kind, size: row.size, tris: row.tris, as, metres: Number(plain.size[1].toFixed(3)), ...(row.rig ? { rig: true } : {}) };
     } catch (e) {

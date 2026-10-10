@@ -26,7 +26,8 @@
 //   said once a model: its skin is for its own mixer. One whose `model` is
 //   'game:<name>' is that object of the drop's library (catalog/
 //   bf2017-library.js), drawn as a kind's model is; one not imported yet,
-//   or rigged, draws nothing, said once.
+//   or rigged, draws nothing, said once. A kind the game has the same of
+//   (catalog/bf2017-game-for.js's GAME_FOR) is the game's on mid and up.
 //   setKitLoader(fn) → the kits' loader (fn(pack, { house, wind }) → a kit,
 //   as loadKit's) for the tests; null puts loadKit back.
 //   With `seated` (ultra: amounts.js), whatever stands on the ground is
@@ -58,6 +59,7 @@ import { budget } from '../../../lib/budgets';
 import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from './catalog';
 import { gameModel, isGame } from './catalog/bf2017-library';
+import { modelFor } from './catalog/bf2017-game-for';
 import { withDetail } from './detail';
 import { LOOKS, loadScan, scanOf } from './kit';
 import { wear as wearCore } from '../../../lib/three/core';
@@ -393,6 +395,9 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     group,
     // one thing; resolves to its object (or null)
     put(spec) {
+      // (a generic prop the game has, on mid and up: the game's, catalog/bf2017-game-for.js)
+      const swap = spec.model === undefined && modelFor(spec.kind, detailLevel(), models);
+      if (swap) spec = { ...spec, model: swap };
       // (the drop's library, `model: 'game:<name>'`: drawn as that object's kind, or nothing)
       if (isGame(spec.model)) {
         const game = gameModel(spec.model, models, gameWarned);
@@ -530,6 +535,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     // one worth its draws)
     scatter(kind, items, { opts = {}, solid = true, model = true, shadow = true } = {}) {
       if (!items.length) return Promise.resolve(null);
+      if (model === true) model = modelFor(kind, detailLevel(), models) || true;
       if (isGame(model)) {
         kind = gameModel(model, models, gameWarned);
         if (!kind) return Promise.resolve(null);

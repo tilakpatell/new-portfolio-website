@@ -81,6 +81,8 @@
 //              library's surface/game: scripts/bf2017-library-import.mjs),
 //              the credit `<sub with dashes>-<kind>`
 //   lod1-tex, lod1-maps  the light cut's map sizes without --full as well
+//   far-tex    the far cut's colour (256; the library's small objects 128,
+//              their KTX2 a mip further down, to keep under the far cap)
 //   keep-origin  not grounded: the model keeps the game's own origin, axes
 //              and metres (a hilt or a blaster, modelled for the Wep_Root
 //              socket with its grip at the origin and its barrel up +y)
@@ -559,7 +561,7 @@ export async function importModel(name, opts) {
     made.push(['far', farLod, f]);
     far = true;
   } else if (cuts.far) {
-    const f = await makeCut(io, entry, parts, cuts.far, { ...spec, statue: true, colourOnly: true, tex: 256, maps: 256 }, path(dir, `${kind}.far.glb`));
+    const f = await makeCut(io, entry, parts, cuts.far, { ...spec, statue: true, colourOnly: true, tex: Number(opts.farTex ?? 256), maps: Number(opts.farTex ?? 256) }, path(dir, `${kind}.far.glb`));
     made.push(['far', cuts.far, f]);
     far = true;
     if (cuts.far.triangles > VEHICLE.farMax) console.log(`  the far cut is the chain's last, LOD${cuts.far.lod}: ${cuts.far.triangles} triangles, over the ${VEHICLE.farMax} it aims at`);
