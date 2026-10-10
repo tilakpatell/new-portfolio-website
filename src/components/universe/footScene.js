@@ -66,6 +66,7 @@ import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
 import { cutFor, loadWalrusBody, packUrls } from '../../lib/three/walrus';
 import { createCutter, cutUrl, swapSkins } from '../../lib/three/walrusCuts';
+import { loadOwnRigBody } from '../../lib/three/ownRig';
 import { loadGLTF } from '../../lib/three/gltfCache';
 import { detailLevel } from '../../lib/detail';
 import { breathe, createGait, sway } from '../../lib/three/gait';
@@ -308,6 +309,7 @@ async function loadModel(spec, cast, looks = null, { templates = null } = {}) {
     };
   }
   if (spec.rig === 'walrus' && spec.src.url) return walrusFigure(spec);
+  if (spec.rig === 'own' && spec.src.url) return ownRigFigure(spec);
   if (spec.src.url && templates) return loadSharedFigure(spec.src.url, spec.tall, { seed: seedFor(spec.id ?? spec.src.url), from: templates });
   if (spec.src.url) {
     const [gltf, clips] = await Promise.all([getLoader().loadAsync(spec.src.url), borrowClips()]);
@@ -326,23 +328,43 @@ async function walrusFigure(spec) {
   // (the full figure on a high or ultra device, the light one below: lib/detail's level)
   // (and the full one when the light one isn't there: a figure is never lost for want of a cut)
   const packs = spec.packs ?? packUrls(spec.pack);
-  // (a kind at full fidelity, `cuts.full`: its `.lod1` first, the rest by
-  // distance through cutAt below; lib/three/walrusCuts.js)
+  return gameFigure(spec, (url) => loadWalrusBody(url, { packs }), { cutOf: cutFor });
+}
+
+// A 2017 droid or beast on a skeleton of its own (lib/three/ownRig.js: the
+// B1, the B2, the droideka, the Ewok, the astromech, the probe, the
+// tauntaun), moved by its rig's pack of the game's clips, with no sockets
+// unless its rig has them: otherwise as walrusFigure's.
+async function ownRigFigure(spec) {
+  const fig = await gameFigure(spec, (url) => loadOwnRigBody(url, { rig: spec.ownRig, packs: spec.packs, bones: spec.bones ?? {} }).then((b) => ({ ...b, sockets: null })), { cutOf: (url) => url });
+  return Object.assign(fig, { rig: 'own' });
+}
+
+// A 2017 figure from its body loader: its cut by the device's level (a
+// hero's three files, cutOf) or, for a kind at full fidelity (`cuts.full`),
+// its `.lod1` first and the rest by distance through cutAt
+// (lib/three/walrusCuts.js); its small parts without shadows, its
+// materials its own.
+async function gameFigure(spec, loadBody, { cutOf }) {
   const cuts = spec.cuts?.full ? spec.cuts : null;
   const level = detailLevel();
-  const cut = cuts ? cutUrl(spec.src.url, cuts.lod ? 'lod1' : 'plain') : cutFor(spec.src.url, level);
-  const { model, clips, sockets } = await loadWalrusBody(cut, { packs }).catch((e) => (cut === spec.src.url ? Promise.reject(e) : loadWalrusBody(spec.src.url, { packs })));
+  const cut = cuts ? cutUrl(spec.src.url, cuts.lod ? 'lod1' : 'plain') : cutOf(spec.src.url, level);
+  const { model, clips, sockets } = await loadBody(cut).catch((e) => (cut === spec.src.url ? Promise.reject(e) : loadBody(spec.src.url)));
   const owned = [];
-  model.traverse((o) => {
-    if (!o.isMesh) return;
-    o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
-    owned.push(...[].concat(o.material));
-    // (its small parts, the eyes, the teeth and the hair's cut-out cards,
-    // cast no shadow: each part is a draw of its own, twice with one, and a
-    // 2017 hero has up to thirteen; the body, the clothes and the cape do)
-    const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
-    if (tris < 1500 || o.material?.alphaTest > 0) o.userData.noShadow = true;
-  });
+  // (its small parts, the eyes, the teeth and the hair's cut-out cards,
+  // cast no shadow: each part is a draw of its own, twice with one, and a
+  // 2017 hero has up to thirteen; the body, the clothes and the cape do)
+  const dress = () => {
+    owned.length = 0;
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
+      owned.push(...[].concat(o.material));
+      const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+      o.userData.noShadow = tris < 1500 || o.material?.alphaTest > 0;
+    });
+  };
+  dress();
   const hips = model.getObjectByName('Hips');
   const fig = rigged(model, clips, spec.tall, owned, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url, library: false });
   // the cut its distance wants, swapped onto the moving figure: the meshes
@@ -356,14 +378,8 @@ async function walrusFigure(spec) {
         load: (u) => loadGLTF(u),
         swap: (scene) => {
           for (const m of swapSkins(model, scene)) for (const x of [].concat(m.material)) x.dispose();
-          owned.length = 0;
-          model.traverse((o) => {
-            if (!o.isMesh) return;
-            owned.push(...[].concat(o.material));
-            const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
-            o.userData.noShadow = tris < 1500 || o.material?.alphaTest > 0;
-            o.castShadow = !o.userData.noShadow;
-          });
+          dress();
+          model.traverse((o) => o.isMesh && (o.castShadow = !o.userData.noShadow));
         },
       })
     : null;

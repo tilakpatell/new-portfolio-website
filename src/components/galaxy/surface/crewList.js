@@ -9,9 +9,11 @@ export const faceOf = (c, i = 0) => (c.faces ? [c, ...c.faces][i % (c.faces.leng
 export const filesOf = (c) => [c, ...(c.faces ?? [])].map(fileOf);
 // how crew.js loads a row: a 2017 figure on the game's skeleton
 // (`rig: 'walrus'`, lib/three/walrus.js, with its `pack` of the game's clips
-// over the humanoid one), one of the wardrobe's people dressed as kept
+// over the humanoid one), a 2017 droid or beast on its own skeleton (`rig:
+// 'own'`, lib/three/ownRig.js, with its `ownRig`'s pack), one of the
+// wardrobe's people dressed as kept
 // (`party`), or a copy of its file's one figure (`shared`)
-export const figureLoaderFor = (row, dressed = false) => (row?.rig === 'walrus' ? 'walrus' : dressed ? 'party' : 'shared');
+export const figureLoaderFor = (row, dressed = false) => (row?.rig === 'walrus' ? 'walrus' : row?.rig === 'own' ? 'own' : dressed ? 'party' : 'shared');
 // a full-fidelity 2017 kind's cuts (scripts/bf2017-import.mjs --full: `full`,
 // with `lod`, `far` and the full cut's GPU textures, `fullMB`), for the
 // walrus loader to draw by distance; null for any other row

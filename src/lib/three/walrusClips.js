@@ -18,6 +18,12 @@
 //   resolveGame(map, name, has)  → the first game name `has`, else the
 //                                  same for CLIP_FALLBACK's stand-in, else null
 //   PACKS                        { pack: map } by the site's kind (crewList.js)
+//   OWN_RIGS                     { rig: { skeleton, body, set } }: the kinds
+//                                on a skeleton of their own (the B1, the B2,
+//                                the droideka, the Ewok, the astromech, the
+//                                probe, the tauntaun), each pack's clips
+//                                taken from that skeleton only (ownRig.js)
+//   RIG_SET(rig)                 → its set
 
 import { CLIP_FALLBACK } from './walrusRig.js';
 
@@ -130,7 +136,163 @@ export function resolveGame(map, name, has) {
   return null;
 }
 
+// The own rigs' sets, from the game's clips on each (web/anims.jsonl). The
+// end-of-round victories and most P_ aims are one-frame poses in the drop,
+// so they are not used; a site name the rig has nothing for falls back as
+// walrusRig.js's CLIP_FALLBACK says, else the figure keeps its idle.
+const DROID = (r, { dodges = true } = {}) => ({
+  walk: `C_${r}_Rifle_Walk_Fwd_01`,
+  run: `C_${r}_Rifle_Run_Fwd_01`,
+  sprint: `C_${r}_Rifle_Sprint_Fwd_01`,
+  'walk.back': `C_${r}_Rifle_Walk_Bwd_01`,
+  'walk.left': `C_${r}_Rifle_Walk_Left1_01`,
+  'walk.right': `C_${r}_Rifle_Walk_Right1_01`,
+  'turn.left': [`L_${r}_Rifle_Stand_TurnLeftSlow90_01`, `L_${r}_Rifle_Stand_TurnLeftSlow90_01_v01`],
+  'turn.right': [`L_${r}_Rifle_Stand_TurnRightSlow90_01`, `L_${r}_Rifle_Stand_TurnRightSlow90_01_v01`],
+  'crouch.run': `C_${r}_Rifle_Crouch_Run_Fwd_01`,
+  die: `A_${r}_Death_Stand_Front_Melee_01`,
+  'die.fwd': `A_${r}_Death_Stand_Front_Melee_01`,
+  'die.back': `A_${r}_Death_Stand_Back_Melee_01`,
+  'die.blown': `A_${r}_Death_Stand_Back_Explosion_01`,
+  // (the B2's: the B1 has no dodge and no rifle butt in the drop)
+  ...(dodges
+    ? {
+        'dodge.back': `A_${r}_Dodge_Back_01`,
+        'dodge.front': `A_${r}_Dodge_Front_01`,
+        'dodge.left': `A_${r}_Dodge_Left_01`,
+        'dodge.right': `A_${r}_Dodge_Right_01`,
+        'melee.rifle': `A_${r}_Melee_FirstStrike_01`,
+      }
+    : {}),
+});
+export const OWN_RIGS = {
+  b1: {
+    skeleton: 'D_Assault_Preq_01_Ske',
+    body: 'battledroid',
+    set: {
+      ...DROID('B1', { dodges: false }),
+      idle: ['L_B1_3p1pLoco_StandIdleLoop_01', 'CIN_B1_StandIdle_01'],
+      'idle.patrol': 'MTT_B1_Deploy_Stand_Idle_01',
+      'aim.rifle': 'C_B1_Combat_Stand_WalkAim_Fwd',
+      'hit.chest': 'A_B1_Stagger_Bwd_01',
+      'hit.head': 'A_B1_Stagger_Bwd_02',
+      'hit.back': 'A_B1_Stagger_Fwd_01',
+      stagger: 'A_B1_Stagger_Bwd_01',
+      talk: 'LW_B1_1_TalkToSpyLoop_01',
+    },
+  },
+  b2: {
+    skeleton: 'B2_01_Ske',
+    body: 'superdroid',
+    set: {
+      ...DROID('B2'),
+      // (the drop's B2 stand idle is empty: the menu's idle stands in)
+      idle: 'UI_FrontEnd_B2_Hands_MainMenu_01',
+      'hit.chest': 'A_B2_Stagger_Front_01',
+      'hit.head': 'A_B2_Stagger_Front_02',
+      'hit.back': 'A_B2_Stagger_Back_01',
+      stagger: 'A_B2_Stagger_Front_01',
+      deploy: 'A_B2_Rifle_Stand_Deploy_01',
+    },
+  },
+  droideka: {
+    skeleton: 'Droideka_01_Ske',
+    body: 'droideka',
+    set: {
+      idle: 'C_Droideka_Walk_InPlace_01',
+      walk: 'C_Droideka_Walk_Fwd_01',
+      run: 'A_Droideka_Folded_RollJump_Fwd_01',
+      'walk.back': 'C_Droideka_Walk_Bwd_01',
+      'walk.left': 'C_Droideka_Walk_Left_02',
+      'walk.right': 'C_Droideka_Walk_Right_01',
+      deploy: 'A_Droideka_Unfold_01',
+      fold: 'A_Droideka_Fold_01',
+      shield: 'A_Droideka_ShieldActivation_01_Activate',
+      'hit.chest': 'A_Droideka_Stagger_Front_01',
+      'hit.back': 'A_Droideka_Stagger_Back_01',
+      die: 'A_Droideka_Death_Stand_02',
+      'die.fwd': 'A_Droideka_Death_Stand_02',
+      'die.back': 'A_Droideka_Death_Stand_02',
+    },
+  },
+  ewok: {
+    skeleton: 'Ewok_01_Ske',
+    body: 'ewok',
+    set: {
+      idle: ['L_Ewok_Stand_Idle_01', 'L_Ewok_Stand_Idle_02'],
+      'idle.look': 'L_Ewok_Stand_Idle_03',
+      walk: 'C_Ewok_Stand_Walk_Fwd_01',
+      run: ['C_Ewok_Stand_Run_Fwd_01', 'C_Ewok_Run_Fwd_01'],
+      sprint: 'C_Ewok_Stand_Sprint_Fwd_01',
+      'walk.back': 'C_Ewok_Walk_Bwd_01',
+      'walk.left': 'C_Ewok_Walk_Left1_01',
+      'walk.right': 'C_Ewok_Walk_Right1_01',
+      crouch: 'L_Ewok_Crouch_01',
+      jump: 'A_Ewok_Jump_Stand_01',
+      'hit.chest': 'A_Ewok_Stagger_Bwd_01',
+      'hit.back': 'A_Ewok_Stagger_Fwd_01',
+      'dodge.back': 'A_Ewok_Dodge_Back_01',
+      'dodge.front': 'A_Ewok_Dodge_Front_01',
+      'dodge.left': 'A_Ewok_Dodge_Left_01',
+      'dodge.right': 'A_Ewok_Dodge_Right_01',
+      die: 'A_Ewok_Stand_Death_Front_01',
+      'die.fwd': 'A_Ewok_Stand_Death_Front_01',
+      'die.back': 'A_Ewok_Stand_Death_Back_01',
+      'melee.a': 'A_Ewok_SpearAttack_01',
+      'melee.b': 'A_Ewok_SpearAttack_02',
+      cheer: 'E_Ewok_The_Ewok_Victory_01',
+      taunt: 'E_Ewok_The_Taunt_01',
+      horn: 'A_Ewok_BlowHorn_01',
+      throw: 'A_Ewok_Throw_02',
+    },
+  },
+  astromech: {
+    skeleton: 'Astromech_01_Ske',
+    body: 'astromech',
+    set: {
+      idle: 'L_LW_Astromech_Stand_Idle_01_LW',
+      walk: ['C_LW_Astromech_Stand_Walk_Fwd_01_LW', 'C_AstromechR2_Walk_Fwd_01'],
+      run: 'C_LW_Astromech_Stand_Run_Fwd_01',
+      'walk.left': 'C_LW_Astromech_Stand_Walk_Fwd_Left_01',
+      'hit.chest': 'A_AstromechR2_ForcePushed_01',
+      die: 'A_AstromechR2_Stand_Death_01',
+      'die.fwd': 'A_AstromechR2_Stand_Death_01',
+      'die.back': 'A_AstromechR2_Stand_Death_01',
+    },
+  },
+  probe: {
+    skeleton: 'Viper_01_Ske',
+    body: 'probe',
+    set: {
+      idle: ['C_ViperDroid_Stand_Idle_01', 'C_ViperDroid_Stand_Idle_02'],
+      walk: 'C_ViperDroid_Stand_Walk_Fwd_01',
+      run: 'C_ViperDroid_Stand_Run_Fwd_01',
+      'walk.left': 'C_ViperDroid_Stand_Walk_Fwd_Left_01',
+      'hit.chest': 'C_ViperDroid_Stand_Idle_Hit_01',
+    },
+  },
+  tauntaun: {
+    skeleton: 'Tauntaun_01_Ske',
+    body: 'tauntaun',
+    set: {
+      idle: ['L_TaunTaun_Stand_Idle_01', 'L_TaunTaun_Stand_Idle_02', 'L_Tauntaun_idle_02'],
+      'idle.look': ['L_TaunTaun_Stand_Idle_03', 'L_TaunTaun_Stand_Idle_04'],
+      walk: 'C_Tauntaun_Walk_Fwd_01',
+      run: 'C_Tauntaun_Run_Fwd_01',
+      sprint: 'C_Tauntaun_Sprint_Fwd_01',
+      jump: 'A_Tauntaun_Jump_Run_Fwd_01',
+      'hit.chest': 'A_TaunTaun_Stand_Idle_Hit_02',
+      die: 'A_Tauntaun_Death_Stand_02',
+      'die.fwd': 'A_Tauntaun_Death_Stand_02',
+      'die.back': 'A_Tauntaun_Death_Stand_03',
+      'melee.a': 'A_Tauntaun_Attack_HeadButt_02',
+    },
+  },
+};
+export const RIG_SET = (rig) => OWN_RIGS[rig]?.set ?? null;
+
 export const PACKS = {
+  ...Object.fromEntries(Object.entries(OWN_RIGS).map(([rig, r]) => [rig, r.set])),
   humanoid: HUMANOID_SET,
   luke: HERO_SET('Luke'),
   vader: HERO_SET('Vader'),
