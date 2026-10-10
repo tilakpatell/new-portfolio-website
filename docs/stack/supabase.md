@@ -1,6 +1,8 @@
 # Supabase and @supabase/supabase-js
 
-**Version** `@supabase/supabase-js@^2.117.3` · **Page owner** `src/lib/durable/` · **Decision** [2026-10-09-supabase-for-durable-shared-state.md](../decisions/2026-10-09-supabase-for-durable-shared-state.md)
+**Version** `@supabase/supabase-js@^2.117.3` · **Page owner** `scripts/assets-upload.mjs`
+and `src/lib/durable/` · **Decision** [2026-10-09-supabase-for-durable-shared-state.md](../decisions/2026-10-09-supabase-for-durable-shared-state.md) <!-- planet flight (scripts/flight-island.mjs removes these rows) -->
+· **Decision** [2026-10-09-heavy-assets-mirrored-on-supabase-storage.md](../decisions/2026-10-09-heavy-assets-mirrored-on-supabase-storage.md)
 
 ## What it is, and why it is here
 
@@ -10,20 +12,23 @@ The client to the durable world’s database: a hosted PostgreSQL with PostGIS, 
 
 The census row is in [README.md](README.md). The files that import it:
 
-- `src/lib/durable/supabase.js`: the client, made or `null`, and the anonymous sign-in.
-- `scripts/supabase-check.mjs`: the schema walked by hand against the real project.
+- `src/lib/durable/supabase.js`: the client, made or `null`, and the anonymous sign-in. <!-- planet flight -->
+- `scripts/supabase-check.mjs`: the project read from `.env.local` as Vite reads it (`scripts/assets-upload.mjs` reads it so).
+With one, it walks the flight’s schema by hand against it (`scripts/lib/durable-check.mjs`). <!-- planet flight -->
 - `scripts/assets-upload.mjs`: the heavy assets to the Storage bucket, from the owner’s shell.
 
-Around them: `src/lib/durable/entityLoader.js` (a planet’s built things, cell by cell; tested against `src/lib/durable/fixtures/fakeClient.js`), `src/lib/durable/entities.js` (the grid and the rows) and `scripts/supabase-seed.mjs` (the planets, into `supabase/seed.sql`). The schema is `supabase/migrations/` (how to apply it: `supabase/README.md`); the design is `docs/superpowers/specs/2026-10-09-planet-flight-and-shared-world-design.md`, Pillar 2.
+Around them: `src/lib/durable/entityLoader.js` (a planet’s built things, cell by cell; tested against `src/lib/durable/fixtures/fakeClient.js`), `src/lib/durable/entities.js` (the grid and the rows) and `scripts/supabase-seed.mjs` (the planets, into `supabase/seed.sql`). The schema is `supabase/migrations/` (how to apply it: `supabase/README.md`); the design is `docs/superpowers/specs/2026-10-09-planet-flight-and-shared-world-design.md`, Pillar 2. <!-- planet flight -->
 
 ## How the site uses it
 
+- **Storage as a mirror.** The heavy models and textures are copied to the public bucket `assets` at `<hash12>/<path>` (`scripts/assets-upload.mjs`, a year’s `cacheControl`, never an overwrite); the build with `VITE_ASSET_BASE` asks the bucket first through `src/lib/assetBase.js` and the site after one failure. The browser never calls the Storage API, only the bucket’s public URLs ([the entry](../decisions/2026-10-09-heavy-assets-mirrored-on-supabase-storage.md)).
+<!-- planet flight: begin -->
 - **One client, made in one file.** The client is made in `src/lib/durable/supabase.js` alone, once a page, from `import.meta.env.VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; either empty, and it is `null`.
 - **Anonymous sign-in for ownership.** The same file’s `signIn` gives each browser a user id (the session it has, else `signInAnonymously`); RLS makes a row its owner’s to change.
 - **An RPC for the envelope.** What is built round the ship is asked for a cell at a time through `get_entities_in_bounding_box` (8,192 m a side and 2,000 rows at most, by the database).
 - **A `security definer` function for others’ writes.** Damage goes through `damage_entity`, clamped and rate-limited in the database.
-- **Storage as a mirror.** The heavy models and textures are copied to the public bucket `assets` at `<hash12>/<path>` (`scripts/assets-upload.mjs`, a year’s `cacheControl`, never an overwrite); the build with `VITE_ASSET_BASE` asks the bucket first through `src/lib/assetBase.js` and the site after one failure. The browser never calls the Storage API, only the bucket’s public URLs ([the entry](../decisions/2026-10-09-heavy-assets-mirrored-on-supabase-storage.md)).
 - **Realtime as the backstop.** `postgres_changes` on `world_entities` for one planet folds others’ builds in; a Nostr hint is the fast path.
+<!-- planet flight: end -->
 
 ## What the site does not use, and why
 
@@ -33,17 +38,17 @@ Around them: `src/lib/durable/entityLoader.js` (a planet’s built things, cell 
 
 ## Rules
 
-- The client is made in `src/lib/durable/supabase.js` alone (nothing enforces it; the census shows which files import the package).
+- The client is made in `src/lib/durable/supabase.js` alone (nothing enforces it; the census shows which files import the package). <!-- planet flight -->
 - Every table has RLS on (the migration enables it; `scripts/supabase-check.mjs` walks it against a project by hand).
 - No key is committed or printed: the build reads the two from the environment (`.env.local`, git-ignored; the repository secrets `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `deploy.yml`). The bucket’s URL is the repository variable `ASSET_BASE` (a URL, not a secret).
 - A bucket path is a content hash and is never overwritten; old paths go only with `--prune`, after the deploy that stopped naming them is live.
-- The durable folder imports no three.js and no React, and its tests use a fake client, never the network (`docs/health/RULES.md`).
+- The durable folder (`src/lib/durable/`) imports no three.js and no React, and its tests use a fake client, never the network (`docs/health/RULES.md`). <!-- planet flight -->
 
 ## Upgrading
 
 ```
 npm install @supabase/supabase-js@<version>
-npx vitest run src/lib/durable
+npx vitest run src/lib/durable   # planet flight
 npm run build
 node scripts/supabase-check.mjs
 ```

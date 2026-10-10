@@ -162,7 +162,7 @@ describe('createLandmarks and the planet’s own buildings', () => {
 describe('galaxyPlacer', () => {
   it('counts a cluster of models as drawn when its members come', async () => {
     const { galaxyPlacer } = await import('./landmarkScene');
-    const { SURFACE_MODELS } = await import('../../galaxy/surface/catalog');
+    const { SURFACE_MODELS } = await import('../../galaxy/shared/models');
     const members = SURFACE_MODELS.crates.cluster;
     expect(members.length).toBeGreaterThan(1);
     // (the galaxy placer's answer: null for a cluster, a mesh for each kind of its own)

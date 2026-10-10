@@ -125,3 +125,62 @@ The owner says the upload goes on for some time and animation, audio and more me
 - **Textures**: `web/textures/` has not started; the GLBs point at it.
 - **The classic edition** (`bf2-extract`): empty.
 - **Not in the 2017 game's set at all** (so never coming from it): the wampa, the rancor, Jabba himself, the sarlacc.
+
+## Update, 02:45 UTC: the upload a day on
+
+| part | objects | bytes | against its manifest |
+| --- | --- | --- | --- |
+| `web/models/` | 48,248 | 2.5 GB | complete: every LOD file of the 13,871 models |
+| `web/collision/` | 12,941 | 151 MB | complete |
+| `web/anims/` + `web/anims_additive/` | 7,947 + 2,159 | 955 + 144 MB | 10,106 of the 10,270 clips in `web/anims.jsonl` |
+| `web/textures/` | 16,617 | 6.7 GB | 2,441 KTX2 (4.9 GB, the derived maps the GLBs point at), 4,528 PNG, 9,648 HDR (sky, probe and far-shadow caches under `levels/`; PR #810's desktop count: there are no lightmaps, Enlighten runs at run time); `web/textures.jsonl` lists 17,511 PNG sources (43.6 GB), 1,851 of them up |
+| `web/physics/` | 10,530 | 123 MB | complete: Havok shapes (`hknpConvexPolytopeShape` and friends) per model, `web/physics.jsonl` |
+| `web/movies/` | 61 | 628 MB | WebM |
+| `web/fonts/`, `web/svg/`, `web/strings/` | 23, 702, 2 | 36 MB, 4 MB, 1 MB | the UI's fonts, icons and strings (`web/misc.jsonl`) |
+| `data/` | 83,983 | 243 MB | the EBX records, complete; `data/Sound/` is 3,918 records, no audio files yet |
+| **bucket** | **183,260** | **11.6 GB** | still rising |
+
+### The clips (`web/anims.jsonl`, 10,270)
+
+One glTF per clip: the skeleton's 248 nodes, no mesh, one animation with rotation and translation channels on the bones by name, 30 fps, raw (uncompressed: Luke's jump attack is 109 KB for 44 frames), with extras `{ codec, fps, endFrame, additive, loop, skeleton, key }`. The manifest adds `channels`, `check`, `duplicates`, `distance` (root travel, 3,409 clips) and `timeScale`.
+
+| skeleton | clips |
+| --- | --- |
+| `Walrus_HumanMale` (the shared humanoid) | 4,498 (1,651 additive); 520 MB; 4,446 up |
+| `Walrus_NIS_S0800_Skeleton` (cinematics) | 2,638 |
+| `Walrus_HumanMale_1p` (first person) | 949 |
+| B1 battle droid (`D_Assault_Preq_01_Ske`) 532 · B2 337 · Grievous 161 · Yoda 101 · BB-8 88 · Ewok 77 · AT-ST 69 · droideka 52 · tauntaun 44 · AT-TE 41 · the creatures | the rest |
+
+The humanoid set by prefix: `A_<Hero>_*` the heroes' combat (Vader 104, Maul 89, Luke 69, Obi-Wan 69, Anakin 62, Dooku 56, Palpatine 37, Chewbacca 11; Kylo and Rey excluded), `C_<Hero>_*` the heroes' locomotion (walk, run, sprint, turn, in eight directions), `A_HM_*` the generic humanoid (deaths standing, running, by weapon; dodges; deploys; speeder bike; throws), `AI_Rifleman_*`, `AI_Officer_*`, `Cover_*`, `Awareness_*`, `Spawn_*`, `Hit_*`, `Loco_*`, `P`/`T`/`L` (pistol, two-hand, long weapon stances), `Add_*`/`PAdd_*` additive layers, `CIN_*` cinematics, `UI_FrontEnd_*` menu poses.
+
+A hero's own set (Luke's, 138 with locomotion): `AttackLoop_Strike1..6` and `_V2` each with a `_BackToIdle`, `AttackPose` closers, `Block_Stagger`, `Stagger_{Back,Front}_01..03`, `Dodge_{Back,Front,Left,Right}`, `Defeated`, `Jump_SaberAttack_Light`, `Stand_SaberDash`, `Stand_ForceAttack_Push`, `Stand_ForceRepulse`, `InAir_ForceAttack_Push`, `Blinded`, `Electrocuted`, `Gas`, `Stunned_Pain` (enter, loop, exit), `Stand_Walk_*`, `Stand_Run_*`, `Stand_Sprint_*`, `StandTurn_*`. Vader adds `Stand_Block_SwingLeft/Right_01..04`, `Stand_Block_Choke_*`, `Stand_CatchSaber`, `LightAttack_Blocked_01..06`, `ForceChoke`, `RagePowerUp`. Obi-Wan adds `MindTrick_*`, `ForcePush`, `Dash_Exit`, a second attack loop.
+
+### Phase 1's inputs, present
+
+Every hilt's three maps (`lightsaber{anakin,darthvader,dooku,grievous,lukehoth,lukeskywalker,maul,maulcrimson,obiwan,yoda}`, and `bowcaster`, `dl44`, `ee3`); the heroes' body maps (luke 12 KTX2, darthvader 15, obiwan 6, anakin 17, darthmaul 18, countdooku 18, yoda 11, generalgrievous 12, palpatine 8, hansolo 5, leia 6, lando 7, chewbacca 25, bobafett 13, bossk 7) and 264 head maps; the heroes' clips.
+
+## Costs measured (03:10 UTC)
+
+Luke's six maps (`luke_rotj_01`: body and vest, each colour, normal, ORM), as the bucket holds them and after the site's pipeline (`basisu -unpack`, then `sharp` WebP at quality 82 for colour and 80 for the rest, `scripts/ktx2.mjs`'s `encodeImage` for a UASTC normal):
+
+| mix | bytes |
+| --- | --- |
+| the game's six KTX2 at 2048 | 19.1 MB |
+| all six as WebP at 1024 | 0.97 MB |
+| all six as WebP at 512 | 0.25 MB |
+| the spec's "high" (colour 1024 WebP, ORM 512 WebP, normal 1024 **KTX2**) | 2.4 MB, of which the two KTX2 normals are 1.9 MB |
+| colour 1024 WebP, ORM 512 WebP, normal 1024 **WebP** | 0.97 MB |
+| "mid" (colour 1024, ORM 512, normal 512, all WebP) | 0.52 MB |
+| "low" (colour 512, the rest 256, all WebP) | 0.15 MB |
+
+So a KTX2 normal is ten times the WebP's bytes at the same size, and `scripts/ktx2.mjs`'s `verdict` (bytes within 1.25×) will keep normals as WebP below ultra. A hero's textures at high are about 1 MB; with his LOD2 mesh (0.36 MB) a hero is about 1.4 MB, a trooper (LOD2 0.5 MB, four maps) about 1.3 MB.
+
+The clips (four of Luke's, 106 to 118 KB raw each, 109 channels, 28 to 45 of them constant):
+
+| treatment | bytes per clip |
+| --- | --- |
+| raw, as uploaded | 110 KB |
+| meshopt only | 64 KB |
+| constant channels dropped, resampled, meshopt | 46 KB |
+
+So a hero's useful set (about 50 clips: twelve strikes and their returns, blocks, staggers, dodges, dash, jump attack, Force, defeat, eight-way locomotion) is about 2.3 MB and must load with the hero, not the world; the generic humanoid set is held under 3 MB by the same treatment plus 15 fps on idles. Dropping the camera, trajectory and reference channels nothing in the site reads is still to be measured (phase 2, task 6).

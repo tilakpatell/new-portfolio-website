@@ -18,6 +18,7 @@ import { localPath, mapPath, textureSources } from './bf2017-paths.mjs';
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
 const sharp = createRequire(createRequire(import.meta.url).resolve('ndarray-pixels'))('sharp');
 const run = promisify(execFile);
+export const sharpOf = () => sharp;
 
 // basisu writes every level in every GPU format; the closest to the source
 // is the uncompressed one where it writes it, else ASTC, else BC7 (both near
