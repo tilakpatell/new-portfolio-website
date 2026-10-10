@@ -5,7 +5,7 @@ import { createSim, modeFor } from './gpu.js';
 
 // The compute pass itself runs in a browser: scripts/light-fixture.mjs
 // --particles steps it 120 frames beside the CPU and reads it back (the
-// plan's bar, 1 cm; 0.02 mm measured on the node renderer over WebGL 2).
+// plan's bar, 1 cm; 0.06 mm measured on two of the game's emitters, the node renderer over WebGL 2).
 // Here: the CPU path is emitter.js's step, and the GPU path lays the spawn
 // window out as the step does.
 
