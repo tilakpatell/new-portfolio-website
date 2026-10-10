@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COMPASS, GUIDE_RESERVE, STICK, far, layoutCompass, layoutRows, markerSize, objectiveText, othersText, padFor, promptText, stackUnder, stickRead, titleMode } from './hud';
+import { COMPASS, GUIDE_RESERVE, MINIMAP, STICK, far, layoutCompass, layoutRows, markerSize, minimapSize, objectiveText, othersText, padFor, promptText, stackUnder, stickRead, titleMode } from './hud';
 
 const W = 420;
 // a mark at x px along the strip (bearing back from x)
@@ -155,5 +155,14 @@ describe('the stick', () => {
   });
   it('ignores a resting thumb’s jitter', () => {
     expect(stickRead(100, 100, 102, 101)).toMatchObject({ x: 0, y: 0 });
+  });
+});
+
+describe('the minimap’s disc', () => {
+  it('is 240 px on a wide screen, 160 on a phone or a narrow one, redrawn ten times a second', () => {
+    expect(minimapSize(1280)).toBe(240);
+    expect(minimapSize(1280, true)).toBe(160);
+    expect(minimapSize(390)).toBe(160);
+    expect(MINIMAP.hz).toBe(10);
   });
 });

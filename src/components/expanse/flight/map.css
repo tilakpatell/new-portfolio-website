@@ -1,0 +1,31 @@
+/* The flight's map (./FlightMap.jsx, ./PlanetMap.jsx): the kit's minimap in
+   the flight's skin (white glass, the night's ink), the waypoint's line, and
+   the full map's card. Text over the world on glass at 0.86, never blurred. */
+.fly-minimap { --hud-glass: rgb(255 255 255 / 0.86); --hud-ink: #1a1f2b; --hud-accent: #ff6b4a; }
+.fly-minimap .hud-minimap-disc { border-color: rgb(255 255 255 / 0.9); box-shadow: 0 6px 22px rgb(26 31 43 / 0.28); }
+
+.fly-waypoint {
+  position: absolute;
+  top: var(--hud-pad);
+  left: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: min(22rem, calc(100% - 2 * var(--hud-pad)));
+  margin: 0;
+  padding: 0.3rem 0.35rem 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.86);
+  color: #1a1f2b;
+  font: 600 0.85rem/1.2 var(--font-sans);
+  box-shadow: 0 4px 16px rgb(26 31 43 / 0.2);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.fly-minimap .fly-waypoint { position: static; transform: none; max-width: 100%; }
+.fly-waypoint-arrow { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: #ff6b4a; color: #fff; font-size: 0.9rem; line-height: 1; }
+.fly-waypoint-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fly-waypoint-dist { color: #2b3d55; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fly-waypoint-clear { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #2b3d55; font-size: 1.1rem; cursor: pointer; }
+.fly-waypoint-clear:hover, .fly-waypoint-clear:focus-visible { background: rgb(26 31 43 / 0.08); }

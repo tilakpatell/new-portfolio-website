@@ -21,6 +21,7 @@ import { LEVELS } from '../../../lib/device';
 import { SHIP, crashed, stepShip } from './flightRules';
 import { createFlightScene } from './scene';
 import { createGround } from './ground';
+import { createMap } from './map';
 import { LOOK } from './look';
 
 export const KEYS = {
@@ -82,6 +83,8 @@ export default {
     const view = createFlightScene({ spec, palette: LOOK.palette });
     const tier = LEVELS.includes(rt.quality?.tier) ? rt.quality.tier : 'mid';
     const ground = createGround(view.scene, { rt, spec, tier, palette: LOOK.palette });
+    // the planet map's rasters, asked of the ground's worker behind its leaves (./map.js; the HUD draws it)
+    const map = createMap({ spec, workers: rt.workers });
     // the planet's own field, here on the page, for where to start and to come
     // back up to before the ground under the ship is in (a few samples, not a mesh)
     const field = planetField(spec);
@@ -108,6 +111,7 @@ export default {
       }) ?? (() => {});
 
     const world = {
+      map,
       get ship() {
         return ship;
       },
@@ -177,6 +181,7 @@ export default {
         if (typeof window !== 'undefined' && window.__FLIGHT__ === world) delete window.__FLIGHT__;
         unOrigin();
         rt.input.unbind();
+        map.dispose();
         ground.dispose();
         view.dispose();
         Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure });

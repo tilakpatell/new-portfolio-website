@@ -119,3 +119,9 @@ export function stickRead(x0, y0, x, y, { reach = STICK.throw, travel = STICK.tr
   const out = (Math.min(1, m) - dead) / (1 - dead) / Math.min(1, m);
   return { x: kx * out, y: ky * out, knob };
 }
+
+// A minimap's disc, in CSS px: 240 on a wide screen, 160 on a phone or a
+// narrow one (the guide's "?" and the touch row keep their room), under the
+// top row on the right, the guide's corner's opposite end of that column.
+export const MINIMAP = { size: 240, phone: 160, narrow: 640, hz: 10 };
+export const minimapSize = (width, touch = false) => (touch || width < MINIMAP.narrow ? MINIMAP.phone : MINIMAP.size);
