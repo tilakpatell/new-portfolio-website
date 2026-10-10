@@ -16,35 +16,44 @@ import { classOf, mapOf, spawnsFor, teamsFor, weaponOf } from './rulebook.js';
 import { press } from './abilities.js';
 import { createBolts, fire as fireBolt, step as stepBolts } from './bolts.js';
 import { heightAt, nearestWalkable } from './nav.js';
-import { capsulesOf, chestOf, eyeOf, hurt, move, newSoldier, roll, tick as tickSoldier } from './soldier.js';
-import { coolPress, damageAt, fire as fireGun, vent } from './weapons.js';
+import { STEP, clock, muzzleOf, profile, shoot } from './core.js';
+import { capsulesOf, chestOf, hurt, move, newSoldier, roll, tick as tickSoldier } from './soldier.js';
+import { coolPress, damageAt, vent } from './weapons.js';
 import { createBrains, onEvents, stepBrains } from './ai/bots.js';
 
-export const STEP = 0.05;
-export const THINK = 0.2;
-export const SENSE = 0.1;
-export const SQUAD = 0.5;
-
-// The muzzle: forward of the eye, the gun's side (the third-person camera's shoulder).
-const MUZZLE = 0.45;
+export { STEP, THINK, SENSE, SQUAD, muzzleOf, shoot } from './core.js';
 
 // The team a side plays: 1 the light side (Hoth's defending Rebels), 2 the dark (the attacking Empire).
 const SIDES = { 1: 'light', 2: 'dark' };
 
-// A team's spawns for the opening: its spawn points by priority, the ones
-// nearest the other team's first (the front), so both sides meet.
-function openingSpawns(map, team, other) {
-  const mine = spawnsFor(map, { mode: 'galacticAssault', team }).filter((s) => s.at);
-  const theirs = spawnsFor(map, { mode: 'galacticAssault', team: other }).filter((s) => s.at && s.enabled);
-  if (!mine.length) return [];
-  const live = mine.filter((s) => s.enabled);
-  const pool = live.length ? live : mine;
-  const d = (a, b) => Math.hypot(a.at[0] - b.at[0], a.at[2] - b.at[2]);
-  const anchor = pool.reduce((best, s) => {
-    const near = Math.min(...theirs.map((t) => d(s, t)));
-    return !best || near < best.near ? { s, near } : best;
-  }, null).s;
-  return [...mine].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0) || d(a, anchor) - d(b, anchor) || (a.id < b.id ? -1 : 1));
+// How far back from the front's middle each side opens: Hoth's front spawns
+// overlap (the stages enable them by turns), so the opening keeps the sides
+// apart, by hand, until lane 2's stages choose the spawns.
+export const OPENING_GAP = 40;
+
+// Each team's spawns for the opening: by priority, then nearest the middle of
+// the front (between the two teams' enabled spawns nearest each other), only
+// those on the team's own side and at least OPENING_GAP from the middle.
+function openingSpawns(map) {
+  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const xz = (s) => [s.at[0], s.at[2]];
+  const points = (team) => spawnsFor(map, { mode: 'galacticAssault', team }).filter((s) => s.at);
+  const all = { 1: points(1), 2: points(2) };
+  const live = (t) => (all[t].some((s) => s.enabled) ? all[t].filter((s) => s.enabled) : all[t]);
+  let best = null;
+  for (const a of live(1)) for (const b of live(2)) if (!best || d(xz(a), xz(b)) < best.d) best = { a, b, d: d(xz(a), xz(b)) };
+  if (!best) return { 1: all[1], 2: all[2] };
+  const mid = [(best.a.at[0] + best.b.at[0]) / 2, (best.a.at[2] + best.b.at[2]) / 2];
+  const out = {};
+  for (const [t, anchor] of [
+    [1, best.a],
+    [2, best.b],
+  ]) {
+    const side = [anchor.at[0] - mid[0], anchor.at[2] - mid[1]];
+    const mine = all[t].filter((s) => (s.at[0] - mid[0]) * side[0] + (s.at[2] - mid[1]) * side[1] > 0 && d(xz(s), mid) >= OPENING_GAP);
+    out[t] = (mine.length ? mine : all[t]).sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0) || d(xz(a), mid) - d(xz(b), mid) || (a.id < b.id ? -1 : 1));
+  }
+  return out;
 }
 
 export function createSim({ rulebook, level = 'hoth', era = 'Orig', nav, seed = 1, teams = null, bots = { 1: 0, 2: 0 }, mode = null, spawns = null }) {
@@ -73,12 +82,11 @@ export function createSim({ rulebook, level = 'hoth', era = 'Orig', nav, seed = 
     out: null,
     brains: null,
   };
-  let map = null;
+  const opening = spawns ?? (bots[1] || bots[2] ? openingSpawns(mapOf(rb, level)) : {});
   for (const team of [1, 2]) {
     const n = bots[team] ?? 0;
     if (!n) continue;
-    map ??= mapOf(rb, level);
-    const list = spawns?.[team] ?? openingSpawns(map, team, team === 1 ? 2 : 1);
+    const list = opening[team] ?? [];
     const classes = sides[team].classes;
     for (let k = 0; k < n; k++) {
       const sp = list[k % list.length];
@@ -134,20 +142,6 @@ function jitter(dir, [dy, dp]) {
   return [Math.sin(yaw) * c, Math.sin(pitch), Math.cos(yaw) * c];
 }
 
-export function muzzleOf(s) {
-  const eye = eyeOf(s);
-  return [eye[0] + Math.sin(s.yaw) * MUZZLE, eye[1] - 0.15, eye[2] + Math.cos(s.yaw) * MUZZLE];
-}
-
-// pull the trigger toward a point: the gun says whether and how many bolts, and when
-export function shoot(sim, s, aim) {
-  if (!s.alive || !s.gun || !aim) return false;
-  const shots = fireGun(s.gun, sim.time, { stance: s.stance, moving: s.moving });
-  if (!shots) return false;
-  for (const shot of shots) sim.pending.push({ owner: s.id, at: shot.at, dir: shot.dir, aim: [...aim] });
-  return true;
-}
-
 function release(sim) {
   const later = [];
   for (const p of sim.pending) {
@@ -194,7 +188,9 @@ function resolveBolts(sim) {
     capsulesOf(s, s.capsules);
     bodies.push({ id: s.id, team: s.team, alive: true, at: s.at, capsules: s.capsules });
   }
+  const t0 = clock();
   const evs = stepBolts(sim.bolts, STEP, { bodies, nav: sim.nav, now: sim.time });
+  if (profile.on) profile.bolts += clock() - t0;
   for (const e of evs) {
     if (e.type === 'hit') {
       const target = sim.entities.get(e.target);
