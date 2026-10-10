@@ -28,8 +28,7 @@ export const CAST = [
   // sixth of its ultra, past ultra.js's four times)
   ['atat', 'walker', `${V}/ground/at-at/old/atat_mesh`, 'the AT-AT', ['--rig', '--hero', '--cuts', 'plain=1']],
   ['atst', 'walker', `${V}/ground/atst/atst_static_donotuse_mesh`, 'the AT-ST', ['--hero', '--bind', 'Cinematics/Objects/ATST/ATST_Ske01']],
-  // (fifteen maps: its light cut's at 512 come to 5.1 MB, over the native light cap)
-  ['atte', 'walker', `${V}/ground/at_te/at_te_mesh`, 'the AT-TE', ['--rig', '--hero', '--light-maps', '256']],
+  ['atte', 'walker', `${V}/ground/at_te/at_te_mesh`, 'the AT-TE', ['--rig', '--hero']],
   ['atrt', 'walker', `${V}/ground/atrt/atrt_mesh`, 'the AT-RT', ['--rig', '--hero']],
   ['droideka', 'walker', `${V}/ground/droideka_01/droideka_01_mesh`, 'a droideka', ['--rig', '--hero']],
 
@@ -91,11 +90,14 @@ export const CAST = [
 ];
 
 // a row's arguments for the import (a cockpit has no far cut: it's only ever near)
-// (and every one native: the game's own KTX2 maps, untouched, the plain cut's
-// at 1024, the light cut's at 512, the ultra cut's at the game's own size;
+// (and every one native: the game's own KTX2 maps, untouched but for the mip
+// levels each cut drops: the plain cut's colour at 1024 and its normal and
+// ORM maps at 512 (the measured high row's ORM; at 1024 Hoth's models came to
+// 60.1 MB and Geonosis's to 72.9, over the 60 MB row), the light cut's at 512
+// and 256, the ultra cut's every map at the game's own size;
 // the caps are lib/bf2017-caps.mjs's native ones, and the files go to the
 // bucket: scripts/assets-publish.mjs)
-export const NATIVE_ARGS = ['--native', '--tex', '1024', '--maps', '1024', '--ultra-tex', '4096', '--ultra-maps', '4096'];
+export const NATIVE_ARGS = ['--native', '--tex', '1024', '--maps', '512', '--ultra-tex', '4096', '--ultra-maps', '4096'];
 export function importArgs([kind, group, name, as, more = []]) {
   const cuts = group === 'cockpit' ? [] : ['--far', '--ultra'];
   return [name, '--kind', kind, '--as', as, '--asis', '--vehicle', ...NATIVE_ARGS, ...cuts, ...more, '--catalog', 'src/components/galaxy/surface/catalog/bf2017-vehicles.js'];
