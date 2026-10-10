@@ -6,11 +6,17 @@
 // those two; .gitignore's block hides the rest). The work is in scripts/lib/bf2017-level.mjs (pure,
 // tested); this fetches, reads and writes.
 //
-//   node scripts/bf2017-level.mjs <map> --world <id> --spot <x> <z> [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--dry]
+//   node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--dry]
 //
 //   map     the map's folder under web/maps/ (levels/mp/hoth_01)
 //   world   the site's world (hoth): the pack's folder and its credit
 //   spot    the game's x and z that become the site's 0, 0 (the landing spot)
+//   spawn   no spot: the first team's first spawn area in the map's gameplay
+//           records (fetched from data/), scripts/lib/bf2017-level-spots.mjs
+//   district  the pack is levels/<world>/<district>/ (a second map of one
+//           world, or an interior); the default `main` is levels/<world>/
+//   inside  an interior: no terrain, its bounds the pieces' extent, and where
+//           the map has ground, only what is buried under it (Hoth's base)
 //   subs    the sub-levels that are the arena (default: the level's own and Content)
 //   arena   the pack's half-size in metres; instances beyond it are the horizon
 //   ultra   the LOD0 cut and 2048 textures as well
@@ -27,7 +33,9 @@ import { fileURLToPath } from 'node:url';
 import { BUDGET_ROWS } from '../src/lib/budgets.js';
 import { LAYERS, imageLayerFrom } from '../src/lib/land/layers.js';
 import { decodePng16 } from '../src/lib/level/png16.js';
-import { getObject, keys } from './bf2017-fetch.mjs';
+import { fetchData, getObject, keys } from './bf2017-fetch.mjs';
+import { spotFrom } from './lib/bf2017-level-spots.mjs';
+import { mapRow } from './lib/bf2017-rulebook-map.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { writeCredit } from './lib/catalog-write.mjs';
 import { isSequel } from './lib/bf2017-manifest.mjs';
@@ -37,6 +45,7 @@ import { LOD, capIndex, texSizeFor } from '../src/lib/level/lod.js';
 import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
 import { encodePng16 } from './lib/png16.mjs';
 
+const USAGE = 'node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--dry]';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(ROOT, 'lab', 'assets', 'bf2017');
 const PERMISSION = 'From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.';
@@ -196,9 +205,11 @@ async function writeTextures(env, uris, radiusOf, { out, tiers, dry }) {
 async function main(args) {
   const [mapName] = args._;
   const world = args.world;
-  const spot = [Number(args.spot), Number(args._[1])];
-  if (!mapName || !world || spot.some(Number.isNaN)) {
-    console.error('usage: node scripts/bf2017-level.mjs <map> --world <id> --spot <x> <z> [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--dry]');
+  const district = typeof args.district === 'string' ? args.district : 'main';
+  const inside = Boolean(args.inside);
+  let spot = [Number(args.spot), Number(args._[1])];
+  if (!mapName || !world || (spot.some(Number.isNaN) && !args.spawn)) {
+    console.error(`usage: ${USAGE}`);
     process.exit(1);
   }
   const env = keys();
@@ -207,13 +218,26 @@ async function main(args) {
   const ultra = Boolean(args.ultra);
   const dry = Boolean(args.dry);
   const subs = typeof args.subs === 'string' ? args.subs.split(',') : null;
-  const out = join(ROOT, 'public', 'models', 'galaxy', 'bf2017', 'levels', world);
+  // (a district's pack sits in its world's folder: levels/<world>/<district>/)
+  const packId = district === 'main' ? world : `${world}/${district}`;
+  const out = join(ROOT, 'public', 'models', 'galaxy', 'bf2017', 'levels', ...packId.split('/'));
   if (yaw) throw new Error('--yaw: the heightmaps are not turned yet; keep the level square to the site');
 
   const base = `web/maps/${mapName}/${lastOf(mapName)}`;
-  const map = readMap(JSON.parse((await need(env, `${base}.json`, 'the map')).toString('utf8')), await need(env, `${base}.bin`, 'the map’s instances'));
+  const mapJson = JSON.parse((await need(env, `${base}.json`, 'the map')).toString('utf8'));
+  const map = readMap(mapJson, await need(env, `${base}.bin`, 'the map’s instances'));
   console.log(`${mapName}: ${map.instances.count} instances, ${map.meshes.length} meshes, subs ${map.subworlds.map(lastOf).join(', ')}`);
   console.log(`vehicle spawns: ${map.vehicleSpawns.map((v) => `${lastOf(v.blueprint ?? '?')} ${v.position?.map((n) => Math.round(n)).join(' ')}`).join(' · ') || 'none'}`);
+  // (no spot given: the first team's first spawn area, from the map's own
+  // gameplay records, scripts/lib/bf2017-rulebook-map.mjs)
+  if (spot.some(Number.isNaN)) {
+    const folder = String(map.name).split('/').slice(0, -1).join('/');
+    await fetchData(env, CACHE, [`${folder}/*`]);
+    const found = spotFrom(mapRow(CACHE, lastOf(mapName)));
+    if (!found) throw new Error(`--spawn: ${mapName} has no team-one spawn in its gameplay records: pass --spot`);
+    spot = found.spot.map((v) => Math.round(v * 100) / 100);
+    console.log(`spot from ${found.from}: ${spot.join(' ')} (heading ${found.yaw.toFixed(2)})`);
+  }
 
   const record = map.terrain;
   if (!record) console.log('no terrain: the ground stays the site’s');
@@ -285,9 +309,11 @@ async function main(args) {
         .join(', ')}${absent.length > 5 ? ' …' : ''}`,
     );
 
-  const terrain = record ? await writeTerrain(env, record, { spot, groundY, arena, out, dry }) : null;
+  // (an interior writes no ground of its own, but reads it: what is under it is the interior)
+  const terrain = record ? await writeTerrain(env, record, { spot, groundY, arena, out, dry: dry || inside }) : null;
   const pack = buildPack({
-    world,
+    world: packId,
+    inside,
     mapName,
     map,
     spot,
@@ -375,11 +401,11 @@ async function main(args) {
   );
   const farBytes = pack.files.get('far.bin').byteLength;
   const lines = [
-    `# ${world}: the game's level`,
+    `# ${packId}: the game's level`,
     '',
     `From \`${mapName}\` (Star Wars Battlefront II, 2017, EA DICE; ${PERMISSION.split(';')[0].replace('From EA DICE’s Star Wars Battlefront II (2017), ', '')}). Written by \`node scripts/bf2017-level.mjs ${process.argv.slice(2).join(' ')}\`; do not edit by hand.`,
     '',
-    `- ${pack.counts.arena} instances in the arena (±${arena} m), ${pack.counts.horizon} beyond it (the horizon), ${pack.counts.buried} left out under the ground (the base inside the glacier: the site's interior zone stands for it), ${pack.counts.cells} cells of ${pack.json.cell} m`,
+    `- ${pack.counts.arena} instances in the arena (±${arena} m), ${pack.counts.horizon} beyond it (the horizon), ${pack.counts.buried} ${inside ? 'left out above the ground (the world outside: its own pack)' : 'left out under the ground (an interior: its own pack, `--inside`)'}, ${pack.counts.cells} cells of ${pack.json.cell} m`,
     `- ${meshes.length} meshes (${absent.length} left out), ${glbs.length} LOD files, ${mb(glbBytes)}`,
     `- the far list ${mb(farBytes)}; terrain ${terrain ? `near ${mb(terrain.bytes.near)}, far ${mb(terrain.bytes.far)}` : 'none'}; the spot's ground ${groundY.toFixed(2)} m in the game`,
     `- textures missing from the bucket: ${tex.missing.length}`,
@@ -395,16 +421,16 @@ async function main(args) {
   for (const [path, bin] of pack.files) await writeFile(join(out, path), Buffer.from(bin));
   await writeFile(join(out, 'level.json'), `${JSON.stringify(pack.json)}\n`);
   await writeFile(join(out, 'README.md'), `${lines.join('\n')}\n`);
-  await writeCredit(join(ROOT, 'src', 'data', 'modelCredits.json'), `level-${world}`, {
-    title: `Star Wars Battlefront II (2017): ${mapName}`,
+  await writeCredit(join(ROOT, 'src', 'data', 'modelCredits.json'), `level-${packId.replace('/', '-')}`, {
+    title: `Star Wars Battlefront II (2017): ${mapName}${district === 'main' ? '' : ` (${district})`}`,
     author: 'EA DICE',
     authorUrl: GAME,
     license: 'permission',
     licenseUrl: GAME,
     source: GAME,
     where: 'galaxy-surface',
-    as: `${world}: the game's level`,
-    file: `/models/galaxy/bf2017/levels/${world}/level.json`,
+    as: `${packId}: the game's level`,
+    file: `/models/galaxy/bf2017/levels/${packId}/level.json`,
     also: ['galaxy'],
     permission: PERMISSION,
   });

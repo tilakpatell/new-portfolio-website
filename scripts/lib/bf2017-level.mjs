@@ -227,7 +227,7 @@ function farList(inst, meshOf, cell) {
   return { bin, draws };
 }
 
-export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes, arena = 1024, cell = CELL, rows = BUDGET_ROWS, subs = null, terrain = null, physics = {}, walk = 640, tex = {}, groundAt = null, holeAt = null }) {
+export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes, arena = 1024, cell = CELL, rows = BUDGET_ROWS, subs = null, terrain = null, physics = {}, walk = 640, tex = {}, groundAt = null, holeAt = null, inside = false }) {
   // (a mesh the bucket has not got, or sequel-era, draws nothing: its instances go)
   const idx = arenaOf(map, { subs }).filter((i) => !meshes[map.meshOf[i]].missing);
   const all = rebase(subset(map.instances, idx), [spot[0], groundY, spot[1]], yaw);
@@ -244,18 +244,22 @@ export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes,
     if (holeAt?.(x, z)) return false;
     return top < groundAt(x, z) - 0.5;
   };
-  const inside = [];
+  const inArena = [];
   const outside = [];
   let buried = 0;
+  // (an interior keeps what a world leaves out: the base inside the glacier,
+  // or, with no ground given, everything its sub-levels hold)
   for (let i = 0; i < all.count; i++) {
-    if (under(i)) {
+    if (under(i) !== Boolean(inside && groundAt)) {
       buried++;
       continue;
     }
-    (Math.abs(all.position[i * 3]) < arena && Math.abs(all.position[i * 3 + 2]) < arena ? inside : outside).push(i);
+    // (an interior has no horizon: what is beyond its arena is not seen from it)
+    if (Math.abs(all.position[i * 3]) < arena && Math.abs(all.position[i * 3 + 2]) < arena) inArena.push(i);
+    else if (!inside) outside.push(i);
   }
-  const arenaInst = subset(all, inside);
-  const arenaMesh = Int32Array.from(inside.map((i) => meshOfAll[i]));
+  const arenaInst = subset(all, inArena);
+  const arenaMesh = Int32Array.from(inArena.map((i) => meshOfAll[i]));
   const horizonInst = subset(all, outside);
   const horizonMesh = Int32Array.from(outside.map((i) => meshOfAll[i]));
   const cells = cellsOf(arenaInst, arenaMesh, { cell, reach: (m, i) => radius(meshes[m]) * Math.max(...arenaInst.scale.subarray(i * 3, i * 3 + 3).map(Math.abs)) });
@@ -312,11 +316,28 @@ export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes,
     meshes: meshes.map((m) => ({ name: m.name, radius: Math.round(radius(m) * 100) / 100, glb: m.glb ?? m.lods.map((_, n) => `meshes/${slug(m.name)}.lod${n}.glb`), lods: m.lods, bounds: m.bounds, mats: m.mats ?? 1 })),
     cull,
     tex,
-    terrain,
+    terrain: inside ? null : terrain,
+    inside: Boolean(inside),
+    bounds: inside ? extentOf(arenaInst, arenaMesh, meshes) : null,
     shadowCache: null,
     physics,
   });
   return { json, files, table, counts: { arena: arenaInst.count, horizon: horizonInst.count, buried, cells: cells.size } };
+}
+
+// An interior's box in the pack's frame: every piece's bounds, scaled
+function extentOf(inst, meshOf, meshes) {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < inst.count; i++) {
+    const r = radius(meshes[meshOf[i]]) * Math.max(...inst.scale.subarray(i * 3, i * 3 + 3).map(Math.abs));
+    for (let k = 0; k < 3; k++) {
+      min[k] = Math.min(min[k], inst.position[i * 3 + k] - r);
+      max[k] = Math.max(max[k], inst.position[i * 3 + k] + r);
+    }
+  }
+  const round = (v) => Math.round(v * 10) / 10;
+  return inst.count ? { min: min.map(round), max: max.map(round) } : { min: [0, 0, 0], max: [0, 0, 0] };
 }
 
 // ── The meshes ──

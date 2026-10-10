@@ -216,4 +216,18 @@ describe('the files', () => {
     const data = Uint16Array.from([90, 90, 90, 90, 90, 0, 0, 50, 90, 90, 90, 90]);
     expect(Array.from(fillHoles(data, 4, 3))).toEqual([90, 90, 90, 90, 90, 50, 50, 50, 90, 90, 90, 90]);
   });
+  it('writes an interior: no terrain, its bounds the extent, and only what is under the ground when it is buried', () => {
+    const meshes = [0, 1, 2, 3, 4].map((i) => ({ name: `m${i}`, lods: [8, 4], bounds: [-1, 0, -1, 1, 1, 1], mats: 1 }));
+    const inside = buildPack({ world: 'fixture/base', mapName: 'm', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256, inside: true, terrain: { near: {} } });
+    expect(inside.json.inside).toBe(true);
+    expect(inside.json.terrain).toBe(null);
+    expect(inside.json.bounds.min[0]).toBeLessThanOrEqual(10);
+    expect(inside.json.bounds.max[0]).toBeGreaterThanOrEqual(200);
+    // (a ground 50 m up buries the arena: an interior keeps what a world leaves out)
+    const buried = buildPack({ world: 'fixture/base', mapName: 'm', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256, inside: true, groundAt: () => 50 });
+    expect(buried.counts.arena).toBe(2);
+    const world = buildPack({ world: 'fixture', mapName: 'm', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256, groundAt: () => 50 });
+    expect(world.counts.arena).toBe(0);
+    expect(world.json.inside).toBe(false);
+  });
 });
