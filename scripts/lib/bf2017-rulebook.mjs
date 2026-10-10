@@ -28,7 +28,7 @@
 //
 // A weapon's display name is the string `ID_W_<id>` (ID_W_A280C → "A280C").
 
-import { assetRefs, deref, follow, objectsOf, pick, pointee, readIndex, rootOf, shortName } from './bf2017-ebx.mjs';
+import { assetRefs, deref, follow, isSequel as isSequelName, objectsOf, pick, pointee, readIndex, rootOf, shortName } from './bf2017-ebx.mjs';
 
 export { isSequel } from './bf2017-ebx.mjs';
 
@@ -373,4 +373,164 @@ export function classRow(root, cls, era, faction, { level = 'hoth_01' } = {}) {
   if (!kit) return null;
   const kits = [...indexOf(root).keys()].filter((n) => n.startsWith(`${folder}Kit_${faction}_${cls}_${era}_`) && !/Skirmish/.test(n)).map(shortName);
   return { id: `${faction}-${era}-${cls}`.toLowerCase(), cls: cls.toLowerCase(), era, faction, name: [`ID_C_${cls.toUpperCase()}_TROOPER`, `ID_C_${cls.toUpperCase()}`], ...kit, kits };
+}
+
+// ── heroes, reinforcements, vehicles ─────────────────────────────────────
+
+// A kit's side, from the side affector its gameplay asset applies on spawn
+// (Affector_Hero_DarkSide, Affector_Special_LightSide).
+function sideOf(root, kit) {
+  const gp = kit && follow(root, rootOf(kit).Gameplay);
+  const names = (gp ? rootOf(gp).AffectorsAppliedOnSpawn ?? [] : []).map((v) => v?.$asset ?? '');
+  if (names.some((n) => /DarkSide/.test(n))) return 'dark';
+  if (names.some((n) => /LightSide/.test(n))) return 'light';
+  return null;
+}
+
+// A hero (`Gameplay/Kits/Hero/<Hero>/…/Kit_Hero_*`): a kit row, its side, its
+// armour star-card health levels (`Affector_Health_*Armor1..4`), its saber
+// (the deflect unlock, the soldier blueprint's specialisation) and the clip
+// family its blueprint names (Hero_Lightsaber_DarthVader → DarthVader).
+export function heroRow(root, kitName, { side = null } = {}) {
+  const kit = follow(root, kitName);
+  const base = kitRow(root, kitName);
+  if (!base) return null;
+  const folder = kitName.split('/').slice(0, 4).join('/') + '/';
+  const names = [...indexOf(root).keys()].filter((n) => n.startsWith(folder));
+  const armour = names.filter((n) => /\/Affector_Health_[^/]*Armor\d$/.test(n)).sort();
+  const blueprint = rootOf(kit).Blueprint?.$asset ?? '';
+  const deflect = names.find((n) => /\/U_Lightsaber_Deflect_[^/]*$/.test(n));
+  const primary = (() => {
+    const gp = follow(root, rootOf(kit).Gameplay);
+    const custom = gp && deref(gp, rootOf(gp).Abilities);
+    const v = (custom?.DefaultAbilities ?? []).find((x) => x?.$asset && slotOf(rootOf(follow(root, x) ?? { objects: [{}], root: 0 })?.Category) === 'primary');
+    return v ? shortName(v.$asset) : null;
+  })();
+  const id = folder.split('/')[3].toLowerCase();
+  return {
+    ...base,
+    id,
+    name: [`ID_CHAR_${id.toUpperCase()}`],
+    side: side ?? sideOf(root, kit),
+    armour: armour.map((n) => follow(root, n)).filter(Boolean).map((a) => rootOf(a).MaxHealth),
+    armour_source: armour.map((n) => `${n}#MaxHealthAffectorAsset.MaxHealth`).join(' '),
+    primary,
+    saber: /Lightsaber/.test(blueprint) ? { blueprint: shortName(blueprint), deflect: deflect ? shortName(deflect) : null } : null,
+    clipPrefix: shortName(blueprint).replace(/^Hero_(Lightsaber|Weapon)_?/, '') || null,
+  };
+}
+
+const REINFORCEMENT_KINDS = { Class_Special_Enforcer: 'enforcer', Class_Special_Jumptrooper: 'aerial', Class_Special_Infiltrator: 'infiltrator' };
+
+// A reinforcement (`Gameplay/Kits/Specials/<Name>/Kit_Special_*`): a kit row
+// and its kind, from the class its gameplay asset names.
+export function reinforcementRow(root, kitName) {
+  const kit = follow(root, kitName);
+  const base = kitRow(root, kitName);
+  if (!base) return null;
+  const gp = follow(root, rootOf(kit).Gameplay);
+  const cls = gp && rootOf(gp).Class?.$asset;
+  return { ...base, id: kitName.split('/')[3], kind: REINFORCEMENT_KINDS[shortName(cls ?? '')] ?? null, side: sideOf(root, kit) };
+}
+
+const VEHICLE_KINDS = { Ground: 'ground', Air: 'air', Stationary: 'stationary', Mount: 'mount', Capital: 'capital', Corvette: 'capital', SpaceBattles: 'air' };
+const ROLES = { EST_Driver: 'driver', EST_Gunner: 'gunner', EST_Passenger: 'passenger', EST_Pilot: 'driver' };
+
+// A vehicle, from its kit (`Kit_Vehicle_*` → its VehicleBlueprint) or its
+// blueprint: health from the `*HealthComponentData`, seats from the entry
+// components in `EntryOrderNumber` order, weapons from each
+// `WeaponComponentData`'s firing data (inline in the blueprint), abilities
+// from the ability set component, overheat from the blueprint's config.
+export function vehicleRow(root, name) {
+  const first = follow(root, name);
+  if (!first) return null;
+  const missing = [];
+  const isKit = rootOf(first).$type === 'WSVehicleCustomizationKitAsset';
+  const bp = isKit ? reach(root, rootOf(first).Blueprint, missing, 'blueprint')?.asset : first;
+  const row = { id: shortName(name), blueprint: bp?.name ?? null, kind: VEHICLE_KINDS[(bp?.name ?? '').split('/')[2]] ?? null };
+  if (!bp) return Object.assign(row, { _missing: missing });
+  // (the largest; a mount's is 1, its rider takes the hits)
+  const health = bp.objects.filter((o) => /HealthComponentData$/.test(o?.$type ?? '') && o.MaxHealth > 0).sort((a, b) => b.MaxHealth - a.MaxHealth)[0];
+  take(row, 'health', bp, health, 'MaxHealth');
+  row.seats = bp.objects
+    .filter((o) => /EntryComponentData$/.test(o?.$type ?? ''))
+    .sort((a, b) => (a.EntryOrderNumber ?? 0) - (b.EntryOrderNumber ?? 0))
+    .map((e) => ({ role: ROLES[e.HudData?.SeatType] ?? (e.EntryOrderNumber === 0 ? 'driver' : 'gunner'), camera: e.CameraIndex ?? null, _source: where(bp, e, 'EntryOrderNumber') }));
+  row.weapons = objectsOf(bp, 'WeaponComponentData').map((w) => {
+    const wfd = deref(bp, w.WeaponFiring);
+    const fn = wfd && deref(bp, wfd.PrimaryFire);
+    const out = { name: w.DamageGiverName || null };
+    if (!fn) return out;
+    take(out, 'rof', bp, fn, 'FireLogic.RateOfFire');
+    take(out, 'speed', bp, fn, 'Shot.InitialSpeed.z');
+    const bolt = fn.Shot?.ProjectileData;
+    const bullet = bolt?.$ref !== undefined ? { asset: bp, obj: deref(bp, bolt) } : reach(root, bolt, missing, 'vehicle projectile');
+    const b = bullet?.obj && (bullet.obj.$type === 'GameDataContainerAsset' ? deref(bullet.asset, bullet.obj.Data) : bullet.obj);
+    if (b) {
+      take(out, 'damage', bullet.asset, b, 'StartDamage');
+      take(out, 'damageEnd', bullet.asset, b, 'EndDamage');
+      const blast = b.Explosion?.$ref !== undefined ? { asset: bullet.asset, obj: deref(bullet.asset, b.Explosion) } : reach(root, b.Explosion, missing, 'explosion');
+      if (blast?.obj) take(out, 'blast', blast.asset, blast.obj, 'BlastDamage');
+    }
+    return out;
+  });
+  const set = objectsOf(bp, 'WSNonCustomizablePlayerAbilitySetComponentData')[0];
+  row.abilities = (set?.Abilities ?? []).filter((v) => v?.$asset).map((v) => shortName(v.$asset));
+  const oh = objectsOf(bp, 'OverheatConfig')[0];
+  if (oh) {
+    row.overheat = {};
+    take(row.overheat, 'perBullet', bp, oh, 'HeatPerBullet');
+    take(row.overheat, 'dropPerSecond', bp, oh, 'HeatDropPerSecond');
+    take(row.overheat, 'penalty', bp, oh, 'OverHeatPenaltyTime');
+  }
+  row._missing = missing;
+  return row;
+}
+
+// ── teams ────────────────────────────────────────────────────────────────
+
+const kitsIn = (root, v, missing, what) => {
+  const list = reach(root, v, missing, what);
+  return (list?.obj.Kits ?? []).filter((k) => k?.$asset).map((k) => k.$asset);
+};
+
+// One side of a level's teams (`Gameplay/Teams/MP/<Era>/Team_<Side>_<Era>_<MAP>`):
+// the kit lists it points at, by row id, the sequel era refused.
+function sideRow(root, era, level, side, refused) {
+  const name = `Gameplay/Teams/MP/${era}/Team_${side}_${era}_${mapCode(level)}`;
+  const team = follow(root, name);
+  if (!team) return null;
+  const t = rootOf(team);
+  const missing = [];
+  // (a refused kit is listed; a refused ability or voice line is only dropped)
+  const keep = (names) => names.filter((n) => (isSequelName(n) ? (refused.push(shortName(n)), false) : true));
+  const drop = (names) => names.filter((n) => !isSequelName(n));
+  const soldiers = keep((deref(team, t.Soldiers)?.Kits ?? []).filter((k) => k?.$asset).map((k) => k.$asset));
+  return {
+    team: name,
+    faction: t.WSFaction ? shortName(t.WSFaction.$asset) : null,
+    classes: soldiers.map((n) => {
+      const [, , , cls] = n.split('/');
+      return `${side[0]}-${era}-${cls}`.toLowerCase();
+    }),
+    classKits: soldiers,
+    heroes: keep(kitsIn(root, t.Heroes, missing, 'heroes')).map((n) => n.split('/')[3].toLowerCase()),
+    heroKits: keep(kitsIn(root, t.Heroes, missing, 'heroes')),
+    reinforcements: keep(kitsIn(root, t.SpecialSoldiers, missing, 'specials')).map((n) => n.split('/')[3]),
+    reinforcementKits: keep(kitsIn(root, t.SpecialSoldiers, missing, 'specials')),
+    vehicles: keep(kitsIn(root, t.Vehicles, missing, 'vehicles')).map(shortName),
+    vehicleKits: keep(kitsIn(root, t.Vehicles, missing, 'vehicles')),
+    heroVehicles: keep(kitsIn(root, t.HeroVehicles, missing, 'hero vehicles')).map(shortName),
+    abilities: drop((t.AllPlayerAbilities ?? []).filter((v) => v?.$asset).map((v) => v.$asset)).map(shortName),
+    emotes: (t.AllPlayerEmotes ?? []).filter((v) => v?.$asset).map((v) => shortName(v.$asset)),
+    voiceLines: drop((t.AllPlayerVoiceLines ?? []).filter((v) => v?.$asset).map((v) => v.$asset)).map(shortName),
+    _missing: missing,
+  };
+}
+
+export function teamRow(root, era, level) {
+  const refused = [];
+  const light = sideRow(root, era, level, 'Light', refused);
+  const dark = sideRow(root, era, level, 'Dark', refused);
+  return { era, level, light, dark, refused: [...new Set(refused)] };
 }

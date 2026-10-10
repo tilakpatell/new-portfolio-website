@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { abilityRow, cardRow, checkSources, classRow, weaponRow } from './bf2017-rulebook.mjs';
+import { abilityRow, cardRow, checkSources, classRow, heroRow, reinforcementRow, teamRow, vehicleRow, weaponRow } from './bf2017-rulebook.mjs';
 
 const ROOT = join(import.meta.dirname, '..', 'fixtures', 'bf2017', 'data');
 const A280C = 'Gameplay/Equipment/Rifles/A280C/Ability_Weapon_BlasterRifle_A280C';
@@ -108,5 +108,47 @@ describe('abilities, cards and classes', () => {
     expect(c.weapons).toContain('a280c');
     expect(c.kits).toEqual(['Kit_L_Assault_Orig_HO']);
     expect(checkSources(c)).toEqual([]);
+  });
+});
+
+describe('heroes, reinforcements, vehicles and teams', () => {
+  it('reads the Rebel team on Hoth, the sequel era refused', () => {
+    const t = teamRow(ROOT, 'Orig', 'hoth_01');
+    expect(t.light.faction).toBe('Faction_Light_Orig');
+    expect(t.light.classes).toContain('l-orig-assault');
+    expect(t.light.heroes).toContain('luke');
+    expect(t.light.heroes).not.toContain('rey');
+    expect(t.refused).toEqual(expect.arrayContaining(['Kit_Hero_Rey', 'Kit_Hero_Finn', 'Kit_Hero_BB8']));
+    expect(t.light.reinforcements).toContain('RebelJumpTrooper');
+    expect(t.light.vehicles).toContain('Kit_Vehicle_ATRT_Rebel');
+    expect(t.light.abilities).toContain('Ability_Weapon_BlasterRifle_A280C');
+    expect(t.dark).toBeNull();
+  });
+
+  it('reads Vader', () => {
+    const h = heroRow(ROOT, 'Gameplay/Kits/Hero/DarthVader/Kit_Hero_DarthVader');
+    expect(h).toMatchObject({ id: 'darthvader', side: 'dark', health: 800, regen: { rate: 50 }, clipPrefix: 'DarthVader' });
+    expect(h.armour).toEqual([850, 875, 900, 950]);
+    expect(h.abilities.map((a) => a.slot)).toEqual(['left', 'middle', 'right']);
+    expect(h.abilities[2].id).toBe('Ability_DarthVader_ForceChoke_02');
+    expect(h.saber.deflect).toBe('U_Lightsaber_Deflect_Vader');
+    expect(checkSources(h)).toEqual([]);
+  });
+
+  it('reads a reinforcement and its kind from its class', () => {
+    const r = reinforcementRow(ROOT, 'Gameplay/Kits/Specials/RebelJumpTrooper/Kit_Special_RebelJumpTrooper');
+    expect(r).toMatchObject({ id: 'RebelJumpTrooper', kind: 'aerial', side: 'light' });
+    expect(r.health).toBeGreaterThan(0);
+  });
+
+  it('reads a vehicle: health, seats, weapons', () => {
+    const v = vehicleRow(ROOT, 'Gameplay/Kits/Vehicle/ATRT/Kit_Vehicle_ATRT_Rebel');
+    expect(v).toMatchObject({ id: 'Kit_Vehicle_ATRT_Rebel', blueprint: 'Gameplay/Vehicles/Mount/ATRT/Mount_ATRT_Rebel', kind: 'mount' });
+    // (a mount's own health is 1, WSMountHealthComponentData: its rider takes the hits)
+    expect(v.health).toBe(1);
+    expect(v.seats[0].role).toBe('driver');
+    expect(v.weapons.length).toBeGreaterThan(0);
+    expect(v.weapons[0].rof).toBeGreaterThan(0);
+    expect(checkSources(v)).toEqual([]);
   });
 });

@@ -55,4 +55,17 @@ describe('the 2017 manifest', () => {
     expect(isSequel('Characters/Hero/KyloRen/x')).toBe(true);
     expect(SEQUEL).toContain('jump_cop');
   });
+
+  it('knows the sequel era by its team, faction, level and hero names', () => {
+    expect(isSequel('Gameplay/Teams/MP/NewEra/Team_Light_NewEra_JA')).toBe(true);
+    expect(isSequel('S1/Gameplay/Kits/Hero/Finn/Kit/Kit_Hero_Finn')).toBe(true);
+    expect(isSequel('Gameplay/Kits/Hero/BB8/Kit/Kit_Hero_BB8')).toBe(true);
+    expect(isSequel('Gameplay/Kits/Hero/BB9E/Kit/Kit_Hero_BB9E')).toBe(true);
+    expect(isSequel('S1/Gameplay/Kits/Hero/Phasma/Kit/Kit_Hero_Phasma')).toBe(true);
+    expect(isSequel('Gameplay/Kits/Hero/Rey/Kit_Hero_Rey')).toBe(true);
+    expect(isSequel('Levels/MP/Crait_01/Crait_01')).toBe(true);
+    expect(isSequel('Gameplay/Kits/Hero/Luke/Kit_Hero_Luke')).toBe(false);
+    expect(isSequel('Gameplay/Kits/Hero/DarthVader/Kit_Hero_DarthVader')).toBe(false);
+    expect(isSequel('Gameplay/Kits/MP/Assault/Kit_L_Assault_Orig_HO')).toBe(false);
+  });
 });
