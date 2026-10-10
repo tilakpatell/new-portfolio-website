@@ -1,10 +1,12 @@
 // A level's light probe from Star Wars Battlefront II (2017) (EA DICE's,
-// used with permission on this non-commercial fan project) as a world's
-// light: the six Radiance faces of one of the level's reflection volumes,
-// fetched from the drop's bucket into lab/assets/bf2017/ (git-ignored),
-// brought to the site's light (scripts/lib/bf2017-sky.mjs) and written at
-// the sizes src/lib/three/levelSky.js loads, as
-// public/textures/galaxy/sky/<name>-probe-<size>-<face>.hdr.
+// used with permission on this non-commercial fan project), published for
+// the owner's lighting lane (this pipeline builds no lighting: the owner's
+// rule of 2026-10-10, 04:40): the six Radiance faces of one of the level's
+// reflection volumes, fetched from the drop's bucket into lab/assets/bf2017/
+// (git-ignored), brought to the site's light (scripts/lib/bf2017-sky.mjs)
+// and written at the game's 128 and at 64, as
+// public/textures/galaxy/sky/<name>-probe-<size>-<face>.hdr, with what each
+// is in docs/superpowers/evidence/bf2017-<world>/skies.md.
 //
 //   node scripts/bf2017-sky.mjs <bucket folder> <probe id> --name hoth [--mean 0.8]
 //
@@ -15,32 +17,22 @@
 // The keys: SUPABASE_URL and BF2017_KEY (or SUPA_KEY) from the environment,
 // never printed; a face already on disk is not fetched again.
 
-import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FloatType } from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { parseArgs } from './lib/args.mjs';
-import { localPath, objectUrl } from './lib/bf2017-paths.mjs';
+import { bucketFile } from './lib/bf2017-bucket.mjs';
 import { encodeRgbe, halve, normalise } from './lib/bf2017-sky.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const FACES = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
-// (levelSky.js's probeSizeFor: the game's 128 for mid and up, half for low)
+// (the game's own 128, and half of it for a weak device)
 const SIZES = [128, 64];
 
 async function face(root, bucketPath) {
-  const file = localPath(root, bucketPath);
-  if (!existsSync(file)) {
-    const base = process.env.SUPABASE_URL;
-    const key = process.env.BF2017_KEY || process.env.SUPA_KEY;
-    if (!base || !key) throw new Error('Set SUPABASE_URL and BF2017_KEY (or SUPA_KEY) to fetch the probe.');
-    const res = await fetch(objectUrl(base, 'bf2017-assets', bucketPath), { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-    if (!res.ok) throw new Error(`${bucketPath}: missing from the bucket (${res.status})`);
-    await mkdir(dirname(file), { recursive: true });
-    await writeFile(file, Buffer.from(await res.arrayBuffer()));
-  }
+  const file = await bucketFile(root, bucketPath);
   const buf = await readFile(file);
   const l = new HDRLoader();
   l.setDataType(FloatType);
