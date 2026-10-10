@@ -18,10 +18,11 @@ export default function DeployScreen({ deploy, points = 0, name = (o) => o.id, t
   const chosen = rows.find((r) => r.id === picked && r.affordable) ?? first;
   // (the highlight is what Enter deploys: the page hears the first one too)
   const firstId = first?.id ?? null;
+  const tell = useRef(null);
+  tell.current = () => first && onPick?.(first);
   useEffect(() => {
     firstButton.current?.focus({ preventScroll: true });
-    if (first) onPick?.(first);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    tell.current();
   }, [firstId]);
   if (!deploy?.open) return null;
   return (
