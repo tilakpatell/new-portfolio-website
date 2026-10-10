@@ -249,7 +249,7 @@ describe('createGameMaterial', () => {
 
   it('snows a snow variation from the start: the snow overlay at its whole amount', () => {
     const m = make({ ...PROPS, variation: { name: 'Box_M_01_A_Snow', snow: true } });
-    expect(features(m).some((f) => f.startsWith('overlay:'))).toBe(true);
+    expect(features(m)).toContain('overlay:snow');
     expect(m.userData.game.snow).toBe(true);
     expect(make(PROPS).userData.game.snow).toBeUndefined();
   });

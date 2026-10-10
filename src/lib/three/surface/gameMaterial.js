@@ -166,7 +166,7 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
     return m;
   }
   if (variation?.snow) {
-    overlays = [...overlays, snowOverlay(SNOW_FULL, three)];
+    overlays = [...overlays, Object.assign(snowOverlay(SNOW_FULL, three), { overlayName: 'snow' })];
     game.snow = true;
   }
   const allow = (f) => tier !== 'mid' || ON_MID.has(f);
