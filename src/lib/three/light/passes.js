@@ -13,6 +13,8 @@
 //   `denoise` after it filters the GI and composites again;
 // - ao: GTAO at half resolution, denoised unless TRAA follows, multiplied in;
 // - ssr: blended over (non-metals left out, SSRNode's default);
+// - volumes: the level's volumetric cones and glows (volumetrics.js), their
+//   quarter-resolution pass brought up over the depth and added;
 // - bloom: added, the house's numbers unless the pass says;
 // - godrays: the lit haze added faintly in the sun's colour;
 // - lensflare: the bloom's ghosts, blurred, added;
@@ -139,6 +141,9 @@ export async function buildChain(renderer, passes) {
         node = tsl.blendColor(node, s);
         break;
       }
+      case 'volumes':
+        node = p.volumetrics.pass(node, { depth: g.depth, camera: p.camera ?? g.camera });
+        break;
       case 'bloom': {
         const b = keep(mods.bloom.bloom(node, p.strength ?? BLOOM.strength, p.radius ?? BLOOM.radius, p.threshold ?? BLOOM.threshold));
         g.bloom = b;

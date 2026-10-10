@@ -59,6 +59,18 @@ describe('passesFor', () => {
   });
 });
 
+describe('volumes', () => {
+  it('on ultra and high after SSR and before the bloom, when a level’s volumetrics are given; never on mid, low or the classic renderer', () => {
+    const vols = { pass: () => null };
+    const with_ = { ...refs, volumetrics: vols };
+    expect(kinds(passesFor('ultra', hoth.sunny, 'webgpu', with_))).toEqual(['render', 'ssgi', 'ao', 'ssr', 'volumes', 'bloom', 'godrays', 'lensflare', 'lut', 'traa', 'output']);
+    expect(kinds(passesFor('high', hoth.sunny, 'nodes-webgl', with_))).toEqual(['render', 'ssgi', 'denoise', 'ao', 'volumes', 'bloom', 'lut', 'smaa', 'output']);
+    expect(passesFor('ultra', hoth.sunny, 'webgpu', with_).find((p) => p.kind === 'volumes').volumetrics).toBe(vols);
+    expect(kinds(passesFor('mid', hoth.sunny, 'webgpu', with_))).not.toContain('volumes');
+    expect(kinds(passesFor('ultra', hoth.sunny, 'webgl', with_))).not.toContain('volumes');
+  });
+});
+
 describe('shed', () => {
   it('drops SSGI, then SSR, then god rays and flare, then AO', () => {
     const ultra = passesFor('ultra', hoth.sunny, 'webgpu', refs);
