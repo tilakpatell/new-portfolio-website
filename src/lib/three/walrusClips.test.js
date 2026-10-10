@@ -1,0 +1,39 @@
+import { describe, expect, it } from 'vitest';
+import { SEQUEL } from '../../../scripts/lib/bf2017-manifest.mjs';
+import { HERO_SET, HUMANOID_SET, PACKS, candidates, resolveGame } from './walrusClips';
+
+const shaped = (map) => {
+  for (const [k, v] of Object.entries(map)) {
+    if (typeof v === 'string') continue;
+    expect(Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'string'), k).toBe(true);
+  }
+};
+
+describe('the site’s clip names on the game’s', () => {
+  it('maps a hero’s strokes, their returns and their block onto the game’s own', () => {
+    expect(HERO_SET('Luke')['sword.light.a']).toBe('A_Luke_AttackLoop_Strike1');
+    expect(HERO_SET('Luke')['sword.light.a.rec']).toEqual(['A_Luke_AttackLoop_Strike1_BackToIdle', 'A_Luke_AttackLoop_Strike1_BackToIdle_02']);
+    expect(HERO_SET('Luke')['sword.heavy.a']).toBe('A_Luke_AttackLoop_Strike1_V2');
+    expect(HERO_SET('Vader')['sword.block'][0]).toBe('A_Vader_Stand_Block_SwingRight_01');
+    expect(HERO_SET('Luke').idle).toContain('L_Luke_Stand_Idle_01');
+  });
+
+  it('takes the first spelling the pack has, else the fallback’s, else nothing', () => {
+    expect(resolveGame(HERO_SET('Luke'), 'sword.block', (n) => n === 'A_Luke_Block_Stagger_Fwd_02')).toBe('A_Luke_Block_Stagger_Fwd_02');
+    expect(resolveGame(HERO_SET('Luke'), 'die.blown', (n) => n === 'A_Luke_Defeated_01')).toBe('A_Luke_Defeated_01');
+    expect(resolveGame(HERO_SET('Vader'), 'hit.chest', (n) => n === 'A_Vader_Stagger_Bwd_01')).toBe('A_Vader_Stagger_Bwd_01');
+    expect(resolveGame(HUMANOID_SET, 'nope', () => true)).toBe(null);
+  });
+
+  it('spells a hero every way the game does (Han is HanSolo and Han)', () => {
+    expect(candidates(HERO_SET(['HanSolo', 'Han']), 'die')).toContain('A_Han_Defeated_01');
+  });
+
+  it('is names all the way down, and nothing of the sequels', () => {
+    shaped(HUMANOID_SET);
+    shaped(HERO_SET('Luke'));
+    for (const k of Object.keys(PACKS)) for (const s of SEQUEL) expect(k.includes(s), k).toBe(false);
+    expect(Object.keys(PACKS)).toContain('humanoid');
+    expect(Object.keys(PACKS)).toContain('luke');
+  });
+});
