@@ -106,7 +106,7 @@ import { isSequel, cutsFor, fullCuts, partsOf, readManifest } from './lib/bf2017
 import { glbJson, imagePath, inBucket, localPath, mapPath } from './lib/bf2017-paths.mjs';
 import { resolveImage } from './lib/bf2017-textures.mjs';
 import { BASIS_LZ, dropLevels, ktx2Info } from './lib/ktx2-levels.mjs';
-import { slotTransfer, withTransfer } from './lib/ktx2-colour.mjs';
+import { loadGameWord, slotTransfer, wantedTransfer, withTransfer } from './lib/ktx2-colour.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
 import { joinSkinned, shareSkins } from './lib/rig-parts.mjs';
 import { glbTextures } from '../src/lib/glbTextures.js';
@@ -364,6 +364,7 @@ const opaqueColour = () => async (doc) => {
 // mip levels. Returns how many it took.
 export async function nativeMaps(doc, spec) {
   let n = 0;
+  const word = loadGameWord(spec.root);
   for (const t of doc.getRoot().listTextures()) {
     const name = t.getName();
     if (!name.startsWith(NATIVE)) continue;
@@ -372,8 +373,11 @@ export async function nativeMaps(doc, spec) {
     const bytes = new Uint8Array(await readFile(file));
     const { width, scheme } = ktx2Info(bytes);
     const slots = listTextureSlots(t);
-    const colour = slots.some((s) => slotTransfer(s) === 'srgb');
-    const want = colour ? spec.tex : spec.maps;
+    const bySlot = slots.some((s) => slotTransfer(s) === 'srgb');
+    // (the game's own word on the map when textures.jsonl is fetched, else the slot's)
+    const said = word ? wantedTransfer(file, { word }) : null;
+    const colour = said ? said === 'srgb' : bySlot;
+    const want = bySlot ? spec.tex : spec.maps;
     const drop = Math.max(0, Math.round(Math.log2(width / want)));
     // (an ETC1S map, BasisLZ, keeps codebooks across its levels, so its top
     // can't be taken off: whole where it fits, else the decoded image goes

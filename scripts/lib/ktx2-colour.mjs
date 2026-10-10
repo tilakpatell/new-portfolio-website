@@ -14,10 +14,14 @@
 //   transferOf(buf) → 'srgb' | 'linear' | 'unknown'
 //   withTransfer(buf, 'srgb' | 'linear') → Buffer (the same buffer when it already says so)
 //   mapKind(name) → 'colour' | 'data' | 'unknown'     (a bucket path, a slug or a sized file name)
-//   wantedTransfer(name) → 'srgb' | 'linear' | null   (null: unknown, leave the file as it is)
+//   gameWord(jsonl) → Map(stem → true | false)         (web/textures.jsonl's own `srgb` flag per map: the truth)
+//   loadGameWord(root) → Map | null                     (the same from lab/assets/bf2017/, when it is there)
+//   wantedTransfer(name, { word }) → 'srgb' | 'linear' | null   (the game's word first, the suffix rule after; null: unknown)
 //   slotTransfer(slot) → 'srgb' | 'linear'            (a glTF slot: baseColor and emissive are sRGB)
 //   auditKtx2(name, buf) → { name, kind, transfer, wanted, ok }
 //   summarise(rows) → { files, colour: { srgb, linear, unknown }, data: { … }, unknown, wrong: [names] }
+
+import { existsSync, readFileSync } from 'node:fs';
 
 const ID = [0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a];
 export const TRANSFER = { linear: 1, srgb: 2 };
@@ -74,17 +78,64 @@ export function mapKind(name) {
   return 'unknown';
 }
 
-export function wantedTransfer(name) {
+// The game's own word: textures.jsonl names each of its 17,511 maps'
+// format (BC7_SRGB and the like against BC7_UNORM; its `srgb` field is
+// false on every row and says nothing). It overrules the suffix
+// rule, which is a heuristic: 103 of the game's 3,780 `_cs` maps and 225 of
+// its 1,257 `_c` maps are linear, and 169 `_w` and 164 `_m` masks are sRGB
+// (measured 2026-10-10). A derived map (`__normal`, `__orm_`) is data
+// whatever its source says.
+export function gameWord(jsonl) {
+  const out = new Map();
+  for (const line of String(jsonl).split('\n')) {
+    if (!line.trim()) continue;
+    let row;
+    try {
+      row = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const stem = String(row.file ?? row.name ?? '')
+      .split('/')
+      .pop()
+      .toLowerCase()
+      .replace(/\.(png|ktx2)$/, '');
+    if (!stem) continue;
+    // (the format is the word: BC7_SRGB against BC7_UNORM. The export's
+    // `srgb` field is false on every row, so it decides only without a format)
+    const fmt = String(row.format ?? '');
+    const srgb = fmt ? /SRGB/i.test(fmt) : typeof row.srgb === 'boolean' ? row.srgb : null;
+    if (srgb != null) out.set(stem, srgb);
+  }
+  return out;
+}
+
+export function loadGameWord(root) {
+  for (const f of [`${root}/web/textures.jsonl`, `${root}/textures.jsonl`]) if (existsSync(f)) return gameWord(readFileSync(f, 'utf8'));
+  return null;
+}
+
+// the game's name under a pack slug: the slug's own stem, its derived
+// marker and the uploader's disambiguating number taken off
+const sourceStem = (name) => stemOf(name).replace(/__(normal|orm_[0-9a-f]+)$/, '');
+
+export function wantedTransfer(name, { word = null } = {}) {
+  const stem = stemOf(name);
+  if (/__normal$|__orm_[0-9a-f]+$/.test(stem)) return 'linear';
+  const said = word?.get(sourceStem(name));
+  if (typeof said === 'boolean') return said ? 'srgb' : 'linear';
   const kind = mapKind(name);
   return kind === 'colour' ? 'srgb' : kind === 'data' ? 'linear' : null;
 }
 
 export const slotTransfer = (slot) => (/baseColor|emissive|diffuse|sheenColor|specularColor/i.test(String(slot)) ? 'srgb' : 'linear');
 
-export function auditKtx2(name, buf) {
+export function auditKtx2(name, buf, { word = null } = {}) {
   const transfer = transferOf(buf);
-  const wanted = wantedTransfer(name);
-  return { name, kind: mapKind(name), transfer, wanted, ok: wanted == null || transfer === wanted };
+  const wanted = wantedTransfer(name, { word });
+  const said = word?.get(sourceStem(name));
+  const kind = typeof said === 'boolean' && !/__(normal|orm_)/.test(stemOf(name)) ? (said ? 'colour' : 'data') : mapKind(name);
+  return { name, kind, transfer, wanted, ok: wanted == null || transfer === wanted, ...(typeof said === 'boolean' ? { game: said ? 'srgb' : 'linear' } : {}) };
 }
 
 export function summarise(rows) {

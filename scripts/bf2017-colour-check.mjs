@@ -6,15 +6,19 @@
 // maps and its index row. A map tagged wrong is read wrong by every loader
 // that trusts the file (three's KTX2Loader does), and came out washed pale.
 //
-//   node scripts/bf2017-colour-check.mjs [--check] [--fix] [--formats <textures.jsonl>] [--published [--base <url>]] [folder …]
+//   node scripts/bf2017-colour-check.mjs [--check] [--fix] [--formats <textures.jsonl>] [--packs] [--published [--base <url>]] [folder …]
 //
 //   check     exit 1 on any map tagged wrong, or a role short of a map
 //   fix       stamp the right transfer function into each wrong file in
 //             place (a byte; nothing re-encoded) and say how many
 //   formats   the bucket's web/textures.jsonl (fetched: `node scripts/bf2017-fetch.mjs --raw textures.jsonl`):
-//             each map's game `format` (BC7_SRGB, BC7_UNORM, BC5 …) decides
-//             sRGB or linear ahead of the suffix rule, and a map the rule
-//             calls unknown gets its answer from here
+//             each map's own `srgb` flag (the game's word) decides ahead of
+//             the suffix rule, and a map the rule calls unknown gets its
+//             answer from here; without the flag, lab/assets/bf2017/web/
+//             textures.jsonl is read when it is there
+//   packs     write the game's word into each level pack's level.json and
+//             recipes.json `tex` rows (`srgb: true | false` per slug), which
+//             the loader obeys (levelGltf.js); with --fix the files too
 //   published the KTX2 files src/data/galaxyAssets.json names (the crew's maps,
 //             the published packs), each asked for its first kilobyte at its
 //             public URL (the DFD is in the header), audited the same way;
@@ -29,7 +33,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
-import { auditKtx2, stemOf, summarise, withTransfer } from './lib/ktx2-colour.mjs';
+import { auditKtx2, gameWord, loadGameWord, summarise, wantedTransfer, withTransfer } from './lib/ktx2-colour.mjs';
 import { readManifest } from './lib/asset-manifest.mjs';
 import { remotePath } from '../src/lib/assetPath.js';
 
@@ -48,22 +52,29 @@ function walk(dir, out = []) {
   return out;
 }
 
-// the game's own word on a map, from textures.jsonl: sRGB where its format says so
+// the game's own word on a map, from textures.jsonl (ktx2-colour.mjs's gameWord), as 'srgb' | 'linear'
 export function formatsOf(jsonl) {
-  const out = new Map();
-  for (const line of jsonl.split('\n')) {
-    if (!line.trim()) continue;
-    let row;
-    try {
-      row = JSON.parse(line);
-    } catch {
+  return new Map([...gameWord(jsonl)].map(([k, v]) => [k, v ? 'srgb' : 'linear']));
+}
+
+// The game's word written into a pack: each `tex` row gains `srgb` (true or
+// false) from textures.jsonl by its slug, a derived map false, a slug the
+// game does not list by the suffix rule, an unknown left without. The
+// loader reads it (levelGltf.js). Returns the counts.
+export function stampPackRows(tex, word) {
+  const n = { srgb: 0, linear: 0, unknown: 0, game: 0 };
+  for (const [slug, row] of Object.entries(tex ?? {})) {
+    if (!row || typeof row !== 'object') continue;
+    const want = wantedTransfer(slug, { word });
+    if (want == null) {
+      n.unknown++;
       continue;
     }
-    const name = String(row.name ?? row.file ?? '').split('/').pop().toLowerCase().replace(/\.(png|ktx2)$/, '');
-    const fmt = String(row.format ?? '').toUpperCase();
-    if (name && fmt) out.set(name, /SRGB/.test(fmt) ? 'srgb' : 'linear');
+    if (word?.has(slug.replace(/__(normal|orm_[0-9a-f]+)$/, '').replace(/_\d+$/, ''))) n.game++;
+    row.srgb = want === 'srgb';
+    n[want]++;
   }
-  return out;
+  return n;
 }
 
 export function auditFolder(dir, { formats = null, fix = false } = {}) {
@@ -72,14 +83,7 @@ export function auditFolder(dir, { formats = null, fix = false } = {}) {
   for (const file of walk(dir)) {
     const buf = readFileSync(file);
     const name = relative(ROOT, file);
-    const row = auditKtx2(name, buf);
-    const known = formats?.get(stemOf(name).replace(/__(normal|orm_[0-9a-f]+)$/, ''));
-    // (a derived map is data whatever its source's format; the game's format decides the rest)
-    if (known && !/__(normal|orm_)/.test(stemOf(name))) {
-      row.wanted = known;
-      row.kind = known === 'srgb' ? 'colour' : 'data';
-      row.ok = row.transfer === known;
-    }
+    const row = auditKtx2(name, buf, { word: formats });
     if (!row.ok && fix) {
       writeFileSync(file, withTransfer(buf, row.wanted));
       row.transfer = row.wanted;
@@ -144,7 +148,20 @@ const headBytes = async (url) => {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
-  const formats = args.formats ? formatsOf(readFileSync(resolve(args.formats), 'utf8')) : null;
+  const formats = args.formats ? gameWord(readFileSync(resolve(args.formats), 'utf8')) : loadGameWord(join(ROOT, 'lab', 'assets', 'bf2017'));
+  if (formats) console.log(`the game's word: ${formats.size} maps (textures.jsonl)`);
+  if (args.packs) {
+    for (const dir of readdirSync(join(ROOT, PACKS, 'levels'))) {
+      for (const f of ['level.json', 'recipes.json']) {
+        const file = join(ROOT, PACKS, 'levels', dir, f);
+        if (!existsSync(file)) continue;
+        const json = JSON.parse(readFileSync(file, 'utf8'));
+        const n = stampPackRows(json.tex, formats);
+        writeFileSync(file, `${JSON.stringify(json)}\n`);
+        console.log(`${relative(ROOT, file).padEnd(40)} tex rows: sRGB ${n.srgb} linear ${n.linear} unknown ${n.unknown} (${n.game} by the game's word)`);
+      }
+    }
+  }
   const folders = args._.length ? args._.map((f) => resolve(f)) : [join(ROOT, PACKS)];
   let wrong = 0;
   for (const dir of folders) {

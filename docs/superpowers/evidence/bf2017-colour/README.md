@@ -39,3 +39,27 @@ The owner attached a Supabase connector; the storage host itself stays refused b
 **Every published file answers.** All 1,246 entries of `src/data/galaxyAssets.json` are in `site-assets` at `<hash>/<path>` with exactly the manifest's bytes and `max-age=31536000`; the 492 published KTX2 maps among them. The mirror manifest (`assets-manifest.json`) is empty on this branch, so nothing of the site's own is served from the bucket. What SQL cannot tell is a published map's colour-space tag (the bytes are not in the database): `node scripts/bf2017-colour-check.mjs --published` does that once the host is reachable.
 
 **The maps the packs wanted.** Hoth's `recipes.json` names 11 maps and the pack holds 10; the one it lacked at build, `T_StarCruiserMC80Panels_01_NS`, is still not in the bucket (no object under `web/textures/` matches `starcruisermc80panels_01` at 22:57 UTC): it is one of the 1,788 maps the desktop never encoded (lane D's list, `web_opt/_surfaces_list.tsv`). The space packs carry no `recipes.json` on `main`.
+
+## The game's word (23:05 UTC, the bucket reachable)
+
+`web/textures.jsonl` read: 17,511 rows, 17,374 distinct maps. Its `srgb` field is false on every row; the `format` is the word. By suffix, the game's own formats against the suffix rule (sRGB / linear):
+
+| suffix | maps | sRGB | linear | the rule said |
+| --- | --: | --: | --: | --- |
+| `_cs` | 3,780 | 3,677 | 103 | colour |
+| `_c` | 1,257 | 1,032 | 225 | colour |
+| `_ca` | 287 | 285 | 2 | colour |
+| `_d` | 98 | 82 | 16 | colour |
+| `_co` | 77 | 77 | 0 | colour |
+| `_nam` | 1,722 | 16 | 1,706 | data |
+| `_n` | 1,215 | 5 | 1,210 | data |
+| `_rgba` | 519 | 129 | 390 | data |
+| `_m` | 383 | 164 | 219 | data |
+| `_w` | 262 | 169 | 93 | data |
+| `_aosl` | 272 | 9 | 263 | data |
+| `_rgb` | 199 | 58 | 141 | data |
+| (no suffix) | 2,331 | 256 | 2,075 | unknown |
+
+So the format decides and the suffix rule is the fallback. Over the three packs with the game's word: 307 colour maps sRGB, 593 data maps linear, 7 unknown (swatches, not in the game's list); 21 maps the rule had called colour are linear in the game (`t_kam_cargometal_01_light_cs`, `t_kam_corridorlarge_wall2_01_cs` and `_e`, `t_kam_corridorlargerims_01_cs` and `_e`, among them) and are now stamped linear with the word in their pack rows. Every pack's `tex` row carries `srgb`: Hoth 51 sRGB and 98 linear, Hoth's recipes 4 and 6, Endor 37 and 77, Kamino 65 and 128 (2 unknown).
+
+**Every published file answers** (`node scripts/assets-check.mjs`, 23:00 UTC): 1,246 of 1,246 right, 21.5 s. **Every published KTX2 says what it is** (`--published`): 492 files, 460 data maps linear, 32 unknown (the `_wm` weathering masks, the site's own fx sheets and sky maps), 0 wrong, 0 unreachable; the crew's published maps are all data (their colour maps are inside their GLBs).

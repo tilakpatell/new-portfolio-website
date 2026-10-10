@@ -8,7 +8,7 @@ The site serves the game’s textures as the bucket’s KTX2, never re-encoded (
 
 ## Decision
 
-The file says what it is. Every writer in the pipeline stamps the right transfer function into each KTX2 it writes (a colour map sRGB, a data map linear, by DICE’s suffix or the glTF slot it fills: `scripts/lib/ktx2-colour.mjs`), the files on `main` are stamped in place, and `scripts/bf2017-colour-check.mjs --check` holds every pack to it. The loaders keep forcing sRGB on their colour keys as a belt to the braces, so a map the bucket still holds unstamped reads right too. A map the rule cannot name is left as it is; the game’s `textures.jsonl` format decides it when the bucket is reachable.
+The file says what it is. Every writer in the pipeline stamps the right transfer function into each KTX2 it writes (a colour map sRGB, a data map linear, by DICE’s suffix or the glTF slot it fills: `scripts/lib/ktx2-colour.mjs`), the files on `main` are stamped in place, and `scripts/bf2017-colour-check.mjs --check` holds every pack to it. The loaders keep forcing sRGB on their colour keys as a belt to the braces, so a map the bucket still holds unstamped reads right too. The game’s own format in `web/textures.jsonl` (BC7_SRGB against BC7_UNORM) is the word and comes first; DICE’s suffixes decide only a map the game does not list (103 of its 3,780 `_cs` maps are linear, 169 of its 262 `_w` masks sRGB). The word rides in each pack’s `tex` rows (`srgb` per slug) and the loaders obey it over their slot rules.
 
 ## Consequences
 
@@ -20,4 +20,5 @@ The file says what it is. Every writer in the pipeline stamps the right transfer
 ## Revisit when
 
 - The desktop’s encoder tags colour maps sRGB itself (`tool/ktx2_encode.py`): the stamp becomes a no-op and the audit still holds.
-- `textures.jsonl`’s `format` disagrees with a suffix the rule names: the rule changes, with a test row, never the file alone.
+- The export’s `srgb` field starts carrying a value (it is false on every row today): `gameWord` can read it ahead of the format.
+- three’s GLTFLoader stops forcing sRGB on a base-colour slot, or a published native model is found carrying a game-linear colour map: the import then writes the word into the material’s extras and `gltf.js` obeys it.

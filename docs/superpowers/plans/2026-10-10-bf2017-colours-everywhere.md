@@ -45,20 +45,19 @@
 - [x] `sites/index.js`’s `siteOf` defaults `look.scanned` to `'bf2017'`; `sites.test.js` pins every landable world; `galaxy-check.mjs` counts scan fetches (`scans cc0 n game n`, `SCANS=game` fails a cc0 fetch).
 - [x] Before and after shots of tatooine, endor and naboo at high in `docs/superpowers/evidence/bf2017-colour/`.
 
-### Task 5: The game’s word on every map (the bucket)
+### Task 5: The game’s word on every map (done, 23:05 UTC)
 
-- [ ] `node --env-file=.env.local scripts/bf2017-fetch.mjs --raw textures.jsonl`, then `node scripts/bf2017-colour-check.mjs --check --formats lab/assets/bf2017/web/textures.jsonl`: the seven unknowns decided, any map where the suffix rule and the game disagree listed; fix the rule (`COLOUR`/`DATA` in `ktx2-colour.mjs`, with a test row each) rather than the file where they differ.
-- [ ] Commit `The audit reads the game’s own format for every map`.
+- [x] `textures.jsonl` fetched; the game’s format is the word (`gameWord`), the suffix rule the fallback; 21 of the packs’ maps that the rule called colour are linear in the game and are stamped so; the word written into every pack’s `tex` rows (`--packs`) and obeyed by the loaders (`gameWordOf`); every writer reads it from `lab/assets/bf2017/web/textures.jsonl`.
 
 ### Task 6: The crew’s published maps carry the stamp (the bucket)
 
 - [ ] `node --env-file=.env.local scripts/bf2017-recipes.mjs --crew all` (the writer now stamps), `node scripts/assets-publish.mjs --dry` then without, `node scripts/assets-check.mjs`; commit `src/data/galaxyAssets.json`.
 - [ ] The audit over the re-made `crew/tex/` before publishing: zero wrong.
 
-### Task 7: The dictionary filled (the bucket)
+### Task 7: The dictionary filled (the names; the depots wait on the desktop)
 
-- [ ] `node --env-file=.env.local scripts/bf2017-fetch.mjs --raw materials.jsonl` and `data 'Objects/**/*Variation*' 'Shaders/**/*Preset*'`, then `node scripts/bf2017-shader-names.mjs` (and `--depots <shaderdepots.jsonl>` on the desktop): `src/data/bf2017/shaderParams.json`, the resolved share in the hand-off (the gate: ≥ 90 % of the depot parameters by count).
-- [ ] Commit `The shader depots’ parameter names, resolved`.
+- [x] `materials.jsonl` and every `*Variation*` and `*Preset*` record fetched; `node scripts/bf2017-shader-names.mjs` writes `src/data/bf2017/shaderParams.json` (the count in the hand-off).
+- [ ] `--depots <shaderdepots.jsonl>` on the desktop (`maps_work/`, not in the bucket): the resolved share (the gate: ≥ 90 % by count).
 
 ### Task 8: The variation chain (the colour lane’s tasks 2 to 6)
 

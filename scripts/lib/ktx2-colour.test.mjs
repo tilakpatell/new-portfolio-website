@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ktx2Info } from './ktx2-mips.mjs';
-import { auditKtx2, mapKind, slotTransfer, stemOf, summarise, transferOf, wantedTransfer, withTransfer } from './ktx2-colour.mjs';
+import { auditKtx2, gameWord, mapKind, slotTransfer, stemOf, summarise, transferOf, wantedTransfer, withTransfer } from './ktx2-colour.mjs';
 
 const fixture = (f) => readFileSync(new URL(`../fixtures/bf2017/ktx2/${f}`, import.meta.url));
 const colour = fixture('t_arcticbase_rock_small_03_c.128.ktx2'); // a game colour map the encode tagged linear
@@ -70,5 +70,37 @@ describe('the audit', () => {
     expect(unknown).toMatchObject({ kind: 'unknown', ok: true });
     const s = summarise([bad, auditKtx2('tex/t_o_kam_rimplaza_s_01_nam__normal.16.ktx2', normal), unknown]);
     expect(s).toEqual({ files: 3, colour: { srgb: 0, linear: 1, unknown: 0 }, data: { srgb: 0, linear: 1, unknown: 0 }, unknown: 1, wrong: ['tex/t_arcticbase_rock_small_03_c.128.ktx2'] });
+  });
+});
+
+describe('the game’s own word', () => {
+  const jsonl = [
+    '{"name":"Objects/X/T_Kam_Wall_01_CS","file":"textures/objects/x/t_kam_wall_01_cs.png","format":"BC7_UNORM","srgb":false}',
+    '{"name":"Objects/X/T_Crate_01_CS","file":"textures/objects/x/t_crate_01_cs.png","format":"BC7_SRGB","srgb":false}',
+    '{"name":"Objects/X/T_Crate_01_W","file":"textures/objects/x/t_crate_01_w.png","format":"BC7_SRGB","srgb":false}',
+    'not json',
+    '{"name":"Objects/X/T_Old_01_C","file":"textures/objects/x/t_old_01_c.png","format":"BC1_UNORM"}',
+  ].join('\n');
+  const word = gameWord(jsonl);
+
+  it('reads the format per map, by its file’s stem (the export’s srgb field is false on every row and is ignored where a format is given)', () => {
+    expect(word.get('t_kam_wall_01_cs')).toBe(false);
+    expect(word.get('t_crate_01_cs')).toBe(true);
+    expect(word.get('t_old_01_c')).toBe(false);
+    expect(word.size).toBe(4);
+  });
+
+  it('overrules the suffix rule, and leaves a derived map data whatever its source says', () => {
+    expect(wantedTransfer('tex/t_kam_wall_01_cs.512.ktx2', { word })).toBe('linear');
+    expect(wantedTransfer('tex/t_kam_wall_01_cs.512.ktx2')).toBe('srgb');
+    expect(wantedTransfer('tex/t_crate_01_w.256.ktx2', { word })).toBe('srgb');
+    expect(wantedTransfer('tex/t_crate_01_w.256.ktx2')).toBe('linear');
+    expect(wantedTransfer('t_crate_01_cs__orm_a2c9de6a.256.ktx2', { word })).toBe('linear');
+    expect(wantedTransfer('t_unlisted_01_cs', { word })).toBe('srgb');
+  });
+
+  it('audits with the game’s word and says so', () => {
+    const row = auditKtx2('tex/t_kam_wall_01_cs.128.ktx2', withTransfer(colour, 'srgb'), { word });
+    expect(row).toMatchObject({ kind: 'data', transfer: 'srgb', wanted: 'linear', ok: false, game: 'linear' });
   });
 });

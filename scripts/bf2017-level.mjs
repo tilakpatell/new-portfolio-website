@@ -43,7 +43,7 @@ import { glbJson, imagePath, imageUris, inBucket } from './lib/bf2017-paths.mjs'
 import { buildPack, cropHeights, fillHoles, glbTriangles, heightsLayer, lodFile, mergeHeights, readMap, rewriteImageUris, terrainFrame } from './lib/bf2017-level.mjs';
 import { LOD, capIndex, texSizeFor } from '../src/lib/level/lod.js';
 import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
-import { wantedTransfer, withTransfer } from './lib/ktx2-colour.mjs';
+import { loadGameWord, wantedTransfer, withTransfer } from './lib/ktx2-colour.mjs';
 import { encodePng16 } from './lib/png16.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -161,6 +161,9 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
 // tex/<slug>.<size>.ktx2, one file a distinct size. The meshes name
 // tex/<slug>.ktx2; level.json's `tex` says which size each tier takes.
 async function writeTextures(env, uris, radiusOf, { out, tiers, dry }) {
+  // (the game's own word on each map's colour space, textures.jsonl's srgb
+  // flag, when it has been fetched; the suffix rule otherwise)
+  const word = loadGameWord(CACHE);
   const slugs = new Map();
   const sizes = {}; // slug → { tier: size }
   const bytes = Object.fromEntries(tiers.map((t) => [t, 0]));
@@ -189,8 +192,11 @@ async function writeTextures(env, uris, radiusOf, { out, tiers, dry }) {
       const size = Math.min(texSizeFor(radiusOf.get(uri) ?? 1, tier, /__(normal|orm)/.test(uri)), info.width);
       sizes[slug][tier] = size;
       if (!written.has(size)) {
-        // (and told what it is: a colour map sRGB, a data map linear, whatever the encode wrote; ktx2-colour.mjs)
-        const want = wantedTransfer(uri);
+        // (and told what it is: the game's word, else a colour map sRGB and a
+        // data map linear by suffix, whatever the encode wrote; the row says
+        // it too, for the loader: ktx2-colour.mjs)
+        const want = wantedTransfer(uri, { word });
+        if (want) sizes[slug].srgb = want === 'srgb';
         const k = withTransfer(dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1)), want ?? 'linear');
         written.set(size, k.length);
         if (!dry) {
