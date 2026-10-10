@@ -5,6 +5,7 @@ import iconsApart from './scripts/icons-apart.mjs'
 import prerender from './scripts/prerender.mjs'
 import packs from './scripts/packs.mjs'
 import assetManifest from './scripts/assets-manifest.mjs'
+import bf2Dev from './scripts/bf2-dev.mjs'
 
 export default defineConfig({
   // each react-icons icon a module of its own, so the entry chunk carries
@@ -13,7 +14,9 @@ export default defineConfig({
   // and search (scripts/prerender.mjs), and each world's install pack
   // (scripts/packs.mjs), and the heavy assets' manifest, only the entries
   // still true of public/ (scripts/assets-manifest.mjs)
-  plugins: [iconsApart(), react(), prerender(), packs(), assetManifest()],
+  // (and, in dev with BF2_ROOT set, the local Battlefront export at /bf2/:
+  // scripts/bf2-dev.mjs; nothing when it is unset)
+  plugins: [iconsApart(), react(), prerender(), packs(), assetManifest(), bf2Dev()],
   // (the icons' modules import react-icons' own GenIcon: bundled up front in dev)
   optimizeDeps: { include: ['react-icons/lib'] },
   base: '/',
