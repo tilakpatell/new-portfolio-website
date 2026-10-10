@@ -22,6 +22,9 @@
 // layBattle(sys, battle, { now, tier }) → createBattle's options for the
 // battle gcw.js has on there (its sides by team: battleAt's `sides`), with
 // its `kind`, and no ticket end (`tickets: false`).
+// layStarfighter(sys, battle, level, { now, tier }) → the same for a space
+// level's Starfighter Assault (surface/missions/starfighter.js's levelOf),
+// with its `layout` and `frame`.
 
 import { WARS as UNIVERSE_WARS } from '../universe/wars';
 import { WIDTH, createBattle, perSide } from '../universe/battle';
@@ -30,6 +33,7 @@ import { cloneTemplates, remnantTemplates } from './battlesWars';
 import { seeded, warInfo } from './gcw';
 import { SIDES } from './sides';
 import { systemById } from './systems';
+import { frameOf, layoutOf, sideShips } from './surface/missions/starfighter';
 
 const M = 53.3; // metres to a map unit (the Star Destroyer's 1,600 m is 30)
 const m = (metres) => +(metres / M).toFixed(2);
@@ -396,5 +400,46 @@ export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {
     // (fought to its clock or its objectives: a ticket end drained the
     // attacker in a couple of minutes, decided in each pilot's own sim)
     tickets: false,
+  };
+}
+
+// A space level's Starfighter Assault laid at the planet (surface/missions/
+// starfighter.js makes the level a battle): fought where the war's battle
+// would be (layBattle's spot, clear of the planet and what's built round
+// it), its ships where the level has them round that spot (`layout`), its
+// lines and its arena the level's own size, its fighters the level's
+// classes, and the plan's objectives at the level's points. `level` is
+// levelOf's; `frame` maps its metres into the battle's units.
+export function layStarfighter(sys, battle, level, { now = battle.start, tier = 'high' } = {}) {
+  const base = layBattle(sys, { ...battle, kind: 'assault' }, { now, tier });
+  const frame = frameOf(level, base.at);
+  const sides = sidesOf(battle);
+  const war = {
+    id: battle.war ?? 'gcw',
+    name: level.name ?? 'Starfighter Assault',
+    sides: sides.map((side, team) => {
+      const ships = sideShips(level, team);
+      const line = { flagship: ship(ships[0].kind, ships[0].name), escorts: ships.slice(1).map((s) => ship(s.kind, s.name)) };
+      return sideOf(LOOKS[side], line, level.fighters[team] ?? FIGHTERS[side]);
+    }),
+  };
+  // (the lines: half the way between the flagships; the arena out past the level's launch points)
+  const flags = [0, 1].map((team) => frame(level.ships.find((s) => s.team === team && s.role === 'flagship').at));
+  const dx = flags[1][0] - flags[0][0];
+  const dz = flags[1][2] - flags[0][2];
+  const lines = Math.max(20, Math.hypot(dx, dz) / 2);
+  const reach = Math.max(...level.spawns.flat().map((s) => Math.hypot(...frame(s.at).map((x, k) => x - base.at[k]))), lines);
+  return {
+    ...base,
+    war,
+    kind: 'starfighter',
+    axis: [dx, dz].map((x) => +(x / (Math.hypot(dx, dz) || 1)).toFixed(6)),
+    lines: +lines.toFixed(2),
+    radius: +(reach + 15).toFixed(2),
+    layout: layoutOf(level, frame),
+    objectivesOn: 'flagship',
+    ace: {},
+    runners: null,
+    frame,
   };
 }

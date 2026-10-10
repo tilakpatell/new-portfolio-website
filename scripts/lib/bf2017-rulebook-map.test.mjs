@@ -119,6 +119,10 @@ describe('a space level’s row (Starfighter Assault)', () => {
     expect(placed.filter((p) => p.mesh === 'corvettecr90_01')).toHaveLength(3);
     expect(placed.some((p) => /nowhere/.test(p.mesh))).toBe(false);
     expect(placed[0].quat).toHaveLength(4);
+    // (the Star Destroyer, turned half round, has its bounds' middle ahead of its pivot)
+    const isd = placed.find((p) => p.mesh === 'stardestroyer_hull_01_sb_endor');
+    expect(isd.r).toBeGreaterThan(800);
+    expect(isd.centre).toHaveLength(3);
     expect(m.terrain).toBeUndefined();
   });
 

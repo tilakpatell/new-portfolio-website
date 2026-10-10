@@ -89,6 +89,14 @@ function spaceBattle(asset, o, base) {
   };
 }
 
+// a vector turned by a quaternion [x, y, z, w]
+function turn([x, y, z, w], [vx, vy, vz]) {
+  const tx = 2 * (y * vz - z * vy);
+  const ty = 2 * (z * vx - x * vz);
+  const tz = 2 * (x * vy - y * vx);
+  return [vx + w * tx + (y * tz - z * ty), vy + w * ty + (z * tx - x * tz), vz + w * tz + (x * ty - y * tx)];
+}
+
 // A space level's placed objects in a sub-level (its capital ships, their
 // nodules and engines, the corvettes, the mines): from the map manifest's
 // instances, those of kind `object`
@@ -106,7 +114,10 @@ function placedIn(root, manifest, rel, sub) {
     for (let i = g.offset; i < g.offset + g.count; i++) {
       const p = [0, 1, 2].map((k) => r3(v.getFloat32(manifest.bin.position + (i * 3 + k) * 4, true)));
       const q = [0, 1, 2, 3].map((k) => r3(v.getInt16(manifest.bin.quaternion + (i * 4 + k) * 2, true) / 32767));
-      out.push({ mesh: shortName(mesh).replace(/_mesh\.glb$/, ''), at: p, quat: q, _source: `web/${rel}#instances.${i}` });
+      // (the middle of its bounds, turned and moved as the instance is, and half their diagonal: where to aim at it, and how big)
+      const { min = [0, 0, 0], max = [0, 0, 0] } = manifest.meshes[g.mesh];
+      const c = turn(q, [0, 1, 2].map((k) => (min[k] + max[k]) / 2));
+      out.push({ mesh: shortName(mesh).replace(/_mesh\.glb$/, ''), at: p, quat: q, centre: p.map((x, k) => r3(x + c[k])), r: r3(Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]) / 2), _source: `web/${rel}#instances.${i}` });
     }
   }
   return out;
