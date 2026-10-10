@@ -19,6 +19,7 @@ describe('the AI rulebook', () => {
       reevaluate: 15,
     });
     expect(Object.keys(t.attack).length).toBeGreaterThan(1);
+    expect(t.queries).toMatchObject({ 'attack.goalCoverQuery': 'Attack_Rebel_Soldier', 'flee.coverQuery': 'Flee', 'hide.coverQuery': 'Hide' });
   });
 
   it('reads a soldier template', () => {

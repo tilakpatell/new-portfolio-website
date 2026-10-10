@@ -4,7 +4,8 @@
 // suppressed or hurt, close combat inside the tactics' close distance,
 // attack inside the engage distance (from a cover slot the attack query
 // scores, else in the open, strafing), advance on a target past it, and
-// otherwise follow the squad's leader to the objective. Fire comes in the
+// otherwise follow the squad's leader to the objective. Cover is the
+// tactics' own query (`coverQuery.js`), else the fallback scorer (`cover.js`). Fire comes in the
 // game's bit patterns (`AIFiringPatterns`, a frame a sim step) and only
 // with a clear line to the target's chest; aim errs inside the AI weapon's
 // accuracy box (`AimBox*`), which shrinks the longer a bot holds a target.
@@ -30,6 +31,7 @@ import { chestOf, move } from '../soldier.js';
 import { clock, profile } from '../core.js';
 import { pickCover, queryFor } from './cover.js';
 import { pickTarget } from './targeting.js';
+import { queryFor as gameQuery, runQuery } from './coverQuery.js';
 
 // The class a soldier plays → the game's AI template for it.
 export const ROLES = { assault: 'rifleman', heavy: 'heavy', officer: 'officer', specialist: 'sniper' };
@@ -83,6 +85,10 @@ export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', ran
     aiWeapon,
     patterns: patterns.length ? patterns : ai.patterns,
     queries: { attack: queryFor(ai, 'attack'), hide: queryFor(ai, 'hide'), flee: queryFor(ai, 'flee'), protective: queryFor(ai, 'protective') },
+    // the tactics' own queries in the game's selection form (coverQuery.js), tried before `queries`
+    gameQueries: { attack: gameQuery(ai, tactics, 'attack'), hide: gameQuery(ai, tactics, 'hide'), flee: gameQuery(ai, tactics, 'flee') },
+    coverScores: ai.coverScores ?? {},
+    preferred: aiWeapon?.outdoorPreferredRange ?? aiWeapon?.preferredRange ?? system?.preferredRange ?? null,
     rand,
     senses: createSenses({ sight: { range: SIGHT, cone: CONE, far: 1 }, hearing: { range: HEARING }, memory: template.targetLostTime, intuition: 2.5 }),
     me: { pos: { x: 0, y: 0, z: 0 }, dir: { x: 0, y: 0, z: 1 }, beliefs: {} },
@@ -231,19 +237,23 @@ export function think(brain, world, now) {
   const intent = { mode, target: b?.id ?? null, goal: null, stance: 'stand', fire: false, aim: null, sprint: false, interact: false };
   const range = brain.s.weapon?.range ?? 200;
   const coverCtx = (query) => ({ me, threat: tgt, enemies: world.enemies, objective: world.objective, query, range, taken: world.taken, who: s.id });
+  // the game's query first, the fallback scorer when it offers nothing
+  const findCover = (state) =>
+    runQuery(brain.gameQueries[state], { common: brain.coverScores, nav: world.nav, me, meY: s.at[1], threat: tgt, threatY: b?.at.y, enemies: world.enemies, preferred: brain.preferred, current: brain.cover, taken: world.taken, who: s.id }) ??
+    pickCover(world.nav, coverCtx(brain.queries[state]));
   if (b) {
     const from = world.muzzle ? world.muzzle(s) : chestOf(s);
     intent.aim = aimAt(brain, from, b, now);
     intent.fire = b.visible && dist <= range && world.lineClear(from, v3(b));
   }
   if (mode === 'flee') {
-    const slot = pickCover(world.nav, coverCtx(brain.queries.flee));
+    const slot = findCover('flee');
     intent.goal = slot ? flat(slot.at) : fallBack(world.nav, me, tgt, world.squad?.centre, 15);
     intent.sprint = true;
     intent.fire = false;
   } else if (mode === 'hide') {
     const keep = brain.cover && world.taken?.get(brain.cover) === s.id;
-    const slot = keep ? brain.cover : pickCover(world.nav, coverCtx(brain.queries.hide));
+    const slot = keep ? brain.cover : findCover('hide');
     intent.goal = slot ? flat(slot.at) : fallBack(world.nav, me, tgt, world.squad?.centre);
     intent.stance = 'crouch';
     intent.fire = false;
@@ -256,7 +266,7 @@ export function think(brain, world, now) {
     const stale = here && (now - brain.coverSince > brain.coverStay || !world.shields(here, tgt));
     let slot = here && !stale ? here : null;
     if (!slot) {
-      slot = pickCover(world.nav, coverCtx(brain.queries.attack));
+      slot = findCover('attack');
       if (slot !== here) {
         brain.coverSince = now;
         const c = brain.tactics.attack ?? {};

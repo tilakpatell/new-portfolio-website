@@ -54,6 +54,13 @@ function tacticsRow(root, name) {
     if (obj) row[lowerFirst(k)] = group(asset, obj);
     else if (v && typeof v === 'object' && !v.$asset && numbersOf(v).length) row[lowerFirst(k)] = { ...Object.fromEntries(numbersOf(v)), _source: src(k) };
   }
+  // the cover queries each state asks (`AttackSettings.GoalCoverQuery` → `attack.goalCoverQuery`)
+  const queries = {};
+  for (const [k, v] of Object.entries(t)) {
+    const obj = deref(asset, v);
+    for (const [qk, qv] of Object.entries(obj ?? {})) if (qv?.$asset?.includes('/Cover/Queries/')) queries[`${lowerFirst(k.replace(/Settings$/, ''))}.${lowerFirst(qk)}`] = shortName(qv.$asset);
+  }
+  if (Object.keys(queries).length) row.queries = queries;
   return row;
 }
 
