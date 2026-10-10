@@ -61,9 +61,3 @@ describe('createProbes', () => {
   });
 });
 
-describe('createProbeGrid', () => {
-  it('is WebGPU’s only: null on the node renderer over WebGL 2', async () => {
-    const { createProbeGrid } = await import('./probes');
-    expect(await createProbeGrid({ add() {} }, { isWebGPURenderer: true, backend: { isWebGLBackend: true } }, { min: [0, 0, 0], max: [1, 1, 1] })).toBe(null);
-  });
-});

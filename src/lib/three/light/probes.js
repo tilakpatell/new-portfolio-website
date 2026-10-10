@@ -17,18 +17,19 @@
 // The grid. three's LightProbeGrid (three/addons/lighting/LightProbeGrid.js)
 // is a Light: added to the scene, it lights every node material from L2
 // spherical harmonics baked on the GPU at each probe. The bake needs the
-// node renderer. Baked once, after the level's near cells are in, never
-// again. It ships behind the design's numbers (A3): under BAKE_BUDGET ms to
-// bake and FRAME_BUDGET ms a frame on the owner's laptop. On the WebGL 2
-// backend the bake's materials fail to build (TSL: "No stack defined for
-// assign operation") and the grid lights everything pink (the fixture's
-// grid shot), so it is WebGPU's only: createProbeGrid gives null elsewhere.
+// node renderer, on either backend. Baked once, after the level's near
+// cells are in, never again. It ships behind the design's numbers (A3):
+// under BAKE_BUDGET ms to bake and FRAME_BUDGET ms a frame on the owner's
+// laptop, so applyGameLight bakes it only when asked (`grid: true`). (A
+// first bake on the fixture, with three's RoomEnvironment scene as the
+// environment, failed to build its materials and lit everything pink;
+// with the TSL sky it bakes clean on WebGL 2 too.)
 //
 // probeFor(volumes, pos) → { i, blend }      (pure)
 // createProbes(scene, volumes, loadCube, { fallback, fade }) → Promise<{ update(pos, dt), current, dispose }>
-// createProbeGrid(scene, renderer, bounds, res = PROBE_GRID, opts) → Promise<{ grid, bake(), dispose } | null>
+// createProbeGrid(scene, renderer, bounds, res = PROBE_GRID, opts) → Promise<{ grid, bake(), dispose }>
 
-import { backendOf, loadThree } from './three.js';
+import { loadThree } from './three.js';
 
 export const FADE = 0.5; // s: the crossfade between two volumes' cubes
 export const EDGE = 4; // m: how deep into a volume `blend` reaches 1
@@ -131,8 +132,7 @@ export async function createProbes(scene, volumes, loadCube, { fallback = scene.
 }
 
 // bounds: { min, max } (the pack's arena); res: probes per axis
-export async function createProbeGrid(scene, renderer, bounds, res = PROBE_GRID, { cubemapSize = 8, far = 600, force = false } = {}) {
-  if (!force && backendOf(renderer) !== 'webgpu') return null;
+export async function createProbeGrid(scene, renderer, bounds, res = PROBE_GRID, { cubemapSize = 8, far = 600 } = {}) {
   const { LightProbeGrid } = await import('three/addons/lighting/LightProbeGrid.js');
   const size = [0, 1, 2].map((k) => bounds.max[k] - bounds.min[k]);
   const grid = new LightProbeGrid(size[0], size[1], size[2], res[0], res[1], res[2]);

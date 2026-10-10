@@ -2,9 +2,10 @@
 // on it, the smallest world that proves src/lib/three/light on both of the
 // node renderer's kinds. A ground, a ring of pillars and spheres, the sun
 // with its cascades, 200 point lights round the ring and 8 spots over it,
-// an environment, and (once applyGameLight is asked for) the sky, the fog
-// and a post chain. It keeps the 'nodes' promise: node materials only, no
-// GLSL, no composer (shading.test.js reads this folder).
+// the sky baked into the environment, the fog and the tier's post chain,
+// all through applyGameLight (src/lib/three/light/apply.js). It keeps the
+// 'nodes' promise: node materials only, no GLSL, no composer
+// (shading.test.js reads this folder).
 //
 // scripts/light-fixture.mjs draws it headless on ?gpu=webgpu and
 // ?gpu=webgl and reads `probe` for the checks the plan names: the
@@ -116,7 +117,14 @@ export default {
 
     let post = null;
     let envTex = null;
-    const lights = ringLights();
+    let light = null;
+    let grid = null;
+    // the ring as a level's lights.json, so the pools are filled the way a
+    // level's are: the cells round the camera, the best by screen area
+    const source = { cells: {} };
+    for (const l of ringLights()) (source.cells[`${Math.floor(l.pos[0] / 128)},${Math.floor(l.pos[2] / 128)}`] ??= []).push(l);
+    const first = Object.values(source.cells).find((c) => c.length)[0];
+    const home = first.pos.slice();
     const probe = {
       backend: rt.gfx.backend,
       light: null,
@@ -129,60 +137,34 @@ export default {
       },
       // one placed light moved and recoloured in place
       nudge(t) {
-        const rec = { ...lights[0], pos: [Math.cos(t) * RADIUS, 1, Math.sin(t) * RADIUS], color: [1, 0.2, 0.1] };
-        placed?.set([rec, ...lights.slice(1)]);
-      },
-      setPost(on) {
-        opts.post = on;
+        Object.assign(first, { pos: [home[0] + Math.cos(t) * 2, home[1], home[2] + Math.sin(t) * 2], color: [1, 0.2, 0.1] });
+        light?.update(0, camera);
       },
       // A3: an arena-sized probe grid (Hoth's 1,536 m), made and baked; the
       // caller waits on the GPU and times it
       async bakeGrid() {
         const { createProbeGrid, PROBE_GRID } = await import('../../lib/three/light/probes.js');
-        grid ??= await createProbeGrid(scene, renderer, { min: [-768, -5, -768], max: [768, 60, 768] }, PROBE_GRID, { force: true });
+        grid ??= await createProbeGrid(scene, renderer, { min: [-768, -5, -768], max: [768, 60, 768] }, PROBE_GRID);
         return grid.bake();
       },
     };
 
-    let sun = null;
-    let placed = null;
-    let sky = null;
-    let grid = null;
     const ready = (async () => {
-      const { registerLights } = await import('../../lib/three/light/three.js');
-      const { createSun } = await import('../../lib/three/light/sun.js');
-      const { createPlacedLights } = await import('../../lib/three/light/placed.js');
-      await registerLights(renderer);
-      renderer.shadowMap.enabled = true;
-      sun = await createSun(ENTRY, { tier: opts.tier, rays: opts.post });
-      scene.add(sun.light);
-      if (sun.rays) scene.add(sun.rays, sun.rays.target);
-      scene.add(new THREE.HemisphereLight(0x8899bb, 0x554433, 0.35));
-      if (opts.placed) {
-        placed = await createPlacedLights(scene, renderer, { clustered: opts.clustered });
-        placed.set(lights);
-      }
-      probe.light = { placed, clustered: placed?.clustered ?? null };
-      if (opts.sky) {
-        const { createSky } = await import('../../lib/three/light/sky.js');
-        const { createFog } = await import('../../lib/three/light/fog.js');
-        sky = await createSky(ENTRY);
-        scene.add(sky.mesh);
-        sky.update(camera);
-        envTex = sky.envTexture(renderer);
-        scene.fogNode = (await createFog(ENTRY)).node;
-      } else {
+      const { applyGameLight } = await import('../../lib/three/light/apply.js');
+      light = await applyGameLight(scene, renderer, ENTRY, { tier: opts.tier, camera, lights: opts.placed ? source : null, clustered: opts.clustered, sky: opts.sky, post: opts.post, lut: gradeLut() });
+      probe.light = { clustered: light.parts.placed?.clustered ?? null };
+      if (!opts.sky) {
         const [{ PMREMGenerator }, { RoomEnvironment }] = await Promise.all([import('three/webgpu'), import('three/addons/environments/RoomEnvironment.js')]);
         const pmrem = new PMREMGenerator(renderer);
-        envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
         pmrem.dispose();
       }
+      envTex = scene.environment;
       probe.setEnv(opts.env);
-      if (opts.post) {
-        const { passesFor } = await import('../../lib/three/light/post.js');
-        const all = passesFor(opts.tier, ENTRY, rt.gfx.backend, { scene, camera, light: sun.rays, lut: gradeLut() });
+      light.update(0, camera);
+      if (light.passes.length) {
         // (`only`: the passes kept, for finding which one breaks)
-        const passes = opts.only ? all.filter((p) => opts.only.includes(p.kind)) : all;
+        const passes = opts.only ? light.passes.filter((p) => opts.only.includes(p.kind)) : light.passes;
         post = rt.gfx.post(passes);
         probe.passes = passes.map((p) => p.kind);
         await post.ready;
@@ -199,8 +181,7 @@ export default {
       },
       step(dt) {
         cube.rotation.y += dt;
-        sky?.update(camera);
-        sun?.update(camera);
+        light?.update(dt, camera);
       },
       draw({ renderer: r }) {
         if (post && opts.post) post.render();
@@ -209,11 +190,9 @@ export default {
       wants: () => true,
       dispose() {
         post?.dispose();
-        sun?.dispose();
-        sky?.dispose();
         grid?.dispose();
-        placed?.dispose();
-        if (!sky) envTex?.dispose();
+        light?.dispose();
+        if (!opts.sky) envTex?.dispose();
         for (const m of made) m.dispose();
       },
     };

@@ -10,20 +10,16 @@
       "clustered": false,
       "passes": [],
       "shot": "grid-ultra-webgl.png",
-      "envDiff": 48.33,
+      "envDiff": 7.14,
       "programsBefore": 21,
       "programsAfter": 21,
-      "frames": 8,
-      "median": 415.2,
-      "p95": 428.8,
-      "gridBakeMs": 4579.2,
-      "gridMedian": 508.2,
-      "errors": [
-        "THREE.TSL: No stack defined for assign operation. Make sure the assign is inside a Fn(). \"new StackTrace()\" at \"three_webgpu.js:632\"\n    at new StackTrace (three_webgpu.js:632:80)\n    at Node.assign (three_webgpu.js:2457:100)\n    at NodeMaterial.setupDiffuseColor (three_webgpu.js:14519:16)\n    at No",
-        "THREE.TSL: No stack defined for assign operation. Make sure the assign is inside a Fn(). \"new StackTrace()\" at \"three_webgpu.js:632\"\n    at new StackTrace (three_webgpu.js:632:80)\n    at Node.assign (three_webgpu.js:2457:100)\n    at NodeMaterial.setupDiffuseColor (three_webgpu.js:14521:18)\n    at No",
-        "THREE.TSL: No stack defined for assign operation. Make sure the assign is inside a Fn(). \"new StackTrace()\" at \"three_webgpu.js:632\"\n    at new StackTrace (three_webgpu.js:632:80)\n    at Node.assign (three_webgpu.js:2457:100)\n    at NodeMaterial.setupDiffuseColor (three_webgpu.js:14531:42)\n    at No",
-        "THREE.TSL: No stack defined for assign operation. Make sure the assign is inside a Fn(). \"new StackTrace()\" at \"three_webgpu.js:632\"\n    at new StackTrace (three_webgpu.js:632:80)\n    at Node.assign (three_webgpu.js:2457:100)\n    at NodeMaterial.setup (three_webgpu.js:14384:11)\n    at NodeMaterial.b"
-      ]
+      "frames": 5,
+      "mean": 426.3,
+      "median": 412.3,
+      "p95": 469,
+      "gridBakeMs": 3365.5,
+      "gridMedian": 418.6,
+      "gridMean": 426.3
     }
   ]
 }
