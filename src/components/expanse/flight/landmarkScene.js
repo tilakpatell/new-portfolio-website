@@ -62,6 +62,7 @@ export function createLandmark(scene, { list, placer: makePlacer, origin = [0, 0
   const placer = makePlacer(group);
   const geometries = []; // one entry a mesh drawn: the count is by draws, not files
   const stats = { placed: 0, standIns: 0 };
+  const missing = new Set(); // the kinds blocks stand in for, to name in the warning
   let block = null; // { geometry, material }, made at the first stand-in
   let gone = false;
 
@@ -74,6 +75,7 @@ export function createLandmark(scene, { list, placer: makePlacer, origin = [0, 0
     m.rotation.y = p.yaw ?? 0;
     group.add(m);
     stats.standIns++;
+    missing.add(p.model ?? p.kind);
   };
 
   const reanchor = (at) => group.position.set(0 - at[0] || 0, 0 - at[1] || 0, 0 - at[2] || 0);
@@ -95,7 +97,7 @@ export function createLandmark(scene, { list, placer: makePlacer, origin = [0, 0
         ),
     ),
   ).then(() => {
-    if (stats.standIns && !gone) console.warn(`${name}: ${stats.standIns} of ${list.length} things won't load; blocks stand in`);
+    if (stats.standIns && !gone) console.warn(`${name}: ${stats.standIns} of ${list.length} things won't load (${[...missing].join(', ')}); blocks stand in`);
   });
 
   return {
