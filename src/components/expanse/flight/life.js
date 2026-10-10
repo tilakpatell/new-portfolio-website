@@ -15,7 +15,7 @@
 // nothing at all. Pure: no three.js.
 //
 //   createLife({ spec, life, tier, field, rand, now, warn, onHit, brainFor }) →
-//     { update(ship, dt) → { make: actors, drop: ids, moved: ids, shots },
+//     { update(ship, dt) → { make: actors, drop: ids, moved: ids, shots, news: lines for the HUD },
 //       actors: Map, died(id), isDead(id), stats() }
 
 import { createChunkGrid } from '../../../runtime/chunkGrid';
@@ -99,7 +99,7 @@ export function createLife({ spec, life, tier = 'mid', field, rand = Math.random
 
   const makeAir = (s, route, key) => {
     const row = life.air[s.row];
-    const a = { id: s.id, kind: s.kind, model: s.model, role: 'air', air: true, row, spec: s, route, t0: s.t0, speed: row.speed, homeCell: key, cell: key, b: { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0 }, intent: null };
+    const a = { id: s.id, kind: s.kind, model: s.model, role: 'air', air: true, row, spec: s, route, group: route.id, t0: s.t0, speed: row.speed, homeCell: key, cell: key, b: { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0 }, intent: null };
     placeAir(a, t);
     a.brain = made(a);
     a.lastStep = frame;
@@ -157,7 +157,7 @@ export function createLife({ spec, life, tier = 'mid', field, rand = Math.random
     },
     stats: () => ({ cells: grid.loaded.size, actors: actors.size, air: [...actors.values()].filter((a) => a.air).length, kept: kept.size, dead: dead.size, broken: broken.size, ...last }),
     update(ship, dt) {
-      const out = { make: [], drop: pending.splice(0), moved: [], shots: [] };
+      const out = { make: [], drop: pending.splice(0), moved: [], shots: [], news: [] };
       if (nothing || !ship) return out;
       frame++;
       t += dt;
@@ -182,7 +182,7 @@ export function createLife({ spec, life, tier = 'mid', field, rand = Math.random
       // the bodies, every frame
       for (const a of [...actors.values()]) {
         if (a.air) {
-          if (a.fly) a.fly(a, dt, t);
+          if (a.fly) a.fly(a, dt, t, ship, field);
           else placeAir(a, t);
           continue;
         }
@@ -244,6 +244,7 @@ export function createLife({ spec, life, tier = 'mid', field, rand = Math.random
           }
           continue;
         }
+        if (a.intent?.say) out.news.push(a.intent.say);
         const f = a.intent?.fire;
         if (f) {
           const from = [a.b.x, a.b.y + 1.5, a.b.z];

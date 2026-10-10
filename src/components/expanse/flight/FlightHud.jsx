@@ -1,4 +1,5 @@
 import { Hud, Menu, MenuItem, Stick, Toast, TouchButton } from '../../../runtime/hud';
+import LifeLine from './LifeLine';
 
 // The flight's HUD, from the kit: the planet's name top left, the one Menu
 // top right (the way out, and the planets to fly to next), the toast under
@@ -51,6 +52,7 @@ export default function FlightHud({ name, way, planets = [], onPlanet, toast, nu
       }
     >
       <Toast toast={toast} className="fly-toast" />
+      <LifeLine />
     </Hud>
   );
 }
