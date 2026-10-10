@@ -9,7 +9,8 @@
 // - levelOf(map, stages) → the level in its own metres: its capital ships
 //   ({ id, team, kind, role, name, at, fwd }: the battle's teams, 0 the
 //   defender's Rebels, 1 the attacking Empire, from the game's Team1 and
-//   Team2), its stages and their objectives each where the level puts it
+//   Team2; `size` in units where the level's ship is no galaxy kind's
+//   length), its stages and their objectives each where the level puts it
 //   (the corvettes on their ships, the mines at their prefabs, the MC80's
 //   nodules and engines at the parts the mode's sub-level places), its
 //   launch points by team, its fighters and bomber flights, its camera, and
@@ -55,7 +56,11 @@ export function levelOf(map, stages) {
   const rows = map.rows ?? map;
   const placed = rows.placed?.starfighter ?? [];
   const prefabs = new Map(rows.prefabs.map((p) => [p.id, p]));
-  const part = (mesh) => placed.find((p) => p.mesh === mesh) ?? null;
+  // (`mesh#n`: the nth of that mesh the sub-level places, in its order, where it places more than one: Kamino's two Venators)
+  const part = (name) => {
+    const [mesh, n = 0] = name.split('#');
+    return placed.filter((p) => p.mesh === mesh)[Number(n)] ?? null;
+  };
   // where a ship or an objective is, and which way it faces (the game's
   // meshes have their bows to +Z; a prefab says only its yaw)
   const spotOf = (o) => {
@@ -69,7 +74,7 @@ export function levelOf(map, stages) {
     return { at: p.at, fwd: [Math.sin(p.yaw), 0, Math.cos(p.yaw)], r: null };
   };
   // (`pack`: one the level's pack draws, a part the mode's sub-level places; a prefab's ship is the battle's to draw)
-  const ships = stages.ships.map((s) => ({ id: s.id, team: teamOf(s.team), kind: s.kind, role: s.role, name: s.name, pack: Boolean(s.placed), ...spotOf(s) }));
+  const ships = stages.ships.map((s) => ({ id: s.id, team: teamOf(s.team), kind: s.kind, role: s.role, name: s.name, pack: Boolean(s.placed), ...(s.length ? { size: +(s.length / METRES).toFixed(2) } : {}), ...spotOf(s) }));
   const shipOf = new Map(ships.map((s) => [s.id, s]));
   const attacker = teamOf(rows.spaceBattle?.attacker ?? 2);
   return {

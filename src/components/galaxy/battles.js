@@ -419,7 +419,7 @@ export function layStarfighter(sys, battle, level, { now = battle.start, tier = 
     name: level.name ?? 'Starfighter Assault',
     sides: sides.map((side, team) => {
       const ships = sideShips(level, team);
-      const line = { flagship: ship(ships[0].kind, ships[0].name), escorts: ships.slice(1).map((s) => ship(s.kind, s.name)) };
+      const line = { flagship: ship(ships[0].kind, ships[0].name, ships[0].size), escorts: ships.slice(1).map((s) => ship(s.kind, s.name, s.size)) };
       return sideOf(LOOKS[side], line, level.fighters[team] ?? FIGHTERS[side]);
     }),
   };

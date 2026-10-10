@@ -34,12 +34,16 @@ export const MODE_LAYERS = { galacticAssault: 'FantasyBattle', hvv: 'HeroArena',
 
 // The layers a mode's rules read, by suffix (art, automation, sound, the
 // living world's ambient paths and the cinematics are not rules).
-const RULE_LAYER = /_(Logic|Spawns|Spawns_Team\d|Shapes|Inf_Shapes_\w+|OOBTeam\d|Gameplay|Global|DefendAreas|CaptureAreas|Skirmish_DefendAreas)$/;
+const RULE_LAYER = /_(Logic|Spawns|Spawns_Team\d|Shapes|Inf_Shapes_\w+|OOBTeam\d|Gameplay|Global|DefendAreas|CaptureAreas|Skirmish_DefendAreas|Phase\d|Phase\d_(Empire|Rebel)Spawns)$/;
+// (a space level's launch points are its phases' own: SpaceBattle_Phase1, SpaceBattle_Phase2_EmpireSpawns…)
+const phaseOf = (layer) => Number(layer.match(/_Phase(\d)/i)?.[1] ?? 0) || null;
 const EXTRA_LAYERS = { Mode9: ['ModeDefend_Spawns_Team1', 'ModeDefend_Spawns_Team2'], SpaceBattle: ['SpaceBattle_ScriptedEvents', 'SpaceBattle_SecondaryObjective_Cruisers'] };
 // the layers whose prefabs are the mode's (a space level's objectives sit in its scripted events and side objectives)
 const PREFAB_LAYER = /_(Logic|Gameplay|ScriptedEvents|SecondaryObjective_\w+)$/;
-// what a space level's mode sub-level places that is not the battle: the end of round's star cards and its room
-const NOT_PLACED = /starcard|nowhere/i;
+// what a space level's mode sub-level places that is not the battle: the end
+// of round's star cards and its room, and the dressing no rule reads (decals,
+// greebles, a hangar's boxes, crates and containers)
+const NOT_PLACED = /starcard|nowhere|decal|greeble|detailpanel|box_m|crate|container|junk/i;
 
 const PLACED = new Set(['AlternateSpawnEntityData', 'OBBData', 'LocatorEntityData', 'LocalLocatorEntityData', 'CameraEntityData']);
 const teamOf = (t) => Number(String(t ?? '').replace(/^Team/, '')) || 0;
@@ -135,7 +139,8 @@ export function mapRow(root, level, { modes = MODE_LAYERS } = {}) {
   for (const [mode, layer] of Object.entries(modes)) {
     if (!names.includes(`${dir}${layer}`)) continue;
     row.modes.push(mode);
-    const layers = names.filter((n) => shortName(n).startsWith(`${layer}_`) && RULE_LAYER.test(shortName(n))).concat((EXTRA_LAYERS[layer] ?? []).map((l) => `${dir}${l}`).filter((n) => names.includes(n)));
+    // (any case: the droid battleship's are `Spacebattle_Phase1`)
+    const layers = names.filter((n) => shortName(n).toLowerCase().startsWith(`${layer}_`.toLowerCase()) && RULE_LAYER.test(shortName(n))).concat((EXTRA_LAYERS[layer] ?? []).map((l) => `${dir}${l}`).filter((n) => names.includes(n)));
     for (const ln of layers) {
       const asset = follow(root, ln);
       if (!asset) {
@@ -158,7 +163,7 @@ export function mapRow(root, level, { modes = MODE_LAYERS } = {}) {
             const key = `${mode}|${o.Team}|${vec(o.Transform.trans).map((v) => v.toFixed(2)).join(',')}`;
             if (seen.has(key)) return;
             seen.add(key);
-            row.spawns.push({ ...base, team: teamOf(o.Team), priority: o.Priority, enabled: Boolean(o.Enabled), at: vec(o.Transform.trans), yaw: r3(t.yaw) });
+            row.spawns.push({ ...base, team: teamOf(o.Team), priority: o.Priority, enabled: Boolean(o.Enabled), at: vec(o.Transform.trans), yaw: r3(t.yaw), ...(phaseOf(lay) ? { phase: phaseOf(lay) } : {}) });
             return;
           }
           case 'SpawnLocationFinderShapeData': {

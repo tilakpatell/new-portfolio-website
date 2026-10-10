@@ -43,3 +43,17 @@ Endor’s space level (`Levels/Space/SB_Endor_01`) says its Starfighter Assault 
 - **bombers**: four of the eleven TIE bomber flights, one a stage, three bombers each (the layer’s `Vehicle_Air_TieBomber` spawns stand in threes), at hand times.
 - **camera**: the level’s intro and outro cameras are Cinematics tracks (`Partition_*` `GroupTrackRootData`), not `CameraEntityData`; the hand camera is behind the Star Destroyer, looking at the MC80.
 - **fighters**: the level’s own classes as the galaxy’s kinds: X-wing, A-wing, Y-wing; TIE fighter, TIE interceptor, TIE bomber.
+
+## `maps/sb_kamino.stages.json`
+
+Kamino’s space level (`Levels/Space/SB_Kamino_01`), read the same way: the Separatists (`Team2`) attack, the Republic (`Team1`) defends; the phases are `Phase  - Venator Bridges` (the game’s own double space), `Phase 2 - Cruisers`, `Phase 3 - Venator Returns`, and the last is two stages by its strings (`…_PHASE_3` the engines, `…_PHASE_3_A` the beam weapon). Its launch points are its phases’ own layers (`SpaceBattle_Phase1` to `3`; Fondor’s `_EmpireSpawns` and `_RebelSpawns`, the droid battleship’s `Spacebattle_Phase1`), each spawn kept with its `phase`.
+
+- **ships**: the mode’s sub-level places two Venators (`venatorstardestroyer_hull_01`, `#0` and `#1` in its order), three Republic cruisers (`jedicruiser_hull_01`, 318 m, drawn as the galaxy’s corvette at their own length) and three Providence dreadnoughts. The Venator with the engines’ and the beam weapon’s health states is the one that returns: the flagship.
+- **bridges**: `Bridge A` and `B` are the first Venator’s two control towers (`venatorcontroltowerleft_healthstate#0`, `right#0`): which is A is a guess.
+- **cruisers**: `Cruiser A` to `C` the three cruisers in the sub-level’s order; each sinks its ship.
+- **engines, beam**: `Engine A` the left engines’ health state, `B` the right’s (a guess); `Laser` the laser base’s.
+- **gates and hp**, **bombers** (two of the droid bomber flights), **camera**: hand, as Endor’s.
+- The level is fought low over Tipoca City, on Kamino’s ocean (its art places the city’s pillars and domes at sea level), not in orbit: its pack wants the surface’s frame, or the city left out, and is not built yet.
+- The game’s Team1 is the light side’s in every level read so far (Hoth, Endor, Kamino), as the battle’s team 0 is.
+
+`maps/sb_fondor.json` and `maps/sb_droidbattleship.json` are the rulebooks alone (their systems are not in the galaxy yet): Fondor’s phases are Cruisers, Shields, Clamps and Reactor; the droid battleship’s Tractor Beams, Generators, Towers and Reactor.

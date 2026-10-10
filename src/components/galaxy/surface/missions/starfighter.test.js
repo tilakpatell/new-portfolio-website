@@ -118,3 +118,50 @@ describe('Starfighter Assault over Endor, from the game’s level', () => {
     expect(frameOf(level, [10, 0, 0])(level.origin)).toEqual([10, 0, 0]);
   });
 });
+
+describe('Starfighter Assault over Kamino, from the game’s level (its stages; its pack waits on a frame for Tipoca City)', async () => {
+  const kmap = (await import('../../../../data/bf2017/maps/sb_kamino.json')).default;
+  const kstages = (await import('../../../../data/bf2017/maps/sb_kamino.stages.json')).default;
+  const kamino = levelOf(kmap, kstages);
+  const sides = teamsOf('separatists', 'republic');
+  const battleOf = (seed) => ({ id: `sf.kamino.${seed}`, war: 'clone', sys: 'kamino', step: 0, seed, attacker: 'separatists', defender: 'republic', sides, attackerTeam: sides.indexOf('separatists'), start: 0, fightEnd: 600000, end: 600000, fighting: true });
+
+  it('the Separatists attack the Republic’s Venators and cruisers, phase by phase as the level has them', () => {
+    expect(kamino.sides).toEqual(sides);
+    expect(kamino.sides[kamino.attacker]).toBe('separatists');
+    // (the two Venators by their order in the sub-level: the one that returns is the flagship)
+    const [ret, first] = kamino.ships.filter((s) => s.kind === 'venator');
+    expect(ret.role).toBe('flagship');
+    expect(Math.hypot(ret.at[0] - first.at[0], ret.at[2] - first.at[2])).toBeGreaterThan(4000);
+    expect(kamino.ships.find((s) => s.id === 'cruiser-a').size).toBeCloseTo(318 / METRES, 1);
+    const laid = layStarfighter(systemById('kamino'), battleOf(1), kamino, { now: 0, tier: 'mid' });
+    const plan = starfighterPlan(kamino, laid.frame, { id: 'k1' });
+    expect(plan.stages.map((s) => s.id)).toEqual(['bridges', 'cruisers', 'engines', 'beam']);
+    const phases = kmap.rows.spaceBattle.phases.filter((p) => p.objectives.length);
+    expect(plan.stages.flatMap((s) => s.objectives.map((o) => o.id)).sort()).toEqual(phases.flatMap((p) => p.objectives.map((o) => o.name)).sort());
+    // the bridges on the first Venator, the engines and the beam weapon on the one that returns
+    const near = (o, ship) => Math.hypot(...o.at.map((x, k) => x - ship.at[k]));
+    for (const o of kamino.stages[0].objectives) expect(near(o, first)).toBeLessThan(near(o, ret));
+    for (const o of [...kamino.stages[2].objectives, ...kamino.stages[3].objectives]) expect(near(o, ret)).toBeLessThan(near(o, first));
+  });
+
+  it('a battle nobody flies in ends inside twelve minutes, its ships clear', () => {
+    for (const seed of [1, 2, 3]) {
+      const b = battleOf(seed);
+      const laid = layStarfighter(systemById('kamino'), b, kamino, { now: 0, tier: 'mid' });
+      const plan = starfighterPlan(kamino, laid.frame, { id: b.id });
+      const director = createDirector({ plan, seed: b.id });
+      let t = 0;
+      let st = director.state(0, () => 0);
+      const battle = createBattle({ ...laid, rand: seeded(b.id), plan, director: { state: () => st }, tactics: { push: 480, clock: () => t } });
+      expect(shipsClear(battle, laid.avoid)).toEqual([]);
+      while (!battle.over && t < 720) {
+        t += 0.5;
+        st = director.state(t, () => 0);
+        if (st.winner !== null) battle.end(st.winner, st.why);
+        battle.update(0.5, null);
+      }
+      expect(battle.over).not.toBeNull();
+    }
+  }, 120000);
+});

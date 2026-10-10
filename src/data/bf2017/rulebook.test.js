@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const DIR = import.meta.dirname;
-const FILES = ['teams', 'classes', 'heroes', 'reinforcements', 'vehicles', 'weapons', 'abilities', 'cards', 'ai', 'cameras', 'ui', 'strings', 'points', 'maps/hoth', 'maps/hoth.lighting', 'maps/hoth.stages', 'maps/sb_endor', 'maps/sb_endor.stages'];
+const FILES = ['teams', 'classes', 'heroes', 'reinforcements', 'vehicles', 'weapons', 'abilities', 'cards', 'ai', 'cameras', 'ui', 'strings', 'points', 'maps/hoth', 'maps/hoth.lighting', 'maps/hoth.stages', 'maps/sb_endor', 'maps/sb_endor.stages', 'maps/sb_kamino', 'maps/sb_kamino.stages', 'maps/sb_fondor', 'maps/sb_droidbattleship'];
 const read = (name) => JSON.parse(readFileSync(join(DIR, `${name}.json`), 'utf8'));
 const rb = Object.fromEntries(FILES.map((f) => [f, read(f)]));
 const rows = (f) => rb[f].rows ?? rb[f];
@@ -37,9 +37,10 @@ const isSequel = (name) => name.toLowerCase().split('/').some((seg) => TESTS.som
 
 describe('the Battlefront rulebooks', () => {
   it('stay small', () => {
-    const bytes = FILES.reduce((n, f) => n + readFileSync(join(DIR, `${f}.json`)).length, 0);
+    // (a space level's map is fetched only when its Starfighter Assault is flown: starfighterMaps.js; each map is held to its own)
+    const bytes = FILES.filter((f) => !f.startsWith('maps/sb_')).reduce((n, f) => n + readFileSync(join(DIR, `${f}.json`)).length, 0);
     expect(bytes).toBeLessThan(2 * 1024 * 1024);
-    expect(readFileSync(join(DIR, 'maps/hoth.json')).length).toBeLessThan(600 * 1024);
+    for (const f of FILES.filter((x) => x.startsWith('maps/') && !x.includes('.'))) expect(readFileSync(join(DIR, `${f}.json`)).length, f).toBeLessThan(600 * 1024);
   });
 
   it.each(FILES)('%s names the source of every number', (f) => {
@@ -50,11 +51,22 @@ describe('the Battlefront rulebooks', () => {
     expect(rb.points.source).toBe('hand');
     expect(rb['maps/hoth.stages'].source).toBe('hand');
     expect(rb['maps/sb_endor.stages'].source).toBe('hand');
+    expect(rb['maps/sb_kamino.stages'].source).toBe('hand');
   });
 
-  it('Endor’s Starfighter Assault follows the level’s own phases, on things the level places', () => {
-    const map = rows('maps/sb_endor');
-    const st = rb['maps/sb_endor.stages'];
+  it('every space level has its Starfighter Assault’s phases, and refuses the sequel era’s', () => {
+    for (const l of ['sb_endor', 'sb_kamino', 'sb_fondor', 'sb_droidbattleship']) {
+      const map = rows(`maps/${l}`);
+      expect(map.modes, l).toEqual(['starfighter']);
+      expect(map.spaceBattle.phases.filter((p) => p.objectives.length).length, l).toBe(3);
+      expect(map.spawns.length, l).toBeGreaterThan(0);
+      expect(isSequel(map.level), l).toBe(false);
+    }
+  });
+
+  it.each(['sb_endor', 'sb_kamino'])('%s’s Starfighter Assault follows the level’s own phases, on things the level places', (l) => {
+    const map = rows(`maps/${l}`);
+    const st = rb[`maps/${l}.stages`];
     expect(map.modes).toEqual(['starfighter']);
     expect(st.level).toBe(map.level);
     // (the stages in the game's phase order, each phase's objectives all bound, and no more)
@@ -62,7 +74,9 @@ describe('the Battlefront rulebooks', () => {
     expect([...new Set(st.stages.map((s) => s.phase))]).toEqual(phases.map((p) => p.name));
     for (const p of phases) expect(st.stages.filter((s) => s.phase === p.name).flatMap((s) => s.objectives.map((o) => o.id)).sort()).toEqual(p.objectives.map((o) => o.name).sort());
     const prefabs = new Set(map.prefabs.map((p) => p.id));
-    const placed = new Set(map.placed.starfighter.map((p) => p.mesh));
+    // (`mesh#n`: the nth the sub-level places)
+    const count = (name) => map.placed.starfighter.filter((p) => p.mesh === name).length;
+    const placed = { has: (name) => count(name.split('#')[0]) > Number(name.split('#')[1] ?? 0) };
     const ships = new Set(st.ships.map((s) => s.id));
     const bad = [];
     for (const s of st.ships) if (!(s.prefab ? prefabs.has(s.prefab) : placed.has(s.placed))) bad.push(`ship ${s.id}`);
