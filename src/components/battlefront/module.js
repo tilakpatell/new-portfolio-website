@@ -70,6 +70,7 @@ export default {
     let sinceHud = Infinity;
     let scoreboard = false;
     let weather = lighting.default;
+    let clock = 0; // s the world has drawn: a drawn bolt's age
 
     const look = createLook({
       host: rt.gfx.canvas,
@@ -172,7 +173,9 @@ export default {
         if (pose) rig.set(pose);
         rig.update(dt);
         figures.update(v.entities, dt, Math.min(1, acc / STEP));
-        bolts.update(v.bolts);
+        clock += dt;
+        // (each bolt leaves its owner's gun: fx/bolts.js)
+        bolts.update(v.bolts, { muzzleOf: figures.muzzleOf, now: clock });
         light.update(dt, camera);
         sinceHud += dt;
         if (sinceHud >= 1 / HUD_HZ) {

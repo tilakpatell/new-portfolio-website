@@ -56,6 +56,25 @@ describe('the battle on lane 1’s sim, with the deploy screen lane 2 will own',
     expect(v.bolts.length).toBeGreaterThan(0);
   });
 
+  it('says which weapon each soldier holds, and whose each bolt is and where it began', () => {
+    const b = make({ 1: 1, 2: 0 });
+    addPlayer(b, { team: 2 });
+    deploy(b, 'player', { classId: 'd-orig-heavy' });
+    for (let i = 0; i < 6; i++) step(b, [{ id: 'player', move: [0, 0], yaw: 0, fire: true }]);
+    const v = view(b);
+    const me = v.entities.find((e) => e.id === b.player.id);
+    expect(me.weapon).toBe('dlt19');
+    for (const e of v.entities) expect(e.weapon, e.id).toBe(b.sim.entities.get(e.id).gun?.row?.id ?? null);
+    const mine = v.bolts.filter((x) => x.owner === b.player.id);
+    expect(mine.length).toBeGreaterThan(0);
+    for (const x of mine) {
+      const sim = b.sim.bolts.list.find((s) => s.id === x.id);
+      expect(x.from).toEqual(sim.from);
+      expect(x.travelled).toBe(sim.travelled);
+      expect(x.speed).toBe(rb.weapons.dlt19.firing.speed);
+    }
+  });
+
   it('fields the bots and ends the round when told', () => {
     const b = make({ 1: 2, 2: 2 });
     addPlayer(b, { team: 2 });
