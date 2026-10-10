@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BODIES, bodyOf, shapeFor } from './bodies';
+import { BODIES, KNOCK, bodyOf, knockOf, shapeFor, shotImpulse } from './bodies';
 
 const box = (min, max) => ({ min, max });
 
@@ -70,6 +70,58 @@ describe('shapeFor', () => {
     expect(shapeFor({ shape: 'box', mass: 1 }, box([NaN, 0, 0], [1, 1, 1]))).toBe(null);
     expect(shapeFor({ shape: 'box', mass: 1 }, box([Infinity, 0, 0], [-Infinity, 1, 1]))).toBe(null);
     expect(shapeFor({ shape: 'piano', mass: 1 }, box([0, 0, 0], [1, 1, 1]))).toBe(null);
+  });
+});
+
+describe('knockOf', () => {
+  it('gives nothing to what has no mass (a fixed thing) or none that’s a number', () => {
+    for (const m of [0, NaN, undefined, -1, Infinity]) expect(knockOf(m), String(m)).toBe(0);
+  });
+
+  it('pushes a heavier thing harder, but gives it less speed', () => {
+    const masses = [0.01, 0.2, 0.4, 1, 2, 3, 4, 8, 14, 25, 30, 1000];
+    for (let i = 1; i < masses.length; i++) {
+      const [a, b] = [masses[i - 1], masses[i]];
+      expect(knockOf(b), `${a} → ${b} kg`).toBeGreaterThanOrEqual(knockOf(a));
+      expect(knockOf(b) / b, `${a} → ${b} kg`).toBeLessThanOrEqual(knockOf(a) / a);
+    }
+  });
+
+  it('slides a crate, an AC unit too, and doesn’t send a pebble out of sight', () => {
+    expect(knockOf(0.01) / 0.01).toBeCloseTo(KNOCK.vMax, 9); // (at most 7 m/s)
+    expect(knockOf(1)).toBeCloseTo(4.5, 6);
+    expect(knockOf(8) / 8).toBeGreaterThanOrEqual(2.5);
+    expect(knockOf(8) / 8).toBeLessThanOrEqual(3.5);
+    expect(knockOf(25) / 25).toBeGreaterThanOrEqual(2);
+    expect(knockOf(1000)).toBe(KNOCK.jMax); // (at most 60 N·s)
+    // (a plumbus is sent no more than three times as fast as an AC unit)
+    expect(knockOf(0.2) / 0.2 / (knockOf(25) / 25)).toBeLessThan(3);
+  });
+});
+
+describe('shotImpulse', () => {
+  const j = 10;
+  const up = [0, 1, 0];
+  const close = (got, want) => want.forEach((w, i) => expect(got[i], `[${i}]`).toBeCloseTo(w, 9));
+
+  it('pushes a level shot all along its way, and hops the thing up a little', () => {
+    const { side, lift } = shotImpulse(j, [1, 0, 0], up);
+    close(side, [j, 0, 0]);
+    close(lift, [0, KNOCK.lift * j, 0]);
+  });
+
+  it('pushes nothing along the ground for a shot from straight above', () => {
+    close(shotImpulse(j, [0, -1, 0], up).side, [0, 0, 0]);
+  });
+
+  it('leaves out the part of a downward shot that goes into the ground', () => {
+    const s = Math.SQRT1_2;
+    const { side } = shotImpulse(j, [s, -s, 0], up);
+    close(side, [j, 0, 0]);
+  });
+
+  it('keeps an upward shot as it is', () => {
+    close(shotImpulse(j, [0.6, 0.8, 0], up).side, [0.6 * j, 0.8 * j, 0]);
   });
 });
 

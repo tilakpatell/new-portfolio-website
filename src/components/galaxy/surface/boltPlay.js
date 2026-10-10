@@ -7,8 +7,15 @@
 // time at you, never three in a row). Wiring beside scene.js, kept apart so
 // that file doesn't grow.
 //
-// createBoltPlay({ blaster, ground, rng }) → { enemy(s, you) → bolt | null,
-// step(dt, ctx, on) }
+// A figure on the game's skeleton (lane 1's heroes) is hit where the game's
+// capsules say (lib/physics/boneCapsules.js over bones.json, fetched the
+// first time such a figure is in the way); any other keeps the one capsule
+// blaster.js's capsuleOf gives it. A hit's `e.body.region` and `reaction`
+// name the bone and the game's hit reaction then.
+//
+// createBoltPlay({ blaster, ground, rng, boneSets }) → { enemy(s, you) →
+// bolt | null, step(dt, ctx, on) } (boneSets: bones.json's contents, else
+// fetched when first wanted)
 //   s: a shot at you, { from, to: [x, z] | null, spread, damage, color, who,
 //     side }; you: your walker state
 //   ctx: { you (your walker state, or null while nothing can hit you), mate
@@ -21,6 +28,7 @@
 //     landed(e) } (e: the step's event)
 
 import { FIRST, freshAim, missBy, shotStep } from '../../../lib/combat/accuracy';
+import { capsulesOf, isGameSkeleton } from '../../../lib/physics/boneCapsules';
 import { capsuleOf } from './blaster';
 
 const CHEST = 1.1; // m over your feet: where they aim
@@ -30,7 +38,7 @@ const CLEAR = 0.9; // of the way to you a line must be clear for a shot
 // you (or your mate) as the bolts see you
 const personAt = (id, st, allies) => ({ id, a: [st.x, st.y + 0.4, st.z], b: [st.x, st.y + 1.45, st.z], r: 0.4, side: 'you', allies });
 
-export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
+export function createBoltPlay({ blaster, ground = null, rng = Math.random, boneSets = null }) {
   const aims = new WeakMap(); // who → { streak, fresh, wide, at }
   const bodies = [];
   const blades = [];
@@ -41,6 +49,29 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
     Object.assign(b, capsuleOf(t));
     b.side = t.spec?.side === 'yours' ? 'you' : (t.side ?? 'them');
     return b;
+  };
+  // the game's capsules on a figure on the game's skeleton (a hero's set for a hero), once fetched
+  let sets = boneSets;
+  let asked = !!boneSets;
+  const gameBodies = (t, out) => {
+    // (a droid or beast on a rig of its own, ownRig.js, takes its rig's own
+    // set where the game has one (the B2's; lane V's walkers, the droideka
+    // among them, name no skeleton and keep their one capsule); else the one
+    // capsule of a figure the game has none for)
+    const own = t.fig?.rig === 'own' ? t.fig.skeleton : null;
+    if (t.fig?.rig === 'own' && !own) return false;
+    if (!own && !isGameSkeleton(t.fig?.bones)) return false;
+    if (!asked) {
+      asked = true;
+      import('../../../data/bf2017/physics/bones.json').then((m) => (sets = m.default ?? m)).catch(() => {});
+    }
+    const id = t.hero || t.spec?.hero ? 'defaultsoldierbonecollision_hero' : 'defaultsoldierbonecollision';
+    const set = own ? sets?.sets?.find((x) => x.skeleton?.endsWith(`/${own}`)) : sets?.sets?.find((x) => x.id === id);
+    const caps = set ? capsulesOf(t.fig.bones, set) : [];
+    if (!caps.length) return false;
+    const side = bodyOf(t).side;
+    for (const c of caps) out.push({ id: t, ref: t, side, ...c });
+    return true;
   };
 
   return {
@@ -74,7 +105,7 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
       if (ctx.you) bodies.push(personAt('you', ctx.you, allies));
       if (ctx.mate) bodies.push(personAt('mate', ctx.mate, allies));
       if (ground) for (const b of ground.bodies()) bodies.push(b);
-      for (const t of ctx.targets ?? []) if (t?.holder && !t.down && !t.ground) bodies.push(bodyOf(t));
+      for (const t of ctx.targets ?? []) if (t?.holder && !t.down && !t.ground && !gameBodies(t, bodies)) bodies.push(bodyOf(t));
       if (ctx.guard) blades.push(ctx.guard);
       for (const e of blaster.update(dt, { bodies, blades })) {
         ground?.bolt(e);

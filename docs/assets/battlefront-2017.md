@@ -28,6 +28,21 @@ node scripts/glb-shot.mjs public/models/galaxy/surface/<kind>.glb out.png three
 
 The import picks the site’s cuts from the LOD chain, turns the textures into WebP at the site’s sizes, grounds the model, writes the row into `src/components/galaxy/surface/catalog/bf2017.js` and the credit into `src/data/modelCredits.json`. Its header comment has every flag.
 
+## Kits, the surfaces' roles, a level's probe
+
+A level's modular system (Echo Base's hangar, its wall system) can be made one file: fetch the pieces at a LOD, then
+
+```
+for n in $(node scripts/bf2017-fetch.mjs --list 'objects/architecture/hoth/wallsystem_01/new/wall_01_*' | awk '{print $1}'); do node scripts/bf2017-fetch.mjs $n --lod 1; done
+node scripts/bf2017-kit.mjs hothwalls --pieces 'objects/architecture/hoth/wallsystem_01/new/wall_01_*' --as 'Echo Base’s inside walls' --lod 1 --world hoth
+```
+
+A piece keeps the game's origin, a corner or an edge; the materials are kept apart by name (`M_Wall` and `M_Floor` are alike in all else). Some systems' maps are bound by their shader preset, not the mesh: Hoth's large hangar shells have no maps in the GLB or the records.
+
+The surfaces' roles on the game's maps: `node scripts/bf2017-textures.mjs [role …]` makes them from `scripts/lib/bf2017-roles.mjs`'s sources; a site's `look.scanned: 'bf2017'` wears them.
+
+A level's light is one of its reflection volumes' probes, six 128² Radiance faces under `web/textures/levels/mp/<level>/reflectionvolumetexture/<lighting>/`, published for the owner's lighting lane (this pipeline builds no lighting); look at them first, then `node scripts/bf2017-sky.mjs <folder> <probe id> --name <world>`, and write what it is in `docs/superpowers/evidence/bf2017-<world>/skies.md`. The levels' panoramic skies (`Levels/Lighting/Hoth/Sunny_01/T_Hoth_Sunny_01_Panoramic_C`, 8192 × 2048) are in `web/textures.jsonl` but were not in the bucket on 2026-10-10.
+
 ## What a texture is
 
 Read from the uploader’s test PNGs (`inventory.md`, “What a texture is”):

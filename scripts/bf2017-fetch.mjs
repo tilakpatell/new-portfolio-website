@@ -13,6 +13,8 @@
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --list '<glob over name>'
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs data '<glob over record name>' […]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs web '<glob under web/>' […]
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs anims
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs anim <clip name>
 //
 //   manifest     web/models.jsonl (about 25 MB), which every other command reads
 //   name         a model's `name` in the manifest (characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh)
@@ -31,6 +33,10 @@
 //                index: the Battlefront extractor's --root (scripts/bf2017-data.mjs)
 //   web          files of the web build (svg/**, fonts/…, maps/…, strings/…),
 //                and the listing of their folders in web/files.txt
+//   list         the names under a glob, with their LOD triangles (models)
+//                or their frames and fps (clips, once `anims` has run)
+//   anims        web/anims.jsonl (about 16 MB), the clips' manifest
+//   anim         one clip's glTF (web/anims/…), by its name in that manifest
 //
 // Every request goes through scripts/lib/pool.mjs (retries, backoff, a
 // timeout by size, a .part renamed when whole), so a cut-off run leaves no
@@ -47,13 +53,15 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
+import { animEntry, animPath, globRe } from './lib/bf2017-anims.mjs';
 import { partsOf, readManifest } from './lib/bf2017-manifest.mjs';
-import { dataPath, globDir, globMatch, globRegExp, imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
+import { dataPath, globDir, globRegExp, imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
 import { createPool } from './lib/pool.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BUCKET = 'bf2017-assets';
 const MANIFEST = 'web/models.jsonl';
+const ANIMS = 'web/anims.jsonl';
 const INDEX = '.index.json';
 
 function keys() {
@@ -287,15 +295,49 @@ async function withIndex(root, verify, work) {
   }
 }
 
+// ── the clips (phase 1): their manifest, one clip, and both in --list ──
+
+export const anims = {
+  // the manifest, fetched when it isn't on disk
+  async load(env, root) {
+    const file = localPath(root, ANIMS);
+    if (!existsSync(file)) say(await getObject(env ?? keys(), root, ANIMS));
+    return readManifest(await readFile(file, 'utf8'));
+  },
+  // one clip's glTF on disk: { file, bytes, state }, `missing` when the
+  // bucket hasn't it yet (164 of the 10,270 weren't up on 2026-10-10)
+  async fetch(env, root, manifest, name) {
+    const e = animEntry(manifest, name);
+    if (!e) return { file: null, bytes: 0, state: 'unknown' };
+    return getObject(env ?? keys(), root, animPath(e));
+  },
+};
+
+function listAll(models, clips, glob) {
+  const re = globRe(glob);
+  for (const [name, e] of models ?? []) if (re.test(name)) console.log(`${name}  ${e.lods.map((l) => l.triangles).join(' · ')}`);
+  for (const [name, e] of clips ?? []) if (re.test(name)) console.log(`${name}  ${e.frames} frames at ${e.fps}${e.additive ? ', additive' : ''}  ${e.skeleton.split('/').pop()}`);
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
   const root = join(ROOT, 'lab', 'assets', 'bf2017');
   const [what] = args._;
   if (args.pool) poolOf(Math.max(1, Number(args.pool) || 6));
   if (args.list) {
-    const manifest = await loadManifest(root);
-    const match = globMatch(args.list);
-    for (const [name, e] of manifest) if (match(name)) console.log(`${name}  ${e.lods.map((l) => l.triangles).join(' · ')}`);
+    const has = (p) => existsSync(localPath(root, p));
+    if (!has(MANIFEST) && !has(ANIMS)) await loadManifest(root);
+    listAll(has(MANIFEST) ? await loadManifest(root) : null, has(ANIMS) ? readManifest(await readFile(localPath(root, ANIMS), 'utf8')) : null, args.list);
+  } else if (what === 'anims') {
+    say(await getObject(keys(), root, ANIMS));
+  } else if (what === 'anim') {
+    const env = keys();
+    const r = await anims.fetch(env, root, await anims.load(env, root), String(args._[1] ?? ''));
+    if (r.state === 'unknown') {
+      console.error(`${args._[1]}: not in web/anims.jsonl (try --list)`);
+      process.exit(1);
+    }
+    say(r);
   } else if (typeof args.all === 'string') {
     const env = keys();
     const manifest = await loadManifest(root);

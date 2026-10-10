@@ -8,9 +8,12 @@
 // createBolts({ pool = 48 }) → { fire(spec) → bolt, step(dt, world) →
 // events[], live() → bolt[], clear() }.
 // spec: { from, dir, speed = 90, range = 120, owner, side ('you' | 'them' |
-// 'none', or a faction), damage, colour, deflect = false, ghost = false, tag }
-// (plain [x, y, z] arrays; `tag` is the caller's, carried untouched; a
-// `ghost` is a battle's tracer, stopped by solids and hurting nobody).
+// 'none', or a faction), damage, colour, deflect = false, ghost = false, tag,
+// ballistic } (plain [x, y, z] arrays; `tag` is the caller's, carried
+// untouched; a `ghost` is a battle's tracer, stopped by solids and hurting
+// nobody; `ballistic`, a projectiles.json row: the bolt flies by
+// lib/combat/ballistics.js's flight at `speed`, falling and slowing as the
+// row says, and is gone at its ttl; the segment test is the same).
 // world: { solids(a, b) → { at, normal } | null, bodies: [{ id, a, b, r,
 // side, allies?, ref }], blades: [{ id, base, tip, r, side, ref }] }
 // (`allies`: the sides whose bolts pass a body by, as a rebel's pass you).
@@ -25,6 +28,8 @@
 // The geometry is exported for the blade's sweep (lib/combat/blade.js):
 // segSeg(a, b, c, d) → { s, t, dist }, segCapsule(a, b, ca, cb, r) → { t, at }
 // | null. Pure: plain arrays, no three.js.
+
+import { flight, launch } from './ballistics';
 
 const EPS = 1e-9;
 
@@ -121,7 +126,7 @@ export function createBolts({ pool = 48 } = {}) {
   };
 
   return {
-    fire({ from, dir, speed = SPEED, range = RANGE, owner = null, side = 'none', damage = 0, colour = '#ff3b30', deflect = false, ghost = false, tag = null }) {
+    fire({ from, dir, speed = SPEED, range = RANGE, owner = null, side = 'none', damage = 0, colour = '#ff3b30', deflect = false, ghost = false, tag = null, ballistic = null }) {
       const b = take();
       const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
       b.alive = true;
@@ -140,6 +145,11 @@ export function createBolts({ pool = 48 } = {}) {
       b.deflected = false;
       b.ghost = ghost;
       b.tag = tag;
+      b.ballistic = ballistic;
+      if (ballistic) {
+        b.vel = launch(ballistic, b.dir, speed);
+        b.life = 0;
+      }
       return b;
     },
 
@@ -150,6 +160,17 @@ export function createBolts({ pool = 48 } = {}) {
       for (const b of slots) {
         if (!b.alive) continue;
         let left = Math.min(b.speed * dt, b.range - b.flown);
+        let spent = false; // (a ballistic bolt's life run out this step)
+        if (b.ballistic) {
+          // the row's step decides where it gets to; the segment there is tested as any other
+          const f = flight(b.ballistic, b, dt);
+          const d = sub(b.pos, f.from);
+          const len = Math.sqrt(dot(d, d));
+          b.pos = f.from;
+          if (len > EPS) b.dir = [d[0] / len, d[1] / len, d[2] / len];
+          left = Math.min(len, b.range - b.flown);
+          spent = f.gone;
+        }
         for (let turn = 0; turn < TURNS && left > 0 && b.alive; turn++) {
           const a = b.pos;
           const e = [a[0] + b.dir[0] * left, a[1] + b.dir[1] * left, a[2] + b.dir[2] * left];
@@ -192,6 +213,7 @@ export function createBolts({ pool = 48 } = {}) {
           }
           // turned: back along its line, the blade's now, home at its shooter
           b.dir = [-b.dir[0], -b.dir[1], -b.dir[2]];
+          if (b.ballistic) b.vel = [-b.vel[0], -b.vel[1], -b.vel[2]];
           b.side = what.blade.side;
           b.owner = what.blade.id;
           b.deflect = false;
@@ -199,7 +221,7 @@ export function createBolts({ pool = 48 } = {}) {
           b.flown = 0;
           left = Math.min(left, b.range);
         }
-        if (b.alive && b.flown >= b.range - EPS) {
+        if (b.alive && (spent || b.flown >= b.range - EPS)) {
           b.alive = false;
           events.push({ type: 'gone', bolt: b });
         }

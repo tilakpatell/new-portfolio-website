@@ -29,13 +29,16 @@ export async function writeCatalogueLine(file, kind, entry) {
   await writeFile(file, s);
 }
 
+// A credit by key: one already there is replaced where it stands; a new one
+// goes after the last key that sorts before it, so a sorted file stays
+// sorted and an unsorted one (modelCredits.json grew by hand) isn't reshuffled.
 export async function writeCredit(file, key, credit) {
   const credits = JSON.parse(await readFile(file, 'utf8'));
-  credits[key] = credit;
-  const sorted = Object.fromEntries(
-    Object.keys(credits)
-      .sort()
-      .map((k) => [k, credits[k]]),
-  );
-  await writeFile(file, `${JSON.stringify(sorted, null, 2)}\n`);
+  let entries = Object.entries(credits);
+  if (key in credits) entries = entries.map(([k, v]) => [k, k === key ? credit : v]);
+  else {
+    const at = entries.findLastIndex(([k]) => k < key);
+    entries.splice(at + 1, 0, [key, credit]);
+  }
+  await writeFile(file, `${JSON.stringify(Object.fromEntries(entries), null, 2)}\n`);
 }
