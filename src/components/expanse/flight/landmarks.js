@@ -20,8 +20,7 @@
 //     opts?, at: [x, z], y, yaw, pitch?, roll?, scale, abs: true, solid:
 //     false }], dropped }
 
-import { siteOf } from '../../galaxy/surface/sites';
-import { makeHeight } from '../../galaxy/surface/terrain';
+import { makeHeight, siteOf } from '../../galaxy/shared/ground';
 import { DROP_Y, LANDMARKS, LANDMARK_MAX, SITE_PLACES } from '../../../lib/land/flight/landmarkTables';
 
 // the site's air, not its places': drawn by the walkable site round you, never from a ship

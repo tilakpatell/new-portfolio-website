@@ -1,0 +1,7 @@
+{
+  "name": "fixture",
+  "dependencies": {
+    "fastnoise-lite": "1.1.1",
+    "three": "0.180.0"
+  }
+}

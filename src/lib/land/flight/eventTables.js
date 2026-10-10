@@ -18,7 +18,7 @@
 //   EVENTS[kind] → { play, ttl, cooldown, weight, …the play's defaults }
 //   EVENT_KINDS; WEATHER (the plays a dead world keeps)
 //   WORLD_EVENTS[planetId] → [{ kind, line, …overrides }]
-//   eventsFor(spec, life?) → [{ kind, line, play, ttl, cooldown, weight, … }]
+//   eventsFor(spec, life?, { expanse }) → [{ kind, line, play, ttl, cooldown, weight, … }]
 
 import { isDead, lifeFor, systemOf } from './lifeTables.js';
 
@@ -234,9 +234,11 @@ export function expanseEvents(spec, system) {
   return out;
 }
 
-export function eventsFor(spec, life = lifeFor(spec)) {
+// (the Expanse given as lifeTables' lifeFor is given it)
+export function eventsFor(spec, life = null, { expanse = null } = {}) {
   if (!spec?.id) return [];
+  life ??= lifeFor(spec, { expanse });
   // (a dead world: its weather, and the dust)
-  const rows = isDead(life) ? weatherOf(spec.type) : (WORLD_EVENTS[spec.id] ?? expanseEvents(spec, systemOf(spec.id)));
+  const rows = isDead(life) ? weatherOf(spec.type) : (WORLD_EVENTS[spec.id] ?? expanseEvents(spec, systemOf(spec.id, { expanse })));
   return rows.map((row) => ({ ...EVENTS[row.kind], ...row }));
 }

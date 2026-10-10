@@ -18,8 +18,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { seeded } from '../../../lib/seeded';
-import { createWeather } from '../../galaxy/surface/weather';
-import { strikeAt } from '../../galaxy/surface/storm';
+import { createWeather, strikeAt } from '../../galaxy/shared/weather';
 import { modelGeometry } from './lifeScene';
 
 const GRAVITY = 30; // m/s², a little light: rocks hang long enough to be seen from a cockpit
