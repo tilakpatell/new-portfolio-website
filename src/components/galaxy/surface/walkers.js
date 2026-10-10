@@ -37,7 +37,7 @@
 import * as THREE from 'three';
 import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, modelUrlFor } from './catalog';
-import { cloneModel, loadGlb } from './placer';
+import { cloneModel, fallbackFor, loadGlb, loadGlbOr } from './placer';
 import { crewFigure } from './crew';
 import { poseRider } from './riders';
 import { NO_CALLS } from '../../../lib/three/figureCalls';
@@ -256,7 +256,8 @@ export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
   // (the level's own cut: at ultra the .ultra file, the same rig and nodes
   // as the plain, which the placer loads for the same kind; asking 'high'
   // fetched the plain as well, and drew the walker below its best)
-  const gltf = await loadGlb(modelUrlFor(kind, detailLevel(), models));
+  const url = modelUrlFor(kind, detailLevel(), models);
+  const gltf = await loadGlbOr(url, fallbackFor(kind, url, models));
   if (!gltf) return null;
   const scene = cloneModel(gltf);
   const { body, legs, pieces } = splitParts(scene, spec);
@@ -319,7 +320,8 @@ export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
 // AT-RT's) sat on the saddle and carried by the bone the clips sway
 async function ownWalker(kind, spec, i, models) {
   const load = async (url) => {
-    const gltf = await loadGlb(url);
+    // (an .ultra cut not to be had falls to the plain one: placer.js's fallbackFor)
+    const gltf = await loadGlbOr(url, fallbackFor(kind, url, models));
     return gltf ? { scene: cloneModel(gltf), animations: gltf.animations } : null;
   };
   // (the level's own cut, as below: the AT-AT's ultra is the same skin on the same rig)
