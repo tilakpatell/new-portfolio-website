@@ -23,9 +23,9 @@ export const WORLD_MB = {
   '/galaxy': 10, // drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon; and down on a world, its models (its people, walkers, landmarks: a few MB a world); and Rapier (1.7 MB) for the loose crates by a site's stacks, on a computer that loads it (never a phone)
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
   // the ground is made in a worker from the planet's seed and wears the galaxy's scans (a few at a planet, under 2 MB); Coruscant adds its film-made Senate, Temple and tower (2.2 MB);
-  // the POIs' buildings and the kit clutter round where it starts add the heaviest planet's 16.2 MB at mid (Naboo; Middle-earth 11.2, Geonosis 10.3,
-  // Mustafar 7.8, Lothal 7.4, Yavin 6.2, Tatooine 5.9, Hoth 4.0, the rest under 5.5, an Expanse planet 1.5 at most: expanse/flight/landmarkFiles.test.js)
-  '/fly': 22,
+  // the POIs' buildings and the kit clutter round where it starts add the heaviest planet's 22.9 MB at mid (Naboo, its AAT, MTT, N-1 and droidekas
+  // the game's since lane V; Geonosis 11.7, Middle-earth 11.2, the rest less, an Expanse planet 1.5 at most: expanse/flight/landmarkFiles.test.js)
+  '/fly': 28,
   '/deathstar/inside': 6, // aboard the station: the first room's kit and textures at phone size, and the cast it starts with (people, guns, the borrowed clips)
   '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
   '/music': 7, // the music planet's courtyard: its instruments, chhatri, lamps and gaddi (Meshy models), sandstone, a dusk sky
