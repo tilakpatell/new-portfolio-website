@@ -23,14 +23,13 @@ import { createBolts } from './fx/bolts.js';
 import { markerProjection } from './hud/widgets.js';
 import { createInput } from './input.js';
 import { createLevel } from './map/level.js';
+import { armCaster, createLevelCollision, wantsEngine } from './map/collision.js';
 import { STEP, addPlayer, createBattle, deploy, step, view } from './battle.js';
 import { entryFor, lightsJsonOf } from './weather.js';
 
 export const HUD_HZ = 8; // snapshots a second to the page
 export const PLAYER_TEAM = 2; // the attackers on Hoth, the Empire (maps/hoth.stages.json)
 export const FAR = 12000; // m: the camera's far plane (the record's ViewDistance is 10,000 on Hoth's day)
-const ARM_STEP = 0.2; // m the camera's ray marches along the arm
-const ARM_CLEAR = 0.25; // m above the ground the camera keeps
 const MAX_STEPS = 10; // the sim's steps at most a frame (a tab back from the background)
 
 export default {
@@ -49,7 +48,12 @@ export default {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0.7, 0.78, 0.88);
     const camera = new THREE.PerspectiveCamera(70, 1, 0.1, FAR);
-    const level = createLevel({ scene, tier, renderer, world: levelName });
+    // (the level's shapes round the player, for the camera's arm: lane P0's
+    // engine where the tier and the screen take it, the cells as the stream
+    // brings them)
+    let collision = null;
+    let physics = null;
+    const level = createLevel({ scene, tier, renderer, world: levelName, onCell: (k, b, band) => collision?.add(k, b, band), onDrop: (k) => collision?.drop(k) });
     const figures = createFigures({ scene });
     const bolts = createBolts(scene);
     const rig = createCameraRig(camera);
@@ -58,7 +62,18 @@ export default {
     // (the navgrid is built from the ground the world draws: the pack's
     // heightmaps first; lane 1's bots walk it, the player too)
     await level.ready;
-    const sim = createBattle({ rulebook: rb, level: levelName, mode, heightAt: (x, z) => level.heightAt(x, z) });
+    const small = typeof window !== 'undefined' && Math.min(window.innerWidth, window.innerHeight) < 600;
+    const engine = async () => {
+      if (!level.pack || !wantsEngine({ pack: level.pack, tier, small })) return;
+      // (preloaded: the engine's first step is otherwise 50–107 ms, mid-play)
+      const { createPhysics, preload } = await import('../../lib/physics/world.js');
+      await preload();
+      physics = await createPhysics();
+      collision = createLevelCollision({ pack: level.pack, loadBin: level.loadBin, physics, tier });
+    };
+    // (the navgrid's mask, the pack's nav.bin: where the game's shapes leave no room to walk)
+    const [mask] = await Promise.all([level.navOf(), engine().catch(() => null)]);
+    const sim = createBattle({ rulebook: rb, level: levelName, mode, heightAt: (x, z) => level.heightAt(x, z), mask });
     const me = addPlayer(sim, { team: PLAYER_TEAM });
     // the player's soldier in lane 1's sim, once deployed
     const body = () => (sim.player?.id ? sim.sim.entities.get(sim.player.id) : null);
@@ -80,16 +95,8 @@ export default {
     });
     look.attach();
 
-    // the camera's arm against the ground: march back from the shoulder
-    const castArm = (from, dir, len) => {
-      for (let d = ARM_STEP; d <= len; d += ARM_STEP) {
-        const x = from[0] + dir[0] * d;
-        const y = from[1] + dir[1] * d;
-        const z = from[2] + dir[2] * d;
-        if (y < level.heightAt(x, z) + ARM_CLEAR) return d;
-      }
-      return null;
-    };
+    // the camera's arm against the ground and the level's shapes (the navgrid's with no engine)
+    const castArm = armCaster({ heightAt: (x, z) => level.heightAt(x, z), collision, nav: sim.nav });
 
     const doDeploy = (classId = picked) => {
       const r = deploy(sim, me, classId ? { classId } : {});
@@ -112,6 +119,11 @@ export default {
     const asked = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.split('?')[1] ?? window.location.search).get('post') : null;
     const post = light.passes.length && asked !== 'off' ? rt.gfx.post(light.passes) : null;
 
+    const physicsStats = () => {
+      const s = collision?.stats();
+      return s ? { cells: s.cells, bodies: s.bodies, colliders: s.colliders, queued: s.queued, mask: Boolean(sim.nav.mask) } : { mask: Boolean(sim.nav.mask) };
+    };
+
     const snapshot = () => {
       const v = view(sim);
       const p = v.player;
@@ -126,7 +138,7 @@ export default {
         scoreboard: v.scoreboard,
         showScoreboard: scoreboard,
         markers,
-        level: { loaded: level.loaded(), progress: level.progress(), ...level.stats() },
+        level: { loaded: level.loaded(), progress: level.progress(), ...level.stats(), physics: physicsStats() },
         backend: rt.gfx.backend,
         weather,
       };
@@ -154,6 +166,7 @@ export default {
           first = false;
           step(sim, [{ id: me, move: once.move, yaw: once.yaw, pitch: once.pitch, fire: once.fire, aim: once.aim, sprint: once.sprint, crouch: once.crouch, vent: once.vent, ability: once.ability }]);
         }
+        collision?.update(4);
         const p = body();
         if (sim.player.state === 'alive' && p) {
           const look = input.look();
@@ -222,6 +235,8 @@ export default {
         bolts.dispose();
         figures.dispose();
         level.dispose();
+        collision?.dispose();
+        physics?.dispose();
         if (typeof window !== 'undefined' && window.__battlefront?.world === world) delete window.__battlefront;
       },
     };

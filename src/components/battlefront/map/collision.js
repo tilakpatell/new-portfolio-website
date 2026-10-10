@@ -14,7 +14,7 @@
 //   armCaster({ heightAt, collision, nav, clear, step, radius }) → castArm(from, dir, len)
 //     the nearer of a march over the ground and a ball swept through the
 //     shapes (with no engine: the navgrid's solids and mask, firstSolid)
-//   CULL_RADIUS, ARM_STEP, ARM_CLEAR
+//   CULL_RADIUS, ARM_STEP, ARM_CLEAR; wantsEngine (lane P0's rule, passed on)
 
 import * as laneL from '../../galaxy/shared/level.js';
 import { firstSolid } from '../../../lib/battlefront/nav.js';
@@ -25,6 +25,8 @@ export const ARM_STEP = 0.2; // m the camera's ray marches along the arm over th
 export const ARM_CLEAR = 0.25; // m above the ground the camera keeps (hand)
 
 const I = { x: 0, y: 0, z: 0, w: 1 };
+
+export const wantsEngine = (opts) => laneL.wantsEngine(opts);
 
 export function createLevelCollision({ pack, loadBin, physics, tier = 'high', deps = {} }) {
   const make = deps.createLevelPhysics ?? laneL.createLevelPhysics;
