@@ -16,21 +16,21 @@
         "end": "docs/superpowers/evidence/battlefront-lane5/end-webgl.png"
       },
       "backend": "nodes-webgl",
-      "loadedMs": 76201,
+      "loadedMs": 83568,
       "deploy": {
         "ok": true
       },
       "advance": {
         "ok": true,
-        "time": 31.750000000000316
+        "time": 31.8
       },
       "view": {
         "player": {
-          "id": 1,
+          "id": "p17",
           "state": "alive",
           "at": [
             -32.134,
-            313.5394248375,
+            313.5422697867767,
             -957.0956
           ],
           "yaw": 2.7471,
@@ -76,9 +76,9 @@
       },
       "frame": {
         "frames": 3,
-        "mean": 4605.5,
-        "median": 4566.7,
-        "p95": 4783.1
+        "mean": 4757.7,
+        "median": 4899.9,
+        "p95": 4956.9
       }
     },
     {
