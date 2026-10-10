@@ -15,7 +15,30 @@
    "size": 1214,
    "url": "/models/galaxy/space/kamino-venator.glb",
    "far": "/models/galaxy/space/kamino-venator.far.glb",
-   "tris": 32978
+   "tris": 32978,
+   "from": [
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_left_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_right_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltowerdetail_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_decal_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailback_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailbottom_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailbottom_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailfront_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailside_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailside_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailtop_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailtop_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_engine_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_engine_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hanger_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hanger_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hangergunbase_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hull_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_window_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/ventatorstardestroyer_turret_01_wreck_mesh"
+   ]
   },
   "kamino-venator-2": {
    "kind": "capital",
@@ -23,7 +46,28 @@
    "size": 1214,
    "url": "/models/galaxy/space/kamino-venator-2.glb",
    "far": "/models/galaxy/space/kamino-venator-2.far.glb",
-   "tris": 37992
+   "tris": 37992,
+   "from": [
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_left_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_right_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltowerdetail_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_decal_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailback_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailbottom_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailbottom_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailfront_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailside_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailside_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailtop_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailtop_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hanger_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hanger_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hangergunbase_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hull_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_window_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/ventatorstardestroyer_turret_01_wreck_mesh"
+   ]
   },
   "kamino-jedicruiser": {
    "kind": "capital",
@@ -31,7 +75,22 @@
    "size": 388,
    "url": "/models/galaxy/space/kamino-jedicruiser.glb",
    "far": "/models/galaxy/space/kamino-jedicruiser.far.glb",
-   "tris": 11013
+   "tris": 11013,
+   "from": [
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_commandbridge_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_decal_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsbottom_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsengine_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsfront_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsside_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsside_02_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailstop_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailstop_02_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_engine_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_hatch_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_hull_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_windows_01_mesh"
+   ]
   },
   "providenceclassdreadnaught-01": {
    "kind": "capital",
@@ -39,7 +98,10 @@
    "size": 1085,
    "url": "/models/galaxy/space/providenceclassdreadnaught-01.glb",
    "far": "/models/galaxy/space/providenceclassdreadnaught-01.far.glb",
-   "tris": 22690
+   "tris": 22690,
+   "from": [
+    "gameplay/vehicles/capital/providenceclassdreadnaught/providenceclassdreadnaught_01_mesh"
+   ]
   }
  },
  "pieces": [

@@ -15,7 +15,26 @@
    "size": 1165,
    "url": "/models/galaxy/space/endor-mc80.glb",
    "far": "/models/galaxy/space/endor-mc80.far.glb",
-   "tris": 36117
+   "tris": 36117,
+   "from": [
+    "gameplay/vehicles/capital/mc80/mc80_engine_module_01_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_engine_module_02_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_engine_module_03_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_engine_module_04_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_engine_skirt_01_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_largenodule_01_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_largenodule_02_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_largenodule_03_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_largenodule_04_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_largenodule_05_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_largenodule_06_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_mainhull_01_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_mainhull_light_01_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_mainturret_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_nodulehanger_01_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_recessed_detail_01_mesh",
+    "gameplay/vehicles/capital/mc80/mc80_slotbacking_01_mesh"
+   ]
   },
   "endor-isd": {
    "kind": "capital",
@@ -23,7 +42,62 @@
    "size": 1606,
    "url": "/models/galaxy/space/endor-isd.glb",
    "far": "/models/galaxy/space/endor-isd.far.glb",
-   "tris": 36781
+   "tris": 36781,
+   "from": [
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_boosterengine_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_communicationstower_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_deflectorshield_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailscommandbridge_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailscommandbridge_02_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailscommandbridge_03_back_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailscommandbridge_03_front_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailscommandbridge_03_left_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailscommandbridge_03_right_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsengine_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsengine_02_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsfront_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshull_01_back_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshull_01_front_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshull_01_middle_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshull_02_back_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshull_02_front_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshull_02_middle_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshulltop_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshulltop_02_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshulltop_03_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailshulltop_04_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_a_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_b_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_c_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_d_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_e_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_right_a_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_right_b_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_right_c_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_right_d_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_01_right_e_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_02_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_02_right_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_03_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_04_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_05_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_05_right_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_06_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_06_right_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_07_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_detailsside_07_right_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_hangarprimary_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_hangarprimary_door_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_hangarprimaryentrance_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_hangarsecondary_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_heavyturbolaser_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_heavyturbolaserframe_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_hull_01_sb_endor_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_mainengine_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_solarionizationreactor_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_tractorbeam_01_mesh",
+    "objects/props/landmarks/_galacticempire/stardestroyer_01/stardestroyer_windows_01_mesh"
+   ]
   },
   "deathstar-debris-l-03-mc80-destruction": {
    "kind": "rock",
@@ -31,7 +105,10 @@
    "size": 28,
    "url": "/models/galaxy/space/deathstar-debris-l-03-mc80-destruction.glb",
    "far": null,
-   "tris": 512
+   "tris": 512,
+   "from": [
+    "levels/space/sb_endor_01/objects/deathstar_debris_l_03_mc80_destruction_mesh"
+   ]
   },
   "corvettecr90-01": {
    "kind": "capital",
@@ -39,7 +116,10 @@
    "size": 133,
    "url": "/models/galaxy/space/corvettecr90-01.glb",
    "far": "/models/galaxy/space/corvettecr90-01.far.glb",
-   "tris": 6838
+   "tris": 6838,
+   "from": [
+    "gameplay/vehicles/corvette/corvettecr90/corvettecr90_01_mesh"
+   ]
   },
   "endor-mine-emissiveoff": {
    "kind": "station",
@@ -47,7 +127,10 @@
    "size": 35,
    "url": "/models/galaxy/space/endor-mine-emissiveoff.glb",
    "far": null,
-   "tris": 8480
+   "tris": 8480,
+   "from": [
+    "gameplay/vehicles/spacebattles/endor_mine/endor_mine_emissiveoff_mesh"
+   ]
   },
   "deathstar-debris-l-04": {
    "kind": "rock",
@@ -55,7 +138,10 @@
    "size": 37,
    "url": "/models/galaxy/space/deathstar-debris-l-04.glb",
    "far": null,
-   "tris": 559
+   "tris": 559,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/deathstar_debris_l_04_mesh"
+   ]
   },
   "debris-beam-xl-01": {
    "kind": "rock",
@@ -63,7 +149,10 @@
    "size": 300,
    "url": "/models/galaxy/space/debris-beam-xl-01.glb",
    "far": null,
-   "tris": 245
+   "tris": 245,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_beam_xl_01_mesh"
+   ]
   },
   "debris-beam-xl-02": {
    "kind": "rock",
@@ -71,7 +160,10 @@
    "size": 186,
    "url": "/models/galaxy/space/debris-beam-xl-02.glb",
    "far": null,
-   "tris": 470
+   "tris": 470,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_beam_xl_02_mesh"
+   ]
   },
   "deathstar-debris-l-03": {
    "kind": "rock",
@@ -79,7 +171,10 @@
    "size": 28,
    "url": "/models/galaxy/space/deathstar-debris-l-03.glb",
    "far": null,
-   "tris": 512
+   "tris": 512,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/deathstar_debris_l_03_mesh"
+   ]
   },
   "deathstar-debris-l-02": {
    "kind": "rock",
@@ -87,7 +182,10 @@
    "size": 49,
    "url": "/models/galaxy/space/deathstar-debris-l-02.glb",
    "far": null,
-   "tris": 376
+   "tris": 376,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/deathstar_debris_l_02_mesh"
+   ]
   },
   "debris-panellit-l-01": {
    "kind": "rock",
@@ -95,7 +193,10 @@
    "size": 66,
    "url": "/models/galaxy/space/debris-panellit-l-01.glb",
    "far": null,
-   "tris": 517
+   "tris": 517,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panellit_l_01_mesh"
+   ]
   },
   "debris-panelcurve-xl-01": {
    "kind": "rock",
@@ -103,7 +204,10 @@
    "size": 97,
    "url": "/models/galaxy/space/debris-panelcurve-xl-01.glb",
    "far": null,
-   "tris": 595
+   "tris": 595,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panelcurve_xl_01_mesh"
+   ]
   },
   "debris-coretube-l-01": {
    "kind": "rock",
@@ -111,7 +215,10 @@
    "size": 93,
    "url": "/models/galaxy/space/debris-coretube-l-01.glb",
    "far": null,
-   "tris": 360
+   "tris": 360,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_coretube_l_01_mesh"
+   ]
   },
   "deathstar-debris-m-03": {
    "kind": "rock",
@@ -119,7 +226,10 @@
    "size": 7,
    "url": "/models/galaxy/space/deathstar-debris-m-03.glb",
    "far": null,
-   "tris": 360
+   "tris": 360,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/deathstar_debris_m_03_mesh"
+   ]
   },
   "debris-panel-l-01": {
    "kind": "rock",
@@ -127,7 +237,10 @@
    "size": 66,
    "url": "/models/galaxy/space/debris-panel-l-01.glb",
    "far": null,
-   "tris": 517
+   "tris": 517,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panel_l_01_mesh"
+   ]
   },
   "debris-sdreactorpipe-s1024-a-01": {
    "kind": "rock",
@@ -135,7 +248,10 @@
    "size": 18,
    "url": "/models/galaxy/space/debris-sdreactorpipe-s1024-a-01.glb",
    "far": null,
-   "tris": 531
+   "tris": 531,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_sdreactorpipe_s1024_a_01_mesh"
+   ]
   },
   "debris-paneltube-l-01": {
    "kind": "rock",
@@ -143,7 +259,10 @@
    "size": 60,
    "url": "/models/galaxy/space/debris-paneltube-l-01.glb",
    "far": null,
-   "tris": 402
+   "tris": 402,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_paneltube_l_01_mesh"
+   ]
   },
   "debris-panel-xl-01": {
    "kind": "rock",
@@ -151,7 +270,10 @@
    "size": 212,
    "url": "/models/galaxy/space/debris-panel-xl-01.glb",
    "far": null,
-   "tris": 585
+   "tris": 585,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panel_xl_01_mesh"
+   ]
   },
   "debris-spindlecore-l-01": {
    "kind": "rock",
@@ -159,7 +281,10 @@
    "size": 90,
    "url": "/models/galaxy/space/debris-spindlecore-l-01.glb",
    "far": null,
-   "tris": 378
+   "tris": 378,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_spindlecore_l_01_mesh"
+   ]
   },
   "debris-panel-corner-l-01": {
    "kind": "rock",
@@ -167,7 +292,10 @@
    "size": 94,
    "url": "/models/galaxy/space/debris-panel-corner-l-01.glb",
    "far": null,
-   "tris": 484
+   "tris": 484,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panel_corner_l_01_mesh"
+   ]
   },
   "debris-panelpartial-l-01": {
    "kind": "rock",
@@ -175,7 +303,10 @@
    "size": 48,
    "url": "/models/galaxy/space/debris-panelpartial-l-01.glb",
    "far": null,
-   "tris": 341
+   "tris": 341,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panelpartial_l_01_mesh"
+   ]
   },
   "debris-panelpartial-l-02": {
    "kind": "rock",
@@ -183,7 +314,10 @@
    "size": 63,
    "url": "/models/galaxy/space/debris-panelpartial-l-02.glb",
    "far": null,
-   "tris": 474
+   "tris": 474,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panelpartial_l_02_mesh"
+   ]
   },
   "debris-panel-l-04": {
    "kind": "rock",
@@ -191,7 +325,10 @@
    "size": 59,
    "url": "/models/galaxy/space/debris-panel-l-04.glb",
    "far": null,
-   "tris": 467
+   "tris": 467,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panel_l_04_mesh"
+   ]
   },
   "debris-panel-l-03": {
    "kind": "rock",
@@ -199,7 +336,10 @@
    "size": 69,
    "url": "/models/galaxy/space/debris-panel-l-03.glb",
    "far": null,
-   "tris": 449
+   "tris": 449,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_panel_l_03_mesh"
+   ]
   },
   "debris-pipe-xl-02": {
    "kind": "rock",
@@ -207,7 +347,10 @@
    "size": 74,
    "url": "/models/galaxy/space/debris-pipe-xl-02.glb",
    "far": null,
-   "tris": 578
+   "tris": 578,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_pipe_xl_02_mesh"
+   ]
   },
   "debris-pipe-xl-01": {
    "kind": "rock",
@@ -215,7 +358,10 @@
    "size": 123,
    "url": "/models/galaxy/space/debris-pipe-xl-01.glb",
    "far": null,
-   "tris": 409
+   "tris": 409,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_pipe_xl_01_mesh"
+   ]
   },
   "debris-pipe-xl-03": {
    "kind": "rock",
@@ -223,7 +369,10 @@
    "size": 123,
    "url": "/models/galaxy/space/debris-pipe-xl-03.glb",
    "far": null,
-   "tris": 507
+   "tris": 507,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/debris_pipe_xl_03_mesh"
+   ]
   },
   "deathstar-debris-l-04-mirrorx": {
    "kind": "rock",
@@ -231,7 +380,10 @@
    "size": 37,
    "url": "/models/galaxy/space/deathstar-debris-l-04-mirrorx.glb",
    "far": null,
-   "tris": 559
+   "tris": 559,
+   "from": [
+    "objects/architecture/_galacticempire/deathstar_debris/deathstar_debris_l_04_mirrorx_mesh"
+   ]
   },
   "debrisfield-02": {
    "kind": "backdrop",
@@ -239,7 +391,10 @@
    "size": 6419,
    "url": "/models/galaxy/space/debrisfield-02.glb",
    "far": null,
-   "tris": 6170
+   "tris": 6170,
+   "from": [
+    "levels/space/sb_endor_01/planet/debrisfield_02_mesh"
+   ]
   },
   "debrisfield-03": {
    "kind": "backdrop",
@@ -247,7 +402,10 @@
    "size": 6420,
    "url": "/models/galaxy/space/debrisfield-03.glb",
    "far": null,
-   "tris": 6000
+   "tris": 6000,
+   "from": [
+    "levels/space/sb_endor_01/planet/debrisfield_03_mesh"
+   ]
   },
   "largering-backdrop-01": {
    "kind": "backdrop",
@@ -255,7 +413,10 @@
    "size": 1730,
    "url": "/models/galaxy/space/largering-backdrop-01.glb",
    "far": null,
-   "tris": 4662
+   "tris": 4662,
+   "from": [
+    "levels/space/sb_endor_01/backdropassets/largering_backdrop_01_mesh"
+   ]
   },
   "stardestroyerdestructionback-01-endor": {
    "kind": "backdrop",
@@ -263,7 +424,10 @@
    "size": 883,
    "url": "/models/galaxy/space/stardestroyerdestructionback-01-endor.glb",
    "far": null,
-   "tris": 3591
+   "tris": 3591,
+   "from": [
+    "levels/space/sb_endor_01/objects/stardestroyerdestructionback_01_endor_mesh"
+   ]
   },
   "stardestroyerdestructionfront-01-endor": {
    "kind": "backdrop",
@@ -271,7 +435,10 @@
    "size": 1038,
    "url": "/models/galaxy/space/stardestroyerdestructionfront-01-endor.glb",
    "far": null,
-   "tris": 3107
+   "tris": 3107,
+   "from": [
+    "levels/space/sb_endor_01/objects/stardestroyerdestructionfront_01_endor_mesh"
+   ]
   }
  },
  "pieces": [

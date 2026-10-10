@@ -15,7 +15,30 @@
    "size": 1213,
    "url": "/models/galaxy/space/naboo-venator.glb",
    "far": "/models/galaxy/space/naboo-venator.far.glb",
-   "tris": 32978
+   "tris": 32978,
+   "from": [
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_left_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_right_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltowerdetail_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_decal_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailback_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailbottom_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailbottom_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailfront_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailside_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailside_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailtop_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailtop_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_engine_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_engine_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hanger_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hanger_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hangergunbase_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hull_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_window_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/ventatorstardestroyer_turret_01_wreck_mesh"
+   ]
   },
   "naboo-venator-2": {
    "kind": "capital",
@@ -23,7 +46,32 @@
    "size": 1213,
    "url": "/models/galaxy/space/naboo-venator-2.glb",
    "far": "/models/galaxy/space/naboo-venator-2.far.glb",
-   "tris": 34248
+   "tris": 34248,
+   "from": [
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_left_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltower_right_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_controltowerdetail_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_decal_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailback_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailbottom_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailbottom_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailfront_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailside_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailside_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailtop_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_detailtop_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_engine_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_engine_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hanger_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hanger_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hangergun_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hangergunbase_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_hull_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_turret_01_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_turret_02_mesh",
+    "gameplay/vehicles/capital/venatorclass_stardestroyer/venatorstardestroyer_window_01_mesh"
+   ]
   },
   "naboo-jedicruiser": {
    "kind": "capital",
@@ -31,7 +79,22 @@
    "size": 388,
    "url": "/models/galaxy/space/naboo-jedicruiser.glb",
    "far": "/models/galaxy/space/naboo-jedicruiser.far.glb",
-   "tris": 11013
+   "tris": 11013,
+   "from": [
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_commandbridge_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_decal_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsbottom_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsengine_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsfront_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsside_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailsside_02_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailstop_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_detailstop_02_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_engine_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_hatch_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_hull_01_mesh",
+    "gameplay/vehicles/capital/jedicruiser/jedicruiser_windows_01_mesh"
+   ]
   },
   "naboo-lucrehulk": {
    "kind": "capital",
@@ -39,7 +102,64 @@
    "size": 3692,
    "url": "/models/galaxy/space/naboo-lucrehulk.glb",
    "far": "/models/galaxy/space/naboo-lucrehulk.far.glb",
-   "tris": 58622
+   "tris": 58622,
+   "from": [
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_antennalight_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_cannon_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_centersphere_exterior_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_centersphere_interior_01_light_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_controlbridgetower_01_left_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_controlbridgetower_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_controlbridgetower_01_right_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_base_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_detail_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_detail_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_detail_03_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_protector_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_top_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_tunell_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_tunell_dooroutline_03_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_tunelldoor_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_core_wall_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_dockingclaw_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_dockingclaw_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_electricgenerator_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_engine_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_engine_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_floor_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_floor_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_floor_03_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_forwardcontroltower_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_hangar_03_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_hangarforcefield_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_hangarforcefield_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_hanger_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_hanger_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_innersidedetail_a_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_light_small_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_mainhull_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_mainhull_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_mainhull_03_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_mainhull_04_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_mainhull_05_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_mainhull_06_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_mainhull_07_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_outersidedetail_a_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_outersidedetail_a_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_radar_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_radar_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_radar_03_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_radar_04_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_radar_05_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_tractor_01_base_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_tractor_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_tractor_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_transmissiontower_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_transmissiontower_02_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_transmissiontower_03_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_transmissiontowerpowergenerator_01_mesh",
+    "gameplay/vehicles/capital/lucrehulkclass_droidbattleship/lucrehulkclass_droidbattleship_windows_01_mesh"
+   ]
   },
   "providenceclassdreadnaught-01": {
    "kind": "capital",
@@ -47,7 +167,10 @@
    "size": 1085,
    "url": "/models/galaxy/space/providenceclassdreadnaught-01.glb",
    "far": "/models/galaxy/space/providenceclassdreadnaught-01.far.glb",
-   "tris": 22690
+   "tris": 22690,
+   "from": [
+    "gameplay/vehicles/capital/providenceclassdreadnaught/providenceclassdreadnaught_01_mesh"
+   ]
   },
   "bd-tradefederationlandingship-01": {
    "kind": "capital",
@@ -55,7 +178,10 @@
    "size": 358,
    "url": "/models/galaxy/space/bd-tradefederationlandingship-01.glb",
    "far": "/models/galaxy/space/bd-tradefederationlandingship-01.far.glb",
-   "tris": 10498
+   "tris": 10498,
+   "from": [
+    "objects/props/landmarks/_separatists/bd_tradefederationlandingship_01/bd_tradefederationlandingship_01_mesh"
+   ]
   }
  },
  "pieces": [

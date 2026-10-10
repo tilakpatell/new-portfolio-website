@@ -15,7 +15,7 @@
 //   writes public/models/galaxy/space/<slug>.glb (published: scripts/assets-
 //   publish.mjs walks the folder; the level's credit `space-<system>`) and
 //   src/data/galaxy/space/<system>.json:
-//     { system, map, title, centre, radius, models: { slug: { kind, as, size, url, far, tris } }, pieces }
+//     { system, map, title, centre, radius, models: { slug: { kind, as, size, url, far, from, tris } }, pieces }
 //   then: node scripts/galaxy-lod.mjs space/<slug>… for the capitals and docks
 //   --dry: the pieces and the cuts it would take, nothing fetched or written
 //   --fleet <slug> --out <file>: that model alone at the fleet's cut (FLEET_CUT:
@@ -171,7 +171,8 @@ export async function makeSpace(system, opts) {
     const { lod, tris } = lodFor(model.parts, entries, cap.tris);
     const n = pieces.filter((p) => p.model === slug).length;
     const url = `/models/galaxy/space/${slug}.glb`;
-    rows[slug] = { kind: model.kind, as: model.as ?? slug, size: model.size, url, far: cap.far ? `/models/galaxy/space/${slug}.far.glb` : null };
+    // (`from`: the drop's models it's made of, for the coverage ledger: scripts/bf2017-coverage.mjs)
+    rows[slug] = { kind: model.kind, as: model.as ?? slug, size: model.size, url, far: cap.far ? `/models/galaxy/space/${slug}.far.glb` : null, from: [...new Set(model.parts.map((p) => nameOf(p.file)))].sort() };
     console.log(`  ${slug}: ${model.kind}, ${model.parts.length} parts, ×${n}, LOD${lod} ${tris} triangles${tris > cap.tris ? ` (simplified to ${cap.tris})` : ''}`);
     if (opts.dry || (opts.only && !opts.only.has(slug))) continue;
     for (const file of new Set(model.parts.map((p) => p.file))) {
@@ -216,11 +217,13 @@ export async function writeTracks(root) {
     const file = (await readdir(dir)).find((f) => f.endsWith('.json'));
     const track = JSON.parse(await readFile(path(dir, file), 'utf8'));
     out[size] = channelsOf(track.name, track.keys).map((c) => ({ ...c, loop: true }));
+    (out.from ??= {})[size] = track.name;
   }
   const file = path(ROOT, 'src/data/galaxy/space/tracks.json');
   await mkdir(dirname(file), { recursive: true });
   const line = (c) => `  ${JSON.stringify(c)}`;
-  await writeFile(file, `{\n${Object.entries(out).map(([k, cs]) => ` "${k}": [\n${cs.map(line).join(',\n')}\n ]`).join(',\n')}\n}\n`);
+  const tracks = Object.entries(out).filter(([k]) => k !== 'from');
+  await writeFile(file, `{\n${tracks.map(([k, cs]) => ` "${k}": [\n${cs.map(line).join(',\n')}\n ]`).join(',\n')},\n "from": ${JSON.stringify(out.from)}\n}\n`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
