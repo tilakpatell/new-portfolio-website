@@ -35,28 +35,25 @@ describe('the 3D models that are other people’s', () => {
     const code = sources().join('\n');
     const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx', earth: 'pages/Earth.jsx', galaxy: 'components/galaxy/GalaxyPanel.jsx', 'galaxy-surface': 'pages/GalaxySurface.jsx', 'c-137': 'components/rickmorty/wardrobe/Wardrobe.jsx', cybertron: 'pages/Cybertron.jsx', dickansh: 'pages/Dickansh.jsx', mario64: 'pages/Mario64.jsx' };
     for (const [name, m] of Object.entries(CREDITS)) {
+      // (a pack credited whole, a level's hundreds of meshes: its folders,
+      // each in the site and loaded from by the code)
       if (m.paths) {
-        // a pack credited whole, by its folders (a game's level, its cells and
-        // its heights): each in public/, and loaded from there, by its own
-        // path or by its folder's parent and its name (a level by its world)
-        for (const p of m.paths) {
-          expect(existsSync(at(p)), p).toBe(true);
-          const url = p.replace(/^public/, '').replace(/\/$/, '');
-          const parent = url.slice(0, url.lastIndexOf('/') + 1);
-          const leaf = url.slice(url.lastIndexOf('/') + 1);
-          expect(code.includes(url) || (code.includes(parent) && code.includes(`'${leaf}'`)), `${name} is used`).toBe(true);
+        for (const dir of m.paths) {
+          expect(existsSync(at(dir)), dir).toBe(true);
+          expect(code.includes(dir.replace(/^public/, '')), `${name} is used`).toBe(true);
         }
-      } else {
-        // where it is: its own `file`, or under its name with the rest from Sketchfab
-        const file = m.file ?? `/models/sketchfab/${name}.glb`;
-        // (in public/, or published to the bucket: src/data/galaxyAssets.json)
-        expect(existsSync(at(`public${file}`)) || Boolean(PUBLISHED[file.slice(1)]), file).toBe(true);
-        // by its own path, or by the folder and its name (the map's places are loaded by name)
-        // (or a world's surface model, by the kind its catalogue names it by)
-        const kind = name.replace(/^surface-/, '');
-        const surface = name.startsWith('surface-') && code.includes('/models/galaxy/surface/${kind}.glb') && code.includes(`  ${kind}: {`);
-        expect(code.includes(file) || surface || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
+        for (const page of [m.where, ...(m.also ?? [])]) expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
+        continue;
       }
+      // where it is: its own `file`, or under its name with the rest from Sketchfab
+      const file = m.file ?? `/models/sketchfab/${name}.glb`;
+      // (in public/, or published to the bucket: src/data/galaxyAssets.json)
+      expect(existsSync(at(`public${file}`)) || Boolean(PUBLISHED[file.slice(1)]), file).toBe(true);
+      // by its own path, or by the folder and its name (the map's places are loaded by name)
+      // (or a world's surface model, by the kind its catalogue names it by)
+      const kind = name.replace(/^surface-/, '');
+      const surface = name.startsWith('surface-') && code.includes('/models/galaxy/surface/${kind}.glb') && code.includes(`  ${kind}: {`);
+      expect(code.includes(file) || surface || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
       expect(shown[m.where], `${name}: ${m.where}`).toBeTruthy();
       expect(readFileSync(at(`src/${shown[m.where]}`), 'utf8'), m.where).toContain(`<ModelCredits where="${m.where}"`);
       // and every other page that shows it, its credit too
@@ -65,7 +62,7 @@ describe('the 3D models that are other people’s', () => {
         expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
       }
     }
-  }, 30000); // (every credit looked for through the whole site's source: 25 MB, near 400 credits)
+  });
 
   it('worn in the wardrobe are credited wherever the crew wear them too', () => {
     // (the cruiser's seats in the universe and the galaxy; out of the ship on a planet)
