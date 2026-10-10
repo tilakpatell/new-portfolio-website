@@ -116,7 +116,7 @@ export const SITES = {
       },
     },
     // the game's own Echo Base inside the glacier (lane E0: the pack
-    // levels/hoth/base, `node scripts/bf2017-level.mjs levels/mp/hoth_01
+    // /models/galaxy/bf2017/levels/hoth/base/level.json, `node scripts/bf2017-level.mjs levels/mp/hoth_01
     // --world hoth --district base --inside --spot 205 -1540 --arena 640`:
     // the 14,535 pieces lane L's world leaves under the ice, in the same
     // frame as the world's), a district you walk down into from the mouth

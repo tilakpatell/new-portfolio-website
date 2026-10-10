@@ -55,7 +55,7 @@ export const SITES = {
   endor: {
     // lit as the game lights its level (src/data/bf2017/light/endor.json, gameLit.js)
     gameLight: 'endor',
-    // drawn from the game's level (lane E0: /models/galaxy/bf2017/levels/endor/,
+    // drawn from the game's level (lane E0: /models/galaxy/bf2017/levels/endor/level.json,
     // `node scripts/bf2017-level.mjs levels/mp/endor_01 --world endor --spot
     // 211.8 331`: the game's bunker door on this site's, so the bunker, its
     // trenches, the AT-AT station and the forest round them stand as the game
@@ -89,6 +89,14 @@ export const SITES = {
       // (the game's own ground: Endor_01's heightmap, 0 at the landing, its
       // edge carried on level past the 2 km the game drew)
       layers: [{ type: 'image', pack: 'endor' }],
+      // (the flight's planet keeps the redwood country it had: the land the
+      // site drew before the level, folded into ravines and spurs)
+      flight: [
+        { type: 'swell', scale: 420, height: 22 },
+        { type: 'hills', scale: 130, height: 14 },
+        { type: 'ridges', scale: 300, height: 8 },
+        { type: 'mountains', from: 900, to: 3200, height: 320, scale: 1300 },
+      ],
       palette: {
         // (the redwood floor as filmed: cinnamon duff and needles, the
         // fern beds darker olive, rust where the bark's fallen)
