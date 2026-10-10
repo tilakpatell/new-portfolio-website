@@ -48,6 +48,28 @@ export const ADD_SET = {
   'add.lean.run.left': 'Lean_Run_Left',
   'add.lean.sprint.left': 'Add_HM_LeanLeftPose_Sprint_01',
   'add.lean.sprint.right': 'Add_HM_LeanRightPose_Sprint_01',
+  // a driver's and a rider's: the X-34's lean, turn, bump; the 74-Z's lean
+  'add.ride.landspeeder.lean.left': 'X34_LandSpeeder_Driver_Lean_Left',
+  'add.ride.landspeeder.lean.right': 'X34_LandSpeeder_Driver_Lean_Right',
+  'add.ride.landspeeder.turn.left': 'X34_LandSpeeder_Driver_Turn_Left',
+  'add.ride.landspeeder.turn.right': 'X34_LandSpeeder_Driver_Turn_Right',
+  'add.ride.landspeeder.hit': 'X34_LandSpeeder_Driver_HitReact_01',
+  'add.ride.speederbike.lean.left': 'Add_HM_SpeederBike_OpenSeat_LeanLeft',
+  'add.ride.speederbike.lean.right': 'Add_HM_SpeederBike_OpenSeat_LeanRight',
+  // the hits on one carrying an anti-armour launcher, a medic's bags, a sidearm in hand
+  'add.hit.at.front': 'AT_Stand_HitReact_Front1',
+  'add.hit.at.back': 'AT_Stand_HitReact_Back1',
+  'add.hit.bags.front': 'Bags_Stand_HitReact_Front1',
+  'add.hit.bags.back': 'Bags_Stand_HitReact_Back1',
+  'add.hit.hand.front': 'Hand_Stand_HitReact_Front1',
+  'add.hit.hand.back': 'Hand_Stand_HitReact_Back1',
+  // down the sights, the weapon's sway as the aim moves; suppressed, the flinch in a sprint
+  'add.zoom.up': 'WepPoseZoom_Up',
+  'add.zoom.down': 'WepPoseZoom_Dwn',
+  'add.zoom.left': 'WepPoseZoom_Left',
+  'add.zoom.right': 'WepPoseZoom_Right',
+  'add.suppressed.left': 'Suppressed_Additive_AssaultSprint_Left',
+  'add.suppressed.right': 'Suppressed_Additive_AssaultSprint_Right',
   // a shot's kick through the body, and the reload
   'add.fire.p': 'A_HM_Pistol_Stand_Fire',
   'add.fire.t': ['Add_HM_Rifle_Stand_FireLoop_02', 'Add_HM_Rifle_Stand_FireLoop_03'],

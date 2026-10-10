@@ -58,6 +58,7 @@ import * as THREE from 'three';
 import { OWN_RIGS, PACKS, PACK_OPTS, candidates } from '../src/lib/three/walrusClips.js';
 import { parseArgs } from './lib/args.mjs';
 import { RIGS } from '../src/lib/three/rigSets.js';
+import { EVENT_RIGS } from '../src/lib/three/walrusSets/events.js';
 import { animEntry, animPath } from './lib/bf2017-anims.mjs';
 import { censusMarkdown, censusRows } from './lib/bf2017-clip-census.mjs';
 import { isSequel, readManifest } from './lib/bf2017-manifest.mjs';
@@ -80,7 +81,12 @@ export const skeletonsFor = (pack) => (PACK_OPTS[pack]?.skeletons ? new RegExp(P
 // the file a pack reads its skeleton from: the humanoid's own, or an own
 // rig's body as imported (its light cut, which is committed; its meshes are
 // taken off before the pack is written)
-export const skeletonFileFor = (pack, root) => (OWN_RIGS[pack] ? join(root, 'public', 'models', 'galaxy', 'bf2017', 'crew', `${OWN_RIGS[pack].body}.lod1.glb`) : join(root, 'public', 'models', 'galaxy', 'bf2017', 'walrus.glb'));
+// (a small creature's light cut may not exist: its plain one, then)
+export const skeletonFileFor = (pack, root) => {
+  if (!OWN_RIGS[pack]) return join(root, 'public', 'models', 'galaxy', 'bf2017', 'walrus.glb');
+  const crew = join(root, 'public', 'models', 'galaxy', 'bf2017', 'crew', OWN_RIGS[pack].body);
+  return existsSync(`${crew}.lod1.glb`) || !existsSync(`${crew}.glb`) ? `${crew}.lod1.glb` : `${crew}.glb`;
+};
 // the game's clips a pack takes: an additive one only into a pack made of them
 export const takes = (pack, e) => Boolean(e) && !isSequel(e.name) && skeletonsFor(pack).test(e.skeleton ?? '') && Boolean(e.additive) === Boolean(PACK_OPTS[pack]?.additive);
 
@@ -96,7 +102,7 @@ export function usedSources(anims) {
         .find((x) => takes(pack, x));
       if (e) used.add(e.name);
     }
-  for (const r of Object.values(RIGS)) for (const g of Object.values(r.set)) if (animEntry(anims, g)) used.add(animEntry(anims, g).name);
+  for (const r of [...Object.values(RIGS), ...Object.values(EVENT_RIGS)]) for (const g of Object.values(r.set)) if (animEntry(anims, g)) used.add(animEntry(anims, g).name);
   return used;
 }
 

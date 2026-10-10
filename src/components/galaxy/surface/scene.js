@@ -156,6 +156,7 @@ import { createPlayerBody } from './playerBody';
 import { assetPool, worldScope } from '../../../lib/assetLoad';
 import { victoryFor } from '../../../lib/three/walrusSets/emotes';
 import { createFirstView } from './firstView';
+import { rideClip } from '../../../lib/three/walrusSets/vehicles';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -2674,6 +2675,13 @@ export async function create(canvas, ctx) {
         if (r === 'cut' && pp.seat === seat && name === 'drive' && pp.fig.anim) sat('sit');
       }, () => {});
     sat(seat.base);
+    // (a 2017 figure on the game's own ride: the game's driver or rider, the
+    // `vehicles` pack taken as it gets on: lib/three/walrusSets/vehicles.js)
+    const game = rideClip(ride.kind);
+    if (game && pp.fig.takePack)
+      pp.fig.takePack('vehicles').then(() => {
+        if (pp.seat === seat && pp.fig.clips?.[game]) pp.fig.anim?.base(game);
+      });
   }
   // a ride's frame in the world, as its seat's points are measured in: its
   // holder, and a beast's step (its model's sway, actors.js) under you
