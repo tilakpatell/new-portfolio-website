@@ -39,6 +39,18 @@ In order:
 3. **Textures**: every map the hilt and Luke’s body name was in the bucket as KTX2 on 2026-10-10, none as PNG. A map not there yet prints `missing:` in the import and the material goes without it; re-fetch and re-import when the upload has it.
 4. **Normals as KTX2** (UASTC) where `scripts/ktx2.mjs report` says it pays: phase 9’s, with the ultra cuts. Level packs (lane L) take the bucket’s KTX2 as it is, for GPU memory.
 
+## Lane X, the sabers
+
+**Done (tasks 1–2).** `scripts/bf2017-strokes.mjs <hero>` measures a hero’s clips into `src/data/bf2017/strokes/<hero>.json` over `scripts/lib/bf2017-strokes.mjs` (tested against a 10 KB fixture, Luke’s first strike on the socket’s chain only, `scripts/fixtures/bf2017/web/anims/`). Each strike: duration, contact window, the way it cuts (`DIRS`), sweep plane, root rows, its return and the return’s length; blocks by side, blocked reactions, staggers, dodges, dash, jump attack, defeat, the generic humanoid (`A_HM_*`) where a set lacks one. `stanceFromTable.js` makes the table a stance; `combatRules.js`’s `stanceOf(id, hero)` gives it for `{ rig: 'walrus', pack }` with a table; `strokeFor` reads a stance’s own `heavies` and `dirs`; `duel.js` takes `cadence` (held a strike’s length, open its return’s length after); `duelFor` finds the hero by the spawn’s kind in `CREW`. Nothing changes for a figure without `rig: 'walrus'`, and no figure on `main` has it until lane 1 merges.
+
+**How the tables were made.** The bucket’s keys were not in the session, so the seven tables (Luke, Vader, Obi-Wan, Anakin, Maul, Dooku, Palpatine) are measured from lane 1’s committed packs (`--pack public/models/galaxy/bf2017/clips-<hero>.glb`): the game’s clips at 24 fps, the game’s name in each clip’s `source`, the root rows already measured. With the keys, `node scripts/bf2017-strokes.mjs <hero>` reads the bucket instead and measures every `A_<Hero>_*` clip (all six blocked reactions, every stagger), not only the pack’s. No Yoda or Grievous pack exists yet, so no table; Palpatine’s set has no saber strikes, so his table makes no stance.
+
+**Findings for lane 1.** The socket frame holds: `Wep_Root` (under `Spine2`) carries the blade along +y. But `bf2017-clips.mjs`’s windows, timed with ual-bake’s 0.15 m before the hips along +z, land on the snap out of the guard in the first frame (Luke’s Strike1 `[0.05, 0.10]`, the cut is 0.2–0.3 s). The tables count only frames where the tip is 0.5 m before the hips along the hips’ own facing (the game’s strikes turn the body), and add the root’s travel to the tip (Luke’s Strike4 is a lunge: the blade moves at 11 m/s in the hands). A pack’s turns are meshopt-normalised shorts: read them with `valuesOf`. The strikes run 1.4–2.7 s with the blade still after about 0.5 s (the game holds the pose for the chain); the duel holds the whole clip, then the return.
+
+**Left.** Task 3 (after lane 1): `saber.js` indexes a walrus figure’s clips by the game name in `userData.source` (the stance’s `clip` is the game’s, `site` the pack’s); the hold (lane 1 already skips `pose`/`poseLeft` and adds `Spine1`, `Spine2`, `Neck` to `ARMS`); `BLADE_OF` from the rod mesh; `saberLight.js`. Task 4: the evidence, the frame time. Then the forms lane reads the tables (saber-forms B), the clash sheet (lane F), the sounds (an exporter).
+
+**Checking it.** `npx vitest run scripts/lib/bf2017-strokes.test.mjs src/components/galaxy/surface/stanceFromTable.test.js src/lib/combat/duel.test.js`; `node scripts/bf2017-strokes.mjs luke --pack <pack> --skeleton <walrus.glb>` prints the table’s strikes.
+
 ## Asked of the desktop exporter (not the site’s work)
 
 The export in `C:\Users\tilak\Downloads\BF2_Extract` (`tool\bf2export.csproj`, Frosty’s libraries) does not write these; each is a `bf2export` pass and a queue, the way `run_terrain.py` and `tool\build_maps.py` were added:
@@ -87,7 +99,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | L | | | |
 | G | | | |
 | K | | | |
-| X | | | |
+| X | lane X’s session | `claude/bf2017-x-sabers` | (draft PR: tasks 1–2; 3–4 wait on lane 1) |
 | S | | | |
 
 Findings for the next lane go here: which sub-levels each map needed, what `fitTo` dropped per tier, the calibration factor and which path each world’s sun direction took, which skins were still missing, which clips’ windows were pinned by hand.
