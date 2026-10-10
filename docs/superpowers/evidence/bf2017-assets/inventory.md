@@ -151,7 +151,7 @@ Two faults: 164 clips named `<clip>~<8 hex>.glb` were refused by Supabase (`Inva
 | `web/models/` | 48,248 | 2.5 GB | complete: every LOD file of the 13,871 models |
 | `web/collision/` | 12,941 | 151 MB | complete |
 | `web/anims/` + `web/anims_additive/` | 7,947 + 2,159 | 955 + 144 MB | 10,106 of the 10,270 clips in `web/anims.jsonl` |
-| `web/textures/` | 16,617 | 6.7 GB | 2,441 KTX2 (4.9 GB, the derived maps the GLBs point at), 4,528 PNG, 9,648 HDR (lightmaps and probes under `levels/`); `web/textures.jsonl` lists 17,511 PNG sources (43.6 GB), 1,851 of them up |
+| `web/textures/` | 16,617 | 6.7 GB | 2,441 KTX2 (4.9 GB, the derived maps the GLBs point at), 4,528 PNG, 9,648 HDR (sky, probe and far-shadow caches under `levels/`; PR #810's desktop count: there are no lightmaps, Enlighten runs at run time); `web/textures.jsonl` lists 17,511 PNG sources (43.6 GB), 1,851 of them up |
 | `web/physics/` | 10,530 | 123 MB | complete: Havok shapes (`hknpConvexPolytopeShape` and friends) per model, `web/physics.jsonl` |
 | `web/movies/` | 61 | 628 MB | WebM |
 | `web/fonts/`, `web/svg/`, `web/strings/` | 23, 702, 2 | 36 MB, 4 MB, 1 MB | the UI's fonts, icons and strings (`web/misc.jsonl`) |

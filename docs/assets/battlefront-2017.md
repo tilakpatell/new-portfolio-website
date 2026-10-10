@@ -28,6 +28,21 @@ node scripts/glb-shot.mjs public/models/galaxy/surface/<kind>.glb out.png three
 
 The import picks the site’s cuts from the LOD chain, turns the textures into WebP at the site’s sizes, grounds the model, writes the row into `src/components/galaxy/surface/catalog/bf2017.js` and the credit into `src/data/modelCredits.json`. Its header comment has every flag.
 
+## Kits, the surfaces' roles, a level's probe
+
+A level's modular system (Echo Base's hangar, its wall system) can be made one file: fetch the pieces at a LOD, then
+
+```
+for n in $(node scripts/bf2017-fetch.mjs --list 'objects/architecture/hoth/wallsystem_01/new/wall_01_*' | awk '{print $1}'); do node scripts/bf2017-fetch.mjs $n --lod 1; done
+node scripts/bf2017-kit.mjs hothwalls --pieces 'objects/architecture/hoth/wallsystem_01/new/wall_01_*' --as 'Echo Base’s inside walls' --lod 1 --world hoth
+```
+
+A piece keeps the game's origin, a corner or an edge; the materials are kept apart by name (`M_Wall` and `M_Floor` are alike in all else). Some systems' maps are bound by their shader preset, not the mesh: Hoth's large hangar shells have no maps in the GLB or the records.
+
+The surfaces' roles on the game's maps: `node scripts/bf2017-textures.mjs [role …]` makes them from `scripts/lib/bf2017-roles.mjs`'s sources; a site's `look.scanned: 'bf2017'` wears them.
+
+A level's light is one of its reflection volumes' probes, six 128² Radiance faces under `web/textures/levels/mp/<level>/reflectionvolumetexture/<lighting>/`, published for the owner's lighting lane (this pipeline builds no lighting); look at them first, then `node scripts/bf2017-sky.mjs <folder> <probe id> --name <world>`, and write what it is in `docs/superpowers/evidence/bf2017-<world>/skies.md`. The levels' panoramic skies (`Levels/Lighting/Hoth/Sunny_01/T_Hoth_Sunny_01_Panoramic_C`, 8192 × 2048) are in `web/textures.jsonl` but were not in the bucket on 2026-10-10.
+
 ## What a texture is
 
 Read from the uploader’s test PNGs (`inventory.md`, “What a texture is”):
@@ -45,6 +60,22 @@ The uploader’s derived maps, `<map>__normal.ktx2` and `<map>__orm_<hash>.ktx2`
 ## The rig
 
 The people are on `Walrus_HumanMale`, about 250 joints named as Maya HumanIK names them, which is Mixamo’s naming without the `mixamorig:` prefix (`Hips`, `Spine`, `Spine1`, `LeftArm`, `LeftHandIndex1` …). The import’s `--rig` keeps it whole, as DICE made it (fingers, the 79 face bones, cloth physics, the `Wep_*` and `IK_Joint_*` sockets), and renames nothing, so the game’s clips can drive it as they were made to. A `grip` node is put under `Wep_Root` (the weapon socket in the right hand), or `IK_Joint_RightHand` where there is none.
+
+## Data
+
+The game’s rules come from its data dump, not its models: 83,983 EBX records as JSON (`data/<Name>.json.gz` in the bucket, `data.tsv` their index), read into the rulebooks under `src/data/bf2017/` that the Battlefront game plays by (`docs/superpowers/HANDOFF-battlefront.md`).
+
+```
+node scripts/bf2017-fetch.mjs data 'Gameplay/Equipment/**' 'Gameplay/Kits/**' 'Gameplay/Teams/**' 'AI/**' 'Levels/MP/Hoth_01/**' …
+node scripts/bf2017-fetch.mjs web 'svg/**' 'strings/**' 'maps/levels/mp/hoth_01/*.json' 'fonts/**/LinotypeUnivers-520CnMedium.ttf' …
+node scripts/bf2017-data.mjs all --root lab/assets/bf2017 --level hoth_01 --era Orig
+```
+
+- **The root** is the export: in the cloud `lab/assets/bf2017` (the bucket’s layout: `data.tsv`, `data/`, `web/`), on the owner’s machine `C:/Users/tilak/Downloads/BF2_Extract/web` (the web build beside it as `../web_opt`). A record is read as `.json` or `.json.gz`, its path matched ignoring case (the export ran on Windows). The fetch’s `web` command also lists what it saw in `web/files.txt`, so the extractor knows the 23 fonts without fetching them all.
+- **The rulebooks**: `teams`, `classes`, `heroes`, `reinforcements`, `vehicles`, `weapons`, `abilities`, `cards`, `ai`, `cameras`, `ui`, `strings`, and per level `maps/<level>.json` and `maps/<level>.lighting.json`, each `{ _from, rows }`. Every number carries a `<key>_source` (or an object `_source`) naming its record and path; `src/data/bf2017/rulebook.test.js` fails on one that does not. The extractor copies the in-game icons and the four HUD fonts under `public/battlefront/`. `src/lib/battlefront/rulebook.js` is how the rules read them.
+- **The hand files**: `maps/hoth.stages.json` (the stage order and objectives) and `points.json` (Battle Points) carry `"source": "hand"`; `src/data/bf2017/NOTES.md` says why each value is by hand and where to look to replace it.
+- **A fixture**: `node scripts/bf2017-data.mjs fixture <record name> [--cut root]` copies one record into `scripts/fixtures/bf2017/data/` (keep it under 40 KB: cut it, or keep it gzipped) and adds its index row. The parsers and builders are tested on those alone, without the network.
+- The sequel era is refused as everywhere else (`isSequel`): a refused team kit is counted in `teams.json`’s `refused`.
 
 ## Credit
 

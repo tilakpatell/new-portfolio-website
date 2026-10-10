@@ -11,6 +11,10 @@
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs <name> [--lod all|<n>[,<n>…]] [--parts '<glob>,…'] [--no-textures] [--collision]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --all '<glob over name>' [--verify] [--pool 6] [--no-textures] [--no-collision]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --list '<glob over name>'
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs data '<glob over record name>' […]
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs web '<glob under web/>' […]
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs anims
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs anim <clip name>
 //
 //   manifest     web/models.jsonl (about 25 MB), which every other command reads
 //   name         a model's `name` in the manifest (characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh)
@@ -24,6 +28,15 @@
 //   verify       trust no index: measure every file again, fetch what's wrong
 //   pool         how many requests at once (6)
 //   list         the names under a glob, with their LOD triangles
+//   data         gameplay records (data/<Name>.json.gz) whose names match the
+//                globs (`*` within a folder, `**` across), and data.tsv, their
+//                index: the Battlefront extractor's --root (scripts/bf2017-data.mjs)
+//   web          files of the web build (svg/**, fonts/…, maps/…, strings/…),
+//                and the listing of their folders in web/files.txt
+//   list         the names under a glob, with their LOD triangles (models)
+//                or their frames and fps (clips, once `anims` has run)
+//   anims        web/anims.jsonl (about 16 MB), the clips' manifest
+//   anim         one clip's glTF (web/anims/…), by its name in that manifest
 //
 // Every request goes through scripts/lib/pool.mjs (retries, backoff, a
 // timeout by size, a .part renamed when whole), so a cut-off run leaves no
@@ -36,17 +49,19 @@
 // error: the upload is still running, and the import says what it lacks.
 
 import { existsSync } from 'node:fs';
-import { readFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
+import { animEntry, animPath, globRe } from './lib/bf2017-anims.mjs';
 import { partsOf, readManifest } from './lib/bf2017-manifest.mjs';
-import { globMatch, imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
+import { dataPath, globDir, globRegExp, imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
 import { createPool } from './lib/pool.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BUCKET = 'bf2017-assets';
 const MANIFEST = 'web/models.jsonl';
+const ANIMS = 'web/anims.jsonl';
 const INDEX = '.index.json';
 
 function keys() {
@@ -194,6 +209,79 @@ export async function fetchModel(env, root, manifest, name, { lod = 'all', parts
 }
 
 // The index read before a run and written after it, and the summary line.
+// Every object under a bucket folder, its sub-folders walked (Storage lists
+// one level at a time; a folder comes back with no id).
+const PAGE = 1000;
+async function listUnder(env, prefix) {
+  const out = [];
+  for (let offset = 0; ; offset += PAGE) {
+    let page = null;
+    for (let tries = 0; !page; tries++) {
+      const res = await fetch(`${env.base.replace(/\/+$/, '')}/storage/v1/object/list/${BUCKET}`, {
+        method: 'POST',
+        headers: { ...env.headers, 'content-type': 'application/json' },
+        body: JSON.stringify({ prefix, limit: PAGE, offset, sortBy: { column: 'name', order: 'asc' } }),
+      }).catch(() => null);
+      if (res?.ok) page = await res.json();
+      else if (tries >= 3) throw new Error(`list ${prefix}: ${res ? res.status : 'no answer'}`);
+      else await new Promise((r) => setTimeout(r, 1000 * 2 ** tries));
+    }
+    for (const e of page) {
+      const path = `${prefix}/${e.name}`;
+      if (e.id) out.push(path);
+      else out.push(...(await listUnder(env, path)));
+    }
+    if (page.length < PAGE) return out;
+  }
+}
+
+// Bucket paths through the pool, one line each.
+const getAll = (env, root, paths) =>
+  Promise.all(
+    paths.map(async (p) => {
+      const r = await getObject(env, root, p);
+      say(r);
+      return r;
+    }),
+  );
+
+// The records a glob names, and data.tsv, their index.
+export async function fetchData(env, root, globs) {
+  const results = await getAll(env, root, ['data.tsv']);
+  for (const glob of globs) {
+    const re = globRegExp(glob);
+    const dir = globDir(glob);
+    const names = (await listUnder(env, dir ? `data/${dir}` : 'data'))
+      .filter((p) => p.endsWith('.json.gz'))
+      .map((p) => p.slice('data/'.length, -'.json.gz'.length))
+      .filter((n) => re.test(n));
+    if (!names.length) console.log(`${glob}: nothing matches`);
+    results.push(...(await getAll(env, root, names.map(dataPath))));
+  }
+  return results;
+}
+
+// Files of the web build (`web/<glob>`), and a listing of everything under
+// the globs' folders in `web/files.txt`, so the extractor knows the 23 fonts
+// without fetching 46 MB of them.
+export async function fetchWeb(env, root, globs) {
+  const results = [];
+  const listing = join(root, 'web', 'files.txt');
+  const listed = new Set(existsSync(listing) ? (await readFile(listing, 'utf8')).split('\n').filter(Boolean) : []);
+  for (const glob of globs) {
+    const re = globRegExp(glob);
+    const dir = globDir(glob);
+    const names = (await listUnder(env, dir ? `web/${dir}` : 'web')).map((p) => p.slice('web/'.length));
+    names.forEach((n) => listed.add(n));
+    const want = names.filter((n) => re.test(n));
+    if (!want.length) console.log(`${glob}: nothing matches`);
+    results.push(...(await getAll(env, root, want.map((n) => `web/${n}`))));
+  }
+  await mkdir(dirname(listing), { recursive: true });
+  await writeFile(listing, [...listed].sort().join('\n') + '\n');
+  return results;
+}
+
 async function withIndex(root, verify, work) {
   const file = join(root, INDEX);
   run.index = await readIndex(file);
@@ -207,20 +295,62 @@ async function withIndex(root, verify, work) {
   }
 }
 
+// ── the clips (phase 1): their manifest, one clip, and both in --list ──
+
+export const anims = {
+  // the manifest, fetched when it isn't on disk
+  async load(env, root) {
+    const file = localPath(root, ANIMS);
+    if (!existsSync(file)) say(await getObject(env ?? keys(), root, ANIMS));
+    return readManifest(await readFile(file, 'utf8'));
+  },
+  // one clip's glTF on disk: { file, bytes, state }, `missing` when the
+  // bucket hasn't it yet (164 of the 10,270 weren't up on 2026-10-10)
+  async fetch(env, root, manifest, name) {
+    const e = animEntry(manifest, name);
+    if (!e) return { file: null, bytes: 0, state: 'unknown' };
+    return getObject(env ?? keys(), root, animPath(e));
+  },
+};
+
+function listAll(models, clips, glob) {
+  const re = globRe(glob);
+  for (const [name, e] of models ?? []) if (re.test(name)) console.log(`${name}  ${e.lods.map((l) => l.triangles).join(' · ')}`);
+  for (const [name, e] of clips ?? []) if (re.test(name)) console.log(`${name}  ${e.frames} frames at ${e.fps}${e.additive ? ', additive' : ''}  ${e.skeleton.split('/').pop()}`);
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
   const root = join(ROOT, 'lab', 'assets', 'bf2017');
   const [what] = args._;
   if (args.pool) poolOf(Math.max(1, Number(args.pool) || 6));
   if (args.list) {
-    const manifest = await loadManifest(root);
-    const match = globMatch(args.list);
-    for (const [name, e] of manifest) if (match(name)) console.log(`${name}  ${e.lods.map((l) => l.triangles).join(' · ')}`);
+    const has = (p) => existsSync(localPath(root, p));
+    if (!has(MANIFEST) && !has(ANIMS)) await loadManifest(root);
+    listAll(has(MANIFEST) ? await loadManifest(root) : null, has(ANIMS) ? readManifest(await readFile(localPath(root, ANIMS), 'utf8')) : null, args.list);
+  } else if (what === 'anims') {
+    say(await getObject(keys(), root, ANIMS));
+  } else if (what === 'anim') {
+    const env = keys();
+    const r = await anims.fetch(env, root, await anims.load(env, root), String(args._[1] ?? ''));
+    if (r.state === 'unknown') {
+      console.error(`${args._[1]}: not in web/anims.jsonl (try --list)`);
+      process.exit(1);
+    }
+    say(r);
   } else if (typeof args.all === 'string') {
     const env = keys();
     const manifest = await loadManifest(root);
     // (exit 1 on a failure only: a `missing` is the upload not there yet)
     await withIndex(root, Boolean(args.verify), () => fetchAll(env, root, manifest, args.all, { textures: !args.noTextures, collision: !args.noCollision }));
+    process.exit(run.failed > 0 ? 1 : 0);
+  } else if (what === 'data' || what === 'web') {
+    if (args._.length < 2) {
+      console.error(`usage: node scripts/bf2017-fetch.mjs ${what} '<glob>' […]`);
+      process.exit(1);
+    }
+    const env = keys();
+    await withIndex(root, Boolean(args.verify), () => (what === 'data' ? fetchData : fetchWeb)(env, root, args._.slice(1)));
     process.exit(run.failed > 0 ? 1 : 0);
   } else if (what === 'manifest') {
     const env = keys();
@@ -239,7 +369,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     });
     process.exit(run.failed > 0 ? 1 : 0);
   } else {
-    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] [--verify] | --all '<glob>' [--verify] [--pool 6] [--no-textures] [--no-collision] | --list '<glob>'");
+    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | data '<glob>' […] | web '<glob>' […] | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] [--verify] | --all '<glob>' [--verify] [--pool 6] [--no-textures] [--no-collision] | --list '<glob>'");
     process.exit(1);
   }
 }

@@ -64,12 +64,13 @@ describe('the Expanse on the map', () => {
     const origin = createOrigin();
     const shifts = [];
     const ex = createExpanse(parent, { origin, make: f.make, makeStarfield: f.makeStarfield, onShift: (s) => shifts.push(s) });
-    run(45000, { ex }, 12);
+    // (awake past the rim but still on the authored map, inside its 54,000 edge: no shift)
+    run(53000, { ex }, 12);
     expect(origin.at).toEqual([0, 0, 0]);
-    run(50001, { ex }, 1);
+    run(55001, { ex }, 1);
     expect(origin.at).toEqual([50000, 0, 0]);
     expect(shifts).toEqual([[50000, 0, 0]]);
-    run(50001, { ex }, 12);
+    run(55001, { ex }, 12);
     // the root carries the origin; every sector re-anchored to it
     expect(ex.root.position.toArray()).toEqual([50000, 0, 0]);
     for (const s of f.made.values()) expect(s.at).toEqual([50000, 0, 0]);

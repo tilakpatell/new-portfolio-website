@@ -1,0 +1,93 @@
+# Hand-off: the galaxy’s physics from the Battlefront II (2017) data
+
+The design: `docs/superpowers/specs/2026-10-10-bf2017-physics-design.md`. The plans: `docs/superpowers/plans/2026-10-10-bf2017-phaseP0-shapes.md`, `-phaseP1-body.md`, `-phaseP2-bolts-ragdolls.md`, `-phaseP3-vehicles.md`, `-phaseP4-surfaces.md`. Beside it: the asset pipeline (`HANDOFF-bf2017.md`: lanes 1, L, G, K, X, S, V), the game (`HANDOFF-battlefront.md`: lanes 0 to 7), and the Rapier library’s own hand-off on the closed branch `claude/wizardly-franklin-ws9uza` (`HANDOFF-rapier-body.md` there; PR #781, closed 2026-10-10 so the galaxy surface would take its physics from the drop, which is what these lanes do).
+
+## What was found (2026-10-10, the desktop export)
+
+- 10,530 Havok shape sets, 114,377 shapes (102,604 convex, 10,444 trimesh, 977 capsules, 198 spheres), 9.05 M triangles, 123 MB of quantised meshopt GLB, one node per shape with its class, part, instance and material index in the node’s extras; the map’s static instances were read out of the same Havok resources, so a model’s shapes at its instance transform are the game’s collision exactly.
+- `CharacterPhysicsData` (13): the soldier’s capsule r 0.3, stand 1.7 / crouch 1.15, step 0.4 / 0.3, 45° to climb and to slide, walk 5.0, sprint 7.5, back 0.8, crouch 3.0, the gains, the slide’s gravity 0.34, the ground rays.
+- `SkeletonCollisionData`: capsules per bone (the head r 0.16); `WSEACharacterPhysicsComponentData`: 15 ragdoll bodies, `MaxImpulse` 1000; `ProjectileBlueprint` (114): speed, gravity, drag, life, impulse, blast radii; `VehicleBlueprint` (159): masses, thresholds, crashed parts; `MaterialGridData` (44): per-pair damage, effects by speed, sounds, decals, footprints.
+- Not there: material names, cloth (an EA binary), the solver itself, audio, props’ destruction graphs (not surveyed).
+
+## The lanes
+
+| lane | plan | what | starts from | blocked by |
+| --- | --- | --- | --- | --- |
+| P0 | `-phaseP0-shapes.md` | the shapes read, packed with the level, streamed as colliders by cell, the heightfield, the walker’s boxes | `main` | nothing (a fixture pack until lane L is on `main`) |
+| P1 | `-phaseP1-body.md` | the #781 library back; the soldier rulebook; the player on the controller | `main` | P0 for task 4 |
+| P2 | `-phaseP2-bolts-ragdolls.md` | ballistics, blasts, bone capsules, the ragdoll | `main` | P0 for the ray; lane 1 for a figure on the game’s bones |
+| P3 | `-phaseP3-vehicles.md` | vehicle bodies, feet, debris, the rides on the walls | `main` after P0 and lane V | P0, lane V |
+| P4 | `-phaseP4-surfaces.md` | the material grid; effects and prints by material | `main` | P0 for task 3 |
+
+One lane per session. P0, P1, P2 and P4 run at once (no shared file: P1 creates `scripts/lib/bf2017-physics-rules.mjs` and P2 adds named exports to it; whoever lands second merges). P3 waits.
+
+## For lane L (PR #810’s session on `claude/bf2017-l-hoth`)
+
+Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, cells)` for the walker and the one call site in `scene.js`; lane P0 writes `createLevelCollision` (the engine’s side) and `havok.js`’s per-instance `solidsOf` that yours calls, plus the pack’s `physics` section and `physics/*.bin` through `scripts/bf2017-physics.mjs` (call it from `bf2017-level.mjs` after the meshes, or leave it to P0 to call on your pack). Your `levelStream.js`’s cell callbacks get two mirrored calls into `levelPhysics` when it exists. Whoever merges second takes the other’s file.
+
+**Lane L’s answer (PR #831, 2026-10-10), the interfaces as built, which P0 builds against:** `src/lib/level/collision.js` exports `solidsOf(pack, draws, bin) → { floors, boxes }`, per cell and pure, with boxes over 15 m skipped until the Havok shapes land; the scene side is `src/components/galaxy/surface/level/colliders.js`, which switches a cell’s shapes `off` when the cell goes; `createLevelStream`’s callbacks are `onCell(key, bin, band)` and `onDrop(key)`, wired in `level/index.js`; `level.json`’s `physics` section exists and is empty; the pack format moved off the design’s (`meshes[].lods`, `glb[]` per LOD, a cull per tier, texture sizes), built by `scripts/lib/bf2017-level.mjs`.
+
+## For the game (PR #812’s lanes)
+
+`loadPhysics(name)` is lane P0’s `readShapes` over the bucket’s GLB through `readPhysicsGlb` (`scripts/lib/bf2017-physics.mjs`) or, in the browser, over a pack’s `physics/<mesh>.bin`; the hulls and trimeshes are `havok.js`’s `collidersOf`. The soldier’s movement rows are `src/data/bf2017/physics/soldier.json`; the projectiles’ `projectiles.json` and `lib/combat/ballistics.js`’s `flight`; the capsules `boneCapsules.js`; the ragdoll `ragdoll2017.js`; the vehicles `vehicleBody.js`; the surfaces `materials.js`. Build on them; add a row to the Departures in the spec if one does not fit.
+
+## What P0 built (2026-10-10, against #831)
+
+No `collision.js` of its own: lane L’s stays. `levelPhysics.js` sits beside `colliders.js` with `add(key, bin)` / `drop(key)`, reads the 32-byte records with `cells[key].draws` and honours `pack.cull[tier]`; `src/lib/level/shapeSolids.js` gives the walker’s side from the Havok shapes in `collision.js`’s `{ floors, boxes }` form, plus the draws `without` shapes for lane L’s bounds rule; the packer reads `meshes[].name` and fills the empty `physics` section. On a scratch copy of #831’s Hoth pack: 432 meshes, 5.2 MB of bins; the near 3 × 3 at high is 6,160 colliders and 0.47 ms a step, added over 29 frames at under 5 ms each. The `index.js`/`scene.js`/`colliders.js` joins and P2’s `world.physicsRay` are in P0’s Left section for whoever merges second.
+
+## Checking it
+
+- Pure: `npx vitest run src/lib/physics src/lib/combat src/lib/three/ragdoll2017.test.js scripts/lib/bf2017-physics.test.mjs scripts/lib/bf2017-physics-rules.test.mjs scripts/lib/bf2017-materials.test.mjs src/data/bf2017/physics`.
+- In a browser: `node scripts/physics-check.mjs hoth` (P1 writes it; P3 and P4 add steps), `node scripts/galaxy-check.mjs surface hoth` under `BUDGET=1` at every tier (the physics row), `npm run lint`, `npm test`, `npm run build`, `node scripts/health.mjs --check --skip build`.
+- The keys: `SUPABASE_URL` and `SUPA_KEY` (or `BF2017_KEY`) in the environment (the cloud sessions have them; locally `.env.local`, never committed).
+
+## Status
+
+| lane | session | branch | PR | merged |
+| --- | --- | --- | --- | --- |
+| design | the architecting session | `claude/bf2017-physics` | #817 | |
+| P0 | `session_018E4MP2mx7j6iFer89w3nFw` (Opus 5.5, started 2026-10-10 05:22) | `claude/bf2017-p0-shapes` | #834, opened by the design session on the owner’s instruction (the P0 session’s permission check blocked it) | |
+| P1 | the P1 session (`session_01NysT4m6BJEr2MtsRWJtgje`, Opus 5.5, the desktop) | `claude/bf2017-p1-body` | #822 | 2026-10-10 |
+| P2 | a desktop session (the export read locally) | `claude/bf2017-p2-bolts` | #820 | 2026-10-10 |
+| P3 | not started: waits for lane V’s first model and P0 | `claude/bf2017-p3-vehicles` | | |
+| P4 | `session_01HTPJgq2Dagy8xghto1YbTV` | `claude/bf2017-p4-surfaces` | #821 | |
+
+Each lane adds its Done and Left here when it merges: the pack’s physics bytes per world, what the budget dropped per cell, the jump row’s source, which material indices were named by hand and from which effect, what the handling layer did not hold.
+
+### P1: the body
+
+**Done.**
+
+- **The library is back** from the closed `claude/wizardly-franklin-ws9uza`, as it was: `character.js`, `queries.js`, `groups.js`, `budget.js`, `zones.js` with their tests, and the branch’s `world.js` (sensors, tags, `onEnter`/`onLeave`, `Body.attach`/`detach`, `tagOf`; main’s `world.js` had not moved since). `hurtbox.js` and `cost.scenario.test.js` (which needs it) are left for P2. `docs/stack/physics-rapier.md` lists the pieces and the controller’s four gotchas.
+- **The soldier’s rulebook**: `src/data/bf2017/physics/soldier.json`, the 13 `CharacterPhysicsData` records (`scripts/bf2017-physics-rules.mjs soldier --root <export>`, builder `soldierRow`/`soldierRulebook` in `scripts/lib/bf2017-physics-rules.mjs` beside P2’s, on its shared `loadAsset`/`deref`/`refused`/`checkSources`). 341 KB, a row a line, every number with its `<asset>#<Type>.<path>` source; a lazy chunk of 13.8 KB gzipped, loaded only when a level hands over an engine. `rulebook.test.js` walks every file in the folder (P2, P3, P4 add theirs there).
+- **A correction to the spec’s survey**: the soldier walks at **3.8 m/s** (back × 0.8, strafe × 0.9, sprint × 1.57 = 5.97 m/s; crouch 2.5, no sprint), `OnGroundStateData`’s rows. The spec’s 5.0 / 7.5 / 3.0 are `AnimationControlledStateData`’s. **The jump row exists**: `JumpStateData.JumpHeight` 1.1 m for the soldier, 1.6 for Yoda and the Ewok, 0 for the heroes (their jump is an ability’s); a height jumps to it under the site’s 15.5 gravity, a 0 or a missing state (the Pillio creature) takes the walker’s 5.4 m/s as `source: "hand"`. The gains’ unit is not in the data: read as the fraction of the gap closed per 30 Hz frame (−15 is a stop within a substep). All in `NOTES.md`.
+- **`src/lib/physics/soldier.js`**: `controllerOptions` (stand half-height 0.55, crouch 0.275, step 0.4 / 0.3, slopes 45, snap 0.8 from `FallWithGravityDistanceFromGround`), `speedFor`, `accelFor`, `poseFor` (the transition times), `slideOn`, `eyeFor`, `jumpSpeed`; tested against the engine (a crouch passes under a 1.3 m beam, a stand does not).
+- **`playerBody.js`**: the player on the controller with the soldier’s row; every key `walk()` writes is written back, plus `pose`; anything that writes the state straight (the scene’s teleport, a respawn, a shove) is followed; a rejected engine leaves you on `walk()` with no gap. **Rapier’s autostep never climbs higher than the capsule’s radius** (the soldier’s 0.3 stops at a 0.35 kerb; measured), so the body takes the record’s 0.4 step itself when the controller reports a wall: lift, along, down, measured by two rays from the ground under you to the top past your front, so a 0.5 m edge never ratchets up. Crouch is **Z** (C is block, Ctrl is filtered by the scene’s keys and closes a tab) and the kit’s `crouch` press (no button drawn yet).
+- **`scene.js`**: one branch in `stepWalk`, the crouch input, `usePhysics(physics, { drive = true })` on the handle (`__surfaceDo('usePhysics', …)` in dev), the body in `debug()`; and `debug()`’s `lockStagger` no longer throws on a lock with no stagger.
+- **Seen in the browser** (`node scripts/physics-check.mjs hoth`, `ANGLE=d3d11`, the desktop’s graphics chip; in software GL Hoth draws one frame in 2.5 s, too few to walk on): on Hoth’s real surface, a course built beside you in the page, all five pass: a 0.5 m wall holds you, a 0.4 m step is climbed, a jump lands on a 0.9 m crate, a 1.3 m beam stops a stand and lets a crouch through. `docs/superpowers/evidence/bf2017-physics/p1/` (the JSON and four shots, the course drawn in orange). No console errors (on the merge with main).
+
+**Left.**
+
+- **The call site** (lane L’s seam, PR #831: `src/components/galaxy/surface/level/colliders.js`, wired from `level/index.js`; P0 builds `createLevelCollision` against it): once that gives an engine, `api.usePhysics(physics, { drive })`: `drive: true` (the default) lets the body step the world once a frame; pass `false` if the level steps it. Then `physics-check.mjs` waits for the body (`source: level`) and the course should become Hoth’s own spots (the hangar mouth, its ramp, a crate, a beam: add `--spot`), with P0’s `havok.test.js` fixture world for a test of the real shapes.
+- **The figures on the body** (`bodyFor` for lane 1’s walrus figures and #812’s lane 5); the crewmate still walks on the walker and sinks into what only the engine knows (seen in the step shot).
+- **The crouch’s clip** (the legs read `state.pose`; nothing plays a crouch yet) and its HUD button (the kit’s `crouch` press is wired, no button drawn).
+- **The sprint ability** (abilityRules’ multiplier) is not applied on the body; the jump penalty (`JumpPenaltyTime` 0.1 × 0.2), the uphill/downhill speed modifiers and the slide state’s gravity scale are in the row and not yet used.
+- **The Windows-only test failures** seen on the desktop (`health.test`, `shadingClosure.test`, `bf2017-paths.test`: path separators; `supabase-seed.test`: CRLF; `supabase-check.test`: the desktop’s keys) are as on main; CI is the gate.
+
+### Lane P2: bolts, blasts, hit zones, ragdolls (2026-10-10)
+
+**Done.**
+- `scripts/lib/bf2017-physics-rules.mjs` (created here, P1 not yet on `main`: P1 merges its soldier builder in beside these and keeps the file’s `loadAsset`/`deref`/`checkSources`, or swaps all of them for lane 0’s `bf2017-ebx.mjs`): `projectileRow`, `projectileRulebook`, `boneSetRow`, `ragdollRow`, `shareBodies`, `physicsRulebooks`, `refused`; its tests are `bf2017-physics-rules.bolts.test.mjs` so P1’s `bf2017-physics-rules.test.mjs` does not collide. `scripts/bf2017-bolts-data.mjs --root <export>/web` writes the three files.
+- `src/data/bf2017/physics/projectiles.json` (333 rows: the 114 blueprints less 14 refused, and 233 bolts, which are `WSBulletEntityData` containers, not blueprints; 397 KB, imported by no page), `bones.json` (10 sets, 112 KB; the surface fetches it as its own 3.9 KB-gzip chunk the first time a figure on the game’s skeleton is in the way), `ragdoll.json` (48 rows, 144 KB: 39 heroes share the human’s bodies through `bodiesOf`); `NOTES.md` says what the records hold and do not (grenades have no `RigidBodyData`; two components give one body to two bones).
+- `src/lib/combat/ballistics.js`: `flight` (the exact solution of `dv/dt = g − k·v`, so a flight lands within millimetres at 1/30 and 1/120; with no gravity and no drag the same positions as `bolt.js` to 1e-9), `launch`, `arc`. `bolt.js` takes an optional `ballistic` row (its own tests untouched and green).
+- `src/lib/physics/blast.js`: `applyBlast` (falloff from `inner` to `radius`, the line of sight on the world’s ray, the shockwave’s kick to ragdolls) and `segmentRay(physics)`, a segment ray in `bolt.js`’s solids form over any `world.js` world.
+- `src/lib/physics/boneCapsules.js` (`capsulesOf`, `regionsOf`, `figureCapsules`, `isGameSkeleton`, `regionOf`) and `hurtbox.js` back from #781’s branch as it was (its engine tests need P1’s `character.js`; the test here uses a stand-in body until then).
+- `src/lib/three/ragdoll2017.js`: `rig2017` over `ragdollPhysics.js` (which gained an optional `table`, Meshy’s by default), the impulse allowance (`maxImpulse` spent and restored over `impulseLifetime`), `ragdollOf`, `floorCollide`.
+- The surface: `blaster.js` flies against `world.physicsRay` when a world has one (P0’s level world sets it; `segmentRay` is one) and takes a `ballistic` row for your bolts; `boltPlay.js` hits a figure on the game’s skeleton by the game’s capsules and names the bone and the reaction on the hit.
+
+**Left.**
+- P0: set `world.physicsRay` (a budgeted `queries.ray` in `bolt.js`’s solids form) on a level world; `blaster.js` picks it up.
+- Lane 1: its figures through `boltPlay.js` (automatic once `fig.bones` carries `Head`, `Spine`, `Spine1`/`Neck`) and `rig2017` where the surface makes a ragdoll today (`ground/groundFigures.js`: `rig2017(bones, ragdollOf(book, 'stormtroopershared'), …)` for a figure on the game’s skeleton, `rigRagdoll` otherwise; a blast’s `kicked` list wants `rag.kick`).
+- No surface page passes a row yet: the rifle’s (`blasterprojectile_blasterrifle_a295`: gravity 0, drag 0, ttl 3) would fly exactly as today, so the first row that shows is a thrown grenade, which wants a throw (the game’s grenade `InitialSpeed` is a placeholder 350; the throw is the weapon’s) and a body (the world’s mass: the record has none).
+- The Battlefront game (#812’s lane 5): `flight` for its sim’s projectiles, `applyBlast` for grenades, `capsulesOf` for hits, `rig2017` for the dead.
+
