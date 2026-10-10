@@ -8,7 +8,7 @@
 // and one occlusion-roughness-metal map.
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -136,7 +136,11 @@ export async function resolveImage(bucketPath, { root, derived, unpackDir }) {
     if (recipe && maps.every(onDisk)) return { png: await ormPng(recipe, (map) => read(mapPath(map))), from: `${[...new Set(maps)].map((m) => basename(m)).join(' + ')} (orm)` };
   }
   if (bucketPath.endsWith('.ktx2') && onDisk(bucketPath)) {
-    const out = await unpackKtx2(localPath(root, bucketPath), join(unpackDir, dirname(bucketPath)));
+    // (unpacked once: each cut of a model, and every model sharing a map, reads the same PNG)
+    const ktx2 = localPath(root, bucketPath);
+    const done = join(unpackDir, dirname(bucketPath), basename(bucketPath).replace(/\.ktx2$/, '.png'));
+    const fresh = existsSync(done) && (await stat(done)).mtimeMs >= (await stat(ktx2)).mtimeMs;
+    const out = fresh ? done : await unpackKtx2(ktx2, dirname(done));
     return { png: await readFile(out), from: `${basename(bucketPath)} (unpacked)` };
   }
   return null;
