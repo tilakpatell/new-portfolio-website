@@ -30,7 +30,7 @@ const snap = (axes = {}) => ({ axis: (n) => axes[n] ?? 0, stick: { x: 0, y: 0 } 
 describe('the flight module', () => {
   it('is whole: glsl, its download as WORLD_MB says', () => {
     expect(flight).toMatchObject({ id: 'flight', shading: 'glsl', mb: WORLD_MB['/fly'] });
-    expect(WORLD_MB['/fly']).toBe(5);
+    expect(WORLD_MB['/fly']).toBe(22);
   });
 
   it('binds its keys, and flies the ship from them', async () => {
