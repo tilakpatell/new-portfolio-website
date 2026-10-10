@@ -15,19 +15,15 @@
 import * as THREE from 'three';
 import { KITS } from './catalog/bf2017-frontend';
 import FRONTEND from '../../../data/bf2017/light/frontend.json';
+import STAGE_DATA from '../../../data/bf2017/stage.json';
 import { cutFor, loadWalrusBody, packUrls } from '../../../lib/three/walrus';
 import { ktx2Loader, loadGltf } from '../../../lib/three/gltf';
 import { pixelRatio } from '../../../lib/device';
 import { quiet, releaseContext } from '../../../lib/three/renderer';
 
-// levels/frontend/frontend.bin, sub-level 4 (Backdrop_01): the dome at
-// [0.426, -3.627, -2.799], the pill lights at [-0.25, -3.587, 6.142] turned
-// a quarter about y and scaled [0.498, 1.562, 1.746]; here from the dome's
-// foot, the hero at its middle
-export const STAGE = {
-  nowheredome_01: { at: [0, 0, 0], quat: [0, 0, 0, 1], scale: [1, 1, 1] },
-  nowherepilllights_01: { at: [-0.676, 0.04, 8.941], quat: [0, Math.SQRT1_2, 0, Math.SQRT1_2], scale: [0.498, 1.562, 1.746] },
-};
+// where the pieces stand: src/data/bf2017/stage.json (the level's own
+// placings, from the dome's foot; the hero at its middle)
+export const STAGE = STAGE_DATA.pieces;
 // the clip it stands in: the front end's own (lane A's frontend.idle) when
 // the packs carry it, else the hero's idle
 export const POSES = ['frontend.idle', 'idle'];

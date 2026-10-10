@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { POSES, STAGE, stageFor } from './heroStage';
+import { POSES, STAGE, stageFor } from './heroStage.js';
 import { heroSpec } from '../heroes';
 
 const luke = heroSpec({ id: 'luke' });

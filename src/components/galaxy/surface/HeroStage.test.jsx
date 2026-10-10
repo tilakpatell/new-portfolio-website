@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import HeroStage from './HeroStage';
+import HeroStage from './HeroStage.jsx'; // (named in full: ./heroStage.js is beside it)
 import { heroSpec } from '../heroes';
 
 describe('the loadout’s stage', () => {

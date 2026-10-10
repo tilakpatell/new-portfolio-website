@@ -18,7 +18,8 @@
       "act": 1,
       "level": "endor",
       "scene": 10100,
-      "captions": "films/bf2017/a1-m0lib-ds01-s0100-fmv.vtt"
+      "captions": "films/bf2017/a1-m0lib-ds01-s0100-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M0LIB/game/A1_M0LIB_DS01_S0100_FMV"
     },
     {
       "slug": "a1-m0lib-ds02-s0210-fmv",
@@ -34,7 +35,8 @@
       "act": 1,
       "level": "endor",
       "scene": 20210,
-      "captions": "films/bf2017/a1-m0lib-ds02-s0210-fmv.vtt"
+      "captions": "films/bf2017/a1-m0lib-ds02-s0210-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M0LIB/game/A1_M0LIB_DS02_S0210_FMV"
     },
     {
       "slug": "a1-m0lib-ds03-s0400-fmv",
@@ -50,7 +52,8 @@
       "act": 1,
       "level": "endor",
       "scene": 30400,
-      "captions": "films/bf2017/a1-m0lib-ds03-s0400-fmv.vtt"
+      "captions": "films/bf2017/a1-m0lib-ds03-s0400-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M0LIB/game/A1_M0LIB_DS03_S0400_FMV"
     },
     {
       "slug": "a1-m1end-ds01-s0100-fmv",
@@ -66,7 +69,8 @@
       "act": 1,
       "level": "endor",
       "scene": 10100,
-      "captions": "films/bf2017/a1-m1end-ds01-s0100-fmv.vtt"
+      "captions": "films/bf2017/a1-m1end-ds01-s0100-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M1END/game/A1_M1END_DS01_S0100_FMV"
     },
     {
       "slug": "a1-m1end-ds02-s0400-fmv",
@@ -82,7 +86,8 @@
       "act": 1,
       "level": "endor",
       "scene": 20400,
-      "captions": "films/bf2017/a1-m1end-ds02-s0400-fmv.vtt"
+      "captions": "films/bf2017/a1-m1end-ds02-s0400-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M1END/game/A1_M1END_DS02_S0400_FMV"
     },
     {
       "slug": "a1-m1end-ds03-s0900-fmv",
@@ -98,7 +103,8 @@
       "act": 1,
       "level": "endor",
       "scene": 30900,
-      "captions": "films/bf2017/a1-m1end-ds03-s0900-fmv.vtt"
+      "captions": "films/bf2017/a1-m1end-ds03-s0900-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M1END/game/A1_M1END_DS03_S0900_FMV"
     },
     {
       "slug": "a1-m1end-ds05-s1200-fmv",
@@ -114,7 +120,8 @@
       "act": 1,
       "level": "endor",
       "scene": 51200,
-      "captions": "films/bf2017/a1-m1end-ds05-s1200-fmv.vtt"
+      "captions": "films/bf2017/a1-m1end-ds05-s1200-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M1END/game/A1_M1END_DS05_S1200_FMV"
     },
     {
       "slug": "a1-m2fon-ds01-s0100-fmv",
@@ -130,7 +137,8 @@
       "act": 1,
       "level": "fondor",
       "scene": 10100,
-      "captions": "films/bf2017/a1-m2fon-ds01-s0100-fmv.vtt"
+      "captions": "films/bf2017/a1-m2fon-ds01-s0100-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M2FON/game/A1_M2FON_DS01_S0100_FMV"
     },
     {
       "slug": "a1-m2fon-ds02-s0680-fmv",
@@ -146,7 +154,8 @@
       "act": 1,
       "level": "fondor",
       "scene": 20680,
-      "captions": "films/bf2017/a1-m2fon-ds02-s0680-fmv.vtt"
+      "captions": "films/bf2017/a1-m2fon-ds02-s0680-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M2FON/game/A1_M2FON_DS02_S0680_FMV"
     },
     {
       "slug": "a1-m2fon-ds03-s0800-fmv",
@@ -162,7 +171,8 @@
       "act": 1,
       "level": "fondor",
       "scene": 30800,
-      "captions": "films/bf2017/a1-m2fon-ds03-s0800-fmv.vtt"
+      "captions": "films/bf2017/a1-m2fon-ds03-s0800-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M2FON/game/A1_M2FON_DS03_S0800_FMV"
     },
     {
       "slug": "a1-m3pil-ds01-s0100-fmv",
@@ -178,7 +188,8 @@
       "act": 1,
       "level": "pillio",
       "scene": 10100,
-      "captions": "films/bf2017/a1-m3pil-ds01-s0100-fmv.vtt"
+      "captions": "films/bf2017/a1-m3pil-ds01-s0100-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M3PIL/game/A1_M3PIL_DS01_S0100_FMV"
     },
     {
       "slug": "a1-m3pil-ds02-s0600-fmv",
@@ -194,7 +205,8 @@
       "act": 1,
       "level": "pillio",
       "scene": 20600,
-      "captions": "films/bf2017/a1-m3pil-ds02-s0600-fmv.vtt"
+      "captions": "films/bf2017/a1-m3pil-ds02-s0600-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M3PIL/game/A1_M3PIL_DS02_S0600_FMV"
     },
     {
       "slug": "a1-m3pil-ds03-s1500-fmv",
@@ -210,7 +222,8 @@
       "act": 1,
       "level": "pillio",
       "scene": 31500,
-      "captions": "films/bf2017/a1-m3pil-ds03-s1500-fmv.vtt"
+      "captions": "films/bf2017/a1-m3pil-ds03-s1500-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M3PIL/game/A1_M3PIL_DS03_S1500_FMV"
     },
     {
       "slug": "a1-m4var-ds01-s0100-fmv",
@@ -226,7 +239,8 @@
       "act": 1,
       "level": "vardos",
       "scene": 10100,
-      "captions": "films/bf2017/a1-m4var-ds01-s0100-fmv.vtt"
+      "captions": "films/bf2017/a1-m4var-ds01-s0100-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M4VAR/game/A1_M4VAR_DS01_S0100_FMV"
     },
     {
       "slug": "a1-m4var-ds02-s0400-fmv",
@@ -242,7 +256,8 @@
       "act": 1,
       "level": "vardos",
       "scene": 20400,
-      "captions": "films/bf2017/a1-m4var-ds02-s0400-fmv.vtt"
+      "captions": "films/bf2017/a1-m4var-ds02-s0400-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M4VAR/game/A1_M4VAR_DS02_S0400_FMV"
     },
     {
       "slug": "a1-m4var-ds03-s1600-fmv",
@@ -258,7 +273,8 @@
       "act": 1,
       "level": "vardos",
       "scene": 31600,
-      "captions": "films/bf2017/a1-m4var-ds03-s1600-fmv.vtt"
+      "captions": "films/bf2017/a1-m4var-ds03-s1600-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M4VAR/game/A1_M4VAR_DS03_S1600_FMV"
     },
     {
       "slug": "a1-m5nab-ds01-s0100-fmv",
@@ -274,7 +290,8 @@
       "act": 1,
       "level": "naboo",
       "scene": 10100,
-      "captions": "films/bf2017/a1-m5nab-ds01-s0100-fmv.vtt"
+      "captions": "films/bf2017/a1-m5nab-ds01-s0100-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M5NAB/game/A1_M5NAB_DS01_S0100_FMV"
     },
     {
       "slug": "a1-m5nab-ds02-s0250-fmv",
@@ -290,7 +307,8 @@
       "act": 1,
       "level": "naboo",
       "scene": 20250,
-      "captions": "films/bf2017/a1-m5nab-ds02-s0250-fmv.vtt"
+      "captions": "films/bf2017/a1-m5nab-ds02-s0250-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M5NAB/game/A1_M5NAB_DS02_S0250_FMV"
     },
     {
       "slug": "a1-m5nab-ds02-s0710-fmv",
@@ -306,7 +324,8 @@
       "act": 1,
       "level": "naboo",
       "scene": 20710,
-      "captions": "films/bf2017/a1-m5nab-ds02-s0710-fmv.vtt"
+      "captions": "films/bf2017/a1-m5nab-ds02-s0710-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M5NAB/game/A1_M5NAB_DS02_S0710_FMV"
     },
     {
       "slug": "a1-m5nab-ds03-s0900-fmv",
@@ -322,7 +341,8 @@
       "act": 1,
       "level": "naboo",
       "scene": 30900,
-      "captions": "films/bf2017/a1-m5nab-ds03-s0900-fmv.vtt"
+      "captions": "films/bf2017/a1-m5nab-ds03-s0900-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M5NAB/game/A1_M5NAB_DS03_S0900_FMV"
     },
     {
       "slug": "a1-m5nab-ds05-s1100-fmv",
@@ -338,7 +358,8 @@
       "act": 1,
       "level": "naboo",
       "scene": 51100,
-      "captions": "films/bf2017/a1-m5nab-ds05-s1100-fmv.vtt"
+      "captions": "films/bf2017/a1-m5nab-ds05-s1100-fmv.vtt",
+      "_source": "Cinematics/Story/A1/M5NAB/game/A1_M5NAB_DS05_S1100_FMV"
     },
     {
       "slug": "a2-m2bes-ds01-s0100-fmv",
@@ -354,7 +375,8 @@
       "act": 2,
       "level": "bespin",
       "scene": 10100,
-      "captions": "films/bf2017/a2-m2bes-ds01-s0100-fmv.vtt"
+      "captions": "films/bf2017/a2-m2bes-ds01-s0100-fmv.vtt",
+      "_source": "Cinematics/Story/A2/M2BES/game/A2_M2BES_DS01_S0100_FMV"
     },
     {
       "slug": "a2-m2bes-ds02-s0500-fmv",
@@ -370,7 +392,8 @@
       "act": 2,
       "level": "bespin",
       "scene": 20500,
-      "captions": "films/bf2017/a2-m2bes-ds02-s0500-fmv.vtt"
+      "captions": "films/bf2017/a2-m2bes-ds02-s0500-fmv.vtt",
+      "_source": "Cinematics/Story/A2/M2BES/game/A2_M2BES_DS02_S0500_FMV"
     },
     {
       "slug": "a2-m2bes-ds03-s1000-fmv",
@@ -386,7 +409,8 @@
       "act": 2,
       "level": "bespin",
       "scene": 31000,
-      "captions": "films/bf2017/a2-m2bes-ds03-s1000-fmv.vtt"
+      "captions": "films/bf2017/a2-m2bes-ds03-s1000-fmv.vtt",
+      "_source": "Cinematics/Story/A2/M2BES/game/A2_M2BES_DS03_S1000_FMV"
     },
     {
       "slug": "a2-m3sul-ds01-s0100-fmv",
@@ -402,7 +426,8 @@
       "act": 2,
       "level": "sullust",
       "scene": 10100,
-      "captions": "films/bf2017/a2-m3sul-ds01-s0100-fmv.vtt"
+      "captions": "films/bf2017/a2-m3sul-ds01-s0100-fmv.vtt",
+      "_source": "Cinematics/Story/A2/M3SUL/game/A2_M3SUL_DS01_S0100_FMV"
     },
     {
       "slug": "a2-m3sul-ds03-s0900-fmv",
@@ -418,7 +443,8 @@
       "act": 2,
       "level": "sullust",
       "scene": 30900,
-      "captions": "films/bf2017/a2-m3sul-ds03-s0900-fmv.vtt"
+      "captions": "films/bf2017/a2-m3sul-ds03-s0900-fmv.vtt",
+      "_source": "Cinematics/Story/A2/M3SUL/game/A2_M3SUL_DS03_S0900_FMV"
     },
     {
       "slug": "doorpanels",
@@ -430,7 +456,8 @@
       "seconds": 2.517,
       "width": 1920,
       "height": 1080,
-      "bytes": 2517894
+      "bytes": 2517894,
+      "_source": "UI/Video/SP_Tutorials/UI/DoorPanels"
     },
     {
       "slug": "droid-legendary",
@@ -442,7 +469,8 @@
       "seconds": 4.05,
       "width": 1920,
       "height": 1080,
-      "bytes": 4433128
+      "bytes": 4433128,
+      "_source": "UI/Video/SP_Tutorials/UI/Video/SP_Tutorials/Droid_Legendary"
     },
     {
       "slug": "iden-legendary-shock",
@@ -454,7 +482,8 @@
       "seconds": 9.234,
       "width": 1920,
       "height": 1080,
-      "bytes": 9573957
+      "bytes": 9573957,
+      "_source": "UI/Video/SP_Tutorials/Iden_Legendary_Shock"
     },
     {
       "slug": "iden-lvlpickup-autoturret",
@@ -466,7 +495,8 @@
       "seconds": 6.5,
       "width": 1920,
       "height": 1080,
-      "bytes": 15525132
+      "bytes": 15525132,
+      "_source": "UI/Video/SP_Tutorials/UI/Video/SP_Tutorials/Iden_LvlPickup_AutoTurret"
     },
     {
       "slug": "iden-officer-combat",
@@ -478,7 +508,8 @@
       "seconds": 8.75,
       "width": 1920,
       "height": 1080,
-      "bytes": 13903561
+      "bytes": 13903561,
+      "_source": "UI/Video/SP_Tutorials/Iden_Officer_Combat"
     },
     {
       "slug": "logos-start-01",
@@ -490,7 +521,8 @@
       "seconds": 34.103,
       "width": 1920,
       "height": 1080,
-      "bytes": 8893690
+      "bytes": 8893690,
+      "_source": "UI/Video/Logos/Logos_Start_01"
     },
     {
       "slug": "lootbox",
@@ -503,7 +535,8 @@
       "width": 96,
       "height": 128,
       "bytes": 112262,
-      "tile": "lootbox"
+      "tile": "lootbox",
+      "_source": "UI/Video/Tiles/LootBox"
     },
     {
       "slug": "lvlpickup-barrage",
@@ -515,7 +548,8 @@
       "seconds": 7.967,
       "width": 1920,
       "height": 1080,
-      "bytes": 20742543
+      "bytes": 20742543,
+      "_source": "UI/Video/SP_Tutorials/LvlPickup_Barrage"
     },
     {
       "slug": "lvlpickup-orbitalstrike",
@@ -527,7 +561,8 @@
       "seconds": 7.35,
       "width": 1920,
       "height": 1080,
-      "bytes": 6439323
+      "bytes": 6439323,
+      "_source": "UI/Video/SP_Tutorials/LvlPickup_OrbitalStrike"
     },
     {
       "slug": "mp-yavin-placeholder-intro-01",
@@ -541,7 +576,8 @@
       "height": 1080,
       "bytes": 3497101,
       "system": "yavin",
-      "variant": "intro"
+      "variant": "intro",
+      "_source": "UI/Video/Loading/MP_Yavin_Placeholder_Intro_01"
     },
     {
       "slug": "mp-yavin-placeholder-loop-01",
@@ -555,7 +591,8 @@
       "height": 1080,
       "bytes": 3497101,
       "system": "yavin",
-      "variant": "loop"
+      "variant": "loop",
+      "_source": "UI/Video/Loading/MP_Yavin_Placeholder_Loop_01"
     },
     {
       "slug": "mt-volcano2",
@@ -569,7 +606,8 @@
       "height": 1024,
       "bytes": 9765274,
       "flipped": true,
-      "fx": "volcano"
+      "fx": "volcano",
+      "_source": "FX/MovieTextures/Amibent/Volcano/MT_Volcano2"
     },
     {
       "slug": "planet-athulla-01",
@@ -582,7 +620,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 3289379,
-      "system": "athulla"
+      "system": "athulla",
+      "_source": "UI/Video/Loading/Planet_Athulla_01"
     },
     {
       "slug": "planet-bespin-01",
@@ -595,7 +634,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 2890573,
-      "system": "bespin"
+      "system": "bespin",
+      "_source": "UI/Video/Loading/Planet_Bespin_01"
     },
     {
       "slug": "planet-deathstarii-01",
@@ -608,7 +648,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 3654183,
-      "system": "deathstar"
+      "system": "deathstar",
+      "_source": "UI/Video/Loading/Planet_DeathStarII_01"
     },
     {
       "slug": "planet-endor-01",
@@ -621,7 +662,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 3402464,
-      "system": "endor"
+      "system": "endor",
+      "_source": "UI/Video/Loading/Planet_Endor_01"
     },
     {
       "slug": "planet-felucia-01",
@@ -634,7 +676,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 1183276,
-      "system": "felucia"
+      "system": "felucia",
+      "_source": "UI/Video/Loading/Planet_Felucia_01"
     },
     {
       "slug": "planet-fondor-01",
@@ -647,7 +690,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 4350255,
-      "system": "fondor"
+      "system": "fondor",
+      "_source": "UI/Video/Loading/Planet_Fondor_01"
     },
     {
       "slug": "planet-geonosis-01",
@@ -660,7 +704,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 3403016,
-      "system": "geonosis"
+      "system": "geonosis",
+      "_source": "UI/Video/Loading/Planet_Geonosis_01"
     },
     {
       "slug": "planet-hoth-01",
@@ -673,7 +718,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 1547155,
-      "system": "hoth"
+      "system": "hoth",
+      "_source": "UI/Video/Loading/Planet_Hoth_01"
     },
     {
       "slug": "planet-kamino-01",
@@ -686,7 +732,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 2308527,
-      "system": "kamino"
+      "system": "kamino",
+      "_source": "UI/Video/Loading/Planet_Kamino_01"
     },
     {
       "slug": "planet-kashyyyk-01",
@@ -699,7 +746,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 3347183,
-      "system": "kashyyyk"
+      "system": "kashyyyk",
+      "_source": "UI/Video/Loading/Planet_Kashyyyk_01"
     },
     {
       "slug": "planet-kessel-01",
@@ -712,7 +760,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 2767824,
-      "system": "kessel"
+      "system": "kessel",
+      "_source": "S3/UI/Video/Loading/Planet_Kessel_01"
     },
     {
       "slug": "planet-liberty-01",
@@ -725,7 +774,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 6142955,
-      "system": "liberty"
+      "system": "liberty",
+      "_source": "UI/Video/Loading/Planet_Liberty_01"
     },
     {
       "slug": "planet-naboo-01",
@@ -738,7 +788,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 3424707,
-      "system": "naboo"
+      "system": "naboo",
+      "_source": "UI/Video/Loading/Planet_Naboo_01"
     },
     {
       "slug": "planet-pilio-alive-01",
@@ -751,7 +802,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 2593650,
-      "system": "pillio"
+      "system": "pillio",
+      "_source": "UI/Video/Loading/Planet_Pilio-Alive_01"
     },
     {
       "slug": "planet-pilio-dead-01",
@@ -765,7 +817,8 @@
       "height": 1080,
       "bytes": 2811278,
       "system": "pillio",
-      "variant": "dead"
+      "variant": "dead",
+      "_source": "UI/Video/Loading/Planet_Pilio-Dead_01"
     },
     {
       "slug": "planet-ryloth-01",
@@ -778,7 +831,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 1082010,
-      "system": "ryloth"
+      "system": "ryloth",
+      "_source": "UI/Video/Loading/Planet_Ryloth_01"
     },
     {
       "slug": "planet-scarif-01",
@@ -791,7 +845,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 860667,
-      "system": "scarif"
+      "system": "scarif",
+      "_source": "UI/Video/Planet_Scarif_01"
     },
     {
       "slug": "planet-sullust-01",
@@ -804,7 +859,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 3593492,
-      "system": "sullust"
+      "system": "sullust",
+      "_source": "UI/Video/Loading/Planet_Sullust_01"
     },
     {
       "slug": "planet-tatooine-01",
@@ -817,7 +873,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 2150834,
-      "system": "tatooine"
+      "system": "tatooine",
+      "_source": "UI/Video/Loading/Planet_Tatooine_01"
     },
     {
       "slug": "planet-vardos-alive-01",
@@ -830,7 +887,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 5136470,
-      "system": "vardos"
+      "system": "vardos",
+      "_source": "UI/Video/Loading/Planet_Vardos-Alive_01"
     },
     {
       "slug": "planet-vardos-dead-01",
@@ -844,7 +902,8 @@
       "height": 1080,
       "bytes": 5081041,
       "system": "vardos",
-      "variant": "dead"
+      "variant": "dead",
+      "_source": "UI/Video/Loading/Planet_Vardos-Dead_01"
     },
     {
       "slug": "planet-yavin4-01",
@@ -857,7 +916,8 @@
       "width": 1920,
       "height": 1080,
       "bytes": 2664487,
-      "system": "yavin"
+      "system": "yavin",
+      "_source": "UI/Video/Loading/Planet_Yavin4_01"
     },
     {
       "slug": "precombat",
@@ -869,7 +929,8 @@
       "seconds": 6.517,
       "width": 1920,
       "height": 1080,
-      "bytes": 5519230
+      "bytes": 5519230,
+      "_source": "UI/Video/SP_Tutorials/UI/Video/SP_Tutorials/Precombat"
     },
     {
       "slug": "tile-campaign-dlc",
@@ -882,7 +943,8 @@
       "width": 504,
       "height": 408,
       "bytes": 604348,
-      "tile": "campaign-dlc"
+      "tile": "campaign-dlc",
+      "_source": "UI/Video/Tiles/Tile_Campaign_DLC"
     },
     {
       "slug": "tile-campaign-selectmission",
@@ -895,7 +957,8 @@
       "width": 504,
       "height": 408,
       "bytes": 493572,
-      "tile": "campaign-selectmission"
+      "tile": "campaign-selectmission",
+      "_source": "UI/Video/Tiles/Tile_Campaign_SelectMission"
     },
     {
       "slug": "tile-campaign-startnew",
@@ -908,7 +971,8 @@
       "width": 504,
       "height": 408,
       "bytes": 433893,
-      "tile": "campaign-startnew"
+      "tile": "campaign-startnew",
+      "_source": "UI/Video/Tiles/Tile_Campaign_StartNew"
     },
     {
       "slug": "tile-co-op",
@@ -921,7 +985,8 @@
       "width": 504,
       "height": 408,
       "bytes": 530838,
-      "tile": "co-op"
+      "tile": "co-op",
+      "_source": "UI/Video/Tiles/Tile_Co-op"
     },
     {
       "slug": "tile-custom",
@@ -934,7 +999,8 @@
       "width": 504,
       "height": 408,
       "bytes": 797293,
-      "tile": "custom"
+      "tile": "custom",
+      "_source": "UI/Video/Tiles/Tile_Custom"
     },
     {
       "slug": "tile-dark",
@@ -947,7 +1013,8 @@
       "width": 504,
       "height": 408,
       "bytes": 1511585,
-      "tile": "dark"
+      "tile": "dark",
+      "_source": "UI/Video/Tiles/Tile_Dark"
     },
     {
       "slug": "tile-light",
@@ -960,7 +1027,8 @@
       "width": 504,
       "height": 408,
       "bytes": 830825,
-      "tile": "light"
+      "tile": "light",
+      "_source": "UI/Video/Tiles/Tile_Light"
     },
     {
       "slug": "tile-multiplayer",
@@ -973,7 +1041,8 @@
       "width": 504,
       "height": 408,
       "bytes": 2741671,
-      "tile": "multiplayer"
+      "tile": "multiplayer",
+      "_source": "UI/Video/Tiles/Tile_Multiplayer"
     },
     {
       "slug": "tile-scenario",
@@ -986,7 +1055,8 @@
       "width": 504,
       "height": 408,
       "bytes": 951978,
-      "tile": "scenario"
+      "tile": "scenario",
+      "_source": "UI/Video/Tiles/Tile_Scenario"
     },
     {
       "slug": "tile-searching",
@@ -999,7 +1069,8 @@
       "width": 504,
       "height": 408,
       "bytes": 154008,
-      "tile": "searching"
+      "tile": "searching",
+      "_source": "UI/Video/Tiles/Tile_Searching"
     },
     {
       "slug": "tile-settings-audio",
@@ -1012,7 +1083,8 @@
       "width": 464,
       "height": 264,
       "bytes": 60809,
-      "tile": "settings-audio"
+      "tile": "settings-audio",
+      "_source": "UI/Video/Tiles/Tile_Settings_Audio"
     },
     {
       "slug": "tile-settings-controls",
@@ -1025,7 +1097,8 @@
       "width": 464,
       "height": 264,
       "bytes": 82718,
-      "tile": "settings-controls"
+      "tile": "settings-controls",
+      "_source": "UI/Video/Tiles/Tile_Settings_Controls"
     },
     {
       "slug": "tile-settings-credits",
@@ -1038,7 +1111,8 @@
       "width": 464,
       "height": 264,
       "bytes": 478938,
-      "tile": "settings-credits"
+      "tile": "settings-credits",
+      "_source": "UI/Video/Tiles/Tile_Settings_Credits"
     },
     {
       "slug": "tile-settings-ea",
@@ -1051,7 +1125,8 @@
       "width": 464,
       "height": 264,
       "bytes": 448764,
-      "tile": "settings-ea"
+      "tile": "settings-ea",
+      "_source": "UI/Video/Tiles/Tile_Settings_EA"
     },
     {
       "slug": "tile-settings-gameplay",
@@ -1064,7 +1139,8 @@
       "width": 464,
       "height": 264,
       "bytes": 189750,
-      "tile": "settings-gameplay"
+      "tile": "settings-gameplay",
+      "_source": "UI/Video/Tiles/Tile_Settings_Gameplay"
     },
     {
       "slug": "tile-settings-video",
@@ -1077,7 +1153,8 @@
       "width": 464,
       "height": 264,
       "bytes": 70968,
-      "tile": "settings-video"
+      "tile": "settings-video",
+      "_source": "UI/Video/Tiles/Tile_Settings_Video"
     },
     {
       "slug": "tile-skirmish",
@@ -1090,7 +1167,8 @@
       "width": 504,
       "height": 408,
       "bytes": 1077208,
-      "tile": "skirmish"
+      "tile": "skirmish",
+      "_source": "UI/Video/Tiles/Tile_Skirmish"
     },
     {
       "slug": "tile-solo",
@@ -1103,7 +1181,8 @@
       "width": 504,
       "height": 408,
       "bytes": 382285,
-      "tile": "solo"
+      "tile": "solo",
+      "_source": "UI/Video/Tiles/Tile_Solo"
     },
     {
       "slug": "tile-sp-campaign",
@@ -1116,7 +1195,8 @@
       "width": 504,
       "height": 408,
       "bytes": 835575,
-      "tile": "sp-campaign"
+      "tile": "sp-campaign",
+      "_source": "UI/Video/Tiles/Tile_SP_Campaign"
     },
     {
       "slug": "tile-supremacy",
@@ -1129,7 +1209,8 @@
       "width": 504,
       "height": 408,
       "bytes": 2844258,
-      "tile": "supremacy"
+      "tile": "supremacy",
+      "_source": "UI/Video/Tiles/Tile_Supremacy"
     },
     {
       "slug": "tile-tutorials",
@@ -1142,7 +1223,8 @@
       "width": 504,
       "height": 408,
       "bytes": 340649,
-      "tile": "tutorials"
+      "tile": "tutorials",
+      "_source": "UI/Video/Tiles/Tile_Tutorials"
     },
     {
       "slug": "tile-vs",
@@ -1155,7 +1237,8 @@
       "width": 504,
       "height": 408,
       "bytes": 398832,
-      "tile": "vs"
+      "tile": "vs",
+      "_source": "UI/Video/Tiles/Tile_VS"
     }
   ],
   "waiting": [],

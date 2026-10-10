@@ -1048,5 +1048,9 @@
     "ID_W_SE44C": "SE-44C",
     "ID_W_TL50": "TL-50",
     "ID_W_WEAPON_NOT_OWNED": "WEAPON NOT OWNED"
-  }
+  },
+  "_source": [
+    "Localization/WSLocalization_English",
+    "strings/keys.json"
+  ]
 }

@@ -141,6 +141,7 @@ export async function films({ dry = false, only = null, say = console.log } = {}
       const keep = { ...r };
       for (const k of ['src', 'subtitles', 'transcode']) delete keep[k];
       keep.bytes = published[r.path].bytes;
+      keep._source = r.name;
       return existsSync(join(PUBLIC, captions)) ? { ...keep, captions } : keep;
     });
   if (waiting.length) say(`  ${waiting.length} cut and not published yet (node scripts/assets-publish.mjs --only 'films/**', then this again)`);
@@ -177,7 +178,9 @@ export function icons({ dry = false, say = console.log } = {}) {
   const dir = join(PUBLIC, 'ui', 'bf2017');
   for (const f of walk(dir).filter((f) => f.endsWith('.svg') && dirname(f) === dir)) rmSync(f);
   for (const [fam, text] of Object.entries(sprites)) write(join(dir, `${fam}.svg`), text);
-  write(join(DATA, 'icons.json'), json({ _from: FROM, rows: Object.fromEntries(Object.entries(table).sort(([a], [b]) => (a < b ? -1 : 1))) }));
+  // (the drop's names, for the coverage ledger)
+  const sources = keep.map((r) => r.name).sort();
+  write(join(DATA, 'icons.json'), json({ _from: FROM, rows: Object.fromEntries(Object.entries(table).sort(([a], [b]) => (a < b ? -1 : 1))), _source: sources }));
   return table;
 }
 
@@ -212,6 +215,16 @@ export function fonts({ dry = false, say = console.log } = {}) {
   }
   write(join(dir, 'OFL.txt'), `${ofl.join('\n')}\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at: https://openfontlicense.org\n\n${OFL()}`);
   write(join(dir, 'LICENSE-Apache-2.0.txt'), `Roboto: Copyright 2011 Google Inc. All Rights Reserved.\nLicensed under the Apache License, Version 2.0.\n\n${APACHE()}\n`);
+  write(
+    join(DATA, 'fonts.json'),
+    json({
+      _from: FROM,
+      rows: all.map((r) => {
+        const l = fontLicence(r.file);
+        return { file: r.file.split('/').pop(), face: `${r.nameFamily ?? r.family} ${r.nameStyle ?? ''}`.trim(), copyright: r.copyright, ships: Boolean(l), licence: l?.licence ?? null, ...(l ? { _source: r.name } : {}) };
+      }),
+    }),
+  );
   const lines = ok.map((r) => {
     const l = fontLicence(r.file);
     return `| \`${r.file.split('/').pop()}\` | ${r.nameFamily ?? r.family} ${r.nameStyle ?? ''} | ${l.by} | ${l.licence} | \`${l.file}\` |`;
@@ -235,7 +248,7 @@ export function strings({ dry = false, say = console.log } = {}) {
   const sorted = Object.fromEntries(Object.keys(rows).sort().map((k) => [k, rows[k]]));
   say(`strings: ${Object.keys(en.strings).length} in English, ${Object.keys(named).length} named; ${Object.keys(sorted).length} the galaxy reads (lane 0’s ${Object.keys(had.rows).length} kept); ${Object.keys(families).length} family files`);
   if (dry) return sorted;
-  write(file, json({ _from: { ...had._from, ...FROM }, rows: sorted }));
+  write(file, json({ _from: { ...had._from, ...FROM }, rows: sorted, _source: ['Localization/WSLocalization_English', 'strings/keys.json'] }));
   const dir = join(PUBLIC, 'ui', 'bf2017', 'strings');
   for (const [fam, table] of Object.entries(families)) write(join(dir, `${fam.toLowerCase()}.json`), `${JSON.stringify(Object.fromEntries(Object.keys(table).sort().map((k) => [k, table[k]])))}\n`);
   write(join(dir, 'index.json'), json(Object.fromEntries(Object.entries(families).map(([f, t]) => [f, Object.keys(t).length]).sort())));

@@ -6,7 +6,7 @@ import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
 import { ABILITIES, abilitiesOf } from './abilityRules';
 import { GameIcon } from '../../../runtime/hud';
 import { gameName } from '../../../lib/bf2017/strings';
-import HeroStage from './HeroStage';
+import HeroStage from './HeroStage.jsx'; // (named in full: ./heroStage.js is beside it)
 
 // Who you play as down here, and what's in your hand: the roster
 // (heroes.js) as cards; for a Jedi the blade's colour, the hilt and the
