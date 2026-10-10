@@ -107,7 +107,7 @@ export function readEmitter(doc, name = doc?.Name) {
   const out = {
     name,
     kind: 'quad',
-    maxCount: 0,
+    maxCount: null,
     lifetime: 1,
     duration: null,
     loop: true,
@@ -236,6 +236,9 @@ export function readEmitter(doc, name = doc?.Name) {
         if (obj?.$type) raw[obj.$type] = { ...obj, $type: undefined };
     }
   }
+  // (a document without MaxCount: said, so the PR lists it; the runtime
+  // sizes its pool from the rate)
+  if (out.maxCount === null) raw._missing = ['EmitterTemplateData.MaxCount'];
   if (out.stretch) out.stretch = { mult: out.stretch.mult ?? 0, min: out.stretch.min ?? 1, max: out.stretch.max ?? Infinity };
   // the sheet's grid from the texture's name (lane F's reading), the frames
   // from the record where it says

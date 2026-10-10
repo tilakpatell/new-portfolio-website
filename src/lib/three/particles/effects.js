@@ -39,7 +39,7 @@
 // Nothing is allocated per frame: the ranks, batches and owners are kept.
 
 import { curveRange, rnd } from './curves.js';
-import { createTrails, lifeMax, MAX_OWNERS, OWNER, spawnCount, spawnFactor, stepTrails } from './emitter.js';
+import { createTrails, lifeMax, MAX_OWNERS, OWNER, perInstance, spawnCount, spawnFactor, stepTrails } from './emitter.js';
 import { createSim } from './gpu.js';
 import { SHEET_DIR, sheetFile, sizeFor } from './sheets.js';
 import { createRibbonMesh, createShared, createSpriteMesh, placeholderSheet } from './sprites.js';
@@ -87,7 +87,7 @@ export function variantFor(def, tier = 'high') {
 }
 
 // slots an emitter's pool holds at a tier
-export const poolSize = (em, def, variant) => Math.max(1, Math.ceil((em.maxCount ?? 1) * (variant.scale ?? 1)) * Math.min(def.maxActive ?? 1, MAX_OWNERS));
+export const poolSize = (em, def, variant) => Math.max(1, Math.ceil(perInstance(em) * (variant.scale ?? 1)) * Math.min(def.maxActive ?? 1, MAX_OWNERS));
 
 // how long a one-shot instance lives: its longest emitter's spawning plus its longest life
 export function oneShotLength(def) {
@@ -105,6 +105,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     return s;
   });
   const camPrev = { x: 0, y: 0, z: 0, set: false };
+  let disposed = false;
   let serial = 0;
 
   async function sheetFor(em) {
@@ -125,9 +126,20 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     const def = defs[name] ?? (load ? await load(name) : null);
     if (!def) return null;
     await sharedReady;
+    if (disposed) return null;
     const variant = variantFor(def, tier);
     const emitters = [];
     const maxActive = Math.min(def.maxActive ?? 1, MAX_OWNERS);
+    // (dispose() during the build: what was made goes with it)
+    const abandon = () => {
+      for (const e of emitters) {
+        e.mesh.removeFromParent();
+        e.mesh.geometry.dispose();
+        e.mesh.material.dispose();
+        e.sim?.dispose();
+      }
+      return null;
+    };
     for (const idx of variant.emitters) {
       const em = def.emitters[idx];
       if (!em) continue;
@@ -138,6 +150,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
         rib.mesh.visible = false;
         scene.add(rib.mesh);
         emitters.push({ em, trails, rib, mesh: rib.mesh, n: trails.m * maxActive });
+        if (disposed) return abandon();
         continue;
       }
       const n = poolSize(em, def, variant);
@@ -146,6 +159,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       mesh.visible = false;
       scene.add(mesh);
       emitters.push({ em, sim, mesh, n });
+      if (disposed) return abandon();
     }
     return {
       name,
@@ -160,6 +174,11 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       chosen: [],
       owners: new Float32Array(MAX_OWNERS * OWNER),
       slots: new Array(MAX_OWNERS).fill(null),
+      // (a freed slot rests until its last following particle could have died)
+      freedAt: new Float64Array(MAX_OWNERS).fill(-Infinity),
+      hold: Math.max(...emitters.map((e) => lifeMax(e.em)), 0),
+      clock: 0,
+      shown: false,
       batches: Array.from({ length: maxActive }, () => ({ owner: 0, count: 0 })),
       active: new Int32Array(maxActive),
     };
@@ -263,7 +282,27 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     return pq;
   }
 
+  // an owner slot given up: its row zeroed (its particles stop following),
+  // its trails cut, and rested before another instance takes it
+  function freeSlot(kind, s) {
+    kind.slots[s] = null;
+    kind.owners.fill(0, s * OWNER, (s + 1) * OWNER);
+    kind.freedAt[s] = kind.clock;
+    for (const e of kind.emitters) if (e.trails) e.trails.on[s] = 0;
+  }
+
+  function takeSlot(kind) {
+    let best = -1;
+    for (let s = 0; s < MAX_OWNERS; s++) {
+      if (kind.slots[s]) continue;
+      if (kind.clock - kind.freedAt[s] >= kind.hold) return s;
+      if (best < 0 || kind.freedAt[s] < kind.freedAt[best]) best = s;
+    }
+    return best;
+  }
+
   function updateKind(kind, dt, camera, wind) {
+    kind.clock += dt;
     const { x: cx, y: cy, z: cz } = camera.position;
     const list = kind.instances;
     // the dead and the finished one-shots out (in place)
@@ -272,7 +311,8 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       const inst = list[i];
       if (inst.running) inst.t += dt;
       if (inst.dead || inst.t > kind.life) {
-        if (inst.slot >= 0) kind.slots[inst.slot] = null;
+        if (inst.slot >= 0) freeSlot(kind, inst.slot);
+        inst.slot = -1;
         continue;
       }
       list[w++] = inst;
@@ -302,15 +342,14 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       const inst = kind.slots[s];
       if (inst && !kind.chosen.includes(inst)) {
         inst.slot = -1;
-        kind.slots[s] = null;
-        kind.owners.fill(0, s * OWNER + 8, s * OWNER + 16);
+        freeSlot(kind, s);
       }
     }
     let nb = 0;
     for (let c = 0; c < m; c++) {
       const inst = kind.chosen[c];
       if (inst.slot < 0) {
-        inst.slot = kind.slots.indexOf(null);
+        inst.slot = takeSlot(kind);
         kind.slots[inst.slot] = inst;
         inst.prev = null;
       }
@@ -341,6 +380,15 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     stats.running += m;
     const visible = m > 0;
     for (let c = 0; c < m; c++) kind.active[c] = kind.chosen[c].slot;
+    // hidden (culled, or nothing running): everything dies once, so nothing
+    // resumes where it froze when the kind comes back
+    if (!visible && kind.shown) {
+      for (const e of kind.emitters) {
+        e.sim?.clear();
+        if (e.trails) stepTrails(e.trails, Infinity, kind.owners, kind.active, 0);
+      }
+    }
+    kind.shown = visible;
     for (let e = 0; e < kind.emitters.length; e++) {
       const { em, sim, mesh, trails, rib } = kind.emitters[e];
       if (!visible) {
@@ -424,6 +472,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       }
     },
     dispose() {
+      disposed = true;
       for (const k of kinds.values()) {
         for (const e of k.kind?.emitters ?? []) {
           e.mesh.removeFromParent();

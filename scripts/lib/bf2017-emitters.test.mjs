@@ -129,7 +129,8 @@ describe('EmitterGraph', () => {
 describe('readEmitter', () => {
   it('defaults an empty document', () => {
     const e = readEmitter({ Objects: [] }, 'em_x');
-    expect(e).toMatchObject({ name: 'em_x', kind: 'quad', maxCount: 0, stretch: null, gravity: null, graph: false });
+    expect(e).toMatchObject({ name: 'em_x', kind: 'quad', maxCount: null, stretch: null, gravity: null, graph: false });
+    expect(e.raw._missing).toEqual(['EmitterTemplateData.MaxCount']);
   });
 });
 

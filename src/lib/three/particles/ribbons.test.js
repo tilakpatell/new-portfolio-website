@@ -87,3 +87,50 @@ describe('a trail that follows its ship', () => {
     expect((P[8] + P[11]) / 2).toBeLessThan(26);
   });
 });
+
+describe('the judge pass’s cases', () => {
+  it('a fresh trail puts every point on its owner, so a dead wedge has no area', () => {
+    const tr = createTrails(trailEm, 1);
+    stepTrails(tr, 1 / 60, owners(7, 2, 3), [0]);
+    for (let k = 0; k < tr.m; k++) expect([tr.pos[k * 3], tr.pos[k * 3 + 1], tr.pos[k * 3 + 2]]).toEqual([7, 2, 3]);
+  });
+  it('all 24 running snows spawn (one batch each)', async () => {
+    const cap = { ...SNOW, cull: 1e6, nearby: null };
+    const fx2 = createEffects({ add() {} }, null, { tier: 'ultra', defs: { [SNOW.name]: cap } });
+    for (let i = 0; i < 24; i++) fx2.spawn(SNOW.name, [i, 0, 0]);
+    await fx2.ready(SNOW.name);
+    for (let f = 0; f < 30; f++) fx2.update(1 / 60, { position: { x: 0, y: 0, z: 0 } });
+    expect(fx2.stats.running).toBe(24);
+  });
+  it('a killed ship’s slot rests, and its trail is cut, before another takes it', async () => {
+    const { Object3D } = await import('three');
+    const a = new Object3D();
+    const b = new Object3D();
+    b.position.set(500, 0, 0);
+    const kids = [];
+    const fx = createEffects({ add: (m) => kids.push(m) }, null, { tier: 'ultra', defs: { [EXHAUST.name]: EXHAUST } });
+    const ha = fx.spawn(EXHAUST.name, [0, 0, 0], [0, 0, 0, 1], 1, { parent: a });
+    await fx.ready(EXHAUST.name);
+    const cam = { position: { x: 0, y: 5, z: 0 } };
+    for (let f = 0; f < 10; f++) {
+      a.position.z = f;
+      a.updateMatrixWorld(true);
+      fx.update(1 / 60, cam);
+    }
+    ha.kill();
+    b.updateMatrixWorld(true);
+    fx.spawn(EXHAUST.name, [0, 0, 0], [0, 0, 0, 1], 1, { parent: b });
+    fx.update(1 / 60, cam);
+    fx.update(1 / 60, cam);
+    // the new ship's trail starts on it: no strip back to the old ship
+    const P = kids[1].geometry.attributes.position.array;
+    const L = kids[1].geometry.attributes.ribbonLife.array;
+    const m = EXHAUST.emitters[1].maxCount;
+    for (let s = 0; s < 16; s++) {
+      for (let k = 0; k < m; k++) {
+        const v = (s * m + k) * 2;
+        if (L[v * 2 + 1] && Math.abs(P[v * 3] - 500) < 50) for (let j = 1; j < 3 && k + j < m; j++) expect(Math.abs(P[(v + 2 * j) * 3] - 500)).toBeLessThan(50);
+      }
+    }
+  });
+});

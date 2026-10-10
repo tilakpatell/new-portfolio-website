@@ -41,9 +41,15 @@
 import { curveRange, evalCurve, rnd } from './curves.js';
 
 export const OWNER = 16; // floats an owner: 4 vec4s
-export const MAX_BATCHES = 16; // spawn batches an emitter takes a frame (the GPU's uniform array)
-export const MAX_OWNERS = 32; // instances of one kind with particles at once (the same)
+export const MAX_OWNERS = 32; // instances of one kind with particles at once (the GPU's uniform array)
+// spawn batches an emitter takes a frame: one per running instance at most
+export const MAX_BATCHES = MAX_OWNERS;
 const DEG = Math.PI / 180;
+const UP = [0, 1, 0];
+
+// a pool's slots for one instance: MaxCount, or (a record without it) what
+// the rate and the burst keep alive
+export const perInstance = (em) => Math.max(1, Math.ceil(em.maxCount > 0 ? em.maxCount : curveRange(em.spawn?.rate ?? 0)[1] * lifeMax(em) + (em.spawn?.burst ?? 0)));
 
 export const lifeMax = (em) => Math.max(1e-3, curveRange(em.lifetime)[1]);
 
@@ -79,31 +85,33 @@ const dirW = [0, 0, 0];
 // rotation's and frame's draw. gpu.js's spawn is this line for line.
 export function spawnParticle(pool, slot, serial, o, owners) {
   const { em, seed } = pool;
-  const r = (k) => rnd(seed, serial, k);
   const pos = em.spawn?.position;
   let lx = 0;
   let ly = 0;
   let lz = 0;
   if (pos?.box) {
     const { center, size } = pos.box;
-    lx = center[0] + (r(0) - 0.5) * size[0];
-    ly = center[1] + (r(1) - 0.5) * size[1];
-    lz = center[2] + (r(2) - 0.5) * size[2];
+    lx = center[0] + (rnd(seed, serial, 0) - 0.5) * size[0];
+    ly = center[1] + (rnd(seed, serial, 1) - 0.5) * size[1];
+    lz = center[2] + (rnd(seed, serial, 2) - 0.5) * size[2];
   } else if (pos?.sphere) {
-    const z = 2 * r(0) - 1;
-    const phi = 2 * Math.PI * r(1);
-    const rad = pos.sphere.radius * Math.cbrt(r(2));
+    const z = 2 * rnd(seed, serial, 0) - 1;
+    const phi = 2 * Math.PI * rnd(seed, serial, 1);
+    const rad = pos.sphere.radius * Math.cbrt(rnd(seed, serial, 2));
     const s = Math.sqrt(Math.max(0, 1 - z * z));
     lx = s * Math.cos(phi) * rad;
     ly = z * rad;
     lz = s * Math.sin(phi) * rad;
   }
   // a direction within the spread's cone round the record's direction
-  const [dx, dy, dz] = em.spawn?.direction?.dir ?? [0, 1, 0];
+  const dir = em.spawn?.direction?.dir ?? UP;
+  const dx = dir[0];
+  const dy = dir[1];
+  const dz = dir[2];
   const cosMax = Math.cos((em.spawn?.direction?.spread ?? 0) * DEG);
-  const cosT = 1 - r(3) * (1 - cosMax);
+  const cosT = 1 - rnd(seed, serial, 3) * (1 - cosMax);
   const sinT = Math.sqrt(Math.max(0, 1 - cosT * cosT));
-  const phi = 2 * Math.PI * r(4);
+  const phi = 2 * Math.PI * rnd(seed, serial, 4);
   // (a basis round d: a = d × (up or x), b = d × a)
   const ux = Math.abs(dy) < 0.99 ? 0 : 1;
   const uy = Math.abs(dy) < 0.99 ? 1 : 0;
@@ -122,14 +130,17 @@ export function spawnParticle(pool, slot, serial, o, owners) {
   const ddx = dx * cosT + ax * cp + bx * sp;
   const ddy = dy * cosT + ay * cp + by * sp;
   const ddz = dz * cosT + az * cp + bz * sp;
-  const speed = evalCurve(em.spawn?.speed ?? 0, 0, r(5));
-  const size = evalCurve(em.spawn?.size ?? 1, 0, r(6));
-  const life = evalCurve(em.lifetime ?? 1, 0, r(7));
-  const g = em.gravity ? em.gravity.g * (1 + (2 * r(8) - 1) * (em.gravity.random ?? 0)) : 0;
+  const speed = evalCurve(em.spawn?.speed ?? 0, 0, rnd(seed, serial, 5));
+  const size = evalCurve(em.spawn?.size ?? 1, 0, rnd(seed, serial, 6));
+  const life = evalCurve(em.lifetime ?? 1, 0, rnd(seed, serial, 7));
+  const g = em.gravity ? em.gravity.g * (1 + (2 * rnd(seed, serial, 8) - 1) * (em.gravity.random ?? 0)) : 0;
   // into the owner's frame
   const b = o * OWNER;
   const sc = owners[b + 3];
-  const [qx, qy, qz, qw] = [owners[b + 4], owners[b + 5], owners[b + 6], owners[b + 7]];
+  const qx = owners[b + 4];
+  const qy = owners[b + 5];
+  const qz = owners[b + 6];
+  const qw = owners[b + 7];
   turn(qx, qy, qz, qw, lx * sc, ly * sc, lz * sc, tmp);
   turn(qx, qy, qz, qw, ddx, ddy, ddz, dirW);
   const follow = em.follow?.velocity ? 1 : 0;
@@ -144,7 +155,7 @@ export function spawnParticle(pool, slot, serial, o, owners) {
   pool.velLife[i + 3] = Math.max(1e-3, life);
   pool.extra[i] = size * sc;
   pool.extra[i + 1] = g;
-  pool.extra[i + 2] = r(9);
+  pool.extra[i + 2] = rnd(seed, serial, 9);
   pool.extra[i + 3] = o;
 }
 
@@ -191,7 +202,8 @@ export function aliveCount(pool) {
 // An instance's spawns this frame. state: { t, acc, burst } (its own, from
 // { t: 0, acc: 0, burst: false }); the rate is the record's curve over the
 // emitter's duration (its lifetime when the record gives none), held to
-// MaxCount alive (rate ≤ MaxCount / longest life), both scaled by the tier;
+// MaxCount alive (rate ≤ MaxCount / longest life; no cap where the record
+// gives none), both scaled by the tier, a random rate at its mean;
 // `factor` the distance's thinning (spawnFactor). A non-looping emitter
 // spawns for its duration only.
 export function spawnCount(state, em, dt, { scale = 1, factor = 1 } = {}) {
@@ -204,7 +216,7 @@ export function spawnCount(state, em, dt, { scale = 1, factor = 1 } = {}) {
   const live = em.loop !== false || state.t < duration;
   if (live) {
     const t = em.loop !== false ? (state.t % duration) / duration : Math.min(1, state.t / duration);
-    const rate = Math.min(Math.max(0, evalCurve(em.spawn?.rate ?? 0, t)), (em.maxCount ?? 0) / lifeMax(em));
+    const rate = Math.min(Math.max(0, evalCurve(em.spawn?.rate ?? 0, t, 0.5)), em.maxCount > 0 ? em.maxCount / lifeMax(em) : Infinity);
     state.acc += rate * scale * factor * dt;
     const whole = Math.floor(state.acc);
     state.acc -= whole;
@@ -251,7 +263,7 @@ export const wrapLight = (nDotL, w = 0) => Math.max(0, (nDotL + w) / (1 + w));
 // trailPoint(trails, slot, k) → the ring index of the k-th newest point
 
 export function createTrails(em, slots) {
-  const m = Math.max(2, em.maxCount ?? 2);
+  const m = Math.max(2, perInstance(em));
   return {
     em,
     slots,
@@ -277,7 +289,7 @@ const put3 = (arr, i, x, y, z) => {
 export function stepTrails(tr, dt, owners, active = [], count = active.length) {
   const { m } = tr;
   for (let i = 0; i < tr.age.length; i++) tr.age[i] += dt;
-  const rate = Math.max(0, evalCurve(tr.em.spawn?.rate ?? 0, 0));
+  const rate = Math.max(0, evalCurve(tr.em.spawn?.rate ?? 0, 0, 0.5));
   const seg = tr.em.ribbon?.segment ?? Infinity;
   for (let s = 0; s < tr.slots; s++) {
     let a = 0;
@@ -293,7 +305,11 @@ export function stepTrails(tr, dt, owners, active = [], count = active.length) {
     const z = owners[b + 2];
     if (!tr.on[s]) {
       // a fresh trail: every point dead, a frozen point and the head on the owner
-      for (let k = 0; k < m; k++) tr.age[s * m + k] = Infinity;
+      // (every point on the owner, so a dead one's wedge has no area)
+      for (let k = 0; k < m; k++) {
+        tr.age[s * m + k] = Infinity;
+        put3(tr.pos, (s * m + k) * 3, x, y, z);
+      }
       tr.on[s] = 1;
       tr.acc[s] = 0;
       put3(tr.last, s * 3, x, y, z);

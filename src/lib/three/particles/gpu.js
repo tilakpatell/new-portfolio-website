@@ -17,6 +17,7 @@
 //   nodes: { posAge, velLife, extra } (per-instance vec4 nodes for sprites.js),
 //   step(dt, { batches, batchCount, owners, wind }) → spawned,
 //   read() → Promise<{ posAge, velLife, extra }> (Float32Arrays: the GPU's read back),
+//   clear() (every slot dead),
 //   dispose() }>
 // mode: 'gpu' where the renderer is WebGPU, else 'cpu'; forced for the tests
 
@@ -45,6 +46,11 @@ export async function createSim(em, n, { renderer = null, seed = 1, mode = modeF
         return spawned;
       },
       read: async () => ({ posAge: pool.posAge.slice(), velLife: pool.velLife.slice(), extra: pool.extra.slice() }),
+      clear() {
+        pool.velLife.fill(0);
+        pool.posAge.fill(0);
+        for (const a of attrs) a.needsUpdate = true;
+      },
       dispose() {},
     };
   }
@@ -192,6 +198,13 @@ function gpuSim(THREE, tsl, pool, renderer) {
       pool.head = (pool.head + total) % n;
       pool.serial = (pool.serial + total) >>> 0;
       return total;
+    },
+    // every slot dead (a hidden kind's: nothing resumes where it froze)
+    clear() {
+      for (const b of [posAge, velLife]) {
+        b.value.array.fill(0);
+        b.value.needsUpdate = true;
+      }
     },
     async read() {
       const get = async (node) => new Float32Array(await renderer.getArrayBufferAsync(node.value));
