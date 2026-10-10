@@ -510,9 +510,9 @@ const FANDOM = [
       b('mordor', 20, [ridges(300, 30), dunes(120, 6), island([6000, -4000], 2400, 700, 0.1), island([6000, -4000], 260, -60, 0.4, 0.1), channels(600, 16)]),
     ]),
     pois: [poi('hobbiton', 'Hobbiton', [-3000, 1800], 200, 120), poi('bree', 'Bree', [-2200, 1600], 120, 60), poi('weathertop', 'Weathertop', [-1500, 1400], 40, 50, 90), poi('rivendell', 'Rivendell', [-600, 1200], 120, 80, 60), poi('moria', 'Moria’s gate', [0, 900], 60, 40, 120), poi('amon-hen', 'Amon Hen', [600, -200], 40, 40, 70), poi('barad-dur', 'Barad-dûr', [2800, -1400], 120, 80, 20)],
-    palette: { low: '#4a7a3a', high: '#a0c060', rock: '#6a6a60', accent: '#2a2420', skyLow: '#eef2e4', skyHigh: '#7aa8c8' },
+    palette: { low: '#4a7a3a', high: '#a0c060', rock: '#8e9086', accent: '#2a2420', skyLow: '#eef2e4', skyHigh: '#7aa8c8' },
     clutter: clutter(['trunk', 15, { size: 0.3 }], ['spire', 3, fine], ['rock', 20]),
-    ground: ground('grass', { low: '#4a7a3a', high: '#a0c060', rock: '#6a6a60', accent: '#2a2420' }, 0, 140, { rockAt: 0.36 }),
+    ground: ground('grass', { low: '#4a7a3a', high: '#a0c060', rock: '#8e9086', accent: '#2a2420' }, 0, 140, { rockAt: 0.36 }),
     water: water('swamp', -2),
   },
   {
