@@ -12,14 +12,16 @@
 //   packCell(cell, instances) → { bin, draws }
 //   terrainFrame(record), heightsLayer(record, png) → the record's frame; an image layer
 //   cropHeights(src, frame, { minX, minZ, size, metresPerPixel }) → Uint16Array
-//   buildPack({ world, mapName, map, spot, groundY, meshes, … }) → { json, files, table }
+//   buildPack({ world, mapName, map, spot, groundY, meshes, groundAt, … }) → { json, files, table, counts }
+//     (groundAt(x, z): the pack's ground in the site's frame; what is under it is left out)
 //   meshCuts(entry, { ultra }) → { far, lod1, plain, ultra } LOD entries
 //   rewriteImageUris(glb, fn) → the GLB with its images' URIs mapped
+//   glbTriangles(glb), lodFile(file, n), mergeHeights(fine, coarse, hole, inside), fillHoles(data, w, h)
 
 import { BUDGET_ROWS } from '../../src/lib/budgets.js';
 import { imageLayerFrom } from '../../src/lib/land/layers.js';
-import { bandsFor, cutFor } from '../../src/lib/level/bands.js';
-import { fitTo } from '../../src/lib/level/fit.js';
+import { fitCull } from '../../src/lib/level/fit.js';
+import { MIN_RADIUS } from '../../src/lib/level/lod.js';
 import { CELL, INSTANCE_BYTES, cellKey, cellOf } from '../../src/lib/level/instances.js';
 import { decodePng16 } from '../../src/lib/level/png16.js';
 import { cutsFor } from './bf2017-manifest.mjs';
@@ -27,33 +29,31 @@ import { glbJson } from './bf2017-paths.mjs';
 import { cellsOf, weightOf } from './level-cells.mjs';
 
 export const TIERS = ['low', 'mid', 'high', 'ultra'];
+export const KMIN = { low: 20, mid: 30, high: 40, ultra: 60 };
 const Q = 32767;
 const last = (path) => String(path).split('/').pop().toLowerCase();
 
-// The map's records are the pack's own (src/lib/level/instances.js): the
-// quaternions stay Int16 here so a rebased bin is written without a second
-// rounding.
+// The map as the bucket packs it (web/maps/README.md): its manifest says
+// where in the bin each array starts (positions Float32 × 3n, quaternions
+// Int16 × 4n over 32767, scales Float32 × 3n); groups are runs of instances
+// `[offset, offset + count)` of one mesh in one sub-level, each a `kind`
+// (static scenery, a placed object, a skinned actor). The quaternions stay
+// Int16 so a rebased cell is written without a second rounding.
 export function readMap(json, bin) {
-  const stride = json.stride ?? INSTANCE_BYTES;
-  const count = json.instances ?? json.count ?? Math.floor(bin.byteLength / stride);
-  if (bin.byteLength < count * stride) throw new Error(`map bin: ${bin.byteLength} bytes for ${count} instances of ${stride}`);
+  const b = json.bin;
+  const count = b.count;
+  if (bin.byteLength < b.scale + count * 12) throw new Error(`map bin: ${bin.byteLength} bytes for ${count} instances`);
   const v = new DataView(bin.buffer ?? bin, bin.byteOffset ?? 0, bin.byteLength);
   const position = new Float32Array(count * 3);
   const quaternion = new Int16Array(count * 4);
   const scale = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const o = i * stride;
-    for (let k = 0; k < 3; k++) position[i * 3 + k] = v.getFloat32(o + k * 4, true);
-    for (let k = 0; k < 4; k++) quaternion[i * 4 + k] = v.getInt16(o + 12 + k * 2, true);
-    for (let k = 0; k < 3; k++) scale[i * 3 + k] = v.getFloat32(o + 20 + k * 4, true);
-  }
-  const meshes = (json.meshes ?? []).map((m) => (typeof m === 'string' ? { name: m } : m));
-  const subworlds = (json.subworlds ?? []).map((s) => (typeof s === 'string' ? s : s.name));
-  const index = (list, v) => (typeof v === 'number' ? v : list.findIndex((x) => (x.name ?? x) === v));
-  const groups = (json.groups ?? []).map((g) => ({ mesh: index(meshes, g.mesh), sub: index(subworlds, g.subworld ?? g.sub), first: g.first ?? g.offset ?? g.start, count: g.count }));
+  for (let i = 0; i < count * 3; i++) position[i] = v.getFloat32(b.position + i * 4, true);
+  for (let i = 0; i < count * 4; i++) quaternion[i] = v.getInt16(b.quaternion + i * 2, true);
+  for (let i = 0; i < count * 3; i++) scale[i] = v.getFloat32(b.scale + i * 4, true);
+  const groups = json.groups.map((g) => ({ mesh: g.mesh, sub: g.sub, kind: g.kind, first: g.offset, count: g.count }));
   const meshOf = new Int32Array(count).fill(-1);
   for (const g of groups) meshOf.fill(g.mesh, g.first, g.first + g.count);
-  return { name: json.name, instances: { count, position, quaternion, scale }, meshOf, groups, meshes, subworlds, terrain: json.terrain ?? null, sky: json.sky ?? [], vehicleSpawns: json.vehicleSpawns ?? [] };
+  return { name: json.level, instances: { count, position, quaternion, scale }, meshOf, groups, meshes: json.meshes, subworlds: json.subworlds.map((x) => x.name ?? x), terrain: json.terrain?.[0] ?? null, sky: json.sky ?? [], vehicleSpawns: json.vehicleSpawns ?? [] };
 }
 
 // The playable map: the level's own sub-level (its name's last part) and
@@ -61,11 +61,18 @@ export function readMap(json, bin) {
 // other sets in the same file, drawn somewhere else in the game.
 export const mainSubs = (map) => [last(map.name), 'content'];
 
+// What the game places and never draws as itself: Enlighten's lighting
+// proxies, the fake light cones, destruction stages waiting their turn
+// (despawn and leftover pieces), the planes that fake shadow, mist and
+// light; and the skinned actors, which stand in
+// their bind pose (the site's own people do the living)
+export const NEVER = /enlighten|fx\/meshes\/lighting|despawn|leftover|_destruction_|shadowplane|invalidatelightplane|mistplane|lightcone/i;
+
 export function arenaOf(map, { subs = null } = {}) {
   const want = new Set((subs ?? mainSubs(map)).map(last));
   const out = [];
   for (const g of map.groups) {
-    if (!want.has(last(map.subworlds[g.sub]))) continue;
+    if (!want.has(last(map.subworlds[g.sub])) || g.kind === 'actor' || NEVER.test(map.meshes[g.mesh]?.file ?? '')) continue;
     for (let i = 0; i < g.count; i++) out.push(g.first + i);
   }
   return out.sort((a, b) => a - b);
@@ -130,26 +137,28 @@ function writeOne(v, j, inst, i) {
 
 // ── The ground ──
 
-// A terrain record's world map: where its first pixel is, its size and step,
-// and how a 16-bit value becomes metres (web/terrain.jsonl)
+// A terrain record's map (`world`, 2 m a pixel over 8 km; `detail`, 0.5 m
+// over the arena): where its first pixel is, its size and step, and how a
+// 16-bit value becomes metres (v × heightScale / 65536; row 0 at minZ). A
+// record with holes (holePixels) holds them at 0.
 export function terrainFrame(record, which = 'world') {
   const m = record[which];
   return {
-    minX: m.min[0],
-    minZ: m.min[1],
+    minX: m.minX,
+    minZ: m.minZ,
     w: m.width,
     h: m.height,
     metresPerPixel: m.metresPerPixel,
     scale: record.heightScale,
     offset: record.heightOffset ?? 0,
-    hole: record.holePixels > 0 ? 0 : null,
+    hole: m.holePixels > 0 ? 0 : null,
   };
 }
 
 export async function heightsLayer(record, png, which = 'world') {
   const f = terrainFrame(record, which);
   const { data, w, h } = await decodePng16(png);
-  return imageLayerFrom(record, { data, w, h, minX: f.minX, minZ: f.minZ, metresPerPixel: f.metresPerPixel }, null);
+  return imageLayerFrom({ heightScale: f.scale, heightOffset: f.offset, holePixels: f.hole === null ? 0 : 1 }, { data, w, h, minX: f.minX, minZ: f.minZ, metresPerPixel: f.metresPerPixel }, null);
 }
 
 // A square of a heightmap, resampled bilinearly to its own step, in the
@@ -217,13 +226,30 @@ function farList(inst, meshOf, cell) {
   return { bin, draws };
 }
 
-export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes, arena = 1024, cell = CELL, rows = BUDGET_ROWS, subs = null, terrain = null, physics = {} }) {
-  const idx = arenaOf(map, { subs });
+export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes, arena = 1024, cell = CELL, rows = BUDGET_ROWS, subs = null, terrain = null, physics = {}, walk = 640, tex = {}, groundAt = null }) {
+  // (a mesh the bucket has not got, or sequel-era, draws nothing: its instances go)
+  const idx = arenaOf(map, { subs }).filter((i) => !meshes[map.meshOf[i]].missing);
   const all = rebase(subset(map.instances, idx), [spot[0], groundY, spot[1]], yaw);
   const meshOfAll = Int32Array.from(idx.map((i) => map.meshOf[i]));
+  // (under the ground: the base inside the glacier, which no one outside can
+  // see; the site's own interior zone stands for it. Top under the pack's
+  // ground by more than half a metre, its mouth's floor included)
+  const under = (i) => {
+    if (!groundAt) return false;
+    const m = meshes[meshOfAll[i]];
+    const top = all.position[i * 3 + 1] + Math.max(m.bounds[1] * all.scale[i * 3 + 1], m.bounds[4] * all.scale[i * 3 + 1]);
+    return top < groundAt(all.position[i * 3], all.position[i * 3 + 2]) - 0.5;
+  };
   const inside = [];
   const outside = [];
-  for (let i = 0; i < all.count; i++) (Math.abs(all.position[i * 3]) < arena && Math.abs(all.position[i * 3 + 2]) < arena ? inside : outside).push(i);
+  let buried = 0;
+  for (let i = 0; i < all.count; i++) {
+    if (under(i)) {
+      buried++;
+      continue;
+    }
+    (Math.abs(all.position[i * 3]) < arena && Math.abs(all.position[i * 3 + 2]) < arena ? inside : outside).push(i);
+  }
   const arenaInst = subset(all, inside);
   const arenaMesh = Int32Array.from(inside.map((i) => meshOfAll[i]));
   const horizonInst = subset(all, outside);
@@ -232,27 +258,32 @@ export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes,
   const far = farList(arenaInst, arenaMesh, cell);
   const horizon = farList(horizonInst, horizonMesh, cell);
 
-  // per tier: what the near window keeps, and what the far list keeps
+  // per tier: how far out things are drawn (K radii) and what goes, held to
+  // the row everywhere you can stand (a 64 m grid over the walkable square)
   const tiers = Object.keys(rows);
-  const keptNear = {};
-  const keptFar = {};
+  const vol = (m) => weightOf({ indices: [0] }, meshes[m]);
+  const weight = new Float64Array(meshes.length);
+  for (let i = 0; i < arenaInst.count; i++) weight[arenaMesh[i]] += vol(arenaMesh[i]);
+  const fitMeshes = meshes.map((m, i) => ({ lods: m.lods, mats: m.mats ?? 1, weight: weight[i], skip: m.missing }));
+  const flat = {
+    x: Float32Array.from({ length: arenaInst.count }, (_, i) => arenaInst.position[i * 3]),
+    z: Float32Array.from({ length: arenaInst.count }, (_, i) => arenaInst.position[i * 3 + 2]),
+    r: Float32Array.from({ length: arenaInst.count }, (_, i) => Math.max(MIN_RADIUS, radius(meshes[arenaMesh[i]]) * Math.max(...arenaInst.scale.subarray(i * 3, i * 3 + 3).map(Math.abs)))),
+    mesh: arenaMesh,
+    mirrored: Uint8Array.from({ length: arenaInst.count }, (_, i) => (arenaInst.scale[i * 3] * arenaInst.scale[i * 3 + 1] * arenaInst.scale[i * 3 + 2] < 0 ? 1 : 0)),
+  };
+  const positions = [];
+  const reachOut = Math.min(walk, arena);
+  for (let x = -reachOut; x <= reachOut; x += 64) for (let z = -reachOut; z <= reachOut; z += 64) positions.push([x, z]);
+  const cull = {};
   const table = {};
-  const forFit = new Map([...cells].map(([k, c]) => [k, { draws: c.draws.map((d) => ({ mesh: d.mesh, count: d.indices.length, mirrored: d.mirrored, weight: weightOf(d, meshes[d.mesh]), tris: meshes[d.mesh].tris })) }]));
-  const farFit = new Map([['0,0', { draws: [...far.draws, ...horizon.draws].map((d) => ({ mesh: d.mesh, count: d.count, mirrored: d.mirrored, weight: d.count * weightOf({ indices: [0] }, meshes[d.mesh]), tris: meshes[d.mesh].tris })) }]]);
+  // (the nearest reach a tier takes before meshes go instead: a 1 m thing
+  // stays in view this many metres, so the base never thins to a ring)
   for (const tier of tiers) {
-    const row = rows[tier];
-    const b = bandsFor(row, cell);
-    const near = cutFor('near', tier);
-    const cost = (d, ring) => (ring <= b.nearRing ? { tris: d.tris[near], cut: near } : ring <= b.midRing ? { tris: d.tris.lod1, cut: 'lod1' } : null);
-    const n = fitTo(forFit, row, { share: 0.7, radius: b.midRing, cost });
-    const f = fitTo(farFit, row, { share: 0.2, radius: 0, cost: (d) => ({ tris: d.tris.far, cut: 'far' }) });
-    keptNear[tier] = new Set([...n.kept.values()].flat().map((d) => d.mesh));
-    keptFar[tier] = new Set(f.kept.get('0,0').map((d) => d.mesh));
-    const named = (list) => list.map((d) => ({ name: meshes[d.mesh].name, count: d.count, tris: d.tris }));
-    table[tier] = { dropped: named(n.dropped), farDropped: named(f.dropped) };
+    const f = fitCull(flat, fitMeshes, rows[tier], tier, { positions, kMin: KMIN[tier] ?? 40 });
+    cull[tier] = { K: f.K, dropped: f.dropped };
+    table[tier] = { K: f.K, dropped: f.dropped.map((m) => ({ name: meshes[m].name, count: arenaMesh.filter((x) => x === m).length })), worst: f.worst };
   }
-  const lodNear = (mesh) => Object.fromEntries(tiers.map((t) => [t, keptNear[t].has(mesh) ? cutFor('near', t) : null]));
-  const lodFar = (mesh) => Object.fromEntries(tiers.map((t) => [t, keptFar[t].has(mesh) ? 'far' : null]));
 
   const files = new Map();
   const jsonCells = {};
@@ -260,7 +291,7 @@ export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes,
     const { bin, draws } = packCell(c, arenaInst);
     const path = `cells/${key.replace(',', '_')}.bin`;
     files.set(path, bin);
-    jsonCells[key] = { bin: path, bytes: bin.byteLength, bounds: c.bounds.map((v) => Math.round(v * 100) / 100), count: bin.byteLength / INSTANCE_BYTES, draws: draws.map((d) => ({ ...d, lod: lodNear(d.mesh) })) };
+    jsonCells[key] = { bin: path, bytes: bin.byteLength, bounds: c.bounds.map((v) => Math.round(v * 100) / 100), count: bin.byteLength / INSTANCE_BYTES, draws };
   }
   files.set('far.bin', far.bin);
   files.set('horizon.bin', horizon.bin);
@@ -272,14 +303,16 @@ export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes,
     cell,
     arena,
     cells: jsonCells,
-    far: { bin: 'far.bin', bytes: far.bin.byteLength, draws: far.draws.map((d) => ({ ...d, lod: lodFar(d.mesh) })) },
-    horizon: { bin: 'horizon.bin', bytes: horizon.bin.byteLength, draws: horizon.draws.map(({ mesh, mirrored, offset, count }) => ({ mesh, mirrored, offset, count, lod: lodFar(mesh) })) },
-    meshes: meshes.map((m) => ({ name: m.name, glb: m.glb ?? Object.fromEntries(['far', 'lod1', 'plain', 'ultra'].map((c) => [c, `meshes/${slug(m.name)}.${c}.glb`])), tris: m.tris, bounds: m.bounds, mats: m.mats ?? 1 })),
+    far: { bin: 'far.bin', bytes: far.bin.byteLength, draws: far.draws },
+    horizon: { bin: 'horizon.bin', bytes: horizon.bin.byteLength, draws: horizon.draws.map(({ mesh, mirrored, offset, count }) => ({ mesh, mirrored, offset, count })) },
+    meshes: meshes.map((m) => ({ name: m.name, radius: Math.round(radius(m) * 100) / 100, glb: m.glb ?? m.lods.map((_, n) => `meshes/${slug(m.name)}.lod${n}.glb`), lods: m.lods, bounds: m.bounds, mats: m.mats ?? 1 })),
+    cull,
+    tex,
     terrain,
     shadowCache: null,
     physics,
   });
-  return { json, files, table, counts: { arena: arenaInst.count, horizon: horizonInst.count, cells: cells.size } };
+  return { json, files, table, counts: { arena: arenaInst.count, horizon: horizonInst.count, buried, cells: cells.size } };
 }
 
 // ── The meshes ──
@@ -310,4 +343,64 @@ export function rewriteImageUris(glb, fn) {
   head.writeUInt32LE(text.length, 12);
   head.write('JSON', 16, 'ascii');
   return Buffer.concat([head, text, rest]);
+}
+
+// A GLB's triangles and primitives, from its JSON alone (the meshes the
+// maps added after the model manifest was written have no row there)
+export function glbTriangles(glb) {
+  const j = glbJson(glb);
+  let tris = 0;
+  let prims = 0;
+  for (const m of j.meshes ?? []) {
+    for (const p of m.primitives) {
+      if ((p.mode ?? 4) !== 4) continue;
+      prims++;
+      tris += (p.indices !== undefined ? j.accessors[p.indices].count : j.accessors[p.attributes.POSITION].count) / 3;
+    }
+  }
+  return { tris, prims };
+}
+
+// A map mesh's LOD files: LOD 0 is its `file`, LOD n `<file>_lod<n>.glb`
+export const lodFile = (file, n) => (n ? file.replace(/\.glb$/, `_lod${n}.glb`) : file);
+
+// Two heightmaps over the same square merged: the fine one where it has
+// ground, the coarse one beyond it; inside the fine one's bounds (`inside(i)`)
+// its holes stay holes (the coarse map would close them: the game cuts the
+// hangar's mouth out of the glacier that way)
+export function mergeHeights(fine, coarse, hole = 0, inside = () => false) {
+  const out = new Uint16Array(coarse.length);
+  for (let i = 0; i < out.length; i++) out[i] = fine[i] !== hole ? fine[i] : inside(i) ? hole : coarse[i];
+  return out;
+}
+
+// Each hole (a run of hole pixels, four-way connected) filled with the lowest
+// ground on its rim: a mouth cut into a glacier becomes a way in at the
+// floor's level, not a pit and not a wall
+export function fillHoles(data, w, h, hole = 0) {
+  const out = Uint16Array.from(data);
+  const seen = new Uint8Array(data.length);
+  for (let start = 0; start < data.length; start++) {
+    if (data[start] !== hole || seen[start]) continue;
+    const run = [start];
+    seen[start] = 1;
+    let low = Infinity;
+    for (let k = 0; k < run.length; k++) {
+      const i = run[k];
+      const x = i % w;
+      const y = (i - x) / w;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (data[j] !== hole) low = Math.min(low, data[j]);
+        else if (!seen[j]) {
+          seen[j] = 1;
+          run.push(j);
+        }
+      }
+    }
+    if (low === Infinity) continue;
+    for (const i of run) out[i] = low;
+  }
+  return out;
 }

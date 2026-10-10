@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { writeInstances } from '../../../../lib/level/instances';
-import { bandOf, cutFor, drawsFor, packUrl, readInstances, splitTextures, tierTexture, wanted } from './levelPack';
+import { bandOf, cutFor, packUrl, readInstances, splitTextures, tierTexture, wanted } from './levelPack';
 
 const S = Math.SQRT1_2;
 
@@ -29,19 +29,14 @@ describe('the pack, read', () => {
     expect(cutFor('near', 'low')).toBe('lod1');
   });
 
-  it('a cell’s draws on a tier: the dropped ones left out, each with its cut and file', () => {
-    const pack = {
-      meshes: [{ glb: { far: 'meshes/a.lod3.glb', lod1: 'meshes/a.lod2.glb', plain: 'meshes/a.lod1.glb', ultra: 'meshes/a.lod0.glb' } }, { glb: { far: 'b.glb', lod1: 'b.glb', plain: 'b.glb', ultra: 'b.glb' } }],
-      cells: { '0,0': { draws: [{ mesh: 0, offset: 0, count: 2, mirrored: false, lod: { high: 'plain', low: 'lod1' } }, { mesh: 1, offset: 2, count: 1, mirrored: true, lod: { high: null, low: 'lod1' } }] } },
-    };
-    expect(drawsFor(pack, pack.cells['0,0'].draws, 'near', 'high')).toEqual([{ mesh: 0, offset: 0, count: 2, mirrored: false, cut: 'plain', glb: 'meshes/a.lod1.glb' }]);
-    expect(drawsFor(pack, pack.cells['0,0'].draws, 'mid', 'low').map((d) => d.cut)).toEqual(['lod1', 'lod1']);
-  });
-
   it('names its files under the world’s folder, and the tier’s texture', () => {
     expect(packUrl('hoth', 'cells/0_0.bin')).toBe('/models/galaxy/bf2017/levels/hoth/cells/0_0.bin');
     expect(tierTexture('../tex/t_snow_cs.ktx2', 'low')).toBe('../tex/t_snow_cs.512.ktx2');
     expect(tierTexture('../tex/t_snow_cs.ktx2', 'ultra')).toBe('../tex/t_snow_cs.2048.ktx2');
+    // the pack's own size for the map, ultra as high where it has no ultra
+    const sizes = { t_snow_cs: { low: 128, mid: 256, high: 256 } };
+    expect(tierTexture('tex/t_snow_cs.ktx2', 'low', sizes)).toBe('tex/t_snow_cs.128.ktx2');
+    expect(tierTexture('tex/t_snow_cs.ktx2', 'ultra', sizes)).toBe('tex/t_snow_cs.256.ktx2');
   });
 
   it('takes a GLB’s textures out and says which material wanted which map where', () => {

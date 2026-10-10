@@ -1,59 +1,178 @@
 {
-  "name": "Levels/MP/Fixture_01/Fixture_01",
-  "instances": 4,
-  "stride": 32,
-  "meshes": [
-    "models/props/rock_01_mesh",
-    "models/levels/fixture/hangar_01_mesh",
-    "models/props/crate_01_mesh"
-  ],
+  "level": "Levels/MP/Fixture_01/Fixture_01",
   "subworlds": [
     "Levels/MP/Fixture_01/Fixture_01",
     "Levels/MP/Fixture_01/Lobby",
     "Levels/MP/Fixture_01/Content"
   ],
-  "groups": [
+  "terrain": [
     {
-      "mesh": 0,
-      "subworld": 0,
-      "first": 0,
-      "count": 1
-    },
-    {
-      "mesh": 1,
-      "subworld": 0,
-      "first": 1,
-      "count": 1
-    },
-    {
-      "mesh": 2,
-      "subworld": 2,
-      "first": 2,
-      "count": 1
-    },
-    {
-      "mesh": 0,
-      "subworld": 1,
-      "first": 3,
-      "count": 1
+      "name": "Levels/MP/Fixture_01/Fixture_01_Terrain/Fixture_01_Terrain",
+      "heightScale": 1024,
+      "world": {
+        "file": "terrain/levels/mp/fixture_01/fixture_01_terrain_height.png",
+        "width": 9,
+        "height": 9,
+        "minX": -64,
+        "minZ": -64,
+        "metresPerPixel": 64,
+        "holePixels": 1
+      }
     }
   ],
-  "terrain": "Levels/MP/Fixture_01/Fixture_01_Terrain/Fixture_01_Terrain",
   "sky": [
-    "VE_Fixture_Sunny_01"
+    "Levels/Lighting/Fixture/Sunny_01/VE_Sky_Fixture_Sunny_01"
+  ],
+  "meshes": [
+    {
+      "file": "models/props/rock_01_mesh.glb",
+      "lods": 3,
+      "min": [
+        -1,
+        0,
+        -1
+      ],
+      "max": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "file": "models/levels/fixture/hangar_01_mesh.glb",
+      "lods": 4,
+      "min": [
+        -20,
+        0,
+        -20
+      ],
+      "max": [
+        20,
+        10,
+        20
+      ]
+    },
+    {
+      "file": "models/props/crate_01_mesh.glb",
+      "lods": 2,
+      "min": [
+        -0.5,
+        0,
+        -0.5
+      ],
+      "max": [
+        0.5,
+        1,
+        0.5
+      ]
+    },
+    {
+      "file": "models/characters/npc/tauntaun_01_mesh.glb",
+      "lods": 2,
+      "min": [
+        -1,
+        0,
+        -1
+      ],
+      "max": [
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "file": "models/objects/nature/snowpile_enlighten_01_mesh.glb",
+      "lods": 1,
+      "min": [
+        -2,
+        0,
+        -2
+      ],
+      "max": [
+        2,
+        1,
+        2
+      ]
+    }
   ],
   "vehicleSpawns": [
     {
-      "name": "Tauntaun",
+      "blueprint": "Gameplay/Vehicles/Mount/Tauntaun/Mount_Tauntaun",
+      "mesh": null,
+      "parts": [],
+      "sub": 2,
       "position": [
         105,
         5,
         205
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
       ]
     }
   ],
-  "notExported": {
-    "lights": 2,
-    "effects": 1
-  }
+  "stats": {
+    "instances": 6,
+    "meshes": 5
+  },
+  "bin": {
+    "file": "fixture_01.bin",
+    "count": 6,
+    "position": 0,
+    "quaternion": 72,
+    "scale": 120,
+    "bytes": 192
+  },
+  "groups": [
+    {
+      "mesh": 0,
+      "sub": 0,
+      "kind": "static",
+      "count": 1,
+      "offset": 0
+    },
+    {
+      "mesh": 1,
+      "sub": 0,
+      "kind": "static",
+      "count": 1,
+      "offset": 1
+    },
+    {
+      "mesh": 2,
+      "sub": 2,
+      "kind": "object",
+      "count": 1,
+      "offset": 2
+    },
+    {
+      "mesh": 0,
+      "sub": 1,
+      "kind": "static",
+      "count": 1,
+      "offset": 3
+    },
+    {
+      "mesh": 3,
+      "sub": 2,
+      "kind": "actor",
+      "count": 1,
+      "offset": 4
+    },
+    {
+      "mesh": 4,
+      "sub": 2,
+      "kind": "static",
+      "count": 1,
+      "offset": 5
+    }
+  ]
 }

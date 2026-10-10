@@ -1,92 +1,74 @@
-// Holding a level to its budget row (lane L): the rows do not move, so the
-// pack drops what it must. A window is the cells a visitor can have drawn at
-// once (the cells within `radius` of one cell); while the heaviest window is
-// over its share of the row's triangles or draw calls, the lightest mesh in
-// it (instances × bounding volume over the whole arena: snow debris, cables,
-// small clutter) is dropped everywhere for that tier. One mesh at a time, so
-// the big pieces (the hangar, the ridges) are the last to go.
+// Holding a level to its budget row (lane L): the rows do not move. Each
+// instance draws the LOD its size and distance give it (lod.js), out to K
+// times its radius; K is the farthest reach for which every place you can
+// stand sees no more than its share of the row (90%: the people, the effects
+// and the sky have the rest). A reach is in radii, so the small things
+// (snow debris, cables, clutter) go first and the hangar and the ridges
+// last. Where even the nearest reach is over, the lightest meshes (instances
+// × bounding volume over the whole arena) go entirely, one at a time.
 //
-//   fitTo(cells, row, { share = 0.7, radius = 1, cost }) → { kept: Map<key, draws>, dropped: [{ mesh, count, tris }] }
-//   windowCost(cells, key, { radius, cost, skip }) → { tris, calls }
+//   costAt(inst, meshes, [x, z], tier, K, skip) → { tris, calls }
+//   fitCull(inst, meshes, row, tier, { positions, share = 0.9, kMin = 4, kMax = 1000 }) → { K, dropped, worst }
 //
-// cells: Map<'cx,cz', { draws: [{ mesh, count, weight, tris, mirrored }] }>;
-// cost(draw, ring) → { tris (a piece), cut } | null (not drawn at that ring;
-// by default the draw's own `tris` at one cut). A call is one distinct mesh,
-// cut and side in the window: the scene draws one InstancedMesh for each.
+// inst: { x, z, r, mesh, mirrored } typed arrays; meshes[m]: { lods (each
+// LOD's triangles), mats, weight }. A call is one mesh, LOD and side drawn
+// (the scene's InstancedMesh), times its materials.
 
-const plainCost = (d) => ({ tris: d.tris, cut: '' });
+import { lodAt, seenAt } from './lod.js';
 
-const parse = (key) => key.split(',').map(Number);
-
-export function windowCost(cells, key, { radius = 1, cost = plainCost, skip = null } = {}) {
-  const [cx, cz] = parse(key);
+export function costAt(inst, meshes, [px, pz], tier, K, skip = null, who = null) {
   let tris = 0;
-  const calls = new Set();
-  for (let dz = -radius; dz <= radius; dz++) {
-    for (let dx = -radius; dx <= radius; dx++) {
-      const c = cells.get(`${cx + dx},${cz + dz}`);
-      if (!c) continue;
-      const ring = Math.max(Math.abs(dx), Math.abs(dz));
-      for (const d of c.draws) {
-        if (skip?.has(d.mesh)) continue;
-        const k = cost(d, ring);
-        if (!k) continue;
-        tris += k.tris * d.count;
-        calls.add(`${d.mesh}|${k.cut}|${d.mirrored ? 1 : 0}`);
-      }
-    }
+  const calls = new Map();
+  for (let i = 0; i < inst.x.length; i++) {
+    const m = inst.mesh[i];
+    if (skip?.has(m)) continue;
+    const d = Math.hypot(inst.x[i] - px, inst.z[i] - pz);
+    if (!seenAt(d, inst.r[i], K)) continue;
+    const n = lodAt(meshes[m].lods, d, inst.r[i], tier);
+    tris += meshes[m].lods[n];
+    calls.set(`${m}|${n}|${inst.mirrored[i]}`, meshes[m].mats ?? 1);
+    who?.add(m);
   }
-  return { tris, calls: calls.size };
+  let c = 0;
+  for (const v of calls.values()) c += v;
+  return { tris, calls: c };
 }
 
-export function fitTo(cells, row, { share = 0.7, radius = 1, cost = plainCost } = {}) {
-  const maxTris = row.tris * share;
-  const maxCalls = row.calls * share;
-  const weight = new Map();
-  for (const c of cells.values()) for (const d of c.draws) weight.set(d.mesh, (weight.get(d.mesh) ?? 0) + d.weight);
+export function fitCull(inst, meshes, row, tier, { positions, share = 0.9, kMin = 4, kMax = 1000 } = {}) {
+  const max = { tris: row.tris * share, calls: row.calls * share };
   const skip = new Set();
-  const over = (w) => w.tris > maxTris || w.calls > maxCalls;
-  for (;;) {
-    // the heaviest window still over the row (by how far over, either way)
-    let worst = null;
-    let by = 0;
-    for (const key of cells.keys()) {
-      const w = windowCost(cells, key, { radius, cost, skip });
-      if (!over(w)) continue;
-      const how = Math.max(w.tris / maxTris, w.calls / maxCalls);
-      if (how > by) [worst, by] = [key, how];
+  for (let m = 0; m < meshes.length; m++) if (meshes[m].skip) skip.add(m);
+  const worstAt = (K) => {
+    let w = { tris: 0, calls: 0, at: null, by: 0 };
+    for (const p of positions) {
+      const c = costAt(inst, meshes, p, tier, K, skip);
+      const by = Math.max(c.tris / max.tris, c.calls / max.calls);
+      w = { tris: Math.max(w.tris, c.tris), calls: Math.max(w.calls, c.calls), at: by > w.by ? p : w.at, by: Math.max(w.by, by) };
     }
-    if (!worst) break;
-    // its lightest mesh, whose drop would change the window
-    let pick = null;
-    const [cx, cz] = parse(worst);
-    for (let dz = -radius; dz <= radius; dz++) {
-      for (let dx = -radius; dx <= radius; dx++) {
-        const c = cells.get(`${cx + dx},${cz + dz}`);
-        if (!c) continue;
-        const ring = Math.max(Math.abs(dx), Math.abs(dz));
-        for (const d of c.draws) {
-          if (skip.has(d.mesh) || !cost(d, ring)) continue;
-          if (pick === null || weight.get(d.mesh) < weight.get(pick) || (weight.get(d.mesh) === weight.get(pick) && d.mesh < pick)) pick = d.mesh;
-        }
-      }
+    return w;
+  };
+  const fits = (w) => w.by <= 1;
+  let K = kMax;
+  if (!fits(worstAt(kMax))) {
+    // the farthest reach that fits, to a metre a radius
+    let lo = kMin;
+    let hi = kMax;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) / 2;
+      if (fits(worstAt(mid))) lo = mid;
+      else hi = mid;
     }
-    if (pick === null) break;
-    skip.add(pick);
-  }
-  const kept = new Map();
-  const lost = new Map();
-  for (const [key, c] of cells) {
-    kept.set(key, c.draws.filter((d) => !skip.has(d.mesh)));
-    for (const d of c.draws) {
-      if (!skip.has(d.mesh)) continue;
-      const k = cost(d, 0) ?? { tris: 0 };
-      const l = lost.get(d.mesh) ?? { mesh: d.mesh, count: 0, tris: 0 };
-      l.count += d.count;
-      l.tris += k.tris * d.count;
-      lost.set(d.mesh, l);
+    K = Math.floor(lo);
+    // and if even that is over, the lightest meshes at the worst place go
+    for (let w = worstAt(K); !fits(w); w = worstAt(K)) {
+      const who = new Set();
+      costAt(inst, meshes, w.at, tier, K, skip, who);
+      let pick = -1;
+      for (const m of who) if (pick < 0 || meshes[m].weight < meshes[pick].weight || (meshes[m].weight === meshes[pick].weight && m < pick)) pick = m;
+      if (pick < 0) break;
+      skip.add(pick);
     }
   }
-  // (in the order they went)
-  return { kept, dropped: [...skip].map((m) => lost.get(m)) };
+  const w = worstAt(K);
+  return { K, dropped: [...skip].filter((m) => !meshes[m].skip), worst: { tris: w.tris, calls: w.calls } };
 }

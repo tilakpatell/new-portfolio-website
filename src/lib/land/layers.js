@@ -13,7 +13,8 @@
 //     each times its weight (1 when left out), on spec.base (0)
 //   noise2(x, z, seed) → the galaxy's value noise, −1…1, a bump a unit
 //     (passed on: cell.js clumps the flora by it)
-//   decodeHeights(png16, scale, offset, { hole }) → metres, a hole NaN
+//   decodeHeights(png16, scale, offset, { hole }) → metres (v × scale / 65536, as the
+//     game's records say), a hole NaN
 //   imageLayerFrom(record, nearPixels, farPixels) → an `image` layer
 
 import { fbm, hash2, noise2, ridged, smoothstep } from '../../components/galaxy/surface/noise.js';
@@ -129,18 +130,19 @@ function sampleImage(m, x, z) {
   return (w00 ? d[k] * w00 : 0) + (w10 ? d[k + 1] * w10 : 0) + (w01 ? d[k + m.w] * w01 : 0) + (w11 ? d[k + m.w + 1] * w11 : 0);
 }
 
-// A 16-bit heightmap's values as metres: offset + v / 65535 × scale. The
+// A 16-bit heightmap's values as metres: offset + v × scale / 65536 (the
+// drop's maps/README.md: 65536 steps to the scale, the top one unused). The
 // record's hole value (its lowest, where the game cut the ground away for a
 // tunnel or a pit) becomes NaN, so the layer reads the next map there.
 export function decodeHeights(png16, scale, offset = 0, { hole = null } = {}) {
   const out = new Float32Array(png16.length);
-  const k = scale / 65535;
+  const k = scale / 65536;
   for (let i = 0; i < png16.length; i++) out[i] = png16[i] === hole ? NaN : offset + png16[i] * k;
   return out;
 }
 
 // An image layer from a terrain record (`heightScale`, `heightOffset`,
-// `holePixels`, as web/terrain.jsonl writes them) and its two decoded PNGs
+// `holePixels`, as web/terrain.jsonl and a map's `terrain[]` write them) and its two decoded PNGs
 // ({ data: Uint16Array, w, h, minX, minZ, metresPerPixel }, the site's frame).
 export function imageLayerFrom(record, nearPixels, farPixels) {
   const scale = record.heightScale ?? record.scale ?? 1024;

@@ -7,7 +7,8 @@
 //
 //   levelGround(ground) → Promise<ground>: its `image` layers' heightmaps
 //     fetched and decoded (before the ground's grid is made)
-//   createLevel({ scene, site, tier, renderer }) → null | { update(position), ready(), stats(), dispose() }
+//   createLevel({ scene, site, tier, renderer, walk }) → null | { update(position), ready(), stats(), dispose() }
+//     (walk: the walk world, { solids, floors }, the pack's collision goes into)
 
 import { withFallback } from '../../../../lib/assetBase.js';
 import { imageLayerFrom } from '../../../../lib/land/layers.js';
@@ -16,6 +17,7 @@ import { createLevelLoader } from './levelGltf.js';
 import { packUrl, wanted } from './levelPack.js';
 import { createLevelScene } from './levelScene.js';
 import { createLevelStream } from './levelStream.js';
+import { createColliders } from './colliders.js';
 
 // A pack file's bytes, from the bucket where it has it, else the site.
 // (No abort signal on the request: assetBase reads any failure as the bucket
@@ -60,6 +62,9 @@ export async function imageLayerOf(world) {
 export async function levelGround(ground) {
   const layers = ground?.layers ?? [];
   if (!layers.some((l) => l.type === 'image' && l.pack)) return ground;
+  // (the places' flats the site marks `game` are the flight's: on the game's
+  // own ground they would bury its trenches)
+  const flats = (ground.flats ?? []).filter((f) => !f.game);
   const filled = await Promise.all(
     layers.map(async (l) => {
       if (l.type !== 'image' || !l.pack) return l;
@@ -68,10 +73,10 @@ export async function levelGround(ground) {
       return img ? { ...l, near: img.near, far: img.far } : l;
     }),
   );
-  return { ...ground, layers: filled };
+  return { ...ground, layers: filled, flats };
 }
 
-export function createLevel({ scene, site, tier, renderer = null }) {
+export function createLevel({ scene, site, tier, renderer = null, walk = null }) {
   if (!site?.level) return null;
   const world = site.level;
   const fetchBytes = bytesOf(world);
@@ -80,13 +85,20 @@ export function createLevel({ scene, site, tier, renderer = null }) {
   let loader = null;
   let gone = false;
   let last = null;
+  const colliders = walk ? createColliders(walk, tier) : null;
   packOf(world)
     .then((pack) => {
       if (gone) return;
-      loader = createLevelLoader({ world, tier, renderer, fetchBytes });
+      loader = createLevelLoader({ world, tier, renderer, fetchBytes, sizes: pack.tex });
       level = createLevelScene({ scene, pack, loadGltf: loader.load, tier });
-      stream = createLevelStream({ pack, fetch: (path) => fetchBytes(path), wanted, tier, onFar: level.setFar, onHorizon: level.setHorizon, onCell: level.addCell, onDrop: level.removeCell });
-      if (last) stream.update(last, tier);
+      // the far list is the whole arena's table; the cells round you bring
+      // its collision (the walk world's solids and floors, switched off when
+      // a cell goes)
+      stream = createLevelStream({ pack, fetch: (path) => fetchBytes(path), wanted, tier, onFar: level.setTable, onHorizon: level.setHorizon, onCell: (key, bin) => colliders?.add(key, pack, bin), onDrop: (key) => colliders?.drop(key) });
+      if (last) {
+        stream.update(last, tier);
+        level.update(last);
+      }
     })
     .catch((e) => {
       if (import.meta.env?.DEV) console.warn('level pack failed', world, e);
@@ -96,12 +108,14 @@ export function createLevel({ scene, site, tier, renderer = null }) {
     update(position) {
       last = position;
       stream?.update(position, tier);
+      level?.update(position);
     },
     ready: () => stream?.ready() ?? false,
     progress: () => stream?.progress() ?? 0,
-    stats: () => level?.stats() ?? { tris: 0, calls: 0, cells: 0 },
+    stats: () => level?.stats() ?? { tris: 0, calls: 0, instances: 0 },
     dispose() {
       gone = true;
+      colliders?.dispose();
       stream?.dispose();
       level?.dispose();
       loader?.dispose();

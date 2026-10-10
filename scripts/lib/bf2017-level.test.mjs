@@ -3,36 +3,39 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LAYERS } from '../../src/lib/land/layers.js';
 import { readInstances } from '../../src/lib/level/instances.js';
-import { arenaOf, buildPack, cropHeights, heightsLayer, mainSubs, meshCuts, packCell, readMap, rebase, rewriteImageUris, subset, terrainFrame } from './bf2017-level.mjs';
+import { arenaOf, buildPack, cropHeights, heightsLayer, mainSubs, fillHoles, glbTriangles, lodFile, meshCuts, mergeHeights, packCell, readMap, rebase, rewriteImageUris, subset, terrainFrame } from './bf2017-level.mjs';
 import { glbJson } from './bf2017-paths.mjs';
 import { cellsOf } from './level-cells.mjs';
 
 const FIX = join(import.meta.dirname, '..', 'fixtures', 'bf2017', 'web');
 const json = JSON.parse(readFileSync(join(FIX, 'maps', 'fixture_01', 'fixture_01.json'), 'utf8'));
 const bin = readFileSync(join(FIX, 'maps', 'fixture_01', 'fixture_01.bin'));
-const record = JSON.parse(readFileSync(join(FIX, 'terrain.jsonl'), 'utf8').split('\n')[0]);
-const png = readFileSync(join(FIX, 'terrain', 'fixture_01', 'fixture_01_height.png'));
+const record = json.terrain[0];
+const png = readFileSync(join(FIX, record.world.file));
 
 describe('readMap', () => {
   it('counts the instances, meshes, subs and spawns', () => {
     const map = readMap(json, bin);
-    expect(map.instances.count).toBe(4);
+    expect(map.instances.count).toBe(6);
     expect(map.instances.quaternion).toBeInstanceOf(Int16Array);
-    expect(map.meshes.length).toBe(3);
+    expect(map.meshes.length).toBe(5);
     expect(map.subworlds.length).toBe(3);
-    expect(map.groups.length).toBe(4);
-    expect(map.meshOf).toEqual(Int32Array.from([0, 1, 2, 0]));
+    expect(map.groups.length).toBe(6);
+    expect(map.meshOf).toEqual(Int32Array.from([0, 1, 2, 0, 3, 4]));
+    // (the arrays as the manifest places them: the second's quarter turn, the third's mirror)
+    expect(map.instances.quaternion[5]).toBe(Math.round(Math.SQRT1_2 * 32767));
+    expect(map.instances.scale[6]).toBe(-1);
     expect(map.vehicleSpawns[0].position).toEqual([105, 5, 205]);
-    expect(map.terrain).toMatch(/Fixture_01_Terrain$/);
+    expect(map.terrain.name).toMatch(/Fixture_01_Terrain$/);
   });
 
   it('refuses a bin the wrong size for its count', () => {
-    expect(() => readMap(json, bin.subarray(0, 64))).toThrow(/bytes/);
+    expect(() => readMap(json, bin.subarray(0, 100))).toThrow(/bytes/);
   });
 });
 
 describe('arenaOf', () => {
-  it('takes the level’s own sub and Content by default, and leaves the lobby out', () => {
+  it('takes the level’s own sub and Content by default, and leaves the lobby, the actors and the lighting proxies out', () => {
     const map = readMap(json, bin);
     expect(mainSubs(map)).toEqual(['fixture_01', 'content']);
     expect(arenaOf(map)).toEqual([0, 1, 2]);
@@ -122,9 +125,11 @@ describe('cropHeights', () => {
 
 describe('buildPack', () => {
   const meshes = [
-    { name: 'rock', tris: { far: 2, lod1: 4, plain: 8, ultra: 8 }, bounds: [-1, 0, -1, 1, 1, 1], mats: 1 },
-    { name: 'hangar', tris: { far: 50, lod1: 100, plain: 400, ultra: 900 }, bounds: [-20, 0, -20, 20, 10, 20], mats: 2 },
-    { name: 'crate', tris: { far: 2, lod1: 2, plain: 12, ultra: 12 }, bounds: [-0.5, 0, -0.5, 0.5, 1, 0.5], mats: 1 },
+    { name: 'rock', lods: [8, 4, 2], bounds: [-1, 0, -1, 1, 1, 1], mats: 1 },
+    { name: 'hangar', lods: [900, 400, 100, 50], bounds: [-20, 0, -20, 20, 10, 20], mats: 2 },
+    { name: 'crate', lods: [12, 2], bounds: [-0.5, 0, -0.5, 0.5, 1, 0.5], mats: 1 },
+    { name: 'tauntaun', lods: [500, 100], bounds: [-1, 0, -1, 1, 2, 1], mats: 1 },
+    { name: 'proxy', lods: [10], bounds: [-2, 0, -2, 2, 1, 2], mats: 1 },
   ];
   const pack = buildPack({ world: 'fixture', mapName: 'levels/mp/fixture_01', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256 });
 
@@ -142,12 +147,23 @@ describe('buildPack', () => {
     expect(j.far.draws[1].cells).toEqual({ '1,0': [0, 1] });
   });
 
-  it('says per tier which cut each draw takes near, and null where it was dropped', () => {
-    expect(pack.json.cells['0,0'].draws[0].lod).toEqual({ high: 'plain', low: 'lod1', mid: 'lod1', ultra: 'ultra' });
-    const tight = buildPack({ world: 'fixture', mapName: 'm', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256, rows: { high: { tris: 500, calls: 700, near: 70, mid: 220, lod1: true } } });
-    // 8 (the rock) + 400 (the hangar, one cell over) is over 70% of 500: the rock, the lighter, goes first
-    expect(tight.json.cells['0,0'].draws[0].lod.high).toBe(null);
-    expect(tight.table.high.dropped[0]).toMatchObject({ name: 'rock', count: 1 });
+  it('says per tier how far out things are drawn, and what the row cost', () => {
+    expect(pack.json.cull.high).toEqual({ K: 1000, dropped: [] });
+    expect(pack.json.meshes[1]).toMatchObject({ name: 'hangar', lods: [900, 400, 100, 50], glb: ['meshes/hangar.lod0.glb', 'meshes/hangar.lod1.glb', 'meshes/hangar.lod2.glb', 'meshes/hangar.lod3.glb'] });
+    // a row the hangar's LOD0 alone breaks: the reach comes in, then the rock (the lighter) goes
+    const tight = buildPack({ world: 'fixture', mapName: 'm', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256, rows: { ultra: { tris: 905, calls: 700 } } });
+    expect(tight.table.ultra.K).toBeLessThan(1000);
+    expect(tight.table.ultra.worst.tris).toBeLessThanOrEqual(905 * 0.9);
+  });
+});
+
+describe('under the ground', () => {
+  it('leaves out what is buried under the pack’s ground: the base inside the glacier', () => {
+    // the rock's top is 6 m up (5 + its 1 m); a ground at 10 there buries it
+    const meshes = [0, 1, 2, 3, 4].map(() => ({ name: 'm', lods: [10], bounds: [-1, 0, -1, 1, 1, 1], mats: 1 }));
+    const buried = buildPack({ world: 'f', mapName: 'm', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256, groundAt: (x, z) => (Math.hypot(x - 10, z - 10) < 2 ? 10 : 0) });
+    expect(buried.counts.buried).toBe(1);
+    expect(buried.counts.arena).toBe(1);
   });
 });
 
@@ -171,5 +187,28 @@ describe('the meshes', () => {
     // the binary chunk is the same bytes
     const binOf = (b) => b.subarray(20 + b.readUInt32LE(12));
     expect(binOf(out).equals(binOf(glb))).toBe(true);
+  });
+});
+
+describe('the files', () => {
+  it('counts a GLB’s triangles from its JSON (the hilt: 920, as the manifest says)', () => {
+    const glb = readFileSync(join(FIX, 'models', 'gameplay', 'equipment', 'heroes', 'lightsaberlukeskywalker', 'lightsaberlukeskywalker_meshp_mesh.glb'));
+    expect(glbTriangles(glb)).toEqual({ tris: 920, prims: 1 });
+  });
+
+  it('names the LOD files as the maps do', () => {
+    expect(lodFile('models/a/b_mesh.glb', 0)).toBe('models/a/b_mesh.glb');
+    expect(lodFile('models/a/b_mesh.glb', 3)).toBe('models/a/b_mesh_lod3.glb');
+  });
+
+  it('merges the detail map over the world map: the world beyond it, its own holes kept inside it', () => {
+    expect(Array.from(mergeHeights(Uint16Array.from([5, 0, 7]), Uint16Array.from([1, 2, 3])))).toEqual([5, 2, 7]);
+    expect(Array.from(mergeHeights(Uint16Array.from([5, 0, 0]), Uint16Array.from([1, 2, 3]), 0, (i) => i < 2))).toEqual([5, 0, 3]);
+  });
+
+  it('fills a hole with the lowest ground on its rim', () => {
+    // a 4 × 3 map: a two-pixel hole in a glacier, its rim 50 at the floor and higher round it
+    const data = Uint16Array.from([90, 90, 90, 90, 90, 0, 0, 50, 90, 90, 90, 90]);
+    expect(Array.from(fillHoles(data, 4, 3))).toEqual([90, 90, 90, 90, 90, 50, 50, 50, 90, 90, 90, 90]);
   });
 });

@@ -300,7 +300,8 @@ export async function create(canvas, ctx) {
   // ground map is painted with the trees' crowns over it)
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
-  const scattered = site.scatter.map((s) => {
+  // (on a world drawn from the game's level, what the game places itself is left to it)
+  const scattered = site.scatter.filter((s) => !(site.level && s.game)).map((s) => {
     const items = [];
     const [r0, r1] = s.within ?? [20, site.reach];
     let tries = 0;
@@ -370,10 +371,11 @@ export async function create(canvas, ctx) {
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
   const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, house, kitTint: floraTint(site), models, props: PROPS, scatter: SCATTER });
   // the game's own level, cell by cell round you (lane L; null for a world without one)
-  const gameLevel = createLevel({ scene, site, tier: level, renderer });
+  const gameLevel = createLevel({ scene, site, tier: level, renderer, walk: world });
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
   for (const t of site.things_all) {
+    if (site.level && t.game) continue;
     const put = placer.put(t);
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
   }

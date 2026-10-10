@@ -871,6 +871,20 @@
       "galaxy-surface"
     ]
   },
+  "deathstar-c3po": {
+    "title": "C-3PO Weight Shift",
+    "author": "Telkar5",
+    "authorUrl": "https://sketchfab.com/Telkar5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0",
+    "where": "galaxy-surface",
+    "as": "C-3PO aboard the Death Star, rigged again on the crew’s skeleton so he walks, sits and falls as they do",
+    "file": "/models/deathstar/c3po.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "dickansh-arch": {
     "title": "Temple arch-3DView",
     "author": "Er.B.Nijithkumar",
@@ -1405,6 +1419,21 @@
     "also": [
       "galaxy"
     ]
+  },
+  "level-hoth": {
+    "title": "Star Wars Battlefront II (2017): levels/mp/hoth_01",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "hoth: the game's level",
+    "file": "/models/galaxy/bf2017/levels/hoth/level.json",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "m64-bobomb": {
     "title": "Bob-Omb",
@@ -1952,20 +1981,6 @@
       "galaxy"
     ]
   },
-  "deathstar-c3po": {
-    "title": "C-3PO Weight Shift",
-    "author": "Telkar5",
-    "authorUrl": "https://sketchfab.com/Telkar5",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0",
-    "where": "galaxy-surface",
-    "as": "C-3PO aboard the Death Star, rigged again on the crew’s skeleton so he walks, sits and falls as they do",
-    "file": "/models/deathstar/c3po.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-cassian": {
     "title": "Cassian Andor",
     "author": "Mind Mulch for The Masses",
@@ -2163,6 +2178,17 @@
     "also": [
       "galaxy"
     ]
+  },
+  "surface-droid": {
+    "title": "R2-D2",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/r2-d2-b251906902104fddb6f1a9a38bfe92ab",
+    "where": "galaxy-surface",
+    "as": "the astromechs",
+    "file": "/models/galaxy/surface/droid.glb"
   },
   "surface-droideka": {
     "title": "Star Wars Battlefront - Droideka",
@@ -2878,17 +2904,6 @@
     "also": [
       "galaxy"
     ]
-  },
-  "surface-droid": {
-    "title": "R2-D2",
-    "author": "ThisIsntAPerson",
-    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/r2-d2-b251906902104fddb6f1a9a38bfe92ab",
-    "where": "galaxy-surface",
-    "as": "the astromechs",
-    "file": "/models/galaxy/surface/droid.glb"
   },
   "surface-r5": {
     "title": "R5-J2 Imperial Astromech Droid",

@@ -1,6 +1,6 @@
 // A level pack, read (lane L, "How a level draws"): which cells a visitor
-// wants and in which band, which of a cell's draws a tier keeps and at what
-// cut, where the pack's files are, and a GLB's textures at the tier's size.
+// wants round them (their collision), where the pack's files are, and a
+// GLB's textures at the tier's size.
 // Pure: no three.js. The bands and the records are src/lib/level's, shared
 // with the pack builder (scripts/bf2017-level.mjs).
 
@@ -9,8 +9,7 @@ import { readInstances } from '../../../../lib/level/instances.js';
 
 export { bandsFor, cutFor, readInstances, wanted };
 
-// the texture sizes by tier, as the pack wrote them (512 low, 1024 mid and
-// high, 2048 ultra)
+// a map's size on a tier when the pack does not say (the design's)
 export const TEX = { low: 512, mid: 1024, high: 1024, ultra: 2048 };
 
 export const packUrl = (world, path) => `/models/galaxy/bf2017/levels/${world}/${path}`;
@@ -18,20 +17,14 @@ export const packUrl = (world, path) => `/models/galaxy/bf2017/levels/${world}/$
 // A key's band in a `wanted` answer: 'near', 'mid', or null (not wanted)
 export const bandOf = (w, key) => (w.near.includes(key) ? 'near' : w.mid.includes(key) ? 'mid' : null);
 
-// A list's draws a tier keeps in a band, each with its cut and GLB. The near
-// band takes the cut the pack chose (null: dropped to fit the row); mid and
-// far take theirs whenever the pack kept the draw at all.
-export function drawsFor(pack, draws, band, tier) {
-  const out = [];
-  for (const d of draws) {
-    if (!d.lod?.[tier]) continue;
-    const cut = band === 'near' ? d.lod[tier] : cutFor(band, tier);
-    out.push({ mesh: d.mesh, offset: d.offset, count: d.count, mirrored: d.mirrored, cut, glb: pack.meshes[d.mesh].glb[cut] });
-  }
-  return out;
+// a map's file on a tier: its size from the pack's `tex` (sized by the
+// biggest thing that wears it; a pack without --ultra draws ultra as high)
+export function tierTexture(uri, tier, sizes = {}) {
+  const slug = uri.split('/').pop().replace(/\.ktx2$/, '');
+  const s = sizes[slug];
+  const size = s?.[tier] ?? s?.high ?? TEX[tier] ?? TEX.high;
+  return uri.replace(/\.ktx2$/, `.${size}.ktx2`);
 }
-
-export const tierTexture = (uri, tier) => uri.replace(/\.ktx2$/, `.${TEX[tier] ?? TEX.high}.ktx2`);
 
 // The pack's meshes share their textures (one material a game material, one
 // KTX2 a map), but a glTF loader keeps its textures per file, which would

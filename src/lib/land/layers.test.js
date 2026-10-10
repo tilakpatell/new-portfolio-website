@@ -114,17 +114,17 @@ describe('the image layer: the game’s heightmaps', () => {
   });
 
   it('decodes 16-bit heights by the record’s scale and offset', () => {
-    expect(Array.from(decodeHeights(new Uint16Array([0, 65535]), 1024, -12))).toEqual([-12, 1012]);
+    expect(Array.from(decodeHeights(new Uint16Array([0, 32768, 65535]), 1024, -12))).toEqual([-12, 500, 1024 - 12 - 1024 / 65536]);
     // the record's hole value reads as NaN, so the layer falls through it
     const d = decodeHeights(new Uint16Array([0, 100]), 1024, 0, { hole: 0 });
     expect(Number.isNaN(d[0])).toBe(true);
-    expect(d[1]).toBeCloseTo((100 / 65535) * 1024, 6);
+    expect(d[1]).toBeCloseTo((100 / 65536) * 1024, 6);
   });
 
   it('builds the layer from a record and its two maps, the seam within half a metre', () => {
     const record = { heightScale: 1024, heightOffset: 0, holePixels: 0 };
     // one gentle slope, sampled at 1 m and at 2 m
-    const raw = (x) => Math.round(((100 + x * 0.5) / 1024) * 65535);
+    const raw = (x) => Math.round(((100 + x * 0.5) / 1024) * 65536);
     const nearPixels = { data: new Uint16Array(9 * 9).map((_, i) => raw(i % 9)), w: 9, h: 9, minX: 0, minZ: 0, metresPerPixel: 1 };
     const farPixels = { data: new Uint16Array(9 * 9).map((_, i) => raw((i % 9) * 2 - 4)), w: 9, h: 9, minX: -4, minZ: -4, metresPerPixel: 2 };
     const l = imageLayerFrom(record, nearPixels, farPixels);

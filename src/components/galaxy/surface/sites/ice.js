@@ -10,8 +10,13 @@ const loop = ([cx, cz], [rx, rz], n = 10) =>
   });
 
 // Echo Base, and a spot in its own frame (x across its mouth, z out of
-// it) put in the world's, for who's about in it
+// it) put in the world's, for who's about in it (and for the flight's
+// planet, which builds it here)
 const ECHO = { at: [-150, 200], yaw: 2.5 };
+
+// the way in on the surface: the game's own hangar, its west mouth 30 m
+// south of the landing, opening north (lane L's level pack)
+const MOUTH = { door: [-20, -32], back: [-20, -26] };
 const echo = ([x, z]) => [Math.round((ECHO.at[0] + x * Math.cos(ECHO.yaw) + z * Math.sin(ECHO.yaw)) * 10) / 10, Math.round((ECHO.at[1] - x * Math.sin(ECHO.yaw) + z * Math.cos(ECHO.yaw)) * 10) / 10];
 
 // the trench line, the same
@@ -24,6 +29,12 @@ const cave = ([x, z]) => [Math.round((CAVE.at[0] + x * Math.cos(CAVE.yaw) + z * 
 
 export const SITES = {
   hoth: {
+    // drawn from the game's level (/models/galaxy/bf2017/levels/hoth/level.json,
+    // by scripts/bf2017-level.mjs; surface/level/): Echo Base, the trenches,
+    // the rocks and the ridges as the game placed them. A thing marked `game`
+    // is the game's too: the flight's planet still builds it, the surface
+    // leaves it to the level
+    level: 'hoth',
     place: 'The ice fields outside Echo Base',
     line: 'Ice to the horizon, wind off the glaciers, and colder every night.',
     // (every one of them a model, never one built in code: surface/cast.js;
@@ -51,7 +62,11 @@ export const SITES = {
     ground: { detail: 'snow', detailLook: { color: 0.5, normal: 0.6 },
       seed: 7,
       wind: 0.6,
-      layers: [
+      // the game's own ground: its heightmaps, 0 at the landing by the hangar
+      layers: [{ type: 'image', pack: 'hoth' }],
+      // (the land the flight's planet sums for Hoth, which has no heightmap
+      // yet: the site's own, as it was)
+      flight: [
         { type: 'swell', scale: 520, height: 6 },
         { type: 'hills', scale: 300, height: 14 },
         { type: 'dunes', scale: 36, height: 1.1, wind: 0.6 },
@@ -97,8 +112,8 @@ export const SITES = {
       {
         id: 'echo',
         name: 'Echo Base',
-        door: { at: echo([-12, -28.2]), r: 2.4, prompt: 'Go into the base' },
-        back: echo([-12, -24]),
+        door: { at: MOUTH.door, r: 2.4, prompt: 'Go into the base' },
+        back: MOUTH.back,
         inside: {
           build: 'echoinside',
           spawn: ECHO_BASE.spawn,
@@ -135,7 +150,7 @@ export const SITES = {
         at: ECHO.at,
         yaw: ECHO.yaw,
         r: 60,
-        flat: { r: 64, edge: 30 },
+        flat: { r: 64, edge: 30, game: true },
         about: 'The Rebellion’s hidden base, cut into the glacier: hangars for the X-wings and snowspeeders, pens for the tauntauns, and a shield to keep the Empire’s guns out. Until a probe droid found it.',
         lines: {
           xwing: [['luke', 'Echo Base. We were all crammed in there, waiting for the Empire to find us.'], ['r2', '(A cheerful beep, then a worried one.)']],
@@ -144,23 +159,25 @@ export const SITES = {
           rv: [['jesse', 'They live in an ice cave, yo. On purpose.'], ['walt', 'Remote. Defensible. I respect it.']],
         },
         things: [
-          { kind: 'echobase', at: [0, 30] },
+          // (the game's hangar and what stands in its mouths: the level
+          // draws them on the surface; the flight's planet builds these)
+          { game: true, kind: 'echobase', at: [0, 30] },
           // in the hangar
-          { kind: 'parkedxwing', at: [-9, 8] },
-          { kind: 'parkedxwing', at: [8, -8], yaw: -0.15, opts: { stripe: '#c8602a' } },
-          { kind: 'snowspeeder', at: [-12, -14], yaw: 0.5 },
-          { kind: 'snowspeeder', at: [11, 18], yaw: -0.3 },
-          { kind: 'crates', at: [-6, -24], opts: { color: '#8a929a' } },
-          { kind: 'crates', at: [2, -25], opts: { color: '#6a6458' } },
+          { game: true, kind: 'parkedxwing', at: [-9, 8] },
+          { game: true, kind: 'parkedxwing', at: [8, -8], yaw: -0.15, opts: { stripe: '#c8602a' } },
+          { game: true, kind: 'snowspeeder', at: [-12, -14], yaw: 0.5 },
+          { game: true, kind: 'snowspeeder', at: [11, 18], yaw: -0.3 },
+          { game: true, kind: 'crates', at: [-6, -24], opts: { color: '#8a929a' } },
+          { game: true, kind: 'crates', at: [2, -25], opts: { color: '#6a6458' } },
           // lined up outside, ready to go
-          { kind: 'snowspeeder', at: [-10, 42] },
-          { kind: 'snowspeeder', at: [0, 44] },
-          { kind: 'snowspeeder', at: [10, 42] },
-          { kind: 'lamp', at: [-24, 33], opts: { h: 5, light: '#ffe2b0' } },
-          { kind: 'lamp', at: [24, 33], opts: { h: 5, light: '#ffe2b0' } },
-          { kind: 'turret', at: [-30, 44], yaw: -0.2 },
-          { kind: 'turret', at: [30, 44], yaw: 0.2 },
-          { kind: 'tauntaunpen', at: [-44, 54], yaw: Math.PI - 0.3 },
+          { game: true, kind: 'snowspeeder', at: [-10, 42] },
+          { game: true, kind: 'snowspeeder', at: [0, 44] },
+          { game: true, kind: 'snowspeeder', at: [10, 42] },
+          { game: true, kind: 'lamp', at: [-24, 33], opts: { h: 5, light: '#ffe2b0' } },
+          { game: true, kind: 'lamp', at: [24, 33], opts: { h: 5, light: '#ffe2b0' } },
+          { game: true, kind: 'turret', at: [-30, 44], yaw: -0.2 },
+          { game: true, kind: 'turret', at: [30, 44], yaw: 0.2 },
+          { game: true, kind: 'tauntaunpen', at: [-44, 54], yaw: Math.PI - 0.3 },
         ],
       },
       {
@@ -168,7 +185,7 @@ export const SITES = {
         name: 'The ion cannon',
         at: [-30, 340],
         r: 40,
-        flat: { r: 34 },
+        flat: { r: 34, game: true },
         about: 'The v-150 Planet Defender. One shot knocks out a Star Destroyer’s systems long enough for a transport to slip past the blockade, and it fired until the last of them was away.',
         lines: {
           xwing: [['luke', 'The first transport is away! That thing gave every one of them a chance.'], ['r2', '(An impressed whistle.)']],
@@ -190,7 +207,7 @@ export const SITES = {
         name: 'The shield generator',
         at: [90, 240],
         r: 40,
-        flat: { r: 32 },
+        flat: { r: 32, game: true },
         about: 'The power generator for Echo Base’s energy shield, strong enough to turn any bombardment. So the Empire came on foot, and General Veers’ walkers made it their target.',
         lines: {
           xwing: [['luke', 'If the walkers reach the generator, the shield’s down and the base is open.'], ['r2', '(A worried warble.)']],
@@ -211,7 +228,7 @@ export const SITES = {
         name: 'The trenches',
         at: TRENCH,
         r: 50,
-        flat: { r: 58 },
+        flat: { r: 58, game: true },
         about: 'Where the Rebel troopers dug in across the ice field with their trench guns, to hold the walkers back long enough for the transports to get away.',
         lines: {
           xwing: [['luke', 'Rogue Group, use your harpoons and tow cables. Go for the legs.'], ['r2', '(A determined toot.)']],
@@ -336,10 +353,12 @@ export const SITES = {
       { kind: 'lamp', at: [-220, -350], opts: { h: 3, light: '#ff8a5a' } },
       { kind: 'lamp', at: [-40, -390], opts: { h: 3, light: '#ff8a5a' } },
     ],
+    // (the game's rocks, snow piles and ice stand where it put them: the
+    // scatter is the flight's planet's)
     scatter: [
-      { kind: 'iceblock', n: 110, within: [40, 570], scale: [0.6, 3.4] },
-      { kind: 'snowrock', n: 80, within: [60, 580], scale: [0.8, 4.2] },
-      { kind: 'snowdrift', n: 160, within: [20, 580], scale: [1.2, 4.0], sink: 0.3 },
+      { game: true, kind: 'iceblock', n: 110, within: [40, 570], scale: [0.6, 3.4] },
+      { game: true, kind: 'snowrock', n: 80, within: [60, 580], scale: [0.8, 4.2] },
+      { game: true, kind: 'snowdrift', n: 160, within: [20, 580], scale: [1.2, 4.0], sink: 0.3 },
     ],
     life: [
       // the perimeter post at the landing

@@ -4,7 +4,8 @@
 // shares is fetched, transcoded and uploaded once whatever names it, at the
 // tier's size (tex/<slug>.<size>.ktx2).
 //
-//   createLevelLoader({ world, tier, renderer, fetchBytes }) → { load(glbPath) → Promise<{ scene } | null>, dispose() }
+//   createLevelLoader({ world, tier, renderer, fetchBytes, sizes }) → { load(glbPath) → Promise<{ scene } | null>, dispose() }
+//   (sizes: level.json's `tex`, each map's size per tier)
 
 import { gltfLoader, ktx2Loader } from '../../../../lib/three/gltf.js';
 import { assetUrl, withFallback } from '../../../../lib/assetBase.js';
@@ -20,14 +21,14 @@ const inPack = (glbPath, uri) => {
   return parts.join('/');
 };
 
-export function createLevelLoader({ world, tier, renderer, fetchBytes }) {
+export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {} }) {
   const textures = new Map(); // pack path → Promise<Texture | null>
   const meshes = new Map(); // glb path → Promise<{ scene } | null>
   let gone = false;
 
   function texture(path) {
     if (!textures.has(path)) {
-      const local = packUrl(world, tierTexture(path, tier));
+      const local = packUrl(world, tierTexture(path, tier, sizes));
       textures.set(
         path,
         ktx2Loader({ renderer })
