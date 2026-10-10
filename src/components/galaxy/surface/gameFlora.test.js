@@ -7,8 +7,8 @@ const book = (recipe, skip = []) => Object.fromEntries(recipeNames(recipe).filte
 
 describe('the drop’s own cover, by recipe', () => {
   it('writes a scatter row an object, its model the library’s', () => {
-    const rows = gameRows(site('swamp'), book('swamp'));
-    expect(rows).toHaveLength(RECIPES.swamp.length);
+    const rows = gameRows(site('woods'), book('woods'));
+    expect(rows).toHaveLength(RECIPES.woods.length);
     for (const r of rows) {
       expect(r.model).toMatch(/^game:objects\//);
       expect(r.n).toBeGreaterThan(0);
@@ -25,12 +25,12 @@ describe('the drop’s own cover, by recipe', () => {
 
   it('lays nothing for a world with no recipe, no ground, or a recipe that isn’t', () => {
     expect(gameRows(site(undefined))).toEqual([]);
-    expect(gameRows(site('swamp', { noGround: true }), book('swamp'))).toEqual([]);
+    expect(gameRows(site('woods', { noGround: true }), book('woods'))).toEqual([]);
     expect(gameRows(site('nowhere'))).toEqual([]);
   });
 
   it('comes after the kit’s rows in a site’s flora, kept above its lava or water', () => {
-    const rows = floraRows(site('volcanic', { water: { level: 0 } }));
+    const rows = floraRows(site('badlands', { water: { level: 0 } }));
     for (const r of rows.filter((q) => q.model?.startsWith('game:'))) expect(r.above).toBeGreaterThan(0);
   });
 });

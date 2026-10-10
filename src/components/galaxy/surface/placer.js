@@ -26,7 +26,10 @@
 //   said once a model: its skin is for its own mixer. One whose `model` is
 //   'game:<name>' is that object of the drop's library (catalog/
 //   bf2017-library.js), drawn as a kind's model is; one not imported yet,
-//   or rigged, draws nothing, said once. A kind the game has the same of
+//   or rigged, draws nothing, said once. Scattered, a row of the site's own
+//   kind wearing one is the game's on mid and up (its own below, or where the
+//   game's isn't there); a row that only adds one (kind 'game') draws on high
+//   and up. A kind the game has the same of
 //   (catalog/bf2017-game-for.js's GAME_FOR) is the game's on mid and up.
 //   setKitLoader(fn) → the kits' loader (fn(pack, { house, wind }) → a kit,
 //   as loadKit's) for the tests; null puts loadKit back.
@@ -536,9 +539,16 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     scatter(kind, items, { opts = {}, solid = true, model = true, shadow = true } = {}) {
       if (!items.length) return Promise.resolve(null);
       if (model === true) model = modelFor(kind, detailLevel(), models) || true;
+      // (the drop's library: a row of the site's own kind wearing the game's
+      // model is the game's on mid and up and the site's own below; one that
+      // only adds, kind 'game', is drawn on high and up, the phones keeping
+      // their budgets)
       if (isGame(model)) {
-        kind = gameModel(model, models, gameWarned);
-        if (!kind) return Promise.resolve(null);
+        const level = detailLevel();
+        const adds = kind === 'game';
+        const game = level === 'low' || (adds && level === 'mid') ? null : gameModel(model, models, gameWarned);
+        if (!game && adds) return Promise.resolve(null);
+        kind = game ?? kind;
         model = true;
       }
       const mats = items.map((it) => {

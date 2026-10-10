@@ -261,16 +261,13 @@ export const SITES = {
       { kind: 'droidplatform', at: [200, 52], abs: true, y: 1.3 },
       { kind: 'droidplatform', at: [290, 322], abs: true, y: 1.3 },
     ],
-    // the drop's crater rocks among the built ones (flora.js, gameFlora.js)
-    flora: { biome: 'none', game: 'volcanic' },
     scatter: [
-      // (the game's living world: rockmites on the cooled rock)
-      { kind: 'game', model: 'game:objects/livingworld/rockmite_01/rockmite_01_mesh', n: 30, within: [8, 160], scale: [0.8, 1.4], solid: false, shadow: false },
       { kind: 'lavacrack', n: 900, within: [10, 585], scale: [1.4, 3.4], solid: false },
       { kind: 'blackspire', n: 90, within: [60, 580], scale: [1.5, 5], opts: { color: '#1c1818' } },
       { kind: 'basalt', n: 90, within: [30, 560], scale: [0.8, 2.2] },
-      { kind: 'rock', n: 120, within: [20, 560], scale: [0.6, 2.8], opts: { color: '#2a2422', sharp: 0.7 } },
-      { kind: 'stones', n: 240, within: [8, 420], scale: [0.25, 0.8], solid: false, opts: { color: '#2e2624' } },
+      // (Sullust's crater rocks and the sulphur flats' stones, the drop's, on mid and up)
+      { kind: 'rock', model: 'game:objects/nature/volcanic/sullustan/volcaniccrater_rockmedium_01/volcaniccrater_rockmedium_01_mesh', n: 120, within: [20, 560], scale: [0.6, 2.8], opts: { color: '#2a2422', sharp: 0.7 } },
+      { kind: 'stones', model: 'game:objects/nature/volcanic/_volcanicsulfur/_meshscatter/ms_volcanicsulfur_rockfrailsmall_01/ms_volcanicsulfur_rockfrailsmall_01_mesh', n: 240, within: [8, 420], scale: [0.25, 0.8], solid: false, opts: { color: '#2e2624' } },
     ],
     life: [
       { kind: 'obiwan', at: [300, 364], face: 3.14, still: true, blade: { color: '#4a8cff' }, name: 'Obi-Wan Kenobi', says: ['It’s over, Anakin. I have the high ground.', 'Don’t try it.', 'You were the Chosen One! It was said that you would destroy the Sith, not join them!', 'You were my brother, Anakin. I loved you.'] },

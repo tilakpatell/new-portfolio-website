@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resetDevice } from '../../../../lib/device';
 import USED from '../../../../data/bf2017/library-used.json';
 import { createPlacer } from '../placer';
 import { MODELS, gameKind, gameModel, gameUrl, isGame, rowFor, slugOf } from './bf2017-library';
@@ -57,7 +58,15 @@ describe('the drop’s object library, placeable by name', () => {
 });
 
 describe('a placer asked for a library object that is not there', () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    resetDevice();
+  });
+  const at = (quality) => {
+    vi.stubGlobal('window', { location: { search: `?quality=${quality}`, hash: '' }, localStorage: { getItem: () => null } });
+    resetDevice();
+  };
   const world = () => ({ heightAt: () => 0, solids: { box: vi.fn(), circle: vi.fn() }, floors: [] });
 
   it('draws nothing, put or scattered, and says so once', async () => {
@@ -68,5 +77,16 @@ describe('a placer asked for a library object that is not there', () => {
     await placer.ready;
     expect(placer.group.children).toHaveLength(0);
     expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('scatters a row that only adds one (kind `game`) on high and up, never on the phones’ tiers', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    for (const quality of ['low', 'mid']) {
+      at(quality);
+      const placer = createPlacer({ parent: new THREE.Group(), kit: null, world: world(), models: { [gameKind(NAME)]: { url: '/x.glb' } } });
+      expect(await placer.scatter('game', [{ at: [0, 0] }], { model: gameKind(NAME) })).toBeNull();
+      expect(placer.group.children).toHaveLength(0);
+    }
+    expect(warn).not.toHaveBeenCalled();
   });
 });
