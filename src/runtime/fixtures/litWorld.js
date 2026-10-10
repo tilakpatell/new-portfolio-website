@@ -201,7 +201,7 @@ export default {
       step(dt) {
         cube.rotation.y += dt;
         if (camVel.x) camera.position.addScaledVector(camVel, dt);
-        probe.particles?.step(dt, camVel);
+        probe.particles?.step(dt);
         light?.update(dt, camera);
       },
       draw({ renderer: r }) {

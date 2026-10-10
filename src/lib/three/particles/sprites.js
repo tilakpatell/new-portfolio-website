@@ -23,7 +23,7 @@
 // - frames: UpdateTextureCoordsData's frame count over the sheet's grid,
 //   at FramesPerSecond (from a random start where the record says), or once
 //   over the life when it gives no rate.
-// - soft against the depth buffer (three's softParticles) where the record
+// - soft against the depth buffer (three's softParticles, written out) where the record
 //   gives SoftParticleDistance; the scene's fog node applies to the
 //   alpha-blended ones (the corners are in world space, so positionView and
 //   positionWorld are the particle's).
@@ -61,8 +61,21 @@ export async function createShared() {
   };
 }
 
-let soft = null;
-const softParticles = () => (soft ??= import('three/addons/tsl/utils/SoftParticles.js').then((m) => m.softParticles));
+// Soft against the depth buffer: three's softParticles (addons/tsl/utils/
+// SoftParticles.js) written out here, since its contrast curve names a
+// parameter `input`, a reserved word in GLSL, and fails to compile on the
+// node renderer over WebGL 2 (r186). The same sum: the gap between the
+// scene's depth and the quad's over `distance`, through a contrast curve
+// of power 2.
+function softFade(tsl, opacity, distance) {
+  const { viewportDepthTexture, perspectiveDepthToViewZ, cameraNear, cameraFar, positionView, select } = tsl;
+  const sceneZ = perspectiveDepthToViewZ(viewportDepthTexture(), cameraNear, cameraFar);
+  const gap = positionView.z.sub(sceneZ).div(distance).saturate();
+  const upper = gap.greaterThan(0.5);
+  const folded = select(upper, gap.oneMinus(), gap);
+  const curve = folded.mul(2).saturate().pow(2).mul(0.5);
+  return opacity.mul(select(upper, curve.oneMinus(), curve));
+}
 
 // where on the sheet: frame k of a [columns, rows] grid, counted from the top row
 function frameUv(tsl, uvNode, frame, [cols, rows]) {
@@ -132,10 +145,7 @@ export async function createSpriteMesh(em, sim, { shared, map = null } = {}) {
     .mul(clamp(curveNode(tsl, em.alpha?.curve ?? 1, t, r), 0, 1))
     .mul(clamp(curveNode(tsl, em.transparency ?? 1, t, r), 0, 1))
     .mul(alive);
-  if (em.soft > 0) {
-    const fade = await softParticles();
-    alpha = fade({ opacity: alpha, distance: em.soft });
-  }
+  if (em.soft > 0) alpha = softFade(tsl, alpha, em.soft);
 
   const material = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
   material.positionNode = corner;

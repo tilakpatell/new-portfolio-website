@@ -18,14 +18,23 @@
         "backend": "nodes-webgl"
       },
       "simMode": "cpu",
-      "stats": null,
-      "envDiff": 11.07,
-      "programsBefore": 29,
-      "programsAfter": 29,
+      "stats": {
+        "kinds": 3,
+        "instances": 5,
+        "running": 4,
+        "culled": 0,
+        "drawn": 5,
+        "dispatches": 0,
+        "declined": 0,
+        "unknown": 0
+      },
+      "envDiff": 11.09,
+      "programsBefore": 49,
+      "programsAfter": 49,
       "frames": 5,
-      "mean": 2972.4,
-      "median": 3013,
-      "p95": 3146.5
+      "mean": 4658.8,
+      "median": 4665.4,
+      "p95": 4988.3
     }
   ]
 }

@@ -46,6 +46,10 @@
 // emitterRefs(blueprint) → [name] ; readVariants(blueprint, refs) → variants
 // effectJson(blueprint, docs, index) → the effect's JSON (docs: name → doc)
 // fileName(effectName) → '<last part>.json'
+// sheetSources(texture) → the export's files for a texture, best first: the
+//   master PNG (`web/textures/<lower>.png`), the encoded KTX2
+//   (`web_opt/textures/<lower>.ktx2`, then the bucket's `web/textures/<lower>.ktx2`)
+// sheetSizes(width) → the widths a source `width` across is written at
 
 import { gridFromName } from '../../src/lib/three/fx/flipbook.js';
 
@@ -399,4 +403,15 @@ export function rawReport(effects) {
     for (const e of fx.emitters) for (const [type, fields] of Object.entries(e.raw ?? {})) for (const f of Object.keys(fields)) (seen[`${type}.${f}`] ??= new Set()).add(fx.name);
   }
   return Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v]]));
+}
+
+export function sheetSources(texture) {
+  const p = String(texture).toLowerCase();
+  return [`web/textures/${p}.png`, `web_opt/textures/${p}.ktx2`, `web/textures/${p}.ktx2`];
+}
+
+// 512, 1024 and 2048, none above the source (a smaller source at its own width)
+export function sheetSizes(width) {
+  const sizes = [512, 1024, 2048].filter((s) => s <= width);
+  return sizes.length ? sizes : [width];
 }

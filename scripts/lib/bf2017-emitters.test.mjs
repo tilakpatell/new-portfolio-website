@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { evalCurve } from '../../src/lib/three/particles/curves.js';
-import { curveOf, effectJson, emitterRefs, nearestDocument, rawReport, readEmitter, readIndex, readVariants } from './bf2017-emitters.mjs';
+import { curveOf, effectJson, sheetSizes, sheetSources, emitterRefs, nearestDocument, rawReport, readEmitter, readIndex, readVariants } from './bf2017-emitters.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/bf2017/fx/web');
 const index = readIndex(readFileSync(join(ROOT, 'data.tsv'), 'utf8'));
@@ -130,5 +130,16 @@ describe('readEmitter', () => {
   it('defaults an empty document', () => {
     const e = readEmitter({ Objects: [] }, 'em_x');
     expect(e).toMatchObject({ name: 'em_x', kind: 'quad', maxCount: 0, stretch: null, gravity: null, graph: false });
+  });
+});
+
+describe('sheets', () => {
+  it('finds a texture’s master first, then its KTX2', () => {
+    expect(sheetSources('FX/Textures/Snow/T_SnowFlake_4x1_01_D')).toEqual(['web/textures/fx/textures/snow/t_snowflake_4x1_01_d.png', 'web_opt/textures/fx/textures/snow/t_snowflake_4x1_01_d.ktx2', 'web/textures/fx/textures/snow/t_snowflake_4x1_01_d.ktx2']);
+  });
+  it('writes 512, 1024, 2048, none above the source', () => {
+    expect(sheetSizes(4096)).toEqual([512, 1024, 2048]);
+    expect(sheetSizes(1024)).toEqual([512, 1024]);
+    expect(sheetSizes(256)).toEqual([256]);
   });
 });

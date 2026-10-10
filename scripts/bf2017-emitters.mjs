@@ -8,6 +8,7 @@
 //
 //   node scripts/bf2017-emitters.mjs <effect name>… | --level hoth [--map levels/mp/hoth_01]
 //     [--root C:/Users/tilak/Downloads/BF2_Extract] [--bucket] [--out src/data/bf2017/fx] [--dry]
+//     [--sheets [--sheets-out public/models/galaxy/bf2017/fx]]
 //
 // An effect is named as the export names it (`FX/Ambient/Snow/FX_Snow_
 // FallingSnow_01_Hoth`) or by its last part. --level reads the map's extras
@@ -20,12 +21,22 @@
 // when it is, for the EmitterGraphs' replacements), with SUPABASE_URL and
 // BF2017_KEY (or SUPA_KEY) from .env.local or the environment, never
 // printed. The fixtures: --root scripts/fixtures/bf2017/fx.
+//
+// --sheets (with --root): each texture the effects name, from the export's
+// master PNG or its KTX2 unpacked (phase 0's bf2017-textures.mjs), as WebP
+// sprite sheets at 512, 1024 and 2048 across (src/lib/three/particles/
+// sheets.js names them), each under 256 KB (the quality stepped down until
+// it is; a size that will not fit is left out and said), and `fx.json`
+// beside them; the set the effects read weighs under 6 MB per tier or the
+// script says by how much. Then scripts/assets-upload.mjs --dry for the
+// bucket's side.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
-import { effectJson, emitterRefs, fileName, nearestDocument, rawReport, readIndex } from './lib/bf2017-emitters.mjs';
+import { effectJson, emitterRefs, fileName, nearestDocument, rawReport, readIndex, sheetSizes, sheetSources } from './lib/bf2017-emitters.mjs';
+import { SET_CAP, SHEET_CAP, SHEET_SIZE, setWeight, sheetFile } from '../src/lib/three/particles/sheets.js';
 import { dataPath, objectUrl } from './lib/bf2017-paths.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,7 +50,7 @@ const stop = (why, code = 2) => {
   console.error(why);
   process.exit(code);
 };
-const flagged = new Set(['level', 'map', 'root', 'out'].flatMap((k) => [arg(k)]).filter(Boolean));
+const flagged = new Set(['level', 'map', 'root', 'out', 'sheets-out'].flatMap((k) => [arg(k)]).filter(Boolean));
 const names = argv.filter((a) => !a.startsWith('--') && !flagged.has(a));
 const level = arg('level');
 if (!names.length && !level) stop('usage: node scripts/bf2017-emitters.mjs <effect>… | --level <world> [--map levels/mp/<map>] [--root <export>] [--bucket] [--out dir] [--dry]');
@@ -163,3 +174,58 @@ mkdirSync(outDir, { recursive: true });
 for (const fx of effects) writeFileSync(join(outDir, fileName(fx.path)), `${JSON.stringify(fx, null, 1)}\n`);
 writeFileSync(join(outDir, '_textures.json'), `${JSON.stringify(textures, null, 1)}\n`);
 console.log(`wrote ${effects.length} effects and _textures.json to ${outDir}`);
+
+if (argv.includes('--sheets')) await writeSheets(textures, effects);
+
+// ── the sheets ──
+async function writeSheets(textures, effects) {
+  const root = arg('root');
+  if (!root) stop('--sheets reads the export: pass --root');
+  const { sharpOf, unpackKtx2 } = await import('./lib/bf2017-textures.mjs');
+  const sharp = sharpOf();
+  const dir = arg('sheets-out') ?? join(ROOT, 'public/models/galaxy/bf2017/fx');
+  const scratch = join(ROOT, 'lab/assets/bf2017/fx-unpacked');
+  const manifestFile = join(dir, 'fx.json');
+  const manifest = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, 'utf8')) : { format: 1, sheets: {} };
+  const additive = new Set(effects.flatMap((fx) => fx.emitters.filter((e) => e.additive).map((e) => e.texture)));
+  const grids = new Map(effects.flatMap((fx) => fx.emitters.map((e) => [e.texture, e.uv.grid])));
+  mkdirSync(dir, { recursive: true });
+  const absent = [];
+  for (const texture of Object.keys(textures)) {
+    const found = sheetSources(texture).find((p) => existsSync(join(root, p)));
+    if (!found) {
+      absent.push(texture);
+      continue;
+    }
+    const png = found.endsWith('.png') ? join(root, found) : await unpackKtx2(join(root, found), scratch);
+    const { width, height } = await sharp(png).metadata();
+    // (the longer side to the size: a 4 by 1 strip stays a strip)
+    const fit = (size) => (width >= height ? { width: size } : { height: size });
+    const entry = { stem: sheetFile(texture, 0).replace(/\.0\.webp$/, ''), grid: grids.get(texture) ?? [1, 1], sizes: [], bytes: {}, additive: additive.has(texture), from: found };
+    for (const size of sheetSizes(Math.max(width, height))) {
+      let q = 86;
+      let buf = null;
+      while (q >= 40) {
+        buf = await sharp(png).resize(fit(size)).webp({ quality: q, alphaQuality: Math.min(100, q + 8) }).toBuffer();
+        if (buf.length <= SHEET_CAP) break;
+        q -= 8;
+      }
+      if (buf.length > SHEET_CAP) {
+        console.log(`  ${texture} at ${size}: ${(buf.length / 1024).toFixed(0)} KB even at quality 40, left out`);
+        continue;
+      }
+      writeFileSync(join(dir, sheetFile(texture, size)), buf);
+      entry.sizes.push(size);
+      entry.bytes[size] = buf.length;
+    }
+    manifest.sheets[texture] = entry;
+    console.log(`  ${texture}: ${entry.sizes.map((s) => `${s} ${(entry.bytes[s] / 1024).toFixed(0)} KB`).join(', ')} (from ${found})`);
+  }
+  writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 1)}\n`);
+  if (absent.length) console.log(`no source for ${absent.length}: ${absent.join(', ')}`);
+  for (const tier of Object.keys(SHEET_SIZE)) {
+    const { bytes, missing } = setWeight(manifest, Object.keys(textures), tier);
+    console.log(`  the set at ${tier}: ${(bytes / 1048576).toFixed(2)} MB${bytes > SET_CAP ? ` — over the 6 MB cap by ${((bytes - SET_CAP) / 1048576).toFixed(2)} MB` : ''}${missing.length ? ` (${missing.length} without a sheet)` : ''}`);
+  }
+  console.log(`wrote ${manifestFile}; next: node scripts/assets-upload.mjs --dry`);
+}
