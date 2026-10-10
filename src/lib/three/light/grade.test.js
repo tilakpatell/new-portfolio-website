@@ -76,18 +76,23 @@ describe('the sky textures', () => {
     expect(cloudShadowOf({ OutdoorLightComponentData: [{ CloudShadowTexture: null }] })).toBeNull();
   });
 
-  it("puts the record's sun on the panorama's painted sun (u 0.225, v 0.84 measured on the texture)", () => {
+  it("maps the panorama as the upper hemisphere's equirect: the record's sun on the painted sun's azimuth (u 0.225 measured)", () => {
     const o = sunny.OutdoorLightComponentData[0];
-    const [u, v] = panoramaUV(sunDir(o.SunRotationX, o.SunRotationY), panoramaOf(sunny));
+    const sun = sunDir(o.SunRotationX, o.SunRotationY);
+    const [u, v] = panoramaUV(sun, panoramaOf(sunny));
     expect(u).toBeCloseTo(0.225, 2);
-    expect(Math.abs(v - 0.84)).toBeLessThan(0.02);
-    // the zenith at the top, the horizon at the foot
+    expect(v).toBeCloseTo(0.01 + 0.99 * (1 - o.SunRotationY / 90), 6);
+    // the zenith at the top, the horizon at the foot, below it the foot still
     expect(panoramaUV([0, 1, 0], panoramaOf(sunny))[1]).toBeCloseTo(0.01, 6);
     expect(panoramaUV([1, 0, 0], panoramaOf(sunny))[1]).toBeCloseTo(1, 6);
-    // the gradient: the sky's half above, the ground's below, the same sun
-    const [gu, gv] = gradientUV(sunDir(o.SunRotationX, o.SunRotationY), 0.963);
+    expect(panoramaUV([1, -0.5, 0], panoramaOf(sunny))[1]).toBeCloseTo(1, 6);
+    // 6° up is 6/90 of the way: the sky's low band keeps its rows
+    expect(1 - panoramaUV(sunDir(0, 6), panoramaOf(sunny))[1]).toBeCloseTo((0.99 * 6) / 90, 6);
+    // the gradient: the whole sphere, the same rotation
+    const [gu, gv] = gradientUV(sun, 0.963);
     expect(gu).toBeCloseTo(u, 6);
-    expect(gv).toBeCloseTo(0.5 * Math.cos((o.SunRotationY * Math.PI) / 180), 6);
+    expect(gv).toBeCloseTo(0.5 - o.SunRotationY / 180, 6);
+    expect(gradientUV([0, 1, 0], 0.963)[1]).toBeCloseTo(0, 6);
     expect(gradientUV([0, -1, 0], 0.963)[1]).toBeCloseTo(1, 6);
   });
 

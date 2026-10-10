@@ -40,15 +40,19 @@
 //   (2,048², BC1: no alpha, so its RGBM's multiplier is 1 throughout),
 //   CloudShadowIsTopDown, CloudShadowAddressingMode TaWrap.
 //
-// The panorama's mapping, read off the texture (not documented): the upper
-// hemisphere, u = fract(PanoramicRotation − azimuth / 2π) (the rotation in
-// turns, the azimuth from +Z toward +X as entry.js's sunDir) and
-// v = MinY + (MaxY − MinY) · cos(elevation), the zenith at the top. With it
-// the record's sun (azimuth 265.61°, elevation 32.9°) lands on the painted
-// sun, measured at u 0.225, v 0.84; a plain equirect (v linear in the
-// elevation) would put the painted sun at 16°. The fog gradient is the
-// whole sphere at the same rotation, the sky's half above v 0.5 by the same
-// cosine and the ground's mirrored below.
+// The panorama's mapping, read off the textures (not documented): the
+// upper hemisphere as an equirect, u = fract(PanoramicRotation − azimuth / 2π)
+// (the rotation in turns, the azimuth from +Z toward +X as entry.js's
+// sunDir: the record's sun, azimuth 265.61°, lands on the painted sun's
+// u 0.225 exactly) and v = MinY + (MaxY − MinY) · (1 − elevation / 90°), the
+// zenith at the top. The painted sun of Hoth's day stands at about 16°
+// (v 0.82) against the record's 32.9°: v = cos(elevation) would put it at
+// the record's, but squeezes the sky's lowest 12° into 11 of the 512 rows
+// and drew the fixture's horizon as vertical smears; Hoth's sunset (its
+// sun at 10.25°, its glow at the horizon's foot) fits the equirect. So the
+// record's disc is drawn at the record's sun and the painted glow stays
+// where it was painted. The fog gradient is the whole sphere at the same
+// rotation, the zenith at its top and the nadir at its foot.
 //
 // GAUSSIAN_LEVELS, BLOOM_FACTORS, GAME_LUT_SIZE, RGBM_RANGE
 // gradeOf(record, { name }) → { tonemap, lut, bloom, ao, _source } | null
@@ -182,18 +186,20 @@ const unit = (d) => {
   return [d[0] / l, d[1] / l, d[2] / l];
 };
 
+// the view's elevation as a share of a quarter turn: 0 at the horizon, 1 at the zenith
+const lift = (d) => Math.asin(Math.max(-1, Math.min(1, d[1]))) / (Math.PI / 2);
+
 export function panoramaUV(dir, p) {
   const d = unit(dir);
   const [minX, minY, maxX, maxY] = p.uv;
   const u = minX + (maxX - minX) * fract(p.rotation - azimuth(d));
-  const v = minY + (maxY - minY) * Math.hypot(d[0], d[2]);
+  const v = minY + (maxY - minY) * (1 - Math.max(0, lift(d)));
   return [u, v];
 }
 
 export function gradientUV(dir, rotation = 0) {
   const d = unit(dir);
-  const c = 0.5 * Math.hypot(d[0], d[2]);
-  return [fract(rotation - azimuth(d)), d[1] >= 0 ? c : 1 - c];
+  return [fract(rotation - azimuth(d)), 0.5 - 0.5 * lift(d)];
 }
 
 export function rgbmDecode([r, g, b, a = 1]) {

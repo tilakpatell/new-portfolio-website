@@ -265,6 +265,11 @@ export default {
       contact(on) {
         for (const p of light?.parts.contact.planes ?? []) p.material.visible = on;
       },
+      // (lane Q6) the post chain on or off without rebuilding it: the sky's
+      // horizon measured under the same output transform either way
+      setPost(on) {
+        opts.post = on;
+      },
       // the environment on or off, for A2's two shots
       setEnv(on) {
         scene.environment = on ? envTex : null;
