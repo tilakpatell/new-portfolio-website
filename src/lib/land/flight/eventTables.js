@@ -54,7 +54,7 @@ export const EVENTS = {
   rampage: { play: 'band', n: 10, speed: 8, hostile: true, converge: true, ttl: 90 },
   purge: { play: 'band', n: 12, speed: 7, hostile: true, converge: true, dusk: 0.55, at: 'sundown', ttl: 180 },
   // the ground itself, and the sky
-  eruption: { play: 'eruption', ttl: 60, fall: 'ash', vis: 900, tint: '#2a201c' },
+  eruption: { play: 'eruption', ttl: 60, fall: 'ash', vis: 2200, tint: '#3a2a24' },
   surge: { play: 'surge', rise: 4, ttl: 40 },
   quake: { play: 'quake', ttl: 30 },
   shower: { play: 'shower', ttl: 45 },

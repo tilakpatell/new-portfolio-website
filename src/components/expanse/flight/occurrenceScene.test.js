@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { withOccurrences } from './occurrenceScene';
+import { createOccurrenceDraw, withOccurrences } from './occurrenceScene';
 import { makePlay } from './eventPlays';
 import { EVENTS, eventsFor } from '../../../lib/land/flight/eventTables';
 import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
@@ -69,5 +69,14 @@ describe('the occurrences drawn', () => {
     expect(drawn).toBe(view.occurrences.placed().length);
     expect(drawn).toBeGreaterThan(0);
     view.dispose();
+  });
+
+  it('draws a camp’s shot as events.js hands it over', () => {
+    const view = viewOf();
+    const draw = createOccurrenceDraw(view, { spec: planetSpecOf('tatooine'), field: flat });
+    draw.fire({ from: [0, 10, 0], to: [100, 60, 0] });
+    draw.step(ship, [0, 0, 0], 0.1, null);
+    expect(draw.stats().bolts).toBe(1);
+    draw.dispose();
   });
 });

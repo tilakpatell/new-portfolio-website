@@ -198,12 +198,12 @@ function bandPlay(ev, ctx, ship0) {
 // ── rocks: thrown from a cone, or falling from the sky ──
 function rocksPlay(ev, ctx, { from, every, burst, look, sky }) {
   const rand = seeded(ev.seed);
-  const draw = pool(tinted(new THREE.IcosahedronGeometry(sky ? 3 : 4, 0), sky ? '#3a3430' : '#2a1a14'), ROCKS, ctx.root, ctx.material);
+  const draw = pool(tinted(new THREE.IcosahedronGeometry(sky ? 4 : 8, 0), sky ? '#3a3430' : '#2a1a14'), ROCKS, ctx.root, ctx.material);
   const rocks = [];
   let next = 0;
   const extras = [];
   if (!sky) {
-    const cone = new THREE.Mesh(new THREE.SphereGeometry(40, 16, 10), glow('#ff6a20'));
+    const cone = new THREE.Mesh(new THREE.SphereGeometry(70, 16, 10), glow('#ff6a20'));
     extras.push(cone);
     ctx.root.add(cone);
   }

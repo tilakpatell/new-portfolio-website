@@ -223,7 +223,8 @@ export function createOccurrenceDraw(view, { spec, field }) {
     occurrences(list) {
       placed = list;
     },
-    fire: ctx.fire,
+    // (events.js's shape, { from, to }; the plays call ctx.fire with the two apart)
+    fire: ({ from, to }) => ctx.fire(from, to),
     begin(ev) {
       play?.dispose();
       playing = ev;
@@ -316,9 +317,12 @@ export function withOccurrences(spec, view) {
   const dispose = view.dispose;
   view.occurrences = layer;
   let warned = false;
+  const frames = [];
+  layer.frameMs = () => ({ worst: Math.max(0, ...frames), mean: frames.reduce((a, b) => a + b, 0) / Math.max(1, frames.length) });
   view.place = (s, at, dt = 0) => {
     place(s, at, dt);
     view.lastShip = s;
+    const t0 = performance.now();
     try {
       layer.step(s, at, dt);
     } catch (err) {
@@ -326,6 +330,10 @@ export function withOccurrences(spec, view) {
       if (!warned) console.warn('flight: the occurrences failed a frame', err);
       warned = true;
     }
+    // (the occurrences' own share of the frame, for the perf probe's notes: the worst of the last second's)
+    const ms = performance.now() - t0;
+    frames.push(ms);
+    if (frames.length > 60) frames.shift();
   };
   view.dispose = () => {
     layer.dispose();
