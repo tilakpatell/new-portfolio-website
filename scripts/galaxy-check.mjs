@@ -10,6 +10,7 @@
 //   QUALITY=mid … (the device tier: ?quality=), SHIP=falcon …, JSON=1 …
 //   OATH='{"since":1,"war":"gcw","oaths":{"gcw":{"side":"rebel","sworn":1}}}' … (sworn, at the held clock's campaign)
 //   ANGLE=d3d11 … (draw on the graphics chip, not in software)
+//   PHASE_WAIT=900000 … (ms for the world to come up: a level pack in software GL takes minutes)
 //   BUDGET=1 … (or BUDGET=path/to/baseline.json): each world held to its
 //     quality level's row of the budget table (src/lib/budgets.js, the
 //     quality modes design: docs/superpowers/specs/2026-10-07-quality-modes-
@@ -100,7 +101,7 @@ for (const id of list.split(',')) {
   await page.goto(`${base}/?quality=${quality}&calibrate=off#${path}`, { waitUntil: 'domcontentloaded' });
   const ready = mode === 'surface' ? () => Boolean(window.__surfaceScene?.renderer) : () => typeof window.__galaxy === 'function' && Boolean(window.__galaxy().system);
   try {
-    await page.waitForFunction(ready, null, { timeout: 180000 });
+    await page.waitForFunction(ready, null, { timeout: Number(process.env.PHASE_WAIT ?? 180000) });
   } catch {
     results.push({ id, error: 'timed out waiting for the scene', errors });
     await ctx.close();
@@ -179,6 +180,8 @@ for (const id of list.split(',')) {
               ratio: renderer.getPixelRatio(),
               // (the ground war's update, smoothed: ground/groundScene.js's ms)
               ground: surface && window.__surfaceScene.groundWar ? +window.__surfaceScene.groundWar.ms.toFixed(2) : null,
+              // (a level world's collision: surface/level/levelPhysics.js's stats, when it has an engine)
+              physics: surface && typeof window.__surfaceScene.physics === 'function' ? (({ dropped, ...rest }) => ({ ...rest, dropped: dropped?.length ?? 0 }))(window.__surfaceScene.physics() ?? {}) : null,
             });
           }
         };
@@ -190,6 +193,10 @@ for (const id of list.split(',')) {
   await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });
   results.push({ id, loaded: +loaded.toFixed(1), ...stats, glbMB: +(glbBytes / 1e6).toFixed(1), errors: errors.slice(0, 5) });
   console.log(`${id.padEnd(10)} calls ${String(stats.calls).padStart(4)}  tris ${String(stats.triangles).padStart(7)}  geo ${String(stats.geometries).padStart(4)}  tex ${String(stats.textures).padStart(3)}  prog ${String(stats.programs).padStart(3)}  frame p50 ${stats.p50} p95 ${stats.p95} ms${stats.ground != null ? `  ground ${stats.ground} ms` : ''}  load ${loaded.toFixed(1)} s${errors.length ? `  errors ${errors.length}` : ''}`);
+  if (stats.physics) {
+    const p = stats.physics;
+    console.log(`${''.padEnd(10)} physics cells ${p.cells}  bodies ${p.bodies}  colliders ${p.colliders}  shapes ${p.uniqueShapes}  trimesh tris ${p.triangles}  heightfields ${p.heightfields}  dropped ${p.dropped}  step ${(+p.stepMs || 0).toFixed(2)} ms`);
+  }
   await ctx.close();
 }
 await browser.close();

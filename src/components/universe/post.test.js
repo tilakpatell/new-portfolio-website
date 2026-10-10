@@ -237,3 +237,24 @@ describe("the map's lens", () => {
     expect(MAP_LENS.contrast).toBeLessThanOrEqual(0.1);
   });
 });
+
+describe('a game’s grade', () => {
+  it('samples its LUT in the final pass, the house’s contrast and saturation stepping aside, and gives them back', () => {
+    const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera());
+    const u = gradeOf(post).uniforms;
+    expect(u.uLutMix.value).toBe(0);
+    const lut = new THREE.Data3DTexture(new Uint8Array(17 * 17 * 17 * 4), 17, 17, 17);
+    post.grading({ lut, size: 17 });
+    expect(u.tLut.value).toBe(lut);
+    expect(u.uLutSize.value).toBe(17);
+    expect(u.uLutMix.value).toBe(1);
+    expect(u.uContrast.value).toBe(0);
+    expect(u.uSat.value).toBe(1);
+    expect(gradeOf(post).material.fragmentShader).toContain('tLut');
+    post.grading(null);
+    expect(u.uLutMix.value).toBe(0);
+    expect(u.tLut.value).toBeNull();
+    expect(u.uContrast.value).toBeCloseTo(0.07);
+    expect(u.uSat.value).toBeCloseTo(1.06);
+  });
+});

@@ -184,6 +184,11 @@ const FINAL = {
     uToe: { value: new THREE.Vector2(0, 0) },
     uDefocus: { value: 0 },
     uTexel: { value: new THREE.Vector2(1, 1) }, // (a pixel of what's read, as uv)
+    // a game's grading LUT (lib/three/gameLut.js), over the finished colour
+    // as the game grades its own: off (mix 0) unless a world has one
+    tLut: { value: null },
+    uLutSize: { value: 2 },
+    uLutMix: { value: 0 },
   },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `
@@ -199,6 +204,8 @@ const FINAL = {
     uniform float uNoiseSize, uGrain, uAberration, uExposure;
     uniform vec2 uToe, uTexel;
     uniform float uDefocus;
+    uniform highp sampler3D tLut;
+    uniform float uLutSize, uLutMix;
     varying vec2 vUv;
     // the blue noise at this pixel, moved by shift texels (0…1)
     float noise(vec2 shift) { return texture2D(tNoise, (gl_FragCoord.xy + shift) / uNoiseSize).r; }
@@ -274,6 +281,11 @@ const FINAL = {
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = max(mix(vec3(l), c, uSat), 0.0);
       c = mix(c, c * c * (3.0 - 2.0 * c), uContrast);
+      if (uLutMix > 0.0) {
+        // (read at the texels' middles, so 0 and 1 land on the cube's ends)
+        vec3 uvw = (c * (uLutSize - 1.0) + 0.5) / uLutSize;
+        c = mix(c, texture(tLut, uvw).rgb, uLutMix);
+      }
       vec2 q = vUv - 0.5;
       q.x *= uAspect;
       c *= 1.0 - (uVignette + uRush * 0.22) * smoothstep(0.35 - uRush * 0.1, 1.1, length(q) * 1.25);
@@ -334,6 +346,7 @@ export function createPost(renderer, scene, camera, { small = false, bloom: look
   let level = 0; // lib/three/pace's step
   let aberrationWant = 0;
   let defocusWant = 0;
+  let houseGrade = null; // (the house's contrast and saturation, while a game's LUT stands in)
 
   let on = true;
   let glow = true; // bloom, until lite() takes it off
@@ -463,6 +476,29 @@ export function createPost(renderer, scene, camera, { small = false, bloom: look
     // the exposure, a multiplier before the tone map (lib/three/exposure)
     exposure(k) {
       grade.uniforms.uExposure.value = k;
+    },
+    // a game's grade: its LUT (a Data3DTexture of size³, sRGB in and out)
+    // over the finished colour; the house's own contrast and saturation
+    // step aside while it's on, the LUT carrying the game's. null: off, and
+    // the house's back.
+    grading(g) {
+      const u = grade.uniforms;
+      if (g?.lut) {
+        houseGrade ??= { contrast: u.uContrast.value, sat: u.uSat.value };
+        u.tLut.value = g.lut;
+        u.uLutSize.value = g.size;
+        u.uLutMix.value = g.mix ?? 1;
+        u.uContrast.value = 0;
+        u.uSat.value = 1;
+      } else {
+        u.tLut.value = null;
+        u.uLutMix.value = 0;
+        if (houseGrade) {
+          u.uContrast.value = houseGrade.contrast;
+          u.uSat.value = houseGrade.sat;
+          houseGrade = null;
+        }
+      }
     },
     // the toe: under lo to black, over hi as drawn (hi 0: off, the default)
     setToe(lo, hi) {

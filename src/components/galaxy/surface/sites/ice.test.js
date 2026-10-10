@@ -2,6 +2,7 @@ import { onSite } from '../../../../../scripts/lib/asset-manifest.mjs';
 import PUBLISHED from '../../../../data/galaxyAssets.json';
 import { describe, expect, it } from 'vitest';
 import { siteOf } from '.';
+import { SITES } from './ice';
 import { CREW, filesOf } from '../crewList';
 import { SURFACE_MODELS, modelUrlFor } from '../catalog';
 import { WALKERS } from '../walkers';
@@ -53,5 +54,23 @@ describe('Hoth, every one of them a model', () => {
   });
   it('everyone walks inside the world’s edge (past it an actor can’t take a step)', () => {
     for (const a of hoth.life.filter((a) => a.path && !a.zone)) for (const [x, z] of a.path) expect(Math.hypot(x, z), `${a.kind} at ${x}, ${z}`).toBeLessThan(hoth.reach - 5);
+  });
+});
+
+const near = (a, b, r) => Math.hypot(a[0] - b[0], a[1] - b[1]) < r;
+
+describe('Hoth on the game’s level', () => {
+  const hoth = SITES.hoth;
+  const door = hoth.zones.find((z) => z.id === 'echo').door.at;
+
+  it('goes into Echo Base through the game’s west mouth', () => {
+    expect(hoth.level).toBe('hoth');
+    expect(near(door, [-20, -35], 10)).toBe(true);
+  });
+
+  it('has the base’s people about that mouth, not where the built base stood', () => {
+    const officer = hoth.life.find((a) => a.id === 'officer');
+    expect(near(officer.at, door, 60)).toBe(true);
+    for (const a of hoth.life.filter((x) => /Echo Base crew|Astromech/.test(x.name ?? ''))) expect(near(a.at, door, 60), a.name).toBe(true);
   });
 });

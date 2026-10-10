@@ -10,6 +10,21 @@
     "as": "the idle, walk and run Thor and Black Widow move with",
     "file": "/models/sketchfab/avengers/thor.glb"
   },
+  "level-hoth": {
+    "title": "Star Wars Battlefront II (2017): levels/mp/hoth_01",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "hoth: the game's level",
+    "paths": ["public/models/galaxy/bf2017/levels/hoth/"],
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "avengers-anim-spiderman-advanced": {
     "title": "Spider-Man 2 Advanced Suit 2.0 PS5",
     "author": "jerrylxia",

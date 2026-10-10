@@ -61,7 +61,8 @@ describe('the flight’s planets, composed', () => {
 
   // the ground round each walkable site is the site's own ground
   it.each(GALAXY.filter((id) => SITES[id]?.ground?.layers?.length))('%s: the landing biome begins with the site’s own layers', (id) => {
-    const site = SITES[id].ground.layers;
+    // (a site on the game's level keeps its own land for the flight: ground.flight)
+    const site = SITES[id].ground.flight ?? SITES[id].ground.layers;
     const relief = planetSpecOf(id).biomes[0].relief;
     expect(relief.slice(0, site.length).map((l) => l.type)).toEqual(site.map((l) => l.type));
     expect(relief.slice(0, site.length)).toEqual(site.map((l) => ({ ...l })).map((l) => expect.objectContaining(l)));
@@ -71,7 +72,7 @@ describe('the flight’s planets, composed', () => {
   // and wears the site's own ground look: Mos Eisley's sand from the air is the sand you walk on
   it.each(GALAXY)('%s: the ground look is the site’s own', (id) => {
     const look = { ...SITES[id].ground };
-    for (const k of ['layers', 'flats', 'pits', 'seed', 'base']) delete look[k];
+    for (const k of ['layers', 'flight', 'flats', 'pits', 'seed', 'base']) delete look[k];
     expect(SITE_GROUND[id]).toEqual(look);
     if (id !== 'coruscant') expect(planetSpecOf(id).ground).toEqual(look);
     if (SITES[id].water && id !== 'bespin') expect(planetSpecOf(id).water).toEqual({ kind: SITES[id].water.kind, level: SITES[id].water.level });

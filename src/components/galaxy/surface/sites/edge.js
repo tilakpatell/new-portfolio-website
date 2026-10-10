@@ -291,6 +291,8 @@ export const SITES = {
     ],
   },
   scarif: {
+    // lit as the game lights its level (src/data/bf2017/light/scarif.json, gameLit.js)
+    gameLight: 'scarif',
     place: 'The beaches of Scarif',
     line: 'White sand, palms and turquoise lagoons, under the shield, with the Citadel over all of it.',
     sky: {

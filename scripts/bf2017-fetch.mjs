@@ -11,6 +11,10 @@
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs <name> [--lod all|<n>[,<n>…]] [--parts '<glob>,…'] [--no-textures] [--collision]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --all '<glob over name>' [--verify] [--pool 6] [--no-textures] [--no-collision]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --list '<glob over name>'
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs data '<glob over record name>' […]
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs web '<glob under web/>' […]
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs --raw <path under web/>
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs --folder '<folder under web/>/<glob>'
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs anims
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs anim <clip name>
 //
@@ -25,6 +29,15 @@
 //                exit 1 only on a failure, never on a missing
 //   verify       trust no index: measure every file again, fetch what's wrong
 //   pool         how many requests at once (6)
+//   list         the names under a glob, with their LOD triangles
+//   data         gameplay records (data/<Name>.json.gz) whose names match the
+//                globs (`*` within a folder, `**` across), and data.tsv, their
+//                index: the Battlefront extractor's --root (scripts/bf2017-data.mjs)
+//   web          files of the web build (svg/**, fonts/…, maps/…, strings/…),
+//                and the listing of their folders in web/files.txt
+//   raw          one object by its path (maps/README.md, terrain.jsonl), not a model
+//   folder       every object in one folder of the bucket whose name matches
+//                the glob (a map's files: 'maps/levels/mp/hoth_01/*')
 //   list         the names under a glob, with their LOD triangles (models)
 //                or their frames and fps (clips, once `anims` has run)
 //   anims        web/anims.jsonl (about 16 MB), the clips' manifest
@@ -41,13 +54,13 @@
 // error: the upload is still running, and the import says what it lacks.
 
 import { existsSync } from 'node:fs';
-import { readFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { animEntry, animPath, globRe } from './lib/bf2017-anims.mjs';
 import { partsOf, readManifest } from './lib/bf2017-manifest.mjs';
-import { imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
+import { dataPath, globDir, globMatch, globRegExp, imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
 import { createPool } from './lib/pool.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -56,7 +69,7 @@ const MANIFEST = 'web/models.jsonl';
 const ANIMS = 'web/anims.jsonl';
 const INDEX = '.index.json';
 
-function keys() {
+export function keys() {
   const base = process.env.SUPABASE_URL;
   const key = process.env.BF2017_KEY || process.env.SUPA_KEY;
   if (!base || !key) {
@@ -90,7 +103,7 @@ const note = (r) => {
 // the body is held to the response's own content-length). With --verify the
 // index is not trusted: every file is asked about again and one that is
 // wrong is fetched again.
-async function getObject(env, root, bucketPath, { size = null } = {}) {
+export async function getObject(env, root, bucketPath, { size = null } = {}) {
   const url = objectUrl(env.base, BUCKET, bucketPath);
   const file = localPath(root, bucketPath);
   const index = run.index ?? {};
@@ -108,6 +121,22 @@ async function getObject(env, root, bucketPath, { size = null } = {}) {
   if (got.status === 'fetched') index[bucketPath] = { bytes: got.bytes, at: new Date().toISOString() };
   else if (got.status === 'missing') delete index[bucketPath];
   return note({ file, bytes: got.bytes, state: got.status, error: got.error });
+}
+
+// The objects in one folder of the bucket (Storage's list call, a page at a time)
+export async function listFolder(env, prefix) {
+  const out = [];
+  for (let offset = 0; ; offset += 1000) {
+    const res = await fetch(`${env.base.replace(/\/+$/, '')}/storage/v1/object/list/${BUCKET}`, {
+      method: 'POST',
+      headers: { ...env.headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix, limit: 1000, offset, sortBy: { column: 'name', order: 'asc' } }),
+    });
+    if (!res.ok) throw new Error(`list ${prefix}: ${res.status}`);
+    const page = await res.json();
+    out.push(...page.filter((o) => o.id).map((o) => o.name));
+    if (page.length < 1000) return out;
+  }
 }
 
 const say = (r) => console.log(`${relative(ROOT, r.file).padEnd(110)} ${String(r.bytes).padStart(10)}  ${r.state}${r.error ? `  (${r.error})` : ''}`);
@@ -201,6 +230,79 @@ export async function fetchModel(env, root, manifest, name, { lod = 'all', parts
 }
 
 // The index read before a run and written after it, and the summary line.
+// Every object under a bucket folder, its sub-folders walked (Storage lists
+// one level at a time; a folder comes back with no id).
+const PAGE = 1000;
+async function listUnder(env, prefix) {
+  const out = [];
+  for (let offset = 0; ; offset += PAGE) {
+    let page = null;
+    for (let tries = 0; !page; tries++) {
+      const res = await fetch(`${env.base.replace(/\/+$/, '')}/storage/v1/object/list/${BUCKET}`, {
+        method: 'POST',
+        headers: { ...env.headers, 'content-type': 'application/json' },
+        body: JSON.stringify({ prefix, limit: PAGE, offset, sortBy: { column: 'name', order: 'asc' } }),
+      }).catch(() => null);
+      if (res?.ok) page = await res.json();
+      else if (tries >= 3) throw new Error(`list ${prefix}: ${res ? res.status : 'no answer'}`);
+      else await new Promise((r) => setTimeout(r, 1000 * 2 ** tries));
+    }
+    for (const e of page) {
+      const path = `${prefix}/${e.name}`;
+      if (e.id) out.push(path);
+      else out.push(...(await listUnder(env, path)));
+    }
+    if (page.length < PAGE) return out;
+  }
+}
+
+// Bucket paths through the pool, one line each.
+const getAll = (env, root, paths) =>
+  Promise.all(
+    paths.map(async (p) => {
+      const r = await getObject(env, root, p);
+      say(r);
+      return r;
+    }),
+  );
+
+// The records a glob names, and data.tsv, their index.
+export async function fetchData(env, root, globs) {
+  const results = await getAll(env, root, ['data.tsv']);
+  for (const glob of globs) {
+    const re = globRegExp(glob);
+    const dir = globDir(glob);
+    const names = (await listUnder(env, dir ? `data/${dir}` : 'data'))
+      .filter((p) => p.endsWith('.json.gz'))
+      .map((p) => p.slice('data/'.length, -'.json.gz'.length))
+      .filter((n) => re.test(n));
+    if (!names.length) console.log(`${glob}: nothing matches`);
+    results.push(...(await getAll(env, root, names.map(dataPath))));
+  }
+  return results;
+}
+
+// Files of the web build (`web/<glob>`), and a listing of everything under
+// the globs' folders in `web/files.txt`, so the extractor knows the 23 fonts
+// without fetching 46 MB of them.
+export async function fetchWeb(env, root, globs) {
+  const results = [];
+  const listing = join(root, 'web', 'files.txt');
+  const listed = new Set(existsSync(listing) ? (await readFile(listing, 'utf8')).split('\n').filter(Boolean) : []);
+  for (const glob of globs) {
+    const re = globRegExp(glob);
+    const dir = globDir(glob);
+    const names = (await listUnder(env, dir ? `web/${dir}` : 'web')).map((p) => p.slice('web/'.length));
+    names.forEach((n) => listed.add(n));
+    const want = names.filter((n) => re.test(n));
+    if (!want.length) console.log(`${glob}: nothing matches`);
+    results.push(...(await getAll(env, root, want.map((n) => `web/${n}`))));
+  }
+  await mkdir(dirname(listing), { recursive: true });
+  await writeFile(listing, [...listed].sort().join('\n') + '\n');
+  return results;
+}
+
 async function withIndex(root, verify, work) {
   const file = join(root, INDEX);
   run.index = await readIndex(file);
@@ -247,6 +349,22 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const has = (p) => existsSync(localPath(root, p));
     if (!has(MANIFEST) && !has(ANIMS)) await loadManifest(root);
     listAll(has(MANIFEST) ? await loadManifest(root) : null, has(ANIMS) ? readManifest(await readFile(localPath(root, ANIMS), 'utf8')) : null, args.list);
+  } else if (typeof args.raw === 'string') {
+    const env = keys();
+    let r = null;
+    await withIndex(root, true, async () => say((r = await getObject(env, root, inBucket(args.raw)))));
+    process.exit(r?.state === 'missing' ? 3 : run.failed > 0 ? 1 : 0);
+  } else if (typeof args.folder === 'string') {
+    const env = keys();
+    const path = inBucket(args.folder);
+    const folder = path.slice(0, path.lastIndexOf('/') + 1);
+    const match = globMatch(path.slice(folder.length));
+    const names = (await listFolder(env, folder)).filter((n) => match(n));
+    if (!names.length) console.log(`${folder}: nothing there yet`);
+    await withIndex(root, Boolean(args.verify), async () => {
+      for (const n of names) say(await getObject(env, root, folder + n));
+    });
+    process.exit(run.failed > 0 ? 1 : 0);
   } else if (what === 'anims') {
     say(await getObject(keys(), root, ANIMS));
   } else if (what === 'anim') {
@@ -262,6 +380,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const manifest = await loadManifest(root);
     // (exit 1 on a failure only: a `missing` is the upload not there yet)
     await withIndex(root, Boolean(args.verify), () => fetchAll(env, root, manifest, args.all, { textures: !args.noTextures, collision: !args.noCollision }));
+    process.exit(run.failed > 0 ? 1 : 0);
+  } else if (what === 'data' || what === 'web') {
+    if (args._.length < 2) {
+      console.error(`usage: node scripts/bf2017-fetch.mjs ${what} '<glob>' […]`);
+      process.exit(1);
+    }
+    const env = keys();
+    await withIndex(root, Boolean(args.verify), () => (what === 'data' ? fetchData : fetchWeb)(env, root, args._.slice(1)));
     process.exit(run.failed > 0 ? 1 : 0);
   } else if (what === 'manifest') {
     const env = keys();
@@ -280,7 +406,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     });
     process.exit(run.failed > 0 ? 1 : 0);
   } else {
-    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] [--verify] | --all '<glob>' [--verify] [--pool 6] [--no-textures] [--no-collision] | --list '<glob>'");
+    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | --raw <path under web/> | --folder '<folder>/<glob>' | data '<glob>' […] | web '<glob>' […] | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] [--verify] | --all '<glob>' [--verify] [--pool 6] [--no-textures] [--no-collision] | --list '<glob>'");
     process.exit(1);
   }
 }

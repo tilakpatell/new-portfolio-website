@@ -108,7 +108,8 @@ export function siteFrom(raw, id, { name, accent } = {}) {
   const flats = [
     ...(raw.ground.flats ?? []),
     { at: land.at, r: raw.land?.r ?? 26, edge: 22, h: raw.land?.h },
-    ...places.filter((p) => p.flat).map((p) => ({ at: p.at, r: p.flat.r, edge: p.flat.edge, h: p.flat.h })),
+    // (`game`: a world drawn from the game's level leaves this flat out: the game's ground is the ground)
+    ...places.filter((p) => p.flat).map((p) => ({ at: p.at, r: p.flat.r, edge: p.flat.edge, h: p.flat.h, ...(p.flat.game ? { game: true } : {}) })),
   ];
   // (the ground's own pits, Beggar's Canyon's run of them, and the places')
   const pits = [...(raw.ground.pits ?? []), ...places.flatMap((p) => p.pits)];

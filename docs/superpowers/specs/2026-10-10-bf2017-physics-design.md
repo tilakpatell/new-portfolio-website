@@ -134,7 +134,7 @@ P0, P1, P2 and P4 start at once (their library tasks share no file); each one’
 
 ## Departures and open assumptions
 
-1. **The jump**: `JumpStateData`’s fields were not read in the survey (the classifier stopped it); P1 reads them and keeps the walker’s 5.4 m/s as `hand` if no speed is there.
+1. **The jump**: `JumpStateData`’s fields were not read in the survey (the classifier stopped it); P1 reads them and keeps the walker’s 5.4 m/s as `hand` if no speed is there. **Lane P1 found (PR #822)**: `JumpHeight` 1.1 m exists and is used; the on-ground stand walk is **3.8 m/s** (the survey’s 5.0 and 7.5 were the animation-controlled state’s pose, not the ground state’s), so §2’s 5.0/7.5 read as 3.8 and its sprint multiple; and Rapier’s autostep never climbs higher than the capsule’s radius, so `playerBody.js` steps the 0.4 m itself.
 2. **Vehicle handling** is not in the `_Handling` layers (2 KB: input scaling and a prefab reference); where the blueprint’s abilities do not give a top speed, `rides.js`’s numbers stand as `hand` and the rulebook says so.
 3. **Material names** are not in the data; the hand column is from the pairs’ effect names and is checked against what a bolt looks like on Hoth’s snow and the hangar’s floor.
 4. **Cloth** is an EA binary and is not reproduced; capes stay the site’s own.
@@ -143,6 +143,10 @@ P0, P1, P2 and P4 start at once (their library tasks share no file); each one’
 7. **Sequel-era records** are refused as lane 0 refuses them (`isSequel`); the physics of a First Order TIE is the same asset family and comes through the Original-era name.
 8. **Bolts are not blueprints** (lane P2): the 114 `ProjectileBlueprint`s are missiles, grenades and charges; a blaster bolt is a `GameDataContainerAsset` holding a `WSBulletEntityData`, so `projectiles.json` reads both (333 rows). **Grenades have no body** in their record (no `RigidBodyData`), and their `InitialSpeed` (350) is not the throw: the world gives a grenade its mass and the weapon its speed.
 9. **Ragdoll bodies are named by the component’s index fields**, which two components get wrong (the Ewok hero’s fifteen all say body 1); such a row is `partial` and falls back to the trooper’s bodies. The blueprint’s `BodiesNamesHashes` did not match FNV-1, FNV-1a or djb2 of the bone names.
+10. **(P0) `0xFFFF0000` is not a visual-only tag**: a mesh root’s leaves carry `0xFFFF00NN`, NN an index (00 to 42 over Hoth), and each sits beside a convex root over the same piece. Both are kept; the budget drops such a trimesh first, as the detail.
+11. **(P0) The budget per cell** is 400 colliders / 30,000 triangles on mid, 1,000 / 60,000 on high, 2,000 / 100,000 on ultra, measured on Echo Base (`docs/superpowers/evidence/bf2017-physics/p0/hoth.md`: 1,000 keep 88 to 98% of a cell’s hull volume at 0.15 ms a step).
+12. **(P0) No physics cell bins**: a cell’s own bin and draws name its meshes; `physics.cells` keeps the counts only. Lane L’s real interfaces (PR #831) replace §1’s names: `collision.js` is lane L’s (`solidsOf(pack, draws, bin) → { floors, boxes }`), the shapes’ walker side is `lib/level/shapeSolids.js` in that form, and `levelPhysics` sits beside `level/colliders.js` with its `add`/`drop`, wired in `level/index.js`’s `onCell`/`onDrop`.
+13. **(P0) The 64-point guard** is in `havok.js`, not `world.js` (the universe’s hulls are uncut models). A `convex_flat` leaf is read as a trimesh.
 
 ## Credit and licence
 
