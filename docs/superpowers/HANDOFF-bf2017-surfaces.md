@@ -33,7 +33,7 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 | Lane | Session | Branch | PR |
 |---|---|---|---|
 | design | the architecting session | `claude/bf2017-render-beauty` | this PR |
-| Q1 | | `claude/surfaces-q1-materials` | |
+| Q1 | the lane Q1 session | `claude/surfaces-q1-materials` | (the PR; the WebGPU leg on the owner's laptop) |
 | Q2 | | `claude/surfaces-q2-ground` | |
 | Q4 | | `claude/surfaces-q4-weathering` | |
 | Q3 | | | after S |
@@ -42,8 +42,19 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 
 Findings for the next lane go here: families by count on Hoth and which fell to `glb`, the detail maps still missing at PR time, the ground's tile size as judged, what the Enlighten probe found, the PSNR table.
 
+### Q1 (the recipes and the game material)
+
+- **Names.** `scripts/bf2017-materials.mjs` and its lib were already lane P4's (the physics material grid), so Q1's are `scripts/bf2017-recipes.mjs` and `scripts/lib/bf2017-recipes.mjs`: `--level <world> [--fetch]` writes `recipes.json` beside the pack, `<mesh>` prints one mesh's recipes, `--count` the families over the dump. The material is `src/lib/three/surface/` (`families.js`, `compose.js`, `gameMaterial.js`, `hair.js`, whose `surfaceMaterial` picks hair, head or the game material).
+- **The hook (Q2, Q4).** As the plan says, plus: `ctx.normal` (the running normal) is view space, as `normalMap` returns it; `ctx.maps.glb` is the GLB's Material, `ctx.maps.weathering` the sampled WeatheringMask node, the rest Textures or null; overlays run at mid and up, never on low.
+- **Families over the dump** (30,517 materials): glb 11,040 (8,573 with no slots, 2,467 with slots no rule settles), props 8,176, propsMetallic 2,662, instance 2,040, vehicle 1,301, panels 1,031, character 962, propsNonMetallic 777, weapon 618, emissive 466, vegetation 435, decal 325, hair 250, vehicleLarge 215, head 139, creature 43, glass 37.
+- **Hoth** (602 meshes, 1,061 materials): glb 568, propsMetallic 181, props 112, propsNonMetallic 68, vehicle 60, instance 36, decal 17, emissive 13, vegetation 3, glass 2, weapon 1. 11 maps wanted, 10 in the pack; missing at PR time: `T_StarCruiserMC80Panels_01_NS`. Of the 123 meshes the pack draws (175 materials), 6 change at ultra (detail 5, emissive 1).
+- **Why Hoth changes so little, and the next step.** The hangar's walls and floors (`SS_HangarSystem_01_*`, no slots) and the texture-array props (`SS_Props*Preset_*_TextureArray_*`: `_CS` + `_NAM` and `GlobalTilingDetailmap`, no detail slot; 2,700 materials across the dump, 71 on Hoth) bind their detail inside the opaque graph. `textures.jsonl`'s `Objects/Props/_CommonTextures/A_Generic_01` (10 slices, the PNGs in the bucket) is very likely the texture-array presets' shared detail, its slice in `_NAM`'s tenths: unconfirmed, not drawn. Confirming it (and dumping what the hangar instances bind) is what turns Hoth's walls from a blur to the game's grain.
+- **On the site today**: inert. `galaxy-surface` still runs the classic renderer; `createLevel` swaps materials only on the node renderer (lane T's flip), never on low. Hoth's before/after and the per-tier `galaxy-check` wait for that flip.
+- **The fixture** (`node scripts/light-fixture.mjs --materials`): seven cubes (the five families, a melanin hair, Luke's head) and a wall at 2 m, per tier and at the GLB's own material; the WebGL 2 leg in `docs/superpowers/evidence/bf2017-surfaces/Q1/`, the WebGPU leg on the owner's laptop. Low against the GLB in `materials-webgl.json`.
+- **Left** (the review's minors, none on Hoth today): the detail array's median slice (slice 0 now: the CLI must read AOSlice's pixels); `MAP_KEYS` without `hairStrand`/`sss` and the crew wiring (a follow-up PR, `crew.js`); the world's sun into `userData.game.sun`; `BlinkLength`'s unit (Hoth has 1000: milliseconds?); `normalScale` applied to the detail too; a throwing `materialFor` dropping its GLB.
+
 ## Checking it
 
-- `npx vitest run src/lib/three/surface src/lib/three/ground src/lib/three/decals scripts/lib/bf2017-materials.test.mjs scripts/lib/bf2017-ground.test.mjs scripts/lib/bf2017-decals.test.mjs`.
+- `npx vitest run src/lib/three/surface src/lib/three/ground src/lib/three/decals scripts/lib/bf2017-recipes.test.mjs src/components/galaxy/surface/level/levelGltf.test.js scripts/lib/bf2017-ground.test.mjs scripts/lib/bf2017-decals.test.mjs`.
 - `node scripts/light-fixture.mjs --materials | --weather | --decals | --bounce | --picture` (the WebGL 2 leg on the cloud; the WebGPU leg on the owner's laptop).
 - `node scripts/galaxy-check.mjs surface hoth` under `BUDGET=1` per tier with `?gpu=webgl`; `node scripts/surface-shot.mjs` at the hangar wall, a crate, the field and the ridge, before and after, in `docs/superpowers/evidence/bf2017-surfaces/<lane>/`.
