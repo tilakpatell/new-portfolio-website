@@ -17,6 +17,8 @@
 //   drink, a scared step back) and its head's look are laid on.
 //   cutAt(distance): a full-fidelity 2017 kind's cut kept to its distance
 //   (null on the others)
+//   A 2017 kind is dressed in the game's surface shader the first time the
+//   node renderer draws it (crewSurface.js); the classic renderer keeps its own.
 //   play, stop, base, look, react: the animator's (meshyCast.js's
 //   animatorCalls: the clip library's clips, on the Meshy skeleton these
 //   all stand on); on Jabba they do nothing.
@@ -29,6 +31,7 @@ import { NO_CALLS, seedOf } from '../../../lib/three/figureCalls';
 import { EVERYONE } from '../../rickmorty/wardrobe/looks';
 import { CREW, cutsOf, faceOf, figureLoaderFor, fileOf } from './crewList';
 import { cloneModel, loadGlb } from './placer';
+import { watchCrew } from './crewSurface';
 
 // (the list itself is crewList.js, plain data a page can read)
 export { CREW, figureLoaderFor, fileOf };
@@ -88,6 +91,10 @@ export async function crewFigure(kind, i = 0) {
   model.traverse((o) => {
     if (o.isMesh) o.castShadow = !o.userData.noShadow; // (a 2017 figure's small parts: none)
   });
+  // (a 2017 figure in the game's own surface shader on the node renderer:
+  // its pack's recipes, by the file it is; crewSurface.js)
+  const file = fileOf(c);
+  if (/\/bf2017\/crew\//.test(file ?? '')) watchCrew(model, file.split('/').pop().replace(/\.glb$/, ''));
   const forward = new THREE.Vector3();
   return {
     model,

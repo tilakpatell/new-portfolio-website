@@ -80,6 +80,7 @@ const MAP_KEYS = [
   ['mask', (m) => m.mask],
   ['hairStrand', (m) => m.hairStrand],
   ['sss', (m) => m.sss],
+  ['aoSlice', (m) => m.aoSlice],
 ];
 
 // the slots whose texture is a colour, in sRGB (the rest are data: normals, roughness and metal)
@@ -98,9 +99,27 @@ export function bindSlot(mat, slot, tex) {
   mat.needsUpdate = true;
 }
 
+// A recipe's maps as the material takes them, each through `texture(path)`
+// from the pack's `maps` (game name → 'tex/x.ktx2', or a detail array's
+// slices as a list); a map the pack has not got is null. keys: the map keys
+// the tier draws (null, all).
+//   recipeMaps(recipe, { maps, texture, keys }) → Promise<{ detail | detailSlices, grunge, … }>
+export async function recipeMaps(recipe, { maps = {}, texture, keys = null }) {
+  const out = {};
+  await Promise.all(
+    MAP_KEYS.filter(([k]) => !keys || keys.includes(k)).map(async ([key, get]) => {
+      const name = get(recipe.maps ?? {});
+      if (typeof name !== 'string') return;
+      const path = maps[name];
+      if (Array.isArray(path)) out.detailSlices = await Promise.all(path.map((p) => texture(p)));
+      else out[key] = path ? await texture(path) : null;
+    }),
+  );
+  return out;
+}
+
 export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {}, recipes = null, materialFor = null, mapKeys = null }) {
   // (mapKeys: the recipe maps the tier draws; null, all of them)
-  const keys = mapKeys ? MAP_KEYS.filter(([k]) => mapKeys.includes(k)) : MAP_KEYS;
   if (recipes?.tex) sizes = { ...sizes, ...recipes.tex };
   const textures = new Map(); // pack path → Promise<Texture | null>
   const meshes = new Map(); // glb path → Promise<{ scene } | null>
@@ -150,15 +169,7 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
     const swap = new Map();
     await Promise.all(
       [...used].map(async ([glb, recipe]) => {
-        const maps = { glb };
-        await Promise.all(
-          keys.map(async ([key, get]) => {
-            const name = get(recipe.maps ?? {});
-            if (typeof name !== 'string') return;
-            const path = recipes.maps?.[name];
-            maps[key] = path ? await texture(path) : null;
-          }),
-        );
+        const maps = { glb, ...(await recipeMaps(recipe, { maps: recipes.maps ?? {}, texture, keys: mapKeys })) };
         if (gone) return;
         // (a recipe the material cannot be made of keeps the GLB's material)
         try {

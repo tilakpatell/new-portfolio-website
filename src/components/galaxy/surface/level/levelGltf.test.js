@@ -1,7 +1,7 @@
 import { Document, NodeIO } from '@gltf-transform/core';
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { bindSlot, createLevelLoader, matchRecipes, recipesIndex } from './levelGltf.js';
+import { bindSlot, createLevelLoader, matchRecipes, recipeMaps, recipesIndex } from './levelGltf.js';
 
 // a GLB with one mesh of two primitives, their materials naming the game's
 // shaders in their extras as the export writes them
@@ -36,6 +36,20 @@ describe('matchRecipes', () => {
     const a = { shader: 'S/A' };
     const b = { shader: 'S/B' };
     expect(matchRecipes(['S/B', null], [a, b])).toEqual([b, null]);
+  });
+});
+
+describe('recipeMaps', () => {
+  it('resolves the maps of a recipe through the pack: an array to its slices, a missing map to null', async () => {
+    const texture = vi.fn(async (path) => ({ path }));
+    const recipe = { maps: { detailArray: 'TA_D', aoSlice: 'T_AOSL', weathering: 'T_W', grunge: 'T_G' } };
+    const maps = { TA_D: ['tex/ta_d_000.ktx2', 'tex/ta_d_001.ktx2', 'tex/ta_d_002.ktx2'], T_AOSL: 'tex/t_aosl.ktx2', T_W: null };
+    const got = await recipeMaps(recipe, { maps, texture, keys: ['detail', 'aoSlice', 'weathering'] });
+    expect(got.detailSlices.map((t) => t.path)).toEqual(maps.TA_D);
+    expect(got.detail).toBeUndefined();
+    expect(got.aoSlice.path).toBe('tex/t_aosl.ktx2');
+    expect(got.weathering).toBeNull();
+    expect('grunge' in got).toBe(false);
   });
 });
 

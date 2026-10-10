@@ -4,7 +4,7 @@
 // proof (docs/superpowers/plans/2026-10-10-galaxy-engine-laneR-light.md).
 //
 //   node scripts/light-fixture.mjs [--tier ultra] [--post on|off] [--sky on|off]
-//     [--grid] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
+//     [--grid] [--particles] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
 //     [--volume [on|off]] [--weather interior|sunny|felucia] [--view wide|edge|sun] [--pan]
 //     [--weather] [--decals] [--seconds 0,12.5,30]   (lane Q4: the weathering and the placed decals, without --volume)
 //     [--hoth] [--shadows [--light-sun] [--clouds]] [--filter pcss|pcf]
@@ -69,6 +69,12 @@
 //   (lane V's fog with media) and its first view; --pan shoots the walk
 //   toward the wall that covers the sun (<label>-<leg>-pan<t>.png at t 0,
 //   0.5, 0.75, 1: the sun flare's occluder curve).
+// - with --particles (fidelity lane X): the game's effects from their own
+//   tables over the ring (Hoth's steam, smoke and falling snow, a bolt into
+//   snow, a GR-75's engine and a TIE's contrail on ships), a shot still and
+//   a shot during a 6 m/s pan (the streaks), the effects' stats, and the GPU
+//   twin's parity with the CPU step after 120 frames; into
+//   docs/superpowers/evidence/galaxy-engine/X/.
 // The numbers go to <label>.json beside the shots and to stdout as a table.
 //
 // On Linux without a display both legs draw on SwiftShader (CPU): the
@@ -88,15 +94,16 @@ const argv = process.argv.slice(2);
 const volumeAt = argv.indexOf('--volume');
 const volume = volumeAt < 0 ? null : argv[volumeAt + 1] !== 'off';
 const q4Flags = volume == null && (argv.includes('--weather') || argv.includes('--decals'));
+const particles = volume == null && !q4Flags && argv.includes('--particles');
 const laneS = volume == null && ['--hoth', '--shadows', '--clouds'].some((f) => argv.includes(f));
-const OUT = join(ROOT, q4Flags ? 'docs/superpowers/evidence/bf2017-surfaces/Q4' : join('docs/superpowers/evidence/galaxy-engine', laneS ? 'S' : volume == null ? 'R' : 'V'));
+const OUT = join(ROOT, q4Flags ? 'docs/superpowers/evidence/bf2017-surfaces/Q4' : join('docs/superpowers/evidence/galaxy-engine', laneS ? 'S' : particles ? 'X' : volume == null ? 'R' : 'V'));
 const arg = (k, d) => {
   const i = argv.indexOf(`--${k}`);
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d;
 };
 const tier = arg('tier', 'ultra');
 const post = volume != null ? arg('post', 'on') === 'on' : arg('post', 'off') === 'on';
-const label = arg(
+const baseLabel = arg(
   'label',
   q4Flags && argv.includes('--weather')
     ? 'weather'
@@ -106,6 +113,7 @@ const label = arg(
         ? `${volume ? 'volume' : 'novolume'}-${tier}`
         : `${arg('filter', null) ? `${arg('filter', null)}-` : ''}${argv.includes('--shadows') ? `shadows${argv.includes('--light-sun') ? '-lightsun' : ''}${argv.includes('--clouds') ? '-clouds' : ''}-` : argv.includes('--hoth') ? 'hoth-' : ''}${post ? `post-${tier}` : `lit-${tier}`}`,
 );
+const label = particles && arg('label', null) == null ? `particles-${baseLabel}` : baseLabel;
 const [W, H] = arg('size', '1600x900').split('x').map(Number);
 const ms = Number(arg('ms', 5000));
 const legs = arg('legs', 'webgpu,webgl').split(',');
@@ -128,6 +136,7 @@ const fixture = {
   sky,
   env: true,
   only,
+  ...(particles ? { particles } : {}),
   ...(volume != null ? { volume, weather: arg('weather', 'interior'), view: arg('view', 'wide') } : {}),
   ...(q4 ? { placed: false } : {}),
   ...(weather ? { weather: seconds[0] } : {}),
@@ -338,6 +347,14 @@ for (const leg of legs) {
       const png = await shot();
       writeFileSync(join(OUT, `${label}-${leg}.png`), png);
       row.shot = `${label}-${leg}.png`;
+      if (particles) {
+        row.parity = await page.evaluate(() => window.__lit.probe.particles.parity(120));
+        row.simMode = await page.evaluate(() => window.__lit.probe.particles.mode);
+        await page.evaluate(() => (window.__lit.probe.pan(6), window.__lit.draw(20)));
+        writeFileSync(join(OUT, `${label}-${leg}-pan.png`), await shot());
+        await page.evaluate(() => (window.__lit.probe.pan(0), window.__lit.draw(1)));
+        row.stats = await page.evaluate(() => window.__lit.probe.particles.stats?.() ?? null);
+      }
       row.meanLum = Number((await meanLum(png)).toFixed(4));
       if (shadows) {
         for (const v of ['seam', 'pen1', 'pen10', 'contact']) {
@@ -419,6 +436,7 @@ console.log(`|---|---|---|---|---|---|---|---|---|---|---|---|---|`);
 for (const r of rows) {
   if (r.error) console.log(`| ${r.leg} | failed: ${r.error} |`);
   else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.meanLum} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.mean} | ${r.median} | ${r.p95} | ${r.gridBakeMs ?? '–'} | ${r.gridMean ?? '–'} | ${r.volumesLit ?? '–'} |`);
+  if (r.parity) console.log(`  particles (${r.simMode}): parity ${JSON.stringify(r.parity)}${r.stats ? `; stats ${JSON.stringify(r.stats)}` : ''}`);
   if (r.errors) console.log(`  errors: ${r.errors.join(' / ')}`);
 }
 process.exit(rows.some((r) => r.error && r.leg !== 'webgpu') ? 1 : 0);
@@ -452,7 +470,14 @@ async function materialList() {
     const flat = { ...recipe.maps, breakupColor: recipe.maps.breakup?.color, breakupNormal: recipe.maps.breakup?.normal };
     for (const [key, name] of Object.entries(flat)) {
       if (typeof name !== 'string' || !MAP_KINDS[key]) continue;
-      const into = key === 'detailArray' ? 'detail' : key;
+      // (a detail array: every slice, encoded from the export's PNGs into
+      // the lab cache where the bucket has no KTX2)
+      if (key === 'detailArray') {
+        maps.detailSlices = await arraySlices(env, cache, name, getObject);
+        if (!maps.detailSlices) console.log(`missing: ${label} ${key} ${name}`);
+        continue;
+      }
+      const into = key;
       maps[into] = null;
       for (const c of candidatesOf(name, MAP_KINDS[key])) {
         const got = await getObject(env, cache, `web/${c}`);
@@ -468,6 +493,31 @@ async function materialList() {
     list.push({ label, recipe: lean, glb: existsSync(glbFile) ? `/lab/assets/bf2017/web/models/${row.mesh}.glb` : null, maps });
   }
   return list;
+}
+
+async function arraySlices(env, cache, name, getObject) {
+  const { readFileSync, writeFileSync: write, mkdirSync: mkdir } = await import('node:fs');
+  const { encodeImage } = await import('./ktx2.mjs');
+  const index = await getObject(env, cache, 'web/textures.jsonl');
+  const t = readFileSync(index.file, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l))
+    .find((r) => r.name.toLowerCase() === name.toLowerCase());
+  if (!t) return null;
+  const out = [];
+  for (const png of t.files ?? [t.file]) {
+    const rel = `encoded/${png.replace(/\.png$/, '.ktx2')}`;
+    const file = join(cache, rel);
+    if (!existsSync(file)) {
+      const got = await getObject(env, cache, `web/${png}`);
+      if (got.state !== 'fetched' && got.state !== 'kept') return null;
+      mkdir(dirname(file), { recursive: true });
+      write(file, (await encodeImage(readFileSync(got.file), { role: 'normal' })).ktx2);
+    }
+    out.push(`/lab/assets/bf2017/${rel}`);
+  }
+  return out;
 }
 
 async function materialsRun() {
