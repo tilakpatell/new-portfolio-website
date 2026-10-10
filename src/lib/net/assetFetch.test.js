@@ -216,12 +216,13 @@ describe('the site’s asset pool', () => {
     expect(pool.progress()).toMatchObject({ bytes: 3, total: 10, inFlight: 1 });
   });
 
-  it('is two at once on a weak device or a saver connection, three on a phone, six on a desktop, eight at ultra', () => {
-    expect(poolSize('low', false)).toBe(2);
+  it('is two at once on a saver connection, four on a weak device or a phone, six on a desktop, eight at ultra', () => {
     expect(poolSize('high', true)).toBe(2);
-    expect(poolSize('mid', false)).toBe(3);
+    expect(poolSize('low', true)).toBe(2);
+    expect(poolSize('low', false)).toBe(4);
+    expect(poolSize('mid', false)).toBe(4);
     expect(poolSize('high', false)).toBe(6);
     expect(poolSize('ultra', false)).toBe(8);
-    expect(poolSize(undefined, false)).toBe(3);
+    expect(poolSize(undefined, false)).toBe(4);
   });
 });

@@ -15,19 +15,23 @@
 //   a 404 rejects at once with { status: 404, missing: true }; an abort with
 //   an AbortError; anything else after three retries (0.5, 1, 2 s; a 429's
 //   Retry-After over the schedule) with the last reason
-// poolSize(level, lowData) → 2 | 3 | 6 | 8
+// poolSize(level, lowData) → 2 | 4 | 6 | 8
 
 export const WAITS = [500, 1000, 2000];
 // 20 s, and a second for every megabyte, with nothing arriving
 export const TIMEOUT = (bytes = 0) => 20000 + 1000 * ((bytes ?? 0) / 1e6);
 
-// two on a weak device or a saver connection, three on a phone, six on a
-// desktop, eight at the ultra level (lib/device's tier, or 'ultra')
+// The connection sets it, not the graphics chip: two on a saver connection
+// or 2G, four on a weak device or a phone, six on a desktop, eight at the
+// ultra level (lib/device's tier, or 'ultra'). A weak device is slow at
+// drawing, not at downloading: held to two, a model built in front of you
+// (a turret in the shared world) waited behind the world's own loads, 3.2 s
+// against 2.6 s at four or more (online-check.mjs --fly, whose limit is 3).
 export function poolSize(level, lowData = false) {
-  if (lowData || level === 'low') return 2;
+  if (lowData) return 2;
   if (level === 'ultra') return 8;
   if (level === 'high') return 6;
-  return 3;
+  return 4;
 }
 
 const abortError = () => {

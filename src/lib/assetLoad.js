@@ -1,6 +1,6 @@
 // Every model's and texture's bytes, through one pool the size this device
-// can take (lib/net/assetFetch: two at once on a weak device or a saver
-// connection, three on a phone, six on a desktop, eight at ultra), asked of
+// can take (lib/net/assetFetch: two at once on a saver connection, four on a
+// weak device or a phone, six on a desktop, eight at ultra), asked of
 // the public bucket first where it holds the file (lib/assetBase), the site
 // after. lib/three/gltf.js's loader and textures.js fetch through here, so
 // every loader on the site gets the retries, the timeouts, the short-body
