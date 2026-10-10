@@ -6,6 +6,10 @@ import surfaceModule from './module';
 import { heroById, heroSpec } from '../heroes';
 import { ABILITIES, abilitiesOf, kindOf } from './abilityRules';
 import LoadingVeil from '../../worlds/LoadingVeil';
+import { Film } from '../../../runtime/hud';
+import { filmFor } from '../../../lib/bf2017/films';
+import { loadingTips } from '../../../lib/bf2017/strings';
+import '../../../lib/bf2017/fonts.css';
 import { usePrepareWait } from '../../worlds/usePrepareWait';
 
 // (shorter names for the thumbs)
@@ -29,6 +33,13 @@ export default function SurfaceView({ system = null, site = null, mission = null
   const powers = abilitiesOf(hero ? heroSpec(hero) : null);
   const events = useRef(onEvent);
   events.current = onEvent;
+  // (the veil plays the planet's loading film from the game, with one of
+  // its loading hints, while the world streams in)
+  const [tip] = useState(() => {
+    const tips = loadingTips();
+    return tips.length ? tips[Math.floor(Math.random() * tips.length)] : '';
+  });
+  const film = system ? filmFor({ system }) : null;
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const reduced = useReducedMotion();
   // the lock-on (./surfaceLockOn.js): whether it's on, for the Lock button
@@ -136,7 +147,7 @@ export default function SurfaceView({ system = null, site = null, mission = null
     <WorldHost world={{ host }} className="surface-map">
       {meant ? (
         // (until it's drawing: on a flown landing it's up before the page is, so this is a direct visit's)
-        <LoadingVeil shown={!on} progress={progress.value} step={progress.step} title="Coming down through the atmosphere" waiting={patience.waiting} onSkip={patience.onSkip} />
+        <LoadingVeil shown={!on} progress={progress.value} step={progress.step} title="Coming down through the atmosphere" waiting={patience.waiting} onSkip={patience.onSkip} line={film ? tip : ''} backdrop={film ? <Film film={film} className="surface-veil-film" /> : null} />
       ) : (
         <p className="surface-loading" role="status">
           Landing needs 3D, and this browser has it turned off.

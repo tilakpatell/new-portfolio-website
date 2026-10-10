@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { HEROES, HILTS, SABER_COLORS, heroById, leanText, loadoutLine, skinsOf } from '../heroes';
+import { HEROES, HILTS, SABER_COLORS, heroById, heroSpec, leanText, loadoutLine, skinsOf } from '../heroes';
 import { STANCES, STANCE_IDS } from './combatRules';
 import { MAX_MODS, MODS, MOD_IDS, PICKABLE, WEAPONS, withMods } from './weaponRules';
 import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
 import { ABILITIES, abilitiesOf } from './abilityRules';
+import { GameIcon } from '../../../runtime/hud';
+import { gameName } from '../../../lib/bf2017/strings';
+import HeroStage from './HeroStage.jsx'; // (named in full: ./heroStage.js is beside it)
 import { sidesOf, troopersFor } from './troopers';
 import { standInLine } from './standIn';
 import './flow.css';
@@ -18,7 +21,9 @@ import './flow.css';
 // mods on it. Equip keeps the choice (pages/GalaxySurface.jsx writes it) and
 // the world puts it on there and then (scene.js's setHero): no reload, you
 // stay where you are. The tabs stay at the top and Equip at the bottom, the
-// choice so far spelt out by it, however far down the list you are.
+// choice so far spelt out by it, however far down the list you are. The
+// 2017 game's own icons for the guns, the heroes' weapons and their
+// abilities, and its names for its heroes (src/lib/bf2017/), where it has them.
 
 const ARM = { saber: 'Lightsaber', bowcaster: 'Bowcaster', rifle: 'Blaster rifle', ee3: 'EE-3 carbine', blaster: 'DL-44', portal: 'Portal gun', laser: 'Laser pistol', revolver: 'Revolver', pistol: 'Pistol' };
 const CLASS_ICON = { assault: '/battlefront/icons/UI/SVG/Classes/Class_Troopers_Assault_01.svg', heavy: '/battlefront/icons/UI/SVG/Classes/Class_Troopers_Heavy_01.svg', officer: '/battlefront/icons/UI/SVG/Classes/Class_Troopers_Officer_01.svg', specialist: '/battlefront/icons/UI/SVG/Classes/Class_Troopers_Specialist_01.svg' };
@@ -137,13 +142,16 @@ export default function DeployPanel({ hero, onChange, onClose, system = null, er
                   <li key={x.id}>
                     <button type="button" className={x.id === pick.id ? 'surface-hero is-picked' : 'surface-hero'} onClick={() => choose(x.id)} aria-pressed={x.id === pick.id}>
                       <span className="surface-hero-top">
-                        <span className="surface-hero-name">{x.name}</span>
+                        <span className="surface-hero-name">{gameName(`hero:${x.id}`, x.name)}</span>
                         {x.id === hero.id && <span className="surface-hero-on">On</span>}
                       </span>
-                      <span className="surface-hero-arm">{ARM[x.weapon] ?? 'Blaster'}</span>
+                      <span className="surface-hero-arm">
+                        <GameIcon name={`hero:${x.id}`} className="surface-game-icon is-arm" />
+                        {ARM[x.weapon] ?? 'Blaster'}
+                      </span>
                       <span className="surface-hero-powers">
-                        <span><kbd>G</kbd> {ABILITIES[ab.power].name}</span>
-                        <span><kbd>V</kbd> {ABILITIES[ab.second].name}</span>
+                        <span><kbd>G</kbd> <GameIcon name={`ability:${ab.power}`} className="surface-game-icon" /> {ABILITIES[ab.power].name}</span>
+                        <span><kbd>V</kbd> <GameIcon name={`ability:${ab.second}`} className="surface-game-icon" /> {ABILITIES[ab.second].name}</span>
                       </span>
                       <span className="surface-hero-blurb">{x.blurb}</span>
                       {leanText(x.lean) && (
@@ -160,6 +168,7 @@ export default function DeployPanel({ hero, onChange, onClose, system = null, er
         )}
         {tab === 'look' && looks.length > 1 && (
           <div className="surface-saber">
+            <HeroStage spec={heroSpec(pick)} />
             <p className="surface-list-title">Outfit</p>
             <ul className="surface-hilts">
               {looks.map((l) => (
@@ -225,6 +234,7 @@ export default function DeployPanel({ hero, onChange, onClose, system = null, er
                         <li key={g}>
                           <button type="button" className={g === pick.gun ? 'surface-hilt is-picked' : 'surface-hilt'} onClick={() => setPick({ ...pick, gun: g })} aria-pressed={g === pick.gun}>
                             <span className="surface-hero-name">
+                              <GameIcon name={`weapon:${g}`} className="surface-game-icon is-arm" />
                               {w.name}
                               {g === h?.weapon ? ' · their own' : ''}
                             </span>
