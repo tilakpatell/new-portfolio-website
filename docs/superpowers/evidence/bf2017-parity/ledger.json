@@ -1,0 +1,2663 @@
+{
+ "date": "2026-10-10",
+ "totals": {
+  "rows": 100,
+  "levels": 23,
+  "score": 89.04,
+  "max": 800,
+  "packWhole": 0,
+  "layerFound": 28,
+  "rules": {
+   "game": 7,
+   "hand": 1,
+   "missing": 92
+  },
+  "simDone": 1,
+  "hudFull": 0,
+  "kitsFull": 0,
+  "pricesGame": 0,
+  "checkGreen": 1
+ },
+ "rows": [
+  {
+   "level": "cloudcity_01",
+   "world": "bespin",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "cloudcity_01",
+   "world": "bespin",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "cloudcity_01",
+   "world": "bespin",
+   "mode": "extraction",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "cloudcity_01",
+   "world": "bespin",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "cloudcity_01",
+   "world": "bespin",
+   "mode": "jetpackCargo",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "deathstar02_01",
+   "world": "deathstar",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 21722
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "deathstar02_01",
+   "world": "deathstar",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 21722
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "deathstar02_01",
+   "world": "deathstar",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 21722
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "deathstar02_01",
+   "world": "deathstar",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 21722
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "deathstar02_01",
+   "world": "deathstar",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 21722
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "deathstar02_01",
+   "world": "deathstar",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 21722
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "deathstar02_01",
+   "world": "deathstar",
+   "mode": "arcade",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 21722
+   },
+   "layer": "none",
+   "rules": "game",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "endor_01",
+   "world": "endor",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18530
+   },
+   "layer": {
+    "spawns": 60,
+    "areas": 0,
+    "volumes": 21,
+    "prefabs": 57
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "endor_01",
+   "world": "endor",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18530
+   },
+   "layer": {
+    "spawns": 31,
+    "areas": 6,
+    "volumes": 1,
+    "prefabs": 3
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "endor_01",
+   "world": "endor",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18530
+   },
+   "layer": {
+    "spawns": 0,
+    "areas": 0,
+    "volumes": 0,
+    "prefabs": 1
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "endor_01",
+   "world": "endor",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18530
+   },
+   "layer": {
+    "spawns": 4,
+    "areas": 2,
+    "volumes": 1,
+    "prefabs": 4
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "endor_01",
+   "world": "endor",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18530
+   },
+   "layer": {
+    "spawns": 185,
+    "areas": 33,
+    "volumes": 22,
+    "prefabs": 23
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "endor_01",
+   "world": "endor",
+   "mode": "arcade",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18530
+   },
+   "layer": {
+    "spawns": 0,
+    "areas": 0,
+    "volumes": 2,
+    "prefabs": 13
+   },
+   "rules": "game",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 2.5
+  },
+  {
+   "level": "endor_02",
+   "world": "endor",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "endor_02",
+   "world": "endor",
+   "mode": "ewokHunt",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "endor_04",
+   "world": "endor",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "endor_04",
+   "world": "endor",
+   "mode": "ewokHunt",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "felucia_01",
+   "world": "felucia",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 33133
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "felucia_01",
+   "world": "felucia",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 33133
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "felucia_01",
+   "world": "felucia",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 33133
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "felucia_01",
+   "world": "felucia",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 33133
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "geonosis_01",
+   "world": "geonosis",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 9580
+   },
+   "layer": {
+    "spawns": 149,
+    "areas": 0,
+    "volumes": 9,
+    "prefabs": 75
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "geonosis_01",
+   "world": "geonosis",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 9580
+   },
+   "layer": {
+    "spawns": 31,
+    "areas": 9,
+    "volumes": 4,
+    "prefabs": 2
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "geonosis_01",
+   "world": "geonosis",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 9580
+   },
+   "layer": {
+    "spawns": 109,
+    "areas": 12,
+    "volumes": 1,
+    "prefabs": 1
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "geonosis_01",
+   "world": "geonosis",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 9580
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "geonosis_01",
+   "world": "geonosis",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 9580
+   },
+   "layer": {
+    "spawns": 4,
+    "areas": 2,
+    "volumes": 4,
+    "prefabs": 2
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "geonosis_01",
+   "world": "geonosis",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 9580
+   },
+   "layer": {
+    "spawns": 217,
+    "areas": 22,
+    "volumes": 22,
+    "prefabs": 25
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "geonosis_02",
+   "world": "geonosis",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "geonosis_02",
+   "world": "geonosis",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "geonosis_02",
+   "world": "geonosis",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "geonosis_02",
+   "world": "geonosis",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "hoth_01",
+   "world": "hoth",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "roam",
+    "published": true,
+    "pieces": 6051,
+    "of": 24532
+   },
+   "layer": {
+    "spawns": 219,
+    "areas": 54,
+    "volumes": 26,
+    "prefabs": 72
+   },
+   "rules": "hand",
+   "sim": "done",
+   "hud": {
+    "drawn": 15,
+    "of": 19
+   },
+   "kits": {
+    "offered": 30,
+    "of": 40
+   },
+   "prices": "hand",
+   "check": "green",
+   "score": 5.54
+  },
+  {
+   "level": "hoth_01",
+   "world": "hoth",
+   "mode": "hvv",
+   "pack": {
+    "kind": "roam",
+    "published": true,
+    "pieces": 6051,
+    "of": 24532
+   },
+   "layer": {
+    "spawns": 24,
+    "areas": 6,
+    "volumes": 1,
+    "prefabs": 4
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 16
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "hoth_01",
+   "world": "hoth",
+   "mode": "blast",
+   "pack": {
+    "kind": "roam",
+    "published": true,
+    "pieces": 6051,
+    "of": 24532
+   },
+   "layer": {
+    "spawns": 44,
+    "areas": 8,
+    "volumes": 1,
+    "prefabs": 1
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 8
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "hoth_01",
+   "world": "hoth",
+   "mode": "showdown",
+   "pack": {
+    "kind": "roam",
+    "published": true,
+    "pieces": 6051,
+    "of": 24532
+   },
+   "layer": {
+    "spawns": 4,
+    "areas": 2,
+    "volumes": 1,
+    "prefabs": 4
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 16
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "hoth_01",
+   "world": "hoth",
+   "mode": "coop",
+   "pack": {
+    "kind": "roam",
+    "published": true,
+    "pieces": 6051,
+    "of": 24532
+   },
+   "layer": {
+    "spawns": 160,
+    "areas": 28,
+    "volumes": 25,
+    "prefabs": 25
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 40
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "hoth_01",
+   "world": "hoth",
+   "mode": "arcade",
+   "pack": {
+    "kind": "roam",
+    "published": true,
+    "pieces": 6051,
+    "of": 24532
+   },
+   "layer": {
+    "spawns": 0,
+    "areas": 0,
+    "volumes": 2,
+    "prefabs": 7
+   },
+   "rules": "game",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 24
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 2.5
+  },
+  {
+   "level": "hoth_02",
+   "world": "hoth",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "jabbaspalace_01",
+   "world": "tatooine",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "jabbaspalace_01",
+   "world": "tatooine",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "jabbaspalace_01",
+   "world": "tatooine",
+   "mode": "extraction",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "jabbaspalace_01",
+   "world": "tatooine",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "jabbaspalace_01",
+   "world": "tatooine",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kamino_01",
+   "world": "kamino",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 14330
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kamino_01",
+   "world": "kamino",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 14330
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kamino_01",
+   "world": "kamino",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 14330
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kamino_01",
+   "world": "kamino",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 14330
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kamino_01",
+   "world": "kamino",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 14330
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kamino_01",
+   "world": "kamino",
+   "mode": "arcade",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 14330
+   },
+   "layer": "none",
+   "rules": "game",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "kamino_03",
+   "world": "kamino",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 32337
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kamino_03",
+   "world": "kamino",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 32337
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kashyyyk_01",
+   "world": "kashyyyk",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15827
+   },
+   "layer": {
+    "spawns": 276,
+    "areas": 22,
+    "volumes": 52,
+    "prefabs": 40
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "kashyyyk_01",
+   "world": "kashyyyk",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15827
+   },
+   "layer": {
+    "spawns": 26,
+    "areas": 5,
+    "volumes": 1,
+    "prefabs": 1
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "kashyyyk_01",
+   "world": "kashyyyk",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15827
+   },
+   "layer": {
+    "spawns": 57,
+    "areas": 10,
+    "volumes": 1,
+    "prefabs": 10
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "kashyyyk_01",
+   "world": "kashyyyk",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15827
+   },
+   "layer": {
+    "spawns": 4,
+    "areas": 2,
+    "volumes": 1,
+    "prefabs": 2
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "kashyyyk_01",
+   "world": "kashyyyk",
+   "mode": "arcade",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15827
+   },
+   "layer": {
+    "spawns": 0,
+    "areas": 0,
+    "volumes": 4,
+    "prefabs": 0
+   },
+   "rules": "game",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 2.5
+  },
+  {
+   "level": "kashyyyk_02",
+   "world": "kashyyyk",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 34010
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kashyyyk_02",
+   "world": "kashyyyk",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 34010
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kessel_01",
+   "world": "kessel",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kessel_01",
+   "world": "kessel",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kessel_01",
+   "world": "kessel",
+   "mode": "extraction",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kessel_01",
+   "world": "kessel",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "kessel_01",
+   "world": "kessel",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_01",
+   "world": "naboo",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18720
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_01",
+   "world": "naboo",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18720
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_01",
+   "world": "naboo",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18720
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_01",
+   "world": "naboo",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 18720
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_02",
+   "world": "naboo",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_02",
+   "world": "naboo",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_02",
+   "world": "naboo",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_03",
+   "world": "naboo",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 36507
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_03",
+   "world": "naboo",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 36507
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_03",
+   "world": "naboo",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 36507
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "naboo_03",
+   "world": "naboo",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 36507
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "scarif_02",
+   "world": "scarif",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "scarif_02",
+   "world": "scarif",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "scarif_02",
+   "world": "scarif",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "scarif_02",
+   "world": "scarif",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "tatooine_01",
+   "world": "tatooine",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 20321
+   },
+   "layer": {
+    "spawns": 154,
+    "areas": 23,
+    "volumes": 15,
+    "prefabs": 23
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "tatooine_01",
+   "world": "tatooine",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 20321
+   },
+   "layer": {
+    "spawns": 25,
+    "areas": 5,
+    "volumes": 1,
+    "prefabs": 1
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "tatooine_01",
+   "world": "tatooine",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 20321
+   },
+   "layer": {
+    "spawns": 81,
+    "areas": 10,
+    "volumes": 1,
+    "prefabs": 1
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "tatooine_01",
+   "world": "tatooine",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 20321
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "tatooine_01",
+   "world": "tatooine",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 20321
+   },
+   "layer": {
+    "spawns": 4,
+    "areas": 2,
+    "volumes": 1,
+    "prefabs": 2
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "tatooine_01",
+   "world": "tatooine",
+   "mode": "jetpackCargo",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 20321
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "tatooine_01",
+   "world": "tatooine",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 20321
+   },
+   "layer": {
+    "spawns": 159,
+    "areas": 27,
+    "volumes": 24,
+    "prefabs": 25
+   },
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  },
+  {
+   "level": "tatooine_01",
+   "world": "tatooine",
+   "mode": "arcade",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 20321
+   },
+   "layer": {
+    "spawns": 0,
+    "areas": 1,
+    "volumes": 3,
+    "prefabs": 1
+   },
+   "rules": "game",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 2.5
+  },
+  {
+   "level": "tatooine_02",
+   "world": "tatooine",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 0
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "yavin_01",
+   "world": "yavin",
+   "mode": "galacticAssault",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15428
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "yavin_01",
+   "world": "yavin",
+   "mode": "hvv",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15428
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 13
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "yavin_01",
+   "world": "yavin",
+   "mode": "blast",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15428
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 16
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "yavin_01",
+   "world": "yavin",
+   "mode": "supremacy",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15428
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "yavin_01",
+   "world": "yavin",
+   "mode": "showdown",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15428
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 14
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "yavin_01",
+   "world": "yavin",
+   "mode": "jetpackCargo",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15428
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "yavin_01",
+   "world": "yavin",
+   "mode": "coop",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15428
+   },
+   "layer": "none",
+   "rules": "missing",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 19
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 0.5
+  },
+  {
+   "level": "yavin_01",
+   "world": "yavin",
+   "mode": "arcade",
+   "pack": {
+    "kind": "none",
+    "published": false,
+    "pieces": 0,
+    "of": 15428
+   },
+   "layer": "none",
+   "rules": "game",
+   "sim": "missing",
+   "hud": {
+    "drawn": 0,
+    "of": 17
+   },
+   "kits": {
+    "offered": 0,
+    "of": 0
+   },
+   "prices": "hand",
+   "check": "none",
+   "score": 1.5
+  }
+ ]
+}

@@ -33,6 +33,9 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run coverage:bf2017
+      # the Battlefront parity ledger (docs/superpowers/evidence/bf2017-parity):
+      # a level × mode row whose score falls, or a sim gone missing, is red
+      - run: npm run parity:bf2017
       # the build as the deploy makes it with the asset bucket set (a stand-in
       # URL: nothing is fetched), then as it is without, which the checks read
       - run: npm run build
