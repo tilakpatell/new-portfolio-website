@@ -42,3 +42,27 @@ export const mapPath = (map) => `web/textures/${map.toLowerCase()}.png`;
 export const localPath = (root, bucketPath) => join(root, bucketPath);
 
 export const objectUrl = (base, bucket, path) => `${base.replace(/\/+$/, '')}/storage/v1/object/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`;
+
+// The gameplay records (`data/<Name>.json.gz`, the dump's EBX as JSON) are
+// asked for by a glob over their names: `*` within a folder, `**` across.
+export const dataPath = (name) => `data/${name}.json.gz`;
+
+export function globRegExp(glob) {
+  const body = glob
+    .split('**')
+    .map((part) =>
+      part
+        .replace(/[.+^${}()|[\]\\?]/g, '\\$&')
+        .replace(/\*/g, '[^/]*'),
+    )
+    .join('.*');
+  return new RegExp(`^${body}$`);
+}
+
+// The deepest folder a glob names before its first star: where a listing starts.
+export function globDir(glob) {
+  const star = glob.indexOf('*');
+  const head = star < 0 ? glob : glob.slice(0, star);
+  const cut = head.lastIndexOf('/');
+  return cut < 0 ? '' : head.slice(0, cut);
+}

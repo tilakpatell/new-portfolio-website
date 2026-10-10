@@ -10,6 +10,7 @@
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs manifest
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs <name> [--lod all|<n>[,<n>…]] [--parts '<glob>,…'] [--no-textures] [--collision]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --list '<glob over name>'
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs data '<glob over record name>' […]
 //
 //   manifest     web/models.jsonl (about 25 MB), which every other command reads
 //   name         a model's `name` in the manifest (characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh)
@@ -18,6 +19,9 @@
 //   no-textures  the GLBs only
 //   collision    its collision GLB as well
 //   list         the names under a glob, with their LOD triangles
+//   data         gameplay records (data/<Name>.json.gz) whose names match the
+//                globs (`*` within a folder, `**` across), and data.tsv, their
+//                index, into lab/assets/bf2017/: the extractor's --root
 //
 // The keys: SUPABASE_URL and BF2017_KEY (or SUPA_KEY, the same key under the
 // name the cloud sessions hold it by) from the environment, never printed.
@@ -30,11 +34,14 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { partsOf, readManifest } from './lib/bf2017-manifest.mjs';
-import { imageUris, inBucket, localPath, objectUrl, textureSources } from './lib/bf2017-paths.mjs';
+import { dataPath, globDir, globRegExp, imageUris, inBucket, localPath, objectUrl, textureSources } from './lib/bf2017-paths.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BUCKET = 'bf2017-assets';
 const MANIFEST = 'web/models.jsonl';
+const INDEX = 'data.tsv';
+const PAGE = 1000;
+const POOL = 12;
 const WAITS = [1000, 2000, 4000];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -135,6 +142,53 @@ export async function fetchModel(env, root, manifest, name, { lod = 'all', parts
   return results;
 }
 
+// Every object under a bucket folder, its sub-folders walked (Storage lists one
+// level at a time; a folder comes back with no id).
+async function listUnder(env, prefix) {
+  const out = [];
+  for (let offset = 0; ; offset += PAGE) {
+    const res = await ask(`${env.base.replace(/\/+$/, '')}/storage/v1/object/list/${BUCKET}`, {
+      method: 'POST',
+      headers: { ...env.headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ prefix, limit: PAGE, offset, sortBy: { column: 'name', order: 'asc' } }),
+    });
+    if (!res.ok) throw new Error(`list ${prefix}: ${res.status}`);
+    const page = await res.json();
+    for (const e of page) {
+      const path = `${prefix}/${e.name}`;
+      if (e.id) out.push(path);
+      else out.push(...(await listUnder(env, path)));
+    }
+    if (page.length < PAGE) return out;
+  }
+}
+
+// The records a glob names, and the index beside them.
+export async function fetchData(env, root, globs) {
+  const results = [await getObject(env, root, INDEX)];
+  say(results[0]);
+  for (const glob of globs) {
+    const re = globRegExp(glob);
+    const dir = globDir(glob);
+    const names = (await listUnder(env, dir ? `data/${dir}` : 'data'))
+      .filter((p) => p.endsWith('.json.gz'))
+      .map((p) => p.slice('data/'.length, -'.json.gz'.length))
+      .filter((n) => re.test(n));
+    if (!names.length) console.log(`${glob}: nothing matches`);
+    // (records are small, so a few at once: one at a time takes an hour on a kit folder)
+    let next = 0;
+    const worker = async () => {
+      while (next < names.length) {
+        const r = await getObject(env, root, dataPath(names[next++]));
+        say(r);
+        results.push(r);
+      }
+    };
+    await Promise.all(Array.from({ length: POOL }, worker));
+  }
+  return results;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
   const root = join(ROOT, 'lab', 'assets', 'bf2017');
@@ -143,6 +197,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const manifest = await loadManifest(root);
     const re = new RegExp(`^${String(args.list).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
     for (const [name, e] of manifest) if (re.test(name)) console.log(`${name}  ${e.lods.map((l) => l.triangles).join(' · ')}`);
+  } else if (what === 'data') {
+    if (args._.length < 2) {
+      console.error("usage: node scripts/bf2017-fetch.mjs data '<glob>' […]");
+      process.exit(1);
+    }
+    await fetchData(keys(), root, args._.slice(1));
   } else if (what === 'manifest') {
     say(await getObject(keys(), root, MANIFEST));
   } else if (what) {
@@ -154,7 +214,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(1);
     });
   } else {
-    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] | --list '<glob>'");
+    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | data '<glob>' […] | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] | --list '<glob>'");
     process.exit(1);
   }
 }
