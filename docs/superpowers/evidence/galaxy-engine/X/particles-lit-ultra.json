@@ -1,0 +1,31 @@
+{
+  "size": "1600x900",
+  "adapter": "swiftshader",
+  "rows": [
+    {
+      "leg": "webgl",
+      "tier": "ultra",
+      "post": false,
+      "backend": "nodes-webgl",
+      "clustered": false,
+      "passes": [],
+      "shot": "particles-lit-ultra-webgl.png",
+      "parity": {
+        "frames": 120,
+        "live": 740,
+        "agree": 1,
+        "worstMetres": 0.000019286869445950207,
+        "backend": "nodes-webgl"
+      },
+      "simMode": "cpu",
+      "stats": null,
+      "envDiff": 11.07,
+      "programsBefore": 29,
+      "programsAfter": 29,
+      "frames": 5,
+      "mean": 2972.4,
+      "median": 3013,
+      "p95": 3146.5
+    }
+  ]
+}
