@@ -6,16 +6,19 @@
 // its spellings, best first); `opts` tells scripts/bf2017-clips.mjs where it
 // takes them from:
 //
-//   SET_PACKS { pack: { set, opts? } }: stance-p, stance-t, stance-l (stance.js)
+//   SET_PACKS { pack: { set, opts? } }: stance-p, stance-t, stance-l (stance.js),
+//     additive (additive.js)
 //     opts.additive   the pack is of the game's additive clips (deltas on
 //                     a pose: anims_additive/), laid over the figure's pose
 //     opts.skeletons  the skeletons' pattern (a RegExp's source), else the
 //                     humanoid's and the cinematics' (the same rig)
 
+import { ADD_SET } from './additive.js';
 import { STANCE_SET } from './stance.js';
 
 export const SET_PACKS = {
   'stance-p': { set: STANCE_SET('p') },
   'stance-t': { set: STANCE_SET('t') },
   'stance-l': { set: STANCE_SET('l') },
+  additive: { set: ADD_SET, opts: { additive: true } },
 };

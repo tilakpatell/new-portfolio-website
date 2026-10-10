@@ -41,6 +41,8 @@
 //     at a part weight. loop: whether it repeats (CLIPS's say, else no);
 //     hold: kept on its last frame until stopped; at: seconds in to start
 //     from. Done when it's played through; a clip it can't have is cut.
+//   post(fn | null): fn(step) laid after the layers and before the look,
+//     on each step (the game's additive clips: additiveLayer.js)
 //   restance({ name: clip }) → [name…]: clips in place of its own by those
 //     names (a weapon's stance, walrusSets/stance.js): idle, walk and run
 //     taken over where they are, at their weight, their strides measured
@@ -597,6 +599,9 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
       if (st.queue?.layers.has(layer)) cutQueue();
       if (SLOTS.has(layer)) cut(layer, fade);
     },
+    post(fn) {
+      st.post = typeof fn === 'function' ? fn : null;
+    },
     restance(set = {}) {
       if (st.disposed) return [];
       const done = [];
@@ -690,6 +695,7 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
         const s = st.slots[layer];
         if (s) lay(s.parts, s.t, s.w * k);
       }
+      st.post?.(step);
       stepLook(step, frame);
     },
     dispose() {

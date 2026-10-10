@@ -137,7 +137,7 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
     const gun = ARMS[t.soldier.kind];
     if (gun && fig.model.getObjectByName('RightHand')?.isBone) {
       t.holder.updateMatrixWorld(true);
-      t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets, stance: fig.stance }, gun, {
+      t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets, stance: fig.stance, aimAt: fig.aimAt }, gun, {
         unit: 1,
         who: t.soldier.kind,
       });

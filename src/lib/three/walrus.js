@@ -23,7 +23,9 @@
 //   loadWalrusBody(url, { packs, loader }) → Promise<{ model, clips, sockets }>:
 //     a copy of the body (its own bones), its clips; refuses a tree that is
 //     not the game's rig, naming what it lacks
-//   PACK_DIR, packUrls(hero): the packs a figure loads, the humanoid first
+//   PACK_DIR, packUrls(hero): the packs a figure loads, the humanoid first,
+//     the additive layer's last (its clips marked `additive`: laid over the
+//     pose by lib/three/additiveLayer.js, never played as one)
 //   cutFor(url, level): which of a 2017 figure's three files a device loads
 //     (lib/detail.js's level, from lib/device's tier): at ultra its
 //     `.ultra` (the game's top mesh, every map at the game's 2048, up to
@@ -37,7 +39,7 @@ import { cloneScene, loadGLTF } from './gltfCache';
 import { CLIP_FALLBACK, SOCKETS, checkWalrus, isWalrus } from './walrusRig.js';
 
 export const PACK_DIR = '/models/galaxy/bf2017';
-export const packUrls = (hero = null) => [`${PACK_DIR}/clips-humanoid.glb`, ...(hero ? [`${PACK_DIR}/clips-${hero}.glb`] : [])];
+export const packUrls = (hero = null) => [`${PACK_DIR}/clips-humanoid.glb`, ...(hero ? [`${PACK_DIR}/clips-${hero}.glb`] : []), `${PACK_DIR}/clips-additive.glb`];
 
 export const cutFor = (url, level) => (level === 'low' || level === 'mid' ? url.replace(/\.glb$/, '.lod1.glb') : level === 'ultra' ? url.replace(/\.glb$/, '.ultra.glb') : url);
 
@@ -122,6 +124,8 @@ export function clipsFor(body, clips) {
     const c = new THREE.AnimationClip(name, clip.duration, tracks);
     c.userData = { ...(clip.userData ?? {}) };
     own[name] = c;
+    // (an additive's deltas are laid over the pose, never played: no rest in them, nor from them)
+    if (c.userData.additive) continue;
     for (const t of tracks) {
       const path = t.name.slice(t.name.lastIndexOf('.') + 1);
       moved.set(t.name, [bones.get(boneOf(t)), path]);
@@ -129,6 +133,7 @@ export function clipsFor(body, clips) {
   }
   // (rest back where a clip leaves a moved bone alone)
   for (const c of Object.values(own)) {
+    if (c.userData.additive) continue;
     const has = new Set(c.tracks.map((t) => t.name));
     for (const [id, [bone, path]] of moved) if (!has.has(id)) c.tracks.push(restTrack(bone, path, c.duration));
   }

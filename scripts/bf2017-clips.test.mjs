@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { atRest, makePack, resampleChannel } from './bf2017-clips.mjs';
+import { atIdentity, atRest, makePack, resampleChannel } from './bf2017-clips.mjs';
 
 const reader = async () => {
   await MeshoptDecoder.ready;
@@ -67,6 +67,12 @@ describe('a pack of the game’s clips', () => {
     expect(odd.values.slice(-3)).toEqual([1, 0, 0]);
   });
 
+  it('knows an additive channel that adds nothing (the identity turn, no move)', () => {
+    expect(atIdentity('rotation', [0, 0, 0, 1, 0, 0, 0, -1])).toBe(true);
+    expect(atIdentity('rotation', [0, 0, 0, 1, 0.1, 0, 0, 0.995])).toBe(false);
+    expect(atIdentity('translation', [0, 0, 0, 0, 0, 0])).toBe(true);
+    expect(atIdentity('translation', [0, 0.01, 0])).toBe(false);
+  });
   it('knows a channel that only holds its rest (a turn or its negation)', () => {
     const node = new Document().createNode('x').setRotation([0, 0, 0, 1]);
     expect(atRest(node, 'rotation', [0, 0, 0, 1, 0, 0, 0, -1])).toBe(true);

@@ -209,6 +209,17 @@ export function atRest(node, path, values) {
   return true;
 }
 
+// an additive channel that adds nothing all through (the identity turn, no move)
+export function atIdentity(path, values) {
+  const size = SIZES[path];
+  const id = size === 4 ? [0, 0, 0, 1] : [0, 0, 0];
+  for (let i = 0; i < values.length; i += size) {
+    const d = (sign) => Math.max(...id.map((r, k) => Math.abs(values[i + k] - sign * r)));
+    if (Math.min(d(1), size === 4 ? d(-1) : Infinity) > 1e-4) return false;
+  }
+  return true;
+}
+
 // ── one clip, read ──
 
 // its channels by node name, the trajectory's kept apart
@@ -240,6 +251,7 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
   if (isSequel(pack)) throw new Error(`${pack} is sequel-era; the site shows none of it`);
   const map = PACKS[pack];
   if (!map) throw new Error(`${pack}: no such pack (${Object.keys(PACKS).join(', ')})`);
+  const additive = Boolean(PACK_OPTS[pack]?.additive);
   const rw = await io();
   const anims = readManifest(await readFile(join(root, 'web', 'anims.jsonl'), 'utf8'));
   const doc = await rw.read(skeleton);
@@ -297,7 +309,7 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
       if (!node) continue;
       const r = resampleChannel(c.times, c.values, SIZES[c.path], fps, end);
       kept.push({ ...c, times: r.times, values: r.values });
-      if (atRest(node, c.path, r.values)) continue;
+      if (additive ? atIdentity(c.path, r.values) : atRest(node, c.path, r.values)) continue;
       keys += r.times.length;
       const input = inputOf(r.times);
       const output = doc
@@ -312,7 +324,9 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
     // that reads the game's logic by it; the credit is the pack's, in
     // public/games/credits.json)
     const extras = { source: game, fps, loop: Boolean(clip.extras?.loop) };
-    if (clip.traj) {
+    // (an additive's deltas are laid over a pose, never played as one: lib/three/additiveLayer.js)
+    if (additive) extras.additive = true;
+    if (clip.traj && !additive) {
       const rows = clip.traj.times.map((t, i) => ({ t, at: clip.traj.values.slice(i * 3, i * 3 + 3) }));
       // (at the pack's rate: a row every 1/fps)
       const step = Math.max(1, Math.round(rows.length / Math.max(1, end * fps)));
@@ -322,7 +336,7 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
         if (rootHips != null) extras.rootHips = rootHips;
       }
     }
-    if (site.startsWith('sword.') && !site.endsWith('.rec')) extras.contact = contactWindow(measure(skel, kept, end, fps));
+    if (!additive && site.startsWith('sword.') && !site.endsWith('.rec')) extras.contact = contactWindow(measure(skel, kept, end, fps));
     anim.setExtras(extras);
     made.push({ site, game, frames: Math.round(end * fps) + 1, keys, duration: end });
   }

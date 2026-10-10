@@ -96,8 +96,8 @@ describe('a figure on the game’s skeleton', () => {
   });
 
   it('loads the humanoid pack first and a hero’s over it', () => {
-    expect(packUrls('luke')).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-luke.glb']);
-    expect(packUrls()).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb']);
+    expect(packUrls('luke')).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-luke.glb', '/models/galaxy/bf2017/clips-additive.glb']);
+    expect(packUrls()).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-additive.glb']);
   });
 
   it('loads the game’s full maps at ultra, the plain figure at high, the light one at low and mid', () => {

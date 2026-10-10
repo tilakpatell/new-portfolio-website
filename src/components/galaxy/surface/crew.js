@@ -89,6 +89,8 @@ export async function crewFigure(kind, i = 0) {
     sockets: fig.sockets ?? null,
     // (a 2017 figure's weapon stance: lib/three/walrusStance.js)
     stance: fig.stance ?? null,
+    // (and its chest aimed by the game's additive aims: footScene's rigged)
+    aimAt: fig.aimAt ?? null,
     // (a droid's or a beast's own skeleton, by the game's name: its hit capsules)
     skeleton: fig.skeleton ?? null,
     clips: fig.clips ?? null,

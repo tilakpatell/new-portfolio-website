@@ -146,6 +146,7 @@ import { asTarget, clashes, duelFor, fence, landed, reeling, stun, turnOf } from
 import { onHit } from '../../../lib/combat/duel';
 import { sharpen } from '../../../lib/three/textures';
 import { ARMS } from './ground/troops';
+import { hitSide } from '../../../lib/three/walrusSets/additive';
 
 const SHOTS = 3; // enemies firing at you at once, across a world (the rest move)
 const UP = new THREE.Vector3(0, 1, 0);
@@ -398,7 +399,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       if (t.blade) t.duel = duelFor(s, Math.round(t.home[0] * 13) * 31 + Math.round(t.home[1] * 17) + targets.indexOf(t) * 7919 + 1);
       return;
     }
-    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets, stance: fig.stance }, kind, { unit: 1, who: s.kind });
+    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets, stance: fig.stance, aimAt: fig.aimAt }, kind, { unit: 1, who: s.kind });
   };
 
   // the step's own things, put out
@@ -473,7 +474,9 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   const flinched = (t, at = null) => {
     if (t.down) return;
     const tall = (t.fig?.tall ?? 1.8) * (t.spec.scale ?? 1);
-    if (t.fig?.react?.('hit', { where: whereHit(at?.y, t.holder.position.y, tall), moving: true })) t.reacted = true;
+    // (and the side it came in from, round the way it faces: a 2017 figure's additive flinch, lib/three/additiveLayer.js)
+    const side = at ? hitSide([at.x - t.b.x, at.z - t.b.z], t.b.yaw) : null;
+    if (t.fig?.react?.('hit', { where: whereHit(at?.y, t.holder.position.y, tall), side, moving: true })) t.reacted = true;
   };
 
   // its guard broken by a heavy stroke, or spent: it reels 2 s
