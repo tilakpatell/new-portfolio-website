@@ -38,7 +38,7 @@ describe('variationsOf', () => {
   it('keeps a texture the bucket lacks under `missing`, its slot null, the rest bound (Review Focus 2)', () => {
     const m = out.meshes[CRATE].variations[SNOW].materials[0];
     expect(m.textures._RGB).toBe(null);
-    expect(m.missing).toEqual(['Objects/Props/ObjectSets/_RebelAlliance/Box_M_01/T_Box_M_01_A_M']);
+    expect(m.missing).toEqual({ _RGB: 'Objects/Props/ObjectSets/_RebelAlliance/Box_M_01/T_Box_M_01_A_M' });
     expect(out.missing).toContain('Objects/Props/ObjectSets/_RebelAlliance/Box_M_01/T_Box_M_01_A_M');
     expect(m.textures._NAM_texcoord0).toMatch(/t_box_m_01_a_nam\.ktx2$/);
   });

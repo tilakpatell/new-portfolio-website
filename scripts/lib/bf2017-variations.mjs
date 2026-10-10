@@ -17,7 +17,7 @@
 //       use: <short name> | null, by: 'instances' | 'rule' | 'mixed' | null, uses?: { name: instances }, _source }
 //     (a mixed mesh draws its default: a pack draws one material a mesh;
 //     `instances` keeps each group's list for a split by instance)
-//     material = { textures: { slot: ktx2 | null }, missing?, shader?, vectors?, bools?, conditionals? }
+//     material = { textures: { slot: ktx2 | null }, missing?: { slot: name }, shader?, vectors?, bools?, conditionals? }
 //   levelRule(meshes, usedDefaults) → { <mesh>: <short name> }
 //   instanceUse({ groups, meshes, members, names }) → { instances: [[groupIndex, name | [names]]], byMesh: { <mesh>: { name: count } } }
 //
@@ -48,14 +48,14 @@ function readVariation(record) {
 // one MVDB material's bindings, and its MeshMaterialVariation's when it has one
 function materialOf(m, listing, shaderOf, missingAll) {
   const textures = {};
-  const missing = [];
+  const missing = {};
   const bind = (slot, name) => {
     const path = name ? ktx2Of(name, listing) : null;
     textures[slot] = path;
     if (name && !path) {
-      missing.push(name);
+      missing[slot] = name;
       missingAll.add(name);
-    }
+    } else delete missing[slot];
   };
   for (const t of m.TextureParameters ?? []) bind(t.ParameterName, t.Value?.$asset);
   const out = { textures };
@@ -70,7 +70,7 @@ function materialOf(m, listing, shaderOf, missingAll) {
     if (Object.keys(bools).length) out.bools = bools;
     if (Object.keys(conditionals).length) out.conditionals = conditionals;
   }
-  if (missing.length) out.missing = missing;
+  if (Object.keys(missing).length) out.missing = missing;
   return out;
 }
 
