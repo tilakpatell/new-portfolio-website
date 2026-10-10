@@ -395,12 +395,15 @@ export function expanseLife(type, biomes, system) {
 
 const EXPANSE_ID = /^e:(-?\d+),(-?\d+):(\d+):(\d+)$/i;
 
-// an Expanse planet's system (its faction, traffic and hazard) is on its row,
-// given as planetSpecOf is given it
+// the system an Expanse planet id names (its faction, traffic and hazard), or
+// null: on its row, given as planetSpecOf is given it
+export const systemOf = (planetId, { expanse = null } = {}) =>
+  EXPANSE_ID.test(String(planetId)) ? (expanseLookup(expanse)(String(planetId).toLowerCase())?.system ?? null) : null;
+
 export function lifeFor(spec, { expanse = null } = {}) {
   if (!spec?.id) return NONE;
   const named = LIFE[spec.id];
-  const life = named ?? (EXPANSE_ID.test(spec.id) ? expanseLife(spec.type, spec.biomes ?? [], expanseLookup(expanse)(spec.id.toLowerCase())?.system ?? null) : NONE);
+  const life = named ?? (EXPANSE_ID.test(spec.id) ? expanseLife(spec.type, spec.biomes ?? [], systemOf(spec.id, { expanse })) : NONE);
   return { kinds: life.kinds, air: life.air, ground: life.ground };
 }
 

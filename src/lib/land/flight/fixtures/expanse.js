@@ -5,8 +5,12 @@
 import EXPANSE from './expanse.json';
 import { planetSpecOf as specWith, planetsOf } from '../planetSpec.js';
 import { lifeFor as lifeWith } from '../lifeTables.js';
+import { occurrencesFor as occurrencesWith } from '../occurrences.js';
+import { eventsFor as eventsWith } from '../eventTables.js';
 
 export { EXPANSE };
 export const PLANETS = planetsOf(EXPANSE);
 export const planetSpecOf = (id) => specWith(id, { expanse: EXPANSE });
 export const lifeFor = (spec) => lifeWith(spec, { expanse: EXPANSE });
+export const occurrencesFor = (spec, life = null) => occurrencesWith(spec, life, { expanse: EXPANSE });
+export const eventsFor = (spec, life = null) => eventsWith(spec, life, { expanse: EXPANSE });

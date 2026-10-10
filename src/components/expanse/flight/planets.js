@@ -9,11 +9,14 @@
 //   PLANETS → the fifty, { id, name, type, seed }
 //   planetSpecOf(id) → the planet's spec, or null
 //   lifeOf(spec) → what lives on it
+//   occurrencesOf(spec), eventsOf(spec) → what is there to find, and what happens
 
 import { makeSector } from '../gen/sector.js';
 import { UNIVERSE } from '../gen/seed.js';
 import { planetSpecOf as specWith, planetsOf } from '../../../lib/land/flight/planetSpec';
 import { lifeFor } from '../../../lib/land/flight/lifeTables';
+import { occurrencesFor } from '../../../lib/land/flight/occurrences';
+import { eventsFor } from '../../../lib/land/flight/eventTables';
 
 const EXPANSE_COUNT = 13;
 // the order the roster takes them in: sectors round home
@@ -51,3 +54,5 @@ export const EXPANSE = expanseRows();
 export const PLANETS = planetsOf(EXPANSE);
 export const planetSpecOf = (id) => specWith(id, { expanse: expanseRow });
 export const lifeOf = (spec) => lifeFor(spec, { expanse: expanseRow });
+export const occurrencesOf = (spec) => occurrencesFor(spec, null, { expanse: expanseRow });
+export const eventsOf = (spec) => eventsFor(spec, null, { expanse: expanseRow });

@@ -4,7 +4,7 @@
 
 **Goal:** Things happen: seeded features in every cell as the ground generates (wrecks with salvage, caves with something in them, camps that are hostile, beacons that call) and timed events a director rolls and announces to the room (storms, raids, launches, eruptions, migrations, the Purge), each planet its own, the same for pilots together.
 
-**Architecture:** `occurrences.js` (pure) is the catalogue of occurrence kinds with a placement and a rule; `roster.js` (lane G) gains `occurrences` per cell from `lifeTables`' list; `director.js` (pure) rolls the planet's events on a clock with cooldowns and a `ttl`, and the scene plays each (weather through the galaxy's `weather.js` kinds, ships through lane G's air, ground through lane G's life); events go out on the room as `event` and come in checked.
+**Architecture:** `occurrences.js` (pure) is the catalogue of occurrence kinds with a placement and a rule, each world's list, and `placeOccurrences` per cell (as built: the lists live here, not in lane G's `lifeTables.js` and `roster.js`, which stay untouched); `eventTables.js` (pure) is the events; `director.js` (pure) rolls the planet's events on a clock with cooldowns and a `ttl`, and the scene plays each (weather through the galaxy's `weather.js` kinds, ships through lane G's air, ground through lane G's life); events go out on the room as `event` and come in checked.
 
 **Tech Stack:** `universe/director.js`'s shape, `galaxy/surface/weather.js`, `galaxy/surface/storm.js`, lane G's pools and brains, lane C's room, lane B's loader (a beacon may mark a built thing).
 
@@ -12,9 +12,9 @@
 
 ## Global Constraints
 
-- Starts from `main` after lanes D and G merge. Touches `src/lib/land/flight/{occurrences,director}.js`, `src/components/expanse/flight/{events,occurrenceScene}.js`, `flightProtocol.js` (the `event` action, rate `[0.5, 3]`), `scene.js`.
+- Starts from `main` after lanes D and G merge. Touches `src/lib/land/flight/{occurrences,eventTables,director}.js`, `src/components/expanse/flight/{events,eventPlays,occurrenceScene,eventNews}.js`, `EventLine.jsx`, `flightProtocol.js` (the `event` action, rate `[0.5, 3]`), `online.js` (the action made and heard), `scene.js`, `FlightHud.jsx`, `module.js` (the room handed in through the shared world's `makeOnline`, and `occurrences()` for the map).
 - Caps: `OCC_CAP = 6` a cell; `EVENT_MIN_GAP = 45` s between events, `EVENT_FIRST = 60` s after arrival, one event at a time, `ttl` per kind under 240 s; an event announced by a peer is believed only with a known kind, within `NET_CELL × 3` of its `at`, and not more often than the rate.
-- A per-cell occurrence is seeded (the same for everyone); a timed event is rolled locally and announced, so pilots together see one event (the first announcer wins by `id` order; a later roll of the same kind within `ttl` is dropped).
+- A per-cell occurrence is seeded (the same for everyone); a timed event is rolled from the seed, the cell and a 90 s wall-clock slot (so pilots in one cell roll the same id with nothing said) and announced, so pilots in the cells round see one event (the earlier start, the lower `id`, wins; a later one of the same kind within its cooldown, never shorter than its `ttl`, is dropped).
 - Weather changes visibility through the scene's fog only; it never changes the terrain's heights except `lava surge` (a uniform the ground shader reads) and `quake` (a visual offset, not the field).
 - No model names in code, docs, commits. Commits end with the harness's attribution lines.
 - Before the PR: lint, tests, build, health, smoke on `/fly/hoth,/fly/purge,/fly/mustafar`, `node scripts/online-check.mjs --fly` (two browsers see one storm).
@@ -32,7 +32,7 @@
 ### Task 1: The occurrence catalogue (pure)
 
 **Files:**
-- Create: `src/lib/land/flight/occurrences.js`, `occurrences.test.js`; Modify: `lifeTables.js` (each planet's `occurrences: [kind…]`), `roster.js` (`occurrences` per cell, `OCC_CAP`)
+- Create: `src/lib/land/flight/occurrences.js`, `occurrences.test.js` (as built: each planet's list `OCC[planetId]`, `occurrencesFor(spec)`, `placeOccurrences(spec, rows, key, field)` and `OCC_CAP` here, `lifeTables.js` and `roster.js` unchanged)
 
 **Interfaces:**
 - Produces: `OCCURRENCES = { wreck: { place: { kinds: [...], r }, rule: 'salvage' }, cave: { place: 'pit', rule: 'lair' }, camp: { rule: 'hostile', r: 300 }, beacon: { rule: 'call' }, outpost: ..., ruin: ..., field: ... }`; `applyRule(occ, ship, state, dt) → { toast?, marker?, hostile?: [...], pickup? }`.
@@ -43,10 +43,10 @@
 ### Task 2: The director (pure) and the wire
 
 **Files:**
-- Create: `src/lib/land/flight/director.js`, `director.test.js`; Modify: `flightProtocol.js` (`writeEvent`, `readEvent`), `flightProtocol.test.js`
+- Create: `src/lib/land/flight/eventTables.js`, `director.js`, `director.test.js`; Modify: `flightProtocol.js` (`writeEvent`, `readEvent`), `flightProtocol.test.js`, `online.js` (`event(ev)`, `{ type: 'event' }`, `{ type: 'joined' }`)
 
 **Interfaces:**
-- Produces: `EVENTS[kind] → { ttl, cooldown, needs?: (ctx) => boolean, pick: (rng, ctx) => params }`; `createFlightDirector({ life, rand, now }) → { update(dt, ctx) → [{ id, kind, at, t0, ttl, params }], announce(ev), receive(ev) → accepted, active(), clear() }`; `readEvent` as the spec's checks.
+- Produces: `EVENTS[kind] → { ttl, cooldown, needs?: (ctx) => boolean, pick: (rng, ctx) => params }`; `createFlightDirector({ spec, list, now, seed }) → { update(dt, ctx) → { begun, ended }, wire(ev), receive(ev) → accepted, active(), clock(), force(kind), clear() }` (as built: no `rand`, the roll is seeded; `wire` is what's announced, the layer sends it); `readEvent` as the spec's checks.
 
 - [ ] Tests: nothing before `EVENT_FIRST`; a gap of `EVENT_MIN_GAP`; one at a time; `needs` respected (no Purge by day; no eruption without a volcano biome loaded); two directors with a fake room converge on the lower id; `clear()` empties.
 - [ ] Write; PASS; **Commit** `A director rolls what happens and tells the room`.

@@ -149,4 +149,24 @@ describe('the flight’s room, heard by cell', () => {
     await flush();
     expect(fake.rooms).toHaveLength(0);
   });
+
+  it('says and hears what is happening, and says when a pilot is new', async () => {
+    const { link, room } = await online();
+    const heard = [];
+    link.on((e) => heard.push(e));
+    link.update(ship(100, 100));
+    const ev = { id: '1790000000:blizzard:0,0', kind: 'blizzard', at: [1000, 1000], t: 3, seed: 9 };
+    link.event(ev);
+    expect(room.sent.find(([ns]) => ns === 'event')[1]).toEqual(ev);
+    room.hear('event', ev, 'p2', 'hoth/0,0');
+    room.hear('event', { ...ev, kind: 'nonsense' }, 'p2', 'hoth/0,0');
+    expect(heard.filter((e) => e.type === 'event')).toEqual([{ type: 'event', event: ev }]);
+    // (the rate: three at once, then one every two seconds)
+    for (let i = 0; i < 5; i++) room.hear('event', ev, 'p3', 'hoth/0,0');
+    expect(heard.filter((e) => e.type === 'event')).toHaveLength(4);
+    room.hear('hi', { n: 'Bravo', k: 'wedge' }, 'p4', 'hoth/0,0');
+    expect(heard.at(-1)).toEqual({ type: 'joined', id: 'p4' });
+    room.hear('hi', { n: 'Bravo', k: 'wedge' }, 'p4', 'hoth/0,0');
+    expect(heard.filter((e) => e.type === 'joined')).toHaveLength(1);
+  });
 });

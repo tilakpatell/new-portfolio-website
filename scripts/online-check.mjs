@@ -23,7 +23,8 @@
 // planet flight: begin (scripts/flight-island.mjs removes this block)
 // or, the shared world over a planet (--fly, ./lib/fly-check.mjs): two pilots
 // on /fly/hoth heard by cell, a turret built in one in the other, kept over
-// a reload and shot to nothing, the durable world faked here:
+// a reload and shot to nothing, the durable world faked here, and one
+// blizzard both see (./lib/storm-check.mjs):
 //   node scripts/online-check.mjs --fly
 // planet flight: end
 // (BASE=http://127.0.0.1:5188/?quality=low# for a dev server elsewhere)
@@ -39,6 +40,7 @@ import { chromium } from 'playwright-core';
 import { fakeRelays } from './lib/fake-relays.mjs';
 import { fakeDurable } from './lib/fake-durable.mjs'; // planet flight
 import { flyCheck } from './lib/fly-check.mjs'; // planet flight
+import { stormCheck } from './lib/storm-check.mjs'; // planet flight
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -409,6 +411,8 @@ if (fly) {
   try {
     const n = await flyCheck({ a, b, relays, durable: fakeDurable(), base: BASE, check, waitFor });
     console.log(`fly: ${JSON.stringify(n)}`);
+    // (and one event, the same in both: ./lib/storm-check.mjs)
+    console.log(`storm: ${JSON.stringify(await stormCheck({ a, b, check, waitFor }))}`);
   } catch (e) {
     failed++;
     console.log(`FAIL ${e.message}`);

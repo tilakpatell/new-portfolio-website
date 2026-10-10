@@ -29,6 +29,7 @@ export const ISLAND = {
     'scripts/supabase-seed.test.mjs',
     'scripts/lib/durable-check.mjs',
     'scripts/lib/fly-check.mjs',
+    'scripts/lib/storm-check.mjs',
     'scripts/lib/fake-durable.mjs',
     'scripts/lib/fake-durable.test.mjs',
     'scripts/fixtures/planets.json',
@@ -122,7 +123,7 @@ export const NAMES = [
   /world_entities/,
   /__FLIGHT__/,
   /flight-island/,
-  /\b(?:fly-check|fake-durable|durable-check|supabase-seed|flight-expanse-fixture)\b/,
+  /\b(?:fly-check|storm-check|fake-durable|durable-check|supabase-seed|flight-expanse-fixture)\b/,
 ];
 
 // where references are looked for: the code and config, not the docs (docs
