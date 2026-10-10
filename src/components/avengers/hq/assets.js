@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { gltfLoader } from '../../../lib/three/gltf';
+import { loadGltfFile } from '../../../lib/three/gltf';
 import { loadTexture, sharpen, sharpenMaterial, warm } from '../../../lib/three/textures';
 import { IMPOSTORS, MODELS, SKIES, TEXTURES } from './catalog';
 
@@ -122,7 +122,7 @@ export function loadSky(name, { background = true } = {}) {
 export function loadModel(name) {
   return once(`model:${name}`, async () => {
     try {
-      const gltf = await gltfLoader().loadAsync(`${BASE}models/${name}.glb`);
+      const gltf = await loadGltfFile(`${BASE}models/${name}.glb`);
       gltf.scene.traverse((o) => {
         if (o.isMesh) {
           o.castShadow = true;
