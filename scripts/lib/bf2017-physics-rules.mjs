@@ -1,0 +1,410 @@
+// The physics rulebooks from the game's own records (the Frosty export's
+// EBX JSON, `<root>/data/<Name>.json` or `.json.gz`, the bucket's layout):
+// one builder a kind, each a named export, each numeric leaf with a
+// `<key>_source` sibling naming `<asset>#<Type>.<Property.Path>`. Lane P1
+// adds the soldier's; lane P2 (here): projectiles, bone capsules, ragdolls.
+// A source that starts with `#` is in the asset its nearest enclosing
+// object's `_source` names (the row's, or a ragdoll body's blueprint), so
+// the asset's path is written once a row and not once a number.
+// Until lane 0's bf2017-ebx.mjs is on main this file carries the forty
+// lines of loadAsset/deref it needs; swap them for that module's when it is.
+//
+//   loadAsset(root, name) → { name, type, guid, root, objects } | null
+//   deref(asset, v) → object | null ({ $ref: i })
+//   refused(name) → bool (the sequel era, never written)
+//   checkSources(json) → string[] (numeric leaves with no source)
+//
+//   projectileRow(asset) → { id, kind ('bolt' | 'missile' | 'grenade' |
+//     'charge'), speed, maxSpeed, gravity, drag, ttl, engineTtl, damping,
+//     impactImpulse, damage, falloff, body, bounce, blast, detonate, _source }
+//     for a ProjectileBlueprint (missiles, grenades, charges) or a bolt's
+//     GameDataContainerAsset (WSBulletEntityData); null for anything else
+//   projectileRulebook(root, { under }) → { rows, refused, skipped }
+//   boneSetRow(asset) → { id, skeleton, bones: [{ bone, length, radius,
+//     offset, axis, reaction, hiLod, lowLod, material }], aimAssist }
+//   ragdollRow(asset, follow?) → { id, physics, bodies: [{ index, bone,
+//     parent, mass, shape, radius, length, rest, friction, limits }],
+//     maxImpulse, impulseLifetime, settleMomentum, dismemberment }
+//     (follow(name) → asset loads the blueprint's ragdoll; without it the
+//     bodies carry their bones only)
+//   physicsRulebooks(root) → { projectiles, bones, ragdoll } (the three
+//     files' contents)
+
+import fs from 'node:fs';
+import path from 'node:path';
+import zlib from 'node:zlib';
+import { isSequel } from './bf2017-manifest.mjs';
+
+// ── reading the export ──
+
+const indexes = new Map(); // root → Map(lower-case name → file)
+
+function indexOf(root) {
+  if (indexes.has(root)) return indexes.get(root);
+  const map = new Map();
+  const base = path.join(root, 'data');
+  const walk = (dir) => {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.json(\.gz)?$/.test(e.name)) {
+        const name = path.relative(base, p).replace(/\\/g, '/').replace(/\.json(\.gz)?$/, '');
+        map.set(name.toLowerCase(), p);
+      }
+    }
+  };
+  walk(base);
+  indexes.set(root, map);
+  return map;
+}
+
+export function loadAsset(root, name) {
+  const file = indexOf(root).get(String(name).toLowerCase());
+  if (!file) return null;
+  const buf = fs.readFileSync(file);
+  return JSON.parse((file.endsWith('.gz') ? zlib.gunzipSync(buf) : buf).toString('utf8'));
+}
+
+export const assetNames = (root, under = '') => [...indexOf(root).keys()].filter((n) => n.startsWith(under.toLowerCase()));
+
+export const deref = (asset, v) => (v && typeof v === 'object' && Number.isInteger(v.$ref) ? (asset.objects[v.$ref] ?? null) : null);
+
+const rootOf = (asset) => asset.objects[asset.root] ?? null;
+
+// lane 0's extra names, beside the models manifest's list
+const MORE_SEQUEL = /newera|crait|kylo|phasma|bb9e|astromechbb/i;
+export const refused = (name) => isSequel(name) || MORE_SEQUEL.test(name);
+
+// ── sources ──
+
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+
+// a number at `key` with its source, or nothing when the record has none
+function put(out, key, value, src) {
+  if (!isNum(value)) return;
+  out[key] = value;
+  out[`${key}_source`] = src;
+}
+
+export function checkSources(json) {
+  const bad = [];
+  const walk = (v, at, hand) => {
+    if (Array.isArray(v)) {
+      v.forEach((x, i) => walk(x, `${at}[${i}]`, hand));
+      return;
+    }
+    if (!v || typeof v !== 'object') return;
+    const here = hand || v.source === 'hand';
+    for (const [k, x] of Object.entries(v)) {
+      if (k.endsWith('_source')) continue;
+      const sourced = here || v[`${k}_source`] !== undefined;
+      if (isNum(x) && !sourced) bad.push(`${at}.${k}`);
+      else if (Array.isArray(x) && x.every(isNum)) {
+        if (!sourced && x.length) bad.push(`${at}.${k}`);
+      } else walk(x, `${at}.${k}`, here);
+    }
+  };
+  walk(json, '$', false);
+  return bad;
+}
+
+const shortId = (name) => name.split('/').pop().toLowerCase();
+
+// ── projectiles ──
+
+const KIND = {
+  WSBulletEntityData: 'bolt',
+  WSMissileEntityData: 'missile',
+  WSGrenadeEntityData: 'grenade',
+  FlashGrenadeEntityData: 'grenade',
+  WSExplosionPackEntityData: 'charge',
+};
+
+export function projectileRow(asset) {
+  if (!asset) return null;
+  const top = rootOf(asset);
+  const data = asset.type === 'ProjectileBlueprint' ? deref(asset, top?.Object) : asset.type === 'GameDataContainerAsset' ? deref(asset, top?.Data) : null;
+  const kind = KIND[data?.$type];
+  if (!kind) return null;
+  const n = asset.name;
+  const T = data.$type;
+  const src = (p) => `#${T}.${p}`;
+  const row = { id: shortId(n), name: n, _source: n, kind };
+  put(row, 'speed', data.InitialSpeed, src('InitialSpeed'));
+  put(row, 'maxSpeed', data.MaxSpeed, src('MaxSpeed'));
+  put(row, 'gravity', data.Gravity, src('Gravity'));
+  put(row, 'drag', data.Drag, src('Drag'));
+  put(row, 'ttl', data.TimeToLive, src('TimeToLive'));
+  put(row, 'engineTtl', data.EngineTimeToLive, src('EngineTimeToLive'));
+  if (typeof data.ExtraDamping === 'boolean') row.damping = data.ExtraDamping;
+  put(row, 'impactImpulse', data.ImpactImpulse, src('ImpactImpulse'));
+  if (isNum(data.Damage)) put(row, 'damage', data.Damage, src('Damage'));
+  else put(row, 'damage', data.StartDamage, src('StartDamage'));
+  if (isNum(data.EndDamage)) {
+    row.falloff = {};
+    put(row.falloff, 'end', data.EndDamage, src('EndDamage'));
+    put(row.falloff, 'from', data.DamageFalloffStartDistance, src('DamageFalloffStartDistance'));
+    put(row.falloff, 'to', data.DamageFalloffEndDistance, src('DamageFalloffEndDistance'));
+  }
+  // the body: the root controller's rigid body (−1 is the material's, so left out)
+  const rb = asset.objects.find((o) => o?.$type === 'RigidBodyData' && o.IsRootController) ?? asset.objects.find((o) => o?.$type === 'RigidBodyData');
+  if (rb) {
+    const bs = (p) => `#RigidBodyData.${p}`;
+    row.body = {};
+    put(row.body, 'mass', rb.Mass, bs('Mass'));
+    if (rb.Restitution >= 0) put(row.body, 'restitution', rb.Restitution, bs('Restitution'));
+    if (rb.DynamicFriction >= 0) put(row.body, 'friction', rb.DynamicFriction, bs('DynamicFriction'));
+  } else row.body = null;
+  if (kind === 'grenade') {
+    row.bounce = {};
+    put(row.bounce, 'speedMultiplier', data.CollisionSpeedMultiplier, src('CollisionSpeedMultiplier'));
+    put(row.bounce, 'minSpeed', data.MinBounceSpeed, src('MinBounceSpeed'));
+    put(row.bounce, 'collisionDamage', data.CollisionDamage, src('CollisionDamage'));
+  }
+  const ex = deref(asset, data.Explosion);
+  if (ex) {
+    const es = (p) => `#ExplosionEntityData.${p}`;
+    row.blast = { occlusion: !ex.DisableOcclusion };
+    put(row.blast, 'inner', ex.InnerBlastRadius, es('InnerBlastRadius'));
+    put(row.blast, 'radius', ex.BlastRadius, es('BlastRadius'));
+    put(row.blast, 'impulse', ex.BlastImpulse, es('BlastImpulse'));
+    put(row.blast, 'damage', ex.BlastDamage, es('BlastDamage'));
+    put(row.blast, 'shockRadius', ex.ShockwaveRadius, es('ShockwaveRadius'));
+    put(row.blast, 'shockImpulse', ex.ShockwaveImpulse, es('ShockwaveImpulse'));
+    put(row.blast, 'shockTime', ex.ShockwaveTime, es('ShockwaveTime'));
+    put(row.blast, 'occlusionRadius', ex.MaxOcclusionRaycastRadius, es('MaxOcclusionRaycastRadius'));
+  } else row.blast = null;
+  const near = data.NearTargetDetonation;
+  row.detonate = {
+    onCollision: typeof data.ShouldDetonateOnCollision === 'boolean' ? data.ShouldDetonateOnCollision : kind === 'bolt',
+    onTimeout: !!data.DetonateOnTimeout,
+    nearTarget: null,
+  };
+  if (near?.DetonateNearTarget) {
+    row.detonate.nearTarget = {};
+    put(row.detonate.nearTarget, 'radius', near.DetonationRadius, src('NearTargetDetonation.DetonationRadius'));
+    put(row.detonate.nearTarget, 'minDelay', near.MinDetonationDelay, src('NearTargetDetonation.MinDetonationDelay'));
+    put(row.detonate.nearTarget, 'maxDelay', near.MaxDetonationDelay, src('NearTargetDetonation.MaxDetonationDelay'));
+  }
+  return row;
+}
+
+// every projectile under data/<under>: the 114 blueprints and the bolts' containers
+export function projectileRulebook(root, { under = 'Gameplay/' } = {}) {
+  const rows = [];
+  const refusedNames = [];
+  let skipped = 0;
+  for (const name of assetNames(root, under)) {
+    if (name.endsWith('_class_schematics')) continue;
+    const file = indexOf(root).get(name);
+    // (a cheap look before parsing: most files are neither)
+    const raw = file.endsWith('.gz') ? zlib.gunzipSync(fs.readFileSync(file)).toString('utf8') : fs.readFileSync(file, 'utf8');
+    if (!/"(ProjectileBlueprint|WSBulletEntityData)"/.test(raw)) continue;
+    const asset = JSON.parse(raw);
+    if (refused(asset.name)) {
+      if (projectileRow(asset)) refusedNames.push(asset.name);
+      continue;
+    }
+    const row = projectileRow(asset);
+    if (row) rows.push(row);
+    else skipped++;
+  }
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+  return { rows, refused: refusedNames.sort(), skipped };
+}
+
+// ── bone capsules ──
+
+const AXES = ['x', 'y', 'z'];
+
+export function boneSetRow(asset) {
+  const data = asset?.objects.find((o) => o?.$type === 'SkeletonCollisionData');
+  if (!data) return null;
+  const n = asset.name;
+  const src = (i, p) => `#SkeletonCollisionData.BoneCollisionData[${i}].${p}`;
+  const bones = (data.BoneCollisionData ?? []).map((b, i) => {
+    const o = b.CapsuleOffset ?? { x: 0, y: 0, z: 0 };
+    const row = { bone: b.BoneName };
+    put(row, 'length', b.CapsuleLength, src(i, 'CapsuleLength'));
+    put(row, 'radius', b.CapsuleRadius, src(i, 'CapsuleRadius'));
+    row.offset = [o.x, o.y, o.z];
+    row.offset_source = src(i, 'CapsuleOffset');
+    put(row, 'axis', b.BoneAxis, src(i, 'BoneAxis'));
+    row.axisName = AXES[b.BoneAxis] ?? 'x';
+    row.reaction = b.AnimationHitReactionType;
+    row.hiLod = !!b.ValidInHiLod;
+    row.lowLod = !!b.ValidInLowLod;
+    row.behindWall = !!b.DeactivateIfBehindWall;
+    put(row, 'material', b.MaterialPair?.Packed, src(i, 'MaterialPair.Packed'));
+    return row;
+  });
+  const aimAssist = [];
+  (data.BoneCollisionData ?? []).forEach((b, i) => {
+    const t = deref(asset, b.AimAssistTarget);
+    if (!t || !b.ValidInHiLod) return;
+    const as = (p) => `#SkeletonCollisionData.BoneCollisionData[${i}].AimAssistTarget.${p}`;
+    const a = { bone: b.BoneName };
+    put(a, 'lengthScale', t.LengthScale, as('LengthScale'));
+    put(a, 'radiusScale', t.SnapAim?.Bounding_RadiusScale, as('SnapAim.Bounding_RadiusScale'));
+    put(a, 'priority', t.SnapAim?.Point_Priorities?.StartPriority, as('SnapAim.Point_Priorities.StartPriority'));
+    aimAssist.push(a);
+  });
+  return { id: shortId(n), name: n, _source: n, skeleton: data.SkeletonAsset?.$asset ?? null, bones, aimAssist };
+}
+
+// ── the ragdoll ──
+
+// the component's body indices, by the game's bone names
+const BODY_FIELDS = ['Hips', 'Spine', 'LeftArm', 'LeftForeArm', 'LeftHand', 'Head', 'RightArm', 'RightForeArm', 'RightHand', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightUpLeg', 'RightLeg', 'RightFoot'];
+// the link fields a ragdoll constraint names its two bodies by (parent, child), read off the
+// StormTrooper's ragdoll: every constraint links hips → spine → head the same way round
+const PARENT = '0xa7b321c9';
+const CHILD = '0xf89af45f';
+
+export function ragdollRow(asset, follow = null) {
+  const comp = asset?.objects.find((o) => o?.$type === 'WSEACharacterPhysicsComponentData');
+  if (!comp) return null;
+  const n = asset.name;
+  const cs = (p) => `#WSEACharacterPhysicsComponentData.${p}`;
+  const row = { id: shortId(n), name: n, _source: n, physics: comp.PhysicsBlueprint?.$asset ?? null };
+  put(row, 'maxImpulse', comp.MaxImpulse, cs('MaxImpulse'));
+  put(row, 'impulseLifetime', comp.ImpulseLifetime, cs('ImpulseLifetime'));
+  put(row, 'settleMomentum', comp.SettleMomentum, cs('SettleMomentum'));
+  row.dismemberment = { enabled: !!comp.EnableDismemberment };
+  put(row.dismemberment, 'probability', comp.DismembermentProbability, cs('DismembermentProbability'));
+  // (some components give two bones one body, the Ewok hero's all fifteen body 1: the first
+  // claim keeps it, the rest are listed, and the row is partial)
+  const byIndex = new Map();
+  const unassigned = [];
+  for (const bone of BODY_FIELDS) {
+    const i = comp[`${bone}BodyIndex`];
+    if (!Number.isInteger(i) || i < 0) continue;
+    if (byIndex.has(i)) unassigned.push(bone);
+    else byIndex.set(i, bone);
+  }
+  if (unassigned.length) {
+    row.partial = true;
+    row.unassigned = unassigned;
+  }
+  const rag = row.physics && follow ? follow(row.physics) : null;
+  const rc = rag?.objects.find((o) => o?.$type === 'RagdollPhysicsComponentData');
+  const proxy = rag ? deref(rag, rootOf(rag)?.Object) : null;
+  const bodyRefs = (rc?.PhysicsBodies ?? []).map((r) => r.$ref);
+  // the constraints' two bodies, from the blueprint's links
+  const parentOf = new Map(); // child body index → parent body index
+  if (rag) {
+    const links = new Map(); // constraint object index → { parent, child } (object indices)
+    for (const l of rootOf(rag)?.LinkConnections ?? []) {
+      const c = l.Source?.$ref;
+      if (!Number.isInteger(c)) continue;
+      const e = links.get(c) ?? {};
+      if (l.SourceField === PARENT) e.parent = l.Target?.$ref;
+      if (l.SourceField === CHILD) e.child = l.Target?.$ref;
+      links.set(c, e);
+    }
+    for (const [c, { parent, child }] of links) {
+      const pi = bodyRefs.indexOf(parent);
+      const ci = bodyRefs.indexOf(child);
+      if (pi >= 0 && ci >= 0) parentOf.set(ci, { parent: pi, constraint: c });
+    }
+  }
+  const rs = rag?.name;
+  row.bodies = [...byIndex.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([index, bone]) => {
+      const b = { index, index_source: cs(`${bone}BodyIndex`), bone, parent: null };
+      const rb = rag ? rag.objects[bodyRefs[index]] : null;
+      if (rb?.$type === 'RigidBodyData') {
+        b._source = rs;
+        const at = `#RigidBodyData[${bodyRefs[index]}]`;
+        put(b, 'mass', rb.Mass, `${at}.Mass`);
+        if (rb.DynamicFriction >= 0) put(b, 'friction', rb.DynamicFriction, `${at}.DynamicFriction`);
+        const t = rb.Transform?.trans;
+        if (t) {
+          b.rest = [t.x, t.y, t.z];
+          b.rest_source = `${at}.Transform.trans`;
+        }
+        // the part's box: a capsule along its longest side
+        const part = rb.PartIndices?.[0];
+        const box = proxy?.PartBoundingBoxes?.[part];
+        if (box) {
+          const half = [(box.max.x - box.min.x) / 2, (box.max.y - box.min.y) / 2, (box.max.z - box.min.z) / 2].sort((p, q) => q - p);
+          const bx = `#PhysicsProxyEntityData.PartBoundingBoxes[${part}]`;
+          b.shape = 'capsule';
+          put(b, 'radius', Math.round(half[1] * 1e4) / 1e4, bx);
+          put(b, 'length', Math.round(Math.max(0, 2 * (half[0] - half[1])) * 1e4) / 1e4, bx);
+        }
+      }
+      const link = parentOf.get(index);
+      if (link) {
+        b.parent = byIndex.get(link.parent) ?? null;
+        const c = rag.objects[link.constraint];
+        if (c?.$type === 'PhysicsRagdollConstraintData') {
+          const ls = (p) => `#PhysicsRagdollConstraintData[${link.constraint}].${p}`;
+          b.limits = {};
+          put(b.limits, 'cone', c.ConeAngularLimit, ls('ConeAngularLimit'));
+          put(b.limits, 'twist', c.TwistMaxAngularLimit, ls('TwistMaxAngularLimit'));
+          put(b.limits, 'plane', c.PlaneMaxAngularLimit, ls('PlaneMaxAngularLimit'));
+        }
+      }
+      return b;
+    });
+  return row;
+}
+
+// ── all three, for scripts/bf2017-bolts-data.mjs ──
+
+export function physicsRulebooks(root) {
+  const projectiles = projectileRulebook(root);
+  const bones = { sets: [], refused: [] };
+  const ragdoll = { rows: [], refused: [] };
+  for (const name of assetNames(root, 'Gameplay/Characters/')) {
+    if (name.endsWith('_class_schematics')) continue;
+    const file = indexOf(root).get(name);
+    const raw = file.endsWith('.gz') ? zlib.gunzipSync(fs.readFileSync(file)).toString('utf8') : fs.readFileSync(file, 'utf8');
+    const isBones = raw.includes('"SkeletonCollisionData"');
+    const isRag = raw.includes('"WSEACharacterPhysicsComponentData"');
+    if (!isBones && !isRag) continue;
+    const asset = JSON.parse(raw);
+    if (refused(asset.name)) {
+      if (isBones) bones.refused.push(asset.name);
+      if (isRag) ragdoll.refused.push(asset.name);
+      continue;
+    }
+    if (isBones) {
+      const row = boneSetRow(asset);
+      if (row) bones.sets.push(row);
+    }
+    if (isRag) {
+      const row = ragdollRow(asset, (p) => loadAsset(root, p));
+      if (row) ragdoll.rows.push(row);
+    }
+  }
+  bones.sets.sort((a, b) => a.name.localeCompare(b.name));
+  ragdoll.rows.sort((a, b) => a.name.localeCompare(b.name));
+  shareBodies(ragdoll.rows);
+  return { projectiles, bones, ragdoll };
+}
+
+// Most characters' ragdolls are the same fifteen bodies to the last digit (the
+// heroes' 39 copies of one human): a row whose bodies match an earlier row's
+// keeps only `bodiesOf: <that row's id>` (src/lib/three/ragdoll2017.js's
+// ragdollOf reads it back).
+export function shareBodies(rows) {
+  const seen = new Map(); // bodies without their sources → the first row's id
+  const plain = (v) => JSON.stringify(v, (k, x) => (k.endsWith('_source') ? undefined : x));
+  for (const row of rows) {
+    const key = plain(row.bodies);
+    if (seen.has(key)) {
+      row.bodiesOf = seen.get(key);
+      delete row.bodies;
+    } else seen.set(key, row.id);
+  }
+  return rows;
+}

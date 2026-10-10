@@ -18,14 +18,24 @@ The schema in `migrations/` is the one source of truth for what players build on
 
 ## The asset bucket
 
-The heavy models and textures are mirrored to the public bucket `assets` (`docs/decisions/2026-10-09-heavy-assets-mirrored-on-supabase-storage.md`). From the owner's shell, never CI:
+The site's one public bucket is `site-assets`: read-only, no key needed to read it, Storage's CORS allowing `GET` from any origin. It holds two sets, both at `<hash12>/<path>` with a year's cache, so one `ASSET_BASE` serves both:
 
-1. `export SUPABASE_SERVICE_ROLE_KEY=…` (the dashboard's secret key; in the shell only, never a file), with `VITE_SUPABASE_URL` in `.env.local`.
-2. `node scripts/assets-upload.mjs --dry`: what goes, what stays, how many megabytes. Then `node scripts/assets-upload.mjs`: it makes the bucket if there is none, uploads what it lacks, writes `src/data/assets-manifest.json` and prints the base URL. Commit the manifest.
-3. Set the repository variable `ASSET_BASE` (Settings, Variables) to that URL, and `VITE_ASSET_BASE` in `.env.local` to try it locally. `unset SUPABASE_SERVICE_ROLE_KEY`.
-4. Once a deploy with the new manifest is live: `git fetch origin main && node scripts/assets-upload.mjs --prune` removes what neither the files on disk nor main's manifest names. It refuses in a run that uploads, with no files on disk, or when main's manifest can't be read.
+- **the heavy-asset mirror** (`docs/decisions/2026-10-09-heavy-assets-mirrored-on-supabase-storage.md`): copies of committed models and textures, `scripts/assets-upload.mjs`, manifest `src/data/assets-manifest.json`;
+- **the game-derived files** (`docs/decisions/2026-10-10-battlefront-2017-assets.md`, the exception): what the 2017 pipeline made, not committed (git ignores them), `scripts/assets-publish.mjs`, manifest `src/data/galaxyAssets.json`.
 
-The bucket is public; Storage's CORS allows `GET` from any origin, the site's included, and the script sets nothing else. Before `ASSET_BASE` is set for everyone, the project wants Pro: the free tier's egress (about 5 GB a month) is a few hundred visits.
+**How it was made** (2026-10-10, once): `POST $SUPABASE_URL/storage/v1/bucket` with `{ "id": "site-assets", "name": "site-assets", "public": true }` and the project's secret key as `apikey` and `Authorization: Bearer`. `scripts/assets-publish.mjs` does the same when the bucket is not there (`ensureBucket`), and refuses a bucket of that name that is not public. No RLS policy is needed on storage for it: a public bucket's objects are read through `/object/public/` with no key, and only the secret key writes.
+
+**Publishing the game-derived files**, from a shell or a cloud session that holds `SUPABASE_URL` and `SUPA_KEY` (the secret key; `BF2017_KEY` is the same), never CI:
+
+1. `node scripts/assets-publish.mjs --dry`: what would go, by hash, and how many megabytes.
+2. `node scripts/assets-publish.mjs`: sends each new hash once (one already there is not sent again), writes `src/data/galaxyAssets.json` last, then `.gitignore`'s marked block. Commit both.
+3. `node scripts/assets-check.mjs`: every manifest entry asked for one byte (a HEAD there always says `no-cache`), its status, size and cache header held to the manifest.
+
+**The mirror**: `export SUPABASE_SERVICE_ROLE_KEY=…` in the shell only, then `node scripts/assets-upload.mjs --dry`, then without; it prints the base URL. Commit the manifest. Once a deploy with the new manifest is live, `git fetch origin main && node scripts/assets-upload.mjs --prune` removes what neither the files on disk nor main's manifest names (it refuses in a run that uploads, with no files on disk, or when main's manifest can't be read). Prune never touches what `galaxyAssets.json` names: run it only with that manifest committed.
+
+**The base**: set the repository variable `ASSET_BASE` (Settings, Secrets and variables, Actions, Variables) to `https://jzabcqboyemokwifmjmp.supabase.co/storage/v1/object/public/site-assets`; `deploy.yml` hands it to the build as `VITE_ASSET_BASE`. Locally, the same in `.env.local`. Unset, the site is exactly as it was: every file from its own origin.
+
+Supabase stores only the `max-age` of the cache header it is sent and serves `public, max-age=31536000` on a GET. Before `ASSET_BASE` is set for everyone the project wants Pro: the free tier's egress (about 5 GB a month) is a few hundred visits; Pro includes 250 GB, about ten thousand visits to Hoth at high (25 MB each). If egress bills, the same files on Cloudflare R2 (free egress) and `ASSET_BASE` pointed there is the whole change.
 
 ## The ground's version
 
@@ -34,5 +44,5 @@ The bucket is public; Storage's CORS allows `GET` from any origin, the site's in
 ## Rules
 
 - A change to the schema is a new migration file, never an edit of an applied one.
-- No service-role key anywhere in this repository or its workflows. The client holds the anon key only.
+- No secret key anywhere in this repository or its workflows. The client holds the anon key only; the public bucket needs none.
 - A write that is not the owner's own row goes through a `security definer` function that clamps and rate-limits (`damage_entity` is the pattern).

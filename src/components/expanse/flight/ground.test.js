@@ -5,7 +5,7 @@ import { createGround, heroOf } from './ground';
 import flight from './module';
 import { answerFor, fakeSink, fakeWorkers, flush, settle, spec } from './fixtures/ground';
 import { MAX_DEPTH, keyOf, sizeAt } from '../../../lib/land/flight/quadtree';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { planetSpecOf } from './planets';
 import { createOrigin } from '../../../runtime/origin';
 import { createEvents } from '../../../runtime/runtime';
 import { STRIP } from './look';

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { planetField } from './field';
-import { PLANETS, TYPE_BIOMES, planetSpecOf } from './planetSpec';
+import { TYPE_BIOMES } from './planetSpec';
+import { PLANETS, planetSpecOf } from './fixtures/expanse.js';
 import { WORLDS } from './planetTables';
 import { seeded } from '../../seeded.js';
 
