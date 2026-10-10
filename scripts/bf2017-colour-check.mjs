@@ -6,7 +6,7 @@
 // maps and its index row. A map tagged wrong is read wrong by every loader
 // that trusts the file (three's KTX2Loader does), and came out washed pale.
 //
-//   node scripts/bf2017-colour-check.mjs [--check] [--fix] [--formats <textures.jsonl>] [folder …]
+//   node scripts/bf2017-colour-check.mjs [--check] [--fix] [--formats <textures.jsonl>] [--published [--base <url>]] [folder …]
 //
 //   check     exit 1 on any map tagged wrong, or a role short of a map
 //   fix       stamp the right transfer function into each wrong file in
@@ -15,6 +15,12 @@
 //             each map's game `format` (BC7_SRGB, BC7_UNORM, BC5 …) decides
 //             sRGB or linear ahead of the suffix rule, and a map the rule
 //             calls unknown gets its answer from here
+//   published the KTX2 files src/data/galaxyAssets.json names (the crew's maps,
+//             the published packs), each asked for its first kilobyte at its
+//             public URL (the DFD is in the header), audited the same way;
+//             --base the bucket (else VITE_ASSET_BASE / ASSET_BASE, else the
+//             project's site-assets from SUPABASE_URL). Read-only: a wrong
+//             published file is re-made by its writer and published again
 //
 // One line a folder (files, colour sRGB/linear, data linear/sRGB, unknown,
 // wrong), one a wrong file, one summary; exit 1 only with --check.
@@ -24,6 +30,8 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { auditKtx2, stemOf, summarise, withTransfer } from './lib/ktx2-colour.mjs';
+import { readManifest } from './lib/asset-manifest.mjs';
+import { remotePath } from '../src/lib/assetPath.js';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..');
 const PACKS = 'public/models/galaxy/bf2017';
@@ -102,6 +110,38 @@ export function auditRoles(dir) {
   return { roles: Object.keys(index).length, problems };
 }
 
+// the published KTX2 files, each audited from its header: get(url) → Buffer
+// of its first bytes (a range request), or null when it cannot be had
+export async function auditPublished(manifest, base, get, { at = 8 } = {}) {
+  const rows = [];
+  const missing = [];
+  const paths = Object.keys(manifest).filter((p) => p.endsWith('.ktx2'));
+  for (let i = 0; i < paths.length; i += at) {
+    await Promise.all(
+      paths.slice(i, i + at).map(async (path) => {
+        const url = remotePath(path, base, manifest);
+        const head = await get(url).catch(() => null);
+        if (!head) {
+          missing.push(path);
+          return;
+        }
+        try {
+          rows.push(auditKtx2(path, head));
+        } catch (e) {
+          missing.push(`${path} (${e.message})`);
+        }
+      }),
+    );
+  }
+  return { rows, missing, summary: summarise(rows) };
+}
+
+const headBytes = async (url) => {
+  const res = await fetch(url, { headers: { Range: 'bytes=0-1023' } });
+  if (!res.ok) return null;
+  return Buffer.from(await res.arrayBuffer());
+};
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
   const formats = args.formats ? formatsOf(readFileSync(resolve(args.formats), 'utf8')) : null;
@@ -112,6 +152,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`${relative(ROOT, dir).padEnd(40)} ${String(s.files).padStart(5)} files  colour sRGB ${s.colour.srgb} linear ${s.colour.linear}  data linear ${s.data.linear} sRGB ${s.data.srgb}  unknown ${s.unknown}  wrong ${s.wrong.length}${fixed ? `  fixed ${fixed}` : ''}`);
     for (const r of rows.filter((x) => !x.ok)) console.log(`  wrong  ${r.name}: ${r.kind} tagged ${r.transfer}, wants ${r.wanted}`);
     wrong += s.wrong.length;
+  }
+  if (args.published) {
+    const base = args.base ?? process.env.VITE_ASSET_BASE ?? process.env.ASSET_BASE ?? (process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL}/storage/v1/object/public/site-assets` : null);
+    if (!base) {
+      console.error('No base for the published files: --base, VITE_ASSET_BASE, ASSET_BASE or SUPABASE_URL.');
+      process.exit(2);
+    }
+    const { summary: s, missing, rows } = await auditPublished(readManifest(join(ROOT, 'src/data/galaxyAssets.json')), base, headBytes);
+    console.log(`${'published (galaxyAssets.json)'.padEnd(40)} ${String(s.files).padStart(5)} files  colour sRGB ${s.colour.srgb} linear ${s.colour.linear}  data linear ${s.data.linear} sRGB ${s.data.srgb}  unknown ${s.unknown}  wrong ${s.wrong.length}  unreachable ${missing.length}`);
+    for (const r of rows.filter((x) => !x.ok)) console.log(`  wrong  ${r.name}: ${r.kind} tagged ${r.transfer}, wants ${r.wanted} (re-make it with its writer and publish)`);
+    for (const m of missing) console.log(`  unreachable  ${m}`);
+    wrong += s.wrong.length + missing.length;
   }
   const roles = auditRoles(join(ROOT, ROLES));
   console.log(`${ROLES.padEnd(40)} ${String(roles.roles).padStart(5)} roles  ${roles.problems.length ? roles.problems.length + ' problems' : 'whole'}`);
