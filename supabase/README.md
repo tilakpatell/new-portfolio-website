@@ -16,6 +16,10 @@ The schema in `migrations/` is the one source of truth for what players build on
 
 `seed.sql` is written by `node scripts/supabase-seed.mjs`, never by hand: the 50 planets a thing may be built on, in the roster's order (`docs/research/2026-10-09-planet-geographies.md`), and the places on them where nothing may be (each POI's `r` in the table is its `r + edge`, the whole eased band; Echo Base on `hoth` alone until lane A lands). It reads lane A's `src/lib/land/flight/planetSpec.js` when that is in the tree, else `scripts/fixtures/planets.json` (the same ids; `--fixture` rebuilds it from the Expanse's `makeSector`). It upserts, so applying it again after the list changes is safe. After lane A merges (`planetSpec.js` on main), the owner runs `node scripts/supabase-seed.mjs` and applies the new `seed.sql` in the SQL editor: the named planets' placeholder types and seeds are replaced by lane A's, and each world's POIs are added.
 
+## The ground's version
+
+`20261009000300_terrain_version.sql` adds `terrain_version` to `planets` and `world_entities` (default 1). The flight's ground is code: when `src/lib/land/flight/planetSpec.js`'s `TERRAIN_VERSION` is bumped (its test fails when the ground changes without it), the client draws anything built on an older ground on the ground there is now, and the seed writes each planet's version. Apply the migration, then `seed.sql` again.
+
 ## Rules
 
 - A change to the schema is a new migration file, never an edit of an applied one.
