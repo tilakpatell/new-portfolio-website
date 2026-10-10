@@ -1,6 +1,6 @@
 import { Document } from '@gltf-transform/core';
 import { describe, expect, it } from 'vitest';
-import { detach, shareSkins } from './rig-parts.mjs';
+import { detach, rebindJoints, shareSkins } from './rig-parts.mjs';
 
 // Hips → Spine → LeftArm → LeftHand, Hips → Wep_Root, Spine → PROC_Bone0
 // (→ a prop that is no joint)
@@ -80,5 +80,44 @@ describe('a bone taken out of the tree', () => {
     const after = prop.getWorldTranslation();
     for (let i = 0; i < 3; i++) expect(after[i]).toBeCloseTo(before[i], 6);
     expect(prop.getParentNode().getName()).toBe('Spine');
+  });
+});
+
+describe('a part’s joints bound to the body’s', () => {
+  it('re-indexes by name', () => {
+    const r = rebindJoints(['Hips', 'Head'], ['Hips', 'Spine', 'Head'], new Uint16Array([1, 0, 0, 0]));
+    expect([...r.joints]).toEqual([2, 0, 0, 0]);
+    expect(r.unmatched).toBe(0);
+  });
+  it('binds a bone the body lacks to its Hips, and counts it', () => {
+    const r = rebindJoints(['Hips', 'Cape_01'], ['Spine', 'Hips'], new Uint16Array([1, 0, 0, 0]));
+    expect([...r.joints]).toEqual([1, 1, 1, 1]);
+    expect(r.unmatched).toBe(1);
+  });
+  it('or to its nearest ancestor the body has, when it knows the parents', () => {
+    const parents = { Cape_02: 'Cape_01', Cape_01: 'Spine2', Spine2: 'Hips' };
+    const r = rebindJoints(['Cape_02', 'Hips'], ['Hips', 'Spine2'], new Uint16Array([0, 1, 0, 0]), { parentOf: (n) => parents[n], weights: new Float32Array([0.5, 0.5, 0, 0]) });
+    expect([...r.joints]).toEqual([1, 0, 0, 0]);
+  });
+  it('joins a part with a bone of its own, which goes', () => {
+    const { doc, skin } = rigged();
+    const buffer = doc.getRoot().listBuffers()[0];
+    const hips = doc.createNode('Hips');
+    const flap = doc.createNode('Flap_01');
+    hips.addChild(flap);
+    doc.getRoot().listScenes()[0].addChild(hips);
+    const part = doc.createSkin().addJoint(hips).addJoint(flap);
+    const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+    const prim = doc
+      .createPrimitive()
+      .setAttribute('POSITION', acc('VEC3', new Float32Array(3)))
+      .setAttribute('JOINTS_0', acc('VEC4', new Uint16Array([1, 0, 0, 0])))
+      .setAttribute('WEIGHTS_0', acc('VEC4', new Float32Array([1, 0, 0, 0])));
+    doc.getRoot().listScenes()[0].addChild(doc.createNode('Skirt').setMesh(doc.createMesh().addPrimitive(prim)).setSkin(part));
+    const said = [];
+    expect(shareSkins(doc, { log: (l) => said.push(l) })).toBe(1);
+    expect(doc.getRoot().listSkins()).toEqual([skin]);
+    expect(prim.getAttribute('JOINTS_0').getArray()[0]).toBe(0);
+    expect(said[0]).toMatch(/1 joints bound, 1 unmatched/);
   });
 });

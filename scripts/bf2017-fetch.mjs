@@ -14,7 +14,8 @@
 //   manifest     web/models.jsonl (about 25 MB), which every other command reads
 //   name         a model's `name` in the manifest (characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh)
 //   lod          which LODs (all by default)
-//   parts        globs over the model's folder for the parts that go with it ('*_cape_mesh,*_hands_mesh')
+//   parts        globs over the model's folder for the parts that go with it ('*_cape_mesh,*_hands_mesh'),
+//                or full manifest names (a hero's head under characters/heads/)
 //   no-textures  the GLBs only
 //   collision    its collision GLB as well
 //   list         the names under a glob, with their LOD triangles

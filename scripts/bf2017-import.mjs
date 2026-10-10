@@ -36,7 +36,8 @@
 //   cuts       which LODs, by number, instead of the triangle budgets
 //              (light ≤ 2,500; plain ≤ 12,000, or 8,000 with --rig)
 //   tex, maps  the colour and other maps' size (the light cut takes half)
-//   parts      globs over the model's folder for the parts that go with it
+//   parts      globs over the model's folder for the parts that go with it,
+//              or full manifest names from any folder (a hero's head and hair)
 //              ('*_cape_mesh,*_hands_mesh'), each at the same LOD, one file
 //   grip       the node the site holds it by (by default Wep_Root, the
 //              game's weapon socket, on a rig in the right hand; a rig
@@ -137,7 +138,7 @@ async function readCut(io, entry, parts, lod, opts) {
   doc.getRoot().setDefaultScene(scene);
   if (parts.length) {
     await doc.transform(unpartition());
-    if (opts.rig) shareSkins(doc);
+    if (opts.rig) shareSkins(doc, { log: (l) => console.log(`  ${l} (LOD${lod.lod})`) });
   }
   return doc;
 }

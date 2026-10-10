@@ -48,13 +48,16 @@ const globRe = (glob) => new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g, '\\$&'
 // (Frostbite's variants a composite never wants: unused, menu, wrecked and cutscene copies)
 const NEVER = /donotuse|frontend|wreck|cutscene/i;
 
-// A composite's parts: the models in its folder whose last segment matches a glob.
+// A composite's parts: the models in its folder whose last segment matches a
+// glob, and any item with a `/` as a full manifest name from any folder (a
+// hero's head and hair live under characters/heads/, not beside the body).
 export function partsOf(manifest, name, globs) {
   const folder = folderOf(name);
-  const res = globs.map(globRe);
-  const out = [];
+  const named = globs.filter((g) => g.includes('/'));
+  const res = globs.filter((g) => !g.includes('/')).map(globRe);
+  const out = named.filter((n) => n !== name && manifest.has(n)).map((n) => manifest.get(n));
   for (const [other, entry] of manifest) {
-    if (other === name || folderOf(other) !== folder) continue;
+    if (other === name || folderOf(other) !== folder || named.includes(other)) continue;
     const last = other.slice(folder.length);
     if (NEVER.test(last) || !res.some((re) => re.test(last))) continue;
     out.push(entry);

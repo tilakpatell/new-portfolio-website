@@ -47,6 +47,13 @@ describe('the 2017 manifest', () => {
     expect(partsOf(m, VADER, ['*']).map((e) => e.name)).toEqual(['characters/hero/darthvader/darthvader_01/darthvader_01_cape_mesh']);
   });
 
+  it('takes a part by its full manifest name, from any folder', () => {
+    const head = 'characters/heads/heads_x/heads_x_01/heads_x_01_mesh';
+    const m2 = readManifest(TEXT + '\n' + JSON.stringify({ name: head, lods: chain([3000]) }));
+    expect(partsOf(m2, VADER, [head]).map((e) => e.name)).toEqual([head]);
+    expect(partsOf(m2, VADER, ['characters/heads/nobody_mesh'])).toEqual([]);
+  });
+
   it('knows the sequel era by its folders', () => {
     expect(isSequel('characters/hero/kyloren/kyloren_01/kyloren_01_mesh')).toBe(true);
     expect(isSequel('characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh')).toBe(false);
