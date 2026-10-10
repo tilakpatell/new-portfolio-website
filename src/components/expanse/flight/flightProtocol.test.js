@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { APP_ID, RATES, ROOM, flightLimiter, readBuilt, readGone, readHi, readHit, readPose, readShot, writeHi, writePose, writeShot } from './flightProtocol';
+import { APP_ID, RATES, ROOM, flightLimiter, readBuilt, readGone, readHi, readHit, readPose, readShot, readEvent, writeEvent, writeHi, writePose, writeShot } from './flightProtocol';
 import { NET_CELL } from '../../../lib/net/cells';
 
 const ship = { x: 1200.123, y: 310.456, z: -800.789, pitch: 0.25, yaw: 7, roll: -0.5, speed: 300.004, flags: 2 };
 
 describe('the flight’s wire', () => {
-  it('names the room by planet, and its rates are the spec’s six', () => {
+  it('names the room by planet, and its rates are the spec’s six and the events’ (Pillar 4)', () => {
     expect(ROOM('hoth')).toBe('fly-v1:hoth');
     expect(APP_ID).toBe('tilakpatel-portfolio-flight');
-    expect(RATES).toEqual({ pose: [20, 30], shot: [10, 12], hit: [10, 12], built: [1, 3], gone: [1, 3], hi: [1, 4] });
+    expect(RATES).toEqual({ pose: [20, 30], shot: [10, 12], hit: [10, 12], built: [1, 3], gone: [1, 3], hi: [1, 4], event: [0.5, 3] });
     const l = flightLimiter();
     let n = 0;
     for (let i = 0; i < 10; i++) n += l.allow('built', 0) ? 1 : 0;
@@ -96,5 +96,33 @@ describe('the flight’s wire', () => {
     expect(readGone({ id: id.toUpperCase() })).toEqual({ id });
     expect(readGone({ id: 'x' })).toBeNull();
     expect(readGone(undefined)).toBeNull();
+  });
+});
+
+describe('the flight’s events on the wire', () => {
+  const known = new Set(['blizzard', 'purge']);
+  const ev = { id: '1790000000:blizzard:3,-2', kind: 'blizzard', at: [6400.123, -3000], t: 12.345, seed: 77 };
+
+  it('goes out and comes back as it was', () => {
+    expect(readEvent(writeEvent(ev), known)).toEqual({ id: ev.id, kind: 'blizzard', at: [6400.12, -3000], t: 12.35, seed: 77 });
+    expect(readEvent(writeEvent({ ...ev, id: '1790000000:purge:day1491', kind: 'purge' }), known)).toMatchObject({ kind: 'purge' });
+  });
+
+  it('is believed only with a known kind and a sound shape', () => {
+    const w = writeEvent(ev);
+    expect(readEvent({ ...w, kind: 'eruption', id: '1790000000:eruption:3,-2' }, known)).toBe(null);
+    expect(readEvent({ ...w, kind: 'purge' }, known)).toBe(null); // (its id names another kind)
+    expect(readEvent({ ...w, id: 'x'.repeat(30) }, known)).toBe(null);
+    expect(readEvent({ ...w, at: [NaN, 0] }, known)).toBe(null);
+    expect(readEvent({ ...w, at: 'here' }, known)).toBe(null);
+    expect(readEvent({ ...w, t: 999 }, known)).toBe(null);
+    expect(readEvent({ ...w, t: -1 }, known)).toMatchObject({ t: 0 });
+    expect(readEvent({ ...w, seed: 1.5 }, known)).toBe(null);
+    expect(readEvent([1, 2], known)).toBe(null);
+    expect(readEvent(null, known)).toBe(null);
+  });
+
+  it('is rated at one every two seconds, three at once', () => {
+    expect(RATES.event).toEqual([0.5, 3]);
   });
 });
