@@ -84,7 +84,6 @@
 - **The rosters and routes take the planet's `field`**, not `heightAt` alone: a row keeps to its biomes, so they need `biomeAt` too. A roster also returns its cell's routes.
 - **Models are code-built.** The catalogue's GLBs are scanned PBR and the flight is painted (one art a world, `docs/health/RULES.md`), so a row draws as the galaxy's code-built ship or figure, or a body built in code from its `body` and `tint`; `model` still names the catalogue kind where there is one. One `InstancedMesh` a model, written each frame and grown as needed (`lifeScene.js`), not `lib/three/pool.js`'s fixed slots. Nothing casts a shadow: the flight draws none.
 - **Damage waits for lane D.** A hit goes to `createLife`'s `onHit` (clamped to 30), which nothing passes yet; nothing touches `hp`.
-- **`NET_CELL` isn't on main** (lane C): `routes.js`'s `LIFE_CELL` is the same 2,048 m, one number to swap for the import.
 - **The caps are per loaded cell**, and the grid keeps a band of up to 30 cells loaded, so Coruscant's lanes peak at 360 ships, not 300.
 - **A `flock` role** (bogwings, gulls, bird people, Geonosians on the wing) joins the six; **a row marked `night`** waits for the flight to have a night.
 - **Files added:** `lifeScene.js` (the drawing, and `withLife`, scene.js's one call), `lifeNews.js` and `LifeLine.jsx` with `life.css` (the HUD's line, FlightHud.jsx's one call), and `FLY` in `scripts/perf-probe.mjs` (the `fly` journey over any planet).

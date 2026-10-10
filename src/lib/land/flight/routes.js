@@ -7,8 +7,8 @@
 // over its band (Coruscant's three). Seeded by the planet, the cell and the
 // row, so every visit, and every pilot, sees the same routes.
 //
-// Cells are the shared world's (LIFE_CELL is lib/net/cells.js's NET_CELL,
-// which isn't on main yet: one number, the same). A route stays its cell's,
+// Cells are the shared world's (lib/net/cells.js's NET_CELL: life is
+// streamed by the same cells the rooms are), and a route stays its cell's,
 // so a ship is never handed from one cell to another.
 //
 // Pure: no three.js.
@@ -20,9 +20,10 @@
 //     points: [[x, y, z]…], loop, speed, alt, scramble, hostile, anchor: [x, z], length }]
 
 import { seeded } from '../../seeded.js';
+import { NET_CELL } from '../../net/cells.js';
 import { kindAt } from './lifeTables.js';
 
-export const LIFE_CELL = 2048;
+export const LIFE_CELL = NET_CELL;
 const EDGE = 96; // m a lane or a shuttle keeps in from its cell's edge
 const STEP = 256; // m between a lane's points
 
