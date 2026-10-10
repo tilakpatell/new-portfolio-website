@@ -93,12 +93,13 @@ for (const id of list.split(',')) {
   // fetch on a surface is a world that slipped back; SCANS=game fails it)
   const scans = { cc0: 0, game: 0, cc0Paths: [] };
   page.on('requestfinished', async (req) => {
-    if (/\/cc0\/galaxy\//.test(req.url())) {
+    // (the maps themselves: the dev server also serves the set's index.json as a module)
+    if (/\/cc0\/galaxy\/.*\.(webp|ktx2|png|jpg|avif)(\?|$)/.test(req.url())) {
       scans.cc0++;
       // (which ones, so a world that slipped back says where)
       if (scans.cc0Paths.length < 8) scans.cc0Paths.push(new URL(req.url()).pathname);
     }
-    else if (/\/textures\/galaxy\/bf2017\//.test(req.url())) scans.game++;
+    else if (/\/textures\/galaxy\/bf2017\/.*\.(webp|ktx2|png|jpg|avif|hdr)(\?|$)/.test(req.url())) scans.game++;
     if (!/\.glb(\?|$)/.test(req.url())) return;
     const sizes = await req.sizes().catch(() => null);
     glbBytes += sizes?.responseBodySize ?? 0;
