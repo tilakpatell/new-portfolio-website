@@ -11,6 +11,8 @@
 //   hit    { d }  to the pilot a bolt hit (theirs to believe, as the universe's)
 //   built  { id, cell }  a hint: I placed `id` in `cell`; fetch that cell again
 //   gone   { id }  the same for a removal
+//   event  { id, kind, at: [x, z], t, seed }  something happening (lib/land/flight/director.js):
+//          `t` is how long it has run, so a late joiner starts it part-way
 //
 // A built or a gone is never believed as the thing: it names what to fetch,
 // and the durable world (under its database's rules) answers. A pose comes
@@ -18,14 +20,13 @@
 // NET_CELL × 2 from that cell's middle is dropped: a pilot who tags one cell
 // and flies in another would be heard where they aren't (a tag lie).
 
-import { createLimiter } from '../../universe/online/protocol';
-import { cleanName } from '../../universe/online/names';
+import { cleanName, createLimiter } from '../../universe/shared/online';
 import { NET_CELL, parseTag } from '../../../lib/net/cells';
 
 export const APP_ID = 'tilakpatel-portfolio-flight';
 export const ROOM = (planetId) => `fly-v1:${planetId}`;
 // [per second, at most at once], by action (pose ten a second with room for a burst)
-export const RATES = { pose: [20, 30], shot: [10, 12], hit: [10, 12], built: [1, 3], gone: [1, 3], hi: [1, 4] };
+export const RATES = { pose: [20, 30], shot: [10, 12], hit: [10, 12], built: [1, 3], gone: [1, 3], hi: [1, 4], event: [0.5, 3] };
 export const flightLimiter = () => createLimiter(RATES);
 
 const FAR = 1e6; // metres from the planet's origin, at most (the ground streams on; this is sanity, not a border)
@@ -90,4 +91,22 @@ export function readBuilt(data) {
 export function readGone(data) {
   const id = uuid(data?.id);
   return id ? { id } : null;
+}
+
+const EVENT_ID = /^\d{10}:[a-z]{2,16}:(-?\d{1,6},-?\d{1,6}|day\d{1,9})$/;
+const EVENT_T = 240; // s an event may have run, at most (every kind's ttl is under it)
+
+export const writeEvent = (ev) => ({ id: ev.id, kind: ev.kind, at: [r2(ev.at[0]), r2(ev.at[1])], t: r2(ev.t), seed: ev.seed >>> 0 });
+
+// an event as it came in: { id, kind, at: [x, z], t, seed }, or null; its
+// kind has to be one of `known` (the planet's), the rest the director weighs
+export function readEvent(data, known) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  if (typeof data.id !== 'string' || !EVENT_ID.test(data.id) || typeof data.kind !== 'string' || !known?.has(data.kind)) return null;
+  if (data.id.split(':')[1] !== data.kind || !Array.isArray(data.at)) return null;
+  const x = num(data.at[0], -FAR, FAR);
+  const z = num(data.at[1], -FAR, FAR);
+  const t = num(data.t, 0, EVENT_T);
+  if (x === null || z === null || t === null || data.t > EVENT_T || !Number.isInteger(data.seed) || data.seed < 0 || data.seed > 0xffffffff) return null;
+  return { id: data.id, kind: data.kind, at: [x, z], t, seed: data.seed };
 }

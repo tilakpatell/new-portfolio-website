@@ -81,6 +81,8 @@ export const PACK = {
   globs: [
     '/models/galaxy/**',
     '/cc0/galaxy/**',
+    // (the Star Wars worlds' surfaces on the game's own maps: lib/three/scans.js)
+    '/textures/galaxy/bf2017/**',
     '/models/universe/war/*',
     '/models/gen3d/x-wing*.glb',
     '/models/gen3d/tie-interceptor*.glb',

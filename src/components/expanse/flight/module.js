@@ -27,6 +27,7 @@ import { createMap } from './map';
 import { createWater } from './water';
 import { STRIP } from './look';
 import { SHARED_KEYS, createSharedWorld } from './shared';
+import { createFlightOnline } from './online';
 
 export const KEYS = {
   noseDown: ['KeyW', 'ArrowUp'],
@@ -206,7 +207,8 @@ export default {
     let touchThrottle = 0; // the touch buttons' (FlightHud), −1, 0 or 1
     const tell = (type, data) => rt.events?.emit(type, data);
     // the other pilots and what's built (./shared.js): joined by the page (world.shared.join)
-    const shared = createSharedWorld({ parent: view.scene, spec, palette: STRIP, groundAt, tell, respawn: () => (down = true) });
+    // (its room heard by the planet's occurrences too: ./occurrenceScene.js, so pilots together see one event)
+    const shared = createSharedWorld({ parent: view.scene, spec, palette: STRIP, groundAt, tell, respawn: () => (down = true), makeOnline: (o) => view.occurrences.link(createFlightOnline(o)) });
     const unOrigin =
       rt.origin?.on?.((shift) => {
         view.shift(shift);
@@ -233,6 +235,7 @@ export default {
       // (the planet map's markers: ./FlightMap.jsx reads them)
       pilots: () => shared.pilots(),
       built: () => shared.built(),
+      occurrences: () => view.occurrences.markers(),
       resize(w, h) {
         view.resize(w, h);
       },
