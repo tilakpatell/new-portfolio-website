@@ -62,7 +62,7 @@ Start A, B and C together. D, E, F and G start when A is on `main` (D also needs
 | D | nothing yet | after A, B, C | `node scripts/online-check.mjs --fly` |
 | E | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/hoth` over Echo Base |
 | F | nothing yet | after A: the plan from Task 1 | smoke `/fly/hoth --phone` with the map open |
-| G | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/coruscant` |
+| G | Tasks 1 to 5 in a draft PR on `claude/planet-life` (on #784): life tables for all 37 named worlds and the Expanse's rule (dead worlds empty), seeded rosters and routes on 2,048 m cells, `life.js` streaming and thinking on `src/lib/ai` within `LIFE_MS`, scrambles that hunt and fire by `hostiles.js`, one instanced draw a model, “Patrol inbound” on the HUD | #784's merge, then out of draft; Coruscant's own ground (not in lane A's 50); `onHit` to lane D's `hit`; on a GPU, the probe's worst frame (here SwiftShader: ~600 ms of raster, the life's own work p99 3 ms, max 5.8 ms with Coruscant's lanes full) | `FLY=bespin LIFE=coruscant node scripts/perf-probe.mjs fly`; `node scripts/perf-probe.mjs fly` |
 | H | nothing yet | after D, G: the plan from Task 1 | `node scripts/online-check.mjs --fly` (one storm, two browsers) |
 | I | nothing yet | after B: the plan from Task 1 | `node scripts/sw-check.mjs`; a build with and without `VITE_ASSET_BASE` |
 
