@@ -32,10 +32,10 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 
 | Lane | Session | Branch | PR |
 |---|---|---|---|
-| design | the architecting session | `claude/bf2017-render-beauty` | this PR |
-| Q1 | | `claude/surfaces-q1-materials` | |
-| Q2 | | `claude/surfaces-q2-ground` | |
-| Q4 | | `claude/surfaces-q4-weathering` | |
+| design | the architecting session | `claude/bf2017-render-beauty` | #844 |
+| Q1 | `session_01Ej9xiBYcqg7uoRPqsbKTtN` (Opus 5.5, env Website, started 2026-10-10 14:13 UTC) | `claude/surfaces-q1-materials` | |
+| Q2 | `session_01RyTcJLkhXuFkEEnUifdzLL` (the same) | `claude/surfaces-q2-ground` | |
+| Q4 | `session_01UZN9iy457biyvcFRr7X39w` (the same) | `claude/surfaces-q4-weathering` | |
 | Q3 | | | after S |
 | Q5 | | | the desktop |
 | Q6 | | | after S and V |
