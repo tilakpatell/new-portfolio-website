@@ -114,6 +114,13 @@ describe('the scripts’ fetch pool', () => {
     expect(await p).toMatchObject({ status: 'fetched', tries: 2 });
   });
 
+  it('sizes the timeout by a guess without holding the body to it', async () => {
+    const asked = [];
+    const pool = createPool({ fetch: scripted([() => body(5)]), sleep: async () => {}, timeout: (b) => (asked.push(b), 1000) });
+    expect(await pool.run({ url: 'https://b/x', size: 4e6 })).toMatchObject({ status: 'fetched', bytes: 5 });
+    expect(asked).toEqual([4e6]);
+  });
+
   it('holds no more than its size in flight', async () => {
     let now = 0;
     let most = 0;

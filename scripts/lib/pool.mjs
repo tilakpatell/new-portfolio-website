@@ -8,7 +8,11 @@
 //
 // createPool({ size, retries, waits, timeout, fetch, sleep, missing, files, now })
 //   → { run(job) → Promise<result>, stats() → { done, missing, failed, retried, bytes, seconds } }
-//   job: { url, method = 'GET', headers, body, bytes?, to? }
+//   job: { url, method = 'GET', headers, body, bytes?, size?, to? }
+//     bytes: what the body must be (a short one is retried); size: a guess,
+//     for the timeout only (the 2017 drop's manifest gives each GLB's size
+//     before the uploader re-encoded it: Luke's lod4 is 162,996 there and
+//     79,980 in the bucket)
 //   result: { status: 'fetched' | 'missing' | 'failed', bytes, tries, http?, error?, body?, headers? }
 //     never thrown: a script counts its failures and decides
 // backoff(try, waits, retryAfter) → ms; retryAfterMs(header, now) → ms | null;
@@ -55,7 +59,7 @@ export function createPool({ size = 6, retries = 3, waits = WAITS, timeout = TIM
   // one try: an answer, or a reason to try again (`again`), or a final word
   async function once(job) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(new Error('timed out')), timeout(job.bytes));
+    const timer = setTimeout(() => ctrl.abort(new Error('timed out')), timeout(job.bytes ?? job.size));
     try {
       const res = await fetch(job.url, { method: job.method ?? 'GET', headers: job.headers, body: job.body, signal: ctrl.signal });
       if (missing.includes(res.status)) {
