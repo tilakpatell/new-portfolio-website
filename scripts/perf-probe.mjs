@@ -322,8 +322,9 @@ const worldPage = (route, { ready = canvasUp, move = 'KeyW' } = {}) =>
 
 const JOURNEYS = {
   // the planet flight (/fly/hoth): the ground streamed in at the start, then
-  // 300 m/s north for 14 s, from the ridges onto the plains (a biome boundary
-  // at z ≈ 1050), over Echo Base (z −800) and into the glacier, and a long
+  // 300 m/s north for 14 s, from the range onto the plains (a biome boundary
+  // at z ≈ 1000), into the glacier (z ≈ −500), over Echo Base (z −800) and
+  // back onto the plains (z ≈ −1550), and a long
   // bank round (the ship's dev hook, expanse/flight/module.js's __FLIGHT__)
   async fly(page, mark) {
     mark('load');

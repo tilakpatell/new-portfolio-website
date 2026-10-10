@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import flight, { AXES, KEYS, inputOf, spawnOf, tierAt } from './module';
+import * as THREE from 'three';
+import flight, { AXES, KEYS, inputOf, modelSources, placeLandmark, spawnOf, tierAt } from './module';
 import { WORLD_MB } from '../../worlds/worlds';
 import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
 import { createOrigin } from '../../../runtime/origin';
@@ -28,7 +29,7 @@ const snap = (axes = {}) => ({ axis: (n) => axes[n] ?? 0, stick: { x: 0, y: 0 } 
 describe('the flight module', () => {
   it('is whole: glsl, its download as WORLD_MB says', () => {
     expect(flight).toMatchObject({ id: 'flight', shading: 'glsl', mb: WORLD_MB['/fly'] });
-    expect(WORLD_MB['/fly']).toBe(1);
+    expect(WORLD_MB['/fly']).toBe(5);
   });
 
   it('binds its keys, and flies the ship from them', async () => {
@@ -80,5 +81,22 @@ describe('the flight module', () => {
     expect(rt.origin.at[0]).toBe(100000);
     world.step(1 / 60, snap());
     world.dispose();
+  });
+
+  it('takes the site’s high-detail model on a strong machine, the light one otherwise', () => {
+    const m = { url: '/models/a.lod1.glb', hq: 'models/a.ultra.glb' };
+    expect(modelSources(m, { strong: true })).toEqual(['/models/a.ultra.glb', '/models/a.lod1.glb']);
+    expect(modelSources(m, { strong: false })).toEqual(['/models/a.lod1.glb']);
+    expect(modelSources({ url: '/models/b.glb' }, { strong: true })).toEqual(['/models/b.glb']);
+  });
+
+  it('scales a landmark to its metres along its axis, its foot where it stood', () => {
+    const root = new THREE.Group();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4).translate(0, 0.5, 0)));
+    placeLandmark(root, { metres: 400, along: 'z', yaw: 1 });
+    const size = new THREE.Box3().setFromObject(new THREE.Group().add(root.clone().rotateY(-1))).getSize(new THREE.Vector3());
+    expect(root.scale.x).toBeCloseTo(100, 6);
+    expect(size.z).toBeCloseTo(400, 3);
+    expect(root.rotation.y).toBe(1);
   });
 });

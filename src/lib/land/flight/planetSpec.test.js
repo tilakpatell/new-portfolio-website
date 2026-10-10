@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PLANETS, TYPE_BIOMES, planetSpecOf } from './planetSpec';
-import { SITE_LAYERS, WORLDS } from './planetTables';
+import { SITE_GROUND, SITE_LAYERS, WORLDS } from './planetTables';
 import { makeSector } from '../../../components/expanse/gen/sector.js';
 import { UNIVERSE } from '../../../components/expanse/gen/seed.js';
 // (the test alone reaches into the galaxy: planetSpec.js stays pure)
@@ -66,11 +66,31 @@ describe('planetSpecOf', () => {
     expect(SITE_LAYERS[id]).toHaveLength(site.length);
   });
 
+  // and wears the site's own ground look: Mos Eisley's sand from the air is the sand you walk on
+  it.each(GALAXY)('%s: the ground look is the site’s own', (id) => {
+    const look = { ...SITES[id].ground };
+    for (const k of ['layers', 'flats', 'pits', 'seed', 'base']) delete look[k];
+    expect(SITE_GROUND[id]).toEqual(look);
+    if (id !== 'coruscant') expect(planetSpecOf(id).ground).toEqual(look);
+    if (SITES[id].water && id !== 'bespin') expect(planetSpecOf(id).water).toEqual({ kind: SITES[id].water.kind, level: SITES[id].water.level });
+  });
+
+  it('gives every world a ground look, every Expanse type its template’s', () => {
+    for (const p of PLANETS) expect(planetSpecOf(p.id).ground?.palette, p.id).toBeTruthy();
+  });
+
   it('marks what the note marks: the pixel world stepped, the cloud deck soft, the cities blocked', () => {
     expect(planetSpecOf('dot-matrix').step).toBe(4);
     expect(planetSpecOf('bespin').soft).toBe(true);
     expect(planetSpecOf('hoth').soft).toBe(false);
-    for (const id of ['coruscant', 'invincible', 'cybertron']) expect(planetSpecOf(id).biomes.some((b) => b.relief.some((l) => l.type === 'blocks')), id).toBe(true);
+    for (const id of ['invincible', 'cybertron']) expect(planetSpecOf(id).biomes.some((b) => b.relief.some((l) => l.type === 'blocks')), id).toBe(true);
+    // Coruscant's city is towers standing on its floor, not bumps in it: one city to the haze, its landmarks the film-made models
+    const c = planetSpecOf('coruscant');
+    expect(c.biomes.some((b) => b.relief.some((l) => l.type === 'blocks' || l.type === 'mountains' || l.type === 'ridges'))).toBe(false);
+    expect(c.clutter[0]).toMatchObject({ kinds: ['tower', 'slab', 'needle'], grid: 150 });
+    expect(c.landmarks.map((l) => l.at)).toEqual(['senate', 'jedi-temple']);
+    for (const l of c.landmarks) expect(c.pois.some((p) => p.id === l.at)).toBe(true);
+    expect(c.hero.url).toMatch(/corutower\.glb$/);
     expect(planetSpecOf('tatooine').pits[0]).toMatchObject({ at: [2800, -1900], r: 90, depth: 40 });
   });
 

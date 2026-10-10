@@ -17,7 +17,7 @@
 //   PLANETS → { id, name, type, seed }[] (50)
 //   TYPE_BIOMES[type] → an Expanse planet's biomes
 //   planetSpecOf(id) → { id, name, seed, type, climate, biomes, pois, pits,
-//     palette, clutter, step, soft } | null
+//     palette, clutter, step, soft, ground, water, fog, landmarks, hero } | null
 
 import { makeSector } from '../../../components/expanse/gen/sector.js';
 import { UNIVERSE, hash64 } from '../../../components/expanse/gen/seed.js';
@@ -55,6 +55,11 @@ const specOf = ({ id, name, type, seed }, w) => ({
   clutter: w.clutter,
   step: w.step ?? 0,
   soft: Boolean(w.soft),
+  ground: w.ground ?? null,
+  water: w.water ?? null,
+  fog: w.fog ?? null,
+  landmarks: w.landmarks ?? [],
+  hero: w.hero ?? null,
 });
 
 const EXPANSE_ID = /^e:(-?\d+),(-?\d+):(\d+):(\d+)$/;
@@ -70,5 +75,5 @@ export function planetSpecOf(planetId) {
   const p = makeSector(UNIVERSE, sx, sz).systems[i]?.planets[j];
   if (!p || !TYPE_BIOMES[p.type]) return null;
   const look = TYPE_LOOK[p.type];
-  return specOf({ id, name: p.name, type: p.type, seed: fold(p.seed) }, { biomes: TYPE_BIOMES[p.type], palette: look.palette, clutter: look.clutter, soft: look.soft });
+  return specOf({ id, name: p.name, type: p.type, seed: fold(p.seed) }, { biomes: TYPE_BIOMES[p.type], palette: look.palette, clutter: look.clutter, soft: look.soft, ground: look.ground, water: look.water });
 }

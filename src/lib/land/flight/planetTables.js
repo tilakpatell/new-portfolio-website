@@ -5,7 +5,8 @@
 // planets take by type. Plain data and a few helpers, no three.js.
 //
 // A world: { id, name, type, seed?, biomes, pois, pits?, palette, clutter,
-//   step?, soft? }. A biome: { id, at: [t, m] (on the climate square), reach,
+//   step?, soft?, ground (lib/three/groundLook.js's: a scan under a palette),
+//   water? ({ kind: 'sea' | 'lake' | 'swamp' | 'lava', level }) }. A biome: { id, at: [t, m] (on the climate square), reach,
 //   base, relief: lib/land/layers.js's layers (and field.js's `fnl`),
 //   scatter? (islands or craters placed from the planet's seed: expand) }.
 // Where the note gives no `at` (the sector's and the fandom planets'), the
@@ -82,6 +83,47 @@ export const SITE_LAYERS = {
 };
 const site = (id) => SITE_LAYERS[id];
 
+// ── the galaxy's walkable sites' ground looks (galaxy/surface/sites: their ground but its layers, flats, pits, seed and base) and water, as they are there ──
+export const SITE_GROUND = {
+  tatooine: { detail: 'sand', detailLook: { color: 0.7, normal: 0.8, metres: 6 }, wind: 0.5, palette: { low: '#d2b083', high: '#ebd4a6', rock: '#a46a4e', accent: '#c69a6c', deep: '#b38e66', hLow: -4, hHigh: 12, rockAt: 0.36, accentCover: 0.22, ripple: { strength: 0.09, scale: 3.2, wind: 0.5 }, grain: 0.6, mark: '#b98a5a' } },
+  hoth: { detail: 'snow', detailLook: { color: 0.5, normal: 0.6 }, wind: 0.6, palette: { low: '#dfe7f1', high: '#f4f8fc', rock: '#7e8fa6', accent: '#cbdaeb', deep: '#c6d6e8', hLow: -4, hHigh: 26, rockAt: 0.48, accentCover: 0.22, ripple: { strength: 0.07, scale: 2.2, wind: 0.6 }, grain: 0.45, sparkle: 0.7, mark: '#a8bcd4' } },
+  endor: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 }, wind: 0.3, palette: { low: '#5e4630', high: '#4a5030', rock: '#5a5040', accent: '#4a5a2c', deep: '#2a1f14', hLow: -8, hHigh: 12, rockAt: 0.48, accentCover: 0.62, grain: 0.9, patch: 0.8 } },
+  kashyyyk: { detail: 'leaves', detailLook: { color: 0.7, normal: 0.7 }, wind: -0.6, palette: { low: '#c5c4bb', high: '#3b4232', rock: '#8a8676', accent: '#5a5440', deep: '#2a3028', hLow: 1.2, hHigh: 4, rockAt: 0.5, accentCover: 0.35, grain: 0.7, wet: { level: 0, band: 1, color: '#7a6a48' } } },
+  dagobah: { detail: 'mud', detailLook: { color: 0.8, normal: 0.8 }, wind: 0.2, palette: { low: '#3c3629', high: '#4a4535', rock: '#4a4436', accent: '#4c5232', deep: '#26221a', hLow: 0, hHigh: 1.8, rockAt: 0.55, accentCover: 0.4, grain: 0.9, wet: { level: 0, band: 0.5, color: '#22241a' } } },
+  yavin: { detail: 'leaves', detailLook: { color: 0.8, normal: 0.7 }, wind: 0.8, palette: { low: '#4a3a26', high: '#3a4228', rock: '#6a6450', accent: '#6e5644', deep: '#2b220e', hLow: -2, hHigh: 12, rockAt: 0.5, accentCover: 0.3, grain: 0.85, wet: { level: -3, band: 1.2, color: '#3a3a26' } } },
+  naboo: { detail: 'grass', detailLook: { color: 0.7, normal: 0.6 }, wind: 0.3, palette: { low: '#5f7034', high: '#7f9440', rock: '#8a8270', accent: '#8f9a48', deep: '#4a5a2e', hLow: 0, hHigh: 30, rockAt: 0.3, accentCover: 0.3, ripple: { strength: 0.03, scale: 1.6, wind: 0.3 }, grain: 0.7, wet: { level: 0.5, band: 2.5, color: '#6a6248' } } },
+  kamino: { palette: { low: '#2a343c', high: '#2a343c', rock: '#22282e', hLow: -50, hHigh: -30, grain: 0.2 } },
+  geonosis: { detail: 'redsoil', detailLook: { color: 0.75, normal: 0.8 }, wind: 1.1, palette: { low: '#b46c44', high: '#c98b5c', rock: '#8a4a2e', accent: '#d49c66', deep: '#9c5a36', hLow: -2, hHigh: 18, rockAt: 0.34, accentCover: 0.24, ripple: { strength: 0.06, scale: 2.6, wind: 1.1 }, grain: 0.7, mark: '#8a4a2e' } },
+  coruscant: { palette: { low: '#4a3a3e', high: '#4a3a3e', rock: '#3a2e30', hLow: -340, hHigh: -320, grain: 0.2 } },
+  mustafar: { detail: 'ash', detailLook: { color: 0.8, normal: 0.8 }, wind: 0.8, palette: { low: '#3a322e', high: '#564a43', rock: '#191515', accent: '#5a3424', deep: '#221c1a', hLow: -6, hHigh: 14, rockAt: 0.34, accentCover: 0.18, grain: 0.8, roughness: 0.9, wet: { level: 2.5, band: 3, color: '#8a2208' }, mark: '#120e0d' } },
+  scarif: { detail: 'beach', detailLook: { color: 0.7, normal: 0.7, metres: 6 }, wind: 0.6, palette: { low: '#ece6d0', high: '#c4c39c', rock: '#8e8a78', accent: '#7f8f5a', deep: '#dccb9e', hLow: 1.1, hHigh: 4, rockAt: 0.4, accentCover: 0.38, ripple: { strength: 0.05, scale: 2.6, wind: 0.6 }, grain: 0.45, sparkle: 0.04, wet: { level: 0, band: 1.3, color: '#b8a682' }, mark: '#c8b896' } },
+  bespin: { palette: { low: '#e8d8c8', high: '#f0e2d2', rock: '#c8b8a8' } },
+  nevarro: { detail: 'ash', detailLook: { color: 0.7, normal: 0.8 }, palette: { low: '#26282e', high: '#3a3b40', rock: '#1b1f21', accent: '#6e6b62', deep: '#1b1f21', hLow: -3, hHigh: 34, rockAt: 0.36, accentCover: 0.3, ripple: { strength: 0.02, scale: 3, wind: 0.5 }, grain: 0.5, roughness: 0.9, wet: { level: -3, band: 2.2, color: '#7a1e06' }, mark: '#18191c' } },
+  mandalore: { detail: 'gravel', detailLook: { color: 0.6, normal: 0.7 }, wind: 0.8, palette: { low: '#b9ab8e', high: '#d0c6b2', rock: '#3a4344', accent: '#5f6a66', deep: '#4a4f4c', hLow: -4, hHigh: 14, rockAt: 0.4, accentCover: 0.25, ripple: { strength: 0.02, scale: 3, wind: 0.5 }, grain: 0.5, mark: '#7a7466' } },
+  lothal: { detail: 'grass', detailLook: { color: 0.7, normal: 0.6 }, palette: { low: '#a48a58', high: '#bba775', rock: '#7a7268', accent: '#b39a7e', deep: '#7a7268', hLow: -4, hHigh: 14, rockAt: 0.4, accentCover: 0.18, ripple: { strength: 0.02, scale: 3, wind: 0.5 }, grain: 0.5, mark: '#6e5a3a' } },
+  sorgan: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 }, palette: { low: '#4f4c2e', high: '#5e6034', rock: '#5a5a50', accent: '#6a5e3a', deep: '#5a5a50', hLow: -4, hHigh: 14, rockAt: 0.4, accentCover: 0.25, ripple: { strength: 0.02, scale: 3, wind: 0.5 }, grain: 0.5, mark: '#3a3824' } },
+};
+export const SITE_WATER = {
+  kashyyyk: { kind: 'sea', level: 0 },
+  dagobah: { kind: 'swamp', level: 0 },
+  yavin: { kind: 'swamp', level: -3 },
+  naboo: { kind: 'sea', level: 0 },
+  kamino: { kind: 'sea', level: 0 },
+  mustafar: { kind: 'lava', level: 2.5 },
+  scarif: { kind: 'sea', level: 0 },
+  bespin: { kind: 'clouds', level: -380 },
+  nevarro: { kind: 'lava', level: -3 },
+};
+
+// a world's ground look for lib/three/groundLook.js: a scan (public/cc0/galaxy/'s role) under its palette
+const ground = (detail, palette, hLow, hHigh, more = {}) => ({
+  ...(detail ? { detail, detailLook: { color: 0.7, normal: 0.7 } } : {}),
+  wind: more.wind ?? 0.5,
+  palette: { ...palette, hLow, hHigh, rockAt: more.rockAt ?? 0.4, accentCover: more.accentCover ?? 0.22, grain: more.grain ?? 0.6, ...(more.sparkle ? { sparkle: more.sparkle } : {}) },
+});
+const water = (kind, level) => ({ kind, level });
+
+
 // ── the galaxy, 17 worlds ──
 const GALAXY = [
   {
@@ -97,6 +139,8 @@ const GALAXY = [
     pits: [{ id: 'carkoon', name: 'The Pit of Carkoon', at: [2800, -1900], r: 90, depth: 40 }],
     palette: { low: '#d9b47a', high: '#efd9a8', rock: '#8a5a3a', accent: '#b8864a', skyLow: '#f6dcb0', skyHigh: '#6fa6d8' },
     clutter: clutter(['rock', 40], ['debris', 10], ['spire', 4, { size: 0.4 }]),
+    ground: SITE_GROUND.tatooine,
+    water: SITE_WATER.tatooine,
   },
   {
     id: 'hoth', name: 'Hoth', type: 'ice', seed: 0x48f1a2c3,
@@ -110,6 +154,8 @@ const GALAXY = [
     pois: [poi('echo-base', 'Echo Base', [1200, -800], 220, 160, 12), poi('trench', 'The trench line', [1500, -1100], 90, 60), poi('ion-cannon', 'The ion cannon', [1380, -620], 40, 30)],
     palette: { low: '#dfe7f1', high: '#f4f8fc', rock: '#7e8fa6', accent: '#cbdaeb', skyLow: '#e9f0f7', skyHigh: '#9fb7d1' },
     clutter: clutter(['rock', 60], ['spire', 6, fine], ['debris', 15]),
+    ground: SITE_GROUND.hoth,
+    water: SITE_WATER.hoth,
   },
   {
     id: 'endor', name: 'Endor', type: 'forest',
@@ -123,6 +169,8 @@ const GALAXY = [
     pois: [poi('bunker', 'The shield generator bunker', [600, -400], 140, 90), poi('bright-tree', 'Bright Tree Village', [-900, 500], 80, 60)],
     palette: { low: '#3f5a30', high: '#7f9a52', rock: '#5a5048', accent: '#a8c070', skyLow: '#d8ecf2', skyHigh: '#5d9fd6' },
     clutter: clutter(['trunk', 30, fine], ['rock', 20], ['debris', 15]),
+    ground: SITE_GROUND.endor,
+    water: water('lake', -8),
   },
   {
     id: 'yavin', name: 'Yavin 4', type: 'forest',
@@ -135,6 +183,8 @@ const GALAXY = [
     pois: [poi('great-temple', 'The Great Temple', [0, 400], 180, 120, 8), poi('landing-field', 'The landing field', [240, 420], 120, 60, 8), poi('ruin', 'A ruined temple', [-1500, -900], 60, 50)],
     palette: { low: '#2e4a2a', high: '#5a7a38', rock: '#6a6a60', accent: '#8a9a50', skyLow: '#e0e8d8', skyHigh: '#d08a5a' },
     clutter: clutter(['trunk', 25, fine], ['debris', 8], ['rock', 20]),
+    ground: SITE_GROUND.yavin,
+    water: SITE_WATER.yavin,
   },
   {
     id: 'bespin', name: 'Bespin', type: 'gas', soft: true,
@@ -148,6 +198,7 @@ const GALAXY = [
     pois: [poi('cloud-city', 'Cloud City', [0, 0], 420, 200, 200), poi('gas-platform', 'A gas platform', [2200, 900], 60, 40, 140)],
     palette: { low: '#e8d8c8', high: '#f0e2d2', rock: '#c8b8a8', accent: '#f0a888', skyLow: '#fbe3cf', skyHigh: '#e09a78' },
     clutter: clutter(['spire', 4, fine], ['debris', 3]),
+    ground: SITE_GROUND.bespin,
   },
   {
     id: 'dagobah', name: 'Dagobah', type: 'swamp',
@@ -161,6 +212,8 @@ const GALAXY = [
     pits: [{ id: 'cave', name: 'The cave', at: [-300, 200], r: 20, depth: 8 }],
     palette: { low: '#2a3a26', high: '#4a5a34', rock: '#3a3a30', accent: '#6a7a40', skyLow: '#9aa48a', skyHigh: '#5a6a52' },
     clutter: clutter(['spire', 20, { size: 0.4 }], ['debris', 20], ['rock', 20]),
+    ground: SITE_GROUND.dagobah,
+    water: SITE_WATER.dagobah,
   },
   {
     id: 'mustafar', name: 'Mustafar', type: 'lava',
@@ -173,19 +226,35 @@ const GALAXY = [
     pois: [poi('mining', 'The mining facility', [300, 380], 70, 40), poi('fortress', 'Vader’s fortress crag', [-390, 80], 80, 50, 32), poi('arm', 'A collection arm', [1600, -600], 40, 30)],
     palette: { low: '#1a1612', high: '#3a3230', rock: '#2a2422', accent: '#ff5a1a', skyLow: '#8a3a22', skyHigh: '#2a1410' },
     clutter: clutter(['spire', 8, fine], ['rock', 50], ['debris', 10]),
+    ground: SITE_GROUND.mustafar,
+    water: SITE_WATER.mustafar,
   },
   {
     id: 'coruscant', name: 'Coruscant', type: 'city',
+    // An ecumenopolis: the whole planet one city. The ground is its floor
+    // (decks at a few levels, the Works' trenches cut through), and the city
+    // stands on it as towers on a lot grid out to the haze (the clutter): the
+    // film-made tower close up, three code-built silhouettes beyond, the
+    // Senate and the Jedi Temple at their places
     biomes: [
-      // (the note's heights raised 300 m whole, the Works' trenches at −400
-      // under the flight's −200: the site's level −330 under the core's base +300)
-      biome('core', [0.5, 0.5], 300, [...site('coruscant'), blocks(120, 24, 200, 600, 0.9)]),
-      biome('works', [0.8, 0.3], -40, [blocks(200, 40, 60, 220, 0.7), channels(900, 60, 0.1)]),
-      biome('plateau', [0.3, 0.7], 0, [level(), blocks(160, 60, 80, 300, 0.5)]),
+      biome('core', [0.5, 0.5], 300, [...site('coruscant'), swell(600, 3)]),
+      biome('works', [0.8, 0.3], -40, [level(), channels(900, 60, 0.1)]),
+      biome('plateau', [0.3, 0.7], 0, [level(), mesas(1200, 30, 0.5, 0.02)]),
     ],
     pois: [poi('senate', 'The Senate', [0, 0], 300, 120, -30), poi('jedi-temple', 'The Jedi Temple', [1400, -600], 260, 100, 50), poi('platform', 'A landing platform', [-800, 500], 60, 30, 100)],
     palette: { low: '#4a3a3e', high: '#6a5a5e', rock: '#3a2e30', accent: '#ff9a50', skyLow: '#f0a070', skyHigh: '#4a3a5a' },
-    clutter: clutter(['spire', 6, { ...fine, size: 0.5 }], ['debris', 10]),
+    fog: { near: 600, far: 13000 },
+    clutter: [{ kinds: ['tower', 'slab', 'needle'], grid: 150, cover: 0.82, scale: [1.6, 6.2], depth: 3 }],
+    // the galaxy's film-made models (galaxy/surface/catalog), standing at their places; `hq` is the
+    // high-detail file the site carries too, for a strong machine
+    landmarks: [
+      { id: 'senate', at: 'senate', url: '/models/galaxy/surface/senate.lod1.glb', hq: 'models/galaxy/surface/senate.ultra.glb', metres: 460, along: 'x' },
+      { id: 'jedi-temple', at: 'jedi-temple', url: '/models/galaxy/surface/jeditemple.lod1.glb', hq: 'models/galaxy/surface/jeditemple.glb', metres: 420, along: 'x', yaw: Math.PI },
+    ],
+    // the city's nearest towers (lib/three's instanced pools: one draw)
+    hero: { url: '/models/galaxy/surface/corutower.glb' },
+    // (the site's flat colours, and the plazas' concrete underfoot, which the walkable square has none of)
+    ground: { ...SITE_GROUND.coruscant, detail: 'concrete', detailLook: { color: 0.7, normal: 0.7 }, palette: { ...SITE_GROUND.coruscant.palette, hLow: -40, hHigh: 40 } },
   },
   {
     id: 'naboo', name: 'Naboo', type: 'temperate',
@@ -199,6 +268,8 @@ const GALAXY = [
     pois: [poi('theed', 'Theed', [0, -1200], 400, 160, 40), poi('varykino', 'Varykino', [1800, 900], 50, 30), poi('gungan', 'The Gungan sacred place', [-1600, 1400], 80, 60), poi('battle', 'The battle plain', [-600, 300], 300, 200)],
     palette: { low: '#4a7a3a', high: '#8ab860', rock: '#8a8070', accent: '#5a9ad0', skyLow: '#e4f0f4', skyHigh: '#5a9ad0' },
     clutter: clutter(['trunk', 15, { ...fine, size: 0.3 }], ['rock', 20], ['spire', 10, { size: 0.2 }]),
+    ground: SITE_GROUND.naboo,
+    water: SITE_WATER.naboo,
   },
   {
     id: 'kashyyyk', name: 'Kashyyyk', type: 'forest',
@@ -212,6 +283,8 @@ const GALAXY = [
     pois: [poi('kachirho', 'Kachirho', [-40, -560], 180, 120), poi('beach', 'The beach landing', [200, -300], 80, 50), poi('clearing', 'A Shadowlands clearing', [-2200, 800], 60, 40, -30)],
     palette: { low: '#2a4a28', high: '#5a8a3a', rock: '#6a5a40', accent: '#3ac8c0', skyLow: '#e0eee8', skyHigh: '#5aa0c8' },
     clutter: clutter(['trunk', 20, { ...fine, size: 3.5 }], ['rock', 10], ['debris', 10]),
+    ground: SITE_GROUND.kashyyyk,
+    water: SITE_WATER.kashyyyk,
   },
   {
     id: 'kamino', name: 'Kamino', type: 'ocean',
@@ -223,6 +296,8 @@ const GALAXY = [
     pois: [poi('tipoca', 'Tipoca City', [0, 0], 240, 0, 5), poi('platform', 'A landing platform', [900, 400], 40, 0, 5)],
     palette: { low: '#2a343c', high: '#3a4650', rock: '#22282e', accent: '#e8eef4', skyLow: '#8a949c', skyHigh: '#4a545c' },
     clutter: [],
+    ground: SITE_GROUND.kamino,
+    water: SITE_WATER.kamino,
   },
   {
     id: 'geonosis', name: 'Geonosis', type: 'desert',
@@ -235,6 +310,7 @@ const GALAXY = [
     pois: [poi('arena', 'The Petranaki arena', [400, -200], 160, 80, 20), poi('foundry', 'The droid foundry', [-1100, 700], 120, 80), poi('hive', 'The Stalgasin hive', [1600, 900], 100, 80)],
     palette: { low: '#9a4a30', high: '#c87a50', rock: '#6a3020', accent: '#e8a070', skyLow: '#f0b088', skyHigh: '#c86a48' },
     clutter: clutter(['hive', 4, fine], ['rock', 40], ['debris', 15]),
+    ground: SITE_GROUND.geonosis,
   },
   {
     id: 'scarif', name: 'Scarif', type: 'ocean',
@@ -247,6 +323,8 @@ const GALAXY = [
     pois: [poi('citadel', 'The Citadel', [0, 0], 220, 120, 9), poi('pads', 'The landing pads', [90, 460], 120, 60, 9), poi('outpost', 'A beach outpost', [-420, 180], 60, 40, 8)],
     palette: { low: '#f0e6c8', high: '#ffffff', rock: '#6a7a60', accent: '#3ad0c8', skyLow: '#e8f6f8', skyHigh: '#3a9ad8' },
     clutter: clutter(['spire', 15, { size: 0.5 }], ['rock', 20], ['debris', 8]),
+    ground: SITE_GROUND.scarif,
+    water: SITE_WATER.scarif,
   },
   {
     id: 'nevarro', name: 'Nevarro', type: 'lava',
@@ -259,6 +337,8 @@ const GALAXY = [
     pois: [poi('city', 'Nevarro City', [0, 0], 150, 100, 10), poi('covert', 'The covert', [-300, 205], 60, 40, 26), poi('lava-flats', 'The lava flats', [325, 245], 150, 80, -7.5)],
     palette: { low: '#1c1a1a', high: '#4a4644', rock: '#2a2626', accent: '#ff4a0a', skyLow: '#c8865a', skyHigh: '#4a3a3a' },
     clutter: clutter(['rock', 50], ['spire', 6, fine], ['debris', 10]),
+    ground: SITE_GROUND.nevarro,
+    water: SITE_WATER.nevarro,
   },
   {
     id: 'mandalore', name: 'Mandalore', type: 'desert',
@@ -273,6 +353,7 @@ const GALAXY = [
     pits: [{ id: 'mine', name: 'The mine mouth', at: [60, -40], r: 30, depth: 20 }],
     palette: { low: '#b9ab8e', high: '#d0c6b2', rock: '#3a4344', accent: '#5f6a66', skyLow: '#e0d6c4', skyHigh: '#8a9298' },
     clutter: clutter(['spire', 10, { size: 0.3 }], ['debris', 20], ['rock', 20]),
+    ground: SITE_GROUND.mandalore,
   },
   {
     id: 'lothal', name: 'Lothal', type: 'temperate',
@@ -285,6 +366,7 @@ const GALAXY = [
     pois: [poi('capital', 'Capital City', [260, -60], 200, 100), poi('factory', 'The Imperial factory', [-220, -200], 120, 60), poi('tower', 'The old tower', [-320, 60], 40, 30), poi('temple', 'The Jedi temple', [-140, 230], 60, 40), poi('depot', 'The Lothal Depot', [1800, 400], 300, 120, -4)],
     palette: { low: '#a48a58', high: '#c6ad72', rock: '#7a7268', accent: '#b39a7e', skyLow: '#f0e4cc', skyHigh: '#7aa8d0' },
     clutter: clutter(['spire', 8, fine], ['rock', 15], ['debris', 6]),
+    ground: SITE_GROUND.lothal,
   },
   {
     id: 'sorgan', name: 'Sorgan', type: 'forest',
@@ -297,6 +379,8 @@ const GALAXY = [
     pois: [poi('village', 'The village', [180, 120], 70, 50), poi('raiders', 'The raiders’ camp', [-240, -160], 50, 30), poi('clearing', 'The landing clearing', [0, 0], 60, 40)],
     palette: { low: '#4f4c2e', high: '#5e6034', rock: '#5a5a50', accent: '#6a5e3a', skyLow: '#c8ccbc', skyHigh: '#7a8a8a' },
     clutter: clutter(['spire', 20, { size: 0.6 }], ['debris', 10], ['rock', 15]),
+    ground: SITE_GROUND.sorgan,
+    water: water('lake', -10),
   },
 ];
 
@@ -308,6 +392,7 @@ const SECTOR = [
     pois: [poi('gate', 'The women’s gate', [0, -300], 90, 60), poi('arena', 'The men’s arena', [400, 200], 120, 60)],
     palette: { low: '#b84a2a', high: '#e08a5a', rock: '#6a2a1a', accent: '#ff9a6a', skyLow: '#f4b890', skyHigh: '#c8604a' },
     clutter: clutter(['rock', 40], ['debris', 20]),
+    ground: ground('redsoil', { low: '#b84a2a', high: '#e08a5a', rock: '#6a2a1a', accent: '#ff9a6a' }, 0, 90, { rockAt: 0.34 }),
   },
   {
     id: 'squanch', name: 'Squanch', type: 'stylised',
@@ -315,6 +400,8 @@ const SECTOR = [
     pois: [poi('venue', 'The wedding venue', [0, 0], 120, 80)],
     palette: { low: '#b83a3a', high: '#d85a4a', rock: '#7a2a2a', accent: '#7ad2c8', skyLow: '#f8d0c8', skyHigh: '#d07a8a' },
     clutter: clutter(['spire', 10], ['rock', 20]),
+    ground: ground('redsoil', { low: '#b83a3a', high: '#d85a4a', rock: '#7a2a2a', accent: '#7ad2c8' }, 0, 50),
+    water: water('lake', -6),
   },
   {
     id: 'birdworld', name: 'Bird World', type: 'stylised',
@@ -322,6 +409,7 @@ const SECTOR = [
     pois: [poi('nest', 'The nest', [0, 0], 80, 60, 20)],
     palette: { low: '#4a8a3a', high: '#6aa84a', rock: '#2a5a2a', accent: '#bfe4ff', skyLow: '#e8f6ff', skyHigh: '#7ac0f0' },
     clutter: clutter(['spire', 10], ['debris', 10], ['rock', 20]),
+    ground: ground('grass', { low: '#4a8a3a', high: '#6aa84a', rock: '#2a5a2a', accent: '#bfe4ff' }, 0, 80, { rockAt: 0.36 }),
   },
   {
     id: 'gearworld', name: 'Gear World', type: 'stylised',
@@ -329,6 +417,7 @@ const SECTOR = [
     pois: [poi('monument', 'The gear monument', [0, 0], 100, 60)],
     palette: { low: '#b88a3a', high: '#d8aa5a', rock: '#6a4a2a', accent: '#ffe0a0', skyLow: '#f8e8c0', skyHigh: '#c89850' },
     clutter: clutter(['debris', 20], ['spire', 6, fine]),
+    ground: ground('metal', { low: '#b88a3a', high: '#d8aa5a', rock: '#6a4a2a', accent: '#ffe0a0' }, 0, 30),
   },
   {
     id: 'pluto', name: 'Pluto', type: 'ice',
@@ -336,6 +425,7 @@ const SECTOR = [
     pois: [poi('hq', 'The mining headquarters', [0, 0], 120, 60)],
     palette: { low: '#8a8a90', high: '#c8c8d0', rock: '#4a4a52', accent: '#6a8ab0', skyLow: '#5a5a6a', skyHigh: '#14141c' },
     clutter: clutter(['rock', 40], ['spire', 4, fine], ['debris', 10]),
+    ground: ground('gravel', { low: '#8a8a90', high: '#c8c8d0', rock: '#4a4a52', accent: '#6a8ab0' }, 0, 30, { sparkle: 0.3 }),
   },
   {
     id: 'snakeplanet', name: 'Snake Planet', type: 'temperate',
@@ -343,6 +433,7 @@ const SECTOR = [
     pois: [poi('capital', 'The capital', [0, 0], 200, 80)],
     palette: { low: '#5a7a3a', high: '#8aa858', rock: '#6a6a5a', accent: '#c8d070', skyLow: '#eef4d8', skyHigh: '#8ab0a0' },
     clutter: clutter(['trunk', 10, { size: 0.3 }], ['spire', 6], ['rock', 15]),
+    ground: ground('grass', { low: '#5a7a3a', high: '#8aa858', rock: '#6a6a5a', accent: '#c8d070' }, 0, 30),
   },
   {
     id: 'nuptia', name: 'Nuptia 4', type: 'stylised',
@@ -350,6 +441,8 @@ const SECTOR = [
     pois: [poi('centre', 'The counselling centre', [0, 0], 160, 60, 40)],
     palette: { low: '#7a9a8a', high: '#e8f0ec', rock: '#5a6a62', accent: '#ffffff', skyLow: '#f4f8f8', skyHigh: '#8ac0d8' },
     clutter: clutter(['rock', 20], ['spire', 6, { size: 0.2 }]),
+    ground: ground('grass', { low: '#7a9a8a', high: '#e8f0ec', rock: '#5a6a62', accent: '#ffffff' }, 30, 60),
+    water: water('sea', 0),
   },
   {
     id: 'resort', name: 'The Immortality Field Resort', type: 'stylised',
@@ -357,6 +450,8 @@ const SECTOR = [
     pois: [poi('resort', 'The resort', [0, 0], 200, 80, 8)],
     palette: { low: '#e8d8a8', high: '#fff4d8', rock: '#7a7a70', accent: '#4ad0e0', skyLow: '#f4fcff', skyHigh: '#4ab0e8' },
     clutter: clutter(['spire', 10, { size: 0.3 }], ['debris', 10]),
+    ground: ground('beach', { low: '#e8d8a8', high: '#fff4d8', rock: '#7a7a70', accent: '#4ad0e0' }, 0, 20),
+    water: water('sea', 0),
   },
   {
     id: 'cronenberg', name: 'Cronenberg World', type: 'temperate',
@@ -364,6 +459,7 @@ const SECTOR = [
     pois: [poi('street', 'The Smiths’ street', [0, 0], 120, 60)],
     palette: { low: '#5a6a4a', high: '#8a9a6a', rock: '#6a5a5a', accent: '#d8a0a0', skyLow: '#e8d8c8', skyHigh: '#9a7a8a' },
     clutter: clutter(['debris', 15], ['trunk', 8, { size: 0.3 }], ['spire', 6, { size: 0.3 }]),
+    ground: ground('grass', { low: '#5a6a4a', high: '#8a9a6a', rock: '#6a5a5a', accent: '#d8a0a0' }, 0, 30),
   },
   {
     id: 'purge', name: 'The Purge Planet', type: 'temperate',
@@ -371,6 +467,8 @@ const SECTOR = [
     pois: [poi('village', 'The village', [0, 0], 140, 60), poi('lighthouse', 'The lighthouse', [900, -600], 40, 30, 24)],
     palette: { low: '#5a7a3a', high: '#a8b860', rock: '#6a6a62', accent: '#ffb050', skyLow: '#fbe8c8', skyHigh: '#e0905a' },
     clutter: clutter(['debris', 10], ['spire', 6, { size: 0.2 }], ['trunk', 10, { size: 0.3 }]),
+    ground: ground('grass', { low: '#5a7a3a', high: '#a8b860', rock: '#6a6a62', accent: '#ffb050' }, 0, 30),
+    water: water('sea', -2),
   },
 ];
 
@@ -382,6 +480,7 @@ const FANDOM = [
     pois: [poi('iacon', 'Iacon', [0, -2000], 400, 160, 30), poi('hydrax', 'The Hydrax Plateau', [0, 0], 300, 100, 40), poi('kaon', 'Kaon', [0, 2400], 300, 120, 20)],
     palette: { low: '#5a6270', high: '#9aa4b0', rock: '#3a4048', accent: '#ff8a30', skyLow: '#d8a070', skyHigh: '#3a4058' },
     clutter: clutter(['crystal', 8, fine], ['debris', 15], ['spire', 4]),
+    ground: ground('metal', { low: '#5a6270', high: '#9aa4b0', rock: '#3a4048', accent: '#ff8a30' }, 0, 120),
   },
   {
     id: 'middle-earth', name: 'Middle-earth', type: 'temperate',
@@ -395,6 +494,8 @@ const FANDOM = [
     pois: [poi('hobbiton', 'Hobbiton', [-3000, 1800], 200, 120), poi('bree', 'Bree', [-2200, 1600], 120, 60), poi('weathertop', 'Weathertop', [-1500, 1400], 40, 50, 90), poi('rivendell', 'Rivendell', [-600, 1200], 120, 80, 60), poi('moria', 'Moria’s gate', [0, 900], 60, 40, 120), poi('amon-hen', 'Amon Hen', [600, -200], 40, 40, 70), poi('barad-dur', 'Barad-dûr', [2800, -1400], 120, 80, 20)],
     palette: { low: '#4a7a3a', high: '#a0c060', rock: '#6a6a60', accent: '#2a2420', skyLow: '#eef2e4', skyHigh: '#7aa8c8' },
     clutter: clutter(['trunk', 15, { size: 0.3 }], ['spire', 3, fine], ['rock', 20]),
+    ground: ground('grass', { low: '#4a7a3a', high: '#a0c060', rock: '#6a6a60', accent: '#2a2420' }, 0, 140, { rockAt: 0.36 }),
+    water: water('swamp', -2),
   },
   {
     id: 'caribbean', name: 'The Caribbean', type: 'ocean',
@@ -402,6 +503,8 @@ const FANDOM = [
     pois: [poi('tortuga', 'Tortuga', [0, 0], 160, 80, 6), poi('port-royal', 'Port Royal', [1600, -900], 140, 60, 30), poi('isla-de-muerta', 'Isla de Muerta', [-1800, 600], 60, 40, 10)],
     palette: { low: '#e8d8b0', high: '#fff0d0', rock: '#5a6a50', accent: '#30c0c8', skyLow: '#f0faf8', skyHigh: '#3aa0d8' },
     clutter: clutter(['spire', 12, { size: 0.5 }], ['rock', 15], ['debris', 6]),
+    ground: ground('beach', { low: '#e8d8b0', high: '#fff0d0', rock: '#5a6a50', accent: '#30c0c8' }, 0, 40, { accentCover: 0.1 }),
+    water: water('sea', 0),
   },
   {
     id: 'albuquerque', name: 'Albuquerque', type: 'desert',
@@ -409,6 +512,7 @@ const FANDOM = [
     pois: [poi('car-wash', 'The car wash', [0, 0], 80, 50), poi('cook-site', 'The RV’s cook site', [2400, -800], 60, 50), poi('lab', 'The lab', [-1200, 400], 70, 40)],
     palette: { low: '#c8a878', high: '#e8d0a0', rock: '#8a6a50', accent: '#c87a7a', skyLow: '#f4ead8', skyHigh: '#5a9ad8' },
     clutter: clutter(['spire', 10, { size: 0.2 }], ['rock', 30], ['debris', 8]),
+    ground: ground('sand', { low: '#c8a878', high: '#e8d0a0', rock: '#8a6a50', accent: '#c87a7a' }, 0, 80, { rockAt: 0.36 }),
   },
   {
     id: 'scranton', name: 'Scranton', type: 'temperate',
@@ -416,6 +520,8 @@ const FANDOM = [
     pois: [poi('office', 'The office park', [0, 0], 120, 60), poi('schrute', 'Schrute Farms', [1800, 900], 140, 60)],
     palette: { low: '#4a6a3a', high: '#a0a860', rock: '#6a6a62', accent: '#c87038', skyLow: '#eae6dc', skyHigh: '#8aa0b8' },
     clutter: clutter(['trunk', 15, { size: 0.3 }], ['debris', 8], ['spire', 3, fine]),
+    ground: ground('grass', { low: '#4a6a3a', high: '#a0a860', rock: '#6a6a62', accent: '#c87038' }, 0, 120),
+    water: water('lake', -12),
   },
   {
     id: 'avengers', name: 'Avengers HQ', type: 'temperate',
@@ -423,6 +529,8 @@ const FANDOM = [
     pois: [poi('compound', 'The compound', [0, 0], 300, 120), poi('helipad', 'The helipad', [260, 80], 40, 20)],
     palette: { low: '#3f6a38', high: '#8ab860', rock: '#6a6a62', accent: '#4a8ad0', skyLow: '#e8f0f4', skyHigh: '#5a90d0' },
     clutter: clutter(['trunk', 15, { size: 0.3 }], ['rock', 15]),
+    ground: ground('grass', { low: '#3f6a38', high: '#8ab860', rock: '#6a6a62', accent: '#4a8ad0' }, 0, 50),
+    water: water('lake', -8),
   },
   {
     id: 'invincible', name: 'Invincible', type: 'temperate',
@@ -430,6 +538,8 @@ const FANDOM = [
     pois: [poi('hq', 'The Guardians’ HQ', [0, 0], 160, 60), poi('graysons', 'The Graysons’ street', [1200, 800], 100, 50)],
     palette: { low: '#5a6a5a', high: '#a8b0a0', rock: '#4a4a50', accent: '#f0d040', skyLow: '#eaf0f4', skyHigh: '#5a8ad0' },
     clutter: clutter(['spire', 4], ['debris', 10], ['trunk', 8, { size: 0.3 }]),
+    ground: ground('grass', { low: '#5a6a5a', high: '#a8b0a0', rock: '#4a4a50', accent: '#f0d040' }, 0, 30),
+    water: water('lake', -4),
   },
   {
     id: 'c-137', name: 'Dimension C-137', type: 'temperate',
@@ -437,6 +547,8 @@ const FANDOM = [
     pois: [poi('smiths', 'The Smith house', [0, 0], 80, 40), poi('school', 'The school', [600, 300], 90, 40), poi('blips', 'Blips and Chitz', [-900, 500], 100, 40)],
     palette: { low: '#5a7a4a', high: '#9ab870', rock: '#6a6a62', accent: '#78d0c0', skyLow: '#eef6f0', skyHigh: '#6ab0d8' },
     clutter: clutter(['trunk', 12, { size: 0.3 }], ['debris', 8], ['spire', 2, fine]),
+    ground: ground('grass', { low: '#5a7a4a', high: '#9ab870', rock: '#6a6a62', accent: '#78d0c0' }, 0, 30),
+    water: water('lake', -8),
   },
   {
     id: 'earth', name: 'Earth', type: 'temperate',
@@ -444,6 +556,8 @@ const FANDOM = [
     pois: [],
     palette: { low: '#4a7a3a', high: '#c8b890', rock: '#6a6a62', accent: '#3a8ad0', skyLow: '#e8f2f8', skyHigh: '#4a8ad0' },
     clutter: clutter(['trunk', 10, { size: 0.3 }], ['rock', 20]),
+    ground: ground('grass', { low: '#4a7a3a', high: '#c8b890', rock: '#6a6a62', accent: '#3a8ad0' }, 0, 200),
+    water: water('sea', 0),
   },
   {
     id: 'dot-matrix', name: 'Dot Matrix', type: 'stylised', step: 4,
@@ -451,6 +565,8 @@ const FANDOM = [
     pois: [poi('castle', 'The castle grounds', [0, 0], 200, 0, 0), poi('bob-omb', 'Bob-omb Ridge', [1200, -800], 60, 0, 60)],
     palette: { low: '#3ab040', high: '#8ae060', rock: '#7a5a30', accent: '#ff4040', skyLow: '#d8f4ff', skyHigh: '#4aa0f0' },
     clutter: clutter(['block', 20], ['spire', 6, { size: 0.2 }]),
+    ground: ground(null, { low: '#3ab040', high: '#8ae060', rock: '#7a5a30', accent: '#ff4040' }, 0, 40, { grain: 0.2 }),
+    water: water('lava', -12),
   },
 ];
 
@@ -458,7 +574,7 @@ export const WORLDS = [...GALAXY, ...SECTOR, ...FANDOM];
 
 // ── the Expanse's generated planets, by type: the galaxy's worlds as templates, the names stripped ──
 const template = (id) => GALAXY.find((w) => w.id === id);
-const look = (id, more = {}) => ({ palette: template(id).palette, clutter: template(id).clutter, soft: Boolean(template(id).soft), ...more });
+const look = (id, more = {}) => ({ palette: template(id).palette, clutter: template(id).clutter, soft: Boolean(template(id).soft), ground: template(id).ground, water: template(id).water ?? null, ...more });
 const geonosis = template('geonosis').biomes;
 export const TYPE_BIOMES = {
   ice: template('hoth').biomes,

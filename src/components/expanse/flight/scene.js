@@ -81,7 +81,8 @@ export function createFlightScene({ spec, palette }) {
   const camera = new THREE.PerspectiveCamera(62, 1, 1, SKY_R * 1.2);
   const sky = skyDome(p.skyLow ?? p.low, p.skyHigh ?? palette[3]);
   scene.add(sky);
-  scene.fog = new THREE.Fog(new THREE.Color(p.skyLow ?? p.low), FOG.near, FOG.far);
+  // (a planet may have its own haze: Coruscant's dusk closes in sooner)
+  scene.fog = new THREE.Fog(new THREE.Color(p.skyLow ?? p.low), spec.fog?.near ?? FOG.near, spec.fog?.far ?? FOG.far);
   const hemi = new THREE.HemisphereLight(new THREE.Color(p.skyHigh ?? palette[3]).lerp(new THREE.Color('#ffffff'), 0.4), new THREE.Color(p.rock), 1.1);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(new THREE.Color(palette[5]).lerp(new THREE.Color('#ffffff'), 0.6), 2.4);
