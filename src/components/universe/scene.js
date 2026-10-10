@@ -483,7 +483,7 @@ export async function create(canvas, ctx) {
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 30000); // (out to the far side of deep space; the near plane follows the view, place())
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 45000); // (out to the far side of deep space; the near plane follows the view, place())
   scene.add(camera); // it carries the streaks
   const map = new THREE.Group(); // turned (yaw) by a drag, or to keep the camera behind the ship
   scene.add(map);
@@ -1401,7 +1401,7 @@ export async function create(canvas, ctx) {
     const r = s ? Math.hypot(s.x, s.z) : 0;
     if (!state.overview || r < DEEP.system) return state.overview;
     const [wx, wz] = rotate(s.x * 0.55, s.z * 0.55);
-    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700 * HOME_SPREAD, 7000), pitch: 0.62 };
+    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700 * HOME_SPREAD, 10500), pitch: 0.62 }; // (10,500: 7,000 before the spread to six, scale.js's SPREAD)
   };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
