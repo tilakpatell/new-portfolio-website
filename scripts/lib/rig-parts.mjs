@@ -161,7 +161,25 @@ export function shareSkins(doc, say = () => {}) {
     // Obi-Wan's seven)
     const deltas = names.map((n, i) => (index.has(n) ? bindDelta(ibmOf(skin, i), ibmOf(body, bodyNames.indexOf(n))) : null));
     const off = worstOff(root.listNodes().filter((n) => n.getSkin() === skin), m, deltas);
-    if (off.by > 0.01) throw new Error(`part ${names[at]}…: moved as one onto the body's bind pose, a vertex on ${names[off.joint]} lands ${(off.by * 100).toFixed(1)} cm from where its own joints put it`);
+    // (a part bound in a pose of its own, the gloves of another body: no one
+    // move fits it, so it keeps its own inverse binds on a skin whose joints
+    // are the body's bones, which is exactly what it was skinned to; only a
+    // joint the body hasn't keeps the part's copy)
+    if (off.by > 0.01) {
+      const byName = new Map(body.listJoints().map((j) => [j.getName(), j]));
+      const own = doc.createSkin(skin.getName()).setInverseBindMatrices(skin.getInverseBindMatrices()).setSkeleton(body.getSkeleton());
+      for (const j of joints) own.addJoint(byName.get(j.getName()) ?? j);
+      for (const node of root.listNodes().filter((n) => n.getSkin() === skin)) {
+        node.setSkin(own);
+        say(`part ${node.getName() || node.getMesh()?.getName() || '?'}: its own binds kept on the body's bones (one move put a vertex on ${names[off.joint]} ${(off.by * 100).toFixed(1)} cm off)`);
+      }
+      const depth = (n) => (n.getParentNode() ? 1 + depth(n.getParentNode()) : 0);
+      const keep = new Set(own.listJoints());
+      for (const j of [...joints].sort((a, b) => depth(b) - depth(a))) if (!bodyJoints.has(j) && !keep.has(j)) detach(j);
+      skin.dispose();
+      joined++;
+      continue;
+    }
     for (const node of root.listNodes().filter((n) => n.getSkin() === skin)) {
       for (const prim of node.getMesh()?.listPrimitives() ?? []) toBodyBind(prim, m);
       let unmatched = 0;

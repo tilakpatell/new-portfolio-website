@@ -135,10 +135,24 @@ describe('a part made in another bind pose', () => {
     expect([p[3], p[4], p[5]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([1, 0.5, 0]);
   });
 
-  it('refuses a part whose joints disagree about where its bind pose is', () => {
-    const { doc } = rigged();
-    partWith(doc, [T(0, 0.5, 0), T(3, 0.9, 0)]);
-    expect(() => shareSkins(doc)).toThrow(/LeftHand/);
+  it('keeps a part whose joints disagree about its bind pose on its own binds, driven by the body’s bones', () => {
+    const { doc, skin } = rigged();
+    const prim = partWith(doc, [T(0, 0.5, 0), T(3, 0.9, 0)]);
+    const said = [];
+    expect(shareSkins(doc, (l) => said.push(l))).toBe(1);
+    const node = doc
+      .getRoot()
+      .listNodes()
+      .find((n) => n.getName() === 'Head');
+    const own = node.getSkin();
+    expect(own).not.toBe(skin);
+    // (its joints the body's own nodes, its inverse binds its own, its vertices where they were)
+    const body = Object.fromEntries(skin.listJoints().map((j) => [j.getName(), j]));
+    expect(own.listJoints()).toEqual([body.Hips, body.LeftHand]);
+    expect(own.getInverseBindMatrices().getElement(1, []).map((v) => Math.round(v * 1e6) / 1e6)).toEqual(T(3, 0.9, 0));
+    expect([...prim.getAttribute('POSITION').getArray()].slice(0, 3)).toEqual([0, 0, 0]);
+    expect(doc.getRoot().listNodes().filter((n) => n.getName() === 'LeftHand').length).toBe(1);
+    expect(said.join()).toMatch(/its own binds/);
   });
 });
 
