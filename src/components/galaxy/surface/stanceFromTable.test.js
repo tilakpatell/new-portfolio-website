@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import luke from '../../../data/bf2017/strokes/luke.json';
 import palpatine from '../../../data/bf2017/strokes/palpatine.json';
-import { strokeTable } from '../../../data/bf2017/strokes';
-import { DIRS, HEAVY, STANCES, STANCE_IDS, stanceOf, strokeFor } from './combatRules';
+import { DIRS, HEAVY, STANCES, strokeFor } from './combatRules';
 import { duelFor } from './duellists';
 import { stanceFromTable } from './stanceFromTable';
 
@@ -76,19 +75,6 @@ describe('strokeFor on the game’s stance', () => {
   it('leaves the site’s own stances as they were', () => {
     expect(strokeFor(STANCES.single, { heavy: true }).clip).toBe(HEAVY.clips[0]);
     expect(strokeFor(STANCES.single, { dir: 'rise' }).clip).toBe(DIRS.rise.clip);
-  });
-});
-
-describe('stanceOf, for a hero on the game’s rig', () => {
-  it('is the game’s for a walrus hero with a table, the site’s for anyone else', () => {
-    expect(stanceOf('single', { rig: 'walrus', pack: 'luke' }).strokes[0].clip).toBe('A_Luke_AttackLoop_Strike1');
-    expect(stanceOf('single', { rig: 'walrus', pack: 'luke' })).toBe(stanceOf('single', { rig: 'walrus', pack: 'luke' }));
-    expect(stanceOf('single', { pack: 'luke' })).toBe(STANCES.single);
-    expect(stanceOf('double', { rig: 'walrus', pack: 'palpatine' })).toBe(STANCES.double);
-    expect(stanceOf('nope')).toBe(STANCES.single);
-    expect(STANCE_IDS).toEqual(['single', 'double', 'dual', 'heavy']);
-    expect(strokeTable('luke').hero).toBe('luke');
-    expect(strokeTable('han')).toBe(null);
   });
 });
 

@@ -18,8 +18,7 @@
 //   PARRY                { window }: seconds before their blade's contact in which a block begun is a parry
 //   DODGE                { dist, dur, safe (seconds of it nothing lands), cool }
 //   FORCE                push / pull: { range, cone, force, cool, damage }
-//   stanceOf(id, hero?)  the stance, 'single' when unknown; for a hero on the 2017 game's rig ({ rig: 'walrus', pack })
-//                        with a stroke table, the game's strokes in its shape (stanceFromTable.js)
+//   stanceOf(id)         the stance, 'single' when unknown (a hero on the 2017 game's rig: gameStance.js's stanceFor)
 //   strokeFor(stance, { last, now, dir, heavy, combo })   the stroke to make now: { clip, speed, damage, lunge, heavy, kind, i };
 //                        a way held (dir) its own (the stance's `dirs`, else DIRS), a heavy one the next of the stance's
 //                        `heavies` (else HEAVY's) while they chain, else the next of the combo
@@ -36,9 +35,6 @@
 //   forceAt(me, t, kind)         whether t is in the Force's reach: { hit, k (1 close … 0 at range) }
 //   pushVelocity(me, t, k)       the shove a push gives t: { vx, vz, vy }
 //   hitStop(damage, killed)      seconds the frame holds on a hit
-
-import { strokeTable } from '../../../data/bf2017/strokes';
-import { stanceFromTable } from './stanceFromTable';
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -100,17 +96,7 @@ export const STANCES = {
   },
 };
 export const STANCE_IDS = Object.keys(STANCES);
-// (a hero on the 2017 game's rig with a stroke table fences with the game's
-// strokes, the stance it was given standing behind them; built once a pair)
-const GAME = new Map();
-export function stanceOf(id, hero = null) {
-  const base = STANCES[id] ?? STANCES.single;
-  const table = hero?.rig === 'walrus' ? strokeTable(hero.pack) : null;
-  if (!table) return base;
-  const key = `${hero.pack}:${id}`;
-  if (!GAME.has(key)) GAME.set(key, stanceFromTable(table, { base, dirs: DIRS, heavy: HEAVY }) ?? base);
-  return GAME.get(key);
-}
+export const stanceOf = (id) => STANCES[id] ?? STANCES.single;
 
 export const HEAVY = { hold: 0.35, clips: ['sword.heavy.a', 'sword.heavy.b', 'sword.heavy.c', 'sword.heavy.d'], speed: 1, damage: 5, breaks: true };
 export const DIRS = {
