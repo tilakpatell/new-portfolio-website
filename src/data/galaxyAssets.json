@@ -1253,12 +1253,6 @@
     "from": "models/galaxy/bf2017/levels/endor/horizon.bin",
     "tier": "pack"
   },
-  "models/galaxy/bf2017/levels/endor/level.json": {
-    "hash": "b887f284a975",
-    "bytes": 634762,
-    "from": "levels/mp/endor_01",
-    "tier": "surface"
-  },
   "models/galaxy/bf2017/levels/endor/lights.json": {
     "hash": "c7ae8f9ff9b1",
     "bytes": 192786,
@@ -18952,12 +18946,6 @@
     "bytes": 0,
     "from": "models/galaxy/bf2017/levels/hoth/base/horizon.bin",
     "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/level.json": {
-    "hash": "1aa31d203b75",
-    "bytes": 540822,
-    "from": "levels/mp/hoth_01 (base)",
-    "tier": "surface"
   },
   "models/galaxy/bf2017/levels/hoth/base/lights.json": {
     "hash": "4f92341d7349",

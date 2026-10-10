@@ -86,6 +86,7 @@ export function gameFiles(credits, publicDir) {
     const tier = plain.includes('/crew/') ? 'crew' : 'surface';
     const stem = plain.replace(/\.glb$/, '');
     for (const [path, t] of [[plain, tier], ...CUTS.map((cut) => [`${stem}.${cut}.glb`, cut === 'ultra' ? 'ultra' : tier])]) {
+      if (PACK_KEPT.test(path)) continue; // (a level pack's credit names its level.json: git keeps it)
       if (existsSync(join(publicDir, path))) out.set(path, { path, ...measure(publicDir, path), from, tier: t });
     }
   }

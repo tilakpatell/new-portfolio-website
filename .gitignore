@@ -275,7 +275,6 @@ scripts/gpu-parity/out/
 /public/models/galaxy/bf2017/levels/endor/effects.json
 /public/models/galaxy/bf2017/levels/endor/far.bin
 /public/models/galaxy/bf2017/levels/endor/horizon.bin
-/public/models/galaxy/bf2017/levels/endor/level.json
 /public/models/galaxy/bf2017/levels/endor/lights.json
 /public/models/galaxy/bf2017/levels/endor/meshes/at_at_station_bunker_doorframe_01_mesh.lod0.glb
 /public/models/galaxy/bf2017/levels/endor/meshes/at_at_station_bunker_doorframe_01_mesh.lod1.glb
@@ -3225,7 +3224,6 @@ scripts/gpu-parity/out/
 /public/models/galaxy/bf2017/levels/hoth/base/effects.json
 /public/models/galaxy/bf2017/levels/hoth/base/far.bin
 /public/models/galaxy/bf2017/levels/hoth/base/horizon.bin
-/public/models/galaxy/bf2017/levels/hoth/base/level.json
 /public/models/galaxy/bf2017/levels/hoth/base/lights.json
 /public/models/galaxy/bf2017/levels/hoth/base/meshes/arctic_corridorsnowpile_01_mesh.lod0.glb
 /public/models/galaxy/bf2017/levels/hoth/base/meshes/arctic_corridorsnowpile_01_mesh.lod1.glb
