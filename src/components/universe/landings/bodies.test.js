@@ -41,6 +41,23 @@ describe('shapeFor', () => {
     expect(s.colliders[0].position).toEqual([0, 0.45, 0]);
   });
 
+  it('makes a post as thick as it says, where it stands, the thing’s whole height', () => {
+    // (a sign: its plate 0.62 m across on a pole 7 cm thick, 2 cm behind the plate's middle)
+    const sign = box([-0.31, 0, -0.05], [0.31, 2.4, 0.05]);
+    const s = shapeFor({ shape: 'cylinder', mass: 15, fixed: true, r: 0.035, at: [0, -0.02] }, sign);
+    expect(s.type).toBe('fixed');
+    expect(s.colliders[0].shape).toBe('cylinder');
+    expect(s.colliders[0].args[0]).toBeCloseTo(1.2, 9);
+    expect(s.colliders[0].args[1]).toBeCloseTo(0.035, 9);
+    expect(s.colliders[0].position).toEqual([0, 1.2, -0.02]);
+    // (at a scatter's scale, it and where it stands too)
+    const twice = shapeFor({ shape: 'cylinder', mass: 15, fixed: true, r: 0.035, at: [0, -0.02] }, sign, 2);
+    expect(twice.colliders[0].args[1]).toBeCloseTo(0.07, 9);
+    expect(twice.colliders[0].position).toEqual([0, 2.4, -0.04]);
+    // (none said: as wide as its widest way, round its box's middle)
+    expect(shapeFor({ shape: 'cylinder', mass: 15, fixed: true }, sign).colliders[0].args[1]).toBeCloseTo(0.31, 9);
+  });
+
   it('makes a ball as big as its biggest way, its foot on the thing’s', () => {
     const s = shapeFor({ shape: 'ball', mass: 0.2 }, box([-0.1, 0, -0.1], [0.1, 0.4, 0.1]));
     expect(s.colliders[0]).toEqual({ shape: 'ball', args: [0.2], position: [0, 0.2, 0] });
