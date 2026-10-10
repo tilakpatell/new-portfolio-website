@@ -25,6 +25,19 @@ describe('the site’s clip names on the game’s', () => {
     expect(resolveGame(HUMANOID_SET, 'nope', () => true)).toBe(null);
   });
 
+  it('names the kits’ Force powers by the game’s clips, which the manifest has', () => {
+    const want = {
+      vader: { 'force.choke': 'A_Vader_ForceChoke_Enter_01', 'force.rage': 'A_Vader_RagePowerUp_01', 'saber.throw': 'A_Vader_Stand_ThrowSaber_FwdFacing_02' },
+      maul: { 'force.choke': 'A_Maul_ChokeThrow_Start_01', 'force.rush': 'A_Maul_SpinLeap_01', 'saber.throw': 'A_Maul_SaberThrow_Stand_01' },
+      palpatine: { 'force.lightning': 'A_Palpatine_Stand_Beam_Fwd_01', 'force.chain': 'A_Palpatine_Stand_ChainLightning_01' },
+      dooku: { 'force.electrocute': 'A_Dooku_Stand_Electrocute_02', 'force.weaken': 'A_Dooku_Stand_ExposeWeakness_02' },
+      anakin: { 'force.pull': 'A_Anakin_Ability2_PullMastery_Full', 'force.slam': 'A_Anakin_Ability3_LandingStrike_Land' },
+      luke: { 'force.rush': 'A_Luke_Stand_RushAttack_01', 'force.slam': 'A_Luke_Stand_ForceRepulse_02' },
+      chewie: { 'force.slam': 'A_Chewbacca_LeapSlam_Exit_01' },
+    };
+    for (const [pack, names] of Object.entries(want)) for (const [site, game] of Object.entries(names)) expect(candidates(PACKS[pack], site), `${pack} ${site}`).toContain(game);
+  });
+
   it('spells a hero every way the game does (Han is HanSolo and Han)', () => {
     expect(candidates(HERO_SET(['HanSolo', 'Han']), 'die')).toContain('A_Han_Defeated_01');
   });

@@ -50,6 +50,23 @@ describe('the heroes', () => {
     }
     expect(new Set(HEROES.map((h) => h.id)).size).toBe(HEROES.length);
   });
+  it('gives each of the 2017 game’s heroes two of its own kit, with the game’s numbers', () => {
+    const game = HEROES.filter((h) => h.rig === 'walrus' && h.id !== 'bobafett');
+    expect(game.map((h) => h.id)).toEqual(expect.arrayContaining(['luke', 'vader', 'palpatine', 'maul', 'dooku', 'obiwan', 'anakin', 'han', 'leia', 'chewie']));
+    for (const h of game) {
+      for (const slot of ['power', 'second']) {
+        const a = ABILITIES[h.abilities[slot]];
+        // (Leia's medpack is the site's: her kit's other two are a shield and a rifle it doesn't play)
+        if (h.id === 'leia' && slot === 'second') continue;
+        // (nor Lando's G, his kit's smoke and disruptor, nor Bossk's V, his mines and his instincts)
+        if ((h.id === 'lando' && slot === 'power') || (h.id === 'bossk' && slot === 'second')) continue;
+        expect(a.game?.startsWith(`${h.id}: `), `${h.id} on ${slot}`).toBe(true);
+      }
+    }
+    // (Boba Fett's jetpack is the site's own; his rocket the game's)
+    expect(ABILITIES[heroById('bobafett').abilities.second].game).toMatch(/^bobafett: /);
+    expect(heroById('vader').abilities).toEqual({ power: 'vaderChoke', second: 'vaderRage' });
+  });
 
   it('reads the kept choice, and falls back to the ship’s lead on nothing or nonsense', () => {
     expect(readHero(null, 'xwing')).toMatchObject({ id: 'luke', color: 'green', hilt: 'luke' });
@@ -62,9 +79,9 @@ describe('the heroes', () => {
     expect(readHero({ id: 'morty', gun: 'laser' }).gun).toBe('laser');
     expect(readHero({ id: 'han', gun: 'laser' }).gun).toBe('blaster');
     expect(heroSpec(readHero(null, 'cruiser'))).toMatchObject({ id: 'rick', src: { meshy: 'rick' }, abilities: { power: 'hop', second: 'overcharge' } });
-    expect(heroSpec({ id: 'bobafett' })).toMatchObject({ gun: 'ee3', abilities: { power: 'jetpack', second: 'rocket' } });
+    expect(heroSpec({ id: 'bobafett' })).toMatchObject({ gun: 'ee3', abilities: { power: 'jetpack', second: 'bobaRocket' } });
     expect(readHero('{bad json', 'xwing').id).toBe('luke');
-    expect(readHero({ id: 'nobody' }).id).toBe(defaultHeroId('xwing'));
+    expect(readHero({ id: 'greedo' }).id).toBe(defaultHeroId('xwing'));
     expect(readHero(writeHero({ id: 'ahsoka', color: 'purple', hilt: 'dooku' }))).toMatchObject({ id: 'ahsoka', color: 'purple', hilt: 'dooku' });
     // a colour or hilt that isn't one goes back to the hero's own
     expect(readHero({ id: 'ahsoka', color: 'plaid', hilt: 'x' })).toMatchObject({ id: 'ahsoka', color: 'white', hilt: 'ahsoka' });

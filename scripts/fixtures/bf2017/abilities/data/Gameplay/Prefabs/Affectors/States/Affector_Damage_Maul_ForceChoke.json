@@ -1,0 +1,3 @@
+{"name":"Gameplay/Prefabs/Affectors/States/Affector_Damage_Maul_ForceChoke","type":"DamageAffectorAsset","root":0,"objects":[
+{"$type":"DamageAffectorAsset","RankData":[{"InitialDamage":1,"DamageToDealPerSecond":80,"DamageInterval":0.5}],"Name":"Gameplay/Prefabs/Affectors/States/Affector_Damage_Maul_ForceChoke"}
+]}
