@@ -31,7 +31,7 @@
 //     at each time into the weather (the record reaches its target at 25 s):
 //     weather-<s>s-<leg>.png, the accumulation moved on a uniform, no rebuild
 //   --decals  ten of Naboo's placed decals on the fixture's wall and floor:
-//     decals-<leg>.png, and the grazing pair decals-grazing-{a,b}-<leg>.png
+//     decals-<leg>.png, the ground from above decals-floor-<leg>.png, and the grazing pair decals-grazing-{a,b}-<leg>.png
 //     two frames apart (no flicker: their mean difference is in the json)
 //
 // On Linux without a display both legs draw on SwiftShader (CPU): the
@@ -42,7 +42,7 @@
 // scripts/gpu-parity/README.md), so there the webgpu leg fails, says so
 // and does not gate; the webgl leg gates.
 
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -66,7 +66,54 @@ const weather = argv.includes('--weather');
 const decals = argv.includes('--decals');
 const seconds = arg('seconds', '0,12.5,30').split(',').map(Number);
 const q4 = weather || decals;
-const fixture = { tier, post, sky, env: true, only, ...(q4 ? { placed: false } : {}), ...(weather ? { weather: seconds[0] } : {}), ...(decals ? { decals: true } : {}) };
+const fixture = { tier, post, sky, env: true, only, ...(q4 ? { placed: false } : {}), ...(weather ? { weather: seconds[0] } : {}), ...(decals ? { decals: await decalPack() } : {}) };
+
+// The --decals pack: the decal fixtures' records (ten of Naboo_01's
+// projected, Endor_01's textured volume decal) read by
+// scripts/lib/bf2017-decals.mjs, then laid on the fixture's wall (the
+// blaster holes, facing the camera) and the ground before it (the streaks,
+// each turned about its normal), the volume box over the wall's foot; each
+// keeps its own size, the holes' cut to the wall's height. The textures
+// come from lab/assets/bf2017/web/ (bf2017-fetch.mjs --raw <file>).
+async function decalPack() {
+  const { decalsOf } = await import('./lib/bf2017-decals.mjs');
+  const read = (f) => JSON.parse(readFileSync(join(ROOT, 'scripts/fixtures/bf2017/decals', f), 'utf8'));
+  const flat = (x) => Object.values(decalsOf(x).cells).flat();
+  const [naboo, endor] = [read('naboo.extras.json'), read('endor.extras.json')];
+  const recs = [...flat(naboo), ...flat(endor)];
+  const files = { ...naboo.textureFiles, ...endor.textureFiles };
+  const yawQ = (a) => [0, Math.sin(a / 2), 0, Math.cos(a / 2)];
+  const qmul = ([ax, ay, az, aw], [bx, by, bz, bw]) => [aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx, aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz];
+  // a projected box projects along its X (bf2017-decals.mjs's AXIS): on
+  // the wall X → −Z (off its face), Y → −X, Z → up; on the ground X → up,
+  // Y → Z, Z → X, then turned about the up
+  const WALL = [-0.5, 0.5, 0.5, 0.5];
+  const GROUND = [0.5, 0.5, 0.5, 0.5];
+  const holes = recs.filter((d) => d.kind === 'projected' && /BlasterHole/.test(d.texture));
+  const streaks = recs.filter((d) => d.kind === 'projected' && !/BlasterHole/.test(d.texture));
+  // (the streaks' boxes are 5 to 13 m across on Naboo's floors: scaled to
+  // 4.5 m at most so six fit before the wall, their shape kept)
+  const fit = ([, y, z], most) => {
+    const k = Math.min(1, most / Math.max(y, z));
+    return [2, y * k, z * k];
+  };
+  const laid = [
+    ...holes.map((d, i) => ({ ...d, position: [-4.2 + i * 2.8, 2.6, 25.8], quaternion: WALL, normal: [0, 0, -1], size: fit(d.size, 2.4) })),
+    ...streaks.map((d, i) => ({ ...d, position: [-4.5 + (i % 3) * 4.5, 0, 23.4 - Math.floor(i / 3) * 3.6], quaternion: qmul(yawQ(i * 0.9), GROUND), normal: [0, 1, 0], size: fit(d.size, 4.5) })),
+    ...recs.filter((d) => d.kind === 'volume').map((d) => ({ ...d, position: [5.6, 0, 24.6], quaternion: yawQ(0.3), size: [3.6, 2.5, 3.6] })),
+  ];
+  const cells = {};
+  for (const d of laid) (cells[`${Math.floor(d.position[0] / 128)},${Math.floor(d.position[2] / 128)}`] ??= []).push(d);
+  const textures = [...new Set(laid.map((d) => d.texture))];
+  for (const t of textures) {
+    if (!existsSync(join(ROOT, 'lab/assets/bf2017/web', files[t]))) {
+      console.error(`no ${files[t]} under lab/assets/bf2017/web: NODE_USE_ENV_PROXY=1 node scripts/bf2017-fetch.mjs --raw ${files[t]}`);
+      process.exit(2);
+    }
+  }
+  const kinds = { projected: laid.filter((d) => d.kind === 'projected').length, volume: laid.filter((d) => d.kind === 'volume').length };
+  return { format: 1, cell: 128, count: laid.length, kinds, textures, files: Object.fromEntries(textures.map((t) => [t, `lab/assets/bf2017/web/${files[t]}`])), cells };
+}
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
@@ -143,6 +190,8 @@ for (const leg of legs) {
         Object.assign(row, await page.evaluate(() => window.__lit.probe.decals()));
         await page.evaluate(() => (window.__lit.probe.view('decals'), window.__lit.draw(8)));
         await save('decals');
+        await page.evaluate(() => (window.__lit.probe.view('floor'), window.__lit.draw(8)));
+        await save('decals-floor');
         await page.evaluate(() => (window.__lit.probe.view('grazing'), window.__lit.draw(8)));
         const a = await raw(await save('decals-grazing-a'));
         await page.evaluate(() => window.__lit.draw(2));

@@ -7,7 +7,7 @@
 // models' frame, with `sub` (the manifest's subworld). Two kinds:
 // - `projected` (3,332 across the drop): `shader` names the decal shader,
 //   whose textures are the extras' `shaderTextures[shader]`; `atlasTile`
-//   picks a tile of the texture;
+//   picks a tile of the texture (its indices counting from 1);
 // - `volume` (10,652): `template` names an EnvironmentDecalVolumeTemplateData
 //   in `decalTemplates` (its `Shader.Shader` binds the textures), `row` and
 //   `column` a cell of its atlas, `alpha`, `enabled`.
@@ -18,8 +18,10 @@
 //   { format: 1, cell, count, kinds, skipped, textures: [name], files: { name: ktx2 },
 //     cells: { "cx,cz": [{ kind, position, quaternion, size, normal, texture,
 //       opacity, tile?, shader?, template? }] } }
-// `normal` is the box's local +Y turned into the pack's frame: the way the
-// decal faces, which it projects against (PROJECT_AXIS).
+// `normal` is the axis the box projects along (AXIS) turned into the pack's
+// frame; its sign is not the record's to give (Naboo_01's projected boxes
+// point it up and down alike), so the drawing pushes off the surface's own
+// normal, not this.
 //
 // What the site draws is the decal's colour: a decal whose shader binds no
 // colour map (the normal-only volume decals bind T_DefaultBlack) is left
@@ -30,10 +32,13 @@
 
 import { CELL, cellOf, keepSub } from './bf2017-lights.mjs';
 
-// The box's axis a decal projects along: local Y. Endor's volume decals
-// over its ground are flat boxes thin in Y (10.9 × 1.51 × 10.9 m); the
-// projected ones are read the same way (the records do not say)
-export const PROJECT_AXIS = [0, 1, 0];
+// The box's axis a decal projects along, by kind (the records do not say;
+// read from them on 2026-10-10): a projected decal's X, since on
+// Naboo_01's floors local X is the vertical axis of 30 of the 41 streaks
+// and their Y × Z faces have the streak sheet's tall tiles' shape (1 : 2 to
+// 1 : 3); a volume decal's Y, since Endor_01's ground boxes are thin in Y
+// (10.9 × 1.51 × 10.9 m) and 19 of its 23 have Y up
+export const AXIS = { projected: [1, 0, 0], volume: [0, 1, 0] };
 
 const r2 = (v) => Math.round(v * 100) / 100;
 const r4 = (v) => Math.round(v * 1e4) / 1e4;
@@ -63,13 +68,16 @@ const qmul = ([ax, ay, az, aw], [bx, by, bz, bw]) => [aw * bx + ax * bw + ay * b
 export function readDecal(raw, extras = {}) {
   if (!raw || raw.enabled === false) return { skip: 'off' };
   const quaternion = (raw.quaternion ?? [0, 0, 0, 1]).map(Number);
-  const base = { kind: raw.type, position: raw.position.map(Number), quaternion, size: (raw.scale ?? [1, 1, 1]).map((s) => Math.abs(Number(s))), normal: turn(PROJECT_AXIS, quaternion) };
+  const base = { kind: raw.type, position: raw.position.map(Number), quaternion, size: (raw.scale ?? [1, 1, 1]).map((s) => Math.abs(Number(s))), normal: turn(AXIS[raw.type] ?? AXIS.projected, quaternion) };
   if (raw.type === 'projected') {
     const texture = colourOf(extras.shaderTextures?.[raw.shader]);
     if (!texture) return { skip: 'texture' };
     const out = { ...base, texture, opacity: 1, shader: raw.shader };
+    // (TileIndex counts from 1: Naboo_01's streaks name 2, 2 of a 2 × 2
+    // sheet; 0 is read as the first)
     const a = raw.atlasTile;
-    if (a && (a.TileCountX > 1 || a.TileCountY > 1)) out.tile = [a.TileIndexX, a.TileIndexY, a.TileCountX, a.TileCountY];
+    const first = (i, n) => Math.min(n - 1, Math.max(0, Math.round(i) - 1));
+    if (a && (a.TileCountX > 1 || a.TileCountY > 1)) out.tile = [first(a.TileIndexX, a.TileCountX), first(a.TileIndexY, a.TileCountY), a.TileCountX, a.TileCountY];
     return out;
   }
   if (raw.type === 'volume') {

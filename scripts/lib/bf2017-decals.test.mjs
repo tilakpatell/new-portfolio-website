@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import naboo from '../fixtures/bf2017/decals/naboo.extras.json';
 import endor from '../fixtures/bf2017/decals/endor.extras.json';
-import { colourOf, decalsOf, readDecal, rebaseDecal } from './bf2017-decals.mjs';
+import { AXIS, colourOf, decalsOf, readDecal, rebaseDecal } from './bf2017-decals.mjs';
 
 const ORIGIN = [640, 400, 300];
 const all = (json) => Object.values(json.cells).flat();
@@ -48,6 +48,27 @@ describe('decalsOf: Naboo’s ten', () => {
     const out = decalsOf(naboo, { origin: [0, 0, 0], arena: 100, cell: 128 });
     expect(out.count).toBe(0);
     expect(out.skipped.outside).toBe(10);
+  });
+});
+
+describe('the atlas tile', () => {
+  it('the record’s TileIndex is 1-based: Naboo’s streaks name tile 2, 2 of a 2 × 2 sheet', () => {
+    expect(readDecal(naboo.decals[4], naboo).tile).toEqual([1, 1, 2, 2]);
+    // (and 1, 1 the first)
+    expect(readDecal(naboo.decals[7], naboo).tile).toEqual([0, 0, 2, 2]);
+    // a whole map names no tile
+    expect(readDecal(naboo.decals[0], naboo).tile).toBeUndefined();
+  });
+});
+
+describe('the axis a decal projects along', () => {
+  it('a projected decal’s box X, a volume decal’s Y, turned into the frame as its `normal`', () => {
+    expect(AXIS).toEqual({ projected: [1, 0, 0], volume: [0, 1, 0] });
+    // Naboo's last fixture streak: [-0.7071, 0.7071, 0, 0] turns X onto Y
+    const d = readDecal(naboo.decals[9], naboo);
+    expect(Math.abs(d.normal[1])).toBeCloseTo(1, 3);
+    // Endor's burnt box sits nearly upright: its Y is up
+    expect(readDecal(endor.decals[1], endor).normal[1]).toBeGreaterThan(0.98);
   });
 });
 
