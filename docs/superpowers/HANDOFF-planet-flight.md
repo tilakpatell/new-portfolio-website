@@ -64,7 +64,7 @@ Start A, B and C together. D, E, F and G start when A is on `main` (D also needs
 | F | nothing yet | after A: the plan from Task 1 | smoke `/fly/hoth --phone` with the map open |
 | G | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/coruscant` |
 | H | nothing yet | after D, G: the plan from Task 1 | `node scripts/online-check.mjs --fly` (one storm, two browsers) |
-| I | nothing yet | after B: the plan from Task 1 | `node scripts/sw-check.mjs`; a build with and without `VITE_ASSET_BASE` |
+| I | PR #798 (draft until #782 merges): the upload script and manifest, the resolver every loader goes through with a once-only local fallback, the deploy variable, packs and the service worker carrying remote files; the remote set is 248 files, 83.1 MB, the local remainder 926.5 MB | the owner runs `node scripts/assets-upload.mjs --dry` then without, commits the manifest, sets the `ASSET_BASE` repository variable (`supabase/README.md`, “The asset bucket”); Pro before it is on for everyone | `node scripts/sw-check.mjs` and `--bucket`; a build with and without `VITE_ASSET_BASE` |
 
 ## When something in the plan is wrong
 
