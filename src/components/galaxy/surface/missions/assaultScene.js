@@ -22,10 +22,14 @@
 // Each lies a while, sinks out of sight and is gone.
 //
 // createAssaultMission({ parent, world, blaster, mission, emit, say, sounds,
-// kit, warm, tier, reduced }) → { begin(), restart(), update(dt, you) →
+// kit, warm, tier, reduced, engine }) → { begin(), restart(), update(dt, you) →
 // { atYou: [{ from, spread, damage, color }] }, targets, hit(target, damage),
 // running(), started(), view(), target(x, z), chooseSide(side), deploy(id),
 // youDown(), force(how), dispose() }
+//
+// engine: the rules it runs, ASSAULT (./assault.js's) unless another mode
+// on the same soldiers brings its own (Blast: blastScene.js), with `n` its
+// soldiers a side at most; a post of r 0 (Blast's middle) isn't drawn.
 //
 // Pure, for the drawing (and tested): fallPose(k, { tall, way, side }),
 // fallWay(from, at, yaw), postureOf(mode, { firing, moving, tall }),
@@ -54,6 +58,8 @@ const TURN = 7; // how quickly a body comes round to face (gait.js's turn)
 const POSE = 8; // how quickly a statue goes down into a crouch and back up (a second)
 const HOP = { time: 0.42, high: 0.22 }; // a statue's cheer: a hop, seconds and metres
 const FAR = 120; // metres: past it, the figures' legs aren't seen and rest
+
+export const ASSAULT = { newBattle, stepBattle, chooseSide: pickSide, deploy: deployAt, hitSoldier, youDown: putYouDown, view: battleView, end: (b, won) => endBattle(b, won, 'posts'), n: Infinity };
 
 const smooth = (k) => k * k * (3 - 2 * k);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -198,11 +204,11 @@ function chevron(colour) {
   return new THREE.SpriteMaterial({ map: t, sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true, opacity: 0.85 });
 }
 
-export function createAssaultMission({ parent, world, blaster, mission, emit, say, sounds, kit = null, warm = (o) => Promise.resolve(o), tier = 'high', reduced = false, only = false }) {
+export function createAssaultMission({ parent, world, blaster, mission, emit, say, sounds, kit = null, warm = (o) => Promise.resolve(o), tier = 'high', reduced = false, only = false, engine = ASSAULT }) {
   const group = new THREE.Group();
-  group.name = 'assault';
+  group.name = mission.kind;
   parent.add(group);
-  const n = SOLDIERS[tier] ?? SOLDIERS.mid;
+  const n = Math.min(engine.n, SOLDIERS[tier] ?? SOLDIERS.mid);
   const colourOf = (side) => (side ? mission.sides[side].colour : NEUTRAL);
   const marks = { attack: chevron(colourOf('attack')), defend: chevron(colourOf('defend')) };
   let battle = null;
@@ -213,7 +219,7 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
   let barkAt = BARK.first;
   // (deep: water too deep to wade, the lagoon past the shallows, which the soldiers don't walk into)
   const env = { solids: world.solids, reach: world.reach, deep: (x, z) => tooDeep(world, x, z) };
-  const view = () => (battle ? battleView(battle) : null);
+  const view = () => (battle ? engine.view(battle) : null);
   const tell = (event = null) => emit({ type: 'mission', event, view: view() });
 
   // ── the soldiers' bodies: one a soldier, by id, made once ──
@@ -263,6 +269,7 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
   const posts = [];
   function makePosts() {
     for (const p of battle.posts) {
+      if (p.r <= 0) continue;
       const g = new THREE.Group();
       const y = groundAt(world, p.at[0], p.at[1]);
       g.position.set(p.at[0], y + 0.05, p.at[1]);
@@ -282,6 +289,7 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
   function paintPosts(dt) {
     for (const v of posts) {
       const p = battle.posts.find((q) => q.id === v.id);
+      if (!p) continue;
       // the owner's colour, eased (neutral: the side taking it, faintly)
       tmpColour.set(colourOf(p.owner ?? p.taking));
       if (!p.owner) tmpColour.lerp(new THREE.Color(NEUTRAL), 0.5);
@@ -305,7 +313,7 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
   }
 
   function begin() {
-    battle = newBattle(mission, { n, seed });
+    battle = engine.newBattle(mission, { n, seed });
     if (!bodies.length) makeBodies();
     if (!posts.length) makePosts();
     reset();
@@ -480,7 +488,7 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
       t += dt;
       const atYou = [];
       if (!battle) return { atYou };
-      const events = stepBattle(battle, dt, you ? { x: you.x, z: you.z } : null, env);
+      const events = engine.stepBattle(battle, dt, you ? { x: you.x, z: you.z } : null, env);
       let drawn = 0;
       for (const e of events) {
         if (e.type === 'shot') {
@@ -565,13 +573,13 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
         if (!s.up || s.side === battle.you.side) continue;
         const b = bodies[s.id];
         if (!b?.holder.visible) continue;
-        out.push({ id: s.id, holder: b.holder, fig: { tall: b.fig?.tall ?? 1.8 } });
+        out.push({ id: s.id, holder: b.holder, fig: { tall: b.fig?.tall ?? 1.8 }, spec: { kind: s.kind } }); // (spec: what the lock-on names)
       }
       return out;
     },
     // one of yours landed
     hit(target, damage = RULES.yours) {
-      const ev = hitSoldier(battle, target.id, damage, 'you');
+      const ev = engine.hitSoldier(battle, target.id, damage, 'you');
       flinch(bodies[target.id], 0.25);
       if (ev) {
         fell(ev.id, ev.from);
@@ -588,25 +596,25 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
     },
     chooseSide(side) {
       if (!battle || battle.phase !== 'choose') return;
-      pickSide(battle, side);
+      engine.chooseSide(battle, side);
       say(mission.lines?.start);
       tell({ type: 'start', side });
     },
     deploy(id) {
       if (!battle) return null;
-      const at = deployAt(battle, id);
+      const at = engine.deploy(battle, id);
       if (at) tell({ type: 'deploy', id });
       return at;
     },
     youDown() {
       if (!battle) return;
-      putYouDown(battle);
+      engine.youDown(battle);
       tell({ type: 'youDown' });
     },
     // (for tests: the end, 'win' or 'lose')
     force(how) {
       if (!battle || battle.result) return;
-      endBattle(battle, how === 'win', 'posts');
+      engine.end(battle, how === 'win');
       say(mission.lines?.[how === 'win' ? 'won' : 'lost']);
       tell({ type: how === 'win' ? 'won' : 'lost' });
     },

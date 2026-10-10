@@ -20,7 +20,7 @@
 // (bf2017/heroes.json's regen).
 //
 //   RULES, HVV_HEROES, GUNS
-//   newHvv(ground, { seed, n })            → b, at the choose card
+//   newHvv(ground, { seed, n, stars })     → b, at the choose card (stars: the mission's, for a win's)
 //   chooseSide(b, side, hero)              you on a side ('light' | 'dark') as `hero`
 //                                          (null: nobody plays, the bots fight it out)
 //   stepHvv(b, dt, you, env)               → events: { type: 'stroke' | 'shot' | 'hit' |
@@ -37,6 +37,7 @@ import { duelFor } from '../duellists';
 import { strafeStep } from '../hostiles';
 import { guarding, duelStep, onHit, swung } from '../../../../lib/combat/duel';
 import { rng } from '../noise';
+import { starsFor } from './chase';
 import { pushOut } from '../walker';
 import { groundFor, inside, pull, spawnFor } from './arenas';
 import GAME_HEROES from '../../../../data/bf2017/heroes.json';
@@ -93,8 +94,8 @@ function fighter(b, hero, side, you = false) {
 }
 
 // A battle laid out at the choose card: the ground, nobody on it yet.
-export function newHvv(ground, { seed = 1, n = 4 } = {}) {
-  return { ground, seed, r: rng(seed), n, t: 0, phase: 'choose', result: null, fighters: [], score: { light: 0, dark: 0 }, targets: { light: null, dark: null }, you: { side: null, id: null }, feed: [] };
+export function newHvv(ground, { seed = 1, n = 4, stars = null } = {}) {
+  return { ground, seed, stars, r: rng(seed), n, t: 0, phase: 'choose', result: null, fighters: [], score: { light: 0, dark: 0 }, targets: { light: null, dark: null }, you: { side: null, id: null }, feed: [] };
 }
 
 const feed = (b, kind, text) => {
@@ -151,7 +152,7 @@ export function chooseSide(b, side = null, hero = null) {
 export function endHvv(b, won, why = 'points') {
   if (b.result) return;
   const me = b.fighters[b.you.id];
-  b.result = { won, why, t: b.t, side: b.you.side, score: { ...b.score }, kills: me?.kills ?? 0, deaths: me?.deaths ?? 0 };
+  b.result = { won, why, t: b.t, stars: won && b.stars ? starsFor({ stars: b.stars }, b.t) : 0, side: b.you.side, score: { ...b.score }, kills: me?.kills ?? 0, deaths: me?.deaths ?? 0 };
   b.phase = 'end';
 }
 
