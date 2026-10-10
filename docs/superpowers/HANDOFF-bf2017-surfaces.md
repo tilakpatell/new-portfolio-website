@@ -35,7 +35,7 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 | design | the architecting session | `claude/bf2017-render-beauty` | this PR |
 | Q1 | | `claude/surfaces-q1-materials` | |
 | Q2 | | `claude/surfaces-q2-ground` | |
-| Q4 | https://claude.ai/code/session_01UZN9iy457biyvcFRr7X39w | `claude/surfaces-q4-weathering` | this lane's PR (weathering and decals; WebGL 2 leg shot, WebGPU leg on the owner's laptop) |
+| Q4 | https://claude.ai/code/session_01UZN9iy457biyvcFRr7X39w | `claude/surfaces-q4-weathering` | #852 (WebGL 2 leg shot; the WebGPU leg and the z-fighting proof on the owner's laptop) |
 | Q3 | | | after S |
 | Q5 | | | the desktop |
 | Q6 | | | after S and V |
