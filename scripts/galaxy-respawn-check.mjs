@@ -48,9 +48,25 @@ await page.waitForFunction(() => Boolean(window.__galaxyOath), null, { timeout: 
 await page.evaluate((s) => window.__galaxyOath.swear(s), side);
 await page.goto(`${base}/?quality=${quality}#/galaxy/endor`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof window.__galaxy === 'function' && window.__galaxy().system === 'endor', null, { timeout: 300000 });
-await page.waitForFunction(() => !window.__galaxy().jump, null, { timeout: 120000 }).catch(() => {});
+await page.waitForFunction(() => !window.__galaxy().jump && Boolean(window.__galaxy().ship), null, { timeout: 300000 });
 await page.evaluate((s) => window.__galaxyDebug.war.force(s), side);
 log('battle forced');
+// what the page has of you and the battle, when something's taking too long
+const where = () =>
+  page.evaluate(() => {
+    const g = window.__galaxy();
+    const at = g.war?.laid?.at;
+    const s = g.ship;
+    return JSON.stringify({ jump: g.jump, ship: s && [s.x, s.y, s.z].map((v) => +v.toFixed(1)), crash: Boolean(window.__galaxyDebug.state.crash), laid: at, radius: g.war?.laid?.radius, off: s && at ? +Math.hypot(s.x - at[0], s.y - at[1], s.z - at[2]).toFixed(1) : null, tookPart: g.war?.tookPart, team: window.__galaxyDebug.war.battle?.you.team });
+  });
+const waitFor = async (fn, what, timeout = 180000) => {
+  try {
+    await page.waitForFunction(fn, null, { timeout });
+  } catch {
+    log(`timed out waiting for ${what}:`, await where());
+    throw new Error(`timed out waiting for ${what}`);
+  }
+};
 
 // into the middle of it, so you've been in it
 await page.evaluate(() => {
@@ -58,13 +74,14 @@ await page.evaluate(() => {
   const at = d.war.info.laid.at;
   d.pin({ x: at[0], y: at[1] + 6, z: at[2], heading: 0, pitch: 0, bank: 0 });
 });
-await page.waitForFunction(() => window.__galaxyDebug.war.info.tookPart === true, null, { timeout: 60000 });
+await waitFor(() => window.__galaxyDebug.war.info.tookPart === true, 'you to be in the battle');
+log('in it', await where());
 const team = await page.evaluate(() => window.__galaxyDebug.war.battle.you.team);
 check(team !== null, `in the battle on a side (team ${team})`);
 // shot down
 await page.evaluate(() => window.__galaxyDebug.destroy());
-await page.waitForFunction(() => Boolean(window.__galaxyDebug.state.crash?.back), null, { timeout: 180000 });
-await page.waitForFunction(() => !window.__galaxyDebug.state.crash, null, { timeout: 180000 });
+await waitFor(() => Boolean(window.__galaxyDebug.state.crash?.back), 'the comeback');
+await waitFor(() => !window.__galaxyDebug.state.crash, 'the comeback to end');
 log('back');
 const back = await page.evaluate(() => {
   const d = window.__galaxyDebug;
