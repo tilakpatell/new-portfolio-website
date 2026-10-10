@@ -14,6 +14,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { BLOOM } from '../lib/three/bloom';
+import { NODE_PASSES } from '../lib/three/light/post';
 import { createRenderer, fitRatio, maxSide, precompile, precompilePasses, uploadTextures } from '../lib/three/renderer';
 import { makeGfx } from './gfx';
 
@@ -29,6 +30,7 @@ export function buildComposer(renderer, passes, size) {
     else if (p.kind === 'bloom') pass = new UnrealBloomPass(new THREE.Vector2(size.w, size.h), p.strength ?? BLOOM.strength, p.radius ?? BLOOM.radius, p.threshold ?? BLOOM.threshold);
     else if (p.kind === 'shader') pass = new ShaderPass(p.material, p.textureID ?? 'tDiffuse');
     else if (p.kind === 'output') pass = new OutputPass();
+    else if (NODE_PASSES.has(p.kind)) throw new Error(`a ${p.kind} pass needs the node renderer (a 'nodes' world): lib/three/light/post.js gives the classic renderer render, bloom and output only`);
     else throw new Error(`unknown pass ${p.kind}`);
     if (p.enabled === false) pass.enabled = false;
     composer.addPass(pass);

@@ -22,7 +22,7 @@
 // cellsNear(pos, size, ring = 1) → keys        (pure)
 // lightsFor(json, cells, camera, { max, cull, fade }) → [{ cell, i, weight, area }]   (pure)
 // createPlacedLights(scene, renderer, { points, spots, clustered, scale, source })
-//   → Promise<{ set(list), update(camera), lit, pools, clustered, dispose }>
+//   → Promise<{ set(list), update(camera), setScale(k), lit, pools, clustered, dispose }>
 
 import { backendOf, loadThree } from './three.js';
 
@@ -113,8 +113,10 @@ export async function createPlacedLights(scene, renderer, { points, spots = SPOT
   scene.add(group);
 
   let lit = 0;
+  let last = [];
   // list: [{ kind, pos, color, candela, range, cone: [inner, outer], dir, weight? }]
   function set(list) {
+    last = list;
     let p = 0;
     let s = 0;
     for (const rec of list) {
@@ -159,6 +161,12 @@ export async function createPlacedLights(scene, renderer, { points, spots = SPOT
     },
     get lit() {
       return lit;
+    },
+    // the game's units to the site's: a weather change moves it with the sun
+    setScale(k) {
+      if (k === scale) return;
+      scale = k;
+      set(last);
     },
     pools: { points: pointPool, spots: spotPool },
     clustered: canCluster,

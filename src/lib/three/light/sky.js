@@ -8,14 +8,15 @@
 // along the view, (βR·phaseR + βM·phaseM)/(βR + βM) · (1 − e^−(βR·sR + βM·sM)),
 // over the optical air mass of the view's zenith angle (Kasten and Young),
 // lit by the sun through its own air mass, so a low sun reddens what it
-// lights. Normalised to the green channel at the zenith and scaled by the
-// record's LuminanceScale (in the site's units), so the record's numbers
+// lights. Normalised to the green channel at the zenith and scaled by
+// ZENITH_SHARE of the record's LuminanceScale (in the site's units), so the record's numbers
 // set the sky's brightness and its colour comes from the coefficients;
 // the horizon's long path is compressed by a square root (single
 // scattering alone puts it at twelve times the zenith; a real sky's
 // extinction and second bounce keep it near three). Below the horizon,
 // the ground colour; the record's first cloud layer tints the upper sky by
-// the entry's cover.
+// the entry's cover. The disc is the record's SunScale (its luminance),
+// dimmed by the air between.
 //
 // createSky(entry, { radius }) → Promise<{ mesh, uniforms, set(params), update(camera), envTexture(renderer), dispose }>
 // skyUniforms(params) → the uniforms' plain values   (pure)
@@ -23,8 +24,12 @@
 import { readEntry } from './entry.js';
 import { loadThree } from './three.js';
 
-export const SUN_DISC = 20; // the disc's brightness over the sky beside it
 const ENV_SIZE = 64; // px: a face of the environment's cube
+// The zenith's share of the record's LuminanceScale: Frostbite scales a sky
+// model whose values sit under one, and a clear zenith with the sun at 33°
+// is near 8,000 nits of Hoth's 35,000 (snow under the same sun is 17,600),
+// so the sky reads darker than the snow it lights, as it does in the game.
+export const ZENITH_SHARE = 0.23;
 
 export function skyUniforms(p) {
   return {
@@ -37,6 +42,7 @@ export function skyUniforms(p) {
     heightM: p.sky.heightM,
     luminance: p.sky.luminance,
     sunSize: p.sky.sunSize,
+    sunScale: p.sky.sunScale,
     cloud: p.sky.cloud.slice(),
     cover: p.sky.cover,
     ground: p.sky.ground.slice(),
@@ -57,6 +63,7 @@ export async function createSky(entry, { radius = 1000 } = {}) {
     heightM: uniform(v.heightM),
     luminance: uniform(v.luminance),
     sunSize: uniform(v.sunSize),
+    sunScale: uniform(v.sunScale),
     cloud: uniform(new THREE.Color(...v.cloud)),
     cover: uniform(v.cover),
     ground: uniform(new THREE.Color(...v.ground)),
@@ -82,12 +89,12 @@ export async function createSky(entry, { radius = 1000 } = {}) {
     const ms = airMass(max(u.sunDir.y, 0.02));
     const ext = betaR.mul(u.heightR).add(betaM.mul(u.heightM));
     const sunT = exp(ext.mul(ms).negate()).div(exp(ext.negate()));
-    const sky = scatter.mul(depth).mul(sunT).mul(u.sunColor).mul(u.luminance);
-    const disc = smoothstep(cos(u.sunSize.mul(1.5)), cos(u.sunSize), c).mul(SUN_DISC).mul(u.luminance);
+    const sky = scatter.mul(depth).mul(sunT).mul(u.sunColor).mul(u.luminance).mul(ZENITH_SHARE);
+    const disc = smoothstep(cos(u.sunSize.mul(1.5)), cos(u.sunSize), c).mul(u.sunScale);
     const lit = sky.add(fex.mul(u.sunColor).mul(disc));
-    const clouds = mix(lit, u.cloud.mul(u.luminance).mul(sunT.y.mul(0.5).add(0.3)), u.cover.mul(smoothstep(0, 0.4, dir.y)));
+    const clouds = mix(lit, u.cloud.mul(u.luminance).mul(ZENITH_SHARE).mul(sunT.y.mul(0.5).add(0.3)), u.cover.mul(smoothstep(0, 0.4, dir.y)));
     const below = smoothstep(0.02, -0.08, dir.y);
-    return mix(clouds, u.ground.mul(u.luminance).mul(0.25), below);
+    return mix(clouds, u.ground.mul(u.luminance).mul(ZENITH_SHARE).mul(0.25), below);
   });
   const material = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false });
   material.colorNode = skyColor(normalize(positionLocal));
@@ -104,7 +111,7 @@ export async function createSky(entry, { radius = 1000 } = {}) {
     u.sunDir.value.set(...w.sunDir).normalize();
     u.sunColor.value.setRGB(...w.sunColor);
     u.betaR.value.set(...w.betaR);
-    for (const k of ['betaM', 'mieG', 'heightR', 'heightM', 'luminance', 'sunSize', 'cover']) u[k].value = w[k];
+    for (const k of ['betaM', 'mieG', 'heightR', 'heightM', 'luminance', 'sunSize', 'sunScale', 'cover']) u[k].value = w[k];
     u.cloud.value.setRGB(...w.cloud);
     u.ground.value.setRGB(...w.ground);
   };

@@ -37,6 +37,12 @@ export const RAYLEIGH = [5.8e-6, 13.5e-6, 33.1e-6];
 export const MIE = 21e-6;
 export const MIE_G = 0.76; // the forward lobe of a hazy sky
 export const SUN = { dir: [0.4, 0.75, 0.3], color: [1, 0.96, 0.9], intensity: 3 };
+// the sky's luminance against the sun's illuminance where a record gives
+// none: Hoth's day, 35,000 nits under 128,000 lux
+export const SKY_TO_SUN = 35000 / 128000;
+// the sun's disc against the sky beside it where a record gives none:
+// Hoth's day, SunScale 120,000 over LuminanceScale 35,000
+export const SUN_TO_SKY = 120000 / 35000;
 export const AMBIENT = { sky: [0.55, 0.65, 0.8], ground: [0.3, 0.27, 0.24], intensity: 0.6 };
 export const FOG = { color: [0.7, 0.75, 0.82], density: 0.0012 };
 // GTAO's own defaults: Hoth's records carry no DynamicAO component
@@ -107,8 +113,10 @@ export function readEntry(entry = {}, { origin = [0, 0, 0] } = {}) {
     mieG: num(skyRec.MieG, MIE_G),
     heightR: num(skyRec.ScaleHeightRayleigh, 8) * 1000, // m (the record's are km)
     heightM: num(skyRec.ScaleHeightMie, 1.2) * 1000,
-    luminance: skyRec.LuminanceScale != null ? skyRec.LuminanceScale * k : 2.5,
+    luminance: skyRec.LuminanceScale != null ? skyRec.LuminanceScale * k : sun.intensity * SKY_TO_SUN,
     sunSize: num(skyRec.SunSize, 0.004), // rad: the disc's angular radius
+    // the disc's luminance (the record's SunScale, Hoth's day 120,000 nits)
+    sunScale: skyRec.SunScale != null ? skyRec.SunScale * k : (skyRec.LuminanceScale != null ? skyRec.LuminanceScale * k : sun.intensity * SKY_TO_SUN) * SUN_TO_SKY,
     zenith: rgb(e.sky?.zenith, [0.24, 0.42, 0.78]),
     horizon: rgb(e.sky?.horizon, [0.7, 0.78, 0.88]),
     cloud: rgb(skyRec.CloudLayer1Color ?? e.sky?.hazeColor, [1, 1, 1]),

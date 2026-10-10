@@ -4,7 +4,7 @@
 // proof (docs/superpowers/plans/2026-10-10-galaxy-engine-laneR-light.md).
 //
 //   node scripts/light-fixture.mjs [--tier ultra] [--post on|off] [--sky on|off]
-//     [--grid] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
+//     [--grid] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
 //
 // For each leg (?gpu=webgpu, and ?gpu=webgl: the node renderer on a WebGL 2
 // context) it opens scripts/light-fixture/index.html on a Vite dev server
@@ -17,7 +17,9 @@
 // - no recompile: the renderer's pipelines counted before and after a
 //   placed light moves and changes colour over 30 frames;
 // - the frame time: frames drawn back to back for --ms, each waited on,
-//   the median and the 95th percentile;
+//   the mean, the median and the 95th percentile (the mean is the one to
+//   read: a post chain's frames queue behind one another, so a few carry
+//   the wait for the rest);
 // - with --grid (A3): an arena-sized probe grid baked, the bake's time to
 //   the GPU's end, a shot with it and the frame time again.
 // The numbers go to <label>.json beside the shots and to stdout as a table.
@@ -49,7 +51,8 @@ const ms = Number(arg('ms', 5000));
 const legs = arg('legs', 'webgpu,webgl').split(',');
 const sky = arg('sky', 'on') === 'on';
 const grid = argv.includes('--grid');
-const fixture = { tier, post, sky, env: true };
+const only = arg('only', null)?.split(',');
+const fixture = { tier, post, sky, env: true, only };
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
@@ -123,6 +126,7 @@ for (const leg of legs) {
     row.programsAfter = await page.evaluate(() => window.__lit.probe.programs());
     const intervals = await page.evaluate((t) => window.__lit.time(t), ms);
     row.frames = intervals.length;
+    row.mean = Number((intervals.reduce((a, b) => a + b, 0) / Math.max(1, intervals.length)).toFixed(1));
     row.median = Number(pct(intervals, 0.5)?.toFixed(1));
     row.p95 = Number(pct(intervals, 0.95)?.toFixed(1));
     if (grid) {
@@ -132,6 +136,7 @@ for (const leg of legs) {
       writeFileSync(join(OUT, `${label}-${leg}-grid.png`), await shot());
       const after = await page.evaluate((t) => window.__lit.time(t), ms);
       row.gridMedian = Number(pct(after, 0.5)?.toFixed(1));
+      row.gridMean = Number((after.reduce((a, b) => a + b, 0) / Math.max(1, after.length)).toFixed(1));
     }
   } catch (e) {
     row.error = String(e.message ?? e).split('\n')[0];
@@ -144,11 +149,11 @@ await browser.close();
 await server.close();
 
 writeFileSync(join(OUT, `${label}.json`), `${JSON.stringify({ size: `${W}x${H}`, adapter: swift ? 'swiftshader' : 'system', rows }, null, 2)}\n`);
-console.log(`| leg | backend | passes | clustered | env diff | programs before → after | median ms | p95 ms | grid bake ms | median with grid |`);
-console.log(`|---|---|---|---|---|---|---|---|---|---|`);
+console.log(`| leg | backend | passes | clustered | env diff | programs before → after | mean ms | median ms | p95 ms | grid bake ms | mean with grid |`);
+console.log(`|---|---|---|---|---|---|---|---|---|---|---|`);
 for (const r of rows) {
   if (r.error) console.log(`| ${r.leg} | failed: ${r.error} |`);
-  else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.median} | ${r.p95} | ${r.gridBakeMs ?? '–'} | ${r.gridMedian ?? '–'} |`);
+  else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.mean} | ${r.median} | ${r.p95} | ${r.gridBakeMs ?? '–'} | ${r.gridMean ?? '–'} |`);
   if (r.errors) console.log(`  errors: ${r.errors.join(' / ')}`);
 }
 process.exit(rows.some((r) => r.error && r.leg !== 'webgpu') ? 1 : 0);

@@ -11,7 +11,7 @@
 // environment under ClusteredLighting (A2), the programs before and after a
 // light moves (no recompile), the frame time.
 //
-// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered }
+// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only }
 
 import * as THREE from 'three';
 
@@ -32,6 +32,27 @@ function ringLights() {
     out.push({ kind: 'spot', pos: [Math.cos(a) * 6, 6, Math.sin(a) * 6], dir: [0, -1, 0], cone: [Math.PI / 8, Math.PI / 4], color: [1, 0.85, 0.6], candela: 400, range: 14 });
   }
   return out;
+}
+
+// A grading LUT as the game stores one (T_CC_*, 32³): a cool grade, the
+// blues lifted and the reds held, so the pass shows (lane G brings the real
+// ones)
+function gradeLut(n = 32) {
+  const data = new Uint8Array(n * n * n * 4);
+  for (let b = 0, i = 0; b < n; b++) {
+    for (let g = 0; g < n; g++) {
+      for (let r = 0; r < n; r++, i += 4) {
+        data[i] = Math.round((r / (n - 1)) * 0.94 * 255);
+        data[i + 1] = Math.round((g / (n - 1)) * 255);
+        data[i + 2] = Math.round(Math.min(1, (b / (n - 1)) * 1.06 + 0.02) * 255);
+        data[i + 3] = 255;
+      }
+    }
+  }
+  const tex = new THREE.Data3DTexture(data, n, n, n);
+  tex.minFilter = tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
 }
 
 // a Hoth-ish clear day, in lane G's derived shape plus the record's fields
@@ -133,8 +154,9 @@ export default {
       const { createPlacedLights } = await import('../../lib/three/light/placed.js');
       await registerLights(renderer);
       renderer.shadowMap.enabled = true;
-      sun = await createSun(ENTRY, { tier: opts.tier });
+      sun = await createSun(ENTRY, { tier: opts.tier, rays: opts.post });
       scene.add(sun.light);
+      if (sun.rays) scene.add(sun.rays, sun.rays.target);
       scene.add(new THREE.HemisphereLight(0x8899bb, 0x554433, 0.35));
       if (opts.placed) {
         placed = await createPlacedLights(scene, renderer, { clustered: opts.clustered });
@@ -156,6 +178,15 @@ export default {
         pmrem.dispose();
       }
       probe.setEnv(opts.env);
+      if (opts.post) {
+        const { passesFor } = await import('../../lib/three/light/post.js');
+        const all = passesFor(opts.tier, ENTRY, rt.gfx.backend, { scene, camera, light: sun.rays, lut: gradeLut() });
+        // (`only`: the passes kept, for finding which one breaks)
+        const passes = opts.only ? all.filter((p) => opts.only.includes(p.kind)) : all;
+        post = rt.gfx.post(passes);
+        probe.passes = passes.map((p) => p.kind);
+        await post.ready;
+      }
       await rt.gfx.compile(scene, camera);
     })();
 
@@ -169,6 +200,7 @@ export default {
       step(dt) {
         cube.rotation.y += dt;
         sky?.update(camera);
+        sun?.update(camera);
       },
       draw({ renderer: r }) {
         if (post && opts.post) post.render();
