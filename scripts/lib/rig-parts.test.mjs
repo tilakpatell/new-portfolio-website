@@ -156,6 +156,40 @@ describe('a part made in another bind pose', () => {
   });
 });
 
+describe('a part on a procedural bone of its own', () => {
+  it('keeps its own PROC bone, hung from the body’s bone its copy hung from, not the body’s of that name', () => {
+    const { doc, skin } = rigged();
+    const buffer = doc.getRoot().listBuffers()[0];
+    const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+    // a helmet's copy of Hips → Spine → PROC_Bone0 (its PROC_Bone0 at the head, 1.5 up), all its weight on PROC_Bone0
+    const hips = doc.createNode('Hips');
+    const spine = doc.createNode('Spine').setTranslation([0, 0.2, 0]);
+    const proc = doc.createNode('PROC_Bone0').setTranslation([0, 1.5, 0]);
+    hips.addChild(spine);
+    spine.addChild(proc);
+    doc.getRoot().listScenes()[0].addChild(hips);
+    const T = (x, y, z) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1];
+    // (binds that no one move fits: the part is kept on its own)
+    const helmet = doc.createSkin().addJoint(hips).addJoint(spine).addJoint(proc).setInverseBindMatrices(acc('MAT4', new Float32Array([...T(0, 7, 0), ...T(1, 0.3, 0), ...T(0, -1.7, 0)])));
+    const prim = doc
+      .createPrimitive()
+      .setAttribute('POSITION', acc('VEC3', new Float32Array([0, 1.7, 0, 0.1, 1.7, 0, 0, 1.8, 0])))
+      .setAttribute('JOINTS_0', acc('VEC4', new Uint16Array([2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0])))
+      .setAttribute('WEIGHTS_0', acc('VEC4', new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])));
+    doc.getRoot().listScenes()[0].addChild(doc.createNode('Helmet').setMesh(doc.createMesh().addPrimitive(prim)).setSkin(helmet));
+    shareSkins(doc);
+    const node = doc
+      .getRoot()
+      .listNodes()
+      .find((n) => n.getName() === 'Helmet');
+    const [, , own] = node.getSkin().listJoints();
+    const body = Object.fromEntries(skin.listJoints().map((j) => [j.getName(), j]));
+    expect(own).not.toBe(body.PROC_Bone0);
+    expect(own.getParentNode()).toBe(body.Spine);
+    expect(own.getTranslation()).toEqual([0, 1.5, 0]);
+  });
+});
+
 describe('a figure’s parts joined per material', () => {
   // three parts on the one skin (a body, a helmet, a backpack), two materials
   // between them: the body and the backpack share the armour's

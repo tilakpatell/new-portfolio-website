@@ -345,7 +345,16 @@ export async function importModel(name, opts) {
   } else console.log('  no .lod1: the chain has no cut light enough below the plain one');
   // (--far: the chain's last cut, colour at 256 and the rest at 128, for the
   // squads past the level's mid, a few dozen pixels tall there)
-  if (farLod) made.push(['far', farLod, await makeCut(io, entry, parts, farLod, { ...spec, tex: 256, maps: 128, quality: 80, mapsQuality: 78 }, path(dir, `${kind}.far.glb`))]);
+  // (a figure of many parts, each with its maps, halves them until it fits its 150 KB)
+  if (farLod) {
+    let far = null;
+    for (let t = 256; t >= 64; t /= 2) {
+      far = await makeCut(io, entry, parts, farLod, { ...spec, tex: t, maps: t / 2, quality: 80, mapsQuality: 78 }, path(dir, `${kind}.far.glb`));
+      if (far.bytes <= 150 * 1024) break;
+      console.log(`  far at ${t}: ${(far.bytes / 1024).toFixed(0)} KB, over 150: halved`);
+    }
+    made.push(['far', farLod, far]);
+  }
   let ultra = null;
   if (cuts.ultra) {
     const ut = Number(opts.ultraTex ?? 2048);

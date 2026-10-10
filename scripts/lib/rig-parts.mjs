@@ -168,7 +168,18 @@ export function shareSkins(doc, say = () => {}) {
     if (off.by > 0.01) {
       const byName = new Map(body.listJoints().map((j) => [j.getName(), j]));
       const own = doc.createSkin(skin.getName()).setInverseBindMatrices(skin.getInverseBindMatrices()).setSkeleton(body.getSkeleton());
-      for (const j of joints) own.addJoint(byName.get(j.getName()) ?? j);
+      // (a procedural bone, PROC_Bone0…5, is a slot the game fills per mesh by
+      // a rule: the helmet's PROC_Bone0 is at the head, the body's somewhere
+      // else, so the part keeps its own, hung from the body's bone its own
+      // hung from, where it was)
+      const proc = (n) => /^PROC_/.test(n.getName());
+      for (const j of joints) {
+        if (proc(j)) {
+          const under = byName.get(j.getParentNode()?.getName());
+          if (under) under.addChild(j);
+          own.addJoint(j);
+        } else own.addJoint(byName.get(j.getName()) ?? j);
+      }
       for (const node of root.listNodes().filter((n) => n.getSkin() === skin)) {
         node.setSkin(own);
         say(`part ${node.getName() || node.getMesh()?.getName() || '?'}: its own binds kept on the body's bones (one move put a vertex on ${names[off.joint]} ${(off.by * 100).toFixed(1)} cm off)`);
