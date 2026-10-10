@@ -1,0 +1,168 @@
+{
+ "world": "geonosis",
+ "map": "s5_1/levels/mp/geonosis_01/geonosis_01",
+ "main": "cloudy",
+ "sky": {
+  "main": "S5_1/Temp/Levels/MP/Geonosis_01/Lighting/Geonosis/VE_Sky_Geonosis_Cloudy_02",
+  "overrides": [
+   "S5_1/Temp/Levels/MP/Geonosis_01/Lighting/Geonosis/VE_Sky_Geonosis_Caves"
+  ]
+ },
+ "weathers": {
+  "cloudy": {
+   "sun": {
+    "color": [
+     1,
+     0.458186835,
+     0.159499854
+    ],
+    "lux": 128000,
+    "az": 75.789,
+    "el": 20
+   },
+   "sky": {
+    "luminance": 60000,
+    "panorama": "S5_1/Levels/MP/Geonosis_01/Lighting/Textures/T_GEonosis_Sky_01_F_Grade",
+    "gradient": "S5_1/Levels/MP/Geonosis_01/Lighting/Textures/T_GEonosis_Fog_01_D_Grade"
+   },
+   "fog": {
+    "start": 15,
+    "end": 3000,
+    "curve": [
+     -0.738126755,
+     0.780629635,
+     0.486742139,
+     -0.010041181
+    ],
+    "height": 8,
+    "heightDepth": 80,
+    "heightRange": 300,
+    "scatter": [
+     974.001953,
+     465.531219,
+     129.6676
+    ]
+   },
+   "tonemap": {
+    "compensation": 1,
+    "minEV": 12.75,
+    "maxEV": 14.5,
+    "bloom": 0.164948732
+   },
+   "grading": {
+    "brightness": 1.1,
+    "contrast": 1,
+    "lut": "textures/galaxy/bf2017/light/geonosis/cloudy.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 360,
+    "strength": 6
+   },
+   "enlighten": {
+    "sky": [
+     123.950943,
+     251.646225,
+     1024
+    ],
+    "terrain": [
+     0.121984906,
+     0.064335905,
+     0.04224286
+    ]
+   },
+   "source": [
+    "S5_1/Temp/Levels/MP/Geonosis_01/Lighting/Geonosis/VE_Sky_Geonosis_Cloudy_02"
+   ],
+   "probe": {
+    "id": "9771e5ce",
+    "variant": "Exterior_01_Reflection_Volumes",
+    "zenith": [
+     4572.129,
+     1970.819,
+     462.289
+    ],
+    "horizon": [
+     3843.888,
+     978.088,
+     266.88
+    ],
+    "ground": [
+     790.115,
+     97.262,
+     62.912
+    ],
+    "open": 1.57,
+    "url": "textures/galaxy/bf2017/light/geonosis/cloudy"
+   }
+  },
+  "interior": {
+   "sun": {
+    "color": [
+     1,
+     0.458186835,
+     0.159499854
+    ],
+    "lux": 128000,
+    "az": 75.789,
+    "el": 20
+   },
+   "sky": {
+    "luminance": 60000,
+    "panorama": "S5_1/Levels/MP/Geonosis_01/Lighting/Textures/T_GEonosis_Sky_01_F_Grade",
+    "gradient": "S5_1/Levels/MP/Geonosis_01/Lighting/Textures/T_GEonosis_Fog_01_D_Grade"
+   },
+   "fog": {
+    "start": 15,
+    "end": 3000,
+    "curve": [
+     -0.313192129,
+     -0.0284256935,
+     0.87348485,
+     -0.0174558088
+    ],
+    "height": 8,
+    "heightDepth": 80,
+    "heightRange": 300,
+    "scatter": [
+     974.001953,
+     465.531219,
+     129.6676
+    ]
+   },
+   "tonemap": {
+    "compensation": 1,
+    "minEV": 8.5,
+    "maxEV": 11.5,
+    "bloom": 0.164948732
+   },
+   "grading": {
+    "brightness": 1.1,
+    "contrast": 1,
+    "lut": "textures/galaxy/bf2017/light/geonosis/interior.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 360,
+    "strength": 6
+   },
+   "enlighten": {
+    "sky": [
+     123.950943,
+     251.646225,
+     1024
+    ],
+    "terrain": [
+     0.121984906,
+     0.064335905,
+     0.04224286
+    ]
+   },
+   "source": [
+    "S5_1/Temp/Levels/MP/Geonosis_01/Lighting/Geonosis/VE_Sky_Geonosis_Cloudy_02",
+    "S5_1/Temp/Levels/MP/Geonosis_01/Lighting/Geonosis/VE_Sky_Geonosis_Caves"
+   ]
+  }
+ },
+ "indoor": null
+}

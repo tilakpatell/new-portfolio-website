@@ -31,9 +31,25 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # the public bucket held to its manifests (scripts/assets-check.mjs):
+      # every published file there at its size, a year's cache, before a
+      # build that sends visitors to it
+      - if: ${{ vars.ASSET_BASE != '' }}
+        run: node scripts/assets-check.mjs
+        env:
+          ASSET_BASE: ${{ vars.ASSET_BASE }}
       - run: npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # the durable world's project: a URL and the public anon key (RLS guards
+          # the tables). Unset, the build makes no client and the game plays without it
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # the public bucket site-assets (a variable, not a secret): where the
+          # heavy models are asked first, and where the game-derived files
+          # live (scripts/assets-upload.mjs, scripts/assets-publish.mjs).
+          # Unset, every file comes from the site as before
+          VITE_ASSET_BASE: ${{ vars.ASSET_BASE }}
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

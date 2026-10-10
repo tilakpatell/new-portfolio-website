@@ -63,8 +63,8 @@ describe('riders', () => {
     expect(p.hips.x).toBeCloseTo(10 + SEATS.speederbike.hips[2], 6);
     // both grips the same height, either side of the bike
     expect(p.hands[0].y).toBeCloseTo(p.hands[1].y, 6);
-    expect(p.hands[0].z).toBeCloseTo(-4 - 0.2, 6);
-    expect(p.hands[1].z).toBeCloseTo(-4 + 0.2, 6);
+    expect(p.hands[0].z).toBeCloseTo(-4 - SEATS.speederbike.hands[0][0], 6);
+    expect(p.hands[1].z).toBeCloseTo(-4 + SEATS.speederbike.hands[0][0], 6);
   });
 
   it('puts the hips on the seat and the hands and feet where the ride has them', () => {

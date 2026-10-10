@@ -160,11 +160,13 @@ export const PAGES = {
           ['C', 'Hold to block with the lightsaber: bolts come off the blade, swipes cost your guard; a block as a swipe lands is a parry'],
           ['R', 'Throw the lightsaber (it comes back); with a gun, vent the heat (overheated, hit the blue band)'],
           ['X', 'Dodge: a roll the way you’re going, nothing landing through its start'],
-          ['G', 'Force push (a Jedi); a thermal detonator (anyone else)'],
-          ['V', 'Force pull; or the overcharge: no heat and a harder shot for a while'],
+          ['G', 'Your hero’s first power: a Force push (a Jedi), a choke (Vader, Maul), lightning held (the Emperor), or a thermal detonator (anyone else)'],
+          ['V', 'The second: a Force pull, a repulse, a rage or a rush (the hero’s own, as the panel says); or the overcharge: no heat and a harder shot for a while'],
           ['Q', 'Things to do'],
           ['Tab', 'Swap to your crewmate'],
           ['L', 'Lock on: the camera stays on the one you’re squared up to (L again lets go)'],
+          ['B', 'Hold for the emote wheel (a hero from the 2017 game does its own four)'],
+          ['P', 'Out of your own eyes, and back (a figure from the 2017 game, on foot, on a computer)'],
         ],
       },
     ],
@@ -190,6 +192,8 @@ export const PAGES = {
       ['The fight', 'Enemies show their health over their heads; the one you’re squared up to wears a ring and is named at the bottom, and your strokes step in to them. Blocking spends your guard: broken, you stagger. A duellist’s guard is the white line over his health: his blade turns your strokes until it breaks. Guns heat up; vent early or ride the lock.'],
       ['The places', 'The compass names the places from the films until you’ve found them, with what the crew have to say about each.'],
       ['Galactic assault', 'On Hoth, Geonosis, Scarif and Endor, a battle for the command posts (from the system’s mission page). Pick a side and a post to deploy at; stand in a post with more of yours than theirs and it turns; take every post of the phase and the next begins. Down, you deploy again for one of your side’s reinforcements.'],
+      ['Heroes vs Villains', 'On Hoth, Endor, Tatooine, Geonosis and Kashyyyk, four heroes against four villains in the level’s hero arena, you one of your side as the hero you’re playing. Each side has a target, marked over its head: only a target going down scores, ten points win. Down, you’re back in ten seconds; ten seconds outside the arena’s wall of light and you’re down.'],
+      ['Blast', 'On the same five worlds, ten a side on the level’s team-deathmatch ground: no posts, just the score bar. The first side to a hundred kills wins.'],
       ['Leaving', 'Get back in the ship (E by it, or Back to orbit) to take off.'],
     ],
   },
@@ -217,6 +221,36 @@ export const PAGES = {
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
+  // planet flight: begin (scripts/flight-island.mjs removes this block)
+  '/fly': {
+    about: ABOUT['/fly'],
+    keys: [
+      {
+        rows: [
+          ['W S / ↑ ↓', 'Nose down and up'],
+          ['A D', 'Bank: the ship turns the way it leans'],
+          ['Q E / ← →', 'Turn'],
+          ['Shift / R', 'Faster'],
+          ['F', 'Slower'],
+          ['M', 'The planet map: tap a place or the ground for a waypoint; Esc closes it'],
+          ['Space', 'Fire'],
+          ['B', 'Build a turret on the ground under you (low and slow)'],
+          ['X', 'Take down your own turret, within 30 m'],
+        ],
+      },
+    ],
+    touch: [{ rows: [['Stick', 'Fly: up is the nose down, to the side a bank'], ['+ −', 'Faster and slower'], ['Minimap', 'Tap it for the planet map; drag to look about, pinch to zoom, tap for a waypoint'], ['Build', 'A turret on the ground under you']] }],
+    tips: [
+      ['The ground', 'Made as you fly, from the planet’s seed: the same planet is the same land every time, however far you go.'],
+      ['Echo Base', 'On Hoth, straight ahead from where you start: a flat field the snow eases into.'],
+      ['Too low', 'Touch the ground and you’re put back up 200 m over where you were.'],
+      ['The map', 'The minimap, top right, is the ground round you, drawn as you fly; the planet map shows all you’ve flown over, the named places with how far they are, and the shared world’s cell you’re in.'],
+      ['Other planets', 'Fifty, each its own world’s ground: the galaxy’s, Rick and Morty’s moons, the map’s worlds and the Expanse’s. The Menu has a few; any of them is /fly/ and its name.'],
+      ['Turrets', 'Built turrets stay for everyone who flies here, and fire at every ship but their builder’s. Shoot one to nothing and it’s gone for everyone.'],
+      ['Online', 'Online, you see the pilots in the few kilometres round you, and they see you.'],
+    ],
+  },
+  // planet flight: end
   '/deathstar/inside': {
     about: ABOUT['/deathstar/inside'],
     keys: [

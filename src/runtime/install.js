@@ -5,7 +5,9 @@
 // skipped, so an install cut off part way resumes; a file with the same hash
 // in an older version's cache is carried over, not fetched again. The pack's
 // manifest goes in last, so a cache holds a whole install or is still going.
-// The service worker (public/sw.js) serves from these caches. The core is
+// A file from the asset bucket (its entry has `local`, its path on the site)
+// is fetched across origins, from the site if the bucket fails, and cached
+// under the bucket's URL. The service worker (public/sw.js) serves from these caches. The core is
 // pure: fetch, caches and storage are passed in (installer() binds the
 // browser's).
 //
@@ -13,6 +15,7 @@
 //   (prepare: before an install begins; notify(what): after one ends or a pack goes)
 //   → { supported, pack(to), installed(to), install(to, { onProgress }), uninstall(to), list(), estimate() }
 
+import { WAIT_MS, isDown, markDown } from '../lib/assetBase';
 import { workerSwitch } from '../lib/sw';
 
 export const PREFIX = 'tp-pack-';
@@ -22,7 +25,7 @@ const markerOf = (slug, v) => `/packs/${slug}.json?v=${v}`;
 const INDEX_TTL = 30000;
 const TRIES = 3;
 
-export function createInstaller({ fetch, caches, storage = null, remember = null, concurrency = 4, now = Date.now, notify = () => {}, prepare = () => {}, retryDelay = 800 }) {
+export function createInstaller({ fetch, caches, storage = null, remember = null, concurrency = 4, now = Date.now, notify = () => {}, prepare = () => {}, retryDelay = 800, bucket = { isDown, markDown }, wait = WAIT_MS }) {
   const supported = Boolean(fetch && caches);
   let index = null; // { at, promise }
   const running = new Map(); // to → promise
@@ -50,7 +53,8 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
   const whole = async (slug, v) => {
     const m = await stored(slug, v);
     if (!m) return null;
-    const keys = new Set((await (await caches.open(cacheName(slug, v))).keys()).map((r) => new URL(r.url, 'http://x').pathname));
+    // (a file of the site is listed by its path, one from the asset bucket by its whole URL)
+    const keys = new Set((await (await caches.open(cacheName(slug, v))).keys()).flatMap((r) => [new URL(r.url, 'http://x').pathname, r.url]));
     return m.files.every((f) => keys.has(f.url)) ? { v, bytes: m.bytes } : null;
   };
 
@@ -114,10 +118,25 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
 
     const fetchOne = async (f) => {
       let err = null;
+      let triedBucket = false;
       for (let i = 0; i < TRIES; i++) {
         let got = 0;
+        // (the bucket once a file, and not at all once it has failed this visit:
+        // a blocked bucket costs one failed request, not one a file)
+        // (a file only the bucket holds, `remoteOnly`, has no copy on the site
+        // to fall to: asked of the bucket every try, with the usual waits)
+        const remote = Boolean(f.local) && (f.remoteOnly || (!triedBucket && !bucket.isDown()));
         try {
-          const r = await fetch(f.url, { cache: 'no-cache' });
+          // a file from the asset bucket (f.local, its path here): asked across
+          // origins with CORS, and of the site once the bucket has failed it;
+          // the same bytes by hash, so kept under the bucket's URL either way
+          let r;
+          if (remote) {
+            triedBucket = true;
+            let timer = null;
+            // (its answer, not its whole body, within the wait: a dropped host, not a big file)
+            r = await Promise.race([fetch(f.url, { cache: 'no-cache', mode: 'cors' }), new Promise((_, no) => (timer = setTimeout(() => no(new Error('the asset base did not answer')), wait)))]).finally(() => clearTimeout(timer));
+          } else r = await fetch(f.local ?? f.url, { cache: 'no-cache' });
           if (!r.ok) throw new Error(`${r.status}`);
           const chunks = [];
           if (r.body?.getReader) {
@@ -136,6 +155,9 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
             got = buf.length;
             done += got;
           }
+          // (a body short of the manifest's bytes, a connection cut or a CDN's
+          // truncated object, is a failure to try again, never a half file kept)
+          if (got < f.bytes) throw new Error(`short body: ${got} of ${f.bytes} bytes`);
           const headers = new Headers(r.headers);
           headers.delete('content-encoding');
           headers.delete('content-length');
@@ -147,6 +169,10 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
         } catch (e) {
           done -= got;
           err = e;
+          if (remote && !f.remoteOnly) {
+            bucket.markDown();
+            continue; // (straight to the site's copy)
+          }
           if (retryDelay) await new Promise((r) => setTimeout(r, retryDelay * (i + 1)));
         }
       }

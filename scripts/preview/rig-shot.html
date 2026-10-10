@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Rig shot</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #1a2029;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- A figure on a rig of its own (a walker, a droid) playing the game's
+         clips from its pack, a row a clip, four moments across, from the
+         side, through src/lib/three/ownRig.js as the site plays them, for
+         scripts/rig-shot.mjs (through the dev server):
+         ?url=/models/galaxy/surface/atst.glb&rig=atst&clips=idle,walk,die&w=240&h=240 -->
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+      import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+      import { loadOwnRigFigure } from '/src/lib/three/ownRig.js';
+      import { RIG_SET } from '/src/lib/three/rigSets.js';
+
+      const q = new URLSearchParams(location.search);
+      const W = Number(q.get('w') ?? 240);
+      const H = Number(q.get('h') ?? 240);
+      const rig = q.get('rig');
+      const STEPS = [0, 0.25, 0.5, 0.75];
+      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+      const load = (u) => loader.loadAsync(u);
+      const fig = await loadOwnRigFigure(q.get('url'), {
+        rig,
+        packs: [`/models/galaxy/bf2017/clips-${rig}.glb`],
+        load,
+        loadPack: load,
+      });
+      const names = q.get('clips') ? q.get('clips').split(',') : Object.keys(RIG_SET(rig) ?? {});
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        preserveDrawingBuffer: true,
+      });
+      renderer.setSize(W * STEPS.length, H * names.length);
+      renderer.setScissorTest(true);
+      document.body.appendChild(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#1a2029');
+      const sun = new THREE.DirectionalLight('#fff4e6', 2.4);
+      sun.position.set(2, 4, 3);
+      scene.add(sun, new THREE.HemisphereLight('#ccd8e6', '#3a3028', 1.2));
+      scene.add(fig.model);
+      const h = fig.tall;
+      const floor = new THREE.Mesh(new THREE.CircleGeometry(h, 48), new THREE.MeshBasicMaterial({ color: '#2c3644' }));
+      floor.rotation.x = -Math.PI / 2;
+      scene.add(floor);
+      const cam = new THREE.PerspectiveCamera(30, W / H, 0.05, 1000);
+      const { mixer, clips } = fig.anim;
+      const side = q.get('view') ?? 'side';
+      const info = [];
+      const feet = fig.feet.map((n) => fig.bones[n]).filter(Boolean);
+      names.forEach((name, row) => {
+        const game = (RIG_SET(rig) ?? {})[name] ?? name; // (a crew kind's own rig packs its clips by the site's names)
+        const clip = clips.find((c) => c.name === game);
+        if (!clip) return info.push(`${name}: none`);
+        mixer.stopAllAction();
+        const a = mixer.clipAction(clip);
+        a.reset().play();
+        const lows = [];
+        STEPS.forEach((f, col) => {
+          mixer.setTime(clip.duration * f);
+          fig.model.updateMatrixWorld(true);
+          lows.push(Math.min(...feet.map((b) => b.getWorldPosition(new THREE.Vector3()).y)).toFixed(2));
+          const d = h * 2.6;
+          if (side === 'side') cam.position.set(d, h * 0.55, d * 0.25);
+          else cam.position.set(d * 0.55, h * 0.7, d * 0.85);
+          cam.lookAt(0, h * 0.45, 0);
+          const y = (names.length - 1 - row) * H;
+          renderer.setViewport(col * W, y, W, H);
+          renderer.setScissor(col * W, y, W, H);
+          renderer.render(scene, cam);
+        });
+        info.push(`${name} ${clip.duration.toFixed(2)}s travel ${clip.userData.travel ?? 0} feet ${lows.join('/')}`);
+      });
+      document.title = JSON.stringify(info);
+      window.__done = true;
+    </script>
+  </body>
+</html>

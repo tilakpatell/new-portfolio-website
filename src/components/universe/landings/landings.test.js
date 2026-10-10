@@ -6,6 +6,7 @@ import { MOONS, UNIVERSES } from '../universes';
 import { STYLES } from './ground';
 import { CLEAR, LANDINGS, SCATTER_MAX, landingOf, scatterSpots, seedOf, tableSet } from './landings';
 import { biomeAt } from './biomes';
+import { shapeFor } from './bodies';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '../../../../public');
@@ -93,6 +94,57 @@ describe('planet landings', () => {
       }
     }
     expect(named).toBeGreaterThan(20);
+  });
+
+  // (what a bolt meets at a lamp post or a sign is the pole you see, not a
+  // column as wide as its plate or its head: landings/bodies.js shapeFor)
+  it('stand a street thing’s post as thick as its pole, inside the model', () => {
+    const manifest = JSON.parse(readFileSync(join(PUBLIC, 'models/quaternius/manifest.json'), 'utf8'));
+    const seen = new Set();
+    for (const [, , l] of PLACES) {
+      for (const m of Object.values(l.models ?? {})) {
+        const own = manifest[m.node];
+        if (!own || m.body?.shape !== 'cylinder' || !m.body.fixed || seen.has(m.node)) continue;
+        seen.add(m.node);
+        const { half, mid } = own.collider;
+        const post = shapeFor(m.body, { min: mid.map((a, i) => a - half[i]), max: mid.map((a, i) => a + half[i]) }).colliders[0];
+        const [x, , z] = post.position;
+        const r = post.args[1];
+        expect(r, m.node).toBeLessThanOrEqual(0.2);
+        // (one that says its pole: within the model's own footprint, to a few millimetres)
+        if (m.body.r) {
+          expect(Math.abs(x) + r, m.node).toBeLessThanOrEqual(half[0] + 0.005);
+          expect(Math.abs(z) + r, m.node).toBeLessThanOrEqual(half[2] + 0.005);
+        }
+        // (a sign's pole, under a plate 0.62 m across: a few centimetres)
+        if (/^Sign_/.test(m.node)) expect(r, m.node).toBeLessThan(0.05);
+      }
+    }
+    expect([...seen].sort()).toEqual(['Prop_Bollard', 'Sign_NoParking', 'Sign_Stop', 'Streetlight_Single', 'TrafficLight']);
+  });
+
+  it('give the leafy places fallen leaves, and a wind every place that has one', () => {
+    for (const [, id, l] of PLACES) {
+      if (l.leaves) {
+        const { colours, density, size, shed, crown } = l.leaves;
+        expect(colours, id).toHaveLength(3);
+        for (const c of colours) expect(c, id).toMatch(HEX);
+        expect(density, id).toBeGreaterThan(0);
+        expect(density, id).toBeLessThanOrEqual(1);
+        expect(size, id).toBeGreaterThanOrEqual(0.1);
+        expect(size, id).toBeLessThanOrEqual(0.3);
+        expect(shed, id).toBeGreaterThanOrEqual(0);
+        if (crown) for (const k of ['lit', 'shade']) expect(crown[k], `${id}'s crown ${k}`).toHaveLength(3);
+      }
+      if (l.wind) {
+        expect(l.wind.strength, id).toBeGreaterThanOrEqual(0.1);
+        expect(l.wind.strength, id).toBeLessThanOrEqual(1);
+      }
+    }
+    const at = (id) => PLACES.filter(([, x]) => x === id).map(([, , l]) => l);
+    for (const id of ['middleearth', 'middleearth/shire', 'middleearth/forest', 'marvel', 'travel', 'travel/land', 'music']) for (const l of at(id)) expect(l.leaves, id).toBeTruthy();
+    expect(at('middleearth/forest')).toHaveLength(2);
+    for (const id of ['middleearth/mordor', 'middleearth/harad', 'middleearth/mountains', 'breakingbad', 'breakingbad/mountains', 'caribbean', 'travel/ice']) for (const l of at(id)) expect(l.leaves ?? null, id).toBeNull();
   });
 
   it('give the lots and streets small things lying about to knock over', () => {

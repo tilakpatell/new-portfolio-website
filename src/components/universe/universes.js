@@ -34,7 +34,7 @@
 const STATION = 7 * 3;
 // and scale.js's SPREAD, the same way: how much further apart the places are
 // than they were (layout.js and deep.js space them by it)
-export const SPREAD = 4;
+export const SPREAD = 6;
 const PLANET = 28 * 3;
 const GATE = 28;
 
@@ -123,6 +123,7 @@ const FANDOMS = [
     pages: [
       { to: '/deathstar', world: 'Death Star' },
       { to: '/deathstar/inside', world: 'Aboard the Death Star' },
+      { to: '/fly', world: 'Planet flight' }, // planet flight (scripts/flight-island.mjs removes this row)
     ],
     portal: true, // (flown into, it's through, not a crash: universe/scene.js)
     swatch: '#ffe81f',

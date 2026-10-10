@@ -41,6 +41,7 @@ export const LOOK_FOLDERS = [
   { folder: 'universe/shipyard', routes: ['/universe'] },
   { folder: 'galaxy', routes: ['/galaxy'] },
   { folder: 'galaxy/surface', routes: ['/galaxy/hoth/surface'] },
+  { folder: 'expanse/flight', routes: ['/fly'] }, // planet flight (scripts/flight-island.mjs removes this row)
   { folder: 'deathstar', routes: ['/deathstar'] },
   { folder: 'deathstar/inside', routes: ['/deathstar/inside'] },
   { folder: 'cockpit', routes: ['/galaxy'] },
@@ -73,6 +74,7 @@ export const LOOK_FOLDERS = [
   { folder: 'mario64', routes: ['/dot-matrix/64'] },
   { folder: 'minecraft', routes: ['/dot-matrix/minecraft'] },
   { folder: 'earth', routes: ['/earth'] },
+  { folder: 'battlefront', routes: ['/battlefront/hoth/galacticAssault'] },
   { folder: 'music/world', routes: ['/music'] },
   { folder: 'projects/cartridges', routes: ['/projects'] },
   { folder: 'contact/plane', routes: ['/contact'] },

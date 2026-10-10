@@ -1,0 +1,24 @@
+{
+ "language": "English",
+ "asset": "Localization/WSLocalization_English",
+ "count": 16,
+ "id": "id = hash of the string key: h = 0xFFFFFFFF; for each character c: h = (c + 33*h) mod 2^32; written as 8 upper-case hex digits",
+ "strings": {
+  "B2823EBD": "TAKE OUT THE WALKERS",
+  "B2823EBE": "TAKE OUT ANY THREATS TO THE AT-ATS",
+  "FF7C7B7E": "STOP THE IMPERIALS FROM ENTERING THE BASE",
+  "FF7C7B7F": "ADVANCE AND SECURE THE HANGAR AREA",
+  "4C76B83F": "HOLD OFF THE IMPERIAL ATTACKERS UNTIL OUR ESCAPE",
+  "4C76B840": "STOP THE REBELS FROM ESCAPING",
+  "B00D7E43": "FUEL PIPES",
+  "B0ABB6E8": "FUEL DEPOT",
+  "2F0F2BAE": "FUEL STATION",
+  "B9DA60BE": "EAST HANGAR",
+  "2A8963D4": "WEST HANGAR",
+  "4A7C029F": "A280C",
+  "579726DC": "A280",
+  "6CFC2974": "ASSAULT",
+  "B912C5CD": "Darth Vader",
+  "D35AB2F9": "Luke Skywalker"
+ }
+}

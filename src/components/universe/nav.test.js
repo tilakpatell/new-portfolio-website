@@ -115,10 +115,10 @@ describe('the drives', () => {
       expect(quick.hits, id).toBe(0);
       expect(orbiting(quick.s, null), id).toBe(id);
       expect(quick.t, id).toBeLessThan(cruise.t * 0.65);
-      expect(quick.t, id).toBeLessThan(40); // (34 s to the Caribbean, the furthest, since the spread: scale.js's SPREAD; under 20 before)
+      expect(quick.t, id).toBeLessThan(60); // (about 1.5 times the 34 s it took the Caribbean, the furthest, at the spread to four: scale.js's SPREAD, six since 2026-10-09; under 20 before either)
       if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * (inMain(id) ? 2 : 1)); // (well past the pulse drive; the gate's close to home, and the sector's first worlds to the Citadel)
     }
-  });
+  }, 60000); // (every world twice over, minutes of flight at 60 steps a second)
 
   it('flies out to every wonder on super speed, and from world to world all the way round, without touching anything', () => {
     for (const w of WONDERS.filter((w) => w.id !== MAW.id)) {
@@ -134,7 +134,7 @@ describe('the drives', () => {
       expect(r.hits, id).toBe(0);
       s = r.s;
     }
-  });
+  }, 60000); // (every wonder and all the way round: minutes of flight at 60 steps a second)
 
   it('is no slower between the home system’s stations (it doesn’t kick in there)', () => {
     for (const id of stations.slice(1)) expect(fly(spawn('home'), id, OVERDRIVE).t, id).toBeCloseTo(fly(spawn('home'), id, 1).t, 5);
@@ -380,14 +380,14 @@ describe('across the sectors', () => {
     for (const id of ['gazorpazorp', 'citadel', 'curvesun']) {
       const d = distanceTo(home(), id);
       expect(Number.isFinite(d), id).toBe(true);
-      expect(d, id).toBeLessThan(20000); // (nothing like the 40000 straight across)
+      expect(d, id).toBeLessThan(30000); // (nothing like the 60000 straight across)
       for (const drive of ['hyper', 'super']) {
         const t = tripTime(home(), id, drive);
         expect(t, `${id} by ${drive}`).not.toBeNull();
         expect(t, `${id} by ${drive}`).toBeGreaterThan(TRANSIT);
       }
     }
-    expect(tripTime(home(), 'gazorpazorp', 'super')).toBeLessThan(40);
+    expect(tripTime(home(), 'gazorpazorp', 'super')).toBeLessThan(60);
     expect(tripTime(startFor('gazorpazorp'), 'marvel', 'super')).not.toBeNull();
   });
 
@@ -397,7 +397,7 @@ describe('across the sectors', () => {
     let park = parkFor(first, [s.x, s.z]);
     let through = null;
     let t = 0;
-    for (; t < 60 && !through; t += 1 / 60) {
+    for (; t < 90 && !through; t += 1 / 60) {
       const next = step(s, autopilot(s, first, park, undefined, OVERDRIVE).input, 1 / 60).ship;
       through = portalHit(s, next);
       s = next;
@@ -409,7 +409,7 @@ describe('across the sectors', () => {
     expect(r.done).toBe(true);
     expect(r.hits).toBe(0);
     expect(orbiting(r.s, null)).toBe('gazorpazorp');
-    expect(t + r.t).toBeLessThan(40);
+    expect(t + r.t).toBeLessThan(60);
   });
 
   it('charts the Rick and Morty sector round its own middle', () => {

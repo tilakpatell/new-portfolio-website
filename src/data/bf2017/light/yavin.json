@@ -1,0 +1,269 @@
+{
+ "world": "yavin",
+ "map": "levels/mp/yavin_01/yavin_01",
+ "main": "sunny",
+ "sky": {
+  "main": "Levels/Lighting/Yavin/Sunny_01/VE_PV_Yavin_Sunny_01",
+  "overrides": [
+   "Levels/Lighting/Yavin/Interior_01/VE_PV_Yavin_Interior_01",
+   "Levels/Lighting/Yavin/Sunset_01/VE_PV_Yavin_Sunset_01"
+  ]
+ },
+ "weathers": {
+  "sunny": {
+   "sun": {
+    "color": [
+     1,
+     0.895025253,
+     0.766352654
+    ],
+    "lux": 100000,
+    "az": 112.294,
+    "el": 28.209
+   },
+   "sky": {
+    "luminance": 25000,
+    "panorama": "Levels/Lighting/Yavin/Sunny_01/T_Yavin_Sunny_01_C",
+    "gradient": "Levels/Lighting/Yavin/Sunny_01/T_Yavin_Sunny_01_Fog_C"
+   },
+   "fog": {
+    "start": 15,
+    "end": 5000,
+    "curve": [
+     2.10931182,
+     -3.36659241,
+     2.04062819,
+     -0.00999998953
+    ],
+    "height": 0,
+    "heightDepth": 30,
+    "heightRange": 3000,
+    "scatter": [
+     1,
+     1,
+     1
+    ]
+   },
+   "tonemap": {
+    "compensation": 1,
+    "minEV": 11,
+    "maxEV": 13.5,
+    "auto": true,
+    "bloom": 0.07976504
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/yavin/sunny.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 6.981,
+    "strength": 1
+   },
+   "enlighten": {
+    "sky": [
+     0.318,
+     0.341,
+     0.4
+    ],
+    "ground": [
+     0.05,
+     0.05,
+     0.05
+    ],
+    "terrain": [
+     0.114021637,
+     0.15415746,
+     0.08231951
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Yavin/Sunny_01/VE_PV_Yavin_Sunny_01"
+   ],
+   "probe": {
+    "id": "0fe9095f",
+    "variant": "Sunny_VFX",
+    "zenith": [
+     272.766,
+     188.725,
+     91.421
+    ],
+    "horizon": [
+     46.076,
+     35.546,
+     23.765
+    ],
+    "ground": [
+     55.976,
+     39.114,
+     18.209
+    ],
+    "open": 5.4,
+    "url": "textures/galaxy/bf2017/light/yavin/sunny"
+   }
+  },
+  "interior": {
+   "sun": {
+    "color": [
+     1,
+     0.895025253,
+     0.766352654
+    ],
+    "lux": 100000,
+    "az": 112.294,
+    "el": 28.209
+   },
+   "sky": {
+    "luminance": 25000,
+    "panorama": "Levels/Lighting/Yavin/Sunny_01/T_Yavin_Sunny_01_C",
+    "gradient": "Levels/Lighting/Yavin/Sunny_01/T_Yavin_Sunny_01_Fog_C"
+   },
+   "fog": {
+    "start": 15,
+    "end": 5000,
+    "curve": [
+     2.10931182,
+     -3.36659241,
+     2.04062819,
+     -0.00999998953
+    ],
+    "height": 0,
+    "heightDepth": 15,
+    "heightRange": 5000,
+    "scatter": [
+     1,
+     1,
+     1
+    ]
+   },
+   "tonemap": {
+    "compensation": 0,
+    "minEV": 7,
+    "maxEV": 10,
+    "auto": true,
+    "bloom": 0.209792852
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/yavin/interior.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 6.981,
+    "strength": 1
+   },
+   "enlighten": {
+    "sky": [
+     0.318,
+     0.341,
+     0.4
+    ],
+    "ground": [
+     0.05,
+     0.05,
+     0.05
+    ],
+    "terrain": [
+     0.114021637,
+     0.15415746,
+     0.08231951
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Yavin/Sunny_01/VE_PV_Yavin_Sunny_01",
+    "Levels/Lighting/Yavin/Interior_01/VE_PV_Yavin_Interior_01"
+   ]
+  },
+  "sunset": {
+   "sun": {
+    "color": [
+     1,
+     0.330383748,
+     0.117421441
+    ],
+    "lux": 22000,
+    "az": 112.294,
+    "el": 19.756
+   },
+   "sky": {
+    "luminance": 15000,
+    "panorama": "Levels/Lighting/Yavin/Sunset_01/T_Yavin_Sunset_02_Panoramic_C",
+    "gradient": "Levels/Lighting/Yavin/Sunset_01/T_Yavin_Sunset_01_Fog_C"
+   },
+   "fog": {
+    "start": 50,
+    "end": 3500,
+    "curve": [
+     1.26361942,
+     -1.9675715,
+     1.27037537,
+     -0.0296844989
+    ],
+    "height": 5,
+    "heightDepth": 15,
+    "heightRange": 3500,
+    "scatter": [
+     1,
+     0.6738595,
+     0.5240807
+    ]
+   },
+   "tonemap": {
+    "compensation": 0,
+    "minEV": 9,
+    "maxEV": 10.5,
+    "auto": true,
+    "bloom": 0.07
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/yavin/sunset.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 6.981,
+    "strength": 2.881
+   },
+   "enlighten": {
+    "sky": [
+     373.880676,
+     433.4108,
+     611.653442
+    ],
+    "ground": [
+     0.05,
+     0.05,
+     0.05
+    ],
+    "terrain": [
+     0.114021637,
+     0.15415746,
+     0.08231951
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Yavin/Sunny_01/VE_PV_Yavin_Sunny_01",
+    "Levels/Lighting/Yavin/Sunset_01/VE_PV_Yavin_Sunset_01"
+   ],
+   "probe": {
+    "id": "5c72c231",
+    "variant": "Sunset_VFX",
+    "zenith": [
+     1084.727,
+     758.875,
+     1234.168
+    ],
+    "horizon": [
+     93.361,
+     83.914,
+     49.992
+    ],
+    "ground": [
+     292.791,
+     314.575,
+     252.308
+    ],
+    "open": 10.33,
+    "url": "textures/galaxy/bf2017/light/yavin/sunset"
+   }
+  }
+ },
+ "indoor": null
+}

@@ -21,6 +21,7 @@ export const GUIDES = {
   '/galaxy/mission': { title: 'Mission briefing' },
   '/deathstar': { title: 'The Death Star', nudge: true },
   '/deathstar/inside': { title: 'Aboard the Death Star', nudge: true },
+  '/fly': { title: 'Planet flight', nudge: true }, // planet flight (scripts/flight-island.mjs removes this row)
   '/caribbean': { title: 'The Caribbean', nudge: true },
   '/invincible': { title: 'Invincible', nudge: true },
   '/middle-earth': { title: 'Middle-earth' },
@@ -49,6 +50,7 @@ const RULES = [
   [/^\/galaxy\/[^/]+\/surface$/, '/galaxy/surface'],
   [/^\/galaxy\/[^/]+\/mission$/, '/galaxy/mission'],
   [/^\/galaxy\/[^/]+$/, '/galaxy'],
+  [/^\/fly\/[^/]+$/, '/fly'], // planet flight
   [/^\/middle-earth\/[^/]+$/, '/middle-earth/place'],
   [/^\/c-137\/(?!citadel$)[a-z0-9-]+$/, '/c-137/planet'],
 ];

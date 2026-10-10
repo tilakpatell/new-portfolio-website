@@ -5,6 +5,18 @@
 // them) as capsules that shove what they walk into; and the shots, as rays
 // along each bolt's flight that stop at the first thing and knock it.
 //
+// A knock goes by the thing's mass (./bodies.js knockOf): a push along the
+// ground the bolt's way (any part of it into the ground left out, so a
+// shot from eye height slides a crate as a level one does), landing
+// halfway from the middle of its mass to where it was hit, and a little
+// hop up. A fixed thing (a lamp post, a bollard) stops a bolt too, and
+// isn't moved by it.
+//
+// The ground round where the landing's laid out (spot: the planet's up
+// there) is a heightfield cap 256 m across (FLOOR_CAP), the ball 5 cm under
+// it: on the ball's own round contact a knocked box rocks and turns for
+// ever and never sleeps; on the cap it settles in under a second.
+//
 // Everything is in the planet's own space (footScene's root: its middle at
 // the origin), in and out in map units; inside, the world is in metres
 // (map units / METRE), Rapier's own scale for a person and a barrel. The
@@ -12,13 +24,14 @@
 // sent: each pilot's props are their own.
 //
 // createLandingPhysics({ R, metre = METRE, g = 9.81, threshold = 15, onHit(force, at,
-//   entry) }) → Promise<{ add({ position, quaternion, scale, box (metres,
-//   its own frame), body, awake?, user }) → entry | null, walls([{ n, r }])
-//   (the landing's fixed things, as walk() has them: a circle along the
-//   ground round n, r map units; each a fixed post 3 m tall, so what's
-//   knocked stops at them), people([{ key, at, up }], dt) (before step(dt),
-//   with the same dt), where(key), shot(from, to) → { entry, at } | null,
-//   step(dt), sync(write(entry, position, quaternion)) (those that moved),
+//   entry), spot ([x, y, z], the cap's middle; none, no cap) }) → Promise<{
+//   add({ position, quaternion, scale, box (metres, its own frame), body,
+//   awake?, user }) → entry | null, walls([{ n, r }]) (the landing's fixed
+//   things, as walk() has them: a circle along the ground round n, r map
+//   units; each a fixed post 3 m tall, so what's knocked stops at them),
+//   people([{ key, at, up }], dt) (before step(dt), with the same dt),
+//   where(key), shot(from, to) → { entry, at } | null, step(dt),
+//   sync(write(entry, position, quaternion)) (those that moved),
 //   settle(at, metres) (the far ones to sleep), pushers, size, dispose() }>
 //
 // The capsules are moved over the time the world will step this frame
@@ -36,10 +49,8 @@
 import { STEP, createPhysics } from '../../../lib/physics/world';
 import { addPusher } from '../../../lib/physics/pusher';
 import { METRE } from '../foot';
-import { shapeFor } from './bodies';
+import { KNOCK, knockOf, shapeFor, shotImpulse } from './bodies';
 
-const SHOT = 4; // a bolt's push (N·s), at most
-const SHOT_KICK = 10; // m/s it gives anything light, at most
 const PERSON = { radius: 0.35, half: 0.55 }; // (a capsule 1.8 m tall)
 const SUBSTEPS = 4; // (the world's maxSubsteps)
 const POST = 1.5; // a fixed thing's post: half its height, metres
@@ -52,8 +63,27 @@ function upTurn(u) {
   const n = Math.hypot(q[0], q[1], q[2], q[3]);
   return [q[0] / n, q[1] / n, q[2] / n, q[3] / n];
 }
+// (a way as a unit vector, or null if it isn't one)
+function unit(u) {
+  const l = Math.hypot(u?.[0], u?.[1], u?.[2]);
+  return l > 0 && Number.isFinite(l) ? u.map((a) => a / l) : null;
+}
 
-export async function createLandingPhysics({ R, metre = METRE, g = 9.81, threshold = 15, onHit = null } = {}) {
+// the floor round the landing as a heightfield: a ball's contact rocks a
+// box for ever (never asleep, turning); this cap lets it settle
+export const FLOOR_CAP = { n: 129, size: 256, sink: 0.05 };
+export function capHeights(Rm, { n = FLOOR_CAP.n, size = FLOOR_CAP.size } = {}) {
+  const h = new Float32Array(n * n);
+  for (let ix = 0; ix < n; ix++)
+    for (let iz = 0; iz < n; iz++) {
+      const x = (ix / (n - 1) - 0.5) * size;
+      const z = (iz / (n - 1) - 0.5) * size;
+      h[ix * n + iz] = Math.sqrt(Math.max(0, Rm * Rm - x * x - z * z)) - Rm;
+    }
+  return h;
+}
+
+export async function createLandingPhysics({ R, metre = METRE, g = 9.81, threshold = 15, onHit = null, spot = null } = {}) {
   const Rm = R / metre;
   const physics = await createPhysics({
     gravity: { centre: [0, 0, 0], g },
@@ -68,7 +98,17 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, thresho
     },
   });
   const { RAPIER, world } = physics;
-  physics.add({ type: 'fixed', group: 'floor', friction: 0.8, colliders: [{ shape: 'ball', args: [Rm] }] });
+  // the ground: the ball, and round the spot (if it's a way at all) the
+  // cap, the ball a little under it so nothing on the cap meets its round
+  // contact
+  const mid = unit(spot);
+  physics.add({ type: 'fixed', group: 'floor', friction: 0.8, colliders: [{ shape: 'ball', args: [Rm - (mid ? FLOOR_CAP.sink : 0)] }] });
+  if (mid) {
+    // (no wider than a small moon has room for)
+    const size = Math.min(FLOOR_CAP.size, 0.8 * Rm);
+    const cap = { shape: 'heightfield', args: [FLOOR_CAP.n - 1, FLOOR_CAP.n - 1, capHeights(Rm, { size }), [size, 1, size], RAPIER.HeightFieldFlags.FIX_INTERNAL_EDGES] };
+    physics.add({ type: 'fixed', group: 'floor', friction: 0.8, position: mid.map((a) => a * Rm), rotation: upTurn(mid), colliders: [cap] });
+  }
   const entries = new Map(); // Body → entry
   const pushers = new Map(); // key → pusher
   let gone = false;
@@ -152,6 +192,9 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, thresho
   }
 
   // a bolt's flight this frame, from → to: the first thing in its way, knocked
+  // (a fixed one stops it unmoved; the floor, the cap and the walls' posts
+  // aren't things, so it flies on through those)
+  const thing = (c) => entries.has(c.parent()?.userData);
   function shot(from, to) {
     if (gone) return null;
     const o = from.map((a) => a / metre);
@@ -159,13 +202,19 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, thresho
     const len = Math.hypot(...d);
     if (!(len > 1e-6)) return null;
     const dir = { x: d[0] / len, y: d[1] / len, z: d[2] / len };
-    const hit = world.castRay(new RAPIER.Ray({ x: o[0], y: o[1], z: o[2] }, dir), len, true, RAPIER.QueryFilterFlags.EXCLUDE_FIXED | RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC);
+    const hit = world.castRay(new RAPIER.Ray({ x: o[0], y: o[1], z: o[2] }, dir), len, true, RAPIER.QueryFilterFlags.EXCLUDE_KINEMATIC, undefined, undefined, undefined, thing);
     const entry = hit && entries.get(hit.collider.parent()?.userData);
     if (!entry) return null;
     const t = hit.timeOfImpact;
     const at = [o[0] + dir.x * t, o[1] + dir.y * t, o[2] + dir.z * t];
-    const j = Math.min(SHOT, entry.handle.mass * SHOT_KICK);
-    entry.handle.push([dir.x * j, dir.y * j, dir.z * j], at);
+    const j = knockOf(entry.handle.mass);
+    if (j > 0) {
+      const l = Math.hypot(...at);
+      const { side, lift } = shotImpulse(j, [dir.x, dir.y, dir.z], at.map((a) => a / l));
+      const c = entry.handle.body.worldCom();
+      entry.handle.push(side, [c.x + KNOCK.spin * (at[0] - c.x), c.y + KNOCK.spin * (at[1] - c.y), c.z + KNOCK.spin * (at[2] - c.z)]);
+      entry.handle.push(lift); // (at the middle of its mass: a hop, no spin)
+    }
     return { entry, at: at.map((a) => a * metre) };
   }
 

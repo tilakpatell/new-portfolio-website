@@ -227,6 +227,38 @@ describe('relayPool', () => {
     a.send(event('one', 'a'));
     expect(sent()).toBe(1);
   });
+  it('refresh asks the open relays again under the same id, with the filter as it is now', () => {
+    vi.useFakeTimers();
+    const net = createNet(URLS);
+    net.down(URLS[3]);
+    const pool = relayPool({ relays: URLS, WebSocket: net.WebSocket });
+    let cells = ['a/0,0'];
+    const a = room(pool, 'one', () => ({ kinds: [1], '#x': ['one'], '#g': cells }));
+    room(pool, 'two');
+    vi.advanceTimersByTime(10);
+    expect(a.up()).toBe(3);
+    const reqs = (s) => s.sent.filter((m) => m[0] === 'REQ' && m[1] === 'tp1');
+    cells = ['a/1,0'];
+    a.refresh();
+    for (const u of URLS.slice(0, 3)) {
+      const s = net.socketTo(u);
+      expect(reqs(s)).toHaveLength(2);
+      expect(reqs(s).at(-1)).toEqual(['REQ', 'tp1', { kinds: [1], '#x': ['one'], '#g': ['a/1,0'] }]);
+      expect(s.sent.filter((m) => m[0] === 'REQ' && m[1] === 'tp2')).toHaveLength(1); // (the other room isn't asked again)
+    }
+    // the one that was down asks with the filter of the moment when it opens
+    cells = ['a/2,0'];
+    net.back(URLS[3]);
+    vi.advanceTimersByTime(1000);
+    const late = net.socketTo(URLS[3]);
+    expect(reqs(late)).toEqual([['REQ', 'tp1', { kinds: [1], '#x': ['one'], '#g': ['a/2,0'] }]]);
+    // and a room gone asks nothing
+    a.close();
+    const before = net.made.reduce((n, s) => n + reqs(s).length, 0);
+    cells = ['b/0,0'];
+    a.refresh();
+    expect(net.made.reduce((n, s) => n + reqs(s).length, 0)).toBe(before);
+  });
 });
 
 describe('poolFor', () => {

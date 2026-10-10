@@ -1,0 +1,1406 @@
+{
+  "route": "/",
+  "visit": "return",
+  "quality": "high",
+  "seconds": 12,
+  "viewport": [
+    1280,
+    720
+  ],
+  "fcpMs": 788,
+  "assets": {
+    "bytes": 4468782,
+    "raw": 4658805,
+    "requests": 64
+  },
+  "js": {
+    "bytes": 1198802,
+    "raw": 3278086,
+    "chunks": 213
+  },
+  "kinds": {
+    "other": {
+      "bytes": 2833,
+      "raw": 9254,
+      "requests": 1
+    },
+    "js": {
+      "bytes": 1198802,
+      "raw": 3278086,
+      "requests": 213
+    },
+    "css": {
+      "bytes": 75037,
+      "raw": 259869,
+      "requests": 12
+    },
+    "font": {
+      "bytes": 134067,
+      "raw": 133104,
+      "requests": 3
+    },
+    "image": {
+      "bytes": 4256845,
+      "raw": 4256578,
+      "requests": 48
+    }
+  },
+  "biggest": [
+    {
+      "path": "/textures/universe/transformers-normal.webp",
+      "bytes": 544810,
+      "at": 1.62
+    },
+    {
+      "path": "/textures/universe/sky-glow.webp",
+      "bytes": 525186,
+      "at": 1.63
+    },
+    {
+      "path": "/textures/universe/transformers.webp",
+      "bytes": 519394,
+      "at": 1.63
+    },
+    {
+      "path": "/textures/universe/transformers-glow-sm.webp",
+      "bytes": 429830,
+      "at": 1.66
+    },
+    {
+      "path": "/textures/universe/invincible-normal.webp",
+      "bytes": 235426,
+      "at": 1.61
+    },
+    {
+      "path": "/textures/universe/middleearth-clouds.webp",
+      "bytes": 204420,
+      "at": 1.59
+    },
+    {
+      "path": "/textures/universe/earth.webp",
+      "bytes": 148582,
+      "at": 1.59
+    },
+    {
+      "path": "/textures/universe/earth-clouds.webp",
+      "bytes": 140868,
+      "at": 1.6
+    },
+    {
+      "path": "/textures/universe/rickmorty.webp",
+      "bytes": 137590,
+      "at": 1.59
+    },
+    {
+      "path": "/textures/universe/breakingbad-normal.webp",
+      "bytes": 122498,
+      "at": 1.6
+    },
+    {
+      "path": "/textures/universe/music.webp",
+      "bytes": 115986,
+      "at": 1.57
+    },
+    {
+      "path": "/textures/universe/rickmorty-clouds.webp",
+      "bytes": 107146,
+      "at": 1.59
+    },
+    {
+      "path": "/textures/universe/sun.webp",
+      "bytes": 93744,
+      "at": 1.59
+    },
+    {
+      "path": "/assets/archivo-latin-wdth-normal-DY7AcnAa.woff2",
+      "bytes": 90425,
+      "at": 0.41
+    },
+    {
+      "path": "/textures/universe/marvel.webp",
+      "bytes": 88992,
+      "at": 1.57
+    }
+  ],
+  "chunks": [
+    {
+      "name": "rolldown-runtime",
+      "bytes": 1038,
+      "raw": 716,
+      "at": 0.02
+    },
+    {
+      "name": "index",
+      "bytes": 23847,
+      "raw": 71904,
+      "at": 0.03
+    },
+    {
+      "name": "themes",
+      "bytes": 2052,
+      "raw": 4920,
+      "at": 0.03
+    },
+    {
+      "name": "hooks",
+      "bytes": 1697,
+      "raw": 3211,
+      "at": 0.03
+    },
+    {
+      "name": "paint",
+      "bytes": 1674,
+      "raw": 2630,
+      "at": 0.03
+    },
+    {
+      "name": "universes",
+      "bytes": 2889,
+      "raw": 8025,
+      "at": 0.04
+    },
+    {
+      "name": "layout",
+      "bytes": 1714,
+      "raw": 2739,
+      "at": 0.04
+    },
+    {
+      "name": "vendor",
+      "bytes": 81981,
+      "raw": 259566,
+      "at": 0.04
+    },
+    {
+      "name": "regions",
+      "bytes": 4063,
+      "raw": 8512,
+      "at": 0.05
+    },
+    {
+      "name": "spring",
+      "bytes": 1037,
+      "raw": 1141,
+      "at": 0.05
+    },
+    {
+      "name": "iconBase",
+      "bytes": 1478,
+      "raw": 2520,
+      "at": 0.05
+    },
+    {
+      "name": "ship",
+      "bytes": 8799,
+      "raw": 19058,
+      "at": 0.06
+    },
+    {
+      "name": "outfit",
+      "bytes": 7277,
+      "raw": 17331,
+      "at": 0.06
+    },
+    {
+      "name": "RiPlayFill",
+      "bytes": 818,
+      "raw": 496,
+      "at": 0.06
+    },
+    {
+      "name": "RiVolumeUpLine",
+      "bytes": 1260,
+      "raw": 938,
+      "at": 0.06
+    },
+    {
+      "name": "worlds",
+      "bytes": 1257,
+      "raw": 1692,
+      "at": 0.06
+    },
+    {
+      "name": "Achievements",
+      "bytes": 18830,
+      "raw": 45373,
+      "at": 0.06
+    },
+    {
+      "name": "audio",
+      "bytes": 2219,
+      "raw": 4158,
+      "at": 0.07
+    },
+    {
+      "name": "speech",
+      "bytes": 1376,
+      "raw": 2053,
+      "at": 0.07
+    },
+    {
+      "name": "voiced",
+      "bytes": 1437,
+      "raw": 1895,
+      "at": 0.07
+    },
+    {
+      "name": "FunProvider",
+      "bytes": 3874,
+      "raw": 8687,
+      "at": 0.07
+    },
+    {
+      "name": "EconomyProvider",
+      "bytes": 1925,
+      "raw": 3211,
+      "at": 0.07
+    },
+    {
+      "name": "looks",
+      "bytes": 2919,
+      "raw": 7337,
+      "at": 0.07
+    },
+    {
+      "name": "names",
+      "bytes": 1180,
+      "raw": 1330,
+      "at": 0.08
+    },
+    {
+      "name": "useOnline",
+      "bytes": 2818,
+      "raw": 5702,
+      "at": 0.08
+    },
+    {
+      "name": "names",
+      "bytes": 995,
+      "raw": 1064,
+      "at": 0.08
+    },
+    {
+      "name": "road",
+      "bytes": 1132,
+      "raw": 1381,
+      "at": 0.08
+    },
+    {
+      "name": "hidden",
+      "bytes": 2254,
+      "raw": 4059,
+      "at": 0.08
+    },
+    {
+      "name": "where",
+      "bytes": 1123,
+      "raw": 1343,
+      "at": 0.08
+    },
+    {
+      "name": "ErrorBoundary",
+      "bytes": 1492,
+      "raw": 2169,
+      "at": 0.09
+    },
+    {
+      "name": "RiCheckLine",
+      "bytes": 613,
+      "raw": 291,
+      "at": 0.09
+    },
+    {
+      "name": "RiCloseLine",
+      "bytes": 712,
+      "raw": 390,
+      "at": 0.09
+    },
+    {
+      "name": "RiGithubFill",
+      "bytes": 979,
+      "raw": 1276,
+      "at": 0.09
+    },
+    {
+      "name": "RiLinkedinBoxFill",
+      "bytes": 1231,
+      "raw": 909,
+      "at": 0.09
+    },
+    {
+      "name": "RiLockLine",
+      "bytes": 787,
+      "raw": 465,
+      "at": 0.09
+    },
+    {
+      "name": "RiRestartLine",
+      "bytes": 820,
+      "raw": 498,
+      "at": 0.09
+    },
+    {
+      "name": "RiSearchLine",
+      "bytes": 888,
+      "raw": 566,
+      "at": 0.09
+    },
+    {
+      "name": "RiSettings3Line",
+      "bytes": 1496,
+      "raw": 2519,
+      "at": 0.09
+    },
+    {
+      "name": "RiTerminalBoxLine",
+      "bytes": 754,
+      "raw": 432,
+      "at": 0.09
+    },
+    {
+      "name": "palette",
+      "bytes": 933,
+      "raw": 611,
+      "at": 0.1
+    },
+    {
+      "name": "anchors",
+      "bytes": 628,
+      "raw": 306,
+      "at": 0.1
+    },
+    {
+      "name": "profile",
+      "bytes": 1635,
+      "raw": 2317,
+      "at": 0.1
+    },
+    {
+      "name": "Wordmark",
+      "bytes": 1327,
+      "raw": 1003,
+      "at": 0.1
+    },
+    {
+      "name": "restart",
+      "bytes": 721,
+      "raw": 399,
+      "at": 0.1
+    },
+    {
+      "name": "feed",
+      "bytes": 1339,
+      "raw": 1015,
+      "at": 0.1
+    },
+    {
+      "name": "ri",
+      "bytes": 1945,
+      "raw": 4583,
+      "at": 0.1
+    },
+    {
+      "name": "ViewSwitch",
+      "bytes": 1219,
+      "raw": 1595,
+      "at": 0.11
+    },
+    {
+      "name": "RiMailLine",
+      "bytes": 716,
+      "raw": 394,
+      "at": 0.11
+    },
+    {
+      "name": "brief",
+      "bytes": 1067,
+      "raw": 745,
+      "at": 0.11
+    },
+    {
+      "name": "RiCompass3Line",
+      "bytes": 888,
+      "raw": 566,
+      "at": 0.11
+    },
+    {
+      "name": "plan",
+      "bytes": 537,
+      "raw": 215,
+      "at": 0.11
+    },
+    {
+      "name": "ui",
+      "bytes": 2161,
+      "raw": 4025,
+      "at": 0.11
+    },
+    {
+      "name": "routes",
+      "bytes": 1063,
+      "raw": 1769,
+      "at": 0.11
+    },
+    {
+      "name": "tour",
+      "bytes": 2458,
+      "raw": 4661,
+      "at": 0.11
+    },
+    {
+      "name": "load",
+      "bytes": 1243,
+      "raw": 921,
+      "at": 0.12
+    },
+    {
+      "name": "visited",
+      "bytes": 793,
+      "raw": 471,
+      "at": 0.12
+    },
+    {
+      "name": "styles",
+      "bytes": 511,
+      "raw": 189,
+      "at": 0.12
+    },
+    {
+      "name": "gpu",
+      "bytes": 1386,
+      "raw": 1995,
+      "at": 0.12
+    },
+    {
+      "name": "install",
+      "bytes": 2650,
+      "raw": 5118,
+      "at": 0.12
+    },
+    {
+      "name": "device",
+      "bytes": 4300,
+      "raw": 8742,
+      "at": 0.12
+    },
+    {
+      "name": "InstallCard",
+      "bytes": 2732,
+      "raw": 5875,
+      "at": 0.12
+    },
+    {
+      "name": "settings",
+      "bytes": 1408,
+      "raw": 2585,
+      "at": 0.12
+    },
+    {
+      "name": "RiArrowRightLine",
+      "bytes": 628,
+      "raw": 306,
+      "at": 0.29
+    },
+    {
+      "name": "RiLayoutGridLine",
+      "bytes": 693,
+      "raw": 371,
+      "at": 0.29
+    },
+    {
+      "name": "RiQuestionLine",
+      "bytes": 1033,
+      "raw": 711,
+      "at": 0.3
+    },
+    {
+      "name": "RiRocket2Line",
+      "bytes": 1163,
+      "raw": 841,
+      "at": 0.3
+    },
+    {
+      "name": "projects",
+      "bytes": 2746,
+      "raw": 6227,
+      "at": 0.3
+    },
+    {
+      "name": "Front",
+      "bytes": 25192,
+      "raw": 77210,
+      "at": 0.31
+    },
+    {
+      "name": "roles",
+      "bytes": 2733,
+      "raw": 5632,
+      "at": 0.32
+    },
+    {
+      "name": "places",
+      "bytes": 1441,
+      "raw": 2545,
+      "at": 0.32
+    },
+    {
+      "name": "timeline",
+      "bytes": 1000,
+      "raw": 1217,
+      "at": 0.32
+    },
+    {
+      "name": "AutobotMark",
+      "bytes": 656,
+      "raw": 334,
+      "at": 0.32
+    },
+    {
+      "name": "nav",
+      "bytes": 5139,
+      "raw": 10157,
+      "at": 0.32
+    },
+    {
+      "name": "marks",
+      "bytes": 6622,
+      "raw": 14331,
+      "at": 0.32
+    },
+    {
+      "name": "DecepticonMark",
+      "bytes": 656,
+      "raw": 334,
+      "at": 0.32
+    },
+    {
+      "name": "PortalSwirl",
+      "bytes": 1130,
+      "raw": 1373,
+      "at": 0.32
+    },
+    {
+      "name": "swirl",
+      "bytes": 1973,
+      "raw": 3070,
+      "at": 0.32
+    },
+    {
+      "name": "pointer",
+      "bytes": 415,
+      "raw": 95,
+      "at": 0.32
+    },
+    {
+      "name": "swirl",
+      "bytes": 1749,
+      "raw": 3250,
+      "at": 0.33
+    },
+    {
+      "name": "gpuWork",
+      "bytes": 2684,
+      "raw": 5142,
+      "at": 0.33
+    },
+    {
+      "name": "useScene",
+      "bytes": 2172,
+      "raw": 4134,
+      "at": 0.33
+    },
+    {
+      "name": "settle",
+      "bytes": 673,
+      "raw": 351,
+      "at": 0.33
+    },
+    {
+      "name": "loop",
+      "bytes": 636,
+      "raw": 314,
+      "at": 0.33
+    },
+    {
+      "name": "stones",
+      "bytes": 924,
+      "raw": 602,
+      "at": 0.33
+    },
+    {
+      "name": "theme",
+      "bytes": 1663,
+      "raw": 2461,
+      "at": 0.33
+    },
+    {
+      "name": "Faces",
+      "bytes": 1944,
+      "raw": 6609,
+      "at": 0.33
+    },
+    {
+      "name": "crews",
+      "bytes": 34853,
+      "raw": 108640,
+      "at": 0.34
+    },
+    {
+      "name": "sounds",
+      "bytes": 5628,
+      "raw": 15607,
+      "at": 0.34
+    },
+    {
+      "name": "Faces",
+      "bytes": 1736,
+      "raw": 4885,
+      "at": 0.34
+    },
+    {
+      "name": "debugPanel",
+      "bytes": 2338,
+      "raw": 4396,
+      "at": 0.34
+    },
+    {
+      "name": "clips",
+      "bytes": 6872,
+      "raw": 18460,
+      "at": 0.34
+    },
+    {
+      "name": "runtime",
+      "bytes": 9468,
+      "raw": 21819,
+      "at": 0.34
+    },
+    {
+      "name": "pad",
+      "bytes": 1114,
+      "raw": 792,
+      "at": 0.34
+    },
+    {
+      "name": "pace",
+      "bytes": 1301,
+      "raw": 979,
+      "at": 0.35
+    },
+    {
+      "name": "detail",
+      "bytes": 1100,
+      "raw": 778,
+      "at": 0.35
+    },
+    {
+      "name": "local",
+      "bytes": 2049,
+      "raw": 3814,
+      "at": 0.35
+    },
+    {
+      "name": "module",
+      "bytes": 1206,
+      "raw": 1615,
+      "at": 0.35
+    },
+    {
+      "name": "look",
+      "bytes": 1783,
+      "raw": 3229,
+      "at": 0.35
+    },
+    {
+      "name": "flight",
+      "bytes": 1618,
+      "raw": 2351,
+      "at": 0.35
+    },
+    {
+      "name": "renderer",
+      "bytes": 4324,
+      "raw": 8539,
+      "at": 0.36
+    },
+    {
+      "name": "earnRules",
+      "bytes": 2216,
+      "raw": 3731,
+      "at": 0.36
+    },
+    {
+      "name": "economy",
+      "bytes": 3185,
+      "raw": 6260,
+      "at": 0.36
+    },
+    {
+      "name": "standing",
+      "bytes": 1891,
+      "raw": 3100,
+      "at": 0.36
+    },
+    {
+      "name": "MiniMap",
+      "bytes": 1668,
+      "raw": 2627,
+      "at": 0.36
+    },
+    {
+      "name": "GuideCue",
+      "bytes": 615,
+      "raw": 293,
+      "at": 0.37
+    },
+    {
+      "name": "hud",
+      "bytes": 3975,
+      "raw": 10977,
+      "at": 0.37
+    },
+    {
+      "name": "hud",
+      "bytes": 1361,
+      "raw": 1803,
+      "at": 0.37
+    },
+    {
+      "name": "LoadingVeil",
+      "bytes": 1113,
+      "raw": 1383,
+      "at": 0.37
+    },
+    {
+      "name": "seeded",
+      "bytes": 485,
+      "raw": 163,
+      "at": 0.37
+    },
+    {
+      "name": "registry",
+      "bytes": 2398,
+      "raw": 4125,
+      "at": 0.38
+    },
+    {
+      "name": "RiArrowLeftLine",
+      "bytes": 628,
+      "raw": 306,
+      "at": 0.38
+    },
+    {
+      "name": "PlacesExplorer",
+      "bytes": 2412,
+      "raw": 4767,
+      "at": 0.38
+    },
+    {
+      "name": "three.core",
+      "bytes": 101219,
+      "raw": 379014,
+      "at": 0.38
+    },
+    {
+      "name": "ModelCredits",
+      "bytes": 1420,
+      "raw": 2207,
+      "at": 0.38
+    },
+    {
+      "name": "three.module",
+      "bytes": 89186,
+      "raw": 365071,
+      "at": 0.38
+    },
+    {
+      "name": "focus",
+      "bytes": 562,
+      "raw": 240,
+      "at": 0.39
+    },
+    {
+      "name": "useLooks",
+      "bytes": 890,
+      "raw": 568,
+      "at": 0.39
+    },
+    {
+      "name": "words",
+      "bytes": 976,
+      "raw": 654,
+      "at": 0.39
+    },
+    {
+      "name": "Wardrobe",
+      "bytes": 2970,
+      "raw": 6544,
+      "at": 0.39
+    },
+    {
+      "name": "relations",
+      "bytes": 980,
+      "raw": 1159,
+      "at": 0.39
+    },
+    {
+      "name": "Online",
+      "bytes": 5498,
+      "raw": 15061,
+      "at": 0.39
+    },
+    {
+      "name": "sides",
+      "bytes": 1334,
+      "raw": 2532,
+      "at": 0.4
+    },
+    {
+      "name": "sector",
+      "bytes": 3682,
+      "raw": 6868,
+      "at": 0.4
+    },
+    {
+      "name": "yardRules",
+      "bytes": 3712,
+      "raw": 7566,
+      "at": 0.4
+    },
+    {
+      "name": "Photo",
+      "bytes": 8517,
+      "raw": 30675,
+      "at": 0.41
+    },
+    {
+      "name": "Gauntlet",
+      "bytes": 1559,
+      "raw": 3336,
+      "at": 0.41
+    },
+    {
+      "name": "RiDownloadLine",
+      "bytes": 624,
+      "raw": 302,
+      "at": 0.41
+    },
+    {
+      "name": "ScriptToggle",
+      "bytes": 761,
+      "raw": 439,
+      "at": 0.41
+    },
+    {
+      "name": "RiPauseFill",
+      "bytes": 534,
+      "raw": 212,
+      "at": 0.41
+    },
+    {
+      "name": "eggs",
+      "bytes": 1020,
+      "raw": 1256,
+      "at": 0.41
+    },
+    {
+      "name": "GuideLink",
+      "bytes": 3842,
+      "raw": 9402,
+      "at": 0.41
+    },
+    {
+      "name": "RiArrowGoBackLine",
+      "bytes": 785,
+      "raw": 463,
+      "at": 0.42
+    },
+    {
+      "name": "dimensions",
+      "bytes": 1086,
+      "raw": 764,
+      "at": 0.42
+    },
+    {
+      "name": "impact",
+      "bytes": 1228,
+      "raw": 906,
+      "at": 0.42
+    },
+    {
+      "name": "mouth",
+      "bytes": 993,
+      "raw": 671,
+      "at": 0.42
+    },
+    {
+      "name": "clips",
+      "bytes": 449,
+      "raw": 127,
+      "at": 0.42
+    },
+    {
+      "name": "useEarn",
+      "bytes": 5309,
+      "raw": 13348,
+      "at": 0.42
+    },
+    {
+      "name": "sfx",
+      "bytes": 10432,
+      "raw": 39557,
+      "at": 0.42
+    },
+    {
+      "name": "runtime",
+      "bytes": 881,
+      "raw": 559,
+      "at": 0.87
+    },
+    {
+      "name": "economy",
+      "bytes": 663,
+      "raw": 341,
+      "at": 0.87
+    },
+    {
+      "name": "pilotMarks",
+      "bytes": 877,
+      "raw": 555,
+      "at": 0.87
+    },
+    {
+      "name": "allegiance",
+      "bytes": 1168,
+      "raw": 1480,
+      "at": 0.88
+    },
+    {
+      "name": "gcw",
+      "bytes": 7123,
+      "raw": 16064,
+      "at": 0.89
+    },
+    {
+      "name": "systems",
+      "bytes": 15638,
+      "raw": 43960,
+      "at": 0.89
+    },
+    {
+      "name": "heroes",
+      "bytes": 4087,
+      "raw": 9061,
+      "at": 0.9
+    },
+    {
+      "name": "combatRules",
+      "bytes": 1841,
+      "raw": 3284,
+      "at": 0.9
+    },
+    {
+      "name": "weaponRules",
+      "bytes": 2335,
+      "raw": 5047,
+      "at": 0.9
+    },
+    {
+      "name": "warState",
+      "bytes": 618,
+      "raw": 296,
+      "at": 0.9
+    },
+    {
+      "name": "tally",
+      "bytes": 1554,
+      "raw": 2691,
+      "at": 0.91
+    },
+    {
+      "name": "warState",
+      "bytes": 2149,
+      "raw": 3406,
+      "at": 0.91
+    },
+    {
+      "name": "allegiance",
+      "bytes": 563,
+      "raw": 241,
+      "at": 0.91
+    },
+    {
+      "name": "RoomEnvironment",
+      "bytes": 1258,
+      "raw": 2041,
+      "at": 0.91
+    },
+    {
+      "name": "textures",
+      "bytes": 3578,
+      "raw": 7513,
+      "at": 0.91
+    },
+    {
+      "name": "bloom",
+      "bytes": 564,
+      "raw": 242,
+      "at": 0.92
+    },
+    {
+      "name": "utility",
+      "bytes": 1330,
+      "raw": 1006,
+      "at": 0.92
+    },
+    {
+      "name": "vec",
+      "bytes": 734,
+      "raw": 412,
+      "at": 0.92
+    },
+    {
+      "name": "house",
+      "bytes": 4751,
+      "raw": 11000,
+      "at": 0.92
+    },
+    {
+      "name": "BufferGeometryUtils",
+      "bytes": 2249,
+      "raw": 6124,
+      "at": 0.93
+    },
+    {
+      "name": "feel",
+      "bytes": 1201,
+      "raw": 1382,
+      "at": 0.93
+    },
+    {
+      "name": "gltfCache",
+      "bytes": 935,
+      "raw": 613,
+      "at": 0.94
+    },
+    {
+      "name": "scene",
+      "bytes": 124868,
+      "raw": 334595,
+      "at": 0.94
+    },
+    {
+      "name": "gltf",
+      "bytes": 22569,
+      "raw": 74572,
+      "at": 0.94
+    },
+    {
+      "name": "houseTuning",
+      "bytes": 1316,
+      "raw": 994,
+      "at": 0.94
+    },
+    {
+      "name": "arrival",
+      "bytes": 717,
+      "raw": 395,
+      "at": 0.94
+    },
+    {
+      "name": "perception",
+      "bytes": 1512,
+      "raw": 2543,
+      "at": 0.95
+    },
+    {
+      "name": "emote",
+      "bytes": 1558,
+      "raw": 2583,
+      "at": 0.95
+    },
+    {
+      "name": "RoundedBoxGeometry",
+      "bytes": 1176,
+      "raw": 1708,
+      "at": 0.95
+    },
+    {
+      "name": "kit",
+      "bytes": 5225,
+      "raw": 11604,
+      "at": 0.95
+    },
+    {
+      "name": "Pass",
+      "bytes": 1013,
+      "raw": 691,
+      "at": 0.95
+    },
+    {
+      "name": "post",
+      "bytes": 5128,
+      "raw": 11055,
+      "at": 0.95
+    },
+    {
+      "name": "tree",
+      "bytes": 1123,
+      "raw": 1550,
+      "at": 0.95
+    },
+    {
+      "name": "noiseGlsl",
+      "bytes": 1684,
+      "raw": 3510,
+      "at": 0.95
+    },
+    {
+      "name": "UnrealBloomPass",
+      "bytes": 4121,
+      "raw": 15351,
+      "at": 0.95
+    },
+    {
+      "name": "explosions",
+      "bytes": 2663,
+      "raw": 4981,
+      "at": 0.95
+    },
+    {
+      "name": "contact",
+      "bytes": 1174,
+      "raw": 1543,
+      "at": 0.96
+    },
+    {
+      "name": "gen3d",
+      "bytes": 909,
+      "raw": 587,
+      "at": 0.96
+    },
+    {
+      "name": "foliage",
+      "bytes": 2640,
+      "raw": 5689,
+      "at": 0.96
+    },
+    {
+      "name": "kit",
+      "bytes": 7301,
+      "raw": 17381,
+      "at": 0.96
+    },
+    {
+      "name": "core",
+      "bytes": 4265,
+      "raw": 10442,
+      "at": 0.96
+    },
+    {
+      "name": "noise",
+      "bytes": 1318,
+      "raw": 996,
+      "at": 0.96
+    },
+    {
+      "name": "director",
+      "bytes": 59725,
+      "raw": 162098,
+      "at": 0.97
+    },
+    {
+      "name": "targeting",
+      "bytes": 2144,
+      "raw": 3646,
+      "at": 0.97
+    },
+    {
+      "name": "protocol",
+      "bytes": 14672,
+      "raw": 33870,
+      "at": 0.97
+    },
+    {
+      "name": "squad",
+      "bytes": 2208,
+      "raw": 4027,
+      "at": 0.97
+    },
+    {
+      "name": "sides",
+      "bytes": 4432,
+      "raw": 13293,
+      "at": 0.97
+    },
+    {
+      "name": "press",
+      "bytes": 887,
+      "raw": 1030,
+      "at": 0.98
+    },
+    {
+      "name": "aim",
+      "bytes": 1520,
+      "raw": 2282,
+      "at": 0.98
+    },
+    {
+      "name": "foot",
+      "bytes": 4440,
+      "raw": 8779,
+      "at": 0.98
+    },
+    {
+      "name": "fleet",
+      "bytes": 63667,
+      "raw": 198115,
+      "at": 0.98
+    },
+    {
+      "name": "bolt",
+      "bytes": 1688,
+      "raw": 2608,
+      "at": 0.98
+    },
+    {
+      "name": "siege",
+      "bytes": 2233,
+      "raw": 3785,
+      "at": 0.98
+    },
+    {
+      "name": "atmosphere",
+      "bytes": 3948,
+      "raw": 7436,
+      "at": 0.98
+    },
+    {
+      "name": "battleObjectives",
+      "bytes": 825,
+      "raw": 1091,
+      "at": 0.98
+    },
+    {
+      "name": "texture",
+      "bytes": 1612,
+      "raw": 2663,
+      "at": 0.98
+    },
+    {
+      "name": "shipModels",
+      "bytes": 18949,
+      "raw": 50647,
+      "at": 0.99
+    },
+    {
+      "name": "war",
+      "bytes": 6668,
+      "raw": 14298,
+      "at": 0.99
+    },
+    {
+      "name": "data",
+      "bytes": 1106,
+      "raw": 1307,
+      "at": 0.99
+    },
+    {
+      "name": "ringShape",
+      "bytes": 1056,
+      "raw": 734,
+      "at": 0.99
+    },
+    {
+      "name": "planets",
+      "bytes": 39982,
+      "raw": 118722,
+      "at": 0.99
+    },
+    {
+      "name": "globe-lattice",
+      "bytes": 6177,
+      "raw": 19450,
+      "at": 0.99
+    },
+    {
+      "name": "sky",
+      "bytes": 5984,
+      "raw": 14531,
+      "at": 0.99
+    },
+    {
+      "name": "reticle",
+      "bytes": 593,
+      "raw": 271,
+      "at": 1
+    },
+    {
+      "name": "chunkGrid",
+      "bytes": 1250,
+      "raw": 1731,
+      "at": 1
+    },
+    {
+      "name": "wayin",
+      "bytes": 12035,
+      "raw": 39145,
+      "at": 1
+    },
+    {
+      "name": "battle",
+      "bytes": 20654,
+      "raw": 55570,
+      "at": 1
+    },
+    {
+      "name": "KeyTable",
+      "bytes": 1262,
+      "raw": 940,
+      "at": 3.74
+    },
+    {
+      "name": "abouts",
+      "bytes": 1771,
+      "raw": 2700,
+      "at": 3.75
+    },
+    {
+      "name": "Tour",
+      "bytes": 4682,
+      "raw": 10500,
+      "at": 3.75
+    },
+    {
+      "name": "todo",
+      "bytes": 6415,
+      "raw": 18605,
+      "at": 3.75
+    },
+    {
+      "name": "steps",
+      "bytes": 6213,
+      "raw": 14787,
+      "at": 3.75
+    },
+    {
+      "name": "briefs",
+      "bytes": 6121,
+      "raw": 16596,
+      "at": 3.75
+    },
+    {
+      "name": "cybertron",
+      "bytes": 804,
+      "raw": 482,
+      "at": 3.75
+    },
+    {
+      "name": "scene",
+      "bytes": 3737,
+      "raw": 7654,
+      "at": 4.24
+    }
+  ],
+  "errors": []
+}

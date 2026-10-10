@@ -21,6 +21,7 @@
 // drawables(roots) → one object per material and kind of mesh, hidden ones too
 // compileSlices(renderer, roots, camera, scene, { sliceMs, batch, onStep, frame, alive, cap, target }) → the materials
 // warmDraw(renderer, render, roots, { frame }) → everything drawn once, out of sight
+// warming() → whether a warm draw is being drawn (the frame guard draws it whole)
 // prepareScene({ renderer, roots, scene, camera, render, onProgress, frame, alive, target })
 //
 // `frame` is how to wait for the next frame (requestAnimationFrame by
@@ -28,7 +29,21 @@
 // while it prepares stops at the next slice). Nothing here throws, and
 // every promise resolves, a lost context included.
 
-export const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 16)));
+// (or a tenth of a second, whichever comes first: a tab in the background
+// gets no frames at all, and a landing prepared there held at its pictures,
+// 33%, until it was looked at: the flow design's bug 2)
+export const FRAME_WAIT = 100;
+export const nextFrame = () =>
+  new Promise((resolve) => {
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(go);
+    setTimeout(go, typeof requestAnimationFrame === 'function' ? FRAME_WAIT : 16);
+  });
 const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const yes = () => true;
 
@@ -141,9 +156,10 @@ const send = (renderer, t) => {
 
 // The pictures a material draws with: its own, its uniforms', and those a
 // patch hands three as the shader's made, kept on it out of sight (a scan,
-// lib/three/core's wear; the look's ground, lib/three/house), which three
-// would otherwise send in the middle of the first draw.
-const PATCHES = ['core', 'house'];
+// lib/three/core's wear; the look's ground, lib/three/house; the wind's
+// noise, universe/landings/canopy), which three would otherwise send in the
+// middle of the first draw.
+const PATCHES = ['core', 'house', 'canopy'];
 export function picturesIn(m, into = []) {
   if (!m) return into;
   for (const v of Object.values(m)) if (v?.isTexture) into.push(v);
@@ -324,12 +340,18 @@ export function revealAll(...roots) {
 }
 
 
+// (lib/three/frameGuard draws a warm draw whole: what it held back there
+// would be left out of the first frames seen, which is what it's for)
+let warm = 0;
+export const warming = () => warm > 0;
+
 // Everything under `roots` drawn once by the world's own `render` (passes
 // and all), hidden things too and nothing culled, into one pixel: what's
 // sent the first time a thing is drawn (its buffers, the chip's own state
 // for each shader) goes now, not on the first frame that's seen.
 export async function warmDraw(renderer, render, roots, { frame = nextFrame } = {}) {
   const undo = revealAll(...roots);
+  warm += 1;
   try {
     renderer.setScissor?.(0, 0, 1, 1);
     renderer.setScissorTest?.(true);
@@ -337,6 +359,7 @@ export async function warmDraw(renderer, render, roots, { frame = nextFrame } = 
   } catch (err) {
     if (import.meta.env?.DEV) console.warn('[gpuWork] warm draw failed', err);
   } finally {
+    warm -= 1;
     undo();
     try {
       renderer.setScissorTest?.(false);

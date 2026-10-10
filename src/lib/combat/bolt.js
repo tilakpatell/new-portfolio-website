@@ -3,19 +3,28 @@
 // segment `speed · dt` and that segment is tested against the world's solids
 // (a raycast the world gives: ground, walls, props), the bodies (capsules)
 // and the raised blades, nearest first, so a bolt stops at the first thing
-// in its way and nothing fast tunnels through anything thin.
+// in its way and nothing fast tunnels through anything thin. The solids are
+// asked last, and only as far as the nearest body or blade on it: a solid
+// the world does something to when it's met (a landing's prop, knocked)
+// isn't met behind the person the bolt hits first.
 //
 // createBolts({ pool = 48 }) → { fire(spec) → bolt, step(dt, world) →
 // events[], live() → bolt[], clear() }.
 // spec: { from, dir, speed = 90, range = 120, owner, side ('you' | 'them' |
-// 'none', or a faction), damage, colour, deflect = false, ghost = false, tag }
-// (plain [x, y, z] arrays; `tag` is the caller's, carried untouched; a
-// `ghost` is a battle's tracer, stopped by solids and hurting nobody).
-// world: { solids(a, b) → { at, normal } | null, bodies: [{ id, a, b, r,
-// side, allies?, ref }], blades: [{ id, base, tip, r, side, ref }] }
+// 'none', or a faction), damage, colour, deflect = false, ghost = false, tag,
+// ballistic } (plain [x, y, z] arrays; `tag` is the caller's, carried
+// untouched; a `ghost` is a battle's tracer, stopped by solids and hurting
+// nobody; `ballistic`, a projectiles.json row: the bolt flies by
+// lib/combat/ballistics.js's flight at `speed`, falling and slowing as the
+// row says, and is gone at its ttl; the segment test is the same).
+// world: { solids(a, b) → { at, normal, surface? } | null (b: as far as it's
+// to look, short of the step's end where a body or a blade is in the way),
+// bodies: [{ id, a, b, r, side, allies?, ref }], blades: [{ id, base, tip, r,
+// side, ref, test? }] } (`test(a, b)` → { t, at } | null: a guard of a shape
+// of its own, the 2017 game's deflect shield, in place of the segment's capsule)
 // (`allies`: the sides whose bolts pass a body by, as a rebel's pass you).
 // events: { type: 'hit', bolt, body, at } | { type: 'solid', bolt, at,
-// normal } | { type: 'deflect', bolt, blade, at } | { type: 'gone', bolt }.
+// normal, surface (what the solids said it struck, for its material) } | { type: 'deflect', bolt, blade, at } | { type: 'gone', bolt }.
 //
 // A bolt never hits its owner's body (it leaves from inside their capsule)
 // nor a body on its own side; a 'none' bolt hits anyone else. A bolt marked
@@ -25,6 +34,8 @@
 // The geometry is exported for the blade's sweep (lib/combat/blade.js):
 // segSeg(a, b, c, d) → { s, t, dist }, segCapsule(a, b, ca, cb, r) → { t, at }
 // | null. Pure: plain arrays, no three.js.
+
+import { flight, launch } from './ballistics';
 
 const EPS = 1e-9;
 
@@ -121,7 +132,7 @@ export function createBolts({ pool = 48 } = {}) {
   };
 
   return {
-    fire({ from, dir, speed = SPEED, range = RANGE, owner = null, side = 'none', damage = 0, colour = '#ff3b30', deflect = false, ghost = false, tag = null }) {
+    fire({ from, dir, speed = SPEED, range = RANGE, owner = null, side = 'none', damage = 0, colour = '#ff3b30', deflect = false, ghost = false, tag = null, ballistic = null }) {
       const b = take();
       const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
       b.alive = true;
@@ -140,6 +151,11 @@ export function createBolts({ pool = 48 } = {}) {
       b.deflected = false;
       b.ghost = ghost;
       b.tag = tag;
+      b.ballistic = ballistic;
+      if (ballistic) {
+        b.vel = launch(ballistic, b.dir, speed);
+        b.life = 0;
+      }
       return b;
     },
 
@@ -150,22 +166,26 @@ export function createBolts({ pool = 48 } = {}) {
       for (const b of slots) {
         if (!b.alive) continue;
         let left = Math.min(b.speed * dt, b.range - b.flown);
+        let spent = false; // (a ballistic bolt's life run out this step)
+        if (b.ballistic) {
+          // the row's step decides where it gets to; the segment there is tested as any other
+          const f = flight(b.ballistic, b, dt);
+          const d = sub(b.pos, f.from);
+          const len = Math.sqrt(dot(d, d));
+          b.pos = f.from;
+          if (len > EPS) b.dir = [d[0] / len, d[1] / len, d[2] / len];
+          left = Math.min(len, b.range - b.flown);
+          spent = f.gone;
+        }
         for (let turn = 0; turn < TURNS && left > 0 && b.alive; turn++) {
           const a = b.pos;
           const e = [a[0] + b.dir[0] * left, a[1] + b.dir[1] * left, a[2] + b.dir[2] * left];
           let t = 1;
           let what = null;
-          // solids first: on a tie (a muzzle inside a wall) the wall wins
-          const wall = world?.solids?.(a, e);
-          if (wall) {
-            const w = sub(wall.at, a);
-            t = Math.sqrt(dot(w, w)) / left;
-            what = { type: 'solid', bolt: b, at: [...wall.at], normal: wall.normal ?? null };
-          }
           if (b.deflect) {
             for (const bl of blades) {
               if (bl.side === b.side) continue;
-              const k = segCapsule(a, e, bl.base, bl.tip, bl.r);
+              const k = bl.test ? bl.test(a, e) : segCapsule(a, e, bl.base, bl.tip, bl.r);
               if (k && k.t < t) {
                 t = k.t;
                 what = { type: 'deflect', bolt: b, blade: bl, at: k.at };
@@ -180,6 +200,18 @@ export function createBolts({ pool = 48 } = {}) {
               what = { type: 'hit', bolt: b, body, at: k.at };
             }
           }
+          // then the solids, as far as that: one there or short of it wins
+          // (on a tie the wall, as for a muzzle inside one), and one past it
+          // is never asked
+          const wall = world?.solids?.(a, t < 1 ? lerp(a, e, t) : e);
+          if (wall) {
+            const w = sub(wall.at, a);
+            const tw = Math.sqrt(dot(w, w)) / left;
+            if (tw <= t + EPS) {
+              t = tw;
+              what = { type: 'solid', bolt: b, at: [...wall.at], normal: wall.normal ?? null, surface: wall.surface ?? null };
+            }
+          }
           const went = left * t;
           b.flown += went;
           left -= went;
@@ -192,6 +224,7 @@ export function createBolts({ pool = 48 } = {}) {
           }
           // turned: back along its line, the blade's now, home at its shooter
           b.dir = [-b.dir[0], -b.dir[1], -b.dir[2]];
+          if (b.ballistic) b.vel = [-b.vel[0], -b.vel[1], -b.vel[2]];
           b.side = what.blade.side;
           b.owner = what.blade.id;
           b.deflect = false;
@@ -199,7 +232,7 @@ export function createBolts({ pool = 48 } = {}) {
           b.flown = 0;
           left = Math.min(left, b.range);
         }
-        if (b.alive && b.flown >= b.range - EPS) {
+        if (b.alive && (spent || b.flown >= b.range - EPS)) {
           b.alive = false;
           events.push({ type: 'gone', bolt: b });
         }

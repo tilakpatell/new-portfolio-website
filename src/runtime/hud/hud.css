@@ -128,6 +128,17 @@
   :where(.hud-toast) { animation: none; }
 }
 
+/* a minimap (./MiniMap.jsx): a disc on glass under the top row on the right,
+   its caption on glass under it; the disc is a button (it opens the map) */
+:where(.hud-minimap):not(hud-none) { position: absolute; right: var(--hud-pad-r); top: var(--hud-under); z-index: 2; display: grid; justify-items: center; gap: 0.35rem; width: var(--hud-minimap, 240px); pointer-events: none; }
+:where(.hud-minimap > :not(.hud-minimap-disc, .hud-minimap-caption)):not(hud-none) { pointer-events: auto; }
+:where(.hud-minimap-disc):not(hud-none) { display: block; width: var(--hud-minimap, 240px); height: var(--hud-minimap, 240px); margin: 0; padding: 0; border: 3px solid var(--hud-glass); border-radius: 50%; background: var(--hud-glass); box-shadow: var(--hud-shadow); overflow: hidden; cursor: pointer; pointer-events: auto; }
+:where(.hud-minimap-disc:focus-visible):not(hud-none) { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+:where(.hud-minimap-disc canvas):not(hud-none) { display: block; width: 100%; height: 100%; }
+:where(.hud-minimap-caption):not(hud-none) { margin: 0; padding: 0.2rem 0.55rem; border-radius: var(--hud-radius); background: var(--hud-glass); color: var(--hud-ink); font: 600 0.75rem/1.3 var(--hud-num-face); font-variant-numeric: tabular-nums; pointer-events: none; }
+:where(.hud-minimap-caption:empty):not(hud-none) { display: none; }
+:where(.hud-minimap[data-empty='true']):not(hud-none) { visibility: hidden; }
+
 /* the spacing, on the root: a world's HUD that isn't in the frame yet
    (its own rows, as the towns' still are) is spaced by the same numbers */
 :root {

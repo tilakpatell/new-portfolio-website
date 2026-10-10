@@ -1,5 +1,11 @@
-// Machines that walk on legs of their own, where their model came as one
-// rigid lump with no skeleton (the AT-RT: one merged Sketchfab mesh). The
+// Machines that walk on legs of their own. Where the model is the game's
+// (Star Wars Battlefront II (2017)'s walkers and droideka: catalog/
+// bf2017-vehicles.js, its entry `rig`), it walks, turns, fires and falls by
+// the game's own clips on the game's own skeleton (lib/three/ownRig.js, the
+// pack lib/three/rigSets.js names), its feet planted by the clip; that is
+// every row below with `own`. Where the model came as one rigid lump with no
+// skeleton (the AT-RT's old Sketchfab mesh, or a page's own book of models
+// without the game's), it is cut at its joints instead. The
 // lump is cut into its parts at their joints (each triangle to the part it
 // lies in: the body, and each leg's thigh, shin and foot), the parts hung
 // on pivots at the joints, and the legs stepped by the ground the walker
@@ -10,7 +16,7 @@
 // the saddle (a crew figure, riders.js's pose: the hands on the bars, the
 // feet on the footrests), who does its looking.
 //
-// WALKERS[kind] → { legs: [{ x, hip, knee, ankle }], body(c) → bool, foot,
+// WALKERS[kind] → { own?: rig, legs?: [{ x, hip, knee, ankle }], body(c) → bool, foot,
 //   step, lift, stance, bob, rider?: { kind, seat } } (in the model's own
 //   frame: +z its nose, +x its left, y up from its feet, metres; hip, knee,
 //   ankle: [y, z] of the left leg's joints, the right mirrored at -x; body:
@@ -23,20 +29,32 @@
 // footAt(g, i, spec) → [dy, dz] off the leg's rest ankle (pure)
 // splitParts(root, spec) → { body, legs: [{ hip, knee, ankle }] }: the
 //   model's meshes cut into its parts and hung on its joints
+// walkerWay(row, entry) → 'own' (the game's rig and clips), 'cut' (cut at
+//   its joints) or null: how a kind with this row and catalogue entry walks
+// packUrl(rig) → its clip pack's file
+// blastClass(kind) → 'walker' | 'speeder' | null: its blast when it falls
 // walkerFigure(kind, i) → a figure (actors.js's shape), or null
 
 import * as THREE from 'three';
+import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, modelUrlFor } from './catalog';
-import { cloneModel, loadGlb } from './placer';
+import { cloneModel, fallbackFor, loadGlb, loadGlbOr } from './placer';
 import { crewFigure } from './crew';
 import { poseRider } from './riders';
 import { NO_CALLS } from '../../../lib/three/figureCalls';
+import { loadOwnRigFigure } from '../../../lib/three/ownRig';
+import { RIGS } from '../../../lib/three/rigSets';
 
 export const WALKERS = {
+  atat: { own: 'atat' },
+  atst: { own: 'atst' },
+  atte: { own: 'atte' },
+  droideka: { own: 'droideka' },
   // the AT-RT: its hips at the discs under the cockpit, a thigh back and
   // down to the knee (bent backward, as a chicken walker's), the shin down
   // and forward to the ankle, the clawed foot ahead of it
   atrt: {
+    own: 'atrt',
     legs: [{ x: 0.33, hip: [1.52, -0.2], knee: [0.76, -1.08], ankle: [0.12, -0.78] }],
     body: ([x, y, z]) => y > 1.68 || (Math.abs(x) < 0.2 && y > 1.2) || (z > 0.05 && y > 1.0),
     foot: 0.25,
@@ -49,6 +67,20 @@ export const WALKERS = {
     rider: { kind: 'clone', seat: { hips: [0, 2.15, -0.45], lean: 0.35, hands: [[0.25, 2.4, -0.2]], feet: [[0.33, 1.62, -0.25]], elbow: [0.7, -0.5, -0.4], knee: [0.6, 0.2, 1], toes: [0.2, -0.3, 1] } },
   },
 };
+
+// the class of lane F's blast (lib/three/fx/gameFx.js's explode) a walker
+// goes up in when it falls: the walkers a walker's, the droideka (a droid
+// the size of a speeder bike) a speeder's; anything not here none
+export const blastClass = (kind) => (WALKERS[kind]?.own ? (kind === 'droideka' ? 'speeder' : 'walker') : null);
+
+export function walkerWay(row, entry) {
+  if (!row) return null;
+  if (row.own && entry?.rig && RIGS[row.own]) return 'own';
+  if (row.legs) return 'cut';
+  return null;
+}
+
+export const packUrl = (rig) => `/models/galaxy/bf2017/clips-${rig}.glb`;
 
 const ang = (y, z) => Math.atan2(z, y); // (about the leg's axis, from straight down… up: y toward z)
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -219,8 +251,14 @@ export function splitParts(root, spec) {
 // its figure does, sat in the saddle
 export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
   const spec = WALKERS[kind];
-  if (!spec || !models[kind]) return null;
-  const gltf = await loadGlb(modelUrlFor(kind, 'high', models));
+  const way = walkerWay(spec, models[kind]);
+  if (way === 'own') return ownWalker(kind, spec, i, models);
+  if (way !== 'cut') return null;
+  // (the level's own cut: at ultra the .ultra file, the same rig and nodes
+  // as the plain, which the placer loads for the same kind; asking 'high'
+  // fetched the plain as well, and drew the walker below its best)
+  const url = modelUrlFor(kind, detailLevel(), models);
+  const gltf = await loadGlbOr(url, fallbackFor(kind, url, models));
   if (!gltf) return null;
   const scene = cloneModel(gltf);
   const { body, legs, pieces } = splitParts(scene, spec);
@@ -277,4 +315,18 @@ export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
       for (const p of pieces) p.geometry.dispose();
     },
   };
+}
+
+// a walker on the game's own rig: the figure ownRig.js makes, as the game
+// has it. Nothing of the site's rides it (the owner, 2026-10-10: nothing of
+// ours rigged to a game model), so the AT-RT walks with its saddle empty
+// until the game's own clone trooper sits it.
+async function ownWalker(kind, spec, i, models) {
+  const load = async (url) => {
+    // (an .ultra cut not to be had falls to the plain one: placer.js's fallbackFor)
+    const gltf = await loadGlbOr(url, fallbackFor(kind, url, models));
+    return gltf ? { scene: cloneModel(gltf), animations: gltf.animations } : null;
+  };
+  // (the level's own cut, as below: the AT-AT's ultra is the same skin on the same rig)
+  return loadOwnRigFigure(modelUrlFor(kind, detailLevel(), models), { rig: spec.own, packs: [packUrl(spec.own)], load, loadPack: loadGlb }).catch(() => null);
 }

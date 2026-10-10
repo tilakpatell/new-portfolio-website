@@ -21,8 +21,14 @@ import { PACK as dotMatrix } from '../dotmatrix/pack.js';
 import { PACK as mario64 } from '../mario64/pack.js';
 import { PACK as earth } from '../earth/pack.js';
 import { PACK as minecraft } from '../minecraft/pack.js';
+import { PACK as fly } from '../expanse/flight/pack.js'; // planet flight (scripts/flight-island.mjs removes this row)
 
-export const PACKS = Object.fromEntries([caribbean, invincible, cybertron, avengers, c137, albuquerque, scranton, galaxy, deathstar, deathstarInside, middleEarth, music, dotMatrix, mario64, earth, minecraft].map((p) => [p.id, p]));
+export const PACKS = Object.fromEntries(
+  [
+    ...[caribbean, invincible, cybertron, avengers, c137, albuquerque, scranton, galaxy, deathstar, deathstarInside, middleEarth, music, dotMatrix, mario64, earth, minecraft],
+    fly, // planet flight
+  ].map((p) => [p.id, p]),
+);
 
 // The longest match wins, as worlds.js's worldAt: '/dot-matrix/64' is its own
 // world, not Dot Matrix's.

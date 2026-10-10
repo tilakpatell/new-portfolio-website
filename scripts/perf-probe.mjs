@@ -16,14 +16,16 @@
 // (?gpu=webgl|webgpu: a port's frame-time table is two runs of the same
 // journey; a 'glsl' world is on the classic renderer either way, and each
 // journey's report names the backend it was actually drawn on), OUT is
-// where the JSON report goes. Each journey
-// prints a table: a row per phase (load, idle, move...), with the frame
+// where the JSON report goes.
+// planet flight: begin
+// FLY picks the /fly journey's planet (default Hoth).
+// planet flight: end
+// Each journey prints a table: a row per phase (load, idle, move...), with the frame
 // times' spread, the hitches (frames over 50 and 100 ms), what the worst
 // frames were spent on, and `sizes`, the 3D canvases resized (each one
 // waits on the graphics chip: a stall with no GL call named in it).
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 
 const argv = process.argv.slice(2);
 const profile = Boolean(process.env.PROFILE);
@@ -321,6 +323,33 @@ const worldPage = (route, { ready = canvasUp, move = 'KeyW' } = {}) =>
   };
 
 const JOURNEYS = {
+  // planet flight: begin (scripts/flight-island.mjs removes this block)
+  // the planet flight (/fly/hoth): the ground streamed in at the start, then
+  // 300 m/s north for 14 s, from the range onto the plains (a biome boundary
+  // at z ≈ 1000), into the glacier (z ≈ −500), over Echo Base (z −800) and
+  // back onto the plains (z ≈ −1550), and a long
+  // bank round (the ship's dev hook, expanse/flight/module.js's __FLIGHT__)
+  async fly(page, mark) {
+    mark('load');
+    // (FLY names another planet to fly)
+    await page.goto(`${this.base}/${this.q}#/fly/${process.env.FLY ?? 'hoth'}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.__FLIGHT__ && window.__RUNTIME__?.status === 'on', null, { timeout: 240000 });
+    mark('settle');
+    await page.waitForFunction(() => window.__FLIGHT__.stats().leaves > 100, null, { timeout: 120000 }).catch(() => {});
+    await wait(page, 4000);
+    mark('idle');
+    await wait(page, 4000);
+    mark('fly');
+    await page.evaluate(() => (window.__FLIGHT__.ship = { speed: 300, pitch: 0, roll: 0 }));
+    await page.keyboard.down('ShiftLeft');
+    await wait(page, 14000);
+    mark('bank');
+    await hold(page, 'KeyD', 1200);
+    await wait(page, 6000);
+    await page.keyboard.up('ShiftLeft');
+    mark('end');
+  },
+  // planet flight: end
   async universe(page, mark) {
     mark('load');
     await page.goto(`${this.base}/${this.q}#/universe`, { waitUntil: 'domcontentloaded' });
@@ -514,13 +543,13 @@ if (!base) {
   await server.listen();
   base = 'http://127.0.0.1:5294';
 }
-const chrome = process.env.CHROME ?? `${homedir()}/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
-const args = process.platform === 'darwin' ? ['--use-angle=metal', '--disable-gpu-vsync', '--disable-frame-rate-limit', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'] : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
-// (WebGPU on: Chromium's own chip on a desktop, SwiftShader's software
-// adapter on a Linux box with no display, whose times are software's)
-// (and Blink's experimental WebGPU IDL off, as a visitor's Chrome has it:
-// its draft texture-view swizzle throws on three's every frame)
-if (gpu === 'webgpu') args.push('--enable-unsafe-webgpu', '--disable-blink-features=WebGPUExperimentalFeatures', '--enable-features=Vulkan', ...(process.platform === 'linux' && !process.env.DISPLAY ? ['--use-webgpu-adapter=swiftshader'] : []));
+const { adapterFor, angleFor, findChromium, launchArgs } = await import('./lib/chromium.mjs');
+const chrome = findChromium();
+if (!chrome) throw new Error('no Chromium (set CHROME=/path/to/chrome)');
+// (the machine's own chip, uncapped, so a frame's time is what it cost;
+// scripts/lib/chromium.mjs)
+const args = launchArgs({ angle: angleFor(), webgpu: gpu === 'webgpu', adapter: adapterFor(), uncapped: true });
+if (process.platform === 'darwin') args.push('--enable-gpu-rasterization');
 const browser = await chromium.launch({ executablePath: chrome, args });
 const report = {};
 mkdirSync(out, { recursive: true });

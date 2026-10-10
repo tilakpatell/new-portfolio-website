@@ -36,7 +36,7 @@ const SPREAD = [30, 260]; // how far its points are spread (map units), least an
 const FLASHES = 10; // the bolt flashes a fight has going, each on for a moment
 const POOL = 4; // far fights drawn at once, at most (the front and a skirmish or two)
 const PX = 2.2; // a point’s size on screen (CSS px)
-export const SKY = 24000; // past this a fight is drawn on the sky, this far out along its line (the camera sees to 30,000)
+export const SKY = 24000; // past this a fight is drawn on the sky, this far out along its line (the camera sees to 45,000)
 export const MIN_ANGLE = 0.008; // and never spread over less than this much of the view (radians, about 10 px), or from across the map it’s a speck
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));

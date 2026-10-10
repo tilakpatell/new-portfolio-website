@@ -22,12 +22,16 @@
 //
 // relayPool({ relays, WebSocket, lingerMs, now }) → { subscribe({ filter,
 //   onEvent, onChange }) → { send(eventJson), up() → how many relays are
-//   up, close() }, sockets() → how many it holds }. `filter` is the REQ's
-//   filter, or a function giving it afresh each time it's sent; onEvent(ev)
-//   gets each event for this subscription; onChange() hears a relay come or
-//   go. poolFor(WebSocket, relays) → the page's pool for that WebSocket
-//   class and list of relays (one each, kept), so a test with a fake of its
-//   own has a pool of its own.
+//   up, close(), refresh() }, sockets() → how many it holds }. `filter` is
+//   the REQ's filter, or a function giving it afresh each time it's sent;
+//   onEvent(ev) gets each event for this subscription; onChange() hears a
+//   relay come or go; refresh() asks every open relay again under the
+//   subscription's id (NIP-01: a REQ under an id already open replaces its
+//   filter), for a room whose filter changed (nostr.js's cells), and a relay
+//   that's down asks with the filter of the moment when it opens, as ever.
+//   poolFor(WebSocket, relays) → the page's pool for that WebSocket class
+//   and list of relays (one each, kept), so a test with a fake of its own
+//   has a pool of its own.
 
 export const LINGER_MS = 5000; // the last room gone: the sockets stay this long
 const HOLD_MS = 10000; // a relay that says slow down: nothing goes to it for this long
@@ -152,6 +156,9 @@ export function relayPool({ relays, WebSocket, lingerMs = LINGER_MS, now = () =>
           if (open) for (const s of sockets ?? []) s.send(json);
         },
         up: () => (open ? (sockets ?? []).filter((s) => s.up).length : 0),
+        refresh() {
+          if (open) for (const s of sockets ?? []) s.ask(sub);
+        },
         close() {
           if (!open) return;
           open = false;

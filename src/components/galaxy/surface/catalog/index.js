@@ -1,6 +1,9 @@
 import { budget } from '../../../../lib/budgets';
 import { MODELS as audit } from './audit';
 import { MODELS as battlefront } from './battlefront';
+import { MODELS as bf2017 } from './bf2017';
+import { MODELS as bf2017vehicles } from './bf2017-vehicles';
+import { MODELS as library2017 } from './bf2017-library';
 import { MODELS as common } from './common';
 import { MODELS as clonewars } from './clonewars';
 import { MODELS as core } from './core';
@@ -21,20 +24,31 @@ import { MODELS as three } from './three';
 // (each group's catalogue is brought in by scripts/sketchfab-surface.mjs on
 // its own). A world asks for a kind; one that isn't here (yet) it builds in
 // code, or goes without.
-// (battlefront last: a kind there takes over from the same kind's Sketchfab model)
-export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, people, outer, rebels, three, quaternius, made, fill, library, audit, battlefront };
+// (battlefront near the end: a kind there takes over from the same kind's
+// Sketchfab model; bf2017 and lane V's bf2017vehicles last, so a 2017 kind
+// takes over from both; the drop's object library after them, its kinds
+// `game:<name>` and so never the same as another's: catalog/bf2017-library.js)
+export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, people, outer, rebels, three, quaternius, made, fill, library, audit, battlefront, bf2017, bf2017vehicles, library2017 };
 export const SURFACE_MODELS = Object.fromEntries(Object.entries(GROUPS).flatMap(([group, models]) => Object.entries(models).map(([kind, m]) => [kind, { ...m, group }])));
 export const surfaceUrl = (kind) => `/models/galaxy/surface/${kind}.glb`;
 export const surfaceLodUrl = (kind) => `/models/galaxy/surface/${kind}.lod1.glb`;
 // A kind's ultra cut (its entry's optional `ultra: { tris, tex }`; the entry's
 // own `tris` stays the high cut): loaded at ultra, the plain file otherwise.
 export const surfaceUltraUrl = (kind) => `/models/galaxy/surface/${kind}.ultra.glb`;
+// A kind's far cut (its entry's `far`: a 2017 vehicle's last LOD, unskinned,
+// 256 maps), for the fleets and the horizon.
+export const surfaceFarUrl = (kind) => `/models/galaxy/surface/${kind}.far.glb`;
 // An entry with its own `url` (a book of models kept outside this folder:
 // the Rick and Morty planets') loads that, and its ultra and light cuts only
 // where it names them (`ultraUrl`, `lodUrl`): no file is guessed at.
+// (a native kind, the game's own maps, has a plain cut of up to 16 MB: at
+// low and mid, the phone's levels, it draws its light cut alone, the
+// library's `game:` rows by their own `lodUrl`)
+const PHONE = new Set(['low', 'mid']);
 export const modelUrlFor = (kind, level, models = SURFACE_MODELS) => {
   const m = models[kind];
-  if (m?.url) return (level === 'ultra' && m.ultraUrl) || m.url;
+  if (m?.url) return (m.native && m.lodUrl && PHONE.has(level) && m.lodUrl) || (level === 'ultra' && m.ultraUrl) || m.url;
+  if (m?.native && m.lod && PHONE.has(level)) return surfaceLodUrl(kind);
   return level === 'ultra' && m?.ultra ? surfaceUltraUrl(kind) : surfaceUrl(kind);
 };
 export const lodUrlFor = (kind, models = SURFACE_MODELS) => {

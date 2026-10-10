@@ -30,7 +30,8 @@
 // - once the battle's over, the losing side's fighters go home.
 //
 // createFlights(k) → { form(), adopt(fighters), lead(f), escortOf(f),
-//   cover(f), threat, sense(), nerve(flight), step(dt, out), steer(f, dist) }.
+//   cover(f), threat, sense(), nerve(flight), step(dt, out), steer(f, dist) };
+// hangarAt(cap, out) → a capital ship's hangar point (battleHome.js too).
 // `k` is the battle's inner context (battle.js's createBattle).
 
 import { confidence } from '../../lib/ai/squad';
@@ -59,6 +60,17 @@ export const FLIGHTS = {
 };
 const CARRIERS = new Set(FLIGHTS.carriers);
 
+// A capital ship's hangar: under its middle, clear of the hull (into `out`)
+export function hangarAt(cap, out) {
+  let r = 0;
+  let near = Infinity;
+  for (const sp of cap.spheres) {
+    const d = dist2(sp.c, cap.pos);
+    if (d < near) (near = d), (r = sp.r);
+  }
+  return set(out, cap.pos.x - cap.up.x * (r + 4), cap.pos.y - cap.up.y * (r + 4), cap.pos.z - cap.up.z * (r + 4));
+}
+
 export function createFlights(k) {
   const { b, A, C } = k;
   const flights = [];
@@ -82,17 +94,8 @@ export function createFlights(k) {
     const flag = k.flagOf(f.team);
     return flag?.alive && flag.dying <= 0 ? flag : null;
   };
-  // its hangar: under its middle, clear of the hull
-  const hangarOf = (cap) => {
-    let r = 0;
-    let near = Infinity;
-    for (const sp of cap.spheres) {
-      const d = dist2(sp.c, cap.pos);
-      if (d < near) (near = d), (r = sp.r);
-    }
-    cap.hangar ??= v3();
-    return set(cap.hangar, cap.pos.x - cap.up.x * (r + 4), cap.pos.y - cap.up.y * (r + 4), cap.pos.z - cap.up.z * (r + 4));
-  };
+  // its hangar (kept on the ship, made once)
+  const hangarOf = (cap) => hangarAt(cap, (cap.hangar ??= v3()));
 
   const make = (team, members) => {
     const fl = { id: flights.length, team, members, role: members[0].role, escort: null, escorting: null, cap: false, nerveAt: flights.length * 0.37 };

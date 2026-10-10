@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { compileSlices, drawables, fence, prepareScene, textureBytes, uploaded, uploadSlices } from './gpuWork';
+import { compileSlices, drawables, fence, picturesIn, prepareScene, textureBytes, uploaded, uploadSlices } from './gpuWork';
 import { fakeGl, fakeRenderer, now } from './gpuFake.fixture';
 
 const picture = (w = 64, h = 64) => {
@@ -69,6 +69,17 @@ describe('textureBytes', () => {
     expect(textureBytes(picture(256, 128))).toBe(256 * 128 * 4);
     const c = new THREE.CompressedTexture([{ data: new Uint8Array(100) }, { data: new Uint8Array(25) }], 16, 16);
     expect(textureBytes(c)).toBe(125);
+  });
+});
+
+describe('picturesIn', () => {
+  it('finds a patch’s pictures kept out of sight on a material (the canopy’s wind noise)', () => {
+    const m = new THREE.MeshStandardMaterial({ map: picture() });
+    const noise = picture(8, 8);
+    Object.defineProperty(m.userData, 'canopy', { value: { uWindNoise: { value: noise }, uWindTime: { value: 0 } }, enumerable: false, configurable: true });
+    expect(picturesIn(m)).toEqual([m.map, noise]);
+    // (and it stays out of sight: a copy doesn't take it)
+    expect(picturesIn(m.clone())).toEqual([m.map]);
   });
 });
 
@@ -172,5 +183,22 @@ describe('prepareScene', () => {
     await prepareScene({ renderer: r, roots: [scene], scene, camera: new THREE.PerspectiveCamera(), render: () => (drawn += 1), frame: now, alive: () => false });
     expect(drawn).toBe(0);
     expect(r.compiled.length).toBe(0);
+  });
+});
+
+describe('a frame in a tab that gets none', () => {
+  it('comes anyway, after FRAME_WAIT: a background tab never holds a prepare', async () => {
+    const { nextFrame, FRAME_WAIT } = await import('./gpuWork');
+    const was = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = () => 0; // (never fires, as in a hidden tab)
+    try {
+      const t0 = Date.now();
+      await nextFrame();
+      expect(Date.now() - t0).toBeGreaterThanOrEqual(FRAME_WAIT - 5);
+      expect(Date.now() - t0).toBeLessThan(FRAME_WAIT * 5);
+    } finally {
+      if (was) globalThis.requestAnimationFrame = was;
+      else delete globalThis.requestAnimationFrame;
+    }
   });
 });
