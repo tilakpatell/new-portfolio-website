@@ -115,8 +115,36 @@ describe('the asset upload', () => {
     expect(said.join('\n')).toMatch(/remote: 2 files, 0\.2 MB/);
     expect(said.join('\n')).toMatch(/local: 3 files/);
 
-    await run({ root, argv: ['--prune'], env: {}, bucket, log: () => {} });
+    await run({ root, argv: ['--prune'], env: {}, bucket, deployed: {}, log: () => {} });
     expect(bucket.calls.remove).toEqual(['000000000000/kit/old.glb']);
+  });
+
+  it('never prunes what the deployed manifest still names', () => {
+    const files = [{ path: 'kit/a.glb', hash: 'aaaaaaaaaaaa', bytes: 1 }];
+    const deployed = { 'kit/a.glb': { hash: '000000000000', bytes: 1 } };
+    expect(planUpload(files, ['000000000000/kit/a.glb', 'cccccccccccc/kit/c.glb'], deployed).prune).toEqual(['cccccccccccc/kit/c.glb']);
+  });
+
+  it('refuses to prune in a run that uploaded, or with no files on disk, or without the deployed manifest', async () => {
+    const said = [];
+    const log = (s) => said.push(s);
+    const root = tree();
+    const bucket = fakeBucket(['000000000000/kit/old.glb']);
+    await run({ root, argv: ['--prune'], env: {}, bucket, deployed: {}, log });
+    expect(bucket.calls.upload.length).toBe(2);
+    expect(bucket.calls.remove).toEqual([]);
+    expect(said.join('\n')).toMatch(/not pruning: this run uploaded/);
+
+    const empty = mkdtempSync(join(tmpdir(), 'assets-empty-'));
+    const full = fakeBucket(['aaaaaaaaaaaa/kit/a.glb']);
+    await run({ root: empty, argv: ['--prune'], env: {}, bucket: full, deployed: {}, log });
+    expect(full.calls.remove).toEqual([]);
+    expect(said.join('\n')).toMatch(/not pruning: no files on disk/);
+
+    const again = fakeBucket([...bucket.objects.keys()]);
+    await run({ root, argv: ['--prune'], env: {}, bucket: again, deployed: null, log });
+    expect(again.calls.remove).toEqual([]);
+    expect(said.join('\n')).toMatch(/not pruning: no deployed manifest/);
   });
 
   it('with --dry, uploads nothing and writes nothing', async () => {

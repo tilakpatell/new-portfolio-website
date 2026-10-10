@@ -187,4 +187,27 @@ describe('a pack with files from the asset bucket', () => {
     expect(cache.has(FAR.local)).toBe(false);
     expect(await inst.installed('/earth')).toEqual({ v: 'r1', bytes: 600 });
   });
+
+  it('asks a bucket that failed once no more, for this install or the page’s loads, and waits no retry for it', async () => {
+    const far = (i) => ({ url: `${BASE}/aaaaaaaaaaa${i}/models/earth/far${i}.glb`, bytes: 10, hash: `aaaaaaaaaaa${i}`, local: `/models/earth/far${i}.glb` });
+    const files = [far(1), far(2), far(3)];
+    const m = manifestOf('r2', files);
+    const asked = [];
+    const fetch = vi.fn(async (url) => {
+      url = String(url);
+      if (url.startsWith('/packs/index.json')) return Response.json({ '/earth': { slug: 'earth', bytes: m.bytes, v: 'r2' } });
+      if (url.startsWith('/packs/earth.json')) return Response.json(m);
+      asked.push(url);
+      if (url.startsWith(BASE)) throw new TypeError('Failed to fetch');
+      return new Response(new Uint8Array(10));
+    });
+    let down = false;
+    const bucket = { isDown: () => down, markDown: vi.fn(() => (down = true)) };
+    const { inst } = make({ fetch }, fakeCaches(), { concurrency: 1, retryDelay: 60000, bucket });
+    await inst.install('/earth');
+    expect(asked.filter((u) => u.startsWith(BASE))).toHaveLength(1);
+    expect(asked.filter((u) => !u.startsWith(BASE))).toEqual(['/models/earth/far1.glb', '/models/earth/far2.glb', '/models/earth/far3.glb']);
+    expect(bucket.markDown).toHaveBeenCalled();
+  });
 });
+

@@ -60,4 +60,23 @@ describe('the asset base', () => {
     expect(await load('/hq/tex/rock.jpg')).toBe(`${BASE}/bbbbbbbbbbbb/hq/tex/rock.jpg`);
     expect(isDown()).toBe(false);
   });
+
+  it('gives up on a bucket that never answers, before it has answered once, and goes local', async () => {
+    const asked = [];
+    const load = withFallback((url) => {
+      asked.push(url);
+      return url.startsWith('https:') ? new Promise(() => {}) : Promise.resolve(`bytes of ${url}`);
+    }, { ...opts, wait: 20 });
+    await expect(load('/kit/crate.glb')).resolves.toBe('bytes of /kit/crate.glb');
+    expect(isDown()).toBe(true);
+  });
+
+  it('once the bucket has answered, waits for a big file as long as it takes', async () => {
+    const slow = (url) => new Promise((r) => setTimeout(() => r(url), url.includes('rock') ? 60 : 0));
+    const load = withFallback(slow, { ...opts, wait: 20 });
+    await load('/kit/crate.glb');
+    expect(await load('/hq/tex/rock.jpg')).toBe(`${BASE}/bbbbbbbbbbbb/hq/tex/rock.jpg`);
+    expect(isDown()).toBe(false);
+  });
 });
+

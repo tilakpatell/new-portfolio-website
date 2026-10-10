@@ -16,6 +16,7 @@
 // shell's). `public/` stays whole: GitHub Pages still serves every file,
 // and the bucket is where the site asks first when VITE_ASSET_BASE is set.
 
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
@@ -46,10 +47,11 @@ export function remoteFiles(publicDir) {
     .sort((a, b) => (a.path < b.path ? -1 : 1));
 }
 
-// what the bucket lacks, what it has, and what nothing names any more. Pure.
-export function planUpload(files, stored) {
+// what the bucket lacks, what it has, and what nothing names any more:
+// neither the files on disk nor the manifest the live site was built with. Pure.
+export function planUpload(files, stored, deployed = {}) {
   const have = new Set(stored);
-  const want = new Set(files.map(keyOf));
+  const want = new Set([...files.map(keyOf), ...Object.entries(deployed ?? {}).map(([path, e]) => keyOf({ path, hash: e.hash }))]);
   return {
     upload: files.filter((f) => !have.has(keyOf(f))),
     keep: files.filter((f) => have.has(keyOf(f))),
@@ -95,13 +97,14 @@ const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
 const sum = (fs) => fs.reduce((s, f) => s + f.bytes, 0);
 
 // the work, with the bucket passed in (main makes the real one)
-export async function run({ root, argv, bucket, log = console.log }) {
+// (deployed: the manifest main has, which the live site was built with; null when it can't be read)
+export async function run({ root, argv, bucket, deployed = null, log = console.log }) {
   const dry = argv.includes('--dry');
   const prune = argv.includes('--prune');
   const publicDir = join(root, 'public');
   const files = remoteFiles(publicDir);
   const all = walk(publicDir);
-  const plan = planUpload(files, await storedKeys(bucket));
+  const plan = planUpload(files, await storedKeys(bucket), deployed);
   log(`remote: ${files.length} files, ${mb(sum(files))} (${plan.upload.length} to upload, ${mb(sum(plan.upload))}; ${plan.keep.length} there already)`);
   log(`local: ${all.length - files.length} files, ${mb(all.reduce((s, f) => s + statSync(f).size, 0) - sum(files))}`);
   if (dry) {
@@ -117,7 +120,12 @@ export async function run({ root, argv, bucket, log = console.log }) {
   }
   writeManifest(join(root, MANIFEST), manifestOf(files));
   log(`wrote ${MANIFEST}`);
-  if (prune && plan.prune.length) {
+  // (a prune is its own run, after the deploy of the last upload's manifest is
+  // live: never with an upload, never from a checkout missing the files,
+  // never without knowing what the live site names)
+  const refuse = !prune ? null : plan.upload.length ? 'this run uploaded; prune after its manifest is deployed' : !files.length ? 'no files on disk' : !deployed ? 'no deployed manifest (git show origin/main)' : null;
+  if (refuse) log(`not pruning: ${refuse}`);
+  else if (prune && plan.prune.length) {
     for (let i = 0; i < plan.prune.length; i += 100) {
       const { error } = await bucket.remove(plan.prune.slice(i, i + 100));
       if (error) throw new Error(`couldn't prune: ${error.message}`);
@@ -150,7 +158,10 @@ async function main() {
       console.log(`made the public bucket ${BUCKET}`);
     }
   }
-  const code = await run({ root, argv: process.argv.slice(2), bucket: storage.from(BUCKET) });
+  // what the live site was built with: main's manifest
+  const shown = spawnSync('git', ['show', `origin/main:${MANIFEST}`], { cwd: root, encoding: 'utf8' });
+  const deployed = shown.status === 0 ? JSON.parse(shown.stdout) : null;
+  const code = await run({ root, argv: process.argv.slice(2), bucket: storage.from(BUCKET), deployed });
   console.log(`VITE_ASSET_BASE (the repository variable ASSET_BASE): ${url}/storage/v1/object/public/${BUCKET}`);
   return code;
 }

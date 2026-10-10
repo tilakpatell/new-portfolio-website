@@ -23,7 +23,7 @@ The heavy models and textures are mirrored to the public bucket `assets` (`docs/
 1. `export SUPABASE_SERVICE_ROLE_KEY=…` (the dashboard's secret key; in the shell only, never a file), with `VITE_SUPABASE_URL` in `.env.local`.
 2. `node scripts/assets-upload.mjs --dry`: what goes, what stays, how many megabytes. Then `node scripts/assets-upload.mjs`: it makes the bucket if there is none, uploads what it lacks, writes `src/data/assets-manifest.json` and prints the base URL. Commit the manifest.
 3. Set the repository variable `ASSET_BASE` (Settings, Variables) to that URL, and `VITE_ASSET_BASE` in `.env.local` to try it locally. `unset SUPABASE_SERVICE_ROLE_KEY`.
-4. Once a deploy with the new manifest is live: `node scripts/assets-upload.mjs --prune` removes what nothing names.
+4. Once a deploy with the new manifest is live: `git fetch origin main && node scripts/assets-upload.mjs --prune` removes what neither the files on disk nor main's manifest names. It refuses in a run that uploads, with no files on disk, or when main's manifest can't be read.
 
 The bucket is public; Storage's CORS allows `GET` from any origin, the site's included, and the script sets nothing else. Before `ASSET_BASE` is set for everyone, the project wants Pro: the free tier's egress (about 5 GB a month) is a few hundred visits.
 

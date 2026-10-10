@@ -10,13 +10,18 @@
 // visitor who can't reach the bucket sees the site as it was.
 //
 // assetUrl(path, { base, manifest }) → the URL to fetch
-// withFallback(load, { base, manifest }) → (path) => load(remote), else load(path) once
+// withFallback(load, { base, manifest, wait }) → (path) => load(remote), else load(path) once
+//   (the remote given `wait` ms until the bucket has answered once this visit)
 // markDown(), isDown(), forgetDown() (a new visit; tests)
 
 import MANIFEST from '../data/assets-manifest.json';
 import { remotePath } from './assetPath';
 
 let down = false;
+let answered = false; // (the bucket has given one file this visit: a slow one after is a big one, not a dead host)
+// how long the first ask may go unanswered: a network that drops the bucket's
+// packets silently would otherwise hold every load for the browser's own timeout
+export const WAIT_MS = 12000;
 
 export const markDown = () => {
   if (!down && import.meta.env?.DEV) console.warn('asset base unreachable: local files for this visit');
@@ -25,6 +30,7 @@ export const markDown = () => {
 export const isDown = () => down;
 export const forgetDown = () => {
   down = false;
+  answered = false;
 };
 
 export function assetUrl(path, { base = import.meta.env?.VITE_ASSET_BASE, manifest = MANIFEST } = {}) {
@@ -35,8 +41,17 @@ export function withFallback(load, opts) {
   return (path) => {
     const url = assetUrl(path, opts);
     if (url === path) return load(path);
-    return Promise.resolve()
-      .then(() => load(url))
+    const wait = opts?.wait ?? WAIT_MS;
+    const asked = Promise.resolve().then(() => load(url));
+    let timer = null;
+    const timed = answered
+      ? asked
+      : Promise.race([asked, new Promise((_, no) => (timer = setTimeout(() => no(new Error('the asset base did not answer')), wait)))]).finally(() => clearTimeout(timer));
+    return timed
+      .then((got) => {
+        answered = true;
+        return got;
+      })
       .catch(() => {
         markDown();
         return load(path);
