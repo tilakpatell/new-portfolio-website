@@ -73,7 +73,7 @@ export async function crewFigure(kind, i = 0) {
   model.scale.setScalar(1 / METRE);
   model.add(fig.model);
   model.traverse((o) => {
-    if (o.isMesh) o.castShadow = true;
+    if (o.isMesh) o.castShadow = !o.userData.noShadow; // (a 2017 figure's small parts: none)
   });
   const forward = new THREE.Vector3();
   return {

@@ -326,6 +326,11 @@ async function walrusFigure(spec) {
     if (!o.isMesh) return;
     o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
     owned.push(...[].concat(o.material));
+    // (its small parts, the eyes, the teeth and the hair's cut-out cards,
+    // cast no shadow: each part is a draw of its own, twice with one, and a
+    // 2017 hero has up to thirteen; the body, the clothes and the cape do)
+    const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+    if (tris < 1500 || o.material?.alphaTest > 0) o.userData.noShadow = true;
   });
   const hips = model.getObjectByName('Hips');
   const fig = rigged(model, clips, spec.tall, owned, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url, library: false });
