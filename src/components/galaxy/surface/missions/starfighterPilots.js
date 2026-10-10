@@ -19,10 +19,11 @@
 //   the mission has one path (the plan's review focus 5).
 
 import { turnRatesAt, topSpeed } from '../../../../lib/flight/starfighter';
+import { NAMES } from '../../../universe/wars';
 
 // the bots lane's files, taken only when they're there (a guarded import: Vite's glob is empty without them)
 const SQUADRON = import.meta.glob('../../../../lib/battlefront/ai/squadron.js');
-const NAMES = import.meta.glob('../../../../data/bf2017/ai.names.json', { import: 'default' });
+const NAME_BOOK = import.meta.glob('../../../../data/bf2017/ai.names.json', { import: 'default' });
 
 export const hasSquadron = () => Object.keys(SQUADRON).length > 0;
 
@@ -40,7 +41,7 @@ export function namesIn(book, faction) {
 }
 
 export async function loadNames(air) {
-  const load = Object.values(NAMES)[0];
+  const load = Object.values(NAME_BOOK)[0];
   const book = load ? await load().catch(() => null) : null;
   return { from: book ? 'ai.names.json' : 'air.json', book, air: air?.names ?? {} };
 }
@@ -98,5 +99,34 @@ export function commandOf(before, after, dt, row, scale = 1) {
     roll: 0,
     fire: (after.shots ?? 0) > (before.shots ?? 0),
     missile: false,
+  };
+}
+
+// ── the battle's fighters named, live (galaxy/warfront.js calls it each step
+// of a Starfighter Assault): each fighter its side's next name, on its
+// target bracket as "TK-772 · TIE fighter" (battleAi.js's `tgt.name`) ──
+
+export function createRoster(lists = [[], []], kindName = (k) => NAMES[k] ?? k) {
+  const namers = lists.map((list, team) => namer(list ?? [], String(team)));
+  let last = null;
+  return {
+    // name every fighter not yet named (cheap: a flag a fighter)
+    name(fighters) {
+      for (const f of fighters) {
+        if (f.pilot !== undefined) continue;
+        f.pilot = namers[f.team]?.(f.id) ?? null;
+        if (f.pilot && f.tgt) f.tgt.name = `${f.pilot} · ${kindName(f.kind)}`;
+      }
+    },
+    // a hit the war front's guns made: the fighter it downed, remembered by name (the panel's last kill)
+    downed(hit, fighters) {
+      if (!hit?.down || hit.capital || hit.sub || hit.turret || hit.shield) return hit;
+      const f = fighters.find((x) => x.id === hit.id);
+      if (f?.pilot) last = { name: f.pilot, kind: f.kind };
+      return hit;
+    },
+    get last() {
+      return last;
+    },
   };
 }

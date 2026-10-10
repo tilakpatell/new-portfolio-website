@@ -141,6 +141,7 @@ import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemB
 import { starfighterAt } from './surface/missions/starfighterMaps';
 import { levelOf } from './surface/missions/starfighter';
 import { playerKit, tuneFor } from './surface/missions/starfighterKits';
+import { listFor, loadNames } from './surface/missions/starfighterPilots';
 import { drawSpaceLevel } from './spaceLevel';
 import { createAreaLook } from './areaLook';
 import { assetUrl } from '../../lib/assetBase';
@@ -2814,9 +2815,12 @@ export async function create(canvas, ctx) {
     starfighter(id, { side = null } = {}) {
       const sf = starfighterAt(id);
       if (!war || !sf || state.sys?.id !== id || !state.ship) return false;
-      sf.load().then(({ map, stages, air }) => {
+      sf.load().then(async ({ map, stages, air }) => {
+        // (the bots' names: the bots lane's lists when they're on main, else the air rulebook's)
+        const names = await loadNames(air);
         if (disposed || state.sys?.id !== id) return;
         const lv = levelOf(map, stages, air);
+        lv.pilots = lv.sides.map((side) => listFor(names, side));
         const draw = drawSpaceLevel(scene, { pack: sf.pack, origin: stages.origin, packOrigin: sf.packOrigin, tier, renderer, area: stages.area ?? null, ships: lv.ships });
         if (!war.starfighter({ level: lv, side, draw, name: sf.name })) return;
         const team = war.info.team;

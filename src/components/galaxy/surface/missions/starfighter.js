@@ -108,6 +108,8 @@ export function levelOf(map, stages, air = null) {
     kits,
     heroes: air ? [0, 1].map((team) => heroesOf(air, team)) : null,
     era: eraOf({ sides }),
+    // (the bots' names by side: the game's AINames_*_SpaceBattles, through the air rulebook; the scene may hand the bots lane's in their place)
+    pilots: sides.map((side) => air?.names?.[side] ?? []),
     bombers: stages.bombers,
     camera: stages.camera,
   };
@@ -132,6 +134,8 @@ export function starfighterPlan(level, frame, { id, length = PLAN.length } = {})
     need: st.objectives.length,
     name: st.title,
     nameDefend: st.titleDefend,
+    // (the game's own words for it, its strings' ids: the mode's panel reads them)
+    ...(st.name ? { sid: st.name, sidDefend: st.nameDefend } : {}),
     ...(st.breaks ? { breaks: true, why: 'flagship' } : {}),
     objectives: st.objectives.map((o) => ({
       id: o.id,
