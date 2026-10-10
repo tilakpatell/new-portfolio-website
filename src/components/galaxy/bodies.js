@@ -341,12 +341,13 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
   // the game's skin from orbit, where the import made one and the tier draws
   // it (not on a small body: the scans' rule, a scene short of power). Its
   // maps are shared by URL (lib/three/textures), and one body draws a planet
-  const skin = !small && L.skin && skinFile(L.skin.color, tier) ? L.skin : null;
+  const skin = !small && L.skin && skinFile(L.skin.color ?? L.skin.rings, tier) ? L.skin : null;
+  const painted = Boolean(skin?.color); // (a skin may be rings alone: Geonosis's)
   const skinTex = []; // [{ url, texture }]: freed with the body
   let skinOn = 0; // (1 once its colour is in: until then the procedural look stands)
   let gone = false;
   const atmoBase = atmo ? { color: new THREE.Color(atmo.color), density: atmo.density } : null;
-  const atmoSkin = skin && atmo ? { color: new THREE.Color(skin.atmo ?? atmo.color), density: atmo.density * (skin.atmoScale ?? 1) } : null;
+  const atmoSkin = painted && atmo ? { color: new THREE.Color(skin.atmo ?? atmo.color), density: atmo.density * (skin.atmoScale ?? 1) } : null;
   const take = (kind, color) => {
     const url = `/${skinFile(skin[kind], tier, kind)}`;
     return Promise.resolve(load(url, { color }))
@@ -361,23 +362,28 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
       })
       .catch(() => null); // (a map not there: the procedural look stands)
   };
-  if (skin) {
+  const bands = skin?.projection === 'bands';
+  if (painted) {
     const b = blanks();
     defines.SKIN = '';
     if (skin.normal) defines.SKIN_NORMAL = '';
     if (skin.clouds) defines.SKIN_CLOUDS = '';
-    if (skin.seas) defines.SKIN_SEAS = '';
+    if (skin.seas !== undefined) defines.SKIN_SEAS = '';
+    if (bands) defines.SKIN_BANDS = '';
+    if (skin.over === 'land') defines.SKIN_LAND = '';
     Object.assign(uniforms, {
       uSkinColor: { value: b.color },
       uSkinNormal: { value: b.normal },
       uSkinClouds: { value: b.none },
       uSkinMix: { value: 0 },
-      uSeamShift: { value: (skin.seamShift ?? 0) / 360 },
-      uSkinK: { value: new THREE.Vector4(1, skin.greenDown ? -1 : 1, 0, 0) },
+      uSkinK: { value: new THREE.Vector4(skin.tiles ?? 1.5, 1, skin.greenDown ? -1 : 1, skin.seas ?? 0) },
+      uSkinC: { value: new THREE.Vector4(skin.cloudTiles ?? skin.tiles ?? 1.5, skin.cloudCut ?? 0, 0, 0) },
     });
     const into = (slot) => (t) => {
       if (!t) return null;
-      t.wrapS = THREE.RepeatWrapping; // (round the planet; not over the poles)
+      // (tiles repeat every way; bands round the planet only, not over the poles)
+      t.wrapS = THREE.RepeatWrapping;
+      if (!bands) t.wrapT = THREE.RepeatWrapping;
       t.needsUpdate = true;
       uniforms[slot].value = t;
       return t;
@@ -392,7 +398,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
   }
 
   const geo = new THREE.SphereGeometry(r, ws, hs);
-  const mat = new THREE.ShaderMaterial({ vertexShader: SURFACE_VERT, fragmentShader: surfaceFrag(L.family, FAMILIES[L.family].slots, { skin: Boolean(skin) }), uniforms, defines });
+  const mat = new THREE.ShaderMaterial({ vertexShader: SURFACE_VERT, fragmentShader: surfaceFrag(L.family, FAMILIES[L.family].slots, { skin: painted }), uniforms, defines });
   const surface = new THREE.Mesh(geo, mat);
   // (how tall it is on the screen, as it's drawn: the near octaves eased
   // toward what that asks for, a frame at a time)
@@ -419,10 +425,13 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
     reach = r * atmo.top;
   }
 
-  // the skin's rings: the game's picture of them, flat round the equator
+  // the skin's rings: the game's strip of them (across: the radius, down: the
+  // way round, eight times), flat round the equator
   if (skin?.rings && skin.ringsAt) {
     const [inner, outer] = skin.ringsAt;
     const ringGeo = new THREE.RingGeometry(r * inner, r * outer, 128, 1);
+    const uv = ringGeo.attributes.uv;
+    for (let j = 0, k = 0; j <= 1; j++) for (let i = 0; i <= 128; i++, k++) uv.setXY(k, j, (i / 128) * 8);
     const ringMat = new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, color: new THREE.Color(0.9, 0.9, 0.9) });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.rotation.x = -Math.PI / 2;
@@ -432,6 +441,8 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
     reach = Math.max(reach, r * outer);
     take('rings', true).then((t) => {
       if (!t) return;
+      t.wrapT = THREE.RepeatWrapping;
+      t.needsUpdate = true;
       ringMat.map = t;
       ringMat.needsUpdate = true;
       ring.visible = true;
@@ -464,7 +475,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
       group.updateWorldMatrix(true, false);
       shared.uCenter.value.setFromMatrixPosition(group.matrixWorld);
       shared.uRot.value.setFromMatrix4(group.matrixWorld);
-      if (skin && camera?.position) {
+      if (painted && camera?.position) {
         const k = skinOn * skinMixAt(camera.position.distanceTo(shared.uCenter.value) / r, atmo?.top ?? 1.05);
         uniforms.uSkinMix.value = k;
         if (atmoSkin) {

@@ -32,17 +32,17 @@ One lane per session; L, G, K and lane 1 may run at once (they own different fil
 
 ### Lane K: the planet skins
 
-**Done** (`claude/bf2017-k-planets`): `scripts/bf2017-planets.mjs` over `scripts/lib/bf2017-planets.mjs` (the `SKINS` table, the plan, the conversion; tested on a 64 × 32 fixture under `scripts/fixtures/bf2017/web/textures/levels/space/sb_endor_01/planet/`), `src/data/planetSkins.json` (empty), `bodySkin.js` (the shader's chunk, spliced in only for a skinned body, so an unskinned one compiles byte for byte what it did: `bodySkin.test.js` holds each family's hash), `bodies.js` loading a look's skin on mid and up (not low, not a small body), easing it out between 1.5 × and 1 × the air's top and freeing every map with the body, the skin's rings, and `REMOTE` gaining `textures/galaxy/planets`. Scarif's shield shaders moved to `bodyShield.js` (re-exported) to keep `bodyShaders.js` under 800 lines.
+**Done** (`claude/bf2017-k-planets`). The bucket listed 103 planet textures on 2026-10-10 (`web/textures.jsonl`); every non-sequel one was fetched (69, all as PNG). What they are, looked at: **no map wraps a whole sphere**. The space levels' colour (`_CS`, smoothness in alpha), normal (`_N`, `_NI`) and cloud maps (coverage in alpha) are seamless tiles; Bespin's is banded; the front end's `_CA` globes, Endor's gas giant and Yavin's are pictures of a lit disc. So the skins are laid on as the game lays them, repeated: triplanar on the unit sphere (`tiles` to a radius), or round the planet for bands.
 
-**Left**: the session had no `SUPABASE_URL` or `SUPA_KEY` in its environment, so the bucket was never listed and no skin is imported. With the keys:
+- Skinned: **Endor** (colour, relief, clouds, its air's colour), **Naboo** (colour, relief, clouds), **Kamino** (colour, its sea), **Bespin** (bands), **Geonosis** (rings only). Endor's and Naboo's ground is laid on the land only (`over: 'land'`): a tile has no continents, so the site's seas and coasts stay.
+- Stay procedural, their only maps being pictures (`PICTURES`): Endor's gas giant, Geonosis's globe, Hoth, Kashyyyk, Scarif, Tatooine, Yavin, Yavin 4.
+- In the drop with no body on the site (`UNPLACED`): Ryloth and its moon, Fondor and its moon, Athulla, Sullust, Pillio, Vardos (tiles like Naboo's), Kessel, Felucia, the Death Star II (globes), Naboo's moon.
+- The code: `scripts/bf2017-planets.mjs` over `scripts/lib/bf2017-planets.mjs` (`SKINS`, `planFor`, `convertSkin`; fixture `scripts/fixtures/bf2017/web/textures/levels/space/sb_endor_01/planet/`), `src/data/planetSkins.json`, `public/textures/galaxy/planets/<id>/<kind>-<tier>.webp|ktx2` (mid 1024, high 2048, ultra the colour and normal UASTC; never larger than the game drew it), `bodySkin.js` (the chunk, spliced in only for a skinned body: an unskinned one compiles byte for byte what it did, `bodySkin.test.js` holds each family's hash), `bodies.js` (loads a skin on mid and up, not low or a small body; eases it out between 1.5 × and 1 × the air's top, the air's colour with it; frees every map with the body), `REMOTE` gains `textures/galaxy/planets`. Scarif's shield shaders moved to `bodyShield.js` (re-exported) to keep `bodyShaders.js` under 800 lines.
+- The shots: `docs/superpowers/evidence/bf2017-planets/`.
 
-```
-node scripts/bf2017-planets.mjs --list          # how many planet textures have landed
-node scripts/bf2017-planets.mjs --dry           # which name each map resolves to; ambiguous globs are reported
-node scripts/bf2017-planets.mjs                 # convert, write public/textures/galaxy/planets/ and planetSkins.json
-```
+**Left**: `assets-upload.mjs` for the new files (the owner's key). Not checked: the relief's sign at a grazing sun (`greenDown`; the shots are lit from the default angle); a skinned planet flown down to in a real browser (the mix is unit-tested; the shots are from orbit). The front end's globes could tint the galaxy map's discs (the plan's optional task; not done). A world placed later (Ryloth, Fondor…) takes its tiles by a line in `SKINS`.
 
-Then make each `SKINS` glob exact where `--dry` calls it ambiguous; check from orbit (`galaxy-check.mjs space <id>` at high and ultra, before and after into `docs/superpowers/evidence/bf2017-planets/`) the seam (`seamShift`), the relief's sign at a grazing sun (`greenDown`), whether the front end's `_CA` globes are sphere maps at all (the import skips any map not 2 : 1 and says so) and whether `atmoScale` 0.5 fights the shell; then `assets-upload.mjs` for the new files. Not on the site, so not in `SKINS`: Naboo's moon, Sullust, Kessel, Felucia, the Death Star II, Ryloth and its moon, Fondor and its moon, Athulla, Pillio, Vardos (`UNPLACED`). Optional and not done: the galaxy map's discs tinted from the colour map.
+**Checking it**: `NODE_USE_ENV_PROXY=1 node scripts/bf2017-planets.mjs --dry` (keys in the environment), then without `--dry`; `QUALITY=high OUT=/tmp/s node scripts/galaxy-check.mjs space naboo,endor,bespin`.
 
 ## Left
 
@@ -100,7 +100,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | 1 | | | |
 | L | | | |
 | G | | | |
-| K | the lane K session | `claude/bf2017-k-planets` | (its PR; the code in, no skin yet: the session had no bucket keys) |
+| K | the lane K session | `claude/bf2017-k-planets` | (its PR) |
 | X | | | |
 | S | | | |
 
