@@ -104,6 +104,13 @@ export const HUMANOID_SET = {
   'dodge.right': 'A_HM_Rifle_Dodge_Right_01',
   talk: 'LW_ST1_TalkToSpyLoop_01',
   'melee.rifle': 'A_HM_Rifle_Melee_FirstStrike_01',
+  // (phase 2: the troopers' and the people's, from the game's own sets; the
+  // end-of-round victories and the P_ stances are single-frame poses, kept out)
+  'idle.patrol': ['AI_Officer_Trooper_Patrol_Twitch_01', 'AI_Officer_Trooper_Patrol_Twitch_02'],
+  'look.around': 'AI_Rifleman_Trooper_Investigate_InspX_03_look_around',
+  'look.ground': 'AI_Rifleman_Trooper_Investigate_InspX_01_look_at_ground',
+  // a greeting: the game has one, the hero's emote on the shared rig
+  wave: 'E_Luke_04_Greetings',
 };
 
 // a blaster hero's own: the game gives them abilities and a defeat, and
