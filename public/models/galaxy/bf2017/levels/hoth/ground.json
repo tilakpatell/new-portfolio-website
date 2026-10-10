@@ -54,11 +54,13 @@
    "id": "rocky",
    "name": "T_ArcticBase_SnowRockyPacked_04_N",
    "channel": 0,
-   "map": null,
+   "map": "tex/t_arcticbase_snowrockypacked_04_n.ktx2",
    "size": 2048,
    "format": "BC7_UNORM",
    "tile": 4,
    "combos": 47,
+   "height": true,
+   "smoothness": 0.212,
    "roughness": {
     "value": 0.7,
     "_source": "ROUGHNESS.rocky: named until the layer shaders are read"
@@ -68,11 +70,13 @@
    "id": "chunky",
    "name": "T_ArcticBase_SnowChunkyWind_01_N",
    "channel": 1,
-   "map": null,
+   "map": "tex/t_arcticbase_snowchunkywind_01_n.ktx2",
    "size": 2048,
    "format": "BC7_UNORM",
    "tile": 4,
    "combos": 42,
+   "height": true,
+   "smoothness": null,
    "roughness": {
     "value": 0.65,
     "_source": "ROUGHNESS.chunky: named until the layer shaders are read"
@@ -82,11 +86,13 @@
    "id": "rough",
    "name": "T_ArcticBase_SnowRoughPacked_03_N",
    "channel": 2,
-   "map": null,
+   "map": "tex/t_arcticbase_snowroughpacked_03_n.ktx2",
    "size": 2048,
    "format": "BC7_UNORM",
    "tile": 4,
    "combos": 70,
+   "height": true,
+   "smoothness": 0.902,
    "roughness": {
     "value": 0.6,
     "_source": "ROUGHNESS.rough: named until the layer shaders are read"
@@ -95,12 +101,14 @@
   {
    "id": "packed",
    "name": "T_ArcticBase_SnowPacked_04_N",
-   "channel": 3,
-   "map": null,
+   "channel": null,
+   "map": "tex/t_arcticbase_snowpacked_04_n.ktx2",
    "size": 2048,
    "format": "BC7_UNORM",
    "tile": 4,
    "combos": 71,
+   "height": true,
+   "smoothness": 0.446,
    "roughness": {
     "value": 0.55,
     "_source": "ROUGHNESS.packed: named until the layer shaders are read"
@@ -109,7 +117,7 @@
  ],
  "sparkle": {
   "name": "T_ArcticBase_SnowSparkle_03_RGBM",
-  "map": null,
+  "map": "tex/t_arcticbase_snowsparkle_03_rgbm.ktx2",
   "tile": 1,
   "_source": "the terrain’s defaultterrainsurfaceshader; SPARKLE_TILE_M named"
  },
@@ -127,16 +135,13 @@
   "_source": "FADE: the design’s 300 m (spec §4, Q2); the end judged on the shot"
  },
  "blend": {
-  "mode": "mask",
+  "mode": "height",
   "sharpness": 4,
-  "_source": "HEIGHT_SHARPNESS; mode by blendModeOf on the layer maps’ blue channel (mask until they are fetched)"
+  "_source": "HEIGHT_SHARPNESS; mode from the layer maps’ blue channel (BLUE_FLAT), the mask alone where no map is read"
+ },
+ "channels": {
+  "_source": "the Arctic _N maps decoded: R, G the normal; B a height (the combinations’ displacement2d); A a smoothness, a constant 255 in some"
  },
  "combos": 105,
- "missing": [
-  "T_ArcticBase_SnowRockyPacked_04_N",
-  "T_ArcticBase_SnowChunkyWind_01_N",
-  "T_ArcticBase_SnowRoughPacked_03_N",
-  "T_ArcticBase_SnowPacked_04_N",
-  "T_ArcticBase_SnowSparkle_03_RGBM"
- ]
+ "missing": []
 }

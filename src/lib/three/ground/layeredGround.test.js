@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { loadThree } from '../light/three.js';
 import hoth from '../light/fixtures/hoth.ve.json';
-import { createLayeredGround, heightBlend, layersFor, macroFade, meanTint, planarShare, triplanarWeights, TIER_LAYERS } from './layeredGround.js';
+import { createLayeredGround, weightsFor, heightBlend, layersFor, macroFade, meanTint, planarShare, triplanarWeights, TIER_LAYERS } from './layeredGround.js';
 
 const ground = JSON.parse(readFileSync(new URL('../../../../public/models/galaxy/bf2017/levels/hoth/ground.json', import.meta.url), 'utf8'));
 
@@ -60,6 +60,18 @@ describe('the pure parts', () => {
     expect(layersFor(ground, 'ultra').map((l) => l.id)).toEqual(['rocky', 'chunky', 'rough', 'packed']);
     expect(layersFor(ground, 'mid').map((l) => l.id)).toEqual(['chunky', 'packed']);
     expect(layersFor(ground, 'low')).toEqual([]);
+  });
+  it('the weights a tier draws: the last layer the mask’s remainder, a dropped layer’s ground to the kept layer with the most', () => {
+    const all = layersFor(ground, 'ultra');
+    // a pure rock pixel: r 1
+    expect(weightsFor([1, 0, 0], ground, all)).toEqual({ rocky: 1, chunky: 0, rough: 0, packed: 0 });
+    // the open field: nothing in r, g, b
+    expect(weightsFor([0, 0, 0], ground, all)).toEqual({ rocky: 0, chunky: 0, rough: 0, packed: 1 });
+    // mid draws chunky and packed: the rock's ground goes to the packed snow, never to nothing
+    expect(weightsFor([1, 0, 0], ground, layersFor(ground, 'mid'))).toEqual({ chunky: 0, packed: 1 });
+    const w = weightsFor([0.2, 0.3, 0.1], ground, layersFor(ground, 'mid'));
+    expect(w.chunky).toBeCloseTo(0.3);
+    expect(w.packed).toBeCloseTo(0.7);
   });
   it('the far colour is the near colour’s mean, so the fade has no seam', () => {
     const t = meanTint(ground);

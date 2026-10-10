@@ -2,8 +2,8 @@
 // bf2017-surfaces-design.md, "The ground"; plan laneQ2-ground): the
 // terrain's layer stacks from its `surfaceShaders`, the masks derived from
 // the pack's heightmap and its placed meshes (src/lib/three/ground/masks.js),
-// written beside the pack as ground.json and ground/masks.png (RGBA, a layer
-// a channel, the near map's size). With --fetch, the layer maps the bucket
+// written beside the pack as ground.json and ground/masks.png (RGB: the first
+// three layers a channel, the last what they leave). With --fetch, the layer maps the bucket
 // holds come into the pack's tex/ at each tier's size, with rows in
 // level.json's `tex`; a map the bucket lacks yet prints `missing:` and its
 // layer draws without its detail until a run after it lands.
@@ -14,6 +14,7 @@
 // BF2017_KEY or SUPA_KEY), never printed.
 
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -34,7 +35,45 @@ const LAB = join(ROOT, 'lab/assets/bf2017/web');
 const DENSITY = { radius: 12, full: 0.08 };
 // a layer map's size per tier: the detail tiles every few metres, so a
 // 1,024 px map is already 4 mm a pixel; low draws no detail at all
-const GROUND_TEX = { low: 256, mid: 512, high: 1024, ultra: 2048 };
+const GROUND_TEX = { low: 256, mid: 512, high: 1024, ultra: 1024 };
+
+// A KTX2's blue and alpha, mean and spread (0…1), from its smallest level
+// through three's Basis transcoder (its file is a script for the browser:
+// read and run here for its BASIS factory)
+let basis = null;
+async function channelStats(buf) {
+  if (!basis) {
+    const dir = dirname(createRequire(import.meta.url).resolve('three/examples/jsm/libs/basis/basis_transcoder.js'));
+    const src = await readFile(join(dir, 'basis_transcoder.js'), 'utf8');
+    const BASIS = new Function('module', 'exports', '__filename', '__dirname', 'require', `${src}\nreturn BASIS;`)(undefined, undefined, join(dir, 'basis_transcoder.js'), dir, createRequire(import.meta.url));
+    basis = await BASIS({ wasmBinary: await readFile(join(dir, 'basis_transcoder.wasm')) });
+    basis.initializeBasis();
+  }
+  const k = new basis.KTX2File(new Uint8Array(buf));
+  try {
+    if (!k.isValid() || !k.startTranscoding()) return null;
+    // (the 256 px level: enough of the detail for its spread, a 4 px one
+    // would average it away)
+    const level = Math.min(k.getLevels() - 1, Math.max(0, Math.round(Math.log2(k.getWidth() / 256))));
+    const RGBA32 = 13;
+    const out = new Uint8Array(k.getImageTranscodedSizeInBytes(level, 0, 0, RGBA32));
+    if (!k.transcodeImage(out, level, 0, 0, RGBA32, 0, -1, -1)) return null;
+    const of = (c) => {
+      let s = 0;
+      let s2 = 0;
+      const n = out.length / 4;
+      for (let i = c; i < out.length; i += 4) {
+        s += out[i] / 255;
+        s2 += (out[i] / 255) ** 2;
+      }
+      return { mean: +(s / n).toFixed(4), sd: +Math.sqrt(Math.max(0, s2 / n - (s / n) ** 2)).toFixed(4) };
+    };
+    return { b: of(2), a: of(3) };
+  } finally {
+    k.close();
+    k.delete();
+  }
+}
 
 const args = process.argv.slice(2);
 const world = args.find((a) => !a.startsWith('--'));
@@ -112,7 +151,7 @@ await sharp(
       frame.w * frame.h,
     ),
   ),
-  { raw: { width: frame.w, height: frame.h, channels: 4 } },
+  { raw: { width: frame.w, height: frame.h, channels: 3 } },
 )
   .resize(half.w, half.h, { kernel: 'linear' })
   .png({ compressionLevel: 9 })
@@ -121,6 +160,7 @@ const share = Object.fromEntries(ids.map((id) => [id, +(masks[id].reduce((a, b) 
 
 // the layer maps (and the sparkle) the bucket holds, at each tier's size
 const have = {};
+const stats = {};
 const wanted = [...Object.values(spec.layers), ...(spec.sparkle ? [...new Set(Object.values(scatter.surfaceShaders).flat())].filter((n) => /sparkle/i.test(n)).map((n) => n.split('/').pop()) : [])];
 if (wantFetch) {
   for (const n of wanted) {
@@ -138,7 +178,7 @@ if (wantFetch) {
       console.log(`missing: ${n}`);
       continue;
     }
-    const buf = new Uint8Array(await readFile(got));
+    const buf = await readFile(got);
     const info = ktx2Info(buf);
     const slug = slugOf(n);
     const sizes = {};
@@ -149,8 +189,9 @@ if (wantFetch) {
       sizes[tier] = size;
     }
     pack.tex[slug] = sizes;
+    stats[slug] = await channelStats(buf);
     have[slug] = `tex/${slug}.ktx2`;
-    console.log(`fetched: ${n} (${info.width} px) → tex/${slug}.<${[...new Set(Object.values(sizes))].join('|')}>.ktx2`);
+    console.log(`fetched: ${n} (${info.width} px) → tex/${slug}.<${[...new Set(Object.values(sizes))].join('|')}>.ktx2; blue ${JSON.stringify(stats[slug]?.b)}, alpha ${JSON.stringify(stats[slug]?.a)}`);
   }
 }
 
@@ -159,6 +200,7 @@ const ground = groundJson({
   scatter,
   index,
   have,
+  stats,
   masks: { png: 'ground/masks.png', ...maskFrame, share },
 });
 await writeFile(join(PACK, 'ground.json'), JSON.stringify(ground, null, 1) + '\n');

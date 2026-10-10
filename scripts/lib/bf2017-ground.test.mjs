@@ -60,9 +60,9 @@ describe('groundJson', () => {
       t_arcticbase_snowpacked_04_n: 'tex/t_arcticbase_snowpacked_04_n.ktx2',
     },
   });
-  it('four layers in Hoth’s rule order, each a channel of the mask', () => {
+  it('four layers in Hoth’s rule order, the first three a channel of the mask, the last what they leave', () => {
     expect(g.layers.map((l) => l.id)).toEqual(['rocky', 'chunky', 'rough', 'packed']);
-    expect(g.layers.map((l) => l.channel)).toEqual([0, 1, 2, 3]);
+    expect(g.layers.map((l) => l.channel)).toEqual([0, 1, 2, null]);
     expect(g.layers[3].name).toBe('T_ArcticBase_SnowPacked_04_N');
     expect(g.layers[3].size).toBe(2048);
     expect(g.layers[3].format).toBe('BC7_UNORM');
@@ -97,15 +97,20 @@ describe('groundJson', () => {
 });
 
 describe('packMasks', () => {
-  it('each layer a channel, 0…255, a pixel’s four summing to 255 within rounding', () => {
-    const a = new Float32Array([1, 0.25]);
-    const b = new Float32Array([0, 0.25]);
-    const c = new Float32Array([0, 0.25]);
-    const d = new Float32Array([0, 0.25]);
-    const rgba = packMasks([a, b, c, d], 2);
-    expect([...rgba.slice(0, 4)]).toEqual([255, 0, 0, 0]);
-    const sum = rgba[4] + rgba[5] + rgba[6] + rgba[7];
-    expect(Math.abs(sum - 255)).toBeLessThanOrEqual(2);
+  it('the first three layers in RGB, the last the remainder: no alpha, which a browser may premultiply away', () => {
+    const a = new Float32Array([1, 0.25, 0]);
+    const b = new Float32Array([0, 0.25, 0]);
+    const c = new Float32Array([0, 0.25, 0]);
+    const rgb = packMasks([a, b, c], 3);
+    expect(rgb).toHaveLength(9);
+    expect([...rgb.slice(0, 3)]).toEqual([255, 0, 0]);
+    expect([...rgb.slice(3, 6)]).toEqual([64, 64, 64]);
+    // (all three at none: the last layer, packed snow, is the whole pixel)
+    expect([...rgb.slice(6, 9)]).toEqual([0, 0, 0]);
+  });
+  it('a fourth mask passed is not written: it is the remainder', () => {
+    const one = new Float32Array([0.5]);
+    expect([...packMasks([one, one, one, one], 1)]).toEqual([128, 128, 128]);
   });
 });
 
@@ -120,5 +125,29 @@ describe('blendModeOf (Review Focus 2)', () => {
     const { blendModeOf } = await import('./bf2017-ground.mjs');
     expect(blendModeOf(Float32Array.from({ length: 256 }, (_, i) => (i % 16) / 15))).toBe('height');
     expect(blendModeOf(new Float32Array(256).fill(0.5))).toBe('mask');
+  });
+});
+
+describe('groundJson with the maps’ channel statistics (Review Focus 2)', () => {
+  const masks = { png: 'ground/masks.png', w: 2, h: 2, minX: 0, minZ: 0, metresPerPixel: 1 };
+  const have = { t_arcticbase_snowpacked_04_n: 'tex/t_arcticbase_snowpacked_04_n.ktx2', t_arcticbase_snowchunkywind_01_n: 'tex/t_arcticbase_snowchunkywind_01_n.ktx2' };
+  // (Hoth's, read from the 512 px maps: blue a height in both; alpha a
+  // smoothness in the packed snow, a constant 255 in the chunky)
+  const stats = {
+    t_arcticbase_snowpacked_04_n: { b: { mean: 0.219, sd: 0.026 }, a: { mean: 0.447, sd: 0.04 } },
+    t_arcticbase_snowchunkywind_01_n: { b: { mean: 0.368, sd: 0.096 }, a: { mean: 1, sd: 0 } },
+  };
+  const g = groundJson({ world: 'hoth', scatter, index, masks, have, stats });
+  it('blends by height where any layer’s blue varies, and says which layers carry one', () => {
+    expect(g.blend.mode).toBe('height');
+    expect(g.layers.find((l) => l.id === 'packed').height).toBe(true);
+    expect(g.layers.find((l) => l.id === 'rocky').height).toBe(false);
+  });
+  it('a varying alpha is the layer’s smoothness, its mean said; a constant one is not', () => {
+    expect(g.layers.find((l) => l.id === 'packed').smoothness).toBeCloseTo(0.447);
+    expect(g.layers.find((l) => l.id === 'chunky').smoothness).toBe(null);
+  });
+  it('without statistics: the mask alone', () => {
+    expect(groundJson({ world: 'hoth', scatter, index, masks, have }).blend.mode).toBe('mask');
   });
 });

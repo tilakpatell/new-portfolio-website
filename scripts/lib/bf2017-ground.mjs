@@ -13,7 +13,7 @@
 //   readTextureIndex(jsonl) → Map(name → { width, height, format, file })
 //   layersOf(scatterJson, index, { tileM }) → [{ id, normals: [names], sparkle, tile }]
 //   groundJson({ world, scatter, index, masks, have }) → ground.json
-//   packMasks([Float32Array × ≤ 4], n) → Uint8Array (RGBA, a layer a channel)
+//   packMasks([Float32Array × ≤ 4], n) → Uint8Array (RGB: three layers a channel, the last the rest)
 //   slugOf(name) → the bucket's file name, lower case, no folder
 //   kindOf(name) → 'packed' | 'rocky' | 'rough' | 'chunky' | …
 
@@ -125,20 +125,27 @@ export function layersOf(scatter, index, { tileM = TILE_M.hoth.m } = {}) {
     });
 }
 
-export function groundJson({ world, scatter, index, masks, have = {} }) {
+export function groundJson({ world, scatter, index, masks, have = {}, stats = {} }) {
   const spec = RULES[world];
   if (!spec) throw new Error(`no ground rules for ${world}: add them to RULES`);
   const tile = TILE_M[world] ?? TILE_M.hoth;
   const combos = layersOf(scatter, index, { tileM: tile.m });
   const named = new Set(combos.flatMap((c) => c.normals));
   const missing = [];
-  const layers = spec.rules.map((r, channel) => {
+  if (spec.rules.length > 4) throw new Error(`${world}: four layers at most (three channels and the rest)`);
+  const layers = spec.rules.map((r, i) => {
+    const channel = i < spec.rules.length - 1 ? i : null;
     const name = spec.layers[r.layer];
     if (!named.has(name)) throw new Error(`${world}: the terrain names no ${name} (rule ${r.layer})`);
     const t = index.get(name) ?? {};
     const map = have[slugOf(name)] ?? null;
     if (!map) missing.push(name);
     const kind = kindOf(name);
+    // (the map's blue a height where it varies; its alpha a smoothness
+    // where it varies and is not the encoder's constant white)
+    const st = stats[slugOf(name)] ?? null;
+    const height = Boolean(st && st.b.sd > BLUE_FLAT);
+    const smoothness = st && st.a.sd > BLUE_FLAT && st.a.mean < 0.98 ? +st.a.mean.toFixed(3) : null;
     return {
       id: r.layer,
       name,
@@ -148,6 +155,8 @@ export function groundJson({ world, scatter, index, masks, have = {} }) {
       format: t.format ?? null,
       tile: tileOf(t.width, tile.m),
       combos: combos.filter((c) => c.normals.includes(name)).length,
+      height,
+      smoothness,
       roughness: {
         value: ROUGHNESS[kind],
         _source: `ROUGHNESS.${kind}: named until the layer shaders are read`,
@@ -174,20 +183,21 @@ export function groundJson({ world, scatter, index, masks, have = {} }) {
     },
     macro: spec.macro,
     fade: FADE,
-    // (the blend by height needs the layer maps' blue channel read; until a
-    // map is in the bucket the blend is the mask alone)
+    // (by height where a layer map's blue carries one, read from the maps
+    // fetched; the mask alone until they are)
     blend: {
-      mode: 'mask',
+      mode: layers.some((l) => l.height) ? 'height' : 'mask',
       sharpness: HEIGHT_SHARPNESS,
-      _source: 'HEIGHT_SHARPNESS; mode by blendModeOf on the layer maps’ blue channel (mask until they are fetched)',
+      _source: 'HEIGHT_SHARPNESS; mode from the layer maps’ blue channel (BLUE_FLAT), the mask alone where no map is read',
     },
+    channels: { _source: 'the Arctic _N maps decoded: R, G the normal; B a height (the combinations’ displacement2d); A a smoothness, a constant 255 in some' },
     combos: combos.length,
     missing,
   };
 }
 
 // Review Focus 2: a blue channel that varies carries a height (the Arctic
-// `_N` maps pack a mask in blue); a constant one carries nothing
+// `_N` maps carry a height in blue); a constant one carries nothing
 export const BLUE_FLAT = 4 / 255;
 export function blendModeOf(blue) {
   let s = 0;
@@ -201,8 +211,11 @@ export function blendModeOf(blue) {
   return sd > BLUE_FLAT ? 'height' : 'mask';
 }
 
+// RGB, the first three layers a channel each; the last layer is what they
+// leave (1 − r − g − b), so no layer lives in alpha, which a browser's
+// decoder may premultiply into the colour and lose where it is 0
 export function packMasks(masks, n) {
-  const out = new Uint8Array(n * 4);
-  for (let i = 0; i < n; i++) for (let c = 0; c < 4; c++) out[i * 4 + c] = masks[c] ? Math.round(Math.min(1, Math.max(0, masks[c][i])) * 255) : 0;
+  const out = new Uint8Array(n * 3);
+  for (let i = 0; i < n; i++) for (let c = 0; c < 3; c++) out[i * 3 + c] = masks[c] ? Math.round(Math.min(1, Math.max(0, masks[c][i])) * 255) : 0;
   return out;
 }

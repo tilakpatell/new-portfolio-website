@@ -3,9 +3,9 @@
 // material for lane L's heightmap ground on a node renderer. Per paint
 // layer (ground.json, written by scripts/bf2017-ground.mjs) a tiling detail
 // normal over the ground's own, triplanar on the steep layer's slopes; the
-// layers blended by the masks (one RGBA texture, a layer a channel), by
-// height where the layer maps carry one; the snow's sparkle as a glint of
-// the sun; and past FADE the detail gone to the macro colour, so the far
+// layers blended by the masks (one RGB texture: three layers a channel, the
+// last what they leave), by height where the layer maps carry one; the
+// snow's sparkle as a glint of the sun; and past FADE the detail gone to the macro colour, so the far
 // ground is one even shade with no seam where the detail ends. The classic
 // worlds keep groundLook.js.
 //
@@ -26,7 +26,8 @@
 //     reads a pack file, urlOf names a pack file's URL at the tier's size.)
 //
 // Pure, for the tests: triplanarWeights(n), planarShare(slopeDeg),
-// heightBlend(masks, heights, k), macroFade(d, fade), layersFor(ground, tier), meanTint(ground)
+// heightBlend(masks, heights, k), macroFade(d, fade), layersFor(ground, tier),
+// weightsFor([r, g, b], ground, kept), meanTint(ground)
 
 import { readEntry } from '../light/entry.js';
 import { loadThree } from '../light/three.js';
@@ -36,6 +37,11 @@ export const TIER_LAYERS = { ultra: 4, high: 4, mid: 2, low: 0 };
 export const TRIPLANAR = [30, 40];
 // how much the detail normal bends the ground's (UDN: n + d × strength)
 export const DETAIL_STRENGTH = 0.6;
+// a layer's height where its map carries none: the middle of the range
+export const HEIGHT_FLAT = 0.5;
+// how far a map's smoothness (its alpha) moves the layer's roughness from
+// the named value, per unit under or over its mean
+export const SMOOTH_GAIN = 0.5;
 // the triplanar weights' sharpness: |n|^4, normalised
 const TRI_SHARPNESS = 4;
 // each layer's shade of the macro colour, until the colour map is decoded:
@@ -60,7 +66,7 @@ export function triplanarWeights([x, y, z], k = TRI_SHARPNESS) {
 export const planarShare = (slopeDeg) => 1 - smooth(TRIPLANAR[0], TRIPLANAR[1], slopeDeg);
 
 export function heightBlend(masks, heights, k) {
-  const w = masks.map((m, i) => (m * (heights[i] ?? 1)) ** k);
+  const w = masks.map((m, i) => (m * (heights[i] ?? HEIGHT_FLAT)) ** k);
   const s = w.reduce((a, b) => a + b, 0);
   return s > 1e-8 ? w.map((v) => v / s) : masks.slice();
 }
@@ -79,6 +85,33 @@ export function layersFor(ground, tier) {
   );
   return ground.layers.filter((l) => keep.has(l.id));
 }
+
+// Each drawn layer's weight from the mask's three channels: a layer with a
+// channel takes it, the last layer what they leave; a layer the tier does
+// not draw gives its ground to the drawn layer with the most, so the
+// weights still sum to one and no pixel is left with none. `o` is the
+// arithmetic: plain numbers here, TSL nodes in the material.
+const NUM = { num: (v) => v, add: (a, b) => a + b, sub: (a, b) => a - b, max: (a, v) => Math.max(a, v) };
+function weigh(channels, ground, kept, o) {
+  const raw = {};
+  let rest = o.num(1);
+  for (const l of ground.layers) {
+    if (l.channel == null) continue;
+    raw[l.id] = channels[l.channel];
+    rest = o.sub(rest, channels[l.channel]);
+  }
+  for (const l of ground.layers) if (l.channel == null) raw[l.id] = o.max(rest, 0);
+  const share = ground.masks?.share ?? {};
+  const keep = new Set(kept.map((l) => l.id));
+  const main = [...kept].sort((a, b) => (share[b.id] ?? 0) - (share[a.id] ?? 0))[0]?.id;
+  let dropped = null;
+  for (const l of ground.layers) if (!keep.has(l.id)) dropped = dropped === null ? raw[l.id] : o.add(dropped, raw[l.id]);
+  const out = {};
+  for (const l of kept) out[l.id] = l.id === main && dropped !== null ? o.add(raw[l.id], dropped) : raw[l.id];
+  return out;
+}
+
+export const weightsFor = (channels, ground, kept) => weigh(channels, ground, kept, NUM);
 
 // the far ground's shade: the near layers' tints weighed by how much ground each has
 export function meanTint(ground) {
@@ -110,7 +143,7 @@ const steepOf = (ground) => ground.rules?.find((r) => r.slope?.[0] != null && r.
 
 export function createLayeredGround({ ground, maps = {}, tier = 'high', three, entry = null }) {
   const { THREE, tsl } = three;
-  const { uniform, texture, vec2, vec3, vec4, float, positionWorld, normalWorldGeometry, cameraPosition, cameraViewMatrix, mix, smoothstep, pow, max, abs, normalize, dot, reflect, acos } = tsl;
+  const { uniform, texture, select, vec2, vec3, vec4, float, positionWorld, normalWorldGeometry, cameraPosition, cameraViewMatrix, mix, smoothstep, pow, max, abs, normalize, dot, reflect, acos } = tsl;
   const light = readEntry(entry ?? {});
   const macro = ground.macro?.color ?? [0.6, 0.6, 0.6];
   const tintFar = meanTint(ground);
@@ -141,7 +174,7 @@ export function createLayeredGround({ ground, maps = {}, tier = 'high', three, e
   const maskUv = xz.sub(vec2(mf.minX, mf.minZ)).div(mf.metresPerPixel).add(0.5).div(vec2(mf.w, mf.h));
   const mask = texture(maps.masks, maskUv);
   samples.mask = 1;
-  const channel = (c) => [mask.r, mask.g, mask.b, mask.a][c];
+  const base = weigh([mask.r, mask.g, mask.b], ground, layers, { num: float, add: (a, b) => a.add(b), sub: (a, b) => a.sub(b), max: (a, v) => a.max(v) });
 
   // per layer: its weight, and its bend of the normal (world space)
   const steep = steepOf(ground);
@@ -149,15 +182,19 @@ export function createLayeredGround({ ground, maps = {}, tier = 'high', three, e
   const k = ground.blend?.sharpness ?? 4;
   const parts = layers.map((l) => {
     const map = maps.layers?.[l.id] ?? null;
-    let w = channel(l.channel);
+    let w = base[l.id];
     let bend = null;
+    let h = float(HEIGHT_FLAT);
+    let rough = float(l.roughness.value);
     if (map) {
       const s = texture(map, xz.div(l.tile));
       samples.detail++;
       const d = s.xy.mul(2).sub(1);
       // (tangent x along world x, tangent y along world z: the ground faces up)
       bend = vec3(d.x, 0, d.y);
-      if (height) w = pow(w.mul(s.b), k);
+      if (l.height) h = s.b;
+      // (the map's alpha a smoothness: rougher where it is under its mean)
+      if (l.smoothness != null) rough = rough.add(float(l.smoothness).sub(s.a).mul(SMOOTH_GAIN)).clamp(0.05, 1);
       if (l.id === steep && (tier === 'ultra' || tier === 'high')) {
         // the ridge's faces: projected along x and z as well, the three
         // weighed by the normal, planar under 30° and triplanar over 40°
@@ -172,17 +209,23 @@ export function createLayeredGround({ ground, maps = {}, tier = 'high', three, e
         bend = mix(tri, bend, float(1).sub(smoothstep(TRIPLANAR[0], TRIPLANAR[1], slope)));
       }
     }
-    return { l, w, bend };
+    // (by height: every layer's weight times its height, sharpened; a
+    // layer without a height stands at the middle)
+    const hw = height ? pow(w.mul(h), k) : w;
+    return { l, w, hw, bend, rough };
   });
-  const total = parts.reduce((a, p) => a.add(p.w), float(0)).max(1e-4);
-  const weight = (p) => p.w.div(total);
+  const sum = (key) => parts.reduce((a, p) => a.add(p[key]), float(0));
+  const total = sum('hw');
+  // (where every height is nil the sharpened weights vanish: the mask's then)
+  const flat = total.lessThan(1e-6);
+  const weight = (p) => select(flat, p.w.div(sum('w').max(1e-4)), p.hw.div(total.max(1e-6)));
 
   let bend = null;
   for (const p of parts) if (p.bend) bend = bend ? bend.add(p.bend.mul(weight(p))) : p.bend.mul(weight(p));
-  const near = (fn) => parts.reduce((a, p) => a.add(weight(p).mul(fn(p.l))), float(0));
-  const tint = near((l) => TINT[kindOf(l)]);
+  const near = (fn) => parts.reduce((a, p) => a.add(weight(p).mul(fn(p))), float(0));
+  const tint = near((p) => TINT[kindOf(p.l)]);
   material.colorNode = vec3(u.macro).mul(mix(tint, float(tintFar), fade));
-  material.roughnessNode = mix(near((l) => l.roughness.value), float(roughFar), fade);
+  material.roughnessNode = mix(near((p) => p.rough), float(roughFar), fade);
   const n = bend ? normalize(nGeo.add(bend.mul(DETAIL_STRENGTH).mul(float(1).sub(fade)))) : nGeo;
   if (bend) material.normalNode = normalize(cameraViewMatrix.mul(vec4(n, 0)).xyz);
 
