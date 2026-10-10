@@ -218,6 +218,19 @@ The owner's direction (2026-10-10, 03:40): every hero, vehicle, effect and line,
 
 **Not in depth, by rule**: nothing of the sequel era; nothing the game does not have (section 5's "stays" list).
 
+### 12. The other designs on the same export (2026-10-10, 05:40), and what they take over
+
+Three designs from the owner's other sessions, written against the desktop export (which holds parts the bucket count could not see), take over parts of this one. The owner's rule is the game first, so where they draw from the game's own data, they win.
+
+| design | what it found | what it takes over from this page |
+| --- | --- | --- |
+| PR #810, the galaxy on the game's levels, under its light, with its planets and sabers | 74 level layouts with 873,000 placed instances and transforms, 39 heightmaps, 10,530 Havok shape sets, 192 VisualEnvironment lighting records with probes, 102 planet skins; no lightmaps exist (Enlighten runs at run time); placed lights, effect spawns and audio are not exported and need an exporter pass | **lane L** supersedes lane W (`-phaseW-worlds.md`): each world drawn from the game's level, cell-streamed, Hoth first; lane W ends with a tools-only PR (the kit merge, the roles' game textures, the skies list). **lane G** is the lighting (this page's section 11 already left it out). **lane K** the planet skins. **lane X** the sabers' stroke tables measured from the game's clips, the hold and the blade's light, on phase 1's packs and loader (phase 1 keeps the packs, the loader, the hilts and the crew rows; lane X reads them). Level textures stay the bucket's KTX2 (ETC1S colour, UASTC the rest) because GPU memory binds a whole level: section 6's WebP mix is for figures, vehicles and props, not level packs. |
+| PR #817, the galaxy's physics from the game's data | `CharacterPhysicsData`, skeleton collision capsules, the ragdoll, 114 projectile and 159 vehicle blueprints, 44 material grids | lanes P0 to P4: the Havok shapes as fixed colliders, the body, bolts and ragdolls, the vehicles' physics (after lane V), surfaces. Lane V imports no collision; phase 2's hurtbox maps become P1's. |
+| PR #812, the Battlefront game from the export | the gameplay records: modes, classes, weapons, abilities, Battle Points, bots | a new world on the real maps (`/battlefront`), not a retrofit of the galaxy surface's assault; the asset adapter contract reads this page's catalogue and packs. |
+| PR #819, the galaxy's engine | three's node renderer, its lighting and Rapier; no new engine | lanes R, P, T, M: the light stack, the physics, the surface and map ports. |
+
+What stays this page's: phase 0 (the tools, merged), phase 1 (the heroes on the game's skeleton, the packs, the loader, the hilts), phase 2 (everyone the game has, people and droids and beasts), lane S (the streaming, merged on #798's mirror), lane V (the vehicles' models, rigs, packs, cockpits and far cuts), lane F's effects (not its lighting), and the inventory. The check-in spawns no further world lanes; lane L does the worlds.
+
 ### 9. What this design does not do
 
 - Does not touch nevarro, mandalore, sorgan, lothal or coruscant: nothing of theirs is in the 2017 game.
