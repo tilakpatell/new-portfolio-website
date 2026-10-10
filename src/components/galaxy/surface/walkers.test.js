@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { WALKERS, footAt, gaitStep, legAngles, packUrl, partOf, splitParts, walkerWay } from './walkers';
+import { WALKERS, blastClass, footAt, gaitStep, legAngles, packUrl, partOf, splitParts, walkerWay } from './walkers';
 import { SURFACE_MODELS } from './catalog';
 import { RIGS } from '../../../lib/three/rigSets';
 
@@ -123,5 +123,12 @@ describe('walkers', () => {
       // (and nothing of the site's rides the game's rig: no figure of ours on its bones)
       expect(WALKERS[kind].ownRider, kind).toBeUndefined();
     }
+  });
+
+  it('goes up in lane F’s blast for its class when it falls: a walker’s, a droideka’s a speeder’s, anything else none', () => {
+    for (const kind of ['atat', 'atst', 'atte', 'atrt']) expect(blastClass(kind), kind).toBe('walker');
+    expect(blastClass('droideka')).toBe('speeder');
+    expect(blastClass('stormtrooper')).toBeNull();
+    expect(blastClass(undefined)).toBeNull();
   });
 });

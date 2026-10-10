@@ -212,6 +212,7 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseV-vehicles.md`; the c
 - **The rides on the game’s 74-Z and X-34.** Their seats are measured off the models and tested against them (`rides.seat.test.js`); the chase’s scouts sit the same saddle.
 - **The fleets on the game’s fighters.** `scripts/bf2017-fleet.mjs` writes twelve ships over the space layer’s Sketchfab files, at the paths `galaxy/models.js` names: the TIE fighter, bomber and Advanced, the A-, Y- and U-wings, the N-1, ARC-170, vulture, tri-fighter, cloud car and the Nebulon-B, natively. They stay committed as well as published, as `galaxy/models.test.js` measures them. Their far-off copies are remade by `galaxy-lod.mjs`, which reads a native map’s colours from the game’s unpacked PNG.
 - **Rigs.** Every kind the drop has a skeleton for is on it: the five walkers with their clips, and the homing and dwarf spider droids on `GEO_HomingSpiderDroid_Skeleton` and `DwarfSpiderDroid_Ske`, kept whole, standing (the drop has no clips for them). The fighters, speeders and turrets have no skeleton in the drop.
+- **The deaths in lane F’s blasts.** A walker or droideka shot down (`activity.js`’s `dying`) plays its game death and goes up in `gameFx.explode` for its class (`walkers.js`’s `blastClass`: a walker’s, the droideka a speeder’s), through the scene’s own `gameFx`.
 - **anim-check knows the walkers’ feet** (`LeftFrontFoot`). On Hoth every AT-AT in view, and on Endor the AT-ST, reads 0 m/s of planted drift and none is at bind pose.
 
 ### Where the code and the plan differed
@@ -236,7 +237,7 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseV-vehicles.md`; the c
 - **The AT-AT’s destruction skeletons** (`ATAT_Destruction_01_*`, one or three clips each): not wired, as nothing brings one down.
 - **The chase rider on the game’s clips** (`A_HM_SpeederBike_*`, the humanoid’s): phase 1’s walrus loader, once it is on main. The chase still sits figures.js’s built scout on the game’s 74-Z.
 - **The fallen AT-AT on Hoth** (`sites/ice.js`’s `walker` zone) is the game’s model rolled on its side in its bind pose. Its tow-cable death’s last frame would be the true pose, but the placer places statues.
-- **Deaths and engines on lane F’s effects**: `gameFx.explode(class, at)` (PR #829, on phase 1’s branch until #815 lands) for a walker’s, speeder’s or fighter’s death, and its engine and thruster glow through `gameLook`: wire `react('down')` and the rides to it once it is on main, rather than a second effect path.
+- **Engines on lane F’s effects**: the engine and thruster glow through `gameLook` for the rides and the fleets. A walker’s or droideka’s death already goes up in `gameFx.explode` (below).
 - **The AT-ST’s rig**: the drop has no skinned AT-ST, so its rigid mesh is skinned at import to the cinematics’ `ATST_Ske01` (one bone a piece). If the owner counts that binding as ours, it stands as a statue instead (drop `--bind`).
 - **Sounds**: the vehicles’ engines and footfalls when the game’s audio lands.
 - **The far fleet instanced**: the space layer draws each ship through its own `THREE.LOD`, a draw each. The game’s far copies keep that cost, and instancing is the fleet war’s own open item.

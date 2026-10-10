@@ -32,6 +32,7 @@
 // walkerWay(row, entry) → 'own' (the game's rig and clips), 'cut' (cut at
 //   its joints) or null: how a kind with this row and catalogue entry walks
 // packUrl(rig) → its clip pack's file
+// blastClass(kind) → 'walker' | 'speeder' | null: its blast when it falls
 // walkerFigure(kind, i) → a figure (actors.js's shape), or null
 
 import * as THREE from 'three';
@@ -66,6 +67,11 @@ export const WALKERS = {
     rider: { kind: 'clone', seat: { hips: [0, 2.15, -0.45], lean: 0.35, hands: [[0.25, 2.4, -0.2]], feet: [[0.33, 1.62, -0.25]], elbow: [0.7, -0.5, -0.4], knee: [0.6, 0.2, 1], toes: [0.2, -0.3, 1] } },
   },
 };
+
+// the class of lane F's blast (lib/three/fx/gameFx.js's explode) a walker
+// goes up in when it falls: the walkers a walker's, the droideka (a droid
+// the size of a speeder bike) a speeder's; anything not here none
+export const blastClass = (kind) => (WALKERS[kind]?.own ? (kind === 'droideka' ? 'speeder' : 'walker') : null);
 
 export function walkerWay(row, entry) {
   if (!row) return null;
