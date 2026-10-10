@@ -1001,32 +1001,34 @@
     ]
   },
   "galaxy-arc170": {
-    "title": "ARC-170 Starfighter",
-    "author": "DrEgguin",
-    "authorUrl": "https://sketchfab.com/DrEgguin",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/arc-170-starfighter-b9407262cdf34d37b0720ca6b70469be",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/arc170/vehicle_air_arc170_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the ARC-170s",
     "file": "/models/galaxy/arc170.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-awing": {
-    "title": "Star Wars: A- Wing",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-a-wing-15d7370b56c04c2e86b16e50bf931a02",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/awing/vehicle_air_awing_01_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the A-wings",
     "file": "/models/galaxy/awing.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-bwing": {
     "title": "Star Wars: B-Wing",
@@ -1043,18 +1045,19 @@
     ]
   },
   "galaxy-cloudcar": {
-    "title": "Star Wars Storm IV Twin-Pod Cloud Car",
-    "author": "OscarLomas3D",
-    "authorUrl": "https://sketchfab.com/OscarLomas3D",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-storm-iv-twin-pod-cloud-car-9bc20239f9c34ed1baacb9a49ba9377d",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "Bespin’s cloud cars",
     "file": "/models/galaxy/cloudcar.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-coreship": {
     "title": "Star Wars Separatist Core Ship",
@@ -1239,32 +1242,34 @@
     ]
   },
   "galaxy-n1": {
-    "title": "Naboo N-1 Starfighter - Star Wars",
-    "author": "Quiznos323",
-    "authorUrl": "https://sketchfab.com/quiznos323",
-    "license": "CC-BY-NC-SA-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
-    "source": "https://sketchfab.com/3d-models/naboo-n-1-starfighter-star-wars-3cf69f6c85234aac8844e845e74ac75b",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/n1starfighter/vehicle_air_n1starfighter_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the Naboo N-1 starfighters",
     "file": "/models/galaxy/n1.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-nebulon": {
-    "title": "Star Wars: Nebulon B Frigate",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-nebulon-b-frigate-1986f7b0dee647b3b2374eb80dbd1faf",
+    "title": "Star Wars Battlefront II (2017): objects/props/landmarks/_rebelalliance/bd_frigatenebulonb_01/frigatenebulonb_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the Nebulon-B frigates",
     "file": "/models/galaxy/nebulon.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-nebulonhq": {
     "title": "Star Wars: Nebulon B Frigate",
@@ -1309,46 +1314,49 @@
     ]
   },
   "galaxy-tie": {
-    "title": "Star Wars: TIE/ln Fighter",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-tieln-fighter-79d9403f15334c129ea5454daffe6b5c",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/tiefighter/vehicle_air_tiefighter_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the TIE fighters",
     "file": "/models/galaxy/tie.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-tieadvanced": {
-    "title": "Star Wars: TIE/x1 Advanced x1",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-tiex1-advanced-x1-0b3825de4fa542a893c9f9344b7e5f31",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/tieadvancedx1/vehicle_air_tieadvancedx1_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "Vader’s TIE Advanced",
     "file": "/models/galaxy/tieadvanced.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-tiebomber": {
-    "title": "Star Wars: TIE/sa Bomber",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-tiesa-bomber-03c30934651e4f5798b67e74049ec6bc",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/tiebomber/vehicle_air_tiebomber_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the TIE bombers",
     "file": "/models/galaxy/tiebomber.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-transport": {
     "title": "Star Wars: GR-75 Medium Transport",
@@ -1365,60 +1373,64 @@
     ]
   },
   "galaxy-trifighter": {
-    "title": "Trade Federation Droid Tri-Fighter",
-    "author": "scarlequin",
-    "authorUrl": "https://sketchfab.com/scarlequin",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/trade-federation-droid-tri-fighter-9c06ba9b24144221aa80f56192f485b6",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/droidtrifighter/vehicle_air_droidtrifighter_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the droid tri-fighters",
     "file": "/models/galaxy/trifighter.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-uwing": {
-    "title": "Star Wars U-Wing UT-60d",
-    "author": "LarsH.",
-    "authorUrl": "https://sketchfab.com/LarsH.",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-u-wing-ut-60d-8d7539ceba7142c2ab5ce296659c026d",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/uwing/vehicle_air_uwing_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the U-wings",
     "file": "/models/galaxy/uwing.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-vulture": {
-    "title": "Vulture Droid",
-    "author": "DrEgguin",
-    "authorUrl": "https://sketchfab.com/DrEgguin",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/vulture-droid-5542f951834e4032b229ebdee12d3310",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/vulturedroid/vehicle_air_vulturedroid_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the vulture droids",
     "file": "/models/galaxy/vulture.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-ywing": {
-    "title": "Star Wars: Y- Wing",
-    "author": "Daniel",
-    "authorUrl": "https://sketchfab.com/DanielAndersson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-y-wing-b8bb6476b1b14ba48987c7efc7b7087a",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/air/ywing/vehicle_air_ywing_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
     "as": "the Y-wings",
     "file": "/models/galaxy/ywing.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "m64-bobomb": {
     "title": "Bob-Omb",
