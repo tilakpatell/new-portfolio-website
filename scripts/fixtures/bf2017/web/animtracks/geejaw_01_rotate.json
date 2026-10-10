@@ -1,0 +1,4 @@
+{"name":"objects/livingworld/geejaw_01/animtrackdata/c787a1eb-8c03-42d9-9f2a-d99d2db36e11_rotate","rid":"57475FDD94DFD995","keyCount":2,"layout":["time","value","inTangentX","inTangentY","outTangentX","outTangentY"],"keys":[
+[0,0,1,0,0.05547002,0.998460352],
+[20,360,0.05547002,0.998460352,1,0]
+]}

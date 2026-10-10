@@ -316,7 +316,7 @@ const opaqueColour = () => async (doc) => {
 // Each map the game has as KTX2 on disk, in place of its decoded copy, at
 // the cut's size (colour at `tex`, the rest at `maps`) by dropping whole
 // mip levels. Returns how many it took.
-async function nativeMaps(doc, spec) {
+export async function nativeMaps(doc, spec) {
   let n = 0;
   for (const t of doc.getRoot().listTextures()) {
     const name = t.getName();

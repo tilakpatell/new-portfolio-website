@@ -39,7 +39,9 @@ describe('the 3D models that are other people’s', () => {
       // each in the site and loaded from by the code)
       if (m.paths) {
         for (const dir of m.paths) {
-          expect(existsSync(at(dir)), dir).toBe(true);
+          // (in public/, or published to the bucket: a file of it in src/data/galaxyAssets.json)
+          const published = Object.keys(PUBLISHED).some((k) => `public/${k}`.startsWith(dir));
+          expect(existsSync(at(dir)) || published, dir).toBe(true);
           expect(code.includes(dir.replace(/^public/, '')), `${name} is used`).toBe(true);
         }
         for (const page of [m.where, ...(m.also ?? [])]) expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
