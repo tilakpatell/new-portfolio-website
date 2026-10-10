@@ -54,11 +54,12 @@ export default {
     const figures = createFigures({ scene });
     const bolts = createBolts(scene);
     const rig = createCameraRig(camera);
-    const input = createInput();
+    const input = createInput({ maxPitch: (cams.soldier.maxPitch * Math.PI) / 180 });
     input.attach();
     const sim = createSim({ rulebook: rb, soldier, level: levelName, mode, heightAt: (x, z) => level.heightAt(x, z) });
     const me = addPlayer(sim, { team: PLAYER_TEAM });
     let picked = null;
+    let lastAt = null; // the player's place before the last step
     let pose = null;
     let acc = 0;
     let size = { w: 1, h: 1 };
@@ -91,6 +92,9 @@ export default {
       if (r.ok) {
         const p = sim.entities.get(me);
         input.setLook(p.yaw, 0);
+        // (the next life's deploy screen starts from its own highlight)
+        picked = null;
+        lastAt = null;
         input.swallow(false);
         pose = null;
       }
@@ -140,8 +144,10 @@ export default {
         if (v.deploy.open && read.deploy) doDeploy();
         acc = Math.min(acc + dt, STEP * MAX_STEPS);
         let first = true;
+        const me0 = sim.entities.get(me);
         while (acc >= STEP) {
           acc -= STEP;
+          lastAt = me0.at.slice();
           const once = first ? read : { ...read, jump: false, roll: false, ability: 0, vent: false, interact: false };
           first = false;
           step(sim, [{ id: me, move: once.move, yaw: once.yaw, pitch: once.pitch, fire: once.fire, aim: once.aim, sprint: once.sprint, crouch: once.crouch, vent: once.vent, ability: once.ability }]);
@@ -149,7 +155,12 @@ export default {
         const p = sim.entities.get(me);
         if (p.state === 'alive') {
           const look = input.look();
-          pose = soldierPose(p, cams, { yaw: look.yaw, pitch: look.pitch, aiming: read.aim, weaponId: p.weapon, dt, prev: pose, castArm });
+          // (the body as it is drawn, between the last two steps, so the
+          // camera does not jump at the sim's 20 Hz while the figure glides)
+          const k = Math.min(1, acc / STEP);
+          const from = lastAt ?? p.at;
+          const drawn = { ...p, at: p.at.map((v, i) => from[i] + (v - from[i]) * k) };
+          pose = soldierPose(drawn, cams, { yaw: look.yaw, pitch: look.pitch, aiming: read.aim, weaponId: p.weapon, dt, prev: pose, castArm });
           level.update(p.at);
         } else {
           const towards = sim.objectives[0]?.at ?? [0, 0, 0];

@@ -61,7 +61,7 @@ export function markerProjection(at, camera, { w, h }) {
   const y = ((1 - ny) / 2) * h;
   if (onScreen) return { x, y, onScreen, edgeAngle: null };
   // (off screen: on the edge, the way the camera would turn to it)
-  const angle = Math.atan2(-(behind ? local.y : ny), behind ? -local.x || -1e-6 : nx);
+  const angle = Math.atan2(-(behind ? local.y : ny), behind ? local.x || -1e-6 : nx);
   const cx = w / 2;
   const cy = h / 2;
   const k = Math.min((cx - MARGIN) / Math.abs(Math.cos(angle) || 1e-6), (cy - MARGIN) / Math.abs(Math.sin(angle) || 1e-6));

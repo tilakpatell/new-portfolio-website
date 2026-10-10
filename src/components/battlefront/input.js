@@ -19,10 +19,13 @@ export const MAX_PITCH = (70 * Math.PI) / 180; // the camera clamps to the recor
 const MOVE = { KeyW: [0, 1], KeyS: [0, -1], KeyA: [-1, 0], KeyD: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 const HELD = { ShiftLeft: 'sprint', ShiftRight: 'sprint', ControlLeft: 'crouch', KeyZ: 'crouch', KeyC: 'crouch', Tab: 'scoreboard' };
 const PRESS = { Digit1: ['ability', 1], Digit2: ['ability', 2], Digit3: ['ability', 3], KeyR: ['vent', true], KeyE: ['interact', true], Enter: ['deploy', true], NumpadEnter: ['deploy', true] };
-// (keys the page must not act on: Tab moves focus, Space scrolls)
+// (keys the page must not act on while the world has them: Tab moves
+// focus, Space scrolls; on a button of the HUD, or while the deploy screen
+// is up, they are the page's, so the Menu and the offers are reachable)
 const SWALLOW = new Set(['Tab', 'Space', 'ArrowUp', 'ArrowDown']);
+const PAGE_KEYS = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA']);
 
-export function createInput({ win = typeof window !== 'undefined' ? window : null, now = () => performance.now() / 1000 } = {}) {
+export function createInput({ win = typeof window !== 'undefined' ? window : null, now = () => performance.now() / 1000, maxPitch = MAX_PITCH } = {}) {
   const down = new Set();
   const once = {};
   let lastSpace = -Infinity;
@@ -34,7 +37,7 @@ export function createInput({ win = typeof window !== 'undefined' ? window : nul
   let swallowed = false;
 
   function onKey(e, isDown) {
-    if (SWALLOW.has(e.code)) e.preventDefault?.();
+    if (SWALLOW.has(e.code) && !swallowed && !PAGE_KEYS.has(e.target?.tagName)) e.preventDefault?.();
     if (isDown && e.repeat) return;
     if (!isDown) {
       down.delete(e.code);
@@ -81,7 +84,7 @@ export function createInput({ win = typeof window !== 'undefined' ? window : nul
     turn(dx, dy) {
       if (swallowed) return;
       yaw -= dx * SENSITIVITY;
-      pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch - dy * SENSITIVITY));
+      pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch - dy * SENSITIVITY));
     },
     button(which, isDown) {
       if (swallowed) return;

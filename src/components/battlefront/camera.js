@@ -53,7 +53,10 @@ export function soldierPose(body, cam, { yaw = 0, pitch = 0, aiming = false, wea
   const hit = castArm ? castArm(side, dir.map((v) => -v), want) : null;
   const target = hit == null ? want : Math.max(0, Math.min(want, hit - s.collision.padding));
   const was = prev?.arm ?? target;
-  const arm = target < was ? blend(was, target, s.collision.blendIn, dt) : blend(was, target, s.collision.blendOut, dt);
+  const eased = target < was ? blend(was, target, s.collision.blendIn, dt) : blend(was, target, s.collision.blendOut, dt);
+  // (the ease is the record's, but never past what the ray hit: the camera
+  // never goes inside the wall while it blends in)
+  const arm = hit == null ? eased : Math.min(eased, hit);
   const zoom = (aiming && weaponId && cam.aim?.[weaponId]?.[0]) || null;
   const fovTo = zoom ? zoom.fov : FOV_DEFAULT;
   const fovFrom = prev?.fov ?? fovTo;

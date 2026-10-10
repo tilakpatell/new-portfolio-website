@@ -35,8 +35,11 @@ describe('the soldier’s camera, from the trooper’s records', () => {
     const one = soldierPose(body, cam, { yaw: 0, pitch: 0, dt: 0.1, prev: free, castArm });
     const target = 0.6 - cam.soldier.collision.padding;
     const gap = free.arm - target;
-    // 5 a second for 0.1 s: half the gap, not all of it
-    expect(free.arm - one.arm).toBeCloseTo(gap * cam.soldier.collision.blendIn * 0.1, 3);
+    // never past the wall, then eased the rest of the way in at the record's rate
+    expect(gap).toBeGreaterThan(0);
+    expect(one.arm).toBeLessThanOrEqual(0.6 + 1e-9);
+    const two = soldierPose(body, cam, { yaw: 0, pitch: 0, dt: 0.1, prev: one, castArm });
+    expect(one.arm - two.arm).toBeCloseTo((one.arm - target) * cam.soldier.collision.blendIn * 0.1, 3);
     const held = settle({ yaw: 0, pitch: 0, castArm });
     expect(held.arm).toBeCloseTo(target, 3);
     const back = soldierPose(body, cam, { yaw: 0, pitch: 0, dt: 0.1, prev: held });

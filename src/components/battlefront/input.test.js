@@ -65,3 +65,28 @@ describe('the player’s hands', () => {
     expect(Object.values(on).every((l) => l.length === 0)).toBe(true);
   });
 });
+
+describe('the review’s findings on the hands', () => {
+  it('leaves Tab to the page while the deploy screen or the HUD has the keys (no keyboard trap)', () => {
+    const on = {};
+    const win = { addEventListener: (t, f) => ((on[t] ??= []).push(f)), removeEventListener() {} };
+    const input = createInput({ win, now: () => 0 });
+    input.attach();
+    let prevented = 0;
+    const tab = (target) => on.keydown.forEach((f) => f({ code: 'Tab', target, repeat: false, preventDefault: () => prevented++ }));
+    input.swallow(true);
+    tab({ tagName: 'BUTTON' });
+    expect(prevented).toBe(0);
+    input.swallow(false);
+    tab({ tagName: 'BUTTON' });
+    expect(prevented).toBe(0);
+    tab({ tagName: 'CANVAS' });
+    expect(prevented).toBe(1);
+  });
+
+  it('holds the look’s pitch to the camera’s own limit, so nothing turns that the camera does not', () => {
+    const input = createInput({ win: null, maxPitch: (55 * Math.PI) / 180 });
+    input.turn(0, -10);
+    expect(input.look().pitch).toBeCloseTo((55 * Math.PI) / 180, 9);
+  });
+});

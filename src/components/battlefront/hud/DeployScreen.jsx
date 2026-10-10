@@ -16,9 +16,13 @@ export default function DeployScreen({ deploy, points = 0, name = (o) => o.id, t
   const [picked, setPicked] = useState(first?.id ?? null);
   const firstButton = useRef(null);
   const chosen = rows.find((r) => r.id === picked && r.affordable) ?? first;
+  // (the highlight is what Enter deploys: the page hears the first one too)
+  const firstId = first?.id ?? null;
   useEffect(() => {
     firstButton.current?.focus({ preventScroll: true });
-  }, []);
+    if (first) onPick?.(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstId]);
   if (!deploy?.open) return null;
   return (
     <div className="bf-screen" role="dialog" aria-modal="true" aria-labelledby="bf-deploy-title">

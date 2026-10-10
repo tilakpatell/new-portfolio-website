@@ -53,5 +53,8 @@ describe('the game’s widgets, placed and filled', () => {
     const behind = markerProjection([0, 0, -10], camera, { w: 1600, h: 900 });
     expect(behind.onScreen).toBe(false);
     expect(Number.isFinite(behind.edgeAngle)).toBe(true);
+    // (looking down +Z, the camera's right is −X: a thing behind and to the right goes on the right edge)
+    expect(markerProjection([-5, 0, -10], camera, { w: 1600, h: 900 }).x).toBeGreaterThan(800);
+    expect(markerProjection([5, 0, -10], camera, { w: 1600, h: 900 }).x).toBeLessThan(800);
   });
 });
