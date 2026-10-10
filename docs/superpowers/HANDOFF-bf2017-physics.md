@@ -43,8 +43,8 @@ Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, 
 | --- | --- | --- | --- | --- |
 | design | the architecting session | `claude/bf2017-physics` | #817 | |
 | P0 | `session_018E4MP2mx7j6iFer89w3nFw` (Opus 5.5, started 2026-10-10 05:22) | `claude/bf2017-p0-shapes` | | |
-| P1 | `session_01NysT4m6BJEr2MtsRWJtgje` | `claude/bf2017-p1-body` | | |
-| P2 | `session_01H327MCrqpMV4bzo1SEtoeR` | `claude/bf2017-p2-bolts` | | |
+| P1 | `session_01NysT4m6BJEr2MtsRWJtgje` | `claude/bf2017-p1-body` | #822 | (merging when green) |
+| P2 | a desktop session | `claude/bf2017-p2-bolts` | #820 | 2026-10-10 |
 | P3 | not started: waits for lane V’s first model and P0 | `claude/bf2017-p3-vehicles` | | |
 | P4 | `session_01HTPJgq2Dagy8xghto1YbTV` | `claude/bf2017-p4-surfaces` | | |
 
