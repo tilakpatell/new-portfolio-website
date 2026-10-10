@@ -2,7 +2,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { mapRow } from './bf2017-rulebook-map.mjs';
+import { djb, mapRow } from './bf2017-rulebook-map.mjs';
 import { checkSources } from './bf2017-rulebook.mjs';
 
 const ROOT = join(import.meta.dirname, '..', 'fixtures', 'bf2017', 'data');
@@ -172,5 +172,15 @@ describe('a level with Strike', () => {
 
   it('lists the objective it cannot place under unplaced (Review Focus 2)', () => {
     expect(m.unplaced).toEqual([expect.objectContaining({ mode: 'strike', layer: 'Domination_Logic', name: 'PF_Strike_Bombs' })]);
+  });
+});
+
+describe('the mode prefabs’ input names', () => {
+  it('are the graphs’ djb2-xor hashes of the names', () => {
+    // (the hashes Naboo's Strike and Jabba's palace's Extraction wire)
+    expect(djb('BombALocation').toString(16)).toBe('97ae711b');
+    expect(djb('CP1Overtime').toString(16)).toBe('965d909c');
+    expect(djb('CheckpointPosition1').toString(16)).toBe('c7a11ce7');
+    expect(djb('CaptureDuration').toString(16)).toBe('8ae4eedf');
   });
 });

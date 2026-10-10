@@ -146,6 +146,58 @@ function placedIn(root, manifest, rel, sub) {
   return out;
 }
 
+// The names of the mode prefabs' input fields (djb2-xor, as the graphs hash
+// them: scripts/lib/bf2017-rulebook-map.mjs's djb): those the modes read
+const INPUT_NAMES = ['DefendingTeam', 'AttackingTeam', 'BombALocation', 'BombBLocation', 'BombAName', 'BombBName', 'CheckpointPosition1', 'CheckpointPosition2', 'CheckpointPosition3', 'CP1Overtime', 'CP2Overtime', 'CP3Overtime', 'NumberCheckPoints', 'ObjectiveIndex', 'CaptureDuration', 'MaxReinforcements', 'MaxBoardingTickets', 'Team', 'Owner', 'VisibleMaxDistance'];
+export const djb = (name) => {
+  let h = 5381;
+  for (const c of Buffer.from(name)) h = ((h * 33) ^ c) >>> 0;
+  return h;
+};
+const INPUT_BY_HASH = new Map(INPUT_NAMES.map((n) => [djb(n), n]));
+const fieldName = (f) => {
+  const h = Number.parseInt(String(f ?? '').replace(/^0x/, ''), 16);
+  return INPUT_BY_HASH.get(h >>> 0) ?? String(f);
+};
+
+// An interface field's value as the export prints it: a team, a number, a transform's position
+function valueOf(v) {
+  const s = String(v ?? '');
+  let m = s.match(/^TeamId Team(\d)/);
+  if (m) return Number(m[1]);
+  m = s.match(/^(?:Int32|Float32|UInt32) (-?[\d.e+-]+)/);
+  if (m) return Number(m[1]);
+  m = s.match(/^LinearTransform \(.*\(([-\d.e]+),([-\d.e]+),([-\d.e]+)\)\)$/);
+  if (m) return [r3(+m[1]), r3(+m[2]), r3(+m[3])];
+  m = s.match(/^Boolean (True|False)/);
+  if (m) return m[1] === 'True';
+  return null;
+}
+
+const modeLayerOf = (modes, mode, names, dir) => [modes[mode], ...(ALT_LAYERS[modes[mode]] ?? [])].map((l) => l.toLowerCase()).find((l) => names.some((n) => n.slice(dir.length).toLowerCase() === l));
+
+// A mode's sub-world wires the level's settings into its prefabs (property
+// connections across its layers): a locator's position into a site field
+// (Strike's BombALocation), the sub-world's interface values (Strike's
+// DefendingTeam). Each prefab gains `inputs`: field → a value or a position.
+function wire(root, row, mode, byGuid, subName) {
+  const sub = subName ? follow(root, subName) : null;
+  const top = sub?.objects?.[0];
+  if (!top) return;
+  const fields = new Map();
+  for (const o of sub.objects) if (o?.$type === 'InterfaceDescriptorData') for (const f of o.Fields ?? []) fields.set(String(f.Name), valueOf(f.Value));
+  for (const c of top.PropertyConnections ?? []) {
+    const target = byGuid.get(c.Target?.$class);
+    if (!target?.prefab || target.prefab.mode !== mode) continue;
+    let value = null;
+    if (c.Source?.$class) value = byGuid.get(c.Source.$class)?.at ?? null;
+    else if (sub.objects[c.Source?.$ref]?.$type === 'InterfaceDescriptorData') value = fields.get(String(c.SourceField)) ?? null;
+    if (value == null) continue;
+    (target.prefab.inputs ??= {})[fieldName(c.TargetField)] = value;
+    target.prefab.inputs_source = `${subName}#PropertyConnections`;
+  }
+}
+
 // A campaign map's objectives (its mission's ObjectivesDefinition records: the
 // tree of top-level and sub-level objectives, their strings and timings)
 function campaignObjectives(root, all, name) {
@@ -174,6 +226,8 @@ export function mapRow(root, level, { modes = MODE_LAYERS } = {}) {
   const names = all.filter((n) => n.toLowerCase().startsWith(dir.toLowerCase()) && !n.slice(dir.length).includes('/'));
   const row = { level: name, modes: [], spawns: [], polygons: [], volumes: [], spheres: [], boxes: [], waypoints: [], oob: { team1: [], team2: [] }, locators: [], cameras: [], prefabs: [], strings: [], unplaced: [], _missing: [] };
   const seen = new Set();
+  // (each mode's objects by guid, for its sub-world's wiring: guid → a prefab row, or a locator's position)
+  const byGuid = new Map();
   for (const [mode, named] of Object.entries(modes)) {
     // (any case: Kamino_01's hero showdown is `mode6`)
     const found = [named, ...(ALT_LAYERS[named] ?? [])].map((l) => names.find((n) => n.slice(dir.length).toLowerCase() === l.toLowerCase())).find(Boolean);
@@ -236,6 +290,7 @@ export function mapRow(root, level, { modes = MODE_LAYERS } = {}) {
           case 'LocatorEntityData':
           case 'LocalLocatorEntityData': {
             const t = transformOf(o);
+            if (t && o.$guid) byGuid.set(o.$guid, { at: t.at.map(r3), id });
             if (t) row.locators.push({ ...base, at: t.at.map(r3), yaw: r3(t.yaw) });
             return;
           }
@@ -256,9 +311,9 @@ export function mapRow(root, level, { modes = MODE_LAYERS } = {}) {
             const bp = o.Blueprint?.$asset;
             if (!bp || !PREFAB_LAYER.test(lay) || isSequel(bp)) return;
             const at = t && /Spatial/.test(o.$type) ? { at: t.at.map(r3), yaw: r3(t.yaw) } : null;
-            row.prefabs.push({ ...base, name: shortName(bp), blueprint: bp, ...(at ?? {}) });
-            // (an objective the extractor cannot place: a mode on this map refuses to start until it is)
-            if (!at && OBJECTIVE.test(shortName(bp))) row.unplaced.push({ id, mode, layer: lay, name: shortName(bp), why: 'an objective prefab with no transform in the layer', _source: base._source });
+            const prefab = { ...base, name: shortName(bp), blueprint: bp, ...(at ?? {}) };
+            row.prefabs.push(prefab);
+            if (o.$guid) byGuid.set(o.$guid, { prefab });
             return;
           }
           default:
@@ -267,6 +322,9 @@ export function mapRow(root, level, { modes = MODE_LAYERS } = {}) {
     }
   }
 
+  for (const mode of row.modes) wire(root, row, mode, byGuid, names.find((n) => n.slice(dir.length).toLowerCase() === modeLayerOf(modes, mode, names, dir)));
+  // (an objective the extractor cannot place: no transform of its own and no site wired in; a mode on this map refuses to start until it is)
+  for (const p of row.prefabs) if (!p.at && OBJECTIVE.test(p.name) && !Object.keys(p.inputs ?? {}).some((k) => /location|transform/i.test(k))) row.unplaced.push({ id: p.id, mode: p.mode, layer: p.layer, name: p.name, why: 'an objective prefab with no transform and no site wired to it', _source: p._source });
   if (campaign) row.objectives = campaignObjectives(root, all, name);
   // (the map's manifest where the bucket's index files it, else by its name)
   const filed = (readWebJson(root, 'maps/index.json') ?? []).find((r) => r.level.toLowerCase() === String(name).toLowerCase())?.file;

@@ -7,7 +7,7 @@
 //
 //   createSquads(sim) → squads       update(squads, sim) (every SQUAD s)
 //   alert(squads, from, { id, at }, now)      deliver(squads, sim, now) → alerts that arrived
-//   squadOf(squads, id) → squad | null
+//   squadOf(squads, id) → squad | null        join(squads, id, team) → the squad a side-changer joins
 
 import { confidence, posture } from '../../ai/squad.js';
 
@@ -34,6 +34,18 @@ export function createSquads(sim) {
 }
 
 export const squadOf = (squads, id) => squads.by.get(id) ?? null;
+
+// a bot that changes sides (Ewok Hunt's trooper risen an Ewok) leaves its squad for the new team's smallest
+export function join(squads, id, team) {
+  const was = squads.by.get(id);
+  if (was?.team === team) return was;
+  if (was) was.members = was.members.filter((m) => m !== id);
+  const to = squads.list.filter((q) => q.team === team).sort((a, b) => a.members.length - b.members.length)[0] ?? null;
+  if (to) to.members.push(id);
+  if (to) squads.by.set(id, to);
+  else squads.by.delete(id);
+  return to;
+}
 
 export function update(squads, sim) {
   for (const sq of squads.list) {
