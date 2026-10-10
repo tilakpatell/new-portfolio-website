@@ -23,3 +23,9 @@ describe('the built people', () => {
     expect(gone).toBe(0);
   });
 });
+
+describe('a built figure says so', () => {
+  it('carries the built mark, a person, a droid and a beast alike', () => {
+    for (const kind of ['stormtrooper', 'droid', 'tauntaun']) expect(buildFigure(kind).model.userData.built, kind).toBe(true);
+  });
+});
