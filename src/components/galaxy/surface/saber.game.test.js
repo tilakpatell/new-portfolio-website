@@ -83,7 +83,12 @@ describe('a 2017 hero’s saber', () => {
     await new Promise((r) => setTimeout(r, 0));
     const scale = gp.gun.getObjectByName('hilt-model').scale.x;
     const want = BLADE_OF[hilt.model].base.map((v) => v * scale);
-    expect(gp.gun.getObjectByName('blade').position.toArray().map((v) => +v.toFixed(4))).toEqual(want.map((v) => +v.toFixed(4)));
+    expect(
+      gp.gun
+        .getObjectByName('blade')
+        .position.toArray()
+        .map((v) => +v.toFixed(4)),
+    ).toEqual(want.map((v) => +v.toFixed(4)));
     saber.dispose();
   });
 
