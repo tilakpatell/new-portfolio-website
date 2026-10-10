@@ -101,7 +101,9 @@ export default {
     // need the sun and the sky before the chain is built)
     const { applyGameLight } = await import('../../lib/three/light/apply.js');
     const light = await applyGameLight(scene, renderer, entryFor(lighting, weather), { tier, camera, lights: lightsJsonOf(lighting.lights) });
-    const post = light.passes.length ? rt.gfx.post(light.passes) : null;
+    // (?post=off in the address: the scene drawn with no chain, for a check)
+    const asked = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.split('?')[1] ?? window.location.search).get('post') : null;
+    const post = light.passes.length && asked !== 'off' ? rt.gfx.post(light.passes) : null;
 
     const snapshot = () => {
       const v = view(sim);

@@ -32,6 +32,10 @@
   color: var(--bf-ink);
   letter-spacing: 0.04em;
 }
+.bf-hud.hud {
+  /* (under the site's bar, which floats over every page) */
+  top: var(--nav-h, 68px);
+}
 .bf-glass {
   background: var(--bf-glass);
   border-radius: 2px;
@@ -275,6 +279,8 @@
 }
 .bf-table {
   width: 100%;
+  background: transparent;
+  color: inherit;
   border-collapse: collapse;
   font-size: 0.85rem;
 }
