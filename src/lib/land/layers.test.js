@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { LAYERS, fieldAt } from './layers';
+import { LAYERS, decodeHeights, fieldAt, imageLayerFrom } from './layers';
 import { LAYER_TYPES, makeRaw } from '../../components/galaxy/surface/terrain';
 
 describe('the layers, shared with the galaxy', () => {
-  it('has the galaxy’s nine', () => {
-    expect(Object.keys(LAYERS)).toEqual(['swell', 'hills', 'dunes', 'mesas', 'ridges', 'mountains', 'channels', 'island', 'level', 'blocks']);
+  it('has the galaxy’s nine, the city’s blocks and the game’s image', () => {
+    expect(Object.keys(LAYERS)).toEqual(['swell', 'hills', 'dunes', 'mesas', 'ridges', 'mountains', 'channels', 'island', 'level', 'blocks', 'image']);
     expect(LAYER_TYPES).toEqual(Object.keys(LAYERS));
   });
 
@@ -78,5 +78,60 @@ describe('fieldAt', () => {
       for (let x = 0; x < 2400; x += 1) expect(Math.abs(LAYERS.blocks(x + 4, 60, l, 9) - LAYERS.blocks(x, 60, l, 9))).toBeLessThanOrEqual(60);
       expect(LAYERS.blocks(60, 60, { ...l, cover: 0 }, 9)).toBe(0);
     });
+  });
+});
+
+describe('the image layer: the game’s heightmaps', () => {
+  // a 3 × 3 near map at 1 m a pixel from (0, 0), over a 5 × 5 far map at 2 m
+  // from (-2, -2); heights already in metres
+  const near = { data: new Float32Array([10, 12, 14, 10, 12, 14, 10, 12, NaN]), w: 3, h: 3, minX: 0, minZ: 0, metresPerPixel: 1 };
+  const far = { data: new Float32Array(25).fill(5), w: 5, h: 5, minX: -2, minZ: -2, metresPerPixel: 2 };
+  const layer = { type: 'image', near, far };
+
+  it('reads the near map where it covers', () => {
+    expect(LAYERS.image(0, 0, layer)).toBe(10);
+    expect(LAYERS.image(1, 1, layer)).toBe(12);
+  });
+
+  it('is bilinear: halfway between two texels is their mean', () => {
+    expect(LAYERS.image(0.5, 0, layer)).toBeCloseTo(11, 10);
+    expect(LAYERS.image(1.5, 0.5, layer)).toBeCloseTo(13, 10);
+  });
+
+  it('reads the far map outside the near one', () => {
+    expect(LAYERS.image(-1, -1, layer)).toBe(5);
+    expect(LAYERS.image(5, 5, layer)).toBe(5);
+  });
+
+  it('a hole in the near map reads the far map, not zero', () => {
+    expect(LAYERS.image(2, 2, layer)).toBe(5);
+    expect(LAYERS.image(1.5, 1.5, layer)).toBe(5);
+  });
+
+  it('is 0 with neither map (the pack not loaded yet), and 0 beyond both', () => {
+    expect(LAYERS.image(3, 3, { type: 'image', pack: 'hoth' })).toBe(0);
+    expect(LAYERS.image(500, 500, layer)).toBe(0);
+  });
+
+  it('decodes 16-bit heights by the record’s scale and offset', () => {
+    expect(Array.from(decodeHeights(new Uint16Array([0, 65535]), 1024, -12))).toEqual([-12, 1012]);
+    // the record's hole value reads as NaN, so the layer falls through it
+    const d = decodeHeights(new Uint16Array([0, 100]), 1024, 0, { hole: 0 });
+    expect(Number.isNaN(d[0])).toBe(true);
+    expect(d[1]).toBeCloseTo((100 / 65535) * 1024, 6);
+  });
+
+  it('builds the layer from a record and its two maps, the seam within half a metre', () => {
+    const record = { heightScale: 1024, heightOffset: 0, holePixels: 0 };
+    // one gentle slope, sampled at 1 m and at 2 m
+    const raw = (x) => Math.round(((100 + x * 0.5) / 1024) * 65535);
+    const nearPixels = { data: new Uint16Array(9 * 9).map((_, i) => raw(i % 9)), w: 9, h: 9, minX: 0, minZ: 0, metresPerPixel: 1 };
+    const farPixels = { data: new Uint16Array(9 * 9).map((_, i) => raw((i % 9) * 2 - 4)), w: 9, h: 9, minX: -4, minZ: -4, metresPerPixel: 2 };
+    const l = imageLayerFrom(record, nearPixels, farPixels);
+    expect(l.type).toBe('image');
+    const inBoth = LAYERS.image(3.3, 2.1, l);
+    const farOnly = LAYERS.image(3.3, 2.1, { far: l.far });
+    expect(Math.abs(inBoth - farOnly)).toBeLessThan(0.5);
+    expect(inBoth).toBeCloseTo(100 + 3.3 * 0.5, 1);
   });
 });
