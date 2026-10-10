@@ -49,11 +49,29 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error(`No materials.jsonl under ${root}: fetch it first (node scripts/bf2017-fetch.mjs --raw materials.jsonl).`);
     process.exit(2);
   }
+  // (which records are variations and presets: data.tsv's type column, since
+  // a record's name seldom says; the mesh variation databases' texture
+  // bindings carry parameter names too)
+  const tsv = [join(root, 'data.tsv'), join(root, 'web', 'data.tsv')].find(existsSync);
+  const typeOf = new Map();
+  if (tsv) for (const line of readFileSync(tsv, 'utf8').split('\n')) {
+    const [, type, path] = line.split('\t');
+    if (type && path) typeOf.set(path.toLowerCase().replace(/\.json$/, ''), type);
+  }
+  const kindOf = (file) => {
+    const rel = file.slice(root.length + 1).replace(/\\/g, '/').replace(/\.json(\.gz)?$/, '').toLowerCase();
+    const type = typeOf.get(rel);
+    if (type === 'ObjectVariation' || type === 'MeshVariationDatabase') return 'variations';
+    if (type === 'SurfaceShaderPreset' || /ShaderPreset$/.test(type ?? '')) return 'presets';
+    if (!type) return /preset/i.test(file) ? 'presets' : /variation/i.test(file) ? 'variations' : null;
+    return null;
+  };
   const variations = [];
   const presets = [];
-  for (const f of walk(join(root, 'data'), (n) => /\.json(\.gz)?$/.test(n) && /variation|preset/i.test(n))) {
-    const rec = await readRecord(f);
-    (/preset/i.test(f) ? presets : variations).push(rec);
+  for (const f of walk(join(root, 'data'), (n) => /\.json(\.gz)?$/.test(n))) {
+    const kind = kindOf(f);
+    if (!kind) continue;
+    (kind === 'presets' ? presets : variations).push(await readRecord(f));
   }
   const names = namesFrom({ materials: readFileSync(materialsFile, 'utf8'), variations, presets });
   const dict = dictionary(names);
