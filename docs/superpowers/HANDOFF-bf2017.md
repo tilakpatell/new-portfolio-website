@@ -15,7 +15,7 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 | Lane | What | Needs first | Session | Branch | Merged |
 |---|---|---|---|---|---|
 | D | the desktop: the texture list and pass; the sound export, encode and upload | the desktop | | | |
-| H | hurtboxes: the game’s three more sets; fitted sets for the rest | nothing | | | |
+| H | hurtboxes: the game’s three more sets; fitted sets for the rest | nothing | the design session (task 1) | `claude/bf2017-h-game-sets` | #840 (task 1: the tauntaun’s, the Ewok’s and the AT-RT’s sets in `bones.json`) |
 | B | phase 3: dewback, bantha, eopie, ronto, Jawa, aiwha; the tauntaun’s rider on the game’s clips and seat bones; the ronto’s Jawa | nothing (the Ewok’s hood and the lodcaps after D) | | | |
 | Y | phase 10: Yoda and Grievous as own-rig heroes, the second blade in `Wep2_Root`, their powers | H for Grievous’s set | | | |
 | I | the Death Star interior’s cast: shadowtrooper, navy crewman, admiral, personnel, the droids; `figures.js` learns the game’s skeletons | nothing | | | |

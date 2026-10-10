@@ -28,7 +28,7 @@
 
 ---
 
-### Task 1: The whole tree's sets
+### Task 1: The whole tree's sets (done in PR #840, from the design session; read it, then go to task 2)
 
 **Files:**
 - Modify: `scripts/bf2017-bolts-data.mjs` (the bone-set pass walks every `data/**/*.json(.gz)` whose raw text contains `"SkeletonCollisionData"`, as the `isBones` check at line 542 does, over the whole tree; sequel skeletons dropped), `src/data/bf2017/physics/bones.json` (regenerated: + `tauntaunbonecollision`, `heroewokbonecollision`, `atrtbonecollision`), `src/data/bf2017/physics/NOTES.md`
