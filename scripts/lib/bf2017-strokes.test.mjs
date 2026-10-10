@@ -19,6 +19,9 @@ describe('a 2017 clip’s name', () => {
     ['A_Vader_Stand_Block_SwingLeft_03', { hero: 'vader', kind: 'block', dir: 'left', variant: 3 }],
     ['A_Luke_Block_Stagger_01', { hero: 'luke', kind: 'block', variant: 1 }],
     ['A_Vader_LightAttack_Blocked_05', { hero: 'vader', kind: 'blocked', index: 5 }],
+    // (Grievous spells a take after the strike and a side in the reaction)
+    ['A_Grievous_AttackLoop_Strike3_01', { hero: 'grievous', kind: 'strike', index: 3, variant: 1 }],
+    ['A_Grievous_Stand_LightAttack_Blocked_Right_02', { hero: 'grievous', kind: 'blocked', index: 2 }],
     ['A_Luke_Stagger_Front_02', { hero: 'luke', kind: 'stagger', dir: 'front', variant: 2 }],
     ['A_Vader_Stagger_Fwd_01', { hero: 'vader', kind: 'stagger', dir: 'back' }],
     ['A_ObiWan_Dodge_Left_01', { hero: 'obiwan', kind: 'dodge', dir: 'left' }],

@@ -3,7 +3,7 @@
 // src/data/bf2017/strokes/<hero>.json, which the site's combat rules turn
 // into the hero's stance (src/components/galaxy/surface/stanceFromTable.js).
 //
-//   node --env-file=.env.local scripts/bf2017-strokes.mjs <hero> [--list]
+//   node --env-file=.env.local scripts/bf2017-strokes.mjs <hero> [--list]   (behind a proxy: NODE_USE_ENV_PROXY=1)
 //   node scripts/bf2017-strokes.mjs <hero> --pack public/models/galaxy/bf2017/clips-<hero>.glb [--skeleton …/walrus.glb]
 //
 //   hero      luke, vader, obiwan, anakin, maul, dooku, yoda, grievous, palpatine
@@ -46,7 +46,12 @@ export const PREFIX = {
   grievous: 'Grievous',
   palpatine: 'Palpatine',
 };
-const SKELETON = /\/Walrus_HumanMale$/;
+// the skeletons a hero's clips are measured on: the humanoid's, the
+// cinematics' (the same rig at the same rest; it holds Luke's swing blocks
+// and all six of his blocked reactions), and a hero's own where the game
+// gives it one (Yoda's, Grievous's)
+const SKELETONS = ['Walrus_HumanMale', 'Walrus_NIS_S0800_Skeleton'];
+const OWN = { yoda: 'Yoda_01_Ske', grievous: 'GeneralGrievous_01_Ske' };
 // (what a table keeps of a measure: the tip's path is for checking, not the site)
 const KINDS = new Set(['strike', 'return', 'block', 'blocked', 'stagger', 'dodge', 'dash', 'jump', 'defeat', 'locomotion']);
 
@@ -81,7 +86,7 @@ async function fetchTo(env, bucketPath) {
 export function heroClips(manifest, hero) {
   const p = PREFIX[hero];
   const re = new RegExp(`^(A_${p}_|L_${p}_Stand_Idle_01$)`);
-  return [...manifest.values()].filter((e) => re.test(e.name) && !e.additive && !isSequel(e.name) && SKELETON.test(e.skeleton ?? '') && KINDS.has(classify(e.name).kind));
+  return [...manifest.values()].filter((e) => re.test(e.name) && !e.additive && !isSequel(e.name) && [...SKELETONS, OWN[hero]].includes((e.skeleton ?? '').split('/').pop()) && KINDS.has(classify(e.name).kind));
 }
 
 async function fromBucket(hero, { list }) {
@@ -104,7 +109,12 @@ async function fromBucket(hero, { list }) {
     const doc = await rw.read(file);
     const anim = doc.getRoot().listAnimations()[0];
     if (!anim) continue;
-    clips.push({ name: e.name, ...measured(clipOf(anim), rigOf(doc)) });
+    try {
+      clips.push({ name: e.name, ...measured(clipOf(anim), rigOf(doc)) });
+    } catch (err) {
+      // (a skeleton without the game's weapon socket: nothing to time a blade by)
+      console.log(`skipped: ${e.name} (${err.message})`);
+    }
   }
   return clips;
 }

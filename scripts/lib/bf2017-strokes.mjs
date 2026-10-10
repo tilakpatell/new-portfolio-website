@@ -87,8 +87,9 @@ export function classify(name) {
   let r;
   // (a return names its strike: Strike3_V2_BackToIdle, Strike4_V2_BackToIdle 1, Strike1_BackToIdle_02)
   if ((r = /AttackLoop_Strike(\d+)(?:_V(\d+))?_BackToIdle/.exec(rest))) return out('return', { index: num(r[1]), variant: num(r[2]) });
-  if ((r = /AttackLoop_Strike(\d+)(?:_V(\d+))?$/.exec(rest))) return out('strike', { index: num(r[1]), variant: num(r[2]) });
-  if ((r = /LightAttack_Blocked_(\d+)/.exec(rest))) return out('blocked', { index: num(r[1]) });
+  // (Grievous's carry a take after them: Strike3_01)
+  if ((r = /AttackLoop_Strike(\d+)(?:_V(\d+))?(?:_\d\d)?$/.exec(rest))) return out('strike', { index: num(r[1]), variant: num(r[2]) });
+  if ((r = /LightAttack_Blocked_(?:(?:Left|Right)_)?(\d+)/.exec(rest))) return out('blocked', { index: num(r[1]) });
   if (/Choke|Force|MindTrick|RagePowerUp|CatchSaber|Lightning/.test(rest)) return out('force');
   if ((r = /Block(?:Saber)?_(?:Swing)?(Left|Right)(?:_(\d+))?/.exec(rest))) return out('block', { dir: low(r[1]), variant: num(r[2]) });
   if ((r = /Block_Stagger(?:_Fwd)?(?:_(\d+))?/.exec(rest))) return out('block', { variant: num(r[1]) });

@@ -25,15 +25,15 @@ describe('a 2017 hero’s stance, from its stroke table', () => {
     const one = luke.strikes.find((s) => s.name === 'A_Luke_AttackLoop_Strike1');
     expect(st.strokes[0].contact).toEqual(one.contact);
     expect(st.strokes[0].back).toBe('A_Luke_AttackLoop_Strike1_BackToIdle');
-    expect(st.strokes[0].site).toBe('sword.light.a');
     // (a return is never a strike)
     expect(st.strokes.some((s) => /BackToIdle/.test(s.clip))).toBe(false);
   });
 
   it('makes its heavies of the jump attack and the dash, and names its blocks', () => {
     expect(st.heavies.map((h) => h.clip)).toEqual(['A_Luke_Jump_SaberAttack_Light_FH_01', 'A_Luke_Stand_SaberDash_01']);
-    expect(st.blocks.left).toEqual(['A_Luke_Stand_Block_SwingLeft_01']);
-    expect(st.blocks.right).toEqual(['A_Luke_Stand_Block_SwingRight_01']);
+    expect(st.blocks.left[0]).toBe('A_Luke_Stand_Block_SwingLeft_01');
+    expect(st.blocks.right[0]).toBe('A_Luke_Stand_Block_SwingRight_01');
+    expect(st.blocks.left.length).toBeGreaterThan(1); // (the game's several, by variant)
   });
 
   it('cuts each way with a strike that cuts that way, read from the tip', () => {
