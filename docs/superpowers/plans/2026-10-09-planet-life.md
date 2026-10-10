@@ -47,9 +47,9 @@
 - Create: `src/lib/land/flight/roster.js`, `roster.test.js`, `routes.js`, `routes.test.js`
 
 **Interfaces:**
-- Produces: `rosterFor(spec, life, cellKey, tier, heightAt) → { air: [{ id, kind, model, route: routeId, t0 }], ground: [{ id, kind, model, role, at: [x, y, z], yaw, home, group }] }` with the caps; `routesFor(spec, life, cellKey) → [{ id, kind, points: [[x, y, z]...], loop: true, speed, alt, scramble }]` between the two nearest POIs or the cell's edges, at the kind's altitude band over `heightAt` + the band; `cellKey` on the `NET_CELL` grid.
+- Produces: `rosterFor(spec, life, cellKey, tier, field) → { routes, air: [{ id, kind, model, row, route: routeId, t0 }], ground: [{ id, kind, model, role, row, at: [x, y, z], yaw, home, group, lift }] }` with the caps (`field` is `planetField`'s `{ heightAt, biomeAt }`: a row keeps to its biomes); `routesFor(spec, life, cellKey, field) → [{ id, row, name, model, route, points: [[x, y, z]...], loop: true, speed, alt, scramble, hostile, anchor, length }]` between the two nearest POIs or the cell's edges, at the kind's altitude band over `heightAt` + the band; `cellKey` on the `NET_CELL` grid.
 
-- [ ] Tests: deterministic; under the caps; a herd's members within `group` metres of their `home`; no ground row on a slope over 0.7 or inside a POI's flat; a route's points are over ground by at least `alt[0]`; a `hostile` POI gives a patrol route with `scramble`.
+- [ ] Tests: deterministic; under the caps; a herd's members within the row's `spread` metres (default 30) of their `home` (`group` is the count); no ground row on a slope over 0.7 or inside a POI's flat; a route's points are over ground by at least `alt[0]`; a `hostile` POI gives a patrol route with `scramble`.
 - [ ] Write; PASS; **Commit** `A cell's roster and routes, from the seed`.
 
 ### Task 3: The life streamer and the brains
@@ -77,3 +77,13 @@
 ### Task 5: Docs and the PR
 
 - [ ] A paragraph in `docs/architecture.md`; the handoff's lane G row. Merge `origin/main`, the checks, push, PR, CI, no merge.
+
+## Where the code disagreed (fixed in lane G's PR)
+
+- **Coruscant's traffic flies over its skyline.** Lane A's city is towers to 620 m on a floor at −330 m, and a route's floor is the ground's, so Coruscant's lanes are 660 to 1,040 m over the floor, not 80 to 420.
+- **The rosters and routes take the planet's `field`**, not `heightAt` alone: a row keeps to its biomes, so they need `biomeAt` too. A roster also returns its cell's routes.
+- **Models are code-built.** The catalogue's GLBs are scanned PBR and the flight is painted (one art a world, `docs/health/RULES.md`), so a row draws as the galaxy's code-built ship or figure, or a body built in code from its `body` and `tint`; `model` still names the catalogue kind where there is one. One `InstancedMesh` a model, written each frame and grown as needed (`lifeScene.js`), not `lib/three/pool.js`'s fixed slots. Nothing casts a shadow: the flight draws none.
+- **Damage waits for lane D.** A hit goes to `createLife`'s `onHit` (clamped to 30), which nothing passes yet; nothing touches `hp`.
+- **The caps are per loaded cell**, and the grid keeps a band of up to 30 cells loaded, so Coruscant's lanes peak at 360 ships, not 300.
+- **A `flock` role** (bogwings, gulls, bird people, Geonosians on the wing) joins the six; **a row marked `night`** waits for the flight to have a night.
+- **Files added:** `lifeScene.js` (the drawing, and `withLife`, scene.js's one call), `lifeNews.js` and `LifeLine.jsx` with `life.css` (the HUD's line, FlightHud.jsx's one call), and `FLY` in `scripts/perf-probe.mjs` (the `fly` journey over any planet).
