@@ -381,6 +381,25 @@ describe('a room heard by cell', () => {
     expect(old.got.filter((m) => m.ns === 'pose').map((m) => m.data[0])).toEqual([1]);
   });
 
+  it('hands on the cell a word was tagged with, the sender’s own, so a reader can hold a pose to it', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    a.setCell('hoth/2,3');
+    const b = join(net);
+    const tags = [];
+    for (const ns of ['pose', 'hi']) b.makeAction(ns).onMessage = (data, { tag }) => tags.push([ns, tag]);
+    await Promise.all([a.ready, b.ready]);
+    a.action('pose').send([5000, 0, 7000]);
+    await until(() => tags.some(([ns]) => ns === 'pose'));
+    expect(tags.find(([ns]) => ns === 'pose')[1]).toBe('hoth/2,3');
+    // (a room whose pilots say no cell hands on none)
+    const c = join(net);
+    await c.ready;
+    c.action('hi').send({ n: 'Han' });
+    await until(() => tags.some(([ns]) => ns === 'hi'));
+    expect(tags.find(([ns]) => ns === 'hi')[1]).toBeNull();
+  });
+
   it('a message for a pilot cells away carries their cell, so it passes their filter', async () => {
     const net = createRelays(URLS);
     const a = join(net); // (hears everyone)

@@ -10,7 +10,8 @@
 }
 .fly-stage .world-canvas { position: absolute; inset: 0; touch-action: none; }
 .fly-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #2b3d55; font-size: var(--fs-sm); }
-.fly-hud { --hud-ink: #1a1f2b; color: #1a1f2b; }
+/* (dark ink on the snow, so the glass is light: the kit's dark glass under it read as nothing) */
+.fly-hud { --hud-ink: #1a1f2b; --hud-muted: #2b3d55; --hud-glass: rgb(255 255 255 / 0.8); --hud-glass-hi: rgb(255 255 255 / 0.9); --hud-line: rgb(43 61 85 / 0.25); color: #1a1f2b; }
 .fly-brand { padding: 0.5rem 0.75rem; border-radius: 0.75rem; background: rgb(255 255 255 / 0.8); }
 .fly-eyebrow { margin: 0; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: #2b3d55; }
 .fly-title { margin: 0; font-size: var(--fs-lg); font-weight: 700; }

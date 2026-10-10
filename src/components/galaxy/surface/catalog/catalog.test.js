@@ -12,13 +12,19 @@ const README = readFileSync(new URL('../../../../../public/cc0/README.md', impor
 const MB = 1024 * 1024;
 
 describe('the surface models', () => {
-  it('names each kind once, across the groups (the Battlefront group aside: a kind there takes over)', () => {
+  it('names each kind once, across the groups (the two Battlefront groups aside: a kind there takes over)', () => {
+    const OVER = ['battlefront', 'bf2017'];
     const all = Object.entries(GROUPS)
-      .filter(([g]) => g !== 'battlefront')
+      .filter(([g]) => !OVER.includes(g))
       .flatMap(([, m]) => Object.keys(m));
     expect(new Set(all).size).toBe(all.length);
-    for (const kind of [...all, ...Object.keys(GROUPS.battlefront)]) expect(kind, kind).toMatch(/^[a-z0-9]+$/);
-    for (const kind of Object.keys(GROUPS.battlefront)) expect(SURFACE_MODELS[kind].group, kind).toBe('battlefront');
+    for (const kind of [...all, ...Object.keys(GROUPS.battlefront), ...Object.keys(GROUPS.bf2017)]) expect(kind, kind).toMatch(/^[a-z0-9]+$/);
+    for (const kind of Object.keys(GROUPS.battlefront)) expect(SURFACE_MODELS[kind].group, kind).toBe(GROUPS.bf2017[kind] ? 'bf2017' : 'battlefront');
+    for (const kind of Object.keys(GROUPS.bf2017)) expect(SURFACE_MODELS[kind].group, kind).toBe('bf2017');
+  });
+
+  it('puts the 2017 group last, so its kinds win over every other', () => {
+    expect(Object.keys(GROUPS).at(-1)).toBe('bf2017');
   });
 
   it('has each one brought in, small enough, with what the import needs', () => {
@@ -36,11 +42,16 @@ describe('the surface models', () => {
     const made = madeKinds(README);
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
       if (m.cluster) continue;
-      if (m.made === 'battlefront') {
-        // (brought in by scripts/battlefront-import.mjs: credited with its permission)
+      if (m.made === 'battlefront' || m.made === 'bf2017') {
+        // (brought in by scripts/battlefront-import.mjs or bf2017-import.mjs: credited with its permission)
         expect(m.uid, kind).toBeUndefined();
         expect(CREDITS[`surface-${kind}`]?.license, `${kind}'s credit`).toBe('permission');
         expect(CREDITS[`surface-${kind}`]?.permission, `${kind}'s permission`).toBeTruthy();
+        // (and a 2017 one names the manifest model it came from, so it can be made again)
+        if (m.made === 'bf2017') {
+          expect(typeof m.from, `${kind}'s from`).toBe('string');
+          expect(m.from.length, `${kind}'s from`).toBeGreaterThan(0);
+        }
       } else if (m.made) {
         expect(['meshy', 'quaternius', 'gen3d'], kind).toContain(m.made);
         expect(m.uid, kind).toBeUndefined();
