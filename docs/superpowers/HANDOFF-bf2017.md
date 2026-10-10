@@ -276,6 +276,8 @@ The owner’s ask: custom figures like Ahsoka were interfering with the saber, s
 
 **Numbers**: in Node, a seeded Luke-against-Vader duel runs the same twice (`saber2017.test.js`); a block from the front holds and costs Vader 7.1 of 100; Luke’s strike lands 130, 160 from behind, 0.09 s after its window opens. Heroes vs Villains on Hoth, four seeds with nobody playing: 4–10 in 219 s, 10–5 in 202 s, 10–1 in 259 s, 4–10 in 196 s; 33–56 saber strikes a battle, 13–24 landing, 5–17 met on a block, 115–205 bolts turned by a raised shield. In the browser (Hoth, software GL, `__surfaceDo('duel', 'vader', { ahead: 5 })`, `docs/superpowers/evidence/bf-saber-2017/`): Vader fences on the engine (approach, block, circle), Luke’s strike carries its trail into him, the stamina meter and “Dodge ×2” on the HUD; a trooper’s bolt from the front with the block up took nothing, one from behind 8; no console error.
 
+**Gates**: `npm run lint`, `npm test` (12,791), `npm run build`, `node scripts/health.mjs --check --skip build` (within budget); `BUDGET=1 node scripts/galaxy-check.mjs surface hoth` (high, as the baseline was made: no asset base) passes: 145 of 274 calls, 0.81 M of 1.66 M triangles, 16.9 of 60 MB. With `VITE_ASSET_BASE` at the bucket the same run fetches 104.3 MB (the 2017 bodies and Hoth’s level pack then come) and fails the 60 MB row; that is the world with its game assets, not this lane’s, and wasn’t measured on `main`.
+
 **Left**: Ahsoka on the game’s rig (lane D2); the camera floats through lane C’s camera; the kick (strike index 7) when a table measures one; a guard-break clip’s length for `hand.broken`; the game’s heroes’ stamina on the HUD as the game’s own widget (`PF_Hud_Ability_Stamina`).
 
 ## Asked of the desktop exporter (not the site’s work)
