@@ -23,7 +23,7 @@
 
 1. A world that places thirty of one kind (Hoth's assault: 14 soldiers a side at high): one skinned mesh per figure is thirty draw calls per material; a kind imported with its parts joined per material (`join` on the skinned primitives that share a material) keeps a trooper at two or three calls. Task 2 asserts the call count of each kind's plain file.
 2. The humanoid pack must not load for a world with no 2017 person (the Mandalorian worlds): task 4's loader test with a world that never calls `loadWalrusFigure` fetches nothing.
-3. A kind whose body has no `IK_Joint_RightHand` or `Wep_Root` (a droid on its own rig, a creature): the walrus loader must refuse it, and the own-rig loader (task 5) take it, never a silent bind pose. `checkWalrus` already says which; task 5's test pins the hand-over.
+3. A kind whose body has no `IK_Joint_RightHand` or `Wep_Root` (a droid on its own rig, a creature): the walrus loader must refuse it, and the own-rig loader (task 5) take it, never a silent bind pose. `checkWalrus` already says which; task 5's test pins the hand-over. If PR #781 (Rapier body, hurtboxes from bone names) has merged, every 2017 kind needs `HURTBOX_REGIONS` (phase 1's `walrusRig.js`) and each own rig its own region map, or a hostile cannot be hit: task 5 adds the maps and a test that every own-rig kind has one.
 4. The `.far` cut at 700 triangles has no fingers to speak of and a 256 map: it must never be the cut drawn within the `near` distance of the level (`budgets.js`'s `near`, 30 to 110 m). Task 3's `wantsLod`-style helper is tested on the three distances.
 5. Memory, not bytes: 102 kinds × plain-file textures could reach the 256 MB desktop contract if a world placed them all; no world does (Tatooine places the most, 19 kinds). Task 6 records `renderer.info.memory.textures` per world at high in the evidence and the PR, and the contract (60 textures, 256 MB desktop, 128 MB phone) holds.
 
@@ -53,6 +53,7 @@ The audit (`node scripts/galaxy-figures-audit.mjs`) lists 102 kinds. Write `cast
 | droideka, dwarfspider | `gameplay/vehicles/ground/droideka_01/droideka_01_mesh`, `…/dwarfspiderdroid/…` | own rigs; droideka 52 clips |
 | villager (built, nine worlds), farmer, caretaker, jocasta, zam | `npc/humans/civ_moseisley/civ_moseisley_0{1,2,3}`, `npc/humans/civ_theed/civ_theed_0{1,2}`, and the modular `civ_vardos` set (coats, robes, pants, hats, boots on the shared body) | the villager becomes a pool: the world's `look` picks desert, Theed or Vardos; `actors.js`'s seed picks the variant |
 | kenobi (built) | phase 1's `kenobi` | already shipped |
+| Hoth's named people, if PR #795 (another account's, Meshy-made: `lukehoth`, `hanhoth`, `leiahoth`, `veers`, `rieekan`, `torynfarr`, `twoonebee`, `astromech2`, `astromech3`) has merged | `hero/luke/luke_hoth_01/…` (+ helmet, gloves, scarf), `hero/hansolo/hansolo_hoth_01/…` (+ helmet, skirt), `hero/leia/leia_01` in the Hoth outfit if the manifest has one (else `leia_01`), `dark/d_officer_orig/…` for Veers with `heads/…`, `npc/humans/rebel_personnel/rebel_personnel_orig_ds_01` for Rieekan and Toryn Farr with a head each, `npc/droids/astromech/r2d2_01` and `r5d4_01` for the astromechs; 2-1B stays (the game has no medical droid) | the kind names stay as the world names them; the Meshy files are replaced under the same rows (`rig: 'walrus'`) |
 | rebelpilot (own clips, Mixamo) | `npc/humans/rebel_pilot/rebel_pilot_male_02_mesh` | |
 | rebeltech | `npc/humans/rebel_technician_orig/rebel_technician_orig_01/rebel_technician_orig_01_mesh` | |
 | imperial officer kinds (`wingguard`, `senateguard` stay; add `officer`, `navycrewman`, `admiral`, `personnel`) | `dark/d_officer_orig/d_officer_orig_01/d_officer_orig_01_parts_mesh`, `hero/imperialofficer/imperialofficer_01_mesh`, `dark/d_navycrewman_orig/…`, `npc/humans/sp_imperial_admiral_orig/sp_imperial_admiral_orig_01_mesh`, `npc/humans/imperial_personnel/imperial_personnel_orig_ds_01/…` | for the Death Star interior's cast (`inside/pack.js`) and Scarif |
@@ -111,6 +112,8 @@ The audit (`node scripts/galaxy-figures-audit.mjs`) lists 102 kinds. Write `cast
 - [ ] **Step 6: Commit** `The game's clip packs load once per world, and a hero's only with the hero`.
 
 ### Task 5: The own-rig cast: B1, B2, droideka, ewok, astromech, probe, tauntaun
+
+*Lane V (`-phaseV-vehicles.md`, task 2) writes `src/lib/three/ownRig.js` and the `--skeleton` form of `bf2017-clips.mjs` for the walkers; if it has merged by the time this task runs, reuse them and add the rigs below to `rigSets.js`; if not, write them here and lane V reuses yours. Merge main first and look.*
 
 **Files:**
 - Create: `src/lib/three/ownRig.js`, `ownRig.test.js`, `public/models/galaxy/bf2017/clips-<rig>.glb` per rig (`b1`, `b2`, `droideka`, `ewok`, `astromech`, `tauntaun`), the bodies under `crew/`

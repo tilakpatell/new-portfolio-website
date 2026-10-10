@@ -106,7 +106,9 @@ async function viteLoader() {
 async function fromSpec() {
   const { load, close } = await viteLoader();
   try {
-    const { PLANETS, TERRAIN_VERSION, planetSpecOf } = await load(`/${SPEC}`);
+    // the fifty as the flight composes them (the pure tables given the Expanse)
+    const { PLANETS, planetSpecOf } = await load('/src/components/expanse/flight/planets.js');
+    const { TERRAIN_VERSION } = await load(`/${SPEC}`);
     const planets = PLANETS.map(({ id, name, type, seed }) => ({ id, name, type, seed: String(seed), terrainVersion: TERRAIN_VERSION }));
     const pois = planets.flatMap(({ id }) =>
       (planetSpecOf(id)?.pois ?? []).map((p) => ({ id: `${id}:${p.id}`, planetId: id, name: p.name, x: p.at[0], z: p.at[1], r: p.r + (p.edge ?? 0) })),

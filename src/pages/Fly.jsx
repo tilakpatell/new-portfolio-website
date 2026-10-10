@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useDocumentTitle, useMediaQuery } from '../lib/hooks';
-import { PLANETS, planetSpecOf } from '../lib/land/flight/planetSpec';
+import { PLANETS, planetSpecOf } from '../components/expanse/flight/planets';
 import { WorldHost, useWorld } from '../runtime';
 import { useOnline } from '../components/universe/online/useOnline';
 import { wayOut } from '../components/worlds/worlds';
@@ -10,7 +10,7 @@ import flightModule from '../components/expanse/flight/module';
 import NotFound from './NotFound';
 import '../components/expanse/flight/flight.css';
 
-// The planets to fly to from the Menu: a spread of the fifty (lib/land/flight's PLANETS), one of each kind of ground
+// The planets to fly to from the Menu: a spread of the fifty (expanse/flight/planets.js's PLANETS), one of each kind of ground
 const NEXT_IDS = ['hoth', 'tatooine', 'endor', 'coruscant', 'bespin', 'mustafar', 'middle-earth', 'dot-matrix', 'gazorpazorp', 'cybertron'];
 const NEXT = NEXT_IDS.map((id) => PLANETS.find((p) => p.id === id));
 

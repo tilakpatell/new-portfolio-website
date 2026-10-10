@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLANETS, TERRAIN_VERSION, TYPE_BIOMES, planetSpecOf } from './planetSpec';
-import { SITE_GROUND, SITE_LAYERS, WORLDS } from './planetTables';
-import { makeSector } from '../../../components/expanse/gen/sector.js';
-import { UNIVERSE } from '../../../components/expanse/gen/seed.js';
-// (the test alone reaches into the galaxy: planetSpec.js stays pure)
-import { SITES } from '../../../components/galaxy/surface/sites/index.js';
+import { TERRAIN_VERSION, TYPE_BIOMES, planetSpecOf as specWith } from './planetSpec';
+import { WORLDS } from './planetTables';
+import { EXPANSE, PLANETS, planetSpecOf } from './fixtures/expanse.js';
 
 const ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
 const GALAXY = 'tatooine hoth endor yavin bespin dagobah mustafar coruscant naboo kashyyyk kamino geonosis scarif nevarro mandalore lothal sorgan'.split(' ');
@@ -32,9 +29,8 @@ describe('PLANETS', () => {
     }
   });
 
-  it('takes the Expanse planets from sector (1, 0) on', () => {
-    const first = makeSector(UNIVERSE, 1, 0).systems[0].planets[0];
-    expect(PLANETS[37]).toMatchObject({ id: first.id.toLowerCase(), name: first.name, type: first.type });
+  it('takes the Expanse’s planets from the rows it is given, in their order', () => {
+    expect(PLANETS.slice(37).map((p) => p.id)).toEqual(EXPANSE.map((r) => r.id));
     for (const p of PLANETS.slice(37)) expect(TYPE_BIOMES[p.type]).toBeTruthy();
   });
 });
@@ -61,23 +57,6 @@ describe('planetSpecOf', () => {
     }
   });
 
-  // the ground round each walkable site is the site's own ground
-  it.each(GALAXY.filter((id) => SITES[id]?.ground?.layers?.length))('%s: the landing biome begins with the site’s own layers', (id) => {
-    const site = SITES[id].ground.layers;
-    const relief = planetSpecOf(id).biomes[0].relief;
-    expect(relief.slice(0, site.length).map((l) => l.type)).toEqual(site.map((l) => l.type));
-    expect(relief.slice(0, site.length)).toEqual(site.map((l) => ({ ...l })).map((l) => expect.objectContaining(l)));
-    expect(SITE_LAYERS[id]).toHaveLength(site.length);
-  });
-
-  // and wears the site's own ground look: Mos Eisley's sand from the air is the sand you walk on
-  it.each(GALAXY)('%s: the ground look is the site’s own', (id) => {
-    const look = { ...SITES[id].ground };
-    for (const k of ['layers', 'flats', 'pits', 'seed', 'base']) delete look[k];
-    expect(SITE_GROUND[id]).toEqual(look);
-    if (id !== 'coruscant') expect(planetSpecOf(id).ground).toEqual(look);
-    if (SITES[id].water && id !== 'bespin') expect(planetSpecOf(id).water).toEqual({ kind: SITES[id].water.kind, level: SITES[id].water.level });
-  });
 
   it('gives every world a ground look, every Expanse type its template’s', () => {
     for (const p of PLANETS) expect(planetSpecOf(p.id).ground?.palette, p.id).toBeTruthy();
@@ -131,6 +110,12 @@ describe('planetSpecOf', () => {
     expect(planetSpecOf('tatooine').biomes).toEqual(planetSpecOf('tatooine').biomes);
   });
 
+  it('knows the named worlds with no Expanse, and no Expanse planet without one', () => {
+    expect(specWith('hoth')).toEqual(planetSpecOf('hoth'));
+    expect(specWith(PLANETS[40].id)).toBeNull();
+    expect(specWith(PLANETS[40].id, { expanse: (id) => EXPANSE.find((r) => r.id === id) })).toEqual(planetSpecOf(PLANETS[40].id));
+  });
+
   it('refuses what it does not know', () => {
     for (const id of ['nowhere', 'alderaan', 'e:1,0:99:0', 'e:0,0:0:0', 'e:x', '', undefined]) expect(planetSpecOf(id)).toBeNull();
   });
@@ -154,6 +139,18 @@ function groundHash() {
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16).padStart(8, '0');
 }
+
+// lib knows no page (docs/health/RULES.md): the tables are given the Expanse,
+// they never reach up for it
+describe('the pure layer', () => {
+  it('imports nothing from a component or a page', () => {
+    const dir = fileURLToPath(new URL('.', import.meta.url));
+    for (const f of [...readdirSync(dir).filter((f) => f.endsWith('.js') && !f.endsWith('.test.js')), ...readdirSync(join(dir, 'fixtures')).filter((f) => f.endsWith('.js')).map((f) => `fixtures/${f}`)]) {
+      const imports = readFileSync(join(dir, f), 'utf8').match(/^\s*(?:import|export)\b[^'"]*?from\s*['"][^'"]+['"]/gm) ?? [];
+      for (const line of imports) expect(line, f).not.toMatch(/components\/|pages\//);
+    }
+  });
+});
 
 describe('TERRAIN_VERSION', () => {
   it('is bumped whenever a planet’s ground changes', () => {
