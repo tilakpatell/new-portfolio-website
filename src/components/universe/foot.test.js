@@ -381,6 +381,21 @@ describe('a bolt', () => {
     expect(flyOut({ from, dir: me.f, side: 'you', owner: 'me' }, { solids: footSolids([pebble], R), bodies: footBodies({ troops: [t], R }) }).type).toBe('hit');
   });
 
+  it('flies by a lamp post’s walk circle (its own body’s the landing physics’), which you still walk round', () => {
+    const me = { id: 'me', ...person([0, 1, 0], [0, 0, -1]) };
+    const t = { ...person(offset(me, 12 * METRE, 0, R).n, [0, 0, 1]), id: 1, kind: 'cop', alive: true };
+    const post = { n: offset(me, 6 * METRE, 0, R).n, r: 0.28 * METRE, pass: true };
+    const from = vec.add(at(me, R), me.n, 1.1 * METRE);
+    expect(flyOut({ from, dir: me.f, side: 'you', owner: 'me' }, { solids: footSolids([post], R), bodies: footBodies({ troops: [t], R }) }).type).toBe('hit');
+    let w = me;
+    let nearest = Infinity;
+    for (let s = 0; s < 6; s += 1 / 60) {
+      w = walk(w, { move: 1 }, 1 / 60, R, [post]);
+      nearest = Math.min(nearest, apart(w, post, R));
+    }
+    expect(nearest).toBeGreaterThanOrEqual(post.r + FOOT.radius - 1e-6);
+  });
+
   it('theirs hits you and your mate, never each other', () => {
     const me = { id: 'me', ...person([0, 1, 0], [0, 0, -1]) };
     const t = { ...person(offset(me, 10 * METRE, 0, R).n, [0, 0, 1]), id: 1, kind: 'cop', alive: true };

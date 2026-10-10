@@ -12,7 +12,10 @@
 //     base: the site's stance it stands in for (its reach, guard and lunge are kept)
 //     dirs, heavy: combatRules.js's DIRS and HEAVY (their damage, and the ways there are)
 //   the stance adds to STANCES' fields: heavies [{ clip, speed, damage }], dirs { way: { clip, damage } },
-//   blocks { left, right, any }, blocked, cadence { clip: { dur (till the blade rests), back (its return) } } (the duel's), game (the hero)
+//   blocks { left, right, any } (by the side each holds the blade on, as measured), blocked, cadence { clip: { dur (till
+//   the blade rests), back (its return) } } (the duel's), cuts { clip: 'left' | 'right' } (the side of the striker each
+//   of the game's strokes was measured coming in from, on the root's axes, the table's `side`, not its `dir`: blockSide.js's;
+//   none for one more up or down than across), game (the hero)
 
 // (the first three of a chain cut light, the rest land harder: the site's single stance's weights)
 const damageOf = (i) => (i < 3 ? 2 : 3);
@@ -47,6 +50,7 @@ export function stanceFromTable(table, { base, dirs, heavy }) {
     }),
   );
   const cadence = Object.fromEntries((table.strikes ?? []).map((s) => [s.name, { dur: s.settle ?? s.duration, back: s.returnDuration }]));
+  const cuts = Object.fromEntries([...(table.strikes ?? []), table.jump, table.dash].filter((s) => s?.side).map((s) => [s.name, s.side]));
   return {
     ...base,
     about: `${base.about} The game’s own chain.`,
@@ -56,6 +60,7 @@ export function stanceFromTable(table, { base, dirs, heavy }) {
     blocks: table.blocks,
     blocked: table.blocked,
     cadence,
+    cuts,
     game: table.hero,
   };
 }
