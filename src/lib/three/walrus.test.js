@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 import { clearGLTFCache } from './gltfCache';
-import { clipsFor, loadWalrusBody, loadWalrusPacks, packUrls, socketsOf } from './walrus';
+import { clipsFor, cutFor, loadWalrusBody, loadWalrusPacks, packUrls, socketsOf } from './walrus';
 import { BODY, SOCKETS } from './walrusRig.js';
 
 // a body by name: the game's (BODY and the sockets) or Meshy's
@@ -78,5 +78,12 @@ describe('a figure on the game’s skeleton', () => {
   it('loads the humanoid pack first and a hero’s over it', () => {
     expect(packUrls('luke')).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-luke.glb']);
     expect(packUrls()).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb']);
+  });
+
+  it('loads the full figure at high and ultra, the light one at low and mid', () => {
+    expect(cutFor('/models/galaxy/crew/luke.glb', 'high')).toBe('/models/galaxy/crew/luke.glb');
+    expect(cutFor('/models/galaxy/crew/luke.glb', 'ultra')).toBe('/models/galaxy/crew/luke.glb');
+    expect(cutFor('/models/galaxy/crew/luke.glb', 'mid')).toBe('/models/galaxy/crew/luke.lod1.glb');
+    expect(cutFor('/models/galaxy/crew/luke.glb', 'low')).toBe('/models/galaxy/crew/luke.lod1.glb');
   });
 });

@@ -11,12 +11,13 @@
 // (docs/superpowers/specs/2026-10-07-living-characters-design.md, animator.js)
 //
 // createAnimator(model, { clips, hipsY, bones, unit = 1, seed = 0, up, key,
-//   clipSpeed }) → animator
+//   clipSpeed, library = true }) → animator
 //   clips: { name: AnimationClip } the figure's own (idle, walk and run at
 //   least, made for it); any other clip it's asked to play comes from the
 //   library (clipLibrary.js forFigure: hipsY, up and key are for that, the
 //   hips' height in its rig's units, the hips' parent's up, the figure's
-//   template). bones: { name: Bone }, else found by name. unit, clipSpeed:
+//   template; `library: false` for a figure that plays only its own, as a
+//   2017 one plays only the game's: walrus.js). bones: { name: Bone }, else found by name. unit, clipSpeed:
 //   locomotion.js's. seed: every clock it starts (its idle's start, its
 //   base loops', its fidgets'), so a crowd never breathes in unison.
 //
@@ -141,7 +142,7 @@ const lay = (parts, t, w) => {
   }
 };
 
-export function createAnimator(model, { clips = {}, hipsY = null, bones = null, unit = 1, seed = 0, up = null, key = null, clipSpeed = null } = {}) {
+export function createAnimator(model, { clips = {}, hipsY = null, bones = null, unit = 1, seed = 0, up = null, key = null, clipSpeed = null, library = true } = {}) {
   const byName = {};
   model.traverse((o) => {
     if (o.isBone && !(o.name in byName)) byName[o.name] = o;
@@ -162,7 +163,7 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
   const loading = new Map();
   const fetchClip = (name) => {
     if (got.has(name)) return Promise.resolve(got.get(name));
-    if (!CLIPS[name]) return Promise.resolve(null);
+    if (!library || !CLIPS[name]) return Promise.resolve(null);
     if (!loading.has(name))
       loading.set(
         name,

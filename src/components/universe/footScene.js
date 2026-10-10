@@ -64,6 +64,8 @@ import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { NO_CALLS, animatorCalls, seedOf } from '../../lib/three/figureCalls';
 import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
+import { cutFor, loadWalrusBody, packUrls } from '../../lib/three/walrus';
+import { detailLevel } from '../../lib/detail';
 import { breathe, createGait, sway } from '../../lib/three/gait';
 import { seeded } from '../../lib/seeded';
 import { createBolts } from '../../lib/combat/bolt';
@@ -185,7 +187,7 @@ const seedFor = (name) => {
 // the Meshy skeleton these all stand on). `key`: the figure's template (its file, for
 // the library's copies), `seed`: its clocks; `up` (in the space its hips
 // turn in) and `hipsY`, for the library's clips made for it.
-function rigged(model, clips, tall, owned, { seed = seedFor('rigged'), key = null, up = null, hipsY = null } = {}) {
+function rigged(model, clips, tall, owned, { seed = seedFor('rigged'), key = null, up = null, hipsY = null, library = true } = {}) {
   const bones = {};
   model.traverse((o) => {
     if (o.isBone) bones[o.name] = o;
@@ -193,7 +195,8 @@ function rigged(model, clips, tall, owned, { seed = seedFor('rigged'), key = nul
   // how tall it stands, from its skeleton at rest: the top of the head to the toes
   model.updateMatrixWorld(true);
   const y = (n) => bones[n]?.getWorldPosition(new V()).y;
-  const top = y('head_end') ?? y('Head');
+  // (the game's rig ends its head in HeadEnd, Meshy's in head_end)
+  const top = y('head_end') ?? y('HeadEnd') ?? y('Head');
   const toes = Math.min(y('LeftToeBase') ?? 0, y('RightToeBase') ?? 0);
   const box = new THREE.Box3().setFromObject(model);
   const height = top != null ? top - toes : box.getSize(new V()).y;
@@ -201,7 +204,7 @@ function rigged(model, clips, tall, owned, { seed = seedFor('rigged'), key = nul
   model.scale.multiplyScalar(k);
   model.position.y -= (top != null ? toes : box.min.y) * k;
   const own = Object.fromEntries(Object.entries(clips).filter(([, clip]) => clip));
-  const anim = createAnimator(model, { clips: own, bones, hipsY, up, unit: METRE, seed, key: key == null ? null : `${key}:${tall}` });
+  const anim = createAnimator(model, { clips: own, bones, hipsY, up, unit: METRE, seed, key: key == null ? null : `${key}:${tall}`, library });
   const act = Object.fromEntries(['idle', 'walk', 'run'].filter((n) => anim.actions[n]).map((n) => [n, anim.actions[n]]));
   const calls = animatorCalls(anim, { model, seed, own: Object.keys(own), act });
   return {
@@ -300,12 +303,33 @@ async function loadModel(spec, cast, looks = null, { templates = null } = {}) {
       },
     };
   }
+  if (spec.rig === 'walrus' && spec.src.url) return walrusFigure(spec);
   if (spec.src.url && templates) return loadSharedFigure(spec.src.url, spec.tall, { seed: seedFor(spec.id ?? spec.src.url), from: templates });
   if (spec.src.url) {
     const [gltf, clips] = await Promise.all([getLoader().loadAsync(spec.src.url), borrowClips()]);
     return rigScene(gltf.scene, clips, spec.tall, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url });
   }
   return built(spec);
+}
+
+// A figure from Star Wars Battlefront II (2017), on the game's whole
+// skeleton and moved by the game's own clips (lib/three/walrus.js: the
+// humanoid pack and, for a hero, theirs over it; never the library's, which
+// are made for Meshy's rig): the same figure every loader here returns,
+// with its sockets (Wep_Root, where its saber or blaster sits) and its clips
+// (the saber's strokes come from these). Its materials are the copy's own.
+async function walrusFigure(spec) {
+  // (the full figure on a high or ultra device, the light one below: lib/detail's level)
+  const { model, clips, sockets } = await loadWalrusBody(cutFor(spec.src.url, detailLevel()), { packs: spec.packs ?? packUrls(spec.pack) });
+  const owned = [];
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
+    owned.push(...[].concat(o.material));
+  });
+  const hips = model.getObjectByName('Hips');
+  const fig = rigged(model, clips, spec.tall, owned, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url, library: false });
+  return Object.assign(fig, { rig: 'walrus', sockets, clips, hipsY: hips?.position.y ?? null });
 }
 
 // A loaded Meshy figure (its scene, or a copy of one: `shared`, whose

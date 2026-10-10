@@ -24,6 +24,10 @@
 //     a copy of the body (its own bones), its clips; refuses a tree that is
 //     not the game's rig, naming what it lacks
 //   PACK_DIR, packUrls(hero): the packs a figure loads, the humanoid first
+//   cutFor(url, level): which of a 2017 figure's two files a device loads:
+//     the full one (the game's top mesh, every map at the game's 2048) at
+//     high and ultra, its `.lod1` (a lighter mesh, 1024 colour) at low and
+//     mid (lib/detail.js's level, from lib/device's tier)
 
 import * as THREE from 'three';
 import { cloneScene, loadGLTF } from './gltfCache';
@@ -31,6 +35,8 @@ import { CLIP_FALLBACK, SOCKETS, checkWalrus, isWalrus } from './walrusRig.js';
 
 export const PACK_DIR = '/models/galaxy/bf2017';
 export const packUrls = (hero = null) => [`${PACK_DIR}/clips-humanoid.glb`, ...(hero ? [`${PACK_DIR}/clips-${hero}.glb`] : [])];
+
+export const cutFor = (url, level) => (level === 'low' || level === 'mid' ? url.replace(/\.glb$/, '.lod1.glb') : url);
 
 const boneOf = (track) => track.name.slice(0, track.name.lastIndexOf('.'));
 
