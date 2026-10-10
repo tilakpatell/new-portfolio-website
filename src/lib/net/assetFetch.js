@@ -26,7 +26,7 @@ export const TIMEOUT = (bytes = 0) => 20000 + 1000 * ((bytes ?? 0) / 1e6);
 // ultra level (lib/device's tier, or 'ultra'). A weak device is slow at
 // drawing, not at downloading: held to two, a model built in front of you
 // (a turret in the shared world) waited behind the world's own loads, 3.2 s
-// against 2.6 s at four or more (online-check.mjs --fly, whose limit is 3).
+// against 2.6 s at four or more (the shared world's online check, whose limit is 3).
 export function poolSize(level, lowData = false) {
   if (lowData) return 2;
   if (level === 'ultra') return 8;
