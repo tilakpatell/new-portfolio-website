@@ -296,7 +296,8 @@ async function figureGlb(kind, models) {
   const small = firstCut(0, level, { hasLod, lowData }) === 'lod1' && !wantsUpgrade(0, level, { lowData });
   const ask = (url) => atPriority(FIGURE_PRIORITY, () => loadGlb(url));
   if (small) return ask(lodUrlFor(kind, models));
-  const plain = await ask(modelUrlFor(kind, 'high', models));
+  // (the level's own cut: at ultra the .ultra file where the kind has one)
+  const plain = await ask(modelUrlFor(kind, level, models));
   if (plain) return squared(plain, kind, models);
   return hasLod ? ask(lodUrlFor(kind, models)) : null;
 }
