@@ -7,15 +7,15 @@
 // side's words behind. Everyone else (a Jawa, a bantha) is untouched. Pure,
 // tested; surface/scene.js hands the site's life through it.
 //
-// troopKind(kind, troops) → the kind to draw; garrisonLife(life, troops) →
-// the site's life with its troopers the holder's (the same array if nothing
-// changes); TROOP_NAMES[kind]; garrisonProbe(site, effects, faction) → a
+// troopKind(kind, troops) → the kind to draw; garrisonLife(life, troops,
+// uniforms) → the site's life with its troopers the holder's, in the world's
+// own kit (a site's `uniforms`; the same array if nothing changes); TROOP_NAMES[kind]; garrisonProbe(site, effects, faction) → a
 // probe droid for an Imperial search party on a world that isn't the
 // Empire's own, as a life entry marked `garrison`; garrisonLines(standing,
 // rank) → what the holder's soldiers say to you (ground/standing.js: they
 // salute their own by rank, tell everyone else to move along).
 
-import { FAMILIES } from './ground/troops';
+import { FAMILIES, dressOf } from './ground/troops';
 
 export { FAMILIES };
 
@@ -23,7 +23,7 @@ export { FAMILIES };
 // (ground/troops.js's: the one table)
 const FAMILY_OF = Object.fromEntries(Object.entries(FAMILIES).flatMap(([f, kinds]) => kinds.map((k) => [k, f])));
 
-export const TROOP_NAMES = { stormtrooper: 'Stormtrooper', rebel: 'Rebel trooper', clone: 'Clone trooper', battledroid: 'Battle droid', mercenary: 'Hutt enforcer' };
+export const TROOP_NAMES = { stormtrooper: 'Stormtrooper', rebel: 'Rebel trooper', clone: 'Clone trooper', battledroid: 'Battle droid', mercenary: 'Hutt enforcer', snowtrooper: 'Snowtrooper', hothtrooper: 'Rebel trooper' };
 
 export function troopKind(kind, troops) {
   const family = FAMILY_OF[kind];
@@ -31,7 +31,7 @@ export function troopKind(kind, troops) {
   return troops;
 }
 
-export function garrisonLife(life, troops) {
+export function garrisonLife(life, troops, uniforms = null) {
   if (!life || !troops) return life;
   let changed = false;
   const mapped = life.map((entry) => {
@@ -39,8 +39,10 @@ export function garrisonLife(life, troops) {
     if (entry.id || entry.named || entry.quest) return entry;
     const kind = troopKind(entry.kind, troops);
     if (kind === entry.kind) return entry;
+    const dressed = dressOf(kind, uniforms);
+    if (dressed === entry.kind) return entry;
     changed = true;
-    const out = { ...entry, kind, name: TROOP_NAMES[kind] };
+    const out = { ...entry, kind: dressed, name: TROOP_NAMES[dressed] ?? TROOP_NAMES[kind] };
     delete out.says;
     return out;
   });
