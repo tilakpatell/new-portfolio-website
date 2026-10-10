@@ -137,3 +137,16 @@ describe('variationsOf with instance use', () => {
     expect(out.counts.byRule).toBe(1);
   });
 });
+
+describe('meshBindings', () => {
+  it("gives each of a mesh's materials its default bindings as glTF slots, by the database's parameter names", async () => {
+    const { meshBindings } = await import('./bf2017-variations.mjs');
+    const b = meshBindings([hoth.record], CRATE);
+    expect(b[0]).toEqual([
+      { slot: 'color', name: 'Objects/Props/ObjectSets/_RebelAlliance/Box_M_01/T_Box_M_01_A_CS', parameter: '_CS' },
+      { slot: 'normal', name: 'Objects/Props/ObjectSets/_RebelAlliance/Box_M_01/T_Box_M_01_A_NAM', parameter: '_NAM_texcoord0' },
+    ]);
+    expect(b[1]).toEqual([{ slot: 'color', name: 'ToBeDeleted_TempInTransition/Objects/Props/_CommonTextures/T_Glass_01_CS', parameter: 'CS' }]);
+    expect(meshBindings([hoth.record], 'nothing/here')).toBe(null);
+  });
+});

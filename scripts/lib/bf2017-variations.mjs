@@ -19,11 +19,16 @@
 //     `instances` keeps each group's list for a split by instance)
 //     material = { textures: { slot: ktx2 | null }, missing?: { slot: name }, shader?, vectors?, bools?, conditionals? }
 //   levelRule(meshes, usedDefaults) → { <mesh>: <short name> }
+//   meshBindings(records, mesh) → [[{ slot, name, parameter }]] | null: a mesh's
+//     default entry, each material's maps as glTF slots (bf2017-textures.mjs's
+//     slotOfParameter; a parameter it does not know is left out), for the import
 //   instanceUse({ groups, meshes, members, names }) → { instances: [[groupIndex, name | [names]]], byMesh: { <mesh>: { name: count } } }
 //
 // The rule, for a mesh no instance names (a placed blueprint, not a static
 // group member): a mesh whose MVDBs carry exactly one variation and whose
 // default no sub-level apart from the level's own names takes it.
+
+import { slotOfParameter } from './bf2017-textures.mjs';
 
 const short = (asset) => String(asset).split('/').pop();
 const meshKey = (asset) => String(asset).toLowerCase();
@@ -169,4 +174,21 @@ export function instanceUse({ groups = [], meshes = [], members = {}, names = ne
     instances.push([i, each.every((n) => n === each[0]) ? each[0] : each]);
   });
   return { instances, byMesh };
+}
+
+export function meshBindings(records, mesh) {
+  const want = meshKey(mesh);
+  for (const r of records) {
+    for (const db of (r?.objects ?? []).filter((o) => o.$type === 'MeshVariationDatabase')) {
+      const e = (db.Entries ?? []).find((x) => meshKey(x.Mesh?.$asset) === want && !x.VariationAssetNameHash);
+      if (!e) continue;
+      return (e.Materials ?? []).map((m) =>
+        (m.TextureParameters ?? []).flatMap((t) => {
+          const slot = slotOfParameter(t.ParameterName);
+          return slot && t.Value?.$asset ? [{ slot, name: t.Value.$asset, parameter: t.ParameterName }] : [];
+        }),
+      );
+    }
+  }
+  return null;
 }
