@@ -14,11 +14,13 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 | bots | the AI system's targeting and squad engagement, the cover queries and scores, the difficulties, the Skirmish bots with abilities, the names, the squadron behaviour trees, the creatures' minds, the walkers' gunners | nothing | | `claude/bf2017-bots` | |
 | screens | the front-end, loading, spawn, in-game menu, end-of-round, kill screen and scoreboard from the widget trees; the vector shapes; `Screen.jsx`; the route through them; the galaxy's cards named as the game's | nothing (lane 5 and M live: merge main first) | | `claude/bf2017-screens` | |
 | fighters | `air.json`; the game's flight model; the game's fighters imported; the mission on the rulebook and the squadron minds; Fondor and the droid battleship as areas; the mode's HUD | nothing (bots' `squadron.js` and the screens' `Screen.jsx` taken when present) | | `claude/bf2017-fighters` | |
-| maps | the per-map accuracy ledger with `--check` in CI; every usable map's rulebook; Strike, Extraction, Ewok Hunt, Supremacy's ground; the menus | nothing (the E lanes fill the drawn columns) | | `claude/bf2017-maps` | |
+| maps | the per-map accuracy ledger with `--check` in CI; every usable map's rulebook; Strike, Extraction, Ewok Hunt, Supremacy's ground; the menus | nothing (the E lanes fill the drawn columns) | session_01MCXgCaU5rC9C2Y353WdnUK | `claude/bf2017-maps` | (this PR) |
 | picture | the game's world on Q1, Q2, Q4, X, S, V, C (and Q6, N, U, colour as they land); the gallery at ultra on the laptop | nothing; task 4 after Q6, N, U | | `claude/bf2017-picture` | |
 | Q6 | the LUT after a linear tonemap, five-Gaussian bloom, HBAO, the painted sky, the cloud-shadow texture (its own plan) | S, V (merged) | | `claude/surfaces-q6-picture` | |
 | N | the scatter from the terrain tables (its own plan) | L, T (merged) | | `claude/fidelity-n-scatter` | |
 | U | FSR1/TAAU, `BatchedMesh`, bundles, occlusion (its own plan) | L (merged) | | `claude/fidelity-u-headroom` | |
+
+**Lane maps (done).** `node scripts/bf2017-map-audit.mjs --all` → `docs/superpowers/evidence/bf2017-maps/ledger.md` (and `ledger.json`, which caches the bucket's columns so `npm run maps:bf2017`, in CI, needs no bucket). The first table: of 44 usable maps, **44 have a rulebook** (109 objective prefabs listed `unplaced`, each file's header saying how many), **3 a pack** (Hoth, SB_Endor, SB_Kamino), **3 drawn columns**; 27 carry a multiplayer mode in their records. Drawn instances per tier come from a pack README's cull row, the parts from lane E0's "other parts" table; `--check` fails on a part a README claims and the pack lacks, a mode in `modes.json` its rulebook lacks, or an unplaced count off its header. **Each E lane runs `node scripts/bf2017-map-audit.mjs <level> --refresh` before its PR** and its row fills from its README. The modes: Strike, Extraction, Ewok Hunt and Supremacy's ground on the sim (`HANDOFF-battlefront.md`, lane 6).
 
 Seams (the spec's §5): E0 keeps the `variations` slot; lane 5 and the screens and picture lanes share `src/components/battlefront/` (merge `origin/main` before the PR, keep both sides); lane M's fonts PR may land under the screens lane; lane S's saber engine is not touched by the bots lane. The desktop's part (§4): the per-instance variation hashes into the maps' `.bin`; the UI bitmaps and the sound stay lane D's.
 
@@ -84,6 +86,8 @@ The rule is the owners table's `finding: true` entries, first match wins: a fold
 | `characters/heads` | T | 455 |
 
 A lane that merges sets its `merged` in `LANES`; from then `npm run coverage:bf2017` fails on every row it still owns and has not used, which is the next design's finding.
+
+**For every E lane (from lane maps):** before your PR, run `node scripts/bf2017-map-audit.mjs <level> --refresh` (e.g. `endor_01`) and commit the ledger; `npm run maps:bf2017` (in CI) fails if your README's parts table claims a file the pack lacks.
 
 ### Lane A: every clip, every skeleton (done)
 
