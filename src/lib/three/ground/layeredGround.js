@@ -86,6 +86,18 @@ export function layersFor(ground, tier) {
   return ground.layers.filter((l) => keep.has(l.id));
 }
 
+// The maps a tier draws, so it fetches no more: the masks and the layers'
+// detail from mid up, the sparkle on ultra and high
+const SPARKLE_TIERS = ['ultra', 'high'];
+export function mapsFor(ground, tier) {
+  const layers = layersFor(ground, tier);
+  return {
+    masks: layers.length > 0,
+    layers: layers.filter((l) => l.map).map((l) => l.id),
+    sparkle: Boolean(ground.sparkle?.map && layers.length && SPARKLE_TIERS.includes(tier)),
+  };
+}
+
 // Each drawn layer's weight from the mask's three channels: a layer with a
 // channel takes it, the last layer what they leave; a layer the tier does
 // not draw gives its ground to the drawn layer with the most, so the
@@ -230,7 +242,7 @@ export function createLayeredGround({ ground, maps = {}, tier = 'high', three, e
   if (bend) material.normalNode = normalize(cameraViewMatrix.mul(vec4(n, 0)).xyz);
 
   // the sparkle: a fine glint where the sun's reflection meets a crystal
-  if (maps.sparkle && ground.sparkle && (tier === 'ultra' || tier === 'high')) {
+  if (maps.sparkle && ground.sparkle && SPARKLE_TIERS.includes(tier)) {
     const crystal = texture(maps.sparkle, xz.div(ground.sparkle.tile)).r;
     samples.sparkle = 1;
     const view = normalize(cameraPosition.sub(positionWorld));
@@ -281,11 +293,15 @@ export function attachLayeredGround({ mesh, renderer, pack, tier, entry = null, 
     const three = await loadThree();
     const ground = JSON.parse(new TextDecoder().decode(await fetchBytes(pack.ground)));
     // (a map that cannot be had leaves its layer without detail)
-    const masks = await fetchBytes(ground.masks.png)
-      .then((b) => maskTexture(three.THREE, b))
-      .catch(() => null);
-    const want = layersFor(ground, tier);
-    const ktx = want.some((l) => l.map) || ground.sparkle?.map ? await import('../gltf.js').then((m) => m.ktx2Loader({ renderer })) : null;
+    // (only what the tier draws: low the macro colour, nothing fetched)
+    const need = mapsFor(ground, tier);
+    const masks = need.masks
+      ? await fetchBytes(ground.masks.png)
+          .then((b) => maskTexture(three.THREE, b))
+          .catch(() => null)
+      : null;
+    const want = layersFor(ground, tier).filter((l) => need.layers.includes(l.id));
+    const ktx = want.some((l) => l.map) || need.sparkle ? await import('../gltf.js').then((m) => m.ktx2Loader({ renderer })) : null;
     const load = (path, repeat) =>
       ktx
         .loadAsync(urlOf(path, tier))
@@ -297,7 +313,7 @@ export function attachLayeredGround({ mesh, renderer, pack, tier, entry = null, 
         .catch(() => null);
     const layers = {};
     await Promise.all(want.filter((l) => l.map).map(async (l) => (layers[l.id] = await load(l.map, true))));
-    const sparkle = ground.sparkle?.map ? await load(ground.sparkle.map, true) : null;
+    const sparkle = need.sparkle ? await load(ground.sparkle.map, true) : null;
     owned.push(masks, sparkle, ...Object.values(layers));
     if (gone) return null;
     built = createLayeredGround({ ground, maps: { layers, sparkle, masks }, tier, three, entry });

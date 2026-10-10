@@ -119,3 +119,29 @@ describe('createLayeredGround', () => {
     g.update({ position: { x: 0, y: 2, z: 0 } });
   });
 });
+
+describe('what a tier fetches (review: low and mid fetched maps they never draw)', () => {
+  it('low fetches no masks, no layer maps, no sparkle; mid its two layers and the masks; ultra and high all', async () => {
+    const { mapsFor } = await import('./layeredGround.js');
+    expect(mapsFor(ground, 'low')).toEqual({ masks: false, layers: [], sparkle: false });
+    expect(mapsFor(ground, 'mid')).toEqual({ masks: true, layers: ['chunky', 'packed'], sparkle: false });
+    expect(mapsFor(ground, 'high')).toEqual({ masks: true, layers: ['rocky', 'chunky', 'rough', 'packed'], sparkle: true });
+    expect(mapsFor(ground, 'ultra').sparkle).toBe(true);
+  });
+  it('attachLayeredGround on low fetches ground.json alone', async () => {
+    const { attachLayeredGround } = await import('./layeredGround.js');
+    const calls = [];
+    const fetchBytes = async (p) => {
+      calls.push(p);
+      if (p === 'ground.json') return new TextEncoder().encode(JSON.stringify(ground)).buffer;
+      throw new Error('404');
+    };
+    const three = await loadThree();
+    const mesh = new three.THREE.Mesh(new three.THREE.PlaneGeometry(), new three.THREE.MeshBasicMaterial());
+    const g = attachLayeredGround({ mesh, renderer: null, pack: { ground: 'ground.json' }, tier: 'low', fetchBytes, urlOf: (p) => p });
+    await g.ready;
+    expect(calls).toEqual(['ground.json']);
+    expect(mesh.material.name).toBe('layered-ground:hoth');
+    g.dispose();
+  });
+});
