@@ -57,3 +57,10 @@ Kamino’s space level (`Levels/Space/SB_Kamino_01`), read the same way: the Sep
 - The game’s Team1 is the light side’s in every level read so far (Hoth, Endor, Kamino), as the battle’s team 0 is.
 
 `maps/sb_fondor.json` and `maps/sb_droidbattleship.json` are the rulebooks alone (their systems are not in the galaxy yet): Fondor’s phases are Cruisers, Shields, Clamps and Reactor; the droid battleship’s Tractor Beams, Generators, Towers and Reactor.
+
+## `saber.json`
+
+Written by `node scripts/bf2017-data.mjs saber` (`scripts/lib/bf2017-rulebook-saber.mjs`, which says how each record is read). One block carries `"_source": "hand"`:
+
+- **`hand.broken`** 1.2 s: how long a hero reels when its block breaks at no stamina. The deflect prefab sets the state machine’s `OutOfStamina` channel when the `AbilityResource` falls under 1 (`stamina.out`, read), but the reaction it plays and its length are the Ant state machine’s, which the export doesn’t hold. Replace it with the length of the hero’s guard-break clip if one is measured into the stroke tables.
+- **`hand.standIn`** `luke`: a figure on the game’s rig with no saber of its own in the game (the Emperor, a clone) fences by Luke’s row, so there is one set of rules.
