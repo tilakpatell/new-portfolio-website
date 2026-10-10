@@ -10,7 +10,8 @@
 //
 // It tells the page through rt.events:
 //   'hud' { speed, alt } (ten times a second at most)
-//   'toast' { text } (a crash)
+//   'toast' { text } (a crash, a build)
+//   'shared' { build, unbuild, shield, others, kept } (./shared.js's prompt, four times a second)
 // and gives the page (and the checks) the world's `ship`, `stats()` and
 // `throttle(v)` (the touch buttons'); ?debug shows the ground's numbers.
 
@@ -25,6 +26,7 @@ import { createGround, heroOf } from './ground';
 import { createMap } from './map';
 import { createWater } from './water';
 import { STRIP } from './look';
+import { SHARED_KEYS, createSharedWorld } from './shared';
 
 export const KEYS = {
   noseDown: ['KeyW', 'ArrowUp'],
@@ -197,12 +199,14 @@ export default {
     for (const m of [...ground.materials, ...(water ? [water.mesh.material] : [])]) house.adopt(new THREE.Mesh(undefined, m));
     house.sky({ low: new THREE.Color(spec.palette.skyLow ?? spec.palette.low), high: new THREE.Color(spec.palette.skyHigh ?? STRIP[3]), sunDir: view.sunDir });
 
-    rt.input.bind(KEYS, { axes: AXES });
+    rt.input.bind({ ...KEYS, ...SHARED_KEYS }, { axes: AXES });
     let ship = spawnOf(spec, groundAt);
     let hudIn = 0;
     let down = false; // crashed: put back up once the ground under it is in
     let touchThrottle = 0; // the touch buttons' (FlightHud), −1, 0 or 1
     const tell = (type, data) => rt.events?.emit(type, data);
+    // the other pilots and what's built (./shared.js): joined by the page (world.shared.join)
+    const shared = createSharedWorld({ parent: view.scene, spec, palette: STRIP, groundAt, tell, respawn: () => (down = true) });
     const unOrigin =
       rt.origin?.on?.((shift) => {
         view.shift(shift);
@@ -225,6 +229,10 @@ export default {
       throttle(v) {
         touchThrottle = v;
       },
+      shared,
+      // (the planet map's markers: ./FlightMap.jsx reads them)
+      pilots: () => shared.pilots(),
+      built: () => shared.built(),
       resize(w, h) {
         view.resize(w, h);
       },
@@ -252,6 +260,7 @@ export default {
           tell('toast', { text: 'Too low: back up you go.' });
           ship = { ...ship, y: g + RESPAWN_UP, pitch: 0, roll: 0, speed: Math.max(SHIP.speedMin, 120) };
         }
+        shared.step(dt, ship, snap);
         const at = rt.origin?.at ?? [0, 0, 0];
         view.place(ship, at, dt);
         water?.place(ship, at);
@@ -263,6 +272,7 @@ export default {
       },
       draw(frame) {
         renderer = frame?.renderer ?? rt.gfx.renderer;
+        shared.draw(rt.origin?.at ?? [0, 0, 0]);
         renderer.render(view.scene, view.camera);
       },
       wants: () => true,
@@ -285,6 +295,7 @@ export default {
         if (typeof window !== 'undefined' && window.__FLIGHT__ === world) delete window.__FLIGHT__;
         unOrigin();
         rt.input.unbind();
+        shared.dispose();
         map.dispose();
         ground.dispose();
         water?.dispose();

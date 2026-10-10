@@ -36,7 +36,7 @@
 //
 // joinRoom({ appId, relays, WebSocket, pool, keys }, roomId) → { selfId, ready (resolves
 // once a relay's listening, rejects if none answer), makeAction(ns) →
-// { send(data, { target }), onMessage(data, { peerId }) }, onPeerJoin(id),
+// { send(data, { target }), onMessage(data, { peerId, tag }) }, onPeerJoin(id),
 // onPeerLeave(id), onStatus('online' | 'connecting'), leave() }: what
 // client.js takes. (Other games pass `latest`, the kinds of message of
 // which only the newest in a bundle matters, and `cheap`, those trusted to
@@ -207,10 +207,13 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
       p.met = true;
       room.onPeerJoin?.(id);
     }
+    // the cell the sender's words carry (theirs comes first; a message for
+    // one pilot adds that pilot's after it), for a reader that holds a pose to it
+    const tag = ev.tags.find((t) => Array.isArray(t) && t[0] === 'g')?.[1] ?? null;
     for (const m of msgs) {
       const [ns, data, to] = m;
       if (ns[0] === '@' || (to !== undefined && to !== self)) continue;
-      actions[ns]?.onMessage?.(data, { peerId: id });
+      actions[ns]?.onMessage?.(data, { peerId: id, tag });
     }
   };
 

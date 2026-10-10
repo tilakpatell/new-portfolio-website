@@ -59,6 +59,14 @@ const num = (n) => {
   return String(n);
 };
 
+// the ground a planet is on now (planetSpec.js's TERRAIN_VERSION; the
+// migration's check takes 1 and up), the first where the list doesn't say
+const versionOf = (p) => {
+  const v = p.terrainVersion ?? 1;
+  if (!Number.isInteger(v) || v < 1) throw new Error(`terrain version the table refuses: ${p.id} ${v}`);
+  return String(v);
+};
+
 export function seedSql({ planets, pois }, source) {
   const ids = new Set();
   for (const p of planets) {
@@ -74,8 +82,8 @@ export function seedSql({ planets, pois }, source) {
     '',
     ...planets.map(
       (p) =>
-        `insert into public.planets (id, name, type, seed) values (${q(p.id)}, ${q(p.name)}, ${q(p.type)}, ${q(p.seed)}) ` +
-        'on conflict (id) do update set name = excluded.name, type = excluded.type, seed = excluded.seed;',
+        `insert into public.planets (id, name, type, seed, terrain_version) values (${q(p.id)}, ${q(p.name)}, ${q(p.type)}, ${q(p.seed)}, ${versionOf(p)}) ` +
+        'on conflict (id) do update set name = excluded.name, type = excluded.type, seed = excluded.seed, terrain_version = excluded.terrain_version;',
     ),
     '',
     ...pois.map(
@@ -98,8 +106,8 @@ async function viteLoader() {
 async function fromSpec() {
   const { load, close } = await viteLoader();
   try {
-    const { PLANETS, planetSpecOf } = await load(`/${SPEC}`);
-    const planets = PLANETS.map(({ id, name, type, seed }) => ({ id, name, type, seed: String(seed) }));
+    const { PLANETS, TERRAIN_VERSION, planetSpecOf } = await load(`/${SPEC}`);
+    const planets = PLANETS.map(({ id, name, type, seed }) => ({ id, name, type, seed: String(seed), terrainVersion: TERRAIN_VERSION }));
     const pois = planets.flatMap(({ id }) =>
       (planetSpecOf(id)?.pois ?? []).map((p) => ({ id: `${id}:${p.id}`, planetId: id, name: p.name, x: p.at[0], z: p.at[1], r: p.r + (p.edge ?? 0) })),
     );
