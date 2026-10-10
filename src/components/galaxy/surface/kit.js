@@ -24,7 +24,7 @@ import { rng } from './noise';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
 import { coverageTexture } from '../../../lib/three/textures';
 import { wear } from '../../../lib/three/core';
-import { SCANS, loadScan, scanOf } from '../../../lib/three/scans';
+import { loadScan, scanOf } from '../../../lib/three/scans';
 
 export { part, place, rod, between, compose, mirror, ball, upright };
 
@@ -330,7 +330,7 @@ export const LOOKS = {
 };
 // a role's repeats a metre (the scan's real size; the stand-in's own where
 // there's no scan)
-export const densityOf = (role, fallback) => (SCANS[role]?.metres ? 1 / SCANS[role].metres : fallback);
+export const densityOf = (role, fallback) => (scanOf(role)?.metres ? 1 / scanOf(role).metres : fallback);
 // a role's scan's size in metres, and the brightness its detail map is centred on
 export { scanOf };
 
@@ -479,7 +479,7 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
     m.metalness = look.metalness;
     m.needsUpdate = true;
   };
-  const roles = Object.keys(LOOKS).filter((role) => SCANS[role]);
+  const roles = Object.keys(LOOKS).filter((role) => scanOf(role));
   const ready = scans
     ? Promise.all(roles.map((role) => load(role).then((scan) => [role, scan]))).then((list) => {
         if (dead || kept) return;

@@ -64,10 +64,10 @@ import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { NO_CALLS, animatorCalls, seedOf } from '../../lib/three/figureCalls';
 import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
-import { cutFor, loadWalrusBody, packUrls } from '../../lib/three/walrus';
-import { createCutter, cutUrl, swapSkins } from '../../lib/three/walrusCuts';
+import { cutsToLoad, loadWalrusBody, packUrls, swapBody } from '../../lib/three/walrus';
+import { createCutter, cutUrl } from '../../lib/three/walrusCuts';
 import { loadOwnRigBody } from '../../lib/three/ownRig';
-import { loadGLTF } from '../../lib/three/gltfCache';
+import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { detailLevel } from '../../lib/detail';
 import { breathe, createGait, sway } from '../../lib/three/gait';
 import { seeded } from '../../lib/seeded';
@@ -325,65 +325,84 @@ async function loadModel(spec, cast, looks = null, { templates = null } = {}) {
 // with its sockets (Wep_Root, where its saber or blaster sits) and its clips
 // (the saber's strokes come from these). Its materials are the copy's own.
 async function walrusFigure(spec) {
-  // (the full figure on a high or ultra device, the light one below: lib/detail's level)
-  // (and the full one when the light one isn't there: a figure is never lost for want of a cut)
+  // (its light cut first, then the one lib/detail's level wants, put on the
+  // figure as it lands: a hero's full cut is 10 to 45 MB of the game's own
+  // maps, and nobody waits that long to see Luke; on a saver connection the
+  // light one only; and the full one when the light one isn't there: a
+  // figure is never lost for want of a cut)
   const packs = spec.packs ?? packUrls(spec.pack);
-  return gameFigure(spec, (url) => loadWalrusBody(url, { packs }), { cutOf: cutFor });
+  return gameFigure(spec, (url) => loadWalrusBody(url, { packs }));
 }
 
 // A 2017 droid or beast on a skeleton of its own (lib/three/ownRig.js: the
 // B1, the B2, the droideka, the Ewok, the astromech, the probe, the
-// tauntaun), moved by its rig's pack of the game's clips, with no sockets
-// unless its rig has them: otherwise as walrusFigure's.
+// tauntaun), moved by its rig's pack of the game's clips, with no sockets:
+// otherwise as walrusFigure's.
 async function ownRigFigure(spec) {
-  const fig = await gameFigure(spec, (url) => loadOwnRigBody(url, { rig: spec.ownRig, packs: spec.packs, bones: spec.bones ?? {} }).then((b) => ({ ...b, sockets: null })), { cutOf: (url) => url });
+  const fig = await gameFigure(spec, (url) => loadOwnRigBody(url, { rig: spec.ownRig, packs: spec.packs, bones: spec.bones ?? {} }).then((b) => ({ ...b, sockets: null })));
   return Object.assign(fig, { rig: 'own' });
 }
 
-// A 2017 figure from its body loader: its cut by the device's level (a
-// hero's three files, cutOf) or, for a kind at full fidelity (`cuts.full`),
-// its `.lod1` first and the rest by distance through cutAt
-// (lib/three/walrusCuts.js); its small parts without shadows, its
-// materials its own.
-async function gameFigure(spec, loadBody, { cutOf }) {
+// A 2017 figure from its body loader. A hero (three files by the level,
+// walrus.js's cutsToLoad): its light cut, then the level's swapped on as it
+// lands. A kind at full fidelity (`cuts.full`, phase 2's cast): its light
+// cut, then the cut its distance wants, through cutAt (lib/three/
+// walrusCuts.js: the full one near, within a page's share of the GPU's
+// texture memory, the far one past the level's mid). Either way the cut
+// goes onto the same bones (walrus.js's swapBody), so the animator, the
+// sockets and the saber keep theirs; its small parts cast no shadow.
+async function gameFigure(spec, loadBody) {
   const cuts = spec.cuts?.full ? spec.cuts : null;
   const level = detailLevel();
-  const cut = cuts ? cutUrl(spec.src.url, cuts.lod ? 'lod1' : 'plain') : cutOf(spec.src.url, level);
-  const { model, clips, sockets } = await loadBody(cut).catch((e) => (cut === spec.src.url ? Promise.reject(e) : loadBody(spec.src.url)));
-  const owned = [];
-  // (its small parts, the eyes, the teeth and the hair's cut-out cards,
-  // cast no shadow: each part is a draw of its own, twice with one, and a
-  // 2017 hero has up to thirteen; the body, the clothes and the cape do)
-  const dress = () => {
-    owned.length = 0;
-    model.traverse((o) => {
+  const lowData = Boolean(device().saveData);
+  const [first, next] = cuts ? [cutUrl(spec.src.url, cuts.lod ? 'lod1' : 'plain'), null] : cutsToLoad(spec.src.url, level, { lowData });
+  const { model, clips, sockets } = await loadBody(first).catch((e) => (first === spec.src.url ? Promise.reject(e) : loadBody(spec.src.url)));
+  // (each mesh's materials, the copy's own, returned for the figure to free)
+  const dress = (root) => {
+    const mats = [];
+    root.traverse((o) => {
       if (!o.isMesh) return;
       o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
-      owned.push(...[].concat(o.material));
+      mats.push(...[].concat(o.material));
+      // (its small parts, the eyes, the teeth and the hair's cut-out cards,
+      // cast no shadow: each part is a draw of its own, twice with one, and a
+      // 2017 hero has up to thirteen; the body, the clothes and the cape do)
       const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
       o.userData.noShadow = tris < 1500 || o.material?.alphaTest > 0;
+      if (o.isSkinnedMesh) o.castShadow = !o.userData.noShadow;
     });
+    return mats;
   };
-  dress();
+  const owned = dress(model);
   const hips = model.getObjectByName('Hips');
   const fig = rigged(model, clips, spec.tall, owned, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url, library: false });
-  // the cut its distance wants, swapped onto the moving figure: the meshes
-  // only, on its own bones, the old ones' materials freed
-  const cutter = cuts
-    ? createCutter({
-        url: spec.src.url,
-        cuts,
-        level,
-        lowData: Boolean(device().saveData),
-        load: (u) => loadGLTF(u),
-        swap: (scene) => {
-          for (const m of swapSkins(model, scene)) for (const x of [].concat(m.material)) x.dispose();
-          dress();
-          model.traverse((o) => o.isMesh && (o.castShadow = !o.userData.noShadow));
-        },
-      })
-    : null;
-  return Object.assign(fig, { rig: 'walrus', sockets, clips, hipsY: hips?.position.y ?? null, cutAt: cutter ? (d) => cutter.at(d) : null, cut: cutter ? () => cutter.current() : () => 'plain' });
+  let gone = false;
+  const own = fig.dispose;
+  fig.dispose = () => {
+    gone = true;
+    own();
+  };
+  // (a cut onto the figure: the old one's materials freed and forgotten, the new one's kept to free)
+  const swap = (gltf) => {
+    if (gone || !gltf) return;
+    const full = cloneScene(gltf);
+    const mats = dress(full);
+    const old = swapBody(model, full);
+    if (!old.length) return mats.forEach((m) => m.dispose());
+    for (const o of old)
+      for (const m of [].concat(o.material)) {
+        m.dispose();
+        const i = owned.indexOf(m);
+        if (i >= 0) owned.splice(i, 1);
+      }
+    owned.push(...mats);
+  };
+  if (next)
+    loadGLTF(next)
+      .then(swap)
+      .catch(() => {}); // (the light cut stays: it was already a whole figure)
+  const cutter = cuts ? createCutter({ url: spec.src.url, cuts, level, lowData, load: (u) => loadGLTF(u), swap }) : null;
+  return Object.assign(fig, { rig: 'walrus', sockets, clips, hipsY: hips?.position.y ?? null, cutAt: cutter ? (d) => cutter.at(d) : null });
 }
 
 // A loaded Meshy figure (its scene, or a copy of one: `shared`, whose

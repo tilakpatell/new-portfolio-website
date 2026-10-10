@@ -22,12 +22,9 @@
 //     'plain' | 'lod1' | 'far'                                   (pure)
 //   createLedger(capMB) → { admit(key, mb) → boolean, used() → MB }
 //   FULL_MB: the share by level
-//   swapSkins(figure, cut) → the meshes taken off: the cut's skinned
-//     meshes put on the figure's own bones by name (the cut's scene is the
-//     cache's, left as it is); throws, changing nothing, when the cut names
-//     a bone the figure lacks
+//   createCutter(…): one figure's cut kept to its distance (below); the swap
+//     itself is walrus.js's swapBody, the heroes' too
 
-import * as THREE from 'three';
 import { firstCut, wantsUpgrade } from '../net/progressive';
 
 export const FULL_MB = { low: 0, mid: 0, high: 224, ultra: 448 };
@@ -57,34 +54,6 @@ export function createLedger(capMB) {
   };
 }
 
-export function swapSkins(figure, cut) {
-  const bones = new Map();
-  figure.traverse((o) => o.isBone && o.name && !bones.has(o.name) && bones.set(o.name, o));
-  const incoming = [];
-  cut.traverse((o) => o.isSkinnedMesh && incoming.push(o));
-  // (every bone the cut binds to, the figure's own, before anything moves)
-  for (const m of incoming)
-    for (const b of m.skeleton.bones) if (!bones.has(b.name)) throw new Error(`the cut binds ${m.name || 'a mesh'} to ${b.name}, which the figure lacks`);
-  const old = [];
-  figure.traverse((o) => o.isSkinnedMesh && old.push(o));
-  const parent = old[0]?.parent ?? figure;
-  for (const m of old) m.removeFromParent();
-  for (const m of incoming) {
-    const mesh = new THREE.SkinnedMesh(m.geometry, Array.isArray(m.material) ? m.material.map((x) => x.clone()) : m.material.clone());
-    mesh.name = m.name;
-    mesh.position.copy(m.position);
-    mesh.quaternion.copy(m.quaternion);
-    mesh.scale.copy(m.scale);
-    mesh.frustumCulled = false; // (a skinned mesh's bounds don't follow its pose)
-    mesh.castShadow = m.castShadow;
-    mesh.userData = { ...m.userData };
-    mesh.bindMode = m.bindMode;
-    parent.add(mesh);
-    mesh.bind(new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone())), m.bindMatrix.clone());
-  }
-  return old;
-}
-
 // One page's ledger a level (a world's figures share it; the next world's page starts again).
 const ledgers = new Map();
 export const ledgerFor = (level) => (ledgers.has(level) ? ledgers : ledgers.set(level, createLedger(FULL_MB[level] ?? FULL_MB.high))).get(level);
@@ -95,7 +64,7 @@ export const cutUrl = (url, cut) => (cut === 'plain' ? url : url.replace(/\.glb$
 // The figure's cut, kept to what its distance wants: `at(d)` each step (or
 // less often); a change is asked for only when the distance is past the band
 // by a tenth either side, so a figure on the line doesn't flicker, and one
-// load at a time. `load(url)` → a glTF (the page's cache), `swap(scene)` puts
+// load at a time. `load(url)` → a glTF (the page's cache), `swap(gltf)` puts
 // it on the figure. A cut that won't load is not asked for again.
 //   createCutter({ url, cuts: { lod, far, fullMB }, level, lowData, ledger, key, start, load, swap })
 //     → { at(distance) → Promise | null, current() → cut }
@@ -121,7 +90,7 @@ export function createCutter({ url, cuts = {}, level, lowData = false, ledger = 
       return Promise.resolve(load(cutUrl(url, next)))
         .then((gltf) => {
           if (!gltf) throw new Error('no file');
-          swap(gltf.scene ?? gltf);
+          swap(gltf);
           current = next;
         })
         .catch(() => failed.add(next))

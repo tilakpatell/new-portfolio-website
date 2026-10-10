@@ -62,3 +62,13 @@ describe('a GLB’s textures on the GPU', () => {
     expect(t.gpuBytes).toBeCloseTo((300 * 200 * 4 * 4) / 3, 6);
   });
 });
+
+describe('a KTX2 map', () => {
+  it('reads its size from its header and counts a byte a texel, as it stays compressed', () => {
+    const b = Buffer.alloc(48);
+    Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+    b.writeUInt32LE(2048, 20);
+    b.writeUInt32LE(1024, 24);
+    expect(imageSize(b)).toEqual({ width: 2048, height: 1024, compressed: true });
+  });
+});

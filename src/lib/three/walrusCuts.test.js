@@ -1,6 +1,5 @@
-import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { createCutter, createLedger, cutWanted, swapSkins } from './walrusCuts';
+import { createCutter, createLedger, cutWanted } from './walrusCuts';
 
 const has = { hasLod: true, hasFar: true, lowData: false, admitted: true };
 
@@ -46,50 +45,6 @@ describe('the full cuts’ share of the GPU’s texture memory', () => {
 
   it('admits nothing with no share (a phone’s levels)', () => {
     expect(createLedger(0).admit('trooper', 1)).toBe(false);
-  });
-});
-
-// a skeleton of three bones and a skinned triangle on it
-function figure(colour) {
-  const root = new THREE.Group();
-  const bones = ['Hips', 'Spine', 'Head'].map((n) => Object.assign(new THREE.Bone(), { name: n }));
-  root.add(bones[0]);
-  bones[0].add(bones[1]);
-  bones[1].add(bones[2]);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
-  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute([2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0], 4));
-  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
-  const mesh = new THREE.SkinnedMesh(geo, new THREE.MeshStandardMaterial({ color: colour }));
-  mesh.name = 'body';
-  root.add(mesh);
-  root.updateMatrixWorld(true);
-  mesh.bind(new THREE.Skeleton(bones));
-  return { root, mesh, bones };
-}
-
-describe('a cut swapped onto a figure already moving', () => {
-  it('puts the other cut’s meshes on the figure’s own bones, by name, and gives back the old', () => {
-    const drawn = figure(0xff0000);
-    const other = figure(0x00ff00);
-    const gone = swapSkins(drawn.root, other.root);
-    expect(gone).toEqual([drawn.mesh]);
-    const meshes = [];
-    drawn.root.traverse((o) => o.isSkinnedMesh && meshes.push(o));
-    expect(meshes.length).toBe(1);
-    expect(meshes[0].material.color.getHex()).toBe(0x00ff00);
-    expect(meshes[0].skeleton.bones).toEqual(drawn.bones);
-    // (the cut's own copy is left alone: it is the cache's)
-    expect(other.mesh.skeleton.bones).toEqual(other.bones);
-    expect(other.mesh.parent).toBe(other.root);
-  });
-
-  it('refuses a cut whose bones the figure lacks, and leaves the figure as it was', () => {
-    const drawn = figure(0xff0000);
-    const other = figure(0x00ff00);
-    other.bones[2].name = 'Head_Other';
-    expect(() => swapSkins(drawn.root, other.root)).toThrow(/Head_Other/);
-    expect(drawn.mesh.parent).toBe(drawn.root);
   });
 });
 

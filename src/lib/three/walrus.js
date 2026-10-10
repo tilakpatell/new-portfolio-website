@@ -41,6 +41,46 @@ export const packUrls = (hero = null) => [`${PACK_DIR}/clips-humanoid.glb`, ...(
 
 export const cutFor = (url, level) => (level === 'low' || level === 'mid' ? url.replace(/\.glb$/, '.lod1.glb') : level === 'ultra' ? url.replace(/\.glb$/, '.ultra.glb') : url);
 
+// The cuts a figure fetches, in order: its light one first where the level
+// wants a bigger one (the full cut of a 2017 hero is 10 to 45 MB of the
+// game's own maps), then that one, which swapBody puts on the figure as it
+// lands; on a saver connection the light one only.
+export function cutsToLoad(url, level, { lowData = false } = {}) {
+  const light = cutFor(url, 'low');
+  const want = cutFor(url, level);
+  return want === light || lowData ? [light] : [light, want];
+}
+
+// The full cut's skinned meshes on a figure already walking on its light
+// one: each bound to the figure's own bones by name (the same skeleton, so
+// the animator, the sockets and the saber keep theirs), hung where the
+// light ones hang, and the light ones taken off; returns those, for their
+// materials to be freed.
+export function swapBody(model, full) {
+  const bones = new Map();
+  model.traverse((o) => o.isBone && !bones.has(o.name) && bones.set(o.name, o));
+  const old = [];
+  model.traverse((o) => o.isSkinnedMesh && old.push(o));
+  if (!old.length) return [];
+  const parent = old[0].parent;
+  const fresh = [];
+  full.traverse((o) => o.isSkinnedMesh && fresh.push(o));
+  for (const m of fresh) {
+    const mapped = m.skeleton.bones.map((b) => bones.get(b.name) ?? null);
+    if (mapped.some((b) => !b)) continue;
+    const skeleton = new THREE.Skeleton(mapped, m.skeleton.boneInverses.map((x) => x.clone()));
+    const bindMatrix = m.bindMatrix.clone();
+    m.removeFromParent();
+    parent.add(m);
+    m.bind(skeleton, bindMatrix);
+    m.frustumCulled = false;
+    m.castShadow = old[0].castShadow;
+  }
+  if (!fresh.some((m) => m.parent === parent)) return [];
+  for (const o of old) o.removeFromParent();
+  return old;
+}
+
 const boneOf = (track) => track.name.slice(0, track.name.lastIndexOf('.'));
 
 export async function loadWalrusPacks(urls, { loader } = {}) {

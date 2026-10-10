@@ -230,5 +230,9 @@ describe('a cut over its cap', () => {
     expect(overCaps([['plain', 3.9 * MB], ['lod1', 2 * MB], ['ultra', 20 * MB]], { hero: true })).toEqual([]);
     expect(overCaps([['plain', 14 * MB]], { hero: true })).toEqual(['plain: 14.0 MB over 4.0 MB']);
     expect(overCaps([['ultra', 25 * MB]], { hero: true })).toEqual(['ultra: 25.0 MB over 24.0 MB']);
+    // (a native hero's, the game's own maps: fetched light first, from the bucket)
+    expect(overCaps([['plain', 14 * MB], ['lod1', 3.4 * MB], ['ultra', 44 * MB]], { hero: true, native: true })).toEqual([]);
+    expect(overCaps([['ultra', 66 * MB]], { hero: true, native: true })).toEqual(['ultra: 66.0 MB over 64.0 MB']);
+    expect(overCaps([['plain', 12.8 * MB]], { native: true })).toEqual([]);
   });
 });

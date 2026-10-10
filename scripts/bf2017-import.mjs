@@ -48,10 +48,10 @@
 //              without one falls back to IK_Joint_RightHand): a `grip` node
 //              is put there, under it on a rig so DICE's own names all stay;
 //              without either, at the model's own origin, which is DICE's hold
-//   full       phase 2's full fidelity (the design's section 6 as revised
-//              2026-10-10, 05:40): the plain cut is the game's LOD0, never
-//              simplified, every map at the game's own size up to 2048 as
-//              AVIF q90, positions at 16 bits; it goes to the bucket
+//   full       phase 2's full fidelity (phase 1's native settings): the
+//              plain cut is the game's LOD0, never simplified, every map
+//              the game's own KTX2 at up to 2048 (AVIF q90 for one the
+//              bucket has only as PNG); it goes to the bucket
 //              (assets-publish.mjs), not the repo. The `.lod1` is the first
 //              LOD under 1,500 triangles (a soldier's LOD4) at colour 1024
 //              and the rest 512, WebP. The row says `full: true`
@@ -70,18 +70,20 @@
 // server (npx vite --port 5188 --strictPort --host 127.0.0.1).
 
 import { Logger, NodeIO } from '@gltf-transform/core';
-import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, dequantize, flatten, join, mergeDocuments, meshopt, metalRough, prune, textureCompress, unpartition, weld } from '@gltf-transform/functions';
+import { ALL_EXTENSIONS, KHRTextureBasisu } from '@gltf-transform/extensions';
+import { dedup, dequantize, flatten, join, listTextureSlots, mergeDocuments, meshopt, metalRough, prune, textureCompress, unpartition, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, stat, unlink } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join as path, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { overCaps } from './lib/bf2017-caps.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { isSequel, cutsFor, fullCuts, partsOf, readManifest } from './lib/bf2017-manifest.mjs';
 import { glbJson, imagePath, inBucket, localPath } from './lib/bf2017-paths.mjs';
-import { resolveImage, stripOpaqueAlpha } from './lib/bf2017-textures.mjs';
+import { resolveImage } from './lib/bf2017-textures.mjs';
+import { BASIS_LZ, dropLevels, ktx2Info } from './lib/ktx2-levels.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
 import { joinSkinned, shareSkins } from './lib/rig-parts.mjs';
 import { glbTextures } from '../src/lib/glbTextures.js';
@@ -93,6 +95,7 @@ const ROOT = path(dirname(fileURLToPath(import.meta.url)), '..');
 export const PERMISSION = 'From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.';
 const GAME = 'https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2';
 const MISSING = '__missing';
+const NATIVE = 'ktx2:';
 const SLOTS = ['BaseColor', 'Normal', 'Occlusion', 'MetallicRoughness', 'Emissive'];
 
 // an eye map with its white lifted outside the iris (radius 0.18 of the
@@ -116,7 +119,7 @@ async function liftSclera(png) {
 // taken off the material after), and the textures' KHR_texture_basisu
 // source becomes their plain source, so glTF-Transform never goes looking
 // for a KTX2 itself.
-async function readLod(io, file, { root, derived, unpackDir, said, eyes = null }) {
+export async function readLod(io, file, { root, derived, unpackDir, said, eyes = null }) {
   const glb = await readFile(localPath(root, inBucket(file)));
   // (the GLB read by hand: glTF-Transform's own reader will not open one whose
   // images are outside it; chunk 0 is the JSON, chunk 1 the binary buffer)
@@ -131,6 +134,8 @@ async function readLod(io, file, { root, derived, unpackDir, said, eyes = null }
     if (found) {
       resources[uri] = new Uint8Array(found.png);
       said.found.add(`${at.split('/').pop()} ← ${found.from}`);
+      // (where the game's own map is, for a cut that takes it as it is: --native)
+      img.name = `${NATIVE}${at}`;
     } else {
       resources[uri] = new Uint8Array(await sharp({ create: { width: 1, height: 1, channels: 3, background: '#808080' } }).png().toBuffer());
       img.name = MISSING;
@@ -199,6 +204,47 @@ async function readCut(io, entry, parts, lod, opts) {
 
 const apply = (m, p) => [0, 1, 2].map((r) => m[r] * p[0] + m[4 + r] * p[1] + m[8 + r] * p[2] + m[12 + r]);
 
+// A colour map whose alpha is the game's smoothness (`_cs`), on a material
+// that draws opaque: the alpha taken off before WebP, which otherwise drops
+// the colour under every low-alpha texel (Luke's body map: 33.7 dB at any
+// quality with it, 48.6 dB at WebP 90 without, and a twelfth the bytes).
+const opaqueColour = () => async (doc) => {
+  const keep = new Set();
+  for (const m of doc.getRoot().listMaterials()) if (m.getAlphaMode() !== 'OPAQUE' && m.getBaseColorTexture()) keep.add(m.getBaseColorTexture());
+  for (const m of doc.getRoot().listMaterials()) {
+    const t = m.getBaseColorTexture();
+    if (!t || keep.has(t) || !/png|webp|jpeg/.test(t.getMimeType())) continue;
+    const img = t.getImage();
+    const meta = await sharp(img).metadata();
+    if (meta.hasAlpha) t.setImage(new Uint8Array(await sharp(img).removeAlpha().png().toBuffer())).setMimeType('image/png');
+  }
+};
+
+// Each map the game has as KTX2 on disk, in place of its decoded copy, at
+// the cut's size (colour at `tex`, the rest at `maps`) by dropping whole
+// mip levels. Returns how many it took.
+async function nativeMaps(doc, spec) {
+  let n = 0;
+  for (const t of doc.getRoot().listTextures()) {
+    const name = t.getName();
+    if (!name.startsWith(NATIVE)) continue;
+    const file = localPath(spec.root, name.slice(NATIVE.length));
+    if (!file.endsWith('.ktx2') || !existsSync(file)) continue;
+    const bytes = new Uint8Array(await readFile(file));
+    const { width, scheme } = ktx2Info(bytes);
+    const want = listTextureSlots(t).some((s) => /baseColor|emissive/.test(s)) ? spec.tex : spec.maps;
+    const drop = Math.max(0, Math.round(Math.log2(width / want)));
+    // (an ETC1S map, BasisLZ, keeps codebooks across its levels, so its top
+    // can't be taken off: whole where it fits, else the decoded image goes
+    // through textureCompress like any other)
+    if (scheme === BASIS_LZ && drop) continue;
+    t.setImage(dropLevels(bytes, drop)).setMimeType('image/ktx2').setName(name.slice(NATIVE.length).split('/').pop());
+    n++;
+  }
+  if (n) doc.createExtension(KHRTextureBasisu).setRequired(true);
+  return n;
+}
+
 // ── one cut, through the pipeline, to a file ──
 
 async function makeCut(io, entry, parts, lod, spec, out) {
@@ -234,22 +280,25 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const held = spec.rig && socket && root.listNodes().includes(socket) ? socket : null;
   if (held) held.addChild(doc.createNode('grip'));
   else root.getDefaultScene().addChild(doc.createNode('grip').setTranslation(gripAt));
-  // (an opaque colour map's alpha is the game's smoothness, which the ORM
-  // map carries: kept, it costs the encoder colour)
-  await stripOpaqueAlpha(doc);
+  // the game's own maps, as the bucket holds them (zstd UASTC, full mips),
+  // their top levels dropped to the cut's size: nothing re-encoded (--native,
+  // and --full's plain cut); a map the bucket has no KTX2 for goes through
+  // the encoder (AVIF on --full's plain cut, WebP on every other)
+  const native = spec.native ? await nativeMaps(doc, spec) : 0;
   const format = spec.format ?? 'webp';
   await doc.transform(
-    textureCompress({ encoder: sharp, targetFormat: format, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
-    textureCompress({ encoder: sharp, targetFormat: format, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
-    // (positions at 16 bits on the full cut, the game's own half-float
-    // precision; meshopt's 14 elsewhere)
-    meshopt({ encoder: MeshoptEncoder, level: 'high', ...(spec.positionBits ? { quantizePosition: spec.positionBits } : {}) }),
+    opaqueColour(),
+    textureCompress({ encoder: sharp, targetFormat: format, formats: /png|jpeg|webp/, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
+    textureCompress({ encoder: sharp, targetFormat: format, formats: /png|jpeg|webp/, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
+    // (the game's own precision: half-float positions are 16 bits; a UV at
+    // meshopt's default 12 bits is half a texel off on a 2048 map)
+    meshopt({ encoder: MeshoptEncoder, level: 'high', quantizePosition: 16, quantizeNormal: 12, quantizeTexcoord: 16 }),
   );
   await mkdir(dirname(out), { recursive: true });
   await io.write(out, doc);
   const bytes = (await stat(out)).size;
   const [w, h, l] = dims(doc);
-  return { out, bytes, tris: Math.round(triangles(doc)), draws: root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0), maps: root.listTextures().length, size: [w, h, l], socket: socket?.getName() ?? null, joints: new Set(root.listSkins().flatMap((s) => s.listJoints())).size };
+  return { out, bytes, native, tris: Math.round(triangles(doc)), draws: root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0), maps: root.listTextures().length, size: [w, h, l], socket: socket?.getName() ?? null, joints: new Set(root.listSkins().flatMap((s) => s.listJoints())).size };
 }
 
 // ── the arguments ──
@@ -267,15 +316,8 @@ function cutsOf(entry, opts, rig) {
   return cuts;
 }
 
-// The caps a cut is held to (the pipeline design's section 6): 2.5 MB, 4 MB
-// for a hero, 2.5 MB for a light cut, 150 KB for a far one, 24 MB for an
-// ultra one; a full-fidelity plain cut (--full: it goes to the bucket, not
-// the repo) is held to the ultra's. Each cut over its cap, said.
+export { overCaps } from './lib/bf2017-caps.mjs';
 const MB = 1048576;
-export function overCaps(cuts, { hero = false, full = false } = {}) {
-  const cap = { plain: full ? 24 * MB : hero ? 4 * MB : 2.5 * MB, lod1: 2.5 * MB, far: 150 * 1024, ultra: 24 * MB };
-  return cuts.filter(([cut, bytes]) => bytes > cap[cut]).map(([cut, bytes]) => `${cut}: ${(bytes / MB).toFixed(1)} MB over ${(cap[cut] / MB).toFixed(1)} MB`);
-}
 
 export async function importModel(name, opts) {
   const kind = opts.kind;
@@ -302,6 +344,8 @@ export async function importModel(name, opts) {
     rig,
     grip: typeof opts.grip === 'string' ? [opts.grip] : rig ? ['Wep_Root', 'IK_Joint_RightHand'] : ['Wep_Root'],
     keepOrigin: Boolean(opts.keepOrigin),
+    // (the game's own KTX2 maps in every cut, trimmed to its size: --native)
+    native: Boolean(opts.native),
     // (a hero's own eye map, under web/textures/, for the eye shader's material)
     eyes: typeof opts.eyes === 'string' ? `web/textures/${opts.eyes.replace(/^web\/textures\//, '')}` : null,
     // (WebP quality: colour, then the rest; a hero at the game's full maps takes more)
@@ -326,14 +370,14 @@ export async function importModel(name, opts) {
   spec.join = Boolean(opts.join);
   // (the full cut: every map at the game's own size, up to 2048, AVIF q90,
   // the mesh never simplified; positions at 16 bits)
-  const plainSpec = full ? { ...spec, tex: 2048, maps: 2048, format: 'avif', quality: Number(opts.quality ?? 90), mapsQuality: Number(opts.quality ?? 90), positionBits: 16, simplify: false } : { ...spec, tex, maps };
+  const plainSpec = full ? { ...spec, native: true, tex: 2048, maps: 2048, format: 'avif', quality: Number(opts.quality ?? 90), mapsQuality: Number(opts.quality ?? 90), simplify: false } : { ...spec, tex, maps };
   const plain = await makeCut(io, entry, parts, cuts.plain, plainSpec, path(dir, `${kind}.glb`));
   made.push(['plain', cuts.plain, plain]);
   let lod = false;
   if (cuts.lod1) {
     // (the light cut: half the colour, a quarter of the full maps at most
-    // 512, at the usual quality; under --full, colour 1024 and the rest 512)
-    const lightSpec = full ? { ...spec, tex: 1024, maps: 512, quality: 82, mapsQuality: 80 } : { ...spec, tex: tex / 2, maps: Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 };
+    // 512, at the usual quality; under --full, colour 1024 and the rest 512, WebP)
+    const lightSpec = full ? { ...spec, native: false, tex: 1024, maps: 512, quality: 82, mapsQuality: 80 } : { ...spec, tex: tex / 2, maps: spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 };
     const light = await makeCut(io, entry, parts, cuts.lod1, lightSpec, path(dir, `${kind}.lod1.glb`));
     if (light.bytes < 0.7 * plain.bytes) {
       made.push(['lod1', cuts.lod1, light]);
@@ -349,7 +393,7 @@ export async function importModel(name, opts) {
   if (farLod) {
     let far = null;
     for (let t = 256; t >= 64; t /= 2) {
-      far = await makeCut(io, entry, parts, farLod, { ...spec, tex: t, maps: t / 2, quality: 80, mapsQuality: 78 }, path(dir, `${kind}.far.glb`));
+      far = await makeCut(io, entry, parts, farLod, { ...spec, native: false, tex: t, maps: t / 2, quality: 80, mapsQuality: 78 }, path(dir, `${kind}.far.glb`));
       if (far.bytes <= 150 * 1024) break;
       console.log(`  far at ${t}: ${(far.bytes / 1024).toFixed(0)} KB, over 150: halved`);
     }
@@ -363,7 +407,7 @@ export async function importModel(name, opts) {
     ultra = { tris: u.tris, tex: ut };
   }
   // (a file over its cap is not shipped: the import stops and says which)
-  const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero), full });
+  const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero), native: Boolean(opts.native), full });
   if (over.length) throw new Error(`${kind}: ${over.join('; ')} (smaller --tex and --maps, or another --cuts)`);
   for (const f of spec.said.found) console.log(`  map ${f}`);
   for (const f of spec.said.missing) console.log(`  missing: ${f}`);
@@ -384,6 +428,8 @@ export async function importModel(name, opts) {
     const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: cuts.plain.triangles, tex };
     if (rig) row.rig = true;
     if (opts.hero) row.hero = true;
+    // (the game's own maps, held to the native caps: scripts/lib/bf2017-caps.mjs)
+    if (spec.native) row.native = true;
     if (lod) row.lod = true;
     if (farLod) row.far = true;
     if (full) Object.assign(row, { full: true, fullMB });

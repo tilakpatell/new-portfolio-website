@@ -103,7 +103,8 @@ describe('a pack of the game’s clips', () => {
     const t = channels[0].getSampler().getInput().getArray();
     expect(t.length).toBe(Math.ceil(0.3 * 24) + 1);
     expect(t[t.length - 1]).toBeCloseTo(0.3, 6);
-    const { contact, root: travel, rootHips } = strike.getExtras();
+    const { contact, root: travel, rootHips, source } = strike.getExtras();
+    expect(source).toBe('A_Luke_AttackLoop_Strike1');
     expect(contact[0]).toBeGreaterThanOrEqual(0);
     expect(contact[1]).toBeGreaterThan(contact[0]);
     expect(contact[1]).toBeLessThanOrEqual(0.3);
