@@ -29,13 +29,15 @@
 // (`guard`, for lib/combat/bolt.js's step), one beside it isn't.
 //
 //   createSaber(gp, { color, hilt, stance, parent, sound, fig, clips }) →
-//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), cancel(), block(on), throw(now, dir, how?),
+//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), cancel(), block(on, side), throw(now, dir, how?),
 //       stand(dt, now, move), update(dt, now, { forward, up, me, targets, hit }),
 //       guard(id, side) (the raised blade for the bolts' step, and what
 //       meets a duellist's contact: { id, base, tip, r, side } | null), lit, busy, swinging (the stroke: { name (the
 //       clip's), clip, t0, speed, contact, damage, heavy, … } or null), thrown, charge (0…1 while F is
 //       held), setCharge(k), blades (lib/combat/blade.js's, the main first),
-//       dispose() }
+//       blockClip (the block it lays: a 2017 hero's by the game's name, else BLOCK_CLIP), dispose() }
+//   side: the side of it a cut comes in on ('left' | 'right' | null: blockSide.js's incomingSide); a 2017
+//   hero lays the game's block measured holding the blade there (its stance's `blocks`), anyone else its one.
 //   fig: the figure that holds it ({ bones, hipsY?, play? }); without
 //   `play` the arms still swing (laid here) but the legs keep their clips.
 //   tier: the device's (lib/device.js's, unless given): a 2017 hero's lit
@@ -57,11 +59,12 @@ import { loadClip } from '../../../lib/three/clipLibrary';
 import { createTrail } from '../../../lib/three/combat/trail';
 import { frameFrom, reach, rotateWorld, setWorldQuaternion } from '../../../lib/three/ik';
 import { capsuleOf } from './blaster';
+import { blockClipFor } from './blockSide';
 import { BLOCK_CLIP, DIRS, HEAVY, PARRY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
 import { stanceFor } from './gameStance';
 import { gameClips, heroOfClips } from './saberGame';
 import { createSaberLight } from './saberLight';
-import { BLADE_OF, SABER, throwAt } from './saberRules';
+import { BLADE_OF, BLOCK_AT, SABER, throwAt } from './saberRules';
 import { modelUrlFor } from './catalog';
 import { loadGlb } from './placer';
 
@@ -96,7 +99,7 @@ const CORRECT = 0.25; // radians the sword arm may be turned toward the lock in 
 const IN = 0.08; // seconds a stroke's arms take to come on over the guard
 const OUT = 0.15; // and to go at its end
 const CANCEL = 0.05; // seconds after the contact window ends that the next stroke may cut in
-const BLOCK_AT = 0.32; // of the block clip, where it's held: the blade up across
+const SWITCH = 0.12; // seconds a block chosen again while it's up takes to ease over from the one before
 const DEFLECT_R = 0.3; // how near the held blade a bolt turns off it (m): its streak is a hand across, and a block should read as covering
 const NO_CLIP = { duration: 0.6, contact: [0.2, 0.4] }; // (a stroke whose clip hasn't come: timed as one)
 const ease = (k) => k * k * (3 - 2 * k);
@@ -247,6 +250,11 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     blockFrom: null, // when the block last went up (a tap still shows it for the parry window)
     now: 0, // the last frame's time
     blocking: false,
+    side: null, // the side the block was chosen for (a 2017 hero's), and the game's block it lays (null: BLOCK_CLIP)
+    blockClip: null,
+    raises: 0, // (the variant's turn)
+    blockWas: null, // (the block before, eased out from blockSwitch)
+    blockSwitch: 0,
     thrown: null, // { t0, from, dir, hits }
     me: null,
     charge: 0,
@@ -560,12 +568,27 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       st.swing = null;
       if (sw.walk) fig?.stop?.(0.2, 'full');
     },
-    block(on) {
+    // a 2017 hero picks the game's block for the side a cut comes in on as
+    // it goes up, the next variant each raise, and again only when a cut
+    // comes in on the other side; anyone else has its one, whatever the side
+    block(on, side = null) {
       if (on && !st.blocking) {
         this.light(true);
         st.blockFrom = st.now;
       }
+      if (walrus && on && (!st.blocking || (side && side !== st.side))) {
+        const was = st.blockClip ?? BLOCK_CLIP;
+        st.side = side;
+        st.blockClip = blockClipFor(st_.blocks, side, (n) => Boolean(clips[n]), st.raises++);
+        if (clips[st.blockClip ?? BLOCK_CLIP] !== clips[was] && st.blockW > 0) {
+          st.blockWas = was;
+          st.blockSwitch = st.now;
+        }
+      }
       st.blocking = on;
+    },
+    get blockClip() {
+      return st.blockClip ?? BLOCK_CLIP;
     },
     // the raised blade as the bolts see it (lib/combat/bolt.js's `blades`):
     // the main blade's segment this frame while the block shows, a little
@@ -620,7 +643,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
         return;
       }
       // between strokes: the guard, the block, or the heavy one winding up
-      const block = clips[BLOCK_CLIP];
+      const block = clips[st.blockClip ?? BLOCK_CLIP];
       const up = blockShown() && st.lit > 0.05;
       st.blockW = Math.max(0, Math.min(1, st.blockW + (up ? dt : -dt) * 8));
       const guardW = Math.min(1, st.lit * 2);
@@ -631,7 +654,11 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
         const g = two ? GUARD : GUARD_DUAL;
         pose(g.yaw, g.pitch, p, guardW, g.at);
       }
-      if (block) lay(block, block.duration * BLOCK_AT, st.blockW * Math.min(1, st.lit * 2));
+      const bw = st.blockW * Math.min(1, st.lit * 2);
+      // (a block chosen again while up: the one before eased out under it)
+      const was = st.blockWas && now - st.blockSwitch < SWITCH ? clips[st.blockWas] : null;
+      if (was) lay(was, was.duration * BLOCK_AT, bw);
+      if (block) lay(block, block.duration * BLOCK_AT, bw * (was ? (now - st.blockSwitch) / SWITCH : 1));
       pushBlades(now);
       drawTrails(false);
     },

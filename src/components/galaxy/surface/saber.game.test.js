@@ -59,14 +59,26 @@ describe('a 2017 hero’s saber', () => {
     saber.dispose();
   });
 
-  it('times a stroke by the table’s window, not the pack’s older one', async () => {
+  it('times a stroke by the table’s window, as the pack now does too', async () => {
     const { fig, world } = await figure();
     const saber = createSaber(createGunplay(fig, 'saber', { unit: 1 }), { fig, parent: world, tier: 'low' });
     const a = saber.swing(0);
     expect(a.contact).toEqual(strike('A_Luke_AttackLoop_Strike1').contact);
-    expect(a.contact).not.toEqual(a.clip.userData.contact);
+    // (the pack re-timed with the tables' measure: scripts/bf2017-clips.mjs)
+    expect(a.clip.userData.contact).toEqual(a.contact);
     const up = createSaber(createGunplay(fig, 'saber', { unit: 1 }), { fig, parent: world, tier: 'low' }).swing(0, { dir: 'left' });
     expect(up.contact).toEqual(luke.strikes.find((s) => s.name === up.name).contact);
+  });
+
+  it('takes the table’s window over a pack’s that disagrees', async () => {
+    const { fig, world } = await figure();
+    // (a pack timed some other way: its first strike's window a tenth of a second on)
+    const other = fig.clips['sword.light.a'].clone();
+    other.userData.contact = other.userData.contact.map((t) => t + 0.1);
+    fig.clips = { ...fig.clips, 'sword.light.a': other };
+    const a = createSaber(createGunplay(fig, 'saber', { unit: 1 }), { fig, parent: world, tier: 'low' }).swing(0);
+    expect(a.clip).toBe(other);
+    expect(a.contact).toEqual(strike('A_Luke_AttackLoop_Strike1').contact);
   });
 
   it('times a stroke named outright (a duellist’s, a peer’s) by that stroke’s own window', async () => {

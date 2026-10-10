@@ -510,7 +510,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   // A figure's body for its step, once the step's placed its holder: its
   // feet on the ground the step covers, its crouch, its head, its start on
   // seeing you, then (after its own bones are laid) its gun or its blade
-  const body = (t, pose, move, dt, time, you) => {
+  const body = (t, pose, move, dt, time, you, eye) => {
     const fig = t.fig;
     const b = t.b;
     // crouched in cover (a base state: only ever while its feet are still)
@@ -549,8 +549,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     if (t.gp && !(time < (t.startUntil ?? 0))) t.gp.set(dt, { aim: pose.aim, look: dir ? 1 : 0, dir, forward: _fwd, up: UP });
     if (t.blade) {
       // (its stroke's root travel and its turn to its lock write into its own walk: b)
-      t.blade.block(t.blocking);
-      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: b, dir, targets: t.duelMark ? [t.duelMark] : [], hit: (x, damage, at, o) => struckBy(t, x, damage, at, o) });
+      t.blade.block(t.blocking, t.blockSide);
+      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: b, dir, eye, targets: t.duelMark ? [t.duelMark] : [], hit: (x, damage, at, o) => struckBy(t, x, damage, at, o) });
     }
     // the pistol's aim, held on its upper half since its last shot (a rigged
     // one with no gun of its own to raise), let down a while after
@@ -565,7 +565,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   // about its feet that way; carried on along a shove that took it; lying a
   // while, then into the ground and gone
   const STOOD = { speed: 0, side: 0, turn: 0 };
-  const dying = (t, dt, time) => {
+  const dying = (t, dt, time, eye) => {
     const d = (t.death ??= { dir: fallOf({ from: lastYou, at: t.b, yaw: t.b.yaw }), force: 0.3, clip: null, started: false, y: null });
     const fig = t.fig;
     const hover = fig?.hover ?? t.spec.y ?? 0;
@@ -613,7 +613,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       fallTurn(f.k, _dir.set(d.dir.x, 0, d.dir.z), UP, _q);
       t.holder.quaternion.copy(_q.multiply(_yq.setFromAxisAngle(UP, t.b.yaw)));
     }
-    t.blade?.out(dt, time, { forward: _fwd, up: UP });
+    t.blade?.out(dt, time, { forward: _fwd, up: UP, eye });
     t.holder.position.set(t.b.x, d.y + (t.knock?.y ?? 0) - f.sink, t.b.z);
     if (f.gone) t.holder.visible = false;
   };
@@ -706,8 +706,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     kill(tag) {
       for (const t of targets) if (t.tag === tag && !t.down) fell(t);
     },
-    // swinging: your stroke (duellists.js's swingingOf), for the duellists to read
-    update(dt, you, time, { actors, door, swinging = null } = {}) {
+    // swinging: your stroke (duellists.js's swingingOf), for the duellists to read; eye: the camera's position (their blades' light: saberLight.js)
+    update(dt, you, time, { actors, door, swinging = null, eye = null } = {}) {
       const events = [];
       const { quest, progress } = shown;
       const step = quest?.steps[progress?.step];
@@ -773,7 +773,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         }
         if (t.down) {
           t.down += dt;
-          dying(t, dt, time);
+          dying(t, dt, time, eye);
           if (t.down > 0.3 && !t.counted) {
             t.counted = true;
             events.push({ type: 'kill', tag: t.tag });
@@ -886,7 +886,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.flinch -= dt;
           t.holder.rotation.z = t.reacted ? 0 : Math.sin(t.flinch * 60) * t.flinch * 0.3;
         } else t.holder.rotation.z = 0;
-        if (t.fig) body(t, pose, moving || (b.to && !near) ? 0.6 : 0, dt, time, you);
+        if (t.fig) body(t, pose, moving || (b.to && !near) ? 0.6 : 0, dt, time, you, eye);
         if (t.bubble?.visible) {
           const f = t.bubble.userData;
           f.flash = Math.max(0, f.flash - dt);
