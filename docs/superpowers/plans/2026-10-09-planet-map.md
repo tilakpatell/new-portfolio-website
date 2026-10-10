@@ -57,7 +57,7 @@
 - Create: `PlanetMap.jsx`; Modify: `FlightHud.jsx`, `src/components/guide/pages.js` (the key)
 
 - [x] `M` opens it over the world (the frame's `pointer-events` back on inside the card), pan by drag or touch, zoom by wheel or pinch (two steps), the POI list on the right with bearing and distance, a tap sets a waypoint (a marker on the minimap and a bearing line on the HUD's top row), `Esc` closes. Pilots as dots with callsigns, built things as squares, occurrences as the life streamer's icons when lane G is on main (else none; a test covers both).
-- [x] Smoke with `--phone`; screenshots of the map on Hoth and Tatooine (`docs/superpowers/shots/2026-10-09-planet-map/`; Coruscant is not in lane A's roster on this branch). **Commit** `The planet map, with waypoints`.
+- [x] Smoke with `--phone`; screenshots of the map on Hoth, Coruscant and Tatooine (`docs/superpowers/shots/2026-10-09-planet-map/`). **Commit** `The planet map, with waypoints`.
 
 ### Task 4: Docs and the PR
 
