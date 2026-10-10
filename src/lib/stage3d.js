@@ -17,7 +17,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget, pixelRatio } from './device';
 import { debugOn, debugPanel } from './debugPanel';
 import { guard } from './three/frameGuard';
-import { prepareScene } from './three/gpuWork';
+import { prepareScene, warmDraw } from './three/gpuWork';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 import { sharpen } from './three/textures';
 import { BLOOM } from './three/bloom';
@@ -121,6 +121,70 @@ export function stageTune({ bloomPass, on = debugOn, panel: makePanel = debugPan
   };
 }
 
+// The drawing buffers' size, apart from when they're made. The canvas is
+// its size in CSS pixels at the stage's ratio; the composer's buffers, where
+// the scene is drawn, are at that ratio times the world's own sharpness
+// (`scale`, lib/three/pace's step for one drawn softer while frames come
+// late), the last pass drawing the picture up to the canvas, as the
+// universe's post does. So a pace step never reallocates the canvas, which
+// waits on the graphics chip (one to two seconds on Metal when it's busy);
+// only a new size and the watchdog's rung do, and a step when the scene is
+// drawn straight to the canvas (`soft`). resize, scale and ratio only note
+// what's wanted; fit() makes it, once, at the start of a frame that is
+// about to draw: a canvas reallocated is cleared, and a frame that then
+// drew nothing (an area still building, its shaders still warming) showed
+// the page through it, black.
+//
+// stageSizing({ ratio, soft, canvas(w, h, pixelRatio), buffers(w, h, pixelRatio) }) →
+//   { resize(w, h) → changed, scale(k), setRatio(r), fit() → made, size, ratio, sharpness, stale }
+export function stageSizing({ ratio: r0 = 1, soft = false, canvas, buffers }) {
+  let size = { w: 1, h: 1 };
+  let ratio = r0;
+  let k = 1;
+  let made = { w: 1, h: 1, canvas: r0, buffers: r0 }; // (as created)
+  const want = () => ({ w: size.w, h: size.h, canvas: soft ? ratio * k : ratio, buffers: ratio * k });
+  const stale = () => {
+    const n = want();
+    return n.w !== made.w || n.h !== made.h || n.canvas !== made.canvas || n.buffers !== made.buffers;
+  };
+  return {
+    get size() {
+      return size;
+    },
+    get ratio() {
+      return ratio;
+    },
+    get sharpness() {
+      return k;
+    },
+    get stale() {
+      return stale();
+    },
+    resize(w, h) {
+      const next = { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
+      if (next.w === size.w && next.h === size.h) return false;
+      size = next;
+      return true;
+    },
+    scale(v) {
+      k = v;
+    },
+    setRatio(v) {
+      ratio = v;
+    },
+    fit() {
+      const n = want();
+      const moved = n.w !== made.w || n.h !== made.h;
+      const c = moved || n.canvas !== made.canvas;
+      const b = moved || n.buffers !== made.buffers;
+      made = n;
+      if (c) canvas(n.w, n.h, n.canvas);
+      if (b) buffers(n.w, n.h, n.buffers);
+      return c || b;
+    },
+  };
+}
+
 // Steps down when frames run long: sharpness first, then shadows, then
 // bloom, then sharpness again. Nothing comes back during a game, so the
 // picture doesn't flicker between settings.
@@ -131,16 +195,17 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
   // less multisampling, a weak device without shadows or bloom
   const fit = budget();
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false }));
-  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
-  guard(renderer);
+  // (what arrives late is held back until it's ready, not waited for:
+  // lib/three/frameGuard; the composer's buffers are the frame's at any
+  // sharpness, smaller than the canvas or not)
+  guard(renderer, { frames: (t) => t === composer.renderTarget1 || t === composer.renderTarget2 });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = exposure;
   renderer.shadowMap.enabled = shadows && !soft && fit.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const full = stageRatio({ soft });
-  let ratio = full;
-  renderer.setPixelRatio(ratio);
+  renderer.setPixelRatio(full);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(fov, 16 / 9, near, far);
@@ -168,16 +233,24 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
   let useBloom = !soft;
   let level = soft ? LADDER.indexOf('bloom') : 0;
 
-  let size = { w: 1, h: 1 };
+  // (the buffers made at the next frame drawn: stageSizing above; the
+  // camera's shape at once, so what's placed over the canvas lines up)
+  const sizing = stageSizing({
+    ratio: full,
+    soft,
+    // (its size and ratio together: setPixelRatio then setSize reallocated it twice)
+    canvas: (w, h, pr) => renderer.setDrawingBufferSize(w, h, pr),
+    buffers: (w, h, pr) => {
+      composer.setPixelRatio(pr);
+      composer.setSize(w, h);
+      bloomPass.resolution.set(w / 2, h / 2);
+    },
+  });
   const resize = (w, h) => {
-    size = { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
-    renderer.setPixelRatio(ratio);
-    renderer.setSize(size.w, size.h, false);
-    composer.setPixelRatio(ratio);
-    composer.setSize(size.w, size.h);
-    bloomPass.resolution.set(size.w / 2, size.h / 2);
-    gradePass.uniforms.uAspect.value = size.w / size.h;
-    camera.aspect = size.w / size.h;
+    sizing.resize(w, h);
+    const { w: sw, h: sh } = sizing.size;
+    gradePass.uniforms.uAspect.value = sw / sh;
+    camera.aspect = sw / sh;
     camera.updateProjectionMatrix();
   };
 
@@ -192,10 +265,7 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
 
   const setLevel = (name) => {
     level = Math.max(level, LADDER.indexOf(name));
-    if (level >= LADDER.indexOf('ratio') && ratio > 1) {
-      ratio = 1;
-      resize(size.w, size.h);
-    }
+    if (level >= LADDER.indexOf('ratio') && sizing.ratio > 1) sizing.setRatio(1);
     if (level >= LADDER.indexOf('shadows') && renderer.shadowMap.enabled) {
       renderer.shadowMap.enabled = false;
       scene.traverse((o) => {
@@ -211,10 +281,7 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
         rt.dispose();
       }
     }
-    if (level >= LADDER.indexOf('low') && ratio > 0.75) {
-      ratio = 0.75;
-      resize(size.w, size.h);
-    }
+    if (level >= LADDER.indexOf('low') && sizing.ratio > 0.75) sizing.setRatio(0.75);
   };
   if (soft || !fit.bloom) setLevel('bloom');
 
@@ -238,13 +305,27 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
 
   let warming = 0; // precompiles in flight (below)
   let passesDone = false;
-  const render = (ms = 16) => {
-    if (lost || disposed || warming) return;
-    gradePass.uniforms.uTime.value += ms / 1000;
+  let drawn = false; // a picture on the canvas yet (prepare's or a frame's)
+  // a new size or sharpness made first, in the same callback as the draw
+  const draw = () => {
+    sizing.fit();
     // software rendering draws straight to the canvas: every full-screen pass costs
     if (soft) renderer.render(scene, camera);
     else composer.render();
+    drawn = true;
+  };
+  const render = (ms = 16) => {
+    if (lost || disposed || warming) return;
+    // (before the draw: a step it takes is made with this frame's)
     watch(ms);
+    gradePass.uniforms.uTime.value += ms / 1000;
+    // (a world that isn't prepared below: everything in it drawn once first,
+    // out of sight, what's hidden or out of view too, as prepare does. The
+    // frame guard draws that whole, so the world doesn't come up as its sky
+    // alone, nor a thing out of view at first come in a few frames late:
+    // this frame takes the compiling it always did, and more of it)
+    if (!drawn) warmDraw(renderer, draw, [scene]);
+    draw();
   };
 
   const tuning = stageTune({ bloomPass, title: () => canvas.closest?.('[data-route]')?.dataset.route || (typeof document !== 'undefined' ? document.title : null) });
@@ -275,6 +356,10 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
   // one that would stop the page while the GPU links.
   const precompile = (root = scene) => {
     if (lost || disposed) return Promise.resolve();
+    // (the buffers made now while nothing's been drawn, behind the loading
+    // screen; after that at the next frame drawn, as render() holds the
+    // last frame while this warms)
+    if (!drawn) sizing.fit();
     // the scene draws into the composer's buffer, or (soft) straight to the canvas
     const jobs = root ? [compileFor(renderer, root, camera, scene, soft ? null : composer.readBuffer)] : [];
     if (!soft && !passesDone) {
@@ -293,12 +378,13 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
   // the page's loading screen (components/worlds/LoadingVeil)
   const prepare = async (onProgress, { alive = () => true } = {}) => {
     const on = () => alive() && !lost && !disposed;
+    if (!drawn) sizing.fit();
     if (!soft && !passesDone) {
       passesDone = true;
       await precompilePasses(renderer, composer, camera);
     }
     if (!on()) return;
-    await prepareScene({ renderer, roots: [scene], scene, camera, target: soft ? null : composer.readBuffer, render: () => (soft ? renderer.render(scene, camera) : composer.render()), onProgress, alive: on });
+    await prepareScene({ renderer, roots: [scene], scene, camera, target: soft ? null : composer.readBuffer, render: draw, onProgress, alive: on });
   };
 
   return {
@@ -310,13 +396,16 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
     bloomPass,
     grade,
     resize,
+    // drawn softer than the stage's ratio by k (1, its sharpest): the
+    // composer's buffers made again at the next frame drawn, not the canvas
+    scale: sizing.scale,
     render,
     dispose,
     precompile,
     setLevel,
     tune: tuning.tune,
     get size() {
-      return size;
+      return sizing.size;
     },
     get lost() {
       return lost;

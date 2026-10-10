@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { anisotropyFor, fitSize, fitTexture, imageBitmapOk, mipsOver, variant } from './textures';
+import { anisotropyFor, fitSize, fitTexture, imageBitmapOk, loadTexture, mipsOver, variant } from './textures';
+
+// (one file the bucket holds, for the asset base's case)
+vi.mock('../../data/assets-manifest.json', () => ({ default: { 'hq/tex/rock.jpg': { hash: 'bbbbbbbbbbbb', bytes: 90000 } } }));
 
 describe('fitting a map under a ceiling', () => {
   it('halves until the longer side fits, keeping the shape', () => {
@@ -80,5 +83,35 @@ describe('decoding off the main thread', () => {
     expect(imageBitmapOk(SAFARI16, true)).toBe(false);
     expect(imageBitmapOk(FF90, true)).toBe(false);
     expect(imageBitmapOk(CHROME, false)).toBe(false);
+  });
+});
+
+describe('a texture the bucket holds', () => {
+  it('is asked of the asset base when the build has one, and nowhere else, through the pool', async () => {
+    const { useAssetPool } = await import('../assetLoad');
+    const { createAssetFetch } = await import('../net/assetFetch');
+    vi.stubEnv('VITE_ASSET_BASE', 'https://bucket.test/assets');
+    const asked = [];
+    useAssetPool(
+      createAssetFetch({
+        fetch: async (url) => {
+          asked.push(url);
+          return new Response(new Uint8Array(url.includes('rock') ? 90000 : 10));
+        },
+        sleep: async () => {},
+      }),
+    );
+    const spy = vi.spyOn(THREE.TextureLoader.prototype, 'loadAsync').mockImplementation(() => Promise.resolve(new THREE.Texture()));
+    try {
+      await loadTexture('/hq/tex/rock.jpg');
+      await loadTexture('/textures/plain.jpg');
+      expect(asked).toEqual(['https://bucket.test/assets/bbbbbbbbbbbb/hq/tex/rock.jpg', '/textures/plain.jpg']);
+      // (decoded from the bytes already here, never fetched again by the decoder)
+      expect(spy.mock.calls.every(([u]) => u.startsWith('blob:'))).toBe(true);
+    } finally {
+      spy.mockRestore();
+      useAssetPool(null);
+      vi.unstubAllEnvs();
+    }
   });
 });

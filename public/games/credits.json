@@ -3815,15 +3815,6 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
-  "meshy/mtt": {
-    "source": "https://www.meshy.ai",
-    "id": "01a114e3-ae77-73e2-913c-51fcebb0174a",
-    "name": "the MTT, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
-    "authors": [
-      "Tilak Patel, with Meshy AI"
-    ],
-    "license": "Meshy paid-plan output, owned by the site owner"
-  },
   "meshy/nexu": {
     "source": "https://www.meshy.ai",
     "id": "01a114d2-ec16-70c4-b693-99758cd8a4d6",
@@ -3855,15 +3846,6 @@
     "source": "https://www.meshy.ai",
     "id": "01a114e3-b5a1-772c-9ba2-496e7949e957",
     "name": "the desert skiff, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
-    "authors": [
-      "Tilak Patel, with Meshy AI"
-    ],
-    "license": "Meshy paid-plan output, owned by the site owner"
-  },
-  "meshy/stap": {
-    "source": "https://www.meshy.ai",
-    "id": "01a114e3-b955-7059-93e0-2d5f5d5e0512",
-    "name": "the STAP, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -4632,6 +4614,16 @@
     "license": "CC0 1.0",
     "use": "In public/models/quaternius/props/space.glb, a kit of them (scripts/quaternius.mjs)"
   },
+  "quaternius-space/pickups": {
+    "source": "https://quaternius.com",
+    "id": "pickups",
+    "name": "Ultimate Space Kit: the five pickups (Pickup_Health, Pickup_Thunder, Pickup_Bullets, Pickup_Sphere, Pickup_Crate)",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "pickups.glb, the galaxy's pickups in flight, packed from the kit's glTF files by scripts/galaxy-pickups.mjs"
+  },
   "quaternius/CommonTree_4": {
     "source": "https://quaternius.com",
     "id": "CommonTree_4",
@@ -4641,5 +4633,35 @@
     ],
     "license": "CC0 1.0",
     "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "bf2017/walrus": {
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "id": "Characters/Rigs/Humanoids/Walrus_HumanMale; web/anims/walrus_humanmale",
+    "name": "Star Wars Battlefront II (2017): the humanoid skeleton and its clips",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.",
+    "use": "The game’s Walrus_HumanMale skeleton (walrus.glb) and the game’s own clips packed onto it (clips-humanoid.glb and one clips-<hero>.glb a hero), in public/models/galaxy/bf2017/, by scripts/bf2017-skeleton.mjs and scripts/bf2017-clips.mjs"
+  },
+  "bf2017-ui": {
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "id": "web/svg, web/fonts (the open-licence faces), web/strings, web/textures/ui/bitmaps",
+    "name": "Star Wars Battlefront II (2017): its icons, strings and UI art",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.",
+    "use": "The game’s icons as sprites (public/ui/bf2017/*.svg), its English strings (src/data/bf2017/strings.json and public/ui/bf2017/strings/), its portraits and tiles (public/ui/bf2017/bitmaps/), by scripts/bf2017-ui.mjs; its open-licence fonts are their makers’ (public/fonts/bf2017/README.md)"
+  },
+  "bf2017-films": {
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "id": "web/movies (planet loading films, campaign cinematics, menu tiles, tutorials, the logo, MT_Volcano2)",
+    "name": "Star Wars Battlefront II (2017): its films",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.",
+    "use": "The planets’ loading films on the galaxy’s cards and landing veils, the campaign’s cinematics as the briefings of the worlds they are set on, the menu tiles, tutorials and logo for the game’s world, and Mustafar’s lava (MT_Volcano2): the drop’s WebM as it is (MT_Volcano2 cut from VP6 to VP9), published to site-assets by scripts/assets-publish.mjs, the posters and captions in public/films/bf2017/, by scripts/bf2017-ui.mjs"
   }
 }

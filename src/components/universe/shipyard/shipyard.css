@@ -83,6 +83,7 @@
 .yard-still span { color: var(--muted); font-size: 0.8rem; }
 .yard-caption { position: absolute; right: 0.8rem; bottom: 0.7rem; left: 0.8rem; margin: 0; overflow: hidden; color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
 .yard-looking { color: var(--text); }
+.yard-hint { position: absolute; right: 0.8rem; bottom: 2.3rem; left: 0.8rem; margin: 0; padding: 0.4rem 0.7rem; border: 1px solid rgb(255 255 255 / 0.22); border-radius: 8px; background: rgb(3 6 14 / 0.84); color: var(--text); font-size: 0.78rem; line-height: 1.4; pointer-events: none; }
 
 /* the bill */
 .yard-bill { grid-area: bill; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--yard-line); }

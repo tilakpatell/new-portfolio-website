@@ -17,6 +17,7 @@ export const BRIEFED = new Set([
   '/galaxy/surface',
   '/deathstar',
   '/deathstar/inside',
+  '/fly', // planet flight (scripts/flight-island.mjs removes this row)
   '/caribbean',
   '/invincible',
   '/middle-earth',

@@ -1,4 +1,4 @@
-/* global window, document, getComputedStyle */
+/* global window, document */
 // A browser check of the galaxy's flight HUD (galaxy/FlightCluster.jsx, cluster.js, radar.js, radarDraw.js, KeysCard.jsx; the
 // course on the HUD: pages/Galaxy.jsx and scene.js). With the dev server up (npx vite --port 5188 --host 127.0.0.1, or BASE= for
 // another), and after the galaxy map check's parts (galaxy-map-check/lib.mjs: the browser, the check line):
@@ -17,33 +17,24 @@
 //   target: T locks one, and its name is in the cluster
 //   course: M, "endo" + Enter plots Endor, M again: the HUD's way-to-go says "Course: Endor" ("· J" on a keyboard only), and J
 //     (with the nose on no star) starts the jump; on a touch screen that's a Jump to Endor button, which a keyboard doesn't show
-// SIZES=900x700,375x667 runs only those.
+// SIZES=900x700,375x667 runs only those. With a scenario's name as the argument, that alone runs, at 1440x900 (shots in OUT):
+//   pickups: a pickup dropped ahead is drawn, on the radar, taken by flying through (the rapid-fire chip; the repair kit's
+//     deflectors; the bubble's points; the power cell's charge), spins unless motion is reduced, is not taken in a jump's
+//     alignment and gone once the jump is committed (galaxy-hud-check/pickups.mjs)
+//   hangar: the Shipyard's button beside the flight settings', H and Escape, the yard shut under the galaxy map and mid-jump, twin
+//     cannons fitted and flying (the guns' cadence), kept under the universe map's keys (galaxy-hud-check/hangar.mjs)
 // Prints a line per check, ok or FAIL, and exits 1 on any FAIL. Shots are in OUT (hud-<size>.png, hud-<size>-keys.png).
 import { writeFileSync } from 'node:fs';
 import { browser, check, problems, out } from './galaxy-map-check/lib.mjs';
+import { hold, open as baseOpen, settle, smallText } from './galaxy-hud-check/lib.mjs';
+import { pickups } from './galaxy-hud-check/pickups.mjs';
+import { hangar } from './galaxy-hud-check/hangar.mjs';
 
-const base = process.env.BASE ?? 'http://127.0.0.1:5188';
-const settle = (page, ms = 400) => page.waitForTimeout(ms);
-
-// a galaxy at Tatooine, flown in an X-wing, nothing else open (the first-flight keys card up)
+// (a galaxy at Tatooine, flown in an X-wing, nothing else open, the first-flight keys card up: lib.mjs's, with a touch screen's rules on after)
 const open = async (viewport, touch) => {
-  const ctx = await browser.newContext({ viewport });
-  await ctx.addInitScript(() => {
-    window.localStorage.setItem('tp-3d', 'on');
-    window.localStorage.setItem('tp-intro', '1');
-    window.localStorage.setItem('tp-sound', 'off');
-    window.sessionStorage.setItem('tp-galaxy-intro', '1');
-  });
-  const page = await ctx.newPage();
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('console', (m) => m.type() === 'error' && !/GPU stall|swiftshader|WebGL|403/i.test(m.text()) && errors.push(m.text().slice(0, 200)));
-  await page.goto(`${base}/#/galaxy`, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.locator('text=An X-wing').first().click({ timeout: 180000 });
-  await page.waitForFunction(() => typeof window.__galaxy === 'function' && window.__galaxy().system && window.__galaxy().ship && !window.__galaxy().jump, null, { timeout: 180000 });
-  await settle(page, 1200);
-  if (touch) await asTouch(page);
-  return { ctx, page, errors };
+  const opened = await baseOpen(viewport);
+  if (touch) await asTouch(opened.page);
+  return opened;
 };
 
 // the page's own `(pointer: coarse)` rules on, its `(pointer: fine)` ones off, in place (a media rule's list is writable)
@@ -88,10 +79,12 @@ const PARTS = [
   ['keys chip', '.galaxy-keysbtn'],
   ['keys card', '.galaxy-keys'],
   ['settings', '.universe-settings-btn'],
+  ['shipyard', '.universe-hangar-btn'],
   ['multiplayer', '.universe-online-pill'],
   ['war line', '.galaxy-warhud-line'],
   ['war stage', '.galaxy-warhud-stage'],
   ['comms', '.universe-comms .universe-line'],
+  ['chip', '.fc-buff'],
   ['jump course', '.galaxy-jumpbtn[data-course]'],
   ['fire', '.universe-fire'],
   ['boost', '.universe-boost'],
@@ -103,10 +96,12 @@ const boxes = (page) =>
   page.evaluate((parts) => {
     const out = [];
     for (const [name, sel] of parts) {
-      const el = document.querySelector(sel);
-      if (!el || !el.checkVisibility({ visibilityProperty: true })) continue;
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) out.push({ name, l: r.left, t: r.top, r: r.right, b: r.bottom });
+      // (the effects' chips are a row of them: all counted)
+      for (const el of name === 'chip' ? document.querySelectorAll(sel) : [document.querySelector(sel)]) {
+        if (!el || !el.checkVisibility({ visibilityProperty: true })) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) out.push({ name, l: r.left, t: r.top, r: r.right, b: r.bottom });
+      }
     }
     return out;
   }, PARTS);
@@ -114,7 +109,7 @@ const boxes = (page) =>
 // there, the radar, the ship's block, the target, the keys and the jump button; the comms too only where the screen is tall enough
 // for the left column to clear them, `tall`: a short phone's has them over the radar when they speak, drawn above it)
 const THEIRS = ['war line', 'war stage', 'comms'];
-const MINE = ['radar', 'ship', 'target', 'keys chip', 'keys card', 'jump', 'jump course'];
+const MINE = ['radar', 'ship', 'target', 'keys chip', 'keys card', 'jump', 'jump course', 'chip', 'shipyard'];
 const meets = (bs, tall = true) => {
   const out = [];
   for (let i = 0; i < bs.length; i++)
@@ -127,19 +122,6 @@ const meets = (bs, tall = true) => {
     }
   return out;
 };
-
-// text a player reads under 0.7 rem (11.2 px) inside `root`
-const smallText = (page, root) =>
-  page.evaluate((sel) => {
-    const bad = [];
-    for (const el of document.querySelectorAll(`${sel}, ${sel} *`)) {
-      const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim()).map((n) => n.textContent.trim());
-      if (!own.length || !el.checkVisibility()) continue;
-      const fs = parseFloat(getComputedStyle(el).fontSize);
-      if (fs < 11.19) bad.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} "${own[0].slice(0, 16)}" ${fs}px`);
-    }
-    return bad;
-  }, root);
 
 // the radar's canvas: how many pixels are drawn, and the centre of those within `hue`'s colours (a predicate on r, g, b)
 const radarPixels = (page) =>
@@ -178,13 +160,6 @@ const quiet = (page) => page.waitForFunction(() => !document.querySelector('.uni
 const saveRadar = async (page, name) => {
   const url = await page.evaluate(() => document.querySelector('.fc-radar').toDataURL('image/png'));
   writeFileSync(`${out}/${name}.png`, Buffer.from(url.split(',')[1], 'base64'));
-};
-
-const hold = async (page, key, ms) => {
-  await page.evaluate(() => document.activeElement?.blur?.());
-  await page.keyboard.down(key);
-  await page.waitForTimeout(ms);
-  await page.keyboard.up(key);
 };
 
 async function run(viewport, touch) {
@@ -248,8 +223,9 @@ async function run(viewport, touch) {
     say(on, 'the flight cluster is shown');
     const bs = await boxes(page);
     const names = bs.map((b) => b.name);
-    for (const want of ['radar', 'ship', 'power G', 'power X', 'galaxy map', 'keys chip', 'settings']) if (!(touch && want === 'keys chip')) say(names.includes(want), `${want} is shown`);
+    for (const want of ['radar', 'ship', 'power G', 'power X', 'galaxy map', 'keys chip', 'settings', 'shipyard']) if (!(touch && (want === 'keys chip' || want === 'shipyard'))) say(names.includes(want), `${want} is shown`);
     if (touch) for (const want of ['fire', 'boost', 'view', 'climb up', 'climb down']) say(names.includes(want), `${want} (a touch button) is shown`);
+    if (touch) say(await G(() => Boolean(document.querySelector('.galaxy-yard-link')) && !document.querySelector('.universe-hangar-btn')?.checkVisibility()), 'the Shipyard is the panel’s “Open the shipyard” on a touch screen, not a button in the crowded corner');
     else if (viewport.width > 1100) say(names.includes('target'), 'the target block is shown');
     const m = meets(bs, tall);
     say(m.length === 0, `no two of the ${bs.length} parts shown meet${m.length ? ` (${m.join(', ')})` : ''}`);
@@ -295,6 +271,21 @@ async function run(viewport, touch) {
     say(/^\d+$/.test(n.kills ?? ''), `and the kills a number (${n.kills})`);
     await page.screenshot({ path: `${out}/hud-${file}${touch ? '-touch' : ''}.png` });
     await page.keyboard.up('w');
+
+    // the pickups' chips, three at once (the most there are: a bubble, rapid fire and overcharge): shown, inside the window and clear
+    // of everything else the cluster, the buttons and the war's lines have there
+    await G(() => ['rapid', 'bubble', 'overcharge'].forEach((k) => window.__galaxyDebug.pickups.give(k)));
+    await settle(page, 700);
+    const chipped = await boxes(page);
+    const chips = chipped.filter((b) => b.name === 'chip');
+    say(chips.length === 3, `three effects are three chips (${chips.length})`);
+    const mchips = meets(chipped, tall);
+    say(mchips.length === 0, `and they meet nothing${mchips.length ? ` (${mchips.join(', ')})` : ''}`);
+    const outChip = chips.filter((b) => b.l < -0.5 || b.t < -0.5 || b.r > viewport.width + 0.5 || b.b > viewport.height + 0.5);
+    say(outChip.length === 0, 'and are inside the window');
+    await page.screenshot({ path: `${out}/hud-${file}${touch ? '-touch' : ''}-chips.png` });
+    await G(() => window.__galaxyDebug.pickups.clear());
+    await settle(page, 300);
 
     // the radar: drawn, with the battle's allies on it
     const px = await radarPixels(page);
@@ -418,10 +409,16 @@ async function run(viewport, touch) {
 const stopped = (size, e) => check(false, `${size}: the check stopped: ${String(e.message).split('\n')[0]}`);
 const SIZES = [[1440, 900], [1280, 720], [1366, 657], [1152, 720], [900, 700], [390, 844, true], [375, 667, true]];
 const only = process.env.SIZES?.split(',');
-for (const [width, height, touch = false] of SIZES) {
-  if (only && !only.includes(`${width}x${height}`)) continue;
-  await run({ width, height }, touch).catch((e) => stopped(`${width}x${height}`, e));
-}
+// (`pickups` as the argument runs that scenario alone, galaxy-hud-check/pickups.mjs; none runs the flight HUD's sizes)
+const scenario = process.argv[2];
+if (scenario === 'pickups') await pickups().catch((e) => stopped('pickups', e));
+else if (scenario === 'hangar') await hangar().catch((e) => stopped('hangar', e));
+else if (scenario) check(false, `no scenario called ${scenario} (pickups, hangar)`);
+else
+  for (const [width, height, touch = false] of SIZES) {
+    if (only && !only.includes(`${width}x${height}`)) continue;
+    await run({ width, height }, touch).catch((e) => stopped(`${width}x${height}`, e));
+  }
 await browser.close();
 console.log(problems.length ? `\n${problems.length} problem(s)` : '\nall ok');
 process.exit(problems.length ? 1 : 0);

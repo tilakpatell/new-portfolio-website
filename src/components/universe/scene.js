@@ -105,7 +105,8 @@ import { createPace } from '../../lib/three/pace';
 import { CHASE, DIVE_MS, FOV, chaseDist, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, inExpanse, mapSectorOf, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
-import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
+import { MODEL_PLANETS, buildPlanet, loadModel, loadModels, loadTextures } from './planets';
+import { createLazy, standIn, wanted as nearEnough } from './nearby';
 import { buildSun } from './sun';
 import { MAP_LENS, aberrationFor, createPost, spaceEnvironment } from './post';
 import { grainFor } from '../../lib/three/noise';
@@ -175,7 +176,7 @@ import { tells } from './npcRules';
 import { createStanding } from './standing';
 import { createWanted } from './wanted';
 import { createLaw } from './law';
-import { readBuildWire, writeBuild } from './shipyard/build';
+import { readBuildWire, readTune, tuneKey, writeBuild } from './shipyard/build';
 import { readLooks } from '../rickmorty/wardrobe/looks';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
 import { entrySound, lockSound, shipEngine, wellSound } from './sounds';
@@ -188,14 +189,13 @@ import { JAMMED, jumpState } from './words';
 import { CORE, GENS, citadelGeometry, createSiege, segmentSphere } from './siege';
 import { createCitadelSiege } from './citadelSiege';
 import { GUARD, STALE_MS } from './online/protocol';
-import { createFoot } from './footScene';
 import { createLook } from '../../runtime/look';
 import { reticleState } from '../../runtime/hud/reticle';
 import { coneFor } from '../../lib/combat/aim';
 import { flownInto, wayIn, worldName } from './landings/wayin';
 import { figureVoice } from './landings/voicelines';
 import { sayVoiced, stopVoiced } from '../../lib/voiced';
-import { ENTRY, LANDABLE, airTop, entering } from './entry';
+import { ENTRY, LANDABLE, airTop, entering, entryGuess } from './entry';
 import { createNearMaps } from './nearMaps';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
@@ -232,6 +232,7 @@ const SAFE = 3; // seconds after coming back when other pilots' shots don't coun
 const NO_SHIPS = []; // (no big ship moving through: solidsWith's base)
 const RAM_CLEARED = 2; // seconds after a ram's kill a pack cleared is the ram's (said as one)
 const PREFETCH_AFTER = 2.5; // seconds at a planet you could land on before what landing there wants is fetched (not as you fly past)
+const PREFETCH_AHEAD = 2; // seconds, at most, from flying into its air when the part of it you'll come down on is fetched too
 // the cockpit view: the intro's cockpits, built on demand; the eye sits a
 // little ahead of the ship's middle and above it (map units); the lens is
 // the intro's, framed for a wide horizontal view, kept within sane vertical limits
@@ -482,7 +483,7 @@ export async function create(canvas, ctx) {
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 30000); // (out to the far side of deep space; the near plane follows the view, place())
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.08, 45000); // (out to the far side of deep space; the near plane follows the view, place())
   scene.add(camera); // it carries the streaks
   const map = new THREE.Group(); // turned (yaw) by a drag, or to keep the camera behind the ship
   scene.add(map);
@@ -772,10 +773,16 @@ export async function create(canvas, ctx) {
   };
   const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
-  // out of the ship and on foot on a planet (footScene.js)
+  // out of the ship and on foot on a planet (footScene.js): its code
+  // fetched as a planet you could land on comes near (nearby.js), and
+  // until it's here nobody's on foot
   // (a shot's assist cone, aim.js's: the look's mode says a mouse, a drag or a finger)
   const footCone = () => coneFor({ coarse, mode: looker.mode });
-  const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, prepare: (roots, alive) => prepareLanding(roots, alive), cone: () => footCone() });
+  const footCode = createLazy(
+    () => import('./footScene').then(({ createFoot }) => createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, prepare: (roots, alive) => prepareLanding(roots, alive), cone: () => footCone() })),
+    (f) => f.dispose(),
+  );
+  const foot = standIn(footCode, { props: { phase: null, id: null, debug: null, spots: null }, methods: { begin: () => (footCode.want(), false) } });
   const onFoot = () => Boolean(foot.phase);
   // the other pilots whose crews are down on a planet now (the scene hands
   // the ones on yours to the foot scene)
@@ -1090,10 +1097,14 @@ export async function create(canvas, ctx) {
   let net = null;
   let netOff = null;
 
-  // the models arrive after the map is up (their shaders made first, off
-  // the main thread, so one coming into view doesn't stall a frame)
-  // (`modelsIn`: all of them mounted, for prepare() to wait on)
-  const modelsIn = loadModels((id, model, spot) => {
+  // the planets' own models, each planet's as it comes near (nearby.js:
+  // from the home system the fandoms' are a few pixels across, and
+  // megabytes to fetch), their shaders made first, off the main thread, so
+  // one coming into view doesn't stall a frame; and the landings' code
+  // with the first planet you could land on
+  const nearAsked = new Set();
+  const nearLoading = new Set(); // (what's on its way, which prepare() and the poses wait for)
+  const onModel = (id, model, spot) => {
     if (disposed) {
       disposeTree(model);
       return null;
@@ -1102,7 +1113,31 @@ export async function create(canvas, ctx) {
       if (disposed || !planetOf[id]?.mount(model, spot)) disposeTree(model);
       ctx.invalidate();
     });
-  });
+  };
+  // the planets near the camera now, asked for, and what's on its way:
+  // what prepare() waits on (the frame loop asks as you fly)
+  const nearNow = () => {
+    camera.updateMatrixWorld();
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    const bound = new THREE.Sphere();
+    const half = Math.tan((camera.fov * Math.PI) / 360);
+    for (const p of planets) {
+      if (nearAsked.has(p.id)) continue;
+      p.group.getWorldPosition(bound.center);
+      bound.radius = p.radius * 2.6;
+      if (nearEnough({ dist: camera.position.distanceTo(bound.center), r: p.radius, inView: frustum.intersectsSphere(bound), focal: size.h / 2 / half })) comeNear(p.id);
+    }
+    return Promise.all([...nearLoading]);
+  };
+  const comeNear = (id) => {
+    nearAsked.add(id);
+    const jobs = [];
+    if (MODEL_PLANETS.includes(id)) jobs.push(loadModels(onModel, [id]));
+    if (LANDABLE.some((p) => p.id === id)) jobs.push(footCode.want());
+    const all = Promise.all(jobs).catch(() => {});
+    nearLoading.add(all);
+    all.then(() => nearLoading.delete(all));
+  };
 
   const size = { w: 1, h: 1 };
   const state = {
@@ -1155,6 +1190,7 @@ export async function create(canvas, ctx) {
     barrel: 0, // and which of the fitted guns' barrels
     loadout: STOCK_LOADOUT, // what's fitted in the hangar (outfit.js)
     build: null, // the garage build flown in place of the stock hull (shipyard/), or null
+    tune: {}, // the crew's own ship tuned with modules ({ slot: module id }); applies while the hull is the stock one
     stats: statsOf(null, STOCK_LOADOUT), // and what it does
     lastShot: 0,
     crash: null, // { age, id, … } while a crash plays out (startCrash)
@@ -1202,6 +1238,7 @@ export async function create(canvas, ctx) {
     camFrom: null, // { pos, quat, start, dur }: the camera easing over from where it was (onto your feet, or back behind the ship)
     landable: null, // the planet you could land on and step out onto, where you are
     landableFor: 0, // (how long it's been that: seconds)
+    aheadAt: 0, // (the wall's seconds) when next to look ahead for the air you're about to fly into
   };
   const t0 = performance.now();
   let engine = null;
@@ -1364,7 +1401,7 @@ export async function create(canvas, ctx) {
     const r = s ? Math.hypot(s.x, s.z) : 0;
     if (!state.overview || r < DEEP.system) return state.overview;
     const [wx, wz] = rotate(s.x * 0.55, s.z * 0.55);
-    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700 * HOME_SPREAD, 7000), pitch: 0.62 };
+    return { target: [wx, s.y * 0.5, wz], dist: clamp(r * 1.25, 700 * HOME_SPREAD, 10500), pitch: 0.62 }; // (10,500: 7,000 before the spread to six, scale.js's SPREAD)
   };
   // the turn of the map that brings a place round to the front, nearest the
   // camera, with nothing between (the rest of the ring to its sides); a
@@ -1969,7 +2006,7 @@ export async function create(canvas, ctx) {
     for (const pl of plumes) pl.trail.setColors(plumeColor(), look.core);
   };
   const refit = () => {
-    state.stats = statsOf(state.kind, state.loadout, state.build);
+    state.stats = statsOf(state.kind, state.loadout, state.build, state.tune);
     if (!state.kind || !state.model) return setBoosterPlumes();
     const mods = state.model.outfit(state.loadout);
     state.barrel = 0;
@@ -2000,6 +2037,15 @@ export async function create(canvas, ctx) {
     if (!disposed) state.model?.setLooks?.(readLooks(e.detail));
   };
   window.addEventListener('tp:looks', onLooks);
+
+  // The tune on the crew's own ship (shipyard/build.js's): only its numbers
+  // change, so the ship is not built again.
+  const setTune = (raw) => {
+    const next = readTune(raw);
+    if (tuneKey(next) === tuneKey(state.tune)) return;
+    state.tune = next;
+    state.stats = statsOf(state.kind, state.loadout, state.build, state.tune);
+  };
 
   // (force: the same crew, built again: its garage build changed)
   const setShip = (kind, force = false) => {
@@ -4483,6 +4529,13 @@ export async function create(canvas, ctx) {
   };
   // the key light's way, in the map's space (it's day where it falls)
   const lightInMap = () => LIGHT.clone().applyAxisAngle(Y_AXIS, -state.yaw);
+  // anyone already down on planet `id`, to come down beside (an ally
+  // first): their ship's spot and kind, or null
+  const friendOn = (id) => {
+    const down = guestsOnFoot(performance.now()).filter((g) => g.foot.planet === id);
+    const friend = down.find((g) => g.ally) ?? down[0] ?? null;
+    return friend && { ...friend.foot.ship, kind: friend.foot.kind };
+  };
   // Down onto a planet, and out they get. Flown down into its air (`entry`,
   // entry.js's entering(): where it went in, how fast and which way), the
   // ship flies on down through it onto the ground; without one (the dev
@@ -4498,10 +4551,8 @@ export async function create(canvas, ctx) {
       return false;
     }
     handOff(entry ? 600 : 1400);
-    // anyone already down on this planet: come down beside them (an ally first)
-    const down = guestsOnFoot(performance.now()).filter((g) => g.foot.planet === id);
-    const friend = down.find((g) => g.ally) ?? down[0] ?? null;
-    const near = friend && { ...friend.foot.ship, kind: friend.foot.kind };
+    // (anyone already down on this planet: come down beside them)
+    const near = friendOn(id);
     if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: sunInMap[id] ?? lightInMap().toArray(), near, entry })) return false;
     dropAuto();
     state.hotSaid = null;
@@ -4955,6 +5006,7 @@ export async function create(canvas, ctx) {
     const landable = flying() && !onFoot() && !state.crash && !state.dive && state.at && byId(state.at)?.kind !== 'core' && !byId(state.at)?.portal ? state.at : null; // (not a station, nor the gate into the galaxy)
     if (landable !== state.landable) {
       state.landable = landable;
+      if (landable) footCode.want(); // (nearby.js asked already, unless it's come some other way)
       state.landableFor = 0;
       emit({ type: 'landable', id: landable });
     }
@@ -4964,6 +5016,20 @@ export async function create(canvas, ctx) {
       const was = state.landableFor;
       state.landableFor += dt;
       if (was < PREFETCH_AFTER && state.landableFor >= PREFETCH_AFTER) foot.prefetch(landable, state.kind);
+    }
+    // (and as you head into its air, the part of it you'll come down on:
+    // heading in is the sign you mean to, so it needs no stay; foreseen
+    // again each half second of the wall's on the way in, and in the air
+    // till it takes you (too fast, easing off the boost as the HUD says,
+    // or skimming in), as where you'll come down moves with your course:
+    // entry.js's entryGuess)
+    if (landable && !state.auto && !state.jump && wall() >= state.aheadAt) {
+      const p = LANDABLE.find((o) => o.id === landable);
+      const ahead = p && entryGuess(state.ship, p, PREFETCH_AHEAD);
+      if (ahead) {
+        state.aheadAt = wall() + 0.5;
+        foot.prefetchAt(landable, { light: sunInMap[landable] ?? lightInMap().toArray(), near: friendOn(landable), entry: ahead });
+      }
     }
     placeAlt();
     map.rotation.y = state.yaw;
@@ -5134,7 +5200,9 @@ export async function create(canvas, ctx) {
       placeBound.radius = p.radius * 2.6; // (out past its moons and what orbits it)
       const d = camera.position.distanceTo(placeBound.center);
       const px = d > placeBound.radius ? (placeBound.radius / (d * tanHalf)) * (size.h / 2) : Infinity;
-      p.update(t, camera, px > 2 && viewFrustum.intersectsSphere(placeBound));
+      const seen = viewFrustum.intersectsSphere(placeBound);
+      p.update(t, camera, px > 2 && seen);
+      if (!nearAsked.has(p.id) && nearEnough({ dist: d, r: p.radius, inView: seen, focal: size.h / 2 / tanHalf })) comeNear(p.id);
     }
     near.update(camera.position, planets);
     locate();
@@ -5588,6 +5656,7 @@ export async function create(canvas, ctx) {
   canvas.addEventListener('pointerleave', onLeave);
 
   state.loadout = readLoadout(props.loadout);
+  state.tune = readTune(props.tune);
   setShip(props.ship ?? null);
   setNet(props.net);
   paintStates();
@@ -5687,7 +5756,13 @@ export async function create(canvas, ctx) {
     }
     state.held = { name, view };
     await frames(2);
+    // (what coming near the pose's place set fetching: its models and maps)
+    while (nearLoading.size) {
+      await Promise.all([...nearLoading]);
+      await frames(2);
+    }
     if (p.foot) {
+      await footCode.want();
       if (!startFoot({ id: p.foot })) throw new Error(`[universe] couldn't land on ${p.foot}`);
       const t0 = performance.now();
       while (foot.phase !== 'walk' && performance.now() - t0 < 300000) await frames(1);
@@ -5698,7 +5773,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, expanse, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wanted, law, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, ram: (gap = 6, kind = 'tie') => {
+    window.__universeDebug = { THREE, post, scene, expanse, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wanted, law, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot: async (o) => (await footCode.want(), startFoot(o)), travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, ram: (gap = 6, kind = 'tie') => {
       // a TIE (or `kind`) put `gap` dead ahead at your height, coming at you, for checking a ram from a browser
       const s = state.ship;
       if (!s || !hunters) return null;
@@ -5788,7 +5863,9 @@ export async function create(canvas, ctx) {
   // counts, not the picture, and the first real frame sizes them back up.
   const prepare = async (onProgress, { alive = () => true, frame } = {}) => {
     onProgress?.(0, 'load');
-    await settleWithin(Promise.all([ready, modelsIn]), 20000);
+    // (the models of the planets near where the map opens: the rest come as
+    // each comes near, nearby.js)
+    await settleWithin(Promise.all([ready, nearNow()]), 20000);
     if (!alive() || disposed) return;
     await prepareScene({
       renderer,
@@ -5839,10 +5916,12 @@ export async function create(canvas, ctx) {
       if ((next.ship ?? null) !== state.kind) {
         state.loadout = readLoadout(next.loadout); // (a new ship comes fitted as it was left)
         state.build = sameBuild(next.build) ? state.build : readBuildWire(next.build ? writeBuild(next.build) : null); // (and on the hull it was left on)
+        state.tune = readTune(next.tune); // (and tuned as it was)
       }
       setShip(next.ship ?? null);
       setBuild(next.build ?? null);
       setLoadout(next.loadout);
+      setTune(next.tune);
       setNet(next.net);
       // the page's pick, only when it changes. The router moves the address
       // in a transition, so a render that comes first (the HUD's, as the
@@ -6001,6 +6080,7 @@ export async function create(canvas, ctx) {
       foot.dispose();
       panel?.dispose();
       near.dispose();
+      footCode.dispose(); // (and one still on its way, when it comes)
       dropCab();
       roomEnv?.dispose();
       state.model?.dispose();

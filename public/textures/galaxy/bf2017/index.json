@@ -1,0 +1,350 @@
+{
+  "adobe": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "ta_moseisley_buildings_detail_04_c_000",
+    "from": "web/textures/objects/nature/desert/_desertbase/_detailtextures/ta_moseisley_buildings_detail_04_c_000.png",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.82,
+    "arm": false
+  },
+  "aerialrock": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "ta_arcticbase_rockdetail_01_c_002",
+    "from": "web/textures/objects/nature/arctic/_arcticbase/_commontextures/ta_arcticbase_rockdetail_01_c_002.png",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 6,
+    "mean": 0.78,
+    "arm": false
+  },
+  "ash": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_volcanicsulfur_sandrocky_01_c",
+    "from": "web/textures/objects/nature/volcanic/_volcanicsulfur/_terraintextures/t_volcanicsulfur_sandrocky_01_c.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.76,
+    "arm": false
+  },
+  "bark": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_forestbase_treelarge_tile_01_c",
+    "from": "web/textures/objects/nature/forest/_forestbase/forestbase_treelarge_01/t_forestbase_treelarge_tile_01_c.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 2,
+    "mean": 0.78,
+    "arm": false
+  },
+  "beach": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "ta_desertbase_detail_02_c_001",
+    "from": "web/textures/objects/nature/desert/_desertbase/_detailtextures/ta_desertbase_detail_02_c_001.png",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.84,
+    "arm": false
+  },
+  "concrete": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_volcanicbase_concreterough_01_c",
+    "from": "web/textures/objects/nature/volcanic/_volcanicbase/_terraintextures/t_volcanicbase_concreterough_01_c.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.84,
+    "arm": false
+  },
+  "deck": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_bs_01_grating_a_01_cs",
+    "from": "web/textures/objects/architecture/_galacticempire/bunkersystem_01/t_bs_01_grating_a_01_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 2,
+    "mean": 0.8,
+    "arm": true
+  },
+  "dryground": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "ta_desertbase_detail_02_c_001",
+    "from": "web/textures/objects/nature/desert/_desertbase/_detailtextures/ta_desertbase_detail_02_c_001.png",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.8,
+    "arm": false
+  },
+  "grass": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_forestbase_mud_02_cs",
+    "from": "web/textures/objects/nature/forest/_forestbase/_terraintextures/virtualterraintextures/t_forestbase_mud_02_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.78,
+    "arm": true
+  },
+  "gravel": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_naboo_gravelfine_01_cs",
+    "from": "web/textures/objects/nature/naboo/_naboobase/_terraintextures/t_naboo_gravelfine_01_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 2,
+    "mean": 0.8,
+    "arm": true
+  },
+  "leaves": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_forestbase_mud_02_cs",
+    "from": "web/textures/objects/nature/forest/_forestbase/_terraintextures/virtualterraintextures/t_forestbase_mud_02_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 2,
+    "mean": 0.76,
+    "arm": true
+  },
+  "metal": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_kam_basemetaldome_01_cs",
+    "from": "web/textures/objects/architecture/kamino/domes/textures/t_kam_basemetaldome_01_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 2,
+    "mean": 0.78,
+    "arm": true
+  },
+  "moss": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_arcticbase_mossrock_01_c",
+    "from": "web/textures/objects/nature/arctic/_arcticbase/_commontextures/t_arcticbase_mossrock_01_c.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.74,
+    "arm": false
+  },
+  "mossrock": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_arcticbase_mossrock_01_c",
+    "from": "web/textures/objects/nature/arctic/_arcticbase/_commontextures/t_arcticbase_mossrock_01_c.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.72,
+    "arm": false
+  },
+  "mud": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_forestbase_mud_02_cs",
+    "from": "web/textures/objects/nature/forest/_forestbase/_terraintextures/virtualterraintextures/t_forestbase_mud_02_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.74,
+    "arm": true
+  },
+  "needles": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_forestbase_mud_02_cs",
+    "from": "web/textures/objects/nature/forest/_forestbase/_terraintextures/virtualterraintextures/t_forestbase_mud_02_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.76,
+    "arm": true
+  },
+  "paint": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_mc80_airlock_metalpainted_gray_01_cs",
+    "from": "web/textures/objects/architecture/rebel/mc80/airlock/textures/t_mc80_airlock_metalpainted_gray_01_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 2,
+    "mean": 0.86,
+    "arm": true
+  },
+  "paving": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_yavintemple_floor_tile_01_co",
+    "from": "web/textures/objects/nature/yavin/_yavintemple/_commontextures/t_yavintemple_floor_tile_01_co.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.82,
+    "arm": true
+  },
+  "redrock": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_desertcanyon_rock_01_c",
+    "from": "web/textures/objects/nature/desert/desertcanyon/_terraintextures/t_desertcanyon_rock_01_c.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 4,
+    "mean": 0.78,
+    "arm": false
+  },
+  "redsoil": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_desertbase_cliffmudrocklarge_01_c",
+    "from": "web/textures/objects/nature/desert/_desertbase/desertbase_cliffmudrocklarge_01/t_desertbase_cliffmudrocklarge_01_c.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 4,
+    "mean": 0.78,
+    "arm": false
+  },
+  "rock": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "ta_arcticbase_rockdetail_01_c_000",
+    "from": "web/textures/objects/nature/arctic/_arcticbase/_commontextures/ta_arcticbase_rockdetail_01_c_000.png",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 4,
+    "mean": 0.8,
+    "arm": false
+  },
+  "sand": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "ta_desertbase_detail_02_c_000",
+    "from": "web/textures/objects/nature/desert/_desertbase/_detailtextures/ta_desertbase_detail_02_c_000.png",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.82,
+    "arm": false
+  },
+  "snow": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_arcticbase_snow_02_n__orm_a2c9de6a",
+    "from": "web/textures/objects/nature/arctic/_arcticbase/_terraintextures/t_arcticbase_snow_02_n__orm_a2c9de6a.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 3,
+    "mean": 0.9,
+    "arm": true
+  },
+  "snowfield": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_arcticbase_snow_02_n__orm_a2c9de6a",
+    "from": "web/textures/objects/nature/arctic/_arcticbase/_terraintextures/t_arcticbase_snow_02_n__orm_a2c9de6a.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 6,
+    "mean": 0.9,
+    "arm": true
+  },
+  "stone": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_yavintemple_maintemple_brickbroken_tile_01_co",
+    "from": "web/textures/objects/nature/yavin/_yavintemple/_commontextures/t_yavintemple_maintemple_brickbroken_tile_01_co.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 4,
+    "mean": 0.8,
+    "arm": true
+  },
+  "stones": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "ta_arcticbase_rockdetail_01_c_001",
+    "from": "web/textures/objects/nature/arctic/_arcticbase/_commontextures/ta_arcticbase_rockdetail_01_c_001.png",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 4,
+    "mean": 0.78,
+    "arm": false
+  },
+  "swampmud": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_forestbase_mud_02_cs",
+    "from": "web/textures/objects/nature/forest/_forestbase/_terraintextures/virtualterraintextures/t_forestbase_mud_02_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 4,
+    "mean": 0.72,
+    "arm": true
+  },
+  "tiles": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_naboo_stonetiles_04_cs",
+    "from": "web/textures/objects/nature/naboo/_naboobase/_terraintextures/t_naboo_stonetiles_04_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 4,
+    "mean": 0.84,
+    "arm": true
+  },
+  "wood": {
+    "source": "Star Wars Battlefront II (2017)",
+    "id": "t_kas_woodplanks_01_cs",
+    "from": "web/textures/objects/architecture/kashyyyk/_textures/t_kas_woodplanks_01_cs.ktx2",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "permission",
+    "metres": 2,
+    "mean": 0.8,
+    "arm": true
+  }
+}

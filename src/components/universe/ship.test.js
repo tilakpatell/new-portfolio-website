@@ -391,7 +391,7 @@ describe('the pulse drive near a place: no wall to hit', () => {
       expect(hit, `${from} to ${to}`).toBeNull();
       expect(done, `${from} to ${to}`).toBe(true);
     }
-  });
+  }, 30000); // (a minute and more of flight a trip since the spread to six)
 
   it('parks at a battle on super speed without flying through it, held down as it comes in', () => {
     const at = [5542, 139, 133];
@@ -530,6 +530,22 @@ describe('deep space', () => {
     expect(fly(open, { throttle: 1, boost: true, tune }, 8, []).ship.speed).toBeLessThanOrEqual(SHIP.pulse + 0.01);
     // (and a tune that's out of reach of any fit is held to what one can do)
     expect(fly(home, { ...held, tune: { boost: 50 } }, 3.5, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 1.6 + 0.01);
+  });
+
+  it('a surge lifts the boost and the pull-up on top of the boosters, which hold to what a fit can do on their own', () => {
+    const home = { ...spawn(null), y: SHIP.ceiling - 6 };
+    const held = { throttle: 1, boost: true, interdicted: true };
+    const stock = fly(home, held, 4, []).ship.speed;
+    expect(fly(home, { ...held, surge: 1.35 }, 4, []).ship.speed).toBeCloseTo(stock * 1.35, 1);
+    // (fully boosted already: 1.6 of the stock boost, and the surge on that, not lost to the 1.6 the fit's held to)
+    const full = fly(home, { ...held, tune: { boost: 1.6 } }, 4, []).ship.speed;
+    expect(full).toBeCloseTo(SHIP.boost * 1.6, 1);
+    expect(fly(home, { ...held, tune: { boost: 1.6 }, surge: 1.35 }, 4, []).ship.speed).toBeCloseTo(full * 1.35, 1);
+    // (it gets there quicker, too, and 1 or nothing changes nothing)
+    expect(fly(home, { ...held, surge: 1.35 }, 0.5, []).ship.speed).toBeGreaterThan(fly(home, held, 0.5, []).ship.speed);
+    expect(fly(home, { ...held, surge: 1 }, 2, []).ship).toEqual(fly(home, held, 2, []).ship);
+    // (and held to twice, whatever it's asked)
+    expect(fly(home, { ...held, surge: 9 }, 6, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 2 + 0.01);
   });
 
   it('turns quicker with thrusters fitted, and cruises faster with racing exhausts', () => {
@@ -781,7 +797,7 @@ describe('where a new ship starts', () => {
 
 // (the autopilot's trips are minutes of flight since the spread, scale.js's
 // SPREAD, flown at 60 steps a second: more than vitest's 5 s under load)
-const LONG = 20000;
+const LONG = 60000;
 
 describe('clearPark', () => {
   const park = { x: 10, y: 0, z: 0, heading: 1 };
@@ -842,7 +858,7 @@ describe('autopilot', () => {
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
       let bumps = 0;
-      for (let t = 0; t < 100 && !done; t += 1 / 60) {
+      for (let t = 0; t < 150 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         const r = step(s, a.input, 1 / 60);
@@ -861,7 +877,7 @@ describe('autopilot', () => {
         let s = { ...spawn(null), y };
         const park = parkAt(id, [s.x, s.z]);
         let done = false;
-        for (let t = 0; t < 100 && !done; t += 1 / 60) {
+        for (let t = 0; t < 150 && !done; t += 1 / 60) {
           const a = autopilot(s, id, park);
           done = a.done;
           s = step(s, a.input, 1 / 60).ship;
@@ -898,7 +914,7 @@ describe('autopilot', () => {
     for (const w of WONDERS) {
       const o = SECTORS.rickmorty.origin;
       const from = inMain(w.at) ? spawn(ORDER[0]) : { ...spawn(null), ...parkAt(w.id === 'citadel' ? 'curvesun' : 'citadel', [o[0], o[2] + 500]), speed: 0 };
-      const { s, top } = trip(from, w.id, 135);
+      const { s, top } = trip(from, w.id, 200);
       expect(top, w.id).toBeGreaterThan(SHIP.boost * 2); // on the pulse drive out there
       const g = GOALS[w.id];
       const d = Math.hypot(s.x - g.at[0], s.z - g.at[2]);
@@ -909,7 +925,7 @@ describe('autopilot', () => {
     // and home again from the furthest, at the home system's speeds by the end
     const far = WONDERS.filter((w) => inMain(w.at)).reduce((a, b) => (Math.hypot(a.at[0], a.at[2]) > Math.hypot(b.at[0], b.at[2]) ? a : b));
     const there = { ...spawn(null), ...parkAt(far.id), speed: 0 };
-    const back = trip(there, ORDER[0], 135);
+    const back = trip(there, ORDER[0], 200);
     expect(orbiting(back.s, null)).toBe(ORDER[0]);
   }, LONG);
 
@@ -918,7 +934,7 @@ describe('autopilot', () => {
       let s = { ...spawn(null), pitch: -1.2, bank: Math.PI - 0.2, speed: SHIP.cruise };
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      for (let t = 0; t < 100 && !done; t += 1 / 60) {
+      for (let t = 0; t < 150 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;
@@ -942,8 +958,8 @@ describe('autopilot', () => {
       const id = ORDER[i % ORDER.length];
       const park = parkAt(id, [s.x, s.z]);
       let done = false;
-      // (the longest leg, from the Caribbean out to Invincible at the end of the spiral, takes the best part of 150 seconds of free flight on the spread map, scale.js's SPREAD: the lanes, hyperlanes.js, are the quick way)
-      for (let t = 0; t < 170 && !done; t += 1 / 60) {
+      // (the longest leg, from the Caribbean out to Invincible at the end of the spiral, takes the best part of 225 seconds of free flight on the map spread to six, scale.js's SPREAD: the jump, nav.js, is the quick way)
+      for (let t = 0; t < 255 && !done; t += 1 / 60) {
         const a = autopilot(s, id, park);
         done = a.done;
         s = step(s, a.input, 1 / 60).ship;

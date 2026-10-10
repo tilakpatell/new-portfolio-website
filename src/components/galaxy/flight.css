@@ -57,9 +57,30 @@
 .fc-none { color: rgb(217 243 255 / 0.85); font-size: 0.74rem; }
 .fc-shield-icon { display: none; }
 .fc-radar { width: 132px; height: 132px; border: 1px solid var(--fc-line); border-radius: 50%; background: radial-gradient(circle, rgb(10 30 50 / 0.82), rgb(3 6 14 / 0.86)); }
-/* (the pickups' effects, over the row: PR 3 fills it) */
-.fc-buffs { display: flex; gap: 6px; }
+/* the pickups' effects, a chip each over the row (cluster.js's buffs): the bar along its foot is the time left, or the bubble's points */
+.fc-buffs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .fc-buffs:empty { display: none; }
+.fc-buff { --c: #6fe7ff; position: relative; display: inline-flex; white-space: nowrap; align-items: baseline; gap: 6px; padding: 4px 9px 6px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); border-radius: 999px; background: rgb(3 6 14 / 0.82); font-size: 0.72rem; }
+.fc-buff::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--c); transform-origin: left; scale: var(--v, 1) 1; }
+.fc-buff i { font-style: normal; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.fc-buff[data-kind='overcharge'] { --c: #ffb347; }
+.fc-buff[data-kind='rapid'] { --c: #ff6a5c; }
+.fc-buff[data-kind='bubble'] { --c: #7fd6ff; }
+/* what a pickup gave, for two seconds, in the middle of the open part of the map, over the ship (Galaxy.jsx) */
+.galaxy-pickup-note { position: absolute; z-index: 3; left: calc(var(--fc-left) + (100% - var(--fc-left) - var(--fc-right)) / 2); bottom: calc(var(--hud-pad-b, 12px) + 330px); translate: -50% 0; max-width: calc(100% - var(--fc-left) - var(--fc-right)); margin: 0; padding: 0.35rem 0.8rem; border: 1px solid rgb(127 214 255 / 0.4); border-radius: 999px; background: rgb(3 6 14 / 0.86); color: #e8f4ff; font-family: var(--font-mono); font-size: 0.8rem; text-align: center; pointer-events: none; }
+@media (pointer: coarse), (max-width: 767px) {
+  /* (a phone's left column is full: the effects are a strip of short chips along the top, right of the Galaxy map button, over the comms' line) */
+  .fc-buffs { position: absolute; top: calc(var(--nav-h, 68px) + 17px); left: 132px; right: var(--hud-edge, 12px); flex-wrap: wrap; justify-content: flex-start; gap: 4px; }
+  .fc-buff { gap: 3px; padding: 3px 5px 5px; }
+  .fc-buff b { display: none; }
+  .fc-buff::before { content: attr(data-kind); }
+  .fc-buff[data-kind='overcharge']::before { content: 'Boost'; }
+  .fc-buff[data-kind='rapid']::before { content: 'Rapid'; }
+  .fc-buff[data-kind='bubble']::before { content: 'Bubble'; }
+  .galaxy-pickup-note { left: 50%; bottom: calc(var(--sheet-h, 0px) + 300px); max-width: calc(100% - 32px); }
+  /* (and no room in the corner for the Shipyard's button: its door is the panel's "Open the shipyard", H is for a keyboard) */
+  .galaxy-map .universe-hangar-btn { display: none; }
+}
 /* the jump button, when the nose is on a star, sits over the cluster, in the middle of the same space: above the cluster's own height
    (--fc-h, measured by GalaxyView: the row wraps in a narrow window). A touch screen keeps its own place (galaxy.css). With the course
    plotted and no star under the nose it's a button for a touch screen, which has no J (data-course): a keyboard has the key. */

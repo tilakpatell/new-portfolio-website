@@ -16,6 +16,7 @@ const cr = (n) => `${n.toLocaleString('en-GB')} ¢`;
 
 const nameOf = (c) => {
   if (c.slot === 'build') return c.to === 'garage' ? 'Garage build' : 'Stock ship';
+  if (c.tune && !c.to) return 'As it came';
   if (c.module) return moduleById(c.slot, c.to)?.name ?? c.to;
   return partById(c.slot, c.to)?.name ?? c.to;
 };

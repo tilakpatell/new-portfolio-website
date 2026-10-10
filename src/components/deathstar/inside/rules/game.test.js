@@ -77,7 +77,8 @@ describe('walking the station', () => {
     teleport(g, 'bay327', 10, -19.5);
     play(g, NORTH, 5);
     expect(g.you.room).toBe('bay327');
-    expect(promptOf(g)).toEqual({ text: 'Imperial personnel only', use: false });
+    // (in free roam, with the way through said: Docking Control's scomp link opens it)
+    expect(promptOf(g)).toEqual({ text: 'Imperial personnel only: a scomp link would open it', use: false });
   });
 
   it('lets that Rebel through once a scomp link has opened the door', () => {

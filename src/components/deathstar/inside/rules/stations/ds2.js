@@ -189,6 +189,12 @@ export const DS2 = {
     // in the ranks west of the aisle the Emperor walks up, facing it
     ranks272: { room: 'hangar272', x: -6, z: -6, yaw: Math.PI / 2 },
     'emperor-ramp': { room: 'hangar272', x: 0, z: 4, yaw: 0 },
+    // the foot of the aisle the Emperor walks down between the ranks, Vader at his side and his
+    // guards behind
+    'aisle-end': { room: 'hangar272', x: 0, z: -18, yaw: 0 },
+    'aisle-vader': { room: 'hangar272', x: 1.3, z: -17.4, yaw: 0 },
+    'aisle-guard-l': { room: 'hangar272', x: -1.6, z: -14.5, yaw: 0 },
+    'aisle-guard-r': { room: 'hangar272', x: 1.6, z: -14.5, yaw: 0 },
     'holding-lift': { room: 'holding', x: TOWER, z: -47.4, yaw: 0 },
     // the seat itself, named apart from the room so ?at= and teleport() can find it
     'throne-seat': { room: 'throne', x: THRONE.x, z: THRONE.z - 12, yaw: Math.PI },

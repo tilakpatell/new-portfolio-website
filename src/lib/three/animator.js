@@ -11,12 +11,13 @@
 // (docs/superpowers/specs/2026-10-07-living-characters-design.md, animator.js)
 //
 // createAnimator(model, { clips, hipsY, bones, unit = 1, seed = 0, up, key,
-//   clipSpeed }) → animator
+//   clipSpeed, library = true }) → animator
 //   clips: { name: AnimationClip } the figure's own (idle, walk and run at
 //   least, made for it); any other clip it's asked to play comes from the
 //   library (clipLibrary.js forFigure: hipsY, up and key are for that, the
 //   hips' height in its rig's units, the hips' parent's up, the figure's
-//   template). bones: { name: Bone }, else found by name. unit, clipSpeed:
+//   template; `library: false` for a figure that plays only its own, as a
+//   2017 one plays only the game's: walrus.js). bones: { name: Bone }, else found by name. unit, clipSpeed:
 //   locomotion.js's. seed: every clock it starts (its idle's start, its
 //   base loops', its fidgets'), so a crowd never breathes in unison.
 //
@@ -40,6 +41,12 @@
 //     at a part weight. loop: whether it repeats (CLIPS's say, else no);
 //     hold: kept on its last frame until stopped; at: seconds in to start
 //     from. Done when it's played through; a clip it can't have is cut.
+//   post(fn | null): fn(step) laid after the layers and before the look,
+//     on each step (the game's additive clips: additiveLayer.js)
+//   restance({ name: clip }) → [name…]: clips in place of its own by those
+//     names (a weapon's stance, walrusSets/stance.js): idle, walk and run
+//     taken over where they are, at their weight, their strides measured
+//     afresh; any other the next time it's played (one playing now plays out)
 //   stop(layer = 'full', fade): the layer's clip faded out (cut)
 //   playing(layer = 'full') → the name of the clip in the layer's slot, or null
 //   weight(layer, w?) → w: how much of a layer over the mixer is laid on
@@ -73,7 +80,9 @@ import { rotateWorld } from './ik';
 import { createLocomotion } from './locomotion';
 
 export const MESHY_MASKS = {
-  upper: ['Spine02', 'Spine01', 'Spine', 'neck', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
+  // (and the 2017 game's chest and neck, Spine1, Spine2, Neck, Neck1: a body
+  // on its skeleton has none of Meshy's names, nor a Meshy body these)
+  upper: ['Spine02', 'Spine01', 'Spine', 'neck', 'Spine1', 'Spine2', 'Neck', 'Neck1', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
   lower: ['Hips', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase'],
   'arm.r': ['RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
   'arm.l': ['LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand'],
@@ -141,7 +150,7 @@ const lay = (parts, t, w) => {
   }
 };
 
-export function createAnimator(model, { clips = {}, hipsY = null, bones = null, unit = 1, seed = 0, up = null, key = null, clipSpeed = null } = {}) {
+export function createAnimator(model, { clips = {}, hipsY = null, bones = null, unit = 1, seed = 0, up = null, key = null, clipSpeed = null, library = true } = {}) {
   const byName = {};
   model.traverse((o) => {
     if (o.isBone && !(o.name in byName)) byName[o.name] = o;
@@ -162,7 +171,7 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
   const loading = new Map();
   const fetchClip = (name) => {
     if (got.has(name)) return Promise.resolve(got.get(name));
-    if (!CLIPS[name]) return Promise.resolve(null);
+    if (!library || !CLIPS[name]) return Promise.resolve(null);
     if (!loading.has(name))
       loading.set(
         name,
@@ -562,6 +571,9 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
     rotateWorld(head, _r, lk.p * rest);
   }
 
+  // whether a clip of that name is in a slot, or fading from one
+  const inSlot = (name) => [...SLOTS].some((l) => st.slots[l]?.name === name || st.fading[l]?.name === name);
+
   const api = {
     mixer,
     actions,
@@ -586,6 +598,33 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
     stop(layer = 'full', fade = FADE) {
       if (st.queue?.layers.has(layer)) cutQueue();
       if (SLOTS.has(layer)) cut(layer, fade);
+    },
+    post(fn) {
+      st.post = typeof fn === 'function' ? fn : null;
+    },
+    restance(set = {}) {
+      if (st.disposed) return [];
+      const done = [];
+      for (const [name, clip] of Object.entries(set)) {
+        if (!clip || got.get(name) === clip) continue;
+        got.set(name, clip);
+        const old = actions[name] ?? null;
+        if (LOCO.includes(name)) {
+          const a = mixer.clipAction(clip);
+          a.play();
+          a.setEffectiveWeight(old ? old.getEffectiveWeight() : 0);
+          if (old) {
+            a.timeScale = old.timeScale;
+            a.time = (old.time / Math.max(old.getClip().duration, 1e-6)) * clip.duration;
+            old.stop();
+          }
+          actions[name] = a;
+          act[name] = a;
+          loco.restride(name);
+        } else if (old && !inSlot(name)) delete actions[name];
+        done.push(name);
+      }
+      return done;
     },
     playing(layer = 'full') {
       return st.slots[layer]?.name ?? null;
@@ -656,6 +695,7 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
         const s = st.slots[layer];
         if (s) lay(s.parts, s.t, s.w * k);
       }
+      st.post?.(step);
       stepLook(step, frame);
     },
     dispose() {

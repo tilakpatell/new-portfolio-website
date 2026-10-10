@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createEconomy, refundOf } from './economy';
 import { itemFor } from './catalog';
 import { STOCK, STOCK_LOADOUT, partById } from './outfit';
-import { STOCK_BUILD, buildCode } from './shipyard/build';
+import { STOCK_BUILD, buildCode, statsOfBuild } from './shipyard/build';
 import { modulesFor } from './shipyard/parts';
-import { check, diff, draftKeys, fitDraft, hullLine, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
+import { check, diff, draftKeys, fitDraft, hullLine, hullName, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
 
 const wallet = ({ credits = 0, owned = [], unlocked = [] } = {}) => {
   const e = createEconomy({ achievements: () => unlocked });
@@ -12,19 +12,21 @@ const wallet = ({ credits = 0, owned = [], unlocked = [] } = {}) => {
   e.grant(owned);
   return e;
 };
-const live = { build: null, loadout: { ...STOCK_LOADOUT } };
+const live = { build: null, loadout: { ...STOCK_LOADOUT }, tune: {} };
 const srb = itemOfPart('booster', 'srb');
 const rcs = itemOfPart('thrusters', 'rcs');
 
 describe('the draft', () => {
   it('a draft from live is equal and not the same object', () => {
-    const l = { build: { ...STOCK_BUILD }, loadout: { ...STOCK_LOADOUT, booster: 'srb' } };
+    const l = { build: { ...STOCK_BUILD }, loadout: { ...STOCK_LOADOUT, booster: 'srb' }, tune: { engines: 'quad' } };
     const d = openDraft(l);
     expect(d).toEqual(l);
     expect(d).not.toBe(l);
     expect(d.loadout).not.toBe(l.loadout);
     expect(d.build).not.toBe(l.build);
+    expect(d.tune).not.toBe(l.tune);
     expect(openDraft(live).build).toBeNull();
+    expect(openDraft({ build: null, loadout: {} }).tune).toEqual({}); // (a live from before tunes: none)
   });
 
   it('setPart and setModule return new drafts and leave the old', () => {
@@ -35,9 +37,44 @@ describe('the draft', () => {
     expect(setPart(d, 'booster', 'nonsense')).toBe(d); // (an unknown part changes nothing)
     const wing = modulesFor('wings')[1].id;
     const b = setModule(d, 'wings', wing);
-    expect(b.build).toEqual({ ...STOCK_BUILD, wings: wing }); // (a build opened from stock)
-    expect(d.build).toBeNull();
+    expect(b.tune).toEqual({ wings: wing }); // (on the crew's own ship: a tune)
+    expect(d.tune).toEqual({});
     expect(setModule(d, 'wings', 'nonsense')).toBe(d);
+    expect(setModule(d, 'nonsense', wing)).toBe(d);
+  });
+
+  it('a module on the stock hull is tuning: the ship stays, and the tune holds the module', () => {
+    const d = openDraft(live);
+    const t = setModule(setModule(d, 'engines', 'quad'), 'cockpit', 'canopy');
+    expect(t.build).toBeNull();
+    expect(t.tune).toEqual({ cockpit: 'canopy', engines: 'quad' }); // (in the rail's order, whatever the order staged)
+    expect(setModule(t, 'engines', 'ring').tune).toEqual({ cockpit: 'canopy', engines: 'ring' });
+    expect(t.tune).toEqual({ cockpit: 'canopy', engines: 'quad' }); // (the old draft is left)
+  });
+
+  it('the slot’s stock module, or a None, clears that slot’s tune', () => {
+    const t = setModule(setModule(setModule(openDraft(live), 'engines', 'quad'), 'tail', 'twinfin'), 'extras', 'antenna');
+    expect(setModule(t, 'engines', STOCK_BUILD.engines).tune).toEqual({ tail: 'twinfin', extras: 'antenna' });
+    expect(setModule(t, 'tail', 'none').tune).toEqual({ engines: 'quad', extras: 'antenna' });
+    expect(setModule(t, 'extras', 'none').tune).toEqual({ engines: 'quad', tail: 'twinfin' });
+    expect(setModule(openDraft(live), 'wings', STOCK_BUILD.wings).tune).toEqual({});
+  });
+
+  it('on a garage build a module edits the build, and the tune is left alone', () => {
+    const t = setModule(openDraft(live), 'engines', 'quad');
+    const g = setHull(t, true, null);
+    expect(g.tune).toEqual({ engines: 'quad' }); // (kept for when you switch back)
+    const edited = setModule(g, 'wings', 'delta');
+    expect(edited.build).toEqual({ ...STOCK_BUILD, wings: 'delta' });
+    expect(edited.tune).toEqual({ engines: 'quad' });
+    expect(setHull(edited, false).tune).toEqual({ engines: 'quad' });
+    expect(setHull(edited, false).build).toBeNull();
+  });
+
+  it('a hull module isn’t a tune: on the stock ship it opens a garage build as before', () => {
+    const d = setModule(openDraft(live), 'hull', 'needle');
+    expect(d.build).toEqual({ ...STOCK_BUILD, hull: 'needle' });
+    expect(d.tune).toEqual({});
   });
 
   it('setHull on opens the last build or stock, and off flies the stock ship', () => {
@@ -65,6 +102,51 @@ describe('the draft', () => {
     expect(pasteDraft(d, code, { economy: wallet({ owned: [itemOfModule('wings', bought.id).key] }) }).draft.build.wings).toBe(bought.id);
     const shut = modulesFor('wings').find((m) => m.achievement);
     if (shut) expect(pasteDraft(d, buildCode({ ...STOCK_BUILD, wings: shut.id }), { economy: wallet() }).error).toMatch(/isn’t yours yet/);
+  });
+});
+
+describe('check on a tuned ship', () => {
+  const ring = itemOfModule('engines', 'ring');
+  const quad = itemOfModule('engines', 'quad');
+  it('lists an unowned tune module to buy, like a part, and owned ones cost nothing', () => {
+    const d = setModule(openDraft(live), 'engines', 'quad');
+    const r = check(d, { kind: 'xwing', unlocked: [], economy: wallet({ credits: 5000 }) });
+    expect(r.toBuy.map((i) => i.key)).toEqual([quad.key]);
+    expect(r.total).toBe(quad.price);
+    expect(r.ok).toBe(true);
+    const owned = check(d, { kind: 'xwing', unlocked: [], economy: wallet({ owned: [quad.key] }) });
+    expect(owned.toBuy).toEqual([]);
+    expect(owned.ok).toBe(true);
+  });
+
+  it('counts what the tune draws and weighs, against the crew’s own plant', () => {
+    const r = check(setModule(openDraft(live), 'engines', 'quad'), { kind: 'xwing', unlocked: [], economy: wallet({ owned: [quad.key] }) });
+    expect(r.power).toBe(2);
+    expect(r.capacity).toBe(7);
+    expect(r.mass).toBe(2);
+  });
+
+  it('a module whose achievement isn’t earned is locked, whatever the wallet says', () => {
+    const d = setModule(openDraft(live), 'engines', 'ring');
+    const r = check(d, { kind: 'xwing', unlocked: [], economy: wallet({ credits: 99999, owned: [ring.key] }) });
+    expect(r.issues).toEqual([{ slot: 'engines', id: 'ring', why: 'locked', text: 'Locked. Beat the Cromulon in Portal panic.' }]);
+    expect(check(d, { kind: 'xwing', unlocked: ['showmewhatyougot'], economy: wallet({ owned: [ring.key] }) }).ok).toBe(true);
+  });
+
+  it('refuses a tune for power, as a part is refused', () => {
+    // the RV's 5 MW: portal (3) and vector (2) fill it, and a quad (2) is the 2 MW over
+    const d = setModule(setPart(setPart(openDraft(live), 'booster', 'portal'), 'thrusters', 'vector'), 'engines', 'quad');
+    const r = check(d, { kind: 'rv', unlocked: ['showmewhatyougot', 'grounded'], economy: wallet({ owned: ['part:booster:portal', 'part:thrusters:vector', quad.key] }) });
+    expect(r.issues).toEqual([{ slot: null, id: null, why: 'power', text: 'Not enough power: 2 MW short.' }]);
+    expect(check(setModule(d, 'engines', 'twincans'), { kind: 'rv', unlocked: ['showmewhatyougot', 'grounded'], economy: wallet({ owned: ['part:booster:portal', 'part:thrusters:vector'] }) }).ok).toBe(true);
+  });
+
+  it('a tune isn’t flown on a garage build: not bought, not counted', () => {
+    const d = setHull(setModule(openDraft(live), 'engines', 'quad'), true, null);
+    const r = check(d, { kind: 'xwing', unlocked: [], economy: wallet() });
+    expect(r.toBuy).toEqual([]);
+    expect(r.power).toBe(statsOfBuild(STOCK_BUILD).power);
+    expect(r.capacity).toBe(statsOfBuild(STOCK_BUILD).plant);
   });
 });
 
@@ -123,12 +205,40 @@ describe('diff', () => {
   it('puts the build first and leaves out what hasn’t changed', () => {
     expect(diff(openDraft(live), live)).toEqual([]);
     const wing = modulesFor('wings')[1].id;
-    const d = setPart(setModule(openDraft(live), 'wings', wing), 'booster', 'srb');
+    const d = setPart(setModule(setHull(openDraft(live), true, null), 'wings', wing), 'booster', 'srb');
     const out = diff(d, live);
     expect(out.map((c) => c.slot)).toEqual(['build', 'wings', 'booster']);
     expect(out[0]).toEqual({ slot: 'build', from: 'stock', to: 'garage', module: true });
     expect(out[1]).toEqual({ slot: 'wings', from: STOCK_BUILD.wings, to: wing, module: true });
     expect(out[2]).toEqual({ slot: 'booster', from: STOCK, to: 'srb', module: false });
+  });
+
+  it('lists a tune change as a module change flagged tune, null for the ship as it came', () => {
+    const d = setModule(setModule(openDraft(live), 'engines', 'quad'), 'cockpit', 'canopy');
+    expect(diff(d, live)).toEqual([
+      { slot: 'cockpit', from: null, to: 'canopy', module: true, tune: true },
+      { slot: 'engines', from: null, to: 'quad', module: true, tune: true },
+    ]);
+    const flown = { build: null, loadout: { ...STOCK_LOADOUT }, tune: { engines: 'quad', tail: 'twinfin' } };
+    const back = setModule(setModule(openDraft(flown), 'engines', STOCK_BUILD.engines), 'tail', 'fin');
+    expect(back.tune).toEqual({});
+    expect(diff(back, flown)).toEqual([
+      { slot: 'engines', from: 'quad', to: null, module: true, tune: true },
+      { slot: 'tail', from: 'twinfin', to: null, module: true, tune: true },
+    ]);
+    expect(diff(openDraft(flown), flown)).toEqual([]);
+  });
+
+  it('puts the tune after the hull switch and before the parts', () => {
+    const flown = { build: { ...STOCK_BUILD }, loadout: { ...STOCK_LOADOUT }, tune: { engines: 'quad' } };
+    const d = setPart(setModule(setHull(openDraft(flown), false), 'cockpit', 'canopy'), 'booster', 'srb');
+    expect(diff(d, flown).map((c) => c.slot)).toEqual(['build', 'cockpit', 'booster']);
+    expect(diff(d, flown)[0]).toEqual({ slot: 'build', from: 'garage', to: 'stock', module: true });
+  });
+
+  it('a tune staged while a garage build is flown isn’t a change: it isn’t flown', () => {
+    const d = setHull(setModule(openDraft(live), 'engines', 'quad'), true, null);
+    expect(diff(d, live).map((c) => c.slot)).toEqual(['build']);
   });
 
   it('takes a part off before putting a hungrier one on', () => {
@@ -157,6 +267,13 @@ describe('sellable', () => {
     expect(sellable({ loadouts: {}, hulls: {}, garage: {}, keep: [rcs.key] }, e).map((s) => s.item.key)).toEqual([key]);
   });
 
+  it('leaves out a module in any crew’s tune', () => {
+    const quad = itemOfModule('engines', 'quad');
+    const e = wallet({ owned: [quad.key, rcs.key] });
+    expect(sellable({ loadouts: {}, hulls: {}, garage: {}, tune: { rv: { engines: 'quad' } } }, e).map((s) => s.item.key)).toEqual([rcs.key]);
+    expect(sellable({ loadouts: {}, hulls: {}, garage: {}, tune: { rv: { hull: 'needle', engines: 'nonsense' } } }, e).map((s) => s.item.key).sort()).toEqual([quad.key, rcs.key].sort());
+  });
+
   it('names catalogue items by part and module', () => {
     expect(itemOfPart('booster', 'srb')).toBe(itemFor('part', 'booster', 'srb'));
     expect(itemOfPart('paint', 'portal')).toBe(itemFor('paint', 'paint', 'portal'));
@@ -183,12 +300,40 @@ describe('fitDraft', () => {
   });
 });
 
+describe('fitDraft with a tune', () => {
+  it('fits parts on the plant the tune leaves, and refuses a part it can’t run', () => {
+    const d = setPart(setModule(openDraft(live), 'engines', 'quad'), 'booster', 'portal'); // (2 + 3 on the RV’s 5)
+    const ok = fitDraft('rv', d, diff(d, live), { saved: {}, unlocked: ['showmewhatyougot'] });
+    expect(ok.ok).toBe(true);
+    expect(ok.loadout.booster).toBe('portal');
+    const over = setPart(d, 'thrusters', 'rcs'); // (and 1 more)
+    expect(fitDraft('rv', over, diff(over, live), { saved: {}, unlocked: ['showmewhatyougot'] })).toMatchObject({ ok: false, why: 'power' });
+    expect(fitDraft('xwing', over, diff(over, live), { saved: {}, unlocked: ['showmewhatyougot'] }).ok).toBe(true);
+  });
+});
+
+describe('hullName', () => {
+  it('says the garage build’s code, or the crew’s own ship, tuned once a module is on it', () => {
+    expect(hullName(openDraft(live))).toBe('Stock hull');
+    expect(hullName(setModule(openDraft(live), 'engines', 'quad'))).toBe('Stock hull · tuned');
+    expect(hullName(setModule(setModule(openDraft(live), 'engines', 'quad'), 'engines', STOCK_BUILD.engines))).toBe('Stock hull');
+    expect(hullName(setHull(setModule(openDraft(live), 'engines', 'quad'), true, null))).toBe(`Garage build ${buildCode(STOCK_BUILD)}`);
+  });
+});
+
 describe('draftKeys', () => {
   it('names every non-stock part, paint and module a draft holds, owned or not', () => {
     const wing = modulesFor('wings').find((m) => m.id !== STOCK_BUILD.wings && m.id !== 'none');
     const d = setModule(setPart(setPart(openDraft(live), 'booster', 'srb'), 'paint', 'portal'), 'wings', wing.id);
     expect(draftKeys(d).sort()).toEqual([itemOfModule('wings', wing.id).key, itemOfPart('booster', 'srb').key, itemOfPart('paint', 'portal').key].sort());
     expect(draftKeys(openDraft(live))).toEqual([]);
+  });
+
+  it('names a garage build’s modules, and a tune’s only while the stock ship is the hull', () => {
+    const t = setModule(openDraft(live), 'engines', 'quad');
+    expect(draftKeys(t)).toEqual([itemOfModule('engines', 'quad').key]);
+    const g = setModule(setHull(t, true, null), 'wings', 'delta');
+    expect(draftKeys(g)).toEqual([itemOfModule('wings', 'delta').key]);
   });
 
   it('kept from sale: an owned part staged on the draft isn’t sellable', () => {

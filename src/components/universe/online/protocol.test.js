@@ -160,28 +160,28 @@ describe('poses', () => {
     expect(readPose(['a', 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     expect(readPose([NaN, 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     const p = readPose([1e9, 0, 0, 0, 9, 0, 1e6, 0, 1]);
-    expect(p.x).toBe(60000);
+    expect(p.x).toBe(90000);
     expect(p.pitch).toBe(1.6);
     expect(p.speed).toBe(5000);
     expect(p.hidden).toBe(true);
   });
   it('reaches as far as the spread universe does, and as fast as its lanes run', () => {
-    // (the Rick and Morty sector sits at z −48,000; an express lane runs at 4,000 a second)
-    const p = readPose(writePose({ ...ship, x: 36000, z: -48000, speed: 4000 }));
-    expect(p.x).toBe(36000);
-    expect(p.z).toBe(-48000);
+    // (the Rick and Morty sector sits at z −66,000 since the spread to six, its far edge −72,000; the fastest ever ran at 4,000 a second)
+    const p = readPose(writePose({ ...ship, x: 54000, z: -70000, speed: 4000 }));
+    expect(p.x).toBe(54000);
+    expect(p.z).toBe(-70000);
     expect(p.speed).toBe(4000);
     expect(readPose([0, 1e9, 0, 0, 0, 0, 0, 0, 0]).y).toBe(1300); // (the height is as it was)
   });
   it('carries the sector out in the Expanse, with x and z from its middle, and reads one without as the authored map', () => {
-    const out = writePose({ ...ship, x: 123456.78, y: 5, z: -81000 });
+    const out = writePose({ ...ship, x: 185184.78, y: 5, z: -121500 });
     expect(out[10]).toBe('E:2,-1');
-    expect(out[0]).toBeCloseTo(123456.78 - 160000, 2);
-    expect(out[2]).toBeCloseTo(-81000 + 80000, 2);
+    expect(out[0]).toBeCloseTo(185184.78 - 240000, 2);
+    expect(out[2]).toBeCloseTo(-121500 + 120000, 2);
     const p = readPose(out);
     expect(p.sec).toBe('E:2,-1');
-    expect(p.x).toBeCloseTo(123456.78, 2);
-    expect(p.z).toBeCloseTo(-81000, 2);
+    expect(p.x).toBeCloseTo(185184.78, 2);
+    expect(p.z).toBeCloseTo(-121500, 2);
     // (on the authored map: no sector, as before)
     expect(writePose(ship)).toHaveLength(10);
     expect(readPose(writePose(ship)).sec).toBeUndefined();
@@ -189,7 +189,7 @@ describe('poses', () => {
     expect(readPose([1, 2, 3, 0, 0, 0, 5, 0, 2, 100, 'E:x']).x).toBe(1);
     expect(readPose([1, 2, 3, 0, 0, 0, 5, 0, 2, 100, 'main']).sec).toBeUndefined();
     // (an Expanse pose is kept near its own sector)
-    expect(readPose([1e9, 0, 0, 0, 0, 0, 0, 0, 0, 100, 'E:1,0']).x).toBe(80000 + 42000);
+    expect(readPose([1e9, 0, 0, 0, 0, 0, 0, 0, 0, 100, 'E:1,0']).x).toBe(120000 + 62000);
   });
   it('says when a pilot is riding a lane, and an old pose says they are not', () => {
     expect(FLAG.lane).toBe(8);
@@ -305,9 +305,9 @@ describe('shots', () => {
     expect(readShot([0, 0, 0, 0, 0])).toBeNull();
   });
   it('reads a shot fired anywhere in the spread universe', () => {
-    const s = readShot(writeShot({ x: 30000, y: 0, z: -48000 }, [0, 0, -20]));
-    expect(s.p).toEqual([30000, 0, -48000]);
-    expect(readShot([1e9, 0, 0, 0, 0, -20]).p[0]).toBe(60000);
+    const s = readShot(writeShot({ x: 45000, y: 0, z: -70000 }, [0, 0, -20]));
+    expect(s.p).toEqual([45000, 0, -70000]);
+    expect(readShot([1e9, 0, 0, 0, 0, -20]).p[0]).toBe(90000);
   });
 });
 
@@ -427,10 +427,10 @@ describe('the hunters after a pilot', () => {
       [5, 'tie', 1e9, 0, 0, 1e9, 'fast', 0, 1e9],
       [5, 'tie', 0, 0, 0, 0, 0, 0, 1], // the same one twice
     ]);
-    expect(got).toEqual([{ id: 5, kind: 'tie', x: 60000, y: 0, z: 0, vx: 80, vy: 0, vz: 0, hp: 99 }]);
+    expect(got).toEqual([{ id: 5, kind: 'tie', x: 90000, y: 0, z: 0, vx: 80, vy: 0, vz: 0, hp: 99 }]);
   });
   it('reads hunters anywhere in the spread universe', () => {
-    expect(readPack([[1, 'tie', 20000, 0, -48000, 0, 0, 0, 1]])[0]).toMatchObject({ x: 20000, z: -48000 });
+    expect(readPack([[1, 'tie', 20000, 0, -70000, 0, 0, 0, 1]])[0]).toMatchObject({ x: 20000, z: -70000 });
   });
   it('reads a hit on one, capped at what a bolt can be worth', () => {
     expect(readHunterHit({ i: 7, d: 1 })).toEqual({ id: 7, damage: 1 });
@@ -574,9 +574,11 @@ describe('down on a world in the galaxy', () => {
 
   it('says what is in the lead’s hand: a hero’s gun, or a lit saber with its colour and stance', async () => {
     const { readWalk, writeWalk } = await import('./protocol');
-    const sent = writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'ahsoka', x: 1, y: 2, z: 3, yaw: 0, speed: 0, aim: 1, arms: { gun: 'saber', lit: true, color: '#f4f8ff', stance: 'dual', swing: true } }, mate: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, arms: { gun: 'shotgun' } } });
+    const sent = writeWalk({ world: 'hoth', kind: 'xwing', lead: { who: 'luke', x: 1, y: 2, z: 3, yaw: 0, speed: 0, aim: 1, arms: { gun: 'saber', lit: true, color: '#f4f8ff', stance: 'double', swing: true } }, mate: { who: 'han', x: 1, y: 2, z: 3, yaw: 0, speed: 0, arms: { gun: 'shotgun' } } });
     const got = readWalk(JSON.parse(JSON.stringify(sent)));
-    expect(got.lead.arms).toEqual({ gun: 'saber', lit: true, color: '#f4f8ff', stance: 'dual', swing: true });
+    expect(got.lead.arms).toEqual({ gun: 'saber', lit: true, color: '#f4f8ff', stance: 'double', swing: true });
+    // (an older pilot's stance the game's heroes don't hold, a pair or a crossguard: one blade)
+    expect(readWalk({ w: 'hoth', a: ['luke', 1, 2, 3, 0, 0, 0, ['saber', 1, '#4aa8ff', 'dual', 1]] }).lead.arms.stance).toBe('single');
     expect(got.mate.arms).toEqual({ gun: 'shotgun', lit: false, color: '#4aa8ff', stance: 'single', swing: false });
     expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0] }).lead.arms).toBeNull(); // (an older pilot)
     expect(readWalk({ w: 'hoth', a: ['han', 1, 2, 3, 0, 0, 0, ['rocket', 1]] }).lead.arms).toBeNull(); // (no such gun)
@@ -591,7 +593,7 @@ describe('down on a world in the galaxy', () => {
     const got = readWalk(JSON.parse(JSON.stringify(sent)));
     expect(got.lead.arms.stroke).toBe('sword.light.b');
     // (five items, as an older pilot sends: no stroke, the rest as ever)
-    expect(readWalk({ w: 'hoth', a: ['luke', 1, 2, 3, 0, 0, 0, ['saber', 1, '#4aa8ff', 'heavy', 1]] }).lead.arms).toEqual({ gun: 'saber', lit: true, color: '#4aa8ff', stance: 'heavy', swing: true });
+    expect(readWalk({ w: 'hoth', a: ['luke', 1, 2, 3, 0, 0, 0, ['saber', 1, '#4aa8ff', 'double', 1]] }).lead.arms).toEqual({ gun: 'saber', lit: true, color: '#4aa8ff', stance: 'double', swing: true });
     // (only a sword clip's name: anything else is no stroke)
     for (const bad of ['dance', 'sword.<b>', 'x'.repeat(80), 7]) expect(readWalk({ w: 'hoth', a: ['luke', 1, 2, 3, 0, 0, 0, ['saber', 1, '#4aa8ff', 'single', 1, bad]] }).lead.arms.stroke).toBeUndefined();
     // (no stroke, nothing sent for it)

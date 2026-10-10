@@ -36,7 +36,7 @@
 // another crew starts from nothing.
 //
 // createGalaxyPowers({ parent, reduced, hunters, war, bolts, flashes, crashFx, pops, post, state, emit, strike, scored, teleport, controls })
-//   → { setCrew(kind), press(slot) → { ok, id } or { ok: false, why }, gain(what, key), mods, aim(own),
+//   → { setCrew(kind), press(slot) → { ok, id } or { ok: false, why }, gain(what, key), pickup(), mods, aim(own),
 //       shipFor(live), warOpts, hold, afterStep(ship, dt) → ship, roll, hidden, frame(dt, live),
 //       cancel(), place(el, on), view, info, busy, keep(), fill(), dispose() }
 // state: the scene's (its ship, lock, world, space, keys and stick, and the
@@ -45,7 +45,7 @@
 // put there, the camera with it.
 
 import * as THREE from 'three';
-import { KEPT_KEY, POWERS, aimHelp, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readCooling, readKept, shotAt, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
+import { KEPT_KEY, POWERS, aimHelp, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, hasten, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readCooling, readKept, shotAt, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
 import { createPowerFx } from '../universe/powerFx';
 import { steer } from '../universe/weapons';
 import { assist, dirTo, intercept, nose } from '../universe/targeting';
@@ -460,6 +460,14 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       const full = charge(st, what, 1, key);
       if (full) say('ready', 'ultimate', st.ultimate.id);
       if (full || what !== 'hit') this.keep();
+    },
+    // a power cell picked up (pickups.js): the big one charged a quarter and G's cooldown cut 5 s
+    pickup() {
+      if (!st) return;
+      const full = charge(st, 'pickup', 1);
+      if (full) say('ready', 'ultimate', st.ultimate.id);
+      if (hasten(st, 5)) say('ready', 'primary', st.primary.id);
+      this.keep();
     },
     get mods() {
       return m;

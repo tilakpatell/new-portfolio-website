@@ -27,7 +27,7 @@
 // does (a walker: an AT-AT, an AT-ST, its legs going as it goes). `model:
 // false` builds it even where there's a model (a walker that should walk).
 //
-// site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still,
+// site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still, hang (metres: hung upside down, the feet that high),
 //   face, y (hovering: a probe droid), name, says: [line…] (a line: text,
 //   or [who, text]), voice (the voice their own lines are said in, where it
 //   isn't their name's: voicelines.js; `says` can be talk.js's tree, by
@@ -45,6 +45,7 @@
 // site.wants: [{ id, kind, at: [x, z], pause?, slots?, spots?, clip?, base?,
 //   face? }] (where the people go, and what they do there: needs.js)
 //
+// place: the world's id, for its everyday people's pool (pools.js)
 // createActors(…) → { group, actors, places, update(dt, you, at), hear({ at,
 //   loudness, t }), setZone, debug, find, hide, hideKinds, talker, say,
 //   shove, dispose }
@@ -52,9 +53,11 @@
 //   blaster, 2 a detonator), heard by whoever's in earshot on the next update
 
 import * as THREE from 'three';
-import { SURFACE_MODELS, modelUrlFor } from './catalog';
+import { SURFACE_MODELS, lodUrlFor, modelUrlFor } from './catalog';
+import { markBuilt, resolveFigure } from './cast';
 import { buildFigure } from './figures';
 import { crewFigure } from './crew';
+import { poolFor } from './pools';
 import { PROPS } from './props';
 import { cloneModel, loadGlb, squared } from './placer';
 import { rng } from './noise';
@@ -73,6 +76,10 @@ import { bodyFrom } from '../../../lib/ai/body';
 import { release, reserve, spotOf } from '../../../lib/ai/needs';
 import { createSocial } from '../../../lib/ai/social';
 import { NO_CALLS, animatorCalls, seedOf } from '../../../lib/three/figureCalls';
+import { atPriority } from '../../../lib/assetLoad';
+import { device } from '../../../lib/device';
+import { detailLevel } from '../../../lib/detail';
+import { firstCut, wantsUpgrade } from '../../../lib/net/progressive';
 
 const TALK = 4.5; // metres: close enough to turn to you
 const THERE = 0.6; // metres from where it's going: there
@@ -264,15 +271,37 @@ export async function modelFigure(kind, models = SURFACE_MODELS) {
   if (!models[kind]) return null;
   const n = made.get(kind) ?? 0;
   made.set(kind, n + 1);
-  const gltf = squared(await loadGlb(modelUrlFor(kind, 'high', models)), kind, models);
-  if (!gltf) return null;
   const row = models[kind];
+  const gltf = await figureGlb(kind, models);
+  if (!gltf) return null;
   // (a person who came as a statue: legs found in it, skinned and walked; legRig.js)
   if (row.legs && !row.anim) {
     const legged = leggedFigure(gltf.scene, { seed: seedOf(kind, n), legs: row.legs === true ? {} : row.legs });
     if (legged) return legged;
   }
   return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null, machine: Boolean(row.machine) });
+}
+
+// A figure's file, through the site's pool (lib/assetLoad) ahead of the
+// world's props (people are what the visitor looks at first). On a saver
+// connection or 2G only its light cut is fetched (lib/net/progressive: the
+// plain is never worth its bytes there); and where the plain cut won't come
+// (a 404 on the bucket and the site, a dropped connection), the light cut
+// stands in before the kind falls to its next maker (cast.js). The light cut
+// came in square (placer.js's loadModel) and is drawn as it is.
+const FIGURE_PRIORITY = 5;
+async function figureGlb(kind, models) {
+  const row = models[kind];
+  const hasLod = Boolean(row.url ? row.lodUrl : row.lod);
+  const level = detailLevel();
+  const lowData = Boolean(device().saveData);
+  const small = firstCut(0, level, { hasLod, lowData }) === 'lod1' && !wantsUpgrade(0, level, { lowData });
+  const ask = (url) => atPriority(FIGURE_PRIORITY, () => loadGlb(url));
+  if (small) return ask(lodUrlFor(kind, models));
+  // (the level's own cut: at ultra the .ultra file where the kind has one)
+  const plain = await ask(modelUrlFor(kind, level, models));
+  if (plain) return squared(plain, kind, models);
+  return hasLod ? ask(lodUrlFor(kind, models)) : null;
 }
 
 // what a move of 1 is, in metres a second (the people's update gives
@@ -437,7 +466,7 @@ function propFigure(kind, spec, kit, i = 0) {
   kit.moving?.(made.object);
   let t = rng(seedOf(kind, i))() * 10; // (each of them somewhere of its own in its stride)
   const box = new THREE.Box3().setFromObject(made.object);
-  return {
+  return markBuilt({
     model: made.object,
     tall: box.max.y - box.min.y,
     update(dt, move) {
@@ -445,18 +474,35 @@ function propFigure(kind, spec, kit, i = 0) {
       made.update?.(t, dt, move);
     },
     dispose() {},
-  };
+  });
 }
 // A figure for any kind there is one of, by name: a crew model (crew.js), a
 // catalogue model walking with its clips or a bob (modelFigure), a built
 // figure (figures.js) or a humanoid prop (props/*.js, given the kit); null
 // for a kind that's none of those. `spec.model: false` builds it even where
 // there's a model; i is which of the entry's figures (a crew kind's face).
-export async function anyFigure(kind, spec = {}, kit = null, i = 0, models = SURFACE_MODELS) {
-  if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
-  // (a machine on legs its model came without: cut at its joints and walked, its rider up top; walkers.js)
-  const walker = WALKERS[kind] ? await walkerFigure(kind, i, models).catch(() => null) : null;
-  return walker ?? (await crewFigure(kind, i)) ?? (await modelFigure(kind, models)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+// `only`: a world that takes models only (a site's `cast: 'models'`): never
+// built, its files tried twice, then a stand-in, then nothing (cast.js).
+const warned = new Set();
+const warnOnce = (kind) => {
+  if (!import.meta.env?.DEV || warned.has(kind)) return;
+  warned.add(kind);
+  console.warn('[surface] no model for', kind);
+};
+export async function anyFigure(kind, spec = {}, kit = null, i = 0, models = SURFACE_MODELS, { only = false } = {}) {
+  if (spec.model === false && !only) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+  return resolveFigure(
+    kind,
+    {
+      // (a machine on legs its model came without: cut at its joints and walked, its rider up top; walkers.js)
+      walker: (k) => (WALKERS[k] ? walkerFigure(k, i, models) : null),
+      crew: (k) => crewFigure(k, i),
+      model: (k) => modelFigure(k, models),
+      built: (k) => buildFigure(k),
+      prop: (k) => propFigure(k, spec, kit, i),
+    },
+    { only, warn: warnOnce },
+  );
 }
 
 // How far off the fog has someone all but gone (97% fog, FogExp2's
@@ -471,7 +517,7 @@ const LEAP = 4; // metres moved between two steps that's no step: put somewhere 
 const EYES = 1.6; // metres: your eyes over your feet, for a head turned to you
 const FLOOR = 4; // metres up or down: someone on another floor isn't greeting you
 
-export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS }) {
+export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS, only = false, place = null }) {
   const group = new THREE.Group();
   group.name = 'life';
   parent.add(group);
@@ -493,7 +539,13 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
 
   // (a page's own maker first, the Rick and Morty cast; what it has nothing
   // for, or fails to make, is made as any other kind)
-  const anyOf = (kind, spec, i) => anyFigure(kind, spec, kit, i, models);
+  // (a world's everyday people are the game's civilians of that place,
+  // pools.js; one that won't load gives way to the kind the world named)
+  const anyOf = (kind, spec, i) => {
+    const pooled = poolFor(kind, place, i);
+    const named = () => anyFigure(kind, spec, kit, i, models, { only });
+    return pooled === kind ? named() : anyFigure(pooled, spec, kit, i, models, { only }).catch(() => null).then((f) => f ?? named());
+  };
   const figureOf = figure
     ? (kind, spec, i) =>
         Promise.resolve(figure(kind, spec, i))
@@ -706,6 +758,8 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   // near, every fourth far, not at all far off on a small device), moving
   // as its brain moved it since it was last stepped
   function stepFigure(a, dt, d, you, e) {
+    // (the cut its distance wants: a full-fidelity 2017 kind's, crew.js)
+    a.fig.cutAt?.(d);
     const by = a.tick(d < FAR ? 1 : small ? 0 : 0.25, dt);
     if (!(by > 0)) return;
     const { b } = a;
@@ -782,8 +836,9 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
           if (a.under != null && a.under !== dv.y < 0 && d < 500) water.splash(b.x, b.z, 1.4);
           a.under = dv.y < 0;
         }
-        a.holder.position.set(b.x, y, b.z);
-        a.holder.rotation.set(pitch, b.yaw, 0, 'YXZ');
+        // (one hung by the ankles, `hang` metres up: upside down, the feet at that height)
+        a.holder.position.set(b.x, spec.hang != null ? g + spec.hang : y, b.z);
+        a.holder.rotation.set(pitch, b.yaw, spec.hang != null ? Math.PI : 0, 'YXZ');
         if (a.fig) stepFigure(a, dt, d, you, e);
       }
     },

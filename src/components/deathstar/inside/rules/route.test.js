@@ -55,4 +55,17 @@ describe('routeTo', () => {
     expect(['lift', 'door']).toContain(inCar.next.kind);
     expect(inCar.metres).toBeGreaterThan(20);
   });
+
+  // (the chute's drop is the only way down into the compactor)
+  it('heads for the jump that is the only way to a target, the chute to the compactor', () => {
+    const g = newGame({ station: 'ds1', side: 'rebel', mode: 'roam', seed: 3 });
+    teleport(g, 'cellbay');
+    const drop = g.layout.station.spots['compactor-drop'];
+    const r = routeTo(g, at(g, 'compactor', drop.x, drop.z));
+    expect(r).not.toBeNull();
+    teleport(g, 'chute', 42, -108.5);
+    const near = routeTo(g, at(g, 'compactor', drop.x, drop.z));
+    expect(near.next).toMatchObject({ kind: 'jump', room: 'chute' });
+    expect(Math.hypot(near.next.x - 42, near.next.z + 110)).toBeLessThan(0.01);
+  });
 });

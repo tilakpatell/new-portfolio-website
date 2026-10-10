@@ -16,7 +16,7 @@
 // online/protocol.js sends what's fitted (only ids from here are believed).
 
 import { PAINTS, STOCK, isOpen as paintOpen, parsePaint } from './paint';
-import { statsOfBuild } from './shipyard/build';
+import { statsOfBuild, statsOfTune } from './shipyard/build';
 import { tuned } from './ship';
 import { WEAPONS, rackOf } from './weaponTable';
 
@@ -215,18 +215,22 @@ const fitted = (loadout) => PARTS_SLOTS.map((slot) => partById(slot, loadout[slo
 export const powerOf = (loadout) => fitted(loadout).reduce((n, p) => n + p.power, 0);
 export const massOf = (loadout) => fitted(loadout).reduce((n, p) => n + p.mass, 0);
 // A garage build (shipyard/build.js) flown in place of the ship's own hull
-// brings its own plant, and its modules draw from it too.
+// brings its own plant, and its modules draw from it too. On the crew's own
+// ship, a tune's modules draw from the crew's plant (a tune brings none).
 export const capacityOf = (kind, build = null) => (build ? statsOfBuild(build).plant : (PLANT[kind] ?? 0));
-const buildDraw = (build) => (build ? statsOfBuild(build).power : 0);
-export const fits = (kind, loadout, build = null) => powerOf(loadout) + buildDraw(build) <= capacityOf(kind, build);
+// What the hull's modules draw: a build's, or on the stock ship the tune's.
+const hullDraw = (build, tune) => (build ? statsOfBuild(build).power : tune ? statsOfTune(tune).power : 0);
+export const fits = (kind, loadout, build = null, tune = null) => powerOf(loadout) + hullDraw(build, tune) <= capacityOf(kind, build);
 
 // What a loadout does to the ship, as multipliers on how it flies as it
 // comes (1 each, for the factory's): { boost, accel, cruise, agility, level }
 // for ship.js's tune, { cadence, punch, bolt } for the guns, { armor, regen,
 // delay } for the shields, and its mass, power and the plant's capacity.
-// On a garage build, the build's own numbers are what it does as it comes.
-export function statsOf(kind, loadout = STOCK_LOADOUT, build = null) {
-  const own = build ? statsOfBuild(build) : null;
+// On a garage build, the build's own numbers are what it does as it comes;
+// on the crew's own ship, the modules of its tune (a tune is a stock ship's
+// only: a build's modules are the ship) add theirs to what it does as it comes.
+export function statsOf(kind, loadout = STOCK_LOADOUT, build = null, tune = null) {
+  const own = build ? statsOfBuild(build) : tune ? statsOfTune(tune) : null;
   const s = { boost: own?.boost ?? 1, accel: own?.accel ?? 1, cruise: own?.cruise ?? 1, agility: own?.agility ?? 1, level: own?.level ?? 1, cadence: 1, punch: 1, bolt: 1, armor: 1, regen: 1, delay: 5 };
   for (const p of fitted(loadout)) {
     for (const k of ['boost', 'accel', 'cruise', 'agility', 'level']) s[k] += p[k] ?? 0;
@@ -247,11 +251,11 @@ export function statsOf(kind, loadout = STOCK_LOADOUT, build = null) {
 // The loadout a ship flies with: what was fitted to it, each part only
 // while it's still open, and, should it ever need more power than the ship
 // makes, parts coming off (the hungriest first) until it doesn't.
-export function loadoutOf(saved, ship, unlocked = [], build = null) {
+export function loadoutOf(saved, ship, unlocked = [], build = null, tune = null) {
   if (!ship) return { ...STOCK_LOADOUT };
   const l = readLoadout(saved?.[ship]);
   for (const slot of SLOTS) if (!isOpen(partById(slot, l[slot]), unlocked)) l[slot] = STOCK;
-  while (!fits(ship, l, build)) {
+  while (!fits(ship, l, build, tune)) {
     const hungriest = PARTS_SLOTS.filter((slot) => l[slot] !== STOCK).sort((a, b) => partById(b, l[b]).power - partById(a, l[a]).power)[0];
     if (!hungriest) break;
     l[hungriest] = STOCK;
@@ -271,12 +275,12 @@ export const fitInto = (saved, slot, id) => ({ ...readLoadout(saved), [slot]: id
 // Fitting a part: the new loadout, or why it won't go: 'locked' (not
 // earned yet) or 'power' (the ship can't run it with what else is fitted;
 // `short` says by how many MW).
-export function equip(kind, loadout, slot, id, unlocked = [], build = null) {
+export function equip(kind, loadout, slot, id, unlocked = [], build = null, tune = null) {
   const p = partById(slot, parsePart(slot, id));
   if (!p) return { ok: false, reason: 'unknown', loadout };
   if (!isOpen(p, unlocked)) return { ok: false, reason: 'locked', loadout };
   const next = { ...loadout, [slot]: p.id };
-  if (!fits(kind, next, build)) return { ok: false, reason: 'power', short: powerOf(next) + buildDraw(build) - capacityOf(kind, build), loadout };
+  if (!fits(kind, next, build, tune)) return { ok: false, reason: 'power', short: powerOf(next) + hullDraw(build, tune) - capacityOf(kind, build), loadout };
   return { ok: true, loadout: next };
 }
 
@@ -316,8 +320,8 @@ const BEST = (() => {
   walk(0, { ...STOCK_LOADOUT });
   return best;
 })();
-export function readout(kind, loadout, build = null) {
-  return Object.entries(measures(statsOf(kind, loadout, build))).map(([id, value]) => ({ id, value, bar: Math.min(1, value / BEST[id]), change: Math.round((value - 1) * 100) }));
+export function readout(kind, loadout, build = null, tune = null) {
+  return Object.entries(measures(statsOf(kind, loadout, build, tune))).map(([id, value]) => ({ id, value, bar: Math.min(1, value / BEST[id]), change: Math.round((value - 1) * 100) }));
 }
 // What a part does, in words, for the hangar's list: ['Boost +25%', …].
 const pct = (v) => `${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%`;

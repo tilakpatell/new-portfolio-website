@@ -525,6 +525,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
         ));
 
   // ── each frame ──
+  // (up as well as down, as the universe's: a step is the composer's
+  // buffers made again, not the canvas, lib/stage3d)
   const pace = createPace();
   const pending = []; // effects asked for, for the next frame
   let sharp = 1;
@@ -541,7 +543,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     const s = pace.frame(now);
     if (s !== null) {
       sharp = s;
-      resize(stage.size.w, stage.size.h);
+      stage.scale(s); // (made with the next frame the stage draws: lib/stage3d)
     }
     const dt = Math.min(0.1, ms / 1000);
     t += dt;
@@ -728,18 +730,6 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     stage.render(ms);
   };
 
-  // drawn a step less sharp than the stage's own ratio while pace says so
-  const resize = (w, h) => {
-    stage.resize(w, h);
-    if (sharp < 1) {
-      const pr = renderer.getPixelRatio() * sharp;
-      renderer.setPixelRatio(pr);
-      renderer.setSize(stage.size.w, stage.size.h, false);
-      stage.composer.setPixelRatio(pr);
-      stage.composer.setSize(stage.size.w, stage.size.h);
-    }
-  };
-
   const fire = (type, d) => {
     const m = morty.group.position;
     if (type === 'done') fx.burst(m.x, m.y + 2.1, m.z, 110, 4.5);
@@ -796,7 +786,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     house: import.meta.env.DEV ? house : null, // for the QA scripts
     render,
     prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
-    resize,
+    resize: stage.resize,
     fx: fxEvent,
     // a knock of `force` at [x, y, z] (the hit law: a thud, and its shake); a shake of its own
     hit: (force, at) => knocks.onHit(force, at),

@@ -405,7 +405,8 @@ function detention(ws) {
   ws.put('horseshoe', c.x, c.z, { yaw: s.yaw, w: 2.5, d: 2.25, h: 1.05, solid: false, tag: s.name, solids: [side(-1.25, 1.25, 0.8, 1.25), side(-1.25, -0.8, -1, 0.8), side(0.8, 1.25, -1, 0.8)] });
   ws.spot('work', s, s.yaw);
   const cams = ws.named(/camera/);
-  for (const cam of cams) ws.put('camera', cam.x, cam.z, { yaw: cam.yaw, w: 0.25, d: 0.4, h: 0.3, y: room.y + room.h - 0.55, solid: false, tag: 'cameras' });
+  // (each by its spot's name, aa23-camera-1 and -2: a bolt breaks what it names, and the story counts them)
+  for (const cam of cams) ws.put('camera', cam.x, cam.z, { yaw: cam.yaw, w: 0.25, d: 0.4, h: 0.3, y: room.y + room.h - 0.55, solid: false, tag: cam.name });
   if (!cams.length && !room.round) for (const k of corners(room).slice(0, 2)) cameraAt(ws, inset(room, k, 0.25).x, inset(room, k, 0.25).z);
   for (const ic of ws.named(/intercom/)) {
     const hit = facedWall(room, ic);

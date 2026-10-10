@@ -29,7 +29,9 @@
 //   routineFor(role, script?) → node       the tree for a role (a typo throws)
 //     role: { type: 'patrol', spots } | { type: 'post', spot } | { type: 'work', spot }
 //       | { type: 'chat', with } | { type: 'march', spots } | { type: 'droid' }
-//       | { type: 'follow', who } | { type: 'scripted' }
+//       | { type: 'follow', who } | { type: 'lead', spot, who } | { type: 'scripted' }
+//       lead: on ahead to the spot, stopping turned to `who` whenever they fall LEAD_GAP behind, and
+//       waiting there for them
 //     script (scripted only): [{ to, run? } | { face } | { say, key? } | { anim, s? } | { wait }]
 //       { anim } with no s is the pose kept from then on; with s, held that long
 //   runRoutine(node, bb, dt) → 'running' | 'done' | 'failed'
@@ -46,7 +48,8 @@
 //     the station’s or a furnished one’s { name, room, x, z, yaw })
 //   faceTo(crew, person, target)
 //   placeOf(crew, person, where) → { x, z, room, y?, yaw? } | null
-//   canPass(crew, person, doorId, door) → bool   not sealed, and not locked against them
+//   canPass(crew, person, doorId, door) → bool   not sealed, and not locked against them (one with you
+//     goes where you may)
 //   wayBetween(nav, from, to, { canPass, solidsOf, state, fresh }) → route | null   nav.route’s way, remembered;
 //     the same way again from the same metre cells, with the same doors shut and the same state (a string:
 //     whatever else the way depends on), has its ends moved to the new ones (fresh: worked out anew
@@ -66,7 +69,8 @@ import { CAST } from './cast';
 import { route } from './nav';
 import { BODY, lineClear, stepBody } from './walker';
 
-export const ROLES = Object.freeze(['patrol', 'post', 'work', 'chat', 'march', 'droid', 'follow', 'scripted']);
+export const ROLES = Object.freeze(['patrol', 'post', 'work', 'chat', 'march', 'droid', 'follow', 'lead', 'scripted']);
+const LEAD_GAP = 5; // metres one led may fall behind before the one leading stops for them
 
 // Each timed leaf keeps its end time in the blackboard under its own key,
 // since a tree is shared by everyone with the role and a leaf has no state.
@@ -122,6 +126,15 @@ const TREES = {
   },
   march: (role) => repeat(sequence(...role.spots.map((s) => go(s)))),
   droid: () => repeat(sequence(go({ wander: true }), wait([0.5, 2.5], 'idle'))),
+  lead: (role) => {
+    const who = { who: role.who };
+    return repeat(
+      select(
+        guard((bb) => !bb.near(who, LEAD_GAP), sequence(face(who), wait(0.4, 'idle'))),
+        sequence(go(role.spot, { near: 1.2 }), face(who), wait(0.5, 'idle')),
+      ),
+    );
+  },
   follow: (role) => {
     const who = { who: role.who };
     return repeat(
@@ -199,7 +212,10 @@ export function canPass(crew, p, id, door) {
   if (!s) return true;
   if (s.sealed) return false;
   if (!s.locked) return true;
-  return door.kind !== 'hatch' && door.lock === 'side:imperial' && p.side === 'imperial';
+  // (one who walks with you goes where you may: your prisoner through the doors your armour opens)
+  const you = crew.world.you;
+  const yours = p.tag?.startsWith('with:') && you && (you.side === 'imperial' || Boolean(you.armour && you.helmet));
+  return door.kind !== 'hatch' && door.lock === 'side:imperial' && (p.side === 'imperial' || yours);
 }
 
 export function placeOf(crew, p, where) {
@@ -316,7 +332,10 @@ export function stepLegs(crew, p, dt, frozen = false) {
   const run = Boolean(dir && legs.nav.run && !shuffle);
   const g = gait((run ? BODY.run : BODY.walk) * (CAST[p.kind].speed ?? 1));
   const was = { x: p.x, z: p.z };
-  stepBody(p, { dir: dir ? { x: dir.x * g.len, z: dir.z * g.len } : { x: 0, z: 0 }, run: g.run }, dt, { layout: crew.layout, open: crew.world.open, solids: crew.solidsOf(p.room) });
+  // (one sat down and going nowhere keeps the seat: its middle is in the seat's solid, which would
+  // put them out behind it, as the Emperor behind his throne)
+  const sat = p.mind.pose === 'sit' && !dir && !legs.ride;
+  if (!sat) stepBody(p, { dir: dir ? { x: dir.x * g.len, z: dir.z * g.len } : { x: 0, z: 0 }, run: g.run }, dt, { layout: crew.layout, open: crew.world.open, solids: crew.solidsOf(p.room) });
   const moved = flat(was, p);
   // (a shuffle out of someone's way keeps the way they face)
   if (dir && !shuffle && moved > 1e-3 && !legs.want.lock) legs.want.yaw = Math.atan2(dir.x, -dir.z);
@@ -541,7 +560,8 @@ export function rememberedWay(nav, from, to, { canPass = () => true, solidsOf = 
 export function wayBetween(nav, from, to, { canPass = () => true, solidsOf = () => [], state = '', fresh = false } = {}) {
   const known = fresh ? null : rememberedWay(nav, from, to, { canPass, solidsOf, state });
   if (known) return known;
-  const way = route(nav, from, to, { canPass, solidsOf });
+  // (the state is the floors drawn back, layout.offTags's, joined: a way is never found across them)
+  const way = route(nav, from, to, { canPass, solidsOf, off: new Set(state.split(',').filter(Boolean)) });
   // one point is no way to remember: from and to are the same place
   if (way?.length > 1) {
     const ways = waysOut(nav, from.room);

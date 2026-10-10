@@ -15,6 +15,10 @@
 //   turned to a sidestep, leaning into its turns. Without, its clips go at
 //   `move`'s old pace. Either way the clips played over its walk (a wave, a
 //   drink, a scared step back) and its head's look are laid on.
+//   cutAt(distance): a full-fidelity 2017 kind's cut kept to its distance
+//   (null on the others)
+//   A 2017 kind is dressed in the game's surface shader the first time the
+//   node renderer draws it (crewSurface.js); the classic renderer keeps its own.
 //   play, stop, base, look, react: the animator's (meshyCast.js's
 //   animatorCalls: the clip library's clips, on the Meshy skeleton these
 //   all stand on); on Jabba they do nothing.
@@ -25,11 +29,12 @@ import { METRE } from '../../universe/foot';
 import { breathe } from '../../../lib/three/gait';
 import { NO_CALLS, seedOf } from '../../../lib/three/figureCalls';
 import { EVERYONE } from '../../rickmorty/wardrobe/looks';
-import { CREW, faceOf, fileOf } from './crewList';
+import { CREW, cutsOf, faceOf, figureLoaderFor, fileOf } from './crewList';
 import { cloneModel, loadGlb } from './placer';
+import { watchCrew } from './crewSurface';
 
 // (the list itself is crewList.js, plain data a page can read)
-export { CREW, fileOf };
+export { CREW, figureLoaderFor, fileOf };
 
 // (the wardrobe's people come dressed as kept, each their own figure;
 // anyone else is a copy of their file's one: a battle's troopers share theirs)
@@ -37,6 +42,17 @@ const DRESSED = new Set(EVERYONE);
 
 const UP = new THREE.Vector3(0, 1, 0);
 const _q = new THREE.Quaternion();
+
+// a kind its loader refuses (an own rig whose pack isn't built yet): skipped,
+// with one line for the kind
+const said = new Set();
+const refused = (kind, e) => {
+  if (!said.has(kind)) {
+    said.add(kind);
+    console.warn(`[surface] ${kind} skipped: ${e?.message ?? e}`);
+  }
+  return null;
+};
 
 export async function crewFigure(kind, i = 0) {
   if (!CREW[kind]) return null;
@@ -63,16 +79,22 @@ export async function crewFigure(kind, i = 0) {
       dispose() {},
     };
   }
-  const fig = DRESSED.has(kind)
-    ? await loadPartyFigure({ id: kind, name: kind, tall: c.tall, src: { url: fileOf(c) } }, null).catch(() => null)
-    : await loadSharedFigure(fileOf(c), c.tall, { seed }).catch(() => null);
+  const how = figureLoaderFor(c, DRESSED.has(kind));
+  const fig =
+    how === 'shared'
+      ? await loadSharedFigure(fileOf(c), c.tall, { seed }).catch(() => null)
+      : await loadPartyFigure({ id: kind, name: kind, tall: c.tall, src: { url: fileOf(c) }, rig: c.rig, pack: c.pack, ownRig: c.ownRig, bones: c.bones, cuts: cutsOf(c) }, null).catch((e) => refused(kind, e));
   if (!fig) return null;
   const model = new THREE.Group();
   model.scale.setScalar(1 / METRE);
   model.add(fig.model);
   model.traverse((o) => {
-    if (o.isMesh) o.castShadow = true;
+    if (o.isMesh) o.castShadow = !o.userData.noShadow; // (a 2017 figure's small parts: none)
   });
+  // (a 2017 figure in the game's own surface shader on the node renderer:
+  // its pack's recipes, by the file it is; crewSurface.js)
+  const file = fileOf(c);
+  if (/\/bf2017\/crew\//.test(file ?? '')) watchCrew(model, file.split('/').pop().replace(/\.glb$/, ''));
   const forward = new THREE.Vector3();
   return {
     model,
@@ -80,6 +102,16 @@ export async function crewFigure(kind, i = 0) {
     anim: fig.anim ?? null,
     // (its bones by name: a rider's limbs are put on what it rides, riders.js)
     bones: fig.bones ?? null,
+    // (a 2017 figure's: the game's skeleton, its sockets and its clips, for the saber and the gun)
+    rig: fig.rig ?? null,
+    sockets: fig.sockets ?? null,
+    // (a 2017 figure's weapon stance: lib/three/walrusStance.js)
+    stance: fig.stance ?? null,
+    // (and its chest aimed by the game's additive aims: footScene's rigged)
+    aimAt: fig.aimAt ?? null,
+    // (a droid's or a beast's own skeleton, by the game's name: its hit capsules)
+    skeleton: fig.skeleton ?? null,
+    clips: fig.clips ?? null,
     update(dt, move, motion = null) {
       // (the figure reads its motion in the units it stands in, under this
       // group: metres over the group's scale, which is the map's units over
@@ -102,6 +134,9 @@ export async function crewFigure(kind, i = 0) {
     base: fig.base ?? NO_CALLS.base,
     look: fig.look ?? NO_CALLS.look,
     react: fig.react ?? NO_CALLS.react,
+    // (a kind at full fidelity: told how far it is from the eye, it draws
+    // the cut that distance wants, lib/three/walrusCuts.js; nothing on others)
+    cutAt: fig.cutAt ?? null,
     dispose: () => fig.dispose(),
   };
 }

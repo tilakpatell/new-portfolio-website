@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AIR, ENTRY, LANDABLE, airTop, entering, entryPath, entrySpot, fxAt, velocityOf } from './entry';
+import { AIR, ENTRY, LANDABLE, airTop, entering, entryAhead, entryGuess, entryPath, entrySpot, fxAt, velocityOf } from './entry';
 import { PLANETS, SHIP, headingTo, spawn, step } from './ship';
 import { NOSE, fromAngles, rotate } from './orient';
 import { flat, vec } from './foot';
@@ -124,6 +124,157 @@ describe('entering', () => {
     for (const p of airless) {
       const s = flying(add(p.at, OUT, p.r * AIR - 0.05), scale(OUT, -1), SHIP.cruise);
       expect(entering(s), p.id).toBe(null);
+    }
+  });
+});
+
+describe('entryAhead', () => {
+  // (the ship moved on along its way by t seconds)
+  const after = (s, t) => {
+    const v = velocityOf(s);
+    return { ...s, x: s.x + v[0] * t, y: s.y + v[1] * t, z: s.z + v[2] * t };
+  };
+
+  it('is what entering() says once the ship gets there, holding its course', () => {
+    const rand = seeded(11);
+    let seen = 0;
+    for (const p of LANDABLE) {
+      for (let i = 0; i < 12; i++) {
+        const n = randUnit(rand);
+        // (out past the air, headed in at a slant, at cruise or at an approach's 9)
+        const aim = unit(add(scale(n, -1), randUnit(rand), 0.6));
+        const s = flying(add(p.at, n, airTop(p) + 0.5 + rand() * 5), aim, i % 2 ? SHIP.cruise : 9);
+        const a = entryAhead(s, p, 10);
+        if (!a) continue;
+        seen++;
+        expect(a.t, p.id).toBeGreaterThan(0);
+        const e = entering(after(s, a.t * (1 + 1e-6)), [p]);
+        expect(e, `${p.id} #${i}`).not.toBe(null);
+        expect(a.kind).toBe(e.kind);
+        expect(a.id).toBe(e.id);
+        for (let k = 0; k < 3; k++) {
+          expect(a.n[k]).toBeCloseTo(e.n[k], 5);
+          expect(a.vel[k]).toBeCloseTo(e.vel[k], 9);
+        }
+        expect(a.h).toBeCloseTo(e.h, 4);
+        expect(a.speed).toBeCloseTo(e.speed, 9);
+        expect(a.sink).toBeCloseTo(e.sink, 4);
+        // (and not a moment sooner)
+        expect(entering(after(s, a.t * (1 - 1e-6)), [p])).toBe(null);
+      }
+    }
+    expect(seen).toBeGreaterThan(LANDABLE.length * 6);
+  });
+
+  it('says how long till then', () => {
+    const p = first;
+    const s = flying(add(p.at, OUT, airTop(p) + 3), scale(OUT, -1), SHIP.cruise);
+    expect(entryAhead(s, p).t).toBeCloseTo(3 / SHIP.cruise, 9);
+    expect(entryAhead(s, p)).toMatchObject({ id: p.id, kind: 'enter' });
+  });
+
+  it("is null heading away, passing by, skimming in, getting there too late, or in the air already", () => {
+    const p = first;
+    const out = add(p.at, OUT, airTop(p) + 1);
+    expect(entryAhead(flying(out, OUT, SHIP.cruise), p)).toBe(null);
+    // (on a tangent past the air, and along its top)
+    const along = flat([0, 1, 0], OUT);
+    expect(entryAhead(flying(out, along, SHIP.cruise), p)).toBe(null);
+    expect(entryAhead(flying(add(p.at, OUT, airTop(p)), along, SHIP.cruise), p)).toBe(null);
+    // (only grazing it: in, but sinking slower than ENTRY.sink, as entering() won't take; a little steeper, it would)
+    const top = add(p.at, OUT, airTop(p) + 1e-4);
+    const graze = flying(top, unit(add(along, OUT, -(ENTRY.sink * 0.8) / SHIP.cruise)), SHIP.cruise);
+    expect(entryAhead(graze, p)).toBe(null);
+    expect(entering(after(graze, 0.01), [p])).toBe(null);
+    expect(entryAhead(flying(top, unit(add(along, OUT, -(ENTRY.sink * 1.5) / SHIP.cruise)), SHIP.cruise), p)).toMatchObject({ kind: 'enter' });
+    // (straight in, but 3 s away with 2 to look)
+    expect(entryAhead(flying(add(p.at, OUT, airTop(p) + SHIP.cruise * 3), scale(OUT, -1), SHIP.cruise), p, 2)).toBe(null);
+    expect(entryAhead(flying(add(p.at, OUT, airTop(p) + SHIP.cruise * 3), scale(OUT, -1), SHIP.cruise), p, 4)).not.toBe(null);
+    // (already inside, and sitting still outside)
+    expect(entryAhead(inAir(p, OUT, scale(OUT, -1), SHIP.cruise), p)).toBe(null);
+    expect(entryAhead(flying(out, scale(OUT, -1), 0), p)).toBe(null);
+  });
+
+  it('calls it hot at the boost, as entering() does', () => {
+    for (const p of LANDABLE) expect(entryAhead(flying(add(p.at, OUT, airTop(p) + 1), scale(OUT, -1), SHIP.boost), p), p.id).toMatchObject({ id: p.id, kind: 'hot' });
+  });
+});
+
+describe('entryGuess', () => {
+  it('is entryAhead’s word for a ship heading in at a speed it can land at', () => {
+    const p = first;
+    const s = flying(add(p.at, OUT, airTop(p) + 3), scale(OUT, -1), SHIP.cruise);
+    expect(entryGuess(s, p)).toEqual(entryAhead(s, p));
+  });
+
+  it('foresees one boosting in at the speed it must slow to, where it would go in', () => {
+    for (const p of LANDABLE) {
+      const s = flying(add(p.at, OUT, airTop(p) + 1), scale(OUT, -1), SHIP.boost);
+      const ahead = entryAhead(s, p);
+      const g = entryGuess(s, p);
+      expect(g, p.id).toMatchObject({ id: p.id, kind: 'hot', speed: ENTRY.fast, n: ahead.n, vel: ahead.vel });
+    }
+  });
+
+  it('foresees one in the air too fast, or skimming it, from where it is', () => {
+    const p = first;
+    const hot = inAir(p, OUT, scale(OUT, -1), SHIP.boost);
+    expect(entryAhead(hot, p)).toBe(null);
+    expect(entryGuess(hot, p)).toMatchObject({ ...entering(hot, [p]), speed: ENTRY.fast });
+    // (along the top, sinking slower than entering() takes: where it is now, at its own speed)
+    const skim = inAir(p, OUT, flat([0, 1, 0], OUT), SHIP.cruise);
+    expect(entering(skim, [p])).toBe(null);
+    const g = entryGuess(skim, p);
+    expect(g).toMatchObject({ id: p.id, kind: 'skim' });
+    expect(g.speed).toBeCloseTo(SHIP.cruise, 9);
+    for (let k = 0; k < 3; k++) expect(g.n[k]).toBeCloseTo(OUT[k], 9);
+    expect(g.h).toBeCloseTo(airTop(p) - 0.2 - p.r, 9);
+  });
+
+  it('is null out of the air and not heading into it soon', () => {
+    const p = first;
+    expect(entryGuess(flying(add(p.at, OUT, airTop(p) + 1), OUT, SHIP.cruise), p)).toBe(null);
+    expect(entryGuess(flying(add(p.at, OUT, airTop(p) + SHIP.cruise * 3), scale(OUT, -1), SHIP.cruise), p, 2)).toBe(null);
+  });
+
+  // (the way the HUD tells you: “Too fast to fly into …: ease off the boost”)
+  it('follows a ship boosted in that eases off in the air, every frame till the air takes it, and near where it comes down', () => {
+    // (the planets: a moon's air is too shallow to slow in from the boost)
+    const planets = LANDABLE.filter((p) => p.r > 20);
+    expect(planets.length).toBeGreaterThan(8);
+    for (const p of planets) {
+      const R = byId(p.id).size;
+      // (a second out, in at a slant, at the boost; off it once in the air)
+      const dir = unit(add(scale(OUT, -1), flat([0, 1, 0], OUT), 0.7));
+      let s = flying(add(p.at, OUT, airTop(p) + SHIP.boost), dir, SHIP.boost);
+      let boost = true;
+      let took = null;
+      let last = null;
+      let blind = 0;
+      let hot = 0;
+      let said = 0;
+      for (let i = 0; i < 600 && !took; i++) {
+        const e = entering(s, [p]);
+        if (e?.kind === 'enter') took = e;
+        if (took) break;
+        if (e?.kind === 'hot') hot++;
+        if (entryAhead(s, p, 2)?.kind === 'enter') said++;
+        const g = entryGuess(s, p, 2);
+        if (g) last = g;
+        else blind++;
+        if (distTo(s, p) < airTop(p)) boost = false;
+        s = step(s, { throttle: 1, boost }, 1 / 60).ship;
+      }
+      expect(took, p.id).not.toBe(null);
+      expect(hot, p.id).toBeGreaterThan(0); // (it was in the air too fast a while)
+      expect(said, p.id).toBe(0); // (and entryAhead never once called it a landing on the way)
+      expect(blind, p.id).toBe(0);
+      expect(last.speed, p.id).toBeLessThanOrEqual(ENTRY.fast);
+      const guessed = entrySpot({ n: last.n, track: last.vel, speed: last.speed, R });
+      const real = entrySpot({ n: took.n, track: took.vel, speed: took.speed, R });
+      expect(angle(guessed.n, real.n), p.id).toBeLessThan(0.02);
+      // (where the boost's speed would have put it: some 5° on, past a biome's edge)
+      expect(angle(entrySpot({ n: last.n, track: last.vel, speed: SHIP.boost, R }).n, real.n), p.id).toBeGreaterThan(0.05);
     }
   });
 });

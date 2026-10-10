@@ -29,6 +29,14 @@ The explorable interior of both Death Stars at `/deathstar/inside`, and HD exter
   - Standing and looking well round turns you on the spot.
   - The second station’s Rebel ending plays through: Vader is held up at Luke’s side through the carry, leaning on him and limping, and Luke only walks (`plot.js`’s `holdUp`). The station shakes and panels burst off the walls in fire and smoke while it comes apart (`rules/breach.js`, the camera’s shake in `scene/index.js`, a rumble in `scene/sounds.js`). At the ramp Vader sits for the mask with Luke kneeling, and lies there after the talk.
   - The chasm swing is drawn: Luke and Leia swing across on the grapple’s line (the `swing` act in `scene/cinematics.js`). A story that moves you (`{ to }`) brings your companions with you.
+- The mechanics audit (9 October; `docs/superpowers/specs/2026-10-08-deathstar-mechanics-audit.md`):
+  - E does every story step's work at whatever it names (`act.js`'s `stepAt`), on both sides. Checkpoints keep what you carry.
+  - Routes leave from beside a box's corner and reach doors in a stair room's far wall. A leg along a door's own wall meets the door square. The way goes by doors you can open, then by a jump.
+  - Your companions go through the doors you may, stoop under low lintels, and see the garrison as you do. Vader's prisoner (`prisoner`) walks unchallenged, and Vader leads him (the `lead` routine).
+  - The camera stops at furniture and ships. Nobody is shot while a scene plays.
+  - Blade and Force fighters duel you (`rules/play/duel.js`, on `saber.js` and `force.js`).
+  - Every story can be finished with the keys alone: `DS_AUTOPLAY=1 npx vitest run src/components/deathstar/inside/rules/play/autoplay.test.js`.
+  - The second round (the audit's findings 15 to 22): in free roam the consoles read out (`rules/play/readouts.js`), the whole crew talks (`rules/talks/crew.js`), the one you talk to stops for you, and E reaches where the camera looks. Seats can be sat in, and every sitter is drawn on the seat (`rules/seats.js`). Luke's saber leaves the armrest when it is taken.
 
 ## Left
 
@@ -39,6 +47,8 @@ The explorable interior of both Death Stars at `/deathstar/inside`, and HD exter
 - Every scene’s shots have been judged by eye in headless Chromium. The tower lift doesn’t move while its scene plays: the camera stays on the four of you in the car.
 
 ## Checking it
+
+- `DS_AUTOPLAY=1 npx vitest run src/components/deathstar/inside/rules/play/autoplay.test.js` plays all four stories start to end through `rules/play/autoplay.js` (a minute or two each). Run it after any change to the stories, the routes, the doors or the crew's minds.
 
 - `npx vitest run src/components/deathstar/inside` for the rules, the scene’s pure parts and the module.
 - `npx vite --port 5197` and open `/#/deathstar/inside?station=ds1&side=rebel&mode=roam` (or `station=ds2`, `side=imperial`, `mode=story`, `at=<room or spot>`). In development `window.__deathstar` has `g`, `view` (the scene and camera), `teleport(room, x, z)`, `do(name, arg)` and `info()`. To reach a story beat, import `rules/play/plot.js` in the page and call `startPlot(__deathstar.g, '<step id>')`: it starts from that beat’s checkpoint.

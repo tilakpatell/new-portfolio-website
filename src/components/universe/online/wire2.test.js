@@ -20,16 +20,17 @@ describe('what pilots say', () => {
     const ping = { kind: 'foe', where: '/galaxy/hoth', p: [12.345, 3, -40], target: 'tie-7' };
     expect(readPing(writePing(ping))).toEqual({ kind: 'foe', where: '/galaxy/hoth', p: [12.35, 3, -40], sec: null, target: 'tie-7' });
     // out in the Expanse, with its sector; with no point, only where (a page with no ping source)
-    const far = readPing(writePing({ kind: 'go', where: '/universe', p: [123456.78, 5, -81000] }));
+    // (the Expanse's sectors are 120,000 across since the universe spread to SPREAD 6, as protocol.test.js has them)
+    const far = readPing(writePing({ kind: 'go', where: '/universe', p: [185184.78, 5, -121500] }));
     expect(far.sec).toBe('E:2,-1');
-    expect(far.p[0]).toBeCloseTo(123456.78, 2);
+    expect(far.p[0]).toBeCloseTo(185184.78, 2);
     expect(readPing(writePing({ kind: 'help', where: '/projects' }))).toEqual({ kind: 'help', where: '/projects', p: null, sec: null, target: null });
     // a point given as the map's { x, y, z } goes too
     expect(readPing(writePing({ kind: 'look', where: '/universe', p: { x: 1, y: 2, z: 3 } })).p).toEqual([1, 2, 3]);
   });
 
   it('a ping is clamped as a pose is, and junk is none', () => {
-    expect(readPing({ k: 'go', w: '/universe', p: [1e9, 1e9, 0] }).p).toEqual([60000, 1300, 0]);
+    expect(readPing({ k: 'go', w: '/universe', p: [1e9, 1e9, 0] }).p).toEqual([90000, 1300, 0]);
     const junk = [null, 'go', [], {}, { k: 'nuke', w: '/universe' }, { k: 'go' }, { k: 'go', w: 'https://x.io' }, { k: 'go', w: '/universe', p: 'here' }, { k: 'go', w: '/universe', p: [1, 'a', 3] }, { k: 'go', w: '/universe', t: '<b>' }, { k: 'go', w: '/universe', t: 'x'.repeat(65) }, { k: 'go', w: '/universe', t: {} }];
     for (const j of junk) expect(readPing(j), JSON.stringify(j)).toBeNull();
     expect(writePing({ kind: 'nuke', where: '/universe' })).toBeNull();
@@ -55,18 +56,18 @@ describe('a point on the map, as it goes over the wire', () => {
   });
 
   it('carries the sector out in the Expanse, with x and z from its middle', () => {
-    const out = writePoint({ x: 123456.78, y: 5, z: -81000 });
+    const out = writePoint({ x: 185184.78, y: 5, z: -121500 });
     expect(out[3]).toBe('E:2,-1');
-    expect(out[0]).toBeCloseTo(123456.78 - 160000, 2);
+    expect(out[0]).toBeCloseTo(185184.78 - 240000, 2);
     const p = readPoint(out);
     expect(p.sec).toBe('E:2,-1');
-    expect(p.x).toBeCloseTo(123456.78, 2);
-    expect(p.z).toBeCloseTo(-81000, 2);
+    expect(p.x).toBeCloseTo(185184.78, 2);
+    expect(p.z).toBeCloseTo(-121500, 2);
   });
 
   it('is clamped as a pose is, and junk is no point', () => {
-    expect(readPoint([1e9, -1e9, 0])).toEqual({ x: 60000, y: -1300, z: 0 });
-    expect(readPoint([1e9, 0, 0, 'E:1,0']).x).toBe(80000 + 42000);
+    expect(readPoint([1e9, -1e9, 0])).toEqual({ x: 90000, y: -1300, z: 0 });
+    expect(readPoint([1e9, 0, 0, 'E:1,0']).x).toBe(120000 + 62000);
     for (const junk of [null, undefined, 'x', {}, [], [1, 2], [1, 'a', 3], [NaN, 0, 0], [1, 2, 3, 'E:1,0', 5]]) expect(readPoint(junk)).toBeNull();
   });
 });

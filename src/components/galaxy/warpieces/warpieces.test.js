@@ -23,7 +23,7 @@ const make = (id, attacker = 'rebel', you = 0, defender = null) => {
   // (an evacuation's runners are the battle's own: battles.js's BATTLE_KINDS)
   battle.setYou(you);
   const fight = createTally(on.id);
-  const world = { solids: [{ id: 'deathstar2', r: 66, reach: 90, at: [0, 0, 0] }], war: { holdShield: vi.fn(), station: vi.fn(), planetShield: vi.fn() } };
+  const world = { solids: [{ id: 'deathstar2', r: 66, reach: 90, at: [0, 0, 0] }], war: { holdShield: vi.fn(), station: vi.fn(), planetShield: vi.fn(), superlaser: vi.fn(), face: vi.fn(), dish: () => null } };
   const events = [];
   const ctx = {
     scene: null,
@@ -248,9 +248,13 @@ describe('Scarif', () => {
     const k = make('scarif');
     const s = createScarif(k.ctx);
     k.battle.phase = 2;
+    k.ctx.clock = () => 42;
+    k.ctx.wallAt = (sec) => 1000 + sec;
     step(s, k.battle, 60, null, 0.1);
     expect(k.events).toContain('gcw-ram');
     expect(k.events).toContain('gcw-gate');
+    // and the Death Star in over the planet, a few seconds after (world.js's hold, on the wall clock)
+    expect(k.world.war.superlaser).toHaveBeenCalledWith(1045);
     expect(k.world.war.station).toHaveBeenCalledWith('gate', false);
     expect(k.world.war.planetShield).toHaveBeenCalledWith(false);
     expect(k.battle.over).toEqual({ winner: 0, why: 'gate' });
@@ -335,7 +339,7 @@ describe('the set pieces in the battle every pilot shares', () => {
     const state = () => d.state(clock.t, (k) => fight.value(k));
     const battle = createBattle({ ...laid, rand: seeded(on.id), perSide: 4, plan, director: { state }, onMine: (k, dmg) => fight.add(k, dmg) });
     battle.setYou(you);
-    const world = { solids: [{ id: 'deathstar2', r: 66, reach: 90, at: [0, 0, 0] }], war: { holdShield: vi.fn(), station: vi.fn(), planetShield: vi.fn() } };
+    const world = { solids: [{ id: 'deathstar2', r: 66, reach: 90, at: [0, 0, 0] }], war: { holdShield: vi.fn(), station: vi.fn(), planetShield: vi.fn(), superlaser: vi.fn(), face: vi.fn(), dish: () => null } };
     const events = [];
     const ctx = {
       scene: null,
@@ -428,9 +432,39 @@ describe('the set pieces in the battle every pilot shares', () => {
     expect(k.events).toContain('gcw-ram');
     expect(s.targets.some((t) => t.kind === 'gate')).toBe(true);
     k.fight.add('gate', 1e4);
+    k.ctx.wallAt = (sec) => 5000 + sec;
+    k.ctx.endedAt = () => 301;
     step(s, k.battle, 0.5);
     expect(k.events).toContain('gcw-gate');
     expect(k.world.war.planetShield).toHaveBeenCalledWith(false);
+    // the Death Star at the same wall second for every pilot: the end's, on the shared clock
+    expect(k.world.war.superlaser).toHaveBeenCalledWith(5304);
+    s.dispose();
+  });
+
+  it('Scarif: the Death Star comes in just after the gate goes here, unless the battle ended long before you came', () => {
+    const k = shared('scarif', 'rebel', 'empire', 0);
+    const s = createScarif(k.ctx);
+    k.through(2);
+    k.clock.t = 330;
+    k.fight.add('gate', 1e4);
+    k.ctx.wallAt = (sec) => 5000 + sec;
+    // (the director's end worked out from the tally can be some seconds back from when it came in)
+    k.ctx.endedAt = () => 301;
+    step(s, k.battle, 0.5);
+    expect(k.world.war.superlaser).toHaveBeenCalledWith(5333);
+    s.dispose();
+    // a pilot coming in long after: the Death Star's been and gone, as it was for everyone there
+    const late = shared('scarif', 'rebel', 'empire', 0);
+    late.through(2);
+    late.clock.t = 500;
+    late.fight.add('gate', 1e4);
+    late.ctx.wallAt = (sec) => 5000 + sec;
+    late.ctx.endedAt = () => 301;
+    const s2 = createScarif(late.ctx);
+    step(s2, late.battle, 0.5);
+    expect(late.world.war.superlaser).toHaveBeenCalledWith(5304);
+    s2.dispose();
     expect(k.battle.over).toBeNull();
     s.dispose();
   });

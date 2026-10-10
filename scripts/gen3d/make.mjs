@@ -111,12 +111,20 @@ export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, 
     log(`judge: ${out}`);
     // the model's eyes on the sheet: a miss is made again, once, with the next seed (and the next-best concept)
     if (judge && vlmReady()) {
-      const { judge: look } = await import('./vlm.mjs');
-      const v = await look(what ?? prompt ?? name, out);
+      const { judge: look, which } = await import('./vlm.mjs');
+      let v;
+      try {
+        v = await look(what ?? prompt ?? name, out);
+      } catch (e) {
+        // Qwen's say is only a note (below), so a Qwen that fails or hangs leaves the made model unjudged, not failed
+        if (which() !== 'qwen') throw e;
+        log(`no verdict: Qwen3-VL failed (${e.message.slice(0, 160)})`);
+        writeFileSync(join(dir, 'result.json'), JSON.stringify({ ...result, sheet: out }, null, 2));
+        return { source, raw, low, out: w.out };
+      }
       log(`verdict: ${v.score}/10${v.problems.length ? ` — ${v.problems.join('; ')}` : ''}${v.ok ? '' : ` — ${v.fix}`}`);
       // only Claude's verdict gates: Qwen3-VL-8B misjudges a right model often enough that its say is a note, not a veto
       // (the contract tests' fake judge stands in for Claude, so the loop is tested)
-      const { which } = await import('./vlm.mjs');
       if (!v.ok && retries > 0 && ['claude', 'fake'].includes(which())) {
         log(`not good enough: once more with seed ${seed + 1}`);
         return make(name, { image, prompt, what, faces, tex, seed: seed + 1, res, fov, engine, faithful, noBake, match, candidates, judge, retries: retries - 1, fresh, first: false, ultra });

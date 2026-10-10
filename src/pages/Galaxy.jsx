@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
-import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
+import { SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { jumpEvent } from '../components/jumps/styles';
-import { LOADOUT_KEY, loadoutOf, readLoadouts } from '../components/universe/outfit';
-import { HULL_KEY, readHulls } from '../components/universe/shipyard/build';
+import { useShipyardPage } from '../components/universe/shipyard/useShipyardPage';
 import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
@@ -14,11 +13,13 @@ import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
 import { FIRST, parseSystem, systemById } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
+import { starfighterAt } from '../components/galaxy/surface/missions/starfighterMaps';
 import galaxyModule from '../components/galaxy/module';
 import surfaceModule from '../components/galaxy/surface/module';
 import { prefetchSurface, surfaceProps } from '../components/galaxy/travel';
 import { runtime, usePrepareProgress } from '../runtime';
 import LoadingVeil from '../components/worlds/LoadingVeil';
+import { usePrepareWait } from '../components/worlds/usePrepareWait';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { battleSay } from '../components/galaxy/warVoice';
 import { groundEffects } from '../components/galaxy/siteWar';
@@ -36,6 +37,8 @@ import '../components/galaxy/galaxy.css';
 import { thud } from '../lib/sfx';
 import { createImpacts } from '../lib/impact';
 
+// the Shipyard (the universe map's own), in its own chunk: opened with H
+const Shipyard = lazy(() => import('../components/universe/shipyard/Shipyard'));
 // a bump's and a crash's thud, by the hit law (lib/impact.js)
 const knockLaw = createImpacts();
 
@@ -67,7 +70,7 @@ export default function Galaxy() {
   const sys = systemById(current);
   useDocumentTitle(`${sys.name} · A galaxy far, far away`);
   const reduced = useReducedMotion();
-  const view = useRef({ live: false, jump: () => false, goTo: () => false, flyTo: () => false, escape: () => false, dive: () => false, host: () => null });
+  const view = useRef({ live: false, jump: () => false, goTo: () => false, flyTo: () => false, starfighter: () => false, escape: () => false, dive: () => false, host: () => null });
   const comms = useRef(null);
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
@@ -105,6 +108,25 @@ export default function Galaxy() {
   useEffect(() => {
     if (!followId) followRef.current = null;
   }, [followId]);
+  // a battle asked for by the link (the landing menu's Starfighter Assault,
+  // the briefing's card: /galaxy/endor?battle=starfighter&side=rebel): once
+  // the scene's in the system, the space level's battle there in place of
+  // the war's (surface/missions/starfighterMaps.js says where there's one).
+  // Tried till it goes, then dropped from the link, so a reload's the war again
+  const [query, setQuery] = useSearchParams();
+  const asked = query.get('battle');
+  const askedSide = query.get('side');
+  useEffect(() => {
+    if (asked !== 'starfighter' || !starfighterAt(current)) return undefined;
+    const go = () => {
+      if (!view.current.live || !view.current.starfighter(current, { side: askedSide })) return false;
+      setQuery({}, { replace: true });
+      return true;
+    };
+    if (go()) return undefined;
+    const t = setInterval(() => go() && clearInterval(t), 500);
+    return () => clearInterval(t);
+  }, [asked, askedSide, current, setQuery]);
   // the wallet (economy.js): the war's points and wins pay into it, and an alliance made
   const { pay, note: earned } = useEarn({ client: online.client });
   // the ship as it's fitted in the universe map's hangar: its paint and parts
@@ -155,9 +177,9 @@ export default function Galaxy() {
     const off = onWar(check);
     return () => (clearInterval(id), off());
   }, [oath.side, oath.war, unlock]);
-  // and the hull it flies: stock, or its garage build from the hangar's shipyard
-  const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
-  const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
+  // the ship as it's fitted, and the hull it flies: stock, or its garage build; and the Shipyard (H) that changes them, which is the
+  // universe map's, with the same saves (shipyard/useShipyardPage.js)
+  const { loadout, build, tune, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [at, setAt] = useState(null); // what in the system you're at (its planet, the Death Star…)
@@ -181,6 +203,28 @@ export default function Galaxy() {
   });
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
+  // what a pickup gave, said for a moment over the flight cluster (the scene's 'pickup' event: pickups.js's name and line)
+  const [pickupNote, setPickupNote] = useState(null);
+  const pickupTimer = useRef(0);
+  useEffect(() => () => clearTimeout(pickupTimer.current), []);
+  const notePickup = useCallback((text) => {
+    clearTimeout(pickupTimer.current);
+    setPickupNote(text);
+    pickupTimer.current = setTimeout(() => setPickupNote(null), 2200);
+  }, []);
+  // The Shipyard's doors (its corner button, the panel's link and H) all come through here: shut under the galaxy map, while a jump is
+  // on and in the first moments. Open, it holds the scene still, so a jump that begins under it (the course, a star, a link asked for)
+  // shuts it: otherwise the jump would stall behind it.
+  const openYard = useCallback(
+    (on) => {
+      if (on && (mapOpen || jumping || intro || leaving)) return;
+      setYard(on);
+    },
+    [setYard, mapOpen, jumping, intro, leaving],
+  );
+  useEffect(() => {
+    if (jumping && yard) setYard(false);
+  }, [jumping, yard, setYard]);
 
   // the URL is the system you're in: put it right as you come in
   useEffect(() => {
@@ -255,6 +299,7 @@ export default function Galaxy() {
   }, []);
   const dove = useRef(null); // resolves the dive's end
   const landing = usePrepareProgress(surfaceModule); // (the surface's prepare, for Land's loading screen)
+  const landingWait = usePrepareWait(surfaceModule, landing, Boolean(leaving?.prep)); // (and why, once it holds)
   const land = useCallback(
     (id) => {
       if (!canLand(id) || leaving) return;
@@ -336,11 +381,17 @@ export default function Galaxy() {
         if (followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
         return;
       }
+      if (e.type === 'pickup') {
+        notePickup(`${e.name} · ${e.line}`);
+        return;
+      }
       if (e.type === 'dove') {
         dove.current?.();
         dove.current = null;
         return;
       }
+      // (the Shipyard's open: its own keys are the ones that count, and the map and the jump wait)
+      if (yard && (e.type === 'map' || e.type === 'jumpKey')) return;
       if (e.type === 'map') {
         setMapOpen((o) => !o);
         return;
@@ -417,7 +468,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock, crew, pay, notePilot, follow, course, jumpTo],
+    [current, leave, navigate, land, unlock, crew, pay, notePilot, notePickup, follow, course, jumpTo, yard],
   );
   const onArrive = useCallback(
     (id) => {
@@ -459,8 +510,11 @@ export default function Galaxy() {
         ship={ship}
         loadout={loadout}
         build={build}
+        tune={tune}
         net={online.client}
-        frozen={Boolean(leaving) || intro}
+        frozen={Boolean(leaving) || intro || yard}
+        hangar={yard}
+        onHangar={jumping ? null : openYard}
         onEvent={onEvent}
         onArrive={onArrive}
         onAt={setAt}
@@ -472,10 +526,33 @@ export default function Galaxy() {
         course={course}
       />
       {crew && <Comms control={comms} crew={galaxyCrew(crew)} reduced={reduced} />}
-      <EarnNote note={earned} />
+      <EarnNote note={yardNote ?? earned} />
+      {ship && !leaving && (
+        <Suspense fallback={null}>
+          <Shipyard
+            open={yard}
+            onOpen={openYard}
+            enabled={yard || (!mapOpen && !jumping && !intro)}
+            ship={ship}
+            shipName={crew?.ship ?? ''}
+            live={live}
+            lastBuild={garage[ship] || null}
+            saves={yardSaves}
+            dropped={dropped}
+            onApply={applyDraft}
+            onSell={sellPart}
+            hint="Secondary and ordnance fire on the universe map; here the crew’s powers take their place."
+          />
+        </Suspense>
+      )}
       {pilotNote && !leaving && (
         <p className="universe-prompt galaxy-note" data-on="" data-plain="" role="status">
           {pilotNote}
+        </p>
+      )}
+      {pickupNote && !leaving && (
+        <p className="galaxy-pickup-note" role="status">
+          {pickupNote}
         </p>
       )}
       {!leaving && <Online online={online} ship={ship} />}
@@ -484,6 +561,7 @@ export default function Galaxy() {
         at={at}
         ship={ship}
         onShip={pickShip}
+        onHangar={ship && !jumping ? () => openYard(true) : null}
         onMap={() => setMapOpen(true)}
         onGo={(id) => view.current.goTo(id)}
         onLeave={() => leave('/universe/starwars', { jump: true })}
@@ -519,7 +597,7 @@ export default function Galaxy() {
       )}
       {exit && <div className="galaxy-exit" aria-hidden="true" />}
       {/* (the surface getting ready before the dive: Land's loading screen) */}
-      <LoadingVeil shown={Boolean(leaving?.prep)} progress={landing.value} step={landing.step} title={`Preparing to land on ${sys.name}`} />
+      <LoadingVeil shown={Boolean(leaving?.prep)} progress={landing.value} step={landing.step} title={`Preparing to land on ${sys.name}`} waiting={landingWait.waiting} onSkip={landingWait.onSkip} />
       {leaving?.land && <div className="galaxy-entry" aria-hidden="true" />}
       {leaving?.dive && (
         <p className="galaxy-entry-note" role="status">

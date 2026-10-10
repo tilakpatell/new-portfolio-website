@@ -37,6 +37,8 @@ import * as THREE from 'three';
 import { frameFrom, reach, rotateWorld, setWorldQuaternion, spring } from '../../lib/three/ik';
 import { gripMorphs, ungrip } from '../../lib/three/grip';
 import { handFrame, handPoints } from '../../lib/three/held';
+import { WEAPON_FRAME } from '../../lib/three/walrusRig.js';
+import { stanceFor, weaponClassOf } from '../../lib/three/walrusSets/stance';
 
 const V = THREE.Vector3;
 const Q = THREE.Quaternion;
@@ -889,7 +891,8 @@ export function stance(gun, S, dir, up, armLen) {
 
 // ── Holding and aiming ──
 
-const BONES = ['RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand', 'Spine02', 'Spine01', 'Spine', 'neck', 'Head', 'Hips'];
+// (Meshy's spine and neck, and the 2017 game's: Spine2, Spine1, Neck)
+const BONES = ['RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand', 'Spine02', 'Spine01', 'Spine2', 'Spine1', 'Spine', 'neck', 'Neck', 'Head', 'Hips'];
 const SPINE_SHARE = [0.22, 0.3, 0.48]; // Spine02 (lowest), Spine01, Spine
 const TWIST_MAX = 1.05; // radians the chest turns to a target off to one side
 const PITCH_MAX = 0.6;
@@ -1038,20 +1041,38 @@ function measureHand(root, hand, hips, left, fix, unit) {
   return out;
 }
 
+// a stance's own additive aims (walrusSets/additive.js's add.aim.p.up…), by its key
+const STANCE_AIM = { p: 'p.', l: 'l.' };
+
 export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
   const spec = GUNS[kind];
   const root = fig.model;
   if (!spec || !root) return null;
+  // (a 2017 figure stands, walks and aims as the game does for this weapon's
+  // class: lib/three/walrusStance.js; the humanoid set for a saber or a gun of no class)
+  fig.stance?.(stanceFor(weaponClassOf(kind)))?.catch?.(() => {});
   const bones = {};
   for (const n of BONES) bones[n] = fig.bones?.[n] ?? root.getObjectByName(n) ?? null;
+  // a 2017 figure's weapon socket (lib/three/walrus.js): the game's clips
+  // carry the weapon there and put the hands on it themselves, so the gun
+  // goes in it as the game modelled it (WEAPON_FRAME) and the aim only
+  // turns the chest, which carries the arms and the socket alike
+  const socket = fig.sockets?.weapon ?? null;
+  bones.Spine02 ??= bones.Spine2;
+  bones.Spine01 ??= bones.Spine1;
+  bones.neck ??= bones.Neck;
   const hand = bones.RightHand;
   if (!hand || !bones.RightArm || !bones.RightForeArm) return null;
   const owned = [];
   const gun = buildGun(kind, owned);
   const twoHanded = spec.hands === 2 || spec.support;
   const left = Boolean(bones.LeftArm && bones.LeftForeArm && bones.LeftHand) && twoHanded;
-  const fix = who ? GRIP_FIX[who] : null;
-  const look = [bones.Spine, bones.Spine01, bones.Spine02].find(Boolean) ?? null; // the chest
+  // (in a socket nothing's closed round the gun by the site: the clip's fingers hold it)
+  const fix = socket ? { curl: false } : who ? GRIP_FIX[who] : null;
+  // the chest; on a 2017 figure in its socket the chest itself (Spine2): its
+  // gun has no arm laid onto the target, so the chest is the aim, and the
+  // game's clips twist the body above the waist, which reading the waist misses
+  const look = (socket ? bones.Spine2 : null) ?? [bones.Spine, bones.Spine01, bones.Spine02].find(Boolean) ?? null;
   const rest = new Map(); // bone → its forward and up in its own frame, from the bind pose
 
   // measured once, in the bind pose: the hands, the arms' reach, where the chest and head face
@@ -1106,7 +1127,13 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
       .negate()
       .add(curl.shape.R.centre);
   } else gun.position.copy(m.R.mean).addScaledVector(m.R.normal, m.R.toLocal(fix?.along ? 0 : 0.018)); // (where the fingers close, a little out from the palm)
-  hand.add(gun);
+  if (socket) {
+    gun.scale.setScalar(unit / (socket.getWorldScale(new V()).x || 1));
+    gun.quaternion.fromArray(WEAPON_FRAME.quaternion);
+    gun.position.fromArray(WEAPON_FRAME.position).multiplyScalar(unit / (socket.getWorldScale(new V()).x || 1));
+    socket.add(gun);
+  } else hand.add(gun);
+  const holder = gun.parent; // (the hand, or the socket)
   // where the other hand's grip is, in its own space: what it closes round goes there
   const leftAt = m.L ? (curl?.shape.L?.centre.clone() ?? m.L.mean.clone().addScaledVector(m.L.normal, m.L.toLocal(0.012 + (spec.fore?.r ?? CUP)))) : null;
   const gripInv = gripQ.clone().invert();
@@ -1194,7 +1221,11 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
       const turn = want - now;
       if (Math.abs(turn) > 1e-4) spine.forEach((b, i) => b && rotateWorld(b, up, turn * SPINE_SHARE[i], 1));
     }
-    const lift = pitch * 0.4 * aim + st.up.x * 0.25;
+    // (a 2017 figure tips its chest by the game's own additive aims, up or
+    // down as far as it's aiming, its stance's where it has them; the kick
+    // stays the site's)
+    const laid = Boolean(socket && fig.aimAt?.(pitch * aim, 0, STANCE_AIM[stanceFor(weaponClassOf(kind))] ?? ''));
+    const lift = (laid ? 0 : pitch * 0.4 * aim) + st.up.x * 0.25;
     if (Math.abs(lift) > 1e-5) spine.forEach((b, i) => b && rotateWorld(b, right, lift * SPINE_SHARE[i], 1));
     // the head: the rest of the way, onto the target
     const lookW = Math.max(st.look, aim);
@@ -1209,6 +1240,13 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
       }
       rotateWorld(bones.Head, up, bones.neck ? dy * 0.6 : dy, 1);
       rotateWorld(bones.Head, right, bones.neck ? dp * 0.6 : dp, 1);
+    }
+
+    // (in a socket the clip's arms hold it: nothing more)
+    if (socket) {
+      gun.updateWorldMatrix(true, true);
+      remember();
+      return;
     }
 
     // the arms as the clip has them (as much of them as the hold below
@@ -1339,6 +1377,9 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
     spec,
     bones,
     armLen,
+    // (where the gun's held: the hand, or a 2017 figure's weapon socket)
+    holder,
+    socket,
     debug,
     get aim() {
       return st.aim;
@@ -1346,7 +1387,7 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
     set,
     // (a blade, after set: the other hand closed round the hilt at `anchor`, as placeLeft)
     holdLeft(anchor, fingers, axis, pole, w = 1) {
-      if (!left || w <= 0) return;
+      if (!left || w <= 0 || socket) return;
       st.heldL = Math.max(st.heldL, Math.min(1, w));
       if (anchor) placeLeft(anchor, fingers, axis, pole, w);
     },
@@ -1366,11 +1407,12 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
     // let go of it (going down): the gun, where it is in the world, for
     // whoever's to throw it; the hands keep posing without it
     drop() {
-      if (!gun.parent || gun.parent !== hand) return null;
+      if (!gun.parent || gun.parent !== holder) return null;
       gun.updateWorldMatrix(true, false);
       return gun;
     },
     dispose() {
+      fig.aimAt?.(0, 0); // (the additive aim let go with the gun)
       curl?.dispose();
       gun.removeFromParent();
       for (const o of owned) o.dispose?.();

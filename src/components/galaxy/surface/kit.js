@@ -23,8 +23,8 @@ import { bake, canvasTexture, panelTexture, part, place, rod, between, compose, 
 import { rng } from './noise';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
 import { coverageTexture } from '../../../lib/three/textures';
-import SCANS from '../../../../public/cc0/galaxy/index.json';
-import { loadCore as loadScan, wear } from '../../../lib/three/core';
+import { wear } from '../../../lib/three/core';
+import { loadScan, scanOf } from '../../../lib/three/scans';
 
 export { part, place, rod, between, compose, mirror, ball, upright };
 
@@ -330,9 +330,9 @@ export const LOOKS = {
 };
 // a role's repeats a metre (the scan's real size; the stand-in's own where
 // there's no scan)
-export const densityOf = (role, fallback) => (SCANS[role]?.metres ? 1 / SCANS[role].metres : fallback);
+export const densityOf = (role, fallback) => (scanOf(role)?.metres ? 1 / scanOf(role).metres : fallback);
 // a role's scan's size in metres, and the brightness its detail map is centred on
-export const scanOf = (role) => SCANS[role] ?? null;
+export { scanOf };
 
 // The kit's own pictures, painted once a seed for the page: the canvases
 // and their mip levels made by hand (keepCoverage) were a few hundred
@@ -479,7 +479,7 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
     m.metalness = look.metalness;
     m.needsUpdate = true;
   };
-  const roles = Object.keys(LOOKS).filter((role) => SCANS[role]);
+  const roles = Object.keys(LOOKS).filter((role) => scanOf(role));
   const ready = scans
     ? Promise.all(roles.map((role) => load(role).then((scan) => [role, scan]))).then((list) => {
         if (dead || kept) return;

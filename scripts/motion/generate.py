@@ -10,7 +10,8 @@ Runs in WSL on the desktop, in the `hymotion` conda env from the
                                                                should stand (bvh-map.test.mjs reads both)
 
 The BVH: metres, +y up, facing +z (SMPL-H's own frame), 30 frames a second.
-The hips carry six channels (their travel from rest, then their turn), every
+The hips carry six channels (their travel from rest, the clip's floor moved
+onto the rest's by grounded(), then their turn), every
 other joint three, all Z X Y as BVH's habit is. The rest is HY-Motion's own
 skeleton (its j_template), so the clip's rest is the model's T-pose. Fingers
 are left out: Meshy's hands are mittens. The model's NPZ and its rewrite of
@@ -73,6 +74,16 @@ def fk(rots, trans, rest):
     return world_p
 
 
+def grounded(rots, trans, rest):
+    """HY-Motion's trans stands the body on its own floor (y = 0), a metre and
+    more above where the rest skeleton's feet are; the retarget reads the
+    hips' channels as travel from rest, so a clip written as it comes floats
+    that high. The clip's floor is moved onto the rest's: the lowest any joint
+    goes over the clip, as low as the rest's lowest."""
+    drop = fk(rots, trans, rest)[..., 1].min() - rest[:, 1].min()
+    return trans - np.array([0.0, drop, 0.0])
+
+
 def bvh(rots, trans, rest, fps=FPS):
     """Turns (L, 22, 3, 3) in each parent's frame, the hips' travel (L, 3) and
     the rest (22, 3) → a BVH's text."""
@@ -120,8 +131,8 @@ def rest_of(repo):
 def from_npz(path, rest, out):
     """An NPZ HY-Motion wrote (poses: axis-angles for 52 joints, trans) → the BVH."""
     data = np.load(path)
-    poses = data["poses"].reshape(data["poses"].shape[0], -1, 3)[:, :22]
-    write(out, bvh(rodrigues(poses), data["trans"].astype(np.float64), rest))
+    rots = rodrigues(data["poses"].reshape(data["poses"].shape[0], -1, 3)[:, :22])
+    write(out, bvh(rots, grounded(rots, data["trans"].astype(np.float64), rest), rest))
 
 
 def generate(args):
@@ -153,7 +164,7 @@ def generate(args):
     print(f"generated in {time.time() - t:.0f}s, peak {torch.cuda.max_memory_allocated() / 2**30:.1f} GiB", flush=True)
     rots = rot6d_to_rotation_matrix(output["rot6d"][0, :, :22].float()).numpy().astype(np.float64)
     trans = output["transl"][0].float().numpy().astype(np.float64)
-    write(args.out, bvh(rots, trans, rest))
+    write(args.out, bvh(rots, grounded(rots, trans, rest), rest))
 
 
 def check(folder):

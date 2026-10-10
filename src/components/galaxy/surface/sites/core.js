@@ -317,6 +317,10 @@ export const SITES = {
     life: [
       { kind: 'gungan', n: 10, at: [250, -235], spread: 40, roam: 14, speed: 1.1, name: 'Gungan soldier', says: ['Wesa ready to do are-sa part!', 'Da shield up! Da droids no getting in here!', 'Boomas! Get da boomas!', 'Yousa stay behind da shield, okeyday?'] },
       { kind: 'kaadu', n: 5, at: [230, -220], spread: 30, roam: 18, speed: 1.4, r: 0.8 },
+      // (the game's own: Theed's birds about the palace plaza, the pelikki on the falls' rocks, runyips on the plains)
+      { kind: 'birdtheed', n: 6, at: [-232, 318], spread: 16, roam: 10, speed: 0.6, r: 0.2, solid: false },
+      { kind: 'pelikki', n: 3, at: [-128, 286], spread: 8, roam: 0, speed: 0, r: 0.4, solid: false },
+      { kind: 'runyip', n: 3, at: [140, -40], spread: 30, roam: 16, speed: 0.7, r: 1 },
       // (the army's fambaas, which carried the shield generators)
       { kind: 'fambaa', n: 2, at: [262, -262], spread: 30, roam: 10, speed: 0.5, r: 3.5 },
       { kind: 'gungan', n: 1, at: [40, 30], roam: 20, speed: 1.2, name: 'Jar Jar Binks', says: ['Meesa Jar Jar Binks!', 'Exsqueeze me, but de mostest safest place would be Gunga City.', 'How wude!', 'Mesa day startin’ pretty okee-day, with a brisky morning munchy. Den BOOM!', 'Mesa called Jar Jar Binks. Mesa your humble servant.'] },
@@ -350,6 +354,8 @@ export const SITES = {
   },
 
   kamino: {
+    // lit as the game lights its level (src/data/bf2017/light/kamino.json, gameLit.js)
+    gameLight: 'kamino',
     place: 'Tipoca City',
     line: 'Rain, and the sea, and white domes on stilts in the storm.',
     sky: {
@@ -568,6 +574,8 @@ export const SITES = {
     skyships: [{ kind: 'acclamator', metres: 752, at: [1300, 320, -1500], yaw: 0.8 }],
   },
   geonosis: {
+    // lit as the game lights its level (src/data/bf2017/light/geonosis.json, gameLit.js)
+    gameLight: 'geonosis',
     place: 'The Plains of Geonosis',
     line: 'Red rock, hive spires and a ringed, rust-coloured sky.',
     sky: {

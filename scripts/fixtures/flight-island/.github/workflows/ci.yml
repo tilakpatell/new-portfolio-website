@@ -1,0 +1,8 @@
+jobs:
+  online:
+    steps:
+      - run: node scripts/online-check.mjs --universe
+      # planet flight: begin
+      - run: node scripts/online-check.mjs --fly
+      # planet flight: end
+      - run: node scripts/flyto-check.mjs

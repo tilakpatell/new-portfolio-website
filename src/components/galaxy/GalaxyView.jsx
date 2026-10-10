@@ -4,6 +4,7 @@ import { WorldHost, useWorld } from '../../runtime';
 import galaxyModule from './module';
 import { CONTROLS_KEY, readControls } from '../universe/controls';
 import FlightSettings from '../universe/FlightSettings';
+import Hangar from '../universe/Hangar';
 import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import { placesOf } from './places';
 import '../universe/universe.css';
@@ -25,12 +26,13 @@ import KeysCard from './KeysCard';
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
 // the flight cluster (FlightCluster.jsx: radar, deflectors, speed, kills,
 // target and the crew's powers), the touch buttons, the flight settings and a line on how to
-// fly until you do, and the war's battle on here in a line (WarHud.jsx) with
+// fly until you do, the Shipyard's button beside the settings' (its yard is the
+// page's: Galaxy.jsx), and the war's battle on here in a line (WarHud.jsx) with
 // its end card when it's decided (BattleEnd.jsx).
 // While the 3D loads the box says so; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
-export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap, oath = null, found = [], course = null }) {
+export default function GalaxyView({ system, here, handle, ship, loadout, build = null, tune = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap, oath = null, found = [], course = null, hangar = false, onHangar = null }) {
   const labels = useRef({});
   const stars = useRef({});
   const [aim, setAim] = useState(null); // the star the nose is on
@@ -50,7 +52,17 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
     setControlsState(next);
     local.set(CONTROLS_KEY, next);
   };
-  const openSettings = useCallback((on) => setSettingsOpen(on), []);
+  // (the flight settings and the Shipyard's door are in the same corner: one at a time, the yard opened by its key as well as by its button)
+  const openSettings = useCallback(
+    (on) => {
+      setSettingsOpen(on);
+      if (on) onHangar?.(false);
+    },
+    [onHangar],
+  );
+  useEffect(() => {
+    if (hangar) setSettingsOpen(false);
+  }, [hangar]);
   const events = useRef(onEvent);
   events.current = onEvent;
   const reduced = useReducedMotion();
@@ -61,6 +73,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       ship,
       loadout,
       build,
+      tune,
       controls,
       labels,
       stars,
@@ -144,6 +157,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       jump: (id) => view.current?.jump?.(id) ?? false,
       goTo: (id) => view.current?.goTo?.(id) ?? false,
       flyTo: (id) => view.current?.flyTo?.(id) ?? false, // (another pilot here: the roster's “Fly to”)
+      starfighter: (id, o) => view.current?.starfighter?.(id, o) ?? false, // (a space level's Starfighter Assault here: ?battle=starfighter)
       escape: () => view.current?.escape?.() ?? false,
       dive: () => view.current?.dive?.() ?? false,
       host: () => host.current,
@@ -297,6 +311,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
                 </button>
               )}
               <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />
+              {onHangar && <Hangar open={hangar} onOpen={onHangar} />}
               <button type="button" className="galaxy-keysbtn" onClick={toggleKeys} aria-expanded={showKeys}>
                 Keys
               </button>

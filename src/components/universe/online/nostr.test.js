@@ -1,8 +1,78 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { schnorr } from '@noble/secp256k1';
 import { KIND, checkEvent, hex, joinAsVisitor, joinRoom, setIdentity, signEvent, visitKeys } from './nostr';
-// (in-memory relays that check, answer and pass events on as the real ones do)
-import { createRelays } from './fakeRelays.testkit';
+
+// In-memory relays that behave like the real ones: they check each event's
+// id and signature, answer OK, and pass it on to every matching listener
+// (the sender included); a CLOSE ends one listening.
+function createRelays(urls) {
+  const relays = Object.fromEntries(urls.map((u) => [u, { clients: new Set(), down: false, log: [], reqs: [] }]));
+  let made = 0;
+  class FakeSocket {
+    constructor(url) {
+      made += 1;
+      this.relay = relays[url];
+      this.readyState = 0;
+      this.subs = new Map();
+      setTimeout(() => {
+        if (!this.relay || this.relay.down) {
+          this.readyState = 3;
+          this.onclose?.();
+          return;
+        }
+        this.readyState = 1;
+        this.relay.clients.add(this);
+        this.onopen?.();
+      }, 0);
+    }
+    deliver(msg) {
+      setTimeout(() => this.readyState === 1 && this.onmessage?.({ data: JSON.stringify(msg) }), 0);
+    }
+    send(s) {
+      const msg = JSON.parse(s);
+      if (msg[0] === 'REQ') {
+        this.subs.set(msg[1], msg[2]);
+        this.relay?.reqs.push(msg);
+      }
+      if (msg[0] === 'CLOSE') this.subs.delete(msg[1]);
+      if (msg[0] !== 'EVENT') return;
+      const ev = msg[1];
+      checkEvent(ev).then((ok) => {
+        this.deliver(['OK', ev.id, ok, ok ? '' : 'invalid: bad signature']);
+        if (!ok) return;
+        this.relay.log.push(ev);
+        pass(this.relay, ev);
+      });
+    }
+    close() {
+      if (this.readyState === 3) return;
+      this.readyState = 3;
+      this.relay?.clients.delete(this);
+      setTimeout(() => this.onclose?.(), 0);
+    }
+  }
+  // (a filter with '#g' passes only events tagged with one of its cells; one without, any)
+  const inCells = (f, ev) => !f['#g'] || ev.tags.some((t) => t[0] === 'g' && f['#g'].includes(t[1]));
+  const pass = (relay, ev) => {
+    for (const c of relay.clients)
+      for (const [id, f] of c.subs) if (f.kinds.includes(ev.kind) && ev.tags.some((t) => t[0] === 'x' && f['#x'].includes(t[1])) && inCells(f, ev)) c.deliver(['EVENT', id, ev]);
+  };
+  return {
+    relays,
+    WebSocket: FakeSocket,
+    made: () => made, // sockets opened to the relays, all told
+    // an event straight to the listeners, unchecked (a relay up to no good)
+    inject: (url, ev) => pass(relays[url], ev),
+    // an event to every listening, whatever its filter (a relay that ignores '#g')
+    leak(url, ev) {
+      for (const c of relays[url].clients) for (const [id] of c.subs) c.deliver(['EVENT', id, ev]);
+    },
+    setDown(url, down) {
+      relays[url].down = down;
+      if (down) for (const c of [...relays[url].clients]) c.close();
+    },
+  };
+}
 
 const URLS = ['wss://one.example', 'wss://two.example'];
 const rooms = [];
@@ -239,5 +309,192 @@ describe('joinRoom over Nostr relays', () => {
     await expect(a.ready).rejects.toThrow();
     net.setDown(URLS[1], false);
     await until(() => statuses.includes('online'), 4000); // (it tries again, a second on)
+  });
+});
+
+describe('a room heard by cell', () => {
+  const reqs = (net) => net.relays[URLS[0]].reqs;
+  const gOf = (ev) => ev.tags.filter((t) => t[0] === 'g').map((t) => t[1]);
+
+  it('a room joined without cells asks for exactly what it always did', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    await a.ready;
+    const [req] = reqs(net);
+    expect(req[0]).toBe('REQ');
+    expect(Object.keys(req[2])).toEqual(['kinds', '#x', 'since']);
+    expect(req[2]).toEqual({ kinds: [KIND], '#x': ['test-app/room-1'], since: expect.any(Number) });
+    a.action('hi').send({ n: 'Han' });
+    await until(() => net.relays[URLS[0]].log.some((ev) => ev.content.includes('"hi"')));
+    for (const ev of net.relays[URLS[0]].log) expect(gOf(ev)).toEqual([]);
+  });
+
+  it('asks for its cells, says its own, and asks again only when the set changes', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0', 'hoth/1,0'] });
+    a.setCell('hoth/0,0');
+    await a.ready;
+    expect(reqs(net)).toHaveLength(1);
+    expect(reqs(net)[0][2]).toEqual({ kinds: [KIND], '#x': ['test-app/room-1'], '#g': ['hoth/0,0', 'hoth/1,0'], since: expect.any(Number) });
+    a.action('hi').send({ n: 'Han' });
+    await until(() => net.relays[URLS[0]].log.some((ev) => ev.content.includes('"hi"')));
+    for (const ev of net.relays[URLS[0]].log) expect(gOf(ev)).toEqual(['hoth/0,0']);
+    a.setCells(['hoth/1,0', 'hoth/0,0']); // (the same set: the relays count REQs)
+    await settle(20);
+    expect(reqs(net)).toHaveLength(1);
+    a.setCells(['hoth/1,0', 'hoth/2,0']);
+    await settle(20); // (asked on the next tick, once however often it's said in a frame)
+    expect(reqs(net)).toHaveLength(2);
+    expect(reqs(net)[1][1]).toBe(reqs(net)[0][1]); // (under the same id: it replaces the first)
+    expect(reqs(net)[1][2]['#g']).toEqual(['hoth/1,0', 'hoth/2,0']);
+  });
+
+  it('a relay that drops asks, when it’s back, for the cells of the moment', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0'] });
+    await a.ready;
+    net.setDown(URLS[0], true);
+    await settle(20); // (the socket's closed, and waiting to try again)
+    a.setCells(['hoth/7,7']);
+    net.setDown(URLS[0], false);
+    join(net); // (a room joining tries a relay that's down at once)
+    const mine = () => reqs(net).filter((r) => r[1] === reqs(net)[0][1]);
+    await until(() => mine().length === 2);
+    expect(mine()[1][2]['#g']).toEqual(['hoth/7,7']);
+  });
+
+  it('a pilot crossing into the next cell is heard by a watcher round both, not by one round the old', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0'] });
+    a.setCell('hoth/0,0');
+    const both = join(net, { cells: () => ['hoth/0,0', 'hoth/1,0'] });
+    const old = join(net, { cells: () => ['hoth/0,0'] });
+    await Promise.all([a.ready, both.ready, old.ready]);
+    a.action('pose').send([1, 0, 0]);
+    await until(() => both.got.some((m) => m.ns === 'pose') && old.got.some((m) => m.ns === 'pose'));
+    a.setCell('hoth/1,0');
+    a.setCells(['hoth/1,0', 'hoth/0,0']);
+    a.action('pose').send([2049, 0, 0]);
+    await until(() => both.got.some((m) => m.ns === 'pose' && m.data[0] === 2049));
+    await settle();
+    expect(both.got.filter((m) => m.ns === 'pose').map((m) => m.data[0])).toEqual([1, 2049]);
+    expect(old.got.filter((m) => m.ns === 'pose').map((m) => m.data[0])).toEqual([1]);
+  });
+
+  it('hands on the cell a word was tagged with, the sender’s own, so a reader can hold a pose to it', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    a.setCell('hoth/2,3');
+    const b = join(net);
+    const tags = [];
+    for (const ns of ['pose', 'hi']) b.makeAction(ns).onMessage = (data, { tag }) => tags.push([ns, tag]);
+    await Promise.all([a.ready, b.ready]);
+    a.action('pose').send([5000, 0, 7000]);
+    await until(() => tags.some(([ns]) => ns === 'pose'));
+    expect(tags.find(([ns]) => ns === 'pose')[1]).toBe('hoth/2,3');
+    // (a room whose pilots say no cell hands on none)
+    const c = join(net);
+    await c.ready;
+    c.action('hi').send({ n: 'Han' });
+    await until(() => tags.some(([ns]) => ns === 'hi'));
+    expect(tags.find(([ns]) => ns === 'hi')[1]).toBeNull();
+  });
+
+  it('a message for a pilot cells away carries their cell, so it passes their filter', async () => {
+    const net = createRelays(URLS);
+    const a = join(net); // (hears everyone)
+    a.setCell('hoth/0,0');
+    const b = join(net, { cells: () => ['hoth/5,5'] });
+    b.setCell('hoth/5,5');
+    await Promise.all([a.ready, b.ready]);
+    b.action('pose').send([10240, 0, 10240]);
+    await until(() => a.got.some((m) => m.ns === 'pose' && m.from === b.selfId));
+    a.action('ally').send({ t: 'ask' }, { target: b.selfId });
+    await until(() => b.got.some((m) => m.ns === 'ally'));
+    const sent = net.relays[URLS[0]].log.find((ev) => ev.pubkey === a.selfId && ev.content.includes('"ally"'));
+    expect(gOf(sent)).toEqual(['hoth/0,0', 'hoth/5,5']);
+    // and what isn't for them, from cells away, they don't hear
+    a.action('hi').send({ n: 'Han' });
+    await settle();
+    expect(b.got.some((m) => m.ns === 'hi')).toBe(false);
+  });
+
+  it('a pilot’s goodbye carries the cell they’re in, so those round them hear they’ve gone', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0'] });
+    a.setCell('hoth/3,3');
+    const b = join(net, { cells: () => ['hoth/0,0'] });
+    await Promise.all([a.ready, b.ready]);
+    await settle(); // (the goodbye's signed ahead, in 3,3)
+    a.setCell('hoth/0,0'); // (and signed again for the cell they're in now)
+    a.action('hi').send({ n: 'Han' }); // (a word that's checked: a goodbye is believed only after one)
+    await until(() => b.got.some((m) => m.ns === 'hi'));
+    await settle();
+    await a.leave();
+    await until(() => b.left.includes(a.selfId));
+  });
+
+  it('setCells with nothing, after none, asks nothing again (all is all)', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    await a.ready;
+    a.setCells([]);
+    a.setCells(null);
+    await settle(20);
+    expect(reqs(net)).toHaveLength(1);
+  });
+
+  it('setCells many times in a frame asks each relay once, and not at all when it ends where it began', async () => {
+    const net = createRelays(URLS);
+    const a = join(net, { cells: () => ['hoth/0,0'] });
+    await a.ready;
+    for (let i = 1; i <= 5; i++) a.setCells([`hoth/${i},0`]);
+    await settle(20);
+    expect(reqs(net)).toHaveLength(2);
+    expect(reqs(net)[1][2]['#g']).toEqual(['hoth/5,0']);
+    a.setCells(['hoth/9,9']);
+    a.setCells(['hoth/5,0']);
+    await settle(20);
+    expect(reqs(net)).toHaveLength(2);
+  });
+
+  it('an event from a cell not listened for (a relay that ignores #g, or a REQ not yet replaced) is dropped and counted', async () => {
+    const net = createRelays(URLS);
+    const b = join(net, { cells: () => ['hoth/0,0'] });
+    await b.ready;
+    const { secretKey, publicKey } = schnorr.keygen();
+    const x = hex(publicKey);
+    const say = (g, n) => signEvent(secretKey, x, { tags: [['x', 'test-app/room-1'], ...(g ? [['g', g]] : [])], content: JSON.stringify([['hi', { n }]]) });
+    net.leak(URLS[0], await say('hoth/9,9', 'Far'));
+    net.leak(URLS[0], await say(null, 'Nowhere'));
+    await settle();
+    expect(b.got).toEqual([]);
+    expect(b.stats().offCell).toBe(2);
+    net.leak(URLS[0], await say('hoth/0,0', 'Near'));
+    await until(() => b.got.some((m) => m.data.n === 'Near'));
+    expect(b.stats().offCell).toBe(2);
+  });
+
+  it('a message for a pilot whose cell isn’t known goes out with the sender’s own', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    a.setCell('hoth/0,0');
+    const b = join(net);
+    await until(() => a.joined.includes(b.selfId) && b.joined.includes(a.selfId));
+    a.action('ally').send({ t: 'ask' }, { target: b.selfId });
+    await until(() => b.got.some((m) => m.ns === 'ally'));
+    const sent = net.relays[URLS[0]].log.find((ev) => ev.pubkey === a.selfId && ev.content.includes('"ally"'));
+    expect(gOf(sent)).toEqual(['hoth/0,0']);
+  });
+
+  it('a message for a pilot whose words carry no cell goes as it always did', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    const b = join(net);
+    await until(() => a.joined.includes(b.selfId) && b.joined.includes(a.selfId));
+    a.action('ally').send({ t: 'ask' }, { target: b.selfId });
+    await until(() => b.got.some((m) => m.ns === 'ally'));
+    const sent = net.relays[URLS[0]].log.find((ev) => ev.pubkey === a.selfId && ev.content.includes('"ally"'));
+    expect(gOf(sent)).toEqual([]);
   });
 });

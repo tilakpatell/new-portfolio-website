@@ -204,7 +204,9 @@ export function createShow(scene, { renderer, tier = 'high', layout, people, fx 
       const blade = CAST[p.kind]?.blade;
       if (blade?.type !== 'saber' || p.hp <= 0 || !rooms.shown(p.room)) continue;
       seen.add(p.id);
-      hold(bladeFor(p.id, bladeColour(blade.colour)), p, p.yaw ?? 0, false, bladeDir(p.yaw ?? 0, null), FIGHTING.has(p.mode) || duel, people.handOf?.(p.id) ?? null);
+      // (lit in a fight, a scene's duel, or the blade fight rules/play/duel.js runs, scripted or not)
+      const lit = FIGHTING.has(p.mode) || duel || Boolean(p.mind?.duel) || p.hostile === true;
+      hold(bladeFor(p.id, bladeColour(blade.colour)), p, p.yaw ?? 0, false, bladeDir(p.yaw ?? 0, null), lit, people.handOf?.(p.id) ?? null);
     }
     for (const id of [...blades.keys()]) if (!seen.has(id)) dropBlade(id);
     sabers.choke({ x: at.x, y: at.y + 1.6, z: at.z }, clock < chokeUntil);

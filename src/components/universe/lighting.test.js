@@ -111,7 +111,7 @@ describe('the worlds in their stars’ light', () => {
   it('far out past the stars the light falls toward its floor', () => {
     // (out past the main map's edge on the far side from the Rick and Morty
     // sector, layout.js: past both their suns' reaches since the spread)
-    const l = lightAt([0, 0, 60000]);
+    const l = lightAt([0, 0, 90000]);
     expect(l.key.strength).toBeLessThan(1.5);
     expect(l.key.strength).toBeGreaterThanOrEqual(0.9);
   });

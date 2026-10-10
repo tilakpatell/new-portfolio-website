@@ -143,3 +143,107 @@ describe('installing a world’s pack', () => {
     expect(await bare.pack('/earth')).toBeNull();
   });
 });
+
+describe('a pack with files from the asset bucket', () => {
+  const BASE = 'https://bucket.test/assets';
+  const FAR = { url: `${BASE}/aaaaaaaaaaaa/models/earth/big.glb`, bytes: 300, hash: 'aaaaaaaaaaaa', local: '/models/earth/big.glb' };
+  function farSite({ down = false } = {}) {
+    const files = [...FILES.slice(0, 2), FAR];
+    const m = manifestOf('r1', files);
+    const asked = [];
+    const fetch = vi.fn(async (url, init) => {
+      url = String(url);
+      if (url.startsWith('/packs/index.json')) return Response.json({ '/earth': { slug: 'earth', bytes: m.bytes, v: 'r1' } });
+      if (url.startsWith('/packs/earth.json')) return Response.json(m);
+      asked.push({ url, mode: init?.mode });
+      if (url.startsWith(BASE)) {
+        if (down) throw new TypeError('Failed to fetch');
+        return new Response(new Uint8Array(300));
+      }
+      if (url === FAR.local) return new Response(new Uint8Array(300));
+      const f = FILES.find((x) => x.url === url);
+      return f ? new Response(new Uint8Array(f.bytes)) : new Response('no', { status: 404 });
+    });
+    return { fetch, asked };
+  }
+
+  it('fetches it across origins with CORS, caches it under its remote URL, and counts the world installed', async () => {
+    const s = farSite();
+    const { inst, caches } = make(s);
+    await inst.install('/earth');
+    expect(s.asked).toContainEqual({ url: FAR.url, mode: 'cors' });
+    expect(s.asked.filter((a) => !a.url.startsWith(BASE)).every((a) => a.mode === undefined)).toBe(true);
+    expect(caches.all.get(cacheName('earth', 'r1')).has(FAR.url)).toBe(true);
+    expect(await inst.installed('/earth')).toEqual({ v: 'r1', bytes: 600 });
+  });
+
+  it('takes the site’s copy when the bucket can’t be reached, kept under the same remote URL', async () => {
+    const s = farSite({ down: true });
+    const { inst, caches } = make(s);
+    await inst.install('/earth');
+    expect(s.asked.map((a) => a.url)).toEqual(expect.arrayContaining([FAR.url, FAR.local]));
+    const cache = caches.all.get(cacheName('earth', 'r1'));
+    expect(cache.has(FAR.url)).toBe(true);
+    expect(cache.has(FAR.local)).toBe(false);
+    expect(await inst.installed('/earth')).toEqual({ v: 'r1', bytes: 600 });
+  });
+
+  it('asks a bucket that failed once no more, for this install or the page’s loads, and waits no retry for it', async () => {
+    const far = (i) => ({ url: `${BASE}/aaaaaaaaaaa${i}/models/earth/far${i}.glb`, bytes: 10, hash: `aaaaaaaaaaa${i}`, local: `/models/earth/far${i}.glb` });
+    const files = [far(1), far(2), far(3)];
+    const m = manifestOf('r2', files);
+    const asked = [];
+    const fetch = vi.fn(async (url) => {
+      url = String(url);
+      if (url.startsWith('/packs/index.json')) return Response.json({ '/earth': { slug: 'earth', bytes: m.bytes, v: 'r2' } });
+      if (url.startsWith('/packs/earth.json')) return Response.json(m);
+      asked.push(url);
+      if (url.startsWith(BASE)) throw new TypeError('Failed to fetch');
+      return new Response(new Uint8Array(10));
+    });
+    let down = false;
+    const bucket = { isDown: () => down, markDown: vi.fn(() => (down = true)) };
+    const { inst } = make({ fetch }, fakeCaches(), { concurrency: 1, retryDelay: 60000, bucket });
+    await inst.install('/earth');
+    expect(asked.filter((u) => u.startsWith(BASE))).toHaveLength(1);
+    expect(asked.filter((u) => !u.startsWith(BASE))).toEqual(['/models/earth/far1.glb', '/models/earth/far2.glb', '/models/earth/far3.glb']);
+    expect(bucket.markDown).toHaveBeenCalled();
+  });
+
+  it('keeps asking the bucket for a file only it holds (no copy on the site), however the bucket did before', async () => {
+    const only = { url: `${BASE}/bbbbbbbbbbbb/models/galaxy/crew/luke.glb`, bytes: 50, hash: 'bbbbbbbbbbbb', local: '/models/galaxy/crew/luke.glb', remoteOnly: true };
+    const m = manifestOf('r3', [only]);
+    let n = 0;
+    const asked = [];
+    const fetch = vi.fn(async (url) => {
+      url = String(url);
+      if (url.startsWith('/packs/index.json')) return Response.json({ '/earth': { slug: 'earth', bytes: m.bytes, v: 'r3' } });
+      if (url.startsWith('/packs/earth.json')) return Response.json(m);
+      asked.push(url);
+      if (url.startsWith(BASE) && ++n === 1) throw new TypeError('Failed to fetch');
+      return url.startsWith(BASE) ? new Response(new Uint8Array(50)) : new Response('no', { status: 404 });
+    });
+    const bucket = { isDown: () => true, markDown: vi.fn() };
+    const { inst, caches } = make({ fetch }, fakeCaches(), { bucket });
+    await inst.install('/earth');
+    expect(asked).toEqual([only.url, only.url]);
+    expect(caches.all.get(cacheName('earth', 'r3')).has(only.url)).toBe(true);
+    expect(bucket.markDown).not.toHaveBeenCalled();
+  });
+
+  it('takes a body short of the manifest’s bytes as a failure, never a cached half file', async () => {
+    const f = { url: '/models/earth/cut.glb', bytes: 100, hash: 'c'.repeat(16) };
+    const m = manifestOf('r4', [f]);
+    let n = 0;
+    const fetch = vi.fn(async (url) => {
+      url = String(url);
+      if (url.startsWith('/packs/index.json')) return Response.json({ '/earth': { slug: 'earth', bytes: m.bytes, v: 'r4' } });
+      if (url.startsWith('/packs/earth.json')) return Response.json(m);
+      return new Response(new Uint8Array(++n === 1 ? 40 : 100));
+    });
+    const { inst, caches } = make({ fetch });
+    await inst.install('/earth');
+    expect(n).toBe(2);
+    expect(caches.all.get(cacheName('earth', 'r4')).get(f.url).body.length).toBe(100);
+  });
+});

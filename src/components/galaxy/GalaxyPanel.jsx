@@ -12,9 +12,14 @@ import { FILMS, eraById, eraOf, filmLabel, filmsOf, goalsOf, systemById, yearLab
 import { placesOf } from './places';
 import { Oath, SystemWar } from './WarCard';
 import { useWar } from './useWar';
+import { Film } from '../../runtime/hud';
+import { filmFor, tilesFor } from '../../lib/bf2017/films';
+import '../../lib/bf2017/fonts.css';
+import { landLine } from './surface/landLine';
 
 // Beside the galaxy (a bottom sheet on a phone): the system you're in, as
-// its card: where it is in the galaxy, its era and the films it's in, the
+// its card: the game's loading film of it (Battlefront II's, where the game
+// went there), where it is in the galaxy, its era and the films it's in, the
 // moment it's shown at, what it is, a line from the films (with the
 // recording, where there is one, or else the line made in the speaker's
 // voice), its facts, and its mission (a briefing
@@ -45,6 +50,22 @@ function Ships({ ship, onShip }) {
   );
 }
 
+// the game's menu tile for a mode the galaxy has here: a galactic assault
+// plays as the 2017 game's own multiplayer tile does
+function ModeTile({ game }) {
+  const assault = [game, ...(game.also ?? [])].find((x) => x.to?.includes('mission=assault'));
+  const tile = assault ? tilesFor('assault')[0] : null;
+  if (!tile) return null;
+  return (
+    <Link to={assault.to} className="galaxy-mode-tile">
+      <Film film={tile} className="galaxy-mode-tile-film" />
+      <span className="galaxy-mode-tile-text">
+        <b>Galactic Assault</b> {assault.title}
+      </span>
+    </Link>
+  );
+}
+
 function Mission({ system }) {
   const g = system.game;
   const live = g.status === 'live';
@@ -63,6 +84,7 @@ function Mission({ system }) {
         {g.role} · {FILMS[g.film].title}
       </p>
       <p className="galaxy-mission-pitch">{g.pitch}</p>
+      <ModeTile game={g} />
       <div className="mt-3 flex flex-wrap gap-2">
         {live ? (
           <Link to={g.to} className="btn btn-primary">
@@ -142,7 +164,7 @@ function Quote({ quote }) {
   );
 }
 
-export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false, oath = null, suggested = null, onSwear, found = [] }) {
+export default function GalaxyPanel({ system, at, ship, onShip, onHangar = null, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false, oath = null, suggested = null, onSwear, found = [] }) {
   const crew = crewById(ship);
   const panel = useRef(null);
   const refocus = useRef(false);
@@ -201,6 +223,7 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
           )}
         </p>
       )}
+      <Film film={filmFor({ system: system.id })} className="galaxy-film-card" label={`${system.name}, from Star Wars Battlefront II’s loading film`} />
       <h2 className="universe-title galaxy-title">{system.name}</h2>
       <p className="galaxy-where">
         {[system.region, system.sector, system.grid && `Grid ${system.grid}`].filter(Boolean).join(' · ')}
@@ -224,6 +247,8 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
             <RiArrowDownLine className="h-4 w-4" aria-hidden="true" /> Land on {system.id === 'bespin' ? 'Cloud City' : system.name}
           </button>
         )}
+        {/* (what's played down there: the landing's menu, surface/modes.js) */}
+        {crew && onLand && landLine(system) && <p className="w-full text-xs text-muted">Down there: {landLine(system)} · Free roam</p>}
         <button type="button" className={crew && onLand ? 'btn btn-ghost' : 'btn btn-primary'} onClick={onMap}>
           <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Plot a course
         </button>
@@ -302,6 +327,13 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
       {crew && (
         <p className="mt-5 text-xs leading-relaxed text-muted">
           Flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}.{' '}
+          {onHangar && (
+            <>
+              <button type="button" className="universe-back inline galaxy-yard-link" onClick={onHangar}>
+                Open the shipyard
+              </button>{' '}
+            </>
+          )}
           <button type="button" className="universe-back inline" onClick={() => onShip(null)}>
             Change ship
           </button>

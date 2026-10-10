@@ -1,4 +1,4 @@
-/* global window, document, requestAnimationFrame, WebGL2RenderingContext, WebGLRenderingContext, HTMLImageElement */
+/* global window, document, requestAnimationFrame, WebGL2RenderingContext, WebGLRenderingContext, HTMLImageElement, HTMLCanvasElement */
 // How smooth the worlds draw, measured in a real browser on the real
 // graphics chip: every frame's time, and what the graphics chip was sent in
 // it (shaders linked, pictures and buffers uploaded, draws and triangles),
@@ -16,13 +16,16 @@
 // (?gpu=webgl|webgpu: a port's frame-time table is two runs of the same
 // journey; a 'glsl' world is on the classic renderer either way, and each
 // journey's report names the backend it was actually drawn on), OUT is
-// where the JSON report goes. Each journey
-// prints a table: a row per phase (load, idle, move...), with the frame
-// times' spread, the hitches (frames over 50 and 100 ms), and what the
-// worst frames were spent on.
+// where the JSON report goes.
+// planet flight: begin
+// FLY picks the /fly journey's planet (default Hoth).
+// planet flight: end
+// Each journey prints a table: a row per phase (load, idle, move...), with the frame
+// times' spread, the hitches (frames over 50 and 100 ms), what the worst
+// frames were spent on, and `sizes`, the 3D canvases resized (each one
+// waits on the graphics chip: a stall with no GL call named in it).
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 
 const argv = process.argv.slice(2);
 const profile = Boolean(process.env.PROFILE);
@@ -37,16 +40,16 @@ const [vw, vh, vdpr] = (process.env.VIEW ?? '1470x956@2').match(/(\d+)x(\d+)(?:@
 // uploads) counted and timed per frame, draws and triangles counted, and
 // the browser's long animation frames with the scripts in them.
 function recorder() {
-  const zero = () => ({ links: 0, compiles: 0, glMs: 0, drawMs: 0, tex: 0, texBytes: 0, buf: 0, bufBytes: 0, draws: 0, tris: 0, slow: '' });
+  const zero = () => ({ links: 0, compiles: 0, glMs: 0, drawMs: 0, tex: 0, texBytes: 0, buf: 0, bufBytes: 0, draws: 0, tris: 0, slow: '', sized: new Set() });
   let cur = zero();
   // (mid: the shaders three made in the middle of a frame so far, as the
   // frame guard counts them in development: lib/three/frameGuard.js)
-  const frames = []; // [t, links, texUploads, texMB, bufMB, draws, tris, glMs, drawMs, slow, mid]
+  const frames = []; // [t, links, texUploads, texMB, bufMB, draws, tris, glMs, drawMs, slow, mid, sizes]
   const stacks = new Map(); // a slow GL call's callers → ms
   const loaf = [];
   const tick = () => {
     const c = cur;
-    frames.push([performance.now(), c.links, c.tex, c.texBytes / 1048576, c.bufBytes / 1048576, c.draws, c.tris, c.glMs, c.drawMs, c.slow, window.__tpGuardSlips ?? 0]);
+    frames.push([performance.now(), c.links, c.tex, c.texBytes / 1048576, c.bufBytes / 1048576, c.draws, c.tris, c.glMs, c.drawMs, c.slow, window.__tpGuardSlips ?? 0, c.sized.size]);
     cur = zero();
     requestAnimationFrame(tick);
   };
@@ -108,6 +111,38 @@ function recorder() {
     return w * h * 4;
   };
   const TRIANGLES = 4;
+  // (a WebGL canvas given a new width or height: its drawing buffer made
+  // again, which waits on the graphics chip, a stall with no GL call in it;
+  // counted once a canvas a frame)
+  const webgl = new WeakSet();
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, ...a) {
+    const ctx = getContext.call(this, type, ...a);
+    if (ctx && /webgl/.test(type)) webgl.add(this);
+    return ctx;
+  };
+  for (const k of ['width', 'height']) {
+    const d = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, k);
+    Object.defineProperty(HTMLCanvasElement.prototype, k, {
+      configurable: true,
+      enumerable: d.enumerable,
+      get() {
+        return d.get.call(this);
+      },
+      set(v) {
+        if (!webgl.has(this) || d.get.call(this) === v >>> 0) {
+          d.set.call(this, v);
+          return;
+        }
+        const t0 = performance.now();
+        d.set.call(this, v);
+        const ms = performance.now() - t0;
+        cur.sized.add(this);
+        cur.glMs += ms;
+        if (ms > 20) cur.slow += `canvas ${k} ${Math.round(ms)}ms `;
+      },
+    });
+  }
   for (const C of [typeof WebGL2RenderingContext !== 'undefined' ? WebGL2RenderingContext : null, typeof WebGLRenderingContext !== 'undefined' ? WebGLRenderingContext : null]) {
     if (!C) continue;
     const p = C.prototype;
@@ -251,6 +286,7 @@ function phases({ frames, marks, loaf }) {
       bufMB: r1(sum(4)),
       draws: Math.round(sum(5) / Math.max(1, fs.length)),
       ktris: Math.round(sum(6) / Math.max(1, fs.length) / 1000),
+      sizes: sum(11),
       worst,
     });
   }
@@ -287,6 +323,33 @@ const worldPage = (route, { ready = canvasUp, move = 'KeyW' } = {}) =>
   };
 
 const JOURNEYS = {
+  // planet flight: begin (scripts/flight-island.mjs removes this block)
+  // the planet flight (/fly/hoth): the ground streamed in at the start, then
+  // 300 m/s north for 14 s, from the range onto the plains (a biome boundary
+  // at z ≈ 1000), into the glacier (z ≈ −500), over Echo Base (z −800) and
+  // back onto the plains (z ≈ −1550), and a long
+  // bank round (the ship's dev hook, expanse/flight/module.js's __FLIGHT__)
+  async fly(page, mark) {
+    mark('load');
+    // (FLY names another planet to fly)
+    await page.goto(`${this.base}/${this.q}#/fly/${process.env.FLY ?? 'hoth'}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.__FLIGHT__ && window.__RUNTIME__?.status === 'on', null, { timeout: 240000 });
+    mark('settle');
+    await page.waitForFunction(() => window.__FLIGHT__.stats().leaves > 100, null, { timeout: 120000 }).catch(() => {});
+    await wait(page, 4000);
+    mark('idle');
+    await wait(page, 4000);
+    mark('fly');
+    await page.evaluate(() => (window.__FLIGHT__.ship = { speed: 300, pitch: 0, roll: 0 }));
+    await page.keyboard.down('ShiftLeft');
+    await wait(page, 14000);
+    mark('bank');
+    await hold(page, 'KeyD', 1200);
+    await wait(page, 6000);
+    await page.keyboard.up('ShiftLeft');
+    mark('end');
+  },
+  // planet flight: end
   async universe(page, mark) {
     mark('load');
     await page.goto(`${this.base}/${this.q}#/universe`, { waitUntil: 'domcontentloaded' });
@@ -421,7 +484,9 @@ const JOURNEYS = {
   avengers: worldPage('/avengers'),
   shire: worldPage('/middle-earth/shire'),
   abq: worldPage('/albuquerque'),
-  c137: worldPage('/c-137'),
+  // (ready once the world's canvas is live, its loading screen gone: the
+  // galaxy behind the page is a big canvas long before the street is)
+  c137: worldPage('/c-137', { ready: (p) => p.waitForFunction(() => document.querySelector('.rm-world-canvas[data-on]'), null, { timeout: 300000 }) }),
   cybertron: worldPage('/cybertron'),
   invincible: worldPage('/invincible'),
   earth: worldPage('/earth'),
@@ -478,19 +543,21 @@ if (!base) {
   await server.listen();
   base = 'http://127.0.0.1:5294';
 }
-const chrome = process.env.CHROME ?? `${homedir()}/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
-const args = process.platform === 'darwin' ? ['--use-angle=metal', '--disable-gpu-vsync', '--disable-frame-rate-limit', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'] : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
-// (WebGPU on: Chromium's own chip on a desktop, SwiftShader's software
-// adapter on a Linux box with no display, whose times are software's)
-// (and Blink's experimental WebGPU IDL off, as a visitor's Chrome has it:
-// its draft texture-view swizzle throws on three's every frame)
-if (gpu === 'webgpu') args.push('--enable-unsafe-webgpu', '--disable-blink-features=WebGPUExperimentalFeatures', '--enable-features=Vulkan', ...(process.platform === 'linux' && !process.env.DISPLAY ? ['--use-webgpu-adapter=swiftshader'] : []));
+const { adapterFor, angleFor, findChromium, launchArgs } = await import('./lib/chromium.mjs');
+const chrome = findChromium();
+if (!chrome) throw new Error('no Chromium (set CHROME=/path/to/chrome)');
+// (the machine's own chip, uncapped, so a frame's time is what it cost;
+// scripts/lib/chromium.mjs)
+const args = launchArgs({ angle: angleFor(), webgpu: gpu === 'webgpu', adapter: adapterFor(), uncapped: true });
+if (process.platform === 'darwin') args.push('--enable-gpu-rasterization');
 const browser = await chromium.launch({ executablePath: chrome, args });
 const report = {};
 mkdirSync(out, { recursive: true });
 try {
   for (const name of names) {
     const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: vdpr || 1 });
+    // (Vite's first transform of the whole site, on a busy machine, runs past Playwright's 30 s)
+    ctx.setDefaultNavigationTimeout(240000);
     await ctx.addInitScript(() => {
       const set = (k, v) => window.localStorage.setItem(k, v);
       set('tp-intro', '1');
@@ -558,10 +625,10 @@ try {
     report[name] = { backend: gpu ?? 'default', drawnOn, rows, errors, failed, secs: Math.round((Date.now() - t0) / 1000), readyS: ready ? r1((ready[1] - data.origin) / 1000) : null, heapMB: data?.heap ? Math.round(data.heap / 1048576) : null };
     console.log(`\n== ${name}${failed ? `  (stopped: ${failed})` : ''}  on ${drawnOn ?? '?'}  ready ${report[name].readyS}s  total ${report[name].secs}s  heap ${report[name].heapMB} MB${errors.length ? `  errors ${errors.length}` : ''}`);
     const pw = Math.max(9, ...rows.map((r) => r.phase.length));
-    console.log(`${'phase'.padEnd(pw)}  secs  fps    p50   p95   p99   max  >50 >100 links   mid texMB bufMB draws ktris`);
+    console.log(`${'phase'.padEnd(pw)}  secs  fps    p50   p95   p99   max  >50 >100 links   mid texMB bufMB draws ktris sizes`);
     for (const r of rows) {
       console.log(
-        [r.phase.padEnd(pw), String(r.secs).padStart(5), String(r.fps).padStart(5), String(r.p50).padStart(6), String(r.p95).padStart(5), String(r.p99).padStart(5), String(r.max).padStart(5), String(r.over50).padStart(4), String(r.over100).padStart(4), String(r.links).padStart(5), String(r.mid).padStart(5), String(r.texMB).padStart(5), String(r.bufMB).padStart(5), String(r.draws).padStart(5), String(r.ktris).padStart(5)].join(' '),
+        [r.phase.padEnd(pw), String(r.secs).padStart(5), String(r.fps).padStart(5), String(r.p50).padStart(6), String(r.p95).padStart(5), String(r.p99).padStart(5), String(r.max).padStart(5), String(r.over50).padStart(4), String(r.over100).padStart(4), String(r.links).padStart(5), String(r.mid).padStart(5), String(r.texMB).padStart(5), String(r.bufMB).padStart(5), String(r.draws).padStart(5), String(r.ktris).padStart(5), String(r.sizes).padStart(5)].join(' '),
       );
     }
     for (const r of rows) {

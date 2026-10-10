@@ -11,8 +11,10 @@
 //   startPlot(g, at?) → void       the side’s story on this station, from the saved step `at`
 //   feedPlot(g, event) → void      hands the story an event; its effects are carried out at once
 //   stepPlot(g, dt) → void         the step’s clock: a tick to the story, a scene timed out
-//   spawnOne(g, { kind, spot, tag, role, squad, hostile, script }, n) → person | null
+//   spawnOne(g, { kind, spot, tag, role, squad, hostile, script, to }, n) → person | null   role 'lead'
+//     walks you to the spot `to`
 //   setHero(g, kind) → void        who you are: their gun, their blade
+//   bringAlong(g) → void           those with you put beside you where you have been put
 //   heldUp(g) → person | null      the father you hold up through the carry
 //   holdUp(g, moved) → void        keeps him at your side, after the crew's step (moved: metres you went)
 //   held(g, walk) → walk           the walk asked of you, without the run, jump and crouch while you hold him
@@ -47,8 +49,9 @@ export function setHero(g, kind) {
   if (kind === 'stormtrooper' || kind === 'dstrooper') you.armour = you.helmet = true;
 }
 
-const roleOf = (role, spot, script) => {
+const roleOf = (role, spot, script, to) => {
   if (role === 'follow') return { type: 'follow', who: 'you' };
+  if (role === 'lead') return { type: 'lead', spot: to, who: 'you' };
   if (role === 'scripted' || script) return { type: 'scripted' };
   if (role === 'patrol') return { type: 'patrol', spots: [spot] };
   if (role === 'work') return { type: 'work', spot };
@@ -56,7 +59,7 @@ const roleOf = (role, spot, script) => {
   return { type: 'post', spot };
 };
 
-export function spawnOne(g, { kind, spot, tag = null, role = 'post', squad = null, hostile = null, script = null }, n = 0) {
+export function spawnOne(g, { kind, spot, tag = null, role = 'post', squad = null, hostile = null, script = null, to = null }, n = 0) {
   const at = g.layout.station.spots?.[spot] ?? (g.layout.rooms.has(spot) ? { room: spot, x: g.layout.rooms.get(spot).x, z: g.layout.rooms.get(spot).z, yaw: 0 } : null);
   if (!at || !CAST[kind]) return null;
   const side = n === 0 ? 0 : (n % 2 ? 1 : -1) * Math.ceil(n / 2) * SPREAD;
@@ -64,7 +67,7 @@ export function spawnOne(g, { kind, spot, tag = null, role = 'post', squad = nul
   const [x, z] = [at.x + Math.cos(yaw) * side, at.z + Math.sin(yaw) * side];
   g.serial = (g.serial ?? 0) + 1;
   const id = `${tag ?? kind}-${g.serial}`;
-  return addPerson(g.crew, { id, kind, room: at.room, x, z, yaw, role: roleOf(role, g.layout.station.spots?.[spot] ? spot : null, script), squad, hostile, script, tag });
+  return addPerson(g.crew, { id, kind, room: at.room, x, z, yaw, role: roleOf(role, g.layout.station.spots?.[spot] ? spot : null, script, to), squad, hostile, script, tag });
 }
 
 function despawn(g, tag) {
@@ -125,9 +128,9 @@ function besideYou(g) {
   return null;
 }
 
-// Those who walk with you, put where you are put (across the chasm with you, off the lift), each
-// on free floor beside you, their old way forgotten
-function bringAlong(g) {
+// Those who walk with you, put where you are put (across the chasm with you, down the chute after
+// you), each on free floor beside you, their old way forgotten
+export function bringAlong(g) {
   for (const p of g.crew.people) {
     if (!p.tag?.startsWith('with:') || p.hp <= 0) continue;
     const at = besideYou(g) ?? { x: g.you.x, z: g.you.z };
@@ -170,7 +173,7 @@ function restore(g, cp) {
   if (!cp) return;
   for (const p of [...g.crew.people]) if (p.tag?.startsWith('with:')) removePerson(g.crew, p.id);
   g.flags = new Set([...(g.keep ?? []), ...cp.flags]);
-  g.items = new Set();
+  g.items = new Set(cp.items ?? []);
   if (cp.spot) g.teleport(cp.spot);
   setHero(g, cp.hero);
   if (cp.gun !== undefined) g.you.gun = cp.gun;

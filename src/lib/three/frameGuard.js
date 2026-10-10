@@ -20,7 +20,13 @@
 // again.
 //
 // Only the frame itself is held back: a Scene drawn to the canvas, or to a
-// buffer the canvas's size (a composer's), with no override material. Left
+// buffer the canvas's size (a composer's) or one its owner says is the
+// frame's (`frames`: a composer drawn softer than the canvas, its last pass
+// drawing it up), with no override material. The size in whole pixels: a
+// composer sizes its buffers at the canvas's size times the pixel ratio,
+// unrounded (1470 wide at 1.75 is 2572.5), and WebGL truncates them to the
+// canvas's 2572, so compared as given most windows' frames went ungated,
+// and a world's frame was gated or not by the width of the window. Left
 // alone: the shadow pass (no scene: its depth shaders are small and
 // shared), anything drawn outside a Scene (a post pass's quad: leaving it
 // out would leave its picture undrawn), the drawings a world makes for
@@ -38,7 +44,17 @@
 // The pictures it waits for are a patch's too (gpuWork's picturesIn: a
 // scan's, the look's), not only the material's own.
 //
-// guard(renderer, { uploadMB, compileMs, frame, invalidate }) → { enabled,
+// A warm draw (gpuWork's warmDraw: a prepare's draw of everything behind
+// the loading screen, or lib/stage3d's before the first frame of a world
+// that isn't prepared) is always drawn whole: it's there to send
+// everything, and what it held back would be left out of the first frames
+// seen, a world up as its sky alone and filling in a few materials a frame.
+// A renderer's first frame can be drawn whole too (`firstWhole`: the
+// Cybertron backdrop's, whose shaders are made ahead but not its pictures).
+// What three drew ungated is known to have linked (that draw linked it), so
+// the frames after it, gated, draw it at once.
+//
+// guard(renderer, { uploadMB, compileMs, frame, invalidate, frames(target), firstWhole }) → { enabled,
 //   invalidate, adopt(scene, fn) → undo, pending(), dispose() }, one per renderer (asked again, the same).
 // In development, a frame in which three still compiled a shader mid-draw
 // says so in the console, so what's still slipping through can be found.
@@ -47,7 +63,7 @@
 // scripts that shoot a world (scripts/gpu-parity.mjs) to know it's all on
 // screen.
 
-import { fence, knownLinked, markLinked, nextFrame, picturesIn, textureBytes, uploaded } from './gpuWork';
+import { fence, knownLinked, markLinked, nextFrame, picturesIn, textureBytes, uploaded, warming } from './gpuWork';
 
 const guards = new WeakMap();
 // (heldBack's, as weak references: a WeakMap can't be counted, and a guard
@@ -84,7 +100,7 @@ const inScene = (object, scene) => {
   return o === scene;
 };
 
-export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame, invalidate = null } = {}) {
+export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame, invalidate = null, frames = null, firstWhole = false } = {}) {
   if (guards.has(renderer)) return guards.get(renderer);
   const state = new WeakMap(); // material → READY | QUEUED
   const shapes = new WeakMap(); // a ready material → what its shader was made for (shapeOf)
@@ -97,6 +113,8 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
   let target = null; // where the scene was drawn (a composer's buffer: other shaders than the canvas's)
   let scheduled = false;
   let gating = false; // the draw in progress is the frame's
+  let whole = firstWhole; // the next frame is drawn as it is (the first, if asked)
+  let wholeNow = false; // a frame drawn whole is being drawn (for development's wording)
   const drawn = { x: 0, y: 0 }; // the canvas's buffer, for telling a frame's buffer from a world's own
   let waiting = false; // a fence in flight
   const dev = Boolean(import.meta.env?.DEV);
@@ -274,19 +292,30 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
     }
   };
 
-  // the canvas, or a buffer its size (where a composer draws the frame)
+  // the canvas, a buffer its size in whole pixels (where a composer draws the
+  // frame: WebGL truncates a buffer's size, and the composer doesn't round
+  // it), or one the owner names
   const frameTarget = (t) => {
-    if (!t) return true;
+    if (!t || frames?.(t)) return true;
     const c = renderer.domElement;
     if (c) {
       drawn.x = c.width;
       drawn.y = c.height;
     } else renderer.getDrawingBufferSize?.(drawn);
-    return t.width === drawn.x && t.height === drawn.y;
+    return Math.floor(t.width) === drawn.x && Math.floor(t.height) === drawn.y;
   };
 
   const realDraw = renderer.renderBufferDirect;
   renderer.renderBufferDirect = function (cam, scn, geometry, material, object, group) {
+    // (one drawn ungated, in a first frame drawn whole or with the guard
+    // off, has had its shader linked by that draw: known from then on, so
+    // the frames gated after it don't hold back the whole world on screen
+    // for two black frames)
+    if (!gating && material) {
+      const out = dev ? devDraw(this, cam, scn, geometry, material, object, group) : realDraw.call(this, cam, scn, geometry, material, object, group);
+      markLinked(props(material).currentProgram);
+      return out;
+    }
     if (gating && scn?.isScene && material) {
       const s = state.get(material);
       if (s === READY) {
@@ -311,38 +340,47 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
         return undefined;
       }
     }
-    if (!dev) return realDraw.call(this, cam, scn, geometry, material, object, group);
-    // (development: a shader three made in the middle of this draw, named,
-    // so what still slips past the guard can be found where it comes from)
+    return dev ? devDraw(this, cam, scn, geometry, material, object, group) : realDraw.call(this, cam, scn, geometry, material, object, group);
+  };
+  // (development: a shader three made in the middle of this draw, named,
+  // so what still slips past the guard can be found where it comes from)
+  function devDraw(self, cam, scn, geometry, material, object, group) {
     const had = renderer.info?.programs?.length ?? 0;
-    const out = realDraw.call(this, cam, scn, geometry, material, object, group);
+    const out = realDraw.call(self, cam, scn, geometry, material, object, group);
     if ((renderer.info?.programs?.length ?? 0) > had && told < 40) {
       told += 1;
-      const pass = !gating ? 'off-frame' : scn === null ? 'shadow' : 'frame';
+      const pass = wholeNow ? 'drawn whole' : !gating ? 'off-frame' : scn === null ? 'shadow' : 'frame';
       console.warn(`[frameGuard] shader compiled mid-frame (${pass}): ${material.type}${material.name ? ` "${material.name}"` : ''} on ${object?.type ?? '?'}${object?.name ? ` "${object.name}"` : ''}${object?.parent?.name ? ` in "${object.parent.name}"` : ''}`);
     }
     return out;
-  };
+  }
 
   const realRender = renderer.render;
   renderer.render = function (scn, cam) {
     const before = dev ? (renderer.info?.programs?.length ?? 0) : 0;
     const t0 = dev ? clock() : 0;
     const into = scn?.isScene ? (renderer.getRenderTarget?.() ?? null) : null;
+    const isFrame = Boolean(scn?.isScene) && !scn.overrideMaterial && frameTarget(into);
+    const first = isFrame && (whole || warming());
     const was = gating;
-    gating = g.enabled && Boolean(scn?.isScene) && !scn.overrideMaterial && frameTarget(into);
+    const wasWhole = wholeNow;
+    gating = g.enabled && isFrame && !first;
+    wholeNow = first;
     let out;
     try {
       out = realRender.call(this, scn, cam);
     } finally {
       gating = was;
+      wholeNow = wasWhole;
     }
-    if (scn?.isScene && !scn.overrideMaterial && frameTarget(into)) {
+    if (isFrame) {
+      whole = false;
       scene = scn;
       camera = cam;
       target = into;
       if (queue.size || linking.size) schedule();
-      if (dev && g.enabled) {
+      // (a frame drawn whole compiles in it by design: not a slip)
+      if (dev && g.enabled && !first) {
         const made = (renderer.info?.programs?.length ?? 0) - before;
         // (every one counted, for scripts/perf-probe.mjs, however few are said)
         if (made > 0 && typeof window !== 'undefined') window.__tpGuardSlips = (window.__tpGuardSlips ?? 0) + made;

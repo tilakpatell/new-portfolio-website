@@ -23,10 +23,11 @@
 //              { flag: name }  { does: name }  { event: { type: 'talked', talk, node } } on closing
 //   validateTalk(tree) → [error]           empty when the tree is sound
 
+import { CREW_TALKS } from './talks/crew';
 import { DS1_TALKS } from './talks/ds1';
 import { DS2_TALKS } from './talks/ds2';
 
-export const TALKS = Object.freeze({ ...DS1_TALKS, ...DS2_TALKS });
+export const TALKS = Object.freeze({ ...DS1_TALKS, ...DS2_TALKS, ...CREW_TALKS });
 
 export const WHO = Object.freeze({
   you: 'You',
@@ -48,6 +49,15 @@ export const WHO = Object.freeze({
   controller: 'Shuttle controller',
   // Vader with his mask off, at the end
   anakin: 'Anakin Skywalker',
+  gunner: 'Gunner',
+  dstrooper: 'Death Star trooper',
+  tiepilot: 'TIE pilot',
+  royalguard: 'Royal Guard',
+  gonk: 'Power droid',
+  mouse: 'Mouse droid',
+  // what a console or a terminal says when it is worked
+  console: 'Console',
+  sign: 'Written there',
 });
 
 // The garrison talks to you only off duty: a person fighting, searching,
@@ -56,11 +66,21 @@ const BUSY = new Set(['fight', 'flee', 'down', 'dead', 'search']);
 
 // The talks a person has by kind alone, tried in order, when the story
 // gave them none of their own. A trooper meets Ben with the mind trick,
-// anyone else who passes with small talk.
+// anyone else who passes with small talk; so do the rest of the crew
+// (talks/crew.js), and the droids talk to anyone. Leia in her cell is
+// rescued in free roam as in the story.
 const BY_KIND = Object.freeze({
   stormtrooper: ['droids-trick', 'trooper-bark'],
   technician: ['technician'],
   librarian: ['librarian'],
+  officer: ['officer-bark'],
+  gunner: ['gunner-bark'],
+  dstrooper: ['dstrooper-bark'],
+  tiepilot: ['pilot-bark'],
+  royalguard: ['royalguard-silent'],
+  gonk: ['gonk-gonk'],
+  mouse: ['mouse-squeal'],
+  leia: ['leia-2187'],
 });
 
 const passes = (ctx) => ctx.side === 'imperial' || Boolean(ctx.disguise && ctx.helmet);

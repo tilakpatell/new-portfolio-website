@@ -2,8 +2,9 @@
 // places the stations have, and the shot maths puts the camera where a
 // shot says.
 import { describe, expect, it } from 'vitest';
-import { drain, newGame, step } from '../rules/game';
-import { SCENE_SECONDS, feedPlot, startPlot, storySteps } from '../rules/play/plot';
+import { newGame } from '../rules/game';
+import { toStep } from '../rules/play/beats';
+import { SCENE_SECONDS, storySteps } from '../rules/play/plot';
 import { STATIONS } from '../rules/stations';
 import { SCENES, ease, offsetIn, shotAt, swingAt } from './cinematics';
 
@@ -32,28 +33,6 @@ describe('the scenes', () => {
   });
 });
 
-// A story played on to its scene step: each step before it in the beat given what finishes it.
-function toScene(station, side, id) {
-  const g = newGame({ station, side, mode: 'story', seed: 5 });
-  startPlot(g, id);
-  for (let k = 0; k < 40 && g.plot.progress.step !== id; k++) {
-    const cur = g.plot.story.steps.find((q) => q.id === g.plot.progress.step);
-    const t = cur.target ?? {};
-    const n = Number.isFinite(cur.need) ? cur.need : 1;
-    if (cur.type === 'reach' || cur.type === 'escort') feedPlot(g, { type: 'at', room: t.spot ? g.layout.station.spots[t.spot]?.room : t.room, spot: t.spot ?? null, with: [cur.need].filter((x) => typeof x === 'string') });
-    else if (cur.type === 'talk') feedPlot(g, { type: 'talked', talk: cur.need.talk, node: cur.need.node });
-    else if (cur.type === 'choose') feedPlot(g, { type: 'chose', talk: cur.need.talk, choice: cur.need.choice });
-    else if (cur.type === 'use') for (let i = 0; i < n; i++) feedPlot(g, cur.need?.code != null ? { type: 'dialled', code: cur.need.code } : { type: 'used', tag: t.tag });
-    else if (cur.type === 'still') feedPlot(g, { type: 'still', seconds: cur.time });
-    else if (cur.type === 'timer' || cur.type === 'hide') feedPlot(g, { type: 'tick', dt: cur.time + 1 });
-    else if (cur.type === 'scene') feedPlot(g, { type: 'sceneDone', id: cur.need.scene });
-    else for (const p of g.crew.people.filter((q) => q.tag === (t.tag ?? t.npc))) feedPlot(g, { type: 'killed', kind: p.kind, tag: p.tag });
-  }
-  step(g, {});
-  drain(g);
-  return g;
-}
-
 describe('the scenes as the stories play them', () => {
   const plays = [];
   for (const [station, side] of [['ds1', 'rebel'], ['ds1', 'imperial'], ['ds2', 'rebel'], ['ds2', 'imperial']]) {
@@ -61,7 +40,7 @@ describe('the scenes as the stories play them', () => {
   }
 
   it.each(plays)('frames $scene in the $station $side story on someone who is there ($id)', ({ station, side, id, scene }) => {
-    const g = toScene(station, side, id);
+    const g = toStep(station, side, id);
     expect(g.plot.progress.step).toBe(id);
     const spec = SCENES[scene];
     const tags = [...spec.shots.flatMap((sh) => [sh.at?.tag, sh.look?.tag]), spec.ship?.near?.tag].filter(Boolean);
@@ -79,7 +58,7 @@ describe('the scenes as the stories play them', () => {
           continue;
         }
         if (a.tag.startsWith('with:')) continue;
-        const named = where.some((p) => toScene(p.station, p.side, p.id).crew.people.some((q) => q.tag === a.tag));
+        const named = where.some((p) => toStep(p.station, p.side, p.id).crew.people.some((q) => q.tag === a.tag));
         expect(named, `${scene}: ${a.tag}`).toBe(true);
       }
     }

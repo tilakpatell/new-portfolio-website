@@ -1,0 +1,173 @@
+{
+ "name": "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
+ "type": "VisualEnvironmentBlueprint",
+ "note": "trimmed to the components and fields lane G reads (scripts/lib/bf2017-light.mjs readVE)",
+ "objects": [
+  {
+   "$type": "ColorCorrectionComponentData",
+   "ColorGradingEnable": true,
+   "HdrColorGradingLut": {
+    "$asset": "Levels/Lighting/Hoth/Sunny_01/T_CC_Hoth_Sunny_01",
+    "$assetType": "GradingLutAsset",
+    "$class": "2f60514a-b4e6-840b-509c-6d229fbe71c3"
+   },
+   "Brightness": {
+    "x": 1.0,
+    "y": 1.0,
+    "z": 1.0
+   },
+   "Contrast": {
+    "x": 1.0,
+    "y": 1.0,
+    "z": 1.0
+   },
+   "Saturation": {
+    "x": 1.0,
+    "y": 1.0,
+    "z": 1.0
+   },
+   "PropertyOverrides": [
+    "ColorGradingEnable",
+    "HdrColorGradingLut"
+   ]
+  },
+  {
+   "$type": "EnlightenComponentData",
+   "SkyBoxSkyColor": {
+    "x": 0.840373158,
+    "y": 1.57825577,
+    "z": 3.0
+   },
+   "SkyBoxGroundColor": {
+    "x": 0.0494334623,
+    "y": 0.0494334623,
+    "z": 0.0494334623
+   },
+   "TerrainColor": {
+    "x": 0.546830952,
+    "y": 0.594003737,
+    "z": 0.644479752
+   },
+   "PropertyOverrides": [
+    "SkyBoxGroundColor",
+    "TerrainColor",
+    "SkyBoxSkyColor"
+   ]
+  },
+  {
+   "$type": "FogComponentData",
+   "Start": 50.0,
+   "End": 10000.0,
+   "Curve": {
+    "x": 2.23109341,
+    "y": -4.5654707,
+    "z": 2.92437458,
+    "w": -0.008789433
+   },
+   "HeightFogEnable": true,
+   "HeightFogAltitude": 320.0,
+   "HeightFogDepth": 50.0,
+   "HeightFogVisibilityRange": 3000.0,
+   "ForwardLightScatteringColor": {
+    "x": 0.423267663,
+    "y": 0.5967023,
+    "z": 1.0
+   },
+   "FogColorEnable": false,
+   "FogColor": {
+    "x": 1.0,
+    "y": 1.0,
+    "z": 1.0
+   },
+   "PropertyOverrides": [
+    "End",
+    "Curve",
+    "Start",
+    "HeightFogEnable",
+    "HeightFogVisibilityRange",
+    "HeightFogAltitude",
+    "HeightFogDepth",
+    "ForwardLightScatteringColor",
+    "FogColorEnable"
+   ]
+  },
+  {
+   "$type": "OutdoorLightComponentData",
+   "SunColor": {
+    "x": 1.0,
+    "y": 0.9559066,
+    "z": 0.917619944
+   },
+   "SunIntensity": 128000.0,
+   "SunRotationX": 265.61,
+   "SunRotationY": 32.943,
+   "SkyColor": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+   },
+   "GroundColor": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+   },
+   "PropertyOverrides": [
+    "SunColor",
+    "SunRotationX",
+    "SunRotationY",
+    "GroundColor",
+    "SkyColor",
+    "SunIntensity"
+   ]
+  },
+  {
+   "$type": "SkyComponentData",
+   "LuminanceScale": 35000.0,
+   "SunSize": 0.004,
+   "PanoramicTexture": {
+    "$asset": "Levels/Lighting/Hoth/Sunny_01/T_Hoth_Sunny_02_C",
+    "$assetType": "TextureAsset",
+    "$class": "76569fb9-b178-02ef-9443-ba94bb1beed9"
+   },
+   "SkyGradientTexture": {
+    "$asset": "Levels/Lighting/Hoth/Sunny_01/T_Hoth_Sunny_02_Fog_C",
+    "$assetType": "TextureAsset",
+    "$class": "59eaf3a1-f462-df21-2f2b-7d0df7d64e16"
+   },
+   "PropertyOverrides": [
+    "PanoramicTexture",
+    "LuminanceScale",
+    "SunSize",
+    "SkyGradientTexture"
+   ]
+  },
+  {
+   "$type": "TonemapComponentData",
+   "ExposureCompensation": 1.5,
+   "MinEV": 11.0,
+   "MaxEV": 15.0,
+   "BloomScale": {
+    "x": 0.1,
+    "y": 0.1,
+    "z": 0.1
+   },
+   "EV": 10.0,
+   "AutomaticExposure": true,
+   "PropertyOverrides": [
+    "MaxEV",
+    "MinEV",
+    "ExposureCompensation",
+    "BloomScale"
+   ]
+  },
+  {
+   "$type": "WindComponentData",
+   "WindDirection": 0.0,
+   "WindStrength": 5.0,
+   "PropertyOverrides": [
+    "WindStrength",
+    "WindDirection"
+   ]
+  }
+ ]
+}

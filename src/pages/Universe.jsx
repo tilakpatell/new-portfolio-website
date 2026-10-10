@@ -8,9 +8,8 @@ import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight'
 import { beyondOf, parseWonder } from '../components/universe/deep';
 import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
 import { FLY_PAST } from '../components/universe/words';
-import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
-import { LOADOUT_KEY, droppedParts, loadoutOf, readLoadout, readLoadouts } from '../components/universe/outfit';
-import { GARAGE_KEY, HULL_KEY, readHulls } from '../components/universe/shipyard/build';
+import { SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
+import { useShipyardPage } from '../components/universe/shipyard/useShipyardPage';
 import { useAchievements } from '../components/Achievements';
 import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
@@ -22,7 +21,6 @@ import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
 import StartChoice from '../components/universe/StartChoice';
 import Rain from '../components/universe/Rain';
-import NavMap from '../components/universe/NavMap';
 import Online from '../components/universe/online/Online';
 import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
 const Shipyard = lazy(() => import('../components/universe/shipyard/Shipyard'));
@@ -32,8 +30,6 @@ import { useOnline } from '../components/universe/online/useOnline';
 import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
 import { goodStanding } from '../components/universe/economy';
-import { useEconomy } from '../components/universe/EconomyProvider';
-import { fitDraft } from '../components/universe/yardRules';
 import { createPayLedger } from '../components/universe/earnRules';
 import { pocketOf, registerPocket } from '../components/expanse/pocket';
 import { createRegistry } from '../components/worlds/registry';
@@ -43,6 +39,8 @@ const PORTAL = '#97ce4c';
 // the phone out past the belt (universe/phone.js): its lock screen, fetched
 // only when it's picked up, and the saffron wash into what it unlocks
 const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
+// (the nav map, M: fetched the first time it opens)
+const NavMap = lazy(() => import('../components/universe/NavMap'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
@@ -108,30 +106,10 @@ export default function Universe({ ask = false }) {
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
-  const [loadouts, setLoadouts] = useState(() => readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)));
-  // and the hull each crew flies: its stock ship, or a garage build from the
-  // hangar's shipyard (shipyard/build.js), kept between visits
-  const [hulls, setHulls] = useState(() => readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id)));
-  const build = (ship && hulls[ship]) || null;
-  // and each crew's last garage build, flown or not, to go back to from stock
-  const [garage, setGarage] = useState(() => readHulls(local.get(GARAGE_KEY), CREWS.map((c) => c.id)));
-  const setBuild = (b) => {
-    if (!ship) return;
-    const next = { ...hulls, [ship]: b };
-    setHulls(next);
-    local.set(HULL_KEY, next);
-    if (b) {
-      const kept = { ...garage, [ship]: b };
-      setGarage(kept);
-      local.set(GARAGE_KEY, kept);
-    }
-  };
-  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked, build), [loadouts, ship, unlocked, build]);
-  const dropped = useMemo(() => (ship ? droppedParts(loadouts[ship], loadout) : []), [loadouts, ship, loadout]); // (what the plant can't run)
+  // (the loadouts, hulls and garage builds, the Shipyard's door and what Apply and a sale do: shipyard/useShipyardPage.js, which the galaxy uses too)
+  const { loadout, build, tune, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
-  // the Shipyard (shipyard/Shipyard.jsx), over the map while it's open
-  const [yard, setYard] = useState(false);
   // the wardrobe, from the shipyard: how the cruiser’s Rick and Morty look,
   // or the RV’s Walt and Jesse (whichever crew’s flying)
   const [looks, setLook] = useLooks();
@@ -150,38 +128,6 @@ export default function Universe({ ask = false }) {
     local.set(DRIVE_KEY, next);
   };
   const jumped = useRef(false); // the crew's had their say about a jump this visit
-  // A draft from the Shipyard, applied: every fit tried first on a copy
-  // (fitDraft), then everything unowned paid for in one checkout, then the
-  // build and the loadout kept. A refusal at any step changes nothing.
-  const { economy } = useEconomy();
-  const [yardNote, setYardNote] = useState(null);
-  const sayYard = (text) => setYardNote({ text, n: Date.now() });
-  useEffect(() => {
-    if (!yardNote) return undefined;
-    const t = setTimeout(() => setYardNote(null), 3200);
-    return () => clearTimeout(t);
-  }, [yardNote]);
-  const applyDraft = ({ diff, toBuy, draft }) => {
-    if (!ship || !economy) return { ok: false, why: 'shop', text: 'The shop’s still opening.' };
-    const fitted = fitDraft(ship, draft, diff, { saved: readLoadout(loadouts[ship]), unlocked });
-    if (!fitted.ok) return { ok: false, why: fitted.why, text: fitted.why === 'power' ? 'Not enough power for that any more: the yard has opened again on what’s flown.' : 'Something there isn’t yours any more: the yard has opened again on what’s flown.' };
-    const paid = economy.checkout(toBuy);
-    if (!paid.ok) return { ok: false, why: paid.why, text: paid.why === 'credits' ? `Short ${(paid.total - economy.credits).toLocaleString('en-GB')} ¢.` : `The ${paid.item?.name ?? 'part'} can’t be bought.` };
-    if (diff.some((c) => c.module)) setBuild(draft.build);
-    const next = { ...loadouts, [ship]: fitted.saved };
-    setLoadouts(next);
-    local.set(LOADOUT_KEY, next);
-    const text = toBuy.length ? `Bought ${toBuy.length} part${toBuy.length === 1 ? '' : 's'} for ${paid.total.toLocaleString('en-GB')} ¢. Fitted.` : 'Fitted.';
-    sayYard(text);
-    return { ok: true, text, live: { build: draft.build, loadout: fitted.loadout } };
-  };
-  const sellPart = (item) => {
-    const back = economy?.sell(item);
-    if (back) sayYard(`Sold the ${item.name} for ${back.toLocaleString('en-GB')} ¢.`);
-    return back;
-  };
-  const live = useMemo(() => ({ build, loadout }), [build, loadout]);
-  const yardSaves = useMemo(() => ({ loadouts, hulls, garage }), [loadouts, hulls, garage]);
   const [leaving, setLeaving] = useState(null); // { id, mode } once Enter is pressed
   const [asking, setAsking] = useState(ask); // the front door's choice, on a first arrival
   // the panel, put away to give the map the room (remembered between visits)
@@ -548,6 +494,7 @@ export default function Universe({ ask = false }) {
         ship={ship}
         loadout={loadout}
         build={build}
+        tune={tune}
         canFit={Boolean(ship)}
         hangar={yard}
         onHangar={setYard}
@@ -619,21 +566,23 @@ export default function Universe({ ask = false }) {
         onNav={() => setCharting(true)}
       />
       {charting && !leaving && (
-        <NavMap
-          where={map.current.live ? map.current.where : null}
-          drive={drive}
-          onDrive={setDrive}
-          selected={selected}
-          live={map.current.live}
-          onTravel={(id, d) => travel(id, d)}
-          onEnter={enterDest}
-          onTour={startTour}
-          onWhole={() => {
-            setCharting(false);
-            whole();
-          }}
-          onClose={() => setCharting(false)}
-        />
+        <Suspense fallback={null}>
+          <NavMap
+            where={map.current.live ? map.current.where : null}
+            drive={drive}
+            onDrive={setDrive}
+            selected={selected}
+            live={map.current.live}
+            onTravel={(id, d) => travel(id, d)}
+            onEnter={enterDest}
+            onTour={startTour}
+            onWhole={() => {
+              setCharting(false);
+              whole();
+            }}
+            onClose={() => setCharting(false)}
+          />
+        </Suspense>
       )}
       {phone && !leaving && (
         <Suspense fallback={null}>

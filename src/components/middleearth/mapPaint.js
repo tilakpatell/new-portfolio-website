@@ -197,17 +197,13 @@ export function paintMap(width = 2048) {
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   ctx.restore();
 
-  // worn at the edges, and ruled round
+  // worn at the edges (the torn edge, ./mapRoom.js, is its frame: a ruled
+  // one would fall in the tear and survive only in pieces)
   const edge = ctx.createRadialGradient(c.width / 2, c.height / 2, c.height * 0.42, c.width / 2, c.height / 2, c.width * 0.62);
   edge.addColorStop(0, 'rgba(120, 84, 40, 0)');
   edge.addColorStop(1, 'rgba(96, 62, 26, 0.6)');
   ctx.fillStyle = edge;
   ctx.fillRect(0, 0, c.width, c.height);
-  ctx.strokeStyle = 'rgba(90, 62, 30, 0.8)';
-  ctx.lineWidth = 2 * k;
-  ctx.strokeRect(7 * k, 7 * k, c.width - 14 * k, c.height - 14 * k);
-  ctx.lineWidth = 0.6 * k;
-  ctx.strokeRect(11 * k, 11 * k, c.width - 22 * k, c.height - 22 * k);
   return c;
 }
 
@@ -234,4 +230,35 @@ export function paintRelief(width = 1024) {
   for (const [x0, y0, x1, y1] of RANGES) for (const [x, y] of peaks(x0, y0, x1, y1, 11, 12)) hill(x, y, 11, 0.85);
   hill(660, 418, 20, 1);
   return c;
+}
+
+// The sheet’s torn edge, as an alpha mask the size of the sheet (white is
+// paper, black is gone): the tear wanders 6 to 14 sheet units in from the
+// border, and foxing spots near it eat into it, so the paper looks worn
+// through where it was weakest. The spots are grey, not black: under the
+// material’s alphaTest of 0.5 they bite only where the tear already thins
+// the paper, never as holes in the middle of the map.
+export function paintEdge(width = 1024) {
+  const k = width / SHEET.w;
+  const c = makeCanvas(width, Math.round(SHEET.h * k));
+  const tear = makeNoise(29);
+  const fox = makeNoise(41);
+  return paintPixels(c, (u, v, out) => {
+    const sx = u * SHEET.w;
+    const sy = v * SHEET.h;
+    const d = Math.min(sx, sy, SHEET.w - sx, SHEET.h - sy);
+    // the middle of the sheet is whole, and painting it noise-free keeps this quick
+    if (d > 40) {
+      out[0] = out[1] = out[2] = 255;
+      return;
+    }
+    // slow wander and fine jags, kept within the 6 to 14 units
+    const wander = Math.min(1, Math.max(0, (fbm(tear, sx * 0.04, sy * 0.04, { octaves: 3 }) - 0.3) / 0.4));
+    const jag = tear(sx * 0.7 + 17, sy * 0.7) - 0.5;
+    const e = Math.min(14, Math.max(6, 6 + wander * 8 + jag * 1.6));
+    let a = Math.min(1, Math.max(0, (d - e) / 1.5 + 0.5));
+    const spot = Math.max(0, fbm(fox, sx * 0.11 + 3, sy * 0.11, { octaves: 2 }) - 0.6) * 4;
+    a -= Math.min(0.45, spot) * Math.max(0, 1 - (d - e) / 22);
+    out[0] = out[1] = out[2] = Math.round(Math.max(0, a) * 255);
+  });
 }

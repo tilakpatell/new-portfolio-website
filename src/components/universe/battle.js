@@ -64,9 +64,15 @@
 // up, and on a capital ship's hull wears it down but never sinks it; and it
 // ends only when it's told to (end).
 //
+// And a space level's own battle (galaxy/surface/missions/starfighter.js,
+// Starfighter Assault): its capital ships where the level has them, not in
+// lines (`layout`: by team, each ship's { at, fwd }, battleCapitals.js's
+// placeCapitals), its plan's objectives at the level's own points
+// (battleStages.js's `on.point`).
+//
 // createBattle({ war, attacker, at, axis, perSide, rand, lines, radius,
 //   avoid, clock, elapsed, shared, onMine, tickets, objectivesOn, ace,
-//   runners, plan, director }) → battle (with
+//   runners, plan, director, layout }) → battle (with
 //   runners, disable(id, s), wreck(id), moveCapital(cap, d), turnCapital(cap, axis, a),
 //   addRunner({ team, kind, size, hp, from, to, speed })):
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
@@ -92,16 +98,17 @@ import { sweptHit } from './targeting';
 import { NAMES } from './wars';
 import { BATTLE, UP, ZERO, copy, cross, dist2, len, norm, set, turnToward, v3 } from './battleKit';
 import { flyFighter, muster, spawn } from './battleAi';
-import { ageCapitals, fireBatteries, holdCapitals, hullHit, layCapitals } from './battleCapitals';
+import { ageCapitals, fireBatteries, holdCapitals, hullHit, layCapitals, placeCapitals } from './battleCapitals';
 import { createRunners } from './battleRunners';
 import { createStages } from './battleStages';
 import { createTactics } from './battleTactics';
 import { createFleet } from './battleFleet';
+import { homeFor } from './battleHome';
 import { pressureOf } from './battleDifficulty';
 
 export { BATTLE, WIDTH, inSights, perSide, turnToward } from './battleKit';
 
-export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null, plan = null, director = null, planet = null, tactics = false }) {
+export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null, plan = null, director = null, planet = null, tactics = false, layout = null }) {
   const defender = 1 - attacker;
   const C = v3(...at);
   const A = norm(v3(axis[0], 0, axis[1])); // from the first side's line to the second's
@@ -155,6 +162,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
 
   // the capital ships in their lines (fought as fleets, with tactics: battleFleet.js), the fighters up, the runners ready
   layCapitals(k, objectivesOn);
+  if (layout) placeCapitals(k, layout);
   k.fleet = tactics ? createFleet(k, typeof tactics === 'object' ? tactics : {}) : null;
   b.fleet = k.fleet;
   muster(k, n, ace);
@@ -265,6 +273,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     b.difficulty = k.pressure.d;
     k.tactics?.pressure();
   };
+  // where a pilot of `team` comes back after a death (battleHome.js)
+  b.homeFor = (team) => homeFor(k, team);
   b.setYou = (team) => {
     b.you.team = team === 0 || team === 1 ? team : null;
     for (const f of b.fighters) if (f.target === b.you) f.target = null;

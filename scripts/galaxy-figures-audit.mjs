@@ -6,7 +6,8 @@
 // stands at its bind pose (rigged, no clips named), or sways (a statue).
 //
 //   drawnAs(kind, { CREW, SURFACE_MODELS, FIGURES, WALKERS }) → 'walker' |
-//     'crew' | 'crew-still' | 'own-clips' | 'legs' | 'rig-noanim' | 'still' |
+//     'walrus' (a 2017 figure on the game's skeleton) | 'own-rig' (a 2017
+//     droid or beast on its own, ownRig.js) | 'crew' | 'crew-still' | 'own-clips' | 'legs' | 'rig-noanim' | 'still' |
 //     'built' | 'none'                                             (pure)
 //   audit(SITES, tables) → [{ kind, how, worlds: [id…] }] by kind  (pure)
 //   table(rows) → Markdown: the counts by how, then every kind     (pure)
@@ -20,17 +21,25 @@
 export const EXPECTED = {
   // phase 1: statues whose legs part, walked by legRig.js (Chirrut's robe
   // is to his ankles, as the Jawa's and Yoda's are: he sways)
-  ...Object.fromEntries(['anakin', 'armorer', 'baze', 'cassian', 'clonephase1', 'dindjarin', 'jyn', 'k2so', 'krennic', 'mace', 'sullustan'].map((k) => [k, 'legs'])),
+  ...Object.fromEntries(['armorer', 'baze', 'cassian', 'dindjarin', 'jyn', 'k2so', 'krennic', 'mace', 'sullustan'].map((k) => [k, 'legs'])),
   // phase 2: Mixamo rigs given UAL's core set, baked into their files (ual-bake.mjs --rig)
-  ...Object.fromEntries(['ithorian', 'rebelpilot', 'rebeltech'].map((k) => [k, 'own-clips'])),
+  ...Object.fromEntries(['ithorian'].map((k) => [k, 'own-clips'])),
+  // Battlefront II (2017), phase 1: the heroes on the game's skeleton
+  ...Object.fromEntries(['anakin', 'bobafett', 'dooku', 'lando', 'luke', 'obiwan', 'vader'].map((k) => [k, 'walrus'])),
+  // Battlefront II (2017), phase 2: the cast on the game's skeleton, and the
+  // droids and beasts on their own (docs/superpowers/evidence/bf2017-phase2/cast.md)
+  ...Object.fromEntries(['c3po', 'clone', 'clonephase1', 'deathtrooper', 'hothtrooper', 'rebel', 'rebelpilot', 'rebeltech', 'sandtrooper', 'scouttrooper', 'shoretrooper', 'snowtrooper', 'stormtrooper', 'wookiee'].map((k) => [k, 'walrus'])),
+  ...Object.fromEntries(['astromech', 'droid', 'ewok', 'probe', 'r5', 'superdroid', 'tauntaun'].map((k) => [k, 'own-rig'])),
+  // the fifth design's lane A: the creatures, droids and aliens on their own rigs
+  ...Object.fromEntries(['birdtheed', 'chicken', 'scurrier', 'tach', 'pelikki', 'runyip', 'profogg', 'gamorreanguard', 'treadwell', 'gonk'].map((k) => [k, 'own-rig'])),
 };
 
-const HOWS = ['walker', 'crew', 'crew-still', 'own-clips', 'legs', 'rig-noanim', 'still', 'built', 'none'];
+const HOWS = ['walker', 'walrus', 'own-rig', 'crew', 'crew-still', 'own-clips', 'legs', 'rig-noanim', 'still', 'built', 'none'];
 
 export function drawnAs(kind, { CREW = {}, SURFACE_MODELS = {}, FIGURES = [], WALKERS = {} } = {}) {
   if (WALKERS[kind]) return 'walker';
   const c = CREW[kind];
-  if (c) return c.still ? 'crew-still' : 'crew';
+  if (c) return c.rig === 'walrus' ? 'walrus' : c.rig === 'own' ? 'own-rig' : c.still ? 'crew-still' : 'crew';
   const m = SURFACE_MODELS[kind];
   if (m) {
     if (m.anim) return 'own-clips';

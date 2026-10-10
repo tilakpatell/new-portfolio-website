@@ -20,6 +20,13 @@
 // alone; Alpha's roster names the region Bravo is in; then Bravo comes in
 // beside Alpha, and is a ship again:
 //   node scripts/online-check.mjs --ride
+// planet flight: begin (scripts/flight-island.mjs removes this block)
+// or, the shared world over a planet (--fly, ./lib/fly-check.mjs): two pilots
+// on /fly/hoth heard by cell, a turret built in one in the other, kept over
+// a reload and shot to nothing, the durable world faked here, and one
+// blizzard both see (./lib/storm-check.mjs):
+//   node scripts/online-check.mjs --fly
+// planet flight: end
 // (BASE=http://127.0.0.1:5188/?quality=low# for a dev server elsewhere)
 // (behind a proxy: HTTPS_PROXY, and BRIDGE=1 NODE_USE_ENV_PROXY=1 if the
 // browser's WebSockets can't get through it)
@@ -31,6 +38,9 @@
 // Headless Chromium draws in software, slowly.
 import { chromium } from 'playwright-core';
 import { fakeRelays } from './lib/fake-relays.mjs';
+import { fakeDurable } from './lib/fake-durable.mjs'; // planet flight
+import { flyCheck } from './lib/fly-check.mjs'; // planet flight
+import { stormCheck } from './lib/storm-check.mjs'; // planet flight
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -41,9 +51,16 @@ const universe = args.includes('--universe');
 if (universe) args.splice(args.indexOf('--universe'), 1);
 const ride = args.includes('--ride');
 if (ride) args.splice(args.indexOf('--ride'), 1);
-const then = universe || ride ? null : flag('--then', '/middle-earth/moria');
+// a check with pages of its own: no --then, no world to start in
+let own = false;
+// planet flight: begin
+const fly = args.includes('--fly');
+if (fly) args.splice(args.indexOf('--fly'), 1);
+own ||= fly;
+// planet flight: end
+const then = universe || ride || own ? null : flag('--then', '/middle-earth/moria');
 const out = process.env.OUT ?? null;
-const worlds = args.length ? args : ride ? [] : ['/middle-earth/bree'];
+const worlds = args.length ? args : ride || own ? [] : ['/middle-earth/bree'];
 const BASE = process.env.BASE ?? `http://localhost:${process.env.PORT ?? 5173}/?quality=low#`;
 // (behind a proxy, the relays go through it and the dev server doesn't)
 // (behind a proxy that re-signs TLS, PROXY_CA_SPKI is its CA's key hash, for
@@ -389,6 +406,19 @@ if (ride) {
     console.log(`FAIL ${e.message}`);
   }
 }
+// planet flight: begin
+if (fly) {
+  try {
+    const n = await flyCheck({ a, b, relays, durable: fakeDurable(), base: BASE, check, waitFor });
+    console.log(`fly: ${JSON.stringify(n)}`);
+    // (and one event, the same in both: ./lib/storm-check.mjs)
+    console.log(`storm: ${JSON.stringify(await stormCheck({ a, b, check, waitFor }))}`);
+  } catch (e) {
+    failed++;
+    console.log(`FAIL ${e.message}`);
+  }
+}
+// planet flight: end
 console.log(`errors: ${JSON.stringify(errors.slice(0, 10))}`);
 console.log(failed ? `${failed} FAILED` : 'ALL OK');
 await browser.close();

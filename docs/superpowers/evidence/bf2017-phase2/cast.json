@@ -1,0 +1,3625 @@
+[
+ {
+  "kind": "acklay",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "ahsoka",
+  "worlds": [
+   "lothal"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks Ahsoka"
+ },
+ {
+  "kind": "aiwha",
+  "worlds": [
+   "kamino"
+  ],
+  "tier": "beast",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Creatures/Aiwha/Aiwha_01/Aiwha_01_Ske",
+  "body": "characters/npc/creatures/aiwha/aiwha_01/aiwha_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   3432,
+   1752,
+   880,
+   454,
+   210
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "a small flier (3,432 triangles at LOD0, five LODs)",
+  "clips": 19,
+  "total0": 3432
+ },
+ {
+  "kind": "anakin",
+  "worlds": [
+   "mustafar",
+   "naboo"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "done",
+  "why": "done (phase 1)"
+ },
+ {
+  "kind": "aqualish",
+  "worlds": [
+   "coruscant",
+   "nevarro",
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game has the head alone (`characters/heads/heads_aqualish/heads_aqualish_02/heads_aqualish_02_mesh`), a face a rebel specialist wears (`skin7_aqualish`); no cantina body"
+ },
+ {
+  "kind": "armorer",
+  "worlds": [
+   "mandalore",
+   "nevarro"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it (the Mandalorian’s era)"
+ },
+ {
+  "kind": "astromech",
+  "worlds": [
+   "bespin",
+   "lothal",
+   "naboo",
+   "yavin"
+  ],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/Astromech/Astromech_01_Ske",
+  "body": "characters/npc/droids/astromech/r2d2/r2d2_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "R2Q5_01 (the record’s folder is `Astromech/R2Q5`; the manifest has no R2-Q5 mesh, so it is a skin for the R2 body)",
+    "era": "original trilogy",
+    "body": "characters/npc/droids/astromech/r2d2/r2d2_01_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   12157,
+   6034,
+   2810,
+   1355,
+   620,
+   298
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 36,
+  "total0": 12157
+ },
+ {
+  "kind": "atap",
+  "worlds": [
+   "kashyyyk"
+  ],
+  "tier": null,
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "a walker: phase 4 (lane V), not this cast"
+ },
+ {
+  "kind": "atat",
+  "worlds": [
+   "hoth",
+   "scarif"
+  ],
+  "tier": null,
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "a walker: phase 4 (lane V), not this cast"
+ },
+ {
+  "kind": "atrt",
+  "worlds": [
+   "kashyyyk"
+  ],
+  "tier": null,
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "a walker: phase 4 (lane V), not this cast"
+ },
+ {
+  "kind": "atst",
+  "worlds": [
+   "endor"
+  ],
+  "tier": null,
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "a walker: phase 4 (lane V), not this cast"
+ },
+ {
+  "kind": "atte",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": null,
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "a walker: phase 4 (lane V), not this cast"
+ },
+ {
+  "kind": "bantha",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "beast",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Creatures/Bantha/Bantha_01/Bantha_01_Ske",
+  "body": "characters/npc/creatures/bantha/bantha_01/bantha_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   71778,
+   39227,
+   20916,
+   10523,
+   5237,
+   2603
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the heaviest beast (71,778 triangles at LOD0)",
+  "clips": 17,
+  "total0": 71778
+ },
+ {
+  "kind": "battledroid",
+  "worlds": [
+   "geonosis",
+   "mustafar",
+   "naboo"
+  ],
+  "tier": "soldier",
+  "rig": "own",
+  "skeleton": "Characters/Dark/D_Assault_Preq/D_Assault_Preq_01/D_Assault_Preq_01_Ske",
+  "body": "characters/dark/d_assault_preq/d_assault_preq_01/d_assault_preq_01_mesh",
+  "parts": [
+   "characters/dark/d_assault_preq/d_assault_preq_01/d_assault_preq_01_backpack_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "D_Assault_Preq_01_Default / _Geonosis / _Kashyyyk / _Pilot / _Training (markings, with the backpack’s D_Assault_Preq_01_BackPack_*)",
+    "era": "Clone Wars",
+    "body": "characters/dark/d_assault_preq/d_assault_preq_01/d_assault_preq_01_mesh",
+    "parts": [
+     "characters/dark/d_assault_preq/d_assault_preq_01/d_assault_preq_01_backpack_mesh"
+    ],
+    "record": "mpvur_d_assault_preq_01_ap_geo_bpb, _ap_kash_bpb and their skins"
+   },
+   {
+    "name": "the officer’s radio",
+    "era": "Clone Wars",
+    "body": "characters/dark/d_assault_preq/d_assault_preq_01/d_assault_preq_01_mesh",
+    "parts": [
+     "characters/dark/d_officer_preq/d_officer_preq_01/d_officer_preq_01_radio_mesh"
+    ]
+   },
+   {
+    "name": "the heavy’s backpack",
+    "era": "Clone Wars",
+    "body": "characters/dark/d_assault_preq/d_assault_preq_01/d_assault_preq_01_mesh",
+    "parts": [
+     "characters/dark/d_heavy_preq/d_heavy_preq_01/d_heavy_preq_01_backpack_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   31702,
+   15879,
+   7919,
+   3950,
+   1974,
+   983
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 532,
+  "total0": 34600
+ },
+ {
+  "kind": "baze",
+  "worlds": [
+   "scarif"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks the Rogue One five"
+ },
+ {
+  "kind": "bibfortuna",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "bith",
+  "worlds": [
+   "nevarro",
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/NPC/Aliens/Bith/Bith_01/Bith_01_Ske",
+  "body": "characters/npc/aliens/bith/bith_01/bith_01_mesh",
+  "parts": [
+   "characters/npc/aliens/bith/bith_01/bith_01_instrument_01_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "instrument 2",
+    "era": "original trilogy",
+    "body": "characters/npc/aliens/bith/bith_01/bith_01_mesh",
+    "parts": [
+     "characters/npc/aliens/bith/bith_01/bith_01_instrument_02_mesh"
+    ]
+   },
+   {
+    "name": "instrument 3",
+    "era": "original trilogy",
+    "body": "characters/npc/aliens/bith/bith_01/bith_01_mesh",
+    "parts": [
+     "characters/npc/aliens/bith/bith_01/bith_01_instrument_03_mesh"
+    ]
+   },
+   {
+    "name": "instrument 4",
+    "era": "original trilogy",
+    "body": "characters/npc/aliens/bith/bith_01/bith_01_mesh",
+    "parts": [
+     "characters/npc/aliens/bith/bith_01/bith_01_instrument_04_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   30659,
+   15228,
+   7546,
+   3749,
+   1899,
+   950
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the head and hands are in the body",
+  "walrusNamed": "44 bones, every one a walrus bone; no weapon sockets",
+  "clips": 0,
+  "total0": 32439
+ },
+ {
+  "kind": "blurrg",
+  "worlds": [
+   "nevarro"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "bobafett",
+  "worlds": [
+   "bespin",
+   "mandalore",
+   "tatooine"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "done",
+  "why": "done (phase 1)"
+ },
+ {
+  "kind": "bogwing",
+  "worlds": [
+   "dagobah"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "c3po",
+  "worlds": [
+   "bespin",
+   "coruscant",
+   "endor",
+   "geonosis",
+   "hoth",
+   "mustafar",
+   "tatooine",
+   "yavin"
+  ],
+  "tier": "droid",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/rebel/c3p0/c3p0_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "E3P0_01 (an ObjectVariation under `Rebel/C3P0`)",
+    "era": "original trilogy",
+    "body": "characters/rebel/c3p0/c3p0_mesh",
+    "parts": []
+   },
+   {
+    "name": "the generic protocol droid",
+    "era": "any",
+    "body": "characters/npc/droids/protocoldroid/protocoldroid_01_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   109841,
+   51418,
+   26001,
+   16134,
+   7890,
+   3641
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "on the walrus rig, not its own: the Mixamo clips go; 109,841 triangles at LOD0, the heaviest body in the cast",
+  "clips": null,
+  "total0": 109841
+ },
+ {
+  "kind": "caretaker",
+  "worlds": [
+   "coruscant"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "takes",
+  "why": "through the villager pool: Coruscant’s look gives `civcity1..3`",
+  "pool": "civcity"
+ },
+ {
+  "kind": "cassian",
+  "worlds": [
+   "scarif"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks the Rogue One five"
+ },
+ {
+  "kind": "chirrut",
+  "worlds": [
+   "scarif"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks the Rogue One five"
+ },
+ {
+  "kind": "clone",
+  "worlds": [
+   "coruscant",
+   "geonosis",
+   "kamino",
+   "kashyyyk"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+  "parts": [
+   "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_helmet_mesh",
+   "characters/bodyparts/gloves_05/gloves_05_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the legions’ markings (L_Assault_Preq_01_CM_T_104 / _212 / _327 / _41 / _41Green_Phase2 / _501 / _91 / _CGuard, with L_Assault_Preq_01_Helmet_CM_T_*)",
+    "era": "Clone Wars",
+    "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+    "parts": [
+     "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_helmet_mesh",
+     "characters/bodyparts/gloves_05/gloves_05_mesh"
+    ]
+   },
+   {
+    "name": "the 91st (L_Assualt_Preq_04_Helmet_CM_T_91, the record’s spelling)",
+    "era": "Clone Wars",
+    "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+    "parts": [
+     "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_03_helmet_mesh",
+     "characters/bodyparts/gloves_05/gloves_05_mesh"
+    ]
+   },
+   {
+    "name": "the 212th in the desert (L_Assault_Preq_04_Helmet_CM_T_212_Desert)",
+    "era": "Clone Wars",
+    "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+    "parts": [
+     "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_04_helmet_mesh",
+     "characters/bodyparts/gloves_05/gloves_05_mesh"
+    ]
+   },
+   {
+    "name": "the 41st scout (L_Assault_Preq_Scout_01_*_CM_T_41Scout)",
+    "era": "Clone Wars",
+    "body": "characters/light/l_assault_preq/l_assault_preq_scout_01/l_assault_preq_scout_01_body_mesh",
+    "parts": [
+     "characters/light/l_assault_preq/l_assault_preq_scout_01/l_assault_preq_scout_01_helmet_mesh"
+    ]
+   },
+   {
+    "name": "the heavy (visor and parts)",
+    "era": "Clone Wars",
+    "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+    "parts": [
+     "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_helmet_mesh",
+     "characters/light/l_heavy_preq/l_heavy_preq_01/l_heavy_preq_01_visor_mesh",
+     "characters/light/l_heavy_preq/l_heavy_preq_01/l_heavy_preq_01_parts_mesh",
+     "characters/bodyparts/gloves_05/gloves_05_mesh"
+    ]
+   },
+   {
+    "name": "the specialist (visor and parts)",
+    "era": "Clone Wars",
+    "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+    "parts": [
+     "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_helmet_mesh",
+     "characters/light/l_specialist_preq/l_specialist_preq_01/l_specialist_preq_01_visor_mesh",
+     "characters/light/l_specialist_preq/l_specialist_preq_01/l_specialist_preq_01_parts_mesh",
+     "characters/bodyparts/gloves_05/gloves_05_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   28846,
+   13891,
+   6951,
+   3537,
+   1849,
+   896
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_l_assault_preq_thee_01_bpb, mpvur_l_assault_preq_pha_01_bpb (Phase II, gloves `Gloves_05_Black`)",
+  "clips": null,
+  "total0": 41544
+ },
+ {
+  "kind": "clonephase1",
+  "worlds": [
+   "geonosis",
+   "kamino"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+  "parts": [
+   "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_02_helmet_mesh",
+   "characters/bodyparts/gloves_05/gloves_05_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the legions’ Phase I markings (L_Assault_Preq_02_CM_T_* on the body, L_Assault_Preq_02_Helmet_CM_T_104 / _212 / _327 / _41 / _501 / _91 / _CGuard)",
+    "era": "Clone Wars",
+    "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+    "parts": [
+     "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_02_helmet_mesh",
+     "characters/bodyparts/gloves_05/gloves_05_mesh"
+    ]
+   },
+   {
+    "name": "the one-mesh NPC (Civilian_Ske, unarmed)",
+    "era": "Clone Wars",
+    "body": "characters/npc/humans/rebel_clonetrooper/rebel_clonetrooper_kam_01_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   28846,
+   13891,
+   6951,
+   3537,
+   1849,
+   896
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_l_assault_preq_kam_01_bpb (Kamino’s default: Phase I helmet)",
+  "note": "the plan’s `rebel_clonetrooper_kam_01_mesh` is on `Civilian_Ske` (no weapon sockets, so no DC-15 in the hand): the walrus parts are taken instead",
+  "clips": null,
+  "total0": 39782
+ },
+ {
+  "kind": "cloudcar",
+  "worlds": [
+   "bespin"
+  ],
+  "tier": null,
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "a vehicle, and the game lacks it"
+ },
+ {
+  "kind": "deathtrooper",
+  "worlds": [
+   "scarif"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/hero/deathtrooper/deathtrooper_01/deathtrooper_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   66575,
+   32864,
+   16668,
+   8472,
+   4282,
+   1583
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "one mesh, helmet and gloves in it; 66,575 triangles at LOD0, so the far cut matters most here",
+  "clips": null,
+  "total0": 66575
+ },
+ {
+  "kind": "dewback",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "beast",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Creatures/Dewback/Dewback_01/Dewback_01_Ske",
+  "body": "characters/npc/creatures/dewback/dewback_01/dewback_01_mesh",
+  "parts": [
+   "characters/npc/creatures/dewback/dewback_01/dewback_01_saddle_mesh"
+  ],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   14926,
+   7356,
+   3548,
+   1798,
+   750,
+   314
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 23,
+  "total0": 35244
+ },
+ {
+  "kind": "dex",
+  "worlds": [
+   "coruscant"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "dindjarin",
+  "worlds": [
+   "nevarro"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "dooku",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "done",
+  "why": "done (phase 1)"
+ },
+ {
+  "kind": "droid",
+  "worlds": [
+   "coruscant",
+   "dagobah",
+   "hoth",
+   "mustafar",
+   "naboo",
+   "tatooine",
+   "yavin"
+  ],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/Astromech/Astromech_01_Ske",
+  "body": "characters/npc/droids/astromech/r4i9/r4i9_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "R4A22_01 (a texture swap the Tatooine record confirms), R4D6_01, R4M9_01",
+    "era": "original trilogy",
+    "body": "characters/npc/droids/astromech/r4i9/r4i9_01_mesh",
+    "parts": []
+   },
+   {
+    "name": "R5A2_01, R5J2_01",
+    "era": "original trilogy",
+    "body": "characters/npc/droids/astromech/r5d4/r5d4_01_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   11870,
+   5836,
+   2162,
+   1033,
+   236
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the built droid becomes the R4 astromech and its skins",
+  "clips": 36,
+  "total0": 11870
+ },
+ {
+  "kind": "dwarfspider",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": "soldier",
+  "rig": "own",
+  "skeleton": "Gameplay/Vehicles/Ground/DwarfSpiderDroid/DwarfSpiderDroid_Ske",
+  "body": "gameplay/vehicles/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   25373,
+   12659,
+   6299,
+   3159,
+   1545,
+   643
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "its skeleton has no clips in `anims.jsonl`: it stands or slides until it has some",
+  "clips": 0,
+  "total0": 25373
+ },
+ {
+  "kind": "eopie",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "beast",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Creatures/Eopie/Eopie_01/Eopie_01_Ske",
+  "body": "characters/npc/creatures/eopie/eopie_01/eopie_01_mesh",
+  "parts": [
+   "characters/npc/creatures/eopie/eopie_01/eopie_01_saddle_mesh"
+  ],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   10940,
+   6214,
+   3608,
+   1536,
+   604,
+   248
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 12,
+  "total0": 34887
+ },
+ {
+  "kind": "ewok",
+  "worlds": [
+   "endor"
+  ],
+  "tier": "soldier",
+  "rig": "own",
+  "skeleton": "Characters/Hero/Ewok/Ewok_01/Ewok_01_Ske",
+  "body": "characters/hero/ewok/ewok_01/ewok_01_mesh",
+  "parts": [
+   "characters/hero/ewok/ewok_01/ewok_hood_01_cloth_brown_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "Ewok_01_Black, Ewok_01_Brown (the record’s colours on the body)",
+    "era": "original trilogy",
+    "body": "characters/hero/ewok/ewok_01/ewok_01_mesh",
+    "parts": [
+     "characters/hero/ewok/ewok_01/ewok_hood_01_cloth_grey_mesh"
+    ]
+   },
+   {
+    "name": "the second body (Ewok_02_Brown, Ewok_02_Orange)",
+    "era": "original trilogy",
+    "body": "characters/hero/ewok/ewok_01/ewok_02_mesh",
+    "parts": [
+     "characters/hero/ewok/ewok_01/ewok_hood_02_cloth_brown_mesh"
+    ]
+   },
+   {
+    "name": "the third body, with a headdress and quiver",
+    "era": "original trilogy",
+    "body": "characters/hero/ewok/ewok_01/ewok_03_mesh",
+    "parts": [
+     "characters/hero/ewok/ewok_01/ewok_headdress_01_mesh",
+     "characters/hero/ewok/ewok_01/ewok_quiver_mesh"
+    ]
+   },
+   {
+    "name": "the NPC Ewok (fur and hood; 26 clips on its own skeleton)",
+    "era": "original trilogy",
+    "body": "characters/npc/creatures/ewok/ewok_01/ewok_01_mesh",
+    "parts": [
+     "characters/npc/creatures/ewok/ewok_01/ewok_01_fur_mesh",
+     "characters/npc/creatures/ewok/ewok_01/ewok_01_hood_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   34064,
+   16406,
+   8596,
+   4598,
+   1788,
+   1784
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the 77 clips are on the hero skeleton (`Characters/Hero/Ewok/Ewok_01/Ewok_01_Ske`, 229 bones, 228 of them walrus-named, weapon sockets included), not the NPC one the plan named (`Characters/NPC/Creatures/Ewok/Ewok_01/Ewok_01_Ske`, 26 clips, 46 bones, no sockets): the hero body is taken",
+  "clips": 77,
+  "total0": 36728
+ },
+ {
+  "kind": "fambaa",
+  "worlds": [
+   "naboo"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "farmer",
+  "worlds": [
+   "lothal",
+   "naboo",
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "takes",
+  "why": "through the villager pool: Tatooine gives `civdesert1..3`, Naboo `civtheed1..2`; Lothal keeps the built figure",
+  "pool": "by look"
+ },
+ {
+  "kind": "gamorrean",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/NPC/Aliens/GamorreanGuard/GamorreanGuard_01/LW_GamorreanGuard_01_Ske",
+  "body": "characters/npc/aliens/gamorreanguard/gamorreanguard_01/lw_gamorreanguard_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   54768,
+   27363,
+   13679,
+   7299,
+   2450,
+   1260
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "three clips of its own; its bones are walrus-named, so the walrus pack may drive it by name",
+  "walrusNamed": "104 bones, every one a walrus bone; no weapon sockets",
+  "clips": 3,
+  "total0": 54768
+ },
+ {
+  "kind": "geonosian",
+  "worlds": [
+   "geonosis",
+   "mustafar"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "ghostben",
+  "worlds": [
+   "dagobah"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game has no old Ben (phase 1’s `obiwan` is the prequels’ Kenobi)"
+ },
+ {
+  "kind": "greedo",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game has the Rodian head alone (`characters/heads/heads_rodian/heads_rodian_01/heads_rodian_01_mesh`), no body"
+ },
+ {
+  "kind": "grogu",
+  "worlds": [
+   "nevarro",
+   "sorgan"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "gungan",
+  "worlds": [
+   "naboo"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "happabore",
+  "worlds": [
+   "nevarro"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "hothtrooper",
+  "worlds": [
+   "hoth"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/bodyparts/torso_02/torso_02_mesh",
+  "parts": [
+   "characters/bodyparts/legs_02/legs_02_mesh",
+   "characters/bodyparts/gloves_02/gloves_02_mesh",
+   "characters/bodyparts/backpack_06/backpack_06_mesh",
+   "characters/bodyparts/headgear_12/headgear_12_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_hakan/heads_hakan_01_mesh",
+   "characters/heads/heads_charlie/heads_charlie_01/heads_charlie_01_mesh",
+   "characters/heads/heads_sullustan/heads_sullustan_01/heads_sullustan_01_mesh",
+   "characters/heads/heads_nikto/heads_nikto_01/head_nikto_01_mesh"
+  ],
+  "variations": [
+   {
+    "name": "the heavy (mpvur_l_heavy_orig_ho_01_bpb)",
+    "era": "original trilogy",
+    "body": "characters/bodyparts/torso_02/torso_02_mesh",
+    "parts": [
+     "characters/bodyparts/legs_02/legs_02_mesh",
+     "characters/bodyparts/gloves_02/gloves_02_mesh",
+     "characters/bodyparts/backpack_01/backpack_01_mesh",
+     "characters/bodyparts/headgear_15/headgear_15_mesh"
+    ]
+   },
+   {
+    "name": "the officer (mpvur_l_officer_orig_ho_01_bpb)",
+    "era": "original trilogy",
+    "body": "characters/bodyparts/torso_03/torso_03_mesh",
+    "parts": [
+     "characters/bodyparts/legs_02/legs_02_mesh",
+     "characters/bodyparts/gloves_02/gloves_02_mesh",
+     "characters/bodyparts/headgear_12/headgear_12_mesh"
+    ]
+   },
+   {
+    "name": "the specialist (mpvur_l_specialist_orig_ho_01_bpb: Backpack_03_HO, Headgear_03_HO)",
+    "era": "original trilogy",
+    "body": "characters/bodyparts/torso_16/torso_16_mesh",
+    "parts": [
+     "characters/bodyparts/legs_04/legs_04_mesh",
+     "characters/bodyparts/gloves_02/gloves_02_mesh",
+     "characters/bodyparts/backpack_03/backpack_03_mesh",
+     "characters/bodyparts/headgear_03/headgear_03_mesh",
+     "characters/heads/_shared/hair/hatbun_01/hatbun_01_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   16935,
+   8234,
+   3603,
+   1666,
+   469,
+   236
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_l_assault_orig_ho_01_bpb, a face from its four skins (hakan, charlie, sullustan, nikto)",
+  "note": "six parts with six materials: `--join` per material cannot reach four draw calls without an atlas",
+  "clips": null,
+  "total0": 53847
+ },
+ {
+  "kind": "hutt",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks Jabba"
+ },
+ {
+  "kind": "ig11",
+  "worlds": [
+   "nevarro"
+  ],
+  "tier": "droid",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "ithorian",
+  "worlds": [
+   "endor"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "jango",
+  "worlds": [
+   "kamino"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game has his head alone (`characters/heads/heads_jangofett/heads_jangofett_01/heads_jangofett_01_mesh`, a helmetless clone’s face), no Jango"
+ },
+ {
+  "kind": "jawa",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Creatures/Jawa/Jawa_01/Jawa_01_Ske",
+  "body": "characters/npc/creatures/jawa/jawa_01/jawa_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   18432,
+   9242,
+   4532,
+   2209,
+   1110,
+   332
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 28,
+  "total0": 18432
+ },
+ {
+  "kind": "jedi",
+  "worlds": [
+   "coruscant",
+   "geonosis"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game has no generic Jedi, only its heroes"
+ },
+ {
+  "kind": "jocasta",
+  "worlds": [
+   "coruscant"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "takes",
+  "why": "through the villager pool: Coruscant gives `civcity1..3`",
+  "pool": "civcity"
+ },
+ {
+  "kind": "jyn",
+  "worlds": [
+   "scarif"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks the Rogue One five"
+ },
+ {
+  "kind": "k2so",
+  "worlds": [
+   "scarif"
+  ],
+  "tier": "droid",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks the Rogue One five"
+ },
+ {
+  "kind": "kaadu",
+  "worlds": [
+   "naboo"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "kaminoan",
+  "worlds": [
+   "kamino"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/NPC/Creatures/Kaminoan/Kaminoan_01/Kaminoan_01_Ske",
+  "body": "characters/npc/creatures/kaminoan/kaminoan_01/kaminoan_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   12793,
+   6303,
+   3147,
+   1586,
+   778,
+   382
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "no clips of its own; its bones are walrus-named, so the walrus pack may drive it by name (its neck is long: prove it on a sheet)",
+  "walrusNamed": "49 bones, every one a walrus bone; no weapon sockets",
+  "clips": 0,
+  "total0": 12793
+ },
+ {
+  "kind": "kenobi",
+  "worlds": [
+   "coruscant",
+   "tatooine"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "done",
+  "why": "the plan calls it phase 1’s; the audit still finds it built: the game has no old Ben, so the row either points at phase 1’s `obiwan` or keeps the built figure"
+ },
+ {
+  "kind": "krennic",
+  "worlds": [
+   "scarif"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks the Rogue One five"
+ },
+ {
+  "kind": "lando",
+  "worlds": [
+   "bespin"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "done",
+  "why": "done (phase 1)"
+ },
+ {
+  "kind": "lavaflea",
+  "worlds": [
+   "mustafar"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "lobot",
+  "worlds": [
+   "bespin"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "lothcat",
+  "worlds": [
+   "lothal"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "lothwolf",
+  "worlds": [
+   "lothal"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "luke",
+  "worlds": [
+   "bespin",
+   "hoth"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "done",
+  "why": "done (phase 1)"
+ },
+ {
+  "kind": "mace",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "mando",
+  "worlds": [
+   "mandalore",
+   "nevarro"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "mousedroid",
+  "worlds": [
+   "coruscant",
+   "mustafar",
+   "scarif",
+   "tatooine"
+  ],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/_Shared/Droid_Parts_Ske",
+  "body": "characters/npc/droids/mouse_01/mouse_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   2416,
+   648,
+   280,
+   148,
+   48,
+   20
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "no clips on its skeleton; `mouse_01_static_mesh` is its unrigged twin",
+  "clips": 0,
+  "total0": 2416
+ },
+ {
+  "kind": "mustafarian",
+  "worlds": [
+   "mustafar"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "neimoidian",
+  "worlds": [
+   "mustafar"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "nexu",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "obiwan",
+  "worlds": [
+   "mustafar"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "done",
+  "why": "done (phase 1)"
+ },
+ {
+  "kind": "probe",
+  "worlds": [
+   "hoth"
+  ],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/Viper_01/Viper_01_Ske",
+  "body": "characters/npc/droids/viper_01/viper_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   21747,
+   10771,
+   5222,
+   2605,
+   1201,
+   585
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 16,
+  "total0": 21747
+ },
+ {
+  "kind": "quigon",
+  "worlds": [
+   "naboo"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "r5",
+  "worlds": [
+   "kamino",
+   "nevarro"
+  ],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/Astromech/Astromech_01_Ske",
+  "body": "characters/npc/droids/astromech/r5d4/r5d4_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "R5A2_01, R5J2_01",
+    "era": "original trilogy",
+    "body": "characters/npc/droids/astromech/r5d4/r5d4_01_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   13060,
+   6980,
+   2322,
+   894,
+   218
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 36,
+  "total0": 13060
+ },
+ {
+  "kind": "rebel",
+  "worlds": [
+   "endor",
+   "hoth",
+   "naboo",
+   "scarif",
+   "yavin"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/light/l_assault_orig/l_assault_orig_ds_01/l_assault_orig_ds_01_mesh",
+  "parts": [
+   "characters/bodyparts/hands_01/hands_01_mesh",
+   "characters/bodyparts/headgear_05/headgear_05_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_hakan/heads_hakan_01_mesh",
+   "characters/heads/heads_charlie/heads_charlie_01/heads_charlie_01_mesh",
+   "characters/heads/heads_sullustan/heads_sullustan_01/heads_sullustan_01_mesh",
+   "characters/heads/heads_nikto/heads_nikto_01/head_nikto_01_mesh"
+  ],
+  "variations": [
+   {
+    "name": "Yavin (L_Assault_Orig_YA_01 on the same body: `T_L_Assault_Orig_YA_01_CS`, `T_L_Assault_Orig_01_Strap_YA_CS`)",
+    "world": "yavin",
+    "era": "original trilogy",
+    "body": "characters/light/l_assault_orig/l_assault_orig_ds_01/l_assault_orig_ds_01_mesh",
+    "parts": [
+     "characters/bodyparts/hands_01/hands_01_mesh",
+     "characters/bodyparts/headgear_05/headgear_05_mesh"
+    ],
+    "record": "mpvur_l_assault_orig_ya_01_bpb"
+   },
+   {
+    "name": "Endor (mpvur_l_assault_orig_en_01_bpb)",
+    "world": "endor",
+    "era": "original trilogy",
+    "body": "characters/bodyparts/torso_01/torso_01_mesh",
+    "parts": [
+     "characters/bodyparts/legs_07/legs_07_mesh",
+     "characters/bodyparts/gloves_04/gloves_04_mesh",
+     "characters/bodyparts/backpack_05/backpack_05_mesh",
+     "characters/bodyparts/headgear_01/headgear_01_mesh",
+     "characters/heads/_shared/hair/helmetshorthair_01/helmetshorthair_01_mesh"
+    ]
+   },
+   {
+    "name": "Endor, the campaign’s forest soldier (fewer parts)",
+    "world": "endor",
+    "era": "original trilogy",
+    "body": "characters/rebel/rebel_soldierforest/rebel_soldierforest_male_01/rebel_soldierforest_male_01_mesh",
+    "parts": [
+     "characters/rebel/rebel_soldierforest/rebel_soldierforest_male_01/rebel_soldierforest_male_01_hands_mesh",
+     "characters/rebel/rebel_soldierforest/rebel_soldierforest_male_01/rebel_soldierforest_male_01_backpack_mesh",
+     "characters/heads/heads_nils/heads_nils_01/heads_nils_01_r_soldierforest_helmet_01_mesh"
+    ]
+   },
+   {
+    "name": "Scarif’s pathfinders (mpvur_l_assault_orig_scar_01_bpb, Gloves_04_Brown)",
+    "world": "scarif",
+    "era": "Rogue One",
+    "body": "characters/light/l_assault_orig/l_assault_orig_pathfinder_01/l_assault_orig_pathfinder_01_mesh",
+    "parts": [
+     "characters/light/l_assault_orig/l_assault_orig_pathfinder_01/l_assault_orig_pathfinder_01_helmet_mesh",
+     "characters/bodyparts/gloves_04/gloves_04_mesh"
+    ]
+   },
+   {
+    "name": "Mos Eisley (mpvur_l_assault_orig_mos_01_bpb: Torso_01_Brown, Legs_07_Brown, Backpack_05_Brown, Gloves_04_Brown)",
+    "world": "tatooine",
+    "era": "original trilogy",
+    "body": "characters/bodyparts/torso_01/torso_01_mesh",
+    "parts": [
+     "characters/bodyparts/legs_07/legs_07_mesh",
+     "characters/bodyparts/gloves_04/gloves_04_mesh",
+     "characters/bodyparts/backpack_05/backpack_05_mesh",
+     "characters/bodyparts/headgear_02/headgear_02_mesh"
+    ]
+   },
+   {
+    "name": "Hoth: the `hothtrooper` row’s files",
+    "world": "hoth",
+    "era": "original trilogy",
+    "body": "characters/bodyparts/torso_02/torso_02_mesh",
+    "parts": [
+     "characters/bodyparts/legs_02/legs_02_mesh",
+     "characters/bodyparts/gloves_02/gloves_02_mesh",
+     "characters/bodyparts/backpack_06/backpack_06_mesh",
+     "characters/bodyparts/headgear_12/headgear_12_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   22826,
+   11535,
+   5364,
+   2768,
+   1440,
+   634
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_l_assault_orig_ds_01_bpb",
+  "clips": null,
+  "total0": 41975
+ },
+ {
+  "kind": "rebelpilot",
+  "worlds": [
+   "endor",
+   "hoth",
+   "naboo",
+   "nevarro",
+   "scarif",
+   "tatooine",
+   "yavin"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/npc/humans/rebel_pilot/rebel_pilot_male_02_mesh",
+  "parts": [],
+  "heads": [
+   "characters/heads/heads_nils/heads_nils_01/heads_nils_01_mesh"
+  ],
+  "variations": [
+   {
+    "name": "the X-wing pilot (one LOD only)",
+    "era": "original trilogy",
+    "body": "characters/hero/pilots/pilot_xwing_orig_01/pilot_xwing_orig_01_mesh",
+    "parts": [
+     "characters/heads/heads_nils/heads_nils_01/heads_nils_01_mesh"
+    ],
+    "record": "VUR_Pilot_Xwing_Orig_01"
+   }
+  ],
+  "lods": [
+   29005,
+   16573,
+   8527,
+   3959,
+   2154,
+   1230
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the body has its helmet but no face: the X-wing pilot’s record (VUR_Pilot_Xwing_Orig_01) gives Nils’s head; the own Mixamo clips go",
+  "clips": null,
+  "total0": 40459
+ },
+ {
+  "kind": "rebeltech",
+  "worlds": [
+   "yavin"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/npc/humans/rebel_technician_orig/rebel_technician_orig_01/rebel_technician_orig_01_mesh",
+  "parts": [],
+  "heads": [
+   "characters/heads/heads_nils/heads_nils_01/heads_nils_01_mesh"
+  ],
+  "variations": [
+   {
+    "name": "the one-mesh NPC with the head baked (Civilian_Ske)",
+    "era": "original trilogy",
+    "body": "characters/npc/humans/rebel_technician_orig/rebel_technician_orig_01/rebel_technician_orig_01_civ_mesh",
+    "parts": []
+   },
+   {
+    "name": "the campaign’s technician",
+    "era": "original trilogy",
+    "body": "characters/npc/humans/sp_rebel_technician_orig/sp_rebel_technician_orig_01_mesh",
+    "parts": [
+     "characters/npc/humans/sp_rebel_technician_orig/sp_rebel_technician_helmet_orig_01_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   17784,
+   8884,
+   4468,
+   2228,
+   1190,
+   384
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "body and cap, no face (its materials are `m_body`, `m_helmet`): the `_civ_mesh` twin bakes Nils’s head, so Nils is the head; the own Mixamo clips go",
+  "clips": null,
+  "total0": 29238
+ },
+ {
+  "kind": "reek",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "ronto",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "beast",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Creatures/Ronto/Ronto_01/Ronto_01_Ske",
+  "body": "characters/npc/creatures/ronto/ronto_01/ronto_01_saddle_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   32430,
+   16367,
+   7730,
+   3145,
+   1077,
+   487
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the manifest has no bare ronto: `ronto_01_saddle_mesh` is the whole beast and its saddle (7.9 m tall; the ronto textures and the saddle’s)",
+  "clips": 30,
+  "total0": 32430
+ },
+ {
+  "kind": "sandtrooper",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/dark/d_heavy_orig/d_heavy_orig_mos_01/d_heavy_orig_mos_01_mesh",
+  "parts": [
+   "characters/dark/d_assault_orig/d_assault_orig_01/d_assault_orig_01_helmet_mesh",
+   "characters/dark/d_heavy_orig/d_heavy_orig_01/d_heavy_orig_01_backpack_mesh",
+   "characters/dark/d_heavy_orig/d_heavy_orig_01/d_heavy_orig_01_parts_mesh"
+  ],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   24306,
+   13135,
+   6383,
+   3192,
+   1693
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_d_heavy_orig_mos_01_bpb, mpvur_d_heavy_orig_01_skin2_sandtrooper_bpb",
+  "note": "the helmet, backpack and parts are the stormtrooper’s with Mos Eisley textures (D_Assault_Orig_MOS_01_Helmet → `T_D_Assault_Orig_MOS_01_Helmet_CS`, D_Heavy_Orig_01_Backpack_MOS, D_Heavy_Orig_MOS_01_Parts); those maps are not in the bucket’s textures yet, so the helmet comes white until they are",
+  "clips": null,
+  "total0": 39171
+ },
+ {
+  "kind": "scouttrooper",
+  "worlds": [
+   "endor"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/imperial/imperial_scoutrooper/imperial_scoutrooper_male_01/imperial_scoutrooper_male_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the multiplayer specialist (the same model)",
+    "era": "original trilogy",
+    "body": "characters/dark/d_specialist_orig/d_specialist_orig_01/d_specialist_orig_01_mesh",
+    "parts": [],
+    "record": "mpvur_d_specialist_orig_01_bpb"
+   }
+  ],
+  "lods": [
+   32694,
+   17096,
+   8492,
+   4308,
+   1312,
+   393
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "one mesh, helmet in it",
+  "clips": null,
+  "total0": 32694
+ },
+ {
+  "kind": "senateguard",
+  "worlds": [
+   "coruscant"
+  ],
+  "tier": "soldier",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it (its honour guard is Alderaan’s)"
+ },
+ {
+  "kind": "shaak",
+  "worlds": [
+   "naboo"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "shoretrooper",
+  "worlds": [
+   "scarif"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/imperial/imperial_beachtrooper/imperial_beachtrooper_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the captain (D_Officer_Orig_BeachTrooper_01)",
+    "era": "Rogue One",
+    "body": "characters/imperial/imperial_beachtrooper/imperial_beachtrooper_mesh",
+    "parts": []
+   },
+   {
+    "name": "the specialist (D_Specialist_Orig_BeachTrooper_01)",
+    "era": "Rogue One",
+    "body": "characters/imperial/imperial_beachtrooper/imperial_beachtrooper_mesh",
+    "parts": []
+   },
+   {
+    "name": "the heavy",
+    "era": "Rogue One",
+    "body": "characters/dark/d_heavy_orig/d_heavy_orig_beachtrooper_01/d_heavy_orig_beachtrooper_01_mesh",
+    "parts": [],
+    "record": "mpvur_d_heavy_orig_01_skin4_scarif_bpb"
+   }
+  ],
+  "lods": [
+   47948,
+   23987,
+   12074,
+   6249,
+   3117,
+   1014
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_d_assault_orig_scar_01_bpb (D_Assault_Orig_BeachTrooper_01)",
+  "clips": null,
+  "total0": 47948
+ },
+ {
+  "kind": "snowtrooper",
+  "worlds": [
+   "hoth"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/dark/d_assault_orig/d_assault_orig_ho_01/d_assault_orig_ho_01_mesh",
+  "parts": [
+   "characters/dark/d_assault_orig/d_assault_orig_ho_01/d_assault_orig_ho_01_helmet_mesh",
+   "characters/dark/d_assault_orig/d_assault_orig_ho_01/d_assault_orig_ho_01_cape_mesh",
+   "characters/dark/d_heavy_orig/d_heavy_orig_ho_01/d_heavy_orig_ho_01_backpack_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the heavy (mpvur_d_heavy_orig_ho_01_bpb)",
+    "era": "original trilogy",
+    "body": "characters/dark/d_assault_orig/d_assault_orig_ho_01/d_assault_orig_ho_01_mesh",
+    "parts": [
+     "characters/dark/d_heavy_orig/d_heavy_orig_ho_01/d_heavy_orig_ho_01_helmet_mesh",
+     "characters/dark/d_assault_orig/d_assault_orig_ho_01/d_assault_orig_ho_01_cape_mesh",
+     "characters/dark/d_heavy_orig/d_heavy_orig_ho_01/d_heavy_orig_ho_01_backpack_mesh",
+     "characters/dark/d_heavy_orig/d_heavy_orig_ho_01/d_heavy_orig_ho_01_parts_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   23067,
+   11513,
+   5884,
+   3511,
+   1119,
+   350
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_d_assault_orig_ho_01_bpb (the backpack is in the record)",
+  "clips": null,
+  "total0": 32876
+ },
+ {
+  "kind": "stormtrooper",
+  "worlds": [
+   "bespin",
+   "endor",
+   "lothal",
+   "nevarro",
+   "scarif",
+   "tatooine"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/imperial/imperial_stormtrooper/imperial_stormtrooper_male_01/imperial_stormtrooper_male_01_fullbody_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the multiplayer stormtrooper (mpvur_d_assault_orig_01_bpb), five LODs",
+    "era": "original trilogy",
+    "body": "characters/dark/d_assault_orig/d_assault_orig_01/d_assault_orig_01_mesh",
+    "parts": [
+     "characters/dark/d_assault_orig/d_assault_orig_01/d_assault_orig_01_helmet_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   34814,
+   16890,
+   7890,
+   3589
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "one mesh, helmet in it, but four LODs only (the far cut is the 3,589)",
+  "clips": null,
+  "total0": 34814
+ },
+ {
+  "kind": "sullustan",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game has the head alone (`characters/heads/heads_sullustan/heads_sullustan_01/heads_sullustan_01_mesh`), one of the rebel soldiers’ four faces; no civilian body"
+ },
+ {
+  "kind": "superdroid",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": "soldier",
+  "rig": "own",
+  "skeleton": "Characters/Hero/B2/B2_01/B2_01_Ske",
+  "body": "characters/hero/b2/b2_01/b2_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the B2-RP (B2_RP_01, with its parts)",
+    "era": "Clone Wars",
+    "body": "characters/hero/b2/b2_01/b2_01_mesh",
+    "parts": [
+     "characters/hero/b2/b2_rp_01/b2_rp_01_parts_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   33620,
+   15952,
+   7837,
+   4179,
+   1268,
+   376
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 337,
+  "total0": 33620
+ },
+ {
+  "kind": "tauntaun",
+  "worlds": [
+   "hoth"
+  ],
+  "tier": "beast",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Creatures/Tauntaun/Tauntaun_01/Tauntaun_01_Ske",
+  "body": "characters/npc/creatures/tauntaun/tauntaun_01/tauntaun_01_mesh",
+  "parts": [
+   "characters/npc/creatures/tauntaun/tauntaun_01/tauntaun_01_reins_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "without the saddle",
+    "era": "original trilogy",
+    "body": "characters/npc/creatures/tauntaun/tauntaun_01/tauntaun_01_nosaddle_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   55195,
+   27537,
+   13676,
+   6625,
+   3359,
+   1080
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "clips": 44,
+  "total0": 61907
+ },
+ {
+  "kind": "tusken",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks them"
+ },
+ {
+  "kind": "twilek",
+  "worlds": [
+   "coruscant",
+   "nevarro",
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game has the head alone (`characters/heads/heads_twilek/heads_twilek_01/heads_twilek_01_mesh`), no body"
+ },
+ {
+  "kind": "ugnaught",
+  "worlds": [
+   "bespin"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks them"
+ },
+ {
+  "kind": "vader",
+  "worlds": [
+   "bespin",
+   "hoth",
+   "mustafar"
+  ],
+  "tier": "duellist",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "done",
+  "why": "done (phase 1)"
+ },
+ {
+  "kind": "villager",
+  "worlds": [
+   "bespin",
+   "coruscant",
+   "kamino",
+   "lothal",
+   "naboo",
+   "nevarro",
+   "sorgan",
+   "tatooine",
+   "yavin"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "takes",
+  "why": "becomes the pool: Tatooine `civdesert1..3`, Naboo `civtheed1..2`, Coruscant and Bespin `civcity1..3`; Kamino, Lothal, Nevarro, Sorgan and Yavin keep the built figure",
+  "pool": "by look"
+ },
+ {
+  "kind": "wa7",
+  "worlds": [
+   "coruscant"
+  ],
+  "tier": "droid",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "wampa",
+  "worlds": [
+   "hoth"
+  ],
+  "tier": "beast",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "wingguard",
+  "worlds": [
+   "bespin"
+  ],
+  "tier": "soldier",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks it"
+ },
+ {
+  "kind": "wookiee",
+  "worlds": [
+   "bespin",
+   "kashyyyk",
+   "yavin"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/hero/wookiewarrior/wookiewarrior_01/wookiewarrior_01_mesh",
+  "parts": [
+   "characters/hero/wookiewarrior/wookiewarrior_01/wookiewarrior_01_haircards_cloth_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the second warrior",
+    "era": "Clone Wars and after",
+    "body": "characters/hero/wookiewarrior/wookiewarrior_02/wookiewarrior_02_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   49160,
+   24478,
+   12289,
+   4007,
+   1729,
+   477
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "head in the body; the hair cards have three LODs only",
+  "clips": null,
+  "total0": 55196
+ },
+ {
+  "kind": "wuher",
+  "worlds": [
+   "nevarro",
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game lacks him"
+ },
+ {
+  "kind": "yoda",
+  "worlds": [
+   "coruscant",
+   "dagobah",
+   "geonosis",
+   "kashyyyk"
+  ],
+  "tier": "duellist",
+  "rig": "own",
+  "skeleton": "Characters/Hero/Yoda/Yoda_01/Yoda_01_Ske",
+  "body": "characters/hero/yoda/yoda_01/yoda_01_mesh",
+  "parts": [
+   "characters/hero/yoda/yoda_01/yoda_01_robe_skinned_mesh"
+  ],
+  "heads": [],
+  "variations": [
+   {
+    "name": "the hooded robe",
+    "era": "prequels",
+    "body": "characters/hero/yoda/yoda_01/yoda_01_mesh",
+    "parts": [
+     "characters/hero/yoda/yoda_hood_01/yoda_hood_01_robe_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   31400,
+   16838,
+   8037,
+   3633,
+   1681,
+   582
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "not one of phase 1’s thirteen; the game has him on his own rig with 101 clips",
+  "clips": 101,
+  "total0": 36149
+ },
+ {
+  "kind": "zam",
+  "worlds": [
+   "coruscant"
+  ],
+  "tier": "civilian",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "takes",
+  "why": "through the villager pool, as the plan says (she is a bounty hunter, so a pool civilian is a stand-in, not her)",
+  "pool": "civcity"
+ },
+ {
+  "kind": "shadowtrooper",
+  "worlds": [
+   "deathstar (inside/pack.js)"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/imperial/imperial_stormtrooper/imperial_stormtrooper_male_01/imperial_shadowtrooper_male_01_mesh",
+  "parts": [
+   "characters/imperial/imperial_stormtrooper/imperial_stormtrooper_male_01/imperial_stormtrooper_male_01_helmet_mesh"
+  ],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   29206,
+   14331,
+   6860,
+   3409,
+   1721
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the body stops at the neck (its top is 1.60 m) and the game’s record for it (`Imperial_Shadowtrooper_Male_01`) names the body alone: there is no black helmet in the manifest, so the stormtrooper’s helmet is darkened on import or the figure goes headless",
+  "new": true,
+  "clips": null,
+  "total0": 36425
+ },
+ {
+  "kind": "clonekamino",
+  "worlds": [
+   "kamino"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+  "parts": [
+   "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_02_helmet_mesh",
+   "characters/bodyparts/gloves_05/gloves_05_mesh"
+  ],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   28846,
+   13891,
+   6951,
+   3537,
+   1849,
+   896
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_l_assault_preq_kam_01_bpb",
+  "note": "the same files as `clonephase1` (Kamino’s default in the game is the plain Phase I): make one of the two",
+  "new": true,
+  "clips": null,
+  "total0": 39782
+ },
+ {
+  "kind": "clonekashyyyk",
+  "worlds": [
+   "kashyyyk"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+  "parts": [
+   "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_helmet_mesh",
+   "characters/bodyparts/gloves_05/gloves_05_mesh"
+  ],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   28846,
+   13891,
+   6951,
+   3537,
+   1849,
+   896
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_l_assault_preq_kash_01_skin1_planetdefault_bpb: L_Assault_Preq_01_CM_T_Assault_Kashyyk, L_Assault_Preq_01_Helmet_CM_T_Assault_Kashyyk",
+  "new": true,
+  "clips": null,
+  "total0": 41544
+ },
+ {
+  "kind": "clonegeonosis",
+  "worlds": [
+   "geonosis"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+  "parts": [
+   "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_02_helmet_mesh",
+   "characters/bodyparts/gloves_05/gloves_05_mesh"
+  ],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   28846,
+   13891,
+   6951,
+   3537,
+   1849,
+   896
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "mpvur_l_assault_preq_pha_01_ap_geo_bpb: L_Assault_Preq_02_CM_T_212, L_Assault_Preq_02_Helmet_CM_T_212 (the 212th in Phase I)",
+  "new": true,
+  "clips": null,
+  "total0": 39782
+ },
+ {
+  "kind": "clonecoruscant",
+  "worlds": [
+   "coruscant"
+  ],
+  "tier": "soldier",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+  "parts": [
+   "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_helmet_mesh",
+   "characters/bodyparts/gloves_05/gloves_05_mesh"
+  ],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   28846,
+   13891,
+   6951,
+   3537,
+   1849,
+   896
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "skin8_cguard: L_Assault_Preq_01_CM_T_CGuard, L_Assault_Preq_01_Helmet_CM_T_CGuard (the Coruscant Guard)",
+  "new": true,
+  "clips": null,
+  "total0": 41544
+ },
+ {
+  "kind": "officer",
+  "worlds": [
+   "deathstar (inside/pack.js)",
+   "scarif"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/hero/imperialofficer/imperialofficer_01_mesh",
+  "parts": [
+   "characters/hero/imperialofficer/sp_imperialofficer_hat_01_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_henry/heads_henry_01_mesh"
+  ],
+  "variations": [
+   {
+    "name": "the multiplayer officer (mpvur_d_officer_orig_01_bpb: Legs_03_DS)",
+    "era": "original trilogy",
+    "body": "characters/bodyparts/torso_05/torso_05_mesh",
+    "parts": [
+     "characters/bodyparts/legs_03/legs_03_mesh",
+     "characters/bodyparts/gloves_03/gloves_03_mesh",
+     "characters/dark/d_officer_orig/d_officer_orig_01/d_officer_orig_01_parts_mesh",
+     "characters/bodyparts/headgear_11/headgear_11_mesh",
+     "characters/heads/heads_henry/heads_henry_01_mesh"
+    ]
+   },
+   {
+    "name": "the Death Star officer (mpvur_d_officer_orig_ds_01_bpb)",
+    "era": "original trilogy",
+    "body": "characters/bodyparts/torso_05/torso_05_mesh",
+    "parts": [
+     "characters/bodyparts/legs_03/legs_03_mesh",
+     "characters/bodyparts/gloves_03/gloves_03_mesh",
+     "characters/hero/imperialofficer/sp_imperialofficer_hat_01_mesh",
+     "characters/heads/heads_henry/heads_henry_01_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   23081,
+   11121,
+   5461,
+   2710,
+   1344,
+   678
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "already a crew row (`officer.glb`, Veers’s stand-in) but placed by no world; the body is the officer’s uniform in one mesh (Torso_05, Legs_03_DS, Gloves_03 textures), no head; Henry is the face the game’s own Imperial personnel wear",
+  "new": true,
+  "clips": null,
+  "total0": 36576
+ },
+ {
+  "kind": "navycrewman",
+  "worlds": [
+   "deathstar (inside/pack.js)",
+   "scarif"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/dark/d_navycrewman_orig/d_navycrewman_orig_01/d_navycrewman_orig_01_mesh",
+  "parts": [
+   "characters/bodyparts/hands_03/hands_03_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_henry/heads_henry_01_mesh"
+  ],
+  "variations": [
+   {
+    "name": "Variation_02 (Heads_Anton_01, Hair_NavyCrewman_01, Hands_03)",
+    "era": "original trilogy",
+    "body": "characters/dark/d_navycrewman_orig/d_navycrewman_orig_01/d_navycrewman_orig_01_mesh",
+    "parts": [
+     "characters/bodyparts/hands_03/hands_03_mesh",
+     "characters/heads/heads_anton/heads_anton_01/heads_anton_01_mesh",
+     "characters/heads/hair_navycrewman/hair_navycrewman_01_mesh"
+    ]
+   },
+   {
+    "name": "Variation_03 (Heads_Jin_01, Hands_01)",
+    "era": "original trilogy",
+    "body": "characters/dark/d_navycrewman_orig/d_navycrewman_orig_01/d_navycrewman_orig_01_mesh",
+    "parts": [
+     "characters/bodyparts/hands_01/hands_01_mesh",
+     "characters/heads/heads_jin/heads_jin_01/heads_jin_01_mesh",
+     "characters/heads/hair_navycrewman/hair_navycrewman_01_mesh"
+    ]
+   },
+   {
+    "name": "Variation_04 (Heads_Noel_01, Hands_03)",
+    "era": "original trilogy",
+    "body": "characters/dark/d_navycrewman_orig/d_navycrewman_orig_01/d_navycrewman_orig_01_mesh",
+    "parts": [
+     "characters/bodyparts/hands_03/hands_03_mesh",
+     "characters/heads/heads_noel/heads_noel_01_mesh",
+     "characters/heads/hair_navycrewman/hair_navycrewman_01_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   22773
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "VUR_D_NavyCrewman_Orig_Variation_01 (Hands_03_Dark, Heads_Henry_01)",
+  "note": "one LOD only (22,773): no far cut of its own",
+  "new": true,
+  "clips": null,
+  "total0": 43308
+ },
+ {
+  "kind": "admiral",
+  "worlds": [
+   "deathstar (inside/pack.js)"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/npc/humans/sp_imperial_admiral_orig/sp_imperial_admiral_orig_01_mesh",
+  "parts": [],
+  "heads": [
+   "characters/heads/heads_garrick/heads_garrick_orig/heads_garrick_orig_head_mesh"
+  ],
+  "variations": [
+   {
+    "name": "the second admiral (one LOD only)",
+    "era": "original trilogy",
+    "body": "characters/npc/humans/sp_imperial_admiral_orig/sp_imperial_admiral_orig_02_mesh",
+    "parts": [
+     "characters/heads/heads_garrick/heads_garrick_orig/heads_garrick_orig_head_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   9538,
+   4764,
+   2378,
+   1192,
+   595,
+   290
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the body’s textures are Garrick Versio’s (the campaign’s admiral, Iden’s father), and his is the head that fits it; any face from `heads/` will do if a named man is not wanted",
+  "new": true,
+  "clips": null,
+  "total0": 20550
+ },
+ {
+  "kind": "personnel",
+  "worlds": [
+   "deathstar (inside/pack.js)"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Refs/_Ref_HumanCivilian/Civilian_Ske",
+  "body": "characters/npc/humans/imperial_personnel/imperial_personnel_orig_ds_01/imperial_personnel_orig_ds_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "Endor’s (Headgear_11, Nils’s head, the officer’s parts)",
+    "world": "endor",
+    "era": "original trilogy",
+    "body": "characters/npc/humans/imperial_personnel/imperial_personnel_orig_en_01/imperial_personnel_orig_en_01_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   34699,
+   16771,
+   8159,
+   3580,
+   984,
+   678
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "one mesh with Henry’s head and Headgear_06 baked in; unarmed, which suits its socketless rig",
+  "new": true,
+  "walrusNamed": "48 bones, every one a walrus bone; no weapon sockets, no index fingers",
+  "clips": 0,
+  "total0": 34699
+ },
+ {
+  "kind": "gonk",
+  "worlds": [
+   "deathstar (inside/pack.js)"
+  ],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/DroidGonk/DroidGonk_01/DroidGonk_01_Ske",
+  "body": "characters/npc/droids/droidgonk/droidgonk_01/droidgonk_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   14240,
+   7330,
+   3672,
+   1784,
+   919,
+   387
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "two clips; `characters/droids/droidgonk_01/droidgonk_01_mesh` is an unrigged twin; the record’s other skin, DroidGonk_01_Kessel, is from Kessel (not wanted)",
+  "new": true,
+  "clips": 2,
+  "total0": 14240
+ },
+ {
+  "kind": "interrogationdroid",
+  "worlds": [
+   "deathstar (inside/pack.js)"
+  ],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/_Shared/Droid_Flying_SingleJoint_Ske",
+  "body": "characters/npc/droids/interrogationdroid_01/interrogationdroid_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   5915,
+   2899,
+   1448,
+   713,
+   252,
+   94
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "one bone and one clip; the First Order’s interrogation droid beside it is sequel-era and left out",
+  "new": true,
+  "clips": 1,
+  "total0": 5915
+ },
+ {
+  "kind": "civdesert1",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Refs/_Ref_HumanCivilian/Civilian_Ske",
+  "body": "characters/npc/humans/civ_moseisley/civ_moseisley_01/civ_moseisley_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "Civ_MosEisley_01_V01..V04 (ColorClothes, ColorHairSkin on the palette)",
+    "era": "original trilogy",
+    "body": "characters/npc/humans/civ_moseisley/civ_moseisley_01/civ_moseisley_01_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   5980,
+   3143,
+   1461,
+   594,
+   285
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "crowd figures: 48 bones, about 6,000 to 8,000 triangles, one material whose colours come from a palette (`T_Civ_MosEisley_0N_P`) indexed by the variation’s ColorClothes and ColorHairSkin; Mos Eisley 01 wears Theed 01’s textures (`T_Civ_Theed_01_C_VFXCrowd`) with its own palette, at nearly Theed 01’s triangle count; the palettes are not in the bucket’s textures yet",
+  "new": true,
+  "walrusNamed": "48 bones, every one a walrus bone; no weapon sockets, no index fingers",
+  "clips": 0,
+  "total0": 5980
+ },
+ {
+  "kind": "civdesert2",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Refs/_Ref_HumanCivilian/Civilian_Ske",
+  "body": "characters/npc/humans/civ_moseisley/civ_moseisley_02/civ_moseisley_02_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "Civ_MosEisley_02_V01..V04 (ColorClothes, ColorHairSkin on the palette)",
+    "era": "original trilogy",
+    "body": "characters/npc/humans/civ_moseisley/civ_moseisley_02/civ_moseisley_02_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   7714,
+   4125,
+   1987,
+   1008,
+   283
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "new": true,
+  "walrusNamed": "48 bones, every one a walrus bone; no weapon sockets, no index fingers",
+  "clips": 0,
+  "total0": 7714
+ },
+ {
+  "kind": "civdesert3",
+  "worlds": [
+   "tatooine"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Refs/_Ref_HumanCivilian/Civilian_Ske",
+  "body": "characters/npc/humans/civ_moseisley/civ_moseisley_03/civ_moseisley_03_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "Civ_MosEisley_03_V01..V05 (ColorClothes, ColorHairSkin on the palette)",
+    "era": "original trilogy",
+    "body": "characters/npc/humans/civ_moseisley/civ_moseisley_03/civ_moseisley_03_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   8144,
+   4220,
+   2220,
+   1007,
+   470
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "new": true,
+  "walrusNamed": "48 bones, every one a walrus bone; no weapon sockets, no index fingers",
+  "clips": 0,
+  "total0": 8144
+ },
+ {
+  "kind": "civtheed1",
+  "worlds": [
+   "naboo"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Refs/_Ref_HumanCivilian/Civilian_Ske",
+  "body": "characters/npc/humans/civ_theed/civ_theed_01/civ_theed_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "Civ_Theed_01_V01..V04 (palette)",
+    "era": "prequels",
+    "body": "characters/npc/humans/civ_theed/civ_theed_01/civ_theed_01_mesh",
+    "parts": []
+   },
+   {
+    "name": "the crowd agent (about 500 triangles, unrigged: a far stand-in)",
+    "era": "prequels",
+    "body": "characters/npc/humans/civ_theed/civ_theed_01/crowdagent/npc_civ_theed_01_crowd_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   5979,
+   3145,
+   1464,
+   592,
+   280
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "new": true,
+  "walrusNamed": "48 bones, every one a walrus bone; no weapon sockets, no index fingers",
+  "clips": 0,
+  "total0": 5979
+ },
+ {
+  "kind": "civtheed2",
+  "worlds": [
+   "naboo"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Refs/_Ref_HumanCivilian/Civilian_Ske",
+  "body": "characters/npc/humans/civ_theed/civ_theed_02/civ_theed_02_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [
+   {
+    "name": "Civ_Theed_02_V01..V04 (palette)",
+    "era": "prequels",
+    "body": "characters/npc/humans/civ_theed/civ_theed_02/civ_theed_02_mesh",
+    "parts": []
+   },
+   {
+    "name": "the crowd agent (about 500 triangles, unrigged: a far stand-in)",
+    "era": "prequels",
+    "body": "characters/npc/humans/civ_theed/civ_theed_02/crowdagent/npc_civ_theed_02_crowd_mesh",
+    "parts": []
+   }
+  ],
+  "lods": [
+   5803,
+   2924,
+   1472,
+   585,
+   292
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "new": true,
+  "walrusNamed": "48 bones, every one a walrus bone; no weapon sockets, no index fingers",
+  "clips": 0,
+  "total0": 5803
+ },
+ {
+  "kind": "civcity1",
+  "worlds": [
+   "coruscant",
+   "bespin"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_top_mesh",
+  "parts": [
+   "characters/npc/humans/_shared/pants1_civ_vardos/civ_vardos_male_pants1_mesh",
+   "characters/npc/humans/_shared/coat1_civ_vardos/civ_vardos_male_coat1_mesh",
+   "characters/npc/humans/_shared/hat2_civ_vardos/civ_vardos_male_hat2_mesh",
+   "characters/npc/humans/_shared/boots2_civ_vardos/civ_vardos_female_boots2_mesh",
+   "characters/bodyparts/hands_01/hands_01_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_eli/heads_eli_01/heads_eli_01_mesh"
+  ],
+  "variations": [],
+  "lods": [
+   4816,
+   2361,
+   1197,
+   601,
+   300,
+   138
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "VUR_SP_Civ_Vardos_Male_01 (Robe1_Top_WhiteSolid, Pants1_Black; it names the female boots)",
+  "note": "Vardos is the campaign’s Imperial city after Endor (not sequel-era); seven parts: past the draw-call cap unless joined to an atlas",
+  "new": true,
+  "clips": null,
+  "total0": 42290
+ },
+ {
+  "kind": "civcity2",
+  "worlds": [
+   "coruscant",
+   "bespin"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/npc/humans/_shared/robe2_civ_vardos/civ_vardos_female_robe2_mesh",
+  "parts": [
+   "characters/npc/humans/_shared/boots1_civ_vardos/civ_vardos_female_boots1_mesh",
+   "characters/bodyparts/hands_02/hands_02_mesh",
+   "characters/heads/heads_linnea/heads_linnea_01/heads_linnea_01_hair_bob_02_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_linnea/heads_linnea_01/heads_linnea_01_mesh"
+  ],
+  "variations": [],
+  "lods": [
+   6310,
+   3148,
+   1569,
+   787,
+   393,
+   196
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "VUR_SP_Civ_Vardos_Female_02 (Robe2_Grey)",
+  "new": true,
+  "clips": null,
+  "total0": 39504
+ },
+ {
+  "kind": "civcity3",
+  "worlds": [
+   "coruscant",
+   "bespin"
+  ],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_mesh",
+  "parts": [
+   "characters/npc/humans/_shared/pants1_civ_vardos/civ_vardos_male_pants1_mesh",
+   "characters/npc/humans/_shared/coat2_civ_vardos/civ_vardos_male_coat2_mesh",
+   "characters/npc/humans/_shared/boots2_civ_vardos/civ_vardos_boots2_mesh",
+   "characters/bodyparts/hands_03/hands_03_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_juan/heads_juan_01/heads_juan_01_mesh"
+  ],
+  "variations": [
+   {
+    "name": "VUR_SP_Civ_Vardos_Male_02 (Robe1_RedSolid, Nils with beard)",
+    "era": "after Endor",
+    "body": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_mesh",
+    "parts": [
+     "characters/npc/humans/_shared/pants1_civ_vardos/civ_vardos_male_pants1_mesh",
+     "characters/npc/humans/_shared/boots2_civ_vardos/civ_vardos_boots2_mesh",
+     "characters/bodyparts/hands_01/hands_01_mesh",
+     "characters/heads/heads_nils/heads_nils_01/heads_nils_01_mesh",
+     "characters/heads/heads_nils/heads_nils_01/heads_nils_01_beard_01_mesh"
+    ]
+   },
+   {
+    "name": "VUR_SP_Civ_Vardos_Male_03 (Robe1_GreySolid, Noel)",
+    "era": "after Endor",
+    "body": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_mesh",
+    "parts": [
+     "characters/npc/humans/_shared/pants1_civ_vardos/civ_vardos_male_pants1_tuckinboot1_mesh",
+     "characters/npc/humans/_shared/boots1_civ_vardos/civ_vardos_boots1_mesh",
+     "characters/bodyparts/hands_01/hands_01_mesh",
+     "characters/heads/heads_noel/heads_noel_01_mesh",
+     "characters/heads/heads_nils/heads_nils_01/heads_nils_01_hair_generic_male_01_mesh"
+    ]
+   },
+   {
+    "name": "VUR_SP_Civ_Vardos_Female_03 (Robe2_Blue, Johanna)",
+    "era": "after Endor",
+    "body": "characters/npc/humans/_shared/robe2_civ_vardos/civ_vardos_female_robe2_mesh",
+    "parts": [
+     "characters/npc/humans/_shared/boots2_civ_vardos/civ_vardos_female_boots2_mesh",
+     "characters/bodyparts/hands_02/hands_02_mesh",
+     "characters/heads/heads_johanna/heads_johanna_01_mesh",
+     "characters/heads/heads_jingxu/heads_jingxu_01/heads_jingxu_01_hair_longpony_01_sp_mesh"
+    ]
+   },
+   {
+    "name": "VUR_SP_Civ_Vardos_Female_04 (Coat3, Robe1_Top_WhiteSolid, Pants1_TuckinBoot1_Blue, Mirialan)",
+    "era": "after Endor",
+    "body": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_female_robe1_top_mesh",
+    "parts": [
+     "characters/npc/humans/_shared/pants1_civ_vardos/civ_vardos_female_pants1_tuckinboot1_mesh",
+     "characters/npc/humans/_shared/coat3_civ_vardos/civ_vardos_female_coat3_mesh",
+     "characters/npc/humans/_shared/boots1_civ_vardos/civ_vardos_female_boots1_mesh",
+     "characters/bodyparts/gloves_03/gloves_03_mesh",
+     "characters/heads/heads_mirialan/heads_mirialan_01/heads_mirialan_01_mesh",
+     "characters/heads/heads_jingxu/heads_jingxu_01/heads_jingxu_01_hair_bob_02_mesh"
+    ]
+   }
+  ],
+  "lods": [
+   6184,
+   3079,
+   1545,
+   772,
+   384,
+   191
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "record": "VUR_SP_Civ_Vardos_Male_04 (Robe1_White, Pants1_Black, Hands_03_Dark)",
+  "new": true,
+  "clips": null,
+  "total0": 40178
+ },
+ {
+  "kind": "droideka",
+  "worlds": [],
+  "tier": "soldier",
+  "rig": "own",
+  "skeleton": "Gameplay/Vehicles/Ground/Droideka_01/Droideka_01_Ske",
+  "body": "gameplay/vehicles/ground/droideka_01/droideka_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   32702,
+   16321,
+   8200,
+   4215,
+   2219,
+   1097
+  ],
+  "far": true,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "a `TROOPS` kind the plan names, though no world places it in the audit",
+  "new": true,
+  "clips": 52,
+  "total0": 32702
+ },
+ {
+  "kind": "lukehoth",
+  "worlds": [],
+  "tier": "duellist",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/hero/luke/luke_hoth_01/luke_hoth_01_mesh",
+  "parts": [
+   "characters/hero/luke/luke_hoth_01/luke_hoth_01_gloves_mesh",
+   "characters/hero/luke/luke_hoth_01/luke_hoth_01_helmet_mesh",
+   "characters/hero/luke/luke_hoth_01/luke_hoth_01_helmetscarf_cloth_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_luke/heads_luke_01/heads_luke_01_mesh"
+  ],
+  "variations": [],
+  "lods": [
+   14621,
+   7194,
+   3584,
+   1737,
+   682,
+   224
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "new": true,
+  "pr795": true,
+  "clips": null,
+  "total0": 37274
+ },
+ {
+  "kind": "hanhoth",
+  "worlds": [],
+  "tier": "duellist",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/hero/hansolo/hansolo_hoth_01/hansolo_hoth_01_mesh",
+  "parts": [
+   "characters/hero/hansolo/hansolo_hoth_01/hansolo_hoth_01_helmet_mesh",
+   "characters/hero/hansolo/hansolo_hoth_01/hansolo_hoth_01_skirt_cloth_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_hansolo/heads_hansolo_01/heads_hansolo_01_mesh"
+  ],
+  "variations": [],
+  "lods": [
+   31802,
+   13744,
+   4855,
+   2138,
+   801,
+   289
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "new": true,
+  "pr795": true,
+  "clips": null,
+  "total0": 52524
+ },
+ {
+  "kind": "leiahoth",
+  "worlds": [],
+  "tier": "duellist",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/hero/leia/leia_01/leia_01_mesh",
+  "parts": [
+   "characters/hero/leia/leia_01/leia_01_vest_mesh"
+  ],
+  "heads": [
+   "characters/heads/heads_leia/heads_leia_01/heads_leia_01_mesh",
+   "characters/heads/heads_leia/heads_leia_01/heads_leia_01_hair_mesh"
+  ],
+  "variations": [],
+  "lods": [
+   23431,
+   11788,
+   5771,
+   2903,
+   772,
+   258
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the manifest has no Hoth Leia: `leia_01`",
+  "new": true,
+  "pr795": true,
+  "clips": null,
+  "total0": 40921
+ },
+ {
+  "kind": "veers",
+  "worlds": [],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Rigs/Humanoids/Walrus_HumanMale",
+  "body": "characters/hero/imperialofficer/imperialofficer_01_mesh",
+  "parts": [],
+  "heads": [
+   "characters/heads/heads_henry/heads_henry_01_mesh"
+  ],
+  "variations": [],
+  "lods": [
+   23081,
+   11121,
+   5461,
+   2710,
+   1344,
+   678
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the `officer` row’s files with another face if wanted",
+  "new": true,
+  "pr795": true,
+  "clips": null,
+  "total0": 34534
+ },
+ {
+  "kind": "rieekan",
+  "worlds": [],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Refs/_Ref_HumanCivilian/Civilian_Ske",
+  "body": "characters/npc/humans/rebel_personnel/rebel_personnel_orig_ds_01/rebel_personnel_orig_ds_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   40477,
+   19879,
+   9214,
+   4442,
+   1874,
+   681
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "head (the base male) and Headgear_05 baked in; Civilian_Ske",
+  "new": true,
+  "pr795": true,
+  "walrusNamed": "48 bones, every one a walrus bone; no weapon sockets, no index fingers",
+  "clips": 0,
+  "total0": 40477
+ },
+ {
+  "kind": "torynfarr",
+  "worlds": [],
+  "tier": "civilian",
+  "rig": "walrus",
+  "skeleton": "Characters/Refs/_Ref_HumanCivilian/Civilian_Ske",
+  "body": "characters/npc/humans/rebel_personnel/rebel_personnel_orig_ds_01/rebel_personnel_orig_ds_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   40477,
+   19879,
+   9214,
+   4442,
+   1874,
+   681
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "note": "the same body; the game has no female rebel personnel",
+  "new": true,
+  "pr795": true,
+  "walrusNamed": "48 bones, every one a walrus bone; no weapon sockets, no index fingers",
+  "clips": 0,
+  "total0": 40477
+ },
+ {
+  "kind": "astromech2",
+  "worlds": [],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/Astromech/Astromech_01_Ske",
+  "body": "characters/npc/droids/astromech/r5d4/r5d4_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   13060,
+   6980,
+   2322,
+   894,
+   218
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "new": true,
+  "pr795": true,
+  "clips": 36,
+  "total0": 13060
+ },
+ {
+  "kind": "astromech3",
+  "worlds": [],
+  "tier": "droid",
+  "rig": "own",
+  "skeleton": "Characters/NPC/Droids/Astromech/Astromech_01_Ske",
+  "body": "characters/npc/droids/astromech/r4i9/r4i9_01_mesh",
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [
+   11870,
+   5836,
+   2162,
+   1033,
+   236
+  ],
+  "far": false,
+  "verdict": "takes",
+  "why": "the game has it",
+  "new": true,
+  "pr795": true,
+  "clips": 36,
+  "total0": 11870
+ },
+ {
+  "kind": "twoonebee",
+  "worlds": [],
+  "tier": "droid",
+  "rig": null,
+  "skeleton": null,
+  "body": null,
+  "parts": [],
+  "heads": [],
+  "variations": [],
+  "lods": [],
+  "far": false,
+  "verdict": "stays",
+  "why": "the game has no medical droid",
+  "new": true,
+  "pr795": true
+ }
+]
