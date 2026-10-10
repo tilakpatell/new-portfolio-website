@@ -22,7 +22,7 @@ import { readPerks } from './perks';
 
 export const HERO_KEY = 'tp-galaxy-hero';
 
-// (the crew's own files: Luke and Leia are Sketchfab figures rigged with Meshy onto the crew's skeleton)
+// (the crew's own files: the 2017 game's heroes, on the game's skeleton, `rig: 'walrus'`)
 const crew = (name) => `/models/galaxy/crew/${name}.glb`;
 
 export const SABER_COLORS = [
@@ -35,23 +35,30 @@ export const SABER_COLORS = [
   { id: 'red', name: 'Red', hex: '#ff3b3b' },
 ];
 
-// a hilt: its length (metres), the emitter's shape, the grip's look
+// a hilt: its length (metres), the emitter's shape, the grip's look, and
+// `model`: the 2017 game's own hilt (catalog/bf2017.js), which the saber
+// wears in place of the built one (its length the model's); the built one,
+// dressed by the rest, stands in where there's none or until it comes
 export const HILTS = [
-  { id: 'skywalker', name: 'Skywalker', about: 'Anakin’s, then Luke’s: a plain steel hilt with a black ribbed grip.', length: 0.28, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
-  { id: 'luke', name: 'Luke’s own', about: 'The one he built on Tatooine: slimmer, a black sleeve and a thin emitter.', length: 0.26, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#141518' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
+  { id: 'skywalker', name: 'Skywalker', about: 'Anakin’s, then Luke’s: a plain steel hilt with a black ribbed grip.', model: 'hiltanakin', length: 0.274, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
+  { id: 'luke', name: 'Luke’s own', about: 'The one he built on Tatooine: slimmer, a black sleeve and a thin emitter.', model: 'hiltluke', length: 0.286, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#141518' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
   { id: 'ahsoka', name: 'Ahsoka’s', about: 'A curved white hilt, the way she carries two.', length: 0.24, emitter: 'shroud', grip: 'curved', metal: '#e8e6e0', trim: '#5a5c60' , lean: 'light', lines: { ours: 'Stay close and trust each other. That’s how we win.', theirs: 'I’ve fought for the wrong people before. Never again. Except today.' } },
-  { id: 'dooku', name: 'Curved', about: 'A fencer’s hilt, bent for the wrist.', length: 0.27, emitter: 'cup', grip: 'curved', metal: '#8a7a5a', trim: '#2a2420' },
-  { id: 'temple', name: 'Temple guard', about: 'A long hilt in Jedi gold and bronze.', length: 0.3, emitter: 'shroud', grip: 'ribbed', metal: '#c8a860', trim: '#4a3a20' },
+  { id: 'dooku', name: 'Curved', about: 'A fencer’s hilt, bent for the wrist.', model: 'hiltdooku', length: 0.324, emitter: 'cup', grip: 'curved', metal: '#8a7a5a', trim: '#2a2420' },
+  { id: 'temple', name: 'Kenobi’s', about: 'Obi-Wan’s: ribbed steel, a deep emitter shroud.', model: 'hiltobiwan', length: 0.27, emitter: 'shroud', grip: 'ribbed', metal: '#c8a860', trim: '#4a3a20' },
+  { id: 'lukehoth', name: 'Luke’s first', about: 'His father’s, the one he carried on Hoth and to Bespin.', model: 'hiltlukehoth', length: 0.284, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
+  { id: 'vader', name: 'Vader’s', about: 'Black and steel, a ribbed grip and a shrouded emitter.', model: 'hiltvader', length: 0.268, emitter: 'shroud', grip: 'ribbed', metal: '#9a9ea6', trim: '#141518' },
+  { id: 'maul', name: 'Maul’s staff', about: 'Two hilts joined at the pommel: a blade at each end.', model: 'hiltmaul', length: 0.567, emitter: 'cup', grip: 'ribbed', metal: '#5a5c60', trim: '#141518' },
+  { id: 'yoda', name: 'Yoda’s', about: 'A short hilt for a small hand.', model: 'hiltyoda', length: 0.158, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#2a2c30' },
 ];
 
 // (each hero's own two abilities, G then V: what the films give them)
 export const HEROES = [
-  { id: 'luke', name: 'Luke Skywalker', tall: 1.72, src: { url: crew('luke') }, weapon: 'saber', bolt: '#5cff6a', saber: { color: 'green', hilt: 'luke', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'A farm boy from Tatooine, a Jedi by the end.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
-  { id: 'leia', name: 'Leia Organa', tall: 1.5, src: { url: crew('leia') }, weapon: 'blaster', bolt: '#ff3b30', abilities: { power: 'overcharge', second: 'medpack' }, blurb: 'A princess, a senator, a general. Shoots better than the boys.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'Hold your positions. They’ve never beaten us when we stand together.', theirs: 'This isn’t my cause. I’ll fight it anyway, and remember who I am.' } },
-  { id: 'han', name: 'Han Solo', tall: 1.85, src: { url: crew('han') }, weapon: 'blaster', bolt: '#ff4a3d', abilities: { power: 'detonator', second: 'overcharge' }, blurb: 'Captain of the Millennium Falcon. Shot first, with the DL-44.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'All right, let’s show these guys how it’s done.', theirs: 'I’m only here for the money. Remember that when it goes bad.' } },
-  { id: 'chewie', name: 'Chewbacca', tall: 2.28, src: { url: '/models/cockpit/chewie.glb' }, weapon: 'bowcaster', bolt: '#ff4a3d', abilities: { power: 'roar', second: 'overcharge' }, blurb: 'Two hundred years old and still winning arguments.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: '[a battle roar, ready for anything]', theirs: '[an unhappy growl: he doesn’t like whose side this is]' } },
+  { id: 'luke', name: 'Luke Skywalker', tall: 1.72, src: { url: crew('luke') }, rig: 'walrus', weapon: 'saber', bolt: '#5cff6a', saber: { color: 'green', hilt: 'luke', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'A farm boy from Tatooine, a Jedi by the end.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
+  { id: 'leia', name: 'Leia Organa', tall: 1.5, src: { url: crew('leia') }, rig: 'walrus', weapon: 'blaster', bolt: '#ff3b30', abilities: { power: 'overcharge', second: 'medpack' }, blurb: 'A princess, a senator, a general. Shoots better than the boys.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'Hold your positions. They’ve never beaten us when we stand together.', theirs: 'This isn’t my cause. I’ll fight it anyway, and remember who I am.' } },
+  { id: 'han', name: 'Han Solo', tall: 1.85, src: { url: crew('han') }, rig: 'walrus', weapon: 'blaster', bolt: '#ff4a3d', abilities: { power: 'detonator', second: 'overcharge' }, blurb: 'Captain of the Millennium Falcon. Shot first, with the DL-44.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'All right, let’s show these guys how it’s done.', theirs: 'I’m only here for the money. Remember that when it goes bad.' } },
+  { id: 'chewie', name: 'Chewbacca', tall: 2.28, src: { url: crew('chewie') }, rig: 'walrus', weapon: 'bowcaster', bolt: '#ff4a3d', abilities: { power: 'roar', second: 'overcharge' }, blurb: 'Two hundred years old and still winning arguments.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: '[a battle roar, ready for anything]', theirs: '[an unhappy growl: he doesn’t like whose side this is]' } },
   { id: 'ahsoka', name: 'Ahsoka Tano', tall: 1.85, src: { url: crew('ahsoka') }, weapon: 'saber', bolt: '#f4f8ff', saber: { color: 'white', hilt: 'ahsoka', stance: 'dual' }, abilities: { power: 'push', second: 'pull' }, blurb: 'No longer a Jedi. Still the best of them.', film: 'The Clone Wars, Ahsoka', side: 'galaxy' , lean: 'light', lines: { ours: 'Stay close and trust each other. That’s how we win.', theirs: 'I’ve fought for the wrong people before. Never again. Except today.' } },
-  { id: 'bobafett', name: 'Boba Fett', tall: 1.83, src: { url: crew('bobafett') }, weapon: 'ee3', bolt: '#ff6a3d', abilities: { power: 'jetpack', second: 'rocket' }, blurb: 'The best bounty hunter in the galaxy, and he knows it. Flies.', film: 'The Original Trilogy, The Book of Boba Fett', side: 'galaxy' , lean: 'dark', lines: { ours: 'The contract’s good. Nobody gets through.', theirs: 'Different employer, same result. They’ll pay double.' } },
+  { id: 'bobafett', name: 'Boba Fett', tall: 1.83, src: { url: crew('bobafett') }, rig: 'walrus', weapon: 'ee3', bolt: '#ff6a3d', abilities: { power: 'jetpack', second: 'rocket' }, blurb: 'The best bounty hunter in the galaxy, and he knows it. Flies.', film: 'The Original Trilogy, The Book of Boba Fett', side: 'galaxy' , lean: 'dark', lines: { ours: 'The contract’s good. Nobody gets through.', theirs: 'Different employer, same result. They’ll pay double.' } },
   // (the crews from elsewhere, as the universe's foot party has them: universe/footScene.js's PARTY)
   { id: 'rick', name: 'Rick Sanchez', tall: 1.88, src: { meshy: 'rick' }, weapon: 'portal', bolt: '#8dff5a', abilities: { power: 'hop', second: 'overcharge' }, blurb: 'The smartest man in the multiverse, with a portal gun and no patience.', film: 'Rick and Morty', side: 'elsewhere' , lean: null, lines: { ours: 'Sure, whatever, I’ll defend the thing. Wubba lubba dub dub.', theirs: 'Switching sides mid-war is a Tuesday for me, Morty.' } },
   { id: 'morty', name: 'Morty Smith', tall: 1.6, src: { meshy: 'morty' }, weapon: 'laser', bolt: '#8dff5a', abilities: { power: 'sprint', second: 'medpack' }, blurb: 'Fourteen, nervous, and still here after everything.', film: 'Rick and Morty', side: 'elsewhere' , lean: 'light', lines: { ours: 'Okay, okay, we’re the good guys this time, right? Right?', theirs: 'Oh geez, are we the bad guys? I think we’re the bad guys.' } },
@@ -100,7 +107,7 @@ export function heroSpec(hero) {
   const gun = saber ? 'saber' : WEAPONS[hero.gun] && hero.gun !== 'saber' ? hero.gun : h.weapon;
   // (a gun from elsewhere fires yellow; the galaxy's keep the hero's own colour)
   const bolt = saber ? saber.color : WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
-  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
+  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, ...(h.rig ? { rig: h.rig, pack: h.pack ?? h.id } : {}), gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
 }
 
 // the two who walk down here: the hero in the lead, and the ship's

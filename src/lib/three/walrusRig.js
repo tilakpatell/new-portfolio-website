@@ -13,6 +13,7 @@
 //   isWalrus(names)          → whether it is the game's rig (Spine1, never Meshy's Spine02)
 //   CLIP_FALLBACK            a clip name → the one to play when a pack hasn't it (always a game clip's role, never a UAL one)
 //   resolveClip(name, has)   → the name, or its fallback, whichever `has`; else null
+//   WEAPON_FRAME             { quaternion, position }: the site's gun frame in Wep_Root's
 
 export const BODY = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Neck1', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase'];
 
@@ -22,6 +23,18 @@ export const FINGERS = ['Left', 'Right'].flatMap((side) =>
 );
 
 export const SOCKETS = { weapon: 'Wep_Root', muzzle: 'Wep_Muzzle', aim: 'Wep_Aim', handL: 'IK_Joint_LeftHand', handR: 'IK_Joint_RightHand' };
+
+// The site's gun frame (a blaster's barrel +z, a saber's blade +y, the grip
+// at the origin: universe/gunplay.js) in the Wep_Root socket's. The game
+// models its weapons in that socket's own frame, so the two are the same:
+// Luke's hilt runs from its pommel at y −0.216 to its emitter at +0.070
+// about the grip at the origin, the DL-44's and the EE-3's barrels along +z
+// (0.33 and 0.79 m); and through Luke's own clips (measured from the bucket's
+// clip glTFs, lab/probe/socket.mjs) the socket's +y is the blade's way:
+// up and across at his guard (L_Luke_Stand_Idle_01: +y at 0.76, 0.64,
+// 0.13), overhead and out at a strike's contact. Kept as a frame, not
+// assumed away, so a weapon that sits wrong is one number to change.
+export const WEAPON_FRAME = { quaternion: [0, 0, 0, 1], position: [0, 0, 0] };
 
 export function checkWalrus(names) {
   const has = new Set(names);
