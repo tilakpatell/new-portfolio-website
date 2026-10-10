@@ -404,6 +404,8 @@ async function main(args) {
     where: 'galaxy-surface',
     as: `${world}: the game's level`,
     file: `/models/galaxy/bf2017/levels/${world}/level.json`,
+    // (the whole pack's folder, for the credits audit: one credit for every mesh in it)
+    paths: [`public/models/galaxy/bf2017/levels/${world}/`],
     also: ['galaxy'],
     permission: PERMISSION,
   });

@@ -19,6 +19,7 @@
     "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
     "as": "hoth: the game's level",
+    "file": "/models/galaxy/bf2017/levels/hoth/level.json",
     "paths": ["public/models/galaxy/bf2017/levels/hoth/"],
     "also": [
       "galaxy"
