@@ -1,0 +1,56 @@
+{
+  "size": "1600x900",
+  "adapter": "swiftshader",
+  "rows": [
+    {
+      "leg": "webgpu",
+      "tier": "ultra",
+      "post": true,
+      "backend": "webgpu",
+      "clustered": true,
+      "passes": [
+        "render",
+        "ssgi",
+        "ao",
+        "ssr",
+        "bloom",
+        "godrays",
+        "lensflare",
+        "lut",
+        "traa",
+        "output"
+      ],
+      "error": "page.evaluate: OperationError: A valid external Instance reference no longer exists.",
+      "errors": [
+        "THREE.THREE.WebGPURenderer: WebGPU Device Lost:\n\nMessage: A valid external Instance reference no longer exists.\nReason: unknown"
+      ]
+    },
+    {
+      "leg": "webgl",
+      "tier": "ultra",
+      "post": true,
+      "backend": "nodes-webgl",
+      "clustered": false,
+      "passes": [
+        "render",
+        "ssgi",
+        "denoise",
+        "ao",
+        "bloom",
+        "godrays",
+        "lensflare",
+        "lut",
+        "smaa",
+        "output"
+      ],
+      "shot": "post-ultra-webgl.png",
+      "envDiff": 2.86,
+      "programsBefore": 77,
+      "programsAfter": 77,
+      "frames": 5,
+      "mean": 1008.2,
+      "median": 13.7,
+      "p95": 4986.6
+    }
+  ]
+}

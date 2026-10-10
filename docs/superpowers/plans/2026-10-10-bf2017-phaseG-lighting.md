@@ -14,18 +14,18 @@
 
 - Phase 0's Global Constraints (keys, `lab/assets/bf2017/`, the gates).
 - **Files this lane owns**: `scripts/bf2017-light.mjs`, `scripts/bf2017-probe.mjs`, `scripts/lib/bf2017-light.mjs` (+ test), `src/lib/three/gameLight.js` (+ test), `src/data/bf2017/light/*.json`, `src/components/galaxy/surface/sky.js` (accepts a derived sky: additive), `surface/scene.js` (the light setup `:247-285` reads `siteLightFrom` when `site.gameLight` names an entry; the zone swap `:1527` takes a probe), `lib/three/groundLook.js` (the shadow cache sample: additive, off when no texture), `surface/weather.js` (the weather → entry map), `universe/post.js` (exposure, bloom and the LUT pass: additive), `public/textures/galaxy/bf2017/light/<world>/` (probes, the shadow cache, the LUT). It does not touch lane L's `level/*`, the sites' `life`, or `levelSky.js` (lane W's, superseded: do not create it).
-- **One calibration**: `GAME_TO_SITE` in `gameLight.js`, set on Hoth Sunny so the derived sun, sky and exposure match the site's Hoth within the before/after shot's mean luminance (±10%), then held for every world. The PR shows both shots and says the factor.
+- **One calibration**: `GAME_TO_SITE` in `gameLight.js`, set on Hoth Sunny so the derived sun, sky and exposure match the site's Hoth within the before/after shot's mean luminance (±10%), then held for every world. The PR shows both shots and says the factor. *(Corrected by the lane's PR: two constants, `GAME_TO_SITE` for the sun's lux and `SKY_TO_SITE` for the record's `LuminanceScale`, both set once on Hoth; the probes are not baked to one scale across weathers, so they give the sky's colours only.)*
 - **A world without a record** (nevarro, mandalore, sorgan, lothal, coruscant, dagobah, mustafar) keeps its site's sky and light exactly; the test asserts `siteLightFrom(undefined)` is `null` and `scene.js` falls through.
-- **Probes**: the outdoor one of the main arena and one per indoor zone the site marks; 128² HDR, six faces, under 400 KB a world; loaded once, the previous world's disposed before the next; never two environments alive.
+- **Probes**: the outdoor one of the main arena and one per indoor zone the site marks; 128² HDR, six faces, under 400 KB a world *(corrected: 64², one indoor probe a world and the LUT at 17³, to stay under the 400 KB)*; loaded once, the previous world's disposed before the next; never two environments alive.
 - Files under 800 lines; pure logic tested beside it; no network in tests; the gates.
 
 ## Review Focus
 
 1. **Which VE is the level's**: the map's `sky[]` lists several (Hoth: `VE_Sky_Arctic_Sunny_01`, a spot-meter, `VE_PV_Hoth_Sunset_01`, `VE_HighEnd_01`, a death-screen desaturation). The main sky is the one whose name starts `VE_Sky_` for the level's folder; `VE_PV_*` are weather or zone overrides blended on top (`Priority`, `BlendMode`); `VE_HighEnd`, spot meters and UI effects are ignored. `pickEntries` is tested on Hoth's list.
-2. **The sun's direction** is not in `OutdoorLightComponentData`; the record has colour and illuminance. Task 1 reads the level's sun entity when `data/` has one for the level (grep the level's objects for `SunEntityData` or a `Transform` on the outdoor light component), else measures the direction from the outdoor probe's brightest texel (`sunFromProbe`, tested on a synthetic cube with one bright texel). Say in the PR which path each world took.
+2. **The sun's direction** is not in `OutdoorLightComponentData`; the record has colour and illuminance. *(Corrected: it is there, `SunRotationX` the azimuth and `SunRotationY` the elevation in degrees; every world took the record's path.)* Task 1 reads the level's sun entity when `data/` has one for the level (grep the level's objects for `SunEntityData` or a `Transform` on the outdoor light component), else measures the direction from the outdoor probe's brightest texel (`sunFromProbe`, tested on a synthetic cube with one bright texel). Say in the PR which path each world took.
 3. **Units**: `FinalSunIlluminance` is lux-like (Hoth's sun near 100,000), `EV` is a photographic exposure value, colours are linear floats possibly over 1. `siteLightFrom` converts all of it to the site's 0…10 intensities and sRGB hex through one factor and `EV`; the test pins Hoth's output to the calibrated numbers so a drift in the conversion fails loudly.
 4. **The far shadow's frame**: the shadow cache's bounds are not in its file. Task 3 measures them by correlating the cache against a shadow rendered from the heightmap with the derived sun (a one-off script that tries the terrain's bounds first and reports the match); the bounds go into the world's light JSON; a world whose match is poor ships without the cache and says so.
-5. **The grading LUT**: `T_CC_<World>_<Weather>` may be a 32³ volume stored as a strip, a 16³, or a 1D ramp. Task 4 reads its dimensions from `textures.jsonl`; a 1024 × 32 or 32 × 1024 strip is a 32³ LUT; anything else means brightness, contrast and saturation only, said in the PR.
+5. **The grading LUT**: `T_CC_<World>_<Weather>` may be a 32³ volume stored as a strip, a 16³, or a 1D ramp. *(Corrected: a 33³ volume as 33 png16 slices, `type: volume` in `textures.jsonl`; display-space, applied in the post's final pass.)* Task 4 reads its dimensions from `textures.jsonl`; a 1024 × 32 or 32 × 1024 strip is a 32³ LUT; anything else means brightness, contrast and saturation only, said in the PR.
 
 ---
 
@@ -38,7 +38,7 @@
 - Produces:
   - `pickEntries(skyNames) → { main, overrides: [] }` (pure).
   - `readVE(record) → { sun: { color, illuminance }, sky: { color, ground, rayleigh, mie, cloudColors }, fog: { color, start, end, colorStart, colorEnd }, tonemap: { ev, compensation, bloom }, grading: { brightness, contrast, saturation, lut }, wind: { dir, strength }, enlighten: { bounce, skyColor, groundColor } }` (pure; every field optional).
-  - CLI `node scripts/bf2017-light.mjs <world> [--map levels/mp/hoth_01]`: reads the map's `sky[]`, fetches each record (`data/<name>.json.gz`), writes `src/data/bf2017/light/<world>.json` as `{ world, weathers: { sunny: entry, sunset: entry, cloudy: entry, blizzard: entry, interior: entry }, probes: {…}, shadowCache: {…} }` (the weather key from the record's folder name, lower case).
+  - CLI `node scripts/bf2017-light.mjs <world> [--map levels/mp/hoth_01]`: reads the map's `sky[]`, fetches each record (`data/<name>.json.gz`), writes `src/data/bf2017/light/<world>.json` as `{ world, weathers: { sunny: entry, sunset: entry, cloudy: entry, blizzard: entry, interior: entry }, probes: {…}, shadowCache: {…} }` (the weather key from the record's folder name, lower case). *(Corrected: the weathers the level has records for, Hoth's being sunny, sunset and interior; `{ world, map, main, sky, weathers, indoor }`, each entry with its probe; no shadow cache, task 3.)*
   - `siteLightFrom(entry, { factor = GAME_TO_SITE } = {}) → { sky, light, fog, exposure, bloom, wind } | null` in the site's shapes (`sky.js`'s header, `scene.js:247-285`'s fields, `look.js`'s `exposureOf`).
   - `sunFromProbe(faces: { px, nx, py, ny, pz, nz: Float32Array }, size) → unit vector` (pure).
 
@@ -60,6 +60,8 @@
 
 ### Task 3: The far shadow
 
+*(Corrected: the distant shadow cache is a 16-bit depth map seen from the sun, not a top-down mask, and it is the game's terrain's; on the site's own procedural ground it would shade ridges that are not there. The task waits on lane L: fit the sun's orthographic frame to the cache against the heightmap, then sample it beyond `SHADOW.extent`.)*
+
 **Files:**
 - Create: `scripts/bf2017-shadowcache.mjs` (fetches the cache, converts the 16-bit PNG to an 8-bit WebP shadow mask at 1024 for high, 2048 ultra, 512 below; measures its bounds against the heightmap: renders the heightmap's sun shadow with the derived sun direction at 2 m a pixel, correlates, reports the best bounds and the match), `src/lib/three/shadowMask.js` (+ test: `maskUv(x, z, bounds)`)
 - Modify: `lib/three/groundLook.js` (a `shadowMask` uniform and bounds; multiplies the sun's term beyond `SHADOW.extent`; off when null), `surface/level/levelScene.js`'s far draws' material (lane L's file: one hook, agreed in the PR; if lane L is not merged, the ground only)
@@ -71,7 +73,7 @@
 ### Task 4: Tone, grading, weather
 
 **Files:**
-- Modify: `universe/post.js` (exposure and bloom scale from the entry; a `LUTPass` on high and ultra when the LUT reads as 32³), `surface/weather.js` (state → weather entry; crossfade the derived light over 20 s as the site crossfades its own), `surface/sky.js` (takes the derived suns, haze and cloud colours)
+- Modify: `universe/post.js` (exposure and bloom scale from the entry; a `LUTPass` on high and ultra when the LUT reads as 32³), `surface/weather.js` (state → weather entry; crossfade the derived light over 20 s as the site crossfades its own), `surface/sky.js` (takes the derived suns, haze and cloud colours) *(corrected: `weather.js` draws particles and has no sky states, so the map and the fade live in `gameLight.js` and `surface/gameLit.js`; the LUT is sampled in `post.js`'s final pass, no extra draw; `sky.js` is unchanged, the derived sky arriving through `site.sky`)*
 - Create: `scripts/bf2017-lut.mjs` (fetches `T_CC_*`, writes the LUT as the pass wants it, or reports it is not a 32³)
 
 - [ ] **Step 1: Failing tests**: the weather map covers every `weather.js` state and falls back to `sunny`; `lutShape(width, height) → 32 | 16 | null`.
@@ -80,5 +82,5 @@
 
 ### Task 5: Every other world the game has, and the PR
 
-- [ ] `node scripts/bf2017-light.mjs <world>` for endor, tatooine, yavin, kashyyyk, naboo, kamino, geonosis, scarif, bespin, deathstar (the interior's `Levels/MP/DeathStar02_01` records for the space outside; the interior keeps its lamps), each wired with `gameLight`, each with a before/after shot; a world whose records are missing in the bucket is listed as left.
+- [ ] `node scripts/bf2017-light.mjs <world>` for endor, tatooine, yavin, kashyyyk, naboo, kamino, geonosis, scarif, bespin, deathstar (the interior's `Levels/MP/DeathStar02_01` records for the space outside; the interior keeps its lamps) *(corrected: the Death Star has no surface site, and its map names no sky)*, each wired with `gameLight`, each with a before/after shot; a world whose records are missing in the bucket is listed as left.
 - [ ] The gates, the regenerated files restored, the lane's section in `docs/superpowers/HANDOFF-bf2017.md` (Done; Left: the placed lights when `bf2export lights` exists, worlds without records; Checking it), merge `origin/main`, push, PR `The worlds under the game's light: its records, probes, baked shadow and grading`. MERGE per the slot.

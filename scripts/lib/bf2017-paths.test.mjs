@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { globMatch, imageUris, inBucket, isCurrent, jobsFor, localPath, mapPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './bf2017-paths.mjs';
+import { dataPath, globDir, globMatch, globRegExp, imageUris, inBucket, isCurrent, jobsFor, localPath, mapPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './bf2017-paths.mjs';
 
 // a GLB of just a JSON chunk, the way gltfpack's start
 function glbOf(json) {
@@ -105,5 +105,22 @@ describe('the 2017 drop’s paths', () => {
 
   it('sums a run up in one line', () => {
     expect(summaryLine({ fetched: 3, kept: 10, missing: 1, failed: 0, bytes: 5.25e6, seconds: 4.04 })).toBe('fetched 3 · kept 10 · missing 1 · failed 0 · 5.3 MB · 4.0 s');
+  });
+
+  it('reads a data glob: one star stays in its folder, two cross them', () => {
+    const re = globRegExp('Gameplay/Equipment/Rifles/A280C/*');
+    expect(re.test('Gameplay/Equipment/Rifles/A280C/WeaponFiring_A280C')).toBe(true);
+    expect(re.test('Gameplay/Equipment/Rifles/A280C/Mods/U_A280C_Barrel')).toBe(false);
+    expect(globRegExp('AI/BattleAI/**').test('AI/BattleAI/Cover/CoverConstants')).toBe(true);
+    expect(globRegExp('Levels/MP/Hoth_01/FantasyBattle_*').test('Levels/MP/Hoth_01/FantasyBattle_Logic')).toBe(true);
+    expect(globRegExp('a.b').test('axb')).toBe(false);
+  });
+
+  it('lists a data glob from the deepest folder it names', () => {
+    expect(globDir('Gameplay/Equipment/Rifles/A280C/*')).toBe('Gameplay/Equipment/Rifles/A280C');
+    expect(globDir('Levels/MP/Hoth_01/FantasyBattle_*')).toBe('Levels/MP/Hoth_01');
+    expect(globDir('AI/**')).toBe('AI');
+    expect(globDir('Settings')).toBe('');
+    expect(dataPath('Gameplay/Kits/MP/Assault/Class_Assault')).toBe('data/Gameplay/Kits/MP/Assault/Class_Assault.json.gz');
   });
 });

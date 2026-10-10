@@ -68,7 +68,7 @@ export const ASSAULTS = {
       { id: 'trenches', name: 'The trenches', at: [100, 370], r: 24 },
       { id: 'shieldgen', name: 'The shield generator', at: [90, 240], r: 20 },
       { id: 'ioncannon', name: 'The ion cannon', at: [-30, 340], r: 20 },
-      { id: 'echobase', name: 'Echo Base’s door', at: [-128, 171], r: 22 },
+      { id: 'echobase', name: 'Echo Base’s door', at: [-20, -22], r: 22 }, // (the game's west mouth: sites/ice.js's MOUTH)
       { id: 'transports', name: 'The transports', at: [-248, 70], r: 14, fixed: 'defend' },
     ],
     phases: [

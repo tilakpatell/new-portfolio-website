@@ -15,6 +15,7 @@ vi.mock('./placer', async (orig) => ({
   loadGlb: (u) => (glb.asked.push(u), new Promise((r) => (glb.release = r))),
 }));
 const { socketsOf } = await import('../../../lib/three/walrus');
+const { rotateWorld } = await import('../../../lib/three/ik');
 const { createGunplay } = await import('../../universe/gunplay');
 const { createSaber } = await import('./saber');
 const { HILTS } = await import('../heroes');
@@ -62,4 +63,29 @@ describe('a weapon in the game’s socket', () => {
     expect(gp.gun.getObjectByName('hilt-model')).toBeUndefined();
     gp.dispose();
   });
+
+  it('aims the chest, not the waist: a clip’s twist above the waist is taken out', async () => {
+    const fig = await figure();
+    const gp = createGunplay(fig, 'blaster', { unit: 1 });
+    const up = new THREE.Vector3(0, 1, 0);
+    const forward = new THREE.Vector3(0, 0, 1);
+    const chest = fig.bones.Spine2;
+    const yawOf = () => {
+      fig.model.updateMatrixWorld(true);
+      const f = new THREE.Vector3(0, 0, 1).applyQuaternion(chest.getWorldQuaternion(new THREE.Quaternion()).multiply(rest));
+      return Math.atan2(f.x, f.z);
+    };
+    // the chest's own forward, read at rest (its bind frame against the figure's +z)
+    fig.model.updateMatrixWorld(true);
+    const rest = chest.getWorldQuaternion(new THREE.Quaternion()).invert();
+    // a clip that turns the upper body half a radian off, above the waist
+    rotateWorld(fig.bones.Spine1, up, 0.5, 1);
+    expect(Math.abs(yawOf())).toBeGreaterThan(0.4);
+    for (let i = 0; i < 40; i++) {
+      gp.set(1 / 30, { aim: 1, look: 1, dir: forward.clone(), forward, up });
+    }
+    expect(Math.abs(yawOf())).toBeLessThan(0.15);
+    gp.dispose();
+  });
 });
+

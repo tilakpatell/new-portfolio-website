@@ -6,7 +6,8 @@
 //                                     (tex/armour → public/games/tex/armour/…, meshy/rm/fart →
 //                                     public/models/c137/rm/fart.glb): any file whose path ends in
 //                                     /<name>, or a folder named <name>
-//   src/data/modelCredits.json       "<name>": its `file`, else /models/sketchfab/<name>.glb
+//   src/data/modelCredits.json       "<name>": its `file`, else /models/sketchfab/<name>.glb; or its
+//                                     `paths` (a level pack credited whole: everything under those folders)
 //   public/models/<dir>/credits.json "<name>": the cast's name for a model in that folder
 //                                     (civA → civ-a.glb, omni → omni-man.glb: src/components/invincible/cast.js)
 //
@@ -29,7 +30,8 @@ export function credits(root) {
   const json = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
   // (a pack credited whole, such as a texture pack rebuilt into a folder of its own, says where in its text: public/mc/)
   const games = Object.entries(json('public/games/credits.json')).map(([key, c]) => ({ list: 'public/games/credits.json', key, name: key.split('/').slice(1).join('/'), paths: [...JSON.stringify(c).matchAll(/public\/[\w./-]+\//g)].map((m) => m[0]) }));
-  const models = Object.entries(json('src/data/modelCredits.json')).map(([key, m]) => ({ list: 'src/data/modelCredits.json', key, file: `public${m.file ?? `/models/sketchfab/${key}.glb`}` }));
+  // (a level pack is credited whole, by its folder: `paths`, the way a games pack is)
+  const models = Object.entries(json('src/data/modelCredits.json')).map(([key, m]) => (m.paths ? { list: 'src/data/modelCredits.json', key, paths: m.paths } : { list: 'src/data/modelCredits.json', key, file: `public${m.file ?? `/models/sketchfab/${key}.glb`}` }));
   const folders = tracked(root, 'public/models')
     .filter((f) => f.endsWith('/credits.json'))
     .flatMap((list) => Object.keys(json(list)).map((key) => ({ list, key, dir: list.replace(/credits\.json$/, ''), name: key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`) })));

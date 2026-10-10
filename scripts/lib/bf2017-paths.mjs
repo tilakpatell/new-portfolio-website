@@ -106,3 +106,25 @@ export function isCurrent(index, path, bytes, onDisk) {
 
 export const summaryLine = ({ fetched, kept, missing, failed, bytes, seconds }) =>
   `fetched ${fetched} · kept ${kept} · missing ${missing} · failed ${failed} · ${(bytes / 1e6).toFixed(1)} MB · ${seconds.toFixed(1)} s`;
+
+// The gameplay records (`data/<Name>.json.gz`, the dump's EBX as JSON) are
+// asked for by a glob over their names: `*` within a folder, `**` across
+// (unlike `globMatch`, whose star crosses folders: a record folder can hold
+// thousands below it).
+export const dataPath = (name) => `data/${name}.json.gz`;
+
+export function globRegExp(glob) {
+  const body = glob
+    .split('**')
+    .map((part) => part.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '[^/]*'))
+    .join('.*');
+  return new RegExp(`^${body}$`);
+}
+
+// The deepest folder a glob names before its first star: where a listing starts.
+export function globDir(glob) {
+  const star = glob.indexOf('*');
+  const head = star < 0 ? glob : glob.slice(0, star);
+  const cut = head.lastIndexOf('/');
+  return cut < 0 ? '' : head.slice(0, cut);
+}
