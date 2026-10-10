@@ -33,7 +33,7 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 | Lane | Session | Branch | PR |
 |---|---|---|---|
 | design | the architecting session | `claude/bf2017-render-beauty` | this PR |
-| Q1 | the lane Q1 session | `claude/surfaces-q1-materials` | (the PR; the WebGPU leg on the owner's laptop) |
+| Q1 | the lane Q1 session | `claude/surfaces-q1-materials` | #855 (open; the WebGPU leg on the owner's laptop) |
 | Q2 | | `claude/surfaces-q2-ground` | |
 | Q4 | | `claude/surfaces-q4-weathering` | |
 | Q3 | | | after S |
