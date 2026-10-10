@@ -23,11 +23,13 @@ describe('the modes on a world', () => {
     expect(MODES.find((m) => m.id === 'galacticAssault').name).toBe(BOOK.names.modes.galacticAssault.text);
     expect(MODES.find((m) => m.id === 'hvv').name).toBe('Heroes vs Villains');
   });
-  it('Hoth: Galactic Assault live, its story live, Heroes vs Villains on the game’s level but not made yet', () => {
+  it('Hoth: Galactic Assault, Heroes vs Villains, Blast and its story live (lane H’s rows); a mode the level has and no mission yet, coming', () => {
     expect(card('hoth', 'galacticAssault')).toMatchObject({ state: 'live', to: '/galaxy/hoth/surface?mode=galacticAssault' });
     expect(card('hoth', 'story')).toMatchObject({ state: 'live', to: '/galaxy/hoth/surface?mission=transport' });
-    expect(card('hoth', 'hvv')).toMatchObject({ state: 'soon' });
-    expect(card('hoth', 'hvv').why).toMatch(/Hoth/);
+    expect(card('hoth', 'hvv')).toMatchObject({ state: 'live', to: '/galaxy/hoth/surface?mode=hvv', mission: 'hvv' });
+    expect(card('hoth', 'blast')).toMatchObject({ state: 'live', to: '/galaxy/hoth/surface?mode=blast', mission: 'blast' });
+    expect(card('hoth', 'hvv', { missions: { hoth: {} } })).toMatchObject({ state: 'soon' });
+    expect(card('hoth', 'hvv', { missions: { hoth: {} } }).why).toMatch(/Hoth/);
     // (no space level over Hoth)
     expect(card('hoth', 'starfighter').state).toBe('none');
   });
@@ -54,7 +56,7 @@ describe('the modes on a world', () => {
     expect(missionForMode('hoth', 'hvv', missions)).toBe('arena');
   });
   it('the Land button’s line, and the ask kept', () => {
-    expect(liveLine('hoth')).toBe('Galactic Assault · Story');
+    expect(liveLine('hoth')).toBe('Galactic Assault · Heroes vs Villains · Blast · Story');
     expect(readAsk('never')).toBe('never');
     expect(readAsk(null)).toBe('ask');
   });

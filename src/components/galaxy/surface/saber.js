@@ -60,7 +60,10 @@ import { capsuleOf } from './blaster';
 import { BLOCK_CLIP, blockClipFor } from './blockSide';
 import { stanceFor, strokeFor } from './gameStance';
 import { gameClips, heroOfClips } from './saberGame';
+import { rootAt } from './saberRoot';
 import { createSaberLight } from './saberLight';
+
+export { rootAt };
 import { BLADE_OF, BLOCK_AT, SABER, throwAt } from './saberRules';
 import { modelUrlFor } from './catalog';
 import { loadGlb } from './placer';
@@ -87,20 +90,6 @@ const NO_CLIP = { duration: 0.6, contact: [0.2, 0.4] }; // (a stroke whose clip 
 const PACK = { combo: ['sword.light.a', 'sword.light.b', 'sword.light.c', 'sword.a'], heavy: ['sword.heavy.a'], dir: ['sword.a'] };
 const ease = (k) => k * k * (3 - 2 * k);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-// a clip's root travel at time t (metres, the figure's own +x and +z), between the baked rows
-export const rootAt = (root, t) => {
-  if (!root?.length) return [0, 0];
-  if (t <= root[0][0]) return [root[0][1], root[0][2]];
-  for (let i = 1; i < root.length; i++)
-    if (root[i][0] >= t) {
-      const [ta, xa, za] = root[i - 1];
-      const [tb, xb, zb] = root[i];
-      const k = (t - ta) / Math.max(1e-6, tb - ta);
-      return [xa + (xb - xa) * k, za + (zb - za) * k];
-    }
-  const l = root[root.length - 1];
-  return [l[1], l[2]];
-};
 // a target as the engine sees it
 const posOf = (t) => t.holder?.position ?? t;
 const asEngine = (t) => {
