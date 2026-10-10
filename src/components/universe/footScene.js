@@ -67,6 +67,7 @@ import { createAnimator } from '../../lib/three/animator';
 import { cutsToLoad, loadWalrusBody, packUrls, swapBody } from '../../lib/three/walrus';
 import { createCutter, cutUrl } from '../../lib/three/walrusCuts';
 import { loadOwnRigBody } from '../../lib/three/ownRig';
+import { OWN_RIGS } from '../../lib/three/walrusClips';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { detailLevel } from '../../lib/detail';
 import { breathe, createGait, sway } from '../../lib/three/gait';
@@ -340,7 +341,8 @@ async function walrusFigure(spec) {
 // otherwise as walrusFigure's.
 async function ownRigFigure(spec) {
   const fig = await gameFigure(spec, (url) => loadOwnRigBody(url, { rig: spec.ownRig, packs: spec.packs, bones: spec.bones ?? {} }).then((b) => ({ ...b, sockets: null })));
-  return Object.assign(fig, { rig: 'own' });
+  // (its skeleton's name, for its own set of the game's hit capsules: boltPlay.js)
+  return Object.assign(fig, { rig: 'own', skeleton: OWN_RIGS[spec.ownRig]?.skeleton ?? null });
 }
 
 // A 2017 figure from its body loader. A hero (three files by the level,

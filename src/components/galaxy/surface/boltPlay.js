@@ -54,13 +54,18 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random, bone
   let sets = boneSets;
   let asked = !!boneSets;
   const gameBodies = (t, out) => {
-    if (!isGameSkeleton(t.fig?.bones)) return false;
+    // (a droid or beast on a rig of its own, ownRig.js, takes its rig's own
+    // set where the game has one, the B2's and the droideka's; else the one
+    // capsule of a figure the game has none for)
+    const own = t.fig?.rig === 'own' ? t.fig.skeleton : null;
+    if (t.fig?.rig === 'own' && !own) return false;
+    if (!own && !isGameSkeleton(t.fig?.bones)) return false;
     if (!asked) {
       asked = true;
       import('../../../data/bf2017/physics/bones.json').then((m) => (sets = m.default ?? m)).catch(() => {});
     }
     const id = t.hero || t.spec?.hero ? 'defaultsoldierbonecollision_hero' : 'defaultsoldierbonecollision';
-    const set = sets?.sets?.find((x) => x.id === id);
+    const set = own ? sets?.sets?.find((x) => x.skeleton?.endsWith(`/${own}`)) : sets?.sets?.find((x) => x.id === id);
     const caps = set ? capsulesOf(t.fig.bones, set) : [];
     if (!caps.length) return false;
     const side = bodyOf(t).side;

@@ -87,6 +87,8 @@ export async function crewFigure(kind, i = 0) {
     // (a 2017 figure's: the game's skeleton, its sockets and its clips, for the saber and the gun)
     rig: fig.rig ?? null,
     sockets: fig.sockets ?? null,
+    // (a droid's or a beast's own skeleton, by the game's name: its hit capsules)
+    skeleton: fig.skeleton ?? null,
     clips: fig.clips ?? null,
     update(dt, move, motion = null) {
       // (the figure reads its motion in the units it stands in, under this

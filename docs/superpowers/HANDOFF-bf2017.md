@@ -143,7 +143,7 @@ In order:
 2. **Draw calls**: the modular Rebels, the Hoth trooper, the Wookiee and the officer are five to nine draws a figure (one per material), against the Meshy figures' one. Under four needs an atlas per kind (or a texture array), which the import doesn't make; `costs.md` has where each world stands.
 3. **The kinds no world places yet**, for the Death Star interior's own lane (`inside/pack.js`): shadowtrooper, navy crewman, admiral, personnel, gonk, interrogation droid. cast.md has their manifest names; none were shipped.
 4. **The own rigs left**: dewback, bantha, eopie, ronto, jawa, aiwha, dwarf spider, mouse droid (phase 3's beasts); Yoda and Grievous (phase 10). The tauntaun's rider (`A_TauntaunRider_*` on the humanoid) is phase 3's.
-5. **Hurtboxes**: lane P1's (PR #817). The own rigs need region maps there.
+5. **Hurtboxes**: #820's capsules (`lib/physics/boneCapsules.js` over `src/data/bf2017/physics/bones.json`) hit a walrus-rig kind where the game says. An own-rig figure takes its rig's own set by its skeleton's name (`boltPlay.js`, the figure's `skeleton`): the B2's and the droideka's are in the game's data, and so is the B1's for when it ships. The Ewok, the astromechs, the probe and the tauntaun have no set in the game's data, so they keep the one generic capsule; a set made for them would go in that same file's `sets`.
 6. **The phase 1 heroes' full cuts** are still committed (phase 1's lane); the same `assets-publish --only` takes them out.
 
 ### Checking it
