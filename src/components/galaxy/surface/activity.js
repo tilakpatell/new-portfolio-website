@@ -141,6 +141,7 @@ import { preload } from '../../../lib/three/clipLibrary';
 import { createGunplay } from '../../universe/gunplay';
 import { SHOW_KILLS } from './weaponRules';
 import { bladeInHand } from './heldBlade';
+import { blastClass } from './walkers';
 import { asTarget, clashes, duelFor, fence, landed, reeling, stun, turnOf } from './duellists';
 import { onHit } from '../../../lib/combat/duel';
 import { sharpen } from '../../../lib/three/textures';
@@ -292,7 +293,7 @@ export function markMaterials() {
   };
 }
 
-export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null }) {
+export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null, blast = null }) {
   const group = new THREE.Group();
   group.name = 'activity';
   parent.add(group);
@@ -580,6 +581,9 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       fig?.stop?.(0.15, 'upper');
       fig?.look?.(null);
       d.clip = fig?.react?.('down', { dir: d.dir, yaw: t.b.yaw, force: d.force })?.clip ?? null;
+      // (a walker or droideka goes up in lane F's blast for its class as it falls: walkers.js's blastClass)
+      const cls = blastClass(t.spec.kind);
+      if (cls && blast) blast(new THREE.Vector3(t.b.x, groundAt(world, t.b.x, t.b.z, t.spec.level ?? Infinity) + (fig?.tall ?? 2) * 0.5, t.b.z), cls);
       d.y = groundAt(world, t.b.x, t.b.z, t.spec.level ?? Infinity) + hover;
     }
     const k = t.knock;

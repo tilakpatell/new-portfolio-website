@@ -21,7 +21,8 @@
 // The kinds and their files are read from galaxy/models.js and
 // universe/glbFleet.js as written, so a ship added there is picked up here.
 
-import { readFileSync, mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { Document, Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTMeshoptCompression, KHRMeshQuantization } from '@gltf-transform/extensions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
@@ -50,6 +51,19 @@ function kinds() {
   return list;
 }
 
+// The 2017 drop's maps as scripts/bf2017-import.mjs unpacked them (PNG beside
+// each KTX2, by its file name), for a native file's colours
+const UNPACKED = 'lab/assets/bf2017/unpacked';
+let unpacked = null;
+function unpackedPng(name) {
+  if (!unpacked) {
+    unpacked = new Map();
+    if (existsSync(UNPACKED)) for (const f of readdirSync(UNPACKED, { recursive: true })) if (String(f).endsWith('.png')) unpacked.set(basename(String(f), '.png'), join(UNPACKED, String(f)));
+  }
+  const at = unpacked.get(basename(name ?? '', '.ktx2'));
+  return at ? readFileSync(at) : null;
+}
+
 const toLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 
 // a texture as linear RGB floats at SAMPLE², read once (its alpha isn't
@@ -59,10 +73,14 @@ async function readTexture(tex) {
   if (pixels.has(tex)) return pixels.get(tex);
   let got = null;
   const mime = tex.getMimeType();
-  if (/png|jpe?g|webp/.test(mime)) {
+  // (the game's own KTX2, which sharp can't read: its pixels from the game's
+  // map as the 2017 import unpacked it, found by its name)
+  const image = /ktx2/.test(mime) ? unpackedPng(tex.getName()) : tex.getImage();
+  if (/png|jpe?g|webp/.test(mime) || image !== tex.getImage()) {
     try {
+      if (!image) throw new Error(`no unpacked copy of ${tex.getName()} under ${UNPACKED}`);
       // (to sRGB first: some come as grey, or grey and alpha, which sharp can't resize to raw as they are)
-      const { data, info } = await sharp(Buffer.from(tex.getImage())).toColourspace('srgb').removeAlpha().resize(SAMPLE, SAMPLE, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
+      const { data, info } = await sharp(Buffer.from(image)).toColourspace('srgb').removeAlpha().resize(SAMPLE, SAMPLE, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
       const f = new Float32Array(info.width * info.height * 3);
       for (let i = 0, j = 0; i < f.length; i += 3, j += info.channels) for (let k = 0; k < 3; k++) f[i + k] = toLinear(data[j + Math.min(k, info.channels - 1)] / 255);
       got = { f, w: info.width, h: info.height };
