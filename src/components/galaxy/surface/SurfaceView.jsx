@@ -9,6 +9,7 @@ import LoadingVeil from '../../worlds/LoadingVeil';
 import { Film } from '../../../runtime/hud';
 import { filmFor } from '../../../lib/bf2017/films';
 import { loadingTips } from '../../../lib/bf2017/strings';
+import '../../../lib/bf2017/fonts.css';
 
 // (shorter names for the thumbs)
 // (a touch button's word: by the card, else by the kind it plays as)

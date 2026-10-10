@@ -1001,3 +1001,6 @@
   height: 1.4em;
   margin: 0;
 }
+/* the ability buttons' words in the game's open HUD face (Cuprum, for the
+   game's Univers Condensed: src/lib/bf2017/fonts.css) */
+.surface-power span { font-family: var(--font-bf-hud, inherit); letter-spacing: 0.08em; }
