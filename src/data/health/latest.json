@@ -1,6 +1,6 @@
 {
   "date": "2026-10-10",
-  "sha": "0135dd71",
+  "sha": "dc123a2d",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -65,7 +65,7 @@
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2813
+          "n": 2842
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 469,
+      "value": 475,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [

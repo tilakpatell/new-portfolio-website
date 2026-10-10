@@ -186,7 +186,7 @@ export function createEndor(ctx) {
     enter: () => ctx.event('gcw-run'),
     onBlown: (mine) => {
       blown = true;
-      ctx.draw?.flash(D, { size: ds.size * 0.75, life: 3.5, color: [2.6, 2, 1.2], bright: 1.4 });
+      ctx.draw?.flash(D, { size: ds.size * 0.5, life: 3.5, color: [2.6, 2, 1.2] });
       for (let i = 0; i < 8; i++) ctx.draw?.flash(v(D.x + (rand() - 0.5) * R * 1.4, D.y + (rand() - 0.5) * R * 1.4, D.z + (rand() - 0.5) * R * 1.4), { size: R * 0.3, life: 1.6 + i * 0.35, color: [2.8, 1.4, 0.5] });
       world?.war?.station('deathstar2', false);
       ctx.event('gcw-ds2');
