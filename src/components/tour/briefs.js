@@ -216,6 +216,7 @@ export const BRIEFS = {
     },
     help('the Death Star'),
   ],
+  // planet flight: begin (scripts/flight-island.mjs removes this block)
   '/fly': [
     {
       id: 'hello',
@@ -239,6 +240,7 @@ export const BRIEFS = {
     },
     help('the flight'),
   ],
+  // planet flight: end
   '/deathstar/inside': [
     {
       id: 'hello',

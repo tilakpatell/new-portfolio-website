@@ -8,6 +8,7 @@ const TEXT = [
   { name: VADER, joints: 250, lods: chain([31042, 18642, 7520, 3575, 1061, 337]) },
   { name: HILT, lods: chain([920]) },
   { name: 'characters/hero/darthvader/darthvader_01/darthvader_01_cape_mesh', lods: chain([2000, 900]) },
+  { name: 'characters/heads/heads_x/heads_x_01/heads_x_01_mesh', lods: chain([1500, 700]) },
 ]
   .map((e) => JSON.stringify(e))
   .join('\n\n');
@@ -16,7 +17,7 @@ describe('the 2017 manifest', () => {
   const m = readManifest(TEXT);
 
   it('reads one model a line, by name', () => {
-    expect(m.size).toBe(3);
+    expect(m.size).toBe(4);
     expect(m.get(VADER).joints).toBe(250);
   });
 
@@ -45,6 +46,14 @@ describe('the 2017 manifest', () => {
   it('finds the parts beside a model, never the model itself', () => {
     expect(partsOf(m, VADER, ['*_cape_mesh']).map((e) => e.name)).toEqual(['characters/hero/darthvader/darthvader_01/darthvader_01_cape_mesh']);
     expect(partsOf(m, VADER, ['*']).map((e) => e.name)).toEqual(['characters/hero/darthvader/darthvader_01/darthvader_01_cape_mesh']);
+  });
+
+  it('takes a part named in full from any folder (a hero’s head is under characters/heads/)', () => {
+    const head = 'characters/heads/heads_x/heads_x_01/heads_x_01_mesh';
+    expect(partsOf(m, VADER, [head]).map((e) => e.name)).toEqual([head]);
+    expect(partsOf(m, VADER, ['*_cape_mesh', head]).map((e) => e.name)).toEqual(['characters/hero/darthvader/darthvader_01/darthvader_01_cape_mesh', head]);
+    // (a full name the manifest hasn't is a typo: a hero would come out headless)
+    expect(() => partsOf(m, VADER, ['characters/heads/nobody_mesh'])).toThrow(/nobody_mesh/);
   });
 
   it('knows the sequel era by its folders', () => {

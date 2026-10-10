@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { GALAXY_KINDS } from '../../../components/galaxy/fleet';
-import { BUILT_KINDS } from '../../../components/universe/trafficModels';
-import { FIGURES } from '../../../components/galaxy/surface/figures';
-import { SURFACE_MODELS } from '../../../components/galaxy/surface/catalog';
-import { PLANETS, planetSpecOf } from './planetSpec';
-import { DENSITY, KINDS, LIFE, expanseLife, isDead, kindAt, lifeFor } from './lifeTables';
+import { PLANETS, lifeFor, planetSpecOf } from './fixtures/expanse.js';
+import { DENSITY, KINDS, LIFE, expanseLife, isDead, kindAt } from './lifeTables';
 
-const KNOWN = new Set([...GALAXY_KINDS, ...BUILT_KINDS, ...FIGURES, ...Object.keys(SURFACE_MODELS), 'figure', 'wedge']);
 const BODIES = ['beast', 'person', 'flyer', 'walker', 'speeder', 'drone', 'craft'];
 // the roster's named worlds (docs/research/2026-10-09-planet-geographies.md, “The roster”)
 const NAMED = 'tatooine hoth endor yavin bespin dagobah mustafar coruscant naboo kashyyyk kamino geonosis scarif nevarro mandalore lothal sorgan gazorpazorp squanch birdworld gearworld pluto snakeplanet nuptia resort cronenberg purge cybertron middle-earth caribbean albuquerque scranton avengers invincible c-137 earth dot-matrix'.split(' ');
@@ -27,11 +22,12 @@ describe('lifeTables', () => {
     for (const id of NAMED) expect(LIFE[id], id).toBeTruthy();
   });
 
-  it('draws every row as a kind the site has, or a code-built one', () => {
+  // (that each model is a kind the site has: expanse/flight/planets.test.js,
+  // which may read the galaxy's face)
+  it('draws every row on a body it knows, a code-built one tinted', () => {
     const lives = [...Object.values(LIFE), ...PLANETS.map((p) => lifeFor(planetSpecOf(p.id)))];
     for (const life of lives)
       for (const row of rowsOf(life)) {
-        expect(KNOWN.has(row.model), `${row.name} → ${row.model}`).toBe(true);
         if (row.body) expect(BODIES).toContain(row.body);
         if (row.model === 'figure' || row.model === 'wedge') expect(row.tint, row.name).toMatch(/^#[0-9a-f]{6}$/);
       }

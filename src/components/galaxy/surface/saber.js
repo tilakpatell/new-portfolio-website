@@ -29,7 +29,7 @@
 // (`guard`, for lib/combat/bolt.js's step), one beside it isn't.
 //
 //   createSaber(gp, { color, hilt, stance, parent, sound, fig, clips }) →
-//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), cancel(), block(on), throw(now, dir),
+//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), cancel(), block(on), throw(now, dir, how?),
 //       stand(dt, now, move), update(dt, now, { forward, up, me, targets, hit }),
 //       guard(id, side) (the raised blade for the bolts' step, and what
 //       meets a duellist's contact: { id, base, tip, r, side } | null), lit, busy, swinging (the stroke: { name (the
@@ -39,19 +39,24 @@
 //   fig: the figure that holds it ({ bones, hipsY?, play? }); without
 //   `play` the arms still swing (laid here) but the legs keep their clips.
 //   clips: { name: clip } to use in place of the library's (tests); a
-//   stroke whose clip hasn't come yet is timed as one and swings nothing.
+//   2017 figure (fig.rig 'walrus') brings its own, the game's, in fig.clips;
+//   a stroke whose clip hasn't come yet is timed as one and swings nothing.
 //   lock: a target (as `targets` hold them: { holder, fig?, spec? }); lunge:
 //   the stance's lunge times this (a perk's); clip: a sword clip's name to
 //   play in place of the one strokeFor picks (a peer's, as their packet says).
 
 import * as THREE from 'three';
 import { createBlade } from '../../../lib/combat/blade';
+import { hiltFit } from '../../../lib/combat/hiltFit';
+import { SOCKETS } from '../../../lib/three/walrusRig.js';
 import { loadClip } from '../../../lib/three/clipLibrary';
 import { createTrail } from '../../../lib/three/combat/trail';
 import { frameFrom, reach, rotateWorld, setWorldQuaternion } from '../../../lib/three/ik';
 import { capsuleOf } from './blaster';
 import { BLOCK_CLIP, DIRS, HEAVY, PARRY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
 import { SABER, throwAt } from './saberRules';
+import { modelUrlFor } from './catalog';
+import { loadGlb } from './placer';
 
 const V = THREE.Vector3;
 const _a = new V();
@@ -75,8 +80,10 @@ const GUARD = { yaw: 0.12, pitch: 1.0, at: { fwd: 0.48, up: -0.58, side: 0.05 } 
 const GUARD_DUAL = { yaw: -0.3, pitch: 0.7, at: { fwd: 0.45, up: -0.7, side: 0.38 } };
 const TRAIL = 8; // frames of the trail behind the blade (and the blade's memory of them)
 const radiusOf = (t) => Math.max(0.45, (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1) * 0.35);
-// what a stroke lays from its clip over gunplay's arms: the chest and both arms
-const ARMS = ['Spine02', 'Spine01', 'Spine', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'];
+// what a stroke lays from its clip over gunplay's arms: the chest and both
+// arms, by Meshy's spine names and the 2017 game's (Spine1, Spine2, Neck:
+// lib/three/walrusRig.js), whichever the figure has
+export const ARMS = ['Spine02', 'Spine01', 'Spine2', 'Spine1', 'Neck', 'Spine', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'];
 const TURN = 0.4; // of the clip, the figure turning to the lock
 const CORRECT = 0.25; // radians the sword arm may be turned toward the lock in the contact window
 const IN = 0.08; // seconds a stroke's arms take to come on over the guard
@@ -111,8 +118,40 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   const local = { pos: gun.position.clone(), quat: gun.quaternion.clone(), scale: gun.scale.clone() }; // in the hand (attach() to the world rewrites all three)
   const gripInv = gun.quaternion.clone().invert();
   const st_ = stanceOf(stance);
-  const two = stance !== 'dual' && Boolean(gp.holdLeft && leftUpper && leftHand); // (both hands on the one hilt)
+  // A 2017 figure (lib/three/walrus.js) holds it in the game's weapon
+  // socket, and the game's clips swing the socket and put both hands on it:
+  // nothing here poses its arms. A stroke or the block lays the socket with
+  // the arms, so the hilt goes where the clip takes it; the turn toward the
+  // lock goes on the chest, which carries both. (One hilt: the game's
+  // heroes don't dual-wield.)
+  const walrus = fig?.rig === 'walrus' && Boolean(gp.socket);
+  const holder = gun.parent; // (the hand, or the socket)
+  const two = !walrus && stance !== 'dual' && Boolean(gp.holdLeft && leftUpper && leftHand); // (both hands on the one hilt)
+  const torso = gp.bones.Spine2 ?? gp.bones.Spine02 ?? upper;
   dress(gun, color, hilt);
+  // the game's hilt (heroes.js's HILTS `model`, a 2017 kind) in place of the
+  // built one: modelled up +y about its grip, so it goes in unturned, scaled
+  // to the hilt's length (hiltFit), and the blade comes out at its top (a
+  // staff's second out of its bottom). Until it comes, or if it doesn't, the
+  // built one stands in, dressed.
+  let gone = false;
+  const worn = [];
+  // (a 2017 figure's alone: a Meshy hand is made for the built hilt's grip)
+  if (walrus && hilt?.model)
+    loadGlb(modelUrlFor(hilt.model, 'high')).then((gltf) => {
+      if (!gltf || gone) return;
+      const m = gltf.scene.clone(true);
+      const box = new THREE.Box3().setFromObject(m);
+      const fit = hiltFit({ min: box.min.toArray(), max: box.max.toArray() }, hilt.modelLength ?? hilt.length ?? 0.28);
+      m.scale.setScalar(fit.scale);
+      m.name = 'hilt-model';
+      for (const o of [...gun.children]) if (o.isMesh && (o.name === 'grip' || o.name === 'metal' || o.name === 'trim' || o.name.startsWith('emitter'))) o.visible = false;
+      gun.add(m);
+      worn.push(m);
+      if (blade) blade.position.y = fit.bladeY;
+      const b2 = gun.getObjectByName('blade2');
+      if (b2) b2.position.y = box.min.y * fit.scale;
+    });
   // the second blade: out of the pommel (a staff), or a second hilt in the other hand
   const blades = [blade].filter(Boolean);
   const extra = [];
@@ -126,7 +165,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     extra.push(b2);
   }
   let gun2 = null;
-  if (blade && stance === 'dual' && leftHand) {
+  if (blade && stance === 'dual' && leftHand && !walrus) {
     gun2 = gun.clone(true);
     gun2.name = 'gun:saber:left';
     // (a left hand is the right's mirror: the hilt's turn mirrored with it)
@@ -141,16 +180,19 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   const segs = blades.map(() => createBlade({ keep: TRAIL }));
   const trails = blades.map(() => createTrail(parent ?? gun.parent?.parent, { color, length: TRAIL }));
   // the clips: the stance's, the heavy ones, the ways and the block, fetched now so the first stroke has its own
-  const clips = { ...(given ?? {}) };
+  // (a 2017 figure's are the game's, its pack's: never the library's, made for Meshy's rig)
+  const own = given ?? (fig?.rig === 'walrus' ? fig.clips : null);
+  const clips = { ...(own ?? {}) };
   const names = [...st_.strokes.map((k) => k.clip), ...HEAVY.clips, ...Object.values(DIRS).map((d) => d.clip), BLOCK_CLIP];
-  let gone = false;
-  if (!given)
+  if (!own)
     for (const n of new Set(names))
       loadClip(n).then((c) => {
         if (c && !gone) clips[n] = c;
       });
-  // each clip's arms on this figure, to sample by hand
+  // each clip's arms on this figure, to sample by hand (a 2017 figure's
+  // weapon socket too, turned and moved: the clip carries the hilt in it)
   const armsOf = new Map();
+  const socketBone = walrus ? gp.socket : null;
   const partsOf = (clip) => {
     if (!armsOf.has(clip))
       armsOf.set(
@@ -159,8 +201,10 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
           .map((tr) => {
             const i = tr.name.lastIndexOf('.');
             const name = tr.name.slice(0, i);
-            const bone = tr.name.slice(i + 1) === 'quaternion' && ARMS.includes(name) ? (fig?.bones?.[name] ?? gp.bones[name] ?? null) : null;
-            return bone && { bone, at: tr.createInterpolant() };
+            const path = tr.name.slice(i + 1);
+            if (socketBone && name === SOCKETS.weapon && (path === 'quaternion' || path === 'position')) return { bone: socketBone, path, at: tr.createInterpolant() };
+            const bone = path === 'quaternion' && ARMS.includes(name) ? (fig?.bones?.[name] ?? gp.bones[name] ?? null) : null;
+            return bone && { bone, path, at: tr.createInterpolant() };
           })
           .filter(Boolean),
       );
@@ -170,7 +214,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     if (!clip || w <= 1e-3) return;
     for (const p of partsOf(clip)) {
       const v = p.at.evaluate(t);
-      p.bone.quaternion.slerp(_q.set(v[0], v[1], v[2], v[3]), Math.min(1, w));
+      if (p.path === 'position') p.bone.position.lerp(_e.set(v[0], v[1], v[2]), Math.min(1, w));
+      else p.bone.quaternion.slerp(_q.set(v[0], v[1], v[2], v[3]), Math.min(1, w));
     }
   };
   // the figure's hips over its toes in metres, against the clip's (for the root's travel)
@@ -295,10 +340,10 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
 
   const fly = (dt, now, pose_, targets, hit) => {
     const th = st.thrown;
-    const k = (now - th.t0) / SABER.throw.dur;
+    const k = (now - th.t0) / th.how.dur;
     if (k >= 1) {
       // caught
-      hand.add(gun);
+      holder.add(gun);
       gun.position.copy(local.pos);
       gun.quaternion.copy(local.quat);
       gun.scale.copy(local.scale);
@@ -317,9 +362,9 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     for (const t of targets) {
       if (th.hits.has(t)) continue;
       const p = t.holder.position;
-      if (Math.hypot(p.x - gun.position.x, p.z - gun.position.z) < SABER.throw.radius + radiusOf(t) && Math.abs(p.y + 1 - gun.position.y) < 2.5) {
+      if (Math.hypot(p.x - gun.position.x, p.z - gun.position.z) < th.how.radius + radiusOf(t) && Math.abs(p.y + 1 - gun.position.y) < 2.5) {
         th.hits.add(t);
-        hit?.(t, SABER.throw.damage, gun.position, { thrown: true });
+        hit?.(t, th.how.damage, gun.position, { thrown: true });
       }
     }
     // the arm out after it, the hand open to take it back
@@ -382,18 +427,20 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     const inside = t >= c0 && t <= c1;
     // in the window, the sword arm a little toward the lock's chest (with
     // no lock, toward where a chest would be a stroke's length ahead)
-    if (inside && upper && blade && me) {
+    // (a 2017 figure's chest, which turns the hilt in its socket with the arms)
+    const turner = walrus ? torso : upper;
+    if (inside && turner && blade && me) {
       // (eased in and out over the window's first and last 30 ms: the cut is often near its end)
       const env = Math.min(1, (t - c0) / 0.03, (c1 - t) / 0.03);
-      upper.updateWorldMatrix(true, false);
-      const S = upper.getWorldPosition(_a);
+      turner.updateWorldMatrix(true, false);
+      const S = turner.getWorldPosition(_a);
       blade.updateWorldMatrix(true, false);
       const mid = _b.set(0, 0.55, 0).applyMatrix4(blade.matrixWorld).sub(S);
       const tall = lock ? (sw.lock.fig?.tall ?? 1.6) * (sw.lock.spec?.scale ?? 1) : hipsM / 0.53;
       const at = lock ?? _e.set(me.x + Math.sin(me.yaw) * STRIKE, S.y - tall * 0.8, me.z + Math.cos(me.yaw) * STRIKE);
       const chest = _c.set(at.x, at.y + tall * 0.65, at.z).sub(S);
       const ang = mid.angleTo(chest);
-      if (ang > 1e-3) rotateWorld(upper, _d.crossVectors(mid, chest).normalize(), Math.min(ang, CORRECT) * env);
+      if (ang > 1e-3) rotateWorld(turner, _d.crossVectors(mid, chest).normalize(), Math.min(ang, CORRECT) * env);
     }
     pushBlades(now);
     if (inside && st.lit > 0.5) {
@@ -509,15 +556,16 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       const f = segs[0]?.history().at(-1);
       return f ? { id, base: f.base, tip: f.tip, r: DEFLECT_R, side } : null;
     },
-    throw(now, dir) {
-      if (st.thrown || st.swing || !hand || gun.parent !== hand) return false;
+    // (how: the throw's numbers, saberRules.js's SABER.throw unless a hero has its own: abilityRules.js's throwOf)
+    throw(now, dir, how = SABER.throw) {
+      if (st.thrown || st.swing || !holder || gun.parent !== holder) return false;
       this.light(true);
       gun.updateWorldMatrix(true, false);
       const from = gun.getWorldPosition(new V());
       const flat = new V(dir.x, 0, dir.z);
       if (flat.lengthSq() < 1e-6) flat.set(0, 0, 1);
       (parent ?? gun.parent.parent).attach(gun);
-      st.thrown = { t0: now, from, dir: flat.normalize(), hits: new Set() };
+      st.thrown = { t0: now, from, dir: flat.normalize(), hits: new Set(), how };
       st.swing = null;
       sound?.('throw');
       return true;
@@ -555,11 +603,13 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       const block = clips[BLOCK_CLIP];
       const up = blockShown() && st.lit > 0.05;
       st.blockW = Math.max(0, Math.min(1, st.blockW + (up ? dt : -dt) * 8));
-      if (st.charge > 0.05) pose(0.3, 1.3, p, Math.min(1, st.charge * 3)); // (wound up overhead while F is held)
-      else if (up && !block) pose(BLOCK.yaw, BLOCK.pitch, p, Math.min(1, st.lit * 2));
-      else if (st.lit > 0.05) {
+      const guardW = Math.min(1, st.lit * 2);
+      // (the game's clips hold a 2017 figure's guard: none of these)
+      if (!walrus && st.charge > 0.05) pose(0.3, 1.3, p, Math.min(1, st.charge * 3)); // (wound up overhead while F is held)
+      else if (!walrus && up && !block) pose(BLOCK.yaw, BLOCK.pitch, p, guardW);
+      else if (!walrus && st.lit > 0.05) {
         const g = two ? GUARD : GUARD_DUAL;
-        pose(g.yaw, g.pitch, p, Math.min(1, st.lit * 2), g.at);
+        pose(g.yaw, g.pitch, p, guardW, g.at);
       }
       if (block) lay(block, block.duration * BLOCK_AT, st.blockW * Math.min(1, st.lit * 2));
       pushBlades(now);
@@ -567,13 +617,14 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     },
     dispose() {
       gone = true;
-      if (st.thrown && hand) {
-        hand.add(gun);
+      if (st.thrown && holder) {
+        holder.add(gun);
         gun.position.copy(local.pos);
         gun.quaternion.copy(local.quat);
         gun.scale.copy(local.scale);
       }
       for (const b of extra) b.removeFromParent();
+      for (const m of worn) m.removeFromParent();
       gun2?.removeFromParent();
       for (const tr of trails) tr.dispose();
     },

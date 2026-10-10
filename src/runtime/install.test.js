@@ -209,5 +209,41 @@ describe('a pack with files from the asset bucket', () => {
     expect(asked.filter((u) => !u.startsWith(BASE))).toEqual(['/models/earth/far1.glb', '/models/earth/far2.glb', '/models/earth/far3.glb']);
     expect(bucket.markDown).toHaveBeenCalled();
   });
-});
 
+  it('keeps asking the bucket for a file only it holds (no copy on the site), however the bucket did before', async () => {
+    const only = { url: `${BASE}/bbbbbbbbbbbb/models/galaxy/crew/luke.glb`, bytes: 50, hash: 'bbbbbbbbbbbb', local: '/models/galaxy/crew/luke.glb', remoteOnly: true };
+    const m = manifestOf('r3', [only]);
+    let n = 0;
+    const asked = [];
+    const fetch = vi.fn(async (url) => {
+      url = String(url);
+      if (url.startsWith('/packs/index.json')) return Response.json({ '/earth': { slug: 'earth', bytes: m.bytes, v: 'r3' } });
+      if (url.startsWith('/packs/earth.json')) return Response.json(m);
+      asked.push(url);
+      if (url.startsWith(BASE) && ++n === 1) throw new TypeError('Failed to fetch');
+      return url.startsWith(BASE) ? new Response(new Uint8Array(50)) : new Response('no', { status: 404 });
+    });
+    const bucket = { isDown: () => true, markDown: vi.fn() };
+    const { inst, caches } = make({ fetch }, fakeCaches(), { bucket });
+    await inst.install('/earth');
+    expect(asked).toEqual([only.url, only.url]);
+    expect(caches.all.get(cacheName('earth', 'r3')).has(only.url)).toBe(true);
+    expect(bucket.markDown).not.toHaveBeenCalled();
+  });
+
+  it('takes a body short of the manifest’s bytes as a failure, never a cached half file', async () => {
+    const f = { url: '/models/earth/cut.glb', bytes: 100, hash: 'c'.repeat(16) };
+    const m = manifestOf('r4', [f]);
+    let n = 0;
+    const fetch = vi.fn(async (url) => {
+      url = String(url);
+      if (url.startsWith('/packs/index.json')) return Response.json({ '/earth': { slug: 'earth', bytes: m.bytes, v: 'r4' } });
+      if (url.startsWith('/packs/earth.json')) return Response.json(m);
+      return new Response(new Uint8Array(++n === 1 ? 40 : 100));
+    });
+    const { inst, caches } = make({ fetch });
+    await inst.install('/earth');
+    expect(n).toBe(2);
+    expect(caches.all.get(cacheName('earth', 'r4')).get(f.url).body.length).toBe(100);
+  });
+});

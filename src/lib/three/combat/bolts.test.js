@@ -34,4 +34,30 @@ describe('the bolts drawn', () => {
     m.decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
     expect(s.z).toBeCloseTo(0.2 / 1.6);
   });
+
+  it('every flash in one draw, however many land at once', () => {
+    const scene = new THREE.Scene();
+    const draw = createBoltMeshes(scene, { pool: 4, flashes: 6, look: null });
+    for (let i = 0; i < 9; i++) draw.flash([i, 0, 0]);
+    draw.update(0.01);
+    expect(draw.flashes.isInstancedMesh).toBe(true);
+    expect(draw.flashes.count).toBe(6);
+    // and gone once they've cooled
+    draw.update(0.5);
+    expect(draw.flashes.count).toBe(0);
+    draw.dispose();
+  });
+
+  it('takes the game’s burst for its flash when it has the sheet, its own soft disc when not', () => {
+    const own = createBoltMeshes(new THREE.Scene(), { look: null });
+    expect(own.flashes.material.uniforms.uHasMap.value).toBe(0);
+    const tex = new THREE.Texture();
+    tex.userData.look = { name: 'impact', grid: [1, 1], channels: { burst: 'g' } };
+    const game = createBoltMeshes(new THREE.Scene(), { look: null });
+    game.setLook({ burst: tex, ramp: null });
+    expect(game.flashes.material.uniforms.uHasMap.value).toBe(1);
+    expect(game.flashes.material.uniforms.uMap.value).toBe(tex);
+    // the burst's rays are the sheet's green
+    expect(game.flashes.material.uniforms.uChan.value.toArray()).toEqual([0, 1, 0, 0]);
+  });
 });
