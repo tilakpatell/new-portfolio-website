@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { WALKERS, footAt, gaitStep, legAngles, partOf, splitParts } from './walkers';
+import { WALKERS, footAt, gaitStep, legAngles, packUrl, partOf, splitParts, walkerWay } from './walkers';
+import { SURFACE_MODELS } from './catalog';
+import { RIGS } from '../../../lib/three/rigSets';
 
 const spec = WALKERS.atrt;
 const leg = spec.legs[0];
@@ -102,5 +104,22 @@ describe('walkers', () => {
     const v = new THREE.Vector3();
     const got = pieces.map((m) => v.fromBufferAttribute(m.geometry.attributes.position, 0).applyMatrix4(m.matrixWorld).toArray().map((n) => +n.toFixed(4)));
     for (const p of pts) expect(got).toContainEqual(p);
+  });
+
+  it('walks a kind on the game’s rig where its model is the game’s, cut at its joints where it isn’t', () => {
+    expect(walkerWay({ own: 'atat' }, { rig: true })).toBe('own');
+    expect(walkerWay({ own: 'atat' }, {})).toBeNull();
+    expect(walkerWay(WALKERS.atrt, {})).toBe('cut');
+    expect(walkerWay(WALKERS.atrt, { rig: true })).toBe('own');
+    expect(walkerWay(undefined, { rig: true })).toBeNull();
+    expect(walkerWay({ own: 'atm6' }, { rig: true })).toBeNull();
+  });
+
+  it('has every walker the game rigged on its rig, with its pack beside the site', () => {
+    for (const kind of ['atat', 'atst', 'atte', 'atrt', 'droideka']) {
+      expect(walkerWay(WALKERS[kind], SURFACE_MODELS[kind]), kind).toBe('own');
+      expect(RIGS[WALKERS[kind].own], kind).toBeTruthy();
+      expect(packUrl(WALKERS[kind].own)).toBe(`/models/galaxy/bf2017/clips-${kind}.glb`);
+    }
   });
 });

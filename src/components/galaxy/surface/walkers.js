@@ -1,5 +1,11 @@
-// Machines that walk on legs of their own, where their model came as one
-// rigid lump with no skeleton (the AT-RT: one merged Sketchfab mesh). The
+// Machines that walk on legs of their own. Where the model is the game's
+// (Star Wars Battlefront II (2017)'s walkers and droideka: catalog/
+// bf2017-vehicles.js, its entry `rig`), it walks, turns, fires and falls by
+// the game's own clips on the game's own skeleton (lib/three/ownRig.js, the
+// pack lib/three/rigSets.js names), its feet planted by the clip; that is
+// every row below with `own`. Where the model came as one rigid lump with no
+// skeleton (the AT-RT's old Sketchfab mesh, or a page's own book of models
+// without the game's), it is cut at its joints instead. The
 // lump is cut into its parts at their joints (each triangle to the part it
 // lies in: the body, and each leg's thigh, shin and foot), the parts hung
 // on pivots at the joints, and the legs stepped by the ground the walker
@@ -10,8 +16,8 @@
 // the saddle (a crew figure, riders.js's pose: the hands on the bars, the
 // feet on the footrests), who does its looking.
 //
-// WALKERS[kind] → { legs: [{ x, hip, knee, ankle }], body(c) → bool, foot,
-//   step, lift, stance, bob, rider?: { kind, seat } } (in the model's own
+// WALKERS[kind] → { own?: rig, legs?: [{ x, hip, knee, ankle }], body(c) → bool, foot,
+//   step, lift, stance, bob, rider?: { kind, seat, bone? } } (in the model's own
 //   frame: +z its nose, +x its left, y up from its feet, metres; hip, knee,
 //   ankle: [y, z] of the left leg's joints, the right mirrored at -x; body:
 //   whether a triangle's centre is the body's; foot: under this height, a
@@ -23,6 +29,9 @@
 // footAt(g, i, spec) → [dy, dz] off the leg's rest ankle (pure)
 // splitParts(root, spec) → { body, legs: [{ hip, knee, ankle }] }: the
 //   model's meshes cut into its parts and hung on its joints
+// walkerWay(row, entry) → 'own' (the game's rig and clips), 'cut' (cut at
+//   its joints) or null: how a kind with this row and catalogue entry walks
+// packUrl(rig) → its clip pack's file
 // walkerFigure(kind, i) → a figure (actors.js's shape), or null
 
 import * as THREE from 'three';
@@ -31,12 +40,19 @@ import { cloneModel, loadGlb } from './placer';
 import { crewFigure } from './crew';
 import { poseRider } from './riders';
 import { NO_CALLS } from '../../../lib/three/figureCalls';
+import { loadOwnRigFigure } from '../../../lib/three/ownRig';
+import { RIGS } from '../../../lib/three/rigSets';
 
 export const WALKERS = {
+  atat: { own: 'atat' },
+  atst: { own: 'atst' },
+  atte: { own: 'atte' },
+  droideka: { own: 'droideka' },
   // the AT-RT: its hips at the discs under the cockpit, a thigh back and
   // down to the knee (bent backward, as a chicken walker's), the shin down
   // and forward to the ankle, the clawed foot ahead of it
   atrt: {
+    own: 'atrt',
     legs: [{ x: 0.33, hip: [1.52, -0.2], knee: [0.76, -1.08], ankle: [0.12, -0.78] }],
     body: ([x, y, z]) => y > 1.68 || (Math.abs(x) < 0.2 && y > 1.2) || (z > 0.05 && y > 1.0),
     foot: 0.25,
@@ -47,8 +63,22 @@ export const WALKERS = {
     stance: 0.6,
     bob: 0.05,
     rider: { kind: 'clone', seat: { hips: [0, 2.15, -0.45], lean: 0.35, hands: [[0.25, 2.4, -0.2]], feet: [[0.33, 1.62, -0.25]], elbow: [0.7, -0.5, -0.4], knee: [0.6, 0.2, 1], toes: [0.2, -0.3, 1] } },
+    // the game's AT-RT, its saddle measured off its rest bones (ATRT_Ske, in
+    // the grounded model's frame: the hands on LeftStearing, the feet on
+    // LeftFootPedal, the hips over Spine1), and carried by its Hips as the
+    // clips sway it
+    ownRider: { kind: 'clone', bone: 'Hips', seat: { hips: [0, 2.2, -0.42], lean: 0.3, hands: [[0.12, 2.6, 0.04]], feet: [[0.2, 1.86, 0.08]], elbow: [0.7, -0.5, -0.4], knee: [0.6, 0.2, 1], toes: [0.2, -0.3, 1] } },
   },
 };
+
+export function walkerWay(row, entry) {
+  if (!row) return null;
+  if (row.own && entry?.rig && RIGS[row.own]) return 'own';
+  if (row.legs) return 'cut';
+  return null;
+}
+
+export const packUrl = (rig) => `/models/galaxy/bf2017/clips-${rig}.glb`;
 
 const ang = (y, z) => Math.atan2(z, y); // (about the leg's axis, from straight down… up: y toward z)
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -219,7 +249,9 @@ export function splitParts(root, spec) {
 // its figure does, sat in the saddle
 export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
   const spec = WALKERS[kind];
-  if (!spec || !models[kind]) return null;
+  const way = walkerWay(spec, models[kind]);
+  if (way === 'own') return ownWalker(kind, spec, i, models);
+  if (way !== 'cut') return null;
   const gltf = await loadGlb(modelUrlFor(kind, 'high', models));
   if (!gltf) return null;
   const scene = cloneModel(gltf);
@@ -275,6 +307,61 @@ export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
       dead = true;
       rider?.dispose?.();
       for (const p of pieces) p.geometry.dispose();
+    },
+  };
+}
+
+// a walker on the game's own rig: the figure ownRig.js makes, its rider (the
+// AT-RT's) sat on the saddle and carried by the bone the clips sway
+async function ownWalker(kind, spec, i, models) {
+  const load = async (url) => {
+    const gltf = await loadGlb(url);
+    return gltf ? { scene: cloneModel(gltf), animations: gltf.animations } : null;
+  };
+  const fig = await loadOwnRigFigure(modelUrlFor(kind, 'high', models), { rig: spec.own, packs: [packUrl(spec.own)], load, loadPack: loadGlb }).catch(() => null);
+  if (!fig) return null;
+  const r = spec.ownRider;
+  if (!r) return fig;
+  const bone = fig.bones[r.bone] ?? null;
+  let rider = null;
+  let dead = false;
+  const seat = new THREE.Group();
+  seat.name = 'walker-rider';
+  fig.model.add(seat);
+  // (where the bone sits in the walker at rest: the saddle follows its moves from there)
+  fig.model.updateMatrixWorld(true);
+  const rest = bone ? new THREE.Matrix4().copy(fig.model.matrixWorld).invert().multiply(bone.matrixWorld).invert() : null;
+  const carried = new THREE.Matrix4();
+  crewFigure(r.kind, i)
+    .then((f) => {
+      if (!f || dead) return void f?.dispose?.();
+      rider = f;
+      seat.add(f.model);
+      f.base?.('sit')?.catch?.(() => {});
+    })
+    .catch(() => {});
+  const STILL = { speed: 0, side: 0, turn: 0, air: 0 };
+  return {
+    ...fig,
+    update(dt, move, motion = null) {
+      fig.update(dt, move, motion);
+      if (!rider) return;
+      rider.update(dt, 0, STILL);
+      fig.model.updateMatrixWorld(true);
+      carried.copy(bone ? bone.matrixWorld : fig.model.matrixWorld);
+      if (rest) carried.multiply(rest);
+      poseRider(rider, rider.model, carried, r.seat);
+    },
+    // (its rider looks and reacts too, the walker falling under it)
+    look: (...a) => rider?.look?.(...a),
+    react: (kind, opts) => {
+      rider?.react?.(kind, opts);
+      return fig.react(kind, opts);
+    },
+    dispose() {
+      dead = true;
+      rider?.dispose?.();
+      fig.dispose();
     },
   };
 }
