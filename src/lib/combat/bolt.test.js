@@ -85,6 +85,44 @@ describe('a bolt in flight', () => {
     expect(ev[0].body.id).toBe('near');
   });
 
+  // (a solid the world knocks when it's met, as a landing's props are:
+  // landings/physics.js shot, footScene's moveBolts)
+  const knocking = (wall) => {
+    const asked = [];
+    const knocked = [];
+    const solids = (a, b) => {
+      asked.push(b[0]);
+      const hit = wall(a, b);
+      if (hit) knocked.push(hit.at[0]);
+      return hit;
+    };
+    return { solids, asked, knocked };
+  };
+
+  it('hits a person on its way before a solid behind them in the one frame, and never meets the solid', () => {
+    const bolts = createBolts();
+    // (a lamp post 0.6 m behind them: both on this frame's 4.5 m)
+    const post = knocking(wallAt(3));
+    bolts.fire({ from: [0, 1, 0], dir: [1, 0, 0], side: 'you', owner: 'you' });
+    const ev = bolts.step(0.05, open({ solids: post.solids, bodies: [person('t', 2.4, 0, 'them')] }));
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ type: 'hit', body: { id: 't' } });
+    expect(ev[0].at[0]).toBeCloseTo(2.05, 3);
+    expect(post.knocked).toEqual([]);
+    expect(Math.max(...post.asked)).toBeLessThanOrEqual(2.05 + 1e-6);
+  });
+
+  it('stops at a solid before a person in the one frame, and meets it', () => {
+    const bolts = createBolts();
+    const crate = knocking(wallAt(1.5));
+    bolts.fire({ from: [0, 1, 0], dir: [1, 0, 0], side: 'you', owner: 'you' });
+    const ev = bolts.step(0.05, open({ solids: crate.solids, bodies: [person('t', 2.4, 0, 'them')] }));
+    expect(ev).toHaveLength(1);
+    expect(ev[0].type).toBe('solid');
+    expect(ev[0].at[0]).toBeCloseTo(1.5);
+    expect(crate.knocked).toEqual([1.5]);
+  });
+
   it('does not hit a body on its own side, nor its shooter', () => {
     const bolts = createBolts();
     const bodies = [person('mate', 5, 0, 'you'), person('you', 0, 0, 'you')];

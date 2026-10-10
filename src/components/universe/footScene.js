@@ -2791,8 +2791,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     for (let k = 0; fed < list.length && k < 60; fed++, k++) {
       const b = list[fed];
       // (a fixed one walls the walk as well: its post stops what's knocked,
-      // but nothing in the engine stops a walker)
-      if (!lp.add({ position: b.position, quaternion: b.quaternion, scale: b.scale, box: b.box, body: b.body, user: b }) || b.body.fixed) rocks.solids.push(...b.solids);
+      // but nothing in the engine stops a walker; its circle a bolt passes,
+      // as its own body, the pole you see, is what stops one: lp.shot)
+      if (!lp.add({ position: b.position, quaternion: b.quaternion, scale: b.scale, box: b.box, body: b.body, user: b })) rocks.solids.push(...b.solids);
+      else if (b.body.fixed) rocks.solids.push(...b.solids.map((o) => ({ ...o, pass: true })));
     }
     // the fixed things (their walk circles, as they arrive) and the parked
     // ship, as walls: what's knocked stops at them
@@ -3182,6 +3184,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const ground = footSolids(obstacles(), S.R);
     // (a loose thing in its way, short of the ground, stops it and is knocked)
     // (a fixed one stops it too, unmoved; by the ground, the leaves round it thrown)
+    // (asked only as far as the nearest person on the way, lib/combat/bolt.js:
+    // a thing behind someone it hits isn't knocked)
     const solids = (a, b) => {
       const g = ground(a, b);
       const knocked = lp ? lp.shot(a, g?.at ?? b) : null;
@@ -3589,8 +3593,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       warmParty(kind);
     },
-    // the ship's about to fly into `id`'s air (`entry`: entry.js's
-    // entryAhead, what entering() will say as it does): the part of it
+    // the ship's about to fly into `id`'s air, or is in it and not yet
+    // taken (`entry`: entry.js's entryGuess, what entering() will say as
+    // it's taken, at the speed it must be down to by then): the part of it
     // it'll come down on, foreseen as begin will find it (from `light`, or
     // beside a friend already down, `near`), and that biome's models
     // fetched (landings/furnish.js), and the physics engine where it has

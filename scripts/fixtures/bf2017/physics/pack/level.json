@@ -1,0 +1,313 @@
+{
+ "cell": 128,
+ "cells": {
+  "-1,0": {
+   "bin": "cells/-1_0.bin",
+   "bytes": 32,
+   "count": 1,
+   "draws": [
+    {
+     "count": 1,
+     "mesh": 1,
+     "mirrored": false,
+     "offset": 0
+    }
+   ]
+  },
+  "0,0": {
+   "bin": "cells/0_0.bin",
+   "bytes": 96,
+   "count": 3,
+   "draws": [
+    {
+     "count": 2,
+     "mesh": 0,
+     "mirrored": false,
+     "offset": 0
+    },
+    {
+     "count": 1,
+     "mesh": 0,
+     "mirrored": true,
+     "offset": 2
+    }
+   ]
+  },
+  "1,0": {
+   "bin": "cells/1_0.bin",
+   "bytes": 64,
+   "count": 2,
+   "draws": [
+    {
+     "count": 1,
+     "mesh": 3,
+     "mirrored": false,
+     "offset": 0
+    },
+    {
+     "count": 1,
+     "mesh": 4,
+     "mirrored": false,
+     "offset": 1
+    }
+   ]
+  }
+ },
+ "cull": {
+  "high": {
+   "K": 1000,
+   "dropped": []
+  },
+  "low": {
+   "K": 35,
+   "dropped": [
+    3
+   ]
+  },
+  "mid": {
+   "K": 137,
+   "dropped": []
+  }
+ },
+ "meshes": [
+  {
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/architecture/hoth/corridorsystem_01/new/arctic_corridorsnowpile_01_mesh.glb",
+   "radius": 1
+  },
+  {
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/props/_decals/decalplane256_01_mesh.glb",
+   "radius": 1
+  },
+  {
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/architecture/tatooine/jabbaspalace/_throneroom/trl_beamwood_01_a_1024_mesh.glb",
+   "radius": 1
+  },
+  {
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/architecture/imperial/stardestroyer_01/sd_hulldetailpiece_02_mesh.glb",
+   "radius": 1
+  },
+  {
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/props/nothing_here_01_mesh.glb",
+   "radius": 1
+  }
+ ],
+ "physics": {
+  "cells": {
+   "-1,0": {
+    "colliders": 3,
+    "instances": [
+     {
+      "count": 1,
+      "mesh": "1"
+     }
+    ],
+    "triangles": 8
+   },
+   "0,0": {
+    "colliders": 3,
+    "instances": [
+     {
+      "count": 3,
+      "mesh": "0"
+     }
+    ],
+    "triangles": 0
+   },
+   "1,0": {
+    "colliders": 2,
+    "instances": [
+     {
+      "count": 1,
+      "mesh": "3"
+     }
+    ],
+    "triangles": 0
+   }
+  },
+  "materials": {
+   "15": {
+    "tag": 15
+   },
+   "22": {
+    "tag": 22
+   },
+   "28": {
+    "tag": 28
+   },
+   "107": {
+    "tag": 107
+   }
+  },
+  "meshes": {
+   "0": {
+    "bounds": {
+     "max": [
+      2.698,
+      0.903,
+      0.427
+     ],
+     "min": [
+      -2.353,
+      0,
+      -0.586
+     ]
+    },
+    "bytes": 168,
+    "capsules": 0,
+    "colliders": 1,
+    "file": "physics/arctic_corridorsnowpile_01.bin",
+    "hulls": 1,
+    "meshTriangles": 0,
+    "name": "Objects/Architecture/Hoth/CorridorSystem_01/New/Arctic_CorridorSnowPile_01_Physics_Win32",
+    "partCount": 1,
+    "spheres": 0
+   },
+   "1": {
+    "bounds": {
+     "max": [
+      1.086,
+      0,
+      0.72
+     ],
+     "min": [
+      -0.817,
+      -0.098,
+      -0.933
+     ]
+    },
+    "bytes": 444,
+    "capsules": 0,
+    "colliders": 3,
+    "file": "physics/decalplane256_01.bin",
+    "hulls": 2,
+    "meshTriangles": 8,
+    "name": "Objects/Props/_Decals/DecalPlane256_01_Physics_Win32",
+    "partCount": 1,
+    "spheres": 0
+   },
+   "2": {
+    "bounds": {
+     "max": [
+      2.731,
+      3.791,
+      10.277
+     ],
+     "min": [
+      2.382,
+      3.442,
+      -0.043
+     ]
+    },
+    "bytes": 52,
+    "capsules": 1,
+    "colliders": 1,
+    "file": "physics/trl_beamwood_01_a_1024.bin",
+    "hulls": 0,
+    "meshTriangles": 0,
+    "name": "Objects/Architecture/Tatooine/JabbasPalace/_ThroneRoom/TRL_BeamWood_01_A_1024_Physics_Win32",
+    "partCount": 1,
+    "spheres": 0
+   },
+   "3": {
+    "bounds": {
+     "max": [
+      3.682,
+      9.884,
+      3.682
+     ],
+     "min": [
+      -4.753,
+      -9.866,
+      -3.682
+     ]
+    },
+    "bytes": 160,
+    "capsules": 1,
+    "colliders": 2,
+    "file": "physics/sd_hulldetailpiece_02.bin",
+    "hulls": 1,
+    "meshTriangles": 0,
+    "name": "Objects/Architecture/Imperial/StarDestroyer_01/SD_HullDetailPiece_02_Physics_Win32",
+    "partCount": 1,
+    "spheres": 0
+   }
+  },
+  "version": 1
+ },
+ "world": "fixture"
+}

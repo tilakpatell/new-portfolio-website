@@ -7,6 +7,8 @@
 //
 //   OUT=lab/shots node scripts/surface-shot.mjs <world> <x,z,dist,deg[,label]> …
 //   QUALITY=low …  (the device tier)
+//   PHASE_WAIT=600000 …  (ms to wait for the landing: a level pack under
+//                  software rendering takes minutes)
 //   ZONE=<id> …    (inside a zone: its id, the views then in the room's own
 //                  frame, through the dev hook __surfaceDo('zone', id))
 //   LOAD_WAIT=<ms> …  (how long a heavy world may take to load: 180000 by default)
@@ -45,7 +47,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto(`${base}/?quality=${quality}${process.env.QUERY ? `&${process.env.QUERY}` : ''}#/galaxy/${world}/surface`);
-await page.waitForFunction(() => window.__surface?.()?.phase, null, { timeout: Number(process.env.LOAD_WAIT ?? 180000) });
+await page.waitForFunction(() => window.__surface?.()?.phase, null, { timeout: Number(process.env.PHASE_WAIT ?? process.env.LOAD_WAIT ?? 180000) });
 await page.waitForTimeout(4000);
 // (past the landing: out of the ship and walking)
 await page.evaluate(() => window.__surfaceDo('advance', 40));
