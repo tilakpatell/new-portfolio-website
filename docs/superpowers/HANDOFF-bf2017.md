@@ -10,7 +10,7 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 
 | Lane | What | Needs first | Session | Branch | Merged |
 |---|---|---|---|---|---|
-| Z | the coverage ledger: `scripts/bf2017-coverage.mjs`, the owners table, `--check` in CI, the four counts in this table | nothing | | `claude/bf2017-z-ledger` | |
+| Z | the coverage ledger: `scripts/bf2017-coverage.mjs`, the owners table, `--check` in CI, the four counts in this table | nothing | `session_018HdseSL3U68899P3D9oWmP` | `claude/bf2017-z-ledger` | (PR pending) |
 | E0 | the level factory: packs out of git, districts and interiors, every map part beside `level.json` (lights, decals, actors, vehicles, effects, tracks, probes, far shadow, scatter table, shapes, collision solids), the detail maps; Endor on Endor_01, Echo Base's inside | nothing | | `claude/bf2017-e0-factory` | |
 | E1 | Tatooine (Mos Eisley, the dunes, Jabba's palace and its inside), Yavin | E0 | | `claude/bf2017-e1-tatooine-yavin` | |
 | E2 | Naboo (Theed under its dusk and lanterns, the hangar, the plains, the palace), Kamino | E0 | | `claude/bf2017-e2-naboo-kamino` | |
@@ -22,7 +22,27 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 | M | the films on the cards, veils and briefings; the tiles and tutorials for the game's world; the lava film; the open fonts, the icons, the strings, the UI widgets, the hero stage | nothing | | `claude/bf2017-m-frontend` | |
 | A | every clip: stances, additive aims and hits, cover and awareness, emotes and end of round, the cinematics player, first person, riders and crews, the band, the fauna rigs | nothing (#839's B, Y, W kept off) | | `claude/bf2017-a-clips` | |
 
-Coverage (from lane Z's ledger, refreshed by every lane's PR): used · owned · excluded · not-uploaded · unowned = (Z writes the first row).
+Coverage (from lane Z's ledger, `docs/superpowers/evidence/bf2017-coverage/`, refreshed by every lane's PR): used · owned · excluded · not-uploaded · unowned =
+
+| when | rows | used | owned | excluded | not-uploaded | unowned |
+| --- | --: | --: | --: | --: | --: | --: |
+| 2026-10-10, lane Z (the bucket: 113,463 objects listed, 83,983 records) | 80,837 | 2,428 | 59,890 | 13,851 | 4,668 | 0 |
+
+**The first finding: what no lane named.** When the ledger was first written, 19,920 of its rows were `unowned`: no plan of this design or the running ones named them, and none of the merged lanes (K, L, G, V, F, P0, P1, P2, P4, R, 0, the sabers' X, the game's 1 and 2) had consumed them. None is hidden: each is given in `scripts/lib/bf2017-owners.mjs` to the lane that takes it, marked `finding: true`, and counted apart in `ledger.md`. By lane and part:
+
+| lane | what it takes | models | textures | data groups |
+| --- | --- | --: | --: | --: |
+| E | every level's own meshes and maps under `levels/`, `a3/`, `s*/` (the campaign's and the seasons' maps), the light (probes, far shadows, lighting meshes), `shaders/` and `systems/` (the detail and weathering maps, the sky and post-process tables), the prefabs; the levels' records, the shader variations, the LOD groups | 161 | 10,662 | 731 |
+| O | the seasons' object sets (`s2/objects`, `s3/objects`, `s5_1/objects`, `a3/objects` …) and `levels/clouds` | 2,036 | 1,063 | |
+| A | the cast's outfits, heads and body parts not yet imported, the weapons and gadgets in their hands (`gameplay/equipment`, `gameplay/kits`), the cinematics' sets; the characters', animations' and cinematics' records and the heroes' ragdoll blueprints | 911 | 1,621 | 92 |
+| Q | the capital ships under `gameplay/vehicles` and `gameplay/ntcapitalships` | 359 | 205 | |
+| X (#836) | the effects' meshes and sheets (`fx/`, `a3/fx`) and their records | 310 | 283 | 26 |
+| M | the UI's art outside `textures/ui` and the front end's stages; the localisation, `media2` and `ui_*` records | | 456 | 85 |
+| 4 (#812) | the ground and air vehicles not yet imported (`gameplay/vehicles`) | 381 | 319 | |
+| 6 (#812) | the other data: prefab and logic blueprints, reports, settings | | | 139 |
+| 7 (#812) | the online, persistence, telemetry and platform records | | | 80 |
+
+A lane that merges sets its `merged` in `LANES`; from then `npm run coverage:bf2017` fails on every row it still owns and has not used, which is the next design's finding.
 
 **Corrections to this file**, in the spec's §7: lane L's "then Endor" is E0's; the placed lights are drawable today and E runs `bf2017-lights.mjs` per world; the fonts, icons and strings are lane M's for the whole site, the game's lane 5 consumes `src/lib/bf2017/ui/`; the collision meshes and the animation tracks had no consumer in any design and have one now (E0, Q).
 

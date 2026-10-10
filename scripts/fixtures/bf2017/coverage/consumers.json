@@ -14,7 +14,7 @@
   "AI/BattleAI/Templates/CloseRange_Template#AISoldierSpawnTemplateData"
  ],
  "public/models/galaxy/bf2017/levels/hoth/level.json": [
-  "map:levels/mp/hoth_01",
+  "map:levels/mp/hoth_01/hoth_01",
   "models/characters/npc/droids/astromech/r5d4/r5d4_01_mesh.glb",
   "terrain:Levels/MP/Hoth_01/Terrain/Hoth_01_Terrain"
  ]
