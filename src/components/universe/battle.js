@@ -97,6 +97,7 @@ import { createRunners } from './battleRunners';
 import { createStages } from './battleStages';
 import { createTactics } from './battleTactics';
 import { createFleet } from './battleFleet';
+import { homeFor } from './battleHome';
 import { pressureOf } from './battleDifficulty';
 
 export { BATTLE, WIDTH, inSights, perSide, turnToward } from './battleKit';
@@ -265,6 +266,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     b.difficulty = k.pressure.d;
     k.tactics?.pressure();
   };
+  // where a pilot of `team` comes back after a death (battleHome.js)
+  b.homeFor = (team) => homeFor(k, team);
   b.setYou = (team) => {
     b.you.team = team === 0 || team === 1 ? team : null;
     for (const f of b.fighters) if (f.target === b.you) f.target = null;
