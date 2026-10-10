@@ -94,8 +94,8 @@ The change:
 
 - **The galaxy names its own bloom** in `galaxy/look.js`:
   `{ threshold: 1.4, knee: 0.5, strength: 0.5, radius: 0, falloff: [1, 0.6, 0.3, 0.12, 0.04] }`,
-  with its `why.bloom`. `createPost(renderer, scene, camera, { small, look })`
-  takes it; without `look` it is the universe map’s, so `/universe`, the
+  with its `why.bloom`. `createPost(renderer, scene, camera, { small, bloom })`
+  takes it; without one it is the universe map’s, so `/universe`, the
   landings and the surfaces look as they do. `falloff` is written to the
   composite’s `bloomFactors`, so the wide mips stop fogging the frame.
 - **A soft-knee bright pass** that passes only the excess over the

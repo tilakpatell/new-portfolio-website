@@ -25,14 +25,14 @@ a health or build run. Merge `origin/main` in before touching
    and DS2’s in `warpieces/endor.js` at most min(0.45 × size, 24),
    brightness 1.0. Test (fx.test.js): the shader has the rim smoothstep.
 5. **The look’s bloom in the post** (`universe/post.js`):
-   - `createPost(renderer, scene, camera, { small, look })`, `look.bloom`
-     over the map’s; `knee`, `falloff` (five numbers) and `flareMax`
-     optional.
+   - `createPost(renderer, scene, camera, { small, bloom })`, the scene’s
+     look’s bloom over the map’s; `knee`, `falloff` (five numbers),
+     `flareMax` and `cap` optional.
    - The bright pass: the soft knee on the excess, four bilinear taps,
      through `finite()`, as an in-place edit of the patched material with a
-     `uKnee` and `uSrcTexel` uniform (set in `render()` on resize).
+     `uKnee` and `uStep` uniform (set in `render()` on resize).
    - `falloff` written to `bloomFactors`.
-   - `bloomSize` cap 960 when not small.
+   - `bloomSize` capped at the bloom’s `cap` (960 for the galaxy).
    - `flare(k)` = base × min(k, `flareMax`), where base is the look’s (or
      the panel’s) strength.
    - Tests (post.test.js): the look’s numbers are taken; falloff lands in
@@ -41,7 +41,7 @@ a health or build run. Merge `origin/main` in before touching
      `flare(1)` 0.5; the shader string has the knee and `finite(`.
 6. **The galaxy’s look** (`galaxy/look.js`): `bloom: { threshold: 1.4,
    knee: 0.5, strength: 0.5, radius: 0, falloff: [1, 0.6, 0.3, 0.12, 0.04],
-   flareMax: 1.6 }` with `why.bloom`; `galaxy/scene.js` passes it to
+   flareMax: 1.6, cap: 960 }` with `why.bloom`; `galaxy/scene.js` passes it to
    `createPost`; while a war battle is on the flare is held to 1.25.
    `looks.test.js` still passes.
 7. **The ?debug panel**: `galaxy/scene.js`’s `tune()` adds
