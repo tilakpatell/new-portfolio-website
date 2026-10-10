@@ -46,8 +46,10 @@ describe('parts on one skeleton', () => {
     hips.addChild(hand);
     const scene = doc.getRoot().listScenes()[0];
     scene.addChild(hips);
-    const cape = doc.createSkin().addJoint(hips).addJoint(hand);
     const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+    // (bound in the body's own pose: its inverse binds the body's for those two bones)
+    const ibm = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 3, 0, 0, 1]);
+    const cape = doc.createSkin().addJoint(hips).addJoint(hand).setInverseBindMatrices(acc('MAT4', ibm));
     const prim = doc
       .createPrimitive()
       .setAttribute('POSITION', acc('VEC3', new Float32Array(9)))
@@ -99,5 +101,43 @@ describe('a part’s joints re-bound to the body’s', () => {
   it('leaves a slot of no weight at 0', () => {
     const r = rebindJoints(['Hips', 'Head'], ['Spine', 'Hips', 'Head'], new Uint16Array([1, 0, 0, 0]), new Float32Array([1, 0, 0, 0]));
     expect([...r.joints]).toEqual([2, 0, 0, 0]);
+  });
+});
+
+describe('a part made in another bind pose', () => {
+  // a part's copy of Hips and LeftHand (the body's joints 0 and 3), its
+  // inverse binds the body's under a further turn `d` of its own
+  function partWith(doc, ibms) {
+    const buffer = doc.getRoot().listBuffers()[0];
+    const hips = doc.createNode('Hips');
+    const hand = doc.createNode('LeftHand');
+    hips.addChild(hand);
+    doc.getRoot().listScenes()[0].addChild(hips);
+    const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+    const part = doc.createSkin().addJoint(hips).addJoint(hand).setInverseBindMatrices(acc('MAT4', new Float32Array(ibms.flat())));
+    const prim = doc
+      .createPrimitive()
+      .setAttribute('POSITION', acc('VEC3', new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0])))
+      .setAttribute('JOINTS_0', acc('VEC4', new Uint16Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])))
+      .setAttribute('WEIGHTS_0', acc('VEC4', new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])));
+    doc.getRoot().listScenes()[0].addChild(doc.createNode('Head').setMesh(doc.createMesh().addPrimitive(prim)).setSkin(part));
+    return prim;
+  }
+  const T = (x, y, z) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1];
+
+  it('is moved into the body’s bind pose before it shares the body’s skeleton', () => {
+    const { doc } = rigged();
+    // (the body's inverse binds translate by the joint's index along x; the part's by that and 0.5 up)
+    const prim = partWith(doc, [T(0, 0.5, 0), T(3, 0.5, 0)]);
+    expect(shareSkins(doc)).toBe(1);
+    const p = prim.getAttribute('POSITION').getArray();
+    expect([p[0], p[1], p[2]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 0.5, 0]);
+    expect([p[3], p[4], p[5]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([1, 0.5, 0]);
+  });
+
+  it('refuses a part whose joints disagree about where its bind pose is', () => {
+    const { doc } = rigged();
+    partWith(doc, [T(0, 0.5, 0), T(3, 0.9, 0)]);
+    expect(() => shareSkins(doc)).toThrow(/LeftHand/);
   });
 });

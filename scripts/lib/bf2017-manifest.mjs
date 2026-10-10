@@ -64,7 +64,9 @@ export function partsOf(manifest, name, globs) {
   }
   for (const n of full) {
     const entry = manifest.get(n);
-    if (entry && n !== name && !out.includes(entry)) out.push(entry);
+    // (a full name is asked for by name: one the manifest hasn't is a typo, and a hero would come out headless)
+    if (!entry) throw new Error(`part ${n}: not in the manifest (try the fetch's --list)`);
+    if (n !== name && !out.includes(entry)) out.push(entry);
   }
   return out;
 }

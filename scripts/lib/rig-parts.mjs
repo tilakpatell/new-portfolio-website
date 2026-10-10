@@ -118,6 +118,14 @@ export function shareSkins(doc, say = () => {}) {
     const at = names.findIndex((n) => index.has(n));
     const ibmOf = (sk, i) => sk.getInverseBindMatrices()?.getElement(i, []) ?? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
     const m = bindDelta(ibmOf(skin, at), ibmOf(body, bodyNames.indexOf(names[at])));
+    // (one move for the whole part: every joint it shares must agree, or the
+    // part was bound in a pose of its own and moving it by one joint's
+    // delta would tear it; 1 mm and a thousandth of a turn)
+    names.forEach((n, i) => {
+      if (!index.has(n)) return;
+      const d = bindDelta(ibmOf(skin, i), ibmOf(body, bodyNames.indexOf(n)));
+      if (d.some((v, k) => Math.abs(v - m[k]) > 1e-3)) throw new Error(`part ${names[0]}…: its bind pose at ${n} differs from at ${names[at]}; it can't be moved onto the body's as one`);
+    });
     for (const node of root.listNodes().filter((n) => n.getSkin() === skin)) {
       for (const prim of node.getMesh()?.listPrimitives() ?? []) toBodyBind(prim, m);
       let unmatched = 0;

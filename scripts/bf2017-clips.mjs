@@ -78,7 +78,8 @@ async function io() {
 // key): linear for positions, slerp for turns, the last value held past
 // the channel's end; a constant channel two keys
 export function resampleChannel(times, values, size, fps, end) {
-  const n = Math.max(1, Math.round(end * fps));
+  // (up, so an end between two frames is still a key: rounded down, the last half frame went)
+  const n = Math.max(1, Math.ceil(end * fps - 1e-6));
   const out = { times: [], values: [] };
   const constant = values.every((v, i) => Math.abs(v - values[i % size]) < 1e-6);
   const at = constant ? [0, end] : Array.from({ length: n + 1 }, (_, i) => Math.min(end, i / fps));

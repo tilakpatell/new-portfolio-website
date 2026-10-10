@@ -61,6 +61,10 @@ describe('a pack of the game’s clips', () => {
     expect(r.times).toEqual([0, 0.25, 0.5, 0.75, 1]);
     expect(r.values.filter((_, i) => i % 3 === 0)).toEqual([0, 0.5, 1, 1.5, 2]);
     expect(resampleChannel([0, 1], [1, 2, 3, 1, 2, 3], 3, 24, 1).times).toEqual([0, 1]);
+    // (an end between two frames is still the last key: 0.43 s at 24 a second)
+    const odd = resampleChannel([0, 0.43], [0, 0, 0, 1, 0, 0], 3, 24, 0.43);
+    expect(odd.times.at(-1)).toBeCloseTo(0.43, 9);
+    expect(odd.values.slice(-3)).toEqual([1, 0, 0]);
   });
 
   it('knows a channel that only holds its rest (a turn or its negation)', () => {
@@ -97,8 +101,8 @@ describe('a pack of the game’s clips', () => {
     // (the arm's, at 24 a second over 0.3 s; the trajectory's and the resting spine's gone)
     expect(channels.map((c) => c.getTargetNode().getName())).toEqual(['RightArm']);
     const t = channels[0].getSampler().getInput().getArray();
-    expect(t.length).toBe(Math.round(0.3 * 24) + 1);
-    expect(Math.abs(t[t.length - 1] - 0.3)).toBeLessThan(1 / 24);
+    expect(t.length).toBe(Math.ceil(0.3 * 24) + 1);
+    expect(t[t.length - 1]).toBeCloseTo(0.3, 6);
     const { contact, root: travel, rootHips } = strike.getExtras();
     expect(contact[0]).toBeGreaterThanOrEqual(0);
     expect(contact[1]).toBeGreaterThan(contact[0]);

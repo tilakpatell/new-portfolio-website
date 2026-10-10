@@ -52,7 +52,8 @@ describe('the 2017 manifest', () => {
     const head = 'characters/heads/heads_x/heads_x_01/heads_x_01_mesh';
     expect(partsOf(m, VADER, [head]).map((e) => e.name)).toEqual([head]);
     expect(partsOf(m, VADER, ['*_cape_mesh', head]).map((e) => e.name)).toEqual(['characters/hero/darthvader/darthvader_01/darthvader_01_cape_mesh', head]);
-    expect(partsOf(m, VADER, ['characters/heads/nobody_mesh'])).toEqual([]);
+    // (a full name the manifest hasn't is a typo: a hero would come out headless)
+    expect(() => partsOf(m, VADER, ['characters/heads/nobody_mesh'])).toThrow(/nobody_mesh/);
   });
 
   it('knows the sequel era by its folders', () => {
