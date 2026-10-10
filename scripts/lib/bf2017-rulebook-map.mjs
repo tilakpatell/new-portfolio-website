@@ -31,6 +31,8 @@ import { follow, isSequel, pointsOf, readWebJson, shortName, transformOf, webFil
 import { indexOf } from './bf2017-rulebook.mjs';
 
 export const MODE_LAYERS = { galacticAssault: 'FantasyBattle', hvv: 'HeroArena', blast: 'TeamDeathmatch', strike: 'Mode9', supremacy: 'Mode1', extraction: 'Mode6', ewokHunt: 'Mode8', arcade: 'PlanetaryMissions', starfighter: 'SpaceBattle' };
+// (a level that names a mode's layer another way: Geonosis_01's hero arena)
+const ALT_LAYERS = { HeroArena: ['HeroesVsVillains'] };
 
 // The layers a mode's rules read, by suffix (art, automation, sound, the
 // living world's ambient paths and the cinematics are not rules).
@@ -64,7 +66,9 @@ const yawOfQuat = ([x, y, z, w]) => Math.atan2(2 * (x * z + w * y), 1 - 2 * (x *
 
 export function levelName(root, level) {
   const want = [`levels/mp/${level}/${level}`.toLowerCase(), `levels/space/${level}/${level}`.toLowerCase()];
-  return [...indexOf(root).keys()].find((n) => want.includes(n.toLowerCase())) ?? null;
+  // (or under a season's folder: S5_1/Levels/MP/Geonosis_01/Geonosis_01)
+  const keys = [...indexOf(root).keys()];
+  return keys.find((n) => want.includes(n.toLowerCase())) ?? keys.find((n) => want.some((w) => n.toLowerCase().endsWith(`/${w}`))) ?? null;
 }
 
 // A string id's hash (LocalizedStringId.StringHash, signed) as English.json keys it
@@ -136,8 +140,9 @@ export function mapRow(root, level, { modes = MODE_LAYERS } = {}) {
   const names = [...indexOf(root).keys()].filter((n) => n.startsWith(dir) && !n.slice(dir.length).includes('/'));
   const row = { level: name, modes: [], spawns: [], polygons: [], volumes: [], spheres: [], boxes: [], waypoints: [], oob: { team1: [], team2: [] }, locators: [], cameras: [], prefabs: [], strings: [], _missing: [] };
   const seen = new Set();
-  for (const [mode, layer] of Object.entries(modes)) {
-    if (!names.includes(`${dir}${layer}`)) continue;
+  for (const [mode, named] of Object.entries(modes)) {
+    const layer = [named, ...(ALT_LAYERS[named] ?? [])].find((l) => names.includes(`${dir}${l}`));
+    if (!layer) continue;
     row.modes.push(mode);
     // (any case: the droid battleship's are `Spacebattle_Phase1`)
     const layers = names.filter((n) => shortName(n).toLowerCase().startsWith(`${layer}_`.toLowerCase()) && RULE_LAYER.test(shortName(n))).concat((EXTRA_LAYERS[layer] ?? []).map((l) => `${dir}${l}`).filter((n) => names.includes(n)));
