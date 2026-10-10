@@ -100,3 +100,11 @@
 .loading-veil-line {
   font-size: 0.85rem;
 }
+/* (a step that has held: what it waits for, and the way in anyway) */
+.loading-veil-wait {
+  color: rgb(233 237 242 / 0.9);
+}
+.loading-veil-skip {
+  justify-self: center;
+  min-height: 44px;
+}

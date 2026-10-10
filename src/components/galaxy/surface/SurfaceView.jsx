@@ -10,6 +10,7 @@ import { Film } from '../../../runtime/hud';
 import { filmFor } from '../../../lib/bf2017/films';
 import { loadingTips } from '../../../lib/bf2017/strings';
 import '../../../lib/bf2017/fonts.css';
+import { usePrepareWait } from '../../worlds/usePrepareWait';
 
 // (shorter names for the thumbs)
 // (a touch button's word: by the card, else by the kind it plays as)
@@ -53,6 +54,8 @@ export default function SurfaceView({ system = null, site = null, mission = null
       events.current?.(e);
     },
   });
+  // (a step that holds: the veil says why, then offers the way in)
+  const patience = usePrepareWait(surfaceModule, progress, meant && !on);
   // the scene itself, while it's the world on the runtime
   const view = { get current() { return rt?.current?.module === surfaceModule ? rt.current.world.scene : null; } };
   useEffect(() => {
@@ -143,7 +146,7 @@ export default function SurfaceView({ system = null, site = null, mission = null
     <WorldHost world={{ host }} className="surface-map">
       {meant ? (
         // (until it's drawing: on a flown landing it's up before the page is, so this is a direct visit's)
-        <LoadingVeil shown={!on} progress={progress.value} step={progress.step} title="Coming down through the atmosphere" line={film ? tip : ''} backdrop={film ? <Film film={film} className="surface-veil-film" /> : null} />
+        <LoadingVeil shown={!on} progress={progress.value} step={progress.step} title="Coming down through the atmosphere" waiting={patience.waiting} onSkip={patience.onSkip} line={film ? tip : ''} backdrop={film ? <Film film={film} className="surface-veil-film" /> : null} />
       ) : (
         <p className="surface-loading" role="status">
           Landing needs 3D, and this browser has it turned off.
