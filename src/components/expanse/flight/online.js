@@ -16,14 +16,17 @@
 //   status ('connecting' | 'online' | 'failed' | 'off'), update(ship) (each
 //   frame: the cell kept current, a pose POSE_MS apart at most), peers() →
 //   [{ id, name, pose: { x, y, z, pitch, yaw, roll, speed }, at }],
-//   shot(p, v), built(id, cellTag), gone(id), cell(), selfId(), on(fn) → off,
-//   stats(), leave() }
+//   shot(p, v), built(id, cellTag), gone(id), event(ev), cell(), selfId(),
+//   on(fn) → off, stats(), leave() }
 // events: { type: 'shot', id, p, v }, { type: 'built', id, cell, key },
-//   { type: 'gone', id }
+//   { type: 'gone', id }, { type: 'event', event } (something happening, read
+//   by flightProtocol's readEvent: lib/land/flight/director.js weighs it),
+//   { type: 'joined', id } (a pilot new to you said hello: tell them what's on)
 
 import { STALE_MS } from '../../universe/online/protocol';
 import { cellTag, netCellOf, netCellsAround, parseTag } from '../../../lib/net/cells';
-import { APP_ID, ROOM, flightLimiter, readBuilt, readGone, readHi, readPose, readShot, writeHi, writePose, writeShot } from './flightProtocol';
+import { EVENT_KINDS } from '../../../lib/land/flight/eventTables';
+import { APP_ID, ROOM, flightLimiter, readBuilt, readEvent, readGone, readHi, readPose, readShot, writeEvent, writeHi, writePose, writeShot } from './flightProtocol';
 
 export const POSE_MS = 100; // ten poses a second
 const HELLO_MS = 8000; // who you are, again, for anyone who came in since
@@ -31,6 +34,7 @@ const DELAY = 140; // ms a peer is drawn behind its newest pose
 export const MAX_PEERS = 32; // ships kept at most: a 3 × 3 of cells rarely holds more
 const LATEST = new Set(['pose']); // only the newest pose of a bundle matters
 const CHEAP = new Set(['pose', 'shot']); // trusted to the relays' own check of the signature
+const KNOWN = new Set(EVENT_KINDS);
 const loadRoom = () => import('../../universe/online/nostr').then((m) => m.joinAsVisitor);
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -94,7 +98,7 @@ export function createFlightOnline({ planetId, name, kind = 'wedge', load = load
     .then((join) => {
       if (left) return;
       room = join({ appId: APP_ID, latest: LATEST, cheap: CHEAP, cells: () => listening }, ROOM(planetId));
-      for (const ns of ['hi', 'pose', 'shot', 'built', 'gone']) acts[ns] = room.makeAction(ns);
+      for (const ns of ['hi', 'pose', 'shot', 'built', 'gone', 'event']) acts[ns] = room.makeAction(ns);
       acts.hi.onMessage = (data, { peerId }) => {
         if (unseen(peerId) || !allow(peerId, 'hi')) return;
         const hi = readHi(data);
@@ -104,6 +108,7 @@ export function createFlightOnline({ planetId, name, kind = 'wedge', load = load
         p.name = hi.name;
         // someone new: who you are straight back, so they needn't wait
         if (fresh && now() - lastHello > 1000) hello();
+        if (fresh) emit({ type: 'joined', id: peerId });
       };
       acts.pose.onMessage = (data, { peerId, tag }) => {
         if (unseen(peerId) || !allow(peerId, 'pose')) return;
@@ -131,6 +136,11 @@ export function createFlightOnline({ planetId, name, kind = 'wedge', load = load
         if (unseen(peerId) || !allow(peerId, 'gone')) return;
         const g = readGone(data);
         if (g) emit({ type: 'gone', id: g.id });
+      };
+      acts.event.onMessage = (data, { peerId }) => {
+        if (unseen(peerId) || !allow(peerId, 'event')) return;
+        const ev = readEvent(data, KNOWN);
+        if (ev) emit({ type: 'event', event: ev });
       };
       room.onPeerLeave = (id) => peers.delete(id);
       room.onStatus = (s) => {
@@ -187,6 +197,10 @@ export function createFlightOnline({ planetId, name, kind = 'wedge', load = load
     },
     gone(id) {
       if (status === 'online') acts.gone?.send({ id });
+    },
+    // something happening, as lib/land/flight/director.js's wire() gives it
+    event(ev) {
+      if (status === 'online') acts.event?.send(writeEvent(ev));
     },
     // the cell you're in as the room tags it (null before the first update)
     cell: () => (key ? cellTag(planetId, key) : null),

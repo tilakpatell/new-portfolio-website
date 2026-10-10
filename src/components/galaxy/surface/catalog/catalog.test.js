@@ -1,15 +1,20 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import CREDITS from '../../../../data/modelCredits.json';
+import PUBLISHED from '../../../../data/galaxyAssets.json';
+import { bytesOf as sizeOf } from '../../../../../scripts/lib/asset-manifest.mjs';
 import { ULTRA } from '../../../../../scripts/gen3d/budget.mjs';
 import { ULTRA as CUT } from './ultra';
 import { GROUPS, SURFACE_MODELS, lodUrlFor, madeKinds, modelUrlFor, surfaceFarUrl, surfaceLodUrl, surfaceUltraUrl, surfaceUrl, wantsLod } from './index';
 
 const file = (kind) => new URL(`../../../../../public${surfaceUrl(kind)}`, import.meta.url);
-const ultraFile = (kind) => new URL(`../../../../../public${surfaceUltraUrl(kind)}`, import.meta.url);
-const lodFile = (kind) => new URL(`../../../../../public${surfaceLodUrl(kind)}`, import.meta.url);
 const README = readFileSync(new URL('../../../../../public/cc0/README.md', import.meta.url), 'utf8');
 const MB = 1024 * 1024;
+// A file's size, and whether it's there: on disk, or (a game-derived file git
+// ignores once published) in the public bucket's manifest, so CI needs no download.
+const PUBLIC = new URL('../../../../../public', import.meta.url).pathname;
+const bytesOf = (url) => sizeOf(url, { publicDir: PUBLIC, manifest: PUBLISHED });
+const has = (url) => existsSync(`${PUBLIC}${url}`) || Boolean(PUBLISHED[url.slice(1)]);
 
 describe('the surface models', () => {
   it('names each kind once, across the groups (the two Battlefront groups aside: a kind there takes over)', () => {
@@ -36,8 +41,8 @@ describe('the surface models', () => {
       expect(m.as, kind).toBeTruthy();
       expect(m.metres, kind).toBeGreaterThan(0);
       expect(['x', 'y', 'z', 'max', undefined], kind).toContain(m.along);
-      expect(existsSync(file(kind)), `${kind}.glb`).toBe(true);
-      expect(statSync(file(kind)).size, `${kind}.glb`).toBeLessThan((m.hero ? 4 : 2.5) * MB);
+      expect(has(surfaceUrl(kind)), `${kind}.glb`).toBe(true);
+      expect(bytesOf(surfaceUrl(kind)), `${kind}.glb`).toBeLessThan((m.hero ? 4 : 2.5) * MB);
     }
   });
 
@@ -95,19 +100,18 @@ describe('the surface models', () => {
   it('has a light model beside each one marked lod, and only those (scripts/galaxy-surface-lod.mjs)', () => {
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
       if (m.cluster) continue;
-      expect(existsSync(lodFile(kind)), `${kind}.lod1.glb`).toBe(Boolean(m.lod));
-      if (m.lod) expect(statSync(lodFile(kind)).size, `${kind}.lod1.glb`).toBeLessThan(0.7 * statSync(file(kind)).size);
+      expect(has(surfaceLodUrl(kind)), `${kind}.lod1.glb`).toBe(Boolean(m.lod));
+      if (m.lod) expect(bytesOf(surfaceLodUrl(kind)), `${kind}.lod1.glb`).toBeLessThan(0.7 * bytesOf(surfaceUrl(kind)));
     }
     const dir = new URL('../../../../../public/models/galaxy/surface/', import.meta.url);
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.lod1.glb'))) expect(SURFACE_MODELS[f.slice(0, -9)]?.lod, f).toBe(true);
   });
 
   it('has a far cut beside each one marked far, and only those, under a thousand-odd triangles’ bytes (lane V)', () => {
-    const farFile = (kind) => new URL(`../../../../../public${surfaceFarUrl(kind)}`, import.meta.url);
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
       if (m.cluster) continue;
-      expect(existsSync(farFile(kind)), `${kind}.far.glb`).toBe(Boolean(m.far));
-      if (m.far) expect(statSync(farFile(kind)).size, `${kind}.far.glb`).toBeLessThan(0.5 * MB);
+      expect(has(surfaceFarUrl(kind)), `${kind}.far.glb`).toBe(Boolean(m.far));
+      if (m.far) expect(bytesOf(surfaceFarUrl(kind)), `${kind}.far.glb`).toBeLessThan(0.5 * MB);
     }
     const dir = new URL('../../../../../public/models/galaxy/surface/', import.meta.url);
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.far.glb'))) expect(SURFACE_MODELS[f.slice(0, -8)]?.far, f).toBe(true);
@@ -116,13 +120,13 @@ describe('the surface models', () => {
   it('has an ultra cut beside each one whose entry says so, and only those, each within the ultra cut’s size', () => {
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
       if (m.cluster) continue;
-      expect(existsSync(ultraFile(kind)), `${kind}.ultra.glb`).toBe(Boolean(m.ultra));
+      expect(has(surfaceUltraUrl(kind)), `${kind}.ultra.glb`).toBe(Boolean(m.ultra));
       if (!m.ultra) continue;
       expect(m.ultra.tris, `${kind}.ultra.tris`).toBeGreaterThan(m.tris ?? 0);
       // (and at most four times the catalogue's cut, where the entry has one: ./ultra.js)
       if (m.tris) expect(m.ultra.tris, `${kind}.ultra.tris`).toBeLessThanOrEqual(CUT.factor * m.tris);
       expect(m.ultra.tex, `${kind}.ultra.tex`).toBeLessThanOrEqual(ULTRA.tex);
-      expect(statSync(ultraFile(kind)).size, `${kind}.ultra.glb`).toBeLessThan(ULTRA.bytes);
+      expect(bytesOf(surfaceUltraUrl(kind)), `${kind}.ultra.glb`).toBeLessThan(ULTRA.bytes);
     }
     const dir = new URL('../../../../../public/models/galaxy/surface/', import.meta.url);
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.ultra.glb'))) expect(SURFACE_MODELS[f.slice(0, -10)]?.ultra, f).toBeTruthy();

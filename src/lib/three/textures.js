@@ -29,7 +29,10 @@
 import * as THREE from 'three';
 import { budget } from '../device';
 import { modelTexCap, texScale } from '../detail';
-import { withFallback } from '../assetBase';
+import { loadBytes } from '../assetLoad';
+
+const TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', avif: 'image/avif', gif: 'image/gif', ktx2: 'image/ktx2' };
+const imageType = (url) => TYPES[/\.([a-z0-9]+)(?:[?#]|$)/i.exec(url)?.[1]?.toLowerCase()] ?? '';
 
 // The anisotropy to ask for: the tier's, no more than the graphics chip has
 // (16 on most; 1 where the extension is missing, which three reports as 1).
@@ -148,17 +151,28 @@ export function loadTexture(url, { renderer = null, color = true, ...rest } = {}
     // a GPU-compressed texture (KTX2) goes through the shared KTX2 loader,
     // which is only fetched for one; it comes with its own mipmaps
     // (from the bucket where it has the file: the same bytes, so the same texture)
-    const p = withFallback((u) =>
-      /\.ktx2(?:[?#]|$)/i.test(u)
-        ? import('./gltf').then(({ ktx2Loader }) => ktx2Loader({ renderer })).then((k) => k.loadAsync(u))
-        : bitmap
-          ? bitmap.loadAsync(u).then((img) => {
-              const t = new THREE.Texture(img);
-              t.flipY = false; // (the bitmap was flipped as it was decoded)
-              return t;
-            })
-          : plain.loadAsync(u),
-    )(url);
+    // (its bytes through the site's pool, from the bucket where it has the
+    // file: the same bytes, so the same texture; then decoded as it always was)
+    const p = loadBytes(url).then(async (buf) => {
+      if (/\.ktx2(?:[?#]|$)/i.test(url)) {
+        const k = await import('./gltf').then(({ ktx2Loader }) => ktx2Loader({ renderer }));
+        return new Promise((resolve, reject) => k.parse(buf, resolve, reject));
+      }
+      const blob = new Blob([buf], { type: imageType(url) });
+      if (bitmap) {
+        // (ImageBitmapLoader's own decode, from bytes already here)
+        const img = await createImageBitmap(blob, { ...bitmap.options, colorSpaceConversion: 'none' });
+        const t = new THREE.Texture(img);
+        t.flipY = false; // (the bitmap was flipped as it was decoded)
+        return t;
+      }
+      const src = URL.createObjectURL(blob);
+      try {
+        return await plain.loadAsync(src);
+      } finally {
+        URL.revokeObjectURL(src);
+      }
+    });
     cache.set(
       url,
       p.then((t) => sharpen(t, { renderer, color, ...rest })).catch((e) => {

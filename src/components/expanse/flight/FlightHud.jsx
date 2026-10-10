@@ -1,5 +1,6 @@
 import { Hud, Menu, MenuItem, PlayersChip, Prompt, Stick, Toast, TouchButton } from '../../../runtime/hud';
 import LifeLine from './LifeLine';
+import EventLine from './EventLine';
 import FlightMap from './FlightMap';
 
 // The flight's HUD, from the kit: the planet's name top left, the one Menu
@@ -25,6 +26,7 @@ export default function FlightHud({ name, way, planets = [], onPlanet, toast, nu
         <div className="fly-brand">
           <p className="fly-eyebrow">Planet flight</p>
           <h1 className="fly-title">{name}</h1>
+          <EventLine />
         </div>
       }
       tools={
