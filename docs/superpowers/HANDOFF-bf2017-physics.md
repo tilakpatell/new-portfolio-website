@@ -31,6 +31,10 @@ Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, 
 
 `loadPhysics(name)` is lane P0’s `readShapes` over the bucket’s GLB through `readPhysicsGlb` (`scripts/lib/bf2017-physics.mjs`) or, in the browser, over a pack’s `physics/<mesh>.bin`; the hulls and trimeshes are `havok.js`’s `collidersOf`. The soldier’s movement rows are `src/data/bf2017/physics/soldier.json`; the projectiles’ `projectiles.json` and `lib/combat/ballistics.js`’s `flight`; the capsules `boneCapsules.js`; the ragdoll `ragdoll2017.js`; the vehicles `vehicleBody.js`; the surfaces `materials.js`. Build on them; add a row to the Departures in the spec if one does not fit.
 
+## What P0 built (2026-10-10, against #831)
+
+No `collision.js` of its own: lane L’s stays. `levelPhysics.js` sits beside `colliders.js` with `add(key, bin)` / `drop(key)`, reads the 32-byte records with `cells[key].draws` and honours `pack.cull[tier]`; `src/lib/level/shapeSolids.js` gives the walker’s side from the Havok shapes in `collision.js`’s `{ floors, boxes }` form, plus the draws `without` shapes for lane L’s bounds rule; the packer reads `meshes[].name` and fills the empty `physics` section. On a scratch copy of #831’s Hoth pack: 432 meshes, 5.2 MB of bins; the near 3 × 3 at high is 6,160 colliders and 0.47 ms a step, added over 29 frames at under 5 ms each. The `index.js`/`scene.js`/`colliders.js` joins and P2’s `world.physicsRay` are in P0’s Left section for whoever merges second.
+
 ## Checking it
 
 - Pure: `npx vitest run src/lib/physics src/lib/combat src/lib/three/ragdoll2017.test.js scripts/lib/bf2017-physics.test.mjs scripts/lib/bf2017-physics-rules.test.mjs scripts/lib/bf2017-materials.test.mjs src/data/bf2017/physics`.
@@ -42,7 +46,7 @@ Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, 
 | lane | session | branch | PR | merged |
 | --- | --- | --- | --- | --- |
 | design | the architecting session | `claude/bf2017-physics` | #817 | |
-| P0 | `session_018E4MP2mx7j6iFer89w3nFw` (Opus 5.5, started 2026-10-10 05:22) | `claude/bf2017-p0-shapes` | | |
+| P0 | `session_018E4MP2mx7j6iFer89w3nFw` (Opus 5.5, started 2026-10-10 05:22) | `claude/bf2017-p0-shapes` (pushed, main merged in; the PR waits on the owner: the session’s permission check blocked opening it) | | |
 | P1 | `session_01NysT4m6BJEr2MtsRWJtgje` | `claude/bf2017-p1-body` | #822 | (merging when green) |
 | P2 | a desktop session | `claude/bf2017-p2-bolts` | #820 | 2026-10-10 |
 | P3 | not started: waits for lane V’s first model and P0 | `claude/bf2017-p3-vehicles` | | |
