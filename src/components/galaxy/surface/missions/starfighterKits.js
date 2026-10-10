@@ -12,7 +12,9 @@
 //   and no others, each the class its kit record names (fighter,
 //   interceptor, bomber), weighted by how many of the level's vehicle
 //   spawners place it (its AI squadrons: Endor's 13 X-wings and 13 TIE
-//   fighters, its 55 TIE bombers; one at least, so every class flies).
+//   fighters; one at least, so every class flies), a bomber one (its
+//   spawners, Endor's 55 TIE bombers, are the level's scripted bomber
+//   flights, which the plan flies as the attacker's waves).
 //   A kind the level's spawners place that the side's list refuses (the
 //   droid battleship's lone X-wing spawner, on the Republic's side) is left
 //   out. The hero ships (the kit limitation's, three at once, 2,000 Battle
@@ -62,7 +64,12 @@ export function kitsOf(air, map, level) {
     const allowed = air.kits[era]?.[SIDE[team]] ?? [];
     return allowed
       .filter((id) => air.vehicles[id] && SIM[id])
-      .map((id) => ({ id, kind: SIM[id], role: air.vehicles[id].class ?? 'fighter', weight: Math.max(1, placed.get(id) ?? 0) }));
+      .map((id) => {
+        const role = air.vehicles[id].class ?? 'fighter';
+        // (a level's bomber spawners are its scripted bomber flights, flown as the plan's waves: in the pool a bomber weighs one)
+        const weight = role === 'bomber' ? 1 : Math.max(1, placed.get(id) ?? 0);
+        return { id, kind: SIM[id], role, weight, abilities: (air.vehicles[id].abilities ?? []).map((a) => a.id) };
+      });
   });
 }
 

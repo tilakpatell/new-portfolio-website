@@ -20,9 +20,9 @@ describe("Starfighter Assault's kits from the game's records", () => {
     expect(kinds(lv.kits[0])).toEqual(['xwing_t65', 'awing', 'ywing']);
     expect(kinds(lv.kits[1])).toEqual(['tiefighter', 'tieinterceptor', 'tiebomber']);
     expect(lv.kits[0].map((k) => k.role)).toEqual(['fighter', 'interceptor', 'bomber']);
-    // (the level's AI squadrons: thirteen X-wing and thirteen TIE fighter spawners, fifty-five TIE bombers)
+    // (the level's AI squadrons: thirteen X-wing and thirteen TIE fighter spawners; its fifty-five TIE bomber spawners are its bomber flights, the plan's waves)
     expect(lv.kits[0][0].weight).toBe(13);
-    expect(lv.kits[1][2].weight).toBe(55);
+    expect(lv.kits[1][2].weight).toBe(1);
     expect(lv.fighters[0].map((f) => f.kind)).toEqual(['xwing65', 'awing', 'ywing']);
   });
 
