@@ -122,6 +122,11 @@ async function writeTerrain(env, record, { spot, groundY: givenY, arena, out, dr
     const holes = mergeHeights(cropHeights(detail, { ...fd, hole: 0 }, square).data, near.data, 0, inside);
     holeMask = Uint8Array.from(holes, (v) => (v === 0 ? 1 : 0));
     near.data = fillHoles(holes, near.w, near.h);
+  } else if (f.hole === 0) {
+    // (a world map with holes of its own, Endor's bunker in its hill: the
+    // same, each hole at its rim's lowest, so the way in stays open)
+    holeMask = Uint8Array.from(near.data, (v) => (v === 0 ? 1 : 0));
+    near.data = fillHoles(near.data, near.w, near.h);
   }
   // (ground the game never painted, Endor's outside its play area, takes its
   // nearest painted ground; the spot's ground read again from it)
@@ -138,6 +143,7 @@ async function writeTerrain(env, record, { spot, groundY: givenY, arena, out, dr
   const pad = clamp ? 2048 : 0;
   const far = cropHeights(src, f, { minX: f.minX - pad, minZ: f.minZ - pad, size: (f.w - 1) * f.metresPerPixel + 2 * pad, metresPerPixel: FAR_MPP, clamp });
   const nearPng = encodePng16(near.data, near.w, near.h);
+  if (record.detail?.file === undefined && f.hole === 0) far.data = fillHoles(far.data, far.w, far.h);
   if (empty !== null) far.data = fillEmpty(far.data, far.w, far.h, empty, { margin: 2 });
   const farPng = encodePng16(far.data, far.w, far.h);
   if (!dry) {
