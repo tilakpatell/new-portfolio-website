@@ -102,6 +102,10 @@ export const SITES = {
           { kind: 'lamp', at: [12, 27], opts: { h: 6, light: '#ffb070', color: '#2a2828' } },
           { kind: 'crates', at: [-16, 27] },
           { kind: 'crates', at: [-30, 12] },
+          // (Sullust's mining works, the game's: a slag container, a smelting bucket, a pump machine)
+          { kind: 'minecontainer', model: 'game:objects/props/objectsets/sullust/containersullustan_xl_01/containersullustan_xl_01_mesh', at: [-36, 30], yaw: 0.6 },
+          { kind: 'smeltbucket', model: 'game:objects/props/objectsets/sullust/bucketsmelting_xl_01/bucketsmelting_xl_bucket_01_mesh', at: [26, 30], yaw: 2.1 },
+          { kind: 'minemachine', model: 'game:objects/props/objectsets/sullust/machine_l_05/machine_l_05_mesh', at: [-4, 34], yaw: 3.1 },
         ],
         // (the lava it reaches back over)
         pits: [{ at: [0, -62], r: 34, depth: 16 }],
@@ -257,7 +261,11 @@ export const SITES = {
       { kind: 'droidplatform', at: [200, 52], abs: true, y: 1.3 },
       { kind: 'droidplatform', at: [290, 322], abs: true, y: 1.3 },
     ],
+    // the drop's crater rocks among the built ones (flora.js, gameFlora.js)
+    flora: { biome: 'none', game: 'volcanic' },
     scatter: [
+      // (the game's living world: rockmites on the cooled rock)
+      { kind: 'game', model: 'game:objects/livingworld/rockmite_01/rockmite_01_mesh', n: 30, within: [8, 160], scale: [0.8, 1.4], solid: false, shadow: false },
       { kind: 'lavacrack', n: 900, within: [10, 585], scale: [1.4, 3.4], solid: false },
       { kind: 'blackspire', n: 90, within: [60, 580], scale: [1.5, 5], opts: { color: '#1c1818' } },
       { kind: 'basalt', n: 90, within: [30, 560], scale: [0.8, 2.2] },

@@ -349,6 +349,9 @@ export const nevarro = {
       flat: { r: 46, h: BASE.top },
       about: 'An Imperial Remnant base built into the lip of a lava canyon, its coolant tanks hanging out over the drop. Still running. Still guarding something.',
       things: [
+        // (the Remnant's cargo, the game's Imperial containers)
+        { kind: 'impcontainer', model: 'game:objects/props/objectsets/_galacticempire/container_xl_02/container_xl_02_a_mesh', at: [-30, 26], yaw: 0.4 },
+        { kind: 'impcontainer', model: 'game:objects/props/objectsets/_galacticempire/container_xl_02/container_xl_02_a_mesh', at: [-34, 16], yaw: 0.5 },
         // (half in the cliff, half out over the canyon, its roof nine metres over the plateau)
         { kind: 'nevarrobase', at: bt(44, 4), yaw: OUT, scale: 1.6, abs: true, y: BASE.top - 6 },
         { kind: 'bunkerash', at: bt(-8, 26), yaw: OUT + PI / 2 },
@@ -438,7 +441,11 @@ export const nevarro = {
       [-302, 70],
     ].map((at) => ({ kind: 'lamp', at, opts: IMP })),
   ],
+  // the drop's crater rocks among the lava rock (flora.js, gameFlora.js)
+  flora: { biome: 'none', game: 'volcanic' },
   scatter: [
+    // (the game's living world: iguanas basking out of the city)
+    { kind: 'game', model: 'game:objects/livingworld/iguana_01/iguana_01_mesh', n: 16, within: [20, 300], scale: [0.9, 1.3], solid: false, shadow: false },
     { kind: 'lavarock', n: 120, within: [36, 470], scale: [0.35, 1.6], sink: 0.25, solid: 0.6, flat: 0.8 },
     { kind: 'lavarock', n: 40, within: [140, 820], scale: [2, 6], sink: 0.6 },
     { kind: 'lavacrack', n: 420, within: [40, 600], scale: [1.4, 3.2], solid: false },

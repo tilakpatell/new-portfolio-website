@@ -167,6 +167,15 @@ export const SITE = {
       things: [
         { kind: 'cplatform', at: [0, 0], abs: true, y: 0, opts: { r: 36, light: '#ff8a4a', color: '#7a6a5c' } },
         { kind: 'works', at: [0, 0], yaw: 0.4, abs: true, y: 0.3 },
+        // (the Republic's cargo left on the platform, the game's)
+        { kind: 'repcontainer', model: 'game:objects/props/objectsets/_galacticrepublic/container_01/container_01_l_mesh', at: [-22, 18], yaw: 1.1, abs: true, y: 0.3 },
+        { kind: 'repcrate', model: 'game:objects/props/objectsets/_galacticrepublic/crate_02_s/crate_02_s_mesh', at: [-16, 24], yaw: 0.5, abs: true, y: 0.3 },
+        { kind: 'repcrate', model: 'game:objects/props/objectsets/_galacticrepublic/crate_02_s/crate_02_s_mesh', at: [-15, 21.6], yaw: 2.1, abs: true, y: 0.3 },
+        // (the game's living world: the city's birds, about the works)
+        { kind: 'pigeon', model: 'game:objects/livingworld/birdsgeneric_01/birdsgeneric_01_sitting_mesh', at: [-12, 16], yaw: 0.4, abs: true, y: 0.3, solid: false },
+        { kind: 'pigeon', model: 'game:objects/livingworld/birdsgeneric_01/birdsgeneric_01_sitting_mesh', at: [-11.4, 16.6], yaw: 2.2, abs: true, y: 0.3, solid: false },
+        { kind: 'pigeon', model: 'game:objects/livingworld/birdsgeneric_01/birdsgeneric_01_sitting_mesh', at: [-6, 10], yaw: 1.3, abs: true, y: 0.3, solid: false },
+        { kind: 'pigeon', model: 'game:objects/livingworld/birdsgeneric_01/birdsgeneric_01_sitting_mesh', at: [4, -12], yaw: 3.6, abs: true, y: 0.3, solid: false },
         // (smoke off its two stacks)
         { kind: 'smoke', at: [18.6, 3.0], abs: true, y: 34.6, solid: false, opts: { h: 80, n: 9, color: '#2e2624' } },
         { kind: 'smoke', at: [19.2, -6.0], abs: true, y: 26.6, solid: false, opts: { h: 70, n: 8, color: '#2e2624' } },

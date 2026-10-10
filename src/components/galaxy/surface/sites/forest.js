@@ -757,7 +757,11 @@ export const SITES = {
     // stands of great cypresses round the landing, roots in the bog between
     // them, kept off the places (Yoda's hut, the X-wing, the cave, the camp)
     things: grove(31, 46, 30, 190, ['dagocypress', 'dagocypress', 'dagoroots'], [0.7, 1.25]).filter(({ at: [x, z] }) => [[-90, 60, 30], [40, 74, 34], [-70, -120, 30], [100, -60, 32], [-26, -46, 24], [130, 110, 30], [0, 0, 26]].every(([px, pz, r]) => Math.hypot(x - px, z - pz) > r)),
+    // the drop's swamp under the built one (flora.js, gameFlora.js)
+    flora: { biome: 'none', game: 'swamp' },
     scatter: [
+      // (the game's living world: skettos on the roots and the mud)
+      { kind: 'game', model: 'game:objects/livingworld/cavesketto_01/cavesketto_01_sitting_mesh', n: 14, within: [12, 260], scale: [0.8, 1.2], solid: false, shadow: false },
       // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
       { kind: 'qfern', n: 100, within: [5, 80], scale: [0.7, 1.4], solid: false },
       { kind: 'qmushroom', n: 30, within: [6, 80], scale: [0.6, 1.4], solid: false },

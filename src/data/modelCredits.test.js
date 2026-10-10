@@ -34,6 +34,7 @@ describe('the 3D models that are other people’s', () => {
   });
 
   it('are each in the site, and each used by a page that shows its credit', () => {
+    const GAME_FILES = new Set(Object.keys(USED).map((n) => gameUrl(n)));
     const code = sources().join('\n');
     const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx', earth: 'pages/Earth.jsx', galaxy: 'components/galaxy/GalaxyPanel.jsx', 'galaxy-surface': 'pages/GalaxySurface.jsx', 'c-137': 'components/rickmorty/wardrobe/Wardrobe.jsx', cybertron: 'pages/Cybertron.jsx', dickansh: 'pages/Dickansh.jsx', mario64: 'pages/Mario64.jsx' };
     for (const [name, m] of Object.entries(CREDITS)) {
@@ -56,7 +57,7 @@ describe('the 3D models that are other people’s', () => {
       const kind = name.replace(/^surface-/, '');
       const surface = name.startsWith('surface-') && code.includes('/models/galaxy/surface/${kind}.glb') && code.includes(`  ${kind}: {`);
       // (or one of the drop's library objects a world asks for by name, `game:<name>`: catalog/bf2017-library.js)
-      const game = Object.keys(USED).some((n) => gameUrl(n) === file);
+      const game = GAME_FILES.has(file);
       expect(code.includes(file) || surface || game || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
       expect(shown[m.where], `${name}: ${m.where}`).toBeTruthy();
       expect(readFileSync(at(`src/${shown[m.where]}`), 'utf8'), m.where).toContain(`<ModelCredits where="${m.where}"`);
@@ -66,7 +67,8 @@ describe('the 3D models that are other people’s', () => {
         expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
       }
     }
-  });
+    // (every credit's file searched for through every source file: past vitest's 5 s once the library's credits came)
+  }, 20000);
 
   it('worn in the wardrobe are credited wherever the crew wear them too', () => {
     // (the cruiser's seats in the universe and the galaxy; out of the ship on a planet)
