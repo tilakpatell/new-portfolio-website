@@ -106,7 +106,10 @@ export async function run({ root, argv, bucket, deployed = null, log = console.l
   const publicDir = join(root, 'public');
   const files = remoteFiles(publicDir);
   const all = walk(publicDir);
-  const plan = planUpload(files, await storedKeys(bucket), deployed);
+  // (the game-derived files share the bucket, src/data/galaxyAssets.json's:
+  // never pruned from here, whatever the mirror names)
+  const published = readManifest(join(root, 'src/data/galaxyAssets.json'));
+  const plan = planUpload(files, await storedKeys(bucket), { ...(deployed ?? {}), ...published });
   log(`remote: ${files.length} files, ${mb(sum(files))} (${plan.upload.length} to upload, ${mb(sum(plan.upload))}; ${plan.keep.length} there already)`);
   log(`local: ${all.length - files.length} files, ${mb(all.reduce((s, f) => s + statSync(f).size, 0) - sum(files))}`);
   if (dry) {

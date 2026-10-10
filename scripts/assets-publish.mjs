@@ -4,8 +4,8 @@
 // kind's GLB and its .lod1, .far and .ultra cuts, credited to the game, and
 // the clip packs under models/galaxy/bf2017/); nothing raw from the drop is
 // ever published, and nothing from Meshy, Sketchfab or Quaternius (those stay
-// committed). Each goes to `<hash12>/<path>` once, with a year's immutable
-// cache and its content type; a hash the bucket already holds is not sent
+// committed). Each goes to `<hash12>/<path>` once, with a year's cache and
+// its content type; a hash the bucket already holds is not sent
 // again. The manifest is written last, after every upload has landed, so a
 // run cut off midway leaves the manifest naming only what is there; then
 // .gitignore's marked block is rewritten (scripts/assets-ignore.mjs), so the
@@ -36,7 +36,11 @@ import { KINDS } from './assets-upload.mjs';
 import { createPool } from './lib/pool.mjs';
 
 export const BUCKET = 'site-assets';
-export const CACHE = 'public, max-age=31536000, immutable';
+// A year. Supabase keeps only the max-age of what it is sent (an `immutable`
+// is dropped) and serves `public, max-age=31536000` on a GET; the path's
+// hash is what makes the file immutable. (A HEAD there always says
+// no-cache, so assets-check.mjs asks for one byte instead.)
+export const CACHE = 'max-age=31536000';
 const TYPES = { ...KINDS, '.json': 'application/json', '.bin': 'application/octet-stream' };
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));

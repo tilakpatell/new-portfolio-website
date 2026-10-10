@@ -51,14 +51,13 @@ describe('the publish', () => {
     expect(pool.asked.filter(([m]) => m === 'HEAD').every(([, u]) => u.startsWith(`${publicBase(URL_)}/`))).toBe(true);
   });
 
-  it('uploads with a year’s immutable cache and the right type', async () => {
+  it('uploads with a year’s cache and the right type', async () => {
     const publicDir = pub({ 'models/galaxy/crew/a.glb': 'aaaa' });
     let seen = null;
     const pool = { run: async (job) => (job.method === 'HEAD' ? { status: 'missing' } : ((seen = job.headers), { status: 'fetched' })) };
     await publish({ files: [f('models/galaxy/crew/a.glb', '111111111111', 4)], manifest: {}, pool, url: URL_, headers: { apikey: 'k' }, publicDir, log: () => {} });
     expect(seen['cache-control']).toBe(CACHE);
     expect(CACHE).toMatch(/max-age=31536000/);
-    expect(CACHE).toMatch(/immutable/);
     expect(seen['content-type']).toBe('model/gltf-binary');
     expect(seen['x-upsert']).toBe('true');
   });
