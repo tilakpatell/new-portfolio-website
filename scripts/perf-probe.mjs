@@ -16,8 +16,8 @@
 // (?gpu=webgl|webgpu: a port's frame-time table is two runs of the same
 // journey; a 'glsl' world is on the classic renderer either way, and each
 // journey's report names the backend it was actually drawn on), OUT is
-// where the JSON report goes. FLY and LIFE pick the `fly` journey's planet
-// and the life flown over it (default Hoth's own). Each journey
+// where the JSON report goes. FLY picks the `fly` journey's planet (default
+// Hoth). Each journey
 // prints a table: a row per phase (load, idle, move...), with the frame
 // times' spread, the hitches (frames over 50 and 100 ms), what the worst
 // frames were spent on, and `sizes`, the 3D canvases resized (each one
@@ -323,14 +323,14 @@ const worldPage = (route, { ready = canvasUp, move = 'KeyW' } = {}) =>
 
 const JOURNEYS = {
   // the planet flight (/fly/hoth): the ground streamed in at the start, then
-  // 300 m/s north for 14 s, from the ridges onto the plains (a biome boundary
-  // at z ≈ 1050), over Echo Base (z −800) and into the glacier, and a long
+  // 300 m/s north for 14 s, from the range onto the plains (a biome boundary
+  // at z ≈ 1000), into the glacier (z ≈ −500), over Echo Base (z −800) and
+  // back onto the plains (z ≈ −1550), and a long
   // bank round (the ship's dev hook, expanse/flight/module.js's __FLIGHT__)
   async fly(page, mark) {
     mark('load');
-    // (FLY names another planet; LIFE flies another's life over it: expanse/flight/lifeScene.js's ?life=)
-    const life = process.env.LIFE ? `${this.q ? '&' : '?'}life=${process.env.LIFE}` : '';
-    await page.goto(`${this.base}/${this.q}${life}#/fly/${process.env.FLY ?? 'hoth'}`, { waitUntil: 'domcontentloaded' });
+    // (FLY names another planet to fly)
+    await page.goto(`${this.base}/${this.q}#/fly/${process.env.FLY ?? 'hoth'}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__FLIGHT__ && window.__RUNTIME__?.status === 'on', null, { timeout: 240000 });
     mark('settle');
     await page.waitForFunction(() => window.__FLIGHT__.stats().leaves > 100, null, { timeout: 120000 }).catch(() => {});

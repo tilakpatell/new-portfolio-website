@@ -8,6 +8,10 @@
 // { type: 'fnl', noise: noiseFor's options, height } for the stylised
 // planets' warped, ping-pong ground the value noise can't make.
 //
+// After the POIs, two things a world may have: `pits` ({ at, r, depth }: a
+// cone dug into the land, the Pit of Carkoon's kind) and `step` (metres:
+// every height snapped to that grid, so the pixel world is terraces).
+//
 // Pure: runs in Node and in the flight's terrain worker.
 //
 //   planetField(spec) → { heightAt(x, z) → metres, biomeAt(x, z) → index of the heaviest }
@@ -36,7 +40,21 @@ export function planetField(spec) {
     for (let i = 0; i < w.length; i++) if (w[i] > 0) h += w[i] * stacks[i](x, z);
     return h;
   };
-  const heightAt = flatten(raw, spec.pois);
+  const flat = flatten(raw, spec.pois);
+  const pits = spec.pits ?? [];
+  const dug = !pits.length
+    ? flat
+    : (x, z) => {
+        let h = flat(x, z);
+        for (const p of pits) {
+          const d = Math.hypot(x - p.at[0], z - p.at[1]);
+          if (d < p.r) h -= p.depth * (1 - d / p.r) ** 0.85;
+        }
+        return h;
+      };
+  const step = spec.step;
+  // (+ 0: a −0 from Math.round(−0.4) is 0)
+  const heightAt = step ? (x, z) => Math.round(dug(x, z) / step) * step + 0 : dug;
   const biomeAt = (x, z) => {
     const w = biomeWeights(spec, x, z);
     let best = 0;

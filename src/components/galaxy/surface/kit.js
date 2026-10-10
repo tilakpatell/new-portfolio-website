@@ -23,8 +23,8 @@ import { bake, canvasTexture, panelTexture, part, place, rod, between, compose, 
 import { rng } from './noise';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
 import { coverageTexture } from '../../../lib/three/textures';
-import SCANS from '../../../../public/cc0/galaxy/index.json';
-import { loadCore as loadScan, wear } from '../../../lib/three/core';
+import { wear } from '../../../lib/three/core';
+import { SCANS, loadScan, scanOf } from '../../../lib/three/scans';
 
 export { part, place, rod, between, compose, mirror, ball, upright };
 
@@ -332,7 +332,7 @@ export const LOOKS = {
 // there's no scan)
 export const densityOf = (role, fallback) => (SCANS[role]?.metres ? 1 / SCANS[role].metres : fallback);
 // a role's scan's size in metres, and the brightness its detail map is centred on
-export const scanOf = (role) => SCANS[role] ?? null;
+export { scanOf };
 
 // The kit's own pictures, painted once a seed for the page: the canvases
 // and their mip levels made by hand (keepCoverage) were a few hundred

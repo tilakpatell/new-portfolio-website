@@ -12,14 +12,14 @@
 //
 //   withLife(spec, view) → view, its place() also stepping and drawing the
 //     planet's life, its dispose() freeing it (scene.js's one call)
-//   createLifeLayer(scene, { spec, tier, field, lifeId }) → { step(ship, at, dt), stats(), dispose() }
+//   createLifeLayer(scene, { spec, tier, field, onHit }) → { step(ship, at, dt), stats(), dispose() }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { lodBand } from '../../../lib/three/lod';
 import { LEVELS, quality } from '../../../lib/device';
 import { planetField } from '../../../lib/land/flight/field';
-import { LIFE, isDead, lifeFor } from '../../../lib/land/flight/lifeTables';
+import { isDead, lifeFor } from '../../../lib/land/flight/lifeTables';
 import { FIGURES, buildFigure } from '../../galaxy/surface/figures';
 import { GALAXY_KINDS, buildGalaxyShip } from '../../galaxy/fleet';
 import { BUILT_KINDS } from '../../universe/trafficModels';
@@ -278,15 +278,8 @@ function createBolts(root) {
   };
 }
 
-// ?life=<planet> flies a planet's life over this one's ground (the probe's Coruscant)
-const lifeOverride = () => {
-  if (typeof location === 'undefined') return null;
-  const m = `${location.search}${location.hash}`.match(/[?&]life=([a-z0-9:,-]+)/i);
-  return m && LIFE[m[1].toLowerCase()] ? m[1].toLowerCase() : null;
-};
-
-export function createLifeLayer(scene, { spec, tier = 'mid', field = planetField(spec), lifeId = lifeOverride(), onHit = null } = {}) {
-  const life = lifeId ? LIFE[lifeId] : lifeFor(spec);
+export function createLifeLayer(scene, { spec, tier = 'mid', field = planetField(spec), onHit = null } = {}) {
+  const life = lifeFor(spec);
   // a dead world: no pool, no brain, nothing to step
   if (isDead(life)) return { step() {}, stats: () => ({ dead: true, draws: 0 }), dispose() {} };
   const streamer = createLife({ spec, life, tier, field, onHit });

@@ -27,11 +27,15 @@
 //     { leaves, flying, pending, clutter, failed }, dispose() }
 //   wholeAnswer(answer, n) → whether a worker's answer can become a mesh
 //   sink: { add(leaf, answer) → mesh, show(mesh, on), remove(mesh),
-//     clutterAdd(rows) → slots, clutterFree(slots), moveTo(at) }
+//     clutterAdd(rows, leaf) → slots, clutterFree(slots), moveTo(at) }
 
 import { MAX_DEPTH, keyOf, leavesFor, sizeAt } from '../../../lib/land/flight/quadtree.js';
 import { createLeafStream } from '../../../lib/land/flight/stream.js';
 import { heightOn } from '../../../lib/land/flight/sample.js';
+import { CLUTTER_KINDS, SOLID } from '../../../lib/land/flight/leafMesh.js';
+
+// a solid kind's size by its index (a row carries the index)
+const SOLID_AT = CLUTTER_KINDS.map((k) => SOLID[k] ?? null);
 
 export const WORKER = 'flight-terrain';
 export const IN_FLIGHT = 6;
@@ -80,7 +84,7 @@ export function createGroundCore({ workers, sink, spec, tier = 'mid', warn = (..
     m.shown = on;
     sink.show(m.mesh, on);
     if (on && m.answer.clutter.length) {
-      m.slots = sink.clutterAdd(m.answer.clutter);
+      m.slots = sink.clutterAdd(m.answer.clutter, m.leaf);
       clutter += m.slots.length;
     } else if (!on && m.slots) {
       sink.clutterFree(m.slots);
@@ -162,12 +166,29 @@ export function createGroundCore({ workers, sink, spec, tier = 'mid', warn = (..
       for (const [key, m] of meshes) show(m, stream.shows(key));
     },
 
-    // the finest leaf shown under (x, z): what the ship sees is what it hits
+    // the finest leaf shown under (x, z): what the ship sees is what it
+    // hits, a city's towers among it (their tops, inside their footprints,
+    // on that leaf and the eight round it)
     heightUnder(x, z) {
       for (let d = MAX_DEPTH; d >= 0; d--) {
         const s = sizeAt(d);
-        const m = meshes.get(keyOf(d, Math.floor(x / s), Math.floor(z / s)));
-        if (m?.shown) return heightOn(m.leaf, m.answer.heights, m.answer.n, x, z);
+        const ix = Math.floor(x / s), iz = Math.floor(z / s);
+        const m = meshes.get(keyOf(d, ix, iz));
+        if (!m?.shown) continue;
+        let h = heightOn(m.leaf, m.answer.heights, m.answer.n, x, z);
+        for (let dz = -1; dz <= 1; dz++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const k = meshes.get(keyOf(d, ix + dx, iz + dz));
+            const rows = k?.shown ? k.answer.clutter : null;
+            if (!rows) continue;
+            for (let r = 0; r < rows.length; r += 6) {
+              const solid = SOLID_AT[rows[r + 5]];
+              if (!solid) continue;
+              const sc = rows[r + 4];
+              if (Math.abs(x - rows[r]) < solid.r * sc && Math.abs(z - rows[r + 2]) < solid.r * sc) h = Math.max(h, rows[r + 1] + solid.h * sc);
+            }
+          }
+        return h;
       }
       return NaN;
     },

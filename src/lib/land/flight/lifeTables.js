@@ -140,12 +140,14 @@ export const LIFE = {
     ],
   },
   coruscant: {
-    // three lanes of traffic at three heights, and nothing wild
+    // three lanes of traffic at three heights, and nothing wild; all over the
+    // skyline, as the city's towers (planetTables.js's clutter) stand to 620 m
+    // and a route's floor is the ground's, not the towers'
     kinds: { default: 'city' },
     air: [
-      air('airspeeder', 40, [80, 420], 90, 'lane', { model: 'airspeeder', body: 'speeder', tint: '#c8b080', lanes: 3 }),
-      air('patrol', 0.6, [200, 360], 110, 'patrol'),
-      air('gunship', 0.3, [260, 480], 120, 'lane', { lanes: 1 }),
+      air('airspeeder', 40, [660, 980], 90, 'lane', { model: 'airspeeder', body: 'speeder', tint: '#c8b080', lanes: 3 }),
+      air('patrol', 0.6, [700, 860], 110, 'patrol'),
+      air('gunship', 0.3, [760, 1040], 120, 'lane', { lanes: 1 }),
     ],
     ground: [gnd('clone', 'patrol', 0.4, [3, 4], {})],
   },
