@@ -34,6 +34,8 @@ const body = () => {
   return root;
 };
 const idle = new THREE.AnimationClip('idle', 1, [new THREE.QuaternionKeyframeTrack('Hips.quaternion', [0, 1], [0, 0, 0, 1, 0, 0, 0, 1])]);
+// a pistol stance's clip: the hips turned a quarter, to tell it by
+const pistol = (name) => new THREE.AnimationClip(name, 1, [new THREE.QuaternionKeyframeTrack('Hips.quaternion', [0, 1], [0, 0.7071, 0, 0.7071, 0, 0.7071, 0, 0.7071])]);
 // (a skinned body, its material named for the cut it came from)
 const skinned = (cut) => {
   const root = body();
@@ -53,6 +55,7 @@ loader.load = async (url) => {
   if (cuts.light && url.includes('/hero.')) return { scene: skinned(url.includes('.lod1.') ? 'light' : 'full'), animations: [] };
   if (url.endsWith('.lod1.glb')) throw new Error('404');
   if (url.includes('clips-humanoid')) return { scene: new THREE.Group(), animations: [idle] };
+  if (url.includes('clips-stance-p')) return { scene: new THREE.Group(), animations: [pistol('stance.p.idle'), pistol('stance.p.walk')] };
   if (url.includes('/clips-')) throw new Error('404');
   return { scene: body(), animations: [] };
 };
@@ -103,5 +106,27 @@ describe('a 2017 hero out on foot', () => {
     fig.dispose();
     level.now = 'low';
     cuts.light = false;
+  });
+
+  it('takes the stance of the weapon it holds up, its idle and walk the pistol’s', async () => {
+    const fig = await loadPartyFigure(spec, null);
+    expect(await fig.stance('p')).toBe('p');
+    expect(loader.urls).toContain('/models/galaxy/bf2017/clips-stance-p.glb');
+    expect(fig.anim.actions.idle.getClip().tracks[0].values[1]).toBeCloseTo(0.7071);
+    expect(fig.anim.actions.walk.getClip().tracks[0].values[1]).toBeCloseTo(0.7071);
+    // (and back to the humanoid's, with nothing in its hands)
+    expect(await fig.stance('humanoid')).toBe('humanoid');
+    expect(fig.anim.actions.idle.getClip().tracks[0].values[1]).toBeCloseTo(0);
+    fig.dispose();
+  });
+
+  it('keeps the humanoid set when its stance’s pack isn’t there, never a missing clip', async () => {
+    const fig = await loadPartyFigure(spec, null);
+    const before = fig.anim.actions.idle;
+    expect(await fig.stance('l')).toBe('humanoid');
+    expect(fig.anim.actions.idle).toBe(before);
+    fig.update(0.1, 0);
+    fig.after(0.1);
+    fig.dispose();
   });
 });

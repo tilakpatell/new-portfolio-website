@@ -1,0 +1,50 @@
+// A 2017 figure takes up a weapon's stance (walrusSets/stance.js): the
+// stance's pack (clips-stance-<key>.glb) fetched the first time any figure
+// asks for it, its clips bound to this body by bone name as every pack's
+// are (walrus.js's clipsFor), and laid over the figure's own by the names
+// they stand in for through its animator's restance. A pack that isn't
+// there leaves the figure as it was (the humanoid set: never a missing
+// clip); 'humanoid' puts back what the figure came with.
+//
+//   withStance(fig, { model, clips, loader }) → fig, with
+//     stance(key) → Promise<key it now stands in>
+
+import { PACK_DIR, clipsFor, loadWalrusPacks } from './walrus';
+import { STANCE_KEYS, stanceClips } from './walrusSets/stance';
+
+export const stancePackUrl = (key) => `${PACK_DIR}/clips-stance-${key}.glb`;
+
+export function withStance(fig, { model = fig.model, clips = fig.clips ?? {}, loader } = {}) {
+  let now = 'humanoid';
+  let laid = []; // the names the stance took over
+  let ask = 0;
+  const own = (names) => Object.fromEntries(names.filter((n) => clips[n]).map((n) => [n, clips[n]]));
+  fig.stance = async (key) => {
+    const token = ++ask;
+    if (key === now) return now;
+    if (!STANCE_KEYS.includes(key)) {
+      fig.anim?.restance(own(laid));
+      laid = [];
+      now = 'humanoid';
+      return now;
+    }
+    const got = await loadWalrusPacks([stancePackUrl(key)], { loader }).catch(() => new Map());
+    if (token !== ask) return now;
+    const over = stanceClips(clipsFor(model, got), key);
+    const names = Object.keys(over);
+    if (!names.length) return now;
+    for (const [name, clip] of Object.entries(over)) {
+      const c = clip.clone();
+      c.name = name;
+      c.userData = { ...clip.userData, stance: key };
+      over[name] = c;
+    }
+    fig.anim?.restance({ ...own(laid.filter((n) => !over[n])), ...over });
+    laid = names;
+    now = key;
+    // (the figure's own handles on its locomotion's actions)
+    if (fig.act && fig.anim) for (const n of ['idle', 'walk', 'run']) if (fig.anim.actions[n]) fig.act[n] = fig.anim.actions[n];
+    return now;
+  };
+  return fig;
+}

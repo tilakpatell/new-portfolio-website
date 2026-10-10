@@ -75,6 +75,7 @@ import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
 import { cutsToLoad, loadWalrusBody, packUrls, swapBody } from '../../lib/three/walrus';
 import { createCutter, cutUrl } from '../../lib/three/walrusCuts';
+import { withStance } from '../../lib/three/walrusStance';
 import { loadOwnRigBody } from '../../lib/three/ownRig';
 import { OWN_RIGS } from '../../lib/three/walrusClips';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
@@ -344,7 +345,8 @@ async function walrusFigure(spec) {
   // light one only; and the full one when the light one isn't there: a
   // figure is never lost for want of a cut)
   const packs = spec.packs ?? packUrls(spec.pack);
-  return gameFigure(spec, (url) => loadWalrusBody(url, { packs }));
+  // (and the stance of the weapon it takes up: lib/three/walrusStance.js)
+  return withStance(await gameFigure(spec, (url) => loadWalrusBody(url, { packs })));
 }
 
 // A 2017 droid or beast on a skeleton of its own (lib/three/ownRig.js: the

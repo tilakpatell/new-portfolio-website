@@ -38,6 +38,7 @@ import { frameFrom, reach, rotateWorld, setWorldQuaternion, spring } from '../..
 import { gripMorphs, ungrip } from '../../lib/three/grip';
 import { handFrame, handPoints } from '../../lib/three/held';
 import { WEAPON_FRAME } from '../../lib/three/walrusRig.js';
+import { stanceFor, weaponClassOf } from '../../lib/three/walrusSets/stance';
 
 const V = THREE.Vector3;
 const Q = THREE.Quaternion;
@@ -1044,6 +1045,9 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
   const spec = GUNS[kind];
   const root = fig.model;
   if (!spec || !root) return null;
+  // (a 2017 figure stands, walks and aims as the game does for this weapon's
+  // class: lib/three/walrusStance.js; the humanoid set for a saber or a gun of no class)
+  fig.stance?.(stanceFor(weaponClassOf(kind)))?.catch?.(() => {});
   const bones = {};
   for (const n of BONES) bones[n] = fig.bones?.[n] ?? root.getObjectByName(n) ?? null;
   // a 2017 figure's weapon socket (lib/three/walrus.js): the game's clips
