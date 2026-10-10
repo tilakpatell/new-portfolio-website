@@ -2,8 +2,6 @@
   "leg": "webgl",
   "adapter": "swiftshader",
   "shots": {
-    "row-glb": "fixture-glb-webgl.png",
-    "wall-glb": "wall-glb-webgl.png",
     "row-low": "fixture-low-webgl.png",
     "wall-low": "wall-low-webgl.png",
     "row-mid": "fixture-mid-webgl.png",
@@ -68,8 +66,8 @@
   "lowVsGlb": {
     "row": {
       "mean": 0,
-      "max": 17,
-      "overOne": 30
+      "max": 32,
+      "overOne": 24
     },
     "wall": {
       "mean": 0,
@@ -77,5 +75,8 @@
       "overOne": 0
     }
   },
-  "errors": []
+  "errors": [
+    "glb: TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:43749/src/lib/three/gltf.js"
+  ],
+  "lowVsGlbNote": "The GLB page failed to load gltf.js on this run (a dev-server dynamic-import error), so low is compared against the previous run's fixture-glb and wall-glb shots. That page draws the GLB's own materials and runs none of the game material's code."
 }

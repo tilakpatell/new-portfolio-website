@@ -12,8 +12,9 @@ Seven cubes, left to right from the sun's side: Luke's head, the large vehicle, 
 | `fixture-high-webgl.png`, `wall-high-webgl.png` | high: everything, parallax 8 steps |
 | `fixture-ultra-webgl.png`, `wall-ultra-webgl.png` | ultra: everything, parallax 16 steps |
 
-- **Low equals the GLB** (`materials-webgl.json`): mean difference 0 on both views. The wall is identical. In the row, 30 channel values differ, by at most 17/255.
-- **Against the GLB**: the wall differs by a mean of 5.34/255 at mid and up, with 28% of channel values over 4/255. That is the detail normal's grain over the panels. The row differs by a mean of 1.99/255 at high and ultra.
+- **Low equals the GLB** (`materials-webgl.json`): mean difference 0 on both views. The wall is identical. In the row, 24 channel values differ, by at most 32/255.
+- **Re-taken after the review's minors** (shared sun, normalScale on the base only, blink, physical only where needed). That run's GLB page failed to load `gltf.js` (a dev-server dynamic-import error), so `fixture-glb` and `wall-glb` are the previous run's. That page draws the GLB's own materials and runs none of this code.
+- **Against the GLB**: the wall differs by a mean of 5.34/255 at mid and up, with 28% of channel values over 4/255. That is the detail normal's grain over the panels. The row differs by a mean of 1.96/255 at high and ultra (1.85 at mid).
 - **Features drawn at ultra**:
 
   | cube | features |
