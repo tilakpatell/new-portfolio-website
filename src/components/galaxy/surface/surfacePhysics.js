@@ -8,7 +8,9 @@
 // sight every brain asks (`seesThrough`: a ray from eyes to chest; a ray
 // the budget refuses answers what it answered last for that pair, never
 // "clear"). A solid added after building (placer places some late) is
-// added through the solids' `onAdd`. Tagged solids and floors can be
+// added through the solids' `onAdd`, a floor added after through
+// `world.onFloor` (placer.js calls it); a floor that `moves` is a kinematic
+// body at its live height. Tagged solids and floors can be
 // turned off and on (`toggle`: a gate lifted, a trapdoor opened). Stepped
 // once after building, since Rapier answers nothing before its first
 // step. Wiring beside scene.js; tested in Node against the engine.
@@ -82,8 +84,11 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
     tagged(s.tag, body);
     return body;
   }
+  // (a floor that `moves`, a platform a builder lowers, is a kinematic body
+  // set to its live height each step)
+  const movers = [];
   function addFloor(f) {
-    const desc = { type: 'fixed', position: [f.x, f.y - FLOOR_T, f.z], group: 'floor', friction: FRICTION, enabled: !f.off };
+    const desc = { type: f.moves ? 'kinematicPositionBased' : 'fixed', position: [f.x, f.y - FLOOR_T, f.z], group: 'floor', friction: FRICTION, enabled: !f.off };
     if (f.r != null) desc.colliders = [{ shape: 'cylinder', args: [FLOOR_T, f.r] }];
     else {
       desc.rotation = yawQ(f.yaw ?? 0);
@@ -91,13 +96,31 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
     }
     const body = phys.add(desc);
     tagged(f.tag, body);
+    if (f.moves) movers.push({ f, body, y: f.y });
     return body;
   }
+  const lift = { x: 0, y: 0, z: 0 };
+  const moveFloors = () => {
+    for (const m of movers) {
+      if (m.body.removed || m.f.y === m.y) continue;
+      m.y = m.f.y;
+      lift.x = m.f.x;
+      lift.y = m.f.y - FLOOR_T;
+      lift.z = m.f.z;
+      m.body.body.setNextKinematicTranslation(lift);
+    }
+  };
   for (const s of world.solids?.all ?? []) addSolid(s);
   for (const f of world.floors ?? []) addFloor(f);
   // water: a floor at knee depth under it, so nobody walks the seabed (the walker's clamp)
   if (world.water != null) phys.add({ type: 'fixed', position: [0, world.water - WADE - FLOOR_T, 0], group: 'floor', friction: FRICTION, colliders: [{ shape: 'cuboid', args: [tiles * TILE, FLOOR_T, tiles * TILE] }] });
   const offAdd = world.solids?.onAdd?.(addSolid) ?? null;
+  // (placer.js tells the world of a floor a built thing adds after this: `onFloor`)
+  const hadFloorHook = world.onFloor;
+  world.onFloor = (f) => {
+    hadFloorHook?.(f);
+    return addFloor(f);
+  };
   phys.step(1 / 60);
 
   // the line of sight, with what it last said for a pair the budget refuses
@@ -141,6 +164,7 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
     step(dt) {
       q.frame();
       qb.frame();
+      moveFloors();
       this.last = phys.step(dt);
       return this.last;
     },
@@ -149,6 +173,9 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
     },
     dispose() {
       offAdd?.();
+      if (hadFloorHook) world.onFloor = hadFloorHook;
+      else delete world.onFloor;
+      movers.length = 0;
       kept.clear();
       byTag.clear();
       phys.dispose();

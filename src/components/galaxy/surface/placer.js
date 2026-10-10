@@ -772,6 +772,7 @@ export function applyBuilt(made, spec, at, world, sinks) {
     // height read from the builder's own floor, live)
     if (f.moves) Object.defineProperty(placed, 'y', { get: () => at[1] + f.y * k, enumerable: true });
     world.floors.push(placed);
+    world.onFloor?.(placed); // (the physics world, surfacePhysics.js, once it's built)
   }
   if (!object) return;
   // (one that `follows` you, a planet's shelling, is told where you are;

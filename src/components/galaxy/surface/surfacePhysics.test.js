@@ -96,4 +96,37 @@ describe('createSurfacePhysics', () => {
     expect(budgetFor('low')).toEqual({ rays: 10, sweeps: 4, overlaps: 2 });
     expect(budgetFor(undefined)).toEqual(budgetFor('mid'));
   });
+
+  // (placer.js adds a built thing's floors after the world is built, and a
+  // platform's floor moves: both must reach the physics world)
+  it('a floor added after building through onFloor is a floor, and a tagged one toggles', async () => {
+    const w = fixture();
+    const sp = await createSurfacePhysics(w);
+    expect(sp.q.floorAt(-10, -10, { from: 8, down: 6 })).toBeNull();
+    const f = { x: -10, z: -10, r: 2, y: 5, tag: 'lift' };
+    w.floors.push(f);
+    w.onFloor(f);
+    sp.step(1 / 60);
+    expect(sp.q.floorAt(-10, -10, { from: 8, down: 6 }).y).toBeCloseTo(5, 1);
+    sp.toggle('lift', false);
+    sp.step(1 / 60);
+    expect(sp.q.floorAt(-10, -10, { from: 8, down: 6 })).toBeNull();
+    sp.dispose();
+    expect(w.onFloor).toBeUndefined();
+  });
+
+  it('a floor that moves follows its height each step', async () => {
+    const w = fixture();
+    let y = 6;
+    const f = { x: -10, z: -10, r: 2, moves: true };
+    Object.defineProperty(f, 'y', { get: () => y, enumerable: true });
+    w.floors.push(f);
+    const sp = await createSurfacePhysics(w);
+    expect(sp.q.floorAt(-10, -10, { from: 9, down: 8 }).y).toBeCloseTo(6, 1);
+    y = 3;
+    sp.step(1 / 60);
+    sp.step(1 / 60);
+    expect(sp.q.floorAt(-10, -10, { from: 9, down: 8 }).y).toBeCloseTo(3, 1);
+    sp.dispose();
+  });
 });
