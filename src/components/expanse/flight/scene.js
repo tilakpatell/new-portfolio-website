@@ -9,6 +9,7 @@
 
 import * as THREE from 'three';
 import { forwardOf } from './flightRules';
+import { createLandmarks } from './landmarkScene';
 import { withLife } from './lifeScene';
 
 const SKY_R = 40000; // m: inside the camera's far plane, round the camera
@@ -95,6 +96,8 @@ export function createFlightScene({ spec, palette }) {
   scene.add(sun, sun.target);
   const ship = shipModel({ hull: palette[1], wing: palette[2], canopy: palette[4], glow: palette[6] });
   scene.add(ship);
+  // (the POIs' buildings, streamed in round the ship: ./landmarkScene.js)
+  const landmarks = createLandmarks(scene, { spec });
 
   const eye = new THREE.Vector3();
   const look = new THREE.Vector3();
@@ -129,6 +132,7 @@ export function createFlightScene({ spec, palette }) {
       sky.position.copy(camera.position);
       sun.target.position.copy(ship.position);
       sun.position.copy(ship.position).addScaledVector(sunDir, 1000);
+      landmarks.update(s, at, dt);
     },
     // the origin moved: what's kept between frames moves with it
     shift([dx, , dz]) {
@@ -140,6 +144,7 @@ export function createFlightScene({ spec, palette }) {
       camera.updateProjectionMatrix();
     },
     dispose() {
+      landmarks.dispose();
       scene.traverse((o) => {
         o.geometry?.dispose();
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) m?.dispose();

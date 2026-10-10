@@ -20,6 +20,7 @@ import { groundMaterial as shadeGround } from '../../../lib/three/groundLook';
 import { SKIRT, CLUTTER_KINDS, SOLID } from '../../../lib/land/flight/leafMesh';
 import { MAX_DEPTH } from '../../../lib/land/flight/quadtree';
 import { WORKER, createGroundCore } from './groundCore';
+import { createKitClutter } from './kitClutter';
 
 // slots a kind, at most (halved on low)
 export const CAP = { rock: 4000, spire: 600, debris: 2000, trunk: 3000, hive: 300, crystal: 800, block: 2000, tower: 6000, slab: 4000, needle: 4000, hero: 300 };
@@ -272,7 +273,7 @@ function counted(p) {
   return p;
 }
 
-function three(scene, spec, tier, palette) {
+function three(scene, spec, tier, palette, kitsOf) {
   const root = new THREE.Group();
   root.name = 'flight-ground';
   scene.add(root);
@@ -291,6 +292,8 @@ function three(scene, spec, tier, palette) {
     root.add(p.mesh);
     return p;
   });
+  // the kits' models for the kinds the planet names one for (./kitClutter.js): the rest stay code-built
+  const kits = kitsOf?.(root, { spec, tier }) ?? null;
   // the film-made tower, once it's in (heroTower): the city's nearest leaves wear it
   let hero = null;
   // (the pool reads plain arrays)
@@ -343,8 +346,11 @@ function three(scene, spec, tier, palette) {
       mesh.geometry.dispose();
       live--;
     },
-    clutterAdd(rows, leaf) {
+    clutterAdd(all, leaf) {
       const slots = [];
+      const kitted = kits?.add(all);
+      const rows = kitted?.key ? kitted.rest : all;
+      for (let i = 0; i < (kitted?.kitted ?? 0); i++) slots.push(['kit', kitted.key]);
       const near = hero && leaf?.d === MAX_DEPTH;
       for (let r = 0; r < rows.length; r += 6) {
         const kind = near && CITY.has(CLUTTER_KINDS[rows[r + 5]]) ? 'hero' : rows[r + 5];
@@ -365,13 +371,16 @@ function three(scene, spec, tier, palette) {
       return slots;
     },
     clutterFree(slots) {
-      for (const [kind, i] of slots) (kind === 'hero' ? hero : pools[kind]).free(i);
+      for (const [kind, i] of slots) (kind === 'kit' ? kits : kind === 'hero' ? hero : pools[kind]).free(i);
     },
     moveTo(at) {
       root.position.set(-at[0], -at[1], -at[2]);
     },
+    tick: (ship) => kits?.update(ship),
+    kitStats: () => kits?.stats() ?? null,
     dispose() {
       scene.remove(root);
+      kits?.dispose();
       for (const p of new Set(pools)) p?.dispose();
       // (the hero's geometry is ours, its material the loaded model's: the asset cache's to free)
       if (hero) hero.mesh.geometry.dispose();
@@ -380,20 +389,26 @@ function three(scene, spec, tier, palette) {
   };
 }
 
-export function createGround(scene, { rt, spec, tier = 'mid', palette, warn }) {
+// (the kits' maps are read on a canvas: with no page, in Node, the clutter stays code-built)
+const pageKits = (root, opts) => (typeof document === 'undefined' ? null : createKitClutter(root, opts));
+
+export function createGround(scene, { rt, spec, tier = 'mid', palette, warn, kits = pageKits }) {
   rt.workers.define(WORKER, () => new Worker(new URL('./terrain.worker.js', import.meta.url), { type: 'module' }));
-  const sink = three(scene, spec, tier, palette);
+  const sink = three(scene, spec, tier, palette, kits);
   const core = createGroundCore({ workers: rt.workers, sink, spec, tier, warn });
   core.origin(rt.origin?.at ?? [0, 0, 0]);
   return {
     root: sink.root,
     materials: sink.materials,
-    update: (ship) => core.update(ship),
+    update: (ship) => {
+      core.update(ship);
+      sink.tick(ship);
+    },
     heightUnder: (x, z) => core.heightUnder(x, z),
     origin: (at) => core.origin(at),
     setTier: (t) => core.setTier(t),
     heroTower: (made) => sink.heroTower(made),
-    stats: () => ({ ...core.stats(), geometries: sink.live() }),
+    stats: () => ({ ...core.stats(), geometries: sink.live(), kit: sink.kitStats() }),
     dispose() {
       core.dispose();
       sink.dispose();
