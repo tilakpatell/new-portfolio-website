@@ -2,6 +2,7 @@ AI/BattleAI/Cover/CoverConstants	CoverConstantData	data/AI/BattleAI/Cover/CoverC
 AI/BattleAI/Tactics/AIRebelSoldierTactics	SoldierTactics	data/AI/BattleAI/Tactics/AIRebelSoldierTactics.json	7857
 AI/BattleAI/Templates/Rifleman_Template	AISoldierSpawnTemplateData	data/AI/BattleAI/Templates/Rifleman_Template.json	2011
 AI/BattleAI/Weapons/AIFiringPatterns	FiringPatternCollectionData	data/AI/BattleAI/Weapons/AIFiringPatterns.json	28528
+Characters/Rigs/Weapon/WeaponSke01	SkeletonAsset	data/Characters/Rigs/Weapon/WeaponSke01.json	40687
 Gameplay/Characters/StormTrooperShared	SoldierBlueprint	data/Gameplay/Characters/StormTrooperShared.json	249777
 Gameplay/Equipment/Abilities/Ability_AssaultTraining/SC_Trooper_01_AssaultTraining	PassivePlayerAbilityAsset	data/Gameplay/Equipment/Abilities/Ability_AssaultTraining/SC_Trooper_01_AssaultTraining.json	3320
 Gameplay/Equipment/Grenades/ThermalDetonator/DefaultAbility_Assault_ThermalDetonator	InactiveSoldierWeaponPlayerAbilityAsset	data/Gameplay/Equipment/Grenades/ThermalDetonator/DefaultAbility_Assault_ThermalDetonator.json	6412

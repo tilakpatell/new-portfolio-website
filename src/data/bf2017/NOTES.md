@@ -31,6 +31,14 @@ Battle Points are a logic graph too (`Prefabs/GameplaySupply/PF_Gameplay_BattleP
 - Vader’s armour levels read 850, 875, 900, 950 (`Affector_Health_DarthVader_VaderArmor1..4`).
 - A mount’s own health is 1 (`WSMountHealthComponentData`): its rider takes the hits.
 
+## `held.json` (the weapons in hand: `node scripts/bf2017-held.mjs --root lab/assets/bf2017`)
+
+Every number is read; these are the hand parts around them.
+- **`stance`** is a hand label: the weapon’s `AnimBaseSet` to the stance pack the site packed for it (`wabsRif` → `t`, `wabsPstl` → `p`, `wabsLMG` → `l`: `lib/three/walrusSets/stance.js`’s keys). The game picks its anim set by that name too; the pairing is ours.
+- **The muzzle is the bone, the flash its effect’s offset.** The game spawns a bolt at the camera and draws it from `Wep_Muzzle` (the firing records’ `Shot.WeaponBone`, `SpawnVisualAtWeaponBone`), so the bolts start at `muzzle`. On the A280 (11 mm up, 8.5 mm out), DH-17 (26 mm down) and RK-3 (55 mm down) the flash sits off the bone; it is kept for the flash.
+- **The converge distance** a drawn bolt takes to slide from the gun onto the sim’s line (`battlefront/fx/bolts.js`’s `CONVERGE`, 15 m) is by hand: the game hides the gap behind its camera spawn and the bolt’s speed, and no record holds a number for it.
+- **The figure’s turn** (`battlefront/figures/facing.js`): the packed clips face +X because the packer drops `AITrajectory`; the clips’ own constant on that node, −90° about y, is put back on each soldier’s body.
+
 ## `maps/sb_endor.stages.json`
 
 Endor’s space level (`Levels/Space/SB_Endor_01`) says its Starfighter Assault plainly: `SpaceBattle_Gameplay`’s `SpaceBattleObjectiveListEntityData` lists the phases in order (`Phase 1 - Corvettes`, `Phase 2 - Mines`, `Phase 3 - MC80`, then an empty `Intermission`), each with its objectives by name, the attacker (`Team2`, the Empire) and the defender (`Team1`, the Rebels), and its side objectives (the TIE bomber flights). The map row keeps it as `spaceBattle`. What the hand file adds:
