@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { HEROES, HILTS, SABER_COLORS, heroById, leanText, loadoutLine, skinsOf } from '../heroes';
+import { HEROES, HILTS, SABER_COLORS, heroById, heroSpec, leanText, loadoutLine, skinsOf } from '../heroes';
 import { STANCES, STANCE_IDS } from './combatRules';
 import { MAX_MODS, MODS, MOD_IDS, PICKABLE, WEAPONS, withMods } from './weaponRules';
 import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
 import { ABILITIES, abilitiesOf } from './abilityRules';
 import { GameIcon } from '../../../runtime/hud';
 import { gameName } from '../../../lib/bf2017/strings';
+import HeroStage from './HeroStage';
 
 // Who you play as down here, and what's in your hand: the roster
 // (heroes.js) as cards; for a Jedi the blade's colour, the hilt and the
@@ -135,6 +136,7 @@ export default function HeroPanel({ hero, onChange, onClose }) {
         )}
         {tab === 'look' && looks.length > 1 && (
           <div className="surface-saber">
+            <HeroStage spec={heroSpec(pick)} />
             <p className="surface-list-title">Outfit</p>
             <ul className="surface-hilts">
               {looks.map((l) => (

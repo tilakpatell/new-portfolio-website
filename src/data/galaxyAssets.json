@@ -1493,6 +1493,12 @@
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_static_donotuse_mesh",
     "tier": "surface"
   },
+  "models/galaxy/kits/frontendstage.glb": {
+    "hash": "41ddc7ffbc14",
+    "bytes": 344216,
+    "from": "levels/frontend/objects",
+    "tier": "surface"
+  },
   "models/galaxy/n1.glb": {
     "hash": "2f8b687e9d57",
     "bytes": 694916,
