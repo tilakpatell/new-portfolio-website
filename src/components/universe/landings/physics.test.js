@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { METRE } from '../foot';
 import { createImpacts } from '../../../lib/impact';
-import { createLandingPhysics } from './physics';
+import { capHeights, createLandingPhysics } from './physics';
 
 // a moon (universes.js: 0.4 × 21 map units across its middle), and a barrel
 // stood on top of it, the way furnish stands a thing: its foot on the
@@ -21,6 +21,27 @@ const run = (lp, n, frame = () => {}) => {
     lp.step(1 / 60);
   }
 };
+// a box stood on its foot, w across (along x), t tall and d deep, metres
+const boxOf = (w, t, d) => ({ min: [-w / 2, 0, -d / 2], max: [w / 2, t, d / 2] });
+const crate = boxOf(0.81, 0.8, 0.8);
+// the turn taking +y to the unit vector n (the way furnish stands a thing)
+const standing = ([x, y, z]) => {
+  const q = [z, 0, -x, 1 + y];
+  const l = Math.hypot(...q);
+  return q.map((a) => a / l);
+};
+// how far (degrees) a body's own +y leans from the planet's up where it is
+const lean = (h) => {
+  const p = h.position();
+  const [x, y, z, w] = h.quaternion();
+  const own = [2 * (x * y - w * z), 1 - 2 * (x * x + z * z), 2 * (y * z + w * x)];
+  const l = Math.hypot(...p);
+  const c = (own[0] * p[0] + own[1] * p[1] + own[2] * p[2]) / l;
+  return (Math.acos(Math.min(1, Math.max(-1, c))) * 180) / Math.PI;
+};
+// a shot along +x through the thing stood on top, `high` metres up it,
+// from 4 m before it to 4 m past
+const level = (lp, high) => lp.shot([-4 * METRE, R + high * METRE, 0], [4 * METRE, R + high * METRE, 0]);
 
 describe('createLandingPhysics', () => {
   it('stands a thing on the planet, asleep, and writes nothing while it rests', async () => {
@@ -61,19 +82,136 @@ describe('createLandingPhysics', () => {
 
   it('stops a shot that meets it, and the shot knocks it', async () => {
     const lp = await createLandingPhysics({ R });
-    lp.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: barrel, body: { shape: 'cylinder', mass: 2 } });
+    const e = lp.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: barrel, body: { shape: 'cylinder', mass: 2 } });
     run(lp, 2);
     const h = R + 0.5 * METRE;
     expect(lp.shot([-3 * METRE, h, 3 * METRE], [-3 * METRE, h, -3 * METRE])).toBe(null); // (wide of it)
     const hit = lp.shot([-3 * METRE, h, 0], [3 * METRE, h, 0]);
     expect(hit).not.toBe(null);
     expect(hit.at[0] / METRE).toBeCloseTo(-0.3, 1);
-    run(lp, 30);
+    const was = e.handle.position();
+    const Rm = R / METRE;
+    let high = 0;
     const writes = [];
-    lp.sync((x, p) => writes.push([...p]));
+    run(lp, 120, (i) => {
+      high = Math.max(high, dist(e.handle.position()) - Rm);
+      if (i === 30) lp.sync((x, p) => writes.push([...p]));
+    });
+    // (written while it moved, sent on its way, and hopped up off the ground)
     expect(writes).toHaveLength(1);
     expect(writes[0][0] / METRE).toBeGreaterThan(0.1);
+    expect(dist(e.handle.position(), was)).toBeGreaterThan(0.6);
+    expect(high).toBeGreaterThan(0.03);
     lp.dispose();
+  });
+
+  it('knocks a heavy thing clearly, a light one not out of sight', async () => {
+    const things = [
+      { name: 'an 8 kg crate', box: crate, body: { shape: 'box', mass: 8 }, least: 0.4 },
+      { name: 'a 25 kg AC unit', box: boxOf(0.89, 0.6, 0.35), body: { shape: 'box', mass: 25 }, least: 0.3 },
+      { name: 'a 0.2 kg plumbus', box: boxOf(0.55, 0.78, 0.32), body: { shape: 'cylinder', mass: 0.2 }, least: 0.4, most: 8 },
+    ];
+    // (on the ball, and on the cap the landing has: the cap only lets it sleep)
+    for (const spot of [null, up]) {
+      for (const t of things) {
+        const lp = await createLandingPhysics({ R, spot });
+        const e = lp.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: t.box, body: t.body });
+        run(lp, 2);
+        const was = e.handle.position();
+        expect(level(lp, t.box.max[1] / 2), t.name).not.toBe(null);
+        run(lp, 360);
+        const moved = dist(e.handle.position(), was);
+        const on = `${t.name}, ${spot ? 'cap' : 'ball'}`;
+        expect(moved, on).toBeGreaterThanOrEqual(t.least);
+        if (t.most) expect(moved, on).toBeLessThanOrEqual(t.most);
+        expect(e.handle.resets, on).toBe(0); // (never flown off or sunk)
+        lp.dispose();
+      }
+    }
+  });
+
+  it('pushes a crate along the ground for a shot from eye height 4 m away', async () => {
+    const lp = await createLandingPhysics({ R, spot: up });
+    const e = lp.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: crate, body: { shape: 'box', mass: 8 } });
+    run(lp, 2);
+    const was = e.handle.position();
+    // (from 1.6 m up, down at the middle of its top)
+    expect(lp.shot([-4 * METRE, R + 1.6 * METRE, 0], [4 * METRE, R, 0])).not.toBe(null);
+    run(lp, 360);
+    expect(dist(e.handle.position(), was)).toBeGreaterThanOrEqual(0.4);
+    lp.dispose();
+  });
+
+  it('tips a chair hit high, and slides a crate hit low upright', async () => {
+    const lp = await createLandingPhysics({ R, spot: up });
+    const chair = lp.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: boxOf(0.415, 0.95, 0.42), body: { shape: 'box', mass: 4 } });
+    run(lp, 2);
+    expect(level(lp, 0.85 * 0.95)).not.toBe(null);
+    run(lp, 180);
+    expect(lean(chair.handle)).toBeGreaterThan(45);
+    lp.dispose();
+    const lp2 = await createLandingPhysics({ R, spot: up });
+    const box = lp2.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: crate, body: { shape: 'box', mass: 8 } });
+    run(lp2, 2);
+    const was = box.handle.position();
+    expect(level(lp2, 0.25 * 0.8)).not.toBe(null);
+    run(lp2, 180);
+    expect(lean(box.handle)).toBeLessThan(10);
+    expect(dist(box.handle.position(), was)).toBeGreaterThan(0.3);
+    lp2.dispose();
+  });
+
+  it('stops a shot at a fixed thing, which doesn’t move; not at the ground or a wall’s post', async () => {
+    const lp = await createLandingPhysics({ R, spot: up });
+    const e = lp.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: boxOf(0.3, 0.9, 0.3), body: { shape: 'cylinder', mass: 60, fixed: true } });
+    lp.walls([{ n: onTop(0, 6).map((a) => a / R), r: 0.5 * METRE }]);
+    run(lp, 2);
+    const was = e.handle.position();
+    const hit = level(lp, 0.5);
+    expect(hit).not.toBe(null);
+    expect(hit.entry).toBe(e);
+    expect(hit.at[0] / METRE).toBeCloseTo(-0.15, 1);
+    run(lp, 60);
+    expect(dist(e.handle.position(), was)).toBe(0);
+    // (a wall's post 6 m off, and a shot down into the ground: both flown through)
+    const h = R + 0.5 * METRE;
+    expect(lp.shot([-4 * METRE, h, 6 * METRE], [4 * METRE, h, 6 * METRE])).toBe(null);
+    expect(lp.shot([3 * METRE, R + 1.6 * METRE, 0], [3 * METRE, R - 1 * METRE, 0])).toBe(null);
+    lp.dispose();
+  });
+
+  it('has a knocked thing asleep again within 3 s, on the cap round the landing', async () => {
+    // (on top, and somewhere down the side: the cap turned to stand there)
+    for (const spot of [up, [0.6, 0.64, -0.48]]) {
+      const n = spot.map((a) => a / Math.hypot(...spot));
+      const lp = await createLandingPhysics({ R, spot });
+      const e = lp.add({ position: n.map((a) => a * R), quaternion: standing(n), scale: 1, box: crate, body: { shape: 'box', mass: 8 } });
+      run(lp, 2);
+      // (level, through its middle, across the ground)
+      const across = Math.abs(n[1]) < 0.9 ? [n[2], 0, -n[0]] : [1, 0, 0];
+      const a = Math.hypot(...across);
+      const mid = n.map((x) => x * (R + 0.4 * METRE));
+      const hit = lp.shot(
+        mid.map((x, i) => x - (across[i] / a) * 4 * METRE),
+        mid.map((x, i) => x + (across[i] / a) * 4 * METRE),
+      );
+      expect(hit, String(spot)).not.toBe(null);
+      expect(e.handle.sleeping).toBe(false);
+      let slept = -1;
+      for (let i = 0; i < 180 && slept < 0; i++) {
+        lp.step(1 / 60);
+        if (e.handle.sleeping) slept = i;
+      }
+      expect(slept, String(spot)).toBeGreaterThanOrEqual(0);
+      // (and still: no slow turn on the spot, and on the ground)
+      const q = e.handle.quaternion();
+      run(lp, 300);
+      const q2 = e.handle.quaternion();
+      const turned = 2 * Math.acos(Math.min(1, Math.abs(q[0] * q2[0] + q[1] * q2[1] + q[2] * q2[2] + q[3] * q2[3])));
+      expect((turned * 180) / Math.PI, String(spot)).toBeLessThan(1);
+      expect(Math.abs(dist(e.handle.position()) - R / METRE), String(spot)).toBeLessThan(0.01);
+      lp.dispose();
+    }
   });
 
   it('keeps one pusher a person, and drops those no longer about', async () => {
@@ -187,6 +325,29 @@ describe('createLandingPhysics', () => {
     expect(e.handle.position()[0]).toBeLessThan(1.5 - 0.3 + 0.1);
     expect(e.handle.position()[0]).toBeGreaterThan(0.5);
     lp.dispose();
+  });
+});
+
+describe('capHeights', () => {
+  it('is the planet’s own round ground, level at its middle, the same all ways round', () => {
+    const n = 5;
+    const h = capHeights(311, { n, size: 100 });
+    expect(h).toHaveLength(n * n);
+    expect(h[2 * n + 2]).toBe(0);
+    const corner = Math.sqrt(311 * 311 - 2 * 50 * 50) - 311;
+    for (const [ix, iz] of [
+      [0, 0],
+      [0, n - 1],
+      [n - 1, 0],
+      [n - 1, n - 1],
+    ])
+      expect(h[ix * n + iz]).toBeCloseTo(corner, 4);
+    for (let ix = 0; ix < n; ix++)
+      for (let iz = 0; iz < n; iz++) {
+        expect(h[iz * n + ix]).toBe(h[ix * n + iz]);
+        expect(h[(n - 1 - ix) * n + iz]).toBe(h[ix * n + iz]);
+        expect(h[ix * n + iz]).toBeLessThanOrEqual(0);
+      }
   });
 });
 

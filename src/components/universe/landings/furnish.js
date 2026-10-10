@@ -6,8 +6,8 @@
 // pilot coming down beside a friend is handed the friend's frame.
 //
 // furnish({ id, landing, frame, R, small, reduced, renderer, physical }) →
-//   { group, solids, spots, lights, bodies, put(entry, position, quaternion),
-//   update(t, dt, ctx?), ready, open(), dispose() }
+//   { group, solids, spots, lights, bodies, crowns, put(entry, position,
+//   quaternion), update(t, dt, ctx?), ready, open(), dispose() }
 //   group  in the planet's space (footScene's root: its middle at the origin),
 //          built out of sight: footScene readies it all at once (its
 //          pictures sent, its shaders made) and shows it, rather than each
@@ -29,6 +29,11 @@
 //          solids, not in `solids`, so the walk goes into them (and shoves
 //          them, ./physics.js) instead of round them; put() stands one
 //          where its body has gone
+//   crowns grows too: the leafy crowns of the trees, for leaves to fall
+//          from (./litter.js): [{ x, z, r, lo, hi }], metres on the frame
+//          (as the things' `at`), its reach and how high it starts and ends;
+//          a scattered model's (its Leaves_NormalTree, a tree 2.5 m and up),
+//          and a thing's builder's (its `crowns`, at spots of its own)
 //   ready  a promise, once everything that's coming has come
 //   open   the things' solids, bodies and spots put in effect, once
 //          they're shown (none to walk into before they can be seen)
@@ -54,6 +59,7 @@ import { beaconOf } from './wayin';
 import { createBeacon } from './beacon';
 import { keepDark } from './lamps';
 import { bodyOf } from './bodies';
+import { biomeAt } from './biomes';
 import { collidersOf } from '../../../lib/three/colliders';
 import { byId } from '../universes';
 
@@ -100,6 +106,19 @@ export const within = (promise, ms) =>
   });
 // every model a landing may stand about (its biomes' too), each once
 export const modelUrls = (landing) => [...new Set([landing?.models, ...(landing?.biomes ?? []).map((b) => b.models)].flatMap((m) => Object.values(m ?? {}).map((spec) => spec.url)))];
+// the models a view's own kinds name (its things' and its scatter's), each once
+export const kindUrls = (view) => [...new Set([...(view?.things ?? []), ...(view?.scatter ?? [])].map((t) => view.models?.[t.kind]?.url).filter(Boolean))];
+// the models no kind of any of a landing's views names: a builder asks for
+// them by name (kit.specs: the Pearl, the gauntlet, the music room's
+// instruments), so every view has them
+export function builderUrls(landing) {
+  const views = [landing, ...(landing?.biomes ?? []).map((b) => biomeAt({ ...landing, biomes: [b] }, [0, 0, 0]))];
+  const named = new Set(views.flatMap(kindUrls));
+  return modelUrls(landing).filter((u) => !named.has(u));
+}
+// what landing on `view` (biomes.js's viewOf: the landing as it is on one
+// of its biomes; the landing's own by default) stands about
+export const viewUrls = (landing, view = landing) => [...new Set([...kindUrls(view), ...builderUrls(landing)])];
 
 // A scatter's spots (scatterSpots': metres from the landing's middle) in
 // cells, each drawn as instances of its own with bounds of its own, so
@@ -121,19 +140,30 @@ export function cellsOf(spots, { sectors = 8, inner = 20 } = {}) {
 }
 
 // What landing on `id` will want, fetched while the ship's still on its way
-// (from the moment it's landable: scene.js), so none of it is fetched, or
-// parsed, on the way down: the builders' file, the models (parsed once for
-// the page: lib/three/gltf), the people's file where anyone stands about,
-// and the kit's scans (loaded once for the page: lib/three/core). Nothing's
-// built or drawn; each planet is asked for once.
-const asked = new Set();
-export function prefetch(id, landing, { renderer = null } = {}) {
-  if (!PLANETS[id] || asked.has(id)) return;
-  asked.add(id);
-  PLANETS[id]().catch(() => asked.delete(id));
-  for (const url of modelUrls(landing)) loadGltf(url, { renderer });
-  if ([landing, ...(landing?.biomes ?? [])].some((l) => l?.things?.some((t) => t.kind === 'figure'))) import('./people.js').catch(() => {});
-  for (const role of Object.keys(LOOKS)) if (scanOf(role)) loadScan(role);
+// (once it's stayed a moment where it could land, and again as it flies
+// into the air: scene.js), so none of it is fetched, or parsed, on the way
+// down: the builders' file and the kit's scans (loaded once for the page:
+// lib/three/core), once a planet; and the models of the `view` it's coming
+// down on (parsed once for the page: lib/three/gltf), and the people's file
+// where anyone stands about there, once a view. Its own by default, the
+// fallback biome (the Shire, the desert, the beach) that most landings
+// are: the other biomes' models are fetched only once they're foreseen
+// (footScene.js's prefetchAt) or come down on (furnish, below). Nothing's
+// built or drawn.
+const asked = new Set(); // id: the builders' file and the scans
+const viewed = new Set(); // `${id}|${biome}`: a view's models
+export function prefetch(id, landing, { renderer = null, view = landing } = {}) {
+  if (!PLANETS[id]) return;
+  if (!asked.has(id)) {
+    asked.add(id);
+    PLANETS[id]().catch(() => asked.delete(id));
+    for (const role of Object.keys(LOOKS)) if (scanOf(role)) loadScan(role);
+  }
+  const key = `${id}|${view?.biome ?? 'own'}`;
+  if (viewed.has(key)) return;
+  viewed.add(key);
+  for (const url of viewUrls(landing, view)) loadGltf(url, { renderer });
+  if (view?.things?.some((t) => t.kind === 'figure')) import('./people.js').catch(() => {});
 }
 
 // how long the things wait for the kit's scans, on the way down (the
@@ -291,6 +321,18 @@ function partsBox(parts) {
   return box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
 }
 
+// a scatter kind's leafy crown (its parts drawn with Leaves_NormalTree, the
+// oaks' and the bushes'), in the kind's own frame, metres: how far it
+// reaches round, and how high it starts and ends; null if it has none
+export function crownsOf(parts) {
+  const leaves = parts.filter((p) => /^Leaves_NormalTree(\.\d+)?$/.test(p.material?.name ?? ''));
+  const box = leaves.length ? partsBox(leaves) : null;
+  if (!box) return null;
+  return { r: Math.max(box.max[0] - box.min[0], box.max[2] - box.min[2]) / 2, lo: box.min[1], hi: box.max[1] };
+}
+// (one lower than this, a hedge, sheds nothing)
+const CROWN_MIN = 2.5;
+
 // a built thing's meshes as instancing parts (scattering a built kind, or a model)
 export function partsOf(object) {
   const out = [];
@@ -313,6 +355,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
   const solids = [];
   const bodies = [];
   const spots = [];
+  const crowns = [];
   // (what's to be walked round, knocked about and answered, held until the things are shown)
   const held = { solids: [], spots: [], bodies: [] };
   let opened = false;
@@ -329,6 +372,9 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
   const specs = landing.models ?? {};
   // (specs: the landing's models, for a builder that stands one on something of its own)
   Object.assign(kit, { renderer, models, specs, Rm: R / METRE, bend: (object) => bend(object, R / METRE), merge: mergeStatic });
+  // (its own kinds' models on their way now, not once the builders' file
+  // and the scans are in: the same downloads models.get asks for below)
+  for (const url of kindUrls(landing)) loadGltf(url, { renderer });
   // the curve of the ground under something r metres across: how far to sink it so its edges don't float
   const sinkFor = (r) => (0.25 * (r * METRE) ** 2) / R;
   const add = (object) => {
@@ -387,6 +433,8 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       addBody({ object: o, position: P.toArray(), quaternion: Q.toArray(), scale: 1, box, body, solids: circles });
     } else addSolid(...circles);
     if (made.update) updates.push(made.update);
+    // (its builder's crowns, at spots of their own on it)
+    for (const k of made.crowns ?? []) crowns.push({ x: t.at[0] + (k.at?.[0] ?? 0), z: t.at[1] + (k.at?.[1] ?? 0), r: k.r, lo: k.lo, hi: k.hi });
     // a door (at a spot of its own on it, in its frame), or something to say
     if (t.door || t.say) {
       const at = t.door?.at ? place(spot, t.door.at[0], t.door.at[1], R).n : spot.n;
@@ -402,6 +450,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     let reach = 0.5;
     let tints = null;
     let shared = false; // (a model's: its geometry and materials are the loader's cache's)
+    let made = null;
     let own = null; // (a model's physical nodes' bodies, as for a thing)
     if (spec) {
       const object = await models.get(spec);
@@ -411,7 +460,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       shared = true;
       reach = entry.reach ?? spec.reach ?? object.userData.footprint * 0.7;
     } else if (planet.SCATTER?.[entry.kind]) {
-      const made = planet.SCATTER[entry.kind](kit, entry.opts ?? {});
+      made = planet.SCATTER[entry.kind](kit, entry.opts ?? {});
       parts = made.parts;
       tints = made.tints ?? null;
       reach = made.radius ?? 0.4;
@@ -458,6 +507,9 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     holder.userData.shared = shared;
     holder.add(...cells.flat());
     if (!add(holder)) return;
+    // (the trees' crowns, for leaves to fall from)
+    const crown = spec ? crownsOf(parts) : (made?.crown ?? null);
+    if (crown) for (const p of items) if (crown.hi * p.s >= CROWN_MIN) crowns.push({ x: p.x, z: p.z, r: crown.r * p.s, lo: crown.lo * p.s, hi: crown.hi * p.s });
     const locals = parts.map((part) => part.local ?? null);
     // (each instance's body: its cell's meshes, and where it is among them)
     cellIds.forEach((ids, c) =>
@@ -521,6 +573,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     spots,
     lights,
     bodies,
+    crowns,
     put,
     ready,
     // (ctx: what the things may answer to; { me }: the player's head, in the world)
@@ -545,6 +598,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       spots.length = 0;
       lights.length = 0;
       bodies.length = 0;
+      crowns.length = 0;
       held.solids.length = held.spots.length = held.bodies.length = 0;
     },
   };

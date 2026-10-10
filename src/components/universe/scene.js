@@ -195,7 +195,7 @@ import { coneFor } from '../../lib/combat/aim';
 import { flownInto, wayIn, worldName } from './landings/wayin';
 import { figureVoice } from './landings/voicelines';
 import { sayVoiced, stopVoiced } from '../../lib/voiced';
-import { ENTRY, LANDABLE, airTop, entering } from './entry';
+import { ENTRY, LANDABLE, airTop, entering, entryAhead } from './entry';
 import { createNearMaps } from './nearMaps';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
@@ -232,6 +232,7 @@ const SAFE = 3; // seconds after coming back when other pilots' shots don't coun
 const NO_SHIPS = []; // (no big ship moving through: solidsWith's base)
 const RAM_CLEARED = 2; // seconds after a ram's kill a pack cleared is the ram's (said as one)
 const PREFETCH_AFTER = 2.5; // seconds at a planet you could land on before what landing there wants is fetched (not as you fly past)
+const PREFETCH_AHEAD = 2; // seconds, at most, from flying into its air when the part of it you'll come down on is fetched too
 // the cockpit view: the intro's cockpits, built on demand; the eye sits a
 // little ahead of the ship's middle and above it (map units); the lens is
 // the intro's, framed for a wide horizontal view, kept within sane vertical limits
@@ -1237,6 +1238,7 @@ export async function create(canvas, ctx) {
     camFrom: null, // { pos, quat, start, dur }: the camera easing over from where it was (onto your feet, or back behind the ship)
     landable: null, // the planet you could land on and step out onto, where you are
     landableFor: 0, // (how long it's been that: seconds)
+    aheadAt: 0, // (the wall's seconds) when next to look ahead for the air you're about to fly into
   };
   const t0 = performance.now();
   let engine = null;
@@ -4527,6 +4529,13 @@ export async function create(canvas, ctx) {
   };
   // the key light's way, in the map's space (it's day where it falls)
   const lightInMap = () => LIGHT.clone().applyAxisAngle(Y_AXIS, -state.yaw);
+  // anyone already down on planet `id`, to come down beside (an ally
+  // first): their ship's spot and kind, or null
+  const friendOn = (id) => {
+    const down = guestsOnFoot(performance.now()).filter((g) => g.foot.planet === id);
+    const friend = down.find((g) => g.ally) ?? down[0] ?? null;
+    return friend && { ...friend.foot.ship, kind: friend.foot.kind };
+  };
   // Down onto a planet, and out they get. Flown down into its air (`entry`,
   // entry.js's entering(): where it went in, how fast and which way), the
   // ship flies on down through it onto the ground; without one (the dev
@@ -4542,10 +4551,8 @@ export async function create(canvas, ctx) {
       return false;
     }
     handOff(entry ? 600 : 1400);
-    // anyone already down on this planet: come down beside them (an ally first)
-    const down = guestsOnFoot(performance.now()).filter((g) => g.foot.planet === id);
-    const friend = down.find((g) => g.ally) ?? down[0] ?? null;
-    const near = friend && { ...friend.foot.ship, kind: friend.foot.kind };
+    // (anyone already down on this planet: come down beside them)
+    const near = friendOn(id);
     if (!foot.begin({ id, ship: state.ship, model: state.model, kind: state.kind, light: sunInMap[id] ?? lightInMap().toArray(), near, entry })) return false;
     dropAuto();
     state.hotSaid = null;
@@ -5009,6 +5016,18 @@ export async function create(canvas, ctx) {
       const was = state.landableFor;
       state.landableFor += dt;
       if (was < PREFETCH_AFTER && state.landableFor >= PREFETCH_AFTER) foot.prefetch(landable, state.kind);
+    }
+    // (and as you head into its air, the part of it you'll come down on:
+    // heading in is the sign you mean to, so it needs no stay; foreseen
+    // again each half second of the wall's on the way in, as where you'll
+    // come down moves with your course)
+    if (landable && !state.auto && !state.jump && wall() >= state.aheadAt) {
+      const p = LANDABLE.find((o) => o.id === landable);
+      const ahead = p && entryAhead(state.ship, p, PREFETCH_AHEAD);
+      if (ahead?.kind === 'enter') {
+        state.aheadAt = wall() + 0.5;
+        foot.prefetchAt(landable, { light: sunInMap[landable] ?? lightInMap().toArray(), near: friendOn(landable), entry: ahead });
+      }
     }
     placeAlt();
     map.rotation.y = state.yaw;
