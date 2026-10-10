@@ -1,6 +1,6 @@
 # The Star Wars galaxy on Battlefront II (2017) assets. The design
 
-Date: 2026-10-10. Status: **design, awaiting the owner's review**, written by an architecting session from the owner's brief and a count of the Supabase buckets; implementation sessions follow, one phase each. The evidence is `docs/superpowers/evidence/bf2017-assets/` (`inventory.md` has every number this page cites). The plan comes after this spec is approved (`docs/superpowers/plans/2026-10-10-battlefront-2017-asset-pipeline.md`, by the writing-plans skill).
+Date: 2026-10-10. Status: **design, revised with the owner's answers of 2026-10-10, awaiting the nod to plan**, written by an architecting session from the owner's brief and a count of the Supabase buckets; implementation sessions follow, one phase each. The evidence is `docs/superpowers/evidence/bf2017-assets/` (`inventory.md` has every number this page cites). The plan comes after this spec is approved (`docs/superpowers/plans/2026-10-10-battlefront-2017-asset-pipeline.md`, by the writing-plans skill).
 
 ## What the owner asked
 
@@ -36,15 +36,16 @@ Read from the code (the map is in the session's notes; file references below are
 
 The 2017 drop answers most of that list directly: real hilts and blasters, rigged people with fingers, every beast with its own rig, modular kits for the worlds that are built from boxes, and six-level LOD chains for the budget.
 
-## Assumptions to confirm
+## The owner's answers, and what stays open
 
-These are the owner's calls. The design proceeds on the first reading of each; a different answer changes the marked parts.
+Asked on 2026-10-10 and answered the same day. Where the answer was "I don't know", the design keeps its reading and says how the tools find out instead of asking again.
 
-1. **Licence.** The owner says all permissions are held and the project is (will be) small, localized and protected. The site today deploys to a public GitHub Pages origin. The design records the permission as a decision entry and credits every imported model as EA DICE's, "used with permission on this non-commercial fan project", the way Harrisonfog's are. *If* the gate (the "protected" part) is meant to come first, phase 0 adds it before any 2017 model is deployed; say so and it is phase 0's first task.
-2. **The clips will come as files on the `Walrus_HumanMale` rig** (GLBs with `animations`, or one file per clip). The design's animation path is built for that; until they land, the site's own clips drive the 2017 people by bone name (section "Animation").
-3. **Raw textures come as PNG** beside the KTX2 (the owner said "raw and compressed"; the test folder holds PNGs). The importer prefers PNG and encodes the site's own WebP and KTX2 from it; if only KTX2 arrives, it transcodes with `basisu -unpack` instead.
-4. **The classic edition is Battlefront II (2005).** Its bucket is empty; when it fills with `.msh` and `.tga`, the existing `battlefront-import.mjs` is its importer and nothing here changes. If it is something else, say what.
-5. **The rig choice** (section "Animation"): keep the 2017 rig and bake clips onto it, rather than transfer the mesh onto Meshy's 24 bones. The second is the fallback for any figure that fails the checks.
+1. **Licence and the gate: deploy as today.** The permission is recorded as a decision entry; every imported model is credited as EA DICE's, "used with permission on this non-commercial fan project", the way Harrisonfog's are. No gate in this design.
+2. **The clips' shape: not known yet.** The design's animation path assumes files on the `Walrus_HumanMale` rig (GLBs with `animations`, or one file per clip), which is what an extraction from the same game gives. Until they land, the site's own clips drive the 2017 people by bone name (section "Animation"); the clip importer is the last phase and is written against what actually arrives.
+3. **Raw PNG beside the KTX2: probably.** The fetch script asks the bucket per texture and takes PNG when it is there, KTX2 unpacked with `basisu -unpack` when it is not; the import never needs to know which.
+4. **The classic edition: not known.** Its bucket is empty. If it fills with `.msh` and `.tga` from the 2005 game, `battlefront-import.mjs` is its importer and nothing here changes; if with something else, it gets its own short design then. Nothing in this design depends on it.
+5. **The rig: the 2017 one, kept and pruned.** The owner's words: "use 2017's, it's way more in depth and can do cool lightsaber fights and animations." Transfer onto Meshy's 24 bones is not a fallback any more; a 2017 figure that fails a check is fixed on its own rig.
+6. **Phase order: people and characters first, then vehicles, then worlds.** The hilts and blasters go with the people, since they are what the people hold. Section 5 is in that order.
 
 ## The approaches weighed
 
@@ -91,7 +92,7 @@ One kind in, the site's files out, the way `battlefront-import.mjs` does, but fr
 - **Parts.** A composite (vehicles, a hero's cape and hands as separate GLBs) is assembled from the manifest's siblings named by `--parts` (globs over the folder) into one file, each part at the same LOD. Frostbite's "donotuse", "frontend", "wreck" and "cutscene" variants are skipped unless named.
 - **Textures to the site's formats.** From PNG (or unpacked KTX2): colour to WebP at `--tex` (1024 default; 2048 for `--ultra`), the orm map rebuilt from the manifest's `derived` recipe (roughness = 1 − smoothness alpha; occlusion and metal from the channels it names) to WebP at `--maps`, normals to KTX2 UASTC at `--tex` where the research rule holds (GPU memory down, bytes within 1.25×, 34 dB kept: `scripts/ktx2.mjs` already measures that) and WebP otherwise. Materials keep the GLB's own metal-rough setup; `extras.shader` and `extras.textures` are dropped before writing.
 - **Grounded and oriented** by `surface-model.mjs` (upright, facing +z, standing on y = 0, `--metres` along y; `--asis` keeps the manifest's metres, which are right for everything sampled).
-- **Rigs.** Without `--rig` the skin is dropped and the model is a statue (vehicles, props, beasts until their clips come). With `--rig` the skin is kept and the rig is **pruned** to the bones that carry weights or sit on the chain between them and the root, plus the sockets the site uses (`Wep_Root`, `Wep_Muzzle`, `Wep_Aim`, `IK_Joint_*` kept by name): the 250-joint rig becomes roughly 70. Pruning is a new pure module, `scripts/lib/rig-prune.mjs`, tested on the Luke fixture (bones in, bones out, every weight still summing to one). `--crew` writes to `galaxy/crew/<kind>.glb` and prints the `CREW` row; otherwise `galaxy/surface/<kind>.glb` and the catalogue row go into a new `catalog/bf2017.js`, which joins `GROUPS` after `battlefront` so it overrides.
+- **Rigs.** Without `--rig` the skin is dropped and the model is a statue (vehicles, props, beasts until their clips come). With `--rig` (every person, hero and trooper) the skin is kept and the rig is **pruned** to the bones that carry weights or sit on the chain between them and the root, plus the sockets the site uses (`Wep_Root`, `Wep_Muzzle`, `Wep_Aim`, `IK_Joint_*` kept by name): the 250-joint rig becomes roughly 70. Pruning is a new pure module, `scripts/lib/rig-prune.mjs`, tested on the Luke fixture (bones in, bones out, every weight still summing to one). `--crew` writes to `galaxy/crew/<kind>.glb` and prints the `CREW` row; otherwise `galaxy/surface/<kind>.glb` and the catalogue row go into a new `catalog/bf2017.js`, which joins `GROUPS` after `battlefront` so it overrides.
 - **Grip and muzzle** named inside the file (`--grip`, defaulting to the manifest's `Wep_Root` for a weapon, `IK_Joint_RightHand` for a person), the way colliders are named, so `fig.hands.hold` and the saber's stroke have a real point to hold instead of an inferred axis (the combat handoff's open item).
 - **Collision.** With `--collision`, the manifest's collision GLB is merged in as a `_physical` node with a `trimesh` child (`docs/assets/colliders.md`), so the durable world's structures and the Death Star interior's walls get walkable collision for free.
 - **Credit and catalogue row** written as in section 1. The import refuses a sequel-era path (a list of folder names from `inventory.md`) with a one-line reason.
@@ -113,20 +114,23 @@ When the 2017 clips land (assumption 2):
 
 ### 5. What each phase brings, and where it goes
 
-Each phase is one branch and one PR, gated on `npm run lint`, `npm test`, `npm run build`, `node scripts/health.mjs --check --skip build`, `galaxy-check.mjs surface <world>` at high under its budget row, `anim-check.mjs` for any rigged kind, and a model-sheet comparison (`scripts/preview/surface.html`, `glb-shot.mjs`) under `docs/superpowers/evidence/bf2017-<phase>/`. "Compare, never assume" stays: a 2017 model replaces a kind only when the sheet shows it better.
+Each phase is one branch and one PR, gated on `npm run lint`, `npm test`, `npm run build`, `node scripts/health.mjs --check --skip build`, `galaxy-check.mjs surface <world>` at high under its budget row, `anim-check.mjs` for any rigged kind, and a model-sheet comparison (`scripts/preview/surface.html`, `glb-shot.mjs`) under `docs/superpowers/evidence/bf2017-<phase>/`. "Compare, never assume" stays: a 2017 model replaces a kind only when the sheet shows it better. The order is the owner's: people and characters, then vehicles, then worlds.
 
 | phase | what | kinds (from the manifest) | replaces |
 | --- | --- | --- | --- |
 | 0 | the tools and the rules: decision entry, assets page, fetch, import, rig-prune, tests, `made:'bf2017'`, `catalog/bf2017.js` | the fixture hilt | nothing visible |
-| 1 | **the hilts and blasters** | lightsaber: luke, lukehoth, vader, obiwan, anakin, maul, maulcrimson, dooku, yoda, grievous; blasters: dl44, ee3, bowcaster, e11, a280, dlt19, dc15, t21, rt97c, se14c | `GUNS.saber`'s procedural hilt and `HILTS`; the box blasters; closes saber-forms lane 0 without gen3d |
-| 2 | **Hoth** (the `cast: 'models'` world, so every kind must resolve) | snowtrooper, hothtrooper (rebel `l_assault` Hoth outfit), imperial officer; atat, atst, snowspeeder (`airspeeder`), e-web, df9, atgar tower; tauntaun, viper probe; Echo Base: hangar system (110 pieces), corridor, wall, fuel silo, DF.9 stack; arctic rocks and backdrops | the Sketchfab atat/atst/snowspeeder/probe/turret, the 2005 snowtrooper and hothtrooper, `echoLayout.js`'s built hangar |
-| 3 | **the other original-trilogy worlds**: Endor, Tatooine, Yavin, the Death Star interior | Endor: landing platform, power core room, bunker system, forest base, scout trooper, speeder bike, ewok, AT-ST; Tatooine: Mos Eisley (96), Jabba's palace (133), desert nature, sandtrooper, dewback, bantha, jawa, landspeeder; Yavin: temple grounds, 551 nature pieces, rebel troopers, pilots, X-wing T-65, Y-wing; Death Star: 216 interior pieces, tractor beam generator, debris | the built bunker and platform, the Meshy Mos Eisley and palace, the Quaternius ground cover, the code-built Death Star rooms' walls (the room layout stays; `kit.js` wears the pieces) |
-| 4 | **the people**: heroes and troopers as `CREW` on the 2017 rig | luke (rotj, farmboy, hoth), vader, obiwan, han, leia, lando, chewbacca, yoda, maul, dooku, anakin, palpatine, grievous, bobafett, bossk; stormtrooper, shadowtrooper, deathtrooper, shoretrooper, scout, clone legions, B1, B2, rebel and imperial officers and crew | the Meshy crew figures and the 2005 troopers; the assault's bind-pose soldiers |
-| 5 | **the prequel worlds**: Naboo, Kamino, Kashyyyk, Geonosis (from `a3/`), plus Bespin and Scarif | palace, hangar, Theed facades, canal; cloning facility, domes, platforms; village, walkways, Venator wreck; upper levels, plaza; barracks, train station; AAT, MTT, droideka, spider droids, STAP, LAAT, ARC-170, N-1 | the Meshy buildings (theed, tipoca, cloudcity…), the Sketchfab vehicles |
-| 6 | **ultra and the space layer**: `.ultra.glb` at LOD0 with 2048 KTX2 for heroes and vehicles; the far LODs (LOD4, LOD5) for instanced far crowds and wrecks; capital ships for the fleet war | imperial cruiser, venator, mc80, cr90; the LOD5 cuts | the `hq/` destroyer and nebulon, the `lod/` cuts |
-| 7 | **the clips, when they land** (`bf2017-clips.mjs`, section 4), and the saber-forms lane on them | the sword and hero sets, deaths, hits, aims | the UAL bakes on 2017 figures; the mirrored-clip forms |
+| 1 | **the heroes, with what they hold**: `CREW` on the 2017 rig, the site's clips baked on by bone name, fingers that grip; the hilts and the hero blasters | luke (rotj, farmboy, hoth), vader, obiwan, anakin, maul, dooku, yoda, grievous, palpatine, han, leia, lando, chewbacca, bobafett, bossk; hilts: luke, lukehoth, vader, obiwan, anakin, maul, maulcrimson, dooku, yoda, grievous; dl44, ee3, bowcaster, the hero rifles | the Meshy crew heroes; `GUNS.saber`'s procedural hilt and `HILTS`; closes saber-forms lane 0 without gen3d |
+| 2 | **the troopers, droids and the rest of the cast**, same path; the standard blasters | stormtrooper, shadowtrooper, deathtrooper, shoretrooper, scout, sandtrooper, snowtrooper, clone legions, rebel and Hoth troopers, officers, pilots; B1, B2, droideka (own rig), astromechs, protocol, gonk, mouse, viper probe; the civilians; e11, a280, dlt19, dc15, t21, rt97c, se14c | the 2005 troopers and `troops/`, the Sketchfab droids, the box blasters; the assault's bind-pose soldiers |
+| 3 | **the beasts**, as statues first, their rigs kept for the clips | tauntaun, dewback, bantha, eopie, ronto, jawa, ewok, wookiee, gamorrean, bith, aiwha, kaminoan | the Meshy and Sketchfab statues of the same |
+| 4 | **ground vehicles and turrets** | atat, atst, atte, atrt, aat, mtt, hailfire, homing and dwarf spider, stap, barc, speeder bike, x34, turbo tank; e-web, df9, atgar, mark ii, turbolaser | the Sketchfab atat/atst/atte/atrt/aat and the rest |
+| 5 | **air vehicles** | xwing t65, ywing, awing, uwing, tie fighter, bomber, interceptor, advanced, falcon, slave i, snowspeeder, laat, arc170, n1, vwing, vulture, tri-fighter, hyena, cloud car | the Sketchfab and gen3d fighters on the ground and the `lod/` cuts in space |
+| 6 | **Hoth** (the `cast: 'models'` world, so every kind must resolve) and its Echo Base | hangar system (110 pieces), corridor, wall, fuel silo, DF.9 stack; arctic rocks and backdrops | `echoLayout.js`'s built hangar, the Sketchfab gr75 and generator |
+| 7 | **the other original-trilogy worlds**: Endor, Tatooine, Yavin, the Death Star interior | Endor: landing platform, power core room, bunker system, forest base; Tatooine: Mos Eisley (96), Jabba's palace (133), desert nature; Yavin: temple grounds, 551 nature pieces; Death Star: 216 interior pieces, tractor beam generator, debris | the built bunker and platform, the Meshy Mos Eisley and palace, the Quaternius ground cover, the code-built Death Star rooms' walls (the room layout stays; `kit.js` wears the pieces) |
+| 8 | **the prequel worlds**: Naboo, Kamino, Kashyyyk, Geonosis (from `a3/`), plus Bespin and Scarif | palace, hangar, Theed facades, canal; cloning facility, domes, platforms; village, walkways, Venator wreck; upper levels, plaza; barracks, train station | the Meshy buildings (theed, tipoca, cloudcity…) |
+| 9 | **ultra and the space layer**: `.ultra.glb` at LOD0 with 2048 KTX2 for heroes and vehicles; the far LODs (LOD4, LOD5) for instanced far crowds and wrecks; capital ships for the fleet war | imperial cruiser, venator, mc80, cr90; the LOD5 cuts | the `hq/` destroyer and nebulon, the `lod/` cuts |
+| 10 | **the clips and the sound, when they land** (`bf2017-clips.mjs`, section 4), and the saber-forms lane on them | the sword and hero sets, deaths, hits, aims; the beasts' walks; ignite, hum, clash | the UAL bakes on 2017 figures; the mirrored-clip forms; the synthesised saber sound |
 
-Phases 1 and 2 need the textures to have arrived; phase 0 does not. Phases 3 to 6 can run in parallel lanes once phase 0 has merged, one world per lane, the way the Hoth and Death Star lanes ran.
+Phases 1 to 9 need the textures to have arrived; phase 0 does not. Phases 4 to 8 can run in parallel lanes once phase 2 has merged, one set per lane, the way the Hoth and Death Star lanes ran. Phase 10 waits on the bucket.
 
 ### 6. Budgets and download
 
@@ -139,10 +143,10 @@ Phases 1 and 2 need the textures to have arrived; phase 0 does not. Phases 3 to 
 
 What the drop changes for the duel, in the order it can land:
 
-1. **Hilts** (phase 1): the real models, 920 triangles, with a grip node; the blade's root sits on the hilt's emitter instead of the procedural cylinder's top. `heroes.js`'s `HILTS` becomes a map from hero to kind; `gunplay.js`'s `GUNS.saber` wears the kind's GLB through the existing `dress()` and keeps its procedural fallback for a hero without one.
-2. **Hands that hold** (phase 4): finger bones on every hero, so the hold is a pose, not an offset; the combat handoff's "sword axis inferred" item closes.
-3. **Duellists that look right** (phase 4): Vader, Luke, Obi-Wan, Maul, Dooku, Yoda, Grievous at the game's quality, facing the player.
-4. **The game's strokes** (phase 7): blocks, clashes, the forms, deaths and the hero sets on the rig they were made for, with `contact` measured so the blade-to-blade contact rule keeps working.
+1. **Hilts** (phase 1, with the heroes): the real models, 920 triangles, with a grip node; the blade's root sits on the hilt's emitter instead of the procedural cylinder's top. `heroes.js`'s `HILTS` becomes a map from hero to kind; `gunplay.js`'s `GUNS.saber` wears the kind's GLB through the existing `dress()` and keeps its procedural fallback for a hero without one.
+2. **Hands that hold** (phase 1): finger bones on every hero, so the hold is a pose, not an offset; the combat handoff's "sword axis inferred" item closes.
+3. **Duellists that look right** (phase 1): Vader, Luke, Obi-Wan, Maul, Dooku, Yoda, Grievous at the game's quality, facing the player.
+4. **The game's strokes** (phase 10): blocks, clashes, the forms, deaths and the hero sets on the rig they were made for, with `contact` measured so the blade-to-blade contact rule keeps working.
 5. **Sound**, when the audio lands: ignite, hum, clash by kind, the Force sounds the saber-forms design listed, through `sounds.js` in place of the synthesised `saber()`. That is a small lane of its own when the files are there, and this design only reserves the names.
 
 The saber FX (`saberFx.js`, bloom, trail, sparks) and the rules (`lib/combat/*`) are not touched by this design; they are the saber-forms lane's.
@@ -162,13 +166,8 @@ The saber FX (`saberFx.js`, bloom, trail, sparks) and the rules (`lib/combat/*`)
 - Does not extract textures, clips or audio from the game itself; it takes what the uploader puts in the bucket, in the shape the manifest describes.
 - Does not change the figure resolution order, the loaders (`actors.js`, `crew.js`, `placer.js`, `animator.js`, `clipLibrary.js`) or the combat rules; it feeds them better files under the same names.
 - Does not build the classic edition's path: `battlefront-import.mjs` is that, when `bf2-extract` fills.
-- Does not decide the gate for the "protected" project; it flags it (assumption 1).
+- Does not add a gate: the owner chose to deploy as today (answer 1).
 
-## Open questions for the owner
+## What the owner decides next
 
-1. Licence and the gate (assumption 1): proceed on "credit as permission, deploy as today", or gate first?
-2. The clips' shape when they come (assumption 2): GLBs on the Walrus rig?
-3. Raw PNGs alongside the KTX2 (assumption 3)?
-4. The classic bucket is `.msh`/`.tga` from the 2005 game (assumption 4)?
-5. Keep the 2017 rig with pruning, or transfer onto Meshy's 24 bones (assumption 5)?
-6. Phase order: hilts and Hoth first (the two the owner named: the saber and the reference world), or the people first?
+The questions this design had are answered above. What is left is the nod to write the plan: `docs/superpowers/plans/2026-10-10-battlefront-2017-asset-pipeline.md`, phase 0 first (the tools, which need no textures), then phase 1 as soon as `web/textures/` holds the heroes' maps.
