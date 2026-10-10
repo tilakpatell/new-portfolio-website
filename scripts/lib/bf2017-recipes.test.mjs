@@ -155,5 +155,7 @@ describe('hair and heads', () => {
     expect(head.family).toBe('head');
     expect(head.maps.sss).toBe('Characters/Heads/Heads_Luke/Heads_Luke_01/Texture/T_Heads_Luke_01_RSSSAO');
     expect(head._source['maps.sss']).toBe(src(r, 1, 'RSSSAO'));
+    // (its NS is its own normal, not a detail map: no other normal slot names one)
+    expect(head.maps.detail).toBeUndefined();
   });
 });

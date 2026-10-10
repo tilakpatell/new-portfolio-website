@@ -221,10 +221,11 @@ export default {
 
 // ---- lane Q1's recipe cubes and wall
 
+// (both from the sun's side: ENTRY's sun is at az 210°, toward −z)
 const VIEWS = {
-  row: { from: [0, 1.9, 7], at: [0, 0.6, 0] },
+  row: { from: [0, 1.9, -7], at: [0, 0.6, 0] },
   // the wall at 2 m, a little off square so the grain catches the sun
-  wall: { from: [0.4, 1.3, -4], at: [0, 1.2, -6] },
+  wall: { from: [0.4, 1.3, 4], at: [0, 1.2, 6] },
 };
 // ENTRY's sun (az 210°, el 24°) as a direction toward it, for the
 // translucency and the hair's lobes
@@ -274,7 +275,9 @@ async function recipeRow(scene, renderer, { mode = 'game', list = [] }, tier, ma
       const uvs = plane.attributes.uv;
       for (let k = 0; k < uvs.count; k++) uvs.setXY(k, uvs.getX(k) * WALL[0], uvs.getY(k) * WALL[1]);
       const wall = new THREE.Mesh(plane, material);
-      wall.position.set(0, WALL[1] / 2, -6);
+      // (facing −z, the sun's side)
+      wall.position.set(0, WALL[1] / 2, 6);
+      wall.rotation.y = Math.PI;
       wall.receiveShadow = true;
       scene.add(wall);
     }

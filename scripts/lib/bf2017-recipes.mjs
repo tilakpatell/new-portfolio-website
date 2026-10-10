@@ -101,8 +101,12 @@ export function recipeOf(row, i) {
   };
 
   // the maps on top of the GLB's three
+  // (a bare NS slot is a detail map only beside another normal slot, or when
+  // its texture says Detail: a head's or a catwalk's own normal is NS too)
+  const mainNormal = slots.some((x) => /^_?(Normals?|NW|NM|NMR|NAM|NA|N|T_Normal)(_texcoord\d)?$/i.test(x));
+  const nsIsDetail = mainNormal || /Detail/i.test(m.textures.NS ?? '');
   for (const [key, names] of Object.entries(MAPS)) {
-    const slot = names.find((n) => slots.includes(n));
+    const slot = names.find((n) => slots.includes(n) && (n !== 'NS' || nsIsDetail));
     if (slot) set(`maps.${MAP_PATHS[key] ?? key}`, m.textures[slot], at(slot));
   }
   if (recipe.maps.detailArray) set('maps.detailSlice', 'median', at(recipe.maps.aoSlice ? 'AOSlice' : 'NormalDetailTextureArray'));
