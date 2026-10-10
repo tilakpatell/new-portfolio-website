@@ -7,7 +7,7 @@
 //
 //   createBolts() → bolts
 //   fire(bolts, { from, dir, speed, range, ttl, team, owner, weapon, colour, now }) → bolt
-//   step(bolts, dt, { bodies: [{ id, team, alive, at, capsules }], nav, now }) → events
+//   step(bolts, dt, { bodies: [{ id, team, alive, safe, at, capsules }], nav, now }) → events   (a `safe` body is passed through)
 //     { type: 'hit', bolt, target, part, at, dir, dist } | { type: 'wall', bolt, at } |
 //     { type: 'near', bolt, target, dist } | { type: 'gone', bolt }
 
@@ -47,7 +47,7 @@ export function step(bolts, dt, { bodies, nav, now = 0 }) {
     const wall = nav ? firstSolid(nav, a, b) : null;
     let hit = null;
     for (const body of bodies) {
-      if (!body.alive || body.team === bolt.team || body.id === bolt.owner) continue;
+      if (!body.alive || body.safe || body.team === bolt.team || body.id === bolt.owner) continue;
       const mid = body.capsules[1] ?? body.capsules[0];
       const off = pointSeg(mid.a, a, b);
       if (off > BROAD) continue;
