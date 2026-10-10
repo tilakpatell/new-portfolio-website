@@ -32,20 +32,20 @@
 
 **Files:**
 - Create: `src/components/expanse/flight/online.js`, `online.test.js`
-- Modify: `scene.js`
+- Modify: `module.js` (lane A's frame loop: `scene.js` is the view alone), through `shared.js`, which composes this lane's modules
 
 **Interfaces:**
 - Consumes: `joinRoom` (lane C's `cells`, `setCell`, `setCells`), `netCellOf`, `netCellsAround`, `cellTag`, `flightProtocol.js`, `visitKeys` as `middleearth/towns/travellers.js` uses them.
 - Produces: `createFlightOnline({ planetId, join = joinRoom, hidden }) → { status, update(ship, dt) (a pose at POSE_MS, the cell tag kept current, the 3 × 3 re-asked on a cell change), peers() → [{ id, name, pose, at }], shot(at, v), built(id, cell), gone(id), on(fn), leave() }`.
 
-- [ ] **Step 1: Failing test** with a fake `join`: `update` at `(0, 0)` sets the cell tag `hoth/0,0` and `setCells` the 9 round it; a move to `(2100, 0)` sets `hoth/1,0` and re-asks; poses go out at `POSE_MS` at most; a peer's pose comes back through `peers()`; a peer not heard for `STALE_MS` is dropped.
+- [ ] **Step 1: Failing test** with a fake `join`: `update` at `(0, 0)` sets the cell tag `hoth/0,0` and `setCells` the 9 round it; a move to `(2100, 0)` sets `hoth/1,0` and re-asks; poses go out at `POSE_MS` at most; a peer's pose comes back through `peers()`; a peer not heard for `STALE_MS` (`protocol.js`'s, 2.5 s: the spec's 20 s is the loader's) is dropped. The room hands each word's `g` tag on (`onMessage(data, { peerId, tag })`, a line in `nostr.js`), so `readPose` can hold a pose to its cell.
 - [ ] **Step 2:** FAIL. **Step 3:** Write it. **Step 4:** PASS. **Step 5: Commit** `The flight's room, listened to by cell`.
 
 ### Task 2: The other ships
 
 **Files:**
-- Create: `src/components/expanse/flight/peers.js` (one pool of the ship wedge, a slot a peer, poses eased as `universe/online/pilots.js` eases them: read its `slerp` use), a kit tag through `src/runtime/hud/` for the callsign
-- Modify: `scene.js`
+- Create: `src/components/expanse/flight/peers.js` (one pool of the ship wedge, a slot a peer, poses eased as `universe/online/pilots.js` eases them: read its `slerp` use), no callsign tag yet (the kit has none to place over the 3D; left)
+- Modify: `module.js`
 
 - [ ] Draw peers from `online.peers()` each frame; a stale peer frees its slot. Check in two browsers (`npm run dev`, two windows on `/fly/hoth`): the other wedge moves; fly two cells apart: it is gone after `STALE_MS`.
 - [ ] **Commit** `Other pilots on the planet, drawn from the cells round you`.
@@ -54,7 +54,7 @@
 
 **Files:**
 - Create: `src/components/expanse/flight/structures.js` (pools per `entity_type`: `turret` a cylinder and a barrel, `structure` a dome, `beacon` a pole with a light, `wreck` the ship wedge tipped; a slot an entity id), `buildRules.js`, `buildRules.test.js`
-- Modify: `scene.js`, `FlightHud.jsx` (the prompt, the toast)
+- Modify: `module.js`, `FlightHud.jsx` (the prompt, the players chip), `src/pages/Fly.jsx` (joins the room while you're online; the prompt's state)
 
 **Interfaces:**
 - Consumes: `createEntityLoader`, `client`, `signIn` (lane B), `online.built`.
@@ -62,28 +62,28 @@
 
 - [ ] **Step 1: Failing test** `buildRules.test.js`: too high, too fast, inside Echo Base's `r + edge`: `ok: false` with a `why` sentence each; else `ok` and a placement on the ground with the ship's yaw.
 - [ ] **Step 2:** FAIL. **Step 3:** Write. **Step 4:** PASS.
-- [ ] **Step 5:** Wire: `signIn` on entering the world (`client()` null: the toast once, local-only mode); `loader.update(ship.x, ship.z)` each frame; `loader.on` events into `structures.js`; `B` → `canBuild` → `loader.place({ type: 'turret', ...placementFor, hp: 100, metadata: { pilot: name } })` → on success `online.built(id, cellTag)`, a toast “Turret built”; `X` on your own nearest within 30 m → `loader.remove` → `online.gone`; a `built`/`gone` from a peer → `loader.refetch(cell)`.
+- [ ] **Step 5:** Wire: `signIn` on entering the world (`client()` null: the toast once, local-only mode); `loader.update(ship.x, ship.z)` each frame; `loader.on` events into `structures.js`; `B` → `canBuild` → `loader.place({ type: 'turret', ...placementFor, hp: 100, metadata: { pilot: name } })` → on success `online.built(id, cellTag)`, a toast “Turret built”; `X` on your own nearest within 30 m → `loader.remove` → `online.gone`; a `built` from a peer → `loader.refetch(cell)`; a `gone` → the cell asked again too, but an ask with `since` never sees a removal, so the realtime `DELETE` is what takes it away.
 - [ ] **Step 6:** Two browsers: build in one, see it in the other within a second; reload both, still there. **Commit** `Build a turret that stays for everyone`.
 
 ### Task 4: Turrets that fire, and take damage
 
 **Files:**
 - Create: `src/components/expanse/flight/turretRules.js`, `turretRules.test.js`
-- Modify: `structures.js`, `scene.js`
+- Modify: `shared.js`
 
 **Interfaces:**
 - Produces: `TURRET = { range: 600, rate: 1.5, damage: 8, turn: 2.0 }`; `aimTurret(turret, targets, dt) → { yaw, pitch, fireAt: target | null }` (the nearest target in range, not its owner's ship, one shot a `1 / rate` s).
 
 - [ ] **Step 1: Failing test**: picks the nearest in range, never its owner, fires at the rate, turns no faster than `turn` a second.
 - [ ] **Step 2:** FAIL. **Step 3:** Write. **Step 4:** PASS.
-- [ ] **Step 5:** Each client runs every turret it holds against the ships it sees (its own included); a bolt at your own ship is your hit (the universe's shield path); your bolt on a turret → `loader.damage(id, 8)`, the bar on its tag; hp 0 → the slot frees. **Commit** `Turrets fire, and wear down through the database`.
+- [ ] **Step 5:** Each client runs every turret it holds against the ships it sees (its own included); a bolt at your own ship is your hit (the universe's shield path); your bolt on a turret → `loader.damage(id, 8)`; its health tints it (white to a dark red: the bar it wears); hp 0 → the slot frees. Space fires. **Commit** `Turrets fire, and wear down through the database`.
 
 ### Task 4b: The terrain version guard
 
 **Files:**
-- Create: `supabase/migrations/20261009000300_terrain_version.sql` (`alter table public.planets add column terrain_version integer not null default 1; alter table public.world_entities add column terrain_version integer not null default 1;`), Modify: `src/lib/durable/entities.js` (`terrainVersion` on the entity and the row), `structures.js`, `src/lib/land/flight/planetSpec.js` (`TERRAIN_VERSION = 1`, bumped by hand whenever `planetTables.js` changes a world's ground; a test hashes the tables and fails when the hash changes without the version), `scripts/supabase-seed.mjs` (writes each planet's version)
+- Create: `supabase/migrations/20261009000300_terrain_version.sql` (`alter table public.planets add column terrain_version integer not null default 1; alter table public.world_entities add column terrain_version integer not null default 1;`), Modify: `src/lib/durable/entities.js` (`terrainVersion` on the entity and the row), `structures.js`, `src/lib/land/flight/planetSpec.js` (`TERRAIN_VERSION = 1`, bumped by hand whenever `tables.js` (lane A's name for the tables) changes a world's ground; a test hashes the tables and fails when the hash changes without the version), `scripts/supabase-seed.mjs` (writes each planet's version)
 
-- [ ] **Step 1: Failing test**: an entity whose `terrainVersion` is older than the spec's is re-grounded on load (`y` set to `heightUnder(x, z)` + its kind's standing height) and drawn there; one with the current version is drawn at its stored `y`; `place` sends the current version.
+- [ ] **Step 1: Failing test**: an entity whose `terrainVersion` is older than the spec's is re-grounded on load (`y` set to the module's `groundAt(x, z)`, the drawn ground or the field where none is in yet, + its kind's standing height: `buildRules.js`'s `grounded`) and drawn there; one with the current version is drawn at its stored `y`; `place` sends the current version.
 - [ ] **Step 2:** FAIL. **Step 3:** Write. **Step 4:** PASS. **Step 5: Commit** `A built thing stays on the ground when the ground changes`.
 
 ### Task 5: The two-browser check and the measurement

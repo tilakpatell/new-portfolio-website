@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { CELL, bboxOf, cellOf, cellsAround, diffCells, entityToRow, rowToEntity } from './entities';
+import { NET_CELL } from '../net/cells';
 
 describe('the entity grid', () => {
   it('is 2048 m a cell, floored, so a point on a line belongs to the cell it starts', () => {
     expect(CELL).toBe(2048);
+    // (one grid: the net's constant, not a copy of it)
+    expect(CELL).toBe(NET_CELL);
     expect(cellOf(-1, 2048)).toEqual([-1, 1]);
     expect(cellOf(0, 0)).toEqual([0, 0]);
     expect(cellOf(2047.9, -0.1)).toEqual([0, -1]);
@@ -30,7 +33,7 @@ describe('the entity grid', () => {
 });
 
 describe('an entity and its row', () => {
-  const e = { planetId: 'hoth', type: 'turret', x: 1, y: 2, z: -3, rot: [0, 1.5, 0], scale: 2, hp: 80, metadata: { colour: 'red' } };
+  const e = { planetId: 'hoth', type: 'turret', x: 1, y: 2, z: -3, rot: [0, 1.5, 0], scale: 2, hp: 80, metadata: { colour: 'red' }, terrainVersion: 2 };
 
   it('round-trips what the client may set', () => {
     const back = rowToEntity(entityToRow(e));
@@ -49,6 +52,12 @@ describe('an entity and its row', () => {
 
   it('reads a row the database sent', () => {
     const row = { id: 'u', planet_id: 'hoth', entity_type: 'wreck', owner: 'o', x: 5, y: 6, z: 7, rot_x: 0.1, rot_y: 0.2, rot_z: 0.3, scale: 1, hp: 100, metadata: {}, version: 2, created_at: 'c', updated_at: 'u2', geom: 'g' };
-    expect(rowToEntity(row)).toEqual({ id: 'u', planetId: 'hoth', type: 'wreck', owner: 'o', x: 5, y: 6, z: 7, rot: [0.1, 0.2, 0.3], scale: 1, hp: 100, metadata: {}, version: 2, updatedAt: 'u2' });
+    expect(rowToEntity(row)).toEqual({ id: 'u', planetId: 'hoth', type: 'wreck', owner: 'o', x: 5, y: 6, z: 7, rot: [0.1, 0.2, 0.3], scale: 1, hp: 100, metadata: {}, version: 2, updatedAt: 'u2', terrainVersion: 1 });
+  });
+
+  it('reads the ground a row was built on, and a row from before the column as the first', () => {
+    expect(rowToEntity({ terrain_version: 3 }).terrainVersion).toBe(3);
+    expect(rowToEntity({}).terrainVersion).toBe(1);
+    expect(entityToRow({ planetId: 'hoth', type: 'turret', x: 0, y: 0, z: 0, terrainVersion: 2 }).terrain_version).toBe(2);
   });
 });
