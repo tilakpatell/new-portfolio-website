@@ -277,7 +277,9 @@ export async function importModel(name, opts) {
   await MeshoptSimplifier.ready;
   const io = new NodeIO().setLogger(new Logger(Logger.Verbosity.ERROR)).registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
   const outRoot = resolve(opts.out ?? path(ROOT, 'public', 'models', 'galaxy'));
-  const dir = path(outRoot, opts.crew ? 'crew' : 'surface');
+  // (a 2017 person on the game's rig beside the crew's own, which other worlds and tools still load)
+  const sub = opts.crew ? (rig ? 'bf2017/crew' : 'crew') : 'surface';
+  const dir = path(outRoot, sub);
   const made = [];
   const plain = await makeCut(io, entry, parts, cuts.plain, { ...spec, tex, maps }, path(dir, `${kind}.glb`));
   made.push(['plain', cuts.plain, plain]);
@@ -308,8 +310,8 @@ export async function importModel(name, opts) {
     const [w, h, d] = r.size;
     console.log(`${relative(ROOT, r.out).padEnd(48)} ${cut.padEnd(5)} LOD${l.lod}  ${r.tris} triangles, ${r.draws} draws, ${r.maps} maps, ${(r.bytes / 1024).toFixed(1)} KB; ${w.toFixed(2)} wide × ${h.toFixed(2)} tall × ${d.toFixed(2)} long (m)`);
   }
-  const file = `/models/galaxy/${opts.crew ? 'crew' : 'surface'}/${kind}.glb`;
-  if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { name: '${kind}', tall: ${metres}${rig ? `, rig: 'walrus', pack: '${kind}'` : ''} },`);
+  const file = `/models/galaxy/${sub}/${kind}.glb`;
+  if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus', pack: '${kind}'` : ''} },`);
   else {
     const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: cuts.plain.triangles, tex };
     if (rig) row.rig = true;
@@ -319,8 +321,7 @@ export async function importModel(name, opts) {
     row.from = name;
     await writeCatalogueLine(resolve(opts.catalog ?? path(ROOT, 'src', 'components', 'galaxy', 'surface', 'catalog', 'bf2017.js')), kind, row);
   }
-  // (a crew figure's credit is keyed as the crew's are, so it takes over the one its file replaces)
-  await writeCredit(resolve(opts.credits ?? path(ROOT, 'src', 'data', 'modelCredits.json')), `${opts.crew ? 'crew' : 'surface'}-${kind}`, {
+  await writeCredit(resolve(opts.credits ?? path(ROOT, 'src', 'data', 'modelCredits.json')), `${opts.crew ? (rig ? 'bf2017' : 'crew') : 'surface'}-${kind}`, {
     title: `Star Wars Battlefront II (2017): ${name}`,
     author: 'EA DICE',
     authorUrl: GAME,

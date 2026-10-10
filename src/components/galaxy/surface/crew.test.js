@@ -18,9 +18,8 @@ describe('the surfaces’ crew', () => {
 
   it('walks the 2017 game’s heroes on the game’s skeleton, each with its pack of the game’s clips', () => {
     for (const [kind, tall] of Object.entries({ luke: 1.72, leia: 1.5, han: 1.85, chewie: 2.28, bobafett: 1.83, vader: 2.02, obiwan: 1.82, anakin: 1.85, maul: 1.75, dooku: 1.93, palpatine: 1.73, lando: 1.78, bossk: 1.9 })) {
-      expect(CREW[kind], kind).toEqual({ name: kind, tall, rig: 'walrus', pack: kind });
-      expect(fileOf(CREW[kind])).toBe(`/models/galaxy/crew/${kind}.glb`);
-      expect(existsSync(at(`/models/galaxy/crew/${kind}.lod1.glb`)), `${kind}'s light cut`).toBe(true);
+      expect(CREW[kind], kind).toEqual({ url: `/models/galaxy/bf2017/crew/${kind}.glb`, tall, rig: 'walrus', pack: kind });
+      expect(existsSync(at(`/models/galaxy/bf2017/crew/${kind}.lod1.glb`)), `${kind}'s light cut`).toBe(true);
       expect(existsSync(at(`/models/galaxy/bf2017/clips-${kind}.glb`)), `${kind}'s pack`).toBe(true);
     }
   });
