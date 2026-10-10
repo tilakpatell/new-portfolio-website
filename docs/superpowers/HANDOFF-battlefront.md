@@ -64,6 +64,24 @@ The design: `docs/superpowers/specs/2026-10-10-battlefront-flow-and-mods-design.
 
 The mod archives already on the owner's machine are listed in the design (Expanded's 141 `.fbmod`s, Saberfront, Realistic Overhaul, the HvV modes, the clone packs, Frosty Mod Manager). Each lane adds its row's numbers here when it merges and a line to the design's "Departures".
 
+## The sixth design: the galaxy lands on the game (2026-10-10, night)
+
+The design: `docs/superpowers/specs/2026-10-10-bf2017-galaxy-on-the-game-design.md`. The owner's ask: every Star Wars world's surface is its 2017 level, every mode the game's on the game's rules, free roam a mode and area of its own, so the site can be set beside the real game and closed on it. What it changes: landing (`/galaxy/:system/surface`) hands over to the Battlefront world in a lobby with the mode menu over the level; the site's surface moves whole to `/galaxy/:system/roam`; the flow design's decision 3 (the cards go to the site's missions first) is withdrawn; the menu's data is the game's own front-end records (`frontend.json`); every level is built whole in the map's frame beside its roam pack; every mode runs on the sim; heroes and vehicles enter the sim; a parity ledger and a compare page measure the gap.
+
+What the survey found that earlier designs had not: the game's front end is data (`UI/Data/GameModes/**`: the mode list in the game's order, each mode's name, description, players, vehicles, heroes and levels; each level's name (Hoth_01 is OUTPOST DELTA), planet and per-mode descriptions); which modes a level has is each level's `GameModes.json` inclusion options (Strike is the `Domination` option on the `PlanetaryMissions` sub-level, which lane F's reading missed; Co-op is `Mode9`); the Battle Point costs and score events are a record (`Online/BattlepointCostData`: 22 heroes at 4,000, 58 unit costs for Galactic Assault, per-mode tables), so `points.json` loses its `hand`; the Arcade's 24 scenarios and 22 parameters are records.
+
+| lane | what | branch | plan | needs | state |
+| --- | --- | --- | --- | --- | --- |
+| G1 | landing is the game, free roam its own area; the lobby and the menu over the level; `frontend.json` and `modes.js` on it with the level picker; Explore; take-off | `claude/bfg-g1-landing` | `plans/2026-10-10-bfg-laneG1-landing.md` | nothing | |
+| G2 | every level whole in the map's frame (`--whole` on E0's builder, `nav.bin`), the nine Galactic Assault levels then the rest, the parts drawn in the game world | `claude/bfg-g2-levels-whole` | `-laneG2-levels-whole.md` | E0 on main (or its branch merged in) | |
+| G3 | the map rulebook for every usable level with every mode layer (by inclusion); `points.json` from the record; `kits.json`; `arcade.json`; the eight other Galactic Assault stage files; `rulebook.js` by level key | `claude/bfg-g3-rulebooks` | `-laneG3-rulebooks.md` | nothing | |
+| G4a | Blast, Heroes vs Villains, Hero Showdown, Strike on the sim with their HUD widgets and arena tests, Hoth first | `claude/bfg-g4a-small-modes` | `-laneG4a-small-modes.md` | Hoth's rows (now); G3 for the rest | |
+| G4b | Co-op, Supremacy, Extraction, Ewok Hunt, Jetpack Cargo, Arcade, Explore on the sim; the bot logic graphs as commander policies | `claude/bfg-g4b-big-modes` | `-laneG4b-big-modes.md` | G3 | |
+| G5 | heroes on `saber2017.js` and `abilities.json`, hero bots; vehicles on `vehicles.json` and P3, vehicle bots; the deploy screen's offers at the record's prices | `claude/bfg-g5-heroes-vehicles` | `-laneG5-heroes-vehicles.md` | lane S (#875) and G3 merged | |
+| G6 | the parity ledger and its CI check, the compare page against the owner's game screenshots, the gizmo overlay | `claude/bfg-g6-parity` | `-laneG6-parity.md` | nothing | |
+
+G1, G3, G4a and G6 start at once; G2 when E0 is on main; G4b after G3; G5 after #875. File ownership is in the spec's "Lanes" section; lane 5's running session keeps `figures/`, `fx/`, `input.js`, `camera*.js`, `weather.js` and its HUD parts. Each lane adds its row's numbers here when it merges and a line to the spec's "Departures". The parity ledger (`docs/superpowers/evidence/bf2017-parity/ledger.md`, lane G6) becomes this page's status table once it exists.
+
 ## Beside the asset lanes (PR #802 and PR #810)
 
 `HANDOFF-bf2017.md` is the assets' hand-off and its status table is theirs. What this game takes from them, so nobody builds it twice: lane 1's `walrus.js` (figures on the game's skeleton), lane L's level pack and loader (run on the whole map with `--frame map --no-fit`, spec decision 15), lane G's light from the level's sky records, lane X's stroke tables for the heroes, lane V's vehicle models, lane S's fetch pool. What this game adds that they do not: the rules, the modes, the bots, the Battle Points, the HUD, the route.
