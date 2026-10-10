@@ -85,15 +85,36 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
 | 1 | | | |
 | L | | | |
-| G | lane G session | `claude/bf2017-g-light` | not yet: the pure parts only, waiting on the keys |
+| G | lane G session | `claude/bf2017-g-light` | (the PR) |
 | K | | | |
 | X | | | |
 | S | | | |
 
-### Lane G, so far
+### Lane G, the worlds under the game's light
 
-Done on `claude/bf2017-g-light`, all data-independent and tested: `scripts/lib/bf2017-light.mjs` (`pickEntries`, `weatherKey`), `src/lib/three/gameLight.js` (`sunFromProbe`, `weatherEntry`, `lutShape`), `src/lib/three/shadowMask.js` (`maskUv`, `shadowAt`), `src/lib/three/probeEnv.js` (one probe alive at a time, an overtaken load thrown away). Nothing on the site changed.
+**Done** (`claude/bf2017-g-light`):
 
-Left: everything that reads the bucket. The session had neither `SUPABASE_URL` nor a bucket key in its environment, and no record is on disk, so `readVE`, `siteLightFrom`, the light JSON, the Hoth calibration (`GAME_TO_SITE`), the probes, the shadow cache's bounds, the LUT and the scene wiring wait for a session with the keys. `pickEntries` is tested on the plan's three Hoth names and two stand-ins: re-pin it on the map's real `sky[]`. `weather.js` has particle kinds, not clear/dusk/overcast/storm states, so `weatherEntry` takes the spec's four names and whoever adds the states passes them.
+- `scripts/bf2017-light.mjs <world> --map <level> [--indoor <probe id>] [--main <VE>] [--also <VE>,…]` reads the map's `sky[]`, the raw VisualEnvironment records under `data/` (a superset of the map's `extras.json` copy: it has the wind and Enlighten's bounce), the level's reflection probes and its grading LUTs, and writes `src/data/bf2017/light/<world>.json` plus a pack under `public/textures/galaxy/bf2017/light/<world>/` (64² probe faces with the sun clipped out, 17³ LUT strips; every world under 400 KB, 2.1 MB for the ten). The pure reading is `scripts/lib/bf2017-light.mjs`, tested on a trimmed real record (`scripts/fixtures/bf2017/data/ve_sky_fixture.json`).
+- `src/lib/three/gameLight.js`: `siteLightFrom(entry)` and `gameSite(site, light, state)`, the record to the site's `sky`, `light` and `fog`. Three constants set once on Hoth's sunny weather and held for every world: `GAME_TO_SITE` 0.0713 (the sun's lux, exposed by the game's own metering), `SKY_TO_SITE` 0.2006 (the record's `LuminanceScale`, exposed, to the dome's horizon and the fill), `PROBE_TO_SITE` 52.4 (the fallback for a record with no sky level). The ice field's mean luminance: 0.3529 under the site's own light, 0.3531 under the game's. The camera's exposure is the game's: a grey card lit by the sun and the record's sky, clamped to the record's EV range. Every world's before and after, with its change, is in `docs/superpowers/evidence/bf2017-light/README.md`.
+- `src/components/galaxy/surface/gameLit.js`: the probe as `scene.environment` (the room's indoors; one alive at a time, `probeEnv.js`), the LUT in `universe/post.js`'s final pass on high and ultra (`grading()`, the house's contrast and saturation stepping aside), the weathers faded over 20 s (`__surfaceDo('weather', 'dusk', seconds)` in dev). `?gamelight=off` (dev) shows a world under the site's own light for a before shot; `surface-shot.mjs` takes `QUERY=` and `WEATHER=`.
+- Wired (`gameLight` on the site): hoth, tatooine, yavin, kashyyyk, kamino, geonosis, scarif, bespin, endor. Worlds without a record (nevarro, mandalore, sorgan, lothal, coruscant, dagobah, mustafar) are unchanged, tested.
+
+**Findings**:
+
+- The sun's direction is in the record (`SunRotationX` the azimuth, `SunRotationY` the elevation, degrees): every world took that path; `sunFromProbe` is the fallback no world needed (the probes' brightest texels are lamps and glints).
+- Hoth's weathers are sunny, sunset and interior (the only VE records the bucket has: Blizzard has a LUT only, Cloudy nothing). The probes of a level's weathers are not baked to one scale (Hoth's Sunset_VFX probe is a day's, and not orange), so a probe gives colours, never a level.
+- Under the one calibration: Geonosis, Scarif, Bespin and Yavin within 8 % of the site's own; Kamino +14 % (a teal storm); Tatooine +25 % and Kashyyyk +39 % (higher suns and skies); Hoth's hangar mouth −36 % (in shade only the fill lights, and the game's is the lower).
+- Probes per world: hoth 661f4d0f (Cloudy_VFX) and 36a2b5e2 (Sunset_VFX), indoor 9c323d00 (the hangar); yavin, kashyyyk, naboo, kamino, geonosis, scarif, bespin one or two each (in the JSON); tatooine none out of doors (only its buildings'), endor none by day (Foggy_Lighting and Night_Lighting2 only): those keep the dome as their environment.
+- The LUTs are 33³ volumes as 33 png16 slices (blue the slice, green the row from the top, red the column), display-space S-curves.
+- The interior's exposure is not applied in a room (the game's opens 4.5 stops over the day; the site's rooms are lit by its own lamps at exposure 1).
+- Endor's surface does not finish loading under the software renderer, before or after (the shots are left); a `mvPosition` shader error on a MeshBasicMaterial predates the lane.
+
+**Left**:
+
+- **The far shadow** (task 3), with lane L: the distant shadow cache is a 16-bit depth map seen from the sun, not a top-down mask, and it is the game's terrain's. Fit the sun's orthographic frame (the record's direction, the heightmap's 8,192 m square) to the cache, then sample it beyond `SHADOW.extent` in `groundLook.js` and the far draws.
+- **The placed lights**: exported now (`maps/<level>.extras.json`, `lights[]`, 1,234 on Hoth) and not yet used; the site's lamps stay.
+- **Naboo**: its JSON is written and not wired. Its level is Theed at dusk (350 lux, 5° up); under the one calibration the field is 62 % darker, its people in silhouette, the game's dusk being carried by Enlighten's bounce and its lamps. Wire it with the placed lights, or with a bounce term.
+- **Hoth's sunset** (dev only): its probe is a day's, so the dome reads pale rather than orange, and its fill is twice noon's.
+- The Death Star (no surface site; its map names no sky). Nothing drives the weather states yet (the dev hook only); a weather fade moves the sun but not the ground's baked shadows.
 
 Findings for the next lane go here: which sub-levels each map needed, what `fitTo` dropped per tier, the calibration factor and which path each world’s sun direction took, which skins were still missing, which clips’ windows were pinned by hand.

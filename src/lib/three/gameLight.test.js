@@ -110,7 +110,7 @@ describe('the records to the site’s light', () => {
 
   it('holds the constants set on Hoth', () => {
     // (the before and after shots of Hoth's ice field: mean luminance 0.3529
-    // under the site's light, 0.3595 under the game's, +1.9 %)
+    // under the site's light, 0.3531 under the game's)
     expect(GAME_TO_SITE).toBe(0.0713);
     expect(SKY_TO_SITE).toBe(0.2006);
     expect(PROBE_TO_SITE).toBe(52.4);

@@ -1,0 +1,157 @@
+{
+ "world": "tatooine",
+ "map": "levels/mp/tatooine_01/tatooine_01",
+ "main": "sunny",
+ "sky": {
+  "main": "Levels/Lighting/Tatooine/Sunny/VE_PV_Tatooine_Sunny_01",
+  "overrides": [
+   "Levels/Lighting/Tatooine/VE_PV_Tatooine_Interior_01"
+  ]
+ },
+ "weathers": {
+  "sunny": {
+   "sun": {
+    "color": [
+     1,
+     0.798377633,
+     0.5737779
+    ],
+    "lux": 120000,
+    "az": 109.352,
+    "el": 54
+   },
+   "sky": {
+    "luminance": 50000,
+    "sunSize": 0.003,
+    "panorama": "Levels/Lighting/Tatooine/Sunny/Textures/T_Tatooine_Sunny_06_C",
+    "gradient": "Levels/Lighting/Tatooine/Sunny/Textures/T_Tatooine_Sunny_06_Fog_C"
+   },
+   "fog": {
+    "start": 10,
+    "end": 2500,
+    "curve": [
+     1.32399988,
+     -2.705862,
+     1.6380322,
+     -0.0205796249
+    ],
+    "height": -500,
+    "heightDepth": 600,
+    "heightRange": 10000,
+    "scatter": [
+     1536,
+     1224.06384,
+     900.054565
+    ]
+   },
+   "tonemap": {
+    "compensation": 2,
+    "minEV": 14,
+    "maxEV": 15,
+    "bloom": 0.07323896
+   },
+   "grading": {
+    "contrast": 1.05,
+    "lut": "textures/galaxy/bf2017/light/tatooine/sunny.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 5
+   },
+   "enlighten": {
+    "sky": [
+     0.720018566,
+     0.720018566,
+     0.720018566
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ],
+    "terrain": [
+     0.356400162,
+     0.304987282,
+     0.238397583
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Tatooine/Sunny/VE_PV_Tatooine_Sunny_01"
+   ]
+  },
+  "interior": {
+   "sun": {
+    "color": [
+     1,
+     0.798377633,
+     0.5737779
+    ],
+    "lux": 120000,
+    "az": 109.352,
+    "el": 54
+   },
+   "sky": {
+    "luminance": 50000,
+    "sunSize": 0.003,
+    "panorama": "Levels/Lighting/Tatooine/Sunny/Textures/T_Tatooine_Sunny_06_C",
+    "gradient": "Levels/Lighting/Tatooine/Sunny/Textures/T_Tatooine_Sunny_06_Fog_C"
+   },
+   "fog": {
+    "start": 30,
+    "end": 2500,
+    "curve": [
+     1.32399988,
+     -2.705862,
+     1.6380322,
+     -0.0205796249
+    ],
+    "height": -500,
+    "heightDepth": 600,
+    "heightRange": 10000,
+    "scatter": [
+     1536,
+     1224.06384,
+     900.054565
+    ]
+   },
+   "tonemap": {
+    "compensation": 0,
+    "minEV": 7,
+    "maxEV": 9,
+    "bloom": 0.17462413
+   },
+   "grading": {
+    "contrast": 1.05,
+    "lut": "textures/galaxy/bf2017/light/tatooine/interior.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 5
+   },
+   "enlighten": {
+    "sky": [
+     0.720018566,
+     0.720018566,
+     0.720018566
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ],
+    "terrain": [
+     0.356400162,
+     0.304987282,
+     0.238397583
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Tatooine/Sunny/VE_PV_Tatooine_Sunny_01",
+    "Levels/Lighting/Tatooine/VE_PV_Tatooine_Interior_01"
+   ]
+  }
+ },
+ "indoor": null
+}
