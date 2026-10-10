@@ -10,7 +10,13 @@
 // troopers, phase 2's light cuts (public/models/galaxy/bf2017/crew/), every
 // class alike until the class kits' own bodies are imported.
 //
-//   createFigures({ scene, loadBody, kinds }) → { update(entities, dt, alpha), figure(id), count(), dispose() }
+// The fallen: with `ragdolls` (ragdolls.js) a soldier dying or down is
+// offered to them with how it fell (the view's `fall`) and the camera's
+// place (`eye`); once they have the body this stops placing and animating
+// it, and lets it go when the sim takes the soldier away or it stands again.
+// A body they refuse plays its death clip as before.
+//
+//   createFigures({ scene, loadBody, kinds, ragdolls }) → { update(entities, dt, alpha, eye), figure(id), count(), dispose() }
 
 import * as THREE from 'three';
 import { loadWalrusBody, packUrls, PACK_DIR } from '../../../lib/three/walrus.js';
@@ -30,7 +36,9 @@ const lerpAngle = (a, b, t) => {
   return a + d * t;
 };
 
-export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, { packs: packUrls() }), kinds = KINDS } = {}) {
+const DEAD = new Set(['dying', 'down']);
+
+export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, { packs: packUrls() }), kinds = KINDS, ragdolls = null } = {}) {
   const root = new THREE.Group();
   root.name = 'figures';
   scene.add(root);
@@ -85,7 +93,7 @@ export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, {
     root,
     // entities: the view's (id, team, kind, at, yaw, state, stance, vel, aim, …);
     // the last step's places are kept so a frame between two steps is smooth
-    update(entities, dt, alpha = 1) {
+    update(entities, dt, alpha = 1, eye = null) {
       const seen = new Set();
       for (const e of entities) {
         // (a soldier only: the walkers and the turrets are lane 4's)
@@ -99,6 +107,17 @@ export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, {
           f.cur = { at: e.at.slice(), yaw: e.yaw ?? 0, t: e.t };
         }
         if (!f.model) continue;
+        if (ragdolls) {
+          if (DEAD.has(e.state) && !f.fell) f.fell = ragdolls.fall(e.id, f, { fall: e.fall ?? null, vel: e.vel ?? null, eye });
+          else if (!DEAD.has(e.state) && f.fell) {
+            // (up again under the same id: the clips have it back)
+            ragdolls.drop(e.id);
+            f.fell = false;
+            f.clip = null;
+            f.model.visible = true;
+          }
+          if (f.fell && ragdolls.handed(e.id)) continue;
+        }
         f.model.position.set(lerp(f.last.at[0], f.cur.at[0], alpha), lerp(f.last.at[1], f.cur.at[1], alpha), lerp(f.last.at[2], f.cur.at[2], alpha));
         f.model.rotation.y = lerpAngle(f.last.yaw, f.cur.yaw, alpha);
         f.model.visible = e.visible !== false;
@@ -107,6 +126,7 @@ export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, {
       }
       for (const [id, f] of figs) {
         if (seen.has(id)) continue;
+        if (f.fell) ragdolls?.drop(id);
         f.model?.removeFromParent();
         f.mixer?.stopAllAction();
         figs.delete(id);
@@ -116,7 +136,8 @@ export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, {
     count: () => [...figs.values()].filter((f) => f.model).length,
     dispose() {
       gone = true;
-      for (const f of figs.values()) {
+      for (const [id, f] of figs) {
+        if (f.fell) ragdolls?.drop(id);
         f.mixer?.stopAllAction();
         f.model?.removeFromParent();
       }
