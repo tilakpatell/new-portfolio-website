@@ -2,13 +2,17 @@
 // shape that goes with it, tested in Node (./physics.js puts them in
 // Rapier; furnish.js says which things and scatter are them).
 //
-// A body is { shape: 'box' | 'cylinder' | 'ball', mass (kg), fixed? }:
-// its size comes from the thing itself (its own box, in metres, at the
-// size the landing stands it), so a kind's entry needn't know it, and a
+// A body is { shape: 'box' | 'cylinder' | 'ball', mass (kg), fixed?, r?,
+// at? }: its size comes from the thing itself (its own box, in metres, at
+// the size the landing stands it), so a kind's entry needn't know it, and a
 // model gets one by naming it on its spec (landings.js's models: { url,
 // tall, body }). The masses are the inventory's (docs/research of the
 // landings), and a bolt's knock goes by them (knockOf, below): a pebble
-// goes a few metres, a crate slides, a shove moves the heavy ones.
+// goes a few metres, a crate slides, a shove moves the heavy ones. A
+// cylinder that's a post under something wider (a sign's pole under its
+// plate, a lamp's under its head) says how thick it is (r, metres) and
+// where it stands (at, [x, z] in its own frame; else the box's middle), so
+// a bolt meets the pole you see, not a column as wide as the sign.
 //
 // A model that was made with its physics (physical nodes: lib/three/
 // colliders.js reads them, docs/assets/colliders.md says how) is its own
@@ -75,8 +79,12 @@ export function shapeFor(body, box, s = 1) {
   const half = size.map((d) => Math.max(THIN, d / 2));
   let collider;
   if (body.shape === 'box') collider = { shape: 'cuboid', args: half, position: mid };
-  else if (body.shape === 'cylinder') collider = { shape: 'cylinder', args: [half[1], Math.max(half[0], half[2])], position: mid };
-  else {
+  else if (body.shape === 'cylinder') {
+    // (a post: as thick as it says, where it stands, the thing's whole height)
+    const r = body.r > 0 ? Math.max(THIN, body.r * s) : Math.max(half[0], half[2]);
+    const at = body.at ? [body.at[0] * s, mid[1], body.at[1] * s] : mid;
+    collider = { shape: 'cylinder', args: [half[1], r], position: at };
+  } else {
     // (as big as its biggest way, but its foot on the thing's: a wide one
     // doesn't reach down into the ground under it)
     const r = Math.max(...half);

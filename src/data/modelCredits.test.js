@@ -35,6 +35,16 @@ describe('the 3D models that are other people’s', () => {
     const code = sources().join('\n');
     const shown = { universe: 'components/universe/UniversePanel.jsx', 'middle-earth': 'components/middleearth/MapHub.jsx', invincible: 'pages/Invincible.jsx', avengers: 'pages/Avengers.jsx', earth: 'pages/Earth.jsx', galaxy: 'components/galaxy/GalaxyPanel.jsx', 'galaxy-surface': 'pages/GalaxySurface.jsx', 'c-137': 'components/rickmorty/wardrobe/Wardrobe.jsx', cybertron: 'pages/Cybertron.jsx', dickansh: 'pages/Dickansh.jsx', mario64: 'pages/Mario64.jsx' };
     for (const [name, m] of Object.entries(CREDITS)) {
+      // (a pack credited whole, a level's hundreds of meshes: its folders,
+      // each in the site and loaded from by the code)
+      if (m.paths) {
+        for (const dir of m.paths) {
+          expect(existsSync(at(dir)), dir).toBe(true);
+          expect(code.includes(dir.replace(/^public/, '')), `${name} is used`).toBe(true);
+        }
+        for (const page of [m.where, ...(m.also ?? [])]) expect(readFileSync(at(`src/${shown[page]}`), 'utf8'), page).toContain(`<ModelCredits where="${page}"`);
+        continue;
+      }
       // where it is: its own `file`, or under its name with the rest from Sketchfab
       const file = m.file ?? `/models/sketchfab/${name}.glb`;
       // (in public/, or published to the bucket: src/data/galaxyAssets.json)

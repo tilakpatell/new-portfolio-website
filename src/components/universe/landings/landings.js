@@ -82,9 +82,15 @@ const space = kit('props/space');
 // its mass in kg, sized from its own box): the loose ones light or
 // middling, a shot sends them and a shove moves them; the street's own
 // (lamps, lights, signs, bollards, planters) fixed, for the loose ones to
-// fetch up against
+// fetch up against and a bolt to stop at. One on a pole says the pole
+// (`post`: r, metres, and at, [x, z] where it stands in the model's own
+// frame), so a bolt that clears the pole goes by: the kit's own, decoded
+// from street.glb (a sign's pole 6.4 cm across, 2 to 3 cm behind the
+// plate's middle; the traffic light's 25 cm, 13 cm behind its lights'; the
+// streetlight's collar at a chest's height, where a shot on foot flies,
+// 40 cm, its pole over that 23 to 12)
 const loose = (shape, mass) => ({ body: { shape, mass } });
-const fixed = (shape, mass) => ({ body: { shape, mass, fixed: true } });
+const fixed = (shape, mass, post = null) => ({ body: { shape, mass, fixed: true, ...post } });
 const PROP = {
   chair: furniture('Chair', { tall: 0.95 }, loose('box', 4)),
   stool: furniture('Stool', { tall: 0.65 }, loose('cylinder', 2.5)),
@@ -96,10 +102,10 @@ const PROP = {
   jar: space('Pickup_Jar', { tall: 0.9 }, loose('cylinder', 3)),
   bollard: city('Prop_Bollard', { tall: 0.89 }, fixed('cylinder', 60)),
   planter: city('Prop_Planter_Single', { tall: 0.6 }, fixed('box', 300)),
-  streetlight: street('Streetlight_Single', { tall: 5.6 }, fixed('cylinder', 120)),
-  trafficLight: street('TrafficLight', { tall: 4.4 }, fixed('cylinder', 150)),
-  stopSign: street('Sign_Stop', { tall: 2.4 }, fixed('cylinder', 15)),
-  noParking: street('Sign_NoParking', { tall: 2.4 }, fixed('cylinder', 12)),
+  streetlight: street('Streetlight_Single', { tall: 5.6 }, fixed('cylinder', 120, { r: 0.2 })),
+  trafficLight: street('TrafficLight', { tall: 4.4 }, fixed('cylinder', 150, { r: 0.13, at: [0.01, -0.13] })),
+  stopSign: street('Sign_Stop', { tall: 2.4 }, fixed('cylinder', 15, { r: 0.032, at: [0, -0.02] })),
+  noParking: street('Sign_NoParking', { tall: 2.4 }, fixed('cylinder', 12, { r: 0.032, at: [0, -0.03] })),
 };
 // a table and its chairs round it, at [x, z] (yaw: the table's turn; each
 // chair faces it, pulled out a little, `out` metres from its middle)
