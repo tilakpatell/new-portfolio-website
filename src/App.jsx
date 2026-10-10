@@ -200,7 +200,8 @@ function IntroJump() {
       import('./components/experience/OpeningCrawl');
       import('./pages/Front');
       import('./components/universe/scene');
-      import('./components/cockpit/load').then((m) => m.preloadCockpit());
+      // (the crew, the biggest part, once the crawl's begun: the welcome may yet be skipped)
+      import('./components/cockpit/load').then((m) => m.preloadCockpit('falcon', { crew: stage === 'crawl' }));
     }
   }, [stage]);
   useEffect(() => {
@@ -333,25 +334,59 @@ const pageKey = (pathname) =>
           ? '/feed'
           : pathname;
 
+// the core pages, fetched ahead so a click on one opens at once
+const fetchPages = () => {
+  import('./components/feed/Feed.jsx');
+  import('./pages/Home');
+  import('./pages/Experience');
+  import('./pages/Projects');
+  import('./pages/Resume');
+  import('./pages/Contact');
+  import('./pages/Travel');
+  import('./components/Hyperspace');
+  // so the first ⌘K opens at once, instead of showing nothing while it loads
+  import('./components/CommandPalette');
+};
+// (at the front door, after this long if nothing's asked for them sooner)
+const PAGES_LATER_MS = 20000;
+
 function Shell() {
   const { pathname } = useLocation();
   const page = pageKey(pathname);
+  const firstPage = useRef(page);
 
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
-    const id = idle(() => {
-      import('./components/feed/Feed.jsx');
-      import('./pages/Home');
-      import('./pages/Experience');
-      import('./pages/Projects');
-      import('./pages/Resume');
-      import('./pages/Contact');
-      import('./pages/Travel');
-      import('./components/Hyperspace');
-      // so the first ⌘K opens at once, instead of showing nothing while it loads
-      import('./components/CommandPalette');
-    });
-    return () => (window.cancelIdleCallback || clearTimeout)(id);
+    const cancelIdle = window.cancelIdleCallback || clearTimeout;
+    if (firstPage.current !== '/universe') {
+      const id = idle(fetchPages);
+      return () => cancelIdle(id);
+    }
+    // At the front door the universe map's own code, maps and models come
+    // first (the page is idle in between, so the idle callback came while
+    // they were still loading): the pages are fetched once you reach for
+    // the nav or ⌘K, or a while later
+    let id = null;
+    const go = () => {
+      stop();
+      id = idle(fetchPages);
+    };
+    const key = (e) => (e.metaKey || e.ctrlKey) && go();
+    const reach = (e) => e.target.closest?.('header, nav, a[href]') && go();
+    const timer = setTimeout(go, PAGES_LATER_MS);
+    const stop = () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', key);
+      document.removeEventListener('pointerover', reach);
+      document.removeEventListener('focusin', reach);
+    };
+    window.addEventListener('keydown', key);
+    document.addEventListener('pointerover', reach);
+    document.addEventListener('focusin', reach);
+    return () => {
+      stop();
+      if (id != null) cancelIdle(id);
+    };
   }, []);
 
   return (
