@@ -129,7 +129,7 @@ export function fallen(down, len = null) {
   const lain = (len ?? DEATH.fall) + DEATH.lie;
   return { k: Math.min(1, down / DEATH.fall), sink: down > lain ? Math.min(1, (down - lain) / DEATH.sink) * DEATH.deep : 0, gone: down > lain + DEATH.sink };
 }
-import { absorb, createPosture, fallOf, hostileBody, hostileStep, startBurst, stepBurst, whereHit } from './hostiles';
+import { absorb, ALERT_CLIP, bodyClip, createPosture, fallOf, hostileBody, hostileStep, startBurst, stepBurst, whereHit } from './hostiles';
 import { lineClear } from './walker';
 import { createTokens } from '../../../lib/ai/squad';
 import { createSearch } from '../../../lib/ai/search';
@@ -146,6 +146,11 @@ import { asTarget, clashes, duelFor, fence, landed, reeling, stun, turnOf } from
 import { onHit } from '../../../lib/combat/duel';
 import { sharpen } from '../../../lib/three/textures';
 import { ARMS } from './ground/troops';
+import { hitSide } from '../../../lib/three/walrusSets/additive';
+import { detailLevel } from '../../../lib/detail';
+import { loadScene, playScene } from '../../../lib/three/scenePlayer';
+import { richClips } from '../../../lib/three/walrus';
+import { introScene } from '../../../lib/three/walrusSets/scenes';
 
 const SHOTS = 3; // enemies firing at you at once, across a world (the rest move)
 const UP = new THREE.Vector3(0, 1, 0);
@@ -398,7 +403,13 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       if (t.blade) t.duel = duelFor(s, Math.round(t.home[0] * 13) * 31 + Math.round(t.home[1] * 17) + targets.indexOf(t) * 7919 + 1);
       return;
     }
-    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets }, kind, { unit: 1, who: s.kind });
+    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets, stance: fig.stance, aimAt: fig.aimAt }, kind, { unit: 1, who: s.kind });
+  };
+
+  // a duellist's entrance, the game's own for its kind, on a device that loads the extras
+  const entrance = (t) => {
+    const id = t.fig?.anim && richClips(detailLevel()) ? introScene(t.spec.kind) : null;
+    if (id) loadScene(id).then((sc) => sc && t.fig && !t.down && playScene(sc, { [t.spec.kind]: t.fig }));
   };
 
   // the step's own things, put out
@@ -473,7 +484,9 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   const flinched = (t, at = null) => {
     if (t.down) return;
     const tall = (t.fig?.tall ?? 1.8) * (t.spec.scale ?? 1);
-    if (t.fig?.react?.('hit', { where: whereHit(at?.y, t.holder.position.y, tall), moving: true })) t.reacted = true;
+    // (and the side it came in from, round the way it faces: a 2017 figure's additive flinch, lib/three/additiveLayer.js)
+    const side = at ? hitSide([at.x - t.b.x, at.z - t.b.z], t.b.yaw) : null;
+    if (t.fig?.react?.('hit', { where: whereHit(at?.y, t.holder.position.y, tall), side, moving: true })) t.reacted = true;
   };
 
   // its guard broken by a heavy stroke, or spent: it reels 2 s
@@ -510,13 +523,13 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   // A figure's body for its step, once the step's placed its holder: its
   // feet on the ground the step covers, its crouch, its head, its start on
   // seeing you, then (after its own bones are laid) its gun or its blade
-  const body = (t, pose, move, dt, time, you) => {
+  const body = (t, pose, move, dt, time, you, eye) => {
     const fig = t.fig;
     const b = t.b;
     // crouched in cover (a base state: only ever while its feet are still)
     if (pose.base !== t.based) {
       t.based = pose.base;
-      fig.base?.(pose.base);
+      fig.base?.(bodyClip(fig, pose.clip, pose.base));
     }
     // where its head goes: its mark at the height it stands (you, or a
     // friend of yours), else a spot at its own eyes' height
@@ -534,7 +547,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       if (start && fig.play) {
         t.startUntil = time + start.for;
         fig.play(start.clip, { layer: 'upper' }).then((ok) => !ok && (t.startUntil = 0));
-      } else fig.react?.('alert', { target: want });
+      } else if (fig.clips?.[ALERT_CLIP] && fig.play) fig.play(ALERT_CLIP, { layer: 'upper' });
+      else fig.react?.('alert', { target: want });
     }
     // its feet on the ground the step covers (and, on a figure that lays
     // them in its update, the bones over its clips: crew.js's)
@@ -549,8 +563,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     if (t.gp && !(time < (t.startUntil ?? 0))) t.gp.set(dt, { aim: pose.aim, look: dir ? 1 : 0, dir, forward: _fwd, up: UP });
     if (t.blade) {
       // (its stroke's root travel and its turn to its lock write into its own walk: b)
-      t.blade.block(t.blocking);
-      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: b, dir, targets: t.duelMark ? [t.duelMark] : [], hit: (x, damage, at, o) => struckBy(t, x, damage, at, o) });
+      t.blade.block(t.blocking, t.blockSide);
+      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: b, dir, eye, targets: t.duelMark ? [t.duelMark] : [], hit: (x, damage, at, o) => struckBy(t, x, damage, at, o) });
     }
     // the pistol's aim, held on its upper half since its last shot (a rigged
     // one with no gun of its own to raise), let down a while after
@@ -565,7 +579,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   // about its feet that way; carried on along a shove that took it; lying a
   // while, then into the ground and gone
   const STOOD = { speed: 0, side: 0, turn: 0 };
-  const dying = (t, dt, time) => {
+  const dying = (t, dt, time, eye) => {
     const d = (t.death ??= { dir: fallOf({ from: lastYou, at: t.b, yaw: t.b.yaw }), force: 0.3, clip: null, started: false, y: null });
     const fig = t.fig;
     const hover = fig?.hover ?? t.spec.y ?? 0;
@@ -613,7 +627,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       fallTurn(f.k, _dir.set(d.dir.x, 0, d.dir.z), UP, _q);
       t.holder.quaternion.copy(_q.multiply(_yq.setFromAxisAngle(UP, t.b.yaw)));
     }
-    t.blade?.out(dt, time, { forward: _fwd, up: UP });
+    t.blade?.out(dt, time, { forward: _fwd, up: UP, eye });
     t.holder.position.set(t.b.x, d.y + (t.knock?.y ?? 0) - f.sink, t.b.z);
     if (f.gone) t.holder.visible = false;
   };
@@ -706,8 +720,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     kill(tag) {
       for (const t of targets) if (t.tag === tag && !t.down) fell(t);
     },
-    // swinging: your stroke (duellists.js's swingingOf), for the duellists to read
-    update(dt, you, time, { actors, door, swinging = null } = {}) {
+    // swinging: your stroke (duellists.js's swingingOf), for the duellists to read; eye: the camera's position (their blades' light: saberLight.js)
+    update(dt, you, time, { actors, door, swinging = null, eye = null } = {}) {
       const events = [];
       const { quest, progress } = shown;
       const step = quest?.steps[progress?.step];
@@ -755,7 +769,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             const up = new THREE.Vector3(0, 1, 0);
             const push = t.push ?? new THREE.Vector3(Math.sin(b.yaw), 0, Math.cos(b.yaw)).negate();
             const on = (ev) => onShow?.(t.how, ev);
-            if (t.blade) t.blade.gun.visible = false;
+            if (t.blade) { t.blade.gun.visible = false; t.blade.dark?.(); } // (no update reaches it now: its light goes)
             if (t.bubble) t.bubble.visible = false;
             if (t.bar) t.bar.sprite.visible = false;
             if (t.mark) t.mark.visible = false;
@@ -773,7 +787,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         }
         if (t.down) {
           t.down += dt;
-          dying(t, dt, time);
+          dying(t, dt, time, eye);
           if (t.down > 0.3 && !t.counted) {
             t.counted = true;
             events.push({ type: 'kill', tag: t.tag });
@@ -811,6 +825,11 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           const seen = t.victim ? { x: aim.x, z: aim.z } : you ? { x: you.x, z: you.z, vel: Number.isFinite(you.vx) ? { x: you.vx, z: you.vz } : null } : null;
           // a duellist with its mark near fences it (duellists.js); otherwise it hunts as the rest do
           const fenced = fence(t, aim, { you: youT, swinging }, dt, time, world);
+          // (squaring up to its mark the first time: its entrance from the game, lib/three/scenePlayer.js)
+          if (fenced != null && !t.introduced) {
+            t.introduced = true;
+            entrance(t);
+          }
           if (fenced != null) moving = fenced;
           else {
             const step = hostileStep(t, { you: t.spec.side === 'yours' && !mark ? null : seen, allies, seesThrough, tokens: t.hostile ? tokens : null, who: t, search: t.hostile ? searchFor(tag) : null, stims }, dt, r);
@@ -886,7 +905,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.flinch -= dt;
           t.holder.rotation.z = t.reacted ? 0 : Math.sin(t.flinch * 60) * t.flinch * 0.3;
         } else t.holder.rotation.z = 0;
-        if (t.fig) body(t, pose, moving || (b.to && !near) ? 0.6 : 0, dt, time, you);
+        if (t.fig) body(t, pose, moving || (b.to && !near) ? 0.6 : 0, dt, time, you, eye);
         if (t.bubble?.visible) {
           const f = t.bubble.userData;
           f.flash = Math.max(0, f.flash - dt);
