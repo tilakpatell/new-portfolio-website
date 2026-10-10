@@ -6,6 +6,7 @@ import Objective from './Objective';
 import PlayersChip from './PlayersChip';
 import QuestList from './QuestList';
 import Toast from './Toast';
+import MiniMap from './MiniMap';
 import { VoicesItem } from './Menu';
 
 const text = (el) => renderToStaticMarkup(el).replace(/<[^>]+>/g, '');
@@ -84,5 +85,22 @@ describe('the voices switch in the Menu', () => {
     expect(text(<VoicesItem />)).toBe('Voices on');
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain('data-keep');
+  });
+});
+
+describe('the minimap', () => {
+  it('is a disc that opens the map, its size in --hud-minimap, no key of its own (the guide says it)', () => {
+    const html = renderToStaticMarkup(
+      <MiniMap size={160} draw={() => 'Cell 0,0'} onOpen={() => {}} label="Open the map">
+        <p>under</p>
+      </MiniMap>,
+    );
+    expect(html).toContain('--hud-minimap:160px');
+    // (hidden until its first draw says there's something to show)
+    expect(html).toContain('data-empty="true"');
+    expect(html).toMatch(/<button[^>]*aria-label="Open the map"/);
+    expect(html).toContain('<canvas aria-hidden="true"></canvas>');
+    expect(html).not.toContain('<kbd');
+    expect(html).toMatch(/hud-minimap-caption"><\/p><p>under<\/p>/);
   });
 });

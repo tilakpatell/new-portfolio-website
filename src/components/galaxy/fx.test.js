@@ -31,3 +31,14 @@ describe('the flashes', () => {
     f.dispose();
   });
 });
+
+describe('the flash’s look', () => {
+  it('fades to its rim instead of ending at a hard edge', () => {
+    const scene = new THREE.Scene();
+    const f = createFlashes(scene, { count: 2 });
+    const mat = scene.children.find((o) => o.isInstancedMesh).material;
+    expect(mat.fragmentShader).toContain('smoothstep(0.65, 1.0, r)');
+    expect(mat.fragmentShader).not.toContain('discard');
+    f.dispose?.();
+  });
+});

@@ -217,6 +217,29 @@ export const PAGES = {
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
+  '/fly': {
+    about: ABOUT['/fly'],
+    keys: [
+      {
+        rows: [
+          ['W S / ↑ ↓', 'Nose down and up'],
+          ['A D', 'Bank: the ship turns the way it leans'],
+          ['Q E / ← →', 'Turn'],
+          ['Shift / R', 'Faster'],
+          ['F', 'Slower'],
+          ['M', 'The planet map: tap a place or the ground for a waypoint; Esc closes it'],
+        ],
+      },
+    ],
+    touch: [{ rows: [['Stick', 'Fly: up is the nose down, to the side a bank'], ['+ −', 'Faster and slower'], ['Minimap', 'Tap it for the planet map; drag to look about, pinch to zoom, tap for a waypoint']] }],
+    tips: [
+      ['The ground', 'Made as you fly, from the planet’s seed: the same planet is the same land every time, however far you go.'],
+      ['Echo Base', 'On Hoth, straight ahead from where you start: a flat field the snow eases into.'],
+      ['Too low', 'Touch the ground and you’re put back up 200 m over where you were.'],
+      ['The map', 'The minimap, top right, is the ground round you, drawn as you fly; the planet map shows all you’ve flown over, the named places with how far they are, and the shared world’s cell you’re in.'],
+      ['Other planets', 'Fifty, each its own world’s ground: the galaxy’s, Rick and Morty’s moons, the map’s worlds and the Expanse’s. The Menu has a few; any of them is /fly/ and its name.'],
+    ],
+  },
   '/deathstar/inside': {
     about: ABOUT['/deathstar/inside'],
     keys: [
