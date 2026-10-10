@@ -5,14 +5,16 @@
 // chunk's fall. Pure; ./marks.js, ./debris.js and ./gameFx.js draw it.
 //
 // countFor(n, level) → n at high and ultra, half at mid, a quarter at low
-// surfaceOf(site, ground) → 'metal' | 'stone' | 'snow' | 'sand'
+// surfaceOf(site, ground) → 'metal' | 'stone' | 'snow' | 'sand' (the fallback)
+// familySurface(family) → the surface for a material family the game's grid
+//   named (PR #821's impactLook: snow | metal | sand | rock | wood), or null
 // impactPlan(surface, level) → { mark: { sheet, frames, tint, size }, debris: { set, n, speed, size }, puff }
 // blastPlan(cls, level) → { size, life, ring, debris: { set, n, speed, size }, then }
 // rampColour(ramp, k) → [r, g, b]: k 0 cold to 1 white-hot, along the ramp's samples
 // stepChunk(c, dt, groundAt) → c: { p, v, spin, r, rest } fallen one step,
 //   bounced off the ground where groundAt(x, z) puts it, at rest once slow
 
-export const SURFACES = ['metal', 'stone', 'snow', 'sand'];
+export const SURFACES = ['metal', 'stone', 'snow', 'sand', 'wood'];
 const G = 9.8;
 
 export function countFor(n, level = 'high') {
@@ -20,6 +22,11 @@ export function countFor(n, level = 'high') {
   const k = level === 'low' ? 0.25 : level === 'mid' ? 0.5 : 1;
   return Math.max(1, Math.round(n * k));
 }
+
+// what the game's material grid said the bolt struck (lane P4's family, on
+// the bolt's `solid` event) wins; the world's ground below is the fallback
+const FAMILY = { snow: 'snow', metal: 'metal', sand: 'sand', rock: 'stone', wood: 'wood' };
+export const familySurface = (family) => FAMILY[family] ?? null;
 
 // the world's ground: what its footsteps say (site.sound.ground), else its
 // terrain's detail (snow; sand, a beach or red soil as sand); grass, mud,
@@ -42,6 +49,7 @@ export const IMPACTS = {
   stone: { mark: { sheet: 'impact', frames: 1, tint: [0.06, 0.05, 0.045], size: 0.9 }, debris: { set: 'debris.rock', n: 3, speed: 3.5, size: 0.2 }, puff: '#8a8076' },
   snow: { mark: { sheet: 'impact', frames: 1, tint: [0.25, 0.28, 0.33], size: 1.1 }, debris: { set: 'debris.snow', n: 6, speed: 4.5, size: 0.22 }, puff: '#eef3f8' },
   sand: { mark: { sheet: 'impact', frames: 1, tint: [0.16, 0.12, 0.08], size: 1 }, debris: { set: 'debris.sand', n: 5, speed: 4, size: 0.22 }, puff: '#d8c49a' },
+  wood: { mark: { sheet: 'impact', frames: 1, tint: [0.05, 0.035, 0.025], size: 0.7 }, debris: { set: 'debris.wood', n: 3, speed: 3, size: 0.2 }, puff: '#6b5a48' },
 };
 
 export function impactPlan(surface, level = 'high') {

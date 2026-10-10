@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLASTS, IMPACTS, SURFACES, blastPlan, countFor, impactPlan, rampColour, stepChunk, surfaceOf } from './fxPlan';
+import { BLASTS, IMPACTS, SURFACES, blastPlan, countFor, familySurface, impactPlan, rampColour, stepChunk, surfaceOf } from './fxPlan';
 
 describe('countFor: particle counts by tier', () => {
   it('all at high and ultra, half at mid, a quarter at low, never under one', () => {
@@ -29,6 +29,17 @@ describe('surfaceOf', () => {
     expect(surfaceOf({ sound: { ground: 'sand' }, ground: { detail: 'snow' } }, true)).toBe('sand');
     expect(surfaceOf({}, true)).toBe('stone');
     expect(surfaceOf(null, true)).toBe('stone');
+  });
+});
+
+describe('familySurface', () => {
+  it('takes the material family the game’s grid named (lane P4) to the look’s surface', () => {
+    expect(familySurface('snow')).toBe('snow');
+    expect(familySurface('rock')).toBe('stone');
+    expect(familySurface('wood')).toBe('wood');
+    expect(familySurface('metal')).toBe('metal');
+    expect(familySurface(undefined)).toBeNull();
+    expect(familySurface('glass')).toBeNull();
   });
 });
 

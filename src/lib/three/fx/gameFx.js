@@ -14,8 +14,10 @@
 //
 // createGameFx(parent, { level, groundAt, site, lit, look }) → {
 //   ready: Promise, has(part),
-//   impact(at, normal, { ground, colour, surface }) → { mark, debris }: what it drew
-//     (`surface` the world's own unless given: metal | stone | snow | sand)
+//   impact(at, normal, { ground, colour, surface, family }) → { mark, debris }: what it drew
+//     (`family` the material the game's grid said it struck, lane P4's
+//     impactLook: it wins; else `surface` (metal | stone | snow | sand | wood);
+//     else the world's own ground, fxPlan's surfaceOf)
 //   explode(at, cls, { tint }) → boolean
 //   push(from, dir, { colour, pull, reach }) → boolean
 //   update(dt), clear(), dispose() }
@@ -24,7 +26,7 @@
 
 import * as THREE from 'three';
 import { createDebris } from './debris';
-import { blastPlan, impactPlan, surfaceOf } from './fxPlan';
+import { blastPlan, familySurface, impactPlan, surfaceOf } from './fxPlan';
 import { loadLook } from './gameLook';
 import { createSheetFx } from './marks';
 import { createPush } from './push';
@@ -79,9 +81,9 @@ export function createGameFx(parent, { level = 'high', groundAt = () => 0, site 
     },
     // a bolt landing: `ground` whether it hit the ground (else a wall or a
     // prop), `colour` the bolt's
-    impact(at, normal = UP, { ground = true, colour = null, surface = null } = {}) {
+    impact(at, normal = UP, { ground = true, colour = null, surface = null, family = null } = {}) {
       if (off) return { mark: false, debris: 0 };
-      const plan = impactPlan(surface ?? surfaceOf(site, ground), level);
+      const plan = impactPlan(familySurface(family) ?? surface ?? surfaceOf(site, ground), level);
       const sheet = plan.mark.sheet === 'scorch.metal' ? k.metal : k.scorch;
       // (a touch off the ground: the drawn snow and sand sit over the height the rules read)
       v.copy(at).addScaledVector(normal, 0.06);
