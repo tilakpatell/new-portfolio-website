@@ -87,7 +87,24 @@ describe('createSun', () => {
     }
     // the colour stays the light's
     expect(sun.light.color.b).toBeCloseTo(0.91762);
+    // a weather with another shadow sun turns the cascades
+    sun.setShadowSun([0, 90]);
+    expect(sun.shadowDir.y).toBeCloseTo(1);
+    // a new projection refits the cascades
+    let refits = 0;
+    const fit = csm.updateFrustums.bind(csm);
+    csm.updateFrustums = () => (refits++, fit());
+    sun.update(camera);
+    camera.aspect = 1;
+    camera.updateProjectionMatrix();
+    sun.update(camera);
+    sun.update(camera);
+    expect(refits).toBe(1);
+    // the cascades' maps freed with the sun
+    const freed = [];
+    for (const n of csm._shadowNodes) n.dispose = () => freed.push(n);
     sun.dispose();
+    expect(freed).toHaveLength(4);
   });
   it('the cascades’ biases from their texels, the near one least', async () => {
     const sun = await createSun(hoth.sunny, { tier: 'ultra' });

@@ -18,7 +18,9 @@ describe('luminanceScale', () => {
   });
   it('a record that exposes by hand keeps its EV; none gives null', () => {
     expect(meteredEV({ EV: 12, ExposureCompensation: 0, AutomaticExposure: false }, {})).toBe(12);
-    expect(luminanceScale({}, {})).toBe(null);
+    expect(luminanceScale(null, {})).toBe(null);
+    // a tone map without an EV meters from gameLight.js's default 12, never a factor of 1
+    expect(meteredEV({}, {})).toBe(12);
   });
 });
 
@@ -54,6 +56,8 @@ describe('calibrate', () => {
     expect(c.sky).toBeCloseTo(0.61, 2);
     expect(c.bloomThreshold).toBe(1);
     expect(calibrate({})).toBe(null);
+    // a sun with no tone map is still taken to the site's units
+    expect(calibrate({ OutdoorLightComponentData: [{ SunIntensity: 128000, SunRotationY: 33 }] }).sun).toBeLessThan(10);
     expect(calibrate(null)).toBe(null);
   });
 });

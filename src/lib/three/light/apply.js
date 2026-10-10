@@ -32,7 +32,7 @@ import { passesFor } from './post.js';
 import { createProbeGrid, createProbes } from './probes.js';
 import { filterFor, pcssFilter, readPcss, vsmFallback } from './shadows.js';
 import { createSky } from './sky.js';
-import { createSun } from './sun.js';
+import { createSun, readShadowRecord } from './sun.js';
 import { backendOf, loadThree, registerLights } from './three.js';
 
 export const WEATHER_FADE = 20; // s: lane G's crossfade between two weathers
@@ -42,7 +42,7 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
   const { THREE } = await loadThree();
   const backend = backendOf(renderer);
   await registerLights(renderer);
-  const was = { shadows: renderer.shadowMap?.enabled, environment: scene.environment, fogNode: scene.fogNode };
+  const was = { shadows: renderer.shadowMap?.enabled, shadowType: renderer.shadowMap?.type, environment: scene.environment, fogNode: scene.fogNode };
   if (renderer.shadowMap) renderer.shadowMap.enabled = tier !== 'low';
   let params = readEntry(entry, { origin });
   const rays = post && tier === 'ultra';
@@ -139,6 +139,8 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
     // the next weather, eased in over `seconds` (0: at once)
     setWeather(next, seconds = WEATHER_FADE) {
       const to = readEntry(next, { origin });
+      // (the shadow sun turns at once; the clouds stay the first weather's: lane S's Left)
+      sun.setShadowSun(readShadowRecord(next).shadowSun);
       if (!(seconds > 0)) {
         fade = null;
         params = to;
@@ -160,7 +162,7 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
       sky?.dispose();
       scene.environment = was.environment;
       scene.fogNode = was.fogNode;
-      if (renderer.shadowMap) renderer.shadowMap.enabled = was.shadows;
+      if (renderer.shadowMap) Object.assign(renderer.shadowMap, { enabled: was.shadows, type: was.shadowType });
     },
   };
 }

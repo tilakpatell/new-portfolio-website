@@ -9,7 +9,7 @@
       "backend": "nodes-webgl",
       "clustered": null,
       "passes": [],
-      "shot": "shadows-lit-low-webgl.png",
+      "shot": "shadows-lit-low-webgl.webp",
       "meanLum": 0.2931,
       "envDiff": 15.99,
       "programsBefore": 18,

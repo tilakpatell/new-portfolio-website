@@ -18,15 +18,15 @@
         "smaa",
         "output"
       ],
-      "shot": "shadows-post-ultra-webgl.png",
+      "shot": "shadows-post-ultra-webgl.webp",
       "meanLum": 0.3254,
       "envDiff": 15.48,
       "programsBefore": 89,
       "programsAfter": 89,
       "frames": 5,
-      "mean": 1036.8,
-      "median": 29.6,
-      "p95": 5064.3
+      "mean": 1435.6,
+      "median": 44.4,
+      "p95": 7012.5
     }
   ]
 }

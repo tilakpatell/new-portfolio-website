@@ -35,7 +35,7 @@
 // cascadesFor(tier, viewDistance) → { n, far, map }   (pure)
 // splitsFor(near, far, n, lambda = 0.5) → n + 1 distances  (pure)
 // biasFor(texel, { bias, normalBias }) → { bias, normalBias }   (pure)
-// createSun(entry, { tier, rays, filter, farShadow, cloud }) → Promise<{ light, rays, shadowDir, set(params), update(camera), dispose }>
+// createSun(entry, { tier, rays, filter, farShadow, cloud }) → Promise<{ light, rays, csm, shadowDir, set(params), setShadowSun([x, y] | null), update(camera), dispose }>
 
 import { readEntry, sunDir } from './entry.js';
 import { loadCSM, loadThree } from './three.js';
@@ -133,6 +133,12 @@ async function sunCSM() {
       }
     }
 
+    // the cascades' maps freed too (CSMShadowNode.dispose only detaches its lights)
+    dispose() {
+      for (const n of this._shadowNodes) n.dispose();
+      super.dispose();
+    }
+
     updateFrustums() {
       super.updateFrustums();
       if (this.lights.length) this.applyBias();
@@ -174,8 +180,14 @@ export async function createSun(entry, { tier = 'high', rays = false, filter = n
   light.name = 'sun';
   light.castShadow = n > 0;
   const shadowDir = new THREE.Vector3();
-  const lockShadow = Boolean(record.shadowSun);
-  if (lockShadow) shadowDir.set(...sunDir(record.shadowSun[0], record.shadowSun[1])).normalize();
+  let lockShadow = false;
+  // the record's shadow sun, or (null) cast along the light
+  const setShadowSun = (rot) => {
+    lockShadow = Boolean(rot);
+    if (lockShadow) shadowDir.set(...sunDir(rot[0], rot[1])).normalize();
+    else shadowDir.copy(light.position).sub(light.target.position).normalize();
+  };
+  setShadowSun(record.shadowSun);
   let csm = null;
   if (light.castShadow) {
     const size = Math.min(map, params.shadow.mapSize);
@@ -207,15 +219,22 @@ export async function createSun(entry, { tier = 'high', rays = false, filter = n
     light.updateMatrixWorld();
   };
   set(params);
+  let projection = '';
   return {
     light,
     rays: raysLight,
     csm,
     shadowDir,
     set,
-    // (the cascades fit themselves to the view each frame; only the rays'
-    // box has to follow the camera)
+    setShadowSun,
+    // (the cascades follow the view's pose each frame by themselves; a new
+    // projection, a resize or a zoom, refits their splits and sizes)
     update(camera) {
+      if (csm?.camera && camera?.isCamera) {
+        const key = `${camera.fov},${camera.aspect},${camera.near},${camera.far},${camera.zoom}`;
+        if (projection && key !== projection) csm.updateFrustums();
+        projection = key;
+      }
       if (!raysLight || !camera) return;
       raysLight.target.position.copy(camera.position);
       raysLight.position.copy(camera.position).addScaledVector(dir, RAYS_FAR / 2);

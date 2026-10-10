@@ -95,7 +95,7 @@ export default {
   mb: 0,
   create(rt) {
     const opts = { tier: 'ultra', env: true, post: true, sky: true, placed: true, ...(rt.fixture ?? {}) };
-    if (opts.shadows) opts.hoth = true;
+    if (opts.shadows || opts.clouds || opts.lightSun) opts.hoth = true;
     if (opts.hoth) opts.placed = false;
     let entry = opts.hoth ? hothVe.sunny : ENTRY;
     if (opts.clouds) {

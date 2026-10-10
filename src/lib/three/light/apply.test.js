@@ -61,6 +61,9 @@ describe('applyGameLight', () => {
     expect(light.parts.sky.uniforms.sunColor.value.g).toBeCloseTo(0.28355);
     light.setWeather(hoth.sunny, 0);
     expect(light.parts.sun.light.intensity).toBeCloseTo(day);
+    // the weather's shadow sun comes with it
+    light.setWeather({ ...hoth.sunny, record: { ...hoth.sunny.record, OutdoorLightComponentData: [{ ...hoth.sunny.record.OutdoorLightComponentData[0], ShadowSunRotationY: 90 }] } }, 0);
+    expect(light.parts.sun.shadowDir.y).toBeCloseTo(1);
     expect(light.passes).toEqual([]);
     light.dispose();
   });

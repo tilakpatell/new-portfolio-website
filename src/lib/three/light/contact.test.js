@@ -42,6 +42,34 @@ describe('createContactShadows', () => {
     contact.dispose();
     expect(scene.children.filter((o) => o.name === 'contact-shadow')).toHaveLength(0);
   });
+  it('a pass that throws still gives the scene and the renderer back', async () => {
+    const scene = new THREE.Scene();
+    const env = new THREE.Texture();
+    scene.environment = env;
+    const f = figure(0, -2);
+    scene.add(f);
+    const target = { name: 'main' };
+    let current = target;
+    const renderer = {
+      getRenderTarget: () => current,
+      setRenderTarget: (t) => (current = t),
+      getClearColor: (c) => c.set(0x123456),
+      getClearAlpha: () => 1,
+      setClearColor() {},
+      clear() {},
+      render() {
+        throw new Error('lost');
+      },
+    };
+    const contact = await createContactShadows(scene, renderer, { tier: 'ultra' });
+    contact.track(f);
+    const camera = new THREE.PerspectiveCamera();
+    expect(() => contact.update(camera)).toThrow('lost');
+    expect(scene.overrideMaterial).toBe(null);
+    expect(scene.environment).toBe(env);
+    expect(current).toBe(target);
+    contact.dispose();
+  });
   it('nothing on mid and low', async () => {
     const contact = await createContactShadows(new THREE.Scene(), {}, { tier: 'mid' });
     contact.track(figure(0, 0));

@@ -51,8 +51,9 @@ const num = (v, d) => (v === null || v === undefined || v === '' || !Number.isFi
 export function readPcss(entry) {
   const o = entry?.record?.OutdoorLightComponentData?.[0] ?? entry?.sun?.raw ?? {};
   return {
-    initial: num(o.SunPcssInitialSampleCount, HOTH.initial),
-    max: num(o.SunPcssMaximumSampleCount, HOTH.max),
+    // (at least one sample each: the kernel divides by them)
+    initial: Math.max(1, num(o.SunPcssInitialSampleCount, HOTH.initial)),
+    max: Math.max(1, num(o.SunPcssMaximumSampleCount, HOTH.max)),
     threshold: num(o.SunPcssFilterErrorThresholdPct, HOTH.threshold),
     angularRadius: num(o.SunAngularRadius, HOTH.angularRadius),
     penumbraSize: num(o.SunPenumbraSize, HOTH.penumbraSize),

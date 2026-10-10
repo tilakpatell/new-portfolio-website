@@ -8,6 +8,8 @@ describe('readPcss', () => {
     expect(readPcss(hoth.sunny)).toEqual({ initial: 8, max: 256, threshold: 0.05, angularRadius: 0.29, penumbraSize: 4, filterScale: 1 });
     // (no record: Hoth's)
     expect(readPcss({}).initial).toBe(8);
+    // (a count of 0 would divide by 0 in the kernel: at least 1)
+    expect(readPcss({ record: { OutdoorLightComponentData: [{ SunPcssInitialSampleCount: 0, SunPcssMaximumSampleCount: 0 }] } })).toMatchObject({ initial: 1, max: 1 });
   });
 });
 

@@ -114,18 +114,22 @@ export async function createContactShadows(scene, renderer, { tier = 'high', siz
       const was = { target: renderer.getRenderTarget?.() ?? null, override: scene.overrideMaterial, background: scene.background, environment: scene.environment, fogNode: scene.fogNode };
       const clear = { color: renderer.getClearColor(new THREE.Color()), alpha: renderer.getClearAlpha() };
       Object.assign(scene, { overrideMaterial: depthMaterial, background: null, environment: null, fogNode: null });
-      renderer.setClearColor(0x000000, 0);
-      for (const n of near) {
-        if (!n.c.plane.visible) continue;
-        camera.position.set(n.x, n.y, n.z);
-        camera.updateMatrixWorld();
-        renderer.setRenderTarget(n.c.target);
-        renderer.clear();
-        renderer.render(scene, camera);
+      try {
+        renderer.setClearColor(0x000000, 0);
+        for (const n of near) {
+          if (!n.c.plane.visible) continue;
+          camera.position.set(n.x, n.y, n.z);
+          camera.updateMatrixWorld();
+          renderer.setRenderTarget(n.c.target);
+          renderer.clear();
+          renderer.render(scene, camera);
+        }
+      } finally {
+        // (the scene and the renderer given back, a throw or not)
+        Object.assign(scene, { overrideMaterial: was.override, background: was.background, environment: was.environment, fogNode: was.fogNode });
+        renderer.setRenderTarget(was.target);
+        renderer.setClearColor(clear.color, clear.alpha);
       }
-      Object.assign(scene, { overrideMaterial: was.override, background: was.background, environment: was.environment, fogNode: was.fogNode });
-      renderer.setRenderTarget(was.target);
-      renderer.setClearColor(clear.color, clear.alpha);
     },
     dispose() {
       for (const o of [...tracked.keys()]) this.untrack(o);

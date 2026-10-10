@@ -32,9 +32,10 @@ const first = (v) => (Array.isArray(v) ? v[0] : v);
 
 // The record's tone map in lane G's shape, so the one meter (gameLight.js)
 // decides the EV for both stacks.
+// (a tone map without an EV meters from 12, gameLight.js's default; none at all, null)
 export function meteredEV(tone, { lux, el, sky } = {}) {
-  const ev = n(tone?.EV);
-  if (ev === undefined) return null;
+  if (!tone) return null;
+  const ev = n(tone.EV) ?? 12;
   const comp = n(tone.ExposureCompensation) ?? 0;
   const m = exposureOf({
     sun: { lux: n(lux) ?? 0, el: n(el) ?? 45 },
@@ -61,8 +62,9 @@ export function calibrate(record) {
   const outdoor = c('OutdoorLight');
   const sky = c('Sky');
   const scene = { lux: outdoor.SunIntensity, el: outdoor.SunRotationY, sky: sky.LuminanceScale };
+  // (a record with neither a tone map nor a sun has nothing to calibrate)
+  if (!record?.TonemapComponentData && n(outdoor.SunIntensity) === undefined) return null;
   const k = luminanceScale(tone, scene);
-  if (k === null) return null;
   return {
     k,
     ev: meteredEV(tone, scene),

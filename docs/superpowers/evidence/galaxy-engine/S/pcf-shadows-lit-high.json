@@ -9,7 +9,7 @@
       "backend": "nodes-webgl",
       "clustered": null,
       "passes": [],
-      "shot": "pcf-shadows-lit-high-webgl.png",
+      "shot": "pcf-shadows-lit-high-webgl.webp",
       "meanLum": 0.2897,
       "envDiff": 15.91,
       "programsBefore": 26,
