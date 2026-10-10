@@ -38,6 +38,9 @@
 //       dispose() }
 //   fig: the figure that holds it ({ bones, hipsY?, play? }); without
 //   `play` the arms still swing (laid here) but the legs keep their clips.
+//   tier: the device's (lib/device.js's, unless given): a 2017 hero's lit
+//   blade lights the scene on high and ultra (saberLight.js); update's
+//   `eye` (the camera's position) puts that light out past 12 m.
 //   clips: { name: clip } to use in place of the library's (tests); a
 //   2017 figure (fig.rig 'walrus') brings its own, the game's, in fig.clips;
 //   a stroke whose clip hasn't come yet is timed as one and swings nothing.
@@ -48,13 +51,17 @@
 import * as THREE from 'three';
 import { createBlade } from '../../../lib/combat/blade';
 import { hiltFit } from '../../../lib/combat/hiltFit';
+import { device } from '../../../lib/device';
 import { SOCKETS } from '../../../lib/three/walrusRig.js';
 import { loadClip } from '../../../lib/three/clipLibrary';
 import { createTrail } from '../../../lib/three/combat/trail';
 import { frameFrom, reach, rotateWorld, setWorldQuaternion } from '../../../lib/three/ik';
 import { capsuleOf } from './blaster';
 import { BLOCK_CLIP, DIRS, HEAVY, PARRY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
-import { SABER, throwAt } from './saberRules';
+import { stanceFor } from './gameStance';
+import { gameClips, heroOfClips } from './saberGame';
+import { createSaberLight } from './saberLight';
+import { BLADE_OF, SABER, throwAt } from './saberRules';
 import { modelUrlFor } from './catalog';
 import { loadGlb } from './placer';
 
@@ -109,7 +116,7 @@ const rootAt = (root, t) => {
   return [l[1], l[2]];
 };
 
-export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'single', parent = null, sound = null, fig = null, clips: given = null } = {}) {
+export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'single', parent = null, sound = null, fig = null, clips: given = null, tier = null } = {}) {
   const gun = gp.gun;
   const { RightArm: upper, RightForeArm: fore, RightHand: hand, LeftArm: leftUpper, LeftHand: leftHand } = gp.bones;
   const blade = gun.getObjectByName('blade');
@@ -117,7 +124,6 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   const core = gun.getObjectByName('core');
   const local = { pos: gun.position.clone(), quat: gun.quaternion.clone(), scale: gun.scale.clone() }; // in the hand (attach() to the world rewrites all three)
   const gripInv = gun.quaternion.clone().invert();
-  const st_ = stanceOf(stance);
   // A 2017 figure (lib/three/walrus.js) holds it in the game's weapon
   // socket, and the game's clips swing the socket and put both hands on it:
   // nothing here poses its arms. A stroke or the block lays the socket with
@@ -125,6 +131,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   // lock goes on the chest, which carries both. (One hilt: the game's
   // heroes don't dual-wield.)
   const walrus = fig?.rig === 'walrus' && Boolean(gp.socket);
+  // (a 2017 hero's strokes are the game's: its stroke table's chain, windows and cadence, gameStance.js)
+  const st_ = walrus ? stanceFor(stance, { rig: 'walrus', pack: heroOfClips(fig.clips) }) : stanceOf(stance);
   const holder = gun.parent; // (the hand, or the socket)
   const two = !walrus && stance !== 'dual' && Boolean(gp.holdLeft && leftUpper && leftHand); // (both hands on the one hilt)
   const torso = gp.bones.Spine2 ?? gp.bones.Spine02 ?? upper;
@@ -148,9 +156,11 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       for (const o of [...gun.children]) if (o.isMesh && (o.name === 'grip' || o.name === 'metal' || o.name === 'trim' || o.name.startsWith('emitter'))) o.visible = false;
       gun.add(m);
       worn.push(m);
-      if (blade) blade.position.y = fit.bladeY;
+      // (out of the hilt's emitter as the game measured it, on the hilt's axis: BLADE_OF)
+      const out = BLADE_OF[hilt.model];
+      if (blade) out ? blade.position.fromArray(out.base).multiplyScalar(fit.scale) : (blade.position.y = fit.bladeY);
       const b2 = gun.getObjectByName('blade2');
-      if (b2) b2.position.y = box.min.y * fit.scale;
+      if (b2) out?.base2 ? b2.position.fromArray(out.base2).multiplyScalar(fit.scale) : (b2.position.y = box.min.y * fit.scale);
     });
   // the second blade: out of the pommel (a staff), or a second hilt in the other hand
   const blades = [blade].filter(Boolean);
@@ -182,7 +192,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   // the clips: the stance's, the heavy ones, the ways and the block, fetched now so the first stroke has its own
   // (a 2017 figure's are the game's, its pack's: never the library's, made for Meshy's rig)
   const own = given ?? (fig?.rig === 'walrus' ? fig.clips : null);
-  const clips = { ...(own ?? {}) };
+  // (and by the game's names, which a stance from the stroke table plays by)
+  const clips = walrus && own ? gameClips(own) : { ...(own ?? {}) };
   const names = [...st_.strokes.map((k) => k.clip), ...HEAVY.clips, ...Object.values(DIRS).map((d) => d.clip), BLOCK_CLIP];
   if (!own)
     for (const n of new Set(names))
@@ -385,12 +396,16 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   // each blade's segment this frame, from the hilt to the tip
   const _base = new V();
   const _tip = new V();
+  // a 2017 hero's lit blade lights what's round it (on high and ultra: saberLight.js)
+  const light = walrus && parent ? createSaberLight({ scene: parent, color, tier: tier ?? device().tier }) : null;
+  let eye = null;
   const pushBlades = (now) => {
     blades.forEach((b, i) => {
       b.updateWorldMatrix(true, false);
       _base.set(0, 0.1, 0).applyMatrix4(b.matrixWorld);
       _tip.set(0, 1, 0).applyMatrix4(b.matrixWorld);
       segs[i].push(_base.toArray(), _tip.toArray(), now);
+      if (i === 0) light?.update(_base, _tip, st.lit, eye);
     });
   };
   const drawTrails = (on) => trails.forEach((tr, i) => tr.sync(segs[i].history(), on && st.lit > 0.5));
@@ -497,6 +512,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       // (one named outright, as a peer's packet names theirs: that clip, fetched if it hasn't been)
       if (named && named !== k.clip) {
         k.clip = named;
+        // (its own window, where its stance measured one: not the one strokeFor's pick had)
+        k.contact = [...st_.strokes, ...(st_.heavies ?? [])].find((s) => s.clip === named)?.contact;
         if (!clips[named] && !given) loadClip(named).then((c) => c && !gone && (clips[named] = c));
       }
       const clip = clips[k.clip] ?? null;
@@ -506,14 +523,16 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       // the step: the clip's own to its contact, grown or cut to land on the lock
       const at = lock?.holder?.position;
       const me = st.me;
-      const ahead = rootAt(root, (x.contact ?? NO_CLIP.contact)[1])[1] * (hipsM / (x.rootHips || hipsM));
+      // (the stroke's own window where its stance measured one: a 2017 hero's, from the stroke table)
+      const contact = k.contact ?? x.contact ?? NO_CLIP.contact;
+      const ahead = rootAt(root, contact[1])[1] * (hipsM / (x.rootHips || hipsM));
       const dist = at && me ? Math.hypot(at.x - me.x, at.z - me.z) : null;
       st.swing = {
         ...k,
         name: k.clip, // (the clip library's name: what goes out online)
         t0: now,
         dur,
-        contact: x.contact ?? NO_CLIP.contact,
+        contact,
         root,
         rootHips: x.rootHips ?? null,
         clip,
@@ -577,6 +596,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     },
     // after gp.set: the blade's length, the arm's pose, the throw's flight
     update(dt, now, p) {
+      eye = p?.eye ?? null;
       st.me = p.me ?? st.me;
       st.now = now;
       const want = st.on ? 1 : 0;
@@ -627,6 +647,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       for (const m of worn) m.removeFromParent();
       gun2?.removeFromParent();
       for (const tr of trails) tr.dispose();
+      light?.dispose();
     },
   };
 }
