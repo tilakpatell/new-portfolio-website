@@ -158,3 +158,29 @@ A hero's own set (Luke's, 138 with locomotion): `AttackLoop_Strike1..6` and `_V2
 ### Phase 1's inputs, present
 
 Every hilt's three maps (`lightsaber{anakin,darthvader,dooku,grievous,lukehoth,lukeskywalker,maul,maulcrimson,obiwan,yoda}`, and `bowcaster`, `dl44`, `ee3`); the heroes' body maps (luke 12 KTX2, darthvader 15, obiwan 6, anakin 17, darthmaul 18, countdooku 18, yoda 11, generalgrievous 12, palpatine 8, hansolo 5, leia 6, lando 7, chewbacca 25, bobafett 13, bossk 7) and 264 head maps; the heroes' clips.
+
+## Costs measured (03:10 UTC)
+
+Luke's six maps (`luke_rotj_01`: body and vest, each colour, normal, ORM), as the bucket holds them and after the site's pipeline (`basisu -unpack`, then `sharp` WebP at quality 82 for colour and 80 for the rest, `scripts/ktx2.mjs`'s `encodeImage` for a UASTC normal):
+
+| mix | bytes |
+| --- | --- |
+| the game's six KTX2 at 2048 | 19.1 MB |
+| all six as WebP at 1024 | 0.97 MB |
+| all six as WebP at 512 | 0.25 MB |
+| the spec's "high" (colour 1024 WebP, ORM 512 WebP, normal 1024 **KTX2**) | 2.4 MB, of which the two KTX2 normals are 1.9 MB |
+| colour 1024 WebP, ORM 512 WebP, normal 1024 **WebP** | 0.97 MB |
+| "mid" (colour 1024, ORM 512, normal 512, all WebP) | 0.52 MB |
+| "low" (colour 512, the rest 256, all WebP) | 0.15 MB |
+
+So a KTX2 normal is ten times the WebP's bytes at the same size, and `scripts/ktx2.mjs`'s `verdict` (bytes within 1.25×) will keep normals as WebP below ultra. A hero's textures at high are about 1 MB; with his LOD2 mesh (0.36 MB) a hero is about 1.4 MB, a trooper (LOD2 0.5 MB, four maps) about 1.3 MB.
+
+The clips (four of Luke's, 106 to 118 KB raw each, 109 channels, 28 to 45 of them constant):
+
+| treatment | bytes per clip |
+| --- | --- |
+| raw, as uploaded | 110 KB |
+| meshopt only | 64 KB |
+| constant channels dropped, resampled, meshopt | 46 KB |
+
+So a hero's useful set (about 50 clips: twelve strikes and their returns, blocks, staggers, dodges, dash, jump attack, Force, defeat, eight-way locomotion) is about 2.3 MB and must load with the hero, not the world; the generic humanoid set is held under 3 MB by the same treatment plus 15 fps on idles. Dropping the camera, trajectory and reference channels nothing in the site reads is still to be measured (phase 2, task 6).
