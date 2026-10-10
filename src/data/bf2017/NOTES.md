@@ -30,3 +30,16 @@ Battle Points are a logic graph too (`Prefabs/GameplaySupply/PF_Gameplay_BattleP
 - Weapon names are the strings `ID_W_<id>`; class names `ID_C_<CLASS>_TROOPER` or `ID_C_<CLASS>` (the Specialist has neither: its name is empty); hero names `ID_CHAR_<HERO>`. Ability and star card names follow no key the data shows and are left out.
 - Vader’s armour levels read 850, 875, 900, 950 (`Affector_Health_DarthVader_VaderArmor1..4`).
 - A mount’s own health is 1 (`WSMountHealthComponentData`): its rider takes the hits.
+
+## `maps/sb_endor.stages.json`
+
+Endor’s space level (`Levels/Space/SB_Endor_01`) says its Starfighter Assault plainly: `SpaceBattle_Gameplay`’s `SpaceBattleObjectiveListEntityData` lists the phases in order (`Phase 1 - Corvettes`, `Phase 2 - Mines`, `Phase 3 - MC80`, then an empty `Intermission`), each with its objectives by name, the attacker (`Team2`, the Empire) and the defender (`Team1`, the Rebels), and its side objectives (the TIE bomber flights). The map row keeps it as `spaceBattle`. What the hand file adds:
+
+- **Five stages, from three phases**: the MC80’s phase is three in the game’s strings (`…_PHASE_3` the top, `…_PHASE_3B` from beneath, `…_PHASE_3C` the rear engines), so the stages are `corvettes`, `mines`, `top`, `beneath`, `engines`, the last breaking the MC80 up.
+- **corvettes**: `CR90_A`, `_B`, `_C` are the three `PF_CorvetteCR90_01` in `SpaceBattle_SecondaryObjective_Cruisers` (`:69`, `:377`, `:875`), in the layer’s order; each sinks its corvette.
+- **mines**: the six `PF_Endor_SpaceBattles_Transmitter_Objective` in `SpaceBattle_ScriptedEvents` (named `REBEL MINE` in the prefab) take `Destroy Mine A` to `F` in the layer’s order: a guess.
+- **top, beneath, engines**: the MC80 target prefabs (`Objectives/PF_SpaceBattles_MC80_target_*`) each hold one part of the MC80 the mode’s sub-level places (`TL01` the large nodule 01, `TL02` 02, `TR01` 04, `TR02` 03, `bottom_front` 05, `bottom_left` 06, `bottom_right` the nodule hangar, the final stage’s engines the engine target collision); `MC80 A1` to `A4` and `B1` to `B3` take them in that order: a guess.
+- **gates and hp** (`opensAt` 0, 150, 270, 360, 440 s; hp 210, 240, 200, 170, 160): hand, so a battle the AI fights alone runs its ten minutes about as the galaxy’s battles do (`universe/battlePlan.js`’s `PLAN`).
+- **bombers**: four of the eleven TIE bomber flights, one a stage, three bombers each (the layer’s `Vehicle_Air_TieBomber` spawns stand in threes), at hand times.
+- **camera**: the level’s intro and outro cameras are Cinematics tracks (`Partition_*` `GroupTrackRootData`), not `CameraEntityData`; the hand camera is behind the Star Destroyer, looking at the MC80.
+- **fighters**: the level’s own classes as the galaxy’s kinds: X-wing, A-wing, Y-wing; TIE fighter, TIE interceptor, TIE bomber.

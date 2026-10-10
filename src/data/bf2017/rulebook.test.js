@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const DIR = import.meta.dirname;
-const FILES = ['teams', 'classes', 'heroes', 'reinforcements', 'vehicles', 'weapons', 'abilities', 'cards', 'ai', 'cameras', 'ui', 'strings', 'points', 'maps/hoth', 'maps/hoth.lighting', 'maps/hoth.stages'];
+const FILES = ['teams', 'classes', 'heroes', 'reinforcements', 'vehicles', 'weapons', 'abilities', 'cards', 'ai', 'cameras', 'ui', 'strings', 'points', 'maps/hoth', 'maps/hoth.lighting', 'maps/hoth.stages', 'maps/sb_endor', 'maps/sb_endor.stages'];
 const read = (name) => JSON.parse(readFileSync(join(DIR, `${name}.json`), 'utf8'));
 const rb = Object.fromEntries(FILES.map((f) => [f, read(f)]));
 const rows = (f) => rb[f].rows ?? rb[f];
@@ -31,7 +31,7 @@ function checkSources(json) {
 }
 
 // (copied from scripts/lib/bf2017-manifest.mjs's SEQUEL, with its matcher)
-const SEQUEL = ['kyloren', 'rey', 'finn', 'captainphasma', 'firstorder', 'starkiller', 'takodana', 'jakku', 'resurgent', 'xwing_t70', 'tiefighterfirstorder', 'tiefighterspecialforces', 'resistance', 'ep7', 'ep9', 'skytrooper', 'jump_cop', 'newera', 'kylo', 'phasma', 'bb8', 'bb9e', 'crait'];
+const SEQUEL = ['kyloren', 'rey', 'finn', 'captainphasma', 'firstorder', 'starkiller', 'takodana', 'jakku', 'resurgent', 'xwing_t70', 'tiefighterfirstorder', 'tiefighterspecialforces', 'resistance', 'ep7', 'ep9', 'skytrooper', 'jump_cop', 'newera', 'kylo', 'phasma', 'bb8', 'bb9e', 'crait', 'spacebear'];
 const TESTS = SEQUEL.map((s) => (s.length < 5 ? new RegExp(`(^|[_\\-.\\d])${s}($|[_\\-.\\d])`) : new RegExp(s.replace(/[_-]/g, '[_-]'))));
 const isSequel = (name) => name.toLowerCase().split('/').some((seg) => TESTS.some((re) => re.test(seg)));
 
@@ -49,6 +49,31 @@ describe('the Battlefront rulebooks', () => {
   it('a hand file says so', () => {
     expect(rb.points.source).toBe('hand');
     expect(rb['maps/hoth.stages'].source).toBe('hand');
+    expect(rb['maps/sb_endor.stages'].source).toBe('hand');
+  });
+
+  it('Endor’s Starfighter Assault follows the level’s own phases, on things the level places', () => {
+    const map = rows('maps/sb_endor');
+    const st = rb['maps/sb_endor.stages'];
+    expect(map.modes).toEqual(['starfighter']);
+    expect(st.level).toBe(map.level);
+    // (the stages in the game's phase order, each phase's objectives all bound, and no more)
+    const phases = map.spaceBattle.phases.filter((p) => p.objectives.length);
+    expect([...new Set(st.stages.map((s) => s.phase))]).toEqual(phases.map((p) => p.name));
+    for (const p of phases) expect(st.stages.filter((s) => s.phase === p.name).flatMap((s) => s.objectives.map((o) => o.id)).sort()).toEqual(p.objectives.map((o) => o.name).sort());
+    const prefabs = new Set(map.prefabs.map((p) => p.id));
+    const placed = new Set(map.placed.starfighter.map((p) => p.mesh));
+    const ships = new Set(st.ships.map((s) => s.id));
+    const bad = [];
+    for (const s of st.ships) if (!(s.prefab ? prefabs.has(s.prefab) : placed.has(s.placed))) bad.push(`ship ${s.id}`);
+    for (const stage of st.stages)
+      for (const o of stage.objectives) {
+        if (o.ship && !ships.has(o.ship)) bad.push(`${o.id}: ship ${o.ship}`);
+        if (o.placed && !placed.has(o.placed)) bad.push(`${o.id}: placed ${o.placed}`);
+        if (!o.ship && !o.placed && !prefabs.has(o.prefab)) bad.push(`${o.id}: prefab ${o.prefab}`);
+      }
+    for (const b of st.bombers) if (!map.spaceBattle.secondary.some((o) => o.name === b.id)) bad.push(`bombers ${b.id}`);
+    expect(bad).toEqual([]);
   });
 
   it('every stage names volumes, paths, prefabs and spawns the map has', () => {
