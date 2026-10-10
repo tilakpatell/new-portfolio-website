@@ -17,6 +17,7 @@
 import BOOK from '../../../data/bf2017/modes.json';
 import { MISSIONS } from './missions';
 import { systemById } from '../systems';
+import { STARFIGHTER as FLOWN } from './missions/starfighterMaps';
 
 const ICONS = '/battlefront/icons/UI/SVG';
 const name = (id, own) => BOOK.names?.modes?.[id]?.text ?? own;
@@ -31,8 +32,10 @@ export const MODES = [
 ];
 const BY_ID = Object.fromEntries(MODES.map((m) => [m.id, m]));
 
-// (the lanes that land these fill them: one row each, flipped here alone)
-export const STARFIGHTER = {};
+// (where a world's Starfighter Assault is flown: lane A's maps; and the
+// Battlefront game's own route for a Galactic Assault, flipped here alone
+// when lane 5's lands)
+export const STARFIGHTER = Object.fromEntries(Object.keys(FLOWN).map((sys) => [sys, `/galaxy/${sys}?battle=starfighter`]));
 export const BATTLEFRONT = {};
 
 // a mission's kind → the mode it is

@@ -60,6 +60,12 @@ Levels/MP/Hoth_01/FantasyBattle_Shapes	LayerData	data/Levels/MP/Hoth_01/FantasyB
 Levels/MP/Hoth_01/Hoth_01	LevelData	data/Levels/MP/Hoth_01/Hoth_01.json	866841
 Levels/MP/Hoth_01/Lighting/Prefabs/PF_LightCeiling_03_Master	SpatialPrefabBlueprint	data/Levels/MP/Hoth_01/Lighting/Prefabs/PF_LightCeiling_03_Master.json	2093
 Levels/MP/Hoth_01/Lighting/Prefabs/PF_LightWall_01_Master	SpatialPrefabBlueprint	data/Levels/MP/Hoth_01/Lighting/Prefabs/PF_LightWall_01_Master.json	2064
+Levels/Space/SB_Endor_01/SB_Endor_01	LevelData	data/Levels/Space/SB_Endor_01/SB_Endor_01.json	45776
+Levels/Space/SB_Endor_01/SpaceBattle	SubWorldData	data/Levels/Space/SB_Endor_01/SpaceBattle.json	571519
+Levels/Space/SB_Endor_01/SpaceBattle_Gameplay	LayerData	data/Levels/Space/SB_Endor_01/SpaceBattle_Gameplay.json	125569
+Levels/Space/SB_Endor_01/SpaceBattle_Logic	LayerData	data/Levels/Space/SB_Endor_01/SpaceBattle_Logic.json	28203
+Levels/Space/SB_Endor_01/SpaceBattle_ScriptedEvents	LayerData	data/Levels/Space/SB_Endor_01/SpaceBattle_ScriptedEvents.json	156926
+Levels/Space/SB_Endor_01/SpaceBattle_SecondaryObjective_Cruisers	LayerData	data/Levels/Space/SB_Endor_01/SpaceBattle_SecondaryObjective_Cruisers.json	471471
 UI/Customize/Screens/SpawnOverlayScreen	UIWidgetBlueprint	data/UI/Customize/Screens/SpawnOverlayScreen.json	54772
 UI/InGame/Hud/Weapons/Widgets/WeaponHeat/WeaponHeatBar	UIWidgetBlueprint	data/UI/InGame/Hud/Weapons/Widgets/WeaponHeat/WeaponHeatBar.json	42447
 UI/InGame/Hud/Weapons/Widgets/WeaponHeat/WeaponHeatProgress	UIWidgetBlueprint	data/UI/InGame/Hud/Weapons/Widgets/WeaponHeat/WeaponHeatProgress.json	48581

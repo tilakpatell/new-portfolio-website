@@ -6,6 +6,7 @@ import { audioContext } from '../lib/audio';
 import { FILMS, SYSTEMS, eraById, eraOf, filmLabel, parseSystem, systemById, yearLabel } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
 import { modesFor } from '../components/galaxy/surface/modes';
+import { starfighterAt } from '../components/galaxy/surface/missions/starfighterMaps';
 import { CRAWLS } from '../components/galaxy/crawls';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/mission.css';
@@ -77,6 +78,12 @@ export default function GalaxyMission() {
                   {a.go ?? 'Play it now'}: {a.title} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
                 </Link>
               ))}
+              {/* the game's Starfighter Assault over this world, from its space level (the landing's mode menu has the same card: surface/modes.js) */}
+              {starfighterAt(sys.id) && (
+                <Link to={`/galaxy/${sys.id}?battle=starfighter`} className="btn btn-primary">
+                  Fly it now: Starfighter Assault <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              )}
               {story && (
                 <button
                   type="button"

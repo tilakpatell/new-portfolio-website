@@ -31,9 +31,10 @@ describe('the modes on a world', () => {
     // (no space level over Hoth)
     expect(card('hoth', 'starfighter').state).toBe('none');
   });
-  it('Endor: the game’s space battle is there, so Starfighter Assault is coming, and live once its row is', () => {
-    expect(card('endor', 'starfighter').state).toBe('soon');
-    expect(card('endor', 'starfighter', { starfighter: { endor: '/galaxy/endor?battle=starfighter' } })).toMatchObject({ state: 'live', to: '/galaxy/endor?battle=starfighter' });
+  it('Starfighter Assault: live over Endor (lane A’s), coming over Kamino, whose space level the game has', () => {
+    expect(card('endor', 'starfighter')).toMatchObject({ state: 'live', to: '/galaxy/endor?battle=starfighter' });
+    expect(card('kamino', 'starfighter').state).toBe('soon');
+    expect(card('kamino', 'starfighter', { starfighter: { kamino: '/galaxy/kamino?battle=starfighter' } })).toMatchObject({ state: 'live', to: '/galaxy/kamino?battle=starfighter' });
   });
   it('a world the game never had: nothing but the site’s own', () => {
     expect(card('dagobah', 'galacticAssault').state).toBe('none');

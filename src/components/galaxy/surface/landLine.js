@@ -5,8 +5,10 @@
 //
 // landLine(sys) → 'Galactic Assault · Story' | ''
 
+import { starfighterAt } from './missions/starfighterMaps';
+
 const isAssault = (to) => /[?&]mission=assault\b/.test(to ?? '');
 const assaulted = (g) => (g?.status === 'live' && isAssault(g.to)) || Boolean(g?.also?.some((a) => isAssault(a.to)));
 const storied = (g) => g?.status === 'live' && Boolean(g.to) && !isAssault(g.to);
 
-export const landLine = (sys) => [assaulted(sys?.game) ? 'Galactic Assault' : null, storied(sys?.game) ? 'Story' : null].filter(Boolean).join(' · ');
+export const landLine = (sys) => [assaulted(sys?.game) ? 'Galactic Assault' : null, sys && starfighterAt(sys.id) ? 'Starfighter Assault' : null, storied(sys?.game) ? 'Story' : null].filter(Boolean).join(' · ');
