@@ -123,7 +123,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
 | 1 | | | |
 | L | | | |
-| G | lane G session | `claude/bf2017-g-light` | (the PR) |
+| G | lane G session | `claude/bf2017-g-light` | #833 |
 | K | | | |
 | X | | | |
 | S | | | |
