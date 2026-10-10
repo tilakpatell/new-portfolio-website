@@ -38,6 +38,10 @@ describe('the worlds you can land on', () => {
     describe(id, () => {
       const site = siteOf(id);
 
+      it('wears the game’s own maps for its props’ trims and its ground’s grain (the owner’s rule: every texture in a Star Wars world is the game’s)', () => {
+        expect(site.look?.scanned).toBe('bf2017');
+      });
+
       it('has its sky, its light, its land and where to come down', () => {
         expect(site.place, 'place').toBeTruthy();
         expect(site.line, 'line').toBeTruthy();

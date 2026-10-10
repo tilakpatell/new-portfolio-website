@@ -36,6 +36,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { candidatesOf, colourIndex, countFamilies, crewRecipes, mapsWanted, recipesOf } from './lib/bf2017-recipes.mjs';
 import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
+import { wantedTransfer, withTransfer } from './lib/ktx2-colour.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(ROOT, 'lab/assets/bf2017');
@@ -94,7 +95,8 @@ async function writeSizes(buf, kind, dir, slug) {
     row[tier] = size;
     if (written.has(size)) continue;
     written.add(size);
-    await writeFile(join(dir, `${slug}.${size}.ktx2`), dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1)));
+    // (stamped with its colour space by name: an emissive map sRGB, a detail normal or mask linear; ktx2-colour.mjs)
+    await writeFile(join(dir, `${slug}.${size}.ktx2`), withTransfer(dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1)), wantedTransfer(slug) ?? 'linear'));
   }
   return row;
 }

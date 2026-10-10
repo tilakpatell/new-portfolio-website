@@ -10,7 +10,7 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 
 | Lane | What | Needs first | Session | Branch | Merged |
 |---|---|---|---|---|---|
-| colour | `variations.json` per pack from the MVDBs and object variations; the level loader applies tints and texture overrides through Q1's game material; the djb2-xor dictionary (`shaderParams.json`); the material audit per world; the vehicles' hand table retired | nothing (E0's slot: `level.json.parts.variations`) | `session_01U5D9w4boHLP4YqctWhTfdF` | `claude/bf2017-colour` | |
+| colour | `variations.json` per pack from the MVDBs and object variations; the level loader applies tints and texture overrides through Q1's game material; the djb2-xor dictionary (`shaderParams.json`); the material audit per world; the vehicles' hand table retired | nothing (E0's slot: `level.json.parts.variations`) | `session_01U5D9w4boHLP4YqctWhTfdF` | `claude/bf2017-colour` (no branch on `origin` by 22:00 UTC; task 1, the dictionary, landed with the colours PR below) | |
 | bots | the AI system's targeting and squad engagement, the cover queries and scores, the difficulties, the Skirmish bots with abilities, the names, the squadron behaviour trees, the creatures' minds, the walkers' gunners | nothing | `session_01CKvDqG9j2gHKnYVKvnDkUP` | `claude/bf2017-bots` | |
 | screens | the front-end, loading, spawn, in-game menu, end-of-round, kill screen and scoreboard from the widget trees; the vector shapes; `Screen.jsx`; the route through them; the galaxy's cards named as the game's | nothing (lane 5 and M live: merge main first) | `session_01NH9xQCGQhfdoG41VpCneb7` | `claude/bf2017-screens` | |
 | fighters | `air.json`; the game's flight model; the game's fighters imported; the mission on the rulebook and the squadron minds; Fondor and the droid battleship as areas; the mode's HUD | nothing (bots' `squadron.js` and the screens' `Screen.jsx` taken when present) | `session_01JqYzKMGHdHxUJHnuF1M3p9` | `claude/bf2017-fighters` | |
@@ -21,6 +21,30 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 | U | FSR1/TAAU, `BatchedMesh`, bundles, occlusion (its own plan) | L (merged) | `session_013FthywQcjzJsAxTWaP7ih7` | `claude/fidelity-u-headroom` | |
 
 All nine sessions started 2026-10-10 20:15 UTC from `claude/bf2017-accuracy`; lane U's prompt leaves its PR for the owner (the classifier refused the self-merge wording once). Seams (the spec's §5): E0 keeps the `variations` slot; lane 5 and the screens and picture lanes share `src/components/battlefront/` (merge `origin/main` before the PR, keep both sides); lane M's fonts PR may land under the screens lane; lane S's saber engine is not touched by the bots lane. The desktop's part (§4): the per-instance variation hashes into the maps' `.bin`; the UI bitmaps and the sound stay lane D's.
+
+## The colours, everywhere (2026-10-10, night; `claude/bf2017-colours-everywhere`, session_01282C5tuJnxtHN4SCrT1kct)
+
+`docs/superpowers/specs/2026-10-10-bf2017-colours-everywhere-design.md` and its plan. The owner asked that the drop's textures reach the pipeline with every colour correct and be applied to every Star Wars world. The session had no bucket key (`SUPABASE_URL`, `SUPA_KEY` absent from its environment), so it measured what `main` holds, fixed what needs no network, and left the bucket-bound steps as commands (the plan's tasks 5 to 8).
+
+**What was found.** A KTX2 says its colour space in its data format descriptor and three's KTX2Loader believes it. Of the 312 colour maps in the three packs on `main` (hoth, sb_endor, sb_kamino), **180 said linear**: every UASTC-encoded `_cs` and `_c` map, where the game stores BC7_SRGB (the ETC1S ones, 132, said sRGB). The level loader's `bindSlot` had been forcing sRGB on the GLB's two colour slots for that reason; a recipe's emissive map and the crew's maps (`crewSurface.js`) went by the file. The 588 data maps all said linear; seven swatches with no suffix are unknown until `textures.jsonl` says.
+
+**Done.**
+- `scripts/lib/ktx2-colour.mjs` (read and stamp the transfer function, DICE's suffixes to colour or data, the glTF slot's space) and `scripts/bf2017-colour-check.mjs` (`--check` the gate, `--fix` in place, `--formats` the game's word). The 180 files stamped sRGB in this PR (a byte each; the mirror manifest lists none of them).
+- Every writer stamps: `bf2017-level.mjs`, `bf2017-recipes.mjs`, `bf2017-import.mjs`'s `nativeMaps` (by slot).
+- The loaders' belt: `families.js`'s `COLOUR_MAP_KEYS` (the emissive), `levelGltf.js`'s `asColour` in `recipeMaps` (the crew's path too). The breakup overlay stays as the file says (its neutral grey is 0.5 read linear).
+- Every landable world wears the game's roles: `sites/index.js`'s `siteOf` defaults `look.scanned` to `'bf2017'` (a site may say `'cc0'`); pinned for all seventeen in `sites.test.js`; `galaxy-check.mjs` prints `scans cc0 n game n` per surface and `SCANS=game` fails a cc0 fetch. Shots: `docs/superpowers/evidence/bf2017-colour/`.
+- The colour lane's task 1: `scripts/lib/bf2017-shader-names.mjs` (`hashName` lower-cased, `hashExact` as written: `Vec` is `0b87fa95` as written and `0b877b75` lower-cased, the design's figure and the plan's; `resolveDepot` leaves an unknown hash as the hash) and the CLI `scripts/bf2017-shader-names.mjs`, which reads the records fetched ahead and writes `src/data/bf2017/shaderParams.json`.
+- The decision `docs/decisions/2026-10-10-game-maps-say-their-colour-space.md`; the assets page's "Colour space".
+
+**Left (needs the bucket; the plan's tasks 5 to 8).** `--formats` over `textures.jsonl` (the seven unknowns; the rule against the game's word); `--crew all` and a publish so the crew's maps carry the stamp; the dictionary filled (`shaderParams.json`, the depots' resolved share); the variation chain as the colour lane planned it. Put `SUPABASE_URL` and `SUPA_KEY` in the cloud environment's secrets and a session finishes them without the desktop.
+
+### Checking it
+
+```
+node scripts/bf2017-colour-check.mjs --check                 # every pack's map says what it is; the roles whole
+npx vitest run scripts/lib/ktx2-colour.test.mjs scripts/lib/bf2017-shader-names.test.mjs src/components/galaxy/surface/level/levelGltf.test.js src/components/galaxy/surface/sites/sites.test.js
+SCANS=game QUALITY=high OUT=/tmp/shots node scripts/galaxy-check.mjs surface tatooine,endor,naboo   # no cc0 fetch on a Star Wars world
+```
 
 ## The fifth design: every object in the drop, used (2026-10-10, night)
 

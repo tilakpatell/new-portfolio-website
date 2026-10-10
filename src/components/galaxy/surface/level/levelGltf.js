@@ -20,6 +20,7 @@
 //   mapKeys: the recipe maps the tier draws (gameMaterial.js's TIER_MAPS), the rest never fetched
 
 import { SRGBColorSpace } from 'three';
+import { COLOUR_MAP_KEYS } from '../../../../lib/three/surface/families.js';
 import { gltfLoader, ktx2Loader } from '../../../../lib/three/gltf.js';
 import { assetUrl, withFallback } from '../../../../lib/assetBase.js';
 import { packUrl, splitTextures, tierTexture } from './levelPack.js';
@@ -86,6 +87,16 @@ const MAP_KEYS = [
 // the slots whose texture is a colour, in sRGB (the rest are data: normals, roughness and metal)
 export const COLOUR_SLOTS = new Set(['map', 'emissiveMap']);
 
+// a colour map read as sRGB whatever its file says (bindSlot's rule, for a
+// recipe's maps too: the crew's and a pack's emissive maps come this way)
+export function asColour(tex, colour) {
+  if (colour && tex?.isTexture && tex.colorSpace !== SRGBColorSpace) {
+    tex.colorSpace = SRGBColorSpace;
+    tex.needsUpdate = true;
+  }
+  return tex;
+}
+
 // a pack texture bound to a material's slot, the colour ones read as sRGB
 export function bindSlot(mat, slot, tex) {
   if (COLOUR_SLOTS.has(slot) && tex.colorSpace !== SRGBColorSpace) {
@@ -112,7 +123,7 @@ export async function recipeMaps(recipe, { maps = {}, texture, keys = null }) {
       if (typeof name !== 'string') return;
       const path = maps[name];
       if (Array.isArray(path)) out.detailSlices = await Promise.all(path.map((p) => texture(p)));
-      else out[key] = path ? await texture(path) : null;
+      else out[key] = path ? asColour(await texture(path), COLOUR_MAP_KEYS.has(key)) : null;
     }),
   );
   return out;

@@ -43,6 +43,7 @@ import { glbJson, imagePath, imageUris, inBucket } from './lib/bf2017-paths.mjs'
 import { buildPack, cropHeights, fillHoles, glbTriangles, heightsLayer, lodFile, mergeHeights, readMap, rewriteImageUris, terrainFrame } from './lib/bf2017-level.mjs';
 import { LOD, capIndex, texSizeFor } from '../src/lib/level/lod.js';
 import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
+import { wantedTransfer, withTransfer } from './lib/ktx2-colour.mjs';
 import { encodePng16 } from './lib/png16.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -188,7 +189,9 @@ async function writeTextures(env, uris, radiusOf, { out, tiers, dry }) {
       const size = Math.min(texSizeFor(radiusOf.get(uri) ?? 1, tier, /__(normal|orm)/.test(uri)), info.width);
       sizes[slug][tier] = size;
       if (!written.has(size)) {
-        const k = dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1));
+        // (and told what it is: a colour map sRGB, a data map linear, whatever the encode wrote; ktx2-colour.mjs)
+        const want = wantedTransfer(uri);
+        const k = withTransfer(dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1)), want ?? 'linear');
         written.set(size, k.length);
         if (!dry) {
           await mkdir(join(out, 'tex'), { recursive: true });

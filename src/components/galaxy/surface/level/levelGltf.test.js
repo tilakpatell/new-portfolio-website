@@ -1,7 +1,7 @@
 import { Document, NodeIO } from '@gltf-transform/core';
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { bindSlot, createLevelLoader, matchRecipes, recipeMaps, recipesIndex } from './levelGltf.js';
+import { asColour, bindSlot, createLevelLoader, matchRecipes, recipeMaps, recipesIndex } from './levelGltf.js';
 
 // a GLB with one mesh of two primitives, their materials naming the game's
 // shaders in their extras as the export writes them
@@ -50,6 +50,26 @@ describe('recipeMaps', () => {
     expect(got.aoSlice.path).toBe('tex/t_aosl.ktx2');
     expect(got.weathering).toBeNull();
     expect('grunge' in got).toBe(false);
+  });
+
+  it('reads a recipe’s emissive map as sRGB whatever its file said, and leaves a data map as it came', async () => {
+    const texture = vi.fn(async (path) => Object.assign(new THREE.Texture(), { path }));
+    const recipe = { maps: { emissive: 'T_E', detail: 'T_D' } };
+    const maps = { T_E: 'tex/t_x_e.ktx2', T_D: 'tex/t_x_ns.ktx2' };
+    const got = await recipeMaps(recipe, { maps, texture });
+    expect(got.emissive.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(got.detail.colorSpace).toBe(THREE.NoColorSpace);
+  });
+});
+
+describe('asColour', () => {
+  it('turns a colour map to sRGB once, and passes a data map, a null or a non-texture through', () => {
+    const t = new THREE.Texture();
+    expect(asColour(t, true)).toBe(t);
+    expect(t.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(asColour(new THREE.Texture(), false).colorSpace).toBe(THREE.NoColorSpace);
+    expect(asColour(null, true)).toBeNull();
+    expect(asColour({ path: 'x' }, true)).toEqual({ path: 'x' });
   });
 });
 
