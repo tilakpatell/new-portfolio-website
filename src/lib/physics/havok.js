@@ -24,8 +24,9 @@
 //   cellBodies(instances, collidersByMesh) → desc[] (instances: [{ mesh,
 //     position, quaternion, scale }])
 //   budgetCell(descs, { colliders, triangles }) → { kept, dropped: [{ mesh,
-//     hulls, triangles }] } (the lightest hulls go first, by their box's
-//     volume; a trimesh only once every hull has gone)
+//     hulls, triangles }] } (first a trimesh whose instance has hulls too,
+//     its detail; then the lightest hulls, by their box's volume; a trimesh
+//     that is all its instance has only once every hull has gone)
 //   solidsOf(shapes, { position, quaternion, scale }) → [{ type: 'box', x,
 //     z, hw, hd, yaw, top, base } | { type: 'circle', x, z, r, top, base }]
 //     (each hull's footprint as a box turned by the instance's yaw; a
@@ -182,15 +183,20 @@ export function budgetCell(descs, { colliders = Infinity, triangles = Infinity }
   const items = [];
   let count = 0;
   let tris = 0;
-  for (const d of descs)
+  for (const d of descs) {
+    // (a trimesh on an instance that has hulls too is its detail: the game's
+    // static models mostly carry both, over the same thing)
+    const solid = d.colliders.some((c) => c.shape !== 'trimesh');
     for (const c of d.colliders) {
-      items.push({ d, c });
+      items.push({ d, c, rank: c.shape !== 'trimesh' ? 1 : solid ? 0 : 2 });
       count++;
       tris += c.triangles ?? 0;
     }
+  }
   if (count <= colliders && tris <= triangles) return { kept: descs, dropped: [] };
-  // (hulls and the small round ones by their weight, then the trimeshes by theirs)
-  items.sort((x, y) => (x.c.shape === 'trimesh') - (y.c.shape === 'trimesh') || (x.c.weight ?? 0) - (y.c.weight ?? 0));
+  // (the detail first, then the hulls and the small round ones, then the
+  // trimeshes that are all an instance has; the lightest of each first)
+  items.sort((x, y) => x.rank - y.rank || (x.c.weight ?? 0) - (y.c.weight ?? 0));
   const gone = new Set();
   const drop = (it) => {
     gone.add(it);
