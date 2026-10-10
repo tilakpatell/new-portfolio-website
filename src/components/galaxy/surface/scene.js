@@ -124,7 +124,7 @@ import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
 import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, pushVelocity } from './combatRules';
 import { DUEL } from '../../../lib/combat/duel';
-import { met, swingingOf } from './duellists';
+import { incomingAt, met, swingingOf } from './duellists';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
 import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
@@ -2234,7 +2234,7 @@ export async function create(canvas, ctx) {
     // (a press that went down and up inside one frame, a quick click, still raises it: saber.js holds it up for the parry window)
     const tapped = state.blockAt != null && state.t - state.blockAt <= dt;
     const blocking = Boolean(state.keys.block || state.buttons.block || tapped) && state.phase === 'walk' && !broken && !state.dodge && state.t >= state.reelUntil;
-    sab.block(blocking);
+    sab.block(blocking, blocking ? incomingAt(activity.targets, p.st) : null); // (on the side the nearest duellist's cut comes in on)
     if (blocking) state.saberAt = state.t;
     // F held: the heavy stroke winding up; let go: the stroke
     if (state.pressAt != null && !sab.busy) sab.setCharge(Math.min(1, (state.t - state.pressAt) / HEAVY.hold));
@@ -2813,7 +2813,7 @@ export async function create(canvas, ctx) {
           if (!lying && !(mine && emoteShown)) pp.gp.set(dt, { aim: aimK, look: mine ? state.aim : mateFight.aim, dir, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
           pp.saber?.update(dt, state.t, { forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP, me: st, targets: mine ? activity.targets : [], hit: saberHit, eye: camera.position });
           if (!mine && mateFight.shoot && !lying) mateShot(pp);
-        }
+        } else pp.saber?.dark(); // (put away to ride: no update reaches it, so its light goes)
       }
     });
   }
@@ -3109,7 +3109,7 @@ export async function create(canvas, ctx) {
       questEvent({ type: 'tick', dt });
       questEvent({ type: 'at', x: p.x, z: p.z, riding: state.riding?.kind ?? null });
     }
-    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor, swinging: swingingOf(me().saber, state.t) })) questEvent(ev);
+    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor, swinging: swingingOf(me().saber, state.t, me().st.yaw), eye: camera.position })) questEvent(ev);
     // your blade crossing a duellist's as either strokes: sparks and the clash
     if (state.phase === 'walk')
       for (const c of activity.clashes(me().saber, state.t)) {
@@ -3277,7 +3277,7 @@ export async function create(canvas, ctx) {
     const out = state.phase === 'walk' || state.phase === 'ride' || state.phase === 'out';
     const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging), stroke: p.saber?.swinging?.name ?? null } : null, emote: p === me() ? emotePacket(state.emote, state.t) : null, motion: p.motion ?? null });
     net.walk?.(out ? { world: site.id, kind: shipKind, lead: w(me()), mate: w(other()), ride: state.riding?.kind ?? null } : null);
-    peers.update(net, site.id, dt);
+    peers.update(net, site.id, dt, camera.position);
   }
 
   // lightning (Kamino's storms): a flash across the sky now and
