@@ -365,7 +365,7 @@ export const SITES = {
       hazeColor: '#818d97',
       below: '#3a4650',
       suns: [{ az: 0.8, el: 0.6, color: '#c8d4e0', size: 0.01, glow: 0.3 }],
-      clouds: { cover: 0.97, color: '#68747f', shade: '#2e3842', scale: 0.8, speed: 0.03, sharp: 0.8 },
+      clouds: { cover: 0.97, color: '#68747f', shade: '#2e3842', scale: 0.8, speed: 0.03, sharp: 0.8, game: true },
     },
     fog: { color: '#6c7882', density: 0.0034 },
     light: { sun: 1.3, sky: '#9aa8b8', ground: '#3a4650', ambient: 1.15 },

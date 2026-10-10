@@ -18,7 +18,7 @@ export const SITE = {
     haze: 0.9,
     hazeColor: '#ffc89c',
     suns: [{ az: -2.3, el: 0.13, color: '#ffd2a0', size: 0.03, glow: 1.9 }],
-    clouds: { cover: 0.5, color: '#ffd6bc', shade: '#c4808a', scale: 0.55, speed: 0.003 },
+    clouds: { cover: 0.5, color: '#ffd6bc', shade: '#c4808a', scale: 0.55, speed: 0.003, game: { n: 16, el: [-0.12, 0.08] } },
     bodies: [
       { az: 1.1, el: 0.42, size: 0.03, color: '#efe0d4', color2: '#cdb8a8', bands: 0 },
       { az: 1.45, el: 0.3, size: 0.012, color: '#e6d6ca' },

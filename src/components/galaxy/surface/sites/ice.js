@@ -56,7 +56,7 @@ export const SITES = {
       haze: 0.95,
       hazeColor: '#eef3f9',
       suns: [{ az: 2.4, el: 0.2, color: '#fff4e6', size: 0.014, glow: 1.0 }],
-      clouds: { cover: 0.42, color: '#ffffff', shade: '#b4c2d6', scale: 0.6, speed: 0.006 },
+      clouds: { cover: 0.42, color: '#ffffff', shade: '#b4c2d6', scale: 0.6, speed: 0.006, game: true },
       // Hoth's three moons, pale in the day
       bodies: [
         { az: -0.62, el: 0.24, size: 0.034, color: '#e6ebf2', color2: '#c4ccd8', bands: 0 },

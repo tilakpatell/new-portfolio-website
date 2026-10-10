@@ -107,7 +107,8 @@ import { createGroundMap } from '../../../lib/three/groundmap';
 import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
-import { createPlacer } from './placer';
+import { createPlacer, loadGlb } from './placer';
+import { createGameClouds } from './gameClouds';
 import { createLevel, levelGround } from './level';
 import { anyFigure, createActors, modelFigure } from './actors';
 import { RIDES as GALAXY_RIDES } from './rides';
@@ -290,6 +291,9 @@ export async function create(canvas, ctx) {
   // site says: the fog is the surface's, so they go on it)
   skyFog.look({ halo: siteLook.halo, below: typeof site.look?.fogBelow === 'number' ? siteLook.fogBelow : null });
   scene.add(sky.mesh);
+  // (the game's cloud cards, on high and ultra where the site's clouds ask for them: gameClouds.js)
+  const gameClouds = createGameClouds(site, { level, models, load: loadGlb });
+  if (gameClouds) scene.add(gameClouds.group);
   const sunDir = sky.sunDirs[0] ?? new V(0.3, 0.8, 0.4).normalize();
   const sun = new THREE.DirectionalLight(site.sky.suns?.[0]?.color ?? '#ffffff', site.light.sun ?? 3);
   sun.castShadow = !small;
@@ -1644,6 +1648,7 @@ export async function create(canvas, ctx) {
     skyFog.indoors(Boolean(z));
     scene.environmentIntensity = z ? 0.15 : outdoors.env;
     sky.mesh.visible = !z;
+    if (gameClouds) gameClouds.group.visible = !z;
     if (weather) weather.group.visible = !z;
     if (water) water.mesh.visible = !z;
     if (water?.spray) water.spray.visible = !z;
@@ -3423,6 +3428,7 @@ export async function create(canvas, ctx) {
     sun.position.copy(snapped).addScaledVector(sunDir, 300);
     sun.target.position.copy(snapped);
     sky.update(camera, t, flash.k);
+    gameClouds?.update(camera, t);
     // (whatever's come into the world since, fogged in the sky's colour before it's drawn)
     skyFog.scene(scene);
     water?.update(t, camera);
@@ -3540,7 +3546,7 @@ export async function create(canvas, ctx) {
         area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
         sun,
         // (what moves isn't baked: the folk and beasts about, the speeders)
-        skip: [sky.mesh, water?.mesh, water?.glow, water?.spray, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
+        skip: [sky.mesh, gameClouds?.group, water?.mesh, water?.glow, water?.spray, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
         movers: [...people.map((p) => ({ object: p.holder, size: [0.8, 0.8] })), ...life.actors.filter((a) => a.holder).map((a) => ({ object: a.holder, size: [1, 1] })), ...rides.map((x) => ({ object: x.holder, size: [1.4, 2.6] }))],
         shade: site.light.shade ?? site.light.ground ?? '#3a3028',
         height: world.heightAt,
@@ -4015,6 +4021,7 @@ export async function create(canvas, ctx) {
       water?.dispose();
       lava?.dispose();
       sky.dispose();
+      gameClouds?.dispose();
       wearScanSet('cc0');
       marks.dispose();
       puff.dispose();
