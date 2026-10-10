@@ -7,7 +7,9 @@
 // are the same either way and nothing drawn changes. The first remote failure
 // (the bucket down, or blocked by a network or an extension) sends that load
 // and every later one to the local file for the rest of the visit, so a
-// visitor who can't reach the bucket sees the site as it was.
+// visitor who can't reach the bucket sees the site as it was. A 404 on one
+// hashed URL (the manifest and the bucket out of step) sends that file alone
+// to the site; an abort (its world left) is passed on, never a fallback.
 //
 // assetUrl(path, { base, manifest }) → the URL to fetch
 // withFallback(load, { base, manifest, wait }) → (path) => load(remote), else load(path) once
@@ -52,8 +54,12 @@ export function withFallback(load, opts) {
         answered = true;
         return got;
       })
-      .catch(() => {
-        markDown();
+      .catch((e) => {
+        // (a world left mid-load: stopped, not failed, and nothing local asked)
+        if (e?.name === 'AbortError') throw e;
+        // (a file the bucket lacks, a 404 on its hashed URL, is this file's
+        // miss, not the bucket down: the site's copy, and the bucket stays on)
+        if (!e?.missing) markDown();
         return load(path);
       });
   };

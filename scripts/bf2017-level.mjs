@@ -41,13 +41,15 @@ const CACHE = join(ROOT, 'lab', 'assets', 'bf2017');
 const PERMISSION = 'From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.';
 const GAME = 'https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2';
 
+// (what a fetch that worked says: anything else is not there yet, or the pool gave up)
+const HAVE = new Set(['fetched', 'kept']);
 const mb = (n) => `${(n / 1048576).toFixed(2)} MB`;
 const lastOf = (p) => p.split('/').pop();
 
 async function need(env, path, what) {
   const r = await getObject(env, CACHE, path);
-  if (r.state === 'missing') {
-    console.error(`${path}: not in the bucket yet (${what}). The uploader sends in passes: try again in ten minutes.`);
+  if (!HAVE.has(r.state)) {
+    console.error(`${path}: not in the bucket yet, or not fetched${r.error ? ` (${r.error})` : ''} (${what}). The uploader sends in passes: try again in ten minutes.`);
     process.exit(3);
   }
   return readFile(r.file);
@@ -167,7 +169,7 @@ async function writeTextures(env, uris, radiusOf, { out, tiers, dry }) {
   await pool(uris, 8, async (uri) => {
     const slug = slugs.get(uri);
     const r = await getObject(env, CACHE, uri);
-    if (r.state === 'missing') {
+    if (!HAVE.has(r.state)) {
       missing.push(uri);
       return;
     }
@@ -233,7 +235,7 @@ async function main(args) {
     const path = inBucket(file);
     if (!files.has(path)) {
       const r = await getObject(env, CACHE, path);
-      files.set(path, r.state === 'missing' ? null : await readFile(r.file));
+      files.set(path, !HAVE.has(r.state) ? null : await readFile(r.file));
     }
     return files.get(path);
   };

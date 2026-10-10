@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, statSync } from 'node:fs';
-import { PLANETS, planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { PLANETS, planetSpecOf } from './planets';
 import { WORLD_MB } from '../../worlds/worlds';
 import { PACK } from './pack';
 import { landmarkFiles } from './landmarkFiles';

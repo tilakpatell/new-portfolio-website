@@ -4,7 +4,7 @@ import flight, { AXES, KEYS, inputOf, modelSources, placeLandmark, settle, spawn
 import { SHARED_KEYS } from './shared';
 import { seeded } from '../../../lib/seeded';
 import { WORLD_MB } from '../../worlds/worlds';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { planetSpecOf } from './planets';
 import { createOrigin } from '../../../runtime/origin';
 import { createEvents } from '../../../runtime/runtime';
 

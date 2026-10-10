@@ -16,9 +16,11 @@
 // (?gpu=webgl|webgpu: a port's frame-time table is two runs of the same
 // journey; a 'glsl' world is on the classic renderer either way, and each
 // journey's report names the backend it was actually drawn on), OUT is
-// where the JSON report goes. FLY picks the `fly` journey's planet (default
-// Hoth). Each journey
-// prints a table: a row per phase (load, idle, move...), with the frame
+// where the JSON report goes.
+// planet flight: begin
+// FLY picks the /fly journey's planet (default Hoth).
+// planet flight: end
+// Each journey prints a table: a row per phase (load, idle, move...), with the frame
 // times' spread, the hitches (frames over 50 and 100 ms), what the worst
 // frames were spent on, and `sizes`, the 3D canvases resized (each one
 // waits on the graphics chip: a stall with no GL call named in it).
@@ -322,6 +324,7 @@ const worldPage = (route, { ready = canvasUp, move = 'KeyW' } = {}) =>
   };
 
 const JOURNEYS = {
+  // planet flight: begin (scripts/flight-island.mjs removes this block)
   // the planet flight (/fly/hoth): the ground streamed in at the start, then
   // 300 m/s north for 14 s, from the range onto the plains (a biome boundary
   // at z ≈ 1000), into the glacier (z ≈ −500), over Echo Base (z −800) and
@@ -347,6 +350,7 @@ const JOURNEYS = {
     await page.keyboard.up('ShiftLeft');
     mark('end');
   },
+  // planet flight: end
   async universe(page, mark) {
     mark('load');
     await page.goto(`${this.base}/${this.q}#/universe`, { waitUntil: 'domcontentloaded' });

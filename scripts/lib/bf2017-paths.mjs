@@ -2,7 +2,9 @@
 // names its textures by a path relative to itself (`../../../../../textures/
 // …_cs.ktx2`), not embedded, so the fetch reads those URIs to know what else
 // to ask for, and keeps the bucket's layout on disk so they still resolve.
-import { join, posix } from 'node:path';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { dirname, join, posix } from 'node:path';
+import { isSequel } from './bf2017-manifest.mjs';
 
 // The JSON chunk of a GLB (chunk 0 starts at byte 20; its length is at 12).
 export function glbJson(glb) {
@@ -42,3 +44,65 @@ export const mapPath = (map) => `web/textures/${map.toLowerCase()}.png`;
 export const localPath = (root, bucketPath) => join(root, bucketPath);
 
 export const objectUrl = (base, bucket, path) => `${base.replace(/\/+$/, '')}/storage/v1/object/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`;
+
+// A glob over the manifest's names (a star crosses folders, as --list's
+// always has), as a test.
+export const globMatch = (glob) => {
+  const re = new RegExp(`^${String(glob).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+  return (name) => re.test(name);
+};
+
+// Every file a set of models needs, from the manifest alone: each LOD and
+// its collision mesh with the size the manifest gives (a guess, for the
+// timeout: the uploader re-encoded the GLBs after writing it, so the bucket's
+// are smaller), then each map it names once, as its
+// sources best first (the PNG, then the KTX2). The derived maps (`__normal`,
+// `__orm_<hash>`) are named only in the GLBs, so the fetch adds those as each
+// GLB lands. Never a sequel-era model.
+export function jobsFor(manifest, glob, { textures = true, collision = true } = {}) {
+  const match = globMatch(glob);
+  const files = [];
+  const maps = new Map();
+  for (const [name, e] of manifest) {
+    if (!match(name) || isSequel(name)) continue;
+    for (const l of e.lods ?? []) files.push({ kind: 'model', path: inBucket(l.file), size: l.bytes ?? null });
+    if (collision && e.collision?.file) files.push({ kind: 'collision', path: inBucket(e.collision.file), size: e.collision.bytes ?? null });
+    if (!textures) continue;
+    for (const t of e.textures ?? []) {
+      const png = mapPath(t);
+      const ktx2 = png.replace(/\.png$/, '.ktx2');
+      if (!maps.has(ktx2)) maps.set(ktx2, { kind: 'texture', path: ktx2, sources: [png, ktx2] });
+    }
+  }
+  return [...files, ...maps.values()];
+}
+
+// The local index (lab/assets/bf2017/.index.json): what a run left on disk,
+// { [bucket path]: { bytes, at } }, so a second pass over a big set asks the
+// bucket nothing for what it already has.
+export async function readIndex(file) {
+  try {
+    return JSON.parse(await readFile(file, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+export async function writeIndex(file, index) {
+  const sorted = Object.fromEntries(Object.keys(index).sort().map((k) => [k, index[k]]));
+  await mkdir(dirname(file), { recursive: true });
+  // (whole or not at all, like every file the fetch writes)
+  await writeFile(`${file}.part`, `${JSON.stringify(sorted, null, 1)}\n`);
+  await rename(`${file}.part`, file);
+}
+
+// Is the file on disk the one the index wrote down, and (where the manifest
+// knows) the size it should be? `onDisk`: its size, or null when it's gone.
+export function isCurrent(index, path, bytes, onDisk) {
+  const had = index[path];
+  if (!had || onDisk == null || had.bytes !== onDisk) return false;
+  return bytes == null || bytes === onDisk;
+}
+
+export const summaryLine = ({ fetched, kept, missing, failed, bytes, seconds }) =>
+  `fetched ${fetched} · kept ${kept} · missing ${missing} · failed ${failed} · ${(bytes / 1e6).toFixed(1)} MB · ${seconds.toFixed(1)} s`;

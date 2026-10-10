@@ -79,6 +79,7 @@ import { SURFACE_MODELS } from './catalog';
 import { heightGrid, makeHeight } from './terrain';
 import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
+import { wearScanSet } from '../../../lib/three/scans';
 import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { floatPose } from './floats';
@@ -143,6 +144,7 @@ import { garrisonLife, garrisonProbe } from './garrison';
 import { createGround, landingFor } from './ground/index';
 import { standable } from './sites/validity';
 import { floraTint } from './flora';
+import { assetPool, worldScope } from '../../../lib/assetLoad';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -187,6 +189,10 @@ export async function create(canvas, ctx) {
   const { reduced, rt } = ctx;
   let props = ctx;
   let disposed = false;
+  // every file this world asks for belongs to it (lib/assetLoad): leaving
+  // stops whatever is still queued or downloading, and a late answer reaches
+  // nothing
+  const net = worldScope('surface');
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   // how much it draws: the level's row of the budget table (amounts.js)
@@ -227,6 +233,10 @@ export async function create(canvas, ctx) {
   // three's fog line be. The post tone-maps with its own shoulder, so the
   // exposure is the site's, through it.
   const siteLook = lookOf(site);
+  // (a Star Wars world on the game's own maps wears them, the props' trims
+  // and the ground's grain alike: lib/three/scans.js; set before the kit is
+  // made, which loads them)
+  wearScanSet(site.look?.scanned ?? 'cc0');
   const house = createHouse({ ...siteLook, fog: false });
   post.exposure(exposureOf(site));
   // (fogged in the sky's colour and in the look before its shaders are
@@ -3595,10 +3605,11 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
+    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), net: { ...net.progress(), pool: assetPool().progress() }, rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
       gameLevel?.dispose();
+      net.end();
       lit?.dispose();
       knocks?.dispose();
       knockHits.dispose();
@@ -3651,6 +3662,7 @@ export async function create(canvas, ctx) {
       weather?.dispose();
       water?.dispose();
       sky.dispose();
+      wearScanSet('cc0');
       marks.dispose();
       puff.dispose();
       env.dispose();

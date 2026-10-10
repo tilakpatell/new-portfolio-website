@@ -6,8 +6,10 @@
 // (solids.js), the bodies' capsules and a raised blade; what it hit comes
 // back as an event when it gets there, never decided when it's fired.
 //
-// createBlaster({ parent, world, pool }) → { bolts (the pool), solids (the
-// world's raycast), aim(from, dir, targets, reach) → { target, at },
+// createBlaster({ parent, world, pool, ballistic }) → { bolts (the pool),
+// solids (the world's raycast: a physics world's `physicsRay` when it has
+// one, a segment ray in bolt.js's solids form such as lib/physics/blast.js's
+// segmentRay, else solids.js over the walker's world), aim(from, dir, targets, reach) → { target, at },
 // fire(from, dir, targets, color, reach, muzzle, tag) → { target, at, bolt }
 // (`target`: what the eyes' line meets first, for the flash's way; the hit
 // itself is the bolt's event), enemy(from, to, spread, color, damage, opts)
@@ -15,7 +17,9 @@
 // shoot(spec) → bolt (lib/combat/bolt's fire), tracer(from, to, color) (a
 // battle's bolt that only walls stop), update(dt, { bodies, blades }) →
 // the step's events, flash(at), dispose() }; `pool`: bolts in the air at
-// once (48 unless a battle asks for more).
+// once (48 unless a battle asks for more); `ballistic`: a projectiles.json
+// row your bolts fly by (lib/combat/ballistics.js, at the one speed), none
+// and they fly straight as ever.
 // capsuleOf(t) → { a, b, r }: a figure's body as the bolts see it.
 
 import * as THREE from 'three';
@@ -37,10 +41,10 @@ export function capsuleOf(t) {
   return { a: [p.x, p.y + r, p.z], b: [p.x, p.y + Math.max(r, tall - r), p.z], r };
 }
 
-export function createBlaster({ parent, world, pool = POOL }) {
+export function createBlaster({ parent, world, pool = POOL, ballistic = null }) {
   const bolts = createBolts({ pool });
   const draw = createBoltMeshes(parent, { pool });
-  const solids = boltSolids(world);
+  const solids = world.physicsRay ?? boltSolids(world);
   const flat = { solids, bodies: [], blades: [] };
 
   // the first thing along a ray: a target's body or a solid (the aim point)
@@ -78,7 +82,7 @@ export function createBlaster({ parent, world, pool = POOL }) {
       const go = hit.at.clone().sub(start);
       // (the aim point behind the muzzle, a wall at your nose: along the look)
       const way = go.lengthSq() > 1e-4 && go.dot(dir) > 0 ? go : dir;
-      const bolt = bolts.fire({ from: arr(start), dir: arr(way), range: Math.min(RANGE, reach), owner: 'you', side: 'you', colour: color, tag });
+      const bolt = bolts.fire({ from: arr(start), dir: arr(way), range: Math.min(RANGE, reach), owner: 'you', side: 'you', colour: color, tag, ballistic });
       return { ...hit, bolt };
     },
     // theirs at `to` (a point on you, or on what they believe is you), off by `spread`
