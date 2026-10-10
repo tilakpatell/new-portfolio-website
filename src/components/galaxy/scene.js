@@ -141,6 +141,8 @@ import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemB
 import { starfighterAt } from './surface/missions/starfighterMaps';
 import { levelOf } from './surface/missions/starfighter';
 import { drawSpaceLevel } from './spaceLevel';
+import { createAreaLook } from './areaLook';
+import { assetUrl } from '../../lib/assetBase';
 
 const BOLTS = 16;
 const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
@@ -261,6 +263,8 @@ export async function create(canvas, ctx) {
   const keys = [new THREE.DirectionalLight('#ffffff', 2.2), new THREE.DirectionalLight('#ffffff', 0)];
   for (const k of keys) scene.add(k, k.target);
   const ambient = new THREE.AmbientLight('#9fb0d8', 0.32);
+  // (inside a level's area of its own, the scene under its light: areaLook.js)
+  let areaLook = null;
   scene.add(ambient);
   // the house look (lib/three/house), as on the universe map: the ships'
   // and stations' shade one colour, from the space light; the post pass
@@ -2254,6 +2258,10 @@ export async function create(canvas, ctx) {
     // (inside a level's area of its own, Kamino's storm, its dome is the sky: the galaxy's hidden)
     state.enclosed = Boolean(war?.enclosed?.(camera.position));
     sky.group.visible = !inTunnel && !state.enclosed;
+    if (state.enclosed || areaLook?.on) {
+      areaLook ??= createAreaLook({ scene, renderer, post, keys, ambient, url: assetUrl });
+      areaLook.apply(state.enclosed ? war.area : null, camera);
+    }
     if (state.aim && (!flying() || state.crash || state.jump || props.frozen)) aimAt(null);
     sky.focus(state.jump?.phase === 'align' ? state.jump.to.id : (state.aim?.id ?? null));
     sky.update(camera, t);
@@ -2842,6 +2850,7 @@ export async function create(canvas, ctx) {
       pops.dispose();
       hunters?.dispose();
       wingmen?.dispose();
+      areaLook?.dispose();
       war?.dispose();
       pieces?.dispose();
       interdictor?.dispose();
