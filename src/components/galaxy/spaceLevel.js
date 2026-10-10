@@ -65,6 +65,9 @@ export function drawSpaceLevel(scene, { pack, origin, packOrigin, tier, renderer
           sky: area.sky,
           fog: { ...area.fog, density: area.fog.density * METRES },
           light: area.light ? (LIGHTS[area.light] ?? null) : null,
+          fill: area.fill ?? null,
+          probe: area.probe ? (LIGHTS[area.probe] ?? null) : null,
+          metres: METRES,
           weather: `/models/galaxy/bf2017/levels/${pack}/area.json`,
           frame: laid.frame,
         })
