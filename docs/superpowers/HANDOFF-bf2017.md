@@ -148,21 +148,20 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseV-vehicles.md`; the c
 ### Done
 
 - **PR #828** (`claude/bf2017-vehicles`).
-- **The walkers on the game’s rigs.** `src/lib/three/ownRig.js` loads a figure on a skeleton of its own, in `crew.js`’s shape, and plays the game’s clips on its bones as they are. Nothing is retargeted, no bone is pruned or renamed, the walk is paced to the ground covered, and `react('down')` and `react('fire')` play the game’s death and shot. `src/lib/three/rigSets.js` names each rig’s clips under the site’s names: the AT-AT 8 (its tow-cable fall `die.cable`), the AT-ST 12, the AT-TE 10, the AT-RT 9, the droideka 17. `CLIP_FALLBACK` stays inside the rig, and `deathFor` picks the cable’s fall when the cable did it. `scripts/bf2017-rigclips.mjs` packs them at 24 fps, in place (the trajectory’s quarter turn folded into its children: `scripts/lib/rig-clips.mjs`), as `public/models/galaxy/bf2017/clips-<rig>.glb`: 259, 111, 323, 95 and 279 KB. `walkers.js` sends every kind whose model is the game’s through it; the AT-RT’s clone sits its saddle, carried by its Hips.
+- **The walkers on the game’s rigs.** `src/lib/three/ownRig.js` loads a figure on a skeleton of its own, in `crew.js`’s shape, and plays the game’s clips on its bones as they are. Nothing is retargeted, no bone is pruned or renamed, the walk is paced to the ground covered, and `react('down')` and `react('fire')` play the game’s death and shot. `src/lib/three/rigSets.js` names each rig’s clips under the site’s names: the AT-AT 8 (its tow-cable fall `die.cable`), the AT-ST 12, the AT-TE 10, the AT-RT 9, the droideka 17. `CLIP_FALLBACK` stays inside the rig, and `deathFor` picks the cable’s fall when the cable did it. `scripts/bf2017-rigclips.mjs` packs them at 24 fps, in place (the trajectory’s quarter turn folded into its children: `scripts/lib/rig-clips.mjs`), as `public/models/galaxy/bf2017/clips-<rig>.glb`: 259, 111, 323, 95 and 279 KB. `walkers.js` sends every kind whose model is the game’s through it. Nothing of the site’s rides a game rig (the owner, 2026-10-10): the AT-RT walks with its saddle empty until the game’s own clone trooper can sit it.
 - **The AT-ST bound to its skeleton.** The drop has it only as one rigid composite, and its 69 clips are on the cinematics’ `ATST_Ske01`. `bf2017-import.mjs --bind` skins it there, each piece of the mesh to one bone (`scripts/lib/rig-bind.mjs`). The AT-AT is the game’s own skinned `old/atat_mesh`; the gameplay composite bound the same way came to 4.0 MB with a plate that tore.
 - **Every vehicle the site places, the game’s.** Five walkers, eight ground vehicles and droids, six turrets, twenty fighters and fourteen cockpits are in `catalog/bf2017-vehicles.js`, a group of the lane’s own after `bf2017`. Each has a `.lod1` and a `.far` cut, and `scripts/bf2017-vehicles.mjs` lists the import of each. Each cockpit is stood in its hull’s frame (`--hull-frame`): 11 of 14 lie inside their hull’s bounds; the snowspeeder’s, A-wing’s and Slave I’s reach past by up to a metre where the canopy is.
-- **The import learns lane V’s flags:**
-  - `--vehicle`: plain under 25,000 triangles, light under 7,000
-  - `--far`
-  - `--bind`
-  - `--hull-frame`, named apart from phase 1’s `--keep-origin` (which doesn’t ground at all): grounded by the hull’s manifest box so a cockpit sits in its hull
-  - the game’s glass made glass
-  - the MTT’s weak-point covers dropped
-  - a packed `_ncs` map’s colour taken from its blue
-  - the smoothness alpha stripped from every opaque colour map before WebP, the trap the spec’s section 6 measured; the AT-ST’s plain cut went from 2.1 MB to 0.8 MB with it
+- **Native, as the game has them** (the owner, 2026-10-10: trust the game’s textures; fix the caps for the native files). Every kind is imported with phase 1’s `--native` (merged in from `claude/bf2017-phase1`, so this PR lands after #815): the game’s own KTX2, untouched, its top mip levels dropped for the lighter cuts (plain 1024, light 512, far 256 and its colour maps alone, ultra the game’s own size). The plain cut is the game’s first LOD under 60,000 triangles (`NATIVE_VEHICLE`; the AT-AT takes its LOD1, 61,900), the ultra its LOD0. The full cuts are in `site-assets` (194 files, 849 MB; `assets-check`: 338 of 338), out of git; a native kind draws its light cut alone at low and mid, the phone’s levels (`catalog/index.js`’s `modelUrlFor`).
+- **Why the game’s files had looked poor on the site, and the fix.** The pipeline did it, not the game:
+  - **The wrong UV set.** The drop’s GLBs bind every map to `TEXCOORD_0`, but the game’s vehicle shader reads its colour, normal and smoothness atlas through the set that unwraps the hull once; on the X-wing that is `TEXCOORD_1`, and through the other the atlas smeared into the grey and brown patchwork of the first sheets. `scripts/lib/bf2017-uv.mjs` tells the set by its area in UV space (about the square’s once, against a tiling set’s many: the X-wing’s fuselage 0.66 against 2.22; the TIE Advanced is the other way round). `xwing-uv-sets.webp` shows both.
+  - **Decals painted opaque.** A decal sheet blends in through the mask in its `_nam` map’s alpha; drawn opaque it painted patches over the hull. It now blends by that mask (lossless), and a normal-only decal, which glTF can’t express, is dropped (`scripts/lib/bf2017-dressing.mjs`).
+  - **Our restyling.** The metal cap (`relit`) is gone, nothing is re-encoded or resized but by dropping the game’s own mips, and the only maps made from the game’s pixels are the two glTF needs: a decal’s colour with its mask, and a packed `_ncs` map’s colour from its blue, both lossless.
+  - **What no file carries.** The game’s lighting, reflections and its tiling detail maps (`DetailNS`) are its renderer’s; lighting is the owner’s lane.
+- **The import learns lane V’s flags:** `--vehicle`; `--far`; `--bind`; `--hull-frame` (named apart from phase 1’s `--keep-origin`: grounded by the hull’s manifest box so a cockpit sits in its hull); `--light-maps` (the AT-TE’s fifteen maps put its light cut at 5.1 MB, over the 5 MB cap, at 512). The game’s glass is made glass and the MTT’s weak-point covers are dropped.
 - **The placer, for the bucket’s cuts.** A row that is `native` draws its `.lod1` first and swaps its level’s cut in under the same object when it lands (`cutsToLoad`, `swapIn`). An `.ultra` that can’t be had falls to the plain one (`fallbackFor`), as a walker’s does.
 - **The rides on the game’s 74-Z and X-34.** Their seats are measured off the models and tested against them (`rides.seat.test.js`); the chase’s scouts sit the same saddle.
-- **The fleets on the game’s fighters.** `scripts/bf2017-fleet.mjs` writes twelve ships over the space layer’s Sketchfab files, at the paths `galaxy/models.js` names: the TIE fighter, bomber and Advanced, the A-, Y- and U-wings, the N-1, ARC-170, vulture, tri-fighter, cloud car and the Nebulon-B. Their far-off copies are remade by `galaxy-lod.mjs`.
+- **The fleets on the game’s fighters.** `scripts/bf2017-fleet.mjs` writes twelve ships over the space layer’s Sketchfab files, at the paths `galaxy/models.js` names: the TIE fighter, bomber and Advanced, the A-, Y- and U-wings, the N-1, ARC-170, vulture, tri-fighter, cloud car and the Nebulon-B, natively. They stay committed as well as published, as `galaxy/models.test.js` measures them. Their far-off copies are remade by `galaxy-lod.mjs`, which reads a native map’s colours from the game’s unpacked PNG.
+- **Rigs.** Every kind the drop has a skeleton for is on it: the five walkers with their clips, and the homing and dwarf spider droids on `GEO_HomingSpiderDroid_Skeleton` and `DwarfSpiderDroid_Ske`, kept whole, standing (the drop has no clips for them). The fighters, speeders and turrets have no skeleton in the drop.
 - **anim-check knows the walkers’ feet** (`LeftFrontFoot`). On Hoth every AT-AT in view, and on Endor the AT-ST, reads 0 m/s of planted drift and none is at bind pose.
 
 ### Where the code and the plan differed
@@ -176,13 +175,6 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseV-vehicles.md`; the c
 
 ### Left
 
-- **Native files, then the bucket** (the spec’s section 6 as revised at 06:30, after this lane’s imports). Every vehicle should be imported with phase 1’s `--native`:
-  - the game’s LOD0 at its precision, every map the game’s own KTX2;
-  - the light cut by dropping mip levels (`scripts/lib/ktx2-levels.mjs`);
-  - caps from `scripts/lib/bf2017-caps.mjs`;
-  - rows `native: true`.
-
-  Then publish the plain and ultra cuts with `node scripts/assets-publish.mjs`, run `node scripts/assets-check.mjs`, and commit the manifest and `.gitignore`. None of `--native`, `ktx2-levels.mjs` or the caps was on phase 1’s branch or main when this lane closed, so these files are still the WebP cuts, committed. Once #815 is on main the re-import is one line: add `'--native'` in `scripts/bf2017-vehicles.mjs`’s `importArgs`, then `node scripts/bf2017-vehicles.mjs`, `node scripts/bf2017-fleet.mjs` and the `galaxy-lod.mjs` line below. The placer’s light-first swap is already keyed on `native`.
 - **The hooks the owner’s other lanes need**, in the files:
   - **The walkers’ feet:** `RIGS[rig].feet` by the game’s bone names; a walker figure’s `bones` and `feet`.
   - **A ride’s seat:** `rides.js`’s `seat` and `riders.js`’s `SEATS`, measured off the game’s models.
@@ -194,6 +186,8 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseV-vehicles.md`; the c
 - **The AT-AT’s destruction skeletons** (`ATAT_Destruction_01_*`, one or three clips each): not wired, as nothing brings one down.
 - **The chase rider on the game’s clips** (`A_HM_SpeederBike_*`, the humanoid’s): phase 1’s walrus loader, once it is on main. The chase still sits figures.js’s built scout on the game’s 74-Z.
 - **The fallen AT-AT on Hoth** (`sites/ice.js`’s `walker` zone) is the game’s model rolled on its side in its bind pose. Its tow-cable death’s last frame would be the true pose, but the placer places statues.
+- **Deaths and engines on lane F’s effects**: `gameFx.explode(class, at)` (PR #829, on phase 1’s branch until #815 lands) for a walker’s, speeder’s or fighter’s death, and its engine and thruster glow through `gameLook`: wire `react('down')` and the rides to it once it is on main, rather than a second effect path.
+- **The AT-ST’s rig**: the drop has no skinned AT-ST, so its rigid mesh is skinned at import to the cinematics’ `ATST_Ske01` (one bone a piece). If the owner counts that binding as ours, it stands as a statue instead (drop `--bind`).
 - **Sounds**: the vehicles’ engines and footfalls when the game’s audio lands.
 - **The far fleet instanced**: the space layer draws each ship through its own `THREE.LOD`, a draw each. The game’s far copies keep that cost, and instancing is the fleet war’s own open item.
 - **Textures**: no map these vehicles name was `missing` on 2026-10-10.
@@ -205,9 +199,11 @@ node scripts/bf2017-fetch.mjs manifest                 # and web/anims.jsonl, wh
 node scripts/bf2017-rigclips.mjs --pack atat           # atst, atte, atrt, droideka
 node scripts/bf2017-vehicles.mjs --fetch               # every kind; or a kind, or --group walker|ground|turret|air|cockpit
 node scripts/bf2017-fleet.mjs && node scripts/galaxy-lod.mjs tie tiebomber tieadvanced awing ywing uwing n1 arc170 vulture trifighter cloudcar nebulon
+node scripts/assets-publish.mjs && node scripts/assets-check.mjs   # the native cuts to site-assets; commit the manifest and .gitignore
+node scripts/ride-points.mjs                                            # after re-importing the 74-Z or the X-34
 npx vite --port 5188 --strictPort --host 127.0.0.1 &
 node scripts/rig-shot.mjs public/models/galaxy/surface/atst.glb atst /tmp/atst.png idle,walk,die
 node scripts/anim-check.mjs --route '#/galaxy/hoth/surface' --do "__surfaceScene.put(261, 431)" --do "__surfaceScene.view([261, 14, 431], [283, 9, 510])" --range 150 --port 5188
 ```
 
-The tests need no keys and no network: `npx vitest run src/lib/three/ownRig.test.js src/lib/three/rigSets.test.js scripts/lib/rig-clips.test.mjs scripts/lib/rig-bind.test.mjs scripts/lib/bf2017-dressing.test.mjs scripts/bf2017-import.vehicles.test.mjs scripts/bf2017-fleet.test.mjs src/components/galaxy/surface/walkers.test.js src/components/galaxy/surface/rides.seat.test.js src/components/galaxy/surface/catalog`.
+The tests need no keys and no network: `npx vitest run src/lib/three/ownRig.test.js src/lib/three/rigSets.test.js scripts/lib/rig-clips.test.mjs scripts/lib/rig-bind.test.mjs scripts/lib/bf2017-dressing.test.mjs scripts/lib/bf2017-uv.test.mjs scripts/bf2017-import.vehicles.test.mjs scripts/bf2017-fleet.test.mjs src/components/galaxy/surface/walkers.test.js src/components/galaxy/surface/rides.seat.test.js src/components/galaxy/surface/catalog`.
