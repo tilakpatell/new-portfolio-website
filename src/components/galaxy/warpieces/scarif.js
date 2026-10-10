@@ -32,6 +32,7 @@ export const RAM = {
   top: 18, // how fast they're falling by the end
 };
 const ARRIVES = 3; // seconds after the gate goes that the Death Star drops out of hyperspace over Scarif
+const LATE = 60; // seconds after the end past which a pilot's too late to see it come in
 const v = (x, y, z) => ({ x, y, z });
 const sub = (a, b) => v(a.x - b.x, a.y - b.y, a.z - b.z);
 const len = (a) => Math.hypot(a.x, a.y, a.z);
@@ -68,10 +69,16 @@ export function createScarif(ctx) {
     ctx.draw?.flash(G, { size: gatePiece.size * 0.45, life: 3, color: [2.2, 1.7, 1], bright: 1.2 });
     world?.war?.station('gate', false);
     world?.war?.planetShield(false);
-    // and the Death Star out of hyperspace over the planet, a few seconds
-    // after the end (world.js's hold, at one wall second for every pilot here)
-    const ended = ctx.endedAt?.() ?? ctx.clock?.() ?? null;
-    if (ended !== null && ctx.wallAt) world?.war?.superlaser?.(ctx.wallAt(ended) + ARRIVES);
+    // and the Death Star out of hyperspace over the planet a few seconds on
+    // (world.js's hold, on the wall clock). The director's end is worked out
+    // from the tally, so it can be some seconds back from when the gate goes
+    // here: just ended, it's in a few seconds from now; long over (a pilot
+    // come in after), it came when it did, and it's gone
+    const now = ctx.clock?.() ?? null;
+    if (now !== null && ctx.wallAt) {
+      const ended = ctx.endedAt?.() ?? now;
+      world?.war?.superlaser?.(ctx.wallAt(now - ended < LATE ? now : ended) + ARRIVES);
+    }
     ctx.event('gcw-gate');
     if (ctx.tookPart()) ctx.points(GCW.points.objective * 2);
     if (!shared) battle.end(REBELS, 'gate');

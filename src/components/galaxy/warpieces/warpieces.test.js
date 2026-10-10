@@ -439,6 +439,32 @@ describe('the set pieces in the battle every pilot shares', () => {
     expect(k.world.war.planetShield).toHaveBeenCalledWith(false);
     // the Death Star at the same wall second for every pilot: the end's, on the shared clock
     expect(k.world.war.superlaser).toHaveBeenCalledWith(5304);
+    s.dispose();
+  });
+
+  it('Scarif: the Death Star comes in just after the gate goes here, unless the battle ended long before you came', () => {
+    const k = shared('scarif', 'rebel', 'empire', 0);
+    const s = createScarif(k.ctx);
+    k.through(2);
+    k.clock.t = 330;
+    k.fight.add('gate', 1e4);
+    k.ctx.wallAt = (sec) => 5000 + sec;
+    // (the director's end worked out from the tally can be some seconds back from when it came in)
+    k.ctx.endedAt = () => 301;
+    step(s, k.battle, 0.5);
+    expect(k.world.war.superlaser).toHaveBeenCalledWith(5333);
+    s.dispose();
+    // a pilot coming in long after: the Death Star's been and gone, as it was for everyone there
+    const late = shared('scarif', 'rebel', 'empire', 0);
+    late.through(2);
+    late.clock.t = 500;
+    late.fight.add('gate', 1e4);
+    late.ctx.wallAt = (sec) => 5000 + sec;
+    late.ctx.endedAt = () => 301;
+    const s2 = createScarif(late.ctx);
+    step(s2, late.battle, 0.5);
+    expect(late.world.war.superlaser).toHaveBeenCalledWith(5304);
+    s2.dispose();
     expect(k.battle.over).toBeNull();
     s.dispose();
   });

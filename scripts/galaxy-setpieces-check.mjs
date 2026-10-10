@@ -1,4 +1,4 @@
-/* global window */
+/* global window, document */
 // A browser check of the Galactic Civil War's set pieces (galaxy/
 // warpieces/). With the dev server up (npx vite --port 5188):
 //   OUT=/tmp/shots node scripts/galaxy-setpieces-check.mjs endor|hoth|scarif|hangar [quality]
@@ -49,7 +49,8 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && !/GPU stall|swiftshader|WebGL/i.test(m.text()) && errors.push(m.text()));
 let shot = 0;
-const snap = (moment) => page.screenshot({ path: `${out}/piece-${what}-${shot++}-${moment}.png` });
+// (software GL can take a long while over a frame with a station filling it)
+const snap = (moment) => page.screenshot({ path: `${out}/piece-${what}-${shot++}-${moment}.png`, timeout: 120000 });
 const ev = (fn, arg) => page.evaluate(fn, arg);
 // the ship put somewhere, looking at a point (the debug pin), shields held up
 const look = (from, at) =>
@@ -67,6 +68,8 @@ const keepAlive = () => ev(() => ((window.__galaxyDebug.state.shield = 100), (wi
 await page.goto(`${base}/?quality=${quality}#/galaxy/${SYS}`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction((id) => typeof window.__galaxy === 'function' && window.__galaxy().system === id, SYS, { timeout: 180000 });
 await page.waitForFunction(() => !window.__galaxy().jump, null, { timeout: 120000 }).catch(() => {});
+// (and done getting ready: the system's there before its veil's gone, and nothing's drawn under it)
+await page.waitForFunction(() => !document.querySelector('.universe-loading.loading-veil:not(.is-done)'), null, { timeout: 420000 });
 await page.addStyleTag({ content: '.galaxy-panel, .universe-hint { display: none !important; }' });
 // sworn to the Rebellion: the set pieces' targets are a side's to take (the
 // moon's generator, an enemy Star Destroyer's reactor), and the unsworn
@@ -258,19 +261,20 @@ if (what === 'endor') {
   // the Death Star in, a few seconds on (on the wall clock), its dish on the planet
   for (let i = 0; i < 60 && !(await dsThere()); i++) await page.waitForTimeout(1000);
   check(await dsThere(), 'the Death Star’s dropped out of hyperspace over Scarif');
-  // (from off to the side of its line of fire, well clear of it and the planet: the Death Star and its beam both in view)
+  // (from the planet's side of it, a little off its line of fire: the Death Star, then its beam coming past)
   const view = await ev(() => {
     const p = window.__galaxyDebug.state.sys.pieces.find((x) => x.type === 'superlaser');
     const d = [p.at[0] - p.from[0], p.at[1] - p.from[1], p.at[2] - p.from[2]];
-    const side = [d[2], 0, -d[0]];
-    const l = Math.hypot(...side);
-    const mid = [0, 1, 2].map((i) => p.from[i] + d[i] * 0.35);
-    return { from: [mid[0] + (side[0] / l) * 180, mid[1] + 50, mid[2] + (side[2] / l) * 180], at: mid };
+    const l = Math.hypot(...d);
+    const side = [d[2] / l, 0, -d[0] / l];
+    return { from: [0, 1, 2].map((i) => p.from[i] + (d[i] / l) * 170 + side[i] * 60 + (i === 1 ? 30 : 0)), at: p.from };
   });
   await look(view.from, view.at);
+  await page.waitForTimeout(4000);
+  await snap('death-star-in');
   // (it fires about 18 s after it's in)
-  await page.waitForTimeout(19000);
-  await snap('death-star');
+  await page.waitForTimeout(14000);
+  await snap('death-star-fires');
 } else if (what === 'hangar') {
   const isd = await ev(() => {
     const b = window.__galaxyDebug.war.battle;
