@@ -39,7 +39,7 @@ import { dirname, join as path, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { parseArgs } from './lib/args.mjs';
-import { PERMISSION, nativeMaps, readLod } from './bf2017-import.mjs';
+import { PERMISSION, nativeMaps, opaqueColour, readLod } from './bf2017-import.mjs';
 import { readMap } from './lib/bf2017-level.mjs';
 import { readManifest } from './lib/bf2017-manifest.mjs';
 import { inBucket, localPath } from './lib/bf2017-paths.mjs';
@@ -132,6 +132,9 @@ async function build(reader, model, entries, cut, cap, opts, file = path(ROOT, '
   if (triangles(out) > cap.tris * 1.1) await out.transform(simplified(cap.tris));
   const native = await nativeMaps(out, { root: opts.root, tex: cap.tex, maps: cap.maps });
   await out.transform(
+    // (an opaque material's colour map without the game's smoothness in its
+    // alpha, as bf2017-import.mjs makes it: a third of a ship's bytes else)
+    opaqueColour(),
     textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, slots: /baseColor|emissive/, resize: [cap.tex, cap.tex], quality: 82 }),
     textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, slots: /normal|occlusion|metallicRoughness/, resize: [cap.maps, cap.maps], quality: 80 }),
     prune(),

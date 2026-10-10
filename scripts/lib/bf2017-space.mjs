@@ -131,7 +131,7 @@ export function piecesOf(map, { subs = SUBS, kits = KITS, kind = kindOf, system 
   const want = new Set([...subs, last(map.name)]);
   const files = map.meshes.map((m) => String(m.file ?? ''));
   const dropped = { sub: 0, never: 0, small: 0, stray: 0, twice: 0 };
-  // every kept instance, once (Mode7 and SpaceBattle place most of a fleet twice, at one spot)
+  // every kept instance, once (Mode7 and SpaceBattle place most of a fleet twice, at one spot and turn)
   const seen = new Set();
   const kept = [];
   for (const g of map.groups) {
@@ -141,7 +141,10 @@ export function piecesOf(map, { subs = SUBS, kits = KITS, kind = kindOf, system 
     }
     for (let i = g.first; i < g.first + g.count; i++) {
       const x = instanceOf(map, i);
-      const key = `${x.mesh}:${x.at.map((v) => Math.round(v)).join(',')}`;
+      // (by its turn too: a kit places one section at one spot several times,
+      // turned, the Lucrehulk's ring among them; q and −q are the one turn)
+      const sign = x.quaternion[3] < 0 ? -1 : 1;
+      const key = `${x.mesh}:${x.at.map((v) => Math.round(v)).join(',')}:${x.quaternion.map((v) => Math.round(v * sign * 100)).join(',')}`;
       if (seen.has(key)) {
         dropped.twice++;
         continue;

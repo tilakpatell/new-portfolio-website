@@ -37,4 +37,27 @@ describe('the game’s atlas UV set', () => {
     expect(hull.getAttribute('TEXCOORD_1')).toBe(tiled);
     expect(kept.getAttribute('TEXCOORD_0')).toBe(once);
   });
+
+  it('leaves a primitive whose maps the drop already reads through the second set as the drop binds them', async () => {
+    // (the game's two-UV presets: the ISD's main engine binds its colour map
+    // at texCoord 1, its atlas, and its tiling normal at 0; swapping the sets
+    // again would put the colour on the tiling set)
+    const doc = new Document();
+    const buffer = doc.createBuffer();
+    const acc = (type, a) => doc.createAccessor().setType(type).setArray(a).setBuffer(buffer);
+    const pos = acc('VEC3', new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0]));
+    const index = acc('SCALAR', new Uint16Array([0, 1, 2, 0, 2, 3]));
+    const tiled = acc('VEC2', new Float32Array([0, 0, 4, 0, 4, 4, 0, 4]));
+    const once = acc('VEC2', new Float32Array([0, 0, 0.8, 0, 0.8, 0.8, 0, 0.8]));
+    const colour = doc.createTexture('cs');
+    const normal = doc.createTexture('nam');
+    const mat = doc.createMaterial().setBaseColorTexture(colour).setNormalTexture(normal);
+    mat.getBaseColorTextureInfo().setTexCoord(1);
+    const engine = doc.createPrimitive().setAttribute('POSITION', pos).setIndices(index).setAttribute('TEXCOORD_0', tiled).setAttribute('TEXCOORD_1', once).setMaterial(mat);
+    doc.createMesh().addPrimitive(engine);
+    await doc.transform(atlasUVs());
+    expect(engine.getAttribute('TEXCOORD_0')).toBe(tiled);
+    expect(engine.getAttribute('TEXCOORD_1')).toBe(once);
+    expect(mat.getBaseColorTextureInfo().getTexCoord()).toBe(1);
+  });
 });

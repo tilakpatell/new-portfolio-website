@@ -52,10 +52,10 @@ export const FLEET = [
   ['cloudcar', -Math.PI / 2, 'galaxy-cloudcar', { kind: 'cloudcar' }],
   ['nebulon', 0, 'galaxy-nebulon', { name: 'objects/props/landmarks/_rebelalliance/bd_frigatenebulonb_01/frigatenebulonb_01_mesh', as: 'the Nebulon-B frigates', cut: 2 }],
   // (lane Q: a capital the space levels assemble from its kit, at the fleet's
-  // cut: scripts/bf2017-space.mjs --fleet; `turn` brings the kit's nose, along
-  // its −z as the game's capitals are, to +z)
-  ['lucrehulk', 0, 'galaxy-lucrehulk', { space: 'naboo', model: 'naboo-lucrehulk', as: 'the Lucrehulk-class droid control ships', turn: Math.PI }],
-  ['lightcruiser', -Math.PI / 2, 'galaxy-lightcruiser', { space: 'fondor', model: 'fondor-arquitens', as: 'the Arquitens-class light cruisers', turn: Math.PI }],
+  // cut: scripts/bf2017-space.mjs --fleet; `turn` brings the kit's nose to +z:
+  // none, as the game's ships come bow to +z)
+  ['lucrehulk', 0, 'galaxy-lucrehulk', { space: 'naboo', model: 'naboo-lucrehulk', as: 'the Lucrehulk-class droid control ships', turn: 0 }],
+  ['lightcruiser', -Math.PI / 2, 'galaxy-lightcruiser', { space: 'fondor', model: 'fondor-arquitens', as: 'the Arquitens-class light cruisers', turn: 0 }],
 ];
 
 // the turn a file is written with so that the row's `nose` turn brings it

@@ -340,7 +340,7 @@ function bindTo(doc, { nodes, roots }) {
 // that draws opaque: the alpha taken off before WebP, which otherwise drops
 // the colour under every low-alpha texel (Luke's body map: 33.7 dB at any
 // quality with it, 48.6 dB at WebP 90 without, and a twelfth the bytes).
-const opaqueColour = () => async (doc) => {
+export const opaqueColour = () => async (doc) => {
   const keep = new Set();
   for (const m of doc.getRoot().listMaterials()) if (m.getAlphaMode() !== 'OPAQUE' && m.getBaseColorTexture()) keep.add(m.getBaseColorTexture());
   for (const m of doc.getRoot().listMaterials()) {

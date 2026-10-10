@@ -85,4 +85,20 @@ describe('the space levels as set pieces', () => {
     const q = [0, Math.SQRT1_2, 0, Math.SQRT1_2]; // (a quarter turn about y)
     rotate(q, [1, 0, 0]).forEach((v, k) => expect(v).toBeCloseTo([0, 0, -1][k], 6));
   });
+
+  it('keeps two parts at one spot turned differently (the Lucrehulk’s rotated sections), and drops only a true twice-placed one', () => {
+    const q = (deg) => [0, Math.round(Math.sin((deg * Math.PI) / 360) * 32767), 0, Math.round(Math.cos((deg * Math.PI) / 360) * 32767)];
+    const turns = [0, 60, 120, 0];
+    const fake = {
+      name: 'Levels/Space/SB_Test_01/SB_Test_01',
+      instances: { count: 4, position: new Float32Array(12), quaternion: Int16Array.from(turns.flatMap(q)), scale: new Float32Array(12).fill(1) },
+      meshOf: new Int32Array(4).fill(0),
+      groups: [{ mesh: 0, sub: 0, kind: 'object', first: 0, count: 4 }],
+      meshes: [{ file: 'models/gameplay/vehicles/capital/test/test_section_mesh.glb', min: [-50, -50, -50], max: [50, 50, 50] }],
+      subworlds: ['SpaceBattle'],
+    };
+    const { pieces, dropped } = piecesOf(fake, { system: 'test' });
+    expect(pieces).toHaveLength(3);
+    expect(dropped.twice).toBe(1);
+  });
 });

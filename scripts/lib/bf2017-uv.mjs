@@ -1,5 +1,5 @@
 // Which of a primitive's two UV sets the game reads its maps through. The
-// drop's GLBs bind every map to TEXCOORD_0, but Frostbite's vehicle shader
+// drop's GLBs bind most maps to TEXCOORD_0, but Frostbite's vehicle shader
 // (SS_VehiclePreset and its kin) reads the colour, normal and smoothness
 // atlas through the set that unwraps the hull once, and keeps the other for
 // its tiling detail: on the X-wing that is TEXCOORD_1 (0.66 of the square
@@ -12,6 +12,7 @@
 //
 // uvArea(uv, index) → the summed area of the triangles in UV space
 // atlasSet(area0, area1) → 0 | 1: the set the maps are read through
+// readsSecondSet(material) → true where the drop already binds a map at texCoord 1
 
 export function uvArea(uv, index) {
   let area = 0;
@@ -33,12 +34,18 @@ export function atlasSet(area0, area1) {
   return area1 < area0 * 0.9 ? 1 : 0;
 }
 
+// (a material the drop already reads through the second set, the game's
+// two-UV presets binding their atlas at texCoord 1 and their tiling detail at
+// 0: its binding is the game's, and swapping the sets would undo it)
+const SLOTS = ['BaseColor', 'Normal', 'MetallicRoughness', 'Occlusion', 'Emissive'];
+export const readsSecondSet = (material) => Boolean(material) && SLOTS.some((s) => material[`get${s}Texture`]() && material[`get${s}TextureInfo`]()?.getTexCoord() === 1);
+
 // a glTF-Transform transform: each primitive's maps read through its atlas set
 export const atlasUVs = () => (doc) => {
   for (const mesh of doc.getRoot().listMeshes())
     for (const prim of mesh.listPrimitives()) {
       const [uv0, uv1] = [prim.getAttribute('TEXCOORD_0'), prim.getAttribute('TEXCOORD_1')];
-      if (!uv0 || !uv1) continue;
+      if (!uv0 || !uv1 || readsSecondSet(prim.getMaterial())) continue;
       const index = prim.getIndices()?.getArray() ?? null;
       if (atlasSet(uvArea(uv0.getArray(), index), uvArea(uv1.getArray(), index)) === 1) prim.setAttribute('TEXCOORD_0', uv1).setAttribute('TEXCOORD_1', uv0);
     }
