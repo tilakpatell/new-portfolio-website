@@ -46,14 +46,19 @@ describe('the game’s weather, for lane R’s light', () => {
     expect(json.cell).toBe(128);
   });
 
-  it('brings the brightest placed light (Intensity 65500, EV 10) to a sane strength after exposure', () => {
-    const k = readEntry(entryFor(lighting, 'sunny')).gameToSite;
+  it('brings the brightest placed light (Intensity 65500, EV 10) to a sane strength beside the sun', () => {
+    const { gameToSite: k, sun } = readEntry(entryFor(lighting, 'sunny'));
     const lights = lighting.lights.map(readLightRow).filter(Boolean);
     const top = lights.reduce((a, b) => (b.candela > a.candela ? b : a));
-    // the light on a surface at half its reach, in the scene's units (the sun is about 9)
+    // the light on a surface at half its reach, against the sun, in the
+    // scene's units: a lamp stands to the sun as the game made it whatever
+    // the stack's calibration (lane S's, src/lib/three/light/calibrate.js,
+    // scaled the sun from 9.2 to 0.79 and the lamps with it, so an absolute
+    // bound here pinned the old scale and failed the deploy on 2026-10-10)
     const lux = (top.candela * k) / (top.range / 2) ** 2;
-    expect(lux).toBeGreaterThan(0.5);
-    expect(lux).toBeLessThan(4);
+    expect(lux / sun.intensity).toBeGreaterThan(0.05);
+    expect(lux / sun.intensity).toBeLessThan(0.5);
+    expect(lux).toBeGreaterThan(0);
   });
 
   it('says its look is its own, with the why', () => {

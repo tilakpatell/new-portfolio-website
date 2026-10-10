@@ -66,7 +66,13 @@ export const NODE_PASSES = new Set(['ssgi', 'denoise', 'ao', 'ssr', 'volumes', '
 // What each backend cannot build. On 'nodes-webgl' the lit fixture
 // (scripts/light-fixture.mjs, pass by pass) drew SSR as white smears below
 // every pillar and TRAA as a flat grey frame, so both are left out there
-// and SMAA takes TRAA's place; the rest drew as on the design.
+// and SMAA takes TRAA's place; the rest drew as on the design. SSGI once
+// seemed broken there too (lane S's --hoth shot lifted from 0.320 to 0.787
+// whatever its GI intensity): that was passes.js reading the node's first
+// attachment, its occlusion, as the bounce, and adding the diffuse back
+// whole. Read as three's example reads it (getAONode, getGINode) it
+// darkens on both kinds (the laptop's Hoth: 0.517 → 0.481 on WebGPU, 0.502
+// → 0.405 over WebGL 2), so it stays in on both.
 export const CANNOT = { webgpu: new Set(), 'nodes-webgl': new Set(['ssr', 'traa']), webgl: NODE_PASSES };
 // SSGINode's presets, from its own doc: with TRAA, and without
 export const SSGI = {
@@ -74,9 +80,9 @@ export const SSGI = {
   plain: { low: { slices: 2, steps: 6 }, medium: { slices: 3, steps: 8 }, high: { slices: 4, steps: 12 } },
 };
 // SSGINode's giIntensity is 10, for an interior lit through a window; under
-// an open sky the bounce at 10 whitens every wall, and at 2 with the bloom
-// over it still washes the fixture out (its shots), so the game light asks
-// for a tenth
+// an open sky the bounce at 10 whitens every wall, so the game light asks
+// for a tenth. (The washing seen before was the composite's, not the
+// bounce's: passes.js. Calibrate against the game's own Hoth on the laptop.)
 export const GI = 1;
 // DepthOfFieldNode's focal "length" is the distance from the focal plane at
 // which a thing is wholly out of focus; a camera's is the thin lens's: half

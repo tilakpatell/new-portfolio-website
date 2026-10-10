@@ -1,7 +1,7 @@
 import { Document, NodeIO } from '@gltf-transform/core';
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { createLevelLoader, matchRecipes, recipesIndex } from './levelGltf.js';
+import { bindSlot, createLevelLoader, matchRecipes, recipeMaps, recipesIndex } from './levelGltf.js';
 
 // a GLB with one mesh of two primitives, their materials naming the game's
 // shaders in their extras as the export writes them
@@ -36,6 +36,20 @@ describe('matchRecipes', () => {
     const a = { shader: 'S/A' };
     const b = { shader: 'S/B' };
     expect(matchRecipes(['S/B', null], [a, b])).toEqual([b, null]);
+  });
+});
+
+describe('recipeMaps', () => {
+  it('resolves the maps of a recipe through the pack: an array to its slices, a missing map to null', async () => {
+    const texture = vi.fn(async (path) => ({ path }));
+    const recipe = { maps: { detailArray: 'TA_D', aoSlice: 'T_AOSL', weathering: 'T_W', grunge: 'T_G' } };
+    const maps = { TA_D: ['tex/ta_d_000.ktx2', 'tex/ta_d_001.ktx2', 'tex/ta_d_002.ktx2'], T_AOSL: 'tex/t_aosl.ktx2', T_W: null };
+    const got = await recipeMaps(recipe, { maps, texture, keys: ['detail', 'aoSlice', 'weathering'] });
+    expect(got.detailSlices.map((t) => t.path)).toEqual(maps.TA_D);
+    expect(got.detail).toBeUndefined();
+    expect(got.aoSlice.path).toBe('tex/t_aosl.ktx2');
+    expect(got.weathering).toBeNull();
+    expect('grunge' in got).toBe(false);
   });
 });
 
@@ -128,5 +142,31 @@ describe('createLevelLoader', () => {
     const maps = materialFor.mock.calls[0][1];
     expect('detail' in maps).toBe(true);
     expect('grunge' in maps).toBe(false);
+  });
+});
+
+describe('a level pack’s textures bound to their materials', () => {
+  it('reads a colour or emissive map as sRGB, whatever its file says (the game’s colour maps are BC7_SRGB)', () => {
+    const mat = new THREE.MeshStandardMaterial();
+    const colour = new THREE.Texture();
+    colour.colorSpace = THREE.NoColorSpace; // (a KTX2 labelled linear)
+    bindSlot(mat, 'map', colour);
+    expect(mat.map).toBe(colour);
+    expect(colour.colorSpace).toBe(THREE.SRGBColorSpace);
+    const glow = new THREE.Texture();
+    bindSlot(mat, 'emissiveMap', glow);
+    expect(glow.colorSpace).toBe(THREE.SRGBColorSpace);
+  });
+
+  it('leaves the data maps linear: normals, roughness and metal', () => {
+    const mat = new THREE.MeshStandardMaterial();
+    const normal = new THREE.Texture();
+    const orm = new THREE.Texture();
+    bindSlot(mat, 'normalMap', normal);
+    bindSlot(mat, 'metalRough', orm);
+    expect(normal.colorSpace).toBe(THREE.NoColorSpace);
+    expect(mat.roughnessMap).toBe(orm);
+    expect(mat.metalnessMap).toBe(orm);
+    expect(orm.colorSpace).toBe(THREE.NoColorSpace);
   });
 });

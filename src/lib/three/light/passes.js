@@ -12,7 +12,7 @@
 // - ssgi: colour × its AO (unless an `ao` pass follows) + diffuse × its GI;
 //   `denoise` after it filters the GI and composites again;
 // - ao: GTAO at half resolution, denoised unless TRAA follows, multiplied in;
-// - ssr: blended over (non-metals left out, SSRNode's default);
+// - ssr: its reflection added (rgb already weighted; non-metals left out, SSRNode's default);
 // - volumes: the level's volumetric cones and glows (volumetrics.js), their
 //   quarter-resolution pass brought up over the depth and added;
 // - fog: the record's forward light scattering added, its participating
@@ -115,6 +115,14 @@ function cameraVelocity(tsl, THREE, depth, camera) {
   return screenUV.sub(was);
 }
 
+// What a scene pass's colour targets cost a sample on WebGPU, by the spec's
+// render-target byte costs (not the texel's size: rgba8unorm counts 8), so
+// a chain's targets are held under the default maxColorAttachmentBytesPerSample
+// of 32. textures: [{ channels: 1 | 2 | 4, half: bool }].
+export const MRT_RG = true;
+export const ATTACHMENT_LIMIT = 32;
+export const attachmentCost = (textures) => textures.reduce((sum, t) => sum + (t.channels === 1 ? (t.half ? 2 : 1) : t.channels === 2 ? (t.half ? 4 : 2) : 8), 0);
+
 export async function buildChain(renderer, passes) {
   const kinds = new Set(passes.map((p) => p.kind));
   // (GTAO without TRAA is filtered by DenoiseNode, as three's AO example does)
@@ -149,7 +157,13 @@ export async function buildChain(renderer, passes) {
     pipeline.outputColorTransform = false;
     return tsl.renderOutput(n);
   };
-  const composeGI = (base, gi) => vec4(aoFollows ? base.rgb : base.rgb.mul(gi.a), base.a).add(vec4(g.diffuse.rgb.mul(gi.rgb), 0));
+  // SSGINode draws two attachments: its occlusion (getAONode) and its
+  // bounce (getGINode). Composited as three's example does: the colour
+  // darkened by the occlusion, plus the diffuse colour lit by the bounce.
+  // (Read as one texture, the node is its first attachment, the occlusion,
+  // and the "bounce" was the diffuse added back whole: the laptop's Hoth
+  // shot lifted from 0.52 to 0.75 mean luminance whatever the GI strength.)
+  const composeGI = (base, { ao, gi }) => vec4(aoFollows ? base.rgb : base.rgb.mul(ao), base.a).add(vec4(g.diffuse.rgb.mul(gi.rgb), 0));
 
   for (const p of passes) {
     if (p.enabled === false) continue;
@@ -165,6 +179,17 @@ export async function buildChain(renderer, passes) {
         if (Object.keys(outs).length > 1) scenePass.setMRT(mrt(outs));
         // (eight bits are enough for what is not colour)
         for (const k of ['normal', 'diffuse', 'metalRough']) if (outs[k]) scenePass.getTexture(k).type = THREE.UnsignedByteType;
+        // Two channels where two are written: WebGPU charges a pass's colour
+        // targets by the spec's byte cost (rgba8 and rgba16f cost 8 each,
+        // rg8 2, rg16f 4) against a default limit of 32 a sample, and the
+        // five targets at four channels each cost 40, which a real chip
+        // refuses (the laptop's 5090 did: a black frame). At two channels
+        // the five cost 30 (attachmentCost).
+        if (MRT_RG && outs.metalRough) scenePass.getTexture('metalRough').format = THREE.RGFormat;
+        if (MRT_RG && outs.velocity) {
+          scenePass.getTexture('velocity').format = THREE.RGFormat;
+          scenePass.getTexture('velocity').type = THREE.HalfFloatType;
+        }
         g.camera = p.camera;
         g.color = scenePass.getTextureNode('output');
         g.depth = scenePass.getTextureNode('depth');
@@ -188,13 +213,14 @@ export async function buildChain(renderer, passes) {
         gi.useTemporalFiltering = Boolean(p.temporal);
         g.gi = gi;
         g.giBase = node;
-        node = composeGI(node, gi);
+        node = composeGI(node, { ao: gi.getAONode(), gi: gi.getGINode() });
         break;
       }
       case 'denoise': {
         if (!g.gi) break;
-        const dn = keep(mods.denoise.denoise(g.gi, g.depth, g.normal, p.camera ?? g.camera));
-        node = composeGI(g.giBase, dn);
+        // (the bounce denoised; the occlusion as the node drew it)
+        const dn = keep(mods.denoise.denoise(g.gi.getGINode(), g.depth, g.normal, p.camera ?? g.camera));
+        node = composeGI(g.giBase, { ao: g.gi.getAONode(), gi: dn });
         break;
       }
       case 'ao': {
@@ -212,7 +238,10 @@ export async function buildChain(renderer, passes) {
         s.resolutionScale = p.resolutionScale ?? 0.5;
         if (p.maxDistance != null) s.maxDistance.value = p.maxDistance;
         if (p.thickness != null) s.thickness.value = p.thickness;
-        node = tsl.blendColor(node, s);
+        // (SSRNode's alpha is the hit's ray length, not a weight: its rgb is
+        // already scaled by fresnel, attenuation and `intensity`, and three's
+        // example adds it; a blend over it painted every hit at full strength)
+        node = vec4(node.rgb.add(s.rgb), node.a);
         break;
       }
       case 'volumes':

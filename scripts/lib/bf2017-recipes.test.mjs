@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { candidatesOf, countFamilies, mapsWanted, recipeOf, recipesOf } from './bf2017-recipes.mjs';
+import { candidatesOf, colourIndex, countFamilies, crewRecipes, mapsWanted, recipeOf, recipesOf } from './bf2017-recipes.mjs';
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/bf2017/materials');
 const row = (name) => JSON.parse(readFileSync(join(DIR, `${name}.jsonl`), 'utf8').trim());
@@ -48,13 +48,15 @@ describe('recipeOf', () => {
     const x = recipeOf(r, 0);
     expect(x.family).toBe('character');
     expect(x.maps.detailArray).toBe('Characters/DetailMaps/TA_CharacterDetail_17_NS');
-    // (one slice per material: the first, until the CLI reads AOSlice's median)
-    expect(x.maps.detailSlice).toBe(0);
+    // (every slice, each texel the one AOSlice's green names)
+    expect(x.maps.detailSlice).toBe('aoSlice');
     expect(x.maps.aoSlice).toBe('Characters/Hero/Iden/Act3/Iden_Act3_01/Texture/T_Iden_Act3_01_AOSL');
     expect(x.maps.weathering).toBe('Characters/Hero/Iden/Act3/Iden_Act3_01/Texture/T_Iden_Act3_01_W');
     // (per slice: the slice's own component once the median is known; x until then)
     expect(x.params.detail.tiling).toEqual([13, 13]);
-    expect(x.params.detail.perSlice.tiling).toEqual([13, 24, 12]);
+    // (one component per AOSlice level: three slices and the fourth, none)
+    expect(x.params.detail.perSlice.tiling).toEqual([13, 24, 12, 0]);
+    expect(x.params.detail.perSlice.normal).toEqual([1, 1, 1.5, 0]);
   });
 
   it('vegetation: translucency, alpha test from the colour + alpha map, both sides', () => {
@@ -185,5 +187,41 @@ describe('blink', () => {
     expect(x.params.emissive.blink).toBe(2);
     expect(x.params.emissive.blinkOff).toBeCloseTo(1.6, 6);
     expect(x._source['params.emissive.blinkOff']).toBe('materials.jsonl:m#0.BlinkLength02');
+  });
+});
+
+describe('crew recipes', () => {
+  // a crew GLB's materials as scripts/bf2017-import.mjs writes them: the
+  // game's material names, each colour image named after its game texture
+  const glb = {
+    materials: [
+      { name: 'M_Iden_Body', pbrMetallicRoughness: { baseColorTexture: { index: 0 } } },
+      { name: 'M_Iden_Strap', pbrMetallicRoughness: { baseColorTexture: { index: 1 } } },
+      { name: 'M_Plain' },
+    ],
+    textures: [{ source: 0 }, { extensions: { KHR_texture_basisu: { source: 1 } } }],
+    images: [{ name: 't_iden_act3_01_cs.ktx2' }, { name: 'ktx2:web/textures/x/t_unknown_cs.ktx2' }],
+  };
+
+  it('finds each material its row by the colour map it wears', () => {
+    const index = colourIndex([row('character'), row('props')]);
+    const out = crewRecipes(glb, index);
+    expect(Object.keys(out)).toEqual(['M_Iden_Body']);
+    expect(out.M_Iden_Body.family).toBe('character');
+    expect(out.M_Iden_Body.maps.detailArray).toBe('Characters/DetailMaps/TA_CharacterDetail_17_NS');
+    expect(out.M_Iden_Body._source['maps.aoSlice']).toBe('materials.jsonl:a3/characters/hero/iden/act3/iden_act3_01/iden_act3_01_mesh#0.AOSlice');
+  });
+
+  it('finds a head by its Color slot and hair by its HairColorTexture', () => {
+    const index = colourIndex([row('head'), row('hair')]);
+    const g = (name) => ({ materials: [{ name: 'M', pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }], textures: [{ source: 0 }], images: [{ name }] });
+    expect(crewRecipes(g('t_heads_luke_01_c.ktx2'), index).M.family).toBe('head');
+    expect(crewRecipes(g('t_haskhaircap_c.ktx2'), index).M.family).toBe('hair');
+  });
+
+  it('reads a full path in the image name as well as a bare file name', () => {
+    const index = colourIndex([row('props')]);
+    const g = { materials: [{ name: 'M', pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }], textures: [{ source: 0 }], images: [{ name: 'ktx2:web/textures/objects/props/objectsets/_generic/catwalksystem_01/t_catwalksystem_imperial_04_cs.ktx2' }] };
+    expect(crewRecipes(g, index).M.family).toBe('propsNonMetallic');
   });
 });
