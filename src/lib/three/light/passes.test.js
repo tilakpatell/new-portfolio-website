@@ -52,6 +52,13 @@ describe('buildChain', () => {
     expect(marched.nodes.length).toBeGreaterThan(1);
     marched.dispose();
   });
+  it('builds motion blur over the camera’s motion and the cinematic depth of field', async () => {
+    const passes = passesFor('high', hoth.sunny, 'webgpu', { scene, camera, light, lut, dof: { focus: 3, aperture: 2, focalLength: 50, maxblur: 4 } });
+    expect(passes.map((p) => p.kind)).toEqual(expect.arrayContaining(['dof', 'motionBlur']));
+    const chain = await buildChain(renderer, passes);
+    expect(chain.pipeline.outputNode).toBeTruthy();
+    chain.dispose();
+  });
   it('a shader pass still needs the webgl backend; an unknown kind is refused', async () => {
     await expect(buildChain(renderer, [{ kind: 'render', scene, camera }, { kind: 'shader' }])).rejects.toThrow('needs the webgl backend');
     await expect(buildChain(renderer, [{ kind: 'render', scene, camera }, { kind: 'vignette' }])).rejects.toThrow('unknown pass vignette');

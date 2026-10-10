@@ -21,7 +21,7 @@ describe('applyGameLight', () => {
     expect(scene.fogNode).toBeTruthy();
     expect(renderer.shadowMap.enabled).toBe(true);
     expect(renderer.lighting.maxLights).toBe(1024);
-    expect(light.passes.map((p) => p.kind)).toEqual(['render', 'ssgi', 'ao', 'ssr', 'bloom', 'godrays', 'lensflare', 'traa', 'output']);
+    expect(light.passes.map((p) => p.kind)).toEqual(['render', 'ssgi', 'ao', 'ssr', 'bloom', 'godrays', 'lensflare', 'motionBlur', 'traa', 'output']);
     expect(light.passes.find((p) => p.kind === 'godrays').light).toBe(light.parts.sun.rays);
     light.update(1 / 60, camera);
     // the placed lights in the game's candela times the weather's factor

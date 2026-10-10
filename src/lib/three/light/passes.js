@@ -22,6 +22,10 @@
 // - godrays: the lit haze added faintly in the sun's colour;
 // - lensflare: the bloom's ghosts, blurred, added; with the record's sun
 //   flare, scaled by its alpha curves at the sun's disc (flare.js);
+// - dof: DepthOfFieldNode at the cinematic camera's focus and range;
+// - motionBlur: MotionBlur over the camera's own motion (the depth
+//   reprojected through last frame's view and projection), times the
+//   record's MotionBlurScale;
 // - lut: the grading LUT (a Data3DTexture) applied to the tone-mapped,
 //   encoded picture;
 // - traa or smaa: the anti-aliasing; SMAA on the picture as shown, TRAA
@@ -43,6 +47,8 @@ const ADDONS = {
   godrays: () => import('three/addons/tsl/display/GodraysNode.js'),
   lensflare: () => Promise.all([import('three/addons/tsl/display/LensflareNode.js'), import('three/addons/tsl/display/GaussianBlurNode.js')]).then(([a, b]) => ({ ...a, ...b })),
   lut: () => import('three/addons/tsl/display/Lut3DNode.js'),
+  motionBlur: () => import('three/addons/tsl/display/MotionBlur.js'),
+  dof: () => import('three/addons/tsl/display/DepthOfFieldNode.js'),
   traa: () => import('three/addons/tsl/display/TRAANode.js'),
   smaa: () => import('three/addons/tsl/display/SMAANode.js'),
 };
@@ -81,6 +87,31 @@ function flareAlpha(tsl, THREE, p, depth, camera) {
     for (const e of p.flare.elements) alpha = max(alpha, clamp(c(e.alphaOccluder, o), 0, 1).mul(clamp(c(e.alphaScreen, s), 0, 1)));
     return select(sun.z.greaterThan(0), alpha.mul(p.flare.dimmer), float(0));
   })();
+}
+
+// Where each pixel was on the screen a frame ago, from the camera alone: its
+// world position (the depth through this frame's inverse projection and
+// the camera's world matrix) through last frame's view-projection; the
+// motion in UV, as MotionBlur takes it.
+function cameraVelocity(tsl, THREE, depth, camera) {
+  const { uniform, vec2, vec4, getViewPosition, screenUV } = tsl;
+  const cur = new THREE.Matrix4();
+  const prev = new THREE.Matrix4();
+  let first = true;
+  const prevU = uniform(prev).onFrameUpdate(() => {
+    if (first) cur.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    prev.copy(cur);
+    cur.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    first = false;
+    return prev;
+  });
+  const projInv = uniform(camera.projectionMatrixInverse);
+  const world = uniform(camera.matrixWorld);
+  const view = getViewPosition(screenUV, depth.sample(screenUV).r, projInv);
+  const clip = prevU.mul(world.mul(vec4(view, 1)));
+  const ndc = clip.xy.div(clip.w.max(1e-6));
+  const was = vec2(ndc.x.mul(0.5).add(0.5), ndc.y.mul(-0.5).add(0.5));
+  return screenUV.sub(was);
 }
 
 export async function buildChain(renderer, passes) {
@@ -214,6 +245,16 @@ export async function buildChain(renderer, passes) {
         let ghosts = keep(mods.lensflare.gaussianBlur(flare, null, 8));
         if (p.flare) ghosts = ghosts.mul(flareAlpha(tsl, THREE, p, g.depth, p.camera ?? g.camera));
         node = node.add(ghosts);
+        break;
+      }
+      case 'dof': {
+        const viewZ = g.scenePass.getViewZNode();
+        node = keep(mods.dof.dof(tsl.convertToTexture(node), viewZ, tsl.uniform(p.focusDistance), tsl.uniform(p.range), tsl.uniform(p.bokehScale)));
+        break;
+      }
+      case 'motionBlur': {
+        const vel = cameraVelocity(tsl, THREE, g.depth, p.camera ?? g.camera).mul(p.scale ?? 1);
+        node = mods.motionBlur.motionBlur(tsl.convertToTexture(node), vel, tsl.int(p.samples ?? 16));
         break;
       }
       case 'lut': {

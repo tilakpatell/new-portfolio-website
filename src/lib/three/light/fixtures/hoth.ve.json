@@ -1,5 +1,5 @@
 {
- "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed; the fog's ForwardLightScattering fields from src/data/bf2017/maps/hoth.lighting.json (lane V); the day's SunFlareComponentData (its elements, shaders left out) from the bucket's data/Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
+ "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed; the fog's ForwardLightScattering fields from src/data/bf2017/maps/hoth.lighting.json (lane V); the day's SunFlareComponentData (its elements, shaders left out) from the bucket's data/Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01; its MotionBlurComponentData's switches and scale",
  "sunny": {
   "name": "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
   "record": {
@@ -297,6 +297,14 @@
      "Element4RotationAlignedToRay": false,
      "Element5Enable": false,
      "Element5RotationAlignedToRay": false
+    }
+   ],
+   "MotionBlurComponentData": [
+    {
+     "MotionBlurEnable": true,
+     "MotionBlurScale": 1,
+     "MotionBlurCentered": false,
+     "RadialBlurEnable": false
     }
    ]
   }
