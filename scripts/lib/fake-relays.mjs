@@ -8,13 +8,14 @@
 // One relay for each host, as the real ones are (the page's pool opens one
 // socket to each of nostr.js's four). Each keeps every socket's listening
 // (a REQ, by its id; a CLOSE ends one) and passes every EVENT to each
-// listening whose kinds and #x match, on every socket of every context
+// listening whose kinds, #x and #g (when it asks by cell) match, on every socket of every context
 // attached, the sender's own included, as the real relays do; the sender
 // gets an OK. Nothing is kept for later (the site's events are ephemeral),
 // and no signature is checked: the pages check what matters themselves.
 //
-// fakeRelays() → { attach(context) } (a promise: awaited before the
-// context's first page opens a socket)
+// fakeRelays() → { attach(context) (a promise: awaited before the
+// context's first page opens a socket), publish(event) (one from the check
+// itself, to every relay: the flight check's extra pilots) }
 
 export function fakeRelays() {
   const relays = new Map(); // host → Set of sockets: { subs: Map(id → filter), send(msg) }
@@ -34,7 +35,12 @@ export function fakeRelays() {
     f.kinds.includes(ev.kind) &&
     Array.isArray(f['#x']) &&
     Array.isArray(ev.tags) &&
-    ev.tags.some((t) => Array.isArray(t) && t[0] === 'x' && f['#x'].includes(t[1]));
+    ev.tags.some((t) => Array.isArray(t) && t[0] === 'x' && f['#x'].includes(t[1])) &&
+    // (a single-letter tag is indexed by a real relay, NIP-01: asked by cell, only those cells)
+    (!Array.isArray(f['#g']) || ev.tags.some((t) => Array.isArray(t) && t[0] === 'g' && f['#g'].includes(t[1])));
+  const pass = (relay, ev) => {
+    for (const s of [...relay]) for (const [id, f] of s.subs) if (matches(f, ev)) s.send(['EVENT', id, ev]);
+  };
 
   return {
     attach(context) {
@@ -64,11 +70,14 @@ export function fakeRelays() {
           else if (msg[0] === 'EVENT' && msg[1] && typeof msg[1] === 'object') {
             const ev = msg[1];
             socket.send(['OK', typeof ev.id === 'string' ? ev.id : '', true, '']);
-            for (const s of [...relay]) for (const [id, f] of s.subs) if (matches(f, ev)) s.send(['EVENT', id, ev]);
+            pass(relay, ev);
           }
         });
         ws.onClose(() => relay.delete(socket));
       });
+    },
+    publish(ev) {
+      for (const relay of relays.values()) pass(relay, ev);
     },
   };
 }

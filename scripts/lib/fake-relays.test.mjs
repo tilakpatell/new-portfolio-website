@@ -114,4 +114,31 @@ describe('fakeRelays', () => {
     a.send(['EVENT', event('app/room', 'still fine')]);
     expect(events(a)).toHaveLength(1);
   });
+  it('passes on, to a listening with #g, only the events tagged with one of its cells, as the real relays index single-letter tags', async () => {
+    const relays = fakeRelays();
+    const ctx = context();
+    await relays.attach(ctx);
+    const near = ctx.open('wss://one.example');
+    const all = ctx.open('wss://one.example');
+    near.send(['REQ', 'tp1', { kinds: [KIND], '#x': ['app/room'], '#g': ['hoth/0,0', 'hoth/1,0'] }]);
+    all.send(['REQ', 'tp1', { kinds: [KIND], '#x': ['app/room'] }]);
+    const tagged = (g, c) => ({ ...event('app/room', c), tags: [['x', 'app/room'], ['g', g]] });
+    all.send(['EVENT', tagged('hoth/5,5', 'far')]);
+    all.send(['EVENT', tagged('hoth/1,0', 'near')]);
+    all.send(['EVENT', event('app/room', 'untagged')]);
+    expect(events(near).map((m) => m[2].content)).toEqual(['near']);
+    expect(events(all).map((m) => m[2].content)).toEqual(['far', 'near', 'untagged']);
+  });
+
+  it('publishes an event from the check itself, to every relay', async () => {
+    const relays = fakeRelays();
+    const ctx = context();
+    await relays.attach(ctx);
+    const one = ctx.open('wss://one.example');
+    const two = ctx.open('wss://two.example');
+    for (const s of [one, two]) s.send(['REQ', 'tp1', { kinds: [KIND], '#x': ['app/room'] }]);
+    relays.publish(event('app/room', 'from-node'));
+    expect(events(one)).toHaveLength(1);
+    expect(events(two)).toHaveLength(1);
+  });
 });
