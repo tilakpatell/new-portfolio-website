@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three/webgpu';
-import { applyGameLight } from './apply';
+import { applyGameLight, sunShadowNode } from './apply';
 import { readEntry } from './entry';
 import hoth from './fixtures/hoth.ve.json';
 
@@ -26,12 +26,23 @@ describe('applyGameLight', () => {
     // PCSS on the sun's cascades, the record's 256 on ultra
     expect(light.parts.soft).toMatchObject({ kind: 'pcss', initial: 8, max: 256 });
     expect(typeof light.parts.sun.csm.filter).toBe('function');
+    // the record's clouds on the sun's shadow; the shadow term for the particles
+    expect(light.parts.clouds.layers.map((l) => l.size)).toEqual([8192, 500]);
+    expect(sunShadowNode(light)).toBe(light.shadowTerm);
+    expect(light.shadowTerm).toBeTruthy();
+    // a contact shadow under a tracked figure
+    const walker = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.6));
+    walker.position.set(3, 0.9, 1);
+    scene.add(walker);
+    light.track(walker);
+    expect(light.parts.contact.planes).toHaveLength(1);
     // the bloom's threshold from the record's ColorGradingMaxHdrValue (calibrate.js)
     expect(light.passes.find((p) => p.kind === 'bloom').threshold).toBe(1);
     light.update(1 / 60, camera);
     // the placed lights in the game's candela times the weather's factor
     expect(light.parts.placed.pools.points[0].intensity).toBeCloseTo(5000 * readEntry(hoth.sunny).gameToSite);
     light.dispose();
+    scene.remove(walker);
     expect(scene.children.length).toBe(before);
     expect(scene.fogNode).toBeFalsy();
     expect(renderer.shadowMap.enabled).toBe(false);
@@ -58,6 +69,8 @@ describe('applyGameLight', () => {
     const light = await applyGameLight(new THREE.Scene(), renderer, {}, { tier: 'low', camera: new THREE.PerspectiveCamera() });
     expect(renderer.shadowMap.enabled).toBe(false);
     expect(light.parts.sun.light.castShadow).toBe(false);
+    expect(sunShadowNode(light)).toBe(null);
+    expect(light.parts.clouds).toBe(null);
     expect(light.passes.map((p) => p.kind)).toEqual(['render', 'bloom', 'output']);
   });
 });

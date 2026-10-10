@@ -1,5 +1,5 @@
 {
- "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed; lane S added the shadow, PCSS and cloud fields from src/data/bf2017/maps/hoth.lighting.json (rows.weathers.<w>.sun.raw and .shadows)",
+ "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed; lane S added the shadow, PCSS and cloud fields from src/data/bf2017/maps/hoth.lighting.json (rows.weathers.<w>.sun.raw, .shadows and .wind.raw)",
  "sunny": {
   "name": "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
   "record": {
@@ -115,6 +115,12 @@
      "SunShadowmapViewDistance.High": 30,
      "SunShadowmapViewDistance.Ultra": 70,
      "SunShadowmapViewDistance.Cinematic": -1
+    }
+   ],
+   "WindComponentData": [
+    {
+     "WindDirection": 0,
+     "WindStrength": 5
     }
    ]
   }
@@ -234,6 +240,12 @@
      "SunShadowmapViewDistance.High": 30,
      "SunShadowmapViewDistance.Ultra": 70,
      "SunShadowmapViewDistance.Cinematic": -1
+    }
+   ],
+   "WindComponentData": [
+    {
+     "WindDirection": 0,
+     "WindStrength": 5
     }
    ]
   }

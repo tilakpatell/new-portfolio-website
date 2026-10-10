@@ -1,6 +1,7 @@
 // The game's light on a 'nodes' world in one call: the sun and its
-// cascades, the sky's hemisphere, the level's placed lights, the sky drawn
-// and baked into the environment (or the level's probe volumes over it),
+// cascades (soft, cast from the record's shadow sun, under the record's
+// cloud shadows; lane S), contact shadows under the tracked figures, the
+// sky's hemisphere, the level's placed lights, the sky drawn and baked into the environment (or the level's probe volumes over it),
 // the fog, on ultra the probe grid where it is asked for, and the post
 // chain as data for `rt.gfx.post`. Weathers crossfade (lane G's 20 s).
 //
@@ -15,9 +16,16 @@
 //   arena, grid,                    { min, max } and true: the probe grid on ultra (off until measured, A3)
 //   sky = true, post = true, lut,   the sky and fog; the post chain; the grade as a Data3DTexture
 //   filter,                         'pcf' forces three's PCF on the sun (else shadows.js's by tier)
-// }) → Promise<{ update(dt, camera), setWeather(entry, seconds), passes, params, parts, dispose }>
+// }) → Promise<{ update(dt, camera), setWeather(entry, seconds), track(object), untrack(object), shadowTerm, passes, params, parts, dispose }>
+//
+// sunShadowNode(lit) → the sun's shadow term as a node (the cascades × the
+//   clouds, eased by the record's ParticleSunShadowFactor) for a material
+//   the lights do not reach: lane X's sprites multiply their colour by it;
+//   null where the sun casts none or the factor is 0
 
 import { lerpEntry, readEntry } from './entry.js';
+import { cloudShadowNode } from './clouds.js';
+import { createContactShadows } from './contact.js';
 import { createFog } from './fog.js';
 import { createPlacedLights } from './placed.js';
 import { passesFor } from './post.js';
@@ -42,11 +50,20 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
   // the sun's soft shadow by tier (shadows.js): PCSS on ultra and high, PCF on mid
   const soft = forced === 'pcf' && tier !== 'low' ? { kind: 'pcf' } : filterFor(tier, readPcss(entry));
   const filter = soft.kind === 'pcss' ? await pcssFilter(soft) : null;
-  const sun = await createSun(entry, { tier, rays, filter });
+  const clouds = tier !== 'low' ? await cloudShadowNode(entry) : null;
+  const sun = await createSun(entry, { tier, rays, filter, cloud: clouds?.node ?? null });
   // (before the first frame: the cascades clone the light's shadow then)
   if (soft.kind === 'vsm') vsmFallback(renderer, sun.light, soft.samples);
   scene.add(sun.light);
   if (sun.rays) scene.add(sun.rays, sun.rays.target);
+  const contact = await createContactShadows(scene, renderer, { tier });
+  // the particles' share of the sun's shadow (ParticleSunShadowFactor, 1 on Hoth)
+  const particleFactor = Number(entry?.record?.OutdoorLightComponentData?.[0]?.ParticleSunShadowFactor ?? 1);
+  let shadowTerm = null;
+  if (sun.csm && particleFactor > 0) {
+    const { tsl } = await loadThree();
+    shadowTerm = tsl.mix(tsl.float(1), tsl.nodeObject(sun.csm).x, particleFactor);
+  }
   const hemi = new THREE.HemisphereLight(new THREE.Color(...params.ambient.sky), new THREE.Color(...params.ambient.ground), params.ambient.intensity);
   hemi.name = 'sky-light';
   scene.add(hemi);
@@ -90,7 +107,10 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
     get params() {
       return params;
     },
-    parts: { sun, soft, hemi, placed, sky, fog, probes, grid: probeGrid, gridBake },
+    shadowTerm,
+    track: (object) => contact.track(object),
+    untrack: (object) => contact.untrack(object),
+    parts: { sun, soft, clouds, contact, hemi, placed, sky, fog, probes, grid: probeGrid, gridBake },
     update(dt, cam = camera) {
       if (fade) {
         fade.t = Math.min(1, fade.t + dt / fade.seconds);
@@ -103,8 +123,10 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
         }
         if (fade.t >= 1) fade = null;
       }
+      clouds?.update(dt);
       if (!cam) return;
       sun.update(cam);
+      contact.update(cam);
       sky?.update(cam);
       placed?.update(cam);
       if (probes) {
@@ -127,6 +149,8 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
       fade = { from: params, to, t: 0, seconds, since: 0 };
     },
     dispose() {
+      contact.dispose();
+      clouds?.dispose();
       sun.dispose();
       hemi.removeFromParent();
       hemi.dispose();
@@ -140,3 +164,5 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
     },
   };
 }
+
+export const sunShadowNode = (lit) => lit?.shadowTerm ?? null;

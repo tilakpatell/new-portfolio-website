@@ -24,6 +24,7 @@
 // - The filter: `filter` (shadows.js's PCSS, or null for three's own)
 //   is set on every cascade's shadow, since LightShadow.copy() does not
 //   carry `filterNode` into CSMShadowNode's clones.
+// - The clouds: `cloud` (clouds.js's term) multiplies the whole shadow.
 //
 // GodraysNode marches a plain DirectionalLight's or a PointLight's shadow
 // map, not a CSM's cascades, so a chain with god rays asks for `rays`: a
@@ -34,7 +35,7 @@
 // cascadesFor(tier, viewDistance) → { n, far, map }   (pure)
 // splitsFor(near, far, n, lambda = 0.5) → n + 1 distances  (pure)
 // biasFor(texel, { bias, normalBias }) → { bias, normalBias }   (pure)
-// createSun(entry, { tier, rays, filter, farShadow }) → Promise<{ light, rays, shadowDir, set(params), update(camera), dispose }>
+// createSun(entry, { tier, rays, filter, farShadow, cloud }) → Promise<{ light, rays, shadowDir, set(params), update(camera), dispose }>
 
 import { readEntry, sunDir } from './entry.js';
 import { loadCSM, loadThree } from './three.js';
@@ -106,8 +107,9 @@ async function sunCSM() {
   const [CSMShadowNode, { tsl }] = await Promise.all([loadCSM(), loadThree()]);
   const { float, mix, positionView, smoothstep, uniform, vec4 } = tsl;
   SunCSM = class extends CSMShadowNode {
-    constructor(light, data, { shadowDir, filter, farShadow, base }) {
+    constructor(light, data, { shadowDir, filter, farShadow, cloud, base }) {
       super(light, data);
+      this.cloud = cloud;
       this.shadowDir = shadowDir;
       this.filter = filter;
       this.farShadow = farShadow;
@@ -156,13 +158,14 @@ async function sunCSM() {
       const w = smoothstep(float(1 - BLEND), float(1), t);
       const distant = this.farShadow ?? float(1);
       // (past the far, the distant shadow alone: no cascade is read there)
-      return t.greaterThanEqual(1).select(vec4(distant), mix(cascades, vec4(distant), w));
+      const out = t.greaterThanEqual(1).select(vec4(distant), mix(cascades, vec4(distant), w));
+      return this.cloud ? out.mul(vec4(this.cloud)) : out;
     }
   };
   return SunCSM;
 }
 
-export async function createSun(entry, { tier = 'high', rays = false, filter = null, farShadow = null } = {}) {
+export async function createSun(entry, { tier = 'high', rays = false, filter = null, farShadow = null, cloud = null } = {}) {
   const { THREE } = await loadThree();
   const record = readShadowRecord(entry);
   const { n, far, map } = cascadesFor(tier, record.viewDistance);
@@ -181,7 +184,7 @@ export async function createSun(entry, { tier = 'high', rays = false, filter = n
     light.shadow.normalBias = params.shadow.normalBias;
     Object.assign(light.shadow.camera, { near: 0.5, far: LIGHT_MARGIN * 2 + far * 2 });
     const Csm = await sunCSM();
-    csm = new Csm(light, { cascades: n, maxFar: Math.min(far, params.shadow.far ?? far), mode: 'practical', lightMargin: LIGHT_MARGIN }, { shadowDir, filter, farShadow, base: { bias: params.shadow.bias, normalBias: params.shadow.normalBias } });
+    csm = new Csm(light, { cascades: n, maxFar: Math.min(far, params.shadow.far ?? far), mode: 'practical', lightMargin: LIGHT_MARGIN }, { shadowDir, filter, farShadow, cloud, base: { bias: params.shadow.bias, normalBias: params.shadow.normalBias } });
     csm.fade = true;
     light.shadow.shadowNode = csm;
   }

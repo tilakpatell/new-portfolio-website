@@ -19,14 +19,14 @@
         "output"
       ],
       "shot": "hoth-post-ultra-webgl.png",
-      "meanLum": 0.3852,
-      "envDiff": 14.21,
-      "programsBefore": 72,
-      "programsAfter": 72,
+      "meanLum": 0.3686,
+      "envDiff": 15.02,
+      "programsBefore": 74,
+      "programsAfter": 74,
       "frames": 5,
-      "mean": 710.1,
-      "median": 21.7,
-      "p95": 3461.9
+      "mean": 988.2,
+      "median": 23.1,
+      "p95": 4849.5
     }
   ]
 }

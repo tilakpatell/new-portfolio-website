@@ -12,7 +12,7 @@
 // environment under ClusteredLighting (A2), the programs before and after a
 // light moves (no recompile), the frame time.
 //
-// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only, hoth, shadows, lightSun, filter }
+// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only, hoth, shadows, lightSun, clouds, filter }
 //
 // `hoth` (lane S's calibration shot): the same ground and ring under Hoth
 // Sunny's record (src/lib/three/light/fixtures/hoth.ve.json), the ground
@@ -23,7 +23,10 @@
 // and a post every 10 m out to 200 m for the cascades' far edge;
 // `probe.view('near' | 'seam')` frames the figures or the far edge.
 // `lightSun` drops the record's shadow sun, so the cascades cast along the
-// light (the before of the shadow sun's shot).
+// light (the before of the shadow sun's shot). `clouds` swaps Hoth's
+// secondary cloud layer for a test one (CLOUD_TEST: 80 m, coverage 1,
+// exponent 1; not Hoth's, whose sunny sky is nearly clear) so the drift
+// shows in a frame.
 
 import * as THREE from 'three';
 import hothVe from '../../lib/three/light/fixtures/hoth.ve.json';
@@ -31,6 +34,7 @@ import hothVe from '../../lib/three/light/fixtures/hoth.ve.json';
 // the snow's albedo under --hoth (fresh snow reflects 0.8 to 0.9; Hoth's
 // ice field, worn, a little under)
 const SNOW = 0xe4eaf0;
+const CLOUD_TEST = { SecondaryCloudShadowSize: 80, SecondaryCloudShadowCoverage: 1, SecondaryCloudShadowExponent: 1 };
 
 const RING = 200; // point lights round the ring
 const SPOTS = 8;
@@ -94,6 +98,10 @@ export default {
     if (opts.shadows) opts.hoth = true;
     if (opts.hoth) opts.placed = false;
     let entry = opts.hoth ? hothVe.sunny : ENTRY;
+    if (opts.clouds) {
+      const outdoor = { ...entry.record.OutdoorLightComponentData[0], ...CLOUD_TEST };
+      entry = { ...entry, record: { ...entry.record, OutdoorLightComponentData: [outdoor] } };
+    }
     if (opts.lightSun) {
       const rest = { ...entry.record.OutdoorLightComponentData[0] };
       delete rest.ShadowSunRotationX;
@@ -122,6 +130,7 @@ export default {
     ground.receiveShadow = true;
     scene.add(ground);
     const views = {};
+    const figures = [];
     if (opts.shadows) {
       ground.position.z = -190;
       const cloth = mat({ color: 0x8a7a66, roughness: 0.8 });
@@ -131,6 +140,7 @@ export default {
         f.position.set(0.6, 0.9, -d);
         f.castShadow = f.receiveShadow = true;
         scene.add(f);
+        figures.push(f);
       }
       const wall = new THREE.Mesh(geo(new THREE.BoxGeometry(7, 3, 0.4)), mat({ color: 0xc8ccd2, roughness: 0.8 }));
       wall.position.set(-4.5, 1.5, -26);
@@ -154,6 +164,10 @@ export default {
         b.castShadow = true;
         scene.add(b);
       }
+      // the 2 m figure's feet, close (contact shadows); the strip from high
+      // over it (the cloud shadows)
+      views.contact = { pos: [1.6, 0.9, -0.2], at: [0.6, 0, -2] };
+      views.clouds = { pos: [0, 70, -40], at: [0, 0, -110] };
       views.pen1 = { pos: [8, 0.7, -4.5], at: [8, 0, -8] };
       views.pen10 = { pos: [16, 2.5, -4], at: [16, 0, -8] };
       // the feet at 2 m in the frame's foot, the 60 m figure under the horizon
@@ -198,6 +212,14 @@ export default {
       passes: [],
       programs: () => countPrograms(renderer),
       csm: () => light?.parts.sun.csm ?? null,
+      // the weather's clock run on by `seconds` (the clouds drift)
+      advance(seconds) {
+        light?.update(seconds, camera);
+      },
+      // the contact shadows shown or hidden (their before)
+      contact(on) {
+        for (const p of light?.parts.contact.planes ?? []) p.material.visible = on;
+      },
       // a named framing (`shadows`): the camera moved, the light told
       view(name) {
         const v = views[name];
@@ -231,6 +253,7 @@ export default {
       const { applyGameLight } = await import('../../lib/three/light/apply.js');
       light = await applyGameLight(scene, renderer, entry, { tier: opts.tier, camera, lights: opts.placed ? source : null, clustered: opts.clustered, sky: opts.sky, post: opts.post, lut: gradeLut(), filter: opts.filter });
       probe.light = { clustered: light.parts.placed?.clustered ?? null };
+      for (const f of figures) light.track(f);
       if (!opts.sky) {
         const [{ PMREMGenerator }, { RoomEnvironment }] = await Promise.all([import('three/webgpu'), import('three/addons/environments/RoomEnvironment.js')]);
         const pmrem = new PMREMGenerator(renderer);

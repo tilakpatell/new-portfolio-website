@@ -5,7 +5,7 @@
 //
 //   node scripts/light-fixture.mjs [--tier ultra] [--post on|off] [--sky on|off]
 //     [--grid] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
-//     [--hoth] [--shadows [--light-sun]] [--filter pcss|pcf]
+//     [--hoth] [--shadows [--light-sun] [--clouds]] [--filter pcss|pcf]
 //
 // Lane S (docs/superpowers/plans/2026-10-10-bf-fidelity-laneS-shadows.md):
 // --hoth draws the fixture under Hoth Sunny's record on snow at the house's
@@ -18,6 +18,10 @@
 // --light-sun casts along the light instead of the record's shadow sun;
 // the pen1 and pen10 shots frame a board's shadow 1 m and 10 m under it.
 // --filter pcf forces three's PCF on the sun (the PCSS cost's baseline).
+// The contact view frames the 2 m figure's feet, with its contact shadow
+// and without (-contact-off); --clouds adds the strip from 70 m up under
+// cloud shadows (the fixture's test layer: litWorld.js's CLOUD_TEST), and
+// again after 60 s of drift on Hoth's wind.
 //
 // For each leg (?gpu=webgpu, and ?gpu=webgl: the node renderer on a WebGL 2
 // context) it opens scripts/light-fixture/index.html on a Vite dev server
@@ -60,7 +64,7 @@ const arg = (k, d) => {
 };
 const tier = arg('tier', 'ultra');
 const post = arg('post', 'off') === 'on';
-const label = arg('label', `${arg('filter', null) ? `${arg('filter', null)}-` : ''}${argv.includes('--shadows') ? `shadows${argv.includes('--light-sun') ? '-lightsun' : ''}-` : argv.includes('--hoth') ? 'hoth-' : ''}${post ? `post-${tier}` : `lit-${tier}`}`);
+const label = arg('label', `${arg('filter', null) ? `${arg('filter', null)}-` : ''}${argv.includes('--shadows') ? `shadows${argv.includes('--light-sun') ? '-lightsun' : ''}${argv.includes('--clouds') ? '-clouds' : ''}-` : argv.includes('--hoth') ? 'hoth-' : ''}${post ? `post-${tier}` : `lit-${tier}`}`);
 const [W, H] = arg('size', '1600x900').split('x').map(Number);
 const ms = Number(arg('ms', 5000));
 const legs = arg('legs', 'webgpu,webgl').split(',');
@@ -71,7 +75,7 @@ const shadows = argv.includes('--shadows');
 const hoth = argv.includes('--hoth') || shadows;
 // the house tone mapper's exposure (src/lib/three/house.js LOOK.exposure): the classic stack's
 const HOUSE_EXPOSURE = 1.4;
-const fixture = { tier, post, sky, env: true, only, ...(hoth ? { hoth: true, exposure: HOUSE_EXPOSURE } : {}), ...(shadows ? { shadows: true, lightSun: argv.includes('--light-sun') } : {}), ...(arg('filter', null) ? { filter: arg('filter', null) } : {}) };
+const fixture = { tier, post, sky, env: true, only, ...(hoth ? { hoth: true, exposure: HOUSE_EXPOSURE } : {}), ...(shadows ? { shadows: true, lightSun: argv.includes('--light-sun'), clouds: argv.includes('--clouds') } : {}), ...(arg('filter', null) ? { filter: arg('filter', null) } : {}) };
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
@@ -139,9 +143,19 @@ for (const leg of legs) {
     row.shot = `${label}-${leg}.png`;
     row.meanLum = Number((await meanLum(png)).toFixed(4));
     if (shadows) {
-      for (const v of ['seam', 'pen1', 'pen10']) {
+      for (const v of ['seam', 'pen1', 'pen10', 'contact']) {
         await page.evaluate((name) => (window.__lit.probe.view(name), window.__lit.draw(8)), v);
         writeFileSync(join(OUT, `${label}-${leg}-${v}.png`), await shot());
+      }
+      await page.evaluate(() => (window.__lit.probe.contact(false), window.__lit.draw(4)));
+      writeFileSync(join(OUT, `${label}-${leg}-contact-off.png`), await shot());
+      await page.evaluate(() => (window.__lit.probe.contact(true), window.__lit.draw(4)));
+      if (argv.includes('--clouds')) {
+        // the cloud shadows, then 60 s of drift on the weather's wind
+        await page.evaluate(() => (window.__lit.probe.view('clouds'), window.__lit.draw(8)));
+        writeFileSync(join(OUT, `${label}-${leg}-clouds.png`), await shot());
+        await page.evaluate(() => (window.__lit.probe.advance(60), window.__lit.draw(8)));
+        writeFileSync(join(OUT, `${label}-${leg}-clouds-60s.png`), await shot());
       }
       await page.evaluate(() => (window.__lit.probe.view('near'), window.__lit.draw(8)));
     }
