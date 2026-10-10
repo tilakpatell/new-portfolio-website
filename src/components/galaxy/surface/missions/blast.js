@@ -40,10 +40,16 @@ const reach = (pts, c) => Math.max(6, ...pts.map((p) => Math.hypot(p[0] - c[0], 
 export function newBlast(mission, { n = RULES.n, seed = 1 } = {}) {
   const b = newBattle(mission, { n, seed });
   // (the middle post: nobody's, nobody can stand in it, so nobody takes it)
-  const mid = b.posts.find((p) => p.id === 'field');
-  mid.owner = null;
-  mid.meter = 0;
-  b.blast = { kills: { attack: 0, defend: 0 }, ground: groundFor(mission.system, 'blast') };
+  const field = b.posts.find((p) => p.id === 'field');
+  field.owner = null;
+  field.meter = 0;
+  // (the fight's middle: halfway between the two sides' spawns, not the
+  // ground's, so neither side starts nearer it: with the ground's middle the
+  // side whose spawns were nearer won seven runs in eight)
+  const [L, D] = [b.posts.find((p) => p.fixed === 'attack'), b.posts.find((p) => p.fixed === 'defend')];
+  const ground = groundFor(mission.system, 'blast');
+  const mid = pull(ground.points, ground.at, (L.at[0] + D.at[0]) / 2, (L.at[1] + D.at[1]) / 2);
+  b.blast = { kills: { attack: 0, defend: 0 }, ground, mid };
   return b;
 }
 
@@ -54,11 +60,11 @@ export const ROAM = 0.3; // (hand: of the way from the middle to the ground's ed
 const roam = (b) => {
   const g = b.blast.ground;
   for (let i = 0; i < 12; i++) {
-    const x = g.at[0] + (b.r() - 0.5) * (g.bounds.max[0] - g.bounds.min[0]) * ROAM;
-    const z = g.at[1] + (b.r() - 0.5) * (g.bounds.max[1] - g.bounds.min[1]) * ROAM;
+    const x = b.blast.mid[0] + (b.r() - 0.5) * (g.bounds.max[0] - g.bounds.min[0]) * ROAM;
+    const z = b.blast.mid[1] + (b.r() - 0.5) * (g.bounds.max[1] - g.bounds.min[1]) * ROAM;
     if (inside(g.points, x, z)) return [x, z];
   }
-  return [g.at[0], g.at[1]];
+  return [b.blast.mid[0], b.blast.mid[1]];
 };
 
 // each soldier its own place to go: the assault sends it to the middle
@@ -113,7 +119,7 @@ function quiet(b, side, near) {
   let bestD = Infinity;
   for (const sp of [...g.spawns[side], ...g.spawns.any]) {
     if (near.some((e) => Math.hypot(e.x - sp[0], e.z - sp[1]) < SAFE)) continue;
-    const d = Math.hypot(sp[0] - g.at[0], sp[1] - g.at[1]) + b.r() * 20;
+    const d = Math.hypot(sp[0] - b.blast.mid[0], sp[1] - b.blast.mid[1]) + b.r() * 20;
     if (d < bestD) {
       best = sp;
       bestD = d;
