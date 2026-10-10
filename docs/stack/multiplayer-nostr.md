@@ -21,6 +21,7 @@ Around them: `src/components/universe/online/client.js` (the site’s link, held
 - **Ephemeral events.** Everything goes out as an ephemeral kind: relays pass it on and keep nothing.
 - **Bundled.** What is waiting goes out together, at most every `FLUSH_MS`, keeping only the latest pose and pointer, which keeps each pilot inside what the relays allow.
 - **Checked twice.** The relays check each signature, and anything that matters (a hello, a hit, an alliance, leaving) is checked again in the browser, so no one can speak as another pilot; an event much older than a pilot’s others is dropped.
+- **Heard by cell.** A room joined with `cells` (`nostr.js`’s header) asks the relays for `#g` too, the 3 × 3 grid cells round the pilot (`src/lib/net/cells.js`, `NET_CELL` 2,048 m), tags what it sends `['g', cell]`, and asks again under the same REQ id only when the set changes (`pool.js`’s `refresh()`); a message for one pilot carries their cell as well. A room joined without `cells` is unchanged.
 - **Off the frames.** Signing and checking run in `signer.worker.js` (`docs/architecture.md`, Graphics).
 
 ## What the site does not use, and why
