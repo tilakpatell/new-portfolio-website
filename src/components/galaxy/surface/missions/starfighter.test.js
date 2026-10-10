@@ -25,7 +25,8 @@ const lay = (seed, tier = 'mid') => {
 describe('Starfighter Assault over Endor, from the game’s level', () => {
   it('reads the level: the Rebels defend the MC80 and its corvettes, the Empire attacks from its Star Destroyer', () => {
     expect(level.attacker).toBe(1);
-    expect(teamsOf('empire', 'rebel')[level.attacker]).toBe('empire');
+    expect(level.sides).toEqual(teamsOf('empire', 'rebel'));
+    expect(level.sides[level.attacker]).toBe('empire');
     expect(level.ships.map((s) => [s.team, s.kind])).toEqual([
       [0, 'moncal'],
       [0, 'corvette'],

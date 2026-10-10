@@ -5,6 +5,8 @@
   "attackers": "dark",
   "notes": "NOTES.md says how each id was chosen. The phases are the level's own (SpaceBattle_Gameplay's objective list: Corvettes, Mines, MC80); the MC80's phase is the game's three sub-stages by its strings (3: the top nodules, 3B: from beneath, 3C: the rear engines). Hand: which mine is A to F, which nodule is A1 to A4 and B1 to B3, the gates, the hp and the bomber flights' times.",
   "origin": [-259, 1771, -665],
+  "sides": { "1": "rebel", "2": "empire" },
+  "hides": ["deathstar2"],
   "ships": [
     { "id": "mc80", "team": 1, "kind": "moncal", "role": "flagship", "name": "MC80 star cruiser", "placed": "mc80_mainhull_01" },
     { "id": "cr90-a", "team": 1, "kind": "corvette", "role": "escort", "name": "CR90 corvette", "prefab": "SpaceBattle_SecondaryObjective_Cruisers:69" },

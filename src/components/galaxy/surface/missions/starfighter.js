@@ -12,7 +12,8 @@
 //   Team2), its stages and their objectives each where the level puts it
 //   (the corvettes on their ships, the mines at their prefabs, the MC80's
 //   nodules and engines at the parts the mode's sub-level places), its
-//   launch points by team, its fighters and bomber flights, its camera.
+//   launch points by team, its fighters and bomber flights, its camera, and
+//   the galaxy's stations it stands in place of (`hides`).
 // - frameOf(level, at) → (metres) → the battle's units: the level's origin
 //   at `at`, 53.3 m to a unit (galaxy/battles.js's scale, the Star
 //   Destroyer's 1,600 m 30 units), not turned (the level's +Z is the
@@ -47,7 +48,7 @@ function turn([x, y, z, w], [vx, vy, vz]) {
   return [vx + w * tx + (y * tz - z * ty), vy + w * ty + (z * tx - x * tz), vz + w * tz + (x * ty - y * tx)];
 }
 
-// the game's Team1 and Team2 as the battle's teams (the sides' order: the Rebellion's 0, the Empire's 1)
+// the game's Team1 and Team2 as the battle's teams (the sides' order: the light side's 0, the dark side's 1, as gcw.js's teamsOf)
 const teamOf = (gameTeam) => gameTeam - 1;
 
 export function levelOf(map, stages) {
@@ -67,7 +68,8 @@ export function levelOf(map, stages) {
     if (!p?.at) throw new Error(`${o.id}: no prefab ${o.prefab} in the level`);
     return { at: p.at, fwd: [Math.sin(p.yaw), 0, Math.cos(p.yaw)], r: null };
   };
-  const ships = stages.ships.map((s) => ({ id: s.id, team: teamOf(s.team), kind: s.kind, role: s.role, name: s.name, ...spotOf(s) }));
+  // (`pack`: one the level's pack draws, a part the mode's sub-level places; a prefab's ship is the battle's to draw)
+  const ships = stages.ships.map((s) => ({ id: s.id, team: teamOf(s.team), kind: s.kind, role: s.role, name: s.name, pack: Boolean(s.placed), ...spotOf(s) }));
   const shipOf = new Map(ships.map((s) => [s.id, s]));
   const attacker = teamOf(rows.spaceBattle?.attacker ?? 2);
   return {
@@ -75,6 +77,10 @@ export function levelOf(map, stages) {
     origin: stages.origin,
     attacker,
     defender: 1 - attacker,
+    // (the sides by team: the game's Team1 is the light side's, as the battle's team 0 is)
+    sides: [stages.sides['1'], stages.sides['2']],
+    // (the galaxy's stations the level stands in place of: Endor's is the second Death Star's wreckage)
+    hides: stages.hides ?? [],
     ships,
     stages: stages.stages.map((st) => ({
       ...st,
