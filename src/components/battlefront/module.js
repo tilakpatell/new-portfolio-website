@@ -11,7 +11,7 @@
 // through world.do. `window.__battlefront` is the same door for
 // scripts/battlefront-check.mjs: { view(), do(action, arg) } with 'deploy'
 // { classId }, 'pick' id, 'advance' seconds, 'win', 'lose', 'weather' name,
-// 'gpu'.
+// 'gpu', 'ragdolls' (how many bodies fall, lie and wait: figures/ragdolls.js).
 
 import * as THREE from 'three';
 import { camerasOf, lightingOf, loadRulebook, mapOf } from '../../lib/battlefront/rulebook.js';
@@ -19,6 +19,7 @@ import { createLook } from '../../runtime/look.js';
 import { overviewPose, soldierPose } from './camera.js';
 import { createCameraRig } from './cameraRig.js';
 import { createFigures } from './figures/figures.js';
+import { RAGDOLLS, createRagdolls } from './figures/ragdolls.js';
 import { createBolts } from './fx/bolts.js';
 import { markerProjection } from './hud/widgets.js';
 import { createInput } from './input.js';
@@ -50,7 +51,9 @@ export default {
     scene.background = new THREE.Color(0.7, 0.78, 0.88);
     const camera = new THREE.PerspectiveCamera(70, 1, 0.1, FAR);
     const level = createLevel({ scene, tier, renderer, world: levelName });
-    const figures = createFigures({ scene });
+    // (the ragdoll book, 144 KB, comes after the page: no body falls as one until it has)
+    const ragdolls = createRagdolls({ book: import('../../data/bf2017/physics/ragdoll.json').then((m) => m.default), floorAt: (x, z) => level.heightAt(x, z), max: RAGDOLLS[tier] ?? RAGDOLLS.mid });
+    const figures = createFigures({ scene, ragdolls });
     const bolts = createBolts(scene);
     const rig = createCameraRig(camera);
     const input = createInput({ maxPitch: (cams.soldier.maxPitch * Math.PI) / 180 });
@@ -172,7 +175,8 @@ export default {
         }
         if (pose) rig.set(pose);
         rig.update(dt);
-        figures.update(v.entities, dt, Math.min(1, acc / STEP));
+        figures.update(v.entities, dt, Math.min(1, acc / STEP), camera.position);
+        ragdolls.update(dt);
         clock += dt;
         // (each bolt leaves its owner's gun: fx/bolts.js)
         bolts.update(v.bolts, { muzzleOf: figures.muzzleOf, now: clock });
@@ -212,6 +216,8 @@ export default {
             return { ok: true };
           case 'gpu':
             return rt.gfx.backend;
+          case 'ragdolls':
+            return ragdolls.count();
           default:
             return { ok: false, why: `no action ${action}` };
         }
@@ -224,6 +230,7 @@ export default {
         light.dispose();
         bolts.dispose();
         figures.dispose();
+        ragdolls.dispose();
         level.dispose();
         if (typeof window !== 'undefined' && window.__battlefront?.world === world) delete window.__battlefront;
       },

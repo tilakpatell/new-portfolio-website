@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { skeleton } from '../../../lib/three/fixtures/gameSkeleton.js';
 import { AITRAJECTORY_TURN } from './facing.js';
 import { createFigures } from './figures.js';
 import { createHeld, weaponUrl } from './held.js';
@@ -107,5 +108,97 @@ describe('a soldier’s figure with its weapon', () => {
     expect(socket.children.length).toBe(1);
     figs.update([], 0.016);
     expect(socket.children.length).toBe(0);
+  });
+});
+
+// a body on the game's skeleton with no clips, loaded at once
+const gameBody = async () => {
+  const model = new THREE.Group();
+  model.add(skeleton().Hips.parent);
+  return { model, clips: {} };
+};
+const tick = () => new Promise((r) => setTimeout(r, 0));
+const trooper = (over = {}) => ({ id: 'a', team: 2, kind: 'soldier', at: [1, 0, 2], yaw: 0, state: 'alive', t: 0, vel: [0, 0], fall: null, ...over });
+
+// a stand-in for ragdolls.js: it takes every fall and has the body at once
+function fakeRagdolls() {
+  const handed = new Set();
+  return {
+    fall: vi.fn((id) => {
+      handed.add(id);
+      return true;
+    }),
+    handed: (id) => handed.has(id),
+    drop: vi.fn((id) => handed.delete(id)),
+  };
+}
+
+describe('the figures and the ragdolls', () => {
+  it('hands a fallen soldier to the ragdolls with how it fell, then stops placing it', async () => {
+    const ragdolls = fakeRagdolls();
+    const figs = createFigures({ scene: new THREE.Scene(), loadBody: gameBody, ragdolls });
+    figs.update([trooper()], 0.05);
+    await tick();
+    figs.update([trooper()], 0.05);
+    expect(ragdolls.fall).not.toHaveBeenCalled();
+    const fall = { part: 'head', dir: [0, 0, 1], at: [1, 1.6, 2], weapon: 'e11' };
+    const eye = [0, 2, 0];
+    figs.update([trooper({ state: 'dying', fall, t: 0.05 })], 0.05, 1, eye);
+    expect(ragdolls.fall).toHaveBeenCalledTimes(1);
+    expect(ragdolls.fall.mock.calls[0][0]).toBe('a');
+    expect(ragdolls.fall.mock.calls[0][2]).toMatchObject({ fall, eye });
+    const model = figs.figure('a').model;
+    figs.update([trooper({ state: 'down', fall, at: [9, 0, 9], t: 0.1 })], 0.05, 1, eye);
+    expect(model.position.x).toBeCloseTo(1, 9);
+    expect(ragdolls.fall).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the ragdoll when the sim takes the soldier away, or it stands again', async () => {
+    const ragdolls = fakeRagdolls();
+    const figs = createFigures({ scene: new THREE.Scene(), loadBody: gameBody, ragdolls });
+    figs.update([trooper(), trooper({ id: 'b' })], 0.05);
+    await tick();
+    figs.update([trooper({ state: 'dying' }), trooper({ id: 'b', state: 'dying' })], 0.05);
+    figs.update([trooper({ state: 'alive', t: 1 })], 0.05);
+    expect(ragdolls.drop).toHaveBeenCalledWith('b');
+    expect(ragdolls.drop).toHaveBeenCalledWith('a');
+    expect(figs.figure('a').model.visible).toBe(true);
+    figs.update([trooper({ state: 'alive', at: [5, 0, 5], t: 2 })], 0.05);
+    expect(figs.figure('a').model.position.x).toBeCloseTo(5, 9);
+  });
+
+  it('draws as before with no ragdolls', async () => {
+    const figs = createFigures({ scene: new THREE.Scene(), loadBody: gameBody });
+    figs.update([trooper()], 0.05);
+    await tick();
+    figs.update([trooper({ state: 'down', at: [3, 0, 3], t: 1 })], 0.05);
+    expect(figs.figure('a').model.position.x).toBeCloseTo(3, 9);
+  });
+});
+
+describe('the gun when the ragdoll has the body', () => {
+  it('leaves the hand, so no bolt comes from a fallen soldier, and comes back if it stands', async () => {
+    const ragdolls = fakeRagdolls();
+    const guns = [];
+    const held = createHeld({
+      load: (url) => {
+        guns.push(url);
+        return Promise.resolve({ scene: new THREE.Group(), animations: [] });
+      },
+    });
+    const figs = createFigures({ scene: new THREE.Scene(), loadBody: async () => body(), held, loadStance: async () => new Map(), ragdolls });
+    figs.update([soldier], 0.016);
+    await settle();
+    figs.update([soldier], 0.016);
+    await settle();
+    const socket = figs.figure(3).sockets.weapon;
+    expect(socket.children.length).toBe(1);
+    figs.update([{ ...soldier, state: 'dying', t: 1 }], 0.016);
+    expect(socket.children.length).toBe(0);
+    expect(figs.muzzleOf(3, new THREE.Vector3())).toBe(null);
+    figs.update([{ ...soldier, t: 2 }], 0.016);
+    await settle();
+    expect(socket.children.length).toBe(1);
+    expect(guns).toEqual([weaponUrl('e11'), weaponUrl('e11')]);
   });
 });

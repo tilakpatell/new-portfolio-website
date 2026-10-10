@@ -298,8 +298,10 @@ const chestAhead = (s) => {
   return [c[0] + Math.sin(s.yaw) * 100, c[1], c[2] + Math.cos(s.yaw) * 100];
 };
 
-// a soldier down: the score, the kill, the mode's ticket and the Battle Points
-function downed(sim, target, by, part, why = null) {
+// a soldier down: the score, the kill, the mode's ticket and the Battle Points;
+// a bolt's kill also says where the shot went (`dir`, unit), where it struck
+// (`at`) and the weapon's id, for the world's ragdolls
+function downed(sim, target, by, part, why = null, hit = null) {
   sim.score[target.team].deaths++;
   sim.stats.get(target.id).deaths++;
   const killer = by ? sim.entities.get(by) : null;
@@ -307,7 +309,7 @@ function downed(sim, target, by, part, why = null) {
     sim.score[killer.team].kills++;
     sim.stats.get(killer.id).kills++;
   }
-  emit(sim, { type: 'kill', by, target: target.id, part, ...(why ? { why } : {}) });
+  emit(sim, { type: 'kill', by, target: target.id, part, ...(why ? { why } : {}), ...(hit ? { dir: hit.dir.slice(), at: hit.at.slice(), weapon: hit.bolt.weapon?.id ?? null } : {}) });
   if (sim.ga) {
     target.respawn = modeEvent(sim.ga, { type: 'down', side: sideOf(sim.ga, target.team) }).respawn;
     if (killer && killer.team !== target.team) bpKill(sim.bp, { by, target: target.id, now: sim.time, hero: target.unit === 'hero' });
@@ -345,9 +347,9 @@ function resolveBolts(sim) {
       }
       const damage = damageAt(e.bolt.weapon, e.dist);
       const r = hurt(target, { damage, part: e.part, by: e.bolt.owner, now: sim.time });
-      emit(sim, { type: 'hit', by: e.bolt.owner, target: e.target, part: e.part, damage: Math.round(damage * 100) / 100 });
+      emit(sim, { type: 'hit', by: e.bolt.owner, target: e.target, part: e.part, damage: Math.round(damage * 100) / 100, dir: e.dir.slice(), at: e.at.slice() });
       if (sim.bp) bpHit(sim.bp, target.id, e.bolt.owner, sim.time);
-      if (r === 'down') downed(sim, target, e.bolt.owner, e.part);
+      if (r === 'down') downed(sim, target, e.bolt.owner, e.part, null, e);
     }
   }
   return evs;

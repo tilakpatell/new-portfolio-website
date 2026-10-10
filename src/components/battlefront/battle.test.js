@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadRulebook } from '../../lib/battlefront/rulebook.js';
 import { hothFlatNav } from '../../lib/battlefront/fixtures/hothFlat.js';
+import { addPlayer as addSoldier } from '../../lib/battlefront/sim.js';
 import { STEP, addPlayer, createBattle, deploy, step, view, worldMove } from './battle.js';
 
 const rb = loadRulebook();
@@ -81,5 +82,27 @@ describe('the battle on lane 1’s sim, with the deploy screen lane 2 will own',
     expect(view(b).entities).toHaveLength(4);
     b.force('win', 2);
     expect(view(b).mode.result).toEqual({ winner: 2, why: 'forced' });
+  });
+
+  it('keeps how each one fell for the figures: the hit part, the shot’s way as the death clip’s side; nothing on the living', () => {
+    const b = make();
+    addPlayer(b, { team: 2 });
+    deploy(b, 'player', { classId: 'd-orig-assault' });
+    const me = b.sim.entities.get(b.player.id);
+    const them = addSoldier(b.sim, { team: 1, classId: 'l-orig-assault', at: [me.at[0], me.at[1], me.at[2] + 15], yaw: Math.PI });
+    const target = b.sim.entities.get(them);
+    // (the ground falls away: aim from the player's chest at theirs)
+    const pitch = Math.atan2(target.at[1] + 1.2 - (me.at[1] + 1.4), 15);
+    let kill = null;
+    for (let i = 0; i < 400 && !kill; i++) kill = step(b, [{ id: 'player', move: [0, 0], yaw: 0, pitch, fire: i % 2 === 0 }]).find((e) => e.type === 'kill');
+    expect(kill?.target).toBe(them);
+    const v = view(b);
+    const victim = v.entities.find((e) => e.id === them);
+    expect(victim.fall).toMatchObject({ part: kill.part, weapon: kill.weapon });
+    expect(victim.fall.at).toHaveLength(3);
+    expect(victim.hitDir).toEqual(kill.dir);
+    const living = v.entities.find((e) => e.id === b.player.id);
+    expect(living.fall).toBe(null);
+    expect(living.hitDir).toBe(null);
   });
 });
