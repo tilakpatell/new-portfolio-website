@@ -42,12 +42,19 @@ export function readIndex(root) {
   return index;
 }
 
-export function loadAsset(root, name) {
+// An asset's text as the export wrote it (a 64-bit integer, like a firing
+// pattern's mask, survives only here: JSON.parse rounds it to a double).
+export function loadText(root, name) {
   const plain = join(root, 'data', `${name}.json`);
-  if (existsSync(plain)) return JSON.parse(readFileSync(plain, 'utf8'));
+  if (existsSync(plain)) return readFileSync(plain, 'utf8');
   const gz = `${plain}.gz`;
-  if (existsSync(gz)) return JSON.parse(gunzipSync(readFileSync(gz)).toString('utf8'));
+  if (existsSync(gz)) return gunzipSync(readFileSync(gz)).toString('utf8');
   return null;
+}
+
+export function loadAsset(root, name) {
+  const text = loadText(root, name);
+  return text === null ? null : JSON.parse(text);
 }
 
 export const rootOf = (asset) => asset.objects[asset.root];
