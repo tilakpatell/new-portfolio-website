@@ -7,8 +7,8 @@ import { crewById } from '../crews';
 import { readout } from '../outfit';
 import { castOfCrew } from '../../rickmorty/wardrobe/looks';
 import { ownedModules } from '../shop';
-import { STOCK_BUILD, buildCode } from './build';
-import { draftKeys, pasteDraft, sellable } from '../yardRules';
+import { buildCode } from './build';
+import { draftKeys, hullName, pasteDraft, sellable, setModule, setPart } from '../yardRules';
 import { createShowroom } from './showroom';
 import { useYard } from './useYard';
 import YardCatalogue from './YardCatalogue';
@@ -110,11 +110,12 @@ export default function Shipyard({ open, onOpen, enabled = true, ship, shipName 
     room.current?.focus(looking?.slot ?? slot);
   }, [looking, slot, open]);
 
-  const now = useMemo(() => (ship ? readout(ship, draft.loadout, draft.build) : []), [ship, draft]);
+  const now = useMemo(() => (ship ? readout(ship, draft.loadout, draft.build, draft.tune) : []), [ship, draft]);
   const then = useMemo(() => {
     if (!ship || !looking || looking.slot === 'paint') return null;
-    if (looking.module) return readout(ship, draft.loadout, { ...(draft.build ?? STOCK_BUILD), [looking.slot]: looking.id });
-    return readout(ship, { ...draft.loadout, [looking.slot]: looking.id }, draft.build);
+    // (the draft as it would be with what's pointed at staged: a build's module, a stock ship's tune, or a part)
+    const next = looking.module ? setModule(draft, looking.slot, looking.id) : setPart(draft, looking.slot, looking.id);
+    return readout(ship, next.loadout, next.build, next.tune);
   }, [ship, draft, looking]);
   const toBuyKeys = useMemo(() => new Set(checked.toBuy.map((i) => i.key)), [checked]);
 
@@ -184,7 +185,7 @@ export default function Shipyard({ open, onOpen, enabled = true, ship, shipName 
           {still ? (
             <div className="yard-still">
               <b>{shipName}</b>
-              <span>{draft.build ? 'Garage build' : 'Stock hull'}</span>
+              <span>{draft.build ? 'Garage build' : hullName(draft)}</span>
             </div>
           ) : (
             <canvas ref={canvas} className="yard-canvas" tabIndex={0} aria-label={`${shipName}, as staged: drag or use the arrow keys to turn it`} />
@@ -195,7 +196,7 @@ export default function Shipyard({ open, onOpen, enabled = true, ship, shipName 
             </p>
           )}
           <p className="yard-caption">
-            {crew?.label ?? ''} · {draft.build ? `Garage build ${buildCode(draft.build)}` : 'Stock hull'}
+            {crew?.label ?? ''} · {hullName(draft)}
             {looking && <span className="yard-looking"> · {RAIL_LABEL[looking.slot]}: {looking.text}</span>}
           </p>
         </div>

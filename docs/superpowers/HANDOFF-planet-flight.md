@@ -15,8 +15,13 @@ Four lanes, one pull request each, three of them in parallel. Read these first, 
 | B | durable world (Supabase) | `2026-10-09-durable-world.md` | `claude/durable-world` | main | nothing in code; the project's schema is applied by the owner or by `supabase db push` with a login |
 | C | spatial channels (Nostr) | `2026-10-09-spatial-channels.md` | `claude/spatial-channels` | main | nothing |
 | D | shared world | `2026-10-09-shared-world-integration.md` | `claude/shared-world` | main after A, B, C | A, B, C merged |
+| E | landmarks and kit clutter | `2026-10-09-landmarks.md` | `claude/planet-landmarks` | main after A | A merged |
+| F | the planet map | `2026-10-09-planet-map.md` | `claude/planet-map` | main after A | A merged |
+| G | planet life (air, animals, people, hostiles) | `2026-10-09-planet-life.md` | `claude/planet-life` | main after A | A merged |
+| H | occurrences and events | `2026-10-09-occurrences.md` | `claude/planet-occurrences` | main after D, G | D, G merged |
+| I | asset hosting on Supabase Storage | `2026-10-09-asset-hosting.md` | `claude/asset-hosting` | main after B | B merged |
 
-Start A, B and C together. D starts when the three are on `main`.
+Start A, B and C together. D, E, F and G start when A is on `main` (D also needs B and C). H starts when D and G are on `main`. E, F and G touch the same `scene.js` and `FlightHud.jsx`: each adds its own module and one call site, merges `origin/main` before its last push, and keeps the other lanes' calls.
 
 ## The Supabase project
 
@@ -41,15 +46,25 @@ Start A, B and C together. D starts when the three are on `main`.
 - **B**: `npm run build` with and without the env; the loader's tests green against the fake; `scripts/supabase-check.mjs` prints six `ok` lines against the project once the schema is applied (or the PR says it could not be applied and why).
 - **C**: a room joined with `cells` sends `#g` in its REQ and re-asks on a cell change; a room joined without is byte-for-byte what it was; `scripts/online-check.mjs` passes as before.
 - **D**: two browsers on `/fly/hoth` see each other's ships only within a cell of each other, a turret built in one is in the other within a second and after a reload of both, and a turret shot to nothing leaves both.
+- **E**: Echo Base has its doors and generator, Mos Eisley its blocks, Cloud City its towers; trees and rocks are the kit's; each planet's download is measured.
+- **F**: a minimap in the HUD and `M` opens the planet map with POIs, pilots, built things and a waypoint; nothing stored.
+- **G**: Hoth has tauntaun herds and snowspeeder patrols, Coruscant three lanes of traffic, Dagobah only bogwings, Mandalore's glass nothing; a patrol scrambles at you over a garrison; the probe holds 33 ms with Coruscant's lanes full.
+- **I**: the heavy models and scans load from the bucket by hash with a year's cache, the site plays unchanged with the bucket unset or blocked, an installed world caches the remote files, and the PR says how many megabytes moved.
+- **H**: a blizzard on Hoth that both browsers see, the Purge at sundown, an eruption on Mustafar, wrecks with salvage and camps that fire.
 
 ## Status
 
 | Lane | Done | Left | Checking it |
 |---|---|---|---|
 | A | #784 (`claude/flight-terrain`): `/fly/:planet` over streamed leaves for the note's fifty worlds (`lib/land/flight/planetTables.js`), each galaxy world on its walkable site's own layers and ground (the surfaces' material moved to `lib/three/groundLook.js`, no pixel changed), its places built of the site's film-made models; Coruscant one city to the haze (the film-made tower close, code-built beyond, the Senate and the Temple); the ground robust to a bad answer or a dead worker; `fastnoise-lite` with its page | its merge; on a GPU, the perf probe's worst frame (here, SwiftShader: software raster; the flight's own work 5.4 ms a frame at most); the asset host is lane I's (`claude/flight-terrain-assets`) | `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /fly/hoth,/galaxy/hoth/surface`; `node scripts/perf-probe.mjs fly` |
-| B | PR #782: `src/lib/durable/` (client, entities, loader), `scripts/supabase-seed.mjs`, `scripts/supabase-check.mjs`, three migrations applied to the owner's project, six live checks `ok`; the robustness pass (retries, realtime resubscribe, 401 re-sign-in) asked for on 2026-10-09 | CI green and out of draft; `CELL` to read `NET_CELL` once lane C is on main (lane D closes it); the seed re-run after lane A merges | `node scripts/supabase-check.mjs` |
-| C | PR #783, out of draft, CI green: `src/lib/net/cells.js`, `refresh()` on a pool subscription, `cells` in `joinRoom` (the `g` tag out, `#g` in, re-asked on change), `flightProtocol.js`; a test that `CELL === NET_CELL` whenever `src/lib/durable/entities.js` is present | merge (the owner's); lane D makes `entities.js` import `NET_CELL` | `npx vitest run src/components/universe/online src/lib/net`; `node scripts/online-check.mjs` |
-| D | nothing yet | after A, B, C | `node scripts/online-check.mjs --fly` |
+| B | PR #782, out of draft, CI green, mergeable: `src/lib/durable/` (client, entities, loader with retries, re-sign-in and realtime resubscribe), `scripts/supabase-seed.mjs` (the 50-planet roster, idempotent), `scripts/supabase-check.mjs`, three migrations applied to the owner's project, six live checks `ok` | merge (the owner's); apply `seed.sql` once after lane A merges (old Expanse rows are deleted by hand); `CELL` to read `NET_CELL` (lane D) | `node scripts/supabase-check.mjs` |
+| C | all five tasks: `src/lib/net/cells.js`, `refresh()` in `pool.js`, `cells`, `setCell`, `setCells` and the target's cell in `nostr.js`, `expanse/flight/flightProtocol.js` (PR #783). Also: `setCells` asks on the next tick, once a frame; an event from a cell not listened for is dropped and counted (`room.stats().offCell`); the goodbye is signed again when your cell changes; `readPose` takes the planet its tag must name. | lane D closes the one-grid line: `src/lib/durable/entities.js` imports `NET_CELL` instead of its own `CELL` (`cells.test.js` holds the two equal wherever `entities.js` is on the branch; on this branch it isn't yet, so that test checks nothing until lane B merges) | `npx vitest run src/components/universe/online src/lib/net src/components/expanse/flight`; `node scripts/online-check.mjs` |
+| D | PR #799 (draft until #782, #783, #784 merge): the room by cell, other ships, B/X building with the `built` hint, turrets that fire and wear down through `damage_entity`, the terrain version migration and re-grounding, `entities.js` on `NET_CELL`; two fake browsers: no pose five cells apart, a pilot a cell away in 1.5 s, a turret across in 1.1 s and through a reload; 70 poses a second at ten pilots, radius stays 1 | CI; the owner applies `20261009000300_terrain_version.sql` and `seed.sql`; out of draft after the three merges | `node scripts/online-check.mjs --fly` |
+| E | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/hoth` over Echo Base |
+| F | nothing yet | after A: the plan from Task 1 | smoke `/fly/hoth --phone` with the map open |
+| G | PR #801 (draft until #784 merges), CI green: life tables for every named world and the Expanse rule (dead worlds empty), seeded rosters and routes, `life.js` on `src/lib/ai` within `LIFE_MS`, scrambles that hunt and fire, one instanced draw a model, “Patrol inbound” on the HUD; life's own work p99 2 ms on Hoth, 3 ms with Coruscant's lanes at the cap | the GPU worst frame; `LIFE_CELL` to `NET_CELL` and damage through lane D's hit path once D is on main; lane A's roster to carry `coruscant` and `geonosis` | `node scripts/perf-probe.mjs fly` on a real GPU |
+| H | nothing yet | after D, G: the plan from Task 1 | `node scripts/online-check.mjs --fly` (one storm, two browsers) |
+| I | PR #798 (draft until #782 merges): the upload script and manifest, the resolver every loader goes through with a once-only local fallback, the deploy variable, packs and the service worker carrying remote files; the remote set is 248 files, 83.1 MB, the local remainder 926.5 MB | the owner runs `node scripts/assets-upload.mjs --dry` then without, commits the manifest, sets the `ASSET_BASE` repository variable (`supabase/README.md`, “The asset bucket”); Pro before it is on for everyone | `node scripts/sw-check.mjs` and `--bucket`; a build with and without `VITE_ASSET_BASE` |
 
 ## When something in the plan is wrong
 

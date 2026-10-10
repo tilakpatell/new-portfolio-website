@@ -549,3 +549,36 @@ A, B and C touch disjoint files (A: `src/lib/land/`, `src/components/expanse/fli
 - Supabase's free tier (500 MB, 2 GB egress, 200 concurrent realtime peers) is enough for the launch; the decision entry says what reopens it.
 - The 50 planets are every world the site has that is a planet, each with its ground from the fiction (`docs/research/2026-10-09-planet-geographies.md`): the galaxy's 17 landable systems, the Rick and Morty sector's 10 moons, the universe map's 10 fandom planets, and 13 Expanse planets by id; listed in `planetSpec.js`'s `PLANETS` and written to `supabase/seed.sql` (with each world's POIs into `pois`) by `scripts/supabase-seed.mjs`; a planet not in the table cannot be built on (the foreign key), which is the point.
 - Three field options the roster needs, added to `planetField` and `layers.js` by lane A: `step` (heights snapped to a grid of that many metres: the pixel world), a `blocks` layer (`{ type: 'blocks', cell, gap, hMin, hMax, cover }`: flat-topped towers on a grid, seeded per cell, for the city worlds), and `soft: true` (a cloud deck: the ground is fog, never a crash).
+
+## Pillar 4: a living planet (added 2026-10-09)
+
+The owner's ask: landmarks from the asset packs, a map, and each planet populated as its fiction is, with ships in the air, animals and people by the planet's kind (a dead rock, a wild world, a settled one, a city, a hostile garrison), and things happening as the ground generates, as Minecraft's structures and mobs do. The per-world tables are `docs/research/2026-10-09-planet-geographies.md`, “The life of each world”.
+
+### Libraries
+
+No new ones. The repo decided against Yuka, behavior3js and recast for NPCs (`2026-10-07-npc-intelligence-design.md`, “What it is not”) and built `src/lib/ai/` (utility, trees, perception, steering, squads, social, needs: pure, tested, in use by the galaxy's surfaces and the universe's hunters); it is the robust choice because it already runs under a dozen NPC systems and is tested in Node. Models come from the packs already committed (`galaxy/surface/catalog`, the Quaternius kits through `lib/three/kit.js`, the landings' models) and gen3d for anything missing; the three terrain repositories the owner pointed at gave techniques (above), and FastNoiseLite and supabase-js are in.
+
+### Decisions
+
+11. **Two clocks, one seed.** What is *placed* (landmarks, wrecks, camps, herds' homes, air routes) is seeded per 2 km cell from the planet seed and the cell, exactly as `galaxy/surface/ground/population.js` seeds a cell's roster, so every pilot sees the same things in the same places with nothing stored. What *happens* (a storm, a raid, a launch, a migration) is rolled by a director on a clock, as `universe/director.js` rolls its events, and *announced on the room* (`event { id, kind, at, t, seed }`, flightProtocol.js) so pilots in the same cells see the same event at the same place; a pilot who joins mid-event is told it in the next `hi`.
+12. **A planet has a kind and a cast.** `lifeTables.js` (pure, beside `planetTables.js`) gives each world `{ kinds: by biome, air: [...], ground: [...], occurrences: [...], events: [...] }` from the note's table; an Expanse planet derives its row from `makeSector`'s `faction`, `traffic` and `hazard`. Density is per km² at mid, halved on low, and capped per cell (`LIFE_CAP = { air: 12, ground: 48, occurrences: 6 }` loaded cells round the ship at radius 2).
+13. **Life is a second streamer on the same cells.** `createLife` (pure) runs a `createChunkGrid` of its own at `NET_CELL` with radius 2 and, for each loaded cell, makes the cell's roster (`rosterFor(spec, cellKey) → { air, ground, occurrences }`) from the seed, lets it go behind, keeps per-visit state (dead, moved) by id as `population.js` does, and gives the scene `{ make, drop }` lists; brains run on `src/lib/ai` (steer for flocks and herds, utility for patrols and hostiles, squad for raids); hostiles use `galaxy/surface/hostiles.js`'s bursts and strafes.
+14. **Air traffic is routes, not random.** A route is a seeded polyline between two POIs (or a POI and the cell's edge) at an altitude band per ship kind; ships fly it on a loop at the kind's speed; a patrol kind is a route with a `scramble` radius round a hostile POI: within it, two ships break off and hunt you with the universe's `hunterRules` shape. Everything in the air is instanced per kind (the universe's ship pools) and the wedge stands in for a kind with no model yet.
+15. **Occurrences are landmarks with a rule.** A wreck, a cave, a camp or a beacon is a placement (lane E's landmark kit) plus a pure rule (`occurrences.js`): a camp is hostile within its radius, a beacon gives a toast and a map marker, a cave is a pit with something in it, a wreck has a salvage pickup (the galaxy's pickups).
+16. **The map is drawn from the field, not stored.** The worker returns, with each depth-3 leaf (2 km), a 32 × 32 raster of biome index and height; `map.js` keeps them in a `Map<cellKey, raster>` and draws the minimap and the full map from them, POIs from the spec, pilots from the room, built things from the loader, occurrences from the life streamer.
+17. **Robust by construction.** Every cap is a constant in one table; a roster with a non-finite position is refused and the cell re-rolled once with a `console.warn`; a brain that throws is removed from the cell for the visit, never the frame loop; events time out (`ttl`) and are cleared on leaving the planet; an announced event from a peer is believed only within `NET_CELL × 3` of its `at` and with a known kind; the per-frame budget for life (`LIFE_MS = 2` on mid) is measured with `performance.now()` and brains are stepped round-robin when it is spent.
+
+### Files
+
+```
+src/lib/land/flight/lifeTables.js        LIFE[planetId] | lifeFor(spec, sectorPlanet)
+src/lib/land/flight/roster.js            rosterFor(spec, life, cellKey, tier) → { air, ground, occurrences } (pure, seeded)
+src/lib/land/flight/routes.js            routesFor(spec, life, cellKey) → [{ id, kind, points, alt, speed, scramble? }]
+src/lib/land/flight/occurrences.js       OCCURRENCES: { kind → { place, rule } }; applyRule(occ, ship, dt) → effects
+src/lib/land/flight/director.js          createFlightDirector({ life, rand, now }) → { update(dt, ctx) → events, announce(ev), receive(ev) }
+src/lib/land/flight/mapRaster.js         rasterFor(field, leaf, n = 32) → { biome: Uint8Array, height: Float32Array } (in the worker)
+src/components/expanse/flight/life.js    createLife(scene, { rt, spec, tier, room }) : the streamer, the pools, the brains
+src/components/expanse/flight/air.js     the ships in the air: pools per kind, routes, scrambles
+src/components/expanse/flight/map.js     the minimap and the full map (a canvas in the HUD kit's frame)
+src/components/expanse/flight/landmarks.js  POI kits: placements from galaxy/surface/sites' `things` and `places` where a site exists, lane E's own lists where none
+```
