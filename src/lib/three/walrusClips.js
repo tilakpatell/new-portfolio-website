@@ -20,8 +20,9 @@
 //   PACKS                        { pack: map } by the site's kind (crewList.js)
 //   OWN_RIGS                     { rig: { skeleton, body, set } }: the kinds
 //                                on a skeleton of their own (the B1, the B2,
-//                                the droideka, the Ewok, the astromech, the
-//                                probe, the tauntaun), each pack's clips
+//                                the Ewok, the astromech, the probe, the
+//                                tauntaun; the droideka is lane V's walker,
+//                                rigSets.js), each pack's clips
 //                                taken from that skeleton only (ownRig.js)
 //   RIG_SET(rig)                 → its set
 
@@ -207,26 +208,6 @@ export const OWN_RIGS = {
       'hit.back': 'A_B2_Stagger_Back_01',
       stagger: 'A_B2_Stagger_Front_01',
       deploy: 'A_B2_Rifle_Stand_Deploy_01',
-    },
-  },
-  droideka: {
-    skeleton: 'Droideka_01_Ske',
-    body: 'droideka',
-    set: {
-      idle: 'C_Droideka_Walk_InPlace_01',
-      walk: 'C_Droideka_Walk_Fwd_01',
-      run: 'A_Droideka_Folded_RollJump_Fwd_01',
-      'walk.back': 'C_Droideka_Walk_Bwd_01',
-      'walk.left': 'C_Droideka_Walk_Left_02',
-      'walk.right': 'C_Droideka_Walk_Right_01',
-      deploy: 'A_Droideka_Unfold_01',
-      fold: 'A_Droideka_Fold_01',
-      shield: 'A_Droideka_ShieldActivation_01_Activate',
-      'hit.chest': 'A_Droideka_Stagger_Front_01',
-      'hit.back': 'A_Droideka_Stagger_Back_01',
-      die: 'A_Droideka_Death_Stand_02',
-      'die.fwd': 'A_Droideka_Death_Stand_02',
-      'die.back': 'A_Droideka_Death_Stand_02',
     },
   },
   ewok: {

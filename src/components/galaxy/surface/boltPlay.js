@@ -55,7 +55,8 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random, bone
   let asked = !!boneSets;
   const gameBodies = (t, out) => {
     // (a droid or beast on a rig of its own, ownRig.js, takes its rig's own
-    // set where the game has one, the B2's and the droideka's; else the one
+    // set where the game has one (the B2's; lane V's walkers, the droideka
+    // among them, name no skeleton and keep their one capsule); else the one
     // capsule of a figure the game has none for)
     const own = t.fig?.rig === 'own' ? t.fig.skeleton : null;
     if (t.fig?.rig === 'own' && !own) return false;

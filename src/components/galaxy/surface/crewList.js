@@ -166,5 +166,4 @@ export const CREW = {
   r5: { url: '/models/galaxy/bf2017/crew/r5.glb', tall: 1.165, rig: 'own', ownRig: 'astromech', lod: true, full: true, fullMB: 2, fullDL: 2 },
   superdroid: { url: '/models/galaxy/bf2017/crew/superdroid.glb', tall: 1.93, rig: 'own', ownRig: 'b2', lod: true, far: true, full: true, fullMB: 36, fullDL: 19 },
   tauntaun: { url: '/models/galaxy/bf2017/crew/tauntaun.glb', tall: 2.67, rig: 'own', ownRig: 'tauntaun', lod: true, full: true, fullMB: 27, fullDL: 12 },
-  droideka: { url: '/models/galaxy/bf2017/crew/droideka.glb', tall: 2.016, rig: 'own', ownRig: 'droideka', lod: true, far: true, full: true, fullMB: 16, fullDL: 9 },
 };

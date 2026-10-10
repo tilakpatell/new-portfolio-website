@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import PUBLISHED from '../../../data/galaxyAssets.json';
+import { bytesOf, onSite } from '../../../../scripts/lib/asset-manifest.mjs';
 import { PLANETS, planetSpecOf } from './planets';
 import { WORLD_MB } from '../../worlds/worlds';
 import { PACK } from './pack';
@@ -7,13 +10,15 @@ import { landmarkFiles } from './landmarkFiles';
 
 const pub = (u) => new URL(`../../../../public${u}`, import.meta.url);
 const kits = Object.fromEntries(['naturemega', 'space'].map((p) => [p, JSON.parse(readFileSync(pub(`/kit/${p}/index.json`), 'utf8'))]));
-const mb = (urls) => urls.reduce((n, u) => n + statSync(pub(u)).size, 0) / 1e6;
+// (on disk, or published to the bucket and out of git: src/data/galaxyAssets.json)
+const PUBLIC = { publicDir: fileURLToPath(pub('')), manifest: PUBLISHED };
+const mb = (urls) => urls.reduce((n, u) => n + bytesOf(u, PUBLIC), 0) / 1e6;
 // what the flight fetches besides its landmarks (worlds.js's own line): the scans and Coruscant's models
 const BASE_MB = 5;
 
 describe('landmarkFiles', () => {
   it('names only files that are there', () => {
-    for (const { id } of PLANETS) for (const u of landmarkFiles(planetSpecOf(id), { kits })) expect(() => statSync(pub(u)), `${id}: ${u}`).not.toThrow();
+    for (const { id } of PLANETS) for (const u of landmarkFiles(planetSpecOf(id), { kits })) expect(onSite(u, PUBLIC), `${id}: ${u}`).toBe(true);
   });
 
   it('keeps the flight’s download over the heaviest planet’s, measured', () => {

@@ -103,7 +103,6 @@ The full cut is in `site-assets` (the download, then its maps on the GPU at a by
 | r5 | 1.6 MB · 2 MB | 152 KB · 4 MB | — |
 | superdroid | 18.8 MB · 36 MB | 566 KB · 24 MB | 71 KB |
 | tauntaun | 11.4 MB · 27 MB | 448 KB · 4 MB | — |
-| droideka | 8.8 MB · 16 MB | 239 KB · 8 MB | 55 KB |
 
 The packs:
 
@@ -111,7 +110,6 @@ The packs:
 | --- | --- | --- |
 | `clips-humanoid.glb` | 31 | 1,002 KB |
 | `clips-b2.glb` | 22 | 432 KB |
-| `clips-droideka.glb` | 12 | 215 KB |
 | `clips-ewok.glb` | 24 | 617 KB |
 | `clips-astromech.glb` | 6 | 22 KB |
 | `clips-probe.glb` | 5 | 30 KB |
