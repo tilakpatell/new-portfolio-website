@@ -36,6 +36,7 @@ import { sweptHit } from '../../universe/targeting';
 import { GCW, seeded } from '../gcw';
 import { tunnelPath } from '../tunnel';
 import { createRun } from './run';
+import { buildBeam, createShockwave } from '../stationFx';
 
 const REBELS = 0;
 const EMPIRE = 1;
@@ -79,15 +80,6 @@ function buildGenerator() {
   return { group, dispose: () => (geos.forEach((g) => g.dispose()), metal.dispose(), dark.dispose(), glow.dispose()) };
 }
 
-// the superlaser's beam: a hot green core in a wider glow
-function buildBeam() {
-  const geo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
-  const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 5.5, 1.4), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.visible = false;
-  return { mesh, mat, dispose: () => (geo.dispose(), mat.dispose()) };
-}
-
 export function createEndor(ctx) {
   const { battle, sys, world } = ctx;
   const ds = sys.pieces.find((p) => p.type === 'station' && p.kind === 'deathstar2');
@@ -127,8 +119,14 @@ export function createEndor(ctx) {
   };
 
   // ── the superlaser ──
+  // (its spin held while the war's on, turned so its dish faces the Rebel
+  // fleet: world.js's face, the dish's place on the model stationFx.js's)
+  const fleet = battle.capitals.filter((c) => c.team === REBELS);
+  if (fleet.length) world?.war?.face?.('deathstar2', v(fleet.reduce((a, c) => a + c.pos.x, 0) / fleet.length, fleet.reduce((a, c) => a + c.pos.y, 0) / fleet.length, fleet.reduce((a, c) => a + c.pos.z, 0) / fleet.length));
   const beam = buildBeam();
   ctx.scene?.add(beam.mesh);
+  // (and when it goes up, a ring of fire running out round its equator)
+  const shock = ctx.scene ? createShockwave(ctx.scene) : null;
   let nextShot = 50 + rand() * 30;
   let shot = null; // { target, age, from? }
   // (in the battle every pilot shares, its shots are the plan's losses: each
@@ -186,7 +184,9 @@ export function createEndor(ctx) {
     enter: () => ctx.event('gcw-run'),
     onBlown: (mine) => {
       blown = true;
+      beam.hide();
       ctx.draw?.flash(D, { size: ds.size * 0.5, life: 3.5, color: [2.6, 2, 1.2] });
+      shock?.at(new THREE.Vector3(D.x, D.y, D.z), R);
       for (let i = 0; i < 8; i++) ctx.draw?.flash(v(D.x + (rand() - 0.5) * R * 1.4, D.y + (rand() - 0.5) * R * 1.4, D.z + (rand() - 0.5) * R * 1.4), { size: R * 0.3, life: 1.6 + i * 0.35, color: [2.8, 1.4, 0.5] });
       world?.war?.station('deathstar2', false);
       ctx.event('gcw-ds2');
@@ -199,6 +199,7 @@ export function createEndor(ctx) {
     run, // (for the browser checks)
     update(dt, t, live, events) {
       const res = {};
+      shock?.update(dt);
       // what's been done to the generator, here and by the pilots in the system
       if (!genDown && genGone()) knockOut(false);
       // its guns, at anyone who comes down to it
@@ -231,25 +232,22 @@ export function createEndor(ctx) {
       if (!blown && shot) {
         shot.age = shot.from !== undefined ? ctx.clock() - shot.from : shot.age + dt;
         const tp = shot.target.pos;
-        aim.set(tp.x - D.x, tp.y - D.y + R * 0.35, tp.z - D.z).normalize();
-        dish.set(D.x, D.y, D.z).addScaledVector(aim, R * 1.02);
-        aim.set(tp.x - dish.x, tp.y - dish.y, tp.z - dish.z);
+        const at = world?.war?.dish?.('deathstar2');
+        if (at) dish.copy(at);
+        else dish.set(D.x, D.y, D.z).addScaledVector(aim.set(tp.x - D.x, tp.y - D.y + R * 0.35, tp.z - D.z).normalize(), R * 1.02);
         // the charge (a glow at the dish), the beam, the ship gone
         if (shot.age < 1.6) {
           if (rand() < dt * 12) ctx.draw?.flash(dish, { size: 6 + shot.age * 6, life: 0.5, color: [0.8, 3.5, 0.9] });
-          beam.mesh.visible = false;
+          beam.hide();
         } else if (shot.age < 3) {
-          beam.mesh.visible = true;
-          beam.mesh.position.copy(dish);
-          beam.mesh.scale.set(1.4 + Math.sin(t * 40) * 0.3, 1.4, aim.length());
-          beam.mesh.lookAt(tp.x, tp.y, tp.z);
+          beam.lay(dish, aim.set(tp.x, tp.y, tp.z), 1.4 + Math.sin(t * 40) * 0.3);
           if (!shot.hit && shot.age > BEAM_HIT) {
             shot.hit = true;
             battle.wreck(shot.target.id);
             ctx.draw?.flash(tp, { size: shot.target.size * 1.4, life: 2.4, color: [2.4, 3.2, 1.2], bright: 1.6 });
           }
         } else {
-          beam.mesh.visible = false;
+          beam.hide();
           shot = null;
         }
       }
@@ -309,6 +307,8 @@ export function createEndor(ctx) {
       gen.dispose();
       beam.mesh.removeFromParent();
       beam.dispose();
+      shock?.dispose();
+      world?.war?.face?.('deathstar2', null);
     },
   };
 }
