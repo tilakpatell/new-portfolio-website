@@ -20,7 +20,7 @@
 //   walkIntent(state, input, row, pose, dt) → { vel: { x, z }, face, jump }   (pure)
 //   createPlayerBody({ physics, state, row, world, drive = true, onError }) → {
 //     step(input, dt) → { landed, jumped, bumped }, teleport([x, y, z], yaw), knock([x, y, z]),
-//     pose (stand | crouch), ready (the engine is in), eye(), dispose() }
+//     pose (stand | crouch), ready (the engine is in), state, eye(), dispose() }
 //   input: walk()'s ({ x, y, run, jump, heading }) and `crouch` (held)
 //   drive: this body steps the physics world (false when its owner does)
 
@@ -288,6 +288,10 @@ export function createPlayerBody({ physics, state, row, world, drive = true, onE
     },
     get ready() {
       return Boolean(c);
+    },
+    // the walker state it moves (the scene rebuilds the body when you swap to your crewmate)
+    get state() {
+      return state;
     },
     get character() {
       return c;
