@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PLANETS, TYPE_BIOMES, planetSpecOf } from './planetSpec';
 import { SITE_GROUND, SITE_LAYERS, WORLDS } from './planetTables';
 import { makeSector } from '../../../components/expanse/gen/sector.js';
@@ -6,6 +9,7 @@ import { UNIVERSE } from '../../../components/expanse/gen/seed.js';
 // (the test alone reaches into the galaxy: planetSpec.js stays pure)
 import { SITES } from '../../../components/galaxy/surface/sites/index.js';
 
+const ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
 const GALAXY = 'tatooine hoth endor yavin bespin dagobah mustafar coruscant naboo kashyyyk kamino geonosis scarif nevarro mandalore lothal sorgan'.split(' ');
 const SECTOR = 'gazorpazorp squanch birdworld gearworld pluto snakeplanet nuptia resort cronenberg purge'.split(' ');
 const FANDOM = 'cybertron middle-earth caribbean albuquerque scranton avengers invincible c-137 earth dot-matrix'.split(' ');
@@ -79,6 +83,24 @@ describe('planetSpecOf', () => {
     for (const p of PLANETS) expect(planetSpecOf(p.id).ground?.palette, p.id).toBeTruthy();
   });
 
+  it('stands each landmark at a place the planet has, from a model the site carries', () => {
+    let n = 0;
+    for (const p of PLANETS) {
+      const s = planetSpecOf(p.id);
+      for (const l of s.landmarks) {
+        n++;
+        expect(s.pois.some((q) => q.id === l.at), `${p.id} ${l.id}`).toBe(true);
+        for (const part of l.parts) {
+          expect(existsSync(join(ROOT, 'public', part.url)), part.url).toBe(true);
+          if (part.hq) expect(existsSync(join(ROOT, 'public', part.hq)), part.hq).toBe(true);
+          expect(part.metres).toBeGreaterThan(0);
+          expect(part.count).toBeGreaterThan(0);
+        }
+      }
+    }
+    expect(n).toBeGreaterThanOrEqual(10);
+  });
+
   it('marks what the note marks: the pixel world stepped, the cloud deck soft, the cities blocked', () => {
     expect(planetSpecOf('dot-matrix').step).toBe(4);
     expect(planetSpecOf('bespin').soft).toBe(true);
@@ -89,7 +111,6 @@ describe('planetSpecOf', () => {
     expect(c.biomes.some((b) => b.relief.some((l) => l.type === 'blocks' || l.type === 'mountains' || l.type === 'ridges'))).toBe(false);
     expect(c.clutter[0]).toMatchObject({ kinds: ['tower', 'slab', 'needle'], grid: 150 });
     expect(c.landmarks.map((l) => l.at)).toEqual(['senate', 'jedi-temple']);
-    for (const l of c.landmarks) expect(c.pois.some((p) => p.id === l.at)).toBe(true);
     expect(c.hero.url).toMatch(/corutower\.glb$/);
     expect(planetSpecOf('tatooine').pits[0]).toMatchObject({ at: [2800, -1900], r: 90, depth: 40 });
   });

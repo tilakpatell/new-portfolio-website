@@ -41,6 +41,13 @@ const toon = (height, scale = 800) => ({ type: 'fnl', noise: { type: 'simplex', 
 // islands or craters, seeded per planet (expand)
 const scatter = (count, height, r = [150, 500], more = {}) => ({ count, height, r, spread: 14000, ...more });
 
+// a place's buildings, the galaxy's film-made models (public/models/galaxy/surface/, at the
+// sizes galaxy/surface/catalog gives them unless a part says): `count` of a part scattered
+// round the place, or one in its middle (`centre`); `hq` its high-detail file, for a strong machine
+const M = '/models/galaxy/surface/';
+const part = (file, metres, count = 1, more = {}) => ({ url: `${M}${file}.glb`, metres, along: 'x', count, ...more });
+const landmark = (id, at, parts) => ({ id, at, parts });
+
 const biome = (id, at, base, relief, more = {}) => ({ id, at, reach: 0.3, base, relief, ...more });
 // a biome placed by `ringed`
 const b = (id, base, relief, more = {}) => ({ id, at: null, reach: 0.3, base, relief, ...more });
@@ -139,6 +146,7 @@ const GALAXY = [
     pits: [{ id: 'carkoon', name: 'The Pit of Carkoon', at: [2800, -1900], r: 90, depth: 40 }],
     palette: { low: '#d9b47a', high: '#efd9a8', rock: '#8a5a3a', accent: '#b8864a', skyLow: '#f6dcb0', skyHigh: '#6fa6d8' },
     clutter: clutter(['rock', 40], ['debris', 10], ['spire', 4, { size: 0.4 }]),
+    landmarks: [landmark('mos-eisley', 'mos-eisley', [part('moscantina.lod1', 22, 1, { centre: true }), part('mosblock', 11, 12, { along: 'max' }), part('moshut', 6.5, 16, { along: 'max' }), part('mosspire', 20, 6, { along: 'y' }), part('mostower', 30, 4, { along: 'y' }), part('mosarch', 10, 3)])],
     ground: SITE_GROUND.tatooine,
     water: SITE_WATER.tatooine,
   },
@@ -169,6 +177,7 @@ const GALAXY = [
     pois: [poi('bunker', 'The shield generator bunker', [600, -400], 140, 90), poi('bright-tree', 'Bright Tree Village', [-900, 500], 80, 60)],
     palette: { low: '#3f5a30', high: '#7f9a52', rock: '#5a5048', accent: '#a8c070', skyLow: '#d8ecf2', skyHigh: '#5d9fd6' },
     clutter: clutter(['trunk', 30, fine], ['rock', 20], ['debris', 15]),
+    landmarks: [landmark('bright-tree', 'bright-tree', [part('ewokhut', 4, 10)])],
     ground: SITE_GROUND.endor,
     water: water('lake', -8),
   },
@@ -198,6 +207,7 @@ const GALAXY = [
     pois: [poi('cloud-city', 'Cloud City', [0, 0], 420, 200, 200), poi('gas-platform', 'A gas platform', [2200, 900], 60, 40, 140)],
     palette: { low: '#e8d8c8', high: '#f0e2d2', rock: '#c8b8a8', accent: '#f0a888', skyLow: '#fbe3cf', skyHigh: '#e09a78' },
     clutter: clutter(['spire', 4, fine], ['debris', 3]),
+    landmarks: [landmark('cloud-city', 'cloud-city', [part('cloudplaza', 300, 1, { centre: true }), part('cloudcity', 160, 1, { centre: true, along: 'y' }), part('cloudtower', 110, 10, { along: 'y' })])],
     ground: SITE_GROUND.bespin,
   },
   {
@@ -212,6 +222,7 @@ const GALAXY = [
     pits: [{ id: 'cave', name: 'The cave', at: [-300, 200], r: 20, depth: 8 }],
     palette: { low: '#2a3a26', high: '#4a5a34', rock: '#3a3a30', accent: '#6a7a40', skyLow: '#9aa48a', skyHigh: '#5a6a52' },
     clutter: clutter(['spire', 20, { size: 0.4 }], ['debris', 20], ['rock', 20]),
+    landmarks: [landmark('yoda', 'yoda', [part('yodahut.lod1', 10, 1, { centre: true })])],
     ground: SITE_GROUND.dagobah,
     water: SITE_WATER.dagobah,
   },
@@ -248,8 +259,8 @@ const GALAXY = [
     // the galaxy's film-made models (galaxy/surface/catalog), standing at their places; `hq` is the
     // high-detail file the site carries too, for a strong machine
     landmarks: [
-      { id: 'senate', at: 'senate', url: '/models/galaxy/surface/senate.lod1.glb', hq: 'models/galaxy/surface/senate.ultra.glb', metres: 460, along: 'x' },
-      { id: 'jedi-temple', at: 'jedi-temple', url: '/models/galaxy/surface/jeditemple.lod1.glb', hq: 'models/galaxy/surface/jeditemple.glb', metres: 420, along: 'x', yaw: Math.PI },
+      landmark('senate', 'senate', [part('senate.lod1', 460, 1, { centre: true, hq: 'models/galaxy/surface/senate.ultra.glb' })]),
+      landmark('jedi-temple', 'jedi-temple', [part('jeditemple.lod1', 420, 1, { centre: true, yaw: Math.PI, hq: 'models/galaxy/surface/jeditemple.glb' })]),
     ],
     // the city's nearest towers (lib/three's instanced pools: one draw)
     hero: { url: '/models/galaxy/surface/corutower.glb' },
@@ -296,6 +307,7 @@ const GALAXY = [
     pois: [poi('tipoca', 'Tipoca City', [0, 0], 240, 0, 5), poi('platform', 'A landing platform', [900, 400], 40, 0, 5)],
     palette: { low: '#2a343c', high: '#3a4650', rock: '#22282e', accent: '#e8eef4', skyLow: '#8a949c', skyHigh: '#4a545c' },
     clutter: [],
+    landmarks: [landmark('tipoca', 'tipoca', [part('tipocadome.lod1', 120, 1, { centre: true, hq: 'models/galaxy/surface/tipocadome.ultra.glb' }), part('tipocadome.lod1', 70, 5)])],
     ground: SITE_GROUND.kamino,
     water: SITE_WATER.kamino,
   },
@@ -337,6 +349,7 @@ const GALAXY = [
     pois: [poi('city', 'Nevarro City', [0, 0], 150, 100, 10), poi('covert', 'The covert', [-300, 205], 60, 40, 26), poi('lava-flats', 'The lava flats', [325, 245], 150, 80, -7.5)],
     palette: { low: '#1c1a1a', high: '#4a4644', rock: '#2a2626', accent: '#ff4a0a', skyLow: '#c8865a', skyHigh: '#4a3a3a' },
     clutter: clutter(['rock', 50], ['spire', 6, fine], ['debris', 10]),
+    landmarks: [landmark('city', 'city', [part('nevarrocantina', 18.5, 1, { centre: true }), part('nevarrodome', 11, 12), part('nevarrodomehouse.lod1', 10, 12)])],
     ground: SITE_GROUND.nevarro,
     water: SITE_WATER.nevarro,
   },
@@ -353,6 +366,7 @@ const GALAXY = [
     pits: [{ id: 'mine', name: 'The mine mouth', at: [60, -40], r: 30, depth: 20 }],
     palette: { low: '#b9ab8e', high: '#d0c6b2', rock: '#3a4344', accent: '#5f6a66', skyLow: '#e0d6c4', skyHigh: '#8a9298' },
     clutter: clutter(['spire', 10, { size: 0.3 }], ['debris', 20], ['rock', 20]),
+    landmarks: [landmark('sundari', 'sundari', [part('sundaridome.lod1', 420, 1, { centre: true, hq: 'models/galaxy/surface/sundaridome.ultra.glb' })])],
     ground: SITE_GROUND.mandalore,
   },
   {
@@ -366,6 +380,7 @@ const GALAXY = [
     pois: [poi('capital', 'Capital City', [260, -60], 200, 100), poi('factory', 'The Imperial factory', [-220, -200], 120, 60), poi('tower', 'The old tower', [-320, 60], 40, 30), poi('temple', 'The Jedi temple', [-140, 230], 60, 40), poi('depot', 'The Lothal Depot', [1800, 400], 300, 120, -4)],
     palette: { low: '#a48a58', high: '#c6ad72', rock: '#7a7268', accent: '#b39a7e', skyLow: '#f0e4cc', skyHigh: '#7aa8d0' },
     clutter: clutter(['spire', 8, fine], ['rock', 15], ['debris', 6]),
+    landmarks: [landmark('capital', 'capital', [part('lothtower', 40, 2, { along: 'y' }), part('lothdome', 11, 14)])],
     ground: SITE_GROUND.lothal,
   },
   {

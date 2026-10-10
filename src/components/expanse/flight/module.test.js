@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import flight, { AXES, KEYS, inputOf, modelSources, placeLandmark, spawnOf, tierAt } from './module';
+import flight, { AXES, KEYS, inputOf, modelSources, placeLandmark, settle, spawnOf, tierAt } from './module';
+import { seeded } from '../../../lib/seeded';
 import { WORLD_MB } from '../../worlds/worlds';
 import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
 import { createOrigin } from '../../../runtime/origin';
@@ -98,5 +99,25 @@ describe('the flight module', () => {
     expect(root.scale.x).toBeCloseTo(100, 6);
     expect(size.z).toBeCloseTo(400, 3);
     expect(root.rotation.y).toBe(1);
+  });
+
+  it('lays a place’s buildings out round it, the centre one in its middle, the same every visit', () => {
+    const poi = { at: [900, 600], r: 260 };
+    const parts = [{ url: 'a', count: 1, centre: true }, { url: 'b', count: 20 }];
+    const a = settle(poi, parts, seeded(4));
+    expect(a).toHaveLength(21);
+    expect(a[0]).toMatchObject({ x: 900, z: 600 });
+    for (const s of a.slice(1)) {
+      const d = Math.hypot(s.x - 900, s.z - 600);
+      expect(d).toBeGreaterThanOrEqual(0.22 * 260 - 1e-9);
+      expect(d).toBeLessThanOrEqual(0.82 * 260 + 1e-9);
+    }
+    expect(settle(poi, parts, seeded(4))).toEqual(a);
+  });
+
+  it('scales a landmark by its longest side, asked to', () => {
+    const root = new THREE.Group().add(new THREE.Mesh(new THREE.BoxGeometry(2, 8, 4)));
+    placeLandmark(root, { metres: 40, along: 'max' });
+    expect(root.scale.x).toBeCloseTo(5, 6);
   });
 });

@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { houseOn } from '../../../lib/three/house';
 import { planetField } from '../../../lib/land/flight/field';
+import { seeded } from '../../../lib/seeded';
 import { LEVELS } from '../../../lib/device';
 import { SHIP, crashed, stepShip } from './flightRules';
 import { createFlightScene } from './scene';
@@ -40,18 +41,38 @@ export const AXES = { pitch: ['noseDown', 'noseUp'], roll: ['rollLeft', 'rollRig
 
 const HUD_EVERY = 0.1; // s
 
+// where a place's buildings stand: a part's `count` of them seeded round the
+// place (none in its middle fifth, where the centre part stands), the same
+// every visit → [{ part, x, z, yaw }]
+export function settle(poi, parts, rnd) {
+  const out = [];
+  for (const part of parts) {
+    for (let k = 0; k < (part.count ?? 1); k++) {
+      if (part.centre) {
+        out.push({ part, x: poi.at[0], z: poi.at[1], yaw: part.yaw ?? 0 });
+        continue;
+      }
+      const a = rnd() * Math.PI * 2;
+      const d = (0.22 + 0.6 * Math.sqrt(rnd())) * poi.r;
+      out.push({ part, x: poi.at[0] + Math.cos(a) * d, z: poi.at[1] + Math.sin(a) * d, yaw: rnd() * Math.PI * 2 });
+    }
+  }
+  return out;
+}
+
 // the URLs to try for a planet's model, best first: on a strong machine the
 // high-detail file the site carries (`hq`), then the lighter one for
 // everyone. Both go through the galaxy's loader (rt.assets, lib/three/gltf),
 // which is where any asset host is resolved
 export const modelSources = (m, { strong }) => (strong && m.hq ? [`/${m.hq}`, m.url] : [m.url]);
 
-// a landmark's model scaled so its length along `along` is `metres`, its
-// foot on y = 0 (the galaxy's models stand there, facing +z)
+// a landmark's model scaled so its length along `along` ('x', 'y', 'z', or
+// 'max': its longest) is `metres`, its foot on y = 0 (the galaxy's models
+// stand there, facing +z)
 export function placeLandmark(root, { metres, along = 'x', yaw = 0 }) {
   const box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
-  const k = metres / Math.max(1e-3, size[along]);
+  const k = metres / Math.max(1e-3, along === 'max' ? Math.max(size.x, size.y, size.z) : size[along]);
   root.scale.setScalar(k);
   root.rotation.y = yaw;
   return root;
@@ -117,14 +138,20 @@ export default {
     for (const l of spec.landmarks ?? []) {
       const poi = spec.pois.find((p) => p.id === l.at);
       if (!poi) continue;
-      fetchModel(modelSources(l, { strong })).then((got) => {
-        if (!got || gone) return;
-        const obj = placeLandmark(got.scene.clone(true), l);
-        obj.name = `flight-${l.id}`;
-        obj.position.set(poi.at[0], poi.h ?? field.heightAt(poi.at[0], poi.at[1]), poi.at[1]);
-        ground.root.add(obj);
-        house?.adopt(obj);
-      });
+      const spots = settle(poi, l.parts, seeded(spec.seed ^ l.id.length * 7919));
+      for (const part of l.parts) {
+        fetchModel(modelSources(part, { strong })).then((got) => {
+          if (!got || gone) return;
+          for (const at of spots.filter((x) => x.part === part)) {
+            const obj = placeLandmark(got.scene.clone(true), { ...part, yaw: at.yaw });
+            obj.name = `flight-${l.id}`;
+            // (inside the place's r its ground is flat at its h: the field says so exactly)
+            obj.position.set(at.x, field.heightAt(at.x, at.z), at.z);
+            ground.root.add(obj);
+            house?.adopt(obj);
+          }
+        });
+      }
     }
     // (the film-made tower only where the tier can take a few hundred of it)
     if (spec.hero && tier !== 'low')
