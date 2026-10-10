@@ -304,7 +304,7 @@ async function recipeRow(scene, renderer, { mode = 'game', list = [] }, tier, ma
     const gltf = entry.glb ? await gltfLoader().loadAsync(entry.glb) : null;
     const glb = gltf ? glbMaterial(gltf, entry.recipe) : new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 0.6 });
     const maps = { glb };
-    for (const [k, url] of Object.entries(entry.maps ?? {})) maps[k] = url ? await ktx2.loadAsync(url) : null;
+    for (const [k, url] of Object.entries(entry.maps ?? {})) maps[k] = Array.isArray(url) ? await Promise.all(url.map((u) => ktx2.loadAsync(u))) : url ? await ktx2.loadAsync(url) : null;
     const material = mode === 'glb' ? glb : make(entry.recipe, maps, { tier, sun: SUN });
     made.push(material);
     const cube = new THREE.Mesh(box, material);
