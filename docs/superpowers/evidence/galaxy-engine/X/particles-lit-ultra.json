@@ -20,21 +20,22 @@
       "simMode": "cpu",
       "stats": {
         "kinds": 3,
-        "instances": 5,
-        "running": 4,
+        "instances": 6,
+        "running": 5,
+        "beyond": 1,
         "culled": 0,
-        "drawn": 5,
+        "drawn": 7,
         "dispatches": 0,
         "declined": 0,
         "unknown": 0
       },
-      "envDiff": 11.09,
-      "programsBefore": 49,
-      "programsAfter": 49,
+      "envDiff": 13.25,
+      "programsBefore": 59,
+      "programsAfter": 59,
       "frames": 5,
-      "mean": 4658.8,
-      "median": 4665.4,
-      "p95": 4988.3
+      "mean": 4492.5,
+      "median": 4408.3,
+      "p95": 4801.7
     }
   ]
 }
