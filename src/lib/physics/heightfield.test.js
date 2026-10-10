@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createPhysics } from './world';
+import { GROUPS, createPhysics } from './world';
 import { addHeightfield } from './heightfield';
 import { CELL, heightAt, makeCell } from '../land/cell';
 import { landSpec } from '../land/spec';
@@ -31,7 +31,7 @@ describe('addHeightfield', () => {
 
   it('is a floor: a bumper falls through it', () => {
     const hf = addHeightfield(physics, { heights: new Float32Array(65 * 65), x: 0, z: 0 });
-    expect(hf.colliders[0].collisionGroups()).toBe(((1 << 16) | 1) >>> 0);
+    expect(hf.colliders[0].collisionGroups()).toBe(GROUPS.floor); // (the floor's groups: groups.js)
     expect(hf.body.isFixed()).toBe(true);
     physics.remove(hf);
   });
