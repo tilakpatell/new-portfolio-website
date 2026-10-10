@@ -142,6 +142,8 @@ import { garrisonLife, garrisonProbe } from './garrison';
 import { createGround, landingFor } from './ground/index';
 import { standable } from './sites/validity';
 import { floraTint } from './flora';
+import { footprintOf, impactOf, loadMaterials, tagOf } from '../../../lib/physics/materials';
+import { landingLook, printOf } from './impactLook';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -334,6 +336,18 @@ export async function create(canvas, ctx) {
   const gmat = groundMaterial(site, { small, map: groundMap, splat: amounts.splat });
   const marks = createMarks(amounts.marks);
   gmat.uniforms.uMarks.value = marks.texture;
+  // what its surfaces are made of, where the 2017 game's material grid has
+  // the world (lib/physics/materials.js): a bolt's landing and the prints you
+  // leave pick by it (impactLook.js); `picks` the last few, for the checks
+  let surfaces = null;
+  let groundPrint = null;
+  const picks = [];
+  loadMaterials(site.materials?.level)
+    .then((book) => {
+      surfaces = book;
+      groundPrint = book && printOf(footprintOf(book, tagOf(site.materials, { ground: true }))?.family);
+    })
+    .catch(() => {});
   const ground = groundMesh(grid, gmat.material);
   if (!site.noGround) scene.add(ground);
   const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: site.id, rings: amounts.rings, depthN: amounts.depthN, foam: amounts.splat }) : null;
@@ -2233,11 +2247,12 @@ export async function create(canvas, ctx) {
         if (me().saber) state.guard = guardHit(state.guard, 7 * me().saber.stance.cost * perks.deflect, state.t);
       },
       landed(e) {
-        if (e.bolt.tag?.yours) impacts.push({ t: state.t, at: new V(...e.at), dir: new V(...e.bolt.dir), ground: (e.normal?.[1] ?? 1) > 0.7 });
+        if (e.bolt.tag?.yours) impacts.push({ t: state.t, at: new V(...e.at), dir: new V(...e.bolt.dir), ground: (e.normal?.[1] ?? 1) > 0.7, normal: e.normal, surface: e.surface, speed: e.bolt.speed });
       },
     });
   }
-  // where a shot lands, as the bolt gets there (stepBolts): sparks off it, and on the ground a burn
+  // where a shot lands, as the bolt gets there (stepBolts): sparks off it, and on the ground a burn;
+  // where the world's surfaces are known, as what it struck takes a bolt (snow puffs, metal sparks)
   const impacts = [];
   function stepImpacts() {
     for (let i = impacts.length - 1; i >= 0; i--) {
@@ -2247,12 +2262,25 @@ export async function create(canvas, ctx) {
       const p = me().st;
       const near = 1 - Math.min(1, Math.hypot(o.at.x - p.x, o.at.z - p.z) / 40);
       if (near > 0) impactSound(Math.max(0.15, near));
+      const pick = surfaces && o.surface ? impactOf(surfaces, { tag: tagOf(site.materials, o.surface), speed: o.speed, by: 'blaster' }) : null;
+      const look = landingLook(pick?.family, { ground: o.ground });
+      const colour = look.spark === 'bolt' ? (me().spec.bolt ?? '#ffd0a0') : look.spark;
+      let n;
       if (o.ground) {
-        const n = world.normalAt ? new V(...world.normalAt(o.at.x, o.at.z)) : UP.clone();
+        n = world.normalAt ? new V(...world.normalAt(o.at.x, o.at.z)) : UP.clone();
         o.at.y = groundAt(world, o.at.x, o.at.z, o.at.y + 0.5);
-        fx.sparks(o.at, n.clone().addScaledVector(o.dir, -0.6).normalize(), me().spec.bolt ?? '#ffd0a0', 12);
-        fx.scorch(o.at, n);
-      } else fx.sparks(o.at, o.dir.clone().negate(), me().spec.bolt ?? '#ffd0a0', 9);
+        if (look.sparks) fx.sparks(o.at, n.clone().addScaledVector(o.dir, -0.6).normalize(), colour, look.sparks);
+      } else {
+        n = o.normal ? new V(...o.normal) : o.dir.clone().negate();
+        if (look.sparks) fx.sparks(o.at, o.dir.clone().negate(), colour, look.sparks);
+      }
+      if (look.scorch) fx.scorch(o.at, n);
+      if (look.smoke) fx.smoke(o.at, n, look.smoke);
+      if (look.kick) for (let k = 0; k < look.kick.n; k++) kick(o.at.x, o.at.y - 0.2, o.at.z, look.kick.spread, look.kick.up);
+      if (pick) {
+        picks.push({ family: pick.family, effect: pick.effect, decal: pick.decal, ground: o.ground, at: o.at.toArray().map((v) => +v.toFixed(1)) });
+        if (picks.length > 8) picks.shift();
+      }
     }
   }
   // `from`: where it came from ({ x, z }), for the way you flinch and fall
@@ -2463,8 +2491,9 @@ export async function create(canvas, ctx) {
       else if (off > AWAY) mateFight.turning = true;
       if (mateFight.turning) q.yaw = turnToward(q.yaw, want, dt * 2);
     } else mateFight.turning = false;
-    // footprints and marks, and footsteps
-    if (p.grounded && p.speed > 0.5 && site.ground.palette.mark && r() < dt * 6) marks.dab(p.x, p.z, 0.7, 0.18);
+    // footprints and marks (as deep as the ground's material prints, where it's known), and footsteps
+    const print = surfaces ? groundPrint : { r: 0.7, k: 0.18 };
+    if (p.grounded && p.speed > 0.5 && print && site.ground.palette.mark && r() < dt * 6) marks.dab(p.x, p.z, print.r, print.k);
     if (p.grounded) {
       strode += p.speed * dt;
       const stride = p.speed > WALK.walk + 1 ? 1.25 : 0.8;
@@ -3201,6 +3230,10 @@ export async function create(canvas, ctx) {
       groundWar,
       put: (x, z) => (state.phase === 'landing' || state.phase === 'out' ? (state.phase = 'walk') : null, putAt(me().st, x, z)), // (you, set down somewhere, out of the ship: the ground war's QA)
       you: () => ({ x: me().st.x, z: me().st.z, health: state.health, phase: state.phase }),
+      // (a bolt of yours from one point at another, [x, y, z] each, for the QA scripts: where it lands is debug().surfaces; and the solids near a spot to aim at)
+      surfaces: () => ({ level: surfaces?.level ?? null, print: groundPrint, picks: [...picks] }),
+      solidsNear: (x, z, r = 60) => world.solids.near(x, z, r).map(({ type, x: sx, z: sz, r: sr, hw, hd, c, s, top, base, tag }) => ({ type, x: sx, z: sz, r: sr, hw, hd, c, s, top, base, tag })),
+      shoot:(from, to) => blaster.fire(new V(...from), new V(...to).sub(new V(...from)).normalize(), [], boltOf(me()), 90, null, { yours: true, push: new V() }),
       // (a stroke now, as the button makes one, for the QA scripts: { heavy, dir, lock } as saber.js takes them)
       swing: (o = {}) => me().saber?.swing(state.t, { lock: state.lock, ...o }) ?? null,
       view(from, at) {
@@ -3587,7 +3620,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
+    debug: () => ({ surfaces: { level: surfaces?.level ?? null, print: groundPrint, picks: [...picks] }, sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
       lit?.dispose();

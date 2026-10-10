@@ -11,11 +11,11 @@
 // 'none', or a faction), damage, colour, deflect = false, ghost = false, tag }
 // (plain [x, y, z] arrays; `tag` is the caller's, carried untouched; a
 // `ghost` is a battle's tracer, stopped by solids and hurting nobody).
-// world: { solids(a, b) → { at, normal } | null, bodies: [{ id, a, b, r,
+// world: { solids(a, b) → { at, normal, surface? } | null, bodies: [{ id, a, b, r,
 // side, allies?, ref }], blades: [{ id, base, tip, r, side, ref }] }
 // (`allies`: the sides whose bolts pass a body by, as a rebel's pass you).
 // events: { type: 'hit', bolt, body, at } | { type: 'solid', bolt, at,
-// normal } | { type: 'deflect', bolt, blade, at } | { type: 'gone', bolt }.
+// normal, surface (what the solids said it struck, for its material) } | { type: 'deflect', bolt, blade, at } | { type: 'gone', bolt }.
 //
 // A bolt never hits its owner's body (it leaves from inside their capsule)
 // nor a body on its own side; a 'none' bolt hits anyone else. A bolt marked
@@ -160,7 +160,7 @@ export function createBolts({ pool = 48 } = {}) {
           if (wall) {
             const w = sub(wall.at, a);
             t = Math.sqrt(dot(w, w)) / left;
-            what = { type: 'solid', bolt: b, at: [...wall.at], normal: wall.normal ?? null };
+            what = { type: 'solid', bolt: b, at: [...wall.at], normal: wall.normal ?? null, surface: wall.surface ?? null };
           }
           if (b.deflect) {
             for (const bl of blades) {
