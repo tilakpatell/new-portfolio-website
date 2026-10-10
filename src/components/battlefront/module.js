@@ -23,7 +23,7 @@ import { createBolts } from './fx/bolts.js';
 import { markerProjection } from './hud/widgets.js';
 import { createInput } from './input.js';
 import { createLevel } from './map/level.js';
-import { STEP, addPlayer, createSim, deploy, step, view } from './simStub.js';
+import { STEP, addPlayer, createBattle, deploy, step, view } from './battle.js';
 import { entryFor, lightsJsonOf } from './weather.js';
 
 export const HUD_HZ = 8; // snapshots a second to the page
@@ -45,7 +45,6 @@ export default {
     const cams = camerasOf(rb);
     const map = mapOf(rb, levelName);
     const lighting = lightingOf(rb, levelName);
-    const soldier = (await import('../../data/bf2017/physics/soldier.json')).default.rows.DefaultSoldierPhysics;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0.7, 0.78, 0.88);
@@ -56,8 +55,13 @@ export default {
     const rig = createCameraRig(camera);
     const input = createInput({ maxPitch: (cams.soldier.maxPitch * Math.PI) / 180 });
     input.attach();
-    const sim = createSim({ rulebook: rb, soldier, level: levelName, mode, heightAt: (x, z) => level.heightAt(x, z) });
+    // (the navgrid is built from the ground the world draws: the pack's
+    // heightmaps first; lane 1's bots walk it, the player too)
+    await level.ready;
+    const sim = createBattle({ rulebook: rb, level: levelName, mode, heightAt: (x, z) => level.heightAt(x, z) });
     const me = addPlayer(sim, { team: PLAYER_TEAM });
+    // the player's soldier in lane 1's sim, once deployed
+    const body = () => (sim.player?.id ? sim.sim.entities.get(sim.player.id) : null);
     let picked = null;
     let lastAt = null; // the player's place before the last step
     let pose = null;
@@ -72,7 +76,7 @@ export default {
       mode: 'lock',
       onTurn: (dx, dy) => input.turn(dx, dy),
       onButton: (which, down) => input.button(which === 0 ? 'left' : 'right', down),
-      active: () => !view(sim).deploy.open,
+      active: () => sim.player?.state === 'alive',
     });
     look.attach();
 
@@ -90,8 +94,7 @@ export default {
     const doDeploy = (classId = picked) => {
       const r = deploy(sim, me, classId ? { classId } : {});
       if (r.ok) {
-        const p = sim.entities.get(me);
-        input.setLook(p.yaw, 0);
+        input.setLook(body().yaw, 0);
         // (the next life's deploy screen starts from its own highlight)
         picked = null;
         lastAt = null;
@@ -144,16 +147,15 @@ export default {
         if (v.deploy.open && read.deploy) doDeploy();
         acc = Math.min(acc + dt, STEP * MAX_STEPS);
         let first = true;
-        const me0 = sim.entities.get(me);
         while (acc >= STEP) {
           acc -= STEP;
-          lastAt = me0.at.slice();
+          lastAt = body()?.at.slice() ?? null;
           const once = first ? read : { ...read, jump: false, roll: false, ability: 0, vent: false, interact: false };
           first = false;
           step(sim, [{ id: me, move: once.move, yaw: once.yaw, pitch: once.pitch, fire: once.fire, aim: once.aim, sprint: once.sprint, crouch: once.crouch, vent: once.vent, ability: once.ability }]);
         }
-        const p = sim.entities.get(me);
-        if (p.state === 'alive') {
+        const p = body();
+        if (sim.player.state === 'alive' && p) {
           const look = input.look();
           // (the body as it is drawn, between the last two steps, so the
           // camera does not jump at the sim's 20 Hz while the figure glides)
@@ -193,7 +195,7 @@ export default {
           case 'advance': {
             const n = Math.round((arg ?? 1) / STEP);
             for (let i = 0; i < n; i++) step(sim, [{ id: me, move: [0, 0] }]);
-            return { ok: true, time: sim.time };
+            return { ok: true, time: sim.sim.time };
           }
           case 'win':
           case 'lose':

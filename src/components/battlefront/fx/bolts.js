@@ -8,6 +8,7 @@ import * as THREE from 'three';
 
 export const MAX_BOLTS = 256;
 export const STREAK = 1 / 40; // s of travel one streak shows
+export const BOLT_SPEED = 700; // m/s where a bolt carries none (lane 1's view: the rifles' InitialSpeed)
 const COLOURS = { red: [6, 0.35, 0.25], blue: [0.35, 0.8, 6], green: [0.4, 6, 0.5], yellow: [5, 4, 0.5] };
 
 export function createBolts(scene, { max = MAX_BOLTS } = {}) {
@@ -32,7 +33,7 @@ export function createBolts(scene, { max = MAX_BOLTS } = {}) {
       let n = 0;
       for (const b of bolts) {
         if (n >= max) break;
-        const len = b.speed * STREAK;
+        const len = (b.speed ?? BOLT_SPEED) * STREAK;
         d.fromArray(b.dir).normalize();
         q.setFromUnitVectors(z, d);
         p.fromArray(b.at).addScaledVector(d, -len / 2);

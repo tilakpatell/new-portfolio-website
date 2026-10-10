@@ -122,7 +122,7 @@ export function stateFor(e) {
   const speed = Math.hypot(vel[0], vel[1]);
   const dir8 = dir8Of(e.yaw ?? 0, vel);
   if (e.state === 'down' || e.state === 'dying') return { state: 'death', speed: 0, dir8, side: sideOf(e.yaw ?? 0, e.hitDir) };
-  if (e.rolling) return { state: 'roll', speed, dir8 };
+  if (e.rolling || e.state === 'roll') return { state: 'roll', speed, dir8 };
   if (e.hitAt != null && e.hitAt > 0) return { state: 'hit', speed, dir8 };
   const moving = e.moving ?? speed > 0.2;
   if (e.stance === 'crouch') return { state: moving ? 'crouchWalk' : 'crouchIdle', speed, dir8 };
