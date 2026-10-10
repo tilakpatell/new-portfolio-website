@@ -39,6 +39,18 @@ In order:
 3. **Textures**: every map the hilt and Luke’s body name was in the bucket as KTX2 on 2026-10-10, none as PNG. A map not there yet prints `missing:` in the import and the material goes without it; re-fetch and re-import when the upload has it.
 4. **Normals as KTX2** (UASTC) where `scripts/ktx2.mjs report` says it pays: phase 9’s, with the ultra cuts. Level packs (lane L) take the bucket’s KTX2 as it is, for GPU memory.
 
+### Lane 1, where it stands
+
+**Done, the code** (branch `claude/bf2017-1-heroes`): `src/lib/three/walrusRig.js` (the 23 body bones, 48 fingers, five sockets, `checkWalrus`, `isWalrus`, `CLIP_FALLBACK`); `scripts/bf2017-skeleton.mjs` (a rigged figure to `walrus.glb`, refusing one with more than one skin); `partsOf` takes full manifest names, and `rig-parts.mjs`'s `rebindJoints` joins a part with bones of its own (each to its nearest ancestor the body has, else `Hips`; the import prints `part …: n joints bound, m unmatched`); `src/lib/three/walrusClips.js` (the site's names per pack, `GAME_CLIPS`, the `~`→`-` rename, `planPacks`: pure and exported for lane X); `scripts/bf2017-clips.mjs` (`--list` reads `web/anims.jsonl`; without it packs the mapped clips onto `walrus.glb` by bone name, no retarget); `src/lib/three/walrus.js` (the loader: tracks filtered to the body's bones, fallbacks by name, `library: false` so no Meshy or UAL clip is ever fetched for it); `crew.js`'s `figureLoaderFor` and `footScene.js`'s `loadPartyFigure` send `rig: 'walrus'` there (heroes' specs carry `rig`); `crewFigure` passes `rig`, `sockets` and `clips` through; `createSaber` strokes a walrus figure with its own clips; `ARMS` names `Spine1`, `Spine2`, `Neck`; `lib/combat/hiltFit.js`.
+
+**Left, in order** (the session had no `SUPABASE_URL` or `SUPA_KEY`, so nothing came from the bucket and no row was switched; the site is unchanged for a visitor):
+
+1. Plan task 1 step 5–6: Luke with his head and hair, `skins.length === 1` and 254 joints checked, `node scripts/bf2017-skeleton.mjs /tmp/bf2017/crew/luke.glb` → `walrus.glb` (the committed-file test then runs).
+2. `node scripts/bf2017-clips.mjs --list`, fill `GAME_CLIPS` (idle, walk, run first: a figure with none stands at rest and fails anim-check), run it, say the three packs' bytes (cap 1.5 MB). Measuring `contact`, `root` and `rootHips` into the sword pack's extras is lane X's stroke tables.
+3. Plan task 5 whole (the heroes, hilts, blasters; sheets before and after into `docs/superpowers/evidence/bf2017-phase1/`), then the rows: `rig: 'walrus'` on `CREW` and `HEROES`.
+4. Plan task 6: measure `Wep_Root` against the hand on Luke at rest, write `WEAPON_FRAME` in `walrusRig.js` with its test, then the socket in `createGunplay` and the hilt's GLB in `createSaber` (`hiltFit`, the procedural drum kept for a failed load).
+5. Plan task 7: anim-check at `--limit 0.15` on every world a hero stands on, galaxy-check surface under `BUDGET=1` at high, `WORLD_MB`, the duel screenshots; the PR out of draft.
+
 ## Asked of the desktop exporter (not the site’s work)
 
 The export in `C:\Users\tilak\Downloads\BF2_Extract` (`tool\bf2export.csproj`, Frosty’s libraries) does not write these; each is a `bf2export` pass and a queue, the way `run_terrain.py` and `tool\build_maps.py` were added:
@@ -83,7 +95,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | design | the architecting session | `claude/nice-mayer-jqow5k` | #802 (open), carried by #805 |
 | 0 | | | #805 |
 | second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
-| 1 | | | |
+| 1 | the phase 1 session | `claude/bf2017-1-heroes` | draft: the code; the assets wait on the keys |
 | L | | | |
 | G | | | |
 | K | | | |
