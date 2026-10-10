@@ -17,7 +17,7 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 | E3 | Kashyyyk, Geonosis, Endor's village, research station and bunker | E0 | | `claude/bf2017-e3-kashyyyk-geonosis-endor` | |
 | E4 | Scarif, Cloud City, Hoth's outpost, the Death Star inside on DeathStar02_01 | E0 | | `claude/bf2017-e4-scarif-bespin-deathstar` | |
 | E5 | Felucia, Kessel, Sullust, Pillio, Vardos, Fondor as systems with skins and surfaces | E0 | | `claude/bf2017-e5-new-systems` | |
-| O | the object library (every placeable set indexed), the seven mapless worlds dressed by biome, `GAME_FOR` props, the game's clouds, the living world | nothing | `session_01HvykTJCK7Bb4cFUjiKN1jW` | `claude/bf2017-o-library` | #PRNUM |
+| O | the object library (every placeable set indexed), the seven mapless worlds dressed by biome, `GAME_FOR` props, the game's clouds, the living world | nothing | `session_01HvykTJCK7Bb4cFUjiKN1jW` | `claude/bf2017-o-library` | #876 |
 | Q (the space lane) | the space levels as set pieces, the capitals, the asteroids on their tracks, the sky panoramas, the map's globes | nothing (#793 read) | session_01CiUP7QfUtHM1EEqgBJpKew | `claude/bf2017-q-space` | (this PR) |
 | M | the films on the cards, veils and briefings; the tiles and tutorials for the game's world; the lava film; the open fonts, the icons, the strings, the UI widgets, the hero stage | nothing | `session_017cZLBzaqCrPFfg6zezARLt` | `claude/bf2017-m-frontend` | done, below |
 | A | every clip: stances, additive aims and hits, cover and awareness, emotes and end of round, the cinematics player, first person, riders and crews, the band, the fauna rigs | nothing (#839's B, Y, W kept off) | lane A's session | `claude/bf2017-a-clips` | (this PR) |
@@ -172,7 +172,7 @@ One script cuts all of it, `node scripts/bf2017-ui.mjs films|icons|fonts|strings
 
 Checking it: `npx vitest run scripts/lib/bf2017-ui.test.mjs src/lib/bf2017 src/runtime/hud/film.test.jsx src/components/galaxy/Briefing.test.jsx src/components/galaxy/surface/lavaFilm.test.js src/components/galaxy/surface/water.test.js src/components/galaxy/surface/heroStage.test.js src/components/galaxy/surface/HeroStage.test.jsx`; shots in `docs/superpowers/evidence/bf2017-frontend/`.
 
-### Lane O: the object library, and the worlds without a map (done, PR #PRNUM)
+### Lane O: the object library, and the worlds without a map (done, PR #876)
 
 **Done.**
 
