@@ -871,6 +871,20 @@
       "galaxy-surface"
     ]
   },
+  "deathstar-c3po": {
+    "title": "C-3PO Weight Shift",
+    "author": "Telkar5",
+    "authorUrl": "https://sketchfab.com/Telkar5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0",
+    "where": "galaxy-surface",
+    "as": "C-3PO aboard the Death Star, rigged again on the crew’s skeleton so he walks, sits and falls as they do",
+    "file": "/models/deathstar/c3po.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "dickansh-arch": {
     "title": "Temple arch-3DView",
     "author": "Er.B.Nijithkumar",
@@ -1756,60 +1770,64 @@
     ]
   },
   "surface-atat": {
-    "title": "Imperial AT-AT Walker - Star Wars",
-    "author": "Quiznos323",
-    "authorUrl": "https://sketchfab.com/quiznos323",
-    "license": "CC-BY-NC-SA-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
-    "source": "https://sketchfab.com/3d-models/imperial-at-at-walker-star-wars-7eab3f41da9143d8975b9034e91f8920",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/ground/at-at/old/atat_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "the AT-AT walkers",
+    "as": "the AT-AT",
     "file": "/models/galaxy/surface/atat.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-atrt": {
-    "title": "AT-RT",
-    "author": "Just Ryk",
-    "authorUrl": "https://sketchfab.com/dryk4085",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/at-rt-6796698b4d564377838c06319ec96f90",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/ground/atrt/atrt_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "the AT-RT walkers",
+    "as": "the AT-RT",
     "file": "/models/galaxy/surface/atrt.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-atst": {
-    "title": "Star Wars AT-ST [Rigged]",
-    "author": "smithson17",
-    "authorUrl": "https://sketchfab.com/smithson17",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-at-st-rigged-18164d3b3eb64ea1b8d3dc2ad5f4f9cf",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/ground/atst/atst_static_donotuse_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "the AT-ST walkers",
+    "as": "the AT-ST",
     "file": "/models/galaxy/surface/atst.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-atte": {
-    "title": "AT-TE Walker (Animated)",
-    "author": "R3negadeAidan",
-    "authorUrl": "https://sketchfab.com/R3negadeAidan",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/at-te-walker-animated-81ef81cf6c554055b741b43a1a08d69f",
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/ground/at_te/at_te_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "the AT-TE walkers",
+    "as": "the AT-TE",
     "file": "/models/galaxy/surface/atte.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-bantha": {
     "title": "Star Wars Bantha Walk",
@@ -1948,20 +1966,6 @@
     "where": "galaxy-surface",
     "as": "C-3PO",
     "file": "/models/galaxy/surface/c3po.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "deathstar-c3po": {
-    "title": "C-3PO Weight Shift",
-    "author": "Telkar5",
-    "authorUrl": "https://sketchfab.com/Telkar5",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0",
-    "where": "galaxy-surface",
-    "as": "C-3PO aboard the Death Star, rigged again on the crew’s skeleton so he walks, sits and falls as they do",
-    "file": "/models/deathstar/c3po.glb",
     "also": [
       "galaxy"
     ]
@@ -2164,19 +2168,31 @@
       "galaxy"
     ]
   },
-  "surface-droideka": {
-    "title": "Star Wars Battlefront - Droideka",
-    "author": "S🅾️Meme star wars",
-    "authorUrl": "https://sketchfab.com/dylantrooper7",
+  "surface-droid": {
+    "title": "R2-D2",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-battlefront-droideka-f3688d384b2042b6a8fc3360f64b9a48",
+    "source": "https://sketchfab.com/3d-models/r2-d2-b251906902104fddb6f1a9a38bfe92ab",
     "where": "galaxy-surface",
-    "as": "the droidekas",
+    "as": "the astromechs",
+    "file": "/models/galaxy/surface/droid.glb"
+  },
+  "surface-droideka": {
+    "title": "Star Wars Battlefront II (2017): gameplay/vehicles/ground/droideka_01/droideka_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "a droideka",
     "file": "/models/galaxy/surface/droideka.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-ds2sky": {
     "title": "Death Star II",
@@ -2878,17 +2894,6 @@
     "also": [
       "galaxy"
     ]
-  },
-  "surface-droid": {
-    "title": "R2-D2",
-    "author": "ThisIsntAPerson",
-    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/r2-d2-b251906902104fddb6f1a9a38bfe92ab",
-    "where": "galaxy-surface",
-    "as": "the astromechs",
-    "file": "/models/galaxy/surface/droid.glb"
   },
   "surface-r5": {
     "title": "R5-J2 Imperial Astromech Droid",
