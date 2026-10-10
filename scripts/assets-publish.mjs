@@ -15,7 +15,8 @@
 //     [--manifest <file>] [--files '<glob>']
 //
 //   dry       what would go, and nothing sent
-//   only      just the files whose path matches (a star crosses folders)
+//   only      just the files whose path matches one of these globs,
+//             comma-separated (a star crosses folders)
 //   manifest  another manifest to write (a check's, not the site's)
 //   files     publish these paths under public/ (globs, comma-separated) instead of the game's
 //             (a check that wants something in the bucket before phase 1's
@@ -46,6 +47,13 @@ const TYPES = { ...KINDS, '.json': 'application/json', '.bin': 'application/octe
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const mb = (n) => `${(n / 1e6).toFixed(1)} MB`;
 const sum = (fs) => fs.reduce((s, f) => s + f.bytes, 0);
+
+// --only's globs, comma-separated: a file goes when any matches (a lane
+// publishes its own full cuts and nothing of another's)
+export const onlyMatch = (only) => {
+  const ms = String(only).split(',').filter(Boolean).map(globMatch);
+  return (path) => ms.some((m) => m(path));
+};
 
 export const publicBase = (url, bucket = BUCKET) => `${url.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}`;
 
@@ -115,7 +123,7 @@ async function main() {
     return 1;
   }
   let files = typeof args.files === 'string' ? anyFiles(publicDir, args.files) : gameFiles(JSON.parse(readFileSync(join(ROOT, 'src/data/modelCredits.json'), 'utf8')), publicDir);
-  if (typeof args.only === 'string') files = files.filter((f) => globMatch(args.only)(f.path));
+  if (typeof args.only === 'string') files = files.filter((f) => onlyMatch(args.only)(f.path));
   const manifest = readManifest(manifestFile);
   const plan = diff(manifest, files);
   console.log(`game-derived: ${files.length} files, ${mb(sum(files))} (${plan.add.length} new, ${plan.change.length} changed, ${mb(sum([...plan.add, ...plan.change]))}; ${plan.same.length} published already; ${plan.gone.length} published and not here, kept)`);

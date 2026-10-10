@@ -68,6 +68,7 @@ import { readLoadout, STOCK_LOADOUT } from '../../universe/outfit';
 import { flybySound, gadgetSound, gunSound, impactSound, popSound, portalSound, shipEngine } from '../../universe/sounds';
 import { PARTY, loadPartyFigure } from '../../universe/footScene';
 import { GUNS, createGunplay } from '../../universe/gunplay';
+import { createGameFx } from '../../../lib/three/fx/gameFx';
 import { createGunFx } from '../../universe/gunfx';
 import { spring } from '../../../lib/three/ik';
 import { METRE } from '../../universe/foot';
@@ -406,7 +407,7 @@ export async function create(canvas, ctx) {
   // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
   // otherwise made when it's first wanted, as it always was
   let cast = ctx.figures ? createMeshyCast(withWardrobe()) : null;
-  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops, site.uniforms ?? null), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null, only: site.cast === 'models' });
+  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops, site.uniforms ?? null), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null, only: site.cast === 'models', place: site.id });
 
   await breathe();
   // ── The places you go into (zones): built high over the world, out of
@@ -433,7 +434,8 @@ export async function create(canvas, ctx) {
       else if (ev === 'cut') popSound();
     } else gadgetSound(how, ev);
   };
-  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
+  // (a walker or droideka falling goes up in lane F's blast: gameFx, made just below, by then)
+  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound, blast: (at, cls) => gameFx.explode(at, cls) });
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
@@ -455,6 +457,10 @@ export async function create(canvas, ctx) {
     ground: (p) => ({ h: p.y - groundAt(world, p.x, p.z, p.y + 0.3), n: UP }),
     light: flare && { obj: flare, place: (p) => flare.position.copy(p) },
   });
+  // and the same in the 2017 game's look where the bucket had it (lib/three/
+  // fx/gameFx.js: its scorch and metal marks, burst, ring, chunks and Force
+  // push); each part says whether it drew, and gunfx's own stands in where not
+  const gameFx = createGameFx(scene, { level, groundAt: (x, z) => groundAt(world, x, z), site });
   const fwdV = new V();
   const rightV = new V();
   // (a world that takes models only: its quests' spawns too, cast.js)
@@ -1945,6 +1951,7 @@ export async function create(canvas, ctx) {
         const an = p.st.yaw + (Math.random() - 0.5) * f.cone * 2;
         fx.sparks(from.clone().addScaledVector(new V(Math.sin(an), 0, Math.cos(an)), way === 'push' ? 1.5 + Math.random() * 4 : 3 + Math.random() * 6), new V(Math.sin(an) * (way === 'push' ? 1 : -1), 0.3, Math.cos(an) * (way === 'push' ? 1 : -1)), kind === 'roar' ? '#ffd0a0' : '#c8d8ff', 4);
       }
+      if (kind !== 'roar') gameFx.push(from, new V(Math.sin(p.st.yaw), 0, Math.cos(p.st.yaw)), { colour: '#c8d8ff', pull: way === 'pull', reach: f.range ?? 6 });
       sounds.combat?.(kind === 'roar' ? 'boom' : 'force');
       state.shake = Math.min(1, state.shake + 0.25);
       if (any) state.hitstop = Math.max(state.hitstop, 0.05);
@@ -2072,7 +2079,7 @@ export async function create(canvas, ctx) {
       heardBy(at, null, 'boom');
       for (let k = 0; k < 6; k++) fx.sparks(at, new V((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2).normalize(), k % 2 ? '#ffd36b' : '#ff6a3d', 14);
       fx.flash(at, UP, { color: '#ffb060', size: 1.6 });
-      fx.scorch(at, UP);
+      if (!gameFx.explode(at, 'grenade')) fx.scorch(at, UP);
       sounds.combat?.('boom');
       state.shake = Math.min(1, state.shake + 0.6 * Math.max(0.3, 1 - dYou / 30));
       state.hitstop = Math.max(state.hitstop, 0.06);
@@ -2283,7 +2290,7 @@ export async function create(canvas, ctx) {
         if (me().saber) state.guard = guardHit(state.guard, 7 * me().saber.stance.cost * perks.deflect, state.t);
       },
       landed(e) {
-        if (e.bolt.tag?.yours) impacts.push({ t: state.t, at: new V(...e.at), dir: new V(...e.bolt.dir), ground: (e.normal?.[1] ?? 1) > 0.7 });
+        if (e.bolt.tag?.yours) impacts.push({ t: state.t, at: new V(...e.at), dir: new V(...e.bolt.dir), ground: (e.normal?.[1] ?? 1) > 0.7, normal: e.normal ? new V(...e.normal) : null });
       },
     });
   }
@@ -2301,8 +2308,11 @@ export async function create(canvas, ctx) {
         const n = world.normalAt ? new V(...world.normalAt(o.at.x, o.at.z)) : UP.clone();
         o.at.y = groundAt(world, o.at.x, o.at.z, o.at.y + 0.5);
         fx.sparks(o.at, n.clone().addScaledVector(o.dir, -0.6).normalize(), me().spec.bolt ?? '#ffd0a0', 12);
-        fx.scorch(o.at, n);
-      } else fx.sparks(o.at, o.dir.clone().negate(), me().spec.bolt ?? '#ffd0a0', 9);
+        if (!gameFx.impact(o.at, n, { ground: true, colour: me().spec.bolt }).mark) fx.scorch(o.at, n);
+      } else {
+        fx.sparks(o.at, o.dir.clone().negate(), me().spec.bolt ?? '#ffd0a0', 9);
+        gameFx.impact(o.at, o.normal ?? o.dir.clone().negate(), { ground: false, colour: me().spec.bolt });
+      }
     }
   }
   // `from`: where it came from ({ x, z }), for the way you flinch and fall
@@ -3130,6 +3140,7 @@ export async function create(canvas, ctx) {
     knockHits.update(dt);
     powers.step(dt); // (a choke, a rush, the arcs and rings: powers.js)
     fx.update(dt);
+    gameFx.update(dt);
     spring(state.kick, dt, 240, 22);
     state.aim = Math.max(0, state.aim - dt / 2.5);
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
@@ -3241,6 +3252,47 @@ export async function create(canvas, ctx) {
     if (import.meta.env.DEV) state.ms = { js: Math.round(tPost - now), post: Math.round(performance.now() - tPost) };
   }
 
+  // (DEV, the effects' before-and-after shots: one fired a few metres before
+  // you, in the game's look, or with { look: 'site' } the site's own alone:
+  // impact.<metal|stone|snow|sand>, blast.<grenade|speeder|fighter|walker>,
+  // push; `at` [x, z] puts it there instead)
+  if (import.meta.env.DEV)
+    window.__surface = {
+      fx(name, { look = 'game', ahead = 6, colour = me().spec.bolt ?? '#ff3b30', at: spot = null } = {}) {
+        const st = me().st;
+        const fwd = new V(Math.sin(st.yaw), 0, Math.cos(st.yaw));
+        const at = spot ? new V(spot[0], 0, spot[1]) : new V(st.x, 0, st.z).addScaledVector(fwd, ahead);
+        at.y = groundAt(world, at.x, at.z);
+        const game = look !== 'site';
+        const [kind, which] = name.split('.');
+        if (kind === 'impact') {
+          fx.sparks(at, UP, colour, 12);
+          if (!game || !gameFx.impact(at, UP, { ground: true, colour, surface: which }).mark) fx.scorch(at, UP);
+          return true;
+        }
+        if (kind === 'blast') {
+          const p = at.clone();
+          p.y += which === 'fighter' ? 4 : 0.3;
+          for (let k = 0; k < 6; k++) fx.sparks(p, new V((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2).normalize(), k % 2 ? '#ffd36b' : '#ff6a3d', 14);
+          fx.flash(p, UP, { color: '#ffb060', size: 1.6 });
+          if (!game || !gameFx.explode(p, which)) fx.scorch(at, UP);
+          return true;
+        }
+        if (name === 'push') {
+          // (from 1.5 m before you, out toward the spot: the camera stays behind it)
+          const way = spot ? new V(at.x - st.x, 0, at.z - st.z).normalize() : fwd;
+          const from = new V(st.x, st.y + 1, st.z).addScaledVector(way, 1.5);
+          for (let i = 0; i < 10; i++) {
+            const an = st.yaw + (Math.random() - 0.5) * 1.5;
+            fx.sparks(from.clone().addScaledVector(new V(Math.sin(an), 0, Math.cos(an)), 1.5 + Math.random() * 4), new V(Math.sin(an), 0.3, Math.cos(an)), '#c8d8ff', 4);
+          }
+          if (game) gameFx.push(from, way, { reach: 9 });
+          return true;
+        }
+        return false;
+      },
+      gameFx,
+    };
   if (import.meta.env.DEV)
     window.__surfaceScene = {
       scene,
@@ -3700,6 +3752,7 @@ export async function create(canvas, ctx) {
       }
       powers.dispose();
       fx.dispose();
+      gameFx.dispose();
       cast?.dispose();
       ship.dispose();
       for (const s of skyships) s.dispose?.();

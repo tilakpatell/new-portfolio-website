@@ -12,7 +12,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { glbTextures } from '../../../lib/glbTextures';
-import { NATIVE_CAPS } from '../../../../scripts/lib/bf2017-caps.mjs';
+import { FULL_CAPS, NATIVE_CAPS } from '../../../../scripts/lib/bf2017-caps.mjs';
+import { FULL_SHARE } from '../../../lib/three/walrusCuts';
 import { MANIFEST, bytesOf, readManifest } from '../../../../scripts/lib/asset-manifest.mjs';
 import { CREW, fileOf } from './crewList';
 
@@ -27,7 +28,7 @@ const publicDir = new URL('../../../../public', import.meta.url).pathname;
 const manifest = readManifest(new URL(`../../../../${MANIFEST}`, import.meta.url).pathname);
 const published = (url) => Boolean(manifest[url.replace(/^\/+/, '')]);
 const cutsOf = (url) => ({ plain: url, lod1: url.replace(/\.glb$/, '.lod1.glb'), ultra: url.replace(/\.glb$/, '.ultra.glb') });
-const heroes = Object.entries(CREW).filter(([, c]) => c.rig === 'walrus');
+const heroes = Object.entries(CREW).filter(([, c]) => c.rig === 'walrus' && !c.full);
 
 describe('the 2017 heroes’ files', () => {
   it('has heroes to hold to them', () => expect(heroes.length).toBeGreaterThan(0));
@@ -43,5 +44,38 @@ describe('the 2017 heroes’ files', () => {
         const { gpuBytes } = glbTextures(readFileSync(at(url)));
         expect(gpuBytes, `${kind} ${cut}: ${(gpuBytes / MB).toFixed(0)} MB of textures`).toBeLessThanOrEqual(CAPS[cut].gpu);
       }
+    });
+});
+
+// The cast at full fidelity (phase 2, scripts/bf2017-import.mjs --full):
+// the plain cut is the game's LOD0 with its own KTX2 maps (from the bucket,
+// FULL_CAPS's 64 MB), told to the page's ledger by its row's fullMB (GPU)
+// and fullDL (download), which at least ultra's share must admit
+// (walrusCuts.js's FULL_SHARE); its light cut colour 1024 and the rest 512
+// (2.5 MB, 64 MB of textures: decoded to RGBA8, a hothtrooper's six
+// materials are 50 MB; a figure on a phone's level draws only this one);
+// the far one 150 KB.
+const cast = Object.entries(CREW).filter(([, c]) => c.full);
+describe('the 2017 cast’s files', () => {
+  it('has a cast to hold to them', () => expect(cast.length).toBeGreaterThan(0));
+
+  for (const [kind, c] of cast)
+    it(`keeps ${kind}’s three cuts under their caps`, () => {
+      const url = fileOf(c);
+      const plain = bytesOf(url, { publicDir, manifest });
+      expect(plain, `${kind} plain: ${(plain / MB).toFixed(1)} MB`).toBeLessThanOrEqual(FULL_CAPS.plain);
+      expect(c.fullDL, `${kind}: fullDL`).toBe(Math.ceil(plain / MB));
+      expect(c.fullMB, `${kind}: fullMB`).toBeGreaterThan(0);
+      expect(c.fullMB).toBeLessThanOrEqual(FULL_SHARE.ultra.gpu);
+      expect(c.fullDL).toBeLessThanOrEqual(FULL_SHARE.ultra.download);
+      if (existsSync(at(url))) expect(Math.abs(glbTextures(readFileSync(at(url))).gpuBytes / MB - c.fullMB)).toBeLessThanOrEqual(1);
+      expect(c.lod, `${kind}: a light cut`).toBe(true);
+      const lod1 = url.replace(/\.glb$/, '.lod1.glb');
+      expect(bytesOf(lod1, { publicDir, manifest })).toBeLessThanOrEqual(FULL_CAPS.lod1);
+      expect(glbTextures(readFileSync(at(lod1))).gpuBytes).toBeLessThanOrEqual(64 * MB);
+      // (a far cut on disk is in its row, and under its cap)
+      const far = url.replace(/\.glb$/, '.far.glb');
+      expect(existsSync(at(far)), `${kind}: a far cut on disk, the row says ${Boolean(c.far)}`).toBe(Boolean(c.far));
+      if (c.far) expect(bytesOf(far, { publicDir, manifest })).toBeLessThanOrEqual(FULL_CAPS.far);
     });
 });

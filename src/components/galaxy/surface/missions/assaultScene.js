@@ -440,6 +440,9 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
         b.aiming = false;
       }
     }
+    // (a full-fidelity 2017 kind draws the cut its distance wants: the
+    // full one near, the far one past the level's mid; crew.js)
+    if (b.fig && you) b.fig.cutAt?.(dist(x, z, you.x, you.z));
     // (the far ones' legs aren't seen: their figures rest)
     if (b.fig && (!you || dist(x, z, you.x, you.z) < FAR)) {
       if (reduced) b.fig.update(dt, s.move * 0.5);

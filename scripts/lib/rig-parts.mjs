@@ -4,6 +4,7 @@
 // whole, as DICE made it (the owner's choice: the game's clips and physics
 // drive it as they were made to), so nothing here removes a bone the body
 // uses: only a part's duplicate copies go.
+import { joinPrimitives } from '@gltf-transform/functions';
 import { invert4, mul4 } from './surface-model.mjs';
 
 // A part's JOINTS_n re-indexed from its own joint list to the body's, by
@@ -181,6 +182,59 @@ export function shareSkins(doc, say = () => {}) {
     for (const j of [...joints].sort((a, b) => depth(b) - depth(a))) if (!bodyJoints.has(j)) detach(j);
     skin.dispose();
     joined++;
+  }
+  return joined;
+}
+
+// What lets two primitives be one draw: the material, the draw mode, indices
+// or none, and the same attributes laid out the same way.
+const drawKey = (prim, ids) => {
+  const m = prim.getMaterial();
+  if (m && !ids.has(m)) ids.set(m, ids.size);
+  const attrs = prim
+    .listSemantics()
+    .sort()
+    .map((sem) => {
+      const a = prim.getAttribute(sem);
+      return `${sem}:${a.getType()}:${a.getComponentType()}:${a.getNormalized()}`;
+    });
+  return [m ? ids.get(m) : -1, prim.getMode(), Boolean(prim.getIndices()), ...attrs].join('|');
+};
+
+// A figure's parts joined per material (the design's section 6: a trooper
+// two or three draws, not one a part). glTF-Transform's join leaves skinned
+// meshes alone; on one skin a node's own transform is not used (its vertices
+// are in the skin's bind space), so the parts' primitives can go into one
+// mesh on one node, and those sharing a material and a layout become one.
+// Floats only (dequantize first). Returns how many skins' parts were joined.
+export function joinSkinned(doc) {
+  const root = doc.getRoot();
+  const ids = new Map();
+  let joined = 0;
+  for (const skin of root.listSkins()) {
+    const nodes = root.listNodes().filter((n) => n.getSkin() === skin && n.getMesh());
+    if (nodes.length < 2 && !nodes.some((n) => n.getMesh().listPrimitives().length > 1)) continue;
+    const groups = new Map();
+    const before = nodes.reduce((n, node) => n + node.getMesh().listPrimitives().length, 0);
+    for (const node of nodes)
+      for (const prim of node.getMesh().listPrimitives()) {
+        // (a primitive with morph targets keeps a draw of its own)
+        const key = prim.listTargets().length ? `own:${groups.size}` : drawKey(prim, ids);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(prim);
+      }
+    const mesh = doc.createMesh(nodes[0].getMesh().getName());
+    for (const prims of groups.values()) mesh.addPrimitive(prims.length > 1 ? joinPrimitives(prims) : prims[0]);
+    for (const node of nodes) {
+      const old = node.getMesh();
+      node.setMesh(null);
+      for (const prim of old.listPrimitives()) old.removePrimitive(prim);
+      if (!old.listParents().some((p) => p.propertyType !== 'Root')) old.dispose();
+    }
+    nodes[0].setMesh(mesh);
+    // (the other parts' nodes go, when nothing hangs from them)
+    for (const node of nodes.slice(1)) if (!node.listChildren().length) node.dispose();
+    if (mesh.listPrimitives().length < before || nodes.length > 1) joined++;
   }
   return joined;
 }

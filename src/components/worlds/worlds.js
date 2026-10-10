@@ -20,12 +20,13 @@ export const WORLD_MB = {
   '/c-137': 16, // about: the Smiths' street, the house, the school and Blips and Chitz, the Smiths and the cruiser; Portal panic's cast; the Citadel inside, its cast, the Council and the crowd's light copies (partly added up from the files). Mortytown is about 11 more, fetched when the lift goes down
   '/albuquerque': 22, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab; and Rapier (1.7 MB) for the street's props, on a computer that loads it (never a phone)
   '/scranton': 5, // the office cast and set (the walkable office and the one from above share them)
-  '/galaxy': 17, // (10 until the 2017 heroes: a world with Luke and Vader adds their light cuts and the game's clip packs, 7 MB at mid, measured on Hoth when the light cuts carried 1024 maps; at 512 they are 0.6 and 0.7 MB, so the true figure is lower and 17 holds; at high their plain files, 1.9 and 2.4 MB) drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon; and down on a world, its models (its people, walkers, landmarks: a few MB a world); and Rapier (1.7 MB) for the loose crates by a site's stacks, on a computer that loads it (never a phone)
+  '/galaxy': 19, // (17 until the 2017 cast, phase 2: Hoth's models at a phone's level went from 18.1 to 19.3 MB with its troopers', pilots', droids' and tauntauns' light cuts and their packs, galaxy-check's measure; 10 until the 2017 heroes: a world with Luke and Vader adds their light cuts and the game's clip packs, 7 MB at mid, measured on Hoth when the light cuts carried 1024 maps; at 512 they are 0.6 and 0.7 MB, so the true figure is lower and 17 holds; at high their plain files, 1.9 and 2.4 MB) drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon; and down on a world, its models (its people, walkers, landmarks: a few MB a world); and Rapier (1.7 MB) for the loose crates by a site's stacks, on a computer that loads it (never a phone)
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
   // planet flight: begin (scripts/flight-island.mjs removes this block)
   // the ground is made in a worker from the planet's seed and wears the galaxy's scans (a few at a planet, under 2 MB); Coruscant adds its film-made Senate, Temple and tower (2.2 MB);
-  // the POIs' buildings and the kit clutter round where it starts add the heaviest planet's 16.2 MB at mid (Naboo; Middle-earth 11.2, Geonosis 10.3,
-  // Mustafar 7.8, Lothal 7.4, Yavin 6.2, Tatooine 5.9, Hoth 4.0, the rest under 5.5, an Expanse planet 1.5 at most: expanse/flight/landmarkFiles.test.js)
+  // the POIs' buildings and the kit clutter round where it starts add the heaviest planet's 16.8 MB at mid (Naboo, its AAT, MTT, N-1 and droidekas
+  // the game's own, natively, at their light cut since lane V; Middle-earth 11.2, Geonosis 10.8, Mustafar 7.8, Yavin 7.5, Lothal 7.4, Tatooine 5.9,
+  // the rest 5.2 or less, an Expanse planet 1.5 at most: expanse/flight/landmarkFiles.test.js)
   '/fly': 22,
   // planet flight: end
   '/deathstar/inside': 6, // aboard the station: the first room's kit and textures at phone size, and the cast it starts with (people, guns, the borrowed clips)
