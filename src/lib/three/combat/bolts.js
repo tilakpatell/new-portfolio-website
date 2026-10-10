@@ -32,6 +32,7 @@ uniform sampler2D uMap;
 uniform sampler2D uRamp;
 uniform float uHasMap;
 uniform float uHasRamp;
+uniform float uRampV;
 uniform vec4 uChan;
 varying vec2 vUv;
 varying float vAge;
@@ -40,7 +41,7 @@ void main() {
   float r = length(vUv * 2.0 - 1.0);
   // the game's rays, or a soft disc (the sphere it was, seen from anywhere)
   float m = uHasMap > 0.5 ? dot(texture2D(uMap, vUv), uChan) * 1.6 : 1.0 - smoothstep(0.75, 1.0, r);
-  vec3 hot = uHasRamp > 0.5 ? texture2D(uRamp, vec2(0.02 + 0.96 * k, 0.5)).rgb * 3.2 : vec3(1.0, 0.816, 0.627) * 3.0;
+  vec3 hot = uHasRamp > 0.5 ? texture2D(uRamp, vec2(0.02 + 0.96 * k, uRampV)).rgb * 3.2 : vec3(1.0, 0.816, 0.627) * 3.0;
   gl_FragColor = vec4(hot * m * 0.6 * k, 1.0);
 }`;
 const CHAN = { r: [1, 0, 0, 0], g: [0, 1, 0, 0], b: [0, 0, 1, 0] };
@@ -79,7 +80,7 @@ export function createBoltMeshes(parent, { pool = 48, flashes: nFlashes = 12, lo
   const flashMat = new THREE.ShaderMaterial({
     vertexShader: FLASH_VERT,
     fragmentShader: FLASH_FRAG,
-    uniforms: { uMap: { value: null }, uRamp: { value: null }, uHasMap: { value: 0 }, uHasRamp: { value: 0 }, uChan: { value: new THREE.Vector4(...CHAN.g) } },
+    uniforms: { uMap: { value: null }, uRamp: { value: null }, uHasMap: { value: 0 }, uHasRamp: { value: 0 }, uRampV: { value: 0.5 }, uChan: { value: new THREE.Vector4(...CHAN.g) } },
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
@@ -100,6 +101,7 @@ export function createBoltMeshes(parent, { pool = 48, flashes: nFlashes = 12, lo
     u.uChan.value.set(...CHAN[burst?.userData.look?.channels?.burst ?? 'g']);
     u.uRamp.value = ramp;
     u.uHasRamp.value = ramp ? 1 : 0;
+    u.uRampV.value = ramp?.userData.look?.rampV ?? 0.5;
   };
   let gone = false;
   if (look === 'game') Promise.all([loadLook('impact'), loadLook('ramp.blackbody')]).then(([burst, ramp]) => !gone && burst && setLook({ burst, ramp }));

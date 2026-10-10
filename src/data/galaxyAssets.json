@@ -1,1 +1,26 @@
-{}
+{
+  "models/galaxy/bf2017/fx/blast.512.ktx2": {
+    "hash": "b9f488195c95",
+    "bytes": 119762,
+    "from": "models/galaxy/bf2017/fx/blast.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/fx/debris.metal.512.ktx2": {
+    "hash": "b6e8cc69dbac",
+    "bytes": 86180,
+    "from": "models/galaxy/bf2017/fx/debris.metal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/fx/impact.256.ktx2": {
+    "hash": "d01769a6be3f",
+    "bytes": 73560,
+    "from": "models/galaxy/bf2017/fx/impact.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/fx/scorch.metal.512.ktx2": {
+    "hash": "4717164cc22a",
+    "bytes": 146633,
+    "from": "models/galaxy/bf2017/fx/scorch.metal.512.ktx2",
+    "tier": "pack"
+  }
+}

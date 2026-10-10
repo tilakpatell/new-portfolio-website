@@ -1,6 +1,6 @@
 // The Force push the game's way: Luke's half-sphere (the 2017 drop's
-// forcefronthalfsphere, ./gameLook's `force.push`) flung out from the
-// hand along the push and fading as it goes, drawn as a rim of light
+// forcefronthalfsphere, ./gameLook's `force.push`), a front running out
+// from the hand along the push, widening and fading as it goes, drawn as a rim of light
 // (bright where it is seen edge on, clear through the middle), and for a
 // pull the same drawn in. A few pooled, one draw each while they play.
 // Null look (the bucket hadn't it): `push` returns false and the scene's
@@ -9,6 +9,7 @@
 // createPush(parent) → { ready: Promise, push(from, dir, { colour, pull, reach }) → bool, update(dt), dispose() }
 
 import * as THREE from 'three';
+import { floatGeometry } from './debris';
 import { loadLookMesh } from './gameLook';
 
 const LIFE = 0.45; // s
@@ -32,7 +33,7 @@ void main() {
   float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), 3.0);
   float k = 1.0 - uAge;
   // (never over the bloom's threshold: a wave of air, not a light)
-  gl_FragColor = vec4(uColour * rim * k * k * 0.8, 1.0);
+  gl_FragColor = vec4(uColour * rim * k * k * 1.2, 1.0);
 }`;
 
 export function createPush(parent) {
@@ -46,7 +47,7 @@ export function createPush(parent) {
       if (!gltf) return false;
       gltf.scene.updateMatrixWorld(true);
       gltf.scene.traverse((o) => {
-        if (o.isMesh && !geo) geo = o.geometry.clone().applyMatrix4(o.matrixWorld);
+        if (o.isMesh && !geo) geo = floatGeometry(o.geometry, o.matrixWorld);
       });
       if (!geo) return false;
       // (the dome's base at its origin, 1 across: its own is 3.1 m)
@@ -61,13 +62,12 @@ export function createPush(parent) {
         mesh.frustumCulled = false;
         mesh.renderOrder = 7;
         group.add(mesh);
-        pool.push({ mesh, u, age: 1, pull: false, reach: 4 });
+        pool.push({ mesh, u, age: 1, pull: false, reach: 4, from: new THREE.Vector3(), dir: new THREE.Vector3(0, 0, 1) });
       }
       return true;
     })
     .catch(() => false);
   const Z = new THREE.Vector3(0, 0, 1);
-  const d = new THREE.Vector3();
   let next = 0;
 
   return {
@@ -76,8 +76,10 @@ export function createPush(parent) {
     push(from, dir, { colour = '#c8d8ff', pull = false, reach = 4 } = {}) {
       if (!pool.length) return false;
       const p = pool[next++ % pool.length];
+      p.from.copy(from);
+      p.dir.copy(dir).normalize();
       p.mesh.position.copy(from);
-      p.mesh.quaternion.setFromUnitVectors(Z, d.copy(dir).normalize());
+      p.mesh.quaternion.setFromUnitVectors(Z, p.dir);
       p.u.uColour.value.set(colour);
       Object.assign(p, { age: 0, pull, reach });
       p.mesh.visible = true;
@@ -91,10 +93,13 @@ export function createPush(parent) {
           p.mesh.visible = false;
           continue;
         }
-        // out fast and easing (in, for a pull), widening as it goes
+        // a front running out along the push, fast and easing (in, for a
+        // pull), widening a little as it goes: it leaves the hand, so the
+        // camera behind never stands inside it
         const k = p.pull ? 1 - p.age : 1 - (1 - p.age) ** 2;
-        const across = 0.4 + k * p.reach * 0.35;
-        p.mesh.scale.set(across, across, 0.3 + k * p.reach * 0.25);
+        const across = 0.5 + k * 1.7;
+        p.mesh.position.copy(p.from).addScaledVector(p.dir, k * p.reach * 0.8);
+        p.mesh.scale.set(across, across, 0.35 + k * 0.5);
         p.u.uAge.value = p.age;
       }
     },

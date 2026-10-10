@@ -43,8 +43,8 @@ describe('sheetWidth', () => {
 
 describe('lookUrl', () => {
   it('a sheet’s file at the tier’s size, a mesh’s own', () => {
-    expect(lookUrl('scorch.metal', 'high', TABLE)).toBe('/models/galaxy/bf2017/fx/scorch.metal.1024.webp');
-    expect(lookUrl('scorch.metal', 'low', TABLE)).toBe('/models/galaxy/bf2017/fx/scorch.metal.512.webp');
+    expect(lookUrl('scorch.metal', 'high', TABLE)).toBe('/models/galaxy/bf2017/fx/scorch.metal.1024.ktx2');
+    expect(lookUrl('scorch.metal', 'low', TABLE)).toBe('/models/galaxy/bf2017/fx/scorch.metal.512.ktx2');
     expect(lookUrl('debris.snow', 'high', TABLE)).toBe('/models/galaxy/bf2017/fx/debris.snow.glb');
   });
 
@@ -54,15 +54,17 @@ describe('lookUrl', () => {
 });
 
 describe('the committed table', () => {
-  it('names only files that are there, each under the effect cap', async () => {
-    const { existsSync, statSync } = await import('node:fs');
+  it('names only files that are there (in git, or published to the bucket), each under the effect cap', async () => {
+    const { existsSync, statSync, readFileSync } = await import('node:fs');
     const at = (p) => new URL(`../../../../public${p}`, import.meta.url);
+    const published = JSON.parse(readFileSync(new URL('../../../data/galaxyAssets.json', import.meta.url), 'utf8'));
+    const bytes = (f) => (existsSync(at(f)) ? statSync(at(f)).size : published[f.slice(1)]?.bytes);
     for (const name of Object.keys(BF2017_FX)) {
       const e = BF2017_FX[name];
       const files = e.mesh ? [e.file] : Object.keys(e.sizes).map((w) => lookUrl(name, w >= 2048 ? 'ultra' : w >= 1024 ? 'high' : 'low', BF2017_FX));
       for (const f of files) {
-        expect(existsSync(at(f)), f).toBe(true);
-        expect(statSync(at(f)).size, f).toBeLessThanOrEqual(256 * 1024);
+        expect(bytes(f), f).toBeGreaterThan(0);
+        expect(bytes(f), f).toBeLessThanOrEqual(256 * 1024);
       }
     }
   });
@@ -78,6 +80,17 @@ describe('loadLook', () => {
     vi.doUnmock('../textures');
   });
 
+  it('steps down to a smaller width the site has when the tier’s is not reachable (published, the site not pointed at the bucket)', async () => {
+    vi.resetModules();
+    const tex = { userData: {} };
+    const asked = [];
+    vi.doMock('../textures', () => ({ loadTexture: vi.fn((url) => (asked.push(url), url.endsWith('.1024.ktx2') ? Promise.reject(new Error('404')) : Promise.resolve(tex))) }));
+    const { loadLook } = await import('./gameLook');
+    expect(await loadLook('scorch.metal', { level: 'high', table: TABLE })).toBe(tex);
+    expect(asked).toEqual(['/models/galaxy/bf2017/fx/scorch.metal.1024.ktx2', '/models/galaxy/bf2017/fx/scorch.metal.512.ktx2']);
+    vi.doUnmock('../textures');
+  });
+
   it('hands back the texture with its grid and channels on it', async () => {
     vi.resetModules();
     const tex = { userData: {} };
@@ -85,7 +98,7 @@ describe('loadLook', () => {
     const { loadLook } = await import('./gameLook');
     const t = await loadLook('scorch.metal', { level: 'high', table: TABLE });
     expect(t).toBe(tex);
-    expect(t.userData.look).toEqual({ name: 'scorch.metal', grid: [2, 2], channels: null, additive: false });
+    expect(t.userData.look).toEqual({ name: 'scorch.metal', grid: [2, 2], channels: null, additive: false, rampV: 0.5 });
     vi.doUnmock('../textures');
   });
 });

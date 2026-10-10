@@ -46,6 +46,7 @@ const FRAG = /* glsl */ `
 uniform sampler2D uMap;
 uniform sampler2D uRamp;
 uniform float uHasRamp;
+uniform float uRampV;
 uniform vec4 uChan;
 varying vec2 vUv;
 varying vec4 vInfo;
@@ -53,7 +54,7 @@ varying vec3 vTint;
 #include <fog_pars_fragment>
 vec3 fire(float k) {
   // the game's ramp, or the site's own cooling where it has none
-  return uHasRamp > 0.5 ? texture2D(uRamp, vec2(0.02 + 0.96 * k, 0.5)).rgb : mix(vec3(0.5, 0.08, 0.02), vec3(1.0, 0.95, 0.85), k * k);
+  return uHasRamp > 0.5 ? texture2D(uRamp, vec2(0.02 + 0.96 * k, uRampV)).rgb : mix(vec3(0.5, 0.08, 0.02), vec3(1.0, 0.95, 0.85), k * k);
 }
 void main() {
   vec4 t = texture2D(uMap, vUv);
@@ -90,7 +91,7 @@ export function createSheetFx(parent, { texture, ramp = null, mode = 'glow', cha
     vertexShader: VERT,
     fragmentShader: FRAG,
     defines: mode === 'sprite' ? { SPRITE: '' } : mode === 'decal' ? { DECAL: '' } : mode === 'decal-colour' ? { DECAL_COLOUR: '' } : {},
-    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uGrid: { value: new THREE.Vector2(...grid) }, uChan: { value: new THREE.Vector4(...CHAN[channel]) }, uHasRamp: { value: ramp ? 1 : 0 } }]),
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uGrid: { value: new THREE.Vector2(...grid) }, uChan: { value: new THREE.Vector4(...CHAN[channel]) }, uHasRamp: { value: ramp ? 1 : 0 }, uRampV: { value: ramp?.userData.look?.rampV ?? 0.5 } }]),
     transparent: true,
     depthWrite: false,
     blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,

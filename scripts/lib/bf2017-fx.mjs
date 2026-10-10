@@ -8,18 +8,21 @@
 //
 // SHEETS: { site name: { from, op, grid?, channels?, additive?, colour?, sizes } }
 //   from      the texture's Frostbite name (web/textures.jsonl's `name`)
-//   op        'rgb' (as it is, its alpha dropped: the game packs masks in
-//             the colour channels), 'ramp' (one band of rows, 256 across)
 //   grid      [columns, rows] where the name's own is wrong or absent
 //   channels  which channel holds what, for a sheet the game packed
+//   rampV     a ramp sheet's band, how far down (0 top, 1 bottom)
 //   sizes     the widths it ships at (lib/three/fx/gameLook.js picks one by tier)
+// Each ships as the game's own KTX2 (the parent session's rule, 2026-10-10,
+// as phase 1's maps do): the bucket's file with its top mip levels taken off
+// for a smaller width (scripts/lib/ktx2-levels.mjs), nothing re-encoded.
 // WANTED: the sheets the site has a use for that the bucket has not yet:
 //   named now, fetched by the same script the day they land.
 // MESHES: { site name: { from: [manifest names], as } }: each a GLB of the
 //   pieces, geometry only (the look is a sheet's, or the effect's colour).
 //
-// sheetFiles(name, spec, width) → the file names a sheet writes
+// sheetFile(name, width), meshFile(name) → the file names
 // wantedSizes(spec, width) → the sizes a source `width` across can give
+// dropFor(source, width) → how many top levels to take off for `width`
 // bareGlb(glb) → the GLB without its images, textures or samplers (the
 //   drop's name KTX2s outside the file, which no reader here can open)
 // tableEntry(…) → a line of src/data/bf2017Fx.js
@@ -39,19 +42,20 @@ export const COMMIT_CAP = 64 * 1024;
 
 export const SHEETS = {
   // the game's impact, packed: red the scorch it leaves, green the burst's
-  // rays, blue the ring that runs out
-  impact: { from: 'FX/Decals/VolumeDecals/Textures/T_Impact_01_RGB', op: 'rgb', channels: { scorch: 'r', burst: 'g', ring: 'b' }, sizes: [512] },
+  // rays, blue the ring that runs out (its 512 is 280 KB, over the effect
+  // cap, so 256 on every tier)
+  impact: { from: 'FX/Decals/VolumeDecals/Textures/T_Impact_01_RGB', channels: { scorch: 'r', burst: 'g', ring: 'b' }, sizes: [256] },
   // a blaster's mark on metal: four of them, 2 by 2 (the name says 2x4)
-  'scorch.metal': { from: 'FX/Decals/Metal/T_Decal_ScorchMark_Metal_2x4_D', op: 'rgb', grid: [2, 2], colour: true, sizes: [512, 1024] },
+  'scorch.metal': { from: 'FX/Decals/Metal/T_Decal_ScorchMark_Metal_2x4_D', grid: [2, 2], colour: true, sizes: [256, 512] },
   // four hot blast marks: red the burn's mask
-  blast: { from: 'FX/Decals/Metal/T_Decal_01_RGBM', op: 'rgb', grid: [2, 2], channels: { burn: 'r' }, sizes: [512, 1024] },
+  blast: { from: 'FX/Decals/Metal/T_Decal_01_RGBM', grid: [2, 2], channels: { burn: 'r' }, sizes: [256, 512] },
   // the lens flare's soft-edged glow: an engine's, a bolt's head
-  glow: { from: 'FX/Lensflare/Textures/T_Box_SoftEdge_02', op: 'rgb', additive: true, sizes: [256] },
-  // what fire cools along, black to white-yellow (the ramp sheet's main band)
-  'ramp.blackbody': { from: 'FX/StandardShaders/T_BlackBodyRamps_01_M', op: 'ramp', rows: [48, 120], colour: true, sizes: [256] },
-  // the thrown chunks' own maps
-  'debris.metal': { from: 'FX/Meshes/Chunks/Metal/T_MetalChunk_01_D', op: 'rgb', colour: true, sizes: [256, 512] },
-  'debris.wood': { from: 'FX/Meshes/Chunks/Wood/T_WoodSplinter_01_CS', op: 'rgb', colour: true, sizes: [256] },
+  glow: { from: 'FX/Lensflare/Textures/T_Box_SoftEdge_02', additive: true, sizes: [256] },
+  // what fire cools along, black to white-yellow: the sheet's main band, at
+  // `rampV` of the way down (rows 48 to 120 of 256)
+  'ramp.blackbody': { from: 'FX/StandardShaders/T_BlackBodyRamps_01_M', colour: true, rampV: 0.33, sizes: [256] },
+  // the metal chunks' own map (BasisLZ: its levels can't be dropped, so its own 512)
+  'debris.metal': { from: 'FX/Meshes/Chunks/Metal/T_MetalChunk_01_D', colour: true, sizes: [512] },
 };
 
 // named, not up yet (2026-10-10, 06:00): each fetched the day the bucket has it
@@ -86,7 +90,7 @@ export const MESHES = {
 };
 
 // the file a sheet or a mesh is at, under the site's root
-export const sheetFile = (name, width) => `${name}.${width}.webp`;
+export const sheetFile = (name, width) => `${name}.${width}.ktx2`;
 export const meshFile = (name) => `${name}.glb`;
 
 // the sizes a source `width` across gives: none bigger than the source
@@ -94,6 +98,8 @@ export function wantedSizes(spec, width) {
   const fit = spec.sizes.filter((s) => s <= width);
   return fit.length ? fit : [Math.min(...spec.sizes, width)];
 }
+
+export const dropFor = (source, width) => Math.max(0, Math.round(Math.log2(source / width)));
 
 // a sheet's grid: its own, else its name's
 export const gridOf = (spec) => spec.grid ?? gridFromName(spec.from);
@@ -133,6 +139,7 @@ export function tableEntry(name, { spec, files, bytes, mesh = false }) {
   if (spec.channels) out.channels = spec.channels;
   if (spec.additive) out.additive = true;
   if (spec.colour) out.colour = true;
+  if (spec.rampV != null) out.rampV = spec.rampV;
   return out;
 }
 

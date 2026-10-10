@@ -24,6 +24,22 @@ const SINK = 1; // s to sink away
 const COLOUR = { 'debris.rock': '#6d655c', 'debris.snow': '#e8eef4', 'debris.sand': '#c9ad7f', 'debris.walker': '#8a8d90', 'debris.fighter': '#b9bcc0', 'debris.metal': '#9a9a9a', 'debris.wood': '#6b4a2e' };
 const MAPS = { 'debris.metal': 'debris.metal', 'debris.wood': 'debris.wood' };
 
+// a mesh's geometry in plain floats, in its node's place: the game's are
+// quantised (int16, normalised, interleaved, the node's scale undoing it), and
+// a transform written back into those would clamp every vertex to ±1
+export function floatGeometry(geometry, matrix) {
+  const g = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(geometry.attributes)) {
+    const out = new Float32Array(a.count * a.itemSize);
+    const get = [a.getX, a.getY, a.getZ, a.getW].slice(0, a.itemSize);
+    for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) out[i * a.itemSize + k] = get[k].call(a, i);
+    g.setAttribute(name, new THREE.BufferAttribute(out, a.itemSize));
+  }
+  if (geometry.index) g.setIndex(geometry.index.clone());
+  if (matrix) g.applyMatrix4(matrix);
+  return g;
+}
+
 export function createDebris(parent, { level = 'high', groundAt = () => 0, lit = true } = {}) {
   const sets = new Map(); // name → { ready, shapes: [{ mesh, live }], mat }
   const cap = countFor(CAP, level);
@@ -46,7 +62,7 @@ export function createDebris(parent, { level = 'high', groundAt = () => 0, lit =
     gltf.scene.traverse((o) => {
       if (!o.isMesh) return;
       // in metres, about its own middle, so it tumbles about itself
-      const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      const g = floatGeometry(o.geometry, o.matrixWorld);
       g.center();
       g.computeBoundingSphere();
       const mesh = new THREE.InstancedMesh(g, set.mat, cap);

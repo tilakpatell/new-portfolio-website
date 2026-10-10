@@ -93,7 +93,8 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseF-effects-lighting-li
 (PR number in the PR body.)
 
 - **The game's look, by name**: `src/lib/three/fx/gameLook.js` reads `src/data/bf2017Fx.js` (written by `scripts/bf2017-fx.mjs`) and loads a sheet or a mesh by the site's name; a name the table lacks is `null`, and the effect keeps its own look, never a missing texture. `flipbook.js` reads a sheet's grid from the game's name (`_5x1_`, `_8x64_` as 8 across and 64 frames, `Anim8x4o32`); the table's own `grid` wins where the name is wrong (the metal scorch's `2x4` is a 2 by 2).
-- **What the bucket had** (55 of the drop's 323 effect textures at 06:00, `node scripts/bf2017-fx.mjs --count`): seven sheets (`impact`, the game's packed impact: red the scorch, green the burst's rays, blue the ring; `scorch.metal`; `blast`; `glow`; `ramp.blackbody`; the metal and wood chunks' maps) and eight mesh sets (`debris.metal`, `.rock`, `.snow`, `.sand`, `.wood`, `.walker` (an AT-ST's wreck), `.fighter` (a Y-wing's shards), and `force.push`, Luke's half-sphere). 282 KB together against the 6 MB cap, the largest 47 KB, so all committed under `public/models/galaxy/bf2017/fx/`; credited `bf2017-fx-*`.
+- **What the bucket had** (55 of the drop's 323 effect textures at 06:00, `node scripts/bf2017-fx.mjs --count`): six sheets (`impact`, the game's packed impact: red the scorch, green the burst's rays, blue the ring; `scorch.metal`; `blast`; `glow`; `ramp.blackbody`; the metal chunks' map) and eight mesh sets (`debris.metal`, `.rock`, `.snow`, `.sand`, `.wood`, `.walker` (an AT-ST's wreck), `.fighter` (a Y-wing's shards), and `force.push`, Luke's half-sphere), credited `bf2017-fx-*`.
+- **The game's own KTX2** (the parent session's rule, mid-lane, as phase 1's maps): each sheet is the bucket's file with its top mip levels taken off for a smaller width (`scripts/lib/ktx2-levels.mjs`), nothing re-encoded; the per-effect cap of 256 KB sets the widths: `impact` 256 on every tier (its 512 is 280 KB), `scorch.metal` and `blast` 512 at high and 256 below, `glow` and the ramp 256 (the ramp's band sampled at `rampV`), the metal chunks' map its own 512 (BasisLZ: no level can be dropped). The wood chunks' map (BasisLZ, 418 KB) is left out: they take a colour. The whole set is 651 KB (sheets 551, meshes 100) against 6 MB; a visit at high loads about 534 KB of it. The four files over 64 KB (`impact.256`, `scorch.metal.512`, `blast.512`, `debris.metal.512`, 426 KB) are published to `site-assets` (`scripts/assets-publish.mjs`, `src/data/galaxyAssets.json`, `assets-check` 4 of 4 right) and out of git; a site not pointed at the bucket takes the next smaller sheet it has (`loadLook` steps down), or for `impact` and the metal map the effect's own look.
 - **Drawn** (`src/lib/three/fx/`: `marks.js` one instanced draw a sheet and mode, `debris.js` one a chunk's shape, `push.js`, `fxPlan.js` the pure rules, `gameFx.js` the one call a scene makes):
   - a bolt's flash (`lib/three/combat/bolts.js`): the game's burst cooling along its black-body ramp, and every flash one draw (it was twelve meshes);
   - an impact by surface (`fxPlan.surfaceOf`: the world's footsteps, else its terrain's detail): the game's scorch tinted (soot on stone and sand, a grey melt on snow) or its metal marks, an ember in the bolt's colour, and the surface's own chunks thrown (snow 6, sand 5, rock and metal 3 at high; half at mid, a quarter at low);
@@ -110,13 +111,16 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseF-effects-lighting-li
 3. **Lane X takes the saber's look** (ignition, clash, trail, the blade's light; #816): the bucket has no saber sheet at all, so what it can use today is through `gameLook`: `loadLook('glow')`, `loadLook('impact')` (its green, the burst, for a clash) and `loadLook('ramp.blackbody')`; `saberFx.js` was not written here.
 4. **Vehicle deaths** on the surface and in space call nothing yet: lane V wires `gameFx.explode(at, 'walker' | 'speeder' | 'fighter')` where a vehicle goes up (the space layer's `world.js` flashes take the game's look already, without debris).
 5. **Metal surfaces**: no world says its floor is metal except by `sound.ground: 'metal'`; a station or a ship's deck that sets it gets the game's metal marks and chunks.
-6. **The 1024 impact sheet** is 189 KB: over the 64 KB line for git, so it ships at 512 on every tier; once this branch has lane S's `assets-publish.mjs` (main has it), add 1024 to its `sizes` and publish it.
+6. **The impact at 512** is 280 KB as the game's KTX2, over the 256 KB effect cap, so it ships at 256; if the owner lifts the cap for the one sheet every hit uses, add 512 to its `sizes` and publish it.
+7. **`ASSET_BASE`**: the published sheets reach a visitor only when the site is built with it (lane S's rule); without it, high takes 256 sheets and the impact falls to the site's own scorch.
 
 ### Checking it
 
 ```
 node scripts/bf2017-fx.mjs --count            # how many effect textures are up
 node scripts/bf2017-fx.mjs                    # make the sheets, meshes, table and credits again
+node scripts/assets-publish.mjs --only 'models/galaxy/bf2017/fx/impact.256.ktx2'   # each file it says is over 64 KB
+node scripts/assets-check.mjs
 node scripts/bf2017-audio.mjs                 # how much audio the bucket holds
 npx vite --port 5188 --strictPort --host 127.0.0.1 &
 OUT=/tmp/fx node scripts/bf2017-fx-shots.mjs hoth impact.snow,blast.grenade,push

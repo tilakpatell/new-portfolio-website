@@ -96,9 +96,12 @@ export function createGameFx(parent, { level = 'high', groundAt = () => 0, site 
       if (off || !k.burst) return false;
       const plan = blastPlan(cls, level);
       const c = tint ? rgb(tint) : [1, 1, 1];
-      // (its core over the bloom's 1.4 for its first tenth of a second, then under)
-      k.burst.add(at, UP, { size: plan.size * 0.8, tint: c, bright: 1.7, life: 0.4, grow: 0.7 });
-      k.glow?.add(at, UP, { size: plan.size * 0.45, tint: c, bright: 0.9, life: plan.life * 0.5, grow: 0.3 });
+      // (its core over the bloom's 1.4 for its first tenth of a second, then
+      // under; held up off the ground by a third of its size, so the ground
+      // never cuts the sprite flat)
+      v.copy(at).addScaledVector(UP, plan.size * 0.3);
+      k.burst.add(v, UP, { size: plan.size * 0.8, tint: c, bright: 1.7, life: 0.4, grow: 0.7 });
+      k.glow?.add(v, UP, { size: plan.size * 0.45, tint: c, bright: 0.9, life: plan.life * 0.5, grow: 0.3 });
       const g = groundAt(at.x, at.z);
       const onGround = at.y - g < plan.size * 0.6;
       if (onGround) {

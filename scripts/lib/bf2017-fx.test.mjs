@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MESHES, SHEETS, WANTED, bareGlb, gridOf, tableEntry, tableModule, upCount, wantedSizes } from './bf2017-fx.mjs';
+import { MESHES, SHEETS, WANTED, bareGlb, dropFor, gridOf, sheetFile, tableEntry, tableModule, upCount, wantedSizes } from './bf2017-fx.mjs';
 
 // a GLB of one material with a basisu map named outside the file
 function glb(json, bin = Buffer.alloc(8)) {
@@ -31,6 +31,14 @@ describe('the effect recipes', () => {
     expect(wantedSizes({ sizes: [512, 1024] }, 1024)).toEqual([512, 1024]);
     expect(wantedSizes({ sizes: [512, 1024] }, 512)).toEqual([512]);
     expect(wantedSizes({ sizes: [512, 1024] }, 256)).toEqual([256]);
+  });
+
+  it('a sheet is the game’s own KTX2, its top levels taken off for a smaller width', () => {
+    expect(sheetFile('impact', 256)).toBe('impact.256.ktx2');
+    expect(dropFor(1024, 1024)).toBe(0);
+    expect(dropFor(1024, 512)).toBe(1);
+    expect(dropFor(1024, 256)).toBe(2);
+    expect(dropFor(256, 512)).toBe(0);
   });
 
   it('the grid is the sheet’s own where its name is wrong', () => {
@@ -70,12 +78,13 @@ describe('bareGlb', () => {
 
 describe('the table', () => {
   it('a sheet’s line says its grid, its sizes and what its channels hold', () => {
-    expect(tableEntry('impact', { spec: SHEETS.impact, files: [[512, 30000], [1024, 90000]] })).toEqual({
+    expect(tableEntry('impact', { spec: SHEETS.impact, files: [[256, 73000]] })).toEqual({
       from: SHEETS.impact.from,
       grid: [1, 1],
-      sizes: { 512: 30000, 1024: 90000 },
+      sizes: { 256: 73000 },
       channels: { scorch: 'r', burst: 'g', ring: 'b' },
     });
+    expect(tableEntry('ramp.blackbody', { spec: SHEETS['ramp.blackbody'], files: [[256, 35000]] }).rampV).toBe(0.33);
     expect(tableEntry('debris.snow', { spec: MESHES['debris.snow'], bytes: 4000, mesh: true })).toEqual({ mesh: true, file: '/models/galaxy/bf2017/fx/debris.snow.glb', from: MESHES['debris.snow'].from, bytes: 4000 });
   });
 

@@ -133,6 +133,7 @@ uniform sampler2D uMap;
 uniform sampler2D uRamp;
 uniform float uHasMap;
 uniform float uHasRamp;
+uniform float uRampV;
 uniform vec4 uChan;
 varying vec2 vUv;
 varying float vAge;
@@ -148,7 +149,7 @@ void main() {
   // the sprite's rim, not cut off there (a hard edge read as a solid disc)
   // (the game's burst: its rays through the body, kept to the same brightness overall)
   if (uHasMap > 0.5) body *= 0.35 + 1.3 * dot(texture2D(uMap, vUv * 0.5 + 0.5), uChan);
-  vec3 cold = uHasRamp > 0.5 ? texture2D(uRamp, vec2(0.02 + 0.5 * k, 0.5)).rgb * 1.4 : vec3(1.4, 0.25, 0.05);
+  vec3 cold = uHasRamp > 0.5 ? texture2D(uRamp, vec2(0.02 + 0.5 * k, uRampV)).rgb * 1.4 : vec3(1.4, 0.25, 0.05);
   vec3 col = vec3(4.0, 3.6, 3.1) * core + mix(cold, vTint, k) * body * 1.8;
   col *= 1.0 - smoothstep(0.65, 1.0, r);
   gl_FragColor = vec4(col * vBright, 1.0);
@@ -160,7 +161,7 @@ export function createFlashes(parent, { count = 48, look = 'game' } = {}) {
   const tint = new Float32Array(count * 3);
   geo.setAttribute('aFlash', new THREE.InstancedBufferAttribute(flash, 4));
   geo.setAttribute('aTint', new THREE.InstancedBufferAttribute(tint, 3));
-  const uniforms = { uMap: { value: null }, uRamp: { value: null }, uHasMap: { value: 0 }, uHasRamp: { value: 0 }, uChan: { value: new THREE.Vector4(0, 1, 0, 0) } };
+  const uniforms = { uMap: { value: null }, uRamp: { value: null }, uHasMap: { value: 0 }, uHasRamp: { value: 0 }, uRampV: { value: 0.5 }, uChan: { value: new THREE.Vector4(0, 1, 0, 0) } };
   const mat = new THREE.ShaderMaterial({ vertexShader: FLASH_VERT, fragmentShader: FLASH_FRAG, uniforms, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
   const setLook = ({ burst = null, ramp = null } = {}) => {
     uniforms.uMap.value = burst;
@@ -169,6 +170,7 @@ export function createFlashes(parent, { count = 48, look = 'game' } = {}) {
     uniforms.uChan.value.set(ch === 'r' ? 1 : 0, ch === 'g' ? 1 : 0, ch === 'b' ? 1 : 0, 0);
     uniforms.uRamp.value = ramp;
     uniforms.uHasRamp.value = ramp ? 1 : 0;
+    uniforms.uRampV.value = ramp?.userData.look?.rampV ?? 0.5;
   };
   let gone = false;
   if (look === 'game') Promise.all([loadLook('impact'), loadLook('ramp.blackbody')]).then(([burst, ramp]) => !gone && setLook({ burst, ramp }));

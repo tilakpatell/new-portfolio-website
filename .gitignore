@@ -68,4 +68,8 @@ scripts/gpu-parity/out/
 .env.*.local
 
 # galaxy assets (published; scripts/assets-publish.mjs)
+/public/models/galaxy/bf2017/fx/blast.512.ktx2
+/public/models/galaxy/bf2017/fx/debris.metal.512.ktx2
+/public/models/galaxy/bf2017/fx/impact.256.ktx2
+/public/models/galaxy/bf2017/fx/scorch.metal.512.ktx2
 # end galaxy assets
