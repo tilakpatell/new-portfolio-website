@@ -4,9 +4,13 @@ The cast is [`cast.md`](cast.md). Every picture here was looked at before the la
 
 ## The sheets
 
-- [`sheet-ground-turrets.webp`](sheet-ground-turrets.webp): the walkers, ground vehicles, droids and turrets, each in its plain cut.
-- [`sheet-fighters.webp`](sheet-fighters.webp): the twenty fighters.
-- [`sheet-cockpits.webp`](sheet-cockpits.webp): the fourteen cockpits, each in its hull's frame.
+- **Native, before and after** (the owner, 2026-10-10: the game's textures as they are):
+  - [`native-ground.webp`](native-ground.webp): the walkers, ground vehicles and droids;
+  - [`native-fighters-1.webp`](native-fighters-1.webp) and [`native-fighters-2.webp`](native-fighters-2.webp): the fighters.
+
+  Each row puts the earlier WebP cut (left) beside the native one (right). The patchwork of the left column was the pipeline's, not the game's.
+- [`xwing-uv-sets.webp`](xwing-uv-sets.webp): the X-wing's maps read through its first UV set (top) and through its second (bottom), the one the game's vehicle shader reads its atlas through.
+- [`sheet-ground-turrets.webp`](sheet-ground-turrets.webp), [`sheet-fighters.webp`](sheet-fighters.webp), [`sheet-cockpits.webp`](sheet-cockpits.webp): the first WebP sheets, before the UV and decal fixes.
 - [`fleet.webp`](fleet.webp): the space layer's ships, old on the left and the game's on the right. Rows: the close-up Star Destroyer, the Nebulon-B, the MC80, the TIE fighter. The game's Nebulon-B and TIE went in. The close-up Star Destroyer and the MC80 stayed, and so did the close-up Nebulon-B: the game's are 16,000-triangle backdrops.
 
 ## The walkers on their own rigs
@@ -22,43 +26,43 @@ The cast is [`cast.md`](cast.md). Every picture here was looked at before the la
 
 ## The cost on the worlds
 
-`BUDGET=1 QUALITY=<q> JSON=1 node scripts/galaxy-check.mjs surface hoth,endor,geonosis,kashyyyk,scarif,tatooine,naboo`.
+`BUDGET=1 QUALITY=<q> JSON=1 node scripts/galaxy-check.mjs surface hoth,endor,geonosis,kashyyyk,scarif,tatooine,naboo`, held to the level's own row (`lib/budgets.js`).
 
-Measured twice on 2026-10-10:
+Measured on 2026-10-10:
 
-- **main:** `85d92f8b`, lane S merged;
-- **lane V:** the same main merged into this branch.
+- **main:** `85d92f8b`, lane S merged (`surface-<q>-main.json`);
+- **lane V:** native, the plain cut's colour at 1024 and its normal and ORM maps at 512 (`surface-<q>.json`).
 
-The raw runs are `surface-<q>-main.json` and `surface-<q>.json`. The PASS and FAIL marks are against `lab/baseline/`, which predates both runs: Geonosis and Scarif fail it on main too. At low there is no baseline, so a world is held to the low row itself, which most worlds broke on main already. What the lane is held to is main's own numbers.
-
-**High**
+**High** (the laptop's default look; the row: 3M triangles, 700 calls, 60 MB)
 
 | world | draw calls (main → lane V) | triangles | models |
 | --- | --- | --- | --- |
-| Hoth | 156 → 128 | 865,338 → 862,311 | 14.7 → 15.1 MB |
-| Endor | 167 → 167 | 2,046,229 → 2,046,229 | 12.3 → 12.9 MB |
-| Geonosis | 196 → 173 | 1,022,138 → 1,015,500 | 22.9 → 26.1 MB |
-| Kashyyyk | 108 → 94 | 1,301,214 → 1,306,930 | 12.3 → 13.6 MB |
-| Scarif | 147 → 132 | 1,743,891 → 1,757,740 | 12.4 → 11.1 MB |
-| Tatooine | 95 → 84 | 707,257 → 709,005 | 24.3 → 25.0 MB |
-| Naboo | 597 → 588 | 1,968,520 → 1,899,004 | 24.4 → 25.8 MB |
+| Hoth | 156 → 122 | 865,338 → 819,586 | 14.7 → 40.7 MB |
+| Endor | 167 → 167 | 2,046,229 → 2,046,229 | 12.3 → 19.2 MB |
+| Geonosis | 196 → 172 | 1,022,138 → 1,016,357 | 22.9 → 47.9 MB |
+| Kashyyyk | 108 → 90 | 1,301,214 → 1,320,590 | 12.3 → 19.3 MB |
+| Scarif | 147 → 140 | 1,743,891 → 1,783,241 | 12.4 → 24.8 MB |
+| Tatooine | 95 → 84 | 707,257 → 722,385 | 24.3 → 28.5 MB |
+| Naboo | 597 → 588 | 1,968,520 → 1,899,004 | 24.4 → 33.3 MB |
 
-**Low**
+Every world passes its high row. With the plain cut's maps all at 1024, Hoth came to 60.1 MB and Geonosis to 72.9, over the row; 512 for normal and ORM gave the row back.
+
+**Low** (the phone's; the row: 0.8M triangles, 350 calls, 20 MB; a native kind draws its light cut alone)
 
 | world | draw calls | triangles | models |
 | --- | --- | --- | --- |
-| Hoth | 156 → 128 | 671,170 → 668,143 | 14.7 → 15.1 MB |
-| Endor | 167 → 167 | 1,362,301 → 1,362,301 | 12.3 → 12.9 MB |
-| Geonosis | 196 → 173 | 781,010 → 774,372 | 22.9 → 26.1 MB |
-| Kashyyyk | 108 → 94 | 934,094 → 939,810 | 12.3 → 13.6 MB |
-| Scarif | 147 → 132 | 1,149,765 → 1,163,614 | 12.4 → 11.1 MB |
-| Tatooine | 97 → 82 | 530,185 → 527,213 | 24.3 → 25.0 MB |
-| Naboo | 595 → 586 | 1,396,467 → 1,326,951 | 24.4 → 25.8 MB |
+| Hoth | 156 → 120 | 671,170 → 596,126 | 14.7 → 18.5 MB |
+| Endor | 167 → 167 | 1,362,301 → 1,362,301 | 12.3 → 13.9 MB |
+| Geonosis | 196 → 172 | 781,010 → 743,867 | 22.9 → 26.9 MB |
+| Kashyyyk | 108 → 90 | 934,094 → 902,126 | 12.3 → 13.9 MB |
+| Scarif | 147 → 132 | 1,149,765 → 1,133,700 | 12.4 → 12.1 MB |
+| Tatooine | 97 → 84 | 530,185 → 515,545 | 24.3 → 25.7 MB |
+| Naboo | 595 → 586 | 1,396,467 → 1,326,951 | 24.4 → 26.3 MB |
 
-- **Draw calls:** fewer or the same on every world. A game vehicle is one to six draws where the old ones were more.
-- **Triangles:** within 1% of main's either way (Scarif +0.8%, Naboo −3.5% at high).
-- **Model bytes:** from 1.3 MB fewer (Scarif) to 3.2 MB more (Geonosis: the AT-TE, the gunship, the droidekas). All are within the 60 MB row at high. At low, Geonosis, Tatooine and Naboo were already over the 20 MB row on main.
-- **No world fails that passed on main**, at either level.
+- **Draw calls:** fewer or the same on every world, at both levels.
+- **Triangles:** fewer on every world at low; at high within 2.3% of main's either way (Scarif +2.3%, Naboo −3.5%).
+- **Model bytes:** what native costs. The game's KTX2 is lossless against the game and a quarter of an RGBA8 WebP's GPU memory, but more bytes on the wire. At high every world is within its 60 MB row. At low, Geonosis, Tatooine and Naboo were already over the 20 MB row on main (by 2.9 to 4.4 MB) and are 1.4 to 4.0 MB further over. Hoth stays under it at 18.5 MB. Endor, Kashyyyk and Scarif break the low row's triangles on main as they do here.
+- **No world fails a row it passed on main**, at either level.
 
 ## The space layer
 
