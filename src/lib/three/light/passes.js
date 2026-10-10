@@ -157,7 +157,13 @@ export async function buildChain(renderer, passes) {
     pipeline.outputColorTransform = false;
     return tsl.renderOutput(n);
   };
-  const composeGI = (base, gi) => vec4(aoFollows ? base.rgb : base.rgb.mul(gi.a), base.a).add(vec4(g.diffuse.rgb.mul(gi.rgb), 0));
+  // SSGINode draws two attachments: its occlusion (getAONode) and its
+  // bounce (getGINode). Composited as three's example does: the colour
+  // darkened by the occlusion, plus the diffuse colour lit by the bounce.
+  // (Read as one texture, the node is its first attachment, the occlusion,
+  // and the "bounce" was the diffuse added back whole: the laptop's Hoth
+  // shot lifted from 0.52 to 0.75 mean luminance whatever the GI strength.)
+  const composeGI = (base, { ao, gi }) => vec4(aoFollows ? base.rgb : base.rgb.mul(ao), base.a).add(vec4(g.diffuse.rgb.mul(gi.rgb), 0));
 
   for (const p of passes) {
     if (p.enabled === false) continue;
@@ -207,13 +213,14 @@ export async function buildChain(renderer, passes) {
         gi.useTemporalFiltering = Boolean(p.temporal);
         g.gi = gi;
         g.giBase = node;
-        node = composeGI(node, gi);
+        node = composeGI(node, { ao: gi.getAONode(), gi: gi.getGINode() });
         break;
       }
       case 'denoise': {
         if (!g.gi) break;
-        const dn = keep(mods.denoise.denoise(g.gi, g.depth, g.normal, p.camera ?? g.camera));
-        node = composeGI(g.giBase, dn);
+        // (the bounce denoised; the occlusion as the node drew it)
+        const dn = keep(mods.denoise.denoise(g.gi.getGINode(), g.depth, g.normal, p.camera ?? g.camera));
+        node = composeGI(g.giBase, { ao: g.gi.getAONode(), gi: dn });
         break;
       }
       case 'ao': {
