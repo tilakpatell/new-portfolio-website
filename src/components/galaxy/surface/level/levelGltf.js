@@ -4,7 +4,8 @@
 // shares is fetched, transcoded and uploaded once whatever names it, at the
 // tier's size (tex/<slug>.<size>.ktx2).
 //
-//   createLevelLoader({ world, tier, renderer, fetchBytes, sizes }) → { load(glbPath) → Promise<{ scene } | null>, dispose() }
+//   createLevelLoader({ world, tier, renderer, fetchBytes, sizes }) → { load(glbPath) → Promise<{ scene } | null>,
+//     texture(packPath, sizes?) → Promise<Texture | null>, dispose() }
 //   (sizes: level.json's `tex`, each map's size per tier)
 
 import { gltfLoader, ktx2Loader } from '../../../../lib/three/gltf.js';
@@ -26,9 +27,10 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
   const meshes = new Map(); // glb path → Promise<{ scene } | null>
   let gone = false;
 
-  function texture(path) {
+  // (a part's own maps, the decals', say their sizes beside them: `own`)
+  function texture(path, own = sizes) {
     if (!textures.has(path)) {
-      const local = packUrl(world, tierTexture(path, tier, sizes));
+      const local = packUrl(world, tierTexture(path, tier, own));
       textures.set(
         path,
         ktx2Loader({ renderer })
@@ -75,6 +77,7 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
 
   return {
     load,
+    texture,
     // (the remote name of a pack file, for the evidence)
     url: (path) => assetUrl(packUrl(world, path)),
     async dispose() {

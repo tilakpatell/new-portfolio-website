@@ -106,7 +106,7 @@ import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { createPlacer } from './placer';
-import { createLevel, levelGround } from './level';
+import { createLevel, levelGround, levelPlaced } from './level';
 import { anyFigure, createActors, modelFigure } from './actors';
 import { RIDES as GALAXY_RIDES } from './rides';
 import { SEATS, poseRider } from './riders';
@@ -328,6 +328,8 @@ export async function create(canvas, ctx) {
   // (a world on the game's level: its heightmaps decoded first, so the grid
   // is the game's ground; any other world's ground is as it was)
   const height = makeHeight(await levelGround(site.ground), { relief: amounts.relief });
+  // (and what the map itself places: its creatures, droids and vehicles where the game stood them)
+  const placed = await levelPlaced(site);
   const grid = heightGrid(height, amounts.grid);
   // (water you wade in: not lava, not cloud, and not a sea far under a
   // platform with nothing else under it, which you'd fall into)
@@ -423,7 +425,7 @@ export async function create(canvas, ctx) {
   const gameLevel = createLevel({ scene, site, tier: level, renderer, walk: world });
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
-  for (const t of site.things_all) {
+  for (const t of [...site.things_all, ...placed.things]) {
     if (site.level && t.game) continue;
     const put = placer.put(t);
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
@@ -450,7 +452,7 @@ export async function create(canvas, ctx) {
   // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
   // otherwise made when it's first wanted, as it always was
   let cast = ctx.figures ? createMeshyCast(withWardrobe()) : null;
-  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops, site.uniforms ?? null), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null, only: site.cast === 'models', place: site.id });
+  const life = createActors({ parent: scene, world, life: [...garrisonLife([...site.life, ...placed.life], ctx.effects?.troops, site.uniforms ?? null), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null, only: site.cast === 'models', place: site.id });
 
   await breathe();
   // ── The places you go into (zones): built high over the world, out of
@@ -537,7 +539,7 @@ export async function create(canvas, ctx) {
   })(), depthWrite: false, transparent: true });
 
   // what you can ride, where it's parked
-  const rides = [...site.rides, ...(mission?.ride ? [{ kind: mission.ride, at: mission.start, yaw: mission.yaw }] : [])]
+  const rides = [...site.rides, ...placed.rides, ...(mission?.ride ? [{ kind: mission.ride, at: mission.start, yaw: mission.yaw }] : [])]
     .filter((x) => RIDES[x.kind])
     .map((x) => {
       const spec = RIDES[x.kind];

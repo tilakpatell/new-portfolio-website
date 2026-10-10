@@ -7,6 +7,8 @@
 //
 //   levelGround(ground) → Promise<ground>: its `image` layers' heightmaps
 //     fetched and decoded (before the ground's grid is made)
+//   partOf(world, file, empty) → Promise<the part's JSON, or empty>
+//   levelPlaced(site) → Promise<{ life, rides, things }> (the map's actors and vehicles)
 //   createLevel({ scene, site, tier, renderer, walk }) → null | { update(position), ready(), stats(), dispose() }
 //     (walk: the walk world, { solids, floors }, the pack's collision goes into)
 
@@ -18,6 +20,7 @@ import { packUrl, wanted } from './levelPack.js';
 import { createLevelScene } from './levelScene.js';
 import { createLevelStream } from './levelStream.js';
 import { createColliders } from './colliders.js';
+import { DECAL_POOL, createDecals } from '../../../../lib/three/decals.js';
 
 // A pack file's bytes, from the bucket where it has it, else the site.
 // (No abort signal on the request: assetBase reads any failure as the bucket
@@ -46,6 +49,39 @@ const packOf = (world) => {
   }
   return packs.get(world);
 };
+
+// A part of the pack beside level.json (lane E0: lights.json, actors.json,
+// vehicles.json, decals.json, effects.json, tracks.json, probes.json,
+// scatter.json), parsed; `empty` where the pack has none (a pack built
+// before the part was, or a failed fetch: said once, nothing drawn)
+const parts = new Map(); // `${world}/${file}` → Promise
+const said = new Set();
+export function partOf(world, file, empty) {
+  const key = `${world}/${file}`;
+  if (!parts.has(key)) {
+    parts.set(
+      key,
+      bytesOf(world)(file)
+        .then((b) => JSON.parse(new TextDecoder().decode(b)))
+        .catch(() => {
+          if (!said.has(key) && import.meta.env?.DEV) console.info(`level pack ${world}: no ${file}, nothing drawn from it`);
+          said.add(key);
+          return empty;
+        }),
+    );
+  }
+  return parts.get(key);
+}
+
+// What the map places that the site's own systems give life: its creatures,
+// droids and civilians (actors.json's `life`, actors.js's rows) and its
+// vehicles (vehicles.json's `rides` and `things`), in the site's frame.
+// Nothing for a site without a level.
+export async function levelPlaced(site) {
+  if (!site?.level) return { life: [], rides: [], things: [] };
+  const [a, v] = await Promise.all([partOf(site.level, 'actors.json', { life: [] }), partOf(site.level, 'vehicles.json', { rides: [], things: [] })]);
+  return { life: a.life ?? [], rides: v.rides ?? [], things: v.things ?? [] };
+}
 
 // The pack's terrain as an image layer: near and far decoded, in metres from
 // the spot's ground
@@ -85,6 +121,8 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null })
   let loader = null;
   let gone = false;
   let last = null;
+  let decals = null;
+  let decalsAt = null; // (where the pool was last filled: again after 8 m)
   const colliders = walk ? createColliders(walk, tier) : null;
   packOf(world)
     .then((pack) => {
@@ -99,6 +137,14 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null })
         stream.update(last, tier);
         level.update(last);
       }
+      // the map's placed decals, the nearest of them in the tier's pool
+      if (DECAL_POOL[tier] > 0)
+        partOf(world, 'decals.json', { decals: [] }).then((d) => {
+          if (gone || !d.decals?.length) return;
+          decals = createDecals(scene, { tier, loadTexture: (path) => loader.texture(path, d.tex ?? {}) });
+          decals.set(d.decals);
+          if (last) decals.update(last);
+        });
     })
     .catch((e) => {
       if (import.meta.env?.DEV) console.warn('level pack failed', world, e);
@@ -109,13 +155,18 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null })
       last = position;
       stream?.update(position, tier);
       level?.update(position);
+      if (decals && (!decalsAt || Math.hypot(position[0] - decalsAt[0], position[1] - decalsAt[1]) > 8)) {
+        decalsAt = position;
+        decals.update(position);
+      }
     },
     ready: () => stream?.ready() ?? false,
     progress: () => stream?.progress() ?? 0,
-    stats: () => level?.stats() ?? { tris: 0, calls: 0, instances: 0 },
+    stats: () => ({ ...(level?.stats() ?? { tris: 0, calls: 0, instances: 0 }), decals: decals?.count() ?? 0 }),
     dispose() {
       gone = true;
       colliders?.dispose();
+      decals?.dispose();
       stream?.dispose();
       level?.dispose();
       loader?.dispose();
