@@ -123,7 +123,9 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
         let got = 0;
         // (the bucket once a file, and not at all once it has failed this visit:
         // a blocked bucket costs one failed request, not one a file)
-        const remote = Boolean(f.local) && !triedBucket && !bucket.isDown();
+        // (a file only the bucket holds, `remoteOnly`, has no copy on the site
+        // to fall to: asked of the bucket every try, with the usual waits)
+        const remote = Boolean(f.local) && (f.remoteOnly || (!triedBucket && !bucket.isDown()));
         try {
           // a file from the asset bucket (f.local, its path here): asked across
           // origins with CORS, and of the site once the bucket has failed it;
@@ -153,6 +155,9 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
             got = buf.length;
             done += got;
           }
+          // (a body short of the manifest's bytes, a connection cut or a CDN's
+          // truncated object, is a failure to try again, never a half file kept)
+          if (got < f.bytes) throw new Error(`short body: ${got} of ${f.bytes} bytes`);
           const headers = new Headers(r.headers);
           headers.delete('content-encoding');
           headers.delete('content-length');
@@ -164,7 +169,7 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
         } catch (e) {
           done -= got;
           err = e;
-          if (remote) {
+          if (remote && !f.remoteOnly) {
             bucket.markDown();
             continue; // (straight to the site's copy)
           }
