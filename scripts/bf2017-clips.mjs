@@ -50,10 +50,12 @@ import { mkdir, readFile, stat } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
-import { OWN_RIGS, PACKS, candidates } from '../src/lib/three/walrusClips.js';
+import { OWN_RIGS, PACKS, PACK_OPTS, candidates } from '../src/lib/three/walrusClips.js';
 import { SOCKETS } from '../src/lib/three/walrusRig.js';
 import { parseArgs } from './lib/args.mjs';
+import { RIGS } from '../src/lib/three/rigSets.js';
 import { animEntry, animPath } from './lib/bf2017-anims.mjs';
+import { censusMarkdown, censusRows } from './lib/bf2017-clip-census.mjs';
 import { isSequel, readManifest } from './lib/bf2017-manifest.mjs';
 import { contactWindow, rootTravel } from './ual-bake.mjs';
 
@@ -69,11 +71,30 @@ const TRAJ = 'AITrajectory';
 const SKELETONS = /\/(Walrus_HumanMale|Walrus_NIS_S0800_Skeleton)$/;
 // the skeleton a pack's clips must be on: an own rig's (walrusClips.js's
 // OWN_RIGS: the B1's D_Assault_Preq_01_Ske…) for its pack, else the humanoid's
-export const skeletonsFor = (pack) => (OWN_RIGS[pack] ? new RegExp(`/${OWN_RIGS[pack].skeleton}$`) : SKELETONS);
+export const skeletonsFor = (pack) => (PACK_OPTS[pack]?.skeletons ? new RegExp(PACK_OPTS[pack].skeletons) : OWN_RIGS[pack] ? new RegExp(`/${OWN_RIGS[pack].skeleton}$`) : SKELETONS);
 // the file a pack reads its skeleton from: the humanoid's own, or an own
 // rig's body as imported (its light cut, which is committed; its meshes are
 // taken off before the pack is written)
 export const skeletonFileFor = (pack, root) => (OWN_RIGS[pack] ? join(root, 'public', 'models', 'galaxy', 'bf2017', 'crew', `${OWN_RIGS[pack].body}.lod1.glb`) : join(root, 'public', 'models', 'galaxy', 'bf2017', 'walrus.glb'));
+// the game's clips a pack takes: an additive one only into a pack made of them
+export const takes = (pack, e) => Boolean(e) && !isSequel(e.name) && skeletonsFor(pack).test(e.skeleton ?? '') && Boolean(e.additive) === Boolean(PACK_OPTS[pack]?.additive);
+
+// every game clip the site's packs carry: each site name's first spelling
+// the drop has on the pack's skeleton (as makePack picks it), and every
+// walker's and droid's (rigSets.js, bf2017-rigclips.mjs's packs)
+export function usedSources(anims) {
+  const used = new Set();
+  for (const [pack, map] of Object.entries(PACKS))
+    for (const site of Object.keys(map)) {
+      const e = candidates(map, site)
+        .map((g) => animEntry(anims, g))
+        .find((x) => takes(pack, x));
+      if (e) used.add(e.name);
+    }
+  for (const r of Object.values(RIGS)) for (const g of Object.values(r.set)) if (animEntry(anims, g)) used.add(animEntry(anims, g).name);
+  return used;
+}
+
 const BLADE = 1; // metres out of the socket the stroke's tip is timed at (ual-bake's: a blade's length)
 
 async function io() {
@@ -225,7 +246,6 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
   // (an own rig's skeleton comes in its body: the meshes go, the bones stay)
   for (const n of doc.getRoot().listNodes()) n.setMesh(null).setSkin(null);
   for (const x of [...doc.getRoot().listMeshes(), ...doc.getRoot().listSkins(), ...doc.getRoot().listMaterials(), ...doc.getRoot().listTextures()]) x.dispose();
-  const allowed = skeletonsFor(pack);
   const skel = skeletonScene(doc);
   const rootHips = restHips(skel);
   const nodes = new Map(doc.getRoot().listNodes().map((n) => [n.getName(), n]));
@@ -243,7 +263,7 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
     let game = null;
     for (const g of candidates(map, site)) {
       const e = animEntry(anims, g);
-      if (!e || e.additive || isSequel(g) || !allowed.test(e.skeleton ?? '')) continue;
+      if (!takes(pack, e)) continue;
       const f = join(root, animPath(e));
       if (!existsSync(f) && fetchClip) await fetchClip(e.name);
       if (existsSync(f)) {
@@ -322,6 +342,17 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
   const [pack] = args._;
+  if (args.census) {
+    const { writeFile } = await import('node:fs/promises');
+    const root = resolve(args.root ?? join(ROOT, 'lab', 'assets', 'bf2017'));
+    const anims = readManifest(await readFile(join(root, 'web', 'anims.jsonl'), 'utf8'));
+    const rows = censusRows(anims, usedSources(anims));
+    const file = join(ROOT, 'docs', 'superpowers', 'evidence', 'bf2017-coverage', 'clips.md');
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, censusMarkdown(rows, { date: new Date().toISOString().slice(0, 10) }));
+    console.log(`${relative(ROOT, file)}: ${Object.entries(rows.totals).map(([k, v]) => `${v} ${k}`).join(', ')}`);
+    process.exit(0);
+  }
   if (!pack) {
     console.error(`usage: node scripts/bf2017-clips.mjs <pack> [--fps 24] [--only a,b] (packs: ${Object.keys(PACKS).join(', ')})`);
     process.exit(1);
