@@ -8,7 +8,9 @@
 //
 //   createBattle({ rulebook, level, mode, heightAt, bots, seed, cell }) → battle
 //   addPlayer(battle, { team }) → id ; deploy(battle, id, { classId }) → { ok, why? }
-//   step(battle, inputs) → events ; view(battle) → the page's view
+//   step(battle, inputs) → events ; view(battle) → the page's view (each fallen
+//   entity's `fall`: { t, part, dir, at, weapon } from its kill, null on the
+//   living, and `hitDir`, the shot's way, for the death clip's side)
 //   (inputs: the page's { id, move: [right, ahead], yaw, pitch, fire, aim: bool, sprint, crouch, roll, ability, vent })
 
 import { aiOf, classOf, mapOf, pointsOf, stagesOf, stringOf, teamsFor } from '../../lib/battlefront/rulebook.js';
@@ -84,6 +86,7 @@ export function createBattle({ rulebook, level = 'hoth', mode = 'galacticAssault
     result: null,
     killLog: [],
     names: new Map(),
+    falls: new Map(), // the fallen's id → how it fell (the kill's part, the shot's way, where it struck, the weapon), for the figures' ragdolls
     force(what, team) {
       if (what === 'win' || what === 'lose') this.result = { winner: what === 'win' ? team : 3 - team, why: 'forced' };
     },
@@ -138,6 +141,7 @@ export function step(b, inputs = []) {
   const t = b.sim.time;
   for (const e of events) {
     if (e.type === 'kill') {
+      b.falls.set(e.target, { t, part: e.part ?? null, dir: e.dir ?? null, at: e.at ?? null, weapon: e.weapon ?? null });
       const killer = b.sim.entities.get(e.by);
       const victim = b.sim.entities.get(e.target);
       b.killLog.push({ id: `${t}:${e.target}`, killer: nameOf(b, e.by), killerTeam: killer?.team, victim: nameOf(b, e.target), victimTeam: victim?.team });
@@ -150,6 +154,8 @@ export function step(b, inputs = []) {
       p.hits.push({ id: `${t}:${e.by}`, angle: -angle, t });
     }
   }
+  // (a fall is forgotten once the sim has taken the body away, or it stands again)
+  for (const id of b.falls.keys()) if (!b.sim.entities.get(id) || b.sim.entities.get(id).alive) b.falls.delete(id);
   if (p) {
     p.hits = p.hits.filter((h) => t - h.t < HIT_SHOWN);
     if (p.state === 'alive' && me && !me.alive) {
@@ -179,6 +185,9 @@ export function view(b) {
     const s = b.sim.entities.get(e.id);
     e.vel = [s?.vel?.[0] ?? 0, s?.vel?.[2] ?? 0];
     e.t = t;
+    // (the view's entities are reused by place: a living one's fall is cleared)
+    e.fall = s && !s.alive ? (b.falls.get(e.id) ?? null) : null;
+    e.hitDir = e.fall?.dir ?? null;
   }
   const p = b.player;
   const me = p?.id ? b.sim.entities.get(p.id) : null;
