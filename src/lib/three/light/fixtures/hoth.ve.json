@@ -1,5 +1,5 @@
 {
- "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed",
+ "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed; GlobalWeatheringParamsEntityData from web/data/Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01.json, its $refs inlined (lane Q4)",
  "sunny": {
   "name": "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
   "record": {
@@ -86,6 +86,46 @@
     {
      "HdrColorGradingLut": "Levels/Lighting/Hoth/Sunny_01/T_CC_Hoth_Sunny_01",
      "ColorGradingMaxHdrValue": 1
+    }
+   ],
+   "GlobalWeatheringParamsEntityData": [
+    {
+     "$type": "GlobalWeatheringParamsEntityData",
+     "Realm": "Realm_Client",
+     "OverrideEvents": [
+      {
+       "EventType": "WeatheringEnable",
+       "Id": -2095241512,
+       "OutputId": -590781299
+      }
+     ],
+     "SkyVisibilityParam": {
+      "$type": "WeatheringSkyVisibilityParam",
+      "SkyVisibilityRange": {
+       "x": 0.1,
+       "y": 0.9
+      },
+      "SkyVisibilityExponent": 1,
+      "IndoorThreshold": 0.5,
+      "DisableGlobalWeatheringIndoor": true,
+      "DisableMaterialWeatheringIndoor": true,
+      "DisableAddSetEventsIndoor": false,
+      "UseDefaultMaterialOpIndoor": true
+     },
+     "GlobalParamsOverrides": [
+      {
+       "$type": "WeatheringParam",
+       "WeatherOperation": {
+        "$type": "AccumulateOverTimeOp",
+        "TargetValue": 1,
+        "InitialValue": 0,
+        "TimeToReachTarget": 25,
+        "KeepValueWhenMaterialChanged": true
+       },
+       "Id": -590781299
+      }
+     ],
+     "Flags": 53596157
     }
    ]
   }

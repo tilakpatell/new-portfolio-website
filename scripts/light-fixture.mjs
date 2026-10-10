@@ -24,6 +24,16 @@
 //   the GPU's end, a shot with it and the frame time again.
 // The numbers go to <label>.json beside the shots and to stdout as a table.
 //
+// Lane Q4 (docs/superpowers/plans/2026-10-10-bf2017-surfaces-laneQ4-weathering.md)
+// adds two shot sets, into docs/superpowers/evidence/bf2017-surfaces/Q4/,
+// in place of the checks above:
+//   --weather [--seconds 0,12.5,30]  the weathering crates under Hoth's snow
+//     at each time into the weather (the record reaches its target at 25 s):
+//     weather-<s>s-<leg>.png, the accumulation moved on a uniform, no rebuild
+//   --decals  ten of Naboo's placed decals on the fixture's wall and floor:
+//     decals-<leg>.png, and the grazing pair decals-grazing-{a,b}-<leg>.png
+//     two frames apart (no flicker: their mean difference is in the json)
+//
 // On Linux without a display both legs draw on SwiftShader (CPU): the
 // shots are the check, the frame times are the CPU's and only compare one
 // leg with the other. The owner's laptop gives the real table. In the
@@ -37,22 +47,26 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'docs/superpowers/evidence/galaxy-engine/R');
 const argv = process.argv.slice(2);
+const OUT = join(ROOT, argv.includes('--weather') || argv.includes('--decals') ? 'docs/superpowers/evidence/bf2017-surfaces/Q4' : 'docs/superpowers/evidence/galaxy-engine/R');
 const arg = (k, d) => {
   const i = argv.indexOf(`--${k}`);
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d;
 };
 const tier = arg('tier', 'ultra');
 const post = arg('post', 'off') === 'on';
-const label = arg('label', post ? `post-${tier}` : `lit-${tier}`);
+const label = arg('label', argv.includes('--weather') ? 'weather' : argv.includes('--decals') ? 'decals' : post ? `post-${tier}` : `lit-${tier}`);
 const [W, H] = arg('size', '1600x900').split('x').map(Number);
 const ms = Number(arg('ms', 5000));
 const legs = arg('legs', 'webgpu,webgl').split(',');
 const sky = arg('sky', 'on') === 'on';
 const grid = argv.includes('--grid');
 const only = arg('only', null)?.split(',');
-const fixture = { tier, post, sky, env: true, only };
+const weather = argv.includes('--weather');
+const decals = argv.includes('--decals');
+const seconds = arg('seconds', '0,12.5,30').split(',').map(Number);
+const q4 = weather || decals;
+const fixture = { tier, post, sky, env: true, only, ...(q4 ? { placed: false } : {}), ...(weather ? { weather: seconds[0] } : {}), ...(decals ? { decals: true } : {}) };
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
@@ -105,38 +119,70 @@ for (const leg of legs) {
     if (err) throw new Error(err);
     Object.assign(row, await page.evaluate(() => ({ backend: window.__lit.backend, clustered: window.__lit.probe.light?.clustered ?? null, passes: window.__lit.probe.passes })));
     const shot = async () => page.locator('canvas').screenshot();
-    await page.evaluate(() => window.__lit.draw(60));
-    const png = await shot();
-    writeFileSync(join(OUT, `${label}-${leg}.png`), png);
-    row.shot = `${label}-${leg}.png`;
-    // A2: with and without the environment
-    await page.evaluate(() => (window.__lit.probe.setEnv(false), window.__lit.draw(8)));
-    const without = await raw(await shot());
-    await page.evaluate(() => (window.__lit.probe.setEnv(true), window.__lit.draw(8)));
-    const withEnv = await raw(await shot());
-    row.envDiff = Number(meanDiff(withEnv, without).toFixed(2));
-    // no recompile when a placed light moves
-    row.programsBefore = await page.evaluate(() => window.__lit.probe.programs());
-    await page.evaluate(async () => {
-      for (let i = 0; i < 30; i++) {
-        window.__lit.probe.nudge(i / 10);
-        await window.__lit.draw(1);
+    if (q4) {
+      row.shots = [];
+      const save = async (name) => {
+        const png = await shot();
+        writeFileSync(join(OUT, `${name}-${leg}.png`), png);
+        row.shots.push(`${name}-${leg}.png`);
+        return png;
+      };
+      if (weather) {
+        await page.evaluate(() => window.__lit.probe.view('crate'));
+        row.amounts = {};
+        for (const s of seconds) {
+          row.amounts[s] = await page.evaluate((t) => window.__lit.probe.setWeather(t), s);
+          await page.evaluate(() => window.__lit.draw(8));
+          await save(`weather-${s}s`);
+          // (counted once the view has drawn: the rest move a uniform only)
+          row.programsBefore ??= await page.evaluate(() => window.__lit.probe.programs());
+        }
+        row.programsAfter = await page.evaluate(() => window.__lit.probe.programs());
       }
-    });
-    row.programsAfter = await page.evaluate(() => window.__lit.probe.programs());
-    const intervals = await page.evaluate((t) => window.__lit.time(t), ms);
-    row.frames = intervals.length;
-    row.mean = Number((intervals.reduce((a, b) => a + b, 0) / Math.max(1, intervals.length)).toFixed(1));
-    row.median = Number(pct(intervals, 0.5)?.toFixed(1));
-    row.p95 = Number(pct(intervals, 0.95)?.toFixed(1));
-    if (grid) {
-      const bake = await page.evaluate(() => window.__lit.bakeGrid());
-      row.gridBakeMs = Number(bake.total.toFixed(1));
-      await page.evaluate(() => window.__lit.draw(4));
-      writeFileSync(join(OUT, `${label}-${leg}-grid.png`), await shot());
-      const after = await page.evaluate((t) => window.__lit.time(t), ms);
-      row.gridMedian = Number(pct(after, 0.5)?.toFixed(1));
-      row.gridMean = Number((after.reduce((a, b) => a + b, 0) / Math.max(1, after.length)).toFixed(1));
+      if (decals) {
+        Object.assign(row, await page.evaluate(() => window.__lit.probe.decals()));
+        await page.evaluate(() => (window.__lit.probe.view('decals'), window.__lit.draw(8)));
+        await save('decals');
+        await page.evaluate(() => (window.__lit.probe.view('grazing'), window.__lit.draw(8)));
+        const a = await raw(await save('decals-grazing-a'));
+        await page.evaluate(() => window.__lit.draw(2));
+        const b = await raw(await save('decals-grazing-b'));
+        row.grazingDiff = Number(meanDiff(a, b).toFixed(3));
+      }
+    } else {
+      await page.evaluate(() => window.__lit.draw(60));
+      const png = await shot();
+      writeFileSync(join(OUT, `${label}-${leg}.png`), png);
+      row.shot = `${label}-${leg}.png`;
+      // A2: with and without the environment
+      await page.evaluate(() => (window.__lit.probe.setEnv(false), window.__lit.draw(8)));
+      const without = await raw(await shot());
+      await page.evaluate(() => (window.__lit.probe.setEnv(true), window.__lit.draw(8)));
+      const withEnv = await raw(await shot());
+      row.envDiff = Number(meanDiff(withEnv, without).toFixed(2));
+      // no recompile when a placed light moves
+      row.programsBefore = await page.evaluate(() => window.__lit.probe.programs());
+      await page.evaluate(async () => {
+        for (let i = 0; i < 30; i++) {
+          window.__lit.probe.nudge(i / 10);
+          await window.__lit.draw(1);
+        }
+      });
+      row.programsAfter = await page.evaluate(() => window.__lit.probe.programs());
+      const intervals = await page.evaluate((t) => window.__lit.time(t), ms);
+      row.frames = intervals.length;
+      row.mean = Number((intervals.reduce((a, b) => a + b, 0) / Math.max(1, intervals.length)).toFixed(1));
+      row.median = Number(pct(intervals, 0.5)?.toFixed(1));
+      row.p95 = Number(pct(intervals, 0.95)?.toFixed(1));
+      if (grid) {
+        const bake = await page.evaluate(() => window.__lit.bakeGrid());
+        row.gridBakeMs = Number(bake.total.toFixed(1));
+        await page.evaluate(() => window.__lit.draw(4));
+        writeFileSync(join(OUT, `${label}-${leg}-grid.png`), await shot());
+        const after = await page.evaluate((t) => window.__lit.time(t), ms);
+        row.gridMedian = Number(pct(after, 0.5)?.toFixed(1));
+        row.gridMean = Number((after.reduce((a, b) => a + b, 0) / Math.max(1, after.length)).toFixed(1));
+      }
     }
   } catch (e) {
     row.error = String(e.message ?? e).split('\n')[0];
@@ -149,6 +195,11 @@ await browser.close();
 await server.close();
 
 writeFileSync(join(OUT, `${label}.json`), `${JSON.stringify({ size: `${W}x${H}`, adapter: swift ? 'swiftshader' : 'system', rows }, null, 2)}\n`);
+if (q4) {
+  for (const r of rows) console.log(r.error ? `${r.leg}: failed: ${r.error}` : `${r.leg} (${r.backend}): ${r.shots.join(', ')}${r.amounts ? ` · accumulation ${JSON.stringify(r.amounts)} · programs ${r.programsBefore} → ${r.programsAfter}` : ''}${r.draws != null ? ` · decals ${r.count} in ${r.draws} draws (${r.textures} textures) · grazing diff ${r.grazingDiff}` : ''}`);
+  for (const r of rows) if (r.errors) console.log(`  ${r.leg} errors: ${r.errors.join(' / ')}`);
+  process.exit(rows.some((r) => r.error && r.leg !== 'webgpu') ? 1 : 0);
+}
 console.log(`| leg | backend | passes | clustered | env diff | programs before → after | mean ms | median ms | p95 ms | grid bake ms | mean with grid |`);
 console.log(`|---|---|---|---|---|---|---|---|---|---|---|`);
 for (const r of rows) {

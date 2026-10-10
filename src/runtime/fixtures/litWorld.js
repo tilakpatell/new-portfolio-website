@@ -12,9 +12,18 @@
 // environment under ClusteredLighting (A2), the programs before and after a
 // light moves (no recompile), the frame time.
 //
-// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only }
+// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only,
+//   weather }
+//
+// `weather` (lane Q4, seconds into Hoth's day): three crates at the front
+// under the snow contributor of src/lib/three/surface/weather.js, composed
+// on a node material here in three lines (lane Q1's composeOverlays takes
+// over when both merge): one flat and one tilted that allow weather, one
+// flat that does not; probe.setWeather(t) moves the accumulation and
+// probe.view('crate') frames them.
 
 import * as THREE from 'three';
+import hoth from '../../lib/three/light/fixtures/hoth.ve.json';
 
 const RING = 200; // point lights round the ring
 const SPOTS = 8;
@@ -119,6 +128,7 @@ export default {
     let envTex = null;
     let light = null;
     let grid = null;
+    let snow = null;
     // the ring as a level's lights.json, so the pools are filled the way a
     // level's are: the cells round the camera, the best by screen area
     const source = { cells: {} };
@@ -142,6 +152,14 @@ export default {
       },
       // A3: an arena-sized probe grid (Hoth's 1,536 m), made and baked; the
       // caller waits on the GPU and times it
+      // (lane Q4) the weather's accumulation at t seconds
+      setWeather(t) {
+        return snow?.setTime(t) ?? null;
+      },
+      view(name) {
+        if (name === 'crate') camera.position.set(0.2, 2.1, 20), camera.lookAt(0.2, 0.7, 16);
+        else camera.position.set(0, 7, 24), camera.lookAt(0, 1, 0);
+      },
       async bakeGrid() {
         const { createProbeGrid, PROBE_GRID } = await import('../../lib/three/light/probes.js');
         grid ??= await createProbeGrid(scene, renderer, { min: [-768, -5, -768], max: [768, 60, 768] }, PROBE_GRID);
@@ -159,6 +177,7 @@ export default {
         scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
         pmrem.dispose();
       }
+      if (opts.weather != null) snow = await weatherCrates(scene, made, opts.weather);
       envTex = scene.environment;
       probe.setEnv(opts.env);
       light.update(0, camera);
@@ -198,6 +217,35 @@ export default {
     };
   },
 };
+
+// Lane Q4's crates: the snow contributor over a plain node material, the
+// running channels its base. One flat and one tilted 50° (a normal's y of
+// 0.64: part way up the band) that allow weather (ESB_TopDirt), one flat
+// that does not
+async function weatherCrates(scene, made, seconds) {
+  const [{ loadThree }, { overlaysFor }] = await Promise.all([import('../../lib/three/light/three.js'), import('../../lib/three/surface/weather.js')]);
+  const { THREE: N, tsl } = await loadThree();
+  const [snow] = overlaysFor(hoth.sunny, 'snow', { tsl });
+  snow.setTime(seconds);
+  const box = new N.BoxGeometry(1.4, 1.2, 1.4);
+  made.push(box);
+  const crate = (weather, at, tilt) => {
+    const base = { color: tsl.vec3(0.32, 0.22, 0.13), roughness: tsl.float(0.72), metalness: tsl.float(0), normal: tsl.normalView };
+    const parts = snow({ uv: tsl.uv(), worldNormal: tsl.normalWorld, worldPosition: tsl.positionWorld, skyVisibility: 1, ...base, params: { weather }, maps: {} });
+    const m = new N.MeshStandardNodeMaterial();
+    for (const c of ['color', 'roughness', 'metalness', 'normal']) m[`${c}Node`] = parts[c] ?? base[c];
+    made.push(m);
+    const mesh = new N.Mesh(box, m);
+    mesh.position.set(at, 0.6, 16);
+    mesh.rotation.z = tilt;
+    mesh.castShadow = mesh.receiveShadow = true;
+    scene.add(mesh);
+  };
+  crate({ top: true }, -1.8, 0);
+  crate({ top: true }, 0.2, (50 * Math.PI) / 180);
+  crate({ use: false }, 2.2, 0);
+  return snow;
+}
 
 // how many render pipelines the node renderer has built: a recompile adds one
 function countPrograms(renderer) {
