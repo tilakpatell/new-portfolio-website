@@ -19,7 +19,9 @@
     "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
     "as": "hoth: the game's level",
-    "paths": ["public/models/galaxy/bf2017/levels/hoth/"],
+    "paths": [
+      "public/models/galaxy/bf2017/levels/hoth/"
+    ],
     "also": [
       "galaxy"
     ],
@@ -1851,32 +1853,34 @@
     ]
   },
   "galaxy-lightcruiser": {
-    "title": "Crucero Ligero Imperial Arquitens",
-    "author": "doclusifer2",
-    "authorUrl": "https://sketchfab.com/doclusifer2",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/crucero-ligero-imperial-arquitens-5a5d6adf2e0444d5be94323938f6d329",
+    "title": "Star Wars Battlefront II (2017): the Arquitens-class light cruisers (fondor-arquitens: its kit as the space level places it)",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
-    "as": "Moff Gideon’s light cruisers",
+    "as": "the Arquitens-class light cruisers",
     "file": "/models/galaxy/lightcruiser.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-lucrehulk": {
-    "title": "Lucrehulk",
-    "author": "photon (that one larry)",
-    "authorUrl": "https://sketchfab.com/Professor_E12",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/lucrehulk-8bb11e0ad31e4b23b1783e10242c5115",
+    "title": "Star Wars Battlefront II (2017): the Lucrehulk-class droid control ships (naboo-lucrehulk: its kit as the space level places it)",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy",
-    "as": "the droid control ships",
+    "as": "the Lucrehulk-class droid control ships",
     "file": "/models/galaxy/lucrehulk.glb",
     "also": [
       "galaxy"
-    ]
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "galaxy-moncal": {
     "title": "Star Wars: MC80 Home One Type Star Cruiser",
@@ -4716,6 +4720,76 @@
     "file": "/models/galaxy/bf2017/crew/wookiee.glb",
     "also": [
       "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "space-endor": {
+    "title": "Star Wars Battlefront II (2017): sb_endor_01, its MC80 Mon Calamari cruiser, Imperial Star Destroyer and the rest it places",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy",
+    "as": "the Imperial fleet over Endor: the game's space level",
+    "paths": [
+      "public/models/galaxy/space/"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "space-fondor": {
+    "title": "Star Wars Battlefront II (2017): sb_fondor_01, its Fondor orbital dry dock, Arquitens-class light cruiser, Imperial Star Destroyer, MC80 Mon Calamari cruiser and the rest it places",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy",
+    "as": "the Fondor shipyards: the game's space level",
+    "paths": [
+      "public/models/galaxy/space/"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "space-kamino": {
+    "title": "Star Wars Battlefront II (2017): sb_kamino_01, its Venator-class Star Destroyer, Republic cruiser and the rest it places",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy",
+    "as": "the Republic fleet over Kamino: the game's space level",
+    "paths": [
+      "public/models/galaxy/space/"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "space-naboo": {
+    "title": "Star Wars Battlefront II (2017): sb_droidbattleship_01, its Venator-class Star Destroyer, Arquitens-class command cruiser (the Republic’s), Lucrehulk-class droid control ship and the rest it places",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy",
+    "as": "the Separatist blockade: the game's space level",
+    "paths": [
+      "public/models/galaxy/space/"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "space-skies": {
+    "title": "Star Wars Battlefront II (2017): the space levels' star fields (t_space_endor01_c, t_space_01_c, t_space_no_large_stars_01_c)",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy",
+    "as": "the star fields behind the systems’ skies",
+    "paths": [
+      "public/textures/galaxy/sky/space/"
     ],
     "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
