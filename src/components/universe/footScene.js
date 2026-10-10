@@ -52,7 +52,16 @@
 // dust and nudges the camera (lib/three/impacts.js; a shot's own knock is
 // still 'impact').
 //
-// createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind), begin(...),
+// The leaves: a landing with trees has its fallen leaves round you
+// (landings/litter.js, Bruno's: kicked along as you walk through them,
+// blown in the gusts, thrown by a bolt into the ground, a jump, the ship
+// setting down and lifting off, shaken from a crown a bolt goes through),
+// and its crowns move in the same wind (landings/canopy.js), opening round
+// you where one's between you and the camera. None of it moves with
+// motion turned down.
+//
+// createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind),
+//   prefetchAt(id, { light, near, entry }), begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
 //   board(), look(dx, dy) (px), turn(dx, dy) (radians), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
@@ -100,13 +109,16 @@ import { BOLT, FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, byTrench,
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
-import { landingOf } from './landings/landings';
-import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf } from './landings/biomes';
+import { landingOf, seedOf as landingSeed } from './landings/landings';
+import { fromLatLon, landOn, readableMap, sampleMap, viewOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished, prefetch as prefetchLanding, within } from './landings/furnish';
 import { LAMPS, createLamps } from './landings/lamps';
 import { createLandingPhysics } from './landings/physics';
+import { aimCanopy, canopy, lookCanopy, seeCanopy, sunCanopy, tickCanopy, windCanopy } from './landings/canopy';
+import { createLitter, leafLevel } from './landings/litter';
+import { weatherWind } from '../../lib/three/leafSim';
 import { bodyOf } from './landings/bodies';
 import { preload as preloadPhysics } from '../../lib/physics/world';
 import { device } from '../../lib/device';
@@ -1582,6 +1594,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   // hidden, so the map's warm-up makes its shaders before the first entry
   const reentry = createReentry({ small, reduced });
   root.add(reentry.group);
+  // the fallen leaves round you (landings/litter.js), made once and kept,
+  // as many as the device steps easily; and the canopy's wind noise made
+  // while nothing's happening (5 to 9 ms, more on a phone), before the
+  // first landing wants it
+  const leaves = createLitter({ level: leafLevel({ tier: device().tier, small }), reduced });
+  root.add(leaves.mesh);
+  (typeof requestIdleCallback === 'function' ? requestIdleCallback : (f) => setTimeout(f, 200))(() => canopy());
 
   // bolts in flight: a white-hot core in a sleeve of the shot's colour,
   // its head where the bolt is and its length trailing behind (grown out
@@ -1793,6 +1812,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     landed: null, // when your last shot hit someone (S.clock), for the reticle
     cam: { pos: null, look: null, pitch: 0.18, first: false, kick: { x: 0, v: 0 } },
     done: null,
+    // the leaves: the ship down on them yet (its blast), the wind's strength
+    // here, and how high your jump took you (its landing's blast)
+    touched: false,
+    windBase: 0.45,
+    airH: 0,
   };
 
   // stand a figure where a person is: up out from the planet, facing f
@@ -2162,25 +2186,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         const fn = turned(toBody.clone().transpose(), want);
         S.spot = { n: fn, f: facingAlong(fn, fwd3) };
       }
-      const fromBody = toBody.clone().transpose();
-      const look = lookOf(planet, id);
-      if (look) {
-        let nb = turned(toBody, (near ?? S.spot).n);
-        // (isSea by colour and by place: Tortuga reads sea on the map's
-        // copy but is land; and the walk goes as far out as the planet's
-        // sea says, the Caribbean's being mostly open water)
-        const sea = own.biomes.find((b) => b.sea);
-        if (!near && !forced && sea) {
-          const moved = towardLand(nb, look, (rgb, p) => !rgb || biomeAt(own, rgb, latLonOf(p)).sea, { track: turned(toBody, S.spot.f), steps: sea.reach });
-          if (moved !== nb) {
-            nb = moved;
-            const mn = turned(fromBody, moved);
-            S.spot = { n: mn, f: facingAlong(mn, S.spot.f) };
-          }
-        }
-        const rgb = look(uvOf(nb));
-        if (rgb) S.biome = { ...biomeAt(own, rgb, latLonOf(nb)), at: latLonOf(nb) };
+      const nb = turned(toBody, (near ?? S.spot).n);
+      const down = landOn(own, nb, lookOf(planet, id), { track: turned(toBody, S.spot.f), walk: !near && !forced });
+      if (down.n !== nb) {
+        const mn = turned(toBody.clone().transpose(), down.n);
+        S.spot = { n: mn, f: facingAlong(mn, S.spot.f) };
       }
+      S.biome = down.biome;
     }
     const { n } = S.spot;
     // a long way round the planet from where the ship is: it flies round over
@@ -2232,7 +2244,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // its sky and its things, laid out from where the first ship down here
     // came down (a friend's, if you're coming down beside them), as the
     // part of it you've come down on has them
-    const landing = own && S.biome ? { ...own, ...(({ title, sub, ground, sky, things, scatter, models }) => ({ title, sub, ground, sky, things, scatter, models }))(S.biome) } : own;
+    const landing = viewOf(own, S.biome);
     ground = createGround(planet, u, S.R, S.band, landing?.ground);
     ground.follow(n);
     root.add(ground.mesh);
@@ -2241,16 +2253,28 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     physical = false;
     fed = walled = 0;
     shipWalled = false;
+    leaves.end();
+    S.touched = false;
+    S.airH = 0;
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
       physical = bodiesHere() && looseOn(landing);
       const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, physical });
-      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, lights: f.lights, bodies: f.bodies, put: f.put, update: f.update, dispose: f.dispose, built: f.ready, open: f.open };
+      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, lights: f.lights, bodies: f.bodies, crowns: f.crowns, put: f.put, update: f.update, dispose: f.dispose, built: f.ready, open: f.open };
+      // the crowns' wind and tones, laid on the landing's frame, and its
+      // fallen leaves (not by a trench: it has none)
+      aimCanopy({ n: anchor.n, f: anchor.f, R: S.R });
+      S.windBase = landing.wind?.strength ?? 0.45;
+      windCanopy({ strength: S.windBase, angle: landing.wind?.angle ?? 0.6 * Math.PI });
+      lookCanopy(landing.leaves?.crown);
+      if (landing.leaves && !S.band) leaves.begin({ spec: landing.leaves, R: S.R, frame: anchor, seed: landingSeed(id), crowns: f.crowns, focus: S.spot.n });
       // (the engine on its way while the ship comes down)
       if (physical) {
         const mine = rocks;
         preloadPhysics().catch(() => {});
-        createLandingPhysics({ R: S.R, threshold: knocks.rules.values().threshold, onHit: heard })
+        // (its floor capped round where it's laid out, so what's knocked
+        // there sleeps again)
+        createLandingPhysics({ R: S.R, threshold: knocks.rules.values().threshold, onHit: heard, spot: anchor.n })
           .then((made) => {
             if (rocks !== mine) made.dispose();
             else lp = made;
@@ -2293,7 +2317,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // part, 2.8 s in, which the things may well not be in by)
     const these = rocks;
     const mine = () => rocks === these;
-    const early = prepare ? Promise.resolve(prepare([ground.mesh, haze?.mesh, sides?.mesh].filter(Boolean), mine)).catch(() => {}) : null;
+    const early = prepare ? Promise.resolve(prepare([ground.mesh, haze?.mesh, sides?.mesh, leaves.on && leaves.mesh].filter(Boolean), mine)).catch(() => {}) : null;
     within(these.built, LAND.ready * 1000)
       .then(() => early)
       .then(() => (mine() && prepare ? prepare([these.mesh], mine) : null))
@@ -2450,6 +2474,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     S.from = { p: m.group.position.clone(), q: m.group.quaternion.clone() };
     S.t = LAND.down;
     placeShip(1);
+    // (down on the leaves: they're blown out from under it)
+    S.touched = true;
+    leaves.blast(vec.scale(S.spot.n, S.R), 7, 12);
   };
   // the show, once the camera's where it is this frame (view())
   const entryCam = { pos: new V(), look: new V(), up: new V() };
@@ -2478,6 +2505,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const startOut = () => {
     const [a, b] = party;
     S.me = { id: 'me', ...doorSpot(1) };
+    S.airH = 0;
     S.mate = b ? { id: 'mate', ...offset(S.me, -0.9 * METRE, 1.1 * METRE, S.R), f: S.me.f, h: 0, vh: 0, speed: 0, side: 0 } : null;
     if (S.mate) S.mate = { ...person(S.mate.n, S.me.f), id: 'mate' };
     a.w = S.me;
@@ -2791,6 +2819,32 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     }
   };
 
+  // the leaves, a frame: about you once you're out (the ship till then),
+  // kicked by everyone walking here, none under the parked ship
+  const OUT_PHASES = ['out', 'walk', 'board', 'down'];
+  const seeAt = new V();
+  const sunAt = new V();
+  const leafWalkers = [];
+  const leavesFrame = (dt) => {
+    if (!leaves.on) return;
+    const out = Boolean(S.me) && OUT_PHASES.includes(S.phase);
+    leafWalkers.length = 0;
+    if (out) {
+      // (each by who they are, not by who you play: a swap isn't a run)
+      leafWalkers.push({ key: party?.[S.lead]?.spec.id ?? 'me', n: S.me.n, h: S.me.h ?? 0 });
+      if (S.mate) leafWalkers.push({ key: party?.[1 - S.lead]?.spec.id ?? 'mate', n: S.mate.n, h: S.mate.h ?? 0 });
+    }
+    for (const t of S.troops) if (t.alive) leafWalkers.push({ key: t.id, n: t.n, h: t.h ?? 0 });
+    for (const g of guests.values()) g.walkers.forEach((wk, i) => wk?.w && wk.group?.visible && leafWalkers.push({ key: `g${g.id}:${i}`, n: wk.w.n, h: wk.w.h ?? 0 }));
+    leaves.update(dt, {
+      focusN: out ? S.me.n : S.spot.n,
+      facing: out ? S.me.f : S.spot.f,
+      walkers: leafWalkers,
+      hole: S.phase === 'land' || S.phase === 'lift' ? null : { n: S.spot.n, r: shipObstacle().r },
+    });
+    leaves.mesh.visible = Boolean(ground?.mesh.visible);
+  };
+
   const update = (dt, t, input = {}) => {
     if (!S.phase) return false;
     S.clock += dt;
@@ -2806,6 +2860,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       ground.sync(bodyTurn(planet));
     }
     ground?.tick(S.clock);
+    // the crowns' wind, rising and falling round the landing's (not with
+    // motion turned down); and a crown between the camera and you opened
+    // round your chest (not out of your own eyes)
+    if (!reduced && rocks?.crowns) {
+      windCanopy({ strength: weatherWind(S.clock, S.windBase) });
+      tickCanopy(dt);
+    }
+    const chest = S.me && !S.cam.first && OUT_PHASES.includes(S.phase);
+    seeCanopy(chest ? root.localToWorld(seeAt.set(...vec.add(at(S.me, S.R), S.me.n, 1.2 * METRE))) : null);
     // (the landing's things, told where your head is: the people there turn to you)
     rocks?.update?.(S.clock, dt, S.me && S.phase === 'walk' ? { me: root.localToWorld(new V(...vec.add(at(S.me, S.R), S.me.n, 1.6 * METRE))) } : null);
     // (and their lights through the map's, the nearest you first: you, or the camera till you're out)
@@ -2816,6 +2879,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     } else if (S.phase === 'land') {
       const k = Math.min(1, S.t / LAND.down);
       placeShip(k);
+      // (down on the leaves: they're blown out from under it)
+      if (k >= 1 && !S.touched) {
+        S.touched = true;
+        leaves.blast(vec.scale(S.spot.n, S.R), 7, 12);
+      }
       if (k >= 1 && party) startOut();
       else if (k >= 1 && S.t > LAND.down + 8) {
         // they never came: take off again
@@ -2840,6 +2908,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (S.t > LAND.fall) {
         // back on your feet by the ship
         S.me = { ...doorSpot(1), id: 'me' };
+        S.airH = 0;
         if (S.mate) S.mate = { ...person(offset(S.me, -0.9 * METRE, 1.1 * METRE, S.R).n, S.me.f), id: 'mate' };
         S.health = FOOT.health;
         S.phase = 'walk';
@@ -2860,6 +2929,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         S.phase = 'lift';
         S.t = 0;
         S.from = { p: S.model.group.position.clone(), q: S.model.group.quaternion.clone() };
+        // (and off them, blowing them out again)
+        leaves.blast(vec.scale(S.spot.n, S.R), 7, 12);
       }
     } else if (S.phase === 'lift') {
       liftFrame();
@@ -2874,6 +2945,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     pfx.update(dt);
     gfx.update(dt);
     knocks.update(dt);
+    leavesFrame(dt);
     spring(S.cam.kick, dt, 240, 22);
     for (const s of puffs) {
       if (!s.visible) continue;
@@ -2939,6 +3011,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const fell = (S.me.h ?? 0) > 0 ? -(S.me.vh ?? 0) : 0;
     S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: jumpKey.press }, dt, S.R, obstacles());
     if (fell > 0 && !(S.me.h > 0) && !reduced) squash.land(fell / METRE);
+    // (down from a jump of any height: the leaves under you thrown out)
+    if (S.me.h > 0) S.airH = Math.max(S.airH, S.me.h);
+    else {
+      if (S.airH > 0.3 * METRE) leaves.blast(at(S.me, S.R), 1.2, 12);
+      S.airH = 0;
+    }
     // the lock: the nearest trooper round the way you face (kept while it's still there)
     const alive = troopsAlive();
     if (S.lock && !alive.find((o) => o.id === S.lock)) S.lock = null;
@@ -3103,11 +3181,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const bodies = footBodies({ me: walking ? S.me : null, mate: walking ? S.mate : null, troops: S.troops, R: S.R });
     const ground = footSolids(obstacles(), S.R);
     // (a loose thing in its way, short of the ground, stops it and is knocked)
+    // (a fixed one stops it too, unmoved; by the ground, the leaves round it thrown)
     const solids = (a, b) => {
       const g = ground(a, b);
       const knocked = lp ? lp.shot(a, g?.at ?? b) : null;
+      if (knocked && vec.len(knocked.at) - S.R < METRE) leaves.blast(knocked.at, 1.5, 12);
       return knocked ? { at: knocked.at, normal: null } : g;
     };
+    // (through a crown: a few of its leaves shaken loose, once a bolt)
+    for (const o of S.bolts) if (!o.shook && o.b.alive) o.shook = leaves.shake(o.b.pos, o.b.dir);
     const ended = new Set();
     for (const e of boltStep.step(dt, { solids, bodies, blades: [] })) {
       const o = S.bolts.find((x) => x.b === e.bolt);
@@ -3127,6 +3209,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         const spot = n.clone().multiplyScalar(S.R);
         fx.sparks(spot, n.clone().addScaledVector(along, 0.6).normalize(), o.color ?? '#ffd0a0', 12);
         fx.scorch(spot, n);
+        leaves.blast(spot, 3);
       } else fx.sparks(new V(...p), along.clone().negate(), o.color ?? '#ffd0a0', 9); // off whoever or whatever it hit, back the way it came
       // how near you: for the sound of it
       if (S.me) {
@@ -3487,8 +3570,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     begin,
     // somewhere to come down on `id` (the ship's at it), in a `kind` of
     // ship: what landing there will want, fetched and made ready while it's
-    // still flying, its landing's (landings/furnish.js), its crew's, and
-    // the physics engine where it has anything loose on it
+    // still flying, its landing's (landings/furnish.js: its own, the
+    // fallback biome most landings are), its crew's, and the physics
+    // engine where it has anything loose on it
     prefetch(id, kind) {
       const u = byId(id);
       if (!u || u.kind === 'core' || u.portal) return;
@@ -3496,11 +3580,41 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       // as it always was)
       if (!bodiesHere()) return;
       const landing = u.plated ? null : landingOf(id);
+      // (and its map read once, so even a first landing finds its biome:
+      // the -sm file fetched now where nothing drawn can be read back)
+      if (landing?.biomes && planetOf[id]) lookOf(planetOf[id], id);
       if (landing && furnished(id)) {
         prefetchLanding(id, landing, { renderer });
         if (bodiesHere() && looseOn(landing)) preloadPhysics().catch(() => {});
       }
       warmParty(kind);
+    },
+    // the ship's about to fly into `id`'s air (`entry`: entry.js's
+    // entryAhead, what entering() will say as it does): the part of it
+    // it'll come down on, foreseen as begin will find it (from `light`, or
+    // beside a friend already down, `near`), and that biome's models
+    // fetched (landings/furnish.js), and the physics engine where it has
+    // anything loose. A guess (the planet turns a little before it's
+    // there, and the ship may yet turn away): begin fetches where it does
+    // come down at once, whatever was guessed
+    prefetchAt(id, { light, near = null, entry }) {
+      const u = byId(id);
+      const planet = planetOf[id];
+      if (!u || !planet || u.plated || u.trench || !furnished(id) || !bodiesHere()) return;
+      const own = landingOf(id);
+      if (!own) return;
+      let view = own;
+      if (own.biomes) {
+        const spot = near ?? entrySpot({ n: entry.n, track: entry.vel, light, speed: entry.speed, R: u.size });
+        map.updateMatrixWorld();
+        const toBody = bodyTurn(planet);
+        // (?spot= in development: where begin will put it)
+        const forced = near ? null : forcedSpot();
+        const nb = forced ? fromLatLon(...forced) : turned(toBody, spot.n);
+        view = viewOf(own, landOn(own, nb, lookOf(planet, id), { track: turned(toBody, spot.f), walk: !near && !forced }).biome);
+      }
+      prefetchLanding(id, own, { renderer, view });
+      if (looseOn(view)) preloadPhysics().catch(() => {});
     },
     update,
     view,
@@ -3517,6 +3631,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     },
     // the day where you are: how much the haze shows (light: the key light's direction, in the map's space)
     day(light) {
+      // (the crowns' two tones by the same sun, in the world)
+      sunCanopy(sunAt.copy(light).transformDirection(map.matrixWorld));
       if (!haze || !S.spot) return;
       const k = smooth(-0.25, 0.35, vec.dot(S.me?.n ?? S.spot.n, arr(light)));
       // (only down in the air: gone by the time you're well up)
@@ -3584,6 +3700,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (S.phase !== 'walk' || !party?.[1] || !S.mate) return false;
       [S.me, S.mate] = [{ ...S.mate, id: 'me' }, { ...S.me, id: 'mate' }];
       S.lead = 1 - S.lead;
+      S.airH = 0; // (the other one's feet were never off the ground)
       return party[S.lead].spec.id;
     },
     // G: back in the ship, if you're by it
@@ -3701,8 +3818,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         simulated: lp ? lp.size : 0,
         pushers: lp ? lp.pushers : 0,
         kinds: list.map((b) => b.object?.name || b.meshes?.[0]?.parent?.name || '?'),
-        // (the loose ones, lightest first: what a shot moves furthest)
-        loose: list.flatMap((b, i) => (b.body.fixed ? [] : [i])).sort((a, b) => (list[a].body.mass ?? 0) - (list[b].body.mass ?? 0)),
+        // (the loose ones, lightest first, at the size each stands: what a
+        // shot moves furthest)
+        loose: list.flatMap((b, i) => (b.body.fixed ? [] : [i])).sort((a, b) => (list[a].body.mass ?? 0) * list[a].scale ** 3 - (list[b].body.mass ?? 0) * list[b].scale ** 3),
         drawn: (i) => (list[i] ? drawn(list[i]) : null),
         bodyAt: (i) => list[i] && { position: list[i].position, quaternion: list[i].quaternion, scale: list[i].scale, box: list[i].box, body: list[i].body },
         knock(i) {
@@ -3715,6 +3833,16 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
           return lp.shot(vec.add(mid, side, -4 * METRE), vec.add(mid, side, 4 * METRE));
         },
       };
+    },
+    // the fallen leaves, for a check in a browser (scripts/leaves-check.mjs):
+    // how many and where they are (landings/litter.js's info, round you),
+    // whether the landing's in, the crowns' shader, and blast(r), a blast
+    // at your feet
+    leaves() {
+      if (!import.meta.env.DEV) return null;
+      let key = null;
+      rocks?.mesh.traverse((o) => (key ??= o.material?.name === 'Leaves_NormalTree' ? o.material.customProgramCacheKey() : null));
+      return { ...leaves.info(S.me ? at(S.me, S.R) : null), ready: Boolean(rocks?.ready), canopy: key, blast: (r = 3) => (S.me ? leaves.blast(at(S.me, S.R), r) : 0) };
     },
     // the ship's numbers to fly on from, once it's up (null until then)
     takeoff() {
@@ -3763,6 +3891,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         x.dispose();
       }
       ground = rocks = haze = sides = null;
+      leaves.end();
+      seeCanopy(null);
       lamps.clear();
       for (const o of owned) o?.dispose?.();
       owned.length = 0;
@@ -3800,6 +3930,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       puffTex.dispose();
       for (const s of puffs) s.material.dispose();
       reentry.dispose();
+      leaves.dispose();
       map.remove(root);
     },
   };

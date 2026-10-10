@@ -1,0 +1,76 @@
+{
+  "world": "hoth",
+  "source": "fixture",
+  "at": {
+    "x": 6.454221180597285,
+    "y": 15.048710823059082,
+    "z": 6.012729603540483
+  },
+  "checks": [
+    {
+      "name": "a 0.5 m wall holds you",
+      "ok": true,
+      "seen": {
+        "x": -5.978,
+        "y": 0.01,
+        "z": 2.67,
+        "grounded": true,
+        "pose": "stand"
+      }
+    },
+    {
+      "name": "a 0.4 m step is climbed",
+      "ok": true,
+      "seen": {
+        "x": -1.567,
+        "y": 0.407,
+        "z": 5.089,
+        "grounded": true,
+        "pose": "stand"
+      }
+    },
+    {
+      "name": "a jump lands you on the 0.9 m crate",
+      "ok": true,
+      "seen": {
+        "x": 2,
+        "y": 0.907,
+        "z": 3.36,
+        "grounded": true,
+        "pose": "stand"
+      }
+    },
+    {
+      "name": "standing, the 1.3 m beam stops you",
+      "ok": true,
+      "seen": {
+        "x": 6.016,
+        "y": 0.009,
+        "z": 4.175,
+        "grounded": true,
+        "pose": "stand"
+      }
+    },
+    {
+      "name": "crouched, you pass under it",
+      "ok": true,
+      "seen": {
+        "x": 6,
+        "y": -0.004,
+        "z": 6.261,
+        "grounded": true,
+        "pose": "crouch"
+      }
+    }
+  ],
+  "frames": [
+    197,
+    196,
+    194,
+    64,
+    196
+  ],
+  "errors": [],
+  "angle": "d3d11",
+  "note": "positions are checked; the shots are what it looked like (in software GL the frames are too few to walk on: run it on a graphics chip, ANGLE=d3d11)"
+}

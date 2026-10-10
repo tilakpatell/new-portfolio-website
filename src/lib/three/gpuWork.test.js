@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { compileSlices, drawables, fence, prepareScene, textureBytes, uploaded, uploadSlices } from './gpuWork';
+import { compileSlices, drawables, fence, picturesIn, prepareScene, textureBytes, uploaded, uploadSlices } from './gpuWork';
 import { fakeGl, fakeRenderer, now } from './gpuFake.fixture';
 
 const picture = (w = 64, h = 64) => {
@@ -69,6 +69,17 @@ describe('textureBytes', () => {
     expect(textureBytes(picture(256, 128))).toBe(256 * 128 * 4);
     const c = new THREE.CompressedTexture([{ data: new Uint8Array(100) }, { data: new Uint8Array(25) }], 16, 16);
     expect(textureBytes(c)).toBe(125);
+  });
+});
+
+describe('picturesIn', () => {
+  it('finds a patch’s pictures kept out of sight on a material (the canopy’s wind noise)', () => {
+    const m = new THREE.MeshStandardMaterial({ map: picture() });
+    const noise = picture(8, 8);
+    Object.defineProperty(m.userData, 'canopy', { value: { uWindNoise: { value: noise }, uWindTime: { value: 0 } }, enumerable: false, configurable: true });
+    expect(picturesIn(m)).toEqual([m.map, noise]);
+    // (and it stays out of sight: a copy doesn't take it)
+    expect(picturesIn(m.clone())).toEqual([m.map]);
   });
 });
 

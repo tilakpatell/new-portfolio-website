@@ -6,7 +6,7 @@
 // it, and a chapter keeps it there, close. By day the sheet lies in window
 // light; at night (dark mode) a candle lights it, and it flickers. In Mordor
 // the light turns to fire. It draws only while something is moving, or the
-// candle is lit.
+// candle is lit; under a chapter's town, less often (./mapCover.js).
 
 import * as THREE from 'three';
 import { normalCanvas } from '../../lib/texture';
@@ -109,6 +109,10 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   let candleLit = false;
   let alive = false;
   let t = 0;
+  // under a town: the time since the last frame drawn, and whether the
+  // camera has moved on from it
+  let since = 0;
+  let behind = false;
   // the visitor's own look about on the map: a pan and a zoom on top of the
   // page's view, and whether a hurried walk (to open a place) is on
   const user = { x: 0, z: 0, zoom: 1 };
@@ -177,8 +181,10 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   };
 
   // Draws one frame, and says whether to keep drawing: the camera is on its
-  // way, or the candle is lit.
-  const render = (ms = 16, slow = 1) => {
+  // way, or the candle is lit. `wait`, when the page has a town over the map,
+  // says how long it may wait between frames (./mapCover.js): asked only
+  // while the camera moves, since it reads the page's layout.
+  const render = (ms = 16, slow = 1, wait = null) => {
     if (lost) return false;
     const dt = Math.min(0.05, ms / 1000);
     t += dt;
@@ -214,7 +220,9 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     const moving = first || far > 0.004 || world.walking || hurry || flying !== null;
     // on the map itself the world is alive (smoke, the Eye, the hobbits):
     // keep drawing; behind a chapter, only while the camera moves
-    if (!moving && !alive && !candleLit) return false;
+    if (!moving && !alive && !candleLit && !behind) return false;
+    // (a canvas just sized is blank: drawn at once)
+    const fresh = first;
     first = false;
     for (const key of ['x', 'z', 'zoom', 'm', 'n']) cur[key] += (goal[key] - cur[key]) * k;
     cur.lx += (goal.lx - cur.lx) * kl;
@@ -244,6 +252,15 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     candle.intensity = (60 + 140 * cur.n) * flick;
     low.color.copy(tint.copy(day.low).lerp(night.low, cur.n)).lerp(fire.low, cur.m);
     low.intensity = (1.2 - 0.45 * cur.n) * (1 - 0.5 * cur.m);
+    // behind most of a town the camera moves on between frames drawn, and is
+    // drawn once more where it comes to rest
+    since += ms;
+    if (moving && !fresh && wait && since < wait()) {
+      behind = true;
+      return true;
+    }
+    since = 0;
+    behind = false;
     renderer.render(scene, camera);
     return true;
   };
