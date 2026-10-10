@@ -15,7 +15,8 @@
 // Hammerhead comes round as that stage opens; locked together, the two
 // Star Destroyers fall toward the gate as far as the pilots and the AI
 // have got through it; when the director says it's gone, it goes, and the
-// battle's end is the one the director's already called.
+// battle's end is the one the director's already called. Then the Death
+// Star drops out of hyperspace over the planet and fires (world.js).
 //
 // createScarif(ctx) → { update(dt, t, live, events), hit, targets, markers(live), dispose() }
 
@@ -30,6 +31,7 @@ export const RAM = {
   fall: 18, // the most it takes the two of them to fall onto the gate
   top: 18, // how fast they're falling by the end
 };
+const ARRIVES = 3; // seconds after the gate goes that the Death Star drops out of hyperspace over Scarif
 const v = (x, y, z) => ({ x, y, z });
 const sub = (a, b) => v(a.x - b.x, a.y - b.y, a.z - b.z);
 const len = (a) => Math.hypot(a.x, a.y, a.z);
@@ -66,6 +68,10 @@ export function createScarif(ctx) {
     ctx.draw?.flash(G, { size: gatePiece.size * 0.45, life: 3, color: [2.2, 1.7, 1], bright: 1.2 });
     world?.war?.station('gate', false);
     world?.war?.planetShield(false);
+    // and the Death Star out of hyperspace over the planet, a few seconds
+    // after the end (world.js's hold, at one wall second for every pilot here)
+    const ended = ctx.endedAt?.() ?? ctx.clock?.() ?? null;
+    if (ended !== null && ctx.wallAt) world?.war?.superlaser?.(ctx.wallAt(ended) + ARRIVES);
     ctx.event('gcw-gate');
     if (ctx.tookPart()) ctx.points(GCW.points.objective * 2);
     if (!shared) battle.end(REBELS, 'gate');

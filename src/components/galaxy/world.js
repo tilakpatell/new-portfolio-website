@@ -20,7 +20,8 @@
 //   goals, body, shield, tractor, update(t, dt, camera, ship) → busy,
 //   setDetail(k), setRatio(r), events (drained by the scene), wake(ship),
 //   quiet(on), setEffects(effects), garrison, war: { holdShield(up),
-//   station(kind, shown), planetShield(on) }, dispose() }
+//   station(kind, shown), planetShield(on), superlaser(at), face(kind, at),
+//   dish(kind) }, dispose() }
 // setEffects(effects): who holds the system in the galaxy's war
 // (warEffects.js): a fleet piece is drawn only for its holder, a standing
 // battle only while the system's fought over, and where the holder has no
@@ -31,7 +32,11 @@
 // (galaxy/warfront.js). war: the battle's set pieces' hold on the system
 // (galaxy/warpieces/): the second Death Star's shield held up or down (null:
 // its own cycle), a station gone (the Death Star blown, the Shield Gate
-// rammed) and Scarif's shield down. quiet(false) puts everything back.
+// rammed) and Scarif's shield down; Scarif's Death Star held away
+// (superlaser(at): in at the wall second `at`, once, firing on the planet
+// from its dish); the second Death Star turned off its spin so its dish
+// faces a point (face(kind, at); null: eased back to its spin) and where
+// its dish is (dish(kind), stationFx.js). quiet(false) puts everything back.
 // solids: ship.js's ({ id, at, r, reach, band?, goal?, name? }), some
 // moving (their `at` is updated in place); goals: the solids the autopilot
 // can take you to, with their names. setDetail(k): how finely to draw the
@@ -49,6 +54,7 @@ import { DEATHSTAR_REACH, STATION_NAMES, TRACTOR_REACH, reachOf } from './system
 import { LASER } from './fx';
 import { HULLS } from '../universe/wars';
 import { garrisonFleet, piecesShown } from './warEffects';
+import { DISH, buildBeam, dishAt, faceDish } from './stationFx';
 
 const TAU = Math.PI * 2;
 const SPIN = TAU / 900; // a planet turns once in fifteen minutes
@@ -77,6 +83,8 @@ function seeded(text) {
 // How each big ship fills its box, for flying into: spheres along its
 // length (universe/wars.js's HULLS, shared with the fleet war's battles).
 const ROUND = { coreship: 0.48, deathstar2: 0.47 };
+// a station turned to face the war's battle: seconds to turn, and to ease back to its spin
+const FACE = { turn: 8, back: 20 };
 
 // the way a holder turns to point its nose (+z) along `dir`, its top toward `up`
 const basis = new THREE.Matrix4();
@@ -114,8 +122,12 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     const i = building;
     return (...a) => (ambient.on || hidden[i] ? false : fn(...a));
   };
-  // the war's hold on it: the Death Star's shield, the stations, Scarif's shield
-  const hold = { shield: null };
+  // the war's hold on it: the Death Star's shield (null: its own cycle),
+  // the stations, Scarif's shield, Scarif's Death Star (null: its own
+  // cycle; false: away; a wall second: in then, once) and a station turned
+  // to face the battle (kind → { goal, on, k })
+  const hold = { shield: null, superlaser: null };
+  const facing = {};
   const stations = {}; // kind → { holder, solids: [{ o, r, reach }] }
   const sunDirs = sys.suns.map((s) => new THREE.Vector3(...s.dir).normalize());
   const sunLights = sys.suns.map((s, i) => ({ dir: sunDirs[i], color: new THREE.Color(s.color).multiplyScalar(i === 0 ? 1.25 : 0.7) }));
@@ -352,7 +364,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     // a great station: the half-built Death Star (and its shield), Cloud City, the Shield Gate
     station(p) {
       const slot = place(models.slot(p.kind, p.size), p.at);
-      const st = (stations[p.kind] = { holder: slot.holder, solids: [] });
+      const st = (stations[p.kind] = { holder: slot.holder, solids: [], r: p.size * (ROUND[p.kind] ?? 0.5) });
       const mark = (o) => (st.solids.push({ o, r: o.r, reach: o.reach }), o);
       const at = new THREE.Vector3(...p.at);
       const up = at.clone().normalize();
@@ -412,11 +424,16 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       if (p.spin) {
         const q0 = slot.holder.quaternion.clone();
         const spinQ = new THREE.Quaternion();
-        ticks.push((t) => {
+        ticks.push((t, dt) => {
           // (about its own up: a ring about its axis, the Death Star about its poles)
           spinQ.setFromAxisAngle(Y, frac((t * p.spin) / TAU) * TAU);
           slot.holder.quaternion.copy(q0).multiply(spinQ);
-          return false;
+          // the war's hold: turned off its spin to face the battle, and eased back when let go
+          const f = facing[p.kind];
+          if (!f) return false;
+          f.k = clamp01(f.k + (f.on ? dt / FACE.turn : -dt / FACE.back));
+          if (f.k > 0) slot.holder.quaternion.slerp(f.goal, f.k * f.k * (3 - 2 * f.k));
+          return f.k > 0 && f.k < 1;
         });
       }
     },
@@ -740,34 +757,36 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       const target = new THREE.Vector3(...p.at);
       const dish = new THREE.Vector3();
       const landing = new THREE.Vector3();
+      // turned so its dish faces what it fires on (stationFx.js)
+      faceDish('deathstar', ds.holder, target, ds.holder.quaternion);
       // the beam: a hot green core in a wider glow
-      const beamGeo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
-      const beamMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 5.5, 1.4), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-      const beam = new THREE.Mesh(beamGeo, beamMat);
-      beam.visible = false;
-      group.add(beam);
+      const beam = buildBeam();
+      group.add(beam.mesh);
       // where it lands: a ring of fire running out over the sea
       const waveMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2, 0.8), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
       const wave = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 64), waveMat);
       wave.visible = false;
       group.add(wave);
-      disposers.push(() => (beamGeo.dispose(), beamMat.dispose(), wave.geometry.dispose(), waveMat.dispose()));
+      disposers.push(() => (beam.dispose(), wave.geometry.dispose(), waveMat.dispose()));
       let phase = null;
       ticks.push((t, dt) => {
-        const k = frac(t / p.every);
-        const shown = k < 0.42;
+        // its own cycle; or the war's hold: away while the war's battle is
+        // on, and in once at the wall second it says (the gate fallen)
+        const h = hold.superlaser;
+        const k = h === null ? frac(t / p.every) : h === false ? 1 : (t - h) / p.every;
+        const shown = k >= 0 && k < 0.42;
         ds.holder.visible = shown;
         solid.r = solid.reach = shown ? 32 : 0;
-        ds.holder.rotation.y = 0.8;
         // in out of hyperspace, long and thin, snapping to size; out again
         const inK = clamp01(k / 0.012);
         const outK = clamp01((k - 0.405) / 0.015);
         const s = shown ? Math.max(0.02, inK * (1 - outK)) : 0.02;
         ds.holder.scale.set(s, s, s * (1 + (1 - inK) * 6 + outK * 6));
-        dish.copy(target).sub(at).normalize().multiplyScalar(30).add(at).addScaledVector(Y, 9);
-        const now = k < 0.012 ? 'in' : k < 0.12 ? 'hold' : k < 0.15 ? 'fire' : k < 0.4 ? 'after' : 'gone';
+        dishAt('deathstar', ds.holder, 32, dish);
+        const now = k < 0 ? 'gone' : k < 0.012 ? 'in' : k < 0.12 ? 'hold' : k < 0.15 ? 'fire' : k < 0.4 ? 'after' : 'gone';
         if (now !== phase) {
-          if (now === 'in' || now === 'gone') flashes.at(at, { size: 70, color: [1.2, 1.8, 3.2], life: 0.9 });
+          // (in and out of hyperspace: not at the first look, when it may be anywhere in its cycle)
+          if (phase !== null && (now === 'in' || now === 'gone')) flashes.at(at, { size: 70, color: [1.2, 1.8, 3.2], life: 0.9 });
           if (now === 'fire') {
             events.push({ type: 'event', id: 'superlaser' });
             flashes.at(dish, { size: 14, color: [0.8, 3.5, 0.8], life: 1.2 });
@@ -775,14 +794,10 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
           phase = now;
         }
         const firing = k >= 0.12 && k < 0.15;
-        beam.visible = firing;
         if (firing) {
-          beam.position.copy(dish);
-          tmp.copy(target).sub(dish);
-          beam.scale.set(1.6 + Math.sin(t * 40) * 0.3, 1.6, tmp.length());
-          pointAlong(beam, tmp);
+          beam.lay(dish, target, 1.6 + Math.sin(t * 40) * 0.3);
           if (Math.random() < dt * 20) flashes.at(target, { size: 10 + Math.random() * 10, color: [2.6, 2.2, 0.8], life: 0.6 });
-        }
+        } else beam.hide();
         // the wave over the surface after it lands
         const w = (k - 0.13) / 0.25;
         wave.visible = w > 0 && w < 1;
@@ -842,11 +857,14 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     if (on === ambient.on) return;
     ambient.on = on;
     refresh();
+    // (Scarif's Death Star away while it's on, till the war brings it in)
+    hold.superlaser = on ? false : null;
     // (and the war's hold let go: everything as it was)
     if (!on) {
       out.war.holdShield(null);
       for (const kind of Object.keys(stations)) if (kind !== 'shield') out.war.station(kind, true);
       out.war.planetShield(true);
+      for (const kind of Object.keys(facing)) out.war.face(kind, null);
     }
   };
   // who holds the system in the war (warEffects.js's effects, or null for
@@ -897,6 +915,23 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       if (!stations.shield) return;
       out.shield = on ? { r: stations.shield.r } : null;
       out.body?.set?.('shield', on ? 1 : 0);
+    },
+    // Scarif's Death Star in at the wall second `at`, once (null: its own cycle again)
+    superlaser(at) {
+      hold.superlaser = at;
+    },
+    // a spinning station turned to face `at` ({ x, y, z } or [x, y, z]), or let go (null)
+    face(kind, at) {
+      const st = stations[kind];
+      if (!st || !DISH[kind]) return;
+      const f = (facing[kind] ??= { goal: new THREE.Quaternion(), on: false, k: 0 });
+      if (at) faceDish(kind, st.holder, Array.isArray(at) ? tmp.fromArray(at) : tmp.set(at.x, at.y, at.z), f.goal);
+      f.on = Boolean(at);
+    },
+    // where a station's dish is now, or null
+    dish(kind) {
+      const st = stations[kind];
+      return st && DISH[kind] ? dishAt(kind, st.holder, st.r) : null;
     },
   };
   // the second Death Star's shield, lit where the ship bumped it
