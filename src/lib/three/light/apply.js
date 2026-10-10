@@ -13,6 +13,7 @@
 //   tier, camera, origin,           the tier; the camera the chain draws; the pack's origin (height fog)
 //   lights, clustered,              the level's lights.json (placed.js), none, no pool; clustering as placed.js takes it
 //   volumes, loadCube,              the reflection volumes and a loader of their HDR cubes (probes.js)
+//   volumetrics,                    the level's volumes.json: its glows and light cones, marched on ultra and high (volumetrics.js)
 //   arena, grid,                    { min, max } and true: the probe grid on ultra (off until measured, A3)
 //   sky = true, post = true, lut,   the sky and fog; the post chain; the grade as a Data3DTexture
 //   filter,                         'pcf' forces three's PCF on the sun (else shadows.js's by tier)
@@ -28,17 +29,18 @@ import { cloudShadowNode } from './clouds.js';
 import { createContactShadows } from './contact.js';
 import { createFog } from './fog.js';
 import { createPlacedLights } from './placed.js';
-import { passesFor } from './post.js';
+import { passesFor, raysLight } from './post.js';
 import { createProbeGrid, createProbes } from './probes.js';
 import { filterFor, pcssFilter, readPcss, vsmFallback } from './shadows.js';
 import { createSky } from './sky.js';
 import { createSun, readShadowRecord } from './sun.js';
+import { CONES_LIT, createVolumetrics } from './volumetrics.js';
 import { backendOf, loadThree, registerLights } from './three.js';
 
 export const WEATHER_FADE = 20; // s: lane G's crossfade between two weathers
 const ENV_EVERY = 2; // s: the sky's environment re-baked this often while a weather fades
 
-export async function applyGameLight(scene, renderer, entry, { tier = 'high', camera = null, origin, lights = null, clustered, volumes = null, loadCube = null, arena = null, grid = false, sky: withSky = true, post = true, lut = null, filter: forced = null } = {}) {
+export async function applyGameLight(scene, renderer, entry, { tier = 'high', camera = null, origin, lights = null, clustered, volumes = null, loadCube = null, volumetrics = null, arena = null, grid = false, sky: withSky = true, post = true, lut = null, filter: forced = null } = {}) {
   const { THREE } = await loadThree();
   const backend = backendOf(renderer);
   await registerLights(renderer);
@@ -86,7 +88,9 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
     if (probeGrid) gridBake = probeGrid.bake();
   }
 
-  const passes = post ? passesFor(tier, entry, backend, { scene, camera, light: sun.rays, lut }) : [];
+  // (the volumes draw only through the post chain)
+  const vols = post && volumetrics && CONES_LIT[tier] && backend !== 'webgl' ? await createVolumetrics(scene, renderer, { tier, source: volumetrics, lights, scale: params.gameToSite }) : null;
+  const passes = post ? passesFor(tier, entry, backend, { scene, camera, light: raysLight(sun), lut, volumetrics: vols }) : [];
   // (the bloom's threshold from the record's grade: calibrate.js)
   for (const p of passes) if (p.kind === 'bloom') p.threshold = params.grade.bloomThreshold;
 
@@ -98,6 +102,7 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
     sky?.set(p);
     fog?.set(p);
     placed?.setScale(p.gameToSite);
+    vols?.setScale(p.gameToSite);
   };
 
   let fade = null; // { from, to, t, seconds, since }
@@ -110,7 +115,7 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
     shadowTerm,
     track: (object) => contact.track(object),
     untrack: (object) => contact.untrack(object),
-    parts: { sun, soft, clouds, contact, hemi, placed, sky, fog, probes, grid: probeGrid, gridBake },
+    parts: { sun, soft, clouds, contact, hemi, placed, sky, fog, probes, grid: probeGrid, gridBake, volumetrics: vols },
     update(dt, cam = camera) {
       if (fade) {
         fade.t = Math.min(1, fade.t + dt / fade.seconds);
@@ -129,6 +134,7 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
       contact.update(cam);
       sky?.update(cam);
       placed?.update(cam);
+      vols?.update(cam);
       if (probes) {
         pos[0] = cam.position.x;
         pos[1] = cam.position.y;
@@ -157,6 +163,7 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
       hemi.removeFromParent();
       hemi.dispose();
       placed?.dispose();
+      vols?.dispose();
       probes?.dispose();
       probeGrid?.dispose();
       sky?.dispose();

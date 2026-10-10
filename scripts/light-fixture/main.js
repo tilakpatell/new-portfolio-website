@@ -2,13 +2,17 @@
 // (src/runtime/fixtures/litWorld.js) on the node renderer, WebGPU or
 // (?gpu=webgl) the same renderer on WebGL 2, drawn frame by frame when the
 // script asks, so it can draw a set number of frames and time them.
-// ?fixture=<json> passes the fixture's options (tier, env, post, sky, exposure, …).
+// ?fixture=<json> passes the fixture's options (tier, env, post, sky,
+// exposure, lane S's hoth, shadows, …; with `volume`, lane V's hangar in
+// volumeWorld.js instead).
 
 import { createWebGPU } from '../../src/runtime/webgpu.js';
-import world from '../../src/runtime/fixtures/litWorld.js';
+import lit from '../../src/runtime/fixtures/litWorld.js';
+import volume from './volumeWorld.js';
 
 const q = new URLSearchParams(location.search);
 const fixture = JSON.parse(q.get('fixture') || '{}');
+const world = fixture.volume != null ? volume : lit; // (--volume: lane V's hangar)
 const canvas = document.querySelector('canvas');
 const state = { error: null, ready: false };
 window.__lit = state;

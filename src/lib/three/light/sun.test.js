@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three/webgpu';
 import { BLEND, REF_TEXEL, ULTRA_SHADOW_FAR, biasFor, cascadesFor, createSun, readShadowRecord, splitsFor } from './sun';
 import { sunDir } from './entry';
+import { raysLight } from './post';
 import hoth from './fixtures/hoth.ve.json';
 
 describe('readShadowRecord', () => {
@@ -127,9 +128,13 @@ describe('createSun', () => {
     expect(one.light.shadow.shadowNode.cascades).toBe(2);
     expect(one.shadowDir.y).toBeCloseTo(0.5);
     expect((await createSun({}, { tier: 'low' })).light.castShadow).toBe(false);
+    // lane V's god rays never read the cascades (they have no single map): the rays helper or nothing
+    expect(one.light.shadow.shadowNode.isCSMShadowNode).toBe(true);
+    expect(raysLight(one)).toBe(null);
     const sun = await createSun({}, { tier: 'ultra', rays: true });
     expect(sun.rays.isDirectionalLight).toBe(true);
     expect(sun.rays.intensity).toBe(0);
+    expect(raysLight(sun)).toBe(sun.rays);
     sun.update({ position: { x: 10, y: 2, z: -5 } });
     expect(sun.rays.target.position.x).toBe(10);
   });

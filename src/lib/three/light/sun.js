@@ -109,6 +109,9 @@ async function sunCSM() {
   SunCSM = class extends CSMShadowNode {
     constructor(light, data, { shadowDir, filter, farShadow, cloud, base }) {
       super(light, data);
+      // (three's CSMShadowNode carries no flag; post.js's raysLight reads this
+      // one to keep god rays off the cascades, which have no single map)
+      this.isCSMShadowNode = true;
       this.cloud = cloud;
       this.shadowDir = shadowDir;
       this.filter = filter;
