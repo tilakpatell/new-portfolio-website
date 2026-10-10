@@ -5,7 +5,8 @@
 // `game:<name>`). What counts as placeable: the architecture, the props'
 // object sets, landmarks, cinematics, decals and set pieces, the nature
 // sets, the living world, the seasons' objects (s2 Bespin, s3 Kessel, s5_1
-// Geonosis, a3 Vardos), Cloud City's level meshes (`levels/clouds`, which
+// Geonosis, a3 Vardos; and the later seasons' sets: s6_2 Geonosis's second
+// map, s7_2 Naboo's third, s8 Felucia), Cloud City's level meshes (`levels/clouds`, which
 // is the level, not the sky) and the front end's stage. A level pack places
 // the same objects through its own map; this makes them placeable by hand.
 //
@@ -34,7 +35,7 @@ export const ERA = ['takodana', 'jakku', 'jak', 'starkiller', 'crait', 'firstord
 // the uploader's scaffolding, never content
 const SCAFFOLD = /(^|\/)(test|testranges|placeholders?|tobedeleted[^/]*|_?temp|planets)(\/|$)|donotuse/i;
 // the seasons' object folders and the levels whose meshes are a library's
-const SEASONS = ['s2/objects/', 's3/objects/', 's5_1/objects/', 'a3/objects/'];
+const SEASONS = ['s2/objects/', 's3/objects/', 's5_1/objects/', 'a3/objects/', 's6_2/geonosis_02/objects/', 's7_2/naboo_03/objects/', 's8/felucia/objects/'];
 const PLACEABLE = ['objects/architecture/', 'objects/props/', 'objects/nature/', 'objects/livingworld/', 'levels/clouds/', 'levels/frontend/objects/', ...SEASONS];
 
 // the world a set is of, for its biome where the folder doesn't say one
@@ -72,6 +73,9 @@ const SEASON_WORLD = {
   's3/objects/': 'kessel',
   's5_1/objects/': 'geonosis',
   'a3/objects/': 'vardos',
+  's6_2/geonosis_02/objects/': 'geonosis',
+  's7_2/naboo_03/objects/': 'naboo',
+  's8/felucia/objects/': 'felucia',
 };
 // (the sides' sets keep the drop's underscore, as the props' object sets do)
 const FACTIONS = ['_galacticempire', '_galacticrepublic', '_rebelalliance', '_separatists', '_generic'];

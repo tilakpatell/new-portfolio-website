@@ -55,6 +55,8 @@ describe('the object library’s index', () => {
     expect(setOf('s2/objects/props/blanketjabba_01/o_tat_blanketjabba_01_mesh')).toBe('bespin');
     expect(setOf('s5_1/objects/_galacticrepublic/props/barrierclone_01/rep_barrierclone_01_mesh')).toBe('_galacticrepublic');
     expect(setOf('objects/props/objectsets/sullust/atat_parts/atat_body/sul_prop_atat_body_01_mesh')).toBe('sullust');
+    expect(setOf('s8/felucia/objects/felucia/props/lamp_01/lamp_01_mesh')).toBe('felucia');
+    expect(setOf('s6_2/geonosis_02/objects/_separatists/architecture/wall_01/wall_01_mesh')).toBe('_separatists');
   });
 
   it('leaves out what is not placeable: the heroes, the front end’s cards are its own kind', () => {
