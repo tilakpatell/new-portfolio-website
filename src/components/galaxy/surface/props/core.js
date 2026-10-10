@@ -10,7 +10,6 @@ import * as THREE from 'three';
 import { box, cyl, dome, part, ring, rod, upright } from '../kitCore';
 import { canvasTexture, loft, trap8, turned } from '../../../universe/trafficKit';
 import { rng } from '../noise';
-import { litWindows, shieldMaterial } from '../nodes/props';
 import { canopy } from './forest';
 import { boltPath, strikeAt } from '../storm';
 
@@ -152,11 +151,12 @@ function n1Parts(H = 1.25) {
 }
 
 // the towers' body: the kit's paint, with its windows lit in the shader
-// (windows.js), one material for every tower in the world
+// (the kit's looks: windows.js or nodes/props.js), one material for every
+// tower in the world
 const towerMat = (k) => {
   if (!k.mats.tower) {
     k.mats.tower = k.own(k.mats.paint.clone());
-    litWindows(k.mats.tower, { seed: 11, density: 0.55, cell: [3, 4] });
+    k.looks.litWindows(k.mats.tower, { seed: 11, density: 0.55, cell: [3, 4] });
   }
   return 'tower';
 };
@@ -529,7 +529,7 @@ export const PROPS = {
   // the Gungan Grand Army's shield: a shimmering dome, thrown up from the
   // generator on a fambaa's back in the middle of it
   shield(k, { r: R = 64 } = {}) {
-    const mat = k.own(shieldMaterial());
+    const mat = k.own(k.looks.shield());
     const { uniforms } = mat;
     const bubble = new THREE.Mesh(k.own(new THREE.SphereGeometry(R, 56, 22, 0, PI * 2, 0, PI / 2)), mat);
     bubble.renderOrder = 4;

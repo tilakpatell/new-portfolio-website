@@ -497,6 +497,9 @@ export function createKitWith(looks, { seed = 11, scans = true, wind: blow = nul
   return {
     mats,
     own,
+    // (the renderer's looks it was made with: the props and the placer take
+    // their windows, shield, shafts, scans and kit models' loader from here)
+    looks,
     rand: r,
     geometry,
     // the scans on (or failed: the stand-ins stay): wait for it before the

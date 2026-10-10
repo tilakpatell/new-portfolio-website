@@ -11,8 +11,7 @@ import { loft, trap8 } from '../../../universe/trafficKit';
 import { rng } from '../noise';
 import { insignia, scorch } from '../decals';
 import { buildGalaxyShip } from '../../fleet';
-import { liftNormals, spherifyNormals } from '../../../../lib/three/foliageNodes';
-import { shaftMaterial as nodeShaft } from '../nodes/props';
+import { liftNormals, spherifyNormals } from '../../../../lib/three/foliageNormals';
 
 const { PI, cos, sin, max, min } = Math;
 const TAU = PI * 2;
@@ -653,7 +652,7 @@ const IMPERIAL = '#7a7d78';
 // light, slanting down through the canopy: soft columns along the sun's
 // rays, brightest low down, fading out far off and close up
 function shaftMaterial(k, color, strength) {
-  return k.own(nodeShaft(color, strength));
+  return k.own(k.looks.shaft(color, strength));
 }
 
 // a shaft geometry: cylinders from the ground up toward the sun

@@ -20,4 +20,4 @@
 
 // (now the site's one core kit, lib/three/core: every world wears the same
 // scans the same way)
-export { wear as withDetail } from '../../../lib/three/coreNodes';
+export { wear as withDetail } from '../../../lib/three/core';
