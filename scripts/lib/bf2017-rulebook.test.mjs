@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkSources, weaponRow } from './bf2017-rulebook.mjs';
+import { abilityRow, cardRow, checkSources, classRow, weaponRow } from './bf2017-rulebook.mjs';
 
 const ROOT = join(import.meta.dirname, '..', 'fixtures', 'bf2017', 'data');
 const A280C = 'Gameplay/Equipment/Rifles/A280C/Ability_Weapon_BlasterRifle_A280C';
@@ -72,5 +72,41 @@ describe('the weapon row', () => {
 
   it('a weapon that is not there is null', () => {
     expect(weaponRow(ROOT, 'Gameplay/Equipment/Rifles/Nope/Ability_Weapon_Nope')).toBeNull();
+  });
+});
+
+describe('abilities, cards and classes', () => {
+  it('reads Force Choke, its card ranks among its modifiers', () => {
+    const a = abilityRow(ROOT, 'Gameplay/Kits/Hero/DarthVader/Ability_DarthVader_ForceChoke_02');
+    expect(a).toMatchObject({ id: 'Ability_DarthVader_ForceChoke_02', kind: 'active', slot: 'right', recharge: 25, active: 1.5, activation: 0.1 });
+    expect(a.ranks.length).toBeGreaterThanOrEqual(1);
+    expect(a.ranks.flatMap((r) => r.modifiers).some((m) => m.property === 'ActiveTime' && m.value === 2.1)).toBe(true);
+    expect(checkSources(a)).toEqual([]);
+  });
+
+  it('reads the combat roll as a state with a cost', () => {
+    const a = abilityRow(ROOT, 'Gameplay/Kits/MP/Assault/Ability_Assault_CombatRoll_CharacterState');
+    expect(a).toMatchObject({ kind: 'state', cost: 0.5, recharge: 4, active: 0.1 });
+    expect(a.ranks.map((r) => r.level)).toEqual([1, 2, 3, 4]);
+    expect(a.ranks[0].modifiers.map((m) => m.value)).toContain(0.95);
+  });
+
+  it('reads a star card', () => {
+    const c = cardRow(ROOT, 'Gameplay/Equipment/Abilities/Ability_AssaultTraining/SC_Trooper_01_AssaultTraining');
+    expect(c).toMatchObject({ id: 'SC_Trooper_01_AssaultTraining', kind: 'passive' });
+    expect(c.ranks.length).toBeGreaterThan(0);
+  });
+
+  it('reads the Rebel assault class on Hoth', () => {
+    const c = classRow(ROOT, 'Assault', 'Orig', 'L');
+    expect(c.name).toContain('ID_C_ASSAULT_TROOPER');
+    expect(c).toMatchObject({ id: 'l-orig-assault', cls: 'assault', era: 'Orig', faction: 'L', health: 150, regen: { rate: 30, delay: 6 }, weapon: 'a280' });
+    expect(c.weapon_source).toContain('DefaultWeapon_L_Assault_Orig');
+    expect(c.abilities.map((a) => a.slot)).toEqual(['left', 'middle', 'right']);
+    expect(c.abilities[0].id).toBe('DefaultAbility_Assault_ThermalDetonator');
+    expect(c.cards).toContain('SC_Trooper_01_AssaultTraining');
+    expect(c.weapons).toContain('a280c');
+    expect(c.kits).toEqual(['Kit_L_Assault_Orig_HO']);
+    expect(checkSources(c)).toEqual([]);
   });
 });

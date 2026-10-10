@@ -243,3 +243,134 @@ function heatOf(root, blueprint, firing, fn, missing) {
   }
   return heat;
 }
+
+// ── abilities and star cards ─────────────────────────────────────────────
+//
+// An ability is a `*PlayerAbilityAsset`: its timings on the root, its slot in
+// `Category`, its star-card ranks as `PlayerAbilityPropertyOutputModifier`s
+// (an output, named only by its hash, and one value per `PlayerAbilityLevel_N`)
+// and card-gated overrides as `PlayerAbilityPropertyModifier`s (`ActiveTime`
+// values behind a `RequiredUnlockId`). A star card (`SC_*`) is itself an ability.
+
+const KINDS = { BasicPlayerAbilityAsset: 'active', CharacterStatePlayerAbilityAsset: 'state', PassivePlayerAbilityAsset: 'passive', SoldierWeaponPlayerAbilityAsset: 'weapon', InactiveSoldierWeaponPlayerAbilityAsset: 'weapon' };
+const slotOf = (category) => (category ?? '').replace(/^PlayerAbilityCategory_/, '').toLowerCase() || null;
+const levelOf = (s) => Number(String(s ?? '').replace(/^PlayerAbilityLevel_/, '')) || 0;
+const hex = (n) => (n >>> 0).toString(16).toUpperCase().padStart(8, '0');
+
+export function abilityRow(root, name) {
+  const asset = follow(root, name);
+  if (!asset) return null;
+  const r = rootOf(asset);
+  const row = { id: shortName(asset.name), asset: asset.name, kind: KINDS[r.$type] ?? 'active', slot: slotOf(r.Category) };
+  take(row, 'activation', asset, r, 'ActivationTime');
+  if (!r.InfiniteActiveTime) take(row, 'active', asset, r, 'ActiveTime');
+  take(row, 'recharge', asset, r, 'RechargeTime');
+  if (r.TriggerCost !== undefined) take(row, 'cost', asset, r, 'TriggerCost');
+  row.channels = (r.BlockingChannels ?? []).map((ref) => deref(asset, ref)?.Channel).filter(Boolean).map((c) => `${shortName(c.$asset)}:${c.$class}`);
+  if (row.kind === 'weapon') {
+    const { blueprint } = weaponChain(root, name);
+    if (blueprint) row.weapon = weaponId(blueprint.name);
+  }
+  const ranks = new Map();
+  const add = (level, m) => {
+    if (!ranks.has(level)) ranks.set(level, []);
+    ranks.get(level).push(m);
+  };
+  for (const ref of r.AbilityModifiers ?? []) {
+    const mod = deref(asset, ref);
+    if (!mod) continue;
+    for (const vref of mod.Values ?? []) {
+      const v = deref(asset, vref);
+      if (!v) continue;
+      if (mod.$type === 'PlayerAbilityPropertyOutputModifier' && typeof v.Value === 'number') {
+        for (let l = levelOf(v.MinAbilityLevel); l <= levelOf(v.MaxAbilityLevel); l++) add(l, { property: hex(mod.OutputHash), op: 'set', value: v.Value, _source: where(asset, v, 'Value') });
+      } else if (typeof v.ActiveTime === 'number') {
+        add(0, { property: 'ActiveTime', op: 'set', value: v.ActiveTime, unlock: hex(mod.RequiredUnlockId ?? 0), _source: where(asset, v, 'ActiveTime') });
+      }
+    }
+  }
+  row.ranks = [...ranks.keys()].sort((a, b) => a - b).map((level) => ({ level, level_source: `${asset.name}#PlayerAbilityPropertyOutputModifier.Values.MinAbilityLevel`, modifiers: ranks.get(level) }));
+  return row;
+}
+
+// A star card: an `SC_*` ability, or a `U_*` unlock naming one.
+export function cardRow(root, name) {
+  const asset = follow(root, name);
+  if (!asset) return null;
+  if (rootOf(asset).$type !== 'ValueUnlockAsset') return abilityRow(root, name);
+  const folder = name.slice(0, name.lastIndexOf('/') + 1);
+  const sc = [...indexOf(root).keys()].find((n) => n.startsWith(folder) && /\/SC_[^/]*$/.test(n));
+  return sc ? abilityRow(root, sc) : null;
+}
+
+// ── classes ──────────────────────────────────────────────────────────────
+
+// A level's code in the kit and team names (Kit_L_Assault_Orig_HO).
+export const MAP_CODES = { hoth_01: 'HO', endor_01: 'EN', mos_eisley_01: 'MOS', yavin_01: 'YA', deathstar02_01: 'DS', scarif_01: 'SCAR', kashyyyk_01: 'KASH', kamino_01: 'KAM', theed_01: 'THEE', geonosis_01: 'GEO', bespin_01: 'BES' };
+export const mapCode = (level) => MAP_CODES[level.toLowerCase()] ?? level.toUpperCase();
+
+// A soldier kit (`Kit_*`, WSSoldierCustomizationKitAsset): its gameplay asset
+// (`GP_*`) holds the spawn affectors (health, regeneration), the default
+// abilities (one per slot) and the unlockable ones (weapons, `SC_*` cards);
+// its `PlayerAbilityModifiers` name the default weapon (`DefaultWeapon_*` →
+// a weapon unlock).
+export function kitRow(root, kitName) {
+  const kit = follow(root, kitName);
+  if (!kit) return null;
+  const k = rootOf(kit);
+  const missing = [];
+  const row = { kit: kit.name, factionAsset: k.WSFaction ? shortName(k.WSFaction.$asset) : null };
+  const gp = reach(root, k.Gameplay, missing, 'gameplay');
+  for (const v of (gp && gp.obj.AffectorsAppliedOnSpawn) ?? []) {
+    const a = reach(root, v, missing, 'affector');
+    if (!a) continue;
+    if (a.obj.$type === 'MaxHealthAffectorAsset') take(row, 'health', a.asset, a.obj, 'MaxHealth');
+    if (a.obj.$type === 'SoldierHealthRegenerationAffectorAsset') {
+      row.regen = {};
+      take(row.regen, 'rate', a.asset, a.obj, 'RankData.0.RegenerationRate');
+      take(row.regen, 'delay', a.asset, a.obj, 'RankData.0.RegenerationDelay');
+    }
+  }
+  for (const v of k.PlayerAbilityModifiers ?? []) {
+    const m = reach(root, v, missing, 'default weapon');
+    const unlock = m && m.obj.UnlockToCreate && reach(root, m.obj.UnlockToCreate, missing, 'weapon unlock');
+    const bp = unlock?.obj.NonStreamedBlueprint?.$asset;
+    if (bp) Object.assign(row, { weapon: weaponId(bp), weapon_source: `${m.asset.name}#${m.obj.$type}.UnlockToCreate` });
+  }
+  const custom = gp && deref(gp.asset, gp.obj.Abilities);
+  const listed = (key) => (custom?.[key] ?? []).filter((v) => v?.$asset);
+  row.abilities = listed('DefaultAbilities')
+    .map((v) => ({ v, a: follow(root, v) }))
+    .filter(({ a }) => a && ['left', 'middle', 'right'].includes(slotOf(rootOf(a).Category)))
+    .map(({ v, a }) => ({ slot: slotOf(rootOf(a).Category), id: shortName(v.$asset), asset: v.$asset }));
+  row.abilities.sort((a, b) => ['left', 'middle', 'right'].indexOf(a.slot) - ['left', 'middle', 'right'].indexOf(b.slot));
+  const extra = listed('AdditionalAbilities').map((v) => v.$asset);
+  row.cards = extra.filter((n) => shortName(n).startsWith('SC_')).map(shortName);
+  row.cardAssets = extra.filter((n) => shortName(n).startsWith('SC_'));
+  row.weapons = extra.filter((n) => /\/Ability_Weapon_[^/]*$/.test(n)).map((n) => weaponChain(root, n).blueprint).filter(Boolean).map((b) => weaponId(b.name));
+  row.weaponAssets = extra.filter((n) => /\/Ability_Weapon_[^/]*$/.test(n));
+  // (no DefaultWeapon_* on the kit: the weapon table's primary part, at its default index)
+  if (!row.weapon) {
+    const unlocks = new Set(row.weaponAssets.map((n) => rootOf(follow(root, n))?.Unlock?.$asset).filter(Boolean));
+    const table = deref(kit, k.WeaponTable);
+    for (const ref of table?.UnlockParts ?? []) {
+      const part = deref(kit, ref);
+      const pickd = part?.SelectableUnlocks?.[part.DefaultSelectionIndex ?? 0];
+      if (!part?.SelectableUnlocks?.some((u) => unlocks.has(u?.$asset)) || !pickd) continue;
+      const bp = follow(root, pickd) && rootOf(follow(root, pickd)).NonStreamedBlueprint?.$asset;
+      if (bp) Object.assign(row, { weapon: weaponId(bp), weapon_source: `${kit.name}#CustomizationUnlockParts.SelectableUnlocks.${part.DefaultSelectionIndex ?? 0}` });
+      break;
+    }
+  }
+  row._missing = missing;
+  return row;
+}
+
+export function classRow(root, cls, era, faction, { level = 'hoth_01' } = {}) {
+  const folder = `Gameplay/Kits/MP/${cls}/`;
+  const kitName = `${folder}Kit_${faction}_${cls}_${era}_${mapCode(level)}`;
+  const kit = kitRow(root, kitName);
+  if (!kit) return null;
+  const kits = [...indexOf(root).keys()].filter((n) => n.startsWith(`${folder}Kit_${faction}_${cls}_${era}_`) && !/Skirmish/.test(n)).map(shortName);
+  return { id: `${faction}-${era}-${cls}`.toLowerCase(), cls: cls.toLowerCase(), era, faction, name: [`ID_C_${cls.toUpperCase()}_TROOPER`, `ID_C_${cls.toUpperCase()}`], ...kit, kits };
+}

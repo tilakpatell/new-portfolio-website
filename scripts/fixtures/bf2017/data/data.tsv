@@ -2,6 +2,10 @@ AI/BattleAI/Cover/CoverConstants	CoverConstantData	data/AI/BattleAI/Cover/CoverC
 AI/BattleAI/Tactics/AIRebelSoldierTactics	SoldierTactics	data/AI/BattleAI/Tactics/AIRebelSoldierTactics.json	7857
 AI/BattleAI/Templates/Rifleman_Template	AISoldierSpawnTemplateData	data/AI/BattleAI/Templates/Rifleman_Template.json	2011
 AI/BattleAI/Weapons/AIFiringPatterns	FiringPatternCollectionData	data/AI/BattleAI/Weapons/AIFiringPatterns.json	28528
+Gameplay/Equipment/Abilities/Ability_AssaultTraining/SC_Trooper_01_AssaultTraining	PassivePlayerAbilityAsset	data/Gameplay/Equipment/Abilities/Ability_AssaultTraining/SC_Trooper_01_AssaultTraining.json	3320
+Gameplay/Equipment/Grenades/ThermalDetonator/DefaultAbility_Assault_ThermalDetonator	InactiveSoldierWeaponPlayerAbilityAsset	data/Gameplay/Equipment/Grenades/ThermalDetonator/DefaultAbility_Assault_ThermalDetonator.json	6412
+Gameplay/Equipment/Pistols/PingLauncher/DefaultAbility_Assault_ScanDart	SoldierWeaponPlayerAbilityAsset	data/Gameplay/Equipment/Pistols/PingLauncher/DefaultAbility_Assault_ScanDart.json	2478
+Gameplay/Equipment/Rifles/A280/U_BlasterRifle_A280	SoldierWeaponUnlockAsset	data/Gameplay/Equipment/Rifles/A280/U_BlasterRifle_A280.json	1730
 Gameplay/Equipment/Rifles/A280C/Ability_Weapon_BlasterRifle_A280C	SoldierWeaponPlayerAbilityAsset	data/Gameplay/Equipment/Rifles/A280C/Ability_Weapon_BlasterRifle_A280C.json	4544
 Gameplay/Equipment/Rifles/A280C/OverheatConfig_Rifle_A280C	OverheatConfigAsset	data/Gameplay/Equipment/Rifles/A280C/OverheatConfig_Rifle_A280C.json	2049
 Gameplay/Equipment/Rifles/A280C/U_BlasterRifle_A280C	SoldierWeaponUnlockAsset	data/Gameplay/Equipment/Rifles/A280C/U_BlasterRifle_A280C.json	3066
@@ -9,6 +13,7 @@ Gameplay/Equipment/Rifles/A280C/W_BlasterRifle_A280C	SoldierWeaponBlueprint	data
 Gameplay/Equipment/Rifles/A280C/WeaponFiring_A280C	WeaponFiringDataAsset	data/Gameplay/Equipment/Rifles/A280C/WeaponFiring_A280C.json	5391
 Gameplay/Equipment/Rifles/A280C/WeaponSway_A280C	DataContainerAsset	data/Gameplay/Equipment/Rifles/A280C/WeaponSway_A280C.json	14471
 Gameplay/Equipment/Shared/Projectiles/BlasterProjectile_BlasterRifle_A295	GameDataContainerAsset	data/Gameplay/Equipment/Shared/Projectiles/BlasterProjectile_BlasterRifle_A295.json	3113
+Gameplay/Equipment/ShortRange/Hunter/DefaultAbility_Assault_Vanguard	SoldierWeaponPlayerAbilityAsset	data/Gameplay/Equipment/ShortRange/Hunter/DefaultAbility_Assault_Vanguard.json	2839
 Gameplay/Factions/MP/Faction_Light_Orig	WSFactionAsset	data/Gameplay/Factions/MP/Faction_Light_Orig.json	288
 Gameplay/Kits/Hero/DarthVader/Ability_DarthVader_ForceChoke_02	BasicPlayerAbilityAsset	data/Gameplay/Kits/Hero/DarthVader/Ability_DarthVader_ForceChoke_02.json	4112
 Gameplay/Kits/Hero/DarthVader/Affector_Health_DarthVader	MaxHealthAffectorAsset	data/Gameplay/Kits/Hero/DarthVader/Affector_Health_DarthVader.json	497
