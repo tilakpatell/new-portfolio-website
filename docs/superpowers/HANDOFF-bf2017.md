@@ -10,19 +10,21 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 
 | Lane | What | Needs first | Session | Branch | Merged |
 |---|---|---|---|---|---|
-| Z | the coverage ledger: `scripts/bf2017-coverage.mjs`, the owners table, `--check` in CI, the four counts in this table | nothing | | `claude/bf2017-z-ledger` | |
-| E0 | the level factory: packs out of git, districts and interiors, every map part beside `level.json` (lights, decals, actors, vehicles, effects, tracks, probes, far shadow, scatter table, shapes, collision solids), the detail maps; Endor on Endor_01, Echo Base's inside | nothing | | `claude/bf2017-e0-factory` | |
+| Z | the coverage ledger: `scripts/bf2017-coverage.mjs`, the owners table, `--check` in CI, the four counts in this table | nothing | `session_018HdseSL3U68899P3D9oWmP` (Opus 5.5, env Website, 2026-10-10 14:50 UTC) | `claude/bf2017-z-ledger` | |
+| E0 | the level factory: packs out of git, districts and interiors, every map part beside `level.json` (lights, decals, actors, vehicles, effects, tracks, probes, far shadow, scatter table, shapes, collision solids), the detail maps; Endor on Endor_01, Echo Base's inside | nothing | `session_01GqoaTfsCCpwaYmpgkHm364` (Opus 5.5, env Website, 2026-10-10 14:50 UTC) | `claude/bf2017-e0-factory` | |
 | E1 | Tatooine (Mos Eisley, the dunes, Jabba's palace and its inside), Yavin | E0 | | `claude/bf2017-e1-tatooine-yavin` | |
 | E2 | Naboo (Theed under its dusk and lanterns, the hangar, the plains, the palace), Kamino | E0 | | `claude/bf2017-e2-naboo-kamino` | |
 | E3 | Kashyyyk, Geonosis, Endor's village, research station and bunker | E0 | | `claude/bf2017-e3-kashyyyk-geonosis-endor` | |
 | E4 | Scarif, Cloud City, Hoth's outpost, the Death Star inside on DeathStar02_01 | E0 | | `claude/bf2017-e4-scarif-bespin-deathstar` | |
 | E5 | Felucia, Kessel, Sullust, Pillio, Vardos, Fondor as systems with skins and surfaces | E0 | | `claude/bf2017-e5-new-systems` | |
-| O | the object library (every placeable set indexed), the seven mapless worlds dressed by biome, `GAME_FOR` props, the game's clouds, the living world | nothing | | `claude/bf2017-o-library` | |
-| Q | the space levels as set pieces, the capitals, the asteroids on their tracks, the sky panoramas, the map's globes | nothing (#793 read) | | `claude/bf2017-q-space` | |
-| M | the films on the cards, veils and briefings; the tiles and tutorials for the game's world; the lava film; the open fonts, the icons, the strings, the UI widgets, the hero stage | nothing | | `claude/bf2017-m-frontend` | |
-| A | every clip: stances, additive aims and hits, cover and awareness, emotes and end of round, the cinematics player, first person, riders and crews, the band, the fauna rigs | nothing (#839's B, Y, W kept off) | | `claude/bf2017-a-clips` | |
+| O | the object library (every placeable set indexed), the seven mapless worlds dressed by biome, `GAME_FOR` props, the game's clouds, the living world | nothing | `session_01HvykTJCK7Bb4cFUjiKN1jW` (Opus 5.5, env Website, 2026-10-10 14:50 UTC) | `claude/bf2017-o-library` | |
+| Q | the space levels as set pieces, the capitals, the asteroids on their tracks, the sky panoramas, the map's globes | nothing (#793 read) | `session_01CiUP7QfUtHM1EEqgBJpKew` (Opus 5.5, env Website, 2026-10-10 14:50 UTC) | `claude/bf2017-q-space` | |
+| M | the films on the cards, veils and briefings; the tiles and tutorials for the game's world; the lava film; the open fonts, the icons, the strings, the UI widgets, the hero stage | nothing | `session_017cZLBzaqCrPFfg6zezARLt` (Opus 5.5, env Website, 2026-10-10 14:50 UTC) | `claude/bf2017-m-frontend` | |
+| A | every clip: stances, additive aims and hits, cover and awareness, emotes and end of round, the cinematics player, first person, riders and crews, the band, the fauna rigs | nothing (#839's B, Y, W kept off) | `session_01QccAxs3jKMzL4TsXJm5U3c` (Opus 5.5, env Website, 2026-10-10 14:50 UTC) | `claude/bf2017-a-clips` | |
 
 Coverage (from lane Z's ledger, refreshed by every lane's PR): used · owned · excluded · not-uploaded · unowned = (Z writes the first row).
+
+Lanes E1 to E5 are spawned the same way once E0 is on `main` (the session's prompt: read the spec, the lane's plan and this section; branch `claude/bf2017-e<n>-…`; executing-plans; the gates; the PR; merge when green). The design PR is #848.
 
 **Corrections to this file**, in the spec's §7: lane L's "then Endor" is E0's; the placed lights are drawable today and E runs `bf2017-lights.mjs` per world; the fonts, icons and strings are lane M's for the whole site, the game's lane 5 consumes `src/lib/bf2017/ui/`; the collision meshes and the animation tracks had no consumer in any design and have one now (E0, Q).
 
