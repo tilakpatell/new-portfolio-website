@@ -66,3 +66,6 @@ scripts/gpu-parity/out/
 # keys stay out (supabase/README.md)
 .env.local
 .env.*.local
+
+# galaxy assets (published; scripts/assets-publish.mjs)
+# end galaxy assets
