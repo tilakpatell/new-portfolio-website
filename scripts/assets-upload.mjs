@@ -23,7 +23,7 @@ import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const BUCKET = 'assets';
-export const REMOTE = ['hq/models', 'hq/tex', 'cc0/galaxy', 'models/gen3d', 'kit'];
+export const REMOTE = ['hq/models', 'hq/tex', 'cc0/galaxy', 'models/gen3d', 'kit', 'textures/galaxy/planets'];
 // (each one whole in itself: a .gltf's sidecars would not sit beside it under one hash)
 export const KINDS = { '.glb': 'model/gltf-binary', '.ktx2': 'image/ktx2', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
 export const MIN_BYTES = 64 * 1024;

@@ -30,6 +30,20 @@ One lane per session; L, G, K and lane 1 may run at once (they own different fil
 
 `main` already has the asset host (planet flight lane I): `src/lib/assetBase.js`, `src/lib/assetPath.js`, `scripts/assets-upload.mjs` (bucket `assets`, `<hash12>/<path>`, a year’s cache, `--prune`), `src/data/assets-manifest.json`, the packs and the service worker carrying bucket URLs, `VITE_ASSET_BASE`. Lane S therefore does **not** create `assetUrl.js`, `galaxyAssets.json`, `assets-publish.mjs`, `assets-ignore.mjs` or a `site-assets` bucket. It keeps: task 1 (`scripts/lib/pool.mjs`), task 2 (the fetch made robust), task 4’s `assetFetch.js` and `progressive.js` with `assetBase.js`’s `withFallback` calling the pool (one in-flight per URL, priority, the short-body check, abort per world, progress), task 6’s `stream-check.mjs`. Task 3 becomes: `REMOTE` in `assets-upload.mjs` gains `models/galaxy/bf2017` and `textures/galaxy/bf2017`; `catalog.test.js`’s size checks read `assets-manifest.json`’s `bytes` when a file is absent. Task 5 (the service worker) is already done by lane I; check `sw-check.mjs --bucket` and drop the task if green.
 
+### Lane K: the planet skins
+
+**Done** (`claude/bf2017-k-planets`): `scripts/bf2017-planets.mjs` over `scripts/lib/bf2017-planets.mjs` (the `SKINS` table, the plan, the conversion; tested on a 64 × 32 fixture under `scripts/fixtures/bf2017/web/textures/levels/space/sb_endor_01/planet/`), `src/data/planetSkins.json` (empty), `bodySkin.js` (the shader's chunk, spliced in only for a skinned body, so an unskinned one compiles byte for byte what it did: `bodySkin.test.js` holds each family's hash), `bodies.js` loading a look's skin on mid and up (not low, not a small body), easing it out between 1.5 × and 1 × the air's top and freeing every map with the body, the skin's rings, and `REMOTE` gaining `textures/galaxy/planets`. Scarif's shield shaders moved to `bodyShield.js` (re-exported) to keep `bodyShaders.js` under 800 lines.
+
+**Left**: the session had no `SUPABASE_URL` or `SUPA_KEY` in its environment, so the bucket was never listed and no skin is imported. With the keys:
+
+```
+node scripts/bf2017-planets.mjs --list          # how many planet textures have landed
+node scripts/bf2017-planets.mjs --dry           # which name each map resolves to; ambiguous globs are reported
+node scripts/bf2017-planets.mjs                 # convert, write public/textures/galaxy/planets/ and planetSkins.json
+```
+
+Then make each `SKINS` glob exact where `--dry` calls it ambiguous; check from orbit (`galaxy-check.mjs space <id>` at high and ultra, before and after into `docs/superpowers/evidence/bf2017-planets/`) the seam (`seamShift`), the relief's sign at a grazing sun (`greenDown`), whether the front end's `_CA` globes are sphere maps at all (the import skips any map not 2 : 1 and says so) and whether `atmoScale` 0.5 fights the shell; then `assets-upload.mjs` for the new files. Not on the site, so not in `SKINS`: Naboo's moon, Sullust, Kessel, Felucia, the Death Star II, Ryloth and its moon, Fondor and its moon, Athulla, Pillio, Vardos (`UNPLACED`). Optional and not done: the galaxy map's discs tinted from the colour map.
+
 ## Left
 
 In order:
@@ -86,7 +100,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | 1 | | | |
 | L | | | |
 | G | | | |
-| K | | | |
+| K | the lane K session | `claude/bf2017-k-planets` | (its PR; the code in, no skin yet: the session had no bucket keys) |
 | X | | | |
 | S | | | |
 

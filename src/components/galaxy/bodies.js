@@ -19,12 +19,18 @@
 //   or 5 small), for a scene that's short of frame rate (and from orbit, on
 //   tier high or ultra, two finer again: nearOctaves); set: 'shield'
 //   (Scarif's shield, 0..1); anything else is ignored
+// A look the game painted wears its skin from orbit (look.skin, from
+// src/data/planetSkins.json; bodySkin.js): on tiers above low, its maps at the
+// tier's size, giving way to the procedural ground in the air (update's camera)
 
 import * as THREE from 'three';
 import { SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surfaceFrag } from './bodyShaders';
 import { createAtmosphere, stepsFor } from '../../lib/three/atmosphere';
 import { detailLevel } from '../../lib/detail';
 import { loadScan, scanOf } from './surface/kit';
+import { forgetTexture, loadTexture } from '../../lib/three/textures';
+import PLANET_SKINS from '../../data/planetSkins.json';
+import { skinFile, skinMixAt } from './bodySkin';
 
 // each family's colour slots (uPal, in order) and params (uP0, uP1)
 export const FAMILIES = {
@@ -203,6 +209,9 @@ export const LOOKS = {
   },
 };
 
+// the game's skins, by look (scripts/bf2017-planets.mjs writes the file)
+for (const [id, skin] of Object.entries(PLANET_SKINS)) if (LOOKS[id]) LOOKS[id].skin = skin;
+
 const MIN_OCT = 4; // the fewest octaves of noise a ground is worked to, however little detail is asked for
 // the ground scans a world wears up close (bodyShaders.js's DETAIL; at
 // ultra their 8192 set where it's made, lib/three/core's coreFiles;
@@ -219,7 +228,7 @@ const blanks = () => {
       t.needsUpdate = true;
       return t;
     };
-    blank = { color: one(255, 255, 255), normal: one(128, 128, 255) };
+    blank = { color: one(255, 255, 255), normal: one(128, 128, 255), none: one(0, 0, 0) };
   }
   return blank;
 };
@@ -265,7 +274,7 @@ const params = (look) => {
   return [new THREE.Vector4(...v.slice(0, 4)), new THREE.Vector4(...v.slice(4, 8))];
 };
 
-export function buildBody(look, { r = 40, small = false, tier = typeof document !== 'undefined' ? detailLevel() : 'mid' } = {}) {
+export function buildBody(look, { r = 40, small = false, tier = typeof document !== 'undefined' ? detailLevel() : 'mid', load = loadTexture } = {}) {
   const L = (typeof look === 'string' ? LOOKS[look] : look) ?? LOOKS['moon-grey'];
   const group = new THREE.Group();
   const made = [];
@@ -329,8 +338,61 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
     });
   }
 
+  // the game's skin from orbit, where the import made one and the tier draws
+  // it (not on a small body: the scans' rule, a scene short of power). Its
+  // maps are shared by URL (lib/three/textures), and one body draws a planet
+  const skin = !small && L.skin && skinFile(L.skin.color, tier) ? L.skin : null;
+  const skinTex = []; // [{ url, texture }]: freed with the body
+  let skinOn = 0; // (1 once its colour is in: until then the procedural look stands)
+  let gone = false;
+  const atmoBase = atmo ? { color: new THREE.Color(atmo.color), density: atmo.density } : null;
+  const atmoSkin = skin && atmo ? { color: new THREE.Color(skin.atmo ?? atmo.color), density: atmo.density * (skin.atmoScale ?? 1) } : null;
+  const take = (kind, color) => {
+    const url = `/${skinFile(skin[kind], tier, kind)}`;
+    return Promise.resolve(load(url, { color }))
+      .then((t) => {
+        if (gone) {
+          t?.dispose?.();
+          forgetTexture(url);
+          return null;
+        }
+        skinTex.push({ url, texture: t });
+        return t;
+      })
+      .catch(() => null); // (a map not there: the procedural look stands)
+  };
+  if (skin) {
+    const b = blanks();
+    defines.SKIN = '';
+    if (skin.normal) defines.SKIN_NORMAL = '';
+    if (skin.clouds) defines.SKIN_CLOUDS = '';
+    if (skin.seas) defines.SKIN_SEAS = '';
+    Object.assign(uniforms, {
+      uSkinColor: { value: b.color },
+      uSkinNormal: { value: b.normal },
+      uSkinClouds: { value: b.none },
+      uSkinMix: { value: 0 },
+      uSeamShift: { value: (skin.seamShift ?? 0) / 360 },
+      uSkinK: { value: new THREE.Vector4(1, skin.greenDown ? -1 : 1, 0, 0) },
+    });
+    const into = (slot) => (t) => {
+      if (!t) return null;
+      t.wrapS = THREE.RepeatWrapping; // (round the planet; not over the poles)
+      t.needsUpdate = true;
+      uniforms[slot].value = t;
+      return t;
+    };
+    take('color', true)
+      .then(into('uSkinColor'))
+      .then((t) => {
+        if (t) skinOn = 1;
+      });
+    if (skin.normal) take('normal', false).then(into('uSkinNormal'));
+    if (skin.clouds) take('clouds', false).then(into('uSkinClouds'));
+  }
+
   const geo = new THREE.SphereGeometry(r, ws, hs);
-  const mat = new THREE.ShaderMaterial({ vertexShader: SURFACE_VERT, fragmentShader: surfaceFrag(L.family, FAMILIES[L.family].slots), uniforms, defines });
+  const mat = new THREE.ShaderMaterial({ vertexShader: SURFACE_VERT, fragmentShader: surfaceFrag(L.family, FAMILIES[L.family].slots, { skin: Boolean(skin) }), uniforms, defines });
   const surface = new THREE.Mesh(geo, mat);
   // (how tall it is on the screen, as it's drawn: the near octaves eased
   // toward what that asks for, a frame at a time)
@@ -357,6 +419,25 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
     reach = r * atmo.top;
   }
 
+  // the skin's rings: the game's picture of them, flat round the equator
+  if (skin?.rings && skin.ringsAt) {
+    const [inner, outer] = skin.ringsAt;
+    const ringGeo = new THREE.RingGeometry(r * inner, r * outer, 128, 1);
+    const ringMat = new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, color: new THREE.Color(0.9, 0.9, 0.9) });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.visible = false;
+    group.add(ring);
+    made.push(ringGeo, ringMat);
+    reach = Math.max(reach, r * outer);
+    take('rings', true).then((t) => {
+      if (!t) return;
+      ringMat.map = t;
+      ringMat.needsUpdate = true;
+      ring.visible = true;
+    });
+  }
+
   let shield = null;
   let lastT = null; // (update's last clock, for how long since)
   if (L.shield) {
@@ -375,7 +456,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
     radius: r,
     reach,
     // (the camera needn't be passed: the shaders know where it is)
-    update(t) {
+    update(t, camera) {
       const dt = lastT === null ? 0 : Math.max(0, Math.min(0.1, t - lastT));
       lastT = t;
       shared.uTime.value = t;
@@ -383,6 +464,14 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
       group.updateWorldMatrix(true, false);
       shared.uCenter.value.setFromMatrixPosition(group.matrixWorld);
       shared.uRot.value.setFromMatrix4(group.matrixWorld);
+      if (skin && camera?.position) {
+        const k = skinOn * skinMixAt(camera.position.distanceTo(shared.uCenter.value) / r, atmo?.top ?? 1.05);
+        uniforms.uSkinMix.value = k;
+        if (atmoSkin) {
+          shared.uAtmo.value.lerpColors(atmoBase.color, atmoSkin.color, k);
+          shared.uAtmoP.value.z = atmoBase.density + (atmoSkin.density - atmoBase.density) * k;
+        }
+      }
     },
     setSuns(suns = []) {
       const list = suns.length ? suns : [{ dir: new THREE.Vector3(1, 0.3, 0.4).normalize(), color: new THREE.Color(1.25, 1.2, 1.1) }];
@@ -418,8 +507,14 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
       return shield ? shield.material.uniforms.uHit.value : 0;
     },
     dispose() {
+      gone = true;
       for (const m of made) m.dispose();
       made.length = 0;
+      for (const { url, texture } of skinTex) {
+        texture.dispose();
+        forgetTexture(url);
+      }
+      skinTex.length = 0;
     },
   };
 }
