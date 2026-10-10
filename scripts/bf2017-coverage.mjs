@@ -127,6 +127,18 @@ export async function readConsumers(root, { fetchPack = null } = {}) {
     add(file, names);
   }
 
+  // the space levels' set pieces (scripts/bf2017-space.mjs): the map, each
+  // model's parts, the asteroid tracks the rocks turn on, the map's globes
+  for (const file of filesUnder(at('src/data/galaxy/space'), (f) => f.endsWith('.json'))) {
+    const pack = readJson(file);
+    const names = [];
+    if (pack.map) names.push(`mapref:${pack.map}`);
+    for (const m of Object.values(pack.models ?? {})) names.push(...(m.from ?? []));
+    if (pack.from && typeof pack.from === 'object') names.push(...Object.values(pack.from));
+    if (!pack.models) for (const g of Object.values(pack)) if (typeof g?.from === 'string') names.push(g.from);
+    add(file, names);
+  }
+
   // the planets' skins, the light records, the effects and the rulebooks' sources
   if (existsSync(at('src/data/planetSkins.json'))) add(at('src/data/planetSkins.json'), Object.values(readJson(at('src/data/planetSkins.json'))).flatMap((s) => strings(s.from ?? {})));
   for (const file of filesUnder(at('src/data/bf2017/light'), (f) => f.endsWith('.json'))) add(file, strings(readJson(file)).filter((s) => s.includes('/')));

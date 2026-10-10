@@ -460,6 +460,8 @@
   border-radius: 50%;
   background: radial-gradient(circle, var(--c) 0 3px, color-mix(in srgb, var(--c) 30%, transparent) 4px, transparent 7px);
 }
+/* a world the game's front end drew a globe of (globes.js): that globe for its dot, ringed faintly in its colour */
+.holomap-dot[data-globe] { inset: -2px; background: var(--globe) center / contain no-repeat; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent); }
 /* a name sits in the place round its dot that HoloMap.jsx gave it, to the pixel (labelPlace.js's boxAt: right by default; a
    corner's box is 5.4 px, CORNER, off the dot's middle each way; above or below it can hang from the dot's left or right
    edge, data-hang s or e, where the dot has neighbours: data-place is then its b or t). The names are placed by their boxes, so
