@@ -35,9 +35,9 @@
 - Create: `src/lib/land/flight/landmarkTables.js`, `landmarkTables.test.js`, `src/components/expanse/flight/landmarks.js`, `landmarks.test.js`
 
 **Interfaces:**
-- Produces: `LANDMARKS[planetId][poiId] → [{ kind, at: [x, z] (relative to the POI), yaw, scale, opts? }]` for every POI with no walkable site (the note's rows: kinds from `catalog/index.js`'s names and kit model names as `{ kit: 'naturemega', name }`); `placementsFor(spec, poi, { site }) → [{ kind | kit, at (world), yaw, scale, y }]`: from `site.places[].things` and `site.things` within the site's radius mapped onto the flight POI (translate by `poi.at − site.land.at`, rotate by the POI's yaw if the table gives one), else from `LANDMARKS`; `y` from a `heightAt` given.
+- Produces: `SITE_PLACES[planetId][poiId] → { site, places, extra? }` and `LANDMARKS[planetId][poiId] → [{ kind | kit: { kit, name }, at: [x, z] (relative to the POI), yaw, scale, opts? }]` for every POI `planetTables.js`'s own `landmarks` don't build (those, Mos Eisley, Cloud City, the Senate and the rest, are the flight module's); `placementsFor(spec, poi, { heightAt, site }) → { list: [placer specs with `abs` heights], dropped }`: the named places' `things` and the site's loose things nearest them, within the POI's r and half its edge, each kept where it stands round the first place's middle (translate by `poi.at − place.at`: the flight's POIs are kilometres apart where the site's places are metres apart), else from `LANDMARKS`; `y` from the `heightAt` given. (Fixed in lane E's PR: the code proved `poi.at − site.land.at` and a bare list wrong.)
 
-- [ ] **Step 1: Failing tests**: every planet's every POI has placements (at least 3, at most 80); every `kind` is in the catalog and every `{ kit, name }` in the kit manifest (read `public/kit/*/index.json`); Echo Base's placements come from `sites.hoth` and include the generator and the doors; a placement whose site `y` differs from the given ground by over 3 m is dropped and counted.
+- [ ] **Step 1: Failing tests**: every planet's every POI has placements (at least 3, at most 80); every `kind` is in the catalog and every `{ kit, name }` in the kit manifest (read `public/kit/*/index.json`); Echo Base's placements come from `sites.hoth` and include the generator and the doors; a built thing whose ground differs from the flight's (the rise and fall under it, 20 m across, by over 3 m) is dropped and counted, under a tenth of any site's things summed over its POIs; what grows or lies loose (trees, rocks, smoke) stands on any ground. (Fixed in lane E's PR: comparing a thing's height off its place's middle dropped Theed's town, which steps gently down to its river while the flight's Theed is one plateau.)
 - [ ] **Step 2:** FAIL. **Step 3:** Write both. **Step 4:** PASS. **Step 5: Commit** `Every POI's buildings as a placement list, from the walkable sites where they exist`.
 
 ### Task 2: Drawing a landmark
@@ -58,15 +58,15 @@
 - Modify: `scene.js`; Create: `landmarkStream.js` (pure: which POIs within `LANDMARK_NEAR`, nearest `LANDMARK_CAP`, prefetch band), `landmarkStream.test.js`
 
 - [ ] Tests: nearest four within reach; a POI leaving reach × 1.3 is dropped; prefetch set is reach × 2.
-- [ ] Wire: each frame `update(ship)`, loads and frees landmarks, prefetches assets; on the `origin` event reanchors. Fly Hoth to Echo Base at 300 m/s: the base is there before the ship is. **Commit** `Landmarks stream in as the ship comes near`.
+- [ ] Wire: each frame `update(ship, at)` from `scene.js`'s `place`, loads and frees landmarks, prefetches the catalog models into the placer's own model cache (`loadModel`: the placer reads that cache, so an `rt.assets` fetch would be a second copy, and `scene.js` has no `rt`), reanchors to the origin's `at`. (Fixed in lane E's PR.) Fly Hoth to Echo Base at 300 m/s: the base is there before the ship is. **Commit** `Landmarks stream in as the ship comes near`.
 
 ### Task 4: Clutter from the kits
 
 **Files:**
-- Modify: `ground.js`, `src/lib/land/flight/planetTables.js` (each planet's `clutterKit`: `{ rock: { kit, name }, trunk: ..., debris: ... }`), `pack.js`, `src/components/worlds/worlds.js`
+- Modify: `ground.js` (a `kits` factory, a few lines in its sink), `src/lib/land/flight/landmarkTables.js` (`CLUTTER_KIT` by type and `CLUTTER_KIT_OF` by planet: `{ rock: { kit, name, size }, trunk: ... }`; kept out of lane A's `planetTables.js`), `pack.js`, `src/components/worlds/worlds.js`. Create `kitClutter.js`, `landmarkFiles.js`. (Fixed in lane E's PR.)
 
 - [ ] The pools for `rock`, `trunk`, `spire`, `debris` take the kit's model where the planet names one (`kit.pool` with `set`/`free` per leaf), the code-built shape otherwise or on low; a test in `ground.test.js` with a fake kit asserts a leaf's rows go to the kit pool and come back on drop.
-- [ ] Measure each planet's download at mid (`scripts/autopilot-check.mjs` reports bytes; or `performance.getEntriesByType('resource')` in a dev probe) and write the heaviest in `WORLD_MB['/fly']` with a comment listing the per-planet figures; `pack.js` lists the kit and catalog folders under `computed`.
+- [ ] Measure each planet's download at mid from the files it fetches (`landmarkFiles.js`, summed from `public/` by its test; a browser's resource timing over Echo Base agreed: 3.9 MB of models) and write the heaviest in `WORLD_MB['/fly']` with a comment listing the per-planet figures; `pack.js` lists every file, `/models/galaxy/surface` and `/kit` under `computed`. (Fixed in lane E's PR.)
 - [ ] Screenshots of Echo Base, Mos Eisley, Cloud City, Kachirho, Hobbiton from 300 m. **Commit** `Clutter from the kits, and each planet's download measured`.
 
 ### Task 5: Docs and the PR
