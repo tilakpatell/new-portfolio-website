@@ -140,6 +140,7 @@ import { jumpTime, routeBetween } from './routes';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
 import { starfighterAt } from './surface/missions/starfighterMaps';
 import { levelOf } from './surface/missions/starfighter';
+import { playerKit, tuneFor } from './surface/missions/starfighterKits';
 import { drawSpaceLevel } from './spaceLevel';
 import { createAreaLook } from './areaLook';
 import { assetUrl } from '../../lib/assetBase';
@@ -905,6 +906,8 @@ export async function create(canvas, ctx) {
     dropAuto();
     if (state.jump?.phase === 'align') cancelJump('pilot');
   };
+  // (in a Starfighter Assault you fly your side's kit on its game handling, held to what the galaxy's tune allows: missions/starfighterKits.js)
+  const flightStats = () => (state.flightTune && war?.on?.starfighter ? { ...state.stats, ...state.flightTune } : state.stats);
   const steering = () => {
     const c = controls();
     let { throttle, turn, climb, roll } = keyAxes(state.keys, c);
@@ -920,7 +923,7 @@ export async function create(canvas, ctx) {
       roll += d.roll;
     }
     const m = powers.mods; // (a power's hand on the stick: the death ray's heavy, the corkscrew's quick)
-    return { throttle: clamp(throttle, -1, 1), turn: clamp(turn, -1, 1) * m.turn, climb: clamp(climb, -1, 1) * m.turn, roll: clamp(roll, -1, 1) * m.turn, boost: Boolean(state.keys.boost || state.boostBtn), turnRate: c.turn * m.agility, pitchRate: c.pitch * m.agility, rollRate: c.roll * m.agility, level: c.level, tune: state.stats };
+    return { throttle: clamp(throttle, -1, 1), turn: clamp(turn, -1, 1) * m.turn, climb: clamp(climb, -1, 1) * m.turn, roll: clamp(roll, -1, 1) * m.turn, boost: Boolean(state.keys.boost || state.boostBtn), turnRate: c.turn * m.agility, pitchRate: c.pitch * m.agility, rollRate: c.roll * m.agility, level: c.level, tune: flightStats() };
   };
 
   // ── The guns ──
@@ -1855,7 +1858,7 @@ export async function create(canvas, ctx) {
     v.shield = state.shield;
     v.low = state.shield < 35;
     v.speed = s?.speed ?? 0;
-    v.top = SHIP.boost * clamp(state.stats.boost ?? 1, TUNE.boost[0], TUNE.boost[1]) * pickups.mods().boost;
+    v.top = SHIP.boost * clamp(flightStats().boost ?? 1, TUNE.boost[0], TUNE.boost[1]) * pickups.mods().boost;
     v.boosting = Boolean(state.keys.boost || state.boostBtn) && v.speed > SHIP.cruise;
     v.kills = state.kills;
     if (t) {
@@ -2811,13 +2814,17 @@ export async function create(canvas, ctx) {
     starfighter(id, { side = null } = {}) {
       const sf = starfighterAt(id);
       if (!war || !sf || state.sys?.id !== id || !state.ship) return false;
-      sf.load().then(({ map, stages }) => {
+      sf.load().then(({ map, stages, air }) => {
         if (disposed || state.sys?.id !== id) return;
-        const lv = levelOf(map, stages);
+        const lv = levelOf(map, stages, air);
         const draw = drawSpaceLevel(scene, { pack: sf.pack, origin: stages.origin, packOrigin: sf.packOrigin, tier, renderer, area: stages.area ?? null, ships: lv.ships });
         if (!war.starfighter({ level: lv, side, draw, name: sf.name })) return;
         const team = war.info.team;
         if (team === null || !state.ship) return;
+        // (your side's fighter kit, on its handling)
+        const kit = playerKit(lv.kits?.[team] ?? []);
+        state.flightKit = kit;
+        state.flightTune = kit && air?.vehicles[kit.id] ? tuneFor(air.vehicles[kit.id], air.vehicles.xwing_t65).tune : null;
         const { pos, fwd } = war.battle.homeFor(team);
         state.ship = { ...spawn(null, { x: pos.x, y: pos.y, z: pos.z, heading: Math.atan2(-fwd.x, -fwd.z) }), speed: 0 };
         state.auto = null;

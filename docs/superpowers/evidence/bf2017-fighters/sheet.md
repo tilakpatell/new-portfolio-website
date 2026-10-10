@@ -4,7 +4,7 @@
 
 | kind | the galaxy's (before) | the game's (now) | far copy | written by |
 | --- | --- | --- | --- | --- |
-| X-wing T-65, Starfighter Assault's (`xwing65`, new) | gen3d `x-wing.lo.glb`: 19,879 triangles, 1.4 MB (the hunters, wingmen and trench run keep it) | `xwing65.glb`: 6,918 triangles, 676 KB (lane V's light cut) | 3,994 triangles, 28 KB | `bf2017-fleet.mjs xwing65` |
+| X-wing T-65, Starfighter Assault's (`xwing65`, new) | gen3d `x-wing.lo.glb`: 19,879 triangles, 656 KB (the hunters, wingmen and trench run keep it) | `xwing65.glb`: 6,918 triangles, 676 KB (lane V's light cut) | 3,994 triangles, 28 KB | `bf2017-fleet.mjs xwing65` |
 | V-wing (`vwing`) | Meshy remake: 15,593 triangles, 820 KB | 6,422 triangles, 531 KB | 1,431 triangles, 14 KB | `bf2017-fleet.mjs vwing` |
 | Hyena bomber (`hyena`) | Meshy remake: 14,998 triangles, 651 KB | 3,980 triangles, 423 KB | 1,476 triangles, 13 KB | `bf2017-fleet.mjs hyena` |
 
