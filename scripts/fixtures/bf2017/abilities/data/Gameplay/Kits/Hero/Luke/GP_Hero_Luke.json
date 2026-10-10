@@ -1,0 +1,9 @@
+{"name":"Gameplay/Kits/Hero/Luke/GP_Hero_Luke","type":"WSSoldierCustomizationGameplayAsset","root":0,"objects":[
+{"$type":"WSSoldierCustomizationGameplayAsset","Abilities":{"$ref":1},"Name":"Gameplay/Kits/Hero/Luke/GP_Hero_Luke"},
+{"$type":"PlayerAbilityCollection","Abilities":[
+ {"$asset":"Gameplay/Kits/Hero/Luke/Ability_hero_Luke","$assetType":"PassivePlayerAbilityAsset"},
+ {"$asset":"Gameplay/Kits/Hero/Luke/Ability_Luke_LightSaber","$assetType":"PassivePlayerAbilityAsset"},
+ {"$asset":"Gameplay/Kits/Hero/Luke/Ability_Luke_ForcePush","$assetType":"CharacterStatePlayerAbilityAsset"},
+ {"$asset":"Gameplay/Kits/Hero/Ability_Evade_CharacterState","$assetType":"CharacterStatePlayerAbilityAsset"},
+ {"$asset":"Gameplay/Equipment/Emotes/Abilities/HeroEmoteAbility","$assetType":"EmoteCharacterStatePlayerAbilityAsset"}
+]}]}

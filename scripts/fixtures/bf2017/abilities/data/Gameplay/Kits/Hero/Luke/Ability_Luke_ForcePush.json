@@ -1,0 +1,7 @@
+{"name":"Gameplay/Kits/Hero/Luke/Ability_Luke_ForcePush","type":"CharacterStatePlayerAbilityAsset","root":0,"objects":[
+{"$type":"CharacterStatePlayerAbilityAsset","ActiveTime":0.0,"ActivationTime":0.5,"RechargeTime":20.0,"Category":"PlayerAbilityCategory_Left","Blueprint":{"$asset":"Gameplay/Kits/Hero/Luke/Prefabs/PF_Push_Luke","$assetType":"LogicPrefabBlueprint"},"AbilityModifiers":[{"$ref":3},{"$ref":4}],"Identifier":1029217446,"Name":"Gameplay/Kits/Hero/Luke/Ability_Luke_ForcePush"},
+{"$type":"PlayerAbilityPropertyOutputFloatModifierValue","Value":12.0,"MinAbilityLevel":"PlayerAbilityLevel_1","MaxAbilityLevel":"PlayerAbilityLevel_4"},
+{"$type":"PlayerAbilityPropertyOutputFloatModifierValue","Value":30.0,"MinAbilityLevel":"PlayerAbilityLevel_1","MaxAbilityLevel":"PlayerAbilityLevel_4"},
+{"$type":"PlayerAbilityPropertyOutputModifier","OutputHash":1697178449,"Values":[{"$ref":2}]},
+{"$type":"PlayerAbilityPropertyOutputModifier","OutputHash":3791637896,"Values":[{"$ref":1}]}
+]}
