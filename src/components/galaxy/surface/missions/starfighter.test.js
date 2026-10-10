@@ -3,7 +3,7 @@ import map from '../../../../data/bf2017/maps/sb_endor.json';
 import stages from '../../../../data/bf2017/maps/sb_endor.stages.json';
 import { createBattle } from '../../../universe/battle';
 import { createDirector } from '../../../universe/battleDirector';
-import { layStarfighter } from '../../battles';
+import { areaSpot, layStarfighter, obstacles } from '../../battles';
 import { seeded, teamsOf } from '../../gcw';
 import { systemById } from '../../systems';
 import { METRES, frameOf, levelOf, shipsClear, starfighterPlan } from './starfighter';
@@ -114,12 +114,13 @@ describe('Starfighter Assault over Endor, from the game’s level', () => {
   it('knows which systems have one, and refuses the sequel era’s', () => {
     expect(starfighterAt('endor')).toBe(STARFIGHTER.endor);
     expect(starfighterAt('hoth')).toBeNull();
+    expect(starfighterAt('kamino')).toBe(STARFIGHTER.kamino);
     expect(Object.values(STARFIGHTER).some((s) => /resurgent|spacebear/.test(s.level))).toBe(false);
     expect(frameOf(level, [10, 0, 0])(level.origin)).toEqual([10, 0, 0]);
   });
 });
 
-describe('Starfighter Assault over Kamino, from the game’s level (its stages; its pack waits on a frame for Tipoca City)', async () => {
+describe('Starfighter Assault over Kamino, from the game’s level, in an area of its own over Tipoca City', async () => {
   const kmap = (await import('../../../../data/bf2017/maps/sb_kamino.json')).default;
   const kstages = (await import('../../../../data/bf2017/maps/sb_kamino.stages.json')).default;
   const kamino = levelOf(kmap, kstages);
@@ -143,6 +144,23 @@ describe('Starfighter Assault over Kamino, from the game’s level (its stages; 
     const near = (o, ship) => Math.hypot(...o.at.map((x, k) => x - ship.at[k]));
     for (const o of kamino.stages[0].objectives) expect(near(o, first)).toBeLessThan(near(o, ret));
     for (const o of [...kamino.stages[2].objectives, ...kamino.stages[3].objectives]) expect(near(o, ret)).toBeLessThan(near(o, first));
+  });
+
+  it('is laid in its own area: off the planet, clear of what’s built round it, the whole level inside its dome, its sea under the city', () => {
+    const sys = systemById('kamino');
+    const r = kamino.area.radius / METRES;
+    const laid = layStarfighter(sys, battleOf(1), kamino, { now: 0, tier: 'mid' });
+    expect(laid.at).toEqual(areaSpot(sys, r));
+    for (const o of obstacles(sys)) expect(Math.hypot(laid.at[0] - o.c.x, laid.at[1] - o.c.y, laid.at[2] - o.c.z)).toBeGreaterThan(o.r + r);
+    // (every ship, objective and launch point inside the dome, above the sea)
+    const sea = laid.frame([0, kamino.area.sea, 0])[1];
+    const points = [...kamino.ships.map((s) => s.at), ...kamino.stages.flatMap((st) => st.objectives.map((o) => o.at)), ...kamino.spawns.flat().map((s) => s.at)].map(laid.frame);
+    for (const p of points) {
+      expect(Math.hypot(p[0] - laid.at[0], p[1] - laid.at[1], p[2] - laid.at[2])).toBeLessThan(r * 0.9);
+      expect(p[1]).toBeGreaterThan(sea);
+    }
+    // (and Endor's, fought in orbit, has no area: where the war's battle would be)
+    expect(level.area).toBeNull();
   });
 
   it('a battle nobody flies in ends inside twelve minutes, its ships clear', () => {

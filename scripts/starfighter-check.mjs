@@ -17,6 +17,7 @@
 //   OUT=/tmp/shots node scripts/starfighter-check.mjs [endor] [mid]
 //   PHASE_WAIT=1500000 … (a level pack in software GL takes minutes)
 //   SIDE=rebel … (the side to fly for; the attacker's, the Empire's, otherwise)
+//   (any system with one: `node scripts/starfighter-check.mjs kamino mid`, in its own area)
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { budget } from '../src/lib/budgets.js';
@@ -57,8 +58,14 @@ const info = await page.evaluate(() => {
   const w = window.__galaxyDebug.war;
   return { laid: w.info.laid, team: w.info.team, stage: w.info.stage, objectives: w.info.objectives.length, capitals: w.battle.capitals.map((c) => ({ kind: c.kind, team: c.team, at: [c.pos.x, c.pos.y, c.pos.z] })) };
 });
-ok(info.laid.kind === 'starfighter' && info.stage?.id === 'corvettes', `the battle is the level's: stage ${info.stage?.index + 1} of ${info.stage?.count}, ${info.stage?.title}, ${info.objectives} objectives, flying for team ${info.team}`);
-ok(info.capitals.filter((c) => c.kind === 'corvette').length === 3, `its ships: ${info.capitals.map((c) => c.kind).join(', ')}`);
+ok(info.laid.kind === 'starfighter' && info.stage?.index === 0, `the battle is the level's: stage ${info.stage?.index + 1} of ${info.stage?.count}, ${info.stage?.title}, ${info.objectives} objectives, flying for team ${info.team}`);
+ok(info.capitals.length > 2, `its ships: ${info.capitals.map((c) => c.kind).join(', ')}`);
+// (a level fought in an area of its own: inside its dome, in its storm)
+const area = await page.evaluate(() => {
+  const a = window.__galaxyDebug.scene.getObjectByName('level-area');
+  return a ? { at: a.position.toArray() } : null;
+});
+if (area) ok(true, `its own area at ${area.at.map((x) => x.toFixed(0)).join(', ')}`);
 
 // the pack in (its cells and its meshes round the camera)
 await page.waitForFunction(() => window.__RUNTIME__?.status !== 'loading', null, { timeout: wait, polling: 2000 }).catch(() => {});
@@ -68,8 +75,9 @@ const place = () =>
   page.evaluate(() => {
     const { state, war } = window.__galaxyDebug;
     const caps = war.battle.capitals;
-    const isd = caps.find((c) => c.kind === 'destroyer').pos;
-    const mc = caps.find((c) => c.kind === 'moncal').pos;
+    // (the attacker's flagship and the defender's: the Star Destroyer and the MC80 at Endor)
+    const isd = caps.find((c) => c.team === war.battle.attacker && c.role === 'flagship').pos;
+    const mc = caps.find((c) => c.team === war.battle.defender && c.role === 'flagship').pos;
     const dx = mc.x - isd.x;
     const dz = mc.z - isd.z;
     const l = Math.hypot(dx, dz);
@@ -88,7 +96,7 @@ const settle = Date.now();
 let last = -1;
 while (Date.now() - settle < wait) {
   await page.waitForTimeout(10000);
-  const n = await page.evaluate(() => window.__galaxyDebug.scene.getObjectByName('level-sb_endor')?.children[0]?.children.length ?? 0);
+  const n = await page.evaluate(() => window.__galaxyDebug.scene.children.find((o) => o.name.startsWith('level-sb_'))?.children[0]?.children.length ?? 0);
   if (n === last && n > 0) break;
   last = n;
 }
@@ -132,7 +140,7 @@ await page.screenshot({ path: `${out}/starfighter-${system}-${quality}.png` });
 // the MC80 in frame, drawn by the pack: its box's pixels with and without the pack
 const box = await page.evaluate(() => {
   const { camera, war, THREE } = window.__galaxyDebug;
-  const mc = war.battle.capitals.find((c) => c.kind === 'moncal');
+  const mc = war.battle.capitals.find((c) => c.team === war.battle.defender && c.role === 'flagship');
   const v = new THREE.Vector3(mc.pos.x, mc.pos.y, mc.pos.z).project(camera);
   return { x: Math.round(((v.x + 1) / 2) * 1280), y: Math.round(((1 - v.y) / 2) * 720), in: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1 };
 });
@@ -143,16 +151,21 @@ await page.addStyleTag({ content: 'body * { visibility: hidden !important; } can
 await page.waitForTimeout(1500);
 const withPack = await page.screenshot({ clip });
 await page.evaluate(() => {
-  window.__galaxyDebug.scene.getObjectByName('level-sb_endor').visible = false;
+  window.__galaxyDebug.scene.children.find((o) => o.name.startsWith('level-sb_')).visible = false;
   window.__RUNTIME__?.invalidate();
 });
 await page.waitForTimeout(3000);
 const without = await page.screenshot({ clip });
 await page.evaluate(() => {
-  window.__galaxyDebug.scene.getObjectByName('level-sb_endor').visible = true;
+  window.__galaxyDebug.scene.children.find((o) => o.name.startsWith('level-sb_')).visible = true;
 });
 const differ = Buffer.compare(withPack, without) !== 0;
-ok(differ, `the pack's MC80 is drawn where the battle's MC80 is (its box ${differ ? 'changes' : 'is the same'} without the pack)`);
+if (area) {
+  const fog = await page.evaluate(() => (window.__galaxyDebug.scene.fog?.isFogExp2 ? window.__galaxyDebug.scene.fog.density : null));
+  const sky = await page.evaluate(() => window.__galaxyDebug.state.enclosed);
+  ok(fog !== null && sky, `inside the area: its storm's fog on (density ${fog}), the galaxy's sky and names shut out`);
+}
+ok(differ, `the pack's flagship is drawn where the battle's is (its box ${differ ? 'changes' : 'is the same'} without the pack)`);
 writeFileSync(`${out}/starfighter-${system}-${quality}-mc80.png`, withPack);
 writeFileSync(`${out}/starfighter-${system}-${quality}-mc80-without.png`, without);
 ok(errors.length === 0, `no console errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);

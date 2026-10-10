@@ -43,13 +43,24 @@ The design: `docs/superpowers/specs/2026-10-10-battlefront-flow-and-mods-design.
 - No-player battles (12 seeds, mid): the Empire breaks the MC80 in 6 at 8:46 to 9:49, the Rebels hold the clock in 6; `starfighter.test.js` holds three seeds under 12 minutes, for Endor and Kamino.
 - `scripts/starfighter-check.mjs endor <tier>` (software GL, the ship behind the Star Destroyer facing the MC80, the pack settled): low 154 calls, 0.77M triangles (row 350, 0.8M); mid 204 calls, 0.94M (500, 1.5M); high 131 calls, 0.32M (700, 3M); the MC80's box changes without the pack (89% of its pixels); no console error.
 - Lane F's menu card is not merged: the entry is the briefing's card and the link; F's card calls `/galaxy/<system>?battle=starfighter` (`starfighterAt(system)` says where there's one).
-- Left: Kamino's pack and entry (its level is fought low over Tipoca City on the ocean, not in orbit: the pack wants the surface's frame or the city left out); Fondor's and the droid battleship's stages and packs when their systems exist; the game's fighters (`bf2017-import.mjs` for the X-wing, TIEs, the Y-wing; the galaxy's own models fly meanwhile); a pack ship that falls (the MC80 at the end) still drawn whole; the galaxy's "second Death Star" marker still listed while its station is hidden.
+- **Kamino, in an area of its own** (the follow-up): `/galaxy/kamino?battle=starfighter` (Kamino's landing menu card, lane F's, and its briefing card). The level is fought low over Tipoca City in the storm, so `galaxy/levelArea.js` makes it a place of its own off the planet (`battles.js`'s `areaSpot`, night side, clear of everything by the dome's width): a 9 km dome of the level's own storm panorama, a sea under the city's stilts, the storm's fog while you're inside, and the galaxy's sky, star names and place names shut out (`warfront.js`'s `enclosed`, the scene's `state.enclosed`). The pack (`levels/sb_kamino/`): 13,838 instances, 344 meshes, 10 MB of meshes, 41 MB of textures, fitted to 0.7 of each row (low keeps little of the city, the fit dropping most of its 14,000 pieces, and its hulls: a ship the pack's tier leaves out is drawn by the battle again, `spaceLevel.js`'s `unhide`). Low 93 calls, 0.16M triangles; high 169, 1.17M. The Republic's cruisers are left to the battle, which sinks them. `starfighter-check.mjs kamino mid`: 112 calls, 1.07M triangles; the fog on, the sky shut out, no console error.
+- Left: Fondor's and the droid battleship's stages and packs when their systems exist; the game's fighters (`bf2017-import.mjs` for the X-wing, TIEs, the Y-wing; the galaxy's own models fly meanwhile); a pack ship that falls (the MC80 at the end) still drawn whole; the galaxy's "second Death Star" marker still listed while its station is hidden.
 
 The mod archives already on the owner's machine are listed in the design (Expanded's 141 `.fbmod`s, Saberfront, Realistic Overhaul, the HvV modes, the clone packs, Frosty Mod Manager). Each lane adds its row's numbers here when it merges and a line to the design's "Departures".
 
 ## Beside the asset lanes (PR #802 and PR #810)
 
 `HANDOFF-bf2017.md` is the assets' hand-off and its status table is theirs. What this game takes from them, so nobody builds it twice: lane 1's `walrus.js` (figures on the game's skeleton), lane L's level pack and loader (run on the whole map with `--frame map --no-fit`, spec decision 15), lane G's light from the level's sky records, lane X's stroke tables for the heroes, lane V's vehicle models, lane S's fetch pool. What this game adds that they do not: the rules, the modes, the bots, the Battle Points, the HUD, the route.
+
+## From the assets' lane M (the front end)
+
+The fonts, icons and strings are not this game's lane 5's to import: lane M (`HANDOFF-bf2017.md`, "Lane M") imported them for the whole site, and lane 5 consumes them:
+
+- **The HUD's widgets**: `src/lib/bf2017/ui/` (`widget(name)` with its tree, layout and words in the game's text; `placeWidget`; `colour(index)` from the game's palette; `fontFor(gameFont)`; `bitmap`, `portrait` once the bucket has `UI/Bitmaps`).
+- **The fonts**: `src/lib/bf2017/fonts.css` (`--font-bf-hud`, `--font-bf-text`, `--font-aurebesh`). Lane 5's plan names `LinotypeUnivers-520CnMedium` and `RaxusPrimeNumericalMonospace_Regular`: those are EA's licences, not the site's, and were taken out of `public/battlefront/fonts/`; `fontFor` maps the widgets' Univers and RaxusPrime faces onto Cuprum and Roboto.
+- **The icons**: `src/lib/bf2017/icons.js` and `src/runtime/hud/GameIcon.jsx` (the sprites under `public/ui/bf2017/`), in place of lane 0's copies under `public/battlefront/icons/`.
+- **The strings**: `src/lib/bf2017/strings.js` (`text`, `nameOf`, `loadFamily` for the whole table), beside `rulebook.js`'s `stringOf`.
+- **The films**: `src/lib/bf2017/films.js`'s `tilesFor(mode)`, `tutorials()`, `logo()` for the menu and the help, and `src/runtime/hud/Film.jsx` to play them.
 
 ## For the streaming session (the other account)
 
