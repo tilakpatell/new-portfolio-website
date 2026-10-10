@@ -27,6 +27,10 @@ The heavy models and textures are mirrored to the public bucket `assets` (`docs/
 
 The bucket is public; Storage's CORS allows `GET` from any origin, the site's included, and the script sets nothing else. Before `ASSET_BASE` is set for everyone, the project wants Pro: the free tier's egress (about 5 GB a month) is a few hundred visits.
 
+## The ground's version
+
+`20261009000300_terrain_version.sql` adds `terrain_version` to `planets` and `world_entities` (default 1). The flight's ground is code: when `src/lib/land/flight/planetSpec.js`'s `TERRAIN_VERSION` is bumped (its test fails when the ground changes without it), the client draws anything built on an older ground on the ground there is now, and the seed writes each planet's version. Apply the migration, then `seed.sql` again.
+
 ## Rules
 
 - A change to the schema is a new migration file, never an edit of an applied one.

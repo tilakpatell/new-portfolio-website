@@ -10,7 +10,7 @@
 // CELL = NET_CELL (2048)
 // cellOf(x, z) → [cx, cz]; cellsAround(cx, cz, r = 1) → 'cx,cz'[] nearest first
 // bboxOf(cx, cz) → { minX, maxX, minZ, maxZ }; diffCells(prev, next) → { gone, came }
-// rowToEntity(row) → { id, planetId, type, owner, x, y, z, rot: [rx, ry, rz], scale, hp, metadata, version, updatedAt }
+// rowToEntity(row) → { id, planetId, type, owner, x, y, z, rot: [rx, ry, rz], scale, hp, metadata, version, updatedAt, terrainVersion }
 // entityToRow(entity) → the columns the client may set (never id, owner, version or the times)
 
 import { NET_CELL } from '../net/cells.js';
@@ -49,6 +49,9 @@ export const rowToEntity = (row) => ({
   metadata: row.metadata,
   version: row.version,
   updatedAt: row.updated_at,
+  // the ground it was put down on (planetSpec.js's TERRAIN_VERSION); a row
+  // from before the column was the first ground
+  terrainVersion: row.terrain_version ?? 1,
 });
 
 // what the entity does not say is left out, so the table's defaults (no
@@ -66,6 +69,7 @@ export function entityToRow(e) {
     scale: e.scale,
     hp: e.hp,
     metadata: e.metadata,
+    terrain_version: e.terrainVersion,
   };
   return Object.fromEntries(Object.entries(row).filter(([, v]) => v !== undefined));
 }
