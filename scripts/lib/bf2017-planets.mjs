@@ -86,7 +86,7 @@ export const PICTURES = {
 // The worlds the drop paints that no system on the site has a body for: left
 // out until a system draws them (a new look in bodies.js and a place in
 // systems.js are another lane's). Ryloth, Fondor, Athulla, Sullust, Pillio
-// and Vardos have tiles like Endor's and Naboo's
+// and Vardos have maps like Endor's and Naboo's
 export const UNPLACED = ['naboo moon', 'sullust', 'kessel', 'felucia', 'death star II', 'ryloth and its moon', 'fondor and its moon', 'athulla', 'pillio', 'vardos'];
 
 // The site's sizes, never larger than the game drew it. Low draws no skin (a
