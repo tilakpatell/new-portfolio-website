@@ -62,7 +62,7 @@ The measure's `kbd-styles` counts the CSS rules that draw a key cap outside the 
 
 ## The worlds' HUDs
 
-A world's HUD is built from the kit in `src/runtime/hud/` (`index.js` lists the parts) and imports it from there only. The kit holds the rules (`hud.js`, tested), the frame (`Hud.jsx`), one part per idea (Menu, Prompt, Exit, Objective, Toast, Bubble, QuestList, PlayersChip, Stick, TouchButton, `fitCanvas`) and the tokens (`hud.css`). A world keeps its face: it skins the parts with its own classes, and the kit's rules weigh (0,0,1), so any world class wins.
+A world's HUD is built from the kit in `src/runtime/hud/` (`index.js` lists the parts) and imports it from there only. The kit holds the rules (`hud.js`, tested), the frame (`Hud.jsx`), one part per idea (Menu, Prompt, Exit, Objective, Toast, Bubble, QuestList, PlayersChip, Stick, TouchButton, MiniMap, `fitCanvas`) and the tokens (`hud.css`). A world keeps its face: it skins the parts with its own classes, and the kit's rules weigh (0,0,1), so any world class wins.
 
 - **Rows, not sums.** The top row, the foot and the thumbs are laid out by `layoutRows` and measured. A position is a kit token (`--hud-pad`, `--hud-pad-b`, `--hud-pad-l/-r`, `--guide-reserve`, `--guide-clear`, `--hud-under`, `--hud-foot`) or a measurement, never a hand sum of other things' sizes.
 - **One of each.** One Menu (the world's settings, Things to do, Controls opening the site's guide, the players chip, the way out read from the view: "Universe map" or "Classic site"); one prompt, key first ("E Go in · Burger Mart"), the button itself on touch; one way out of an inner place (the world's verb, or "Leave", with Esc); one toast, top centre under the top row.
