@@ -2460,8 +2460,8 @@
     "tier": "surface"
   },
   "models/galaxy/surface/atat.glb": {
-    "hash": "066469e515f8",
-    "bytes": 12113756,
+    "hash": "62e9990f003e",
+    "bytes": 12327628,
     "from": "gameplay/vehicles/ground/at-at/old/atat_mesh",
     "tier": "surface"
   },
@@ -2472,8 +2472,8 @@
     "tier": "surface"
   },
   "models/galaxy/surface/atat.ultra.glb": {
-    "hash": "cf9bc0ca2692",
-    "bytes": 27144752,
+    "hash": "962d68529f54",
+    "bytes": 28514552,
     "from": "gameplay/vehicles/ground/at-at/old/atat_mesh",
     "tier": "ultra"
   },
@@ -2766,26 +2766,26 @@
     "tier": "ultra"
   },
   "models/galaxy/surface/falcon.far.glb": {
-    "hash": "d147b7624a04",
-    "bytes": 51636,
+    "hash": "2fc87b0b1b54",
+    "bytes": 145164,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.glb": {
-    "hash": "4f0c4c37b7a1",
-    "bytes": 1131416,
+    "hash": "73ac4e2ca9b2",
+    "bytes": 4025892,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.lod1.glb": {
-    "hash": "2f0faa1710e2",
-    "bytes": 230256,
+    "hash": "7bb9cc210be3",
+    "bytes": 633052,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.ultra.glb": {
-    "hash": "f63ad0c91646",
-    "bytes": 9181668,
+    "hash": "025edc6af482",
+    "bytes": 21878340,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "ultra"
   },

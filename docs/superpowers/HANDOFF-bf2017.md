@@ -699,7 +699,7 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseV-vehicles.md`; the c
 - **The AT-ST’s rig**: the drop has no skinned AT-ST, so its rigid mesh is skinned at import to the cinematics’ `ATST_Ske01` (one bone a piece). If the owner counts that binding as ours, it stands as a statue instead (drop `--bind`).
 - **Sounds**: the vehicles’ engines and footfalls when the game’s audio lands.
 - **The far fleet instanced**: the space layer draws each ship through its own `THREE.LOD`, a draw each. The game’s far copies keep that cost, and instancing is the fleet war’s own open item.
-- **Textures**: no map these vehicles name was `missing` on 2026-10-10.
+- **Textures**: no map these vehicles name was `missing` on 2026-10-10. **But a material whose maps are bound inside its own shader graph names none** (2026-10-10, afternoon): the AT-AT’s head (`SS_ATAT_Head`: `T_ATATHead_01_CW`, `_N`, `_RGBM`, `T_ATATTile_01_C`) and the Falcon’s details and legs (`SS_MillenniumFalcon_01_Landmark_Details`/`_Legs`) drew untextured in the plain and ultra cuts. The desktop’s shader-depot probe (`maps_work/shaderdepots.jsonl`, `bf2export sbdprobe`) lists a graph’s maps; those seven were encoded and uploaded by hand, and `bf2017-import.mjs --textures '<material>=color:<name>,normal:<name>;…'` binds them (the vehicle cast’s rows carry the flag). The re-imported cuts are published (`atat-maps-bound.webp`, `falcon-maps-bound.webp` beside this). The other 51 kinds’ untextured materials are glass, windows, cockpit screens and a fake-AO plane, as the game has them.
 
 ### Checking it
 
