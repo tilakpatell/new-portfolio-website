@@ -125,11 +125,11 @@ export function strokeFor(stance, { last = null, now = 0, dir = null, heavy = fa
     // (a stance of its own heavies, the game's, plays those: stanceFromTable.js)
     const own = stance.heavies;
     const i = chain('heavy') ? (last.i + 1) % (own?.length ?? HEAVY.clips.length) : 0;
-    if (own) return { ...base, kind: 'heavy', i, clip: own[i].clip, speed: own[i].speed, damage: own[i].damage, heavy: true };
+    if (own) return { ...base, kind: 'heavy', i, clip: own[i].clip, speed: own[i].speed, damage: own[i].damage, heavy: true, ...(own[i].contact ? { contact: own[i].contact } : {}) };
     return { ...base, kind: 'heavy', i, clip: HEAVY.clips[i], speed: HEAVY.speed, damage: HEAVY.damage, heavy: true };
   }
   const way = (stance.dirs ?? DIRS)[dir];
-  if (way) return { ...base, kind: 'dir', i: 0, clip: way.clip, speed: stance.strokes[0].speed, damage: way.damage };
+  if (way) return { ...base, kind: 'dir', i: 0, clip: way.clip, speed: stance.strokes[0].speed, damage: way.damage, ...(way.contact ? { contact: way.contact } : {}) };
   const i = chain('combo') ? (last.i + 1) % stance.strokes.length : 0;
   return { ...base, kind: 'combo', i, ...stance.strokes[i] };
 }

@@ -88,8 +88,13 @@ describe('a 2017 duellist', () => {
   });
 
   it('is the site’s duellist for a figure on another rig', () => {
-    const d = duelFor(spec, 1);
+    // (Luke's crew row is the game's own figure since phase 1: no hero here is the site's rig)
+    const d = duelFor(spec, 1, null);
     expect(d.strokes).toEqual(STANCES.single.strokes.map((k) => k.clip));
     expect(d.cadence).toBe(null);
+  });
+
+  it('is the game’s for the spawn’s own kind when its crew row is the game’s figure', () => {
+    expect(duelFor(spec, 1).strokes[0]).toBe('A_Luke_AttackLoop_Strike1');
   });
 });

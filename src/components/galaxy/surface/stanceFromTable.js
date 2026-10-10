@@ -43,7 +43,7 @@ export function stanceFromTable(table, { base, dirs, heavy }) {
   const ways = Object.fromEntries(
     Object.entries(dirs).map(([way, d]) => {
       const s = all.find((k) => k.dir === way) ?? chain[0];
-      return [way, { clip: s.name, damage: d.damage }];
+      return [way, { clip: s.name, damage: d.damage, contact: s.contact }];
     }),
   );
   const cadence = Object.fromEntries((table.strikes ?? []).map((s) => [s.name, { dur: s.settle ?? s.duration, back: s.returnDuration }]));

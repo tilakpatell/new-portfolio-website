@@ -2724,7 +2724,7 @@ export async function create(canvas, ctx) {
           const dir = mine ? (state.aim > 0 ? state.aimDir : null) : mateFight.foe && mateFight.aim > 0 ? chestOf(mateFight.foe, _mateDir).sub(_mateFrom.set(st.x, st.y + 1.35, st.z)).normalize() : null;
           const aimK = mine ? (pp.saber?.lit ? Math.max(state.aim, 0.75) : state.aim) : mateFight.aim;
           if (!lying && !(mine && emoteShown)) pp.gp.set(dt, { aim: aimK, look: mine ? state.aim : mateFight.aim, dir, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
-          pp.saber?.update(dt, state.t, { forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP, me: st, targets: mine ? activity.targets : [], hit: saberHit });
+          pp.saber?.update(dt, state.t, { forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP, me: st, targets: mine ? activity.targets : [], hit: saberHit, eye: camera.position });
           if (!mine && mateFight.shoot && !lying) mateShot(pp);
         }
       }
