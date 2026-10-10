@@ -35,11 +35,12 @@
 - Modify (import lines only): `expanse/flight/landmarkFiles.js`, `lifeScene.js`, `brains.js`, `flightProtocol.js`, `landmarks.js`, `online.js`, `landmarkScene.js`, `air.js`
 
 **Interfaces:**
-- `galaxy/shared/models.js` exports exactly: `SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod` (from `../surface/catalog`), `createPlacer, loadModel, usesModel, clusterSpecs` (from `../surface/placer`), `createKit` (from `../surface/kit`), `FIGURES, buildFigure` (from `../surface/figures`), `GALAXY_KINDS, buildGalaxyShip` (from `../fleet`).
-- `galaxy/shared/ground.js`: `siteOf` (from `../surface/sites`), `makeHeight` (from `../surface/terrain`).
+- `galaxy/shared/models.js` exports exactly: `SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod` (from `../surface/catalog`), `createPlacer, loadModel, usesModel, clusterSpecs` (from `../surface/placer`), `PROPS` (from `../surface/props`), `createKit` (from `../surface/kit`), `FIGURES, buildFigure` (from `../surface/figures`), `GALAXY_KINDS, buildGalaxyShip` (from `../fleet`).
+- `galaxy/shared/ground.js`: `SITES, siteOf` (from `../surface/sites`), `makeHeight` (from `../surface/terrain`).
 - `galaxy/shared/fight.js`: `sensesFor, startBurst, stepBurst, strafeStep` (from `../surface/hostiles`).
 - `universe/shared/online.js`: `STALE_MS, createLimiter` (from `../online/protocol`), `cleanName` (from `../online/names`).
 - `universe/shared/flying.js`: `turnToward` (from `../hunterRules`), `BUILT_KINDS` (from `../trafficModels`).
+- `universe/shared/room.js`: `joinAsVisitor` (from `../online/nostr`), loaded lazily as `online.js` loaded `nostr.js`.
 
 - [ ] **Step 1: Failing tests**: each barrel’s test imports it and checks every name above is a function or an object (`typeof`), and that the module exports nothing else (`Object.keys(mod).sort()` equals the list).
 - [ ] **Step 2: Run** `npx vitest run src/components/galaxy/shared src/components/universe/shared` → FAIL (no module).
@@ -55,12 +56,12 @@
 - Modify: `src/lib/land/flight/planetSpec.js`, `planetSpec.test.js`, `lifeTables.js`, `lifeTables.test.js`, `src/pages/Fly.jsx`, and each flight module that imports `PLANETS` (`grep -rln "PLANETS" src/components/expanse/flight src/lib/land/flight src/pages/Fly.jsx`)
 
 **Interfaces:**
-- `planetSpec.js`: `planetSpecOf(id, { expanse } = {})` where `expanse` is `[{ id, name, system, star, faction, traffic, hazard, kind, seed … }]`, the rows `makeSector`/`UNIVERSE` gave before, as plain data; `planetsOf(expanse) → PLANETS` in the same order as today; `PLANETS` is no longer exported from `src/lib` (the component composes it). `TERRAIN_VERSION` and its hash unchanged.
-- `lifeTables.js`: `lifeFor(spec, { expanse })`, `isDead(spec)` likewise take rows, import nothing from `src/components`.
-- `expanse/flight/planets.js`: `export const EXPANSE = expanseRows()` built from `expanse/gen/sector.js`’s `makeSector` and `seed.js`’s `UNIVERSE` (the only file in the flight that imports `expanse/gen`), `export const PLANETS = planetsOf(EXPANSE)`, `export const planetSpecOf = (id) => specOf(id, { expanse: EXPANSE })`.
+- `planetSpec.js`: `planetSpecOf(id, { expanse } = {})` where `expanse` is the rows `[{ id, name, type, seed, system: { faction, traffic, hazard } }]` or a lookup `id → row | null` (a typed `/fly/e:…` reaches past the thirteen); `planetsOf(expanse) → PLANETS` in the same order as today; `PLANETS` is no longer exported from `src/lib` (the component composes it). `TERRAIN_VERSION` and its hash unchanged.
+- `lifeTables.js`: `lifeFor(spec, { expanse })` takes rows or a lookup (`isDead(life)` needs neither), import nothing from `src/components`.
+- `expanse/flight/planets.js`: `export const EXPANSE = expanseRows()` built from `expanse/gen/sector.js`’s `makeSector` and `seed.js`’s `UNIVERSE` (the only file in the flight that imports `expanse/gen`), `export const PLANETS = planetsOf(EXPANSE)`, `export const planetSpecOf = (id) => specOf(id, { expanse: expanseRow })`, `lifeOf(spec)`.
 - `scripts/flight-expanse-fixture.mjs`: writes `fixtures/expanse.json` from `expanse/gen` (run once; the test pins it; re-run when the Expanse changes).
 
-- [ ] **Step 1: Failing tests**: `planetSpec.test.js` and `lifeTables.test.js` read the fixture and pass it; a new assertion that `src/lib/land/flight/*.js` (not tests) imports nothing matching `components/` (read the files, regex the import lines); `planets.test.js` pins the fifty ids in order and that `EXPANSE` has thirteen rows whose ids start `E:`.
+- [ ] **Step 1: Failing tests**: `planetSpec.test.js` and `lifeTables.test.js` read the fixture and pass it; a new assertion that `src/lib/land/flight/*.js` (not tests) imports nothing matching `components/` (read the files, regex the import lines); `planets.test.js` pins the fifty ids in order and that `EXPANSE` has thirteen rows whose ids start `e:`.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement**; the fixture written by the script and committed. **Step 4: Run** → PASS; `npx vitest run src/components/expanse/flight src/lib/land/flight src/pages` → PASS; `node scripts/supabase-seed.mjs` writes a `seed.sql` identical to `main`’s (`git diff --stat supabase/seed.sql` empty); `boundary-breaks`’s detail has no `lib/land/flight` row.
 - [ ] **Step 5: Commit** `The flight’s pure tables take the Expanse as rows; nothing in lib reaches a world`.
 
@@ -70,7 +71,7 @@
 - Create: `scripts/lib/flight-island.mjs`, `scripts/lib/flight-island.test.mjs`, `scripts/fixtures/flight-island/` (a small tree: two marked rows, a decoy row beside each, one unmarked reference, one marker with no reference, a folder of the island)
 
 **Interfaces:**
-- `ISLAND`: `{ folders: ['src/components/expanse/flight', 'src/lib/land/flight', 'src/lib/durable'], files: ['src/pages/Fly.jsx', 'scripts/supabase-seed.mjs', 'scripts/supabase-seed.test.mjs', 'scripts/supabase-check.mjs', 'scripts/supabase-check.test.mjs', 'scripts/lib/fly-check.mjs', 'scripts/lib/fake-durable.mjs', 'scripts/lib/fake-durable.test.mjs', 'scripts/fixtures/planets.json', 'supabase/migrations/20261009000000_world_entities.sql', '…000100…', '…000200…', '…000300…', 'supabase/seed.sql', 'docs/stack/fastnoise-lite.md'], deps: ['fastnoise-lite'], marker: 'planet flight', rows: [{ file, kind: 'line' | 'block' }] (the files from the design’s list), docsByHand: ['docs/architecture.md', 'docs/stack/README.md', 'supabase/README.md', 'docs/decisions/README.md'], keep: [the design’s “What stays” paths] }`.
+- `ISLAND`: `{ folders: ['src/components/expanse/flight', 'src/lib/land/flight', 'src/lib/durable'], files: ['src/pages/Fly.jsx', 'scripts/supabase-seed.mjs', 'scripts/supabase-seed.test.mjs', 'scripts/lib/durable-check.mjs', 'scripts/lib/fly-check.mjs', 'scripts/lib/fake-durable.mjs', 'scripts/lib/fake-durable.test.mjs', 'scripts/fixtures/planets.json', 'supabase/migrations/20261009000000_world_entities.sql', '…000100…', '…000200…', '…000300…', 'supabase/seed.sql', 'docs/stack/fastnoise-lite.md'], deps: ['fastnoise-lite'], marker: 'planet flight', rows: [{ file, kind: 'line' | 'block' }] (the files from the design’s list), docsByHand: ['docs/architecture.md', 'docs/stack/README.md', 'supabase/README.md', 'docs/decisions/README.md'], keep: [the design’s “What stays” paths] }`.
 - `NAMES`: the regexes a reference matches: `expanse/flight`, `land/flight`, `lib/durable`, `['"]/fly`, `fastnoise-lite`, `world_entities`, `__FLIGHT__`, `online-check.mjs --fly`.
 - `referencesIn(text, file) → [{ line, text }]`; `isMarked(lines, i, marker) → boolean` (the line carries the marker, or sits inside a begin/end block); `check(tree) → { unmarked: [{ file, line, text }], stale: [{ file, line }], outsideImports: [...], crossWorld: [...] }` where `tree` is `{ read(file), list(dir), files }` (a fake in tests, `node:fs` in the script); `removal(tree) → { delete: [...files], dropLines: [{ file, lines }], byHand: [...], deps, migration: '<sql>' }`; `apply(removal, tree)` writes.
 - Every function pure over the `tree`; `check` and `removal` never read `node:fs`.
@@ -83,7 +84,7 @@
 
 **Files:**
 - Create: `scripts/flight-island.mjs`
-- Modify (a marker comment only, on the rows the design lists): `src/App.jsx`, `src/components/worlds/worlds.js`, `looks.js`, `packs.js`, `src/components/universe/universes.js`, `src/components/guide/routes.js`, `pages.js`, `abouts.js`, `src/components/tour/brief.js`, `briefs.js`, `.github/workflows/ci.yml`, `scripts/online-check.mjs`, `scripts/perf-probe.mjs`, `scripts/health/art-mix.mjs`, `scripts/stack-census.mjs`, `package.json` (no comments in JSON: the dependency is in `deps`, not a row), `.env.example`, `src/components/universe/online/nostr.js` (the `cells` lines are the universe’s now: *not* marked; `keep`)
+- Modify (a marker comment only, on the rows the design lists): `src/App.jsx`, `src/components/worlds/worlds.js`, `looks.js`, `packs.js`, `src/components/universe/universes.js`, `src/components/guide/routes.js`, `pages.js`, `abouts.js`, `src/components/tour/brief.js`, `briefs.js`, `.github/workflows/ci.yml`, `scripts/online-check.mjs`, `scripts/perf-probe.mjs`, `scripts/stack-census.mjs`, `scripts/supabase-check.mjs`, `docs/stack/supabase.md` (`<!-- planet flight -->`), `package.json` (no comments in JSON: the dependency is in `deps`, not a row), `.env.example`, `src/components/universe/online/nostr.js` (the `cells` lines are the universe’s now: *not* marked; `keep`)
 
 **Interfaces:**
 - `node scripts/flight-island.mjs --check` → prints `ok` and the counts (files, rows, references), exit 1 with each unmarked or stale line otherwise.

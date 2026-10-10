@@ -19,10 +19,14 @@
 //     side() → unit }]: the middle point m kept on the `side` of the line from a to b (a knee in
 //     front, an elbow behind); radii: a radius a point, else `radius`; settled: still for long
 //     enough to stop (step does nothing more)
-//   rigRagdoll(bones, { collide, push, speed, velocity, gravity }) → { step(dt), settled, point(name), body }
+//   rigRagdoll(bones, { collide, push, speed, velocity, gravity, table }) → { step(dt), settled, point(name), body }
 //     bones: { name: Bone } on Meshy's skeleton, posed as the body is to fall from (its clip's pose);
 //     push: the way it was shot (unit-ish, in the world), speed: how hard (m/s at the chest);
-//     velocity: how the whole body was already moving (m/s, in the world)
+//     velocity: how the whole body was already moving (m/s, in the world);
+//     table: which bones are points, for another skeleton (ragdoll2017.js's, the game's fifteen
+//     bodies): { torso, limbs, radius: { name: m }, aim: { name: child }, frames: { name: [left,
+//     right, low, high] }, parents?: { name: parent } (the sticks' tree, when it is not the
+//     skeleton's own: the game's bodies skip the shoulders and the upper spine) }; Meshy's by default
 
 import * as THREE from 'three';
 
@@ -189,6 +193,7 @@ const RADIUS = { Hips: 0.13, Spine02: 0.13, Spine01: 0.14, Spine: 0.14, neck: 0.
 const AIM = { Spine02: 'Spine01', Spine01: 'Spine', neck: 'Head', Head: 'head_end', LeftShoulder: 'LeftArm', RightShoulder: 'RightArm', LeftArm: 'LeftForeArm', RightArm: 'RightForeArm', LeftForeArm: 'LeftHand', RightForeArm: 'RightHand', LeftUpLeg: 'LeftLeg', RightUpLeg: 'RightLeg', LeftLeg: 'LeftFoot', RightLeg: 'RightFoot', LeftFoot: 'LeftToeBase', RightFoot: 'RightToeBase' };
 // and the two the hips and the chest take their whole turn from: across (left to right) and up
 const FRAMES = { Hips: ['LeftUpLeg', 'RightUpLeg', 'Hips', 'Spine01'], Spine: ['LeftArm', 'RightArm', 'Spine', 'neck'] };
+export const MESHY = { torso: TORSO, limbs: LIMBS, radius: RADIUS, aim: AIM, frames: FRAMES };
 
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
@@ -203,7 +208,8 @@ function basis(across, up, out) {
   return out.setFromRotationMatrix(_m.makeBasis(x, y, z));
 }
 
-export function rigRagdoll(bones, { collide = null, push = { x: 0, y: 0, z: 0 }, speed = 2, velocity = null, gravity = -9.8 } = {}) {
+export function rigRagdoll(bones, { collide = null, push = { x: 0, y: 0, z: 0 }, speed = 2, velocity = null, gravity = -9.8, table = MESHY } = {}) {
+  const { torso: TORSO, limbs: LIMBS, radius: RADIUS, aim: AIM, frames: FRAMES, parents = null } = table;
   const names = [...TORSO, ...LIMBS].filter((n) => bones[n]);
   const index = new Map(names.map((n, i) => [n, i]));
   const root = bones.Hips;
@@ -214,8 +220,8 @@ export function rigRagdoll(bones, { collide = null, push = { x: 0, y: 0, z: 0 },
   const sticks = [];
   // along each bone, from its parent's point
   for (const n of names) {
-    const parent = bones[n].parent;
-    if (parent?.isBone && index.has(parent.name)) sticks.push({ a: index.get(parent.name), b: index.get(n) });
+    const parent = parents ? parents[n] : bones[n].parent?.isBone ? bones[n].parent.name : null;
+    if (parent && index.has(parent)) sticks.push({ a: index.get(parent), b: index.get(n) });
   }
   // the torso braced rigid: every pair of its points
   const torso = TORSO.filter((n) => index.has(n)).map((n) => index.get(n));

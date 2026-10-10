@@ -17,7 +17,7 @@
 //
 //   OCC_CAP; OCCURRENCES[archetype] → { rule, r, foot }
 //   OCC[planetId] → [{ kind, name, chance, biome? }]
-//   occurrencesFor(spec, life?) → rows (the named world's, the Expanse's rule, or none when dead)
+//   occurrencesFor(spec, life?, { expanse }) → rows (the named world's, the Expanse's rule, or none when dead)
 //   placeOccurrences(spec, rows, key, field) → [{ id, kind, name, rule, r, at: [x, y, z], yaw }]
 //   applyRule(occ, ship, state, dt) → { toast?, marker?, hostile?: [{ from, to }], pickup? }
 
@@ -97,9 +97,11 @@ export function expanseOccurrences(spec, system) {
   return out;
 }
 
-export function occurrencesFor(spec, life = lifeFor(spec)) {
+// (the Expanse given as lifeTables' lifeFor is given it)
+export function occurrencesFor(spec, life = null, { expanse = null } = {}) {
+  life ??= lifeFor(spec, { expanse });
   if (!spec?.id || isDead(life)) return [];
-  return OCC[spec.id] ?? expanseOccurrences(spec, systemOf(spec.id));
+  return OCC[spec.id] ?? expanseOccurrences(spec, systemOf(spec.id, { expanse }));
 }
 
 export function placeOccurrences(spec, rows, key, field) {

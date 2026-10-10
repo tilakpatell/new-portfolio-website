@@ -3,7 +3,7 @@
 // the site's stance standing behind them; anyone else's is combatRules.js's.
 // Apart from combatRules.js so the pages that only need its names (the
 // universe's online protocol reads STANCE_IDS) don't load the tables: with
-// them behind it every flight page carried them, and fly-check's turret
+// them behind it every flight page carried them, and the multiplayer check's turret
 // reached the other pilot half a second later, past its 3 s.
 //
 //   stanceFor(id, hero?) → the stance; hero: { rig, pack } (a crew row): 'walrus' with a table gives the game's,

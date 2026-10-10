@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { MAP_N, rasterKey } from '../../../lib/land/flight/mapRaster';
 import { leafOf } from '../../../lib/land/flight/quadtree';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { planetSpecOf } from './planets';
 
 // the terrain worker as the page sees it: a message in, one answer out
 const posted = [];

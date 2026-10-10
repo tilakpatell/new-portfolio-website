@@ -217,6 +217,7 @@ export const PAGES = {
       ['The readout', 'Open any part of the station on the technical readout.'],
     ],
   },
+  // planet flight: begin (scripts/flight-island.mjs removes this block)
   '/fly': {
     about: ABOUT['/fly'],
     keys: [
@@ -245,6 +246,7 @@ export const PAGES = {
       ['Online', 'Online, you see the pilots in the few kilometres round you, and they see you.'],
     ],
   },
+  // planet flight: end
   '/deathstar/inside': {
     about: ABOUT['/deathstar/inside'],
     keys: [
