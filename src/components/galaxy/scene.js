@@ -2805,8 +2805,9 @@ export async function create(canvas, ctx) {
       if (!war || !sf || state.sys?.id !== id || !state.ship) return false;
       sf.load().then(({ map, stages }) => {
         if (disposed || state.sys?.id !== id) return;
-        const draw = drawSpaceLevel(scene, { pack: sf.pack, origin: stages.origin, packOrigin: sf.packOrigin, tier, renderer, area: stages.area ?? null });
-        if (!war.starfighter({ level: levelOf(map, stages), side, draw, name: sf.name })) return;
+        const lv = levelOf(map, stages);
+        const draw = drawSpaceLevel(scene, { pack: sf.pack, origin: stages.origin, packOrigin: sf.packOrigin, tier, renderer, area: stages.area ?? null, ships: lv.ships });
+        if (!war.starfighter({ level: lv, side, draw, name: sf.name })) return;
         const team = war.info.team;
         if (team === null || !state.ship) return;
         const { pos, fwd } = war.battle.homeFor(team);

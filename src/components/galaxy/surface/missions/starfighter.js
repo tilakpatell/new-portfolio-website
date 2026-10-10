@@ -74,7 +74,7 @@ export function levelOf(map, stages) {
     return { at: p.at, fwd: [Math.sin(p.yaw), 0, Math.cos(p.yaw)], r: null };
   };
   // (`pack`: one the level's pack draws, a part the mode's sub-level places; a prefab's ship is the battle's to draw)
-  const ships = stages.ships.map((s) => ({ id: s.id, team: teamOf(s.team), kind: s.kind, role: s.role, name: s.name, pack: Boolean(s.placed), ...(s.length ? { size: +(s.length / METRES).toFixed(2) } : {}), ...spotOf(s) }));
+  const ships = stages.ships.map((s) => ({ id: s.id, team: teamOf(s.team), kind: s.kind, role: s.role, name: s.name, pack: Boolean(s.placed), ...(s.placed ? { mesh: s.placed.split('#')[0] } : {}), ...(s.length ? { size: +(s.length / METRES).toFixed(2) } : {}), ...spotOf(s) }));
   const shipOf = new Map(ships.map((s) => [s.id, s]));
   const attacker = teamOf(rows.spaceBattle?.attacker ?? 2);
   return {
