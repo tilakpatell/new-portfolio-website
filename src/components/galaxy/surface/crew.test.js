@@ -16,11 +16,13 @@ describe('the surfaces’ crew', () => {
     expect(faceOf(CREW.han, 3)).toBe(CREW.han);
   });
 
-  it('has Luke and Leia, rigged on the same skeleton as Han, and Chewie, whose model is the cockpits’', () => {
-    expect(fileOf(CREW.han)).toBe('/models/galaxy/crew/han.glb');
-    expect(CREW.luke).toEqual({ url: '/models/galaxy/crew/luke.glb', tall: 1.72 });
-    expect(CREW.leia).toEqual({ url: '/models/galaxy/crew/leia.glb', tall: 1.5 });
-    expect(CREW.chewie).toMatchObject({ url: '/models/cockpit/chewie.glb', tall: 2.28 });
+  it('walks the 2017 game’s heroes on the game’s skeleton, each with its pack of the game’s clips', () => {
+    for (const [kind, tall] of Object.entries({ luke: 1.72, leia: 1.5, han: 1.85, chewie: 2.28, bobafett: 1.83, vader: 2.02, obiwan: 1.82, anakin: 1.85, maul: 1.75, dooku: 1.93, palpatine: 1.73, lando: 1.78, bossk: 1.9 })) {
+      expect(CREW[kind], kind).toEqual({ name: kind, tall, rig: 'walrus', pack: kind });
+      expect(fileOf(CREW[kind])).toBe(`/models/galaxy/crew/${kind}.glb`);
+      expect(existsSync(at(`/models/galaxy/crew/${kind}.lod1.glb`)), `${kind}'s light cut`).toBe(true);
+      expect(existsSync(at(`/models/galaxy/bf2017/clips-${kind}.glb`)), `${kind}'s pack`).toBe(true);
+    }
   });
 
   it('walks the Battlefront’s soldiers on their rigged files, as tall as the catalogue has them, its statues left to stand in', () => {

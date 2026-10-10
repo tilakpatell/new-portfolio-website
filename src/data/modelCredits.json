@@ -111,6 +111,36 @@
       "galaxy"
     ]
   },
+  "crew-anakin": {
+    "title": "Star Wars Battlefront II (2017): characters/hero/anakin/anakin_01/anakin_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Anakin Skywalker",
+    "file": "/models/galaxy/crew/anakin.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "crew-bobafett": {
+    "title": "Star Wars Battlefront II (2017): characters/hero/bobafett/bobafett_01/bobafett_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Boba Fett",
+    "file": "/models/galaxy/crew/bobafett.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "crew-bokatan": {
     "title": "Bo Katan Kryze",
     "author": "ThisIsntAPerson",
@@ -125,6 +155,21 @@
       "galaxy"
     ],
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-bossk": {
+    "title": "Star Wars Battlefront II (2017): characters/hero/bossk/bossk_01/bossk_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Bossk",
+    "file": "/models/galaxy/crew/bossk.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "crew-caradune": {
     "title": "Cara Dune Mandalorian",
@@ -141,6 +186,21 @@
     ],
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   },
+  "crew-chewie": {
+    "title": "Star Wars Battlefront II (2017): characters/hero/chewbacca/chewbacca_01/chewbacca_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Chewbacca",
+    "file": "/models/galaxy/crew/chewie.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "crew-dindjarin": {
     "title": "Mandalorian - Star Wars",
     "author": "GRIP420",
@@ -155,6 +215,21 @@
       "galaxy"
     ],
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-dooku": {
+    "title": "Star Wars Battlefront II (2017): characters/hero/countdooku/countdooku_01/countdooku_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Count Dooku",
+    "file": "/models/galaxy/crew/dooku.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "crew-fennec": {
     "title": "Fennec Shand",
@@ -186,6 +261,21 @@
     ],
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   },
+  "crew-han": {
+    "title": "Star Wars Battlefront II (2017): characters/hero/hansolo/hansolo_01/hansolo_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Han Solo",
+    "file": "/models/galaxy/crew/han.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "crew-inquisitor": {
     "title": "Inquisitor Lanu Pasiq - Star Wars",
     "author": "JCarpenter_48",
@@ -216,81 +306,95 @@
     ],
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   },
-  "crew-leia": {
-    "title": "FN Princess Leia",
-    "author": "fhfhhf",
-    "authorUrl": "https://sketchfab.com/fhfhhf",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/fn-princess-leia-e5efdd35a5e4462cbc013db44e80d31e",
+  "crew-lando": {
+    "title": "Star Wars Battlefront II (2017): characters/hero/lando/lando_01/lando_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "Princess Leia, walking on the worlds",
+    "as": "Lando Calrissian",
+    "file": "/models/galaxy/crew/lando.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "crew-leia": {
+    "title": "Star Wars Battlefront II (2017): characters/hero/leia/leia_01/leia_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Leia Organa",
     "file": "/models/galaxy/crew/leia.glb",
     "also": [
       "galaxy"
     ],
-    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "crew-luke": {
-    "title": "FB Luke Skywalker",
-    "author": "fhfhhf",
-    "authorUrl": "https://sketchfab.com/fhfhhf",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/fb-luke-skywalker-84d5ed9497b5435b9a804f956ff74927",
+    "title": "Star Wars Battlefront II (2017): characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "Luke Skywalker, walking on the worlds",
+    "as": "Luke Skywalker (Return of the Jedi)",
     "file": "/models/galaxy/crew/luke.glb",
     "also": [
-      "galaxy",
-      "universe"
+      "galaxy"
     ],
-    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "crew-maul": {
-    "title": "Darth Maul",
-    "author": "Konstantin Koretskyi",
-    "authorUrl": "https://sketchfab.com/cgnoobmaster",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/darth-maul-102ed10dfcd441029b4586bf4c88ec20",
+    "title": "Star Wars Battlefront II (2017): characters/hero/darthmaul/darthmaul_01/darthmaul_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "Darth Maul, walking on the worlds",
+    "as": "Darth Maul",
     "file": "/models/galaxy/crew/maul.glb",
     "also": [
       "galaxy"
     ],
-    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "crew-obiwan": {
-    "title": "Obi-Wan Kenobi Clone Wars v1",
-    "author": "Raxy3D",
-    "authorUrl": "https://sketchfab.com/Raxy3D",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/obi-wan-kenobi-clone-wars-v1-416a8f0c9c1742ee8fd71274d27bc305",
+    "title": "Star Wars Battlefront II (2017): characters/hero/obiwan/obiwan_01/obiwan_01_body_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "Obi-Wan Kenobi, walking on the worlds",
+    "as": "Obi-Wan Kenobi",
     "file": "/models/galaxy/crew/obiwan.glb",
     "also": [
       "galaxy"
     ],
-    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "crew-palpatine": {
-    "title": "Darth Sidious",
-    "author": "Richi_n12",
-    "authorUrl": "https://sketchfab.com/Richi11",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/darth-sidious-8f6f188ba2ee4708aa277789c830cbb8",
+    "title": "Star Wars Battlefront II (2017): characters/hero/palpatine/palpatine_01/palpatine_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "Darth Sidious, walking on the worlds",
+    "as": "Emperor Palpatine",
     "file": "/models/galaxy/crew/palpatine.glb",
     "also": [
       "galaxy"
     ],
-    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "crew-rex": {
     "title": "Captain Rex",
@@ -353,19 +457,19 @@
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   },
   "crew-vader": {
-    "title": "Darth Vader",
-    "author": "Konstantin Koretskyi",
-    "authorUrl": "https://sketchfab.com/cgnoobmaster",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/darth-vader-62a4273131f949ed9559721f7fb9cf14",
+    "title": "Star Wars Battlefront II (2017): characters/hero/darthvader/darthvader_01/darthvader_01_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
     "where": "galaxy-surface",
-    "as": "Darth Vader, walking on the worlds",
+    "as": "Darth Vader",
     "file": "/models/galaxy/crew/vader.glb",
     "also": [
       "galaxy"
     ],
-    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "cybertron-arcee": {
     "title": "Arcee TFP Rigged",
@@ -1966,6 +2070,21 @@
       "galaxy"
     ]
   },
+  "surface-bowcaster": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/bowcaster/bowcaster_mesh3p_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Chewbacca’s bowcaster",
+    "file": "/models/galaxy/surface/bowcaster.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "surface-cassian": {
     "title": "Cassian Andor",
     "author": "Mind Mulch for The Masses",
@@ -2149,6 +2268,21 @@
     "also": [
       "galaxy"
     ]
+  },
+  "surface-dl44": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/dl44/dl44_mesh3p_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Han Solo’s DL-44 blaster pistol",
+    "file": "/models/galaxy/surface/dl44.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-dockingbay": {
     "title": "Star Wars Tatooine Star Port Prop.",
@@ -2889,6 +3023,171 @@
     "where": "galaxy-surface",
     "as": "the astromechs",
     "file": "/models/galaxy/surface/droid.glb"
+  },
+  "surface-ee3": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/ee3/ee3_mesh3p_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Boba Fett’s EE-3 blaster carbine",
+    "file": "/models/galaxy/surface/ee3.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltanakin": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsaberanakin/lightsaberanakin_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Anakin Skywalker’s lightsaber hilt",
+    "file": "/models/galaxy/surface/hiltanakin.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltdooku": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsaberdooku/lightsaberdooku_gameplay_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Count Dooku’s curved lightsaber hilt",
+    "file": "/models/galaxy/surface/hiltdooku.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltgrievous": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsabergrievous/lightsabergrievous_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "General Grievous’s lightsaber hilt",
+    "file": "/models/galaxy/surface/hiltgrievous.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltluke": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsaberlukeskywalker/lightsaberlukeskywalker_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Luke’s lightsaber hilt (Return of the Jedi)",
+    "file": "/models/galaxy/surface/hiltluke.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltlukehoth": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsaberlukehoth/lightsaberlukehoth_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Luke’s first lightsaber hilt, Anakin’s (Hoth)",
+    "file": "/models/galaxy/surface/hiltlukehoth.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltmaul": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsabermaul/lightsabermaul_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Darth Maul’s saber staff",
+    "file": "/models/galaxy/surface/hiltmaul.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltmaulcrimson": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsabermaulcrimson/lightsabermaulcrimson_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Maul’s crimson saber staff",
+    "file": "/models/galaxy/surface/hiltmaulcrimson.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltobiwan": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsaberobiwan/lightsaberobiwan_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Obi-Wan Kenobi’s lightsaber hilt",
+    "file": "/models/galaxy/surface/hiltobiwan.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltvader": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsaberdarthvader/lightsaberdarthvader_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Darth Vader’s lightsaber hilt",
+    "file": "/models/galaxy/surface/hiltvader.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-hiltyoda": {
+    "title": "Star Wars Battlefront II (2017): gameplay/equipment/heroes/lightsaberyoda/lightsaberyoda_meshp_mesh",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy-surface",
+    "as": "Yoda’s lightsaber hilt",
+    "file": "/models/galaxy/surface/hiltyoda.glb",
+    "also": [
+      "galaxy"
+    ],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
   "surface-r5": {
     "title": "R5-J2 Imperial Astromech Droid",

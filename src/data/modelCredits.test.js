@@ -41,7 +41,10 @@ describe('the 3D models that are other people’s', () => {
       // (or a world's surface model, by the kind its catalogue names it by)
       const kind = name.replace(/^surface-/, '');
       const surface = name.startsWith('surface-') && code.includes('/models/galaxy/surface/${kind}.glb') && code.includes(`  ${kind}: {`);
-      expect(code.includes(file) || surface || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
+      // (or one of the crew, by the name its row gives it: crewList.js's fileOf)
+      const crewKind = name.replace(/^crew-/, '');
+      const crew = name.startsWith('crew-') && code.includes('/models/galaxy/crew/${c.name}.glb') && code.includes(`name: '${crewKind}'`);
+      expect(code.includes(file) || surface || crew || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
       expect(shown[m.where], `${name}: ${m.where}`).toBeTruthy();
       expect(readFileSync(at(`src/${shown[m.where]}`), 'utf8'), m.where).toContain(`<ModelCredits where="${m.where}"`);
       // and every other page that shows it, its credit too
