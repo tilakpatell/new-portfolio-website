@@ -248,7 +248,7 @@ function scratchOf(nav) {
   return nav.scratch;
 }
 
-export function findPath(nav, from, to, { blocked = null } = {}) {
+export function findPath(nav, from, to, { blocked = null, max = MAX_EXPAND } = {}) {
   const s = nearestOpen(nav, from[0], from[1], blocked);
   const goal = nearestOpen(nav, to[0], to[1], blocked);
   if (s < 0 || goal < 0) return null;
@@ -278,7 +278,7 @@ export function findPath(nav, from, to, { blocked = null } = {}) {
       found = true;
       break;
     }
-    if (++expanded > MAX_EXPAND) return null;
+    if (++expanded > max) return null;
     const c = cur % cols;
     const r = Math.floor(cur / cols);
     for (let dr = -1; dr <= 1; dr++)

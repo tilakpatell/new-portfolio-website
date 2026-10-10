@@ -8,11 +8,15 @@
 // game's bit patterns (`AIFiringPatterns`, a frame a sim step) and only
 // with a clear line to the target's chest; aim errs inside the AI weapon's
 // accuracy box (`AimBox*`), which shrinks the longer a bot holds a target.
+// A commander's task (`world.task`: a point, a radius, whether to interact)
+// turns following into going to the objective and staying on it, firing
+// on the way, and holding the interaction there when no enemy is close.
 //
 //   createBrain(s, { ai, role, rand }) → brain
 //   think(brain, world, now) → intent { mode, target, goal, stance, fire, aim }
 //   act(brain, intent, s, dt, world, now)        patternStep(brain) → fire this frame?
-//   world: { nav, lineClear(a, b), squad: { centre, leader, posture } | null, objective, enemies, others, shoot(s, aim) }
+//   world: { nav, lineClear(a, b), squad: { centre, leader, posture } | null, objective, task, enemies, others, shoot(s, aim) }
+//   task: { at: [x, z], spot: [x, z], radius, interact, reach, role }
 
 import { pick } from '../../ai/utility.js';
 import { createSenses, target as believed } from '../../ai/perception.js';
@@ -39,6 +43,18 @@ export const SUPPRESSED = 1; // the suppression a bot hides at (near misses fill
 export const STRAFE = 4; // metres a bot attacking in the open steps aside
 export const WANDER = 30; // metres round the objective a bot with nothing to do searches
 const NEAR_GOAL = 0.8;
+// A bot with a task this far outside its radius goes there rather than
+// fight, unless the enemy is inside FIGHT_AWAY; it interacts only with no
+// enemy believed inside INTERACT_CLEAR (the commander's rule). By hand.
+export const TASK_SLACK = 10;
+export const FIGHT_AWAY = 20;
+export const INTERACT_CLEAR = 10;
+// A goal further than this is walked to by legs of LEG metres, each its own
+// search, so a long walk across a Galactic Assault map never floods A*. By hand.
+export const FAR = 80;
+export const LEG = 40;
+// The cells one of those searches may open before it gives up, by hand.
+export const SEARCH_CELLS = 6000;
 
 export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', rand = Math.random }) {
   const template = ai.templates[role] ?? ai.templates.rifleman;
@@ -142,9 +158,10 @@ export function aimAt(brain, from, belief, now) {
 const OPTIONS = [
   { id: 'flee', rank: 5, considerations: [(c) => (c.target && c.posture === 'retreat' ? 1 : 0)] },
   { id: 'hide', rank: 4, considerations: [(c) => (c.target && (c.suppressed >= SUPPRESSED || c.health < HIDE_HEALTH) ? 1 : 0)] },
+  { id: 'interact', rank: 3.5, considerations: [(c) => (c.interact ? 1 : 0)] },
   { id: 'close', rank: 3, considerations: [(c) => (c.target && c.dist <= c.close ? 1 : 0)] },
-  { id: 'attack', rank: 2, considerations: [(c) => (c.target && c.dist <= c.engage ? 1 : 0), (c) => 0.5 + 0.5 * c.confidence] },
-  { id: 'advance', rank: 1, considerations: [(c) => (c.target && c.dist > c.engage ? 1 : 0)] },
+  { id: 'attack', rank: 2, considerations: [(c) => (c.target && c.dist <= c.engage && (!c.away || c.dist <= FIGHT_AWAY) ? 1 : 0), (c) => 0.5 + 0.5 * c.confidence] },
+  { id: 'advance', rank: 1, considerations: [(c) => (c.target && c.dist > c.engage && !c.task ? 1 : 0)] },
   { id: 'follow', rank: 0, considerations: [() => 1] },
 ];
 
@@ -176,7 +193,12 @@ export function think(brain, world, now) {
   const b = believed(brain.me, { hostile: true });
   const tgt = b ? [b.at.x, b.at.z] : null;
   const dist = tgt ? d2(me, tgt) : Infinity;
+  const task = world.task ?? null;
+  const fromTask = task ? d2(me, task.at) : Infinity;
   const ctx = {
+    task: !!task,
+    away: !!task && fromTask > (task.radius ?? 0) + TASK_SLACK,
+    interact: !!task?.interact && fromTask <= (task.reach ?? 3) && dist > INTERACT_CLEAR,
     target: !!b,
     dist,
     engage: brain.tactics.engage?.distance ?? 40,
@@ -189,7 +211,7 @@ export function think(brain, world, now) {
   const choice = pick(OPTIONS, ctx, { current: brain.current, rank: (o) => o.rank });
   let mode = choice?.id ?? 'follow';
   brain.current = mode;
-  const intent = { mode, target: b?.id ?? null, goal: null, stance: 'stand', fire: false, aim: null, sprint: false };
+  const intent = { mode, target: b?.id ?? null, goal: null, stance: 'stand', fire: false, aim: null, sprint: false, interact: false };
   const range = brain.s.weapon?.range ?? 200;
   const coverCtx = (query) => ({ me, threat: tgt, enemies: world.enemies, objective: world.objective, query, range, taken: world.taken, who: s.id });
   if (b) {
@@ -243,9 +265,28 @@ export function think(brain, world, now) {
       intent.goal = [me[0] + (az / L) * STRAFE * brain.strafe, me[1] - (ax / L) * STRAFE * brain.strafe];
       intent.stance = 'crouch';
     }
+  } else if (mode === 'interact') {
+    intent.goal = task.spot ?? task.at;
+    intent.stance = 'crouch';
+    intent.interact = true;
+    intent.fire = false;
   } else if (mode === 'advance') {
     intent.goal = tgt;
     intent.sprint = dist > ctx.engage + 20;
+  } else if (task) {
+    // the commander's objective: there, then round it inside its radius, firing at what is in sight on the way
+    intent.mode = mode = 'objective';
+    if (task.interact || !task.radius) intent.goal = task.spot ?? task.at;
+    else {
+      if (!brain.wander || brain.wanderFor !== task || d2(me, brain.wander) < 2 || d2(brain.wander, task.at) > task.radius + 1) {
+        const a = brain.rand() * Math.PI * 2;
+        const r = brain.rand() * task.radius;
+        brain.wander = (world.nav && nearestWalkable(world.nav, task.at[0] + Math.cos(a) * r, task.at[1] + Math.sin(a) * r, 6)) ?? task.spot ?? task.at;
+        brain.wanderFor = task;
+      }
+      intent.goal = brain.wander;
+    }
+    intent.sprint = fromTask > (task.radius ?? 0) + TASK_SLACK + 20 && !intent.fire;
   } else {
     // follow the squad's leader; the leader (or one with no squad) takes the objective, then searches round it
     const lead_ = world.squad?.leader;
@@ -286,13 +327,13 @@ function plan(brain, world, s, goal, now) {
   const t0 = clock();
   const from = flat(s.at);
   const blocked = blockedCells(world, s, goal);
-  let path = findPath(world.nav, from, goal, { blocked });
+  const d = d2(from, goal);
+  let path = d <= FAR ? findPath(world.nav, from, goal, { blocked, max: SEARCH_CELLS }) : null;
   // too far for one search, or walled off for now: a leg toward it
   if (!path) {
-    const d = d2(from, goal);
-    const k = Math.min(1, 40 / (d || 1));
+    const k = Math.min(1, LEG / (d || 1));
     const mid = nearestWalkable(world.nav, from[0] + (goal[0] - from[0]) * k, from[1] + (goal[1] - from[1]) * k, 8);
-    path = mid ? findPath(world.nav, from, mid, { blocked }) : null;
+    path = mid ? findPath(world.nav, from, mid, { blocked, max: SEARCH_CELLS }) : null;
   }
   brain.path = path ?? [from, goal];
   brain.pathGoal = goal;
@@ -335,6 +376,7 @@ export function act(brain, intent, s, dt, world, now) {
   const look = intent.aim ?? (s.moving ? [s.at[0] + s.vel[0], 0, s.at[2] + s.vel[2]] : null);
   if (look) s.yaw = Math.atan2(look[0] - s.at[0], look[2] - s.at[2]);
   s.aim = intent.aim;
+  s.interact = !!intent.interact && !!intent.goal && d2(flat(s.at), intent.goal) < NEAR_GOAL + 2;
   const firing = patternStep(brain);
   if (intent.fire && firing && intent.aim && world.lineClear(world.muzzle ? world.muzzle(s) : chestOf(s), intent.aim)) world.shoot(s, intent.aim);
 }

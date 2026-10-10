@@ -8,6 +8,7 @@
 // sight of an enemy is passed to the squad as an alert. Pure.
 //
 //   createBrains(sim) → { brains: Map, squads, taken, add(s), remove(id) }
+//   addBrain(sim, s) (a bot deployed after the start)
 //   stepBrains(sim)          onEvents(sim, boltEvents)
 
 import { sense } from '../../ai/perception.js';
@@ -23,17 +24,25 @@ const PLAYER_TACTICS = 'AIRebelSoldierTactics';
 
 const toV = (a) => ({ x: a[0], y: a[1], z: a[2] });
 
+function brainFor(sim, ai, s) {
+  const brain = createBrain(s, { ai, rand: sim.rand });
+  brain.nextSense = sim.time + sim.rand() * SENSE;
+  brain.nextThink = sim.time + sim.rand() * THINK;
+  s.brain = brain;
+  return brain;
+}
+
+export function addBrain(sim, s) {
+  const B = sim.brains;
+  const b = brainFor(sim, B.ai, s);
+  B.brains.set(s.id, b);
+  return b;
+}
+
 export function createBrains(sim) {
   const ai = aiOf(sim.rb);
   const brains = new Map();
-  for (const s of sim.entities.values()) {
-    if (!s.bot) continue;
-    const brain = createBrain(s, { ai, rand: sim.rand });
-    brain.nextSense = sim.rand() * SENSE;
-    brain.nextThink = sim.rand() * THINK;
-    s.brain = brain;
-    brains.set(s.id, brain);
-  }
+  for (const s of sim.entities.values()) if (s.bot) brains.set(s.id, brainFor(sim, ai, s));
   // each team's objective for the skirmish: where the other team started
   const objective = {};
   for (const team of [1, 2]) {
@@ -49,6 +58,8 @@ export function createBrains(sim) {
     taken: new Map(),
     add() {},
     remove(id) {
+      const b = brains.get(id);
+      if (b?.cover && out.taken.get(b.cover) === id) out.taken.delete(b.cover);
       brains.delete(id);
     },
   };
@@ -64,7 +75,8 @@ function worldFor(sim, b, s) {
     shields,
     squad: sq,
     leaderAt: leader ? [leader.at[0], leader.at[2]] : null,
-    objective: sim.objective?.[s.team] ?? sim.brains.objective[s.team],
+    objective: b.task?.at ?? sim.objective?.[s.team] ?? sim.brains.objective[s.team],
+    task: b.task ?? null,
     enemies: sim.cache.enemies[s.team],
     others: sim.cache.all,
     taken: sim.brains.taken,
@@ -94,10 +106,12 @@ function gather(sim) {
   for (const e of sim.entities.values()) {
     all.push(e);
     if (!e.alive) continue;
+    // a walker is a target only while a bombing run has it open
+    if (e.kind === 'walker' && !e.vulnerable) continue;
     const t = { id: e.id, at: toV(chestOf(e)), vel: { x: e.vel[0], y: 0, z: e.vel[2] }, hostile: true };
     const other = e.team === 1 ? 2 : 1;
     targets[other].push(t);
-    enemies[other].push([e.at[0], e.at[2]]);
+    if (e.kind === 'soldier') enemies[other].push([e.at[0], e.at[2]]);
   }
   sim.cache = { all, targets, enemies };
 }
