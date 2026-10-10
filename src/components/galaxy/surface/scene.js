@@ -346,6 +346,7 @@ export async function create(canvas, ctx) {
   // leave pick by it (impactLook.js); `picks` the last few, for the checks
   let surfaces = null;
   let groundPrint = null;
+  const DAB = { r: 0.7, k: 0.18 }; // (a step's mark where the material isn't known)
   const picks = [];
   loadMaterials(site.materials?.level)
     .then((book) => {
@@ -2497,7 +2498,7 @@ export async function create(canvas, ctx) {
       if (mateFight.turning) q.yaw = turnToward(q.yaw, want, dt * 2);
     } else mateFight.turning = false;
     // footprints and marks (as deep as the ground's material prints, where it's known), and footsteps
-    const print = surfaces ? groundPrint : { r: 0.7, k: 0.18 };
+    const print = surfaces ? groundPrint : DAB;
     if (p.grounded && p.speed > 0.5 && print && site.ground.palette.mark && r() < dt * 6) marks.dab(p.x, p.z, print.r, print.k);
     if (p.grounded) {
       strode += p.speed * dt;
