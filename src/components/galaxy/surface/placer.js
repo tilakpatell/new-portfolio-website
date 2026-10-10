@@ -49,19 +49,19 @@
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { gltfLoader } from '../../../lib/three/gltf';
-import { loadKit } from '../../../lib/three/kit';
+import { loadKit } from '../../../lib/three/kitNodes';
 import { sharpenMaterial } from '../../../lib/three/textures';
 import { budget } from '../../../lib/budgets';
 import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from './catalog';
 import { withDetail } from './detail';
-import { LOOKS, loadScan, scanOf } from './kit';
-import { wear as wearCore } from '../../../lib/three/core';
+import { LOOKS, loadScan, scanOf } from './nodes/kit';
+import { wear as wearCore } from '../../../lib/three/coreNodes';
 import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
-import { litWindows } from './props/windows';
+import { litWindows } from './nodes/props';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
-import { sizeFor } from '../../universe/landings/models';
+import { sizeFor } from '../../universe/landings/sizing';
 import { dropTransmission } from '../../../lib/three/glass';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again

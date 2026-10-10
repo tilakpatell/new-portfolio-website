@@ -7,9 +7,9 @@
 // the platforms its tread plate (kit.js's roles).
 
 import * as THREE from 'three';
-import { box, cyl, dome, part, ring, rod } from '../kit';
+import { box, cyl, dome, part, ring, rod } from '../kitCore';
 import { upright } from '../../../universe/trafficKit';
-import { litWindows } from './windows';
+import { litWindows } from '../nodes/props';
 
 const { PI, cos, sin, abs } = Math;
 const hot = (c, k = 2) => new THREE.Color(c).multiplyScalar(k);

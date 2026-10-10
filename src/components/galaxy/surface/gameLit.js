@@ -18,7 +18,7 @@ import { siteLightFrom, weatherEntry } from '../../../lib/three/gameLight';
 import { createProbeEnv } from '../../../lib/three/probeEnv';
 import { loadLut } from '../../../lib/three/gameLut';
 import { assetUrl } from '../../../lib/assetBase';
-import { dirOf } from './sky';
+import { dirOf } from './nodes/sky';
 
 const FACES = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
 export const FADE_S = 20;
