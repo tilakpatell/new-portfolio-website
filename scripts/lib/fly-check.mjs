@@ -133,13 +133,32 @@ export async function flyCheck({ a, b, relays, durable, base, check, waitFor }) 
   }, 60000, 'the turret after both reload');
   console.log('ok   after both reload, both still have the turret');
 
-  // Bravo shoots it to nothing: 150 m south of it, nose on it, Space held
+  // Bravo shoots it to nothing: from a spot 80 m off and over it whose line
+  // to the turret's head the ground doesn't cut (Hoth's ridges can rise
+  // 200 m in 150), nose on the head, Space held
+  const spot = await b.evaluate(async ([tx, ty, tz]) => {
+    const { planetField } = await import('/src/lib/land/flight/field.js');
+    const { planetSpecOf } = await import('/src/lib/land/flight/planetSpec.js');
+    const f = planetField(planetSpecOf('hoth'));
+    const head = ty + 6;
+    let best = null;
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const [dx, dz] = [Math.sin(a), Math.cos(a)];
+      const y = Math.max(head + 25, f.heightAt(tx + dx * 80, tz + dz * 80) + 15);
+      // the least room between the line of fire and the ground under it
+      let room = Infinity;
+      for (let s = 10; s <= 80; s += 5) room = Math.min(room, head + ((y - head) * s) / 80 - f.heightAt(tx + dx * s, tz + dz * s));
+      if (!best || room > best.room) best = { x: tx + dx * 80, y, z: tz + dz * 80, yaw: Math.atan2(dx, dz), pitch: Math.atan2(head - y, 80), room };
+    }
+    return best;
+  }, [turret.x, turret.y, turret.z]);
   await b.bringToFront();
   await b.keyboard.down('Space');
   const t3 = Date.now();
   try {
     await waitFor(async () => {
-      await b.evaluate(([x, y, z]) => (window.__FLIGHT__.ship = { x, y, z, pitch: 0, roll: 0, yaw: 0, speed: 40 }), [turret.x, turret.y + 6, turret.z + 150]);
+      await b.evaluate((s) => (window.__FLIGHT__.ship = { x: s.x, y: s.y, z: s.z, pitch: s.pitch, roll: 0, yaw: s.yaw, speed: 40 }), spot);
       await hold(a, ...A);
       const [x, y] = [await stats(a), await stats(b)];
       return x.held === 0 && y.held === 0;
