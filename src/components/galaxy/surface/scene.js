@@ -709,7 +709,7 @@ export async function create(canvas, ctx) {
     if (!own) inner.scale.setScalar(1 / METRE);
     inner.add(fig.model);
     fig.model.traverse((o) => {
-      if (o.isMesh) o.castShadow = true;
+      if (o.isMesh) o.castShadow = !o.userData.noShadow; // (a 2017 figure's small parts: none)
     });
     inner.updateMatrixWorld(true);
     // (a model of their own reads its motion in metres a second, as the
@@ -3571,6 +3571,16 @@ export async function create(canvas, ctx) {
       const at = performance.now();
       const net = { peers: new Map(list.map((p) => [p.id, { ...p, walk: { ...p.walk, at } }])) };
       props = { ...props, net: { ...net, walk() {} } };
+    },
+    // (dev: a duellist, its saber lit, `ahead` metres away `turn` radians
+    // round from where you face, facing you: the duel's browser check)
+    duel(kind = 'vader', { ahead = 6, turn = 0, color = '#ff3b3b', stance = 'single', hp = 99 } = {}) {
+      if (!import.meta.env.DEV) return;
+      const p = me().st;
+      const at = [p.x + Math.sin(p.yaw + turn) * ahead, p.z + Math.cos(p.yaw + turn) * ahead];
+      const spawn = { kind, at, face: p.yaw + turn + Math.PI, hp, leash: 30, roam: 1, tag: 'devduel', hostile: { range: 16, chase: 2, melee: true, reach: 2.8, every: 1.5, damage: 1, delay: 1, parry: 0.7, guard: 4, blade: { color, stance } } };
+      activity.show({ id: 'dev-duel', steps: [{ type: 'shoot', tag: 'devduel', n: 1, text: 'Duel', spawn }] }, { id: 'dev-duel', step: 0 });
+      ctx.invalidate();
     },
     // (for tests: put you somewhere, facing somewhere)
     // (dev: into a zone by its id, or out of the one you're in)

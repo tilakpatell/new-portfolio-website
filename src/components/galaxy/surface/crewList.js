@@ -7,16 +7,23 @@ export const fileOf = (c) => c.url ?? `/models/galaxy/crew/${c.name}.glb`;
 export const faceOf = (c, i = 0) => (c.faces ? [c, ...c.faces][i % (c.faces.length + 1)] : c);
 // every file a kind may load
 export const filesOf = (c) => [c, ...(c.faces ?? [])].map(fileOf);
+// how crew.js loads a row: a 2017 figure on the game's skeleton
+// (`rig: 'walrus'`, lib/three/walrus.js, with its `pack` of the game's clips
+// over the humanoid one), one of the wardrobe's people dressed as kept
+// (`party`), or a copy of its file's one figure (`shared`)
+export const figureLoaderFor = (row, dressed = false) => (row?.rig === 'walrus' ? 'walrus' : dressed ? 'party' : 'shared');
 // kind → { model's name or file, how tall, still (not rigged) }
 export const CREW = {
-  han: { name: 'han', tall: 1.85 },
-  // (Luke and Leia are Sketchfab figures, rigged with Meshy onto the same skeleton)
-  luke: { url: '/models/galaxy/crew/luke.glb', tall: 1.72 },
-  leia: { url: '/models/galaxy/crew/leia.glb', tall: 1.5 },
-  chewie: { url: '/models/cockpit/chewie.glb', tall: 2.28 }, // (the cockpits' own, whom the Falcon's party walks)
+  han: { url: '/models/galaxy/bf2017/crew/han.glb', tall: 1.85, rig: 'walrus', pack: 'han' },
+  // the heroes from Star Wars Battlefront II (2017), on the game's whole
+  // skeleton with the game's own clips (scripts/bf2017-import.mjs --rig
+  // --crew; their `pack`, scripts/bf2017-clips.mjs, over the humanoid one)
+  luke: { url: '/models/galaxy/bf2017/crew/luke.glb', tall: 1.72, rig: 'walrus', pack: 'luke' },
+  leia: { url: '/models/galaxy/bf2017/crew/leia.glb', tall: 1.5, rig: 'walrus', pack: 'leia' },
+  chewie: { url: '/models/galaxy/bf2017/crew/chewie.glb', tall: 2.28, rig: 'walrus', pack: 'chewie' },
   greedo: { name: 'greedo', tall: 1.73 },
   gamorrean: { name: 'gamorrean', tall: 1.8 },
-  bobafett: { name: 'bobafett', tall: 1.83 },
+  bobafett: { url: '/models/galaxy/bf2017/crew/bobafett.glb', tall: 1.83, rig: 'walrus', pack: 'bobafett' },
   bith: { name: 'bith', tall: 1.8 },
   ahsoka: { name: 'ahsoka', tall: 1.85 },
   hutt: { name: 'jabba', tall: 1.8, still: true },
@@ -25,7 +32,7 @@ export const CREW = {
   // Kamino, Shaak Ti, the Mandalorian; the Wookiees are Chewie's model.
   // (Anakin, Krennic, Cassian, Chirrut and Mace stand still instead,
   // catalog/library.js: their arms-down poses didn't rig)
-  obiwan: { url: '/models/galaxy/crew/obiwan.glb', tall: 1.82 },
+  obiwan: { url: '/models/galaxy/bf2017/crew/obiwan.glb', tall: 1.82, rig: 'walrus', pack: 'obiwan' },
   jango: { url: '/models/galaxy/crew/jango.glb', tall: 1.83 },
   // (not `shaak`: that kind is Naboo's grazing beasts)
   shaakti: { url: '/models/galaxy/crew/shaakti.glb', tall: 1.88 },
@@ -37,7 +44,7 @@ export const CREW = {
   // troops; Coruscant's Senate guards and Jedi; the Neimoidians; Mustafar's
   // miners
   tusken: { url: '/models/galaxy/crew/tusken.glb', tall: 1.9 },
-  lando: { url: '/models/galaxy/crew/lando.glb', tall: 1.78 },
+  lando: { url: '/models/galaxy/bf2017/crew/lando.glb', tall: 1.78, rig: 'walrus', pack: 'lando' },
   twilek: { url: '/models/galaxy/crew/twilek.glb', tall: 1.7 },
   ugnaught: { url: '/models/galaxy/crew/ugnaught.glb', tall: 1.05 },
   rebel: { url: '/models/galaxy/crew/rebel.glb', tall: 1.78 },
@@ -61,11 +68,13 @@ export const CREW = {
     ],
   },
   // and the galaxy's who's who, for the worlds and heroes to come
-  maul: { url: '/models/galaxy/crew/maul.glb', tall: 1.75 },
-  palpatine: { url: '/models/galaxy/crew/palpatine.glb', tall: 1.73 },
+  maul: { url: '/models/galaxy/bf2017/crew/maul.glb', tall: 1.75, rig: 'walrus', pack: 'maul' },
+  palpatine: { url: '/models/galaxy/bf2017/crew/palpatine.glb', tall: 1.73, rig: 'walrus', pack: 'palpatine' },
   rex: { url: '/models/galaxy/crew/rex.glb', tall: 1.83 },
   bokatan: { url: '/models/galaxy/crew/bokatan.glb', tall: 1.7 },
-  vader: { url: '/models/galaxy/crew/vader.glb', tall: 2.02 },
+  vader: { url: '/models/galaxy/bf2017/crew/vader.glb', tall: 2.02, rig: 'walrus', pack: 'vader' },
+  anakin: { url: '/models/galaxy/bf2017/crew/anakin.glb', tall: 1.85, rig: 'walrus', pack: 'anakin' },
+  bossk: { url: '/models/galaxy/bf2017/crew/bossk.glb', tall: 1.9, rig: 'walrus', pack: 'bossk' },
   fennec: { url: '/models/galaxy/crew/fennec.glb', tall: 1.7 },
   caradune: { url: '/models/galaxy/crew/caradune.glb', tall: 1.78 },
   greef: { url: '/models/galaxy/crew/greef.glb', tall: 1.85 },
@@ -87,8 +96,35 @@ export const CREW = {
   hondo: { url: '/models/galaxy/crew/hondo.glb', tall: 1.78 },
   ackbar: { url: '/models/galaxy/crew/ackbar.glb', tall: 1.8 },
   officer: { url: '/models/galaxy/crew/officer.glb', tall: 1.8 },
-  dooku: { url: '/models/galaxy/crew/dooku.glb', tall: 1.93 },
+  dooku: { url: '/models/galaxy/bf2017/crew/dooku.glb', tall: 1.93, rig: 'walrus', pack: 'dooku' },
   quigon: { url: '/models/galaxy/crew/quigon.glb', tall: 1.93 },
+  // the 2017 heroes' other outfits (heroes.js's SKINS): each on the game's
+  // skeleton, moved by its hero's own pack
+  lukehoth: { url: '/models/galaxy/bf2017/crew/lukehoth.glb', tall: 1.72, rig: 'walrus', pack: 'luke' },
+  lukefarmboy: { url: '/models/galaxy/bf2017/crew/lukefarmboy.glb', tall: 1.72, rig: 'walrus', pack: 'luke' },
+  lukeyavin: { url: '/models/galaxy/bf2017/crew/lukeyavin.glb', tall: 1.72, rig: 'walrus', pack: 'luke' },
+  obiwan2: { url: '/models/galaxy/bf2017/crew/obiwan2.glb', tall: 1.82, rig: 'walrus', pack: 'obiwan' },
+  obiwan3: { url: '/models/galaxy/bf2017/crew/obiwan3.glb', tall: 1.82, rig: 'walrus', pack: 'obiwan' },
+  anakin2: { url: '/models/galaxy/bf2017/crew/anakin2.glb', tall: 1.85, rig: 'walrus', pack: 'anakin' },
+  anakin3: { url: '/models/galaxy/bf2017/crew/anakin3.glb', tall: 1.85, rig: 'walrus', pack: 'anakin' },
+  maullegs: { url: '/models/galaxy/bf2017/crew/maullegs.glb', tall: 1.75, rig: 'walrus', pack: 'maul' },
+  dooku2: { url: '/models/galaxy/bf2017/crew/dooku2.glb', tall: 1.93, rig: 'walrus', pack: 'dooku' },
+  dooku3: { url: '/models/galaxy/bf2017/crew/dooku3.glb', tall: 1.93, rig: 'walrus', pack: 'dooku' },
+  hanendor: { url: '/models/galaxy/bf2017/crew/hanendor.glb', tall: 1.85, rig: 'walrus', pack: 'han' },
+  hanhoth: { url: '/models/galaxy/bf2017/crew/hanhoth.glb', tall: 1.85, rig: 'walrus', pack: 'han' },
+  hanrotj: { url: '/models/galaxy/bf2017/crew/hanrotj.glb', tall: 1.85, rig: 'walrus', pack: 'han' },
+  hanyavin: { url: '/models/galaxy/bf2017/crew/hanyavin.glb', tall: 1.85, rig: 'walrus', pack: 'han' },
+  hanyoung: { url: '/models/galaxy/bf2017/crew/hanyoung.glb', tall: 1.85, rig: 'walrus', pack: 'han' },
+  hanyoung2: { url: '/models/galaxy/bf2017/crew/hanyoung2.glb', tall: 1.85, rig: 'walrus', pack: 'han' },
+  leiaboushh: { url: '/models/galaxy/bf2017/crew/leiaboushh.glb', tall: 1.5, rig: 'walrus', pack: 'leia' },
+  leiaendor: { url: '/models/galaxy/bf2017/crew/leiaendor.glb', tall: 1.5, rig: 'walrus', pack: 'leia' },
+  leiagoldvest: { url: '/models/galaxy/bf2017/crew/leiagoldvest.glb', tall: 1.5, rig: 'walrus', pack: 'leia' },
+  leiaprincess: { url: '/models/galaxy/bf2017/crew/leiaprincess.glb', tall: 1.5, rig: 'walrus', pack: 'leia' },
+  landorotj: { url: '/models/galaxy/bf2017/crew/landorotj.glb', tall: 1.78, rig: 'walrus', pack: 'lando' },
+  landoskiff: { url: '/models/galaxy/bf2017/crew/landoskiff.glb', tall: 1.78, rig: 'walrus', pack: 'lando' },
+  landoyoung: { url: '/models/galaxy/bf2017/crew/landoyoung.glb', tall: 1.78, rig: 'walrus', pack: 'lando' },
+  landoyoung2: { url: '/models/galaxy/bf2017/crew/landoyoung2.glb', tall: 1.78, rig: 'walrus', pack: 'lando' },
+  chewiegoggles: { url: '/models/galaxy/bf2017/crew/chewiegoggles.glb', tall: 2.28, rig: 'walrus', pack: 'chewie' },
   // the Battlefront's soldiers (the remaster's models, catalog/battlefront.js),
   // rigged with Meshy onto the same skeleton (scripts/meshy-troopers.mjs), so
   // they walk, aim, fire and fall on clips wherever a world, a quest or a

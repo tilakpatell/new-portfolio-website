@@ -7,8 +7,9 @@
 //
 //   HEROES                   the roster, in order: { id, name, tall, src, weapon ('saber' | a gun kind), bolt, saber?, abilities { power, second } (surface/abilityRules.js's kinds, on G and V), blurb, film, side ('galaxy' | 'elsewhere': the crews from other universes walk here too), lean ('light' | 'dark' | null: the side of the galaxy's wars they'd pick, allegiance.js), lines { ours, theirs } (said as a ground assault starts on their side, or against it) }
 //   SABER_COLORS, HILTS      what a saber can be: { id, name, hex } and { id, name, ... }
+//   SKINS, skinsOf(id)       a 2017 hero's outfits, the one they wear first and then the game's others: { id, name, kind (surface/crewList.js's CREW row) }
 //   HERO_KEY                 the localStorage key
-//   readHero(raw, ship)      the choice, made good: { id, color, hilt, stance, gun, mods, perks } (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's)
+//   readHero(raw, ship)      the choice, made good: { id, skin, color, hilt, stance, gun, mods, perks } (skin null for a hero with no outfits) (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's)
 //   heroSpec(hero, ship)     the party spec for them (universe/footScene.js's PARTY shape), the saber (with its stance) on it where they carry one, else the gun they picked with its mods
 //   partyFor(spec, crew)     the two who walk: the hero, and the ship's crewmate who isn't them (the crew as it is with no hero)
 //   loadoutLine(hero)        the choice in a line: a Jedi's blade, hilt and stance, or the gun and its mods; the perks counted
@@ -19,11 +20,13 @@
 import { STANCES } from './surface/combatRules';
 import { MODS, MAX_MODS, PICKABLE, WEAPONS } from './surface/weaponRules';
 import { readPerks } from './perks';
+import { CREW, fileOf } from './surface/crewList';
 
 export const HERO_KEY = 'tp-galaxy-hero';
 
-// (the crew's own files: Luke and Leia are Sketchfab figures rigged with Meshy onto the crew's skeleton)
+// (the crew's own files; the 2017 game's heroes, on the game's skeleton, `rig: 'walrus'`, theirs)
 const crew = (name) => `/models/galaxy/crew/${name}.glb`;
+const bf2017 = (name) => `/models/galaxy/bf2017/crew/${name}.glb`;
 
 export const SABER_COLORS = [
   { id: 'blue', name: 'Blue', hex: '#4aa8ff' },
@@ -35,29 +38,67 @@ export const SABER_COLORS = [
   { id: 'red', name: 'Red', hex: '#ff3b3b' },
 ];
 
-// a hilt: its length (metres), the emitter's shape, the grip's look
+// a hilt: its length (metres), the emitter's shape, the grip's look, and
+// `model`: the 2017 game's own hilt (catalog/bf2017.js) at `modelLength`,
+// which the saber of a figure on the game's skeleton wears in place of the
+// built one; a Meshy hand holds the built one at `length`, as it always
+// has, and the built one, dressed by the rest, stands in where there's no
+// model or until it comes
 export const HILTS = [
-  { id: 'skywalker', name: 'Skywalker', about: 'Anakin’s, then Luke’s: a plain steel hilt with a black ribbed grip.', length: 0.28, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
-  { id: 'luke', name: 'Luke’s own', about: 'The one he built on Tatooine: slimmer, a black sleeve and a thin emitter.', length: 0.26, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#141518' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
+  { id: 'skywalker', name: 'Skywalker', about: 'Anakin’s, then Luke’s: a plain steel hilt with a black ribbed grip.', model: 'hiltanakin', modelLength: 0.274, length: 0.28, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
+  { id: 'luke', name: 'Luke’s own', about: 'The one he built on Tatooine: slimmer, a black sleeve and a thin emitter.', model: 'hiltluke', modelLength: 0.286, length: 0.26, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#141518' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
   { id: 'ahsoka', name: 'Ahsoka’s', about: 'A curved white hilt, the way she carries two.', length: 0.24, emitter: 'shroud', grip: 'curved', metal: '#e8e6e0', trim: '#5a5c60' , lean: 'light', lines: { ours: 'Stay close and trust each other. That’s how we win.', theirs: 'I’ve fought for the wrong people before. Never again. Except today.' } },
-  { id: 'dooku', name: 'Curved', about: 'A fencer’s hilt, bent for the wrist.', length: 0.27, emitter: 'cup', grip: 'curved', metal: '#8a7a5a', trim: '#2a2420' },
-  { id: 'temple', name: 'Temple guard', about: 'A long hilt in Jedi gold and bronze.', length: 0.3, emitter: 'shroud', grip: 'ribbed', metal: '#c8a860', trim: '#4a3a20' },
+  { id: 'dooku', name: 'Curved', about: 'A fencer’s hilt, bent for the wrist.', model: 'hiltdooku', modelLength: 0.324, length: 0.27, emitter: 'cup', grip: 'curved', metal: '#8a7a5a', trim: '#2a2420' },
+  { id: 'temple', name: 'Temple guard', about: 'A long hilt in Jedi gold and bronze.', model: 'hiltobiwan', modelLength: 0.27, length: 0.3, emitter: 'shroud', grip: 'ribbed', metal: '#c8a860', trim: '#4a3a20' },
+  { id: 'lukehoth', name: 'Luke’s first', about: 'His father’s, the one he carried on Hoth and to Bespin.', model: 'hiltlukehoth', modelLength: 0.284, length: 0.284, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
+  { id: 'vader', name: 'Vader’s', about: 'Black and steel, a ribbed grip and a shrouded emitter.', model: 'hiltvader', modelLength: 0.268, length: 0.268, emitter: 'shroud', grip: 'ribbed', metal: '#9a9ea6', trim: '#141518' },
+  { id: 'maul', name: 'Maul’s staff', about: 'Two hilts joined at the pommel: a blade at each end.', model: 'hiltmaul', modelLength: 0.567, length: 0.567, emitter: 'cup', grip: 'ribbed', metal: '#5a5c60', trim: '#141518' },
+  { id: 'yoda', name: 'Yoda’s', about: 'A short hilt for a small hand.', model: 'hiltyoda', modelLength: 0.158, length: 0.158, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#2a2c30' },
 ];
 
 // (each hero's own two abilities, G then V: what the films give them)
 export const HEROES = [
-  { id: 'luke', name: 'Luke Skywalker', tall: 1.72, src: { url: crew('luke') }, weapon: 'saber', bolt: '#5cff6a', saber: { color: 'green', hilt: 'luke', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'A farm boy from Tatooine, a Jedi by the end.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
-  { id: 'leia', name: 'Leia Organa', tall: 1.5, src: { url: crew('leia') }, weapon: 'blaster', bolt: '#ff3b30', abilities: { power: 'overcharge', second: 'medpack' }, blurb: 'A princess, a senator, a general. Shoots better than the boys.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'Hold your positions. They’ve never beaten us when we stand together.', theirs: 'This isn’t my cause. I’ll fight it anyway, and remember who I am.' } },
-  { id: 'han', name: 'Han Solo', tall: 1.85, src: { url: crew('han') }, weapon: 'blaster', bolt: '#ff4a3d', abilities: { power: 'detonator', second: 'overcharge' }, blurb: 'Captain of the Millennium Falcon. Shot first, with the DL-44.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'All right, let’s show these guys how it’s done.', theirs: 'I’m only here for the money. Remember that when it goes bad.' } },
-  { id: 'chewie', name: 'Chewbacca', tall: 2.28, src: { url: '/models/cockpit/chewie.glb' }, weapon: 'bowcaster', bolt: '#ff4a3d', abilities: { power: 'roar', second: 'overcharge' }, blurb: 'Two hundred years old and still winning arguments.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: '[a battle roar, ready for anything]', theirs: '[an unhappy growl: he doesn’t like whose side this is]' } },
+  { id: 'luke', name: 'Luke Skywalker', tall: 1.72, src: { url: bf2017('luke') }, rig: 'walrus', weapon: 'saber', bolt: '#5cff6a', saber: { color: 'green', hilt: 'luke', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'A farm boy from Tatooine, a Jedi by the end.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
+  { id: 'leia', name: 'Leia Organa', tall: 1.5, src: { url: bf2017('leia') }, rig: 'walrus', weapon: 'blaster', bolt: '#ff3b30', abilities: { power: 'overcharge', second: 'medpack' }, blurb: 'A princess, a senator, a general. Shoots better than the boys.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'Hold your positions. They’ve never beaten us when we stand together.', theirs: 'This isn’t my cause. I’ll fight it anyway, and remember who I am.' } },
+  { id: 'han', name: 'Han Solo', tall: 1.85, src: { url: bf2017('han') }, rig: 'walrus', weapon: 'blaster', bolt: '#ff4a3d', abilities: { power: 'detonator', second: 'overcharge' }, blurb: 'Captain of the Millennium Falcon. Shot first, with the DL-44.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: 'All right, let’s show these guys how it’s done.', theirs: 'I’m only here for the money. Remember that when it goes bad.' } },
+  { id: 'chewie', name: 'Chewbacca', tall: 2.28, src: { url: bf2017('chewie') }, rig: 'walrus', weapon: 'bowcaster', bolt: '#ff4a3d', abilities: { power: 'roar', second: 'overcharge' }, blurb: 'Two hundred years old and still winning arguments.', film: 'The Original Trilogy', side: 'galaxy' , lean: 'light', lines: { ours: '[a battle roar, ready for anything]', theirs: '[an unhappy growl: he doesn’t like whose side this is]' } },
   { id: 'ahsoka', name: 'Ahsoka Tano', tall: 1.85, src: { url: crew('ahsoka') }, weapon: 'saber', bolt: '#f4f8ff', saber: { color: 'white', hilt: 'ahsoka', stance: 'dual' }, abilities: { power: 'push', second: 'pull' }, blurb: 'No longer a Jedi. Still the best of them.', film: 'The Clone Wars, Ahsoka', side: 'galaxy' , lean: 'light', lines: { ours: 'Stay close and trust each other. That’s how we win.', theirs: 'I’ve fought for the wrong people before. Never again. Except today.' } },
-  { id: 'bobafett', name: 'Boba Fett', tall: 1.83, src: { url: crew('bobafett') }, weapon: 'ee3', bolt: '#ff6a3d', abilities: { power: 'jetpack', second: 'rocket' }, blurb: 'The best bounty hunter in the galaxy, and he knows it. Flies.', film: 'The Original Trilogy, The Book of Boba Fett', side: 'galaxy' , lean: 'dark', lines: { ours: 'The contract’s good. Nobody gets through.', theirs: 'Different employer, same result. They’ll pay double.' } },
+  { id: 'bobafett', name: 'Boba Fett', tall: 1.83, src: { url: bf2017('bobafett') }, rig: 'walrus', weapon: 'ee3', bolt: '#ff6a3d', abilities: { power: 'jetpack', second: 'rocket' }, blurb: 'The best bounty hunter in the galaxy, and he knows it. Flies.', film: 'The Original Trilogy, The Book of Boba Fett', side: 'galaxy' , lean: 'dark', lines: { ours: 'The contract’s good. Nobody gets through.', theirs: 'Different employer, same result. They’ll pay double.' } },
+  { id: 'obiwan', name: 'Obi-Wan Kenobi', tall: 1.82, src: { url: bf2017('obiwan') }, rig: 'walrus', weapon: 'saber', bolt: '#4aa8ff', saber: { color: 'blue', hilt: 'temple', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'A Jedi Master of the old Republic: patient, precise, very hard to hit.', film: 'The Prequel Trilogy', side: 'galaxy', lean: 'light', lines: { ours: 'Hold the line, and keep your heads. Patience wins this.', theirs: 'I have a bad feeling about the side I’m on. I’ll see it through.' } },
+  { id: 'anakin', name: 'Anakin Skywalker', tall: 1.85, src: { url: bf2017('anakin') }, rig: 'walrus', weapon: 'saber', bolt: '#4aa8ff', saber: { color: 'blue', hilt: 'skywalker', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'The Chosen One, before the fall: fast, fierce and sure of himself.', film: 'The Prequel Trilogy', side: 'galaxy', lean: 'light', lines: { ours: 'Stay with me. This is where we turn it round.', theirs: 'This isn’t the side I trained for. It might be the one that wins.' } },
+  { id: 'vader', name: 'Darth Vader', tall: 2.02, src: { url: bf2017('vader') }, rig: 'walrus', weapon: 'saber', bolt: '#ff3b3b', saber: { color: 'red', hilt: 'vader', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'The Emperor’s enforcer: slow, relentless, and nothing gets past him.', film: 'The Original Trilogy', side: 'galaxy', lean: 'dark', lines: { ours: 'This position will not fall. I will see to it personally.', theirs: 'You fight for the wrong master today. Do not fail me.' } },
+  { id: 'palpatine', name: 'Emperor Palpatine', tall: 1.73, src: { url: bf2017('palpatine') }, rig: 'walrus', weapon: 'saber', bolt: '#ff3b3b', saber: { color: 'red', hilt: 'dooku', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'The Emperor himself, who rarely needs a blade for anything.', film: 'The Original Trilogy', side: 'galaxy', lean: 'dark', lines: { ours: 'Everything is proceeding as I have foreseen.', theirs: 'An unusual alliance. It amuses me, for now.' } },
+  { id: 'maul', name: 'Darth Maul', tall: 1.75, src: { url: bf2017('maul') }, rig: 'walrus', weapon: 'saber', bolt: '#ff3b3b', saber: { color: 'red', hilt: 'maul', stance: 'double' }, abilities: { power: 'push', second: 'pull' }, blurb: 'A Sith apprentice with a blade at each end of his staff.', film: 'The Phantom Menace', side: 'galaxy', lean: 'dark', lines: { ours: 'At last we will have our revenge on whoever comes through here.', theirs: 'I fight for no one’s cause. Only for the fight.' } },
+  { id: 'dooku', name: 'Count Dooku', tall: 1.93, src: { url: bf2017('dooku') }, rig: 'walrus', weapon: 'saber', bolt: '#ff3b3b', saber: { color: 'red', hilt: 'dooku', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'A duellist of the old school, curved hilt and all.', film: 'Attack of the Clones', side: 'galaxy', lean: 'dark', lines: { ours: 'Hold your ground with some dignity, if you please.', theirs: 'A temporary arrangement. I expect it to be profitable.' } },
+  { id: 'lando', name: 'Lando Calrissian', tall: 1.78, src: { url: bf2017('lando') }, rig: 'walrus', weapon: 'blaster', bolt: '#ff4a3d', abilities: { power: 'detonator', second: 'overcharge' }, blurb: 'Baron Administrator of Cloud City, gambler, general. Charming throughout.', film: 'The Original Trilogy', side: 'galaxy', lean: 'light', lines: { ours: 'Here goes nothing. Let’s make this look easy.', theirs: 'This deal’s getting worse all the time. I’m still in it.' } },
+  { id: 'bossk', name: 'Bossk', tall: 1.9, src: { url: bf2017('bossk') }, rig: 'walrus', weapon: 'rifle', bolt: '#ff6a3d', abilities: { power: 'detonator', second: 'medpack' }, blurb: 'A Trandoshan bounty hunter who heals as he hunts.', film: 'The Empire Strikes Back', side: 'galaxy', lean: 'dark', lines: { ours: '[a hiss: this ground is his, and no one takes it]', theirs: '[a low growl: the pay had better be worth it]' } },
   // (the crews from elsewhere, as the universe's foot party has them: universe/footScene.js's PARTY)
   { id: 'rick', name: 'Rick Sanchez', tall: 1.88, src: { meshy: 'rick' }, weapon: 'portal', bolt: '#8dff5a', abilities: { power: 'hop', second: 'overcharge' }, blurb: 'The smartest man in the multiverse, with a portal gun and no patience.', film: 'Rick and Morty', side: 'elsewhere' , lean: null, lines: { ours: 'Sure, whatever, I’ll defend the thing. Wubba lubba dub dub.', theirs: 'Switching sides mid-war is a Tuesday for me, Morty.' } },
   { id: 'morty', name: 'Morty Smith', tall: 1.6, src: { meshy: 'morty' }, weapon: 'laser', bolt: '#8dff5a', abilities: { power: 'sprint', second: 'medpack' }, blurb: 'Fourteen, nervous, and still here after everything.', film: 'Rick and Morty', side: 'elsewhere' , lean: 'light', lines: { ours: 'Okay, okay, we’re the good guys this time, right? Right?', theirs: 'Oh geez, are we the bad guys? I think we’re the bad guys.' } },
   { id: 'walt', name: 'Walter White', tall: 1.79, src: { url: '/models/albuquerque/walt.glb' }, weapon: 'revolver', bolt: '#ffd36b', abilities: { power: 'fulminate', second: 'overcharge' }, blurb: 'A chemistry teacher. The one who knocks.', film: 'Breaking Bad', side: 'elsewhere' , lean: 'dark', lines: { ours: 'This is our territory now. We hold it, with discipline.', theirs: 'Loyalty is for amateurs. I chose the better organisation.' } },
   { id: 'jesse', name: 'Jesse Pinkman', tall: 1.73, src: { url: '/models/albuquerque/jesse.glb' }, weapon: 'pistol', bolt: '#ffd36b', abilities: { power: 'sprint', second: 'overcharge' }, blurb: 'Yeah, science. Quick on his feet, quicker to run.', film: 'Breaking Bad', side: 'elsewhere' , lean: null, lines: { ours: 'Yo, let’s hold this place! Science, yeah!', theirs: 'Yo, I don’t even know whose side we’re on anymore.' } },
 ];
+
+// A 2017 hero's outfits: their kit's visual unlocks in the game (Kit_Hero_*'s
+// VUR_* assets), the sequel trilogy's left out (Chewbacca's and Palpatine's
+// EP7 and EP9 looks), each its own file on the same skeleton, moved by the
+// hero's own clip pack (their CREW rows: scripts/bf2017-import.mjs --crew,
+// lab/probe/skins.tsv says how each was made). The first is the one they
+// wear unless another's picked.
+const outfit = (kind, name) => ({ id: kind, name, kind });
+export const SKINS = {
+  luke: [outfit('luke', 'Return of the Jedi'), outfit('lukehoth', 'Hoth'), outfit('lukefarmboy', 'Tatooine'), outfit('lukeyavin', 'Yavin')],
+  obiwan: [outfit('obiwan', 'Revenge of the Sith'), outfit('obiwan2', 'Jedi robe'), outfit('obiwan3', 'Clone Wars')],
+  anakin: [outfit('anakin', 'Revenge of the Sith'), outfit('anakin2', 'Jedi robe'), outfit('anakin3', 'Clone Wars')],
+  maul: [outfit('maul', 'The Phantom Menace'), outfit('maullegs', 'Cybernetic legs')],
+  dooku: [outfit('dooku', 'Attack of the Clones'), outfit('dooku2', 'Geonosis'), outfit('dooku3', 'Jedi Master')],
+  han: [outfit('han', 'Bespin'), outfit('hanendor', 'Endor'), outfit('hanhoth', 'Hoth'), outfit('hanrotj', 'Return of the Jedi'), outfit('hanyavin', 'Yavin'), outfit('hanyoung', 'Young, Corellia'), outfit('hanyoung2', 'Young, Kessel')],
+  leia: [outfit('leia', 'Hoth'), outfit('leiaboushh', 'Boushh'), outfit('leiaendor', 'Endor'), outfit('leiagoldvest', 'Gold vest'), outfit('leiaprincess', 'Princess')],
+  lando: [outfit('lando', 'Bespin'), outfit('landorotj', 'Return of the Jedi'), outfit('landoskiff', 'Skiff guard'), outfit('landoyoung', 'Young'), outfit('landoyoung2', 'Young, Kessel')],
+  chewie: [outfit('chewie', 'Bandolier'), outfit('chewiegoggles', 'Goggles')],
+};
+// (only the outfits whose files are in: a row the import hasn't made yet isn't offered)
+export const skinsOf = (id) => (SKINS[id] ?? []).filter((l) => CREW[l.kind]);
 
 const BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
 export const heroById = (id) => BY_ID[id] ?? null;
@@ -88,9 +129,11 @@ export function readHero(raw, ship = 'xwing') {
   // (a gun hero carries their own, or one of the pickable ones; a Jedi's gun is their saber)
   const gun = hero.weapon !== 'saber' && (v?.gun === hero.weapon || PICKABLE.includes(v?.gun)) && WEAPONS[v.gun] ? v.gun : hero.weapon;
   const mods = Array.isArray(v?.mods) ? [...new Set(v.mods.filter((m) => MODS[m]))].slice(0, MAX_MODS) : [];
-  return { id: hero.id, color, hilt, stance, gun, mods, perks: readPerks(v?.perks) };
+  const looks = skinsOf(hero.id);
+  const skin = looks.some((l) => l.id === v?.skin) ? v.skin : (looks[0]?.id ?? null);
+  return { id: hero.id, skin, color, hilt, stance, gun, mods, perks: readPerks(v?.perks) };
 }
-export const writeHero = (hero) => JSON.stringify({ id: hero.id, color: hero.color, hilt: hero.hilt, stance: hero.stance, gun: hero.gun, mods: hero.mods ?? [], perks: hero.perks ?? [] });
+export const writeHero = (hero) => JSON.stringify({ id: hero.id, skin: hero.skin ?? null, color: hero.color, hilt: hero.hilt, stance: hero.stance, gun: hero.gun, mods: hero.mods ?? [], perks: hero.perks ?? [] });
 
 // the spec the scene walks: a saber hero carries no gun (the saber's its
 // own thing, surface/saber.js), the others their gun
@@ -100,7 +143,10 @@ export function heroSpec(hero) {
   const gun = saber ? 'saber' : WEAPONS[hero.gun] && hero.gun !== 'saber' ? hero.gun : h.weapon;
   // (a gun from elsewhere fires yellow; the galaxy's keep the hero's own colour)
   const bolt = saber ? saber.color : WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
-  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
+  // (another outfit is another file, on the same skeleton with the same clips)
+  const look = skinsOf(h.id).find((l) => l.id === hero.skin && l.kind !== h.id);
+  const src = look ? { url: fileOf(CREW[look.kind]) } : h.src;
+  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src, ...(h.rig ? { rig: h.rig, pack: h.pack ?? h.id } : {}), gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
 }
 
 // the two who walk down here: the hero in the lead, and the ship's
@@ -125,5 +171,6 @@ export function loadoutLine(hero) {
       ? [`${SABER_COLORS.find((c) => c.id === hero.color)?.name ?? 'Blue'} blade`, `${HILTS.find((x) => x.id === hero.hilt)?.name ?? HILTS[0].name} hilt`, STANCES[hero.stance]?.name ?? STANCES.single.name]
       : [[WEAPONS[hero.gun]?.name ?? WEAPONS[h.weapon]?.name, (hero.mods ?? []).filter((m) => MODS[m]).map((m) => MODS[m].name).join(', ')].filter(Boolean).join(' · ')];
   const n = (hero.perks ?? []).length;
-  return [...parts, ...(n ? [`${n} perk${n === 1 ? '' : 's'}`] : [])].join(' · ');
+  const look = skinsOf(h.id).find((l) => l.id === hero.skin && l.kind !== h.id);
+  return [...(look ? [look.name] : []), ...parts, ...(n ? [`${n} perk${n === 1 ? '' : 's'}`] : [])].join(' · ');
 }

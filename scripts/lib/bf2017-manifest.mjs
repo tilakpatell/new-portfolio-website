@@ -48,16 +48,25 @@ const globRe = (glob) => new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g, '\\$&'
 // (Frostbite's variants a composite never wants: unused, menu, wrecked and cutscene copies)
 const NEVER = /donotuse|frontend|wreck|cutscene/i;
 
-// A composite's parts: the models in its folder whose last segment matches a glob.
+// A composite's parts: the models in its folder whose last segment matches a
+// glob, and any named in full (an item with a `/`: a hero's head and hair
+// are under characters/heads/, not the body's folder), whatever its folder.
 export function partsOf(manifest, name, globs) {
   const folder = folderOf(name);
-  const res = globs.map(globRe);
+  const full = globs.filter((g) => g.includes('/'));
+  const res = globs.filter((g) => !g.includes('/')).map(globRe);
   const out = [];
   for (const [other, entry] of manifest) {
     if (other === name || folderOf(other) !== folder) continue;
     const last = other.slice(folder.length);
     if (NEVER.test(last) || !res.some((re) => re.test(last))) continue;
     out.push(entry);
+  }
+  for (const n of full) {
+    const entry = manifest.get(n);
+    // (a full name is asked for by name: one the manifest hasn't is a typo, and a hero would come out headless)
+    if (!entry) throw new Error(`part ${n}: not in the manifest (try the fetch's --list)`);
+    if (n !== name && !out.includes(entry)) out.push(entry);
   }
   return out;
 }
