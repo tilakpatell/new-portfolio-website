@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { CREW, fileOf } from './crew';
 import { faceOf, filesOf } from './crewList';
 import { SURFACE_MODELS } from './catalog';
+import PUBLISHED from '../../../data/galaxyAssets.json';
 
 const at = (path) => new URL(`../../../../public${path}`, import.meta.url);
 
 describe('the surfaces’ crew', () => {
   it('has a model in the site for each of them', () => {
-    for (const [kind, c] of Object.entries(CREW)) for (const file of filesOf(c)) expect(existsSync(at(file)), `${kind}: ${file}`).toBe(true);
+    for (const [kind, c] of Object.entries(CREW)) for (const file of filesOf(c)) expect(existsSync(at(file)) || Boolean(PUBLISHED[file.slice(1)]), `${kind}: ${file}, here or published`).toBe(true);
   });
 
   it('gives a kind with other faces each of them in turn', () => {

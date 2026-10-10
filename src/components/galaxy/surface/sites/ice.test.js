@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import PUBLISHED from '../../../../data/galaxyAssets.json';
 import { describe, expect, it } from 'vitest';
 import { siteOf } from '.';
 import { CREW, filesOf } from '../crewList';
@@ -9,7 +10,8 @@ import { ASSAULTS } from '../missions/assaults';
 import { STAND_INS } from '../cast';
 import { dressOf } from '../ground/troops';
 
-const onDisk = (url) => existsSync(new URL(`../../../../../public${url}`, import.meta.url));
+// (on disk, or published to the bucket and named by the manifest: a full cut lives there, not in git)
+const onDisk = (url) => existsSync(new URL(`../../../../../public${url}`, import.meta.url)) || Boolean(PUBLISHED[url.replace(/^\/+/, '')]);
 const filesFor = (kind) => (CREW[kind] ? filesOf(CREW[kind]) : SURFACE_MODELS[kind] ? [modelUrlFor(kind, 'high')] : []);
 const hoth = siteOf('hoth');
 

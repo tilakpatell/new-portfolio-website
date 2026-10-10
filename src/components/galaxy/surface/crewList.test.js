@@ -1,9 +1,11 @@
 import { existsSync } from 'node:fs';
+import PUBLISHED from '../../../data/galaxyAssets.json';
 import { describe, expect, it } from 'vitest';
 import { CREW, filesOf } from './crewList';
 import { SURFACE_MODELS, modelUrlFor } from './catalog';
 
-const onDisk = (url) => existsSync(new URL(`../../../../public${url}`, import.meta.url));
+// (on disk, or published to the bucket and named by the manifest: a full cut lives there, not in git)
+const onDisk = (url) => existsSync(new URL(`../../../../public${url}`, import.meta.url)) || Boolean(PUBLISHED[url.replace(/^\/+/, '')]);
 
 describe('the kinds the worlds built in code, as models', () => {
   it('the astromechs are R2’s model, gliding', () => {
