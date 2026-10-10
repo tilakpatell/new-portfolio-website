@@ -10,6 +10,8 @@
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs manifest
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs <name> [--lod all|<n>[,<n>…]] [--parts '<glob>,…'] [--no-textures] [--collision]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --list '<glob over name>'
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs --raw <path under web/>
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs --all '<folder under web/>/*'
 //
 //   manifest     web/models.jsonl (about 25 MB), which every other command reads
 //   name         a model's `name` in the manifest (characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh)
@@ -18,6 +20,8 @@
 //   no-textures  the GLBs only
 //   collision    its collision GLB as well
 //   list         the names under a glob, with their LOD triangles
+//   raw          one object by its path (maps/README.md, terrain.jsonl), not a model
+//   all          every object in one folder whose name matches the glob's last part
 //
 // The keys: SUPABASE_URL and BF2017_KEY (or SUPA_KEY, the same key under the
 // name the cloud sessions hold it by) from the environment, never printed.
@@ -39,7 +43,7 @@ const WAITS = [1000, 2000, 4000];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function keys() {
+export function keys() {
   const base = process.env.SUPABASE_URL;
   const key = process.env.BF2017_KEY || process.env.SUPA_KEY;
   if (!base || !key) {
@@ -66,7 +70,7 @@ async function ask(url, init) {
 
 // One object to disk: `kept` when the file there is the size the bucket says,
 // `missing` when the bucket hasn't it.
-async function getObject(env, root, bucketPath) {
+export async function getObject(env, root, bucketPath) {
   const url = objectUrl(env.base, BUCKET, bucketPath);
   const file = localPath(root, bucketPath);
   if (existsSync(file)) {
@@ -82,6 +86,25 @@ async function getObject(env, root, bucketPath) {
   await writeFile(file, body);
   return { file, bytes: body.length, state: 'fetched' };
 }
+
+// The objects in one folder of the bucket (Storage's list call, a page at a time)
+export async function listFolder(env, prefix) {
+  const out = [];
+  for (let offset = 0; ; offset += 1000) {
+    const res = await ask(`${env.base.replace(/\/+$/, '')}/storage/v1/object/list/${BUCKET}`, {
+      method: 'POST',
+      headers: { ...env.headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix, limit: 1000, offset, sortBy: { column: 'name', order: 'asc' } }),
+    });
+    if (!res.ok) throw new Error(`list ${prefix}: ${res.status}`);
+    const page = await res.json();
+    out.push(...page.filter((o) => o.id).map((o) => o.name));
+    if (page.length < 1000) return out;
+  }
+}
+
+// One object by its path under web/, as it is
+export const fetchRaw = (env, root, path) => getObject(env, root, inBucket(path));
 
 const say = (r) => console.log(`${relative(ROOT, r.file).padEnd(110)} ${String(r.bytes).padStart(10)}  ${r.state}`);
 
@@ -143,6 +166,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const manifest = await loadManifest(root);
     const re = new RegExp(`^${String(args.list).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
     for (const [name, e] of manifest) if (re.test(name)) console.log(`${name}  ${e.lods.map((l) => l.triangles).join(' · ')}`);
+  } else if (typeof args.raw === 'string') {
+    const r = await fetchRaw(keys(), root, args.raw);
+    say(r);
+    if (r.state === 'missing') process.exit(3);
+  } else if (typeof args.all === 'string') {
+    const env = keys();
+    const path = inBucket(args.all);
+    const folder = path.slice(0, path.lastIndexOf('/') + 1);
+    const re = new RegExp(`^${path.slice(folder.length).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+    const names = (await listFolder(env, folder)).filter((n) => re.test(n));
+    if (!names.length) console.log(`${folder}: nothing there yet`);
+    for (const n of names) say(await getObject(env, root, folder + n));
   } else if (what === 'manifest') {
     say(await getObject(keys(), root, MANIFEST));
   } else if (what) {
@@ -154,7 +189,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(1);
     });
   } else {
-    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] | --list '<glob>'");
+    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] | --list '<glob>' | --raw <path> | --all '<folder>/*'");
     process.exit(1);
   }
 }

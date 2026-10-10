@@ -1,0 +1,59 @@
+{
+  "name": "Levels/MP/Fixture_01/Fixture_01",
+  "instances": 4,
+  "stride": 32,
+  "meshes": [
+    "models/props/rock_01_mesh",
+    "models/levels/fixture/hangar_01_mesh",
+    "models/props/crate_01_mesh"
+  ],
+  "subworlds": [
+    "Levels/MP/Fixture_01/Fixture_01",
+    "Levels/MP/Fixture_01/Lobby",
+    "Levels/MP/Fixture_01/Content"
+  ],
+  "groups": [
+    {
+      "mesh": 0,
+      "subworld": 0,
+      "first": 0,
+      "count": 1
+    },
+    {
+      "mesh": 1,
+      "subworld": 0,
+      "first": 1,
+      "count": 1
+    },
+    {
+      "mesh": 2,
+      "subworld": 2,
+      "first": 2,
+      "count": 1
+    },
+    {
+      "mesh": 0,
+      "subworld": 1,
+      "first": 3,
+      "count": 1
+    }
+  ],
+  "terrain": "Levels/MP/Fixture_01/Fixture_01_Terrain/Fixture_01_Terrain",
+  "sky": [
+    "VE_Fixture_Sunny_01"
+  ],
+  "vehicleSpawns": [
+    {
+      "name": "Tauntaun",
+      "position": [
+        105,
+        5,
+        205
+      ]
+    }
+  ],
+  "notExported": {
+    "lights": 2,
+    "effects": 1
+  }
+}
