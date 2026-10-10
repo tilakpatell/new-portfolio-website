@@ -29,7 +29,10 @@
 //   node scripts/bf2017-clips.mjs <pack> [--fps 24] [--only <site name>,…]
 //     [--out public/models/galaxy/bf2017] [--root lab/assets/bf2017] [--skeleton public/models/galaxy/bf2017/walrus.glb]
 //
-//   pack      a key of walrusClips.js's PACKS (humanoid, luke, vader, obiwan…)
+//   pack      a key of walrusClips.js's PACKS (humanoid, luke, vader, obiwan…,
+//             or an own rig's: b1, b2, droideka, ewok, astromech, probe,
+//             tauntaun, whose clips come from that rig's skeleton alone and
+//             whose skeleton is read from its imported body's light cut)
 //   only      just these site names (a test's, or a re-pack of a few)
 //   root      where the fetch keeps the bucket (a clip not there is fetched,
 //             with SUPABASE_URL and BF2017_KEY or SUPA_KEY in the environment)
@@ -47,7 +50,7 @@ import { mkdir, readFile, stat } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
-import { PACKS, candidates } from '../src/lib/three/walrusClips.js';
+import { OWN_RIGS, PACKS, candidates } from '../src/lib/three/walrusClips.js';
 import { SOCKETS } from '../src/lib/three/walrusRig.js';
 import { parseArgs } from './lib/args.mjs';
 import { animEntry, animPath } from './lib/bf2017-anims.mjs';
@@ -64,6 +67,13 @@ const TRAJ = 'AITrajectory';
 // Luke's block swings, which the humanoid's set hasn't), never the first
 // person's or another rig's
 const SKELETONS = /\/(Walrus_HumanMale|Walrus_NIS_S0800_Skeleton)$/;
+// the skeleton a pack's clips must be on: an own rig's (walrusClips.js's
+// OWN_RIGS: the B1's D_Assault_Preq_01_Ske…) for its pack, else the humanoid's
+export const skeletonsFor = (pack) => (OWN_RIGS[pack] ? new RegExp(`/${OWN_RIGS[pack].skeleton}$`) : SKELETONS);
+// the file a pack reads its skeleton from: the humanoid's own, or an own
+// rig's body as imported (its light cut, which is committed; its meshes are
+// taken off before the pack is written)
+export const skeletonFileFor = (pack, root) => (OWN_RIGS[pack] ? join(root, 'public', 'models', 'galaxy', 'bf2017', 'crew', `${OWN_RIGS[pack].body}.lod1.glb`) : join(root, 'public', 'models', 'galaxy', 'bf2017', 'walrus.glb'));
 const BLADE = 1; // metres out of the socket the stroke's tip is timed at (ual-bake's: a blade's length)
 
 async function io() {
@@ -158,6 +168,8 @@ function measure(skel, channels, duration, fps) {
 // the hips' height over the toes at rest (game metres)
 function restHips(skel) {
   const { scene, objs } = skel;
+  // (a rig with no toes by those names, a droid's or a beast's: none)
+  if (!objs.get('Hips') || !objs.get('LeftToeBase') || !objs.get('RightToeBase')) return null;
   scene.updateMatrixWorld(true);
   const y = (n) => objs.get(n).getWorldPosition(new THREE.Vector3()).y;
   return +(y('Hips') - Math.min(y('LeftToeBase'), y('RightToeBase'))).toFixed(4);
@@ -210,6 +222,10 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
   const rw = await io();
   const anims = readManifest(await readFile(join(root, 'web', 'anims.jsonl'), 'utf8'));
   const doc = await rw.read(skeleton);
+  // (an own rig's skeleton comes in its body: the meshes go, the bones stay)
+  for (const n of doc.getRoot().listNodes()) n.setMesh(null).setSkin(null);
+  for (const x of [...doc.getRoot().listMeshes(), ...doc.getRoot().listSkins(), ...doc.getRoot().listMaterials(), ...doc.getRoot().listTextures()]) x.dispose();
+  const allowed = skeletonsFor(pack);
   const skel = skeletonScene(doc);
   const rootHips = restHips(skel);
   const nodes = new Map(doc.getRoot().listNodes().map((n) => [n.getName(), n]));
@@ -227,7 +243,7 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
     let game = null;
     for (const g of candidates(map, site)) {
       const e = animEntry(anims, g);
-      if (!e || e.additive || isSequel(g) || !SKELETONS.test(e.skeleton ?? '')) continue;
+      if (!e || e.additive || isSequel(g) || !allowed.test(e.skeleton ?? '')) continue;
       const f = join(root, animPath(e));
       if (!existsSync(f) && fetchClip) await fetchClip(e.name);
       if (existsSync(f)) {
@@ -283,7 +299,7 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
       const travel = rootTravel(rows.filter((_, i) => i % step === 0 || i === rows.length - 1));
       if (travel.some(([, x, z]) => Math.hypot(x, z) > 0.01)) {
         extras.root = travel;
-        extras.rootHips = rootHips;
+        if (rootHips != null) extras.rootHips = rootHips;
       }
     }
     if (site.startsWith('sword.') && !site.endsWith('.rec')) extras.contact = contactWindow(measure(skel, kept, end, fps));
@@ -322,7 +338,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     only: typeof args.only === 'string' ? args.only.split(',') : null,
     out: resolve(args.out ?? join(ROOT, 'public', 'models', 'galaxy', 'bf2017')),
     root,
-    skeleton: resolve(args.skeleton ?? join(ROOT, 'public', 'models', 'galaxy', 'bf2017', 'walrus.glb')),
+    skeleton: resolve(args.skeleton ?? skeletonFileFor(pack, ROOT)),
     fetchClip,
   }).catch((e) => {
     console.error(e.message);

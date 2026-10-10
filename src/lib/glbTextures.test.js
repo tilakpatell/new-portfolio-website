@@ -24,11 +24,22 @@ const webp = (kind) => {
   } else b.writeUInt32LE((299 & 0x3fff) | ((199 & 0x3fff) << 14), 21);
   return b;
 };
+// an AVIF: its ftyp box, then the image's spatial extents ('ispe') in its meta
+const avif = () => {
+  const b = Buffer.alloc(64);
+  b.writeUInt32BE(20, 0);
+  b.write('ftypavif', 4, 'ascii');
+  b.writeUInt32BE(20, 36);
+  b.write('ispe', 40, 'ascii');
+  b.writeUInt32BE(300, 48);
+  b.writeUInt32BE(200, 52);
+  return b;
+};
 const jpeg = () => Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xc0, 0, 11, 8, 0, 200, 1, 44, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 describe('an image’s size from its header', () => {
-  it('reads PNG, the three WebPs and JPEG', () => {
-    for (const b of [png(), webp('VP8X'), webp('VP8 '), webp('VP8L'), jpeg()]) expect(imageSize(b)).toEqual({ width: 300, height: 200 });
+  it('reads PNG, the three WebPs, AVIF and JPEG', () => {
+    for (const b of [png(), webp('VP8X'), webp('VP8 '), webp('VP8L'), avif(), jpeg()]) expect(imageSize(b)).toEqual({ width: 300, height: 200 });
     expect(imageSize(Buffer.alloc(40))).toBeNull();
   });
 });

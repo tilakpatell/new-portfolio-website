@@ -27,11 +27,33 @@
 // clipsFor(clips, has) → the clips with only the tracks for bones it has
 // pickBase(motion, move, set) → the site name its legs should be playing
 // paceOf(speed, clip) → the clip's rate for that speed (1 without a travel)
+//
+// Beside that whole figure (lane V's walkers, walkers.js), a body alone for
+// the crew's droids and beasts (phase 2: the B2, the Ewok, the astromechs,
+// the probe, the tauntaun; crewList.js's `rig: 'own'` rows), which
+// footScene's figure animator moves as it does a person, on the game's
+// clips for that rig (walrusClips.js's OWN_RIGS, their packs by
+// scripts/bf2017-clips.mjs <rig> under the site's names):
+//
+// ownPackUrl(rig) → '/models/galaxy/bf2017/clips-<rig>.glb'
+// loadOwnRigBody(url, { rig, packs?, bones?, loader? })
+//   → Promise<{ model, clips: { name: AnimationClip }, bones: { hips, head,
+//      … rig.js's roles }, rig }>: a copy of the file's scene, its pack's
+//   clips filtered to it (walrus.js's clipsFor), its bones by rig.js's
+//   findBones with the row's `bones` ({ role: boneName }) over its guesses.
+//   Refuses, naming them, a body without a bone the row names, a statue,
+//   and a rig with no pack. A rig is either a walker's (rigSets.js's RIGS,
+//   the figure above) or a crew kind's (OWN_RIGS), never both: the droideka
+//   is the walkers'.
 
 import * as THREE from 'three';
 import { NO_CALLS } from './figureCalls';
 import { loadGltf } from './gltf';
 import { RIGS, RIG_SET, clipFor, deathFor } from './rigSets';
+import { cloneScene, loadGLTF } from './gltfCache';
+import { findBones } from './rig';
+import { PACK_DIR, clipsFor as walrusClipsFor, loadWalrusPacks } from './walrus';
+import { OWN_RIGS } from './walrusClips';
 
 const boneOf = (track) => track.name.slice(0, track.name.lastIndexOf('.'));
 
@@ -222,4 +244,27 @@ export async function loadOwnRigFigure(url, { rig, tall = null, packs = [], bone
       mixer.uncacheRoot(scene);
     },
   };
+}
+
+// ── a crew kind's body on its own rig (phase 2) ──
+
+export const ownPackUrl = (rig) => `${PACK_DIR}/clips-${rig}.glb`;
+
+export async function loadOwnRigBody(url, { rig, packs: given, bones: named = {}, loader } = {}) {
+  // (a rig may hand its packs in; one of OWN_RIGS has its own)
+  const packs = given ?? (OWN_RIGS[rig] ? [ownPackUrl(rig)] : []);
+  if (!packs.length) throw new Error(`${url}: no pack for the rig ${rig} (walrusClips.js's OWN_RIGS)`);
+  const [gltf, clips] = await Promise.all([loadGLTF(url, { loader }), loadWalrusPacks(packs, { loader })]);
+  if (!gltf) throw new Error(`${url}: no model`);
+  const model = cloneScene(gltf);
+  const names = new Set();
+  let boneCount = 0;
+  model.traverse((o) => {
+    if (o.name) names.add(o.name);
+    if (o.isBone) boneCount++;
+  });
+  const lacks = Object.values(named).filter((n) => !names.has(n));
+  if (lacks.length) throw new Error(`${url} lacks the bones its row names: ${lacks.join(', ')}`);
+  if (!boneCount) throw new Error(`${url} has no skeleton: a statue is the catalogue's, not this loader's`);
+  return { model, clips: walrusClipsFor(model, clips), bones: findBones(model, named).bones, rig };
 }

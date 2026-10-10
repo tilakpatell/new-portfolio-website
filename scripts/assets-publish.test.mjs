@@ -74,3 +74,14 @@ describe('the publish', () => {
     await expect(ensureBucket(URL_, {}, 'site-assets', priv)).rejects.toThrow(/not public/);
   });
 });
+
+describe('--only', () => {
+  it('takes any of its comma-separated globs, a star crossing folders', async () => {
+    const { onlyMatch } = await import('./assets-publish.mjs');
+    const m = onlyMatch('models/galaxy/bf2017/crew/clone.glb,models/galaxy/bf2017/crew/rebel.glb');
+    expect(m('models/galaxy/bf2017/crew/clone.glb')).toBe(true);
+    expect(m('models/galaxy/bf2017/crew/rebel.glb')).toBe(true);
+    expect(m('models/galaxy/bf2017/crew/clone.lod1.glb')).toBe(false);
+    expect(onlyMatch('models/*.ultra.glb')('models/galaxy/bf2017/crew/luke.ultra.glb')).toBe(true);
+  });
+});

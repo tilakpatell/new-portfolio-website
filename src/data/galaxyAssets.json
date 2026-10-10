@@ -179,6 +179,12 @@
     "from": "characters/hero/anakin/anakin_03/anakin_03_mesh",
     "tier": "ultra"
   },
+  "models/galaxy/bf2017/crew/astromech.glb": {
+    "hash": "4aa88f301a1e",
+    "bytes": 18618772,
+    "from": "characters/npc/droids/astromech/r2d2/r2d2_01_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/bobafett.glb": {
     "hash": "2adf71ae871f",
     "bytes": 7583400,
@@ -215,6 +221,12 @@
     "from": "characters/hero/bossk/bossk_01/bossk_01_mesh",
     "tier": "ultra"
   },
+  "models/galaxy/bf2017/crew/c3po.glb": {
+    "hash": "8f97abfe165f",
+    "bytes": 25959524,
+    "from": "characters/rebel/c3p0/c3p0_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/chewie.glb": {
     "hash": "df6356e3bd13",
     "bytes": 11476756,
@@ -250,6 +262,36 @@
     "bytes": 35055780,
     "from": "characters/hero/chewbacca/chewbacca_goggles_01/chewbacca_goggles_01_mesh",
     "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/civcity1.glb": {
+    "hash": "89efea4f2b3e",
+    "bytes": 43807320,
+    "from": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_top_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/civcity3.glb": {
+    "hash": "a6d8897ee5fc",
+    "bytes": 46410168,
+    "from": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/clone.glb": {
+    "hash": "cd3dfdf59468",
+    "bytes": 20600424,
+    "from": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/clonephase1.glb": {
+    "hash": "1e8e5bed8168",
+    "bytes": 23423056,
+    "from": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/deathtrooper.glb": {
+    "hash": "2fd37261c116",
+    "bytes": 13414680,
+    "from": "characters/hero/deathtrooper/deathtrooper_01/deathtrooper_01_mesh",
+    "tier": "crew"
   },
   "models/galaxy/bf2017/crew/dooku.glb": {
     "hash": "5d754a8fbe39",
@@ -304,6 +346,18 @@
     "bytes": 41154864,
     "from": "characters/hero/countdooku/countdooku_03/countdooku_03_mesh",
     "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/droid.glb": {
+    "hash": "327a02f1f814",
+    "bytes": 1650052,
+    "from": "characters/npc/droids/astromech/r4i9/r4i9_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/ewok.glb": {
+    "hash": "2c643e6ee6ed",
+    "bytes": 8661632,
+    "from": "characters/hero/ewok/ewok_01/ewok_01_mesh",
+    "tier": "crew"
   },
   "models/galaxy/bf2017/crew/han.glb": {
     "hash": "fece1b4ab7a0",
@@ -430,6 +484,12 @@
     "bytes": 26508884,
     "from": "characters/hero/hansolo/hansolo_young_02/hansolo_young_02_mesh",
     "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/hothtrooper.glb": {
+    "hash": "eb6fc724ad49",
+    "bytes": 28270872,
+    "from": "characters/bodyparts/torso_02/torso_02_mesh",
+    "tier": "crew"
   },
   "models/galaxy/bf2017/crew/lando.glb": {
     "hash": "5aae2ffed10e",
@@ -773,6 +833,12 @@
     "from": "characters/hero/obiwan/obiwan_03/obiwan_03_body_mesh",
     "tier": "ultra"
   },
+  "models/galaxy/bf2017/crew/officer.glb": {
+    "hash": "7a2fd991dbf1",
+    "bytes": 27503916,
+    "from": "characters/hero/imperialofficer/imperialofficer_01_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/palpatine.glb": {
     "hash": "2def77cb1be1",
     "bytes": 10110672,
@@ -791,6 +857,78 @@
     "from": "characters/hero/palpatine/palpatine_01/palpatine_01_mesh",
     "tier": "ultra"
   },
+  "models/galaxy/bf2017/crew/probe.glb": {
+    "hash": "962627e76100",
+    "bytes": 3574028,
+    "from": "characters/npc/droids/viper_01/viper_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/r5.glb": {
+    "hash": "61be56f1d0ae",
+    "bytes": 1706092,
+    "from": "characters/npc/droids/astromech/r5d4/r5d4_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/rebel.glb": {
+    "hash": "06322a12683a",
+    "bytes": 16078840,
+    "from": "characters/light/l_assault_orig/l_assault_orig_ds_01/l_assault_orig_ds_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/rebelpilot.glb": {
+    "hash": "64507be248ce",
+    "bytes": 24978172,
+    "from": "characters/npc/humans/rebel_pilot/rebel_pilot_male_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/rebeltech.glb": {
+    "hash": "fcd85b03ab97",
+    "bytes": 13450568,
+    "from": "characters/npc/humans/rebel_technician_orig/rebel_technician_orig_01/rebel_technician_orig_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/sandtrooper.glb": {
+    "hash": "4d7b67bfa719",
+    "bytes": 17689964,
+    "from": "characters/dark/d_heavy_orig/d_heavy_orig_mos_01/d_heavy_orig_mos_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/scouttrooper.glb": {
+    "hash": "7d4766bc28d3",
+    "bytes": 26686024,
+    "from": "characters/imperial/imperial_scoutrooper/imperial_scoutrooper_male_01/imperial_scoutrooper_male_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/shoretrooper.glb": {
+    "hash": "a2687ab6af5b",
+    "bytes": 12927828,
+    "from": "characters/imperial/imperial_beachtrooper/imperial_beachtrooper_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/snowtrooper.glb": {
+    "hash": "0dd3c8472eae",
+    "bytes": 18274380,
+    "from": "characters/dark/d_assault_orig/d_assault_orig_ho_01/d_assault_orig_ho_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/stormtrooper.glb": {
+    "hash": "2fe419352123",
+    "bytes": 25869840,
+    "from": "characters/imperial/imperial_stormtrooper/imperial_stormtrooper_male_01/imperial_stormtrooper_male_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/superdroid.glb": {
+    "hash": "218022aa46b8",
+    "bytes": 19749396,
+    "from": "characters/hero/b2/b2_01/b2_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/tauntaun.glb": {
+    "hash": "58474f0e3b04",
+    "bytes": 11944440,
+    "from": "characters/npc/creatures/tauntaun/tauntaun_01/tauntaun_01_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/vader.glb": {
     "hash": "24384ffb3846",
     "bytes": 11699484,
@@ -808,6 +946,12 @@
     "bytes": 23354640,
     "from": "characters/hero/darthvader/darthvader_01/darthvader_01_mesh",
     "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/wookiee.glb": {
+    "hash": "81b576bd3a0c",
+    "bytes": 19458072,
+    "from": "characters/hero/wookiewarrior/wookiewarrior_01/wookiewarrior_01_mesh",
+    "tier": "crew"
   },
   "models/galaxy/bf2017/fx/blast.512.ktx2": {
     "hash": "b9f488195c95",

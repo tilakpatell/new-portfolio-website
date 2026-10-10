@@ -112,3 +112,14 @@ describe('a pack of the game’s clips', () => {
     expect(travel.at(-1)[2]).toBeCloseTo(0.45, 2);
   });
 });
+
+describe('an own rig’s pack', () => {
+  it('takes clips from that rig’s skeleton alone, and its skeleton from the body', async () => {
+    const { skeletonFileFor, skeletonsFor } = await import('./bf2017-clips.mjs');
+    expect(skeletonsFor('b1').test('Characters/Rigs/Droids/D_Assault_Preq_01_Ske')).toBe(true);
+    expect(skeletonsFor('b1').test('Characters/Rigs/Humanoids/Walrus_HumanMale')).toBe(false);
+    expect(skeletonsFor('humanoid').test('Characters/Rigs/Humanoids/Walrus_HumanMale')).toBe(true);
+    expect(skeletonFileFor('b1', '/r')).toBe('/r/public/models/galaxy/bf2017/crew/battledroid.lod1.glb');
+    expect(skeletonFileFor('luke', '/r')).toBe('/r/public/models/galaxy/bf2017/walrus.glb');
+  });
+});

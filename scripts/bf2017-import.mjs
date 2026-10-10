@@ -20,6 +20,7 @@
 //     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512] [--quality 82] [--maps-quality 80]
 //     [--parts '<glob>,…'] [--grip <node>] [--out public/models/galaxy]
 //     [--vehicle] [--far] [--bind <skeleton>] [--hull-frame [<hull name>]] [--light-maps <px>]
+//     [--full] [--join] (--cuts also far=<n>, with --full) [--lod1-tex 1024] [--lod1-maps 512]
 //
 //   name       the model's `name` in the manifest (bf2017-fetch.mjs --list finds it)
 //   kind       the catalogue kind: one already in another group is taken over
@@ -48,6 +49,20 @@
 //              without one falls back to IK_Joint_RightHand): a `grip` node
 //              is put there, under it on a rig so DICE's own names all stay;
 //              without either, at the model's own origin, which is DICE's hold
+//   full       phase 2's full fidelity (phase 1's native settings): the
+//              plain cut is the game's LOD0, never simplified, every map
+//              the game's own KTX2 at up to 2048 (AVIF q90 for one the
+//              bucket has only as PNG); it goes to the bucket
+//              (assets-publish.mjs), not the repo. The `.lod1` is the first
+//              LOD under 1,500 triangles (a soldier's LOD4) at colour 1024
+//              and the rest 512, WebP. The row says `full: true`
+//   far        with --full, a figure's `.far` cut from the chain's last LOD,
+//              colour 256 and the rest 128, halved until under 150 KB: the
+//              squads past the level's `mid` (without --full, lane V's below)
+//   join       a figure's parts (body, helmet, backpack) that share a
+//              material drawn as one (rig-parts.mjs's joinSkinned)
+//   (every cut: an opaque material's colour map loses its alpha, the
+//   game's smoothness, which the ORM map carries)
 //   vehicle    a vehicle's budgets (lane V): plain ≤ 25,000, light ≤ 7,000
 //   far        a .far.glb as well: the chain's first cut under 1,000
 //              triangles (else its last), its colour maps alone at 256, no
@@ -81,15 +96,16 @@ import { dirname, join as path, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { overCaps } from './lib/bf2017-caps.mjs';
 import { parseArgs } from './lib/args.mjs';
-import { isSequel, cutsFor, partsOf, readManifest } from './lib/bf2017-manifest.mjs';
+import { isSequel, cutsFor, fullCuts, partsOf, readManifest } from './lib/bf2017-manifest.mjs';
 import { glbJson, imagePath, inBucket, localPath } from './lib/bf2017-paths.mjs';
 import { resolveImage } from './lib/bf2017-textures.mjs';
 import { BASIS_LZ, dropLevels, ktx2Info } from './lib/ktx2-levels.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
+import { joinSkinned, shareSkins } from './lib/rig-parts.mjs';
+import { glbTextures } from '../src/lib/glbTextures.js';
 import { KEPT, decalOf, dressed } from './lib/bf2017-dressing.mjs';
 import { atlasUVs } from './lib/bf2017-uv.mjs';
 import { bindVertices, bonesOf, HELPERS } from './lib/rig-bind.mjs';
-import { shareSkins } from './lib/rig-parts.mjs';
 import { bareWhereUntextured, bounds, dims, grounded, invert4, simplified, triangles, unskinned } from './lib/surface-model.mjs';
 
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
@@ -343,8 +359,13 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const hold = socket ? socket.getWorldTranslation() : [0, 0, 0];
   if (spec.rig && !spec.statue) await doc.transform(dequantize(), dedup(), metalRough(), prune(), bareWhereUntextured(), weld());
   else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
+  // (--join: a figure's parts that share a material drawn as one)
+  if (spec.rig && !spec.statue && spec.join) {
+    joinSkinned(doc);
+    await doc.transform(prune());
+  }
   // (the cut is the file, so this is only for parts that overshoot it)
-  if (triangles(doc) > budget * 1.1) {
+  if (spec.simplify !== false && triangles(doc) > budget * 1.1) {
     console.log(`  ${Math.round(triangles(doc))} triangles against the cut's ${budget}: simplified`);
     await doc.transform(simplified(budget));
   }
@@ -376,13 +397,16 @@ async function makeCut(io, entry, parts, lod, spec, out) {
     await doc.transform(prune({ propertyTypes: ['Texture'] }));
   }
   // the game's own maps, as the bucket holds them (zstd UASTC, full mips),
-  // their top levels dropped to the cut's size: nothing re-encoded (--native)
+  // their top levels dropped to the cut's size: nothing re-encoded (--native,
+  // and --full's plain cut); a map the bucket has no KTX2 for goes through
+  // the encoder (AVIF on --full's plain cut, WebP on every other)
   const native = spec.native ? await nativeMaps(doc, spec) : 0;
+  const format = spec.format ?? 'webp';
   await doc.transform(
     opaqueColour(),
     // (a map lib/bf2017-dressing.mjs made from the game's pixels is lossless already: left as it is)
-    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, pattern: NOT_KEPT, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
-    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, pattern: NOT_KEPT, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
+    textureCompress({ encoder: sharp, targetFormat: format, formats: /png|jpeg|webp/, pattern: NOT_KEPT, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
+    textureCompress({ encoder: sharp, targetFormat: format, formats: /png|jpeg|webp/, pattern: NOT_KEPT, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
     // (the game's own precision: half-float positions are 16 bits; a UV at
     // meshopt's default 12 bits is half a texel off on a 2048 map)
     meshopt({ encoder: MeshoptEncoder, level: 'high', quantizePosition: 16, quantizeNormal: 12, quantizeTexcoord: 16 }),
@@ -416,9 +440,13 @@ export const farCut = (entry, max = VEHICLE.farMax) => {
   return lods.find((l) => l.triangles <= max) ?? lods[lods.length - 1];
 };
 
+// (--full's cuts, the vehicles', or the triangle budgets'; either way --cuts
+// names a LOD for any of them: a kind whose light LODs wear maps the bucket
+// hasn't yet, the Wookiee's `lodcaps` from LOD3, takes the last LOD whose
+// maps are there)
 function cutsOf(entry, opts, rig) {
-  const cuts = opts.vehicle ? vehicleCuts(entry, { native: Boolean(opts.native), ultra: Boolean(opts.ultra) }) : cutsFor(entry, { plainMax: rig ? 8000 : 12000, ultra: Boolean(opts.ultra) });
-  if (opts.far) cuts.far = farCut(entry);
+  const cuts = opts.full ? fullCuts(entry) : opts.vehicle ? vehicleCuts(entry, { native: Boolean(opts.native), ultra: Boolean(opts.ultra) }) : cutsFor(entry, { plainMax: rig ? 8000 : 12000, ultra: Boolean(opts.ultra) });
+  if (opts.far && !opts.full) cuts.far = farCut(entry);
   if (typeof opts.cuts === 'string')
     for (const part of opts.cuts.split(',')) {
       const [name, n] = part.split('=');
@@ -431,6 +459,7 @@ function cutsOf(entry, opts, rig) {
 }
 
 export { overCaps } from './lib/bf2017-caps.mjs';
+const MB = 1048576;
 
 export async function importModel(name, opts) {
   const kind = opts.kind;
@@ -473,7 +502,12 @@ export async function importModel(name, opts) {
     if (!hull) throw new Error(`--hull-frame: ${opts.hullFrame} is not in the manifest`);
     spec.frame = { min: hull.min, max: hull.max, name: hull.name };
   }
-  const cuts = cutsOf(entry, opts, rig);
+  // (--full: the game's LOD0 at its own maps, the light cut at LOD4 or so,
+  // and with --far a figure's far cut from the chain's last)
+  const full = Boolean(opts.full);
+  const cuts = cutsOf(entry, { ...opts, full }, rig);
+  const lastLod = [...entry.lods].sort((a, b) => a.lod - b.lod).pop();
+  const farLod = full && opts.far ? (cuts.far ?? lastLod) : null;
   await MeshoptEncoder.ready;
   await MeshoptDecoder.ready;
   await MeshoptSimplifier.ready;
@@ -483,12 +517,21 @@ export async function importModel(name, opts) {
   const sub = opts.crew ? (rig ? 'bf2017/crew' : 'crew') : 'surface';
   const dir = path(outRoot, sub);
   const made = [];
-  const plain = await makeCut(io, entry, parts, cuts.plain, { ...spec, tex, maps }, path(dir, `${kind}.glb`));
+  spec.join = Boolean(opts.join);
+  // (the full cut: every map at the game's own size, up to 2048, AVIF q90,
+  // the mesh never simplified; positions at 16 bits)
+  const plainSpec = full ? { ...spec, native: true, tex: 2048, maps: 2048, format: 'avif', quality: Number(opts.quality ?? 90), mapsQuality: Number(opts.quality ?? 90), simplify: false } : { ...spec, tex, maps };
+  const plain = await makeCut(io, entry, parts, cuts.plain, plainSpec, path(dir, `${kind}.glb`));
   made.push(['plain', cuts.plain, plain]);
   let lod = false;
   if (cuts.lod1) {
-    // (the light cut: half the colour, a quarter of the full maps at most 512, at the usual quality)
-    const light = await makeCut(io, entry, parts, cuts.lod1, { ...spec, tex: tex / 2, maps: opts.lightMaps ? Number(opts.lightMaps) : spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 }, path(dir, `${kind}.lod1.glb`));
+    // (the light cut: half the colour, a quarter of the full maps at most
+    // 512, at the usual quality; under --full, colour 1024 and the rest 512, WebP)
+    // (--lod1-tex and --lod1-maps: a kind of many parts, the Hoth trooper's
+    // seven, takes smaller maps on its light cut to keep a phone's world to
+    // its 20 MB of models: the design's 'a smaller map, said in the PR')
+    const lightSpec = full ? { ...spec, native: false, tex: Number(opts.lod1Tex ?? 1024), maps: Number(opts.lod1Maps ?? 512), quality: 82, mapsQuality: 80 } : { ...spec, tex: tex / 2, maps: opts.lightMaps ? Number(opts.lightMaps) : spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 };
+    const light = await makeCut(io, entry, parts, cuts.lod1, lightSpec, path(dir, `${kind}.lod1.glb`));
     if (light.bytes < 0.7 * plain.bytes) {
       made.push(['lod1', cuts.lod1, light]);
       lod = true;
@@ -498,7 +541,19 @@ export async function importModel(name, opts) {
     }
   } else console.log('  no .lod1: the chain has no cut light enough below the plain one');
   let far = false;
-  if (cuts.far) {
+  // (--full --far: the chain's last cut, colour at 256 and the rest at 128,
+  // for the squads past the level's mid, a few dozen pixels tall there; a
+  // figure of many parts, each with its maps, halves them until it fits)
+  if (farLod) {
+    let f = null;
+    for (let t = 256; t >= 64; t /= 2) {
+      f = await makeCut(io, entry, parts, farLod, { ...spec, native: false, tex: t, maps: t / 2, quality: 80, mapsQuality: 78 }, path(dir, `${kind}.far.glb`));
+      if (f.bytes <= 150 * 1024) break;
+      console.log(`  far at ${t}: ${(f.bytes / 1024).toFixed(0)} KB, over 150: halved`);
+    }
+    made.push(['far', farLod, f]);
+    far = true;
+  } else if (cuts.far) {
     const f = await makeCut(io, entry, parts, cuts.far, { ...spec, statue: true, colourOnly: true, tex: 256, maps: 256 }, path(dir, `${kind}.far.glb`));
     made.push(['far', cuts.far, f]);
     far = true;
@@ -519,7 +574,7 @@ export async function importModel(name, opts) {
     }
   }
   // (a file over its cap is not shipped: the import stops and says which)
-  const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero), native: Boolean(opts.native) });
+  const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero), native: Boolean(opts.native), full });
   if (over.length) throw new Error(`${kind}: ${over.join('; ')} (smaller --tex and --maps, or another --cuts)`);
   for (const f of spec.said.found) console.log(`  map ${f}`);
   for (const f of spec.said.missing) console.log(`  missing: ${f}`);
@@ -538,7 +593,13 @@ export async function importModel(name, opts) {
     console.log(`${relative(ROOT, r.out).padEnd(48)} ${cut.padEnd(5)} LOD${l.lod}  ${r.tris} triangles, ${r.draws} draws, ${r.maps} maps, ${(r.bytes / 1024).toFixed(1)} KB; ${w.toFixed(2)} wide × ${h.toFixed(2)} tall × ${d.toFixed(2)} long (m)`);
   }
   const file = `/models/galaxy/${sub}/${kind}.glb`;
-  if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus', pack: '${kind}'` : ''} },`);
+  // (the full cut's textures on the GPU, for the page's ledger: lib/three/walrusCuts.js)
+  const fullMB = full ? Math.ceil(glbTextures(await readFile(plain.out)).gpuBytes / MB) : 0;
+  // (and its download, for the same ledger)
+  const fullDL = full ? Math.ceil(plain.bytes / MB) : 0;
+  if (full) console.log(`  the full cut: ${fullDL} MB to download, its maps ${fullMB} MB on the GPU`);
+  const more = `${lod ? ', lod: true' : ''}${far ? ', far: true' : ''}${full ? `, full: true, fullMB: ${fullMB}, fullDL: ${fullDL}` : ''}`;
+  if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus'${opts.hero ? `, pack: '${kind}'` : ''}` : ''}${more} },`);
   else {
     // (a vehicle's the file's own count, after its markers and normal-only decals are gone)
     const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: opts.vehicle ? plain.tris : cuts.plain.triangles, tex };
@@ -549,6 +610,7 @@ export async function importModel(name, opts) {
     // (the game's own maps, held to the native caps: scripts/lib/bf2017-caps.mjs)
     if (spec.native) row.native = true;
     if (lod) row.lod = true;
+    if (full) Object.assign(row, { full: true, fullMB, fullDL });
     if (ultra) row.ultra = ultra;
     row.from = name;
     await writeCatalogueLine(resolve(opts.catalog ?? path(ROOT, 'src', 'components', 'galaxy', 'surface', 'catalog', 'bf2017.js')), kind, row);
