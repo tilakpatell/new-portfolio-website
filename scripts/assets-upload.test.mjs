@@ -169,22 +169,13 @@ describe('the asset upload', () => {
   });
 
   it('no tracked file or workflow holds a secret key or its role', () => {
-    // (spelt in halves, so this file is not its own match)
+    // (spelt in halves, so this file is not its own match; git grep reads the
+    // tracked text files, binaries skipped, fast enough for the full run)
     const words = ['sb_' + 'secret_', 'service' + '_role'];
-    const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean);
-    const hits = [];
-    for (const f of tracked) {
-      let text;
-      try {
-        const buf = readFileSync(join(ROOT, f));
-        if (buf.length > 4 << 20 || buf.includes(0)) continue; // (binaries)
-        text = buf.toString('utf8');
-      } catch {
-        continue; // (a tracked file deleted in the working tree)
-      }
-      for (const w of words) if (text.includes(w)) hits.push(`${f}: ${w}`);
-    }
-    expect(tracked.some((f) => f.startsWith('.github/workflows/'))).toBe(true);
-    expect(hits).toEqual([]);
+    const run = spawnSync('git', ['grep', '-l', '-I', '-F', ...words.flatMap((w) => ['-e', w])], { cwd: ROOT, encoding: 'utf8' });
+    // (exit 1: nothing found; 0: found; anything else: git itself failed)
+    expect(run.status, run.stderr).not.toBe(128);
+    expect(run.stdout.split('\n').filter(Boolean)).toEqual([]);
+    expect(execFileSync('git', ['ls-files', '.github/workflows'], { cwd: ROOT, encoding: 'utf8' })).toMatch(/deploy\.yml/);
   });
 });
