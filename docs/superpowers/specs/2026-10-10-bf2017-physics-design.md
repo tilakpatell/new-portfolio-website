@@ -141,6 +141,10 @@ P0, P1, P2 and P4 start at once (their library tasks share no file); each one’
 5. **Props’ destruction** was not surveyed; P3 covers crashed vehicle parts, and a later lane may read `DestructionVolumeAsset` and the props’ graphs.
 6. **The surface’s hostiles and crowds stay on the walker** in these lanes; moving them is #781’s lane two, revived when a world on the game’s level has them (lane 5 of #812 is the first).
 7. **Sequel-era records** are refused as lane 0 refuses them (`isSequel`); the physics of a First Order TIE is the same asset family and comes through the Original-era name.
+8. **(P0) `0xFFFF0000` is not a visual-only tag**: a mesh root’s leaves carry `0xFFFF00NN`, NN an index (00 to 42 over Hoth), and each sits beside a convex root over the same piece. Both are kept; the budget drops such a trimesh first, as the detail.
+9. **(P0) The budget per cell** is 400 colliders / 30,000 triangles on mid, 1,000 / 60,000 on high, 2,000 / 100,000 on ultra, measured on Echo Base (`docs/superpowers/evidence/bf2017-physics/p0/hoth.md`: 1,000 keep 88 to 98% of a cell’s hull volume at 0.15 ms a step).
+10. **(P0) No physics cell bins**: a cell’s own bin and draws name its meshes; `physics.cells` keeps the counts only.
+11. **(P0) The 64-point guard** is in `havok.js`, not `world.js` (the universe’s hulls are uncut models). A `convex_flat` leaf is read as a trimesh.
 
 ## Credit and licence
 

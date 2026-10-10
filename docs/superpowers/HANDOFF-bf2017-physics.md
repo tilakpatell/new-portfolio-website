@@ -40,10 +40,36 @@ Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, 
 | lane | session | branch | PR | merged |
 | --- | --- | --- | --- | --- |
 | design | the architecting session | `claude/bf2017-physics` | (this PR) | |
-| P0 | | `claude/bf2017-p0-shapes` | | |
+| P0 | the P0 session (local, Opus 5.5) | `claude/bf2017-p0-shapes` | (P0’s PR) | |
 | P1 | | `claude/bf2017-p1-body` | | |
 | P2 | | `claude/bf2017-p2-bolts` | | |
 | P3 | | `claude/bf2017-p3-vehicles` | | |
 | P4 | | `claude/bf2017-p4-surfaces` | | |
 
 Each lane adds its Done and Left here when it merges: the pack’s physics bytes per world, what the budget dropped per cell, the jump row’s source, which material indices were named by hand and from which effect, what the handling layer did not hold.
+
+## P0, the shapes: Done and Left
+
+**Done.**
+
+- `scripts/lib/bf2017-physics.mjs` reads a physics GLB (the node matrices undo the quantisation; the snow pile’s hull lands on its record’s box within 1 cm), cuts a hull to 64 points, and packs a mesh’s shapes into `physics/<mesh>.bin` (`src/lib/physics/shapesBin.js`, pure, shared by the build and the page). `scripts/bf2017-physics.mjs <pack dir>` writes the bins and `level.json`’s `physics` section ({ version, materials, meshes by the pack’s mesh index, cells }); `--map levels/mp/hoth_01 --from <web_opt>` gives the table for a map before there is a pack. Fixtures: four GLBs under 4 KB and a five-mesh pack in `scripts/fixtures/bf2017/physics/`.
+- `src/lib/physics/havok.js`: `collidersOf` (the material index as each collider’s `tag`; a hull over 64 points refused), `instanceBody` (a scale put into the points, kept per mesh and scale; a mirrored trimesh’s triangles turned round, tested by a ray’s normal), `cellBodies` (instances of one mesh share its arrays), `budgetCell`, `solidsOf` (the walker’s boxes and circles).
+- `src/components/galaxy/surface/level/levelPhysics.js`: `addCell`/`removeCell` (a cell’s bin in the map’s layout, or its instances), `update(ms)` putting bodies in a slice a frame, `setTerrain` (a heightfield per 64 m under every loaded cell; a hole reads the far map), `stats()`, a removal from inside a substep deferred by `world.js`.
+- `src/lib/level/collision.js` (both halves, lane L wasn’t on `main`): `createLevelCollision`, `wantsEngine` (the one rule), `solidsOf(pack, cells, loadBin)` for the walker over `havok.js`’s per-instance `solidsOf`, `fillSolids` into `createSolids`. `galaxy-check.mjs` prints a physics row when `__surfaceScene.physics` exists.
+- Hoth, measured (`docs/superpowers/evidence/bf2017-physics/p0/hoth.md`): 432 of the map’s 602 meshes have shapes, 3,539 hulls and 236,905 trimesh triangles, **5.2 MB** of bins. Echo Base’s densest cell is 6,492 pieces and 12,796 shapes: 923 ms to add and 2.1 ms a step unbudgeted; at 1,000 colliders it keeps 97% of its hulls’ volume for 21 ms and 0.15 ms a step.
+
+**What the survey changed (the spec’s Departures 8 to 11).**
+
+- The mesh roots’ user data `0xFFFF00NN` is an index (NN runs 00 to 42 over Hoth), not a visual-only tag: every one of Hoth’s 240 `0xFFFF0000` mesh roots sits beside a convex root over the same piece. Both are kept (statics take both); the budget drops such a trimesh first, as the instance’s detail. `readPhysicsGlb(…, { dropVisual: true })` keeps the first reading for whoever wants it.
+- The budget is 400 / 30,000 on mid, **1,000 / 60,000 on high, 2,000 / 100,000 on ultra** (the design said 400 for high and ultra): the table above.
+- No `physics/cells/*.bin`: a cell’s draws already name their meshes, so `levelPhysics` reads the cell’s own bin (the map’s layout) and the pack’s `physics.cells` keeps only the counts.
+- The 64-point guard is in `havok.js`, not `world.js`: the universe’s hulls come from models uncut and a throw there would be a new failure for them.
+- A `convex_flat` leaf (4 on Hoth: the Falcon landmark, a bacta-tank wall) is read as a trimesh; Rapier builds no hull through points in a plane.
+
+**Left.**
+
+- **Lane L takes**, when its pack lands (or whoever merges second): (1) `bf2017-level.mjs` runs `node scripts/bf2017-physics.mjs <pack dir>` after the meshes (it reads `level.json`’s `meshes[].file` or `.source`, the map’s model file, and `cells[key].draws[{ mesh, offset, count }]`); (2) in `levelStream.js`, `onCell(key, bin)` also calls `levelPhysics?.addCell(key, bin)` and `onCellGone(key)` `levelPhysics?.removeCell(key)` (a cell bin in the map’s layout: positions, Int16 quaternions, scales, `count` in the cell’s entry; else pass `instancesOf`-shaped instances); (3) lane L’s `solidsOf(pack, cells)` is `collision.js`’s (no second one).
+- **scene.js**, where lane L makes `createLevel`: `const engine = wantsEngine({ pack, small, tier }) ? await createPhysics({ gravity: -15.5 }) : null;` then `const collision = await createLevelCollision({ pack, physics: engine, loadBin, tier, instances: farList })`; `fillSolids(world.solids, collision.solids)`; each frame `collision.physics?.update(4)` and `engine?.step(dt)` (time it into `collision.physics.timed(ms)`) before the walk; `collision.physics?.setTerrain(heightAt)` once the `image` layer is read; `__surfaceScene.physics = () => collision.physics?.stats()` under `?debug`; dispose both. Not written here: there is no `createLevel` on `main` to hang it on, and lane L owns that call site.
+- The walker’s fallback has no floors from trimeshes (a hangar’s shell isn’t a box): on a phone you walk on the heightmap and stop at hulls. Steep-triangle walls from the trimeshes are a later step if a mesh-only piece matters.
+- In the browser on Hoth (`galaxy-check.mjs surface hoth` under `BUDGET=1` with the physics row) waits for lane L’s pack and the scene.js lines.
+- Material friction and restitution: `physics.materials` lists each index used (`{ tag }`); P4 fills them and `collidersOf` already takes `materials[i].friction`/`restitution`.
