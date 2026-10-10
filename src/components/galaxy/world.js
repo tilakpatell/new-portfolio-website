@@ -837,14 +837,13 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       return false;
     });
   }
-  // ── The game's space level, where the system has one (spacePieces.js): scenery, not the war's ships ──
-  {
-    const level = createSpacePieces(sys.id);
-    group.add(level.group);
-    for (const g of level.goals) addSolid({ ...g, at: [...g.at] });
-    disposers.push(() => level.dispose());
-    ticks.push((t) => (level.update(t % 3600), false));
-  }
+  // ── The game's space level, where the system has one (spacePieces.js): scenery, not the war's ships,
+  // and aside while the war's battle is on (a Starfighter Assault draws its own level: warfront.js) ──
+  const spaceLevel = createSpacePieces(sys.id);
+  group.add(spaceLevel.group);
+  for (const g of spaceLevel.goals) addSolid({ ...g, at: [...g.at] });
+  disposers.push(() => spaceLevel.dispose());
+  ticks.push((t) => (spaceLevel.update(t % 3600), false));
   // what's shown: nothing of it while the war's battle is on here (quiet),
   // and of the rest only what its holder has here (setEffects)
   const garrison = { ships: [], slots: [], solids: [] };
@@ -855,6 +854,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       for (const x of own) x.o.r = x.o.reach = shown ? x.r : 0;
     });
     for (const slot of garrison.slots) slot.holder.visible = !ambient.on;
+    spaceLevel.group.visible = !ambient.on;
     for (const x of garrison.solids) x.o.r = x.o.reach = ambient.on ? 0 : x.r;
   };
 
