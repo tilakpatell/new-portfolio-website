@@ -7,18 +7,18 @@ One page per library, engine or framework the site is built on, and this index o
 <!-- census:start -->
 | package | version | page | files |
 | --- | --- | --- | --- |
-| `three` | ^0.186.1 | [three.md](three.md) | 552 |
-| `react` | ^19.3.0 | [react.md](react.md) | 282 |
-| `react-router-dom` | ^7.18.4 | [react.md](react.md) | 80 |
+| `three` | ^0.186.1 | [three.md](three.md) | 557 |
+| `react` | ^19.3.0 | [react.md](react.md) | 283 |
+| `react-router-dom` | ^7.18.4 | [react.md](react.md) | 81 |
 | `sharp` | ^0.35.5 | [assets-pipeline.md](assets-pipeline.md) | 74 |
 | `react-icons` | ^5.7.0 | [react.md](react.md) | 71 |
-| `playwright-core` | ^1.56.0 | [testing.md](testing.md) | 58 |
+| `playwright-core` | ^1.56.0 | [testing.md](testing.md) | 60 |
 | `@gltf-transform/core` | ^4.5.1 | [assets-pipeline.md](assets-pipeline.md) | 52 |
 | `meshoptimizer` | ^1.3.0 | [assets-pipeline.md](assets-pipeline.md) | 50 |
 | `@gltf-transform/extensions` | ^4.5.1 | [assets-pipeline.md](assets-pipeline.md) | 49 |
 | `@gltf-transform/functions` | ^4.5.1 | [assets-pipeline.md](assets-pipeline.md) | 44 |
 | `react-dom` | ^19.3.0 | [react.md](react.md) | 24 |
-| `vite` | ^8.3.2 | [build.md](build.md) | 12 |
+| `vite` | ^8.3.2 | [build.md](build.md) | 13 |
 | `@fontsource/luckiest-guy` | ^5.3.0 | [fonts.md](fonts.md) | 6 |
 | `@fontsource/cinzel` | ^5.3.0 | [fonts.md](fonts.md) | 5 |
 | `@fontsource/press-start-2p` | ^5.3.0 | [fonts.md](fonts.md) | 4 |
@@ -26,6 +26,7 @@ One page per library, engine or framework the site is built on, and this index o
 | `@fontsource/courier-prime` | ^5.3.0 | [fonts.md](fonts.md) | 2 |
 | `@fontsource/orbitron` | ^5.3.0 | [fonts.md](fonts.md) | 2 |
 | `@noble/secp256k1` | ^3.2.0 | [multiplayer-nostr.md](multiplayer-nostr.md) | 2 |
+| `@supabase/supabase-js` | ^2.117.3 | [supabase.md](supabase.md) | 2 |
 | `fflate` | ^0.8.3 | [assets-pipeline.md](assets-pipeline.md) | 2 |
 | `@dimforge/rapier3d-compat` | 0.21.0 | [physics-rapier.md](physics-rapier.md) | 1 |
 | `@fontsource-variable/archivo` | ^5.3.0 | [fonts.md](fonts.md) | 1 |

@@ -9,7 +9,10 @@
 // Fails the build when a world's source names an asset its pack misses
 // (scripts/pack-check.mjs).
 //
-// buildManifest(pack, { dist, publicDir, chunksOf }) → { v, id, bytes, files: [{ url, bytes, hash }] }
+// A file the asset bucket holds (VITE_ASSET_BASE and src/data/assets-manifest.json)
+// is listed by its remote URL and the upload's hash, with `local`, its path here.
+//
+// buildManifest(pack, { dist, publicDir, chunksOf, remote }) → { v, id, bytes, files: [{ url, bytes, hash, local? }] }
 
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -17,6 +20,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { globRe, missing, undeclared } from './pack-check.mjs';
+import { freshManifest, manifestPath, readManifest } from './assets-upload.mjs';
+import { remotePath } from '../src/lib/assetPath.js';
 
 export const slugOf = (to) => to.replace(/\//g, '-').replace(/^-/, '');
 const sha = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 16);
@@ -40,7 +45,7 @@ export function chunksFrom(manifest, pages) {
   return [...urls];
 }
 
-export async function buildManifest(pack, { dist, publicDir, chunksOf = () => [] }) {
+export async function buildManifest(pack, { dist, publicDir, chunksOf = () => [], remote = null }) {
   const pub = walk(publicDir).map((f) => `/${relative(publicDir, f).split('\\').join('/')}`);
   const res = (pack.globs ?? []).map(globRe);
   const urls = new Set([...(pack.urls ?? []), ...pub.filter((u) => res.some((re) => re.test(u))), ...chunksOf(pack.id)]);
@@ -48,6 +53,10 @@ export async function buildManifest(pack, { dist, publicDir, chunksOf = () => []
     const path = [join(dist, url), join(publicDir, url)].find((p) => existsSync(p) && statSync(p).isFile());
     if (!path) return [];
     const buf = readFileSync(path);
+    // (a file the bucket holds: fetched from there, by the hash in its path,
+    // and the site's own path kept for the install's fallback)
+    const far = remote ? remotePath(url, remote.base, remote.manifest) : url;
+    if (far !== url) return [{ url: far, bytes: buf.length, hash: remote.manifest[url.slice(1)].hash, local: url }];
     return [{ url, bytes: buf.length, hash: sha(buf) }];
   });
   const v = sha(files.map((f) => `${f.url} ${f.hash}`).join('\n'));
@@ -55,8 +64,10 @@ export async function buildManifest(pack, { dist, publicDir, chunksOf = () => []
 }
 
 // every world's manifest and the index, into dist/packs; throws when a pack is out of step
-export async function writePacks(root, dist = join(root, 'dist'), log = console.log) {
+export async function writePacks(root, dist = join(root, 'dist'), log = console.log, base = process.env.VITE_ASSET_BASE ?? '') {
   const publicDir = join(root, 'public');
+  // the heavy files the bucket holds, as the bundle's manifest has them (scripts/assets-manifest.mjs)
+  const remote = base ? { base, manifest: freshManifest(readManifest(manifestPath(root)), publicDir) } : null;
   const { PACKS } = await import(pathToFileURL(join(root, 'src/components/worlds/packs.js')).href);
   const bad = Object.values(PACKS).flatMap((p) => [...undeclared((p.src ?? []).map((s) => join(root, s)), p), ...missing(p, publicDir)].map((r) => `${p.id}: ${r}`));
   if (bad.length) throw new Error(`packs: not in step with the source (node scripts/pack-check.mjs):\n  ${bad.join('\n  ')}`);
@@ -66,7 +77,7 @@ export async function writePacks(root, dist = join(root, 'dist'), log = console.
   await mkdir(join(dist, 'packs'), { recursive: true });
   const index = {};
   for (const pack of Object.values(PACKS)) {
-    const m = await buildManifest(pack, { dist, publicDir, chunksOf: () => chunksFrom(manifest, pack.pages ?? []) });
+    const m = await buildManifest(pack, { dist, publicDir, chunksOf: () => chunksFrom(manifest, pack.pages ?? []), remote });
     const slug = slugOf(pack.id);
     await writeFile(join(dist, 'packs', `${slug}.json`), JSON.stringify(m));
     index[pack.id] = { slug, bytes: m.bytes, v: m.v };
@@ -80,6 +91,7 @@ export async function writePacks(root, dist = join(root, 'dist'), log = console.
 export default function packs() {
   let root = process.cwd();
   let outDir = 'dist';
+  let base = '';
   let failed = false;
   return {
     name: 'world-packs',
@@ -87,6 +99,7 @@ export default function packs() {
     configResolved(c) {
       root = c.root;
       outDir = resolve(c.root, c.build.outDir);
+      base = c.env?.VITE_ASSET_BASE ?? '';
     },
     buildStart() {
       failed = false;
@@ -99,7 +112,7 @@ export default function packs() {
     },
     async closeBundle(error) {
       if (error || failed) return;
-      const index = await writePacks(root, outDir, () => {});
+      const index = await writePacks(root, outDir, () => {}, base);
       console.log(`packs: ${Object.keys(index).length} worlds written to dist/packs`);
     },
   };
