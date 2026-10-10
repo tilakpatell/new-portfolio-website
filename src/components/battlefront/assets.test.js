@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { encodePng16 } from '../../../scripts/lib/png16.mjs';
 import { createAssets, pathFor } from './assets.js';
 
-const ROOT = join(process.cwd(), 'scripts/fixtures/bf2017/web');
+const ROOT = fileURLToPath(new URL('../../../scripts/fixtures/bf2017/web', import.meta.url));
 
 // the dev backend over the committed fixture: each path the adapter asks
 // for read from the folder, every ask recorded
