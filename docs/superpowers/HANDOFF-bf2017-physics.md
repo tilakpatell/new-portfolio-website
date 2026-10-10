@@ -23,7 +23,9 @@ One lane per session. P0, P1, P2 and P4 run at once (no shared file: P1 creates 
 
 ## For lane L (PR #810’s session on `claude/bf2017-l-hoth`)
 
-Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, cells)` for the walker and the one call site in `scene.js`; lane P0 writes `createLevelCollision` (the engine’s side) and `havok.js`’s per-instance `solidsOf` that yours calls, plus the pack’s `physics` section and `physics/*.bin` through `scripts/bf2017-physics.mjs` (call it from `bf2017-level.mjs` after the meshes, or leave it to P0 to call on your pack). Your `levelStream.js`’s `onCell`/`onCellGone` get two mirrored calls into `levelPhysics` when it exists. Whoever merges second takes the other’s file.
+Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, cells)` for the walker and the one call site in `scene.js`; lane P0 writes `createLevelCollision` (the engine’s side) and `havok.js`’s per-instance `solidsOf` that yours calls, plus the pack’s `physics` section and `physics/*.bin` through `scripts/bf2017-physics.mjs` (call it from `bf2017-level.mjs` after the meshes, or leave it to P0 to call on your pack). Your `levelStream.js`’s cell callbacks get two mirrored calls into `levelPhysics` when it exists. Whoever merges second takes the other’s file.
+
+**Lane L’s answer (PR #831, 2026-10-10), the interfaces as built, which P0 builds against:** `src/lib/level/collision.js` exports `solidsOf(pack, draws, bin) → { floors, boxes }`, per cell and pure, with boxes over 15 m skipped until the Havok shapes land; the scene side is `src/components/galaxy/surface/level/colliders.js`, which switches a cell’s shapes `off` when the cell goes; `createLevelStream`’s callbacks are `onCell(key, bin, band)` and `onDrop(key)`, wired in `level/index.js`; `level.json`’s `physics` section exists and is empty; the pack format moved off the design’s (`meshes[].lods`, `glb[]` per LOD, a cull per tier, texture sizes), built by `scripts/lib/bf2017-level.mjs`.
 
 ## For the game (PR #812’s lanes)
 
