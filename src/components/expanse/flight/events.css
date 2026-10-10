@@ -1,0 +1,17 @@
+/* The event on now (EventLine.jsx): a line under the planet's name, on the
+   brand's own glass, its edge the warm amber the map marks events with. */
+.fly-event {
+  max-width: 18rem;
+  margin: 0.3rem 0 0;
+  padding-left: 0.5rem;
+  border-left: 3px solid #e0a030;
+  color: #1a1f2b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.fly-event small {
+  color: #2b3d55;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
