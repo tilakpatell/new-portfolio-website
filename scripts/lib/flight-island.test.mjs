@@ -9,7 +9,7 @@ const walk = (dir) => readdirSync(dir).flatMap((n) => (statSync(join(dir, n)).is
 const FILES = walk(ROOT).map((f) => relative(ROOT, f)).sort();
 const TEXT = Object.fromEntries(FILES.map((f) => [f, readFileSync(join(ROOT, f), 'utf8')]));
 // the fixture's own rows: the files in it that carry a marker
-const island = { ...ISLAND, rows: ['.github/workflows/ci.yml', 'src/App.jsx', 'src/components/guide/routes.js', 'src/components/worlds/looks.js', 'src/components/worlds/packs.js'] };
+const island = { ...ISLAND, rows: ['.github/workflows/ci.yml', 'docs/stack/supabase.md', 'src/App.jsx', 'src/components/guide/routes.js', 'src/components/worlds/looks.js', 'src/components/worlds/packs.js'] };
 
 // a tree in memory over the fixture: what apply() changes, nothing on disk
 function fakeTree() {
@@ -86,6 +86,14 @@ describe('removal', () => {
     expect(by['.github/workflows/ci.yml'].map((l) => l.line)).toEqual([5, 6, 7]);
     const dropped = plan.dropLines.flatMap((d) => d.lines.map((l) => l.text));
     for (const decoy of ['Galaxy', 'Music', '/galaxy', '/music', 'flyto-check', '--universe']) expect(dropped.some((t) => t.includes(decoy) && !t.includes('planet flight')), decoy).toBe(false);
+  });
+
+  // a stack page is a doc the tests hold to the code (docs/stack/stack.test.js
+  // names only files that exist), so its flight rows are marked and go too
+  it('drops a stack page’s marked rows, the doc kept', () => {
+    const by = Object.fromEntries(plan.dropLines.map((d) => [d.file, d.lines]));
+    expect(by['docs/stack/supabase.md'].map((l) => l.line)).toEqual([4, 7]);
+    expect(plan.delete.some((f) => f.startsWith('docs/stack/supabase'))).toBe(false);
   });
 
   it('writes the migration that drops the four objects, and the decision', () => {

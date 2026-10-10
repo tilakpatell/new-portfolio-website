@@ -69,11 +69,12 @@ export const ISLAND = {
     'src/components/worlds/looks.js',
     'src/components/worlds/packs.js',
     'src/components/worlds/worlds.js',
+    'docs/stack/supabase.md',
   ],
   // what the remover leaves for a hand: prose that names the flight
   docsByHand: [
     'docs/architecture.md: the flight’s paragraphs',
-    'docs/stack/README.md: the fastnoise-lite row',
+    'docs/stack/supabase.md: the durable world’s prose (its marked rows go)',
     'supabase/README.md: the planets and world_entities sections',
     'docs/health/RULES.md: the flight as the example of a removable world',
     'docs/superpowers/HANDOFF-planet-flight.md: the status, as retired',
@@ -114,10 +115,13 @@ export const NAMES = [
 ];
 
 // where references are looked for: the code and config, not the docs (docs
-// are history, and the remover never rewrites them), not what a run writes
-const SCANNED = /\.(?:js|jsx|mjs|cjs|json|ya?ml|sql|toml|html|css)$|(?:^|\/)\.env\.example$/;
-const UNSCANNED = [/^docs\//, /^\.claude\//, /^\.agents\//, /^lab\//, /^public\//, /^dist\//, /^node_modules\//, /^src\/data\/health\//, /^package-lock\.json$/, /\.md$/];
+// are history, and the remover never rewrites them), not what a run writes.
+// The stack pages are the exception: docs/stack/stack.test.js holds the
+// paths they name to the tree, so their flight rows are marked and go too
+const SCANNED = /\.(?:js|jsx|mjs|cjs|json|ya?ml|sql|toml|html|css)$|(?:^|\/)\.env\.example$|^docs\/stack\/[^/]+\.md$/;
+const UNSCANNED = [/^docs\/(?!stack\/[^/]+\.md$)/, /^\.claude\//, /^\.agents\//, /^lab\//, /^public\//, /^dist\//, /^node_modules\//, /^src\/data\/health\//, /^package-lock\.json$/, /^(?!docs\/stack\/).*\.md$/];
 
+const DEP_LISTS = ['package.json', 'docs/stack/README.md'];
 const under = (file, dir) => file === dir || file.startsWith(`${dir}/`);
 export const inIsland = (file, island = ISLAND) => island.files.includes(file) || island.folders.some((d) => under(file, d));
 const scanned = (file) => SCANNED.test(file) && !UNSCANNED.some((re) => re.test(file));
@@ -126,7 +130,8 @@ export const referencesIn = (text) =>
   text.split('\n').flatMap((line, i) => (NAMES.some((re) => re.test(line)) ? [{ line: i + 1, text: line }] : []));
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-// a marker is a comment: // planet flight, # planet flight, {/* planet flight */} or -- planet flight
+// a marker is a comment: // planet flight, # planet flight, {/* planet flight */},
+// -- planet flight or, in Markdown, <!-- planet flight -->
 const markRe = (marker, tail = '') => new RegExp(`(?:\\/\\/|#|\\/\\*|--)\\s*${esc(marker)}${tail}`);
 
 // The marked spans of a file: [{ from, to }] (0-based, inclusive), a single
@@ -219,8 +224,9 @@ export function check(tree, island = ISLAND) {
     lines.forEach((line, i) => {
       if (!NAMES.some((re) => re.test(line))) return;
       references++;
-      // a dependency of the island's is named in package.json; it goes as a dep, not a row
-      if (file === 'package.json' && island.deps.some((d) => line.includes(`"${d}"`))) return;
+      // a dependency of the island's is named in package.json and the stack
+      // census's table: it goes as a dep, and the census rewrites its row
+      if (DEP_LISTS.includes(file) && island.deps.some((d) => line.includes(d))) return;
       if (!covered.has(i)) unmarked.push({ file, line: i + 1, text: line.trim() });
       if (file.startsWith('src/') && !MAY_IMPORT.includes(file))
         for (const spec of specifiers(line)) if (ISLAND_PATH.test(resolved(file, spec))) outsideImports.push({ file, line: i + 1, text: line.trim() });
