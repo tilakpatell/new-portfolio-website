@@ -4,6 +4,7 @@
 // into the hero's stance (src/components/galaxy/surface/stanceFromTable.js).
 //
 //   node --env-file=.env.local scripts/bf2017-strokes.mjs <hero> [--list]   (behind a proxy: NODE_USE_ENV_PROXY=1)
+//   node --env-file=.env.local scripts/bf2017-strokes.mjs --blade   (src/data/bf2017/blades.json: each hilt's emitters and the rod's width)
 //   node scripts/bf2017-strokes.mjs <hero> --pack public/models/galaxy/bf2017/clips-<hero>.glb [--skeleton …/walrus.glb]
 //
 //   hero      luke, vader, obiwan, anakin, maul, dooku, yoda, grievous, palpatine
@@ -28,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { isSequel, readManifest } from './lib/bf2017-manifest.mjs';
 import { inBucket, objectUrl } from './lib/bf2017-paths.mjs';
-import { classify, clipOf, measure, rigOf, tableFor } from './lib/bf2017-strokes.mjs';
+import { BLADE, classify, clipOf, emitterOf, measure, rigOf, rodOf, tableFor } from './lib/bf2017-strokes.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BUCKET = 'bf2017-assets';
@@ -136,6 +137,82 @@ async function fromPack(pack, skeleton) {
   return clips;
 }
 
+// ── the blade ──
+
+const HERO_DIR = 'gameplay/equipment/heroes';
+const ROD = `${HERO_DIR}/lightsaberlukeskywalker/lightsaberlukerod_meshp_mesh`;
+// the site's hilt kinds (catalog/bf2017.js) → the game's models; a staff has a blade out of each end
+export const HILTS = {
+  hiltluke: 'lightsaberlukeskywalker/lightsaberlukeskywalker_meshp_mesh',
+  hiltlukehoth: 'lightsaberlukehoth/lightsaberlukehoth_meshp_mesh',
+  hiltanakin: 'lightsaberanakin/lightsaberanakin_meshp_mesh',
+  hiltvader: 'lightsaberdarthvader/lightsaberdarthvader_meshp_mesh',
+  hiltobiwan: 'lightsaberobiwan/lightsaberobiwan_meshp_mesh',
+  hiltdooku: 'lightsaberdooku/lightsaberdooku_gameplay_meshp_mesh',
+  hiltyoda: 'lightsaberyoda/lightsaberyoda_meshp_mesh',
+  hiltgrievous: 'lightsabergrievous/lightsabergrievous_meshp_mesh',
+  hiltmaul: 'lightsabermaul/lightsabermaul_meshp_mesh',
+  hiltmaulcrimson: 'lightsabermaulcrimson/lightsabermaulcrimson_gameplay_meshp_mesh',
+};
+const STAFFS = new Set(['hiltmaul', 'hiltmaulcrimson']);
+
+// a model's vertices (metres, its own frame): the GLB read without the
+// textures it names outside itself, which the measure doesn't need
+async function pointsOf(rw, file) {
+  const buf = await readFile(file);
+  const jl = buf.readUInt32LE(12);
+  const json = JSON.parse(buf.subarray(20, 20 + jl).toString());
+  for (const k of ['images', 'textures', 'samplers']) delete json[k];
+  for (const m of json.materials ?? []) for (const k of Object.keys(m)) if (k !== 'name') delete m[k];
+  for (const k of ['extensionsUsed', 'extensionsRequired']) if (json[k]) json[k] = json[k].filter((e) => e !== 'KHR_texture_basisu');
+  let js = Buffer.from(JSON.stringify(json));
+  if (js.length % 4) js = Buffer.concat([js, Buffer.alloc(4 - (js.length % 4), 0x20)]);
+  const rest = buf.subarray(20 + jl);
+  const head = Buffer.alloc(20);
+  head.writeUInt32LE(0x46546c67, 0);
+  head.writeUInt32LE(2, 4);
+  head.writeUInt32LE(20 + js.length + rest.length, 8);
+  head.writeUInt32LE(js.length, 12);
+  head.writeUInt32LE(0x4e4f534a, 16);
+  const doc = await rw.readBinary(new Uint8Array(Buffer.concat([head, js, rest])));
+  const out = [];
+  const v = [0, 0, 0];
+  for (const node of doc.getRoot().listNodes()) {
+    if (!node.getMesh()) continue;
+    const M = node.getWorldMatrix();
+    for (const prim of node.getMesh().listPrimitives()) {
+      const a = prim.getAttribute('POSITION');
+      for (let i = 0; i < a.getCount(); i++) {
+        a.getElement(i, v);
+        out.push([0, 1, 2].map((k) => M[k] * v[0] + M[4 + k] * v[1] + M[8 + k] * v[2] + M[12 + k]));
+      }
+    }
+  }
+  return out;
+}
+
+async function blades() {
+  const env = keys();
+  const mf = await fetchTo(env, 'web/models.jsonl');
+  const models = readManifest(await readFile(mf, 'utf8'));
+  const rw = await io();
+  const fileOf = async (name) => {
+    const e = models.get(name);
+    if (!e) throw new Error(`${name}: not in web/models.jsonl`);
+    return fetchTo(env, inBucket(e.lods[0].file));
+  };
+  const rod = rodOf(await pointsOf(rw, await fileOf(ROD)));
+  const hilts = {};
+  for (const [kind, model] of Object.entries(HILTS)) {
+    const e = emitterOf(await pointsOf(rw, await fileOf(`${HERO_DIR}/${model}`)));
+    hilts[kind] = { base: e.top, ...(STAFFS.has(kind) ? { base2: e.bottom } : {}), length: BLADE, radius: rod.radius };
+    console.log(`${kind.padEnd(16)} ${JSON.stringify(hilts[kind])}`);
+  }
+  const file = join(ROOT, 'src', 'data', 'bf2017', 'blades.json');
+  await writeFile(file, `${JSON.stringify({ rod, hilts })}\n`);
+  console.log(`${relative(ROOT, file)}: the rod ${JSON.stringify(rod)}`);
+}
+
 // (the tip's path is for checking a window by hand, not for the site)
 function measured(clip, rig) {
   const m = measure(clip, rig);
@@ -146,6 +223,10 @@ function measured(clip, rig) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
   const [hero] = args._;
+  if (args.blade) {
+    await blades();
+    process.exit(0);
+  }
   if (!PREFIX[hero]) {
     console.error(`usage: node scripts/bf2017-strokes.mjs <hero> [--list] [--pack <glb>] (heroes: ${Object.keys(PREFIX).join(', ')})`);
     process.exit(1);

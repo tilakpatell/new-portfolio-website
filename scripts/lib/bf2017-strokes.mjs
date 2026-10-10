@@ -33,6 +33,7 @@
 //   measure(clip, rig, { fps, blade, ahead }) → { duration, contact, settle, dir, plane, root, tipPath ([t, x, y, z, ahead?]) }
 //   tableFor(hero, clips) → the stroke table (clips: [{ name, site?, duration?, contact?, dir?, plane?, root? }])
 //   settleAfter(rows, after, end) → seconds
+//   emitterOf(points, { near }) → { top, bottom }: a hilt's emitters on its axis; rodOf(points) → { radius, from }
 //   AHEAD, BLADE, GENERIC, SETTLE
 
 import * as THREE from 'three';
@@ -316,6 +317,32 @@ export function measure(clip, rig, { fps = 30, blade = BLADE, ahead = AHEAD } = 
     root: root && root.map(([t, x, z]) => [round(t), round(x), round(z)]),
     tipPath: rows.map((r) => [round(r.t), ...r.hand.map((v) => round(v)), r.ahead ? 1 : 0]),
   };
+}
+
+// ── the blade ──
+
+// Where a hilt's blade comes out: the game models its hilts up +y about
+// the grip, the blade on the axis (its rod, lightsaberlukerod, sits at
+// x = z = 0), so the emitter is the highest point near the axis (a curved
+// hilt's prong rises higher beside it), and a staff's second the lowest.
+// points: [[x, y, z]…] in the hilt's frame (metres); near: how far off the axis still counts
+export function emitterOf(points, { near = 0.035 } = {}) {
+  const axis = points.filter(([x, , z]) => Math.hypot(x, z) <= near);
+  const at = (y0) => {
+    const ring = axis.filter((p) => Math.abs(p[1] - y0) < 0.006);
+    const mean = (k) => ring.reduce((s, p) => s + p[k], 0) / ring.length;
+    return [round(mean(0)), round(y0), round(mean(2))];
+  };
+  const ys = axis.map((p) => p[1]);
+  return { top: at(Math.max(...ys)), bottom: at(Math.min(...ys)) };
+}
+
+// the game's blade rod: how wide the blade is and where along +y it starts
+// (its length isn't the mesh's: the game stretches the rod as the blade comes out)
+export function rodOf(points) {
+  const from = Math.min(...points.map((p) => p[1]));
+  const radius = Math.max(...points.map(([x, , z]) => Math.hypot(x, z)));
+  return { radius: round(radius), from: round(from) };
 }
 
 // ── the table ──

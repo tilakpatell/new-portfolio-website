@@ -61,7 +61,7 @@
 - Modify: `saber.js` (`walrus`: skip `pose`/`poseLeft`, the arms laid from the clip with `Spine1`, `Spine2`, `Neck` in `ARMS`; the blade's base and length from `BLADE_OF`), `saberRules.js` (`BLADE_OF[hilt] = { base: [x, y, z] in the hilt's frame, length, radius }` measured from the game's rod and each hilt's emitter by `scripts/bf2017-strokes.mjs --blade`)
 - Create: `surface/saberLight.js` (+ test): `createSaberLight({ scene, color, tier }) → { update(base, tip, lit), dispose }`
 
-- [ ] **Step 1: Failing tests**: a `walrus` figure's guard leaves the clip's hand transforms untouched (a fake figure with recorded bone quaternions); `BLADE_OF.luke.length` is within 10% of the rod mesh's; the light is made on high, not on mid, and follows the blade's middle.
+- [ ] **Step 1: Failing tests**: a `walrus` figure's guard leaves the clip's hand transforms untouched (a fake figure with recorded bone quaternions); `BLADE_OF.hiltluke` comes out where the rod starts (the rod is a 13 mm stub the game stretches at run time, so it gives the width and the start, not the length: the length stays the 1 m the windows are timed at); the light is made on high, not on mid, and follows the blade's middle.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
 - [ ] **Step 5: See it**: Luke on Tatooine lit, swinging through the six strikes (`__surfaceScene.swing`), a duel with Vader on Dagobah (`HANDOFF-saber-forms.md`'s "How to check"); `anim-check` the fight; `saber-check` ignite, stroke, block, clash; frame time with four lit blades; into `docs/superpowers/evidence/bf2017-sabers/`.
 - [ ] **Step 6: Commit** `The hilt in the game's hands, the blade from the game's rod, lighting the one who holds it`.

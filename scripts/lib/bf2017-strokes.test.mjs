@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DIRS } from '../../src/components/galaxy/surface/combatRules.js';
-import { GENERIC, classify, clipOf, measure, rigOf, tableFor } from './bf2017-strokes.mjs';
+import { GENERIC, classify, clipOf, emitterOf, measure, rigOf, rodOf, tableFor } from './bf2017-strokes.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // (the fixtures: Luke's first strike and Obi-Wan's fourth, the socket's chain only: Reference → … → Spine2 → Wep_Root)
@@ -156,5 +156,23 @@ describe('a hero’s table', () => {
   it('names the dash and the jump attack', () => {
     expect(t.dash.name).toBe('A_Luke_Stand_SaberDash_01');
     expect(t.jump.contact).toEqual([0.2, 0.3]);
+  });
+});
+
+describe('the blade out of a hilt', () => {
+  // a hilt 0.28 m along +y about its grip, a 0.01 m-wide emitter ring on its axis at the top, and a prong off the axis higher still
+  const ring = (y, r, cx = 0) => Array.from({ length: 12 }, (_, i) => [cx + Math.cos(i) * r, y, Math.sin(i) * r]);
+  const hilt = [...ring(-0.21, 0.02), ...ring(0, 0.022), ...ring(0.07, 0.012), [0, 0.12, 0.09]];
+
+  it('comes out of the emitter on the hilt’s axis, not a prong beside it', () => {
+    const e = emitterOf(hilt);
+    expect(e.top[1]).toBeCloseTo(0.07, 3);
+    expect(Math.hypot(e.top[0], e.top[2])).toBeLessThan(1e-3);
+    expect(e.bottom[1]).toBeCloseTo(-0.21, 3);
+  });
+
+  it('takes the rod’s width and where it starts', () => {
+    const rod = [...ring(0.068, 0.011), ...ring(0.081, 0.011)];
+    expect(rodOf(rod)).toEqual({ radius: 0.011, from: 0.068 });
   });
 });
