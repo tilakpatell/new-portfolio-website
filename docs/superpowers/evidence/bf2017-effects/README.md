@@ -13,10 +13,10 @@ Shot at `high` in headless Chromium (software GL) by `scripts/bf2017-fx-shots.mj
 | | |
 |---|---|
 | the drop's effect textures in the bucket (06:00) | 55 of 323 |
-| sheets shipped (the game's KTX2, top levels dropped) | 6 sheets, 8 files, 551 KB; the largest 147 KB (`scorch.metal.512`) |
+| sheets shipped (the game's KTX2, top levels dropped) | 6 sheets, 9 files, 838 KB; the largest 287 KB (`impact.512`, under the 512 KB effect cap) |
 | meshes shipped | 8 sets, 100 KB; the largest 28 KB (`debris.walker`) |
-| the set | 651 KB of the 6 MB cap; a visit at high loads about 534 KB, once |
-| published to `site-assets` (over 64 KB) | 4 files, 426 KB, `assets-check` 4 of 4 right |
+| the set | 938 KB of the 6 MB cap; a visit at high loads about 747 KB, once |
+| published to `site-assets` (over 64 KB) | 5 files, 713 KB, `assets-check` right |
 | draw calls an effect kind adds while it plays | 1 (one `InstancedMesh` a sheet and mode, one a chunk's shape); 0 at rest |
 | a bolt's flashes | 1 draw (12 meshes before) |
 | chunks at low, mid, high | a quarter, a half, all (snow 6 → 2, capped at 48 a shape at high) |

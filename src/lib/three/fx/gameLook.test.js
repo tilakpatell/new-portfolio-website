@@ -54,7 +54,7 @@ describe('lookUrl', () => {
 });
 
 describe('the committed table', () => {
-  it('names only files that are there (in git, or published to the bucket), each under the effect cap', async () => {
+  it('names only files that are there (in git, or published to the bucket), each under the effect cap of 512 KB', async () => {
     const { existsSync, statSync, readFileSync } = await import('node:fs');
     const at = (p) => new URL(`../../../../public${p}`, import.meta.url);
     const published = JSON.parse(readFileSync(new URL('../../../data/galaxyAssets.json', import.meta.url), 'utf8'));
@@ -64,7 +64,8 @@ describe('the committed table', () => {
       const files = e.mesh ? [e.file] : Object.keys(e.sizes).map((w) => lookUrl(name, w >= 2048 ? 'ultra' : w >= 1024 ? 'high' : 'low', BF2017_FX));
       for (const f of files) {
         expect(bytes(f), f).toBeGreaterThan(0);
-        expect(bytes(f), f).toBeLessThanOrEqual(256 * 1024);
+        // (512 KB an effect: the game's KTX2, the set held to its 6 MB)
+        expect(bytes(f), f).toBeLessThanOrEqual(512 * 1024);
       }
     }
   });

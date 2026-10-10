@@ -34,17 +34,18 @@ import { gridFromName } from '../../src/lib/three/fx/flipbook.js';
 export const OUT_DIR = 'public/models/galaxy/bf2017/fx';
 export const SITE_DIR = '/models/galaxy/bf2017/fx';
 export const TABLE = 'src/data/bf2017Fx.js';
-// (an effect's own cap; the set's is SET_CAP, loaded once a galaxy visit)
-export const EFFECT_CAP = 256 * 1024;
+// (an effect's own cap; the set's is SET_CAP, loaded once a galaxy visit;
+// 512 KB, not the WebP-era 256: the game's KTX2 at 512 is the size the
+// parent session took for the impact, 2026-10-10)
+export const EFFECT_CAP = 512 * 1024;
 export const SET_CAP = 6 * 1024 * 1024;
 // a file over this goes to the public bucket (scripts/assets-publish.mjs), not git
 export const COMMIT_CAP = 64 * 1024;
 
 export const SHEETS = {
   // the game's impact, packed: red the scorch it leaves, green the burst's
-  // rays, blue the ring that runs out (its 512 is 280 KB, over the effect
-  // cap, so 256 on every tier)
-  impact: { from: 'FX/Decals/VolumeDecals/Textures/T_Impact_01_RGB', channels: { scorch: 'r', burst: 'g', ring: 'b' }, sizes: [256] },
+  // rays, blue the ring that runs out
+  impact: { from: 'FX/Decals/VolumeDecals/Textures/T_Impact_01_RGB', channels: { scorch: 'r', burst: 'g', ring: 'b' }, sizes: [256, 512] },
   // a blaster's mark on metal: four of them, 2 by 2 (the name says 2x4)
   'scorch.metal': { from: 'FX/Decals/Metal/T_Decal_ScorchMark_Metal_2x4_D', grid: [2, 2], colour: true, sizes: [256, 512] },
   // four hot blast marks: red the burn's mask

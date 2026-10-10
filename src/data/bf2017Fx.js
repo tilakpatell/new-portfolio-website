@@ -14,7 +14,7 @@ export const BF2017_FX = {
   'debris.wood': {"mesh":true,"file":"/models/galaxy/bf2017/fx/debris.wood.glb","from":["fx/meshes/chunks/wood/meshp_woodsplinter_01_mesh","fx/meshes/chunks/wood/meshp_chunk_treesplinter_01_mesh","fx/meshes/chunks/wood/meshp_chunk_treesplinter_02_mesh","fx/meshes/chunks/wood/meshp_chunk_treesplinter_03_mesh"],"bytes":15320},
   'force.push': {"mesh":true,"file":"/models/galaxy/bf2017/fx/force.push.glb","from":["fx/gameplay/hero/luke/meshes/forcefronthalfsphere_mesh"],"bytes":6136},
   'glow': {"from":"FX/Lensflare/Textures/T_Box_SoftEdge_02","grid":[1,1],"sizes":{"256":27327},"additive":true},
-  'impact': {"from":"FX/Decals/VolumeDecals/Textures/T_Impact_01_RGB","grid":[1,1],"sizes":{"256":73560},"channels":{"scorch":"r","burst":"g","ring":"b"}},
+  'impact': {"from":"FX/Decals/VolumeDecals/Textures/T_Impact_01_RGB","grid":[1,1],"sizes":{"256":73560,"512":286838},"channels":{"scorch":"r","burst":"g","ring":"b"}},
   'ramp.blackbody': {"from":"FX/StandardShaders/T_BlackBodyRamps_01_M","grid":[1,1],"sizes":{"256":35750},"colour":true,"rampV":0.33},
   'scorch.metal': {"from":"FX/Decals/Metal/T_Decal_ScorchMark_Metal_2x4_D","grid":[2,2],"sizes":{"256":41665,"512":146633},"colour":true},
 };

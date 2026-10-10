@@ -785,6 +785,12 @@
     "from": "models/galaxy/bf2017/fx/impact.256.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/fx/impact.512.ktx2": {
+    "hash": "366a0c9f8fc7",
+    "bytes": 286838,
+    "from": "models/galaxy/bf2017/fx/impact.512.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/fx/scorch.metal.512.ktx2": {
     "hash": "4717164cc22a",
     "bytes": 146633,
