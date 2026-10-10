@@ -35,10 +35,18 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 | design | the architecting session | `claude/bf2017-render-beauty` | this PR |
 | Q1 | | `claude/surfaces-q1-materials` | |
 | Q2 | | `claude/surfaces-q2-ground` | |
-| Q4 | | `claude/surfaces-q4-weathering` | |
+| Q4 | https://claude.ai/code/session_01UZN9iy457biyvcFRr7X39w | `claude/surfaces-q4-weathering` | this lane's PR (weathering and decals; WebGL 2 leg shot, WebGPU leg on the owner's laptop) |
 | Q3 | | | after S |
 | Q5 | | | the desktop |
 | Q6 | | | after S and V |
+
+**Q4 (weathering and decals), 2026-10-10:**
+
+- **The hook contract is honoured, not yet wired.** `src/lib/three/surface/weather.js`'s `snowOverlay`, `sandOverlay`, `wetOverlay` (and `overlaysFor(entry, kind, { tsl })`) return `(ctx) → { color, roughness, metalness?, normal? }`, each mixed from the running value, `{}` for a material whose `params.weather` allows none (`use`/`top`/`snow` for snow, `use`/`top`/`sand` for sand, `use`/`rain` for wet; `weather.mask` names the WeatheringMask channel). Q1 had not pushed when this lane finished: the wiring is one line in Q1's `overlays` (`overlays: overlaysFor(entry, undefined, { tsl })`, plus `contributor.setTime(seconds)` each frame or on a weather change), done by whichever lane merges second. Two assumptions about Q1's ctx to check then: the running channels arrive as `ctx.color`, `ctx.roughness`, `ctx.metalness`, `ctx.normal`, and `ctx.normal` is in the material's normalNode space (view).
+- **The records**: Hoth Sunny's `GlobalWeatheringParamsEntityData` (sky visibility 0.1 to 0.9, exponent 1, indoor threshold 0.5, the AccumulateOverTimeOp 0 to 1 over 25 s, kept across a weather change) pinned in `surface/fixtures/hoth.weather.json` and inlined into lane R's `light/fixtures/hoth.ve.json`. `RainFlipNormal` is not drawn (its meaning is not in the records). The fixture: `node scripts/light-fixture.mjs --weather --legs webgl` (crates at 0, 12.5, 30 s; the accumulation moves a uniform, no pipeline rebuilt: 35 → 35).
+- **Decals per world**: Hoth 0 (nothing written); Endor_01 23 (all volume: 12 drawn, the 11 normal-only `DV_BumpedMetal_01` left out as having no colour map), Kamino_01 51, Naboo_01 48, Geonosis_02 582, Naboo_03 563, Kamino_03 536, Kashyyyk_02 512. Only Hoth is packed, so no `decals.json` ships; `node scripts/bf2017-decals.mjs <world>` writes it the day lane L packs one (`--fetch` takes the textures into `tex/decals/`).
+- **What the records turned out to say** (read from Naboo_01 and Endor_01, not documented): projected decals project along their box's local X, volume decals along Y; `atlasTile.TileIndex` counts from 1; the decal maps named `_RGB` are channel masks, not colour (blaster hole: red the scorch, green the ember rim, blue a breakup; streak: a 2 × 2 sheet of three-streak bursts; burnt: red/green a normal, blue the burn). The site draws them as a near-black scorch by the mask; the rims' glow (`T_BlackBodyRamps_01_M`) and the burnt normal wait.
+- **Volume decals over WebGL 2** (Review Focus 3): the box's `viewportDepthTexture` read draws on the node renderer over WebGL 2 (the fixture's burnt patch, fallback 0); the classic renderer projects them over their box instead. The fixture: `node scripts/light-fixture.mjs --decals --legs webgl` (11 decals in 5 draws, one per texture per cell plus the box; the grazing pair two frames apart differ by 0).
 
 Findings for the next lane go here: families by count on Hoth and which fell to `glb`, the detail maps still missing at PR time, the ground's tile size as judged, what the Enlighten probe found, the PSNR table.
 
