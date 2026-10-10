@@ -26,6 +26,8 @@ Coverage (from lane Z's ledger, refreshed by every lane's PR): used · owned · 
 
 Lanes E1 to E5 are spawned the same way once E0 is on `main` (the session's prompt: read the spec, the lane's plan and this section; branch `claude/bf2017-e<n>-…`; executing-plans; the gates; the PR; merge when green). The design PR is #848. Written the same night, in parallel and unseen until after the sessions were spawned: the surfaces design #844 (`HANDOFF-bf2017-surfaces.md`, lanes Q1 to Q6, three running). Its Q1 owns the materials' recipes and detail maps, its Q4 the placed decals' renderer, its Q6 the surface sky's panorama; lanes E0, Z and the space lane were told so by message at 14:55 UTC and the spec's §3 and owned-rows table say it. "No lightmaps exist" in lane L's notes below is wrong: #844 found the Enlighten atlases.
 
+The owner holds the licence for everything in the drop, the fonts included (2026-10-10): no asset is excluded for a licence; only the era rule and the uploader's scaffolding exclude anything.
+
 **Corrections to this file**, in the spec's §7: lane L's "then Endor" is E0's; the placed lights are drawable today and E runs `bf2017-lights.mjs` per world; the fonts, icons and strings are lane M's for the whole site, the game's lane 5 consumes `src/lib/bf2017/ui/`; the collision meshes and the animation tracks had no consumer in any design and have one now (E0, Q).
 
 ## Done
