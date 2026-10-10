@@ -14,3 +14,10 @@ From `levels/mp/hoth_01` (Star Wars Battlefront II, 2017, EA DICE; used with per
 | worst place: triangles, calls | 716k, 141 | 1347k, 154 | 1573k, 169 |
 | texture bytes (every map the level has) | 8.83 MB | 28.71 MB | 28.71 MB |
 
+## Variations
+
+Written by `node scripts/bf2017-variations.mjs hoth` from the level's 13 mesh variation databases (variations.json, 0.40 MB).
+
+| meshes | with variations | applied by instances | by the level rule | mixed (default drawn) | textures missing from the bucket | maps not in the pack |
+|---|---|---|---|---|---|---|
+| 601 | 55 | 20 | 0 | 24 | 105 | 0 |
