@@ -13,13 +13,17 @@
 // light moves (no recompile), the frame time.
 //
 // rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only,
-//   materials, weather, decals, hoth, shadows, lightSun, clouds, filter }
+//   materials, weather, decals, particles }
 //
 // `materials` (lane Q1, scripts/light-fixture.mjs --materials): { mode:
 // 'game' | 'glb', list: [{ label, recipe, glb, maps: { detail: url, … } }] }:
 // the ring and its things set aside, a cube per recipe wearing the game
 // material over the GLB's own (mode 'glb': the GLB's material as it is) and
 // a wall under the first recipe, seen from probe.view('row' | 'wall').
+//
+// `particles` (fidelity lane X): the game's effects from their emitter
+// tables over the ring, and the GPU twin's parity (particleProbe.js), read
+// by scripts/light-fixture.mjs --particles as `probe.particles`.
 //
 // `weather` (lane Q4, seconds into Hoth's day): three crates at the front
 // under the snow contributor of src/lib/three/surface/weather.js, composed
@@ -34,29 +38,9 @@
 // cut's targets; its textures' `files` are fetched from the dev server
 // (scripts/light-fixture.mjs --decals). probe.decals() reads its stats,
 // probe.view('decals' | 'floor' | 'grazing') frames it.
-//
-// `hoth` (lane S's calibration shot): the same ground and ring under Hoth
-// Sunny's record (src/lib/three/light/fixtures/hoth.ve.json), the ground
-// snow, the ring's coloured lamps off, so its mean luminance stands beside
-// lane G's calibrated classic Hoth (docs/superpowers/evidence/bf2017-light/).
-// `shadows` (lane S's cascades): under Hoth's record, a 400 m strip of snow
-// with a figure (a 1.8 m capsule) at 2, 20 and 60 m from the camera, a wall,
-// and a post every 10 m out to 200 m for the cascades' far edge;
-// `probe.view('near' | 'seam')` frames the figures or the far edge.
-// `lightSun` drops the record's shadow sun, so the cascades cast along the
-// light (the before of the shadow sun's shot). `clouds` swaps Hoth's
-// secondary cloud layer for a test one (CLOUD_TEST: 80 m, coverage 1,
-// exponent 1; not Hoth's, whose sunny sky is nearly clear) so the drift
-// shows in a frame.
 
 import * as THREE from 'three';
 import hothWeather from '../../lib/three/surface/fixtures/hoth.weather.json';
-import hothVe from '../../lib/three/light/fixtures/hoth.ve.json';
-
-// the snow's albedo under --hoth (fresh snow reflects 0.8 to 0.9; Hoth's
-// ice field, worn, a little under)
-const SNOW = 0xe4eaf0;
-const CLOUD_TEST = { SecondaryCloudShadowSize: 80, SecondaryCloudShadowCoverage: 1, SecondaryCloudShadowExponent: 1 };
 
 const RING = 200; // point lights round the ring
 const SPOTS = 8;
@@ -117,25 +101,18 @@ export default {
   mb: 0,
   create(rt) {
     const opts = { tier: 'ultra', env: true, post: true, sky: true, placed: true, ...(rt.fixture ?? {}) };
-    if (opts.shadows || opts.clouds || opts.lightSun) opts.hoth = true;
-    if (opts.hoth) opts.placed = false;
-    let entry = opts.hoth ? hothVe.sunny : ENTRY;
-    if (opts.clouds) {
-      const outdoor = { ...entry.record.OutdoorLightComponentData[0], ...CLOUD_TEST };
-      entry = { ...entry, record: { ...entry.record, OutdoorLightComponentData: [outdoor] } };
-    }
-    if (opts.lightSun) {
-      const rest = { ...entry.record.OutdoorLightComponentData[0] };
-      delete rest.ShadowSunRotationX;
-      delete rest.ShadowSunRotationY;
-      entry = { ...entry, record: { ...entry.record, OutdoorLightComponentData: [rest] } };
-    }
     const renderer = rt.gfx.renderer;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0b0d12);
     const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 800);
     camera.position.set(0, 7, 24);
     camera.lookAt(0, 1, 0);
+    // (closer for the particles: a flake is 3 to 5 cm)
+    if (opts.particles) {
+      camera.position.set(0, 2.2, 7);
+      camera.lookAt(0, 2.4, 0);
+    }
+    const camVel = new THREE.Vector3();
 
     const made = [];
     const mat = (o) => {
@@ -147,7 +124,8 @@ export default {
       made.push(g);
       return g;
     };
-    const ground = new THREE.Mesh(geo(opts.shadows ? new THREE.PlaneGeometry(60, 400) : new THREE.PlaneGeometry(200, 200)), mat({ color: opts.hoth ? SNOW : 0x9aa0a8, roughness: opts.hoth ? 0.8 : 0.55, metalness: 0.05 }));
+    // (lane S's shadows fixture stands on a long strip, its figures, wall, posts and boards down it)
+    const ground = new THREE.Mesh(geo(opts.shadows ? new THREE.PlaneGeometry(60, 400) : new THREE.PlaneGeometry(200, 200)), mat({ color: 0x9aa0a8, roughness: 0.55, metalness: 0.05 }));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
@@ -203,7 +181,7 @@ export default {
     const ball = geo(new THREE.SphereGeometry(0.9, 32, 16));
     const stone = mat({ color: 0xd8d2c8, roughness: 0.7 });
     const chrome = mat({ color: 0xffffff, roughness: 0.08, metalness: 1 });
-    for (let i = 0; i < (opts.shadows ? 0 : 12); i++) {
+    for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;
       const p = new THREE.Mesh(pillar, stone);
       p.position.set(Math.cos(a) * 10, 2.5, Math.sin(a) * 10);
@@ -216,7 +194,7 @@ export default {
     const cube = new THREE.Mesh(geo(new THREE.BoxGeometry(2, 2, 2)), mat({ color: 0x4488ff, roughness: 0.3 }));
     cube.position.y = 1.6;
     cube.castShadow = cube.receiveShadow = true;
-    if (!opts.shadows) scene.add(cube);
+    scene.add(cube);
 
     let post = null;
     let envTex = null;
@@ -235,15 +213,6 @@ export default {
       light: null,
       passes: [],
       programs: () => countPrograms(renderer),
-      csm: () => light?.parts.sun.csm ?? null,
-      // the weather's clock run on by `seconds` (the clouds drift)
-      advance(seconds) {
-        light?.update(seconds, camera);
-      },
-      // the contact shadows shown or hidden (their before)
-      contact(on) {
-        for (const p of light?.parts.contact.planes ?? []) p.material.visible = on;
-      },
       // the environment on or off, for A2's two shots
       setEnv(on) {
         scene.environment = on ? envTex : null;
@@ -310,9 +279,10 @@ export default {
     const ready = (async () => {
       await row;
       const { applyGameLight } = await import('../../lib/three/light/apply.js');
-      light = await applyGameLight(scene, renderer, entry, { tier: opts.tier, camera, lights: opts.placed ? source : null, clustered: opts.clustered, sky: opts.sky, post: opts.post, lut: gradeLut(), filter: opts.filter });
+      light = await applyGameLight(scene, renderer, ENTRY, { tier: opts.tier, camera, lights: opts.placed ? source : null, clustered: opts.clustered, sky: opts.sky, post: opts.post, lut: gradeLut() });
       probe.light = { clustered: light.parts.placed?.clustered ?? null };
-      for (const f of figures) light.track(f);
+      // (lane S's shadow figures: the contact pass follows them)
+      for (const f of figures) light.track?.(f);
       if (!opts.sky) {
         const [{ PMREMGenerator }, { RoomEnvironment }] = await Promise.all([import('three/webgpu'), import('three/addons/environments/RoomEnvironment.js')]);
         const pmrem = new PMREMGenerator(renderer);
@@ -321,6 +291,15 @@ export default {
       }
       if (opts.weather != null) snow = await weatherCrates(scene, made, opts.weather);
       if (opts.decals) decals = await decalWall(scene, made, renderer, ground, opts.decals, opts.tier);
+      if (opts.particles) {
+        const { createParticleProbe } = await import('./particleProbe.js');
+        probe.particles = await createParticleProbe({ scene, renderer, camera, light, tier: opts.tier });
+        probe.particles.warm(6);
+        // a pan for the streaks: the camera moved sideways at `speed` m/s
+        probe.pan = (speed) => {
+          camVel.set(speed, 0, 0);
+        };
+      }
       envTex = scene.environment;
       probe.setEnv(opts.env);
       light.update(0, camera);
@@ -343,6 +322,8 @@ export default {
       },
       step(dt) {
         cube.rotation.y += dt;
+        if (camVel.x) camera.position.addScaledVector(camVel, dt);
+        probe.particles?.step(dt);
         light?.update(dt, camera);
       },
       draw({ renderer: r }) {
@@ -355,6 +336,7 @@ export default {
         grid?.dispose();
         light?.dispose();
         decals?.dispose();
+        probe.particles?.dispose();
         if (!opts.sky) envTex?.dispose();
         for (const m of made) m.dispose();
       },
@@ -403,7 +385,7 @@ async function recipeRow(scene, renderer, { mode = 'game', list = [] }, tier, ma
     const gltf = entry.glb ? await gltfLoader().loadAsync(entry.glb) : null;
     const glb = gltf ? glbMaterial(gltf, entry.recipe) : new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 0.6 });
     const maps = { glb };
-    for (const [k, url] of Object.entries(entry.maps ?? {})) maps[k] = url ? await ktx2.loadAsync(url) : null;
+    for (const [k, url] of Object.entries(entry.maps ?? {})) maps[k] = Array.isArray(url) ? await Promise.all(url.map((u) => ktx2.loadAsync(u))) : url ? await ktx2.loadAsync(url) : null;
     const material = mode === 'glb' ? glb : make(entry.recipe, maps, { tier, sun: SUN });
     made.push(material);
     const cube = new THREE.Mesh(box, material);

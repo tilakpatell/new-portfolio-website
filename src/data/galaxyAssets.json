@@ -869,6 +869,12 @@
     "from": "characters/hero/anakin/anakin_01/anakin_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/anakin.recipes.json": {
+    "hash": "c70907041d23",
+    "bytes": 7651,
+    "from": "models/galaxy/bf2017/crew/anakin.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/anakin.ultra.glb": {
     "hash": "563f13b9e8c3",
     "bytes": 55585312,
@@ -886,6 +892,12 @@
     "bytes": 4517524,
     "from": "characters/hero/anakin/anakin_02/anakin_02_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/anakin2.recipes.json": {
+    "hash": "b7a56e288229",
+    "bytes": 7089,
+    "from": "models/galaxy/bf2017/crew/anakin2.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/anakin2.ultra.glb": {
     "hash": "9339773eb9d4",
@@ -905,6 +917,12 @@
     "from": "characters/hero/anakin/anakin_03/anakin_03_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/anakin3.recipes.json": {
+    "hash": "cf85d4a01e4a",
+    "bytes": 6317,
+    "from": "models/galaxy/bf2017/crew/anakin3.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/anakin3.ultra.glb": {
     "hash": "f30a60f8d91d",
     "bytes": 55494284,
@@ -917,11 +935,23 @@
     "from": "characters/npc/droids/astromech/r2d2/r2d2_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/astromech.recipes.json": {
+    "hash": "60c3d874d672",
+    "bytes": 1010,
+    "from": "models/galaxy/bf2017/crew/astromech.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/birdtheed.glb": {
     "hash": "122de85b16cc",
     "bytes": 2875272,
     "from": "characters/npc/creatures/birdtheed/birdtheed_02/birdtheed_02_b_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/birdtheed.recipes.json": {
+    "hash": "5d580e636855",
+    "bytes": 387,
+    "from": "models/galaxy/bf2017/crew/birdtheed.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/bobafett.glb": {
     "hash": "2adf71ae871f",
@@ -934,6 +964,12 @@
     "bytes": 2424796,
     "from": "characters/hero/bobafett/bobafett_01/bobafett_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/bobafett.recipes.json": {
+    "hash": "15ba75d32bf8",
+    "bytes": 10424,
+    "from": "models/galaxy/bf2017/crew/bobafett.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/bobafett.ultra.glb": {
     "hash": "b3df0c7dde16",
@@ -953,6 +989,12 @@
     "from": "characters/hero/bossk/bossk_01/bossk_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/bossk.recipes.json": {
+    "hash": "ff8e155100dd",
+    "bytes": 3540,
+    "from": "models/galaxy/bf2017/crew/bossk.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/bossk.ultra.glb": {
     "hash": "732ecd704145",
     "bytes": 35318272,
@@ -965,6 +1007,12 @@
     "from": "characters/rebel/c3p0/c3p0_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/c3po.recipes.json": {
+    "hash": "1aec765628ab",
+    "bytes": 4561,
+    "from": "models/galaxy/bf2017/crew/c3po.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/chewie.glb": {
     "hash": "df6356e3bd13",
     "bytes": 11476756,
@@ -976,6 +1024,12 @@
     "bytes": 3402640,
     "from": "characters/hero/chewbacca/chewbacca_01/chewbacca_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/chewie.recipes.json": {
+    "hash": "4241b931000b",
+    "bytes": 3771,
+    "from": "models/galaxy/bf2017/crew/chewie.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/chewie.ultra.glb": {
     "hash": "66b1bb7be111",
@@ -995,6 +1049,12 @@
     "from": "characters/hero/chewbacca/chewbacca_goggles_01/chewbacca_goggles_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/chewiegoggles.recipes.json": {
+    "hash": "8c337783d089",
+    "bytes": 1328,
+    "from": "models/galaxy/bf2017/crew/chewiegoggles.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/chewiegoggles.ultra.glb": {
     "hash": "f7190c8036f9",
     "bytes": 35055780,
@@ -1007,11 +1067,23 @@
     "from": "characters/npc/creatures/chicken/chicken_01/chicken_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/chicken.recipes.json": {
+    "hash": "85c80bbb05dc",
+    "bytes": 382,
+    "from": "models/galaxy/bf2017/crew/chicken.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/civcity1.glb": {
     "hash": "89efea4f2b3e",
     "bytes": 43807320,
     "from": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_top_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/civcity1.recipes.json": {
+    "hash": "7bd6c849c966",
+    "bytes": 9178,
+    "from": "models/galaxy/bf2017/crew/civcity1.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/civcity3.glb": {
     "hash": "a6d8897ee5fc",
@@ -1019,11 +1091,23 @@
     "from": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/civcity3.recipes.json": {
+    "hash": "d0951dbc0463",
+    "bytes": 7682,
+    "from": "models/galaxy/bf2017/crew/civcity3.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/clone.glb": {
     "hash": "cd3dfdf59468",
     "bytes": 20600424,
     "from": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/clone.recipes.json": {
+    "hash": "2eb3662cfb72",
+    "bytes": 7825,
+    "from": "models/galaxy/bf2017/crew/clone.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/clonephase1.glb": {
     "hash": "1e8e5bed8168",
@@ -1031,11 +1115,23 @@
     "from": "characters/light/l_assault_preq/l_assault_preq_01/l_assault_preq_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/clonephase1.recipes.json": {
+    "hash": "be698f7c60d6",
+    "bytes": 10126,
+    "from": "models/galaxy/bf2017/crew/clonephase1.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/deathtrooper.glb": {
     "hash": "2fd37261c116",
     "bytes": 13414680,
     "from": "characters/hero/deathtrooper/deathtrooper_01/deathtrooper_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/deathtrooper.recipes.json": {
+    "hash": "0b63bd847ea2",
+    "bytes": 8130,
+    "from": "models/galaxy/bf2017/crew/deathtrooper.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/dooku.glb": {
     "hash": "5d754a8fbe39",
@@ -1048,6 +1144,12 @@
     "bytes": 3834988,
     "from": "characters/hero/countdooku/countdooku_01/countdooku_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/dooku.recipes.json": {
+    "hash": "87ff827801b7",
+    "bytes": 8126,
+    "from": "models/galaxy/bf2017/crew/dooku.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/dooku.ultra.glb": {
     "hash": "90211e932421",
@@ -1067,6 +1169,12 @@
     "from": "characters/hero/countdooku/countdooku_02/countdooku_02_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/dooku2.recipes.json": {
+    "hash": "823abf44cf8f",
+    "bytes": 7439,
+    "from": "models/galaxy/bf2017/crew/dooku2.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/dooku2.ultra.glb": {
     "hash": "8836044a97ea",
     "bytes": 45054828,
@@ -1085,6 +1193,12 @@
     "from": "characters/hero/countdooku/countdooku_03/countdooku_03_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/dooku3.recipes.json": {
+    "hash": "e7c49e56eec3",
+    "bytes": 7564,
+    "from": "models/galaxy/bf2017/crew/dooku3.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/dooku3.ultra.glb": {
     "hash": "2bc52cee0929",
     "bytes": 41154864,
@@ -1097,11 +1211,23 @@
     "from": "characters/npc/droids/astromech/r4i9/r4i9_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/droid.recipes.json": {
+    "hash": "97f0a548e0b4",
+    "bytes": 656,
+    "from": "models/galaxy/bf2017/crew/droid.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/ewok.glb": {
     "hash": "2c643e6ee6ed",
     "bytes": 8661632,
     "from": "characters/hero/ewok/ewok_01/ewok_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/ewok.recipes.json": {
+    "hash": "3572967f2782",
+    "bytes": 2779,
+    "from": "models/galaxy/bf2017/crew/ewok.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/felbird.glb": {
     "hash": "4bf4dd7b6038",
@@ -1109,11 +1235,23 @@
     "from": "characters/npc/creatures/fel_bird/fel_bird_01/fel_bird_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/felbird.recipes.json": {
+    "hash": "19ccab2c8249",
+    "bytes": 380,
+    "from": "models/galaxy/bf2017/crew/felbird.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/felripper.glb": {
     "hash": "c7737fd0105a",
     "bytes": 9133440,
     "from": "characters/npc/creatures/fel_ripper/fel_ripper_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/felripper.recipes.json": {
+    "hash": "03ee6f782eed",
+    "bytes": 367,
+    "from": "models/galaxy/bf2017/crew/felripper.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/gamorreanguard.glb": {
     "hash": "57bd879acb95",
@@ -1121,11 +1259,23 @@
     "from": "characters/npc/aliens/gamorreanguard/gamorreanguard_01/lw_gamorreanguard_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/gamorreanguard.recipes.json": {
+    "hash": "1dccaea59eaf",
+    "bytes": 5436,
+    "from": "models/galaxy/bf2017/crew/gamorreanguard.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/gonk.glb": {
     "hash": "349d6338da27",
     "bytes": 3555068,
     "from": "characters/npc/droids/droidgonk/droidgonk_01/droidgonk_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/gonk.recipes.json": {
+    "hash": "97c5871f5cc5",
+    "bytes": 653,
+    "from": "models/galaxy/bf2017/crew/gonk.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/han.glb": {
     "hash": "fece1b4ab7a0",
@@ -1138,6 +1288,12 @@
     "bytes": 2957172,
     "from": "characters/hero/hansolo/hansolo_01/hansolo_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/han.recipes.json": {
+    "hash": "1e88d2a8e9ee",
+    "bytes": 3736,
+    "from": "models/galaxy/bf2017/crew/han.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/han.ultra.glb": {
     "hash": "5688948874a5",
@@ -1157,6 +1313,12 @@
     "from": "characters/hero/hansolo/hansolo_endor_01/hansolo_endor_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/hanendor.recipes.json": {
+    "hash": "bc765010c8ad",
+    "bytes": 2645,
+    "from": "models/galaxy/bf2017/crew/hanendor.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/hanendor.ultra.glb": {
     "hash": "39e66e7023a7",
     "bytes": 27411072,
@@ -1174,6 +1336,12 @@
     "bytes": 2726300,
     "from": "characters/hero/hansolo/hansolo_hoth_01/hansolo_hoth_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanhoth.recipes.json": {
+    "hash": "c79feea2d154",
+    "bytes": 4896,
+    "from": "models/galaxy/bf2017/crew/hanhoth.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/hanhoth.ultra.glb": {
     "hash": "03b92bc0dd31",
@@ -1193,6 +1361,12 @@
     "from": "characters/hero/hansolo/hansolo_rotj_01/hansolo_rotj_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/hanrotj.recipes.json": {
+    "hash": "8c548c3eb4b8",
+    "bytes": 710,
+    "from": "models/galaxy/bf2017/crew/hanrotj.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/hanrotj.ultra.glb": {
     "hash": "3550133551c5",
     "bytes": 24399452,
@@ -1210,6 +1384,12 @@
     "bytes": 1836256,
     "from": "characters/hero/hansolo/hansolo_yavin_01/hansolo_yavin_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanyavin.recipes.json": {
+    "hash": "8c548c3eb4b8",
+    "bytes": 710,
+    "from": "models/galaxy/bf2017/crew/hanyavin.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/hanyavin.ultra.glb": {
     "hash": "fbf4ca8c76d0",
@@ -1229,6 +1409,12 @@
     "from": "characters/hero/hansolo/hansolo_young_01/hansolo_young_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/hanyoung.recipes.json": {
+    "hash": "337b60367ff0",
+    "bytes": 1336,
+    "from": "models/galaxy/bf2017/crew/hanyoung.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/hanyoung.ultra.glb": {
     "hash": "152d05efa3c7",
     "bytes": 26656212,
@@ -1247,6 +1433,12 @@
     "from": "characters/hero/hansolo/hansolo_young_02/hansolo_young_02_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/hanyoung2.recipes.json": {
+    "hash": "dbd4cac5445a",
+    "bytes": 1335,
+    "from": "models/galaxy/bf2017/crew/hanyoung2.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/hanyoung2.ultra.glb": {
     "hash": "1a5b123f0e59",
     "bytes": 26508884,
@@ -1259,6 +1451,12 @@
     "from": "characters/bodyparts/torso_02/torso_02_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/hothtrooper.recipes.json": {
+    "hash": "6a2b555d743e",
+    "bytes": 13858,
+    "from": "models/galaxy/bf2017/crew/hothtrooper.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/lando.glb": {
     "hash": "5aae2ffed10e",
     "bytes": 11757328,
@@ -1270,6 +1468,12 @@
     "bytes": 3291364,
     "from": "characters/hero/lando/lando_01/lando_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lando.recipes.json": {
+    "hash": "d9d2de78cf41",
+    "bytes": 5092,
+    "from": "models/galaxy/bf2017/crew/lando.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/lando.ultra.glb": {
     "hash": "f2d5372fed7f",
@@ -1289,6 +1493,12 @@
     "from": "characters/hero/lando/lando_rotj_01/lando_rotj_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/landorotj.recipes.json": {
+    "hash": "d1eb5d686a0e",
+    "bytes": 2428,
+    "from": "models/galaxy/bf2017/crew/landorotj.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/landorotj.ultra.glb": {
     "hash": "27438699197d",
     "bytes": 19687760,
@@ -1306,6 +1516,12 @@
     "bytes": 2522676,
     "from": "characters/hero/lando/lando_skiff_01/lando_skiff_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landoskiff.recipes.json": {
+    "hash": "1b8173f268d9",
+    "bytes": 1460,
+    "from": "models/galaxy/bf2017/crew/landoskiff.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/landoskiff.ultra.glb": {
     "hash": "57df966808e0",
@@ -1325,6 +1541,12 @@
     "from": "characters/hero/lando/lando_young_01/lando_young_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/landoyoung.recipes.json": {
+    "hash": "6dfd9a1da028",
+    "bytes": 5689,
+    "from": "models/galaxy/bf2017/crew/landoyoung.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/landoyoung.ultra.glb": {
     "hash": "77a3def73ecc",
     "bytes": 34198892,
@@ -1342,6 +1564,12 @@
     "bytes": 3214020,
     "from": "characters/hero/lando/lando_young_02/lando_young_02_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landoyoung2.recipes.json": {
+    "hash": "54be99a19f18",
+    "bytes": 5804,
+    "from": "models/galaxy/bf2017/crew/landoyoung2.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/landoyoung2.ultra.glb": {
     "hash": "7b118aedccb9",
@@ -1361,6 +1589,12 @@
     "from": "characters/hero/leia/leia_01/leia_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/leia.recipes.json": {
+    "hash": "d891176a64f3",
+    "bytes": 4971,
+    "from": "models/galaxy/bf2017/crew/leia.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/leia.ultra.glb": {
     "hash": "f14a1a40d37b",
     "bytes": 34186816,
@@ -1378,6 +1612,12 @@
     "bytes": 984916,
     "from": "characters/hero/leia/leia_boushh_01/leia_boushh_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiaboushh.recipes.json": {
+    "hash": "879a957579b2",
+    "bytes": 1937,
+    "from": "models/galaxy/bf2017/crew/leiaboushh.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/leiaboushh.ultra.glb": {
     "hash": "359818ce3a97",
@@ -1397,6 +1637,12 @@
     "from": "characters/hero/leia/leia_endor_01/leia_endor_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/leiaendor.recipes.json": {
+    "hash": "62834de72a76",
+    "bytes": 673,
+    "from": "models/galaxy/bf2017/crew/leiaendor.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/leiaendor.ultra.glb": {
     "hash": "80b9df4f3dd0",
     "bytes": 42056236,
@@ -1414,6 +1660,12 @@
     "bytes": 1232812,
     "from": "characters/hero/leia/leia_orig_nab_01/leia_orig_nab_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiagoldvest.recipes.json": {
+    "hash": "6df621ced986",
+    "bytes": 424,
+    "from": "models/galaxy/bf2017/crew/leiagoldvest.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/leiagoldvest.ultra.glb": {
     "hash": "47fd172f7c28",
@@ -1433,6 +1685,12 @@
     "from": "characters/hero/leia/leia_princess_01/leia_princess_01_pants_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/leiaprincess.recipes.json": {
+    "hash": "5a05aef38cb1",
+    "bytes": 5698,
+    "from": "models/galaxy/bf2017/crew/leiaprincess.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/leiaprincess.ultra.glb": {
     "hash": "b9da7c4f3ec6",
     "bytes": 37742808,
@@ -1450,6 +1708,12 @@
     "bytes": 3586132,
     "from": "characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/luke.recipes.json": {
+    "hash": "c66c18668a0d",
+    "bytes": 6921,
+    "from": "models/galaxy/bf2017/crew/luke.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/luke.ultra.glb": {
     "hash": "defc459255f5",
@@ -1469,6 +1733,12 @@
     "from": "characters/hero/luke/luke_farmboy_01/luke_farmboy_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/lukefarmboy.recipes.json": {
+    "hash": "5b0e4090eb41",
+    "bytes": 7134,
+    "from": "models/galaxy/bf2017/crew/lukefarmboy.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/lukefarmboy.ultra.glb": {
     "hash": "2454f3a08232",
     "bytes": 51214840,
@@ -1486,6 +1756,12 @@
     "bytes": 3690588,
     "from": "characters/hero/luke/luke_hoth_01/luke_hoth_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lukehoth.recipes.json": {
+    "hash": "068e30029c77",
+    "bytes": 7847,
+    "from": "models/galaxy/bf2017/crew/lukehoth.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/lukehoth.ultra.glb": {
     "hash": "5b13e3ec4443",
@@ -1505,6 +1781,12 @@
     "from": "characters/hero/luke/luke_yavin_01/luke_yavin_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/lukeyavin.recipes.json": {
+    "hash": "0203637fea1f",
+    "bytes": 4290,
+    "from": "models/galaxy/bf2017/crew/lukeyavin.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/lukeyavin.ultra.glb": {
     "hash": "f446a18c1db9",
     "bytes": 31493148,
@@ -1522,6 +1804,12 @@
     "bytes": 3279696,
     "from": "characters/hero/darthmaul/darthmaul_01/darthmaul_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/maul.recipes.json": {
+    "hash": "cc55d37cc676",
+    "bytes": 6149,
+    "from": "models/galaxy/bf2017/crew/maul.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/maul.ultra.glb": {
     "hash": "46c47f954655",
@@ -1541,6 +1829,12 @@
     "from": "characters/hero/darthmaul/darthmaul_robotlegs_01/darthmaul_robotlegs_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/maullegs.recipes.json": {
+    "hash": "5081aa937054",
+    "bytes": 4452,
+    "from": "models/galaxy/bf2017/crew/maullegs.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/maullegs.ultra.glb": {
     "hash": "304a9badf094",
     "bytes": 39290636,
@@ -1558,6 +1852,12 @@
     "bytes": 4297752,
     "from": "characters/hero/obiwan/obiwan_01/obiwan_01_body_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/obiwan.recipes.json": {
+    "hash": "de05377ad43f",
+    "bytes": 5365,
+    "from": "models/galaxy/bf2017/crew/obiwan.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/obiwan.ultra.glb": {
     "hash": "a1e4ca77fa74",
@@ -1577,6 +1877,12 @@
     "from": "characters/hero/obiwan/obiwan_02/obiwan_02_body_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/obiwan2.recipes.json": {
+    "hash": "f6a8951c16d9",
+    "bytes": 4898,
+    "from": "models/galaxy/bf2017/crew/obiwan2.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/obiwan2.ultra.glb": {
     "hash": "bf9a2e279f07",
     "bytes": 59812296,
@@ -1595,6 +1901,12 @@
     "from": "characters/hero/obiwan/obiwan_03/obiwan_03_body_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/obiwan3.recipes.json": {
+    "hash": "bcf4bb20dfcf",
+    "bytes": 4175,
+    "from": "models/galaxy/bf2017/crew/obiwan3.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/obiwan3.ultra.glb": {
     "hash": "9700be0c82f8",
     "bytes": 53566280,
@@ -1606,6 +1918,12 @@
     "bytes": 27503916,
     "from": "characters/hero/imperialofficer/imperialofficer_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/officer.recipes.json": {
+    "hash": "9178b9a6aa61",
+    "bytes": 9839,
+    "from": "models/galaxy/bf2017/crew/officer.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/palpatine.glb": {
     "hash": "2def77cb1be1",
@@ -1619,6 +1937,12 @@
     "from": "characters/hero/palpatine/palpatine_01/palpatine_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/palpatine.recipes.json": {
+    "hash": "b2640b4d414a",
+    "bytes": 5918,
+    "from": "models/galaxy/bf2017/crew/palpatine.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/palpatine.ultra.glb": {
     "hash": "9c59e560755b",
     "bytes": 25825592,
@@ -1631,11 +1955,23 @@
     "from": "characters/npc/creatures/pelikki/pelikki_01/pelikki_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/pelikki.recipes.json": {
+    "hash": "b177a7198ff9",
+    "bytes": 380,
+    "from": "models/galaxy/bf2017/crew/pelikki.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/pillioshrimp.glb": {
     "hash": "778207c1b6ab",
     "bytes": 11204824,
     "from": "characters/npc/creatures/pillioshrimp/pillioshrimp_01/pillioshrimp_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/pillioshrimp.recipes.json": {
+    "hash": "7189800854f5",
+    "bytes": 1226,
+    "from": "models/galaxy/bf2017/crew/pillioshrimp.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/probe.glb": {
     "hash": "962627e76100",
@@ -1643,11 +1979,23 @@
     "from": "characters/npc/droids/viper_01/viper_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/probe.recipes.json": {
+    "hash": "af7a86dbe7a5",
+    "bytes": 639,
+    "from": "models/galaxy/bf2017/crew/probe.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/profogg.glb": {
     "hash": "6e215d6238ed",
     "bytes": 154552,
     "from": "characters/npc/creatures/profogg/profogg_01/profogg_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/profogg.recipes.json": {
+    "hash": "60e3fb79f21a",
+    "bytes": 383,
+    "from": "models/galaxy/bf2017/crew/profogg.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/r5.glb": {
     "hash": "61be56f1d0ae",
@@ -1655,11 +2003,23 @@
     "from": "characters/npc/droids/astromech/r5d4/r5d4_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/r5.recipes.json": {
+    "hash": "6bb3045a5bc4",
+    "bytes": 656,
+    "from": "models/galaxy/bf2017/crew/r5.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/rebel.glb": {
     "hash": "06322a12683a",
     "bytes": 16078840,
     "from": "characters/light/l_assault_orig/l_assault_orig_ds_01/l_assault_orig_ds_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/rebel.recipes.json": {
+    "hash": "f2ccb87402b0",
+    "bytes": 9820,
+    "from": "models/galaxy/bf2017/crew/rebel.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/rebelpilot.glb": {
     "hash": "64507be248ce",
@@ -1667,11 +2027,23 @@
     "from": "characters/npc/humans/rebel_pilot/rebel_pilot_male_02_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/rebelpilot.recipes.json": {
+    "hash": "0bffc5685605",
+    "bytes": 9239,
+    "from": "models/galaxy/bf2017/crew/rebelpilot.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/rebeltech.glb": {
     "hash": "fcd85b03ab97",
     "bytes": 13450568,
     "from": "characters/npc/humans/rebel_technician_orig/rebel_technician_orig_01/rebel_technician_orig_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/rebeltech.recipes.json": {
+    "hash": "0efc22404792",
+    "bytes": 6440,
+    "from": "models/galaxy/bf2017/crew/rebeltech.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/runyip.glb": {
     "hash": "80928845bf2d",
@@ -1679,11 +2051,23 @@
     "from": "characters/npc/creatures/runyip/runyip_01/runyip_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/runyip.recipes.json": {
+    "hash": "38645b6566c1",
+    "bytes": 374,
+    "from": "models/galaxy/bf2017/crew/runyip.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/sandtrooper.glb": {
     "hash": "4d7b67bfa719",
     "bytes": 17689964,
     "from": "characters/dark/d_heavy_orig/d_heavy_orig_mos_01/d_heavy_orig_mos_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/sandtrooper.recipes.json": {
+    "hash": "01e46f1649c3",
+    "bytes": 11413,
+    "from": "models/galaxy/bf2017/crew/sandtrooper.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/scouttrooper.glb": {
     "hash": "7d4766bc28d3",
@@ -1691,11 +2075,23 @@
     "from": "characters/imperial/imperial_scoutrooper/imperial_scoutrooper_male_01/imperial_scoutrooper_male_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/scouttrooper.recipes.json": {
+    "hash": "a80ab80e5d25",
+    "bytes": 8463,
+    "from": "models/galaxy/bf2017/crew/scouttrooper.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/scurrier.glb": {
     "hash": "f29fd846d948",
     "bytes": 229860,
     "from": "characters/npc/creatures/scurrier/scurrier_01/scurrier_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/scurrier.recipes.json": {
+    "hash": "096a1d14e143",
+    "bytes": 376,
+    "from": "models/galaxy/bf2017/crew/scurrier.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/shoretrooper.glb": {
     "hash": "a2687ab6af5b",
@@ -1703,11 +2099,23 @@
     "from": "characters/imperial/imperial_beachtrooper/imperial_beachtrooper_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/shoretrooper.recipes.json": {
+    "hash": "52eaa17c4be5",
+    "bytes": 7421,
+    "from": "models/galaxy/bf2017/crew/shoretrooper.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/sneep.glb": {
     "hash": "b9eb801f4da3",
     "bytes": 555152,
     "from": "characters/npc/creatures/sneep/sneep_01/sneep_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/sneep.recipes.json": {
+    "hash": "1aee40e93579",
+    "bytes": 374,
+    "from": "models/galaxy/bf2017/crew/sneep.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/snowtrooper.glb": {
     "hash": "0dd3c8472eae",
@@ -1715,11 +2123,23 @@
     "from": "characters/dark/d_assault_orig/d_assault_orig_ho_01/d_assault_orig_ho_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/snowtrooper.recipes.json": {
+    "hash": "79047877bad4",
+    "bytes": 12823,
+    "from": "models/galaxy/bf2017/crew/snowtrooper.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/stintarils.glb": {
     "hash": "e878a630e56d",
     "bytes": 698292,
     "from": "characters/npc/creatures/stintarils/stintarils_01/stintarils_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/stintarils.recipes.json": {
+    "hash": "f2f022ffaaa2",
+    "bytes": 382,
+    "from": "models/galaxy/bf2017/crew/stintarils.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/stormtrooper.glb": {
     "hash": "2fe419352123",
@@ -1727,11 +2147,23 @@
     "from": "characters/imperial/imperial_stormtrooper/imperial_stormtrooper_male_01/imperial_stormtrooper_male_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/stormtrooper.recipes.json": {
+    "hash": "1545648cd12b",
+    "bytes": 7556,
+    "from": "models/galaxy/bf2017/crew/stormtrooper.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/superdroid.glb": {
     "hash": "218022aa46b8",
     "bytes": 19749396,
     "from": "characters/hero/b2/b2_01/b2_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/superdroid.recipes.json": {
+    "hash": "deecab43feef",
+    "bytes": 1855,
+    "from": "models/galaxy/bf2017/crew/superdroid.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/tach.glb": {
     "hash": "70e6bb310437",
@@ -1739,17 +2171,2909 @@
     "from": "characters/npc/creatures/tach/tach_01/tach_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/tach.recipes.json": {
+    "hash": "b87b1fa77626",
+    "bytes": 364,
+    "from": "models/galaxy/bf2017/crew/tach.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/tauntaun.glb": {
     "hash": "58474f0e3b04",
     "bytes": 11944440,
     "from": "characters/npc/creatures/tauntaun/tauntaun_01/tauntaun_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/tauntaun.recipes.json": {
+    "hash": "bf8b9e4c4545",
+    "bytes": 790,
+    "from": "models/galaxy/bf2017/crew/tauntaun.recipes.json",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_aosl.1024.ktx2": {
+    "hash": "4acf3658479f",
+    "bytes": 411502,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_aosl.256.ktx2": {
+    "hash": "9b33d67504ba",
+    "bytes": 42873,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_aosl.512.ktx2": {
+    "hash": "4103f5f55b5c",
+    "bytes": 132701,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_w.1024.ktx2": {
+    "hash": "9c79685b26a6",
+    "bytes": 595992,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_w.256.ktx2": {
+    "hash": "2845e9856d45",
+    "bytes": 55921,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_w.512.ktx2": {
+    "hash": "68cba276911b",
+    "bytes": 182644,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_legs_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_aosl.1024.ktx2": {
+    "hash": "d3b378839b08",
+    "bytes": 413582,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_aosl.256.ktx2": {
+    "hash": "ac4fba16497d",
+    "bytes": 41648,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_aosl.512.ktx2": {
+    "hash": "222b40377af2",
+    "bytes": 131101,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_w.1024.ktx2": {
+    "hash": "5f74f22e3fe0",
+    "bytes": 459507,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_w.256.ktx2": {
+    "hash": "ca6d22f78210",
+    "bytes": 45042,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_w.512.ktx2": {
+    "hash": "6a960e9fe5a6",
+    "bytes": 142865,
+    "from": "models/galaxy/bf2017/crew/tex/luke_farmboy_01_torso_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/m_anakin_03_body_aosl.1024.ktx2": {
+    "hash": "5de72d2ff141",
+    "bytes": 624376,
+    "from": "models/galaxy/bf2017/crew/tex/m_anakin_03_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/m_anakin_03_body_aosl.256.ktx2": {
+    "hash": "9fbe25396f90",
+    "bytes": 57213,
+    "from": "models/galaxy/bf2017/crew/tex/m_anakin_03_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/m_anakin_03_body_aosl.512.ktx2": {
+    "hash": "6875bf7046ae",
+    "bytes": 191226,
+    "from": "models/galaxy/bf2017/crew/tex/m_anakin_03_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/m_anakin_03_cloth_aosl.1024.ktx2": {
+    "hash": "69cb02339454",
+    "bytes": 447094,
+    "from": "models/galaxy/bf2017/crew/tex/m_anakin_03_cloth_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/m_anakin_03_cloth_aosl.256.ktx2": {
+    "hash": "e07025179481",
+    "bytes": 44206,
+    "from": "models/galaxy/bf2017/crew/tex/m_anakin_03_cloth_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/m_anakin_03_cloth_aosl.512.ktx2": {
+    "hash": "b203e06be9da",
+    "bytes": 140427,
+    "from": "models/galaxy/bf2017/crew/tex/m_anakin_03_cloth_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_body_aosl.1024.ktx2": {
+    "hash": "94330d377861",
+    "bytes": 700545,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_body_aosl.256.ktx2": {
+    "hash": "768ff86aa4bc",
+    "bytes": 62840,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_body_aosl.512.ktx2": {
+    "hash": "7a1738f5746c",
+    "bytes": 211173,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_body_w.1024.ktx2": {
+    "hash": "72c5a7aa707f",
+    "bytes": 772589,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_body_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_body_w.256.ktx2": {
+    "hash": "f01d33a4bdfe",
+    "bytes": 63806,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_body_w.512.ktx2": {
+    "hash": "8370cac1aef2",
+    "bytes": 223186,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_aosl.1024.ktx2": {
+    "hash": "269738882912",
+    "bytes": 474972,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_aosl.256.ktx2": {
+    "hash": "96a6d4de14cd",
+    "bytes": 50014,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_aosl.512.ktx2": {
+    "hash": "f437a0504a4c",
+    "bytes": 152695,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_w.1024.ktx2": {
+    "hash": "7e5523126492",
+    "bytes": 521031,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_w.256.ktx2": {
+    "hash": "24704b9f6e04",
+    "bytes": 55883,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_w.512.ktx2": {
+    "hash": "54deedd09849",
+    "bytes": 173210,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_01_glove_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_02_robe_w.1024.ktx2": {
+    "hash": "2fa9ca9caff3",
+    "bytes": 489983,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_02_robe_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_02_robe_w.256.ktx2": {
+    "hash": "64926a2fbe9e",
+    "bytes": 45198,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_02_robe_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_anakin_02_robe_w.512.ktx2": {
+    "hash": "e1659e19ba9e",
+    "bytes": 146970,
+    "from": "models/galaxy/bf2017/crew/tex/t_anakin_02_robe_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_bust_w.1024.ktx2": {
+    "hash": "8226df4372fd",
+    "bytes": 511581,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_bust_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_bust_w.256.ktx2": {
+    "hash": "149f4f13b1b7",
+    "bytes": 47487,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_bust_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_bust_w.512.ktx2": {
+    "hash": "440295d84f46",
+    "bytes": 155342,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_bust_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_leg_w.1024.ktx2": {
+    "hash": "043bd79c9ec1",
+    "bytes": 851118,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_leg_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_leg_w.256.ktx2": {
+    "hash": "188c573f61b7",
+    "bytes": 66311,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_leg_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_leg_w.512.ktx2": {
+    "hash": "de9119908d0a",
+    "bytes": 235156,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_leg_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_waist_w.1024.ktx2": {
+    "hash": "78e0c7661694",
+    "bytes": 605456,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_waist_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_waist_w.256.ktx2": {
+    "hash": "9039a4e8ff37",
+    "bytes": 54305,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_waist_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_b2_01_waist_w.512.ktx2": {
+    "hash": "d228774011c8",
+    "bytes": 181025,
+    "from": "models/galaxy/bf2017/crew/tex/t_b2_01_waist_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_backpack_01_aosl.256.ktx2": {
+    "hash": "484eaa05be12",
+    "bytes": 60601,
+    "from": "models/galaxy/bf2017/crew/tex/t_backpack_01_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_backpack_01_aosl.512.ktx2": {
+    "hash": "965bb91cdcf4",
+    "bytes": 200963,
+    "from": "models/galaxy/bf2017/crew/tex/t_backpack_01_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_backpack_01_w.256.ktx2": {
+    "hash": "7728cc8a7e8e",
+    "bytes": 64809,
+    "from": "models/galaxy/bf2017/crew/tex/t_backpack_01_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_aosl.1024.ktx2": {
+    "hash": "d5b354c53718",
+    "bytes": 947532,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_aosl.256.ktx2": {
+    "hash": "c1dd2bf74871",
+    "bytes": 77742,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_aosl.512.ktx2": {
+    "hash": "2f8aeb990364",
+    "bytes": 274662,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_w.256.ktx2": {
+    "hash": "2dfea745caf2",
+    "bytes": 70136,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_w.512.ktx2": {
+    "hash": "a754bd9d9093",
+    "bytes": 257021,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_cape_aosl.1024.ktx2": {
+    "hash": "804cdb31405b",
+    "bytes": 141843,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_cape_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_cape_aosl.256.ktx2": {
+    "hash": "a4baafd3c327",
+    "bytes": 14394,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_cape_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_cape_aosl.512.ktx2": {
+    "hash": "985e792848db",
+    "bytes": 43506,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_cape_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_aosl.1024.ktx2": {
+    "hash": "3a541b90f67b",
+    "bytes": 376652,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_aosl.256.ktx2": {
+    "hash": "9549c5f0c9da",
+    "bytes": 34520,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_aosl.512.ktx2": {
+    "hash": "5dd3ab1cd020",
+    "bytes": 117557,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_w.256.ktx2": {
+    "hash": "f41309c4dd74",
+    "bytes": 35205,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_w.512.ktx2": {
+    "hash": "9b83d1a0e690",
+    "bytes": 128454,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_gear_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_glove_aosl.256.ktx2": {
+    "hash": "841a75d50bbb",
+    "bytes": 43710,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_glove_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bobafett_01_glove_w.128.ktx2": {
+    "hash": "06e5dc874a88",
+    "bytes": 14962,
+    "from": "models/galaxy/bf2017/crew/tex/t_bobafett_01_glove_w.128.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_aosl.1024.ktx2": {
+    "hash": "dbff1e38440e",
+    "bytes": 361568,
+    "from": "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_aosl.256.ktx2": {
+    "hash": "8d7d7c1d32e9",
+    "bytes": 42848,
+    "from": "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_aosl.512.ktx2": {
+    "hash": "a6ae482480f1",
+    "bytes": 124226,
+    "from": "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_w.256.ktx2": {
+    "hash": "626d32a7600d",
+    "bytes": 55539,
+    "from": "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_w.512.ktx2": {
+    "hash": "2b0ed12889c0",
+    "bytes": 197694,
+    "from": "models/galaxy/bf2017/crew/tex/t_boots2_civ_vardos_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bossk_01_body_aosl.1024.ktx2": {
+    "hash": "6077447cb409",
+    "bytes": 805223,
+    "from": "models/galaxy/bf2017/crew/tex/t_bossk_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bossk_01_body_aosl.256.ktx2": {
+    "hash": "1af3cfbdba49",
+    "bytes": 69217,
+    "from": "models/galaxy/bf2017/crew/tex/t_bossk_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bossk_01_body_aosl.512.ktx2": {
+    "hash": "86715d20058b",
+    "bytes": 237924,
+    "from": "models/galaxy/bf2017/crew/tex/t_bossk_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bossk_01_body_w.256.ktx2": {
+    "hash": "676cb25fa70b",
+    "bytes": 75438,
+    "from": "models/galaxy/bf2017/crew/tex/t_bossk_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_bossk_01_body_w.512.ktx2": {
+    "hash": "6834f848961d",
+    "bytes": 278707,
+    "from": "models/galaxy/bf2017/crew/tex/t_bossk_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_chewbacca_01_bag_aosl.256.ktx2": {
+    "hash": "a808ac5991ea",
+    "bytes": 47005,
+    "from": "models/galaxy/bf2017/crew/tex/t_chewbacca_01_bag_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_chewbacca_01_bag_aosl.512.ktx2": {
+    "hash": "6b9229ce85d2",
+    "bytes": 152931,
+    "from": "models/galaxy/bf2017/crew/tex/t_chewbacca_01_bag_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_cloth_01_ns.256.ktx2": {
+    "hash": "0172bb3cdcf4",
+    "bytes": 81931,
+    "from": "models/galaxy/bf2017/crew/tex/t_cloth_01_ns.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_cloth_01_ns.512.ktx2": {
+    "hash": "ac7160437aa4",
+    "bytes": 323621,
+    "from": "models/galaxy/bf2017/crew/tex/t_cloth_01_ns.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_cloth_02_ns.1024.ktx2": {
+    "hash": "483dcc1c8aa4",
+    "bytes": 1179953,
+    "from": "models/galaxy/bf2017/crew/tex/t_cloth_02_ns.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_cloth_02_ns.256.ktx2": {
+    "hash": "19a14ad1be9a",
+    "bytes": 82277,
+    "from": "models/galaxy/bf2017/crew/tex/t_cloth_02_ns.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_cloth_02_ns.512.ktx2": {
+    "hash": "bc09681b9298",
+    "bytes": 313620,
+    "from": "models/galaxy/bf2017/crew/tex/t_cloth_02_ns.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_cloth_10_ns.256.ktx2": {
+    "hash": "e56af7ec3ff1",
+    "bytes": 85426,
+    "from": "models/galaxy/bf2017/crew/tex/t_cloth_10_ns.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_cloth_10_ns.512.ktx2": {
+    "hash": "0e4561842893",
+    "bytes": 335635,
+    "from": "models/galaxy/bf2017/crew/tex/t_cloth_10_ns.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_aosl.1024.ktx2": {
+    "hash": "14f0edf1def0",
+    "bytes": 383325,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_aosl.256.ktx2": {
+    "hash": "19d24e7ae5eb",
+    "bytes": 44924,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_aosl.512.ktx2": {
+    "hash": "5e0f0929d8c3",
+    "bytes": 130349,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_w.256.ktx2": {
+    "hash": "3b8f82070d91",
+    "bytes": 60882,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_w.512.ktx2": {
+    "hash": "9ee246b6f790",
+    "bytes": 206813,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat1_civ_vardos_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_aosl.1024.ktx2": {
+    "hash": "e8cea4b664a3",
+    "bytes": 388110,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_aosl.256.ktx2": {
+    "hash": "36eacf418a1a",
+    "bytes": 43860,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_aosl.512.ktx2": {
+    "hash": "8c6f975c3e6b",
+    "bytes": 129442,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_w.256.ktx2": {
+    "hash": "da36a78d5881",
+    "bytes": 53595,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_w.512.ktx2": {
+    "hash": "dcde5690a71b",
+    "bytes": 173162,
+    "from": "models/galaxy/bf2017/crew/tex/t_coat2_civ_vardos_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_aosl.1024.ktx2": {
+    "hash": "0519e8e2406b",
+    "bytes": 384365,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_aosl.256.ktx2": {
+    "hash": "2b2cca623c3e",
+    "bytes": 42363,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_aosl.512.ktx2": {
+    "hash": "027fe59c3352",
+    "bytes": 126826,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_w.1024.ktx2": {
+    "hash": "12a26340540a",
+    "bytes": 626787,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_w.256.ktx2": {
+    "hash": "fd4befd727b6",
+    "bytes": 56833,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_w.512.ktx2": {
+    "hash": "fec04a43a0c5",
+    "bytes": 189244,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_aosl.1024.ktx2": {
+    "hash": "a982b550bd38",
+    "bytes": 284590,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_aosl.256.ktx2": {
+    "hash": "ab319206e934",
+    "bytes": 29628,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_aosl.512.ktx2": {
+    "hash": "b75942765cc9",
+    "bytes": 90553,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_w.1024.ktx2": {
+    "hash": "c8dd3506f26c",
+    "bytes": 461728,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_w.256.ktx2": {
+    "hash": "8ccc8fed13da",
+    "bytes": 44172,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_w.512.ktx2": {
+    "hash": "316d01b055ab",
+    "bytes": 144390,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_01_cape_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_aosl.1024.ktx2": {
+    "hash": "fbf867d85360",
+    "bytes": 469410,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_aosl.256.ktx2": {
+    "hash": "541fe5e04c70",
+    "bytes": 48221,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_aosl.512.ktx2": {
+    "hash": "eeeb8a541178",
+    "bytes": 150981,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_w.1024.ktx2": {
+    "hash": "fe152b7d774e",
+    "bytes": 921317,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_w.256.ktx2": {
+    "hash": "e9492809cb22",
+    "bytes": 74169,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_w.512.ktx2": {
+    "hash": "6ea36803ee3c",
+    "bytes": 263305,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_legs_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_aosl.1024.ktx2": {
+    "hash": "13d8df361b8a",
+    "bytes": 508321,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_aosl.256.ktx2": {
+    "hash": "cfa5557de684",
+    "bytes": 49020,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_aosl.512.ktx2": {
+    "hash": "17bb46c97eac",
+    "bytes": 159274,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_w.1024.ktx2": {
+    "hash": "06aeebac43a0",
+    "bytes": 704228,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_w.256.ktx2": {
+    "hash": "26001651a177",
+    "bytes": 62433,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_w.512.ktx2": {
+    "hash": "362c14244647",
+    "bytes": 210244,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_02_torso_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_aosl.1024.ktx2": {
+    "hash": "429971eb174e",
+    "bytes": 475948,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_aosl.256.ktx2": {
+    "hash": "ed042a906f89",
+    "bytes": 48427,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_aosl.512.ktx2": {
+    "hash": "e05852066025",
+    "bytes": 152179,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_w.1024.ktx2": {
+    "hash": "ab95b661a826",
+    "bytes": 703741,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_w.256.ktx2": {
+    "hash": "4f45e0bce39f",
+    "bytes": 60455,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_w.512.ktx2": {
+    "hash": "598b3e3e77d0",
+    "bytes": 207327,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_legs_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_aosl.1024.ktx2": {
+    "hash": "652c24fd9184",
+    "bytes": 479813,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_aosl.256.ktx2": {
+    "hash": "bc70ecc14670",
+    "bytes": 46475,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_aosl.512.ktx2": {
+    "hash": "d57e64de15f1",
+    "bytes": 149948,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_w.1024.ktx2": {
+    "hash": "3c58b1c44431",
+    "bytes": 441590,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_w.256.ktx2": {
+    "hash": "452e29fdb7e2",
+    "bytes": 43353,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_w.512.ktx2": {
+    "hash": "b0f4dd03c290",
+    "bytes": 138286,
+    "from": "models/galaxy/bf2017/crew/tex/t_countdooku_03_torso_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_aosl.256.ktx2": {
+    "hash": "75ec8a990374",
+    "bytes": 36517,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_aosl.512.ktx2": {
+    "hash": "e99d6f31195e",
+    "bytes": 109651,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_w.1024.ktx2": {
+    "hash": "5fcfb2206ba0",
+    "bytes": 688830,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_w.256.ktx2": {
+    "hash": "8036492af1c5",
+    "bytes": 64320,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_w.512.ktx2": {
+    "hash": "448b72223ba5",
+    "bytes": 218186,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_hands_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_aosl.1024.ktx2": {
+    "hash": "1ab611837f74",
+    "bytes": 482898,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_aosl.256.ktx2": {
+    "hash": "6de2defaa222",
+    "bytes": 46409,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_aosl.512.ktx2": {
+    "hash": "f9dc68aaaf80",
+    "bytes": 145061,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_w.1024.ktx2": {
+    "hash": "d872b71bff22",
+    "bytes": 773884,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_w.256.ktx2": {
+    "hash": "fa5d83f48578",
+    "bytes": 67948,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_w.512.ktx2": {
+    "hash": "a7b9e3bec944",
+    "bytes": 238920,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_01_helmet_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_aosl.1024.ktx2": {
+    "hash": "ced60bb13011",
+    "bytes": 720589,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_aosl.256.ktx2": {
+    "hash": "b99a09c29a68",
+    "bytes": 66957,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_aosl.512.ktx2": {
+    "hash": "725465d3fcba",
+    "bytes": 218998,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_w.1024.ktx2": {
+    "hash": "b9c63301af93",
+    "bytes": 427136,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_w.256.ktx2": {
+    "hash": "a5e617b839ee",
+    "bytes": 34895,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_w.512.ktx2": {
+    "hash": "695b2c1f253e",
+    "bytes": 123903,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_cape_aosl.256.ktx2": {
+    "hash": "512df593096e",
+    "bytes": 30992,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_cape_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_cape_aosl.512.ktx2": {
+    "hash": "d4a5bd26b3c1",
+    "bytes": 99904,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_cape_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_glove_aosl.256.ktx2": {
+    "hash": "351141586ef8",
+    "bytes": 46707,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_glove_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_aosl.256.ktx2": {
+    "hash": "94fc91048376",
+    "bytes": 41915,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_aosl.512.ktx2": {
+    "hash": "50e8200bb23f",
+    "bytes": 125596,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_w.1024.ktx2": {
+    "hash": "2c0426615c9c",
+    "bytes": 588875,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_w.256.ktx2": {
+    "hash": "a733c95a93b2",
+    "bytes": 49806,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_w.512.ktx2": {
+    "hash": "8c3a0373f4ab",
+    "bytes": 171235,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_assault_orig_ho_01_helmet_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_01_backpack_aosl.256.ktx2": {
+    "hash": "ee0ee7fe4831",
+    "bytes": 45841,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_01_backpack_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_01_backpack_aosl.512.ktx2": {
+    "hash": "8eac9e56a8a4",
+    "bytes": 129020,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_01_backpack_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_ho_01_backpack_aosl.256.ktx2": {
+    "hash": "7400222c79f9",
+    "bytes": 40664,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_ho_01_backpack_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_ho_01_backpack_aosl.512.ktx2": {
+    "hash": "4967a9271320",
+    "bytes": 125481,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_ho_01_backpack_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_ho_01_parts_aosl.256.ktx2": {
+    "hash": "7e9dbdf9c2a0",
+    "bytes": 50146,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_ho_01_parts_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_ho_01_parts_aosl.512.ktx2": {
+    "hash": "7571dced6aca",
+    "bytes": 164691,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_ho_01_parts_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_mos_01_aosl.1024.ktx2": {
+    "hash": "15354b0c2eae",
+    "bytes": 857989,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_mos_01_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_mos_01_aosl.256.ktx2": {
+    "hash": "2f5f5c063784",
+    "bytes": 74444,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_mos_01_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_mos_01_aosl.512.ktx2": {
+    "hash": "9e886e110f50",
+    "bytes": 256741,
+    "from": "models/galaxy/bf2017/crew/tex/t_d_heavy_orig_mos_01_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_aosl.1024.ktx2": {
+    "hash": "77d718922ac3",
+    "bytes": 638299,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_aosl.256.ktx2": {
+    "hash": "36ddf5113dce",
+    "bytes": 57285,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_aosl.512.ktx2": {
+    "hash": "cded59ab8e4e",
+    "bytes": 186817,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_w.1024.ktx2": {
+    "hash": "1dc3908fd919",
+    "bytes": 767866,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_w.256.ktx2": {
+    "hash": "a699c82d43d9",
+    "bytes": 64896,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_w.512.ktx2": {
+    "hash": "7b7efbeaf175",
+    "bytes": 224278,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_01_gloves_w.256.ktx2": {
+    "hash": "e4ab4777c6d0",
+    "bytes": 47534,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_01_gloves_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_01_gloves_w.512.ktx2": {
+    "hash": "47f3f4183818",
+    "bytes": 146538,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_01_gloves_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_aosl.1024.ktx2": {
+    "hash": "9a5b540e3873",
+    "bytes": 728311,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_aosl.256.ktx2": {
+    "hash": "dfefe0f0f753",
+    "bytes": 64273,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_aosl.512.ktx2": {
+    "hash": "47aa0e011215",
+    "bytes": 218691,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_w.1024.ktx2": {
+    "hash": "b4c6a05b8443",
+    "bytes": 1034876,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_w.256.ktx2": {
+    "hash": "d7d7177dc1ab",
+    "bytes": 82824,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_w.512.ktx2": {
+    "hash": "df51f08b70b3",
+    "bytes": 302361,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthmaul_robotlegs_01_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_glove_aosl.1024.ktx2": {
+    "hash": "277344550354",
+    "bytes": 518335,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_glove_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_glove_aosl.256.ktx2": {
+    "hash": "29f4356781cb",
+    "bytes": 47740,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_glove_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_glove_aosl.512.ktx2": {
+    "hash": "ce2ab92807d8",
+    "bytes": 155373,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_glove_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_gloves_w.128.ktx2": {
+    "hash": "4e69b11fee72",
+    "bytes": 15042,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_gloves_w.128.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_helmet_aosl.256.ktx2": {
+    "hash": "f02220833778",
+    "bytes": 43789,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_helmet_aosl.512.ktx2": {
+    "hash": "ba52ee80c9fa",
+    "bytes": 133347,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_helmet_w.256.ktx2": {
+    "hash": "12a1fb66d46f",
+    "bytes": 59002,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_helmet_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_innercape_aosl.256.ktx2": {
+    "hash": "d2a7e6c8d953",
+    "bytes": 31209,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_innercape_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_innercape_aosl.512.ktx2": {
+    "hash": "247a0a127eb9",
+    "bytes": 104685,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_innercape_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_darthvader_01_innercape_w.256.ktx2": {
+    "hash": "130e6fb942db",
+    "bytes": 39408,
+    "from": "models/galaxy/bf2017/crew/tex/t_darthvader_01_innercape_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_aosl.1024.ktx2": {
+    "hash": "d3e939b8cab0",
+    "bytes": 871965,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_aosl.256.ktx2": {
+    "hash": "920617e8ff23",
+    "bytes": 74061,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_aosl.512.ktx2": {
+    "hash": "6bdbd3db45d0",
+    "bytes": 257233,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_w.256.ktx2": {
+    "hash": "3bc1e3b39057",
+    "bytes": 72067,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_w.512.ktx2": {
+    "hash": "3fc85bfc5550",
+    "bytes": 268358,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_gloves_aosl.256.ktx2": {
+    "hash": "e6d401444067",
+    "bytes": 56231,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_gloves_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_gloves_w.128.ktx2": {
+    "hash": "3ffe4922fb47",
+    "bytes": 13937,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_gloves_w.128.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_helmet_aosl.256.ktx2": {
+    "hash": "ab44ac8dde28",
+    "bytes": 61288,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_helmet_aosl.512.ktx2": {
+    "hash": "591b8f3e3212",
+    "bytes": 201155,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_helmet_w.256.ktx2": {
+    "hash": "76d0f2992110",
+    "bytes": 61784,
+    "from": "models/galaxy/bf2017/crew/tex/t_deathtrooper_01_helmet_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_ewok_01_hood_aosl.1024.ktx2": {
+    "hash": "5e27e0d2fed7",
+    "bytes": 530827,
+    "from": "models/galaxy/bf2017/crew/tex/t_ewok_01_hood_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_ewok_01_hood_aosl.256.ktx2": {
+    "hash": "55cd4bb06396",
+    "bytes": 43766,
+    "from": "models/galaxy/bf2017/crew/tex/t_ewok_01_hood_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_ewok_01_hood_aosl.512.ktx2": {
+    "hash": "e52db5a5ccf4",
+    "bytes": 144215,
+    "from": "models/galaxy/bf2017/crew/tex/t_ewok_01_hood_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_fluffy_01_ns.256.ktx2": {
+    "hash": "3c07a66a8f83",
+    "bytes": 82936,
+    "from": "models/galaxy/bf2017/crew/tex/t_fluffy_01_ns.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_fluffy_01_ns.512.ktx2": {
+    "hash": "4d6b3bdcb981",
+    "bytes": 321359,
+    "from": "models/galaxy/bf2017/crew/tex/t_fluffy_01_ns.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_lowerbody_aosl.1024.ktx2": {
+    "hash": "ca9735cc6e47",
+    "bytes": 529051,
+    "from": "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_lowerbody_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_lowerbody_aosl.256.ktx2": {
+    "hash": "53268707dee6",
+    "bytes": 49091,
+    "from": "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_lowerbody_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_lowerbody_aosl.512.ktx2": {
+    "hash": "1aad26aed1c6",
+    "bytes": 159552,
+    "from": "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_lowerbody_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_upperbody_aosl.1024.ktx2": {
+    "hash": "d009193176fa",
+    "bytes": 496213,
+    "from": "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_upperbody_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_upperbody_aosl.256.ktx2": {
+    "hash": "32694b86aeec",
+    "bytes": 49455,
+    "from": "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_upperbody_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_upperbody_aosl.512.ktx2": {
+    "hash": "84a10756d01f",
+    "bytes": 158126,
+    "from": "models/galaxy/bf2017/crew/tex/t_gamorreanguard_01_upperbody_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_garrick_01_hat_aosl.1024.ktx2": {
+    "hash": "c458912a3036",
+    "bytes": 298681,
+    "from": "models/galaxy/bf2017/crew/tex/t_garrick_01_hat_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_garrick_01_hat_aosl.256.ktx2": {
+    "hash": "40448adebcdf",
+    "bytes": 32441,
+    "from": "models/galaxy/bf2017/crew/tex/t_garrick_01_hat_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_garrick_01_hat_aosl.512.ktx2": {
+    "hash": "0dac7b90c20a",
+    "bytes": 97771,
+    "from": "models/galaxy/bf2017/crew/tex/t_garrick_01_hat_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gloves_02_aosl.1024.ktx2": {
+    "hash": "baa9d15c6b38",
+    "bytes": 377777,
+    "from": "models/galaxy/bf2017/crew/tex/t_gloves_02_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gloves_02_aosl.256.ktx2": {
+    "hash": "d51d815b681f",
+    "bytes": 42274,
+    "from": "models/galaxy/bf2017/crew/tex/t_gloves_02_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gloves_02_aosl.512.ktx2": {
+    "hash": "8e0f7d0f7c40",
+    "bytes": 125719,
+    "from": "models/galaxy/bf2017/crew/tex/t_gloves_02_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gloves_02_w.128.ktx2": {
+    "hash": "ba56edaf9a5a",
+    "bytes": 16063,
+    "from": "models/galaxy/bf2017/crew/tex/t_gloves_02_w.128.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_gloves_03_w.128.ktx2": {
+    "hash": "fc7d0fae895a",
+    "bytes": 14430,
+    "from": "models/galaxy/bf2017/crew/tex/t_gloves_03_w.128.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_aosl.1024.ktx2": {
+    "hash": "05fe94165797",
+    "bytes": 168044,
+    "from": "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_aosl.256.ktx2": {
+    "hash": "b404d29acbc7",
+    "bytes": 24605,
+    "from": "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_aosl.512.ktx2": {
+    "hash": "b2e32bfb2a34",
+    "bytes": 61765,
+    "from": "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_w.256.ktx2": {
+    "hash": "df295b3b8147",
+    "bytes": 40207,
+    "from": "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_w.512.ktx2": {
+    "hash": "24aa89634f24",
+    "bytes": 121803,
+    "from": "models/galaxy/bf2017/crew/tex/t_hat2_civ_vardos_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_headgear_05_aosl.256.ktx2": {
+    "hash": "611f15159434",
+    "bytes": 30791,
+    "from": "models/galaxy/bf2017/crew/tex/t_headgear_05_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_headgear_05_aosl.512.ktx2": {
+    "hash": "5b3bbc9b81af",
+    "bytes": 85156,
+    "from": "models/galaxy/bf2017/crew/tex/t_headgear_05_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_headgear_05_w.256.ktx2": {
+    "hash": "a826c27efca5",
+    "bytes": 59460,
+    "from": "models/galaxy/bf2017/crew/tex/t_headgear_05_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_headgear_07_w.256.ktx2": {
+    "hash": "17d565e63781",
+    "bytes": 67376,
+    "from": "models/galaxy/bf2017/crew/tex/t_headgear_07_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_headgear_12_aosl.256.ktx2": {
+    "hash": "821aee2a0425",
+    "bytes": 58654,
+    "from": "models/galaxy/bf2017/crew/tex/t_headgear_12_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_headgear_12_aosl.512.ktx2": {
+    "hash": "8f2c90888504",
+    "bytes": 183783,
+    "from": "models/galaxy/bf2017/crew/tex/t_headgear_12_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_headgear_12_w.256.ktx2": {
+    "hash": "9ac17ab57a29",
+    "bytes": 67860,
+    "from": "models/galaxy/bf2017/crew/tex/t_headgear_12_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_hero_jedi_darthvader_cape_wm.256.ktx2": {
+    "hash": "d10913323228",
+    "bytes": 3195,
+    "from": "models/galaxy/bf2017/crew/tex/t_hero_jedi_darthvader_cape_wm.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_body_w.256.ktx2": {
+    "hash": "c50888ccf5f0",
+    "bytes": 69835,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_body_w.512.ktx2": {
+    "hash": "5376653588c1",
+    "bytes": 257105,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_hand_aosl.256.ktx2": {
+    "hash": "9ab623ac6992",
+    "bytes": 42790,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_hand_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_hand_aosl.512.ktx2": {
+    "hash": "91dbcbf3d163",
+    "bytes": 128102,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_hand_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_hand_w.256.ktx2": {
+    "hash": "bd099971a36e",
+    "bytes": 54149,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_hand_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_hand_w.512.ktx2": {
+    "hash": "319b65915991",
+    "bytes": 181636,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_hand_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_aosl.1024.ktx2": {
+    "hash": "f94562e626e3",
+    "bytes": 469226,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_aosl.256.ktx2": {
+    "hash": "0d75803a98cb",
+    "bytes": 46104,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_aosl.512.ktx2": {
+    "hash": "b9d0757d7383",
+    "bytes": 146357,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_w.256.ktx2": {
+    "hash": "8dd8b38cb6c2",
+    "bytes": 55115,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_w.512.ktx2": {
+    "hash": "953ca7f2aaa6",
+    "bytes": 182407,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_beachtrooper_head_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_body_wm.1024.ktx2": {
+    "hash": "e99d3dfe7466",
+    "bytes": 737863,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_body_wm.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_body_wm.256.ktx2": {
+    "hash": "ddcf6b47e033",
+    "bytes": 65461,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_body_wm.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_body_wm.512.ktx2": {
+    "hash": "97e07ecd1c3e",
+    "bytes": 221110,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_body_wm.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_glove_wm.1024.ktx2": {
+    "hash": "8d751f2e9e4e",
+    "bytes": 298203,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_glove_wm.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_glove_wm.256.ktx2": {
+    "hash": "0e79c32cf843",
+    "bytes": 33883,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_glove_wm.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_glove_wm.512.ktx2": {
+    "hash": "5ad642467911",
+    "bytes": 102403,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_glove_wm.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_hemlet_wm.1024.ktx2": {
+    "hash": "e48add471859",
+    "bytes": 351143,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_hemlet_wm.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_hemlet_wm.256.ktx2": {
+    "hash": "3963a9b84512",
+    "bytes": 37522,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_hemlet_wm.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_hemlet_wm.512.ktx2": {
+    "hash": "03d3f29c449e",
+    "bytes": 115705,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_scoutrooper_male_01_hemlet_wm.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_body_wm.1024.ktx2": {
+    "hash": "d9fbd64c7ae1",
+    "bytes": 885026,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_body_wm.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_body_wm.256.ktx2": {
+    "hash": "9e0c1ff81f9a",
+    "bytes": 71433,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_body_wm.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_body_wm.512.ktx2": {
+    "hash": "31658e4650fc",
+    "bytes": 252566,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_body_wm.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_hands_wm.1024.ktx2": {
+    "hash": "02820b2af305",
+    "bytes": 532407,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_hands_wm.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_hands_wm.256.ktx2": {
+    "hash": "db6791b98fde",
+    "bytes": 54458,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_hands_wm.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_hands_wm.512.ktx2": {
+    "hash": "55c402ee1c94",
+    "bytes": 169357,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_hands_wm.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_helmet_wm.1024.ktx2": {
+    "hash": "8e8d2527141c",
+    "bytes": 528227,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_helmet_wm.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_helmet_wm.256.ktx2": {
+    "hash": "45b990689947",
+    "bytes": 49625,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_helmet_wm.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_helmet_wm.512.ktx2": {
+    "hash": "5b97594b0132",
+    "bytes": 158095,
+    "from": "models/galaxy/bf2017/crew/tex/t_imperial_stormtrooper_male_01_helmet_wm.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_orig_01_strap_aosl.256.ktx2": {
+    "hash": "40b23ccdae1c",
+    "bytes": 48167,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_orig_01_strap_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_orig_01_strap_w.256.ktx2": {
+    "hash": "35ea2f54727a",
+    "bytes": 57834,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_orig_01_strap_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_aosl.1024.ktx2": {
+    "hash": "4adb12384f35",
+    "bytes": 531083,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_aosl.256.ktx2": {
+    "hash": "85e2aed5686d",
+    "bytes": 55963,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_aosl.512.ktx2": {
+    "hash": "947e55d23716",
+    "bytes": 173467,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_w.256.ktx2": {
+    "hash": "1f453957331b",
+    "bytes": 68146,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_w.512.ktx2": {
+    "hash": "9a07f5231f57",
+    "bytes": 245668,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_orig_ds_01_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_aosl.1024.ktx2": {
+    "hash": "3788982e6f86",
+    "bytes": 632527,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_aosl.256.ktx2": {
+    "hash": "fe5002abe414",
+    "bytes": 63083,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_aosl.512.ktx2": {
+    "hash": "2860c0b7ad4e",
+    "bytes": 199848,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_w.256.ktx2": {
+    "hash": "43fa4cb636b9",
+    "bytes": 69143,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_w.512.ktx2": {
+    "hash": "7b8c88def516",
+    "bytes": 251252,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_helmet_aosl.256.ktx2": {
+    "hash": "03117bb4b773",
+    "bytes": 57176,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_helmet_aosl.512.ktx2": {
+    "hash": "19767739a969",
+    "bytes": 173005,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_helmet_w.256.ktx2": {
+    "hash": "ced7e2bfebae",
+    "bytes": 68006,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_01_helmet_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_02_helmet_aosl.1024.ktx2": {
+    "hash": "54f9e7919a94",
+    "bytes": 436195,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_02_helmet_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_02_helmet_aosl.256.ktx2": {
+    "hash": "875c44dd5535",
+    "bytes": 49229,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_02_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_02_helmet_aosl.512.ktx2": {
+    "hash": "1ef323bd1c4f",
+    "bytes": 147796,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_02_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_l_assault_preq_02_helmet_w.256.ktx2": {
+    "hash": "be33f6feee2c",
+    "bytes": 63121,
+    "from": "models/galaxy/bf2017/crew/tex/t_l_assault_preq_02_helmet_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_01_body_aosl.1024.ktx2": {
+    "hash": "f2df7e60c5e6",
+    "bytes": 496599,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_01_body_aosl.256.ktx2": {
+    "hash": "7713cc7fa68b",
+    "bytes": 48698,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_01_body_aosl.512.ktx2": {
+    "hash": "67fe9b596f0d",
+    "bytes": 151966,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_skiff_01_headgear_aosl.256.ktx2": {
+    "hash": "068353c2bd56",
+    "bytes": 48784,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_skiff_01_headgear_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_skiff_01_headgear_aosl.512.ktx2": {
+    "hash": "93e9bfda2bc8",
+    "bytes": 173366,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_skiff_01_headgear_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_skiff_01_headgear_w.256.ktx2": {
+    "hash": "f0c6b85e7d23",
+    "bytes": 62477,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_skiff_01_headgear_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_skiff_01_headgear_w.512.ktx2": {
+    "hash": "25ad9c6da2bc",
+    "bytes": 223228,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_skiff_01_headgear_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_aosl.1024.ktx2": {
+    "hash": "bb3f4f6e1efb",
+    "bytes": 461621,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_aosl.256.ktx2": {
+    "hash": "4619d0cfacba",
+    "bytes": 46538,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_aosl.512.ktx2": {
+    "hash": "2ec70a963347",
+    "bytes": 147047,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_w.256.ktx2": {
+    "hash": "7000a230d8f5",
+    "bytes": 69678,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_w.512.ktx2": {
+    "hash": "48237d61c7e5",
+    "bytes": 239663,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_aosl.1024.ktx2": {
+    "hash": "eaf474a0ea8e",
+    "bytes": 333819,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_aosl.256.ktx2": {
+    "hash": "b087a07553d6",
+    "bytes": 38533,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_aosl.512.ktx2": {
+    "hash": "dd39634d7a7d",
+    "bytes": 113635,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_w.256.ktx2": {
+    "hash": "a8c5a395bc52",
+    "bytes": 55672,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_w.512.ktx2": {
+    "hash": "1d07656b3ed0",
+    "bytes": 187701,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_01_cape_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_aosl.1024.ktx2": {
+    "hash": "38d705b808c1",
+    "bytes": 475317,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_aosl.256.ktx2": {
+    "hash": "bf2af90f9bd2",
+    "bytes": 47897,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_aosl.512.ktx2": {
+    "hash": "dc82aa7e3d4e",
+    "bytes": 150913,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_w.256.ktx2": {
+    "hash": "55c71741f60a",
+    "bytes": 69909,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_w.512.ktx2": {
+    "hash": "ca41b64852a2",
+    "bytes": 239947,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_aosl.1024.ktx2": {
+    "hash": "98fa2dfe3003",
+    "bytes": 208221,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_aosl.256.ktx2": {
+    "hash": "ea10a26d50cd",
+    "bytes": 23769,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_aosl.512.ktx2": {
+    "hash": "48f118c7cf02",
+    "bytes": 67423,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_w.256.ktx2": {
+    "hash": "160a24e8c0dc",
+    "bytes": 51470,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_w.512.ktx2": {
+    "hash": "e64bf1894e7a",
+    "bytes": 163179,
+    "from": "models/galaxy/bf2017/crew/tex/t_lando_young_02_cape_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_landocap_w.256.ktx2": {
+    "hash": "0d61b484294c",
+    "bytes": 38112,
+    "from": "models/galaxy/bf2017/crew/tex/t_landocap_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_landocap_w.512.ktx2": {
+    "hash": "a5b60214eee0",
+    "bytes": 126344,
+    "from": "models/galaxy/bf2017/crew/tex/t_landocap_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leather_02_ns.256.ktx2": {
+    "hash": "abb0de792655",
+    "bytes": 84394,
+    "from": "models/galaxy/bf2017/crew/tex/t_leather_02_ns.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leather_02_ns.512.ktx2": {
+    "hash": "725dbdbfaa5f",
+    "bytes": 331524,
+    "from": "models/galaxy/bf2017/crew/tex/t_leather_02_ns.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_legs_02_w.256.ktx2": {
+    "hash": "49463067a736",
+    "bytes": 69171,
+    "from": "models/galaxy/bf2017/crew/tex/t_legs_02_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_legs_03_w.256.ktx2": {
+    "hash": "c7025b2368dd",
+    "bytes": 69180,
+    "from": "models/galaxy/bf2017/crew/tex/t_legs_03_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_hoth_01_aosl.1024.ktx2": {
+    "hash": "a9757b023eaf",
+    "bytes": 671612,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_hoth_01_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_hoth_01_aosl.256.ktx2": {
+    "hash": "3bb672994f34",
+    "bytes": 59474,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_hoth_01_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_hoth_01_aosl.512.ktx2": {
+    "hash": "b28eb53ad9f5",
+    "bytes": 204273,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_hoth_01_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_aosl.1024.ktx2": {
+    "hash": "7085726206cf",
+    "bytes": 496508,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_aosl.256.ktx2": {
+    "hash": "cfddc63e79f5",
+    "bytes": 47849,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_aosl.512.ktx2": {
+    "hash": "2fd441632e77",
+    "bytes": 152670,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_w.1024.ktx2": {
+    "hash": "b6e865796dc7",
+    "bytes": 691967,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_w.256.ktx2": {
+    "hash": "0612190a3628",
+    "bytes": 58940,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_w.512.ktx2": {
+    "hash": "c8f56e04d771",
+    "bytes": 201484,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_skirt_w.1024.ktx2": {
+    "hash": "3168061e4081",
+    "bytes": 464484,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_skirt_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_skirt_w.256.ktx2": {
+    "hash": "c353f1a817be",
+    "bytes": 45196,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_skirt_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_leia_princess_01_skirt_w.512.ktx2": {
+    "hash": "ecf10ce61958",
+    "bytes": 147572,
+    "from": "models/galaxy/bf2017/crew/tex/t_leia_princess_01_skirt_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_hoth_gloves_aosl.256.ktx2": {
+    "hash": "05b4b7a1aa40",
+    "bytes": 44110,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_hoth_gloves_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_hoth_helmet_aosl.256.ktx2": {
+    "hash": "ee192eb005c8",
+    "bytes": 56978,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_hoth_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_hoth_helmet_aosl.512.ktx2": {
+    "hash": "da8837bbd18a",
+    "bytes": 181043,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_hoth_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_aosl.1024.ktx2": {
+    "hash": "373523c17b6d",
+    "bytes": 599081,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_aosl.256.ktx2": {
+    "hash": "705d8016ca9d",
+    "bytes": 51916,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_aosl.512.ktx2": {
+    "hash": "59df762e2555",
+    "bytes": 172981,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_w.256.ktx2": {
+    "hash": "711416ad6ab2",
+    "bytes": 64242,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_w.512.ktx2": {
+    "hash": "5314e9119580",
+    "bytes": 220790,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_vest_aosl.256.ktx2": {
+    "hash": "fa80ddc87a8c",
+    "bytes": 47649,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_vest_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_vest_aosl.512.ktx2": {
+    "hash": "58df45a047bf",
+    "bytes": 147151,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_vest_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_vest_w.256.ktx2": {
+    "hash": "44fe3e845fb4",
+    "bytes": 57986,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_rotj_01_vest_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_aosl.1024.ktx2": {
+    "hash": "e0be601ce848",
+    "bytes": 580193,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_aosl.256.ktx2": {
+    "hash": "3939c007e9d6",
+    "bytes": 53269,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_aosl.512.ktx2": {
+    "hash": "48d1c20885eb",
+    "bytes": 175738,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_w.1024.ktx2": {
+    "hash": "bcccaf71d85a",
+    "bytes": 722360,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_w.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_w.256.ktx2": {
+    "hash": "ac878b7d3741",
+    "bytes": 61155,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_w.512.ktx2": {
+    "hash": "8dcd007dd2b8",
+    "bytes": 211676,
+    "from": "models/galaxy/bf2017/crew/tex/t_luke_yavin_01_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_obiwan_01_aosl.1024.ktx2": {
+    "hash": "ae1b053e0494",
+    "bytes": 463109,
+    "from": "models/galaxy/bf2017/crew/tex/t_obiwan_01_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_obiwan_01_aosl.256.ktx2": {
+    "hash": "f8898dea0b54",
+    "bytes": 46702,
+    "from": "models/galaxy/bf2017/crew/tex/t_obiwan_01_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_obiwan_01_aosl.512.ktx2": {
+    "hash": "538b76a2dc79",
+    "bytes": 147080,
+    "from": "models/galaxy/bf2017/crew/tex/t_obiwan_01_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_obiwan_01_w.256.ktx2": {
+    "hash": "47d664edcac8",
+    "bytes": 59821,
+    "from": "models/galaxy/bf2017/crew/tex/t_obiwan_01_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_obiwan_01_w.512.ktx2": {
+    "hash": "0fb5fb54e674",
+    "bytes": 215463,
+    "from": "models/galaxy/bf2017/crew/tex/t_obiwan_01_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_obiwan_03_gloves_aosl.1024.ktx2": {
+    "hash": "97eec867a36a",
+    "bytes": 308103,
+    "from": "models/galaxy/bf2017/crew/tex/t_obiwan_03_gloves_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_obiwan_03_gloves_aosl.256.ktx2": {
+    "hash": "99713b9600dc",
+    "bytes": 30805,
+    "from": "models/galaxy/bf2017/crew/tex/t_obiwan_03_gloves_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_obiwan_03_gloves_aosl.512.ktx2": {
+    "hash": "642864478890",
+    "bytes": 94962,
+    "from": "models/galaxy/bf2017/crew/tex/t_obiwan_03_gloves_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_palpatine_01_body_aosl.256.ktx2": {
+    "hash": "e7f1038608b2",
+    "bytes": 44212,
+    "from": "models/galaxy/bf2017/crew/tex/t_palpatine_01_body_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_palpatine_01_body_aosl.512.ktx2": {
+    "hash": "8e3d084d828a",
+    "bytes": 140632,
+    "from": "models/galaxy/bf2017/crew/tex/t_palpatine_01_body_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_palpatine_01_body_w.256.ktx2": {
+    "hash": "7fe9f7ea4831",
+    "bytes": 31912,
+    "from": "models/galaxy/bf2017/crew/tex/t_palpatine_01_body_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_palpatine_01_body_w.512.ktx2": {
+    "hash": "c7b1f4da656b",
+    "bytes": 104828,
+    "from": "models/galaxy/bf2017/crew/tex/t_palpatine_01_body_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_aosl.1024.ktx2": {
+    "hash": "2b4cbebfe501",
+    "bytes": 289058,
+    "from": "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_aosl.256.ktx2": {
+    "hash": "2e51289896d7",
+    "bytes": 33469,
+    "from": "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_aosl.512.ktx2": {
+    "hash": "8d0de679bd6b",
+    "bytes": 97283,
+    "from": "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_w.256.ktx2": {
+    "hash": "35985f983027",
+    "bytes": 56413,
+    "from": "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_w.512.ktx2": {
+    "hash": "1bd548dc8509",
+    "bytes": 188027,
+    "from": "models/galaxy/bf2017/crew/tex/t_pants1_civ_vardos_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_gloves_aosl.256.ktx2": {
+    "hash": "e54266eedf50",
+    "bytes": 55771,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_gloves_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_gloves_aosl.512.ktx2": {
+    "hash": "b071f6ca510a",
+    "bytes": 208100,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_gloves_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_helmet_aosl.1024.ktx2": {
+    "hash": "f609299f47fc",
+    "bytes": 526841,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_helmet_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_helmet_aosl.256.ktx2": {
+    "hash": "7895ae3f0ef6",
+    "bytes": 44634,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_helmet_aosl.512.ktx2": {
+    "hash": "ac46fc77d9af",
+    "bytes": 151923,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_legs_aosl.256.ktx2": {
+    "hash": "5626734683c3",
+    "bytes": 69995,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_legs_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_legs_aosl.512.ktx2": {
+    "hash": "4471cae56b3d",
+    "bytes": 244458,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_legs_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_torso_aosl.256.ktx2": {
+    "hash": "a06ab3568970",
+    "bytes": 77476,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_torso_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_pilot_torso_aosl.512.ktx2": {
+    "hash": "e90556b04bfe",
+    "bytes": 287164,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_pilot_torso_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_technician_orig_01_helmet_aosl.1024.ktx2": {
+    "hash": "5df799ac7f0a",
+    "bytes": 283887,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_technician_orig_01_helmet_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_technician_orig_01_helmet_aosl.256.ktx2": {
+    "hash": "185a39c4a081",
+    "bytes": 30930,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_technician_orig_01_helmet_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_rebel_technician_orig_01_helmet_aosl.512.ktx2": {
+    "hash": "a88dffff20b9",
+    "bytes": 95540,
+    "from": "models/galaxy/bf2017/crew/tex/t_rebel_technician_orig_01_helmet_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_aosl.1024.ktx2": {
+    "hash": "4439d463915e",
+    "bytes": 424612,
+    "from": "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_aosl.256.ktx2": {
+    "hash": "4cec1cd0cd31",
+    "bytes": 45773,
+    "from": "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_aosl.512.ktx2": {
+    "hash": "56805448548d",
+    "bytes": 137064,
+    "from": "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_w.256.ktx2": {
+    "hash": "87a7ab2646ca",
+    "bytes": 66320,
+    "from": "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_w.512.ktx2": {
+    "hash": "b5f57e3bc04f",
+    "bytes": 226094,
+    "from": "models/galaxy/bf2017/crew/tex/t_robe2_civ_vardos_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_sp_torso_05_aosl.1024.ktx2": {
+    "hash": "6194669f6403",
+    "bytes": 294704,
+    "from": "models/galaxy/bf2017/crew/tex/t_sp_torso_05_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_sp_torso_05_aosl.256.ktx2": {
+    "hash": "c4a23d3d5ec7",
+    "bytes": 32155,
+    "from": "models/galaxy/bf2017/crew/tex/t_sp_torso_05_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_sp_torso_05_aosl.512.ktx2": {
+    "hash": "be809fab1fc2",
+    "bytes": 97392,
+    "from": "models/galaxy/bf2017/crew/tex/t_sp_torso_05_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_tauntaun_01_haircards_w.256.ktx2": {
+    "hash": "f92d12cb622b",
+    "bytes": 64473,
+    "from": "models/galaxy/bf2017/crew/tex/t_tauntaun_01_haircards_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_torso_02_aosl.256.ktx2": {
+    "hash": "164baad72161",
+    "bytes": 57964,
+    "from": "models/galaxy/bf2017/crew/tex/t_torso_02_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_torso_02_aosl.512.ktx2": {
+    "hash": "5f8a9f3e74bc",
+    "bytes": 185578,
+    "from": "models/galaxy/bf2017/crew/tex/t_torso_02_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_torso_02_w.256.ktx2": {
+    "hash": "17a7f0e4a57a",
+    "bytes": 62576,
+    "from": "models/galaxy/bf2017/crew/tex/t_torso_02_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_torso_02_w.512.ktx2": {
+    "hash": "cbcb72f55e0a",
+    "bytes": 226692,
+    "from": "models/galaxy/bf2017/crew/tex/t_torso_02_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_torso_05_w.256.ktx2": {
+    "hash": "c3f2d1e62b53",
+    "bytes": 64577,
+    "from": "models/galaxy/bf2017/crew/tex/t_torso_05_w.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_torso_05_w.512.ktx2": {
+    "hash": "b6cf51102bf3",
+    "bytes": 234368,
+    "from": "models/galaxy/bf2017/crew/tex/t_torso_05_w.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_wookiewarrior_01_aosl.1024.ktx2": {
+    "hash": "97e01a3eafe6",
+    "bytes": 657431,
+    "from": "models/galaxy/bf2017/crew/tex/t_wookiewarrior_01_aosl.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_wookiewarrior_01_aosl.256.ktx2": {
+    "hash": "2c3480afd129",
+    "bytes": 66834,
+    "from": "models/galaxy/bf2017/crew/tex/t_wookiewarrior_01_aosl.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/t_wookiewarrior_01_aosl.512.ktx2": {
+    "hash": "27f0c42ff3f0",
+    "bytes": 209725,
+    "from": "models/galaxy/bf2017/crew/tex/t_wookiewarrior_01_aosl.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_000.256.ktx2": {
+    "hash": "582e3eba2ecb",
+    "bytes": 81746,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_000.512.ktx2": {
+    "hash": "c593ad74dcfa",
+    "bytes": 323227,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_001.256.ktx2": {
+    "hash": "76d2b944daab",
+    "bytes": 74031,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_001.512.ktx2": {
+    "hash": "aba3bd59a86d",
+    "bytes": 302848,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_002.256.ktx2": {
+    "hash": "23aea327a884",
+    "bytes": 83517,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_002.512.ktx2": {
+    "hash": "dd75c695035d",
+    "bytes": 314874,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_01_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_000.256.ktx2": {
+    "hash": "256193935764",
+    "bytes": 81084,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_000.512.ktx2": {
+    "hash": "bc747fdffbd7",
+    "bytes": 230917,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_001.256.ktx2": {
+    "hash": "98ba64038f73",
+    "bytes": 83885,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_001.512.ktx2": {
+    "hash": "35df0e854358",
+    "bytes": 258317,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_002.256.ktx2": {
+    "hash": "8ef03705f33c",
+    "bytes": 72144,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_002.512.ktx2": {
+    "hash": "e30fce3afa97",
+    "bytes": 212510,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_02_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_000.1024.ktx2": {
+    "hash": "cd6caa444db2",
+    "bytes": 892636,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_000.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_000.256.ktx2": {
+    "hash": "80475da05d43",
+    "bytes": 81742,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_000.512.ktx2": {
+    "hash": "4a82af3961e0",
+    "bytes": 317173,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_001.1024.ktx2": {
+    "hash": "9bfedf87f4c9",
+    "bytes": 847377,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_001.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_001.256.ktx2": {
+    "hash": "5098d225d0f0",
+    "bytes": 79970,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_001.512.ktx2": {
+    "hash": "5f5d0adaed4d",
+    "bytes": 293936,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_002.1024.ktx2": {
+    "hash": "96ed7e31c01b",
+    "bytes": 843050,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_002.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_002.256.ktx2": {
+    "hash": "5d7363a51e45",
+    "bytes": 72293,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_002.512.ktx2": {
+    "hash": "f7ab98fa299d",
+    "bytes": 292347,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_03_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_000.256.ktx2": {
+    "hash": "256193935764",
+    "bytes": 81084,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_000.512.ktx2": {
+    "hash": "bc747fdffbd7",
+    "bytes": 230917,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_001.256.ktx2": {
+    "hash": "98ba64038f73",
+    "bytes": 83885,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_001.512.ktx2": {
+    "hash": "35df0e854358",
+    "bytes": 258317,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_002.256.ktx2": {
+    "hash": "7101359c92e3",
+    "bytes": 83805,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_002.512.ktx2": {
+    "hash": "d8332b0a5375",
+    "bytes": 260271,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_04_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_000.256.ktx2": {
+    "hash": "582e3eba2ecb",
+    "bytes": 81746,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_000.512.ktx2": {
+    "hash": "c593ad74dcfa",
+    "bytes": 323227,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_001.256.ktx2": {
+    "hash": "e96f151c26c5",
+    "bytes": 81120,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_001.512.ktx2": {
+    "hash": "f463858e80c5",
+    "bytes": 303694,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_002.256.ktx2": {
+    "hash": "e4dfa6fcedd8",
+    "bytes": 53880,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_002.512.ktx2": {
+    "hash": "8b6369c8fa04",
+    "bytes": 210260,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_07_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_000.256.ktx2": {
+    "hash": "582e3eba2ecb",
+    "bytes": 81746,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_000.512.ktx2": {
+    "hash": "c593ad74dcfa",
+    "bytes": 323227,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_001.256.ktx2": {
+    "hash": "e96f151c26c5",
+    "bytes": 81120,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_001.512.ktx2": {
+    "hash": "f463858e80c5",
+    "bytes": 303694,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_002.256.ktx2": {
+    "hash": "529061df3d18",
+    "bytes": 78968,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_002.512.ktx2": {
+    "hash": "2963a69b8490",
+    "bytes": 312668,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_08_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_000.256.ktx2": {
+    "hash": "256193935764",
+    "bytes": 81084,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_000.512.ktx2": {
+    "hash": "bc747fdffbd7",
+    "bytes": 230917,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_001.256.ktx2": {
+    "hash": "adf8e44968e1",
+    "bytes": 81109,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_001.512.ktx2": {
+    "hash": "d254e0700b74",
+    "bytes": 245095,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_002.256.ktx2": {
+    "hash": "7101359c92e3",
+    "bytes": 83805,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_002.512.ktx2": {
+    "hash": "d8332b0a5375",
+    "bytes": 260271,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_09_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_000.1024.ktx2": {
+    "hash": "5df80b05686f",
+    "bytes": 1204889,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_000.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_000.256.ktx2": {
+    "hash": "517d1efd9254",
+    "bytes": 81755,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_000.512.ktx2": {
+    "hash": "2b509b639d5e",
+    "bytes": 323669,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_001.1024.ktx2": {
+    "hash": "a5c0330fb1ab",
+    "bytes": 1150358,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_001.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_001.256.ktx2": {
+    "hash": "9d0a540f54cc",
+    "bytes": 71406,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_001.512.ktx2": {
+    "hash": "36aa46b4b38a",
+    "bytes": 285957,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_002.1024.ktx2": {
+    "hash": "562a4310ea83",
+    "bytes": 1168173,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_002.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_002.256.ktx2": {
+    "hash": "598c861adc68",
+    "bytes": 71582,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_002.512.ktx2": {
+    "hash": "0c8da08306be",
+    "bytes": 297963,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_10_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_000.256.ktx2": {
+    "hash": "3e6e6758fca9",
+    "bytes": 76592,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_000.512.ktx2": {
+    "hash": "97aec272b0bd",
+    "bytes": 300206,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_001.256.ktx2": {
+    "hash": "76d2b944daab",
+    "bytes": 74031,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_001.512.ktx2": {
+    "hash": "aba3bd59a86d",
+    "bytes": 302848,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_002.256.ktx2": {
+    "hash": "582e3eba2ecb",
+    "bytes": 81746,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_002.512.ktx2": {
+    "hash": "c593ad74dcfa",
+    "bytes": 323227,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_11_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_000.1024.ktx2": {
+    "hash": "562a4310ea83",
+    "bytes": 1168173,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_000.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_000.256.ktx2": {
+    "hash": "598c861adc68",
+    "bytes": 71582,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_000.512.ktx2": {
+    "hash": "0c8da08306be",
+    "bytes": 297963,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_001.1024.ktx2": {
+    "hash": "a5c0330fb1ab",
+    "bytes": 1150358,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_001.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_001.256.ktx2": {
+    "hash": "9d0a540f54cc",
+    "bytes": 71406,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_001.512.ktx2": {
+    "hash": "36aa46b4b38a",
+    "bytes": 285957,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_002.1024.ktx2": {
+    "hash": "06ccd097b751",
+    "bytes": 897897,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_002.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_002.256.ktx2": {
+    "hash": "cce58e4547ba",
+    "bytes": 76820,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_002.512.ktx2": {
+    "hash": "031be2b57dab",
+    "bytes": 254715,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_13_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_000.256.ktx2": {
+    "hash": "582e3eba2ecb",
+    "bytes": 81746,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_000.512.ktx2": {
+    "hash": "c593ad74dcfa",
+    "bytes": 323227,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_001.256.ktx2": {
+    "hash": "e96f151c26c5",
+    "bytes": 81120,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_001.512.ktx2": {
+    "hash": "f463858e80c5",
+    "bytes": 303694,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_002.256.ktx2": {
+    "hash": "76d2b944daab",
+    "bytes": 74031,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_002.512.ktx2": {
+    "hash": "aba3bd59a86d",
+    "bytes": 302848,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_16_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_000.1024.ktx2": {
+    "hash": "00799c2d5014",
+    "bytes": 1236936,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_000.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_000.256.ktx2": {
+    "hash": "13ef0ce29a1d",
+    "bytes": 85557,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_000.512.ktx2": {
+    "hash": "33f6609ae7f6",
+    "bytes": 336001,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_001.1024.ktx2": {
+    "hash": "a5c0330fb1ab",
+    "bytes": 1150358,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_001.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_001.256.ktx2": {
+    "hash": "9d0a540f54cc",
+    "bytes": 71406,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_001.512.ktx2": {
+    "hash": "36aa46b4b38a",
+    "bytes": 285957,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_002.1024.ktx2": {
+    "hash": "4f37d4f2923c",
+    "bytes": 1309682,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_002.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_002.256.ktx2": {
+    "hash": "e815d471f609",
+    "bytes": 85151,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_002.512.ktx2": {
+    "hash": "d33796c182de",
+    "bytes": 340052,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_18_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_000.256.ktx2": {
+    "hash": "945ba95746de",
+    "bytes": 85530,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_000.512.ktx2": {
+    "hash": "2a7fb3b02523",
+    "bytes": 336192,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_001.256.ktx2": {
+    "hash": "8eff7dba099c",
+    "bytes": 84375,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_001.512.ktx2": {
+    "hash": "0fedcd909459",
+    "bytes": 333683,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_002.256.ktx2": {
+    "hash": "6f79781e324a",
+    "bytes": 81779,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_002.512.ktx2": {
+    "hash": "343d043af3e8",
+    "bytes": 316550,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_19_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_000.256.ktx2": {
+    "hash": "945ba95746de",
+    "bytes": 85530,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_000.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_000.512.ktx2": {
+    "hash": "2a7fb3b02523",
+    "bytes": 336192,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_000.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_001.256.ktx2": {
+    "hash": "8eff7dba099c",
+    "bytes": 84375,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_001.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_001.512.ktx2": {
+    "hash": "0fedcd909459",
+    "bytes": 333683,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_001.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_002.256.ktx2": {
+    "hash": "582e3eba2ecb",
+    "bytes": 81746,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_002.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_002.512.ktx2": {
+    "hash": "c593ad74dcfa",
+    "bytes": 323227,
+    "from": "models/galaxy/bf2017/crew/tex/ta_characterdetail_21_ns_002.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/tex/ta_landocap_ns_000.256.ktx2": {
+    "hash": "6df83db542d8",
+    "bytes": 83524,
+    "from": "models/galaxy/bf2017/crew/tex/ta_landocap_ns_000.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/treadwell.glb": {
     "hash": "e5f5e39f26c5",
     "bytes": 1761672,
     "from": "characters/npc/droids/wed_15septoidtreadwell_01/wed_15septoidtreadwell_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/treadwell.recipes.json": {
+    "hash": "cb93411a3b3a",
+    "bytes": 589,
+    "from": "models/galaxy/bf2017/crew/treadwell.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/crew/vader.glb": {
     "hash": "24384ffb3846",
@@ -1763,6 +5087,12 @@
     "from": "characters/hero/darthvader/darthvader_01/darthvader_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/vader.recipes.json": {
+    "hash": "54366a1ac45b",
+    "bytes": 9910,
+    "from": "models/galaxy/bf2017/crew/vader.recipes.json",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/crew/vader.ultra.glb": {
     "hash": "22b8743c2777",
     "bytes": 23354640,
@@ -1774,6 +5104,12 @@
     "bytes": 19458072,
     "from": "characters/hero/wookiewarrior/wookiewarrior_01/wookiewarrior_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/wookiee.recipes.json": {
+    "hash": "d03abdfdd480",
+    "bytes": 4708,
+    "from": "models/galaxy/bf2017/crew/wookiee.recipes.json",
+    "tier": "pack"
   },
   "models/galaxy/bf2017/fx/blast.512.ktx2": {
     "hash": "b9f488195c95",
@@ -2799,6 +6135,510 @@
     "hash": "0e4e3eb6f64b",
     "bytes": 209024,
     "from": "gameplay/vehicles/air/millenniumfalcon/vehicle_air_millenniumfalcon_ot_cockpit_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/barrelplastic0114nct05.far.glb": {
+    "hash": "ade88da0732d",
+    "bytes": 39464,
+    "from": "objects/props/objectsets/tatooine/barrelplastic_01/barrelplastic_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/barrelplastic0114nct05.glb": {
+    "hash": "1d798110f010",
+    "bytes": 651808,
+    "from": "objects/props/objectsets/tatooine/barrelplastic_01/barrelplastic_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/barrelplastic0114nct05.lod1.glb": {
+    "hash": "a4b4c37244a6",
+    "bytes": 445060,
+    "from": "objects/props/objectsets/tatooine/barrelplastic_01/barrelplastic_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm0200lg876.far.glb": {
+    "hash": "90a5e3ea57b1",
+    "bytes": 56040,
+    "from": "objects/props/objectsets/_rebelalliance/box_m_02/box_m_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm0200lg876.glb": {
+    "hash": "494d2ab7d3a3",
+    "bytes": 1207044,
+    "from": "objects/props/objectsets/_rebelalliance/box_m_02/box_m_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm0200lg876.lod1.glb": {
+    "hash": "5c7ec49ba7d3",
+    "bytes": 755420,
+    "from": "objects/props/objectsets/_rebelalliance/box_m_02/box_m_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm040rjr5fv.far.glb": {
+    "hash": "8c79aa21cb06",
+    "bytes": 29676,
+    "from": "objects/props/objectsets/_galacticempire/box_m_04/box_m_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm040rjr5fv.glb": {
+    "hash": "1f8f2a1952b3",
+    "bytes": 628628,
+    "from": "objects/props/objectsets/_galacticempire/box_m_04/box_m_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm040rjr5fv.lod1.glb": {
+    "hash": "7fc9cfb1af44",
+    "bytes": 437684,
+    "from": "objects/props/objectsets/_galacticempire/box_m_04/box_m_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm0511wbd3d.far.glb": {
+    "hash": "5eacd60c74b8",
+    "bytes": 31436,
+    "from": "objects/props/objectsets/_galacticempire/box_m_05/box_m_05_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm0511wbd3d.glb": {
+    "hash": "9fe4777811be",
+    "bytes": 2541928,
+    "from": "objects/props/objectsets/_galacticempire/box_m_05/box_m_05_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm0511wbd3d.lod1.glb": {
+    "hash": "4a3057f5d3c8",
+    "bytes": 445560,
+    "from": "objects/props/objectsets/_galacticempire/box_m_05/box_m_05_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm060n9ycs3.far.glb": {
+    "hash": "1a06d11c8222",
+    "bytes": 55128,
+    "from": "objects/props/objectsets/_galacticempire/box_m_06/box_m_06_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm060n9ycs3.glb": {
+    "hash": "6dd878fcc23c",
+    "bytes": 600688,
+    "from": "objects/props/objectsets/_galacticempire/box_m_06/box_m_06_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxm060n9ycs3.lod1.glb": {
+    "hash": "a115183b5039",
+    "bytes": 305668,
+    "from": "objects/props/objectsets/_galacticempire/box_m_06/box_m_06_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxs040td2gva.far.glb": {
+    "hash": "85233e5d9b6d",
+    "bytes": 56720,
+    "from": "objects/props/objectsets/_rebelalliance/box_s_04/box_s_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxs040td2gva.glb": {
+    "hash": "3e4d0eec3358",
+    "bytes": 1316508,
+    "from": "objects/props/objectsets/_rebelalliance/box_s_04/box_s_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/boxs040td2gva.lod1.glb": {
+    "hash": "7e5ae50d2079",
+    "bytes": 846076,
+    "from": "objects/props/objectsets/_rebelalliance/box_s_04/box_s_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/bucketsmeltingxlbucket010irh9vj.far.glb": {
+    "hash": "163c98f1103a",
+    "bytes": 30004,
+    "from": "objects/props/objectsets/sullust/bucketsmelting_xl_01/bucketsmelting_xl_bucket_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/bucketsmeltingxlbucket010irh9vj.glb": {
+    "hash": "1eb69a6eb435",
+    "bytes": 6513616,
+    "from": "objects/props/objectsets/sullust/bucketsmelting_xl_01/bucketsmelting_xl_bucket_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/bucketsmeltingxlbucket010irh9vj.lod1.glb": {
+    "hash": "ae0c62cb244f",
+    "bytes": 197100,
+    "from": "objects/props/objectsets/sullust/bucketsmelting_xl_01/bucketsmelting_xl_bucket_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/cavesketto01sitting0a2adms.far.glb": {
+    "hash": "190be52de8e6",
+    "bytes": 24556,
+    "from": "objects/livingworld/cavesketto_01/cavesketto_01_sitting_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/cavesketto01sitting0a2adms.glb": {
+    "hash": "ac3d654c1d1c",
+    "bytes": 170136,
+    "from": "objects/livingworld/cavesketto_01/cavesketto_01_sitting_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/container01l0jjxi4c.far.glb": {
+    "hash": "81643d93c851",
+    "bytes": 40752,
+    "from": "objects/props/objectsets/_galacticrepublic/container_01/container_01_l_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/container01l0jjxi4c.glb": {
+    "hash": "a4d8eb7f1508",
+    "bytes": 7778932,
+    "from": "objects/props/objectsets/_galacticrepublic/container_01/container_01_l_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/container01l0jjxi4c.lod1.glb": {
+    "hash": "1fcbcfd47f92",
+    "bytes": 156668,
+    "from": "objects/props/objectsets/_galacticrepublic/container_01/container_01_l_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/containersullustanxl011bbh0ga.far.glb": {
+    "hash": "ba21916444e5",
+    "bytes": 19900,
+    "from": "objects/props/objectsets/sullust/containersullustan_xl_01/containersullustan_xl_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/containersullustanxl011bbh0ga.glb": {
+    "hash": "be0676bec457",
+    "bytes": 5903640,
+    "from": "objects/props/objectsets/sullust/containersullustan_xl_01/containersullustan_xl_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/containersullustanxl011bbh0ga.lod1.glb": {
+    "hash": "873ed9dfd0bd",
+    "bytes": 153076,
+    "from": "objects/props/objectsets/sullust/containersullustan_xl_01/containersullustan_xl_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/containerxl02a0hh0o1d.far.glb": {
+    "hash": "f6c1048e626b",
+    "bytes": 16820,
+    "from": "objects/props/objectsets/_galacticempire/container_xl_02/container_xl_02_a_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/containerxl02a0hh0o1d.glb": {
+    "hash": "e829d6cbef13",
+    "bytes": 6308128,
+    "from": "objects/props/objectsets/_galacticempire/container_xl_02/container_xl_02_a_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/containerxl02a0hh0o1d.lod1.glb": {
+    "hash": "53255413da3e",
+    "bytes": 178968,
+    "from": "objects/props/objectsets/_galacticempire/container_xl_02/container_xl_02_a_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/convor01sitting1t8vjr0.far.glb": {
+    "hash": "b012a07c66ef",
+    "bytes": 30548,
+    "from": "objects/livingworld/convor_01/convor_01_sitting_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/convor01sitting1t8vjr0.glb": {
+    "hash": "0b498ecc4ea4",
+    "bytes": 631528,
+    "from": "objects/livingworld/convor_01/convor_01_sitting_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/crate02s08kdpnf.far.glb": {
+    "hash": "6d9c73fbeded",
+    "bytes": 57264,
+    "from": "objects/props/objectsets/_galacticrepublic/crate_02_s/crate_02_s_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/crate02s08kdpnf.glb": {
+    "hash": "7d57e4fdda2d",
+    "bytes": 2516500,
+    "from": "objects/props/objectsets/_galacticrepublic/crate_02_s/crate_02_s_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/crate02s08kdpnf.lod1.glb": {
+    "hash": "74bb6cf5e243",
+    "bytes": 356976,
+    "from": "objects/props/objectsets/_galacticrepublic/crate_02_s/crate_02_s_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/cratem010e694s7.far.glb": {
+    "hash": "516867b53dc2",
+    "bytes": 65668,
+    "from": "objects/props/objectsets/tatooine/crate_m_01/crate_m_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/cratem010e694s7.glb": {
+    "hash": "f278560ea29b",
+    "bytes": 1444880,
+    "from": "objects/props/objectsets/tatooine/crate_m_01/crate_m_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/cratem010e694s7.lod1.glb": {
+    "hash": "313333562d14",
+    "bytes": 872160,
+    "from": "objects/props/objectsets/tatooine/crate_m_01/crate_m_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/cratemetal010tqifvz.far.glb": {
+    "hash": "11191bd60339",
+    "bytes": 33344,
+    "from": "objects/props/objectsets/tatooine/cratemetal_01/cratemetal_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/cratemetal010tqifvz.glb": {
+    "hash": "744ce01f36b1",
+    "bytes": 595836,
+    "from": "objects/props/objectsets/tatooine/cratemetal_01/cratemetal_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/cratemetal010tqifvz.lod1.glb": {
+    "hash": "442363c15e2b",
+    "bytes": 381088,
+    "from": "objects/props/objectsets/tatooine/cratemetal_01/cratemetal_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/desertbaserockmudrockmedium0104oa7z9.far.glb": {
+    "hash": "adb809f3aecf",
+    "bytes": 26028,
+    "from": "objects/nature/desert/_desertbase/desertbase_rockmudrockmedium_01/desertbase_rockmudrockmedium_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/desertbaserockmudrockmedium0104oa7z9.glb": {
+    "hash": "67353698a024",
+    "bytes": 331176,
+    "from": "objects/nature/desert/_desertbase/desertbase_rockmudrockmedium_01/desertbase_rockmudrockmedium_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/desertbaserockmudrockmedium0104oa7z9.lod1.glb": {
+    "hash": "a8435878d8ea",
+    "bytes": 151876,
+    "from": "objects/nature/desert/_desertbase/desertbase_rockmudrockmedium_01/desertbase_rockmudrockmedium_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/forestbaselogsmall011y9w8zv.far.glb": {
+    "hash": "8e409c4336f6",
+    "bytes": 92508,
+    "from": "objects/nature/forest/_forestbase/forestbase_logsmall_01/forestbase_logsmall_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/forestbaselogsmall011y9w8zv.glb": {
+    "hash": "817700b0ec99",
+    "bytes": 678436,
+    "from": "objects/nature/forest/_forestbase/forestbase_logsmall_01/forestbase_logsmall_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/forestbaserockmedium020zxwjnf.far.glb": {
+    "hash": "ac0913bdac74",
+    "bytes": 25892,
+    "from": "objects/nature/forest/_forestbase/forestbase_rockmedium_02/forestbase_rockmedium_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/forestbaserockmedium020zxwjnf.glb": {
+    "hash": "5e49d80d7d05",
+    "bytes": 638780,
+    "from": "objects/nature/forest/_forestbase/forestbase_rockmedium_02/forestbase_rockmedium_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/forestbaserockmedium020zxwjnf.lod1.glb": {
+    "hash": "6e9f9f10a669",
+    "bytes": 402800,
+    "from": "objects/nature/forest/_forestbase/forestbase_rockmedium_02/forestbase_rockmedium_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/forestbaserocksmall011x2jkd9.far.glb": {
+    "hash": "e8b5b6aa5dcd",
+    "bytes": 26028,
+    "from": "objects/nature/forest/_forestbase/forestbase_rocksmall_01/forestbase_rocksmall_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/forestbaserocksmall011x2jkd9.glb": {
+    "hash": "6aa16e0fcb04",
+    "bytes": 171032,
+    "from": "objects/nature/forest/_forestbase/forestbase_rocksmall_01/forestbase_rocksmall_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/gasflask010almg1g.far.glb": {
+    "hash": "89e22b4bd71f",
+    "bytes": 27160,
+    "from": "objects/props/objectsets/_rebelalliance/gasflask_01/gasflask_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/gasflask010almg1g.glb": {
+    "hash": "ef9063ebbaa3",
+    "bytes": 545944,
+    "from": "objects/props/objectsets/_rebelalliance/gasflask_01/gasflask_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/gasflask010almg1g.lod1.glb": {
+    "hash": "9d0db8140dce",
+    "bytes": 221076,
+    "from": "objects/props/objectsets/_rebelalliance/gasflask_01/gasflask_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/lanternbird01sitting0me7hcs.far.glb": {
+    "hash": "144db676b534",
+    "bytes": 24492,
+    "from": "objects/livingworld/lanternbird_01/lanternbird_01_sitting_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/lanternbird01sitting0me7hcs.glb": {
+    "hash": "4db1689b74f4",
+    "bytes": 221424,
+    "from": "objects/livingworld/lanternbird_01/lanternbird_01_sitting_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/machinel051cx8j0c.far.glb": {
+    "hash": "1d0ac1144485",
+    "bytes": 25480,
+    "from": "objects/props/objectsets/sullust/machine_l_05/machine_l_05_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/machinel051cx8j0c.glb": {
+    "hash": "c7104c965d57",
+    "bytes": 1839420,
+    "from": "objects/props/objectsets/sullust/machine_l_05/machine_l_05_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/machinel051cx8j0c.lod1.glb": {
+    "hash": "682dfb9aa46c",
+    "bytes": 294136,
+    "from": "objects/props/objectsets/sullust/machine_l_05/machine_l_05_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/moisturevaporator020p3i7wn.far.glb": {
+    "hash": "fd6feba6312f",
+    "bytes": 56840,
+    "from": "objects/props/objectsets/tatooine/moisturevaporator_02/moisturevaporator_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/moisturevaporator020p3i7wn.glb": {
+    "hash": "63985e4d7803",
+    "bytes": 1332748,
+    "from": "objects/props/objectsets/tatooine/moisturevaporator_02/moisturevaporator_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/moisturevaporator020p3i7wn.lod1.glb": {
+    "hash": "b0cb4a48b118",
+    "bytes": 904540,
+    "from": "objects/props/objectsets/tatooine/moisturevaporator_02/moisturevaporator_02_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/msdesertcanyonrock031tt294q.far.glb": {
+    "hash": "246f1cc5601a",
+    "bytes": 22576,
+    "from": "objects/nature/desert/desertcanyon/_meshscattering/ms_desertcanyon_rock_03/ms_desertcanyon_rock_03_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/msdesertcanyonrock031tt294q.glb": {
+    "hash": "e457e1a7fa44",
+    "bytes": 442956,
+    "from": "objects/nature/desert/desertcanyon/_meshscattering/ms_desertcanyon_rock_03/ms_desertcanyon_rock_03_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/mskashyyykbaseschefflerabushs011nxbo38.far.glb": {
+    "hash": "2b4820207b28",
+    "bytes": 27928,
+    "from": "objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_s_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/mskashyyykbaseschefflerabushs011nxbo38.glb": {
+    "hash": "d4f2a810624f",
+    "bytes": 2499340,
+    "from": "objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_s_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/mskashyyykbaseschefflerabushs011nxbo38.lod1.glb": {
+    "hash": "cf344e413998",
+    "bytes": 394924,
+    "from": "objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_s_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/mskashyyykbaseschefflerabushxs011rq7qlu.far.glb": {
+    "hash": "066d0af4aeb8",
+    "bytes": 26172,
+    "from": "objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_xs_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/mskashyyykbaseschefflerabushxs011rq7qlu.glb": {
+    "hash": "37a7c3887332",
+    "bytes": 2497580,
+    "from": "objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_xs_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/mskashyyykbaseschefflerabushxs011rq7qlu.lod1.glb": {
+    "hash": "9a0d47da9d9d",
+    "bytes": 393620,
+    "from": "objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_xs_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/msvolcanicsulfurrockfrailsmall011alxniu.far.glb": {
+    "hash": "1c490892ede2",
+    "bytes": 26552,
+    "from": "objects/nature/volcanic/_volcanicsulfur/_meshscatter/ms_volcanicsulfur_rockfrailsmall_01/ms_volcanicsulfur_rockfrailsmall_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/msvolcanicsulfurrockfrailsmall011alxniu.glb": {
+    "hash": "2d35cbc05059",
+    "bytes": 647260,
+    "from": "objects/nature/volcanic/_volcanicsulfur/_meshscatter/ms_volcanicsulfur_rockfrailsmall_01/ms_volcanicsulfur_rockfrailsmall_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/msvolcanicsulfurrockfrailsmall011alxniu.lod1.glb": {
+    "hash": "ce4ba81953c2",
+    "bytes": 403448,
+    "from": "objects/nature/volcanic/_volcanicsulfur/_meshscatter/ms_volcanicsulfur_rockfrailsmall_01/ms_volcanicsulfur_rockfrailsmall_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/msyavinbasesmallbush071s34dyg.far.glb": {
+    "hash": "c9bfcf0ee9bf",
+    "bytes": 24904,
+    "from": "objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_smallbush_07/ms_yavinbase_smallbush_07_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/msyavinbasesmallbush071s34dyg.glb": {
+    "hash": "8c02c01a20da",
+    "bytes": 1795984,
+    "from": "objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_smallbush_07/ms_yavinbase_smallbush_07_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/msyavinbasesmallbush071s34dyg.lod1.glb": {
+    "hash": "40710539fd59",
+    "bytes": 352420,
+    "from": "objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_smallbush_07/ms_yavinbase_smallbush_07_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/rancorpitcaverockmedium041jc5x8i.far.glb": {
+    "hash": "483e5ec564a9",
+    "bytes": 30148,
+    "from": "objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/rancorpitcaverockmedium041jc5x8i.glb": {
+    "hash": "24d28db0c595",
+    "bytes": 1238828,
+    "from": "objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/rancorpitcaverockmedium041jc5x8i.lod1.glb": {
+    "hash": "8940b693bfbf",
+    "bytes": 317268,
+    "from": "objects/nature/desert/jabbaspalace/rancorpit_rocks_01/rancorpit_cave_rockmedium_04_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/volcaniccraterrockmedium010thluor.far.glb": {
+    "hash": "d141fbc94cf3",
+    "bytes": 27844,
+    "from": "objects/nature/volcanic/sullustan/volcaniccrater_rockmedium_01/volcaniccrater_rockmedium_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/volcaniccraterrockmedium010thluor.glb": {
+    "hash": "8316e58ba440",
+    "bytes": 376920,
+    "from": "objects/nature/volcanic/sullustan/volcaniccrater_rockmedium_01/volcaniccrater_rockmedium_01_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/game/volcaniccraterrockmedium010thluor.lod1.glb": {
+    "hash": "9606a8932cf2",
+    "bytes": 170288,
+    "from": "objects/nature/volcanic/sullustan/volcaniccrater_rockmedium_01/volcaniccrater_rockmedium_01_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/hiltanakin.glb": {

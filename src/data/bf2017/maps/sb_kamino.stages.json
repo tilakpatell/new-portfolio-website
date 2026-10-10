@@ -13,8 +13,12 @@
     "radius": 9000,
     "sea": -1400,
     "sky": { "url": "/models/galaxy/bf2017/levels/sb_kamino/sky.webp", "gain": 1.35 },
-    "light": "kamino",
-    "fog": { "color": "#56636d", "density": 0.00018, "sea": "#3e525c", "deep": "#16262e", "dim": 0.38 }
+    "light": "sb_kamino",
+    "lightWhy": "the space level's own VisualEnvironments (light/sb_kamino.json: VE_Kamino_Stormy_SB_01 its sky, fog and tonemap, VE_SB_Kamino_Stormy_02 its sun, blended): the sun at 216.2 deg, 20.6 deg up, the fog's distance from its curve, no grade",
+    "fill": { "sun": [1, 0.971, 0.914], "sky": [0.318, 0.341, 0.4], "ground": [0.05, 0.05, 0.05], "why": "VE_SB_Kamino_Stormy_02's OutdoorLightComponentData as stored (its SunColor, SkyColor, GroundColor are not among its overrides: the only fill the storm's records carry)" },
+    "probe": "kamino",
+    "probeWhy": "the space level's one probe (164727d2, Art_Lighting) sees a black sky: the shine is multiplayer Kamino's stormy probe",
+    "fog": { "color": "#203343", "density": 0.00018, "sea": "#2a3a44", "deep": "#0b141a", "why": "the colour the level's own fog gradient (T_Kamino_Stormy_02_Fog_C) has at its horizon, at the sky dome's gain; the density the record's (0.000223 a metre) where it gives one, this the fallback" }
   },
   "ships": [
     { "id": "venator-return", "team": 1, "kind": "venator", "role": "flagship", "name": "Venator star destroyer", "placed": "venatorstardestroyer_hull_01#1" },

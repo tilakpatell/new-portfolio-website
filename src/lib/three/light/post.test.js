@@ -50,9 +50,9 @@ describe('passesFor', () => {
     expect(kinds(passesFor('ultra', hoth.sunny, 'webgl', refs))).toEqual(['render', 'bloom', 'output']);
     for (const k of NODE_PASSES) expect(kinds(passesFor('ultra', hoth.sunny, 'webgl', refs))).not.toContain(k);
   });
-  it('on the node renderer over WebGL 2: no SSR, no SSGI (lane S’s shot), and SMAA for TRAA', () => {
-    expect(kinds(passesFor('ultra', hoth.sunny, 'nodes-webgl', refs))).toEqual(['render', 'ao', 'bloom', 'godrays', 'lensflare', 'motionBlur', 'lut', 'smaa', 'output']);
-    expect(kinds(passesFor('high', hoth.sunny, 'nodes-webgl', refs))).toEqual(['render', 'ao', 'bloom', 'motionBlur', 'lut', 'smaa', 'output']);
+  it('on the node renderer over WebGL 2: no SSR, SMAA for TRAA, and SSGI denoised in TRAA’s absence', () => {
+    expect(kinds(passesFor('ultra', hoth.sunny, 'nodes-webgl', refs))).toEqual(['render', 'ssgi', 'denoise', 'ao', 'bloom', 'godrays', 'lensflare', 'motionBlur', 'lut', 'smaa', 'output']);
+    expect(kinds(passesFor('high', hoth.sunny, 'nodes-webgl', refs))).toEqual(['render', 'ssgi', 'denoise', 'ao', 'bloom', 'motionBlur', 'lut', 'smaa', 'output']);
   });
   it('no light and no LUT given: ultra goes without god rays and the grade', () => {
     expect(kinds(passesFor('ultra', hoth.sunny, 'webgpu', { scene: {}, camera: {} }))).toEqual(['render', 'ssgi', 'ao', 'ssr', 'bloom', 'lensflare', 'motionBlur', 'traa', 'output']);
@@ -64,7 +64,7 @@ describe('volumes', () => {
     const vols = { pass: () => null };
     const with_ = { ...refs, volumetrics: vols };
     expect(kinds(passesFor('ultra', hoth.sunny, 'webgpu', with_))).toEqual(['render', 'ssgi', 'ao', 'ssr', 'volumes', 'bloom', 'godrays', 'lensflare', 'motionBlur', 'lut', 'traa', 'output']);
-    expect(kinds(passesFor('high', hoth.sunny, 'nodes-webgl', with_))).toEqual(['render', 'ao', 'volumes', 'bloom', 'motionBlur', 'lut', 'smaa', 'output']);
+    expect(kinds(passesFor('high', hoth.sunny, 'nodes-webgl', with_))).toEqual(['render', 'ssgi', 'denoise', 'ao', 'volumes', 'bloom', 'motionBlur', 'lut', 'smaa', 'output']);
     expect(passesFor('ultra', hoth.sunny, 'webgpu', with_).find((p) => p.kind === 'volumes').volumetrics).toBe(vols);
     expect(kinds(passesFor('mid', hoth.sunny, 'webgpu', with_))).not.toContain('volumes');
     expect(kinds(passesFor('ultra', hoth.sunny, 'webgl', with_))).not.toContain('volumes');

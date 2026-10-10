@@ -41,9 +41,12 @@ export const EMISSIVE_MAX = 16;
 // `unconfirmed`)
 export const PAINT_CHANNEL = 'r';
 export const METAL_CHANNEL = 'g';
-// the detail array's slice index in AOSlice's blue: tenths (the research's
-// "discrete k/10 levels")
-export const SLICE_STEPS = 10;
+// The detail array's slice per texel, in AOSlice's green (red is the AO,
+// blue empty): four levels, measured on Iden's and Luke's AOSL maps as 0,
+// 105, 170 and 255 of 255. Level k takes slice k and component k of the
+// per-slice vectors (Detail_Tiling, NormalDetail_Intensity…), whose fourth is
+// 0: the level that has no detail (skin). (Not the research's tenths in blue.)
+export const AOSLICE_LEVELS = [0, 105 / 255, 170 / 255, 1];
 // the tiers and what each draws (the spec's "Tiers")
 export const PARALLAX_STEPS = { ultra: 16, high: 8, mid: 0, low: 0 };
 
@@ -150,7 +153,7 @@ export const MAP_KINDS = {
 
 // the colour slots, for an alpha test read off the map's suffix (`_CA`:
 // colour + alpha)
-export const COLOR_SLOTS = ['_BaseColor', 'BaseColor', 'Basecolor', 'BaseColour', '_CS', 'CS', '_CA', '_ColorSmoothness', 'ColorSmoothness', 'CW'];
+export const COLOR_SLOTS = ['_BaseColor', 'BaseColor', 'Basecolor', 'BaseColour', '_CS', 'CS', '_CA', '_ColorSmoothness', 'ColorSmoothness', 'CW', 'Color', 'HairColorTexture'];
 
 // ---- parameters: which vector is which number
 
