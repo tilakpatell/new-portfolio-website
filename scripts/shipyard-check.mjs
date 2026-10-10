@@ -10,7 +10,10 @@
 // stage without it, and the canvas inspector's colour entropy), earns
 // credits through the dev hook, stages the Flak burst on the Secondary
 // line, reads the bill's total, applies, and reads tp-pilot and
-// tp-universe-loadout back. At 390 × 844 it opens the bill's sheet, shoots
+// tp-universe-loadout back; then, on the X-wing's own hull, picks a Quad on
+// the Engines tab: the hull stays Stock ("Stock hull · tuned"), the stats
+// change, Apply keeps the X-wing's model and keeps the tune under
+// tp-universe-tune (and no garage hull). At 390 × 844 it opens the bill's sheet, shoots
 // phone.webp and checks Apply is on screen, under the nav and inside the
 // safe area. Exit 1 on any miss.
 import { spawn } from 'node:child_process';
@@ -179,6 +182,39 @@ try {
     });
     if (arms === 'flak') pass('the armoury fires the flak on line 2');
     else fail(`the armoury's line 2 is ${arms}`);
+    // ── a module on the crew's own ship: tuning, not a garage build ──
+    await page.evaluate(() => window.__universeDebug.economy.earn('warWin', 10));
+    const was = await page.evaluate(() => ({ ...window.__universeDebug.state.stats }));
+    await page.keyboard.press('h');
+    await yard.waitFor({ timeout: 60000 });
+    await yard.getByRole('tab', { name: 'Engines' }).click();
+    const hint = await yard.locator('.yard-quiet').first().innerText();
+    if (/tunes it: its numbers, not its looks/.test(hint)) pass('the Engines tab says a module tunes the crew’s own ship');
+    else fail(`the Engines tab's hint reads "${hint}"`);
+    await yard.getByRole('button', { name: /Quad/ }).click();
+    const caption = await yard.locator('.yard-caption').innerText();
+    if (/Stock hull · tuned/.test(caption)) pass(`the caption reads "${caption.split(' · ').slice(1).join(' · ')}"`);
+    else fail(`the caption reads "${caption}"`);
+    await sharp(await page.screenshot()).webp({ quality: 82 }).toFile(join(OUT, 'tune.webp'));
+    await yard.getByRole('button', { name: 'Apply and launch' }).click();
+    await page.waitForFunction(() => Boolean(JSON.parse(localStorage.getItem('tp-universe-tune') ?? 'null')), null, { timeout: 5000, polling: 200 }).catch(() => {});
+    const tuned = await page.evaluate(() => {
+      const kept = (k) => {
+        const v = JSON.parse(localStorage.getItem(k) ?? 'null');
+        return v?.data ?? v;
+      };
+      const s = window.__universeDebug.state;
+      return { tune: kept('tp-universe-tune'), hull: kept('tp-universe-hull'), kind: s.kind, build: s.build, garageModel: Boolean(s.model?.build), stats: { ...s.stats } };
+    });
+    report.tune = tuned;
+    if (tuned.tune?.xwing?.engines === 'quad') pass('tp-universe-tune keeps the Quad on the X-wing');
+    else fail(`tp-universe-tune: ${JSON.stringify(tuned.tune)}`);
+    if (!tuned.hull?.xwing && !tuned.build && !tuned.garageModel) pass('the hull is still Stock: no garage build kept or flown');
+    else fail(`the hull changed: ${JSON.stringify({ hull: tuned.hull, build: tuned.build, garageModel: tuned.garageModel })}`);
+    if (tuned.kind === 'xwing') pass('Apply kept the X-wing’s model');
+    else fail(`the ship is ${tuned.kind}`);
+    if (tuned.stats.accel > was.accel) pass(`the stats changed (acceleration ${was.accel.toFixed(2)} → ${tuned.stats.accel.toFixed(2)})`);
+    else fail(`the stats didn't change: ${was.accel} → ${tuned.stats.accel}`);
     if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
     await ctx.close();
   }

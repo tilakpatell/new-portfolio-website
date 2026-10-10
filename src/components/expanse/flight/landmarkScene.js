@@ -140,7 +140,9 @@ export function prefetchModels(list) {
 }
 
 export function createLandmarks(scene, { spec, heightAt = null, placer = null, prefetch = prefetchModels, house = null }) {
-  const pois = spec?.pois ?? [];
+  // (a POI the planet's own `landmarks` build, the flight module draws: one set of buildings a place)
+  const built = new Set((spec?.landmarks ?? []).map((l) => l.at));
+  const pois = (spec?.pois ?? []).filter((p) => !built.has(p.id));
   const height = heightAt ?? planetField(spec).heightAt;
   const lists = new Map(); // POI id → its placements, worked out once
   const listOf = (poi) => {

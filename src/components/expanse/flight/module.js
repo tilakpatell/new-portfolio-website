@@ -17,11 +17,13 @@
 import * as THREE from 'three';
 import { houseOn } from '../../../lib/three/house';
 import { planetField } from '../../../lib/land/flight/field';
+import { seeded } from '../../../lib/seeded';
 import { LEVELS } from '../../../lib/device';
 import { SHIP, crashed, stepShip } from './flightRules';
 import { createFlightScene } from './scene';
-import { createGround } from './ground';
-import { LOOK } from './look';
+import { createGround, heroOf } from './ground';
+import { createWater } from './water';
+import { STRIP } from './look';
 
 export const KEYS = {
   noseDown: ['KeyW', 'ArrowUp'],
@@ -38,6 +40,62 @@ export const KEYS = {
 export const AXES = { pitch: ['noseDown', 'noseUp'], roll: ['rollLeft', 'rollRight'], yaw: ['yawRight', 'yawLeft'], throttle: ['slower', 'faster'] };
 
 const HUD_EVERY = 0.1; // s
+
+// where a place's buildings stand: a part's `count` of them seeded round the
+// place, between `inner` and `outer` of its r (0.12 and 0.7 unless the part
+// says), the centre part in its middle, the same every visit → [{ part, x, z, yaw }]
+export function settle(poi, parts, rnd) {
+  const out = [];
+  for (const part of parts) {
+    for (let k = 0; k < (part.count ?? 1); k++) {
+      if (part.centre) {
+        out.push({ part, x: poi.at[0], z: poi.at[1], yaw: part.yaw ?? 0 });
+        continue;
+      }
+      const a = rnd() * Math.PI * 2;
+      const d = ((part.inner ?? 0.12) + ((part.outer ?? 0.7) - (part.inner ?? 0.12)) * Math.sqrt(rnd())) * poi.r;
+      out.push({ part, x: poi.at[0] + Math.cos(a) * d, z: poi.at[1] + Math.sin(a) * d, yaw: rnd() * Math.PI * 2 });
+    }
+  }
+  return out;
+}
+
+// a model in a colour: a copy whose materials are copies with their colour
+// multiplied by `tint` (the walkable site dresses these models in its scans;
+// from the air a tint is what reads), made once a part, shared by its copies
+export function tinted(root, tint) {
+  const out = root.clone(true);
+  const made = new Map();
+  out.traverse((o) => {
+    if (!o.isMesh) return;
+    const was = o.material;
+    if (!made.has(was)) {
+      const m = was.clone();
+      m.color?.multiply(new THREE.Color(tint));
+      made.set(was, m);
+    }
+    o.material = made.get(was);
+  });
+  return out;
+}
+
+// the URLs to try for a planet's model, best first: on a strong machine the
+// high-detail file the site carries (`hq`), then the lighter one for
+// everyone. Both go through the galaxy's loader (rt.assets, lib/three/gltf),
+// which is where any asset host is resolved
+export const modelSources = (m, { strong }) => (strong && m.hq ? [`/${m.hq}`, m.url] : [m.url]);
+
+// a landmark's model scaled so its length along `along` ('x', 'y', 'z', or
+// 'max': its longest) is `metres`, its foot on y = 0 (the galaxy's models
+// stand there, facing +z)
+export function placeLandmark(root, { metres, along = 'x', yaw = 0 }) {
+  const box = new THREE.Box3().setFromObject(root);
+  const size = box.getSize(new THREE.Vector3());
+  const k = metres / Math.max(1e-3, along === 'max' ? Math.max(size.x, size.y, size.z) : size[along]);
+  root.scale.setScalar(k);
+  root.rotation.y = yaw;
+  return root;
+}
 const RESPAWN_UP = 200; // m over the ground, after a crash
 const START = { speed: 160, up: 300 };
 
@@ -70,7 +128,7 @@ export function inputOf(snap) {
 export default {
   id: 'flight',
   shading: 'glsl',
-  mb: 1, // (WORLD_MB['/fly']: drawn in code, nothing fetched)
+  mb: 5, // (WORLD_MB['/fly']: the scans a planet wears, Coruscant's models)
   label: 'A ship flying low over an endless planet',
   async create(rt, props = {}) {
     const spec = props.spec;
@@ -79,9 +137,49 @@ export default {
     const was = { toneMapping: renderer.toneMapping, exposure: renderer.toneMappingExposure, shadows: renderer.shadowMap.enabled };
     renderer.shadowMap.enabled = false;
 
-    const view = createFlightScene({ spec, palette: LOOK.palette });
+    const view = createFlightScene({ spec, palette: STRIP });
     const tier = LEVELS.includes(rt.quality?.tier) ? rt.quality.tier : 'mid';
-    const ground = createGround(view.scene, { rt, spec, tier, palette: LOOK.palette });
+    const ground = createGround(view.scene, { rt, spec, tier, palette: STRIP });
+    const water = createWater(view.scene, spec);
+    let house = null;
+    // the planet's models (Coruscant's: the Senate, the Jedi Temple, its
+    // nearest towers), fetched behind the first frames; a planet without
+    // them, or a fetch that fails, flies on without
+    const strong = tier === 'high' || tier === 'ultra';
+    let gone = false;
+    const fetchModel = async (urls) => {
+      for (const url of urls) {
+        const got = await Promise.resolve(rt.assets?.gltf?.(url)).catch(() => null);
+        if (got?.scene) return got;
+      }
+      return null;
+    };
+    for (const l of spec.landmarks ?? []) {
+      const poi = spec.pois.find((p) => p.id === l.at);
+      if (!poi) continue;
+      const spots = settle(poi, l.parts, seeded(spec.seed ^ l.id.length * 7919));
+      for (const part of l.parts) {
+        fetchModel(modelSources(part, { strong })).then((got) => {
+          if (!got || gone) return;
+          const model = part.tint ? tinted(got.scene, part.tint) : got.scene;
+          for (const at of spots.filter((x) => x.part === part)) {
+            const obj = placeLandmark(model.clone(true), { ...part, yaw: at.yaw });
+            obj.name = `flight-${l.id}`;
+            // (inside the place's r its ground is flat at its h: the field says so exactly)
+            obj.position.set(at.x, field.heightAt(at.x, at.z) + (part.lift ?? 0), at.z);
+            ground.root.add(obj);
+            house?.adopt(obj);
+          }
+        });
+      }
+    }
+    // (the film-made tower only where the tier can take a few hundred of it)
+    if (spec.hero && tier !== 'low')
+      fetchModel(modelSources(spec.hero, { strong })).then((got) => {
+        const made = got && !gone ? heroOf(got.scene) : null;
+        const mesh = made ? ground.heroTower(made) : null;
+        if (mesh) house?.adopt(mesh);
+      });
     // the planet's own field, here on the page, for where to start and to come
     // back up to before the ground under the ship is in (a few samples, not a mesh)
     const field = planetField(spec);
@@ -90,10 +188,11 @@ export default {
       return Number.isFinite(h) ? h : field.heightAt(x, z);
     };
 
-    const house = houseOn({ renderer, scene: view.scene, sun: view.sun, hemi: view.hemi, look: { fog: true } });
+    // (declared before the models' fetches above resolve; assigned here)
+    house = houseOn({ renderer, scene: view.scene, sun: view.sun, hemi: view.hemi, look: { fog: true } });
     // (the ground's and the clutter's materials, on no leaf yet: in the look before their first draw)
-    for (const m of ground.materials) house.adopt(new THREE.Mesh(undefined, m));
-    house.sky({ low: new THREE.Color(spec.palette.skyLow ?? spec.palette.low), high: new THREE.Color(spec.palette.skyHigh ?? LOOK.palette[3]), sunDir: view.sunDir });
+    for (const m of [...ground.materials, ...(water ? [water.mesh.material] : [])]) house.adopt(new THREE.Mesh(undefined, m));
+    house.sky({ low: new THREE.Color(spec.palette.skyLow ?? spec.palette.low), high: new THREE.Color(spec.palette.skyHigh ?? STRIP[3]), sunDir: view.sunDir });
 
     rt.input.bind(KEYS, { axes: AXES });
     let ship = spawnOf(spec, groundAt);
@@ -144,12 +243,14 @@ export default {
         ground.update(ship);
         // (a crash only on ground drawn: what isn't in yet can't be hit)
         const g = ground.heightUnder(ship.x, ship.z);
-        if (crashed(ship, g)) {
+        // (a soft world's ground is cloud: flown into, it's fog, not a crash)
+        if (!spec.soft && crashed(ship, g)) {
           tell('toast', { text: 'Too low: back up you go.' });
           ship = { ...ship, y: g + RESPAWN_UP, pitch: 0, roll: 0, speed: Math.max(SHIP.speedMin, 120) };
         }
         const at = rt.origin?.at ?? [0, 0, 0];
         view.place(ship, at, dt);
+        water?.place(ship, at);
         hudIn -= dt;
         if (hudIn <= 0) {
           hudIn = HUD_EVERY;
@@ -164,6 +265,8 @@ export default {
       lowerQuality(level) {
         ground.setTier(tierAt(tier, level));
       },
+      // the scene, for the checks (scripts/.cache's flights wait on a landmark in it)
+      scene: view.scene,
       stats: () => ground.stats(),
       // the height of the ground drawn under the ship (NaN: none in yet)
       groundUnder: () => ground.heightUnder(ship.x, ship.z),
@@ -174,10 +277,12 @@ export default {
         },
       ],
       dispose() {
+        gone = true;
         if (typeof window !== 'undefined' && window.__FLIGHT__ === world) delete window.__FLIGHT__;
         unOrigin();
         rt.input.unbind();
         ground.dispose();
+        water?.dispose();
         view.dispose();
         Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure });
         renderer.shadowMap.enabled = was.shadows;

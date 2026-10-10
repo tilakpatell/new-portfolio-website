@@ -18,7 +18,8 @@
 //     a world's named materials ({ stone: mat, … }) onto roles
 //     ({ stone: 'stone', timber: 'wood', … }): each one's own painted picture
 //     is folded into its colour, and the role's scan goes on instead (with
-//     `keep`, the picture stays and the scan's grain goes over it)
+//     `keep`, the picture stays and the scan's grain goes over it, its
+//     shader on at once and its pictures in when they've loaded)
 //   meanColour(texture)      a picture's mean colour (linear)
 //   wearShader(shader, { normal }) → { vertexShader, fragmentShader, swapped } (pure)
 
@@ -206,6 +207,31 @@ export function meanColour(texture) {
   return new THREE.Color().setRGB(sum[0] / n, sum[1] / n, sum[2] / n, THREE.LinearSRGBColorSpace);
 }
 
+// Stand-ins for a role's scan until it has loaded (dress with `keep`): a
+// picture at the scan's centred brightness and a flat relief, so the
+// material looks as it did, but it's drawn from the first frame with the
+// shader the scan will be, and the scan's pictures go in later with no
+// shader made again. Made again just after a world's first frame, that
+// shader was left out of the frame by lib/three/frameGuard for a few frames
+// while it readied it: walls on screen dropped out and came back.
+const standIns = new Map(); // centred brightness → { map, normalMap }
+function standIn(mean) {
+  let s = standIns.get(mean);
+  if (!s) {
+    const px = (r, g, b) => {
+      const t = new THREE.DataTexture(Uint8Array.from([r, g, b, 255]), 1, 1);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.needsUpdate = true;
+      return t;
+    };
+    // (linear, at what the scan's sRGB mean decodes to: the detail's divided by it, so 1)
+    const v = Math.round(255 * mean ** 2.2);
+    s = { map: px(v, v, v), normalMap: px(128, 128, 255) };
+    standIns.set(mean, s);
+  }
+  return s;
+}
+
 // A world's named materials onto the kit's roles: each one's own painted
 // picture folded into its colour (and its own relief dropped), and the
 // role's scan put on, at its real size. `keep` leaves the picture and the
@@ -217,15 +243,28 @@ export async function dress(materials, roles, { strength = 0.55, normal = 0.9, k
   const jobs = Object.entries(roles).map(async ([name, role]) => {
     const m = materials[name];
     if (!LIT(m) || m.userData.core) return 0;
-    const scan = await load(role);
-    if (!scan) return 0;
-    if (!keep) {
-      const mean = meanColour(m.map);
-      if (mean) m.color.multiply(mean);
-      if (m.map) m.map = null;
-      if (m.normalMap) m.normalMap = null;
-    }
     const { metres = 2, mean: centre = 0.8 } = coreOf(role) ?? {};
+    // (with `keep` nothing of the material changes when the scan comes but
+    // its pictures, so it's worn at once, on stand-ins)
+    if (keep) wear(m, standIn(centre), { metres, mean: centre, strength, normal });
+    const scan = await load(role);
+    if (keep) {
+      const u = m.userData.core;
+      if (!scan?.map) {
+        u.uCoreStrength.value = 0;
+        u.uCoreNormalStrength.value = 0;
+        return 0;
+      }
+      u.uCoreMap.value = scan.map;
+      u.uCoreNormal.value = scan.normalMap ?? u.uCoreNormal.value;
+      u.uCoreNormalStrength.value = scan.normalMap ? normal : 0;
+      return 1;
+    }
+    if (!scan) return 0;
+    const mean = meanColour(m.map);
+    if (mean) m.color.multiply(mean);
+    if (m.map) m.map = null;
+    if (m.normalMap) m.normalMap = null;
     wear(m, scan, { metres, mean: centre, strength, normal });
     return 1;
   });

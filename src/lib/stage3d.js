@@ -17,7 +17,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget, pixelRatio } from './device';
 import { debugOn, debugPanel } from './debugPanel';
 import { guard } from './three/frameGuard';
-import { prepareScene } from './three/gpuWork';
+import { prepareScene, warmDraw } from './three/gpuWork';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 import { sharpen } from './three/textures';
 import { BLOOM } from './three/bloom';
@@ -319,6 +319,12 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
     // (before the draw: a step it takes is made with this frame's)
     watch(ms);
     gradePass.uniforms.uTime.value += ms / 1000;
+    // (a world that isn't prepared below: everything in it drawn once first,
+    // out of sight, what's hidden or out of view too, as prepare does. The
+    // frame guard draws that whole, so the world doesn't come up as its sky
+    // alone, nor a thing out of view at first come in a few frames late:
+    // this frame takes the compiling it always did, and more of it)
+    if (!drawn) warmDraw(renderer, draw, [scene]);
     draw();
   };
 

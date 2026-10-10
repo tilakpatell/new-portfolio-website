@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { CLUTTER_KIT, CLUTTER_KIT_OF, LANDMARKS, POIS, SITE_PLACES, clutterKitOf } from './landmarkTables.js';
+import { CLUTTER_KIT, CLUTTER_KIT_OF, LANDMARKS, SITE_PLACES, clutterKitOf } from './landmarkTables.js';
+import { PLANETS, planetSpecOf } from './planetSpec.js';
 import { CLUTTER_KINDS } from './leafMesh.js';
 
 const manifest = (pack) => JSON.parse(readFileSync(new URL(`../../../../public/kit/${pack}/index.json`, import.meta.url), 'utf8'));
@@ -10,27 +11,28 @@ const kitHas = ({ kit, name }) => {
 };
 
 describe('the landmark tables', () => {
-  it('gives every POI a site place or a list of its own, never both', () => {
-    for (const [planet, pois] of Object.entries(POIS))
-      for (const poi of pois) {
-        const site = SITE_PLACES[planet]?.[poi.id];
-        const own = LANDMARKS[planet]?.[poi.id];
-        expect(Boolean(site) !== Boolean(own), `${planet}/${poi.id}`).toBe(true);
+  it('gives every POI planetTables doesn’t build a site place or a list of its own, never both', () => {
+    let n = 0;
+    for (const { id } of PLANETS) {
+      const spec = planetSpecOf(id);
+      const built = new Set((spec.landmarks ?? []).map((l) => l.at));
+      for (const poi of spec.pois) {
+        const site = SITE_PLACES[id]?.[poi.id];
+        const own = LANDMARKS[id]?.[poi.id];
+        if (built.has(poi.id)) expect(Boolean(site || own), `${id}/${poi.id} is lane A's`).toBe(false);
+        else expect(Boolean(site) !== Boolean(own), `${id}/${poi.id}`).toBe(true);
+        n++;
       }
+    }
+    expect(n).toBeGreaterThan(80);
   });
 
-  it('keeps every POI a flat the land can ease into', () => {
-    for (const pois of Object.values(POIS)) {
-      expect(new Set(pois.map((p) => p.id)).size).toBe(pois.length);
-      for (const p of pois) {
-        expect(p.id).toMatch(/^[a-z0-9-]+$/);
-        expect(p.r).toBeGreaterThan(0);
-        expect(p.edge).toBeGreaterThanOrEqual(0);
-        expect(p.at.every(Number.isFinite)).toBe(true);
+  it('names only POIs the planets have', () => {
+    for (const table of [SITE_PLACES, LANDMARKS])
+      for (const [planet, byPoi] of Object.entries(table)) {
+        const ids = new Set(planetSpecOf(planet).pois.map((p) => p.id));
+        for (const poi of Object.keys(byPoi)) expect(ids.has(poi), `${planet}/${poi}`).toBe(true);
       }
-      // (two flats overlapping would fight over the ground between them)
-      for (const a of pois) for (const b of pois) if (a !== b) expect(Math.hypot(a.at[0] - b.at[0], a.at[1] - b.at[1])).toBeGreaterThan(a.r + a.edge + b.r + b.edge);
-    }
   });
 
   it('names only kit models the kits have, and no rig', () => {

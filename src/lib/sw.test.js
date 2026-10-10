@@ -37,4 +37,13 @@ describe('the service worker’s registration', () => {
     expect(nav.serviceWorker.register).not.toHaveBeenCalled();
     await expect(createWorkerSwitch({ nav: {}, caches: cachesOf([]), prod: true }).need()).resolves.toBeNull();
   });
+
+  it('tells the worker the asset base in its URL, so it serves the bucket’s files of an installed pack', async () => {
+    const nav = navOf();
+    await createWorkerSwitch({ nav, caches: cachesOf(['tp-pack-earth-abc']), prod: true, base: 'https://b.test/a' }).start();
+    expect(nav.serviceWorker.register).toHaveBeenCalledWith('/sw.js?base=https%3A%2F%2Fb.test%2Fa', { scope: '/' });
+    const reg = { unregister: vi.fn(async () => true), active: { scriptURL: 'http://x/sw.js?base=https%3A%2F%2Fb.test%2Fa' } };
+    await createWorkerSwitch({ nav: navOf([reg]), caches: cachesOf([]), prod: true, base: 'https://b.test/a' }).tidy();
+    expect(reg.unregister).toHaveBeenCalled();
+  });
 });

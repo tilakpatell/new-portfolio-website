@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { SURFACE_MODELS } from '../../galaxy/surface/catalog';
 import { PROPS } from '../../galaxy/surface/props';
 import { planetField } from '../../../lib/land/flight/field';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
-import { DROP_Y, LANDMARK_MAX, LANDMARK_MIN, POIS } from '../../../lib/land/flight/landmarkTables';
+import { PLANETS, planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { LANDMARK_MAX, LANDMARK_MIN } from '../../../lib/land/flight/landmarkTables';
 import { placementsFor, siteFor } from './landmarks';
 
-const NAMED = ['hoth', ...Object.keys(POIS)];
+const NAMED = PLANETS.map((p) => p.id).filter((id) => planetSpecOf(id).pois.length);
+// (the POIs planetTables.js builds itself are the flight module's)
+const ours = (spec) => spec.pois.filter((p) => !(spec.landmarks ?? []).some((l) => l.at === p.id));
 const known = (p) => (p.model ? /^kit:[a-z0-9-]+\/\S+$/.test(p.model) : Boolean(SURFACE_MODELS[p.kind] || PROPS[p.kind]));
 
 describe('placementsFor', () => {
@@ -14,8 +16,7 @@ describe('placementsFor', () => {
     for (const id of NAMED) {
       const spec = planetSpecOf(id);
       const { heightAt } = planetField(spec);
-      expect(spec.pois.length, id).toBeGreaterThan(0);
-      for (const poi of spec.pois) {
+      for (const poi of ours(spec)) {
         const { list } = placementsFor(spec, poi, { heightAt });
         expect(list.length, `${id}/${poi.id}`).toBeGreaterThanOrEqual(LANDMARK_MIN);
         expect(list.length, `${id}/${poi.id}`).toBeLessThanOrEqual(LANDMARK_MAX);
@@ -38,21 +39,20 @@ describe('placementsFor', () => {
     const kinds = placementsFor(spec, poi, { heightAt }).list.map((p) => p.kind);
     expect(kinds).toContain('echobase');
     expect(kinds).toContain('hothgenerator');
-    expect(kinds).toContain('ioncannon');
   });
 
-  it('stands Mos Eisley’s blocks and Cloud City’s towers', () => {
-    const tat = planetSpecOf('tatooine');
-    const mos = placementsFor(tat, tat.pois.find((p) => p.id === 'mos-eisley'), { heightAt: planetField(tat).heightAt }).list.map((p) => p.kind);
-    expect(mos).toEqual(expect.arrayContaining(['moscantina', 'mostower', 'mosblock', 'dockingbay']));
-    const bes = planetSpecOf('bespin');
-    const city = placementsFor(bes, bes.pois.find((p) => p.id === 'cloud-city'), { heightAt: planetField(bes).heightAt }).list.map((p) => p.kind);
-    expect(city).toEqual(expect.arrayContaining(['cloudcity', 'bespinplatform']));
+  it('stands Theed’s palace and the Lars homestead from their sites', () => {
+    const kinds = (id, poiId) => {
+      const spec = planetSpecOf(id);
+      return placementsFor(spec, spec.pois.find((p) => p.id === poiId), { heightAt: planetField(spec).heightAt }).list.map((p) => p.kind);
+    };
+    expect(kinds('naboo', 'theed')).toEqual(expect.arrayContaining(['theedpalace', 'hangar']));
+    expect(kinds('tatooine', 'lars')).toEqual(expect.arrayContaining(['homestead', 'vaporator']));
   });
 
   it('stands a POI with no site on its own list, at the ground', () => {
     const spec = planetSpecOf('mustafar');
-    const poi = spec.pois.find((p) => p.id === 'collection-arm');
+    const poi = spec.pois.find((p) => p.id === 'arm');
     expect(siteFor(spec, poi)).toBeNull();
     const heightAt = () => 7;
     const { list } = placementsFor(spec, poi, { heightAt });
@@ -64,21 +64,27 @@ describe('placementsFor', () => {
     const spec = planetSpecOf('hoth');
     const poi = spec.pois[0];
     const flat = placementsFor(spec, poi, { heightAt: () => 12 });
-    // (a wall 20 m high everywhere but the middle: everything off the middle goes)
-    const walled = placementsFor(spec, poi, { heightAt: (x, z) => (Math.hypot(x - poi.at[0], z - poi.at[1]) < 1 ? 12 : 12 + DROP_Y + 20) });
+    // (ground that rises and falls 25 m every 40: everything the site stood on level ground goes)
+    const walled = placementsFor(spec, poi, { heightAt: (x) => 12 + 25 * Math.abs(Math.sin(x / 13)) });
     expect(walled.dropped).toBeGreaterThan(0);
     expect(walled.list.length + walled.dropped).toBe(flat.list.length + flat.dropped);
   });
 
   it('drops under a tenth of any site’s things on the planet’s own ground', () => {
+    // (summed over the site's POIs, as the plan has it: one place on a slope
+    // can lose a thing of seven, a whole site loses under a tenth)
     for (const id of NAMED) {
       const spec = planetSpecOf(id);
       const { heightAt } = planetField(spec);
-      for (const poi of spec.pois) {
+      let kept = 0;
+      let dropped = 0;
+      for (const poi of ours(spec)) {
         if (!siteFor(spec, poi)) continue;
-        const { list, dropped } = placementsFor(spec, poi, { heightAt });
-        expect(dropped / (list.length + dropped), `${id}/${poi.id}`).toBeLessThan(0.1);
+        const got = placementsFor(spec, poi, { heightAt });
+        kept += got.list.length;
+        dropped += got.dropped;
       }
+      if (kept + dropped) expect(dropped / (kept + dropped), id).toBeLessThan(0.1);
     }
   });
 

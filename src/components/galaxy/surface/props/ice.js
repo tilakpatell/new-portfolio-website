@@ -594,8 +594,9 @@ export const PROPS = {
   },
 
   // the wampa's cave: a hollow in a hummock of ice, icicles over its
-  // mouth (to +z), and inside, hung upside down from the roof, someone in
-  // a snow parka; his lightsaber in the snow where it fell
+  // mouth (to +z), and inside, the block of ice in the roof someone in a
+  // snow parka hangs from (Luke: the site's `hungluke`, a model); his
+  // lightsaber in the snow where it fell
   wampacave(k) {
     const object = new THREE.Group();
     const ice = [
@@ -630,24 +631,13 @@ export const PROPS = {
       // (rooted in the roof, so the tips stay where they were)
       icicles.push(part(new THREE.ConeGeometry(r, h + 0.6, 6).rotateX(PI), { at: [x, 6.0 - (h + 0.6) / 2, z], color: '#dcecff', to: 'glass' }));
     }
-    // hung by his ankles in the ice: legs, body, arms down, head
-    const parka = '#a8a090';
-    const hang = [
-      part(box(0.7, 0.5, 0.6), { at: [0, 4.9, -10], color: '#e6f0fa', to: 'stone' }),
-      part(box(0.14, 0.8, 0.16), { at: [-0.1, 4.1, -10], color: '#6a6458', to: 'cloth' }),
-      part(box(0.14, 0.8, 0.16), { at: [0.1, 4.1, -10], color: '#6a6458', to: 'cloth' }),
-      part(box(0.44, 0.62, 0.3), { at: [0, 3.48, -10], color: parka, to: 'cloth' }),
-      part(box(0.11, 0.6, 0.13), { at: [-0.3, 2.95, -10], color: parka, to: 'cloth' }),
-      part(box(0.11, 0.6, 0.13), { at: [0.3, 2.95, -10], color: parka, to: 'cloth' }),
-      part(new THREE.SphereGeometry(0.13, 10, 8), { at: [0, 3.3, -10], color: '#d8b090', to: 'cloth' }),
-      part(new THREE.SphereGeometry(0.14, 10, 8, 0, PI * 2, PI * 0.5, PI * 0.5), { at: [0, 3.3, -10], color: '#c8b07a', to: 'cloth' }),
-    ];
-    object.add(k.build([...icicles, hang[0]], { name: 'wampacave' }));
-    // him, and the saber in the snow, lit, where it fell (a quest's `saber`
-    // signal takes them away, or puts them back)
+    // the block of ice his ankles are frozen into
+    const block = part(box(0.7, 0.5, 0.6), { at: [0, 4.9, -10], color: '#e6f0fa', to: 'stone' });
+    object.add(k.build([...icicles, block], { name: 'wampacave' }));
+    // the saber in the snow, lit, where it fell (a quest's `saber` signal
+    // takes it away, or puts it back)
     const saberOf = k.build(
       [
-        ...hang.slice(1),
         rod([1.6, 0.06, -6], [1.6, 0.1, -5.7], 0.03, 0.03, { color: '#a8acb2', to: 'metal' }),
         rod([1.6, 0.1, -5.7], [1.62, 0.25, -4.7], 0.028, 0.022, { color: hot('#6ab4ff', 3.2), to: 'glow' }),
         part(new THREE.CircleGeometry(0.7, 16).rotateX(-PI / 2), { at: [1.6, 0.06, -5.3], color: hot('#3a7aff', 0.5), to: 'glow' }),
@@ -896,15 +886,17 @@ export const PROPS = {
 
   // snowspeeders flying: Rogue Group, a pair and a third, round and round
   // over the battlefield, banking, now and then a burst from their cannons
-  // (r: how wide a circuit, h: how high over the ground where it's placed)
-  speederflight(k, { r = 150, h = 34, speed = 0.11, n = 3, squash = 0.6 } = {}) {
+  // (r: how wide a circuit, h: how high over the ground where it's placed;
+  // built: false, nothing built in code for them, each the snowspeeder's
+  // model once it's in, by the placer's `wear`)
+  speederflight(k, { r = 150, h = 34, speed = 0.11, n = 3, squash = 0.6, built = true } = {}) {
     const object = new THREE.Group();
     const boltMat = k.own(new THREE.MeshBasicMaterial({ color: hot('#ff3a2a', 4), toneMapped: false }));
     const boltGeo = k.own(new THREE.CapsuleGeometry(0.12, 2.4, 2, 6).rotateX(PI / 2));
     const flyers = [];
     for (let i = 0; i < n; i++) {
       const holder = new THREE.Group();
-      holder.add(PROPS.snowspeeder(k).object);
+      if (built) holder.add(PROPS.snowspeeder(k).object);
       object.add(holder);
       const bolt = new THREE.Mesh(boltGeo, boltMat);
       bolt.visible = false;
@@ -935,7 +927,19 @@ export const PROPS = {
       }
     };
     tick(0);
-    return { object, update: tick };
+    return {
+      object,
+      update: tick,
+      wear: {
+        url: '/models/galaxy/surface/snowspeeder.glb',
+        on(model) {
+          for (const f of flyers) {
+            f.holder.clear();
+            f.holder.add(f === flyers[0] ? model : model.clone());
+          }
+        },
+      },
+    };
   },
 
   // an AT-AT far out on the plain, walking its beat back and forth (`len`

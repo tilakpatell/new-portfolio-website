@@ -11,7 +11,7 @@
 //
 // createPool({ make }) → { take(kind, id) → Promise<fig | null>, give(id),
 //   free(kind), made() }: pure bookkeeping
-// createFigures({ parent, world, warm, kit, tier }) → { add(s) → t, remove(id),
+// createFigures({ parent, world, warm, kit, tier, only, uniforms }) → { add(s) → t, remove(id),
 //   get(id), all(), body(t, step, dt, time, { you, rate, live }), dying(t, dt),
 //   flinch(t, at), fell(t, { push, from }), fire(t, aim) → muzzle | null,
 //   frame(), dispose() }
@@ -23,7 +23,7 @@ import { DEATH, fallen, healthBar, markMaterials } from '../activity';
 import { HOSTILE_BODY, createPosture, fallOf, hostileBody, whereHit } from '../hostiles';
 import { groundAt, pushOut } from '../walker';
 import { rigRagdoll } from '../../../../lib/three/ragdollPhysics';
-import { ARMS } from './troops';
+import { ARMS, dressOf } from './troops';
 import { createGunplay } from '../../../universe/gunplay';
 import { budgetClock, createAnimBudget } from '../../../../lib/three/animBudget';
 import { POP } from './population';
@@ -89,7 +89,7 @@ export function createPool({ make }) {
   };
 }
 
-export function createFigures({ parent, world, warm = (o) => Promise.resolve(o), kit = null, tier = 'high' }) {
+export function createFigures({ parent, world, warm = (o) => Promise.resolve(o), kit = null, tier = 'high', only = false, uniforms = null }) {
   const group = new THREE.Group();
   group.name = 'ground';
   parent.add(group);
@@ -99,7 +99,8 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
     max: POP[tier] ?? POP.high,
   });
   const marks = markMaterials();
-  const pool = createPool({ make: (kind) => anyFigure(kind, {}, kit, 0) });
+  // (each in the world's own kit, and on a world that takes models only, a model or nothing: surface/cast.js)
+  const pool = createPool({ make: (kind) => anyFigure(dressOf(kind, uniforms), {}, kit, 0, undefined, { only }) });
   const records = new Map(); // id → t
   const queue = []; // ids waiting for a figure
   let making = false;
@@ -155,6 +156,8 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
       .take(t.soldier.kind, id)
       .then((fig) => {
         making = false;
+        // (no model, on a world that takes models only: it stays out of the fight, groundScene.js)
+        if (!fig && only && records.get(id) === t) t.faceless = true;
         if (!fig || dead) return;
         if (records.get(id) !== t) return pool.give(id);
         attach(t, fig);

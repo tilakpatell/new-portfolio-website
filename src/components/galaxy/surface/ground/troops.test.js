@@ -3,7 +3,7 @@ import { PICKABLE, WEAPONS } from '../weaponRules';
 import { FIGURES } from '../figures';
 import { OWNERS } from '../../warEffects';
 import { SIDE_OF_KIND } from './standing';
-import { ARMS, FAMILIES, KINDS_OF_SIDE, SOLDIERS, TROOPS, damageOf, hpOf, hurt, kindFor, newSoldier } from './troops';
+import { ARMS, FAMILIES, KINDS_OF_SIDE, SOLDIERS, TROOPS, damageOf, dressOf, hpOf, hurt, kindFor, newSoldier } from './troops';
 
 describe('troops', () => {
   test('every kind a side fields has a row, with a gun the galaxy knows (or none)', () => {
@@ -52,5 +52,15 @@ describe('troops', () => {
     expect(ARMS).toEqual({ tusken: 'sniper', jango: 'westar', greedo: 'blaster', aqualish: 'blaster', scouttrooper: 'blaster', stormtrooper: 'e11', sandtrooper: 'e11', snowtrooper: 'e11', shoretrooper: 'e11', deathtrooper: 'e11', clone: 'dc15', battledroid: 'e5', mercenary: 'rifle', hothtrooper: 'a280', rebel: 'a280' });
     expect(FAMILIES).toEqual({ stormtrooper: ['stormtrooper', 'sandtrooper', 'snowtrooper', 'scouttrooper'], rebel: ['rebel', 'hothtrooper'], clone: ['clone'], battledroid: ['battledroid', 'superdroid'], mercenary: ['mercenary'] });
     expect([...SOLDIERS]).toEqual(['stormtrooper', 'sandtrooper', 'snowtrooper', 'scouttrooper', 'shoretrooper', 'deathtrooper', 'tiepilot', 'officer', 'clone', 'rex', 'battledroid', 'superdroid', 'rebel', 'hothtrooper', 'wingguard', 'senateguard', 'bobafett', 'greedo', 'jango', 'mando', 'bokatan', 'fennec', 'caradune', 'ig11', 'greef']);
+  });
+});
+
+describe('a world’s own kit', () => {
+  test('dresses a side’s trooper in the world’s uniform, and leaves the rest', () => {
+    const hoth = { stormtrooper: 'snowtrooper', rebel: 'hothtrooper' };
+    expect(dressOf('stormtrooper', hoth)).toBe('snowtrooper');
+    expect(dressOf('rebel', hoth)).toBe('hothtrooper');
+    expect(dressOf('mercenary', hoth)).toBe('mercenary');
+    expect(dressOf('stormtrooper', undefined)).toBe('stormtrooper');
   });
 });

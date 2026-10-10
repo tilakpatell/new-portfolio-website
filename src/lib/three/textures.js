@@ -29,6 +29,7 @@
 import * as THREE from 'three';
 import { budget } from '../device';
 import { modelTexCap, texScale } from '../detail';
+import { withFallback } from '../assetBase';
 
 // The anisotropy to ask for: the tier's, no more than the graphics chip has
 // (16 on most; 1 where the extension is missing, which three reports as 1).
@@ -146,15 +147,18 @@ export function loadTexture(url, { renderer = null, color = true, ...rest } = {}
     const { bitmap, plain } = loaders();
     // a GPU-compressed texture (KTX2) goes through the shared KTX2 loader,
     // which is only fetched for one; it comes with its own mipmaps
-    const p = /\.ktx2(?:[?#]|$)/i.test(url)
-      ? import('./gltf').then(({ ktx2Loader }) => ktx2Loader({ renderer })).then((k) => k.loadAsync(url))
-      : bitmap
-        ? bitmap.loadAsync(url).then((img) => {
-            const t = new THREE.Texture(img);
-            t.flipY = false; // (the bitmap was flipped as it was decoded)
-            return t;
-          })
-        : plain.loadAsync(url);
+    // (from the bucket where it has the file: the same bytes, so the same texture)
+    const p = withFallback((u) =>
+      /\.ktx2(?:[?#]|$)/i.test(u)
+        ? import('./gltf').then(({ ktx2Loader }) => ktx2Loader({ renderer })).then((k) => k.loadAsync(u))
+        : bitmap
+          ? bitmap.loadAsync(u).then((img) => {
+              const t = new THREE.Texture(img);
+              t.flipY = false; // (the bitmap was flipped as it was decoded)
+              return t;
+            })
+          : plain.loadAsync(u),
+    )(url);
     cache.set(
       url,
       p.then((t) => sharpen(t, { renderer, color, ...rest })).catch((e) => {

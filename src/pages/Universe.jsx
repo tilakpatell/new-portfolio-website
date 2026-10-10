@@ -21,7 +21,6 @@ import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
 import StartChoice from '../components/universe/StartChoice';
 import Rain from '../components/universe/Rain';
-import NavMap from '../components/universe/NavMap';
 import Online from '../components/universe/online/Online';
 import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
 const Shipyard = lazy(() => import('../components/universe/shipyard/Shipyard'));
@@ -40,6 +39,8 @@ const PORTAL = '#97ce4c';
 // the phone out past the belt (universe/phone.js): its lock screen, fetched
 // only when it's picked up, and the saffron wash into what it unlocks
 const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
+// (the nav map, M: fetched the first time it opens)
+const NavMap = lazy(() => import('../components/universe/NavMap'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
@@ -106,7 +107,7 @@ export default function Universe({ ask = false }) {
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
   // (the loadouts, hulls and garage builds, the Shipyard's door and what Apply and a sale do: shipyard/useShipyardPage.js, which the galaxy uses too)
-  const { loadout, build, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
+  const { loadout, build, tune, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   // the wardrobe, from the shipyard: how the cruiser’s Rick and Morty look,
@@ -493,6 +494,7 @@ export default function Universe({ ask = false }) {
         ship={ship}
         loadout={loadout}
         build={build}
+        tune={tune}
         canFit={Boolean(ship)}
         hangar={yard}
         onHangar={setYard}
@@ -564,21 +566,23 @@ export default function Universe({ ask = false }) {
         onNav={() => setCharting(true)}
       />
       {charting && !leaving && (
-        <NavMap
-          where={map.current.live ? map.current.where : null}
-          drive={drive}
-          onDrive={setDrive}
-          selected={selected}
-          live={map.current.live}
-          onTravel={(id, d) => travel(id, d)}
-          onEnter={enterDest}
-          onTour={startTour}
-          onWhole={() => {
-            setCharting(false);
-            whole();
-          }}
-          onClose={() => setCharting(false)}
-        />
+        <Suspense fallback={null}>
+          <NavMap
+            where={map.current.live ? map.current.where : null}
+            drive={drive}
+            onDrive={setDrive}
+            selected={selected}
+            live={map.current.live}
+            onTravel={(id, d) => travel(id, d)}
+            onEnter={enterDest}
+            onTour={startTour}
+            onWhole={() => {
+              setCharting(false);
+              whole();
+            }}
+            onClose={() => setCharting(false)}
+          />
+        </Suspense>
       )}
       {phone && !leaving && (
         <Suspense fallback={null}>

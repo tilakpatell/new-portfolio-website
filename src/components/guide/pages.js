@@ -235,7 +235,7 @@ export const PAGES = {
       ['The ground', 'Made as you fly, from the planet’s seed: the same planet is the same land every time, however far you go.'],
       ['Echo Base', 'On Hoth, straight ahead from where you start: a flat field the snow eases into.'],
       ['Too low', 'Touch the ground and you’re put back up 200 m over where you were.'],
-      ['Other planets', 'The Menu flies you to another: a desert, a forest moon, a cloud deck, lava, an ocean, a swamp.'],
+      ['Other planets', 'Fifty, each its own world’s ground: the galaxy’s, Rick and Morty’s moons, the map’s worlds and the Expanse’s. The Menu has a few; any of them is /fly/ and its name.'],
     ],
   },
   '/deathstar/inside': {

@@ -101,7 +101,7 @@ describe('createLandmark', () => {
 });
 
 describe('createLandmarks', () => {
-  const spec = { id: 'mustafar', pois: [{ id: 'collection-arm', at: [1600, -600], r: 40, edge: 30 }, { id: 'far-off', at: [90000, 0], r: 40, edge: 30 }] };
+  const spec = { id: 'mustafar', pois: [{ id: 'arm', at: [1600, -600], r: 40, edge: 30 }, { id: 'far-off', at: [90000, 0], r: 40, edge: 30 }] };
   const flat = () => 4;
 
   it('draws a POI as the ship comes near and frees it as it goes', async () => {
@@ -111,7 +111,7 @@ describe('createLandmarks', () => {
     lms.update({ x: 1600, y: 300, z: 10000 }, [0, 0, 0], 0.016);
     expect(lms.live()).toEqual([]);
     lms.update({ x: 1600, y: 300, z: 2000 }, [0, 0, 0], 0.016);
-    expect(lms.live()).toEqual(['collection-arm']);
+    expect(lms.live()).toEqual(['arm']);
     await lms.ready();
     expect(placer.put).toHaveBeenCalledTimes(6);
     lms.update({ x: 1600, y: 300, z: 1000 }, [0, 0, 0], 0.016);
@@ -140,8 +140,21 @@ describe('createLandmarks', () => {
     const { make } = fakePlacer();
     const lms = createLandmarks(scene, { spec, heightAt: flat, placer: make, prefetch: () => {} });
     lms.update({ x: 1600, y: 300, z: 0 }, [2048, 0, 0], 0.016);
-    expect(scene.getObjectByName('landmark:collection-arm').position.x).toBe(-2048);
+    expect(scene.getObjectByName('landmark:arm').position.x).toBe(-2048);
     lms.dispose();
-    expect(scene.getObjectByName('landmark:collection-arm')).toBeUndefined();
+    expect(scene.getObjectByName('landmark:arm')).toBeUndefined();
+  });
+});
+
+describe('createLandmarks and the planet’s own buildings', () => {
+  it('leaves a POI the planet’s own landmarks build to the flight module', () => {
+    const scene = new THREE.Scene();
+    const { make, placer } = fakePlacer();
+    const spec = { id: 'mustafar', pois: [{ id: 'arm', at: [0, 0], r: 40, edge: 30 }], landmarks: [{ id: 'arm', at: 'arm', parts: [] }] };
+    const lms = createLandmarks(scene, { spec, heightAt: () => 0, placer: make, prefetch: () => {} });
+    lms.update({ x: 0, y: 300, z: 0 }, [0, 0, 0], 0.016);
+    expect(lms.live()).toEqual([]);
+    expect(placer.put).not.toHaveBeenCalled();
+    lms.dispose();
   });
 });

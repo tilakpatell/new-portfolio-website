@@ -57,7 +57,7 @@ function nameTag(text) {
   return s;
 }
 
-export function createPeers({ parent, placer, getCast, rides: RIDES = GALAXY_RIDES, models = undefined }) {
+export function createPeers({ parent, placer, getCast, rides: RIDES = GALAXY_RIDES, models = undefined, only = false }) {
   const group = new THREE.Group();
   group.name = 'peers';
   parent.add(group);
@@ -114,7 +114,8 @@ export function createPeers({ parent, placer, getCast, rides: RIDES = GALAXY_RID
     const r = { kind, holder, fig: null };
     const spec = RIDES[kind];
     if (spec?.figure) {
-      r.fig = buildFigure(spec.figure);
+      // (a world that takes models only waits for the model: cast.js)
+      r.fig = only ? null : buildFigure(spec.figure);
       if (r.fig) holder.add(r.fig.model);
       // (its catalogue model once it's here, as yours is: the seat's measured on it)
       modelFigure(spec.figure, models)

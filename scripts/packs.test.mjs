@@ -33,6 +33,22 @@ describe('the pack manifests', () => {
     }
   });
 
+  it('list a file the bucket holds by its remote URL and the manifest’s hash, with its site path', async () => {
+    const base = 'https://bucket.test/assets';
+    const plain = await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf });
+    const remote = (hash) => ({ base, manifest: { 'models/w/tree.glb': { hash, bytes: 5 } } });
+    const m = await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf, remote: remote('aaaaaaaaaaaa') });
+    const tree = plain.files.find((f) => f.url === '/models/w/tree.glb');
+    expect(m.files.find((f) => f.local)).toEqual({ url: `${base}/aaaaaaaaaaaa/models/w/tree.glb`, bytes: tree.bytes, hash: 'aaaaaaaaaaaa', local: '/models/w/tree.glb' });
+    expect(m.files.filter((f) => !f.local)).toEqual(plain.files.filter((f) => f.url !== '/models/w/tree.glb'));
+    expect(m.bytes).toBe(plain.bytes);
+    // (a new upload of the file is a new version, so an installed world updates)
+    expect(m.v).not.toBe(plain.v);
+    expect((await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf, remote: remote('bbbbbbbbbbbb') })).v).not.toBe(m.v);
+    // and without a base, the bucket is not named
+    expect(await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf, remote: { base: '', manifest: remote('a').manifest } })).toEqual(plain);
+  });
+
   it('take a page’s chunks through static and dynamic imports', () => {
     const manifest = {
       'src/pages/W.jsx': { file: 'assets/W-abc.js', css: ['assets/W-abc.css'], imports: ['_three.js'], dynamicImports: ['src/w/scene.js'] },

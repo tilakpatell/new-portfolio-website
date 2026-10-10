@@ -53,7 +53,7 @@ const inert = { posts: [], turfs: [], targets: [], ms: 0, landed() {}, update: (
 export function createGround({ parent, world, site, effects, tier = 'high', kit = null, warm, blaster = null, sparks = null, standable = () => true, seesThrough = null, rand = Math.random }) {
   if (!effects?.owner || !site?.land?.at || site.noGround) return inert;
   const turfs = turfsOf(site, effects, { standable, height: world.heightAt });
-  const figures = createFigures({ parent, world, warm, kit, tier });
+  const figures = createFigures({ parent, world, warm, kit, tier, only: site.cast === 'models', uniforms: site.uniforms ?? null });
   const tokens = createTokens({ pools: SHOTS, scale: SCALE[tier] ?? 1, timeout: 0.9 });
   const director = createDirector({ turfs, effects, tier, rand });
   let pop = null;
@@ -242,6 +242,8 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
         if (figures.dying(t, dt)) figures.remove(t.id);
         continue;
       }
+      // (one a world that takes models only had no model for: never there, never firing)
+      if (t.faceless) continue;
       const d = Math.hypot(s.b.x - you.x, s.b.z - you.z);
       if (d > BRAINS) continue;
       const was = { x: s.b.x, z: s.b.z };

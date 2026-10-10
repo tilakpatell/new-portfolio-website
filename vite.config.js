@@ -4,14 +4,16 @@ import { configDefaults } from 'vitest/config'
 import iconsApart from './scripts/icons-apart.mjs'
 import prerender from './scripts/prerender.mjs'
 import packs from './scripts/packs.mjs'
+import assetManifest from './scripts/assets-manifest.mjs'
 
 export default defineConfig({
   // each react-icons icon a module of its own, so the entry chunk carries
   // only the icons the nav and footer draw (scripts/icons-apart.mjs)
   // and after a build, a page of its own for each route, for links shared
   // and search (scripts/prerender.mjs), and each world's install pack
-  // (scripts/packs.mjs)
-  plugins: [iconsApart(), react(), prerender(), packs()],
+  // (scripts/packs.mjs), and the heavy assets' manifest, only the entries
+  // still true of public/ (scripts/assets-manifest.mjs)
+  plugins: [iconsApart(), react(), prerender(), packs(), assetManifest()],
   // (the icons' modules import react-icons' own GenIcon: bundled up front in dev)
   optimizeDeps: { include: ['react-icons/lib'] },
   base: '/',

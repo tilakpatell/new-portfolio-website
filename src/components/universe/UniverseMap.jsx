@@ -36,7 +36,7 @@ import { PROMPT as LOOK_PROMPT } from '../../runtime/look';
 // `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, loadout, build = null, canFit = false, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null, universe = null }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, loadout, build = null, tune = null, canFit = false, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null, universe = null }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -93,6 +93,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       ship,
       loadout,
       build,
+      tune,
       controls,
       labels,
       stick,

@@ -158,7 +158,7 @@ export default function Galaxy() {
   }, [oath.side, oath.war, unlock]);
   // the ship as it's fitted, and the hull it flies: stock, or its garage build; and the Shipyard (H) that changes them, which is the
   // universe map's, with the same saves (shipyard/useShipyardPage.js)
-  const { loadout, build, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
+  const { loadout, build, tune, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [at, setAt] = useState(null); // what in the system you're at (its planet, the Death Star…)
@@ -488,6 +488,7 @@ export default function Galaxy() {
         ship={ship}
         loadout={loadout}
         build={build}
+        tune={tune}
         net={online.client}
         frozen={Boolean(leaving) || intro || yard}
         hangar={yard}

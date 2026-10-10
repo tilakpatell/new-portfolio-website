@@ -54,7 +54,7 @@
 ### Task 3: The loader
 
 **Files:**
-- Create: `src/lib/durable/entityLoader.js`, `entityLoader.test.js`, `fixtures/fakeClient.js` (a fake with `rpc`, `from().insert().select().single()`, `from().delete().eq()`, `channel().on().subscribe()`, scripted answers and a log of calls)
+- Create: `src/lib/durable/entityLoader.js`, `entityLoader.test.js`, `fixtures/fakeClient.js` (a fake with `rpc`, `from().insert().select().single()`, `from().delete().eq().select('id')` (RLS turns a delete of someone else's row into a delete of nothing, so the loader asks which ids went), `channel().on().subscribe()`, scripted answers and a log of calls)
 
 **Interfaces:**
 - Consumes: Task 2's `entities.js`.
@@ -70,7 +70,7 @@
 - Create: `scripts/supabase-seed.mjs` (writes `supabase/seed.sql`: 50 `planets` rows and the POIs, from `src/lib/land/flight/planetSpec.js` when it exists on main, else from `scripts/fixtures/planets.json` carrying the same 50 ids; say which in the file's header), `supabase/seed.sql`, `scripts/supabase-check.mjs` (reads `.env.local`; signs in anonymously; the spec's six steps; prints one line each; exits 1 on any failure)
 - Modify: `supabase/README.md` if a step differs from what it says.
 
-- [ ] **Step 1:** Write the seed script and run it; `supabase/seed.sql` has 50 inserts into `planets` and one `pois` row for Echo Base on `hoth` at `(1200, −800)`, `r = 380` (the flat's `r + edge`).
+- [ ] **Step 1:** Write the seed script and run it (the planets' id check takes upper case: Expanse ids start `E:`); `supabase/seed.sql` has 50 inserts into `planets` and one `pois` row for Echo Base on `hoth` at `(1200, −800)`, `r = 380` (the flat's `r + edge`).
 - [ ] **Step 2:** Write the check script. Without `.env.local` it prints `no project linked: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local` and exits 2.
 - [ ] **Step 3: Commit** `The planets seeded and a check that walks the schema by hand`.
 

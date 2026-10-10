@@ -3,7 +3,7 @@ import { RiLock2Line } from 'react-icons/ri';
 import { STOCK, isOpen, partEffects, partsFor } from '../outfit';
 import { BUILD_SLOTS, isModuleOpen, modulesFor } from './parts';
 import { RAIL, RAIL_LABEL } from './rail';
-import { STOCK_BUILD, buildCode } from './build';
+import { STOCK_BUILD, buildCode, isStockModule } from './build';
 import { itemOfModule, itemOfPart } from '../yardRules';
 import { pillOf } from '../shop';
 
@@ -13,6 +13,8 @@ import { pillOf } from '../shop';
 // the lock's sentence); the row staged on the draft is pressed, the one
 // flown is marked. A press stages it (a locked one says why instead);
 // pointing at one previews it in the bill's read-out and the showroom.
+// On the crew's own ship the build's slots after the hull offer tuning: the
+// slot's own module (and a None) are one row, "As it came", that clears it.
 
 
 const SWATCH_STOCK = 'linear-gradient(135deg, #e2ded5 50%, #8a8f99 50%)';
@@ -25,10 +27,16 @@ const moduleEffects = (m) => [
     .map(([k, v]) => `${DOES[k]} ${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%`),
 ];
 
+const moduleRows = (slot, unlocked) =>
+  modulesFor(slot).map((m) => ({ id: m.id, name: m.name, module: true, open: isModuleOpen(m, unlocked), hint: m.hint, blurb: m.blurb, does: moduleEffects(m), mass: m.mass, power: m.power, item: itemOfModule(slot, m.id) }));
+// the tune's rows: the ship as it came (staging the slot's stock module, which clears the tune), then each module that isn't the slot's stock or a None
+const AS_IT_CAME = { name: 'As it came', module: true, open: true, hint: null, blurb: 'The crew’s own ship, as it came.', does: [], mass: 0, power: 0, item: null };
+const tuneRows = (slot, unlocked) => [{ ...AS_IT_CAME, id: STOCK_BUILD[slot] }, ...moduleRows(slot, unlocked).filter((r) => !isStockModule(slot, r.id))];
+
 // a row's model: whichever kind of thing the slot holds, said the same way
-function rowsFor(slot, unlocked) {
-  if (BUILD_SLOTS.includes(slot))
-    return modulesFor(slot).map((m) => ({ id: m.id, name: m.name, module: true, open: isModuleOpen(m, unlocked), hint: m.hint, blurb: m.blurb, does: moduleEffects(m), mass: m.mass, power: m.power, item: itemOfModule(slot, m.id) }));
+function rowsFor(slot, unlocked, tuning) {
+  if (tuning) return tuneRows(slot, unlocked);
+  if (BUILD_SLOTS.includes(slot)) return moduleRows(slot, unlocked);
   return partsFor(slot).map((p) => ({
     id: p.id,
     name: p.name,
@@ -48,9 +56,11 @@ export default function YardCatalogue({ slot, onSlot, draft, live, unlocked, eco
   const id = useId();
   const [code, setCode] = useState('');
   const isBuild = BUILD_SLOTS.includes(slot);
-  const rows = rowsFor(slot, unlocked);
-  const stagedId = isBuild ? (draft.build ?? null)?.[slot] : (draft.loadout[slot] ?? STOCK);
-  const flownId = isBuild ? (live.build ?? null)?.[slot] : (live.loadout[slot] ?? STOCK);
+  // (a slot after the hull, on the crew's own ship: tuning, not a build)
+  const tuning = isBuild && slot !== 'hull' && !draft.build;
+  const rows = rowsFor(slot, unlocked, tuning);
+  const stagedId = isBuild ? (tuning ? (draft.tune?.[slot] ?? STOCK_BUILD[slot]) : (draft.build ?? null)?.[slot]) : (draft.loadout[slot] ?? STOCK);
+  const flownId = isBuild ? (live.build ? live.build[slot] : slot === 'hull' ? null : (live.tune?.[slot] ?? STOCK_BUILD[slot])) : (live.loadout[slot] ?? STOCK);
 
   const press = (r) => {
     if (!r.open) return onSay(`Locked. ${r.hint}.`);
@@ -128,6 +138,7 @@ export default function YardCatalogue({ slot, onSlot, draft, live, unlocked, eco
             </form>
           </div>
         )}
+        {tuning && <p className="yard-quiet">On the crew’s own ship a module tunes it: its numbers, not its looks.</p>}
         <ul className="yard-rows" aria-label={RAIL_LABEL[slot]}>
           {rows.map((r) => {
             const pill = pillOf(economy, r.item);

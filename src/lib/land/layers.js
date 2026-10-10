@@ -2,7 +2,8 @@
 // hills, dunes along the wind, mesas, ridges, mountains round the horizon,
 // channels, islands, a level. The galaxy's surfaces (galaxy/surface/terrain.js)
 // and the planets' land (this folder) both sum them, so they agree on what a
-// hill is.
+// hill is. The flight's planets add a wind to the ridges, a range with no
+// `to` and the blocks of a city (lib/land/flight).
 //
 // Pure: imports nothing but the galaxy's noise (galaxy/surface/noise.js, a
 // pure module), and runs in Node and in a worker.
@@ -13,9 +14,11 @@
 //   noise2(x, z, seed) → the galaxy's value noise, −1…1, a bump a unit
 //     (passed on: cell.js clumps the flora by it)
 
-import { fbm, noise2, ridged, smoothstep } from '../../components/galaxy/surface/noise.js';
+import { fbm, hash2, noise2, ridged, smoothstep } from '../../components/galaxy/surface/noise.js';
 
 export { noise2 };
+
+export const BLOCK_WALL = 14; // m a metre: a tower's wall, steep, not sheer
 
 export const LAYERS = {
   // broad rises and falls, ±height
@@ -40,13 +43,20 @@ export const LAYERS = {
     const ledge = smoothstep(l.cover - 0.12, l.cover - 0.06, m) * 0.18; // a step at the foot
     return (up * (1 + fbm(x / 40, z / 40, { octaves: 2, seed: seed + 3 }) * 0.04) + ledge * (1 - up)) * l.height;
   },
-  // sharp ridges: 0…height
-  ridges: (x, z, l, seed) => ridged(x / l.scale, z / l.scale, { octaves: l.octaves ?? 5, seed }) * l.height,
-  // mountains round the horizon, rising from `from` metres out to their full height by `to`
+  // sharp ridges: 0…height; with a `wind` (an angle) they run long and
+  // parallel along it, as a fold range's do
+  ridges: (x, z, l, seed) => {
+    if (l.wind === undefined) return ridged(x / l.scale, z / l.scale, { octaves: l.octaves ?? 5, seed }) * l.height;
+    const c = Math.cos(l.wind);
+    const s = Math.sin(l.wind);
+    return ridged((x * c - z * s) / (l.scale * 4), (x * s + z * c) / l.scale, { octaves: l.octaves ?? 5, seed }) * l.height;
+  },
+  // mountains round the horizon, rising from `from` metres out to their full
+  // height by `to`; with no `to`, a range at its full height everywhere
   mountains: (x, z, l, seed) => {
     const r = Math.hypot(x, z);
     if (r < l.from) return 0;
-    const k = smoothstep(l.from, l.to, r);
+    const k = l.to === undefined ? 1 : smoothstep(l.from, l.to, r);
     return k * (0.3 + 0.7 * ridged(x / l.scale, z / l.scale, { octaves: 6, seed })) * l.height;
   },
   // rivers (of water, lava, salt): channels `depth` deep where the noise crosses zero
@@ -68,6 +78,21 @@ export const LAYERS = {
   },
   // a constant
   level: (x, z, l) => l.height,
+  // a city from the air: a grid of `cell`-metre lots, `gap` of street
+  // between them, a share `cover` built on, each tower's height seeded from
+  // its lot (hMin…hMax), flat on top. Its walls lean in at BLOCK_WALL
+  // metres a metre, not straight up, so no two points 4 m apart differ by
+  // more than a ship at its slowest can climb
+  blocks: (x, z, l, seed) => {
+    const ix = Math.floor(x / l.cell);
+    const iz = Math.floor(z / l.cell);
+    const half = l.gap / 2;
+    const u = x - ix * l.cell;
+    const v = z - iz * l.cell;
+    const inside = Math.min(u - half, l.cell - half - u, v - half, l.cell - half - v);
+    if (inside <= 0 || hash2(ix, iz, seed + 7) >= l.cover) return 0;
+    return Math.min(l.hMin + hash2(ix, iz, seed) * (l.hMax - l.hMin), inside * BLOCK_WALL);
+  },
 };
 
 // The land's height from its relief alone: no rivers, no flats

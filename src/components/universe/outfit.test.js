@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ACHIEVEMENTS } from '../Achievements';
 import { CREWS } from './crews';
-import { STOCK_BUILD, rollBuild, statsOfBuild } from './shipyard/build';
+import { STOCK_BUILD, rollBuild, statsOfBuild, statsOfTune } from './shipyard/build';
 import {
   FASTEST,
   PARTS,
@@ -289,6 +289,53 @@ describe('on a garage build', () => {
     const r = equip('falcon', { ...STOCK_LOADOUT, guns: 'fusion' }, 'booster', 'portal', all, needle);
     expect(r).toMatchObject({ ok: false, reason: 'power', short: 1 }); // (3 + 3 + 1 against 6)
     expect(equip('falcon', STOCK_LOADOUT, 'booster', 'portal', all, needle).ok).toBe(true);
+  });
+});
+
+describe('on a crew’s own ship, tuned', () => {
+  const all = Object.keys(ACHIEVEMENTS);
+  const tune = { engines: 'quad', cockpit: 'canopy' };
+
+  it('flies on the tune’s numbers under the parts, as a build’s modules would add them', () => {
+    const own = statsOfTune(tune);
+    const s = statsOf('xwing', STOCK_LOADOUT, null, tune);
+    expect(s.boost).toBeCloseTo(own.boost, 6);
+    expect(s.accel).toBeCloseTo(own.accel, 6);
+    expect(s.agility).toBeCloseTo(own.agility / (1 + 0.03 * own.mass), 6);
+    expect(s.mass).toBeCloseTo(own.mass, 6);
+    expect(s.power).toBe(own.power);
+    expect(s.capacity).toBe(PLANT.xwing); // (the crew’s own plant: a tune brings none)
+    const boosted = statsOf('xwing', { ...STOCK_LOADOUT, booster: 'srb' }, null, tune);
+    expect(boosted.boost).toBeCloseTo(own.boost + 0.25, 6);
+    expect(statsOf('xwing', STOCK_LOADOUT, null, {})).toEqual(statsOf('xwing', STOCK_LOADOUT));
+  });
+
+  it('is ignored on a garage build: the build’s modules are the ship', () => {
+    expect(statsOf('xwing', STOCK_LOADOUT, STOCK_BUILD, tune)).toEqual(statsOf('xwing', STOCK_LOADOUT, STOCK_BUILD));
+  });
+
+  it('draws on the crew’s plant, so a part may not fit beside it', () => {
+    expect(fits('rv', { ...STOCK_LOADOUT, booster: 'portal' }, null, { engines: 'quad' })).toBe(true); // (3 + 2 = 5)
+    expect(fits('rv', { ...STOCK_LOADOUT, booster: 'portal', thrusters: 'rcs' }, null, { engines: 'quad' })).toBe(false); // (3 + 1 + 2 = 6)
+    expect(fits('rv', { ...STOCK_LOADOUT, booster: 'portal', thrusters: 'rcs' })).toBe(true);
+    expect(equip('rv', { ...STOCK_LOADOUT, booster: 'portal' }, 'thrusters', 'rcs', all, null, { engines: 'quad' })).toMatchObject({ ok: false, reason: 'power', short: 1 });
+    expect(equip('rv', { ...STOCK_LOADOUT, booster: 'portal' }, 'thrusters', 'rcs', all).ok).toBe(true);
+  });
+
+  it('takes parts off, hungriest first, when the tune leaves too little', () => {
+    const heavy = { ...STOCK_LOADOUT, booster: 'portal', thrusters: 'rcs' }; // (4 MW: the RV runs it alone)
+    expect(loadoutOf({ rv: heavy }, 'rv', all)).toEqual(heavy);
+    const l = loadoutOf({ rv: heavy }, 'rv', all, null, { engines: 'quad' });
+    expect(l.booster).toBe(STOCK);
+    expect(l.thrusters).toBe('rcs');
+    expect(droppedParts(heavy, l).map((p) => p.id)).toEqual(['portal']);
+  });
+
+  it('shows in the read-out, and the same as the module on a build for the shares it adds', () => {
+    const now = readout('xwing', STOCK_LOADOUT, null, tune);
+    const speed = (r) => r.find((x) => x.id === 'speed').value;
+    expect(speed(now)).toBeGreaterThan(speed(readout('xwing', STOCK_LOADOUT)));
+    expect(readout('xwing', STOCK_LOADOUT, null, {})).toEqual(readout('xwing', STOCK_LOADOUT));
   });
 });
 

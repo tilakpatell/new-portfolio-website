@@ -5,12 +5,13 @@
 // Where a walkable galaxy site has the place (lib/land/flight/
 // landmarkTables.js's SITE_PLACES), its things are the site's own: the
 // places' `things` and the site's loose ones nearest them, kept where they
-// stand relative to the first place's middle, within the POI's r + edge. A
-// thing the site stood on a rise or in a hollow the flight's ground hasn't
-// got (its height off the place's middle differs from the flight's by more
-// than DROP_Y) is dropped and counted: a wall following a river the flight
-// has no river for would hang in the air. Where no site has it, the POI's
-// own list (LANDMARKS) stands on the flight's ground.
+// stand relative to the first place's middle, within the POI's r and half its
+// edge. A
+// thing the site stood on ground the flight hasn't got (the rise and fall
+// under it, 20 m across, differs from the flight's by more than DROP_Y) is
+// dropped and counted: a wall along a riverbank the flight has no river for
+// would hang in the air. Where no site has it, the POI's own list
+// (LANDMARKS) stands on the flight's ground.
 //
 // No three.js: the sites and the galaxy's terrain are data and pure code.
 //
@@ -22,6 +23,13 @@
 import { siteOf } from '../../galaxy/surface/sites';
 import { makeHeight } from '../../galaxy/surface/terrain';
 import { DROP_Y, LANDMARKS, LANDMARK_MAX, SITE_PLACES } from '../../../lib/land/flight/landmarkTables';
+
+// the site's air, not its places': drawn by the walkable site round you, never from a ship
+const AIR = new Set(['lightshafts', 'ds2sky', 'ds1sky']);
+
+// what grows, lies or drifts stands on whatever ground it's given: the drop is for what's built
+const GROWS = new Set(['lavarock', 'karst', 'glassshard', 'floatrocks', 'smoke', 'wrecksmoke', 'grove', 'redwood', 'jungletree', 'yavintree', 'palm', 'dagocypress', 'dagoroots', 'gnarltree', 'wroshyr', 'wroshyrgreat', 'ewoktree', 'sorganbirch', 'sorganfir', 'sorganfern', 'fern', 'log', 'qpine', 'qdeadtree', 'qfern']);
+const grows = (t) => GROWS.has(t.kind) || String(t.model ?? '').startsWith('kit:naturemega/');
 
 const sites = new Map(); // id → { site, height }: made once a page
 function siteData(id) {
@@ -46,24 +54,24 @@ const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
 function siteThings(site, m) {
   if (m.places === '*') {
     const centre = m.centre ?? site.land.at;
-    return { centre, things: site.things_all.map((t) => ({ t, ref: centre })) };
+    return { centre, things: site.things_all };
   }
   const ids = new Set(m.places);
   const places = m.places.map((id) => site.places.find((p) => p.id === id)).filter(Boolean);
   if (!places.length) return { centre: [0, 0], things: [] };
-  const at = new Map(site.places.map((p) => [p.id, p.at]));
   // (a loose thing goes with the place nearest it, ours or another's, or
   // with the landing spot: the crates round where you set down are no place's)
   const spots = [...site.places, { id: '@land', at: site.land.at }];
   const nearest = (at) => spots.reduce((best, p) => (d2(p.at, at) < d2(best.at, at) ? p : best)).id;
-  // (each thing measured from its own place's middle: two places on flats
-  // at different heights in the site are each level on the flight's one)
-  const things = [];
-  for (const t of site.things_all) {
-    const id = t.place ?? nearest(t.at);
-    if (ids.has(id)) things.push({ t, ref: at.get(id) });
-  }
-  return { centre: places[0].at, things };
+  return { centre: places[0].at, things: site.things_all.filter((t) => ids.has(t.place ?? nearest(t.at))) };
+}
+
+// how far the ground rises and falls under a thing: the spread of its
+// height over a cross FOOT metres either side
+const FOOT = 10;
+function relief(h, x, z) {
+  const ys = [h(x, z), h(x + FOOT, z), h(x - FOOT, z), h(x, z + FOOT), h(x, z - FOOT)];
+  return Math.max(...ys) - Math.min(...ys);
 }
 
 const spec4 = (t, at, y) => {
@@ -85,15 +93,17 @@ function capped(list, poi) {
 
 function fromSite({ site, height }, m, poi, heightAt) {
   const { centre, things } = siteThings(site, m);
-  const reach2 = (poi.r + poi.edge) ** 2;
+  // (to halfway across the band the flat eases out over: past it the
+  // flight's ground is a slope the site's level place never was)
+  const reach2 = (poi.r + poi.edge / 2) ** 2;
   const siteBase = height(centre[0], centre[1]);
   const base = poi.h ?? heightAt(poi.at[0], poi.at[1]);
-  const moved = (p) => [poi.at[0] + p[0] - centre[0], poi.at[1] + p[1] - centre[1]];
   const list = [];
   let dropped = 0;
-  for (const { t, ref } of things) {
-    // (a room's furniture, and what hangs in the sky past the fog, aren't the place's buildings)
-    if (t.zone || t.fog === false) continue;
+  for (const t of things) {
+    // (a room's furniture, what hangs in the sky past the fog and the forest's
+    // light through its canopy aren't the place's buildings)
+    if (t.zone || t.fog === false || AIR.has(t.kind)) continue;
     const dx = t.at[0] - centre[0], dz = t.at[1] - centre[1];
     if (dx * dx + dz * dz > reach2) continue;
     const at = [poi.at[0] + dx, poi.at[1] + dz];
@@ -102,8 +112,10 @@ function fromSite({ site, height }, m, poi, heightAt) {
       continue;
     }
     const ground = heightAt(at[0], at[1]);
-    const r = moved(ref);
-    if (Math.abs(height(t.at[0], t.at[1]) - height(ref[0], ref[1]) - (ground - heightAt(r[0], r[1]))) > DROP_Y) {
+    // (what matters is the ground under it, not how high its place is: a
+    // house on a gentle slope stands on the flight's level ground as well,
+    // a wall along a riverbank doesn't)
+    if (!grows(t) && Math.abs(relief(height, t.at[0], t.at[1]) - relief(heightAt, at[0], at[1])) > DROP_Y) {
       dropped++;
       continue;
     }
