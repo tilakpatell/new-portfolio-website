@@ -11,8 +11,11 @@
 //   color, size, glow? }], clouds: { cover, color, shade, scale, speed,
 //   sharp? } | null, stars: 0…1, bodies: [{ az, el, size, color, color2,
 //   bands, lit? }] }
-// createSky(site, { clouds }): clouds 1 (ultra, amounts.js) for finer clouds
-// with their own shade toward the sun and a high veil over them
+// createSky(site, { clouds, image }): clouds 1 (ultra, amounts.js) for finer
+// clouds with their own shade toward the sun and a high veil over them;
+// `image`, a level's own sky from the game (lib/three/levelSky.js: { env,
+// sun }), whose sun is the first one's way and colour (the dome stays the
+// sky you see, its probe what things reflect: scene.js)
 // (az: radians round from +z toward +x; el: radians up from the horizon;
 // size: the angular radius, radians)
 
@@ -148,12 +151,14 @@ void main() {
   gl_FragColor = vec4(c, 1.0);
 }`;
 
-export function createSky(site, { clouds = 0 } = {}) {
+export function createSky(site, { clouds = 0, image = null } = {}) {
   const s = site.sky;
   const col = (c, f = '#000000') => new THREE.Color(c ?? f);
   const suns = (s.suns ?? []).slice(0, MAX_SUNS);
+  // (the game's sun where the level has one: its way, and its colour)
+  if (image?.sun && suns[0]) suns[0] = { ...suns[0], color: `#${new THREE.Color(...image.sun.color).getHexString()}` };
   const bodies = (s.bodies ?? []).slice(0, MAX_BODIES);
-  const sunDirs = suns.map((x) => dirOf(x.az, x.el));
+  const sunDirs = suns.map((x, i) => (i === 0 && image?.sun ? new THREE.Vector3(...image.sun.dir) : dirOf(x.az, x.el)));
   const uniforms = {
     uZenith: { value: col(s.zenith) },
     uHorizon: { value: col(s.horizon) },

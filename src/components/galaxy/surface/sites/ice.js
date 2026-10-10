@@ -31,6 +31,12 @@ export const SITES = {
     cast: 'models',
     uniforms: { stormtrooper: 'snowtrooper', rebel: 'hothtrooper' },
     sky: {
+      // the light of Hoth's own sky, from the game: the probe out on the
+      // plain of its main arena on a cloudy day (Battlefront II's hoth_01,
+      // reflection volume 78e8837b; scripts/bf2017-sky.mjs). Its sun is the
+      // first one's way and colour; the dome stays the sky you see, as the
+      // game's panorama isn't in the drop yet
+      probe: '/textures/galaxy/sky/hoth',
       zenith: '#6f98c8',
       horizon: '#e4ecf4',
       haze: 0.95,

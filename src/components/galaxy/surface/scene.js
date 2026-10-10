@@ -79,6 +79,7 @@ import { SURFACE_MODELS } from './catalog';
 import { heightGrid, makeHeight } from './terrain';
 import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
+import { loadLevelSky } from '../../../lib/three/levelSky';
 import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { floatPose } from './floats';
@@ -236,7 +237,11 @@ export async function create(canvas, ctx) {
     return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
   };
 
-  const sky = createSky(site, { clouds: amounts.clouds });
+  // a level's own sky and probe from the game, where the world has one
+  // (lib/three/levelSky.js; site.sky.probe the files' stem): its light is
+  // the world's, its sun the dome's; the dome's alone if it won't load
+  const levelSky = site.sky.probe ? await loadLevelSky(site.sky.probe, { level }).catch(() => null) : null;
+  const sky = createSky(site, { clouds: amounts.clouds, image: levelSky });
   // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
   const skyFog = createSkyFog(sky, THREE.ShaderChunk);
   // (the look's halo round the sun, and its haze below the horizon where the
@@ -244,7 +249,7 @@ export async function create(canvas, ctx) {
   skyFog.look({ halo: siteLook.halo, below: typeof site.look?.fogBelow === 'number' ? siteLook.fogBelow : null });
   scene.add(sky.mesh);
   const sunDir = sky.sunDirs[0] ?? new V(0.3, 0.8, 0.4).normalize();
-  const sun = new THREE.DirectionalLight(site.sky.suns?.[0]?.color ?? '#ffffff', site.light.sun ?? 3);
+  const sun = new THREE.DirectionalLight(sky.suns[0]?.color ?? '#ffffff', site.light.sun ?? 3);
   sun.castShadow = !small;
   if (sun.castShadow) {
     sun.shadow.mapSize.set(2048, 2048);
@@ -275,12 +280,18 @@ export async function create(canvas, ctx) {
   // (the look's sky is the dome's: its horizon and zenith, the sun's way)
   house.sky({ low: sky.uniforms.uHorizon.value, high: sky.uniforms.uZenith.value, sunDir });
   house.light({ sun, hemi });
-  // what shiny things reflect: the sky
+  // what shiny things reflect: the sky (the level's probe, where it has one)
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const envSky = sky.envScene();
-  const env = pmrem.fromScene(envSky.scene, 0, 1, 2000);
-  envSky.dispose();
+  let env;
+  if (levelSky) env = pmrem.fromCubemap(levelSky.env);
+  else {
+    const envSky = sky.envScene();
+    env = pmrem.fromScene(envSky.scene, 0, 1, 2000);
+    envSky.dispose();
+  }
   pmrem.dispose();
+  // (the probe's in the PMREM now: its own faces aren't wanted on the chip)
+  levelSky?.dispose();
   scene.environment = env.texture;
   scene.environmentIntensity = 0.4;
 
@@ -336,7 +347,7 @@ export async function create(canvas, ctx) {
   gmat.uniforms.uMarks.value = marks.texture;
   const ground = groundMesh(grid, gmat.material);
   if (!site.noGround) scene.add(ground);
-  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: site.id, rings: amounts.rings, depthN: amounts.depthN, foam: amounts.splat }) : null;
+  const water = site.water ? createWater(site, sunDir, sky.suns[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: site.id, rings: amounts.rings, depthN: amounts.depthN, foam: amounts.splat }) : null;
   if (water) {
     scene.add(water.mesh);
     if (water.glow) scene.add(water.glow);

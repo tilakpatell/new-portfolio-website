@@ -81,6 +81,8 @@ export const PACK = {
   globs: [
     '/models/galaxy/**',
     '/cc0/galaxy/**',
+    // (the levels' own light from the game: lib/three/levelSky.js)
+    '/textures/galaxy/**',
     '/models/universe/war/*',
     '/models/gen3d/x-wing*.glb',
     '/models/gen3d/tie-interceptor*.glb',
