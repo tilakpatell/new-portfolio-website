@@ -1919,6 +1919,456 @@
     "from": "objects/props/landmarks/_rebelalliance/bd_frigatenebulonb_01/frigatenebulonb_01_mesh",
     "tier": "surface"
   },
+  "models/galaxy/space/bd-tradefederationlandingship-01.far.glb": {
+    "hash": "7068854ba2d7",
+    "bytes": 34988,
+    "from": "models/galaxy/space/bd-tradefederationlandingship-01.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/bd-tradefederationlandingship-01.glb": {
+    "hash": "00b6c368b1af",
+    "bytes": 788624,
+    "from": "models/galaxy/space/bd-tradefederationlandingship-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/cinder-satellite-01.glb": {
+    "hash": "12d499e534af",
+    "bytes": 513780,
+    "from": "models/galaxy/space/cinder-satellite-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/cinder-satellite-large-01.glb": {
+    "hash": "c192b6484b97",
+    "bytes": 453860,
+    "from": "models/galaxy/space/cinder-satellite-large-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/cinder-satellite-large-03.glb": {
+    "hash": "1252ab9a333f",
+    "bytes": 526072,
+    "from": "models/galaxy/space/cinder-satellite-large-03.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/cinder-satellite-small-02.glb": {
+    "hash": "d908c697655b",
+    "bytes": 891464,
+    "from": "models/galaxy/space/cinder-satellite-small-02.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/corvettecr90-01.far.glb": {
+    "hash": "6a1197d63ee1",
+    "bytes": 43152,
+    "from": "models/galaxy/space/corvettecr90-01.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/corvettecr90-01.glb": {
+    "hash": "77a59be3d160",
+    "bytes": 810264,
+    "from": "models/galaxy/space/corvettecr90-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/deathstar-debris-l-02.glb": {
+    "hash": "1a7b83f9b627",
+    "bytes": 6256,
+    "from": "models/galaxy/space/deathstar-debris-l-02.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/deathstar-debris-l-03-mc80-destruction.glb": {
+    "hash": "ffcb650fcf9f",
+    "bytes": 7004,
+    "from": "models/galaxy/space/deathstar-debris-l-03-mc80-destruction.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/deathstar-debris-l-03.glb": {
+    "hash": "ad21d49e4c17",
+    "bytes": 6984,
+    "from": "models/galaxy/space/deathstar-debris-l-03.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/deathstar-debris-l-04-mirrorx.glb": {
+    "hash": "1d091cabde1a",
+    "bytes": 7704,
+    "from": "models/galaxy/space/deathstar-debris-l-04-mirrorx.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/deathstar-debris-l-04.glb": {
+    "hash": "e85d2d91365a",
+    "bytes": 7720,
+    "from": "models/galaxy/space/deathstar-debris-l-04.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/deathstar-debris-m-03.glb": {
+    "hash": "f43384b67104",
+    "bytes": 141252,
+    "from": "models/galaxy/space/deathstar-debris-m-03.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-beam-xl-01.glb": {
+    "hash": "b8ee460ebd75",
+    "bytes": 4592,
+    "from": "models/galaxy/space/debris-beam-xl-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-beam-xl-02.glb": {
+    "hash": "ee331b9488f7",
+    "bytes": 7432,
+    "from": "models/galaxy/space/debris-beam-xl-02.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-coretube-l-01.glb": {
+    "hash": "8d140e132818",
+    "bytes": 4976,
+    "from": "models/galaxy/space/debris-coretube-l-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panel-corner-l-01.glb": {
+    "hash": "a43a8245c35a",
+    "bytes": 7088,
+    "from": "models/galaxy/space/debris-panel-corner-l-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panel-l-01.glb": {
+    "hash": "3b6fd03adad7",
+    "bytes": 7768,
+    "from": "models/galaxy/space/debris-panel-l-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panel-l-03.glb": {
+    "hash": "0586aaf7e56e",
+    "bytes": 7148,
+    "from": "models/galaxy/space/debris-panel-l-03.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panel-l-04.glb": {
+    "hash": "2caa61459a16",
+    "bytes": 7052,
+    "from": "models/galaxy/space/debris-panel-l-04.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panel-xl-01.glb": {
+    "hash": "12059778cadc",
+    "bytes": 8092,
+    "from": "models/galaxy/space/debris-panel-xl-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panelcurve-xl-01.glb": {
+    "hash": "30443ac289b3",
+    "bytes": 9180,
+    "from": "models/galaxy/space/debris-panelcurve-xl-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panellit-l-01.glb": {
+    "hash": "a5b2dbeece8c",
+    "bytes": 7768,
+    "from": "models/galaxy/space/debris-panellit-l-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panelpartial-l-01.glb": {
+    "hash": "3755378e34bc",
+    "bytes": 5940,
+    "from": "models/galaxy/space/debris-panelpartial-l-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-panelpartial-l-02.glb": {
+    "hash": "f42595af2c3b",
+    "bytes": 7124,
+    "from": "models/galaxy/space/debris-panelpartial-l-02.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-paneltube-l-01.glb": {
+    "hash": "30cf84658bf2",
+    "bytes": 5940,
+    "from": "models/galaxy/space/debris-paneltube-l-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-pipe-xl-01.glb": {
+    "hash": "c1630ba5f0b0",
+    "bytes": 4720,
+    "from": "models/galaxy/space/debris-pipe-xl-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-pipe-xl-02.glb": {
+    "hash": "21e6baf8e5eb",
+    "bytes": 6384,
+    "from": "models/galaxy/space/debris-pipe-xl-02.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-pipe-xl-03.glb": {
+    "hash": "a1aee324aec6",
+    "bytes": 5204,
+    "from": "models/galaxy/space/debris-pipe-xl-03.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-sdreactorpipe-s1024-a-01.glb": {
+    "hash": "6b4b817d7fac",
+    "bytes": 7060,
+    "from": "models/galaxy/space/debris-sdreactorpipe-s1024-a-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debris-spindlecore-l-01.glb": {
+    "hash": "0b8b28be49b2",
+    "bytes": 6640,
+    "from": "models/galaxy/space/debris-spindlecore-l-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debrisfield-02.glb": {
+    "hash": "bb5dda0243cc",
+    "bytes": 68416,
+    "from": "models/galaxy/space/debrisfield-02.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/debrisfield-03.glb": {
+    "hash": "985e44772aea",
+    "bytes": 65952,
+    "from": "models/galaxy/space/debrisfield-03.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/endor-isd.far.glb": {
+    "hash": "a43d44091265",
+    "bytes": 56720,
+    "from": "models/galaxy/space/endor-isd.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/endor-isd.glb": {
+    "hash": "790430901c55",
+    "bytes": 9340768,
+    "from": "models/galaxy/space/endor-isd.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/endor-mc80.far.glb": {
+    "hash": "4d538277cdfe",
+    "bytes": 36768,
+    "from": "models/galaxy/space/endor-mc80.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/endor-mc80.glb": {
+    "hash": "f46b598d557a",
+    "bytes": 3016632,
+    "from": "models/galaxy/space/endor-mc80.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/endor-mine-emissiveoff.glb": {
+    "hash": "a381ddaa5ac3",
+    "bytes": 374704,
+    "from": "models/galaxy/space/endor-mine-emissiveoff.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-arquitens.far.glb": {
+    "hash": "7e66e9a89709",
+    "bytes": 55664,
+    "from": "models/galaxy/space/fondor-arquitens.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-arquitens.glb": {
+    "hash": "7b29a0295070",
+    "bytes": 2871160,
+    "from": "models/galaxy/space/fondor-arquitens.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-drydock-2.far.glb": {
+    "hash": "f7f66d89e99a",
+    "bytes": 54692,
+    "from": "models/galaxy/space/fondor-drydock-2.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-drydock-2.glb": {
+    "hash": "e85547663861",
+    "bytes": 8593512,
+    "from": "models/galaxy/space/fondor-drydock-2.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-drydock.far.glb": {
+    "hash": "b87ab990075d",
+    "bytes": 51108,
+    "from": "models/galaxy/space/fondor-drydock.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-drydock.glb": {
+    "hash": "ff00ee10e923",
+    "bytes": 7974620,
+    "from": "models/galaxy/space/fondor-drydock.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-isd.far.glb": {
+    "hash": "5c9ad49248aa",
+    "bytes": 58892,
+    "from": "models/galaxy/space/fondor-isd.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-isd.glb": {
+    "hash": "28dd51b9ae69",
+    "bytes": 9020652,
+    "from": "models/galaxy/space/fondor-isd.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-mc80.far.glb": {
+    "hash": "743f4620186e",
+    "bytes": 36828,
+    "from": "models/galaxy/space/fondor-mc80.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/fondor-mc80.glb": {
+    "hash": "753998cdac4e",
+    "bytes": 3016636,
+    "from": "models/galaxy/space/fondor-mc80.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/globes/geonosis.webp": {
+    "hash": "e11403ae5b98",
+    "bytes": 2950,
+    "from": "models/galaxy/space/globes/geonosis.webp",
+    "tier": "pack"
+  },
+  "models/galaxy/space/globes/hoth.webp": {
+    "hash": "373923e65b9f",
+    "bytes": 2252,
+    "from": "models/galaxy/space/globes/hoth.webp",
+    "tier": "pack"
+  },
+  "models/galaxy/space/globes/kashyyyk.webp": {
+    "hash": "9782bbc0ccbc",
+    "bytes": 3172,
+    "from": "models/galaxy/space/globes/kashyyyk.webp",
+    "tier": "pack"
+  },
+  "models/galaxy/space/globes/scarif.webp": {
+    "hash": "672969713643",
+    "bytes": 3694,
+    "from": "models/galaxy/space/globes/scarif.webp",
+    "tier": "pack"
+  },
+  "models/galaxy/space/globes/tatooine.webp": {
+    "hash": "def3cb2c0ab3",
+    "bytes": 2794,
+    "from": "models/galaxy/space/globes/tatooine.webp",
+    "tier": "pack"
+  },
+  "models/galaxy/space/globes/yavin.webp": {
+    "hash": "5bc06afe8bdc",
+    "bytes": 3154,
+    "from": "models/galaxy/space/globes/yavin.webp",
+    "tier": "pack"
+  },
+  "models/galaxy/space/kamino-jedicruiser.far.glb": {
+    "hash": "95f2da3e0cb3",
+    "bytes": 52956,
+    "from": "models/galaxy/space/kamino-jedicruiser.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/kamino-jedicruiser.glb": {
+    "hash": "cc9d990dd1df",
+    "bytes": 3013696,
+    "from": "models/galaxy/space/kamino-jedicruiser.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/kamino-venator-2.far.glb": {
+    "hash": "1e09112341e3",
+    "bytes": 53076,
+    "from": "models/galaxy/space/kamino-venator-2.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/kamino-venator-2.glb": {
+    "hash": "5bfe371364ca",
+    "bytes": 3552452,
+    "from": "models/galaxy/space/kamino-venator-2.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/kamino-venator.far.glb": {
+    "hash": "461a7c4bb233",
+    "bytes": 51948,
+    "from": "models/galaxy/space/kamino-venator.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/kamino-venator.glb": {
+    "hash": "091ca459f575",
+    "bytes": 3919492,
+    "from": "models/galaxy/space/kamino-venator.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/largering-backdrop-01.glb": {
+    "hash": "d10471da7700",
+    "bytes": 74172,
+    "from": "models/galaxy/space/largering-backdrop-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/naboo-jedicruiser.far.glb": {
+    "hash": "baef3c93d28f",
+    "bytes": 53004,
+    "from": "models/galaxy/space/naboo-jedicruiser.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/naboo-jedicruiser.glb": {
+    "hash": "c67506496ba8",
+    "bytes": 3013688,
+    "from": "models/galaxy/space/naboo-jedicruiser.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/naboo-lucrehulk.far.glb": {
+    "hash": "caa8f8e37841",
+    "bytes": 49776,
+    "from": "models/galaxy/space/naboo-lucrehulk.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/naboo-lucrehulk.glb": {
+    "hash": "b7c33aed8270",
+    "bytes": 5680620,
+    "from": "models/galaxy/space/naboo-lucrehulk.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/naboo-venator-2.far.glb": {
+    "hash": "9ef2d548cab5",
+    "bytes": 52312,
+    "from": "models/galaxy/space/naboo-venator-2.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/naboo-venator-2.glb": {
+    "hash": "0295618f0bb4",
+    "bytes": 4561772,
+    "from": "models/galaxy/space/naboo-venator-2.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/naboo-venator.far.glb": {
+    "hash": "9570e87711b3",
+    "bytes": 51592,
+    "from": "models/galaxy/space/naboo-venator.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/naboo-venator.glb": {
+    "hash": "4aaa26826d0b",
+    "bytes": 3920356,
+    "from": "models/galaxy/space/naboo-venator.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/providenceclassdreadnaught-01.far.glb": {
+    "hash": "8ebe7f212002",
+    "bytes": 44752,
+    "from": "models/galaxy/space/providenceclassdreadnaught-01.far.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/providenceclassdreadnaught-01.glb": {
+    "hash": "85f3cf736c36",
+    "bytes": 589200,
+    "from": "models/galaxy/space/providenceclassdreadnaught-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/silo-xl-01.glb": {
+    "hash": "62223c65e03a",
+    "bytes": 384640,
+    "from": "models/galaxy/space/silo-xl-01.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/stardestroyerdestructionback-01-endor.glb": {
+    "hash": "ef7620680d15",
+    "bytes": 776076,
+    "from": "models/galaxy/space/stardestroyerdestructionback-01-endor.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/space/stardestroyerdestructionfront-01-endor.glb": {
+    "hash": "9df5686541a9",
+    "bytes": 787712,
+    "from": "models/galaxy/space/stardestroyerdestructionfront-01-endor.glb",
+    "tier": "pack"
+  },
   "models/galaxy/surface/aat.far.glb": {
     "hash": "5a716d07ef9b",
     "bytes": 50848,
@@ -2010,8 +2460,8 @@
     "tier": "surface"
   },
   "models/galaxy/surface/atat.glb": {
-    "hash": "066469e515f8",
-    "bytes": 12113756,
+    "hash": "62e9990f003e",
+    "bytes": 12327628,
     "from": "gameplay/vehicles/ground/at-at/old/atat_mesh",
     "tier": "surface"
   },
@@ -2022,8 +2472,8 @@
     "tier": "surface"
   },
   "models/galaxy/surface/atat.ultra.glb": {
-    "hash": "cf9bc0ca2692",
-    "bytes": 27144752,
+    "hash": "962d68529f54",
+    "bytes": 28514552,
     "from": "gameplay/vehicles/ground/at-at/old/atat_mesh",
     "tier": "ultra"
   },
@@ -2316,26 +2766,26 @@
     "tier": "ultra"
   },
   "models/galaxy/surface/falcon.far.glb": {
-    "hash": "d147b7624a04",
-    "bytes": 51636,
+    "hash": "2fc87b0b1b54",
+    "bytes": 145164,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.glb": {
-    "hash": "4f0c4c37b7a1",
-    "bytes": 1131416,
+    "hash": "73ac4e2ca9b2",
+    "bytes": 4025892,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.lod1.glb": {
-    "hash": "2f0faa1710e2",
-    "bytes": 230256,
+    "hash": "7bb9cc210be3",
+    "bytes": 633052,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "surface"
   },
   "models/galaxy/surface/falcon.ultra.glb": {
-    "hash": "f63ad0c91646",
-    "bytes": 9181668,
+    "hash": "025edc6af482",
+    "bytes": 21878340,
     "from": "gameplay/vehicles/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh",
     "tier": "ultra"
   },
@@ -3136,5 +3586,53 @@
     "bytes": 1511344,
     "from": "gameplay/vehicles/air/ywing/vehicle_air_ywing_static_donotuse_mesh",
     "tier": "surface"
+  },
+  "textures/galaxy/sky/space/core.1024.ktx2": {
+    "hash": "b1bcca5de83b",
+    "bytes": 369983,
+    "from": "textures/galaxy/sky/space/core.1024.ktx2",
+    "tier": "pack"
+  },
+  "textures/galaxy/sky/space/core.2048.ktx2": {
+    "hash": "de8234a32c11",
+    "bytes": 1284398,
+    "from": "textures/galaxy/sky/space/core.2048.ktx2",
+    "tier": "pack"
+  },
+  "textures/galaxy/sky/space/core.4096.ktx2": {
+    "hash": "9b022cccd3b0",
+    "bytes": 4382584,
+    "from": "textures/galaxy/sky/space/core.4096.ktx2",
+    "tier": "pack"
+  },
+  "textures/galaxy/sky/space/endor.1024.ktx2": {
+    "hash": "ba16586336eb",
+    "bytes": 380262,
+    "from": "textures/galaxy/sky/space/endor.1024.ktx2",
+    "tier": "pack"
+  },
+  "textures/galaxy/sky/space/endor.2048.ktx2": {
+    "hash": "b8f3f2dc6304",
+    "bytes": 1359870,
+    "from": "textures/galaxy/sky/space/endor.2048.ktx2",
+    "tier": "pack"
+  },
+  "textures/galaxy/sky/space/endor.4096.ktx2": {
+    "hash": "8ed47a4b800e",
+    "bytes": 4430916,
+    "from": "textures/galaxy/sky/space/endor.4096.ktx2",
+    "tier": "pack"
+  },
+  "textures/galaxy/sky/space/rim.1024.ktx2": {
+    "hash": "19a877069462",
+    "bytes": 248870,
+    "from": "textures/galaxy/sky/space/rim.1024.ktx2",
+    "tier": "pack"
+  },
+  "textures/galaxy/sky/space/rim.2048.ktx2": {
+    "hash": "46ed6d76f5bb",
+    "bytes": 1029472,
+    "from": "textures/galaxy/sky/space/rim.2048.ktx2",
+    "tier": "pack"
   }
 }

@@ -32,7 +32,9 @@ export const MANIFEST = 'src/data/galaxyAssets.json';
 export const GAME = 'https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2';
 const TITLE = 'Star Wars Battlefront II (2017): ';
 // the clip packs and anything else the pipeline makes outside a kind's file
-const PACKS = 'models/galaxy/bf2017';
+// (and the space levels' models, scripts/bf2017-space.mjs, and the game's
+// star fields, scripts/bf2017-sky.mjs --panorama)
+const PACKS = ['models/galaxy/bf2017', 'models/galaxy/space', 'textures/galaxy/sky/space'];
 // the game's films (scripts/bf2017-ui.mjs): the WebM only, its poster and
 // captions beside it stay committed
 const FILMS = 'films/bf2017';
@@ -75,9 +77,9 @@ const measure = (publicDir, path) => {
 // What the pipeline made from the game and is here to publish: every file a
 // credit from the game names (crew or surface), each of its cuts beside it
 // (.lod1, .far, .ultra), and everything under models/galaxy/bf2017 (the clip
-// packs), and the game's films under films/bf2017. Meshy's, Sketchfab's and
-// Quaternius's stay committed: their credits name another source. Sorted by
-// path.
+// packs) and models/galaxy/space (the space levels), and the game's films
+// under films/bf2017. Meshy's, Sketchfab's and Quaternius's stay committed:
+// their credits name another source. Sorted by path.
 export function gameFiles(credits, publicDir) {
   const out = new Map();
   for (const c of Object.values(credits)) {
@@ -90,7 +92,7 @@ export function gameFiles(credits, publicDir) {
       if (existsSync(join(publicDir, path))) out.set(path, { path, ...measure(publicDir, path), from, tier: t });
     }
   }
-  for (const abs of walk(join(publicDir, PACKS))) {
+  for (const abs of PACKS.flatMap((dir) => walk(join(publicDir, dir)))) {
     const path = abs.slice(publicDir.length + 1).split('\\').join('/');
     if (!out.has(path)) out.set(path, { path, ...measure(publicDir, path), from: path, tier: 'pack' });
   }

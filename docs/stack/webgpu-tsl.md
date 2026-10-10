@@ -40,6 +40,7 @@ On `main` today no shipped world is `'nodes'`, so no visitor reaches this render
 - A parity check that shoots a world on `main` and on the branch on both backends and diffs the pictures; a port passes under the thresholds the design states.
 - The port recipe: a world’s GLSL becomes TSL functions in a `nodes.js` beside its scene, each a factory returning a node material and its uniforms under the names the frame code already writes, so the per-frame code changes only where it imports the materials. Then `BundleGroup` round what never moves, measured by the perf probe on each backend.
 - The order: Earth, Minecraft, Mario 64, then the Expanse surface (the TSL twins of `src/lib/three/`’s shared shaders), which opens the galaxy surfaces and Middle-earth.
+- The galaxy's surfaces (the engine design's lane T, `docs/superpowers/plans/2026-10-10-galaxy-engine-laneT-surface-port.md`): the shared shaders' twins are written, beside their originals (`src/lib/three/groundingNodes.js`, `groundLookNodes.js`, `houseNodes.js` and the rest), with `src/lib/three/hookNodes.js` for what an `onBeforeCompile` chunk swap becomes (the material's own setup method wrapped and chained), and the surface's own materials in `src/components/galaxy/surface/nodes/`. No shipped world draws with them until the surface's flip; `scripts/twin-parity.mjs` compares each with its original.
 
 ## What the site does not use, and why
 
@@ -69,6 +70,7 @@ Last upgrade: not recorded; record the next one here, with what it broke.
 
 ## Gotchas
 
+- **TSL's bloom is a third of UnrealBloomPass's.** With the same strength, radius and threshold, three's `bloom` (`three/addons/tsl/display/BloomNode.js`) glows a third as much: `UnrealBloomPass`'s composite multiplies its sum by `3.0 * bloomStrength`, the TSL node by the strength alone. A port that wants its old glow hands the strength over three times (`src/components/galaxy/surface/nodes/post.js`'s `UNREAL`).
 - **An override can put a `'glsl'` world on WebGPU.** `pickBackend` honours `?gpu=webgpu` whatever the module’s shading, as long as the browser has WebGPU, so forcing it on a world that still has GLSL breaks that world’s first frame. Use it on `'nodes'` worlds and the fixture only.
 - **Colour space on a port.** A world that does its arithmetic on sRGB bytes as painted (Minecraft’s atlas is `NoColorSpace`) shifts every colour if the node material lets the renderer linearise the texture or applies the output transform twice; colour is the first thing to compare (the WebGPU plan’s Review Focus 4).
 - **A sun that moves with the clock.** Two shots of Earth a minute apart differ, so a picture diff freezes the page clock first (the WebGPU plan’s Review Focus 5).

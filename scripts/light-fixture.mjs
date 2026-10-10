@@ -79,7 +79,7 @@
 // scripts/gpu-parity/README.md), so there the webgpu leg fails, says so
 // and does not gate; the webgl leg gates.
 
-import { existsSync, mkdirSync, readdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -186,21 +186,19 @@ async function decalPack() {
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
-const exe = process.env.CHROMIUM ?? readdirSync('/opt/pw-browsers', { withFileTypes: true }).filter((d) => /^chromium-\d+$/.test(d.name)).map((d) => `/opt/pw-browsers/${d.name}/chrome-linux/chrome`).find(existsSync);
+const { adapterFor, angleFor, findChromium, launchArgs } = await import('./lib/chromium.mjs');
+const exe = findChromium();
 if (!exe) {
   console.error('no Chromium (set CHROMIUM=/path/to/chrome)');
   process.exit(2);
 }
-const swift = process.platform === 'linux' && !process.env.DISPLAY;
-const args = [
-  ...(process.platform === 'darwin' ? ['--use-angle=metal'] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']),
-  '--enable-unsafe-webgpu',
-  '--disable-blink-features=WebGPUExperimentalFeatures',
-  '--enable-features=Vulkan',
-  ...(swift ? ['--use-webgpu-adapter=swiftshader'] : []),
-  '--ignore-gpu-blocklist',
-  '--enable-webgl',
-];
+// Where the picture is drawn: the machine's own chip (Metal on a Mac, ANGLE
+// over D3D11 and WebGPU on D3D12 on Windows), SwiftShader on Linux without
+// a display; ANGLE= overrides (scripts/lib/chromium.mjs).
+const adapter = adapterFor();
+const swift = adapter === 'swiftshader';
+const angle = angleFor();
+const args = launchArgs({ angle, webgpu: true, adapter, uncapped: true });
 
 const { createServer } = await import('vite');
 const server = await createServer({ root: ROOT, configFile: join(ROOT, 'vite.config.js'), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null }, logLevel: 'error' });
@@ -242,7 +240,7 @@ if (argv.includes('--camera')) {
   }
   await browser.close();
   await server.close();
-  writeFileSync(join(out, 'camera.json'), `${JSON.stringify({ size: `${W}x${H}`, adapter: swift ? 'swiftshader' : 'system', rows }, null, 2)}\n`);
+  writeFileSync(join(out, 'camera.json'), `${JSON.stringify({ size: `${W}x${H}`, adapter: swift ? 'swiftshader' : angle === 'swiftshader' ? 'swiftshader' : `system (${angle})`, rows }, null, 2)}\n`);
   console.log('| leg | backend | frames | largest step cm | shortest arm m | frames behind a wall |');
   console.log('|---|---|---|---|---|---|');
   for (const r of rows) console.log(r.error ? `| ${r.leg} | failed: ${r.error} |` : `| ${r.leg} | ${r.backend} | ${r.frames} | ${r.maxStepCm} | ${r.minArm} | ${r.behindWall} |`);
