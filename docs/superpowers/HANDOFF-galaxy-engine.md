@@ -46,7 +46,7 @@ One lane per session. R and T run at once and own different files (`src/lib/thre
   - The look, judged on a real chip: SSGI over open snow lifts the shaded faces near the lit ones even at a tenth of three's GI (`post.js`'s `GI`, `SSGI_RADIUS`); the sky's `ZENITH_SHARE`; bloom at the house's numbers on a bright day. Lane G's calibration on Hoth sets them.
   - The record's grading LUT (`T_CC_*`) to a `Data3DTexture` for `lut` (lane G's `lutShape` reads its strip); `volumetrics.js` (the volumetric cones) not written.
 - **T, before the flip** (the imports that keep 34 GLSL files in the surface's closure, `evidence/galaxy-engine/T/closure-now.md`):
-  - `loadModel` from `universe/planets.js`: take `loadGLTF` and `cloneScene` from `lib/three/gltfCache` instead (no twin needed); eleven files go.
+  - `loadModel` from `universe/planets.js`: take `loadGLTF` and `cloneScene` from `lib/three/gltfCache` instead (no twin needed); ten files go.
   - `PARTY`, `loadPartyFigure`, `loadSharedFigure` from `universe/footScene.js`: the figure-loading slice of footScene as a GLSL-free file, with twins of its two matte-figure patches and its ShaderMaterial; fifteen files go (footScene, portalFx, and furnish's landings).
   - `rickmorty/portal/meshyCast.js` (with `toon.js` and `wardrobe/dress.js`), `rickmorty/cruiser3d.js`'s own patch, `universe/livery.js` (ships' paint), `universe/landings/models.js`'s `sizeFor` (pure), `lib/three/portalFx.js`, and main's `lib/three/fx/marks.js`, `fx/push.js` and `combat/bolts.js`: twins.
   - Two twins under the line: **dust** (its cards smaller and softer; scaling by 1.4 gets 34 dB, so the instanced billboard's size differs somewhere) and **matcap** (the baked sphere brighter on the node renderer; the surface does not ask for matcaps).
