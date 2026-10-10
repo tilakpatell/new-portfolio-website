@@ -2,11 +2,106 @@
 
 The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-design.md` (the pipeline: fetch, import, the rig, the phases; PR #802) and `docs/superpowers/specs/2026-10-10-bf2017-levels-lighting-sabers-design.md` (the levels, the light, the planet skins, the sabers, and the review of the first design). The bucket’s numbers, `docs/superpowers/evidence/bf2017-assets/inventory.md`; the drop and its credit, `docs/assets/battlefront-2017.md`.
 
+## The fifth design: every object in the drop, used (2026-10-10, night)
+
+`docs/superpowers/specs/2026-10-10-bf2017-every-asset-design.md`, with eleven plans `docs/superpowers/plans/2026-10-10-bf2017-every-asset-lane{Z,E0,E1,E2,E3,E4,E5,O,Q,M,A}-*.md`. Written from a census of the desktop export's manifests, a live listing of the bucket and `origin/main` at `ff7bee49` (#842). The owner asked that every asset on the bucket be used by the site, added to all the worlds where it fits, and implemented by Opus 5.5.
+
+**What the census found.** The bucket holds 13,871 models (about 750 used), 74 maps (one used; 44 usable under the era rule), 39 terrains (one used), 10,530 Havok sets and 12,941 collision meshes (Hoth's cells; the collision meshes never), 10,270 clips on 59 skeletons (eleven skeletons in part), 61 animation tracks (none), 116 films, 23 fonts, 702 icons and 19,482 strings (none on the site), every map's placed lights, decals, actors, vehicle spawns and effect spawns (none drawn; lane R's `placed.js` can draw `lights.json` but no world has one), the other levels' probes and far shadows, the sky panoramas, the UI bitmaps and the shader presets' detail maps (none). The design makes "all" a number: a ledger that gives every object a consumer, an owner lane or a rule, and a CI check that fails while any object has none.
+
+| Lane | What | Needs first | Session | Branch | Merged |
+|---|---|---|---|---|---|
+| Z | the coverage ledger: `scripts/bf2017-coverage.mjs`, the owners table, `--check` in CI, the four counts in this table | nothing | `session_018HdseSL3U68899P3D9oWmP` | `claude/bf2017-z-ledger` | #853 |
+| E0 | the level factory: packs out of git, districts and interiors, every map part beside `level.json` (lights, decals, actors, vehicles, effects, tracks, probes, far shadow, scatter table, shapes, collision solids), the detail maps; Endor on Endor_01, Echo Base's inside | nothing | | `claude/bf2017-e0-factory` | |
+| E1 | Tatooine (Mos Eisley, the dunes, Jabba's palace and its inside), Yavin | E0 | | `claude/bf2017-e1-tatooine-yavin` | |
+| E2 | Naboo (Theed under its dusk and lanterns, the hangar, the plains, the palace), Kamino | E0 | | `claude/bf2017-e2-naboo-kamino` | |
+| E3 | Kashyyyk, Geonosis, Endor's village, research station and bunker | E0 | | `claude/bf2017-e3-kashyyyk-geonosis-endor` | |
+| E4 | Scarif, Cloud City, Hoth's outpost, the Death Star inside on DeathStar02_01 | E0 | | `claude/bf2017-e4-scarif-bespin-deathstar` | |
+| E5 | Felucia, Kessel, Sullust, Pillio, Vardos, Fondor as systems with skins and surfaces | E0 | | `claude/bf2017-e5-new-systems` | |
+| O | the object library (every placeable set indexed), the seven mapless worlds dressed by biome, `GAME_FOR` props, the game's clouds, the living world | nothing | | `claude/bf2017-o-library` | |
+| Q | the space levels as set pieces, the capitals, the asteroids on their tracks, the sky panoramas, the map's globes | nothing (#793 read) | | `claude/bf2017-q-space` | |
+| M | the films on the cards, veils and briefings; the tiles and tutorials for the game's world; the lava film; the open fonts, the icons, the strings, the UI widgets, the hero stage | nothing | `session_017cZLBzaqCrPFfg6zezARLt` | `claude/bf2017-m-frontend` | done, below |
+| A | every clip: stances, additive aims and hits, cover and awareness, emotes and end of round, the cinematics player, first person, riders and crews, the band, the fauna rigs | nothing (#839's B, Y, W kept off) | | `claude/bf2017-a-clips` | |
+
+Coverage (from lane Z's ledger, `docs/superpowers/evidence/bf2017-coverage/`, refreshed by every lane's PR): used · owned · excluded · not-uploaded · unowned =
+
+| when | rows | used | owned | excluded | not-uploaded | unowned |
+| --- | --: | --: | --: | --: | --: | --: |
+| 2026-10-10, lane Z (the bucket: 113,463 objects listed, 83,983 records) | 80,837 | 2,428 | 59,904 | 13,837 | 4,668 | 0 |
+| 2026-10-10, lane M (films 83 used, 31 excluded; fonts 7 used, 16 excluded (licence-pending); icons 626 used; strings used) | 80,837 | 3,525 | 58,602 | 14,066 | 4,644 | 0 |
+
+**The first finding: what no lane named.** When the ledger was first written, 18,377 of its rows were `unowned`: no plan of this design or the running ones named them, and none of the merged lanes (K, L, G, V, F, P0, P1, P2, P4, R, 0, the sabers' X, the game's 1 and 2) had consumed them. None is hidden: each is given in `scripts/lib/bf2017-owners.mjs` to the lane that takes it, marked `finding: true`, and counted apart in `ledger.md`. By lane and part:
+
+| lane | what it takes | models | textures | data groups |
+| --- | --- | --: | --: | --: |
+| E | every level's own meshes and maps under `levels/`, `a3/`, `s*/` (the campaign's and the seasons' maps), the light (probes, far shadows, lighting meshes), `systems/` (the sky and post-process tables), the prefabs, the cinematics' sets (as districts); the levels' records, the shader variations, the LOD groups | 163 | 9,471 | 697 |
+| O | the seasons' object sets (`s2/objects`, `s3/objects`, `s5_1/objects`, `a3/objects` …) and `levels/clouds` | 2,036 | 1,063 | |
+| A | the animations' and cinematics' records and the heroes' ragdoll blueprints (A imports no models: its plan's rigs and clips only) | | | 51 |
+| T (#839) | the cast's outfits, heads and body parts not yet imported (the outfit variations), and the characters' records | 578 | 1,230 | 25 |
+| 5 (#812) | the weapons, gadgets and hilts not yet imported (`gameplay/equipment`, `gameplay/kits`); the galaxy's loadout takes them through the same import (lane 1, the weapons' rules, has merged, so it cannot own rows) | 321 | 358 | |
+| space (this design's Q) | the capital ships under `gameplay/vehicles` and `gameplay/ntcapitalships` | 359 | 205 | |
+| X (#836) | the effects' meshes and sheets (`fx/`, `a3/fx`) and their records | 309 | 25 | 26 |
+| M | the UI's art outside `textures/ui` and the front end's stages; the localisation, `media2` and `ui_*` records | | 456 | 85 |
+| 4 (#812) | the ground and air vehicles not yet imported (`gameplay/vehicles`) | 381 | 319 | |
+| 6 (#812) | the other data: prefab and logic blueprints, reports, settings | | | 139 |
+| 7 (#812) | the online, persistence, telemetry and platform records | | | 80 |
+
+The surfaces design (#844), landed beside this one, is in the owners table under its own names (`surfaces-Q1` to `surfaces-Q6`; this design's space lane is `space` there, so the two Qs never meet), ahead of this design's lanes where both consume a row: Q1 `materials.jsonl` and `textures/shaders/**`, Q3 the Enlighten rows, Q4 every map's `maps.decals` row (not E0's) and the `FX/Decals` and `_decals` sheets, Q6 the `T_CC_*` colour cubes, `lighting/lut/` and the painted skies. Q2's ground layer maps are named only inside the scatter tables, so they stay the scatter rows' lane N until Q2 lists them. The bucket holds no Enlighten atlas textures yet (its 118 `enlighten` objects are proxy meshes and records); `textures.jsonl` lists the 200 `*_staticIrradianceTexture` sources, never queued, and the ledger has them `not-uploaded` (lane D's upload pass) until they land, when they become Q3's. The owner holds the licence for every font, so there is no `licence` rule: the 23 fonts are lane M's.
+
+The rule is the owners table's `finding: true` entries, first match wins: a folder of a level (`levels/`, `a3/`, `s*/`, `addons/`), the light and the sky → E; any `objects/` set and `levels/clouds` → O; `ui/` and the front-end stages → M; capital-ship names under `gameplay/vehicles` and `gameplay/ntcapitalships` → space; other `gameplay/vehicles` → 4; `gameplay/equipment` and `gameplay/kits` → 5; `characters/` → T; `cinematics/` → E; the animations' and cinematics' records → A; `fx/` → X; `data/` by top folder (online and platform → 7; the rest → 6). The ten largest prefixes, which tell E, O, T and the game's lane 5 how far their scope grew:
+
+| prefix | lane | rows |
+| --- | --- | --: |
+| `levels/sp` | E | 3,063 |
+| `levels/mp` | E | 2,766 |
+| `s6_2/geonosis_02` (its level meshes and maps) | E | 1,021 |
+| `a3/levels` | E | 847 |
+| `gameplay/equipment` | 5 | 625 |
+| `s3/objects` | O | 620 |
+| `gameplay/vehicles` (the capitals) | space | 562 |
+| `s6_2/geonosis_02` (its object sets) | O | 520 |
+| `gameplay/vehicles` (the rest) | 4 | 472 |
+| `characters/heads` | T | 455 |
+
+A lane that merges sets its `merged` in `LANES`; from then `npm run coverage:bf2017` fails on every row it still owns and has not used, which is the next design's finding.
+
+**Corrections to this file**, in the spec's §7: lane L's "then Endor" is E0's; the placed lights are drawable today and E runs `bf2017-lights.mjs` per world; the fonts, icons and strings are lane M's for the whole site, the game's lane 5 consumes `src/lib/bf2017/ui/`; the collision meshes and the animation tracks had no consumer in any design and have one now (E0, Q).
+
+### Lane M: the films, the front end, the fonts, the icons, the strings and the UI (done)
+
+One script cuts all of it, `node scripts/bf2017-ui.mjs films|icons|fonts|strings|bitmaps|all [--dry]` (pure parts and tests in `scripts/lib/bf2017-ui.mjs`); the site reads it through `src/lib/bf2017/{films,icons,strings}.js`, `fonts.css` and `ui/`, and two kit parts, `src/runtime/hud/Film.jsx` and `GameIcon.jsx`.
+
+- **Films**: 83 of the drop's 116 published to `site-assets` as the drop's WebM, untouched (2.6 GB; `tier: 'film'` in `galaxyAssets.json`, through `assets-publish.mjs`'s `gameFiles`, which now walks `public/films/bf2017/`), each with a committed poster (`ffmpeg -ss 1`, WebP, 640 wide) and, for the 26 campaign films, the game's English lines as WebVTT captions (the `.ssa` scripts name string keys; 248 of 249 resolve). `src/data/bf2017/films.json` lists only what is published. The planets' 22 loading films play on the system card (`GalaxyPanel`) and the landing veil (`SurfaceView`'s `LoadingVeil`, which takes a `backdrop` now, with one of the game's loading hints); a system with none (Nevarro, Mandalore, Sorgan, Lothal, Coruscant, Dagobah, Mustafar, Alderaan) keeps its card as it was. The campaign's cinematics are the briefings on `/galaxy/<world>/mission` (`Briefing.jsx`: Endor 7 scenes, Naboo 5, Bespin 3; Fondor, Pillio, Vardos and Sullust's wait for lane E5's systems and light up by their `level`), muted, captioned, skippable. The 24 menu tiles, 8 tutorials and the logo are `tilesFor`, `tutorials()` and `logo()` for the game's world; the galaxy card shows the multiplayer tile where a world has a galactic assault. A film plays only while on screen, muted, never on a saver connection or with reduced motion (`mayPlay`).
+- **Not published** (33): the era rule's (M1TAK, M4JAK, M5STA and its NIS, the Crait, D'Qar, Jakku, Starkiller, Takodana, Resurgent and Paintball films) and **the whole of act 3, Resurrection** (A3_*: thirty years on, the First Order's rise; stricter than the plan's list, by the autopilot's rule); the two VP6 effect textures nothing asks for (`MT_CapitalShipDestruction`, the Death Star II explosion). `films.json`'s `excluded` names each with its reason.
+- **The one re-encode**: `MT_Volcano2` is VP6 in Matroska, which no browser decodes, so it is cut once to VP9 (same 1024² frames, 30 fps, 60 s, 9.8 MB). It flows in Mustafar's lava rivers on high and ultra (`lavaFilm.js` → `water.js`'s `flow`; `sites/edge.js`'s `water.video: 'volcano'`), the shader's own lava under it, flipped as the game stores it.
+- **Icons**: 626 of 702 in 39 sprites (`public/ui/bf2017/<family>.svg`, white made `currentColor`), 76 of the sequel era left out; `icon(name)` by the game's name or the site's (`ICON_FOR`: guns, heroes' weapons, their abilities by the game's slot, classes, sides, vehicles); null where the game has none. The loadout's cards and gun list and the HUD's ability buttons draw them. The galaxy map's markers are drawn in 3D and still use their own.
+- **Strings**: `src/data/bf2017/strings.json` holds lane 0's 69 and the families the galaxy reads (1,043); the whole English table (19,482) is under `public/ui/bf2017/strings/<family>.json` (`loadFamily`). `text(key, args)` fills `{0}`, `{0:d}`, `{0:f.2}`, `%s`; a missing key gives the key.
+- **UI bitmaps**: none in the bucket (`web/textures/ui/` has `art/buttons` and `resources/cube` only): the 111 the site would cut (portraits, mode and side tiles, the HUD's art) are the desktop's never-queued textures (`not-uploaded` in the ledger). `bf2017-ui.mjs bitmaps` cuts them the day they land; `bitmaps.json` says how many are missing.
+- **The hero stage**: lane E0's `--inside` is not on `main`, so the stage is a kit (`node scripts/bf2017-kit.mjs frontendstage --pieces 'levels/frontend/objects/nowhere*'`, 2 pieces, 336 KB, published): the Frontend level's Backdrop_01 dome and pill lights, placed as `frontend.bin` places them, lit by `VE_FrostEnd` (`node scripts/bf2017-light.mjs frontend --map levels/frontend/frontend --main Levels/Frontend/Lighting/VE_FrostEnd`). The Outfit tab stands the hero on it (`heroStage.js`, `HeroStage.jsx`) in lane A's `frontend.idle` when its packs carry it, else its idle; on low, or for a hero not on the game's skeleton, the flat panel as before. Lane A's branch had not landed.
+- **Removed**: lane 0's four HUD fonts under `public/battlefront/fonts/` (Linotype Univers and RaxusPrime, which are EA's licences, not the site's); `copyUiAssets` copies only open faces now.
+
+**The fonts' licences** (`public/fonts/bf2017/README.md`, each licence's text beside the files):
+
+| face | files | licence (as each file's name table states it) | ships |
+| --- | --- | --- | --- |
+| Roboto | `Roboto-Regular`, `Roboto-MediumItalic` | Apache 2.0 (Google) | yes |
+| Noto Sans CJK | `NotoSansCJKsc-Regular`, `NotoSansCJKkr-Regular` | SIL OFL 1.1 (Adobe, for Google's Noto) | yes, loaded only for CJK glyphs |
+| Noto Kufi Arabic | `NotoKufiArabic-Regular` | SIL OFL 1.1 (Google) | yes, loaded only for Arabic glyphs |
+| Cuprum | `Cuprum-Regular`, `Cuprum-Bold` | SIL OFL 1.1 (Jovanny Lemonad) | yes: the HUD's face, in Univers Condensed's place |
+| Aurebesh (the game's) | `Aurebesh.ttf` | none in the file; fsType 1 (restricted embedding); made in Fontographer 3.5, origin unknown | no: the site's own OFL Aurebesh (SilvinoR's, `public/fonts/aurebesh/`) is `--font-aurebesh`. The owner may know its maker. |
+| Linotype Univers | `LinotypeUnivers-*` (5), `LT_UniversCond820`, `UniversLT-65Bold` | commercial (Linotype, Monotype) | no |
+| DFP HS Gothic | `DFPHSGothic-W5`, `-W7` | commercial (DynaComware) | no |
+| AR Yenti | `ARYenti*` (2) | commercial (Arphic) | no |
+| News Gothic | `NewsGothicRomanBT` | commercial (Bitstream) | no |
+| RaxusPrime | `RaxusPrimeNumericalMonospace_*` (3) | none in the file; the game's own | no |
+
+Checking it: `npx vitest run scripts/lib/bf2017-ui.test.mjs src/lib/bf2017 src/runtime/hud/film.test.jsx src/components/galaxy/Briefing.test.jsx src/components/galaxy/surface/lavaFilm.test.js src/components/galaxy/surface/water.test.js src/components/galaxy/surface/heroStage.test.js src/components/galaxy/surface/HeroStage.test.jsx`; shots in `docs/superpowers/evidence/bf2017-frontend/`.
+
 ## Done
 
 - **The design, the inventory and the plans** (PR #802, carried by the phase 0 PR).
 - **Phase 0, the tools** (PR #805): the decision entry and the assets page; `scripts/bf2017-fetch.mjs` and `scripts/bf2017-import.mjs` over five tested modules under `scripts/lib/` (`bf2017-manifest`, `bf2017-paths`, `bf2017-textures`, `rig-parts`, `catalog-write`); the committed fixture (`scripts/fixtures/bf2017/`, 39.6 KB); the empty `catalog/bf2017.js`, last in `GROUPS`. Nothing on the site changed. Tried on two real models and nothing kept: Luke’s hilt (920 triangles, 212 KB, the shot in `docs/superpowers/evidence/bf2017-phase0/`) and Luke’s rotj body with `--rig` (the whole rig kept, 254 joints with fingers, face and physics; LOD2 706 KB, LOD4 236 KB; drawn in its bind pose).
 - **The second design and four more plans** (this PR): lanes L, G, K and X below, and the corrections to the first design (its section "The review of #802").
+- **The surfaces design** (2026-10-10 night, `HANDOFF-bf2017-surfaces.md`): how the game makes its picture from these assets and the six layers the site lacks (the surface shader's parameters, which are in `web/materials.jsonl`; the ground's layers; the baked Enlighten atlases, which exist; weathering and decals; the texture quality; the picture); lanes Q1 to Q6 there.
 - **On the desktop, 2026-10-10 00:20**: the 102 planet skins encoded (KTX2 at up to 4096, hybrid) and linked raw, both queued; 164 clips with `~` in their names (refused by Supabase as `InvalidKey`) renamed `-`, `web/anims.jsonl` rewritten and re-uploaded; 119 physics files queued. The pipeline’s upload passes pick them up (`logs\pipeline_status.txt`).
 - **On the desktop, 2026-10-10 morning: lights, effects, decals, creatures, vehicles and terrain scattering**, in the bucket under `web/maps/` (format: `web/maps/README.md`):
   - every map now has `maps/<level>.extras.json`: 49,632 placed lights (spot, sphere, rect, tube; colour, intensity in lumens, range, cone, cookie, per sub-level), 52,027 effect spawns (the `EffectBlueprint` name), 13,984 decals with their textures, and the sun, sky, fog, tonemap and colour grading of each VisualEnvironment. Hoth: 1,234 lights, 648 effects. Spot and rect lights shine along local -Z;
