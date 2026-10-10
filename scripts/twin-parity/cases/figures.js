@@ -3,10 +3,10 @@
 // clipped at its plane) against portalFxNodes.js's, and footFigures.js's
 // figures built from shapes (no GLSL of their own) on either renderer.
 import * as THREE from 'three';
-import * as PO from '@src/lib/three/portalFx.js';
-import * as PN from '@src/lib/three/portalFxNodes.js';
-import { built } from '@src/components/universe/footFigures.js';
-import { METRE } from '@src/components/universe/foot.js';
+import * as PO from '../../../src/lib/three/portalFx.js';
+import * as PN from '../../../src/lib/three/portalFxNodes.js';
+import { built } from '../../../src/components/universe/footFigures.js';
+import { METRE } from '../../../src/components/universe/foot.js';
 
 // (the swallow draws where the cut lands, the motes and their sizes at
 // random: the same draws on both sides. A node material makes more objects

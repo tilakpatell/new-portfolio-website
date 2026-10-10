@@ -5,16 +5,16 @@
 // bucket), bolts.js's streaks and flashes, and the hvv arena's wall
 // (hvvScene.js's GLSL, copied here as it builds it, against nodes/hvv.js).
 import * as THREE from 'three';
-import * as LO from '@src/components/universe/livery.js';
-import * as LN from '@src/components/universe/liveryNodes.js';
-import * as MO from '@src/lib/three/fx/marks.js';
-import * as MN from '@src/lib/three/fx/marksNodes.js';
-import * as BO from '@src/lib/three/combat/bolts.js';
-import * as BN from '@src/lib/three/combat/boltsNodes.js';
-import * as PO from '@src/lib/three/fx/push.js';
-import * as PN from '@src/lib/three/fx/pushNodes.js';
-import { wallGeometry } from '@src/components/galaxy/surface/missions/hvvScene.js';
-import { wallMaterial } from '@src/components/galaxy/surface/nodes/hvv.js';
+import * as LO from '../../../src/components/universe/livery.js';
+import * as LN from '../../../src/components/universe/liveryNodes.js';
+import * as MO from '../../../src/lib/three/fx/marks.js';
+import * as MN from '../../../src/lib/three/fx/marksNodes.js';
+import * as BO from '../../../src/lib/three/combat/bolts.js';
+import * as BN from '../../../src/lib/three/combat/boltsNodes.js';
+import * as PO from '../../../src/lib/three/fx/push.js';
+import * as PN from '../../../src/lib/three/fx/pushNodes.js';
+import { wallGeometry } from '../../../src/components/galaxy/surface/missions/hvvScene.js';
+import { wallMaterial } from '../../../src/components/galaxy/surface/nodes/hvv.js';
 
 // a hull's texture: plain grey panels, a red stripe, a dark vent
 const hullMap = () => {

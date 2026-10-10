@@ -3,17 +3,17 @@
 // the GLSL original and once with its twin. The cast and the cruiser are
 // the site's own models (public/games/meshy), loaded the same on both sides.
 import * as THREE from 'three';
-import * as TO from '@src/components/rickmorty/portal/toon.js';
-import * as TN from '@src/components/rickmorty/portal/toonNodes.js';
-import * as MO from '@src/components/rickmorty/portal/meshyCast.js';
-import * as MN from '@src/components/rickmorty/portal/meshyCastNodes.js';
-import * as DO from '@src/components/rickmorty/wardrobe/dress.js';
-import * as DN from '@src/components/rickmorty/wardrobe/dressNodes.js';
-import * as CO from '@src/components/rickmorty/cruiser3d.js';
-import * as CN from '@src/components/rickmorty/cruiser3dNodes.js';
-import * as IO from '@src/lib/three/ink.js';
-import * as IN from '@src/lib/three/inkNodes.js';
-import { readLooks } from '@src/components/rickmorty/wardrobe/looks.js';
+import * as TO from '../../../src/components/rickmorty/portal/toon.js';
+import * as TN from '../../../src/components/rickmorty/portal/toonNodes.js';
+import * as MO from '../../../src/components/rickmorty/portal/meshyCast.js';
+import * as MN from '../../../src/components/rickmorty/portal/meshyCastNodes.js';
+import * as DO from '../../../src/components/rickmorty/wardrobe/dress.js';
+import * as DN from '../../../src/components/rickmorty/wardrobe/dressNodes.js';
+import * as CO from '../../../src/components/rickmorty/cruiser3d.js';
+import * as CN from '../../../src/components/rickmorty/cruiser3dNodes.js';
+import * as IO from '../../../src/lib/three/ink.js';
+import * as IN from '../../../src/lib/three/inkNodes.js';
+import { readLooks } from '../../../src/components/rickmorty/wardrobe/looks.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const pair = (make, O, N) => ({ node: make(N), classic: make(O) });
