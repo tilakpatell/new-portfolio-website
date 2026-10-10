@@ -115,6 +115,8 @@ A planet spec (`planetSpec.js`, pure, from a planet id: the Expanse's `makeSecto
 }
 ```
 
+Every world's ground is the fiction's: `docs/research/2026-10-09-planet-geographies.md` gives each of the 50 its biomes, POIs, palette and clutter, and the flight's ground round a walkable site reuses that site's layers so it is recognisably the same place. A planet type is three to five biomes, not one, and uses every layer `layers.js` has (swell, hills, dunes, mesas, ridges, mountains, channels, island, level): the ice world has wind-scoured plains, a ridge range of 160 to 260 m over a raised base, a glacier field with crevasse channels and a frozen sea with islands; the desert has dune seas, mesa country, canyon land and salt flats; rock has broken highlands, crater fields (negative islands) and rolling regolith; lava has ridged rock cut by channels, a caldera and cinder plains; the stylised types have rounded hills and warped `pingpong` plateaus; the ocean an archipelago and a continent edge of mountains. Each biome has its own `base`, so the blend band between two is a slope you fly down, never a step. The tables live in `planetSpec.js` (or a `tables.js` beside it), and `field.test.js` pins every type finite, within `[−200, 1200]`, and nowhere steeper than 60 m over 4 m outside a POI's edge.
+
 `biomeWeights(spec, x, z)` samples two warped noises (`noiseFor(seed, climate)` and `noiseFor(seed + 1, climate)`), maps them to `[0, 1]`, and for each biome takes `w = 1 − smoothstep(reach × 0.6, reach, distance((t, m), biome.at))`, then normalises so the weights sum to 1 (a point outside every reach falls back to the first biome). `heightAt(x, z) = Σ wᵢ (biomeᵢ.base + fieldAt({ seed, relief: biomeᵢ.relief }, x, z))`, then `flatten(heightAt, spec.pois)`.
 
 `flats.js` is `levelled` moved and renamed; its tests move with it (`terrain.test.js` keeps its cases through the import). The signature stays `flatten(raw, flats = []) → (x, z) → metres`; a flat is `{ at: [x, z], r, edge?, h? }`. Inside `r` the answer is `h` exactly: the test asserts `heightAt(poi.at[0], poi.at[1]) === poi.h` and the same at `r × 0.99`, and that at `r + edge` the raw field is back.
@@ -257,7 +259,7 @@ create extension if not exists btree_gist;
 
 -- the planets a thing may be built on (50 at launch: supabase/seed.sql)
 create table if not exists public.planets (
-  id   text primary key check (id ~ '^[a-z0-9:_,-]{1,64}$'),
+  id   text primary key check (id ~ '^[A-Za-z0-9:_,-]{1,64}$'),
   name text not null,
   type text not null,
   seed text not null
@@ -307,7 +309,7 @@ create trigger world_entities_touch before update on public.world_entities for e
 create or replace function public.check_placement() returns trigger language plpgsql as $$
 declare cap constant integer := 200;
 begin
-  if exists (select 1 from public.pois p where p.planet_id = new.planet_id and ST_DWithin(p.geom, new.geom, p.r)) then
+  if exists (select 1 from public.pois p where p.planet_id = new.planet_id and ST_DWithin(p.geom, ST_MakePoint(new.x, new.z), p.r)) then
     raise exception 'inside a point of interest' using errcode = 'check_violation';
   end if;
   if (select count(*) from public.world_entities e where e.owner = new.owner and e.planet_id = new.planet_id) >= cap then
@@ -377,7 +379,7 @@ grant execute on function public.damage_entity(uuid, integer) to authenticated;
 alter publication supabase_realtime add table public.world_entities;
 ```
 
-Notes the implementer keeps: `ST_MakePoint` is immutable, so the generated column is allowed; `ST_DWithin` on SRID 0 is in the table's own units (metres); the composite GiST needs `btree_gist`; anonymous users sign in through `supabase.auth.signInAnonymously()` and are role `authenticated` (enable anonymous sign-ins in the project's Auth settings); `security invoker` on the RPC means the read policy applies; the rate limit in `damage_entity` is per caller, not per socket, which is the right side of the trust line for a public anon key.
+Notes the implementer keeps: a stored generated column is still NULL in a `BEFORE` trigger, so `check_placement` makes the point from `new.x, new.z` (repaired by `20261009000100_placement_reads_x_z.sql`); `ST_MakePoint` is immutable, so the generated column is allowed; `ST_DWithin` on SRID 0 is in the table's own units (metres); the composite GiST needs `btree_gist`; anonymous users sign in through `supabase.auth.signInAnonymously()` and are role `authenticated` (enable anonymous sign-ins in the project's Auth settings); `security invoker` on the RPC means the read policy applies; the rate limit in `damage_entity` is per caller, not per socket, which is the right side of the trust line for a public anon key.
 
 ### The loader (`entityLoader.js`)
 
@@ -545,4 +547,38 @@ A, B and C touch disjoint files (A: `src/lib/land/`, `src/components/expanse/fli
 
 - `NET_CELL = 2048` and a radius of 1 (a 6 km square heard and asked for) suit a ship at 300 m/s with poses at 10 Hz; lane D measures how many poses a client takes on a busy planet and may widen the radius to 2 for the fastest ships.
 - Supabase's free tier (500 MB, 2 GB egress, 200 concurrent realtime peers) is enough for the launch; the decision entry says what reopens it.
-- The 50 planets are the 8 authored ones with ids (`hoth` among them) and 42 Expanse planets by id, listed in `planetSpec.js`'s `PLANETS` and written to `supabase/seed.sql` by `scripts/supabase-seed.mjs`; a planet not in the table cannot be built on (the foreign key), which is the point.
+- The 50 planets are every world the site has that is a planet, each with its ground from the fiction (`docs/research/2026-10-09-planet-geographies.md`): the galaxy's 17 landable systems, the Rick and Morty sector's 10 moons, the universe map's 10 fandom planets, and 13 Expanse planets by id; listed in `planetSpec.js`'s `PLANETS` and written to `supabase/seed.sql` (with each world's POIs into `pois`) by `scripts/supabase-seed.mjs`; a planet not in the table cannot be built on (the foreign key), which is the point.
+- Three field options the roster needs, added to `planetField` and `layers.js` by lane A: `step` (heights snapped to a grid of that many metres: the pixel world), a `blocks` layer (`{ type: 'blocks', cell, gap, hMin, hMax, cover }`: flat-topped towers on a grid, seeded per cell, for the city worlds), and `soft: true` (a cloud deck: the ground is fog, never a crash).
+
+## Pillar 4: a living planet (added 2026-10-09)
+
+The owner's ask: landmarks from the asset packs, a map, and each planet populated as its fiction is, with ships in the air, animals and people by the planet's kind (a dead rock, a wild world, a settled one, a city, a hostile garrison), and things happening as the ground generates, as Minecraft's structures and mobs do. The per-world tables are `docs/research/2026-10-09-planet-geographies.md`, “The life of each world”.
+
+### Libraries
+
+No new ones. The repo decided against Yuka, behavior3js and recast for NPCs (`2026-10-07-npc-intelligence-design.md`, “What it is not”) and built `src/lib/ai/` (utility, trees, perception, steering, squads, social, needs: pure, tested, in use by the galaxy's surfaces and the universe's hunters); it is the robust choice because it already runs under a dozen NPC systems and is tested in Node. Models come from the packs already committed (`galaxy/surface/catalog`, the Quaternius kits through `lib/three/kit.js`, the landings' models) and gen3d for anything missing; the three terrain repositories the owner pointed at gave techniques (above), and FastNoiseLite and supabase-js are in.
+
+### Decisions
+
+11. **Two clocks, one seed.** What is *placed* (landmarks, wrecks, camps, herds' homes, air routes) is seeded per 2 km cell from the planet seed and the cell, exactly as `galaxy/surface/ground/population.js` seeds a cell's roster, so every pilot sees the same things in the same places with nothing stored. What *happens* (a storm, a raid, a launch, a migration) is rolled by a director on a clock, as `universe/director.js` rolls its events, and *announced on the room* (`event { id, kind, at, t, seed }`, flightProtocol.js) so pilots in the same cells see the same event at the same place; a pilot who joins mid-event is told it in the next `hi`.
+12. **A planet has a kind and a cast.** `lifeTables.js` (pure, beside `planetTables.js`) gives each world `{ kinds: by biome, air: [...], ground: [...], occurrences: [...], events: [...] }` from the note's table; an Expanse planet derives its row from `makeSector`'s `faction`, `traffic` and `hazard`. Density is per km² at mid, halved on low, and capped per cell (`LIFE_CAP = { air: 12, ground: 48, occurrences: 6 }` loaded cells round the ship at radius 2).
+13. **Life is a second streamer on the same cells.** `createLife` (pure) runs a `createChunkGrid` of its own at `NET_CELL` with radius 2 and, for each loaded cell, makes the cell's roster (`rosterFor(spec, cellKey) → { air, ground, occurrences }`) from the seed, lets it go behind, keeps per-visit state (dead, moved) by id as `population.js` does, and gives the scene `{ make, drop }` lists; brains run on `src/lib/ai` (steer for flocks and herds, utility for patrols and hostiles, squad for raids); hostiles use `galaxy/surface/hostiles.js`'s bursts and strafes.
+14. **Air traffic is routes, not random.** A route is a seeded polyline between two POIs (or a POI and the cell's edge) at an altitude band per ship kind; ships fly it on a loop at the kind's speed; a patrol kind is a route with a `scramble` radius round a hostile POI: within it, two ships break off and hunt you with the universe's `hunterRules` shape. Everything in the air is instanced per kind (the universe's ship pools) and the wedge stands in for a kind with no model yet.
+15. **Occurrences are landmarks with a rule.** A wreck, a cave, a camp or a beacon is a placement (lane E's landmark kit) plus a pure rule (`occurrences.js`): a camp is hostile within its radius, a beacon gives a toast and a map marker, a cave is a pit with something in it, a wreck has a salvage pickup (the galaxy's pickups).
+16. **The map is drawn from the field, not stored.** The worker returns, with each depth-3 leaf (2 km), a 32 × 32 raster of biome index and height; `map.js` keeps them in a `Map<cellKey, raster>` and draws the minimap and the full map from them, POIs from the spec, pilots from the room, built things from the loader, occurrences from the life streamer.
+17. **Robust by construction.** Every cap is a constant in one table; a roster with a non-finite position is refused and the cell re-rolled once with a `console.warn`; a brain that throws is removed from the cell for the visit, never the frame loop; events time out (`ttl`) and are cleared on leaving the planet; an announced event from a peer is believed only within `NET_CELL × 3` of its `at` and with a known kind; the per-frame budget for life (`LIFE_MS = 2` on mid) is measured with `performance.now()` and brains are stepped round-robin when it is spent.
+
+### Files
+
+```
+src/lib/land/flight/lifeTables.js        LIFE[planetId] | lifeFor(spec, sectorPlanet)
+src/lib/land/flight/roster.js            rosterFor(spec, life, cellKey, tier) → { air, ground, occurrences } (pure, seeded)
+src/lib/land/flight/routes.js            routesFor(spec, life, cellKey) → [{ id, kind, points, alt, speed, scramble? }]
+src/lib/land/flight/occurrences.js       OCCURRENCES: { kind → { place, rule } }; applyRule(occ, ship, dt) → effects
+src/lib/land/flight/director.js          createFlightDirector({ life, rand, now }) → { update(dt, ctx) → events, announce(ev), receive(ev) }
+src/lib/land/flight/mapRaster.js         rasterFor(field, leaf, n = 32) → { biome: Uint8Array, height: Float32Array } (in the worker)
+src/components/expanse/flight/life.js    createLife(scene, { rt, spec, tier, room }) : the streamer, the pools, the brains
+src/components/expanse/flight/air.js     the ships in the air: pools per kind, routes, scrambles
+src/components/expanse/flight/map.js     the minimap and the full map (a canvas in the HUD kit's frame)
+src/components/expanse/flight/landmarks.js  POI kits: placements from galaxy/surface/sites' `things` and `places` where a site exists, lane E's own lists where none
+```

@@ -32,6 +32,12 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # the build as the deploy makes it with the asset bucket set (a stand-in
+      # URL: nothing is fetched), then as it is without, which the checks read
+      - run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_ASSET_BASE: https://assets.invalid/storage/v1/object/public/assets
       - run: npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -142,12 +148,20 @@ jobs:
         run: |
           RELAY=fake CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" node scripts/flyto-check.mjs 2>&1 | tee flyto-check.log
 
+      # the shared world over a planet (online-check.mjs --fly): two pilots
+      # heard by cell, a turret built, kept over a reload and shot to nothing,
+      # the durable world faked in the check (scripts/lib/fake-durable.mjs)
+      - if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          RELAY=fake CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" node scripts/online-check.mjs --fly 2>&1 | tee fly-check.log
+
       # what each said, as a note on the check (readable where the log isn't)
       - if: always()
         shell: bash
         run: |
-          for check in online-check flyto-check; do
+          for check in online-check flyto-check fly-check; do
             [ -f "$check.log" ] || continue
-            lines=$(grep -E '^(ok|FAIL|note|errors:|ALL OK|[0-9]+ FAILED|     )' "$check.log" | cut -c1-300 | sed -e 's/%/%25/g' | awk 'NR <= 40 { printf "%s%%0A", $0 }' || true)
+            lines=$(grep -E '^(ok|FAIL|note|fly:|errors:|ALL OK|[0-9]+ FAILED|     )' "$check.log" | cut -c1-300 | sed -e 's/%/%25/g' | awk 'NR <= 40 { printf "%s%%0A", $0 }' || true)
             echo "::notice title=${check}::${lines}"
           done

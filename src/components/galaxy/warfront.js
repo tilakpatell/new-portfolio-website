@@ -49,7 +49,7 @@
 //   now, allegiance, saves }) → { enter(sys, world), update(dt, t, camera, live, you) → { busy, hurt,
 //   ship?, speedCap?, kill? },
 //   hit(from, to, damage), targets, solids, bodies (shipHits.js's: the other side's fighters), setNet(client), onNet(e), battle,
-//   director, info, win(team), dispose() }
+//   director, info, win(team), respawn() → { x, y, z, heading } | null, dispose() }
 // `allegiance()` → { war, side } (allegiance.js's current). `saves`: the
 // browser's (runtime/saves.js), for the battle's save. `live`: the ship ({ x, y, z }) while it's flying, or null;
 // `you`: { shield, down } (your shields, and whether you're shot down), for the
@@ -222,6 +222,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     // piece's moments are the same for every pilot, not timed from when you came
     clock: () => sharedT(),
     losses: () => shared()?.losses ?? null,
+    // when the battle every pilot here shares ended, on the shared clock (or
+    // null), and a second on that clock as a wall second (world.js's: Scarif's Death Star in)
+    endedAt: () => shared()?.endsAt ?? null,
+    wallAt: (s) => (on ? on.start / 1000 + s - skew : null),
     event: (id) => sayEvent(id),
     points: (n) => score(n),
     tookPart: () => tookPart,
@@ -622,6 +626,14 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         out.push({ key: `f:${f.id}`, id: f.id, kind: f.kind, at: f.seen, vel: f.vel, size: f.size, side: 'foe', hit: (punch) => battle?.strike(f.id, punch) ?? null });
       }
       return out;
+    },
+    // where you come back after a death here: behind your side's line
+    // (battle.js's homeFor), while the battle's on and you've been in it on
+    // a side, as an arrival ({ x, y, z, heading }); else null (the system's own)
+    respawn() {
+      if (!battle || battle.over || !tookPart || team === null) return null;
+      const { pos, fwd } = battle.homeFor(team);
+      return { x: pos.x, y: pos.y, z: pos.z, heading: Math.atan2(-fwd.x, -fwd.z) };
     },
     get battle() {
       return battle;

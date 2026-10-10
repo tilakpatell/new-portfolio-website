@@ -204,3 +204,19 @@ The owner's direction (2026-10-10, 03:30): make the Supabase-to-game streaming r
 ## What the owner decides next
 
 The questions this design had are answered above. What is left is the nod to write the plan: `docs/superpowers/plans/2026-10-10-battlefront-2017-asset-pipeline.md`, phase 0 first (the tools, which need no textures), then phase 1 as soon as `web/textures/` holds the heroes' maps.
+
+## Departures
+
+Where phase 0’s code went another way than this page or its plan, one line each:
+
+- The manifest’s `file` paths are relative to the bucket’s `web/` (`models/…glb`), not under it: `inBucket` in `scripts/lib/bf2017-paths.mjs` adds the prefix.
+- The fetch’s and the URI parser’s tests are `bf2017-manifest.test.mjs` and `bf2017-paths.test.mjs`, not a `bf2017-fetch.test.mjs`; the fetch itself is the thin CLI over them.
+- The fixture holds two 64² PNGs, not three: the colour map and the raw `_NAM` map, rebuilt from the unpacked `__normal` and `__orm` maps by the manifest’s own recipe, so the import test runs the recipe path (`ormPng`, `normalPng`); the import still writes three maps.
+- `normalPng` rebuilds a normal’s z from x and y rather than setting B to 255, so a tilted normal keeps its length.
+- `basisu -unpack` (1.16) writes no uncompressed level for a UASTC file; `unpackKtx2` keeps the BC7 level 0, near lossless from UASTC, always as RGBA, and the import reuses an unpack across cuts (about 9 s a 2048² map otherwise).
+- A derived map is also taken from a PNG of itself (`<map>__normal.png`) when the uploader puts one there, before the recipe and the KTX2.
+- Normals are WebP like the other maps, not KTX2 UASTC: the import test pins WebP; the KTX2 call is phase 9’s (ultra), where `scripts/ktx2.mjs report` can judge it per map.
+- `--metres` defaults to the manifest’s own height (`--asis`); `--cuts` takes LOD numbers (`plain=2`); `--catalog`, `--credits` and `--unpacked` exist for the test’s sake.
+- A short sequel-era name (`rey`, `finn`, `ep7`, `ep9`) is matched only between separators, so `grey` and `osprey` pass; the longer ones anywhere in a segment.
+- The rig is kept in full with `--rig`: no prune, no rename (the owner, 2026-10-10: keep the physics and the rest so the game is accurate). The prune of section 3 was written and tried: Luke’s body lost its fingers and all 79 face bones, which its LOD2 mesh does not weight, and it was taken out. A part’s duplicate skeleton is still joined to the body’s (`scripts/lib/rig-parts.mjs`). The `grip` node goes under `Wep_Root`, else `IK_Joint_RightHand`, else at the origin, so every DICE name stays.
+- The import does not take parts by full manifest name yet: phase 1 adds it.

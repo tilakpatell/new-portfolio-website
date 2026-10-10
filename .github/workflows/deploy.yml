@@ -34,6 +34,14 @@ jobs:
       - run: npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # the durable world's project: a URL and the public anon key (RLS guards
+          # the tables). Unset, the build makes no client and the game plays without it
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # where the heavy models and textures are asked first (the Storage
+          # bucket's public URL: a variable, not a secret). Unset, every file
+          # comes from the site as before (scripts/assets-upload.mjs)
+          VITE_ASSET_BASE: ${{ vars.ASSET_BASE }}
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

@@ -9,6 +9,8 @@
 //
 //   gltfLoader({ renderer }) → the shared GLTFLoader, for modules with caches
 //                              of their own
+//   loadGltfFile(url) → Promise<gltf>: that loader's parse of one file, asked
+//                              of the asset base first (src/lib/assetBase.js)
 //   loadGltf(url, { renderer, fresh }) → Promise<{ scene, animations, gltf }
 //                              | null>: cached by URL for the page's life; with
 //                              `fresh`, `scene` is a copy to move, wrap and
@@ -25,6 +27,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { fitTextures, sharpenTree } from './textures';
+import { withFallback } from '../assetBase';
 
 let loader = null;
 let ktx2 = null; // the KTX2Loader, once something has needed it
@@ -130,11 +133,20 @@ const parsed = new Map(); // url → Promise<gltf | null>
 function fetchGltf(url, renderer) {
   const files = new THREE.FileLoader();
   files.setResponseType('arraybuffer');
-  return files.loadAsync(url).then(async (buffer) => {
+  // (the bucket's copy where it has one: the same bytes, so the same model;
+  // resolved against the site's path, as it always was)
+  return withFallback((u) => files.loadAsync(u))(url).then(async (buffer) => {
     if (renderer && usesBasisu(buffer)) await ktx2Loader({ renderer });
     const path = THREE.LoaderUtils.extractUrlBase(url);
     return gltfLoader().parseAsync(buffer, path);
   });
+}
+
+// One file through the shared loader, uncached, for a module that keeps its
+// own: from the asset bucket where it has the file (the same bytes, so the
+// same model), else the site.
+export function loadGltfFile(url) {
+  return withFallback((u) => gltfLoader().loadAsync(u))(url);
 }
 
 // A model by URL, parsed once for the page's life (two worlds asking for the

@@ -24,4 +24,13 @@ describe('the house bloom', () => {
     group.items[2].set(0.1);
     expect(pass).toEqual({ threshold: 1.2, strength: 0.6, radius: 0.1 });
   });
+
+  it('gives a soft-knee pass a knee slider too', () => {
+    const pass = { threshold: 1.4, strength: 0.5, radius: 0, knee: 0.5 };
+    const [group] = bloomGroups(pass);
+    expect(group.items.map((it) => it.key)).toEqual(['threshold', 'knee', 'strength', 'radius']);
+    expect(group.items.find((it) => it.key === 'threshold').max).toBe(3);
+    group.items[1].set(0.25);
+    expect(pass.knee).toBe(0.25);
+  });
 });

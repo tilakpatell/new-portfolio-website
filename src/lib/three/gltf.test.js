@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { SHIP_PROFILE, tune, tuneTree, usesBasisu } from './gltf';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { SHIP_PROFILE, loadGltf, loadGltfFile, tune, tuneTree, usesBasisu } from './gltf';
+
+// (one file the bucket holds, for the asset base's case)
+vi.mock('../../data/assets-manifest.json', () => ({ default: { 'kit/crate.glb': { hash: 'aaaaaaaaaaaa', bytes: 70000 }, 'hq/models/lamp.glb': { hash: 'cccccccccccc', bytes: 70000 } } }));
 
 // a GLB with the given JSON chunk
 function glb(json) {
@@ -88,5 +92,44 @@ describe('the hero ships’ finish', () => {
     const chrome = tune({ name: 'chrome', metalness: 1 }, { metalness: 0.2 });
     expect(plastic.metalness).toBe(0.2);
     expect(chrome.metalness).toBe(1);
+  });
+});
+
+describe('a model the bucket holds', () => {
+  it('is asked of the asset base first, and of the site once the base fails', async () => {
+    const { forgetDown, isDown } = await import('../assetBase');
+    vi.stubEnv('VITE_ASSET_BASE', 'https://bucket.test/assets');
+    const asked = [];
+    const spy = vi.spyOn(THREE.FileLoader.prototype, 'loadAsync').mockImplementation((url) => {
+      asked.push(url);
+      return Promise.reject(new Error('unreachable'));
+    });
+    try {
+      expect(await loadGltf('/kit/crate.glb')).toBeNull();
+      expect(asked).toEqual(['https://bucket.test/assets/aaaaaaaaaaaa/kit/crate.glb', '/kit/crate.glb']);
+      expect(isDown()).toBe(true);
+    } finally {
+      spy.mockRestore();
+      vi.unstubAllEnvs();
+      forgetDown();
+    }
+  });
+});
+
+describe('a model a world parses itself', () => {
+  it('is asked of the asset base too, through the shared loader', async () => {
+    vi.stubEnv('VITE_ASSET_BASE', 'https://bucket.test/assets');
+    const asked = [];
+    const spy = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockImplementation(async (url) => {
+      asked.push(url);
+      return { scene: url };
+    });
+    try {
+      expect((await loadGltfFile('/hq/models/lamp.glb')).scene).toBe('https://bucket.test/assets/cccccccccccc/hq/models/lamp.glb');
+      expect((await loadGltfFile('/models/sketchfab/door.glb')).scene).toBe('/models/sketchfab/door.glb');
+    } finally {
+      spy.mockRestore();
+      vi.unstubAllEnvs();
+    }
   });
 });

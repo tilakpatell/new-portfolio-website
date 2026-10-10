@@ -14,6 +14,7 @@
 // exactly as it's drawn.
 
 import { LAYERS } from '../../../lib/land/layers.js';
+import { flatten } from '../../../lib/land/flats.js';
 import { fbm, noise2, smoothstep } from './noise';
 
 // the walkable square: HALF metres each way from the middle; you're turned
@@ -54,26 +55,9 @@ export function makeRaw(ground, { relief = 0 } = {}) {
 }
 
 // A world's flats: each { at: [x, z], r, edge, h } (h: the height it's
-// levelled to; left out, the land's own height at its middle)
-export function levelled(raw, flats = []) {
-  const pads = flats.map((f) => {
-    const edge = f.edge ?? Math.max(8, f.r * 0.6);
-    return { x: f.at[0], z: f.at[1], r: f.r, edge, reach: f.r + edge, h: f.h ?? raw(f.at[0], f.at[1]) };
-  });
-  if (!pads.length) return raw;
-  return (x, z) => {
-    let h = raw(x, z);
-    for (const p of pads) {
-      // (far off on either axis: out of its reach, without the square root)
-      if (Math.abs(x - p.x) >= p.reach || Math.abs(z - p.z) >= p.reach) continue;
-      const d = Math.hypot(x - p.x, z - p.z);
-      if (d >= p.r + p.edge) continue;
-      const w = 1 - smoothstep(p.r, p.r + p.edge, d);
-      h += (p.h - h) * w;
-    }
-    return h;
-  };
-}
+// levelled to; left out, the land's own height at its middle). The body is
+// lib/land/flats.js's, so the flight's planets level their POIs the same way
+export const levelled = flatten;
 
 // Pits dug into it: each { at: [x, z], r, depth, cone } (cone: sloping all
 // the way to the middle, as the Sarlacc's; otherwise steep-sided with a
