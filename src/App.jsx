@@ -49,6 +49,7 @@ const RmPlanet = lazy(() => import('./pages/RmPlanet'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
 const Minecraft = lazy(() => import('./pages/Minecraft'));
+const Fly = lazy(() => import('./pages/Fly'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
@@ -421,6 +422,7 @@ function Shell() {
                 <Route path="/galaxy/:system?" element={<Galaxy />} />
                 <Route path="/galaxy/:system/mission" element={<GalaxyMission />} />
                 <Route path="/galaxy/:system/surface" element={<GalaxySurface />} />
+                <Route path="/fly/:planet?" element={<Fly />} />
                 <Route path="/music" element={<Music />} />
                 <Route path="/middle-earth/:place?" element={<MiddleEarth />} />
                 <Route path="/scranton" element={<Scranton />} />

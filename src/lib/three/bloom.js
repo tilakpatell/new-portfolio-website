@@ -7,10 +7,15 @@
 //
 //   BLOOM → { threshold, strength, radius }
 //   bloomGroups(pass) → the panel’s groups (lib/debugPanel) for a bloom
-//     pass or anything with the same three numbers
+//     pass or anything with the same three numbers (and a knee slider, the
+//     threshold up to 3, for a soft-knee pass: one with a `knee`)
 
 export const BLOOM = Object.freeze({ threshold: 1, strength: 0.25, radius: 0.4 });
 
 const slider = (pass, key, max) => ({ key, type: 'range', min: 0, max, step: 0.01, get: () => pass[key], set: (v) => (pass[key] = v) });
 
-export const bloomGroups = (pass) => [{ name: 'bloom', items: [slider(pass, 'threshold', 2), slider(pass, 'strength', 1.5), slider(pass, 'radius', 1)] }];
+export const bloomGroups = (pass) => {
+  const soft = typeof pass.knee === 'number';
+  const items = [slider(pass, 'threshold', soft ? 3 : 2), ...(soft ? [slider(pass, 'knee', 1)] : []), slider(pass, 'strength', 1.5), slider(pass, 'radius', 1)];
+  return [{ name: 'bloom', items }];
+};

@@ -129,12 +129,14 @@ varying float vBright;
 varying vec3 vTint;
 void main() {
   float r = length(vUv);
-  if (r > 1.0) discard;
   float k = 1.0 - vAge;
   float core = exp(-r * r * 9.0) * k * k;
-  float body = exp(-r * r * 3.0) * k;
-  // white hot, cooling through the tint to a dull red
-  vec3 col = vec3(6.0, 5.4, 4.6) * core + mix(vec3(1.4, 0.25, 0.05), vTint, k) * body * 1.8;
+  // (cooling as k², so the dull tail doesn't hang as a brown disc)
+  float body = exp(-r * r * 3.0) * k * k;
+  // white hot, cooling through the tint to a dull red; out to nothing at
+  // the sprite's rim, not cut off there (a hard edge read as a solid disc)
+  vec3 col = vec3(4.0, 3.6, 3.1) * core + mix(vec3(1.4, 0.25, 0.05), vTint, k) * body * 1.8;
+  col *= 1.0 - smoothstep(0.65, 1.0, r);
   gl_FragColor = vec4(col * vBright, 1.0);
 }`;
 
