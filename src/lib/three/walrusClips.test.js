@@ -1,0 +1,52 @@
+import { describe, expect, it } from 'vitest';
+import { SEQUEL } from '../../../scripts/lib/bf2017-manifest.mjs';
+import { HERO_SET, HUMANOID_SET, PACKS, candidates, resolveGame } from './walrusClips';
+
+const shaped = (map) => {
+  for (const [k, v] of Object.entries(map)) {
+    if (typeof v === 'string') continue;
+    expect(Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'string'), k).toBe(true);
+  }
+};
+
+describe('the site’s clip names on the game’s', () => {
+  it('maps a hero’s strokes, their returns and their block onto the game’s own', () => {
+    expect(HERO_SET('Luke')['sword.light.a']).toBe('A_Luke_AttackLoop_Strike1');
+    expect(HERO_SET('Luke')['sword.light.a.rec']).toEqual(['A_Luke_AttackLoop_Strike1_BackToIdle', 'A_Luke_AttackLoop_Strike1_BackToIdle_02']);
+    expect(HERO_SET('Luke')['sword.heavy.a']).toBe('A_Luke_AttackLoop_Strike1_V2');
+    expect(HERO_SET('Vader')['sword.block'][0]).toBe('A_Vader_Stand_Block_SwingRight_01');
+    expect(HERO_SET('Luke').idle).toContain('L_Luke_Stand_Idle_01');
+  });
+
+  it('takes the first spelling the pack has, else the fallback’s, else nothing', () => {
+    expect(resolveGame(HERO_SET('Luke'), 'sword.block', (n) => n === 'A_Luke_Block_Stagger_Fwd_02')).toBe('A_Luke_Block_Stagger_Fwd_02');
+    expect(resolveGame(HERO_SET('Luke'), 'die.blown', (n) => n === 'A_Luke_Defeated_01')).toBe('A_Luke_Defeated_01');
+    expect(resolveGame(HERO_SET('Vader'), 'hit.chest', (n) => n === 'A_Vader_Stagger_Bwd_01')).toBe('A_Vader_Stagger_Bwd_01');
+    expect(resolveGame(HUMANOID_SET, 'nope', () => true)).toBe(null);
+  });
+
+  it('names the kits’ Force powers by the game’s clips, which the manifest has', () => {
+    const want = {
+      vader: { 'force.choke': 'A_Vader_ForceChoke_Enter_01', 'force.rage': 'A_Vader_RagePowerUp_01', 'saber.throw': 'A_Vader_Stand_ThrowSaber_FwdFacing_02' },
+      maul: { 'force.choke': 'A_Maul_ChokeThrow_Start_01', 'force.rush': 'A_Maul_SpinLeap_01', 'saber.throw': 'A_Maul_SaberThrow_Stand_01' },
+      palpatine: { 'force.lightning': 'A_Palpatine_Stand_Beam_Fwd_01', 'force.chain': 'A_Palpatine_Stand_ChainLightning_01' },
+      dooku: { 'force.electrocute': 'A_Dooku_Stand_Electrocute_02', 'force.weaken': 'A_Dooku_Stand_ExposeWeakness_02' },
+      anakin: { 'force.pull': 'A_Anakin_Ability2_PullMastery_Full', 'force.slam': 'A_Anakin_Ability3_LandingStrike_Land' },
+      luke: { 'force.rush': 'A_Luke_Stand_RushAttack_01', 'force.slam': 'A_Luke_Stand_ForceRepulse_02' },
+      chewie: { 'force.slam': 'A_Chewbacca_LeapSlam_Exit_01' },
+    };
+    for (const [pack, names] of Object.entries(want)) for (const [site, game] of Object.entries(names)) expect(candidates(PACKS[pack], site), `${pack} ${site}`).toContain(game);
+  });
+
+  it('spells a hero every way the game does (Han is HanSolo and Han)', () => {
+    expect(candidates(HERO_SET(['HanSolo', 'Han']), 'die')).toContain('A_Han_Defeated_01');
+  });
+
+  it('is names all the way down, and nothing of the sequels', () => {
+    shaped(HUMANOID_SET);
+    shaped(HERO_SET('Luke'));
+    for (const k of Object.keys(PACKS)) for (const s of SEQUEL) expect(k.includes(s), k).toBe(false);
+    expect(Object.keys(PACKS)).toContain('humanoid');
+    expect(Object.keys(PACKS)).toContain('luke');
+  });
+});

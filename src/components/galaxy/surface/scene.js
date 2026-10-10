@@ -125,7 +125,9 @@ import { met, swingingOf } from './duellists';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
 import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
-import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
+import { ABILITIES, JET, SABER_THROWS, abilitiesOf, forceOf, hitOf, holdOf, jetStep, kindOf, newJet, takenOf, throwOf } from './abilityRules';
+import { createPowers } from './powers';
+import { SABER } from './saberRules';
 import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, lineClear, pushOut, ride, rider, turnToward, walk, walker } from './walker';
@@ -709,7 +711,7 @@ export async function create(canvas, ctx) {
     if (!own) inner.scale.setScalar(1 / METRE);
     inner.add(fig.model);
     fig.model.traverse((o) => {
-      if (o.isMesh) o.castShadow = true;
+      if (o.isMesh) o.castShadow = !o.userData.noShadow; // (a 2017 figure's small parts: none)
     });
     inner.updateMatrixWorld(true);
     // (a model of their own reads its motion in metres a second, as the
@@ -848,7 +850,9 @@ export async function create(canvas, ctx) {
     cool: { power: -99, second: -99 }, // when each ability is ready again
     overcharge: -99, // until when the gun runs hot-free
     sprint: -99, // until when you're sprinting (abilityRules.js's sprint)
-    jet: newJet(), // the jetpack's tank, for a hero with one
+    jet: newJet(), // the jetpack's tank, for a hero with one (the held lightning's too)
+    rage: null, // { until, taken, shield }: a rage on you (powers.js)
+    throwCool: -99, // when a hero's own saber throw is back (abilityRules.js's SABER_THROWS)
     heat: { value: 0, locked: false, lockedAt: null },
     burst: null, // { left, next }: the rest of a burst
     ads: false, // down the sights (right button, or the Aim button)
@@ -1886,24 +1890,39 @@ export async function create(canvas, ctx) {
   // the two abilities (G and V) the hero carries (abilityRules.js, named on
   // heroes.js): the Force for a Jedi, a detonator and the overcharge for most
   // with a gun, and each hero's own besides. Each on its own cooldown; the
-  // jetpack's held instead (stepJet)
+  // jetpack's held instead (stepJet), and the Emperor's lightning. The 2017
+  // heroes' Force powers that last or draw (a choke, lightning, a repulse, a
+  // rush, a rage) are powers.js's; a push or a pull from one of them is the
+  // Force's own below, at the game's reach, cone, knockback and damage
   const myAbility = (slot) => abilitiesOf(me().spec)[slot];
+  // (the game's damage to a hero: a duellist's, or a named one's)
+  const isHero = (t) => Boolean(t.duel || t.spec?.named || t.spec?.hostile?.blade);
+  const powers = createPowers({ scene, fx, sounds, state, me, targets: shootable, on, isHero, dealt, emit, ground: (x, z, y) => groundAt(world, x, z, y), reach: world.reach });
   function power(slot) {
-    if (state.phase !== 'walk' || state.off) return;
+    if (state.phase !== 'walk' || state.off || powers.busy()) return;
     const p = me();
-    const kind = myAbility(slot);
-    const a = ABILITIES[kind];
+    const id = myAbility(slot);
+    const kind = kindOf(id);
+    const a = ABILITIES[id];
     if (a.hold || state.t < state.cool[slot]) return;
     camera.getWorldDirection(camDir);
     p.st.yaw = Math.atan2(camDir.x, camDir.z);
     state.cool[slot] = state.t + a.cool * perks.cooldown;
+    if (powers.cast(id, a, camDir)) {
+      if (p.saber) state.saberAt = state.t;
+      state.aim = 1;
+      state.aimDir.copy(camDir);
+      emit({ type: 'fire' });
+      return;
+    }
     if (kind === 'push' || kind === 'pull' || kind === 'roar') {
       // the Force, or a roar: everyone in the cone shoved (or drawn in)
-      const f = kind === 'roar' ? a : FORCE[kind];
+      const f = kind === 'roar' ? a : forceOf(a);
       const way = kind === 'pull' ? 'pull' : 'push';
       if (p.saber) state.saberAt = state.t;
       state.aim = 1;
       state.aimDir.copy(camDir);
+      if (a.game) powers.play(kind);
       let any = 0;
       for (const t of shootable()) {
         const q = t.holder.position;
@@ -1911,7 +1930,12 @@ export async function create(canvas, ctx) {
         if (!at.hit) continue;
         any++;
         on(t).knock(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, way, f));
-        if (f.damage) on(t).hit(t, f.damage);
+        const n = kind === 'roar' ? 0 : hitOf(a, isHero(t));
+        if (n) {
+          const was = t.hp;
+          on(t).hit(t, a.game ? dealt(n) : n);
+          if (a.game) emit({ type: 'hit', kill: was > 0 && t.hp <= 0 });
+        }
         if (kind === 'pull') on(t).stagger(t, 1.2);
         if (a.stagger) on(t).stagger(t, a.stagger);
       }
@@ -1990,6 +2014,12 @@ export async function create(canvas, ctx) {
       return;
     }
     const hold = Boolean(state.keys.power || state.buttons.power) && !state.dodge;
+    // (the Emperor's lightning: held G too, off its own tank, powers.js's)
+    if (a.kind === 'lightning') {
+      camera.getWorldDirection(camDir);
+      if (powers.held(a, hold && !powers.busy(), dt, camDir)) state.aimDir.copy(camDir);
+      return;
+    }
     jetStep(state.jet, { hold, grounded: p.st.grounded, dt });
     if (!state.jet.on) return;
     p.st.vy = Math.min(JET.lift, p.st.vy + (WALK.gravity + JET.thrust) * dt);
@@ -2067,7 +2097,16 @@ export async function create(canvas, ctx) {
     state.aim = 1;
     state.aimDir.copy(camDir);
     state.saberAt = state.t;
-    if (p.saber.throw(state.t, camDir)) emit({ type: 'fire' });
+    // (Vader's and Maul's own, at the game's speed, hit and recharge; anyone else's as it always was)
+    const own = SABER_THROWS[p.spec.id];
+    if (own && (state.t < state.throwCool || powers.busy())) return;
+    const how = throwOf(own, SABER.throw);
+    if (!p.saber.throw(state.t, camDir, how)) return;
+    if (own) {
+      state.throwCool = state.t + how.cool * perks.cooldown;
+      powers.play('saberThrow');
+    }
+    emit({ type: 'fire' });
   }
   // the blade through one of them: their blade turns it (sparks, a clash)
   // or it lands
@@ -2097,7 +2136,8 @@ export async function create(canvas, ctx) {
       return;
     }
     const was = t.hp;
-    on(t).hit(t, dealt(damage), { breaks: heavy, at });
+    // (an exposed weakness, Dooku's: the game's more from every stroke while it lasts)
+    on(t).hit(t, Math.round(dealt(damage) * takenOf(t, state.t)), { breaks: heavy, at });
     if (heavy) on(t).stagger(t, 1.2);
     const killed = was > 0 && t.hp <= 0;
     emit({ type: 'hit', kill: killed });
@@ -2170,7 +2210,7 @@ export async function create(canvas, ctx) {
       hot: state.t < state.overcharge,
       // (the abilities: named, their cooldowns, and a held one's tank as how much is spent)
       powers: { power: ABILITIES[ab.power].name, second: ABILITIES[ab.second].name, hold: Boolean(ABILITIES[ab.power].hold) },
-      cool: { power: ABILITIES[ab.power].hold ? (1 - state.jet.fuel / JET.tank) * HOLD_FULL : Math.max(0, state.cool.power - state.t), second: Math.max(0, state.cool.second - state.t), dodge: Math.max(0, state.dodgedAt + DODGE.cool * perks.dodge - state.t) },
+      cool: { power: ABILITIES[ab.power].hold ? Math.max(0, 1 - state.jet.fuel / holdOf(ABILITIES[ab.power]).tank) * HOLD_FULL : Math.max(0, state.cool.power - state.t), second: Math.max(0, state.cool.second - state.t), dodge: Math.max(0, state.dodgedAt + DODGE.cool * perks.dodge - state.t) },
       cools: { power: ABILITIES[ab.power].hold ? HOLD_FULL : ABILITIES[ab.power].cool * perks.cooldown, second: ABILITIES[ab.second].cool * perks.cooldown, dodge: DODGE.cool * perks.dodge },
       lock: lock ? { name: lock.spec.kind, hp: Math.max(0, lock.hp), max: lock.spec.hp ?? 1, shield: lock.shield } : null,
       ads: state.ads,
@@ -2268,6 +2308,8 @@ export async function create(canvas, ctx) {
   // `from`: where it came from ({ x, z }), for the way you flinch and fall
   // (else the last shot's at you)
   function hurt(n, from = null) {
+    // (in a rage: its shield takes it first, the rest by the game's multiplier)
+    if (state.rage) n = powers.soaked(n);
     state.health = Math.max(0, state.health - n * perks.hurt);
     state.hurtAt = state.t;
     state.shake = Math.min(1, state.shake + 0.3);
@@ -3086,6 +3128,7 @@ export async function create(canvas, ctx) {
     stepImpacts();
     knocks?.step(dt, me().st, state.phase === 'ride' ? state.riding : null);
     knockHits.update(dt);
+    powers.step(dt); // (a choke, a rush, the arcs and rings: powers.js)
     fx.update(dt);
     spring(state.kick, dt, 240, 22);
     state.aim = Math.max(0, state.aim - dt / 2.5);
@@ -3572,6 +3615,16 @@ export async function create(canvas, ctx) {
       const net = { peers: new Map(list.map((p) => [p.id, { ...p, walk: { ...p.walk, at } }])) };
       props = { ...props, net: { ...net, walk() {} } };
     },
+    // (dev: a duellist, its saber lit, `ahead` metres away `turn` radians
+    // round from where you face, facing you: the duel's browser check)
+    duel(kind = 'vader', { ahead = 6, turn = 0, color = '#ff3b3b', stance = 'single', hp = 99 } = {}) {
+      if (!import.meta.env.DEV) return;
+      const p = me().st;
+      const at = [p.x + Math.sin(p.yaw + turn) * ahead, p.z + Math.cos(p.yaw + turn) * ahead];
+      const spawn = { kind, at, face: p.yaw + turn + Math.PI, hp, leash: 30, roam: 1, tag: 'devduel', hostile: { range: 16, chase: 2, melee: true, reach: 2.8, every: 1.5, damage: 1, delay: 1, parry: 0.7, guard: 4, blade: { color, stance } } };
+      activity.show({ id: 'dev-duel', steps: [{ type: 'shoot', tag: 'devduel', n: 1, text: 'Duel', spawn }] }, { id: 'dev-duel', step: 0 });
+      ctx.invalidate();
+    },
     // (for tests: put you somewhere, facing somewhere)
     // (dev: into a zone by its id, or out of the one you're in)
     zone(id = null) {
@@ -3597,7 +3650,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), net: { ...net.progress(), pool: assetPool().progress() }, rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
+    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), force: powers.debug(), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), net: { ...net.progress(), pool: assetPool().progress() }, rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
       net.end();
@@ -3645,6 +3698,7 @@ export async function create(canvas, ctx) {
         p.gp?.dispose();
         p.fig?.dispose?.();
       }
+      powers.dispose();
       fx.dispose();
       cast?.dispose();
       ship.dispose();

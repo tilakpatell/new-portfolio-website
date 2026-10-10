@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import PUBLISHED from './galaxyAssets.json';
 import { describe, expect, it } from 'vitest';
 import CREDITS from './modelCredits.json';
 
@@ -36,7 +37,8 @@ describe('the 3D models that are other people’s', () => {
     for (const [name, m] of Object.entries(CREDITS)) {
       // where it is: its own `file`, or under its name with the rest from Sketchfab
       const file = m.file ?? `/models/sketchfab/${name}.glb`;
-      expect(existsSync(at(`public${file}`)), file).toBe(true);
+      // (in public/, or published to the bucket: src/data/galaxyAssets.json)
+      expect(existsSync(at(`public${file}`)) || Boolean(PUBLISHED[file.slice(1)]), file).toBe(true);
       // by its own path, or by the folder and its name (the map's places are loaded by name)
       // (or a world's surface model, by the kind its catalogue names it by)
       const kind = name.replace(/^surface-/, '');

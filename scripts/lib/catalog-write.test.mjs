@@ -44,4 +44,15 @@ describe('the catalogue and credit writers', () => {
     expect(Object.keys(JSON.parse(await readFile(file, 'utf8')))).toEqual(['b', 'c', 'd']);
     expect((await readFile(file, 'utf8')).endsWith('}\n')).toBe(true);
   });
+
+  it('replaces a credit where it stands and never reshuffles an unsorted file', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'credits-'));
+    const file = join(dir, 'c.json');
+    await writeFile(file, JSON.stringify({ z: { title: 'z' }, a: { title: 'a' }, m: { title: 'm' } }));
+    await writeCredit(file, 'a', { title: 'A' });
+    await writeCredit(file, 'b', { title: 'b' });
+    const got = JSON.parse(await readFile(file, 'utf8'));
+    expect(Object.keys(got)).toEqual(['z', 'a', 'b', 'm']);
+    expect(got.a.title).toBe('A');
+  });
 });

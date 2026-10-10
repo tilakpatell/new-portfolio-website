@@ -1,0 +1,7 @@
+{"name":"Gameplay/Kits/Hero/Maul/Ability_Maul_ForceChoke","type":"CharacterStatePlayerAbilityAsset","root":0,"objects":[
+{"$type":"CharacterStatePlayerAbilityAsset","ActiveTime":0.1,"ActivationTime":1.0,"RechargeTime":18.0,"Category":"PlayerAbilityCategory_Middle","Blueprint":{"$asset":"Gameplay/Kits/Hero/Maul/PF_ForceChoke_Maul","$assetType":"LogicPrefabBlueprint"},"AbilityModifiers":[{"$ref":3},{"$ref":4}],"Identifier":42,"Name":"Gameplay/Kits/Hero/Maul/Ability_Maul_ForceChoke"},
+{"$type":"PlayerAbilityPropertyOutputFloatModifierValue","Value":15.0},
+{"$type":"PlayerAbilityPropertyOutputFloatModifierValue","Value":40.0},
+{"$type":"PlayerAbilityPropertyOutputModifier","OutputHash":1697178449,"Values":[{"$ref":2}]},
+{"$type":"PlayerAbilityPropertyOutputModifier","OutputHash":3791637896,"Values":[{"$ref":1}]}
+]}
