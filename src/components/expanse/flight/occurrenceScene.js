@@ -19,6 +19,7 @@ import { planetField } from '../../../lib/land/flight/field';
 import { createFlightDirector } from '../../../lib/land/flight/director';
 import { bake } from './lifeScene';
 import { createOccurrences } from './events';
+import { eventsOf } from './planets';
 import { fade, makePlay } from './eventPlays';
 
 const CAP = 64; // occurrences of a kind drawn at most (a 3 × 3 of cells holds 54 in all)
@@ -312,7 +313,7 @@ export function createOccurrenceDraw(view, { spec, field }) {
 export function withOccurrences(spec, view) {
   const field = planetField(spec);
   const draw = createOccurrenceDraw(view, { spec, field });
-  const layer = createOccurrences({ spec, field, draw, director: createFlightDirector({ spec }) });
+  const layer = createOccurrences({ spec, field, draw, director: createFlightDirector({ spec, list: eventsOf(spec) }) });
   const place = view.place;
   const dispose = view.dispose;
   view.occurrences = layer;

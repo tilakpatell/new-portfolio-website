@@ -1,7 +1,7 @@
 // The grid the shared world is heard by: a pilot's events carry the cell
 // they're in (Nostr tag `g`), and a room listens only for the cells round
 // its pilot, so a busy planet costs each browser the few ships near it, not
-// all of them. The durable world (src/lib/durable) fetches by the same
+// all of them. The durable world (the planet flight's) fetches by the same
 // cells, so this is the one place NET_CELL is said.
 //
 // A cell's key is 'cx,cz' (whole cells from the planet's origin, floored,

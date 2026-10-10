@@ -79,6 +79,7 @@ import { SURFACE_MODELS } from './catalog';
 import { heightGrid, makeHeight } from './terrain';
 import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
+import { wearScanSet } from '../../../lib/three/scans';
 import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { floatPose } from './floats';
@@ -231,6 +232,10 @@ export async function create(canvas, ctx) {
   // three's fog line be. The post tone-maps with its own shoulder, so the
   // exposure is the site's, through it.
   const siteLook = lookOf(site);
+  // (a Star Wars world on the game's own maps wears them, the props' trims
+  // and the ground's grain alike: lib/three/scans.js; set before the kit is
+  // made, which loads them)
+  wearScanSet(site.look?.scanned ?? 'cc0');
   const house = createHouse({ ...siteLook, fog: false });
   post.exposure(exposureOf(site));
   // (fogged in the sky's colour and in the look before its shaders are
@@ -3648,6 +3653,7 @@ export async function create(canvas, ctx) {
       weather?.dispose();
       water?.dispose();
       sky.dispose();
+      wearScanSet('cc0');
       marks.dispose();
       puff.dispose();
       env.dispose();
