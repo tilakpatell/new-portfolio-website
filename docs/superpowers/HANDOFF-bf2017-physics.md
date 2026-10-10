@@ -23,11 +23,19 @@ One lane per session. P0, P1, P2 and P4 run at once (no shared file: P1 creates 
 
 ## For lane L (PR #810’s session on `claude/bf2017-l-hoth`)
 
+Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, cells)` for the walker and the one call site in `scene.js`; lane P0 writes `createLevelCollision` (the engine’s side) and `havok.js`’s per-instance `solidsOf` that yours calls, plus the pack’s `physics` section and `physics/*.bin` through `scripts/bf2017-physics.mjs` (call it from `bf2017-level.mjs` after the meshes, or leave it to P0 to call on your pack). Your `levelStream.js`’s cell callbacks get two mirrored calls into `levelPhysics` when it exists. Whoever merges second takes the other’s file.
+
+**Lane L’s answer (PR #831, 2026-10-10), the interfaces as built, which P0 builds against:** `src/lib/level/collision.js` exports `solidsOf(pack, draws, bin) → { floors, boxes }`, per cell and pure, with boxes over 15 m skipped until the Havok shapes land; the scene side is `src/components/galaxy/surface/level/colliders.js`, which switches a cell’s shapes `off` when the cell goes; `createLevelStream`’s callbacks are `onCell(key, bin, band)` and `onDrop(key)`, wired in `level/index.js`; `level.json`’s `physics` section exists and is empty; the pack format moved off the design’s (`meshes[].lods`, `glb[]` per LOD, a cull per tier, texture sizes), built by `scripts/lib/bf2017-level.mjs`.
+
 As built (PR #831 and lane P0): lane L’s `src/lib/level/collision.js` and `level/colliders.js` stay lane L’s; lane P0 adds `levelPhysics.js` beside `colliders.js` (the same `add`/`drop`), `lib/level/shapeSolids.js` (the walker’s boxes from the shapes, in `collision.js`’s `{ floors, boxes }` form) and the pack’s `physics` section through `scripts/bf2017-physics.mjs`. The joins (`level/index.js`’s `onCell`/`onDrop`, `scene.js`’s engine, `colliders.js` taking the shapes) are in P0’s Left below; whoever merges second makes them.
 
 ## For the game (PR #812’s lanes)
 
 `loadPhysics(name)` is lane P0’s `readShapes` over the bucket’s GLB through `readPhysicsGlb` (`scripts/lib/bf2017-physics.mjs`) or, in the browser, over a pack’s `physics/<mesh>.bin`; the hulls and trimeshes are `havok.js`’s `collidersOf`. The soldier’s movement rows are `src/data/bf2017/physics/soldier.json`; the projectiles’ `projectiles.json` and `lib/combat/ballistics.js`’s `flight`; the capsules `boneCapsules.js`; the ragdoll `ragdoll2017.js`; the vehicles `vehicleBody.js`; the surfaces `materials.js`. Build on them; add a row to the Departures in the spec if one does not fit.
+
+## What P0 built (2026-10-10, against #831)
+
+No `collision.js` of its own: lane L’s stays. `levelPhysics.js` sits beside `colliders.js` with `add(key, bin)` / `drop(key)`, reads the 32-byte records with `cells[key].draws` and honours `pack.cull[tier]`; `src/lib/level/shapeSolids.js` gives the walker’s side from the Havok shapes in `collision.js`’s `{ floors, boxes }` form, plus the draws `without` shapes for lane L’s bounds rule; the packer reads `meshes[].name` and fills the empty `physics` section. On a scratch copy of #831’s Hoth pack: 432 meshes, 5.2 MB of bins; the near 3 × 3 at high is 6,160 colliders and 0.47 ms a step, added over 29 frames at under 5 ms each. The `index.js`/`scene.js`/`colliders.js` joins and P2’s `world.physicsRay` are in P0’s Left section for whoever merges second.
 
 ## Checking it
 
@@ -39,12 +47,12 @@ As built (PR #831 and lane P0): lane L’s `src/lib/level/collision.js` and `lev
 
 | lane | session | branch | PR | merged |
 | --- | --- | --- | --- | --- |
-| design | the architecting session | `claude/bf2017-physics` | (this PR) | |
-| P0 | the P0 session (local, Opus 5.5) | `claude/bf2017-p0-shapes` | #834 | |
-| P1 | the P1 session (Opus 5.5, the desktop) | `claude/bf2017-p1-body` | #822 | |
-| P2 | a desktop session (the export read locally) | `claude/bf2017-p2-bolts` | #820 | |
-| P3 | | `claude/bf2017-p3-vehicles` | | |
-| P4 | | `claude/bf2017-p4-surfaces` | | |
+| design | the architecting session | `claude/bf2017-physics` | #817 | |
+| P0 | `session_018E4MP2mx7j6iFer89w3nFw` (Opus 5.5, started 2026-10-10 05:22) | `claude/bf2017-p0-shapes` | #834, opened by the design session on the owner’s instruction (the P0 session’s permission check blocked it) | |
+| P1 | the P1 session (`session_01NysT4m6BJEr2MtsRWJtgje`, Opus 5.5, the desktop) | `claude/bf2017-p1-body` | #822 | 2026-10-10 |
+| P2 | a desktop session (the export read locally) | `claude/bf2017-p2-bolts` | #820 | 2026-10-10 |
+| P3 | not started: waits for lane V’s first model and P0 | `claude/bf2017-p3-vehicles` | | |
+| P4 | `session_01HTPJgq2Dagy8xghto1YbTV` | `claude/bf2017-p4-surfaces` | #821 | |
 
 Each lane adds its Done and Left here when it merges: the pack’s physics bytes per world, what the budget dropped per cell, the jump row’s source, which material indices were named by hand and from which effect, what the handling layer did not hold.
 
