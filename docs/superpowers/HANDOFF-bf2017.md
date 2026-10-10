@@ -8,6 +8,12 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 - **Phase 0, the tools** (PR #805): the decision entry and the assets page; `scripts/bf2017-fetch.mjs` and `scripts/bf2017-import.mjs` over five tested modules under `scripts/lib/` (`bf2017-manifest`, `bf2017-paths`, `bf2017-textures`, `rig-parts`, `catalog-write`); the committed fixture (`scripts/fixtures/bf2017/`, 39.6 KB); the empty `catalog/bf2017.js`, last in `GROUPS`. Nothing on the site changed. Tried on two real models and nothing kept: Luke’s hilt (920 triangles, 212 KB, the shot in `docs/superpowers/evidence/bf2017-phase0/`) and Luke’s rotj body with `--rig` (the whole rig kept, 254 joints with fingers, face and physics; LOD2 706 KB, LOD4 236 KB; drawn in its bind pose).
 - **The second design and four more plans** (this PR): lanes L, G, K and X below, and the corrections to the first design (its section "The review of #802").
 - **On the desktop, 2026-10-10 00:20**: the 102 planet skins encoded (KTX2 at up to 4096, hybrid) and linked raw, both queued; 164 clips with `~` in their names (refused by Supabase as `InvalidKey`) renamed `-`, `web/anims.jsonl` rewritten and re-uploaded; 119 physics files queued. The pipeline’s upload passes pick them up (`logs\pipeline_status.txt`).
+- **On the desktop, 2026-10-10 morning: lights, effects, decals, creatures, vehicles and terrain scattering**, in the bucket under `web/maps/` (format: `web/maps/README.md`):
+  - every map now has `maps/<level>.extras.json`: 49,632 placed lights (spot, sphere, rect, tube; colour, intensity in lumens, range, cone, cookie, per sub-level), 52,027 effect spawns (the `EffectBlueprint` name), 13,984 decals with their textures, and the sun, sky, fog, tonemap and colour grading of each VisualEnvironment. Hoth: 1,234 lights, 648 effects. Spot and rect lights shine along local -Z;
+  - placed creatures, droids and civilians (3,425, kind `actor`) and vehicle spawns built from their parts (2,925 of 2,971);
+  - `maps/terrain_scatter/<terrain>.json` for the 39 terrains: each paint layer's grass, ferns, debris and backdrop trees (mesh, density per m², scale, wind), 739 types, plus the ground's surface textures;
+  - 600 models placed on maps that the web build had skipped, now packed and uploaded.
+  - Still missing: where scatter grows (the terrain's layer masks, format half decoded in the README), the terrain's painted decals, and audio.
 
 ## The lanes
 
@@ -41,12 +47,13 @@ In order:
 
 ## Asked of the desktop exporter (not the site’s work)
 
-The export in `C:\Users\tilak\Downloads\BF2_Extract` (`tool\bf2export.csproj`, Frosty’s libraries) does not write these; each is a `bf2export` pass and a queue, the way `run_terrain.py` and `tool\build_maps.py` were added:
+The export in `C:\Users\tilak\Downloads\BF2_Extract` (`tool\bf2export.csproj`, Frosty’s libraries):
 
-- **Lights**: the map builder counts them (Hoth: 1,234) and writes none. `maps/<level>.lights.json` with type, position, direction, colour, intensity, radius, cone, per sub-level, would give lane G the hangar’s lamps and Theed’s lanterns.
-- **Effects**: counted (Hoth: 648), not written. The spawn points with the effect’s name would tell lane F which effect plays where.
-- **Audio**: `GUIDE.md` says 17,509 sound assets, not exported. Frosty can write a `SoundWaveAsset` as `.wav`; without a `bf2export sound` pass, lane F’s sound map stays `null` for good.
-- **Decals**: painted into the terrain resource, no transform; not needed.
+- **Lights**: done, in `maps/<level>.extras.json` `lights[]` (not a separate `.lights.json`): type, position, quaternion, colour, intensity, range, cone, emitter size, cookie, per sub-level. Lane G gets the hangar’s lamps and Theed’s lanterns from there.
+- **Effects**: done, `effects[]` in the same file: the spawn transform and the effect’s `EffectBlueprint` name, for lane F.
+- **Decals**: done, `decals[]`: 13,984 placed decals do have transforms (10,652 volume decals, 3,332 projected), with their textures in `shaderTextures`/`textureFiles`. Only the terrain’s painted decals are in a terrain resource.
+- **Terrain scattering**: what grows on each paint layer, done (`maps/terrain_scatter/`); where it grows waits on decoding the layer masks.
+- **Audio**: still not exported. `GUIDE.md` says 17,509 sound assets. Frosty can write a `SoundWaveAsset` as `.wav`; without a `bf2export sound` pass, lane F’s sound map stays `null`.
 
 ## Checking it
 
