@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { bladeInHand, heldBlade } from './heldBlade';
 import { meshyRig } from '../../../lib/three/meshyRig.fixture';
 
@@ -71,5 +71,34 @@ describe('a duellist’s blade', () => {
     fake.name = 'RightHand';
     g.add(fake);
     expect(bladeInHand({ model: g }, { color: '#f00' })).toBeNull();
+  });
+});
+
+describe('a duellist’s blade and the eye', () => {
+  it('hands the camera’s position to its saber as eye, held and going down (its light, out past 12 m: saberLight.js)', () => {
+    const { scene, fig } = standing();
+    const b = bladeInHand(fig, { color: '#ff3b3b' }, { parent: scene });
+    const update = vi.spyOn(b.saber, 'update');
+    const eye = new THREE.Vector3(0, 1.6, -3);
+    b.pose(1 / 30, 0, { forward: FORWARD, up: UP, me: { x: 0, z: 0, yaw: 0 }, eye });
+    expect(update.mock.calls.at(-1)[2].eye).toBe(eye);
+    b.pose(1 / 30, 1 / 30, { forward: FORWARD, up: UP, me: { x: 0, z: 0, yaw: 0 } });
+    expect(update.mock.calls.at(-1)[2].eye).toBe(null);
+    b.out(1 / 30, 2 / 30, { forward: FORWARD, up: UP, eye });
+    expect(update.mock.calls.at(-1)[2].eye).toBe(eye);
+    b.dispose();
+  });
+});
+
+describe('a duellist’s blade and the side a cut comes in on', () => {
+  it('hands the side to its saber’s block (a 2017 hero’s block is the game’s for it: saber.js)', () => {
+    const { scene, fig } = standing();
+    const b = bladeInHand(fig, { color: '#ff3b3b' }, { parent: scene });
+    const block = vi.spyOn(b.saber, 'block');
+    b.block(true, 'left');
+    expect(block).toHaveBeenLastCalledWith(true, 'left');
+    b.block(false);
+    expect(block.mock.calls.at(-1)[0]).toBe(false);
+    b.dispose();
   });
 });

@@ -12,10 +12,12 @@
 //   gun, owned (to dispose) }
 // bladeInHand(fig, { color, hilt }, { parent, stance, who }) → { gun, gp,
 //   saber, stand(dt, now, move), pose(dt, now, { forward, up, me, dir,
-//   targets, hit }) (what its strokes may hit, as saber.js's update has them),
-//   out(dt, now, { forward, up }) (in pose's place, going down), swing(now,
-//   { heavy }), block(on), light(on), busy, lit, dispose() }, or
-//   null for a figure with no hand bone to hold it (heldBlade's arm then).
+//   targets, hit, eye }) (what its strokes may hit, as saber.js's update has
+//   them; eye: the camera's position, its light out past 12 m of it:
+//   saberLight.js), out(dt, now, { forward, up, eye }) (in pose's place,
+//   going down), swing(now, { heavy }), block(on, side), light(on), busy, lit,
+//   dispose() }, or null for a figure with no hand bone to hold it
+//   (heldBlade's arm then).
 //   fig: { model, bones?, hipsY?, after? }, in a holder already in the
 //   scene; parent: where the blade's trail is drawn. Each frame, as the
 //   party's are: the figure's update, stand (the body under the blade, for
@@ -67,20 +69,21 @@ export function bladeInHand(fig, { color = '#ff3b3b', hilt = null } = {}, { pare
       return saber.lit;
     },
     stand: (dt, now, move = 0) => saber.stand(dt, now, move),
-    pose(dt, now, { forward, up, me = null, dir = null, targets = [], hit = null }) {
+    pose(dt, now, { forward, up, me = null, dir = null, targets = [], hit = null, eye = null }) {
       gp.set(dt, { aim: saber.lit ? GUARD_AIM : 0, look: dir ? 1 : 0, dir, forward, up });
-      saber.update(dt, now, { forward, up, me, targets, hit });
+      saber.update(dt, now, { forward, up, me, targets, hit, eye });
     },
     // going down: put out, and the arms left to the clip it falls on (the
     // stroke it was in played out, the blade drawn back in)
-    out(dt, now, { forward, up }) {
+    out(dt, now, { forward, up, eye = null }) {
       saber.light(false);
       saber.block(false);
-      saber.update(dt, now, { forward, up, me: null, targets: [] });
+      saber.update(dt, now, { forward, up, me: null, targets: [], eye });
     },
     swing: (now, opts) => saber.swing(now, opts),
-    block: (on) => saber.block(on),
+    block: (on, side) => saber.block(on, side),
     light: (on) => saber.light(on),
+    dark: () => saber.dark(),
     dispose() {
       saber.dispose();
       gp.dispose();
