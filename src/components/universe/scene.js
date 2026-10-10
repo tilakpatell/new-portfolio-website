@@ -195,7 +195,7 @@ import { coneFor } from '../../lib/combat/aim';
 import { flownInto, wayIn, worldName } from './landings/wayin';
 import { figureVoice } from './landings/voicelines';
 import { sayVoiced, stopVoiced } from '../../lib/voiced';
-import { ENTRY, LANDABLE, airTop, entering, entryAhead } from './entry';
+import { ENTRY, LANDABLE, airTop, entering, entryGuess } from './entry';
 import { createNearMaps } from './nearMaps';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
@@ -5019,12 +5019,14 @@ export async function create(canvas, ctx) {
     }
     // (and as you head into its air, the part of it you'll come down on:
     // heading in is the sign you mean to, so it needs no stay; foreseen
-    // again each half second of the wall's on the way in, as where you'll
-    // come down moves with your course)
+    // again each half second of the wall's on the way in, and in the air
+    // till it takes you (too fast, easing off the boost as the HUD says,
+    // or skimming in), as where you'll come down moves with your course:
+    // entry.js's entryGuess)
     if (landable && !state.auto && !state.jump && wall() >= state.aheadAt) {
       const p = LANDABLE.find((o) => o.id === landable);
-      const ahead = p && entryAhead(state.ship, p, PREFETCH_AHEAD);
-      if (ahead?.kind === 'enter') {
+      const ahead = p && entryGuess(state.ship, p, PREFETCH_AHEAD);
+      if (ahead) {
         state.aheadAt = wall() + 0.5;
         foot.prefetchAt(landable, { light: sunInMap[landable] ?? lightInMap().toArray(), near: friendOn(landable), entry: ahead });
       }
