@@ -195,24 +195,27 @@ export const LANDMARKS = {
 };
 
 // Each kind's kit model where the planet type has one; a kind left out
-// keeps its code-built shape (Hoth's ice spires, the snowspeeder debris).
-// Sizes put a row of scale 1 at about the code shape's size (ground.js:
-// a rock 7 m across, a spire 26 m tall).
+// keeps its code-built shape (Hoth's ice spires, the snowspeeder debris, a
+// city's towers). Sizes put a row of scale 1 at about the code shape's size
+// (ground.js: a rock 7 m across, a spire 26 m tall, a trunk and its crown
+// 79 m); a temperate world's trees a little under, as they're its parks' and
+// gardens', not a wroshyr forest's.
 export const CLUTTER_KIT = {
   ice: { rock: { ...k('Rock_Large_2'), size: 1.4 } },
   rock: { rock: { ...k('Rock_Large_1'), size: 1.5 } },
   lava: { rock: { ...k('Rock_Large_3'), size: 1.5 } },
   desert: { rock: { ...k('Rock_Big_1', 'naturemega'), size: 1 } },
   ocean: { rock: { ...k('Rock_Big_2', 'naturemega'), size: 1 } },
-  forest: { rock: { ...k('Rock_Big_2', 'naturemega'), size: 1 }, spire: { ...k('GiantPine_2', 'naturemega'), size: 1.6 } },
-  temperate: { rock: { ...k('Rock_Big_1', 'naturemega'), size: 1 }, spire: { ...k('Pine_4', 'naturemega'), size: 2 } },
+  forest: { rock: { ...k('Rock_Big_2', 'naturemega'), size: 1 }, trunk: { ...k('TallThick_5', 'naturemega'), size: 4.2 } },
+  temperate: { rock: { ...k('Rock_Big_1', 'naturemega'), size: 1 }, trunk: { ...k('CommonTree_3', 'naturemega'), size: 5 } },
 };
 
 // a world's own trees where its fiction has them
 export const CLUTTER_KIT_OF = {
-  endor: { spire: { ...k('TallThick_5', 'naturemega'), size: 2.6 } },
-  yavin: { spire: { ...k('TallThick_2', 'naturemega'), size: 2 } },
+  yavin: { trunk: { ...k('TallThick_2', 'naturemega'), size: 5.3 } },
+  kashyyyk: { trunk: { ...k('TallThick_4', 'naturemega'), size: 5.3 } },
   dagobah: { spire: { ...k('TwistedTree_1', 'naturemega'), size: 1.6 }, debris: { ...k('DeadTree_2', 'naturemega'), size: 0.8 } },
+  'middle-earth': { trunk: { ...k('Birch_1', 'naturemega'), size: 4 } },
 };
 
 export function clutterKitOf(spec) {

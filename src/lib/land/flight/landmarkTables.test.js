@@ -54,8 +54,8 @@ describe('the landmark tables', () => {
   });
 
   it('gives a planet its own trees over its type’s', () => {
-    expect(clutterKitOf({ id: 'endor', type: 'forest' }).spire.name).toBe('TallThick_5');
-    expect(clutterKitOf({ id: 'e:1,0:0:0', type: 'forest' }).spire.name).toBe('GiantPine_2');
+    expect(clutterKitOf({ id: 'yavin', type: 'forest' }).trunk.name).toBe('TallThick_2');
+    expect(clutterKitOf({ id: 'e:1,0:0:0', type: 'forest' }).trunk.name).toBe('TallThick_5');
     expect(clutterKitOf({ id: 'x', type: 'gas' })).toEqual({});
     expect(clutterKitOf(null)).toEqual({});
   });
