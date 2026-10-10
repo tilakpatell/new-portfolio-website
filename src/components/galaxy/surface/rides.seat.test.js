@@ -1,6 +1,7 @@
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { SEATS } from './riders';
@@ -10,11 +11,22 @@ import { RIDES } from './rides';
 // bf2017-vehicles.js), their seats measured once off the models and held to
 // them here: the hips sit on something just under them, the hands are on
 // something, the feet stand on something. Read from the files themselves,
-// in the model's frame (+z its nose, +x its left, y up from its underside).
+// in the model's frame (+z its nose, +x its left, y up from its underside);
+// where the file is in the bucket and not this checkout (src/data/
+// galaxyAssets.json), from its points to the centimetre, kept beside this
+// test (fixtures/<kind>.points.json: scripts/ride-points.mjs makes them from
+// the same file).
 async function points(kind) {
+  const file = fileURLToPath(new URL(`../../../../public/models/galaxy/surface/${kind}.glb`, import.meta.url));
+  if (!existsSync(file)) {
+    const { cm } = JSON.parse(readFileSync(new URL(`./fixtures/${kind}.points.json`, import.meta.url), 'utf8'));
+    const out = [];
+    for (let i = 0; i < cm.length; i += 3) out.push([cm[i] / 100, cm[i + 1] / 100, cm[i + 2] / 100]);
+    return out;
+  }
   await MeshoptDecoder.ready;
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
-  const doc = await io.read(fileURLToPath(new URL(`../../../../public/models/galaxy/surface/${kind}.glb`, import.meta.url)));
+  const doc = await io.read(file);
   const out = [];
   const v = [];
   for (const node of doc.getRoot().listNodes()) {

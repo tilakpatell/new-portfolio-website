@@ -21,6 +21,8 @@ describe('the light cut first, the level’s swapped in', () => {
   it('draws a native kind’s light cut first, its level’s cut after', () => {
     expect(cutsToLoad('native', 'ultra', models)).toEqual({ first: surfaceLodUrl('native'), then: surfaceUltraUrl('native') });
     expect(cutsToLoad('native', 'high', models)).toEqual({ first: surfaceLodUrl('native'), then: surfaceUrl('native') });
+    // (at the phone's levels the light cut is the level's own: loaded once, nothing swapped)
+    expect(cutsToLoad('native', 'mid', models)).toEqual({ first: surfaceLodUrl('native'), then: null });
   });
   it('loads anything else’s level cut straight away', () => {
     expect(cutsToLoad('old', 'ultra', models)).toEqual({ first: surfaceUltraUrl('old'), then: null });

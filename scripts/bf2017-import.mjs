@@ -370,8 +370,11 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   else root.getDefaultScene().addChild(doc.createNode('grip').setTranslation(gripAt));
   // (a far cut wears the game's colour maps alone: its normals and smoothness
   // are under a pixel at the distance it's drawn)
-  if (spec.colourOnly) for (const m of root.listMaterials()) m.setNormalTexture(null).setMetallicRoughnessTexture(null).setOcclusionTexture(null);
-  await doc.transform(prune());
+  if (spec.colourOnly) {
+    for (const m of root.listMaterials()) m.setNormalTexture(null).setMetallicRoughnessTexture(null).setOcclusionTexture(null);
+    // (the maps alone: an empty node such as the grip stays)
+    await doc.transform(prune({ propertyTypes: ['Texture'] }));
+  }
   // the game's own maps, as the bucket holds them (zstd UASTC, full mips),
   // their top levels dropped to the cut's size: nothing re-encoded (--native)
   const native = spec.native ? await nativeMaps(doc, spec) : 0;
@@ -537,7 +540,8 @@ export async function importModel(name, opts) {
   const file = `/models/galaxy/${sub}/${kind}.glb`;
   if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus', pack: '${kind}'` : ''} },`);
   else {
-    const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: cuts.plain.triangles, tex };
+    // (a vehicle's the file's own count, after its markers and normal-only decals are gone)
+    const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: opts.vehicle ? plain.tris : cuts.plain.triangles, tex };
     if (rig || spec.skeleton) row.rig = true;
     if (far) row.far = true;
     if (spec.frame && spec.frame.name !== name) row.hull = spec.frame.name;

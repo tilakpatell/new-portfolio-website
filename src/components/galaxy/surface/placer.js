@@ -168,7 +168,8 @@ export const fallbackFor = (kind, url, models = SURFACE_MODELS) => {
 export function cutsToLoad(kind, level, models = SURFACE_MODELS) {
   const url = modelUrlFor(kind, level, models);
   const row = models[kind];
-  if (row?.native && row.lod) return { first: lodUrlFor(kind, models), then: url };
+  // (at low and mid a native kind's cut is the light one itself: nothing to swap in)
+  if (row?.native && row.lod && url !== lodUrlFor(kind, models)) return { first: lodUrlFor(kind, models), then: url };
   return { first: url, then: null };
 }
 

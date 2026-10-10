@@ -39,9 +39,13 @@ export const surfaceFarUrl = (kind) => `/models/galaxy/surface/${kind}.far.glb`;
 // An entry with its own `url` (a book of models kept outside this folder:
 // the Rick and Morty planets') loads that, and its ultra and light cuts only
 // where it names them (`ultraUrl`, `lodUrl`): no file is guessed at.
+// (a native kind, the game's own maps, has a plain cut of up to 16 MB: at
+// low and mid, the phone's levels, it draws its light cut alone)
+const PHONE = new Set(['low', 'mid']);
 export const modelUrlFor = (kind, level, models = SURFACE_MODELS) => {
   const m = models[kind];
   if (m?.url) return (level === 'ultra' && m.ultraUrl) || m.url;
+  if (m?.native && m.lod && PHONE.has(level)) return surfaceLodUrl(kind);
   return level === 'ultra' && m?.ultra ? surfaceUltraUrl(kind) : surfaceUrl(kind);
 };
 export const lodUrlFor = (kind, models = SURFACE_MODELS) => {

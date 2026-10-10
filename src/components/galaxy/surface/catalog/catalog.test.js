@@ -148,6 +148,18 @@ describe('which file a level loads, and whether it swaps to the light one far of
     expect(modelUrlFor('nothing', 'ultra', models)).toBe(surfaceUrl('nothing'));
   });
 
+  it('loads a native kind’s light cut alone at low and mid (the phone’s), its plain at high, its ultra at ultra', () => {
+    const native = { ship: { native: true, lod: true, ultra: { tris: 80000, tex: 4096 } }, bare: { native: true } };
+    expect(modelUrlFor('ship', 'low', native)).toBe(surfaceLodUrl('ship'));
+    expect(modelUrlFor('ship', 'mid', native)).toBe(surfaceLodUrl('ship'));
+    expect(modelUrlFor('ship', 'high', native)).toBe(surfaceUrl('ship'));
+    expect(modelUrlFor('ship', 'ultra', native)).toBe(surfaceUltraUrl('ship'));
+    // (one with no light cut has only its plain to give)
+    expect(modelUrlFor('bare', 'low', native)).toBe(surfaceUrl('bare'));
+    // (and a kind that isn't native keeps its plain at every level below ultra)
+    expect(modelUrlFor('plain', 'low', models)).toBe(surfaceUrl('plain'));
+  });
+
   it('never swaps to the light model at ultra, and does below it where the kind has one', () => {
     expect(wantsLod('plain', 'ultra', models)).toBe(false);
     expect(wantsLod('plain', 'high', models)).toBe(true);

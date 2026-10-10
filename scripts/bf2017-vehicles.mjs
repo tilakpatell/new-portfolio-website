@@ -24,7 +24,9 @@ const V = 'gameplay/vehicles';
 
 // [kind, group, manifest name, what it is, more flags, parts]
 export const CAST = [
-  ['atat', 'walker', `${V}/ground/at-at/old/atat_mesh`, 'the AT-AT', ['--rig', '--hero']],
+  // (its LOD1, 61,901 triangles, a hair over the plain's 60,000: the next down is a
+  // sixth of its ultra, past ultra.js's four times)
+  ['atat', 'walker', `${V}/ground/at-at/old/atat_mesh`, 'the AT-AT', ['--rig', '--hero', '--cuts', 'plain=1']],
   ['atst', 'walker', `${V}/ground/atst/atst_static_donotuse_mesh`, 'the AT-ST', ['--hero', '--bind', 'Cinematics/Objects/ATST/ATST_Ske01']],
   // (fifteen maps: its light cut's at 512 come to 5.1 MB, over the native light cap)
   ['atte', 'walker', `${V}/ground/at_te/at_te_mesh`, 'the AT-TE', ['--rig', '--hero', '--light-maps', '256']],

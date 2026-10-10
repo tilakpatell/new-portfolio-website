@@ -73,7 +73,7 @@ async function source([file, , , from]) {
   await writeFile(join(out, 'credits.json'), '{}\n');
   const kind = file.replace(/[^a-z0-9]/g, '');
   execFileSync('node', ['scripts/bf2017-fetch.mjs', from.name], { cwd: ROOT, stdio: 'ignore' });
-  execFileSync('node', ['scripts/bf2017-import.mjs', from.name, '--kind', kind, '--as', from.as, '--asis', '--cuts', `plain=${from.cut}`, '--tex', String(from.tex ?? 1024), '--maps', String((from.tex ?? 1024) / 2), '--out', out, '--catalog', join(out, 'cat.js'), '--credits', join(out, 'credits.json')], { cwd: ROOT, stdio: 'inherit' });
+  execFileSync('node', ['scripts/bf2017-import.mjs', from.name, '--kind', kind, '--as', from.as, '--asis', '--native', '--cuts', `plain=${from.cut}`, '--tex', String(from.tex ?? 1024), '--maps', String(from.tex ?? 1024), '--out', out, '--catalog', join(out, 'cat.js'), '--credits', join(out, 'credits.json')], { cwd: ROOT, stdio: 'inherit' });
   return { path: join(out, 'surface', `${kind}.glb`), title: from.name, as: from.as };
 }
 let SURFACE_FROM = () => null;
