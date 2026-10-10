@@ -176,7 +176,7 @@ export default function HeroPanel({ hero, onChange, onClose }) {
                 </li>
               ))}
             </ul>
-            <p className="surface-hero-keys">F a stroke (strokes chain; hold F for the heavy one, which breaks shields), hold C to block (a block as a swipe lands is a parry), X to dodge, R to throw, G the Force push, V the pull.</p>
+            <p className="surface-hero-keys">F a stroke (strokes chain; hold F for the heavy one, which breaks shields), hold C to block (a block as a swipe lands is a parry), X to dodge, R to throw, G {ABILITIES[abilitiesOf(h).power].name.toLowerCase()}: {ABILITIES[abilitiesOf(h).power].about} V {ABILITIES[abilitiesOf(h).second].name.toLowerCase()}: {ABILITIES[abilitiesOf(h).second].about}</p>
           </div>
         )}
         {tab === 'arms' && !saber && (

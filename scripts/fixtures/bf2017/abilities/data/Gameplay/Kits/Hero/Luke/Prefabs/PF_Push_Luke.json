@@ -1,0 +1,19 @@
+{"name":"Gameplay/Kits/Hero/Luke/Prefabs/PF_Push_Luke","type":"LogicPrefabBlueprint","root":0,"objects":[
+{"$type":"LogicPrefabBlueprint","Name":"Gameplay/Kits/Hero/Luke/Prefabs/PF_Push_Luke","PropertyConnections":[
+ {"Source":{"$ref":1},"Target":{"$ref":4},"SourceFieldId":1697178449,"TargetFieldId":-1975641046},
+ {"Source":{"$ref":1},"Target":{"$ref":2},"SourceFieldId":-503329400,"TargetFieldId":-1379054756},
+ {"Source":{"$ref":2},"Target":{"$ref":3},"SourceFieldId":-1399230854,"TargetFieldId":-996560163},
+ {"Source":{"$ref":5},"Target":{"$ref":6},"SourceFieldId":309214835,"TargetFieldId":328942422},
+ {"Source":{"$ref":5},"Target":{"$ref":7},"SourceFieldId":1495681468,"TargetFieldId":328942422}
+]},
+{"$type":"PlayerAbilityPropertyOutputEntityData","PlayerAbilityIdentifier":1029217446},
+{"$type":"ConditionalFloatEntityData"},
+{"$type":"SphereQueryEntityData","Radius":0.0},
+{"$type":"DynamicQueryFilterEntityData"},
+{"$type":"AffectorQueryFilterEntityData","DescriptorIds":[4161031954,1555918390]},
+{"$type":"AffectorApplyEntityData","Duration":1.0,"Rank":0,"Affector":{"$asset":"Gameplay/Prefabs/Affectors/States/Affector_Damage_Luke_ForcePush","$assetType":"DamageAffectorAsset"}},
+{"$type":"AffectorApplyEntityData","Duration":1.0,"Rank":1,"Affector":{"$asset":"Gameplay/Prefabs/Affectors/States/Affector_Damage_Luke_ForcePush","$assetType":"DamageAffectorAsset"}},
+{"$type":"AffectorApplyEntityData","Duration":1.0,"Affector":{"$asset":"Gameplay/Prefabs/Affectors/CharacterState/Affector_ForcePushed_14m","$assetType":"CharacterStateAffectorAsset"}},
+{"$type":"AffectorApplyEntityData","Duration":1.0,"Affector":{"$asset":"Gameplay/Prefabs/Affectors/CharacterState/Affector_ForcePushed_10m","$assetType":"CharacterStateAffectorAsset"}},
+{"$type":"SphereQueryEntityData","Radius":10.0}
+]}
