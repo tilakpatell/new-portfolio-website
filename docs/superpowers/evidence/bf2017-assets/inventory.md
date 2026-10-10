@@ -125,3 +125,36 @@ The owner says the upload goes on for some time and animation, audio and more me
 - **Textures**: `web/textures/` has not started; the GLBs point at it.
 - **The classic edition** (`bf2-extract`): empty.
 - **Not in the 2017 game's set at all** (so never coming from it): the wampa, the rancor, Jabba himself, the sarlacc.
+
+## Update, 02:45 UTC: the upload a day on
+
+| part | objects | bytes | against its manifest |
+| --- | --- | --- | --- |
+| `web/models/` | 48,248 | 2.5 GB | complete: every LOD file of the 13,871 models |
+| `web/collision/` | 12,941 | 151 MB | complete |
+| `web/anims/` + `web/anims_additive/` | 7,947 + 2,159 | 955 + 144 MB | 10,106 of the 10,270 clips in `web/anims.jsonl` |
+| `web/textures/` | 16,617 | 6.7 GB | 2,441 KTX2 (4.9 GB, the derived maps the GLBs point at), 4,528 PNG, 9,648 HDR (lightmaps and probes under `levels/`); `web/textures.jsonl` lists 17,511 PNG sources (43.6 GB), 1,851 of them up |
+| `web/physics/` | 10,530 | 123 MB | complete: Havok shapes (`hknpConvexPolytopeShape` and friends) per model, `web/physics.jsonl` |
+| `web/movies/` | 61 | 628 MB | WebM |
+| `web/fonts/`, `web/svg/`, `web/strings/` | 23, 702, 2 | 36 MB, 4 MB, 1 MB | the UI's fonts, icons and strings (`web/misc.jsonl`) |
+| `data/` | 83,983 | 243 MB | the EBX records, complete; `data/Sound/` is 3,918 records, no audio files yet |
+| **bucket** | **183,260** | **11.6 GB** | still rising |
+
+### The clips (`web/anims.jsonl`, 10,270)
+
+One glTF per clip: the skeleton's 248 nodes, no mesh, one animation with rotation and translation channels on the bones by name, 30 fps, raw (uncompressed: Luke's jump attack is 109 KB for 44 frames), with extras `{ codec, fps, endFrame, additive, loop, skeleton, key }`. The manifest adds `channels`, `check`, `duplicates`, `distance` (root travel, 3,409 clips) and `timeScale`.
+
+| skeleton | clips |
+| --- | --- |
+| `Walrus_HumanMale` (the shared humanoid) | 4,498 (1,651 additive); 520 MB; 4,446 up |
+| `Walrus_NIS_S0800_Skeleton` (cinematics) | 2,638 |
+| `Walrus_HumanMale_1p` (first person) | 949 |
+| B1 battle droid (`D_Assault_Preq_01_Ske`) 532 · B2 337 · Grievous 161 · Yoda 101 · BB-8 88 · Ewok 77 · AT-ST 69 · droideka 52 · tauntaun 44 · AT-TE 41 · the creatures | the rest |
+
+The humanoid set by prefix: `A_<Hero>_*` the heroes' combat (Vader 104, Maul 89, Luke 69, Obi-Wan 69, Anakin 62, Dooku 56, Palpatine 37, Chewbacca 11; Kylo and Rey excluded), `C_<Hero>_*` the heroes' locomotion (walk, run, sprint, turn, in eight directions), `A_HM_*` the generic humanoid (deaths standing, running, by weapon; dodges; deploys; speeder bike; throws), `AI_Rifleman_*`, `AI_Officer_*`, `Cover_*`, `Awareness_*`, `Spawn_*`, `Hit_*`, `Loco_*`, `P`/`T`/`L` (pistol, two-hand, long weapon stances), `Add_*`/`PAdd_*` additive layers, `CIN_*` cinematics, `UI_FrontEnd_*` menu poses.
+
+A hero's own set (Luke's, 138 with locomotion): `AttackLoop_Strike1..6` and `_V2` each with a `_BackToIdle`, `AttackPose` closers, `Block_Stagger`, `Stagger_{Back,Front}_01..03`, `Dodge_{Back,Front,Left,Right}`, `Defeated`, `Jump_SaberAttack_Light`, `Stand_SaberDash`, `Stand_ForceAttack_Push`, `Stand_ForceRepulse`, `InAir_ForceAttack_Push`, `Blinded`, `Electrocuted`, `Gas`, `Stunned_Pain` (enter, loop, exit), `Stand_Walk_*`, `Stand_Run_*`, `Stand_Sprint_*`, `StandTurn_*`. Vader adds `Stand_Block_SwingLeft/Right_01..04`, `Stand_Block_Choke_*`, `Stand_CatchSaber`, `LightAttack_Blocked_01..06`, `ForceChoke`, `RagePowerUp`. Obi-Wan adds `MindTrick_*`, `ForcePush`, `Dash_Exit`, a second attack loop.
+
+### Phase 1's inputs, present
+
+Every hilt's three maps (`lightsaber{anakin,darthvader,dooku,grievous,lukehoth,lukeskywalker,maul,maulcrimson,obiwan,yoda}`, and `bowcaster`, `dl44`, `ee3`); the heroes' body maps (luke 12 KTX2, darthvader 15, obiwan 6, anakin 17, darthmaul 18, countdooku 18, yoda 11, generalgrievous 12, palpatine 8, hansolo 5, leia 6, lando 7, chewbacca 25, bobafett 13, bossk 7) and 264 head maps; the heroes' clips.
