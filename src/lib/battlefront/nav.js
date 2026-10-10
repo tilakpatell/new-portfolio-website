@@ -14,7 +14,8 @@
 //
 //   buildNav({ heightAt, bounds, cell, solids, maxSlope, cover, radius }) → nav
 //   cellAt(nav, x, z) → [c, r] | null      heightAt(nav, x, z) → y (bilinear)
-//   walkable(nav, x, z) → bool             findPath(nav, from, to, { blocked }) → [[x, z]] | null
+//   walkable(nav, x, z) → bool             nearestWalkable(nav, x, z) → [x, z] | null
+//   findPath(nav, from, to, { blocked }) → [[x, z]] | null
 //   firstSolid(nav, a, b) → { t, at, solid } | null   lineClear(nav, a, b) → bool
 //   coverSlots(nav, near, r) → slots       nearestSlot(nav, at, threat) → slot | null
 // Pure: typed arrays, no three.js.
@@ -178,6 +179,13 @@ function nearestOpen(nav, x, z, blocked, reach = 4) {
     if (best >= 0) return best;
   }
   return -1;
+}
+
+// the nearest walkable point to (x, z): itself, or the middle of the nearest open cell
+export function nearestWalkable(nav, x, z, reach = 8) {
+  if (walkable(nav, x, z)) return [x, z];
+  const i = nearestOpen(nav, x, z, null, reach);
+  return i < 0 ? null : centre(nav, i);
 }
 
 const centre = (nav, i) => [nav.origin[0] + ((i % nav.cols) + 0.5) * nav.cell, nav.origin[1] + (Math.floor(i / nav.cols) + 0.5) * nav.cell];
