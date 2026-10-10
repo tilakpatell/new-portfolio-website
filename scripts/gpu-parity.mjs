@@ -232,7 +232,8 @@ try {
     // main's pictures, from a worktree of it with this checkout's packages
     const wt = mkdtempSync(join(tmpdir(), 'gpu-parity-'));
     rmSync(wt, { recursive: true, force: true });
-    execFileSync('git', ['worktree', 'add', '--detach', wt, before], { cwd: ROOT, stdio: 'ignore' });
+    // (long paths on: a fixture under scripts/fixtures/bf2017 is past Windows's 260)
+    execFileSync('git', ['-c', 'core.longpaths=true', 'worktree', 'add', '--detach', wt, before], { cwd: ROOT, stdio: 'ignore' });
     const sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: wt }).toString().trim();
     symlinkSync(join(ROOT, 'node_modules'), join(wt, 'node_modules'), 'junction');
     let server = null;
@@ -244,7 +245,19 @@ try {
       report.before = { ref: before, sha, ...leg.info, errors: leg.errors, views: Object.keys(leg.shots) };
     } finally {
       await server?.close();
-      execFileSync('git', ['worktree', 'remove', '--force', wt], { cwd: ROOT, stdio: 'ignore' });
+      // (on Windows a file the browser or Vite still holds makes git refuse
+      // the removal: the folder is then deleted directly and the worktree
+      // pruned, and the before pictures are kept either way)
+      try {
+        execFileSync('git', ['-c', 'core.longpaths=true', 'worktree', 'remove', '--force', wt], { cwd: ROOT, stdio: 'ignore' });
+      } catch {
+        rmSync(wt, { recursive: true, force: true });
+        try {
+          execFileSync('git', ['worktree', 'prune'], { cwd: ROOT, stdio: 'ignore' });
+        } catch {
+          /* (pruned on the next run) */
+        }
+      }
     }
     writeFileSync(reportFile, JSON.stringify(report, null, 1));
     stop(0);
