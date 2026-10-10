@@ -88,33 +88,44 @@ void main() {
 
 // what the scene takes from the world's light record while you're inside
 // (areaLook.js): the storm's sun, the sky's fill, the probe and the grade
-export function lookOf(light) {
+// (the stored, linear [r, g, b] the records carry, as three's linear colour)
+const linear = (c) => (Array.isArray(c) ? new THREE.Color().setRGB(c[0], c[1], c[2], THREE.LinearSRGBColorSpace) : null);
+
+// what the scene takes from the level's own light record while you're
+// inside (areaLook.js): the sun's way from the record, the sun's, the sky's
+// and the ground's colours from the area's `fill` (the records' stored
+// values), the reflection probe of another record where the level's own sees
+// nothing (`probe`), the grade the record has (none, for a space level), the
+// wind, and the fog's density from the record's own curve
+export function lookOf(light, { fill = null, probe = null } = {}) {
   const entry = weatherEntry(light, 'stormy');
   const d = siteLightFrom(entry);
   if (!d) return null;
   const sun = d.sky.suns[0];
+  const shine = probe ? weatherEntry(probe, 'stormy') : entry;
+  const shineD = probe ? siteLightFrom(shine) : d;
   return {
-    sun: { dir: sun ? dirOf(sun.az, sun.el).toArray() : [0, 1, 0], color: sun?.color ?? '#ffffff' },
-    sky: d.sky.horizon ?? '#8899aa',
-    zenith: d.sky.zenith ?? null,
-    ground: d.light.ground ?? '#333333',
-    probe: entry.probe?.url ?? null,
+    sun: { dir: sun ? dirOf(sun.az, sun.el).toArray() : [0, 1, 0], color: linear(fill?.sun) ?? new THREE.Color(sun?.color ?? '#ffffff') },
+    sky: linear(fill?.sky) ?? new THREE.Color(d.sky.horizon ?? '#8899aa'),
+    ground: linear(fill?.ground) ?? new THREE.Color(d.light.ground ?? '#333333'),
+    probe: shine?.probe?.url ?? null,
     // (the probe's faces are the game's radiance: this brings them to the site's, as the surface takes them)
-    probeScale: d.probeScale ?? 0,
+    probeScale: shineD?.probeScale ?? 0,
     lut: d.grading.lut ? { url: d.grading.lut, size: d.grading.lutSize } : null,
     wind: d.wind,
-    fog: d.fog.color ?? null,
+    fogDensity: d.fog.density ?? null,
   };
 }
 
-export function createLevelArea(scene, { at, radius, sea, sky = null, fog, light = null, weather = null, frame = null }) {
+export function createLevelArea(scene, { at, radius, sea, sky = null, fog, light = null, fill = null, probe = null, weather = null, frame = null, metres = 1 }) {
   const group = new THREE.Group();
   group.name = 'level-area';
   group.position.set(...at);
   scene.add(group);
-  const look = light ? lookOf(light) : null;
-  // (the record's fog colour, dimmed for the storm's dark, where it has one)
-  const fogColor = new THREE.Color(look?.fog ?? fog.color).multiplyScalar(look?.fog ? (fog.dim ?? 1) : 1);
+  const look = light ? lookOf(light, { fill, probe }) : null;
+  const fogColor = new THREE.Color(fog.color);
+  // (the record's fog density, a metre's, in the battle's units, where it gives one)
+  if (look?.fogDensity) fog = { ...fog, density: look.fogDensity * metres };
 
   const domeUniforms = { uSky: { value: null }, uGain: { value: sky?.gain ?? 1 }, uHas: { value: 0 }, uFog: { value: fogColor }, uFlash: { value: 0 } };
   const dome = new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 24), new THREE.ShaderMaterial({ vertexShader: DOME_VERT, fragmentShader: DOME_FRAG, uniforms: domeUniforms, side: THREE.DoubleSide, fog: false }));
