@@ -7,7 +7,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { VEHICLE, farCut } from './bf2017-import.mjs';
+import { NATIVE_VEHICLE, VEHICLE, farCut, vehicleCuts } from './bf2017-import.mjs';
 
 // Lane V's flags on the 2017 import (docs/superpowers/plans/
 // 2026-10-10-bf2017-phaseV-vehicles.md): a walker's far cut, a rigid walker
@@ -96,6 +96,18 @@ describe('the 2017 import, for vehicles', () => {
     expect(farCut(chain([116141, 61901, 20863, 9727, 4740, 1032])).lod).toBe(5);
     expect(farCut(chain([17206, 8393, 940, 400])).lod).toBe(2);
     expect(VEHICLE).toEqual({ plainMax: 25000, lod1Max: 7000, farMax: 1000 });
+  });
+
+  it('takes a native vehicle’s plain cut at the game’s first LOD under 60,000 triangles, and its ultra at LOD0 whatever it is', () => {
+    const chain = (tris) => ({ lods: tris.map((t, lod) => ({ lod, triangles: t })) });
+    const xwing = chain([82340, 36843, 17601, 6918, 3498, 568]);
+    const tie = chain([57264, 28509, 14169, 7083, 2558, 856]);
+    expect(NATIVE_VEHICLE.plainMax).toBe(60000);
+    expect(vehicleCuts(xwing, { native: true, ultra: true })).toMatchObject({ plain: { lod: 1 }, lod1: { lod: 3 }, ultra: { lod: 0 } });
+    expect(vehicleCuts(tie, { native: true, ultra: true })).toMatchObject({ plain: { lod: 0 }, lod1: { lod: 4 }, ultra: { lod: 0 } });
+    expect(vehicleCuts(tie, { native: true }).ultra).toBe(null);
+    // (the WebP cuts, for what isn't native, as they were)
+    expect(vehicleCuts(xwing).plain.lod).toBe(2);
   });
 
   it('binds a rigid walker to its game skeleton, every bone kept, each vertex to one, and cuts it far without a skin', { timeout: 15000 }, async () => {

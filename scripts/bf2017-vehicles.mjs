@@ -8,7 +8,8 @@
 //   node scripts/bf2017-vehicles.mjs [kind,kind…|--group ground|turret|air|cockpit|walker] [--fetch] [--dry]
 //
 // A walker's rig: --rig keeps the game's skin (the AT-AT's, AT-TE's,
-// AT-RT's, droideka's); --bind skins the AT-ST's rigid composite to the
+// AT-RT's, droideka's, and the two spider droids', whose skeletons have no
+// clips in the drop); --bind skins the AT-ST's rigid composite to the
 // skeleton its clips are on. A fighter with a cockpit stands in the frame
 // its manifest bounds give (--hull-frame), and its cockpit (`<kind>cockpit`)
 // in the same one, so the seat is where the hull's is.
@@ -23,9 +24,10 @@ const V = 'gameplay/vehicles';
 
 // [kind, group, manifest name, what it is, more flags, parts]
 export const CAST = [
-  ['atat', 'walker', `${V}/ground/at-at/old/atat_mesh`, 'the AT-AT', ['--rig', '--hero', '--ultra', '--cuts', 'ultra=1']],
+  ['atat', 'walker', `${V}/ground/at-at/old/atat_mesh`, 'the AT-AT', ['--rig', '--hero']],
   ['atst', 'walker', `${V}/ground/atst/atst_static_donotuse_mesh`, 'the AT-ST', ['--hero', '--bind', 'Cinematics/Objects/ATST/ATST_Ske01']],
-  ['atte', 'walker', `${V}/ground/at_te/at_te_mesh`, 'the AT-TE', ['--rig', '--hero']],
+  // (fifteen maps: its light cut's at 512 come to 5.1 MB, over the native light cap)
+  ['atte', 'walker', `${V}/ground/at_te/at_te_mesh`, 'the AT-TE', ['--rig', '--hero', '--light-maps', '256']],
   ['atrt', 'walker', `${V}/ground/atrt/atrt_mesh`, 'the AT-RT', ['--rig', '--hero']],
   ['droideka', 'walker', `${V}/ground/droideka_01/droideka_01_mesh`, 'a droideka', ['--rig', '--hero']],
 
@@ -35,10 +37,10 @@ export const CAST = [
   ['barc', 'ground', `${V}/ground/barc/barc_speeder_static_donotuse_mesh`, 'the BARC speeders'],
   ['speederbike', 'ground', `${V}/ground/74z/speederbike_static_donotuse_mesh`, 'the 74-Z speeder bikes'],
   ['landspeeder', 'ground', `${V}/ground/x34/vehicle_ground_x34_static_donotuse_mesh`, 'Luke’s X-34 landspeeder'],
-  ['homingspider', 'ground', `${V}/ground/homingspiderdroid/vehicle_ground_homingspiderdroid_static_donotuse_mesh`, 'the homing spider droids'],
-  ['dwarfspider', 'ground', `${V}/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh`, 'the dwarf spider droids'],
+  ['homingspider', 'ground', `${V}/ground/homingspiderdroid/geo_homingspiderdroid_anim_mesh`, 'the homing spider droids', ['--rig']],
+  ['dwarfspider', 'ground', `${V}/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh`, 'the dwarf spider droids', ['--rig']],
 
-  ['eweb', 'turret', `${V}/stationary/e-web/e-web_mesh`, 'the E-Web heavy blasters', ['--tex', '512']],
+  ['eweb', 'turret', `${V}/stationary/e-web/e-web_mesh`, 'the E-Web heavy blasters'],
   ['turret', 'turret', `${V}/stationary/df9/old/df9_01_static_mesh`, 'the DF.9 turrets'],
   ['atgar', 'turret', `${V}/stationary/atgar14fdptower/atgar14fdptower_mesh`, 'the Atgar anti-vehicle towers'],
   ['markii', 'turret', `${V}/stationary/markii/vehicle_markii_deployed_mesh`, 'the Mark II medium repeating blasters'],
@@ -46,18 +48,18 @@ export const CAST = [
   ['aaturret', 'turret', `${V}/stationary/turretantiair_yavin/turretantiair_yavin_livingworld_mesh`, 'the Rebel anti-air turrets'],
 
   ['snowspeeder', 'air', `${V}/air/airspeeder/airspeeder_static_donotuse_mesh`, 'the snowspeeders', ['--hull-frame']],
-  ['xwing', 'air', `${V}/air/xwing_t65/vehicle_air_xwing_t65_static_donotuse_mesh`, 'the T-65 X-wings', ['--hull-frame', '--ultra', '--cuts', 'ultra=1']],
+  ['xwing', 'air', `${V}/air/xwing_t65/vehicle_air_xwing_t65_static_donotuse_mesh`, 'the T-65 X-wings', ['--hull-frame']],
   ['parkedxwing', 'air', `${V}/air/xwing_red5/xwing_red5_landing_mesh`, 'the parked X-wings (Red Five, gear down)'],
   ['ywing', 'air', `${V}/air/ywing/vehicle_air_ywing_static_donotuse_mesh`, 'the Y-wings', ['--hull-frame']],
   ['awing', 'air', `${V}/air/awing/vehicle_air_awing_01_static_donotuse_mesh`, 'the A-wings', ['--hull-frame']],
   ['uwing', 'air', `${V}/air/uwing/vehicle_air_uwing_static_donotuse_mesh`, 'the U-wings'],
-  ['tiefighter', 'air', `${V}/air/tiefighter/vehicle_air_tiefighter_static_donotuse_mesh`, 'the TIE fighters', ['--hull-frame', '--ultra', '--cuts', 'ultra=1']],
+  ['tiefighter', 'air', `${V}/air/tiefighter/vehicle_air_tiefighter_static_donotuse_mesh`, 'the TIE fighters', ['--hull-frame']],
   ['tiebomber', 'air', `${V}/air/tiebomber/vehicle_air_tiebomber_static_donotuse_mesh`, 'the TIE bombers', ['--hull-frame']],
   ['tieinterceptor', 'air', `${V}/air/tieinterceptor/vehicle_air_tieinterceptor_static_donotuse_mesh`, 'the TIE interceptors'],
   ['tieadvanced', 'air', `${V}/air/tieadvancedx1/vehicle_air_tieadvancedx1_static_donotuse_mesh`, 'Vader’s TIE Advanced x1', ['--hull-frame']],
   // (the Falcon's gameplay mesh names no maps in the drop; its landmark, the
   // one parked on the game's maps, has them)
-  ['falcon', 'air', `${V}/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh`, 'the Millennium Falcon', ['--hull-frame', '--hero', '--ultra', '--cuts', 'ultra=2']],
+  ['falcon', 'air', `${V}/air/millenniumfalcon/landmark/millenniumfalcon_01_landmark_mesh`, 'the Millennium Falcon', ['--hull-frame', '--hero']],
   ['slave1', 'air', `${V}/air/slave1/vehicle_air_slave1_static_donotuse_mesh`, 'Boba Fett’s Slave I', ['--hull-frame']],
   ['laat', 'air', `${V}/air/laat/vehicle_air_laat_gunship_mesh`, 'the Republic gunships', ['--hull-frame']],
   ['arc170', 'air', `${V}/air/arc170/vehicle_air_arc170_static_donotuse_mesh`, 'the ARC-170s', ['--hull-frame']],
@@ -87,9 +89,14 @@ export const CAST = [
 ];
 
 // a row's arguments for the import (a cockpit has no far cut: it's only ever near)
+// (and every one native: the game's own KTX2 maps, untouched, the plain cut's
+// at 1024, the light cut's at 512, the ultra cut's at the game's own size;
+// the caps are lib/bf2017-caps.mjs's native ones, and the files go to the
+// bucket: scripts/assets-publish.mjs)
+export const NATIVE_ARGS = ['--native', '--tex', '1024', '--maps', '1024', '--ultra-tex', '4096', '--ultra-maps', '4096'];
 export function importArgs([kind, group, name, as, more = []]) {
-  const far = group === 'cockpit' ? [] : ['--far'];
-  return [name, '--kind', kind, '--as', as, '--asis', '--vehicle', ...far, ...more, '--catalog', 'src/components/galaxy/surface/catalog/bf2017-vehicles.js'];
+  const cuts = group === 'cockpit' ? [] : ['--far', '--ultra'];
+  return [name, '--kind', kind, '--as', as, '--asis', '--vehicle', ...NATIVE_ARGS, ...cuts, ...more, '--catalog', 'src/components/galaxy/surface/catalog/bf2017-vehicles.js'];
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

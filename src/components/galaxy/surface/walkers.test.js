@@ -120,6 +120,8 @@ describe('walkers', () => {
       expect(walkerWay(WALKERS[kind], SURFACE_MODELS[kind]), kind).toBe('own');
       expect(RIGS[WALKERS[kind].own], kind).toBeTruthy();
       expect(packUrl(WALKERS[kind].own)).toBe(`/models/galaxy/bf2017/clips-${kind}.glb`);
+      // (and nothing of the site's rides the game's rig: no figure of ours on its bones)
+      expect(WALKERS[kind].ownRider, kind).toBeUndefined();
     }
   });
 });

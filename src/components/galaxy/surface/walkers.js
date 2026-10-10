@@ -17,7 +17,7 @@
 // feet on the footrests), who does its looking.
 //
 // WALKERS[kind] → { own?: rig, legs?: [{ x, hip, knee, ankle }], body(c) → bool, foot,
-//   step, lift, stance, bob, rider?: { kind, seat, bone? } } (in the model's own
+//   step, lift, stance, bob, rider?: { kind, seat } } (in the model's own
 //   frame: +z its nose, +x its left, y up from its feet, metres; hip, knee,
 //   ankle: [y, z] of the left leg's joints, the right mirrored at -x; body:
 //   whether a triangle's centre is the body's; foot: under this height, a
@@ -64,11 +64,6 @@ export const WALKERS = {
     stance: 0.6,
     bob: 0.05,
     rider: { kind: 'clone', seat: { hips: [0, 2.15, -0.45], lean: 0.35, hands: [[0.25, 2.4, -0.2]], feet: [[0.33, 1.62, -0.25]], elbow: [0.7, -0.5, -0.4], knee: [0.6, 0.2, 1], toes: [0.2, -0.3, 1] } },
-    // the game's AT-RT, its saddle measured off its rest bones (ATRT_Ske, in
-    // the grounded model's frame: the hands on LeftStearing, the feet on
-    // LeftFootPedal, the hips over Spine1), and carried by its Hips as the
-    // clips sway it
-    ownRider: { kind: 'clone', bone: 'Hips', seat: { hips: [0, 2.2, -0.42], lean: 0.3, hands: [[0.12, 2.6, 0.04]], feet: [[0.2, 1.86, 0.08]], elbow: [0.7, -0.5, -0.4], knee: [0.6, 0.2, 1], toes: [0.2, -0.3, 1] } },
   },
 };
 
@@ -316,8 +311,10 @@ export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
   };
 }
 
-// a walker on the game's own rig: the figure ownRig.js makes, its rider (the
-// AT-RT's) sat on the saddle and carried by the bone the clips sway
+// a walker on the game's own rig: the figure ownRig.js makes, as the game
+// has it. Nothing of the site's rides it (the owner, 2026-10-10: nothing of
+// ours rigged to a game model), so the AT-RT walks with its saddle empty
+// until the game's own clone trooper sits it.
 async function ownWalker(kind, spec, i, models) {
   const load = async (url) => {
     // (an .ultra cut not to be had falls to the plain one: placer.js's fallbackFor)
@@ -325,50 +322,5 @@ async function ownWalker(kind, spec, i, models) {
     return gltf ? { scene: cloneModel(gltf), animations: gltf.animations } : null;
   };
   // (the level's own cut, as below: the AT-AT's ultra is the same skin on the same rig)
-  const fig = await loadOwnRigFigure(modelUrlFor(kind, detailLevel(), models), { rig: spec.own, packs: [packUrl(spec.own)], load, loadPack: loadGlb }).catch(() => null);
-  if (!fig) return null;
-  const r = spec.ownRider;
-  if (!r) return fig;
-  const bone = fig.bones[r.bone] ?? null;
-  let rider = null;
-  let dead = false;
-  const seat = new THREE.Group();
-  seat.name = 'walker-rider';
-  fig.model.add(seat);
-  // (where the bone sits in the walker at rest: the saddle follows its moves from there)
-  fig.model.updateMatrixWorld(true);
-  const rest = bone ? new THREE.Matrix4().copy(fig.model.matrixWorld).invert().multiply(bone.matrixWorld).invert() : null;
-  const carried = new THREE.Matrix4();
-  crewFigure(r.kind, i)
-    .then((f) => {
-      if (!f || dead) return void f?.dispose?.();
-      rider = f;
-      seat.add(f.model);
-      f.base?.('sit')?.catch?.(() => {});
-    })
-    .catch(() => {});
-  const STILL = { speed: 0, side: 0, turn: 0, air: 0 };
-  return {
-    ...fig,
-    update(dt, move, motion = null) {
-      fig.update(dt, move, motion);
-      if (!rider) return;
-      rider.update(dt, 0, STILL);
-      fig.model.updateMatrixWorld(true);
-      carried.copy(bone ? bone.matrixWorld : fig.model.matrixWorld);
-      if (rest) carried.multiply(rest);
-      poseRider(rider, rider.model, carried, r.seat);
-    },
-    // (its rider looks and reacts too, the walker falling under it)
-    look: (...a) => rider?.look?.(...a),
-    react: (kind, opts) => {
-      rider?.react?.(kind, opts);
-      return fig.react(kind, opts);
-    },
-    dispose() {
-      dead = true;
-      rider?.dispose?.();
-      fig.dispose();
-    },
-  };
+  return loadOwnRigFigure(modelUrlFor(kind, detailLevel(), models), { rig: spec.own, packs: [packUrl(spec.own)], load, loadPack: loadGlb }).catch(() => null);
 }

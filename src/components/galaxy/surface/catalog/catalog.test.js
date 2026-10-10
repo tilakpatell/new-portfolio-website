@@ -124,11 +124,14 @@ describe('the surface models', () => {
       if (m.cluster) continue;
       expect(has(surfaceUltraUrl(kind)), `${kind}.ultra.glb`).toBe(Boolean(m.ultra));
       if (!m.ultra) continue;
-      expect(m.ultra.tris, `${kind}.ultra.tris`).toBeGreaterThan(m.tris ?? 0);
+      // (a native one may be the same mesh as the plain, with the game's maps at their own size, not cut down)
+      if (m.native) expect(m.ultra.tris, `${kind}.ultra.tris`).toBeGreaterThanOrEqual(m.tris ?? 0);
+      else expect(m.ultra.tris, `${kind}.ultra.tris`).toBeGreaterThan(m.tris ?? 0);
       // (and at most four times the catalogue's cut, where the entry has one: ./ultra.js)
       if (m.tris) expect(m.ultra.tris, `${kind}.ultra.tris`).toBeLessThanOrEqual(CUT.factor * m.tris);
       expect(m.ultra.tex, `${kind}.ultra.tex`).toBeLessThanOrEqual(ULTRA.tex);
-      expect(bytesOf(surfaceUltraUrl(kind)), `${kind}.ultra.glb`).toBeLessThan(ULTRA.bytes);
+      // (a native one to the native cap: it is served from the bucket)
+      expect(bytesOf(surfaceUltraUrl(kind)), `${kind}.ultra.glb`).toBeLessThan(m.native ? NATIVE_CAPS.ultra : ULTRA.bytes);
     }
     const dir = new URL('../../../../../public/models/galaxy/surface/', import.meta.url);
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.ultra.glb'))) expect(SURFACE_MODELS[f.slice(0, -10)]?.ultra, f).toBeTruthy();

@@ -1,6 +1,6 @@
 import { Document } from '@gltf-transform/core';
 import { describe, expect, it } from 'vitest';
-import { GLASS, dressed, isGlass, isMarker, isPacked, ncsColour } from './bf2017-dressing.mjs';
+import { GLASS, KEPT, decalOf, dressed, isGlass, isMarker, isPacked, ncsColour, withMask } from './bf2017-dressing.mjs';
 
 describe('the game’s materials, dressed for the site', () => {
   it('knows glass and gameplay markers by their names', () => {
@@ -33,16 +33,34 @@ describe('the game’s materials, dressed for the site', () => {
     expect([...ncsColour(Buffer.from([128, 69, 40, 200, 120, 60, 90, 10]))]).toEqual([40, 40, 40, 90, 90, 90]);
   });
 
-  it('strips the smoothness alpha from an opaque material’s colour map, and keeps a blended one’s', async () => {
+  it('tells a decal by its shader: one that lerps everything, and one that lerps only the normal', () => {
+    expect(decalOf('Shaders/Presets/Walrus/SS_DecalLerpEverything_01')).toBe('colour');
+    expect(decalOf('Shaders/Presets/Walrus/SS_DecalLerpNormal_01')).toBe('normal');
+    expect(decalOf('Shaders/Presets/Walrus/SS_VehiclePreset')).toBe(null);
+    expect([...withMask(Buffer.from([10, 20, 30, 99, 40, 50, 60, 99]), Buffer.from([0, 0, 255, 1, 0, 0, 0, 1]))]).toEqual([10, 20, 30, 255, 40, 50, 60, 0]);
+  });
+
+  it('blends a decal through the game’s own mask, drops a normal-only one, and leaves every other map as the game made it', async () => {
     const sharp = (await import('sharp')).default;
-    const rgba = await sharp({ create: { width: 2, height: 2, channels: 4, background: { r: 200, g: 100, b: 50, alpha: 0.3 } } }).png().toBuffer();
+    const png = (r, g, b, alpha) => sharp({ create: { width: 2, height: 2, channels: 4, background: { r, g, b, alpha } } }).png().toBuffer();
+    const tex = async (name, ...c) => doc.createTexture(name).setImage(new Uint8Array(await png(...c))).setMimeType('image/png');
     const doc = new Document();
     const mesh = doc.createMesh();
-    const hull = doc.createMaterial('M_Hull').setBaseColorTexture(doc.createTexture('hull').setImage(new Uint8Array(rgba)).setMimeType('image/png'));
-    const decal = doc.createMaterial('M_Decal').setAlphaMode('BLEND').setBaseColorTexture(doc.createTexture('decal').setImage(new Uint8Array(rgba)).setMimeType('image/png'));
-    mesh.addPrimitive(doc.createPrimitive().setMaterial(hull)).addPrimitive(doc.createPrimitive().setMaterial(decal));
+    const hullMap = await tex('t_hull_cs', 200, 100, 50, 0.3);
+    const hull = doc.createMaterial('M_Hull').setBaseColorTexture(hullMap);
+    const decal = doc.createMaterial('Mat_XWing_decal_ca').setExtras({ decal: 'colour' }).setBaseColorTexture(await tex('t_decals_cs', 160, 40, 40, 0.6)).setMetallicRoughnessTexture(await tex('t_decals_nam__orm', 255, 108, 255, 1));
+    const normalOnly = doc.createMaterial('Mat_XWing_decal_na').setExtras({ decal: 'normal' });
+    for (const m of [hull, decal, normalOnly]) mesh.addPrimitive(doc.createPrimitive().setMaterial(m));
     await doc.transform(dressed({ sharp }));
-    expect((await sharp(Buffer.from(hull.getBaseColorTexture().getImage())).metadata()).hasAlpha).toBe(false);
-    expect((await sharp(Buffer.from(decal.getBaseColorTexture().getImage())).metadata()).hasAlpha).toBe(true);
+    expect(mesh.listPrimitives().map((p) => p.getMaterial().getName())).toEqual(['M_Hull', 'Mat_XWing_decal_ca']);
+    expect(hull.getBaseColorTexture()).toBe(hullMap);
+    expect(decal.getAlphaMode()).toBe('BLEND');
+    expect(decal.getMetallicFactor()).toBe(0);
+    expect(decal.getExtras()).toEqual({});
+    const made = decal.getBaseColorTexture();
+    expect(made.getName().startsWith(KEPT)).toBe(true);
+    expect(made.getMimeType()).toBe('image/webp');
+    const { data } = await sharp(Buffer.from(made.getImage())).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    expect([...data.subarray(0, 4)]).toEqual([160, 40, 40, 255]);
   });
 });

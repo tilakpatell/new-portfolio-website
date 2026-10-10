@@ -19,7 +19,7 @@
 //     [--root lab/assets/bf2017] [--metres <m> | --asis] [--along y|x|z|max] [--yaw <rad>] [--up y|z|-z|x|-x|-y]
 //     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512] [--quality 82] [--maps-quality 80]
 //     [--parts '<glob>,…'] [--grip <node>] [--out public/models/galaxy]
-//     [--vehicle] [--far] [--bind <skeleton>] [--hull-frame [<hull name>]]
+//     [--vehicle] [--far] [--bind <skeleton>] [--hull-frame [<hull name>]] [--light-maps <px>]
 //
 //   name       the model's `name` in the manifest (bf2017-fetch.mjs --list finds it)
 //   kind       the catalogue kind: one already in another group is taken over
@@ -50,13 +50,15 @@
 //              without either, at the model's own origin, which is DICE's hold
 //   vehicle    a vehicle's budgets (lane V): plain ≤ 25,000, light ≤ 7,000
 //   far        a .far.glb as well: the chain's first cut under 1,000
-//              triangles (else its last), 256 maps, no skin, for the fleets
-//              and the horizon
+//              triangles (else its last), its colour maps alone at 256, no
+//              skin, for the fleets and the horizon
 //   bind       skin a rigid model to the game's own skeleton for it (the
 //              AT-ST's, whose clips are on Cinematics/Objects/ATST/ATST_Ske01):
 //              the skeleton is read at rest from one of its clips on disk
 //              (bf2017-rigclips.mjs fetches them), every bone kept, each
 //              vertex to one bone (scripts/lib/rig-bind.mjs)
+//   light-maps  the light cut's maps other than colour at this size (a model
+//              with many maps whose light cut is over its cap: the AT-TE's)
 //   hull-frame  stand it where the manifest's bounds of the model (or of
 //              <hull name>) put it, not by its own cut's: a cockpit and its
 //              hull share their frame, so the seat sits in the hull
@@ -84,10 +86,11 @@ import { glbJson, imagePath, inBucket, localPath } from './lib/bf2017-paths.mjs'
 import { resolveImage } from './lib/bf2017-textures.mjs';
 import { BASIS_LZ, dropLevels, ktx2Info } from './lib/ktx2-levels.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
-import { dressed } from './lib/bf2017-dressing.mjs';
+import { KEPT, decalOf, dressed } from './lib/bf2017-dressing.mjs';
+import { atlasUVs } from './lib/bf2017-uv.mjs';
 import { bindVertices, bonesOf, HELPERS } from './lib/rig-bind.mjs';
 import { shareSkins } from './lib/rig-parts.mjs';
-import { bareWhereUntextured, bounds, dims, grounded, invert4, relit, simplified, triangles, unskinned } from './lib/surface-model.mjs';
+import { bareWhereUntextured, bounds, dims, grounded, invert4, simplified, triangles, unskinned } from './lib/surface-model.mjs';
 
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
 const sharp = createRequire(createRequire(import.meta.url).resolve('ndarray-pixels'))('sharp');
@@ -131,8 +134,6 @@ export async function readLod(io, file, { root, derived, unpackDir, said, eyes =
     if (!at) continue;
     const found = await resolveImage(at, { root, derived, unpackDir });
     const uri = `image${i}.png`;
-    // (named for what it is, so a packed map can be told: lib/bf2017-dressing.mjs)
-    img.name ??= at.split('/').pop();
     if (found) {
       resources[uri] = new Uint8Array(found.png);
       said.found.add(`${at.split('/').pop()} ← ${found.from}`);
@@ -175,8 +176,9 @@ export async function readLod(io, file, { root, derived, unpackDir, said, eyes =
       } else m.setBaseColorFactor([0.16, 0.12, 0.1, 1]);
       m.setRoughnessFactor(0.15).setMetallicFactor(0);
     }
-    // (Frostbite's shader preset and source maps: nothing the site reads)
-    m.setExtras({});
+    // (Frostbite's shader preset and source maps: nothing the site reads but
+    // a decal's, which lib/bf2017-dressing.mjs draws as the game does)
+    m.setExtras(decalOf(shader) ? { decal: decalOf(shader) } : {});
   }
   for (const t of doc.getRoot().listTextures()) if (t.getName() === MISSING) t.dispose();
   return doc;
@@ -320,6 +322,10 @@ async function nativeMaps(doc, spec) {
   return n;
 }
 
+// (textureCompress skips a texture only when both its name and its URI fail
+// the pattern: a made map has no URI, and the one character asks for one)
+const NOT_KEPT = new RegExp(`^(?!${KEPT}).`);
+
 // ── one cut, through the pipeline, to a file ──
 
 async function makeCut(io, entry, parts, lod, spec, out) {
@@ -328,13 +334,15 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const root = doc.getRoot();
   const budget = lod.triangles + parts.reduce((n, p) => n + (p.lods.find((l) => l.lod === lod.lod) ?? p.lods[p.lods.length - 1]).triangles, 0);
   for (const mesh of root.listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
-  // (the game's glass made glass, its weak points' covers dropped)
-  await doc.transform(dressed({ sharp }));
+  // (each map read through the UV set the game reads it through: lib/bf2017-uv.mjs;
+  // the game's glass made glass, its decals blended by their own masks, its
+  // weak points' covers dropped: lib/bf2017-dressing.mjs)
+  await doc.transform(atlasUVs(), dressed({ sharp }));
   // where it is held, in the model's own frame, before anything moves
   const socket = spec.grip.map((g) => root.listNodes().find((n) => n.getName() === g)).find(Boolean);
   const hold = socket ? socket.getWorldTranslation() : [0, 0, 0];
-  if (spec.rig && !spec.statue) await doc.transform(dequantize(), dedup(), metalRough(), relit({}), prune(), bareWhereUntextured(), weld());
-  else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), relit({}), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
+  if (spec.rig && !spec.statue) await doc.transform(dequantize(), dedup(), metalRough(), prune(), bareWhereUntextured(), weld());
+  else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
   // (the cut is the file, so this is only for parts that overshoot it)
   if (triangles(doc) > budget * 1.1) {
     console.log(`  ${Math.round(triangles(doc))} triangles against the cut's ${budget}: simplified`);
@@ -360,13 +368,18 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const held = rigged && socket && root.listNodes().includes(socket) ? socket : null;
   if (held) held.addChild(doc.createNode('grip'));
   else root.getDefaultScene().addChild(doc.createNode('grip').setTranslation(gripAt));
+  // (a far cut wears the game's colour maps alone: its normals and smoothness
+  // are under a pixel at the distance it's drawn)
+  if (spec.colourOnly) for (const m of root.listMaterials()) m.setNormalTexture(null).setMetallicRoughnessTexture(null).setOcclusionTexture(null);
+  await doc.transform(prune());
   // the game's own maps, as the bucket holds them (zstd UASTC, full mips),
   // their top levels dropped to the cut's size: nothing re-encoded (--native)
   const native = spec.native ? await nativeMaps(doc, spec) : 0;
   await doc.transform(
     opaqueColour(),
-    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
-    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
+    // (a map lib/bf2017-dressing.mjs made from the game's pixels is lossless already: left as it is)
+    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, pattern: NOT_KEPT, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
+    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, pattern: NOT_KEPT, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
     // (the game's own precision: half-float positions are 16 bits; a UV at
     // meshopt's default 12 bits is half a texel off on a 2048 map)
     meshopt({ encoder: MeshoptEncoder, level: 'high', quantizePosition: 16, quantizeNormal: 12, quantizeTexcoord: 16 }),
@@ -384,13 +397,24 @@ async function makeCut(io, entry, parts, lod, spec, out) {
 // a vehicle's cuts (lane V's budgets): the plain under 25,000 triangles, the
 // light under 7,000, the far under 1,000 (else the chain's last)
 export const VEHICLE = { plainMax: 25000, lod1Max: 7000, farMax: 1000 };
+// a native vehicle's (the game's own maps, from the bucket: the native caps
+// of lib/bf2017-caps.mjs): the plain the game's first LOD under 60,000
+// triangles, which is its LOD0 for all but the biggest, and the ultra its
+// LOD0 whatever it is, with every map at the game's own size
+export const NATIVE_VEHICLE = { plainMax: 60000, lod1Max: 7000, farMax: 1000 };
+export function vehicleCuts(entry, { native = false, ultra = false } = {}) {
+  const caps = native ? NATIVE_VEHICLE : VEHICLE;
+  const cuts = cutsFor(entry, { plainMax: caps.plainMax, lod1Max: caps.lod1Max, ultra });
+  if (native && ultra) cuts.ultra = [...entry.lods].sort((a, b) => a.lod - b.lod)[0];
+  return cuts;
+}
 export const farCut = (entry, max = VEHICLE.farMax) => {
   const lods = [...entry.lods].sort((a, b) => a.lod - b.lod);
   return lods.find((l) => l.triangles <= max) ?? lods[lods.length - 1];
 };
 
 function cutsOf(entry, opts, rig) {
-  const cuts = cutsFor(entry, opts.vehicle ? { plainMax: VEHICLE.plainMax, lod1Max: VEHICLE.lod1Max, ultra: Boolean(opts.ultra) } : { plainMax: rig ? 8000 : 12000, ultra: Boolean(opts.ultra) });
+  const cuts = opts.vehicle ? vehicleCuts(entry, { native: Boolean(opts.native), ultra: Boolean(opts.ultra) }) : cutsFor(entry, { plainMax: rig ? 8000 : 12000, ultra: Boolean(opts.ultra) });
   if (opts.far) cuts.far = farCut(entry);
   if (typeof opts.cuts === 'string')
     for (const part of opts.cuts.split(',')) {
@@ -461,7 +485,7 @@ export async function importModel(name, opts) {
   let lod = false;
   if (cuts.lod1) {
     // (the light cut: half the colour, a quarter of the full maps at most 512, at the usual quality)
-    const light = await makeCut(io, entry, parts, cuts.lod1, { ...spec, tex: tex / 2, maps: spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 }, path(dir, `${kind}.lod1.glb`));
+    const light = await makeCut(io, entry, parts, cuts.lod1, { ...spec, tex: tex / 2, maps: opts.lightMaps ? Number(opts.lightMaps) : spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 }, path(dir, `${kind}.lod1.glb`));
     if (light.bytes < 0.7 * plain.bytes) {
       made.push(['lod1', cuts.lod1, light]);
       lod = true;
@@ -472,7 +496,7 @@ export async function importModel(name, opts) {
   } else console.log('  no .lod1: the chain has no cut light enough below the plain one');
   let far = false;
   if (cuts.far) {
-    const f = await makeCut(io, entry, parts, cuts.far, { ...spec, statue: true, tex: 256, maps: 256 }, path(dir, `${kind}.far.glb`));
+    const f = await makeCut(io, entry, parts, cuts.far, { ...spec, statue: true, colourOnly: true, tex: 256, maps: 256 }, path(dir, `${kind}.far.glb`));
     made.push(['far', cuts.far, f]);
     far = true;
     if (cuts.far.triangles > VEHICLE.farMax) console.log(`  the far cut is the chain's last, LOD${cuts.far.lod}: ${cuts.far.triangles} triangles, over the ${VEHICLE.farMax} it aims at`);
@@ -481,8 +505,15 @@ export async function importModel(name, opts) {
   if (cuts.ultra) {
     const ut = Number(opts.ultraTex ?? 2048);
     const u = await makeCut(io, entry, parts, cuts.ultra, { ...spec, tex: ut, maps: Number(opts.ultraMaps ?? 1024) }, path(dir, `${kind}.ultra.glb`));
-    made.push(['ultra', cuts.ultra, u]);
-    ultra = { tris: u.tris, tex: ut };
+    // (a native one the same mesh with the same maps, where the game's are
+    // no bigger than the plain cut's, is no gain: not kept)
+    if (spec.native && cuts.ultra.lod === cuts.plain.lod && u.bytes < 1.1 * plain.bytes) {
+      await unlink(u.out);
+      console.log(`  no .ultra: LOD${cuts.ultra.lod} at the game's own maps came to ${u.bytes} bytes, the plain file's ${plain.bytes}`);
+    } else {
+      made.push(['ultra', cuts.ultra, u]);
+      ultra = { tris: u.tris, tex: ut };
+    }
   }
   // (a file over its cap is not shipped: the import stops and says which)
   const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero), native: Boolean(opts.native) });

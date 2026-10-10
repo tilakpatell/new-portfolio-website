@@ -2,6 +2,8 @@
 
 Every vehicle kind the galaxy shows, with the Battlefront II (2017) model that replaces it, read from the drop's manifest (`web/models.jsonl`, fetched 2026-10-10) and checked with `node scripts/bf2017-fetch.mjs --list`. The import commands are `scripts/bf2017-vehicles.mjs`'s `CAST` (run it with a kind, a `--group`, or nothing for all); the catalogue rows land in `src/components/galaxy/surface/catalog/bf2017-vehicles.js`.
 
+Every kind is imported native (`scripts/bf2017-vehicles.mjs`'s `NATIVE_ARGS`): the game's own KTX2 maps, untouched, each read through the UV set the game reads it through (`scripts/lib/bf2017-uv.mjs`). Every kind the drop has a skeleton for is on it: the five walkers with their clips, the two spider droids without (the drop has none for them). The fighters, speeders and turrets have no skeleton in the drop, so they are rigid, as the game's static meshes are.
+
 Tiers: **walker** (on the game's own rig, with its clip pack: `src/lib/three/rigSets.js`), **ride** (the visitor boards it: `rides.js`), **prop** (stands in a world's `things`), **fleet** (the space layer and the horizon, through the `.far` cut). Worlds are where a `sites/*.js` entry names the kind today.
 
 ## Walkers
@@ -25,8 +27,8 @@ Tiers: **walker** (on the game's own rig, with its clip pack: `src/lib/three/rig
 | barc | `gameplay/vehicles/ground/barc/barc_speeder_static_donotuse_mesh` | prop | geonosis, kashyyyk |
 | speederbike | `gameplay/vehicles/ground/74z/speederbike_static_donotuse_mesh` (the 74-Z) | ride, chase | endor, geonosis, kashyyyk, lothal, mustafar, scarif |
 | landspeeder | `gameplay/vehicles/ground/x34/vehicle_ground_x34_static_donotuse_mesh` (the X-34) | ride | tatooine |
-| homingspider | `gameplay/vehicles/ground/homingspiderdroid/vehicle_ground_homingspiderdroid_static_donotuse_mesh` | prop | (none yet) |
-| dwarfspider | `gameplay/vehicles/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh` (a statue: its skeleton has no clips in the drop) | prop | (none yet) |
+| homingspider | `gameplay/vehicles/ground/homingspiderdroid/geo_homingspiderdroid_anim_mesh` (skinned, on its own `GEO_HomingSpiderDroid_Skeleton`, kept whole; the drop has no clips for it) | prop | forest, core |
+| dwarfspider | `gameplay/vehicles/ground/dwarfspiderdroid/dwarfspiderdroid_skinned_mesh` (on its own `DwarfSpiderDroid_Ske`, kept whole; the drop has no clips for it) | prop | core |
 | (hailfire) | `gameplay/vehicles/ground/hailfiredroid/meshp_hailfiredroid_bb_smooth_mesh`: one LOD, a smoothing shell, not the droid | **not taken** | — |
 | (turbotank) | `gameplay/vehicles/stationary/hcvwa9_turbotank/*`: only its turrets and missile, no hull | **not taken** | — |
 
