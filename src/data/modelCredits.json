@@ -4723,6 +4723,18 @@
     ],
     "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
   },
+  "level-sb_endor": {
+    "title": "Star Wars Battlefront II (2017): levels/space/sb_endor_01",
+    "author": "EA DICE",
+    "authorUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "license": "permission",
+    "licenseUrl": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "where": "galaxy",
+    "as": "sb_endor: the game's level",
+    "paths": ["public/models/galaxy/bf2017/levels/sb_endor/"],
+    "permission": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm."
+  },
   "space-endor": {
     "title": "Star Wars Battlefront II (2017): sb_endor_01, its MC80 Mon Calamari cruiser, Imperial Star Destroyer and the rest it places",
     "author": "EA DICE",
