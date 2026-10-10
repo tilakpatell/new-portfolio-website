@@ -47,7 +47,7 @@ describe('applyBlast', () => {
     p.add({ type: 'fixed', position: [0, 0, 0.5], colliders: [{ shape: 'cuboid', args: [0.6, 0.6, 0.05] }] });
     p.step(1 / 60);
     const out = applyBlast(p, [0, 0, 0], { blast: { ...STUN.blast, occlusion: false } });
-    expect(out.hit).toHaveLength(1);
+    expect(out.hit.map((h) => h.body)).toEqual([hid]);
     p.dispose();
   });
 
