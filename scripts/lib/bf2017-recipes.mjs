@@ -11,6 +11,11 @@
 //     overlay, height, mask, emissive, array)
 //   countFamilies(rows) → { family: materials }
 //   candidatesOf(name, kind) → the map's objects in the bucket under web/, best first
+//   colourIndex(rows) → Map(colour texture file name → { row, i }): each
+//     material by the colour map it names
+//   crewRecipes(glbJson, index) → { <material name>: recipe }: a crew pack's
+//     materials (scripts/bf2017-import.mjs keeps the game's names and names
+//     each image after its game texture), each found by its colour map
 //
 // Every leaf of `maps` and `params` has a `_source` keyed by its path:
 // 'materials.jsonl:<mesh>#<i>.<slot or parameter>' when it is the dump's, or
@@ -20,6 +25,7 @@
 
 import {
   ALPHA_CUTOFF,
+  AOSLICE_LEVELS,
   COLOR_SLOTS,
   DETAIL_NORMAL,
   DETAIL_SMOOTHNESS,
@@ -109,9 +115,9 @@ export function recipeOf(row, i) {
     const slot = names.find((n) => slots.includes(n) && (n !== 'NS' || nsIsDetail));
     if (slot) set(`maps.${MAP_PATHS[key] ?? key}`, m.textures[slot], at(slot));
   }
-  // (one slice per material: the first; the spec's median of AOSlice's blue
-  // needs the AOSL map's pixels, which this pure step has not got)
-  if (recipe.maps.detailArray) set('maps.detailSlice', 0, at(recipe.maps.aoSlice ? 'AOSlice' : 'NormalDetailTextureArray'));
+  // (every slice, each texel the one AOSlice's green names: four levels,
+  // three slices and none; without an AOSlice map, the first)
+  if (recipe.maps.detailArray) set('maps.detailSlice', recipe.maps.aoSlice ? 'aoSlice' : 0, at(recipe.maps.aoSlice ? 'AOSlice' : 'NormalDetailTextureArray'));
   // An emissive slot holds what its texture's suffix says: an emissive (_E,
   // _EM, _Emissive) is drawn as one, a mask (_M) as one channel; a colour
   // map (_C, _CA, _CS) or a packed normal is not drawn (the base colour glows)
@@ -130,12 +136,12 @@ export function recipeOf(row, i) {
   if (t && PER_SLICE.has(family) && recipe.maps.detailArray) {
     // (one component per slice: the slice's own once the median is known)
     set('params.detail.tiling', [t[1][0], t[1][0]], at(t[0]));
-    set('params.detail.perSlice.tiling', t[1].slice(0, 3), at(t[0]));
+    set('params.detail.perSlice.tiling', t[1].slice(0, AOSLICE_LEVELS.length), at(t[0]));
     for (const p of ['normal', 'smoothness']) {
       const v = vec(`detail.${p}`);
       if (v) {
         set(`params.detail.${p}`, v[1][0], at(v[0]));
-        set(`params.detail.perSlice.${p}`, v[1].slice(0, 3), at(v[0]));
+        set(`params.detail.perSlice.${p}`, v[1].slice(0, AOSLICE_LEVELS.length), at(v[0]));
       }
     }
   } else {
@@ -281,4 +287,41 @@ export function candidatesOf(name, kind) {
   if (kind === 'array') return [`${base}_000__normal.ktx2`, `${base}_000.ktx2`];
   if (kind === 'detail') return [`${base}__normal.ktx2`, `${base}.ktx2`];
   return [`${base}.ktx2`];
+}
+
+// a texture's file name as the index keys it: lower case, no folder, no
+// extension and none of the export's suffixes (__normal, __orm_<hash>)
+const fileKey = (name) =>
+  String(name ?? '')
+    .split('/')
+    .pop()
+    .toLowerCase()
+    .replace(/\.(ktx2|png|webp|jpe?g)$/, '')
+    .replace(/__(normal|orm_[0-9a-f]+)$/, '');
+
+export function colourIndex(rows) {
+  const index = new Map();
+  for (const row of rows) {
+    row.materials.forEach((m, i) => {
+      for (const slot of COLOR_SLOTS) {
+        const t = m.textures?.[slot];
+        if (t && !index.has(fileKey(t))) index.set(fileKey(t), { row, i });
+      }
+    });
+  }
+  return index;
+}
+
+export function crewRecipes(glb, index) {
+  const out = {};
+  for (const m of glb.materials ?? []) {
+    const ref = m.pbrMetallicRoughness?.baseColorTexture;
+    if (!ref || !m.name) continue;
+    const t = glb.textures?.[ref.index];
+    const src = t?.extensions?.KHR_texture_basisu?.source ?? t?.source;
+    const img = glb.images?.[src];
+    const hit = index.get(fileKey(img?.name ?? img?.uri));
+    if (hit) out[m.name] = recipeOf(hit.row, hit.i);
+  }
+  return out;
 }

@@ -144,6 +144,21 @@ describe('createGameMaterial', () => {
     expect(lamp(0).userData.game.blink).toBeNull();
   });
 
+  it('a character samples every slice of its array, each texel the one AOSlice names', () => {
+    const r = { ...CHARACTER, maps: { ...CHARACTER.maps, detailSlice: 'aoSlice' }, params: { ...CHARACTER.params, detail: { ...CHARACTER.params.detail, perSlice: { tiling: [13, 24, 12, 0], normal: [1, 1, 1.5, 0], smoothness: [0.5, 2, 0.5, 0] } } } };
+    const slices = [tex(), tex(), tex()];
+    const m = createGameMaterial(r, { glb: glb(), detailSlices: slices, aoSlice: tex(), weathering: tex() }, { tier: 'ultra', three });
+    expect(features(m)).toEqual(['detailArray', 'weathering']);
+    expect(m.userData.game.slices).toBe(3);
+    expect(m.normalNode).toBeTruthy();
+    // (every slice tiles)
+    for (const t of slices) expect(t.wrapS).toBe(three.THREE.RepeatWrapping);
+    // (without the AOSlice map: the first slice alone)
+    const one = createGameMaterial(r, { glb: glb(), detailSlices: slices, aoSlice: null }, { tier: 'ultra', three });
+    expect(one.userData.game.slices).toBe(1);
+    expect(features(one)).toContain('detailArray');
+  });
+
   it('a tiled map repeats', () => {
     const { THREE } = three;
     const detail = tex();

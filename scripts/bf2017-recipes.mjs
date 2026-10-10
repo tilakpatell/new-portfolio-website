@@ -11,6 +11,12 @@
 //   node scripts/bf2017-recipes.mjs --level hoth [--fetch]
 //   node scripts/bf2017-recipes.mjs <mesh>            (one mesh's recipes, printed)
 //   node scripts/bf2017-recipes.mjs --count           (families over the whole dump)
+//   node scripts/bf2017-recipes.mjs --crew <kind>[,<kind>…] | --crew all
+//     a crew pack's recipes, crew/<kind>.recipes.json: { materials: { <GLB
+//     material name>: recipe }, maps, tex }, each material found by the
+//     colour map it wears; its maps in crew/tex/ (a detail array's slices
+//     encoded from the export's PNGs where the bucket has no KTX2), shared by
+//     every kind; published with the packs (scripts/assets-publish.mjs)
 //
 // The keys (SUPABASE_URL and BF2017_KEY, or SUPA_KEY in a cloud session)
 // come from the environment; in a cloud session Node's fetch needs
@@ -28,7 +34,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
-import { candidatesOf, countFamilies, mapsWanted, recipesOf } from './lib/bf2017-recipes.mjs';
+import { candidatesOf, colourIndex, countFamilies, crewRecipes, mapsWanted, recipesOf } from './lib/bf2017-recipes.mjs';
 import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -73,6 +79,24 @@ async function bucketHas(env, listFolder) {
       );
     return (await folders.get(dir)).has(path.split('/').pop());
   };
+}
+
+// A KTX2 at each tier's size, its mips dropped (tex/<slug>.<size>.ktx2,
+// one file a distinct size) → { tier: size }
+async function writeSizes(buf, kind, dir, slug) {
+  const info = ktx2Info(buf);
+  const sizes = TILING_KINDS.has(kind) ? TILING_SIZE : MASK_SIZE;
+  const row = {};
+  const written = new Set();
+  await mkdir(dir, { recursive: true });
+  for (const tier of TIERS) {
+    const size = Math.min(sizes[tier], info.width);
+    row[tier] = size;
+    if (written.has(size)) continue;
+    written.add(size);
+    await writeFile(join(dir, `${slug}.${size}.ktx2`), dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1)));
+  }
+  return row;
 }
 
 async function level(world, { fetch: doFetch }) {
@@ -134,20 +158,7 @@ async function level(world, { fetch: doFetch }) {
       maps[name] = null;
       continue;
     }
-    const buf = await readFile(got.file);
-    const info = ktx2Info(buf);
-    const sizes = TILING_KINDS.has(kind) ? TILING_SIZE : MASK_SIZE;
-    tex[slug] = {};
-    const written = new Set();
-    for (const tier of TIERS) {
-      const size = Math.min(sizes[tier], info.width);
-      tex[slug][tier] = size;
-      if (written.has(size)) continue;
-      written.add(size);
-      const out = dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1));
-      await mkdir(join(packDir, 'tex'), { recursive: true });
-      await writeFile(join(packDir, 'tex', `${slug}.${size}.ktx2`), out);
-    }
+    tex[slug] = await writeSizes(await readFile(got.file), kind, join(packDir, 'tex'), slug);
     console.log(`fetched: ${kind.padEnd(8)} ${name} → tex/${slug}`);
   }
   const out = { source: `web/${DUMP}`, families, meshes, maps, tex };
@@ -155,6 +166,110 @@ async function level(world, { fetch: doFetch }) {
   await writeFile(join(packDir, 'recipes.json'), text);
   const have = Object.values(maps).filter(Boolean).length;
   console.log(`recipes.json: ${(text.length / 1e6).toFixed(2)} MB; maps ${have} of ${wanted.length} in the pack, ${missing} missing from the bucket`);
+}
+
+// ---- crew packs (scripts/bf2017-import.mjs's kinds under crew/): each
+// material found by its colour map, the maps beside the packs in crew/tex/,
+// shared by every kind
+
+const CREW_DIR = join(ROOT, 'public/models/galaxy/bf2017/crew');
+const ASSETS = 'src/data/galaxyAssets.json';
+
+// a crew GLB's JSON chunk: the file here, else its first bytes from the
+// site's public bucket (the published GLBs are not in git)
+async function crewGlbJson(kind) {
+  const local = join(CREW_DIR, `${kind}.glb`);
+  const parse = (b) => JSON.parse(b.subarray(20, 20 + b.readUInt32LE(12)).toString('utf8'));
+  if (existsSync(local)) return parse(await readFile(local));
+  const published = JSON.parse(await readFile(join(ROOT, ASSETS), 'utf8'))[`models/galaxy/bf2017/crew/${kind}.glb`];
+  if (!published) return null;
+  const url = `${process.env.SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/object/public/site-assets/${published.hash}/models/galaxy/bf2017/crew/${kind}.glb`;
+  const head = Buffer.from(await (await fetch(url, { headers: { Range: 'bytes=0-19' } })).arrayBuffer());
+  const len = head.readUInt32LE(12);
+  const json = Buffer.from(await (await fetch(url, { headers: { Range: `bytes=20-${19 + len}` } })).arrayBuffer());
+  return JSON.parse(json.toString('utf8'));
+}
+
+async function crew(kinds) {
+  const { keys, listFolder, getObject } = await import('./bf2017-fetch.mjs');
+  const { encodeImage } = await import('./ktx2.mjs');
+  const env = keys();
+  const has = await bucketHas(env, listFolder);
+  const index = colourIndex([...(await readDump()).values()]);
+  const textures = new Map();
+  for (const line of (await readFile((await getObject(env, CACHE, 'web/textures.jsonl')).file, 'utf8')).split('\n')) {
+    if (!line.trim()) continue;
+    const t = JSON.parse(line);
+    textures.set(t.name.toLowerCase(), t);
+  }
+  const texDir = join(CREW_DIR, 'tex');
+  const done = new Map(); // game name → its maps entry, across kinds
+  const sizesOf = {};
+  const total = { kinds: 0, materials: 0, maps: 0, missing: 0, encoded: 0 };
+  // one map into crew/tex: its slices for an array (encoded from the export's
+  // PNGs when the bucket has no KTX2), else its KTX2
+  async function mapOf(name, kind) {
+    if (done.has(name)) return done.get(name);
+    let entry = null;
+    if (kind === 'array') {
+      const t = textures.get(name.toLowerCase());
+      const files = t?.files ?? (t ? [t.file] : []);
+      const paths = [];
+      for (const [i, png] of files.entries()) {
+        const slug = `${png.split('/').pop().replace(/\.png$/, '')}`;
+        if (!existsSync(join(texDir, `${slug}.${Math.min(TILING_SIZE.high, t.width)}.ktx2`)) || !sizesOf[slug]) {
+          let buf = null;
+          for (const c of [`${png.replace(/\.png$/, '')}__normal.ktx2`, png.replace(/\.png$/, '.ktx2')]) {
+            if (!buf && (await has(c))) buf = await readFile((await getObject(env, CACHE, `web/${c}`)).file);
+          }
+          if (!buf) {
+            const got = await getObject(env, CACHE, `web/${png}`);
+            if (got.state !== 'fetched' && got.state !== 'kept') break;
+            buf = (await encodeImage(await readFile(got.file), { role: 'normal' })).ktx2;
+            total.encoded++;
+          }
+          sizesOf[slug] = await writeSizes(buf, kind, texDir, slug);
+        }
+        paths[i] = `tex/${slug}.ktx2`;
+      }
+      entry = paths.length && paths.length === files.length ? paths : null;
+    } else {
+      let found = null;
+      for (const c of candidatesOf(name, kind)) if (!found && (await has(c))) found = c;
+      if (found) {
+        const slug = found.split('/').pop().replace(/\.ktx2$/, '');
+        if (!sizesOf[slug]) sizesOf[slug] = await writeSizes(await readFile((await getObject(env, CACHE, `web/${found}`)).file), kind, texDir, slug);
+        entry = `tex/${slug}.ktx2`;
+      }
+    }
+    if (!entry) {
+      console.log(`missing: ${kind.padEnd(8)} ${name}`);
+      total.missing++;
+    }
+    done.set(name, entry);
+    return entry;
+  }
+  for (const kind of kinds) {
+    const glb = await crewGlbJson(kind).catch((e) => (console.log(`${kind}: no GLB (${e.message})`), null));
+    if (!glb) continue;
+    const materials = crewRecipes(glb, index);
+    const wanted = mapsWanted(Object.values(materials));
+    const maps = {};
+    const tex = {};
+    for (const { name, kind: k } of wanted) {
+      maps[name] = await mapOf(name, k);
+      for (const p of [maps[name]].flat().filter(Boolean)) {
+        const slug = p.slice(4, -5);
+        tex[slug] = sizesOf[slug];
+      }
+    }
+    await writeFile(join(CREW_DIR, `${kind}.recipes.json`), `${JSON.stringify({ source: `web/${DUMP}`, materials, maps, tex })}\n`);
+    total.kinds++;
+    total.materials += Object.keys(materials).length;
+    total.maps += wanted.length;
+    console.log(`${kind}: ${Object.keys(materials).length} of ${glb.materials?.length ?? 0} materials, ${wanted.length} maps (${Object.entries(materials).map(([n, r]) => `${n}: ${r.family}`).join(', ')})`);
+  }
+  console.log(`crew: ${total.kinds} kinds, ${total.materials} materials with recipes, ${total.maps} maps wanted, ${total.missing} missing, ${total.encoded} slices encoded from the export's PNGs`);
 }
 
 async function main() {
@@ -168,6 +283,11 @@ async function main() {
     return;
   }
   if (args.level) return level(args.level, { fetch: !!args.fetch });
+  if (args.crew) {
+    const { CREW } = await import('../src/components/galaxy/surface/crewList.js');
+    const all = Object.keys(CREW).filter((k) => /\/bf2017\/crew\//.test(CREW[k].url ?? ''));
+    return crew(args.crew === 'all' || args.crew === true ? all : String(args.crew).split(','));
+  }
   const [mesh] = args._;
   if (!mesh) {
     console.error('usage: node scripts/bf2017-recipes.mjs --level <world> [--fetch] | <mesh> | --count');

@@ -18,7 +18,7 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 | E4 | Scarif, Cloud City, Hoth's outpost, the Death Star inside on DeathStar02_01 | E0 | | `claude/bf2017-e4-scarif-bespin-deathstar` | |
 | E5 | Felucia, Kessel, Sullust, Pillio, Vardos, Fondor as systems with skins and surfaces | E0 | | `claude/bf2017-e5-new-systems` | |
 | O | the object library (every placeable set indexed), the seven mapless worlds dressed by biome, `GAME_FOR` props, the game's clouds, the living world | nothing | | `claude/bf2017-o-library` | |
-| Q | the space levels as set pieces, the capitals, the asteroids on their tracks, the sky panoramas, the map's globes | nothing (#793 read) | | `claude/bf2017-q-space` | |
+| Q (the space lane) | the space levels as set pieces, the capitals, the asteroids on their tracks, the sky panoramas, the map's globes | nothing (#793 read) | session_01CiUP7QfUtHM1EEqgBJpKew | `claude/bf2017-q-space` | (this PR) |
 | M | the films on the cards, veils and briefings; the tiles and tutorials for the game's world; the lava film; the open fonts, the icons, the strings, the UI widgets, the hero stage | nothing | `session_017cZLBzaqCrPFfg6zezARLt` | `claude/bf2017-m-frontend` | done, below |
 | A | every clip: stances, additive aims and hits, cover and awareness, emotes and end of round, the cinematics player, first person, riders and crews, the band, the fauna rigs | nothing (#839's B, Y, W kept off) | lane A's session | `claude/bf2017-a-clips` | (this PR) |
 
@@ -28,6 +28,7 @@ Coverage (from lane Z's ledger, `docs/superpowers/evidence/bf2017-coverage/`, re
 | --- | --: | --: | --: | --: | --: | --: |
 | 2026-10-10, lane Z (the bucket: 113,463 objects listed, 83,983 records) | 80,837 | 2,428 | 59,904 | 13,837 | 4,668 | 0 |
 | 2026-10-10, lane M (films 83 used, 31 excluded; fonts 7 used, 16 excluded (licence-pending); icons 626 used; strings used) | 80,837 | 3,525 | 58,602 | 14,066 | 4,644 | 0 |
+| 2026-10-10, the space lane (on main after lane M; the space lane's own owned rows: 894 models and 564 maps before, 450 and 157 now) | 80,837 | 4,651 | 57,498 | 14,060 | 4,628 | 0 |
 
 **The first finding: what no lane named.** When the ledger was first written, 18,377 of its rows were `unowned`: no plan of this design or the running ones named them, and none of the merged lanes (K, L, G, V, F, P0, P1, P2, P4, R, 0, the sabers' X, the game's 1 and 2) had consumed them. None is hidden: each is given in `scripts/lib/bf2017-owners.mjs` to the lane that takes it, marked `finding: true`, and counted apart in `ledger.md`. By lane and part:
 
@@ -91,6 +92,55 @@ The humanoid pack is unchanged (1.0 MB). Past the figure's own, the soldiers', a
 
 **Corrections to this file**, in the spec's §7: lane L's "then Endor" is E0's; the placed lights are drawable today and E runs `bf2017-lights.mjs` per world; the fonts, icons and strings are lane M's for the whole site, the game's lane 5 consumes `src/lib/bf2017/ui/`; the collision meshes and the animation tracks had no consumer in any design and have one now (E0, Q).
 
+
+### The space lane (the fifth design's Q)
+
+The plan is `docs/superpowers/plans/2026-10-10-bf2017-every-asset-laneQ-space.md`; the shots, `docs/superpowers/evidence/bf2017-space/`. Called “the space lane” here and in the owners table (`space`), apart from #844's `surfaces-Q1` to `Q6`.
+
+**Done.**
+
+- **The space levels as set pieces.** `scripts/bf2017-space.mjs` reads each system's `SB_*` map (`scripts/lib/bf2017-space.mjs`'s `SPACE`: Endor ← SB_Endor_01, Fondor ← SB_Fondor_01, Kamino ← SB_Kamino_01, Naboo ← SB_DroidBattleShip_01, the Separatist blockade) and keeps its scenery and its Starfighter Assault (`Art`, `Art_LargeGameMode`, `SpaceBattle`; the lobby, the intros and outros, `Mode7` and the split screen left out). `piecesOf` gathers a capital's kit round the nearest of its hulls within 0.6 of the ship's length (the Star Destroyer's 83 parts, the MC80's 22, the Venator's 36, the Lucrehulk's 176, the Arquitens' 16) into one model in the hull's frame; an area kit (the Fondor dry docks) into one model a lot; the rest a model each. Each model is the game's parts at the first LOD the whole fits its cap in (a capital 60,000 triangles at the Star Destroyer's length, no less than 8,000; a dock 90,000; else the lightest, simplified to it), its maps the game's KTX2 with their top levels dropped (colour 512, the rest 256), joined by material. The packs, `src/data/galaxy/space/<system>.json` (`{ map, centre, radius, models: { slug: { kind, as, size, url, far, from } }, pieces: [{ model, kind, at, quaternion, scale, track? }] }`, in the space layer's units, a metre a hundredth): Endor 7 hulls (the Star Destroyer, the MC80, five CR90s), 6 mines, 34 backdrop pieces (the debris belts, the broken Star Destroyer, the ring) and 2,194 pieces of the second Death Star's debris; Fondor 2 dry docks, 8 hulls, 54 satellites and silos; Kamino 2 Venators, 3 of the Republic's Arquitens and 3 Providences; Naboo the Lucrehulk, 5 Venators, 3 Arquitens, 4 Providences and 2 landing ships. 74 files, 77 MB (with the star fields and the globes below, 83 files, 90 MB), published to `site-assets` (`assets-check`: 454 of 454), out of git; the far copies (`<slug>.far.glb`, 6,000 triangles, vertex-coloured) by `galaxy-lod.mjs space/<slug>`.
+- **Placed.** `places.js`'s `SPACE_LEVELS` sets each level's middle in its system, clear of its places, its moment and its planet (`places.test.js` holds it; the places themselves are as they were, Hoth's pinned), and `piecesFor(sysId)` places a pack's pieces there. `galaxy/spacePieces.js` draws them: nothing on low; the capitals and docks as their far copies on mid; everything on high and ultra, a capital its plain cut within 8 times its size. The hulls are scenery of their own, never `models.js`'s slots, so nothing the war flies is drawn twice; and the level stands aside with the system's own fleets while the war's battle is on (`world.js`'s `quiet`), which is when #854's Starfighter Assault draws its own SB_Endor round its battle. The level is one goal for the autopilot (`spaceGoals`).
+- **The rocks on the game's tracks.** `rocks.js`'s `kind: 'placed'` (`rocksPlaced.js`): a pack's rocks, one `InstancedMesh` a part of a model, the biggest first when a tier keeps fewer (high half, ultra all), each turning on the game's asteroid track for its size (`animtracks/a3/…/asteroid_{large,medium,small}_01`: a 45° tilt and once round in 30 seconds, once in 30, once in 20), evaluated by E0's `src/lib/three/animTracks.js` (E0's commit cherry-picked here, so its merge is a no-op) into one uniform a size a frame. The tracks are `src/data/galaxy/space/tracks.json`.
+- **The war's capitals from the kits.** `bf2017-fleet.mjs` gains `space` rows: the Lucrehulk (`galaxy/lucrehulk.glb`, 1.7 MB) and the Arquitens (`galaxy/lightcruiser.glb`, 1.0 MB, Gideon's cruiser's row) from the assembled kits at the fleet's cut (24,000 triangles, maps 256 and 128), turned bow to +z; committed, as lane V's fleet files are. #793's rows are untouched.
+- **The skies.** `scripts/bf2017-sky.mjs --panorama <name> --as <as>`: the game's panoramas as they are, top levels dropped, at **`public/textures/galaxy/sky/space/endor.{4096,2048,1024}.ktx2`** (SB_Endor_01's `t_space_endor01_c`), **`core.{4096,2048,1024}.ktx2`** (`t_space_01_c`) and **`rim.{2048,1024}.ktx2`** (`t_space_no_large_stars_01_c`, the game's own is 2048), published (ultra takes the widest, high 2048, mid 1024, low none), for #844's Q6 to take the same files. `galaxy/sky.js` bakes the system's under the galaxy (`skyPanorama.js`: Endor its own, Naboo and Fondor their maps' Outer Rim one, the Core Worlds the generic, the Outer Rim the one without large stars; Kashyyyk and Kamino none), sampled at its sharpest level with the seam wrapped (the shot at the seam's azimuth shows no line), and bakes again when it arrives. The surface skies and `src/lib/three/light/` are untouched.
+- **The globes.** `bf2017-sky.mjs --globes`: lane K's `PICTURES` cut to 96 pixels (WebP, alpha kept) for Geonosis, Hoth, Kashyyyk, Scarif, Tatooine and Yavin 4, as the galaxy map's dots (`globes.js`, `HoloMap.jsx`); `src/data/galaxy/space/globes.json`, not `planetSkins.json` (lane K's script writes that file whole).
+- **The two VP6 films.** `scripts/desktop/bf2017-vp6.ps1` makes `MT_CapitalShipDestruction.vp6` and `deathStarII_event010_mainExplosion_v003.vp6` WebM on the owner's desktop (the Starkiller one left out); `galaxy/capitalFilm.js`'s `videoLook(kind)` answers a `VideoTexture` on high and ultra once a row is `published`, null till then.
+- **The ledger.** Each pack's models name the drop's models they're made of (`from`), and `scripts/bf2017-coverage.mjs` reads `src/data/galaxy/space/` (the map, the parts, the tracks, the globes).
+
+**Where the code and the plan differed.**
+
+- Kamino's platforms stand on the sea under SB_Kamino_01's fleets (13,700 parts, 3 million triangles at their lightest): the sea is the surface's (E2), so Kamino's level is its fleet.
+- The plan's `src/lib/three/tracks.js` is the wheel tracks: E0 named its evaluator `animTracks.js`, used here.
+- Lane O's `bf2017-library-import.mjs` was not on main: the import goes through `bf2017-import.mjs`'s own readers (`readLod`, now-exported `nativeMaps`).
+- The capitals are static scenery drawn by `spacePieces.js`, not `models.js`'s slots (the plan's review focus 2 by construction). The Star Destroyer and Nebulon-B rows stay Daniel Andersson's, the MC80 its Sketchfab one, the Providence and the CR90 their Meshy remakes (their tests hold them); the Venator's row is the universe map's file as well, so it stays.
+- The panoramas are under `public/textures/galaxy/sky/space/` (a folder of their own, so the committed probes beside them aren't published with them), asked for by the design session.
+- The VP6 consumer is `capitalFilm.js`, not `fx.js` (#793 changes `fx.js`'s head); nothing calls it yet: the capitals' deaths are the war's (#793).
+- Fondor is not a system yet (E5): its pack and `SPACE_LEVELS` row are ready for it.
+
+**Left.**
+
+- Fondor drawn once E5 adds the system; `galaxy-check space fondor` with it.
+- The VP6 films converted on the desktop, then `published: true` and a caller in the war's capital deaths (#793's).
+- The capitals' maps at the game's 1024 on ultra: every tier draws them at 512 today.
+- The space lane's other `owned` rows (the capitals no space map places: the shuttles, the ntcapitalships) stay owned; the lane's `merged` waits for them.
+
+**Checking it.**
+
+```
+node scripts/bf2017-fetch.mjs manifest
+node scripts/bf2017-space.mjs all            # or endor,naboo; --dry for the pieces and cuts
+node scripts/galaxy-lod.mjs space/<slug>…     # each capital and dock's far copy
+node scripts/bf2017-fleet.mjs lucrehulk,lightcruiser && node scripts/galaxy-lod.mjs lucrehulk lightcruiser
+node scripts/bf2017-sky.mjs --panorama t_space_endor01_c --as endor   # core: t_space_01_c; rim: t_space_no_large_stars_01_c
+node scripts/bf2017-sky.mjs --globes
+node scripts/assets-publish.mjs --only 'models/galaxy/space/*,textures/galaxy/sky/space/*' && node scripts/assets-check.mjs
+npx vite --port 5188 --strictPort --host 127.0.0.1 &
+node scripts/space-shots.mjs endor <dir> [--quality ultra] [--seam]
+QUALITY=high node scripts/galaxy-check.mjs space endor,kamino,naboo
+```
+
+The tests need no keys: `npx vitest run scripts/lib/bf2017-space.test.mjs src/components/galaxy/places.test.js src/components/galaxy/rocks.test.js src/components/galaxy/sky.panorama.test.js src/components/galaxy/globes.test.js src/components/galaxy/capitalFilm.test.js src/components/galaxy/world.test.js scripts/bf2017-fleet.test.mjs`.
 ### Lane M: the films, the front end, the fonts, the icons, the strings and the UI (done)
 
 One script cuts all of it, `node scripts/bf2017-ui.mjs films|icons|fonts|strings|bitmaps|all [--dry]` (pure parts and tests in `scripts/lib/bf2017-ui.mjs`); the site reads it through `src/lib/bf2017/{films,icons,strings}.js`, `fonts.css` and `ui/`, and two kit parts, `src/runtime/hud/Film.jsx` and `GameIcon.jsx`.
@@ -681,7 +731,7 @@ The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseV-vehicles.md`; the c
 - **The AT-ST’s rig**: the drop has no skinned AT-ST, so its rigid mesh is skinned at import to the cinematics’ `ATST_Ske01` (one bone a piece). If the owner counts that binding as ours, it stands as a statue instead (drop `--bind`).
 - **Sounds**: the vehicles’ engines and footfalls when the game’s audio lands.
 - **The far fleet instanced**: the space layer draws each ship through its own `THREE.LOD`, a draw each. The game’s far copies keep that cost, and instancing is the fleet war’s own open item.
-- **Textures**: no map these vehicles name was `missing` on 2026-10-10.
+- **Textures**: no map these vehicles name was `missing` on 2026-10-10. **But a material whose maps are bound inside its own shader graph names none** (2026-10-10, afternoon): the AT-AT’s head (`SS_ATAT_Head`: `T_ATATHead_01_CW`, `_N`, `_RGBM`, `T_ATATTile_01_C`) and the Falcon’s details and legs (`SS_MillenniumFalcon_01_Landmark_Details`/`_Legs`) drew untextured in the plain and ultra cuts. The desktop’s shader-depot probe (`maps_work/shaderdepots.jsonl`, `bf2export sbdprobe`) lists a graph’s maps; those seven were encoded and uploaded by hand, and `bf2017-import.mjs --textures '<material>=color:<name>,normal:<name>;…'` binds them (the vehicle cast’s rows carry the flag). The re-imported cuts are published (`atat-maps-bound.webp`, `falcon-maps-bound.webp` beside this). The other 51 kinds’ untextured materials are glass, windows, cockpit screens and a fake-AO plane, as the game has them.
 
 ### Checking it
 

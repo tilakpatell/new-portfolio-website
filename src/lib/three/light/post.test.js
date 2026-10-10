@@ -50,7 +50,7 @@ describe('passesFor', () => {
     expect(kinds(passesFor('ultra', hoth.sunny, 'webgl', refs))).toEqual(['render', 'bloom', 'output']);
     for (const k of NODE_PASSES) expect(kinds(passesFor('ultra', hoth.sunny, 'webgl', refs))).not.toContain(k);
   });
-  it('on the node renderer over WebGL 2: no SSR, and SMAA for TRAA, so SSGI is denoised', () => {
+  it('on the node renderer over WebGL 2: no SSR, SMAA for TRAA, and SSGI denoised in TRAA’s absence', () => {
     expect(kinds(passesFor('ultra', hoth.sunny, 'nodes-webgl', refs))).toEqual(['render', 'ssgi', 'denoise', 'ao', 'bloom', 'godrays', 'lensflare', 'motionBlur', 'lut', 'smaa', 'output']);
     expect(kinds(passesFor('high', hoth.sunny, 'nodes-webgl', refs))).toEqual(['render', 'ssgi', 'denoise', 'ao', 'bloom', 'motionBlur', 'lut', 'smaa', 'output']);
   });
