@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** The galaxy's effects look like the game's (bolts, impacts by surface, saber ignition, clash and trail, the Force push, engine and thruster glow, explosions by vehicle, kicked-up snow and sand), its lighting comes from the game's skies and probes on every world lane W has not yet lit, and the game's sound and lines replace the site's synthesised and generated ones under the same names the moment the audio lands, at a laptop's `high` by default.
+**Goal:** The galaxy's effects look like the game's (bolts, impacts by surface, saber ignition, clash and trail, the Force push, engine and thruster glow, explosions by vehicle, kicked-up snow and sand), the game's sound and lines replace the site's synthesised and generated ones under the same names the moment the audio lands, at a laptop's `high` by default.
 
 **Architecture:** Frostbite's effect graphs do not export, so the site's own effect systems keep their rules and take the game's *look*: a lane-owned `src/lib/three/fx/gameLook.js` resolves an effect name to the game's sprite sheet or mesh (from `textures/fx/` and `fx/*/meshes/` through the import's texture path and a small `--fx` form), with the site's procedural look as the fallback for any the bucket lacks. Lighting reuses lane W's `levelSky.js` for the worlds W has not reached. Sound goes through a `src/lib/sound/gameSounds.js` map from the site's sound names (`sounds.js`, `sfx.js`, `clips.js`) to the game's files, filled in when `data/Sound`'s files arrive, with every name falling back to today's sound until then.
 
@@ -42,9 +42,9 @@
 - [ ] **Step 2:** shots of each effect at `high` before and after (a dev hook that fires an effect at a named spot: `window.__surface.fx(name)`), under the evidence; `galaxy-check.mjs surface hoth,endor,tatooine` under budget; frame p95 with twenty bolts and two explosions on screen where a GPU is there.
 - [ ] **Step 3: Commit** in batches by effect family.
 
-### Task 3: Lighting for the worlds lane W has not reached
+### Task 3: (withdrawn)
 
-- [ ] For each world lane W has not lit by the time this lane reaches it (check `HANDOFF-bf2017.md`): pick the level's outdoor probe, convert, wire through `levelSky.js`, shot before and after. Commit per world: `<World> under the game's sky`.
+The owner (2026-10-10, 04:40): lighting, physics, camera and GUI are added separately with three.js by the owner's own lanes. This lane publishes nothing for lighting beyond what lane W's `skies.md` already lists, and does not touch the renderer, the post pass, the camera or the HUD; an effect that needs a light (a saber's glow on a wall) keeps the light source the site has today and says so in the hand-off for the lighting lane.
 
 ### Task 4: The sound map, ready for the audio
 
