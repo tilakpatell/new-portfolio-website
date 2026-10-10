@@ -44,7 +44,7 @@ Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, 
 | P1 | `session_01NysT4m6BJEr2MtsRWJtgje` | `claude/bf2017-p1-body` | | |
 | P2 | `session_01H327MCrqpMV4bzo1SEtoeR` | `claude/bf2017-p2-bolts` | | |
 | P3 | not started: waits for lane V’s first model and P0 | `claude/bf2017-p3-vehicles` | | |
-| P4 | `session_01HTPJgq2Dagy8xghto1YbTV` | `claude/bf2017-p4-surfaces` | | |
+| P4 | `session_01HTPJgq2Dagy8xghto1YbTV` | `claude/bf2017-p4-surfaces` | #821 | |
 
 Each lane adds its Done and Left here when it merges: the pack’s physics bytes per world, what the budget dropped per cell, the jump row’s source, which material indices were named by hand and from which effect, what the handling layer did not hold.
 
