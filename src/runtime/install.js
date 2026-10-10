@@ -5,7 +5,9 @@
 // skipped, so an install cut off part way resumes; a file with the same hash
 // in an older version's cache is carried over, not fetched again. The pack's
 // manifest goes in last, so a cache holds a whole install or is still going.
-// The service worker (public/sw.js) serves from these caches. The core is
+// A file from the asset bucket (its entry has `local`, its path on the site)
+// is fetched across origins, from the site if the bucket fails, and cached
+// under the bucket's URL. The service worker (public/sw.js) serves from these caches. The core is
 // pure: fetch, caches and storage are passed in (installer() binds the
 // browser's).
 //
@@ -50,7 +52,8 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
   const whole = async (slug, v) => {
     const m = await stored(slug, v);
     if (!m) return null;
-    const keys = new Set((await (await caches.open(cacheName(slug, v))).keys()).map((r) => new URL(r.url, 'http://x').pathname));
+    // (a file of the site is listed by its path, one from the asset bucket by its whole URL)
+    const keys = new Set((await (await caches.open(cacheName(slug, v))).keys()).flatMap((r) => [new URL(r.url, 'http://x').pathname, r.url]));
     return m.files.every((f) => keys.has(f.url)) ? { v, bytes: m.bytes } : null;
   };
 
@@ -117,7 +120,11 @@ export function createInstaller({ fetch, caches, storage = null, remember = null
       for (let i = 0; i < TRIES; i++) {
         let got = 0;
         try {
-          const r = await fetch(f.url, { cache: 'no-cache' });
+          // a file from the asset bucket (f.local, its path here): asked across
+          // origins with CORS, and of the site once the bucket has failed it;
+          // the same bytes by hash, so kept under the bucket's URL either way
+          const far = Boolean(f.local);
+          const r = await (far && i > 0 ? fetch(f.local, { cache: 'no-cache' }) : fetch(f.url, far ? { cache: 'no-cache', mode: 'cors' } : { cache: 'no-cache' }));
           if (!r.ok) throw new Error(`${r.status}`);
           const chunks = [];
           if (r.body?.getReader) {

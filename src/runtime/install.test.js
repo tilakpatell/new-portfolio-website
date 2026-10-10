@@ -143,3 +143,48 @@ describe('installing a world’s pack', () => {
     expect(await bare.pack('/earth')).toBeNull();
   });
 });
+
+describe('a pack with files from the asset bucket', () => {
+  const BASE = 'https://bucket.test/assets';
+  const FAR = { url: `${BASE}/aaaaaaaaaaaa/models/earth/big.glb`, bytes: 300, hash: 'aaaaaaaaaaaa', local: '/models/earth/big.glb' };
+  function farSite({ down = false } = {}) {
+    const files = [...FILES.slice(0, 2), FAR];
+    const m = manifestOf('r1', files);
+    const asked = [];
+    const fetch = vi.fn(async (url, init) => {
+      url = String(url);
+      if (url.startsWith('/packs/index.json')) return Response.json({ '/earth': { slug: 'earth', bytes: m.bytes, v: 'r1' } });
+      if (url.startsWith('/packs/earth.json')) return Response.json(m);
+      asked.push({ url, mode: init?.mode });
+      if (url.startsWith(BASE)) {
+        if (down) throw new TypeError('Failed to fetch');
+        return new Response(new Uint8Array(300));
+      }
+      if (url === FAR.local) return new Response(new Uint8Array(300));
+      const f = FILES.find((x) => x.url === url);
+      return f ? new Response(new Uint8Array(f.bytes)) : new Response('no', { status: 404 });
+    });
+    return { fetch, asked };
+  }
+
+  it('fetches it across origins with CORS, caches it under its remote URL, and counts the world installed', async () => {
+    const s = farSite();
+    const { inst, caches } = make(s);
+    await inst.install('/earth');
+    expect(s.asked).toContainEqual({ url: FAR.url, mode: 'cors' });
+    expect(s.asked.filter((a) => !a.url.startsWith(BASE)).every((a) => a.mode === undefined)).toBe(true);
+    expect(caches.all.get(cacheName('earth', 'r1')).has(FAR.url)).toBe(true);
+    expect(await inst.installed('/earth')).toEqual({ v: 'r1', bytes: 600 });
+  });
+
+  it('takes the site’s copy when the bucket can’t be reached, kept under the same remote URL', async () => {
+    const s = farSite({ down: true });
+    const { inst, caches } = make(s);
+    await inst.install('/earth');
+    expect(s.asked.map((a) => a.url)).toEqual(expect.arrayContaining([FAR.url, FAR.local]));
+    const cache = caches.all.get(cacheName('earth', 'r1'));
+    expect(cache.has(FAR.url)).toBe(true);
+    expect(cache.has(FAR.local)).toBe(false);
+    expect(await inst.installed('/earth')).toEqual({ v: 'r1', bytes: 600 });
+  });
+});

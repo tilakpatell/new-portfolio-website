@@ -14,6 +14,7 @@
 // markDown(), isDown(), forgetDown() (a new visit; tests)
 
 import MANIFEST from '../data/assets-manifest.json';
+import { remotePath } from './assetPath';
 
 let down = false;
 
@@ -27,10 +28,7 @@ export const forgetDown = () => {
 };
 
 export function assetUrl(path, { base = import.meta.env?.VITE_ASSET_BASE, manifest = MANIFEST } = {}) {
-  if (!base || down || typeof path !== 'string' || /^[a-z][a-z0-9+.-]*:|[?#]/i.test(path)) return path;
-  const key = path.replace(/^\/+/, '');
-  const hit = manifest[key];
-  return hit ? `${base.replace(/\/+$/, '')}/${hit.hash}/${key}` : path;
+  return down ? path : remotePath(path, base, manifest);
 }
 
 export function withFallback(load, opts) {

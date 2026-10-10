@@ -58,6 +58,8 @@ export function planUpload(files, stored) {
 }
 
 export const manifestOf = (files) => Object.fromEntries([...files].sort((a, b) => (a.path < b.path ? -1 : 1)).map((f) => [f.path, { hash: f.hash, bytes: f.bytes }]));
+// the committed manifest, or another for a check (sw-check.mjs --bucket names one in ASSET_MANIFEST)
+export const manifestPath = (root, env = process.env) => (env.ASSET_MANIFEST ? resolve(env.ASSET_MANIFEST) : join(root, MANIFEST));
 export const readManifest = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {});
 export function writeManifest(file, m) {
   mkdirSync(dirname(file), { recursive: true });

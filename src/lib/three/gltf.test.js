@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { SHIP_PROFILE, loadGltf, tune, tuneTree, usesBasisu } from './gltf';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { SHIP_PROFILE, loadGltf, loadGltfFile, tune, tuneTree, usesBasisu } from './gltf';
 
 // (one file the bucket holds, for the asset base's case)
-vi.mock('../../data/assets-manifest.json', () => ({ default: { 'kit/crate.glb': { hash: 'aaaaaaaaaaaa', bytes: 70000 } } }));
+vi.mock('../../data/assets-manifest.json', () => ({ default: { 'kit/crate.glb': { hash: 'aaaaaaaaaaaa', bytes: 70000 }, 'hq/models/lamp.glb': { hash: 'cccccccccccc', bytes: 70000 } } }));
 
 // a GLB with the given JSON chunk
 function glb(json) {
@@ -111,6 +112,24 @@ describe('a model the bucket holds', () => {
       spy.mockRestore();
       vi.unstubAllEnvs();
       forgetDown();
+    }
+  });
+});
+
+describe('a model a world parses itself', () => {
+  it('is asked of the asset base too, through the shared loader', async () => {
+    vi.stubEnv('VITE_ASSET_BASE', 'https://bucket.test/assets');
+    const asked = [];
+    const spy = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockImplementation(async (url) => {
+      asked.push(url);
+      return { scene: url };
+    });
+    try {
+      expect((await loadGltfFile('/hq/models/lamp.glb')).scene).toBe('https://bucket.test/assets/cccccccccccc/hq/models/lamp.glb');
+      expect((await loadGltfFile('/models/sketchfab/door.glb')).scene).toBe('/models/sketchfab/door.glb');
+    } finally {
+      spy.mockRestore();
+      vi.unstubAllEnvs();
     }
   });
 });

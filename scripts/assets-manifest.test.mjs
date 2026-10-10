@@ -38,3 +38,18 @@ describe('the manifest the build bundles', () => {
     expect(made(root, 'https://bucket.test').load(join(root, 'src/data/modelCredits.json'))).toBeNull();
   });
 });
+
+describe('a check’s own manifest', () => {
+  it('is read in place of the committed one when ASSET_MANIFEST names it', () => {
+    const { root, manifest } = project();
+    const other = join(root, 'other.json');
+    writeFileSync(other, JSON.stringify({ 'kit/a.glb': manifest['kit/a.glb'] }));
+    writeFileSync(join(root, 'src/data/assets-manifest.json'), '{}');
+    process.env.ASSET_MANIFEST = other;
+    try {
+      expect(JSON.parse(made(root, 'https://bucket.test').load(join(root, 'src/data/assets-manifest.json')))).toEqual({ 'kit/a.glb': manifest['kit/a.glb'] });
+    } finally {
+      delete process.env.ASSET_MANIFEST;
+    }
+  });
+});

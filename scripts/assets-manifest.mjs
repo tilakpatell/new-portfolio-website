@@ -7,10 +7,11 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MANIFEST, freshManifest } from './assets-upload.mjs';
+import { MANIFEST, freshManifest, manifestPath } from './assets-upload.mjs';
 
 export default function assetManifest() {
   let file = null;
+  let from = null;
   let publicDir = null;
   let base = '';
   return {
@@ -18,13 +19,14 @@ export default function assetManifest() {
     enforce: 'pre',
     configResolved(c) {
       file = join(c.root, MANIFEST);
+      from = manifestPath(c.root);
       publicDir = c.publicDir;
       base = c.env?.VITE_ASSET_BASE ?? '';
     },
     // (JSON text, which Vite's own JSON plugin then makes a module of)
     load(id) {
       if (id.split('?')[0] !== file) return null;
-      return base ? JSON.stringify(freshManifest(JSON.parse(readFileSync(file, 'utf8')), publicDir)) : '{}';
+      return base ? JSON.stringify(freshManifest(JSON.parse(readFileSync(from, 'utf8')), publicDir)) : '{}';
     },
   };
 }

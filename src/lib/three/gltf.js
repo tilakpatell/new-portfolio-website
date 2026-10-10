@@ -9,6 +9,8 @@
 //
 //   gltfLoader({ renderer }) → the shared GLTFLoader, for modules with caches
 //                              of their own
+//   loadGltfFile(url) → Promise<gltf>: that loader's parse of one file, asked
+//                              of the asset base first (src/lib/assetBase.js)
 //   loadGltf(url, { renderer, fresh }) → Promise<{ scene, animations, gltf }
 //                              | null>: cached by URL for the page's life; with
 //                              `fresh`, `scene` is a copy to move, wrap and
@@ -138,6 +140,13 @@ function fetchGltf(url, renderer) {
     const path = THREE.LoaderUtils.extractUrlBase(url);
     return gltfLoader().parseAsync(buffer, path);
   });
+}
+
+// One file through the shared loader, uncached, for a module that keeps its
+// own: from the asset bucket where it has the file (the same bytes, so the
+// same model), else the site.
+export function loadGltfFile(url) {
+  return withFallback((u) => gltfLoader().loadAsync(u))(url);
 }
 
 // A model by URL, parsed once for the page's life (two worlds asking for the
