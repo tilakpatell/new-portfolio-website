@@ -1,8 +1,8 @@
 # The Battlefront II (2017) drop: the coverage ledger
 
-Written 2026-10-10 15:06 UTC from the bucket (113,464 objects listed) by `scripts/bf2017-coverage.mjs`. One row per object (a model with all its LOD files; a map and each of its five extras kinds; `data/` by top folder and record type), each in one state: used, owned, excluded, not-uploaded, unowned. `npm run coverage:bf2017` fails while any row is unowned, or owned by a lane that has merged.
+Written 2026-10-10 15:12 UTC from the bucket (113,464 objects listed) by `scripts/bf2017-coverage.mjs`. One row per object (a model with all its LOD files; a map and each of its five extras kinds; `data/` by top folder and record type), each in one state: used, owned, excluded, not-uploaded, unowned. `npm run coverage:bf2017` fails while any row is unowned, or owned by a lane that has merged.
 
-**Rows:** 80,837 · used 2,428 · owned 59,890 · excluded 13,851 · not-uploaded 4,668 · unowned 0
+**Rows:** 80,837 · used 2,428 · owned 59,904 · excluded 13,837 · not-uploaded 4,668 · unowned 0
 
 ## By part
 
@@ -23,7 +23,7 @@ Written 2026-10-10 15:06 UTC from the bucket (113,464 objects listed) by `script
 | scatter | 40 | 40 | 10 | 0 | 30 | 10 | 0 | 0 |
 | animtracks | 61 | 61 | 0 | 0 | 52 | 9 | 0 | 0 |
 | movies | 116 | 116 | 5,725 | 0 | 109 | 7 | 0 | 0 |
-| fonts | 23 | 23 | 36 | 0 | 9 | 14 | 0 | 0 |
+| fonts | 23 | 23 | 36 | 0 | 23 | 0 | 0 | 0 |
 | svg | 702 | 702 | 4 | 28 | 615 | 59 | 0 | 0 |
 | strings | 2 | 2 | 1 | 0 | 2 | 0 | 0 | 0 |
 | data | 1,307 | 83,983 | 2,078 | 73 | 1,203 | 31 | 0 | 0 |
@@ -36,18 +36,22 @@ Of each lane’s rows, those its plan did not name are the fifth design’s firs
 
 | lane | design | owned rows | of them, the first finding |
 | --- | --- | --: | --: |
-| E | #848 | 30,288 | 11,554 |
-| O | #848 | 13,682 | 3,099 |
+| E | #848 | 29,501 | 10,831 |
+| O | #848 | 13,677 | 3,099 |
 | A | #848 | 11,558 | 2,624 |
-| M | #848 | 1,310 | 541 |
-| Q | #848 | 900 | 564 |
+| M | #848 | 1,324 | 541 |
+| space | #848 | 894 | 564 |
+| surfaces-Q6 | #844 | 833 | 0 |
 | 4 | #812 | 700 | 700 |
-| X | #836 | 681 | 619 |
+| X | #836 | 422 | 360 |
 | Y | #839 | 310 | 0 |
 | B | #839 | 175 | 0 |
 | 6 | #812 | 139 | 139 |
+| surfaces-Q4 | #844 | 125 | 0 |
 | 7 | #812 | 80 | 80 |
+| surfaces-Q3 | #844 | 70 | 0 |
 | N | #836 | 30 | 0 |
+| surfaces-Q1 | #844 | 29 | 0 |
 | D | #839 | 27 | 0 |
 | W | #839 | 10 | 0 |
 
@@ -56,6 +60,4 @@ Of each lane’s rows, those its plan did not name are the fifth design’s firs
 | rule | rows |
 | --- | --: |
 | era | 11,511 |
-| scaffolding | 2,321 |
-| licence | 14 |
-| docs | 5 |
+| scaffolding | 2,326 |

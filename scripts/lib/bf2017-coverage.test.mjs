@@ -82,8 +82,11 @@ describe('classify', () => {
     expect(c('test:test/web/models/test_cube.glb')).toEqual({ state: 'excluded', by: 'scaffolding' });
     expect(c('maps:a3/levels/sp/rootlevel/rootlevel_a3/rootlevel_a3').by).toBe('scaffolding');
   });
-  it('keeps a commercial font out by its licence', () => {
-    expect(c('fonts:ui/resources/fonts/linotypeunivers')).toEqual({ state: 'excluded', by: 'licence' });
+  it('excludes nothing by licence: the owner holds it for every font', () => {
+    expect(c('fonts:ui/resources/fonts/linotypeunivers')).toEqual({ state: 'owned', by: 'M' });
+  });
+  it('keeps the uploader’s notes out as scaffolding', () => {
+    expect(c('index:readme.md')).toEqual({ state: 'excluded', by: 'scaffolding' });
   });
   it('calls a manifest row the bucket lacks not-uploaded, never unowned', () => {
     expect(c('textures:levels/mp/hoth_01/textures/t_missing_from_bucket_cs')).toEqual({ state: 'not-uploaded', by: 'D' });
@@ -91,7 +94,7 @@ describe('classify', () => {
   });
   it('gives an owned row its lane', () => {
     expect(classify(row('models:objects/architecture/kamino/archive/o_kam_archivecenter_01_mesh'), { ...ctx, owners: [{ match: 'objects/architecture/', lane: 'O', design: 839 }] })).toEqual({ state: 'owned', by: 'O' });
-    expect(c('models:objects/props/_battlebeyond/asteroid_01_mesh').by).toBe('Q');
+    expect(c('models:objects/props/_battlebeyond/asteroid_01_mesh').by).toBe('space');
     expect(c('models:objects/nature/arctic/rock_01_mesh').by).toBe('O');
     expect(c('models:characters/npc/creatures/dewback/dewback_01/dewback_01_mesh').by).toBe('B');
     expect(c('anims:anims/yoda_01_ske/yoda_idle.glb').by).toBe('Y');
@@ -101,7 +104,8 @@ describe('classify', () => {
     expect(c('textures:ui/art/hub/map_planet').by).toBe('M');
     expect(c('anims:anims/walrus_humanmale/p_stance_idle_00.glb').by).toBe('A');
     expect(c('data:Sound/SoundPatchAsset').by).toBe('D');
-    expect(c('maps.decals:levels/mp/endor_01/endor_01').by).toBe('E');
+    expect(c('maps.lights:levels/mp/endor_01/endor_01').by).toBe('E');
+    expect(c('maps.decals:levels/mp/endor_01/endor_01').by).toBe('surfaces-Q4');
   });
   it('leaves a row no table names unowned', () => {
     expect(classify(row('models:objects/nature/arctic/rock_01_mesh'), { ...ctx, owners: [] })).toEqual({ state: 'unowned', by: '' });

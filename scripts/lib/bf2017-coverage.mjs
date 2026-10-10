@@ -3,9 +3,9 @@
 // order:
 //
 //   used          a site file names it (the consumer is `by`)
-//   excluded      a rule keeps it out: the sequel era (`isSequel`), the
-//                 uploader's scaffolding and notes, a font licensed to EA,
-//                 not the owner
+//   excluded      a rule keeps it out: the sequel era (`isSequel`), or the
+//                 uploader's scaffolding and notes (the owner holds the
+//                 licence for everything else, the fonts included)
 //   not-uploaded  a manifest lists it and the bucket's listing has none of
 //                 its files (`by`: the lane that uploads it, D for textures)
 //   owned         the owners table (bf2017-owners.mjs) names a lane for it
@@ -33,10 +33,8 @@ const EXTRAS = ['lights', 'decals', 'actors', 'vehicles', 'effects'];
 // placeholders, what it marked for deletion, the RootLevel dev maps, and the
 // paintball set (the sequel's Resistance and First Order art)
 export const EXCLUDED_PREFIXES = ['test/', 'testranges', 'placeholders', 'tobedeleted_tempintransition', 'rootlevel', 'paintball'];
-// Linotype Univers, DFPHSGothic, ARYenti and RaxusPrime: licensed to EA (lane M)
 // The uploader's own notes and viewers (README, GUIDE, the two viewer pages): not content
 const DOCS = /(^|\/)(readme\.md|guide\.md|viewer\.html|cloud_viewer\.html)$/;
-const LICENCE = /linotype|univers|dfphs|aryenti|raxusprime/;
 
 const EXT = /\.(glb|gltf|ktx2|png|jpg|webp|json|jsonl|bin|webm|ogv|ssa|srt|vtt|ttf|otf|svg|gz|tsv|txt|md|html|vp6)$/;
 const lower = (s) => String(s).toLowerCase();
@@ -186,8 +184,7 @@ export function classify(row, { consumers, listing = null, owners = [] }) {
   if (used) return { state: 'used', by: consumers.by.get(used) };
   if (row.part !== 'data' && hit(row, isSequel)) return { state: 'excluded', by: 'era' };
   if (hit(row, (s) => EXCLUDED_PREFIXES.some((p) => (p.endsWith('/') ? s.startsWith(p) : s.includes(p))))) return { state: 'excluded', by: 'scaffolding' };
-  if (DOCS.test(lower(row.name))) return { state: 'excluded', by: 'docs' };
-  if (row.part === 'fonts' && LICENCE.test(lower(row.name))) return { state: 'excluded', by: 'licence' };
+  if (DOCS.test(lower(row.name))) return { state: 'excluded', by: 'scaffolding' };
   if (listing && row.files.length && !row.files.some((f) => listing.has(pathKey(f)))) return { state: 'not-uploaded', by: row.part === 'textures' ? 'D' : 'listing' };
   const o = ownerOf(row, owners);
   if (o) return { state: 'owned', by: o.lane, ...(o.finding ? { finding: true } : {}) };

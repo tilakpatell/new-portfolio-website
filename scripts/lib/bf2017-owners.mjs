@@ -21,7 +21,7 @@ export const LANES = [
   { lane: 'Z', design: 848 },
   { lane: 'E', design: 848 },
   { lane: 'O', design: 848 },
-  { lane: 'Q', design: 848 },
+  { lane: 'space', design: 848 },
   { lane: 'M', design: 848 },
   { lane: 'A', design: 848 },
   // the cast left (#839): the desktop's gaps, the beasts, Yoda and Grievous, the inside's crew, the atlas, the wrecks
@@ -31,6 +31,8 @@ export const LANES = [
   { lane: 'I', design: 839 },
   { lane: 'T', design: 839 },
   { lane: 'W', design: 839 },
+  // the surfaces design (#844): materials, ground, bounce, weathering and decals, ultra textures, the picture
+  ...['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'].map((q) => ({ lane: `surfaces-${q}`, design: 844 })),
   // the fidelity design (#836): effects, scatter, upscaling, far shadow, cameras, volumetrics
   { lane: 'X', design: 836 },
   { lane: 'N', design: 836 },
@@ -73,11 +75,22 @@ export const OWNERS = [
   // #836: the effect spawns (lane X) and the terrain scatter (lane N)
   { part: 'maps.effects', lane: 'X' },
   { part: 'scatter', lane: 'N' },
-  // lane Q: the space levels, their set pieces and the asteroids' tracks
-  { match: 'levels/space/', lane: 'Q' },
-  { match: 'cinematics/spacebattles', lane: 'Q' },
-  { match: 'objects/props/_battlebeyond', lane: 'Q' },
-  { match: /asteroid/, part: 'animtracks', lane: 'Q' },
+  // #844's surfaces lanes (before the space lane and the library: a row two
+  // lanes consume is the first one's): Q1 the materials' manifest and the
+  // shaders' presets, detail and weathering maps; Q3 the Enlighten proxies;
+  // Q4 the decals and their sheets; Q6 the colour cubes and the painted skies
+  { match: 'materials.jsonl', part: 'index', lane: 'surfaces-Q1' },
+  { match: /^(textures\/)?shaders\//, part: 'textures', lane: 'surfaces-Q1' },
+  { match: /enlighten/, lane: 'surfaces-Q3' },
+  { part: 'maps.decals', lane: 'surfaces-Q4' },
+  { match: /(^|\/)(fx\/decals|objects\/props\/_decals)\//, part: 'textures', lane: 'surfaces-Q4' },
+  { match: /(^|\/)t_cc_[^/]*$/, part: 'textures', lane: 'surfaces-Q6' },
+  { match: /(^|\/)(lighting\/textures\/space\/|levels\/space\/[^/]+\/planet\/t_space_)/, part: 'textures', lane: 'surfaces-Q6' },
+  // the space lane (the fifth design's Q): the space levels, their set pieces and the asteroids' tracks
+  { match: 'levels/space/', lane: 'space' },
+  { match: 'cinematics/spacebattles', lane: 'space' },
+  { match: 'objects/props/_battlebeyond', lane: 'space' },
+  { match: /asteroid/, part: 'animtracks', lane: 'space' },
   // lane M: the films, fonts, icons, strings and the UI's bitmaps
   { part: 'movies', lane: 'M' },
   { part: 'fonts', lane: 'M' },
@@ -88,14 +101,12 @@ export const OWNERS = [
   // collision mesh and Havok shapes are the level's solids, not the library's)
   { part: 'maps', lane: 'E' },
   { part: 'maps.lights', lane: 'E' },
-  { part: 'maps.decals', lane: 'E' },
   { part: 'maps.actors', lane: 'E' },
   { part: 'maps.vehicles', lane: 'E' },
   { part: 'terrain', lane: 'E' },
   { part: 'physics', lane: 'E' },
   { part: 'collision', lane: 'E' },
   { part: 'animtracks', lane: 'E' },
-  { match: 'materials.jsonl', part: 'index', lane: 'E' },
   // lane O: every placeable object
   { match: 'objects/', lane: 'O' },
 
@@ -109,8 +120,8 @@ export const OWNERS = [
   { match: /^(levels\/frontend|levels\/initialexperience)\//, lane: 'M', finding: true },
   { match: /(^|\/)ui\//, lane: 'M', finding: true },
   // the capital ships are the space lane's; the other vehicles the game's lane 4
-  { match: /^gameplay\/vehicles\/.*(capital|cruiser|venator|mc80|cr90|lucrehulk|providence|stardestroyer|dreadnought|frigate|corvette)/, lane: 'Q', finding: true },
-  { match: /(^|\/)gameplay\/ntcapitalships\//, lane: 'Q', finding: true },
+  { match: /^gameplay\/vehicles\/.*(capital|cruiser|venator|mc80|cr90|lucrehulk|providence|stardestroyer|dreadnought|frigate|corvette)/, lane: 'space', finding: true },
+  { match: /(^|\/)gameplay\/ntcapitalships\//, lane: 'space', finding: true },
   { match: /(^|\/)gameplay\/vehicles\//, lane: '4', finding: true },
   // the prefabs (pickups, spawners, vehicle pads) are placed by the levels (lane E)
   { match: /(^|\/)gameplay\/prefabs\//, lane: 'E', finding: true },
