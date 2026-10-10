@@ -10,6 +10,7 @@
 //   node scripts/hoth-check.mjs
 //   QUALITY=low …   BASE=http://localhost:5173 …   CHROME=<chromium> …
 //   WAIT=30000 …    (ms each count waits for the figures to come in)
+//   PHASE_WAIT=900000 …  (ms for the landing: the level pack in software GL takes minutes)
 // The clock is held and the random numbers seeded as surface-shot.mjs does.
 
 import { chromium } from 'playwright-core';
@@ -69,7 +70,7 @@ const report = (label, got) => {
 
 const land = async (hash) => {
   await page.goto(`${base}/?quality=${quality}#${hash}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-  await page.waitForFunction(() => window.__surface?.()?.phase, null, { timeout: 180000 });
+  await page.waitForFunction(() => window.__surface?.()?.phase, null, { timeout: Number(process.env.PHASE_WAIT ?? 180000) });
 };
 
 // ── out on the ice ──

@@ -106,6 +106,7 @@ import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { createPlacer } from './placer';
+import { createLevel, levelGround } from './level';
 import { anyFigure, createActors, modelFigure } from './actors';
 import { RIDES as GALAXY_RIDES } from './rides';
 import { SEATS, poseRider } from './riders';
@@ -324,7 +325,9 @@ export async function create(canvas, ctx) {
   // dive, which goes on drawing meanwhile, and one long task stopped it)
   await breathe();
   // ── The land ──
-  const height = makeHeight(site.ground, { relief: amounts.relief });
+  // (a world on the game's level: its heightmaps decoded first, so the grid
+  // is the game's ground; any other world's ground is as it was)
+  const height = makeHeight(await levelGround(site.ground), { relief: amounts.relief });
   const grid = heightGrid(height, amounts.grid);
   // (water you wade in: not lava, not cloud, and not a sea far under a
   // platform with nothing else under it, which you'd fall into)
@@ -333,7 +336,8 @@ export async function create(canvas, ctx) {
   // ground map is painted with the trees' crowns over it)
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
-  const scattered = site.scatter.map((s) => {
+  // (on a world drawn from the game's level, what the game places itself is left to it)
+  const scattered = site.scatter.filter((s) => !(site.level && s.game)).map((s) => {
     const items = [];
     const [r0, r1] = s.within ?? [20, site.reach];
     let tries = 0;
@@ -415,9 +419,12 @@ export async function create(canvas, ctx) {
   // given is in the house's look from the start)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
   const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, house, kitTint: floraTint(site), models, props: PROPS, scatter: SCATTER });
+  // the game's own level, cell by cell round you (lane L; null for a world without one)
+  const gameLevel = createLevel({ scene, site, tier: level, renderer, walk: world });
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
   for (const t of site.things_all) {
+    if (site.level && t.game) continue;
     const put = placer.put(t);
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
   }
@@ -3213,6 +3220,7 @@ export async function create(canvas, ctx) {
     state.aim = Math.max(0, state.aim - dt / 2.5);
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
+    gameLevel?.update([me().st.x, me().st.z]);
     if (!reduced) kit.tick(dt);
     grass?.update(me().st);
     wind.update(dt);
@@ -3803,6 +3811,7 @@ export async function create(canvas, ctx) {
     debug: () => ({ surfaces: { level: surfaces?.level ?? null, print: groundPrint, picks: [...picks] }, sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, body: body ? { ready: body.ready, pose: body.pose } : null, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock?.stagger != null ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), force: powers.debug(), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), net: { ...net.progress(), pool: assetPool().progress() }, rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
+      gameLevel?.dispose();
       net.end();
       body?.dispose();
       body = null;

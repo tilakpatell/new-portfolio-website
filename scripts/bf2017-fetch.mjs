@@ -13,6 +13,8 @@
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --list '<glob over name>'
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs data '<glob over record name>' […]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs web '<glob under web/>' […]
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs --raw <path under web/>
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs --folder '<folder under web/>/<glob>'
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs anims
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs anim <clip name>
 //
@@ -33,6 +35,9 @@
 //                index: the Battlefront extractor's --root (scripts/bf2017-data.mjs)
 //   web          files of the web build (svg/**, fonts/…, maps/…, strings/…),
 //                and the listing of their folders in web/files.txt
+//   raw          one object by its path (maps/README.md, terrain.jsonl), not a model
+//   folder       every object in one folder of the bucket whose name matches
+//                the glob (a map's files: 'maps/levels/mp/hoth_01/*')
 //   list         the names under a glob, with their LOD triangles (models)
 //                or their frames and fps (clips, once `anims` has run)
 //   anims        web/anims.jsonl (about 16 MB), the clips' manifest
@@ -55,7 +60,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { animEntry, animPath, globRe } from './lib/bf2017-anims.mjs';
 import { partsOf, readManifest } from './lib/bf2017-manifest.mjs';
-import { dataPath, globDir, globRegExp, imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
+import { dataPath, globDir, globMatch, globRegExp, imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
 import { createPool } from './lib/pool.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -64,7 +69,7 @@ const MANIFEST = 'web/models.jsonl';
 const ANIMS = 'web/anims.jsonl';
 const INDEX = '.index.json';
 
-function keys() {
+export function keys() {
   const base = process.env.SUPABASE_URL;
   const key = process.env.BF2017_KEY || process.env.SUPA_KEY;
   if (!base || !key) {
@@ -98,7 +103,7 @@ const note = (r) => {
 // the body is held to the response's own content-length). With --verify the
 // index is not trusted: every file is asked about again and one that is
 // wrong is fetched again.
-async function getObject(env, root, bucketPath, { size = null } = {}) {
+export async function getObject(env, root, bucketPath, { size = null } = {}) {
   const url = objectUrl(env.base, BUCKET, bucketPath);
   const file = localPath(root, bucketPath);
   const index = run.index ?? {};
@@ -116,6 +121,22 @@ async function getObject(env, root, bucketPath, { size = null } = {}) {
   if (got.status === 'fetched') index[bucketPath] = { bytes: got.bytes, at: new Date().toISOString() };
   else if (got.status === 'missing') delete index[bucketPath];
   return note({ file, bytes: got.bytes, state: got.status, error: got.error });
+}
+
+// The objects in one folder of the bucket (Storage's list call, a page at a time)
+export async function listFolder(env, prefix) {
+  const out = [];
+  for (let offset = 0; ; offset += 1000) {
+    const res = await fetch(`${env.base.replace(/\/+$/, '')}/storage/v1/object/list/${BUCKET}`, {
+      method: 'POST',
+      headers: { ...env.headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix, limit: 1000, offset, sortBy: { column: 'name', order: 'asc' } }),
+    });
+    if (!res.ok) throw new Error(`list ${prefix}: ${res.status}`);
+    const page = await res.json();
+    out.push(...page.filter((o) => o.id).map((o) => o.name));
+    if (page.length < 1000) return out;
+  }
 }
 
 const say = (r) => console.log(`${relative(ROOT, r.file).padEnd(110)} ${String(r.bytes).padStart(10)}  ${r.state}${r.error ? `  (${r.error})` : ''}`);
@@ -328,6 +349,22 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const has = (p) => existsSync(localPath(root, p));
     if (!has(MANIFEST) && !has(ANIMS)) await loadManifest(root);
     listAll(has(MANIFEST) ? await loadManifest(root) : null, has(ANIMS) ? readManifest(await readFile(localPath(root, ANIMS), 'utf8')) : null, args.list);
+  } else if (typeof args.raw === 'string') {
+    const env = keys();
+    let r = null;
+    await withIndex(root, true, async () => say((r = await getObject(env, root, inBucket(args.raw)))));
+    process.exit(r?.state === 'missing' ? 3 : run.failed > 0 ? 1 : 0);
+  } else if (typeof args.folder === 'string') {
+    const env = keys();
+    const path = inBucket(args.folder);
+    const folder = path.slice(0, path.lastIndexOf('/') + 1);
+    const match = globMatch(path.slice(folder.length));
+    const names = (await listFolder(env, folder)).filter((n) => match(n));
+    if (!names.length) console.log(`${folder}: nothing there yet`);
+    await withIndex(root, Boolean(args.verify), async () => {
+      for (const n of names) say(await getObject(env, root, folder + n));
+    });
+    process.exit(run.failed > 0 ? 1 : 0);
   } else if (what === 'anims') {
     say(await getObject(keys(), root, ANIMS));
   } else if (what === 'anim') {
@@ -369,7 +406,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     });
     process.exit(run.failed > 0 ? 1 : 0);
   } else {
-    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | data '<glob>' […] | web '<glob>' […] | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] [--verify] | --all '<glob>' [--verify] [--pool 6] [--no-textures] [--no-collision] | --list '<glob>'");
+    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | --raw <path under web/> | --folder '<folder>/<glob>' | data '<glob>' […] | web '<glob>' […] | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] [--verify] | --all '<glob>' [--verify] [--pool 6] [--no-textures] [--no-collision] | --list '<glob>'");
     process.exit(1);
   }
 }

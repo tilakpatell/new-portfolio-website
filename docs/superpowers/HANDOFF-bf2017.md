@@ -171,11 +171,26 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | 0 | | | #805 |
 | second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
 | 1 | | | |
-| L | | | |
+| L | the lane L session | `claude/bf2017-l-hoth` | #831 |
 | G | lane G session | `claude/bf2017-g-light` | #833 |
 | K | the lane K session | `claude/bf2017-k-planets` | #825 |
 | X | lane X’s session | `claude/bf2017-x-sabers` | #816 (tasks 1–3; the GPU frame time left) |
 | S | | | |
+
+### Lane L: Hoth
+
+**Done.** Hoth draws from the game's own level (`public/models/galaxy/bf2017/levels/hoth/`, 53 MB; its README has the table): `node scripts/bf2017-level.mjs levels/mp/hoth_01 --world hoth --spot 205 -1540` (the spot: in front of the hangar's west mouth, the site's 0, 0). The pieces: `src/lib/land/layers.js`'s `image` layer; `src/lib/level/` (the instance records, the bands, the LOD by size and the reach per tier, the 16-bit PNG reader, collision); `scripts/lib/bf2017-level.mjs`, `level-cells.mjs`, `png16.mjs`, `ktx2-mips.mjs` (`ktx2.mjs convert --drop-mips`); `src/components/galaxy/surface/level/` (the scene, the stream, the shared-texture loader, the colliders); `scene.js` (the ground's image layers filled before the grid; `createLevel` beside the placer; a site's `game` things and scatter left to the level); `sites/ice.js` (`level: 'hoth'`, the ground the game's heightmap, the zone's door at the game's mouth); the Battle of Hoth's Echo Base post at that door. Gates: `galaxy-check surface hoth` with `BUDGET=1` passes at low (165 calls, 657k triangles, 15.6 MB), mid (162, 655k, 16.1 MB), high (152, 818k, 16.5 MB) and ultra (153, 1.69M, 19.3 MB); the level's own textures on the GPU 12 MB (low) and 47 MB (high); `hoth-check` (built: none) and `anim-check` green.
+
+**What the data said** (each in the PR):
+- The map's format is three arrays, not records, and its terrain record sits in the map's manifest (`web/maps/README.md`, fetched with `--raw maps/README.md`); its heights are v × heightScale / 65536.
+- 14,536 of Hoth's 20,350 arena instances are the base inside the glacier, under the terrain: left out (the site's interior zone stands for it). The hangar's mouths are the terrain's holes, filled at their rim's lowest so the way in stays open.
+- The plan's four cuts at the row's bands could not fit: the base's dressing is 21M triangles at LOD0 in a 3 × 3. Each instance now draws its LOD by size and distance and each tier a reach; what `fitCull` dropped per tier is in the pack's README (nothing, once the buried base was out).
+- Sub-levels: `Hoth_01` and `Content` (the default); skinned actors (bind pose), Enlighten proxies, light cones, destruction stages, shadow, mist and light-invalidation planes are never drawn.
+- **The desktop now exports lights and the sky's records**: each map's `<level>.extras.json` has `lights[]` (Hoth's 1,234 with colour, intensity, range, cones), `effects[]`, `decals[]` and `environments` (the VisualEnvironment components, sun rotation included). Lane G and lane F: read them there.
+
+**Left.** The flight's `/fly/hoth` still shows the site's own land (`ground.flight`): it reads the pack's heightmaps when its worker can fetch them (bump `TERRAIN_VERSION` then). The Havok shapes (Rapier, #781) for the near cells; until then walls are their bounds (pieces over 15 m wait for their shapes) and floors their flat tops. The base's inside as the game's (it is the site's `echoinside` zone today). `--ultra` (LOD0 and 2048 maps) when ultra wants them. Then Endor (`endor_01`) on a fresh branch: the same script, its spot where its missions stand.
+
+**Checking it.** The keys in `.env.local` (`SUPABASE_URL`, `BF2017_KEY`); in a cloud session Node's fetch needs `NODE_USE_ENV_PROXY=1`. A level pack in software GL lands in minutes: `PHASE_WAIT=1500000` on `surface-shot.mjs`, `galaxy-check.mjs` and `hoth-check.mjs`. Restart the dev server after rebuilding a pack (Vite lists `public/` at start).
 
 Findings for the next lane go here: which sub-levels each map needed, what `fitTo` dropped per tier, the calibration factor and which path each world’s sun direction took, which skins were still missing, which clips’ windows were pinned by hand.
 
