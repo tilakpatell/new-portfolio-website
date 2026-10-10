@@ -19,66 +19,60 @@
 // A map with no pack has its data columns and `drawn: none`; that is not a
 // failure. A pack whose README claims a part the pack lacks is.
 
-import { modesOf } from "./bf2017-modes.mjs";
+import { modesOf } from './bf2017-modes.mjs';
 
 export const USABLE = [
-  "Levels/MP/Hoth_01/Hoth_01",
-  "S9_3/Hoth_02/Hoth_02",
-  "Levels/MP/Endor_01/Endor_01",
-  "S2_1/Levels/Endor_02/Endor_02",
-  "S8_1/Endor_04/Endor_04",
-  "Levels/MP/Tatooine_01/Tatooine_01",
-  "S9_3/Tatooine_02/Tatooine_02",
-  "S2_2/Levels/JabbasPalace_01/JabbasPalace_01",
-  "Levels/MP/Yavin_01/Yavin_01",
-  "Levels/MP/Kashyyyk_01/Kashyyyk_01",
-  "S7/Levels/Kashyyyk_02/Kashyyyk_02",
-  "Levels/MP/Kamino_01/Kamino_01",
-  "S7_1/Levels/Kamino_03/Kamino_03",
-  "Levels/MP/Naboo_01/Naboo_01",
-  "Levels/MP/Naboo_02/Naboo_02",
-  "S7_2/Levels/Naboo_03/Naboo_03",
-  "S5_1/Levels/MP/Geonosis_01/Geonosis_01",
-  "S6_2/Geonosis_02/Levels/Geonosis_02/Geonosis_02",
-  "S9_3/Scarif/Levels/MP/Scarif_02/Scarif_02",
-  "S2/Levels/CloudCity_01/CloudCity_01",
-  "Levels/MP/DeathStar02_01/DeathStar02_01",
-  "S8/Felucia/Levels/MP/Felucia_01/Felucia_01",
-  "S3/Levels/Kessel_01/Kessel_01",
-  "Levels/Space/SB_Endor_01/SB_Endor_01",
-  "Levels/Space/SB_Fondor_01/SB_Fondor_01",
-  "Levels/Space/SB_Kamino_01/SB_Kamino_01",
-  "Levels/Space/SB_DroidBattleShip_01/SB_DroidBattleShip_01",
-  "Levels/SP/A1/M0LIB/DS02",
-  "Levels/SP/A1/M1END/DS02",
-  "Levels/SP/A1/M1END/DS04",
-  "Levels/SP/A1/M2FON/DS02",
-  "Levels/SP/A1/M3PIL/DS02",
-  "Levels/SP/A1/M4VAR/DS02",
-  "Levels/SP/A1/M5NAB/DS02",
-  "Levels/SP/A1/M5NAB/DS05",
-  "Levels/SP/A2/M2BES/DS02",
-  "Levels/SP/A2/M3SUL/DS02",
-  "Levels/SP/A3/M1PIL/DS02",
-  "Levels/SP/A3/M1PIL/DS04",
-  "A3/Levels/SP/M2PIL/DS02",
-  "A3/Levels/SP/M3ATH/DS02",
-  "A3/Levels/SP/M4VAR/DS02",
-  "Levels/Frontend/Frontend",
-  "Levels/InitialExperience/InitialExperience_01",
+  'Levels/MP/Hoth_01/Hoth_01',
+  'S9_3/Hoth_02/Hoth_02',
+  'Levels/MP/Endor_01/Endor_01',
+  'S2_1/Levels/Endor_02/Endor_02',
+  'S8_1/Endor_04/Endor_04',
+  'Levels/MP/Tatooine_01/Tatooine_01',
+  'S9_3/Tatooine_02/Tatooine_02',
+  'S2_2/Levels/JabbasPalace_01/JabbasPalace_01',
+  'Levels/MP/Yavin_01/Yavin_01',
+  'Levels/MP/Kashyyyk_01/Kashyyyk_01',
+  'S7/Levels/Kashyyyk_02/Kashyyyk_02',
+  'Levels/MP/Kamino_01/Kamino_01',
+  'S7_1/Levels/Kamino_03/Kamino_03',
+  'Levels/MP/Naboo_01/Naboo_01',
+  'Levels/MP/Naboo_02/Naboo_02',
+  'S7_2/Levels/Naboo_03/Naboo_03',
+  'S5_1/Levels/MP/Geonosis_01/Geonosis_01',
+  'S6_2/Geonosis_02/Levels/Geonosis_02/Geonosis_02',
+  'S9_3/Scarif/Levels/MP/Scarif_02/Scarif_02',
+  'S2/Levels/CloudCity_01/CloudCity_01',
+  'Levels/MP/DeathStar02_01/DeathStar02_01',
+  'S8/Felucia/Levels/MP/Felucia_01/Felucia_01',
+  'S3/Levels/Kessel_01/Kessel_01',
+  'Levels/Space/SB_Endor_01/SB_Endor_01',
+  'Levels/Space/SB_Fondor_01/SB_Fondor_01',
+  'Levels/Space/SB_Kamino_01/SB_Kamino_01',
+  'Levels/Space/SB_DroidBattleShip_01/SB_DroidBattleShip_01',
+  'Levels/SP/A1/M0LIB/DS02',
+  'Levels/SP/A1/M1END/DS02',
+  'Levels/SP/A1/M1END/DS04',
+  'Levels/SP/A1/M2FON/DS02',
+  'Levels/SP/A1/M3PIL/DS02',
+  'Levels/SP/A1/M4VAR/DS02',
+  'Levels/SP/A1/M5NAB/DS02',
+  'Levels/SP/A1/M5NAB/DS05',
+  'Levels/SP/A2/M2BES/DS02',
+  'Levels/SP/A2/M3SUL/DS02',
+  'Levels/SP/A3/M1PIL/DS02',
+  'Levels/SP/A3/M1PIL/DS04',
+  'A3/Levels/SP/M2PIL/DS02',
+  'A3/Levels/SP/M3ATH/DS02',
+  'A3/Levels/SP/M4VAR/DS02',
+  'Levels/Frontend/Frontend',
+  'Levels/InitialExperience/InitialExperience_01',
 ];
 
 export function levelKey(level) {
-  const segs = String(level).split("/");
-  const sp = segs.findIndex((s) => s.toLowerCase() === "sp");
+  const segs = String(level).split('/');
+  const sp = segs.findIndex((s) => s.toLowerCase() === 'sp');
   // (a campaign map: its act, mission and detached sub-world; A3/Levels/SP/… holds the act in front)
-  if (sp >= 0)
-    return [
-      ...(/^A\d$/i.test(segs[0]) && sp > 0 ? [segs[0]] : []),
-      ...segs.slice(sp + 1),
-    ]
-      .join("_")
-      .toLowerCase();
+  if (sp >= 0) return [...(/^A\d$/i.test(segs[0]) && sp > 0 ? [segs[0]] : []), ...segs.slice(sp + 1)].join('_').toLowerCase();
   return segs[segs.length - 1].toLowerCase();
 }
 
@@ -90,7 +84,7 @@ export function rulebookFile(key) {
 
 // ── the pack's README ──────────────────────────────────────────────────
 
-const num = (s) => Number(String(s).replace(/,/g, ""));
+const num = (s) => Number(String(s).replace(/,/g, ''));
 
 export function readmeOf(text) {
   const out = {
@@ -101,37 +95,27 @@ export function readmeOf(text) {
     parts: null,
   };
   if (!text) return out;
-  const inst = text.match(
-    /^- (\d+) instances in the arena[^,]*, (\d+) beyond it/m,
-  );
+  const inst = text.match(/^- (\d+) instances in the arena[^,]*, (\d+) beyond it/m);
   if (inst) [out.instances, out.horizon] = [num(inst[1]), num(inst[2])];
   const subs = text.match(/--subs ([^\s`]+)/);
-  if (subs) out.subs = subs[1].split(",").filter(Boolean);
+  if (subs) out.subs = subs[1].split(',').filter(Boolean);
   // (the cull table: its header names the tiers, its "meshes dropped (instances)" row each tier's count)
   const head = text.match(/^\| *\| *(low[^\n]*)\|\s*$/m);
-  const dropped = text.match(
-    /^\| *meshes dropped \(instances\) *\|([^\n]*)\|\s*$/m,
-  );
+  const dropped = text.match(/^\| *meshes dropped \(instances\) *\|([^\n]*)\|\s*$/m);
   if (head && dropped) {
     const tiers = head[1]
-      .split("|")
+      .split('|')
       .map((s) => s.trim())
       .filter(Boolean);
-    const cells = dropped[1].split("|").map((s) => s.trim());
-    out.cull = Object.fromEntries(
-      tiers
-        .map((t, i) => [t, num(cells[i]?.match(/\((\d+)\)/)?.[1] ?? NaN)])
-        .filter(([, v]) => Number.isFinite(v)),
-    );
+    const cells = dropped[1].split('|').map((s) => s.trim());
+    out.cull = Object.fromEntries(tiers.map((t, i) => [t, num(cells[i]?.match(/\((\d+)\)/)?.[1] ?? NaN)]).filter(([, v]) => Number.isFinite(v)));
   }
   // (lane E0's "The map's other parts" table: | part | count | bytes | read by |)
   const sec = text.split(/^## The map's other parts\s*$/m)[1];
   if (sec) {
     out.parts = {};
-    for (const line of sec.split("\n")) {
-      const c = line.match(
-        /^\| *([a-z][\w./ ]*?\.(?:json|png|bin)[^|]*?) *\| *(\d+)[^|]*\| *([^|]*)\| *([^|]*)\|/i,
-      );
+    for (const line of sec.split('\n')) {
+      const c = line.match(/^\| *([a-z][\w./ ]*?\.(?:json|png|bin)[^|]*?) *\| *(\d+)[^|]*\| *([^|]*)\| *([^|]*)\|/i);
       if (!c) continue;
       const file = c[1].split(/\s+and\s+/)[0].trim();
       out.parts[file] = {
@@ -148,25 +132,24 @@ export function readmeOf(text) {
 // ── the row ────────────────────────────────────────────────────────────
 
 const PART_OF = {
-  lights: "lights.json",
-  decals: "decals.json",
-  effects: "effects.json",
-  actors: "actors.json",
-  vehicles: "vehicles.json",
+  lights: 'lights.json',
+  decals: 'decals.json',
+  effects: 'effects.json',
+  actors: 'actors.json',
+  vehicles: 'vehicles.json',
 };
-const TIERS = ["low", "mid", "high", "ultra"];
+const TIERS = ['low', 'mid', 'high', 'ultra'];
 
 // The modes a level's sub-levels carry (lane F's table, and Strike's
 // `Domination`, the layer PF_Strike_Bombs and PF_Strike_CTF stand in)
 export function modesInRecords(subworlds = []) {
   const names = subworlds.map((s) =>
     String(s?.name ?? s)
-      .split("/")
+      .split('/')
       .pop(),
   );
   const got = modesOf(names);
-  if (names.some((n) => /^Domination$/i.test(n)) && !got.includes("strike"))
-    got.push("strike");
+  if (names.some((n) => /^Domination$/i.test(n)) && !got.includes('strike')) got.push('strike');
   return got;
 }
 
@@ -180,28 +163,16 @@ export function modesInRecords(subworlds = []) {
  *   modes     modes.json's row for the level, or null
  *   variations lane colour's audit row ({ applied, rule, default }), or null
  */
-export function auditMap({
-  level,
-  index = null,
-  manifest = null,
-  pack = null,
-  report = null,
-  rulebook = null,
-  modes = null,
-  stages = [],
-  variations = null,
-}) {
+export function auditMap({ level, index = null, manifest = null, pack = null, report = null, rulebook = null, modes = null, stages = [], variations = null }) {
   const key = levelKey(level);
   const subs = (manifest?.subworlds ?? []).map((s) =>
     String(s?.name ?? s)
-      .split("/")
+      .split('/')
       .pop(),
   );
   const readme = pack ? readmeOf(pack.readme) : null;
   const gaps = [];
-  const actorsInMap = (manifest?.groups ?? [])
-    .filter((g) => g.kind === "actor")
-    .reduce((n, g) => n + (g.count ?? 0), 0);
+  const actorsInMap = (manifest?.groups ?? []).filter((g) => g.kind === 'actor').reduce((n, g) => n + (g.count ?? 0), 0);
   const inMap = {
     instances: index?.instances ?? null,
     lights: index?.lights ?? null,
@@ -213,18 +184,8 @@ export function auditMap({
 
   const instances = { inMap: inMap.instances, inPack: null, drawn: null };
   if (pack) {
-    instances.inPack =
-      readme.instances != null
-        ? readme.instances + (readme.horizon ?? 0)
-        : null;
-    instances.drawn = Object.fromEntries(
-      TIERS.map((t) => [
-        t,
-        readme.cull?.[t] != null && readme.instances != null
-          ? readme.instances - readme.cull[t]
-          : null,
-      ]),
-    );
+    instances.inPack = readme.instances != null ? readme.instances + (readme.horizon ?? 0) : null;
+    instances.drawn = Object.fromEntries(TIERS.map((t) => [t, readme.cull?.[t] != null && readme.instances != null ? readme.instances - readme.cull[t] : null]));
     for (const t of TIERS)
       if (report?.[t])
         instances.drawn[`${t}Frame`] = {
@@ -256,11 +217,11 @@ export function auditMap({
       inPack: pack ? (readme.subs?.length ?? subs.length) : null,
     },
     instances,
-    lights: part("lights"),
-    decals: part("decals"),
-    effects: part("effects"),
-    actors: part("actors"),
-    vehicles: part("vehicles"),
+    lights: part('lights'),
+    decals: part('decals'),
+    effects: part('effects'),
+    actors: part('actors'),
+    vehicles: part('vehicles'),
     variations: variations ?? null,
     modes: {
       inRecords,
@@ -270,12 +231,7 @@ export function auditMap({
     },
     terrain: {
       layers: index?.terrain?.length ?? 0,
-      scatter: Boolean(
-        pack &&
-        (readme.parts?.["scatter.json"]?.count ||
-          pack.parts?.["scatter.json"] ||
-          pack.parts?.["ground.json"]),
-      ),
+      scatter: Boolean(pack && (readme.parts?.['scatter.json']?.count || pack.parts?.['scatter.json'] || pack.parts?.['ground.json'])),
     },
     rulebook: rulebook
       ? {
@@ -286,14 +242,12 @@ export function auditMap({
       : null,
     gaps,
   };
-  if (!index) gaps.push("not in the bucket’s index");
-  if (!pack) gaps.push("no pack");
-  if (!rulebook) gaps.push("no rulebook");
-  for (const m of inRecords)
-    if (rulebook && !withRulebook.includes(m))
-      gaps.push(`mode ${m}: in the records, not in the rulebook`);
+  if (!index) gaps.push('not in the bucket’s index');
+  if (!pack) gaps.push('no pack');
+  if (!rulebook) gaps.push('no rulebook');
+  for (const m of inRecords) if (rulebook && !withRulebook.includes(m)) gaps.push(`mode ${m}: in the records, not in the rulebook`);
   // (the claims a check fails on: kept beside the row, not in the ledger's columns)
-  Object.defineProperty(row, "claims", {
+  Object.defineProperty(row, 'claims', {
     enumerable: false,
     value: pack
       ? Object.entries(readme.parts ?? {})
@@ -308,20 +262,9 @@ export function auditMap({
 export function checkRows(rows) {
   const errors = [];
   for (const r of rows) {
-    for (const c of r.claims ?? [])
-      if (!c.found)
-        errors.push(
-          `${r.key}: the pack’s README claims ${c.file}, which the pack lacks`,
-        );
-    for (const m of r.modes.inModesJson)
-      if (r.rulebook && !r.modes.withRulebook.includes(m))
-        errors.push(
-          `${r.key}: modes.json lists ${m}, which its rulebook lacks`,
-        );
-    if (r.rulebook && r.rulebook.unplaced !== r.rulebook.stated)
-      errors.push(
-        `${r.key}: its rulebook has ${r.rulebook.unplaced} unplaced rows, its header says ${r.rulebook.stated}`,
-      );
+    for (const c of r.claims ?? []) if (!c.found) errors.push(`${r.key}: the pack’s README claims ${c.file}, which the pack lacks`);
+    for (const m of r.modes.inModesJson) if (r.rulebook && !r.modes.withRulebook.includes(m)) errors.push(`${r.key}: modes.json lists ${m}, which its rulebook lacks`);
+    if (r.rulebook && r.rulebook.unplaced !== r.rulebook.stated) errors.push(`${r.key}: its rulebook has ${r.rulebook.unplaced} unplaced rows, its header says ${r.rulebook.stated}`);
   }
   return errors;
 }

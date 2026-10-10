@@ -76,8 +76,8 @@
      "galacticAssault",
      "hvv",
      "blast",
-     "strike",
-     "extraction",
+     "showdown",
+     "coop",
      "arcade"
     ],
     "withStages": [
@@ -90,13 +90,10 @@
    },
    "rulebook": {
     "file": "hoth.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 9,
+    "stated": 9
    },
-   "gaps": [
-    "mode showdown: in the records, not in the rulebook",
-    "mode coop: in the records, not in the rulebook"
-   ],
+   "gaps": [],
    "data": {
     "index": {
      "level": "Levels/MP/Hoth_01/Hoth_01",
@@ -209,6 +206,8 @@
      "arcade"
     ],
     "withRulebook": [
+     "heroStarfighters",
+     "arcade",
      "starfighter"
     ],
     "withStages": [
@@ -221,13 +220,10 @@
    },
    "rulebook": {
     "file": "sb_endor.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 21,
+    "stated": 21
    },
-   "gaps": [
-    "mode heroStarfighters: in the records, not in the rulebook",
-    "mode arcade: in the records, not in the rulebook"
-   ],
+   "gaps": [],
    "data": {
     "index": {
      "level": "Levels/Space/SB_Endor_01/SB_Endor_01",
@@ -331,6 +327,8 @@
      "arcade"
     ],
     "withRulebook": [
+     "heroStarfighters",
+     "arcade",
      "starfighter"
     ],
     "withStages": [
@@ -343,13 +341,10 @@
    },
    "rulebook": {
     "file": "sb_kamino.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 13,
+    "stated": 13
    },
-   "gaps": [
-    "mode heroStarfighters: in the records, not in the rulebook",
-    "mode arcade: in the records, not in the rulebook"
-   ],
+   "gaps": [],
    "data": {
     "index": {
      "level": "Levels/Space/SB_Kamino_01/SB_Kamino_01",
@@ -443,17 +438,22 @@
     "inModesJson": [
      "supremacy"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "supremacy"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "hoth.2.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -563,11 +563,13 @@
      "galacticAssault",
      "hvv",
      "blast",
-     "strike",
-     "extraction",
+     "showdown",
+     "coop",
      "arcade"
     ],
-    "withStages": []
+    "withStages": [
+     "galacticAssault"
+    ]
    },
    "terrain": {
     "layers": 1,
@@ -575,13 +577,11 @@
    },
    "rulebook": {
     "file": "endor.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 4,
+    "stated": 4
    },
    "gaps": [
-    "no pack",
-    "mode showdown: in the records, not in the rulebook",
-    "mode coop: in the records, not in the rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -689,17 +689,23 @@
      "blast",
      "ewokHunt"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "blast",
+     "ewokHunt"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "endor.2.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -791,17 +797,23 @@
      "blast",
      "ewokHunt"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "blast",
+     "ewokHunt"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "endor.4.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -911,12 +923,15 @@
      "galacticAssault",
      "hvv",
      "blast",
-     "strike",
      "supremacy",
-     "extraction",
+     "showdown",
+     "coop",
+     "jetpackCargo",
      "arcade"
     ],
-    "withStages": []
+    "withStages": [
+     "galacticAssault"
+    ]
    },
    "terrain": {
     "layers": 1,
@@ -924,14 +939,11 @@
    },
    "rulebook": {
     "file": "tatooine.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 6,
+    "stated": 6
    },
    "gaps": [
-    "no pack",
-    "mode showdown: in the records, not in the rulebook",
-    "mode jetpackCargo: in the records, not in the rulebook",
-    "mode coop: in the records, not in the rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -1039,17 +1051,22 @@
     "inModesJson": [
      "supremacy"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "supremacy"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "tatooine.2.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -1155,17 +1172,26 @@
      "showdown",
      "coop"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "hvv",
+     "blast",
+     "extraction",
+     "showdown",
+     "coop"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "jabbaspalace.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -1277,17 +1303,31 @@
      "coop",
      "arcade"
     ],
-    "withRulebook": [],
-    "withStages": []
+    "withRulebook": [
+     "galacticAssault",
+     "hvv",
+     "blast",
+     "supremacy",
+     "showdown",
+     "coop",
+     "jetpackCargo",
+     "arcade"
+    ],
+    "withStages": [
+     "galacticAssault"
+    ]
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "yavin.json",
+    "unplaced": 6,
+    "stated": 6
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -1407,10 +1447,12 @@
      "galacticAssault",
      "hvv",
      "blast",
-     "extraction",
+     "showdown",
      "arcade"
     ],
-    "withStages": []
+    "withStages": [
+     "galacticAssault"
+    ]
    },
    "terrain": {
     "layers": 1,
@@ -1418,12 +1460,11 @@
    },
    "rulebook": {
     "file": "kashyyyk.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 5,
+    "stated": 5
    },
    "gaps": [
-    "no pack",
-    "mode showdown: in the records, not in the rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -1533,17 +1574,23 @@
      "supremacy",
      "coop"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "supremacy",
+     "coop"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "kashyyyk.2.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -1672,17 +1719,29 @@
      "coop",
      "arcade"
     ],
-    "withRulebook": [],
-    "withStages": []
+    "withRulebook": [
+     "galacticAssault",
+     "hvv",
+     "blast",
+     "showdown",
+     "coop",
+     "arcade"
+    ],
+    "withStages": [
+     "galacticAssault"
+    ]
    },
    "terrain": {
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "kamino.json",
+    "unplaced": 5,
+    "stated": 5
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -1786,17 +1845,23 @@
      "supremacy",
      "coop"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "supremacy",
+     "coop"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "kamino.3.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -1912,26 +1977,36 @@
      "galacticAssault",
      "hvv",
      "blast",
-     "supremacy",
-     "strike"
+     "strike",
+     "supremacy"
     ],
     "inModesJson": [
      "galacticAssault",
      "hvv",
      "blast",
+     "strike",
      "supremacy"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "galacticAssault",
+     "hvv",
+     "blast",
+     "strike",
+     "supremacy"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "naboo.json",
+    "unplaced": 3,
+    "stated": 3
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -2039,17 +2114,24 @@
      "blast",
      "showdown"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "hvv",
+     "blast",
+     "showdown"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "naboo.2.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -2154,17 +2236,25 @@
      "showdown",
      "coop"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "hvv",
+     "supremacy",
+     "showdown",
+     "coop"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "naboo.3.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -2303,11 +2393,13 @@
      "galacticAssault",
      "hvv",
      "blast",
-     "strike",
      "supremacy",
-     "extraction"
+     "showdown",
+     "coop"
     ],
-    "withStages": []
+    "withStages": [
+     "galacticAssault"
+    ]
    },
    "terrain": {
     "layers": 1,
@@ -2315,13 +2407,11 @@
    },
    "rulebook": {
     "file": "geonosis.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 4,
+    "stated": 4
    },
    "gaps": [
-    "no pack",
-    "mode showdown: in the records, not in the rulebook",
-    "mode coop: in the records, not in the rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -2428,17 +2518,25 @@
      "showdown",
      "coop"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "hvv",
+     "supremacy",
+     "showdown",
+     "coop"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "geonosis.2.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -2567,17 +2665,25 @@
      "showdown",
      "coop"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "hvv",
+     "supremacy",
+     "showdown",
+     "coop"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "scarif.2.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -2689,17 +2795,26 @@
      "showdown",
      "jetpackCargo"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "hvv",
+     "blast",
+     "extraction",
+     "showdown",
+     "jetpackCargo"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "cloudcity.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -2805,17 +2920,30 @@
      "coop",
      "arcade"
     ],
-    "withRulebook": [],
-    "withStages": []
+    "withRulebook": [
+     "galacticAssault",
+     "hvv",
+     "blast",
+     "supremacy",
+     "showdown",
+     "coop",
+     "arcade"
+    ],
+    "withStages": [
+     "galacticAssault"
+    ]
    },
    "terrain": {
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "deathstar02.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -2921,17 +3049,25 @@
      "showdown",
      "coop"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "hvv",
+     "supremacy",
+     "showdown",
+     "coop"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "felucia.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3063,17 +3199,26 @@
      "showdown",
      "coop"
     ],
-    "withRulebook": [],
+    "withRulebook": [
+     "hvv",
+     "blast",
+     "extraction",
+     "showdown",
+     "coop"
+    ],
     "withStages": []
    },
    "terrain": {
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "kessel.json",
+    "unplaced": 1,
+    "stated": 1
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3179,6 +3324,8 @@
      "arcade"
     ],
     "withRulebook": [
+     "heroStarfighters",
+     "arcade",
      "starfighter"
     ],
     "withStages": []
@@ -3189,13 +3336,11 @@
    },
    "rulebook": {
     "file": "sb_fondor.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 9,
+    "stated": 9
    },
    "gaps": [
-    "no pack",
-    "mode heroStarfighters: in the records, not in the rulebook",
-    "mode arcade: in the records, not in the rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3295,6 +3440,8 @@
      "arcade"
     ],
     "withRulebook": [
+     "heroStarfighters",
+     "arcade",
      "starfighter"
     ],
     "withStages": []
@@ -3305,13 +3452,11 @@
    },
    "rulebook": {
     "file": "sb_droidbattleship.json",
-    "unplaced": 0,
-    "stated": 0
+    "unplaced": 15,
+    "stated": 15
    },
    "gaps": [
-    "no pack",
-    "mode heroStarfighters: in the records, not in the rulebook",
-    "mode arcade: in the records, not in the rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3409,10 +3554,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a1_m0lib_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3499,10 +3647,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a1_m1end_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3590,10 +3741,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a1_m1end_ds04.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3685,10 +3839,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a1_m2fon_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3777,10 +3934,13 @@
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a1_m3pil_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3871,10 +4031,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a1_m4var_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -3971,10 +4134,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a1_m5nab_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4060,10 +4226,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a1_m5nab_ds05.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4147,10 +4316,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a2_m2bes_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4241,10 +4413,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a2_m3sul_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4335,10 +4510,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a3_m1pil_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4420,10 +4598,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a3_m1pil_ds04.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4518,10 +4699,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a3_m2pil_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4615,10 +4799,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a3_m3ath_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4700,10 +4887,13 @@
     "layers": 1,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "a3_m4var_ds02.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4812,10 +5002,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "frontend.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
@@ -4903,10 +5096,13 @@
     "layers": 0,
     "scatter": false
    },
-   "rulebook": null,
+   "rulebook": {
+    "file": "initialexperience.json",
+    "unplaced": 0,
+    "stated": 0
+   },
    "gaps": [
-    "no pack",
-    "no rulebook"
+    "no pack"
    ],
    "data": {
     "index": {
