@@ -4,7 +4,7 @@
 // (window.__battlefront: src/components/battlefront/module.js), on one or
 // both of the node renderer's kinds:
 //
-//   node scripts/battlefront-check.mjs [--gpu webgl|webgpu|both] [--out dir] [--size 1280x720] [--wait 900000] [--ms 10000]
+//   node scripts/battlefront-check.mjs [--gpu webgl|webgpu|both] [--out dir] [--size 1280x720] [--wait 900000] [--ms 10000] [--quality low|mid|high|ultra]
 //
 // Each leg opens /battlefront/hoth/galacticAssault?gpu=<leg> on a Vite dev
 // server, waits for the level's far list (the map whole), then shoots the
@@ -37,6 +37,7 @@ const OUT = join(ROOT, arg('out', 'docs/superpowers/evidence/battlefront-lane5')
 const [W, H] = arg('size', '1280x720').split('x').map(Number);
 const WAIT = Number(arg('wait', process.env.PHASE_WAIT ?? 900000));
 const MS = Number(arg('ms', 10000));
+const QUALITY = arg('quality', null); // a tier forced through tp-quality (low on a software GL), else the device's
 const ROUTE = '/battlefront/hoth/galacticAssault';
 mkdirSync(OUT, { recursive: true });
 
@@ -72,16 +73,17 @@ const frames = (page, n) => page.evaluate((k) => new Promise((done) => {
 async function leg(kind) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H } });
   // (past the front door's first-visit asks, as galaxy-check does)
-  await ctx.addInitScript(() => {
+  await ctx.addInitScript((q) => {
     window.localStorage.setItem('tp-intro', '1');
     window.localStorage.setItem('tp-start', '"universe"');
     window.localStorage.setItem('tp-worlds', JSON.stringify('load'));
-  });
+    if (q) window.localStorage.setItem('tp-quality', q);
+  }, QUALITY);
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(String(e)));
-  const out = { leg: kind, errors, shots: {} };
+  const out = { leg: kind, quality: QUALITY ?? 'device', errors, shots: {} };
   const t0 = Date.now();
   await page.goto(`${base}/#${ROUTE}?gpu=${kind}`, { waitUntil: 'domcontentloaded', timeout: WAIT });
   await page.waitForFunction(() => Boolean(window.__battlefront?.view), null, { timeout: WAIT });
@@ -91,7 +93,7 @@ async function leg(kind) {
   await frames(page, 30);
   const shoot = async (name) => {
     const file = join(OUT, `${name}-${kind}.png`);
-    await page.screenshot({ path: file });
+    await page.screenshot({ path: file, timeout: WAIT });
     out.shots[name] = file.slice(ROOT.length + 1);
     return file;
   };
