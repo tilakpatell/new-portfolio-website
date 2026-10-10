@@ -13,8 +13,8 @@
 //   poolFor(kind, world, i) → the kind to draw                 (pure)
 
 export const POOLS = {
-  coruscant: ['civcity1', 'civcity2', 'civcity3'],
-  bespin: ['civcity1', 'civcity2', 'civcity3'],
+  coruscant: ['civcity1', 'civcity3'],
+  bespin: ['civcity1', 'civcity3'],
 };
 
 export const POOLED = new Set(['villager', 'farmer', 'caretaker', 'jocasta', 'zam']);

@@ -17,12 +17,6 @@
     "from": "characters/npc/humans/_shared/robe1_civ_vardos/civ_vardos_male_robe1_top_mesh",
     "tier": "crew"
   },
-  "models/galaxy/bf2017/crew/civcity2.glb": {
-    "hash": "8c828264213f",
-    "bytes": 21914552,
-    "from": "characters/npc/humans/_shared/robe2_civ_vardos/civ_vardos_female_robe2_mesh",
-    "tier": "crew"
-  },
   "models/galaxy/bf2017/crew/civcity3.glb": {
     "hash": "a6d8897ee5fc",
     "bytes": 46410168,

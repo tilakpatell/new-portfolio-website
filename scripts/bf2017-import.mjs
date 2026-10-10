@@ -19,7 +19,7 @@
 //     [--root lab/assets/bf2017] [--metres <m> | --asis] [--along y|x|z|max] [--yaw <rad>] [--up y|z|-z|x|-x|-y]
 //     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512] [--quality 82] [--maps-quality 80]
 //     [--parts '<glob>,…'] [--grip <node>] [--out public/models/galaxy]
-//     [--full] [--far] [--join] (--cuts also far=<n>)
+//     [--full] [--far] [--join] (--cuts also far=<n>) [--lod1-tex 1024] [--lod1-maps 512]
 //
 //   name       the model's `name` in the manifest (bf2017-fetch.mjs --list finds it)
 //   kind       the catalogue kind: one already in another group is taken over
@@ -380,7 +380,10 @@ export async function importModel(name, opts) {
   if (cuts.lod1) {
     // (the light cut: half the colour, a quarter of the full maps at most
     // 512, at the usual quality; under --full, colour 1024 and the rest 512, WebP)
-    const lightSpec = full ? { ...spec, native: false, tex: 1024, maps: 512, quality: 82, mapsQuality: 80 } : { ...spec, tex: tex / 2, maps: spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 };
+    // (--lod1-tex and --lod1-maps: a kind of many parts, the Hoth trooper's
+    // seven, takes smaller maps on its light cut to keep a phone's world to
+    // its 20 MB of models: the design's 'a smaller map, said in the PR')
+    const lightSpec = full ? { ...spec, native: false, tex: Number(opts.lod1Tex ?? 1024), maps: Number(opts.lod1Maps ?? 512), quality: 82, mapsQuality: 80 } : { ...spec, tex: tex / 2, maps: spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 };
     const light = await makeCut(io, entry, parts, cuts.lod1, lightSpec, path(dir, `${kind}.lod1.glb`));
     if (light.bytes < 0.7 * plain.bytes) {
       made.push(['lod1', cuts.lod1, light]);

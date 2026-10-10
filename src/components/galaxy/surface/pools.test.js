@@ -3,12 +3,12 @@ import { POOLS, poolFor } from './pools';
 
 describe('the worlds’ everyday people, from the game’s civilians', () => {
   it('gives the cities the city’s people', () => {
-    expect(poolFor('villager', 'coruscant', 1)).toMatch(/^civcity[123]$/);
-    expect(poolFor('zam', 'bespin', 2)).toMatch(/^civcity[123]$/);
+    expect(poolFor('villager', 'coruscant', 1)).toMatch(/^civcity[13]$/);
+    expect(poolFor('zam', 'bespin', 2)).toMatch(/^civcity[13]$/);
   });
 
   it('takes the pool in turn, figure by figure', () => {
-    const seen = new Set([0, 1, 2].map((i) => poolFor('villager', 'coruscant', i)));
+    const seen = new Set([0, 1].map((i) => poolFor('villager', 'coruscant', i)));
     expect(seen).toEqual(new Set(POOLS.coruscant));
   });
 

@@ -360,17 +360,24 @@ async function gameFigure(spec, loadBody) {
   // (each mesh's materials, the copy's own, returned for the figure to free)
   const dress = (root) => {
     const mats = [];
+    const meshes = [];
     root.traverse((o) => {
       if (!o.isMesh) return;
       o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
       mats.push(...[].concat(o.material));
-      // (its small parts, the eyes, the teeth and the hair's cut-out cards,
-      // cast no shadow: each part is a draw of its own, twice with one, and a
-      // 2017 hero has up to thirteen; the body, the clothes and the cape do)
-      const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
-      o.userData.noShadow = tris < 1500 || o.material?.alphaTest > 0;
-      if (o.isSkinnedMesh) o.castShadow = !o.userData.noShadow;
+      meshes.push(o);
     });
+    // (its small parts, the eyes, the teeth and the hair's cut-out cards,
+    // cast no shadow: each part is a draw of its own, twice with one, and a
+    // 2017 hero has up to thirteen; the body, the clothes and the cape do.
+    // The cast, a crowd of five to nine parts a figure, casts its body's
+    // alone: a world of thirty soldiers is otherwise a hundred draws more)
+    const trisOf = (o) => (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+    const body = cuts ? meshes.reduce((a, b) => (trisOf(b) > trisOf(a) ? b : a), meshes[0]) : null;
+    for (const o of meshes) {
+      o.userData.noShadow = cuts ? o !== body : trisOf(o) < 1500 || o.material?.alphaTest > 0;
+      if (o.isSkinnedMesh) o.castShadow = !o.userData.noShadow;
+    }
     return mats;
   };
   const owned = dress(model);
