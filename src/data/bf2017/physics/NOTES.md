@@ -14,3 +14,4 @@ Thirteen `CharacterPhysicsData` records, one row each, the default `DefaultSoldi
 ## A correction to the design’s survey
 
 The design read the soldier’s walk as 5.0 m/s and the sprint as × 1.5 (7.5 m/s), the crouch as 3.0. Those are the **`AnimationControlledStateData`**’s pose rows. The walk on the ground is **`OnGroundStateData`**’s: stand 3.8 m/s, back × 0.8, strafe × 0.9, sprint × 1.57 (5.97 m/s), acceleration gain 0.4, deceleration −15; crouch 2.5 m/s, no sprint. The rulebook keeps both states; `soldier.js` walks on `onGround`.
+- **The gains’ unit** is not in the records. `soldier.js` reads `AccelerationGain` and `DecelerationGain` as the fraction of the gap to the wanted speed closed in one 30 Hz frame, by magnitude, never more than the whole gap: the soldier’s 0.4 closes 90% of a start in about a sixth of a second, its −15 stops within a substep and never reverses.
