@@ -25,7 +25,7 @@ import { precompile, precompilePasses, quiet } from '../../lib/three/renderer';
 import { paintGasGiant, paintPlating, starSprite } from './plating';
 import { pixelRatio } from '../../lib/device';
 import { houseOn } from '../../lib/three/house';
-import { gltfLoader } from '../../lib/three/gltf';
+import { loadGltfFile } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
 import { createFeel, feelGroups } from '../../lib/three/feel';
 import { BLOOMS } from './look';
@@ -551,7 +551,7 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   let disposed = false;
   let house = null; // (the house look, set below once the scene is built)
   gen3dUrlChecked('x-wing') // the cut for this device's detail level (its .ultra one where it has one)
-    .then((url) => gltfLoader().loadAsync(url))
+    .then((url) => loadGltfFile(url))
     .then(async ({ scene: model }) => {
       if (disposed || lost) return disposeModel(model);
       house?.adopt(model); // (in the house look, as the rest)
