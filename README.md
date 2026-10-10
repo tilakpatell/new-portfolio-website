@@ -249,6 +249,8 @@ And the galaxy is at war, three times over: the Clone Wars, the Galactic Civil W
 | `M` | The galaxy map: plot a course, filter by era or film |
 | `E` | Land on the planet you're at (or board the Death Star) |
 
+And **Battlefront** (`/battlefront/hoth/galacticAssault`) is Star Wars Battlefront II (2017)'s Galactic Assault on Hoth, drawn from the game's own level, light, figures, clips, cameras and HUD on the WebGPU renderer.
+
 ### Down on the worlds
 
 Every planet from the films you can stand on (all but Alderaan, which is gone) is a world of its own to land on and walk: `/galaxy/tatooine/surface`. Your ship comes down out of the sky and sets down, and you and your crewmate climb out onto the sand, the snow, the forest floor, a platform over Bespin's clouds or a Coruscant rooftop. Each world has the places from the films to find (the Lars homestead, Mos Eisley and the Sarlacc on Tatooine; Echo Base on Hoth; the Ewok village and the shield-generator bunker on Endor…), named on a compass until you've found them, with what the crew have to say about each; its people and creatures going about their business, who'll talk if you go up to them; speeders, speeder bikes and tauntauns to ride; walkers, ships going over, the weather and the sound of the place. Online, the other pilots down on the same world are there with you. Get back in the ship to take off, back up to the system.

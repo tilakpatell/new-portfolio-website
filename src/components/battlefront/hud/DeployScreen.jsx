@@ -9,8 +9,8 @@ import { offerRows } from './widgets.js';
 // this listens too, for a click on the button). A modal dialog: the focus
 // starts on the first offer and stays inside.
 //
-//   <DeployScreen deploy={{ open, offers, timeLeft }} points={n} name={(offer) => text} onDeploy={(offer) => …} />
-export default function DeployScreen({ deploy, points = 0, name = (o) => o.id, title = 'Deploy', onDeploy }) {
+//   <DeployScreen deploy={{ open, offers, timeLeft }} points={n} name={(offer) => text} onDeploy={(offer) => …} onPick={(offer) => …} />
+export default function DeployScreen({ deploy, points = 0, name = (o) => o.id, title = 'Deploy', onDeploy, onPick }) {
   const rows = offerRows(deploy?.offers ?? [], points);
   const first = rows.find((r) => r.affordable) ?? null;
   const [picked, setPicked] = useState(first?.id ?? null);
@@ -33,7 +33,11 @@ export default function DeployScreen({ deploy, points = 0, name = (o) => o.id, t
                 className="bf-offer"
                 aria-pressed={chosen?.id === o.id}
                 aria-disabled={!o.affordable}
-                onClick={() => o.affordable && setPicked(o.id)}
+                onClick={() => {
+                  if (!o.affordable) return;
+                  setPicked(o.id);
+                  onPick?.(o);
+                }}
                 onDoubleClick={() => o.affordable && onDeploy?.(o)}
               >
                 <img src={offerIcon(o)} alt="" width="36" height="36" />

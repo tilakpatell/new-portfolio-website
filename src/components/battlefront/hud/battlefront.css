@@ -41,6 +41,23 @@
   font-family: var(--bf-font-number);
 }
 
+/* the stage: the whole viewport under the site's bar */
+.bf-stage {
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+  background: #b4c3d6;
+}
+.bf-loading {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  font-family: 'LinotypeUnivers-520CnMedium', 'Arial Narrow', sans-serif;
+  color: #f2f5f8;
+  font-size: 0.9rem;
+}
+
 /* the objective bar: top centre */
 .bf-objectives {
   position: absolute;

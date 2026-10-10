@@ -20,7 +20,7 @@ import './battlefront.css';
 //
 //   <BattlefrontHud view={snapshot} mine={team} words={…} markers={[…]} scoreboard={bool}
 //     onDeploy={(offer) => …} readRadar={() => …} way={{ label, to }} touch={bool} />
-export default function BattlefrontHud({ view, mine = 2, words, markers = [], scoreboard = false, onDeploy, readRadar, way = null, toast = null, touch = false }) {
+export default function BattlefrontHud({ view, mine = 2, words, markers = [], scoreboard = false, onDeploy, onPick, readRadar, way = null, toast = null, touch = false }) {
   const p = view?.player ?? null;
   const deploying = Boolean(view?.deploy?.open);
   const mode = view?.mode ?? null;
@@ -42,7 +42,7 @@ export default function BattlefrontHud({ view, mine = 2, words, markers = [], sc
       )}
       <KillLog entries={view?.killLog ?? []} mine={mine} />
       {p && p.state !== 'alive' && !deploying && <DeathPoints earned={p.earned ?? 0} total={view?.points ?? 0} label={words.earned} totalLabel={words.total} />}
-      {deploying && <DeployScreen deploy={view.deploy} points={view.points ?? 0} name={words.offer} title={words.deploy} onDeploy={onDeploy} />}
+      {deploying && <DeployScreen deploy={view.deploy} points={view.points ?? 0} name={words.offer} title={words.deploy} onDeploy={onDeploy} onPick={onPick} />}
       {scoreboard && !mode?.result && <Scoreboard teams={view?.scoreboard ?? {}} />}
       {mode?.result && <EndOfRound result={mode.result} mine={mine} words={words.outcome} teams={view?.scoreboard ?? {}} />}
     </Hud>
