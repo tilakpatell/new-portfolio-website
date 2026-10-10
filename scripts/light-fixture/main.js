@@ -28,19 +28,32 @@ try {
     w.draw({ renderer: gfx.renderer });
   };
   // the GPU waited on: the queue on WebGPU, one pixel read on WebGL 2
+  const tick = () => new Promise((r) => requestAnimationFrame(r));
   const px = new Uint8Array(4);
   const sync = async () => {
     const b = gfx.renderer.backend;
     if (b?.device) await b.device.queue.onSubmittedWorkDone();
-    else b?.gl?.readPixels(0, 0, 1, 1, b.gl.RGBA, b.gl.UNSIGNED_BYTE, px);
+    else if (b?.gl) {
+      // (the screen's framebuffer, then a pixel read: the read waits for
+      // everything queued before it, which a read of a post target does not)
+      b.gl.bindFramebuffer(b.gl.FRAMEBUFFER, null);
+      b.gl.finish();
+      b.gl.readPixels(0, 0, 1, 1, b.gl.RGBA, b.gl.UNSIGNED_BYTE, px);
+    }
   };
   Object.assign(state, {
     ready: true,
     backend: gfx.backend,
     probe: w.probe,
-    // n frames of a fixed step, then the GPU waited on
+    // n frames of a fixed step, each on its own animation frame (a node
+    // that updates once a frame, TRAA's history above all, resolves on the
+    // next frame: drawn back to back in one task it never does, and the
+    // screen stays the clear colour), then the GPU waited on
     async draw(n = 1, dt = 1 / 60) {
-      for (let i = 0; i < n; i++) frame(dt);
+      for (let i = 0; i < n; i++) {
+        await tick();
+        frame(dt);
+      }
       await sync();
     },
     // the probe grid made and baked, the GPU waited on (A3)
@@ -57,6 +70,7 @@ try {
       const out = [];
       const end = performance.now() + ms;
       while (performance.now() < end || out.length < 5) {
+        await tick();
         const t = performance.now();
         frame(1 / 60);
         await sync();
