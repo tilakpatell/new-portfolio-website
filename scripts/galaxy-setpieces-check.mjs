@@ -258,8 +258,16 @@ if (what === 'endor') {
   // the Death Star in, a few seconds on (on the wall clock), its dish on the planet
   for (let i = 0; i < 60 && !(await dsThere()); i++) await page.waitForTimeout(1000);
   check(await dsThere(), 'the Death Star’s dropped out of hyperspace over Scarif');
-  const sl = await ev(() => window.__galaxyDebug.state.sys.pieces.find((p) => p.type === 'superlaser'));
-  await look([sl.from[0] * 0.55 + sl.at[0] * 0.45 + 60, sl.from[1] * 0.55 + sl.at[1] * 0.45 + 40, sl.from[2] * 0.55 + sl.at[2] * 0.45 + 60], sl.from);
+  // (from off to the side of its line of fire, well clear of it and the planet: the Death Star and its beam both in view)
+  const view = await ev(() => {
+    const p = window.__galaxyDebug.state.sys.pieces.find((x) => x.type === 'superlaser');
+    const d = [p.at[0] - p.from[0], p.at[1] - p.from[1], p.at[2] - p.from[2]];
+    const side = [d[2], 0, -d[0]];
+    const l = Math.hypot(...side);
+    const mid = [0, 1, 2].map((i) => p.from[i] + d[i] * 0.35);
+    return { from: [mid[0] + (side[0] / l) * 180, mid[1] + 50, mid[2] + (side[2] / l) * 180], at: mid };
+  });
+  await look(view.from, view.at);
   // (it fires about 18 s after it's in)
   await page.waitForTimeout(19000);
   await snap('death-star');

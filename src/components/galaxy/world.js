@@ -424,14 +424,16 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       if (p.spin) {
         const q0 = slot.holder.quaternion.clone();
         const spinQ = new THREE.Quaternion();
-        ticks.push((t, dt) => {
+        ticks.push((t) => {
           // (about its own up: a ring about its axis, the Death Star about its poles)
           spinQ.setFromAxisAngle(Y, frac((t * p.spin) / TAU) * TAU);
           slot.holder.quaternion.copy(q0).multiply(spinQ);
-          // the war's hold: turned off its spin to face the battle, and eased back when let go
+          // the war's hold: turned off its spin to face the battle, and eased
+          // back when let go (on the wall clock, so at any frame rate alike)
           const f = facing[p.kind];
           if (!f) return false;
-          f.k = clamp01(f.k + (f.on ? dt / FACE.turn : -dt / FACE.back));
+          f.t0 ??= t;
+          f.k = f.on ? clamp01(f.from + (t - f.t0) / FACE.turn) : clamp01(f.from - (t - f.t0) / FACE.back);
           if (f.k > 0) slot.holder.quaternion.slerp(f.goal, f.k * f.k * (3 - 2 * f.k));
           return f.k > 0 && f.k < 1;
         });
@@ -924,9 +926,12 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     face(kind, at) {
       const st = stations[kind];
       if (!st || !DISH[kind]) return;
-      const f = (facing[kind] ??= { goal: new THREE.Quaternion(), on: false, k: 0 });
+      const f = (facing[kind] ??= { goal: new THREE.Quaternion(), on: false, k: 0, from: 0, t0: null });
       if (at) faceDish(kind, st.holder, Array.isArray(at) ? tmp.fromArray(at) : tmp.set(at.x, at.y, at.z), f.goal);
+      // (turning on from wherever it's got to, timed from the next tick)
       f.on = Boolean(at);
+      f.from = f.k;
+      f.t0 = null;
     },
     // where a station's dish is now, or null
     dish(kind) {
