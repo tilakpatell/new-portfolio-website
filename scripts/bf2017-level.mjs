@@ -15,8 +15,9 @@
 //           records (fetched from data/), scripts/lib/bf2017-level-spots.mjs
 //   district  the pack is levels/<world>/<district>/ (a second map of one
 //           world, or an interior); the default `main` is levels/<world>/
-//   calls   the share of each tier's row of draw calls the level is fitted to
-//           (default 1; less where the site's own things already spend them)
+//   share   a tier's part of its row the level is fitted to, triangles and
+//           calls (low=0.5,mid=0.8; default all of it), where the site's own
+//           things already spend the rest
 //   parts   only the map's other parts beside a pack already built (lights,
 //           actors, vehicles, decals, effects, tracks, probes, the far shadow,
 //           the scatter table: scripts/bf2017-level-parts.mjs)
@@ -54,7 +55,7 @@ import { encodePng16 } from './lib/png16.mjs';
 import { writeParts } from './bf2017-level-parts.mjs';
 import { main as writePhysics } from './bf2017-physics.mjs';
 
-const USAGE = 'node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--calls 1] [--parts] [--mode FantasyBattle] [--weather sunny] [--dry]';
+const USAGE = 'node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--share low=0.5] [--parts] [--mode FantasyBattle] [--weather sunny] [--dry]';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(ROOT, 'lab', 'assets', 'bf2017');
 const PERMISSION = 'From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.';
@@ -239,7 +240,13 @@ async function main(args) {
   const arena = Number(args.arena ?? 1024);
   const yaw = Number(args.yaw ?? 0);
   const ultra = Boolean(args.ultra);
-  const callShare = Number(args.calls ?? 1);
+  const share = Object.fromEntries(
+    String(args.share ?? '')
+      .split(',')
+      .filter(Boolean)
+      .map((kv) => kv.split('='))
+      .map(([t, k]) => [t, Number(k)]),
+  );
   const dry = Boolean(args.dry);
   const subs = typeof args.subs === 'string' ? args.subs.split(',') : null;
   // (a district's pack sits in its world's folder: levels/<world>/<district>/)
@@ -371,9 +378,9 @@ async function main(args) {
       missing: Boolean(missing),
     })),
     arena,
-    // (--calls: the share of each row's draw calls the level may take, where
-    // the site's own forest already spends most of them: Endor's 0.35)
-    rows: Object.fromEntries(Object.entries(ultra ? BUDGET_ROWS : { low: BUDGET_ROWS.low, mid: BUDGET_ROWS.mid, high: BUDGET_ROWS.high }).map(([t, r]) => [t, { ...r, calls: Math.round(r.calls * callShare) }])),
+    // (--share: the part of a tier's row the level may take, where the site's
+    // own things already spend the rest: Endor's low=0.5)
+    rows: Object.fromEntries(Object.entries(ultra ? BUDGET_ROWS : { low: BUDGET_ROWS.low, mid: BUDGET_ROWS.mid, high: BUDGET_ROWS.high }).map(([t, r]) => [t, share[t] ? { ...r, tris: r.tris * share[t], calls: Math.round(r.calls * share[t]) } : r])),
     subs,
     terrain: terrain?.json ?? null,
     groundAt: terrain ? (x, z) => LAYERS.image(x, z, terrain.layer) : null,
