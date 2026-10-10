@@ -108,21 +108,63 @@ function source() {
   }
   if (!argv.includes('--bucket')) stop('say where the export is: --root <export> on the desktop, or --bucket with the key');
   const env = keys();
-  const get = async (path) => {
+  const fetchKey = async (path) => {
     const res = await fetch(objectUrl(env.base, BUCKET, path), { headers: env.headers });
     return res.ok ? Buffer.from(await res.arrayBuffer()) : null;
   };
+  // The bucket's keys are case-sensitive, but a folder keeps one spelling
+  // (`FX/Impacts`) where the index and the records may write another
+  // (`FX/impacts`, `fx/impacts`): a miss is retried along the real
+  // spelling, found folder by folder by listing (cached)
+  const listed = new Map();
+  const list = async (prefix) => {
+    if (!listed.has(prefix)) {
+      const res = await fetch(`${env.base.replace(/\/+$/, '')}/storage/v1/object/list/${BUCKET}`, { method: 'POST', headers: { ...env.headers, 'content-type': 'application/json' }, body: JSON.stringify({ prefix, limit: 1000 }) });
+      listed.set(prefix, res.ok ? (await res.json()).map((o) => o.name) : []);
+    }
+    return listed.get(prefix);
+  };
+  const spelled = async (path) => {
+    let at = '';
+    for (const part of path.split('/')) {
+      const names = await list(at ? `${at}/` : '');
+      const hit = names.find((n) => n === part) ?? names.find((n) => n.toLowerCase() === part.toLowerCase());
+      if (!hit) return null;
+      at = at ? `${at}/${hit}` : hit;
+    }
+    return at;
+  };
+  const get = async (path) => {
+    const got = await fetchKey(path);
+    if (got) return got;
+    const real = await spelled(path);
+    return real && real !== path ? fetchKey(real) : null;
+  };
   return (async () => {
-    const tsv = (await get('data.tsv')) ?? (await get('web/data.tsv'));
+    const tsvCached = join(ROOT, 'lab/assets/bf2017/data.tsv');
+    const tsv = existsSync(tsvCached) ? readFileSync(tsvCached) : ((await get('data.tsv')) ?? (await get('web/data.tsv')));
     const index = tsv ? readIndex(tsv.toString('utf8')) : new Map();
+    // (an effect named by its last part, as a map's extras name them: the blueprint of that name)
+    const byLast = new Map();
+    for (const row of index.values()) if (row.type === 'EffectBlueprint') byLast.set(row.name.split('/').pop().toLowerCase(), row);
     if (!tsv) console.log('no data.tsv in the bucket: EmitterGraphs will be listed as missing');
     return {
       index,
       from: `the bucket ${BUCKET}`,
+      // (by the index's path, whose case the bucket's keys keep: the records
+      // name their emitters in lower case), kept under lab/assets/bf2017 as
+      // bf2017-fetch.mjs lays it, so a second run and the fixtures read it there
       async record(name) {
-        const full = index.get(name.toLowerCase())?.name ?? name;
-        const gz = await get(dataPath(full));
-        return gz ? JSON.parse(gunzipSync(gz).toString('utf8')) : null;
+        const row = index.get(name.toLowerCase()) ?? byLast.get(name.toLowerCase());
+        const path = row ? `${row.path}.gz` : dataPath(name);
+        const cached = join(ROOT, 'lab/assets/bf2017', path);
+        let gz = existsSync(cached) ? readFileSync(cached) : await get(path);
+        if (!gz) return null;
+        if (!existsSync(cached)) {
+          mkdirSync(dirname(cached), { recursive: true });
+          writeFileSync(cached, gz);
+        }
+        return JSON.parse(gunzipSync(gz).toString('utf8'));
       },
       async extras(map) {
         const buf = await get(`web/maps/${map}/${map.split('/').pop()}.extras.json`);
@@ -154,14 +196,14 @@ const effects = [];
 const notFound = [];
 for (const name of wanted) {
   const bp = await src.record(name);
-  if (!bp || bp.$type !== 'EffectBlueprint') {
+  if (!bp || (bp.type ?? bp.objects?.[0]?.$type) !== 'EffectBlueprint') {
     notFound.push(name);
     continue;
   }
   for (const ref of emitterRefs(bp)) {
     const key = ref.toLowerCase();
     if (!docs.has(key)) docs.set(key, await src.record(ref));
-    if (docs.get(key)?.$type === 'EmitterGraph') {
+    if (docs.get(key)?.type === 'EmitterGraph') {
       const near = nearestDocument(src.index, ref);
       if (near && !docs.has(near.name.toLowerCase())) docs.set(near.name.toLowerCase(), await src.record(near.name));
     }
@@ -182,7 +224,7 @@ console.log('kept under raw:');
 for (const [k, v] of Object.entries(rawReport(effects))) console.log(`  ${k}: ${v.length} effect${v.length === 1 ? '' : 's'}`);
 if (dry) process.exit(0);
 mkdirSync(outDir, { recursive: true });
-for (const fx of effects) writeFileSync(join(outDir, fileName(fx.path)), `${JSON.stringify(fx, null, 1)}\n`);
+for (const fx of effects) writeFileSync(join(outDir, fileName(fx.path)), `${JSON.stringify(fx)}\n`);
 writeFileSync(join(outDir, '_textures.json'), `${JSON.stringify(textures, null, 1)}\n`);
 console.log(`wrote ${effects.length} effects and _textures.json to ${outDir}`);
 

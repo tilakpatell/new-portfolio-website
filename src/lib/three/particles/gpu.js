@@ -21,6 +21,7 @@
 //   dispose() }>
 // mode: 'gpu' where the renderer is WebGPU, else 'cpu'; forced for the tests
 
+import { evalCurve } from './curves.js';
 import { createPool, MAX_BATCHES, MAX_OWNERS, OWNER, stepPool } from './emitter.js';
 import { loadThree } from '../light/three.js';
 
@@ -94,7 +95,8 @@ function gpuSim(THREE, tsl, pool, renderer) {
   // a curve at t = 0 with the draw r, as evalCurve (the spawn's curves)
   const at0 = (c, r) => {
     if (typeof c === 'number') return float(c);
-    if (c?.poly) return float(c.poly[0] * (c.scale ?? 1));
+    if (c?.poly) return float(evalCurve(c, 0));
+    if (c?.table) return float(c.table[0]);
     if (c?.random) return float(c.random[0]).add(r.mul(c.random[1] - c.random[0]));
     return float(0);
   };
@@ -102,31 +104,46 @@ function gpuSim(THREE, tsl, pool, renderer) {
   const spawn = (i, serial, o) => {
     const r = (k) => rnd(serial, k);
     const place = em.spawn?.position;
-    let local = vec3(0);
+    let local = vec3(...(em.offset ?? [0, 0, 0]));
     if (place?.box) {
       const { center, size } = place.box;
-      local = vec3(r(0).sub(0.5).mul(size[0]).add(center[0]), r(1).sub(0.5).mul(size[1]).add(center[1]), r(2).sub(0.5).mul(size[2]).add(center[2]));
+      local = local.add(vec3(r(0).sub(0.5).mul(size[0]).add(center[0]), r(1).sub(0.5).mul(size[1]).add(center[1]), r(2).sub(0.5).mul(size[2]).add(center[2])));
     } else if (place?.sphere) {
-      const z = r(0).mul(2).sub(1);
+      const sp = place.sphere;
+      const [z0, z1] = sp.zenith ?? [0, 180];
+      const c0 = Math.cos((z0 * Math.PI) / 180);
+      const c1 = Math.cos((z1 * Math.PI) / 180);
+      const y = r(0).mul(c0 - c1).add(c1);
       const phi = r(1).mul(PI.mul(2));
-      const rad = pow(r(2), 1 / 3).mul(place.sphere.radius);
-      const s = sqrt(max(z.mul(z).oneMinus(), 0));
-      local = vec3(s.mul(cos(phi)).mul(rad), z.mul(rad), s.mul(sin(phi)).mul(rad));
+      const inner = sp.inner ?? 0;
+      const rad = pow(r(2).mul(sp.radius ** 3 - inner ** 3).add(inner ** 3), 1 / 3);
+      const s = sqrt(max(y.mul(y).oneMinus(), 0));
+      const [sx, sy, sz] = sp.scale ?? [1, 1, 1];
+      const [cx, cy, cz] = sp.center ?? [0, 0, 0];
+      local = local.add(vec3(s.mul(cos(phi)).mul(rad).mul(sx).add(cx), y.mul(rad).mul(sy).add(cy), s.mul(sin(phi)).mul(rad).mul(sz).add(cz)));
     }
-    const [dx, dy, dz] = em.spawn?.direction?.dir ?? [0, 1, 0];
-    const cosMax = Math.cos(((em.spawn?.direction?.spread ?? 0) * Math.PI) / 180);
-    const cosT = r(3).mul(1 - cosMax).oneMinus();
-    const sinT = sqrt(max(cosT.mul(cosT).oneMinus(), 0));
-    const phi = r(4).mul(PI.mul(2));
-    // the basis round d, computed here in JavaScript: d is the record's constant
-    const up = Math.abs(dy) < 0.99 ? [0, 1, 0] : [1, 0, 0];
-    let a = [dy * up[2] - dz * up[1], dz * up[0] - dx * up[2], dx * up[1] - dy * up[0]];
-    const al = Math.hypot(...a) || 1;
-    a = a.map((c) => c / al);
-    const b = [dy * a[2] - dz * a[1], dz * a[0] - dx * a[2], dx * a[1] - dy * a[0]];
-    const cp = cos(phi).mul(sinT);
-    const sp = sin(phi).mul(sinT);
-    const dir = vec3(dx, dy, dz).mul(cosT).add(vec3(...a).mul(cp)).add(vec3(...b).mul(sp));
+    const d = em.spawn?.direction;
+    let dir;
+    if (d?.box) {
+      const { min: lo, max: hi } = d.box;
+      dir = vec3(r(3).mul(hi[0] - lo[0]).add(lo[0]), r(4).mul(hi[1] - lo[1]).add(lo[1]), r(10).mul(hi[2] - lo[2]).add(lo[2]));
+    } else {
+      const [dx, dy, dz] = d?.dir ?? [0, 1, 0];
+      const cosFrom = Math.cos(((d?.from ?? 0) * Math.PI) / 180);
+      const cosMax = Math.cos(((d?.spread ?? 0) * Math.PI) / 180);
+      const cosT = r(3).mul(cosFrom - cosMax).negate().add(cosFrom);
+      const sinT = sqrt(max(cosT.mul(cosT).oneMinus(), 0));
+      const phi = r(4).mul(PI.mul(2));
+      // the basis round d, computed here in JavaScript: d is the record's constant
+      const up = Math.abs(dy) < 0.99 ? [0, 1, 0] : [1, 0, 0];
+      let a = [dy * up[2] - dz * up[1], dz * up[0] - dx * up[2], dx * up[1] - dy * up[0]];
+      const al = Math.hypot(...a) || 1;
+      a = a.map((c) => c / al);
+      const b = [dy * a[2] - dz * a[1], dz * a[0] - dx * a[2], dx * a[1] - dy * a[0]];
+      const cp = cos(phi).mul(sinT);
+      const sp = sin(phi).mul(sinT);
+      dir = vec3(dx, dy, dz).mul(cosT).add(vec3(...a).mul(cp)).add(vec3(...b).mul(sp));
+    }
     const speed = at0(em.spawn?.speed ?? 0, r(5));
     const size = at0(em.spawn?.size ?? 1, r(6));
     const life = at0(em.lifetime ?? 1, r(7));
@@ -161,7 +178,7 @@ function gpuSim(THREE, tsl, pool, renderer) {
     const ex = extra.element(i);
     If(pa.w.lessThan(vl.w), () => {
       const drag = float(em.drag ?? 0);
-      const acc = vec3(0, ex.y.negate(), 0).add(u.wind.sub(vl.xyz).mul(drag));
+      const acc = vec3(0, ex.y.negate(), 0).add(u.wind.mul(em.wind ?? 0).sub(vl.xyz).mul(drag));
       const v = vl.xyz.add(acc.mul(u.dt));
       let move = v.mul(u.dt);
       if (em.follow?.source) move = move.add(u.owners.element(uint(ex.w).mul(OWNER / 4).add(3)).xyz);

@@ -26,7 +26,7 @@
 // the velocity (for FollowSpawnSourceVelocity); the move since the last
 // frame (for FollowSpawnSource: a following particle moves with its owner).
 //
-// The step, each live slot: v += (−g ŷ + drag (wind − v)) dt; p += v dt
+// The step, each live slot: v += (−g ŷ + drag (wind·k − v)) dt; p += v dt
 // (+ the owner's move when the emitter follows); age += dt. Semi-implicit
 // Euler at a fixed dt, the same sum on both sides.
 //
@@ -46,6 +46,9 @@ export const MAX_OWNERS = 32; // instances of one kind with particles at once (t
 export const MAX_BATCHES = MAX_OWNERS;
 const DEG = Math.PI / 180;
 const UP = [0, 1, 0];
+const ZERO = [0, 0, 0];
+const ONE = [1, 1, 1];
+const FULL = [0, 180];
 
 // a pool's slots for one instance: MaxCount, or (a record without it) what
 // the rate and the burst keep alive
@@ -82,54 +85,81 @@ const dirW = [0, 0, 0];
 
 // The particle `serial` into `slot`, for owner `o`: the draws k = 0…8 are
 // position (3), direction (2), speed, size, lifetime, gravity; 9 the
-// rotation's and frame's draw. gpu.js's spawn is this line for line.
+// rotation's and frame's draw; 10 a box direction's third. gpu.js's spawn is
+// this line for line.
+//
+// The position: a box (centre, size), or a sphere's shell between `inner`
+// and `radius`, between two zenith angles from +Y (a whole sphere 0…180),
+// scaled per axis, about its centre; then the emitter's offset in its
+// effect. The direction: a box of vectors drawn as they are (the speed
+// scales them), or a cone round `dir` from `from` to `spread` degrees.
 export function spawnParticle(pool, slot, serial, o, owners) {
   const { em, seed } = pool;
   const pos = em.spawn?.position;
-  let lx = 0;
-  let ly = 0;
-  let lz = 0;
+  const off = em.offset ?? ZERO;
+  let lx = off[0];
+  let ly = off[1];
+  let lz = off[2];
   if (pos?.box) {
     const { center, size } = pos.box;
-    lx = center[0] + (rnd(seed, serial, 0) - 0.5) * size[0];
-    ly = center[1] + (rnd(seed, serial, 1) - 0.5) * size[1];
-    lz = center[2] + (rnd(seed, serial, 2) - 0.5) * size[2];
+    lx += center[0] + (rnd(seed, serial, 0) - 0.5) * size[0];
+    ly += center[1] + (rnd(seed, serial, 1) - 0.5) * size[1];
+    lz += center[2] + (rnd(seed, serial, 2) - 0.5) * size[2];
   } else if (pos?.sphere) {
-    const z = 2 * rnd(seed, serial, 0) - 1;
+    const sp = pos.sphere;
+    const [z0, z1] = sp.zenith ?? FULL;
+    const c0 = Math.cos(z0 * DEG);
+    const c1 = Math.cos(z1 * DEG);
+    const y = c1 + (c0 - c1) * rnd(seed, serial, 0);
     const phi = 2 * Math.PI * rnd(seed, serial, 1);
-    const rad = pos.sphere.radius * Math.cbrt(rnd(seed, serial, 2));
-    const s = Math.sqrt(Math.max(0, 1 - z * z));
-    lx = s * Math.cos(phi) * rad;
-    ly = z * rad;
-    lz = s * Math.sin(phi) * rad;
+    const inner = sp.inner ?? 0;
+    const rad = Math.cbrt(inner ** 3 + (sp.radius ** 3 - inner ** 3) * rnd(seed, serial, 2));
+    const s = Math.sqrt(Math.max(0, 1 - y * y));
+    const sc = sp.scale ?? ONE;
+    const ct = sp.center ?? ZERO;
+    lx += ct[0] + s * Math.cos(phi) * rad * sc[0];
+    ly += ct[1] + y * rad * sc[1];
+    lz += ct[2] + s * Math.sin(phi) * rad * sc[2];
   }
-  // a direction within the spread's cone round the record's direction
-  const dir = em.spawn?.direction?.dir ?? UP;
-  const dx = dir[0];
-  const dy = dir[1];
-  const dz = dir[2];
-  const cosMax = Math.cos((em.spawn?.direction?.spread ?? 0) * DEG);
-  const cosT = 1 - rnd(seed, serial, 3) * (1 - cosMax);
-  const sinT = Math.sqrt(Math.max(0, 1 - cosT * cosT));
-  const phi = 2 * Math.PI * rnd(seed, serial, 4);
-  // (a basis round d: a = d × (up or x), b = d × a)
-  const ux = Math.abs(dy) < 0.99 ? 0 : 1;
-  const uy = Math.abs(dy) < 0.99 ? 1 : 0;
-  let ax = dy * 0 - dz * uy;
-  let ay = dz * ux - dx * 0;
-  let az = dx * uy - dy * ux;
-  const al = Math.hypot(ax, ay, az) || 1;
-  ax /= al;
-  ay /= al;
-  az /= al;
-  const bx = dy * az - dz * ay;
-  const by = dz * ax - dx * az;
-  const bz = dx * ay - dy * ax;
-  const cp = Math.cos(phi) * sinT;
-  const sp = Math.sin(phi) * sinT;
-  const ddx = dx * cosT + ax * cp + bx * sp;
-  const ddy = dy * cosT + ay * cp + by * sp;
-  const ddz = dz * cosT + az * cp + bz * sp;
+  const d = em.spawn?.direction;
+  let ddx;
+  let ddy;
+  let ddz;
+  if (d?.box) {
+    const { min, max } = d.box;
+    ddx = min[0] + (max[0] - min[0]) * rnd(seed, serial, 3);
+    ddy = min[1] + (max[1] - min[1]) * rnd(seed, serial, 4);
+    ddz = min[2] + (max[2] - min[2]) * rnd(seed, serial, 10);
+  } else {
+    // a direction within the cone round the record's direction
+    const dir = d?.dir ?? UP;
+    const dx = dir[0];
+    const dy = dir[1];
+    const dz = dir[2];
+    const cosFrom = Math.cos((d?.from ?? 0) * DEG);
+    const cosMax = Math.cos((d?.spread ?? 0) * DEG);
+    const cosT = cosFrom - rnd(seed, serial, 3) * (cosFrom - cosMax);
+    const sinT = Math.sqrt(Math.max(0, 1 - cosT * cosT));
+    const phi = 2 * Math.PI * rnd(seed, serial, 4);
+    // (a basis round d: a = d × (up or x), b = d × a)
+    const ux = Math.abs(dy) < 0.99 ? 0 : 1;
+    const uy = Math.abs(dy) < 0.99 ? 1 : 0;
+    let ax = -dz * uy;
+    let ay = dz * ux;
+    let az = dx * uy - dy * ux;
+    const al = Math.hypot(ax, ay, az) || 1;
+    ax /= al;
+    ay /= al;
+    az /= al;
+    const bx = dy * az - dz * ay;
+    const by = dz * ax - dx * az;
+    const bz = dx * ay - dy * ax;
+    const cp = Math.cos(phi) * sinT;
+    const sp = Math.sin(phi) * sinT;
+    ddx = dx * cosT + ax * cp + bx * sp;
+    ddy = dy * cosT + ay * cp + by * sp;
+    ddz = dz * cosT + az * cp + bz * sp;
+  }
   const speed = evalCurve(em.spawn?.speed ?? 0, 0, rnd(seed, serial, 5));
   const size = evalCurve(em.spawn?.size ?? 1, 0, rnd(seed, serial, 6));
   const life = evalCurve(em.lifetime ?? 1, 0, rnd(seed, serial, 7));
@@ -171,9 +201,11 @@ export function stepPool(pool, dt, { batches = [], batchCount = batches.length, 
     for (let j = 0; j < count && total < n; j++, total++) spawnParticle(pool, (pool.head + total) % n, pool.serial + total, owner, owners);
   }
   const drag = em.drag ?? 0;
-  const wx = wind ? wind[0] : 0;
-  const wy = wind ? wind[1] : 0;
-  const wz = wind ? wind[2] : 0;
+  // (WorldWindData's multiplier: how much of the world's wind it is dragged towards)
+  const wk = em.wind ?? 0;
+  const wx = wind ? wind[0] * wk : 0;
+  const wy = wind ? wind[1] * wk : 0;
+  const wz = wind ? wind[2] * wk : 0;
   const follows = em.follow?.source ? 1 : 0;
   const { posAge: p, velLife: v, extra: e } = pool;
   for (let s = 0; s < n; s++) {
@@ -199,31 +231,43 @@ export function aliveCount(pool) {
   return a;
 }
 
-// An instance's spawns this frame. state: { t, acc, burst } (its own, from
-// { t: 0, acc: 0, burst: false }); the rate is the record's curve over the
-// emitter's duration (its lifetime when the record gives none), held to
-// MaxCount alive (rate ≤ MaxCount / longest life; no cap where the record
-// gives none), both scaled by the tier, a random rate at its mean;
-// `factor` the distance's thinning (spawnFactor). A non-looping emitter
-// spawns for its duration only.
+// An instance's spawns this frame. state: { t, acc, burst, total } (its
+// own, from { t: 0, acc: 0, burst: false }); the rate is the record's curve
+// over the emitter's duration (its particles' life when the record gives
+// none), scaled by the tier, a random rate at its mean; `factor` the
+// distance's thinning (spawnFactor). A looping emitter holds MaxCount alive
+// (its rate no more than MaxCount over the longest life); a one-shot
+// (RepeatParticleSpawning false) spawns for its duration and MaxCount in
+// all at most (a bolt's 1,500 a second for 0.05 s are its 10 sparks).
 export function spawnCount(state, em, dt, { scale = 1, factor = 1 } = {}) {
   const duration = em.duration ?? lifeMax(em);
+  const looping = em.loop !== false;
+  const cap = em.maxCount > 0 ? em.maxCount * scale : Infinity;
   let n = 0;
   if (!state.burst) {
     state.burst = true;
     n += Math.round((em.spawn?.burst ?? 0) * scale * factor);
   }
-  const live = em.loop !== false || state.t < duration;
-  if (live) {
-    const t = em.loop !== false ? (state.t % duration) / duration : Math.min(1, state.t / duration);
-    const rate = Math.min(Math.max(0, evalCurve(em.spawn?.rate ?? 0, t, 0.5)), em.maxCount > 0 ? em.maxCount / lifeMax(em) : Infinity);
-    state.acc += rate * scale * factor * dt;
+  if (looping || state.t < duration) {
+    const t = looping ? (state.t % duration) / duration : Math.min(1, state.t / duration);
+    const r = Math.max(0, evalCurve(em.spawn?.rate ?? 0, t, 0.5));
+    // (a loop holds MaxCount alive: its rate no more than MaxCount over the
+    // longest life; a one-shot spawns MaxCount in all at most, below)
+    const rate = looping ? Math.min(r * scale, cap / lifeMax(em)) : r * scale;
+    state.acc += rate * factor * dt;
     const whole = Math.floor(state.acc);
     state.acc -= whole;
     n += whole;
   }
+  if (!looping) {
+    state.total = (state.total ?? 0) + n;
+    if (state.total > cap) {
+      n -= state.total - cap;
+      state.total = cap;
+    }
+  }
   state.t += dt;
-  return n;
+  return Math.max(0, Math.floor(n));
 }
 
 // Spawning thins past ParticleCullingFactor of MaxSpawnDistance and stops at
@@ -238,11 +282,13 @@ export function spawnFactor(distance, em) {
 }
 
 // MotionStretchScreen: the quad's length along its velocity across the
-// screen: the size plus the distance moved in MotionStretchMultiplier
-// seconds, held between MotionStretchMinLength and MaxLength times the size
+// screen: its size stretched by MotionStretchMultiplier times its speed over
+// the template's SpeedNormalizationValue (50 m/s: a particle at that speed
+// with a multiplier of 1 is twice its length), held between 1 and
+// MotionStretchRelativeLengthClamp times the size
 export function stretchLength(size, speed, stretch) {
   if (!stretch) return size;
-  const len = size + speed * stretch.mult;
+  const len = size * (1 + (speed / (stretch.norm ?? 50)) * stretch.mult);
   return Math.min(size * (stretch.max ?? Infinity), Math.max(size * (stretch.min ?? 1), len));
 }
 

@@ -8,7 +8,8 @@
 //   (degrees over EfNormTime); `motionStretchScreen` lies along the
 //   particle's velocity across the screen (the camera's own velocity taken
 //   off, so falling snow streaks when the camera pans), its length
-//   emitter.js's `stretchLength` (MotionStretchMultiplier and the clamps);
+//   emitter.js's `stretchLength` (MotionStretchMultiplier over the speed
+//   normalisation, and the clamp);
 //   `velocity` the same without the camera's; `world` flat on the ground.
 // - colour: the sheet's texel times the colour curve, HDR as stored (12.7
 //   on Hoth's powder: scaled, never clamped, so it blooms as the game's
@@ -19,10 +20,13 @@
 //   LightWrapAroundFactor (emitter.js's `wrapLight`), n the quad's facing
 //   (towards the camera), times the sun's shadow when a shadow node is
 //   given (lane S's sunShadowNode once it is on main), so a sprite in a dark
-//   corridor is dark.
-// - frames: UpdateTextureCoordsData's frame count over the sheet's grid,
-//   at FramesPerSecond (from a random start where the record says), or once
-//   over the life when it gives no rate.
+//   corridor is dark. A glow's colour is taken by the scene's exposure as far
+//   as EmissiveExposureFactor says (1: wholly, at the light stack's
+//   gameToSite); a lit sprite's is as stored (its calibration against the
+//   game's exposure is lane S's).
+// - frames: the sheet's grid (its name's), from a random start where
+//   SpawnAnimationFrameData draws one, run once over the life where
+//   SpawnAnimationData says BasedOnLifetime.
 // - soft against the depth buffer (three's softParticles, written out) where the record
 //   gives SoftParticleDistance; the scene's fog node applies to the
 //   alpha-blended ones (the corners are in world space, so positionView and
@@ -39,7 +43,7 @@
 // - EmittableType_Ribbon (contrails, engine trails): emitter.js's trails,
 //   each a camera-facing strip through its points, built on the CPU every
 //   frame into one mesh for all of a kind's trails (one draw), its width the
-//   spawn size times the size curve and its colour and alpha the curves at
+//   spawn size times the size curve (UpdateSizeYData's where given) and its colour and alpha the curves at
 //   each point's age; the sheet runs along the age.
 //
 // curveNode(tsl, curve, t, r) → a float node, curves.js's evalCurve in TSL
@@ -52,11 +56,23 @@ import { trailPoint } from './emitter.js';
 import { loadThree } from '../light/three.js';
 
 export function curveNode(tsl, c, t, r) {
-  const { float } = tsl;
+  const { float, uniformArray, clamp, floor, min } = tsl;
   if (typeof c === 'number') return float(c);
   if (c?.poly) {
     const [x, y, z, w] = c.poly;
-    return t.mul(w).add(z).mul(t).add(y).mul(t).add(x).mul(c.scale ?? 1);
+    let v = t.mul(x).add(y).mul(t).add(z).mul(t).add(w);
+    if (c.min !== null && c.min !== undefined && Number.isFinite(c.min)) v = v.max(c.min);
+    if (c.max !== null && c.max !== undefined && Number.isFinite(c.max)) v = v.min(c.max);
+    return v.mul(c.scale ?? 1);
+  }
+  if (c?.table) {
+    const n = c.table.length - 1;
+    const arr = uniformArray(c.table, 'float');
+    const f = clamp(t, 0, 1).mul(n);
+    const i = min(floor(f), n - 1);
+    const a = arr.element(tsl.int(i));
+    const b = arr.element(tsl.int(i).add(1));
+    return a.add(b.sub(a).mul(f.sub(i)));
   }
   if (c?.random) return float(c.random[0]).add(r.mul(c.random[1] - c.random[0]));
   return float(0);
@@ -70,6 +86,9 @@ export async function createShared() {
     sunColor: tsl.uniform(new THREE.Color(1, 1, 1)),
     ambient: tsl.uniform(new THREE.Color(0.35, 0.38, 0.42)),
     camVel: tsl.uniform(new THREE.Vector3()),
+    // the light stack's game-to-site factor (entry.js's gameToSite): a glow's
+    // colour is taken towards it by its EmissiveExposureFactor
+    gameToSite: tsl.uniform(1),
     // (a function of the world position to a float node, 1 lit and 0 in shadow)
     shadow: null,
   };
@@ -101,7 +120,7 @@ function frameUv(tsl, uvNode, frame, [cols, rows]) {
 
 export async function createSpriteMesh(em, sim, { shared, map = null, geometry = null } = {}) {
   const { THREE, tsl } = await loadThree();
-  const { float, vec3, vec4, clamp, max, min, cos, sin, floor, pow, select, length, normalize, cross, dot, positionGeometry, cameraWorldMatrix, texture, uv, radians } = tsl;
+  const { float, vec3, vec4, clamp, max, min, cos, sin, floor, pow, select, length, normalize, cross, dot, positionGeometry, cameraWorldMatrix, texture, uv } = tsl;
   const { posAge, velLife, extra } = sim.nodes;
   const age = posAge.w;
   const life = velLife.w;
@@ -109,6 +128,10 @@ export async function createSpriteMesh(em, sim, { shared, map = null, geometry =
   const r = extra.z;
   const alive = select(age.lessThan(life), float(1), float(0));
   const size = extra.x.mul(curveNode(tsl, em.size ?? 1, t, r)).mul(alive);
+  // (UpdateSizeYData: the quad's height its own curve; the width's when absent)
+  const sizeY = em.sizeY !== null && em.sizeY !== undefined ? extra.x.mul(curveNode(tsl, em.sizeY, t, r)).mul(alive) : size;
+  // the angle in radians: the spawn's (its draw) and the curve's over life
+  const angle = curveNode(tsl, em.spawn?.rotation ?? 0, t, r).add(curveNode(tsl, em.rotation ?? 0, t, r));
   const center = posAge.xyz;
   const right = cameraWorldMatrix.element(0).xyz;
   const up = cameraWorldMatrix.element(1).xyz;
@@ -117,7 +140,7 @@ export async function createSpriteMesh(em, sim, { shared, map = null, geometry =
 
   let corner;
   if (em.kind === 'mesh') {
-    const a = radians(curveNode(tsl, em.rotation ?? 0, t, r)).add(r.mul(Math.PI * 2));
+    const a = angle.add(r.mul(Math.PI * 2));
     const g = tsl.positionGeometry;
     corner = center.add(vec3(g.x.mul(cos(a)).add(g.z.mul(sin(a))), g.y, g.z.mul(cos(a)).sub(g.x.mul(sin(a)))).mul(size));
   } else if (em.alignment === 'motionStretchScreen' || em.alignment === 'velocity') {
@@ -127,17 +150,19 @@ export async function createSpriteMesh(em, sim, { shared, map = null, geometry =
     const axis = select(speed.greaterThan(1e-4), across.div(max(speed, 1e-4)), up);
     const side = normalize(cross(axis, back));
     const s = em.stretch ?? { mult: 0, min: 1, max: null };
-    let len = size.add(speed.mul(s.mult));
-    len = max(len, size.mul(s.min ?? 1));
-    if (s.max !== null && s.max !== undefined && Number.isFinite(s.max)) len = min(len, size.mul(s.max));
+    let len = sizeY.mul(speed.div(s.norm ?? 50).mul(s.mult).add(1));
+    len = max(len, sizeY.mul(s.min ?? 1));
+    if (s.max !== null && s.max !== undefined && Number.isFinite(s.max)) len = min(len, sizeY.mul(s.max));
     corner = center.add(axis.mul(c.y).mul(len)).add(side.mul(c.x).mul(size));
   } else if (em.alignment === 'world') {
-    corner = center.add(vec3(c.x, 0, c.y).mul(size));
+    corner = center.add(vec3(c.x.mul(size), 0, c.y.mul(sizeY)));
   } else {
-    const a = radians(curveNode(tsl, em.rotation ?? 0, t, r));
-    const rx = c.x.mul(cos(a)).sub(c.y.mul(sin(a)));
-    const ry = c.x.mul(sin(a)).add(c.y.mul(cos(a)));
-    corner = center.add(right.mul(rx).add(up.mul(ry)).mul(size));
+    const a = angle;
+    const qx = c.x.mul(size);
+    const qy = c.y.mul(sizeY);
+    const rx = qx.mul(cos(a)).sub(qy.mul(sin(a)));
+    const ry = qx.mul(sin(a)).add(qy.mul(cos(a)));
+    corner = center.add(right.mul(rx).add(up.mul(ry)));
   }
 
   // the sheet's frame
@@ -146,13 +171,16 @@ export async function createSpriteMesh(em, sim, { shared, map = null, geometry =
   let frame = float(0);
   if (frames > 1) {
     const start = em.uv?.randomStart ? floor(r.mul(frames)) : float(0);
-    const run = em.uv?.fps > 0 ? floor(age.mul(em.uv.fps)) : em.uv?.randomStart ? float(0) : floor(t.mul(frames - 0.001));
+    // (over the life where SpawnAnimationData says BasedOnLifetime, at
+    // FramesPerSecond where a record gives one, else the start frame held)
+    const run = em.uv?.overLife ? floor(t.mul(frames - 0.001)) : em.uv?.fps > 0 ? floor(age.mul(em.uv.fps)) : float(0);
     frame = start.add(run).mod(frames);
   }
   const texel = map ? texture(map, frameUv(tsl, uv(), frame, grid)) : vec4(1);
 
   const col = (em.color ?? [1, 1, 1]).map((ch) => curveNode(tsl, ch, t, r));
   let rgb = texel.rgb.mul(vec3(col[0], col[1], col[2]));
+  if (em.additive && em.exposure > 0) rgb = rgb.mul(shared.gameToSite.sub(1).mul(em.exposure).add(1));
   if (!em.additive && em.kind !== 'mesh') {
     const w = em.lightWrap ?? 0;
     const sun = max(dot(back, shared.sunDir).add(w).div(1 + w), 0);
@@ -238,6 +266,7 @@ export async function createRibbonMesh(em, trails, { shared, map = null } = {}) 
   const texel = map ? texture(map, uv()) : vec4(1);
   const col = (em.color ?? [1, 1, 1]).map((ch) => curveNode(tsl, ch, t, r));
   let rgb = texel.rgb.mul(vec3(col[0], col[1], col[2]));
+  if (em.additive && em.exposure > 0) rgb = rgb.mul(shared.gameToSite.sub(1).mul(em.exposure).add(1));
   if (!em.additive) {
     const w = em.lightWrap ?? 0;
     const back = tsl.cameraWorldMatrix.element(2).xyz;
@@ -293,7 +322,7 @@ export async function createRibbonMesh(em, trails, { shared, map = null } = {}) 
           let sy = tz * vx - tx * vz;
           let sz = tx * vy - ty * vx;
           const sl = Math.hypot(sx, sy, sz);
-          const half = alive && sl > 1e-9 ? (size * evalCurve(em.size ?? 1, Math.min(1, tt), 0.5)) / 2 / sl : 0;
+          const half = alive && sl > 1e-9 ? (size * evalCurve(em.sizeY ?? em.size ?? 1, Math.min(1, tt), 0.5)) / 2 / sl : 0;
           sx *= half;
           sy *= half;
           sz *= half;

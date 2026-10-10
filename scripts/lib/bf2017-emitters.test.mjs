@@ -1,142 +1,169 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { evalCurve } from '../../src/lib/three/particles/curves.js';
-import { curveOf, effectJson, sheetSizes, sheetSources, emitterRefs, nearestDocument, rawReport, readEmitter, readIndex, readVariants } from './bf2017-emitters.mjs';
+import { curveOf, derefPartition, effectJson, emitterRefs, nearestDocument, operatorTable, rawReport, readIndex, readTemplate, scaled, sheetSizes, sheetSources, splineTable } from './bf2017-emitters.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/bf2017/fx/web');
+// the real records, trimmed (scripts/fixtures/bf2017/fx/README.md)
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/bf2017/fx');
 const index = readIndex(readFileSync(join(ROOT, 'data.tsv'), 'utf8'));
-const load = (name) => JSON.parse(readFileSync(join(ROOT, index.get(name.toLowerCase()).path), 'utf8'));
+const load = (name) => JSON.parse(gunzipSync(readFileSync(join(ROOT, `${index.get(name.toLowerCase()).path}.gz`))));
 const docs = new Map([...index.values()].filter((r) => r.type !== 'EffectBlueprint').map((r) => [r.name.toLowerCase(), load(r.name)]));
-const SNOW = 'FX/Ambient/Snow/FX_Snow_FallingSnow_01_Hoth';
+const SNOW = 'FX/Ambient/_MP/Hoth/FX_Snow_FallingSnow_01_Hoth';
+const EXHAUST = 'FX/Vehicles/EngineExhaust/FX_EngineExhaust_TransportGR75_Prim';
+const IMPACT = 'FX/impacts/Blaster/Snow/FX_Impact_Blaster_Snow';
+const TIE = 'FX/Vehicles/ConTrails/FX_ConTrail_TieFighter';
 const snow = effectJson(load(SNOW), docs, index);
-const exhaust = effectJson(load('FX/Vehicles/GR75/FX_Veh_GR75_Engine_Exhaust_01'), docs, index);
-const impact = effectJson(load('FX/Impacts/Blaster/FX_Impact_Blaster_Snow_01'), docs, index);
+const exhaust = effectJson(load(EXHAUST), docs, index);
+const impact = effectJson(load(IMPACT), docs, index);
+const tie = effectJson(load(TIE), docs, index);
+const em = (fx, part) => fx.emitters.find((e) => e.name.includes(part));
+
+describe('the partition', () => {
+  it('follows its links to the root', () => {
+    const root = derefPartition({ root: 0, objects: [{ $type: 'A', b: { $ref: 1 }, list: [{ $ref: 1 }] }, { $type: 'B', back: { $ref: 0 } }] });
+    expect(root.b.$type).toBe('B');
+    expect(root.list[0]).toBe(root.b);
+    expect(root.b.back).toBe(root);
+  });
+  it('reads the index without a header', () => {
+    expect(index.get(SNOW.toLowerCase())).toMatchObject({ type: 'EffectBlueprint', path: 'data/FX/Ambient/_MP/Hoth/FX_Snow_FallingSnow_01_Hoth.json' });
+  });
+});
 
 describe('curves', () => {
-  it('reads a PolynomialData as its cubic and scale, a RandomEvaluatorData as its range', () => {
-    expect(curveOf({ $type: 'PolynomialData', Coefficients: { x: 1, y: 2, z: 3, w: 4 }, ScaleValue: 0.5 })).toEqual({ poly: [1, 2, 3, 4], scale: 0.5 });
-    expect(curveOf({ $type: 'RandomEvaluatorData', Min: 0.2, Max: 0.6 })).toEqual({ random: [0.2, 0.6] });
-    expect(curveOf(40)).toBe(40);
-    expect(curveOf({ $type: 'Something' })).toBeNull();
+  it('a PolynomialData: x·t³ + y·t² + z·t + w, clamped, then scaled', () => {
+    const c = curveOf({ $type: 'PolynomialData', Coefficients: { x: 0, y: 0, z: -0.14438498, w: 0.8502138 }, MinClamp: 0.51, MaxClamp: 1, ScaleValue: 2 });
+    expect(evalCurve(c, 0)).toBeCloseTo(1.7004, 4);
+    expect(evalCurve(c, 1)).toBeCloseTo((0.8502138 - 0.14438498) * 2, 6);
+    expect(evalCurve({ ...c, poly: [0, 0, -2, 1] }, 1)).toBeCloseTo(1.02, 6);
+  });
+  it('under EfOne a cubic is its value at 1', () => {
+    expect(curveOf({ $type: 'PolynomialData', Coefficients: { x: 0, y: 0, z: 1, w: 0.25 }, MinClamp: 0, MaxClamp: 1, ScaleValue: 3 }, 'EfOne')).toBe(3);
+  });
+  it('a random range, ordered; a default; a scale times a curve', () => {
+    expect(curveOf({ $type: 'RandomEvaluatorData', Min: 1, Max: 0.9 })).toEqual({ random: [0.9, 1] });
+    expect(curveOf({ $type: 'DefaultEvaluatorData', Values: { x: 0.15 } })).toBe(0.15);
+    expect(scaled({ random: [1, 1.25] }, 0.5)).toEqual({ random: [0.5, 0.625] });
+    expect(scaled(null, 4)).toBe(4);
+  });
+  it('a SplineData sampled through its knots as a Hermite', () => {
+    const t = splineTable({ XValues0: { x: 0, y: 0.5, z: 1, w: 0 }, YValues0: { x: 0, y: 1, z: 0, w: 0 }, GValues0: { x: 0, y: 0, z: 0, w: 0 } });
+    expect(t).toHaveLength(17);
+    expect(t[0]).toBe(0);
+    expect(t[8]).toBe(1);
+    expect(t[16]).toBe(0);
+    expect(t[4]).toBeCloseTo(0.5, 6);
+  });
+  it('a PolynomialOperatorData: the two cubics multiplied, clamped, sampled', () => {
+    const one = { Coefficients: { x: 0, y: 0, z: 1, w: 0 }, ScaleValue: 1, MinClamp: 0, MaxClamp: 1 };
+    const t = operatorTable({ Operation: 'Multiplication', FirstOperand: one, SecondOperand: one, MinClampResult: 0, MaxClampResult: 1 });
+    expect(t[8]).toBeCloseTo(0.25, 6);
+    expect(t[16]).toBe(1);
   });
 });
 
-describe('the template', () => {
-  const e = snow.emitters[0];
-  it('keeps the template fields as stored', () => {
-    expect(e).toMatchObject({ kind: 'quad', maxCount: 400, lifetime: 6, alignment: 'motionStretchScreen', lightWrap: 0.5, maxSpawnDistance: 55, cullingFactor: 0.8, additive: false });
-    expect(e.stretch).toEqual({ mult: 0.06, min: 1, max: 6 });
-    expect(e.texture).toBe('FX/Textures/Snow/T_SnowFlake_4x1_01_D');
-    expect(e.uv).toMatchObject({ frames: 4, grid: [4, 1], randomStart: true });
+describe('the template, from the real records', () => {
+  const powder = em(snow, 'powder');
+  it("the hangar's powder: HDR 12.7, stretched across the screen, culled at 55 m", () => {
+    expect(powder.color.map((c) => +c.toFixed(2))).toEqual([12.73, 12.28, 12.06]);
+    expect(powder).toMatchObject({ kind: 'quad', maxCount: 31, alignment: 'motionStretchScreen', lightWrap: 0.5, maxSpawnDistance: 55, cullingFactor: 0.8, additive: false });
+    expect(powder.stretch).toEqual({ mult: 10, norm: 50, min: 1, max: 100 });
+    expect(powder.gravity).toEqual({ g: 9.8, random: 0.2 });
+  });
+  it('the emitter runs for its template Lifetime; a particle lives its UpdateAgeData Lifetime', () => {
+    expect(powder).toMatchObject({ lifetime: 1, duration: 2, loop: false });
+    const burn = em(exhaust, 'burn');
+    expect(burn).toMatchObject({ lifetime: 0.15, duration: null, loop: true });
+    expect(em(impact, 'sparksflash')).toMatchObject({ duration: 0.05, loop: false });
+  });
+  it('the spawn block: rate, sizes and directions drawn, a box or a shell', () => {
+    expect(powder.spawn).toMatchObject({ rate: 30, size: { random: [0, 1.75] }, speed: { random: [0.2, 0.5] }, direction: { box: { min: [0, -1, 0], max: [0, -0.5, 0] } }, position: { box: { center: [0, 0, 0], size: [0.25, 0, 0] } } });
+    expect(em(impact, 'smokespikes').spawn.position).toEqual({ sphere: { radius: 0.1, inner: 0, zenith: [0, 60], scale: [0.25, 0.25, 0.25], center: [0, 0, 0] } });
+  });
+  it('a colour born at Color0 and cooling to Color1 along a cubic (PolynomialColorInterpData)', () => {
+    const [r, , b] = em(exhaust, 'burn').color;
+    expect(evalCurve(r, 0)).toBeCloseTo(4.447832 + (21.222084 - 4.447832) * 1.00999987, 3);
+    expect(evalCurve(b, 1)).toBeCloseTo(70 + (300 - 70) * (1.00999987 - 1.0050503), 3);
+  });
+  it('a glow: additive, its exposure factor, following its engine', () => {
+    expect(em(exhaust, 'prim_glow')).toMatchObject({ additive: true, exposure: 0.75, follow: { source: true, velocity: false }, color: [0.289911866, 2.17637634, 10], transparency: { random: [0.7, 1] } });
+  });
+  it('the frames: a random start and once over the life', () => {
+    expect(em(snow, 'dust_thin').uv).toEqual({ frames: 8, grid: [4, 2], fps: 0, randomStart: true, overLife: true });
+  });
+  it('a mesh emitter and a ribbon', () => {
+    expect(em(snow, 'debris').kind).toBe('mesh');
+    expect(tie.emitters[0]).toMatchObject({ kind: 'ribbon', maxCount: 150, ribbon: { segment: 1 } });
   });
   it('says where every leaf came from', () => {
-    expect(e._source.maxCount).toBe('FX/Ambient/Snow/Emitters/em_Snow_FallingSnow_01_Hoth#EmitterTemplateData.MaxCount');
-    expect(e._source['stretch.mult']).toMatch(/#EmitterTemplateData\.MotionStretchMultiplier$/);
-    expect(e._source['gravity.g']).toMatch(/#GravityData\.Gravity$/);
-    expect(e._source.color).toMatch(/#UpdateColorData\.Color$/);
-    expect(snow._source.cull).toBe(`${SNOW}#EffectBlueprint.CullDistance`);
+    expect(powder._source.maxCount).toBe('fx/ambient/_mp/hoth/emitters/em_snow_fallingrocks_powder_hoth#EmitterTemplateData.MaxCount');
+    expect(powder._source['gravity']).toMatch(/#GravityData\.Gravity$/);
+    expect(powder._source.color).toMatch(/#UpdateColorData\.Color$/);
+    expect(powder._source.probability).toMatch(/#EmitterEntityData\[.*powder_hoth\]\.SpawnProbability$/);
   });
-  it('keeps what it does not understand under raw', () => {
-    expect(e.raw.EmitterTemplateData).toEqual({ SortPriority: 2 });
-    expect(snow.emitters[1].raw.TurbulenceData).toEqual({ Strength: 0.4, Frequency: 0.2 });
-    expect(snow.raw).toEqual({ SoundOnStart: 'Sound/Ambient/Wind_Indoor_01' });
-    expect(rawReport([snow])).toMatchObject({ 'EmitterTemplateData.SortPriority': ['FX_Snow_FallingSnow_01_Hoth'], 'TurbulenceData.Strength': ['FX_Snow_FallingSnow_01_Hoth'] });
+  it('keeps what it does not read under raw', () => {
+    expect(powder.raw.EmitterTemplateData).toMatchObject({ TimeScale: 1, MotionStretchLengthClamp: 100 });
+    expect(rawReport([snow])['EffectEntityData.KillOnMaxCount']).toEqual(['FX_Snow_FallingSnow_01_Hoth']);
   });
-});
-
-describe('the spawn block and the forces', () => {
-  it('reads rate, box, size, speed, direction, gravity and drag', () => {
-    const e = snow.emitters[0];
-    expect(e.spawn).toEqual({ rate: { poly: [60, 0, 0, 0], scale: 1 }, burst: 0, size: { random: [0.025, 0.05] }, speed: { random: [0.2, 0.6] }, direction: { dir: [0, -1, 0], spread: 25 }, position: { box: { center: [0, 0, 0], size: [12, 0.5, 12] } } });
-    expect(e.gravity).toEqual({ g: 9.8, random: 0.3 });
-    expect(e.drag).toBe(2.2);
-  });
-  it('reads a burst and a sphere', () => {
-    const sparks = impact.emitters[0];
-    expect(sparks.spawn).toMatchObject({ rate: 0, burst: 24, position: { sphere: { radius: 0.05 } } });
-    expect(sparks).toMatchObject({ loop: false, duration: 0.1, additive: true, lifetime: { random: [0.3, 0.7] } });
-  });
-});
-
-describe('the curves over EfNormTime', () => {
-  it("the powder's HDR colour at 0, 0.5 and 1: scaled, not clamped", () => {
-    const [r, , b] = snow.emitters[1].color;
-    expect([0, 0.5, 1].map((t) => evalCurve(r, t))).toEqual([12.7, expect.closeTo(8.89, 6), expect.closeTo(5.08, 6)]);
-    expect([0, 0.5, 1].map((t) => evalCurve(b, t))).toEqual([12.7, expect.closeTo(9.525, 6), expect.closeTo(6.35, 6)]);
-  });
-  it('size, rotation and alpha', () => {
-    const p = snow.emitters[1];
-    expect(evalCurve(p.size, 1)).toBeCloseTo(1.8, 6);
-    expect(evalCurve(p.rotation, 0.5)).toBe(20);
-    expect(p.alpha.exponent).toBe(2);
-    expect(evalCurve(p.alpha.curve, 0.5)).toBeCloseTo(0.08, 6);
-    expect(p.lifetime).toEqual({ random: [3, 5] });
-    expect(p.soft).toBe(0.8);
-  });
-});
-
-describe('the variants', () => {
-  it('takes the blueprint’s variants by tier', () => {
-    expect(snow.variants.ultra).toEqual({ emitters: [0, 1], scale: 1, from: 'Ultra' });
-    expect(snow.variants.mid).toEqual({ emitters: [0], scale: 0.5, from: 'Medium' });
-    expect(snow.variants.low).toEqual({ emitters: [0], scale: 0.25, from: 'Low' });
-    expect(snow._source['variants.high']).toBe(`${SNOW}#EffectBlueprint.High`);
-  });
-  it('scales MaxCount by 1, 0.75, 0.5, 0.25 without them', () => {
-    expect(Object.fromEntries(Object.entries(exhaust.variants).map(([t, v]) => [t, v.scale]))).toEqual({ low: 0.25, mid: 0.5, high: 0.75, ultra: 1 });
-    expect(exhaust.variants.low.emitters).toEqual([0, 1]);
-  });
-  it('a variant given as a number is a scale', () => {
-    expect(readVariants({ Low: 0.3 }, ['a']).low).toEqual({ emitters: [0], scale: 0.3, from: 'Low' });
+  it('defaults a template without a MaxCount and says so', () => {
+    expect(readTemplate({ $type: 'EmitterTemplateData' }, 'em_x')).toMatchObject({ maxCount: null, raw: { _missing: ['EmitterTemplateData.MaxCount'] } });
   });
 });
 
 describe('the blueprint', () => {
-  it('reads cull, caps and nearby', () => {
-    expect(snow).toMatchObject({ name: 'FX_Snow_FallingSnow_01_Hoth', cull: 120, maxActive: 24, probability: 1, nearby: { radius: 20, max: 6 }, autoStart: true, graph: false, missing: [] });
-    expect(impact.autoStart).toBe(false);
+  it('cull and the active cap by tier; 0 is no cull', () => {
+    expect(snow).toMatchObject({ name: 'FX_Snow_FallingSnow_01_Hoth', cull: 50, maxActive: 35, autoStart: true, graph: false, missing: [] });
+    expect(exhaust).toMatchObject({ graph: false, missing: [] });
+    expect(exhaust.cull).toBeNull();
+    expect(tie.maxActive).toBe(160);
   });
-  it('lists the textures once', () => {
-    expect(snow.textures).toEqual(['FX/Textures/Snow/T_SnowFlake_4x1_01_D', 'FX/Textures/Smoke/T_ThinPuff_Gnomon_4x32_NoAtlas_01_D']);
-    expect(impact.textures).toHaveLength(3);
+  it('the per-emitter fields: probability by tier, delay, offset, the nearby cap', () => {
+    expect(em(snow, 'powder').probability).toEqual({ low: 0.8, mid: 0.8, high: 0.8, ultra: 0.8 });
+    expect(em(snow, 'dust_thin').delay).toBe(0.2);
+    expect(em(exhaust, 'burn').offset.map((v) => +v.toFixed(4))).toEqual([0, -0, -0.8758]);
+    expect(impact.nearby).toEqual({ radius: 5, max: 5 });
   });
-  it('finds the emitters in the entity and the variants, once each', () => {
-    expect(emitterRefs(load(SNOW))).toEqual(['FX/Ambient/Snow/Emitters/em_Snow_FallingSnow_01_Hoth', 'FX/Ambient/Snow/Emitters/em_Snow_Powder_01_Hoth']);
+  it('the variants: one entry per template, each tier the ones it draws', () => {
+    expect(snow.variants.high.emitters).toEqual([0, 1, 3]);
+    expect(snow.variants.ultra.emitters).toEqual([0, 2, 3]);
+    expect(impact.variants.low.emitters).toEqual([0, 1, 2, 4]);
+    expect(impact.variants.ultra.emitters).toEqual([0, 1, 3, 4]);
+    expect(snow.variants.mid).toMatchObject({ cull: 50, maxActive: 35, scale: 1 });
   });
-  it('reads mesh and ribbon emittables and following', () => {
-    expect(exhaust.emitters[0]).toMatchObject({ kind: 'quad', follow: { source: true, velocity: true }, additive: true });
-    expect(exhaust.emitters[1]).toMatchObject({ kind: 'ribbon', ribbon: { segment: 2 } });
+  it('lists the textures once and the emitters it names', () => {
+    expect(exhaust.textures).toEqual(['FX/Textures/Exhausts/T_EngineExhaust_01_D', 'FX/Textures/Gradients/Gradient_Circle']);
+    expect(emitterRefs(load(EXHAUST))).toHaveLength(3);
   });
 });
 
 describe('EmitterGraph', () => {
-  it('is replaced by the nearest document of its family, said as graph: true', () => {
-    expect(nearestDocument(index, 'FX/Impacts/Smoke/Emitters/eg_Impact_Smoke_Big_01').name).toBe('FX/Impacts/Smoke/Emitters/em_Impact_Smoke_01');
-    const g = impact.emitters[2];
-    expect(g).toMatchObject({ graph: true, graphOf: 'FX/Impacts/Smoke/Emitters/eg_Impact_Smoke_Big_01', name: 'FX/Impacts/Smoke/Emitters/em_Impact_Smoke_01', maxCount: 6 });
+  it("the bolt's EmitterGraphEntityData stands in by its folder's nearest document; a graph with none is missing", () => {
+    const g = impact.emitters[4];
+    expect(g).toMatchObject({ graph: true, graphOf: 'FX/impacts/Blaster/Generic/Emitters/EG_CheapImpact' });
     expect(impact.graph).toBe(true);
+    expect(impact.missing).toEqual(['FX/Tech/Sparks_Walrus/Emitters/EG_Sparks_Default_Walrus', 'FX/Tech/Pebbles_Walrus/Emitters/EG_Pebbles_Default_Walrus_Snow']);
   });
-  it('an emitter not found is listed as missing and dropped', () => {
-    const fx = effectJson({ Name: 'FX/X/FX_Gone', Object: { Components: [{ Emitter: 'FX/X/Emitters/em_Gone' }] } }, new Map(), index);
-    expect(fx.missing).toEqual(['FX/X/Emitters/em_Gone']);
-    expect(fx.emitters).toEqual([]);
-    expect(fx.variants.ultra.emitters).toEqual([]);
+  it('is replaced by the nearest document of its family, said as graph: true', () => {
+    const graph = 'fx/impacts/blaster/snow/emitters/eg_impact_blaster_snow_smokespikes_big';
+    const idx = new Map([...index, [graph, { name: graph, type: 'EmitterGraph', path: 'x' }]]);
+    expect(nearestDocument(idx, graph).name).toBe('fx/impacts/blaster/snow/emitters/em_impact_blaster_snow_smokespikes');
+    const bp = { root: 0, objects: [{ $type: 'EffectBlueprint', Name: 'FX/X/FX_Graph', Object: { $ref: 1 } }, { $type: 'EffectEntityData', Components: [{ $ref: 2 }] }, { $type: 'EmitterEntityData', Emitter: { $asset: graph } }] };
+    const fx = effectJson(bp, new Map([...docs, [graph, { type: 'EmitterGraph', root: 0, objects: [{ $type: 'EmitterGraph' }] }]]), idx);
+    expect(fx.graph).toBe(true);
+    expect(fx.emitters[0]).toMatchObject({ graph: true, graphOf: graph, name: 'fx/impacts/blaster/snow/emitters/em_impact_blaster_snow_smokespikes' });
   });
-});
-
-describe('readEmitter', () => {
-  it('defaults an empty document', () => {
-    const e = readEmitter({ Objects: [] }, 'em_x');
-    expect(e).toMatchObject({ name: 'em_x', kind: 'quad', maxCount: null, stretch: null, gravity: null, graph: false });
-    expect(e.raw._missing).toEqual(['EmitterTemplateData.MaxCount']);
+  it('an emitter not found is listed as missing', () => {
+    const bp = { root: 0, objects: [{ $type: 'EffectBlueprint', Name: 'FX/X/FX_Gone', Object: { $ref: 1 } }, { $type: 'EffectEntityData', Components: [{ $ref: 2 }] }, { $type: 'EmitterEntityData', Emitter: { $asset: 'fx/x/emitters/em_gone' } }] };
+    expect(effectJson(bp, new Map(), index)).toMatchObject({ missing: ['fx/x/emitters/em_gone'], emitters: [] });
   });
 });
 
 describe('sheets', () => {
   it('finds a texture’s master first, then its KTX2', () => {
-    expect(sheetSources('FX/Textures/Snow/T_SnowFlake_4x1_01_D')).toEqual(['web/textures/fx/textures/snow/t_snowflake_4x1_01_d.png', 'web_opt/textures/fx/textures/snow/t_snowflake_4x1_01_d.ktx2', 'web/textures/fx/textures/snow/t_snowflake_4x1_01_d.ktx2']);
+    expect(sheetSources('FX/Textures/Snow/T_Snow_Mist_4x2_D')).toEqual(['web/textures/fx/textures/snow/t_snow_mist_4x2_d.png', 'web_opt/textures/fx/textures/snow/t_snow_mist_4x2_d.ktx2', 'web/textures/fx/textures/snow/t_snow_mist_4x2_d.ktx2']);
   });
   it('writes 512, 1024, 2048, none above the source', () => {
     expect(sheetSizes(4096)).toEqual([512, 1024, 2048]);

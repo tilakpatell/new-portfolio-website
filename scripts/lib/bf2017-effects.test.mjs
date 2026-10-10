@@ -5,15 +5,18 @@ import { describe, expect, it } from 'vitest';
 import { effectsJson, readEffect, rebaseEffect } from './bf2017-effects.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const extras = JSON.parse(readFileSync(join(HERE, '../fixtures/bf2017/fx/web/maps/levels/mp/fixture_01/fixture_01.extras.json'), 'utf8'));
+// eight of Hoth's 648 spawns as the game exports them, and its subworlds
+const MAP = join(HERE, '../fixtures/bf2017/fx/web/maps/levels/mp/hoth_01');
+const extras = JSON.parse(readFileSync(join(MAP, 'hoth_01.extras.json'), 'utf8'));
+const manifest = JSON.parse(readFileSync(join(MAP, 'hoth_01.json'), 'utf8'));
 // Hoth's frame, from lane L's pack on main
 const pack = JSON.parse(readFileSync(join(HERE, '../../public/models/galaxy/bf2017/levels/hoth/level.json'), 'utf8'));
 
 describe('readEffect', () => {
-  it('the name’s last part, the transform, the scale and autoStart where given', () => {
-    expect(readEffect(extras.effects[3])).toEqual({ name: 'FX_Veh_GR75_Engine_Exhaust_01', pos: [180, 370, -1500], quat: [0, 0.7071068, 0, 0.7071068], scale: 2 });
-    expect(readEffect(extras.effects[4]).autoStart).toBe(false);
-    expect(readEffect(extras.effects[7])).toEqual({ skip: 'unnamed' });
+  it('the name’s last part (the export calls it `effect`), the transform and autoStart', () => {
+    expect(readEffect(extras.effects[2])).toEqual({ name: 'FX_EngineExhaust_TransportGR75_Prim', pos: extras.effects[2].position, quat: [0, -0.70711, 0, 0.70711], autoStart: false });
+    expect(readEffect({ position: [0, 0, 0] })).toEqual({ skip: 'unnamed' });
+    expect(readEffect({ effect: 'FX/A/FX_B', position: [1, 2, 3], scale: [2, 2, 2] })).toMatchObject({ name: 'FX_B', scale: 2 });
   });
 });
 
@@ -26,15 +29,15 @@ describe('rebaseEffect', () => {
 });
 
 describe('effectsJson', () => {
-  const known = new Set(['FX_Snow_FallingSnow_01_Hoth', 'FX_Veh_GR75_Engine_Exhaust_01', 'FX_Impact_Blaster_Snow_01']);
-  const json = effectsJson(extras, pack, { subworlds: extras.subworlds, known });
+  const known = new Set(['FX_Snow_FallingSnow_01_Hoth', 'FX_EngineExhaust_TransportGR75_Prim']);
+  const json = effectsJson(extras, pack, { subworlds: manifest.subworlds, known });
   it('bins the arena’s effects by the pack’s cells in its frame', () => {
-    expect(json).toMatchObject({ format: 1, cell: 128, count: 5, skipped: { sub: 1, unnamed: 1, outside: 1 } });
-    expect(json.kinds).toEqual({ FX_Snow_FallingSnow_01_Hoth: 2, FX_Veh_GR75_Engine_Exhaust_01: 1, FX_Impact_Blaster_Snow_01: 1, FX_Steam_Rising_01: 1 });
-    expect(json.cells['0,-1'][0]).toEqual({ name: 'FX_Snow_FallingSnow_01_Hoth', pos: [5, 17.7, -5], quat: [0, 0, 0, 1] });
-    expect(json.cells['-1,0'].find((e) => e.name === 'FX_Veh_GR75_Engine_Exhaust_01')).toMatchObject({ pos: [-25, 7.7, 40], scale: 2 });
+    expect(json).toMatchObject({ format: 1, cell: 128, count: 6, skipped: { sub: 1, outside: 1 } });
+    expect(json.kinds).toEqual({ FX_Arctic_Ceiling_FallingSnow: 2, FX_EngineExhaust_TransportGR75_Prim: 2, FX_Snow_FallingSnow_01_Hoth: 2 });
+    expect(json.cells['0,-2']).toEqual([{ name: 'FX_Snow_FallingSnow_01_Hoth', pos: [61.45, 12.06, -221.94], quat: [0, 0, 0, 1], autoStart: true }]);
+    expect(json.cells['-2,-2'][0]).toMatchObject({ name: 'FX_EngineExhaust_TransportGR75_Prim', quat: [0, -0.7071, 0, 0.7071], autoStart: false });
   });
   it('names the effects the level spawns that have no table yet', () => {
-    expect(json.unread).toEqual(['FX_Steam_Rising_01']);
+    expect(json.unread).toEqual(['FX_Arctic_Ceiling_FallingSnow']);
   });
 });

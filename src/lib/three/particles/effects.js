@@ -87,7 +87,10 @@ export function variantFor(def, tier = 'high') {
 }
 
 // slots an emitter's pool holds at a tier
-export const poolSize = (em, def, variant) => Math.max(1, Math.ceil(perInstance(em) * (variant.scale ?? 1)) * Math.min(def.maxActive ?? 1, MAX_OWNERS));
+export const poolSize = (em, def, variant) => Math.max(1, Math.ceil(perInstance(em) * (variant.scale ?? 1)) * Math.min(variant.maxActive ?? def.maxActive ?? 1, MAX_OWNERS));
+
+// the tier's cull distance (none past which: null) and its active cap
+export const cullFor = (def, variant) => (variant.cull !== undefined ? variant.cull : def.cull) ?? Infinity;
 
 // how long a one-shot instance lives: its longest emitter's spawning plus its longest life
 export function oneShotLength(def) {
@@ -129,7 +132,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     if (disposed) return null;
     const variant = variantFor(def, tier);
     const emitters = [];
-    const maxActive = Math.min(def.maxActive ?? 1, MAX_OWNERS);
+    const maxActive = Math.min(variant.maxActive ?? def.maxActive ?? 1, MAX_OWNERS);
     // (dispose() during the build: what was made goes with it)
     const abandon = () => {
       for (const e of emitters) {
@@ -167,6 +170,8 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       variant,
       emitters,
       maxActive,
+      cull: cullFor(def, variant),
+      tier: TIER_KEY[tier] ?? 'high',
       life: oneShotLength(def),
       instances: [],
       // (kept for the frame: the ranks, the chosen, the owner table, the batches)
@@ -328,13 +333,13 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       inst.y = p.y;
       inst.z = p.z;
       inst.d = Math.hypot(p.x - cx, p.y - cy, p.z - cz);
-      if (inst.d > (kind.def.cull ?? Infinity)) stats.beyond++;
+      if (inst.d > kind.cull) stats.beyond++;
       list[i] = list[r];
       list[r] = inst;
       r++;
     }
     if (r > kind.order.length) kind.order = new Int32Array(r * 2);
-    const m = chooseRunning(list, r, { cull: kind.def.cull, maxActive: kind.maxActive, nearby: kind.def.nearby }, kind.chosen, kind.order);
+    const m = chooseRunning(list, r, { cull: kind.cull, maxActive: kind.maxActive, nearby: kind.def.nearby }, kind.chosen, kind.order);
     kind.chosen.length = m;
     if (r > 0 && m === 0) stats.culled++;
     // owner slots: kept by those still chosen, freed by the rest
@@ -404,9 +409,15 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       }
       for (let c = 0; c < m; c++) {
         const inst = kind.chosen[c];
-        const st = (inst.states[e] ??= { t: 0, acc: 0, burst: false });
+        // (the emitter's own: its StartDelay, and its SpawnProbability by
+        // tier drawn once an instance)
+        const st = (inst.states[e] ??= { t: -(em.delay ?? 0), acc: 0, burst: false, skip: rnd(11, serial++, 0) >= (em.probability?.[kind.tier] ?? 1) });
         kind.batches[c].owner = inst.slot;
-        kind.batches[c].count = spawnCount(st, em, dt, { scale: kind.variant.scale ?? 1, factor: spawnFactor(inst.d, em) });
+        if (st.skip) kind.batches[c].count = 0;
+        else if (st.t < 0) {
+          st.t += dt;
+          kind.batches[c].count = 0;
+        } else kind.batches[c].count = spawnCount(st, em, dt, { scale: kind.variant.scale ?? 1, factor: spawnFactor(inst.d, em) });
       }
       sim.step(dt, { batches: kind.batches, batchCount: nb, owners: kind.owners, wind });
       stats.dispatches += sim.mode === 'gpu' ? 1 : 0;
@@ -423,6 +434,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     // (the sky's ambient at full: it stands in for the environment light
     // the quads do not sample)
     shared.ambient.value.setRGB(...p.ambient.sky).multiplyScalar(p.ambient.intensity);
+    shared.gameToSite.value = p.gameToSite ?? 1;
   }
 
   return {

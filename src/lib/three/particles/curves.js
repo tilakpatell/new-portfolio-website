@@ -2,10 +2,12 @@
 // CPU step (emitter.js), the GPU twin (gpu.js, which writes the same in TSL)
 // and the tests agree to the bit where they can.
 //
-// A curve (scripts/lib/bf2017-emitters.mjs writes them): a number, a cubic
-// over the particle's normalised life `{ poly: [x, y, z, w], scale }`
-// (x + y·t + z·t² + w·t³, times scale: the game's `PolynomialData`), or a
-// draw per particle `{ random: [min, max] }` (`RandomEvaluatorData`).
+// A curve (scripts/lib/bf2017-emitters.mjs writes them): a number; a cubic
+// over the particle's normalised life `{ poly: [x, y, z, w], min, max,
+// scale }`, x·t³ + y·t² + z·t + w held to min…max (null: unbounded) then
+// times scale (the game's `PolynomialData`); a table of even samples over
+// 0…1, read linearly (`{ table: [...] }`, a `SplineData` sampled); or a draw
+// per particle `{ random: [min, max] }` (`RandomEvaluatorData`).
 //
 // evalCurve(curve, t, r) → the value at t (0…1); r (0…1) the particle's draw
 // curveRange(curve) → [min, max] over t in 0…1 and every draw
@@ -18,7 +20,14 @@ export function evalCurve(c, t = 0, r = 0) {
   if (!c) return 0;
   if (c.poly) {
     const [x, y, z, w] = c.poly;
-    return (x + t * (y + t * (z + t * w))) * (c.scale ?? 1);
+    const v = ((x * t + y) * t + z) * t + w;
+    return Math.min(c.max ?? Infinity, Math.max(c.min ?? -Infinity, v)) * (c.scale ?? 1);
+  }
+  if (c.table) {
+    const n = c.table.length - 1;
+    const f = Math.min(n, Math.max(0, t * n));
+    const i = Math.min(n - 1, Math.floor(f));
+    return c.table[i] + (c.table[i + 1] - c.table[i]) * (f - i);
   }
   if (c.random) return c.random[0] + (c.random[1] - c.random[0]) * r;
   return 0;
@@ -27,6 +36,7 @@ export function evalCurve(c, t = 0, r = 0) {
 export function curveRange(c) {
   if (typeof c === 'number') return [c, c];
   if (c?.random) return [Math.min(...c.random), Math.max(...c.random)];
+  if (c?.table) return [Math.min(...c.table), Math.max(...c.table)];
   if (c?.poly) {
     let lo = Infinity;
     let hi = -Infinity;
