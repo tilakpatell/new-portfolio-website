@@ -20,8 +20,10 @@
 //   play(name, { loop }): one of the rig's clips by its site name (or the
 //     game's); resolves true when a one-shot ends, false when there's none.
 //   base(name): the clip it rests in instead of its idle ('cut' for none).
-//   react('down', { cable, side }): its death (./rigSets.js deathFor), held
-//     on the last frame; anything else ('hit') its stagger where it has one.
+//   react('down', { cable, side }) → { clip }: its death (./rigSets.js
+//     deathFor), held on the last frame (activity.js reads the clip);
+//     react('fire') → whether it played the rig's own shot; react('hit') its
+//     stagger where it has one.
 // clipsFor(clips, has) → the clips with only the tracks for bones it has
 // pickBase(motion, move, set) → the site name its legs should be playing
 // paceOf(speed, clip) → the clip's rate for that speed (1 without a travel)
@@ -29,7 +31,7 @@
 import * as THREE from 'three';
 import { NO_CALLS } from './figureCalls';
 import { loadGltf } from './gltf';
-import { RIGS, clipFor, deathFor } from './rigSets';
+import { RIGS, RIG_SET, clipFor, deathFor } from './rigSets';
 
 const boneOf = (track) => track.name.slice(0, track.name.lastIndexOf('.'));
 
@@ -177,7 +179,14 @@ export async function loadOwnRigFigure(url, { rig, tall = null, packs = [], bone
         st.down = true;
         const name = deathFor(rig, opts);
         oneShot(name, { hold: true });
-        return name;
+        return { clip: name };
+      }
+      // (a shot: the game's own where the rig has one, laid over the legs for
+      // the droideka's recoil, the AT-TE's big gun's loop; true when it played)
+      if (kind === 'fire') {
+        if (!clipOf('fire') || RIG_SET(rig)?.fire == null) return false;
+        oneShot('fire');
+        return true;
       }
       if (kind === 'hit') {
         const name = clipOf('stagger.front') ? 'stagger.front' : null;

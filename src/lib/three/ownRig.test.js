@@ -89,9 +89,19 @@ describe('a figure on a rig of its own', () => {
 
   it('falls by the tow cable’s death when the cable brought it down, and stays down', async () => {
     const fig = await loadOwnRigFigure('atat.glb', opts());
-    expect(fig.react('down', { cable: true })).toBe('die.cable');
+    expect(fig.react('down', { cable: true })).toEqual({ clip: 'die.cable' });
     expect(fig.react('down', {})).toBeNull();
     expect(await fig.play('walk')).toBe(false);
+    fig.dispose();
+  });
+
+  it('fires by the rig’s own shot where it has one, and says when it hasn’t', async () => {
+    const atat = await loadOwnRigFigure('atat.glb', opts());
+    expect(atat.react('fire', {})).toBe(false);
+    atat.dispose();
+    const droid = { ...opts(), rig: 'droideka', loadPack: async () => ({ animations: [new THREE.AnimationClip(RIG_SET('droideka').idle, 1, []), new THREE.AnimationClip(RIG_SET('droideka').fire, 0.6, [new THREE.VectorKeyframeTrack('Hips.position', [0, 0.6], [0, 0, 0, 0, 0.1, 0])])] }) };
+    const fig = await loadOwnRigFigure('droideka.glb', droid);
+    expect(fig.react('fire', {})).toBe(true);
     fig.dispose();
   });
 });
