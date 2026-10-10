@@ -62,8 +62,9 @@ function flareAlpha(tsl, THREE, p, depth, camera) {
   const { uniform, float, vec2, clamp, max, select, Fn } = tsl;
   const at = new THREE.Vector4();
   const dir = new THREE.Vector3(...p.sunDir).normalize();
+  const v = new THREE.Vector4();
   const sun = uniform(at).onRenderUpdate(() => {
-    const v = new THREE.Vector4(dir.x, dir.y, dir.z, 0).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+    v.set(dir.x, dir.y, dir.z, 0).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
     const w = Math.max(1e-6, v.w);
     at.set((v.x / w) * 0.5 + 0.5, (v.y / w) * 0.5 + 0.5, v.w, camera.aspect ?? 1);
     return at;
