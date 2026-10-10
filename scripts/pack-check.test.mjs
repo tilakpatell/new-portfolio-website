@@ -40,6 +40,10 @@ describe('the pack check', () => {
     expect(missing({ computed: ['/models/w'] }, join(FIX, 'site'))).toEqual(['/models/w']);
   });
 
+  it('takes a file the public bucket alone holds as there', () => {
+    expect(missing({ urls: ['/models/w/gone.glb'], globs: ['/hq/none/*'] }, join(FIX, 'site'), ['/models/w/gone.glb', '/hq/none/luke.glb'])).toEqual([]);
+  });
+
   it('names what a pack lists that is not there', () => {
     expect(missing({ urls: ['/models/w/plane.glb', '/models/w/gone.glb'], globs: ['/models/w/*', '/hq/none/*'] }, join(FIX, 'site'))).toEqual(['/models/w/gone.glb', '/hq/none/*']);
   });

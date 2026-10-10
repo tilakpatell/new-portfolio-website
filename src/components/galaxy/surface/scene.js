@@ -143,6 +143,7 @@ import { createGround, landingFor } from './ground/index';
 import { standable } from './sites/validity';
 import { floraTint } from './flora';
 import { createPlayerBody } from './playerBody';
+import { assetPool, worldScope } from '../../../lib/assetLoad';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -187,6 +188,10 @@ export async function create(canvas, ctx) {
   const { reduced, rt } = ctx;
   let props = ctx;
   let disposed = false;
+  // every file this world asks for belongs to it (lib/assetLoad): leaving
+  // stops whatever is still queued or downloading, and a late answer reaches
+  // nothing
+  const net = worldScope('surface');
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   // how much it draws: the level's row of the budget table (amounts.js)
@@ -3622,9 +3627,10 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, body: body ? { ready: body.ready, pose: body.pose } : null, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock?.stagger != null ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
+    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, body: body ? { ready: body.ready, pose: body.pose } : null, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock?.stagger != null ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), net: { ...net.progress(), pool: assetPool().progress() }, rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
+      net.end();
       body?.dispose();
       body = null;
       lit?.dispose();
