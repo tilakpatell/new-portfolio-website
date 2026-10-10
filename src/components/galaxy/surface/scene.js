@@ -117,7 +117,7 @@ import { snapToTexel } from './shadow';
 import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
 import { createBoltPlay } from './boltPlay';
-import { applyEmote, createEmoteWheel, emotePacket, keepEmote, readEmote } from '../../../lib/emote';
+import { applyEmote, createEmoteWheel, emoteFor, emotePacket, keepEmote, readEmote } from '../../../lib/emote';
 import { preload } from '../../../lib/three/clipLibrary';
 import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
@@ -154,6 +154,7 @@ import { gameLightOf } from '../../../data/bf2017/light/index';
 import { createGameLit } from './gameLit';
 import { createPlayerBody } from './playerBody';
 import { assetPool, worldScope } from '../../../lib/assetLoad';
+import { victoryFor } from '../../../lib/three/walrusSets/emotes';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -1191,6 +1192,12 @@ export async function create(canvas, ctx) {
   }
   // both of you, on something won (a quest done, a post taken): yours cut
   // by input as ever; nobody who's down
+  function endPose(won) {
+    const f = me().fig;
+    if (state.fallen > 0 || !f?.clips) return;
+    const clip = won ? victoryFor(f.clips, Math.floor(state.t)) : f.clips.defeat ? 'defeat' : null;
+    if (clip) f.play?.(clip, { hold: 8 });
+  }
   function cheer() {
     if (!(state.fallen > 0)) reactYou('win');
     if (mateFight.down <= 0) other().fig?.react?.('win', { yaw: other().st.yaw });
@@ -1210,7 +1217,9 @@ export async function create(canvas, ctx) {
   function startEmote(id) {
     if (state.phase !== 'walk' || state.off || state.dodge || state.fallen > 0) return;
     cutReaction();
-    state.emote = { id, at: state.t };
+    // (a 2017 hero's own emote in the slot's place, as long as it is: lib/emote.js's emoteFor)
+    const got = emoteFor(me().fig, id);
+    state.emote = { id, at: state.t, length: got?.length, walk: got?.walk };
   }
   let emoteShown = null;
   let emoteFig = null; // (whose figure it's on: a swap leaves it with them)
@@ -1679,6 +1688,8 @@ export async function create(canvas, ctx) {
     emit(e);
     const ev = e?.type === 'mission' ? e.event : null;
     if ((ev?.type === 'capture' && ev.you) || ev?.type === 'won') cheer();
+    // (the battle's end: a 2017 hero in the game's own victory pose, or its defeat)
+    if (ev?.type === 'won' || ev?.type === 'lost') endPose(ev.type === 'won');
   };
   const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced, only: site.cast === 'models' }) : null;
   const assaultOn = () => Boolean(assault?.running());

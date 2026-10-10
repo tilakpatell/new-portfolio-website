@@ -25,7 +25,8 @@
 //     not the game's rig, naming what it lacks
 //   PACK_DIR, packUrls(hero): the packs a figure loads, the humanoid first,
 //     then the hero's own, or for a soldier (no hero) the soldiers' (npc:
-//     walrusSets/npc.js's cover, awareness and arrivals), and the
+//     walrusSets/npc.js's cover, awareness and arrivals), a hero's emotes
+//     (emotes-<hero>: its four, its victories, its stage idle), and the
 //     additive layer's; with { extras: false } (richClips: a phone's
 //     levels) the humanoid's and the hero's alone
 //     the additive layer's last (its clips marked `additive`: laid over the
@@ -41,11 +42,13 @@
 import * as THREE from 'three';
 import { cloneScene, loadGLTF } from './gltfCache';
 import { CLIP_FALLBACK, SOCKETS, checkWalrus, isWalrus } from './walrusRig.js';
+import { EMOTE_HEROES } from './walrusSets/emotes.js';
 
 export const PACK_DIR = '/models/galaxy/bf2017';
 export const packUrls = (hero = null, { extras = true } = {}) => [
   `${PACK_DIR}/clips-humanoid.glb`,
   ...(hero ? [`${PACK_DIR}/clips-${hero}.glb`] : extras ? [`${PACK_DIR}/clips-npc.glb`] : []),
+  ...(extras && EMOTE_HEROES.includes(hero) ? [`${PACK_DIR}/clips-emotes-${hero}.glb`] : []),
   ...(extras ? [`${PACK_DIR}/clips-additive.glb`] : []),
 ];
 // whether a device's level loads the packs past a figure's own (the soldiers',

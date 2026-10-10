@@ -96,7 +96,7 @@ describe('a figure on the game’s skeleton', () => {
   });
 
   it('loads the humanoid pack first and a hero’s over it', () => {
-    expect(packUrls('luke')).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-luke.glb', '/models/galaxy/bf2017/clips-additive.glb']);
+    expect(packUrls('luke')).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-luke.glb', '/models/galaxy/bf2017/clips-emotes-luke.glb', '/models/galaxy/bf2017/clips-additive.glb']);
     expect(packUrls()).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-npc.glb', '/models/galaxy/bf2017/clips-additive.glb']);
     // (a phone's levels: the figure's own alone)
     expect(packUrls('luke', { extras: false })).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-luke.glb']);

@@ -40,6 +40,7 @@ import { anyFigure } from '../actors';
 import { groundAt, pushOut, tooDeep } from '../walker';
 import { BATTLE_BODY, RULES, SOLDIERS, battleView, chooseSide as pickSide, deploy as deployAt, endBattle, hitSoldier, newBattle, objectiveFor, soldierBody, stepBattle, youDown as putYouDown } from './assault';
 import { sharpen } from '../../../../lib/three/textures';
+import { victoryFor } from '../../../../lib/three/walrusSets/emotes';
 
 const EYE = 1.4; // metres: where a soldier's bolt leaves from
 const CHEST = 1.0; // metres: where one lands
@@ -411,7 +412,10 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
     if (b.cheer && t >= b.cheer.at) {
       const u = (t - b.cheer.at) / HOP.time;
       if (b.rigged) {
-        b.fig.react?.('win', {});
+        // (the battle won: the game's own victory pose, where the figure has the soldiers' set)
+        const v = b.cheer.hops >= 2 ? victoryFor(b.fig.clips, s.id) : null;
+        if (v) b.fig.play?.(v, { hold: 8 });
+        else b.fig.react?.('win', {});
         b.cheer = null;
       } else if (u >= b.cheer.hops) b.cheer = null;
       else hop = HOP.high * Math.sin(Math.PI * (u % 1));
