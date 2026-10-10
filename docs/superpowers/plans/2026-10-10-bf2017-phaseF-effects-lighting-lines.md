@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Phases 0 to 2's Global Constraints (keys, caps, the sequel list, the gates, the game first).
-- **Files this lane owns**: `src/lib/three/fx/*`, `src/lib/sound/gameSounds.js`, `surface/saberFx.js` (new, per the saber-forms design, lane A's look), the effect calls in `surface/scene.js` (`fx.sparks`, `saberHit`, the bolt pool's material) and `lib/three/combat/trail.js`, `bolts.js`, `scripts/bf2017-fx.mjs`, `public/models/galaxy/bf2017/fx/`. It does not touch the combat rules (`lib/combat/*`), the loaders, the worlds' kits or lane W's `levelSky.js` (it calls it).
+- **Files this lane owns**: `src/lib/three/fx/*`, `src/lib/sound/gameSounds.js`, `surface/saberFx.js` (new, per the saber-forms design, lane A's look), the effect calls in `surface/scene.js` (`fx.sparks`, `saberHit`, the bolt pool's material) and `lib/three/combat/trail.js`, `bolts.js`, `scripts/bf2017-fx.mjs`, `public/models/galaxy/bf2017/fx/`. **Other accounts' work to build on, not beside**: the space layer's effects are `galaxy/fx.js`, `galaxy/warEffects.js` and `galaxy/stationFx.js` (PR #807, merged: the Death Stars' dish beam and the ring of fire) and, when PR #793 merges, `galaxy/battlePlans.js`; the surface's bolts and aim may move into `surface/boltPlay.js` and `blaster.js` when PR #781 (Rapier body, open draft) merges: merge main before task 2 and put the game's look where the bolt is drawn then. It does not touch the combat rules (`lib/combat/*`), the loaders, the worlds' kits or lane W's `levelSky.js` (it calls it).
 - An effect texture ships as a WebP sprite sheet at 1024 for `high`, 512 below, 2048 on `ultra`, additive where the game's material is; every effect under 256 KB; the whole effect set under 6 MB and loaded once per galaxy visit.
 - Effects obey `lib/three/pace`: particle counts scale by tier (a quarter on `low`, half on `mid`); no effect adds a draw call per particle (sprites in one `InstancedMesh` or `Points` per effect).
 - The audio map is written now with the game's names left `null`; nothing plays from the game until a file exists in the bucket, and the fallback is always today's sound.
@@ -21,7 +21,7 @@
 ## Review Focus
 
 1. A sprite sheet whose frame grid is not square (`T_Wisties_5x1_01`): the flipbook reads the grid from the name (`_5x1_`) or the manifest, tested in a pure `flipbook.js`.
-2. Additive effects under the site's bloom (`saberFx.js`'s threshold 1.7): an effect brighter than the threshold blooms, so the sheets' intensities are calibrated once (task 3's shot compares a bolt's bloom radius before and after).
+2. Additive effects under the galaxy's own bloom (PR #804, merged: `createPost` takes a scene's bloom; the galaxy's look is threshold 1.4 with a soft knee 0.5, strength 0.5, a falloff per mip and a cap; the saber-forms design's "1.7" is stale): an effect brighter than the threshold blooms, so the sheets' intensities are calibrated once against `scripts/galaxy-bloom-check.mjs` (task 2's shot compares a bolt's bloom radius before and after).
 3. An effect texture the bucket does not have yet (367 of 378 at planning time): `gameLook` returns `null` and the procedural look stands, never a missing-texture magenta; tested.
 4. Explosions by vehicle must not spawn a mesh per fragment: the game's debris meshes (`deathstar_debris`, the AT-AT destruction leftovers) are instanced, capped per tier.
 5. The sound map's names must be the ones `sounds.js`, `sfx.js` and `clips.js` already use, so a game file drops in without code; the test asserts every key exists in those modules' name lists.
