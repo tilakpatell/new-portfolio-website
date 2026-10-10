@@ -3184,6 +3184,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const ground = footSolids(obstacles(), S.R);
     // (a loose thing in its way, short of the ground, stops it and is knocked)
     // (a fixed one stops it too, unmoved; by the ground, the leaves round it thrown)
+    // (asked only as far as the nearest person on the way, lib/combat/bolt.js:
+    // a thing behind someone it hits isn't knocked)
     const solids = (a, b) => {
       const g = ground(a, b);
       const knocked = lp ? lp.shot(a, g?.at ?? b) : null;
