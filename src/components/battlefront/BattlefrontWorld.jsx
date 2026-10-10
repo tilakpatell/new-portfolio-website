@@ -15,7 +15,7 @@ const NAMES = { 'd-orig-assault': 'ID_C_ASSAULT_TROOPER', 'l-orig-assault': 'ID_
 // the game's word for an offer where its strings have one, else its own name
 const offerName = (o) => {
   if (o.kind === 'class') return NAMES[o.id] ? stringOf(rb, NAMES[o.id]) : String(o.cls ?? o.id).toUpperCase();
-  if (o.kind === 'hero') return stringOf(rb, rb.heroes[o.id]?.name ?? '') || o.id;
+  if (o.kind === 'hero') return rb.heroes[o.id]?.name ? stringOf(rb, rb.heroes[o.id].name) : o.id.toUpperCase();
   return o.id.replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase();
 };
 const WORDS = {

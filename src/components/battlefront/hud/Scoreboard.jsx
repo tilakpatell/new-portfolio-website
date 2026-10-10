@@ -6,7 +6,7 @@
 export default function Scoreboard({ teams = {}, title = 'Scoreboard', bare = false }) {
   const tables = Object.entries(teams).map(([t, team]) => (
           <table key={t} className="bf-table">
-            <caption className="bf-stage">{team.name}</caption>
+            <caption className="bf-stage-name">{team.name}</caption>
             <thead>
               <tr>
                 <th scope="col">Name</th>
