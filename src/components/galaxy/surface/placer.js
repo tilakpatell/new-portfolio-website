@@ -151,22 +151,24 @@ function sized(gltf, row) {
   root.userData.sized = true;
 }
 
-// A kind's model, or its plain file when the cut asked for can't be had: an
-// .ultra cut lives in the public bucket only (the 2017 full cuts, lane V's
-// and phase 1's), so a site without the bucket, or a bucket without that
-// file, still draws the kind, at high.
+// A kind's model, or its plain file when the cut asked for can't be had: a
+// game-derived .ultra cut can live in the public bucket only (the pipeline
+// design's section 6), so a site without the bucket, or a bucket without
+// that file, still draws the kind, at high.
 export const fallbackFor = (kind, url, models = SURFACE_MODELS) => {
   const plain = modelUrlFor(kind, 'high', models);
   return url !== plain && url === modelUrlFor(kind, 'ultra', models) ? plain : null;
 };
-// Which cut is drawn first and which swapped in after: at ultra, a kind
-// whose ultra cut is a full one (the game's LOD0 at 2048, from the bucket)
-// draws its plain cut first, the full one taking its place when it lands
-// (lib/net/progressive.js's rule, a model's whole file the unit); otherwise
-// the level's own cut, nothing after it.
+// Which cut is drawn first and which swapped in after: a kind whose row is
+// `native` (the game's own files, its plain and ultra cuts in the public
+// bucket: the pipeline design's section 6) draws its light cut first, the
+// level's own taking its place when it lands (lib/net/progressive.js's
+// rule, a model's whole file the unit); otherwise the level's own cut,
+// nothing after it.
 export function cutsToLoad(kind, level, models = SURFACE_MODELS) {
   const url = modelUrlFor(kind, level, models);
-  if (level === 'ultra' && models[kind]?.ultra?.full) return { first: modelUrlFor(kind, 'high', models), then: url };
+  const row = models[kind];
+  if (row?.native && row.lod) return { first: lodUrlFor(kind, models), then: url };
   return { first: url, then: null };
 }
 
