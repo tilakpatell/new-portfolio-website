@@ -77,6 +77,8 @@
     "camera": "Gameplay/Kits/Hero/Hero_Lightsaber_Default_Camera_3P",
     "costs": "LIGHTSABER_COSTS_*_LUKE"
    },
+   "health": 750,
+   "health_source": "Gameplay/Kits/Hero/Luke/Affector_Health_Luke#MaxHealthAffectorAsset.MaxHealth",
    "damage": {
     "hit": {
      "damage": 130,
@@ -181,6 +183,8 @@
     "camera": "Gameplay/Kits/Hero/Hero_Lightsaber_Vader_Camera_3P",
     "costs": "LIGHTSABER_COSTS_*_VADER"
    },
+   "health": 800,
+   "health_source": "Gameplay/Kits/Hero/DarthVader/Affector_Health_DarthVader#MaxHealthAffectorAsset.MaxHealth",
    "damage": {
     "hit": {
      "damage": 130,
@@ -275,6 +279,8 @@
     "camera": "Gameplay/Kits/Hero/Hero_Lightsaber_Default_Camera_3P",
     "costs": "LIGHTSABER_COSTS_*_OBI"
    },
+   "health": 750,
+   "health_source": "Gameplay/Kits/Hero/ObiWan/Affectors/Health/Affector_ObiWan_Health#MaxHealthAffectorAsset.MaxHealth",
    "damage": {
     "behind": {
      "damage": 20,
@@ -379,6 +385,8 @@
     "camera": "Gameplay/Kits/Hero/Hero_Lightsaber_Default_Camera_3P",
     "costs": "LIGHTSABER_COSTS_*_ANAKIN"
    },
+   "health": 800,
+   "health_source": "Gameplay/Kits/Hero/Anakin/Affectors/Health/Affector_Anakin_Health#MaxHealthAffectorAsset.MaxHealth",
    "damage": {
     "hit": {
      "damage": 130,
@@ -473,6 +481,8 @@
     "camera": "Gameplay/Kits/Hero/Hero_Lightsaber_Default_Camera_3P",
     "costs": "LIGHTSABER_COSTS_*_MAUL"
    },
+   "health": 700,
+   "health_source": "Gameplay/Kits/Hero/Maul/Affector_Health_Maul#MaxHealthAffectorAsset.MaxHealth",
    "damage": {
     "hit": {
      "damage": 120,
@@ -567,6 +577,8 @@
     "camera": "Gameplay/Kits/Hero/Hero_Lightsaber_Default_Camera_3P",
     "costs": "LIGHTSABER_COSTS_*_DOOKU"
    },
+   "health": 750,
+   "health_source": "Gameplay/Kits/Hero/Dooku/Affectors/BaseAffectors/Affector_Health_Dooku#MaxHealthAffectorAsset.MaxHealth",
    "damage": {
     "behind": {
      "damage": 30,
@@ -661,6 +673,8 @@
     "camera": "Gameplay/Kits/Hero/Hero_Lightsaber_Yoda_Camera_3P",
     "costs": "LIGHTSABER_COSTS_*_YODA"
    },
+   "health": 700,
+   "health_source": "Gameplay/Kits/Hero/Yoda/Affector_Health_Yoda#MaxHealthAffectorAsset.MaxHealth",
    "damage": {
     "hit": {
      "damage": 125,
@@ -755,6 +769,8 @@
     "camera": "Gameplay/Kits/Hero/Hero_Lightsaber_Default_Camera_3P",
     "costs": "LIGHTSABER_COSTS_*_GRIEVOUS"
    },
+   "health": 800,
+   "health_source": "Gameplay/Kits/Hero/Grievous/Affectors/Health/Affector_Grievous_Health#MaxHealthAffectorAsset.MaxHealth",
    "damage": {
     "behind": {
      "damage": 30,
@@ -845,6 +861,13 @@
  "hand": {
   "broken": 1.2,
   "broken_source": "hand",
+  "combo": 0.45,
+  "combo_source": "hand",
+  "roll": {
+   "dist": 3.5,
+   "dur": 0.63,
+   "_source": "hand"
+  },
   "standIn": "luke"
  },
  "names": {

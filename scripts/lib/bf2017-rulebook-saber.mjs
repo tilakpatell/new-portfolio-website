@@ -41,7 +41,7 @@
 // - The dodge: Ability_Evade_CharacterState (_Dooku): TriggerCost, RetriggerCount,
 //   ActiveTime, RechargeTime; while it's on, Affector_Evading_DMGMultiplier.
 //
-//   HEROES                    { site id: { key (the cost table's), saber, deflect, evade, camera } } (record names)
+//   HEROES                    { site id: { key (the cost table's), health, saber, deflect, evade, camera } } (record names)
 //   queryOf(root)             → the hit and lunge queries
 //   damageOf(root, prefab)    → { hit, delay, behind, gate, kick? } the strike's damage rows
 //   deflectOf(root, prefab)   → { shield: { radius, offset, box }, stamina: { max } }
@@ -67,14 +67,14 @@ const camera = (who) => `${K}Hero_Lightsaber_${who}_Camera_3P`;
 // (the roster's saber heroes; Palpatine has no saber in the game, and no
 // sequel hero is read)
 export const HEROES = {
-  luke: { key: 'LUKE', saber: `${K}Luke/Prefabs/PF_Lightsaber_Luke`, deflect: `${P}PF_DeflectAbility_Gameplay_Luke`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
-  vader: { key: 'VADER', saber: `${K}DarthVader/Prefabs/PF_Lightsaber_DarthVader`, deflect: `${P}PF_DeflectAbility_Gameplay_Vader`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Vader') },
-  obiwan: { key: 'OBI', saber: `${K}ObiWan/Prefabs/Lightsaber/PF_Lightsaber_ObiWan`, deflect: `${P}PF_DeflectAbility_Gameplay_ObiWan`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
-  anakin: { key: 'ANAKIN', saber: `${K}Anakin/Prefabs/Lightsaber/PF_Lightsaber_Anakin`, deflect: `${P}PF_DeflectAbility_Gameplay_Anakin`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
-  maul: { key: 'MAUL', saber: `${K}Maul/Prefabs/PF_Lightsaber_Maul`, deflect: `${P}PF_DeflectAbility_Gameplay_Maul`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
-  dooku: { key: 'DOOKU', saber: `${K}Dooku/Prefabs/Lightsaber/PF_DefaultAbility_Lightsaber_Dooku`, deflect: `${P}PF_DeflectAbility_Gameplay_CountDooku`, evade: `${K}Ability_Evade_CharacterState_Dooku`, camera: camera('Default') },
-  yoda: { key: 'YODA', saber: `${K}Yoda/Prefabs/PF_Lightsaber_Yoda`, deflect: `${P}PF_DeflectAbility_Gameplay_Yoda`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Yoda') },
-  grievous: { key: 'GRIEVOUS', saber: `${K}Grievous/Prefabs/Lightsaber/PF_DefaultAbility_Grievous_Lightsaber`, deflect: `${P}PF_DeflectAbility_Gameplay_Grievous`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
+  luke: { key: 'LUKE', health: `${K}Luke/Affector_Health_Luke`, saber: `${K}Luke/Prefabs/PF_Lightsaber_Luke`, deflect: `${P}PF_DeflectAbility_Gameplay_Luke`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
+  vader: { key: 'VADER', health: `${K}DarthVader/Affector_Health_DarthVader`, saber: `${K}DarthVader/Prefabs/PF_Lightsaber_DarthVader`, deflect: `${P}PF_DeflectAbility_Gameplay_Vader`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Vader') },
+  obiwan: { key: 'OBI', health: `${K}ObiWan/Affectors/Health/Affector_ObiWan_Health`, saber: `${K}ObiWan/Prefabs/Lightsaber/PF_Lightsaber_ObiWan`, deflect: `${P}PF_DeflectAbility_Gameplay_ObiWan`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
+  anakin: { key: 'ANAKIN', health: `${K}Anakin/Affectors/Health/Affector_Anakin_Health`, saber: `${K}Anakin/Prefabs/Lightsaber/PF_Lightsaber_Anakin`, deflect: `${P}PF_DeflectAbility_Gameplay_Anakin`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
+  maul: { key: 'MAUL', health: `${K}Maul/Affector_Health_Maul`, saber: `${K}Maul/Prefabs/PF_Lightsaber_Maul`, deflect: `${P}PF_DeflectAbility_Gameplay_Maul`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
+  dooku: { key: 'DOOKU', health: `${K}Dooku/Affectors/BaseAffectors/Affector_Health_Dooku`, saber: `${K}Dooku/Prefabs/Lightsaber/PF_DefaultAbility_Lightsaber_Dooku`, deflect: `${P}PF_DeflectAbility_Gameplay_CountDooku`, evade: `${K}Ability_Evade_CharacterState_Dooku`, camera: camera('Default') },
+  yoda: { key: 'YODA', health: `${K}Yoda/Affector_Health_Yoda`, saber: `${K}Yoda/Prefabs/PF_Lightsaber_Yoda`, deflect: `${P}PF_DeflectAbility_Gameplay_Yoda`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Yoda') },
+  grievous: { key: 'GRIEVOUS', health: `${K}Grievous/Affectors/Health/Affector_Grievous_Health`, saber: `${K}Grievous/Prefabs/Lightsaber/PF_DefaultAbility_Grievous_Lightsaber`, deflect: `${P}PF_DeflectAbility_Gameplay_Grievous`, evade: `${K}Ability_Evade_CharacterState`, camera: camera('Default') },
 };
 
 const H = (name) => fieldHash(name);
@@ -284,9 +284,18 @@ export function aiMeleeOf(root) {
   return { damage: g.CollisionDamage, damage_source: s('CollisionDamage'), speed: g.InitialSpeed, speed_source: s('InitialSpeed'), life: g.TimeToLive, life_source: s('TimeToLive') };
 }
 
+export function healthOf(root, name) {
+  return rootOf(need(loadAsset(root, name), name)).MaxHealth;
+}
+
 // the seconds a hero reels when its block breaks at no stamina: the state
 // machine's OutOfStamina reaction is Ant's, not exported
-export const HAND = { broken: 1.2 };
+// when its block breaks at no stamina; and the seconds after a strike ends
+// in which the next continues the chain (the Ant state machine's too); and
+// the dodge of a figure with no dodge clip of the game's (the crews from
+// elsewhere): Luke's front dodge's root travel and its length, measured from
+// his pack's `dodge.front` (clips-luke.glb)
+export const HAND = { broken: 1.2, combo: 0.45, roll: { dist: 3.5, dur: 0.63 } };
 
 export function saberRow(root, id) {
   const h = HEROES[id];
@@ -294,6 +303,8 @@ export function saberRow(root, id) {
   const d = deflectOf(root, h.deflect);
   return {
     records: { saber: h.saber, deflect: h.deflect, evade: h.evade, camera: h.camera, costs: `LIGHTSABER_COSTS_*_${h.key}` },
+    health: healthOf(root, h.health),
+    health_source: `${h.health}#MaxHealthAffectorAsset.MaxHealth`,
     damage: damageOf(root, h.saber),
     react: hitReactOf(root, h.saber),
     shield: d.shield,
@@ -320,7 +331,7 @@ export function saberRulebook(root, ids = Object.keys(HEROES)) {
     ai: { melee: aiMeleeOf(root) },
     heroes,
     // (what the records don't hold: src/data/bf2017/NOTES.md, "saber.json")
-    hand: { broken: HAND.broken, broken_source: 'hand', standIn: 'luke' },
+    hand: { broken: HAND.broken, broken_source: 'hand', combo: HAND.combo, combo_source: 'hand', roll: { ...HAND.roll, _source: 'hand' }, standIn: 'luke' },
     missing,
     names: Object.fromEntries(Object.entries(HEROES).map(([id, h]) => [id, shortName(h.saber)])),
   };

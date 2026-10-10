@@ -70,7 +70,7 @@ export function strikeZone(q, me, t) {
   const az = me.z + fz * q.anchor;
   const dx = t.x - ax;
   const dz = t.z - az;
-  const dy = (t.y ?? 0) - (me.y ?? 0);
+  const dy = t.y != null && me.y != null ? t.y - me.y : 0; // (height only where both are known)
   const d = Math.hypot(dx, dy, dz);
   const h = q.hit;
   let inside = d <= h.radius && d >= h.near && off(dx, dz, me.yaw) <= h.cone * RAD;

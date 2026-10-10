@@ -35,6 +35,7 @@ Gameplay/Kits/Hero/DarthVader/GP_Hero_DarthVader	WSSoldierCustomizationGameplayA
 Gameplay/Kits/Hero/DarthVader/Kit_Hero_DarthVader	WSSoldierCustomizationKitAsset	data/Gameplay/Kits/Hero/DarthVader/Kit_Hero_DarthVader.json	4246
 Gameplay/Kits/Hero/DarthVader/U_Lightsaber_Deflect_Vader	WeaponUnlockAsset	data/Gameplay/Kits/Hero/DarthVader/U_Lightsaber_Deflect_Vader.json	535
 Gameplay/Kits/Hero/Hero_Lightsaber_Default_Camera_3P	LogicPrefabBlueprint	data/Gameplay/Kits/Hero/Hero_Lightsaber_Default_Camera_3P.json	2905
+Gameplay/Kits/Hero/Luke/Affector_Health_Luke	MaxHealthAffectorAsset	data/Gameplay/Kits/Hero/Luke/Affector_Health_Luke.json	472
 Gameplay/Kits/Hero/Luke/Prefabs/PF_Lightsaber_Luke	LogicPrefabBlueprint	data/Gameplay/Kits/Hero/Luke/Prefabs/PF_Lightsaber_Luke.json	64908
 Gameplay/Kits/Hero/PF_BlockStaggerAffectors	LogicPrefabBlueprint	data/Gameplay/Kits/Hero/PF_BlockStaggerAffectors.json	3589
 Gameplay/Kits/MP/Assault/Ability_Assault_CombatRoll_CharacterState	CharacterStatePlayerAbilityAsset	data/Gameplay/Kits/MP/Assault/Ability_Assault_CombatRoll_CharacterState.json	6396
