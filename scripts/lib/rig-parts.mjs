@@ -70,6 +70,41 @@ export function bindDelta(partIbm, bodyIbm) {
   return mul4(invert4(bodyIbm), partIbm);
 }
 
+const apply = (m, p) => [0, 1, 2].map((r) => m[r] * p[0] + m[4 + r] * p[1] + m[8 + r] * p[2] + m[12 + r]);
+// How far the one move `m` puts a part's vertex from where its own joints'
+// moves (`deltas`, by the part's joint index), blended by its weights, put
+// it: the worst, in metres, and the joint most weighted on that vertex.
+export function worstOff(nodes, m, deltas) {
+  let worst = { by: 0, joint: 0 };
+  for (const node of nodes)
+    for (const prim of node.getMesh()?.listPrimitives() ?? []) {
+      const pos = prim.getAttribute('POSITION');
+      const J = prim.getAttribute('JOINTS_0')?.getArray();
+      const W = prim.getAttribute('WEIGHTS_0')?.getArray();
+      if (!pos || !J || !W) continue;
+      for (let v = 0; v < pos.getCount(); v++) {
+        const x = pos.getElement(v, []);
+        const at = apply(m, x);
+        const own = [0, 0, 0];
+        let sum = 0;
+        let top = 0;
+        for (let k = 0; k < 4; k++) {
+          const w = W[v * 4 + k];
+          const d = deltas[J[v * 4 + k]];
+          if (!(w > 0) || !d) continue;
+          const q = apply(d, x);
+          for (let r = 0; r < 3; r++) own[r] += w * q[r];
+          sum += w;
+          if (w > W[v * 4 + top]) top = k;
+        }
+        if (!sum) continue;
+        const by = Math.hypot(at[0] - own[0] / sum, at[1] - own[1] / sum, at[2] - own[2] / sum);
+        if (by > worst.by) worst = { by, joint: J[v * 4 + top] };
+      }
+    }
+  return worst;
+}
+
 function remap(prim, partJoints, bodyJoints) {
   let unmatched = 0;
   for (let set = 0; ; set++) {
@@ -118,14 +153,14 @@ export function shareSkins(doc, say = () => {}) {
     const at = names.findIndex((n) => index.has(n));
     const ibmOf = (sk, i) => sk.getInverseBindMatrices()?.getElement(i, []) ?? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
     const m = bindDelta(ibmOf(skin, at), ibmOf(body, bodyNames.indexOf(names[at])));
-    // (one move for the whole part: every joint it shares must agree, or the
-    // part was bound in a pose of its own and moving it by one joint's
-    // delta would tear it; 1 mm and a thousandth of a turn)
-    names.forEach((n, i) => {
-      if (!index.has(n)) return;
-      const d = bindDelta(ibmOf(skin, i), ibmOf(body, bodyNames.indexOf(n)));
-      if (d.some((v, k) => Math.abs(v - m[k]) > 1e-3)) throw new Error(`part ${names[0]}…: its bind pose at ${n} differs from at ${names[at]}; it can't be moved onto the body's as one`);
-    });
+    // (one move for the whole part: where the joints it shares disagree,
+    // each vertex is checked against the move its own joints would give it,
+    // and the part is refused when any lands more than a centimetre off;
+    // the game's own parts disagree by float noise, 5 mm at most on
+    // Obi-Wan's seven)
+    const deltas = names.map((n, i) => (index.has(n) ? bindDelta(ibmOf(skin, i), ibmOf(body, bodyNames.indexOf(n))) : null));
+    const off = worstOff(root.listNodes().filter((n) => n.getSkin() === skin), m, deltas);
+    if (off.by > 0.01) throw new Error(`part ${names[at]}…: moved as one onto the body's bind pose, a vertex on ${names[off.joint]} lands ${(off.by * 100).toFixed(1)} cm from where its own joints put it`);
     for (const node of root.listNodes().filter((n) => n.getSkin() === skin)) {
       for (const prim of node.getMesh()?.listPrimitives() ?? []) toBodyBind(prim, m);
       let unmatched = 0;
