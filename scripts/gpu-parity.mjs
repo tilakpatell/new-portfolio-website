@@ -32,7 +32,7 @@
 // Chromium (a desktop's own chip); 'auto' is swiftshader on Linux without a
 // display, system elsewhere.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -61,7 +61,8 @@ const views = typeof args.view === 'string' ? args.view.split(',').map((s) => s.
 const quality = ['high', 'mid', 'low'].includes(args.quality) ? args.quality : 'high';
 const settle = Number(args.settle) || 8000;
 const before = args.before ? (args.before === true ? 'origin/main' : args.before) : null;
-const adapter = ['swiftshader', 'system'].includes(args.adapter) ? args.adapter : process.platform === 'linux' && !process.env.DISPLAY ? 'swiftshader' : 'system';
+const { adapterFor, angleFor, findChromium, launchArgs: chromiumArgs } = await import('./lib/chromium.mjs');
+const adapter = adapterFor({ adapter: args.adapter });
 const slug = route.replace(/^\/+/, '').replace(/[^a-z0-9]+/gi, '-') || 'home';
 const OUT = join(ROOT, 'scripts/gpu-parity/out', slug);
 mkdirSync(OUT, { recursive: true });
@@ -75,16 +76,11 @@ const stop = (code, why) => {
 // ── the browser ──
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
-const exe = args.chromium ?? process.env.CHROMIUM ?? readdirSync('/opt/pw-browsers', { withFileTypes: true }).filter((d) => /^chromium-\d+$/.test(d.name)).map((d) => `/opt/pw-browsers/${d.name}/chrome-linux/chrome`).find(existsSync);
+const exe = args.chromium ?? findChromium();
 if (!exe) stop(2, 'no Chromium (set CHROMIUM=/path/to/chrome)');
-// (WebGL the way the smoke check draws it, so the two agree; WebGPU on
-// the adapter asked for)
-const gl = process.platform === 'darwin' ? ['--use-angle=metal'] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
-// (--enable-unsafe-webgpu also turns on Blink's experimental WebGPU IDL,
-// whose draft texture-view swizzle is a dictionary where three gives the
-// spec's string, and every frame throws; a visitor's Chrome has it off)
-const gpu = ['--enable-unsafe-webgpu', '--disable-blink-features=WebGPUExperimentalFeatures', '--enable-features=Vulkan', ...(adapter === 'swiftshader' ? ['--use-webgpu-adapter=swiftshader'] : [])];
-const launchArgs = [...gl, ...gpu, '--ignore-gpu-blocklist', '--enable-webgl', '--js-flags=--max-old-space-size=4096'];
+// (WebGL on the machine's own chip where there is one, as the fixture and
+// the perf probe draw; WebGPU on the adapter asked for; scripts/lib/chromium.mjs)
+const launchArgs = [...chromiumArgs({ angle: angleFor(), webgpu: true, adapter }), '--js-flags=--max-old-space-size=4096'];
 
 // ── a dev server on a checkout ──
 // (a worktree's node_modules is a link to this checkout's: its fonts are let through)

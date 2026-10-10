@@ -32,7 +32,7 @@
 // scripts/gpu-parity/README.md), so there the webgpu leg fails, says so
 // and does not gate; the webgl leg gates.
 
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -56,33 +56,19 @@ const fixture = { tier, post, sky, env: true, only };
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
-// On Windows the owner's own browser (Edge ships with Windows; Chrome if it is there); elsewhere Playwright's Chromium.
-const WIN_BROWSERS = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'];
-const exe = process.env.CHROMIUM ?? process.env.CHROME ?? (process.platform === 'win32' ? WIN_BROWSERS.find(existsSync) : existsSync('/opt/pw-browsers') ? readdirSync('/opt/pw-browsers', { withFileTypes: true }).filter((d) => /^chromium-\d+$/.test(d.name)).map((d) => `/opt/pw-browsers/${d.name}/chrome-linux/chrome`).find(existsSync) : null);
+const { adapterFor, angleFor, findChromium, launchArgs } = await import('./lib/chromium.mjs');
+const exe = findChromium();
 if (!exe) {
   console.error('no Chromium (set CHROMIUM=/path/to/chrome)');
   process.exit(2);
 }
-// Where the picture is drawn: the machine's own chip on a Mac (Metal) and on
-// Windows (ANGLE over D3D11 for WebGL 2; WebGPU on D3D12, Chromium's default
-// there, so no Vulkan flag), SwiftShader on Linux without a display. ANGLE=
-// overrides the Windows choice (d3d11, vulkan, swiftshader) as the other
-// shot scripts take it.
-const swift = process.platform === 'linux' && !process.env.DISPLAY;
-const angle = process.env.ANGLE ?? (process.platform === 'darwin' ? 'metal' : process.platform === 'win32' ? 'd3d11' : 'swiftshader');
-const args = [
-  '--use-gl=angle',
-  `--use-angle=${angle}`,
-  ...(angle === 'swiftshader' ? ['--enable-unsafe-swiftshader'] : []),
-  '--enable-unsafe-webgpu',
-  '--disable-blink-features=WebGPUExperimentalFeatures',
-  ...(process.platform === 'win32' ? [] : ['--enable-features=Vulkan']),
-  ...(swift ? ['--use-webgpu-adapter=swiftshader'] : []),
-  '--ignore-gpu-blocklist',
-  '--enable-webgl',
-  '--disable-gpu-vsync',
-  '--disable-frame-rate-limit',
-];
+// Where the picture is drawn: the machine's own chip (Metal on a Mac, ANGLE
+// over D3D11 and WebGPU on D3D12 on Windows), SwiftShader on Linux without
+// a display; ANGLE= overrides (scripts/lib/chromium.mjs).
+const adapter = adapterFor();
+const swift = adapter === 'swiftshader';
+const angle = angleFor();
+const args = launchArgs({ angle, webgpu: true, adapter, uncapped: true });
 
 const { createServer } = await import('vite');
 const server = await createServer({ root: ROOT, configFile: join(ROOT, 'vite.config.js'), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null }, logLevel: 'error' });
