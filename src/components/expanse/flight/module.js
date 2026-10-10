@@ -131,7 +131,7 @@ export function inputOf(snap) {
 export default {
   id: 'flight',
   shading: 'glsl',
-  mb: 5, // (WORLD_MB['/fly']: the scans a planet wears, Coruscant's models)
+  mb: 22, // (WORLD_MB['/fly']: the scans a planet wears, Coruscant's models, the heaviest planet's landmarks)
   label: 'A ship flying low over an endless planet',
   async create(rt, props = {}) {
     const spec = props.spec;

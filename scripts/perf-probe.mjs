@@ -16,7 +16,8 @@
 // (?gpu=webgl|webgpu: a port's frame-time table is two runs of the same
 // journey; a 'glsl' world is on the classic renderer either way, and each
 // journey's report names the backend it was actually drawn on), OUT is
-// where the JSON report goes. Each journey
+// where the JSON report goes. FLY picks the `fly` journey's planet (default
+// Hoth). Each journey
 // prints a table: a row per phase (load, idle, move...), with the frame
 // times' spread, the hitches (frames over 50 and 100 ms), what the worst
 // frames were spent on, and `sizes`, the 3D canvases resized (each one
@@ -328,7 +329,8 @@ const JOURNEYS = {
   // bank round (the ship's dev hook, expanse/flight/module.js's __FLIGHT__)
   async fly(page, mark) {
     mark('load');
-    await page.goto(`${this.base}/${this.q}#/fly/hoth`, { waitUntil: 'domcontentloaded' });
+    // (FLY names another planet to fly)
+    await page.goto(`${this.base}/${this.q}#/fly/${process.env.FLY ?? 'hoth'}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__FLIGHT__ && window.__RUNTIME__?.status === 'on', null, { timeout: 240000 });
     mark('settle');
     await page.waitForFunction(() => window.__FLIGHT__.stats().leaves > 100, null, { timeout: 120000 }).catch(() => {});

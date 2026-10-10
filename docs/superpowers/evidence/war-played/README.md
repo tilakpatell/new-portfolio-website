@@ -42,3 +42,19 @@ is the halos of the bolts nearest the camera, which fill much of that view.
   the Empire (12 units from your own fleet, 187 from theirs), with the
   “Shielded” chip over the cluster. The check also saw a shot of your own
   end the shield.
+
+## `deathstars/` (part 8, the Death Stars at Scarif and Endor)
+
+From `scripts/galaxy-setpieces-check.mjs` at mid quality, as the Rebellion.
+
+- `scarif-in.jpg`: the gate gone, the Death Star out of hyperspace over
+  Scarif, its dish turned onto the planet (it was held away all through the
+  battle, where before it cycled in every 150 s mid-fight).
+- `scarif-fires.jpg`: the dish charging, about 18 s on.
+- `endor-dish.jpg`: the second Death Star turned off its spin, its dish on
+  the Rebel fleet (in the foreground), its shield up.
+
+The Endor check goes on past this to the generator, the run and the
+reactor. Its run fails at “in the tunnel” on this branch and on main alike
+(main also fails the generator and the chamber); that’s the run’s, not this
+part’s, and is left to the Yavin part, which reworks boarding in a war battle.
