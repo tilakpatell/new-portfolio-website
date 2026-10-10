@@ -1,4 +1,502 @@
 {
+  "films/bf2017/a1-m0lib-ds01-s0100-fmv.webm": {
+    "hash": "59e637c2ca93",
+    "bytes": 108337150,
+    "from": "films/bf2017/a1-m0lib-ds01-s0100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m0lib-ds02-s0210-fmv.webm": {
+    "hash": "0f89f534b726",
+    "bytes": 15662955,
+    "from": "films/bf2017/a1-m0lib-ds02-s0210-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m0lib-ds03-s0400-fmv.webm": {
+    "hash": "9c13694f1aff",
+    "bytes": 95100185,
+    "from": "films/bf2017/a1-m0lib-ds03-s0400-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m1end-ds01-s0100-fmv.webm": {
+    "hash": "9c6ec4eb7df1",
+    "bytes": 124500746,
+    "from": "films/bf2017/a1-m1end-ds01-s0100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m1end-ds02-s0400-fmv.webm": {
+    "hash": "3c2f8dde19f4",
+    "bytes": 74021284,
+    "from": "films/bf2017/a1-m1end-ds02-s0400-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m1end-ds03-s0900-fmv.webm": {
+    "hash": "e04a0ec8577e",
+    "bytes": 31798783,
+    "from": "films/bf2017/a1-m1end-ds03-s0900-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m1end-ds05-s1200-fmv.webm": {
+    "hash": "2d18bd548c53",
+    "bytes": 216524952,
+    "from": "films/bf2017/a1-m1end-ds05-s1200-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m2fon-ds01-s0100-fmv.webm": {
+    "hash": "97c6f280117e",
+    "bytes": 85953515,
+    "from": "films/bf2017/a1-m2fon-ds01-s0100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m2fon-ds02-s0680-fmv.webm": {
+    "hash": "83614c73adf5",
+    "bytes": 66968138,
+    "from": "films/bf2017/a1-m2fon-ds02-s0680-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m2fon-ds03-s0800-fmv.webm": {
+    "hash": "da234a7d90a8",
+    "bytes": 74766566,
+    "from": "films/bf2017/a1-m2fon-ds03-s0800-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m3pil-ds01-s0100-fmv.webm": {
+    "hash": "72dc5097db2a",
+    "bytes": 78529511,
+    "from": "films/bf2017/a1-m3pil-ds01-s0100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m3pil-ds02-s0600-fmv.webm": {
+    "hash": "69f63e6b32bb",
+    "bytes": 88381758,
+    "from": "films/bf2017/a1-m3pil-ds02-s0600-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m3pil-ds03-s1500-fmv.webm": {
+    "hash": "8f260a82343f",
+    "bytes": 186077663,
+    "from": "films/bf2017/a1-m3pil-ds03-s1500-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m4var-ds01-s0100-fmv.webm": {
+    "hash": "0c860a80eea2",
+    "bytes": 258948817,
+    "from": "films/bf2017/a1-m4var-ds01-s0100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m4var-ds02-s0400-fmv.webm": {
+    "hash": "95c92b645396",
+    "bytes": 126050082,
+    "from": "films/bf2017/a1-m4var-ds02-s0400-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m4var-ds03-s1600-fmv.webm": {
+    "hash": "e6f7c61f44be",
+    "bytes": 169321706,
+    "from": "films/bf2017/a1-m4var-ds03-s1600-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m5nab-ds01-s0100-fmv.webm": {
+    "hash": "a6d2020e2894",
+    "bytes": 71421831,
+    "from": "films/bf2017/a1-m5nab-ds01-s0100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m5nab-ds02-s0250-fmv.webm": {
+    "hash": "b007a20361d4",
+    "bytes": 40350743,
+    "from": "films/bf2017/a1-m5nab-ds02-s0250-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m5nab-ds02-s0710-fmv.webm": {
+    "hash": "8c8be2256cc9",
+    "bytes": 46103488,
+    "from": "films/bf2017/a1-m5nab-ds02-s0710-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m5nab-ds03-s0900-fmv.webm": {
+    "hash": "6e55f2d23c62",
+    "bytes": 82186996,
+    "from": "films/bf2017/a1-m5nab-ds03-s0900-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a1-m5nab-ds05-s1100-fmv.webm": {
+    "hash": "e24b1dbccc5e",
+    "bytes": 143748827,
+    "from": "films/bf2017/a1-m5nab-ds05-s1100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a2-m2bes-ds01-s0100-fmv.webm": {
+    "hash": "d863decc7d57",
+    "bytes": 22716878,
+    "from": "films/bf2017/a2-m2bes-ds01-s0100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a2-m2bes-ds02-s0500-fmv.webm": {
+    "hash": "6119ce3c0c76",
+    "bytes": 28126491,
+    "from": "films/bf2017/a2-m2bes-ds02-s0500-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a2-m2bes-ds03-s1000-fmv.webm": {
+    "hash": "9a8e437c769e",
+    "bytes": 21696746,
+    "from": "films/bf2017/a2-m2bes-ds03-s1000-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a2-m3sul-ds01-s0100-fmv.webm": {
+    "hash": "e390277783e9",
+    "bytes": 78964371,
+    "from": "films/bf2017/a2-m3sul-ds01-s0100-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/a2-m3sul-ds03-s0900-fmv.webm": {
+    "hash": "75969a3a7315",
+    "bytes": 53468039,
+    "from": "films/bf2017/a2-m3sul-ds03-s0900-fmv.webm",
+    "tier": "film"
+  },
+  "films/bf2017/doorpanels.webm": {
+    "hash": "24037f387e4c",
+    "bytes": 2517894,
+    "from": "films/bf2017/doorpanels.webm",
+    "tier": "film"
+  },
+  "films/bf2017/droid-legendary.webm": {
+    "hash": "9256a7004bd7",
+    "bytes": 4433128,
+    "from": "films/bf2017/droid-legendary.webm",
+    "tier": "film"
+  },
+  "films/bf2017/iden-legendary-shock.webm": {
+    "hash": "1dac3996c0e8",
+    "bytes": 9573957,
+    "from": "films/bf2017/iden-legendary-shock.webm",
+    "tier": "film"
+  },
+  "films/bf2017/iden-lvlpickup-autoturret.webm": {
+    "hash": "b6177cec33d6",
+    "bytes": 15525132,
+    "from": "films/bf2017/iden-lvlpickup-autoturret.webm",
+    "tier": "film"
+  },
+  "films/bf2017/iden-officer-combat.webm": {
+    "hash": "a86fa5c931a1",
+    "bytes": 13903561,
+    "from": "films/bf2017/iden-officer-combat.webm",
+    "tier": "film"
+  },
+  "films/bf2017/logos-start-01.webm": {
+    "hash": "0a2166d6fa4b",
+    "bytes": 8893690,
+    "from": "films/bf2017/logos-start-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/lootbox.webm": {
+    "hash": "54f583de36fa",
+    "bytes": 112262,
+    "from": "films/bf2017/lootbox.webm",
+    "tier": "film"
+  },
+  "films/bf2017/lvlpickup-barrage.webm": {
+    "hash": "7c34ee04e37b",
+    "bytes": 20742543,
+    "from": "films/bf2017/lvlpickup-barrage.webm",
+    "tier": "film"
+  },
+  "films/bf2017/lvlpickup-orbitalstrike.webm": {
+    "hash": "ef75003c19f1",
+    "bytes": 6439323,
+    "from": "films/bf2017/lvlpickup-orbitalstrike.webm",
+    "tier": "film"
+  },
+  "films/bf2017/mp-yavin-placeholder-intro-01.webm": {
+    "hash": "c75c1c6c68b2",
+    "bytes": 3497101,
+    "from": "films/bf2017/mp-yavin-placeholder-intro-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/mp-yavin-placeholder-loop-01.webm": {
+    "hash": "d00f5bd765a0",
+    "bytes": 3497101,
+    "from": "films/bf2017/mp-yavin-placeholder-loop-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/mt-volcano2.webm": {
+    "hash": "b13caa283cc5",
+    "bytes": 9765274,
+    "from": "films/bf2017/mt-volcano2.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-athulla-01.webm": {
+    "hash": "b2bc7d5f3ee4",
+    "bytes": 3289379,
+    "from": "films/bf2017/planet-athulla-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-bespin-01.webm": {
+    "hash": "4772e8c10bcc",
+    "bytes": 2890573,
+    "from": "films/bf2017/planet-bespin-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-deathstarii-01.webm": {
+    "hash": "c8ad4d4646ad",
+    "bytes": 3654183,
+    "from": "films/bf2017/planet-deathstarii-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-endor-01.webm": {
+    "hash": "378da0b43995",
+    "bytes": 3402464,
+    "from": "films/bf2017/planet-endor-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-felucia-01.webm": {
+    "hash": "93236ba5e427",
+    "bytes": 1183276,
+    "from": "films/bf2017/planet-felucia-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-fondor-01.webm": {
+    "hash": "53962eeba8a3",
+    "bytes": 4350255,
+    "from": "films/bf2017/planet-fondor-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-geonosis-01.webm": {
+    "hash": "f8c72872ecac",
+    "bytes": 3403016,
+    "from": "films/bf2017/planet-geonosis-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-hoth-01.webm": {
+    "hash": "3b1ebda18e9e",
+    "bytes": 1547155,
+    "from": "films/bf2017/planet-hoth-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-kamino-01.webm": {
+    "hash": "99582080c4fb",
+    "bytes": 2308527,
+    "from": "films/bf2017/planet-kamino-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-kashyyyk-01.webm": {
+    "hash": "2945adca4ce8",
+    "bytes": 3347183,
+    "from": "films/bf2017/planet-kashyyyk-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-kessel-01.webm": {
+    "hash": "83771b0b3cf2",
+    "bytes": 2767824,
+    "from": "films/bf2017/planet-kessel-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-liberty-01.webm": {
+    "hash": "8facb367c3cf",
+    "bytes": 6142955,
+    "from": "films/bf2017/planet-liberty-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-naboo-01.webm": {
+    "hash": "af8dfff5facf",
+    "bytes": 3424707,
+    "from": "films/bf2017/planet-naboo-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-pilio-alive-01.webm": {
+    "hash": "4baea7de8d74",
+    "bytes": 2593650,
+    "from": "films/bf2017/planet-pilio-alive-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-pilio-dead-01.webm": {
+    "hash": "7a8428959484",
+    "bytes": 2811278,
+    "from": "films/bf2017/planet-pilio-dead-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-ryloth-01.webm": {
+    "hash": "1ae0885c5137",
+    "bytes": 1082010,
+    "from": "films/bf2017/planet-ryloth-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-scarif-01.webm": {
+    "hash": "4140956f6b61",
+    "bytes": 860667,
+    "from": "films/bf2017/planet-scarif-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-sullust-01.webm": {
+    "hash": "7cb9c51da5c1",
+    "bytes": 3593492,
+    "from": "films/bf2017/planet-sullust-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-tatooine-01.webm": {
+    "hash": "ca0419943dde",
+    "bytes": 2150834,
+    "from": "films/bf2017/planet-tatooine-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-vardos-alive-01.webm": {
+    "hash": "3fed5b6f5e61",
+    "bytes": 5136470,
+    "from": "films/bf2017/planet-vardos-alive-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-vardos-dead-01.webm": {
+    "hash": "adf8d3a6d093",
+    "bytes": 5081041,
+    "from": "films/bf2017/planet-vardos-dead-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/planet-yavin4-01.webm": {
+    "hash": "ffc747e27fce",
+    "bytes": 2664487,
+    "from": "films/bf2017/planet-yavin4-01.webm",
+    "tier": "film"
+  },
+  "films/bf2017/precombat.webm": {
+    "hash": "74880723bacf",
+    "bytes": 5519230,
+    "from": "films/bf2017/precombat.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-campaign-dlc.webm": {
+    "hash": "fb7bb3924d94",
+    "bytes": 604348,
+    "from": "films/bf2017/tile-campaign-dlc.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-campaign-selectmission.webm": {
+    "hash": "b6b68edfc428",
+    "bytes": 493572,
+    "from": "films/bf2017/tile-campaign-selectmission.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-campaign-startnew.webm": {
+    "hash": "0218ece9159d",
+    "bytes": 433893,
+    "from": "films/bf2017/tile-campaign-startnew.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-co-op.webm": {
+    "hash": "960d76ddf8cf",
+    "bytes": 530838,
+    "from": "films/bf2017/tile-co-op.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-custom.webm": {
+    "hash": "208706c33c90",
+    "bytes": 797293,
+    "from": "films/bf2017/tile-custom.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-dark.webm": {
+    "hash": "330d088a11aa",
+    "bytes": 1511585,
+    "from": "films/bf2017/tile-dark.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-light.webm": {
+    "hash": "1ba37c4ebef5",
+    "bytes": 830825,
+    "from": "films/bf2017/tile-light.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-multiplayer.webm": {
+    "hash": "de2c7f778c34",
+    "bytes": 2741671,
+    "from": "films/bf2017/tile-multiplayer.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-scenario.webm": {
+    "hash": "18957ab90355",
+    "bytes": 951978,
+    "from": "films/bf2017/tile-scenario.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-searching.webm": {
+    "hash": "9d77636ba001",
+    "bytes": 154008,
+    "from": "films/bf2017/tile-searching.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-settings-audio.webm": {
+    "hash": "933c5e711093",
+    "bytes": 60809,
+    "from": "films/bf2017/tile-settings-audio.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-settings-controls.webm": {
+    "hash": "2b82560bb864",
+    "bytes": 82718,
+    "from": "films/bf2017/tile-settings-controls.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-settings-credits.webm": {
+    "hash": "5725d1ad65db",
+    "bytes": 478938,
+    "from": "films/bf2017/tile-settings-credits.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-settings-ea.webm": {
+    "hash": "1ba59d9f4823",
+    "bytes": 448764,
+    "from": "films/bf2017/tile-settings-ea.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-settings-gameplay.webm": {
+    "hash": "a357102fece3",
+    "bytes": 189750,
+    "from": "films/bf2017/tile-settings-gameplay.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-settings-video.webm": {
+    "hash": "77ebe26e4488",
+    "bytes": 70968,
+    "from": "films/bf2017/tile-settings-video.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-skirmish.webm": {
+    "hash": "f7529b756af6",
+    "bytes": 1077208,
+    "from": "films/bf2017/tile-skirmish.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-solo.webm": {
+    "hash": "7fc74b6e1cd3",
+    "bytes": 382285,
+    "from": "films/bf2017/tile-solo.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-sp-campaign.webm": {
+    "hash": "7d65250bb3a4",
+    "bytes": 835575,
+    "from": "films/bf2017/tile-sp-campaign.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-supremacy.webm": {
+    "hash": "785c2049f5f3",
+    "bytes": 2844258,
+    "from": "films/bf2017/tile-supremacy.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-tutorials.webm": {
+    "hash": "216f907d25eb",
+    "bytes": 340649,
+    "from": "films/bf2017/tile-tutorials.webm",
+    "tier": "film"
+  },
+  "films/bf2017/tile-vs.webm": {
+    "hash": "76a18088929a",
+    "bytes": 398832,
+    "from": "films/bf2017/tile-vs.webm",
+    "tier": "film"
+  },
   "models/galaxy/arc170.glb": {
     "hash": "ceae5130daa4",
     "bytes": 920576,
@@ -11,9 +509,21 @@
     "from": "gameplay/vehicles/air/awing/vehicle_air_awing_01_static_donotuse_mesh",
     "tier": "surface"
   },
+  "models/galaxy/bf2017/clips-1p.glb": {
+    "hash": "89b81f854dc0",
+    "bytes": 373328,
+    "from": "models/galaxy/bf2017/clips-1p.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-additive.glb": {
+    "hash": "482890c2f8fa",
+    "bytes": 566932,
+    "from": "models/galaxy/bf2017/clips-additive.glb",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/clips-anakin.glb": {
-    "hash": "eb588371ba92",
-    "bytes": 1291596,
+    "hash": "0c84f1562fea",
+    "bytes": 1291592,
     "from": "models/galaxy/bf2017/clips-anakin.glb",
     "tier": "pack"
   },
@@ -41,6 +551,18 @@
     "from": "models/galaxy/bf2017/clips-atte.glb",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/clips-band.glb": {
+    "hash": "8c7f3b525bef",
+    "bytes": 381412,
+    "from": "models/galaxy/bf2017/clips-band.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-birdtheed.glb": {
+    "hash": "3482288cbb0e",
+    "bytes": 40076,
+    "from": "models/galaxy/bf2017/clips-birdtheed.glb",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/clips-bobafett.glb": {
     "hash": "4e0c74629169",
     "bytes": 144828,
@@ -59,9 +581,15 @@
     "from": "models/galaxy/bf2017/clips-chewie.glb",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/clips-chicken.glb": {
+    "hash": "dbd5acf1b054",
+    "bytes": 53468,
+    "from": "models/galaxy/bf2017/clips-chicken.glb",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/clips-dooku.glb": {
-    "hash": "9e26065a79c9",
-    "bytes": 1240924,
+    "hash": "504b6d795d2d",
+    "bytes": 1240920,
     "from": "models/galaxy/bf2017/clips-dooku.glb",
     "tier": "pack"
   },
@@ -69,6 +597,108 @@
     "hash": "6bfc43acfb0d",
     "bytes": 286120,
     "from": "models/galaxy/bf2017/clips-droideka.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-anakin.glb": {
+    "hash": "bebcf16e1d1d",
+    "bytes": 408168,
+    "from": "models/galaxy/bf2017/clips-emotes-anakin.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-bobafett.glb": {
+    "hash": "17652a8b5546",
+    "bytes": 376636,
+    "from": "models/galaxy/bf2017/clips-emotes-bobafett.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-bossk.glb": {
+    "hash": "dacc1b64e1ad",
+    "bytes": 422656,
+    "from": "models/galaxy/bf2017/clips-emotes-bossk.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-chewie.glb": {
+    "hash": "8919b289eca9",
+    "bytes": 479800,
+    "from": "models/galaxy/bf2017/clips-emotes-chewie.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-dooku.glb": {
+    "hash": "32c20ce19c22",
+    "bytes": 445804,
+    "from": "models/galaxy/bf2017/clips-emotes-dooku.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-han.glb": {
+    "hash": "4057ef1adc8a",
+    "bytes": 413912,
+    "from": "models/galaxy/bf2017/clips-emotes-han.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-lando.glb": {
+    "hash": "75b209f57d09",
+    "bytes": 419760,
+    "from": "models/galaxy/bf2017/clips-emotes-lando.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-leia.glb": {
+    "hash": "39bfe34400f3",
+    "bytes": 418116,
+    "from": "models/galaxy/bf2017/clips-emotes-leia.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-luke.glb": {
+    "hash": "f072d613e796",
+    "bytes": 431172,
+    "from": "models/galaxy/bf2017/clips-emotes-luke.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-maul.glb": {
+    "hash": "13e040dfab28",
+    "bytes": 461624,
+    "from": "models/galaxy/bf2017/clips-emotes-maul.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-obiwan.glb": {
+    "hash": "cd200a343c4f",
+    "bytes": 425264,
+    "from": "models/galaxy/bf2017/clips-emotes-obiwan.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-palpatine.glb": {
+    "hash": "a38cbcc32d79",
+    "bytes": 224160,
+    "from": "models/galaxy/bf2017/clips-emotes-palpatine.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-emotes-vader.glb": {
+    "hash": "c2c7f0887725",
+    "bytes": 374260,
+    "from": "models/galaxy/bf2017/clips-emotes-vader.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-felbird.glb": {
+    "hash": "352a2e770b2b",
+    "bytes": 58340,
+    "from": "models/galaxy/bf2017/clips-felbird.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-felripper.glb": {
+    "hash": "c3bd0f1b7ca7",
+    "bytes": 35200,
+    "from": "models/galaxy/bf2017/clips-felripper.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-gamorrean.glb": {
+    "hash": "20e2709aed7b",
+    "bytes": 317188,
+    "from": "models/galaxy/bf2017/clips-gamorrean.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-gonk.glb": {
+    "hash": "102a09e3586c",
+    "bytes": 15684,
+    "from": "models/galaxy/bf2017/clips-gonk.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-han.glb": {
@@ -81,6 +711,12 @@
     "hash": "6d9ff1254a22",
     "bytes": 863976,
     "from": "models/galaxy/bf2017/clips-humanoid.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-kaminoevent24.glb": {
+    "hash": "3ff0a7d4bde8",
+    "bytes": 287024,
+    "from": "models/galaxy/bf2017/clips-kaminoevent24.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-lando.glb": {
@@ -96,33 +732,129 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-luke.glb": {
-    "hash": "ae3272e90473",
-    "bytes": 1384564,
+    "hash": "1567d1becc59",
+    "bytes": 1384560,
     "from": "models/galaxy/bf2017/clips-luke.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-maul.glb": {
-    "hash": "5a2ae539c234",
-    "bytes": 1302748,
+    "hash": "900bd2a2afb8",
+    "bytes": 1302740,
     "from": "models/galaxy/bf2017/clips-maul.glb",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/clips-npc.glb": {
+    "hash": "b90a478d267f",
+    "bytes": 1148108,
+    "from": "models/galaxy/bf2017/clips-npc.glb",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/clips-obiwan.glb": {
-    "hash": "237361d10153",
+    "hash": "1e10d9344036",
     "bytes": 1095224,
     "from": "models/galaxy/bf2017/clips-obiwan.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-palpatine.glb": {
-    "hash": "cf7c5efa8493",
+    "hash": "50d3d693df79",
     "bytes": 591680,
     "from": "models/galaxy/bf2017/clips-palpatine.glb",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/clips-pelikki.glb": {
+    "hash": "203e8be6b68e",
+    "bytes": 15432,
+    "from": "models/galaxy/bf2017/clips-pelikki.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-pillioshrimp.glb": {
+    "hash": "8bd0afff70fb",
+    "bytes": 256668,
+    "from": "models/galaxy/bf2017/clips-pillioshrimp.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-profogg.glb": {
+    "hash": "4e319865989b",
+    "bytes": 55660,
+    "from": "models/galaxy/bf2017/clips-profogg.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-runyip.glb": {
+    "hash": "06710c3fe8f3",
+    "bytes": 76112,
+    "from": "models/galaxy/bf2017/clips-runyip.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-scurrier.glb": {
+    "hash": "0a122f3e46a6",
+    "bytes": 56680,
+    "from": "models/galaxy/bf2017/clips-scurrier.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-sneep.glb": {
+    "hash": "1bdad493ec22",
+    "bytes": 31560,
+    "from": "models/galaxy/bf2017/clips-sneep.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-stance-l.glb": {
+    "hash": "7905878e4f2f",
+    "bytes": 404896,
+    "from": "models/galaxy/bf2017/clips-stance-l.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-stance-p.glb": {
+    "hash": "7d2a74ac8629",
+    "bytes": 495672,
+    "from": "models/galaxy/bf2017/clips-stance-p.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-stance-t.glb": {
+    "hash": "e4a1923ddfb6",
+    "bytes": 481028,
+    "from": "models/galaxy/bf2017/clips-stance-t.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-stintarils.glb": {
+    "hash": "7a1536f06ebb",
+    "bytes": 55896,
+    "from": "models/galaxy/bf2017/clips-stintarils.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-tach.glb": {
+    "hash": "91ee8def77e9",
+    "bytes": 111000,
+    "from": "models/galaxy/bf2017/clips-tach.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-theedevent19.glb": {
+    "hash": "5645dfea3441",
+    "bytes": 65560,
+    "from": "models/galaxy/bf2017/clips-theedevent19.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-treadwell.glb": {
+    "hash": "03e3ed04e5f1",
+    "bytes": 25708,
+    "from": "models/galaxy/bf2017/clips-treadwell.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-trident.glb": {
+    "hash": "b61898cdff19",
+    "bytes": 260004,
+    "from": "models/galaxy/bf2017/clips-trident.glb",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/clips-vader.glb": {
-    "hash": "5edb878f0885",
+    "hash": "ab441e7ad0e9",
     "bytes": 1391588,
     "from": "models/galaxy/bf2017/clips-vader.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-vehicles.glb": {
+    "hash": "2e38f74951ca",
+    "bytes": 581684,
+    "from": "models/galaxy/bf2017/clips-vehicles.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/crew/anakin.glb": {
@@ -183,6 +915,12 @@
     "hash": "4aa88f301a1e",
     "bytes": 18618772,
     "from": "characters/npc/droids/astromech/r2d2/r2d2_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/birdtheed.glb": {
+    "hash": "122de85b16cc",
+    "bytes": 2875272,
+    "from": "characters/npc/creatures/birdtheed/birdtheed_02/birdtheed_02_b_mesh",
     "tier": "crew"
   },
   "models/galaxy/bf2017/crew/bobafett.glb": {
@@ -262,6 +1000,12 @@
     "bytes": 35055780,
     "from": "characters/hero/chewbacca/chewbacca_goggles_01/chewbacca_goggles_01_mesh",
     "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/chicken.glb": {
+    "hash": "f9afce318a76",
+    "bytes": 706244,
+    "from": "characters/npc/creatures/chicken/chicken_01/chicken_01_mesh",
+    "tier": "crew"
   },
   "models/galaxy/bf2017/crew/civcity1.glb": {
     "hash": "89efea4f2b3e",
@@ -357,6 +1101,30 @@
     "hash": "2c643e6ee6ed",
     "bytes": 8661632,
     "from": "characters/hero/ewok/ewok_01/ewok_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/felbird.glb": {
+    "hash": "4bf4dd7b6038",
+    "bytes": 7348052,
+    "from": "characters/npc/creatures/fel_bird/fel_bird_01/fel_bird_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/felripper.glb": {
+    "hash": "c7737fd0105a",
+    "bytes": 9133440,
+    "from": "characters/npc/creatures/fel_ripper/fel_ripper_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/gamorreanguard.glb": {
+    "hash": "57bd879acb95",
+    "bytes": 22434028,
+    "from": "characters/npc/aliens/gamorreanguard/gamorreanguard_01/lw_gamorreanguard_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/gonk.glb": {
+    "hash": "349d6338da27",
+    "bytes": 3555068,
+    "from": "characters/npc/droids/droidgonk/droidgonk_01/droidgonk_01_mesh",
     "tier": "crew"
   },
   "models/galaxy/bf2017/crew/han.glb": {
@@ -857,10 +1625,28 @@
     "from": "characters/hero/palpatine/palpatine_01/palpatine_01_mesh",
     "tier": "ultra"
   },
+  "models/galaxy/bf2017/crew/pelikki.glb": {
+    "hash": "369b1bdd9bdd",
+    "bytes": 739588,
+    "from": "characters/npc/creatures/pelikki/pelikki_01/pelikki_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/pillioshrimp.glb": {
+    "hash": "778207c1b6ab",
+    "bytes": 11204824,
+    "from": "characters/npc/creatures/pillioshrimp/pillioshrimp_01/pillioshrimp_01_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/probe.glb": {
     "hash": "962627e76100",
     "bytes": 3574028,
     "from": "characters/npc/droids/viper_01/viper_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/profogg.glb": {
+    "hash": "6e215d6238ed",
+    "bytes": 154552,
+    "from": "characters/npc/creatures/profogg/profogg_01/profogg_01_mesh",
     "tier": "crew"
   },
   "models/galaxy/bf2017/crew/r5.glb": {
@@ -887,6 +1673,12 @@
     "from": "characters/npc/humans/rebel_technician_orig/rebel_technician_orig_01/rebel_technician_orig_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/runyip.glb": {
+    "hash": "80928845bf2d",
+    "bytes": 7478844,
+    "from": "characters/npc/creatures/runyip/runyip_01/runyip_01_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/sandtrooper.glb": {
     "hash": "4d7b67bfa719",
     "bytes": 17689964,
@@ -899,16 +1691,34 @@
     "from": "characters/imperial/imperial_scoutrooper/imperial_scoutrooper_male_01/imperial_scoutrooper_male_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/scurrier.glb": {
+    "hash": "f29fd846d948",
+    "bytes": 229860,
+    "from": "characters/npc/creatures/scurrier/scurrier_01/scurrier_01_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/shoretrooper.glb": {
     "hash": "a2687ab6af5b",
     "bytes": 12927828,
     "from": "characters/imperial/imperial_beachtrooper/imperial_beachtrooper_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/sneep.glb": {
+    "hash": "b9eb801f4da3",
+    "bytes": 555152,
+    "from": "characters/npc/creatures/sneep/sneep_01/sneep_01_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/snowtrooper.glb": {
     "hash": "0dd3c8472eae",
     "bytes": 18274380,
     "from": "characters/dark/d_assault_orig/d_assault_orig_ho_01/d_assault_orig_ho_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/stintarils.glb": {
+    "hash": "e878a630e56d",
+    "bytes": 698292,
+    "from": "characters/npc/creatures/stintarils/stintarils_01/stintarils_01_mesh",
     "tier": "crew"
   },
   "models/galaxy/bf2017/crew/stormtrooper.glb": {
@@ -923,10 +1733,22 @@
     "from": "characters/hero/b2/b2_01/b2_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/tach.glb": {
+    "hash": "70e6bb310437",
+    "bytes": 2975888,
+    "from": "characters/npc/creatures/tach/tach_01/tach_01_mesh",
+    "tier": "crew"
+  },
   "models/galaxy/bf2017/crew/tauntaun.glb": {
     "hash": "58474f0e3b04",
     "bytes": 11944440,
     "from": "characters/npc/creatures/tauntaun/tauntaun_01/tauntaun_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/treadwell.glb": {
+    "hash": "e5f5e39f26c5",
+    "bytes": 1761672,
+    "from": "characters/npc/droids/wed_15septoidtreadwell_01/wed_15septoidtreadwell_01_mesh",
     "tier": "crew"
   },
   "models/galaxy/bf2017/crew/vader.glb": {
@@ -983,6 +1805,90 @@
     "from": "models/galaxy/bf2017/fx/scorch.metal.512.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/scenes/hoth-outro.glb": {
+    "hash": "201417ead22b",
+    "bytes": 230272,
+    "from": "models/galaxy/bf2017/scenes/hoth-outro.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-anakin.glb": {
+    "hash": "61971e3f781a",
+    "bytes": 163688,
+    "from": "models/galaxy/bf2017/scenes/intro-anakin.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-bobafett.glb": {
+    "hash": "f5feb65a92dc",
+    "bytes": 97728,
+    "from": "models/galaxy/bf2017/scenes/intro-bobafett.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-bossk.glb": {
+    "hash": "b53798763b15",
+    "bytes": 99860,
+    "from": "models/galaxy/bf2017/scenes/intro-bossk.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-chewie.glb": {
+    "hash": "13cb44f14cbf",
+    "bytes": 92476,
+    "from": "models/galaxy/bf2017/scenes/intro-chewie.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-dooku.glb": {
+    "hash": "031bed13745c",
+    "bytes": 160672,
+    "from": "models/galaxy/bf2017/scenes/intro-dooku.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-han.glb": {
+    "hash": "36758b5a3d18",
+    "bytes": 78840,
+    "from": "models/galaxy/bf2017/scenes/intro-han.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-lando.glb": {
+    "hash": "bcff2181d48a",
+    "bytes": 113084,
+    "from": "models/galaxy/bf2017/scenes/intro-lando.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-leia.glb": {
+    "hash": "be99b95ac022",
+    "bytes": 77540,
+    "from": "models/galaxy/bf2017/scenes/intro-leia.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-luke.glb": {
+    "hash": "47b54105caaf",
+    "bytes": 85432,
+    "from": "models/galaxy/bf2017/scenes/intro-luke.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-maul.glb": {
+    "hash": "d75cecef3c51",
+    "bytes": 113692,
+    "from": "models/galaxy/bf2017/scenes/intro-maul.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-obiwan.glb": {
+    "hash": "565c1a984a08",
+    "bytes": 101424,
+    "from": "models/galaxy/bf2017/scenes/intro-obiwan.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-palpatine.glb": {
+    "hash": "733c3714b951",
+    "bytes": 81068,
+    "from": "models/galaxy/bf2017/scenes/intro-palpatine.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/scenes/intro-vader.glb": {
+    "hash": "aa4cb2918df5",
+    "bytes": 84288,
+    "from": "models/galaxy/bf2017/scenes/intro-vader.glb",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/walrus.glb": {
     "hash": "da04ad0d6bcd",
     "bytes": 33464,
@@ -993,6 +1899,12 @@
     "hash": "adae345cd1cb",
     "bytes": 235424,
     "from": "gameplay/vehicles/air/cloudcar/vehicle_air_cloudcar_static_donotuse_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/kits/frontendstage.glb": {
+    "hash": "41ddc7ffbc14",
+    "bytes": 344216,
+    "from": "levels/frontend/objects",
     "tier": "surface"
   },
   "models/galaxy/n1.glb": {
