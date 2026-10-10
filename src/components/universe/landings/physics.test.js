@@ -180,6 +180,22 @@ describe('createLandingPhysics', () => {
     lp.dispose();
   });
 
+  it('stops a shot at a sign’s pole, and lets one a hand’s width off it by', async () => {
+    const lp = await createLandingPhysics({ R, spot: up });
+    // (a stop sign: its plate 0.62 m across up top, its pole 6.4 cm thick)
+    const sign = { min: [-0.31, 0, -0.05], max: [0.31, 2.4, 0.05] };
+    const e = lp.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: sign, body: { shape: 'cylinder', mass: 15, fixed: true, r: 0.032, at: [0, -0.02] } });
+    run(lp, 2);
+    const hit = level(lp, 1.1);
+    expect(hit?.entry).toBe(e);
+    // (at its face, round a pole 2 cm behind the line the shot flies)
+    expect(hit.at[0] / METRE).toBeCloseTo(-Math.sqrt(0.032 ** 2 - 0.02 ** 2), 3);
+    // (at a chest's height, 15 cm to the side of it: no stop in the air)
+    const h = R + 1.1 * METRE;
+    expect(lp.shot([-4 * METRE, h, 0.15 * METRE], [4 * METRE, h, 0.15 * METRE])).toBe(null);
+    lp.dispose();
+  });
+
   it('has a knocked thing asleep again within 3 s, on the cap round the landing', async () => {
     // (on top, and somewhere down the side: the cap turned to stand there)
     for (const spot of [up, [0.6, 0.64, -0.48]]) {

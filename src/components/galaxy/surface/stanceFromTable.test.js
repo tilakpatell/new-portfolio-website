@@ -30,9 +30,17 @@ describe('a 2017 hero’s stance, from its stroke table', () => {
 
   it('makes its heavies of the jump attack and the dash, and names its blocks', () => {
     expect(st.heavies.map((h) => h.clip)).toEqual(['A_Luke_Jump_SaberAttack_Light_FH_01', 'A_Luke_Stand_SaberDash_01']);
-    expect(st.blocks.left[0]).toBe('A_Luke_Stand_Block_SwingLeft_01');
-    expect(st.blocks.right[0]).toBe('A_Luke_Stand_Block_SwingRight_01');
+    // (each on the side of him it was measured holding the blade on, whatever its name: luke.held)
+    for (const side of ['left', 'right']) for (const n of st.blocks[side]) expect(luke.held[n].tip[0] >= 0 ? 'left' : 'right', n).toBe(side);
+    expect(st.blocks.left).toContain('A_Luke_Stand_Block_SwingLeft_01');
     expect(st.blocks.left.length).toBeGreaterThan(1); // (the game's several, by variant)
+  });
+
+  it('knows the side each of its strokes comes in from, on the root’s axes, not the way for the keys', () => {
+    for (const s of [...luke.strikes, luke.dash, luke.jump]) expect(st.cuts[s.name] ?? null, s.name).toBe(s.side);
+    // (his second reads 'right' on the hips' frame, which it turns as it cuts, and comes round the front from his left)
+    expect(luke.strikes.find((s) => s.name === 'A_Luke_AttackLoop_Strike2')).toMatchObject({ dir: 'right', side: 'left' });
+    expect(st.cuts['A_Luke_AttackLoop_Strike2']).toBe('left');
   });
 
   it('cuts each way with a strike that cuts that way, read from the tip', () => {
