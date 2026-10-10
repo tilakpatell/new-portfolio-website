@@ -62,7 +62,7 @@ import { device } from '../../../lib/device';
 import { detailLevel } from '../../../lib/detail';
 import { createPost } from '../../universe/post';
 import { SHIP_MODELS, buildShip, LENGTH } from '../../universe/shipModels';
-import { loadModel } from '../../universe/planets';
+import { cloneScene, loadGLTF } from '../../../lib/three/gltfCache';
 import { paintById } from '../../universe/paint';
 import { readLoadout, STOCK_LOADOUT } from '../../universe/outfit';
 import { flybySound, gadgetSound, gunSound, impactSound, popSound, portalSound, shipEngine } from '../../universe/sounds';
@@ -170,6 +170,9 @@ import { rideClip } from '../../../lib/three/walrusSets/vehicles';
 import { richClips } from '../../../lib/three/walrus';
 
 const V = THREE.Vector3;
+// a ship's model, a copy of the page's cached file (universe/planets.js's
+// loadModel, taken from its source: planets.js reaches the map's shaders)
+const loadModel = (url) => loadGLTF(url).then((g) => g && cloneScene(g));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
