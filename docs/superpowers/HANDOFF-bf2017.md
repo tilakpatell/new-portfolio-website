@@ -100,7 +100,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | 1 | | | |
 | L | | | |
 | G | | | |
-| K | the lane K session | `claude/bf2017-k-planets` | (its PR) |
+| K | the lane K session | `claude/bf2017-k-planets` | #825 |
 | X | | | |
 | S | | | |
 
