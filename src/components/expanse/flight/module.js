@@ -42,8 +42,8 @@ export const AXES = { pitch: ['noseDown', 'noseUp'], roll: ['rollLeft', 'rollRig
 const HUD_EVERY = 0.1; // s
 
 // where a place's buildings stand: a part's `count` of them seeded round the
-// place (none in its middle fifth, where the centre part stands), the same
-// every visit → [{ part, x, z, yaw }]
+// place, between `inner` and `outer` of its r (0.12 and 0.7 unless the part
+// says), the centre part in its middle, the same every visit → [{ part, x, z, yaw }]
 export function settle(poi, parts, rnd) {
   const out = [];
   for (const part of parts) {
@@ -53,10 +53,29 @@ export function settle(poi, parts, rnd) {
         continue;
       }
       const a = rnd() * Math.PI * 2;
-      const d = (0.22 + 0.6 * Math.sqrt(rnd())) * poi.r;
+      const d = ((part.inner ?? 0.12) + ((part.outer ?? 0.7) - (part.inner ?? 0.12)) * Math.sqrt(rnd())) * poi.r;
       out.push({ part, x: poi.at[0] + Math.cos(a) * d, z: poi.at[1] + Math.sin(a) * d, yaw: rnd() * Math.PI * 2 });
     }
   }
+  return out;
+}
+
+// a model in a colour: a copy whose materials are copies with their colour
+// multiplied by `tint` (the walkable site dresses these models in its scans;
+// from the air a tint is what reads), made once a part, shared by its copies
+export function tinted(root, tint) {
+  const out = root.clone(true);
+  const made = new Map();
+  out.traverse((o) => {
+    if (!o.isMesh) return;
+    const was = o.material;
+    if (!made.has(was)) {
+      const m = was.clone();
+      m.color?.multiply(new THREE.Color(tint));
+      made.set(was, m);
+    }
+    o.material = made.get(was);
+  });
   return out;
 }
 
@@ -142,8 +161,9 @@ export default {
       for (const part of l.parts) {
         fetchModel(modelSources(part, { strong })).then((got) => {
           if (!got || gone) return;
+          const model = part.tint ? tinted(got.scene, part.tint) : got.scene;
           for (const at of spots.filter((x) => x.part === part)) {
-            const obj = placeLandmark(got.scene.clone(true), { ...part, yaw: at.yaw });
+            const obj = placeLandmark(model.clone(true), { ...part, yaw: at.yaw });
             obj.name = `flight-${l.id}`;
             // (inside the place's r its ground is flat at its h: the field says so exactly)
             obj.position.set(at.x, field.heightAt(at.x, at.z), at.z);

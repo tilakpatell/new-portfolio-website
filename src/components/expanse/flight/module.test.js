@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import flight, { AXES, KEYS, inputOf, modelSources, placeLandmark, settle, spawnOf, tierAt } from './module';
+import flight, { AXES, KEYS, inputOf, modelSources, placeLandmark, settle, spawnOf, tierAt, tinted } from './module';
 import { seeded } from '../../../lib/seeded';
 import { WORLD_MB } from '../../worlds/worlds';
 import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
@@ -109,8 +109,8 @@ describe('the flight module', () => {
     expect(a[0]).toMatchObject({ x: 900, z: 600 });
     for (const s of a.slice(1)) {
       const d = Math.hypot(s.x - 900, s.z - 600);
-      expect(d).toBeGreaterThanOrEqual(0.22 * 260 - 1e-9);
-      expect(d).toBeLessThanOrEqual(0.82 * 260 + 1e-9);
+      expect(d).toBeGreaterThanOrEqual(0.12 * 260 - 1e-9);
+      expect(d).toBeLessThanOrEqual(0.7 * 260 + 1e-9);
     }
     expect(settle(poi, parts, seeded(4))).toEqual(a);
   });
@@ -119,5 +119,17 @@ describe('the flight module', () => {
     const root = new THREE.Group().add(new THREE.Mesh(new THREE.BoxGeometry(2, 8, 4)));
     placeLandmark(root, { metres: 40, along: 'max' });
     expect(root.scale.x).toBeCloseTo(5, 6);
+  });
+
+  it('tints a copy of a model, its materials copied once and the original left as it was', () => {
+    const m = new THREE.MeshStandardMaterial({ color: '#ffffff' });
+    const root = new THREE.Group().add(new THREE.Mesh(new THREE.BoxGeometry(), m), new THREE.Mesh(new THREE.BoxGeometry(), m));
+    const t = tinted(root, '#ff0000');
+    const mats = [];
+    t.traverse((o) => o.isMesh && mats.push(o.material));
+    expect(mats[0]).toBe(mats[1]);
+    expect(mats[0]).not.toBe(m);
+    expect(mats[0].color.getHexString()).toBe('ff0000');
+    expect(m.color.getHexString()).toBe('ffffff');
   });
 });
