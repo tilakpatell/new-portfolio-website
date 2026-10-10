@@ -9,6 +9,8 @@
 //   withStance(fig, { model, clips, loader, enabled }) → fig, with (not
 //   enabled, a phone's levels: always the humanoid's, nothing fetched)
 //     stance(key) → Promise<key it now stands in>
+//     takePack(name) → Promise<[name…]>: a pack's clips (clips-<name>.glb, the
+//       first person's 1p…) added to the figure's own, to play on its animator
 
 import { PACK_DIR, clipsFor, loadWalrusPacks } from './walrus';
 import { STANCE_KEYS, stanceClips } from './walrusSets/stance';
@@ -46,6 +48,21 @@ export function withStance(fig, { model = fig.model, clips = fig.clips ?? {}, lo
     // (the figure's own handles on its locomotion's actions)
     if (fig.act && fig.anim) for (const n of ['idle', 'walk', 'run']) if (fig.anim.actions[n]) fig.act[n] = fig.anim.actions[n];
     return now;
+  };
+  const taken = new Map(); // pack → Promise<[name…]>
+  fig.takePack = (pack) => {
+    if (!taken.has(pack))
+      taken.set(
+        pack,
+        loadWalrusPacks([`${PACK_DIR}/clips-${pack}.glb`], { loader })
+          .catch(() => new Map())
+          .then((got) => {
+            const own = clipsFor(model, got);
+            for (const [name, clip] of Object.entries(own)) if (!clips[name] && fig.anim?.add(name, clip)) clips[name] = clip;
+            return Object.keys(own);
+          }),
+      );
+    return taken.get(pack);
   };
   return fig;
 }

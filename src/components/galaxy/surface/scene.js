@@ -155,6 +155,7 @@ import { createGameLit } from './gameLit';
 import { createPlayerBody } from './playerBody';
 import { assetPool, worldScope } from '../../../lib/assetLoad';
 import { victoryFor } from '../../../lib/three/walrusSets/emotes';
+import { createFirstView } from './firstView';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -171,7 +172,7 @@ const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
 const ROLL_PIVOT = 0.55; // metres up from the feet: where a dodge's roll turns about (a tucked body's middle)
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', z: 'crouch', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second', b: 'emote' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', z: 'crouch', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second', b: 'emote', p: 'view' };
 const FIRE_EVERY = 0.24; // seconds between shots
 const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
 const LOCK = { range: 14, cone: 0.9 }; // metres and radians: what a stroke homes on
@@ -1034,6 +1035,7 @@ export async function create(canvas, ctx) {
   // (the emote wheel, B: lib/emote.js's; the pointer's where it is, and
   // where it was when the wheel opened, to point at a slice by)
   const emotes = createEmoteWheel();
+  const firstView = createFirstView({ camera, phone: device().phone });
   const pointer = { x: 0, y: 0, x0: 0, y0: 0, id: null };
   const onKey = (down) => (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1060,6 +1062,8 @@ export async function create(canvas, ctx) {
       if (k === 'block') state.blockAt = state.t;
       if (k === 'fire' && me().saber) state.pressAt = state.t;
       if (k === 'emote') emoteDown();
+      // (out of your own eyes, and back: firstView.js)
+      if (k === 'view') firstView.toggle(me().fig, { seated: state.phase !== 'walk' });
     }
     if (!down && k === 'emote') emoteUp();
     if (!down && k === 'fire' && state.pressAt != null) {
@@ -1161,6 +1165,7 @@ export async function create(canvas, ctx) {
     // (what you were doing stops with you; a mate who's down gets up to be
     // you, and the one you were starts as your mate afresh)
     endEmote();
+    firstView.leave(me().fig);
     mateUp();
     mateFight.foe = null;
     mateFight.aim = 0;
@@ -2889,6 +2894,11 @@ export async function create(canvas, ctx) {
     camLook.lerp(focus, 1 - Math.exp(-dt * 14));
     camera.position.copy(camPos);
     camera.lookAt(camLook);
+    // (out of your own eyes on foot, its arms in the game's first-person poses: firstView.js)
+    if (firstView.on) {
+      if (state.phase !== 'walk') firstView.leave(me().fig);
+      else if (firstView.place(me().fig, c.yaw, c.pitch)) firstView.pose(me().fig, { gun: me().gp ? weapon().kind : null, ads: state.ads, sprint: Boolean(state.keys.run) });
+    }
     if (Math.abs(state.kick.x) > 1e-4) camera.rotateX(state.kick.x * 0.04); // your own shot's kick
     // every knock this frame, as trauma (the k each had is its trauma)
     if (state.shake > 0) feel.trauma(state.shake);
