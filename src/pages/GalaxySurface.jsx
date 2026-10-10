@@ -9,7 +9,7 @@ import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
-import { parseSystem, systemById } from '../components/galaxy/systems';
+import { eraOf, parseSystem, systemById } from '../components/galaxy/systems';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
@@ -26,7 +26,7 @@ import { thud } from '../lib/sfx';
 import { createImpacts } from '../lib/impact';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
-import HeroPanel from '../components/galaxy/surface/HeroPanel';
+import DeployPanel from '../components/galaxy/surface/DeployPanel';
 import { HERO_KEY, heroById, heroSpec, loadoutLine, readHero, writeHero } from '../components/galaxy/heroes';
 import { standInLine } from '../components/galaxy/surface/standIn';
 import { missionOf } from '../components/galaxy/surface/missions';
@@ -122,6 +122,7 @@ export default function GalaxySurface() {
   heroNow.current = hero;
   const worn = useRef(hero);
   const saidStood = useRef(new Set()); // (the stand-ins already told of)
+  const [stood, setStood] = useState(null); // (and the one on now, for the deploy screen's note)
   const pickHero = (next) => {
     setHero(next);
     local.set(HERO_KEY, writeHero(next));
@@ -466,6 +467,7 @@ export default function GalaxySurface() {
         // a pick on in the world, or one that wouldn't load (back to what was on)
         const now = heroNow.current;
         const name = (h) => heroById(h.id)?.name ?? '';
+        if (e.ok) setStood(e.stoodIn ?? null);
         // (on, in another body than the game's: said once a hero, standIn.js)
         const stood = e.ok && e.stoodIn && !saidStood.current.has(`${e.who}:${e.stoodIn}`) ? standInLine(heroById(e.who)?.name ?? '', e.stoodIn) : null;
         if (stood) {
@@ -750,7 +752,7 @@ export default function GalaxySurface() {
         <ModelCredits where="galaxy-surface" only={kinds} className="surface-credits-corner" />
       </div>
       {modes.open && !picking && <ModeMenu place={sys.name} cards={modes.cards} onPick={playMode} onDeploy={() => setPicking(true)} onClose={() => modes.setOpen(false)} ask={modes.ask} onAsk={modes.setAsk} />}
-      {picking && <HeroPanel hero={hero} onChange={pickHero} onClose={() => setPicking(false)} />}
+      {picking && <DeployPanel hero={hero} onChange={pickHero} onClose={() => setPicking(false)} system={id} era={eraOf(sys)} stoodIn={stood} />}
       {crew && talkCrew && <Comms control={comms} crew={talkCrew} reduced={reduced} />}
       {!leaving && <Online online={online} ship={ship} />}
       <div className="surface-fade" aria-hidden="true" />

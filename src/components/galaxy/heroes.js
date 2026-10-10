@@ -2,14 +2,14 @@
 // made: the roster (each a rigged figure the site already has, with the
 // weapon they carry), the blade colours and hilts to pick from, and the
 // choice kept in the browser. Pure data and parsing, so it's tested in
-// Node; HeroPanel.jsx offers it, pages/GalaxySurface.jsx reads it, and
+// Node; DeployPanel.jsx offers it, pages/GalaxySurface.jsx reads it, and
 // surface/scene.js walks the hero in the lead of the party.
 //
 //   HEROES                   the roster, in order: { id, fallback (the site's committed figure of a 2017 hero, worn when the game's body can't be fetched: surface/standIn.js), name, tall, src, weapon ('saber' | a gun kind), bolt, saber?, abilities { power, second } (surface/abilityRules.js's kinds, on G and V), blurb, film, side ('galaxy' | 'elsewhere': the crews from other universes walk here too), lean ('light' | 'dark' | null: the side of the galaxy's wars they'd pick, allegiance.js), lines { ours, theirs } (said as a ground assault starts on their side, or against it) }
 //   SABER_COLORS, HILTS      what a saber can be: { id, name, hex } and { id, name, ... }
 //   SKINS, skinsOf(id)       a 2017 hero's outfits, the one they wear first and then the game's others: { id, name, kind (surface/crewList.js's CREW row) }
 //   HERO_KEY                 the localStorage key
-//   readHero(raw, ship)      the choice, made good: { id, skin, color, hilt, stance, gun, mods, perks } (skin null for a hero with no outfits) (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's)
+//   readHero(raw, ship)      the choice, made good: { id, skin, color, hilt, stance, gun, mods, perks, kind? (a trooper class's body: surface/troopers.js) } (skin null for a hero with no outfits) (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's)
 //   heroSpec(hero, ship)     the party spec for them (universe/footScene.js's PARTY shape), the saber (with its stance) on it where they carry one, else the gun they picked with its mods
 //   partyFor(spec, crew)     the two who walk: the hero, and the ship's crewmate who isn't them (the crew as it is with no hero)
 //   loadoutLine(hero)        the choice in a line: a Jedi's blade, hilt and stance, or the gun and its mods; the perks counted
@@ -21,6 +21,7 @@ import { STANCES } from './surface/combatRules';
 import { MODS, MAX_MODS, PICKABLE, WEAPONS } from './surface/weaponRules';
 import { readPerks } from './perks';
 import { CREW, fileOf } from './surface/crewList';
+import { TROOPERS } from './surface/troopers';
 
 export const HERO_KEY = 'tp-galaxy-hero';
 
@@ -113,7 +114,8 @@ export const SKINS = {
 // (only the outfits whose files are in: a row the import hasn't made yet isn't offered)
 export const skinsOf = (id) => (SKINS[id] ?? []).filter((l) => CREW[l.kind]);
 
-const BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
+// (and the trooper classes, surface/troopers.js: a class picked on the deploy screen is read back as any hero is)
+const BY_ID = Object.fromEntries([...HEROES, ...TROOPERS].map((h) => [h.id, h]));
 export const heroById = (id) => BY_ID[id] ?? null;
 
 // which side of the galaxy's wars a hero leans to (allegiance.js suggests it;
@@ -144,9 +146,11 @@ export function readHero(raw, ship = 'xwing') {
   const mods = Array.isArray(v?.mods) ? [...new Set(v.mods.filter((m) => MODS[m]))].slice(0, MAX_MODS) : [];
   const looks = skinsOf(hero.id);
   const skin = looks.some((l) => l.id === v?.skin) ? v.skin : (looks[0]?.id ?? null);
-  return { id: hero.id, skin, color, hilt, stance, gun, mods, perks: readPerks(v?.perks) };
+  // (a trooper's body, the world's own kit of their side: a snowtrooper on Hoth)
+  const kind = hero.trooper && CREW[v?.kind] ? v.kind : (hero.trooper?.kind ?? null);
+  return { id: hero.id, skin, color, hilt, stance, gun, mods, perks: readPerks(v?.perks), ...(hero.trooper ? { kind } : {}) };
 }
-export const writeHero = (hero) => JSON.stringify({ id: hero.id, skin: hero.skin ?? null, color: hero.color, hilt: hero.hilt, stance: hero.stance, gun: hero.gun, mods: hero.mods ?? [], perks: hero.perks ?? [] });
+export const writeHero = (hero) => JSON.stringify({ id: hero.id, skin: hero.skin ?? null, color: hero.color, hilt: hero.hilt, stance: hero.stance, gun: hero.gun, mods: hero.mods ?? [], perks: hero.perks ?? [], ...(hero.kind ? { kind: hero.kind } : {}) });
 
 // the spec the scene walks: a saber hero carries no gun (the saber's its
 // own thing, surface/saber.js), the others their gun
@@ -158,8 +162,10 @@ export function heroSpec(hero) {
   const bolt = saber ? saber.color : WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
   // (another outfit is another file, on the same skeleton with the same clips)
   const look = skinsOf(h.id).find((l) => l.id === hero.skin && l.kind !== h.id);
-  const src = look ? { url: fileOf(CREW[look.kind]) } : h.src;
-  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src, ...(h.rig ? { rig: h.rig, pack: h.pack ?? h.id } : {}), gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
+  const body = h.trooper && CREW[hero.kind] ? CREW[hero.kind] : null;
+  const src = look ? { url: fileOf(CREW[look.kind]) } : body ? { url: fileOf(body) } : h.src;
+  const rig = body ? (body.rig === 'walrus' ? 'walrus' : null) : h.rig;
+  return { id: h.id, name: h.trooper ? h.name : h.name.split(' ')[0], tall: body?.tall ?? h.tall, src, ...(rig ? { rig, pack: h.trooper ? null : (h.pack ?? h.id) } : {}), gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
 }
 
 // the two who walk down here: the hero in the lead, and the ship's
