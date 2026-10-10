@@ -12,7 +12,7 @@
 // environment under ClusteredLighting (A2), the programs before and after a
 // light moves (no recompile), the frame time.
 //
-// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only, hoth, shadows, lightSun }
+// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only, hoth, shadows, lightSun, filter }
 //
 // `hoth` (lane S's calibration shot): the same ground and ring under Hoth
 // Sunny's record (src/lib/three/light/fixtures/hoth.ve.json), the ground
@@ -144,6 +144,18 @@ export default {
         p.castShadow = p.receiveShadow = true;
         scene.add(p);
       }
+      // the penumbra: a board 1 m and one 10 m over the snow, each seen
+      // from beside its shadow (the record's shadow sun stands at 82°, so
+      // each shadow lies nearly under its board)
+      const board = geo(new THREE.BoxGeometry(2, 0.1, 2));
+      for (const [x, h] of [[8, 1], [16, 10]]) {
+        const b = new THREE.Mesh(board, dark);
+        b.position.set(x, h, -8);
+        b.castShadow = true;
+        scene.add(b);
+      }
+      views.pen1 = { pos: [8, 0.7, -4.5], at: [8, 0, -8] };
+      views.pen10 = { pos: [16, 2.5, -4], at: [16, 0, -8] };
       // the feet at 2 m in the frame's foot, the 60 m figure under the horizon
       views.near = { pos: [0, 1.6, 0], at: [0, 0, -6] };
       // from above and behind: the post row's shadows out past the cascades' far edge
@@ -217,7 +229,7 @@ export default {
 
     const ready = (async () => {
       const { applyGameLight } = await import('../../lib/three/light/apply.js');
-      light = await applyGameLight(scene, renderer, entry, { tier: opts.tier, camera, lights: opts.placed ? source : null, clustered: opts.clustered, sky: opts.sky, post: opts.post, lut: gradeLut() });
+      light = await applyGameLight(scene, renderer, entry, { tier: opts.tier, camera, lights: opts.placed ? source : null, clustered: opts.clustered, sky: opts.sky, post: opts.post, lut: gradeLut(), filter: opts.filter });
       probe.light = { clustered: light.parts.placed?.clustered ?? null };
       if (!opts.sky) {
         const [{ PMREMGenerator }, { RoomEnvironment }] = await Promise.all([import('three/webgpu'), import('three/addons/environments/RoomEnvironment.js')]);

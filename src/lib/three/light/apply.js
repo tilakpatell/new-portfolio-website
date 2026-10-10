@@ -14,6 +14,7 @@
 //   volumes, loadCube,              the reflection volumes and a loader of their HDR cubes (probes.js)
 //   arena, grid,                    { min, max } and true: the probe grid on ultra (off until measured, A3)
 //   sky = true, post = true, lut,   the sky and fog; the post chain; the grade as a Data3DTexture
+//   filter,                         'pcf' forces three's PCF on the sun (else shadows.js's by tier)
 // }) → Promise<{ update(dt, camera), setWeather(entry, seconds), passes, params, parts, dispose }>
 
 import { lerpEntry, readEntry } from './entry.js';
@@ -21,6 +22,7 @@ import { createFog } from './fog.js';
 import { createPlacedLights } from './placed.js';
 import { passesFor } from './post.js';
 import { createProbeGrid, createProbes } from './probes.js';
+import { filterFor, pcssFilter, readPcss, vsmFallback } from './shadows.js';
 import { createSky } from './sky.js';
 import { createSun } from './sun.js';
 import { backendOf, loadThree, registerLights } from './three.js';
@@ -28,7 +30,7 @@ import { backendOf, loadThree, registerLights } from './three.js';
 export const WEATHER_FADE = 20; // s: lane G's crossfade between two weathers
 const ENV_EVERY = 2; // s: the sky's environment re-baked this often while a weather fades
 
-export async function applyGameLight(scene, renderer, entry, { tier = 'high', camera = null, origin, lights = null, clustered, volumes = null, loadCube = null, arena = null, grid = false, sky: withSky = true, post = true, lut = null } = {}) {
+export async function applyGameLight(scene, renderer, entry, { tier = 'high', camera = null, origin, lights = null, clustered, volumes = null, loadCube = null, arena = null, grid = false, sky: withSky = true, post = true, lut = null, filter: forced = null } = {}) {
   const { THREE } = await loadThree();
   const backend = backendOf(renderer);
   await registerLights(renderer);
@@ -37,7 +39,12 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
   let params = readEntry(entry, { origin });
   const rays = post && tier === 'ultra';
 
-  const sun = await createSun(entry, { tier, rays });
+  // the sun's soft shadow by tier (shadows.js): PCSS on ultra and high, PCF on mid
+  const soft = forced === 'pcf' && tier !== 'low' ? { kind: 'pcf' } : filterFor(tier, readPcss(entry));
+  const filter = soft.kind === 'pcss' ? await pcssFilter(soft) : null;
+  const sun = await createSun(entry, { tier, rays, filter });
+  // (before the first frame: the cascades clone the light's shadow then)
+  if (soft.kind === 'vsm') vsmFallback(renderer, sun.light, soft.samples);
   scene.add(sun.light);
   if (sun.rays) scene.add(sun.rays, sun.rays.target);
   const hemi = new THREE.HemisphereLight(new THREE.Color(...params.ambient.sky), new THREE.Color(...params.ambient.ground), params.ambient.intensity);
@@ -83,7 +90,7 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
     get params() {
       return params;
     },
-    parts: { sun, hemi, placed, sky, fog, probes, grid: probeGrid, gridBake },
+    parts: { sun, soft, hemi, placed, sky, fog, probes, grid: probeGrid, gridBake },
     update(dt, cam = camera) {
       if (fade) {
         fade.t = Math.min(1, fade.t + dt / fade.seconds);
