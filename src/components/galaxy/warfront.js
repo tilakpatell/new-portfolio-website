@@ -222,6 +222,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     // piece's moments are the same for every pilot, not timed from when you came
     clock: () => sharedT(),
     losses: () => shared()?.losses ?? null,
+    // when the battle every pilot here shares ended, on the shared clock (or
+    // null), and a second on that clock as a wall second (world.js's: Scarif's Death Star in)
+    endedAt: () => shared()?.endsAt ?? null,
+    wallAt: (s) => (on ? on.start / 1000 + s - skew : null),
     event: (id) => sayEvent(id),
     points: (n) => score(n),
     tookPart: () => tookPart,

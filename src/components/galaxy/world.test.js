@@ -5,6 +5,7 @@ import { placesOf } from './places';
 import { makeSpace } from './space';
 import { buildSystem } from './world';
 import { LASER } from './fx';
+import { dishAt } from './stationFx';
 
 // the parts that draw (the planets' shaders, the rocks, the ships) stood in
 // for: these are about what's built, where, and what it does over time
@@ -210,6 +211,84 @@ describe('buildSystem', () => {
     expect(scarif.shield.r).toBeGreaterThan(systemById('scarif').body.r);
     endor.dispose();
     scarif.dispose();
+  });
+
+  it('holds Scarif’s superlaser while the war’s battle is on, brings the Death Star in when the war says, and gives it back its cycle', () => {
+    const k = kit();
+    const slots = [];
+    const slot = k.models.slot;
+    k.models.slot = (kind, size) => {
+      const s = slot(kind, size);
+      slots.push(s);
+      return s;
+    };
+    const scarif = buildSystem(systemById('scarif'), { ...k, small: false });
+    const ds = slots.find((s) => s.kind === 'deathstar');
+    const fired = () => scarif.events.splice(0).filter((e) => e.id === 'superlaser').length;
+    scarif.quiet(true);
+    for (let i = 0; i < 160; i += 2) {
+      scarif.update(T0 + i, 2, camera, null);
+      expect(ds.holder.visible).toBe(false);
+    }
+    expect(fired()).toBe(0);
+    // the gate fallen: in at the second the war says, firing about 18 s on, gone a minute later
+    const T = T0 + 1000;
+    scarif.war.superlaser(T);
+    scarif.update(T - 5, 1, camera, null);
+    expect(ds.holder.visible).toBe(false);
+    scarif.update(T + 5, 1, camera, null);
+    expect(ds.holder.visible).toBe(true);
+    for (let i = 6; i <= 24; i += 0.5) scarif.update(T + i, 0.5, camera, null);
+    expect(fired()).toBe(1);
+    // its dish turned onto the planet
+    const dish = dishAt('deathstar', ds.holder, 32).sub(ds.holder.position).normalize();
+    const toPlanet = new THREE.Vector3(0, 0, 0).sub(ds.holder.position).normalize();
+    expect(dish.dot(toPlanet)).toBeGreaterThan(0.9);
+    scarif.update(T + 80, 1, camera, null);
+    expect(ds.holder.visible).toBe(false);
+    // and once the war's gone, its own cycle
+    scarif.quiet(false);
+    const shownAt = Math.ceil(T0 / 150) * 150 + 30; // (a third of the way into a cycle of 150 s)
+    scarif.update(shownAt, 1, camera, null);
+    expect(ds.holder.visible).toBe(true);
+    scarif.dispose();
+  });
+
+  it('holds the second Death Star turned with its dish on the battle, and eases it back to its spin', () => {
+    const k = kit();
+    const slots = [];
+    const slot = k.models.slot;
+    k.models.slot = (kind, size) => {
+      const s = slot(kind, size);
+      slots.push(s);
+      return s;
+    };
+    const endor = buildSystem(systemById('endor'), { ...k, small: false });
+    const ds = slots.find((s) => s.kind === 'deathstar2');
+    const P = new THREE.Vector3(-60, 30, 40);
+    endor.quiet(true);
+    endor.war.face('deathstar2', P);
+    for (let i = 0; i < 30; i += 0.5) endor.update(T0 + i, 0.5, camera, null);
+    const dish = endor.war.dish('deathstar2');
+    const r = systemById('endor').pieces.find((p) => p.kind === 'deathstar2').size * 0.47;
+    expect(dish.distanceTo(ds.holder.position)).toBeCloseTo(r * 0.95, 4);
+    expect(dish.clone().sub(ds.holder.position).normalize().dot(P.clone().sub(ds.holder.position).normalize())).toBeGreaterThan(0.99);
+    // let go: back on its spin, as it would have been with no war
+    endor.war.face('deathstar2', null);
+    for (let i = 30; i < 60; i += 0.5) endor.update(T0 + i, 0.5, camera, null);
+    const held = ds.holder.quaternion.clone();
+    const k2 = kit();
+    let freeDs = null;
+    k2.models.slot = (kind, size) => {
+      const s = slot(kind, size);
+      if (kind === 'deathstar2') freeDs = s;
+      return s;
+    };
+    const free = buildSystem(systemById('endor'), { ...k2, small: false });
+    free.update(T0 + 59.5, 0.5, camera, null);
+    expect(Math.abs(held.dot(freeDs.holder.quaternion))).toBeCloseTo(1, 4);
+    endor.dispose();
+    free.dispose();
   });
 
   it('puts a TIE on the Razor Crest’s tail over Nevarro, firing the Empire’s green', () => {
