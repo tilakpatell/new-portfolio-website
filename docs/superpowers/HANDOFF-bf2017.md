@@ -28,6 +28,7 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline
   - Eight more heroes are playable: Obi-Wan, Anakin, Vader, Palpatine, Maul, Dooku, Lando and Bossk, joining Luke, Leia, Han, Chewbacca and Boba Fett.
   - The files are in the `site-assets` bucket: 143 of them, 1.91 GB, listed in `src/data/galaxyAssets.json`. `walrus.glb`, `clips-humanoid.glb` and `clips-luke.glb` stay committed as well (`asset-manifest.mjs`'s `KEPT`), because tests read them whole. A test that only asks whether the site has a file takes a published one as there (`onSite`).
   - `rig-parts` puts each vertex of a part where its own joints put it. A helmet's `PROC_*` bones share the body's names but are other bones, so they are bound to the nearest parent the two share.
+  - A 2017 figure passes `boneCapsules.js`'s `isGameSkeleton`, so bolts hit it where the game's capsules say (`footScene.walrus.test.js`). `ragdoll2017.js` (lane P2's, #820) is ready for whoever wires the dead fall. The call is `rigRagdoll` at `src/components/galaxy/surface/ground/groundFigures.js:345`, with ragdoll2017's table for a figure with `rig: 'walrus'`. That wiring is not this phase's: the owner keeps the physics lanes.
   - The clip packs carry each clip's game name exactly in `extras.source`, which lane X asked for.
   - Ten hilts and three hero blasters, `--keep-origin`, at the game's own maps; `HILTS` wear them; the saber and gunplay put the weapon in `Wep_Root` on a 2017 figure, the clip's arms and fingers holding it, the aim on the chest.
 
