@@ -40,7 +40,10 @@ export function dustShader({ vertexShader, fragmentShader }) {
   if (!ok) return { vertexShader, fragmentShader, swapped: false };
   const vs = vertexShader.replace('#include <common>', `#include <common>\n${PARS_VS}`).replace(
     '#include <project_vertex>',
-    `{
+    // (mvPosition declared outside the block: three's fog chunk reads it
+    // after, and with fog on, the ultra level's, the shader didn't compile)
+    `vec4 mvPosition;
+{
   float dustAge = (uDustTime - aStart) / uDustLife;
   float dustLive = step(0.0, dustAge) * step(dustAge, 1.0);
   float dustA = clamp(dustAge, 0.0, 1.0);
@@ -51,7 +54,7 @@ export function dustShader({ vertexShader, fragmentShader }) {
   #ifdef USE_INSTANCING
   dustM = modelMatrix * instanceMatrix;
   #endif
-  vec4 mvPosition = viewMatrix * dustM * vec4(0.0, dustUp, 0.0, 1.0);
+  mvPosition = viewMatrix * dustM * vec4(0.0, dustUp, 0.0, 1.0);
   // the card faces the camera, at the mesh’s own scale, turned by its seed
   float dustTurn = aSeed * 6.2831853 + dustA * (aSeed - 0.5) * 2.0;
   float dustC = cos(dustTurn);
