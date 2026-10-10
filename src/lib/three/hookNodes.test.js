@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { float } from 'three/tsl';
-import { asNode, follow, onColor, onDirect, onFog, onIndirect, onLight, onNormal, onPosition, wrap } from './hookNodes';
+import { asNode, follow, twinScene, onColor, onDirect, onFog, onIndirect, onLight, onNormal, onPosition, wrap } from './hookNodes';
 
 describe('a hook on the node renderer', () => {
   it('turns a classic material into its node twin, every property kept', () => {
@@ -62,5 +62,19 @@ describe('a hook on the node renderer', () => {
     expect(m.customProgramCacheKey()).toMatch(/off$/);
     on = true;
     expect(m.customProgramCacheKey()).toMatch(/on$/);
+  });
+
+  it('swaps a scene’s classic materials for their twins, a shared one once', () => {
+    const scene = new THREE.Scene();
+    const shared = new THREE.MeshLambertMaterial();
+    const a = new THREE.Mesh(new THREE.BoxGeometry(), shared);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(), [shared, new THREE.MeshBasicMaterial()]);
+    scene.add(a, b);
+    const twins = twinScene(scene);
+    expect(a.material.isMeshLambertNodeMaterial).toBe(true);
+    expect(b.material[0]).toBe(a.material);
+    expect(b.material[1].isMeshBasicNodeMaterial).toBe(true);
+    twinScene(scene, twins);
+    expect(b.material[0]).toBe(a.material);
   });
 });

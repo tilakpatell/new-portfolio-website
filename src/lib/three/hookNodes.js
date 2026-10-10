@@ -21,6 +21,7 @@
 // renderer shares one program between materials whose keys agree, and two
 // hooked materials with uniforms of their own must not share one.
 //
+//   twinScene(root, twins) → every classic material under root swapped for its twin
 //   asNode(material) → the node material for a classic one (three's own
 //     NodeLibrary.fromMaterial: every property copied), or itself
 //   follow(holder) → a uniform node that is `holder` ({ value } read every
@@ -72,6 +73,22 @@ export function asNode(material) {
   // its program by its nodes; a GLSL patch copied over does nothing here)
   for (const key in material) if (key !== 'customProgramCacheKey') out[key] = material[key];
   return out;
+}
+
+// Every classic material under `root` swapped on its object for its node
+// twin (one twin a material, so a shared one stays shared: `twins` keeps
+// them across calls), so hooks put on after change what is drawn.
+export function twinScene(root, twins = new Map()) {
+  const twin = (m) => {
+    if (!m || m.isNodeMaterial) return m;
+    if (!twins.has(m)) twins.set(m, asNode(m));
+    return twins.get(m);
+  };
+  root?.traverse?.((o) => {
+    if (!o.material) return;
+    o.material = Array.isArray(o.material) ? o.material.map(twin) : twin(o.material);
+  });
+  return twins;
 }
 
 // A uniform node for what a GLSL hook took as a { value }: a node is kept,
