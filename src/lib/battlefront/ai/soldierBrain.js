@@ -16,8 +16,10 @@
 // turns following into going to the objective and staying on it, firing
 // on the way, and holding the interaction there when no enemy is close.
 //
-//   createBrain(s, { ai, role, rand, aimScale, system }) → brain   (aimScale widens the aim box: a mode's lethality lever;
-//     system: the AI system row, ai.system by default)
+//   createBrain(s, { ai, role, rand, aimScale, system, difficulty, pve }) → brain   (aimScale widens the aim box: a
+//     mode's lethality lever; system: the AI system row, ai.system by default, AISystem_PvE for a pve bot;
+//     difficulty: `difficulty.js`'s row, which times the first shot at a new target, the aim's settling and
+//     widens the aim at a target that sprints or crouches; pve: the Skirmish template, tactics and abilities)
 //   think(brain, world, now) → intent { mode, target, goal, stance, fire, aim }
 //   act(brain, intent, s, dt, world, now)        patternStep(brain) → fire this frame?
 //   world: { nav, lineClear(a, b), squad: { centre, leader, posture } | null, objective, task, enemies, others, shoot(s, aim), who(id) }
@@ -32,6 +34,7 @@ import { clock, profile } from '../core.js';
 import { pickCover, queryFor } from './cover.js';
 import { pickTarget } from './targeting.js';
 import { queryFor as gameQuery, runQuery } from './coverQuery.js';
+import { skirmishRole, pressAbility } from './skirmish.js';
 
 // The class a soldier plays → the game's AI template for it.
 export const ROLES = { assault: 'rifleman', heavy: 'heavy', officer: 'officer', specialist: 'sniper' };
@@ -66,17 +69,26 @@ export const SEARCH_CELLS = 6000;
 // narrow for its body) is left out of its paths this long, by hand.
 export const AVOID = 10;
 
-export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', rand = Math.random, aimScale = 1, system = ai.system }) {
-  const template = ai.templates[role] ?? ai.templates.rifleman;
-  const tactics = ai.tactics[template.tactics] ?? ai.tactics.Rifleman_Tactics;
+export function createBrain(s, { ai, role: given = null, rand = Math.random, aimScale = 1, system: sys = null, difficulty = null, pve = false }) {
+  // a Skirmish bot plays its class's PvE template, tactics and AI weapon, under the PvE AI system
+  const pveRole = pve ? skirmishRole(s.cls ?? {}) : null;
+  const pveTemplate = pve ? ai.skirmish?.templates?.[pveRole] : null;
+  const role = given ?? (pveTemplate ? pveRole : (ROLES[s.cls?.cls] ?? 'rifleman'));
+  const template = pveTemplate ?? ai.templates[role] ?? ai.templates.rifleman;
+  const tactics = (pveTemplate && ai.skirmish.tactics[template.tactics]) ?? ai.tactics[template.tactics] ?? ai.tactics.Rifleman_Tactics;
+  const system = sys ?? (pveTemplate ? ai.systemPvE : ai.system);
   const family = s.weapon?.family ?? 'rifle';
-  const aiWeapon = ai.weapons[AI_WEAPONS[family] ?? 'AI_Rifle'];
+  const pveWeapon = pveTemplate ? ai.skirmish.weapons[`AI_${pveRole[0].toUpperCase()}${pveRole.slice(1)}_PvE`] : null;
+  const aiWeapon = pveWeapon?.accuracyHitBox ? pveWeapon : ai.weapons[AI_WEAPONS[family] ?? 'AI_Rifle'];
   const patterns = ai.patterns.filter((p) => p.weapon === (PATTERN_WEAPONS[family] ?? 'AssaultRifle'));
   return {
     s,
     role,
     aimScale,
     system,
+    difficulty,
+    pve: !!pveTemplate,
+    skirmish: pveTemplate ? ai.skirmish : null,
     target: null,
     targetSince: 0,
     assigned: null,
@@ -156,7 +168,17 @@ function aimBox(box, dist, settle) {
   return [lerp(w1, w0, settle), lerp(h1, h0, settle)];
 }
 
-export function aimAt(brain, from, belief, now) {
+// the difficulty's widening of the aim at a target that sprints, crouches or lies prone
+function penalty(brain, e) {
+  const a = brain.difficulty?.aim;
+  if (!a || !e) return 1;
+  if (e.sprint) return a.sprint;
+  if (e.stance === 'prone') return a.prone;
+  if (e.stance === 'crouch') return a.crouch;
+  return 1;
+}
+
+export function aimAt(brain, from, belief, now, who = null) {
   const tgt = v3(belief);
   if (brain.aimTarget !== belief.id) {
     brain.aimTarget = belief.id;
@@ -166,9 +188,11 @@ export function aimAt(brain, from, belief, now) {
   const vel = [belief.vel?.x ?? 0, 0, belief.vel?.z ?? 0];
   const p = lead(tgt, vel, from, speed) ?? tgt;
   const dist = Math.hypot(p[0] - from[0], p[2] - from[2]);
-  const [bw, bh] = aimBox(brain.aiWeapon.accuracyHitBox, dist, Math.min(1, (now - brain.aimSince) / AIM_SETTLE));
-  const w = bw * brain.aimScale;
-  const h = bh * brain.aimScale;
+  const settle = brain.difficulty?.settle(dist) ?? AIM_SETTLE;
+  const [bw, bh] = aimBox(brain.aiWeapon.accuracyHitBox, dist, Math.min(1, (now - brain.aimSince) / Math.max(1e-3, settle)));
+  const k = brain.aimScale * penalty(brain, who);
+  const w = bw * k;
+  const h = bh * k;
   const fx = (p[0] - from[0]) / (dist || 1);
   const fz = (p[2] - from[2]) / (dist || 1);
   const u = (brain.rand() * 2 - 1) * (w / 2);
@@ -239,18 +263,28 @@ export function think(brain, world, now) {
   const coverCtx = (query) => ({ me, threat: tgt, enemies: world.enemies, objective: world.objective, query, range, taken: world.taken, who: s.id });
   // the game's query first, the fallback scorer when it offers nothing
   const findCover = (state) =>
-    runQuery(brain.gameQueries[state], { common: brain.coverScores, nav: world.nav, me, meY: s.at[1], threat: tgt, threatY: b?.at.y, enemies: world.enemies, preferred: brain.preferred, current: brain.cover, taken: world.taken, who: s.id }) ??
+    runQuery(brain.gameQueries[state], { common: brain.coverScores, nav: world.nav, me, meY: s.at[1], threat: tgt, threatY: b?.at.y, enemies: world.enemies, preferred: brain.preferred, current: brain.cover, taken: world.taken, who: s.id, objective: world.objective }) ??
     pickCover(world.nav, coverCtx(brain.queries[state]));
   if (b) {
     const from = world.muzzle ? world.muzzle(s) : chestOf(s);
-    intent.aim = aimAt(brain, from, b, now);
-    intent.fire = b.visible && dist <= range && world.lineClear(from, v3(b));
+    intent.aim = aimAt(brain, from, b, now, world.who?.(b.id) ?? null);
+    // (a new target's first shot waits the difficulty's reaction at its distance)
+    const ready = !brain.difficulty || now - brain.targetSince >= brain.difficulty.reaction(dist);
+    intent.fire = ready && b.visible && dist <= range && world.lineClear(from, v3(b));
+    if (brain.pve) intent.ability = pressAbility(brain, { target: b, now });
   }
   if (mode === 'flee') {
     const slot = findCover('flee');
     intent.goal = slot ? flat(slot.at) : fallBack(world.nav, me, tgt, world.squad?.centre, 15);
     intent.sprint = true;
     intent.fire = false;
+    // (fled into the cover its query chose: it hides there)
+    if (slot && d2(me, intent.goal) < NEAR_GOAL) {
+      intent.mode = mode = 'hide';
+      intent.stance = 'crouch';
+      intent.sprint = false;
+      brain.cover = slot;
+    }
   } else if (mode === 'hide') {
     const keep = brain.cover && world.taken?.get(brain.cover) === s.id;
     const slot = keep ? brain.cover : findCover('hide');

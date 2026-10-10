@@ -26,17 +26,20 @@
 // Every other score (path avoidance, nav probes, the follow and exposure
 // scores) adds nothing and is counted once in `unreadScores`. A slot must
 // shield from the target and its solid stand between them (`cover.js`'s
-// `covered`); a slot another bot holds is not offered. The best slot above
+// `covered`); a slot another bot holds is not offered. The game's objective
+// terms are in its logic graphs, not its queries, so the modes' hand term is
+// added as the fallback scorer adds it (`cover.js`'s OBJECTIVE_WEIGHT a 100 m
+// nearer `ctx.objective`): without it a bot on an objective stalls in cover. The best slot above
 // nothing wins; none, and the brain falls back to `cover.js`'s pickCover. Pure.
 //
 //   queryFor(ai, tactics, state) → a coverQueries row | null      state: attack | hide | flee | protective
 //   runQuery(query, ctx) → slot | null
 //     ctx: { common (ai.coverScores), nav, me: [x, z], meY, threat: [x, z], threatY, enemies: [[x, z]],
-//            friends: [[x, z]], corpses: [[x, z]], preferred: { Start, Ideal, End }, current, taken, who }
+//            friends: [[x, z]], corpses: [[x, z]], preferred: { Start, Ideal, End }, current, taken, who, objective: [x, z] }
 //   unreadScores: Set of score kinds met and not read
 
 import { coverSlots, shields } from '../nav.js';
-import { covered, lineOfFire } from './cover.js';
+import { OBJECTIVE_WEIGHT, covered, lineOfFire } from './cover.js';
 import { curveAt } from './curve.js';
 
 export const unreadScores = new Set();
@@ -45,6 +48,8 @@ export const unreadScores = new Set();
 export const MAX_SEARCH = 40;
 // The cover-filter mask the records mark "[+] Protected Covers Additional Score": a full-height slot.
 export const PROTECTED = 3801088;
+// Nearer than this to where an angle is measured from, a slot has no angle (metres).
+const HERE = 0.5;
 // A RuntimeFilter whose low 20 bits are set names a cover shape (left, right, top blocked).
 const SHAPE_BITS = 0xfffff;
 
@@ -84,6 +89,8 @@ function xOf(s, ctx, slot, p) {
     case 'AngleFromReferenceDirection': {
       const from = where(s.refDirFromPos, ctx);
       const to = where(s.refDirToPos, ctx);
+      // (a slot where the angle is measured from has no angle: the score is left out, not read as 0°)
+      if (dist(p, from) < HERE) return null;
       return angle(to[0] - from[0], to[1] - from[1], p[0] - from[0], p[1] - from[1]);
     }
     case 'DistanceToActor':
@@ -122,12 +129,23 @@ function xOf(s, ctx, slot, p) {
   }
 }
 
-// a slot's score under the query and its score asset; null rejects it
-function scoreSpot(scores, ctx, slot) {
+// the most a score can add (its curve's highest point by its scale; a cover filter's or bonus's score)
+const most = (s) => (s.curve ? Math.max(0, ...s.curve.points.map((q) => q[1])) * (s.scale ?? 1) : Math.max(0, s.matchingScore ?? s.bonusScore ?? 0));
+// the line tests are dear: the line of fire is scored last, and not at all for a slot that cannot win
+const DEAR = new Set(['LineOfFire']);
+
+// a slot's score under the query and its score asset; null rejects it (or, given `beat`, one that cannot beat it)
+function scoreSpot(scores, ctx, slot, beat = -Infinity) {
   const p = [slot.at[0], slot.at[2]];
   let total = 0;
   let shape = null;
+  let left = scores.reduce((n, s) => n + (DEAR.has(s.type) ? most(s) : 0), 0);
   for (const s of scores) {
+    if (DEAR.has(s.type)) {
+      const toward = ctx.objective ? Math.max(0, (OBJECTIVE_WEIGHT * (dist(ctx.me, ctx.objective) - dist(p, ctx.objective))) / 100) : 0;
+      if (total + Math.max(0, shape ?? 0) + left + toward <= beat) return null;
+      left -= most(s);
+    }
     let v;
     if (s.type === 'CoverFilter') {
       if (s.runtimeFilter !== PROTECTED) {
@@ -151,12 +169,15 @@ function scoreSpot(scores, ctx, slot) {
     if (s.type === 'AngleToActor' && s.runtimeFilter & SHAPE_BITS) shape = Math.max(shape ?? -Infinity, v);
     else total += v;
   }
-  return total + (shape ?? 0);
+  total += shape ?? 0;
+  if (ctx.objective) total += (OBJECTIVE_WEIGHT * (dist(ctx.me, ctx.objective) - dist(p, ctx.objective))) / 100;
+  return total;
 }
 
 export function runQuery(query, ctx) {
   if (!query || !ctx.threat || !ctx.nav) return null;
-  const scores = [...query.scores, ...(ctx.common?.[query.common]?.scores ?? [])];
+  const all = [...query.scores, ...(ctx.common?.[query.common]?.scores ?? [])];
+  const scores = [...all.filter((s) => !DEAR.has(s.type)), ...all.filter((s) => DEAR.has(s.type))];
   const r = Math.min(query.radius ?? query.pathSearch ?? MAX_SEARCH, MAX_SEARCH);
   let best = null;
   let bestScore = 0;
@@ -164,9 +185,10 @@ export function runQuery(query, ctx) {
   for (const slot of coverSlots(ctx.nav, ctx.me, r)) {
     if (!shields(slot, ctx.threat) || !covered(ctx, slot)) continue;
     if (ctx.taken?.has(slot) && ctx.taken.get(slot) !== ctx.who) continue;
-    const score = scoreSpot(scores, ctx, slot);
-    if (score === null) continue;
     const d = Math.hypot(slot.at[0] - ctx.me[0], slot.at[2] - ctx.me[1]);
+    // (a slot level with the best and nearer can still win the tie)
+    const score = scoreSpot(scores, ctx, slot, d < bestD ? bestScore - 1e-9 : bestScore);
+    if (score === null) continue;
     if (score > bestScore || (score === bestScore && best && d < bestD)) {
       best = slot;
       bestScore = score;

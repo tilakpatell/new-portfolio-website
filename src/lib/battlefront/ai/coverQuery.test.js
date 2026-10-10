@@ -59,4 +59,25 @@ describe('cover queries in the game’s selection form', () => {
     expect(unreadScores.has('PathAvoidance')).toBe(true);
     expect(unreadScores.has('AngleToActor')).toBe(false);
   });
+
+  it('a bot that has fled into the cover its query chose hides there, crouched, never standing in the open', () => {
+    const cls = classOf(rb, 'l-orig-assault');
+    const flee = ai.coverQueries[ai.tactics.Rifleman_Tactics.queries['flee.coverQuery']];
+    // (walk the query to its own fixed point: the spot it keeps choosing from where it stands)
+    let at = [0, 8];
+    let spot = null;
+    for (let i = 0; i < 20; i++) {
+      spot = runQuery(flee, ctx({ me: at }));
+      if (!spot || (spot.at[0] === at[0] && spot.at[2] === at[1])) break;
+      at = [spot.at[0], spot.at[2]];
+    }
+    expect(spot).not.toBe(null);
+    expect([spot.at[0], spot.at[2]]).toEqual(at);
+    const s = newSoldier(cls, { id: 'me', team: 1, at: [spot.at[0], 0, spot.at[2]], weapon: weaponOf(rb, cls.weapon), rand: seeded(1) });
+    const b = createBrain(s, { ai, rand: seeded(1) });
+    b.me.beliefs.them = { id: 'them', at: { x: 10, y: 1.2, z: -30 }, vel: { x: 0, y: 0, z: 0 }, confidence: 1, visible: true, seenAt: 0, hostile: true };
+    const i = think(b, { nav, lineClear: (a, c) => lineClear(nav, a, c), shields, squad: { centre: [0, 10], posture: 'retreat' }, objective: null, enemies: [[10, -30]], taken: new Map() }, 1);
+    expect(i.mode).toBe('hide');
+    expect(i.stance).toBe('crouch');
+  });
 });
