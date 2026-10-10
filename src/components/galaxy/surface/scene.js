@@ -1550,6 +1550,8 @@ export async function create(canvas, ctx) {
         else if (q && state.done.has(q.id)) say(q.again ?? [[spec.name, 'Thanks again.']]);
       }
     } else if (tg.kind === 'use') questEvent({ type: 'use', id: tg.id });
+    // (a door to another of the world's maps: the page goes there, as the ship's leave does)
+    else if (tg.kind === 'enter' && tg.zone.to?.district) emit({ type: 'district', id: tg.zone.to.district });
     else if (tg.kind === 'enter') enterZone(tg.zone);
     else if (tg.kind === 'leave') leaveZone();
     else if (tg.kind === 'mount') {

@@ -8,7 +8,7 @@ import { FIGURES } from '../figures';
 import { PROPS, SCATTER } from '../props';
 import { RIDES } from '../rides';
 import { LAYER_TYPES, REACH, heightGrid, makeHeight } from '../terrain';
-import { LANDABLE, SITES, siteFrom, siteOf } from '.';
+import { LANDABLE, SITES, districtOf, siteFrom, siteOf, withDistrict } from '.';
 import { EXTRA } from './quests';
 import { CREW } from '../crew';
 import { talkTree } from '../talk';
@@ -221,3 +221,24 @@ describe('siteFrom', () => {
     expect(site.accent).toBe('#ffffff');
   });
 });
+
+describe('districts: more than one of the game’s maps on a world', () => {
+  const site = { level: 'tatooine', land: { at: [0, 0], yaw: 0 }, place: 'Mos Eisley', ground: { layers: [{ type: 'image', pack: 'tatooine' }] }, districts: [{ id: 'jabba', name: 'Jabba’s palace', level: 'tatooine/jabba', land: { at: [10, 0], yaw: 1 }, line: 'The palace.' }] };
+
+  it('finds a district by its id, and the world as it is for none or an unknown one', () => {
+    expect(districtOf(site, 'jabba').level).toBe('tatooine/jabba');
+    expect(districtOf(site, null)).toEqual({ id: 'main', level: 'tatooine', land: site.land });
+    expect(districtOf(site, 'nowhere').id).toBe('main');
+    expect(districtOf({ land: { at: [0, 0] } }, 'jabba')).toEqual({ id: 'main', level: undefined, land: { at: [0, 0] } });
+  });
+
+  it('puts a district’s level, landing and ground on the site, and leaves the site alone without one', () => {
+    const d = withDistrict(site, 'jabba');
+    expect(d).toMatchObject({ level: 'tatooine/jabba', land: { at: [10, 0], yaw: 1 }, place: 'Jabba’s palace', line: 'The palace.', district: 'jabba' });
+    // (the ground's own heightmap is the district's pack's)
+    expect(d.ground.layers).toEqual([{ type: 'image', pack: 'tatooine/jabba' }]);
+    expect(withDistrict(site, 'nowhere')).toBe(site);
+    expect(withDistrict(site, null)).toBe(site);
+  });
+});
+

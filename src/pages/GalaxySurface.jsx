@@ -11,7 +11,7 @@ import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
 import { parseSystem, systemById } from '../components/galaxy/systems';
 import { galaxyCrew } from '../components/galaxy/lines';
-import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
+import { LANDABLE, siteOf, withDistrict } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
 import { CREW, filesOf } from '../components/galaxy/surface/crewList';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
@@ -82,10 +82,12 @@ export default function GalaxySurface() {
   // (the way back up: the galaxy page's code comes ahead, so the route changes under the glare at once)
   useEffect(() => void import('./Galaxy').catch(() => {}), []);
   const id = parseSystem(useParams().system);
-  const site = useMemo(() => (id ? siteOf(id) : null), [id]);
-  const sys = systemById(id);
-  // a mission played down here (?mission=chase): you start in it
+  // a mission played down here (?mission=chase): you start in it; another of
+  // the game's maps on this world (?district=jabba: sites/index.js's districts)
   const [params] = useSearchParams();
+  const district = params.get('district');
+  const site = useMemo(() => (id ? withDistrict(siteOf(id), district) : null), [id, district]);
+  const sys = systemById(id);
   const mission = useMemo(() => missionOf(id, params.get('mission')), [id, params]);
   const missionKey = mission ? `${id}/${mission.id}` : null;
   // the scene's view of it, as the page needs it (how it stands, the count,
@@ -404,6 +406,7 @@ export default function GalaxySurface() {
         later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') goUp();
       else if (e.type === 'go') navigate(e.to);
+      else if (e.type === 'district') navigate(e.id === 'main' ? pathname : `${pathname}?district=${encodeURIComponent(e.id)}`);
       else if (e.type === 'bump') {
         comms.current?.handle({ type: 'bump', hard: e.hard });
         // and a thud as hard as the knock (the hit law: a scrape quiet, a tree head-on full)
@@ -465,7 +468,7 @@ export default function GalaxySurface() {
         later('toast', 3200, () => setToast(null));
       }
     },
-    [site, id, unlock, mission, missionKey, flyOut, goUp, navigate, pay, payOnce, warCarry],
+    [site, id, unlock, mission, missionKey, flyOut, goUp, navigate, pathname, pay, payOnce, warCarry],
   );
   const track = (qid) => {
     view.current?.input?.('track', qid);

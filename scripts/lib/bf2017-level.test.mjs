@@ -37,7 +37,7 @@ describe('readMap', () => {
 describe('arenaOf', () => {
   it('takes the level’s own sub and Content by default, and leaves the lobby, the actors and the lighting proxies out', () => {
     const map = readMap(json, bin);
-    expect(mainSubs(map)).toEqual(['fixture_01', 'content']);
+    expect(mainSubs(map)).toEqual(['fixture_01', 'content', 'shared_art', 'sunny']);
     expect(arenaOf(map)).toEqual([0, 1, 2]);
   });
 

@@ -57,10 +57,12 @@ export function readMap(json, bin) {
   return { name: json.level, instances: { count, position, quaternion, scale }, meshOf, groups, meshes: json.meshes, subworlds: json.subworlds.map((x) => x.name ?? x), terrain: json.terrain?.[0] ?? null, sky: json.sky ?? [], vehicleSpawns: json.vehicleSpawns ?? [] };
 }
 
-// The playable map: the level's own sub-level (its name's last part) and
-// `Content`. Lobby, EOR, Cinematics, Outro_*, HeroArena and the rest are
+// The playable map: the level's own sub-level (its name's last part),
+// `Content`, and where a map keeps its scenery apart, `Shared_Art` and the
+// day's `Sunny` (Endor_01: 16,341 of its 18,530 pieces). Lobby, EOR,
+// Cinematics, Outro_*, HeroArena, the modes and the other times of day are
 // other sets in the same file, drawn somewhere else in the game.
-export const mainSubs = (map) => [last(map.name), 'content'];
+export const mainSubs = (map) => [last(map.name), 'content', 'shared_art', 'sunny'];
 
 // What the game places and never draws as itself: Enlighten's lighting
 // proxies, the fake light cones, destruction stages waiting their turn
