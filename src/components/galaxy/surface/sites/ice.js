@@ -26,6 +26,11 @@ export const SITES = {
   hoth: {
     place: 'The ice fields outside Echo Base',
     line: 'Ice to the horizon, wind off the glaciers, and colder every night.',
+    // what its surfaces are, as the 2017 game's material grid for Hoth has
+    // them (lib/physics/materials.js): until the level's own collision tags
+    // its shapes, the ground is snow (28), a wall metal (14), a rock rock
+    // under snow (91); by hand, src/data/bf2017/physics/NOTES.md
+    materials: { level: 'hoth_01', ground: 28, box: 14, circle: 91 },
     // (every one of them a model, never one built in code: surface/cast.js;
     // whoever holds Hoth, their soldiers in snow kit)
     cast: 'models',

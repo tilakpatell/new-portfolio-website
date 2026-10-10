@@ -4,8 +4,10 @@
 // knees and lets one over your head go by) and the ground under them. The
 // world's half of lib/combat/bolt.js's step, and of the aim's ray.
 //
-// boltSolids(world, { step = 1 }) → (a, b) → { at, normal } | null: the
-// first solid along the segment a → b ([x, y, z] arrays). A segment that
+// boltSolids(world, { step = 1 }) → (a, b) → { at, normal, surface } | null:
+// the first solid along the segment a → b ([x, y, z] arrays); `surface`
+// what it struck, { ground: true } or { solid, tag } (the solid's own `tag`,
+// a material index where one was given), for lib/physics/materials.js. A segment that
 // starts inside one stops where it starts (a muzzle pressed into a wall).
 // world: { heightAt, normalAt?, solids (walker's createSolids), floors? }.
 
@@ -121,6 +123,7 @@ export function boltSolids(world, { step = 1 } = {}) {
   return (a, b) => {
     let best = 1;
     let normal = null;
+    let struck = null;
     if (solids?.near) {
       const len = Math.hypot(b[0] - a[0], b[2] - a[2]);
       const pieces = Math.max(1, Math.ceil(len / CHUNK));
@@ -133,6 +136,7 @@ export function boltSolids(world, { step = 1 } = {}) {
           if (k && k.t < best) {
             best = k.t;
             normal = k.normal;
+            struck = s;
           }
         }
       }
@@ -141,9 +145,9 @@ export function boltSolids(world, { step = 1 } = {}) {
     if (g !== null && (normal === null || g <= best)) {
       best = g;
       const at = lerp(a, b, g);
-      return { at: g === 0 ? [...a] : at, normal: world.normalAt ? world.normalAt(at[0], at[2]) : [0, 1, 0] };
+      return { at: g === 0 ? [...a] : at, normal: world.normalAt ? world.normalAt(at[0], at[2]) : [0, 1, 0], surface: { ground: true } };
     }
     if (normal === null) return null;
-    return { at: best === 0 ? [...a] : lerp(a, b, best), normal };
+    return { at: best === 0 ? [...a] : lerp(a, b, best), normal, surface: { solid: struck, tag: struck.tag ?? null } };
   };
 }

@@ -66,4 +66,18 @@ describe('what a bolt stops at on a galaxy surface', () => {
     for (let i = 0; i < 60 && bolts.live().length; i++) over.push(...bolts.step(1 / 60, { solids: cast, bodies: [{ ...you, a: [24, 0.3, 0], b: [24, 1.5, 0] }], blades: [] }));
     expect(over.map((e) => e.type)).toEqual(['hit']);
   });
+  it('says what it struck: the ground, or a solid with its material tag', () => {
+    const world = fixture();
+    world.solids.box(40, 0, 0.5, 5, 0, { tag: 14 });
+    const cast = boltSolids(world);
+    expect(cast([0, 1.2, 0], [15, 1.2, 0]).surface).toMatchObject({ solid: { type: 'box' }, tag: null });
+    expect(cast([35, 1.2, 0], [45, 1.2, 0]).surface).toMatchObject({ solid: { type: 'box' }, tag: 14 });
+    expect(cast([0, 1.2, 25], [0, 1.2, 35]).surface.solid.type).toBe('circle');
+    expect(cast([2, 2, 2], [3, -1, 2]).surface).toEqual({ ground: true });
+    const bolts = createBolts({ pool: 2 });
+    bolts.fire({ from: [35, 1.2, 0], dir: [1, 0, 0], range: 20, owner: 'you', side: 'you' });
+    const events = [];
+    for (let i = 0; i < 30 && bolts.live().length; i++) events.push(...bolts.step(1 / 60, { solids: cast, bodies: [], blades: [] }));
+    expect(events.find((e) => e.type === 'solid').surface.tag).toBe(14);
+  });
 });
