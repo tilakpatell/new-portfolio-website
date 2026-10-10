@@ -40,7 +40,7 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 | Q4 | `session_01UZN9iy457biyvcFRr7X39w` (the same) | `claude/surfaces-q4-weathering` | #852 (WebGL 2 leg shot; the WebGPU leg and the z-fighting proof on the owner's laptop) |
 | Q3 | | | after S |
 | Q5 | | | the desktop |
-| Q6 | `session_0176qPrnCnjzaZ9WkYe3RG5z` (Opus 5.5, env Website, started 2026-10-10 20:15 UTC) | `claude/surfaces-q6-picture` | this lane's PR (WebGL 2 leg shot; the WebGPU leg on the owner's laptop) |
+| Q6 | `session_0176qPrnCnjzaZ9WkYe3RG5z` (Opus 5.5, env Website, started 2026-10-10 20:15 UTC) | `claude/surfaces-q6-picture` | #882 (WebGL 2 leg shot; the WebGPU leg on the owner's laptop) |
 
 **Q4 (weathering and decals), 2026-10-10:**
 
