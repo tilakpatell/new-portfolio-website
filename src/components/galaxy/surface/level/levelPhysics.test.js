@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createPhysics } from '../../../../lib/physics/world';
-import { createLevelPhysics, imageHeight, instancesOf } from './levelPhysics';
+import { createLevelPhysics, imageHeight, instancesOf, wantsEngine } from './levelPhysics';
 
 const PACK = new URL('../../../../../scripts/fixtures/bf2017/physics/pack/', import.meta.url);
 const pack = JSON.parse(readFileSync(new URL('level.json', PACK), 'utf8'));
@@ -61,22 +61,37 @@ describe('createLevelPhysics', () => {
     expect(s.dropped).toEqual([{ cell: '0,0', mesh: 1, hulls: 0, triangles: 8 }]);
   });
 
-  it('reads a cell bin in the map’s layout', async () => {
-    const n = 3;
-    const buf = new ArrayBuffer(32 * n);
-    new Float32Array(buf, 0, 9).set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    new Int16Array(buf, 12 * n, 12).set([0, 0, 0, 32767, 0, 23170, 0, 23170, 0, 0, 0, -32767]);
-    new Float32Array(buf, 20 * n, 9).set([1, 1, 1, -1, 1, 1, 2, 2, 2]);
-    const list = instancesOf({ count: n, draws: [{ mesh: 0, offset: 0, count: 2 }, { mesh: 3, offset: 2, count: 1 }] }, buf);
-    expect(list.map((i) => i.mesh)).toEqual([0, 0, 3]);
-    expect(list[1].position).toEqual([4, 5, 6]);
+  it('reads a cell’s own bin (lane L’s 32-byte records) with its draws', async () => {
+    const list = instancesOf(pack.cells['0,0'].draws, await loadBin('cells/0_0.bin'));
+    expect(list.map((i) => i.mesh)).toEqual([0, 0, 0]);
+    expect(list[1].position).toEqual([20, 0, 10]);
     expect(list[1].quaternion[1]).toBeCloseTo(Math.SQRT1_2, 4);
-    expect(list[1].scale).toEqual([-1, 1, 1]);
-    expect(list[2].quaternion).toEqual([0, 0, 0, -1]);
-    const lp = createLevelPhysics({ physics, pack: { ...pack, cells: { '0,0': { count: n, draws: [{ mesh: 0, offset: 0, count: 3 }] } } }, loadBin });
-    await lp.addCell('0,0', buf);
+    expect(list[2].scale).toEqual([-1, 1, 1]);
+    const lp = createLevelPhysics({ physics, pack, loadBin });
+    await lp.add('0,0', await loadBin('cells/0_0.bin'));
     lp.update(Infinity);
     expect(lp.stats().bodies).toBe(3);
+    expect(down(10, 10)).toBeGreaterThan(0.5);
+    lp.drop('0,0');
+    expect(bodies()).toBe(0);
+  });
+
+  it('stops no one with a mesh the tier culls', async () => {
+    const lp = createLevelPhysics({ physics, pack, loadBin, tier: 'low', budget: { colliders: 100, triangles: 1000 } });
+    await lp.add('1,0', await loadBin('cells/1_0.bin'));
+    lp.update(Infinity);
+    expect(lp.stats().bodies).toBe(0);
+    const hi = createLevelPhysics({ physics, pack, loadBin, tier: 'high' });
+    await hi.add('1,0', await loadBin('cells/1_0.bin'));
+    hi.update(Infinity);
+    expect(hi.stats().bodies).toBe(1);
+  });
+
+  it('wants the engine only off phones, above low, on a pack with shapes', () => {
+    expect(wantsEngine({ pack, tier: 'high' })).toBe(true);
+    expect(wantsEngine({ pack, tier: 'high', small: true })).toBe(false);
+    expect(wantsEngine({ pack, tier: 'low' })).toBe(false);
+    expect(wantsEngine({ pack: { physics: {} }, tier: 'ultra' })).toBe(false);
   });
 
   it('lays the ground under a cell from the heights, the far map under a hole', async () => {

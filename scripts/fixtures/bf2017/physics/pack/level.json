@@ -3,6 +3,7 @@
  "cells": {
   "-1,0": {
    "bin": "cells/-1_0.bin",
+   "bytes": 32,
    "count": 1,
    "draws": [
     {
@@ -15,6 +16,7 @@
   },
   "0,0": {
    "bin": "cells/0_0.bin",
+   "bytes": 96,
    "count": 3,
    "draws": [
     {
@@ -33,6 +35,7 @@
   },
   "1,0": {
    "bin": "cells/1_0.bin",
+   "bytes": 64,
    "count": 2,
    "draws": [
     {
@@ -50,21 +53,117 @@
    ]
   }
  },
+ "cull": {
+  "high": {
+   "K": 1000,
+   "dropped": []
+  },
+  "low": {
+   "K": 35,
+   "dropped": [
+    3
+   ]
+  },
+  "mid": {
+   "K": 137,
+   "dropped": []
+  }
+ },
  "meshes": [
   {
-   "file": "models/objects/architecture/hoth/corridorsystem_01/new/arctic_corridorsnowpile_01_mesh.glb"
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/architecture/hoth/corridorsystem_01/new/arctic_corridorsnowpile_01_mesh.glb",
+   "radius": 1
   },
   {
-   "file": "models/objects/props/_decals/decalplane256_01_mesh.glb"
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/props/_decals/decalplane256_01_mesh.glb",
+   "radius": 1
   },
   {
-   "file": "models/objects/architecture/tatooine/jabbaspalace/_throneroom/trl_beamwood_01_a_1024_mesh.glb"
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/architecture/tatooine/jabbaspalace/_throneroom/trl_beamwood_01_a_1024_mesh.glb",
+   "radius": 1
   },
   {
-   "file": "models/objects/architecture/imperial/stardestroyer_01/sd_hulldetailpiece_02_mesh.glb"
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/architecture/imperial/stardestroyer_01/sd_hulldetailpiece_02_mesh.glb",
+   "radius": 1
   },
   {
-   "file": "models/objects/props/nothing_here_01_mesh.glb"
+   "bounds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1
+   ],
+   "glb": [
+    null
+   ],
+   "lods": [
+    12
+   ],
+   "mats": 1,
+   "name": "models/objects/props/nothing_here_01_mesh.glb",
+   "radius": 1
   }
  ],
  "physics": {

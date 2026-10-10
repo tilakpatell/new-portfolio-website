@@ -1,6 +1,6 @@
 # Lane P0 on Hoth: the shapes, measured (2026-10-10)
 
-Lane L’s Hoth pack wasn’t on `main` when lane P0 finished, so these are from the map itself (the export on the desktop, `levels/mp/hoth_01`), not a pack.
+From the map itself (the export on the desktop, `levels/mp/hoth_01`), and from lane L’s Hoth pack on its PR #831 (`claude/bf2017-l-hoth`), packed in a scratch copy (nothing of lane L’s committed here).
 
 ## The pack’s physics, over the whole map
 
@@ -29,3 +29,15 @@ Echo Base’s cells, the arena’s subs only (`Hoth_01` and `Content`), every pl
 Unbudgeted, one cell is nearly a second to add and 2 ms a step, almost all of it the mesh roots’ trimeshes (the detail over the hulls). The design’s 400 colliders a cell keeps 66 to 93% of the hulls; 1,000 keeps 88 to 98% for a fifth of a millisecond, so high is 1,000 and ultra 2,000 (`levelPhysics.js`’s `BUDGETS`). The bodies go in a slice a frame (`update(4)`), so the 20 to 60 ms of a dense cell is spread over its frames.
 
 A ray down through a budgeted cell: 0.5 to 2 µs.
+
+## Lane L’s Hoth pack (PR #831), packed and streamed
+
+`node scripts/bf2017-physics.mjs <a copy of public/models/galaxy/bf2017/levels/hoth> --from <web_opt>`: the same 432 meshes, 5.2 MB of bins (6.0 MB on disk in 432 files). The pack’s arena is lighter than the raw map’s cells (the lobby, the other modes and the never-drawn pieces are out): the heaviest cell is -3,0 at 2,019 colliders and 51,276 trimesh triangles.
+
+The near 3 × 3 round the spot through `levelPhysics` (`add` with each cell’s own bin, `update(4)` a frame until nothing is queued, then an idle step):
+
+| tier | bodies | colliders | unique shapes | trimesh triangles | cells over budget | added over | worst slice | step |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| mid (400 / 30k) | 323 | 2,560 | 1,362 | 4,066 | 227 rows dropped | 13 frames, 55 ms | 4.7 ms | 0.19 ms |
+| high (1,000 / 60k) | 1,123 | 6,160 | 2,787 | 30,501 | 145 rows dropped | 29 frames, 125 ms | 4.8 ms | 0.47 ms |
+| ultra (2,000 / 100k) | 1,603 | 8,687 | 3,364 | 216,782 | none | 51 frames, 224 ms | 4.8 ms | 0.57 ms |

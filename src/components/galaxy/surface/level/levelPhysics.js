@@ -1,10 +1,13 @@
 // A level pack's collision, streamed with its cells (lane P0 of the 2017
 // physics design, docs/superpowers/specs/2026-10-10-bf2017-physics-design.md
-// §1): when lane L's stream adds a cell's draws, the cell's placed meshes
+// §1): beside lane L's colliders.js, as it is (add when the stream brings a
+// cell, drop when it goes, from level/index.js's onCell and onDrop), the
+// cell's placed meshes
 // that have shapes become fixed bodies in the physics world (havok.js), and
 // its ground a heightfield per 64 m from the same heights the ground is
-// drawn from; when the cell goes, so do they. The far ring and the horizon
-// have none.
+// drawn from; when the cell goes, so do they (removed, not switched off as
+// the walk world's shapes are: a body costs memory). The far ring and the
+// horizon have none; a mesh the tier culls (pack.cull[tier]) stops no one.
 //
 // A mesh's shapes bin is fetched once (loadBin, lane L's fetch) and kept.
 // A cell over its budget drops its detail and its lightest hulls first
@@ -14,21 +17,28 @@
 // removed from inside a step (a substep hook) is gone once the step is
 // done (world.js defers it); a cell arriving after dispose() adds nothing.
 //
+//   wantsEngine({ pack, small, tier }) → bool: not a phone, not low, a pack
+//     whose `physics` section has meshes (the one rule)
 //   createLevelPhysics({ physics (createPhysics's), pack (level.json, with
-//     its `physics` section), loadBin(path) → Promise<ArrayBuffer>, budget =
-//     BUDGETS.high, cellSize = 128, terrainCell = 64 })
-//     → { addCell(key, cell) → Promise (cell: the cell's bin, read with the
-//         pack's cells[key], or [{ mesh, position, quaternion, scale }]),
-//       removeCell(key), setTerrain(heightAt | { near, far }), timed(stepMs),
+//     its `physics` section), loadBin(path) → Promise<ArrayBuffer>, tier =
+//     'high', budget = BUDGETS[tier], cellSize = pack.cell ?? 128,
+//     terrainCell = 64 })
+//     → { add(key, bin) / addCell → Promise (bin: the cell's own, lane L's
+//         32-byte records, read with pack.cells[key].draws; or
+//         [{ mesh, position, quaternion, scale }]),
+//       drop(key) / removeCell, setTerrain(heightAt | { near, far }), timed(stepMs),
 //         update(ms = 4)
 //         → bodies added, stats() → { cells, bodies, colliders,
 //         uniqueShapes, triangles, heightfields, queued, dropped, stepMs },
 //       dispose() }
 //   BUDGETS: per cell, by tier (low and phones: no engine at all)
-//   instancesOf(meta, bin) → [{ mesh, position, quaternion, scale }] (a cell
-//     bin in the map's layout: positions, Int16 quaternions / 32767, scales)
+//   instancesOf(draws, bin) → [{ mesh, position, quaternion, scale }] (lane
+//     L's records: position Float32 × 3, quaternion Int16 × 4 over 32767,
+//     scale Float32 × 3, 32 bytes each; lib/level/instances.js's layout)
 //   imageHeight({ near, far }) → heightAt(x, z): bilinear in near where it
 //     covers, else far, else 0; a hole (not a number) reads the next map
+//     (maps in metres; on the scene, pass setTerrain lane L's own sampler,
+//     (x, z) => LAYERS.image(x, z, layer), so the floor is the ground drawn)
 
 import { addHeightfield } from '../../../../lib/physics/heightfield.js';
 import { budgetCell, cellBodies, collidersOf, readShapes } from '../../../../lib/physics/havok.js';
@@ -42,18 +52,21 @@ export const BUDGETS = {
   ultra: { colliders: 2000, triangles: 100000 },
 };
 
-export function instancesOf(meta, bin) {
-  const buf = bin instanceof ArrayBuffer ? bin : bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
-  const n = meta.count ?? (meta.draws ?? []).reduce((a, d) => Math.max(a, d.offset + d.count), 0);
-  const P = new Float32Array(buf, meta.position ?? 0, 3 * n);
-  const Q = new Int16Array(buf, meta.quaternion ?? 12 * n, 4 * n);
-  const S = new Float32Array(buf, meta.scale ?? 20 * n, 3 * n);
+export const wantsEngine = ({ pack, small = false, tier = 'high' }) => Boolean(!small && tier !== 'low' && Object.keys(pack?.physics?.meshes ?? {}).length);
+
+const RECORD = 32;
+
+export function instancesOf(draws, bin) {
+  const v = bin instanceof ArrayBuffer ? new DataView(bin) : new DataView(bin.buffer, bin.byteOffset, bin.byteLength);
   const out = [];
-  for (const d of meta.draws ?? [])
+  for (const d of draws ?? [])
     for (let i = d.offset; i < d.offset + d.count; i++) {
-      const q = [Q[i * 4] / 32767, Q[i * 4 + 1] / 32767, Q[i * 4 + 2] / 32767, Q[i * 4 + 3] / 32767];
+      const o = i * RECORD;
+      if (o + RECORD > v.byteLength) break;
+      const f = (k) => v.getFloat32(o + k * 4, true);
+      const q = [0, 1, 2, 3].map((k) => v.getInt16(o + 12 + k * 2, true) / 32767);
       const l = Math.hypot(...q) || 1;
-      out.push({ mesh: d.mesh, position: [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]], quaternion: q.map((v) => v / l), scale: [S[i * 3], S[i * 3 + 1], S[i * 3 + 2]] });
+      out.push({ mesh: d.mesh, position: [f(0), f(1), f(2)], quaternion: q.map((x) => x / l), scale: [v.getFloat32(o + 20, true), v.getFloat32(o + 24, true), v.getFloat32(o + 28, true)] });
     }
   return out;
 }
@@ -66,7 +79,7 @@ function sample(map, x, z) {
   const iz = Math.min(Math.floor(fz), map.h - 2);
   const tx = fx - ix;
   const tz = fz - iz;
-  const at = (i, j) => map.data[j * map.w + i] * (map.scale ?? 1) + (map.offset ?? 0);
+  const at = (i, j) => map.data[j * map.w + i];
   return (at(ix, iz) * (1 - tx) + at(ix + 1, iz) * tx) * (1 - tz) + (at(ix, iz + 1) * (1 - tx) + at(ix + 1, iz + 1) * tx) * tz;
 }
 
@@ -83,7 +96,8 @@ export function imageHeight({ near = null, far = null }) {
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-export function createLevelPhysics({ physics, pack, loadBin, budget = BUDGETS.high, cellSize = 128, terrainCell = 64 }) {
+export function createLevelPhysics({ physics, pack, loadBin, tier = 'high', budget = BUDGETS[tier] ?? BUDGETS.high, cellSize = pack.cell ?? 128, terrainCell = 64 }) {
+  const culled = new Set(pack.cull?.[tier]?.dropped ?? []);
   const section = pack.physics ?? { meshes: {}, materials: {} };
   const shapes = new Map(); // mesh → Promise<colliders | null>
   const cells = new Map(); // key → { bodies, queue, heightfields, dropped, colliders, triangles }
@@ -126,7 +140,7 @@ export function createLevelPhysics({ physics, pack, loadBin, budget = BUDGETS.hi
     const cell = { bodies: [], queue: [], heightfields: [], dropped: [], colliders: 0, triangles: 0, gone: false };
     cells.set(key, cell);
     terrainFor(cell, key);
-    const instances = Array.isArray(cellIn) ? cellIn : instancesOf(pack.cells?.[key] ?? {}, cellIn);
+    const instances = (Array.isArray(cellIn) ? cellIn : instancesOf(pack.cells?.[key]?.draws, cellIn)).filter((i) => !culled.has(i.mesh));
     const byMesh = {};
     for (const mesh of new Set(instances.map((i) => String(i.mesh)))) {
       const c = await collidersFor(mesh);
@@ -174,6 +188,9 @@ export function createLevelPhysics({ physics, pack, loadBin, budget = BUDGETS.hi
   return {
     addCell,
     removeCell,
+    // (colliders.js's names)
+    add: addCell,
+    drop: removeCell,
     update,
     setTerrain(source) {
       if (disposed) return;

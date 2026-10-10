@@ -84,7 +84,7 @@ async function readMeshes(meshes, get, recs, from) {
   const names = new Set();
   const dropped = [];
   for (let i = 0; i < meshes.length; i++) {
-    const file = meshes[i].source ?? meshes[i].file;
+    const file = meshes[i].source ?? meshes[i].file ?? meshes[i].name;
     const rec = recs.get(physicsKey(file));
     if (!rec) continue;
     // (a flat folder of GLBs, the fixtures', by the file's own name)
