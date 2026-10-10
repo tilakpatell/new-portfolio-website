@@ -1,0 +1,174 @@
+{
+ "world": "bespin",
+ "map": "s2/levels/cloudcity_01/cloudcity_01",
+ "main": "dusk",
+ "sky": {
+  "main": "S2/Levels/CloudCity_01/VE_Sky_Clouds_Dusk_01",
+  "overrides": [
+   "S2/Levels/CloudCity_01/VE_Sky_Clouds_Dusk_Interiors_01"
+  ]
+ },
+ "weathers": {
+  "dusk": {
+   "sun": {
+    "color": [
+     0.8468733,
+     0.1944831,
+     0.08393031
+    ],
+    "lux": 25000,
+    "az": 220,
+    "el": 12.371
+   },
+   "sky": {
+    "luminance": 1500,
+    "sunSize": 0.003,
+    "panorama": "S2/Levels/CloudCity_01/textures/T_Sky_Clouds_Dusk_01_01_C",
+    "gradient": "S2/Levels/CloudCity_01/textures/T_Clouds_Dusk_Fog_01_C"
+   },
+   "fog": {
+    "start": 20,
+    "end": 12000,
+    "curve": [
+     2.28299785,
+     -3.188866,
+     1.8218379,
+     0.00418918
+    ],
+    "height": 500,
+    "heightDepth": 50,
+    "heightRange": 2500,
+    "scatter": [
+     953.967346,
+     479.69043,
+     307.108948
+    ]
+   },
+   "tonemap": {
+    "compensation": 0.5,
+    "minEV": 7,
+    "maxEV": 9,
+    "auto": true,
+    "bloom": 0.070025824
+   },
+   "grading": {
+    "brightness": 1,
+    "contrast": 1.1,
+    "saturation": 1,
+    "lut": "textures/galaxy/bf2017/light/bespin/dusk.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 270,
+    "strength": 1
+   },
+   "enlighten": {
+    "sky": [
+     0.2068366,
+     0.4079095,
+     1.24304736
+    ],
+    "ground": [
+     0.2068366,
+     0.4079095,
+     1.24304736
+    ]
+   },
+   "source": [
+    "S2/Levels/CloudCity_01/VE_Sky_Clouds_Dusk_01"
+   ],
+   "probe": {
+    "id": "6982dab2",
+    "variant": "SL_Lighting",
+    "zenith": [
+     2830.57,
+     2728.549,
+     2713.045
+    ],
+    "horizon": [
+     199.215,
+     127.829,
+     74.626
+    ],
+    "ground": [
+     322.201,
+     322.171,
+     322.135
+    ],
+    "open": 19.75,
+    "url": "textures/galaxy/bf2017/light/bespin/dusk"
+   }
+  },
+  "interior": {
+   "sun": {
+    "color": [
+     0.8468733,
+     0.1944831,
+     0.08393031
+    ],
+    "lux": 25000,
+    "az": 220,
+    "el": 12.371
+   },
+   "sky": {
+    "luminance": 1500,
+    "sunSize": 0.003,
+    "panorama": "S2/Levels/CloudCity_01/textures/T_Sky_Clouds_Dusk_01_01_C",
+    "gradient": "S2/Levels/CloudCity_01/textures/T_Clouds_Dusk_Fog_01_C"
+   },
+   "fog": {
+    "start": 20,
+    "end": 12000,
+    "curve": [
+     2.28299785,
+     -3.188866,
+     1.8218379,
+     0.00418918
+    ],
+    "height": 500,
+    "heightDepth": 50,
+    "heightRange": 2500,
+    "scatter": [
+     953.967346,
+     479.69043,
+     307.108948
+    ]
+   },
+   "tonemap": {
+    "compensation": 1.5,
+    "minEV": 7,
+    "maxEV": 9,
+    "auto": true,
+    "bloom": 0.07
+   },
+   "grading": {
+    "brightness": 1,
+    "contrast": 1.1,
+    "saturation": 1,
+    "lut": "textures/galaxy/bf2017/light/bespin/interior.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 270,
+    "strength": 1
+   },
+   "enlighten": {
+    "sky": [
+     0.2068366,
+     0.4079095,
+     1.24304736
+    ],
+    "ground": [
+     0.2068366,
+     0.4079095,
+     1.24304736
+    ]
+   },
+   "source": [
+    "S2/Levels/CloudCity_01/VE_Sky_Clouds_Dusk_01",
+    "S2/Levels/CloudCity_01/VE_Sky_Clouds_Dusk_Interiors_01"
+   ]
+  }
+ },
+ "indoor": null
+}

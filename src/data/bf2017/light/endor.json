@@ -1,0 +1,343 @@
+{
+ "world": "endor",
+ "map": "levels/mp/endor_01/endor_01",
+ "main": "sunny",
+ "sky": {
+  "main": "Levels/Lighting/Endor/Sunny_01/VE_PV_Endor_Sunny_01",
+  "overrides": [
+   "Levels/Lighting/Endor/night_01/VE_PV_Endor_Night_01",
+   "Levels/Lighting/Endor/Foggy_01/VE_PV_Endor_Foggy_01",
+   "Levels/Lighting/Endor/Foggy_01/VE_PV_Endor_Foggy_Caves_01"
+  ]
+ },
+ "weathers": {
+  "sunny": {
+   "sun": {
+    "color": [
+     1,
+     0.858494461,
+     0.792422235
+    ],
+    "lux": 180000,
+    "az": 356.742,
+    "el": 43.575
+   },
+   "sky": {
+    "luminance": 25000,
+    "sunSize": 0.001,
+    "panorama": "Levels/SP/A1/M1END/DS02/Lighting/T_A1_M1END_Sky_Sunny_01_C",
+    "gradient": "Levels/Forest/Lighting/Textures/T_Sky_Forest_02_Fog_Sunny_C"
+   },
+   "fog": {
+    "start": 50,
+    "end": 5000,
+    "curve": [
+     1.94354916,
+     -2.58006763,
+     1.44530582,
+     -0.02378697
+    ],
+    "height": 190,
+    "heightDepth": 25,
+    "heightRange": 1500,
+    "scatter": [
+     829.2792,
+     810.6158,
+     790.9053
+    ]
+   },
+   "tonemap": {
+    "compensation": 1,
+    "minEV": 12.5,
+    "maxEV": 14,
+    "auto": true,
+    "bloom": 0.114435375
+   },
+   "grading": {
+    "brightness": 0.955104649,
+    "contrast": 1.05,
+    "saturation": 0.848088264,
+    "lut": "textures/galaxy/bf2017/light/endor/sunny.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 1
+   },
+   "enlighten": {
+    "sky": [
+     0.218190253,
+     0.309427172,
+     0.499505222
+    ],
+    "ground": [
+     0.0494334623,
+     0.0494334623,
+     0.0494334623
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Endor/Sunny_01/VE_PV_Endor_Sunny_01"
+   ]
+  },
+  "night": {
+   "sun": {
+    "color": [
+     0.178192988,
+     0.4283924,
+     0.9457819
+    ],
+    "lux": 4000,
+    "az": 356.742,
+    "el": 43.575
+   },
+   "sky": {
+    "luminance": 2500,
+    "sunSize": 0.025,
+    "panorama": "Levels/Lighting/Kashyyyk/Night_01/T_Kashyyyk_Night_01_C",
+    "gradient": "Levels/Lighting/Endor/night_01/T_Endor_Night_01_Fog_D"
+   },
+   "fog": {
+    "start": 25,
+    "end": 800,
+    "curve": [
+     0.725711,
+     -0.225123554,
+     0.30453378,
+     -0.0107739624
+    ],
+    "height": 230,
+    "heightDepth": 55,
+    "heightRange": 160,
+    "scatter": [
+     1.66515648,
+     4.67994642,
+     12
+    ]
+   },
+   "tonemap": {
+    "compensation": -0.4,
+    "minEV": 5.5,
+    "maxEV": 8.5,
+    "auto": true,
+    "bloom": 0.1,
+    "ev": 6.132
+   },
+   "grading": {
+    "brightness": 0.955104649,
+    "contrast": 1.05,
+    "saturation": 0.848088264,
+    "lut": "textures/galaxy/bf2017/light/endor/night.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 1
+   },
+   "enlighten": {
+    "sky": [
+     17.945652,
+     19.6215668,
+     24
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ],
+    "terrain": [
+     0.316933662,
+     0.28651607,
+     0.2664664
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Endor/Sunny_01/VE_PV_Endor_Sunny_01",
+    "Levels/Lighting/Endor/night_01/VE_PV_Endor_Night_01"
+   ],
+   "probe": {
+    "id": "670f571c",
+    "variant": "Night_Lighting2",
+    "zenith": [
+     3.755,
+     8.667,
+     19.198
+    ],
+    "horizon": [
+     5.087,
+     11.449,
+     21.873
+    ],
+    "ground": [
+     34.45,
+     80.405,
+     173.969
+    ],
+    "open": 0.77,
+    "url": "textures/galaxy/bf2017/light/endor/night"
+   }
+  },
+  "foggy": {
+   "sun": {
+    "color": [
+     0,
+     0,
+     0
+    ],
+    "lux": 0.001,
+    "az": 356.742,
+    "el": 43.575
+   },
+   "sky": {
+    "luminance": 10000,
+    "sunSize": 0.001,
+    "panorama": "Levels/Lighting/Endor/Foggy_01/T_Endor_Foggy_01_C",
+    "gradient": "Levels/Lighting/Endor/Foggy_01/T_Endor_Foggy_01_Fog_C"
+   },
+   "fog": {
+    "start": 10,
+    "end": 500,
+    "curve": [
+     0,
+     -1.02945125,
+     1.715502,
+     -0.0277419984
+    ],
+    "height": 178,
+    "heightDepth": 20,
+    "heightRange": 180,
+    "scatter": [
+     2.977,
+     2.72638154,
+     2.47216129
+    ]
+   },
+   "tonemap": {
+    "compensation": 1,
+    "minEV": 8.5,
+    "maxEV": 10.5,
+    "auto": true,
+    "bloom": 0.124450795
+   },
+   "grading": {
+    "brightness": 0.955104649,
+    "contrast": 1.05,
+    "saturation": 0.848088264,
+    "lut": "textures/galaxy/bf2017/light/endor/foggy.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 1
+   },
+   "enlighten": {
+    "sky": [
+     0.218190253,
+     0.309427172,
+     0.499505222
+    ],
+    "ground": [
+     0.0494334623,
+     0.0494334623,
+     0.0494334623
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Endor/Sunny_01/VE_PV_Endor_Sunny_01",
+    "Levels/Lighting/Endor/Foggy_01/VE_PV_Endor_Foggy_01"
+   ],
+   "probe": {
+    "id": "94b0bf9c",
+    "variant": "Foggy_Lighting",
+    "zenith": [
+     2050.672,
+     3424.031,
+     5190.25
+    ],
+    "horizon": [
+     404.18,
+     602.127,
+     794.885
+    ],
+    "ground": [
+     152.263,
+     246.94,
+     350.559
+    ],
+    "open": 5.68,
+    "url": "textures/galaxy/bf2017/light/endor/foggy"
+   }
+  },
+  "interior": {
+   "sun": {
+    "color": [
+     1,
+     0.858494461,
+     0.792422235
+    ],
+    "lux": 180000,
+    "az": 356.742,
+    "el": 43.575
+   },
+   "sky": {
+    "luminance": 25000,
+    "sunSize": 0.001,
+    "panorama": "Levels/SP/A1/M1END/DS02/Lighting/T_A1_M1END_Sky_Sunny_01_C",
+    "gradient": "Levels/Forest/Lighting/Textures/T_Sky_Forest_02_Fog_Sunny_C"
+   },
+   "fog": {
+    "start": 30,
+    "end": 5000,
+    "curve": [
+     0.769871,
+     -0.805615544,
+     0.8199147,
+     -0.0289865844
+    ],
+    "height": 178,
+    "heightDepth": 20,
+    "heightRange": 5000,
+    "scatter": [
+     829.2792,
+     810.6158,
+     790.9053
+    ]
+   },
+   "tonemap": {
+    "compensation": 0,
+    "minEV": 7.5,
+    "maxEV": 11,
+    "auto": true,
+    "bloom": 0.1
+   },
+   "grading": {
+    "brightness": 0.955104649,
+    "contrast": 1.05,
+    "saturation": 0.848088264,
+    "lut": "textures/galaxy/bf2017/light/endor/interior.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 1
+   },
+   "enlighten": {
+    "sky": [
+     0.218190253,
+     0.309427172,
+     0.499505222
+    ],
+    "ground": [
+     0.0494334623,
+     0.0494334623,
+     0.0494334623
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Endor/Sunny_01/VE_PV_Endor_Sunny_01",
+    "Levels/Lighting/Endor/Foggy_01/VE_PV_Endor_Foggy_Caves_01"
+   ]
+  }
+ },
+ "indoor": null
+}
