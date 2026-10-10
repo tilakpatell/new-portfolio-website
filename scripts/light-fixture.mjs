@@ -3,8 +3,8 @@
 // The lit fixture on both of the node renderer's kinds, headless: lane R's
 // proof (docs/superpowers/plans/2026-10-10-galaxy-engine-laneR-light.md).
 //
-//   node scripts/light-fixture.mjs [--tier ultra] [--post on|off]
-//     [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
+//   node scripts/light-fixture.mjs [--tier ultra] [--post on|off] [--sky on|off]
+//     [--grid] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
 //
 // For each leg (?gpu=webgpu, and ?gpu=webgl: the node renderer on a WebGL 2
 // context) it opens scripts/light-fixture/index.html on a Vite dev server
@@ -17,7 +17,9 @@
 // - no recompile: the renderer's pipelines counted before and after a
 //   placed light moves and changes colour over 30 frames;
 // - the frame time: frames drawn back to back for --ms, each waited on,
-//   the median and the 95th percentile.
+//   the median and the 95th percentile;
+// - with --grid (A3): an arena-sized probe grid baked, the bake's time to
+//   the GPU's end, a shot with it and the frame time again.
 // The numbers go to <label>.json beside the shots and to stdout as a table.
 //
 // On Linux without a display both legs draw on SwiftShader (CPU): the
@@ -45,7 +47,9 @@ const label = arg('label', post ? `post-${tier}` : `lit-${tier}`);
 const [W, H] = arg('size', '1600x900').split('x').map(Number);
 const ms = Number(arg('ms', 5000));
 const legs = arg('legs', 'webgpu,webgl').split(',');
-const fixture = { tier, post, sky: post, env: true };
+const sky = arg('sky', 'on') === 'on';
+const grid = argv.includes('--grid');
+const fixture = { tier, post, sky, env: true };
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
@@ -121,6 +125,14 @@ for (const leg of legs) {
     row.frames = intervals.length;
     row.median = Number(pct(intervals, 0.5)?.toFixed(1));
     row.p95 = Number(pct(intervals, 0.95)?.toFixed(1));
+    if (grid) {
+      const bake = await page.evaluate(() => window.__lit.bakeGrid());
+      row.gridBakeMs = Number(bake.total.toFixed(1));
+      await page.evaluate(() => window.__lit.draw(4));
+      writeFileSync(join(OUT, `${label}-${leg}-grid.png`), await shot());
+      const after = await page.evaluate((t) => window.__lit.time(t), ms);
+      row.gridMedian = Number(pct(after, 0.5)?.toFixed(1));
+    }
   } catch (e) {
     row.error = String(e.message ?? e).split('\n')[0];
   }
@@ -132,11 +144,11 @@ await browser.close();
 await server.close();
 
 writeFileSync(join(OUT, `${label}.json`), `${JSON.stringify({ size: `${W}x${H}`, adapter: swift ? 'swiftshader' : 'system', rows }, null, 2)}\n`);
-console.log(`| leg | backend | passes | clustered | env diff | programs before → after | median ms | p95 ms |`);
-console.log(`|---|---|---|---|---|---|---|---|`);
+console.log(`| leg | backend | passes | clustered | env diff | programs before → after | median ms | p95 ms | grid bake ms | median with grid |`);
+console.log(`|---|---|---|---|---|---|---|---|---|---|`);
 for (const r of rows) {
   if (r.error) console.log(`| ${r.leg} | failed: ${r.error} |`);
-  else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.median} | ${r.p95} |`);
+  else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.median} | ${r.p95} | ${r.gridBakeMs ?? '–'} | ${r.gridMedian ?? '–'} |`);
   if (r.errors) console.log(`  errors: ${r.errors.join(' / ')}`);
 }
 process.exit(rows.some((r) => r.error && r.leg !== 'webgpu') ? 1 : 0);

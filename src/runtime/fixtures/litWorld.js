@@ -114,10 +114,19 @@ export default {
       setPost(on) {
         opts.post = on;
       },
+      // A3: an arena-sized probe grid (Hoth's 1,536 m), made and baked; the
+      // caller waits on the GPU and times it
+      async bakeGrid() {
+        const { createProbeGrid, PROBE_GRID } = await import('../../lib/three/light/probes.js');
+        grid ??= await createProbeGrid(scene, renderer, { min: [-768, -5, -768], max: [768, 60, 768] }, PROBE_GRID, { force: true });
+        return grid.bake();
+      },
     };
 
     let sun = null;
     let placed = null;
+    let sky = null;
+    let grid = null;
     const ready = (async () => {
       const { registerLights } = await import('../../lib/three/light/three.js');
       const { createSun } = await import('../../lib/three/light/sun.js');
@@ -132,10 +141,20 @@ export default {
         placed.set(lights);
       }
       probe.light = { placed, clustered: placed?.clustered ?? null };
-      const [{ PMREMGenerator }, { RoomEnvironment }] = await Promise.all([import('three/webgpu'), import('three/addons/environments/RoomEnvironment.js')]);
-      const pmrem = new PMREMGenerator(renderer);
-      envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-      pmrem.dispose();
+      if (opts.sky) {
+        const { createSky } = await import('../../lib/three/light/sky.js');
+        const { createFog } = await import('../../lib/three/light/fog.js');
+        sky = await createSky(ENTRY);
+        scene.add(sky.mesh);
+        sky.update(camera);
+        envTex = sky.envTexture(renderer);
+        scene.fogNode = (await createFog(ENTRY)).node;
+      } else {
+        const [{ PMREMGenerator }, { RoomEnvironment }] = await Promise.all([import('three/webgpu'), import('three/addons/environments/RoomEnvironment.js')]);
+        const pmrem = new PMREMGenerator(renderer);
+        envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        pmrem.dispose();
+      }
       probe.setEnv(opts.env);
       await rt.gfx.compile(scene, camera);
     })();
@@ -149,6 +168,7 @@ export default {
       },
       step(dt) {
         cube.rotation.y += dt;
+        sky?.update(camera);
       },
       draw({ renderer: r }) {
         if (post && opts.post) post.render();
@@ -158,8 +178,10 @@ export default {
       dispose() {
         post?.dispose();
         sun?.dispose();
+        sky?.dispose();
+        grid?.dispose();
         placed?.dispose();
-        envTex?.dispose();
+        if (!sky) envTex?.dispose();
         for (const m of made) m.dispose();
       },
     };

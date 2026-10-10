@@ -43,6 +43,13 @@ try {
       for (let i = 0; i < n; i++) frame(dt);
       await sync();
     },
+    // the probe grid made and baked, the GPU waited on (A3)
+    async bakeGrid() {
+      const t = performance.now();
+      const cpu = await w.probe.bakeGrid();
+      await sync();
+      return { cpu, total: performance.now() - t };
+    },
     // frames drawn back to back for ms (at least five), each waited on:
     // the time each took, CPU and GPU (a headless page's animation frames
     // are throttled, so this is not the loop's interval)
