@@ -377,6 +377,7 @@ function three(scene, spec, tier, palette, kitsOf) {
       root.position.set(-at[0], -at[1], -at[2]);
     },
     tick: (ship) => kits?.update(ship),
+    kitStats: () => kits?.stats() ?? null,
     dispose() {
       scene.remove(root);
       kits?.dispose();
@@ -407,7 +408,7 @@ export function createGround(scene, { rt, spec, tier = 'mid', palette, warn, kit
     origin: (at) => core.origin(at),
     setTier: (t) => core.setTier(t),
     heroTower: (made) => sink.heroTower(made),
-    stats: () => ({ ...core.stats(), geometries: sink.live() }),
+    stats: () => ({ ...core.stats(), geometries: sink.live(), kit: sink.kitStats() }),
     dispose() {
       core.dispose();
       sink.dispose();

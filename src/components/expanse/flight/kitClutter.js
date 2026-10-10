@@ -12,7 +12,8 @@
 //
 //   createKitClutter(root, { spec, tier, load, makePool }) → {
 //     add(rows) → { key (null: none taken), rest (the rows it left), kitted },
-//     free(key), update(ship), dispose() }
+//     free(key), update(ship), stats() → { ready (kinds in), items, drawn
+//     ([full, LOD1, puff]) }, dispose() }
 //   rows: the worker's [x, y, z, yaw, scale, kindIndex] each
 
 import { createPool, loadKit } from '../../../lib/three/kit';
@@ -21,8 +22,8 @@ import { clutterKitOf } from '../../../lib/land/flight/landmarkTables';
 
 // [near, mid]: the full model within near, its LOD1 to mid, its puff to
 // twice that; the clutter lives on the two finest leaves, within a few
-// hundred metres of the ship
-const BANDS = [120, 600];
+// hundred metres of the ship, its puffs out to 1.8 km where the code-built shapes would still show
+const BANDS = [150, 900];
 const CAP = 256; // a pool's instances to start (it grows)
 
 export function createKitClutter(root, { spec, tier = 'mid', load = loadKit, makePool = createPool } = {}) {
@@ -88,6 +89,15 @@ export function createKitClutter(root, { spec, tier = 'mid', load = loadKit, mak
       last = now;
       const camera = { position: { x: ship.x, y: ship.y ?? 0, z: ship.z } };
       for (const e of kinds.values()) e.pool?.update(camera, dt);
+    },
+    stats() {
+      const out = { ready: 0, items: 0, drawn: [0, 0, 0] };
+      for (const e of kinds.values()) {
+        if (e.ready) out.ready++;
+        out.items += e.pool?.stats?.total ?? 0;
+        e.pool?.stats?.levels?.forEach((n, i) => (out.drawn[i] += n));
+      }
+      return out;
     },
     dispose() {
       gone = true;
