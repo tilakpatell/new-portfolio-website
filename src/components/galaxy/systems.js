@@ -111,7 +111,9 @@ export const LANES = [
 // moment     { film, title, text }: the scene the system is shown at
 // about      a line or two for its card
 // facts      [label, value] for its card
-// quote      { text, by, film, clip? } (clip: lib/clips.js's, said as you arrive)
+// quote      { text, by, film, clip?, voice? } (clip: lib/clips.js's, said as you arrive;
+//            voice: with no clip, the voice it's made in (lib/voiced.js), the film's own
+//            actor's: Anakin in The Phantom Menace is the boy's; none for a crowd)
 // accent     its colour on the map and the card (readable on #03040a)
 // body       { look, r }: its planet (bodies.js's look), or null
 // parent     { look, r, at }: the gas giant it orbits, seen in its sky
@@ -120,6 +122,10 @@ export const LANES = [
 // pieces     the set pieces (setpieces.js reads them; sizes in map units, the ship is 0.26 long)
 //            (the planet's grown to be wider than its biggest ship's long: fit.js, as SYSTEMS is made)
 // faction    who hunts you here (galaxy/hunted.js), or null for nobody
+// war        { worth: 1 | 2 | 3, weight: 1 | 2 | 3 | 4, kind, area }: what it is to
+//            the galaxy's wars (gcw.js: the order of the fronts, how often a
+//            raider picks it), the battle fought there (battles.js's
+//            BATTLE_KINDS) and the area of the war it's in (sides.js's AREAS)
 // traffic    what flies through on its own business
 // game       the mission: { id, objectives, title, film, role, pitch, how, status: 'soon' | 'live', to?, go? (the button: 'Fly it now' unless it says) }
 
@@ -140,7 +146,7 @@ const AS_SET = [
       ['Terrain', 'Dune seas, canyons, mesas'],
       ['Natives', 'Jawas, Tusken Raiders'],
     ],
-    quote: { text: 'If there’s a bright center to the universe, you’re on the planet that it’s farthest from.', by: 'Luke Skywalker', film: 'anh' },
+    quote: { text: 'If there’s a bright center to the universe, you’re on the planet that it’s farthest from.', by: 'Luke Skywalker', film: 'anh', voice: 'luke' },
     accent: '#f0c27a',
     body: { look: 'tatooine', r: 40 },
     moons: [
@@ -154,6 +160,7 @@ const AS_SET = [
     ],
     pieces: [{ type: 'chase', runner: { kind: 'corvette', size: 3.2 }, hunter: { kind: 'destroyer', size: 32 }, radius: 95, height: 22, tilt: 0.28, speed: 0.016 }],
     faction: 'empire',
+    war: { worth: 1, weight: 1, kind: 'ambush', area: 'arkanis' },
     traffic: ['freighter', 'shuttle', 'slave1', 'xwing'],
     game: {
       id: 'canyonrun',
@@ -209,6 +216,7 @@ const AS_SET = [
       { type: 'rocks', kind: 'field', at: [230, 30, 150], radius: 80, count: 420, seed: 7 },
     ],
     faction: 'empire',
+    war: { worth: 2, weight: 4, kind: 'evacuation', area: 'anoat' },
     traffic: ['transport', 'xwing', 'tie'],
     game: {
       id: 'transport',
@@ -248,7 +256,8 @@ const AS_SET = [
     moons: [],
     suns: [{ dir: [0.68, 0.36, 0.64], color: '#fff4e2', size: 0.95 }],
     pieces: [
-      { type: 'station', kind: 'deathstar2', at: [150, 46, -190], size: 140, spin: 0.004, shield: true },
+      // (flown into once its shield is down: aboard, at the dock where Vader’s shuttle sets down)
+      { type: 'station', kind: 'deathstar2', at: [150, 46, -190], size: 140, spin: 0.004, shield: true, board: '/deathstar/inside?station=ds2&side=rebel&at=dock' },
       {
         type: 'battle',
         at: [70, 30, -60],
@@ -273,6 +282,7 @@ const AS_SET = [
       },
     ],
     faction: 'empire',
+    war: { worth: 2, weight: 1, kind: 'siege', area: 'western' },
     traffic: ['shuttle', 'xwing', 'awing'],
     game: {
       id: 'endor',
@@ -285,6 +295,8 @@ const AS_SET = [
       status: 'live',
       to: '/galaxy/endor/surface?mission=chase',
       go: 'Ride it now',
+      // (and the battle for the bunker, a galactic assault, beside it)
+      also: [{ id: 'assault', title: 'The Battle of Endor', text: 'The strike team and the Ewoks against the garrison, through the forest to the bunker and the shield generator, as a galactic assault. Fight for either side.', to: '/galaxy/endor/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -316,6 +328,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'tie', count: 6, at: [170, 26, 150], radius: 46, height: 12, speed: 0.22, size: 0.3 },
     ],
     faction: 'empire',
+    war: { worth: 2, weight: 2, kind: 'evacuation', area: 'north' },
     traffic: ['xwing', 'ywing', 'corvette'],
     game: {
       id: 'trench',
@@ -327,6 +340,7 @@ const AS_SET = [
       how: 'Already flying: on the Death Star’s own page.',
       status: 'live',
       to: '/deathstar#trench',
+      also: [{ id: 'assault', title: 'The Battle of Yavin 4', text: 'A galactic assault on the moon: the Empire comes in across the landing field for the hangar and the temple steps, and the Rebellion holds each as long as it can. Fight for either side.', to: '/galaxy/yavin/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -396,6 +410,7 @@ const AS_SET = [
       { type: 'depart', kind: 'slave1', from: [0, 118, 0], to: [-220, 200, 260], size: 0.6, every: 40 },
     ],
     faction: 'empire',
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'anoat' },
     traffic: ['shuttle', 'freighter'],
     game: {
       id: 'cloudcity',
@@ -406,6 +421,7 @@ const AS_SET = [
       pitch: 'Get the Falcon off Cloud City and up through the clouds with TIEs on your tail, swing back for Luke under the city, and make the jump. If the hyperdrive works.',
       how: 'Through the cloud layers, under the city’s vane to catch Luke, then up and out to the jump point.',
       status: 'soon',
+      also: [{ id: 'assault', title: 'The Battle of Cloud City', text: 'A galactic assault on the decks: the Rebellion comes in over Platform 327 for the south walkway and the plaza, and the Empire holds the city as long as it can. Fight for either side.', to: '/galaxy/bespin/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -461,7 +477,7 @@ const AS_SET = [
       ['Landmark', 'Fortress Vader'],
       ['Duel', 'Kenobi and Skywalker, 19 BBY'],
     ],
-    quote: { text: 'It’s over, Anakin. I have the high ground.', by: 'Obi-Wan Kenobi', film: 'rots' },
+    quote: { text: 'It’s over, Anakin. I have the high ground.', by: 'Obi-Wan Kenobi', film: 'rots', voice: 'obiwan' },
     accent: '#ff8a4a',
     body: { look: 'mustafar', r: 28 },
     moons: [],
@@ -471,6 +487,7 @@ const AS_SET = [
       { type: 'depart', kind: 'shuttle', from: [70, 40, -80], to: [0, 28, 0], size: 0.5, every: 22 },
     ],
     faction: 'empire',
+    war: { worth: 1, weight: 1, kind: 'interdiction', area: 'anoat' },
     traffic: ['shuttle', 'nubian'],
     game: {
       id: 'mustafar',
@@ -499,7 +516,7 @@ const AS_SET = [
       ['Landmarks', 'The Senate, the Jedi Temple'],
       ['Coordinates', '0, 0, 0'],
     ],
-    quote: { text: 'This is where the fun begins.', by: 'Anakin Skywalker', film: 'rots' },
+    quote: { text: 'This is where the fun begins.', by: 'Anakin Skywalker', film: 'rots', voice: 'anakin' },
     accent: '#ffd08a',
     body: { look: 'coruscant', r: 46 },
     moons: [
@@ -530,6 +547,7 @@ const AS_SET = [
       },
     ],
     faction: 'separatists',
+    war: { worth: 3, weight: 1, kind: 'siege', area: 'core' },
     traffic: ['shuttle', 'nubian', 'venator', 'freighter'],
     game: {
       id: 'coruscant',
@@ -540,6 +558,7 @@ const AS_SET = [
       pitch: 'An assassin just tried to kill Senator Amidala. Chase her airspeeder down through the traffic lanes and the canyons between the towers before she gets away.',
       how: 'Drop between the lanes, cut through the power couplings, and don’t lose her in the traffic. Pull up!',
       status: 'soon',
+      also: [{ id: 'assault', title: 'The Battle of the Temple', text: 'A galactic assault on the capital: the droids come up the Processional Way for the Temple’s doors, and the clones hold the steps as long as they can. Fight for either side.', to: '/galaxy/coruscant/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -558,7 +577,7 @@ const AS_SET = [
       ['Capital', 'Theed'],
       ['Moons', 'Ohma-D’un, Rori'],
     ],
-    quote: { text: 'I’ll try spinning. That’s a good trick!', by: 'Anakin Skywalker', film: 'tpm' },
+    quote: { text: 'I’ll try spinning. That’s a good trick!', by: 'Anakin Skywalker', film: 'tpm', voice: 'younganakin' },
     accent: '#7fd8a8',
     body: { look: 'naboo', r: 34 },
     moons: [
@@ -580,6 +599,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'vulture', count: 6, at: [-20, 42, -96], radius: 45, height: 8, speed: 0.3, size: 0.26 },
     ],
     faction: 'separatists',
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'arkanis' },
     traffic: ['n1', 'nubian', 'freighter'],
     game: {
       id: 'naboo',
@@ -619,6 +639,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'vulture', count: 5, at: [80, 30, -60], radius: 30, height: 6, speed: 0.3, size: 0.26 },
     ],
     faction: 'separatists',
+    war: { worth: 1, weight: 3, kind: 'blockade', area: 'core' },
     traffic: ['arc170', 'freighter'],
     game: {
       id: 'kashyyyk',
@@ -629,6 +650,8 @@ const AS_SET = [
       pitch: 'The droid army is coming across the lagoon. Hold the beach at Kachirho against tanks and spider droids alongside the clones and the Wookiees.',
       how: 'Skim the lagoon, sink the droid boats and tanks before they land, and watch the clones. Something’s not right about them.',
       status: 'soon',
+      // (and the ground battle, on the same world)
+      also: [{ id: 'assault', title: 'The Battle of Kashyyyk', text: 'A galactic assault on the shore at Kachirho: the droid army wades out of the lagoon for the barricades, the gun line and the command post, and the clones and Wookiees hold each as long as they can. Fight for either side.', to: '/galaxy/kashyyyk/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -647,7 +670,7 @@ const AS_SET = [
       ['Natives', 'Kaminoans'],
       ['Industry', 'Cloning'],
     ],
-    quote: { text: 'Lost a planet, Master Obi-Wan has. How embarrassing.', by: 'Yoda', film: 'aotc' },
+    quote: { text: 'Lost a planet, Master Obi-Wan has. How embarrassing.', by: 'Yoda', film: 'aotc', voice: 'yoda' },
     accent: '#8ec7e8',
     body: { look: 'kamino', r: 32 },
     moons: [],
@@ -657,6 +680,7 @@ const AS_SET = [
       { type: 'chase', runner: { kind: 'slave1', size: 0.6 }, hunter: { kind: 'delta7', size: 0.3 }, radius: 52, height: 6, tilt: -0.2, speed: 0.05, fire: 'small' },
     ],
     faction: null,
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'arkanis' },
     traffic: ['acclamator', 'delta7'],
     game: {
       id: 'kamino',
@@ -685,7 +709,7 @@ const AS_SET = [
       ['Rings', 'An asteroid ring'],
       ['Industry', 'Droid foundries'],
     ],
-    quote: { text: 'Begun, the Clone War has.', by: 'Yoda', film: 'aotc' },
+    quote: { text: 'Begun, the Clone War has.', by: 'Yoda', film: 'aotc', voice: 'yoda' },
     accent: '#ff9a6a',
     body: { look: 'geonosis', r: 34 },
     moons: [],
@@ -696,6 +720,7 @@ const AS_SET = [
       { type: 'fleet', side: 'republic', ships: [{ kind: 'acclamator', at: [-40, 70, 100], yaw: 2.6, size: 16 }, { kind: 'acclamator', at: [20, 60, 120], yaw: 2.9, size: 16 }, { kind: 'venator', at: [-90, 90, 60], yaw: 2.3, size: 24 }] },
     ],
     faction: 'separatists',
+    war: { worth: 1, weight: 1, kind: 'ambush', area: 'arkanis' },
     traffic: ['slave1', 'acclamator'],
     game: {
       id: 'geonosis',
@@ -726,7 +751,7 @@ const AS_SET = [
       ['Landmark', 'The Citadel'],
       ['Stolen', 'The Death Star plans, 0 BBY'],
     ],
-    quote: { text: 'Rebellions are built on hope.', by: 'Jyn Erso', film: 'rogue' },
+    quote: { text: 'Rebellions are built on hope.', by: 'Jyn Erso', film: 'rogue', voice: 'jyn' },
     accent: '#6fe0d8',
     body: { look: 'scarif', r: 32 },
     moons: [],
@@ -756,16 +781,19 @@ const AS_SET = [
       { type: 'superlaser', from: [-260, 120, -320], at: [8, 22, 22], every: 150 },
     ],
     faction: 'empire',
+    war: { worth: 2, weight: 1, kind: 'siege', area: 'north' },
     traffic: ['uwing', 'shuttle'],
     game: {
       id: 'scarif',
-      objectives: ['Get through the Shield Gate before it closes', 'Hold the beach against the AT-ACTs', 'Climb the Citadel tower and send the plans'],
-      title: 'Rogue One',
+      objectives: ['Take the beach and the bunker line', 'Take Landing Pad Nine', 'Take the master switch, out in the open, so the plans can go up to the fleet'],
+      title: 'The Battle of Scarif',
       film: 'rogue',
-      role: 'Blue Squadron, then Jyn Erso',
-      pitch: 'Through the shield gate before it closes, down to the beaches to hold off the walkers, then up the Citadel tower to send the plans to the fleet before the Death Star fires.',
-      how: 'Squadron flying above, AT-ACTs on the sand, and a climb against the clock at the end.',
-      status: 'soon',
+      role: 'A Pathfinder off the U-wings, or a shoretrooper holding the beach',
+      pitch: 'A galactic assault on the beaches of Scarif: the Pathfinders come out of the palms for the beach, the bunker line, Pad Nine and the master switch; the shoretroopers and Krennic’s death troopers hold each as long as they can. Fight for either side.',
+      how: 'Pick a side and a post to deploy at. Stand in a post with more of your side than theirs and it turns yours; every soldier down costs their side a reinforcement, and a side with none left and nobody standing has lost. The walkers on the beach are the Empire’s; keep out from under them.',
+      status: 'live',
+      to: '/galaxy/scarif/surface?mission=assault',
+      go: 'Fight it now',
     },
   },
   {
@@ -784,7 +812,7 @@ const AS_SET = [
       ['Hidden', 'The Mandalorians’ covert'],
       ['Magistrate', 'Greef Karga'],
     ],
-    quote: { text: 'This is the Way.', by: 'The Armorer', film: 'mando' },
+    quote: { text: 'This is the Way.', by: 'The Armorer', film: 'mando', voice: 'armorer' },
     accent: '#f4a27c',
     body: { look: 'nevarro', r: 30 },
     moons: [],
@@ -794,6 +822,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'tie', count: 3, at: [21, 30, -21], radius: 7, height: 2, speed: 0.2, size: 0.3 },
     ],
     faction: 'remnant',
+    war: { worth: 1, weight: 1, kind: 'interdiction', area: 'anoat' },
     traffic: ['razorcrest', 'shuttle', 'xwing', 'freighter'],
     game: {
       id: 'nevarro',
@@ -848,6 +877,7 @@ const AS_SET = [
       },
     ],
     faction: 'remnant',
+    war: { worth: 1, weight: 1, kind: 'interdiction', area: 'north' },
     traffic: ['gauntlet', 'n1', 'razorcrest'],
     game: {
       id: 'mandalore',
@@ -876,7 +906,7 @@ const AS_SET = [
       ['Natives', 'Loth-cats, loth-wolves'],
       ['Lost here', 'Ezra Bridger, and Thrawn’s Chimaera'],
     ],
-    quote: { text: 'I’m counting on you to see this through.', by: 'Ezra Bridger', film: 'ahsoka' },
+    quote: { text: 'I’m counting on you to see this through.', by: 'Ezra Bridger', film: 'ahsoka', voice: 'ezra' },
     accent: '#d8dc84',
     body: { look: 'lothal', r: 34 },
     moons: [
@@ -886,6 +916,7 @@ const AS_SET = [
     suns: [{ dir: [0.62, 0.36, 0.7], color: '#fff3dc', size: 1 }],
     pieces: [{ type: 'patrol', kind: 'xwing', count: 4, at: [28, 38, 18], radius: 10, height: 2.5, speed: 0.16, size: 0.3 }],
     faction: 'remnant',
+    war: { worth: 2, weight: 2, kind: 'evacuation', area: 'north' },
     traffic: ['xwing', 'shuttle', 'freighter'],
     game: {
       id: 'lothal',
@@ -916,7 +947,7 @@ const AS_SET = [
       ['Raiders', 'Klatooinians, with an AT-ST'],
       ['Moons', 'At least two'],
     ],
-    quote: { text: 'Nice bedside manner.', by: 'Cara Dune', film: 'mando' },
+    quote: { text: 'Nice bedside manner.', by: 'Cara Dune', film: 'mando', voice: 'caradune' },
     accent: '#86d6a6',
     body: { look: 'sorgan', r: 30 },
     moons: [
@@ -926,6 +957,7 @@ const AS_SET = [
     suns: [{ dir: [-0.36, 0.44, 0.82], color: '#fff6e6', size: 0.95 }],
     pieces: [{ type: 'depart', kind: 'razorcrest', from: [0, 31, 0], to: [210, 160, -180], size: 0.7, every: 44 }],
     faction: null,
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'western' },
     traffic: ['razorcrest', 'freighter'],
     game: {
       id: 'sorgan',
@@ -1109,16 +1141,34 @@ export function arrival(s, from = null, rand = Math.random) {
   az /= al;
   // spread round a little either way
   const spread = (rand() - 0.5) * 0.7;
-  const c = Math.cos(spread);
-  const n = Math.sin(spread);
-  const dx = ax * c - az * n;
-  const dz = ax * n + az * c;
   const d = r * 3.2 + 26 + rand() * 12;
-  const x = dx * d;
-  const z = dz * d;
   const y = r * 0.35 + (rand() - 0.5) * r * 0.3;
-  return { x, y, z, heading: Math.atan2(x, z) };
+  const hazards = hazardsOf(s);
+  const at = (a) => {
+    const c = Math.cos(a);
+    const n = Math.sin(a);
+    return { x: (ax * c - az * n) * d, y, z: (ax * n + az * c) * d };
+  };
+  const clear = (p) => hazards.every((h) => Math.hypot(p.x - h.at[0], p.y - h.at[1], p.z - h.at[2]) > h.r + ARRIVAL_GAP);
+  // but never inside a station or its tractor beam's reach (Alderaan's
+  // Death Star sits where the way in from the Core comes out): round the
+  // planet, a little further each way, to the nearest clear spot
+  let p = at(spread);
+  for (let k = 1; k <= 12 && !clear(p); k++) {
+    const a = at(spread + k * 0.5);
+    const b = at(spread - k * 0.5);
+    p = clear(a) ? a : b;
+  }
+  return { x: p.x, y: p.y, z: p.z, heading: Math.atan2(p.x, p.z) };
 }
+
+// What's solid round a system's planet before anything's built, as far as
+// an arrival must keep off it: its Death Star (world.js's solid, out to its
+// reach, or its tractor beam's where it has one). [{ at, r }]
+export const DEATHSTAR_REACH = 1.4; // of its radius: the solid round the Death Star
+export const TRACTOR_REACH = 3.4; // of its radius: how far out its tractor beam takes hold
+const ARRIVAL_GAP = 8; // and this much clear of that
+export const hazardsOf = (s) => s.pieces.filter((p) => p.type === 'deathstar').map((p) => ({ at: p.at, r: p.r * (p.tractor ? TRACTOR_REACH : DEATHSTAR_REACH) }));
 
 // The places in a system the autopilot can take you to (and the map names):
 // its planet (at Alderaan, where it was), and its great stations.
@@ -1134,7 +1184,7 @@ export function goalsOf(s) {
 
 // Whether the Death Star's model is wanted here: its own piece (Yavin's trench,
 // Alderaan's tractor beam), or Scarif's, where it arrives to fire. (Endor's second
-// is built in code, kind 'deathstar2', and loads nothing.)
+// is a station piece of its own, kind 'deathstar2', with its own model.)
 export const wantsDeathStar = (s) => s.pieces.some((p) => p.type === 'deathstar' || p.type === 'superlaser' || p.kind === 'deathstar');
 
 // The kinds of ship and station a system's pieces fly, each once: the models to

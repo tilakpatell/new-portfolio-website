@@ -5,7 +5,8 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext, output } from '../../../../lib/audio';
 import { local, useFrameLoop, useMediaQuery, useReducedMotion } from '../../../../lib/hooks';
 import { readPad, typing } from '../../../games/pad';
-import { MORTY_BEST, OLD_AGE, STAGE_INFO, TUNING, ageOf, beatMorty, epitaph, inBand, newLife, stageTitle, stepLife } from './rules';
+import { sayVoiced } from '../../../../lib/voiced';
+import { MORTY_BEST, OLD_AGE, ROY_SAYS, STAGE_INFO, TUNING, ageOf, beatMorty, epitaph, inBand, newLife, stageLine, stageTitle, stepLife } from './rules';
 import './roy.css';
 
 // Roy: A Life Well Lived, the VR game at Blips and Chitz: a whole life in
@@ -56,15 +57,6 @@ const ACT_LABEL = { kid: 'Throw', carpet: 'Pick', cancer: 'Beat' };
 const howFor = ({ stage, route }, touch) => {
   const off = route === 'offgrid';
   return (touch ? (off && HOW_TOUCH_OFFGRID[stage]) || HOW_TOUCH[stage] : null) || (off && HOW_OFFGRID[stage]) || HOW[stage];
-};
-const LINES = {
-  kid: 'A boy at the window, dreaming of the NFL.',
-  football: 'Friday night under the lights, and the end zone a long way off.',
-  carpet: 'The dream goes on the shelf: a family to provide for, and a job at the carpet store.',
-  offgrid: 'No job and no store: a cabin in the woods, and whatever the woods give.',
-  cancer: '“I’m not ready to die.”',
-  finale: 'Back at the store, where the rolls are stacked high.',
-  woods: 'Back in the woods, where the logs are stacked high.',
 };
 const GOT = ['Caught a fish', 'Picked berries', 'Chopped wood'];
 const CAUSE = { carpet: 'A roll of carpet came loose', log: 'A log came down', cancer: 'The diagnosis', old: 'All the way to 100' };
@@ -128,7 +120,7 @@ const cardFor = (l) => ({
   key: `${l.stage}-${l.route}-${Math.random()}`,
   ages: agesOf(l.stage),
   title: stageTitle(l),
-  line: l.stage === 'carpet' && l.route === 'offgrid' ? LINES.offgrid : l.stage === 'finale' && l.route === 'offgrid' ? LINES.woods : LINES[l.stage],
+  line: stageLine(l),
 });
 
 export default function Roy({ onLeave }) {
@@ -213,6 +205,7 @@ export default function Roy({ onLeave }) {
           return;
         }
         api.current = r;
+        r.tune?.(); // (behind ?debug: the shake's numbers)
         r.resize(el.clientWidth, el.clientHeight);
         const l = newLife({ seed: 1 });
         life.current = l;
@@ -384,6 +377,7 @@ export default function Roy({ onLeave }) {
     }
     const c = cardFor(l);
     setCard(c);
+    if (ROY_SAYS.includes(c.line)) sayVoiced('roy', c.line); // in his own voice, where it's been made (lib/voiced.js)
     setAnnounce(`${c.title}, ${c.ages.toLowerCase()}. ${howFor(l, touchRef.current)}.`);
     setPhase('card');
   };

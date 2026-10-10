@@ -39,7 +39,22 @@ describe('the characters', () => {
     expect(npcsOf('nope')).toEqual([]);
   });
 
-  it('include the six the design names', () => {
+  it('include the six the design names, and the law, the nemeses, the tagalong and the trickster', () => {
     for (const id of ['saul', 'mike', 'fett', 'birdperson', 'squanchy', 'evilmorty']) expect(NPCS[id], id).toBeTruthy();
+    for (const id of ['vader', 'customs', 'hondo', 'tammy', 'fedcustoms', 'jerry', 'tuco', 'hank']) expect(NPCS[id], id).toBeTruthy();
+    // every side has someone who pulls you over and someone who comes for you in person
+    for (const side of Object.keys(SIDES)) {
+      expect(npcsOf(side).some((c) => c.brain === 'inspector'), `${side} inspector`).toBe(true);
+      expect(npcsOf(side).some((c) => c.brain === 'nemesis'), `${side} nemesis`).toBe(true);
+    }
+  });
+
+  it('call in a faction of their own side when they call for one', () => {
+    for (const c of Object.values(NPCS)) {
+      if (!['inspector', 'nemesis', 'trickster'].includes(c.brain)) continue;
+      expect(SIDES[c.side].factions[c.faction], `${c.id} ${c.faction}`).toBeTruthy();
+      // (a nemesis is an enemy; the law and a pirate start neutral)
+      expect(c.role).toBe(c.brain === 'nemesis' ? 'enemy' : 'neutral');
+    }
   });
 });

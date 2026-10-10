@@ -1,0 +1,895 @@
+{
+ "route": "#/galaxy/scarif/surface",
+ "rows": [
+  {
+   "id": 0,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.44562399286792,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.11622040788643054,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 1,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.42281173101026,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.6240013663191347,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 2,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.42951633478438,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.24812139384448528,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 3,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.42670789119886,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2470335604157299,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 4,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.44562399286791,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.11622040788643054,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 5,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.42281173101026,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.6240013663191347,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 6,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.42951633478441,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.24812139384448528,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 7,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.32976042796534,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.33722311817109585,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 8,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.49834454241575,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9101678938604891,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 9,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 10,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 11,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.94627890432983,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 12,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 13,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 14,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.94627890432983,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 15,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.9646976074846,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.22517555742524567,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 16,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.95997358253075,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.3996859909966587,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 17,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99146806122687,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2614409090019762,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 18,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 19,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.9961692219317,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 20,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.94627890432982,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 21,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 22,
+   "name": "GLTF_created_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.0182306089285746,
+   "bind": false,
+   "act": {
+    "clip": "idle",
+    "phase": 0.6918748712632805,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 23,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.44562399286792,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.11622040788643054,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 24,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.42281173101028,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.6240013663191347,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 25,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 26,
+   "name": "polySurface515_Legs_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 27,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 28,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 29,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 30,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 31,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 32,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.9961692219317,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 33,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 34,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 35,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494262,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 36,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": true,
+   "dev": 87.96445763494262,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 37,
+   "name": "life-inside",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 38,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 91.32976042796533,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.33722311817109585,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 39,
+   "name": "mesh_part1",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 90.49834454241575,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9101678938604891,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 40,
+   "name": "figure",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 84.99898630079082,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9155734234955162,
+    "loop": true,
+    "weight": 1
+   }
+  }
+ ],
+ "over": [],
+ "bind": [
+  {
+   "id": 25,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 26,
+   "name": "polySurface515_Legs_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 27,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 28,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 37,
+   "name": "life-inside",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  }
+ ],
+ "locked": {
+  "count": 30,
+  "groups": [
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     9,
+     12,
+     18,
+     21,
+     29,
+     31,
+     33,
+     34,
+     35,
+     36
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     0,
+     4,
+     23
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     11,
+     14,
+     20
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     2,
+     6
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     7,
+     38
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     1,
+     5,
+     24
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     8,
+     39
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     10,
+     13,
+     19,
+     30,
+     32
+    ]
+   }
+  ]
+ },
+ "spread": [
+  {
+   "clip": "Armature|Idle|baselayer",
+   "n": 35,
+   "r": 0.5439041514090532
+  }
+ ],
+ "time": {
+  "dt": [
+   0,
+   0.1,
+   0.026600000000093132,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.021299999999813735,
+   0.013,
+   0.1,
+   0.1
+  ],
+  "from": "wall",
+  "total": 1.6608999999999072
+ },
+ "fail": false
+}

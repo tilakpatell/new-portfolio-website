@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { hot } from '../../../../lib/stage3d';
 import { pose } from '../../mapFigures';
 import { calm, dance, makePerson, sit } from '../../shire/people';
+import { castDo } from '../../cast3d';
 import { B, barrelParts, beam, benchParts, cyl, cylX, lathe, parts, roundBox, squareWindow } from '../../shire/props';
 import { POUR } from './pints';
 import { makeFolk } from './props';
@@ -243,7 +244,8 @@ export function buildInn(renderer, { kit }) {
       sit(people.pippin, false);
       const fall = Math.min(1, Math.max(0, (k - 0.35) / 0.4));
       f.group.position.set(HOBBITS.x - 0.9 - fall * 0.5, 0, HOBBITS.z - 0.5 + fall * 0.9);
-      f.group.rotation.set(0, Math.PI / 2 + 0.6, fall * 1.35);
+      // (on the cast he goes over by his own fall, not tipped like a plank)
+      f.group.rotation.set(0, Math.PI / 2 + 0.6, f.cast?.ready ? 0 : fall * 1.35);
       // the Ring, slowly, up and over and down
       const rk = Math.min(1, Math.max(0, (k - 0.55) / 1.6));
       if (rk > 0 && !s.ringOn) {
@@ -269,6 +271,14 @@ export function buildInn(renderer, { kit }) {
         sit(p, true);
       } else pose(p, t + id.length, { moving: false, talk: (id === 'butterbur' && (beat === 'bar' || beat === 'ask')) || (id === 'pippin' && beat === 'slip') ? 1 : 0, wave: id === 'pippin' && beat === 'slip' ? 0.8 : 0 });
     }
+    // on the cast: Frodo goes over by his fall when he slips; Pippin holds
+    // forth on the table; Butterbur works the tap; the hobbits clap seated
+    castDo(f, { down: beat === 'slip' && k > 0.35, flinch: null, fall: 'fall', rise: null });
+    castDo(people.pippin, { upper: beat === 'slip' ? 'talk.passion' : null });
+    castDo(people.butterbur, { upper: beat === 'pints' && s.pour?.pouring ? 'interact' : null });
+    for (const id of ['sam', 'merry', 'pippin']) if (id !== 'pippin' || beat === 'song') castDo(people[id], { upper: beat === 'song' ? 'sit.clap' : null });
+    // the room looks at Frodo up on the table
+    for (const p of folk) castDo(p, { look: beat === 'song' || beat === 'slip' ? f : null });
     if (beat === 'song') {
       // Frodo hops on every beat; the hobbits clap on the off-beats
       const st = s.song?.t ?? 0;

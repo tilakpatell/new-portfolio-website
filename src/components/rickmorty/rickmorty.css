@@ -19,10 +19,10 @@
 @media (max-width: 767px) { .rm-box { grid-template-columns: 1fr; } }
 .rm-box-stage { position: relative; display: grid; place-items: end center; min-height: 260px; }
 .rm-box-crew { position: absolute; inset: 0 0 64px; display: flex; align-items: flex-end; justify-content: center; }
-.rm-meeseeks { position: relative; display: grid; justify-items: center; width: 74px; margin: 0 -10px; animation: rm-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; transform-origin: bottom; }
+.rm-meeseeks { position: relative; display: grid; justify-items: center; width: 74px; margin: 0 -10px; animation: rm-pop 0.45s var(--ease-spring) both; transform-origin: bottom; }
 .rm-meeseeks-face { width: 70px; height: 70px; position: relative; z-index: 1; }
 .rm-meeseeks-body { width: 30px; height: 70px; margin-top: -10px; border: 2px solid #1b1424; border-radius: 14px 14px 6px 6px; background: #6fc6ea; }
-.rm-meeseeks[data-stressed] { animation: rm-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both, rm-jitter 0.18s steps(2) infinite 0.45s; }
+.rm-meeseeks[data-stressed] { animation: rm-pop 0.45s var(--ease-spring) both, rm-jitter 0.18s steps(2) infinite 0.45s; }
 .rm-meeseeks:nth-child(2n) { margin-bottom: 18px; }
 .rm-meeseeks:nth-child(3n) { margin-bottom: 8px; }
 @keyframes rm-pop { from { transform: scale(0.1, 0.1); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -134,8 +134,8 @@
 @media (max-width: 767px) { .rm-plumbus-factory { grid-template-columns: 1fr; } }
 .rm-pf-stage { margin: 0; display: grid; place-items: center; }
 .rm-pf-art { width: min(100%, 300px); height: auto; overflow: visible; }
-.rm-pf-part { transform-box: fill-box; transform-origin: 50% 100%; animation: rm-pf-in 0.42s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
-.rm-pf-shine { animation: rm-pf-in 0.42s cubic-bezier(0.3, 1.5, 0.5, 1) both, rm-pf-twinkle 1.6s ease-in-out 0.42s infinite alternate; transform-origin: 50% 50%; }
+.rm-pf-part { transform-box: fill-box; transform-origin: 50% 100%; animation: rm-pf-in 0.42s var(--ease-spring) both; }
+.rm-pf-shine { animation: rm-pf-in 0.42s var(--ease-spring) both, rm-pf-twinkle 1.6s ease-in-out 0.42s infinite alternate; transform-origin: 50% 50%; }
 @keyframes rm-pf-in { from { transform: scale(0.2); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes rm-pf-twinkle { to { transform: scale(0.8) rotate(20deg); } }
 .rm-pf-empty { font: 600 13px var(--font-sans); fill: var(--muted); }
@@ -175,3 +175,6 @@
   .rm-pf-part, .rm-pf-shine, .rm-butter-bot-art { animation: none !important; }
   .rm-butter-bot, .rm-butter-head, .rm-butter-arm, .rm-butter-lid, .rm-butter-eye { transition: none; }
 }
+
+/* the galaxy behind the page (GalaxyBackdrop.jsx), fixed, under everything */
+.rm-galaxy { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }

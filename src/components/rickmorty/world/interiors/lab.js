@@ -24,9 +24,10 @@ import { AREAS, FURNITURE, HATCH, LINKS, PEOPLE } from '../rules';
 import { at, mergeParts, rng, speckle } from '../kit';
 import { BALL, BALL8, BOX, CYL, CYL8, DOOR_H, PLANE, TAU, casing, fitText, lathe, makeRoom, tiledPaint, tube, wallLine, win, windowView } from './shell';
 import { govPortal } from './govportal';
-import { needCast, onEntry, person, seatOwn } from './people';
+import { needCast, onEntry, person, seatOwn, tinker } from './people';
 import { LOOKS } from './furniture';
 import { PINS, paintCells, planks } from './labpaint';
+import { sharpen } from '../../../../lib/three/textures';
 
 const H = 2.9; // the lab's walls, to its ceiling
 const TOP = 0xc9ccc6; // the bench top
@@ -475,6 +476,11 @@ export async function buildGarage(kit) {
   const it = (id) => FURNITURE.find((f) => f.id === id);
   bench(R, it('workbench'), glass);
   benchArm(R, it('bench-arm'));
+  // Rick's portal gun on the arm's end, by the portal: its dial picks where the portal opens
+  const arm = it('bench-arm');
+  const gun = R.frame(-303.2, 100.0, Math.PI / 2, { y: arm.h });
+  gun.box(0xd8dde2, 0, 0.03, 0, 0.3, 0.1, 0.14).box(0x9aa3ab, -0.18, 0.02, 0, 0.08, 0.12, 0.1).cyl(0xd8dde2, 0.17, 0.08, 0, 0.035, 0.12, 0, Math.PI / 2);
+  gun.glow(CYL, 0x7dff5a, 1.8, 0.02, 0.15, 0, 0, 0.1, 0.06, 0.1).glow(BALL, 0x7dff5a, 1.6, 0.25, 0.08, 0, 0, 0.05);
   chair(R, -300.85, 98.95, 0.25);
   const ld = it('laundry');
   const nw = R.fixed(ld.x, a.z0, 0);
@@ -526,9 +532,9 @@ export async function buildGarage(kit) {
   const gp = it('govportal');
   govPortal(R, gp.x + (Math.sin(gp.turn) * gp.d) / 2, gp.z + (Math.cos(gp.turn) * gp.d) / 2, gp.turn, { open: (state) => !!state?.done?.includes('president') });
 
-  // Rick at the bench
+  // Rick at the bench, at whatever's on it now and then, and his flask
   const rick = PEOPLE.find((p) => p.id === 'rick');
-  person(R, 'rick', { ...rick, h: 2.0, look: LOOKS.rick });
+  tinker(R, person(R, 'rick', { ...rick, h: 2.0, look: LOOKS.rick }).cast);
 
   // Space Beth on a shop stool at the worktable's east end, back for a while
   // (the multiverse's Phase 2): fetched the first time Morty's in the garage,
@@ -783,6 +789,7 @@ export function fadeUp(down = false) {
   g.fillStyle = s;
   g.fillRect(0, 0, 32, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -799,6 +806,7 @@ export function glowSpot() {
   g.fillStyle = gr;
   g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

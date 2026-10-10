@@ -1,11 +1,15 @@
-// The cruiser's voice: the browser's own speech (no files), calm, low and a
-// little slow, saying what ./ship.js picks. Quiet with the site's sound off,
-// or with the ship's voice switched off in the things-to-do list (kept in
-// tp-c137-shipvoice); the captions show either way. Without speech in the
-// browser, it just doesn't speak.
+// The cruiser's voice, saying what ./ship.js picks: its own (the show's ship,
+// cloned by scripts/voices, made for each of its lines: ./voicelines.js) where
+// a line's been made, and the browser's own speech for the rest, calm, low and
+// a little slow. Quiet with the site's sound or voices off, or with the ship's voice
+// switched off in the things-to-do list (kept in tp-c137-shipvoice); the
+// captions show either way. With neither, it just doesn't speak.
 
-import { soundOn } from '../../../lib/audio';
+import { soundOn, voicesOn } from '../../../lib/audio';
 import { local } from '../../../lib/hooks';
+import { speech } from '../../../lib/speech';
+import { sayVoiced, voicedSrc } from '../../../lib/voiced';
+import { SHIP_VOICE } from './ship';
 
 const KEY = 'tp-c137-shipvoice';
 export const shipVoiceOn = () => local.get(KEY, true) !== false;
@@ -27,8 +31,8 @@ function voice() {
   return (chosen = all[0]);
 }
 
-export function speak(line) {
-  if (!can() || !soundOn() || !shipVoiceOn()) return;
+function synth(line) {
+  if (!can()) return;
   try {
     const s = window.speechSynthesis;
     s.cancel();
@@ -45,7 +49,29 @@ export function speak(line) {
   }
 }
 
+let turn = 0; // (a line asked for after this one, or a stop, overtakes it while it's looked up)
+let made = null; // the made line, playing or waiting its turn (lib/speech.js)
+
+// Says a line: the made one if there is one, else the browser's speech (not
+// over anyone else). One at a time; nothing with the voices off.
+export function speak(line) {
+  if (!soundOn() || !shipVoiceOn() || !voicesOn()) return;
+  stopSpeaking();
+  const mine = turn;
+  voicedSrc(SHIP_VOICE, line).then((src) => {
+    if (mine !== turn) return;
+    if (!src) {
+      if (!speech.busy()) synth(line);
+      return;
+    }
+    made = sayVoiced(SHIP_VOICE, line);
+  });
+}
+
 export function stopSpeaking() {
+  turn += 1;
+  made?.stop();
+  made = null;
   if (!can()) return;
   try {
     window.speechSynthesis.cancel();

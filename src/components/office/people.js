@@ -12,10 +12,27 @@
 //
 // Anyone else (Albuquerque's people) comes as a spec of their own figure on
 // the same skeleton: { id, model (its .glb), height }.
+//
+// Someone on their feet can stand on clips instead (loadPeople's `clips`,
+// person's `anim`): Rick's walk and run and the UAL's calm idle, borrowed
+// (lib/three/clipLibrary.js) and laid under the same passes (the hands'
+// reaches, the gestures, the head), on an animator of their own
+// (lib/three/animator.js) with its stride paced to the ground the scene
+// moves them over (./motion.js), so their feet don't slide; they stand up
+// out of a chair and sit down into one (the UAL's), and play anything in
+// the clip library (a wave, a talk, a drink at the kitchen counter). The
+// figures themselves carry no clips (people.test.js): the clips come from
+// their own files. Anyone whose clips don't come stands as before.
 
 import * as THREE from 'three';
 import { clone as cloneRig } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { gltfLoader } from '../../lib/three/gltf';
+import { createAnimator } from '../../lib/three/animator';
+import { borrowClips, faceForward, heading, loadClip, retarget } from '../../lib/three/clipLibrary';
+import { breathe } from '../../lib/three/gait';
+import { REACTIONS, createReactions } from '../../lib/ai/react';
+import { seeded } from '../../lib/seeded';
+import { createMotion, habitAt, seedOf } from './motion';
 
 // Who is in, and how tall (metres, the actor's).
 export const CAST = {
@@ -57,6 +74,16 @@ const AX = new THREE.Vector3(1, 0, 0);
 const AY = new THREE.Vector3(0, 1, 0);
 const AZ = new THREE.Vector3(0, 0, 1);
 const IDENTITY = new THREE.Quaternion();
+// the gestures a figure on clips plays from the clip library (the rest,
+// the head's and the folded arms, stay its own, over whatever it's doing)
+const CLIP_GESTURE = { wave: 'wave', cheer: 'cheer', shrug: 'shrug' };
+const SIT_IN = 'sit.enter'; // the UAL's: standing to sat (1.3 s), and back (1 s)
+const SIT_OUT = 'sit.exit';
+export const SITTING = { enter: 1.3, exit: 1.03 };
+// where the hips sit, sat on the UAL's chair, behind where its feet stand
+// (as a share of how high the hips stand): a chair's middle is this far
+// behind the feet of someone getting out of it
+export const SIT_BACK = 0.26;
 
 // Turn a bone about an axis of the figure's own frame (x its left, y up, z
 // forward), whatever the bone's own axes are. `frame` is the figure's world
@@ -117,11 +144,46 @@ function reach(upper, lower, end, target, pole) {
 // dispose }; `person` gives null for anyone whose model can't be had, and the
 // scene goes on without them. `each(id, cast)`, if given, hears of each as
 // their model comes (cast.person(who) can be had from then), so a scene
-// needn't wait for everyone.
-export async function loadPeople(ids = Object.keys(CAST), each) {
-  const loader = gltfLoader();
+// needn't wait for everyone. `clips`: the walk, run and idle those who
+// stand on clips borrow are fetched with the models (each person is handed
+// on once both are in); without it no one stands on clips.
+export async function loadPeople(ids = Object.keys(CAST), each, { clips = false, loader: given = null } = {}) {
+  const loader = given ?? gltfLoader();
   const models = new Map(); // id -> their model
   const skeletons = []; // each figure's own, to dispose
+  const animators = []; // each standing figure's, to dispose
+  // Rick's walk and run, and the UAL's calm idle (Meshy's own idle stands
+  // like a fighter), as the clip library has them; Rick's idle if the
+  // calm one won't come. null if none of it comes.
+  const moves = clips
+    ? Promise.all([borrowClips(['walk', 'run', 'idle'], { loader }), loadClip('idle.calm', { loader }).catch(() => null)])
+        .then(([rick, calm]) => (rick.walk ? { walk: rick.walk, run: rick.run, idle: calm ?? rick.idle } : null))
+        .catch(() => null)
+    : Promise.resolve(null);
+  let borrowed = null;
+  // each figure's own copies of them: made for its hips and turned to face
+  // where its walk does, once a figure (every copy of it shares them)
+  const made = new Map(); // id -> { clips, hipsY, up, ahead }
+  const clipsFor = (id, model) => {
+    if (!borrowed) return null;
+    if (made.has(id)) return made.get(id);
+    const hips = model.scene.getObjectByName('Hips');
+    let got = null;
+    if (hips?.parent) {
+      model.scene.updateMatrixWorld(true);
+      // (up, in the space the hips turn in, as meshyCast.js finds it)
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+      const hipsY = hips.position.y;
+      const own = {};
+      for (const [n, c] of Object.entries(borrowed)) if (c) own[n] = retarget(c, hipsY, c.userData.hips);
+      const ahead = heading(own.walk, up);
+      if (ahead != null) for (const [n, c] of Object.entries(own)) if (n !== 'walk') faceForward(c, up, ahead);
+      got = { clips: own, hipsY, up };
+    }
+    made.set(id, got);
+    return got;
+  };
+  const copies = new Map(); // id -> how many figures of them have been made (each its own seed)
   // A person (an office id or a spec), facing +z. Returns { group, id,
   // look(target | null), gesture(name), cheer(), wave(), reach(side, point),
   // headAt(), update(t, dt) }, where update says whether they are still
@@ -130,12 +192,31 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
   // `typing`: the hands go on the keys, which are `keys` ahead of the chair's
   // middle; `idle`: the head looks round now and then. `cull`: left out of a
   // frame (and its shadows) when they're out of view, within a sphere wide
-  // enough for any pose; otherwise always drawn.
-  const person = (who, { pose = 'sit', seat = SEAT, shadows = true, typing = false, idle = false, keys = 0.45, cull = false } = {}) => {
+  // enough for any pose; otherwise always drawn. `habit`: what they do at a
+  // desk when not typing (./motion.js's HABITS: the phone, a mug, the
+  // crossword…).
+  //
+  // `anim` (standing, when the cast was loaded with clips): on an animator,
+  // its feet paced to the ground the scene moves it over. Then too: anim
+  // (the animator, or null), play(name, { layer = 'upper', loop, hold,
+  // fade, lasts }) → Promise<'done' | 'cut'> (lasts: seconds it plays
+  // before it's stopped), stop(layer, fade), react(event, ctx) (react.js's
+  // site table: 'greet', 'say', 'hit', 'gunfire', 'win'… → the reaction
+  // played, or null), say(seconds, target) (talking for a line), rise() (up
+  // out of a chair: it starts sat, its feet where it's put),
+  // sit() (down onto one behind it, held there), stand() (the chair let go
+  // of, at once: for a figure hidden and shown again), glance(target,
+  // seconds) (the head on something for a while, then back) and motion
+  // (how it's moving, ./motion.js's). On a figure without an animator each
+  // does nothing (play resolves 'cut').
+  const person = (who, { pose = 'sit', seat = SEAT, shadows = true, typing = false, idle = false, keys = 0.45, cull = false, anim: onClips = false, habit = null } = {}) => {
     const spec = isSpec(who) ? who : CAST[who];
     const id = isSpec(who) ? who.id : who;
     const model = models.get(id);
     if (!spec || !model) return null;
+    const copy = copies.get(id) ?? 0;
+    copies.set(id, copy + 1);
+    const seed = seedOf(id, copy);
     // their own copy of the skeleton, sharing the model's mesh and texture
     const rig = cloneRig(model.scene);
     let body = null;
@@ -278,6 +359,33 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
     const rest = bones.map((b) => b.quaternion.clone());
     const reset = () => bones.forEach((b, i) => b.quaternion.copy(rest[i]));
 
+    // ── on clips: an animator of its own, its stride measured where it
+    // stands now (the figure's size set, its soles on the floor) ──
+    const mine = onClips && pose === 'stand' ? clipsFor(id, model) : null;
+    const anim = mine ? createAnimator(rig, { clips: mine.clips, hipsY: mine.hipsY, up: mine.up, key: `office:${id}:${scale.toFixed(4)}`, seed, unit: 1 }) : null;
+    if (anim) animators.push(anim);
+    const motion = createMotion();
+    const reactions = createReactions(REACTIONS, { rand: seeded(seed ^ 0x5bd1e995) });
+    const holds = { full: null, upper: null, lower: null }; // seconds till a layer's clip is let go
+    const tokens = { full: 0, upper: 0, lower: 0 };
+    const clock = { t: 0, moving: false };
+    const play = (name, { layer = 'upper', loop = false, hold = false, fade = 0.2, speed = 1, at = 0, lasts = null } = {}) => {
+      if (!anim) return Promise.resolve('cut');
+      const token = ++tokens[layer];
+      holds[layer] = lasts != null ? lasts : null;
+      const done = anim.play(name, { layer, loop, hold, fade, speed, at });
+      done.then((r) => {
+        if (r === 'done' && token === tokens[layer] && hold === false) holds[layer] = null;
+      });
+      return done;
+    };
+    const stop = (layer = 'upper', fade = 0.2) => {
+      if (!anim) return;
+      tokens[layer]++;
+      holds[layer] = null;
+      anim.stop(layer, fade);
+    };
+
     // a hand raised from where it is to a point (figure's frame, from the
     // shoulder), by `p` of the way, the elbow toward `pole` (x out to its side)
     const right = sides.indexOf(-1) < 0 ? 1 : sides.indexOf(-1);
@@ -302,19 +410,49 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
       gesture: null, // { name, t }
       hands: [0, 1].map(() => ({ to: null, at: new THREE.Vector3(), amt: 0 })), // reaching for
       walk: { on: false, amt: 0, t: 0 }, // a stride, on the spot (the scene moves them)
-      seed: Math.random() * 100,
+      seed: (((seed % 1e4) + 1e4) % 1e4) / 100, // (0…100: each copy its own, the same every visit)
+      glance: { at: new THREE.Vector3(), left: 0 }, // a look for a while, over the one asked for
+      habit: [0, 1].map(() => 0), // how far each hand's gone to its habit (eased)
     };
     const tmp = new THREE.Vector3();
     const frame = new THREE.Quaternion();
     const inv = new THREE.Quaternion();
     const headAt = new THREE.Vector3();
+    const wp = new THREE.Vector3();
+    const fwd = new THREE.Vector3();
+    const upw = new THREE.Vector3();
     const gesture = (name) => {
+      // on clips, the library's wave, cheer and shrug, on the upper half (the
+      // legs keep walking or standing); the rest, its own
+      if (anim && CLIP_GESTURE[name]) {
+        if (anim.playing('upper') !== CLIP_GESTURE[name]) play(CLIP_GESTURE[name], { layer: 'upper' });
+        return;
+      }
       // one at a time; asked again while it's going, it goes on
       if (LASTS[name] && state.gesture?.name !== name) state.gesture = { name, t: 0 };
+    };
+    const glance = (target, seconds = 2) => {
+      if (!target) return void (state.glance.left = 0);
+      state.glance.at.copy(target);
+      state.glance.left = seconds;
+    };
+    const react = (event, ctx = {}) => {
+      if (!anim) return null;
+      const r = reactions.on(event, { t: clock.t, moving: clock.moving, ...ctx });
+      if (!r) return null;
+      const loop = typeof r.hold === 'number';
+      play(r.clip, { layer: r.layer, loop, hold: r.hold === true, lasts: loop ? r.hold : (r.cut ?? null) });
+      if (r.look?.isVector3) glance(r.look, (loop ? r.hold : 2) + 1);
+      return r;
     };
     return {
       group: root,
       id,
+      anim,
+      // how it's moving (speed, side, turn, move: ./motion.js's), as of its last update
+      get motion() {
+        return state.motion ?? null;
+      },
       // look at a world position, or (null) back to the desk
       look(target) {
         state.look = target ? state.lookAt.copy(target) : null;
@@ -322,6 +460,23 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
       gesture,
       cheer: () => gesture('cheer'),
       wave: () => gesture('wave'),
+      play,
+      stop,
+      react,
+      // talking for `seconds` (a line), looking at `target` (a world point) if given
+      say: (seconds = 2, target = null) => react('say', { hold: seconds, target }),
+      // up out of a chair: sat at first, its feet where it's been put, and
+      // standing a second later (the clip's own way up)
+      rise: () => play(SIT_OUT, { layer: 'full', fade: 0.01 }),
+      // down onto a chair behind it, and kept there
+      sit: () => play(SIT_IN, { layer: 'full', hold: true, fade: 0.25 }),
+      // the chair let go of at once (a figure put away sat, and shown again on its feet)
+      stand: () => {
+        stop('full', 0);
+        stop('upper', 0);
+        motion.reset();
+      },
+      glance,
       // a hand ('left' or 'right') reaching for a world position, or (null)
       // back to the pose
       reach(side, point) {
@@ -334,16 +489,36 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
         state.walk.on = !!on;
         state.walk.rate = rate;
       },
-      // how far up the stride lifts them, for the scene to add (metres)
-      bob: () => Math.abs(Math.sin(state.walk.t)) * 0.018 * state.walk.amt,
+      // how far up the stride lifts them, for the scene to add (metres; on
+      // clips, nothing: the clip's hips rise and fall themselves)
+      bob: () => (anim ? 0 : Math.abs(Math.sin(state.walk.t)) * 0.018 * state.walk.amt),
       // where their head is (world)
       headAt(out = new THREE.Vector3()) {
         return B.head.getWorldPosition(out);
       },
       update(t, dt = 1 / 60) {
-        reset();
         let moving = false;
         root.getWorldQuaternion(frame);
+        if (anim) {
+          // on clips: how the scene's moving it, its feet paced to that,
+          // then the clips, and the passes below over them
+          root.getWorldPosition(wp);
+          fwd.set(0, 0, 1).applyQuaternion(frame);
+          upw.set(0, 1, 0).applyQuaternion(frame);
+          const m = motion.step(wp.x, wp.z, Math.atan2(fwd.x, fwd.z), dt);
+          state.motion = m;
+          clock.t += dt;
+          clock.moving = m.move > 0.05;
+          for (const layer of ['full', 'upper', 'lower']) {
+            if (holds[layer] == null) continue;
+            holds[layer] -= dt;
+            if (holds[layer] <= 0) stop(layer);
+          }
+          anim.locomote({ move: m.move, speed: m.speed, side: m.side, turn: m.turn });
+          anim.update(dt);
+          anim.after(dt, null, { forward: fwd, up: upw });
+          moving = true;
+        } else reset();
         // the hands on what they're reaching for, easing there and back
         for (let s = 0; s < 2; s++) {
           const h = state.hands[s];
@@ -354,10 +529,42 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
           B.wrist[s].getWorldPosition(from);
           reach(B.arm[s], B.fore[s], B.wrist[s], from.lerp(h.at, ease(amt)), va.set(sides[s] * 0.6, -1, -0.5).applyQuaternion(frame));
         }
+        // a habit at the desk (sat, not typing, no gesture going): a hand to
+        // the ear, the mouth or the chin, or on the desk or in the lap
+        const hab = habit && pose === 'sit' && !typing && !state.gesture ? habitAt(habit, t, seed) : null;
+        let deskAt = null;
+        for (let s = 0; s < 2; s++) {
+          const side = s === right ? 'right' : 'left';
+          const on = hab && (hab.hand === 'both' || hab.hand === side) && !state.hands[s].to;
+          const want = on ? hab.amt : 0;
+          const was = state.habit[s];
+          state.habit[s] = want > was ? Math.min(want, was + dt * 4) : Math.max(want, was - dt * 4);
+          const amt = state.habit[s];
+          if (!amt) continue;
+          moving = true;
+          const sd = sides[s];
+          const wig = hab?.wiggle ?? 0;
+          if (hab?.where === 'desk' || hab?.where === 'lap') {
+            // (in the figure's own frame, from its middle: the desk's edge, or the lap)
+            if (hab.where === 'desk') tmp.set(sd * 0.1 + wig * 0.02, KEYS + 0.015, keys - 0.08 + wig * 0.012);
+            else tmp.set(sd * 0.045 * (1 + wig * 0.4), seat + 0.3, 0.3 + sd * wig * 0.015);
+            root.localToWorld(tmp);
+            if (hab.where === 'desk') deskAt = tmp.clone();
+          } else {
+            // by the head: at the ear on its own side, the mouth or the chin
+            B.head.getWorldPosition(tmp);
+            if (hab?.where === 'ear') offset.set(sd * 0.1, -0.04, 0.01);
+            else if (hab?.where === 'mouth') offset.set(sd * 0.02, -0.08, 0.12);
+            else offset.set(sd * 0.01, -0.13, 0.09);
+            tmp.add(offset.applyQuaternion(frame));
+          }
+          B.wrist[s].getWorldPosition(from);
+          reach(B.arm[s], B.fore[s], B.wrist[s], from.lerp(tmp, ease(amt)), va.set(sides[s] * 0.6, -1, -0.4).applyQuaternion(frame));
+        }
         // a stride: the thighs swing, the knees bend through, the arms swing
-        // against the legs
+        // against the legs (on clips, the clips' own)
         const w = state.walk;
-        const wa = w.on ? Math.min(1, w.amt + dt * 4) : Math.max(0, w.amt - dt * 4);
+        const wa = anim ? 0 : w.on ? Math.min(1, w.amt + dt * 4) : Math.max(0, w.amt - dt * 4);
         if (wa !== w.amt || wa) moving = true;
         w.amt = wa;
         if (wa) {
@@ -410,16 +617,20 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
           moving = true;
         } else if (typing) {
           for (let s = 0; s < 2; s++) turn(B.wrist[s], AX, Math.max(0, Math.sin(t * 10 + s * 2.1 + state.seed)) * 0.2, frame);
-          turn(B.chest, AX, Math.sin(t * 1.6 + state.seed) * 0.012, frame); // breathing
-        } else if (idle && pose !== 'sit') {
-          turn(B.chest, AX, Math.sin(t * 1.6 + state.seed) * 0.012, frame); // breathing
         }
-        // the head: down at the screen, a look round, or at what it's asked to
-        let yaw = idle ? Math.sin(t * 0.31 + state.seed) * 0.3 + Math.sin(t * 0.13 + state.seed * 2) * 0.18 : 0;
-        let pitch = idle ? Math.sin(t * 0.21 + state.seed) * 0.05 : 0;
-        if (state.look) {
+        // breathing, sat or standing, each at their own pace (on clips, the
+        // idle's own)
+        if (!anim) turn(B.chest, AX, breathe(t, seed) * 0.014, frame);
+        // the head: down at the screen, a look round, or at what it's asked
+        // to (a glance for a while over that); at a crossword, down at it
+        const roam = anim ? 0.5 * Math.max(0, 1 - (state.motion?.move ?? 0) * 2.5) : 1;
+        let yaw = idle ? (Math.sin(t * 0.31 + state.seed) * 0.3 + Math.sin(t * 0.13 + state.seed * 2) * 0.18) * roam : 0;
+        let pitch = idle ? Math.sin(t * 0.21 + state.seed) * 0.05 * roam : 0;
+        if (state.glance.left > 0) state.glance.left -= dt;
+        const at = state.glance.left > 0 ? state.glance.at : (state.look ?? deskAt);
+        if (at) {
           B.head.getWorldPosition(headAt);
-          tmp.copy(state.look).sub(headAt).applyQuaternion(inv.copy(frame).invert());
+          tmp.copy(at).sub(headAt).applyQuaternion(inv.copy(frame).invert());
           state.amt = Math.min(1, state.amt + dt * 3);
           yaw = THREE.MathUtils.lerp(yaw, THREE.MathUtils.clamp(Math.atan2(tmp.x, tmp.z), -1.25, 1.25), state.amt);
           // less what the pose already looks down
@@ -440,7 +651,12 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
 
   const cast = {
     person,
+    // whether those who stand can stand on clips (the clips came)
+    get clips() {
+      return Boolean(borrowed);
+    },
     dispose() {
+      for (const a of animators) a.dispose();
       for (const sk of skeletons) sk.dispose();
       for (const m of models.values())
         m.scene.traverse((o) => {
@@ -455,7 +671,10 @@ export async function loadPeople(ids = Object.keys(CAST), each) {
     ids.map((who) => {
       const id = isSpec(who) ? who.id : who;
       return loader.loadAsync(isSpec(who) ? who.model : `/models/office/cast/${id}.glb`).then(
-        (m) => {
+        async (m) => {
+          // (handed on once the clips are in too, so a figure asked for on
+          // clips gets them)
+          borrowed = (await moves) ?? borrowed;
           models.set(id, m);
           each?.(id, cast);
         },

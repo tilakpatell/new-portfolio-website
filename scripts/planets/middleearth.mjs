@@ -9,15 +9,19 @@
 // ragged, as on a real world, not a drawn line. Past the map the Great Sea
 // goes all the way round to a continent of its own on the far side.
 //
-// Makes middleearth, -normal and -clouds (RGBA) at 2048 (-hq), 1024 and 512
-// (-sm); -night at 1024 and 512; -rough and -glow at 1024: the clouds, and the pall of Mordor's
-// smoke over the Black Land.
+// The forests are a canopy, crowns at three sizes dark in their middles
+// with lighter edges, so Mirkwood and Fangorn have a grain from orbit.
+//
+// Makes middleearth at 4096 (-xl, KTX2), 2048 (-hq), 1024 and 512 (-sm);
+// -normal (its -hq at twice the strength, for close in) and -clouds (RGBA)
+// at 2048, 1024 and 512; -night at 1024 and 512; -rough and -glow at 1024:
+// the clouds, and the pall of Mordor's smoke over the Black Land.
 
 import { COAST, LAKES, RIVERS, RANGES, PEAKS, FORESTS, LANDS, CITIES, FARMS } from './middleearth-geo.mjs';
-import { clamp, curve, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, raster, ramp, rand, ridged, sampler, save, smooth } from './sphere.mjs';
+import { cells, clamp, curve, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, raster, ramp, rand, ridged, sampler, save, smooth, bakeSize } from './sphere.mjs';
 
-const W = 4096;
-const H = 2048;
+// (8192 × 4096 with --ultra: sphere.mjs's bakeSize)
+const [W, H] = bakeSize();
 const LAT0 = (35 * Math.PI) / 180;
 const MID = [430, 300]; // the sheet's middle, at (LAT0, the map's middle meridian)
 const K = 509; // sheet units a radian: the 800-wide sheet spans 90°
@@ -79,6 +83,19 @@ export async function bake() {
   const n1 = perlin(1);
   const n2 = perlin(2);
   const n3 = perlin(3);
+  // the forests' canopy: crowns at three sizes (stands, trees, and the
+  // grain between), each dark in its middle with a lighter, sunlit edge
+  const CANOPY = [12000, 48000, 190000].map((count, k) => ({ cell: cells(61 + k, count), s: Math.sqrt((4 * Math.PI) / count), w: [0.5, 0.3, 0.2][k] }));
+  const canopyAt = (x, y, z) => {
+    let v = 0;
+    for (const { cell, s, w } of CANOPY) {
+      const { f1, f2, id } = cell(x, y, z);
+      const edge = 1 - smooth(0, s * 0.42, f2 - f1); // 1 on the crowns' edges
+      const tone = ((id * 2654435761) % 1000) / 1000; // each crown its own shade
+      v += w * (edge * 0.75 + tone * 0.25);
+    }
+    return v;
+  };
   const n4 = perlin(4);
   const n5 = perlin(5);
   const n6 = perlin(6);
@@ -158,7 +175,10 @@ export async function bake() {
     const rd = rc + rf + farR > 0.01 ? ridged(n5, x * 85, y * 85, z * 85, { octaves: 5 }) : 0.4;
     const rl = rf + farR > 0.01 ? ridged(n6, x * 22, y * 22, z * 22, { octaves: 4 }) : 0.4;
     const mount = rc * (0.1 + 0.72 * rd ** 1.5) + rf * 0.18 * (0.3 + rl) + farR * (0.25 + 0.7 * rd * rl);
-    const elev = (0.05 + hills * 0.15 * (1 - valley * 0.7) + mount + cone * 0.9) * isLand;
+    // (in a forest, the canopy is a little relief of its own)
+    const inWood = near ? Math.max(forest.dark(ux, uy), forest.gold(ux, uy), forest.old(ux, uy), forest.green(ux, uy), forest.jungle(ux, uy)) : 0;
+    const canopy = inWood > 0.05 ? canopyAt(x, y, z) : 0.5;
+    const elev = (0.05 + hills * 0.15 * (1 - valley * 0.7) + mount + cone * 0.9 + inWood * (canopy - 0.5) * 0.05) * isLand;
     const h = elev * (1 - lakeK) * (1 - riverK * 0.6);
     height[i] = h * 0.0105;
 
@@ -205,6 +225,8 @@ export async function bake() {
       col = mix3(col, mix3(C.old, C.darker, grain * 0.5), fk(forest.old));
       col = mix3(col, C.green, fk(forest.green) * 0.9);
       col = mix3(col, mix3(C.jungle, C.jungleHi, grain), edge(forest.jungle(ux, uy), 0.3, 0.7, 0.4) * 0.9);
+      // the canopy over all of them: crowns dark in the middle, lighter at the edge
+      col = col.map((c) => c * mix(1, 0.7 + 0.8 * canopy, smooth(0.15, 0.6, inWood)));
       // the East beyond the map: steppe, and forest in the wet
       col = mix3(col, mix3(steppe(grain), C.taiga, smooth(0.52, 0.68, moist)), smooth(940, 1060, ux) * 0.8);
     } else {
@@ -290,8 +312,10 @@ export async function bake() {
   });
 
   console.log('middle-earth: saving');
-  await save(albedo, W, H, 3, 'middleearth', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
-  await save(normalMap(height, W, H, 1), W, H, 3, 'middleearth-normal', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
+  await save(albedo, W, H, 3, 'middleearth', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+  // (the -hq relief, worn near, at twice the strength: close in, the ranges should stand up)
+  await save(normalMap(height, W, H, 2), W, H, 3, 'middleearth-normal', [[2048, '-hq']], { quality: 90 });
+  await save(normalMap(height, W, H, 1), W, H, 3, 'middleearth-normal', [[1024, ''], [512, '-sm']], { quality: 90 });
   await save(rough, W, H, 3, 'middleearth-rough', [[1024, '']], { quality: 84 });
   // (lights and glow are small soft points: 1024 holds them)
   await save(night, W, H, 3, 'middleearth-night', [[1024, ''], [512, '-sm']], { quality: 86 });

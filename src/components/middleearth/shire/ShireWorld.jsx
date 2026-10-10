@@ -3,17 +3,21 @@ import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../lib/voiced';
+import { useVoiced } from '../../../lib/useVoiced';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf, ownButton } from '../towns/keys';
-import { Travellers } from '../towns/TownHud';
+import { Bubble, QuestList, Stick, Travellers } from '../towns/TownHud';
 import { useTravellers } from '../towns/useTravellers';
 import {
   CAST,
   COLOURS,
+  FADE,
   FIELD,
   GANDALF_LINES,
   HOLLOW,
   HUNT,
+  INSIDE_TEXT,
   LOBELIA,
   LOBELIA_LEN,
   LOBELIA_LINES,
@@ -23,13 +27,16 @@ import {
   RIDER_RETRY,
   RINGS,
   ROADS,
+  SAYS,
   SHOW,
   SIDE,
+  SPOKEN,
   SPOONS,
   SPOON_SPOTS,
   SPOTS,
   START,
   STREAM,
+  STRIDE,
   WORLD,
   behindYaw,
   cameraMove,
@@ -46,6 +53,7 @@ import {
   newShow,
   newSpoons,
   nextRingStep,
+  onRoad,
   progress,
   puff,
   riderTrigger,
@@ -57,11 +65,15 @@ import {
   stepRings,
   stepShow,
   stepSpoons,
+  stepFade,
+  stepStride,
 } from './rules';
 import { SWATCH } from './fx';
 import './shire.css';
 import '../../../styles/lazy/middleearth.css';
 import GuideCue from '../../guide/GuideCue';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // Hobbiton, the world: walk about the Shire as Frodo on the day of Bilbo's
 // party, and do what hobbits do there. The rules are in ./rules.js, the
@@ -74,9 +86,7 @@ const SIDE_DONE = 'tp-shire-side'; // kept apart, so the story's count stays the
 const AT = 'tp-shire-at';
 const ACH = { maggot: 'mushrooms', rings: 'smokerings', party: 'fireworks', ring: 'secretsafe', rider: 'getoffroad' };
 const sounds = () => import('./sounds');
-const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
-// the lines the site has the films' own recordings of (lib/clips)
-const SPOKEN = { 'A wizard is never late, Frodo Baggins. Nor is he early. He arrives precisely when he means to.': 'wizardLate', 'What about second breakfast?': 'secondBreakfast', 'We’ve had one, yes. What about second breakfast?': 'secondBreakfast' };
+const clip = (id, o) => import('../../../lib/clips').then((c) => c.playClip(id, o)).catch(() => null);
 const sfx = () => import('../../../lib/sfx');
 const PROMPT = {
   rings: { name: 'The bench at Bag End', act: 'Sit with Gandalf' },
@@ -84,12 +94,6 @@ const PROMPT = {
   ring: { name: 'Bag End', act: 'Go in' },
   leave: { name: 'The East Road', act: 'On to Bree' },
   spoons: { name: 'Lobelia Sackville-Baggins', act: 'Race her for Bilbo’s spoons' },
-};
-const INSIDE_TEXT = {
-  envelope: { say: 'Bilbo has gone. On the mantelpiece is an envelope with your name on it.', act: 'Open it' },
-  fire: { say: 'A plain gold ring. Gandalf says, “Throw it in the fire.”', act: 'Throw it in the fire' },
-  letters: { say: 'Letters in a fiery script come up round the band, and Gandalf goes very still.', act: 'Take it out with the tongs' },
-  safe: { say: 'Gandalf: “Keep it secret. Keep it safe.”', act: null },
 };
 
 export default function ShireWorld({ onLeave }) {
@@ -139,6 +143,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const canvas = useRef(null);
   const map = useRef(null);
   const api = useRef(null);
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const sim = useRef(null);
   if (!sim.current) {
     const kept = local.get(AT, null);
@@ -157,9 +162,15 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [toast, setToast] = useState(null);
   const [bubble, setBubble] = useState(null);
   const [list, setList] = useState(false);
+  const [fading, setFading] = useState(false); // caught or found: the screen goes dark while he's put back
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   // timers for what comes a moment after an event; cleared if the world goes
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
@@ -197,7 +208,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if (dead || !canvas.current) return null;
         return createShireWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
       })
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
@@ -206,7 +217,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__SHIRE__ = { api: a, sim: sim.current, complete }; // for the QA scripts
         fit();
-        setGl('on');
+        // everything on the graphics chip before Hobbiton's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (!dead) setGl('on');
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -254,7 +267,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       if (id === 'spoons') {
         s.spoons = newSpoons();
         sounds().then((x) => x.spoon());
-        say('“Bilbo’s hidden the good silver about Hobbiton, I know he has,” says Lobelia, and off she goes. Beat her to the spoons: two to a pocket, up to Bag End’s gate. Five home wins.');
+        say(SAYS.spoons.text, false, SAYS.spoons.who);
         setList(false);
         return undefined;
       }
@@ -429,8 +442,27 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
+    // put back where he starts again, under a fade rather than a cut (./rules.js)
+    const putBack = (at) => {
+      s.fade = FADE;
+      s.putBack = () => {
+        s.h = newHobbit(at);
+        s.yaw = behindYaw(s.h.face);
+        s.cut = true; // (the camera cuts to him, in the dark, rather than swing across)
+      };
+      setFading(true);
+    };
+    if (s.fade != null) {
+      const [left, move] = stepFade(s.fade, dt);
+      s.fade = left;
+      if (move) {
+        s.putBack?.();
+        s.putBack = null;
+        setFading(false);
+      }
+    }
 
-    if (s.mode === 'walk' || s.mode === 'rider') {
+    if ((s.mode === 'walk' || s.mode === 'rider') && s.fade == null) {
       let fwd = (held('up') ? 1 : 0) - (held('down') ? 1 : 0) - s.stick.y;
       let side = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + s.stick.x;
       if (pad) {
@@ -447,6 +479,10 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, Math.max(-1, Math.min(1, fwd)), Math.max(-1, Math.min(1, side)));
       s.h = stepHobbit(s.h, { x: mv.x, z: mv.z, run }, dt);
+      // his footsteps, a stride of ground apart, on the grass or the road
+      const [stride, foot] = stepStride(s.stride ?? STRIDE.first, s.h, dt);
+      s.stride = stride;
+      if (foot) sounds().then((x) => x.step({ run: s.h.running, road: onRoad(s.h.x, s.h.z) }));
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
       // the camera drifts round behind him as he walks, unless you've just turned it
       if (s.h.speed > 0.5 && s.t - s.dragAt > 1.4) {
@@ -458,7 +494,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
 
     // Maggot's dogs walk their rounds whatever you're doing
     const huntDone = doneRef.current.includes('maggot');
-    const hEv = stepHunt(s.hunt, huntDone || s.mode !== 'walk' ? { x: 0, z: -40, running: false } : { x: s.h.x, z: s.h.z, running: s.h.running }, dt);
+    const hEv = stepHunt(s.hunt, huntDone || s.mode !== 'walk' || s.fade != null ? { x: 0, z: -40, running: false } : { x: s.h.x, z: s.h.z, running: s.h.running }, dt);
     for (const e of hEv) {
       if (e.type === 'pick') {
         a.fx('pick', e);
@@ -472,8 +508,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         a.fx('caught');
         say('Caught! Farmer Maggot marches you back to his gate, and takes his mushrooms back.', true);
         s.hunt = newHunt([]);
-        s.h = newHobbit(MAGGOT_GATE);
-        s.yaw = behindYaw(s.h.face);
+        putBack(MAGGOT_GATE);
         break;
       } else if (e.type === 'lost') say('It’s lost you.');
       else if (e.type === 'all') {
@@ -490,7 +525,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     }
 
     // the Rider
-    if (s.mode === 'walk' && p.hasRing && !doneRef.current.includes('rider') && riderTrigger(s.h)) {
+    if (s.mode === 'walk' && s.fade == null && p.hasRing && !doneRef.current.includes('rider') && riderTrigger(s.h)) {
       s.mode = 'rider';
       s.rider = newRider();
       sounds().then((x) => {
@@ -517,8 +552,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           say(e.why === 'ring' ? 'The Ring calls to it, and it screams. Try again, and leave the Ring be.' : e.why === 'moved' ? 'You moved, and it screams. Try again, and keep still.' : 'It sees you, and screams. Get off the road and under the roots, quick.', true);
           s.rider = null;
           s.mode = 'walk';
-          s.h = newHobbit(RIDER_RETRY);
-          s.yaw = behindYaw(s.h.face);
+          putBack(RIDER_RETRY);
         } else if (e.type === 'leaving') a.fx('leaving');
         else if (e.type === 'gone') {
           s.hoof?.stop();
@@ -544,7 +578,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if (e.type === 'through') {
           a.fx('through', s.aim);
           sounds().then((x) => x.chime(e.hits));
-          say(['Through! Gandalf chuckles.', 'Through again! “Well, Frodo Baggins!”', ''][e.hits - 1] || 'Three!');
+          if (e.hits === 2) say(SAYS.through.text, false, SAYS.through.who);
+          else say(e.hits === 1 ? 'Through! Gandalf chuckles.' : 'Three!');
         } else if (e.type === 'won') {
           complete('rings');
           say('Three through his. Gandalf blows a little smoke ship that sails through yours.');
@@ -598,7 +633,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           say('Five of Bilbo’s spoons safe home. Lobelia sniffs, and says she never cared for them anyway.');
         } else if (e.type === 'lost') {
           s.spoons = null;
-          say('Two spoons in Lobelia’s bag, and that’s that. “Finders keepers,” she says. Ask her again, and she’ll “find” them back.', true);
+          say(SAYS.finders.text, true, SAYS.finders.who);
         }
       }
     }
@@ -636,7 +671,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         lines.current[talk] = n + 1;
         const line = pool[n % pool.length];
         setBubble({ id: talk, name: c ? c.name : lob ? 'Lobelia Sackville-Baggins' : 'Gandalf', line });
-        if (SPOKEN[line]) clip(SPOKEN[line]);
+        // the films' own recording, or the speaker's made voice (./voicelines.js)
+        if (SPOKEN[line]) clip(SPOKEN[line], { voice: true }); // (a voice, on the floor: lib/speech.js)
+        else sayVoiced(talk, line);
       } else setBubble(null);
     }
 
@@ -675,10 +712,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           talk: s.talk,
           markers,
           debugCam: s.debugCam,
+          cut: s.cut,
         },
         ms * fast,
         fast,
       );
+      s.cut = false;
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
@@ -760,28 +799,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   };
 
   // the touch stick: drag from where you put your thumb
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   const travel = (q) => {
     const s = sim.current;
@@ -795,6 +813,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const here = hud.near ? PROMPT[hud.near] : null;
   const mode = hud.mode;
   const walking = mode === 'walk' || mode === 'rider';
+  const inside = mode === 'inside' ? INSIDE_TEXT[hud.step] : null;
+  useVoiced(inside?.who, inside?.who && inside.say); // Gandalf's words, in his voice (./voicelines.js)
   const count = done.length;
   const objective =
     mode === 'rider'
@@ -809,7 +829,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   return (
     <div ref={box} className="shire-stage" data-touch={touch || undefined} data-mode={mode} data-wearing={hud.wearing || undefined} data-sky={prog.sky}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Hobbiton in 3D: the Hill and Bag End, the Party Field, the pond and the mill, and Frodo on the lane" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
-      {gl === 'loading' && <p className="shire-loading">Walking into Hobbiton…</p>}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Walking into Hobbiton" />
+      <div className="shire-fade" data-on={fading || undefined} aria-hidden="true" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">
@@ -852,19 +873,14 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       )}
 
       {bubble && walking && (
-        <div ref={bubbleRef} className="shire-bubble" aria-live="polite">
-          <div>
-            <b>{bubble.name}</b>
-            <span>{bubble.line}</span>
-          </div>
-        </div>
+        <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />
       )}
 
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -953,69 +969,27 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       {mode === 'inside' && (
         <div className="shire-panel shire-panel-inside">
           <p className="shire-panel-title">Bag End</p>
-          <p className="shire-panel-say">{INSIDE_TEXT[hud.step]?.say}</p>
-          {INSIDE_TEXT[hud.step]?.act && (
+          <p className="shire-panel-say">{inside?.say}</p>
+          {inside?.act && (
             <button type="button" className="btn btn-primary btn-sm" disabled={!hud.ready} onClick={() => act()}>
-              {INSIDE_TEXT[hud.step].act}
+              {inside.act}
             </button>
           )}
         </div>
       )}
 
-      {walking && touch && (
-        <div className="shire-hud shire-hud-bottom">
-          <div className="shire-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-            <span />
-          </div>
-        </div>
-      )}
+      {walking && touch && <Stick onMove={onStick} />}
 
       {list && (
-        <div className="shire-list" role="dialog" aria-label="Things to do in Hobbiton">
-          <div className="shire-list-head">
-            <p>Things to do</p>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setList(false)}>
-              Close
-            </button>
-          </div>
-          <ul>
-            {prog.quests.map((q) => (
-              <li key={q.id} data-done={q.done || undefined} data-open={q.open || undefined} data-next={q.id === prog.next || undefined}>
-                <span className="shire-seal" aria-hidden="true">
-                  {q.done ? '✓' : ''}
-                </span>
-                <div>
-                  <p className="shire-list-name">{q.name}</p>
-                  <p className="shire-list-sub">{q.open ? `${q.where}. ${q.blurb}` : q.locked}</p>
-                </div>
-                {q.open && !hud.spoons && (q.id !== 'rings' || prog.sky === 'day') && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(q)}>
-                    Go there
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="shire-list-side">On the side</p>
-          <ul>
-            <li data-done={side || undefined} data-open data-side>
-              <span className="shire-seal" aria-hidden="true">
-                {side ? '✓' : ''}
-              </span>
-              <div>
-                <p className="shire-list-name">{SIDE.name}</p>
-                <p className="shire-list-sub">
-                  {SIDE.where}. {SIDE.blurb}
-                </p>
-              </div>
-              {!hud.spoons && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(SIDE)}>
-                  Go there
-                </button>
-              )}
-            </li>
-          </ul>
-        </div>
+        <QuestList
+          title="Things to do in Hobbiton"
+          quests={prog.quests}
+          next={prog.next}
+          side={[{ ...SIDE, done: side }]}
+          onClose={() => setList(false)}
+          onGo={travel}
+          canGo={(q) => !hud.spoons && (q.id === SIDE.id || (q.open && (q.id !== 'rings' || prog.sky === 'day')))}
+        />
       )}
     </div>
   );

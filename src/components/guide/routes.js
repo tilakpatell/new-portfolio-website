@@ -1,5 +1,8 @@
 // Which guide a page gets, what it's called, and whether its first visit
-// gets a note by the "?" button (`nudge`: it has controls worth knowing). Small
+// gets a note by the "?" button (`nudge`: it has controls worth knowing). The
+// universe and the galaxy don't: their "?" is in their own panel, their first
+// hint already says where the controls are, and the note, up top, sat over
+// the crew's line. Small
 // on purpose: the corner button needs it from the first page, while what
 // each guide says (pages.js) loads with the panel, the first time it opens.
 
@@ -12,11 +15,12 @@ export const GUIDES = {
   '/contact': { title: 'Contact' },
   '/travel': { title: 'Travel' },
   '/terminal': { title: 'The terminal' },
-  '/universe': { title: 'The universe', nudge: true },
-  '/galaxy': { title: 'A galaxy far, far away', nudge: true },
+  '/universe': { title: 'The universe' },
+  '/galaxy': { title: 'A galaxy far, far away' },
   '/galaxy/surface': { title: 'Down on the surface', nudge: true },
   '/galaxy/mission': { title: 'Mission briefing' },
   '/deathstar': { title: 'The Death Star', nudge: true },
+  '/deathstar/inside': { title: 'Aboard the Death Star', nudge: true },
   '/caribbean': { title: 'The Caribbean', nudge: true },
   '/invincible': { title: 'Invincible', nudge: true },
   '/middle-earth': { title: 'Middle-earth' },
@@ -27,14 +31,17 @@ export const GUIDES = {
   '/albuquerque': { title: 'Albuquerque', nudge: true },
   '/c-137': { title: 'Dimension C-137', nudge: true },
   '/c-137/citadel': { title: 'The Citadel of Ricks', nudge: true },
+  '/c-137/planet': { title: 'A Rick and Morty planet' },
   '/dot-matrix': { title: 'Dot Matrix', nudge: true },
   '/dot-matrix/64': { title: 'Super Mario 64 on the N64', nudge: true },
+  '/dot-matrix/minecraft': { title: 'Minecraft', nudge: true },
   '/earth': { title: 'Earth', nudge: true },
   '/music': { title: 'The music room', nudge: true },
 };
 
 // The deeper paths share their section's guide: every role is Experience,
-// every place on the map the universe.
+// every place on the map the universe, every Rick and Morty planet landed on
+// from the map one of its own (not C-137's, and not its street's basics).
 const RULES = [
   [/^\/(universe(\/.*)?)?$/, '/universe'],
   [/^\/experience\/[^/]+$/, '/experience'],
@@ -43,6 +50,7 @@ const RULES = [
   [/^\/galaxy\/[^/]+\/mission$/, '/galaxy/mission'],
   [/^\/galaxy\/[^/]+$/, '/galaxy'],
   [/^\/middle-earth\/[^/]+$/, '/middle-earth/place'],
+  [/^\/c-137\/(?!citadel$)[a-z0-9-]+$/, '/c-137/planet'],
 ];
 
 export const guideKeyFor = (pathname) => (GUIDES[pathname] ? pathname : (RULES.find(([re]) => re.test(pathname))?.[1] ?? null));

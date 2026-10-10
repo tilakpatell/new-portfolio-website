@@ -8,18 +8,23 @@
 // when you're down in it). Lit by its system's sun or suns.
 //
 // LOOKS: { [id]: { name, swatch, family, pal: { slot: '#rrggbb' }, p: { param: n },
-//   flags, bump, clouds, atmo, shield } }; the families and their slots and
+//   flags, bump, clouds, atmo, shield, detail ([flat, steep] ground scans up
+//   close: detailScans) } }; the families and their slots and
 //   params are FAMILIES below
-// buildBody(look, { r = 40, small = false }) → { group, radius, reach,
+// buildBody(look, { r = 40, small = false, tier }) → { group, radius, reach,
 //   update(t, camera), setSuns([{ dir, color }]), setDetail(k), set(name, value), dispose() }
 //   look: an id (or a LOOKS entry); radius: the solid sphere, = r; reach:
 //   how far it shows (atmosphere, shield); setDetail: how many octaves of
 //   noise the ground is worked to, 0…1 from 4 up to all it was built with (9,
-//   or 5 small), for a scene that's short of frame rate; set: 'shield'
+//   or 5 small), for a scene that's short of frame rate (and from orbit, on
+//   tier high or ultra, two finer again: nearOctaves); set: 'shield'
 //   (Scarif's shield, 0..1); anything else is ignored
 
 import * as THREE from 'three';
-import { SHELL_FRAG, SHELL_VERT, SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surfaceFrag } from './bodyShaders';
+import { SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surfaceFrag } from './bodyShaders';
+import { createAtmosphere, stepsFor } from '../../lib/three/atmosphere';
+import { detailLevel } from '../../lib/detail';
+import { loadScan, scanOf } from './surface/kit';
 
 // each family's colour slots (uPal, in order) and params (uP0, uP1)
 export const FAMILIES = {
@@ -46,7 +51,7 @@ export const LOOKS = {
     atmo: air('#ffe0b8', 1.3, 1.04, '#ffa060', 4),
   },
   geonosis: {
-    name: 'Geonosis', swatch: '#c0613a', family: 'desert', bump: 0.026, flags: ['CRATERS'],
+    name: 'Geonosis', swatch: '#c0613a', family: 'desert', bump: 0.026, flags: ['CRATERS'], detail: ['redsoil', 'rock'],
     pal: { sand: '#c96a40', sand2: '#a9512d', rock: '#8c4024', dark: '#4a2016', salt: '#d99a6e', crest: '#da7e4e' },
     p: { dunes: 0.45, rock: -0.12, craters: 0.85, salt: 0.15, scars: 0, duneFreq: 40, canyons: 0.8, mesas: 1 },
     atmo: air('#ff9c5c', 2.2, 1.05, '#ff7040', 3),
@@ -54,7 +59,7 @@ export const LOOKS = {
   // Mandalore: glassed in the Purge, a pale crust of fused glass and ash,
   // bomb scars and craters, a poisoned lilac haze
   mandalore: {
-    name: 'Mandalore', swatch: '#a8a4b4', family: 'desert', bump: 0.02, flags: ['CRATERS', 'SCARS'],
+    name: 'Mandalore', swatch: '#a8a4b4', family: 'desert', bump: 0.02, flags: ['CRATERS', 'SCARS'], detail: ['gravel', 'rock'],
     pal: { sand: '#aaa6b4', sand2: '#8b8597', rock: '#5e5a68', dark: '#27232d', salt: '#dfe4f0', crest: '#c6c4d2' },
     p: { dunes: 0.25, rock: 0.02, craters: 0.6, salt: 0.6, scars: 1, duneFreq: 30, canyons: 0.5, mesas: 0.3 },
     clouds: sky(0.22, '#bdb4c8', 1.2, 2.8, 0.004),
@@ -70,7 +75,7 @@ export const LOOKS = {
   },
   // ── Living worlds ──
   endor: {
-    name: 'Endor', swatch: '#3f6a3a', family: 'lush', bump: 0.02,
+    name: 'Endor', swatch: '#3f6a3a', family: 'lush', bump: 0.02, detail: ['needles', 'rock'],
     pal: { deep: '#123248', shallow: '#2a6870', forest: '#2a4c26', grass: '#66763c', rock: '#5a5246', snow: '#eef2f4', beach: '#8f8460', murk: '#2a3a2a' },
     p: { sea: -0.22, forest: 1.25, mountains: 0.3, caps: 0.05, islands: 0, swamp: 0, rivers: 0, scale: 2.3 },
     clouds: sky(0.3, '#ffffff', 1.8, 5),
@@ -84,7 +89,7 @@ export const LOOKS = {
     atmo: air('#82ccbe', 2.7, 1.07),
   },
   kashyyyk: {
-    name: 'Kashyyyk', swatch: '#2e5a34', family: 'lush', bump: 0.02, flags: ['ISLANDS'],
+    name: 'Kashyyyk', swatch: '#2e5a34', family: 'lush', bump: 0.02, flags: ['ISLANDS'], detail: ['leaves', 'rock'],
     pal: { deep: '#0c2c52', shallow: '#1e6a8a', forest: '#224a20', grass: '#446832', rock: '#4a4a40', snow: '#e8eef0', beach: '#a09468', murk: '#22302a' },
     p: { sea: 0.02, forest: 1.1, mountains: 0.6, caps: 0.04, islands: 0.3, swamp: 0, rivers: 0, scale: 2.6 },
     clouds: sky(0.32, '#ffffff', 1.7, 4.8),
@@ -182,24 +187,64 @@ export const LOOKS = {
     p: { craters: 1, maria: 0.5, cracks: 0 },
   },
   'moon-ice': {
-    name: 'Ice moon', swatch: '#dfe8f0', family: 'moon', bump: 0.02,
+    name: 'Ice moon', swatch: '#dfe8f0', family: 'moon', bump: 0.02, detail: ['snow', 'rock'],
     pal: { base: '#dfe8f0', dark: '#a8bccc', bright: '#ffffff', crack: '#6a8aa8' },
     p: { craters: 0.4, maria: 0.3, cracks: 1 },
   },
   'moon-dust': {
-    name: 'Dusty moon', swatch: '#b89a72', family: 'moon', bump: 0.03,
+    name: 'Dusty moon', swatch: '#b89a72', family: 'moon', bump: 0.03, detail: ['sand', 'rock'],
     pal: { base: '#b89a72', dark: '#8a6e50', bright: '#d8c09a', crack: '#5a4a38' },
     p: { craters: 0.8, maria: 0.3, cracks: 0 },
   },
   'moon-rust': {
-    name: 'Red moon', swatch: '#9a4a30', family: 'moon', bump: 0.03,
+    name: 'Red moon', swatch: '#9a4a30', family: 'moon', bump: 0.03, detail: ['redsoil', 'rock'],
     pal: { base: '#9a4a30', dark: '#6a2e1e', bright: '#c07050', crack: '#4a1e14' },
     p: { craters: 0.8, maria: 0.4, cracks: 0 },
   },
 };
 
 const MIN_OCT = 4; // the fewest octaves of noise a ground is worked to, however little detail is asked for
+// the ground scans a world wears up close (bodyShaders.js's DETAIL; at
+// ultra their 8192 set where it's made, lib/three/core's coreFiles;
+// public/cc0/galaxy/), [flat, steep]: by the look's own `detail`, else its
+// family's (a swamp's is mud); a gas giant has no ground
+const DETAIL_SCANS = { desert: ['sand', 'rock'], ice: ['snow', 'rock'], lush: ['grass', 'rock'], city: ['concrete', 'metal'], lava: ['ash', 'rock'], moon: ['gravel', 'rock'] };
+export const detailScans = (L) => L.detail ?? (L.family === 'lush' && L.flags?.includes('SWAMP') ? ['mud', 'rock'] : DETAIL_SCANS[L.family]) ?? null;
+const TILE = 0.45; // world units a tile of the coarser scan covers (the finer one's 6.5 times smaller)
+let blank = null; // (what the samplers read until the scans are in: plain white, and a flat normal)
+const blanks = () => {
+  if (!blank) {
+    const one = (r, g, b) => {
+      const t = new THREE.DataTexture(new Uint8Array([r, g, b, 255]), 1, 1);
+      t.needsUpdate = true;
+      return t;
+    };
+    blank = { color: one(255, 255, 255), normal: one(128, 128, 255) };
+  }
+  return blank;
+};
 const SEG = { big: [128, 96], small: [64, 48], moon: [64, 48] };
+// at ultra (lib/budgets' terrain row, 2), the sphere twice as fine each
+// way, its ground worked to more octaves (MAX_OCT, and twice NEAR_OCT from
+// orbit), its air marched in twice the steps (lib/three/atmosphere's stepsFor)
+export const segmentsFor = (kind, level) => SEG[kind].map((n) => (level === 'ultra' ? n * 2 : n));
+const MAX_OCT = { small: 5, big: 9, ultra: 11 };
+
+// From orbit (the world over NEAR_PX pixels tall), on a strong enough
+// device, the ground is worked NEAR_OCT octaves finer than its pixels'
+// footprint alone would give it, and wears a fine grain that catches the
+// sun (bodyShaders.js's octs and nearRelief): from a parking orbit the
+// footprint, not the octave cap, is what held it soft
+const NEAR_PX = 300;
+const NEAR_OCT = 2;
+const NEAR_EASE = 0.1; // octaves a frame drawn it eases in and out at (no pop as a world crosses NEAR_PX)
+export const nearOctaves = ({ tier, pxTall: px }) => ((tier === 'high' || tier === 'ultra') && px > NEAR_PX ? (tier === 'ultra' ? NEAR_OCT * 2 : NEAR_OCT) : 0);
+// how many of a `height`-pixel view's pixels a ball of radius r fills, top
+// to bottom, from `dist` away with a vertical field of view of `fov` degrees
+// (Infinity from inside it)
+export const pxTall = ({ r, dist, fov, height }) => (dist <= r ? Infinity : ((2 * Math.asin(r / dist)) / ((fov * Math.PI) / 180)) * height);
+const bufferSize = new THREE.Vector2();
+const bodyAt = new THREE.Vector3();
 const SHIELD_R = 1.12;
 const DUNE_DIR = new THREE.Vector3(0.62, 0.32, 0.72).normalize();
 
@@ -220,12 +265,12 @@ const params = (look) => {
   return [new THREE.Vector4(...v.slice(0, 4)), new THREE.Vector4(...v.slice(4, 8))];
 };
 
-export function buildBody(look, { r = 40, small = false } = {}) {
+export function buildBody(look, { r = 40, small = false, tier = typeof document !== 'undefined' ? detailLevel() : 'mid' } = {}) {
   const L = (typeof look === 'string' ? LOOKS[look] : look) ?? LOOKS['moon-grey'];
   const group = new THREE.Group();
   const made = [];
   const moon = L.family === 'moon' || r < 6;
-  const [ws, hs] = moon ? SEG.moon : small ? SEG.small : SEG.big;
+  const [ws, hs] = segmentsFor(moon ? 'moon' : small ? 'small' : 'big', tier);
   const [p0, p1] = params(L);
   const atmo = L.atmo ?? null;
   const clouds = L.clouds ?? null;
@@ -242,10 +287,11 @@ export function buildBody(look, { r = 40, small = false } = {}) {
     uAtmoP: { value: new THREE.Vector4(atmo?.top ?? 1.05, atmo?.falloff ?? 3.5, atmo?.density ?? 0, atmo?.glow ?? 0.8) },
     uSunset: { value: new THREE.Color(atmo ? atmo.sunset : '#ffffff') },
   };
-  const maxOct = small ? 5 : 9;
+  const maxOct = small ? MAX_OCT.small : tier === 'ultra' ? MAX_OCT.ultra : MAX_OCT.big;
   const uniforms = {
     ...shared,
     uMaxOct: { value: maxOct },
+    uNearOct: { value: 0 },
     uBump: { value: L.bump ?? 0.02 },
     uPal: { value: colors(L) },
     uP0: { value: p0 },
@@ -259,27 +305,63 @@ export function buildBody(look, { r = 40, small = false } = {}) {
   for (const f of L.flags ?? []) defines[f] = '';
   if (clouds) defines.CLOUDS = '';
   if (atmo) defines.ATMO = '';
+  if (tier === 'ultra' && !small) defines.FBM_OCT = MAX_OCT.ultra + NEAR_OCT * 2;
+  // the scans up close: in once both are loaded (on: uDetK.w)
+  const scans = !small && typeof document !== 'undefined' && detailLevel() !== 'low' ? detailScans(L) : null;
+  if (scans?.every(scanOf)) {
+    defines.DETAIL = '';
+    const b = blanks();
+    Object.assign(uniforms, {
+      uDetA: { value: b.color },
+      uDetAN: { value: b.normal },
+      uDetB: { value: b.color },
+      uDetBN: { value: b.normal },
+      uDetMean: { value: new THREE.Vector2(...scans.map((id) => Math.pow(scanOf(id).mean ?? 0.8, 2.2))) },
+      uDetK: { value: new THREE.Vector4(r / TILE, 0.55, 0.22, 0) },
+    });
+    Promise.all(scans.map((id) => loadScan(id, { xl: tier === 'ultra' }))).then(([a, bb]) => {
+      if (!a || !bb) return;
+      uniforms.uDetA.value = a.map;
+      uniforms.uDetAN.value = a.normalMap;
+      uniforms.uDetB.value = bb.map;
+      uniforms.uDetBN.value = bb.normalMap;
+      uniforms.uDetK.value.w = 1;
+    });
+  }
 
   const geo = new THREE.SphereGeometry(r, ws, hs);
   const mat = new THREE.ShaderMaterial({ vertexShader: SURFACE_VERT, fragmentShader: surfaceFrag(L.family, FAMILIES[L.family].slots), uniforms, defines });
   const surface = new THREE.Mesh(geo, mat);
+  // (how tall it is on the screen, as it's drawn: the near octaves eased
+  // toward what that asks for, a frame at a time)
+  if (!small) {
+    surface.onBeforeRender = (renderer, scene, camera) => {
+      if (!camera?.isPerspectiveCamera) return;
+      renderer.getDrawingBufferSize(bufferSize);
+      surface.getWorldPosition(bodyAt);
+      const want = nearOctaves({ tier, pxTall: pxTall({ r, dist: camera.position.distanceTo(bodyAt), fov: camera.fov, height: bufferSize.y }) });
+      const n = uniforms.uNearOct;
+      n.value += Math.max(-NEAR_EASE, Math.min(NEAR_EASE, want - n.value));
+    };
+  }
   group.add(surface);
   made.push(geo, mat);
 
   let reach = r;
   if (atmo) {
-    const shellGeo = new THREE.SphereGeometry(r * atmo.top, moon || small ? 48 : 96, moon || small ? 32 : 64);
-    const shellMat = new THREE.ShaderMaterial({ vertexShader: SHELL_VERT, fragmentShader: SHELL_FRAG, uniforms: { ...shared, uInner: { value: Math.cos(Math.PI / hs) } }, side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
-    const shell = new THREE.Mesh(shellGeo, shellMat);
-    group.add(shell);
-    made.push(shellGeo, shellMat);
+    // (lib/three's shell, the universe map's planets' too, reading this
+    // body's own sun and air: its uniforms are the surface's)
+    const shell = createAtmosphere({ radius: r, top: atmo.top, segments: moon || small ? [48, 32] : [96, 64], steps: tier === 'ultra' ? stepsFor('ultra', 7) : 7, inner: Math.cos(Math.PI / hs), uniforms: shared });
+    group.add(shell.mesh);
+    made.push(shell);
     reach = r * atmo.top;
   }
 
   let shield = null;
+  let lastT = null; // (update's last clock, for how long since)
   if (L.shield) {
     const shieldGeo = new THREE.SphereGeometry(r * SHIELD_R, small ? 64 : 96, small ? 48 : 64);
-    const shieldMat = new THREE.ShaderMaterial({ vertexShader: SHIELD_VERT, fragmentShader: SHIELD_FRAG, uniforms: { uShield: { value: 0 }, uTime: shared.uTime }, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+    const shieldMat = new THREE.ShaderMaterial({ vertexShader: SHIELD_VERT, fragmentShader: SHIELD_FRAG, uniforms: { uShield: { value: 0 }, uTime: shared.uTime, uHit: { value: 0 }, uHitAt: { value: new THREE.Vector3(0, 1, 0) } }, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
     shield = new THREE.Mesh(shieldGeo, shieldMat);
     shield.visible = false;
     group.add(shield);
@@ -294,7 +376,10 @@ export function buildBody(look, { r = 40, small = false } = {}) {
     reach,
     // (the camera needn't be passed: the shaders know where it is)
     update(t) {
+      const dt = lastT === null ? 0 : Math.max(0, Math.min(0.1, t - lastT));
+      lastT = t;
       shared.uTime.value = t;
+      if (shield && shield.material.uniforms.uHit.value > 0) shield.material.uniforms.uHit.value = Math.max(0, shield.material.uniforms.uHit.value - dt * 1.1); // (a bump's flash dies away in about a second)
       group.updateWorldMatrix(true, false);
       shared.uCenter.value.setFromMatrixPosition(group.matrixWorld);
       shared.uRot.value.setFromMatrix4(group.matrixWorld);
@@ -317,6 +402,20 @@ export function buildBody(look, { r = 40, small = false } = {}) {
         shield.material.uniforms.uShield.value = v;
         shield.visible = v > 0.001;
       }
+    },
+    // a ship's bump into the shield at `point` (world space): a flash there
+    // and a ring out across the shell, dying away over the next second.
+    // False on a body with no shield
+    hit(point) {
+      if (!shield) return false;
+      group.updateWorldMatrix(true, false);
+      shield.material.uniforms.uHitAt.value.copy(point).applyMatrix4(group.matrixWorld.clone().invert()).normalize();
+      shield.material.uniforms.uHit.value = 1;
+      return true;
+    },
+    // (how far the last bump's flash has to go, 0 for none: for checking)
+    get hitLeft() {
+      return shield ? shield.material.uniforms.uHit.value : 0;
     },
     dispose() {
       for (const m of made) m.dispose();

@@ -1,10 +1,15 @@
-// The forest worlds, from the ground: Endor, Kashyyyk, Dagobah and Yavin 4.
+// The forest worlds, from the ground: Endor, Kashyyyk and Dagobah (Yavin 4
+// is yavin.js's).
 // (sites/index.js has what a site is.)
 
 import { grove } from './stand';
 
 // Endor's sun, for its sky and the light slanting through its trees
 const ENDOR_SUN = { az: 0.9, el: 1.02 };
+
+// what Kashyyyk's beach defenders say, clones and Wookiees along the line
+const CLONE_SAYS = ['Droids coming across the lagoon, sir!', 'Hold the line!', 'The Wookiees fight like nothing I’ve ever seen.', 'Execute Order… (He stops, and listens to his helmet.) Nothing, sir. Never mind.'];
+const WOOKIEE_SAYS = ['(A battle roar that rattles your teeth.)', '(It hefts a bowcaster and points across the lagoon.)', 'Rrraaaaaaaaghhh!', '(It thumps its chest, then yours. Friendly. You think.)'];
 
 // the Ewok village: five trees round a clearing, a deck up each, rope
 // bridges between, huts on the decks (all relative to the village)
@@ -70,27 +75,36 @@ export const SITES = {
     ground: { detail: 'needles', detailLook: { color: 0.8, normal: 0.7 },
       seed: 7,
       wind: 0.3,
+      // (the redwood country as filmed: the floor rises and falls, folded
+      // into ravines and spurs, the village and the bunker on their own
+      // level ground; the forest moon's mountains far off, in the haze)
       layers: [
-        { type: 'swell', scale: 420, height: 14 },
-        { type: 'hills', scale: 150, height: 7 },
+        { type: 'swell', scale: 420, height: 22 },
+        { type: 'hills', scale: 130, height: 14 },
+        { type: 'ridges', scale: 300, height: 8 },
         { type: 'mountains', from: 900, to: 3200, height: 320, scale: 1300 },
       ],
       palette: {
         // (the redwood floor as filmed: cinnamon duff and needles, the
         // fern beds darker olive, rust where the bark's fallen)
+        // (the floor itself part green: moss and sorrel in patches over
+        // the duff, as the redwood floor is where the light gets down)
         low: '#5e4630',
-        high: '#45442a',
+        high: '#4a5030',
         rock: '#5a5040',
-        accent: '#7a5634',
+        accent: '#4a5a2c',
         deep: '#2a1f14',
         hLow: -8,
         hHigh: 12,
         rockAt: 0.48,
-        accentCover: 0.5,
+        accentCover: 0.62,
         grain: 0.9,
         patch: 0.8,
       },
     },
+    // (the floor's low growth, as the film's: short grass and sorrel in
+    // drifts between the fern beds, soft green over the dirt, not a lawn)
+    grass: { h: [0.12, 0.36], w: 0.035, root: '#3a4a26', mid: '#52703a', tip: '#8fae62', dry: '#8c8050', cover: 0.62, scale: 45, above: 0, wind: 0.35 },
     weather: [{ kind: 'motes', count: 700 }],
     land: { at: [0, 0], yaw: 0.6 },
     lines: {
@@ -139,6 +153,7 @@ export const SITES = {
         },
         things: [
           { kind: 'bunker', at: [0, -6], yaw: 0 },
+          { kind: 'bunkerbank', at: [0, -8.5], yaw: 0 },
           { kind: 'redwood', at: [-7, -24], model: false, opts: { seed: 21, h: 60, r: 2.2 } },
           { kind: 'redwood', at: [9, -27], model: false, opts: { seed: 22, h: 56, r: 2.0 } },
           { kind: 'crates', at: [-10, 4] },
@@ -161,13 +176,13 @@ export const SITES = {
           rv: [['jesse', 'Yo, that’s the biggest satellite dish I ever saw.'], ['walt', 'And they guarded it with a dozen men and some walkers. Sloppy.']],
         },
         things: [
-          { kind: 'shieldgen', at: [0, -10], yaw: 0.2 },
-          { kind: 'pad', at: [-10, 42], opts: { r: 14, color: '#6a6c68', light: '#ffd070' } },
+          { kind: 'shieldgen', at: [0, -10], yaw: 0.2, solid: { r: 22 } },
+          { kind: 'pad', at: [-10, 42], opts: { r: 14, color: '#5e6064', light: '#ffd070', shape: 'square', marks: 'rings' } },
           { kind: 'lambda', at: [-10, 41], yaw: -0.4 },
           { kind: 'crates', at: [-30, 26] },
           { kind: 'crates', at: [24, 30] },
-          { kind: 'lamp', at: [4, 30], opts: { h: 5, light: '#ffe0a0' } },
-          { kind: 'lamp', at: [-24, 32], opts: { h: 5, light: '#ffe0a0' } },
+          { kind: 'lamp', at: [4, 30], opts: { h: 8, light: '#ffe0a0' } },
+          { kind: 'lamp', at: [-24, 32], opts: { h: 8, light: '#ffe0a0' } },
         ],
       },
       {
@@ -245,23 +260,49 @@ export const SITES = {
       { kind: 'cooler', at: [18, 10.4], yaw: 2.1 },
       { kind: 'redwood', at: [-22, 24], model: false, opts: { seed: 31, h: 64, r: 2.4 } },
       { kind: 'redwood', at: [28, -26], model: false, opts: { seed: 32, h: 58, r: 2.1 } },
+      // the second Death Star, half built, over the trees (N8's model, from
+      // Sketchfab; clear of the fog, its bite turned to the forest), hung
+      // where you see it as you climb out of the ship: ahead and to the
+      // right of the landing, a hand's width over the treetops
+      { kind: 'ds2sky', at: [2600, 700], abs: true, y: 1200, yaw: 2.6, scale: 2.0, solid: false, fog: false },
       { kind: 'lightshafts', at: [0, 0], opts: { ...ENDOR_SUN, n: 8, spread: 40, seed: 5 } },
       { kind: 'lightshafts', at: [130, -110], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 7 } },
       { kind: 'lightshafts', at: [-90, 60], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 9 } },
     ],
     scatter: [
-      { kind: 'redwood', n: 300, within: [24, 640], scale: [0.75, 1.35], opts: { seed: 1, leaf: '#3a4626' } },
-      { kind: 'redwood', n: 160, within: [24, 640], scale: [0.6, 1.2], opts: { seed: 2, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
-      { kind: 'redwood', n: 140, within: [600, 1300], scale: [1.0, 1.5], solid: false, opts: { seed: 3, lo: true, leaf: '#3a4626' } },
-      { kind: 'spruce', n: 140, within: [20, 620], scale: [0.7, 1.3], opts: { seed: 4, leaf: '#2f3e26' } },
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 120, within: [5, 60], scale: [0.7, 1.4], solid: false },
+      { kind: 'qmushroom', n: 30, within: [6, 60], scale: [0.6, 1.3], solid: false },
+      // (the stand close set, as a redwood grove is: trunks in every
+      // direction, the nearest ring thickest so the clearing you land in
+      // reads as one, and the far ones carrying the forest to the hills)
+      // (the full trees where you walk, from the edge of the glade you land
+      // in: 60 m out, so the sky and the Death Star show over the trunks
+      // from its middle; past the fog's reach, where a tree is a trunk in
+      // the mist, the light ones, as many again)
+      { kind: 'redwood', n: 320, within: [60, 280], scale: [0.75, 1.35], opts: { seed: 1, leaf: '#3a4626' } },
+      { kind: 'redwood', n: 150, within: [60, 280], scale: [0.6, 1.2], opts: { seed: 2, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
+      { kind: 'redwood', n: 100, within: [60, 200], scale: [0.7, 1.25], opts: { seed: 13, leaf: '#3c4828' } },
+      { kind: 'redwood', n: 300, within: [280, 640], scale: [0.75, 1.35], opts: { seed: 14, lo: true, leaf: '#3a4626' } },
+      { kind: 'redwood', n: 140, within: [280, 640], scale: [0.6, 1.2], opts: { seed: 15, lo: true, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
+      { kind: 'redwood', n: 200, within: [600, 1300], scale: [1.0, 1.5], solid: false, opts: { seed: 3, lo: true, leaf: '#3a4626' } },
+      { kind: 'spruce', n: 160, within: [20, 420], scale: [0.7, 1.3], opts: { seed: 4, leaf: '#2f3e26' } },
       { kind: 'fern', n: 1100, within: [6, 240], scale: [0.9, 2.1], solid: false, clear: -12, opts: { seed: 5, n: 11, color: '#56592c' } },
       // (the floor near you carpeted, as the film's is: low ferns, close set)
       { kind: 'fern', n: 1500, within: [4, 90], scale: [0.7, 1.5], solid: false, clear: -14, opts: { seed: 12, n: 7, color: '#5a5e2e' } },
       { kind: 'fern', n: 160, within: [17, 60], scale: [0.9, 1.8], solid: false, clear: -30, opts: { seed: 9, n: 10, color: '#5e6230' } },
       { kind: 'fern', n: 500, within: [6, 240], scale: [0.6, 1.3], solid: false, clear: -14, opts: { seed: 6, color: '#626436', n: 7, len: 1.0 } },
       { kind: 'fern', n: 700, within: [240, 600], scale: [1.0, 2.2], solid: false, clear: -10, opts: { seed: 8, n: 9, color: '#52562c' } },
-      { kind: 'log', n: 40, within: [30, 560], scale: [0.8, 1.4], solid: false, opts: { seed: 7 } },
-      { kind: 'rock', n: 50, within: [20, 560], scale: [0.6, 2.2], opts: { color: '#6a6a5a', sharp: 0.4 } },
+      { kind: 'log', n: 70, within: [20, 560], scale: [0.8, 1.4], solid: false, opts: { seed: 7 } },
+      // (the floor's boulders mossy, as the film's are; scrub and toadstools under the ferns)
+      { kind: 'rock', n: 110, within: [14, 560], scale: [0.6, 2.4], opts: { color: '#6e7460', sharp: 0.4, to: 'mossrock' } },
+      { kind: 'stones', n: 320, within: [6, 300], scale: [0.25, 0.7], solid: false, opts: { color: '#6a6e5a', to: 'mossrock' } },
+      // (the shrub layer thick, two greens of it, and broad-leaved plants
+      // in the fern beds: the floor reads as growth, not dirt with ferns on)
+      { kind: 'bush', n: 380, within: [10, 420], scale: [0.7, 1.5], solid: false, clear: -8, opts: { seed: 14, s: 1.8, color: '#3e4e2a' } },
+      { kind: 'bush', n: 260, within: [8, 300], scale: [0.5, 1.1], solid: false, clear: -10, opts: { seed: 17, s: 1.3, color: '#4c6232' } },
+      { kind: 'plant', n: 320, within: [6, 260], scale: [0.7, 1.5], solid: false, clear: -10, opts: { seed: 18, color: '#44622c', n: 7, len: 1.5 } },
+      { kind: 'fungus', n: 240, within: [6, 200], scale: [0.8, 1.6], solid: false, clear: -12, opts: { seed: 8 } },
     ],
     life: [
       { kind: 'ewok', n: 7, at: V, spread: 6, roam: 6, speed: 0.9, name: 'Ewok', says: ['Yub nub!', 'Ee chee wa maa!', '(It dances round the fire, banging a stick on a helmet.)', '(It looks at you, then at the fire, then back at you. Thoughtfully.)', 'Gunda!'] },
@@ -272,10 +313,13 @@ export const SITES = {
       { kind: 'ewok', n: 1, at: [18, -16], roam: 6, speed: 0.8, name: 'Wicket', says: ['Yub nub!', '(He pokes you with his spear, then sniffs your boots.)', '(He offers you half a strange fruit. The bitten half.)'] },
       { kind: 'ewok', n: 3, at: [-140, -164], spread: 5, roam: 6, speed: 0.9, name: 'Ewok hunter', says: ['(It points at the net, very proud of it.)', 'Ee chee wa maa!'] },
       { kind: 'ewok', n: 2, at: [148, 100], spread: 5, roam: 6, speed: 0.9, name: 'Ewok', says: ['(It mimes a log swinging, and a walker going over.)', 'Yub nub!'] },
+      // (Wicket's cousin, who wants the walker at the generator brought down the Ewok way; and a Rebel pilot on the platform's edge, after the shuttle's codes)
+      { kind: 'ewok', id: 'paploo', at: [126, 118], roam: 4, speed: 0.9, name: 'Paploo', quest: 'ewokwar', says: ['(He hefts a stone and points east, growling.)', 'Yub nub!'] },
       { kind: 'scouttrooper', n: 2, path: [[236, -30], [264, -30], [264, -12], [236, -12]], speed: 1.3, name: 'Scout trooper', says: ['Hey! You there! Freeze!', 'Go for help! Go!', 'Nobody gets in without authorisation.', 'Quiet out here. Too quiet.'] },
       { kind: 'stormtrooper', n: 1, at: [245, -38], still: true, face: 0, name: 'Stormtrooper', says: ['This area is off limits.', 'Move along.'] },
       { kind: 'stormtrooper', n: 1, at: [255, -38], still: true, face: 0, name: 'Stormtrooper', says: ['Freeze! Don’t move!', 'There’s nothing to see here.'] },
       { kind: 'rebel', n: 3, at: [214, -12], spread: 4, roam: 3, speed: 0.8, name: 'Rebel commando', says: ['Quiet. There’s a scout trooper right over there.', 'We go in on General Solo’s signal.', 'I hope the fleet’s on time.'] },
+      { kind: 'rebelpilot', id: 'tydirium', at: [-14, -6], still: true, face: 1.2, name: 'The shuttle’s pilot', quest: 'tydirium', says: ['That code was old. They’ll have changed it by now.'] },
       { kind: 'scouttrooper', n: 2, at: [60, 250], spread: 4, roam: 5, speed: 0.8, name: 'Scout trooper', says: ['Hey, did you hear something?', 'Stay with the bikes. I’ll check the perimeter.'] },
       { kind: 'atst', n: 1, path: [[400, -282], [430, -270], [442, -240], [430, -210], [400, -198], [370, -210], [358, -240], [370, -270]], speed: 1.4, r: 1.6, name: 'AT-ST', says: ['(The walker stops, its head turning toward you with a hiss of hydraulics.)', '(Its chin guns track you. Then it stalks on.)'] },
       { kind: 'scouttrooper', n: 2, path: [[420, -200], [442, -200], [442, -182], [420, -182]], speed: 1.2, name: 'Scout trooper', says: ['The shield must stay up. Lord Vader’s orders.', 'Back to the platform. Now.'] },
@@ -289,10 +333,7 @@ export const SITES = {
       { kind: 'shuttle', n: 1, metres: 20, alt: 120, speed: 60, every: 70 },
       { kind: 'tie', n: 2, metres: 7, alt: 110, speed: 120, every: 60 },
     ],
-    skyships: [
-      { kind: 'deathstar2', metres: 640, at: [2880, 2614, -3143], yaw: 0.6 },
-      { kind: 'executor', metres: 260, at: [-1800, 2200, -3600], yaw: 1.2 },
-    ],
+    skyships: [{ kind: 'executor', metres: 260, at: [-1800, 2200, -3600], yaw: 1.2 }],
   },
 
   kashyyyk: {
@@ -310,7 +351,8 @@ export const SITES = {
     fog: { color: '#c4cebe', density: 0.0017 },
     light: { sun: 3.0, sky: '#c8dcea', ground: '#6a7a48', ambient: 0.8 },
     // (Kachirho's lagoon as filmed: milky olive-grey, not a tropical blue)
-    water: { level: 0, color: '#7b8575', deep: '#3a4a40', kind: 'sea', foam: 0.2 },
+    // (wadeMax: how deep you can wade before the lagoon turns you back)
+    water: { level: 0, color: '#7b8575', deep: '#3a4a40', kind: 'sea', foam: 0.2, wadeMax: 1.2 },
     dust: '#bca880',
     edge: 'Beyond here the forest drops away into the Shadowlands. Even Wookiees don’t go down there.',
     ground: { detail: 'leaves', detailLook: { color: 0.7, normal: 0.7 },
@@ -322,6 +364,19 @@ export const SITES = {
         { type: 'swell', scale: 300, height: 3 },
         { type: 'hills', scale: 110, height: 6 },
         { type: 'mountains', from: 1100, to: 3400, height: 420, scale: 900 },
+      ],
+      // The beach in front of Kachirho, as the film has it: a shore of sand a
+      // metre over the lagoon, and in front of it the shallows the droids
+      // wade out of, knee-deep, before the lagoon falls away. Later flats win
+      // where they overlap, so the shallows go down first and the beach is
+      // laid over their near side: the shore eases from sand into wading
+      // water along z ≈ 78. Each is a row of round flats, as a single round
+      // one big enough to reach both ends of the beach would flood the beach's
+      // middle or bury the shallows' (one circle can't make a straight shore).
+      flats: [
+        { at: [25, 96], r: 38, edge: 14, h: -0.45 },
+        { at: [95, 96], r: 38, edge: 14, h: -0.45 },
+        ...[-10, 30, 70, 110].map((x) => ({ at: [x, 38], r: 34, edge: 14, h: 1.0 })),
       ],
       palette: {
         // (the beach grey-white sand, the forest floor a cool dark green)
@@ -371,9 +426,9 @@ export const SITES = {
       {
         id: 'beach',
         name: 'The beachhead',
-        at: [40, 40],
-        r: 46,
-        flat: { r: 34, h: 1.2 },
+        // (its ground is the beach's own flats, above: no flat of its own)
+        at: [50, 40],
+        r: 60,
         about: 'Where clones and Wookiees dug in against the Separatist landing: sharpened-log barricades on the sand, AT-RTs on patrol, the droid army coming across the lagoon.',
         lines: {
           xwing: [['luke', 'Clones and Wookiees, side by side. Before the clones turned.']],
@@ -382,12 +437,26 @@ export const SITES = {
           rv: [['jesse', 'This is like Saving Private Ryan but with Chewbacca.'], ['walt', 'Keep your head down, Jesse.']],
         },
         things: [
-          { kind: 'barricade', at: [-16, 14], yaw: 0.3, opts: { len: 11 } },
-          { kind: 'barricade', at: [2, 18], yaw: 0.1, opts: { len: 10 } },
-          { kind: 'barricade', at: [20, 14], yaw: -0.3, opts: { len: 11 } },
-          { kind: 'crates', at: [-12, -8] },
-          { kind: 'crates', at: [12, -12] },
-          { kind: 'lamp', at: [0, -14], opts: { h: 4, light: '#ffd9a0' } },
+          // the line, across the beach and facing the lagoon (south), as the
+          // film has it: the droids come straight up out of the shallows at it
+          { kind: 'barricade', at: [-50, 18], yaw: 0.05, opts: { len: 12 } },
+          { kind: 'barricade', at: [-25, 20], yaw: 0, opts: { len: 12 } },
+          { kind: 'barricade', at: [0, 19], yaw: -0.05, opts: { len: 12 } },
+          { kind: 'barricade', at: [25, 20], yaw: 0.03, opts: { len: 12 } },
+          { kind: 'barricade', at: [50, 18], yaw: 0.05, opts: { len: 12 } },
+          // cover on the sand in front of it, between the barricades and the
+          // water: what a droid wading ashore gets behind
+          { kind: 'crates', at: [-40, 26] },
+          { kind: 'crates', at: [36, 30] },
+          // (boulders: the shore's own mossy limestone, a karst cut down to a
+          // rock's size, 2 m tall: `rock` is a scatter kind only, not placeable)
+          { kind: 'karst', at: [-10, 30], opts: { w: 3.4, h: 0.3, seed: 9 } },
+          { kind: 'karst', at: [-60, 32], opts: { w: 3.4, h: 0.3, seed: 10 } },
+          { kind: 'log', at: [14, 26], yaw: 0.2, opts: { bark: '#6a5a46' } },
+          // the stores, back behind the line
+          { kind: 'crates', at: [-24, -6] },
+          { kind: 'crates', at: [2, -12] },
+          { kind: 'lamp', at: [-10, -14], opts: { h: 4, light: '#ffd9a0' } },
         ],
       },
       {
@@ -412,10 +481,12 @@ export const SITES = {
       {
         id: 'command',
         name: 'The command post',
-        at: [180, -150],
+        // (at the beach's rear, by Kachirho's foot, looking down the line:
+        // a little over the sand, as the land here is at the water's level)
+        at: [-60, 10],
         r: 26,
-        flat: { r: 18 },
-        about: 'On the ridge above the beach, where Yoda watched the battle with Commander Gree, until the order came through and Gree turned his blaster on him. Yoda felt it coming.',
+        flat: { r: 14, h: 1.6 },
+        about: 'At the back of the beach, by Kachirho’s foot, where Yoda watched the battle with Commander Gree, until the order came through and Gree turned his blaster on him. Yoda felt it coming.',
         lines: {
           xwing: [['luke', 'Master Yoda was here when the clones turned on the Jedi. He felt every one of them die.'], ['r2', '(A sad, low tone.)']],
           falcon: [['han', 'Order 66. They didn’t teach that in the Imperial Academy. Funny, that.']],
@@ -454,11 +525,11 @@ export const SITES = {
           cruiser: [['rick', 'Big hairy guys, small cosy houses. That’s the whole species, Morty.'], ['morty', 'I feel like we should take our shoes off.']],
         },
         things: [
-          { kind: 'wookieehouse', at: [0, 16], yaw: 3.1 },
-          { kind: 'wookieehouse', at: [17, 2], yaw: 4.6 },
-          { kind: 'wookieehouse', at: [-16, 4], yaw: 1.7 },
-          { kind: 'wookieehouse', at: [8, -16], yaw: 5.8 },
-          { kind: 'wookieehouse', at: [-10, -15], yaw: 0.6 },
+          { kind: 'wookieehouse', at: [0, 16], yaw: 3.1, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [17, 2], yaw: 4.6, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [-16, 4], yaw: 1.7, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [8, -16], yaw: 5.8, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [-10, -15], yaw: 0.6, solid: { r: 4 } },
           { kind: 'fire', at: [0, 0], scale: 1.3 },
         ],
       },
@@ -471,19 +542,23 @@ export const SITES = {
       { kind: 'barrel', at: [-13, -46], yaw: 0.2 },
       { kind: 'barrel', at: [-11.8, -45.2], yaw: 1.6 },
       { kind: 'empirecrate', at: [10, -52], yaw: 2.4 },
-      // the droids' landing, up the beach: a spider droid left burning
-      { kind: 'homingspider', at: [128, 92], yaw: 3.6, roll: 0.5, sink: 0.6, solid: { r: 3 } },
-      { kind: 'wrecksmoke', at: [128, 92], solid: false, opts: { h: 14, r: 1.0 } },
+      // a spider droid left burning on the sand at the beach's east end,
+      // between the water and the barricades, where the first droids got
+      // ashore (cover for the next ones)
+      { kind: 'homingspider', at: [96, 68], yaw: 3.6, roll: 0.5, sink: 0.6, solid: { r: 3 } },
+      { kind: 'wrecksmoke', at: [96, 68], solid: false, opts: { h: 14, r: 1.0 } },
       { kind: 'karst', at: [-80, 260], opts: { w: 26, h: 18, seed: 5 } },
       { kind: 'karst', at: [120, 330], opts: { w: 20, h: 14, seed: 6 } },
       { kind: 'karst', at: [320, 250], opts: { w: 28, h: 20, seed: 7 } },
       { kind: 'karst', at: [-260, 330], opts: { w: 22, h: 15, seed: 8 } },
       // the great wroshyrs, as tall as the city's tree
-      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 14 } },
-      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 15 } },
-      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 13 } },
+      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 28 } },
+      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 31 } },
+      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 25 } },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 100, within: [8, 120], scale: [0.8, 1.5], solid: false },
       { kind: 'wroshyr', n: 110, within: [50, 640], scale: [0.7, 1.4], opts: { seed: 1, leaf: '#354832', bark: '#50554e' } },
       { kind: 'wroshyr', n: 70, within: [640, 1400], scale: [1.0, 1.8], solid: false, opts: { seed: 2, lo: true, leaf: '#354832', bark: '#50554e' } },
       { kind: 'karst', n: 30, within: [200, 900], scale: [7, 16], stretch: [1.0, 1.8], dry: false, opts: { seed: 3 } },
@@ -495,20 +570,20 @@ export const SITES = {
       { kind: 'log', n: 20, within: [40, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a5a46' } },
     ],
     life: [
-      { kind: 'wookiee', n: 6, at: [40, 32], spread: 14, roam: 10, speed: 1.1, name: 'Wookiee warrior', says: ['(A battle roar that rattles your teeth.)', '(It hefts a bowcaster and points across the lagoon.)', 'Rrraaaaaaaaghhh!', '(It thumps its chest, then yours. Friendly. You think.)'] },
-      { kind: 'clone', n: 5, at: [40, 30], spread: 12, roam: 8, speed: 1.2, name: 'Clone trooper', says: ['Droids coming across the lagoon, sir!', 'Hold the line!', 'The Wookiees fight like nothing I’ve ever seen.', 'Execute Order… (He stops, and listens to his helmet.) Nothing, sir. Never mind.'] },
-      { kind: 'battledroid', n: 5, path: [[82, 70], [104, 62], [124, 66], [104, 72]], speed: 1.0, name: 'Battle droid', says: ['Roger, roger.', 'Uh oh.', 'Wookiees! Retreat! Uh… advance! Uh…', 'Halt! Er… we surrender?'] },
-      { kind: 'dwarfspider', n: 2, path: [[100, 80], [120, 70], [136, 80], [120, 90]], speed: 0.9, r: 1.0, name: 'Dwarf spider droid', says: ['(It clicks, and its cannon swings toward the barricades.)'] },
+      // the line's defenders, standing behind the barricades and facing the
+      // water, a few behind each (a group stands in a disc round its `at`, so
+      // one group spread along 100 m of line would put some of it in the
+      // lagoon: so a group to each barricade)
+      ...[[0, 2], [50, 2], [100, 1]].map(([x, n]) => ({ kind: 'clone', n, at: [x, 52], spread: 4, still: true, face: 0, name: 'Clone trooper', says: CLONE_SAYS })),
+      ...[25, 75].map((x) => ({ kind: 'wookiee', n: 2, at: [x, 52], spread: 4, still: true, face: 0, name: 'Wookiee warrior', says: WOOKIEE_SAYS })),
       { kind: 'wookiee', n: 2, at: [6, -34], spread: 5, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It beats its chest once, and points you up the beach.)', '(A warm growl: a welcome.)'] },
-      { kind: 'clone', n: 2, at: [16, -40], spread: 4, roam: 4, speed: 1.0, name: 'Clone trooper', says: ['BARC’s fuelled, sir. The beach is that way.', 'Droids landed at the far end of the lagoon. We hold here.'] },
-      { kind: 'superdroid', n: 2, path: [[90, 60], [116, 56]], speed: 0.8, name: 'Super battle droid', says: ['(It raises its wrist blasters, slowly.)', 'Surrender, Jedi scum.'] },
-      { kind: 'atrt', n: 2, path: [[14, 22], [40, 16], [66, 22], [40, 16]], speed: 1.6, r: 0.8, name: 'AT-RT', says: ['(The clone rider nods down at you.) Good hunting, sir.', '(The walker clanks past, its rider scanning the lagoon.)'] },
-      { kind: 'atap', n: 1, path: [[22, 44], [58, 44], [58, 36], [22, 36]], speed: 1.0, r: 2.2, name: 'AT-AP', says: ['(Its heavy cannon swings out toward the water.)'] },
-      { kind: 'yoda', n: 1, at: [182, -146], still: true, face: 0.6, name: 'Yoda', says: ['Go, I will. Good relations with the Wookiees, I have.', 'A great disturbance in the Force, I feel.', 'Into exile I must go. Failed, I have.'] },
-      { kind: 'clone', n: 1, at: [176, -150], still: true, face: 1.2, name: 'Commander Gree', says: ['The droid army is moving into position, General.', 'Yes, my lord. (He turns, slowly, toward Master Yoda.)'] },
-      { kind: 'clone', n: 2, at: [186, -156], spread: 4, roam: 4, speed: 0.8, name: 'Clone trooper', says: ['Sir.', 'Communications are clear, Commander.'] },
+      { kind: 'clone', n: 2, at: [16, -40], spread: 4, roam: 4, speed: 1.0, name: 'Clone trooper', says: ['BARC’s fuelled, sir. The beach is that way.', 'Droids are wading in from the lagoon. We hold the barricades.'] },
+      { kind: 'atrt', n: 2, path: [[0, 40], [60, 36], [110, 40], [60, 36]], speed: 1.6, r: 0.8, name: 'AT-RT', says: ['(The clone rider nods down at you.) Good hunting, sir.', '(The walker clanks past, its rider scanning the lagoon.)'] },
+      // (the AT-AP's beat behind the stores, clear of them and of Gree)
+      { kind: 'atap', n: 1, path: [[20, 18], [90, 18]], speed: 1.0, r: 2.2, name: 'AT-AP', says: ['(Its heavy cannon swings out toward the water.)'] },
+      { kind: 'yoda', n: 1, at: [-58, 8], still: true, face: 1.1, name: 'Yoda', says: ['Go, I will. Good relations with the Wookiees, I have.', 'A great disturbance in the Force, I feel.', 'Into exile I must go. Failed, I have.'] },
+      { kind: 'clone', n: 2, at: [-64, 14], spread: 4, roam: 4, speed: 0.8, name: 'Clone trooper', says: ['Sir.', 'Communications are clear, Commander.'] },
       { kind: 'wookiee', n: 1, at: [-116, -376], still: true, face: 3.5, name: 'Chewbacca', says: ['(Chewbacca throws back his head and roars.)', '(He points at the pod, then at the sky: away.)'] },
-      { kind: 'wookiee', n: 1, at: [-125, -374], still: true, face: 3.0, scale: 1.08, name: 'Tarfful', says: ['(Tarfful rumbles a greeting, deep as a drum.)', '(He looks back the way you came, listening for clones.)'] },
       { kind: 'wookiee', n: 5, at: [-370, -170], spread: 12, roam: 10, speed: 0.9, name: 'Wookiee', says: ['(A friendly, gargling growl.)', '(It offers you a bowl of something. It is moving.)', '(It ruffles your hair. Hard.)'] },
       { kind: 'wookiee', n: 4, at: [-136, 14], spread: 6, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It waves you up the steps to the city.)', '(A long, musical howl, answered from far up the tree.)'] },
     ],
@@ -679,6 +754,9 @@ export const SITES = {
     // them, kept off the places (Yoda's hut, the X-wing, the cave, the camp)
     things: grove(31, 46, 30, 190, ['dagocypress', 'dagocypress', 'dagoroots'], [0.7, 1.25]).filter(({ at: [x, z] }) => [[-90, 60, 30], [40, 74, 34], [-70, -120, 30], [100, -60, 32], [-26, -46, 24], [130, 110, 30], [0, 0, 26]].every(([px, pz, r]) => Math.hypot(x - px, z - pz) > r)),
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 100, within: [5, 80], scale: [0.7, 1.4], solid: false },
+      { kind: 'qmushroom', n: 30, within: [6, 80], scale: [0.6, 1.4], solid: false },
       // great cypresses on their roots, mangrove roots standing in the bog
       // (the great trees few and far, shapes in the mist; the gnarled ones
       // close in all round, crowded, as the film's are)
@@ -694,241 +772,11 @@ export const SITES = {
       { kind: 'rock', n: 40, within: [10, 460], scale: [0.6, 2], opts: { color: '#5a5a48', sharp: 0.3 } },
     ],
     life: [
-      { kind: 'yoda', n: 1, at: [-86, 68], roam: 6, speed: 0.4, name: 'Yoda', says: ['Do. Or do not. There is no try.', 'Size matters not. Judge me by my size, do you?', 'Mudhole? Slimy? My home this is!', 'Away put your weapon. I mean you no harm.', 'Wars not make one great.', 'Luminous beings are we, not this crude matter.'] },
       { kind: 'droid', n: 1, at: [-22, -42], roam: 4, speed: 0.5, name: 'R2-D2', says: ['(An indignant whistle: he was nearly eaten, you know.)', '(He beeps, and shakes off a strand of swamp weed.)', '(A worried warble at the mist.)'] },
-      { kind: 'ghostben', n: 1, at: [96, -52], still: true, face: 2.6, name: 'Obi-Wan Kenobi', says: ['You will go to the Dagobah system. There you will learn from Yoda, the Jedi Master who instructed me.', 'If you choose the quick and easy path, as Vader did, you will become an agent of evil.', 'That boy is our last hope.', 'Use the Force.'] },
+      { kind: 'ghostben', n: 1, at: [96, -52], still: true, face: 2.6, name: 'Obi-Wan Kenobi', voice: 'ben', says: ['You will go to the Dagobah system. There you will learn from Yoda, the Jedi Master who instructed me.', 'If you choose the quick and easy path, as Vader did, you will become an agent of evil.', 'That boy is our last hope.', 'Use the Force.'] },
       { kind: 'bogwing', n: 8, at: [0, 0], spread: 160, roam: 40, speed: 3, y: 3.5, solid: false },
     ],
     rides: [],
     flyovers: [{ kind: 'xwing', n: 1, metres: 12.5, alt: 160, speed: 90, every: 240 }],
-  },
-
-  yavin: {
-    place: 'The jungle of Yavin 4',
-    line: 'Steaming jungle, ancient temples, and a gas giant filling half the sky.',
-    sky: {
-      zenith: '#5b8ec2',
-      horizon: '#d2dac6',
-      haze: 0.85,
-      hazeColor: '#dfe4d2',
-      suns: [{ az: -0.5, el: 0.62, color: '#fff2da', size: 0.015, glow: 1.1 }],
-      clouds: { cover: 0.3, color: '#ffffff', shade: '#c4ccc4', scale: 0.6, speed: 0.004 },
-      bodies: [
-        // Yavin, the gas giant, rising behind the Great Temple
-        { az: 3.0, el: 0.36, size: 0.3, color: '#d8763e', color2: '#f2d2a6', bands: 10, twist: 1.4 },
-        { az: 2.3, el: 0.7, size: 0.012, color: '#d0ccc0' },
-      ],
-    },
-    fog: { color: '#b8c8b0', density: 0.0022 },
-    light: { sun: 3.0, sky: '#c8daea', ground: '#4a4028', ambient: 0.8 },
-    water: { level: -3, color: '#5a7a5a', deep: '#22382a', kind: 'swamp', waves: 1.2 },
-    dust: '#8a8a60',
-    edge: 'The jungle closes in. Somewhere out there are temples nobody has seen in four thousand years.',
-    ground: { detail: 'leaves', detailLook: { color: 0.8, normal: 0.7 },
-      seed: 14,
-      wind: 0.8,
-      base: 0,
-      layers: [
-        { type: 'swell', scale: 380, height: 8 },
-        { type: 'hills', scale: 140, height: 10 },
-        { type: 'channels', scale: 700, depth: 12, width: 0.05 },
-        { type: 'mountains', from: 1000, to: 3400, height: 300, scale: 1100 },
-      ],
-      palette: {
-        // (the jungle floor as filmed: dark soil, leaf litter, moss)
-        low: '#4a3a26',
-        high: '#3a4228',
-        rock: '#6a6450',
-        accent: '#6e5644',
-        deep: '#2b220e',
-        hLow: -2,
-        hHigh: 12,
-        rockAt: 0.5,
-        accentCover: 0.3,
-        grain: 0.85,
-        wet: { level: -3, band: 1.2, color: '#3a3a26' },
-      },
-    },
-    weather: [{ kind: 'motes', count: 500, color: '#f0f8c0' }],
-    land: { at: [0, 0], yaw: 3.0 },
-    lines: {
-      out: {
-        xwing: [['luke', 'Yavin 4. Home, for a while. Artoo, remember the medals?'], ['r2', '(A proud, happy whistle.)']],
-        falcon: [['han', 'Back where it all started. I almost didn’t come back for the kid, you know.'], ['chewie', '(A knowing, sarcastic growl.)']],
-        cruiser: [['morty', 'Rick, there’s a giant orange planet in the sky!'], ['rick', 'Gas giant, Morty. We’re on its moon. Basic orbital stuff.']],
-        rv: [['jesse', 'Yo, it’s hot as balls out here. Like Florida, but in space.'], ['walt', 'Humidity like this ruins equipment, Jesse.']],
-      },
-    },
-    places: [
-      {
-        id: 'temple',
-        name: 'The Great Temple',
-        at: [0, -240],
-        r: 92,
-        flat: { r: 74 },
-        about: 'The Great Temple of Massassi, raised for the Sith thousands of years ago and overgrown ever since: the Rebel Alliance’s base, its hangar at the foot, its war room deep inside.',
-        lines: {
-          xwing: [['luke', 'The Massassi temple. Every fighter we had took off from in there.'], ['r2', '(An excited, nostalgic burble.)']],
-          falcon: [['han', 'I dropped the kid off here and left with the reward. Then I came back. Don’t tell anybody.'], ['chewie', '(A teasing rumble.)']],
-          cruiser: [['morty', 'It’s like a Mayan pyramid, but in space!'], ['rick', 'Every civilisation builds the same stairs, Morty. Lack of imagination.']],
-          rv: [['walt', 'A secret base inside a thousand-year-old temple. Clever.'], ['jesse', 'Yo, I bet there’s like, booby traps.']],
-        },
-        things: [
-          { kind: 'massassi', at: [0, 0], yaw: 0 },
-          { kind: 'lamp', at: [-24, 44], opts: { h: 5, light: '#ffe0a0' } },
-          { kind: 'lamp', at: [24, 44], opts: { h: 5, light: '#ffe0a0' } },
-        ],
-      },
-      {
-        id: 'hangar',
-        name: 'The hangar',
-        at: [0, -218],
-        r: 16,
-        about: 'Under the temple, where Red and Gold squadrons waited for the Death Star to come round Yavin: X-wings, Y-wings, fuel lines, astromechs being loaded aboard. Thirty went up; three came home.',
-        lines: {
-          xwing: [['luke', 'This is where Biggs and I took off together. He didn’t come back.'], ['r2', '(A long, low, sad note.)']],
-          falcon: [['han', 'They’re gonna need more than luck, Chewie. Come on, we’ve got our reward.'], ['chewie', '(An angry, disappointed growl.)']],
-          cruiser: [['rick', 'One-man fighters versus a planet-killer. Bold strategy, Morty.'], ['morty', 'It worked though, didn’t it?']],
-        },
-        things: [
-          { kind: 'parked', at: [-9, -2], yaw: 0.15, opts: { kind: 'xwing', metres: 12.5 } },
-          { kind: 'parked', at: [9, -4], yaw: -0.1, opts: { kind: 'xwing', metres: 12.5 } },
-          { kind: 'ywing', at: [0, 12], yaw: 0.05 },
-          { kind: 'yavinramp', at: [-6, -4], yaw: 1.6 },
-          { kind: 'crates', at: [-14, 10] },
-          { kind: 'ammocan', at: [-12.4, 8.6], yaw: 0.3 },
-          { kind: 'ammocan', at: [-12.6, 7.6], yaw: 0.2 },
-          { kind: 'ammocan', at: [14.6, 9.8], yaw: 1.4 },
-          { kind: 'welderrack', at: [13, 13], yaw: -2.4 },
-          { kind: 'yavinspeeder', at: [-15, -8], yaw: 1.4 },
-        ],
-      },
-      {
-        id: 'summit',
-        name: 'The temple summit',
-        at: [0, -256],
-        r: 6,
-        about: 'The top of the Great Temple, high over the canopy, where Rebel lookouts watched the sky for the Death Star. On a clear day, the jungle goes on forever, and Yavin fills the horizon.',
-        lines: {
-          xwing: [['luke', 'You can see the whole jungle from up here. And Yavin, like it’s right on top of us.']],
-          falcon: [['han', 'Nice view. Shame about the stairs.'], ['chewie', '(Panting.)']],
-          cruiser: [['morty', 'W-we climbed all of those, Rick?'], ['rick', 'Cardio, Morty. Even in a galaxy far, far away.']],
-          rv: [['jesse', 'This is the best view I’ve ever seen, yo.'], ['walt', 'Catch your breath, Jesse.']],
-        },
-      },
-      {
-        id: 'field',
-        name: 'The landing field',
-        at: [0, -112],
-        r: 36,
-        flat: { r: 32 },
-        about: 'The clearing in front of the temple, where the Falcon set down with the stolen plans, and where Rogue One’s U-wing left for Scarif without orders.',
-        lines: {
-          xwing: [['luke', 'The Falcon landed right here, with the princess and the plans.']],
-          falcon: [['han', 'Set her down right here. Easiest money I ever almost made.'], ['chewie', '(A rumble about the money.)']],
-          rv: [['jesse', 'A U-wing. Rogue One, yo. They didn’t come back either.'], ['walt', 'Some jobs you don’t come back from, Jesse.']],
-        },
-        things: [
-          { kind: 'parked', at: [-14, 2], yaw: 0.6, opts: { kind: 'uwing', metres: 24, lift: 1.4 } },
-          { kind: 'crates', at: [10, -8] },
-          { kind: 'crates', at: [16, 6] },
-          { kind: 'crates', at: [-4, 18] },
-          { kind: 'lamp', at: [6, 14], opts: { h: 5, light: '#ffe0a0' } },
-        ],
-      },
-      {
-        id: 'lookout',
-        name: 'The lookout tower',
-        at: [-200, -120],
-        r: 18,
-        flat: { r: 10 },
-        about: 'A steel tower up through the canopy, where a Rebel sentry watched the sky. He saw the Millennium Falcon coming in over the trees, with a princess and the Death Star plans aboard.',
-        lines: {
-          xwing: [['luke', 'The sentry up there spotted us coming in with the plans.'], ['r2', '(A cheerful whistle up at him.)']],
-          falcon: [['han', 'Bet he was glad to see us. Everybody usually is.'], ['chewie', '(A doubtful huff.)']],
-          cruiser: [['rick', 'One guy, a tower and a pair of binoculars. That’s the whole early-warning system, Morty.']],
-        },
-        things: [{ kind: 'lookout', at: [0, 0], yaw: 0.4 }],
-      },
-      {
-        id: 'ruin',
-        name: 'A lesser temple',
-        at: [260, 170],
-        r: 40,
-        flat: { r: 28 },
-        about: 'One of the Massassi’s smaller temples, swallowed by the jungle: the Sith’s slaves built dozens across Yavin 4, and the forest has taken most of them back.',
-        lines: {
-          xwing: [['luke', 'There are temples all over this moon. Nobody knows how many.']],
-          falcon: [['han', 'Creepy. Let’s not go in.'], ['chewie', '(A nervous, agreeing whine.)']],
-          cruiser: [['morty', 'Rick, should we go inside?'], ['rick', 'Sith temple, Morty. Ancient evil. Bad vibes. Absolutely not.']],
-          rv: [['jesse', 'Indiana Jones, yo.'], ['walt', 'Don’t touch anything, Jesse.']],
-        },
-        things: [{ kind: 'ruin', at: [0, 0], yaw: 0.6 }],
-      },
-      {
-        id: 'river',
-        name: 'The river',
-        at: [-290, -280],
-        r: 28,
-        about: 'A slow green river winding through the jungle past the temples. The Rebels drew their water from it, and kept an eye on whatever else came down to drink.',
-        lines: {
-          xwing: [['luke', 'More water here than on all of Tatooine.'], ['r2', '(A nervous beep: he remembers Dagobah.)']],
-          falcon: [['han', 'Don’t drink that, Chewie.'], ['chewie', '(A defiant slurp.)']],
-          rv: [['jesse', 'Yo, there could be alligators in there. Space alligators.'], ['walt', 'Then stay out of the water, Jesse.']],
-        },
-        things: [
-          { kind: 'log', at: [6, 10], yaw: 1.2, opts: { len: 11, r: 0.8, bark: '#6a6250', moss: '#4e6a2c' } },
-          { kind: 'log', at: [-10, -6], yaw: -0.4, opts: { len: 7, r: 0.6, bark: '#6a6250', moss: '#4e6a2c' } },
-        ],
-      },
-    ],
-    things: [
-      // where you set down: Gold Squadron's dispersal on the field's edge, a
-      // Y-wing under its ramp, the ground crew's gear
-      { kind: 'ywing', at: [28, -22], yaw: 2.7 },
-      { kind: 'yavinramp', at: [20, -14], yaw: 2.7 },
-      { kind: 'ammocan', at: [12, -6], yaw: 0.3 },
-      { kind: 'ammocan', at: [13.1, -5.4], yaw: 1.1 },
-      { kind: 'cratecube', at: [-14, -10], yaw: 0.6 },
-      { kind: 'barrel', at: [-12.6, -8.4], yaw: 0.2 },
-      { kind: 'welderrack', at: [-10, -14], yaw: 2.2 },
-      { kind: 'lamp', at: [-16, -2], opts: { h: 5, light: '#ffe0a0' } },
-      { kind: 'lamp', at: [16, -30], opts: { h: 5, light: '#ffe0a0' } },
-    ],
-    scatter: [
-      // the tall trees, vines hanging from them, then the built ones between
-      // (the jungle's own trees close in all round, their umbrella crowns a
-      // roof overhead, as the film's are: built here, in the world's own
-      // light, where the photographed yavintree model stood out of it)
-      { kind: 'jungletree', n: 330, within: [22, 640], scale: [0.8, 1.4], opts: { seed: 1, leaf: '#3c4a22' } },
-      { kind: 'jungletree', n: 200, within: [22, 640], scale: [0.7, 1.2], opts: { seed: 2, bark: '#7a7462', leaf: '#46522a', creepers: false } },
-      { kind: 'jungletree', n: 180, within: [640, 1400], scale: [1.0, 1.6], solid: false, opts: { seed: 3, lo: true, leaf: '#3c4a22' } },
-      { kind: 'plant', n: 700, within: [6, 480], scale: [0.8, 2.0], solid: false, clear: -8, opts: { seed: 4, color: '#4a5a30' } },
-      { kind: 'fern', n: 400, within: [6, 480], scale: [0.8, 1.7], solid: false, clear: -8, opts: { seed: 5, color: '#4a5230' } },
-      // (the undergrowth near you, thick, as the jungle's floor is in the film)
-      { kind: 'fern', n: 1200, within: [4, 90], scale: [0.7, 1.6], solid: false, clear: -10, opts: { seed: 15, n: 7, color: '#465030' } },
-      { kind: 'plant', n: 500, within: [4, 90], scale: [0.7, 1.6], solid: false, clear: -10, opts: { seed: 16, color: '#50603a' } },
-      { kind: 'rock', n: 50, within: [20, 560], scale: [0.6, 2.4], opts: { color: '#6a6656', sharp: 0.4 } },
-      { kind: 'log', n: 24, within: [30, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a6250', moss: '#4e6a2c' } },
-    ],
-    life: [
-      { kind: 'rebelpilot', n: 1, at: [18, -16], still: true, face: 2.4, name: 'Gold Squadron pilot', says: ['Gold Leader, standing by.', 'Y-wings take the first run at the trench. Keep the fighters off us.'] },
-      { kind: 'rebeltech', n: 2, at: [6, -12], spread: 8, roam: 8, speed: 0.9, name: 'Rebel technician', says: ['Proton torpedoes loaded. Both of them.', 'She’s old, but she flies.', 'Don’t stand under the ramp.'] },
-      { kind: 'astromech', n: 1, at: [20, -26], roam: 5, speed: 0.6, name: 'Astromech', says: ['(A low, grumbling whistle: the Y-wing’s deflector is shot again.)'] },
-      { kind: 'rebel', n: 6, at: [0, -112], spread: 18, roam: 12, speed: 1.1, name: 'Rebel trooper', says: ['They got the plans out! The princess brought them herself.', 'The Death Star’s coming round the planet. Thirty minutes, they say.', 'Massassi built this place. Who they were, nobody knows.', 'May the Force be with you.'] },
-      { kind: 'pilot', n: 4, at: [0, -222], spread: 8, roam: 6, speed: 1.0, name: 'X-wing pilot', says: ['Red Five standing by.', 'Look at the size of that thing!', 'Stay on target… stay on target…', 'I used to bullseye womp rats in my T-16 back home. They’re not much bigger than two metres.'] },
-      { kind: 'droid', n: 3, at: [0, -216], spread: 8, roam: 6, speed: 0.6, name: 'Astromech', says: ['(A brisk, busy whistle.)', '(It plugs into a fuel line and beeps happily.)'] },
-      { kind: 'c3po', n: 1, at: [5, -208], still: true, face: 3.4, name: 'C-3PO', says: ['Hang on tight, Artoo. You’ve got to come back.', 'You wouldn’t want my life to get boring, would you?', 'Oh, I do hope they know what they’re doing.'] },
-      { kind: 'rebel', n: 1, at: [-200, -120], still: true, face: 0.3, name: 'Rebel sentry', says: ['(He lowers his macrobinoculars.) Ship coming in. It’s the Falcon!', 'All quiet up here. Just the jungle, and Yavin.'] },
-      { kind: 'rebel', n: 2, at: [-284, -270], spread: 6, roam: 6, speed: 0.9, name: 'Rebel scout', says: ['Fresh water, and plenty of it. Just don’t go in past your knees.', 'Something big came down to drink last night. We didn’t stay to find out what.'] },
-      { kind: 'rebel', n: 2, path: [[-30, -190], [30, -190], [30, -186], [-30, -186]], speed: 1.1, name: 'Rebel guard', says: ['Halt. Who goes there? …Oh, it’s you. Go on in.', 'Keep an eye on the sky.'] },
-    ],
-    rides: [],
-    flyovers: [
-      { kind: 'xwing', n: 3, metres: 12.5, alt: 80, speed: 120, every: 45 },
-      { kind: 'ywing', n: 2, metres: 16, alt: 90, speed: 100, every: 60 },
-      { kind: 'freighter', n: 1, metres: 34, alt: 70, speed: 70, every: 110 },
-      { kind: 'uwing', n: 1, metres: 24, alt: 110, speed: 80, every: 100 },
-    ],
   },
 };

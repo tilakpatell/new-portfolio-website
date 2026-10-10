@@ -14,6 +14,7 @@
 
 import * as THREE from 'three';
 import { SWIRL_GLSL } from '../rickmorty/swirl';
+import { sharpen } from '../../lib/three/textures';
 
 const SPARKS = 90;
 const SHARDS = 18;
@@ -31,6 +32,7 @@ function spot() {
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

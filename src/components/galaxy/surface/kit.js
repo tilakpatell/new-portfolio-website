@@ -22,7 +22,9 @@ import * as THREE from 'three';
 import { bake, canvasTexture, panelTexture, part, place, rod, between, compose, mirror, ball, upright } from '../../universe/trafficKit';
 import { rng } from './noise';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
+import { coverageTexture } from '../../../lib/three/textures';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
+import { loadCore as loadScan, wear } from '../../../lib/three/core';
 
 export { part, place, rod, between, compose, mirror, ball, upright };
 
@@ -271,74 +273,42 @@ function strandTexture(seed = 10) {
 
 // A cut-out texture's mip levels made by hand, each level's alpha scaled so
 // as much of it is over the cut as at full size: far-off foliage stays as
-// thick as near (left to the graphics chip, averaging thins it away)
+// thick as near (left to the graphics chip, averaging thins it away). The
+// site's one way of doing it, lib/three/textures' coverageTexture.
 function keepCoverage(t, cut = 0.3) {
-  const src = t.image;
-  const levels = [src];
-  const coverage = (ctx, n) => {
-    const d = ctx.getImageData(0, 0, n, n).data;
-    let on = 0;
-    for (let i = 3; i < d.length; i += 4) if (d[i] > cut * 255) on++;
-    return on / (n * n);
-  };
-  const want = coverage(src.getContext('2d'), src.width);
-  for (let n = src.width / 2; n >= 1; n /= 2) {
-    const c = document.createElement('canvas');
-    c.width = c.height = n;
-    const ctx = c.getContext('2d');
-    ctx.drawImage(src, 0, 0, n, n);
-    // (scale alpha up till the coverage matches: a few tries)
-    const img = ctx.getImageData(0, 0, n, n);
-    let lo = 1;
-    let hi = 4;
-    for (let k = 0; k < 8; k++) {
-      const m = (lo + hi) / 2;
-      let on = 0;
-      for (let i = 3; i < img.data.length; i += 4) if (img.data[i] * m > cut * 255) on++;
-      if (on / (n * n) < want) lo = m;
-      else hi = m;
-    }
-    for (let i = 3; i < img.data.length; i += 4) img.data[i] = Math.min(255, img.data[i] * hi);
-    ctx.putImageData(img, 0, 0);
-    levels.push(c);
-  }
-  t.mipmaps = levels;
-  t.generateMipmaps = false;
-  t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.needsUpdate = true;
-  return t;
+  return coverageTexture(t, { cut });
 }
 
-// The scanned surfaces, each loaded once for the page (every world's kit
-// shares them; a new renderer uploads them again by itself): role →
-// { map, normalMap, arm } textures, or a promise of them
-const scanned = new Map();
-const SCAN_BASE = '/cc0/galaxy';
-export function loadScan(role) {
-  if (!scanned.has(role)) {
-    const loader = new THREE.TextureLoader();
-    const get = (file, srgb) =>
-      loader.loadAsync(`${SCAN_BASE}/${role}/${file}.webp`).then((t) => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.anisotropy = 8;
-        if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-        return t;
-      });
-    scanned.set(
-      role,
-      Promise.all([get('color', true), get('normal', false), SCANS[role]?.arm ? get('arm', false) : null])
-        .then(([map, normalMap, arm]) => ({ map, normalMap, arm }))
-        .catch(() => null),
-    );
-  }
-  return scanned.get(role);
-}
+// The scanned surfaces, each loaded once for the page: the site's one core
+// kit (lib/three/core), which every world shares.
+export { loadScan };
 
-// How each solid role wears its scan: how far it repeats (a metre of
-// texture is a metre of wall: SCANS' sizes), how rough it is over the
-// scan's own roughness, and whether its metalness comes from the scan
-// (bare metal) or is the role's own (painted plates, which aren't).
-const LOOKS = {
+// The kit's solid materials on the core kit's roles (lib/three/core): each
+// wears its role's scan in the world, triplanar, at the scan's own size, so a
+// wall of any size shows the same grain (sand, snow and mud are for a
+// model's `wear`, placer.js).
+export const KIT_ROLES = {
+  paint: 'paint',
+  metal: 'metal',
+  stone: 'stone',
+  rock: 'rock',
+  adobe: 'adobe',
+  bark: 'bark',
+  wood: 'wood',
+  concrete: 'concrete',
+  tiles: 'tiles',
+  deck: 'deck',
+  sand: 'sand',
+  snow: 'snow',
+  mud: 'mud',
+};
+
+// How each solid role wears its scan: how strongly its colour shows and its
+// relief; and for the twins dressed by their UVs (moving things, where a
+// scan in the world would slide over them), how rough each is over the
+// scan's own roughness, and whether its metalness comes from the scan (bare
+// metal) or is the role's own (painted plates, which aren't).
+export const LOOKS = {
   paint: { roughness: 0.9, metalness: 0.15, normal: 0.9 },
   metal: { roughness: 1, metalness: 0.75, scanMetal: true, normal: 1 },
   stone: { roughness: 1, metalness: 0, normal: 1.1 },
@@ -347,6 +317,16 @@ const LOOKS = {
   bark: { roughness: 1, metalness: 0, normal: 1.4 },
   wood: { roughness: 1, metalness: 0, normal: 1 },
   concrete: { roughness: 1, metalness: 0, normal: 0.7 },
+  // (the bases' floors: Theed's polished slabs, a tread plate)
+  tiles: { roughness: 0.6, metalness: 0, normal: 0.8 },
+  // (for a model's `wear` only: no kit material is these)
+  sand: { roughness: 1, metalness: 0, normal: 0.8 },
+  snow: { roughness: 1, metalness: 0, normal: 0.6 },
+  mud: { roughness: 1, metalness: 0, normal: 1 },
+  deck: { roughness: 0.8, metalness: 0.6, scanMetal: true, normal: 1 },
+  // (the worlds' own rock: Geonosis's red, eroded stone; Endor's mossy boulders)
+  redrock: { roughness: 1, metalness: 0, normal: 1.2 },
+  mossrock: { roughness: 1, metalness: 0, normal: 1.2 },
 };
 // a role's repeats a metre (the scan's real size; the stand-in's own where
 // there's no scan)
@@ -354,19 +334,51 @@ export const densityOf = (role, fallback) => (SCANS[role]?.metres ? 1 / SCANS[ro
 // a role's scan's size in metres, and the brightness its detail map is centred on
 export const scanOf = (role) => SCANS[role] ?? null;
 
-export function createKit({ seed = 11, scans = true } = {}) {
+// The kit's own pictures, painted once a seed for the page: the canvases
+// and their mip levels made by hand (keepCoverage) were a few hundred
+// milliseconds of every landing, the same each time. Each kit has its own
+// copies of them, on the same paint (and in three the same picture on the
+// graphics chip), so what one does to its own is its own and its dispose
+// frees only those. `draws`: how many of the seed's numbers the plates
+// took, dealt out again for a kit made from the paint, so its builders get
+// the numbers they always did. The last few seeds asked for are kept.
+const PAINTED = new Map(); // seed → { pictures, draws }
+const PAINTED_KEPT = 4;
+function paintedFor(seed, r) {
+  let got = PAINTED.get(seed);
+  if (got) {
+    PAINTED.delete(seed);
+    for (let i = 0; i < got.draws; i++) r();
+  } else {
+    let draws = 0;
+    const counted = () => {
+      draws += 1;
+      return r();
+    };
+    const grime = grimeTexture(seed);
+    grime.wrapS = grime.wrapT = THREE.RepeatWrapping;
+    grime.colorSpace = THREE.SRGBColorSpace;
+    const plates = panelTexture(counted, { min: 10, base: 222, spread: 16, seam: 0.55, detail: 0.35 });
+    plates.wrapS = plates.wrapT = THREE.RepeatWrapping;
+    plates.colorSpace = THREE.SRGBColorSpace;
+    const pictures = { grime, plates, needles: needleTexture(seed), foliage: leafTexture(seed + 1), fronds: frondTexture(seed + 2), broadleaf: broadLeafTexture(seed + 3), strands: strandTexture(seed + 4) };
+    got = { pictures, draws };
+  }
+  PAINTED.set(seed, got);
+  if (PAINTED.size > PAINTED_KEPT) PAINTED.delete(PAINTED.keys().next().value);
+  return Object.fromEntries(Object.entries(got.pictures).map(([k, t]) => [k, t.clone()]));
+}
+
+export function createKit({ seed = 11, scans = true, wind: blow = null, load = loadScan } = {}) {
   const owned = [];
   const own = (x) => {
     owned.push(x);
     return x;
   };
   const r = rng(seed);
-  const grime = own(grimeTexture(seed));
-  grime.wrapS = grime.wrapT = THREE.RepeatWrapping;
-  grime.colorSpace = THREE.SRGBColorSpace;
-  const plates = own(panelTexture(r, { min: 10, base: 222, spread: 16, seam: 0.55, detail: 0.35 }));
-  plates.wrapS = plates.wrapT = THREE.RepeatWrapping;
-  plates.colorSpace = THREE.SRGBColorSpace;
+  const pic = paintedFor(seed, r);
+  const grime = own(pic.grime);
+  const plates = own(pic.plates);
   const std = (o, density, role = null) => {
     const m = own(new THREE.MeshStandardMaterial({ vertexColors: true, ...o }));
     m.userData.density = role ? densityOf(role, density) : density;
@@ -378,25 +390,29 @@ export function createKit({ seed = 11, scans = true } = {}) {
     metal: std({ roughness: 0.42, metalness: 0.55, map: grime }, 0.5, 'metal'),
     stone: std({ roughness: 0.96, map: grime }, 0.18, 'stone'),
     rock: std({ roughness: 0.96, map: grime }, 0.3, 'rock'),
+    redrock: std({ roughness: 0.96, map: grime }, 0.7, 'redrock'),
+    mossrock: std({ roughness: 0.96, map: grime }, 0.33, 'mossrock'),
     adobe: std({ roughness: 0.98, map: grime }, 0.12, 'adobe'),
     wood: std({ roughness: 0.9, map: grime }, 0.5, 'wood'),
     concrete: std({ roughness: 0.9, map: grime }, 0.3, 'concrete'),
+    tiles: std({ roughness: 0.6, map: grime }, 0.33, 'tiles'),
+    deck: std({ roughness: 0.5, metalness: 0.55, map: grime }, 2, 'deck'),
     cloth: std({ roughness: 1, side: THREE.DoubleSide }, 0.5),
     bark: std({ roughness: 0.95, map: grime }, 0.6, 'bark'),
     leaf: std({ roughness: 0.82, side: THREE.DoubleSide }, 0.5),
     // (foliage cards: needles on twigs, cut out of the light behind them)
     // (cut out by alpha to coverage, where the frame is multisampled: soft
     // edges, and leaves that don't thin away in the smaller mip levels)
-    needles: std({ roughness: 0.85, side: THREE.DoubleSide, map: own(needleTexture(seed)), alphaTest: 0.3, alphaToCoverage: true }, 1),
-    foliage: std({ roughness: 0.75, side: THREE.DoubleSide, map: own(leafTexture(seed + 1)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    needles: std({ roughness: 0.85, side: THREE.DoubleSide, map: own(pic.needles), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    foliage: std({ roughness: 0.75, side: THREE.DoubleSide, map: own(pic.foliage), alphaTest: 0.3, alphaToCoverage: true }, 1),
     // (ferns' and palms' fronds, and the jungles' big leaves, on cards)
-    fronds: std({ roughness: 0.8, side: THREE.DoubleSide, map: own(frondTexture(seed + 2)), alphaTest: 0.3, alphaToCoverage: true }, 1),
-    broadleaf: std({ roughness: 0.7, side: THREE.DoubleSide, map: own(broadLeafTexture(seed + 3)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    fronds: std({ roughness: 0.8, side: THREE.DoubleSide, map: own(pic.fronds), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    broadleaf: std({ roughness: 0.7, side: THREE.DoubleSide, map: own(pic.broadleaf), alphaTest: 0.3, alphaToCoverage: true }, 1),
     // (the smooth solid middle of a crown the leaf cards sit on, so the
     // light doesn't pour through it)
     crown: std({ roughness: 0.85 }, 1),
     // (moss and vines hanging; a reed's or a grass's blades, two-sided)
-    strands: std({ roughness: 0.9, side: THREE.DoubleSide, map: own(strandTexture(seed + 4)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    strands: std({ roughness: 0.9, side: THREE.DoubleSide, map: own(pic.strands), alphaTest: 0.3, alphaToCoverage: true }, 1),
     blades: std({ roughness: 0.85, side: THREE.DoubleSide }, 1),
     dark: std({ roughness: 0.55, metalness: 0.2 }, 1),
     glass: own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.55 })),
@@ -406,6 +422,9 @@ export function createKit({ seed = 11, scans = true } = {}) {
   // the plants lit as foliage and moving in the wind, all by one clock (the
   // shared leaf material is the creatures' skin too: it stays as it is)
   const windTime = { value: 0 };
+  // (the way it blows: the world's own, so the grass in lib/three/wind and
+  // the kit's plants and cloth lean the same way)
+  const windDir = blow?.angle != null ? new THREE.Vector2(Math.cos(blow.angle), Math.sin(blow.angle)) : undefined;
   for (const [name, kind] of [
     ['needles', 'tree'],
     ['foliage', 'tree'],
@@ -414,15 +433,36 @@ export function createKit({ seed = 11, scans = true } = {}) {
     ['broadleaf', 'shrub'],
     ['strands', 'shrub'],
     ['blades', 'shrub'],
+    ['cloth', 'shrub'],
   ]) {
-    wrapLighting(mats[name], { wrap: 0.45, backScatter: 0.35 });
-    if (mats[name].side === THREE.DoubleSide) faceless(mats[name]);
-    wind(mats[name], { kind, time: windTime, ...(kind === 'tree' ? { strength: 0.12 } : {}) });
+    // (cloth, banners and awnings, only stirs: it isn't lit as a leaf)
+    if (name !== 'cloth') {
+      wrapLighting(mats[name], { wrap: 0.45, backScatter: 0.35 });
+      if (mats[name].side === THREE.DoubleSide) faceless(mats[name]);
+    }
+    const strength = kind === 'tree' ? { strength: 0.12 } : name === 'cloth' ? { strength: 0.08 } : {};
+    wind(mats[name], { kind, time: windTime, ...(windDir ? { dir: windDir } : {}), ...strength });
   }
 
+  // each solid role's twin for things that move (a ride, a figure built of
+  // props, what you carry): dressed by its UVs, the grain going with it
+  const twins = {};
+  for (const m of Object.values(mats)) if (m.userData.role && !twins[m.userData.role]) twins[m.userData.role] = own(Object.assign(m.clone(), { userData: { ...m.userData, twin: true } }));
+
   // the scans on every material that wears one: the role's own, and the
-  // copies the builders made of them (a clone keeps its role in userData)
+  // copies the builders made of them (a clone keeps its role in userData).
+  // In the world, triplanar at the scan's size (its own roughness and
+  // metalness kept: no picture of them goes on); on a moving thing's twin,
+  // by its UVs with the scan's roughness and metal.
   let dead = false;
+  let kept = false; // (keep(): the stand-ins stay, whatever comes)
+  const wearOn = (m, scan) => {
+    const look = LOOKS[m.userData.role];
+    const size = scanOf(m.userData.role);
+    if (!look || !scan?.map || !size) return;
+    m.map = null;
+    wear(m, scan, { metres: size.metres ?? 2, strength: look.strength ?? 0.55, normal: look.normal, mean: size.mean ?? 0.8 });
+  };
   const dress = (m, scan) => {
     const look = LOOKS[m.userData.role];
     if (!look || !scan) return;
@@ -441,10 +481,10 @@ export function createKit({ seed = 11, scans = true } = {}) {
   };
   const roles = Object.keys(LOOKS).filter((role) => SCANS[role]);
   const ready = scans
-    ? Promise.all(roles.map((role) => loadScan(role).then((scan) => [role, scan]))).then((list) => {
-        if (dead) return;
+    ? Promise.all(roles.map((role) => load(role).then((scan) => [role, scan]))).then((list) => {
+        if (dead || kept) return;
         const by = Object.fromEntries(list);
-        for (const m of owned) if (m.isMeshStandardMaterial && m.userData.role) dress(m, by[m.userData.role]);
+        for (const m of owned) if (m.isMeshStandardMaterial && m.userData.role) (m.userData.twin ? dress : wearOn)(m, by[m.userData.role]);
       })
     : Promise.resolve();
 
@@ -461,6 +501,19 @@ export function createKit({ seed = 11, scans = true } = {}) {
     ready,
     // the wind's clock, shared with whatever else moves in it (the grass)
     wind: windTime,
+    // a thing that moves onto the twins (its scans by its UVs, going with
+    // it); how many meshes changed
+    moving(root) {
+      let n = 0;
+      root?.traverse?.((o) => {
+        if (!o.isMesh) return;
+        const swap = (m) => (m?.userData.role && !m.userData.twin && twins[m.userData.role] ? twins[m.userData.role] : m);
+        const before = o.material;
+        o.material = Array.isArray(before) ? before.map(swap) : swap(before);
+        if (Array.isArray(before) ? before.some((m, i) => m !== o.material[i]) : before !== o.material) n += 1;
+      });
+      return n;
+    },
     // the wind's clock on (held still for reduced motion: not called)
     tick(dt) {
       windTime.value += dt;
@@ -481,6 +534,12 @@ export function createKit({ seed = 11, scans = true } = {}) {
         group.add(mesh);
       }
       return group;
+    },
+    // the stand-ins kept: scans that come from now on aren't worn (on a
+    // world already shown, every material in it would go into another
+    // shader at once; the next kit has them from the page's)
+    keep() {
+      kept = true;
     },
     dispose() {
       dead = true;

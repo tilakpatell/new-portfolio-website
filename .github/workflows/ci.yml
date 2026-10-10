@@ -3,7 +3,8 @@ name: CI
 # Every pull request to main: install, lint, test, build. The autopilot
 # (.claude/skills/autopilot) waits for this check before it merges, and a
 # red check stops any merge from deploying something broken (deploy.yml runs
-# the same steps again on main before it publishes).
+# the same steps again on main before it publishes). Beside it, the AI's
+# tests, and the multiplayer's two-browser check (evidence, not a gate).
 on:
   pull_request:
     branches: [main]
@@ -37,3 +38,116 @@ jobs:
       # the codebase's health against docs/health/budgets.json: a number over
       # its budget is a red check, the same as a failing test (docs/health)
       - run: node scripts/health.mjs --check --skip build
+
+  # The AI and the models (scripts/ai-e2e/README.md): the pipelines with
+  # fake engines, the shipped assets, the brains, the agent's guards. A job
+  # of its own so a slow contract test never holds up the first one's answer.
+  ai:
+    name: AI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # two deep: the render step diffs the merge commit against main
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # the voices contract tests run the pipeline's Python with the fake
+      # worker and ears: numpy and soundfile are all those need (no torch, no
+      # engines), and ffmpeg publishes the mp3s
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy soundfile
+      - run: command -v ffmpeg || (sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg)
+
+      - run: npm ci
+      - run: npm run test:ai
+
+      # tier 3, every model draws: only when the pull request touches a model
+      # or the code that draws one (render/changed.mjs), as it needs a browser
+      - id: changed
+        run: node scripts/ai-e2e/render/changed.mjs
+      - id: playwright
+        if: steps.changed.outputs.render == 'true'
+        run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+      - if: steps.changed.outputs.render == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ steps.playwright.outputs.version }}
+      - if: steps.changed.outputs.render == 'true'
+        run: npx --yes playwright@${{ steps.playwright.outputs.version }} install --with-deps chromium
+      - if: steps.changed.outputs.render == 'true'
+        run: npm run test:ai:render
+      - if: always() && steps.changed.outputs.render == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: renders
+          path: scripts/ai-e2e/render/out/
+          if-no-files-found: ignore
+
+  # Multiplayer in two browsers (scripts/online-check.mjs --universe: Alpha
+  # and Bravo meet on the universe map, see each other's tags and become
+  # allies; then scripts/flyto-check.mjs: Alpha flies to Bravo, and Bravo
+  # goes offline mid-trip) on the fake relay (scripts/lib/fake-relays.mjs,
+  # RELAY=fake), so no network is needed; from the squads' second pull
+  # request on, scripts/squad-check.mjs runs the same way. Evidence, not a
+  # gate: a red run is read, then fixed or explained in the pull request.
+  # (Each check runs in `shell: bash`, which has pipefail, so a check that
+  # fails fails its step through the tee that keeps its lines.)
+  online:
+    name: Multiplayer
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium
+
+      # the dev server in the background, and a wait till it answers
+      - run: |
+          npx vite --port 5173 > vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:5173/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat vite.log
+          exit 1
+
+      - shell: bash
+        run: |
+          RELAY=fake CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" node scripts/online-check.mjs --universe 2>&1 | tee online-check.log
+
+      # the fly-to check, whatever the first came to. Reported, but it doesn't
+      # turn the job red: two pages drawing in software on a runner send their
+      # poses seconds apart, past STALE_MS (2.5 s, online/protocol.js), and the
+      # trip then rightly ends "has gone" (with two browsers it had never been
+      # run till this job: docs/superpowers/HANDOFF-multiplayer-economy.md)
+      - if: ${{ !cancelled() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          RELAY=fake CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" node scripts/flyto-check.mjs 2>&1 | tee flyto-check.log
+
+      # what each said, as a note on the check (readable where the log isn't)
+      - if: always()
+        shell: bash
+        run: |
+          for check in online-check flyto-check; do
+            [ -f "$check.log" ] || continue
+            lines=$(grep -E '^(ok|FAIL|note|errors:|ALL OK|[0-9]+ FAILED|     )' "$check.log" | cut -c1-300 | sed -e 's/%/%25/g' | awk 'NR <= 40 { printf "%s%%0A", $0 }' || true)
+            echo "::notice title=${check}::${lines}"
+          done

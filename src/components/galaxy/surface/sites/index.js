@@ -23,19 +23,30 @@
 //   things         placed things (placer.js's specs), at world positions
 //   scatter        [{ kind, n, within: [r0, r1], scale: [a, b], solid?,
 //                  opts?, flat? (on level ground only) }]
+//   flora          { biome, tint?, density?, trees? }: the nature kit's
+//                  cover, middle layer and trees by a recipe (flora.js),
+//                  its rows added after the scatter's own
 //   life           actors.js's
 //   rides          [{ kind (rides.js's), at, yaw }]
 //   flyovers       [{ kind (a galaxy ship), n, metres, alt, speed, every }]
 //   skyships       [{ kind, metres, at: [x, y, z], yaw }]: hanging in the sky
 //   floors         walker.js's, over the land (platforms, walkways)
+//   wants          needs.js's: where the people with `needs` go, and what
+//                  they do there, [{ id, kind, at: [x, z], pause?, slots?,
+//                  spots?, clip?, base?, face? }]
 //   zones          places you go into: { id, name, door: { at, r, prompt },
 //                  back: [x, z] (where you come out), inside: { build (a
 //                  props kind), spawn, yaw, exit: { at, r }, bounds: [hw,
 //                  hd, h], rooms?: [[x, z, hw, hd, floor, ceiling]…] (the
 //                  camera keeps in the one you're in), light: { sky,
 //                  ground, ambient, fog, density },
-//                  lamps: [[x, y, z, color, intensity, distance]] }, life
-//                  (as the site's, placed relative to the inside) }
+//                  lamps: [[x, y, z, color, intensity, distance]],
+//                  fall?: a height (relative) below which you've fallen off
+//                  what's in it, respawn?: [x, z] where you're put then }, life
+//                  (as the site's, placed relative to the inside), things
+//                  (placer specs, placed relative to the inside: a model
+//                  in a room), wants (as the site's, placed relative to the
+//                  inside: a cantina's bar) }
 //   quests         quests.js's: things to do (talk to someone, get
 //                  somewhere, pick things up, race, shoot, ride, use); a
 //                  step's start and end: what happens then ({ signal (to
@@ -50,15 +61,19 @@
 
 import { SYSTEMS } from '../../systems';
 import { REACH } from '../terrain';
+import { floraRows } from '../flora';
 import { SITES as desert } from './desert';
 import { SITES as ice } from './ice';
 import { SITES as forest } from './forest';
 import { SITES as core } from './core';
+import { SITE as coruscant } from './coruscant';
+import { SITE as yavin } from './yavin';
+import { SITE as bespin } from './bespin';
 import { SITES as edge } from './edge';
 import { SITES as outer } from './outer';
 import { EXTRA } from './quests';
 
-export const SITES = { ...desert, ...ice, ...forest, ...core, ...edge, ...outer };
+export const SITES = { ...desert, ...ice, ...forest, yavin, ...core, coruscant, ...edge, bespin, ...outer };
 
 // the systems with somewhere to land, in the galaxy's own order
 export const LANDABLE = SYSTEMS.filter((s) => SITES[s.id]).map((s) => s.id);
@@ -67,9 +82,7 @@ export const canLand = (id) => Boolean(SITES[id]);
 const turn = ([x, z], yaw = 0) => [x * Math.cos(yaw) + z * Math.sin(yaw), -x * Math.sin(yaw) + z * Math.cos(yaw)];
 const plus = (a, b) => [a[0] + b[0], a[1] + b[1]];
 
-// A site made whole: its places' things and pits moved to where the places
-// are, its flats gathered (the landing spot's, each place's, each pit), and
-// what's left out filled in.
+// A galaxy site made whole, named for its system.
 export function siteOf(id) {
   const base = SITES[id];
   if (!base) return null;
@@ -77,6 +90,15 @@ export function siteOf(id) {
   const more = EXTRA[id];
   const raw = more ? { ...base, life: [...(base.life ?? []), ...more.life], quests: [...(base.quests ?? []), ...more.quests] } : base;
   const sys = SYSTEMS.find((s) => s.id === id);
+  return siteFrom(raw, id, { name: sys?.name, accent: sys?.accent });
+}
+
+// A raw site made whole: its places' things and pits moved to where the
+// places are, its flats gathered (the landing spot's, each place's, each
+// pit), and what's left out filled in. On its own (not inside siteOf) so a
+// book of sites outside the galaxy (the Rick and Morty planets) is made
+// whole by the same rules the scene was built for.
+export function siteFrom(raw, id, { name, accent } = {}) {
   const places = (raw.places ?? []).map((p) => ({
     ...p,
     things: (p.things ?? []).map((t) => ({ ...t, at: plus(p.at, turn(t.at, p.yaw)), yaw: (t.yaw ?? 0) + (p.yaw ?? 0), place: p.id })),
@@ -93,12 +115,18 @@ export function siteOf(id) {
   // the places you go into (zones): each built high over the world where
   // nothing outside can be seen, at `origin`; what's in one is placed
   // relative to it (its life, and its quests' steps that say `zone`)
-  const zones = (raw.zones ?? []).map((z, i) => ({ ...z, origin: z.origin ?? [-1600 + i * 700, 1500, -4200] }));
+  const zones = (raw.zones ?? []).map((z, i) => {
+    const origin = z.origin ?? [-1600 + i * 700, 1500, -4200];
+    const things = (z.things ?? []).map((t) => ({ ...t, at: [origin[0] + t.at[0], origin[2] + t.at[1]], y: origin[1] + (t.y ?? 0), abs: true, zone: true }));
+    return { ...z, origin, things };
+  });
   const inZone = (id, xz) => {
     const z = zones.find((q) => q.id === id);
     return z && xz ? [z.origin[0] + xz[0], z.origin[2] + xz[1]] : xz;
   };
   const zoneLife = zones.flatMap((z) => (z.life ?? []).map((a) => ({ ...a, zone: z.id, at: a.at && inZone(z.id, a.at), path: a.path?.map((q) => inZone(z.id, q)), level: a.level != null ? z.origin[1] + a.level : undefined })));
+  // (and the places in them its people go to, where they are)
+  const zoneWants = zones.flatMap((z) => (z.wants ?? []).map((w) => ({ ...w, zone: z.id, at: inZone(z.id, w.at), ...(w.spots ? { spots: w.spots.map((q) => inZone(z.id, q)) } : {}) })));
   const levelIn = (id, y) => (y == null ? undefined : zones.find((q) => q.id === id).origin[1] + y);
   const quests = (raw.quests ?? []).map((q) => ({
     ...q,
@@ -111,22 +139,24 @@ export function siteOf(id) {
   }));
   return {
     id,
-    name: sys?.name ?? id,
-    accent: sys?.accent ?? '#ffffff',
+    name: name ?? id,
+    accent: accent ?? '#ffffff',
     reach: REACH,
     weather: [],
     things: [],
-    scatter: [],
     rides: [],
     flyovers: [],
     skyships: [],
     floors: [],
     ...raw,
+    // (the site's own rows, then its flora's: the recipe adds, never replaces)
+    scatter: [...(raw.scatter ?? []), ...floraRows(raw)],
     land,
     places,
     zones,
     quests,
     life: [...(raw.life ?? []), ...zoneLife],
+    wants: [...(raw.wants ?? []), ...zoneWants],
     ground: { ...raw.ground, flats, pits },
     things_all: [...(raw.things ?? []), ...places.flatMap((p) => p.things)],
   };

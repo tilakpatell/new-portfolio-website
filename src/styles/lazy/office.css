@@ -6,7 +6,7 @@
 .dundie-curtain-r { right: 0; transform: scaleX(-1); border-bottom-right-radius: 40% 12%; }
 .dundie-spot { position: absolute; left: 50%; top: -10%; width: 70%; height: 110%; translate: -50% 0; background: radial-gradient(ellipse 50% 85% at 50% 0%, rgba(255, 244, 214, 0.32), rgba(255, 244, 214, 0.08) 55%, transparent 72%); clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); }
 .dundie-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(#1b1d29, #0b0c12); border-top: 1px solid rgba(255, 255, 255, 0.07); }
-.dundie-big { position: absolute; left: 50%; bottom: 17%; height: 56%; width: auto; translate: -50% 0; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px rgba(255, 214, 120, 0.25)); animation: dundie-pop 0.7s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.dundie-big { position: absolute; left: 50%; bottom: 17%; height: 56%; width: auto; translate: -50% 0; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px rgba(255, 214, 120, 0.25)); animation: dundie-pop 0.7s var(--ease-spring); }
 @keyframes dundie-pop { from { transform: translateY(14px) scale(0.86); opacity: 0.4; } }
 .dundie-award { position: absolute; left: 50%; bottom: 3.5%; translate: -50% 0; width: min(88%, 30rem); padding: 0.5rem 0.9rem; border: 1px solid rgba(246, 215, 122, 0.45); border-radius: 6px; background: rgba(10, 10, 14, 0.82); text-align: center; color: #f3ead2; }
 .dundie-award-title { display: block; font: 700 clamp(0.95rem, 0.8rem + 0.6vw, 1.15rem)/1.25 'Courier Prime', var(--font-mono); color: #f6d77a; }

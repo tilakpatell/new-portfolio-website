@@ -5,7 +5,10 @@ import Readout from '../components/deathstar/Readout';
 import TrenchRun from '../components/deathstar/TrenchRun';
 import Hero3D from '../components/deathstar/Hero3D';
 import { PLANETS, PLANET_AT as PLANET, PlanetArt, PlanetBackdrop } from '../components/deathstar/Planets';
-import { BATTLE_SECONDS, fmtClock } from '../components/deathstar/battle';
+import { BATTLE_SECONDS, CALLS, CLEARED, ENDINGS, fmtClock } from '../components/deathstar/battle';
+import { INTERCOM, endingVoice } from '../components/deathstar/voicelines';
+import { sayVoiced } from '../lib/voiced';
+import { useVoiced } from '../lib/useVoiced';
 import { AurebeshLine } from '../components/Wordmark';
 import { useAchievements } from '../components/Achievements';
 import { jumpTo } from '../lib/anchors';
@@ -29,14 +32,6 @@ const DS = { x: 505, y: 292, r: 145 };
 const DISH = { x: 446, y: 232, r: 38 };
 const FOCUS = { x: 420, y: 217 }; // where the tributary beams meet, out along the line to the target
 const BEAM = '#8dff6b';
-
-// Read out as the clock runs down, the way the film counts it.
-const CALLS = {
-  90: 'The Death Star is rounding Yavin.',
-  60: 'Death Star will be in range in one minute.',
-  30: 'Thirty seconds until Yavin 4 is in range.',
-  10: 'Ten seconds. Stay on target.',
-};
 
 // Luke's X-wing seen from above, nose to the right, for the victory flypast.
 function XWing({ style }) {
@@ -121,6 +116,7 @@ export default function DeathStar() {
   const [battle, setBattle] = useState(false);
   const [clock, setClock] = useState(BATTLE_SECONDS);
   const [outcome, setOutcome] = useState(null); // 'empire' | 'rebels'
+  const [hanSaid, setHanSaid] = useState(false); // (his last word, in the trench: onWin)
   const [call, setCall] = useState('');
   const [sound, setSoundState] = useState(soundOn);
   const deadline = useRef(0);
@@ -186,15 +182,29 @@ export default function DeathStar() {
     const id = setInterval(() => setClock(Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000))), 250);
     return () => clearInterval(id);
   }, [battle]);
+  // The base's intercom reads each call out (in its own voice, where it's been made: lib/voiced.js).
   useEffect(() => {
     if (!battle) return undefined;
-    if (CALLS[clock]) setCall(CALLS[clock]);
+    if (CALLS[clock]) {
+      setCall(CALLS[clock]);
+      sayVoiced(INTERCOM, CALLS[clock]);
+    }
     if (clock > 0) return undefined;
-    // Time's up: the station has cleared the planet. Back to the top to watch it fire.
-    setCall('The Death Star has cleared the planet. Yavin 4 is in range.');
+    // Time's up: the station has cleared the planet. Back to the top to watch
+    // it fire, once the intercom has said so.
+    setCall(CLEARED);
+    const said = sayVoiced(INTERCOM, CLEARED).catch(() => null);
     window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
-    const t = setTimeout(() => fireRef.current(), reduced ? 0 : 800);
-    return () => clearTimeout(t);
+    let live = true;
+    const t = setTimeout(async () => {
+      // (but not for ever: the line can be slow to come, or the sound asleep)
+      await Promise.race([said.then((h) => h?.ended), new Promise((done) => setTimeout(done, 6000))]);
+      if (live) fireRef.current();
+    }, reduced ? 0 : 800);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
   }, [battle, clock, reduced]);
 
   useEffect(() => {
@@ -203,11 +213,13 @@ export default function DeathStar() {
     return () => clearTimeout(t);
   }, [hash]);
 
-  // The Rebels win: back to the top to watch the station go.
-  const onWin = () => {
+  // The Rebels win: back to the top to watch the station go. (With the
+  // computer on, Han has his say down in the trench; with the Force, at the top.)
+  const onWin = ({ force = false } = {}) => {
     const savedYavin = battle && planet === 'yavin';
     setBattle(false);
     setCall('');
+    setHanSaid(!force);
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
       setTimeout(() => {
@@ -252,6 +264,11 @@ export default function DeathStar() {
     );
     return () => clearTimeout(t);
   }, [destroyed]);
+  // The last word, said while it's up: Han's as the station goes, unless he
+  // said it in the trench; Tarkin's once Yavin 4 has gone, after the film's
+  // own "You may fire when ready."
+  const ending = (outcome === 'rebels' && !hanSaid) || (outcome === 'empire' && phase === 'gone') ? outcome : null;
+  useVoiced(endingVoice(ending), ENDINGS[ending]?.line);
 
   useEffect(() => {
     const next = { charging: ['firing', 1100], firing: ['boom', 380], boom: ['gone', 1500] }[phase];
@@ -437,10 +454,8 @@ export default function DeathStar() {
             <figure className={`ds-ending ds-ending-${outcome}`}>
               {outcome === 'rebels' && <Medal />}
               <div>
-                <blockquote className="text-lg text-ink">
-                  {outcome === 'empire' ? '“Fear will keep the local systems in line.”' : '“Great shot, kid. That was one in a million!”'}
-                </blockquote>
-                <figcaption className="mt-1 text-sm text-muted">{outcome === 'empire' ? 'Grand Moff Tarkin' : 'Han Solo'}</figcaption>
+                <blockquote className="text-lg text-ink">“{ENDINGS[outcome].line}”</blockquote>
+                <figcaption className="mt-1 text-sm text-muted">{ENDINGS[outcome].by}</figcaption>
               </div>
             </figure>
           )}
@@ -482,6 +497,11 @@ export default function DeathStar() {
               <a href="#trench" className="btn btn-ghost" onClick={(e) => jumpTo(e, 'trench')}>
                 Fly the trench run
               </a>
+            )}
+            {!destroyed && (
+              <Link to="/deathstar/inside" className="btn btn-ghost">
+                Go aboard
+              </Link>
             )}
             <ScriptToggle id="aurebesh" />
             <Link to="/galaxy/yavin" className="btn btn-ghost">

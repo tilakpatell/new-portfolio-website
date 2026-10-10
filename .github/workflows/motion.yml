@@ -1,0 +1,124 @@
+name: motion
+
+# A clip from words, made on the owner's desktop GPU with HY-Motion 1.0
+# (scripts/motion/README.md). Ask for one from the Actions tab (Run
+# workflow), from a terminal (`node scripts/desktop/ask.mjs motion NAME
+# --prompt "…"`), or with an issue labelled motion (the "Motion clip" issue
+# form). Either way the request is an issue, so it keeps while the desktop
+# is off: the self-hosted runner there takes it when it's up, and an hourly
+# sweep catches anything a run missed.
+
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' && format('motion: {0}', inputs.name)
+  || github.event_name == 'issues' && format('motion #{0}: {1}', github.event.issue.number, github.event.issue.title)
+  || 'motion: sweep' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Name: the clip becomes public/games/meshy/ual-gen.NAME.glb (a-z, 0-9, dashes)'
+        required: true
+        type: string
+      prompt:
+        description: 'What the body does, in English, under 60 words (a two-handed overhead sword strike, stepping forward)'
+        required: true
+        type: string
+      seconds:
+        description: 'How long, 1 to 10 seconds (default 3; under 5 keeps the model under 26 GB)'
+        required: false
+        type: string
+      seed:
+        description: 'Seed, for another take (default 42)'
+        required: false
+        type: string
+      options:
+        description: 'More, as key: value two spaces apart (cfg: 5  model: lite  with: sword.a)'
+        required: false
+        type: string
+  issues:
+    types: [opened, reopened, labeled, unlabeled]
+  schedule:
+    - cron: '41 * * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  # a dispatch's request, written down as an issue at once (GitHub's own runner, always up)
+  queue:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      number: ${{ steps.issue.outputs.number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - id: issue
+        run: node scripts/motion/runner.mjs --enqueue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_NAME: ${{ inputs.name }}
+          INPUT_PROMPT: ${{ inputs.prompt }}
+          INPUT_SECONDS: ${{ inputs.seconds }}
+          INPUT_SEED: ${{ inputs.seed }}
+          INPUT_OPTIONS: ${{ inputs.options }}
+
+  # the hourly sweep wakes the desktop's runner only when there's something to make
+  check:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      pending: ${{ steps.count.outputs.pending }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - id: count
+        run: echo "pending=$(node scripts/motion/runner.mjs --pending)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # the clip, on the desktop (a stranger's issue never gets here: only the
+  # owner's and collaborators', and the ones this workflow's own form opened
+  # as github-actions; runner.mjs checks again, with the same rule)
+  make:
+    needs: [queue, check]
+    if: >-
+      always() && !cancelled() && (
+        (github.event_name == 'workflow_dispatch' && needs.queue.result == 'success') ||
+        (github.event_name == 'schedule' && needs.check.outputs.pending != '0' && needs.check.outputs.pending != '') ||
+        (github.event_name == 'issues' && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) || github.event.issue.user.login == 'github-actions[bot]') && (
+          ((github.event.action == 'opened' || github.event.action == 'reopened') && contains(github.event.issue.labels.*.name, 'motion')) ||
+          (github.event.action == 'labeled' && github.event.label.name == 'motion') ||
+          (github.event.action == 'unlabeled' && github.event.label.name == 'motion:failed' && contains(github.event.issue.labels.*.name, 'motion'))
+        ))
+      )
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 120
+    concurrency:
+      group: motion-${{ needs.queue.outputs.number || github.event.issue.number || 'sweep' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - name: Make it
+        shell: powershell
+        run: node scripts/motion/runner.mjs --auto
+        env:
+          JOB_ISSUE: ${{ needs.queue.outputs.number || github.event.issue.number }}
+          GCM_INTERACTIVE: never
+          GIT_TERMINAL_PROMPT: '0'
+      - name: The clip, its BVH and its sheet
+        if: always() && (needs.queue.outputs.number || github.event.issue.number)
+        uses: actions/upload-artifact@v7
+        with:
+          name: motion-${{ needs.queue.outputs.number || github.event.issue.number }}
+          path: ${{ runner.temp }}/motion-artifacts
+          if-no-files-found: ignore
+          retention-days: 14

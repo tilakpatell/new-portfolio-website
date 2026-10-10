@@ -14,6 +14,8 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -55,6 +57,11 @@ import {
   height,
   roadAmount,
 } from './layout';
+import { attend, castDo, releaseCast, tickCast } from '../../cast3d';
+import { turn } from '../../../../lib/three/gait';
+import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const faceTo = (obj, face) => {
@@ -117,9 +124,13 @@ const growable = (x, z) => {
 export function createBreeWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 420, bloom: { strength: 0.62, radius: 0.5, threshold: 0.86 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 420, bloom: BLOOMS.bree, onLost });
   stage.grade({ contrast: 0.12, saturation: 0.86, vignette: 0.3, grain: 0.016, shadow: [0.0, 0.012, 0.035], high: [0.03, 0.018, 0.0] });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x3c4450, 14, 115);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.3;
@@ -144,7 +155,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
   const puddles = makePuddles(PUDDLES, height);
   outdoors.add(puddles.mesh);
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: puddles.material, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: puddles.material, stage, house: houseLook, moods: MOODS });
 
   // ── the ground ──
   const terrain = makeTerrain(renderer, { size: WORLD.edge * 2, seg: tier === 'high' ? 210 : tier === 'mid' ? 150 : 100, height, paint, blades: 0.22 });
@@ -154,6 +165,9 @@ export function createBreeWorld(canvas, { onLost } = {}) {
 
   const kit = createBreeKit(renderer);
   const mats = kit.mats;
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
 
   // ── the buildings ──
   const chimneys = [];
@@ -290,6 +304,13 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   const bill = blob(kit.billPony(), 1.6);
   outdoors.add(bill.group);
   const billStable = stable.stalls[1].clone().applyMatrix4(stable.group.matrixWorld);
+  // his way to the East Gate and back: out of his stall into the yard (clear
+  // of the trough), then across to Sam; walked, never put there
+  const billYard = V(stable.stalls[1].x, 0, STABLE.d / 2 + 1.4).applyMatrix4(stable.group.matrixWorld);
+  const billPath = [billStable, billYard, V(BILL.x, 0, BILL.z)];
+  const billLegs = billPath.slice(1).map((p, i) => Math.hypot(p.x - billPath[i].x, p.z - billPath[i].z));
+  const billLong = billLegs.reduce((a, b) => a + b, 0);
+  const billWalk = { s: null, face: -Math.PI / 2 + 0.2 }; // s: how far along his way he is (m)
   // the Nazgûl, and two of their horses by the broken gate
   const wraithKit = createWraithKit(renderer);
   // (the Ring's pale form, compiled now so putting it on doesn't stall)
@@ -424,6 +445,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, peep: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', smashed: false, smoke: 0, flame: 0, near: [] };
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const look = new THREE.Vector3();
@@ -457,6 +480,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     sky.uniforms.uGrey.value = A.wraith * 0.85;
     sky.uniforms.uEye.value = A.wraith * (0.4 + 0.6 * (s.gaze ?? 0));
     stage.grade({ saturation: 0.86 - A.wraith * 0.8, contrast: 0.12 + A.wraith * 0.18, vignette: 0.3 + A.wraith * 0.4 + (s.chased ? 0.14 : 0), shadow: [A.wraith * 0.03, 0.012 + A.wraith * 0.03, 0.035 + A.wraith * 0.06] });
+    // (the fog's own colour while it's this, not the sky's)
+    houseLook.set({ fogMix: 1 - A.wraith * 0.8 });
     if (A.wraith > 0.01) {
       scene.fog.near *= 1 - A.wraith * 0.7;
       scene.fog.far *= 1 - A.wraith * 0.55;
@@ -532,6 +557,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     frodo.group.visible = A.wraith < 0.5 && !inside;
     pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
     if (s.crouch) frodo.body.position.y -= 0.12;
+    castDo(frodo, { crouch: Boolean(s.crouch) });
     ghosts.update(s.travellers ?? [], t, dt, { ringOn: Boolean(s.wearing) });
 
     // ── who's about ──
@@ -541,31 +567,46 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       const on = c.when.includes(tod) && !inside && !(c.id === 'harry' && !s.gateOpen);
       p.group.visible = on;
       if (!on) continue;
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      const want = near ? Math.atan2(-(h.z - c.z), h.x - c.x) : p.home.face;
-      let d = want - p.group.rotation.y;
-      d = Math.atan2(Math.sin(d), Math.cos(d));
-      p.group.rotation.y += d * Math.min(1, dt * 4);
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      attend(p, h, p.home.face, dt, { who: frodo });
       pose(p, t + c.x, { moving: false, wave: s.talk === c.id ? 0.5 : 0, talk: s.talk === c.id ? 1 : 0 });
     }
     // Strider waits by the East Gate at night
     striderNight.group.visible = tod === 'night' && !inside;
     if (striderNight.group.visible) {
-      faceTo(striderNight.group, Math.atan2(-(h.z - STRIDER_NIGHT.z), h.x - STRIDER_NIGHT.x));
+      // (on the cast: his eyes on you from the gate, his body turning only as he must; a toy faces you)
+      if (striderNight.cast?.ready) attend(striderNight, h, Math.atan2(-(h.z - STRIDER_NIGHT.z), h.x - STRIDER_NIGHT.x), dt, { who: frodo, near: 12, greet: false });
+      else faceTo(striderNight.group, Math.atan2(-(h.z - STRIDER_NIGHT.z), h.x - STRIDER_NIGHT.x));
       pose(striderNight, t, { moving: false, wave: Math.hypot(h.x - STRIDER_NIGHT.x, h.z - STRIDER_NIGHT.z) < 8 ? 0.4 : 0 });
     }
-    // Bill: in the stable, then at the East Gate with Sam
+    // Bill: in the stable, then at the East Gate with Sam, walked there at a
+    // pony's walk (put straight there when no one's looking: inside, or the
+    // first frame)
     bill.group.visible = !inside;
-    if (tod === 'dawn') {
-      bill.group.position.set(BILL.x, height(BILL.x, BILL.z), BILL.z);
-      faceTo(bill.group, BILL.face);
-    } else {
-      bill.group.position.copy(billStable);
-      faceTo(bill.group, -Math.PI / 2 + 0.2);
+    {
+      const goal = tod === 'dawn' ? billLong : 0;
+      const snap = billWalk.s == null || inside;
+      if (snap) billWalk.s = goal;
+      const was = billWalk.s;
+      billWalk.s += Math.sign(goal - was) * Math.min(Math.abs(goal - was), dt * 1.1);
+      // where that is along his way, and which way the leg he's on runs
+      let k = billWalk.s;
+      let leg = 0;
+      while (leg < billLegs.length - 1 && k > billLegs[leg]) k -= billLegs[leg++];
+      const a = billPath[leg];
+      const b = billPath[leg + 1];
+      const u = billLegs[leg] > 0 ? Math.min(1, Math.max(0, k / billLegs[leg])) : 0;
+      const x = a.x + (b.x - a.x) * u;
+      const z = a.z + (b.z - a.z) * u;
+      bill.group.position.set(x, height(x, z), z);
+      const going = billWalk.s - was;
+      const rest = tod === 'dawn' ? BILL.face : -Math.PI / 2 + 0.2;
+      const want = going ? Math.atan2(-(b.z - a.z) * Math.sign(going), (b.x - a.x) * Math.sign(going)) : rest;
+      billWalk.face = snap ? rest : turn(billWalk.face, want, dt, going ? 6 : 2);
+      faceTo(bill.group, billWalk.face);
     }
-    bill.legs.forEach((leg) => (leg.rotation.z = 0));
-    bill.neck.rotation.z = -0.25 + Math.sin(t * 0.8) * 0.06;
-    bill.tail.rotation.y = Math.sin(t * 1.3) * 0.3;
+    // his legs from the ground he covers; standing, he picks at the straw (props.js)
+    bill.animate?.(t);
     // the Nazgûl: stooped and sniffing on their rounds, upright and
     // reaching once they've a scent; pale, through the Ring
     const ws = s.watchers ?? [];
@@ -596,8 +637,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     horses.forEach((r, i) => {
       r.group.visible = tod === 'night' && !inside;
       if (!r.group.visible) return;
-      r.horse.neck.rotation.z = -0.1 + Math.sin(t * 0.9 + i) * 0.08;
-      r.horse.legs.forEach((leg, j) => (leg.rotation.z = Math.sin(t * 1.4 + j + i) * 0.04));
+      // stood waiting: shifting their feet, tossing their heads (../../shire/props.js)
+      r.animate?.(t + i);
     });
     // the people far off aren't drawn
     if (!inside) {
@@ -694,21 +735,20 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== s.mode || A.beat !== s.beat;
     A.mode = s.mode;
     A.beat = s.beat;
-    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' ? 8 : 2.5));
+    const ease = jump ? 1 : byFrame(s.mode === 'walk' ? 8 : 2.5, dt);
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     rain.update(camera, t, inside ? 0 : wet, frodo.group.position);
     sun.position.copy(frodo.group.position).addScaledVector(sunDir, 70);
     sun.target.position.copy(frodo.group.position);
     ground.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast); // (the real frame time, however fast the QA runs the clock)
   };
@@ -741,6 +781,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the town is first drawn ──
   const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30, matcap: [rimTrees] });
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
@@ -761,9 +803,11 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      shake.dispose();
       ground.dispose();
       ghosts.dispose();
       disposeTree(inn.group);
+      releaseCast(scene);
       stage.dispose();
     },
   };

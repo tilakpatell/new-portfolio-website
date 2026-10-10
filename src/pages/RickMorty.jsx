@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import ButterRobot from '../components/rickmorty/ButterRobot';
 import Cable from '../components/rickmorty/Cable';
 import CruiserFlight from '../components/rickmorty/CruiserFlight';
+import GalaxyBackdrop from '../components/rickmorty/GalaxyBackdrop';
 import MeeseeksBox from '../components/rickmorty/MeeseeksBox';
 import PlumbusFactory from '../components/rickmorty/PlumbusFactory';
 import PortalHero from '../components/rickmorty/PortalHero';
 import RmWorld from '../components/rickmorty/world/RmWorld';
 import { DIMENSIONS } from '../components/rickmorty/dimensions';
+import { isPlanet } from '../components/rickmorty/world/dimensions/destinations';
 import PortalPanic from '../components/rickmorty/portal/PortalPanic';
 import { BethFace, JerryFace, MortyFace, RickFace, SummerFace } from '../components/rickmorty/Faces';
 import '../components/rickmorty/rickmorty.css';
@@ -56,6 +58,21 @@ const BOARD = [
   ['showMe', 'Show me what you got'],
 ];
 
+// What a look through the page's portal gun is, and how to get there for real:
+// a planet's on the universe map, the Citadel's a page of its own, C-137's
+// here, and anywhere else is on the dial of Rick's gun in the world above.
+function LookNote({ d }) {
+  if (isPlanet(d.id))
+    return (
+      <>
+        That’s only a look. {d.name} is a planet on the universe map, out in the Rick and Morty sector: <Link className="underline underline-offset-2" to={`/universe/${d.id}`}>land on it</Link> and you’re in it.
+      </>
+    );
+  if (d.id === 'citadel') return 'That’s only a look. Enter the Citadel to walk it.';
+  if (d.id === 'c137') return 'That’s only a look: you’re in C-137 already.';
+  return 'That’s only a look. To go, dial it on Rick’s portal gun in the world at the top of the page.';
+}
+
 // Dimension C-137: the Smiths' neighbourhood to walk about in 3D first, then
 // fire the portal gun into other dimensions, play Portal panic, press the
 // Meeseeks box, flip through interdimensional cable, see how a plumbus is
@@ -88,6 +105,7 @@ export default function RickMorty() {
 
   return (
     <div className="relative rm-page">
+      <GalaxyBackdrop />
       <RmWorld />
       <CruiserFlight />
       <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="rm-title">
@@ -122,6 +140,12 @@ export default function RickMorty() {
               Back to the site
             </Link>
           </div>
+          {/* (this one only shows a dimension: how to get to it depends on where it is) */}
+          {fired > 0 && (
+            <p className="mt-3 text-sm opacity-80" aria-live="polite">
+              <LookNote d={d} />
+            </p>
+          )}
           <WorldSwitcher className="mt-10" />
         </div>
       </section>

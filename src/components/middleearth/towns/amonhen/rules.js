@@ -85,7 +85,7 @@ export function stepSeat(st, dt, hold) {
 }
 
 // ── The Uruk-hai ──
-export const URUKS = { sight: 11, cone: 0.68, smell: 1.4, hear: 3.6, ringSight: 0, alert: 0.4, chase: 4.7, patrol: 1.7, giveUp: 4, leash: 26, catch: 1.4, look: 1.2 };
+export const URUKS = { sight: 11, cone: 0.68, smell: 1.4, hear: 3.6, ringSight: 0, alert: 0.4, chase: 4.7, patrol: 1.7, giveUp: 4, leash: 26, catch: 1.4, look: 1.2, far: 1.6, suspicious: 0.5, search: 9 }; // (far, suspicious, search: the Uruks take a moment at the edge of the trees, come to look, and beat the wood together)
 
 // ── I made a promise ──
 // Sam's in the water, going under and coming up. Paddle back to him (he's

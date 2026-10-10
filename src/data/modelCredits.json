@@ -86,6 +86,17 @@
     "where": "middle-earth",
     "as": "Bag End’s door"
   },
+  "c-137-krombopulos-rick-and-morty": {
+    "title": "Krombopulos Rick And Morty",
+    "author": "ELCHUPAAANOS",
+    "authorUrl": "https://sketchfab.com/elchupaanos",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/krombopulos-rick-and-morty-4d65b1da2fe54c5590aa8abc7c64bf83",
+    "where": "c-137",
+    "as": "Krombopulos Michael at Interdimensional Customs, rigged by Meshy",
+    "file": "/games/meshy/krombopulos.glb"
+  },
   "cr90": {
     "title": "Star Wars: CR-90",
     "author": "Daniel",
@@ -99,6 +110,111 @@
     "also": [
       "galaxy"
     ]
+  },
+  "crew-bokatan": {
+    "title": "Bo Katan Kryze",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/bo-katan-kryze-c1e33e1c34304b879a1c2fdb5ee4c8cd",
+    "where": "galaxy-surface",
+    "as": "Bo-Katan Kryze, walking on the worlds",
+    "file": "/models/galaxy/crew/bokatan.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-caradune": {
+    "title": "Cara Dune Mandalorian",
+    "author": "Star guardian",
+    "authorUrl": "https://sketchfab.com/ProjectorElka",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/cara-dune-mandalorian-67940dad3a484fddb4d6d1127d233460",
+    "where": "galaxy-surface",
+    "as": "Cara Dune, walking on the worlds",
+    "file": "/models/galaxy/crew/caradune.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-dindjarin": {
+    "title": "Mandalorian - Star Wars",
+    "author": "GRIP420",
+    "authorUrl": "https://sketchfab.com/GRIP420",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/mandalorian-star-wars-65383411ba6f4a56aac823d5d014df20",
+    "where": "galaxy-surface",
+    "as": "the Mandalorian, walking on the worlds",
+    "file": "/models/galaxy/crew/dindjarin.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-fennec": {
+    "title": "Fennec Shand",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/fennec-shand-bdf5d6140fde4c6bb8f265680bf8231f",
+    "where": "galaxy-surface",
+    "as": "Fennec Shand, walking on the worlds",
+    "file": "/models/galaxy/crew/fennec.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-greef": {
+    "title": "Greef Karga",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/greef-karga-6cc95642575445aca67733c4bffa2559",
+    "where": "galaxy-surface",
+    "as": "Greef Karga, walking on the worlds",
+    "file": "/models/galaxy/crew/greef.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-inquisitor": {
+    "title": "Inquisitor Lanu Pasiq - Star Wars",
+    "author": "JCarpenter_48",
+    "authorUrl": "https://sketchfab.com/jcarpenter48",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/inquisitor-lanu-pasiq-star-wars-c3af0bd197f348c4a4819a45e78faa53",
+    "where": "galaxy-surface",
+    "as": "the Inquisitors, walking on the worlds",
+    "file": "/models/galaxy/crew/inquisitor.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-jango": {
+    "title": "Jango Fett",
+    "author": "asifsaj",
+    "authorUrl": "https://sketchfab.com/asifsaj",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/jango-fett-4ce40f867ff84df6bab5a3e060cb5e69",
+    "where": "galaxy-surface",
+    "as": "Jango Fett, walking on the worlds",
+    "file": "/models/galaxy/crew/jango.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   },
   "crew-leia": {
     "title": "FN Princess Leia",
@@ -128,6 +244,126 @@
     "also": [
       "galaxy",
       "universe"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-maul": {
+    "title": "Darth Maul",
+    "author": "Konstantin Koretskyi",
+    "authorUrl": "https://sketchfab.com/cgnoobmaster",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/darth-maul-102ed10dfcd441029b4586bf4c88ec20",
+    "where": "galaxy-surface",
+    "as": "Darth Maul, walking on the worlds",
+    "file": "/models/galaxy/crew/maul.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-obiwan": {
+    "title": "Obi-Wan Kenobi Clone Wars v1",
+    "author": "Raxy3D",
+    "authorUrl": "https://sketchfab.com/Raxy3D",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/obi-wan-kenobi-clone-wars-v1-416a8f0c9c1742ee8fd71274d27bc305",
+    "where": "galaxy-surface",
+    "as": "Obi-Wan Kenobi, walking on the worlds",
+    "file": "/models/galaxy/crew/obiwan.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-palpatine": {
+    "title": "Darth Sidious",
+    "author": "Richi_n12",
+    "authorUrl": "https://sketchfab.com/Richi11",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/darth-sidious-8f6f188ba2ee4708aa277789c830cbb8",
+    "where": "galaxy-surface",
+    "as": "Darth Sidious, walking on the worlds",
+    "file": "/models/galaxy/crew/palpatine.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-rex": {
+    "title": "Captain Rex",
+    "author": "Anakin",
+    "authorUrl": "https://sketchfab.com/Vikttor.Smolentsiev",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/captain-rex-18a73ab03ac84cf49015559c522a2965",
+    "where": "galaxy-surface",
+    "as": "Captain Rex, walking on the worlds",
+    "file": "/models/galaxy/crew/rex.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-rodian": {
+    "title": "Star Wars Rodian",
+    "author": "LarsH.",
+    "authorUrl": "https://sketchfab.com/LarsH.",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-rodian-ba7389be15774e7786b50d9ff839f51f",
+    "where": "galaxy-surface",
+    "as": "the Rodians, walking on the worlds",
+    "file": "/models/galaxy/crew/rodian.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-shaakti": {
+    "title": "Shaak Ti",
+    "author": "Luan.Pezzatti",
+    "authorUrl": "https://sketchfab.com/Luan.Pezzatti",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/shaak-ti-7af69133613e4035939b1bcc42a5d652",
+    "where": "galaxy-surface",
+    "as": "Shaak Ti, walking on the worlds",
+    "file": "/models/galaxy/crew/shaakti.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-tiepilot": {
+    "title": "Tie Fighter Pilot",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tie-fighter-pilot-33a466f49ff3496c8f76d3f4cb845e30",
+    "where": "galaxy-surface",
+    "as": "the TIE pilots, walking on the worlds",
+    "file": "/models/galaxy/crew/tiepilot.glb",
+    "also": [
+      "galaxy"
+    ],
+    "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
+  },
+  "crew-vader": {
+    "title": "Darth Vader",
+    "author": "Konstantin Koretskyi",
+    "authorUrl": "https://sketchfab.com/cgnoobmaster",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/darth-vader-62a4273131f949ed9559721f7fb9cf14",
+    "where": "galaxy-surface",
+    "as": "Darth Vader, walking on the worlds",
+    "file": "/models/galaxy/crew/vader.glb",
+    "also": [
+      "galaxy"
     ],
     "note": "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk."
   },
@@ -630,7 +866,10 @@
     "source": "https://sketchfab.com/3d-models/death-star-star-wars-423fb92f677f4448aef407112a1fc032",
     "where": "galaxy",
     "as": "the Death Star",
-    "file": "/models/universe/death-star.glb"
+    "file": "/models/universe/death-star.glb",
+    "also": [
+      "galaxy-surface"
+    ]
   },
   "dickansh-arch": {
     "title": "Temple arch-3DView",
@@ -789,6 +1028,20 @@
       "galaxy"
     ]
   },
+  "galaxy-cloudcar": {
+    "title": "Star Wars Storm IV Twin-Pod Cloud Car",
+    "author": "OscarLomas3D",
+    "authorUrl": "https://sketchfab.com/OscarLomas3D",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-storm-iv-twin-pod-cloud-car-9bc20239f9c34ed1baacb9a49ba9377d",
+    "where": "galaxy",
+    "as": "Bespin’s cloud cars",
+    "file": "/models/galaxy/cloudcar.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "galaxy-coreship": {
     "title": "Star Wars Separatist Core Ship",
     "author": "ThrillDaWill",
@@ -799,6 +1052,20 @@
     "where": "galaxy",
     "as": "the Separatist core ships",
     "file": "/models/galaxy/coreship.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-deathstar2": {
+    "title": "Death Star II",
+    "author": "N8",
+    "authorUrl": "https://sketchfab.com/nathanmlange",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/death-star-ii-17ccca0dbb6b4e338fa999202f9e6685",
+    "where": "galaxy",
+    "as": "the second Death Star, its hull’s gaps plated over",
+    "file": "/models/galaxy/deathstar2.glb",
     "also": [
       "galaxy"
     ]
@@ -817,6 +1084,20 @@
       "galaxy"
     ]
   },
+  "galaxy-destroyerhq": {
+    "title": "Star Wars: Imperial II Star Destroyer",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-imperial-ii-star-destroyer-b8bd2d35f7604670ab85242c06c6d280",
+    "where": "galaxy",
+    "as": "the Star Destroyers, close up",
+    "file": "/models/galaxy/hq/destroyer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "galaxy-executor": {
     "title": "Star Wars: Executor Class Star Destroyer",
     "author": "Daniel",
@@ -827,6 +1108,20 @@
     "where": "galaxy",
     "as": "the Executor",
     "file": "/models/galaxy/executor.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-freighter": {
+    "title": "Star Wars: YT-2400 Light Freighter",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-yt-2400-light-freighter-ccd2749df33641fba7a5326500abdbfb",
+    "where": "galaxy",
+    "as": "the YT-2400 freighters",
+    "file": "/models/galaxy/freighter.glb",
     "also": [
       "galaxy"
     ]
@@ -855,6 +1150,34 @@
     "where": "galaxy",
     "as": "the Gozanti cruisers",
     "file": "/models/galaxy/gozanti.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-gunboat": {
+    "title": "Star Wars: Alpha-class Xg-1 Star Wing",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-alpha-class-xg-1-star-wing-b07306d348a44991ae7d0bbcff95fe90",
+    "where": "galaxy",
+    "as": "the Xg-1 assault gunboats",
+    "file": "/models/galaxy/gunboat.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-ig2000": {
+    "title": "IG-2000",
+    "author": "CorelliaStar Shipyards",
+    "authorUrl": "https://sketchfab.com/corelliastarshipyards",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/ig-2000-527958c20fdb4d4d9f3e858db62e6139",
+    "where": "galaxy",
+    "as": "IG-88’s IG-2000",
+    "file": "/models/galaxy/ig2000.glb",
     "also": [
       "galaxy"
     ]
@@ -901,20 +1224,6 @@
       "galaxy"
     ]
   },
-  "galaxy-munificent": {
-    "title": "Munificent-Class Star Frigate",
-    "author": "A308 Digital",
-    "authorUrl": "https://sketchfab.com/A308",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/munificent-class-star-frigate-44d5db77bb1342e5a6e58c24a0dcb256",
-    "where": "galaxy",
-    "as": "the Munificent frigates",
-    "file": "/models/galaxy/munificent.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "galaxy-n1": {
     "title": "Naboo N-1 Starfighter - Star Wars",
     "author": "Quiznos323",
@@ -943,6 +1252,20 @@
       "galaxy"
     ]
   },
+  "galaxy-nebulonhq": {
+    "title": "Star Wars: Nebulon B Frigate",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-nebulon-b-frigate-19b1b0126f8248c28ce38863413c30b8",
+    "where": "galaxy",
+    "as": "the Nebulon-B frigates, close up",
+    "file": "/models/galaxy/hq/nebulon.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "galaxy-nubian": {
     "title": "Naboo Royal Starship (J-type 327 Nubian)",
     "author": "hobbit84",
@@ -953,20 +1276,6 @@
     "where": "galaxy",
     "as": "the Naboo royal starship",
     "file": "/models/galaxy/nubian.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "galaxy-providence": {
-    "title": "Star Wars: The Clone Wars Providence",
-    "author": "lolqeeeeeeeeee",
-    "authorUrl": "https://sketchfab.com/lolqeeeeeeeeee",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-the-clone-wars-providence-8d27764a7d254fd7948557daf6d7ccdc",
-    "where": "galaxy",
-    "as": "the Invisible Hand",
-    "file": "/models/galaxy/providence.glb",
     "also": [
       "galaxy"
     ]
@@ -1023,6 +1332,20 @@
     "where": "galaxy",
     "as": "the TIE bombers",
     "file": "/models/galaxy/tiebomber.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "galaxy-transport": {
+    "title": "Star Wars: GR-75 Medium Transport",
+    "author": "Daniel",
+    "authorUrl": "https://sketchfab.com/DanielAndersson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-gr-75-medium-transport-071b158d02c044ee9b431aeb28b85b6a",
+    "where": "galaxy",
+    "as": "the GR-75 transports",
+    "file": "/models/galaxy/transport.glb",
     "also": [
       "galaxy"
     ]
@@ -1247,17 +1570,6 @@
     "where": "middle-earth",
     "as": "Minas Tirith"
   },
-  "omni-man": {
-    "title": "Omni Man Fortnite",
-    "author": "Swimknot19",
-    "authorUrl": "https://sketchfab.com/RafaMario",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/omni-man-fortnite-4203fb581ef0499a82fb2db5d9f96744",
-    "where": "invincible",
-    "as": "Omni-Man",
-    "file": "/models/invincible/omni-man.glb"
-  },
   "orthanc": {
     "title": "Isengard",
     "author": "AndreOrla",
@@ -1299,6 +1611,20 @@
     "where": "universe",
     "as": "the Star Destroyers",
     "file": "/models/universe/star-destroyer.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-aat": {
+    "title": "-Star Wars- AAT",
+    "author": "ARKON MAREK",
+    "authorUrl": "https://sketchfab.com/ARKON-83",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-aat-9ed126f4616a482fabee52b0e0d46e52",
+    "where": "galaxy-surface",
+    "as": "the AAT battle tanks",
+    "file": "/models/galaxy/surface/aat.glb",
     "also": [
       "galaxy"
     ]
@@ -1355,6 +1681,20 @@
     "where": "galaxy-surface",
     "as": "the Rebel ammo canisters",
     "file": "/models/galaxy/surface/ammocan.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-anakin": {
+    "title": "Star Wars Episode 3: Anakin Skywalker",
+    "author": "alnmathew",
+    "authorUrl": "https://sketchfab.com/alnmathew",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-episode-3-anakin-skywalker-afde81fe035b4e0aa8d1b3b96c9fd7ff",
+    "where": "galaxy-surface",
+    "as": "Anakin Skywalker",
+    "file": "/models/galaxy/surface/anakin.glb",
     "also": [
       "galaxy"
     ]
@@ -1458,12 +1798,12 @@
     ]
   },
   "surface-atte": {
-    "title": "AT-TE Walker",
-    "author": "HarukaS",
-    "authorUrl": "https://sketchfab.com/Haruka_S",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/at-te-walker-93890aa7a2c84102a4a28af05bd07c9b",
+    "title": "AT-TE Walker (Animated)",
+    "author": "R3negadeAidan",
+    "authorUrl": "https://sketchfab.com/R3negadeAidan",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/at-te-walker-animated-81ef81cf6c554055b741b43a1a08d69f",
     "where": "galaxy-surface",
     "as": "the AT-TE walkers",
     "file": "/models/galaxy/surface/atte.glb",
@@ -1556,20 +1896,6 @@
       "galaxy"
     ]
   },
-  "surface-benhut": {
-    "title": "Poor Desert House",
-    "author": "Fjordreig",
-    "authorUrl": "https://sketchfab.com/Fjordreig",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/poor-desert-house-64310fbd9b1640cdbf04f5f12ad58ba2",
-    "where": "galaxy-surface",
-    "as": "Ben Kenobi’s hut",
-    "file": "/models/galaxy/surface/benhut.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-bevelcrate": {
     "title": "Star Wars Beveled Crate S",
     "author": "tegnemaskin",
@@ -1598,6 +1924,20 @@
       "galaxy"
     ]
   },
+  "surface-bunkerash": {
+    "title": "Star Wars Endor Bunker",
+    "author": "aclarke064",
+    "authorUrl": "https://sketchfab.com/aclarke064",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-endor-bunker-1c54abb1c6824f26a0a087d2bd7a635a",
+    "where": "galaxy-surface",
+    "as": "the Imperial bunker, its moss taken off",
+    "file": "/models/galaxy/surface/bunkerash.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-c3po": {
     "title": "C-3PO Weight Shift",
     "author": "Telkar5",
@@ -1608,6 +1948,48 @@
     "where": "galaxy-surface",
     "as": "C-3PO",
     "file": "/models/galaxy/surface/c3po.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "deathstar-c3po": {
+    "title": "C-3PO Weight Shift",
+    "author": "Telkar5",
+    "authorUrl": "https://sketchfab.com/Telkar5",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0",
+    "where": "galaxy-surface",
+    "as": "C-3PO aboard the Death Star, rigged again on the crew’s skeleton so he walks, sits and falls as they do",
+    "file": "/models/deathstar/c3po.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-cassian": {
+    "title": "Cassian Andor",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/cassian-andor-1ef27f2978d442e39eac1e62cf28e226",
+    "where": "galaxy-surface",
+    "as": "Cassian Andor",
+    "file": "/models/galaxy/surface/cassian.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-chirrut": {
+    "title": "Chirrut Îmwe",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/chirrut-imwe-9340db8a8aab4091886d25a187b956fa",
+    "where": "galaxy-surface",
+    "as": "Chirrut Îmwe",
+    "file": "/models/galaxy/surface/chirrut.glb",
     "also": [
       "galaxy"
     ]
@@ -1796,6 +2178,20 @@
       "galaxy"
     ]
   },
+  "surface-ds2sky": {
+    "title": "Death Star II",
+    "author": "N8",
+    "authorUrl": "https://sketchfab.com/nathanmlange",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/death-star-ii-17ccca0dbb6b4e338fa999202f9e6685",
+    "where": "galaxy-surface",
+    "as": "the second Death Star",
+    "file": "/models/galaxy/surface/ds2sky.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-dwarfspider": {
     "title": "Dwarf Spider Droid",
     "author": "Mind Mulch for The Masses",
@@ -1852,6 +2248,20 @@
       "galaxy"
     ]
   },
+  "surface-eweb": {
+    "title": "e web clone wars style",
+    "author": "zakeriiino",
+    "authorUrl": "https://sketchfab.com/zakeriiino",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/e-web-clone-wars-style-05e7a18aeeb94478b45454eaa609346f",
+    "where": "galaxy-surface",
+    "as": "the E-Web heavy blasters",
+    "file": "/models/galaxy/surface/eweb.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-ewok": {
     "title": "Ewok",
     "author": "Ulrik S. Selvik",
@@ -1862,20 +2272,6 @@
     "where": "galaxy-surface",
     "as": "the Ewoks",
     "file": "/models/galaxy/surface/ewok.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-fortress": {
-    "title": "Vader's Castle",
-    "author": "art16c",
-    "authorUrl": "https://sketchfab.com/art16c",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/vaders-castle-dccd24bde1c0475eab1f1674c108d42a",
-    "where": "galaxy-surface",
-    "as": "Vader's castle",
-    "file": "/models/galaxy/surface/fortress.glb",
     "also": [
       "galaxy"
     ]
@@ -2091,16 +2487,16 @@
       "galaxy"
     ]
   },
-  "surface-jeditemple": {
-    "title": "Jedi Temple",
-    "author": "Owen Cornelius",
-    "authorUrl": "https://sketchfab.com/omcstudios333",
+  "surface-juggernaut": {
+    "title": "Clone Turbo Tank HAVw A6 Juggernaut",
+    "author": "bruhepic925",
+    "authorUrl": "https://sketchfab.com/bruhepic925",
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/jedi-temple-317dedec15a845cbb1abc8c90804b840",
+    "source": "https://sketchfab.com/3d-models/clone-turbo-tank-havw-a6-juggernaut-4e331a37fe614fc783f0dcbcb77310cb",
     "where": "galaxy-surface",
-    "as": "the Jedi Temple",
-    "file": "/models/galaxy/surface/jeditemple.glb",
+    "as": "the clone turbo tanks",
+    "file": "/models/galaxy/surface/juggernaut.glb",
     "also": [
       "galaxy"
     ]
@@ -2157,6 +2553,20 @@
     "where": "galaxy-surface",
     "as": "the krayt dragon’s bones",
     "file": "/models/galaxy/surface/krayt.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-krennic": {
+    "title": "Orson Callan Krennic",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/orson-callan-krennic-59c66eb5d470436f9d29d5720c9b402a",
+    "where": "galaxy-surface",
+    "as": "Director Krennic",
+    "file": "/models/galaxy/surface/krennic.glb",
     "also": [
       "galaxy"
     ]
@@ -2245,6 +2655,20 @@
       "galaxy"
     ]
   },
+  "surface-mace": {
+    "title": "Mace Windu",
+    "author": "Mind Mulch for The Masses",
+    "authorUrl": "https://sketchfab.com/mindmulchforthemasses",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/mace-windu-ba2eaba7ff6b45c89c1b2c4919e46880",
+    "where": "galaxy-surface",
+    "as": "Mace Windu",
+    "file": "/models/galaxy/surface/mace.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-mosarch": {
     "title": "Tattoine Buildings Kitbash",
     "author": "chuckcg",
@@ -2273,6 +2697,20 @@
       "galaxy"
     ]
   },
+  "surface-mosespa": {
+    "title": "SM_Mos_Espa_Grand_house",
+    "author": "michael50",
+    "authorUrl": "https://sketchfab.com/michael50",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/sm-mos-espa-grand-house-3ca4aa22148f4435b7c763f0039c1449",
+    "where": "galaxy-surface",
+    "as": "the Mos Espa houses",
+    "file": "/models/galaxy/surface/mosespa.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-moshouse": {
     "title": "Tattoine Buildings Kitbash",
     "author": "chuckcg",
@@ -2297,20 +2735,6 @@
     "where": "galaxy-surface",
     "as": "the huts of Mos Eisley",
     "file": "/models/galaxy/surface/moshut.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-mosspire": {
-    "title": "Tattoine Buildings Kitbash",
-    "author": "chuckcg",
-    "authorUrl": "https://sketchfab.com/chuckcg",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
-    "where": "galaxy-surface",
-    "as": "the spires of Mos Eisley",
-    "file": "/models/galaxy/surface/mosspire.glb",
     "also": [
       "galaxy"
     ]
@@ -2357,6 +2781,34 @@
       "galaxy"
     ]
   },
+  "surface-n1fighter": {
+    "title": "Naboo N-1 Starfighter - Star Wars",
+    "author": "Quiznos323",
+    "authorUrl": "https://sketchfab.com/quiznos323",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/naboo-n-1-starfighter-star-wars-3cf69f6c85234aac8844e845e74ac75b",
+    "where": "galaxy-surface",
+    "as": "the parked N-1 starfighters",
+    "file": "/models/galaxy/surface/n1fighter.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-padme": {
+    "title": "Star+ Wars+-+ Padme+-+ Amidala",
+    "author": "Brainy Skills",
+    "authorUrl": "https://sketchfab.com/nativejaxgirl",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-padme-amidala-35e48eeb21f54d7e8a20e72f86753311",
+    "where": "galaxy-surface",
+    "as": "Padmé Amidala",
+    "file": "/models/galaxy/surface/padme.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-palm": {
     "title": "Coconut Tree Low poly",
     "author": "Nodeaxis Interactive",
@@ -2367,6 +2819,20 @@
     "where": "galaxy-surface",
     "as": "the palms",
     "file": "/models/galaxy/surface/palm.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-parkedxwing": {
+    "title": "Star Wars; X-wing Fighter",
+    "author": "Heataker",
+    "authorUrl": "https://sketchfab.com/Heataker",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-x-wing-fighter-e6b85951f85940c1b26505eda7d73ef9",
+    "where": "galaxy-surface",
+    "as": "the parked X-wings",
+    "file": "/models/galaxy/surface/parkedxwing.glb",
     "also": [
       "galaxy"
     ]
@@ -2412,6 +2878,17 @@
     "also": [
       "galaxy"
     ]
+  },
+  "surface-droid": {
+    "title": "R2-D2",
+    "author": "ThisIsntAPerson",
+    "authorUrl": "https://sketchfab.com/ThisIsntAPerson",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/r2-d2-b251906902104fddb6f1a9a38bfe92ab",
+    "where": "galaxy-surface",
+    "as": "the astromechs",
+    "file": "/models/galaxy/surface/droid.glb"
   },
   "surface-r5": {
     "title": "R5-J2 Imperial Astromech Droid",
@@ -2493,6 +2970,20 @@
     "where": "galaxy-surface",
     "as": "the rontos",
     "file": "/models/galaxy/surface/ronto.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-royalship": {
+    "title": "Naboo Royal Starship (J-type 327 Nubian)",
+    "author": "hobbit84",
+    "authorUrl": "https://sketchfab.com/hobbit84",
+    "license": "CC-BY-NC-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
+    "source": "https://sketchfab.com/3d-models/naboo-royal-starship-j-type-327-nubian-f631077977754b5591298ecfa201380b",
+    "where": "galaxy-surface",
+    "as": "the Naboo royal starship",
+    "file": "/models/galaxy/surface/royalship.glb",
     "also": [
       "galaxy"
     ]
@@ -2582,6 +3073,20 @@
       "galaxy"
     ],
     "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
+  },
+  "surface-senatepod": {
+    "title": "Star Wars Galaxies - Senate Pod",
+    "author": "Zorg_Sinister",
+    "authorUrl": "https://sketchfab.com/4130ff15fe394c239cc064b5286c43",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-galaxies-senate-pod-64dabc7d11d24b18a56edc4d1d91ae0f",
+    "where": "galaxy-surface",
+    "as": "the Senate pods",
+    "file": "/models/galaxy/surface/senatepod.glb",
+    "also": [
+      "galaxy"
+    ]
   },
   "surface-shoretrooper": {
     "title": "Battlefront 2 Remaster: imp_inf_shoretrooper",
@@ -2711,34 +3216,6 @@
       "galaxy"
     ]
   },
-  "surface-stall": {
-    "title": "Tattoine Buildings Kitbash",
-    "author": "chuckcg",
-    "authorUrl": "https://sketchfab.com/chuckcg",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
-    "where": "galaxy-surface",
-    "as": "the market stalls",
-    "file": "/models/galaxy/surface/stall.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-stilthut": {
-    "title": "Thatched Hut on Stilts",
-    "author": "rajoelinirinanear",
-    "authorUrl": "https://sketchfab.com/rajoelinirinanear",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thatched-hut-on-stilts-b73d5d61395d45a2bd65768223fb28de",
-    "where": "galaxy-surface",
-    "as": "the krill farmers’ huts",
-    "file": "/models/galaxy/surface/stilthut.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-stormtrooper": {
     "title": "Battlefront 2 Remaster: imp_inf_stormtrooper",
     "author": "Harrisonfog",
@@ -2783,16 +3260,30 @@
     ],
     "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
-  "surface-tipoca": {
-    "title": "Kamino Platform Simple 1",
-    "author": "svemun",
-    "authorUrl": "https://sketchfab.com/svemun",
+  "surface-tathouse": {
+    "title": "Tatooine Styled House V2",
+    "author": "haykal12321",
+    "authorUrl": "https://sketchfab.com/haykal12321",
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/kamino-platform-simple-1-9c569d83df584c06b1c6ea1b496a4704",
+    "source": "https://sketchfab.com/3d-models/tatooine-styled-house-v2-66893ef6ad5f434e9db954b1f5496dfc",
     "where": "galaxy-surface",
-    "as": "Tipoca City",
-    "file": "/models/galaxy/surface/tipoca.glb",
+    "as": "the Tatooine domed houses",
+    "file": "/models/galaxy/surface/tathouse.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
+  "surface-tathouse2": {
+    "title": "Tatooine Styled House",
+    "author": "haykal12321",
+    "authorUrl": "https://sketchfab.com/haykal12321",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/tatooine-styled-house-9cf63b1dfb234bab823879f78f367128",
+    "where": "galaxy-surface",
+    "as": "the Tatooine domed houses",
+    "file": "/models/galaxy/surface/tathouse2.glb",
     "also": [
       "galaxy"
     ]
@@ -2936,17 +3427,6 @@
     "also": [
       "galaxy"
     ]
-  },
-  "thragg": {
-    "title": "Thragg from invincible s4",
-    "author": "Gojiram",
-    "authorUrl": "https://sketchfab.com/geoffscool",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thragg-from-invincible-s4-b404844894fb4f4d99b8c1648dc901a4",
-    "where": "invincible",
-    "as": "Thragg",
-    "file": "/models/invincible/thragg.glb"
   },
   "tie-interceptor": {
     "title": "Star Wars: TIE/in Interceptor",

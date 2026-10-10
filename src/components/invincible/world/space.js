@@ -8,7 +8,7 @@
 // world's Earth and turned so the city is at the top.
 
 import * as THREE from 'three';
-import { loadTexture, variant } from '../../../lib/three/textures';
+import { loadTexture, variant, sharpen } from '../../../lib/three/textures';
 import { hot } from '../../avengers/hq/engine';
 import { BODIES, SPACE } from './orbit';
 
@@ -273,6 +273,7 @@ function glow() {
   x.fillStyle = g;
   x.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

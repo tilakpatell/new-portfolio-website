@@ -2,45 +2,116 @@
 // in a stance's strokes that chain into a combo, a charged heavy stroke,
 // held up to block, thrown and caught. The hilt is a gun kind
 // (universe/gunplay.js's `saber`), so the same grip and arm that hold a
-// blaster hold it, and the lit stance (held out in front, point up) is
-// gunplay's aimed one; this poses the arm over that, after `gp.set`, and
-// reads combatRules.js for the stances, where a stroke is and what it
-// reaches. A double blade lights out of the pommel too; dual wield puts a
-// second hilt in the other hand. The blade leaves a trail through a
-// stroke. Hits go back through `hit(target, damage, at, { heavy })`;
-// sounds through `sound(name)`.
+// blaster hold it; at guard this poses the arms over gunplay's, after
+// `gp.set`: lit, the hilt low before the belly in both hands (the other
+// hand below the first, as Luke holds it), the blade up and ahead. A double
+// blade lights out of the pommel too; dual wield puts a second hilt in the
+// other hand, held at a mirrored guard.
 //
-//   createSaber(gp, { color, hilt, stance, parent, sound }) →
-//     { light(on), swing(now, { heavy }), block(on), throw(now, dir),
-//       update(dt, now, { forward, up, me, targets, hit }), deflecting(from),
-//       lit, busy, swinging, thrown, charge (0…1 while F is held), setCharge(k), dispose() }
+// A stroke is a clip: one of UAL2's sword clips (combatRules.js's stance
+// table, strokeFor), played full-body on the figure's animator (`fig.play`)
+// for the legs and the hips, and its arms and chest laid here over
+// gunplay's from the same clip at the same time, so the blade goes where
+// the clip swings it. The clip's root travel (its extras, baked by
+// scripts/ual-bake.mjs) steps the figure (`me`), scaled to land the stroke
+// on the one it's locked on and capped at the stance's lunge; the figure
+// turns to the lock over the wind-up (the first 40% of the clip), eased;
+// inside the clip's contact window the sword arm is turned toward the
+// lock's chest (or a chest a stroke's length ahead, with no lock), by at
+// most 0.25 rad, so a clip made on a mannequin connects with a Wookiee. What the stroke hits is the blade: its segment swept
+// between frames (lib/combat/blade.js) against each target's capsule,
+// inside the contact window, once a stroke a target. The trail is drawn
+// from the same frames (lib/three/combat/trail.js). Hits go back through
+// `hit(target, damage, at, { heavy })`, `at` on the blade; sounds through
+// `sound(name)`. The block lays the block clip's arms the same way, held
+// up across, and shows for the parry window however short the press; a
+// bolt whose flown segment passes through the held blade is turned
+// (`guard`, for lib/combat/bolt.js's step), one beside it isn't.
+//
+//   createSaber(gp, { color, hilt, stance, parent, sound, fig, clips }) →
+//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), cancel(), block(on), throw(now, dir),
+//       stand(dt, now, move), update(dt, now, { forward, up, me, targets, hit }),
+//       guard(id, side) (the raised blade for the bolts' step, and what
+//       meets a duellist's contact: { id, base, tip, r, side } | null), lit, busy, swinging (the stroke: { name (the
+//       clip's), clip, t0, speed, contact, damage, heavy, … } or null), thrown, charge (0…1 while F is
+//       held), setCharge(k), blades (lib/combat/blade.js's, the main first),
+//       dispose() }
+//   fig: the figure that holds it ({ bones, hipsY?, play? }); without
+//   `play` the arms still swing (laid here) but the legs keep their clips.
+//   clips: { name: clip } to use in place of the library's (tests); a
+//   stroke whose clip hasn't come yet is timed as one and swings nothing.
+//   lock: a target (as `targets` hold them: { holder, fig?, spec? }); lunge:
+//   the stance's lunge times this (a perk's); clip: a sword clip's name to
+//   play in place of the one strokeFor picks (a peer's, as their packet says).
 
 import * as THREE from 'three';
-import { frameFrom, reach, setWorldQuaternion } from '../../../lib/three/ik';
-import { HEAVY, arcHit, nextSwing, stanceOf, swingPose } from './combatRules';
-import { SABER, deflects, throwAt } from './saberRules';
+import { createBlade } from '../../../lib/combat/blade';
+import { loadClip } from '../../../lib/three/clipLibrary';
+import { createTrail } from '../../../lib/three/combat/trail';
+import { frameFrom, reach, rotateWorld, setWorldQuaternion } from '../../../lib/three/ik';
+import { capsuleOf } from './blaster';
+import { BLOCK_CLIP, DIRS, HEAVY, PARRY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
+import { SABER, throwAt } from './saberRules';
 
 const V = THREE.Vector3;
 const _a = new V();
 const _b = new V();
 const _c = new V();
+const _d = new V();
+const _e = new V();
 const _q = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
 const LIGHT = 9; // how quick the blade comes out (per second)
 const BLOCK = { yaw: 0.3, pitch: 0.85 }; // the raised blade: up and across to the left
 const SWING_YAW = 0.55; // how far round the hand follows the blade's turn
-const TRAIL = 14; // segments of the trail behind the blade
+// in both hands: the hilt this far out before the chest (arm lengths), up
+// or down from the shoulders with the blade's pitch (low + rise × pitch,
+// kept between low[1] and high), a little right, and round with the blade
+const TWO = { fwd: 0.68, low: [-0.3, -0.8], rise: 0.5, high: 0.4, side: 0.05, swing: 0.55, twist: 0.45 };
+const LEFT_DOWN = 0.09; // metres down the hilt from the first hand's middle to the second's
+// lit, between strokes: the hilt low before the belly, the blade up and
+// ahead, a little across (a dual wielder's first hilt out to the right)
+const GUARD = { yaw: 0.12, pitch: 1.0, at: { fwd: 0.48, up: -0.58, side: 0.05 } };
+const GUARD_DUAL = { yaw: -0.3, pitch: 0.7, at: { fwd: 0.45, up: -0.7, side: 0.38 } };
+const TRAIL = 8; // frames of the trail behind the blade (and the blade's memory of them)
 const radiusOf = (t) => Math.max(0.45, (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1) * 0.35);
+// what a stroke lays from its clip over gunplay's arms: the chest and both arms
+const ARMS = ['Spine02', 'Spine01', 'Spine', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'];
+const TURN = 0.4; // of the clip, the figure turning to the lock
+const CORRECT = 0.25; // radians the sword arm may be turned toward the lock in the contact window
+const IN = 0.08; // seconds a stroke's arms take to come on over the guard
+const OUT = 0.15; // and to go at its end
+const CANCEL = 0.05; // seconds after the contact window ends that the next stroke may cut in
+const BLOCK_AT = 0.32; // of the block clip, where it's held: the blade up across
+const DEFLECT_R = 0.3; // how near the held blade a bolt turns off it (m): its streak is a hand across, and a block should read as covering
+const NO_CLIP = { duration: 0.6, contact: [0.2, 0.4] }; // (a stroke whose clip hasn't come: timed as one)
+const ease = (k) => k * k * (3 - 2 * k);
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+// a clip's root travel at time t (metres, the figure's own +x and +z), between the baked rows
+const rootAt = (root, t) => {
+  if (!root?.length) return [0, 0];
+  if (t <= root[0][0]) return [root[0][1], root[0][2]];
+  for (let i = 1; i < root.length; i++)
+    if (root[i][0] >= t) {
+      const [ta, xa, za] = root[i - 1];
+      const [tb, xb, zb] = root[i];
+      const k = (t - ta) / Math.max(1e-6, tb - ta);
+      return [xa + (xb - xa) * k, za + (zb - za) * k];
+    }
+  const l = root[root.length - 1];
+  return [l[1], l[2]];
+};
 
-export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'single', parent = null, sound = null } = {}) {
+export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'single', parent = null, sound = null, fig = null, clips: given = null } = {}) {
   const gun = gp.gun;
-  const { RightArm: upper, RightForeArm: fore, RightHand: hand, LeftHand: leftHand } = gp.bones;
+  const { RightArm: upper, RightForeArm: fore, RightHand: hand, LeftArm: leftUpper, LeftHand: leftHand } = gp.bones;
   const blade = gun.getObjectByName('blade');
   const sleeve = gun.getObjectByName('sleeve');
   const core = gun.getObjectByName('core');
   const local = { pos: gun.position.clone(), quat: gun.quaternion.clone(), scale: gun.scale.clone() }; // in the hand (attach() to the world rewrites all three)
   const gripInv = gun.quaternion.clone().invert();
   const st_ = stanceOf(stance);
+  const two = stance !== 'dual' && Boolean(gp.holdLeft && leftUpper && leftHand); // (both hands on the one hilt)
   dress(gun, color, hilt);
   // the second blade: out of the pommel (a staff), or a second hilt in the other hand
   const blades = [blade].filter(Boolean);
@@ -66,25 +137,59 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     const b2 = gun2.getObjectByName('blade');
     if (b2) blades.push(b2);
   }
-  // the trail: a ribbon from the hilt to the tip over the last few frames
-  const trailGeo = new THREE.BufferGeometry();
-  const trailPos = new Float32Array(TRAIL * 2 * 3);
-  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
-  const trailIdx = [];
-  for (let i = 0; i < TRAIL - 1; i++) trailIdx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
-  trailGeo.setIndex(trailIdx);
-  const trailMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
-  const trail = new THREE.Mesh(trailGeo, trailMat);
-  trail.frustumCulled = false;
-  trail.visible = false;
-  (parent ?? gun.parent?.parent)?.add(trail);
-  const trailPts = []; // [{ a: V, b: V }] newest first
+  // each blade's segment, frame by frame (what its strokes hit), and its trail from them
+  const segs = blades.map(() => createBlade({ keep: TRAIL }));
+  const trails = blades.map(() => createTrail(parent ?? gun.parent?.parent, { color, length: TRAIL }));
+  // the clips: the stance's, the heavy ones, the ways and the block, fetched now so the first stroke has its own
+  const clips = { ...(given ?? {}) };
+  const names = [...st_.strokes.map((k) => k.clip), ...HEAVY.clips, ...Object.values(DIRS).map((d) => d.clip), BLOCK_CLIP];
+  let gone = false;
+  if (!given)
+    for (const n of new Set(names))
+      loadClip(n).then((c) => {
+        if (c && !gone) clips[n] = c;
+      });
+  // each clip's arms on this figure, to sample by hand
+  const armsOf = new Map();
+  const partsOf = (clip) => {
+    if (!armsOf.has(clip))
+      armsOf.set(
+        clip,
+        clip.tracks
+          .map((tr) => {
+            const i = tr.name.lastIndexOf('.');
+            const name = tr.name.slice(0, i);
+            const bone = tr.name.slice(i + 1) === 'quaternion' && ARMS.includes(name) ? (fig?.bones?.[name] ?? gp.bones[name] ?? null) : null;
+            return bone && { bone, at: tr.createInterpolant() };
+          })
+          .filter(Boolean),
+      );
+    return armsOf.get(clip);
+  };
+  const lay = (clip, t, w) => {
+    if (!clip || w <= 1e-3) return;
+    for (const p of partsOf(clip)) {
+      const v = p.at.evaluate(t);
+      p.bone.quaternion.slerp(_q.set(v[0], v[1], v[2], v[3]), Math.min(1, w));
+    }
+  };
+  // the figure's hips over its toes in metres, against the clip's (for the root's travel)
+  const hipsM = (() => {
+    const h = fig?.bones?.Hips ?? gp.bones.Hips;
+    if (!h?.parent) return 0.92;
+    h.parent.updateWorldMatrix(true, false);
+    return (fig?.hipsY ?? h.position.y) * h.parent.getWorldScale(_e).y;
+  })();
 
   const st = {
     on: false,
     lit: 0,
-    swing: null, // { i, t0, hits, heavy, dur, lead, damage }
-    last: null, // { i, endedAt }
+    swing: null, // the stroke: strokeFor's, with { t0, dur, contact, root, rootHips, clip, hits, lock, yaw0, scale, was }
+    last: null, // the stroke before, with its endedAt
+    move: 0, // how much the figure's going (stand's): moving, the legs keep walking under a stroke
+    blockW: 0, // the block clip's arms, coming on and going
+    blockFrom: null, // when the block last went up (a tap still shows it for the parry window)
+    now: 0, // the last frame's time
     blocking: false,
     thrown: null, // { t0, from, dir, hits }
     me: null,
@@ -96,8 +201,13 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   }
 
   // the arm, over gunplay's pose: the blade along `yaw` round and `pitch`
-  // up from the facing, the hand carried round with it
-  const pose = (yaw, pitch, { forward, up }, w = 1) => {
+  // up from the facing, the hand carried round with it. Held in both hands
+  // (any stance but dual), the hilt goes before the chest, swung round it,
+  // and the other hand closes on the hilt below the first; held in one,
+  // it's out from the shoulder. `at` puts the hilt somewhere of its own
+  // instead: { fwd, up, side } from the middle of the shoulders, in arm
+  // lengths (the guard's).
+  const pose = (yaw, pitch, { forward, up }, w = 1, at = null) => {
     if (!upper || !fore || !hand) return;
     const right = _a.crossVectors(forward, up).normalize();
     const B = _b.copy(forward).applyAxisAngle(up, yaw);
@@ -105,23 +215,82 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     upper.updateWorldMatrix(true, false);
     const S = upper.getWorldPosition(new V());
     const armLen = gp.armLen;
-    const target = _c
-      .copy(forward)
-      .applyAxisAngle(up, yaw * SWING_YAW)
-      .multiplyScalar(0.5 * armLen)
-      .addScaledVector(up, (0.1 + 0.3 * pitch) * armLen)
-      .addScaledVector(right, 0.15 * armLen)
-      .add(S);
+    const target = _c;
+    if (two || at) {
+      const C = (leftUpper ?? upper).getWorldPosition(new V()).add(S).multiplyScalar(0.5);
+      const o = at ?? { fwd: TWO.fwd, up: Math.max(TWO.low[1], Math.min(TWO.high, TWO.low[0] + TWO.rise * pitch)), side: TWO.side };
+      target
+        .copy(forward)
+        .applyAxisAngle(up, at ? 0 : yaw * TWO.swing)
+        .multiplyScalar(o.fwd * armLen)
+        .addScaledVector(up, o.up * armLen)
+        .addScaledVector(right, o.side * armLen)
+        .add(C);
+    } else
+      target
+        .copy(forward)
+        .applyAxisAngle(up, yaw * SWING_YAW)
+        .multiplyScalar(0.5 * armLen)
+        .addScaledVector(up, (0.1 + 0.3 * pitch) * armLen)
+        .addScaledVector(right, 0.15 * armLen)
+        .add(S);
+    // the hilt's "sights" (gun +z, where the fingers run) square to the
+    // blade on the side away from up: the palm in toward the body, the
+    // knuckles ahead, as a hand closes on a hilt
+    const F = new V().copy(up).negate().addScaledVector(B, up.dot(B));
+    if (F.lengthSq() < 0.01) F.copy(forward);
+    frameFrom(F.normalize(), B, _q).multiply(gripInv);
+    // (the target's for the hilt in the fist: the wrist goes back from it
+    // by where the hilt sits in the hand, turned as the hand will be)
+    if (two || at) target.sub(_d.copy(local.pos).multiplyScalar(hand.getWorldScale(_e).x).applyQuaternion(_q));
     const out = target.distanceTo(S);
     if (out > armLen * 0.95) target.sub(S).multiplyScalar((armLen * 0.95) / out).add(S);
     const pole = new V().addScaledVector(up, -0.6).addScaledVector(right, 0.7).addScaledVector(forward, -0.2).normalize();
     reach(upper, fore, hand, target, pole, w);
-    // the hilt's "sights" (gun +z) wherever they land square to the blade
-    const F = new V().copy(up).addScaledVector(B, -up.dot(B));
-    if (F.lengthSq() < 0.01) F.copy(forward);
-    frameFrom(F.normalize(), B, _q).multiply(gripInv);
     setWorldQuaternion(hand, _q, w);
     gun.updateWorldMatrix(true, true);
+    if (two) {
+      // the other hand under it, the palms facing across the hilt
+      const anchor = _d.set(0, -LEFT_DOWN, 0).applyMatrix4(gun.matrixWorld);
+      const fingers = new V(0, 0, 1).transformDirection(gun.matrixWorld);
+      const axis = new V(0, 1, 0).transformDirection(gun.matrixWorld);
+      const poleL = new V().addScaledVector(up, -1).addScaledVector(right, -0.6).addScaledVector(forward, -0.15).normalize();
+      gp.holdLeft(anchor, fingers, axis, poleL, w);
+    }
+  };
+
+  // dual: the second hilt in the other hand, held as the first is at
+  // guard but mirrored (out to the left, the blade up and ahead), whatever
+  // the first is doing
+  const leftFore = gp.bones.LeftForeArm;
+  const gun2Inv = gun2 ? gun2.quaternion.clone().invert() : null;
+  const poseLeft = ({ forward, up }, w) => {
+    if (!gun2 || !leftUpper || !leftFore || gun2.parent !== leftHand || w <= 0) return;
+    const g = GUARD_DUAL;
+    const right = _a.crossVectors(forward, up).normalize();
+    const B = _b.copy(forward).applyAxisAngle(up, -g.yaw);
+    B.multiplyScalar(Math.cos(g.pitch)).addScaledVector(up, Math.sin(g.pitch)).normalize();
+    upper.updateWorldMatrix(true, false);
+    const SL = leftUpper.getWorldPosition(new V());
+    const C = upper.getWorldPosition(new V()).add(SL).multiplyScalar(0.5);
+    const armLen = gp.armLen;
+    const F = new V().copy(up).negate().addScaledVector(B, up.dot(B));
+    if (F.lengthSq() < 0.01) F.copy(forward);
+    frameFrom(F.normalize(), B, _q).multiply(gun2Inv);
+    const target = _c
+      .copy(forward)
+      .multiplyScalar(g.at.fwd * armLen)
+      .addScaledVector(up, g.at.up * armLen)
+      .addScaledVector(right, -g.at.side * armLen)
+      .add(C)
+      .sub(_d.copy(gun2.position).multiplyScalar(leftHand.getWorldScale(_e).x).applyQuaternion(_q));
+    const out = target.distanceTo(SL);
+    if (out > armLen * 0.95) target.sub(SL).multiplyScalar((armLen * 0.95) / out).add(SL);
+    const pole = new V().addScaledVector(up, -0.6).addScaledVector(right, -0.7).addScaledVector(forward, -0.2).normalize();
+    reach(leftUpper, leftFore, leftHand, target, pole, w);
+    setWorldQuaternion(leftHand, _q, w);
+    gun2.updateWorldMatrix(true, true);
+    gp.holdLeft(null, null, null, null, w); // (its fingers closed on it)
   };
 
   const fly = (dt, now, pose_, targets, hit) => {
@@ -166,26 +335,81 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     }
   };
 
-  // the trail behind the main blade: this frame's hilt-to-tip line at the
-  // front, the older ones fading behind it
-  const tipA = new V();
-  const tipB = new V();
-  const stepTrail = (swinging) => {
-    if (!blade) return;
-    if (swinging && st.lit > 0.5) {
-      blade.updateWorldMatrix(true, false);
-      tipA.set(0, 0.1, 0).applyMatrix4(blade.matrixWorld);
-      tipB.set(0, 1, 0).applyMatrix4(blade.matrixWorld);
-      trailPts.unshift({ a: tipA.clone(), b: tipB.clone() });
-      if (trailPts.length > TRAIL) trailPts.length = TRAIL;
-    } else if (trailPts.length) trailPts.pop(); // (gone in a few frames once the stroke's over)
-    trail.visible = trailPts.length > 1;
-    if (!trail.visible) return;
-    for (let i = 0; i < TRAIL; i++) {
-      const p = trailPts[Math.min(i, trailPts.length - 1)];
-      trailPos.set([p.a.x, p.a.y, p.a.z, p.b.x, p.b.y, p.b.z], i * 6);
+  // the block up: held, or tapped within the parry window
+  const blockShown = () => st.blocking || (st.blockFrom != null && st.now - st.blockFrom < PARRY.window);
+  // each blade's segment this frame, from the hilt to the tip
+  const _base = new V();
+  const _tip = new V();
+  const pushBlades = (now) => {
+    blades.forEach((b, i) => {
+      b.updateWorldMatrix(true, false);
+      _base.set(0, 0.1, 0).applyMatrix4(b.matrixWorld);
+      _tip.set(0, 1, 0).applyMatrix4(b.matrixWorld);
+      segs[i].push(_base.toArray(), _tip.toArray(), now);
+    });
+  };
+  const drawTrails = (on) => trails.forEach((tr, i) => tr.sync(segs[i].history(), on && st.lit > 0.5));
+
+  // a stroke a frame on: the turn to the lock, the root's step, the clip's
+  // arms over gunplay's, the arm's correction, the blade through them
+  const _hit = new V();
+  const stroke = (dt, now, p) => {
+    const sw = st.swing;
+    const t = Math.min(sw.dur, (now - sw.t0) * sw.speed);
+    const me = p.me;
+    // (the lock's feet and chest, if it's still standing)
+    const lock = sw.lock && !sw.lock.down && sw.lock.holder ? sw.lock.holder.position : null;
+    if (me && lock && t < sw.dur * TURN) {
+      const want = Math.atan2(lock.x - me.x, lock.z - me.z);
+      sw.yaw0 ??= me.yaw;
+      me.yaw = sw.yaw0 + wrap(want - sw.yaw0) * ease(Math.min(1, t / (sw.dur * TURN)));
     }
-    trailGeo.attributes.position.needsUpdate = true;
+    if (me && sw.walk) {
+      const [x, z] = rootAt(sw.root, t);
+      // (the step grown or cut up to the blade's landing; after it, the clip's own)
+      const k = (t <= sw.contact[1] ? sw.scale : Math.min(1, sw.scale)) * (hipsM / (sw.rootHips || hipsM));
+      const lx = (x - sw.was[0]) * k;
+      const lz = (z - sw.was[1]) * k;
+      sw.was = [x, z];
+      // (the figure's own +x is its left, +z ahead, turned by its yaw)
+      me.x += Math.cos(me.yaw) * lx + Math.sin(me.yaw) * lz;
+      me.z += -Math.sin(me.yaw) * lx + Math.cos(me.yaw) * lz;
+    }
+    // the clip's arms, eased on over the guard and off at the end
+    const w = Math.min(1, (now - sw.t0) / IN, (sw.dur - t) / (sw.speed * OUT) + 0.0001);
+    lay(sw.clip, t, w);
+    const [c0, c1] = sw.contact;
+    const inside = t >= c0 && t <= c1;
+    // in the window, the sword arm a little toward the lock's chest (with
+    // no lock, toward where a chest would be a stroke's length ahead)
+    if (inside && upper && blade && me) {
+      // (eased in and out over the window's first and last 30 ms: the cut is often near its end)
+      const env = Math.min(1, (t - c0) / 0.03, (c1 - t) / 0.03);
+      upper.updateWorldMatrix(true, false);
+      const S = upper.getWorldPosition(_a);
+      blade.updateWorldMatrix(true, false);
+      const mid = _b.set(0, 0.55, 0).applyMatrix4(blade.matrixWorld).sub(S);
+      const tall = lock ? (sw.lock.fig?.tall ?? 1.6) * (sw.lock.spec?.scale ?? 1) : hipsM / 0.53;
+      const at = lock ?? _e.set(me.x + Math.sin(me.yaw) * STRIKE, S.y - tall * 0.8, me.z + Math.cos(me.yaw) * STRIKE);
+      const chest = _c.set(at.x, at.y + tall * 0.65, at.z).sub(S);
+      const ang = mid.angleTo(chest);
+      if (ang > 1e-3) rotateWorld(upper, _d.crossVectors(mid, chest).normalize(), Math.min(ang, CORRECT) * env);
+    }
+    pushBlades(now);
+    if (inside && st.lit > 0.5) {
+      const caps = (p.targets ?? []).filter((x) => !sw.hits.has(x) && x.holder).map((x) => ({ ...capsuleOf(x), ref: x })); // (a body as the bolts see it: blaster.js's)
+      for (const seg of segs)
+        for (const h of seg.sweep(caps)) {
+          if (sw.hits.has(h.target.ref)) continue;
+          sw.hits.add(h.target.ref);
+          p.hit?.(h.target.ref, sw.damage, _hit.fromArray(h.at), { heavy: sw.heavy });
+        }
+    }
+    drawTrails(true);
+    if (t >= sw.dur) {
+      st.last = { ...sw, endedAt: now };
+      st.swing = null;
+    }
   };
 
   return {
@@ -202,6 +426,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     get thrown() {
       return Boolean(st.thrown);
     },
+    blades: segs,
     get charge() {
       return st.charge;
     },
@@ -213,26 +438,76 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       st.on = on;
       sound?.(on ? 'ignite' : 'off');
     },
-    // a stroke: the next of the combo if the last just ended, else the
-    // first; or the heavy one, charged
-    swing(now, { heavy = false } = {}) {
-      if (st.swing || st.thrown) return null;
+    // a stroke: a way held, the heavy one, else the next of the combo
+    // (strokeFor); one under way may be cut once its blade's passed
+    swing(now, { heavy = false, dir = null, lock = null, lunge = 1, clip: named = null } = {}) {
+      if (st.thrown) return null;
+      const cur = st.swing;
+      if (cur && (now - cur.t0) * cur.speed < cur.contact[1] + CANCEL) return null;
+      if (cur) st.last = { ...cur, endedAt: now };
       this.light(true);
-      if (heavy) {
-        st.swing = { i: -1, t0: now, hits: new Set(), heavy: true, dur: HEAVY.dur, lead: HEAVY.lead, damage: HEAVY.damage };
-        sound?.('heavy');
-      } else {
-        const i = nextSwing(st_, st.last, now, SABER.combo);
-        const sw = st_.swings[i];
-        st.swing = { i, t0: now, hits: new Set(), heavy: false, dur: sw.dur, lead: sw.lead, damage: sw.damage };
-        sound?.('swing');
+      const k = strokeFor(st_, { last: st.last, now, dir, heavy, combo: SABER.combo });
+      // (one named outright, as a peer's packet names theirs: that clip, fetched if it hasn't been)
+      if (named && named !== k.clip) {
+        k.clip = named;
+        if (!clips[named] && !given) loadClip(named).then((c) => c && !gone && (clips[named] = c));
       }
+      const clip = clips[k.clip] ?? null;
+      const x = clip?.userData ?? {};
+      const dur = clip?.duration ?? NO_CLIP.duration;
+      const root = x.root ?? null;
+      // the step: the clip's own to its contact, grown or cut to land on the lock
+      const at = lock?.holder?.position;
+      const me = st.me;
+      const ahead = rootAt(root, (x.contact ?? NO_CLIP.contact)[1])[1] * (hipsM / (x.rootHips || hipsM));
+      const dist = at && me ? Math.hypot(at.x - me.x, at.z - me.z) : null;
+      st.swing = {
+        ...k,
+        name: k.clip, // (the clip library's name: what goes out online)
+        t0: now,
+        dur,
+        contact: x.contact ?? NO_CLIP.contact,
+        root,
+        rootHips: x.rootHips ?? null,
+        clip,
+        hits: new Set(),
+        lock: lock ?? null,
+        yaw0: null,
+        scale: rootScale(ahead, dist, k.lunge * lunge),
+        was: [0, 0],
+        // (moving, the legs keep walking and the walk does the stepping)
+        walk: st.move < 0.3,
+      };
+      if (st.swing.walk) fig?.play?.(k.clip, { layer: 'full', speed: k.speed, fade: 0.08 });
+      // (the blade's memory starts with the stroke: its sweep and its trail are this stroke's)
+      for (const seg of segs) seg.clear();
+      sound?.(k.heavy ? 'heavy' : 'swing');
       st.charge = 0;
       return st.swing;
     },
+    // a stroke dropped where it is, its clip let go: a duellist whose mark is
+    // gone (duel.js, Review Focus 5), or you, parried
+    cancel() {
+      const sw = st.swing;
+      if (!sw) return;
+      st.last = { ...sw, endedAt: st.now };
+      st.swing = null;
+      if (sw.walk) fig?.stop?.(0.2, 'full');
+    },
     block(on) {
-      if (on && !st.blocking) this.light(true);
+      if (on && !st.blocking) {
+        this.light(true);
+        st.blockFrom = st.now;
+      }
       st.blocking = on;
+    },
+    // the raised blade as the bolts see it (lib/combat/bolt.js's `blades`):
+    // the main blade's segment this frame while the block shows, a little
+    // wider than the blade, else null
+    guard(id = 'you', side = 'you') {
+      if (!blockShown() || st.lit <= 0.5 || st.swing || st.thrown) return null;
+      const f = segs[0]?.history().at(-1);
+      return f ? { id, base: f.base, tip: f.tip, r: DEFLECT_R, side } : null;
     },
     throw(now, dir) {
       if (st.thrown || st.swing || !hand || gun.parent !== hand) return false;
@@ -247,13 +522,15 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       sound?.('throw');
       return true;
     },
-    // whether a bolt from `from` ([x, y, z]) would meet the raised blade
-    deflecting(from) {
-      return st.blocking && st.lit > 0.5 && st.me ? deflects(st.me, from, SABER.block.cone * (st_.block > 1 ? 1.2 : 1)) : false;
+    // after the figure's clips, before what poses over them: how much it's
+    // going (0…1, as the figure's update has it), for the next stroke
+    stand(dt, now, move = 0) {
+      st.move = move;
     },
     // after gp.set: the blade's length, the arm's pose, the throw's flight
     update(dt, now, p) {
       st.me = p.me ?? st.me;
+      st.now = now;
       const want = st.on ? 1 : 0;
       st.lit += Math.sign(want - st.lit) * Math.min(Math.abs(want - st.lit), dt * LIGHT);
       const flicker = 0.5 + 0.12 * Math.sin(now * 37) + 0.05 * Math.sin(now * 61);
@@ -263,39 +540,33 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       }
       if (sleeve) sleeve.material.opacity = flicker + st.charge * 0.35;
       if (core) core.scale.set(1 + st.charge * 0.6, 1, 1 + st.charge * 0.6);
+      gp.twist?.(0); // (the chest square again unless a stroke turns it, below)
+      if (st.lit > 0.05) poseLeft(p, Math.min(1, st.lit * 2));
       if (st.thrown) {
         fly(dt, now, p, p.targets ?? [], p.hit);
-        stepTrail(false);
+        drawTrails(false);
         return;
       }
       if (st.swing) {
-        const sw = st.swing;
-        const k = (now - sw.t0) / sw.dur;
-        if (k >= 1) {
-          if (!sw.heavy) st.last = { i: sw.i, endedAt: now };
-          st.swing = null;
-        } else {
-          const { yaw, pitch } = sw.heavy ? heavyPose(k) : swingPose(st_, sw.i, k);
-          pose(yaw, pitch, p, 1);
-          // the blade through them, round the middle of the stroke
-          if (p.me && k > sw.lead - 0.18 && k < sw.lead + 0.22)
-            for (const t of p.targets ?? []) {
-              if (sw.hits.has(t)) continue;
-              const q = t.holder.position;
-              if (arcHit(p.me, { x: q.x, z: q.z, r: radiusOf(t) }, st_.reach * (sw.heavy ? 1.1 : 1), st_.half)) {
-                sw.hits.add(t);
-                p.hit?.(t, sw.damage, _a.set(q.x, q.y + 1.1, q.z), { heavy: sw.heavy });
-              }
-            }
-          stepTrail(true);
-          return;
-        }
+        stroke(dt, now, p);
+        return;
       }
-      stepTrail(false);
+      // between strokes: the guard, the block, or the heavy one winding up
+      const block = clips[BLOCK_CLIP];
+      const up = blockShown() && st.lit > 0.05;
+      st.blockW = Math.max(0, Math.min(1, st.blockW + (up ? dt : -dt) * 8));
       if (st.charge > 0.05) pose(0.3, 1.3, p, Math.min(1, st.charge * 3)); // (wound up overhead while F is held)
-      else if (st.blocking && st.lit > 0.05) pose(BLOCK.yaw, BLOCK.pitch, p, Math.min(1, st.lit * 2));
+      else if (up && !block) pose(BLOCK.yaw, BLOCK.pitch, p, Math.min(1, st.lit * 2));
+      else if (st.lit > 0.05) {
+        const g = two ? GUARD : GUARD_DUAL;
+        pose(g.yaw, g.pitch, p, Math.min(1, st.lit * 2), g.at);
+      }
+      if (block) lay(block, block.duration * BLOCK_AT, st.blockW * Math.min(1, st.lit * 2));
+      pushBlades(now);
+      drawTrails(false);
     },
     dispose() {
+      gone = true;
       if (st.thrown && hand) {
         hand.add(gun);
         gun.position.copy(local.pos);
@@ -304,20 +575,10 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       }
       for (const b of extra) b.removeFromParent();
       gun2?.removeFromParent();
-      trail.removeFromParent();
-      trailGeo.dispose();
-      trailMat.dispose();
+      for (const tr of trails) tr.dispose();
     },
   };
 }
-
-const easeH = (k) => k * k * (3 - 2 * k);
-// the heavy stroke: wound up high and brought straight down, slow at the top
-function heavyPose(k) {
-  const e = easeH(Math.max(0, Math.min(1, (k - 0.25) / 0.75)));
-  return { yaw: HEAVY.yaw[0] * (1 - e) + HEAVY.yaw[1] * e, pitch: HEAVY.pitch[0] * (1 - e) + HEAVY.pitch[1] * e };
-}
-
 
 // the blade's colour and the hilt's look, on the built hilt
 export function dress(gun, color, hilt) {

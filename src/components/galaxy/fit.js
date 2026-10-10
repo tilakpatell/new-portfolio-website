@@ -19,7 +19,7 @@
 export const FIT = {
   ratio: 1.25, // a world at least this many times as wide as the longest ship near it is long
   superlaser: 64, // the Death Star that drops in to fire at Scarif (world.js builds it this size)
-  farthest: 7600, // a gas giant pushed out no further than this (the camera sees to 9000)
+  farthest: 7600, // a gas giant pushed out no further than this (the camera sees to space.js's FAR, from the far edge too)
 };
 
 // the longest ship or station a system's pieces build

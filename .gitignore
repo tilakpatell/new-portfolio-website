@@ -33,6 +33,8 @@ lab/*
 !lab/universe/
 lab/universe/*
 !lab/universe/baseline/
+# (and the galaxy surfaces' per-level baselines: scripts/galaxy-check.mjs BUDGET=1)
+!lab/baseline/
 
 # superpowers brainstorming companion session files
 .superpowers
@@ -50,3 +52,15 @@ scripts/voices/**/__pycache__/
 
 # what scripts/gen3d makes along the way (raw GLBs, concept images, renders)
 scripts/gen3d/cache/
+scripts/motion/cache/
+scripts/motion/__pycache__/
+# what the AI tests leave to look at: the render tier's PNGs, the nightly's results (CI keeps them as artifacts)
+scripts/ai-e2e/render/out/
+scripts/ai-e2e/results/
+
+# the parity check's pictures (scripts/gpu-parity.mjs): the pull request carries the numbers
+scripts/gpu-parity/out/
+
+# keys stay out (supabase/README.md)
+.env.local
+.env.*.local

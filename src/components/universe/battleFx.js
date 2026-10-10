@@ -3,7 +3,7 @@
 // flagship's shield, the markers over the objectives and the fires where
 // one's gone. Each is one or two draws.
 //
-// createBoltDraw(parent, { count }) → { sync(bolts, colourOf), dispose() }
+// createBoltDraw(parent, { count }) → { sync(bolts, colourOf, eye, ahead), dispose() }
 // createGlows(parent, { count }) → { begin(), add(pos, colour, size), end(), dispose() }
 // createShield(parent) → { show(cap, colour), hit(point), drop(), hide(), update(dt, t), dispose() }
 // createMarkers(parent) → { sync(list), hide(), dispose() }; list: [{ key, pos, title, sub, hp, colour, under }]
@@ -39,17 +39,22 @@ export function createBoltDraw(parent, { count = 320 } = {}) {
   return {
     // bolts: battle.js's pool; colourOf(bolt) → [r, g, b]; eye: the camera, in
     // the parent's space (a bolt right by it is dimmed: one passing a few
-    // metres off shouldn't fill the screen with its glow)
-    sync(bolts, colourOf, eye = null) {
+    // metres off shouldn't fill the screen with its glow); ahead: seconds
+    // past the battle's last step (each bolt's carried on that far, so a
+    // bolt doesn't stutter along at the battle's 30 steps a second)
+    sync(bolts, colourOf, eye = null, ahead = 0) {
       let n = 0;
       for (const b of bolts) {
         if (!b.on || n >= count) continue;
         const look = BOLT_LOOK[b.kind] ?? BOLT_LOOK.laser;
-        const near = eye ? Math.min(1, Math.max(0.12, (Math.hypot(b.x - eye.x, b.y - eye.y, b.z - eye.z) - look.length) / (look.length * 4 + 2))) : 1;
+        const x = b.x + b.vx * ahead;
+        const y = b.y + b.vy * ahead;
+        const z = b.z + b.vz * ahead;
+        const near = eye ? Math.min(1, Math.max(0.12, (Math.hypot(x - eye.x, y - eye.y, z - eye.z) - look.length) / (look.length * 4 + 2))) : 1;
         d.set(b.vx, b.vy, b.vz).normalize();
         q.setFromUnitVectors(Z, d);
         // (drawn a little behind its point, so it trails from where it is)
-        p.set(b.x - d.x * look.length * 0.5, b.y - d.y * look.length * 0.5, b.z - d.z * look.length * 0.5);
+        p.set(x - d.x * look.length * 0.5, y - d.y * look.length * 0.5, z - d.z * look.length * 0.5);
         s.set(look.width, look.width, look.length);
         mesh.setMatrixAt(n, m.compose(p, q, s));
         const rgb = colourOf(b);
@@ -235,8 +240,13 @@ export function createShield(parent) {
 }
 
 // ── the objective markers: a diamond, a name, how much is left and how far ──
-const MW = 256;
-const MH = 72;
+// (the card wide enough for 'Destroy: Shield generator' at its full size;
+// a longer name is drawn smaller to fit, not cut off at the card's edges)
+export const MARK = { w: 320, h: 72, pad: 8 };
+const MW = MARK.w;
+const MH = MARK.h;
+// the font size that fits a name `room` wide, from its width at `px`
+export const fitPx = (width, room, px = 20, min = 12) => Math.max(min, Math.min(px, Math.floor((px * room) / Math.max(width, 1))));
 export function createMarkers(parent) {
   const pool = [];
   const used = new Map(); // key → marker
@@ -250,7 +260,7 @@ export function createMarkers(parent) {
     if (tex) tex.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false, toneMapped: false }));
     sprite.center.set(0.5, 0.18);
-    sprite.scale.set(0.24, 0.0675, 1);
+    sprite.scale.set(0.24 * (MW / 256), 0.0675, 1);
     sprite.renderOrder = 10;
     sprite.frustumCulled = false;
     return { sprite, canvas, tex, sig: '' };
@@ -260,6 +270,8 @@ export function createMarkers(parent) {
     if (!g) return;
     g.clearRect(0, 0, MW, MH);
     g.font = '600 20px "JetBrains Mono", ui-monospace, monospace';
+    const px = fitPx(g.measureText(o.title).width, MW - 2 * MARK.pad);
+    if (px < 20) g.font = `600 ${px}px "JetBrains Mono", ui-monospace, monospace`;
     g.textAlign = 'center';
     g.fillStyle = o.colour;
     g.shadowColor = 'rgba(0,0,0,0.85)';

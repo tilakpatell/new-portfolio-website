@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from './systems';
-import { FAMILIES, LOOKS, buildBody } from './bodies';
+import { FAMILIES, LOOKS, buildBody, nearOctaves, pxTall, segmentsFor } from './bodies';
 import { createRocks } from './rocks';
 
 // every look the systems name, each body and rock field they'd build: what
@@ -82,12 +82,72 @@ describe('buildBody', () => {
     expect(buildBody('hoth', { r: 36 }).reach).toBeLessThan(36 * 1.1);
   });
 
+  it('lights Scarif’s shield where a ship bumps it, then lets it fade', () => {
+    const b = buildBody('scarif', { r: 32 });
+    b.set('shield', 1);
+    expect(b.hitLeft).toBe(0);
+    expect(b.hit(new THREE.Vector3(0, 0, 32 * 1.12))).toBe(true);
+    expect(b.hitLeft).toBe(1);
+    b.update(10);
+    b.update(10.05);
+    expect(b.hitLeft).toBeCloseTo(1 - 0.05 * 1.1, 5);
+    b.update(20);
+    expect(b.hitLeft).toBeCloseTo(1 - 0.15 * 1.1, 5); // (a long gap counts as a tenth of a second: a tab left in the background fades on its return)
+    for (let t = 20.05; t < 21.2; t += 0.05) b.update(t);
+    expect(b.hitLeft).toBe(0);
+    expect(buildBody('hoth', { r: 36 }).hit(new THREE.Vector3(0, 0, 40))).toBe(false);
+  });
+
   it('hands back the mesh a crash can mark', () => {
     for (const small of [false, true]) {
       const b = buildBody('hoth', { r: 20, small });
       expect(b.surface.isMesh).toBe(true);
       expect(b.group.children).toContain(b.surface);
     }
+  });
+
+  it('works its ground two octaves finer from orbit on high (four on ultra), eased in, and not small', () => {
+    const near = (b) => b.surface.material.uniforms.uNearOct.value;
+    const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.05, 9000);
+    const renderer = { getDrawingBufferSize: (v) => v.set(1280, 720) };
+    const frames = (b, from, n) => {
+      for (let i = 0; i < n; i++) {
+        b.surface.onBeforeRender(renderer, null, camera);
+        b.update(from + i / 30, camera);
+      }
+    };
+    for (const [tier, small, want] of [['high', false, 2], ['ultra', false, 4], ['mid', false, 0], ['low', false, 0], ['high', true, 0]]) {
+      const b = buildBody('tatooine', { r: 30, small, tier });
+      expect(near(b), tier).toBe(0);
+      camera.position.set(0, 0, 30 * 2.4); // (parked: the world most of the screen tall)
+      frames(b, 0, 2);
+      expect(near(b), tier).toBeLessThanOrEqual(want); // (eased in, not jumped to)
+      frames(b, 1, 60);
+      expect(near(b), tier).toBeCloseTo(want, 6);
+      camera.position.set(0, 0, 30 * 40); // (and off again, a disc in the sky)
+      frames(b, 3, 60);
+      expect(near(b), tier).toBeCloseTo(0, 6);
+      b.dispose();
+    }
+  });
+});
+
+describe('nearOctaves', () => {
+  it('is two on high and four on ultra for a world over 300 pixels tall, and none otherwise', () => {
+    expect(nearOctaves({ tier: 'high', pxTall: 600 })).toBe(2);
+    expect(nearOctaves({ tier: 'ultra', pxTall: 600 })).toBe(4);
+    for (const tier of ['high', 'ultra']) expect(nearOctaves({ tier, pxTall: 200 })).toBe(0);
+    for (const tier of ['mid', 'low']) {
+      expect(nearOctaves({ tier, pxTall: 600 })).toBe(0);
+      expect(nearOctaves({ tier, pxTall: 200 })).toBe(0);
+    }
+  });
+
+  it('measures a world as tall as it is on the screen', () => {
+    // (a world just filling a 60° view from top to bottom: sin 30° = r / d)
+    expect(pxTall({ r: 1, dist: 2, fov: 60, height: 720 })).toBeCloseTo(720, 6);
+    expect(pxTall({ r: 1, dist: 4, fov: 60, height: 720 })).toBeCloseTo((2 * Math.asin(0.25) * 720) / (Math.PI / 3), 6);
+    expect(pxTall({ r: 1, dist: 0.5, fov: 60, height: 720 })).toBe(Infinity); // (inside it)
   });
 });
 
@@ -237,5 +297,25 @@ describe('createRocks', () => {
         .flatMap(({ mesh }) => Array.from({ length: mesh.count }, (_, i) => new THREE.Matrix4().fromArray(mesh.instanceMatrix.array, i * 16).elements.slice(12, 15).map((x) => +x.toFixed(4)).join()))
         .sort();
     expect(at(createRocks(kinds[0]))).toEqual(at(createRocks(kinds[0])));
+  });
+});
+
+describe("a world's sphere at ultra", () => {
+  it('is twice as fine each way, and as it was below', () => {
+    expect(segmentsFor('big', 'ultra')).toEqual([256, 192]);
+    expect(segmentsFor('big', 'high')).toEqual([128, 96]);
+    expect(segmentsFor('small', 'mid')).toEqual([64, 48]);
+  });
+
+  it('works its ground to more octaves only at ultra', () => {
+    const at = (tier) => buildBody('tatooine', { tier });
+    const hi = at('high');
+    const ul = at('ultra');
+    const mat = (b) => b.group.children[0].material;
+    expect(mat(hi).defines.FBM_OCT).toBeUndefined();
+    expect(mat(ul).defines.FBM_OCT).toBeGreaterThan(10);
+    expect(mat(ul).uniforms.uMaxOct.value).toBeGreaterThan(mat(hi).uniforms.uMaxOct.value);
+    hi.dispose();
+    ul.dispose();
   });
 });

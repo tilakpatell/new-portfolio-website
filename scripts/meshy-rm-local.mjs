@@ -1,7 +1,8 @@
-// Makes this session's slice of the Rick and Morty multiverse plan
+// Makes the local session's slice of the Rick and Morty multiverse plan
 // (docs/superpowers/plans/2026-10-06-rick-and-morty-multiverse.md) with
 // Meshy, the site owner's account: Phase 2's people and props (Task 2.1) and
-// Phase 6's vehicles (Task 6.1). Another session makes Phase 1 and is writing
+// Phase 6's vehicles (Task 6.1); and Phase 3's (Task 3.1), made the same way
+// by the cloud session. Another session makes Phase 1 and is writing
 // the plan's `rm` set into scripts/meshy.mjs (Task 0.2) at the same time, so
 // this is that set's pipeline for these names alone, kept apart so the two
 // never edit the same lines. Everything else is the plan's: its prompts (put
@@ -19,7 +20,7 @@
 // `claim` marks the names `claimed` (push that before any paid step), a paid
 // step marks them `meshy`, `fetch` marks them `done`.
 //
-//   node --env-file=.env.local scripts/meshy-rm-local.mjs <step> [name … | phase2 | phase6]
+//   node --env-file=.env.local scripts/meshy-rm-local.mjs <step> [name … | phase2 | phase3 | phase4 | phase6]
 //
 // Steps, in order: claim (free), images (9 credits), models (30, heroes 35),
 // look (free: the model as Meshy made it, for judging before the rig), rig
@@ -37,7 +38,7 @@
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, meshopt, prune, resample, textureCompress } from '@gltf-transform/functions';
+import { dedup, flatten, getBounds, meshopt, prune, resample, textureCompress, transformMesh } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -45,6 +46,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Matrix4 } from 'three';
+import { creditOf, slugOf } from './model-scout.mjs';
 
 // The sharp that glTF-Transform's ndarray-pixels loads (it brings its own
 // version). Loading the project's as well puts two libvips in one process,
@@ -57,6 +59,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'games', 'meshy');
 const RM_OUT = join(ROOT, 'public', 'models', 'c137', 'rm');
 const REVIEW = join(ROOT, 'lab', 'meshy', 'rm'); // concept images and thumbnails, for judging (not shipped)
+const FULL = join(ROOT, 'node_modules', '.cache', 'meshy-full'); // crowd-only figures, full size, for scripts/crowd.mjs
 const TASKS = join(ROOT, 'scripts', 'meshy-tasks.json');
 const LEDGER = join(ROOT, 'scripts', 'rm-models.json');
 const API = 'https://api.meshy.ai/openapi';
@@ -65,7 +68,51 @@ const API = 'https://api.meshy.ai/openapi';
 const STYLE = 'Drawn in the 2D cartoon style of the animated TV show Rick and Morty: flat cel colours, clean thick black outlines, simple rounded shapes. Plain white background, no text, no shadow.';
 const BODY = 'Full body, front view, standing straight in an A-pose with the arms held a little away from the body.';
 const PROP = 'The whole object, three-quarter front view, centred.';
+const BUILDING = 'The whole building, three-quarter front view from slightly above, centred, no people.';
+const AT_EASE = 'Full body, front view, standing at ease with the arms hanging down by the sides, empty hands, feet together.';
+const RICK = 'Rick Sanchez from Rick and Morty, a tall thin old scientist with spiky pale blue-grey hair and a unibrow';
+const MORTY = 'Morty Smith from Rick and Morty, a nervous 14-year-old boy with short brown hair and a round head';
 const CAR = 'The whole vehicle, three-quarter front view, centred, wheels on the ground.';
+
+// The plan's Task 1.1 assets, made on the account in ~/.tilakverse.env (a
+// task id only works on the account that made it). The prompts were put
+// right against the wiki's sheets on 6 October: Birdperson's hood is dark
+// olive with pale green spots over a cream ruff, his wings cream with olive
+// tips, his boots ridged yellow; Squanchy is golden with a cream streak and
+// heavy lids; Mar-Sha's extra arms grow from the sides of her head; Morty
+// Jr.'s face is pale and only his arms are red; Unity has three antennae and
+// three dots on her forehead; the Zigerions wear red with yellow collars.
+// Gwendolyn is left out (the show's is a sex robot). Krombopulos Michael is a
+// Sketchfab model (`uid`, CC BY, scouted and judged by the gate), rigged by
+// Meshy: `bake` makes it ready, `rig` sends it.
+const PHASE1 = {
+  squanchy: { hero: true, height: 1.15, prompt: `Squanchy from Rick and Morty: a short scruffy cat-person standing upright on two legs, golden orange fur with spiky messy tufts on top of his head and a cream streak on his forehead, big pointed ears with cream insides, heavy half-closed droopy yellow eyes, a tiny blue nose, a cream muzzle with long scraggly whiskers, two small fangs and a little brown goatee tuft under his lip, a cream chest and cream paw tips, a bare thin tail with a brown tuft at its tip, wearing nothing but a small black bow tie. ${BODY}` },
+  birdperson: { hero: true, height: 2.0, prompt: `Birdperson from Rick and Morty: a tall thin humanoid bird-man with pale peach skin and a bare chest and belly, a dark olive-grey feathered hood with pale green spots framing a long stern human face with a big hooked nose and heavy dark brows, a tuft of feathers on top of the hood, a ruff of pale cream feathers round his neck under a dark olive feathered mantle across the shoulders, a small yellow feather clasp at the chest, two huge pale cream eagle wings with dark olive tips folded down his back like a long cape to his ankles, yellow feathered gloves with white feather cuffs, a jagged brown loincloth skirt with a brown belt and an oval pale blue buckle, bare legs, ridged yellow-orange bird-foot boots with white feather tops. ${BODY}` },
+  phoenixperson: { height: 2.05, prompt: `Phoenixperson from Rick and Morty: Birdperson rebuilt as a cyborg, a tall thin bird-man with his pale peach human face, a big hooked nose and heavy dark brows, one glowing red mechanical eye, a dark gunmetal plate shaped like three tall feathers on his head, huge wings of dark gunmetal steel blades folded down his back like a long cape, his chest, arms and legs rebuilt as dark grey robot armour with small red lights, a jagged brown loincloth skirt with a belt and an oval buckle, metal bird-foot boots. ${BODY}` },
+  unity: { height: 1.75, prompt: `Unity from Rick and Morty, in her main host body: a slim woman with light blue skin, dark plum-purple hair swept to one side and back into a low ponytail, three thin light blue antenna stalks with round yellow tips standing up from the top of her head, three small teal dots on her forehead, thin rimless rectangular glasses over yellow eyes, coral pink lips, a pale pink pearl necklace, a raspberry-red blazer with pink lapels and pink cuffs over a cream top, a dark purple pencil skirt to the knee, dark magenta high heels. ${BODY}` },
+  marsha: { height: 2.3, pose: false, prompt: `Mar-Sha, queen of the Gazorpian women from Rick and Morty: a tall stately woman with tan skin, a single dark blue unibrow, long straight dark blue hair with a straight fringe, a gold and yellow Egyptian-style headband with a red stripe at the front, two extra long thin tan arms growing out of the sides of her head where her ears would be and raised up beside it, two normal arms, a long white robe with long sleeves and a wide collar of yellow, gold and green segments, bare feet. ${BODY}` },
+  mortyjr: { height: 2.0, pose: false, prompt: `Morty Jr. grown up, from Rick and Morty: a huge heavy-set half-alien man with a pale peach face, a unibrow, small grumpy eyes, an underbite with two big lower fangs, two huge muscular bright red arms growing out of the sides of his head, bright red hands, a small grey flat cap, a long dark charcoal overcoat with brown elbow patches over a dark olive-green shirt and a dark blue tie, dark grey trousers, white and brown shoes. ${BODY}` },
+  krombopulos: { uid: '4d65b1da2fe54c5590aa8abc7c64bf83', turn: -Math.PI / 2, height: 1.9, as: 'Krombopulos Michael at Interdimensional Customs' },
+  zigerion: { crowd: true, prompt: `A Zigerion from Rick and Morty: a tall thin bald alien with pink-purple skin, a big bulbous head swelling up and back with a few small spikes and two thin antennae on top, droopy-lidded yellow eyes, a long wide nose, a long neck, four arms, in a red spacefleet uniform tunic with a yellow collar and a small black triangle badge on the chest, black trousers, white boots. ${AT_EASE}` },
+  'squanchy-house': { rig: false, hero: true, prompt: `Squanchy's house on Planet Squanch from Rick and Morty: a house built like a giant cat tree, three round carpeted platforms in beige and brown stacked on thick sisal-rope-wrapped posts, little ladders between them, a round carpeted den with a round door at the top, toy mice and balls hanging on strings, on a patch of red grass. ${BUILDING}` },
+  'birdperson-house': { rig: false, hero: true, prompt: `Birdperson's home on Bird World from Rick and Morty: a tall tower house of smooth tan clay grown round a twisting tree trunk, round and oval windows, small balconies, a little wooden ladder, vines hanging down, and a wide flat umbrella-shaped canopy of pale green leaves on top like an acacia tree, no people. ${BUILDING}` },
+};
+
+// The plan's Task 5.1 assets, the Vindicators, on the ~/.tilakverse.env
+// account. Put right against the wiki's stills on 6 October: Vance's
+// emblem is orange on a pale blue chest plate, Supernova's helmet is silver
+// with a crescent moon, Crocubot's tan crocodile head sticks out of a boxy
+// robot body with a small robot head of its own on top, Noob-Noob's head is
+// pale. The Sketchfab scout found none of them.
+const PHASE5 = {
+  vance: { hero: true, height: 1.85, prompt: `Vance Maximus, Renegade Starsoldier of the Vindicators from Rick and Morty: a lean man with spiky swept-up auburn-red hair, red stubble, a long chin and a cocky grin, in a fitted blue armoured battlesuit with dark blue panels and red stripes on the shoulders, a pale blue and white chest plate with an orange Vindicators emblem (a stylised V in a circle), armoured gauntlets and boots, a small jetpack on his back. ${BODY}` },
+  supernova: { hero: true, height: 1.85, prompt: `Supernova of the Vindicators from Rick and Morty: a tall slim cosmic woman with lavender-purple skin, long flowing dark purple hair, glowing pale pink eyes with no pupils, a silver helmet-tiara with a crescent moon on top holding a small glowing orb, a skin-tight dark purple bodysuit patterned like a galaxy with tiny stars and swirls, short sleeves, bare lavender arms, dark purple boots. ${BODY}` },
+  alanrails: { height: 2.0, prompt: `Alan Rails of the Vindicators from Rick and Morty: a big muscular Black man with a short black beard and a stern face, an old-fashioned grey train conductor's cap, a dirty black sleeveless greatcoat open over a dark green shirt, grey overalls with straps, grey work gloves, and a heavy glowing green chain with a train whistle hanging round his neck. ${BODY}` },
+  millionants: { height: 1.9, prompt: `Million Ants of the Vindicators from Rick and Morty: a slim humanoid figure made entirely of a swarm of tiny dark red ants packed together into the shape of a man, a rough grainy dark red-brown surface with a few ants crawling off it, two dark hollow round eyes and a small hollow mouth, no clothes. ${BODY}` },
+  crocubot: { height: 1.9, prompt: `Crocubot of the Vindicators from Rick and Morty: a cyborg crocodile standing upright, a tan-yellow crocodile head with a long toothy snout and a yellow eye sticking forward out of a boxy grey and pale blue robot body, a small grey cylindrical robot head with a red light and a camera lens on top of the body, a blue screen panel on the chest, grey robot arms and legs with round joints, one clamp hand, one scaly tan clawed arm, a short tan crocodile tail. ${BODY}` },
+  noobnoob: { height: 1.1, prompt: `Noob-Noob of the Vindicators from Rick and Morty: a small skinny man with a tall narrow bullet-shaped pale peach head, a pink superhero mask round his big eyes, a wide open happy mouth with a few teeth, a pale pink short-sleeved top with lavender shoulders, pink briefs with a small white letter n on them over pale tights, a long purple cape, dark purple boots, pale skinny arms and legs. ${BODY}` },
+  'vindicators-ship': { rig: false, hero: true, prompt: `The Vindicators' ship from Rick and Morty: a sleek superhero team's spaceship, a long white and dark blue hull with red and orange trim, swept-back wings, a domed cockpit at the front, a big circular orange Vindicators emblem on the side, twin blue-glowing engines at the back. ${PROP}` },
+};
 
 // The plan's Task 2.1 and 6.1 assets. Its prompts were checked against each
 // one's wiki page and stills on 6 October (the plan's Step 1), and all but
@@ -106,15 +153,208 @@ const PHASE6 = {
   gotron: { rig: false, hero: true, fix: 'shin', prompt: `The combined Gotron mecha from Rick and Morty: a towering super robot built from five ferret robots. It has a wide black torso with a red collar and a gold chevron chest plate holding a red shield with a glowing pale cyan G emblem, a short red pointed panel on the torso just below the shield, a white segmented waist, and black hips with a black belt and a gold buckle, with no flap hanging between the legs. Two long red-and-white wings rise behind the shoulders in a V. The helmet is black with a gold brow, glowing yellow eyes and a white faceplate. Each arm is one whole ferret robot, all red on the right arm (viewer's left) and all yellow on the left arm (viewer's right): a plain rounded shoulder block in that same colour with one black wheel on its outer side and nothing on top of it, a white segmented elbow, then the ferret's body as the forearm, with black wheels on its sides, reaching to mid-thigh with its head in place of the hand, and no robot hand or fist. Each leg is a white segmented thigh over a shin that is one whole ferret robot with black wheels on its sides, blue on the right leg (viewer's left) and green on the left (viewer's right), its head forming the foot and pointing straight forwards at the viewer. There are exactly four ferret heads: the two hands and the two feet. Each is an angular mecha ferret head with small pointed ear pods with teal glass, a teal glass windscreen on top, narrow glowing yellow eyes, a small red nose gem and a white-silver jaw with slanted vents and a zigzag edge, not a car bonnet with headlights and not a furry face. Last time the picture wrongly put a whole yellow car and a whole red car with teeth on top of the shoulders, drew the feet as plain cars with headlights, and hung a red flap over the crotch. Nothing sits on the shoulders, the feet are ferret heads, and the hips are plain black. Standing straight, the arms a little away from the body with white background between each forearm and the thigh. ${PROP}` },
   'zigerion-ship': { rig: false, hero: true, prompt: `The Zigerion mothership from Rick and Morty: a huge dark green spaceship shaped like a dumbbell, two giant thick disc-shaped hulls side by side joined by a short boxy central hull, each disc rimmed with large glowing lime-green crescent windows and a ringed hub on its outer face with spiky barrels sticking out, teal light strips all over the hull, a flat top deck with a low boxy deckhouse and tall thin antenna spires tipped with red lights, a stepped underside ending in hanging spires. ${PROP}` }, // (confirm against the sheet "Zigerions")
   storytrain: { rig: false, hero: true, prompt: `The Story Train from Rick and Morty: a long streamlined science-fiction steam locomotive in gold, amber and copper. Its front is a long, low, tapering snout like a shark's nose. It slopes steeply down from a pale curved cab windscreen to a narrow tip almost at rail level, with a small round copper buffer at the tip, and the snout is longer than it is tall, not a blunt or upright rounded face. A narrow ridged cream strip runs down the middle of the snout from just under the windscreen to the tip, with a small red-rimmed round lamp at its top. One big glowing round headlamp in a thick gold ring is set flush into each side of the engine just behind the snout, not on a stalk, and there are no other headlamps. Along each lower side, below the headlamp, runs a copper skirt with three dark rectangular slots, and there is no cowcatcher, bumper or grille across the front. Behind them are red piston cylinders and big dark red spoked driving wheels. It hauls exactly three passenger carriages, the first dark red, the second brown and the third black, with warm lit windows and glowing gold couplings, no text or numbers. Last time the picture drew a blunt, bulbous diesel-style front with a wide bumper, headlamps sticking out on stalks at the front corners and a slatted cowcatcher across the front. The snout must be long, low and pointed, and the headlamps flush on the sides. ${PROP}` },
+  // (the people, made on the ~/.tilakverse.env account, put right against
+  // the wiki's stills: Nebulon's tall gold collar and white gloves, Story
+  // Lord's gold medallions, the conductor's navy cap and round glasses)
+  nebulon: { height: 1.95, prompt: `Prince Nebulon, leader of the Zigerions from Rick and Morty: a tall thin alien with pink-purple skin, a big bulbous pink head with small bumps on it and two curly thin antennae with green tips, angry yellow eyes under a heavy brow, a long purple face with a wide mouth, four long thin arms with white gloves, in a red spacefleet uniform with a tall stiff cream and gold collar rising behind his head, a gold V-shaped yoke over the chest, a small black and green badge, a gold triangle on the belt, red trousers and white boots. ${BODY}` },
+  'zigerion-b': { crowd: true, prompt: `A Zigerion from Rick and Morty: a tall thin bald alien with pink-purple skin, a big bulbous head swelling up and back with a few small bumps and two thin antennae on top, droopy-lidded yellow eyes, a long wide nose, a long neck, in a yellow spacefleet uniform tunic with a black collar and a small black triangle badge on the chest, black trousers, white boots. ${AT_EASE}` },
+  'zigerion-c': { crowd: true, prompt: `A Zigerion from Rick and Morty: a tall thin bald alien with lilac skin, a big bulbous head swelling up and back with a few small bumps and two thin antennae on top, droopy-lidded yellow eyes, a long wide nose, a long neck, in a grey spacefleet uniform tunic with a red collar and a small black triangle badge on the chest, black trousers, white boots. ${AT_EASE}` },
+  storylord: { hero: true, height: 1.9, prompt: `Story Lord from Rick and Morty: a tall heavily muscled man with swept-back grey hair and a grey chinstrap beard, a smug face, in a white tunic with gold trim and three round gold medallions joined by thin gold lines across the chest, a tall gold collar, dark orange shoulder pieces and a dark orange cape, a brown belt with a round gold buckle, yellow jodhpurs, dark brown gloves and boots, an emerald ring and a ruby ring. ${BODY}` },
+  ticketsguy: { height: 1.75, prompt: `The Tickets Please Guy from Rick and Morty: a balding older man with grey hair at the sides, thick grey eyebrows, a curled grey moustache and a full grey beard, a round pink nose, small round glasses, a navy conductor's cap with a gold band and badge, a red conductor's jacket with gold buttons and two gold stripes on each cuff over a white shirt and a dark red tie, black trousers, black boots, white gloves. ${BODY}` },
+};
+// Phase 6's set pieces in models rather than shapes (the user's rule: never
+// a figure or a prop drawn in code where a model can stand): the
+// simulation's two identical men, its pop-tart and his toaster, the Omega
+// Device, and Rick Prime's security drones. None are rigged; they stand or
+// are moved whole (stage.js's NPC behaviour slides a prop figure along).
+const PHASE7 = {
+  simman: { rig: false, poly: 14000, prompt: `A simulated human pedestrian from the Zigerions' simulation in Rick and Morty: a plain middle-aged man with a blank calm face, short flat brown hair, a long brown overcoat over a white shirt, dark grey trousers, brown shoes, both arms down by his sides, standing stiffly. ${AT_EASE}` },
+  poptart: { rig: false, poly: 14000, prompt: `A living pop-tart character from the Zigerions' simulation in Rick and Morty: a tall upright rectangular toaster pastry with pink frosting and rainbow sprinkles on the front, a golden-brown crust edge, a simple smiling face with dot eyes, thin stick arms and legs, one hand raised in a wave. ${PROP}` },
+  toasterhouse: { rig: false, prompt: `A giant chrome toaster as a small house, from Rick and Morty: a shiny silver two-slot toaster the size of a garden shed with a front door and a round window cut into its side, a black lever and dial on the end, two slots on top, standing on a patch of grass. ${BUILDING}` },
+  omegadevice: { rig: false, hero: true, prompt: `The Omega Device from Rick and Morty: a sinister science-fiction machine, a black metal sphere held in a frame of three thin gold rings over a squat dark steel plinth with riveted panels, a red glow leaking from gaps in the sphere, thick cables running from the plinth's base, no text. ${PROP}` },
+  primedrone: { rig: false, poly: 14000, prompt: `A security drone from Rick Prime's fortress in Rick and Morty: a hovering drone shaped like a flattened dark grey metal egg, one big round red glowing lens at the front, two small thruster pods underneath, a thin antenna on top, a few orange warning stripes, no text. ${PROP}` },
+};
+// Phase 7 (the plan's long tail), five more places on the dial, each with
+// people who do something: Froopyland, Mr. Nimbus's beach, the Gromflomite
+// base, Heist-Con and Snake Planet.
+const PHASE8 = {
+  tommy: { height: 1.8, prompt: `Tommy Lipkip from Rick and Morty's Froopyland, grown up: a gaunt man in his late thirties with wild tangled brown hair and a scraggly brown beard, wide staring eyes, in the torn and dirty remains of a child's pale blue sweater and brown shorts, bare feet, thin arms. ${BODY}` },
+  'froopy-a': { rig: false, poly: 14000, prompt: `A Froopylander creature from Rick and Morty: a chubby round candy-pink fantasy animal the size of a large dog, a rabbit-like body with floppy ears, a wide smiling mouth full of small sharp teeth, big round eyes, short legs, a fluffy tail, bright cheerful colours. ${PROP}` },
+  'froopy-b': { rig: false, poly: 14000, prompt: `A Froopylander creature from Rick and Morty: a tall gangly lime-green fantasy bird the size of a person, a long neck, a round head with a yellow beak and big round eyes, a tuft of purple feathers on top, stubby wings, long thin legs, bright cheerful colours. ${PROP}` },
+  nimbus: { hero: true, height: 1.95, prompt: `Mr. Nimbus from Rick and Morty: the king of the ocean, a muscular man with blue skin, a strong jaw and a smug grin, slicked-back dark blue hair, in a tight pink and purple superhero bodysuit with a plunging neckline, a high collar, long pink gloves, pink boots, a gold shell belt buckle, holding a golden trident. ${BODY}` },
+  atlantean: { height: 1.85, prompt: `An Atlantean guard from Rick and Morty's ocean kingdom: a humanoid fish-person with teal scaly skin, a finned crest on the head, large round black eyes, gills on the neck, webbed hands, in a dark blue armoured vest with gold trim and a short dark kilt, holding a long silver spear. ${BODY}` },
+  miles: { height: 1.85, prompt: `Miles Knightly from Rick and Morty's Heist-Con: a slim confident man with a neat dark pompadour haircut and a thin moustache, a sly smile, in a tan trench coat open over a dark turtleneck, dark trousers, brown shoes, one hand in a pocket. ${BODY}` },
+  heistotron: { rig: false, hero: true, prompt: `Heistotron from Rick and Morty: a huge heist-planning robot, a squat heavy boxy body of riveted grey steel plates, a big round bank-vault door with a spinning dial as its face, two heavy arms ending in clamp hands, tank treads instead of legs, red glowing lights, no text. ${PROP}` },
+  'heister-a': { rig: false, poly: 14000, prompt: `A heist crew member attending Heist-Con in Rick and Morty: a stocky man in a black ski mask with eye holes, a black turtleneck, black gloves, black trousers and boots, a canvas loot bag over one shoulder. ${AT_EASE}` },
+  'heister-b': { rig: false, poly: 14000, prompt: `A heist crew member attending Heist-Con in Rick and Morty: a tall thin woman in a sleek black catsuit, a black domino mask, short platinum hair, a coil of rope over one shoulder, black boots. ${AT_EASE}` },
+  fart: { rig: false, poly: 14000, prompt: `Fart, the gaseous being from Rick and Morty: a floating cloud of glowing pale green and pink gas the size of a person, soft wispy edges, a faint calm face with two simple eyes in the middle, lit from inside, no text. ${PROP}` },
+  'snake-a': { rig: false, poly: 12000, prompt: `A snake from Snake Planet in Rick and Morty: a long cartoon snake with green scales, a yellow belly, a wedge-shaped head with round red eyes and a forked tongue, its body coiled on the ground in a spiral with the head raised. ${PROP}` },
+  'snake-b': { rig: false, poly: 12000, prompt: `A snake from Snake Planet in Rick and Morty: a long cartoon snake with orange and brown banded scales, a cream belly, a wedge-shaped head with round yellow eyes and a forked tongue, its body in an S-curve along the ground with the head raised. ${PROP}` },
+  snakeastronaut: { rig: false, poly: 14000, prompt: `A snake astronaut from Rick and Morty's Snake Planet: a cartoon green snake wearing a tiny white spacesuit along its body with a round glass helmet over its head, small life-support pack, the body coiled upright. ${PROP}` },
+  snakerocket: { rig: false, prompt: `The snakes' space rocket from Rick and Morty's Snake Planet: a small cartoon rocket, a slim silver and white body with red fins, a round porthole, a long pointed nose cone, standing upright on a launch pad of concrete with a few scaffold poles, no text. ${PROP}` },
+};
+// Phase 7, the second batch: Nuptia 4, St. Gloopy Noops, the Immortality
+// Field Resort and the Get Schwifty show.
+const PHASE9 = {
+  glexo: { height: 1.85, prompt: `Glexo Slim Slom from Rick and Morty's Nuptia 4: a tall slim alien counsellor with smooth pale lavender skin, a long oval head with no hair, large calm dark eyes, a small mouth, in a flowing white and gold robe with wide sleeves, sandals, hands folded. ${BODY}` },
+  nuptiamachine: { rig: false, prompt: `The couples' mind-reading machine from Rick and Morty's Nuptia 4: a futuristic white and gold therapy pod, two reclined seats side by side under a pair of domed helmets on arms, glowing teal panels, a slim console between the seats, no text. ${PROP}` },
+  mytholog: { rig: false, poly: 14000, prompt: `A mytholog from Rick and Morty's Nuptia 4: a monster made of a couple's resentment, a hulking hunched creature of pale translucent purple flesh with two half-formed faces on one head, long arms with clawed hands, no legs but a trailing body, glowing eyes. ${PROP}` },
+  glipglop: { height: 1.8, prompt: `Dr. Glip-Glop from Rick and Morty's St. Gloopy Noops hospital: an alien doctor with light green skin, a tall ridged head, a single wide mouth and two round eyes on short stalks, in a white doctor's coat over a teal scrub shirt and trousers, white shoes, a stethoscope round the neck. ${BODY}` },
+  shrimply: { rig: false, prompt: `Shrimply Pibbles from Rick and Morty: a civil-rights leader alien lying in a hospital bed, a big round pale pink body like a soft heart shape with a small wrinkled face, two thin arms, under a white sheet on a white hospital bed with chrome rails and a drip stand. ${PROP}` },
+  gloopnurse: { rig: false, poly: 14000, prompt: `An alien nurse from Rick and Morty's St. Gloopy Noops hospital: a short round alien with blue skin, three eyes in a row, no hair, in pink nurse's scrubs and a small white cap, white shoes, holding a clipboard. ${AT_EASE}` },
+  risotto: { height: 1.9, prompt: `Risotto Groupon from Rick and Morty's Immortality Field Resort: a tall broad alien former king with dark red skin, a heavy brow and a square jaw, small horns, in a dark grey resort manager's suit with a red tie and a name badge, black shoes, hands clasped. ${BODY}` },
+  'resortguest-a': { rig: false, poly: 14000, prompt: `A holidaying alien at a resort from Rick and Morty: a plump orange alien with a wide head and four eyes, in a loud Hawaiian shirt with blue flowers, white shorts, sandals and sunglasses pushed up on its head, holding a drink with a tiny umbrella. ${AT_EASE}` },
+  'resortguest-b': { rig: false, poly: 14000, prompt: `A holidaying alien at a resort from Rick and Morty: a thin tall grey alien with a long neck and a small head, in a green sun visor, a striped beach towel over one shoulder, a yellow swimsuit and flip-flops. ${AT_EASE}` },
+  dirlycar: { rig: false, prompt: `A car of the Whirly Dirly roller coaster from Rick and Morty: a small open two-seat coaster car in bright yellow and red with a chrome safety bar, a pointed nose, four small wheels on a short piece of blue steel track, no text. ${PROP}` },
+  watert: { hero: true, height: 1.9, prompt: `Water-T from Rick and Morty: a tall humanoid made of clear blue flowing water, a rounded head with a calm face, broad shoulders, in a baggy white t-shirt and dark jeans, white trainers, a thick gold chain. ${BODY}` },
+  icet: { rig: false, prompt: `Ice-T from Rick and Morty, in his true form: a large block of blue-white ice shaped like a tall rounded letter T, translucent with frost on its edges, a faint stern face in the ice, standing upright. ${PROP}` },
+};
+// Phase 7, the third batch: the Blood Dome, the Federation prison and the
+// Interdimensional Cable studio (Cronenberg World needs nothing new).
+const PHASE10 = {
+  hemorrhage: { hero: true, height: 2.1, prompt: `Hemorrhage from Rick and Morty's wasteland: a tall hulking warlord in a helmet of welded scrap metal with a glowing red visor slit, heavy bolted scrap-metal armour plates over a dark bodysuit, spiked shoulder pads, a long tattered dark red cape, big gauntlets and boots, a leather belt with skulls. ${BODY}` },
+  'deathstalker-a': { rig: false, poly: 14000, prompt: `A Death Stalker raider from Rick and Morty's wasteland: a wiry human in patched brown leather armour, a dust mask over the mouth, cracked goggles pushed up on a bald head, a spiked shoulder pad, ragged trousers, heavy boots, bandaged hands. ${AT_EASE}` },
+  'deathstalker-b': { rig: false, poly: 14000, prompt: `A Death Stalker raider from Rick and Morty's wasteland: a stocky human woman in dark leather and scrap-metal plates, a red bandana over wild black hair, a scarf over the mouth, a chain across the chest, fingerless gloves, heavy boots. ${AT_EASE}` },
+  armothy: { rig: false, prompt: `Armothy from Rick and Morty: a huge muscular severed green alien arm the size of a person, standing upright balanced on its spread fingers, thick bulging veins, a bandaged stump at the top with a leather strap, no body. ${PROP}` },
+  cornvelious: { height: 2.2, prompt: `Cornvelious Daniel from Rick and Morty: a Gromflomite officer of the Galactic Federation, a tall insect-like alien with green skin, large compound eyes, antennae, mandibles, in a brown Federation officer's uniform with gold trim and a peaked officer's cap, a holster on the belt, black boots. ${BODY}` },
+  brainalyzer: { rig: false, prompt: `The Brainalyzer from Rick and Morty: a Galactic Federation interrogation chair, a reclined dark green metal seat with heavy arm clamps, a domed steel helmet on a jointed arm over the headrest, thick cables running to a console with green lights, no text. ${PROP}` },
+  antsjohnson: { rig: false, poly: 14000, prompt: `Ants in my Eyes Johnson from Rick and Morty's interdimensional cable: a man in a cheap brown suit and a red tie with his arms out wide, his eyes covered by a swarm of small black ants crawling over his face, a wide desperate grin. ${AT_EASE}` },
+  babylegs: { rig: false, poly: 14000, prompt: `Baby Legs from Rick and Morty's interdimensional cable: a police detective with a grown man's torso, a trench coat, a tie and a fedora, and tiny short baby legs in a nappy, a big moustache, holding a badge. ${AT_EASE}` },
+  regularlegs: { rig: false, poly: 14000, prompt: `Regular Legs from Rick and Morty's interdimensional cable: a police detective with ordinary long legs, a dark suit and tie, a stern face, slicked hair, a badge on his belt. ${AT_EASE}` },
+  mrsneezy: { rig: false, poly: 14000, prompt: `Mr. Sneezy from Rick and Morty's interdimensional cable: a man in a green cardigan and brown trousers with an enormous round red swollen nose taking up half his face, his eyes screwed shut mid-sneeze, a handkerchief in one hand. ${AT_EASE}` },
+  gazorpazorpfield: { rig: false, poly: 14000, prompt: `Gazorpazorpfield from Rick and Morty's interdimensional cable: a fat orange striped cartoon cat standing upright with a smug grin, four arms, small horns, half-lidded eyes, holding a lasagne dish. ${PROP}` },
+  shmlo: { rig: false, poly: 14000, prompt: `Shmlonathan from Rick and Morty's interdimensional cable: a human-like man with a huge bulbous bald forehead three times the size of his face, small eyes, a blue shirt and brown trousers, hands at his sides. ${AT_EASE}` },
+  trunkperson: { rig: false, poly: 14000, prompt: `A Trunk Person from Rick and Morty's interdimensional cable: a human in a white shirt and jeans whose head is an elephant's trunk, long and grey, drooping down to the chest, with two small eyes at the top. ${AT_EASE}` },
+  lilbits: { rig: false, poly: 14000, prompt: `The host of Lil' Bits from Rick and Morty's interdimensional cable: a tiny thin man in a black tuxedo and bow tie with slicked hair and a toothy grin, holding a tiny plate of tiny food, standing on a small round pedestal. ${PROP}` },
+  tophatjones: { rig: false, poly: 14000, prompt: `A tophat cat from Rick and Morty's interdimensional cable: a thin tall black cat standing upright in a top hat and a monocle with a cane, a smug face. ${PROP}` },
+  realfakedoors: { rig: false, poly: 14000, prompt: `The Real Fake Doors salesman from Rick and Morty's interdimensional cable: a short bald man in a pale blue shirt and a red tie with a name badge, one arm raised to present, standing in front of a plain white fake door frame with no wall. ${PROP}` },
+};
+// Phase 7, the fourth batch: Mr. Goldenfold's dream and the agency (the
+// Meeseeks' golf course, the vat of acid and Dimension 35-C need nothing new).
+const PHASE11 = {
+  scaryterry: { hero: true, height: 1.95, prompt: `Scary Terry from Rick and Morty: a nightmare creature like a horror-film slasher, a burned red lumpy face with a wide grin of jagged teeth and small yellow eyes, no hair, in a dark brown wide-brimmed hat, a red and green striped sweater, a glove of long silver blades on his right hand, dark trousers, big black boots, a twin pair of tiny baby legs sticking out of his back. ${BODY}` },
+  mrspancakes: { rig: false, poly: 14000, prompt: `Mrs. Pancakes from Rick and Morty, in Mr. Goldenfold's dream: a tall glamorous woman with long wavy blonde hair, heavy eye make-up, a tight red evening dress with a slit, long red gloves, red high heels, one hand on her hip. ${AT_EASE}` },
+  jaguar: { hero: true, height: 1.95, prompt: `Jaguar from Rick and Morty: a tall powerfully built man with long dark hair tied back in a ponytail, a stubbled square jaw and a thin scar on one cheek, a calm stern face, in a tight black tactical bodysuit with grey straps across the chest, grey knee pads and shoulder pads, fingerless black gloves, black combat boots, empty hands. ${BODY}` },
+  agencyguard: { rig: false, poly: 14000, prompt: `A guard from the agency in Rick and Morty's Pickle Rick episode: a stocky man in grey body armour over a black uniform, a black helmet with a visor, a utility belt, black gloves and boots, standing at attention with an assault rifle held across the chest. ${AT_EASE}` },
+  sewerrat: { rig: false, poly: 12000, prompt: `A sewer rat from Rick and Morty's Pickle Rick episode: a big cartoon brown rat the size of a cat, hunched on four legs, a long pink tail, pink ears and nose, small red eyes, whiskers, bared teeth. ${PROP}` },
+};
+// Mr. Frundles' Earth (S6 'Full Meta Jackrick' cold open): the Frundles
+// himself, a man and a dog he bit, and a house gone Frundles.
+const PHASE12 = {
+  frundles: { rig: false, poly: 12000, prompt: `Mr. Frundles from Rick and Morty: a small cute fuzzy creature the size of a rabbit, round and chubby, soft reddish-brown shaggy fur with a lighter tan belly and face, two big round black eyes, a tiny pink nose, a wide friendly mouth, two little pointed ears with pink insides, four short stubby paws, a short fluffy tail, sitting up. ${PROP}` },
+  frundlesman: { hero: true, height: 1.8, prompt: `A man turned into Mr. Frundles from Rick and Morty: an ordinary suburban man's body in a blue checked shirt and khaki trousers and brown shoes, but covered head to toe in soft reddish-brown shaggy fur, with Mr. Frundles' face in place of his own: two big round black eyes, a tiny pink nose, a wide friendly mouth, two little pointed furry ears with pink insides. ${BODY}` },
+  frundlesdog: { rig: false, poly: 12000, prompt: `A dog turned into Mr. Frundles from Rick and Morty: a standing medium-sized dog's body with a red collar, covered in soft reddish-brown shaggy fur, with Mr. Frundles' face in place of its own: two big round black eyes, a tiny pink nose, a wide friendly mouth, two little pointed furry ears with pink insides. ${PROP}` },
+  frundleshouse: { rig: false, hero: true, prompt: `A suburban house turned into Mr. Frundles from Rick and Morty: a two-storey American house with a pitched roof, a porch and a garage, entirely covered in soft reddish-brown shaggy fur, with Mr. Frundles' huge face on its front: two big round black eyes where the upstairs windows were, a pink nose, a wide friendly mouth across the ground floor, two little pointed furry ears with pink insides on the roof. ${BUILDING}` },
+};
+// The plan's Task 3.1: Mortytown's people and buildings, two Ricks for the
+// Citadel's crowd, the Citadel from space and the NX-5. The plan's prompts
+// were checked against the wiki on 6 October and put right where the show
+// differs: the Locos are three tattooed Mortys in grubby T-shirts and a tank
+// top (not purple bandanas), and rigged (the quest walks them to Cop Morty);
+// the Supreme Guards wear gold armour and red capes; Garment District Rick a
+// fur-collared brown coat and no hat; the campaign manager a white
+// short-sleeved shirt, red tie and lanyard; Slick Morty a yellow T-shirt with
+// rolled sleeves; Morty Mart is a grimy slate-green shopfront under a neon
+// sign; the Citadel a brass disc with a teal dome and three arms ending in
+// saucers; the NX-5 a crimson ship with a hexagon-plated teal bulb and a
+// green ring cannon. `crowd`: only ever stands in the Citadel's crowd, so it
+// is drawn standing at ease on the lighter image model, never rigged, about
+// 9,000 faces, and kept full-size in node_modules/.cache/meshy-full/ for
+// scripts/crowd.mjs to bake.
+const PHASE3 = {
+  bigmorty: { sit: true, height: 1.5, prompt: `Big Morty from Rick and Morty: ${MORTY}, with a scowl, a dark teal-grey knitted beanie pulled down over his hair, big yellow-tinted aviator sunglasses, a thin wispy moustache, two thin gold chain necklaces, a dark magenta-pink jacket worn open over a red T-shirt, dark maroon-brown trousers and dark shoes. ${BODY}` },
+  slickmorty: { height: 1.5, prompt: `Slick Morty from Rick and Morty: ${MORTY}, with one curl of hair sticking up at the front and a thin shaved line on one side of his scalp, a plain pale yellow T-shirt with its sleeves rolled up to the shoulders, two metal dog tags on a ball chain round his neck, blue jeans and white sneakers. ${BODY}` },
+  campaignmorty: { height: 1.5, prompt: `Campaign Manager Morty from Rick and Morty: ${MORTY}, with a pleased open smile, in a white short-sleeved collared dress shirt tucked in, a long red tie, a lanyard round his neck with a white ID card hanging from it, a black belt, dark charcoal grey trousers and black shoes. ${BODY}` },
+  rickd3: { height: 1.85, prompt: `Rick D. Sanchez III from Rick and Morty: ${RICK}, dressed like a showman chocolatier: a tall purple top hat with a wide gold band, a purple tailcoat with wide lapels over a green waistcoat with gold buttons, a green shirt with a green tie, purple trousers and black shoes, empty hands. ${BODY}` },
+  simplerick: { height: 1.85, prompt: `Simple Rick from Rick and Morty: ${RICK}, with a gentle contented smile and no lab coat, in a plain pale sky-blue long-sleeved collared shirt tucked into dark navy blue trousers, a brown belt and brown shoes. ${BODY}` },
+  evilrick: { height: 1.85, prompt: `Evil Rick from Rick and Morty: ${RICK}, with a cold blank stare, dark shadowy circles under his eyes and a thin scar across his lips, in a long white lab coat open over a plain black shirt, brown trousers, a black belt and dark grey shoes. ${BODY}` },
+  'loco-a': { height: 1.5, prompt: `A Mortytown Loco from Rick and Morty, a Morty gang member: ${MORTY}, with a big dark blue-grey flame-shaped tattoo over one side of his face and forehead and three small ring tattoos beside his mouth, a grubby dark mauve-brown T-shirt, faded dark blue jeans and scuffed grey sneakers. ${BODY}` },
+  'loco-b': { height: 1.5, prompt: `A Mortytown Loco from Rick and Morty, a Morty gang member: ${MORTY}, with a small dark blue-grey swirl tattoo over one eyebrow and a few small ring tattoos on his cheek beside his mouth, a dirty off-white T-shirt, baggy dark grey jeans and scuffed white sneakers. ${BODY}` },
+  'loco-c': { height: 1.5, prompt: `A Mortytown Loco from Rick and Morty, a Morty gang member: ${MORTY}, with a small dark blue-grey swirl tattoo at one temple and small ring tattoos beside his mouth, a stained olive-grey sleeveless tank top, baggy brown cargo trousers and scuffed dark sneakers. ${BODY}` },
+  supremeguard: { crowd: true, prompt: `A Supreme Guard Rick of the Citadel from Rick and Morty: ${RICK}, a stern soldier in ornate gold armour: a gold breastplate, big rounded gold shoulder plates, gold gauntlets and gold shin guards, a long dark red cape hanging from his shoulders to his calves, dark olive trousers and dark boots. ${AT_EASE}` },
+  garmentrick: { crowd: true, prompt: `Garment District Rick from Rick and Morty: ${RICK}, but with his pale blue-grey hair swept back into a low rounded puffy pompadour, only a little taller than Rick's own spiky hair and not a tall bouffant, long grey sideburns and a grey moustache, in a long double-breasted brown winter coat with a thick cream fur collar and cream fur cuffs, dark trousers and dark shoes. ${AT_EASE}` },
+  mortymart: { rig: false, hero: true, prompt: `Morty Mart from Rick and Morty, a small corner convenience store in a grimy science-fiction city: a boxy single-storey shop of dark slate grey-green metal panels with rust streaks and rivets, a flat roof with pipes and a vent; across the front a long blank sign board edged with an unlit red neon tube, under it a wide shop window and an open doorway showing tall glass fridges full of green bottles inside, a curved metal air-conditioning cylinder over the door, a cyan neon bottle-shaped sign on the left corner, a green neon palm-tree sign and a small yellow neon sign in the window with no letters, torn paper posters on the wall. ${BUILDING}` },
+  creepymorty: { rig: false, hero: true, prompt: `The Creepy Morty, a seedy nightclub in the Mortytown district of the Citadel from Rick and Morty: a two-storey building of dark purple-grey metal panels with grimy streaks, a flat roof with pipes, a tall vertical blank sign board edged with pink and violet neon tubes on the front corner, a recessed doorway lit purple under a short black awning, a red velvet rope on two brass posts by the door, small round porthole windows glowing magenta, no letters anywhere. ${BUILDING}` },
+  'citadel-exterior': { rig: false, hero: true, prompt: `The Citadel of Ricks from Rick and Morty, a huge space station seen from the side and a little above: a wide flattened central disc of brass-gold and olive metal plating with rows of small lit windows, a large dome of pale teal glass on top of the disc with a tall thin spire rising from its centre, three long thin straight arms reaching out level from the disc at equal angles, each ending in a smaller flattened saucer of teal glass ringed in brass, and under the central disc a long downward-pointing tapering cluster of metal plates and fins with glowing cyan crystal panels. ${PROP}` },
+  nx5: { rig: false, hero: true, prompt: `The NX-5 Planet Remover from Rick and Morty, a Galactic Federation capital warship: a huge organic-looking battleship of dark crimson red armour, its long body reaching forward like a thick arm and ending in a huge round planet-killer cannon at the front, a ring of rounded pale green glowing pods round a big glowing green lens; behind it a spiky armoured command head with glowing orange windows; the back half of the ship is a huge rounded bulb covered in pale teal hexagonal armour plating held by dark red rib-like straps, round glowing cyan lights and red glowing orbs dotted along the hull. ${PROP}` },
+};
+// The plan's Phase 4: eight more destinations' people and places (its
+// prompts as written, from each one's wiki page).
+const PHASE4 = {
+  stairgoblin: { rig: false, prompt: `A Stair Goblin from Rick and Morty: a living flight of three steps, a blocky pink body shaped like a small staircase with a grumpy face on the top step, two stubby arms and two short legs. ${PROP}` },
+  kingjellybean: { height: 2.2, prompt: `King Jellybean from Rick and Morty: a tall pale blue jellybean-shaped creature with a droopy tired face, half-closed eyes and a frown, a small gold crown on top, a magenta royal robe with white fur trim over his shoulders, a gold medallion on a chain, thin bare bluish arms and legs, bare feet. ${BODY}` },
+  thirstystep: { rig: false, hero: true, prompt: `The Thirsty Step tavern from Rick and Morty: a medieval fantasy tavern of dark timber and cream plaster with a steep brown shingled roof, a big round wooden door, small leaded windows glowing warm, a hanging wooden sign with a tankard on it, a stone chimney, no text. ${BUILDING}` },
+  giant: { rig: false, prompt: `A giant from the giants' village in Rick and Morty: a huge bearded man in a simple brown peasant tunic with a rope belt, brown trousers and big leather boots, bushy brown hair and beard, a kindly face, standing with his arms at his sides. ${PROP}` },
+  zeep: { hero: true, height: 1.8, prompt: `Zeep Xanflorp from Rick and Morty: a thin alien scientist with a green head that is tall and wide at the top and tapers to the chin, three blue stripes across his big forehead, a single blue unibrow, yellow eyes with blue pupils and dark circles under them, blue lips and blue fingertips, in a green lab coat with gold trim at the collar and cuffs over a grey shirt, grey trousers and dark shoes. ${BODY}` },
+  kyle: { height: 1.7, prompt: `Kyle, the scientist of the Miniverse from Rick and Morty: a slim alien with pale blue-grey skin, a tall oval head with a high brow, big sad dark eyes, two small antennae, in a white lab coat over a teal tunic, grey trousers, boots. ${BODY}` },
+  xenonbloom: { height: 1.9, prompt: `Dr. Xenon Bloom from Rick and Morty: a translucent pale teal-green amoeba in the shape of a tall thin man, with lighter blobs floating inside his body, a drawn-on face with round black glasses, a grey moustache and a wide mouth of square teeth, no clothes, empty hands. ${BODY}` },
+  poncho: { height: 1.75, prompt: `Poncho from Rick and Morty: a stocky middle-aged man with grey hair and a grey moustache and an angry face, in a brown sleeveless vest over a bare chest, dark green trousers, boots, and a clear round bubble helmet with a blue collar ring over his head, empty hands. ${BODY}` },
+  annie: { height: 1.62, prompt: `Annie from Rick and Morty: a teenage girl with long blonde hair in a high ponytail with a teal bow, big eyes with long lashes, a few freckles, a white short-sleeved blouse under a dark green theme-park apron with a name tag, a dark green skirt, white sneakers. ${BODY}` },
+  hepatitis: { rig: false, prompt: `Hepatitis A as a monster in Rick and Morty: a huge hulking green-brown blob creature with a lumpy wet body, a wide mouth of jagged teeth, small yellow eyes and two thick arms. ${PROP}` },
+  gonorrhoea: { rig: false, prompt: `Gonorrhea as a monster in Rick and Morty: a towering pale yellow-green creature of lumpy jelly with many thin tentacles, a cluster of red eyes and a round sucker mouth. ${PROP}` },
+  tuberculosis: { rig: false, prompt: `Tuberculosis as a monster in Rick and Morty: a tall gaunt pale grey creature with long thin arms, a hunched back, a skull-like face with sunken eyes and a wide coughing mouth. ${PROP}` },
+  plague: { rig: false, prompt: `Bubonic plague as a monster in Rick and Morty: a swollen black and purple creature covered in bulging boils, short legs, a huge toothy mouth and small glowing eyes. ${PROP}` },
+  ecoli: { rig: false, prompt: `E. coli as a monster in Rick and Morty: a long dark brown rod-shaped creature covered in wriggling hairs, a mouth of needle teeth at one end, many small legs. ${PROP}` },
+  needful: { height: 1.85, prompt: `Mr. Needful from Rick and Morty: a thin man of Rick's height with very angular features, a long nose, a pointed chin and bags under his eyes, red hair pointed up at the sides like horns, a thin pencil moustache and a matching goatee, thick eyebrows, in a three-piece suit of a drab purple-and-green blazer over a green waistcoat, dark purple trousers, a string tie, white gloves, red dress shoes and a large black top hat, empty hands. ${BODY}` },
+  'needful-shop': { rig: false, hero: true, prompt: `Needful Things, the curiosity shop from Rick and Morty: a small old-fashioned shop of dark red brick with a black-painted wooden shopfront, a big bay window full of odd antiques, a glass door with a bell, a hanging blank sign, a lamp either side of the door, no text. ${BUILDING}` },
+  'jerry-robe': { crowd: true, prompt: `A Jerry Smith from another dimension at the Jerryboree in Rick and Morty: Jerry Smith, a man in his late thirties with short swept brown hair, a weak chin and a sulky look, in a brown bathrobe over pyjamas and slippers. ${AT_EASE}` },
+  'jerry-golf': { crowd: true, prompt: `A Jerry Smith from another dimension at the Jerryboree in Rick and Morty: Jerry Smith, a man in his late thirties with short swept brown hair, a weak chin and a sulky look, in a green polo shirt, khaki shorts, a white sun visor and white trainers. ${AT_EASE}` },
+  'jerry-tux': { crowd: true, prompt: `A Jerry Smith from another dimension at the Jerryboree in Rick and Morty: Jerry Smith, a man in his late thirties with short swept brown hair, a weak chin and a sulky look, in a black tuxedo with a bow tie. ${AT_EASE}` },
+  'jerry-track': { crowd: true, prompt: `A Jerry Smith from another dimension at the Jerryboree in Rick and Morty: Jerry Smith, a man in his late thirties with short swept brown hair, a weak chin and a sulky look, in a red tracksuit with white stripes and a sweatband. ${AT_EASE}` },
+  'jerry-gown': { crowd: true, prompt: `A Jerry Smith from another dimension at the Jerryboree in Rick and Morty: Jerry Smith, a man in his late thirties with short swept brown hair, a weak chin and a sulky look, in a pale blue hospital gown and socks. ${AT_EASE}` },
+  'jerry-cardigan': { crowd: true, prompt: `A Jerry Smith from another dimension at the Jerryboree in Rick and Morty: Jerry Smith, a man in his late thirties with short swept brown hair, a weak chin and a sulky look, in a beige cardigan over a checked shirt, with a flat cap. ${AT_EASE}` },
+  arthricia: { height: 1.6, prompt: `Arthricia from Rick and Morty: a teenage cat-girl with light brown fur, a cat's face with a small pink nose and pointed ears, long flowing darker brown hair worn down, in a light blue peasant dress with a white apron and long black boots. ${BODY}` },
+  'magdalian-a': { crowd: true, prompt: `A Magdalian villager from the Purge Planet in Rick and Morty: a cat-person with orange fur, a cat's face with a small nose and pointed ears, in a brown peasant tunic with a rope belt, bare furry feet. ${AT_EASE}` },
+  'magdalian-b': { crowd: true, prompt: `A Magdalian villager from the Purge Planet in Rick and Morty: a cat-person with grey fur, a cat's face with a small nose and pointed ears, in a blue dress with a white apron, bare furry feet. ${AT_EASE}` },
+  'magdalian-c': { crowd: true, prompt: `A Magdalian villager from the Purge Planet in Rick and Morty: a cat-person with cream fur, a cat's face with a small nose and pointed ears, in a green jerkin over a white shirt and brown trousers, bare furry feet. ${AT_EASE}` },
+  flippynips: { height: 1.5, prompt: `A Plutonian king from Rick and Morty: a round plump alien with orange skin and a pale yellow front, three tall yellow-green antennae standing up on top of his head like a crown, red frilled fins at the sides of his head, round glasses with X-shaped eyes, a wide grin of white teeth, a dark red royal cape fastened with a round blue gem, gold bracelets on his wrists, three-toed orange feet. ${BODY}` },
+  scroopy: { height: 1.4, prompt: `Scroopy Noopers, a Plutonian from Rick and Morty: a round plump alien with orange skin and a pale yellow belly, three short red antennae on his head, red frilled fins at the sides of his head, round glasses with X-shaped eyes, a wide mouth of white teeth, in a white short-sleeved collared shirt with a pocket of pens, three-toed orange feet. ${BODY}` },
+  'plutonian-a': { crowd: true, prompt: `A Plutonian from Rick and Morty: a round plump alien with orange skin and a pale yellow belly, three short antennae on the head, frilled fins at the sides of the head, round eyes with X-shaped pupils, a wide mouth of white teeth, in a blue tunic, three-toed orange feet. ${AT_EASE}` },
+  'plutonian-b': { crowd: true, prompt: `A Plutonian from Rick and Morty: a round plump alien with orange skin and a pale yellow belly, three short antennae on the head, frilled fins at the sides of the head, round eyes with X-shaped pupils, a wide mouth of white teeth, in grey overalls, three-toed orange feet. ${AT_EASE}` },
+  gearhead: { height: 1.8, prompt: `Gearhead (Revolio Clockberg Jr.) from Rick and Morty: a thick-set gear-person, bald, with forehead wrinkles above a large purple unibrow, yellow-tinted eyes with heavy bags under them, a round nose, yellow and orange gears where his ears and mouth would be, a transparent pink torso with brass gears turning inside it and pink windows on his shoulders, grey metal arms and legs, in a brown waistcoat and dark trousers. ${BODY}` },
+  'gearperson-a': { crowd: true, prompt: `A gear-person of Gear World from Rick and Morty: a thick-set humanoid made of brass and grey metal with a round head, gears turning where the ears are, a transparent pink torso with brass gears inside, grey metal arms and legs, in a brown leather apron. ${AT_EASE}` },
+  'gearperson-b': { crowd: true, prompt: `A gear-person of Gear World from Rick and Morty: a thick-set humanoid made of brass and grey metal with a round head, gears turning where the ears are, a transparent pink torso with brass gears inside, grey metal arms and legs, in a grey suit jacket and trousers. ${AT_EASE}` },
+};
+// The Rick and Morty sector's worlds (docs/superpowers/HANDOFF-rm-sector.md),
+// made on the account in MESHY_API_KEY_ACC_3 (its task ids are only good on
+// that account): Cronenberg World's and the Purge Planet's set pieces, and
+// the four first worlds' code-built props made models (Gazorpazorp's gate,
+// Planet Squanch's suckulent, Bird World's perch, Gear World's gears). Each
+// prompt was written from the show (the wiki's pages and episode stills,
+// through its API) and checked against it by a second reader; what each
+// rests on is in the handoff.
+const PHASE13 = {
+  cronhouse: { rig: false, hero: true, prompt: `The Smith family's house in the Cronenberged dimension from Rick and Morty, the original Earth that Rick and Morty abandoned: the Smiths' wide, low suburban house, still clearly recognisable but abandoned and rotting, with cracked, grimy cream stucco walls streaked grey-green, a dark red brick base along the bottom of the walls and brown shingled roofs with short tight eaves; from left to right a single-storey two-car garage wing standing forward with a steep front-facing gable and a plain windowless left side wall of stucco over brick, one side of its roof sagging inwards with missing shingles leaving dark solid patches (no open rafters, nothing see-through), its tan four-panel garage door buckled and dented with the bottom panel bent outwards and resting on the ground, and a white basketball backboard with a red hoop and no net held flat against the gable; then a single-storey middle section set back, its roof sagging with a dark ragged hole in the shingles (no rafters sticking up, nothing you can see through), its wide window smashed to a jagged black hole, and a brown wooden front door under a small pointed porch roof on two thick square posts; then a two-storey wing on the right with a hipped brown roof with a dark ragged hole in it, a wide upstairs window with cracked glass opening onto a small solid balcony with a low solid brown wooden wall instead of a railing, the balcony resting on a little shingled roof over the smashed wide downstairs window, and a red brick planter overgrown with dark green bushes along its front; thick lumpy yellow-green moss lies over every roof on all sides like a heavy crust and oozes down the walls in short fat drips pressed flat against the walls, no drips hanging in the air off the eaves or roof corners, no blobs sticking out past the roof edges, no thin strands, nothing floating, no painted shadows on the walls; the whole house stands on one thick, flat, square slab of dark overgrown grass and weeds a little wider than its footprint, the slab's edges running parallel to the house walls, its front edge running straight along the whole front of the house and its left edge running along the garage's left side wall, both edges clearly visible under every wall, the garage door, the porch posts and the planter, no text. The whole building seen from its front-left corner and turned about 35 degrees, so that the long front of the house recedes towards the right and the full left side wall of the garage wing and the left side of the two-storey wing are clearly visible as solid walls with real depth, with the house and slab turned the same way; three-quarter front view from slightly above, centred, no people.` },
+  croncar: { rig: false, prompt: `An abandoned wrecked car from Cronenberg World in Rick and Morty, the ruined Earth that Rick and Morty left behind in the Rick Potion #9 episode, as it looks once its streets have grown over: a boxy old four-door family station wagon in faded pale blue with no roof rack, sitting low with all four wheels on the ground on flat sagging black tyres with grey hubcaps, its bodywork dented and scraped with smudges of grey-green grime, a crumpled grey front bumper and a cracked headlight, every window still in its frame and unbroken, the windscreen, the side windows and the rear windows all solid opaque panes of flat dark charcoal-grey grimy glass cracked in spider-webs of thin dark lines, with no holes, no missing glass and no shards, so that nothing behind the glass shows through any window, no white background, no seats, no interior and no far-side windows visible through them, blank white number plates, and thick shaggy cushions of yellow-green moss growing only on the upper surfaces of the car: the roof, the bonnet and the top of the tailgate, the moss lying low and close like a thick rug, its edges rolling over the panel edges in short fat rounded lumps pressed flat against the bodywork and stopping well above the door handles; the lower half of the car is clear of moss: no moss at all on the bumpers, the grille, the lower doors, the sills, the wheel arches or the tyres, nothing hanging below the sills or off the bumpers, no drips, strands or vines anywhere, nobody in or near it, no text. The whole object, three-quarter front view, centred.` },
+  purgecottage: { rig: false, hero: true, prompt: `The ramshackle farm cabin from Rick and Morty's Purge Planet episode: a small single-storey rustic cabin of weathered grey-brown horizontal wooden planks under a low, shallow-pitched roof of thick, shaggy, sagging mossy olive-brown thatch that overhangs the walls, patched with a few dark broken boards, with loose poles lying along the ridge and round log ends poking out of the gable end, a crooked red-brown brick chimney at one end, the front overhang held up on thin wooden posts over a low plank deck, an open porch at one end with an empty wooden rocking chair and a small tin lantern hanging from the porch beam, a dark wooden four-panel door with a small brass knob and a low wooden washtub beside it, small four-pane windows in plain wooden frames glowing warm orange, standing on a small patch of dry earth with a few tufts of grass, no text. The whole building, three-quarter front view from slightly above, centred, no people.` },
+  purgebarn: { rig: false, hero: true, prompt: `A farm barn in the style of the cat people's frontier farming village on the Purge Planet in Rick and Morty: a tall old barn of weathered brown wooden planks with a few paler patched boards, a steep gabled roof of rusty red-brown corrugated tin with paler worn streaks and a slightly sagging ridge, big double plank doors on the front with Z-shaped braces, a small square hay-loft door above them under a short jutting wooden hoist beam, small windows with cream-painted frames, a short square cupola on the middle of the ridge with pale olive-khaki walls, cream corner trim, one cream-framed arched window and a brown shingled pyramid roof, topped by a short sturdy brass weathervane with a thick rod, a chunky solid brass arrow across it and a pale teal glass oval held in a solid brass ring at its tip, a low lean-to with a slanted tin roof on one side, a big round rolled hay bale of pale golden straw lying on its side against the wall and a small solid wooden crate beside it, both resting firmly on the ground, the whole barn, lean-to, bale and crate standing together on one even, low, roughly oval patch of dry yellow grass that spreads a little way beyond them on every side, no text. The whole building, three-quarter front view from slightly above, centred, no people.` },
+  purgesiren: { rig: false, prompt: `The Festival bell from Rick and Morty's purge planet episode, heard ringing at sundown to start the yearly purge, made here as a freestanding wooden bell tower in the weathered Old West timber style of that episode: a tall, narrow square tower of weathered brown horizontal planks with pale cream corner boards, standing on a low square base of grey fieldstone, an enclosed square belfry at the top with one tall arched recess on each side trimmed in pale cream, each recess only a shallow niche closed by a solid flat back wall painted deep dark brown, so the arches are not holes, nothing can be seen through the tower, and no white background and no other arch or post shows anywhere inside them, a big chunky dark bronze bell filling almost the whole front niche from side to side, hanging from a thick wooden beam set against the dark back wall, a thick rope dropping straight down from the middle of the bell's rim onto the front sill, then lying flat against the front planks straight down the tower to a chunky iron cleat just above the base and tied off neatly round it with no loose end, a low pyramid roof of dark brown wooden shingles with a small silver-blue cap on its peak, and on that a short thick gold rod carrying a chunky, thick gold arrow weathervane with a pair of thick gold curls above the arrow, and a round pale mint-green glass globe with white streaks inside it set on the very top above the arrow, no text, no people. The whole object, three-quarter front view, centred.` },
+  purgewell: { rig: false, prompt: `A village well for the dusty Old West farming town on the Purge Planet from Rick and Morty: a round, waist-high well of rough grey fieldstone with a flat stone rim and a dark round opening, standing on a small round flagstone base, two sturdy weathered brown wooden posts rising either side to hold a little pitched roof of weathered brown wooden shingles, a wooden log roller across between the posts with a simple iron crank handle on one side, a thick tan rope wound round it, and a plain wooden bucket with dark iron bands standing on the stone rim, no text. The whole object, three-quarter front view, centred.` },
+  gazorpgate: { rig: false, hero: true, prompt: `A grand gate to the women's city on Gazorpazorp, built in the style of the female Gazorpians' city in Rick and Morty's Raising Gazorpazorp episode: a tall, deep, free-standing pointed archway of thick solid golden-yellow stone covered in soft rounded bubble-shaped panels, a thick rounded pillar joined directly to each side of the arch, each topped with a small pale lime-green glass dome with a white lattice, a pair of tall pointed mint-green doors shut inside the arch that fill the whole arch opening right up to its point so no background shows through the arch anywhere, a carved golden emblem of two open hands raised side by side with palms forward on the top of the arch, a shallow yellow bowl planter fixed to the front of each pillar holding a compact rounded mound of pink coral-like blossoms that stays inside the bowl with nothing hanging down or sticking out, two round green bushes dotted with pink flowers either side of the doors, the arch, both pillars and both bushes all standing together on one small round base of cream paving inlaid with mint-green petal shapes that is wide enough for both pillars to sit fully on it, no text. The gate is turned clearly to one side so the thick stone side of the arch and one pillar show their full depth. The whole building, three-quarter front view from slightly above, centred, no people.` },
+  suckulent: { rig: false, prompt: `A suckulent from Planet Squanch in Rick and Morty, drawn as the tall crimson spike plant that grows in log-ringed garden beds in the Wedding Squanchers episode: a clump of four tall fleshy tapering spikes like giant pointed horns, each shaded deep crimson-maroon down one side and lighter raspberry red down the other, dotted with scattered small salmon-pink teardrop-shaped nubs pointing upwards, three standing nearly upright grouped close together in the middle and one curving outwards, rising from a low round bed of dark purple-plum soil with short tufts of red grass, a cluster of pale lilac-pink mushroom-like flowers with round caps and a small branching red coral sprig with lime-green tips at the foot of the spikes, the bed ringed by short upright cut log stumps of brown wood with light tan tops, no face, no mouth. The whole object, three-quarter front view, centred.` },
+  birdperch: { rig: false, prompt: `An empty perch tree for the bird-people of Bird World, Birdperson's home planet in Rick and Morty: one thick, twisted, knobbly trunk of pale tan-brown wood standing on a short, stubby, tight flare of thick gnarled roots that stay close to the trunk on a small round patch of bare brown earth, two round knotholes on opposite sides of the trunk halfway up, each with a glowing mint-green orb set in it, exactly two thick, short, stubby crossbars of smooth branch wood with blunt rounded ends and no twigs, forks or side shoots, set far apart up the trunk so they never cross or overlap each other in the picture: the lower one sticks straight out just above the knotholes towards the viewer's left-front, and the upper one sticks straight out just below the nest, a full trunk-width higher, towards the back-right, each fixed to the trunk by a few tight coils of dark brown rope wrapped flat around the joint with no loose ends and no rope hanging down, no other branches on the trunk, near the top the trunk splits into two thick arms that hold a big round woven wicker nest bowl lined with golden straw and then spread out a short way above it into a solid, thick, flat umbrella-shaped canopy of pale green leaves like an acacia tree, the canopy sitting low and close over the nest, two fat amber teardrop seed pods half-sunk into the underside of the canopy's rim so they sit flush with it and do not hang below it, nothing dangling, two or three small pale cyan crystals growing from the earth between the roots, nobody on it, no text. The whole object, clear three-quarter front view turned about 45 degrees and seen from slightly above, so the round earth base reads as an oval, the flat top of the canopy, the inside of the nest and the depth of both crossbars are all visible, centred.` },
+  gearbig: { rig: false, hero: true, prompt: `A giant gear monument of Gear World from Rick and Morty's Mortynight Run episode: one huge, very chunky brass cog wheel standing upright on its edge, as thick as a quarter of its width so its broad side edge and the deep sides of its teeth show clearly, with twelve big blocky square teeth all round its rim, six broad thick straight spokes and a round riveted hub at the centre with a smaller purple cog bolted flat on the hub's face, the brass warm gold with a few dark oil streaks, its bottom edge sunk into a slot in the top of one low, wide, solid stepped plinth of riveted teal-green painted metal with brass trim, the plinth about as long as the cog is wide and half as deep, nothing else on the plinth, nothing hanging off it, no pipes, no other cogs, a blank brass plaque on the front of the plinth, the whole monument turned so both the cog's face and its thick side edge are in view with the plinth turned the same way, a wide margin of white all round it, no text, no people. The whole object, three-quarter front view, centred.` },
+  gearcog: { rig: false, prompt: `A single loose red gear from Gear World in Rick and Morty: one chunky cartoon gear wheel lying flat on the ground, a thick heavy round disc like a hockey puck with a tall side edge, about a quarter as thick as it is wide, not a thin coin, with about twelve short, wide, blocky square teeth, slightly tapered with rounded corners, evenly spaced all round its rim and as tall as the disc is thick, and a smaller round inner disc stacked on top of it, raised up above the toothed rim like a low drum, standing proud of the top face with its own short side wall showing at the front, covering most of the top face, not sunken, not a dish, not a recess, with four small round dark holes set in a square on it and no hole in the middle, the rim and teeth in clean bright tomato red and the raised inner disc a darker rust red, seen from above at an angle so the whole top face and the ring of teeth round its edge show, lying on its own with nothing else around it, no text. The whole object, three-quarter front view, centred.` },
 };
 // the small props, whose textures the plan keeps to 1024 pixels
-const SMALL = new Set(['snuffles', 'ghostinajar', 'tinkles', 'babywizard']);
+const SMALL = new Set(['gearcog', 'purgewell', 'frundles', 'frundlesdog', 'snuffles', 'ghostinajar', 'tinkles', 'babywizard', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli']);
 export const ASSETS = {};
 for (const [phase, set] of [
+  [1, PHASE1],
   [2, PHASE2],
+  [3, PHASE3],
+  [4, PHASE4],
+  [5, PHASE5],
   [6, PHASE6],
+  [7, PHASE7],
+  [8, PHASE8],
+  [9, PHASE9],
+  [10, PHASE10],
+  [11, PHASE11],
+  [12, PHASE12],
+  [13, PHASE13],
 ]) {
-  for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: true, poly: a.hero ? 40000 : 30000, tex: SMALL.has(n) ? 1024 : 2048, ...a };
+  for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };
 }
 
 const key = process.env.MESHY_API_KEY;
@@ -149,12 +389,20 @@ async function download(url, file) {
 const json = async (file) => (existsSync(file) ? JSON.parse(await readFile(file, 'utf8')) : {});
 const put = (file, v) => writeFile(file, `${JSON.stringify(v, null, 2)}\n`);
 // (several tasks finish at once: each save writes what's in memory, which
-// has them all)
+// has them all; and what another run of this has saved since this one
+// read the file is kept, so two steps can run side by side: a name's
+// entries are merged, this run's winning. A reroll forgets on purpose, so
+// it writes what it has.)
 let tasks = null;
-const save = () => put(TASKS, tasks);
+const save = async ({ merge = true } = {}) => {
+  const disk = merge ? await json(TASKS) : {};
+  for (const [n, v] of Object.entries(tasks)) disk[n] = { ...disk[n], ...v };
+  tasks = disk;
+  await put(TASKS, tasks);
+};
 async function mark(names, status) {
   const ledger = await json(LEDGER);
-  for (const n of names) if (ledger[n]?.status !== 'done' || status === 'done') ledger[n] = { status, by: 'local' };
+  for (const n of names) if (ledger[n]?.status !== 'done' || status === 'done') ledger[n] = { status, by: ASSETS[n]?.phase === 3 ? 'cloud' : 'local' };
   await put(LEDGER, ledger);
 }
 
@@ -380,6 +628,14 @@ async function squeeze(from, to, { tex = 0, clip = false, ankles = false, fix = 
   await io.write(to, doc);
 }
 
+// a found model's entry in src/data/modelCredits.json, as the scout's fetch writes it
+async function creditFound(n, m, a) {
+  const file = join(ROOT, 'src', 'data', 'modelCredits.json');
+  const all = JSON.parse(await readFile(file, 'utf8'));
+  all[`c-137-${slugOf(m.name)}`] = creditOf(m, { where: 'c-137', as: `${a.as}, rigged by Meshy`, file: `/games/meshy/${n}.glb` });
+  await put(file, Object.fromEntries(Object.entries(all).sort(([x], [y]) => x.localeCompare(y))));
+}
+
 // what each step leaves, in order: rerolling one forgets it and those after
 const CHAIN = ['image', 'use', 'model', 'rig', 'idle', 'sit'];
 
@@ -399,12 +655,13 @@ const steps = {
     console.log(`claim    ${names.length} names in scripts/rm-models.json: commit and push it before paying`);
   },
   async images(names) {
+    names = names.filter((n) => !ASSETS[n].uid);
     await mark(names, 'meshy');
     await each(names, async (n) => {
       const a = ASSETS[n];
       tasks[n] ??= {};
       if (!tasks[n].image) {
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}) });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: a.crowd ? 'nano-banana' : 'nano-banana-pro', prompt: `${a.prompt} ${STYLE}`, ...(a.rig ? { pose_mode: 'a-pose' } : {}) });
         tasks[n].image = result;
         await save();
       }
@@ -414,9 +671,9 @@ const steps = {
     });
   },
   async models(names) {
-    await each(names, async (n) => {
+    await each(names.filter((n) => !ASSETS[n].uid), async (n) => {
       const a = ASSETS[n];
-      if (!tasks[n]?.image) throw new Error('no image yet');
+      if (!tasks[n]?.image && !tasks[n]?.use) throw new Error('no image yet');
       if (!tasks[n].model) {
         const { result } = await api('POST', '/v1/image-to-3d', {
           ...(tasks[n].use ? { image_url: await picked(n) } : { input_task_id: tasks[n].image }),
@@ -428,7 +685,10 @@ const steps = {
           target_polycount: a.poly,
           texture_resolution: '2k',
           ...(a.hero ? { geometry_resolution: '2k' } : {}),
-          ...(a.rig ? { pose_mode: 'a-pose' } : {}),
+          // (`pose: false`: the concept's own pose kept, for a figure whose
+          // extra limbs Meshy's A-pose pass drops, as Mar-Sha's and Morty
+          // Jr.'s arms on their heads)
+          ...(a.rig && a.pose !== false ? { pose_mode: 'a-pose' } : {}),
           target_formats: ['glb'],
           enable_thumbnail: true,
         });
@@ -440,13 +700,56 @@ const steps = {
       console.log(`model    ${n.padEnd(18)} ${t.consumed_credits} credits`);
     });
   },
+  // a Sketchfab model (an asset with a `uid`) made ready for Meshy's rigger:
+  // downloaded (SKETCHFAB_API_TOKEN), its transforms baked into the vertices,
+  // turned to face +z (`turn`), stood on y = 0 at the middle, its maps JPEGs at 1024 and no meshopt
+  // (Meshy can't read it), into lab/meshy/rm/in/<name>.glb; its page kept
+  // for the credit (src/data/modelCredits.json, written by fetch)
+  async bake(names) {
+    const token = process.env.SKETCHFAB_API_TOKEN;
+    if (!token) throw new Error('Set SKETCHFAB_API_TOKEN (it is in ~/.tilakverse.env).');
+    const sf = async (path) => {
+      const r = await fetch(`https://api.sketchfab.com/v3${path}`, { headers: { Authorization: `Token ${token}` } });
+      if (!r.ok) throw new Error(`sketchfab ${path}: ${r.status}`);
+      return r.json();
+    };
+    for (const n of names.filter((k) => ASSETS[k].uid)) {
+      const { uid } = ASSETS[n];
+      const raw = join(REVIEW, 'in', `${n}-sketchfab.glb`);
+      if (!existsSync(raw)) await download((await sf(`/models/${uid}/download`)).glb.url, raw);
+      tasks[n] = { ...tasks[n], sketchfab: await sf(`/models/${uid}`).then((m) => ({ name: m.name, user: m.user, license: m.license, viewerUrl: m.viewerUrl })) };
+      await save();
+      const plain = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+      const doc = await plain.read(raw);
+      await doc.transform(flatten());
+      for (const node of doc.getRoot().listNodes()) {
+        if (!node.getMesh()) continue;
+        transformMesh(node.getMesh(), node.getWorldMatrix());
+        node.setMatrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+      }
+      // (`turn`: radians about y, for a model that doesn't face +z)
+      if (ASSETS[n].turn) for (const m of doc.getRoot().listMeshes()) transformMesh(m, new Matrix4().makeRotationY(ASSETS[n].turn).elements);
+      const b = getBounds(doc.getRoot().listScenes()[0]);
+      const shift = new Matrix4().makeTranslation(-(b.min[0] + b.max[0]) / 2, -b.min[1], -(b.min[2] + b.max[2]) / 2).elements;
+      for (const m of doc.getRoot().listMeshes()) transformMesh(m, shift);
+      await doc.transform(prune(), dedup(), textureCompress({ encoder: sharp, targetFormat: 'jpeg', resize: [1024, 1024], quality: 92 }));
+      await plain.write(join(REVIEW, 'in', `${n}.glb`), doc);
+      const c = getBounds(doc.getRoot().listScenes()[0]);
+      console.log(`bake     ${n.padEnd(18)} ${(c.max[1] - c.min[1]).toFixed(2)} tall, x ${c.min[0].toFixed(2)}…${c.max[0].toFixed(2)}, z ${c.min[2].toFixed(2)}…${c.max[2].toFixed(2)}`);
+    }
+  },
   async rig(names) {
     await each(
       names.filter((n) => ASSETS[n].rig),
       async (n) => {
-        if (!tasks[n]?.model) throw new Error('no model yet');
-        if (!tasks[n].rig) {
-          const { result } = await api('POST', '/v1/rigging', { input_task_id: tasks[n].model, height_meters: ASSETS[n].height });
+        const a = ASSETS[n];
+        const baked = join(REVIEW, 'in', `${n}.glb`);
+        if (a.uid ? !existsSync(baked) : !tasks[n]?.model) throw new Error(a.uid ? 'bake it first' : 'no model yet');
+        if (!tasks[n]?.rig) {
+          // a found model goes to the rigger as a data: URI (nothing public needed)
+          const from = a.uid ? { model_url: `data:application/octet-stream;base64,${(await readFile(baked)).toString('base64')}` } : { input_task_id: tasks[n].model };
+          tasks[n] ??= {};
+          const { result } = await api('POST', '/v1/rigging', { ...from, height_meters: a.height });
           tasks[n].rig = result;
           await save();
         }
@@ -519,14 +822,15 @@ const steps = {
         const t = await api('GET', `/v1/image-to-3d/${s.model}`);
         files.push([t.model_urls.glb, `${n}.glb`, a.tex, false]);
       }
-      const out = a.rig ? OUT : RM_OUT;
+      const out = a.rig ? OUT : a.crowd ? FULL : RM_OUT;
       await mkdir(out, { recursive: true });
       for (const [url, file, tex, clip] of files) {
         const raw = join(tmp, `${s.rig ?? s.model}-${file}`);
         if (!existsSync(raw)) await download(url, raw);
         await squeeze(raw, join(out, file), { tex, clip, ankles: clip ? false : (a.ankles ?? false), fix: clip ? null : (a.fix ?? null) });
       }
-      credits[`meshy/${a.rig ? '' : 'rm/'}${n}`] = { source: 'https://www.meshy.ai', id: s.model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
+      if (a.uid) await creditFound(n, s.sketchfab, a);
+      else credits[`meshy/${a.rig || a.crowd ? '' : 'rm/'}${n}`] = { source: 'https://www.meshy.ai', id: s.model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
       done.push(n);
       console.log(`fetch    ${n.padEnd(18)} ${files.map((f) => f[1]).join(', ')}`);
     }
@@ -553,8 +857,48 @@ const steps = {
     await save();
     console.log(`use      ${n.padEnd(18)} its model will be made from ${file}${how === 'flip' ? ', mirrored' : ''}`);
   },
+  // more clips from Meshy's animation library, on a rigged figure's own
+  // skeleton (3 credits each): `clips <clip> <name …>` makes one, kept in
+  // tasks[name].clips[clip]; `fetchclips <name …>` downloads every clip a
+  // figure has to public/games/meshy/<name>-<clip>.glb. The names needn't be
+  // this file's assets: Rick, Morty, Evil Rick and Evil Morty are
+  // scripts/meshy.mjs's, and their task ids are in the same file (on the
+  // account that made them).
+  async clips(names) {
+    const [clip, ...who] = names;
+    if (!CLIPS[clip]) throw new Error(`clip: ${Object.keys(CLIPS).join(' | ')}`);
+    await each(who, async (n) => {
+      if (!tasks[n]?.rig) throw new Error(`${n}: not rigged`);
+      tasks[n].clips ??= {};
+      if (!tasks[n].clips[clip]) {
+        const { result } = await api('POST', '/v1/animations', { rig_task_id: tasks[n].rig, action_id: CLIPS[clip], post_process: { operation_type: 'extract_armature' } });
+        tasks[n].clips[clip] = result;
+        await save();
+      }
+      const t = await wait('/v1/animations', tasks[n].clips[clip], `${n} ${clip}`);
+      console.log(`clip     ${n.padEnd(18)} ${clip} ${t.consumed_credits} credits`);
+    });
+  },
+  async fetchclips(names) {
+    const tmp = join(ROOT, 'node_modules', '.cache', 'meshy');
+    await mkdir(tmp, { recursive: true });
+    await mkdir(OUT, { recursive: true });
+    for (const n of names) {
+      const made = tasks[n]?.clips ?? {};
+      for (const [clip, id] of Object.entries(made)) {
+        const a = (await api('GET', `/v1/animations/${id}`)).result;
+        const raw = join(tmp, `${id}-${n}-${clip}.glb`);
+        if (!existsSync(raw)) await download(a.animation_glb_url, raw);
+        // (CLIP_PREFIX=clips: files named clips-<clip>.glb, shared by every figure through the cast's retargeting)
+        await squeeze(raw, join(OUT, `${process.env.CLIP_PREFIX ?? n}-${clip}.glb`), { tex: 0, clip: true });
+      }
+      console.log(`clips    ${n.padEnd(18)} ${Object.keys(made).join(', ') || 'none'}`);
+    }
+  },
   async balance() {},
 };
+// the library's actions used (node scripts/meshy-rm-local.mjs library lists more)
+const CLIPS = { drink: 342, cheer: 403, wave: 28, happy: 61, hit: 178, fall: 187, scared: 404, shoot: 232, dance: 64, punch: 198, taunt: 88, shot: 183, sitcross: 364 };
 
 async function main() {
   if (!key) throw new Error('Set MESHY_API_KEY in .env.local and run with node --env-file=.env.local.');
@@ -567,14 +911,16 @@ async function main() {
     return steps.use(rest);
   }
   // a phase's name stands for its assets
-  const names = (rest.length ? rest : Object.keys(ASSETS)).flatMap((n) => (/^phase\d$/.test(n) ? Object.keys(ASSETS).filter((k) => ASSETS[k].phase === Number(n.slice(5))) : [n]));
-  for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n}`);
+  const names = (rest.length ? rest : Object.keys(ASSETS)).flatMap((n) => (/^phase\d+$/.test(n) ? Object.keys(ASSETS).filter((k) => ASSETS[k].phase === Number(n.slice(5))) : [n]));
   tasks = await json(TASKS);
+  // (the clip steps take any rigged figure in the tasks file)
+  const own = step === 'clips' ? names.slice(1) : step === 'fetchclips' ? names : [];
+  for (const n of step === 'clips' ? names.slice(1) : names) if (!ASSETS[n] && !(own.includes(n) && tasks[n]?.rig)) throw new Error(`unknown asset ${n}`);
   if (forget) {
     const from = CHAIN.indexOf(LEAVES[forget]);
     if (from < 0 || !rest.length) throw new Error(`reroll <${Object.keys(LEAVES).join(' | ')}> <name …>`);
     for (const n of names) for (const k of CHAIN.slice(from)) if (tasks[n]) delete tasks[n][k];
-    await save();
+    await save({ merge: false });
     console.log(`reroll   ${forget} forgotten for ${names.join(' ')}`);
     return;
   }

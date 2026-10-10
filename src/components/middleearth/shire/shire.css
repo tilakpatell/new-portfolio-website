@@ -3,11 +3,14 @@
 
 .shire-world {
   --shire-ink: #fbf4e2;
-  --shire-glass: rgba(28, 34, 20, 0.74);
+  --shire-glass: rgba(28, 34, 20, 0.78); /* (the HUD's glass floor: runtime/hud/hud.css) */
   --shire-glass-hi: rgba(36, 44, 26, 0.9);
   --shire-gold: #f0c040;
   --shire-green: #2e6b3a;
   --shire-line: rgba(240, 216, 150, 0.4);
+  /* clear of the chapter's bar, which sticks over the top of Middle-earth's
+     towns (Scranton and the Citadel have none: they set the pad) */
+  --shire-bar-clear: 3.4rem;
   position: relative;
   z-index: 10;
 }
@@ -29,13 +32,15 @@
 .shire-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #2a1d10; font: 600 1.1rem/1 'Cinzel', Georgia, serif; letter-spacing: 0.04em; }
 
 /* the HUD sits over the world; only its controls take the pointer */
-.shire-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: clamp(0.7rem, 2vw, 1.2rem); pointer-events: none; }
+/* (spaced by the HUD kit's tokens, runtime/hud/hud.css: the pad, the phone's
+   home bar and notch, the site's "?" corner) */
+.shire-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: var(--hud-pad) var(--hud-pad-r) var(--hud-pad) var(--hud-pad-l); pointer-events: none; }
 .shire-hud > * { pointer-events: auto; }
-.shire-hud-top { top: 0; align-items: flex-start; padding-top: 3.4rem; } /* clear of the chapter's bar, which sticks over the top */
-.shire-hud-bottom { bottom: 0; align-items: flex-end; padding-right: calc(16px + 42px + 0.9rem); } /* clear of the site's guide button */
+.shire-hud-top { top: 0; align-items: flex-start; padding-top: var(--shire-bar-clear); }
+.shire-hud-bottom { bottom: 0; align-items: flex-end; padding-right: var(--guide-reserve); padding-bottom: var(--hud-pad-b); } /* clear of the site's guide button and the home bar */
 .shire-brand { display: grid; gap: 0.55rem; max-width: min(32rem, 60%); pointer-events: none; }
 .shire-title { margin: 0; color: var(--shire-ink); font: 600 clamp(1.8rem, 1.1rem + 2.4vw, 3rem)/1 'Cinzel', Georgia, serif; letter-spacing: 0.04em; text-shadow: 0 2px 16px rgba(20, 12, 4, 0.6), 0 0 2px rgba(20, 12, 4, 0.5); }
-.shire-objective { display: inline-flex; align-items: flex-start; gap: 0.5rem; justify-self: start; margin: 0; padding: 0.5rem 0.8rem; border: 1px solid var(--shire-line); border-radius: 8px; background: var(--shire-glass); color: var(--shire-ink); font: 500 clamp(0.8rem, 0.75rem + 0.25vw, 0.95rem)/1.4 var(--font-sans); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.shire-objective { display: inline-flex; align-items: flex-start; gap: 0.5rem; justify-self: start; margin: 0; padding: 0.5rem 0.8rem; border: 1px solid var(--shire-line); border-radius: 8px; background: var(--shire-glass); color: var(--shire-ink); font: 500 clamp(0.8rem, 0.75rem + 0.25vw, 0.95rem)/1.4 var(--font-sans); } /* (on glass, never blurred: a blur over the town redrawn every frame costs a frame) */
 .shire-objective span { color: var(--shire-gold); }
 .shire-side { display: grid; justify-items: end; gap: 0.5rem; }
 .shire-map { width: 150px; height: 150px; border-radius: 50%; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.32); }
@@ -58,6 +63,9 @@
 .shire-tempt { position: absolute; left: 50%; top: clamp(7rem, 22%, 10rem); width: min(22rem, calc(100% - 2rem)); transform: translateX(-50%); border-color: rgba(255, 140, 40, 0.6); animation: shire-tempt 1.1s ease-in-out infinite alternate; }
 .shire-tempt .shire-meter-bar span { background: linear-gradient(90deg, #f0c040, #ff4a1a); }
 
+/* caught or found: dark for a moment while he's put back, not a cut */
+.shire-fade { position: absolute; inset: 0; z-index: 1; background: #05070a; opacity: 0; pointer-events: none; transition: opacity 0.26s ease; }
+.shire-fade[data-on] { opacity: 1; }
 .shire-toast { position: absolute; top: clamp(8.6rem, 24%, 11.5rem); left: 50%; z-index: 3; max-width: min(32rem, calc(100% - 2rem)); margin: 0; padding: 0.7rem 1rem; border-left: 4px solid var(--shire-gold); border-radius: 8px; background: var(--shire-glass-hi); color: var(--shire-ink); font: 500 0.95rem/1.4 var(--font-sans); text-align: center; transform: translateX(-50%); animation: shire-toast 4.2s ease both; pointer-events: none; }
 .shire-toast[data-bad] { border-left-color: #ff7a5a; }
 .shire-stage[data-mode='show'] .shire-toast, .shire-stage[data-mode='rings'] .shire-toast, .shire-stage[data-mode='inside'] .shire-toast { top: 3.6rem; }
@@ -70,6 +78,8 @@
 .shire-bubble b { color: var(--shire-green); font: 600 0.74rem/1.1 'Cinzel', Georgia, serif; letter-spacing: 0.05em; }
 
 .shire-door { position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); z-index: 2; display: grid; justify-items: center; gap: 0.45rem; width: min(22rem, calc(100% - 2rem)); padding: 0.85rem 1rem 0.95rem; border: 1px solid rgba(240, 192, 64, 0.55); border-radius: 12px; background: var(--shire-glass-hi); color: var(--shire-ink); text-align: center; transform: translateX(-50%); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
+/* the key first, as the guide writes it ("E Go in") */
+.shire-world kbd.key-first { margin: 0 0.35rem 0 0; }
 .shire-door-name { margin: 0; font: 600 1.15rem/1.15 'Cinzel', Georgia, serif; letter-spacing: 0.03em; }
 .shire-world .btn-primary { background: var(--shire-gold); color: #1d160a; border-color: transparent; }
 .shire-world .btn-ghost { background: rgba(255, 255, 255, 0.08); color: var(--shire-ink); border-color: rgba(255, 255, 255, 0.35); }
@@ -77,7 +87,7 @@
 .shire-hint { position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); max-width: calc(100% - 2rem); margin: 0; padding: 0.5rem 0.85rem; border-radius: 8px; background: var(--shire-glass); color: var(--shire-ink); font: 500 0.84rem/1.35 var(--font-sans); text-align: center; transform: translateX(-50%); pointer-events: none; }
 
 /* the activities' panels */
-.shire-panel { position: absolute; left: clamp(0.7rem, 2vw, 1.2rem); bottom: clamp(0.7rem, 2vw, 1.2rem); z-index: 2; display: grid; gap: 0.55rem; width: min(22rem, calc(100% - 1.4rem)); padding: 0.85rem 1rem; border: 1px solid var(--shire-line); border-radius: 12px; background: var(--shire-glass-hi); color: var(--shire-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
+.shire-panel { position: absolute; left: var(--hud-pad-l); bottom: var(--hud-pad-b); z-index: 2; display: grid; gap: 0.55rem; width: min(22rem, calc(100% - 1.4rem)); padding: 0.85rem 1rem; border: 1px solid var(--shire-line); border-radius: 12px; background: var(--shire-glass-hi); color: var(--shire-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
 .shire-panel-title { margin: 0; font: 600 1.05rem/1.15 'Cinzel', Georgia, serif; letter-spacing: 0.03em; color: var(--shire-gold); }
 .shire-panel-stats { display: flex; gap: 1.1rem; margin: 0; font: 500 0.9rem/1.2 var(--font-sans); }
 .shire-panel-stats b { color: var(--shire-gold); font-variant-numeric: tabular-nums; }
@@ -96,21 +106,23 @@
 .shire-stick span { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: rgba(240, 192, 64, 0.92); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); transform: translate(var(--sx, 0px), var(--sy, 0px)); }
 
 /* the list of things to do */
-.shire-list { position: absolute; right: clamp(0.7rem, 2vw, 1.2rem); top: calc(3.4rem + 150px + 3.4rem); z-index: 4; width: min(25rem, calc(100% - 1.4rem)); max-height: calc(100% - 150px - 8rem); overflow-y: auto; padding: 0.75rem; border: 1px solid var(--shire-line); border-radius: 12px; background: rgba(24, 30, 18, 0.95); color: var(--shire-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); }
-.shire-list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; font: 600 1.05rem/1 'Cinzel', Georgia, serif; }
-.shire-list-head p { margin: 0; }
+/* (under the map and the chips, measured by the kit's list however many
+   chips a town has, and clear of the site's "?" at the foot) */
+.shire-list { position: absolute; right: var(--hud-pad-r); top: var(--hud-under, calc(var(--shire-bar-clear) + 150px + 3.4rem)); z-index: 4; width: min(25rem, calc(100% - 1.4rem)); max-height: calc(100% - var(--hud-under, calc(var(--shire-bar-clear) + 150px + 3.4rem)) - var(--guide-clear)); overflow-y: auto; padding: 0.75rem; border: 1px solid var(--shire-line); border-radius: 12px; background: rgba(24, 30, 18, 0.95); color: var(--shire-ink); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4); }
+.shire-list-head, .shire-list .hud-list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; font: 600 1.05rem/1 'Cinzel', Georgia, serif; }
+.shire-list-head p, .shire-list .hud-list-head p { margin: 0; }
 .shire-list ul { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
 .shire-list li { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.7rem; border-radius: 9px; background: rgba(255, 255, 255, 0.05); }
 .shire-list li[data-next] { box-shadow: inset 0 0 0 1px var(--shire-gold); }
-.shire-list li:not([data-open]) { opacity: 0.6; }
+.shire-list li:not([data-open]) { opacity: 0.6; color: inherit; }
 .shire-list li > div { flex: 1; min-width: 0; }
-.shire-seal { flex: none; display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border: 2px dashed rgba(240, 216, 150, 0.45); border-radius: 50%; color: #fff4dc; font: 700 0.85rem/1 var(--font-sans); }
-.shire-list li[data-done] .shire-seal { border: 0; background: radial-gradient(circle at 35% 35%, #c8453a, #8a1e18); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
-.shire-list-name { margin: 0; font-weight: 700; }
-.shire-list-sub { margin: 0.15rem 0 0; color: #cfc6ad; font-size: 0.82rem; line-height: 1.35; }
+.shire-seal, .shire-list .hud-seal { flex: none; display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border: 2px dashed rgba(240, 216, 150, 0.45); border-radius: 50%; color: #fff4dc; font: 700 0.85rem/1 var(--font-sans); }
+.shire-list li[data-done] :is(.shire-seal, .hud-seal) { border: 0; background: radial-gradient(circle at 35% 35%, #c8453a, #8a1e18); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
+.shire-list-name, .shire-list .hud-list-name { margin: 0; font-weight: 700; }
+.shire-list-sub, .shire-list .hud-list-sub { margin: 0.15rem 0 0; color: #cfc6ad; font-size: 0.82rem; line-height: 1.35; }
 /* on the side: a task the story never waits on, with a dotted seal */
-.shire-list-side { margin: 0.85rem 0 0.4rem; color: var(--shire-gold); font: 700 0.7rem/1 var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase; }
-.shire-list li[data-side]:not([data-done]) .shire-seal { border-style: dotted; }
+.shire-list-side, .shire-list .hud-list-side { margin: 0.85rem 0 0.4rem; color: var(--shire-gold); font: 700 0.7rem/1 var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase; }
+.shire-list li[data-side]:not([data-done]) :is(.shire-seal, .hud-seal) { border-style: dotted; }
 .shire-cards li[data-side] { border-style: dashed; }
 .shire-cards .shire-list-side { margin: 0 0 0.45rem; color: var(--muted); }
 
@@ -131,11 +143,10 @@
   .shire-objective { font-size: 0.78rem; padding: 0.4rem 0.6rem; }
   .shire-map { width: 96px; height: 96px; }
   .shire-chip { font-size: 0.74rem; padding: 0.35rem 0.55rem; }
-  .shire-list { top: auto; bottom: 0.7rem; max-height: 70%; }
   .shire-door { bottom: 4.4rem; right: 0.8rem; left: auto; transform: none; width: min(13.5rem, calc(100% - 9.5rem)); padding: 0.7rem 0.8rem; }
   .shire-door-name { font-size: 0.98rem; }
   .shire-hint { bottom: 9.2rem; font-size: 0.78rem; }
-  .shire-panel { bottom: 0.7rem; width: calc(100% - 5.4rem); } /* clear of the site's guide button */
+  .shire-panel { bottom: var(--hud-pad-b); width: calc(100% - var(--guide-reserve) - var(--hud-pad-l)); } /* clear of the site's guide button */
   .shire-panel-inside { left: 0.7rem; transform: none; }
   .shire-bubble > div { font-size: 0.8rem; max-width: 13rem; }
 }

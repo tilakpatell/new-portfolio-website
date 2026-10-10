@@ -276,7 +276,7 @@ export function PortfolioStage() {
                     stroke: s.color,
                     strokeDasharray: `${inView ? len : 0} ${C}`,
                     strokeDashoffset: -acc,
-                    transition: 'stroke-dasharray 0.9s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                    transition: 'stroke-dasharray 0.9s var(--ease-smooth)',
                   }}
                   transform="rotate(-90 60 60)"
                 />
@@ -375,7 +375,7 @@ export function FlamegraphStage() {
                       color: '#0f1111',
                       transform: inView ? 'scaleX(1)' : 'scaleX(0)',
                       transformOrigin: 'left',
-                      transition: `transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) ${(FLAME.length - r) * 120 + k * 60}ms`,
+                      transition: `transform 0.5s var(--ease-smooth) ${(FLAME.length - r) * 120 + k * 60}ms`,
                     }}
                     title={b.l}
                   >

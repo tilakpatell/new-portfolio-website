@@ -32,25 +32,33 @@
 // tail). While hunters are on you (`fight`), the ordinary ships near you run
 // for it: faster, and weaving.
 //
-// createTraffic(parent, { small }) → { setCrew(id), update(dt, t, ship, { fight }) → events,
-//   hit(from, to) → hit or null, convoy(ship, side), distress(ship, side) → the one in
+// The ordinary ships also run from a pilot they fear (`feared`: standing.js,
+// you've shot too many of them), fight or no; and a patrol of the law going
+// past a pilot the law wants (`wanted`) reports them: a `spotted` event, once
+// a group, for the scene to send the law after you.
+//
+// createTraffic(parent, { small, engines }) → { setCrew(id), update(dt, t, ship, { fight, feared, wanted }) → events,
+//   hit(from, to) → hit or null, near(p, r) → ships, bodies(p, r) → shipHits.js's bodies (the small
+//   ships), solids(p, r) → ship.js's solids (the big ones), convoy(ship, side), distress(ship, side) → the one in
 //   distress (an Object3D) or null, clear(), dispose() }
-// Points are in `parent`'s space (the map's).
+// Points are in `parent`'s space (the map's). `engines` (engines.js), when
+// given, lights each ship's engines, brighter as it runs from a fight.
 
 import * as THREE from 'three';
 import { createFleet } from './glbFleet';
 import { bezier, convoyLane, dockScale, dockable, flybyLane, laneDepart, laneDock, laneLength, laneLocal, laneNear, tangent } from './lanes';
 import { DEEP, PLACES, nearestPlace, openness } from './deep';
 import { HOME_RADIUS } from './layout';
-import { SOLIDS } from './ship';
+import { SOLIDS, pacedAll, PACE } from './ship';
 import { SIDES, sideFor } from './sides';
 
-// size: its biggest dimension in map units (a TIE's height, Birdperson's
-// wingspan, Meeseeks' height); speed: map units a second; crew: how many
+// size: its length in map units, nose to tail (a traveller who isn't a ship
+// is his biggest side: Birdperson's wingspan, Meeseeks' height; shipFit.js);
+// speed: map units a second; crew: how many
 // fly together; weight: how often it comes up; big: high over the map, one
 // at a time; flyby: whether it comes to you; civil: an ordinary ship (a
 // convoy's, or one in distress)
-export const TYPES = {
+export const TYPES = pacedAll({
   freighter: { size: 0.7, speed: 7.5, crew: [1, 2], weight: 3, flyby: true, civil: true },
   transport: { size: 1.8, speed: 4.2, crew: [1, 2], weight: 2, civil: true },
   corvette: { size: 3.2, speed: 5, crew: [1, 1], weight: 1.2, civil: true },
@@ -87,7 +95,7 @@ export const TYPES = {
   mortyfighter: { size: 0.28, speed: 10, crew: [3, 5], weight: 1.4, flyby: true },
   squanchship: { size: 0.36, speed: 8, crew: [1, 1], weight: 0.8, flyby: true },
   poopyship: { size: 0.3, speed: 9, crew: [1, 1], weight: 0.6, flyby: true },
-};
+}); // (at the ship's pace: ship.js's PACE)
 // whose traffic each crew meets (sides.js: the side's everyday ships and
 // its civilians, who guards a convoy, who calls for help); with no ship
 // picked, every side's
@@ -100,6 +108,7 @@ const ALL = [...new Set(kindsFor(null))];
 const runOf = (speed) => Math.min(90, Math.max(30, speed * 10));
 const DOCKING = 0.32; // how much of the everyday traffic at a place is coming in to land, or launching
 const FLEE = { near: 70, faster: 0.9, ease: 1.2 }; // how near you a civil ship runs from a fight, how much faster it goes, how quickly it gets going
+export const SPOT = 32; // how near a patrol of the law must pass a wanted pilot to report them
 const PEEL = { from: 0.52, to: 0.88, roll: 0.95 }; // where along its lane a wing peels apart (past you), and how far each rolls
 const FADE_OVER = 8; // map units over which a ship whose run was cut short fades into sight (or out of it)
 
@@ -148,7 +157,7 @@ const stationBy = (ship) => {
   return gap < DEEP.near ? best : null;
 };
 
-export function createTraffic(parent, { small = false, fleet = createFleet() } = {}) {
+export function createTraffic(parent, { small = false, fleet = createFleet(), engines = null } = {}) {
   const rand = Math.random;
   const MAX = small ? 8 : 18; // groups at once
   const pool = {}; // kind → models not in use
@@ -171,14 +180,30 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
   };
   const take = (kind) => {
     // a built stand-in waiting in the pool gives way once the model is here
-    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) m.dispose();
+    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
     const model = pool[kind]?.pop() ?? fleet.make(kind);
-    model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1); // to its biggest dimension
+    model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1); // (the fleet's says how it's fitted, shipFit.js; a model with none, to its biggest dimension)
+    // (its engines, once: lit while it's out, nothing while it's in the pool)
+    if (engines && !model.engine) model.engine = engines.add(kind, model.group, { size: model.size });
     return model;
+  };
+  const drop = (model) => {
+    engines?.remove(model.engine);
+    model.dispose();
   };
   const give = (kind, model) => {
     model.group.removeFromParent();
     (pool[kind] ??= []).push(model);
+  };
+  // one shot down (or rammed): gone, its model back in the pool
+  const down = (m) => {
+    m.alive = false;
+    give(m.kind, m.model);
+  };
+  // the kinds of the law and the police of the side you fly with
+  const lawKindsNow = () => {
+    const side = sideFor(crew);
+    return side ? [side.law, side.police?.faction].flatMap((f) => side.factions[f]?.kinds.map(([k]) => side.kinds[k]?.model ?? k) ?? []) : [];
   };
 
   // a group on a lane: in a loose wedge behind its leader, or (a convoy) in
@@ -298,6 +323,8 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       gr.position.addScaledVector(lift, Math.sin(g.weave + m.phase) * m.size * weave);
       gr.scale.setScalar(m.size * m.model.fit * Math.max(1e-3, grow));
       gr.quaternion.copy(turn);
+      // (its engines a little harder running from a fight; easing off to land)
+      if (m.model.engine) engines.set(m.model.engine, { throttle: (g.dock ? 0.3 : 0.45) + 0.45 * g.flee, boost: 0 });
       // rolled into the peel (most of the way through it), and a jink while running
       const lean = (m.roll ? m.roll * Math.sin(apart * Math.PI) : 0) + g.flee * 0.35 * Math.sin(t * 2.1 + m.phase);
       if (lean) gr.quaternion.multiply(bank.setFromAxisAngle(Z, lean));
@@ -327,9 +354,12 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
 
     // ship: the player's ship ({ x, y, z, heading, speed }) or null. Returns
     // what happened: [{ type: 'traffic', kind }] as a group goes past you
-    update(dt, t, ship, { fight = false } = {}) {
+    update(dt, t, ship, { fight = false, feared = false, wanted = false } = {}) {
       clock += dt;
       const events = [];
+      // the law's own ships, in passing (the side's `law` faction's kinds)
+      const side = sideFor(crew);
+      const law = wanted && side?.law ? side.factions[side.law] : null;
       const bigs = live.filter((g) => g.type.big).length;
       if (clock >= nextAt && live.length < MAX) {
         nextAt = clock + between(rand, small ? 2.5 : 1, small ? 6 : 3);
@@ -364,11 +394,20 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
         if (pts) spawn(kind, pts, true);
       }
       for (const g of [...live]) {
-        // the ordinary ships near you run from a fight (and settle once it's over)
+        // the ordinary ships near you run from a fight (and settle once it's
+        // over), and from a pilot they fear, fight or no
         let run = 0;
-        if (fight && ship && g.type.civil && !g.type.big && !g.dock) {
+        if ((fight || feared) && ship && g.type.civil && !g.type.big && !g.dock) {
           const p = g.members.find((m) => m.alive)?.model.group.position;
           if (p && (p.x - ship.x) ** 2 + (p.y - ship.y) ** 2 + (p.z - ship.z) ** 2 < FLEE.near * FLEE.near) run = 1;
+        }
+        // a patrol of the law passing a wanted pilot reports them, once
+        if (law && ship && !g.spotted && !g.type.civil && !g.type.big && law.kinds.some(([k]) => k === g.kind)) {
+          const p = g.members.find((m) => m.alive)?.model.group.position;
+          if (p && (p.x - ship.x) ** 2 + (p.y - ship.y) ** 2 + (p.z - ship.z) ** 2 < SPOT * SPOT) {
+            g.spotted = true;
+            events.push({ type: 'spotted', kind: g.kind, faction: side.law });
+          }
         }
         g.flee += (run - g.flee) * Math.min(1, dt * FLEE.ease);
         g.weave += dt * (1.3 + g.flee * 2); // (its own phase, run on at its own rate: a rate times the clock would jump)
@@ -393,6 +432,69 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
     // ground in a frame than a fighter is wide, so it's the whole stretch that
     // counts): the ship it hit, if any ({ kind, at, size }), which is gone.
     // A little forgiving: a near miss counts
+    // the ships within `r` of `p` ({ x, y, z }): the witnesses to what you
+    // just did (wanted.js), [{ ref (the ship: the same one frame to frame,
+    // gone from the list once it's shot down or flown off), kind, civil,
+    // law (one of the law's or the police's own) }]
+    near(p, r) {
+      const out = [];
+      const lawKinds = lawKindsNow();
+      for (const g of live) {
+        if ((g.grow ?? 1) < HIDDEN) continue;
+        for (const m of g.members) {
+          if (!m.alive) continue;
+          const q = m.model.group.position;
+          if ((q.x - p.x) ** 2 + (q.y - p.y) ** 2 + (q.z - p.z) ** 2 > r * r) continue;
+          out.push({ ref: m, kind: m.kind, civil: Boolean(TYPES[m.kind]?.civil), law: lawKinds.includes(m.kind) });
+        }
+      }
+      return out;
+    },
+
+    // the small ships within `r` of `p`, as shipHits.js's bodies (one too
+    // big to bring down is a solid), each civil, the law's or a foe as near
+    // tells them; a ram brings one down as a shot does
+    bodies(p, r) {
+      const out = [];
+      const lawKinds = lawKindsNow();
+      for (const g of live) {
+        if ((g.grow ?? 1) < HIDDEN) continue;
+        g.members.forEach((m, i) => {
+          const type = TYPES[m.kind];
+          if (!m.alive || type.big || m.size > 2) return;
+          const q = m.model.group.position;
+          if ((q.x - p.x) ** 2 + (q.y - p.y) ** 2 + (q.z - p.z) ** 2 > r * r) return;
+          const civil = Boolean(type.civil);
+          const side = civil ? 'civil' : lawKinds.includes(m.kind) ? 'law' : 'foe';
+          const hit = () => {
+            if (!m.alive) return null;
+            const at = q.clone();
+            down(m);
+            return { down: true, at, size: m.size, kind: m.kind, civil };
+          };
+          out.push({ key: `t:${g.id}:${i}`, id: `${g.id}:${i}`, kind: m.kind, at: q, size: m.size, side, hit });
+        });
+      }
+      return out;
+    },
+
+    // the ships too big to bring down within `r` of `p` (a Star Destroyer, a
+    // corvette), as ship.js's solids: flying into one is a planet's bump or crash
+    solids(p, r) {
+      const out = [];
+      for (const g of live) {
+        if ((g.grow ?? 1) < HIDDEN) continue;
+        g.members.forEach((m, i) => {
+          if (!m.alive || !(TYPES[m.kind].big || m.size > 2)) return;
+          const q = m.model.group.position;
+          const rr = m.size * 0.3;
+          if ((q.x - p.x) ** 2 + (q.y - p.y) ** 2 + (q.z - p.z) ** 2 > (r + rr) ** 2) return;
+          out.push({ id: `t:${g.id}:${i}`, at: [q.x, q.y, q.z], r: rr, reach: rr, ship: true });
+        });
+      }
+      return out;
+    },
+
     hit(from, to) {
       const sx = to.x - from.x;
       const sy = to.y - from.y;
@@ -413,8 +515,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
           if (ex * ex + ey * ey + ez * ez < r * r) {
             // too big to bring down (a Star Destroyer, a corvette)
             if (type.big || m.size > 2) return { kind: m.kind, at: p.clone(), size: m.size, glance: true, civil: Boolean(type.civil) };
-            m.alive = false;
-            give(m.kind, m.model);
+            down(m);
             return { kind: m.kind, at: p.clone(), size: m.size, civil: Boolean(type.civil) };
           }
         }
@@ -434,7 +535,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
       // (a long one has an escort in the middle too)
       if (n >= 6) freight.splice(3, 0, side.convoy.escort);
       const kinds = [side.convoy.escort, ...freight, side.convoy.escort];
-      spawn(kinds[1], pts, true, { kinds, column: true, speed: 3.6, event: 'convoy' });
+      spawn(kinds[1], pts, true, { kinds, column: true, speed: 3.6 * PACE, event: 'convoy' });
       return true;
     },
 
@@ -443,8 +544,32 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
     distress(ship, side = sideFor(crew)) {
       const pts = side && ship && (laneNear(ship, rand) ?? flybyLane(ship, rand, { cross: true }));
       if (!pts) return null;
-      const g = spawn(side.distress.civil, pts, true, { kinds: [side.distress.civil], speed: 2.6, event: 'distress' });
+      const g = spawn(side.distress.civil, pts, true, { kinds: [side.distress.civil], speed: 2.6 * PACE, event: 'distress' });
       return g.members[0].model.group;
+    },
+
+    // one of your universe's ordinary ships to see to the next place
+    // (escort.js): on `path` from where it drops in to where it jumps, no
+    // run in or out, at `speed` (quicker running from a fight, as any).
+    // { ship: what the pirates are after, arrived (it got to the end),
+    // kill() → where it went up, or null }; or null
+    escort(path, speed, side = sideFor(crew)) {
+      if (!side) return null;
+      const g = spawn(side.distress.civil, path, false, { kinds: [side.distress.civil], speed, event: 'escort' });
+      Object.assign(g, { runIn: 0, runOut: 0, total: g.len, fadeIn: false, fadeOut: false });
+      const m = g.members[0];
+      return {
+        ship: m.model.group,
+        get arrived() {
+          return g.t >= 1 && m.alive;
+        },
+        kill() {
+          if (!m.alive || !m.model.group.parent) return null;
+          const at = m.model.group.position.clone();
+          down(m);
+          return at;
+        },
+      };
     },
 
     clear() {
@@ -471,7 +596,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet() } =
 
     dispose() {
       while (live.length) end(live[0]);
-      for (const list of Object.values(pool)) for (const m of list) m.dispose();
+      for (const list of Object.values(pool)) for (const m of list) drop(m);
     },
   };
 }

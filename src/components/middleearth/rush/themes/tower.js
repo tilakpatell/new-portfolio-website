@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { hot } from '../../../../lib/stage3d';
 import { B, ball, cyl, lathe } from '../../shire/props';
 import { V, motes, webTexture } from './common';
+import { sharpen } from '../../../../lib/three/textures';
 
 // the orcs' banner: the red Eye on black
 function eyeBanner() {
@@ -40,6 +41,7 @@ function eyeBanner() {
   g.fillRect(28, 84, 8, 22);
   for (let k = 0; k < 4; k++) g.fillRect(22 + k * 5, 78, 3, 10);
   const tex = new THREE.CanvasTexture(cv);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -74,6 +76,7 @@ function mordorView() {
   g.fillRect(32, 71, 2, 20);
   g.fillRect(29, 74, 2, 14);
   const tex = new THREE.CanvasTexture(cv);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }

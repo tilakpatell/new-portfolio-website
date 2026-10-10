@@ -70,14 +70,14 @@ export const CONVOS = {
     nodes: {
       plain: { who: 'narrator', say: 'Gorgoroth: ash and cinders and rock, the camps of the enemy’s armies smoking all across it. And far off, the mountain, fire running down its sides. Above, the Eye.', next: 'feet' },
       feet: { who: 'sam', say: 'Tramping feet behind you, and drums. An orc column, coming down the road. Nowhere to hide.', next: 'line' },
-      line: { who: 'orc', say: '“You two! Get in line, you maggots! Move it!” The whip cracks. You fall in among them.', end: 'won' },
+      line: { who: 'orc', voice: 'shagrat', say: '“You two! Get in line, you maggots! Move it!” The whip cracks. You fall in among them.', end: 'won' },
     },
   },
   // the column halts at the camp
   halt: {
     start: 'halt',
     nodes: {
-      halt: { who: 'orc', say: '“Halt! Inspection!” The line breaks into a shoving, snarling crowd, and they’re at each other’s throats.', next: 'away' },
+      halt: { who: 'orc', voice: 'shagrat', say: '“Halt! Inspection!” The line breaks into a shoving, snarling crowd, and they’re at each other’s throats.', next: 'away' },
       away: { who: 'sam', say: 'Sam pulls you down and away, and you crawl off among the rocks while they fight. “Come on, Mr. Frodo. The mountain.”', end: 'won' },
     },
   },
@@ -107,7 +107,7 @@ export const CONVOS = {
       edge: { who: 'sam', say: 'You’re at the end of the spur, the fire below, the Ring in your hand. Sam’s voice behind you: “Frodo! Destroy it! Go on! Throw it in the fire!”', choices: [{ text: 'Throw it in.', to: 'cant' }, { text: 'Turn round.', to: 'mine' }] },
       cant: { who: 'narrator', say: 'You hold it out over the fire, and your hand won’t open.', next: 'mine' },
       mine: { who: 'frodo', say: 'You turn to him. “I’m here, Sam.” And then: “The Ring is mine.” You put it on, and you’re gone.', next: 'gollum' },
-      gollum: { who: 'narrator', say: 'Out of nowhere, Gollum, on your invisible back, biting, tearing at your hand, and he has it: the Ring, and your finger with it. “Precious!” He dances with joy at the edge, and you go for him.', next: 'fall' },
+      gollum: { who: 'narrator', voice: 'gollum', say: 'Out of nowhere, Gollum, on your invisible back, biting, tearing at your hand, and he has it: the Ring, and your finger with it. “Precious!” He dances with joy at the edge, and you go for him.', next: 'fall' },
       fall: { who: 'narrator', say: 'You struggle, and go over the edge together. Gollum falls into the fire with his precious in his hand. You hang from the broken rock above it.', end: 'won' },
     },
   },
@@ -145,15 +145,34 @@ export const SIDE = {
   needs: 'gorgoroth',
   seal: 'remembertheshire',
 };
-// what's said, as { who, say }
+// what's said, as { who, say }, and `then` what Sam says back, where he
+// does (shown after it, and said after it, in his voice)
+const RID = { who: 'sam', say: 'Sam: “Then let us be rid of it, once and for all.”' };
 export const REMEMBER_SAYS = {
   start: { who: 'sam', say: '“Do you remember the Shire, Mr. Frodo? Listen. I’ll tell it you, a bit at a time, and you say it back to me.”' },
-  ask: (n) => ({ who: 'sam', say: n === 2 ? '“Now you. What did I say first?”' : `“Now you. All ${n} of them, in order.”` }),
+  first: { who: 'sam', say: '“Now you. What did I say first?”' },
+  ask: (n) => (n === 2 ? REMEMBER_SAYS.first : { who: 'sam', say: `“Now you. All ${n} of them, in order.”` }),
   right: { who: 'frodo', say: '“…Yes.”' },
-  round: (n) => ({ who: 'frodo', say: ['', '', '“I can almost see it.”', '“I remember that.”', '“There was a smell of it, Sam. Of the Shire.”', '“Go on. Tell me more.”'][Math.min(5, n)] || '“Go on.”' }),
-  wrong: { who: 'frodo', say: '“I can’t, Sam. It’s gone. There’s nothing.” Sam takes his hand. “Then I’ll tell you again.”' },
-  won: (slips) => ({ who: 'frodo', say: slips === 0 ? '“I can see it, Sam. All of it. The Shire.” Sam: “Then let us be rid of it, once and for all.”' : '“I can see it, Sam. The Shire.” Sam: “Then let us be rid of it, once and for all.”' }),
+  // after the second round, and the third, fourth and fifth
+  rounds: [
+    { who: 'frodo', say: '“I can almost see it.”' },
+    { who: 'frodo', say: '“I remember that.”' },
+    { who: 'frodo', say: '“There was a smell of it, Sam. Of the Shire.”' },
+    { who: 'frodo', say: '“Go on. Tell me more.”' },
+  ],
+  round: (n) => REMEMBER_SAYS.rounds[Math.min(5, n) - 2] ?? { who: 'frodo', say: '“Go on.”' },
+  wrong: { who: 'frodo', say: '“I can’t, Sam. It’s gone. There’s nothing.”', then: { who: 'sam', say: 'Sam takes his hand. “Then I’ll tell you again.”' } },
+  all: { who: 'frodo', say: '“I can see it, Sam. All of it. The Shire.”', then: RID },
+  seen: { who: 'frodo', say: '“I can see it, Sam. The Shire.”', then: RID },
+  won: (slips) => (slips === 0 ? REMEMBER_SAYS.all : REMEMBER_SAYS.seen),
   best: (slips) => (slips === 0 ? 'Your best: all six, without a slip.' : `Your best: all six, with ${slips} ${slips === 1 ? 'slip' : 'slips'}.`),
+};
+
+// the toasts someone speaks in (../voice.js): the slaver in Shagrat's voice
+// (an orc's), and Sam at the Crack
+export const SAYS = {
+  lash: { who: 'shagrat', text: 'The slaver’s whip. “Keep up, you scum!”' },
+  reach: { who: 'sam', text: 'He looks up at you, and reaches… “Don’t you let go! Reach!”' },
 };
 
 export const SPEAKERS = { sam: 'Samwise Gamgee', frodo: 'Frodo', orc: 'An orc', narrator: '' };

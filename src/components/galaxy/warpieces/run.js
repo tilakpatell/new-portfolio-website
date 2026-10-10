@@ -8,12 +8,16 @@
 // (ctx.solidsOff), and once in, the ship's kept inside the tunnel (a wall
 // is a bump, and costs shields) and slowed to what it can be flown at. Its
 // reactor, once you're in, is a target: its damage is shared with the
-// pilots in the system (the battle's tally: `key`). When it's gone the
+// pilots in the system (the battle's tally: `key`), counted only from the
+// side it's `team`'s to take (ctx.mineAs). When it's gone the
 // lights go red and there's `escape` seconds to get out; then it blows
-// (onBlown), and anyone still inside goes with it.
+// (onBlown), and anyone still inside goes with it. In the battle every
+// pilot shares (a plan's run: Endor's), whether it's gone and how much of
+// it's left are the director's (`down()`, `left()`: a share of it).
 //
-// createRun(ctx, { key, name, mouth, inward, up, path, radius, chamber,
-//   look, hp, escape, speed, open(), solidsOff(off), onBlown(), enter })
+// createRun(ctx, { key, team, name, mouth, inward, up, path, radius, chamber,
+//   look, hp, escape, speed, open(), solidsOff(off), onBlown(), enter, down?(),
+//   left?() })
 //   → { update(dt, t, live) → { ship?, hurt?, speedCap?, kill? }, hit(from, to,
 //   damage), targets, markers, state, inside, dispose() }
 
@@ -26,7 +30,7 @@ const OPEN = '#ffb347';
 const HOT = '#ff5a4a';
 
 export function createRun(ctx, o) {
-  const { key, name, mouth, inward, up, path, radius, chamber, look = 'ds2', hp, escape = 20, speed = 9 } = o;
+  const { key, team, name, mouth, inward, up, path, radius, chamber, look = 'ds2', hp, escape = 20, speed = 9 } = o;
   const frame = frameOf(mouth, inward, up);
   const tube = { path, radius, chamber };
   let state = 'shut'; // 'open', 'blown', 'done'
@@ -65,6 +69,9 @@ export function createRun(ctx, o) {
   };
 
   const tgt = { id: o.id ?? 5e6, at: core, vel: ZERO, size: coreR, kind: 'reactor', name, hp, hpMax: hp, threat: 0 };
+  // gone, and how much is left (the director's, if it's a plan's run)
+  const gone = () => (o.down ? o.down() : ctx.shared(key) >= hp);
+  const hpLeft = () => (o.left ? o.left() * hp : Math.max(0, hp - ctx.shared(key)));
   const run = {
     get state() {
       return state;
@@ -92,7 +99,7 @@ export function createRun(ctx, o) {
       const near = live && Math.hypot(live.x - mouth[0], live.y - mouth[1], live.z - mouth[2]) < (o.drawWithin ?? 400);
       if (state !== 'shut' && (near || inside)) build();
       // what's been done to the reactor, here and by the pilots in the system
-      if (state === 'open' && ctx.shared(key) >= hp) blow(false);
+      if (state === 'open' && gone()) blow(false);
       drawn?.update(t, state === 'blown' ? 1 : 0);
       bumpCool -= dt;
       const out = {};
@@ -150,14 +157,13 @@ export function createRun(ctx, o) {
       if (state !== 'open' || !inside || !drawn) return null;
       const k = sweptHit(from, to, core, core, coreR);
       if (k === null) return null;
-      ctx.mine(key, damage);
-      const down = ctx.shared(key) >= hp;
-      if (down) blow(true);
+      ctx.mineAs(team, key, damage);
+      if (gone()) blow(true);
       return { id: tgt.id, kind: 'reactor', at: { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k, z: from.z + (to.z - from.z) * k }, size: coreR, down: false, sub: key };
     },
     get targets() {
       if (state !== 'open' || !inside || !drawn) return [];
-      tgt.hp = Math.max(0, hp - ctx.shared(key));
+      tgt.hp = hpLeft();
       return [tgt];
     },
     // what's marked: the way in, the reactor, the way out
@@ -165,7 +171,7 @@ export function createRun(ctx, o) {
       if (state === 'shut' || state === 'done' || !live) return [];
       const d = Math.hypot(live.x - mouth[0], live.y - mouth[1], live.z - mouth[2]);
       if (state === 'blown') return [{ key: `${key}-out`, pos: mouthAt, title: `Get out: ${Math.ceil(left)} s`, colour: HOT }];
-      if (inside) return drawn ? [{ key: `${key}-core`, pos: core, title: `Destroy: ${name}`, hp: Math.max(0, hp - ctx.shared(key)) / hp, colour: OPEN }] : [];
+      if (inside) return drawn ? [{ key: `${key}-core`, pos: core, title: `Destroy: ${name}`, hp: hpLeft() / hp, colour: OPEN }] : [];
       return d < (o.markWithin ?? 260) ? [{ key: `${key}-in`, pos: mouthAt, title: o.wayIn ?? `Fly in: ${name}`, colour: OPEN }] : [];
     },
     dispose() {

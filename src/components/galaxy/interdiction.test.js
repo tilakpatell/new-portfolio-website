@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EDGE } from './space';
-import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace, pickDue, readCount } from './interdiction';
+import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace, interdictorSolids, nextWindow, pickDue, readCount } from './interdiction';
 
 // a store over a string, as sessionStorage is
 const memory = (s = null) => {
@@ -62,6 +62,23 @@ describe('the Empire’s count of your jumps', () => {
     };
     const i = createInterdiction({ rand: always(0), store: broken });
     expect(i.jumped()).toEqual({ n: 1, due: 10, interdicted: false });
+  });
+
+  it('brings the window on two jumps sooner after a jump off the lanes', () => {
+    expect(INTERDICTION.offLane).toBe(2);
+    expect(nextWindow(8, true)).toBe(nextWindow(10, false));
+    expect(nextWindow(10, false)).toBe(10);
+    expect(nextWindow(7)).toBe(7);
+    // a cycle due on the tenth: the eighth jump bites off the lanes, not on them
+    const on = createInterdiction({ rand: always(0) });
+    const off = createInterdiction({ rand: always(0) });
+    for (let n = 1; n < 8; n++) {
+      on.jumped(false);
+      off.jumped();
+    }
+    expect(on.jumped(false)).toEqual({ n: 8, due: 10, interdicted: false });
+    expect(off.jumped(true)).toEqual({ n: 8, due: 10, interdicted: true });
+    expect(off.jumps).toBe(0);
   });
 
   it('can be made to bite on the next jump, for checking in a browser', () => {
@@ -145,5 +162,18 @@ describe('the hold', () => {
     expect(holdLifts({ since: 0, now: hold + 1, pack: 'here', inWell: true })).toBe('time');
     // a pack that never came (the ship crashed, say) still lets go in time
     expect(holdLifts({ since: 0, now: hold + 1, pack: 'coming', inWell: true })).toBe('time');
+  });
+});
+
+describe('the Interdictor as a solid', () => {
+  it('is one sphere where it is once it’s here, so flying into it is a bump or a crash', () => {
+    const [s] = interdictorSolids('here', [1, 2, 3]);
+    expect(s).toMatchObject({ id: 'interdictor', at: [1, 2, 3], ship: true });
+    expect(s.r).toBeCloseTo(INTERDICTION.size * 0.3, 6);
+    expect(s.reach).toBe(s.r);
+  });
+  it('is nothing while it jumps in or out, or when it’s gone', () => {
+    for (const state of ['in', 'out', null]) expect(interdictorSolids(state, [1, 2, 3]), String(state)).toEqual([]);
+    expect(interdictorSolids('here', null)).toEqual([]);
   });
 });

@@ -27,7 +27,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createRenderer, disposeTree, easeInOut, precompile } from '../../lib/three/renderer';
 import { gltfLoader } from '../../lib/three/gltf';
-import { sharpenMaterial } from '../../lib/three/textures';
+import { sharpen, sharpenMaterial } from '../../lib/three/textures';
+import { castCopy, castModel } from './meshy';
 
 const SIDES = {
   autobot: { model: 'optimus-prime', energon: 0x4fd8ff, rim: 0x2fbfff, key: 0xfff1dc },
@@ -153,6 +154,15 @@ export async function create(canvas, ctx) {
   turntable.add(alt.group);
 
   const loader = gltfLoader();
+  // Roll out's Meshy models (the seeker, Megatron and his idle) come through
+  // ../meshy.js, fetched once for the page whoever asks first: copies here,
+  // whose materials are their own (to fade and tune) and whose geometry and
+  // textures are the page's, which Roll out may still be drawing
+  const copies = [];
+  const own = (copy) => {
+    copy.traverse((o) => o.isMesh && copies.push(o));
+    return copy;
+  };
   // Optimus, animated through the whole change: stood on the floor at the
   // robot's height, the truck and the robot each centred on the turntable
   let change = null;
@@ -194,7 +204,7 @@ export async function create(canvas, ctx) {
   // Megatron's jet: the seeker the site owner made for Roll out, in place of the one built from parts
   let jet3d = null; // the seeker, under a pivot that pitches it and one that spins it
   if (ctx.side === 'decepticon') {
-    const g = await loader.loadAsync(`${import.meta.env.BASE_URL}games/meshy/rollout/seeker.glb`).catch(() => null);
+    const g = await castModel('seeker').then((src) => (src ? { scene: own(castCopy(src)) } : null));
     if (g) {
       g.scene.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(g.scene);
@@ -230,10 +240,8 @@ export async function create(canvas, ctx) {
   // Megatron himself, rigged: his bones fold him down and stand him up, and raise the cannon
   let meg = null;
   if (jet3d) {
-    const [rig, idle] = await Promise.all([
-      loader.loadAsync(`${import.meta.env.BASE_URL}games/meshy/rollout/megatron.glb`).catch(() => null),
-      loader.loadAsync(`${import.meta.env.BASE_URL}games/meshy/rollout/megatron-idle.glb`).catch(() => null),
-    ]);
+    const [src, idle] = await Promise.all([castModel('megatron'), castModel('megatron-idle')]);
+    const rig = src ? { scene: own(castCopy(src)) } : null;
     let body = null;
     rig?.scene.traverse((o) => {
       if (o.isSkinnedMesh) body = o;
@@ -376,6 +384,7 @@ export async function create(canvas, ctx) {
     c.height = h;
     draw(c.getContext('2d'));
     const tex = new THREE.CanvasTexture(c);
+    sharpen(tex);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   };
@@ -783,6 +792,11 @@ export async function create(canvas, ctx) {
       el.style.touchAction = '';
       change?.mixer.stopAllAction();
       meg?.mixer?.stopAllAction();
+      // (the copies' own materials go; their geometry and textures stay the page's)
+      for (const o of copies) {
+        for (const m of [].concat(o.material)) m?.dispose();
+        o.removeFromParent();
+      }
       glowTex.dispose();
       rayTex.dispose();
       chamberTex.dispose();

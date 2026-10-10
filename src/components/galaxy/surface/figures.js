@@ -7,6 +7,7 @@
 // for a kind there's no figure of.
 
 import * as THREE from 'three';
+import { markBuilt } from './cast';
 
 const { PI, sin, abs, max } = Math;
 
@@ -29,6 +30,10 @@ const PEOPLE = {
   kaminoan: { tall: 2.6, body: '#e6e8ec', legs: '#e6e8ec', skin: '#e0e4ea', neck: true, thin: true, bulk: 0.7 },
   villager: { tall: 1.75, body: '#8a7a5e', legs: '#5a4c3a', skin: '#c89a78', robe: '#9a8a6a', bulk: 1 },
   jedi: { tall: 1.8, body: '#c8b48c', legs: '#8a6a4a', skin: '#e0b090', robe: '#6a4a2a', hood: '#6a4a2a', bulk: 1 },
+  // the Archives' keeper: white hair, a cream robe over brown
+  jocasta: { tall: 1.68, body: '#e8e0cc', legs: '#6a4a2a', skin: '#e8c8b0', robe: '#8a6a4a', hair: '#e8e4dc', bulk: 0.9 },
+  // the changeling, as the woman in purple she wears at the club
+  zam: { tall: 1.7, body: '#4a2a6a', legs: '#2a1a3a', skin: '#e0b8a0', hair: '#3a2a4a', bulk: 0.9 },
   caretaker: { tall: 1.2, body: '#e8e4dc', legs: '#e8e4dc', skin: '#9a9a8a', robe: '#ece8de', hood: '#ece8de', bulk: 1.1 },
   // the cantina's and the palace's: a Bith in the band, a Rodian, a
   // Gamorrean guard, a Twi'lek, an Aqualish, the barman, a Mandalorian, a
@@ -699,9 +704,9 @@ function small(spec) {
 
 export function buildFigure(kind) {
   const p = PEOPLE[kind];
-  if (p) return p.creature === 'hutt' ? hutt(p) : p.creature ? small(p) : person(p);
+  if (p) return markBuilt(p.creature === 'hutt' ? hutt(p) : p.creature ? small(p) : person(p));
   const b = BEASTS[kind];
-  if (b) return beast(b);
+  if (b) return markBuilt(beast(b));
   return null;
 }
 

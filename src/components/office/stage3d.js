@@ -6,6 +6,9 @@
 
 import * as THREE from 'three';
 import { pixelRatio } from '../../lib/device';
+import { stageSizing } from '../../lib/stage3d';
+import { guard } from '../../lib/three/frameGuard';
+import { prepareScene } from '../../lib/three/gpuWork';
 import { precompile as compileFor, quiet } from '../../lib/three/renderer';
 
 // `antialias`: off for a scene that draws through passes of its own (its
@@ -14,29 +17,38 @@ import { precompile as compileFor, quiet } from '../../lib/three/renderer';
 // starts the steps down.
 export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true, maxRatio = 2, slowMs = 40 } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias, powerPreference: 'high-performance', alpha: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false);
-  let ratio = pixelRatio(maxRatio); // lib/device: 1.5 on a phone, 1 on a weak device
-  renderer.setPixelRatio(ratio);
+  const full = pixelRatio(maxRatio); // lib/device: 1.5 on a phone, 1 on a weak device
+  renderer.setPixelRatio(full);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xe9e6df);
   const camera = new THREE.PerspectiveCamera(fov, 1, 0.05, 120);
-  const size = { w: 1, h: 1 };
   let api = null;
 
+  // A new size or ratio is noted when asked and made at the start of the
+  // next frame that draws (lib/stage3d's stageSizing): a canvas reallocated
+  // is cleared, and one resized after the frame's draw (a ResizeObserver fit
+  // runs after requestAnimationFrame) showed the page blank. The camera's
+  // shape changes at once, so what's placed over the canvas lines up.
+  const sizing = stageSizing({
+    ratio: full,
+    // (its size and ratio together: setPixelRatio then setSize reallocated it twice)
+    canvas: (w, h, pr) => renderer.setDrawingBufferSize(w, h, pr),
+    // a scene's own passes (api.onResize), with the canvas
+    buffers: (w, h, pr) => api.onResize?.(w, h, pr),
+  });
   const resize = (w, h) => {
-    size.w = Math.max(1, Math.round(w));
-    size.h = Math.max(1, Math.round(h));
-    renderer.setPixelRatio(ratio);
-    renderer.setSize(size.w, size.h, false);
-    camera.aspect = size.w / size.h;
+    sizing.resize(w, h);
+    camera.aspect = sizing.size.w / sizing.size.h;
     camera.updateProjectionMatrix();
-    api.onResize?.(size.w, size.h, ratio);
   };
 
   let lost = false;
@@ -49,7 +61,8 @@ export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true
 
   // quality steps: every few seconds of drawing, the average frame; below
   // about 25 fps (or the scene's own `slowMs`) it steps down (resolution,
-  // then shadows, then resolution again)
+  // then shadows, then resolution again), a new resolution made at the
+  // next frame drawn
   const perf = { acc: 0, n: 0, step: 0 };
   const watch = (ms) => {
     perf.acc += ms;
@@ -60,15 +73,14 @@ export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true
     perf.n = 0;
     if (avg < slowMs) return;
     perf.step += 1;
+    const ratio = sizing.ratio;
     if (perf.step === 1 && ratio > 1) {
-      ratio = 1;
-      resize(size.w, size.h);
+      sizing.setRatio(1);
     } else if (perf.step <= 2 && renderer.shadowMap.enabled) {
       renderer.shadowMap.enabled = false;
       scene.traverse((o) => o.material && (o.material.needsUpdate = true));
     } else if (ratio > 0.6) {
-      ratio = Math.max(0.6, ratio - 0.2);
-      resize(size.w, size.h);
+      sizing.setRatio(Math.max(0.6, ratio - 0.2));
     }
     onSlow?.(perf.step);
   };
@@ -76,16 +88,25 @@ export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true
   const tmp = new THREE.Vector3();
   // where a world point is on the canvas, in CSS pixels (and whether it's in front)
   const project = (x, y, z) => {
+    const { w, h } = sizing.size;
     tmp.set(x, y, z).project(camera);
-    return { x: ((tmp.x + 1) / 2) * size.w, y: ((1 - tmp.y) / 2) * size.h, front: tmp.z < 1 };
+    return { x: ((tmp.x + 1) / 2) * w, y: ((1 - tmp.y) / 2) * h, front: tmp.z < 1 };
   };
 
   // a scene with its own passes (bloom, a grade) sets api.draw to draw them,
-  // and api.onResize to size them; without either, the scene draws straight
-  const render = (ms = 16) => {
-    if (lost) return;
+  // and api.onResize to size them (called with the canvas's size, at the
+  // frame that makes it); without either, the scene draws straight
+  let drawn = false; // a picture on the canvas yet (prepare's or a frame's)
+  // a new size or ratio made first, in the same callback as the draw
+  const draw = (ms) => {
+    sizing.fit();
     if (api.draw) api.draw(ms);
     else renderer.render(scene, camera);
+    drawn = true;
+  };
+  const render = (ms = 16) => {
+    if (lost) return;
+    draw(ms);
     watch(ms);
   };
 
@@ -106,9 +127,19 @@ export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true
   const precompile = (root = scene) => (lost ? Promise.resolve() : compileFor(renderer, root, camera, scene));
 
   // renderer counts, for checking the scene against its budget
-  const info = () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, dpr: ratio, shadows: renderer.shadowMap.enabled });
+  const info = () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, dpr: sizing.ratio, shadows: renderer.shadowMap.enabled });
 
-  api = { renderer, scene, camera, size, resize, project, render, dispose, precompile, info, coarse, draw: null, onResize: null, get lost() { return lost; } };
+  // Everything sent to the graphics chip before it's first seen (lib/three/
+  // gpuWork), with progress for the page's loading screen; a scene with its
+  // own passes says where it draws (api.target) and draws them (api.draw).
+  // (the buffers made first while nothing's been drawn, behind the loading
+  // screen, so its own passes are sized as they'll be drawn)
+  const prepare = (onProgress, { alive = () => true } = {}) => {
+    if (!drawn) sizing.fit();
+    return prepareScene({ renderer, roots: [scene], scene, camera, target: api.target ?? undefined, render: () => draw(16), onProgress, alive: () => alive() && !lost });
+  };
+
+  api = { renderer, scene, camera, resize, project, render, dispose, precompile, prepare, info, coarse, draw: null, onResize: null, target: undefined, get size() { return sizing.size; }, get lost() { return lost; } };
   return api;
 }
 

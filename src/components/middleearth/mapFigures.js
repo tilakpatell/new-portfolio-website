@@ -18,6 +18,10 @@ function put(parent, geo, material, x = 0, y = 0, z = 0) {
 }
 
 const SKIN = 0xf1c9a0;
+// where a hand closes on each toy's item, in the item's own space (as the
+// builder below puts its parts): on the shaft, the haft, the hilt under the
+// guard, the bow's middle, the horn's
+const GRIPS = { staff: [0.04, 0, 0], 'white-staff': [0.04, 0, 0], bow: [-0.37, 0.1, 0], axe: [0.05, 0, 0], sword: [0.05, -0.05, 0], horn: [0.08, 0.02, 0] };
 
 // One toy person. `tall` stretches the legs and body (1 is a hobbit), the
 // head stays big. A `robe` hides the legs; `hat`, `beard`, `item` and the
@@ -92,8 +96,15 @@ export function makeToyFigure({
     put(sh, new THREE.CylinderGeometry(0.05, 0.045, armLen, 8), mat(robe || shirt), 0, -armLen / 2, 0);
     put(sh, new THREE.SphereGeometry(0.055, 8, 6), skinM, 0, -armLen - 0.02, 0);
     if (s === 1 && item) {
+      // (what it is in a hand, and where the hand closes on it: for the cast,
+      // lib/three/held.js; the bow's grip is its middle, the rest's their shaft)
       const hand = new THREE.Group();
       hand.position.set(0, -armLen - 0.02, 0);
+      hand.userData.held = { kind: item };
+      const grip = new THREE.Object3D();
+      grip.name = 'grip';
+      grip.position.set(...(GRIPS[item] ?? [0, 0, 0]));
+      hand.add(grip);
       sh.add(hand);
       if (item === 'staff' || item === 'white-staff') {
         put(hand, new THREE.CylinderGeometry(0.025, 0.03, 1.5 * tall, 6), mat(item === 'staff' ? 0x5a3e24 : 0xe8e4da), 0.04, 0.3 * tall, 0);
@@ -247,8 +258,15 @@ export function makeTreebeard() {
 }
 
 // Poses one figure for this frame. `wave` (0..1) raises the right arm and
-// waves it; `talk` bobs the head; moving swings the legs and arms.
+// waves it; `talk` bobs the head; moving swings the legs and arms. A figure
+// on the cast (cast3d.js) only notes the wave and the talk: its feet go by
+// the ground it really covers, and its body is drawn once a frame by
+// tickCast; the toy is posed until its cast model's here.
 export function pose(f, t, { moving = false, wave = 0, talk = 0, speed = 1 } = {}) {
+  if (f.cast) {
+    f.cast.pose({ wave, talk });
+    if (f.cast.ready) return;
+  }
   const k = f.slow ? 0.4 : 1;
   const sw = moving ? Math.sin(t * 13 * speed * k) : 0;
   if (!f.robe) {

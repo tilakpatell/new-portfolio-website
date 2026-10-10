@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { useTravellers } from '../useTravellers';
@@ -13,7 +14,7 @@ import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { followAt, lead, newParty } from '../rivendell/rules';
 import { CHAMBER, CHAMBER_DOOR_WALL, COMPANY, DASH_START, DOOR_WALL, FLIGHT, FORK, GATE, GATE_COLLIDERS, GATE_WALLS, HALL, HALL_COLLIDERS, HALL_START, HALL_WALLS, SHAFT, SPOTS, TOMB, TROLL_FRODO, TROLL_ROUNDS, TROLL_ZONE, WELL, castFor, inLake, validAt, wayAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SPEAKERS, moriaProgress } from './story';
+import { CONVOS, QUESTS, SAYS, SEAL, SPEAKERS, moriaProgress } from './story';
 import { FLY, PLANK, SIDE, TROLL, WATCHER, grab, newDash, newFlight, newPlank, newTumble, stepDash, stepFlight, stepPlank, stepTumble } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -136,7 +137,13 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js), or
+  // says `line`, where only that much of it is theirs
+  const say = useCallback((text, bad = false, who = null, line = text) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, line);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -339,7 +346,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         s.mode = 'walk';
         s.revealing = false;
         complete('dark');
-        say('Gimli runs ahead, through a door in the north wall: “Balin!”');
+        // (said a moment after, once the conversation closing has stopped its own line)
+        say(SAYS.balin.text);
+        later(() => sayVoiced(SAYS.balin.who, SAYS.balin.text), 150);
       } else if (which === 'tomb') {
         s.mode = 'tumble';
         s.tumble = newTumble();
@@ -451,7 +460,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a blow holds the game a moment: the scene's hitstop, ../../feel.js)
+    const real = Math.min(0.05, ms / 1000);
+    const dt = real * a.timeScale(real) * fast;
     s.t += dt;
     s.stepT += dt;
     const k = s.keys;
@@ -507,7 +518,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           s.held = WATCHER.hold;
           // dragged a step back towards the water
           s.h = { ...s.h, z: Math.min(GATE.shore - 0.5, s.h.z + 1.4) };
-          say(['It has your ankle! Sam hacks at it: “Frodo!”', 'Torn off your feet, and dropped. Run!', 'It lifts you, and Aragorn’s sword cuts you free.'][Math.min(2, s.dash.grabs - 1)], true);
+          if (s.dash.grabs <= 1) say(SAYS.ankle.text, true, SAYS.ankle.who);
+          else say(s.dash.grabs === 2 ? 'Torn off your feet, and dropped. Run!' : 'It lifts you, and Aragorn’s sword cuts you free.', true);
         } else if (e.type === 'taken') {
           say('Up into the air, out over the water… and Boromir and Aragorn hack you free, and haul you back to the shore. Again: dodge its strikes.', true);
           later(() => sim.current?.mode === 'dash' && startDash(), 1800);
@@ -515,7 +527,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           s.dash = null;
           complete('doors');
           sounds().then((x) => x.collapse());
-          say('Into the dark, and the Watcher tears the doorway down behind you. Gandalf: “We now have but one choice. We must face the long dark of Moria.”', true);
+          say(SAYS.dark.text, true, SAYS.dark.who);
           later(() => {
             const ss = sim.current;
             if (!ss) return;
@@ -632,7 +644,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           say('You have it. Now back, slowly, the same way.');
         } else if (e.type === 'won') {
           winSide();
-          say('Back on the floor of the hall, and the pipe safe. Gandalf takes it without a word, then: “Thank you, Frodo.”');
+          say(SAYS.thanks.text, false, SAYS.thanks.who);
           later(() => sim.current?.plank === pl && leavePlank(), 2600);
         } else if (e.type === 'fell') {
           sounds().then((x) => {
@@ -640,7 +652,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
             setTimeout(() => x.drums(), 2600);
           });
           api.current?.fx('break');
-          say(e.pipe ? 'You throw your arms out, and Gandalf’s pipe goes down the shaft: tink… tink… tink. Far below, a drum. “Fool of a Baggins!”' : 'You throw your arms out, and something goes down the shaft: tink… tink… tink. Far below, a drum. “Fool of a Baggins!”', true);
+          const fool = e.pipe ? SAYS.pipe : SAYS.dropped;
+          say(fool.text, true, fool.who, fool.line);
         }
       }
       s.h.x = SHAFT.x - PLANK.half - 0.15 + pl.at;
@@ -790,28 +803,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (name, v) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -889,12 +881,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           {toast.text}
         </p>
       )}
-      {bubble && walking && <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />}
+      {bubble && walking && <Bubble ref={bubbleRef} who={bubble.id} name={bubble.name} line={bubble.line} />}
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -1024,7 +1016,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           </div>
         </div>
       )}
-      {(walking || mode === 'dash' || mode === 'troll') && touch && <Stick onStick={onStick} />}
+      {(walking || mode === 'dash' || mode === 'troll') && touch && <Stick onMove={onStick} />}
       {list && (
         <QuestList
           title="Things to do in Moria"

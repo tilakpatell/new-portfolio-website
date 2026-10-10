@@ -27,14 +27,26 @@
 // the planet itself, so it just curves away more gently. A world must stay
 // smaller than every deep-space star (scale.test.js).
 //
+// SPREAD: how much further apart the places are than they were on
+// 2026-10-07, when every one sat within 9,000 of the home sun and the camera
+// saw all of them from anywhere: the map read as one galaxy seen whole. Four
+// times puts the nearest fandom 27 s of free flight from home at the pulse
+// drive and the far ones over a minute: a long way to fly, and a jump
+// (nav.js) the way across. Eight
+// made free flight a chore; six pushed the far rim past what the far
+// impostors (farStars.js) handle well. Only the gaps grow: the places
+// themselves, the home system and the Rick and Morty sector's own layout
+// stay as they are.
+//
 // (No imports: everything sized by it imports this, never the other way.
-// universes.js writes HOME_SCALE and WORLD_SCALE out as numbers instead, so
+// universes.js writes HOME_SCALE, WORLD_SCALE and SPREAD out as numbers instead, so
 // the prerender can load it in Node; scale.test.js keeps them the same.)
 
 export const LENGTH = 0.26;
 export const HOME_SCALE = 3;
 export const HOME_SPREAD = Math.cbrt(HOME_SCALE);
 export const WORLD_SCALE = 3;
+export const SPREAD = 4;
 // STAR_SCALE and HOLE_SCALE: deep space's suns (with their planets and
 // orbits) and the Maw (its shadow and disk), so each is bigger than any world
 // (deep.js). The nebulae, the gas and ice giants and the Star Wars gate

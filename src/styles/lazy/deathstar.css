@@ -17,6 +17,18 @@
   .trench-key { display: block; font: 500 0.55rem/1 var(--font-mono); letter-spacing: 0.04em; opacity: 0.75; text-transform: uppercase; }
 }
 .trench-overlay { position: absolute; z-index: 2; inset: 0; display: grid; place-content: center; justify-items: center; padding: 1.5rem; text-align: center; background: rgba(5, 6, 11, 0.62); }
+/* On a narrow phone the brief (and its guide line) can be taller than the square screen:
+   then it starts at the top and scrolls, rather than losing its title and button off both
+   edges. Where it fits, "safe" centres it exactly as before; the block padding is only the
+   room it may take before counting as too tall (centring ignores even padding). */
+.trench-overlay { place-content: safe center; overflow-y: auto; padding-block: 0.5rem; }
+/* ...and on a phone the brief sets a little tighter, so on a 390 px screen
+   the whole card, its Start included, fits without that scroll */
+@media (max-width: 420px) {
+  .trench-overlay { padding-block: 0.25rem; }
+  .trench-brief { margin-top: 0.35rem; line-height: 1.35; }
+  .trench-overlay .trench-levels, .trench-go { margin-top: 0.6rem; }
+}
 @media (max-width: 640px) {
   .trench-touch { left: 12px; }
   .trench-touch-laser { order: 3; margin-left: auto; }
@@ -29,7 +41,7 @@
 @media (max-width: 480px) { .trench-levels button { min-width: 0; padding-inline: 0.6rem; } .trench-overlay .text-sm { font-size: 0.78rem; } }
 .ds-gone { transform-box: fill-box; transform-origin: center; animation: ds-gone 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 @media (prefers-reduced-motion: reduce) { .ds-gone { animation: none; opacity: 0; } }
-.ds-arrive { transform-box: fill-box; transform-origin: center; animation: ds-arrive 1.1s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.ds-arrive { transform-box: fill-box; transform-origin: center; animation: ds-arrive 1.1s var(--ease-out) backwards; }
 .planet-in { animation: planet-in 0.8s ease backwards; }
 .ds-stage { position: relative; }
 @media (max-width: 639px) { .ds-stage { margin-inline: calc(-1 * var(--gutter-l)) calc(-1 * var(--gutter-r)); } }
@@ -41,7 +53,7 @@
 .battle-bar { margin-top: 0.6rem; height: 4px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, 0.1); }
 .battle-bar span { display: block; height: 100%; background: #ffb347; transform-origin: left; transition: transform 0.25s linear; }
 .ds-ending { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0 0; padding: 0.9rem 1.1rem; border-left: 3px solid; border-radius: 4px; }
-.rebel-medal { width: 48px; height: 66px; flex: none; animation: medal-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.6s backwards; }
+.rebel-medal { width: 48px; height: 66px; flex: none; animation: medal-in 0.9s var(--ease-out) 0.6s backwards; }
 @keyframes medal-in { from { opacity: 0; transform: translateY(-18px) rotate(-8deg); } to { opacity: 1; transform: none; } }
 /* the Empire's ending: a red shadow closes in, then lifts */
 .empire-shade { background: radial-gradient(ellipse at center, transparent 30%, rgba(150, 8, 16, 0.55) 100%); opacity: 0; animation: empire-shade 3.2s ease forwards; }

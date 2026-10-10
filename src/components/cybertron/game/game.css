@@ -6,14 +6,18 @@
 .cyw-spinner { width: 42px; height: 42px; border-radius: 50%; border: 3px solid rgba(63, 210, 255, 0.2); border-top-color: #3fd2ff; animation: cyw-spin 0.9s linear infinite; }
 @keyframes cyw-spin { to { transform: rotate(360deg); } }
 
-.cyw-start { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); width: min(92%, 640px); padding: 26px 28px 22px; border: 1px solid rgba(127, 216, 255, 0.25); border-radius: 18px; background: linear-gradient(180deg, rgba(8, 14, 26, 0.86), rgba(4, 7, 13, 0.92)); backdrop-filter: blur(6px); text-align: center; box-shadow: 0 20px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
+.cyw-start { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); width: min(92%, 640px); padding: 26px 28px 22px; border: 1px solid rgba(127, 216, 255, 0.25); border-radius: 18px; background: linear-gradient(180deg, rgba(8, 14, 26, 0.86), rgba(4, 7, 13, 0.92)); /* (no blur: over a world redrawn every frame, it costs a frame) */ text-align: center; box-shadow: 0 20px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
 .cyw-kicker { font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; color: #ffb36a; }
 .cyw-title { margin-top: 6px; color: #f2f7ff; font-size: clamp(1.6rem, 1rem + 2.4vw, 2.6rem); font-weight: 800; letter-spacing: 0.04em; text-shadow: 0 0 24px rgba(63, 210, 255, 0.45); }
-.cyw-lede { margin: 10px auto 18px; max-width: 46ch; font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.95rem; line-height: 1.55; color: #c8d6ea; }
+.cyw-lede { margin: 10px auto 18px; max-width: 46ch; font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.55; color: #c8d6ea; }
 .cyw-keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 14px; margin: 18px 0 4px; font-size: 0.72rem; text-align: left; }
 .cyw-keys div { display: flex; gap: 8px; align-items: baseline; }
 .cyw-keys dt { min-width: 64px; color: #7fd8ff; font-weight: 700; }
-.cyw-keys dd { margin: 0; color: #c8d6ea; font-family: var(--font-body, ui-sans-serif, system-ui); }
+/* the guide's key caps (guide/KeyTable Keys), in the card's cyan */
+.cyw-keys { --border-strong: rgba(127, 216, 255, 0.45); --surface-2: rgba(127, 216, 255, 0.08); --text: #7fd8ff; } /* (the house cap, src/index.css, in the card's cyan) */
+.cyw-keys .guide-keyset { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.cyw-keys .guide-or { color: #8aa0bd; font-size: 0.7rem; font-weight: 400; }
+.cyw-keys dd { margin: 0; color: #c8d6ea; font-family: var(--font-sans); }
 .cyw-sides { display: flex; justify-content: center; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
 .cyw-side { padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(127, 216, 255, 0.3); background: rgba(5, 9, 18, 0.5); color: #c8d6ea; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
 .cyw-side span { color: #8aa0bd; text-transform: none; letter-spacing: 0; }
@@ -23,16 +27,32 @@
 .cyw-progress { margin-top: 12px; font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: #8aa0bd; }
 
 .cyw-hud { position: absolute; inset: 0; pointer-events: none; }
-.cyw-hud .cyw-list, .cyw-hud .cyw-list button { pointer-events: auto; }
-.cyw-mission { position: absolute; left: 20px; top: 18px; max-width: min(46ch, 60%); padding: 10px 14px; border-left: 3px solid #ffb03a; background: linear-gradient(90deg, rgba(5, 9, 18, 0.78), rgba(5, 9, 18, 0)); }
+.cyw-hud .cyw-list, .cyw-hud .cyw-list button, .cyw-tools > * { pointer-events: auto; }
+/* the kit's parts (runtime/hud: the Menu, the prompt, the toast, the way
+   out, the thumbs) in Cybertron's look: its night glass, cyan edge, amber
+   and Orbitron */
+.cyw-hud, .cyw-touch { --hud-ink: #e9f1ff; --hud-muted: #8aa0bd; --hud-glass: rgba(5, 9, 18, 0.82); --hud-glass-hi: rgba(5, 9, 18, 0.92); --hud-line: rgba(127, 216, 255, 0.35); --hud-accent: #ffb03a; --hud-accent-ink: #05070c; --hud-bad: #ff6b6b; --hud-radius: 12px; --hud-border: 1px solid var(--hud-line); --hud-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); --hud-face: 'Orbitron', ui-sans-serif, system-ui, sans-serif; --hud-title-face: var(--hud-face); --hud-num-face: var(--hud-face); }
+.cyw-mission { position: absolute; left: 20px; top: 18px; max-width: min(46ch, 60%); padding: 10px 14px; border-left: 3px solid #ffb03a; background: linear-gradient(90deg, rgba(5, 9, 18, 0.82) 0 70%, rgba(5, 9, 18, 0)); } /* (near-opaque under the words, fading only past them) */
 .cyw-mission-title { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: #ffb03a; }
-.cyw-mission-text { margin-top: 3px; font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.95rem; color: #eef4ff; text-shadow: 0 1px 2px #000; }
+.cyw-mission-text { margin-top: 3px; font-family: var(--font-sans); font-size: 0.95rem; color: #eef4ff; text-shadow: 0 1px 2px #000; }
 .cyw-count, .cyw-timer { font-family: 'Orbitron', ui-sans-serif; color: #7fd8ff; margin-left: 6px; }
 .cyw-timer { color: #ff9a7a; }
 .cyw-compass { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .cyw-arrow { width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 18px solid #ffb03a; filter: drop-shadow(0 0 6px rgba(255, 176, 58, 0.8)); transform: rotate(var(--rel)); transition: transform 0.12s linear; }
-.cyw-compass-label { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ffd9a0; text-shadow: 0 1px 3px #000; white-space: nowrap; }
-.cyw-stats { position: absolute; right: 20px; top: 18px; font-size: 0.95rem; color: #7fd8ff; text-shadow: 0 0 10px rgba(63, 210, 255, 0.6); }
+.cyw-compass-label { padding: 2px 9px; border-radius: 999px; background: rgba(5, 9, 18, 0.82); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ffd9a0; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+/* top right: the way out (on a phone), the Menu, and the energon on the
+   mission's plate, mirrored, with a cyan rule */
+.cyw-tools { position: absolute; right: 20px; top: 18px; z-index: 2; /* (its Menu over the phone's look pad) */ display: flex; align-items: center; gap: 10px; }
+.cyw-stats { padding: 8px 14px; border-right: 3px solid #7fd8ff; background: linear-gradient(270deg, rgba(5, 9, 18, 0.82) 0 70%, rgba(5, 9, 18, 0)); font-size: 0.95rem; color: #7fd8ff; text-shadow: 0 0 10px rgba(63, 210, 255, 0.6); }
+.cyw-menu .hud-btn, .cyw-leave { padding: 8px 14px; border: 1px solid rgba(127, 216, 255, 0.35); border-radius: 999px; background: var(--hud-glass); color: #c8d6ea; font: 600 0.78rem/1.2 var(--hud-face); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.cyw-menu .hud-btn:hover, .cyw-menu .hud-btn:focus-visible, .cyw-leave:focus-visible { border-color: #7fd8ff; color: #fff; }
+.cyw-menu .hud-btn:focus-visible, .cyw-leave:focus-visible { outline: 2px solid #7fd8ff; outline-offset: 2px; }
+.cyw-menu .hud-menu-list { border-radius: 14px; }
+.cyw-menu .hud-menu-list > * { font: 600 0.78rem/1.2 var(--hud-face); letter-spacing: 0.06em; text-transform: uppercase; color: #c8d6ea; }
+.cyw-menu .hud-menu-list > :is(button, a):hover, .cyw-menu .hud-menu-list > :is(button, a):focus-visible { background: rgba(127, 216, 255, 0.14); color: #fff; }
+/* Leave: a thumb's whole 64 px to hit, round a chip that stays small */
+.cyw-leave { position: relative; border-color: rgba(255, 90, 74, 0.55); color: #ffd2cc; }
+.cyw-leave::after { content: ''; position: absolute; z-index: -1; /* (under its neighbours: where it reaches past the gap, the Menu and the energon keep their own edge, so a tap on the Menu's top never leaves) */ left: 50%; top: 50%; width: max(100%, var(--touch-action)); height: var(--touch-action); transform: translate(-50%, -50%); }
 .cyw-bars { position: absolute; left: 20px; bottom: 22px; display: grid; gap: 6px; width: min(260px, 40vw); }
 .cyw-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
 .cyw-bar span { display: block; height: 100%; background: linear-gradient(90deg, #ff4b4b, #ff9a4b); transition: width 0.2s; }
@@ -45,16 +65,24 @@
 .cyw-hurt { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 120px 30px rgba(255, 40, 30, 0.75); }
 .cyw-hurt.cyw-hurt-on { animation: cyw-hurt 0.45s ease-out; }
 @keyframes cyw-hurt { 0% { opacity: 1; } 100% { opacity: 0; } }
-.cyw-prompt { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 7px 14px; border-radius: 8px; background: rgba(5, 9, 18, 0.75); font-size: 0.78rem; letter-spacing: 0.08em; color: #ffd9a0; border: 1px solid rgba(255, 176, 58, 0.35); }
-.cyw-talk { position: absolute; left: 50%; bottom: 168px; transform: translateX(-50%); width: min(560px, 88%); padding: 12px 16px; border-radius: 12px; background: rgba(5, 9, 18, 0.82); border: 1px solid rgba(127, 216, 255, 0.25); font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.95rem; line-height: 1.5; }
+.cyw-prompt { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); gap: 8px; padding: 7px 14px; border-radius: 8px; background: rgba(5, 9, 18, 0.82); font: 400 0.78rem/1.3 var(--hud-face); letter-spacing: 0.08em; color: #ffd9a0; border: 1px solid rgba(255, 176, 58, 0.35); box-shadow: none; white-space: nowrap; } /* (not pressed: the HUD lets touches through, and on a phone the Use button does it) */
+.cyw-prompt .hud-prompt-key { color: #ffb03a; } /* (the house HUD cap, src/index.css, in amber) */
+.cyw-talk { position: absolute; left: 50%; bottom: 168px; transform: translateX(-50%); width: min(560px, 88%); padding: 12px 16px; border-radius: 12px; background: rgba(5, 9, 18, 0.82); border: 1px solid rgba(127, 216, 255, 0.25); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.5; }
 .cyw-talk-name { font-family: 'Orbitron', ui-sans-serif; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #7fd8ff; margin-bottom: 3px; }
-.cyw-toast { position: absolute; right: 22px; top: 64px; padding: 12px 16px; border-radius: 12px; background: rgba(5, 9, 18, 0.85); border: 1px solid rgba(255, 176, 58, 0.35); animation: cyw-in 0.3s ease-out; font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.85rem; }
+.cyw-toast { top: 112px; /* (the kit's top centre, under the compass and the boss's bar) */ padding: 12px 16px; border: 1px solid rgba(255, 176, 58, 0.35); border-radius: 12px; background: rgba(5, 9, 18, 0.88); font: 400 0.85rem/1.45 var(--font-sans); animation-duration: 3.2s; }
+.cyw-toast-long { animation-duration: 5.2s; } /* (a mission done stays up longer) */
+.cyw-toast > span { display: block; }
 .cyw-toast-title { font-family: 'Orbitron', ui-sans-serif; font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb03a; }
-@keyframes cyw-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 .cyw-down { position: absolute; inset: 0; display: grid; place-content: center; font-size: 2.4rem; letter-spacing: 0.3em; text-transform: uppercase; color: #ff6b6b; background: radial-gradient(60% 50% at 50% 50%, rgba(120, 0, 0, 0.25), rgba(40, 0, 0, 0.55)); }
-.cyw-list { position: absolute; right: 20px; top: 110px; width: min(360px, 86vw); padding: 14px 16px; border-radius: 14px; background: rgba(5, 9, 18, 0.9); border: 1px solid rgba(127, 216, 255, 0.25); }
-.cyw-list-title { font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: #7fd8ff; margin-bottom: 8px; }
-.cyw-list ul { display: grid; gap: 6px; margin-bottom: 10px; font-family: var(--font-body, ui-sans-serif, system-ui); font-size: 0.88rem; }
+.cyw-list { position: absolute; right: 20px; top: 110px; z-index: 2; /* (over the phone's look pad) */ width: min(360px, 86vw); padding: 14px 16px; border-radius: 14px; background: rgba(5, 9, 18, 0.9); border: 1px solid rgba(127, 216, 255, 0.25); }
+.cyw-list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -10px -12px 4px 0; }
+.cyw-list-title { font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: #7fd8ff; }
+/* its close: the ×, 44 px to hit, with the key that also shuts it */
+.cyw-list-close { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: #c8d6ea; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.cyw-list-close:hover, .cyw-list-close:focus-visible { background: rgba(127, 216, 255, 0.12); color: #fff; outline: none; }
+.cyw-list-close span { font-family: var(--font-sans); font-weight: 300; } /* (Orbitron draws × as an x) */
+.cyw-list-close .hud-cap { color: #7fd8ff; } /* (the house HUD cap, src/index.css, in cyan) */
+.cyw-list ul { display: grid; gap: 6px; margin-bottom: 4px; font-family: var(--font-sans); font-size: 0.88rem; }
 .cyw-list li { display: flex; justify-content: space-between; gap: 10px; }
 .cyw-list li[data-state='done'] span:first-child { color: #7dffa8; text-decoration: line-through; }
 .cyw-list li[data-state='active'] span:first-child { color: #ffb03a; }
@@ -66,9 +94,20 @@
 
 .cyw-touch { position: absolute; inset: 0; pointer-events: none; }
 .cyw-stick { position: absolute; left: calc(18px + env(safe-area-inset-left)); bottom: calc(60px + env(safe-area-inset-bottom)); width: 140px; height: 140px; border-radius: 50%; border: 2px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.25); pointer-events: auto; touch-action: none; }
+.cyw-stick span { display: none; } /* (Optimus's ring has no knob) */
 .cyw-lookpad { position: absolute; right: 0; top: 18%; bottom: 210px; width: 50%; pointer-events: auto; touch-action: none; }
-.cyw-buttons { position: absolute; right: calc(12px + env(safe-area-inset-right)); bottom: calc(54px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 76px); gap: 8px; pointer-events: auto; }
-.cyw-buttons button { height: 52px; padding: 0 2px; border-radius: 14px; border: 1px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.6); color: #e9f1ff; font-size: 0.6rem; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; touch-action: none; }
+/* the buttons, the kit's sizes in Cybertron's cut: Fire the big one where
+   the thumb rests, the rest round it, each as wide as its word needs (no
+   label under 0.7 rem). The guide's ? is hidden while playing (below), so
+   the corner is theirs */
+.cyw-buttons { position: absolute; right: var(--hud-pad-r); bottom: var(--hud-pad-b); display: grid; grid-template-areas: 'tr us ju' '. bo fi'; align-items: end; justify-items: end; gap: 8px; pointer-events: auto; }
+.cyw-buttons .hud-touch-btn { width: auto; min-width: var(--touch-secondary); height: var(--touch-secondary); padding: 0 12px; border-radius: 14px; border: 1px solid rgba(127, 216, 255, 0.35); background: rgba(5, 9, 18, 0.78); color: #e9f1ff; font: 700 0.7rem/1 var(--hud-face); letter-spacing: 0.04em; white-space: nowrap; }
+.cyw-buttons .hud-touch-btn:active { border-color: #7fd8ff; background: rgba(63, 210, 255, 0.3); color: #fff; }
+.cyw-buttons .cyw-fire { grid-area: fi; min-width: var(--touch-action); height: var(--touch-action); border-color: rgba(255, 90, 74, 0.6); font-size: 0.78rem; }
+.cyw-transform { grid-area: tr; }
+.cyw-use { grid-area: us; }
+.cyw-jump { grid-area: ju; }
+.cyw-boost-btn { grid-area: bo; }
 /* Playing, the guide's ? and the scroll saber stay out of the way of the
    HUD and the buttons; on a phone or a tablet the world takes the whole
    screen, over the site's bar (Stop, or the back gesture, gives the page
@@ -79,26 +118,30 @@
   :root[data-playing='cybertron'] .cyw-host { z-index: 60; } /* (the page's wrapper, over what comes after it) */
   .cyw[data-playing] { position: fixed; inset: 0; z-index: 60; height: 100svh; min-height: 0; margin: 0; }
   .cyw[data-playing] .cyw-mission { top: calc(10px + env(safe-area-inset-top)); left: calc(10px + env(safe-area-inset-left)); }
-  .cyw[data-playing] .cyw-stats { top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right)); }
+  .cyw[data-playing] .cyw-tools { top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right)); }
   .cyw[data-playing] .cyw-bars { bottom: calc(14px + env(safe-area-inset-bottom)); left: calc(18px + env(safe-area-inset-left)); }
 }
 /* a phone held upright: the buttons in two columns, clear of the stick */
 @media (pointer: coarse) and (max-width: 440px) {
-  .cyw-buttons { grid-template-columns: repeat(2, 76px); }
+  .cyw-buttons { grid-template-areas: 'tr tr' 'us ju' 'bo fi'; }
 }
 /* a phone on its side: everything a little nearer the edges */
 @media (pointer: coarse) and (max-height: 500px) {
   .cyw-stick { bottom: calc(34px + env(safe-area-inset-bottom)); width: 120px; height: 120px; }
-  .cyw-buttons { bottom: calc(30px + env(safe-area-inset-bottom)); gap: 6px; }
-  .cyw-buttons button { height: 44px; }
+  .cyw-buttons { gap: 6px; }
   .cyw-prompt { bottom: 96px; }
   .cyw-talk { bottom: 140px; }
   .cyw-boss { top: 52px; }
+  .cyw-toast { top: 88px; }
 }
 @media (max-width: 640px) {
   .cyw-keys { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cyw-mission { left: 10px; top: 10px; max-width: 70%; }
-  .cyw-stats { right: 10px; top: 10px; }
+  .cyw-tools { right: 10px; top: 10px; flex-direction: column-reverse; align-items: flex-end; } /* (stacked: the mission's plate has the width) */
+  .cyw-list { top: calc(152px + env(safe-area-inset-top)); } /* (under that stack: the energon, the way out and the Menu) */
+  /* the boss's bar and the toast, under that stack too (centred, they'd run across the way out and the Menu) */
+  .cyw-boss { top: calc(146px + env(safe-area-inset-top)); }
+  .cyw-toast { top: calc(186px + env(safe-area-inset-top)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .cyw-spinner, .cyw-toast, .cyw-fade, .cyw-cross.cyw-hitmark, .cyw-hurt.cyw-hurt-on { animation: none; }

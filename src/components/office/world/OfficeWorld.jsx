@@ -4,6 +4,7 @@ import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery, usePageVisible } from '../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { readPad, typing } from '../../games/pad';
 import { Bubble, Convo, QuestList, Stick } from '../../middleearth/towns/TownHud';
 import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
@@ -12,13 +13,16 @@ import { nearest } from '../../middleearth/towns/story';
 import { newTalk, talkNode, talkOn } from '../../middleearth/towns/talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../../middleearth/towns/walker';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
-import { CAST, COLLIDERS, DOORS, HOOP, JIM, LINES, NAMES, OFFICE_ARRIVE, P, RACKS, ROOMS, SPOTS, THINGS, WALLS, WAREHOUSE, WH_ARRIVE, WORLD, inLot, inWarehouse, rect, roomAt, seatOf, spot, validAt } from './layout';
+import { ASKS, CAST, COLLIDERS, DOORS, HOOP, JIM, LINES, NAMES, OFFICE_ARRIVE, P, RACKS, ROOMS, SPOKEN, SPOTS, THINGS, WALLS, WAREHOUSE, WH_ARRIVE, WORLD, inLot, inWarehouse, rect, roomAt, seatOf, spot, validAt } from './layout';
+import { SHOUTS } from './shouts';
 import { CALL_COUNT, CHILI, CONVOS, FIRE, HOOPS, JELLO, QUESTS, SEAL, SPEAKERS, callOf, fireLeft, meterAt, newChili, newHoops, officeProgress, shoot, stepChili, stepHoops } from './story';
 import '../../middleearth/shire/shire.css';
 import '../../middleearth/towns/bree/bree.css';
 import './world.css';
 import '../../../styles/lazy/office.css';
 import GuideCue from '../../guide/GuideCue';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 const PaperToss = lazy(() => import('../PaperToss'));
 const FactCheck = lazy(() => import('../FactCheck'));
@@ -88,6 +92,7 @@ const ROOM = { bound: 160, motion: true };
 const areaOf = (h) => (inWarehouse(h.x, h.z) || inLot(h.x, h.z) ? 'warehouse' : 'office');
 
 function World({ prog, done, complete, gl, setGl, setPlace, place }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -114,7 +119,46 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  const toastTurn = useRef(0);
+  const say = useCallback((text, bad = false) => {
+    toastTurn.current += 1;
+    setToast({ text, bad, at: Date.now() });
+  }, []);
+  // who has the floor: a toast with someone speaking in it (and the clip
+  // before it), which whoever's near waits out before saying their line
+  const [floor, setFloor] = useState(0);
+  const floorTurn = useRef(0);
+  const hold = useCallback((until) => {
+    const mine = ++floorTurn.current;
+    setFloor(mine);
+    const free = () => setFloor((n) => (n === mine ? 0 : n));
+    Promise.race([until, new Promise((r) => setTimeout(r, 15000))]).then(free, free);
+  }, []);
+  // a toast that's someone speaking (./shouts.js), said in their voice where
+  // it's been made (lib/voiced.js): once the clip that goes with it (`first`)
+  // is over, and not if another toast has come up since
+  const shout = useCallback(
+    (line, bad = false, { first = null, shown = line.say } = {}) => {
+      say(shown, bad);
+      const mine = toastTurn.current;
+      hold(
+        Promise.resolve(first)
+          .then((h) => h?.ended)
+          .then(() => new Promise((r) => setTimeout(r, 0))) // (after this render's goodbyes: a conversation closing stops its line)
+          .then(() => (mine === toastTurn.current ? sayVoiced(line.who, line.say) : null))
+          .then((h) => h?.ended),
+      );
+    },
+    [say, hold],
+  );
+  // leaving the office: nothing it said goes on being said
+  useEffect(() => {
+    const turn = toastTurn;
+    return () => {
+      turn.current += 1;
+      stopVoiced();
+    };
+  }, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -135,6 +179,21 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     const t = setTimeout(() => setToast(null), 5200);
     return () => clearTimeout(t);
   }, [toast]);
+  // whoever's near says the line in their bubble: as the show said it, where
+  // it did (SPOKEN), else in their own voice where it's been made
+  // (lib/voiced.js). It stops when the bubble goes, waits while a toast has
+  // the floor, and is said once a bubble.
+  const heard = useRef(null);
+  useEffect(() => {
+    if (!bubble || floor || heard.current === bubble) return undefined;
+    heard.current = bubble;
+    if (SPOKEN[bubble.line]) {
+      clip(SPOKEN[bubble.line], { voice: true }); // (a voice, on the floor: lib/speech.js)
+      return undefined;
+    }
+    const said = sayVoiced(bubble.id, bubble.line);
+    return () => said.stop(); // (just this line: not a toast's, said since)
+  }, [bubble, floor]);
 
   // the world: made once
   useEffect(() => {
@@ -150,7 +209,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         if (dead || !canvas.current) return null;
         return createOfficeWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
       })
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
@@ -159,6 +218,9 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         api.current = a;
         if (import.meta.env.DEV) window.__OFFICE__ = { api: a, sim: sim.current, complete };
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
       })
       .catch((e) => {
@@ -244,9 +306,8 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     s.carry = null;
     setFireOn(true);
     api.current?.fx('fire');
-    clip('fireDrill');
-    say('Dwight has set a fire in the conference room’s bin. “Today, smoking is going to save lives.” Get out by the stairwell, past the kitchen!', true);
-  }, [say]);
+    shout(SHOUTS.fire, true, { first: clip('fireDrill') }); // (Michael panics first)
+  }, [shout]);
   const endFire = useCallback(
     (won) => {
       const s = sim.current;
@@ -255,15 +316,15 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
       if (won) {
         complete('fire');
         sfx().then((x) => x.applause());
-        say('Out in the stairwell. Dwight follows you through with a clipboard: “Everyone is dead. Except Jim. Good work, Jim.” Back to work.');
+        shout(SHOUTS.fireOut);
         later(() => toWalk({ ...P(703, 196), face: Math.PI / 2 }), 2600);
       } else {
-        say('Too slow. Dwight, from somewhere: “You are dead. Do it again.” Back in the conference room.', true);
+        shout(SHOUTS.fireSlow, true);
         toWalk({ ...spot('seminar'), face: -Math.PI / 2 });
         later(() => startFire(), 1200);
       }
     },
-    [complete, later, say, startFire, toWalk],
+    [complete, later, shout, startFire, toWalk],
   );
 
   const enter = useCallback(
@@ -306,7 +367,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         s.chiliDone = true;
         complete('chili');
         sfx().then((x) => x.ding?.());
-        say('On the counter, not a drop lost. Kevin, from his desk: “I just want people to like my chili.” They will.');
+        shout(SHOUTS.chili);
       } else if (id === 'factdesk') {
         if (s.carry !== 'jello') return;
         s.carry = null;
@@ -337,11 +398,12 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         s.hoops = newHoops();
         s.h = newWalker({ x: HOOP.x + HOOP.line + 0.3, z: HOOP.z, face: Math.PI });
         s.deskCam = { at: [HOOP.x + HOOP.line + 3.4, 2.15, HOOP.z + 0.9], look: [HOOP.x + 0.4, 2.55, HOOP.z] };
-        say(has('hoops') ? 'Free throws again. Darryl’s keeping count anyway.' : 'Darryl: “Three out of five, office man. Michael said you were the ringer. Michael says a lot of things.”');
+        if (has('hoops')) say('Free throws again. Darryl’s keeping count anyway.');
+        else shout(SHOUTS.hoops);
       }
       return undefined;
     },
-    [complete, endFire, say, setPlace, startFire, toWalk],
+    [complete, endFire, say, setPlace, shout, startFire, toWalk],
   );
 
   const talkOnward = useCallback(
@@ -407,14 +469,14 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     if (s.mode !== 'talk') return;
     if (s.talking === 'phones') {
       s.erinBreak = false;
-      say('Erin’s back early. “Did you just hang up on someone?” Come back to cover reception any time.');
+      shout(SHOUTS.erinBack);
     }
     s.talking = null;
     s.talk = null;
     s.deskCam = null;
     s.mode = 'walk';
     setHud((h) => ({ ...h, line: null }));
-  }, [say]);
+  }, [shout]);
 
   const lookAt = useCallback(
     (id) => {
@@ -582,8 +644,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
       // walked back to find Jim still standing at his desk, Jell-O in hand
       if (s.dwightK > 0.85 && s.carry === 'jello' && Math.hypot(s.h.x - d.chair.x, s.h.z - d.chair.z) < 1.6) {
         a.fx('caught');
-        clip('identityTheft');
-        say('Dwight: “What are you doing at my desk? FALSE. Whatever you were going to say: false.” The Jell-O goes back in the fridge.', true);
+        shout(SHOUTS.caught, true, { first: clip('identityTheft') });
         s.carry = null;
       }
       if (s.dwightK >= 1) {
@@ -594,8 +655,9 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         }
         if (s.jelloSet && !doneRef.current.includes('jello')) {
           complete('jello');
-          clip('dwightPunish');
-          later(() => say('Dwight sits down. Looks at his desk. Looks at you. “JIM!” Pam, across the room, doesn’t even look up. She’s smiling.'), 800);
+          const punish = clip('dwightPunish');
+          hold(punish.then((h) => h?.ended));
+          later(() => shout(SHOUTS.jello, false, { first: punish }), 800);
         }
       }
     }
@@ -613,8 +675,8 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         if (won) {
           complete('hoops');
           sfx().then((x) => x.applause());
-          say(`${hh.made} of ${hh.shots}. Darryl, slowly: “Okay. Okay. The office has one.” The warehouse goes back to work.`);
-        } else say(`${hh.made} of ${hh.shots}. Darryl: “That’s what I thought.” Step up and go again.`, true);
+          shout(SHOUTS.hoopsWon, false, { shown: `${hh.made} of ${hh.shots}. ${SHOUTS.hoopsWon.say}` });
+        } else shout(SHOUTS.hoopsLost, true, { shown: `${hh.made} of ${hh.shots}. ${SHOUTS.hoopsLost.say}` });
         later(() => {
           const ss = sim.current;
           if (ss.mode !== 'hoops') return;
@@ -694,9 +756,9 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         lines.current[person] = n + 1;
         const ls = LINES[person];
         let line = ls[n % ls.length];
-        if (person === 'kevin' && !doneRef.current.includes('chili') && s.carry !== 'chili') line = 'Jim. Jim. My chili’s at the lift. Can you bring it to the kitchen? Careful. It’s my thing.';
-        if (person === 'erin' && !doneRef.current.includes('phones')) line = 'Jim, could you cover the phones for a minute? Please? I really need a break.';
-        if (person === 'michael' && progRef.current.quests.find((q) => q.id === 'dundies')?.open && !doneRef.current.includes('dundies')) line = 'Jim! Get in here. Step into my office. Not you, Toby.';
+        if (person === 'kevin' && !doneRef.current.includes('chili') && s.carry !== 'chili') line = ASKS.kevin;
+        if (person === 'erin' && !doneRef.current.includes('phones')) line = ASKS.erin;
+        if (person === 'michael' && progRef.current.quests.find((q) => q.id === 'dundies')?.open && !doneRef.current.includes('dundies')) line = ASKS.michael;
         setBubble({ id: person, name: NAMES[person], line });
         s.wave = n === 0 ? person : null;
       } else {
@@ -817,28 +879,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   // the list's "go there"
   const travel = (q) => {
@@ -881,7 +922,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
   return (
     <div ref={box} className="shire-stage dm-stage" data-touch={touch || undefined} data-mode={mode} data-fire={hud.fire || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Dunder Mifflin Scranton office in 3D: the bullpen's desks under fluorescent lights, reception, Michael's glass-fronted office and the conference room, with Jim Halpert walking among his coworkers" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
-      {gl === 'loading' && <p className="shire-loading dm-loading">Clocking in at Dunder Mifflin…</p>}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Clocking in at Dunder Mifflin" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">
@@ -928,7 +969,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         <div className="shire-door">
           <p className="shire-door-name">{here ? here[0] : thingHere.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => (here ? enter(hud.near) : lookAt(hud.thing))}>
-            {here ? here[1] : 'Look'} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here ? here[1] : 'Look'}
           </button>
         </div>
       )}
@@ -939,7 +980,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         <Convo
           className="dm-convo"
           title={hud.talking === 'phones' ? `Reception · call ${Math.min(CALL_COUNT, callOf(hud.line) + 1)} of ${CALL_COUNT}` : 'Michael’s office'}
-          name={node.who === 'narrator' ? '' : (SPEAKERS[node.who] ?? '')}
+          name={node.who === 'narrator' || node.told ? '' : (SPEAKERS[node.who] ?? '')}
           node={node}
           touch={touch}
           onPick={(i) => talkOnward(i)}
@@ -950,9 +991,9 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
 
       {mode === 'hoops' && hud.hoops && <Hoops hud={hud.hoops} touch={touch} sim={sim} onShoot={throwBall} onLeave={leaveHoops} />}
 
-      {walking && touch && <Stick onStick={onStick} />}
+      {walking && touch && <Stick onMove={onStick} />}
 
-      {list && <QuestList title="This week at Dunder Mifflin" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && !hud.fire && !hud.carry} />}
+      {list && <QuestList title="This week at Dunder Mifflin" quests={prog.quests.map((q) => ({ ...q, blurb: q.go }))} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && !hud.fire && !hud.carry} />}
     </div>
   );
 }

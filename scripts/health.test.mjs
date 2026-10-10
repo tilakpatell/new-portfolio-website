@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeContext, metric } from './health/context.mjs';
@@ -8,6 +10,10 @@ import cycles from './health/cycles.mjs';
 import { graph, resolve, uncomment } from './health/graph.mjs';
 import lintDisables from './health/lint-disables.mjs';
 import todoNotes from './health/todo-notes.mjs';
+import hudKit from './health/hud-kit.mjs';
+import kbdStyles, { capRules } from './health/kbd-styles.mjs';
+import stackPages from './health/stack-pages.mjs';
+import glslSites, { EXEMPT, NAMES, sites } from './health/glsl-sites.mjs';
 import { check, describe as words, ratchet } from './health/ratchet.mjs';
 
 const TREE = fileURLToPath(new URL('./health/fixtures/tree/', import.meta.url));
@@ -29,10 +35,68 @@ describe('the measure, on a fixture tree', () => {
     expect(m.detail).toEqual([{ file: 'src/world/small.js', n: 2 }, { file: 'scripts/tool.mjs', n: 1 }]);
   });
 
+  it('kbd-styles counts the rules that draw a key cap outside the house one, walking the CSS itself', async () => {
+    const m = await kbdStyles(ctx);
+    expect(m.value).toBe(2);
+    expect(m.detail).toEqual([{ file: 'src/world/world.css', n: 2 }]);
+  });
+
+  it('kbd-styles reads a selector, not a word', () => {
+    expect(capRules('.a kbd { x: 1 } .b-kbd { x: 1 } .kbd-ish { x: 1 } .keyboard { x: 1 }')).toBe(2);
+    expect(capRules('/* kbd { } */ .a { x: 1 }')).toBe(0);
+    expect(capRules('@media (x) { .a > kbd, .b { x: 1 } }')).toBe(1);
+  });
+
   it('todo-notes counts TODO, FIXME and HACK under src only', async () => {
     const m = await todoNotes(ctx);
     expect(m.value).toBe(2);
     expect(m.detail).toEqual([{ file: 'src/world/small.js', n: 2 }]);
+  });
+});
+
+describe('the stack pages, on a fixture tree', () => {
+  it('counts the packages of package.json with no row in the stack index, and names each', async () => {
+    const m = await stackPages(ctx);
+    expect(m.value).toBe(2);
+    expect(m.detail).toEqual([
+      { file: 'docs/stack/README.md', n: 1, note: '@gltf-transform/core' },
+      { file: 'docs/stack/README.md', n: 1, note: 'lonely' },
+    ]);
+  });
+  it('counts every package when there is no index', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'stack-pages-'));
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ dependencies: { a: '1' }, devDependencies: { b: '1' } }));
+    expect((await stackPages(await makeContext(dir))).value).toBe(2);
+  });
+});
+
+describe('the GLSL sites, on a fixture tree', () => {
+  it('counts the names a WebGPU port removes, comments, tests and the exempt infrastructure left out', async () => {
+    const m = await glslSites(ctx);
+    expect(m.value).toBe(2);
+    expect(m.detail).toEqual([{ file: 'src/world/glsl.js', n: 2 }]);
+  });
+  it('reads RawShaderMaterial as one site, not two, and agrees with the WebGPU design’s exempt list', () => {
+    expect(NAMES).toContain('RawShaderMaterial');
+    expect(sites('new RawShaderMaterial(); new ShaderMaterial(); myShaderMaterialish; x.RenderPass')).toBe(3);
+    expect(EXEMPT).toEqual(['src/lib/three/frameGuard.js', 'src/lib/three/renderer.js', 'src/lib/three/gpuWork.js', 'src/runtime/']);
+  });
+});
+
+describe('the HUD kit, on a fixture tree', () => {
+  it('counts the worlds whose HUD imports nothing from the kit', async () => {
+    const hud = await makeContext(fileURLToPath(new URL('./health/fixtures/hud/', import.meta.url)));
+    const m = await hudKit(hud, ['alpha', 'beta', 'missing']);
+    expect(m.value).toBe(1);
+    expect(m.detail).toEqual([{ file: 'src/components/beta', n: 1 }]);
+  });
+  it('counts a world on the kit through the towns’ shared HUD', async () => {
+    const hud = await makeContext(fileURLToPath(new URL('./health/fixtures/hud/', import.meta.url)));
+    expect((await hudKit(hud, ['gamma'])).value).toBe(0);
+  });
+  it('counts a world on the kit through its own page', async () => {
+    const hud = await makeContext(fileURLToPath(new URL('./health/fixtures/hud/', import.meta.url)));
+    expect((await hudKit(hud, ['beta'], { beta: ['src/pages/BetaPage.jsx'] })).value).toBe(0);
   });
 });
 
@@ -174,6 +238,8 @@ describe('the ratchet', () => {
     expect(over[0]).toMatchObject({ id: 'big-files', value: 3, budget: 2, worst: [{ file: 'a.js', n: 2000 }] });
     expect(words(over)).toContain('big-files: 3 files over budget 2');
     expect(words(over)).toContain('a.js  2000');
+    // a row's note names what the file and count can't (the package with no page)
+    expect(words([{ id: 'stack-pages', value: 1, budget: 0, unit: 'packages', worst: [{ file: 'docs/stack/README.md', n: 1, note: 'left-pad' }] }])).toContain('docs/stack/README.md  1  left-pad');
   });
 
   it('ratchet only lowers, adds a budget for a new metric, rounds kB up to the next 5 and sorts the keys', () => {

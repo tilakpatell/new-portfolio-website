@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { useTravellers } from '../useTravellers';
@@ -13,7 +14,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { LAIR_IN, LAIR_OUT, ORC_ROUNDS, SHELOB_ROUNDS, SHELOB_START, TOWER_COLLIDERS, TOWER_DOOR, TOWER_IN, TOWER_WALLS, lairBlocked, validAt } from './layout';
-import { CONVOS, CRUMB_SAYS, QUESTS, SEAL, SIDE, SPEAKERS, cirithProgress } from './story';
+import { CONVOS, CRUMB_SAYS, QUESTS, SAYS, SEAL, SIDE, SPEAKERS, cirithProgress } from './story';
 import { CRUMBS, DUEL, MORGUL, ORCS, PHIAL, SHELOB, STAIRS, brush, crumbling, crumbsLeft, dodge, moveHand, newClimb, newCrumbs, newDuel, newMorgul, newPhial, onLedge, recoils, stab, stepClimb, stepCrumbs, stepDuel, stepMorgul, stepPhial } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -103,7 +104,12 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const hudKey = useRef('');
   const [toast, setToast] = useState(null);
   const [list, setList] = useState(false);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -445,7 +451,9 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a blow holds the game a moment: the scene's hitstop, ../../feel.js)
+    const real = Math.min(0.05, ms / 1000);
+    const dt = real * a.timeScale(real) * fast;
     s.t += dt;
     s.stepT += dt;
     const k = s.keys;
@@ -492,7 +500,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         } else if (e.type === 'stood') {
           s.busy = true;
           a.fx('stood');
-          say('You’re on your feet and walking down to the road, towards the green light. Sam drags you down behind the rocks. “Mr. Frodo!” Again: keep your eyes off it.', true);
+          say(SAYS.stood.text, true, SAYS.stood.who);
           later(() => sim.current?.mode === 'morgul' && startMorgul(), 2400);
         } else if (e.type === 'passed') {
           complete('morgul');
@@ -500,7 +508,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           s.zone = 'stairs';
           s.mode = 'walk';
           s.air?.place('stairs');
-          say('The host has gone by, west, to war. Gollum: “This way, master. Up the stairs.”', false);
+          say(SAYS.passed.text, false, SAYS.passed.who);
         }
       }
     }
@@ -618,9 +626,11 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           a.fx('stir');
           sounds().then((x) => x.murmur());
           s.said = CRUMB_SAYS.stir[e.i % CRUMB_SAYS.stir.length];
+          if (s.said.includes('“')) sayVoiced('frodo', s.said); // talking in his sleep (./voicelines.js)
         } else if (e.type === 'woke') {
           sounds().then((x) => x.murmur());
           s.said = CRUMB_SAYS.woke;
+          sayVoiced('gollum', s.said);
           recordGo({ won: false, score: null });
         }
       }
@@ -712,28 +722,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (name, v) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -798,7 +787,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -961,7 +950,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           )}
         </div>
       )}
-      {walking && touch && (hud.zone === 'lair' || hud.zone === 'tower') && <Stick onStick={onStick} />}
+      {walking && touch && (hud.zone === 'lair' || hud.zone === 'tower') && <Stick onMove={onStick} />}
       {list && (
         <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)}>
           <SideList tasks={[sideTask]} onGo={startCrumbs} canGo={(t) => t.open && (sim.current.mode === 'walk' || sim.current.mode === 'end')} />

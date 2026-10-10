@@ -9,20 +9,20 @@
 // Blender in WSL ($BLENDER_WSL, else ~/blender/blender-*/blender in the
 // same distro as the trellis2 engine). Cycles bakes on the GPU either way.
 
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { live, localDir } from '../desktop/lib.mjs';
 import { WSL, wslPath } from './generate.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const LOCAL = process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? '', 'AppData', 'Local');
 // what a Linux Blender tarball lacks on a bare WSL Ubuntu (libSM, libICE), from conda-forge
 const WSL_LIBS = `~/${'miniforge3'}/envs/x11libs/lib`;
 
 export function blenderWindows() {
   if (process.env.BLENDER && existsSync(process.env.BLENDER)) return process.env.BLENDER;
-  for (const root of [join(LOCAL, 'blender'), 'C:\\Program Files\\Blender Foundation']) {
+  for (const root of [localDir('blender'), 'C:\\Program Files\\Blender Foundation']) {
     if (!existsSync(root)) continue;
     const dirs = readdirSync(root).filter((d) => /^blender/i.test(d)).sort().reverse();
     for (const d of dirs) {
@@ -59,7 +59,8 @@ export function blender() {
 export function command(raw, out, { faces = 24000, tex = 2048, where = blender() } = {}) {
   if (!where) return null;
   const args = ['--background', '--python', join(HERE, 'bake.py'), '--', raw, out, '--faces', String(faces), '--tex', String(tex)];
-  if (where.kind === 'windows') return [where.exe, ...args];
+  // a script standing in for Blender (scripts/ai-e2e/fakes/blender.mjs) runs under node
+  if (where.kind === 'windows') return /\.mjs$/i.test(where.exe) ? [process.execPath, where.exe, ...args] : [where.exe, ...args];
   const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
   const run = `export LD_LIBRARY_PATH=${WSL_LIBS}:$LD_LIBRARY_PATH; ${q(where.exe)} ${args.map((a) => q(/^[A-Za-z]:[\\/]/.test(a) ? wslPath(a) : a)).join(' ')}`;
   return ['wsl.exe', '-d', WSL.distro, '-e', 'bash', '-lc', run];
@@ -69,11 +70,7 @@ export async function bake(raw, out, opts = {}) {
   const cmd = command(raw, out, opts);
   if (!cmd) throw new Error('Blender is not set up here: see scripts/gen3d/README.md');
   const started = Date.now();
-  await new Promise((done, fail) => {
-    const p = spawn(cmd[0], cmd.slice(1), { stdio: ['ignore', 'inherit', 'inherit'] });
-    p.on('error', fail);
-    p.on('exit', (code) => (code === 0 ? done() : fail(new Error(`blender exited ${code}`))));
-  });
+  await live(cmd[0], cmd.slice(1), { name: 'blender', minutes: Number(process.env.GEN3D_BAKE_MINUTES ?? 20) });
   if (!existsSync(out)) throw new Error(`blender made no ${out}`);
   return { out, seconds: (Date.now() - started) / 1000 };
 }

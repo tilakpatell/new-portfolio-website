@@ -13,19 +13,146 @@
 // A step's spawn: { kind, n, at, spread, roam, speed, hp, tag, scale,
 // model, still, face, y, level (the height it's on, where there are
 // floors over floors: a pit under a throne room), leash, hostile: { range, every, spread, damage,
-// burst, strafe, shield, parry (hostiles.js's: bursts of fire, circling you, a shield that soaks hits, a blade that turns your swings),
+// burst, strafe, shield (hostiles.js's: bursts of fire, circling you, a shield that soaks hits),
+// blade ({ color, hilt?, stance? }: a lit saber in its hand, and it fences: duellists.js), parry (the share of your strokes a
+// duellist blocks), riposte (the share of those it parries), guard (strokes it turns before its guard breaks and it reels),
 // delay (before its first shot), chase (m/s: it comes for you), melee,
-// reach (how close it has to be to hit) } }
+// reach (how close it has to be to hit), cone, far, smell, memory (what it
+// perceives: hostiles.js's sensesFor), force ({ every, push }: a duellist's
+// shove at you, every so often, close to) }, side ('yours': it fights beside
+// you, at the nearest hostile, and the hostiles fire at it; a shot's `at`
+// and `victim` say so) }
+//
+// Every figure has a head (hostiles.js's hostileStep, on lib/ai): it
+// knows you only as it perceives you (the world's solids are its line of
+// sight: walker.js's lineClear), weighs what to do with you in sight (hold
+// and fire, strafe, close, back off, take cover from your line of fire or
+// flank round when it has no shot: `shot` tokens, SHOTS at once across the
+// world, and `melee` tokens, one swing at a time), goes to look where it
+// last had you, and joins its group's search (one lib/ai/search a tag: the
+// spots that could hide you round where you were lost, shared) before it
+// goes back to its wander. Its shots go to what it believes (a shot's `to`,
+// which the scene aims at; `guessed` when it can only guess). An `update`
+// event { type: 'search', tag } says a group has started looking.
+//
+// And a body that shows it (hostiles.js's hostileBody, the seam from
+// brain to body): its feet paced to the ground its head moves it over (a
+// strafer's hips toward its travel, its chest on you), its head on what it
+// watches or sweeping as it searches, with a '?' over it while it looks
+// for you and a '!' when it has you again; crouched in cover once it's
+// there, standing to fire. A rigged one holds its gun in its hand and
+// raises it to aim and fire from the muzzle (universe/gunplay.js, as
+// yours), or plays the pistol's aim and shot on its upper half; a
+// duellist's saber is in its own hand, held at guard and swung in its
+// strokes (heldBlade.js's bladeInHand; duellists.js fences with it: what
+// lands on you is what its blade sweeps, handed to the scene through
+// shooters as a melee contact). It flinches by where it's hit, goes down by
+// the way the shot went (die.fwd, die.back, die.blown) and lies a while
+// before it goes; one with no clips falls over about its feet that way. A
+// Tusken brandishes its rifle over its head when it sees you. Bodies never
+// change what the heads decide: every shot, kill and event is as it was.
+// hit(t, damage, { at }) takes where it landed (a point in the world: the
+// head or the chest).
 
 import * as THREE from 'three';
 import { buildFigure } from './figures';
-import { modelFigure } from './actors';
+import { anyFigure, modelFigure } from './actors';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
-import { groundAt, turnToward } from './walker';
+import { groundAt, shoreStep, turnToward } from './walker';
 import { stepTarget } from './quests';
 import { rng } from './noise';
-import { absorb, startBurst, stepBurst, strafeStep } from './hostiles';
+
+// ── the pure parts ──
+// a duellist's Force: its push falls due every `force.every` seconds while
+// you're within 8 m of it (t.forceAt: when it last pushed)
+export const nextForce = (t, h, dYou, time) => Boolean(h?.force) && dYou <= 8 && time - (t.forceAt ?? -99) >= (h.force.every ?? 7);
+// one on your side (spec.side: 'yours') fights the nearest hostile that's
+// up, never you and never its own side
+export function friendlyAim(t, targets) {
+  if (t.spec?.side !== 'yours') return null;
+  let best = null;
+  let bd = Infinity;
+  for (const o of targets) {
+    if (o === t || o.down || !o.hostile || o.spec?.side === 'yours') continue;
+    const d = Math.hypot(o.b.x - t.b.x, o.b.z - t.b.z);
+    if (d < bd) {
+      bd = d;
+      best = o;
+    }
+  }
+  return best;
+}
+// a hostile's mark: you, or a friend of yours nearer to it than you are
+// ({ x, z, victim }: the friend, or null when it's you; null with nobody)
+export function hostileAim(t, you, targets) {
+  let best = you ? { x: you.x, z: you.z, victim: null } : null;
+  let bd = you ? Math.hypot(you.x - t.b.x, you.z - t.b.z) : Infinity;
+  for (const o of targets) {
+    if (o === t || o.down || o.spec?.side !== 'yours') continue;
+    const d = Math.hypot(o.b.x - t.b.x, o.b.z - t.b.z);
+    if (d < bd) {
+      bd = d;
+      best = { x: o.b.x, z: o.b.z, victim: o };
+    }
+  }
+  return best;
+}
+// What a hostile carries, by kind (universe/gunplay.js's GUNS): a Tusken's
+// long cycler rifle, Jango's WESTAR-34, the troopers' E-11s, the clones'
+// DC-15As, the battle droids' E-5s, a Rebel's A280; a blaster pistol for
+// anyone else with a gun (a spawn's own `gun` first). A duellist carries
+// its saber; a brawler, a beast or a target that doesn't fight back, nothing.
+export { ARMS }; // (ground/troops.js's: the one table)
+export function armsOf(s) {
+  const h = s?.hostile;
+  if (!h) return null;
+  if (h.blade) return 'saber';
+  if (h.melee) return null;
+  return s.gun ?? ARMS[s.kind] ?? 'blaster';
+}
+// how one starts when it sees you, by kind, in place of react.js's alert:
+// a Tusken's cry, its rifle brandished over its head (a clip on its upper
+// half, so long, the gun's own pose let go meanwhile)
+const STARTS = { tusken: { clip: 'cheer', for: 1.6 } };
+// up to fire: its next shot due within half a second (and not left waiting
+// long for its turn), or one just fired: what stands it out of its crouch
+// and brings the gun up, ahead of the shot rather than after it
+export const upToFire = (t, time) => Boolean(t.aim && t.cool < 0.5 && t.cool > -0.4) || time - (t.firedAt ?? -Infinity) < 0.9;
+// going down: a fall over `fall` seconds about its feet (for one with no
+// clip to fall on; a clip's own length otherwise), then lying `lie`, then
+// sinking `deep` metres over `sink` and gone
+export const DEATH = { fall: 0.9, lie: 2, sink: 0.6, deep: 0.35 };
+// `down` seconds after it went (len: its clip's length, null for the tip)
+// → { k (0…1 of the tip), sink (metres), gone }
+export function fallen(down, len = null) {
+  const lain = (len ?? DEATH.fall) + DEATH.lie;
+  return { k: Math.min(1, down / DEATH.fall), sink: down > lain ? Math.min(1, (down - lain) / DEATH.sink) * DEATH.deep : 0, gone: down > lain + DEATH.sink };
+}
+import { absorb, createPosture, fallOf, hostileBody, hostileStep, startBurst, stepBurst, whereHit } from './hostiles';
+import { lineClear } from './walker';
+import { createTokens } from '../../../lib/ai/squad';
+import { createSearch } from '../../../lib/ai/search';
+import { candidates } from '../../../lib/ai/spatial';
+import { createPortalFx, meshyJoints } from '../../../lib/three/portalFx';
+import { createGadgetFx } from '../../../lib/three/gadgetFx';
+import { fallTurn } from '../../../lib/three/locomotion';
+import { preload } from '../../../lib/three/clipLibrary';
+import { createGunplay } from '../../universe/gunplay';
+import { SHOW_KILLS } from './weaponRules';
+import { bladeInHand } from './heldBlade';
+import { asTarget, clashes, duelFor, fence, landed, reeling, stun, turnOf } from './duellists';
+import { onHit } from '../../../lib/combat/duel';
+import { sharpen } from '../../../lib/three/textures';
+import { ARMS } from './ground/troops';
+
+const SHOTS = 3; // enemies firing at you at once, across a world (the rest move)
+const UP = new THREE.Vector3(0, 1, 0);
+const _fwd = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+const _from = new THREE.Vector3();
+const _q = new THREE.Quaternion();
+const _yq = new THREE.Quaternion();
 
 const BEAM_VERT = `
 varying vec2 vUv;
@@ -75,40 +202,6 @@ function gateMesh() {
   return m;
 }
 
-// a womp rat: a big-eared rodent, scurrying
-function wompRat() {
-  const g = new THREE.Group();
-  const fur = new THREE.MeshStandardMaterial({ color: '#6b5642', roughness: 1 });
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), fur);
-  body.scale.set(0.8, 0.7, 1.4);
-  body.position.y = 0.4;
-  g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), fur);
-  head.position.set(0, 0.5, 0.55);
-  g.add(head);
-  for (const x of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.CircleGeometry(0.16, 10), new THREE.MeshStandardMaterial({ color: '#9a7a62', side: THREE.DoubleSide }));
-    ear.position.set(x * 0.15, 0.72, 0.5);
-    ear.rotation.y = x * 0.6;
-    g.add(ear);
-  }
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.9, 6), fur);
-  tail.rotation.x = -Math.PI / 2 - 0.3;
-  tail.position.set(0, 0.35, -0.9);
-  g.add(tail);
-  g.traverse((o) => o.isMesh && (o.castShadow = true));
-  let t = Math.random() * 9;
-  return {
-    model: g,
-    tall: 0.8,
-    update(dt, move) {
-      t += dt * (4 + move * 14);
-      body.position.y = 0.4 + Math.abs(Math.sin(t)) * 0.08 * move;
-    },
-    dispose() {},
-  };
-}
-
 // a training remote, hovering and darting (for blaster practice)
 function remote() {
   const g = new THREE.Group();
@@ -125,23 +218,25 @@ function remote() {
   return { model: g, tall: 0.45, update() {}, dispose() {}, hover: 1.6 };
 }
 
-const SPECIAL = { womprat: wompRat, remote };
+// (the womp rats are the catalogue's model now: catalog/library.js)
+const SPECIAL = { remote };
 
 // A health bar over a hostile's head: a sprite with a small canvas, red
 // for what's left, blue over it for a shield, redrawn only when they change
-function healthBar() {
+export function healthBar() {
   const canvas = document.createElement('canvas');
   canvas.width = 64;
   canvas.height = 10;
   const c = canvas.getContext('2d');
   const texture = new THREE.CanvasTexture(canvas);
+  sharpen(texture);
   texture.minFilter = THREE.LinearFilter;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
   sprite.scale.set(0.9, 0.14, 1);
   sprite.renderOrder = 5;
   return {
     sprite,
-    draw(hp, shield) {
+    draw(hp, shield, guard = 0) {
       c.clearRect(0, 0, 64, 10);
       c.fillStyle = 'rgba(0,0,0,0.6)';
       c.fillRect(0, 2, 64, 6);
@@ -150,6 +245,11 @@ function healthBar() {
       if (shield > 0) {
         c.fillStyle = '#7fd0ff';
         c.fillRect(1, 0, Math.round(62 * Math.min(1, shield)), 2);
+      }
+      // (a duellist's guard: white over the top, gone when it's broken)
+      if (guard > 0) {
+        c.fillStyle = '#ffffff';
+        c.fillRect(1, 0, Math.round(62 * Math.min(1, guard)), 2);
       }
       texture.needsUpdate = true;
     },
@@ -160,10 +260,46 @@ function healthBar() {
   };
 }
 
-export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null }) {
+// The marks over a hostile's head: '?' while it looks for you, '!' when it
+// has you again. One canvas each, shared by every head that shows it.
+export function markMaterials() {
+  const made = {};
+  return {
+    of(ch) {
+      if (made[ch]) return made[ch];
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 64;
+      const c = canvas.getContext('2d');
+      c.font = 'bold 54px system-ui, sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.lineWidth = 7;
+      c.strokeStyle = 'rgba(0,0,0,0.75)';
+      c.strokeText(ch, 32, 35);
+      c.fillStyle = ch === '!' ? '#ff5a3d' : '#ffd36a';
+      c.fillText(ch, 32, 35);
+      const texture = new THREE.CanvasTexture(canvas);
+      sharpen(texture);
+      made[ch] = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false });
+      return made[ch];
+    },
+    dispose() {
+      for (const m of Object.values(made)) {
+        m.map.dispose();
+        m.dispose();
+      }
+    },
+  };
+}
+
+export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null }) {
   const group = new THREE.Group();
   group.name = 'activity';
   parent.add(group);
+  // Rick's guns' kills: through a portal, frozen and shattered, shrunk and
+  // popped (onShow(how, event) for the sounds of them)
+  const pfx = createPortalFx({ parent: group });
+  const gfx = createGadgetFx({ parent: group });
   const marker = beam(color);
   marker.visible = false;
   group.add(marker);
@@ -173,6 +309,17 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   let shown = { quest: null, step: -1 };
   let dead = false;
   const r = rng(7);
+  const tokens = createTokens({ pools: { shot: SHOTS, melee: 1 }, timeout: 0.9 }); // (a shot's token frees itself a moment after the shot)
+  const searches = new Map(); // tag → the group's search (lib/ai/search)
+  const stims = []; // (your shots, heard: the scene may push them; cleared each update)
+  const seesThrough = (a, b) => lineClear(world.solids, a, b);
+  // the spots a search looks in: round where you were lost, out of sight of it
+  const hidingSpots = (b) => [...candidates(b.at, { ring: 8, n: 8 }), ...candidates(b.at, { ring: 16, n: 12 })].filter((p) => !seesThrough(b.at, p));
+  const searchFor = (tag) => {
+    if (!searches.has(tag)) searches.set(tag, createSearch({ rand: r, spots: hidingSpots, time: 30 }));
+    return searches.get(tag);
+  };
+  const marks = markMaterials();
 
   // (the pickups and gates are made here for the step, each its own
   // geometry and materials: gone with it)
@@ -183,7 +330,14 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       for (const mat of [m.material].flat()) mat.dispose();
     });
   const clearStep = () => {
-    for (const t of targets) t.bar?.dispose();
+    searches.clear();
+    tokens.clear();
+    for (const t of targets) {
+      t.show?.dispose();
+      t.bar?.dispose();
+      t.blade?.dispose();
+      t.gp?.dispose();
+    }
     for (const p of pickups) {
       p.mesh.removeFromParent();
       release(p.mesh);
@@ -201,20 +355,49 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     targets = [];
   };
 
+  // (a world that takes models only: api.modelsOnly(), cast.js)
+  let only = false;
   const figure = async (kind, spec) => {
     if (SPECIAL[kind]) return SPECIAL[kind]();
+    // (a world that takes models only: a model, a stand-in or nothing; cast.js)
+    if (only) return anyFigure(kind, spec, kit, 0, undefined, { only });
     if (spec.model !== false) {
-      const m = (await crewFigure(kind).catch(() => null)) ?? (await modelFigure(kind).catch(() => null));
+      // (a walking crew figure first: a rigged one holds its gun or its blade
+      // in its own hand; else the catalogue's model, which holds a blade
+      // where its hand would hang)
+      const crew = () => crewFigure(kind).catch(() => null);
+      const still = () => modelFigure(kind).catch(() => null);
+      const m = (await crew()) ?? (await still());
       if (m) return m;
     }
     const f = buildFigure(kind);
     if (f) return f;
     if (PROPS[kind] && kit) {
       const made = PROPS[kind](kit, spec.opts ?? {});
+      // (it walks: its scans go with it, kit.js's twins)
+      kit.moving?.(made.object);
       let t = 0;
       return { model: made.object, tall: 4, update: (dt, move) => made.update?.((t += dt), dt, move), dispose() {} };
     }
     return null;
+  };
+
+  // what it carries, in its hand: a rigged figure's gun in its own right
+  // hand (gunplay.js, raised to aim), its lightsaber lit there (heldBlade.js's
+  // bladeInHand) and a duellist's mind to fence with it (duellists.js); a
+  // figure without hand bones carries neither (every duellist is a rigged
+  // crew figure: crewList.js)
+  const armed = (t, fig) => {
+    const s = t.spec;
+    const kind = armsOf(s);
+    if (!kind) return;
+    t.holder.updateMatrixWorld(true);
+    if (kind === 'saber') {
+      t.blade = bladeInHand(fig, s.hostile.blade, { parent: group, stance: s.hostile.blade.stance ?? 'single', who: s.kind });
+      if (t.blade) t.duel = duelFor(s, Math.round(t.home[0] * 13) * 31 + Math.round(t.home[1] * 17) + targets.indexOf(t) * 7919 + 1);
+      return;
+    }
+    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones }, kind, { unit: 1, who: s.kind });
   };
 
   // the step's own things, put out
@@ -249,7 +432,9 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           const holder = new THREE.Group();
           holder.visible = false;
           group.add(holder);
-          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null };
+          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null, guard: s.hostile?.guard ?? 0, guardAt: -99 };
+          // its body's own (no draw from r: the spawns and their heads are as they were)
+          Object.assign(t, { posture: createPosture({ seed: targets.length * 7919 + Math.round(home[0] * 13) * 31 + Math.round(home[1] * 17) }), pose: null, gp: null, blade: null, firedAt: -99, kick: 0, death: null, reacted: false, mark: null, based: null, looked: null, duel: null, duelMark: null, engaged: false, blocking: false, contacts: [] });
           targets.push(t);
           if (t.shield) {
             // its shield: a bubble round it, bright for a moment where it's hit
@@ -266,13 +451,174 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             fig.model.scale.multiplyScalar(s.scale ?? 1);
             holder.add(fig.model);
             t.fig = fig;
+            armed(t, fig);
+            fetchFight(fig);
             warm(holder).then(() => (holder.visible = true));
           });
         }
       }
   };
 
-  return {
+  // gone down: which way (the way the shot went, else away from you, else
+  // back) and how hard (a blast or a shove takes it off its feet), for its body
+  let lastYou = null;
+  const fell = (t, { push = null, blown = false } = {}) => {
+    t.down = 0.001;
+    if (t.duel) onHit(t.duel, { dead: true });
+    t.death = { dir: fallOf({ push, from: lastYou, at: t.b, yaw: t.b.yaw }), force: blown || t.knock ? 1 : 0.3, clip: null, started: false, y: null };
+  };
+  // hit and still up: a flinch by where (the head, high up; else the chest),
+  // on its upper half so its feet keep on as its head has them
+  const flinched = (t, at = null) => {
+    if (t.down) return;
+    const tall = (t.fig?.tall ?? 1.8) * (t.spec.scale ?? 1);
+    if (t.fig?.react?.('hit', { where: whereHit(at?.y, t.holder.position.y, tall), moving: true })) t.reacted = true;
+  };
+
+  // its guard broken by a heavy stroke, or spent: it reels 2 s
+  const broke = (t) => {
+    t.stagger = Math.max(t.stagger, 2);
+    stun(t, t.stagger);
+    flinched(t);
+  };
+
+  // the line from its chest to a point (y: the point's height, else level)
+  const lineTo = (t, p) => {
+    const tall = (t.fig?.tall ?? 1.8) * (t.spec.scale ?? 1);
+    _from.set(t.b.x, t.holder.position.y + tall * 0.78, t.b.z);
+    _dir.set(p.x, p.y ?? _from.y, p.z).sub(_from);
+    return _dir.lengthSq() > 1e-6 ? _dir.normalize() : null;
+  };
+  // the clips a rigged one plays in a fight, fetched once its first figure's in
+  let fetched = false;
+  const fetchFight = (fig) => {
+    if (fetched || !fig.anim) return;
+    fetched = true;
+    preload(['die.fwd', 'die.back', 'die.blown', 'hit.chest', 'hit.head', 'crouch', 'shoot.pistol', 'aim.pistol', 'jab', 'cheer']).catch(() => {});
+  };
+
+  // a duellist's blade through someone: you, for the scene (shooters hands
+  // it on, and your block decides it); a friend of yours, as any hit
+  const struckBy = (t, x, damage, at, o) => {
+    const c = landed(t, x, damage, at, o);
+    if (c) t.contacts.push(c);
+    else if (!x.down && targets.includes(x)) api.hit(x, damage, { at });
+  };
+  const youT = asTarget();
+
+  // A figure's body for its step, once the step's placed its holder: its
+  // feet on the ground the step covers, its crouch, its head, its start on
+  // seeing you, then (after its own bones are laid) its gun or its blade
+  const body = (t, pose, move, dt, time, you) => {
+    const fig = t.fig;
+    const b = t.b;
+    // crouched in cover (a base state: only ever while its feet are still)
+    if (pose.base !== t.based) {
+      t.based = pose.base;
+      fig.base?.(pose.base);
+    }
+    // where its head goes: its mark at the height it stands (you, or a
+    // friend of yours), else a spot at its own eyes' height
+    const p = pose.look;
+    const onMark = p && t.aim && Math.abs(p.x - t.aim.x) + Math.abs(p.z - t.aim.z) < 0.01;
+    const want = p ? { x: p.x, y: onMark ? (t.victim ? t.victim.holder.position.y + 1.4 : you ? (you.y ?? 0) + 1.5 : undefined) : undefined, z: p.z } : null;
+    const was = t.looked;
+    if (!want !== !was || (want && (Math.hypot(want.x - was.x, want.z - was.z) > 0.25 || Math.abs((want.y ?? 0) - (was.y ?? 0)) > 0.2))) {
+      t.looked = want;
+      fig.look?.(want);
+    }
+    // seeing you: a Tusken's cry, its rifle over its head; anyone else's own start (react.js's alert)
+    if (pose.alert && t.hostile && t.spec.side !== 'yours' && fig.anim) {
+      const start = STARTS[t.spec.kind];
+      if (start && fig.play) {
+        t.startUntil = time + start.for;
+        fig.play(start.clip, { layer: 'upper' }).then((ok) => !ok && (t.startUntil = 0));
+      } else fig.react?.('alert', { target: want });
+    }
+    // its feet on the ground the step covers (and, on a figure that lays
+    // them in its update, the bones over its clips: crew.js's)
+    fig.update(dt, move, pose.motion);
+    _fwd.set(Math.sin(b.yaw), 0, Math.cos(b.yaw));
+    t.blade?.stand(dt, time, move);
+    if (fig.anim || fig.after || t.gp || t.blade) t.holder.updateMatrixWorld(true);
+    fig.after?.(dt, pose.motion, { forward: _fwd, up: UP });
+    // its gun: up on its mark, or carried with its head and chest toward
+    // where it looks (fired from the muzzle: shooters)
+    const dir = want ? lineTo(t, want) : null;
+    if (t.gp && !(time < (t.startUntil ?? 0))) t.gp.set(dt, { aim: pose.aim, look: dir ? 1 : 0, dir, forward: _fwd, up: UP });
+    if (t.blade) {
+      // (its stroke's root travel and its turn to its lock write into its own walk: b)
+      t.blade.block(t.blocking);
+      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: b, dir, targets: t.duelMark ? [t.duelMark] : [], hit: (x, damage, at, o) => struckBy(t, x, damage, at, o) });
+    }
+    // the pistol's aim, held on its upper half since its last shot (a rigged
+    // one with no gun of its own to raise), let down a while after
+    if (t.aimHeld && !pose.aim && time - t.firedAt > 2) {
+      t.aimHeld = false;
+      fig.stop?.(0.3, 'upper');
+    }
+  };
+
+  // Going down: on its own clip by the way it was struck (react.js's down:
+  // die.fwd, die.back, die.blown, else a fall), or with none to play, over
+  // about its feet that way; carried on along a shove that took it; lying a
+  // while, then into the ground and gone
+  const STOOD = { speed: 0, side: 0, turn: 0 };
+  const dying = (t, dt, time) => {
+    const d = (t.death ??= { dir: fallOf({ from: lastYou, at: t.b, yaw: t.b.yaw }), force: 0.3, clip: null, started: false, y: null });
+    const fig = t.fig;
+    const hover = fig?.hover ?? t.spec.y ?? 0;
+    if (!d.started) {
+      d.started = true;
+      if (t.bar) t.bar.sprite.visible = false;
+      if (t.mark) t.mark.visible = false;
+      t.holder.rotation.set(0, t.b.yaw, 0);
+      // (up out of a crouch, so it falls on its whole body; whatever its upper
+      // half held let go, its head no longer on anything)
+      if (t.based) fig?.base?.(null);
+      t.based = null;
+      fig?.stop?.(0.15, 'upper');
+      fig?.look?.(null);
+      d.clip = fig?.react?.('down', { dir: d.dir, yaw: t.b.yaw, force: d.force })?.clip ?? null;
+      d.y = groundAt(world, t.b.x, t.b.z, t.spec.level ?? Infinity) + hover;
+    }
+    const k = t.knock;
+    if (k) {
+      t.b.x += k.vx * dt;
+      t.b.z += k.vz * dt;
+      k.vy -= 14 * dt;
+      k.y = Math.max(0, k.y + k.vy * dt);
+      k.vx *= 1 - Math.min(1, dt * 2.5);
+      k.vz *= 1 - Math.min(1, dt * 2.5);
+      d.y = groundAt(world, t.b.x, t.b.z, t.spec.level ?? Infinity) + hover;
+      if (k.y <= 0 && k.vy < 0) t.knock = null;
+    }
+    // (a clip that never came, fetched and failed: over about its feet from now)
+    if (d.clip && fig?.anim && t.down > 1.5 && fig.anim.playing?.('full') !== d.clip) {
+      d.clip = null;
+      d.tipAt = t.down;
+      fig.stop?.(0.1, 'full');
+    }
+    const f = d.clip ? fallen(t.down, fig.anim?.actions?.[d.clip]?.getClip().duration ?? 2) : fallen(t.down - (d.tipAt ?? 0));
+    _fwd.set(Math.sin(t.b.yaw), 0, Math.cos(t.b.yaw));
+    if (d.clip) {
+      fig.update(dt, 0, STOOD);
+      t.holder.updateMatrixWorld(true);
+      fig.after?.(dt, STOOD, { forward: _fwd, up: UP });
+    } else {
+      fallTurn(f.k, _dir.set(d.dir.x, 0, d.dir.z), UP, _q);
+      t.holder.quaternion.copy(_q.multiply(_yq.setFromAxisAngle(UP, t.b.yaw)));
+    }
+    t.blade?.out(dt, time, { forward: _fwd, up: UP });
+    t.holder.position.set(t.b.x, d.y + (t.knock?.y ?? 0) - f.sink, t.b.z);
+    if (f.gone) t.holder.visible = false;
+  };
+
+  const api = {
+    // a world that takes models only: what's spawned is a model, a stand-in or nothing (cast.js)
+    modelsOnly() {
+      only = true;
+    },
     group,
     show(quest, progress) {
       const key = quest && progress ? `${quest.id}:${progress.step}` : null;
@@ -285,9 +631,15 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     },
     // what the blaster can hit
     get targets() {
-      return targets.filter((t) => !t.down && t.fig);
+      return targets.filter((t) => !t.down && t.fig && t.spec.side !== 'yours');
     },
-    hit(t, damage = 1, { breaks = false } = {}) {
+    // `how`: the gun (a kill by one of SHOW_KILLS plays its show), `push` the
+    // way the shot went, `at` where it landed (a point in the world)
+    hit(t, damage = 1, { breaks = false, how = null, push = null, at = null } = {}) {
+      if (SHOW_KILLS.includes(how) && t.hp - damage <= 0 && !t.down && t.fig) {
+        t.how = how;
+        t.push = push?.clone() ?? null;
+      }
       if (t.shield > 0 && breaks) {
         // (a heavy stroke, or a blast: the shield goes at once, and the rest lands)
         t.shield = 0;
@@ -301,31 +653,57 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         t.hp = after.hp;
         if (t.bubble) t.bubble.userData.flash = 0.35;
         if (!t.shield && t.bubble) t.bubble.visible = false;
-        if (t.hp <= 0 && !t.down) t.down = 0.001;
+        if (t.hp <= 0 && !t.down) fell(t, { push, blown: breaks });
         return;
       }
       t.hp -= damage;
       t.flinch = 0.25;
-      if (t.hp <= 0 && !t.down) t.down = 0.001;
+      if (t.hp <= 0 && !t.down) fell(t, { push, blown: breaks });
+      else {
+        if (t.duel) onHit(t.duel, {});
+        flinched(t, at);
+      }
+    },
+    // your stroke on a duellist: turned by its blade when it's up (its mind's
+    // block or parry, raised as your stroke began: duellists.js's turnOf);
+    // its guard gone, it reels. Returns { parried, broke, perfect }
+    parry(t, { heavy = false } = {}) {
+      const turn = turnOf(t, { heavy });
+      if (turn.broke) broke(t);
+      return turn;
+    },
+    // its stroke parried by you: it reels (a duellist PARRY's 0.6 s, then
+    // comes again; anything else `secs`)
+    parried(t, secs) {
+      if (t.down) return;
+      if (t.duel) stun(t, 0.6, 'attack');
+      t.stagger = Math.max(t.stagger, t.duel ? 0.6 : secs);
+      t.burst = null;
+      flinched(t);
     },
     // shoved (the Force, a blast): off its feet along `v` ({ vx, vz, vy })
     knock(t, v) {
       if (t.down) return;
       t.knock = { vx: v.vx, vz: v.vz, vy: v.vy ?? 0, y: 0 };
       t.stagger = Math.max(t.stagger, 1.4);
+      if (t.duel) stun(t, t.stagger);
       t.burst = null;
+      flinched(t);
     },
     // staggered: no shooting, no moving, for `secs`
     stagger(t, secs) {
       if (t.down) return;
       t.stagger = Math.max(t.stagger, secs);
+      if (t.duel) stun(t, t.stagger);
       t.burst = null;
+      flinched(t);
     },
     // everything tagged so, down at once (a gate dropped on it)
     kill(tag) {
-      for (const t of targets) if (t.tag === tag && !t.down) t.down = 0.001;
+      for (const t of targets) if (t.tag === tag && !t.down) fell(t);
     },
-    update(dt, you, time, { actors, door } = {}) {
+    // swinging: your stroke (duellists.js's swingingOf), for the duellists to read
+    update(dt, you, time, { actors, door, swinging = null } = {}) {
       const events = [];
       const { quest, progress } = shown;
       const step = quest?.steps[progress?.step];
@@ -359,22 +737,49 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         m.rotation.z = time * (next ? 1.5 : 0.3);
       });
       // targets: about their business, or going down
+      lastYou = you ? { x: you.x, z: you.z } : lastYou;
+      if (you) youT.at(you);
+      let downed = false; // (a hostile counted down this frame)
       for (const t of targets) {
         const b = t.b;
-        if (t.down) {
+        t.contacts.length = 0; // (last frame's, handed on by shooters)
+        if (t.down && t.how) {
+          // the show owns the figure from the moment it starts
           t.down += dt;
-          t.holder.rotation.x = Math.min(Math.PI / 2, t.down * 4) * -1;
+          if (!t.show) {
+            const tall = (t.fig.tall ?? 1.8) * (t.spec.scale ?? 1);
+            const up = new THREE.Vector3(0, 1, 0);
+            const push = t.push ?? new THREE.Vector3(Math.sin(b.yaw), 0, Math.cos(b.yaw)).negate();
+            const on = (ev) => onShow?.(t.how, ev);
+            if (t.blade) t.blade.gun.visible = false;
+            if (t.bubble) t.bubble.visible = false;
+            if (t.bar) t.bar.sprite.visible = false;
+            if (t.mark) t.mark.visible = false;
+            if (t.how === 'freeze') t.show = gfx.freeze({ root: t.holder, tall, up, push, on });
+            else if (t.how === 'shrink') t.show = gfx.shrink({ root: t.holder, tall, up, on });
+            else t.show = pfx.swallow({ root: t.holder, tall, up, push, joints: meshyJoints(t.holder, 1, tall), on });
+            t.holder.userData.show = t.show; // (for the QA scripts: the show's handle)
+            onShow?.(t.how, 'hit');
+          }
           if (t.down > 0.3 && !t.counted) {
             t.counted = true;
             events.push({ type: 'kill', tag: t.tag });
           }
-          if (t.down > 3) t.holder.visible = false;
+          continue;
+        }
+        if (t.down) {
+          t.down += dt;
+          dying(t, dt, time);
+          if (t.down > 0.3 && !t.counted) {
+            t.counted = true;
+            events.push({ type: 'kill', tag: t.tag });
+            if (t.hostile && t.spec.side !== 'yours') downed = true;
+          }
           continue;
         }
         const s = t.spec;
-        const pace = s.speed ?? 1.4;
         const dYou = you ? Math.hypot(you.x - b.x, you.z - b.z) : Infinity;
-        const near = dYou < (t.hostile?.range ?? 0);
+        const near = Boolean(t.aim); // (it has you, as it believes, in range)
         let moving = 0;
         if (t.knock) {
           // off its feet: along the shove, up and down again, slowing
@@ -390,60 +795,55 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         } else if (t.stagger > 0) {
           // reeling: it stands where it is
           t.stagger -= dt;
-        } else if (near && t.hostile.chase) {
-          // one that comes for you (a rancor): after you, up to arm's
-          // length, but never far from its den
-          b.yaw = turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), dt * 2.2);
-          if (dYou > (t.hostile.reach ?? 2) * 0.8) {
-            const step = t.hostile.chase * dt;
-            const nx = b.x + Math.sin(b.yaw) * step;
-            const nz = b.z + Math.cos(b.yaw) * step;
-            const leash = s.leash ?? s.roam ?? 8;
-            if (Math.hypot(nx - t.home[0], nz - t.home[1]) < leash) {
-              b.x = nx;
-              b.z = nz;
-              moving = 1;
-            }
-          }
-        } else if (near && t.hostile.strafe) {
-          // one that circles you (a death trooper), firing as it goes
-          const next = strafeStep(b, you, t.hostile, dt, time);
-          const leash = s.leash ?? (s.roam ?? 8) + 10;
-          if (Math.hypot(next.x - t.home[0], next.z - t.home[1]) < leash) {
-            b.x = next.x;
-            b.z = next.z;
-            moving = 1;
-          }
-          b.yaw = turnToward(b.yaw, next.yaw, dt * 4);
-        } else if (near) {
-          // a hostile one turns on you
-          b.yaw = turnToward(b.yaw, Math.atan2(you.x - b.x, you.z - b.z), dt * 3);
-        } else if (!s.still) {
-          if (!b.to) {
-            b.wait -= dt;
-            if (b.wait <= 0) {
-              const a = r() * Math.PI * 2;
-              b.to = [t.home[0] + Math.cos(a) * (s.roam ?? 8) * r(), t.home[1] + Math.sin(a) * (s.roam ?? 8) * r()];
-            }
-          } else {
-            const dx = b.to[0] - b.x;
-            const dz = b.to[1] - b.z;
-            const d = Math.hypot(dx, dz);
-            if (d < 0.5) {
-              b.to = null;
-              b.wait = 0.5 + r() * 2;
-            } else {
-              b.yaw = turnToward(b.yaw, Math.atan2(dx, dz), dt * 5);
-              b.x += Math.sin(b.yaw) * pace * dt;
-              b.z += Math.cos(b.yaw) * pace * dt;
-            }
+          reeling(t, dt);
+        } else {
+          // its head: what it knows of you, and what it does about it (hostiles.js)
+          const tag = t.tag ?? '';
+          const allies = targets.filter((o) => o !== t && !o.down && (o.tag === t.tag || (t.spec.side === 'yours' && o.spec.side === 'yours'))).map((o) => ({ x: o.b.x, z: o.b.z }));
+          // (its mark: a friend of yours fights the nearest hostile; a hostile, you or a friend of yours nearer to it)
+          const mark = t.spec.side === 'yours' ? friendlyAim(t, targets) : null;
+          const aim = t.hostile ? (mark ? { x: mark.b.x, z: mark.b.z, victim: mark } : hostileAim(t, you, targets)) : you && { x: you.x, z: you.z, victim: null };
+          t.victim = t.hostile && aim?.victim ? aim.victim : null;
+          const seen = t.victim ? { x: aim.x, z: aim.z } : you ? { x: you.x, z: you.z, vel: Number.isFinite(you.vx) ? { x: you.vx, z: you.vz } : null } : null;
+          // a duellist with its mark near fences it (duellists.js); otherwise it hunts as the rest do
+          const fenced = fence(t, aim, { you: youT, swinging }, dt, time, world);
+          if (fenced != null) moving = fenced;
+          else {
+            const step = hostileStep(t, { you: t.spec.side === 'yours' && !mark ? null : seen, allies, seesThrough, tokens: t.hostile ? tokens : null, who: t, search: t.hostile ? searchFor(tag) : null, stims }, dt, r);
+            // (a droid doesn't wade out into the deep water after you: it holds at the shallows)
+            const held = shoreStep(world, b, step.x, step.z);
+            b.x = held ? held[0] : step.x;
+            b.z = held ? held[1] : step.z;
+            b.yaw = step.yaw;
+            moving = step.moving;
+            t.aim = step.aim;
+            t.guessed = step.guessed;
+            if (step.mode === 'search' && !t.searchSaid) {
+              t.searchSaid = true;
+              events.push({ type: 'search', tag: t.tag });
+            } else if (step.mode !== 'search') t.searchSaid = false;
           }
         }
+        // what that step looks like (hostiles.js's hostileBody): off its feet
+        // or reeling, it's going nowhere on them
+        if (t.knock || t.stagger > 0) t.posture.prev = null;
+        const pose = hostileBody(t.posture, { x: b.x, z: b.z, yaw: b.yaw, mode: t.mind?.mode ?? 'wander', aim: t.aim ?? null, guessed: Boolean(t.guessed), belief: t.belief ?? null, sees: Boolean(t.sees) }, dt, { t: time, firing: Boolean(t.hostile) && upToFire(t, time) });
+        t.pose = pose;
         const hover = t.fig?.hover ?? s.y ?? 0;
         t.holder.position.set(b.x, groundAt(world, b.x, b.z, s.level ?? Infinity) + hover + (hover ? Math.sin(time * 3 + t.home[0]) * 0.2 : 0) + (t.knock?.y ?? 0), b.z);
         t.holder.rotation.y = b.yaw;
-        // (knocked: tipped back off its feet; staggered: bent back, straightening)
-        t.holder.rotation.x = t.knock ? -0.9 : t.stagger > 0 ? -0.35 * Math.min(1, t.stagger) : 0;
+        // (knocked: tipped back off its feet; staggered: bent back, straightening;
+        // a shot from one with no arms to raise: a little kick back)
+        t.kick = Math.max(0, t.kick - dt * 7);
+        t.holder.rotation.x = t.knock ? -0.9 : t.stagger > 0 ? -0.35 * Math.min(1, t.stagger) : -0.06 * t.kick;
+        // its guard, back to full a while after it broke
+        if (t.hostile?.guard && t.guard <= 0 && t.stagger <= 0) {
+          if (t.guardAt < 0) t.guardAt = time;
+          else if (time - t.guardAt > 7) {
+            t.guard = t.hostile.guard;
+            t.guardAt = -99;
+          }
+        }
         // its health over its head, while you're near and it's been hurt
         const hpMax = s.hp ?? 1;
         const show = you && dYou < 45 && t.hostile && (t.hp < hpMax || t.shield > 0 || dYou < 16);
@@ -455,37 +855,88 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.bar.sprite.visible = true;
           const tall = (t.fig?.tall ?? 1.6) * (s.scale ?? 1);
           t.bar.sprite.position.y = tall + 0.45;
-          const key = `${Math.max(0, t.hp)}/${hpMax}/${t.shield}`;
+          const key = `${Math.max(0, t.hp)}/${hpMax}/${t.shield}/${t.guard}`;
           if (key !== t.barAt) {
             t.barAt = key;
-            t.bar.draw(Math.max(0, t.hp) / hpMax, t.shield / Math.max(1, s.hostile?.shield ?? 1));
+            t.bar.draw(Math.max(0, t.hp) / hpMax, t.shield / Math.max(1, s.hostile?.shield ?? 1), s.hostile?.guard ? t.guard / s.hostile.guard : 0);
           }
         } else if (t.bar) t.bar.sprite.visible = false;
-        // (a flinch where it's hit and doesn't go down)
+        // over a hostile's head: '?' while it looks for you, '!' when it has you again
+        const mark = t.hostile && s.side !== 'yours' && dYou < 60 ? pose.mark : null;
+        if (mark && !t.mark) {
+          t.mark = new THREE.Sprite(marks.of(mark));
+          t.mark.scale.setScalar(0.42);
+          t.mark.renderOrder = 5;
+          t.holder.add(t.mark);
+        }
+        if (t.mark) {
+          t.mark.visible = Boolean(mark);
+          if (mark) {
+            t.mark.material = marks.of(mark);
+            t.mark.position.y = (t.fig?.tall ?? 1.6) * (s.scale ?? 1) + 0.8 + Math.sin(time * 3 + t.home[0]) * 0.05;
+          }
+        }
+        // (a flinch where it's hit and doesn't go down: the holder's shake,
+        // for a figure with no flinch of its own to play)
         if (t.flinch > 0) {
           t.flinch -= dt;
-          t.holder.rotation.z = Math.sin(t.flinch * 60) * t.flinch * 0.3;
+          t.holder.rotation.z = t.reacted ? 0 : Math.sin(t.flinch * 60) * t.flinch * 0.3;
         } else t.holder.rotation.z = 0;
-        t.fig?.update(dt, moving || (b.to && !near) ? 0.6 : 0);
+        if (t.fig) body(t, pose, moving || (b.to && !near) ? 0.6 : 0, dt, time, you);
         if (t.bubble?.visible) {
           const f = t.bubble.userData;
           f.flash = Math.max(0, f.flash - dt);
           t.bubble.material.opacity = 0.1 + f.flash * 1.6 + 0.03 * Math.sin(time * 9 + t.home[0]);
         }
       }
+      // the last of the step's hostiles down: those on your side cheer
+      if (downed && !targets.some((o) => !o.down && o.hostile && o.spec.side !== 'yours')) for (const o of targets) if (!o.down && o.spec.side === 'yours') o.fig?.react?.('win', {});
+      pfx.update(dt);
+      for (const sr of searches.values()) sr.update(dt);
+      tokens.audit(dt, (who) => !who.down && targets.includes(who));
+      stims.length = 0;
+      gfx.update(dt);
       return events;
     },
-    // the hostile ones ready to fire at you this frame
-    shooters(dt, you) {
+    // the hostile ones ready to fire at you this frame: at what each believes
+    // you to be (to: [x, z]; guessed: it can only guess), so many at once
+    shooters(dt, you, time = 0) {
       const out = [];
+      // a duellist's blade on you this frame (struckBy's), as a melee contact
+      for (const t of targets) out.push(...t.contacts);
       for (const t of targets) {
         if (t.down || !t.hostile || !t.fig || !you || t.stagger > 0 || t.knock) continue;
-        const d = Math.hypot(you.x - t.b.x, you.z - t.b.z);
-        if (d > (t.hostile.melee ? t.hostile.reach ?? 2 : t.hostile.range)) {
+        const at = t.aim;
+        const d = at ? Math.hypot(at.x - t.b.x, at.z - t.b.z) : Infinity;
+        // a duellist's Force: a shove at you, every so often, when you're close
+        const dYou = Math.hypot(you.x - t.b.x, you.z - t.b.z);
+        if (nextForce(t, t.hostile, dYou, time) && t.spec.side !== 'yours') {
+          t.forceAt = time;
+          out.push({ force: true, push: t.hostile.force.push ?? 9, from: [t.b.x, t.holder.position.y, t.b.z], who: t });
+          continue;
+        }
+        if (t.duel) continue; // (its strokes land through its blade, above)
+        if (!at || d > (t.hostile.melee ? t.hostile.reach ?? 2 : t.hostile.range)) {
           if (t.hostile.melee) t.cool = Math.max(t.cool, 0.4);
           continue;
         }
-        const shot = () => ({ from: [t.b.x, t.holder.position.y + 1.4, t.b.z], spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8, who: t });
+        const v = t.victim && !t.victim.down ? t.victim : null;
+        // (fired: from the muzzle of a gun that's up, kicking; or from where
+        // it stands, as ever: a rigged one with no gun to raise plays the
+        // pistol's shot and holds its aim, react.js's fire; one with no arms
+        // at all kicks back a little)
+        const fired = () => {
+          t.firedAt = time;
+          if (t.gp?.aim > 0.5 && !(time < (t.startUntil ?? 0))) {
+            const m = t.gp.fire().muzzle;
+            return [m.x, m.y, m.z];
+          }
+          if (t.gp) return null;
+          if (t.fig.react?.('fire', { target: { x: at.x, z: at.z } })) t.aimHeld = true;
+          else t.kick = 1;
+          return null;
+        };
+        const shot = () => ({ from: fired() ?? [t.b.x, t.holder.position.y + 1.4, t.b.z], to: [at.x, at.z], guessed: Boolean(t.guessed), spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8, who: t, at: v ? [v.b.x, v.holder.position.y + 1.1, v.b.z] : null, victim: v });
         // the rest of a burst, as its shots fall due
         if (t.burst) {
           for (let i = stepBurst(t.burst, dt, t.hostile.burst.gap); i > 0; i--) out.push(shot());
@@ -493,9 +944,15 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         }
         t.cool -= dt;
         if (t.cool > 0) continue;
+        // its turn: so many fire (or swing) at once; the rest keep moving
+        if (!tokens.claim(t.hostile.melee ? 'melee' : 'shot', t)) continue;
         t.cool = t.hostile.every * (0.7 + r() * 0.6);
         // in arm's reach, a swipe (a rancor's, a blade's), or a shot from where it stands
-        if (t.hostile.melee) out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t });
+        if (t.hostile.melee) {
+          // (a brawler's jab, react.js's caught: it lands as it's decided)
+          t.fig.react?.('caught', { target: { x: at.x, z: at.z } });
+          out.push({ melee: true, damage: t.hostile.damage ?? 25, from: [t.b.x, t.holder.position.y, t.b.z], who: t, at: v ? [v.b.x, v.holder.position.y + 1.1, v.b.z] : null, victim: v });
+        }
         else if (t.hostile.burst) {
           t.burst = startBurst(t.hostile);
           out.push(shot());
@@ -505,10 +962,23 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       return out;
     },
     clear: clearStep,
+    // your blade crossing a duellist's (duellists.js's clashes)
+    clashes: (saber, now) => clashes(saber, targets, now),
+    // (for tests: who's out, and what each is at)
+    // (body: how it's drawn, crouched, its gun up, its mark, what it carries, the clip it went down on)
+    debug: () => targets.map((t) => ({ tag: t.tag, side: t.spec.side ?? null, hp: t.hp, down: t.down > 0, fig: Boolean(t.fig), aim: Boolean(t.aim), victim: t.victim?.tag ?? null, mode: t.mind?.mode ?? null, at: [+t.b.x.toFixed(1), +t.b.z.toFixed(1)], body: { base: t.pose?.base ?? null, gun: t.gp ? t.gp.kind : t.blade ? 'saber:hand' : null, duel: t.duel?.state ?? null, up: t.gp ? +t.gp.aim.toFixed(2) : null, mark: t.pose?.mark ?? null, rigged: Boolean(t.fig?.anim), death: t.death?.clip ?? null } })),
+    // your shot, for the enemies to hear (lib/ai/perception's stims): from where, aimed where
+    heard(from, aim) {
+      stims.push({ type: 'shot', at: { x: from.x, y: 0, z: from.z }, aim: { x: aim.x, y: 0, z: aim.z }, radius: 60, from: 'you', loudness: 1 });
+    },
     dispose() {
       dead = true;
       clearStep();
+      pfx.dispose();
+      gfx.dispose();
+      marks.dispose();
       group.removeFromParent();
     },
   };
+  return api;
 }

@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { between, box, cyl, dome, part, ring, rockGeometry, rod, upright } from '../kit';
 import { loft, trap8 } from '../../../universe/trafficKit';
 import { rng } from '../noise';
+import { insignia, scorch } from '../decals';
 import { buildGalaxyShip } from '../../fleet';
 import { liftNormals, spherifyNormals } from '../../../../lib/three/foliage';
 
@@ -292,24 +293,26 @@ function spruceParts({ h = 22, seed = 2, bark = '#5a3a28', leaf = '#2a4224' } = 
   const parts = [part(trunkGeometry(prof, { seg: 8, furrow: 0.06, ridges: 5, seed }), { color: bark, to: 'bark' })];
   // whorls of branches, each a spray of needles reaching out and drooping,
   // shorter going up; a spike of them at the top
-  const layers = 9;
+  const layers = 12;
   // (darker in at the trunk and down the tree)
   const shade = (x, y, z) => (0.55 + 0.45 * smooth(0, (1 - (y / h - 0.24) / 0.7) * 4 + 0.9, Math.hypot(x, z))) * (0.78 + 0.22 * smooth(0, h, y));
   for (let i = 0; i < layers; i++) {
     const f = i / (layers - 1);
     const y = h * (0.24 + 0.7 * f);
-    const w = (1 - f) * 4 + 0.9;
+    const w = (1 - f) * 4.2 + 0.9;
     const green = new THREE.Color(leaf).offsetHSL(0, 0, (rand() - 0.5) * 0.06);
-    const n = 7;
+    const n = 9;
     const turn = rand() * TAU;
     for (let j = 0; j < n; j++) parts.push(spray(w, w * 0.5 + 0.4, [0, y, 0], turn + (j / n) * TAU, 0.3 + f * 0.2 + rand() * 0.15, (rand() - 0.5) * 0.5, green, shade));
   }
   for (let j = 0; j < 3; j++) parts.push(spray(h * 0.12, 1.1, [0, h * 0.9, 0], j * 2.1, -PI / 2 + 0.15, 0, leaf, shade));
   // (a dark cone inside the sprays, as a fir's crown is solid from a little
   // way off: so far off it stays a full dark spire, not a pole with wisps)
-  const core = new THREE.ConeGeometry(2.6, h * 0.72, 8, 1, true).translate(0, h * 0.24 + h * 0.36, 0);
+  // (slimmer than the sprays reach and many-sided, so it's the dark heart
+  // of the crown, not a flat-faced cone seen between the sprays)
+  const core = new THREE.ConeGeometry(1.9, h * 0.72, 14, 1, true).translate(0, h * 0.24 + h * 0.36, 0);
   coneNormals(core, { lift: 0.5, keep: 0.1 });
-  parts.push(part(core, { color: new THREE.Color(leaf).multiplyScalar(0.7), to: 'crown', shade: (x, y) => 0.7 + 0.3 * smooth(h * 0.24, h, y) }));
+  parts.push(part(core, { color: new THREE.Color(leaf).multiplyScalar(0.8), to: 'crown', shade: (x, y) => 0.7 + 0.3 * smooth(h * 0.24, h, y) }));
   return { parts };
 }
 
@@ -996,51 +999,118 @@ const ENDOR = {
     return { object: k.build(parts, { name: 'bunker' }), solids: [{ box: [0, -8, 14, 12, 0] }, { box: [-5.6, 3.6, 0.5, 1.8, -0.35] }, { box: [5.6, 3.6, 0.5, 1.8, 0.35] }] };
   },
 
-  // the shield generator: a great dish turned to the sky on its tower over
-  // a concrete platform, its projector spike in the middle; 70 m tall
+  // the earth bank the bunker's model is dug into: the mound and its two
+  // shoulders, ferns on top (its front 2.5 m behind the model's doors)
+  bunkerbank(k) {
+    const parts = [];
+    parts.push(part(blob(41, { lump: 0.3, flat: 0.2 }), { at: [0, -2.5, -11], scale: [38, 22, 30], color: '#4a5530', to: 'adobe' }));
+    parts.push(part(blob(42, { lump: 0.4, flat: 0.2 }), { at: [-12, -2, -4], scale: [16, 11, 14], color: '#46502c', to: 'adobe' }), part(blob(43, { lump: 0.4, flat: 0.2 }), { at: [12, -2, -4], scale: [16, 10, 14], color: '#4a5430', to: 'adobe' }));
+    for (let i = 0; i < 6; i++) {
+      const f = fernParts({ seed: 70 + i, len: 1.6 }).parts;
+      const a = (i / 6) * PI + 0.2;
+      for (const fp of f) parts.push({ ...fp, at: [cos(a) * 10, 6.5 + sin(i) * 1.5, -10 - sin(a) * 7] });
+    }
+    return { object: k.build(parts, { name: 'bunkerbank' }), solids: [{ box: [0, -11, 16, 12, 0] }, { circle: [-12, -4, 6] }, { circle: [12, -4, 6] }] };
+  },
+
+  // the shield generator, as the film's matte has it: a wide concrete
+  // apron with a blast wall round it, the control block (panelled, lit
+  // strips, the Empire's crest over its door, vents and masts on top), and
+  // over it the great dish on its lattice tower, ribbed, its rim lit,
+  // turned to the sky where the station hangs; 70 m tall
   shieldgen(k) {
     const parts = [];
     const P = { color: IMPERIAL, to: 'paint' };
     const M = { color: '#5c5e5a', to: 'metal' };
-    parts.push(part(box(50, 4, 50), { color: '#6e706a', to: 'stone' }));
-    parts.push(part(box(30, 8, 30), { at: [0, 4, 0], ...P }));
-    for (let i = 0; i < 12; i++) parts.push(part(box(1.4, 0.6, 0.2), { at: [-12 + i * 2.2, 9.5, 15.05], color: new THREE.Color('#ffd27a').multiplyScalar(1.8), to: 'glow' }));
-    // the tower: four legs leaning in, braced
+    const C = { color: '#7c7e78', to: 'concrete' };
+    const warm = new THREE.Color('#ffd27a').multiplyScalar(1.8);
+    // the apron, stepped, and the blast wall round it with its gaps
+    parts.push(part(box(56, 2.2, 56), C));
+    parts.push(part(box(50, 1.8, 50), { at: [0, 2.2, 0], ...C }));
+    for (const s of [-1, 1]) {
+      for (const [x, z, w, d] of [[s * 27, 0, 1.6, 18], [0, s * 27, 18, 1.6]]) {
+        parts.push(part(box(w, 3.6, d), { at: [x, 2.2, z], color: '#8a8c86', to: 'concrete' }));
+        parts.push(part(box(w + 0.3, 0.5, d + 0.3), { at: [x, 5.8, z], ...M }));
+      }
+    }
+    // the control block: two storeys, panelled, a lit strip round each
+    parts.push(part(loft([{ z: -15, pts: trap8(32, 30, 9, 0.6, 8.5) }, { z: 15, pts: trap8(32, 30, 9, 0.6, 8.5) }]), P));
+    parts.push(part(box(22, 5, 22), { at: [0, 13, 0], color: '#878a84', to: 'paint' }));
+    for (let i = 0; i < 14; i++) for (const s of [-1, 1]) parts.push(part(box(0.12, 8, 0.6), { at: [-13 + i * 2, 4.5, s * 15.1], color: '#5a5c58', to: 'metal' }));
+    for (const s of [-1, 1]) {
+      parts.push(part(new THREE.BoxGeometry(26, 0.3, 0.2), { at: [0, 11.6, s * 15.15], color: warm, to: 'glow' }));
+      parts.push(part(new THREE.BoxGeometry(0.2, 0.3, 26), { at: [s * 15.15, 11.6, 0], color: warm, to: 'glow' }));
+      parts.push(part(new THREE.BoxGeometry(18, 0.25, 0.2), { at: [0, 17.2, s * 11.05], color: warm, to: 'glow' }));
+    }
+    // the door, the crest over it, lamps either side, a ramp down to the apron
+    parts.push(part(box(5, 5.5, 0.5), { at: [0, 4, 15.2], color: '#1a1b1a', to: 'dark' }));
+    parts.push(part(insignia('imperial', 2.6), { at: [0, 8.9, 15.35], color: '#e8e8e4', to: 'paint' }));
+    for (const s of [-1, 1]) parts.push(part(box(0.5, 0.5, 0.3), { at: [s * 3.4, 7.6, 15.3], color: warm, to: 'glow' }));
+    parts.push(part(box(7, 0.4, 7), { at: [0, 3.8, 18.5], rot: [0.08, 0, 0], ...M }));
+    // vents, a cooling stack and two masts on the roof
+    for (const x of [-8, -3, 2, 7]) parts.push(part(box(2.2, 1, 2.2), { at: [x, 18, -8], ...M }));
+    parts.push(part(cyl(1.6, 1.2, 6, 12), { at: [8, 18, 6], ...M }));
+    parts.push(rod([-9, 18, 8], [-9, 30, 8], 0.14, 0.06, M, 6));
+    parts.push(part(new THREE.SphereGeometry(0.28, 8, 6), { at: [-9, 30.2, 8], color: new THREE.Color('#ff5040').multiplyScalar(2.4), to: 'glow' }));
+    parts.push(part(dome(1.3, 0.6, 12), { at: [-4, 18, 7], rot: [0.5, 0, 0], ...M }));
+    // the tower: four legs leaning in, braced twice over, a platform at the top
     const legs = [
-      [-12, -12],
-      [12, -12],
-      [12, 12],
-      [-12, 12],
+      [-13, -13],
+      [13, -13],
+      [13, 13],
+      [-13, 13],
     ];
-    for (const [x, z] of legs) parts.push(rod([x, 12, z], [x * 0.35, 46, z * 0.35], 1.2, 0.8, M, 8));
+    for (const [x, z] of legs) {
+      parts.push(rod([x, 4, z], [x * 0.32, 46, z * 0.32], 1.3, 0.8, M, 8));
+      parts.push(part(cyl(2.2, 1.8, 1.2, 10), { at: [x, 4, z], ...M }));
+    }
     for (let i = 0; i < 4; i++) {
       const [x0, z0] = legs[i];
       const [x1, z1] = legs[(i + 1) % 4];
       for (const [y0, y1, s0, s1] of [
-        [14, 28, 1, 0.75],
-        [28, 14, 0.75, 1],
-        [28, 42, 0.75, 0.48],
-        [42, 28, 0.48, 0.75],
+        [8, 22, 0.94, 0.71],
+        [22, 8, 0.71, 0.94],
+        [22, 36, 0.71, 0.48],
+        [36, 22, 0.48, 0.71],
+        [36, 46, 0.48, 0.32],
+        [46, 36, 0.32, 0.48],
+        [22, 22, 0.71, 0.71],
+        [36, 36, 0.48, 0.48],
       ])
-        parts.push(rod([x0 * s0, y0, z0 * s0], [x1 * s1, y1, z1 * s1], 0.35, 0.35, M, 6));
+        parts.push(rod([x0 * s0, y0, z0 * s0], [x1 * s1, y1, z1 * s1], 0.32, 0.32, M, 6));
     }
-    parts.push(part(cyl(4.5, 3.4, 36, 16), { at: [0, 12, 0], ...P }));
-    // the dish, tilted to the sky, its rim, its spike
-    const dish = upright(
-      Array.from({ length: 9 }, (_, i) => {
-        const r = (i / 8) * 27;
+    parts.push(part(cyl(4.5, 3.6, 34, 16), { at: [0, 12, 0], ...P }));
+    for (let i = 1; i < 5; i++) parts.push(part(ring(4.4 - i * 0.2, 0.18, 24), { at: [0, 12 + i * 7, 0], ...M }));
+    parts.push(part(box(12, 1, 12), { at: [0, 46, 0], ...M }));
+    parts.push(part(cyl(5, 3, 4, 16), { at: [0, 47, 0], ...M }));
+    // the dish, tilted to the sky: a mesh of ribs round a ribbed bowl, its
+    // rim lit, the feed on its spike
+    const tilt = [-0.45, 0, 0];
+    const at = [0, 51, 0];
+    // (a point in the dish's own frame, tilted with it and set where it stands)
+    const T = ([x, y, z]) => [at[0] + x, at[1] + y * cos(tilt[0]) - z * sin(tilt[0]), at[2] + y * sin(tilt[0]) + z * cos(tilt[0])];
+    const bowl = upright(
+      Array.from({ length: 11 }, (_, i) => {
+        const r = (i / 10) * 27;
         return [r, (r * r) / 85];
       }),
-      36,
+      48,
     );
-    const tilt = [-0.45, 0, 0];
-    const at = [0, 50, 0];
-    parts.push(part(dish, { at, rot: tilt, color: '#9a9c96', to: 'cloth' }));
-    parts.push(part(ring(27, 0.6, 40), { at: [0, 50 + 8.6 * cos(0.45), 8.6 * sin(0.45) * -1], rot: tilt, color: '#5c5e5a', to: 'metal' }));
-    parts.push(part(new THREE.ConeGeometry(1.2, 16, 10).translate(0, 8, 0), { at, rot: tilt, color: '#6a6c68', to: 'metal' }));
-    parts.push(part(new THREE.SphereGeometry(0.9, 10, 8), { at: [0, 50 + 16 * cos(0.45), -16 * sin(0.45)], color: new THREE.Color('#ff6a50').multiplyScalar(2.5), to: 'glow' }));
-    parts.push(part(cyl(5, 3, 4, 16), { at: [0, 46, 0], ...M }));
-    return { object: k.build(parts, { name: 'shieldgen', shadows: false }), solids: [{ box: [0, 0, 24, 24, 0] }] };
+    parts.push(part(bowl, { at, rot: tilt, color: '#9a9c96', to: 'cloth' }));
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * TAU;
+      const rr = 27;
+      parts.push(rod(T([0, 0.2, 0]), T([sin(a) * rr, (rr * rr) / 85 + 0.2, cos(a) * rr]), 0.22, 0.14, M, 5));
+    }
+    for (const [r, tube] of [[27, 0.7], [18, 0.3], [9, 0.25]]) parts.push(part(ring(r, tube, 48), { at: T([0, (r * r) / 85, 0]), rot: tilt, color: '#5c5e5a', to: 'metal' }));
+    parts.push(part(ring(27.4, 0.18, 48), { at: T([0, 8.6, 0]), rot: tilt, color: new THREE.Color('#9ad8ff').multiplyScalar(2.2), to: 'glow' }));
+    parts.push(part(new THREE.ConeGeometry(1.2, 18, 10).translate(0, 9, 0), { at, rot: tilt, color: '#6a6c68', to: 'metal' }));
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU;
+      parts.push(rod(T([sin(a) * 12, 1.7, cos(a) * 12]), T([0, 17, 0]), 0.12, 0.08, M, 5));
+    }
+    parts.push(part(new THREE.SphereGeometry(1.1, 10, 8), { at: T([0, 18, 0]), color: new THREE.Color('#ff6a50').multiplyScalar(2.5), to: 'glow' }));
+    return { object: k.build(parts, { name: 'shieldgen', shadows: false }), solids: [{ box: [0, 0, 16, 15, 0] }, { box: [27, 0, 0.8, 9, 0] }, { box: [-27, 0, 0.8, 9, 0] }, { box: [0, 27, 9, 0.8, 0] }, { box: [0, -27, 9, 0.8, 0] }], floors: [{ x: 0, z: 0, hw: 28, hd: 28, yaw: 0, y: 2.2 }, { x: 0, z: 0, hw: 25, hd: 25, yaw: 0, y: 4 }] };
   },
 
   // the Tydirium: a Lambda-class shuttle set down, wings folded up, its
@@ -1341,7 +1411,9 @@ const KASHYYYK = {
     return { object: k.build(parts, { name: 'yodapod' }), solids: [{ circle: [0, 0, 1.6] }] };
   },
 
-  // a Wookiee barricade: crossed, sharpened logs along the beach, `len` long
+  // a Wookiee barricade: crossed, sharpened logs along the beach, `len` long;
+  // chest-high to shoot over (its top: a soldier standing sees over it, one
+  // kneeling is hidden behind it)
   barricade(k, { len = 10 } = {}) {
     const parts = [];
     const B = { color: '#6a4e34', to: 'bark' };
@@ -1351,7 +1423,7 @@ const KASHYYYK = {
       for (const s of [-1, 1]) parts.push(rod([x - s * 1.0, -0.2, -0.6], [x + s * 1.0, 2.4, 0.9], 0.18, 0.06, B, 6));
     }
     parts.push(rod([-len / 2, 1.1, 0.1], [len / 2, 1.1, 0.1], 0.2, 0.2, B, 6));
-    return { object: k.build(parts, { name: 'barricade' }), solids: [{ box: [0, 0, len / 2, 0.8, 0] }] };
+    return { object: k.build(parts, { name: 'barricade' }), solids: [{ box: [0, 0, len / 2, 0.8, 0], top: 1.25 }] };
   },
 
   // an AT-RT: a clone trooper in an open cockpit on two legs, a repeating
@@ -1631,7 +1703,9 @@ const DAGOBAH = {
     };
   },
 
-  // a dragonsnake, its coils breaking the black water as it circles
+  // a dragonsnake, its coils breaking the black water as it circles; now and
+  // then its head rears up out of it (a cone, till its model is here: the
+  // Meshy head and neck, worn by `wear`, rising higher)
   dragonsnake(k, { r = 7 } = {}) {
     const mat = k.own(new THREE.MeshStandardMaterial({ color: '#3a4430', roughness: 0.4 }));
     const hump = k.own(new THREE.TorusGeometry(0.9, 0.32, 8, 12, PI));
@@ -1643,10 +1717,24 @@ const DAGOBAH = {
       object.add(m);
       humps.push(m);
     }
-    const head = new THREE.Mesh(k.own(new THREE.ConeGeometry(0.35, 1.4, 8).rotateX(PI / 2)), mat);
+    const head = new THREE.Group();
+    const cone = new THREE.Mesh(k.own(new THREE.ConeGeometry(0.35, 1.4, 8).rotateX(PI / 2)), mat);
+    head.add(cone);
     object.add(head);
+    let neck = null;
     return {
       object,
+      // (its 4.5 m model, shrunk to the coils: 3.6 m, of which 2.6 m clears
+      // the water at the top of a rear and none at the bottom)
+      wear: {
+        url: '/models/galaxy/surface/dragonsnake.glb',
+        on(o) {
+          o.scale.setScalar(0.8);
+          head.add(o);
+          cone.visible = false;
+          neck = o;
+        },
+      },
       update(t) {
         const s = t * 0.18;
         humps.forEach((m, i) => {
@@ -1656,8 +1744,13 @@ const DAGOBAH = {
         });
         const up = Math.max(0, sin(t * 0.35)) ** 3;
         const a = s + 0.3;
-        head.position.set(cos(a) * r, -0.6 + up * 1.4, sin(a) * r);
-        head.rotation.set(-up * 0.6, -a + PI, 0);
+        if (neck) {
+          head.position.set(cos(a) * r, -3.7 + up * 2.7, sin(a) * r);
+          head.rotation.set(0, -a + PI, 0);
+        } else {
+          head.position.set(cos(a) * r, -0.6 + up * 1.4, sin(a) * r);
+          head.rotation.set(-up * 0.6, -a + PI, 0);
+        }
       },
     };
   },
@@ -1741,74 +1834,194 @@ function tiers(list, { seed = 1, zo = 0 } = {}) {
   return { parts, top: y };
 }
 
+// the Great Temple's model (massassi.glb at 96 m), measured off a height
+// map of it: its terraces, square round its middle, as [half-width, top];
+// the hangar a tunnel x ±10.4 under a roof at 10.8, open from the front
+// (+z) back to z 11.5, where hangarfloor's back wall closes it off from the
+// tunnel crossing it; and the stair up the middle of its east face, as
+// [distance out, height] (17 m wide)
+const TERRACES = [
+  [46, 1.6],
+  [40, 11.3],
+  [32.5, 19.9],
+  [27.9, 28.9],
+  [19.5, 36],
+  [12.5, 49.4],
+  [8.5, 52.4],
+];
+const HANGAR = { hw: 10.4, roof: 10.8, back: 11.5, front: 46 };
+const EAST_STAIR = [
+  [42, 12.6],
+  [39.5, 13],
+  [38.5, 14.1],
+  [37.5, 16.3],
+  [36.5, 17.3],
+  [35.5, 19.3],
+  [34.5, 20.3],
+  [33.5, 22.6],
+  [32.5, 23.7],
+  [31.5, 24.8],
+  [30.5, 27],
+  [29.5, 28.2],
+  [28.5, 29],
+  [26.5, 29],
+  [25.5, 30.9],
+  [24.5, 32.3],
+  [23.5, 34.5],
+  [22.5, 35.7],
+  [21.5, 36.9],
+  [20.5, 39.3],
+  [19.5, 40.4],
+  [18.5, 42.6],
+  [17.5, 43.7],
+  [16.5, 44.9],
+  [15.5, 47.1],
+  [14.5, 48.2],
+  [13, 49.4],
+];
+// (its height at r, between the measured points)
+const eastStairAt = (r) => {
+  for (let i = 1; i < EAST_STAIR.length; i++) {
+    const [r0, y0] = EAST_STAIR[i - 1];
+    const [r1, y1] = EAST_STAIR[i];
+    if (r <= r0 && r >= r1) return y0 + ((r0 - r) / (r0 - r1)) * (y1 - y0);
+  }
+  return r > EAST_STAIR[0][0] ? EAST_STAIR[0][1] : EAST_STAIR.at(-1)[1];
+};
+
 const YAVIN = {
-  // the Great Temple of Massassi: a broad stone platform 100 m across with
-  // the Rebel hangar cut into its front (+z), four tiers stepping up behind
-  // it, flights of steps up its east side to the summit; built by the
-  // Massassi for the Sith thousands of years ago
+  // the floor of the Great Temple's hangar, laid over the temple's own:
+  // dark weathered concrete, its panel seams, two muted bays for the X-wings
+  // one behind the other, the taxi line out of the mouth and the scorches of
+  // a squadron's engines (Red and Gold squadrons flew from here); the dark
+  // back wall that closes the temple's tunnel, with the war room's and the
+  // inner stair's doors in it
+  hangarfloor(k, { w = 20, d = 36.5 } = {}) {
+    const zc = d / 2 - 10.5; // (from the back wall at -10.5 to the mouth)
+    const parts = [part(box(w, 0.04, d), { at: [0, 0, zc], color: '#56544c', to: 'stone' })];
+    for (let i = 1; i < 7; i++) parts.push(part(box(w, 0.012, 0.06), { at: [0, 0.04, zc - d / 2 + (i * d) / 7], color: '#3e3c36', to: 'stone' }));
+    for (const x of [-w / 4, w / 4]) parts.push(part(box(0.06, 0.012, d), { at: [x, 0.04, zc], color: '#3e3c36', to: 'stone' }));
+    for (const [x, z] of [
+      [4.8, -1],
+      [4.8, 13],
+    ]) {
+      parts.push(part(new THREE.RingGeometry(4.4, 4.8, 40).rotateX(-PI / 2), { at: [x, 0.05, z], color: '#b0923e', to: 'paint' }));
+      parts.push(part(scorch(4.2, x + z * 3).rotateX(-PI / 2), { at: [x, 0.045, z - 4.5], color: '#3a3833', to: 'stone' }));
+      parts.push(part(scorch(2.4, x + z * 3 + 1).rotateX(-PI / 2), { at: [x, 0.048, z - 4.8], color: '#22201c', to: 'dark' }));
+    }
+    // the taxi line out of the mouth, and the edge marks down both sides
+    parts.push(part(box(0.5, 0.02, d - 2), { at: [-1.2, 0.04, zc], color: '#c4c2b8', to: 'paint' }));
+    for (const x of [-w / 2 + 0.8, w / 2 - 0.8]) for (let i = 0; i < 8; i++) parts.push(part(box(0.5, 0.02, 1.6), { at: [x, 0.04, -8 + i * 4.4], color: i % 2 ? '#2a2a2a' : '#c4c2b8', to: 'paint' }));
+    // the back wall and its two doors
+    parts.push(part(box(w + 1, 11.2, 0.6), { at: [0, -0.6, -10.5], color: '#24221e', to: 'stone' }));
+    for (const x of [-4, 4]) {
+      parts.push(part(box(3, 4, 0.2), { at: [x, 0, -10.12], color: '#0e0d0b', to: 'dark' }));
+      parts.push(part(box(3.4, 0.15, 0.1), { at: [x, 4.1, -10.12], color: new THREE.Color('#ffe8c0').multiplyScalar(2.2), to: 'glow' }));
+    }
+    return { object: k.build(parts, { name: 'hangarfloor' }) };
+  },
+
+  // the Great Temple of Massassi: a steep stepped pyramid of six terraces
+  // round a slotted tower, 96 m across, a stair up the middle of each face,
+  // the Rebel hangar a tunnel through its foot (+z); built by the Massassi for
+  // the Sith thousands of years ago. Drawn only if its model doesn't load;
+  // its walls and floors are the model's, measured (TERRACES)
   massassi(k) {
     const parts = [];
     const floors = [];
     const solids = [];
-    const ZO = -16; // (the tiers' middle, behind the hangar)
-    const T = [
-      [42, 20, 13],
-      [33, 15, 11],
-      [24, 10, 9],
-      [14, 7, 7],
-    ];
-    // the base, round the hangar (x ±18, z 4…40, 12 high)
     const S = { color: MASSASSI, to: 'stone' };
-    parts.push(part(box(32, 18, 80), { at: [-34, 0, 0], ...S }), part(box(32, 18, 80), { at: [34, 0, 0], ...S }), part(box(36, 18, 44), { at: [0, 0, -18], ...S }), part(box(36, 6, 36), { at: [0, 12, 22], ...S }));
-    parts.push(part(box(101.2, 0.9, 81.2), { at: [0, 17.1, 0], color: MASSASSI_DARK, to: 'stone' }));
-    parts.push(part(box(100.3, 0.35, 80.3), { at: [0, 8, 0], color: MASSASSI_DARK, to: 'stone' }));
-    // the hangar's mouth: a lintel, its floor, the lights in its ceiling
-    parts.push(part(box(40, 2.2, 2), { at: [0, 11, 40.2], color: MASSASSI_DARK, to: 'stone' }));
-    parts.push(part(box(35.6, 0.1, 35.6), { at: [0, 0.02, 22], color: '#6a665c', to: 'stone' }));
-    for (let i = 0; i < 4; i++) for (const x of [-10, 0, 10]) parts.push(part(box(3, 0.15, 0.6), { at: [x, 11.8, 9 + i * 8.5], color: new THREE.Color('#ffe8c0').multiplyScalar(2.2), to: 'glow' }));
-    parts.push(part(box(30, 6, 0.3), { at: [0, 0, 4.2], color: '#4a4842', to: 'metal' }));
-    solids.push({ box: [-34, 0, 16, 40, 0], top: 18 }, { box: [34, 0, 16, 40, 0], top: 18 }, { box: [0, -18, 18, 22, 0], top: 18 });
-    floors.push({ x: 0, z: 0, hw: 50, hd: 40, yaw: 0, y: 18 });
-    // the tiers above, behind the hangar
-    const up = tiers(T, { seed: 4, zo: ZO });
-    for (const p of up.parts) parts.push({ ...p, at: [p.at[0], p.at[1] + 18, p.at[2]] });
-    let y = 18;
-    const tops = [18];
-    for (const [hw, hd, h] of T) {
-      y += h;
-      tops.push(y);
-      solids.push({ box: [0, ZO, hw, hd, 0], top: y });
-      floors.push({ x: 0, z: ZO, hw, hd, yaw: 0, y });
+    const D = { color: MASSASSI_DARK, to: 'stone' };
+    const { hw: HW, roof: ROOF, back: BACK, front: FRONT } = HANGAR;
+    const [[A, ya], [T1, y1]] = TERRACES;
+    // the plinth and the base up to the first terrace, round the hangar:
+    // left, right, behind; and the roof over it
+    for (const s of [-1, 1]) {
+      parts.push(part(box(A - HW, ya, A * 2), { at: [(s * (A + HW)) / 2, 0, 0], ...D }), part(box(T1 - HW, y1, T1 * 2), { at: [(s * (T1 + HW)) / 2, 0, 0], ...S }));
+      solids.push({ box: [(s * (A + HW)) / 2, 0, (A - HW) / 2, A, 0], top: ya }, { box: [(s * (T1 + HW)) / 2, 0, (T1 - HW) / 2, T1, 0], top: y1 });
     }
-    // vines down the front
+    parts.push(part(box(HW * 2, ya, A + BACK), { at: [0, 0, (BACK - A) / 2], ...D }), part(box(HW * 2, y1, T1 + BACK), { at: [0, 0, (BACK - T1) / 2], ...S }));
+    solids.push({ box: [0, (BACK - A) / 2, HW, (A + BACK) / 2, 0], top: ya }, { box: [0, (BACK - T1) / 2, HW, (T1 + BACK) / 2, 0], top: y1 });
+    parts.push(part(box(HW * 2, y1 - ROOF, T1 - BACK), { at: [0, ROOF, (T1 + BACK) / 2], ...S }));
+    // the hangar's floor (a step up off the ground), lights in its roof
+    floors.push({ x: 0, z: (BACK + FRONT) / 2, hw: HW, hd: (FRONT - BACK) / 2, yaw: 0, y: 0.55 });
+    parts.push(part(box(HW * 2, 0.55, FRONT - BACK), { at: [0, 0, (BACK + FRONT) / 2], color: '#5a574e', to: 'stone' }));
+    for (let i = 0; i < 4; i++) for (const x of [-6, 0, 6]) parts.push(part(box(3, 0.15, 0.6), { at: [x, ROOF - 0.2, BACK + 4 + i * 8], color: new THREE.Color('#ffe8c0').multiplyScalar(2.2), to: 'glow' }));
+    // the terraces, each walled to its top, from the hangar's roof up (so
+    // the hangar stays open under them)
+    for (const [hw, y] of TERRACES.slice(1)) {
+      if (hw < T1) parts.push(part(box(hw * 2, y - ROOF, hw * 2), { at: [0, ROOF, 0], ...S }));
+      parts.push(part(box(hw * 2 + 0.8, 0.6, hw * 2 + 0.8), { at: [0, y - 0.6, 0], ...D }));
+      solids.push({ box: [0, 0, hw, hw, 0], top: y, base: ROOF });
+      floors.push({ x: 0, z: 0, hw, hd: hw, yaw: 0, y });
+    }
+    // the slotted tower on top, to 77
+    const top = TERRACES.at(-1)[1];
+    parts.push(part(box(13, 77 - top, 13), { at: [0, top, 0], ...S }));
+    for (const a of [0, PI / 2, PI, -PI / 2]) parts.push(part(box(2, 12, 0.3), { at: [sin(a) * 6.6, top + 8, cos(a) * 6.6], rot: [0, a, 0], color: '#1a1814', to: 'dark' }));
+    solids.push({ box: [0, 0, 6.5, 6.5, 0] });
+    // the stairs up the middle of each face (the east one walked: a strip
+    // of floor every 20 cm, each no more than a step over the last, and its
+    // sides walled to its height, so it's not walked into off a terrace)
+    const [r0, s0] = EAST_STAIR[0];
+    const [r1, s1] = EAST_STAIR.at(-1);
+    const run = r0 - r1;
+    const flightGeo = () =>
+      new THREE.BoxGeometry(Math.hypot(run, s1 - s0), 0.8, 17)
+        .rotateZ(-Math.atan2(s1 - s0, run))
+        .translate((r0 + r1) / 2, (s0 + s1) / 2 - 0.4, 0);
+    for (const a of [0, PI / 2, PI, -PI / 2]) parts.push(part(flightGeo().rotateY(a), D));
+    for (let i = 0; r0 - i * 0.2 >= r1 - 0.6; i++) {
+      const r = r0 - i * 0.2;
+      const y = eastStairAt(r);
+      for (const z of [-8.5, 8.5]) solids.push({ box: [r, z, 0.1, 0.1, 0], top: y, base: ROOF });
+      floors.push({ x: r, z: 0, hw: 0.1, hd: 8.5, yaw: 0, y });
+    }
+    // vines down its faces
     const rand = rng(12);
-    for (let i = 0; i < 10; i++) {
-      const x = (rand() - 0.5) * 96;
-      if (Math.abs(x) < 20) continue;
-      const l = 6 + rand() * 10;
-      parts.push(part(new THREE.BoxGeometry(2 + rand() * 3, l, 0.3), { at: [x, 18 - l / 2, 40.3], color: VINE, to: 'leaf' }));
-    }
-    // the summit: a parapet round its back and sides, the throne room's
-    // doors on the tier below
-    const top = tops.at(-1);
-    parts.push(part(box(29, 1.1, 0.5), { at: [0, top, ZO - 7.2], ...S }), part(box(0.5, 1.1, 14), { at: [-14.2, top, ZO], ...S }));
-    parts.push(part(box(8, 4.5, 0.4), { at: [0, tops[3], ZO + 10.2], color: '#2a2620', to: 'dark' }));
-    // the steps up the east side, each flight beside the tier it climbs to
-    const flights = [flight(52, 38, 0, tops[0], -1, 50, { wide: 3.6 })];
-    flights.push(flight(45, 6, tops[0], tops[1], -1, 42));
-    flights.push(flight(36, -32, tops[1], tops[2], 1, 33));
-    flights.push(flight(27, -5, tops[2], tops[3], -1, 24));
-    flights.push(flight(17, -24, tops[3], tops[4], 1, 14));
-    for (const f of flights) {
-      parts.push(...f.parts);
-      floors.push(...f.floors);
+    for (let i = 0; i < 16; i++) {
+      const a = Math.floor(rand() * 4) * (PI / 2);
+      const along = (rand() - 0.5) * 70;
+      if (Math.abs(along) < 12) continue;
+      const l = 4 + rand() * 6;
+      parts.push(part(new THREE.BoxGeometry(2 + rand() * 3, l, 0.3), { at: [sin(a) * (T1 + 0.2) + cos(a) * along, y1 - l, cos(a) * (T1 + 0.2) - sin(a) * along], rot: [0, a, 0], color: VINE, to: 'leaf' }));
     }
     return { object: k.build(parts, { name: 'massassi' }), solids, floors };
   },
 
+  // what's drawn with the Great Temple's model: dark plugs a metre inside
+  // its back and side tunnel mouths (its hangar is one tunnel front to back,
+  // crossed by a second), so they read as doorways and not a see-through
+  // cross; and a stone stair up its east side, from the ground to the foot
+  // of the east face's own stair
+  massassiplugs(k) {
+    const P = { color: '#1a1814', to: 'dark' };
+    const parts = [part(box(21, 11, 0.6), { at: [0, 0, -44.5], ...P })];
+    for (const s of [-1, 1]) parts.push(part(box(0.6, 11, 24), { at: [s * 44.5, 0, -0.5], ...P }));
+    const top = EAST_STAIR[0][1];
+    const f = flight(47.6, 22.5, 0, top, -1, 41, { wide: 3.6 });
+    parts.push(...f.parts);
+    // (its landing widened, out over the plinth to the stair's foot)
+    parts.push(part(box(9.2, 0.5, 4), { at: [44.8, top - 0.5, -0.5], color: MASSASSI, to: 'stone' }));
+    return { object: k.build(parts, { name: 'massassiplugs' }), floors: [...f.floors, { x: 44.8, z: -0.5, hw: 4.6, hd: 2, yaw: 0, y: top }] };
+  },
+
   // a lesser temple, swallowed by the jungle: three worn tiers, a dark
-  // doorway, a tree growing out of its top, blocks fallen round it
-  ruin(k, { seed = 21 } = {}) {
+  // doorway, a tree growing out of its top, blocks fallen round it. With
+  // `core`, only what goes with the Great Temple's model drawn small: two
+  // dark boxes plugging its crossed tunnels, and the fallen blocks
+  ruin(k, { seed = 21, core = false } = {}) {
+    const rand = rng(seed);
+    const fallen = [];
+    for (let i = 0; i < 7; i++) {
+      const a = rand() * TAU;
+      const d = 17 + rand() * 5;
+      fallen.push(part(box(1.5 + rand() * 1.5, 0.8 + rand(), 1.2 + rand()), { at: [cos(a) * d, -0.2, sin(a) * d], rot: [(rand() - 0.5) * 0.4, rand() * PI, (rand() - 0.5) * 0.3], color: MASSASSI, to: 'stone' }));
+    }
+    if (core) {
+      const P = { color: '#1a1814', to: 'dark' };
+      return { object: k.build([part(box(7.2, 3.8, 30), P), part(box(30, 3.8, 7.2), P), ...fallen], { name: 'ruincore' }) };
+    }
     const t = tiers(
       [
         [15, 15, 6],
@@ -1817,15 +2030,9 @@ const YAVIN = {
       ],
       { seed },
     );
-    const parts = [...t.parts];
+    const parts = [...t.parts, ...fallen];
     parts.push(part(box(4, 4, 0.4), { at: [0, 0, 15.1], color: '#1a1814', to: 'dark' }));
     parts.push(part(box(5.4, 0.8, 1), { at: [0, 4, 15.2], color: MASSASSI_DARK, to: 'stone' }));
-    const rand = rng(seed);
-    for (let i = 0; i < 7; i++) {
-      const a = rand() * TAU;
-      const d = 17 + rand() * 5;
-      parts.push(part(box(1.5 + rand() * 1.5, 0.8 + rand(), 1.2 + rand()), { at: [cos(a) * d, -0.2, sin(a) * d], rot: [(rand() - 0.5) * 0.4, rand() * PI, (rand() - 0.5) * 0.3], color: MASSASSI, to: 'stone' }));
-    }
     for (const p of jungleParts({ h: 22, r: 0.8, seed: seed + 3 }).parts) parts.push({ ...p, at: [(p.at?.[0] ?? 0) + 2, (p.at?.[1] ?? 0) + t.top - 1, (p.at?.[2] ?? 0) - 1] });
     return { object: k.build(parts, { name: 'ruin' }), solids: [{ box: [0, 0, 15, 15, 0] }] };
   },
@@ -1894,4 +2101,17 @@ const YAVIN = {
   },
 };
 
+// (the crowns the ground map shades under, groundPaint.js: a kind's crown
+// radius in metres at scale 1)
+for (const [kind, crown] of [
+  ['jungletree', 10],
+  ['redwood', 7],
+  ['wroshyr', 10],
+  ['gnarltree', 6],
+])
+  SCATTER[kind].canopy = crown;
+
 export const PROPS = { ...TREES, ...ENDOR, ...KASHYYYK, ...DAGOBAH, ...YAVIN };
+// Lothal's old Imperial tower: the audit lane's model where it loads, this
+// lattice where it won't
+PROPS.lothtower = PROPS.lookout;

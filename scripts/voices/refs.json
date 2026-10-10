@@ -1,45 +1,40 @@
 {
-  "rick": {"engine": "qwen"},
-  "morty": {"engine": "qwen"},
-  "luke": {"engine": "qwen"},
-  "han": {"engine": ["qwen", "fish"]},
-  "walt": {"engine": "qwen"},
-  "jesse": {"engine": "qwen"},
-  "hank": {"engine": ["qwen", "fish"]},
-  "gandalf": {"engine": "qwen"},
-  "aragorn": {"engine": "qwen"},
-  "sam": {"engine": "qwen"},
-  "frodo": {"engine": "qwen"},
-  "galadriel": {"engine": "qwen"},
-  "boromir": {"engine": "qwen"},
-  "pippin": {"engine": "qwen"},
-  "gimli": {"engine": "qwen"},
-  "saruman": {"engine": "qwen"},
-  "gollum": {"engine": "qwen"},
-  "elrond": {"engine": "qwen"},
-  "butterbur": {"engine": "qwen"},
-  "theoden": {"engine": "qwen"},
-  "legolas": {"engine": "qwen"},
-  "arwen": {"engine": "qwen"},
-  "bilbo": {"engine": "qwen"},
-  "hama": {"engine": "qwen"},
-  "haldir": {"engine": "qwen"},
-  "denethor": {"engine": "qwen"},
-  "grima": {"engine": "qwen"},
-  "celeborn": {"engine": "qwen"},
-  "michael": {"engine": "qwen"},
-  "jim": {"engine": "qwen"},
-  "badger": {"engine": "qwen"},
-  "pete": {"engine": "qwen"},
-  "tuco": {"engine": "qwen"},
-  "mike": {"engine": "qwen"},
-  "gus": {"engine": "qwen"},
-  "lydia": {"engine": "qwen"},
-  "declan": {"engine": "qwen"},
-  "saul": {"engine": "qwen"},
-  "thor": {"engine": "qwen"},
-  "natasha": {"engine": "qwen"},
-  "hulk": {"engine": "qwen"},
-  "soundwave": {"engine": "qwen"},
-  "grimlock": {"engine": "qwen"}
+  "*": {
+    "engine": [
+      "qwen",
+      "longcat",
+      "qwenft"
+    ]
+  },
+  "rick": {
+    "engine": [
+      "qwen",
+      "auk",
+      "longcat",
+      "qwenft"
+    ]
+  },
+  "morty": {
+    "engine": [
+      "qwen",
+      "auk",
+      "longcat",
+      "qwenft"
+    ]
+  },
+  "han": {
+    "engine": [
+      "qwen",
+      "fish",
+      "qwenft"
+    ]
+  },
+  "hank": {
+    "engine": [
+      "qwen",
+      "fish",
+      "longcat",
+      "qwenft"
+    ]
+  }
 }

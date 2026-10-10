@@ -5,6 +5,8 @@
 //
 //   node scripts/galaxy-lod.mjs            every kind
 //   node scripts/galaxy-lod.mjs xwing n1   just these
+//   node scripts/galaxy-lod.mjs hq/moncal  a capital's close-up cut
+//                                          (public/models/galaxy/hq/, to lod/hq/)
 //
 // For each kind it reads the GLB (meshopt-compressed, as they all are), puts
 // every primitive where its node puts it, and bakes its look into vertex
@@ -25,19 +27,26 @@ import { ALL_EXTENSIONS, EXTMeshoptCompression, KHRMeshQuantization } from '@glt
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
-const FIGHTERS = new Set(['xwing', 'interceptor', 'awing', 'ywing', 'bwing', 'uwing', 'vulture', 'trifighter', 'delta7', 'arc170', 'n1', 'slave1', 'tie', 'tiebomber', 'tieadvanced']);
+const FIGHTERS = new Set(['tiedefender', 'tiestriker', 'vwing', 'eta2', 'hyena', 'fang', 'xwing', 'interceptor', 'awing', 'ywing', 'bwing', 'uwing', 'vulture', 'trifighter', 'delta7', 'arc170', 'n1', 'slave1', 'tie', 'tiebomber', 'tieadvanced']);
 const TARGET = { fighter: 1500, other: 4000 };
 const OUT = 'public/models/galaxy/lod';
 const SAMPLE = 256; // textures are read at this size: a far ship's colour is the average of a patch, not one texel
 
-// kind → url, from the two files that list them (MODELS spreads GLB's in first)
+// kind → url, from the two files that list them: MODELS spreads GLB's in
+// first and its own entries win over them, as they do here, so a kind
+// models.js gives a file of its own (the galaxy's corvette, over the
+// universe map's) has its far-off copy made from the file the galaxy loads
 function kinds() {
   const list = new Map();
-  for (const file of ['src/components/universe/glbFleet.js', 'src/components/galaxy/models.js']) {
-    const text = readFileSync(file, 'utf8');
-    for (const m of text.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) if (!list.has(m[1])) list.set(m[1], m[2]);
+  const models = readFileSync('src/components/galaxy/models.js', 'utf8');
+  const at = models.indexOf('export const HQ = {');
+  for (const text of [readFileSync('src/components/universe/glbFleet.js', 'utf8'), at < 0 ? models : models.slice(0, at)]) {
+    for (const m of text.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) list.set(m[1], m[2]);
   }
   list.delete('deathstar'); // (a sphere far off is a sphere: the world draws its own)
+  // (and the capitals' close-up cuts, galaxy/models.js's HQ: their own far-off copies)
+  const hq = at < 0 ? '' : models.slice(at, models.indexOf('\n};', at));
+  for (const m of hq.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) list.set(`hq/${m[1]}`, m[2]);
   return list;
 }
 
@@ -279,7 +288,7 @@ async function write(kind, { pos, col, idx }, io) {
 
 await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready, MeshoptSimplifier.ready]);
 const io = new NodeIO().setLogger(new Logger(Logger.Verbosity.WARN)).registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
-mkdirSync(OUT, { recursive: true });
+mkdirSync(`${OUT}/hq`, { recursive: true });
 const all = kinds();
 const asked = process.argv.slice(2);
 const made = [];
@@ -291,7 +300,7 @@ for (const kind of asked.length ? asked : [...all.keys()]) {
     continue;
   }
   const baked = await bake(await io.read(`public${url}`));
-  const target = FIGHTERS.has(kind) ? TARGET.fighter : TARGET.other;
+  const target = FIGHTERS.has(kind) ? TARGET.fighter : TARGET.other; // (an hq/ cut is a capital: 'other')
   made.push({ kind, from: baked.idx.length / 3, lod: simplify(weld(baked), target) });
 }
 for (const { kind, from, lod } of made) {

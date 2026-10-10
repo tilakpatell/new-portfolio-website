@@ -188,7 +188,7 @@ export const CAST = [
   { zone: 'gate', id: 'gimli-gate', name: 'Gimli', x: 3.2, z: -9.6, face: Math.PI, look: 'gimli', while: ['doors'], lines: ['“Soon, Master Elf, you will enjoy the fabled hospitality of the Dwarves: roaring fires, malt beer, ripe meat off the bone!”'] },
   { zone: 'halls', id: 'gandalf-fork', name: 'Gandalf', x: FORK.x - 3.2, z: -1.5, face: 0, look: 'gandalf', while: ['dark'], lines: ['“I have no memory of this place.”', '“Ah. It’s that way.” No: he’s still thinking.'] },
   { zone: 'halls', id: 'merry-fork', name: 'Merry Brandybuck', x: FORK.x - 6, z: 3, face: 0, look: 'merry', while: ['dark'], lines: ['“Are we lost?”', '“I think we are.”'] },
-  { zone: 'halls', id: 'pippin-fork', name: 'Pippin Took', x: FORK.x - 6.5, z: 4.6, face: -0.3, look: 'pippin', while: ['dark'], lines: ['“Gandalf’s thinking.”', '“Merry?” “What?” “I’m hungry.”'] },
+  { zone: 'halls', id: 'pippin-fork', name: 'Pippin Took', x: FORK.x - 6.5, z: 4.6, face: -0.3, look: 'pippin', while: ['dark'], lines: ['“Gandalf’s thinking.”', '“Merry?” Merry looks round. “I’m hungry.”'] },
   { zone: 'halls', id: 'gimli-hall', name: 'Gimli', x: CHAMBER.x - 1.5, z: -hd + 3.5, face: Math.PI / 2, look: 'gimli', while: ['tomb'], lines: ['“Balin! Balin!” He runs for the chamber.'] },
 ];
 export const castFor = (zone, next) => CAST.filter((c) => c.zone === zone && (!c.while || c.while.includes(next)));

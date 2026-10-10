@@ -5,6 +5,7 @@
 //   node scripts/universe-check.mjs [--quality high|mid|low|all] [--poses a,b]
 //     [--out lab/universe/<tier>] [--baseline] [--url http://127.0.0.1:5173] [--chromium /path]
 //     [--frames 20] (how many frames are timed: fewer in a container that draws in software, where a frame takes seconds)
+//     [--near off] (without the planets' near maps and finer spheres, nearMaps.js: what they cost, measured on one tree)
 //
 // It starts the dev server (the poses are a DEV hook, `window.__universe().pose`,
 // which a production build leaves out) unless --url names one, opens
@@ -27,7 +28,7 @@ import { chromium } from 'playwright-core';
 import sharp from 'sharp';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const POSES = ['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'belt', 'maw', 'landing-middleearth', 'station'];
+const POSES = ['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'middleearth', 'breakingbad', 'office', 'belt', 'maw', 'landing-middleearth', 'station', 'far-rim'];
 const TIERS = ['high', 'mid', 'low'];
 
 const args = {};
@@ -146,13 +147,14 @@ for (const tier of tiers) {
   // scene of its own): each pose gets a fresh page, the same start
   for (const name of poses) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
-    await ctx.addInitScript((q) => {
+    await ctx.addInitScript(([q, near]) => {
       window.localStorage.setItem('tp-intro', '1');
       window.localStorage.setItem('tp-start', '"universe"');
       window.localStorage.setItem('tp-quality', q);
       window.localStorage.setItem('tp-universe-ship', '"falcon"');
       window.__tpKeepFrames = true;
-    }, tier);
+      if (near === 'off') window.localStorage.setItem('tp-near', 'off');
+    }, [tier, args.near]);
     const page = await ctx.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e.message ?? e)));
@@ -160,8 +162,16 @@ for (const tier of tiers) {
     try {
       await page.goto(`${base}/?quality=${tier}#/universe`, { waitUntil: 'domcontentloaded', timeout: 180000 });
       await page.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship && window.__universeDebug?.state?.model, null, { timeout: 300000, polling: 250 });
+      // and its box drawn: the hook (lib/three/useScene) marks it data-gl="on"
+      // at its own first frame, and until then index.css holds the canvas at
+      // opacity 0 behind the loading veil. The scene is made (and the pose
+      // draws) a minute or more before that in software, so the shot taken
+      // then was a clear canvas over a white page: one colour, at every pose.
+      await page.waitForFunction(() => window.__universeDebug.renderer.domElement.parentElement?.dataset.gl === 'on', null, { timeout: 600000, polling: 500 });
       await page.waitForTimeout(2000);
       await page.evaluate((n) => window.__universe().pose(n), name);
+      // (a planet pose: its near maps given a moment to land, unless they're off)
+      if (args.near !== 'off') await page.waitForFunction(() => (window.__universe().near ?? []).length > 0, null, { timeout: 15000, polling: 250 }).catch(() => {});
       // the grain moves frame to frame; the shots and their metrics shouldn't (post.js: checkpoint 1)
       await page.evaluate(() => window.__universeDebug.post?.grain?.(0));
       const numbers = await page.evaluate(async (n) => {
@@ -183,17 +193,25 @@ for (const tier of tiers) {
         }
         const sorted = [...times].sort((a, b) => a - b);
         const r1 = (v) => Number(v.toFixed(1));
-        return { calls, triangles, frameMs: r1(times.reduce((s, v) => s + v, 0) / times.length), frameMsMedian: r1(sorted[Math.floor(n / 2)]), memory: { ...renderer.info.memory } };
+        // the ship's box on screen (scene.js's DEV hook, where it has one)
+        const shipPx = u.shipPx?.() ?? null;
+        return { calls, triangles, shipPx, frameMs: r1(times.reduce((s, v) => s + v, 0) / times.length), frameMsMedian: r1(sorted[Math.floor(n / 2)]), memory: { ...renderer.info.memory } };
       }, FRAMES);
       // the picture alone: the page's bar, panel and HUD hidden (they'd be
-      // half the shot, and in its metrics), the map's canvas the biggest one
-      await page.evaluate(() => {
-        const big = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)[0];
-        big?.setAttribute('data-measured', '');
+      // half the shot, and in its metrics), the map's own canvas (the
+      // renderer's, not the biggest on the page)
+      const seen = await page.evaluate(() => {
+        const canvas = window.__universeDebug.renderer.domElement;
+        canvas.setAttribute('data-measured', '');
         const style = document.createElement('style');
         style.textContent = 'body * { visibility: hidden !important; } canvas[data-measured] { visibility: visible !important; }';
         document.head.append(style);
+        let opacity = 1;
+        for (let e = canvas; e; e = e.parentElement) opacity *= Number(window.getComputedStyle(e).opacity);
+        return { inPage: canvas.isConnected, drawn: canvas.matches("[data-gl='on'] > canvas"), opacity };
       });
+      // (loudly, so a change to how the map mounts can't blank the shots unseen again)
+      if (!seen.inPage || !seen.drawn || seen.opacity < 0.99) throw new Error(`the map's canvas isn't the one on screen (${JSON.stringify(seen)})`);
       await page.evaluate(() => window.__universe().frames(2));
       const png = await page.screenshot({ type: 'png', timeout: 180000 });
       const raw = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -201,7 +219,7 @@ for (const tier of tiers) {
       await writeFile(join(out, `${name}.webp`), await sharp(png).webp({ quality: 88 }).toBuffer());
       report.poses[name] = { ...numbers, metrics, errors: [...new Set(errors)].slice(0, 5) };
       if (metrics.dominantColorShare > 0.98) fail(`${tier} ${name}: the canvas is blank (${metrics.dominantColorShare} one colour)`);
-      console.log(`ok   ${tier.padEnd(4)} ${name.padEnd(20)} calls ${String(numbers.calls).padStart(4)}  tris ${String(numbers.triangles).padStart(8)}  ${String(numbers.frameMs).padStart(6)} ms  entropy ${metrics.colorEntropyBits}  edges ${metrics.edgeDensity}  contrast ${metrics.luminance.contrast}  (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+      console.log(`ok   ${tier.padEnd(4)} ${name.padEnd(20)} calls ${String(numbers.calls).padStart(4)}  tris ${String(numbers.triangles).padStart(8)}  ${String(numbers.frameMs).padStart(6)} ms  entropy ${metrics.colorEntropyBits}  edges ${metrics.edgeDensity}  contrast ${metrics.luminance.contrast}${numbers.shipPx ? `  ship ${numbers.shipPx.w} × ${numbers.shipPx.h} px` : ''}  (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
     } catch (e) {
       report.poses[name] = { error: String(e.message ?? e).split('\n')[0], errors: [...new Set(errors)].slice(0, 5) };
       fail(`${tier} ${name}: ${report.poses[name].error}`);

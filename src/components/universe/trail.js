@@ -14,7 +14,12 @@
 // Boosting (`stretch` above 1), it draws out longer, a little wider and
 // hotter, as an afterburner's flame does.
 //
-// createTrail({ width, life, length, wobble, sparks }) → { mesh, setColors(color, core),
+// With `cap` ({ length, peak }: engines.js's capPlume, for the ship you
+// fly), the plume is never longer than cap.length at any stretch, and its
+// middle never brighter than cap.peak (linear luminance): the boost draws it
+// out, but doesn't brighten it. Without (the galaxy's), as it always was.
+//
+// createTrail({ width, life, length, wobble, sparks, cap }) → { mesh, setColors(color, core),
 //   update(dt, t, nozzle, amount, camera, stretch), clear(), dispose() }
 // (mesh carries the sparks too, as a child)
 // `nozzle` and `camera` are in the mesh's parent's space.
@@ -150,7 +155,7 @@ function sparkCloud(count) {
   };
 }
 
-export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble = 0, sparks = 0 } = {}) {
+export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble = 0, sparks = 0, cap = null } = {}) {
   const pos = new Float32Array(POINTS * 2 * 3);
   const fade = new Float32Array(POINTS * 2);
   const along = new Float32Array(POINTS * 2);
@@ -196,6 +201,12 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
   const hot = new THREE.Color();
   const path = []; // newest first: { x, y, z, age, run }
   const spare = []; // samples that have gone, to be used again (nothing made each frame)
+  // the path at even steps along it, as drawn
+  const evenX = new Float64Array(POINTS);
+  const evenY = new Float64Array(POINTS);
+  const evenZ = new Float64Array(POINTS);
+  const evenAge = new Float64Array(POINTS);
+  const evenRun = new Float64Array(POINTS);
   const dir = new THREE.Vector3();
   const toCam = new THREE.Vector3();
   const across = new THREE.Vector3();
@@ -215,7 +226,7 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
     // amount: 0 (engines idle) … 1 (flat out); stretch: 1, up to 2 or so boosting
     update(dt, t, nozzle, amount, camera, stretch = 1) {
       level += (amount - level) * Math.min(1, dt * 5);
-      const reachOut = length * stretch;
+      const reachOut = cap ? Math.min(cap.length, length * stretch) : length * stretch;
       for (const p of path) p.age += dt;
       while (path.length && path[path.length - 1].age > life) spare.push(path.pop());
       since += dt;
@@ -240,8 +251,21 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
       mesh.visible = path.length > 1 && level > 0.01;
       if (!mesh.visible) return;
       const u = mat.uniforms;
-      u.uColor.value.copy(colour).multiplyScalar(level * (0.75 + 0.25 * stretch));
-      u.uCore.value.copy(hot).multiplyScalar(level * (0.6 + 0.4 * stretch));
+      if (cap) {
+        // (as bright as cruising whatever the stretch, and under the cap)
+        u.uColor.value.copy(colour).multiplyScalar(level);
+        u.uCore.value.copy(hot).multiplyScalar(level);
+        const c = u.uColor.value;
+        const k = u.uCore.value;
+        const peak = 0.2126 * (c.r + k.r) + 0.7152 * (c.g + k.g) + 0.0722 * (c.b + k.b);
+        if (peak > cap.peak) {
+          c.multiplyScalar(cap.peak / peak);
+          k.multiplyScalar(cap.peak / peak);
+        }
+      } else {
+        u.uColor.value.copy(colour).multiplyScalar(level * (0.75 + 0.25 * stretch));
+        u.uCore.value.copy(hot).multiplyScalar(level * (0.6 + 0.4 * stretch));
+      }
       u.uCam.value.copy(camera);
       u.uTime.value = t;
       const reach = dist(camera.x, camera.y, camera.z, nozzle.x, nozzle.y, nozzle.z); // engine to lens
@@ -256,27 +280,47 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
         }
       }
       path[0].run = 0;
+      // drawn at even steps along the path, ending at the flame's length
+      // exactly: at the galaxy's speeds a sample lands further back than a
+      // flame is long, and drawn sample to sample the plume would be a
+      // sample's spacing long, a different length every frame (a flicker)
       const n = path.length;
+      const end = Math.min(path[n - 1].run, reachOut);
+      let seg = 1;
       for (let i = 0; i < POINTS; i++) {
-        const at = Math.min(i, n - 1);
-        const p = path[at];
-        const q = path[at + 1 < n ? at + 1 : Math.max(0, at - 1)]; // a neighbour, for the plume's direction
-        dir.set(q.x - p.x, q.y - p.y, q.z - p.z);
-        toCam.set(camera.x - p.x, camera.y - p.y, camera.z - p.z);
+        const s = (end * i) / (POINTS - 1);
+        while (seg < n - 1 && path[seg].run < s) seg++;
+        const a = path[seg - 1];
+        const b = path[seg];
+        const span = b.run - a.run;
+        const f = span > 1e-9 ? Math.min(1, Math.max(0, (s - a.run) / span)) : 0;
+        evenX[i] = a.x + (b.x - a.x) * f;
+        evenY[i] = a.y + (b.y - a.y) * f;
+        evenZ[i] = a.z + (b.z - a.z) * f;
+        evenAge[i] = a.age + (b.age - a.age) * f;
+        evenRun[i] = s;
+      }
+      for (let i = 0; i < POINTS; i++) {
+        const px = evenX[i];
+        const py = evenY[i];
+        const pz = evenZ[i];
+        const j = i + 1 < POINTS ? i + 1 : i - 1; // a neighbour, for the plume's direction
+        dir.set(evenX[j] - px, evenY[j] - py, evenZ[j] - pz);
+        toCam.set(camera.x - px, camera.y - py, camera.z - pz);
         across.crossVectors(dir, toCam);
         if (across.lengthSq() < 1e-12) across.crossVectors(dir.lengthSq() > 1e-12 ? dir : lift, lift);
         across.normalize();
         // 0 at the nozzle, 1 where it's gone: by age, or by coming too near the lens
-        const lens = dist(camera.x, camera.y, camera.z, p.x, p.y, p.z) / reach;
-        const k = i < n ? Math.min(1, Math.max(p.age / life, p.run / reachOut, 1 - Math.min(1, Math.max(0, (lens - 0.2) / 0.3)))) : 1;
+        const lens = dist(camera.x, camera.y, camera.z, px, py, pz) / reach;
+        const k = Math.min(1, Math.max(evenAge[i] / life, evenRun[i] / reachOut, 1 - Math.min(1, Math.max(0, (lens - 0.2) / 0.3))));
         // a flame's shape: a little narrow right at the nozzle, swelling,
         // then thinning away (faster than it fades)
         const w = width * (0.6 + 0.4 * Math.sin(Math.min(1, k * 5) * Math.PI * 0.5)) * (1 - k) ** 1.6 * (0.5 + 0.5 * level) * (0.8 + 0.2 * stretch);
         // the plasma's ripple: the middle line weaving side to side, more as it goes
-        const weave = wobble ? Math.sin(p.age * 26 + phase) * width * wobble * k : 0;
-        const cx = p.x + across.x * weave;
-        const cy = p.y + across.y * weave;
-        const cz = p.z + across.z * weave;
+        const weave = wobble ? Math.sin(evenAge[i] * 26 + phase) * width * wobble * k : 0;
+        const cx = px + across.x * weave;
+        const cy = py + across.y * weave;
+        const cz = pz + across.z * weave;
         const o = i * 6;
         pos[o] = cx - across.x * w;
         pos[o + 1] = cy - across.y * w;
@@ -284,7 +328,7 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
         pos[o + 3] = cx + across.x * w;
         pos[o + 4] = cy + across.y * w;
         pos[o + 5] = cz + across.z * w;
-        fade[i * 2] = fade[i * 2 + 1] = i < n ? 1 - k : 0;
+        fade[i * 2] = fade[i * 2 + 1] = 1 - k;
         along[i * 2] = along[i * 2 + 1] = Math.min(1, k);
       }
       geo.attributes.position.needsUpdate = true;

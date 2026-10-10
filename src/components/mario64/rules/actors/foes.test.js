@@ -190,3 +190,100 @@ describe('iron balls', () => {
     expect(g.mario.health).toBeLessThan(8);
   });
 });
+
+describe('Bob-ombs’ eyes', () => {
+  const walled = () => {
+    const k = createKit();
+    k.box({ x: 0, y: -100, z: 0, w: 40000, h: 100, d: 40000, mat: 'g' });
+    k.box({ x: 0, y: 0, z: 0, w: 60, h: 600, d: 3000, mat: 'g' });
+    const o = k.done();
+    return makeWorld(o.tris, o.kinds, { deathY: -3000 });
+  };
+  it('light their fuse only for a Mario they can see: not through a wall', () => {
+    const g = newScene({ world: walled(), mario: newMario({ x: -200, y: 0, z: 0 }), save: { stars: {} }, area: {} });
+    const b = g.spawn({ type: 'bobomb', x: 200, y: 0, z: 0, yaw: Math.PI / 2 });
+    frames(g, 30);
+    expect(b.state).toBe('walk');
+    expect(events(g, 'fuse')).toHaveLength(0);
+    // in the open, at the same distance, at once
+    const open = scene(newMario({ x: -200, y: 0, z: 0 }));
+    const c = open.spawn({ type: 'bobomb', x: 200, y: 0, z: 0 });
+    frame(open);
+    expect(c.state).toBe('lit');
+  });
+});
+
+describe('the Chain Chomp’s tell', () => {
+  it('rears back over its last moments before a bite at a Mario who is near, and bites when it always did', () => {
+    const g = scene(newMario({ x: 0, y: 0, z: 700 }));
+    g.spawn({ type: 'post', id: 'post', x: 0, y: 0, z: 0 });
+    const c = g.spawn({ type: 'chomp', post: 'post', gate: 'gate', x: 0, y: 0, z: -300 });
+    g.mario.invuln = 999;
+    const tells = [];
+    let went = -1;
+    for (let i = 0; i < 80 && went < 0; i++) {
+      frame(g);
+      tells.push(c.tell);
+      if (c.state === 'lunge') went = i;
+    }
+    expect(went).toBe(59); // (its 60-frame wait, as before)
+    // wound up over a dozen frames, rising, just before it went
+    const wound = tells.filter((v) => v > 0);
+    expect(wound.length).toBeGreaterThanOrEqual(10);
+    expect(tells.slice(0, 40).every((v) => v === 0)).toBe(true);
+    for (let i = 1; i < wound.length; i++) expect(wound[i]).toBeGreaterThan(wound[i - 1]);
+    // far off, it doesn't wind up at all
+    const far = scene(newMario({ x: 0, y: 0, z: 9000 }));
+    far.spawn({ type: 'post', id: 'post', x: 0, y: 0, z: 0 });
+    const d = far.spawn({ type: 'chomp', post: 'post', gate: 'gate', x: 0, y: 0, z: -300 });
+    for (let i = 0; i < 100; i++) {
+      frame(far);
+      expect(d.tell).toBe(0);
+    }
+  });
+});
+
+describe('Goombas’ eyes', () => {
+  // a floor with a wall across it: Mario on one side, a Goomba on the other
+  const walled = () => {
+    const k = createKit();
+    k.box({ x: 0, y: -100, z: 0, w: 40000, h: 100, d: 40000, mat: 'g' });
+    k.box({ x: 0, y: 0, z: 0, w: 60, h: 600, d: 3000, mat: 'g' });
+    const o = k.done();
+    return makeWorld(o.tris, o.kinds, { deathY: -3000 });
+  };
+  it('chase only what they can see: not Mario behind a wall', () => {
+    const g = newScene({ world: walled(), mario: newMario({ x: -250, y: 0, z: 0 }), save: { stars: {} }, area: {} });
+    const a = g.spawn({ type: 'goomba', x: 250, y: 0, z: 0 });
+    frames(g, 90);
+    expect(a.state).toBe('wander');
+    expect(a.pos.x).toBeGreaterThan(40);
+    // and in the open, they do
+    const open = scene(newMario({ x: -250, y: 0, z: 0 }));
+    const b = open.spawn({ type: 'goomba', x: 250, y: 0, z: 0 });
+    frames(open, 90);
+    expect(b.state).toBe('chase');
+  });
+
+  it('keep after Mario a moment once he is round the wall, go to look where he was, then wander', () => {
+    const g = newScene({ world: walled(), mario: newMario({ x: 300, y: 0, z: -100 }), save: { stars: {} }, area: {} });
+    const a = g.spawn({ type: 'goomba', x: 400, y: 0, z: 400 });
+    frames(g, 30);
+    expect(a.state).toBe('chase');
+    // Mario steps round the wall's end, out of sight
+    g.mario.pos.x = -300;
+    g.mario.pos.z = -1700;
+    const states = [];
+    let nearest = Infinity;
+    for (let i = 0; i < 240; i++) {
+      frame(g);
+      states.push(a.state);
+      nearest = Math.min(nearest, Math.hypot(a.pos.x - 300, a.pos.z + 100));
+      expect(a.pos.x).toBeGreaterThan(30); // (never through the wall)
+    }
+    // still chasing for a while (intuition), then on to where it last had him, then wandering
+    expect(states.slice(0, 60).every((s) => s === 'chase')).toBe(true);
+    expect(states[states.length - 1]).toBe('wander');
+    expect(nearest).toBeLessThan(200);
+  });
+});

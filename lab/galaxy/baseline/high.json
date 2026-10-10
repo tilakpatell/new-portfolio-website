@@ -1,0 +1,36 @@
+[
+  {
+    "id": "tatooine",
+    "loaded": 16.4,
+    "calls": 54,
+    "triangles": 270309,
+    "points": 5017,
+    "lines": 0,
+    "geometries": 62,
+    "textures": 40,
+    "programs": 67,
+    "frames": 5,
+    "p50": 1150,
+    "p95": 2333.3,
+    "ratio": 1.25,
+    "glbMB": 10.5,
+    "errors": []
+  },
+  {
+    "id": "coruscant",
+    "loaded": 4.3,
+    "calls": 50,
+    "triangles": 289262,
+    "points": 5537,
+    "lines": 0,
+    "geometries": 61,
+    "textures": 39,
+    "programs": 73,
+    "frames": 5,
+    "p50": 1266.6,
+    "p95": 1433.3,
+    "ratio": 1.25,
+    "glbMB": 13.6,
+    "errors": []
+  }
+]

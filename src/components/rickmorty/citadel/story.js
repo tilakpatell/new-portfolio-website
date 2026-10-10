@@ -1,6 +1,7 @@
-// The Citadel of Ricks, the story: the five things to do, what's said at
-// the Council and the ballot box, and how the Cop Ricks hunt. The place
-// itself is in ./layout.js.
+// The Citadel of Ricks, the story: the five things to do, and Mortytown's
+// Locos beside them; what's said at the Council and the ballot box, and how
+// the Cop Ricks hunt. The place itself is in ./layout.js (and Mortytown in
+// ./mortytown.js).
 
 import { progress } from '../../middleearth/towns/story';
 
@@ -46,10 +47,21 @@ export const QUESTS = [
     needs: 'votemorty',
     locked: 'After the election.',
   },
+  // on the side, any time after the day care: listed last, so the story's
+  // next step always comes first
+  {
+    id: 'locos',
+    name: 'The Mortytown Locos',
+    where: 'Mortytown, down the lift in the south-west',
+    blurb: 'Find the three Locos who robbed Morty Mart, and walk each one to Cop Morty.',
+    go: 'Morty Mart’s been robbed. The Locos are hiding somewhere in Mortytown. Find all three and walk each one to Cop Morty.',
+    needs: 'daycare',
+    locked: 'After the day care.',
+  },
 ];
 
 // the seal each one wins (../../Achievements.jsx)
-export const SEAL = { daycare: 'daycare', wafers: 'wafers', council: 'council', votemorty: 'votemorty', citadelout: 'citadelout' };
+export const SEAL = { daycare: 'daycare', wafers: 'wafers', council: 'council', votemorty: 'votemorty', citadelout: 'citadelout', locos: 'locos' };
 
 // The Citadel's mood: an ordinary day, election day once the first three
 // are done, a red alert once Candidate Morty has won, and an ordinary day
@@ -97,7 +109,7 @@ export const CONVOS = {
         ],
       },
       lost: { who: 'councilb', say: '“Lost it. In a disintegration ray, no doubt. Contempt of Council.”', next: 'face' },
-      dog: { who: 'councila', say: 'The three of them lean together and mutter behind their hands. Somewhere a gavel is found.', next: 'dismissed' },
+      dog: { who: 'narrator', say: 'The three of them lean together and mutter behind their hands. Somewhere a gavel is found.', next: 'dismissed' },
       dismissed: { who: 'councilb', say: '“Dismissed. Get out of our chamber, C-137.”' },
     },
   },
@@ -107,7 +119,7 @@ export const CONVOS = {
     nodes: {
       booth: { who: 'evilmorty', say: '“Vote Morty. A Citadel for all of us.” He holds out a ballot, and doesn’t blink.', next: 'cast' },
       cast: {
-        who: 'pa',
+        who: 'narrator',
         say: 'The ballot has three boxes.',
         choices: [
           { text: 'Candidate Morty', to: 'morty' },
@@ -124,7 +136,7 @@ export const CONVOS = {
   },
 };
 
-// Who says what in a conversation
+// Who says what in a conversation (the narrator, nobody: nothing said aloud)
 export const SPEAKERS = {
   councila: 'Council Rick',
   councilb: 'Zeta Alpha Rick',
@@ -132,10 +144,11 @@ export const SPEAKERS = {
   evilmorty: 'Candidate Morty',
   pa: 'The Citadel’s PA',
   rick: 'Rick C-137',
+  narrator: '',
 };
 
 // ── the Cop Ricks ──
 // Evil Morty's Cop Ricks on red alert (../../middleearth/towns/watchers.js):
 // a wider, longer look than the Nazgûl and quicker on their feet, but no
 // Ring to see you by.
-export const COPS = { sight: 11, cone: 0.55, smell: 1.6, hear: 4, ringSight: 0, alert: 0.7, chase: 5.2, patrol: 1.6, giveUp: 6, leash: 16, catch: 1, look: 1.6 };
+export const COPS = { sight: 11, cone: 0.55, smell: 1.6, hear: 4, ringSight: 0, alert: 0.7, chase: 5.2, patrol: 1.6, giveUp: 6, leash: 16, catch: 1, look: 1.6, far: 1.8, suspicious: 0.5, search: 10 }; // (far, suspicious, search: the cops take a second to clock a Morty, come to look, and sweep the concourse together)

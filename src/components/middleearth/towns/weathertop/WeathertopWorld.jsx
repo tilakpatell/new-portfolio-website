@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { stepGaze } from '../../shire/rules';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
@@ -13,7 +14,7 @@ import { nearest } from '../story';
 import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { BED, COLLIDERS, DELL, GAPS, HILL, PATCHES, PLANTS, RUIN, SAM_START, SPOTS, START, STAIR, WALLS, WORLD, castFor, spot, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SPEAKERS, weathertopProgress } from './story';
+import { CONVOS, QUESTS, SAYS, SEAL, SPEAKERS, weathertopProgress } from './story';
 import { ATHELAS, BRAND, FIRE, MARK, MARK_LINES, READINGS, RIDE, SIDE, newBrand, newFire, newHunt, newMark, newRide, pick, pickable, readMark, revealed, scrape, stamp, stampable, stepBrand, stepFire, stepHunt, stepRide, thrust } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -150,7 +151,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -390,7 +396,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       api.current?.fx('out');
       complete('supper');
       s.fire = null;
-      say('Out, every last ember. Pippin: “Oh, that’s nice! Ash on my tomatoes!”');
+      say(SAYS.tomatoes.text, false, SAYS.tomatoes.who);
       later(() => {
         shriek();
         say('A scream, out of the dark below. They’ve seen it. They’re coming up the hill! Get to the top, to the ruin!', true);
@@ -562,7 +568,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a blow holds the game a moment: the scene's hitstop, ../../feel.js)
+    const real = Math.min(0.05, ms / 1000);
+    const dt = real * a.timeScale(real) * fast;
     s.t += dt;
     s.stepT += dt;
     const k = s.keys;
@@ -641,7 +649,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     if (s.hunt && s.mode === 'walk') {
       for (const e of stepHunt(s.hunt, dt)) {
         if (e.type === 'cold') {
-          say('Frodo’s gone so cold. Strider: “Sam! Quickly!” Start again, and hurry.', true);
+          say(SAYS.cold.text, true, SAYS.cold.who);
           s.hunt = newHunt();
           s.found = [];
         }
@@ -908,28 +916,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   };
 
   // the touch stick
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   // held buttons, for touch: steer and spur
   const hold = (name, v) => ({
     onPointerDown: (e) => {
@@ -1056,13 +1043,13 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </p>
       )}
 
-      {bubble && walking && <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />}
+      {bubble && walking && <Bubble ref={bubbleRef} who={bubble.id} name={bubble.name} line={bubble.line} />}
 
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -1116,7 +1103,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           {hud.plant && (
             <div className="shire-panel-row">
               <button type="button" className="btn btn-primary btn-sm" onClick={doPick}>
-                Pick it {!touch && <kbd>E</kbd>}
+                {!touch && <kbd className="key-first">E</kbd>} Pick it
               </button>
             </div>
           )}
@@ -1249,7 +1236,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {walking && touch && <Stick onStick={onStick} />}
+      {walking && touch && <Stick onMove={onStick} />}
 
       {list && (
         <QuestList

@@ -55,5 +55,14 @@ describe('the surface made from the galaxy', () => {
     expect(p).toMatchObject({ system: 'hoth', mission: null, ship: 'xwing', found: ['base'], done: ['tauntaun'], build: null, net: null, reduced: false });
     expect(p.compass).toEqual({ current: null });
     expect(surfaceProps('tatooine', { ship: 'xwing' }).found).toEqual([]);
+    // (and who holds it in the war, for its garrison on the ground)
+    expect(surfaceProps('hoth', { ship: 'xwing', effects: { troops: 'rebel' } }).effects).toEqual({ troops: 'rebel' });
+    expect(surfaceProps('hoth', { ship: 'xwing' }).effects).toBeNull();
+  });
+  it('carries who you picked to play as, so a flown landing walks them out (the ship’s lead with no pick)', () => {
+    window.localStorage.setItem('tp-galaxy-hero', JSON.stringify({ id: 'han', gun: 'ee3' }));
+    expect(surfaceProps('hoth', { ship: 'xwing' }).hero).toMatchObject({ id: 'han', gun: 'ee3' });
+    window.localStorage.setItem('tp-galaxy-hero', 'nonsense');
+    expect(surfaceProps('hoth', { ship: 'falcon' }).hero).toMatchObject({ id: 'han', gun: 'blaster' });
   });
 });

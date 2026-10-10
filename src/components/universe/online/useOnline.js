@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { local } from '../../../lib/hooks';
 import { cleanName, randomCallsign } from './names';
 import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
+import { useEconomy } from '../EconomyProvider';
 
 // Going online, for the whole site (OnlineProvider.jsx holds it, so the
 // link stays up from page to page): whether you are (asked once on the
@@ -22,6 +23,28 @@ import { LOADOUT_KEY, STOCK_LOADOUT, readLoadouts } from '../outfit';
 // remembered, and they're never drawn over a walkable world (enterWorld(),
 // from ../../middleearth/towns/useTravellers.js), where the others are
 // there in person.
+//
+// Your level and factions go in the hello too: the wallet's level and its
+// marks (your standing with each universe, your oath and rank in the
+// galaxy's wars), once a page has loaded it, read again whenever it
+// changes, a standing level turns (`tp:standing`, from the universe page)
+// or you swear (`tp:oath`, from the galaxy's).
+//
+// follow(id) is the roster's “Fly to” and “Go”: the pilot to fly to once
+// the ship is in, on the universe map or in a galaxy system. The flight
+// page acts on followId and clears it when the trip ends; left alone, it's
+// forgotten after FOLLOW_MS (and on going offline), so a page opened much
+// later doesn't set off after someone.
+//
+// Who you are (identity.js, through nostr.js, loaded once you're online):
+// remember and setRemember(yes) are the roster's “Remember me on this
+// browser”, newIdentity() its “New identity” (a fresh key, and in again on
+// it), and guestTab says this tab flies as a guest, another being online
+// on the kept key. Your allies and blocks are kept in this browser too
+// (allies.js, made once you're online, handed to the link, which lists the
+// saved allies who aren't here as room.away); removeAlly(id) is the roster's
+// Remove on one of those, and isBlocked(id) says whether a block is kept
+// for a pilot (a world's travellers ask it too).
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
@@ -30,7 +53,8 @@ const POINTERS_KEY = 'tp-universe-pointers'; // 'off' once you've turned pointer
 const AWAY_MS = 120000; // a tab hidden this long leaves the room till you're back
 const FEED_MS = 6000;
 const FEED_MAX = 4;
-const OFF = { status: 'off', self: null, peers: [] };
+const FOLLOW_MS = 60000; // a pilot to fly to, once the ship's in (follow): forgotten after this
+const OFF = { status: 'off', self: null, peers: [], away: [] };
 
 export const OnlineContext = createContext(null);
 export const useOnline = () => useContext(OnlineContext);
@@ -50,7 +74,20 @@ export function useOnlineState(where) {
     window.addEventListener('tp:looks', on);
     return () => window.removeEventListener('tp:looks', on);
   }, []);
+  const { economy, version: wallet, marks } = useEconomy({ ask: false });
+  const level = economy?.level ?? 1;
+  const [marked, setMarked] = useState(0); // bumps when a standing or an oath changes
+  useEffect(() => {
+    const bump = () => setMarked((n) => n + 1);
+    window.addEventListener('tp:standing', bump);
+    window.addEventListener('tp:oath', bump);
+    return () => {
+      window.removeEventListener('tp:standing', bump);
+      window.removeEventListener('tp:oath', bump);
+    };
+  }, []);
   const [client, setClient] = useState(null);
+  const allies = useRef(null); // (allies.js's store: one for the page, made the first time you're online)
   const [room, setRoom] = useState(OFF);
   const [feed, setFeed] = useState([]);
   const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
@@ -67,8 +104,31 @@ export function useOnlineState(where) {
       setWorlds((n) => n - 1);
     };
   }, []);
+  const [following, setFollowing] = useState(null); // { id, at }: a fresh object each time, so asking again starts the clock again
+  const follow = useCallback((id) => setFollowing(typeof id === 'string' && id ? { id, at: Date.now() } : null), []);
+  useEffect(() => {
+    if (!following) return undefined;
+    const t = setTimeout(() => setFollowing(null), FOLLOW_MS);
+    return () => clearTimeout(t);
+  }, [following]);
+  useEffect(() => {
+    if (!on) setFollowing(null);
+  }, [on]);
   const latest = useRef({ name, kind, loadout, build, looks, where });
   latest.current = { name, kind, loadout, build, looks, where };
+  // who you are, once you've gone online (the module that has it comes with the link)
+  const [me, setMe] = useState(null);
+  const [, setMeChanged] = useState(0); // (bumped when it changes, for a render)
+  useEffect(() => {
+    if (!on || me) return undefined;
+    let gone = false;
+    import('./nostr')
+      .then((m) => !gone && setMe(m.identity()))
+      .catch(() => {});
+    return () => {
+      gone = true;
+    };
+  }, [on, me]);
 
   // gone from the tab a while: out of the room; back: in again
   useEffect(() => {
@@ -96,10 +156,11 @@ export function useOnlineState(where) {
     const timers = new Set();
     let n = 0;
     setRoom({ ...OFF, status: 'connecting' });
-    import('./client')
-      .then(({ createClient }) => {
+    Promise.all([import('./client'), import('./allies'), import('../../../runtime/local')])
+      .then(([{ createClient }, { createAllies }, { localSaves }]) => {
         if (gone) return;
-        c = createClient(latest.current);
+        allies.current ??= createAllies({ saves: localSaves() });
+        c = createClient({ ...latest.current, allies: allies.current });
         setClient(c);
         setRoom(c.snapshot());
         off = c.on((e) => {
@@ -135,9 +196,10 @@ export function useOnlineState(where) {
     };
   }, [on, attempt, away]);
 
+  // (marks() is read here, not each render: it counts up the war's points)
   useEffect(() => {
-    client?.setProfile({ name, kind, loadout, build, looks, where });
-  }, [client, name, kind, loadout, build, looks, where]);
+    client?.setProfile({ name, kind, loadout, build, looks, where, level, marks: marks() });
+  }, [client, name, kind, loadout, build, looks, where, level, marks, wallet, marked]);
 
   const keepName = (callsign) => {
     const next = cleanName(callsign) ?? name ?? randomCallsign();
@@ -175,7 +237,24 @@ export function useOnlineState(where) {
       setPointers(yes);
     },
     rename: keepName,
+    remember: me ? me.remember : true, // your key kept in this browser (identity.js)
+    setRemember(yes) {
+      if (!me) return;
+      me.setRemember(yes);
+      setMeChanged((n) => n + 1);
+    },
+    // a fresh key, and in again on it (your allies won't know you)
+    newIdentity() {
+      if (!me) return;
+      me.renew();
+      setAttempt((a) => a + 1);
+    },
+    guestTab: Boolean(me?.guest), // another tab's online on the kept key: this one's a guest
+    follow, // follow(id): fly to them once the ship's in; follow(null) to forget it
+    followId: following?.id ?? null,
     ally: (id, what) => client?.ally(id, what),
     block: (id, yes) => client?.block(id, yes),
+    removeAlly: (id) => allies.current?.dropAlly(id), // (a saved ally who isn't here: forgotten)
+    isBlocked: (id) => Boolean(allies.current?.isBlocked(id)), // (a block of yours kept in this browser: for the worlds' travellers)
   };
 }

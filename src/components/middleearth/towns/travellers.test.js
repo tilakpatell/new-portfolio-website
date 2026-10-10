@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QUIET_MS, createTravellers, readStep, writeStep } from './travellers';
+import { MAX, QUIET_MS, createTravellers, readStep, writeStep } from './travellers';
 
 // a room in memory: what one sends, the rest get
 function fakeRelay() {
@@ -126,6 +126,24 @@ describe('travellers', () => {
     b.leave();
   });
 
+  it('a hidden traveller takes no place', async () => {
+    const load = fakeRelay();
+    const now = () => 1000;
+    // (the room names them t1, t2, … as they join: Rosie first, then the crowd, then Fatty)
+    const hidden = new Set(Array.from({ length: MAX }, (_, i) => `t${i + 2}`));
+    const rosie = createTravellers({ town: 'bree', name: 'Rosie', load, now, hidden: (id) => hidden.has(id) });
+    const crowd = Array.from({ length: MAX }, (_, i) => createTravellers({ town: 'bree', name: `Orc ${i}`, load, now }));
+    await settle();
+    await settle();
+    for (const t of crowd) t.pose({ x: 1, z: 1, face: 0, speed: 3 });
+    const fatty = createTravellers({ town: 'bree', name: 'Fatty', load, now });
+    await settle();
+    await settle();
+    fatty.pose({ x: 2, z: 2, face: 0, speed: 3 });
+    expect(rosie.list().map((p) => p.name)).toEqual(['Fatty']);
+    for (const t of [rosie, fatty, ...crowd]) t.leave();
+  });
+
   it('see only those in the same area of a world, each area its own ground', async () => {
     const load = fakeRelay();
     let t = 1000;
@@ -167,5 +185,67 @@ describe('steps with an area', () => {
     expect(readStep([0, 0, 0, 0, 0, 0, 0, '<script>'])).not.toHaveProperty('area');
     expect(readStep([0, 0, 0, 0, 0, 0, 0, 'x'.repeat(40)])).not.toHaveProperty('area');
     expect(writeStep({ x: 0, z: 0, face: 0 })).toHaveLength(5);
+  });
+});
+
+describe('steps with an emote and how you move', () => {
+  // the reader before them, as an older client still has it
+  const oldRead = (data) => {
+    const step = { x: data[0], z: data[1], face: data[2], moving: data[3] === 1 };
+    if (data.length >= 7) Object.assign(step, { speed: data[5], y: data[6] });
+    if (typeof data[7] === 'string') step.area = data[7];
+    return step;
+  };
+
+  it('carry them, cleaned, in every kind of step, and an older reader reads the rest as before', () => {
+    const flags = { emote: ['wave', 1.3], move: { speed: 3.04, side: -0.26, turn: 1.23 } };
+    for (const more of [{}, { motion: true }, { area: 'arcade' }, { motion: true, area: 'sky' }]) {
+      const h = { x: 1, z: 2, face: 0.5, speed: 3, y: 1 };
+      const sent = JSON.parse(JSON.stringify(writeStep(h, { ...flags, ...more })));
+      const step = readStep(sent);
+      expect(step.emote).toEqual({ id: 'wave', age: 1.3 });
+      expect(step.motion).toEqual({ speed: 3, side: -0.3, turn: 1.2 });
+      const plain = readStep(writeStep(h, more));
+      expect(step).toEqual({ ...plain, emote: step.emote, motion: step.motion });
+      expect(oldRead(sent)).toEqual(oldRead(writeStep(h, more)));
+    }
+  });
+
+  it('leave a step without them as it was, and drop what isn’t one', () => {
+    expect(writeStep({ x: 0, z: 0, face: 0 }, { emote: null, move: null })).toHaveLength(5);
+    expect(writeStep({ x: 0, z: 0, face: 0 }, { emote: ['moonwalk', 1] })).toHaveLength(5);
+    expect(readStep([0, 0, 0, 0, 0])).not.toHaveProperty('emote');
+    const bad = readStep([0, 0, 0, 0, 0, { e: ['moonwalk', 1], m: 'fast' }]);
+    expect(bad).not.toHaveProperty('emote');
+    expect(bad).not.toHaveProperty('motion');
+    expect(readStep([0, 0, 0, 0, 0, { e: ['taunt', 2] }]).emote).toEqual({ id: 'taunt', age: 2 });
+  });
+
+  it('reach the others, and go when the emote does', async () => {
+    const load = fakeRelay();
+    let t = 1000;
+    const now = () => t;
+    const a = createTravellers({ town: 'c137', name: 'Morty', load, now });
+    const b = createTravellers({ town: 'c137', name: 'Summer', load, now });
+    await settle();
+    await settle();
+    a.pose({ x: 1, z: 2, face: 0, speed: 0 }, { move: { speed: 0, side: 0, turn: 0 } });
+    expect(b.list()[0].emote).toBeNull();
+    expect(b.list()[0].motion).toEqual({ speed: 0, side: 0, turn: 0 });
+    // standing still, an emote struck goes out at the walking pace, not a second later
+    t += 250;
+    a.pose({ x: 1, z: 2, face: 0, speed: 0 }, { emote: ['cheer', 0], move: { speed: 0, side: 0, turn: 0 } });
+    expect(b.list()[0].emote).toEqual({ id: 'cheer', age: 0 });
+    // the same one going on: at the standing pace
+    t += 250;
+    a.pose({ x: 1, z: 2, face: 0, speed: 0 }, { emote: ['cheer', 0.3], move: { speed: 0, side: 0, turn: 0 } });
+    expect(b.list()[0].emote).toEqual({ id: 'cheer', age: 0 });
+    // over: gone with the next step
+    t += 1000;
+    a.pose({ x: 1, z: 2, face: 0, speed: 0 });
+    expect(b.list()[0].emote).toBeNull();
+    expect(b.list()[0].motion).toBeNull();
+    a.leave();
+    b.leave();
   });
 });

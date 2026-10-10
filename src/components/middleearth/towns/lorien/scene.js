@@ -15,6 +15,8 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -28,8 +30,13 @@ import { makeTerrain } from '../ground';
 import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createLorienKit } from './props';
+import { createGollum } from '../marshes/props';
 import { AMBUSH, BANK, BOARDS, BUTTS, CAST, CITY, COLLIDERS, GALADHRIM, LANDING, MALLORNS, MIRROR, PATHS, RANGE, RIVER_Y, STAIR, TABLE, TREE, WOOD, groundHeight, nearPath, streamX, woodHeight } from './layout';
 import { RIVER, aimDir, riverBend, riverWide } from './rules';
+import { attend, castDo, castPlay, followDrawn, releaseCast, tickCast } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const X_AXIS = new THREE.Vector3(1, 0, 0);
@@ -168,9 +175,13 @@ function instanceModel(model, list) {
 export function createLorienWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 900, bloom: { strength: 0.7, radius: 0.6, threshold: 0.8 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 900, bloom: BLOOMS.lorien, onLost });
   stage.grade({ contrast: 0.08, saturation: 1.04, vignette: 0.26, grain: 0.012, shadow: [0.02, 0.02, 0.04], high: [0.05, 0.035, 0.0] });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0xd8c890, 30, 210);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35;
@@ -187,10 +198,13 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   const sky = makeSky(800);
   scene.add(sky.dome);
   const water = { uniforms: { uSky: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uSun: { value: V(0, 1, 0) }, uSunColor: { value: new THREE.Color() }, uGlints: { value: 1 } } };
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, house: houseLook, moods: MOODS });
 
   const kit = createLorienKit(renderer);
   const mats = kit.mats ?? {};
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
   const zones = { wood: new THREE.Group(), river: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
     g.position.copy(AT[k]);
@@ -550,15 +564,13 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     scene.add(b.group);
     return b;
   });
-  // Gollum, on his log behind
+  // Gollum, on his log behind: the one Gollum (../marshes/props.js),
+  // crouched on it, faces +x along it, as the log goes
   const gollum = new THREE.Group();
   const log = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 3.2, 8).rotateZ(Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x3a2e22 }));
-  const pale = new THREE.MeshLambertMaterial({ color: 0x9a9a7a });
-  const gBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.6, 4, 8).rotateZ(Math.PI / 2), pale);
-  gBody.position.set(0.1, 0.38, 0);
-  const gHead = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), pale);
-  gHead.position.set(0.62, 0.48, 0);
-  gollum.add(log, gBody, gHead);
+  const smeagol = createGollum(renderer);
+  smeagol.group.position.set(0.2, 0.28, 0);
+  gollum.add(log, smeagol.group);
   scene.add(gollum);
 
   // ── people ──
@@ -642,8 +654,14 @@ export function createLorienWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, night: 0, dawn: 0, first: true, leaves: 0, tempt: 0, eye: 0, sight: V(), sightD: 20 };
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
+  const HITSTOP = { hit: 50 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
+  // where the cast's eyes go: down into the Mirror, along the range to the butts
+  const MIRROR_EYE = V(MIRROR.x, woodHeight(MIRROR.x, MIRROR.z) + 0.9, MIRROR.z);
+  const BUTTS_EYE = V(BUTTS.x, groundHeight(BUTTS.x, BUTTS.z) + 1.2, BUTTS.z);
   const look = V();
   const lampCol = new THREE.Color(0xb8d4ff);
   const turnTo = (p, face, dt, k = 4) => {
@@ -665,6 +683,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     for (const b of boats) b.group.visible = zone === 'river';
     for (const r of rowers) for (const p of r) p.group.visible = zone === 'river';
     gollum.visible = zone === 'river';
+    // crouched on his log, looking about (the log moves him: still on it, he doesn't crawl)
+    if (gollum.visible) smeagol.animate(t, { pose: 'crouch', look: Math.sin(t * 0.7) * 0.3 });
     const h = s.hobbit;
 
     // ── the time of day ──
@@ -677,6 +697,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     const sunDir = atmosphere(A.night, A.dawn);
     // the Lady, terrible as the dawn
     A.tempt += ((s.tempt ? 1 : 0) - A.tempt) * Math.min(1, dt * (s.tempt ? 1.2 : 0.6));
+    // (the fog's own colour while it's this, not the sky's)
+    houseLook.set({ fogMix: 1 - A.tempt * 0.8 });
     if (A.tempt > 0.01) {
       scene.fog.color.lerp(TEMPT_FOG, A.tempt * 0.8);
       hemi.intensity *= 1 - A.tempt * 0.7;
@@ -705,11 +727,12 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       frodo.group.rotation.set(0, yaw, 0);
       sit(frodo, true);
       pose(frodo, t, { moving: false });
-      // Sam in front, paddling
+      // Sam in front, paddling (on the cast: his arms at the stroke, sat in the boat)
       const sam = rowers[0][0];
       sam.group.position.copy(mine.seats?.[0] ?? V(0.9, 0.3, 0)).applyMatrix4(mine.group.matrixWorld);
       sam.group.rotation.set(0, yaw, 0);
-      pose(sam, t, { moving: false, wave: 0.4 + Math.sin(t * 3) * 0.3 });
+      castDo(sam, { upper: 'push' });
+      pose(sam, t, { moving: false, wave: sam.cast?.ready ? 0 : 0.4 + Math.sin(t * 3) * 0.3 });
       mine.paddles?.forEach((p, i) => (p.rotation.z = Math.sin(t * 3 + i * Math.PI) * 0.5));
       // the others ahead, strung out down the river
       for (let i = 1; i < boats.length; i++) {
@@ -723,7 +746,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
           const seat2 = ob.seats?.[Math.min(1, j)] ?? V(0.9 - j * 1.2, 0.3, 0);
           p.group.position.copy(seat2).add(tmp2.set(-0.6 * Math.max(0, j - 1), 0, 0)).applyMatrix4(ob.group.matrixWorld);
           p.group.rotation.set(0, ob.group.rotation.y, 0);
-          pose(p, t + j, { moving: false, wave: j === 0 ? 0.4 + Math.sin(t * 3 + i) * 0.3 : 0 });
+          castDo(p, { upper: j === 0 ? 'push' : null });
+          pose(p, t + j, { moving: false, wave: j === 0 && !p.cast?.ready ? 0.4 + Math.sin(t * 3 + i) * 0.3 : 0 });
         });
       }
       // Gollum, a long way back
@@ -752,6 +776,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
         frodo.body.rotation.z = -0.25 - (s.pull?.pull ?? 0) * 0.35;
       } else frodo.body.rotation.z = 0;
     }
+    // (on the cast: his eyes down into the water of the Mirror)
+    castDo(frodo, { look: zone === 'wood' && (s.mode === 'mirror' || (s.vision && s.mode === 'talk')) ? MIRROR_EYE : null });
     // at the targets: the bow up and drawn, Legolas watching, the arrows
     const range = zone === 'wood' && s.mode === 'archery' ? s.range : null;
     archer.group.visible = Boolean(range);
@@ -769,10 +795,16 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       const up = range.state === 'aim' || range.draw > 0;
       if (archer.arms?.[0]) archer.arms[0].rotation.x = up ? -1.5 : 0;
       if (archer.arms?.[1]) archer.arms[1].rotation.x = 1.3 * range.draw;
+      // on the cast: the bow held out at the mark, a loose as each arrow goes, eyes on the butts
+      castDo(archer, { upper: up ? 'aim.pistol' : null, look: BUTTS_EYE });
+      if (range.arrow && range.arrow !== A.loosed) castPlay(archer, 'shoot.pistol', { layer: 'upper' });
+      A.loosed = range.arrow ?? null;
       const lx = BUTTS.x + 2;
       const lz = BUTTS.z + 1.1;
       legolasMark.group.position.set(lx, groundHeight(lx, lz), lz);
       turnTo(legolasMark, range.aim.yaw + 0.25, dt, 3);
+      // (on the cast: he watches the arrow fly, and you between)
+      castDo(legolasMark, { look: range.arrow ? V(range.arrow.x, range.arrow.y, range.arrow.z) : archer });
       pose(legolasMark, t, { moving: false, talk: s.speaker === 'legolas' ? 1 : 0 });
       if (range.arrow) shown.push([range.arrow, 0.43]);
       for (const a of range.stuck) shown.push([a, 0.3]);
@@ -795,8 +827,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       p.group.visible = Boolean(on);
       if (!on) continue;
       p.group.position.set(c.x, groundHeight(c.x, c.z), c.z);
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      turnTo(p, near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face, dt);
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      attend(p, h, c.face, dt, { who: frodo });
       pose(p, t + c.x, { moving: false, talk: s.talk === c.id ? 1 : 0 });
       if (c.look === 'galadriel') lights.push([tmp.set(c.x, groundHeight(c.x, c.z) + 2.2, c.z).clone(), lampCol, 2.4, 9]);
     }
@@ -807,7 +839,13 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       const hx = lead ? lead.x : AMBUSH.x + 4;
       const hz = lead ? lead.z : AMBUSH.z;
       haldir.group.position.set(hx, groundHeight(hx, hz), hz);
-      turnTo(haldir, lead ? lead.face : Math.PI, dt, 6);
+      // on the cast: waiting, he looks back at you and waves you on; walking, ahead
+      const waiting = Boolean(lead?.waiting);
+      if (waiting && haldir.cast?.ready) attend(haldir, h, lead.face, dt, { who: frodo, near: 30, greet: false });
+      else turnTo(haldir, lead ? lead.face : Math.PI, dt, 6);
+      if (waiting && !A.haldirWaited) castPlay(haldir, 'beckon', { layer: 'upper' });
+      A.haldirWaited = waiting;
+      castDo(haldir, { look: waiting || !lead ? frodo : null });
       pose(haldir, t, { moving: Boolean(lead?.moving), speed: 1, talk: s.speaker === 'haldir' ? 1 : 0 });
     }
     galadhrim.forEach((p, i) => {
@@ -817,18 +855,24 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       p.group.position.set(x, groundHeight(x, z), z);
       p.group.rotation.y = Math.atan2(-(AMBUSH.z - z), AMBUSH.x - x);
       pose(p, t + i, { moving: false });
-      // bow up, drawn
+      // bow up, drawn (on the cast: held on you, eyes along it)
       if (p.arms?.[0]) p.arms[0].rotation.x = -1.5;
       if (p.arms?.[1]) p.arms[1].rotation.x = 1.3;
+      castDo(p, { upper: 'aim.pistol', look: frodo });
     });
     // the Fellowship behind you
     COMPANY.forEach((id, i) => {
       const p = company[id];
       const at = s.company?.[id];
       p.group.visible = zone === 'wood' && Boolean(at);
-      if (!at) return;
-      p.group.position.set(at.x, groundHeight(at.x, at.z), at.z);
-      turnTo(p, at.face, dt, 6);
+      if (!at) {
+        p.drawn = null;
+        return;
+      }
+      // off the conga line: each to its place at its own pace, apart from the rest
+      const d = followDrawn(p, at, dt, { others: [...COMPANY.map((o) => company[o]).filter((o) => o !== p && o.group.visible), { x: h.x, z: h.z }] });
+      p.group.position.set(d.x, groundHeight(d.x, d.z), d.z);
+      p.group.rotation.y = d.face;
       pose(p, t + i, { moving: Boolean(at.moving) });
     });
     // the Lord and the Lady, on the flet
@@ -843,7 +887,10 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       const a = top - 1.05 - off * 0.45;
       const rf = trunkAt(STAIR.rise) + 3;
       p.group.position.set(TREE.x + Math.cos(a) * rf, fletTop.y + 0.05, TREE.z + Math.sin(a) * rf);
-      p.group.rotation.y = Math.atan2(-(frodo.group.position.z - p.group.position.z), frodo.group.position.x - p.group.position.x);
+      const toFrodo = Math.atan2(-(frodo.group.position.z - p.group.position.z), frodo.group.position.x - p.group.position.x);
+      // (on the cast: they turn to you over a moment, their eyes first; a toy faces you at once)
+      if (p.cast?.ready) attend(p, frodo.group.position, toFrodo, dt, { who: frodo, near: 30, greet: false });
+      else p.group.rotation.y = toFrodo;
       pose(p, t + off, { moving: false, talk: s.speaker === (p === lady ? 'galadriel' : 'celeborn') ? 1 : 0 });
     }
     if (onFlet) lights.push([lady.group.position.clone().add(V(0, 2, 0)), lampCol, 3 + A.night * 2, 12]);
@@ -852,6 +899,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     ladyLight.intensity = 0;
     if (zone === 'wood' && ladyAtMirror?.group.visible) {
       ladyAtMirror.group.scale.setScalar(1 + A.tempt * 0.35);
+      // (on the cast: her arms up and out as the Ring tempts her)
+      castDo(ladyAtMirror, { full: A.tempt > 0.4 ? 'cast.idle' : null });
       ladyLight.position.copy(ladyAtMirror.group.position).add(V(0, 2, 0));
       ladyLight.color.setRGB(0.75 + A.tempt * 0.1, 1, 0.85 + A.tempt * 0.15);
       ladyLight.intensity = 1.5 + A.tempt * 22;
@@ -992,25 +1041,25 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'river' || s.mode === 'climb';
-    const k = jump || s.mode === 'archery' ? 1 : Math.min(1, dt * (follow ? 7 : 2.4));
+    const k = jump || s.mode === 'archery' ? 1 : byFrame(follow ? 7 : 2.4, dt);
     A.cam.at.lerp(camAt, k);
     A.cam.look.lerp(camLook, k);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
     ground.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
 
   const fxEvent = (type, id) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'hit') A.shake = Math.max(A.shake, 0.22);
     else if (type === 'eye') A.shake = Math.max(A.shake, 0.06);
     else if (type === 'touched') A.shake = 0.3;
@@ -1040,12 +1089,15 @@ export function createLorienWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the town is first drawn ──
   const ground = groundTown({ renderer, scene, terrain, outdoors: wood, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-6, 0], radius: 72, shade: 0x26301e, sunFloor: 0.4 });
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     screenOf,
     resize: stage.resize,
     get info() {
@@ -1059,9 +1111,11 @@ export function createLorienWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      shake.dispose();
       ground.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

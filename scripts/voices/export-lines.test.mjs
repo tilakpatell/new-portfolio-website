@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineId, spoken, voiceOf } from '../../src/lib/voiced';
-import { conversationLines, peopleLines } from './export-lines.mjs';
+import { conversationLines, peopleLines, worldLines } from './export-lines.mjs';
 
 const convo = {
   start: 'a',
@@ -43,5 +43,20 @@ describe('the worlds’ people, in their own formats', () => {
   });
   it('leave out a line that’s only an aside', () => {
     expect(peopleLines([[{ id: 'starscream', lines: ['(He sneers.)'] }]], v, ['starscream'])).toEqual([]);
+  });
+});
+
+describe('the worlds’ own voicelines.js', () => {
+  const v = { lineId, voiceOf, spoken };
+  it('say each line in its speaker’s voice, by the id the site looks it up by', () => {
+    const got = worldLines([[{ who: 'dwight', text: 'Fact. Bears eat beets.' }, { who: 'strider', text: 'Footsteps. “Frodo?”' }]], v);
+    expect(got).toEqual([
+      { id: lineId('dwight', 'Fact. Bears eat beets.'), who: 'dwight', text: 'Fact. Bears eat beets.' },
+      { id: lineId('aragorn', 'Footsteps. “Frodo?”'), who: 'aragorn', text: 'Frodo?' },
+    ]);
+  });
+  it('leave out the voiceless, the unsaid and the same line twice', () => {
+    const got = worldLines([[{ who: 'narrator', text: 'He waits.' }, { who: 'r2', text: 'Beep.' }, { who: 'kid', text: '(Shrugs.)' }], [{ who: 'kid', text: 'Hi!' }, { who: 'kid', text: 'Hi!' }], undefined], v);
+    expect(got.map((l) => l.text)).toEqual(['Hi!']);
   });
 });

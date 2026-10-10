@@ -5,11 +5,14 @@ import { useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { capturePointer } from '../../../lib/pointer';
 import { keyDown, keyUp } from '../../middleearth/towns/keys';
 import { SWARA_NAME, bolLabel, onHarmoniumNote, onSitarChikari, onSitarPluck, onTablaBol, onTanpuraPluck, swaraOf } from '../engine';
-import { INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove, walker } from './layout';
+import { BODY, INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove, walker } from './layout';
 import './world.css';
 import '../../../styles/lazy/music.css';
 import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { Stick } from '../../../runtime/hud';
+import { throttled } from '../../worlds/loadingSteps';
 
 // others online in the courtyard (middleearth/towns/useTravellers), as lamps
 const ROOM = { bound: 80, motion: true };
@@ -28,10 +31,17 @@ const ROOM = { bound: 80, motion: true };
 const label = (ratio) => SWARA_NAME[swaraOf(ratio).s];
 const TURN = 1.9; // radians a second, from the arrow keys
 
+// the walk's numbers on the ?debug panel (layout.js's BODY, which the walker reads as it goes)
+const walkItem = (key, label, min, max, step) => ({ key, label, type: 'range', min, max, step, get: () => BODY[key], set: (v) => {
+  BODY[key] = v;
+} });
+const WALK_GROUPS = [{ name: 'walk', items: [walkItem('walk', 'walk (m/s)', 0.5, 6, 0.1), walkItem('run', 'run (m/s)', 1, 10, 0.1), walkItem('accel', 'accel', 2, 40, 0.5), walkItem('turn', 'turn', 2, 30, 0.5)] }];
+
 export default function MusicWorld({ panel }) {
   const three = use3D();
   const touch = useMediaQuery('(pointer: coarse)');
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const trav = useTravellers('music', gl === 'on', ROOM);
   const [models, setModels] = useState(false);
   const [near, setNear] = useState(null);
@@ -57,15 +67,19 @@ export default function MusicWorld({ panel }) {
     };
     import('./scene')
       .then(({ createMusicWorld }) => (dead || !canvas.current ? null : createMusicWorld(canvas.current, { onLost: () => !dead && setGl('lost') })))
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
           return;
         }
         api.current = a;
+        a.tune?.(WALK_GROUPS); // (behind ?debug: the walk's numbers)
         if (import.meta.env.DEV) window.__MUSIC_WORLD__ = { api: a, sim: sim.current }; // for the QA scripts
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
         a.loaded.then(() => !dead && setModels(true));
       })
@@ -211,33 +225,9 @@ export default function MusicWorld({ panel }) {
     if (sim.current.drag?.id === e.pointerId) sim.current.drag = null;
   };
 
-  // ── the thumb stick, on a touch screen ──
-  const stickEl = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      capturePointer(e);
-      const r = e.currentTarget.getBoundingClientRect();
-      s.stickAt = { id: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 };
-    }
-    const at = s.stickAt;
-    if (!at || at.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      s.stick = null;
-      s.stickAt = null;
-      if (stickEl.current) stickEl.current.style.transform = '';
-      return;
-    }
-    let x = (e.clientX - at.cx) / at.r;
-    let y = (e.clientY - at.cy) / at.r;
-    const len = Math.hypot(x, y);
-    if (len > 1) {
-      x /= len;
-      y /= len;
-    }
-    s.stick = { x, y };
-    if (stickEl.current) stickEl.current.style.transform = `translate(${x * 34}px, ${y * 34}px)`;
-  };
+  // ── the thumb stick, on a touch screen: the HUD kit's, in the
+  // courtyard's own ring (full tilt at the ring's edge, as before) ──
+  const onStick = (x, y) => (sim.current.stick = x || y ? { x, y } : null);
 
   const toRoom = () => document.getElementById('music-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -277,7 +267,7 @@ export default function MusicWorld({ panel }) {
         }}
       >
         <canvas ref={canvas} className="mw-canvas" data-on={gl === 'on' || undefined} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
-        {gl !== 'on' && <p className="mw-loading">Landing on the music planet…</p>}
+        <LoadingVeil shown={gl !== 'on'} progress={prep.value} step={prep.step} title="Landing on the music planet" />
 
         <div className="mw-hud mw-hud-top">
           <div>
@@ -298,16 +288,16 @@ export default function MusicWorld({ panel }) {
 
         {near && !open && (
           <div className="mw-hud mw-hud-bottom">
+            {/* key first, as in every world's prompt; on touch the pill itself is the button, so no key */}
             <button type="button" className="mw-prompt" onClick={() => openPanel(near)}>
-              Play the {INSTRUMENTS[near].name.toLowerCase()} {!touch && <kbd>E</kbd>}
+              {!touch && <kbd>E</kbd>}
+              Play the {INSTRUMENTS[near].name.toLowerCase()}
             </button>
           </div>
         )}
 
         {touch && !open && gl === 'on' && (
-          <div className="mw-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-            <span ref={stickEl} />
-          </div>
+          <Stick className="mw-stick" onMove={onStick} reach={56} label="Walk" />
         )}
 
         {opened.map((id) => (

@@ -13,11 +13,18 @@
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createStage } from '../../../lib/stage3d';
+import { houseOn } from '../../../lib/three/house';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { houseGroups } from '../../../lib/three/houseTuning';
 import { SUN, createSea, loadSky } from './sea';
 import { DECAL, createBalls, createDecals, createFoam, createParticles } from './fx';
 import { ARM, CHAPTERS, ISLES, SHIPS, TIDE, bearing, fitted } from './rules';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { createGhosts } from '../../middleearth/towns/ghosts';
+import { WHEEL_AHEAD, createCaptain, makeWheel } from './captain';
+import { createArm } from './arm';
+import { bendArm } from './bend';
+import { LOOK } from './look';
 
 const BASE = '/games/caribbean';
 const FIRST = ['pearl', 'navy', 'jack']; // what a game can't start without
@@ -44,7 +51,7 @@ const lerp = (a, b, k) => a + (b - a) * k;
 
 export async function createTide3D(canvas, { soft = false, alive = () => true, onLost, onProgress } = {}) {
   onProgress?.(0.05, 'Raising the sky');
-  const stage = createStage(canvas, { soft, shadows: true, fov: 50, near: 1, far: 9000, exposure: 0.92, bloom: { strength: 0.24, radius: 0.5, threshold: 1 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: true, fov: 50, near: 1, far: 9000, exposure: 0.92, bloom: LOOK.bloom, onLost });
   const { scene, camera, renderer } = stage;
   stage.grade({ contrast: 0.16, saturation: 1.08, vignette: 0.26, shadow: [0.0, 0.012, 0.02], high: [0.03, 0.012, 0.0] });
 
@@ -65,7 +72,13 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   sun.shadow.normalBias = 0.5;
   scene.add(sun, sun.target);
   // a little cool light from the sky side, so the shadowed side isn't flat
-  scene.add(new THREE.HemisphereLight(0x9cc4ff, 0x1c2f33, 0.35));
+  const hemi = new THREE.HemisphereLight(0x9cc4ff, 0x1c2f33, 0.35);
+  scene.add(hemi);
+  // the house look (lib/three/house): the shade one colour from the sky
+  // light, as in every world, under the house tone mapper (the sea's own
+  // shader, and its fog, left as they are)
+  const house = houseOn({ renderer, scene, sun, hemi, look: { fog: false } });
+  let houseFrames = 0;
 
   const particles = createParticles(scene, sea.ripples);
   const decals = createDecals(scene, sea);
@@ -130,6 +143,8 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   const drop = (o) => {
     o.root.removeFromParent();
     for (const m of o.mats ?? []) m.dispose();
+    o.captain?.body.dispose();
+    o.bend?.dispose();
   };
 
   // islands, as each model lands
@@ -194,12 +209,20 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
       if (m.isMesh) m.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
     });
     tilt.add(figure);
-    const mixer = new THREE.AnimationMixer(figure);
-    if (src.clips[0]) mixer.clipAction(src.clips[0]).play();
+    // his wheel just ahead of him (the model has none there), its helmsman's
+    // side to him; and his body on it (./captain.js: his own idle, the clip
+    // library's for the rest, his hands on the spokes)
+    const tall = src.size.y * k;
+    const wheel = makeWheel(tall);
+    wheel.group.position.set(x - WHEEL_AHEAD * tall, deck, 0);
+    tilt.add(wheel.group);
+    const body = createCaptain(figure, src, { wheel });
     // where the title screen stands (on the main deck ahead of him, looking aft: the captain to the right of
     // the picture, the stern lantern and the sky behind) and what it looks at
-    return { mixer, eye: new THREE.Vector3(x - 5.0, deck + 2.5, 0.9), gaze: new THREE.Vector3(x + 2, deck + 2.25, -1.9) };
+    return { body, eye: new THREE.Vector3(x - 5.0, deck + 2.5, 0.9), gaze: new THREE.Vector3(x + 2, deck + 2.25, -1.9), sight: new THREE.Vector3(x - 40, deck + tall * 0.92, 0), ahead: new THREE.Vector3() };
   };
+  // a point on the sea (rules.js's x, y), a little over the water, in the world
+  const seaPoint = (p, out) => out.set(p.x, sea.height(p.x, p.y) + 4, p.y);
 
   const makeShip = (s) => {
     const spec = SHIP[s.kind];
@@ -322,6 +345,14 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   // ── things that happen ──
   let trauma = 0;
   let fovKick = 0;
+  // the shake through the house's feel (lib/three/feel.js), with the tide's
+  // own numbers: 1.1 at full trauma (the old 0.9 up and down is the feel's
+  // one offset, 1.1, now), a 0.035 roll, trauma gone at 1.3 a second; the
+  // hits still add to `trauma` and it's handed over each frame. Still under
+  // reduced motion (the page's calm is the same setting the feel reads).
+  const feel = createFeel({ seed: 31, baseFov: 50, offset: 1.1 });
+  feel.set({ decay: 1.3, roll: 0.035 });
+  stage.tune([...houseGroups(house, { exposure: { get: () => renderer.toneMappingExposure, set: (v) => (renderer.toneMappingExposure = v) } }), ...feelGroups(feel)]);
   const spray = (x, y, z, n, power, size = 1) => {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.283;
@@ -463,10 +494,6 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   const target = new THREE.Vector3();
   const deckAt = new THREE.Vector3();
   const deckTo = new THREE.Vector3();
-  const noise = (t, s) => {
-    const x = Math.sin(t * 12.9898 + s * 78.233) * 43758.5453;
-    return (x - Math.floor(x)) * 2 - 1;
-  };
   const moveCamera = (g, dt, view) => {
     const p = g.p;
     if (!cam.set) {
@@ -509,19 +536,19 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
     camera.lookAt(target);
     // a kick of the lens on a broadside, and the deck shaking under a hit
     fovKick = Math.max(0, fovKick - dt * 3.2);
+    // (the broadside's kick of the lens is a camera move: none under reduced motion)
+    if (view.calm) fovKick = 0;
     const fov = lerp(50 + (p.v / 30) * 4 + fovKick * fovKick * 2.2, 46, onDeck);
     if (Math.abs(camera.fov - fov) > 0.02) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
-    trauma = Math.max(0, trauma - dt * 1.3);
-    if (trauma > 0 && !view.calm) {
-      cam.t += dt;
-      const s = trauma * trauma;
-      camera.position.x += noise(cam.t * 31, 1) * s * 1.1;
-      camera.position.y += noise(cam.t * 31, 2) * s * 0.9;
-      camera.rotation.z += noise(cam.t * 31, 3) * s * 0.035;
+    if (trauma > 0) {
+      feel.trauma(trauma);
+      trauma = 0;
     }
+    feel.setBaseFov(camera.fov);
+    feel.update(dt, camera);
   };
 
   // ── a frame ──
@@ -574,7 +601,15 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
         ships.set(s.id, o);
       }
       poseShip(o, s, dt);
-      o.captain?.mixer.update(dt);
+      if (o.captain) {
+        // the captain: the wheel over with her helm, his eyes ahead, swung the way she turns
+        const c = o.captain;
+        c.ahead.copy(c.sight);
+        c.ahead.z = -s.rudder * 16; // (his left is her +z: a turn to starboard is to his right)
+        o.tilt.updateWorldMatrix(true, false);
+        o.tilt.localToWorld(c.ahead);
+        c.body.update(dt, { rudder: s.sunk ? 0 : s.rudder, ahead: c.ahead });
+      }
       trail(o, s, dt, s.max);
       if (!s.sunk && s.under < 0.3) {
         // where the hull meets the water: froth round it, and its shade under it
@@ -588,6 +623,9 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
         drop(o);
         ships.delete(id);
       }
+    // what the captain makes of what's happened (./jack.js), his eyes on it
+    const helm = ships.get(g.p.id)?.captain?.body;
+    if (helm) for (const e of g.events) helm.hear(e, g.p, seaPoint);
     // one of them about to fire: the arc its guns cover, in red, while it aims
     for (const s of g.ships) {
       if (!s.aim || s.sunk) continue;
@@ -710,26 +748,49 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
         lean.add(made.model);
         root.add(lean);
         scene.add(root);
-        o = { root, lean, mats: made.mats, height: made.height, sway: Math.random() * 6.283 };
+        // a chain, not a pole: bent along its length (./arm.js, ./bend.js),
+        // the lean group turning only where it leaves the water
+        o = { root, lean, mats: made.mats, height: made.height, sway: Math.random() * 6.283, chain: createArm({ seed: a.id }), bend: bendArm(made.model, lean), struck: 0 };
         armObjs.set(a.id, o);
       }
       const h = sea.height(a.x, a.y);
       let rise = 1;
       let fall = 0;
+      let curl = 1; // the hook at its tip
+      let droop = 0; // laid on the water, its end bent down into it
       if (a.st === 'warn') rise = 0;
       else if (a.st === 'rise') rise = ease(1 - a.t / ARM.rise);
-      else if (a.st === 'hold') fall = -0.22 * ease(1 - a.t / ARM.hold); // drawn back, before it comes down
-      else if (a.st === 'slam') fall = lerp(-0.22, 1.45, (1 - a.t / ARM.slam) ** 2);
-      else if (a.st === 'down') fall = 1.45;
-      else if (a.st === 'sink') {
+      else if (a.st === 'hold') {
+        // drawn back, before it comes down, the hook cocked
+        const k = ease(1 - a.t / ARM.hold);
+        fall = -0.22 * k;
+        curl = 1 + 0.3 * k;
+      } else if (a.st === 'slam') {
+        const k = (1 - a.t / ARM.slam) ** 2;
+        fall = lerp(-0.22, 1.45, k);
+        curl = 1.3 * (1 - k);
+        droop = k;
+      } else if (a.st === 'down') {
+        fall = 1.45;
+        curl = 0;
+        droop = 1;
+      } else if (a.st === 'sink') {
+        // going back down: still laid out, or (cut off) limp
         fall = a.hp > 0 ? 1.45 : 0.3;
+        curl = a.hp > 0 ? 0 : 0.6;
+        droop = a.hp > 0 ? 1 : 0;
         rise = a.t / ARM.sink;
       }
+      // struck: it recoils
+      if (a.hit > o.struck + 0.05) o.chain.flinch(0.7);
+      o.struck = a.hit;
+      const pose = o.chain.step(dt, { fall, curl, droop, t: sea.time });
+      o.bend.set(pose);
       o.root.visible = rise > 0.01;
       o.root.position.set(a.x, h - (1 - rise) * o.height * 1.02, a.y);
       o.root.rotation.y = -a.dir;
-      o.lean.rotation.z = -fall + Math.sin(sea.time * 2.3 + o.sway) * 0.07 * (1 - Math.min(1, Math.abs(fall)));
-      o.lean.rotation.x = Math.cos(sea.time * 1.9 + o.sway) * 0.07;
+      o.lean.rotation.z = -pose.base;
+      o.lean.rotation.x = Math.cos(sea.time * 1.9 + o.sway) * 0.05;
       const hit = a.hit > 0 ? (a.hit / 0.3) ** 2 : 0;
       for (const m of o.mats) m.emissive.setRGB(hit * 0.5, hit * 0.08, hit * 0.08);
       if (rise > 0.2 && Math.abs(fall) < 0.5) decals.put(DECAL.foam, a.x, a.y, 10, 10, sea.time, 0.86, 0.92, 0.94, 0.7);
@@ -793,6 +854,8 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
     decals.end();
     particles.update(dt, wind);
     const t1 = performance.now();
+    // (the ships and the crews that came since, taken on now and then)
+    if (houseFrames++ % 60 === 0) house.follow({ adopt: true });
     stage.render(ms);
     cost.sim += (t1 - t0 - cost.sim) * 0.05;
     cost.draw += (performance.now() - t1 - cost.draw) * 0.05;

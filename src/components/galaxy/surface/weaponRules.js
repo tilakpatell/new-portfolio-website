@@ -30,6 +30,9 @@ export const WEAPONS = {
   dlt19: { ...base, name: 'DLT-19', about: 'The heavy repeater: a stream of light bolts, slow to heat.', side: 'galaxy', damage: 1, every: 0.09, spread: 0.028, heat: 0.03, cool: 0.4, range: 100, zoom: 1.5, kick: 0.6 },
   ee3: { ...base, name: 'EE-3', about: 'Boba Fett’s carbine: a quick two-shot burst, a good scope.', side: 'galaxy', damage: 1, every: 0.36, burst: 2, spread: 0.008, heat: 0.13, cool: 0.35, range: 140, zoom: 2.6 },
   westar: { ...base, name: 'WESTAR-34', about: 'Jango’s pistol: light and very fast.', side: 'galaxy', damage: 1, every: 0.12, spread: 0.02, heat: 0.055, cool: 0.4, range: 70, zoom: 1.3, kick: 0.7 },
+  // (the soldiers' own: ground/troops.js; not in PICKABLE, so never offered to you)
+  dc15: { ...base, name: 'DC-15A', about: 'The clone trooper’s rifle: three-shot bursts.', side: 'galaxy', damage: 1, every: 0.4, burst: 3, spread: 0.012, range: 120 },
+  e5: { ...base, name: 'E-5', about: 'The battle droid’s carbine: slow and wide.', side: 'galaxy', damage: 1, every: 0.5, spread: 0.03, range: 70 },
   bowcaster: { ...base, name: 'Bowcaster', about: 'Chewie’s: a slow, heavy quarrel.', side: 'galaxy', damage: 3, every: 0.7, spread: 0.006, heat: 0.25, cool: 0.3, range: 120, zoom: 1.6, kick: 1.6 },
   // ── Elsewhere ──
   shotgun: { ...base, name: 'Scattergun', about: 'Seven pellets at once. Close in, nothing survives it.', side: 'elsewhere', damage: 1, every: 0.8, pellets: 7, spread: 0.07, heat: 0.26, cool: 0.3, range: 30, zoom: 1.1, kick: 2 },
@@ -37,13 +40,17 @@ export const WEAPONS = {
   smg: { ...base, name: 'Machine pistol', about: 'Rattles through a clip. Wild past twenty metres.', side: 'elsewhere', damage: 1, every: 0.07, spread: 0.04, heat: 0.028, cool: 0.4, range: 50, zoom: 1.2, kick: 0.5 },
   revolver: { ...base, name: 'Revolver', about: 'Walt’s snub-nose. Six shots, each one counts.', side: 'elsewhere', damage: 2, every: 0.45, spread: 0.008, heat: 0.17, cool: 0.3, range: 60, zoom: 1.3, kick: 1.5 },
   pistol: { ...base, name: 'Pistol', about: 'Jesse’s. Quick and a little loose.', side: 'elsewhere', damage: 1, every: 0.18, spread: 0.02, heat: 0.08, cool: 0.35, range: 60 },
-  portal: { ...base, name: 'Portal gun', about: 'Rick’s. It isn’t meant for this, but it works.', side: 'elsewhere', damage: 2, every: 0.35, spread: 0.01, heat: 0.15, cool: 0.35, range: 80 },
+  portal: { ...base, name: 'Portal gun', about: 'Rick’s. Whoever it drops goes through a portal, and not all the way.', side: 'elsewhere', damage: 2, every: 0.35, spread: 0.01, heat: 0.15, cool: 0.35, range: 80 },
+  freeze: { ...base, name: 'Freeze ray', about: 'Rick’s. Ices them where they stand, then they shatter.', side: 'elsewhere', damage: 3, every: 0.6, spread: 0.008, heat: 0.22, cool: 0.32, range: 70, kick: 0.6 },
+  shrink: { ...base, name: 'Shrink ray', about: 'Rick’s. Down to a tenth, a squeak, a pop.', side: 'elsewhere', damage: 3, every: 0.6, spread: 0.008, heat: 0.22, cool: 0.32, range: 70, kick: 0.7 },
   laser: { ...base, name: 'Laser pistol', about: 'Morty’s ray gun.', side: 'elsewhere', damage: 1, every: 0.2, spread: 0.015, heat: 0.08, cool: 0.35, range: 70 },
   coppistol: { ...base, name: 'Service pistol', about: 'Citadel issue.', side: 'elsewhere', damage: 1, every: 0.2, spread: 0.015, heat: 0.08, cool: 0.35, range: 70 },
 };
 export const WEAPON_IDS = Object.keys(WEAPONS);
 // the ones the hero panel offers (a hero's own gun always, these besides)
-export const PICKABLE = ['blaster', 'rifle', 'a280', 'dlt19', 'ee3', 'westar', 'bowcaster', 'shotgun', 'sniper', 'smg', 'revolver'];
+export const PICKABLE = ['blaster', 'rifle', 'a280', 'dlt19', 'ee3', 'westar', 'bowcaster', 'shotgun', 'sniper', 'smg', 'revolver', 'portal', 'freeze', 'shrink'];
+// the guns whose kills are a show of their own (lib/three/portalFx.js, gadgetFx.js: activity.js plays them)
+export const SHOW_KILLS = ['portal', 'freeze', 'shrink'];
 
 export const MODS = {
   cooling: { name: 'Cooling cell', about: 'Builds heat slower, sheds it faster.', heat: 0.7, cool: 1.3 },

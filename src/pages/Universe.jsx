@@ -7,13 +7,15 @@ import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
 import { beyondOf, parseWonder } from '../components/universe/deep';
 import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
-import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
-import { LOADOUT_KEY, droppedParts, equip, fitInto, loadoutOf, readLoadouts } from '../components/universe/outfit';
-import { GARAGE_KEY, HULL_KEY, readHulls } from '../components/universe/shipyard/build';
+import { FLY_PAST } from '../components/universe/words';
+import { SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
+import { useShipyardPage } from '../components/universe/shipyard/useShipyardPage';
 import { useAchievements } from '../components/Achievements';
 import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
+import { jumpEvent } from '../components/jumps/styles';
+import { jumpOut } from '../components/jumps/jumpOut';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
@@ -22,9 +24,17 @@ import Rain from '../components/universe/Rain';
 import NavMap from '../components/universe/NavMap';
 import Online from '../components/universe/online/Online';
 import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
+const Shipyard = lazy(() => import('../components/universe/shipyard/Shipyard'));
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { CASTS, castOfCrew } from '../components/rickmorty/wardrobe/looks';
 import { useOnline } from '../components/universe/online/useOnline';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
+import { goodStanding } from '../components/universe/economy';
+import { createPayLedger } from '../components/universe/earnRules';
+import { pocketOf, registerPocket } from '../components/expanse/pocket';
+import { createRegistry } from '../components/worlds/registry';
+import { worldStore } from '../runtime';
 
 const PORTAL = '#97ce4c';
 // the phone out past the belt (universe/phone.js): its lock screen, fetched
@@ -33,6 +43,16 @@ const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
+// (the page you go into knows you came from the map, so its way out can be
+// back to space: the Citadel's)
+const FROM_MAP = { state: { from: 'universe' } };
+
+// The galaxy's page and its scene, fetched once its gate is picked or
+// flown into, so the jump into it isn't waiting on them (App.jsx loads the
+// page lazily, and the page its scene), as galaxy/travel.js fetches a
+// world's surface on the way down to it.
+let galaxyFetched = null;
+const prefetchGalaxy = () => (galaxyFetched ??= Promise.all([import('./Galaxy'), import('../components/galaxy/scene')]).catch(() => (galaxyFetched = null)));
 
 // The universe map: every fandom on the site is a planet, and you travel
 // between them, flying a ship of your choice (remembered between visits,
@@ -49,11 +69,21 @@ const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put awa
 // there (nav.js: hyperspeed, super speed or cruise; kept between visits),
 // which is how picking a place anywhere else on the page goes too.
 export default function Universe({ ask = false }) {
-  const atRoot = useLocation().pathname === '/';
+  const { pathname, search } = useLocation();
+  const atRoot = pathname === '/';
+  // a pocket universe (/universe?seed=marble): the Expanse past the rim made
+  // from its own seed, and kept on /worlds (expanse/pocket.js)
+  const pocketWord = pocketOf(search).word;
+  const pocket = useMemo(() => pocketOf(`?seed=${encodeURIComponent(pocketWord)}`), [pocketWord]);
+  useEffect(() => {
+    if (pocket.pocket) registerPocket(createRegistry(worldStore()), pocket).catch(() => {});
+  }, [pocket]);
   useDocumentTitle(atRoot ? null : 'The universe'); // the front door keeps the site's own title
   const navigate = useNavigate();
   const param = useParams().id;
   const selected = parseId(param);
+  const selectedRef = useRef(selected); // (for the scene's events, which keep their first render's closure)
+  selectedRef.current = selected;
   const universe = byId(selected);
   // a link out to a wonder (/universe/aurelia): the ship starts parked beside it, and the panel shows it
   const wonder = parseWonder(param);
@@ -66,33 +96,20 @@ export default function Universe({ ask = false }) {
   const online = useOnline(); // (OnlineProvider, above the pages: the link stays up off the map)
   const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // the wallet (economy.js): what the scene pays for, a good standing
+  // reached and an alliance made earn into it, with a note over the HUD
+  const { pay, note: earned } = useEarn({ client: online.client });
+  // (a level is paid for once a visit: lost and won back with a shot at the
+  // law and a hunter down, it's no living)
+  const [stood] = useState(createPayLedger);
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
-  const [loadouts, setLoadouts] = useState(() => readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)));
-  // and the hull each crew flies: its stock ship, or a garage build from the
-  // hangar's shipyard (shipyard/build.js), kept between visits
-  const [hulls, setHulls] = useState(() => readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id)));
-  const build = (ship && hulls[ship]) || null;
-  // and each crew's last garage build, flown or not, to go back to from stock
-  const [garage, setGarage] = useState(() => readHulls(local.get(GARAGE_KEY), CREWS.map((c) => c.id)));
-  const setBuild = (b) => {
-    if (!ship) return;
-    const next = { ...hulls, [ship]: b };
-    setHulls(next);
-    local.set(HULL_KEY, next);
-    if (b) {
-      const kept = { ...garage, [ship]: b };
-      setGarage(kept);
-      local.set(GARAGE_KEY, kept);
-    }
-  };
-  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked, build), [loadouts, ship, unlocked, build]);
-  const dropped = useMemo(() => (ship ? droppedParts(loadouts[ship], loadout) : []), [loadouts, ship, loadout]); // (what the plant can't run)
+  // (the loadouts, hulls and garage builds, the Shipyard's door and what Apply and a sale do: shipyard/useShipyardPage.js, which the galaxy uses too)
+  const { loadout, build, tune, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
-  const [hangar, setHangar] = useState(false);
-  // the wardrobe, from the hangar: how the cruiser’s Rick and Morty look,
+  // the wardrobe, from the shipyard: how the cruiser’s Rick and Morty look,
   // or the RV’s Walt and Jesse (whichever crew’s flying)
   const [looks, setLook] = useLooks();
   const dressing = castOfCrew(ship) ?? 'rickmorty';
@@ -110,15 +127,6 @@ export default function Universe({ ask = false }) {
     local.set(DRIVE_KEY, next);
   };
   const jumped = useRef(false); // the crew's had their say about a jump this visit
-  const fit = (slot, id) => {
-    const r = equip(ship, loadout, slot, id, unlocked, build);
-    if (r.ok) {
-      const next = { ...loadouts, [ship]: fitInto(loadouts[ship], slot, r.loadout[slot]) }; // (what the plant took off is kept, for a bigger one)
-      setLoadouts(next);
-      local.set(LOADOUT_KEY, next);
-    }
-    return r;
-  };
   const [leaving, setLeaving] = useState(null); // { id, mode } once Enter is pressed
   const [asking, setAsking] = useState(ask); // the front door's choice, on a first arrival
   // the panel, put away to give the map the room (remembered between visits)
@@ -128,7 +136,14 @@ export default function Universe({ ask = false }) {
     local.set(PANEL_KEY, on ? 'tucked' : 'open');
   };
   const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const trip = useRef(null); // a jump out (jumps/jumpOut.js): this page gone first, its dark coming late changes nothing
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      trip.current?.cancel();
+    },
+    [],
+  );
   // a trip on through the gate: to a star system picked on the nav map, the
   // ship flies to the gate, and when it parks there the page goes on in
   const onward = useRef(null); // { via, to }
@@ -142,6 +157,33 @@ export default function Universe({ ask = false }) {
     setTouring(null);
   }, []);
   useEffect(() => () => clearTimeout(tour.current?.timer), []);
+
+  // flying to another pilot (the roster's “Fly to”, or its “Go” from
+  // another page: useOnline's follow): once the ship's in and they're
+  // flying here in sight, the autopilot takes it to them (scene.js's
+  // `pilot:<id>`, by the drive picked). Tried till it goes; the trip's end
+  // (there, gone, or the stick taken back) or the follow's own minute
+  // forgets it
+  const { followId, follow } = online;
+  const followRef = useRef(null); // the pilot whose trip is under way
+  useEffect(() => {
+    if (!followId || !ship) return undefined;
+    const go = () => {
+      if (followRef.current === followId) return true;
+      if (!map.current.live || !map.current.travel(`pilot:${followId}`, driveRef.current)) return false;
+      followRef.current = followId;
+      stopTour();
+      onward.current = null;
+      setCharting(false);
+      return true;
+    };
+    if (go()) return undefined;
+    const t = setInterval(() => go() && clearInterval(t), 500);
+    return () => clearInterval(t);
+  }, [followId, ship, stopTour]);
+  useEffect(() => {
+    if (!followId) followRef.current = null;
+  }, [followId]);
 
   // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
   // ship it was, with no question first. Sat down in the cockpit with no
@@ -173,7 +215,28 @@ export default function Universe({ ask = false }) {
     };
   }, []);
 
-  const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
+  // (not once the page is on its way out: the scene's last word as it's torn
+  // down, or a key pressed on the way, mustn't pull the address back to the
+  // map from the page it's leaving for)
+  const gone = useRef(false);
+  useEffect(() => {
+    gone.current = false;
+    return () => {
+      gone.current = true;
+    };
+  }, []);
+  const select = useCallback(
+    (id) => {
+      if (gone.current) return;
+      navigate(id ? `/universe/${id}` : '/universe', { replace: true });
+    },
+    [navigate],
+  );
+  // the Star Wars gate picked: the galaxy behind it fetched while you fly there
+  const toGalaxy = Boolean(universe?.to?.startsWith('/galaxy'));
+  useEffect(() => {
+    if (toGalaxy) prefetchGalaxy();
+  }, [toGalaxy]);
 
   const pickShip = (id) => {
     audioContext(); // inside the press, so the engine can start
@@ -189,17 +252,24 @@ export default function Universe({ ask = false }) {
     stopTour();
     const plan = enterPlan(u, { reduced, three: map.current.live, ship });
     if (plan.mode === 'now') {
-      navigate(to);
+      navigate(to, FROM_MAP);
       return;
     }
     audioContext(); // inside the press, so the way out can sound
-    if (plan.mode === 'jump') window.dispatchEvent(new Event('tp:hyperspace'));
-    else {
-      if (plan.mode === 'portal') portalSound();
-      map.current.dive(u.id);
-    }
     setLeaving({ id: u.id, mode: plan.mode });
-    timer.current = setTimeout(() => navigate(to), plan.delay);
+    if (plan.mode === 'jump') {
+      // the page changes under the jump's dark. Into the galaxy, its page
+      // and scene are fetched now, and the jump's tunnel is held from the
+      // change until the galaxy has drawn, so it clears onto the galaxy,
+      // not its loading line
+      const galaxy = Boolean(to?.startsWith('/galaxy'));
+      if (galaxy) prefetchGalaxy();
+      trip.current = jumpOut({ style: crew?.jump, to, navigate: (page) => navigate(page, FROM_MAP), hold: galaxy, delay: plan.delay });
+      return;
+    }
+    if (plan.mode === 'portal') portalSound();
+    map.current.dive(u.id);
+    timer.current = setTimeout(() => navigate(to, FROM_MAP), plan.delay);
   };
   const enter = () => go(universe);
   // the phone unlocked: the Dickansh and Deekbeggers Universe (its page keeps
@@ -245,7 +315,7 @@ export default function Universe({ ask = false }) {
     if (!plan) return false;
     setLeaving({ id: u.id, mode: plan.mode });
     // (a wonder with a page of its own, the Citadel, goes there)
-    timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to), plan.delay);
+    timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to, FROM_MAP), plan.delay);
     return true;
   };
 
@@ -262,9 +332,19 @@ export default function Universe({ ask = false }) {
   };
 
   // what the scene says: the nav map (M), a jump to lightspeed (the site's
-  // own jump plays over the map: the scene has the ship out at the place
-  // under its flash), through a gate, or something for the crew to say
+  // own jump plays over the map, or the crew's own way across it, Rick's
+  // portal or the RV's Blue Sky: the scene has the ship out at the place
+  // under its flash either way), through a gate, or something for the crew to say
   const onEvent = (e) => {
+    if (e.type === 'earn') {
+      pay(e.what, e.n, e.side);
+      return;
+    }
+    // (the hello says what you are to the others: useOnline.js reads it again)
+    if (e.type === 'event' && e.id === 'standing') window.dispatchEvent(new Event('tp:standing'));
+    if (e.type === 'event' && e.id === 'standing' && goodStanding(e.sub) && stood.once(`${e.side}:${e.sub}`)) pay('standingUp', 1, e.side);
+    // a trip to a pilot over (with them, gone, or the stick taken back): the follow's done
+    if ((e.type === 'arrived' || e.type === 'jumped' || e.type === 'lost') && followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
     // a trip ended: on through the gate, or the tour's next leg
     if (e.type === 'arrived' || e.type === 'jumped') {
       const done = e.type === 'jumped' || e.done;
@@ -299,7 +379,7 @@ export default function Universe({ ask = false }) {
     }
     if (e.type === 'map') setCharting((o) => !o);
     else if (e.type === 'jump') {
-      window.dispatchEvent(new Event('tp:hyperspace'));
+      window.dispatchEvent(jumpEvent(crew?.jump));
       if (!jumped.current) {
         jumped.current = true;
         comms.current?.handle({ type: 'event', id: 'hyperspeed' });
@@ -312,6 +392,17 @@ export default function Universe({ ask = false }) {
       unlock('citadelfall'); // (you helped bring it down)
       comms.current?.handle(e);
     } else if (e.type === 'rifted') unlock('rifted'); // (the crew's line comes as an event of its own)
+    else if (e.type === 'sector') {
+      // through a portal into the other sector of the map: a place picked on
+      // this side is let go (a trip on through it picked where it's going)
+      const sel = selectedRef.current;
+      if (sel && destinationById(sel)?.sector !== e.id) select(null);
+      comms.current?.handle(e);
+    }
+    else if (e.type === 'event' && e.id === 'removerDown') {
+      unlock('remover'); // (the NX-5 shot down before it fired)
+      comms.current?.handle(e);
+    }
     else {
       if (e.type === 'kill' && e.hunter && (e.kind === 'slave1' || e.kind === 'phoenixperson')) unlock('wanted'); // (a bounty hunter shot down: not Slave I going by as traffic)
       comms.current?.handle(e);
@@ -392,25 +483,20 @@ export default function Universe({ ask = false }) {
         {universe ? `${universe.label}: selected` : ''}
       </p>
       <UniverseMap
+        key={pocket.word}
+        universe={pocket.universe}
         selected={selected}
         onSelect={select}
         onOpen={(id) => go(byId(id))}
         handle={map}
         frozen={Boolean(leaving)}
         ship={ship}
-        shipName={crew?.ship ?? ''}
         loadout={loadout}
         build={build}
-        lastBuild={(ship && garage[ship]) || null}
-        dropped={dropped}
-        onBuild={ship ? setBuild : null}
-        onCrew={() => {
-          setHangar(false);
-          setWardrobe(true);
-        }}
-        onFit={ship ? fit : null}
-        hangar={hangar}
-        onHangar={setHangar}
+        tune={tune}
+        canFit={Boolean(ship)}
+        hangar={yard}
+        onHangar={setYard}
         net={online.client}
         onEvent={onEvent}
         drive={drive}
@@ -420,10 +506,15 @@ export default function Universe({ ask = false }) {
         onCrash={crashInto}
         startAt={wonder}
       />
+      {pocket.pocket && !leaving && (
+        <p className="universe-pocket" role="status">
+          Pocket universe · {pocket.name}
+        </p>
+      )}
       {touring && !leaving && (
         <div className="universe-tour" role="status">
           <span>
-            Touring, {touring.i + 1} of {touring.n}: next {touring.next}
+            {FLY_PAST.pill(touring.i + 1, touring.n, touring.next)}
           </span>
           <button type="button" onClick={stopTour}>
             Stop <kbd>Esc</kbd>
@@ -431,6 +522,28 @@ export default function Universe({ ask = false }) {
         </div>
       )}
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
+      {!leaving && <EarnNote note={yardNote ?? earned} />}
+      {ship && !leaving && (
+        <Suspense fallback={null}>
+          <Shipyard
+            open={yard}
+            onOpen={setYard}
+            enabled={!charting && !wardrobe}
+            ship={ship}
+            shipName={crew?.ship ?? ''}
+            live={live}
+            lastBuild={garage[ship] || null}
+            saves={yardSaves}
+            dropped={dropped}
+            onApply={applyDraft}
+            onSell={sellPart}
+            onCrew={() => {
+              setYard(false);
+              setWardrobe(true);
+            }}
+          />
+        </Suspense>
+      )}
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} cast={dressing} who={CASTS[dressing][0]} returnTo=".universe-hangar-btn" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel
@@ -443,8 +556,9 @@ export default function Universe({ ask = false }) {
         leaving={Boolean(leaving)}
         ship={ship}
         loadout={loadout}
+        build={build}
         onShip={pickShip}
-        onHangar={() => setHangar(true)}
+        onHangar={() => setYard(true)}
         onClassic={() => switchTo('classic')}
         tucked={tucked}
         onTuck={tuck}

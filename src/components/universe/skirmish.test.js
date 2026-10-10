@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { SKIRMISH, createSkirmish } from './skirmish';
+import { SKIRMISH, createSkirmish, placeAt } from './skirmish';
 import { createHunt } from './hunterRules';
+import { NODES } from './waypoints';
+import { SOLIDS } from './ship';
 
 // a seeded random, so a skirmish is the same every time; the seed is mixed
 // first, so neighbouring seeds don't start alike (the pack's size is the
@@ -301,5 +303,26 @@ describe('a skirmish', () => {
     expect(sk.targets).toEqual([]);
     expect(sk.shots.some((m) => m.on) || sk.hunt.lasers.some((m) => m.on) || sk.wing.bolts.some((b) => b.on)).toBe(false);
     expect(sk.start({ at, faction: 'empire', escort: 'xwing' })).toBe(true);
+  });
+});
+
+describe('placeAt', () => {
+  it('puts a skirmish within 200 of a node of the lanes and clear of everything solid, for every node', () => {
+    for (const node of NODES) {
+      const p = placeAt(node, SOLIDS);
+      expect(Math.hypot(p.x - node.at[0], p.y - node.at[1], p.z - node.at[2]), node.id).toBeLessThanOrEqual(200);
+      for (const o of SOLIDS) expect(Math.hypot(p.x - o.at[0], p.y - o.at[1], p.z - o.at[2]), `${node.id} in ${o.id}`).toBeGreaterThan(o.r + SKIRMISH.clear);
+    }
+  });
+
+  it('sits off the node itself, so the fight isn’t in its ramp ring', () => {
+    for (const node of NODES) {
+      const p = placeAt(node, SOLIDS);
+      expect(Math.hypot(p.x - node.at[0], p.y - node.at[1], p.z - node.at[2]), node.id).toBeGreaterThan(40);
+    }
+  });
+
+  it('takes ship.js’s solids when given none', () => {
+    expect(placeAt(NODES[0])).toEqual(placeAt(NODES[0], SOLIDS));
   });
 });

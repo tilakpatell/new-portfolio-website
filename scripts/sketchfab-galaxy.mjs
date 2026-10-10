@@ -42,9 +42,16 @@ const API = 'https://api.sketchfab.com/v3/models';
 // (Tried and left built: the Hammerhead corvette, 8ca35cee5f614c289a1ff069556fef98,
 // a generated model that doesn't read as one; the second Death Star,
 // 17ccca0dbb6b4e338fa999202f9e6685, a cage of plating all round rather than
-// the half-built one; the Munificent, 966265e37e61433b919ba640a12a33f5, whose
+// the half-built one, till scripts/deathstar-hd.mjs filled its hull: it's
+// that script's now, as deathstar2; the Munificent, 966265e37e61433b919ba640a12a33f5, whose
 // paint is tiled maps that don't survive, leaving it near black; Naboo's royal
 // starship, f72431e7a97e4bf994dd8b1f3f288d7c, whose maps are black.)
+// (And brought in, then made again with Meshy, scripts/meshy-galaxy-library.mjs,
+// so left out here, or a run would put them back over the new ones: the
+// Interdictor, 452cab004f024c01969b2111fbdd55b8, a flat white wedge with one
+// small map; the Munificent, 44d5db77bb1342e5a6e58c24a0dcb256, a blotchy
+// scan; the Invisible Hand, 8d27764a7d254fd7948557daf6d7ccdc, a muddy paint
+// job.)
 export const MODELS = {
   // the Rebellion's
   moncal: { uid: '9b5e5e5192f64a7faad93a3bfd2efaf2', tris: 40000, tex: 1024, as: 'the Mon Calamari cruisers' },
@@ -67,14 +74,31 @@ export const MODELS = {
   coreship: { uid: '0d829115bb4d472da5d05cdf529b6694', tris: 20000, tex: 1024, as: 'the Separatist core ships' },
   vulture: { uid: '5542f951834e4032b229ebdee12d3310', tris: 10000, tex: 512, as: 'the vulture droids' },
   trifighter: { uid: '9c06ba9b24144221aa80f56192f485b6', tris: 10000, tex: 512, as: 'the droid tri-fighters' },
-  munificent: { uid: '44d5db77bb1342e5a6e58c24a0dcb256', tris: 25000, tex: 1024, as: 'the Munificent frigates' },
-  providence: { uid: '8d27764a7d254fd7948557daf6d7ccdc', tris: 10000, tex: 1024, as: 'the Invisible Hand' },
   // the Republic's
   acclamator: { uid: 'e6a2171be5c34bb68a05aba657fd8fa8', tris: 30000, tex: 1024, as: 'the Acclamators' },
   delta7: { uid: 'b4a8ad8a1e8b4e5b961cf4726d8a8646', tris: 12000, tex: 512, as: 'the Jedi starfighters' },
   arc170: { uid: 'b9407262cdf34d37b0720ca6b70469be', tris: 14000, tex: 512, as: 'the ARC-170s' },
   n1: { uid: '3cf69f6c85234aac8844e845e74ac75b', tris: 12000, tex: 512, as: 'the Naboo N-1 starfighters' },
   nubian: { uid: 'f631077977754b5591298ecfa201380b', tris: 20000, tex: 1024, as: 'the Naboo royal starship' },
+  // the capitals' close-up cut, for a desktop with a graphics card (galaxy/
+  // models.js's HQ): Daniel Andersson's, kept fine enough to fly along
+  // (its grey hull plates, lit by one sun with nothing to reflect, came out
+  // near black where the old one's glow maps keep it lit: barely metal, brighter)
+  destroyerhq: { uid: 'b8bd2d35f7604670ab85242c06c6d280', tris: 100000, tex: 2048, out: 'hq/destroyer', metal: 0.05, gain: 1.6, as: 'the Star Destroyers, close up' },
+  // (Home One's close-up cut was tried and left: the same model as moncal's, it
+  // came out plainer than the 40k one in the battle, whose panel maps read better)
+  nebulonhq: { uid: '19b1b0126f8248c28ce38863413c30b8', tris: 100000, tex: 2048, out: 'hq/nebulon', as: 'the Nebulon-B frigates, close up' },
+  // the ones still built in code (fleetRebels.js, fleetExtras.js and the
+  // universe's fleetStarwars.js) that somebody had already made: the
+  // Outrider's YT-2400, the Xg-1 gunboat and the GR-75 by Daniel Andersson
+  // again, Bespin's cloud cars and city and IG-88's ship (Cloud City,
+  // 8e708a2749484750ae9aeab27f579d37, was tried and left: an untextured
+  // low-poly saucer on a stalk, plainer than the built one)
+  freighter: { uid: 'ccd2749df33641fba7a5326500abdbfb', tris: 20000, tex: 1024, as: 'the YT-2400 freighters' },
+  gunboat: { uid: 'b07306d348a44991ae7d0bbcff95fe90', tris: 14000, tex: 1024, as: 'the Xg-1 assault gunboats' },
+  transport: { uid: '071b158d02c044ee9b431aeb28b85b6a', tris: 20000, tex: 1024, as: 'the GR-75 transports' },
+  cloudcar: { uid: '9bc20239f9c34ed1baacb9a49ba9377d', tris: 10000, tex: 512, as: 'Bespin’s cloud cars' },
+  ig2000: { uid: '527958c20fdb4d4d9f3e858db62e6139', tris: 14000, tex: 1024, as: 'IG-88’s IG-2000' },
 };
 
 const token = process.env.SKETCHFAB_API_TOKEN;
@@ -100,7 +124,7 @@ async function download(kind, uid) {
 }
 
 // who made it, from the model's public page
-async function credit(kind, uid, as) {
+async function credit(kind, uid, as, out = kind) {
   const m = await json(`${API}/${uid}`);
   const license = LICENCES[m.license?.slug];
   if (!license) throw new Error(`${kind}: its licence (${m.license?.label}) isn't one the site can use`);
@@ -113,7 +137,7 @@ async function credit(kind, uid, as) {
     source: m.viewerUrl,
     where: 'galaxy',
     as,
-    file: `/models/galaxy/${kind}.glb`,
+    file: `/models/galaxy/${out}.glb`,
     also: ['galaxy'],
   };
 }
@@ -197,14 +221,14 @@ const unskinned = () => (doc) => {
   }
 };
 
-// Its materials made for the galaxy's light: nothing more than half metal (a
-// fully metal hull, with only the dark sky to reflect, comes out black), its
+// Its materials made for the galaxy's light: nothing more than half metal, or
+// `metal` (a fully metal hull, with only the dark sky to reflect, comes out black), its
 // colours brightened by `gain`, and any material in `drop` left off with its
 // parts.
-const relit = ({ gain = 1, drop = null }) => (doc) => {
+const relit = ({ gain = 1, drop = null, metal = 0.5 }) => (doc) => {
   for (const mesh of doc.getRoot().listMeshes()) for (const prim of mesh.listPrimitives()) if (drop?.test(prim.getMaterial()?.getName() ?? '')) prim.dispose();
   for (const m of doc.getRoot().listMaterials()) {
-    m.setMetallicFactor(Math.min(m.getMetallicFactor(), 0.5));
+    m.setMetallicFactor(Math.min(m.getMetallicFactor(), metal));
     const [r, g, b, a] = m.getBaseColorFactor();
     m.setBaseColorFactor([...[r, g, b].map((c) => Math.min(1, c * gain)), a]);
   }
@@ -269,7 +293,8 @@ async function bring(io, kind, spec) {
     textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps ?? spec.tex / 2, spec.maps ?? spec.tex / 2], quality: 80 }),
     meshopt({ encoder: MeshoptEncoder, level: 'high' }),
   );
-  const out = path(OUT, `${kind}.glb`);
+  const out = path(OUT, `${spec.out ?? kind}.glb`);
+  await mkdir(dirname(out), { recursive: true });
   await io.write(out, doc);
   const draws = root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0);
   const bytes = (await stat(out)).size;
@@ -291,7 +316,7 @@ async function main() {
   for (const kind of only.length ? only : Object.keys(MODELS)) {
     const spec = MODELS[kind];
     await bring(io, kind, spec);
-    credits[`galaxy-${kind}`] = await credit(kind, spec.uid, spec.as);
+    credits[`galaxy-${kind}`] = await credit(kind, spec.uid, spec.as, spec.out);
   }
   const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
   await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFun } from '../../fun/FunProvider';
 import { audioContext } from '../../lib/audio';
+import { sayVoiced } from '../../lib/voiced';
 import AutobotMark from '../AutobotMark';
+import { SAID } from '../../fun/said';
 import { BACK, SCRIPTS, scriptFor } from '../../fun/scripts';
 import { useTheme } from '../../theme/ThemeProvider';
 import '../../styles/lazy/interests.css';
@@ -125,7 +127,8 @@ export default function InterestDock() {
   };
   const saber = () => {
     audioContext();
-    setSay('Punch it.');
+    setSay(SAID.lightspeed.text);
+    sayVoiced(SAID.lightspeed.who, SAID.lightspeed.text); // Han, where his voice has been made (lib/voiced.js)
     window.dispatchEvent(new Event('tp:hyperspace'));
     setTimeout(() => navigate('/deathstar'), 1250); // arrive at the flash
   };
@@ -137,7 +140,7 @@ export default function InterestDock() {
       id: 'gauntlet',
       label: 'Snap',
       run: () => {
-        setSay('Perfectly balanced.');
+        setSay(SAID.snap.text); // (Thanos says it with the snap)
         snap();
       },
     },
@@ -169,8 +172,14 @@ export default function InterestDock() {
       id: 'ring',
       label: 'Speak, friend, and enter',
       run: () => {
-        setSay('Mellon.');
-        speakFriend('shire');
+        audioContext();
+        setSay(SAID.mellon.text);
+        // Gandalf says it, where his voice has been made (lib/voiced.js), and then the doors open
+        // (the Shire's scene has Galadriel's line, which would cut him off)
+        sayVoiced(SAID.mellon.who, SAID.mellon.text)
+          .then((h) => h?.ended)
+          .catch(() => {})
+          .then(() => speakFriend('shire'));
       },
     },
     {

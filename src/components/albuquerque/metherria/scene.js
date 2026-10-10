@@ -14,6 +14,7 @@ import { createElement } from 'react';
 import Face from './Face';
 import { CUSTOMERS, M } from './rules';
 import { loadPeople } from '../../office/people';
+import { createQueue } from './queue';
 import { ABQ, dressedAs, moodGesture } from '../wardrobe';
 import { LOOK_KEY, readLooks } from '../../rickmorty/wardrobe/looks';
 import { dressColors } from '../../rickmorty/wardrobe/dress';
@@ -23,6 +24,8 @@ import { loadProps, PROPS, spoutOf } from './props';
 import { paintDial, paintFloor, paintHazard, paintLabel, paintPollosBox, paintSteel, paintTile, paintWood } from './paint';
 import { pixelRatio } from '../../../lib/device';
 import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
+import { sharpen } from '../../../lib/three/textures';
+import { houseOn } from '../../../lib/three/house';
 
 export const STATIONS = { order: -4.4, serve: -4.4, idle: -4.4, build: -1.7, cook: 0.7, break: 3.0, pack: 5.3 };
 const BENCH_Y = 0.92;
@@ -62,7 +65,7 @@ const FLASK_H = 0.27; // the liquid can rise to the neck
 export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // (the house tone mapper: houseOn, below, before the first frame)
   renderer.toneMappingExposure = 1.1;
   renderer.localClippingEnabled = true;
   renderer.shadowMap.enabled = true;
@@ -96,7 +99,8 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   camera.position.set(STATIONS.order, 1.55, 2.4);
 
   // light: a warm fill, tube lights down the room, a key that casts shadows
-  scene.add(new THREE.HemisphereLight(0xfff4e6, 0x2a2420, 0.55));
+  const hemi = new THREE.HemisphereLight(0xfff4e6, 0x2a2420, 0.55);
+  scene.add(hemi);
   const key = new THREE.DirectionalLight(0xfff1dc, 1.6);
   key.position.set(1, 5, 3.5);
   key.castShadow = true;
@@ -129,6 +133,10 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   }
   const burnerLight = new THREE.PointLight(0xff7a2a, 0, 2, 2);
   scene.add(burnerLight);
+  // the house look (lib/three/house): one shadow colour, measured off the
+  // room's light and its HDRI (the room keeps its own dark, no fog)
+  const house = houseOn({ renderer, scene, sun: key, hemi, env: { get texture() { return scene.environment; }, intensity: () => scene.environmentIntensity }, look: { fog: false } });
+  let houseFrames = 0;
 
   // ── the room: two looks, the RV and the superlab ──
   // Photo-scanned CC0 materials (Poly Haven, ambientCG; see public/cc0),
@@ -240,6 +248,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     x.fillStyle = '#a07c5a';
     x.fillRect(0, 410, 1024, 102);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     const back = new THREE.Mesh(new THREE.PlaneGeometry(9, 4.5), new THREE.MeshBasicMaterial({ map: t }));
     back.position.set(-4.4, 1.6, -4.5);
@@ -272,6 +281,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   cabinet.receiveShadow = true;
   room.add(cabinet);
   const hazardTex = new THREE.CanvasTexture(paintHazard());
+  sharpen(hazardTex);
   hazardTex.colorSpace = THREE.SRGBColorSpace;
   hazardTex.wrapS = THREE.RepeatWrapping;
   hazardTex.repeat.set(24, 1);
@@ -293,6 +303,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     for (const w of wallParts) w.material = L.wall;
     bench.material = L.bench;
     hazard.visible = p === 'superlab';
+    house.adopt(scene);
   };
 
   const shadowy = (o) => {
@@ -460,6 +471,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const dialCanvas = document.createElement('canvas');
   dialCanvas.width = dialCanvas.height = 256;
   const dialTex = new THREE.CanvasTexture(dialCanvas);
+  sharpen(dialTex);
   dialTex.colorSpace = THREE.SRGBColorSpace;
   const gauge = new THREE.Group();
   {
@@ -569,6 +581,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const scaleDialCanvas = document.createElement('canvas');
   scaleDialCanvas.width = scaleDialCanvas.height = 256;
   const scaleDialTex = new THREE.CanvasTexture(scaleDialCanvas);
+  sharpen(scaleDialTex);
   scaleDialTex.colorSpace = THREE.SRGBColorSpace;
   const scaleDial = new THREE.Group();
   {
@@ -666,6 +679,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       x.fillText('MADRIGAL', 0, 8);
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     stickerTex[kind] = new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2 });
     return stickerTex[kind];
@@ -721,17 +735,21 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   // the room ── Rigged figures (office/people.js) once the cast has loaded;
   // until then, or for anyone whose figure can't be had, the cut-outs above.
   const folks = { ready: false, people: null, at: new Map(), walt: null, jesse: null, reaction: null, undress: [] };
+  // Each on their feet stands on clips (office/people.js: a calm idle, the
+  // walk paced to the floor they cover, the clip library's for the rest):
+  // the line walks up to the hatch and off again (./queue.js), Walt steps
+  // between the stations, Jesse throws his arms up at a great batch.
   const cast = [...Object.keys(CUSTOMERS), 'walt', 'jesseLab'];
-  loadPeople(cast.map((id) => ABQ[id]).filter(Boolean))
+  loadPeople(cast.map((id) => ABQ[id]).filter(Boolean), null, { clips: true })
     .then((people) => {
       if (disposed) return people.dispose();
-      const walt = people.person(ABQ.walt, { pose: 'stand' });
+      const walt = people.person(ABQ.walt, { pose: 'stand', anim: true });
       if (!walt) return people.dispose(); // no models: the cut-outs stay
       folks.people = people;
       folks.walt = walt;
       folks.waltHead = walt.group.getObjectByName('Head');
       walt.group.rotation.y = Math.PI; // at the bench, his back to us
-      folks.jesse = people.person(ABQ.jesseLab, { pose: 'stand', idle: true });
+      folks.jesse = people.person(ABQ.jesseLab, { pose: 'stand', idle: true, anim: true });
       // both in the lab’s suits, as the universe’s wardrobe colours them;
       // Jesse’s gear on too (Walt’s eyes are the camera’s: nothing on his
       // head or face to see through, so his colours only, his own sleeves
@@ -749,12 +767,17 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   // one figure a customer, made the first time they come and kept
   const figureFor = (id) => {
     if (!folks.at.has(id)) {
-      const p = ABQ[id] ? folks.people.person(ABQ[id], { pose: 'stand', idle: true }) : null;
-      if (p) scene.add(p.group);
+      const p = ABQ[id] ? folks.people.person(ABQ[id], { pose: 'stand', idle: true, anim: true }) : null;
+      if (p) {
+        p.group.visible = false;
+        scene.add(p.group);
+      }
       folks.at.set(id, p && { p, mood: null });
     }
     return folks.at.get(id);
   };
+  // the line, walked: in from the left beyond the hatch, off to the right
+  const line = createQueue({ enter: { x: -7.6, z: -2.7 }, leave: { x: -1.2, z: -2.5 } });
   const crowdAnchors = []; // over each customer's head, in crowd order
   const waltAt = new THREE.Vector3(STATIONS.order - 0.42, 0, 0.42);
   const WALT_EYES = 1.66; // how far his eyes are off the floor
@@ -984,14 +1007,28 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     const atHatch = Math.abs(camPos.x - STATIONS.order) < 2.6;
     const shown = new Set();
     crowdAnchors.length = 0;
+    // each in the line's place: the front one at the ledge, the rest behind
+    const spotOf = (e, i) => {
+      const front = e.front || (!live.serving && i === 0);
+      const slot = live.serving ? i : i + 1;
+      return { front, x: -4.4 + (front ? 0 : (slot % 2 ? -1 : 1) * (0.35 + Math.floor(slot / 2) * 0.3)), z: front ? -1.05 : -1.5 - slot * 0.35 };
+    };
+    // the figures walked to theirs (the line moving up, the served walking off)
+    const wanted = [];
+    const placed = new Set();
+    if (folks.ready)
+      crowd.forEach((e, i) => {
+        if (i >= standees.length || placed.has(e.customer) || !figureFor(e.customer)) return;
+        placed.add(e.customer);
+        const { front, x, z } = spotOf(e, i);
+        wanted.push({ id: e.customer, x, z: front ? -1.25 : z, face: front ? 0 : Math.atan2(-4.4 - x, -0.75 - z) });
+      });
+    const walked = new Map(folks.ready ? line.step(dt, wanted).map((w) => [w.id, w]) : []);
     standees.forEach((m, i) => {
       const e = crowd[i];
       m.visible = !!e && !folks.ready;
       if (!e) return;
-      const front = e.front || (!live.serving && i === 0);
-      const slot = live.serving ? i : i + 1;
-      const x = -4.4 + (front ? 0 : (slot % 2 ? -1 : 1) * (0.35 + Math.floor(slot / 2) * 0.3));
-      const z = front ? -1.05 : -1.5 - slot * 0.35;
+      const { front, x, z } = spotOf(e, i);
       const f = folks.ready ? figureFor(e.customer) : null;
       if (!f) {
         // a cut-out: until the cast is in, or if their figure can't be had
@@ -1003,15 +1040,21 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
         if (folks.ready) crowdAnchors.push(new THREE.Vector3(x, m.position.y + s * 0.5, z));
         return;
       }
-      // a figure: the one being served at the ledge, looking at us; the
-      // queue behind, turned to the hatch
+      // a figure: the one being served at the ledge, looking at us once
+      // they're there; the queue behind, turned to the hatch
       if (shown.has(e.customer)) return crowdAnchors.push(null);
       shown.add(e.customer);
       const g = f.p.group;
+      const w = walked.get(e.customer);
       g.visible = atHatch;
-      g.position.set(x, 0, front ? -1.25 : z);
-      g.rotation.y = front ? 0 : Math.atan2(-4.4 - x, -0.75 - z);
-      f.p.look(front ? camera.position : null);
+      if (w) {
+        g.position.set(w.x, 0, w.z);
+        g.rotation.y = w.yaw;
+      } else {
+        g.position.set(x, 0, front ? -1.25 : z);
+        g.rotation.y = front ? 0 : Math.atan2(-4.4 - x, -0.75 - z);
+      }
+      f.p.look(front && (!w || w.arrived) ? camera.position : null);
       // the one at the front shows how the order left them
       const mood = front ? (e.mood ?? 'wait') : null;
       if (mood !== f.mood) {
@@ -1022,7 +1065,18 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       if (atHatch) f.p.update(clock, dt);
       crowdAnchors.push(f.p.headAt(new THREE.Vector3()).add(headTmp.set(0, 0.3, 0)));
     });
-    if (folks.ready) for (const [id, f] of folks.at) if (f && !shown.has(id)) f.p.group.visible = false;
+    // (the one just served, walking off; anyone else out of the line, put away)
+    if (folks.ready)
+      for (const [id, f] of folks.at) {
+        if (!f || shown.has(id)) continue;
+        const w = walked.get(id);
+        f.p.group.visible = Boolean(w) && atHatch;
+        if (!w) continue;
+        f.p.group.position.set(w.x, 0, w.z);
+        f.p.group.rotation.y = w.yaw;
+        f.p.look(null);
+        if (atHatch) f.p.update(clock, dt);
+      }
 
     // Walt, at the station, his hand on what he's working with; Jesse in the
     // room, reacting to each order (unless he's outside, ordering)
@@ -1088,6 +1142,8 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     coins.instanceMatrix.needsUpdate = true;
 
     renderer.shadowMap.enabled = shadows;
+    // (and whatever's come in since: the people, the props)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     renderer.render(scene, camera);
     watch();
   }
@@ -1200,7 +1256,11 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const whenReady = () => {
     const look = lookFor(place ?? 'rv');
     const wait = new Promise((r) => setTimeout(r, 6000));
-    return Promise.race([Promise.all([look.ready, hdriFor(place ?? 'rv')]), wait]).then(() => (disposed || lost ? null : precompile(renderer, scene, camera)));
+    return Promise.race([Promise.all([look.ready, hdriFor(place ?? 'rv')]), wait]).then(() => {
+      if (disposed || lost) return null;
+      house.adopt(scene);
+      return precompile(renderer, scene, camera);
+    });
   };
 
   return { render, resize, dispose, project, standeeAnchors, diagnostics, whenReady, get lost() { return lost; } };

@@ -45,6 +45,10 @@ export const TRENCH = {
   lined: { x: 0.45, y: 0.1 }, // and how centred and low the ship must be
   forceBonus: 1.5,
   vaderAt: 46, // Vader joins this far from the port
+  // seconds a hit leaves the ship clear (a rule change, the game-feel
+  // design's: a catwalk straight after the bolt that rocked you, or a TIE's
+  // pair of shots, cost one shield, not two)
+  iframes: 1,
   hanAt: 15, // and Han clears him off here
 };
 
@@ -157,6 +161,27 @@ export function newRun({ seed = 1, level = 'red5' } = {}) {
   };
 }
 
+// The radio, by when it comes: who's talking, before what they say (./voicelines.js
+// has their voices; the films' own recordings, where the site has them, are
+// ./TrenchRun.jsx's SAID). And the last word, with the computer on or off.
+export const RADIO = {
+  start: 'Red Leader: “This is it, boys. Stay tight, the TIEs are coming in.”',
+  dive: 'Luke: “Red Five, going in.”',
+  trench: 'Gold Five: “Stay on target.”',
+  range: 'In range. Torpedoes on F or Enter.',
+  ties: 'Biggs: “TIE fighters, dead ahead!”',
+  vader: 'Vader: “The Force is strong with this one.”',
+  han: 'Han: “You’re all clear, kid. Now blow this thing.”',
+  r2: 'Luke: “I’m hit, but not bad. R2, see what you can do with it.” Shields up.',
+};
+// How hard each kind of hit is, for the hit law (lib/impact.js: quiet
+// under 15, full at 120): flying into the trench's iron, a TIE rammed, a
+// bolt (Vader's too). The 'hit' event carries it, and TrenchRun.jsx plays
+// its sound at that
+export const HURT = { crash: 120, ram: 105, bolt: 70 };
+
+export const WON = { computer: 'Great shot, kid. That was one in a million.', force: 'The Force is strong with this one. Great shot.' };
+
 const emit = (g, type, extra = {}) => g.events.push({ type, ...extra });
 const say = (g, key, text) => {
   if (g.said[key]) return;
@@ -171,13 +196,15 @@ function lose(g, message) {
   emit(g, 'lost', { text: message });
 }
 
-function damage(g, why) {
+function damage(g, why, force = HURT.crash) {
   if (g.status !== 'running' || g.shields <= 0) return;
+  if (g.t - (g.hurtAt ?? -Infinity) < TRENCH.iframes) return;
+  g.hurtAt = g.t;
   g.shields -= 1;
   g.flash = 0.35;
   g.shake = 0.3;
   if (g.r2.at == null) g.r2.at = g.t + TRENCH.r2Delay;
-  emit(g, 'hit', { why, shields: g.shields });
+  emit(g, 'hit', { why, shields: g.shields, force });
   if (g.shields <= 0) lose(g, why === 'vader' ? 'Vader got you. Pull up, and try again.' : why === 'tie' ? 'The TIEs got you. Pull up, and try again.' : 'Shields are gone. Pull up, and try again.');
 }
 
@@ -345,7 +372,7 @@ function stepOnce(g, dt) {
     }
     if (win.t >= 2.5) {
       g.status = 'won';
-      emit(g, 'won', { text: g.computer ? 'Great shot, kid. That was one in a million.' : 'The Force is strong with this one. Great shot.' });
+      emit(g, 'won', { text: g.computer ? WON.computer : WON.force });
     }
     return;
   }
@@ -366,10 +393,10 @@ function stepOnce(g, dt) {
   const zone = zoneAt(g.z);
 
   // the radio
-  if (g.t > 0.4) say(g, 'start', 'Red Leader: “This is it, boys. Stay tight, the TIEs are coming in.”');
-  if (zone === 'dive') say(g, 'dive', 'Luke: “Red Five, going in.”');
-  if (zone === 'trench' && g.z > trenchStart() + 6) say(g, 'trench', 'Gold Five: “Stay on target.”');
-  if (portZ() - g.z < TRENCH.torpedoRange) say(g, 'range', 'In range. Torpedoes on F or Enter.');
+  if (g.t > 0.4) say(g, 'start', RADIO.start);
+  if (zone === 'dive') say(g, 'dive', RADIO.dive);
+  if (zone === 'trench' && g.z > trenchStart() + 6) say(g, 'trench', RADIO.trench);
+  if (portZ() - g.z < TRENCH.torpedoRange) say(g, 'range', RADIO.range);
 
   // lasers: held fire, two cannons at a time
   g.laserCool -= dt;
@@ -386,7 +413,7 @@ function stepOnce(g, dt) {
     g.tieAt.shift();
     const x0 = g.rand() * 3.4 - 1.7;
     g.ties.push({ x: x0, x0, y: 1.55 + g.rand() * 0.85, z: g.z + TRENCH.tie.start, phase: g.rand() * 6, fire: 1.2 + g.rand() * g.L.tieFire, alive: true });
-    say(g, 'ties', 'Biggs: “TIE fighters, dead ahead!”');
+    say(g, 'ties', RADIO.ties);
   }
   for (const t of g.ties) {
     if (!t.alive) continue;
@@ -403,7 +430,7 @@ function stepOnce(g, dt) {
     if (before > 0 && ahead <= 0) {
       if (Math.hypot(t.x - g.px, t.y - g.py) < TRENCH.tie.ram) {
         t.alive = false;
-        damage(g, 'tie');
+        damage(g, 'tie', HURT.ram);
       }
     }
     if (ahead < -3) t.alive = false;
@@ -507,7 +534,7 @@ function stepOnce(g, dt) {
     const now = bo.z - g.z;
     if (!bo.done && before > 0 && now <= 0) {
       bo.done = true;
-      if (Math.hypot(bo.x - g.px, bo.y - g.py) < TRENCH.boltHit) damage(g, bo.from);
+      if (Math.hypot(bo.x - g.px, bo.y - g.py) < TRENCH.boltHit) damage(g, bo.from, HURT.bolt);
     }
     if (now < -4) bo.done = true;
   }
@@ -519,7 +546,7 @@ function stepOnce(g, dt) {
   const v = g.vader;
   if (!v.on && !v.gone && toPort < TRENCH.vaderAt) {
     v.on = true;
-    emit(g, 'vader', { text: 'Vader: “The Force is strong with this one.”' });
+    emit(g, 'vader', { text: RADIO.vader });
   }
   if (v.on && !v.gone) {
     v.cooldown -= dt;
@@ -531,7 +558,7 @@ function stepOnce(g, dt) {
       v.gone = true;
       v.on = false;
       v.away = 1;
-      emit(g, 'han', { text: 'Han: “You’re all clear, kid. Now blow this thing.”' });
+      emit(g, 'han', { text: RADIO.han });
     }
   }
   if (v.gone && v.away > 0) {
@@ -542,7 +569,7 @@ function stepOnce(g, dt) {
     r.z += (g.speed + 16) * dt;
     if (!r.checked && r.z >= g.z) {
       r.checked = true;
-      if (Math.hypot(r.x - g.px, r.y - g.py) < 0.18) damage(g, 'vader');
+      if (Math.hypot(r.x - g.px, r.y - g.py) < 0.18) damage(g, 'vader', HURT.bolt);
     }
   }
   if (g.rear.length) g.rear = g.rear.filter((r) => r.z - g.z < TRENCH.far);
@@ -552,7 +579,7 @@ function stepOnce(g, dt) {
     g.r2.used = true;
     if (g.shields < g.maxShields && g.shields > 0) {
       g.shields += 1;
-      emit(g, 'r2', { text: 'Luke: “I’m hit, but not bad. R2, see what you can do with it.” Shields up.' });
+      emit(g, 'r2', { text: RADIO.r2 });
     }
   }
 

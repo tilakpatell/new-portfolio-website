@@ -1,0 +1,129 @@
+name: gen3d
+
+# A 3D model made on the owner's desktop GPU (scripts/desktop/README.md).
+# Ask for one from the Actions tab (Run workflow), from a terminal
+# (`gh workflow run gen3d.yml -f name=… -f what=… -f image=…`), or with an
+# issue labelled gen3d (the "3D model" issue form). Either way the request
+# is an issue, so it keeps while the desktop is off: the self-hosted runner
+# there takes it when it's up, and an hourly sweep catches anything a run
+# missed (a desktop asleep for over a day, a busy GPU).
+
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' && format('gen3d: {0}', inputs.name)
+  || github.event_name == 'issues' && format('gen3d #{0}: {1}', github.event.issue.number, github.event.issue.title)
+  || 'gen3d: sweep' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Name: the model becomes public/models/gen3d/NAME.glb (a-z, 0-9, dashes)'
+        required: true
+        type: string
+      what:
+        description: 'What it is, in words (for the credit, and what the judge checks it against)'
+        required: true
+        type: string
+      image:
+        description: 'A picture to follow, by URL (best). Several sides: front, left, back, right URLs, comma-separated'
+        required: false
+        type: string
+      prompt:
+        description: 'Or a prompt for a concept picture (only for designs FLUX knows: an X-wing, a TIE)'
+        required: false
+        type: string
+      faces:
+        description: 'Triangles in the top cut (default 120000; a rock 4000, a prop 10000, a character 30000)'
+        required: false
+        type: string
+      options:
+        description: 'More, as key: value two spaces apart (tex: 2048  seed: 7  engine: hunyuan  faithful: no  bake: no  fresh: yes  ultra: yes)'
+        required: false
+        type: string
+  issues:
+    types: [opened, reopened, labeled, unlabeled]
+  schedule:
+    - cron: '23 * * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  # a dispatch's request, written down as an issue at once (GitHub's own runner, always up)
+  queue:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      number: ${{ steps.issue.outputs.number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - id: issue
+        run: node scripts/gen3d/runner.mjs --enqueue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_NAME: ${{ inputs.name }}
+          INPUT_WHAT: ${{ inputs.what }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          INPUT_PROMPT: ${{ inputs.prompt }}
+          INPUT_FACES: ${{ inputs.faces }}
+          INPUT_OPTIONS: ${{ inputs.options }}
+
+  # the hourly sweep wakes the desktop's runner only when there's something to make
+  check:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      pending: ${{ steps.count.outputs.pending }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - id: count
+        run: echo "pending=$(node scripts/gen3d/runner.mjs --pending)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # the model, on the desktop (a stranger's issue never gets here: only the
+  # owner's and collaborators', and the ones this workflow's own form opened
+  # as github-actions; runner.mjs checks again, with the same rule)
+  make:
+    needs: [queue, check]
+    if: >-
+      always() && !cancelled() && (
+        (github.event_name == 'workflow_dispatch' && needs.queue.result == 'success') ||
+        (github.event_name == 'schedule' && needs.check.outputs.pending != '0' && needs.check.outputs.pending != '') ||
+        (github.event_name == 'issues' && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) || github.event.issue.user.login == 'github-actions[bot]') && (
+          ((github.event.action == 'opened' || github.event.action == 'reopened') && contains(github.event.issue.labels.*.name, 'gen3d')) ||
+          (github.event.action == 'labeled' && github.event.label.name == 'gen3d') ||
+          (github.event.action == 'unlabeled' && github.event.label.name == 'gen3d:failed' && contains(github.event.issue.labels.*.name, 'gen3d'))
+        ))
+      )
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 300
+    concurrency:
+      group: gen3d-${{ needs.queue.outputs.number || github.event.issue.number || 'sweep' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - name: Make it
+        shell: powershell
+        run: node scripts/gen3d/runner.mjs --auto
+        env:
+          JOB_ISSUE: ${{ needs.queue.outputs.number || github.event.issue.number }}
+          GCM_INTERACTIVE: never
+          GIT_TERMINAL_PROMPT: '0'
+      - name: Judging sheet
+        if: always() && (needs.queue.outputs.number || github.event.issue.number)
+        uses: actions/upload-artifact@v7
+        with:
+          name: gen3d-${{ needs.queue.outputs.number || github.event.issue.number }}
+          path: ${{ runner.temp }}/gen3d-artifacts
+          if-no-files-found: ignore
+          retention-days: 14

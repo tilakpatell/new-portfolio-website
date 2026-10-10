@@ -7,7 +7,7 @@
 //
 // stormPlan(lane, rand, n) → [{ at, vel, size }] is pure (tested): where
 // each rock starts and how it goes.
-// createMeteors(parent, { small }) → { storm(ship, rand) → boolean,
+// createMeteors(parent, { small, tier }) → { storm(ship, rand) → boolean,
 //   update(dt, ship) → events, hit(from, to) → { at, size } | null, targets,
 //   count, clear(), dispose() }
 // Events: { type: 'meteor', damage }. Points are in `parent`'s space.
@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { meteorLane } from './lanes';
 import { rock } from './belt';
+import { rockHook } from '../../lib/three/rock';
 
 export const METEOR = { count: 24, speed: [12, 16], size: [0.25, 0.7], spread: 40, across: 4, up: 3, damage: 8, life: 30 };
 const SHIP_R = 0.3; // how close a rock must come to the ship's way to hit it, plus its size
@@ -57,10 +58,11 @@ const segmentDistance = (a, b, c) => {
   return Math.hypot(a.x + abx * t - c.x, a.y + aby * t - c.y, a.z + abz * t - c.z);
 };
 
-export function createMeteors(parent, { small = false } = {}) {
+export function createMeteors(parent, { small = false, tier = 'high' } = {}) {
   const MAX = small ? 16 : METEOR.count;
   const geo = rock(4242);
-  const mat = new THREE.MeshStandardMaterial({ color: '#8a7f72', roughness: 0.95, metalness: 0.04, flatShading: true });
+  // (stone, pitted on high and mid: lib/three/rock)
+  const mat = rockHook(new THREE.MeshStandardMaterial({ color: '#8a7f72', roughness: 0.95, metalness: 0.04, flatShading: true }), { tier });
   const mesh = new THREE.InstancedMesh(geo, mat, MAX);
   mesh.count = 0;
   mesh.frustumCulled = false;

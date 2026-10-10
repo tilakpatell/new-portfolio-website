@@ -4,18 +4,26 @@ import { ThemeProvider } from './theme/ThemeProvider';
 import { AchievementProvider, useAchievements } from './components/Achievements';
 import { FunProvider } from './fun/FunProvider';
 import OnlineProvider from './components/universe/online/OnlineProvider';
+import EconomyProvider from './components/universe/EconomyProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
+import TourHost from './components/tour/TourHost';
 // fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
 import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
+import { local, prefersReducedMotion } from './lib/hooks';
+import { VISITED_KEY, addVisited } from './lib/visited';
+import { isPaletteKey } from './lib/palette';
+import { guideKeyFor } from './components/guide/routes';
 import { introPlaying } from './lib/stale';
+import { jumpStyle } from './components/jumps/styles';
 import WorldGate from './components/worlds/WorldGate';
 import Ambience from './components/ambience/Ambience';
 import { categoryAt, isFeedMove } from './components/feed/feed';
+import SettingsHost from './components/settings/SettingsHost';
 
 // Feed.jsx, named in full: feed.js sits beside it, and a case-blind disk
 // (Windows, macOS) would pick that
@@ -25,6 +33,7 @@ const Caribbean = lazy(() => import('./pages/Caribbean'));
 const Invincible = lazy(() => import('./pages/Invincible'));
 const Terminal = lazy(() => import('./pages/Terminal'));
 const DeathStar = lazy(() => import('./pages/DeathStar'));
+const DeathStarInside = lazy(() => import('./pages/DeathStarInside'));
 const Galaxy = lazy(() => import('./pages/Galaxy'));
 const GalaxyMission = lazy(() => import('./pages/GalaxyMission'));
 const GalaxySurface = lazy(() => import('./pages/GalaxySurface'));
@@ -36,15 +45,22 @@ const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Citadel = lazy(() => import('./pages/Citadel'));
+const RmPlanet = lazy(() => import('./pages/RmPlanet'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
+const Minecraft = lazy(() => import('./pages/Minecraft'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
+const Worlds = lazy(() => import('./pages/Worlds'));
 const Dickansh = lazy(() => import('./pages/Dickansh'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const Hyperspace = lazy(() => import('./components/Hyperspace'));
+// and the crews' own ways across the universe map (components/jumps/styles.js)
+const PortalJump = lazy(() => import('./components/jumps/PortalJump'));
+const BlueSkyJump = lazy(() => import('./components/jumps/BlueSkyJump'));
+const JUMPS = { hyper: Hyperspace, portal: PortalJump, bluesky: BlueSkyJump };
 
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
@@ -69,17 +85,47 @@ function ScrollToTop() {
   useEffect(() => {
     if (!now.current.feed) import('./lib/clips').then((c) => c.stopPageClips());
   }, [pathname]);
+  // every page shown, the feed's included, for the guide's checklist: the
+  // page, and its guide's key when that's another (a place in a world ticks
+  // the world's things; a project still ticks its own)
+  useEffect(() => {
+    // ('/' is the front door, which may be the map or send you to /home: not a visit to the map)
+    const key = pathname === '/' ? null : guideKeyFor(pathname);
+    let list = addVisited(local.get(VISITED_KEY, []), pathname);
+    if (key && key !== pathname) list = addVisited(list, key);
+    local.set(VISITED_KEY, list);
+  }, [pathname]);
   return null;
 }
 
-// ↑ ↑ ↓ ↓ ← → ← → B A — jump to lightspeed.
+// ↑ ↑ ↓ ↓ ← → ← → B A — jump to lightspeed. The tp:hyperspace event plays
+// the same, or, by the style in its detail (components/jumps/styles.js), a
+// crew's own way across the universe map: Rick's portal, Walt and Jesse's
+// Blue Sky. With reduced motion every one of them is the site's crossfade.
+// A page that changes under the jump says what to do once it's dark (the
+// event's onPeak): it's called at the jump's flash, or at its end, or when
+// another jump takes its place, whichever is first, and the event is marked
+// `taken` so the page knows it will be.
 function Lightspeed() {
   const { unlock } = useAchievements();
   const [on, setOn] = useState(0);
+  const [style, setStyle] = useState('hyper');
   const seq = useRef([]);
+  const waiting = useRef(null); // the page's onPeak, till it's called
+  const peak = useCallback(() => {
+    const fn = waiting.current;
+    waiting.current = null;
+    fn?.();
+  }, []);
   useEffect(() => {
-    const jump = () => {
+    const jump = (e) => {
       audioContext(); // inside the key press, so the sound may play
+      peak(); // (one jump taking another's place: whoever waited on that one goes now)
+      if (typeof e?.detail?.onPeak === 'function') {
+        waiting.current = e.detail.onPeak;
+        e.detail.taken = true;
+      }
+      setStyle(prefersReducedMotion() ? 'hyper' : jumpStyle(e?.detail?.style));
       setOn(Date.now());
     };
     const onKey = (e) => {
@@ -98,11 +144,20 @@ function Lightspeed() {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('tp:hyperspace', jump);
     };
-  }, [unlock]);
+  }, [unlock, peak]);
   if (!on) return null;
+  const Jump = JUMPS[style] ?? Hyperspace;
   return (
     <Suspense fallback={null}>
-      <Hyperspace key={on} sound onDone={() => setOn(0)} />
+      <Jump
+        key={on}
+        sound
+        onPeak={peak}
+        onDone={() => {
+          peak();
+          setOn(0);
+        }}
+      />
     </Suspense>
   );
 }
@@ -232,7 +287,7 @@ function PaletteHost() {
   const close = useCallback(() => setOpen(false), []);
   useEffect(() => {
     const onKey = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if (isPaletteKey(e)) {
         e.preventDefault();
         setOpen((o) => !o);
       }
@@ -299,6 +354,8 @@ function Shell() {
   }, []);
 
   return (
+    // (the wallet outside the link to the other pilots: the roster reads it too)
+    <EconomyProvider>
     <OnlineProvider>
       <div className="backdrop" aria-hidden="true" />
       <Ambience />
@@ -307,7 +364,7 @@ function Shell() {
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
         {/* (every feed page shares a page key, so it's the path that lets the nav's links clear an error) */}
         <ErrorBoundary resetKey={pathname}>
-          <Suspense fallback={<div className="min-h-[100svh]" />}>
+          <Suspense fallback={<div className="min-h-[100svh]" data-fallback />}>
             <div key={page} className="page-enter">
               {/* a world on a phone (or with Data Saver, or short of space) asks before it downloads its 3D */}
               <WorldGate pathname={pathname}>
@@ -325,6 +382,7 @@ function Shell() {
                 <Route path="/invincible" element={<Invincible />} />
                 <Route path="/terminal" element={<Terminal />} />
                 <Route path="/deathstar" element={<DeathStar />} />
+                <Route path="/deathstar/inside" element={<DeathStarInside />} />
                 <Route path="/galaxy/:system?" element={<Galaxy />} />
                 <Route path="/galaxy/:system/mission" element={<GalaxyMission />} />
                 <Route path="/galaxy/:system/surface" element={<GalaxySurface />} />
@@ -336,11 +394,14 @@ function Shell() {
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
                 <Route path="/c-137/citadel" element={<Citadel />} />
+                <Route path="/c-137/:planet" element={<RmPlanet />} />
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/dot-matrix/64" element={<Mario64 />} />
+                <Route path="/dot-matrix/minecraft" element={<Minecraft />} />
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
+                <Route path="/worlds" element={<Worlds />} />
                 <Route path="/dickansh" element={<Dickansh />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -349,15 +410,18 @@ function Shell() {
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && pathname !== '/deathstar/inside' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && <Footer />}
       <ScrollSaber />
       <Guide />
+      <TourHost />
       <Lightspeed />
       <PaletteHost />
+      <SettingsHost />
       <ErrorBoundary fallback={<IntroGone />}>
         <IntroJump />
       </ErrorBoundary>
     </OnlineProvider>
+    </EconomyProvider>
   );
 }
 

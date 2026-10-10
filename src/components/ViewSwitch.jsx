@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { RiLayoutGridLine, RiRocket2Line } from 'react-icons/ri';
+import { IconClassic, IconUniverse } from './icons';
 import { useAchievements } from './Achievements';
 import { START_KEY, VIEW_EVENT, classicPathFor, readStart, saveStart, universePathFor, viewOf } from '../lib/view';
 
@@ -33,12 +33,8 @@ export function useView() {
       const to = next === 'classic' ? classicPathFor(pathname) : universePathFor(pathname);
       if (to !== pathname) navigate(to);
       if (changed)
-        notify(
-          next === 'classic' ? 'Classic site' : 'The universe',
-          next === 'classic'
-            ? 'The site opens on the home page from now on. The switch at the top takes you back to the universe.'
-            : 'The site opens in the universe from now on. The switch at the top brings back the classic site.',
-        );
+        // one sentence: a toast is gone in under four seconds
+        notify(next === 'classic' ? 'Classic site' : 'The universe', 'The site opens here from now on.');
     },
     [pathname, navigate, notify],
   );
@@ -46,8 +42,8 @@ export function useView() {
 }
 
 const OPTIONS = [
-  { id: 'universe', label: 'Universe', title: 'Universe: fly through the site in 3D', Icon: RiRocket2Line },
-  { id: 'classic', label: 'Classic', title: 'Classic: the site as plain pages', Icon: RiLayoutGridLine },
+  { id: 'universe', label: 'Universe', title: 'Universe: fly through the site in 3D', Icon: IconUniverse },
+  { id: 'classic', label: 'Classic', title: 'Classic: the site as pages to read', Icon: IconClassic },
 ];
 
 // `size` 'bar' sits in the nav, where the words go when room is short:
@@ -57,7 +53,7 @@ const OPTIONS = [
 export default function ViewSwitch({ size = 'bar', labels = 'all', className = '' }) {
   const { view, switchTo } = useView();
   return (
-    <div className={`view-switch ${className}`} data-size={size} role="group" aria-label="View the site as">
+    <div className={`view-switch switch ${className}`} data-size={size} data-tour="view" role="group" aria-label="View the site as">
       {OPTIONS.map(({ id, label, title, Icon }) => (
         <button key={id} type="button" aria-pressed={view === id} title={title} onClick={() => switchTo(id)}>
           <Icon className="h-4 w-4 flex-none" aria-hidden="true" />

@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { useTravellers } from '../useTravellers';
@@ -10,9 +11,10 @@ import { SideList } from '../SideList';
 import { readSide, recordSide } from '../side';
 import { keyDown, keyUp, moveOf, ownButton } from '../keys';
 import { newTalk, talkNode, talkOn } from '../talk';
+import { sayInTurn } from '../voice';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { CROSS, CROSS_COLLIDERS, CROSS_START, CROSS_WALLS, FOOT, covered, validAt } from './layout';
-import { CONVOS, QUESTS, REMEMBER_SAYS, SEAL, SIDE, SPEAKERS, doomProgress } from './story';
+import { CONVOS, QUESTS, REMEMBER_SAYS, SAYS, SEAL, SIDE, SPEAKERS, doomProgress } from './story';
 import { CARRY, FLIGHT, HANG, MARCH, RECALL, SHIRE, carryStep, newCarry, newFlight, newHang, newMarch, newRecall, newSearch, recall, stepCarry, stepFlight, stepHang, stepMarch, stepRecall, stepSearch, telling } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -106,7 +108,12 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const hudKey = useRef('');
   const [toast, setToast] = useState(null);
   const [list, setList] = useState(false);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -253,7 +260,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     sounds().then((x) => x.eagle());
   }, [place]);
 
-  // do you remember the Shire? Resting at the mountain's foot
+  // do you remember the Shire? Resting at the mountain's foot; what's said
+  // there, in the speakers' voices, and then what Sam says back to it
+  // (./voicelines.js)
+  const rememberSay = useCallback((said) => {
+    sim.current.said = said;
+    sayInTurn([said, said.then].filter(Boolean).map((l) => ({ who: l.who, text: l.say })));
+  }, []);
   const startRemember = useCallback(() => {
     const s = sim.current;
     audioContext();
@@ -261,9 +274,9 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     place('plain');
     s.mode = 'remember';
     s.recall = newRecall(Math.floor(Math.random() * 1000) + 1);
-    s.said = REMEMBER_SAYS.start;
+    rememberSay(REMEMBER_SAYS.start);
     setList(false);
-  }, [place]);
+  }, [place, rememberSay]);
   const leaveRemember = useCallback(() => {
     const s = sim.current;
     if (s.mode !== 'remember') return;
@@ -283,20 +296,20 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       if (!res) return;
       if (res === 'wrong') {
         sounds().then((x) => x.forget());
-        s.said = REMEMBER_SAYS.wrong;
+        rememberSay(REMEMBER_SAYS.wrong);
         return;
       }
       sounds().then((x) => x.memory(i));
       api.current?.fx('recall');
-      if (res === 'right') s.said = REMEMBER_SAYS.right;
-      else if (res === 'round') s.said = REMEMBER_SAYS.round(r.round - 1);
+      if (res === 'right') rememberSay(REMEMBER_SAYS.right);
+      else if (res === 'round') rememberSay(REMEMBER_SAYS.round(r.round - 1));
       else if (res === 'remembered') {
-        s.said = REMEMBER_SAYS.won(r.slips);
+        rememberSay(REMEMBER_SAYS.won(r.slips));
         sounds().then((x) => x.done());
         recordGo({ won: true, score: r.slips });
       }
     },
-    [recordGo],
+    [recordGo, rememberSay],
   );
 
   const enter = useCallback(
@@ -450,7 +463,9 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a blow holds the game a moment: the scene's hitstop, ../../feel.js)
+    const real = Math.min(0.05, ms / 1000);
+    const dt = real * a.timeScale(real) * fast;
     s.t += dt;
     s.stepT += dt;
     const k = s.keys;
@@ -516,7 +531,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         else if (e.type === 'lash') {
           a.fx('lash');
           sounds().then((x) => x.whip());
-          say('The slaver’s whip. “Keep up, you scum!”', true);
+          say(SAYS.lash.text, true, SAYS.lash.who);
         } else if (e.type === 'caught') {
           s.busy = true;
           sounds().then((x) => x.snarl());
@@ -546,8 +561,10 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     if (s.mode === 'hang' && s.hang && !s.busy) {
       const hold = held('space') || held('up') || s.reach > 0 || Boolean(pad?.a);
       for (const e of stepHang(s.hang, dt, hold)) {
-        if (e.type === 'reach') say(s.saw ? 'He reaches up to you!' : 'He looks up at you, and reaches… “Don’t you let go! Reach!”', true);
-        else if (e.type === 'look') {
+        if (e.type === 'reach') {
+          if (s.saw) say('He reaches up to you!', true);
+          else say(SAYS.reach.text, true, SAYS.reach.who);
+        } else if (e.type === 'look') {
           s.saw = true;
           say('He’s looking down at the fire again, where the Ring went.');
         } else if (e.type === 'caught') {
@@ -593,8 +610,8 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         if (e.type === 'tell') {
           const i = SHIRE.findIndex((x) => x.id === e.id);
           sounds().then((x) => x.memory(i, 0.8));
-          s.said = { who: 'sam', say: SHIRE[i].say };
-        } else if (e.type === 'ask') s.said = REMEMBER_SAYS.ask(s.recall.round);
+          rememberSay({ who: 'sam', say: SHIRE[i].say });
+        } else if (e.type === 'ask') rememberSay(REMEMBER_SAYS.ask(s.recall.round));
       }
     }
 
@@ -679,28 +696,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (name, v) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -775,7 +771,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
           {sideHere && prog.next === 'carry' && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={startRemember}>
@@ -790,6 +786,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           {Re.say && (
             <p className="shire-panel-say" aria-live="polite">
               <b>{SPEAKERS[Re.say.who]}:</b> {Re.say.say}
+              {Re.say.then && ` ${Re.say.then.say}`}
             </p>
           )}
           <div className="doom-shire" role="group" aria-label="Things of the Shire">
@@ -960,7 +957,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           )}
         </div>
       )}
-      {crossing && touch && <Stick onStick={onStick} />}
+      {crossing && touch && <Stick onMove={onStick} />}
       {list && (
         <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && (sim.current.mode === 'walk' || sim.current.mode === 'end')}>
           <SideList tasks={[sideTask]} onGo={startRemember} canGo={(t) => t.open && (sim.current.mode === 'walk' || sim.current.mode === 'end')} />
