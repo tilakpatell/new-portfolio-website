@@ -1,8 +1,9 @@
 // A level's placed decals drawn cell by cell (the surfaces design, §5, lane
 // Q4), from the decals.json beside its pack (scripts/bf2017-decals.mjs).
 //
-//   createDecals({ scene, pack, loader, tier, backend, three? }) → {
-//     cell(cx, cz, targets) → Promise, drop(cx, cz), stats() → { draws, decals, textures, fallback }, dispose() }
+//   createDecals({ scene, pack, loader, tier, backend, volumes = true, three? }) → {
+//     cell(cx, cz, targets) → Promise, drop(cx, cz), stats() → { draws, decals, textures, fallback },
+//     setVisible(on), dispose() }
 //
 // - pack: decals.json ({ cells: { "cx,cz": [decal] }, files: { texture: path } })
 // - loader(texture, file) → Promise<Texture>: once per texture, shared by
@@ -10,16 +11,18 @@
 // - targets: what the cell's projected decals are cut from, [{ geometry,
 //   matrix }] (its static instances: lane L's packCell draws with their
 //   instance matrices)
-// - backend: light/three.js's backendOf(renderer); a volume decal draws as a
-//   box that reads the depth where volume.js's VOLUME_BACKENDS say it can,
-//   else it is projected over its box like the rest (Review Focus 3)
+// - backend: light/three.js's backendOf(renderer). Decals are node materials:
+//   the classic renderer ('webgl') draws none. A volume decal draws as a box
+//   that reads the depth where volume.js's VOLUME_BACKENDS say it can and
+//   `volumes` is not false, else it is projected over its box like the rest
+//   (Review Focus 3)
 //
-// One draw per texture per cell for the projected (Review Focus 4), one
-// per volume decal. Low draws none.
+// One draw per texture per cell for the projected and one for the volume
+// boxes (Review Focus 4). Low draws none.
 
 import { decalNodes, lookOf } from './look.js';
-import { buildProjected, loadDecalThree } from './projected.js';
-import { volumeMaterial, volumeMesh, volumeOk } from './volume.js';
+import { DECAL_ORDER, buildProjected, groupByTexture, loadDecalThree } from './projected.js';
+import { volumeBatch, volumeMaterial, volumeOk } from './volume.js';
 
 // the tiers that draw decals (low keeps the GLB's surfaces only)
 export const DECAL_TIERS = ['mid', 'high', 'ultra'];
@@ -30,8 +33,8 @@ export const POLYGON_OFFSET = -4;
 // own here; a scorch or a streak is matte
 const DECAL_ROUGHNESS = 0.8;
 
-export function createDecals({ scene, pack, loader, tier = 'high', backend = 'webgpu', three = null }) {
-  const on = DECAL_TIERS.includes(tier) && !!pack?.cells;
+export function createDecals({ scene, pack, loader, tier = 'high', backend = 'webgpu', volumes: boxes = true, three = null }) {
+  const on = DECAL_TIERS.includes(tier) && backend !== 'webgl' && !!pack?.cells;
   const ready = three ? Promise.resolve(three) : loadDecalThree();
   const cells = new Map(); // "cx,cz" → { promise, done: { meshes, decals, fallback } once built, dropped }
   const textures = new Map(); // name → Promise<Texture>
@@ -54,7 +57,7 @@ export function createDecals({ scene, pack, loader, tier = 'high', backend = 'we
     const t = await ready;
     const { THREE } = t;
     const list = pack.cells[key] ?? [];
-    const volumes = volumeOk(backend) ? list.filter((d) => d.kind === 'volume') : [];
+    const volumes = boxes && volumeOk(backend) ? list.filter((d) => d.kind === 'volume') : [];
     const flat = list.filter((d) => !volumes.includes(d));
     const maps = new Map(await Promise.all([...new Set(list.map((d) => d.texture))].map(async (n) => [n, await textureOf(n)])));
     if (disposed) return { meshes: [], decals: 0, fallback: 0 };
@@ -69,24 +72,24 @@ export function createDecals({ scene, pack, loader, tier = 'high', backend = 'we
         return m;
       });
     const { meshes } = buildProjected(flat, targets, { ...t, materialFor: projectedMaterial });
-    for (const d of volumes) {
-      box ??= new THREE.BoxGeometry(1, 1, 1);
-      const m = materialOf(`v|${d.texture}|${d.opacity}`, () => volumeMaterial(maps.get(d.texture), d.opacity, t, lookOf(d.texture)));
-      const mesh = volumeMesh(d, m, box, t);
-      mesh.renderOrder = meshes[0]?.renderOrder ?? 10;
-      mesh.userData.volume = true;
+    if (volumes.length) box ??= new THREE.BoxGeometry(1, 1, 1);
+    for (const [name, group] of groupByTexture(volumes)) {
+      const m = materialOf(`v|${name}`, () => volumeMaterial(maps.get(name), t, lookOf(name)));
+      const mesh = volumeBatch(group, m, box, t);
+      mesh.renderOrder = DECAL_ORDER;
       meshes.push(mesh);
     }
     for (const m of meshes) root.add(m);
     return { meshes, decals: list.length, fallback: list.filter((d) => d.kind === 'volume').length - volumes.length };
   }
 
-  // a cell's draws out of the scene, their cut geometry freed (the volume
-  // boxes share one geometry, freed on dispose)
+  // a cell's draws out of the scene, their geometry freed (the cuts, and the
+  // volume batches' box copies with their instanced attributes)
   function free({ meshes }) {
     for (const m of meshes) {
       root?.remove(m);
-      if (!m.userData.volume) m.geometry.dispose();
+      m.geometry.dispose();
+      if (m.isInstancedMesh) m.dispose();
     }
   }
 
@@ -113,6 +116,9 @@ export function createDecals({ scene, pack, loader, tier = 'high', backend = 'we
       c.dropped = true;
       // (a built cell goes now; one still building goes when it lands)
       if (c.done) free(c.done);
+    },
+    setVisible(on) {
+      if (root) root.visible = on;
     },
     stats() {
       const out = { draws: 0, decals: 0, textures: textures.size, fallback: 0 };

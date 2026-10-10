@@ -43,11 +43,26 @@ describe('createDecals', () => {
     expect(flat.colorNode?.isNode).toBe(true);
     expect(flat.opacityNode?.isNode).toBe(true);
   });
-  it('where the depth cannot be read, a volume decal is projected over its box', async () => {
-    const { scene, targets, decals } = await setup({ backend: 'webgl' });
+  it('volumes: false (a driver whose depth read fails) projects a volume decal over its box', async () => {
+    const { scene, targets, decals } = await setup({ backend: 'nodes-webgl', volumes: false });
     await decals.cell(0, 0, targets);
     expect(drawn(scene).every((m) => m.material.side !== 1)).toBe(true);
     expect(decals.stats()).toMatchObject({ draws: 3, fallback: 1 });
+  });
+  it('the classic renderer draws none: its materials are not node materials', async () => {
+    const { scene, targets, decals } = await setup({ backend: 'webgl' });
+    await decals.cell(0, 0, targets);
+    expect(drawn(scene)).toHaveLength(0);
+  });
+  it('a cell’s volume boxes of one texture are one draw', async () => {
+    const vol = (p, o) => at('c', p, { kind: 'volume', quaternion: [0, 0, 0, 1], size: [4, 2, 4], opacity: o });
+    const pack = { ...PACK, cells: { '0,0': [vol([0, 0, 0], 1), vol([10, 0, 0], 0.5), vol([20, 0, 0], 1)] } };
+    const three = await loadDecalThree();
+    const scene = new three.THREE.Scene();
+    const d = createDecals({ scene, pack, loader: async () => new three.THREE.Texture(), three });
+    await d.cell(0, 0, []);
+    expect(drawn(scene)).toHaveLength(1);
+    expect(drawn(scene)[0].count).toBe(3);
   });
   it('a texture is loaded once across cells, by its file', async () => {
     const { targets, decals, loader } = await setup();

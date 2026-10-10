@@ -28,6 +28,13 @@ import { loadThree } from '../light/three.js';
 
 // metres a decal's cut is lifted off the surface it lies on
 export const PUSH = 0.002;
+// DecalGeometry cuts every face inside the box; the records' projectors
+// are deep (5 to 18 m along X on Naboo_01), so a face is kept only when it
+// lies across the decal's axis (|cos| at least FACING, about 75°) and turns
+// toward the decal's centre, not away (the wall's back, the ceiling under
+// a floor), FACING_SLACK metres of give for the face the centre sits on
+export const FACING = 0.25;
+export const FACING_SLACK = 0.05;
 // drawn after the opaque world and the sky
 export const DECAL_ORDER = 10;
 // the box's frame onto the projector's, as [x, y, z, w]: a projected box
@@ -90,8 +97,10 @@ function cut(decal, targets, { THREE, DecalGeometry, mergeGeometries }, probe) {
     else g.dispose();
   }
   if (!parts.length) return null;
-  const g = parts.length === 1 ? parts[0] : mergeGeometries(parts);
+  const merged = parts.length === 1 ? parts[0] : mergeGeometries(parts);
   if (parts.length > 1) for (const p of parts) p.dispose();
+  const g = facing(merged, decal, THREE);
+  if (!g) return null;
   if (decal.tile) {
     const [ix, iy, cx, cy] = decal.tile;
     const uv = g.attributes.uv;
@@ -101,6 +110,44 @@ function cut(decal, targets, { THREE, DecalGeometry, mergeGeometries }, probe) {
   const n = g.attributes.normal;
   for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + n.getX(i) * PUSH, p.getY(i) + n.getY(i) * PUSH, p.getZ(i) + n.getZ(i) * PUSH);
   return g;
+}
+
+// the cut's triangles that face the decal, as a new geometry (null if none)
+function facing(g, decal, THREE) {
+  const p = g.attributes.position.array;
+  const n = g.attributes.normal.array;
+  const uv = g.attributes.uv.array;
+  const axis = decal.normal ?? [0, 1, 0];
+  const c = decal.position;
+  const keep = [];
+  for (let t = 0; t < p.length / 9; t++) {
+    let nx = 0;
+    let ny = 0;
+    let nz = 0;
+    let away = 0;
+    for (let k = 0; k < 3; k++) {
+      const i = (t * 3 + k) * 3;
+      nx += n[i];
+      ny += n[i + 1];
+      nz += n[i + 2];
+      away += (c[0] - p[i]) * n[i] + (c[1] - p[i + 1]) * n[i + 1] + (c[2] - p[i + 2]) * n[i + 2];
+    }
+    const len = Math.hypot(nx, ny, nz) || 1;
+    if (Math.abs(nx * axis[0] + ny * axis[1] + nz * axis[2]) / len >= FACING && away / 3 >= -FACING_SLACK) keep.push(t);
+  }
+  if (keep.length * 9 === p.length) return g;
+  g.dispose();
+  if (!keep.length) return null;
+  const pick = (src, w) => {
+    const out = new Float32Array(keep.length * 3 * w);
+    keep.forEach((t, j) => out.set(src.subarray(t * 3 * w, (t + 1) * 3 * w), j * 3 * w));
+    return new THREE.Float32BufferAttribute(out, w);
+  };
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', pick(p, 3));
+  out.setAttribute('normal', pick(n, 3));
+  out.setAttribute('uv', pick(uv, 2));
+  return out;
 }
 
 export function buildProjected(decals, targets, three) {

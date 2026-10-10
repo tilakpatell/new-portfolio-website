@@ -65,6 +65,16 @@ describe('buildProjected (three in Node)', () => {
     const out = buildProjected([flipped], [{ geometry: plane, matrix: new THREE.Matrix4() }], { ...three, materialFor: () => new THREE.MeshBasicMaterial() });
     expect(out.meshes[0].geometry.attributes.position.getY(0)).toBeCloseTo(PUSH, 5);
   });
+  it('only the faces turned to the decal take it: not the back of the wall, not its sides', async () => {
+    const three = await loadDecalThree();
+    const { THREE } = three;
+    const wall = new THREE.BoxGeometry(4, 4, 0.4); // front face at z = 0.2
+    const onFront = (x) => at('a', [x, 0, 0.2], { quaternion: [0, -Math.SQRT1_2, 0, Math.SQRT1_2], size: [2, 1, 1], normal: [0, 0, 1] }); // X → +Z, 2 m deep
+    const out = buildProjected([onFront(0), onFront(1.8)], [{ geometry: wall, matrix: new THREE.Matrix4() }], { ...three, materialFor: () => new THREE.MeshBasicMaterial() });
+    const n = out.meshes[0].geometry.attributes.normal;
+    expect(n.count).toBeGreaterThan(0);
+    for (let i = 0; i < n.count; i++) expect(n.getZ(i)).toBeGreaterThan(0.99);
+  });
   it('an atlas tile: the cut’s UVs fall in that tile of the sheet', async () => {
     const three = await loadDecalThree();
     const { THREE } = three;

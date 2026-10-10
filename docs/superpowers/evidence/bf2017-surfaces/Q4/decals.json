@@ -24,7 +24,8 @@
         "projected": 10,
         "volume": 1
       },
-      "grazingDiff": 0
+      "grazingFlicker": 0.08,
+      "grazingMove": 0.047
     }
   ]
 }

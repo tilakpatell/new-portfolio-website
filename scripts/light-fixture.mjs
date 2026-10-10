@@ -31,8 +31,9 @@
 //     at each time into the weather (the record reaches its target at 25 s):
 //     weather-<s>s-<leg>.png, the accumulation moved on a uniform, no rebuild
 //   --decals  ten of Naboo's placed decals on the fixture's wall and floor:
-//     decals-<leg>.png, the ground from above decals-floor-<leg>.png, and the grazing pair decals-grazing-{a,b}-<leg>.png
-//     two frames apart (no flicker: their mean difference is in the json)
+//     decals-<leg>.png, the ground from above decals-floor-<leg>.png, and the grazing pair decals-grazing-{a,b}-<leg>.png,
+//     the camera 3 mm higher in b (no flicker: the change the decals add
+//     between the two, against the change without them, is in the json)
 //
 // On Linux without a display both legs draw on SwiftShader (CPU): the
 // shots are the check, the frame times are the CPU's and only compare one
@@ -66,6 +67,8 @@ const weather = argv.includes('--weather');
 const decals = argv.includes('--decals');
 const seconds = arg('seconds', '0,12.5,30').split(',').map(Number);
 const q4 = weather || decals;
+// metres the camera rises between the grazing pair's two frames
+const GRAZE_JITTER = 0.003;
 const fixture = { tier, post, sky, env: true, only, ...(q4 ? { placed: false } : {}), ...(weather ? { weather: seconds[0] } : {}), ...(decals ? { decals: await decalPack() } : {}) };
 
 // The --decals pack: the decal fixtures' records (ten of Naboo_01's
@@ -192,11 +195,22 @@ for (const leg of legs) {
         await save('decals');
         await page.evaluate(() => (window.__lit.probe.view('floor'), window.__lit.draw(8)));
         await save('decals-floor');
-        await page.evaluate(() => (window.__lit.probe.view('grazing'), window.__lit.draw(8)));
-        const a = await raw(await save('decals-grazing-a'));
-        await page.evaluate(() => window.__lit.draw(2));
-        const b = await raw(await save('decals-grazing-b'));
-        row.grazingDiff = Number(meanDiff(a, b).toFixed(3));
+        // Z-fighting (Review Focus 5): the grazing view and the same view with
+        // the camera raised GRAZE_JITTER; the change between them with the
+        // decals, less the change without them, is what the decals add: a
+        // decal that fights its surface speckles there
+        const graze = async (jitter, on, name) => {
+          await page.evaluate(([j, o]) => (window.__lit.probe.view('grazing', j), window.__lit.probe.showDecals(o), window.__lit.draw(4)), [jitter, on]);
+          return raw(name ? await save(name) : await shot());
+        };
+        const a = await graze(0, true, 'decals-grazing-a');
+        const b = await graze(GRAZE_JITTER, true, 'decals-grazing-b');
+        const a0 = await graze(0, false);
+        const b0 = await graze(GRAZE_JITTER, false);
+        let s = 0;
+        for (let i = 0; i < a.length; i++) s += Math.abs(Math.abs(a[i] - b[i]) - Math.abs(a0[i] - b0[i]));
+        row.grazingFlicker = Number((s / a.length).toFixed(3));
+        row.grazingMove = Number(meanDiff(a0, b0).toFixed(3));
       }
     } else {
       await page.evaluate(() => window.__lit.draw(60));
@@ -245,7 +259,7 @@ await server.close();
 
 writeFileSync(join(OUT, `${label}.json`), `${JSON.stringify({ size: `${W}x${H}`, adapter: swift ? 'swiftshader' : 'system', rows }, null, 2)}\n`);
 if (q4) {
-  for (const r of rows) console.log(r.error ? `${r.leg}: failed: ${r.error}` : `${r.leg} (${r.backend}): ${r.shots.join(', ')}${r.amounts ? ` · accumulation ${JSON.stringify(r.amounts)} · programs ${r.programsBefore} → ${r.programsAfter}` : ''}${r.draws != null ? ` · decals ${r.count} in ${r.draws} draws (${r.textures} textures) · grazing diff ${r.grazingDiff}` : ''}`);
+  for (const r of rows) console.log(r.error ? `${r.leg}: failed: ${r.error}` : `${r.leg} (${r.backend}): ${r.shots.join(', ')}${r.amounts ? ` · accumulation ${JSON.stringify(r.amounts)} · programs ${r.programsBefore} → ${r.programsAfter}` : ''}${r.draws != null ? ` · decals ${r.count} in ${r.draws} draws (${r.textures} textures) · grazing: the scene moves ${r.grazingMove} between the pair, the decals add ${r.grazingFlicker}` : ''}`);
   for (const r of rows) if (r.errors) console.log(`  ${r.leg} errors: ${r.errors.join(' / ')}`);
   process.exit(rows.some((r) => r.error && r.leg !== 'webgpu') ? 1 : 0);
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import hothWeather from './fixtures/hoth.weather.json';
 import hoth from '../light/fixtures/hoth.ve.json';
-import { SAND_ROUGHNESS, SNOW_ROUGHNESS, UP_MAX, UP_MIN, WET_DARKEN, WET_ROUGHNESS, accumulation, gateOf, kindOf, overlaysFor, sandOverlay, skyFactor, snowOverlay, weatherAmount, weatherParams, wetOverlay } from './weather.js';
+import { SAND_ROUGHNESS, SNOW_ROUGHNESS, UP_MAX, UP_MIN, WET_DARKEN, WET_ROUGHNESS, accumulation, gateOf, kindOf, overlaysFor, sandOverlay, skyFactor, snowOverlay, weatherAmount, weatherClock, weatherParams, weatheringRecord, wetOverlay } from './weather.js';
 
 // A TSL stand-in that records the graph: every call is { op, args }, so a
 // test reads which channels a contributor made and from what
@@ -46,11 +46,21 @@ describe('weatherParams', () => {
     expect(p._source.seconds).toMatch(/VE_Sky_Arctic_Sunny_01.*AccumulateOverTimeOp\.TimeToReachTarget/);
     expect(p._source.range).toMatch(/WeatheringSkyVisibilityParam\.SkyVisibilityRange/);
   });
-  it('the same numbers from entry.record (lane R’s inlined shape)', () => {
-    const a = weatherParams(hothWeather, 'snow');
-    const b = weatherParams(hoth.sunny.record, 'snow');
-    for (const k of ['range', 'exponent', 'indoor', 'disableIndoor', 'initial', 'target', 'seconds', 'keep']) expect(b[k]).toEqual(a[k]);
-    expect(weatherParams(hoth.sunny, 'snow').seconds).toBe(25);
+  it('lane R’s entry (the map extras’ environments) carries no weathering entity: nothing accumulates from it', () => {
+    // (GlobalWeatheringParamsEntityData is in the VE data file, not in the
+    // extras: the world's weather.json carries it, weatheringRecord's shape)
+    const p = weatherParams(hoth.sunny, 'snow');
+    expect(p.target).toBe(0);
+    expect(p._source.target).toMatch(/default/);
+  });
+  it('weatheringRecord: the VE data file trimmed to its four weathering objects, the same numbers', () => {
+    const full = { name: hothWeather.name, objects: [] };
+    for (const [i, o] of Object.entries(hothWeather.objects)) full.objects[Number(i)] = o;
+    full.objects[3] = { $type: 'SkyComponentData', LuminanceScale: 35000 };
+    const rec = weatheringRecord(full, 'snow');
+    expect(rec.kind).toBe('snow');
+    expect(Object.values(rec.objects).map((o) => o.$type).sort()).toEqual(['AccumulateOverTimeOp', 'GlobalWeatheringParamsEntityData', 'WeatheringParam', 'WeatheringSkyVisibilityParam']);
+    expect(weatherParams(rec, 'snow')).toMatchObject({ seconds: 25, target: 1, range: [0.1, 0.9] });
   });
   it('a record with no weathering: the named defaults, said in _source, and nothing accumulates', () => {
     const p = weatherParams({}, 'sand');
@@ -102,6 +112,9 @@ describe('the gate (Review Focus 1)', () => {
     const p = weatherParams(hothWeather, 'snow');
     const snow = snowOverlay(p, stub);
     expect(snow(ctxOf({ use: false, top: false }))).toEqual({});
+    // (UseWeather false does not veto TopDirt: a recipe defaults `use` to
+    // false where the dump lacks it, as on most of the 100 TopDirt props)
+    expect(Object.keys(snow(ctxOf({ use: false, top: true })))).toContain('color');
     expect(snow(ctxOf(undefined))).toEqual({});
     expect(snow({ ...ctxOf(null), params: {} })).toEqual({});
   });
@@ -170,25 +183,46 @@ describe('the contributors, on the hook contract', () => {
 });
 
 describe('overlaysFor', () => {
-  it('the world’s weather kind picks the contributor', () => {
-    expect(overlaysFor(hoth.sunny, 'snow', stub).map((c) => c.kind)).toEqual(['snow']);
-    expect(overlaysFor(hoth.sunny, 'sand', stub).map((c) => c.kind)).toEqual(['sand']);
-    expect(overlaysFor(hoth.sunny, 'wet', stub).map((c) => c.kind)).toEqual(['wet']);
-    expect(overlaysFor(hoth.sunny, null, stub)).toEqual([]);
+  it('the weather’s kind picks the contributor, its numbers the world’s weather record', () => {
+    expect(overlaysFor(hothWeather, 'snow', stub).map((c) => c.kind)).toEqual(['snow']);
+    expect(overlaysFor(hothWeather, 'sand', stub).map((c) => c.kind)).toEqual(['sand']);
+    expect(overlaysFor(hothWeather, 'wet', stub).map((c) => c.kind)).toEqual(['wet']);
+    expect(overlaysFor(hothWeather, null, stub)).toEqual([]);
+    expect(overlaysFor(hothWeather, 'snow', stub)[0].params.seconds).toBe(25);
   });
-  it('the kind from the world when none is given', () => {
-    expect(kindOf({ world: 'hoth' })).toBe('snow');
-    expect(kindOf({ world: 'jakku' })).toBe('sand');
-    expect(kindOf({ world: 'kamino' })).toBe('wet');
-    expect(kindOf({ world: 'endor' })).toBe(null);
-    expect(kindOf({ weatherKind: 'sand', world: 'hoth' })).toBe('sand');
-    expect(overlaysFor({ ...hoth.sunny, world: 'hoth' }, undefined, stub).map((c) => c.kind)).toEqual(['snow']);
+  it('the kind from the record’s own `kind` (weather.json) or the world', () => {
+    expect(kindOf('hoth')).toBe('snow');
+    expect(kindOf('jakku')).toBe('sand');
+    expect(kindOf('kamino')).toBe('wet');
+    expect(kindOf('endor')).toBe(null);
+    expect(overlaysFor({ ...hothWeather, kind: 'snow' }, undefined, stub).map((c) => c.kind)).toEqual(['snow']);
   });
   it('builds on the real TSL too', async () => {
     const t = await import('three/tsl');
-    const [snow] = overlaysFor(hoth.sunny, 'snow', { tsl: t });
+    const [snow] = overlaysFor(hothWeather, 'snow', { tsl: t });
     const out = snow({ worldNormal: t.normalWorld, skyVisibility: 1, color: t.vec3(0.5, 0.4, 0.3), roughness: t.float(0.7), metalness: t.float(0), normal: t.normalView, params: { weather: { top: true } }, maps: {} });
     expect(out.color.isNode).toBe(true);
     expect(out.normal.isNode).toBe(true);
+  });
+});
+
+describe('weatherClock', () => {
+  it('moves the contributors’ accumulation with the seconds since the weather began', () => {
+    const overlays = overlaysFor(hothWeather, 'snow', stub);
+    const clock = weatherClock(overlays);
+    clock.update(12.5);
+    expect(overlays[0].amount.value).toBeCloseTo(0.5);
+    clock.update(20);
+    expect(overlays[0].amount.value).toBe(1);
+  });
+  it('a new weather with KeepValueWhenMaterialChanged grows from the value the last one left', () => {
+    const first = overlaysFor(hothWeather, 'snow', stub);
+    const clock = weatherClock(first);
+    clock.update(5); // 0.2
+    const next = overlaysFor(hothWeather, 'snow', stub);
+    clock.change(next);
+    expect(next[0].amount.value).toBeCloseTo(0.2);
+    clock.update(10); // 0.2 + 0.8 × 10/25
+    expect(next[0].amount.value).toBeCloseTo(0.52);
   });
 });

@@ -30,7 +30,7 @@
 // probe.view('decals' | 'floor' | 'grazing') frames it.
 
 import * as THREE from 'three';
-import hoth from '../../lib/three/light/fixtures/hoth.ve.json';
+import hothWeather from '../../lib/three/surface/fixtures/hoth.weather.json';
 
 const RING = 200; // point lights round the ring
 const SPOTS = 8;
@@ -164,12 +164,16 @@ export default {
       setWeather(t) {
         return snow?.setTime(t) ?? null;
       },
-      view(name) {
+      // (jitter: metres the camera is raised, for the grazing pair)
+      view(name, jitter = 0) {
         if (name === 'crate') camera.position.set(0.2, 2.1, 20), camera.lookAt(0.2, 0.7, 16);
         else if (name === 'decals') camera.position.set(0, 3.6, 15.2), camera.lookAt(0, 1.4, 24.5);
         else if (name === 'floor') camera.position.set(0, 13, 17.5), camera.lookAt(0, 0, 22.5);
-        else if (name === 'grazing') camera.position.set(-8.6, 0.9, 23.4), camera.lookAt(5, 1.4, 25.6);
+        else if (name === 'grazing') camera.position.set(-8.6, 0.9 + jitter, 23.4), camera.lookAt(5, 1.4, 25.6);
         else camera.position.set(0, 7, 24), camera.lookAt(0, 1, 0);
+      },
+      showDecals(on) {
+        decals?.setVisible(on);
       },
       decals() {
         if (!decals) return null;
@@ -243,7 +247,7 @@ export default {
 async function weatherCrates(scene, made, seconds) {
   const [{ loadThree }, { overlaysFor }] = await Promise.all([import('../../lib/three/light/three.js'), import('../../lib/three/surface/weather.js')]);
   const { THREE: N, tsl } = await loadThree();
-  const [snow] = overlaysFor(hoth.sunny, 'snow', { tsl });
+  const [snow] = overlaysFor(hothWeather, 'snow', { tsl });
   snow.setTime(seconds);
   const box = new N.BoxGeometry(1.4, 1.2, 1.4);
   made.push(box);

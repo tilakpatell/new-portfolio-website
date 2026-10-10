@@ -28,7 +28,19 @@
 // gateOf(weather, kind) → bool
 // snowOverlay(params, { tsl }) | sandOverlay | wetOverlay → contributor,
 //   with .kind, .amount (the accumulation's uniform) and .setTime(t, from?)
-// kindOf(entry) → 'snow' | 'sand' | 'wet' | null ; overlaysFor(entry, kind, { tsl }) → contributor[]
+// weatheringRecord(veData, kind) → weather.json: the VE data file's four
+//   weathering objects, keyed by index (scripts/bf2017-weather.mjs writes it
+//   beside a level pack)
+// kindOf(world) → 'snow' | 'sand' | 'wet' | null
+// overlaysFor(weather, kind, { tsl }) → contributor[]   (weather: a weather.json,
+//   or the VE data file; kind defaults to its own `kind`)
+// weatherClock(contributors) → { update(dt), change(contributors), seconds }
+//
+// Where the numbers live: GlobalWeatheringParamsEntityData is an entity of
+// the VE data file (`data/Levels/Lighting/<world>/<weather>/VE_*.json` in
+// the bucket), not a component of the map extras' environments that lane
+// R's entry reads, so an entry gives nothing and the world's weather.json
+// is what a level hands overlaysFor.
 
 // The up-facing band: none at or below a normal's y of UP_MIN (about 66°
 // from up), all at UP_MAX (about 26°); the design's smoothstep, the
@@ -209,13 +221,47 @@ export function wetOverlay(params, three) {
 }
 
 const BY_KIND = { snow: snowOverlay, sand: sandOverlay, wet: wetOverlay };
+const WEATHERING = new Set(['GlobalWeatheringParamsEntityData', 'WeatheringParam', 'WeatheringSkyVisibilityParam', 'AccumulateOverTimeOp']);
 
-export const kindOf = (entry) => entry?.weatherKind ?? WEATHER_KIND[entry?.world] ?? null;
+export const kindOf = (world) => WEATHER_KIND[world] ?? null;
+
+export function weatheringRecord(data, kind = null) {
+  const objects = {};
+  for (const [i, o] of Object.entries(data?.objects ?? {})) if (WEATHERING.has(o?.$type)) objects[i] = o;
+  return { name: data?.name ?? null, kind, objects };
+}
 
 // the contributors a world's weather wants, for createGameMaterial's
-// `overlays` (Q1): one, of the entry's kind, or none
-export function overlaysFor(entry, kind, three) {
-  const k = kind === undefined ? kindOf(entry) : kind;
+// `overlays` (Q1): one, of the weather's kind, or none
+export function overlaysFor(weather, kind, three) {
+  const k = kind === undefined ? (weather?.kind ?? null) : kind;
   const make = BY_KIND[k];
-  return make ? [make(weatherParams(entry, k), three)] : [];
+  return make ? [make(weatherParams(weather, k), three)] : [];
+}
+
+// The weather's clock: seconds since it began, handed to each contributor's
+// accumulation. A change of weather starts the clock again; under
+// KeepValueWhenMaterialChanged the new one grows from the value the old one
+// had reached.
+export function weatherClock(contributors = []) {
+  let list = contributors;
+  let seconds = 0;
+  let from = null;
+  const apply = () => list.forEach((c) => c.setTime(seconds, from));
+  apply();
+  return {
+    get seconds() {
+      return seconds;
+    },
+    update(dt) {
+      seconds += dt;
+      apply();
+    },
+    change(next) {
+      from = list[0]?.amount.value ?? null;
+      list = next;
+      seconds = 0;
+      apply();
+    },
+  };
 }
