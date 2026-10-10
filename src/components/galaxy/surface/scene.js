@@ -715,6 +715,7 @@ export async function create(canvas, ctx) {
   let picked = ctx.hero ? writeHero(ctx.hero) : null; // (the choice as kept, to know a new one)
   let hero = ctx.hero ? heroSpec(ctx.hero) : null;
   let perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
+  let spareSim = null; // (the dodge's engine for a hero with no saber: dodge())
   // (your mate carries their own two abilities too, where they're on the roster)
   const withAbilities = (s) => (s.abilities || !heroById(s.id)?.abilities ? s : { ...s, abilities: heroById(s.id).abilities });
   const party = partyFor(hero, crewOf).map(withAbilities);
@@ -748,7 +749,9 @@ export async function create(canvas, ctx) {
   const armsFor = (spec, fig, own) => {
     if (!spec.gun || own) return { gp: null, saber: null, weapon: null };
     const gp = createGunplay(fig, fig.gun ?? spec.gun, { unit: 1, who: fig.built ? 'built' : spec.id });
-    const saber = spec.saber && gp ? createSaber(gp, { color: spec.saber.color, hilt: spec.saber.hilt, stance: spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what), fig }) : null;
+    const saber = spec.saber && gp ? createSaber(gp, { color: spec.saber.color, hilt: spec.saber.hilt, stance: spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what), fig, hero: spec.id }) : null;
+    // (the hero's perks on the engine's numbers: a blocked strike's cost, the dodge's recharge)
+    if (saber) saber.sim.scale = { blocked: 1 / perks.guard, recharge: perks.dodge };
     return { gp, saber, weapon: weaponOf(spec, fig) };
   };
   const unarm = (a) => {
@@ -849,6 +852,8 @@ export async function create(canvas, ctx) {
     picked = kept;
     hero = heroSpec(choice);
     perks = perkEffects(hero.perks ?? []);
+    if (me().saber) me().saber.sim.scale = { blocked: 1 / perks.guard, recharge: perks.dodge };
+    spareSim = null;
     const [lead1, mate1] = partyFor(hero, crewOf).map(withAbilities);
     // (the page hears once they're on: `ok` false only when no body at all
     // would load; `stoodIn` when another stands in for theirs, standIn.js)
@@ -1866,8 +1871,7 @@ export async function create(canvas, ctx) {
   // as far as the clip's root travels; any other rolls the clip library's
   // `roll` as far as the rulebook's hand.roll. While it's on, what lands is
   // the evading share of it (hurt)
-  let spareSim = null;
-  const evader = () => me().saber?.sim ?? (spareSim ??= createSaberSim(saberOf('luke')));
+  const evader = () => me().saber?.sim ?? (spareSim ??= Object.assign(createSaberSim(saberOf('luke')), { scale: { blocked: 1, recharge: perks.dodge } }));
   function dodge() {
     if (state.phase !== 'walk' || state.dodge || state.off) return;
     if (!evader().dash(state.t)) return;
@@ -3834,6 +3838,15 @@ export async function create(canvas, ctx) {
       const spawn = { kind, at, face: p.yaw + turn + Math.PI, hp, leash: 30, roam: 1, tag: 'devduel', hostile: { range: 16, chase: 2, melee: true, reach: 2.8, every: 1.5, damage: 1, delay: 1, parry: 0.7, guard: 4, blade: { color, stance } } };
       activity.show({ id: 'dev-duel', steps: [{ type: 'shoot', tag: 'devduel', n: 1, text: 'Duel', spawn }] }, { id: 'dev-duel', step: 0 });
       ctx.invalidate();
+    },
+    // (dev: a trooper's bolt at your chest from `far` metres off, `turn`
+    // radians round from where you face: the block's shield turns one from
+    // the front and not from behind, the duel's browser check)
+    bolt({ far = 14, turn = 0, damage = 8 } = {}) {
+      if (!import.meta.env.DEV) return null;
+      const p = me().st;
+      const from = [p.x + Math.sin(p.yaw + turn) * far, p.y + 1.3, p.z + Math.cos(p.yaw + turn) * far];
+      return Boolean(boltPlay.enemy({ from, to: [p.x, p.z], spread: 0, damage, side: 'them' }, p, state.t));
     },
     // (for tests: put you somewhere, facing somewhere)
     // (dev: into a zone by its id, or out of the one you're in)

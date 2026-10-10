@@ -47,6 +47,7 @@
 //     taken(damage, now) → the damage that lands on you (evading: ×)
 //     recoil(now, secs?), stagger(now, secs)
 //     state: { stamina, blocking, out, dashBar, evadingUntil, recoilUntil, staggerUntil, striking, lunge }
+//     scale: { blocked, recharge } (1 each: the hero's perks bend a blocked strike's cost and the dash's recharge)
 //     view(now) → { stamina (0…1), out, dashes (whole charges), dashBar (0…1), blocking, evading }
 
 import BOOK from '../../data/bf2017/saber.json';
@@ -204,8 +205,9 @@ export function createSaberSim(rules, { id = null } = {}) {
       st.staggerUntil = Math.max(st.staggerUntil, now + secs);
     },
     // (the defender's side of a blocked strike: its stamina, the BlockedLightSaber state)
+    scale: { blocked: 1, recharge: 1 },
     blockedStrike(now) {
-      const held = drain(S.blocked, now);
+      const held = drain(S.blocked * sim.scale.blocked, now);
       if (held !== false) st.recoilUntil = Math.max(st.recoilUntil, now + rules.stagger.blocked);
       return held !== false;
     },
@@ -226,7 +228,7 @@ export function createSaberSim(rules, { id = null } = {}) {
       if (st.out && st.stamina > S.out) st.out = false;
       if (st.out) st.blocking = false;
       // the dash bar: refilled over its recharge, not while it's on
-      if (now >= st.evadingUntil) st.dashBar = Math.min(1, st.dashBar + dt / E.recharge);
+      if (now >= st.evadingUntil) st.dashBar = Math.min(1, st.dashBar + dt / (E.recharge * sim.scale.recharge));
       // damage whose delay has run
       for (let i = pending.length - 1; i >= 0; i--)
         if (pending[i].at <= now) {
