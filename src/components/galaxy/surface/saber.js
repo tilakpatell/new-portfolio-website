@@ -454,7 +454,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       // (one named outright, as a peer's packet names theirs: that clip, fetched if it hasn't been)
       if (named && named !== k.clip) {
         k.clip = named;
-        if (!clips[named] && !given) loadClip(named).then((c) => c && !gone && (clips[named] = c));
+        if (!clips[named] && !given && !own) loadClip(named).then((c) => c && !gone && (clips[named] = c));
       }
       const clip = clips[k.clip] ?? null;
       const x = clip?.userData ?? {};

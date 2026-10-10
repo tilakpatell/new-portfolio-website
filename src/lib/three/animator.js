@@ -17,7 +17,8 @@
 //   library (clipLibrary.js forFigure: hipsY, up and key are for that, the
 //   hips' height in its rig's units, the hips' parent's up, the figure's
 //   template). bones: { name: Bone }, else found by name. unit, clipSpeed:
-//   locomotion.js's. seed: every clock it starts (its idle's start, its
+//   locomotion.js's. library: false, and nothing is ever fetched from
+//   the library (a 2017 figure plays only the game's clips). seed: every clock it starts (its idle's start, its
 //   base loops', its fidgets'), so a crowd never breathes in unison.
 //
 //   mixer, actions ({ name: AnimationAction }), loco (locomotion.js's)
@@ -73,7 +74,9 @@ import { rotateWorld } from './ik';
 import { createLocomotion } from './locomotion';
 
 export const MESHY_MASKS = {
-  upper: ['Spine02', 'Spine01', 'Spine', 'neck', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
+  // (and the 2017 game's spine and neck, Spine1, Spine2, Neck, Neck1: a
+  // walrus body has no Meshy names, nor a Meshy body these)
+  upper: ['Spine02', 'Spine01', 'Spine', 'neck', 'Spine1', 'Spine2', 'Neck', 'Neck1', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
   lower: ['Hips', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase'],
   'arm.r': ['RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
   'arm.l': ['LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand'],
@@ -141,7 +144,7 @@ const lay = (parts, t, w) => {
   }
 };
 
-export function createAnimator(model, { clips = {}, hipsY = null, bones = null, unit = 1, seed = 0, up = null, key = null, clipSpeed = null } = {}) {
+export function createAnimator(model, { clips = {}, hipsY = null, bones = null, unit = 1, seed = 0, up = null, key = null, clipSpeed = null, library = true } = {}) {
   const byName = {};
   model.traverse((o) => {
     if (o.isBone && !(o.name in byName)) byName[o.name] = o;
@@ -162,7 +165,7 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
   const loading = new Map();
   const fetchClip = (name) => {
     if (got.has(name)) return Promise.resolve(got.get(name));
-    if (!CLIPS[name]) return Promise.resolve(null);
+    if (!library || !CLIPS[name]) return Promise.resolve(null);
     if (!loading.has(name))
       loading.set(
         name,
@@ -283,7 +286,7 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
     st.baseWait = wait;
     st.want = name;
     const go = () => st.baseWait === wait && !st.disposed && route(name, fade);
-    const need = [name, `${group(name)}.enter`, `${group(st.at)}.exit`].filter((n) => n && !got.has(n) && CLIPS[n]);
+    const need = [name, `${group(name)}.enter`, `${group(st.at)}.exit`].filter((n) => n && !got.has(n) && library && CLIPS[n]);
     if (need.length) Promise.all(need.map(fetchClip)).then(go);
     else go();
     return wait;

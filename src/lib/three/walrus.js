@@ -50,9 +50,11 @@ export function loadWalrusClips(urls = WALRUS_CLIPS, { loader = gltfLoader() } =
   if (!cache.has(key))
     cache.set(
       key,
-      Promise.all(urls.map((u) => loader.loadAsync(u).then((g) => g.animations, () => []))).then((packs) => {
+      Promise.all(urls.map((u) => loader.loadAsync(u).then((g) => [g.animations, true], () => [[], false]))).then((packs) => {
+        // (a pack that failed is asked for again by the next figure)
+        if (packs.some(([, ok]) => !ok)) cache.delete(key);
         const out = new Map();
-        for (const pack of packs) for (const c of pack) if (!out.has(c.name)) out.set(c.name, c);
+        for (const [pack] of packs) for (const c of pack) if (!out.has(c.name)) out.set(c.name, c);
         return out;
       }),
     );
@@ -73,7 +75,9 @@ export function clipsFor(body, clips) {
   }
   for (const name of Object.keys(CLIP_FALLBACK)) {
     const to = resolveClip(name, (n) => n in out);
-    if (to && to !== name) out[name] = out[to];
+    // (a copy: the mixer keeps one action a clip, so a shared clip would
+    // make a dodge stop the idle it falls back to)
+    if (to && to !== name) out[name] = Object.assign(out[to].clone(), { name });
   }
   return out;
 }
@@ -119,7 +123,7 @@ export async function loadWalrusFigure(url, { tall, unit = 1, seed = 0, clipSpee
   model.position.y -= floor * k;
 
   const own = clipsFor(model, clips ?? (await loadWalrusClips(WALRUS_CLIPS, { loader })));
-  const anim = createAnimator(model, { clips: own, bones, unit, seed, clipSpeed, key: `${url}:${tall}` });
+  const anim = createAnimator(model, { clips: own, bones, unit, seed, clipSpeed, key: `${url}:${tall}`, library: false });
   const act = Object.fromEntries(['idle', 'walk', 'run'].filter((n) => anim.actions[n]).map((n) => [n, anim.actions[n]]));
   // (library: false, so a name it lacks is never fetched from Meshy's or the UAL's)
   const calls = animatorCalls(anim, { model, seed, own: Object.keys(own), act, library: false });

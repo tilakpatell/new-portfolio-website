@@ -4,11 +4,14 @@
 // the grip point and must stay where it is (no recentring); the blade
 // leaves from the scaled box's top along that axis. Pure: plain arrays.
 //
-//   hiltFit({ min, max }, length, axis = 1) → { scale, bladeY }
+//   hiltFit({ min, max }, length, axis) → { scale, bladeY }
 //     axis: which of x, y, z (0, 1, 2) the blade runs along (y: the site's
 //     gun frame, gunplay.js's GUNS.saber, the blade up its +y)
 
-export function hiltFit(box, length, axis = 1) {
+export function hiltFit(box, length, axis) {
+  // (no default: which axis a game hilt's blade runs along is read from the
+  // measured Wep_Root frame, never assumed)
+  if (![0, 1, 2].includes(axis)) throw new Error('hiltFit: name the blade axis (0, 1 or 2)');
   const extent = box.max[axis] - box.min[axis];
   const scale = extent > 1e-9 ? length / extent : 1;
   return { scale, bladeY: box.max[axis] * scale };

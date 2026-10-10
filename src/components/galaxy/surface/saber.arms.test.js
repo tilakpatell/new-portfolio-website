@@ -23,7 +23,11 @@ describe('a saber in the hands of a figure on the game’s skeleton', () => {
   };
   it('strokes with the figure’s own clips and never fetches the library’s', () => {
     fetched.length = 0;
-    armed({ rig: 'walrus', clips: {} }).dispose();
+    const saber = armed({ rig: 'walrus', clips: {} });
+    // (a peer's packet naming a stroke it hasn't: still not fetched)
+    saber.light(true);
+    saber.swing(1, { clip: 'sword.a' });
+    saber.dispose();
     expect(fetched).toEqual([]);
   });
   it('while anyone else’s still fetches them', () => {

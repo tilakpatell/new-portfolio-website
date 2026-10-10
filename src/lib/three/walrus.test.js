@@ -1,7 +1,11 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { BODY, SOCKETS } from './walrusRig';
 import { clipsFor, loadWalrusClips, loadWalrusFigure } from './walrus';
+
+// (the clip library watched: nothing of it may reach a figure on the game's skeleton)
+const asked = vi.hoisted(() => []);
+vi.mock('./clipLibrary', async (orig) => ({ ...(await orig()), forFigure: (n) => (asked.push(n), Promise.resolve(null)), loadClip: (n) => (asked.push(n), Promise.resolve(null)) }));
 
 // a body on the game's skeleton: its bones under one root, a Spine1 among them
 function walrusBody(names = BODY.concat(Object.values(SOCKETS))) {
@@ -31,7 +35,7 @@ describe('the shared clips on one body', () => {
     const got = clipsFor(body, clips);
     expect(got.ghost).toBeUndefined();
     // (and the names that fall back to an idle stand on it)
-    expect(got.kneel).toBe(got.idle);
+    expect(got.kneel.tracks).toEqual(got.idle.tracks);
     expect(got.idle.tracks.map((t) => t.name)).toEqual(['Hips.quaternion']);
     // (the library's own copy is left alone, for the next body)
     expect(clips.get('idle').tracks).toHaveLength(2);
@@ -41,9 +45,31 @@ describe('the shared clips on one body', () => {
       ['hit.chest', clip('hit.chest', [quat('Spine1')])],
       ['die', clip('die', [quat('Hips')])],
     ]));
-    expect(got['hit.head']).toBe(got['hit.chest']);
-    for (const n of ['die.fwd', 'die.back', 'die.blown']) expect(got[n]).toBe(got.die);
+    expect(got['hit.head'].tracks).toEqual(got['hit.chest'].tracks);
+    for (const n of ['die.fwd', 'die.back', 'die.blown']) expect(got[n].tracks).toEqual(got.die.tracks);
     expect(got['aim.pistol']).toBeUndefined();
+  });
+  it('gives a fallback its own copy, so playing it never stops the clip it stands for', () => {
+    const got = clipsFor(walrusBody(), new Map([['idle', clip('idle', [quat('Hips')])]]));
+    expect(got.roll).not.toBe(got.idle);
+    expect(got.roll.tracks).toEqual(got.idle.tracks);
+    const mixer = new THREE.AnimationMixer(walrusBody());
+    expect(mixer.clipAction(got.roll)).not.toBe(mixer.clipAction(got.idle));
+  });
+  it('lays an upper-layer clip on the game’s chest and neck', async () => {
+    const body = walrusBody();
+    const tilt = (n) => new THREE.QuaternionKeyframeTrack(`${n}.quaternion`, [0, 1], [0.5, 0, 0, 0.866, 0.5, 0, 0, 0.866]);
+    const fig = await loadWalrusFigure('/upper.glb', { tall: 1.7, loader: loaderOf(body), clips: new Map([
+      ['idle', clip('idle', [quat('Hips')])],
+      ['talk', clip('talk', ['Spine1', 'Spine2', 'Neck'].map(tilt))],
+    ]) });
+    await fig.play('talk', { layer: 'upper', fade: 0 });
+    for (let i = 0; i < 5; i++) {
+      fig.update(0.1, 0);
+      fig.after(0.1, null, { forward: new THREE.Vector3(0, 0, 1), up: new THREE.Vector3(0, 1, 0) });
+    }
+    for (const n of ['Spine1', 'Spine2', 'Neck']) expect(Math.abs(fig.bones[n].quaternion.x)).toBeGreaterThan(0.1);
+    fig.dispose();
   });
 });
 
@@ -54,7 +80,7 @@ describe('a figure on the game’s skeleton', () => {
   });
   it('stands at its height, with the game’s sockets and the shared clips', async () => {
     const body = walrusBody();
-    const fig = await loadWalrusFigure('/luke.glb', { tall: 1.72, unit: 1, loader: loaderOf(body), clips: new Map([['idle', clip('idle', [quat('Hips')])]]) });
+    const fig = await loadWalrusFigure('/luke.glb', { tall: 1.72, unit: 1, loader: loaderOf(body), clips: new Map([['idle', clip('idle', [quat('Hips')])], ['sit.idle', clip('sit.idle', [quat('Hips')])]]) });
     expect(fig.rig).toBe('walrus');
     expect(fig.sockets.weapon.name).toBe('Wep_Root');
     expect(fig.sockets.handL.name).toBe('IK_Joint_LeftHand');
@@ -63,6 +89,11 @@ describe('a figure on the game’s skeleton', () => {
     // (a copy: the loaded scene stays the template)
     expect(fig.model).not.toBe(body);
     expect(await fig.play('sword.block')).toBe(false);
+    // (a base state whose way in it lacks: never fetched from the library)
+    asked.length = 0;
+    fig.base('sit.idle');
+    await Promise.resolve();
+    expect(asked).toEqual([]);
     fig.update(0.016, 0);
     fig.dispose();
   });
