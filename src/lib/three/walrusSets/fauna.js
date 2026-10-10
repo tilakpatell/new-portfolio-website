@@ -93,7 +93,8 @@ export const FAUNA = {
     skeleton: 'LW_GamorreanGuard_01_Ske',
     body: 'gamorreanguard',
     model: 'characters/npc/aliens/gamorreanguard/gamorreanguard_01/lw_gamorreanguard_01_mesh',
-    set: { idle: 'L_Gamorrean_SitOnBench_01', sit: 'L_Gamorrean_SitOnBench_01', 'sit.floor': 'L_Gamorrean_SitOnFloor_01', shake: 'L_Gamorrean_ShakeBars_01' },
+    // (sat on the floor: the bench's sitting needs the game's bench under it)
+    set: { idle: 'L_Gamorrean_SitOnFloor_01', 'sit.bench': 'L_Gamorrean_SitOnBench_01', shake: 'L_Gamorrean_ShakeBars_01' },
   },
   treadwell: {
     skeleton: 'WED_15SeptoidTreadwell_01_Ske',

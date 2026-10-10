@@ -435,7 +435,7 @@ export const SITES = {
           { kind: 'gamorrean', at: [1.6, 25], still: true, face: -PI / 2, name: 'Gamorrean guard', says: ['(Snort.)'] },
           { kind: 'gamorrean', at: [-4.6, -5.4], still: true, face: 0, name: 'Gamorrean guard', says: ['(It watches the trapdoor, and grins.)'] },
           { kind: 'gamorrean', at: [4.6, -5.4], still: true, face: 0, name: 'Gamorrean guard', says: ['(Grunt.)'] },
-          // (off duty on the bench by the gate: the game's own guard, on its own rig, lib/three/walrusSets/fauna.js)
+          // (off duty, sat on the floor by the wall: the game's own guard, on its own rig, lib/three/walrusSets/fauna.js)
           { kind: 'gamorreanguard', at: [-8.6, 14], roam: 0, speed: 0, face: PI / 2, name: 'Gamorrean guard', says: ['(It grunts, and doesn’t get up.)'] },
           { kind: 'bith', at: [8, 3.1], still: true, face: 0, name: 'The organist', says: ['(A slow, greasy riff. Jabba likes it slow.)'] },
           { kind: 'twilek', n: 2, at: [6, 8.5], spread: 1.5, roam: 2, speed: 0.6, name: 'Twi’lek dancer', says: ['(She glances at the trapdoor, and keeps well clear of it.)'] },
