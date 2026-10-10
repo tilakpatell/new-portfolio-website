@@ -25,7 +25,7 @@ import { LOOK } from '../../../universe/look';
 
 const SOFTEST = 0.6;
 // UnrealBloomPass's composite multiplies its sum by 3 × the strength
-// (three's UnrealBloomPass.js, \`3.0 * bloomStrength\`); the TSL bloom by
+// (three's UnrealBloomPass.js, `3.0 * bloomStrength`); the TSL bloom by
 // the strength alone. So the same numbers glow a third as much: the
 // strength is handed over three times over. (The runtime's own bloom pass,
 // src/runtime/webgpu.js, has the same third: lane R's to settle.)
