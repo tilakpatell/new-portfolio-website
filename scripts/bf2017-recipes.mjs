@@ -23,39 +23,36 @@
 // (the dump's material order; the loader matches a GLB material to its
 // recipe by the shader the GLB's extras name)
 
-import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { parseArgs } from "./lib/args.mjs";
-import { countFamilies, mapsWanted, recipesOf } from "./lib/bf2017-recipes.mjs";
-import { ktx2Info, dropMips, mipsToFit } from "./lib/ktx2-mips.mjs";
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseArgs } from './lib/args.mjs';
+import { candidatesOf, countFamilies, mapsWanted, recipesOf } from './lib/bf2017-recipes.mjs';
+import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const CACHE = join(ROOT, "lab/assets/bf2017");
-const DUMP = "materials.jsonl";
-const TIERS = ["low", "mid", "high", "ultra"];
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const CACHE = join(ROOT, 'lab/assets/bf2017');
+const DUMP = 'materials.jsonl';
+const TIERS = ['low', 'mid', 'high', 'ultra'];
 // A tiling map's size per tier: it repeats over the surface, so it is sized
 // by how close it is seen, not by the thing (the spec's tiers: high takes
 // the detail a mip under ultra; low draws none, its row the smallest)
 const TILING_SIZE = { low: 256, mid: 512, high: 512, ultra: 1024 };
 // a mask or overlay spans the thing once: lod.js's data maps' sizes
 const MASK_SIZE = { low: 256, mid: 512, high: 512, ultra: 1024 };
-const TILING_KINDS = new Set(["detail", "array"]);
+const TILING_KINDS = new Set(['detail', 'array']);
 
-const dumpPath = join(CACHE, "web", DUMP);
-const meshOf = (glbName) =>
-  glbName.replace(/^models\//, "").replace(/\.glb$/, "");
+const dumpPath = join(CACHE, 'web', DUMP);
+const meshOf = (glbName) => glbName.replace(/^models\//, '').replace(/\.glb$/, '');
 
 async function readDump() {
   if (!existsSync(dumpPath)) {
-    console.error(
-      `No dump at ${dumpPath}: run node scripts/bf2017-fetch.mjs --raw ${DUMP} first.`,
-    );
+    console.error(`No dump at ${dumpPath}: run node scripts/bf2017-fetch.mjs --raw ${DUMP} first.`);
     process.exit(2);
   }
   const rows = new Map();
-  for (const line of (await readFile(dumpPath, "utf8")).split("\n")) {
+  for (const line of (await readFile(dumpPath, 'utf8')).split('\n')) {
     if (!line.trim()) continue;
     const r = JSON.parse(line);
     rows.set(r.mesh, r);
@@ -63,21 +60,10 @@ async function readDump() {
   return rows;
 }
 
-// A game texture's objects in the bucket, best first: a normal-kind map as
-// the export rebuilt it (__normal), else as encoded; an array's first slice
-// (one texture per material: the spec's C2)
-function candidates(name, kind) {
-  const base = `textures/${name.toLowerCase()}`;
-  if (kind === "array") return [`${base}_000__normal.ktx2`, `${base}_000.ktx2`];
-  if (kind === "detail") return [`${base}__normal.ktx2`, `${base}.ktx2`];
-  // (a packed normal + emissive map rebuilt as a normal has lost its emissive)
-  return [`${base}.ktx2`];
-}
-
 async function bucketHas(env, listFolder) {
   const folders = new Map();
   return async (path) => {
-    const dir = `web/${path.slice(0, path.lastIndexOf("/"))}`;
+    const dir = `web/${path.slice(0, path.lastIndexOf('/'))}`;
     if (!folders.has(dir))
       folders.set(
         dir,
@@ -85,13 +71,13 @@ async function bucketHas(env, listFolder) {
           .then((names) => new Set(names))
           .catch(() => new Set()),
       );
-    return (await folders.get(dir)).has(path.split("/").pop());
+    return (await folders.get(dir)).has(path.split('/').pop());
   };
 }
 
 async function level(world, { fetch: doFetch }) {
-  const packDir = join(ROOT, "public/models/galaxy/bf2017/levels", world);
-  const pack = JSON.parse(await readFile(join(packDir, "level.json"), "utf8"));
+  const packDir = join(ROOT, 'public/models/galaxy/bf2017/levels', world);
+  const pack = JSON.parse(await readFile(join(packDir, 'level.json'), 'utf8'));
   const rows = await readDump();
   const meshes = {};
   const all = [];
@@ -105,29 +91,25 @@ async function level(world, { fetch: doFetch }) {
   const families = {};
   for (const r of all) families[r.family] = (families[r.family] ?? 0) + 1;
   const wanted = mapsWanted(all);
-  console.log(
-    `${pack.meshes.length} meshes, ${all.length} materials (${unknown} meshes not in the dump)`,
-  );
+  console.log(`${pack.meshes.length} meshes, ${all.length} materials (${unknown} meshes not in the dump)`);
   console.log(
     `families: ${Object.entries(families)
       .sort((a, b) => b[1] - a[1])
       .map(([k, v]) => `${k} ${v}`)
-      .join(", ")}`,
+      .join(', ')}`,
   );
   console.log(`maps wanted: ${wanted.length}`);
 
-  const { keys, listFolder, getObject } = await import("./bf2017-fetch.mjs");
+  const { keys, listFolder, getObject } = await import('./bf2017-fetch.mjs');
   const env = keys();
   const has = await bucketHas(env, listFolder);
   const maps = {};
   const tex = {};
-  const old = existsSync(join(packDir, "recipes.json"))
-    ? JSON.parse(await readFile(join(packDir, "recipes.json"), "utf8"))
-    : null;
+  const old = existsSync(join(packDir, 'recipes.json')) ? JSON.parse(await readFile(join(packDir, 'recipes.json'), 'utf8')) : null;
   let missing = 0;
   for (const { name, kind } of wanted) {
     let found = null;
-    for (const c of candidates(name, kind)) if (await has(c)) found ??= c;
+    for (const c of candidatesOf(name, kind)) if (await has(c)) found ??= c;
     if (!found) {
       console.log(`missing: ${kind.padEnd(8)} ${name}`);
       maps[name] = null;
@@ -135,21 +117,19 @@ async function level(world, { fetch: doFetch }) {
       continue;
     }
     const slug = found
-      .split("/")
+      .split('/')
       .pop()
-      .replace(/\.ktx2$/, "");
+      .replace(/\.ktx2$/, '');
     maps[name] = `tex/${slug}.ktx2`;
     if (!doFetch) {
       // (a map fetched by an earlier run keeps its rows)
       if (old?.tex?.[slug]) tex[slug] = old.tex[slug];
       else maps[name] = null;
-      console.log(
-        `${old?.tex?.[slug] ? "have:   " : "there:  "} ${kind.padEnd(8)} ${name}`,
-      );
+      console.log(`${old?.tex?.[slug] ? 'have:   ' : 'there:  '} ${kind.padEnd(8)} ${name}`);
       continue;
     }
     const got = await getObject(env, CACHE, `web/${found}`);
-    if (got.state !== "fetched" && got.state !== "kept") {
+    if (got.state !== 'fetched' && got.state !== 'kept') {
       console.log(`failed: ${kind.padEnd(8)} ${name} (${got.state})`);
       maps[name] = null;
       continue;
@@ -164,22 +144,17 @@ async function level(world, { fetch: doFetch }) {
       tex[slug][tier] = size;
       if (written.has(size)) continue;
       written.add(size);
-      const out = dropMips(
-        buf,
-        Math.min(mipsToFit(info.width, size), info.levels - 1),
-      );
-      await mkdir(join(packDir, "tex"), { recursive: true });
-      await writeFile(join(packDir, "tex", `${slug}.${size}.ktx2`), out);
+      const out = dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1));
+      await mkdir(join(packDir, 'tex'), { recursive: true });
+      await writeFile(join(packDir, 'tex', `${slug}.${size}.ktx2`), out);
     }
     console.log(`fetched: ${kind.padEnd(8)} ${name} → tex/${slug}`);
   }
   const out = { source: `web/${DUMP}`, families, meshes, maps, tex };
   const text = `${JSON.stringify(out)}\n`;
-  await writeFile(join(packDir, "recipes.json"), text);
+  await writeFile(join(packDir, 'recipes.json'), text);
   const have = Object.values(maps).filter(Boolean).length;
-  console.log(
-    `recipes.json: ${(text.length / 1e6).toFixed(2)} MB; maps ${have} of ${wanted.length} in the pack, ${missing} missing from the bucket`,
-  );
+  console.log(`recipes.json: ${(text.length / 1e6).toFixed(2)} MB; maps ${have} of ${wanted.length} in the pack, ${missing} missing from the bucket`);
 }
 
 async function main() {
@@ -188,19 +163,14 @@ async function main() {
     const rows = [...(await readDump()).values()];
     const c = countFamilies(rows);
     const total = Object.values(c).reduce((a, b) => a + b, 0);
-    for (const [k, v] of Object.entries(c).sort((a, b) => b[1] - a[1]))
-      console.log(
-        `${k.padEnd(18)} ${String(v).padStart(6)}  ${((100 * v) / total).toFixed(1)}%`,
-      );
-    console.log(`${"total".padEnd(18)} ${String(total).padStart(6)}`);
+    for (const [k, v] of Object.entries(c).sort((a, b) => b[1] - a[1])) console.log(`${k.padEnd(18)} ${String(v).padStart(6)}  ${((100 * v) / total).toFixed(1)}%`);
+    console.log(`${'total'.padEnd(18)} ${String(total).padStart(6)}`);
     return;
   }
   if (args.level) return level(args.level, { fetch: !!args.fetch });
   const [mesh] = args._;
   if (!mesh) {
-    console.error(
-      "usage: node scripts/bf2017-recipes.mjs --level <world> [--fetch] | <mesh> | --count",
-    );
+    console.error('usage: node scripts/bf2017-recipes.mjs --level <world> [--fetch] | <mesh> | --count');
     process.exit(2);
   }
   const row = (await readDump()).get(mesh);
