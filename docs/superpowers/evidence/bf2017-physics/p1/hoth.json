@@ -11,8 +11,8 @@
       "name": "a 0.5 m wall holds you",
       "ok": true,
       "seen": {
-        "x": -6,
-        "y": 0.005,
+        "x": -5.978,
+        "y": 0.01,
         "z": 2.67,
         "grounded": true,
         "pose": "stand"
@@ -22,9 +22,9 @@
       "name": "a 0.4 m step is climbed",
       "ok": true,
       "seen": {
-        "x": -1.555,
-        "y": 0.405,
-        "z": 5.099,
+        "x": -1.567,
+        "y": 0.407,
+        "z": 5.089,
         "grounded": true,
         "pose": "stand"
       }
@@ -34,8 +34,8 @@
       "ok": true,
       "seen": {
         "x": 2,
-        "y": 0.905,
-        "z": 3.577,
+        "y": 0.907,
+        "z": 3.36,
         "grounded": true,
         "pose": "stand"
       }
@@ -44,9 +44,9 @@
       "name": "standing, the 1.3 m beam stops you",
       "ok": true,
       "seen": {
-        "x": 5.964,
-        "y": 0.003,
-        "z": 4.17,
+        "x": 6.016,
+        "y": 0.009,
+        "z": 4.175,
         "grounded": true,
         "pose": "stand"
       }
@@ -55,9 +55,9 @@
       "name": "crouched, you pass under it",
       "ok": true,
       "seen": {
-        "x": 5.993,
-        "y": 0.001,
-        "z": 6.287,
+        "x": 6,
+        "y": -0.004,
+        "z": 6.261,
         "grounded": true,
         "pose": "crouch"
       }
@@ -65,14 +65,12 @@
   ],
   "frames": [
     197,
-    195,
     196,
-    65,
-    194
+    194,
+    64,
+    196
   ],
-  "errors": [
-    "THREE.WebGLProgram: Shader Error 0 - VALIDATE_STATUS false\n\nMaterial Name: \nMaterial Type: MeshBasicMaterial\n\nProgram Info Log: Vertex shader is not compiled.\nVERTEX\n\nERROR: 0:582: 'mvPosition' : undeclared identifier\nERROR: 0:582: 'z' :  field selection requires structure, vector, or interface block on left hand side\nERROR: 0:585: 'mvPosition' : undeclared identifier\nERROR: 0:585: 'xyz' :  field selection requires structure, vector, or interface block on left hand side\nERROR: 0:585: '=' : dimension mismatch\nERROR: 0:585: 'assign' : cannot convert from 'highp 3X3 matrix of float' to 'out highp 3-component vector of float'\n\n  577: \t\t\tvReflect = refract( cameraToVertex, worldNormal, refractionRatio );\n  578: \t\t#endif\n  579: \t#endif\n  580: #endif\n  581: #ifdef USE_FOG\n> 582: \tvFogDepth = - mvPosition.z;\n  583: #endif\n  584: #ifdef USE_FOG\n  585:   vSkyFogDir = transpose(mat3(viewMatrix)) * mvPosition.xyz;\n  586: #endif\n  587: }\n"
-  ],
+  "errors": [],
   "angle": "d3d11",
   "note": "positions are checked; the shots are what it looked like (in software GL the frames are too few to walk on: run it on a graphics chip, ANGLE=d3d11)"
 }
