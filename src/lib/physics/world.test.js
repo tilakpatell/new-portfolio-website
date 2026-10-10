@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { GROUPS, createPhysics } from './world';
 
 let physics;
@@ -13,8 +13,9 @@ describe('createPhysics', () => {
   it('loads the engine and has his groups', () => {
     expect(physics.RAPIER).toBeTruthy();
     expect(physics.world).toBeTruthy();
-    expect(GROUPS.floor).toBe((1 << 16) | 1);
-    expect(GROUPS.object).toBe((3 << 16) | 5);
+    // (his values plus the character bit in the floor's and the object's filter: groups.js)
+    expect(GROUPS.floor).toBe((1 << 16) | 9);
+    expect(GROUPS.object).toBe((3 << 16) | 13);
     expect(GROUPS.bumper).toBe((4 << 16) | 2);
   });
 
@@ -296,6 +297,85 @@ describe('createPhysics, on a round planet', () => {
     p.onOrigin([1000, 0, 0]);
     for (let i = 0; i < 200; i++) p.step(1 / 60);
     expect(dist(b.position(), [0, -100, 0])).toBeCloseTo(100.5, 1);
+    p.dispose();
+  });
+});
+
+describe('sensors, tags and collision events', () => {
+  const zoneAt = (p, at, on) => p.add({ type: 'fixed', position: at, group: 'zone', onEnter: on.enter, onLeave: on.leave, colliders: [{ shape: 'ball', args: [1], sensor: true, tag: 'bite' }] });
+  const walker = (p, at) => p.add({ type: 'kinematicPositionBased', position: at, group: 'character', colliders: [{ shape: 'capsule', args: [0.6, 0.4] }] });
+  const stroll = (p, w, from, to, steps = 20) => {
+    for (let i = 1; i <= steps && !w.removed; i++) {
+      const t = i / steps;
+      w.body.setNextKinematicTranslation({ x: from[0] + (to[0] - from[0]) * t, y: from[1], z: from[2] });
+      p.step(1 / 60);
+    }
+  };
+
+  it('a sensor zone reports a kinematic capsule entering and leaving', async () => {
+    const p = await createPhysics();
+    ground(p);
+    const enter = vi.fn();
+    const leave = vi.fn();
+    zoneAt(p, [0, 1, 0], { enter, leave });
+    const w = walker(p, [-4, 1, 0]);
+    p.step(1 / 60);
+    stroll(p, w, [-4, 1, 0], [4, 1, 0]);
+    expect(enter).toHaveBeenCalledTimes(1);
+    expect(enter).toHaveBeenCalledWith(w, 'bite', null);
+    expect(leave).toHaveBeenCalledTimes(1);
+    expect(leave).toHaveBeenCalledWith(w, 'bite', null);
+    expect(enter.mock.invocationCallOrder[0]).toBeLessThan(leave.mock.invocationCallOrder[0]);
+    p.dispose();
+  });
+
+  it('a sensor zone never pushes the capsule', async () => {
+    const p = await createPhysics();
+    ground(p);
+    zoneAt(p, [0, 1, 0], { enter: () => {}, leave: () => {} });
+    const w = walker(p, [-4, 1, 0]);
+    p.step(1 / 60);
+    stroll(p, w, [-4, 1, 0], [0, 1, 0]);
+    expect(w.position()[0]).toBeCloseTo(0, 5);
+    p.dispose();
+  });
+
+  it('a throwing onEnter goes to onError and the step finishes', async () => {
+    const errors = [];
+    const p = await createPhysics({ onError: (e) => errors.push(e) });
+    ground(p);
+    const leave = vi.fn();
+    zoneAt(p, [0, 1, 0], { enter: () => { throw new Error('bitten'); }, leave });
+    const w = walker(p, [-4, 1, 0]);
+    p.step(1 / 60);
+    stroll(p, w, [-4, 1, 0], [4, 1, 0]);
+    expect(errors.map((e) => e.message)).toEqual(['bitten']);
+    expect(leave).toHaveBeenCalledTimes(1);
+    p.dispose();
+  });
+
+  it('a body removed from inside onEnter is gone after the step', async () => {
+    const p = await createPhysics();
+    ground(p);
+    const leave = vi.fn();
+    zoneAt(p, [0, 1, 0], { enter: (other) => p.remove(other), leave });
+    const w = walker(p, [-4, 1, 0]);
+    p.step(1 / 60);
+    const before = p.world.bodies.len();
+    stroll(p, w, [-4, 1, 0], [4, 1, 0]);
+    expect(w.removed).toBe(true);
+    expect(p.world.bodies.len()).toBe(before - 1);
+    expect(leave).not.toHaveBeenCalled();
+    p.dispose();
+  });
+
+  it('tagOf gives a collider’s tag', async () => {
+    const p = await createPhysics();
+    const z = zoneAt(p, [0, 1, 0], { enter: () => {}, leave: () => {} });
+    const w = walker(p, [-4, 1, 0]);
+    expect(p.tagOf(z.colliders[0])).toBe('bite');
+    expect(p.tagOf(w.colliders[0])).toBeNull();
+    expect(p.tagOf(null)).toBeNull();
     p.dispose();
   });
 });

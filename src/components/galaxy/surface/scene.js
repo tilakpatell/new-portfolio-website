@@ -146,6 +146,7 @@ import { garrisonLife, garrisonProbe } from './garrison';
 import { createGround, landingFor } from './ground/index';
 import { standable } from './sites/validity';
 import { floraTint } from './flora';
+import { createPlayerBody } from './playerBody';
 import { assetPool, worldScope } from '../../../lib/assetLoad';
 
 const V = THREE.Vector3;
@@ -163,7 +164,7 @@ const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
 const ROLL_PIVOT = 0.55; // metres up from the feet: where a dodge's roll turns about (a tucked body's middle)
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second', b: 'emote' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', z: 'crouch', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second', b: 'emote' };
 const FIRE_EVERY = 0.24; // seconds between shots
 const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
 const LOCK = { range: 14, cone: 0.9 }; // metres and radians: what a stroke homes on
@@ -823,6 +824,18 @@ export async function create(canvas, ctx) {
     },
   });
   let strode = 0;
+  // ── The 2017 soldier's body (playerBody.js) ──
+  // A level whose shapes are in a physics engine (lane P0's stream) hands it
+  // over through the handle's usePhysics; until then, and on a world with no
+  // level pack, a phone or a low tier, you walk on walker.js as ever.
+  let body = null;
+  let bodyPhysics = null;
+  let bodyDrives = true;
+  let soldierBook = null;
+  const bodyFor = (st) => {
+    body?.dispose();
+    return createPlayerBody({ physics: bodyPhysics, state: st, row: soldierBook.rows[soldierBook.default], world, drive: bodyDrives });
+  };
 
   // ── The other pilots down here (online) ──
   const peers = createPeers({ parent: scene, placer, rides: RIDES, models, only: site.cast === 'models', getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
@@ -2405,7 +2418,8 @@ export async function create(canvas, ctx) {
       y /= m;
     }
     const run = Boolean(k.run || state.buttons.run || Math.hypot(state.stick.x, state.stick.y) > 0.92);
-    return { x, y, run, heading: state.cam.yaw };
+    const crouch = Boolean(k.crouch || state.buttons.crouch);
+    return { x, y, run, crouch, heading: state.cam.yaw };
   }
 
   function stepLanding(dt) {
@@ -2460,7 +2474,10 @@ export async function create(canvas, ctx) {
     state.safe = safe;
     // (a sprint: abilityRules.js's, the walk and the run both quicker)
     const rules = state.t < state.sprint ? { ...WALK, walk: WALK.walk * ABILITIES.sprint.speed, run: WALK.run * ABILITIES.sprint.speed } : WALK;
-    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpPress }, dt, world, rules);
+    const intent = state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpPress };
+    // (on a level with the game's shapes in an engine: the 2017 soldier's body, playerBody.js)
+    if (body && body.state !== p) body = bodyFor(p);
+    const o = body ? body.step(intent, dt) : walk(p, intent, dt, world, rules);
     stepJet(dt);
     life.shove(p, WALK.radius);
     // (and out of whatever's parked: a speeder, a tauntaun)
@@ -3461,6 +3478,7 @@ export async function create(canvas, ctx) {
         if (name === 'jump') state.jumpPress.press();
         if (name === 'act') state.actQueued = true;
         if (name === 'run') state.buttons.run = true;
+        if (name === 'crouch') state.buttons.crouch = true;
         if (name === 'fire') state.buttons.fire = true;
         if (name === 'block') {
           state.buttons.block = true;
@@ -3484,6 +3502,7 @@ export async function create(canvas, ctx) {
       },
       release(name) {
         if (name === 'run') state.buttons.run = false;
+        if (name === 'crouch') state.buttons.crouch = false;
         if (name === 'fire') state.buttons.fire = false;
         if (name === 'block') state.buttons.block = false;
         if (name === 'power') state.buttons.power = false;
@@ -3679,6 +3698,22 @@ export async function create(canvas, ctx) {
     },
     // (for tests: put you somewhere, facing somewhere)
     // (dev: into a zone by its id, or out of the one you're in)
+    // a level's physics engine (or a promise of it), from the level's stream:
+    // the player onto the 2017 soldier's body (drive: this body steps it; false
+    // when its owner does); null back to the walker
+    async usePhysics(physics, { drive = true } = {}) {
+      if (!physics) {
+        body?.dispose();
+        body = null;
+        bodyPhysics = null;
+        return;
+      }
+      soldierBook ??= (await import('../../../data/bf2017/physics/soldier.json')).default;
+      if (disposed) return;
+      bodyPhysics = physics;
+      bodyDrives = drive;
+      body = bodyFor(me().st);
+    },
     zone(id = null) {
       const z = id && site.zones.find((o) => o.id === id);
       if (z) enterZone(z);
@@ -3702,10 +3737,12 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), force: powers.debug(), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), net: { ...net.progress(), pool: assetPool().progress() }, rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
+    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, body: body ? { ready: body.ready, pose: body.pose } : null, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock?.stagger != null ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), force: powers.debug(), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), net: { ...net.progress(), pool: assetPool().progress() }, rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
       net.end();
+      body?.dispose();
+      body = null;
       lit?.dispose();
       knocks?.dispose();
       knockHits.dispose();
