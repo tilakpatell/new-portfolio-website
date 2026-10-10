@@ -2859,6 +2859,13 @@ export async function create(canvas, ctx) {
     });
   }
 
+  // out of your own eyes on foot, its arms in the game's first-person poses
+  // (firstView.js), over whichever camera follow() set, the game's or the site's
+  function firstPerson() {
+    if (!firstView.on) return;
+    if (state.phase !== 'walk') return firstView.leave(me().fig);
+    if (firstView.place(me().fig, state.cam.yaw, state.cam.pitch)) firstView.pose(me().fig, { gun: me().gp?.kind ?? null, ads: state.ads, sprint: Boolean(state.keys.run) });
+  }
   function follow(dt) {
     const c = state.cam;
     const p = me().st;
@@ -2923,11 +2930,6 @@ export async function create(canvas, ctx) {
     camLook.lerp(focus, 1 - Math.exp(-dt * 14));
     camera.position.copy(camPos);
     camera.lookAt(camLook);
-    // (out of your own eyes on foot, its arms in the game's first-person poses: firstView.js)
-    if (firstView.on) {
-      if (state.phase !== 'walk') firstView.leave(me().fig);
-      else if (firstView.place(me().fig, c.yaw, c.pitch)) firstView.pose(me().fig, { gun: me().gp?.kind ?? null, ads: state.ads, sprint: Boolean(state.keys.run) });
-    }
     if (Math.abs(state.kick.x) > 1e-4) camera.rotateX(state.kick.x * 0.04); // your own shot's kick
     // every knock this frame, as trauma (the k each had is its trauma)
     if (state.shake > 0) feel.trauma(state.shake);
@@ -3116,6 +3118,7 @@ export async function create(canvas, ctx) {
       if (state.phase === 'ride') stepRide(dt);
       else stepWalk(dt);
       follow(dt);
+      firstPerson();
       if (state.phase === 'walk' || state.phase === 'ride') {
         const tg = target();
         state.tg = tg;
