@@ -1,15 +1,16 @@
 import { Hud, Menu, MenuItem, Stick, Toast, TouchButton } from '../../../runtime/hud';
 import LifeLine from './LifeLine';
+import FlightMap from './FlightMap';
 
 // The flight's HUD, from the kit: the planet's name top left, the one Menu
 // top right (the way out, and the planets to fly to next), the toast under
 // the top row, and at the foot the speed and the height over the ground,
 // written by the page into the refs it holds (numbers through refs, not
 // state). On touch, the kit's stick flies it and two buttons work the
-// throttle.
+// throttle. `map`: { spec, source } for the planet map (./FlightMap).
 //
-//   <FlightHud name way planets onPlanet toast numbers touch onStick onThrottle />
-export default function FlightHud({ name, way, planets = [], onPlanet, toast, numbers, touch = false, onStick, onThrottle }) {
+//   <FlightHud name way planets onPlanet toast numbers touch onStick onThrottle map />
+export default function FlightHud({ name, way, planets = [], onPlanet, toast, numbers, touch = false, onStick, onThrottle, map = null }) {
   return (
     <Hud
       className="fly-hud"
@@ -53,6 +54,7 @@ export default function FlightHud({ name, way, planets = [], onPlanet, toast, nu
     >
       <Toast toast={toast} className="fly-toast" />
       <LifeLine />
+      {map && <FlightMap {...map} touch={touch} />}
     </Hud>
   );
 }
