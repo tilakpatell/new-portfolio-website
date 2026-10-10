@@ -1,15 +1,225 @@
 {
+  "models/galaxy/bf2017/clips-anakin.glb": {
+    "hash": "eb588371ba92",
+    "bytes": 1291596,
+    "from": "models/galaxy/bf2017/clips-anakin.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-bobafett.glb": {
+    "hash": "4e0c74629169",
+    "bytes": 144828,
+    "from": "models/galaxy/bf2017/clips-bobafett.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-bossk.glb": {
+    "hash": "69b29cbf2be8",
+    "bytes": 118388,
+    "from": "models/galaxy/bf2017/clips-bossk.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-chewie.glb": {
+    "hash": "a3f3e2b4e1c9",
+    "bytes": 168824,
+    "from": "models/galaxy/bf2017/clips-chewie.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-dooku.glb": {
+    "hash": "9e26065a79c9",
+    "bytes": 1240924,
+    "from": "models/galaxy/bf2017/clips-dooku.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-han.glb": {
+    "hash": "31f66dcc2e78",
+    "bytes": 94152,
+    "from": "models/galaxy/bf2017/clips-han.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-humanoid.glb": {
+    "hash": "6d9ff1254a22",
+    "bytes": 863976,
+    "from": "models/galaxy/bf2017/clips-humanoid.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-lando.glb": {
+    "hash": "20e6a9f3ef07",
+    "bytes": 95460,
+    "from": "models/galaxy/bf2017/clips-lando.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-leia.glb": {
+    "hash": "9dc506933577",
+    "bytes": 94968,
+    "from": "models/galaxy/bf2017/clips-leia.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-luke.glb": {
+    "hash": "ae3272e90473",
+    "bytes": 1384564,
+    "from": "models/galaxy/bf2017/clips-luke.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-maul.glb": {
+    "hash": "5a2ae539c234",
+    "bytes": 1302748,
+    "from": "models/galaxy/bf2017/clips-maul.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-obiwan.glb": {
+    "hash": "237361d10153",
+    "bytes": 1095224,
+    "from": "models/galaxy/bf2017/clips-obiwan.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-palpatine.glb": {
+    "hash": "cf7c5efa8493",
+    "bytes": 591680,
+    "from": "models/galaxy/bf2017/clips-palpatine.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/clips-vader.glb": {
+    "hash": "5edb878f0885",
+    "bytes": 1391588,
+    "from": "models/galaxy/bf2017/clips-vader.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/crew/anakin.glb": {
+    "hash": "46b5b3f5a2b6",
+    "bytes": 16450504,
+    "from": "characters/hero/anakin/anakin_01/anakin_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/anakin.lod1.glb": {
+    "hash": "7cbc398c3bc9",
+    "bytes": 4450852,
+    "from": "characters/hero/anakin/anakin_01/anakin_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/anakin.ultra.glb": {
+    "hash": "563f13b9e8c3",
+    "bytes": 55585312,
+    "from": "characters/hero/anakin/anakin_01/anakin_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/anakin2.glb": {
+    "hash": "ea1ed7e4e799",
+    "bytes": 16676036,
+    "from": "characters/hero/anakin/anakin_02/anakin_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/anakin2.lod1.glb": {
+    "hash": "a4b5bf0ffd68",
+    "bytes": 4517524,
+    "from": "characters/hero/anakin/anakin_02/anakin_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/anakin2.ultra.glb": {
+    "hash": "9339773eb9d4",
+    "bytes": 56388068,
+    "from": "characters/hero/anakin/anakin_02/anakin_02_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/anakin3.glb": {
+    "hash": "52e060839d6b",
+    "bytes": 15647000,
+    "from": "characters/hero/anakin/anakin_03/anakin_03_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/anakin3.lod1.glb": {
+    "hash": "471dcb98df50",
+    "bytes": 4148624,
+    "from": "characters/hero/anakin/anakin_03/anakin_03_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/anakin3.ultra.glb": {
+    "hash": "f30a60f8d91d",
+    "bytes": 55494284,
+    "from": "characters/hero/anakin/anakin_03/anakin_03_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/bf2017/crew/astromech.glb": {
     "hash": "4aa88f301a1e",
     "bytes": 18618772,
     "from": "characters/npc/droids/astromech/r2d2/r2d2_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/bobafett.glb": {
+    "hash": "2adf71ae871f",
+    "bytes": 7583400,
+    "from": "characters/hero/bobafett/bobafett_01/bobafett_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/bobafett.lod1.glb": {
+    "hash": "7093dddf8790",
+    "bytes": 2424796,
+    "from": "characters/hero/bobafett/bobafett_01/bobafett_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/bobafett.ultra.glb": {
+    "hash": "b3df0c7dde16",
+    "bytes": 21313836,
+    "from": "characters/hero/bobafett/bobafett_01/bobafett_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/bossk.glb": {
+    "hash": "09ea7c74a0b4",
+    "bytes": 11760100,
+    "from": "characters/hero/bossk/bossk_01/bossk_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/bossk.lod1.glb": {
+    "hash": "01bad2055da7",
+    "bytes": 3311860,
+    "from": "characters/hero/bossk/bossk_01/bossk_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/bossk.ultra.glb": {
+    "hash": "732ecd704145",
+    "bytes": 35318272,
+    "from": "characters/hero/bossk/bossk_01/bossk_01_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/bf2017/crew/c3po.glb": {
     "hash": "8f97abfe165f",
     "bytes": 25959524,
     "from": "characters/rebel/c3p0/c3p0_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/chewie.glb": {
+    "hash": "df6356e3bd13",
+    "bytes": 11476756,
+    "from": "characters/hero/chewbacca/chewbacca_01/chewbacca_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/chewie.lod1.glb": {
+    "hash": "0e60f61f33a2",
+    "bytes": 3402640,
+    "from": "characters/hero/chewbacca/chewbacca_01/chewbacca_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/chewie.ultra.glb": {
+    "hash": "66b1bb7be111",
+    "bytes": 19233588,
+    "from": "characters/hero/chewbacca/chewbacca_01/chewbacca_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/chewiegoggles.glb": {
+    "hash": "02d40c44ebf8",
+    "bytes": 13945576,
+    "from": "characters/hero/chewbacca/chewbacca_goggles_01/chewbacca_goggles_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/chewiegoggles.lod1.glb": {
+    "hash": "ec93c44119c7",
+    "bytes": 4055968,
+    "from": "characters/hero/chewbacca/chewbacca_goggles_01/chewbacca_goggles_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/chewiegoggles.ultra.glb": {
+    "hash": "f7190c8036f9",
+    "bytes": 35055780,
+    "from": "characters/hero/chewbacca/chewbacca_goggles_01/chewbacca_goggles_01_mesh",
+    "tier": "ultra"
   },
   "models/galaxy/bf2017/crew/civcity1.glb": {
     "hash": "89efea4f2b3e",
@@ -41,6 +251,60 @@
     "from": "characters/hero/deathtrooper/deathtrooper_01/deathtrooper_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/dooku.glb": {
+    "hash": "5d754a8fbe39",
+    "bytes": 13609308,
+    "from": "characters/hero/countdooku/countdooku_01/countdooku_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/dooku.lod1.glb": {
+    "hash": "eee1f5355166",
+    "bytes": 3834988,
+    "from": "characters/hero/countdooku/countdooku_01/countdooku_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/dooku.ultra.glb": {
+    "hash": "90211e932421",
+    "bytes": 45582220,
+    "from": "characters/hero/countdooku/countdooku_01/countdooku_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/dooku2.glb": {
+    "hash": "714d0a574816",
+    "bytes": 13420396,
+    "from": "characters/hero/countdooku/countdooku_02/countdooku_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/dooku2.lod1.glb": {
+    "hash": "c03de8e93bec",
+    "bytes": 3702544,
+    "from": "characters/hero/countdooku/countdooku_02/countdooku_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/dooku2.ultra.glb": {
+    "hash": "8836044a97ea",
+    "bytes": 45054828,
+    "from": "characters/hero/countdooku/countdooku_02/countdooku_02_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/dooku3.glb": {
+    "hash": "5fdf7ebc6438",
+    "bytes": 11992176,
+    "from": "characters/hero/countdooku/countdooku_03/countdooku_03_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/dooku3.lod1.glb": {
+    "hash": "292736f1ffa1",
+    "bytes": 3339632,
+    "from": "characters/hero/countdooku/countdooku_03/countdooku_03_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/dooku3.ultra.glb": {
+    "hash": "2bc52cee0929",
+    "bytes": 41154864,
+    "from": "characters/hero/countdooku/countdooku_03/countdooku_03_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/bf2017/crew/droid.glb": {
     "hash": "327a02f1f814",
     "bytes": 1650052,
@@ -59,17 +323,503 @@
     "from": "characters/hero/ewok/ewok_01/ewok_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/han.glb": {
+    "hash": "fece1b4ab7a0",
+    "bytes": 10377892,
+    "from": "characters/hero/hansolo/hansolo_01/hansolo_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/han.lod1.glb": {
+    "hash": "d5091da349fe",
+    "bytes": 2957172,
+    "from": "characters/hero/hansolo/hansolo_01/hansolo_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/han.ultra.glb": {
+    "hash": "5688948874a5",
+    "bytes": 34040612,
+    "from": "characters/hero/hansolo/hansolo_01/hansolo_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/hanendor.glb": {
+    "hash": "148de630fb57",
+    "bytes": 9822836,
+    "from": "characters/hero/hansolo/hansolo_endor_01/hansolo_endor_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanendor.lod1.glb": {
+    "hash": "1f3319fe1ce0",
+    "bytes": 2670556,
+    "from": "characters/hero/hansolo/hansolo_endor_01/hansolo_endor_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanendor.ultra.glb": {
+    "hash": "39e66e7023a7",
+    "bytes": 27411072,
+    "from": "characters/hero/hansolo/hansolo_endor_01/hansolo_endor_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/hanhoth.glb": {
+    "hash": "082772a2abec",
+    "bytes": 9452700,
+    "from": "characters/hero/hansolo/hansolo_hoth_01/hansolo_hoth_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanhoth.lod1.glb": {
+    "hash": "6835f76eb14b",
+    "bytes": 2726300,
+    "from": "characters/hero/hansolo/hansolo_hoth_01/hansolo_hoth_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanhoth.ultra.glb": {
+    "hash": "03b92bc0dd31",
+    "bytes": 20329312,
+    "from": "characters/hero/hansolo/hansolo_hoth_01/hansolo_hoth_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/hanrotj.glb": {
+    "hash": "22a3f5f29e39",
+    "bytes": 6811216,
+    "from": "characters/hero/hansolo/hansolo_rotj_01/hansolo_rotj_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanrotj.lod1.glb": {
+    "hash": "0271eb710f95",
+    "bytes": 1850280,
+    "from": "characters/hero/hansolo/hansolo_rotj_01/hansolo_rotj_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanrotj.ultra.glb": {
+    "hash": "3550133551c5",
+    "bytes": 24399452,
+    "from": "characters/hero/hansolo/hansolo_rotj_01/hansolo_rotj_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/hanyavin.glb": {
+    "hash": "ddf1f5853aee",
+    "bytes": 6772236,
+    "from": "characters/hero/hansolo/hansolo_yavin_01/hansolo_yavin_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanyavin.lod1.glb": {
+    "hash": "cae0d461109f",
+    "bytes": 1836256,
+    "from": "characters/hero/hansolo/hansolo_yavin_01/hansolo_yavin_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanyavin.ultra.glb": {
+    "hash": "fbf4ca8c76d0",
+    "bytes": 24210884,
+    "from": "characters/hero/hansolo/hansolo_yavin_01/hansolo_yavin_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/hanyoung.glb": {
+    "hash": "3f8b4d76d468",
+    "bytes": 9388184,
+    "from": "characters/hero/hansolo/hansolo_young_01/hansolo_young_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanyoung.lod1.glb": {
+    "hash": "c0bab1c6b366",
+    "bytes": 2615876,
+    "from": "characters/hero/hansolo/hansolo_young_01/hansolo_young_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanyoung.ultra.glb": {
+    "hash": "152d05efa3c7",
+    "bytes": 26656212,
+    "from": "characters/hero/hansolo/hansolo_young_01/hansolo_young_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/hanyoung2.glb": {
+    "hash": "41944037f321",
+    "bytes": 9818476,
+    "from": "characters/hero/hansolo/hansolo_young_02/hansolo_young_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanyoung2.lod1.glb": {
+    "hash": "8fde64ad7fa0",
+    "bytes": 2647292,
+    "from": "characters/hero/hansolo/hansolo_young_02/hansolo_young_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/hanyoung2.ultra.glb": {
+    "hash": "1a5b123f0e59",
+    "bytes": 26508884,
+    "from": "characters/hero/hansolo/hansolo_young_02/hansolo_young_02_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/bf2017/crew/hothtrooper.glb": {
     "hash": "eb6fc724ad49",
     "bytes": 28270872,
     "from": "characters/bodyparts/torso_02/torso_02_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/lando.glb": {
+    "hash": "5aae2ffed10e",
+    "bytes": 11757328,
+    "from": "characters/hero/lando/lando_01/lando_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lando.lod1.glb": {
+    "hash": "7ee3ef5da077",
+    "bytes": 3291364,
+    "from": "characters/hero/lando/lando_01/lando_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lando.ultra.glb": {
+    "hash": "f2d5372fed7f",
+    "bytes": 33170800,
+    "from": "characters/hero/lando/lando_01/lando_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/landorotj.glb": {
+    "hash": "7b148f4b9fde",
+    "bytes": 6722572,
+    "from": "characters/hero/lando/lando_rotj_01/lando_rotj_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landorotj.lod1.glb": {
+    "hash": "e267cf6abcdc",
+    "bytes": 1933496,
+    "from": "characters/hero/lando/lando_rotj_01/lando_rotj_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landorotj.ultra.glb": {
+    "hash": "27438699197d",
+    "bytes": 19687760,
+    "from": "characters/hero/lando/lando_rotj_01/lando_rotj_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/landoskiff.glb": {
+    "hash": "77b3b7b43722",
+    "bytes": 8546052,
+    "from": "characters/hero/lando/lando_skiff_01/lando_skiff_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landoskiff.lod1.glb": {
+    "hash": "d29eb3510d19",
+    "bytes": 2522676,
+    "from": "characters/hero/lando/lando_skiff_01/lando_skiff_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landoskiff.ultra.glb": {
+    "hash": "57df966808e0",
+    "bytes": 27229136,
+    "from": "characters/hero/lando/lando_skiff_01/lando_skiff_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/landoyoung.glb": {
+    "hash": "a42078ac1297",
+    "bytes": 11550964,
+    "from": "characters/hero/lando/lando_young_01/lando_young_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landoyoung.lod1.glb": {
+    "hash": "afdb4c36861b",
+    "bytes": 3296180,
+    "from": "characters/hero/lando/lando_young_01/lando_young_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landoyoung.ultra.glb": {
+    "hash": "77a3def73ecc",
+    "bytes": 34198892,
+    "from": "characters/hero/lando/lando_young_01/lando_young_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/landoyoung2.glb": {
+    "hash": "c2d98ed03e88",
+    "bytes": 11301072,
+    "from": "characters/hero/lando/lando_young_02/lando_young_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landoyoung2.lod1.glb": {
+    "hash": "98a377b89a4a",
+    "bytes": 3214020,
+    "from": "characters/hero/lando/lando_young_02/lando_young_02_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/landoyoung2.ultra.glb": {
+    "hash": "7b118aedccb9",
+    "bytes": 34077000,
+    "from": "characters/hero/lando/lando_young_02/lando_young_02_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/leia.glb": {
+    "hash": "c183514970fb",
+    "bytes": 10247668,
+    "from": "characters/hero/leia/leia_01/leia_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leia.lod1.glb": {
+    "hash": "e4041ccee679",
+    "bytes": 2736040,
+    "from": "characters/hero/leia/leia_01/leia_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leia.ultra.glb": {
+    "hash": "f14a1a40d37b",
+    "bytes": 34186816,
+    "from": "characters/hero/leia/leia_01/leia_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/leiaboushh.glb": {
+    "hash": "b4ce95789154",
+    "bytes": 3697604,
+    "from": "characters/hero/leia/leia_boushh_01/leia_boushh_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiaboushh.lod1.glb": {
+    "hash": "30d1eb61c6b1",
+    "bytes": 984916,
+    "from": "characters/hero/leia/leia_boushh_01/leia_boushh_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiaboushh.ultra.glb": {
+    "hash": "359818ce3a97",
+    "bytes": 13368264,
+    "from": "characters/hero/leia/leia_boushh_01/leia_boushh_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/leiaendor.glb": {
+    "hash": "c2df1cc4ecc8",
+    "bytes": 11468608,
+    "from": "characters/hero/leia/leia_endor_01/leia_endor_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiaendor.lod1.glb": {
+    "hash": "557c97842ecc",
+    "bytes": 2444324,
+    "from": "characters/hero/leia/leia_endor_01/leia_endor_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiaendor.ultra.glb": {
+    "hash": "80b9df4f3dd0",
+    "bytes": 42056236,
+    "from": "characters/hero/leia/leia_endor_01/leia_endor_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/leiagoldvest.glb": {
+    "hash": "d4c00118f499",
+    "bytes": 4874264,
+    "from": "characters/hero/leia/leia_orig_nab_01/leia_orig_nab_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiagoldvest.lod1.glb": {
+    "hash": "a64ea68ddbd9",
+    "bytes": 1232812,
+    "from": "characters/hero/leia/leia_orig_nab_01/leia_orig_nab_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiagoldvest.ultra.glb": {
+    "hash": "47fd172f7c28",
+    "bytes": 17988080,
+    "from": "characters/hero/leia/leia_orig_nab_01/leia_orig_nab_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/leiaprincess.glb": {
+    "hash": "5cd87334679b",
+    "bytes": 12579448,
+    "from": "characters/hero/leia/leia_princess_01/leia_princess_01_pants_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiaprincess.lod1.glb": {
+    "hash": "410909e12407",
+    "bytes": 2816092,
+    "from": "characters/hero/leia/leia_princess_01/leia_princess_01_pants_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/leiaprincess.ultra.glb": {
+    "hash": "b9da7c4f3ec6",
+    "bytes": 37742808,
+    "from": "characters/hero/leia/leia_princess_01/leia_princess_01_pants_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/luke.glb": {
+    "hash": "a0d6e3109c68",
+    "bytes": 13225412,
+    "from": "characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/luke.lod1.glb": {
+    "hash": "553336f78586",
+    "bytes": 3586132,
+    "from": "characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/luke.ultra.glb": {
+    "hash": "defc459255f5",
+    "bytes": 46077848,
+    "from": "characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/lukefarmboy.glb": {
+    "hash": "7a7759a1ebb3",
+    "bytes": 15255496,
+    "from": "characters/hero/luke/luke_farmboy_01/luke_farmboy_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lukefarmboy.lod1.glb": {
+    "hash": "71ce0c631a32",
+    "bytes": 4173548,
+    "from": "characters/hero/luke/luke_farmboy_01/luke_farmboy_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lukefarmboy.ultra.glb": {
+    "hash": "2454f3a08232",
+    "bytes": 51214840,
+    "from": "characters/hero/luke/luke_farmboy_01/luke_farmboy_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/lukehoth.glb": {
+    "hash": "ac67c2eeffcd",
+    "bytes": 11109304,
+    "from": "characters/hero/luke/luke_hoth_01/luke_hoth_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lukehoth.lod1.glb": {
+    "hash": "ec45b35e8da2",
+    "bytes": 3690588,
+    "from": "characters/hero/luke/luke_hoth_01/luke_hoth_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lukehoth.ultra.glb": {
+    "hash": "5b13e3ec4443",
+    "bytes": 23234400,
+    "from": "characters/hero/luke/luke_hoth_01/luke_hoth_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/lukeyavin.glb": {
+    "hash": "641247965a5d",
+    "bytes": 9820368,
+    "from": "characters/hero/luke/luke_yavin_01/luke_yavin_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lukeyavin.lod1.glb": {
+    "hash": "59940b178c21",
+    "bytes": 2734668,
+    "from": "characters/hero/luke/luke_yavin_01/luke_yavin_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/lukeyavin.ultra.glb": {
+    "hash": "f446a18c1db9",
+    "bytes": 31493148,
+    "from": "characters/hero/luke/luke_yavin_01/luke_yavin_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/maul.glb": {
+    "hash": "d60a7c617dcd",
+    "bytes": 9067536,
+    "from": "characters/hero/darthmaul/darthmaul_01/darthmaul_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/maul.lod1.glb": {
+    "hash": "31e5d156a9ff",
+    "bytes": 3279696,
+    "from": "characters/hero/darthmaul/darthmaul_01/darthmaul_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/maul.ultra.glb": {
+    "hash": "46c47f954655",
+    "bytes": 27863040,
+    "from": "characters/hero/darthmaul/darthmaul_01/darthmaul_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/maullegs.glb": {
+    "hash": "c9e2474bb26b",
+    "bytes": 12012168,
+    "from": "characters/hero/darthmaul/darthmaul_robotlegs_01/darthmaul_robotlegs_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/maullegs.lod1.glb": {
+    "hash": "1ab3b4687b5c",
+    "bytes": 3116040,
+    "from": "characters/hero/darthmaul/darthmaul_robotlegs_01/darthmaul_robotlegs_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/maullegs.ultra.glb": {
+    "hash": "304a9badf094",
+    "bytes": 39290636,
+    "from": "characters/hero/darthmaul/darthmaul_robotlegs_01/darthmaul_robotlegs_01_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/obiwan.glb": {
+    "hash": "5ce81c60ba45",
+    "bytes": 15393316,
+    "from": "characters/hero/obiwan/obiwan_01/obiwan_01_body_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/obiwan.lod1.glb": {
+    "hash": "0b9c5098c019",
+    "bytes": 4297752,
+    "from": "characters/hero/obiwan/obiwan_01/obiwan_01_body_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/obiwan.ultra.glb": {
+    "hash": "a1e4ca77fa74",
+    "bytes": 54700696,
+    "from": "characters/hero/obiwan/obiwan_01/obiwan_01_body_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/obiwan2.glb": {
+    "hash": "0e20b67d1185",
+    "bytes": 16708120,
+    "from": "characters/hero/obiwan/obiwan_02/obiwan_02_body_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/obiwan2.lod1.glb": {
+    "hash": "1d39fb4dc4f9",
+    "bytes": 4627588,
+    "from": "characters/hero/obiwan/obiwan_02/obiwan_02_body_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/obiwan2.ultra.glb": {
+    "hash": "bf9a2e279f07",
+    "bytes": 59812296,
+    "from": "characters/hero/obiwan/obiwan_02/obiwan_02_body_mesh",
+    "tier": "ultra"
+  },
+  "models/galaxy/bf2017/crew/obiwan3.glb": {
+    "hash": "70dfe98a1e05",
+    "bytes": 14550524,
+    "from": "characters/hero/obiwan/obiwan_03/obiwan_03_body_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/obiwan3.lod1.glb": {
+    "hash": "ee178a5ed2bb",
+    "bytes": 3707020,
+    "from": "characters/hero/obiwan/obiwan_03/obiwan_03_body_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/obiwan3.ultra.glb": {
+    "hash": "9700be0c82f8",
+    "bytes": 53566280,
+    "from": "characters/hero/obiwan/obiwan_03/obiwan_03_body_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/bf2017/crew/officer.glb": {
     "hash": "7a2fd991dbf1",
     "bytes": 27503916,
     "from": "characters/hero/imperialofficer/imperialofficer_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/palpatine.glb": {
+    "hash": "2def77cb1be1",
+    "bytes": 10110672,
+    "from": "characters/hero/palpatine/palpatine_01/palpatine_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/palpatine.lod1.glb": {
+    "hash": "f28a052df060",
+    "bytes": 2959728,
+    "from": "characters/hero/palpatine/palpatine_01/palpatine_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/palpatine.ultra.glb": {
+    "hash": "9c59e560755b",
+    "bytes": 25825592,
+    "from": "characters/hero/palpatine/palpatine_01/palpatine_01_mesh",
+    "tier": "ultra"
   },
   "models/galaxy/bf2017/crew/probe.glb": {
     "hash": "962627e76100",
@@ -143,10 +893,118 @@
     "from": "characters/npc/creatures/tauntaun/tauntaun_01/tauntaun_01_mesh",
     "tier": "crew"
   },
+  "models/galaxy/bf2017/crew/vader.glb": {
+    "hash": "24384ffb3846",
+    "bytes": 11699484,
+    "from": "characters/hero/darthvader/darthvader_01/darthvader_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/vader.lod1.glb": {
+    "hash": "7f0de1ae26a2",
+    "bytes": 3186932,
+    "from": "characters/hero/darthvader/darthvader_01/darthvader_01_mesh",
+    "tier": "crew"
+  },
+  "models/galaxy/bf2017/crew/vader.ultra.glb": {
+    "hash": "22b8743c2777",
+    "bytes": 23354640,
+    "from": "characters/hero/darthvader/darthvader_01/darthvader_01_mesh",
+    "tier": "ultra"
+  },
   "models/galaxy/bf2017/crew/wookiee.glb": {
     "hash": "81b576bd3a0c",
     "bytes": 19458072,
     "from": "characters/hero/wookiewarrior/wookiewarrior_01/wookiewarrior_01_mesh",
     "tier": "crew"
+  },
+  "models/galaxy/bf2017/walrus.glb": {
+    "hash": "da04ad0d6bcd",
+    "bytes": 33464,
+    "from": "models/galaxy/bf2017/walrus.glb",
+    "tier": "pack"
+  },
+  "models/galaxy/surface/bowcaster.glb": {
+    "hash": "3c32f993a384",
+    "bytes": 3633156,
+    "from": "gameplay/equipment/heroes/bowcaster/bowcaster_mesh3p_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/dl44.glb": {
+    "hash": "5a8d806e2025",
+    "bytes": 3542676,
+    "from": "gameplay/equipment/heroes/dl44/dl44_mesh3p_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/ee3.glb": {
+    "hash": "863b445523c2",
+    "bytes": 13458096,
+    "from": "gameplay/equipment/heroes/ee3/ee3_mesh3p_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/ee3.lod1.glb": {
+    "hash": "97bde0abf8f2",
+    "bytes": 3478920,
+    "from": "gameplay/equipment/heroes/ee3/ee3_mesh3p_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltanakin.glb": {
+    "hash": "e14d0e8a71fd",
+    "bytes": 577924,
+    "from": "gameplay/equipment/heroes/lightsaberanakin/lightsaberanakin_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltdooku.glb": {
+    "hash": "59d112552f4e",
+    "bytes": 771084,
+    "from": "gameplay/equipment/heroes/lightsaberdooku/lightsaberdooku_gameplay_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltgrievous.glb": {
+    "hash": "f53aa3388801",
+    "bytes": 838124,
+    "from": "gameplay/equipment/heroes/lightsabergrievous/lightsabergrievous_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltluke.glb": {
+    "hash": "7f9d5e7c5962",
+    "bytes": 854728,
+    "from": "gameplay/equipment/heroes/lightsaberlukeskywalker/lightsaberlukeskywalker_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltlukehoth.glb": {
+    "hash": "081c7086ed83",
+    "bytes": 806272,
+    "from": "gameplay/equipment/heroes/lightsaberlukehoth/lightsaberlukehoth_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltmaul.glb": {
+    "hash": "bde32c1cb91a",
+    "bytes": 799620,
+    "from": "gameplay/equipment/heroes/lightsabermaul/lightsabermaul_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltmaulcrimson.glb": {
+    "hash": "704fff28ec11",
+    "bytes": 2707896,
+    "from": "gameplay/equipment/heroes/lightsabermaulcrimson/lightsabermaulcrimson_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltobiwan.glb": {
+    "hash": "ce79e516be5b",
+    "bytes": 838892,
+    "from": "gameplay/equipment/heroes/lightsaberobiwan/lightsaberobiwan_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltvader.glb": {
+    "hash": "6a4c49ca5cc7",
+    "bytes": 841756,
+    "from": "gameplay/equipment/heroes/lightsaberdarthvader/lightsaberdarthvader_meshp_mesh",
+    "tier": "surface"
+  },
+  "models/galaxy/surface/hiltyoda.glb": {
+    "hash": "62f705d6b1ab",
+    "bytes": 747064,
+    "from": "gameplay/equipment/heroes/lightsaberyoda/lightsaberyoda_meshp_mesh",
+    "tier": "surface"
   }
 }
