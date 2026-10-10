@@ -13,8 +13,8 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-game-design.md`. Th
 | lane | state | branch | plan |
 | --- | --- | --- | --- |
 | 0 data: extractor, parsers, rulebooks for Hoth's Galactic Assault | **done** (PR to `main`): 16 rulebooks, 1.9 MB; teams 1 (6 sequel kits refused), classes 8, heroes 16, reinforcements 6, vehicles 16, weapons 34, abilities 76, cards 68; AI 16 tactics, 10 templates, 202 firing patterns; Hoth 474 spawns, 102 spawn areas, 52 volumes, 2 walker paths, 3 stages (hand); 104 lights and 413 lighting prefabs; 84 HUD widgets; 69 strings; 0 missing links | `claude/bf-data` | `plans/2026-10-10-battlefront-lane0-data.md` |
-| 1 sim, soldiers, weapons, bolts, nav, cover, the soldier bots, the skirmish arena | not started (needs 0) | `claude/bf-ai` | `plans/2026-10-10-battlefront-lane1-soldier-ai.md` |
-| 2 Galactic Assault: stages, objectives, spawning, Battle Points, the commander, balance | not started (needs 1) | `claude/bf-assault` | `plans/2026-10-10-battlefront-lane2-galactic-assault.md` |
+| 1 sim, soldiers, weapons, bolts, nav, cover, the soldier bots, the skirmish arena | **done** (PR to `main`): `src/lib/battlefront/` nav, affectors, abilities, weapons, soldier, bolts, sim (`core.js`, `skirmish.js`), `ai/` cover, soldierBrain, squad, bots; 57 tests beside the files, 4 in the arena under `test:ai` (seed 1: kills 19 to 9, stuck 0, off the navgrid 0, about 2 s); `--skirmish` over 10 seeds: kills 17.6 (Rebels) to 11.5 (Empire), the Rebels ahead in 8, stuck 0, off 0, 2.1 s a run, time a quarter thinking and a quarter finding paths ([the table](evidence/battlefront-lane1/skirmish.md)). Knobs: `HEAD_MULTIPLIER` 1.5, `HAND_DAMAGE` (the bowcaster only), `COOL_DELAY` 0.3, `WINDOW_STEP` 0.05, `TIME_FOR_CORPSE` 4.5, `ROLL` and `ROLL_TIME`/`ROLL_SPEED`, the brain's `SIGHT` 100, `CONE`, `AIM_SETTLE` 2, `HIDE_HEALTH` 0.4, the squad's `REACH` 60, the opening's `OPENING_GAP` 40 | `claude/bf-ai` | `plans/2026-10-10-battlefront-lane1-soldier-ai.md` |
+| 2 Galactic Assault: stages, objectives, spawning, Battle Points, the commander, balance | ready to start (1 is merged) | `claude/bf-assault` | `plans/2026-10-10-battlefront-lane2-galactic-assault.md` |
 | 3 heroes: abilities, saber combat, hero bots | not started (needs 1); plan when 1 merges | `claude/bf-heroes` | |
 | 4 vehicles: AT-AT escort, walkers, speeders, turrets, mounts, vehicle bots | not started (needs 2) | `claude/bf-vehicles` | |
 | 5 the world: assets adapter (dev backend), the whole-map pack through lane L's loader, the look from the lighting records and the placed lights, the cameras, figures on the game's clips, input, the game's HUD, the route | not started (needs 0 and #810's lane L; the streaming lane for the bucket backend) | `claude/bf-world` | `plans/2026-10-10-battlefront-lane5-world.md` |
@@ -22,6 +22,23 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-game-design.md`. Th
 | 7 online | later | `claude/bf-online` | |
 
 Lanes 1, 3 and 5 run in parallel once 0 merges. Each lane adds its row's numbers here when it merges and a line to the spec's "Departures" for anything that went another way.
+
+## The flow and the mods (the fifth design, 2026-10-10 evening)
+
+The design: `docs/superpowers/specs/2026-10-10-battlefront-flow-and-mods-design.md`. The owner's ask: land on a planet and get the game's own menu (Galactic Assault, Starfighter Assault, Heroes vs Villains, Blast, the world's story, free roam), deploy as a hero or a class, and bring the mods' content in. Two bugs were found on the way and are in the design's first section:
+
+1. **The repo has no `ASSET_BASE` Actions variable**, so the live build never asks the bucket and every file in `src/data/galaxyAssets.json` (the 2017 heroes' bodies among them) returns 404: that is "it wouldn't let me switch to Luke". The owner sets the variable to `https://jzabcqboyemokwifmjmp.supabase.co/storage/v1/object/public/site-assets` and re-runs the deploy (`assets-check` passed 371 of 371 there on 2026-10-10). Lane F makes the page honest when a file is missing anyway.
+2. **The landing veil creeps at "Sending pictures to the graphics chip 33 %"** for minutes (live, and on local servers from `main`, fronted, on an RTX 5090, with and without the bucket base). Not root-caused; lane F's task 2, and decision 8 says what the veil must do whatever the cause.
+
+| lane | what | branch | plan | state |
+| --- | --- | --- | --- | --- |
+| F | the honest Equip and its fallback chain; the veil's rule and the stall; `modes.json` (the levels' mode layers); the landing mode menu, `?mode=`, the briefing's cards; the deploy screen (side, hero or class, outfit, weapon, perks) | `claude/bf-flow` | `plans/2026-10-10-bf-flow-laneF-landing-menu.md` | not started |
+| A | Starfighter Assault: the four space packs (`sb_endor_01` first), the `SpaceBattle` layer in the map rulebook, the mission on the Fleet Assault sim, the entry from the menu (`/galaxy/endor?battle=starfighter`) | `claude/bf-starfighter` | `-laneA-starfighter.md` | not started |
+| H | Heroes vs Villains (4 v 4, a target a team, the level's hero arena) and Blast (10 a side, kills to 100, the team-deathmatch spawns) as surface missions on Hoth, Endor, Tatooine, Geonosis, Kashyyyk | `claude/bf-hvv-blast` | `-laneH-hvv-blast.md` | not started |
+| D2 | **desktop, local session**: Frosty profile → `ModData` → `bf2export` → the diff → `bf2017-import`; Battlefront Expanded's heroes and reinforcements first, then the clones' looks, Realistic Overhaul's weapon table, the HvV mods' and Instant Action Overhaul V2's mode logic written up for lanes 2, 6 and H | `claude/bf-mods-desktop` | `-laneD2-mods-desktop.md` | not started; IAO V2 is not on the PC yet (the owner's Nexus account; the file is on their phone) |
+| 1, 5 | the game design's own lanes, started from this design's branch | `claude/bf-ai`, `claude/bf-world` | their plans above | started 2026-10-10 |
+
+The mod archives already on the owner's machine are listed in the design (Expanded's 141 `.fbmod`s, Saberfront, Realistic Overhaul, the HvV modes, the clone packs, Frosty Mod Manager). Each lane adds its row's numbers here when it merges and a line to the design's "Departures".
 
 ## Beside the asset lanes (PR #802 and PR #810)
 

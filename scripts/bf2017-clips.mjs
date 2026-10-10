@@ -15,15 +15,18 @@
 // site moves it itself, so the clip plays in place) and kept instead as
 // `root` ([[t, dx, dz]…], metres, +z ahead and +x to the figure's left,
 // ual-bake.mjs's rootTravel) with `rootHips` (the hips' height over the
-// toes it was measured at), and a stroke's `contact` ([t0, t1], the span the
-// blade's tip, a metre out of the Wep_Root socket along the hilt's +y, moves
-// fastest ahead of the body: ual-bake.mjs's contactWindow) put in the
-// animation's extras, which the site reads as clip.userData. The channels of
-// the game's camera and trajectory helpers go, and so does a bone's that
-// holds the skeleton's rest all through (a third of each clip's: the loader
-// puts rest back for any bone another clip of the pack moves, so none is
-// left where the last clip put it); a bone held anywhere else is two keys.
-// A clip's channels share its times. Then meshopt, with its animation
+// toes it was measured at), and a stroke's `contact` ([t0, t1]: the window
+// the stroke tables time it by, scripts/lib/bf2017-strokes.mjs's measure, on
+// the game's clip as it comes, before the resample, at the measure's own 30
+// a second whatever --fps is: the blade's tip a metre up the Wep_Root
+// socket's +y, carried by the root's travel, counted only before the hips
+// along +z and never inside the clip's first key, the guard's snap) put in
+// the animation's extras, which the site reads as clip.userData. The
+// channels of the game's camera and trajectory helpers go, and so does a
+// bone's that holds the skeleton's rest all through (a third of each clip's:
+// the loader puts rest back for any bone another clip of the pack moves, so
+// none is left where the last clip put it); a bone held anywhere else is two
+// keys. A clip's channels share its times. Then meshopt, with its animation
 // quantisation.
 //
 //   node scripts/bf2017-clips.mjs <pack> [--fps 24] [--only <site name>,…]
@@ -53,13 +56,13 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { OWN_RIGS, PACKS, PACK_OPTS, candidates } from '../src/lib/three/walrusClips.js';
-import { SOCKETS } from '../src/lib/three/walrusRig.js';
 import { parseArgs } from './lib/args.mjs';
 import { RIGS } from '../src/lib/three/rigSets.js';
 import { animEntry, animPath } from './lib/bf2017-anims.mjs';
 import { censusMarkdown, censusRows } from './lib/bf2017-clip-census.mjs';
 import { isSequel, readManifest } from './lib/bf2017-manifest.mjs';
-import { contactWindow, rootTravel } from './ual-bake.mjs';
+import { clipOf, measure, rigOf } from './lib/bf2017-strokes.mjs';
+import { rootTravel } from './ual-bake.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // the game's helpers no site code reads: the trajectory the game moves the
@@ -97,8 +100,6 @@ export function usedSources(anims) {
   return used;
 }
 
-const BLADE = 1; // metres out of the socket the stroke's tip is timed at (ual-bake's: a blade's length)
-
 async function io() {
   await MeshoptEncoder.ready;
   await MeshoptDecoder.ready;
@@ -135,58 +136,7 @@ export function resampleChannel(times, values, size, fps, end) {
   return out;
 }
 
-// ── the skeleton, posed by a clip, in three.js (for measuring) ──
-
-function skeletonScene(doc) {
-  const objs = new Map();
-  const make = (n) => {
-    const o = new THREE.Object3D();
-    o.name = n.getName();
-    o.position.fromArray(n.getTranslation());
-    o.quaternion.fromArray(n.getRotation());
-    o.scale.fromArray(n.getScale());
-    objs.set(o.name, o);
-    for (const c of n.listChildren()) o.add(make(c));
-    return o;
-  };
-  const scene = new THREE.Group();
-  for (const n of doc.getRoot().listScenes()[0].listChildren()) scene.add(make(n));
-  return { scene, objs };
-}
-
-const PATHS = { translation: 'position', rotation: 'quaternion', scale: 'scale' };
 const SIZES = { translation: 3, rotation: 4, scale: 3 };
-
-// rows through a clip (in place: its trajectory left out) of what the
-// site measures: the hips, the toes, the blade's tip out of the socket
-function measure(skel, channels, duration, fps) {
-  const tracks = channels.map((c) => {
-    const T = c.path === 'rotation' ? THREE.QuaternionKeyframeTrack : THREE.VectorKeyframeTrack;
-    return new T(`${c.node}.${PATHS[c.path]}`, c.times, c.values);
-  });
-  const clip = new THREE.AnimationClip('m', duration, tracks);
-  const { scene, objs } = skel;
-  const mixer = new THREE.AnimationMixer(scene);
-  const action = mixer.clipAction(clip).play();
-  const rows = [];
-  const p = new THREE.Vector3();
-  const q = new THREE.Quaternion();
-  const up = new THREE.Vector3();
-  const hips = objs.get('Hips');
-  const wep = objs.get(SOCKETS.weapon);
-  for (let f = 0, n = Math.round(duration * fps); f <= n; f++) {
-    action.time = Math.min(duration, f / fps);
-    mixer.update(0);
-    scene.updateMatrixWorld(true);
-    const h = hips.getWorldPosition(new THREE.Vector3());
-    // (the blade along the socket's +y: the game's hilts are modelled up it, the grip at its origin)
-    const tip = wep.getWorldPosition(p).clone().add(up.set(0, 1, 0).applyQuaternion(wep.getWorldQuaternion(q)).multiplyScalar(BLADE));
-    rows.push({ t: action.time, hand: tip.toArray(), ahead: tip.z > h.z + 0.15 });
-  }
-  action.stop();
-  mixer.uncacheRoot(scene);
-  return rows;
-}
 
 // the hips' height over the toes at rest (game metres)
 function restHips(skel) {
@@ -224,7 +174,9 @@ export function atIdentity(path, values) {
 
 // ── one clip, read ──
 
-// its channels by node name, the trajectory's kept apart
+// its channels by node name, the trajectory's kept apart; `timed`, the clip
+// as the stroke tables read it (lib/bf2017-strokes.mjs's clipOf), for a
+// stroke's window
 async function readClip(rw, file) {
   const doc = await rw.read(file);
   const [anim] = doc.getRoot().listAnimations();
@@ -244,7 +196,7 @@ async function readClip(rw, file) {
     if (node === TRAJ && path === 'translation') traj = c;
     if (!DROP.test(node)) channels.push(c);
   }
-  return { name: anim.getName(), channels, traj, end, extras: anim.getExtras() };
+  return { name: anim.getName(), channels, traj, end, extras: anim.getExtras(), timed: clipOf(anim) };
 }
 
 // ── the pack ──
@@ -260,7 +212,7 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
   // (an own rig's skeleton comes in its body: the meshes go, the bones stay)
   for (const n of doc.getRoot().listNodes()) n.setMesh(null).setSkin(null);
   for (const x of [...doc.getRoot().listMeshes(), ...doc.getRoot().listSkins(), ...doc.getRoot().listMaterials(), ...doc.getRoot().listTextures()]) x.dispose();
-  const skel = skeletonScene(doc);
+  const skel = rigOf(doc);
   const rootHips = restHips(skel);
   const nodes = new Map(doc.getRoot().listNodes().map((n) => [n.getName(), n]));
   const buffer = doc.getRoot().listBuffers()[0] ?? doc.createBuffer();
@@ -299,7 +251,6 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
     const end = clip.end;
     const anim = doc.createAnimation(site);
     let keys = 0;
-    const kept = [];
     // (one input a key count: every channel is on the same grid, or two keys)
     const inputs = new Map();
     const inputOf = (times) => {
@@ -310,7 +261,6 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
       const node = nodes.get(c.node);
       if (!node) continue;
       const r = resampleChannel(c.times, c.values, SIZES[c.path], fps, end);
-      kept.push({ ...c, times: r.times, values: r.values });
       if (additive ? atIdentity(c.path, r.values) : atRest(node, c.path, r.values)) continue;
       keys += r.times.length;
       const input = inputOf(r.times);
@@ -338,7 +288,9 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
         if (rootHips != null) extras.rootHips = rootHips;
       }
     }
-    if (!additive && site.startsWith('sword.') && !site.endsWith('.rec')) extras.contact = contactWindow(measure(skel, kept, end, fps));
+    // (timed as the stroke tables are, on the game's own keys at the
+    // measure's own rate, not --fps's: a pack's window is its table's)
+    if (!additive && site.startsWith('sword.') && !site.endsWith('.rec')) extras.contact = measure(clip.timed, skel).contact;
     anim.setExtras(extras);
     made.push({ site, game, frames: Math.round(end * fps) + 1, keys, duration: end });
   }

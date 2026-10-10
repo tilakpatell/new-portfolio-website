@@ -1,11 +1,17 @@
 import { Document, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
-import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { copyFile, mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { atIdentity, atRest, makePack, resampleChannel } from './bf2017-clips.mjs';
+import { clipOf, measure, rigOf } from './lib/bf2017-strokes.mjs';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const WALRUS = join(HERE, '..', 'public', 'models', 'galaxy', 'bf2017', 'walrus.glb');
 
 const reader = async () => {
   await MeshoptDecoder.ready;
@@ -116,6 +122,37 @@ describe('a pack of the game’s clips', () => {
     expect(contact[1]).toBeLessThanOrEqual(0.3);
     expect(rootHips).toBeGreaterThan(0);
     expect(travel.at(-1)[2]).toBeCloseTo(0.45, 2);
+  });
+});
+
+describe('a stroke’s window in the pack', () => {
+  // (Luke's first strike, the socket's chain only: the stroke tables' measure
+  // lands where the blade crosses the front, as lib/bf2017-strokes.test.mjs
+  // has it; ual-bake's rule over the pack's own tip landed on the snap out of
+  // the guard, [0.05, 0.101])
+  it('is the stroke tables’ own, past the snap out of the guard', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'bf2017-clips-'));
+    const file = 'anims/walrus_humanmale/a_luke_attackloop_strike1.glb';
+    await mkdir(join(root, 'web', 'anims', 'walrus_humanmale'), { recursive: true });
+    await copyFile(join(HERE, 'fixtures', 'bf2017', 'web', file), join(root, 'web', file));
+    await writeFile(join(root, 'web', 'anims.jsonl'), JSON.stringify({ name: 'A_Luke_AttackLoop_Strike1', file, fps: 24, frames: 39, additive: false, skeleton: 'Characters/Rigs/Humanoids/Walrus_HumanMale' }));
+    const r = await makePack('luke', { only: ['sword.light.a'], out: join(root, 'out'), root, skeleton: WALRUS, log: () => {} });
+    const strike = (await (await reader()).read(r.file)).getRoot().listAnimations().find((a) => a.getName() === 'sword.light.a');
+    const game = await new NodeIO().readBinary(new Uint8Array(readFileSync(join(root, 'web', file))));
+    expect(strike.getExtras().contact).toEqual(measure(clipOf(game.getRoot().listAnimations()[0]), rigOf(game)).contact);
+    expect(strike.getExtras().contact).toEqual([0.107, 0.293]);
+  });
+
+  it('in the committed pack, is its hero’s table’s to a frame', async () => {
+    const table = JSON.parse(readFileSync(join(HERE, '..', 'src', 'data', 'bf2017', 'strokes', 'luke.json'), 'utf8'));
+    const windows = new Map([...table.strikes, table.dash, table.jump].filter((s) => s?.contact).map((s) => [s.name, s.contact]));
+    const pack = await (await reader()).read(join(HERE, '..', 'public', 'models', 'galaxy', 'bf2017', 'clips-luke.glb'));
+    const timed = pack.getRoot().listAnimations().filter((a) => windows.has(a.getExtras()?.source));
+    expect(timed.length).toBeGreaterThanOrEqual(12);
+    for (const a of timed) {
+      const { source, contact, fps } = a.getExtras();
+      for (const k of [0, 1]) expect(Math.abs(contact[k] - windows.get(source)[k]), `${a.getName()} (${source})`).toBeLessThanOrEqual(1 / fps);
+    }
   });
 });
 

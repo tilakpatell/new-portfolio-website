@@ -12,8 +12,8 @@
     "tier": "surface"
   },
   "models/galaxy/bf2017/clips-anakin.glb": {
-    "hash": "eb588371ba92",
-    "bytes": 1291596,
+    "hash": "0c84f1562fea",
+    "bytes": 1291592,
     "from": "models/galaxy/bf2017/clips-anakin.glb",
     "tier": "pack"
   },
@@ -60,8 +60,8 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-dooku.glb": {
-    "hash": "9e26065a79c9",
-    "bytes": 1240924,
+    "hash": "504b6d795d2d",
+    "bytes": 1240920,
     "from": "models/galaxy/bf2017/clips-dooku.glb",
     "tier": "pack"
   },
@@ -96,31 +96,31 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-luke.glb": {
-    "hash": "ae3272e90473",
-    "bytes": 1384564,
+    "hash": "1567d1becc59",
+    "bytes": 1384560,
     "from": "models/galaxy/bf2017/clips-luke.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-maul.glb": {
-    "hash": "5a2ae539c234",
-    "bytes": 1302748,
+    "hash": "900bd2a2afb8",
+    "bytes": 1302740,
     "from": "models/galaxy/bf2017/clips-maul.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-obiwan.glb": {
-    "hash": "237361d10153",
+    "hash": "1e10d9344036",
     "bytes": 1095224,
     "from": "models/galaxy/bf2017/clips-obiwan.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-palpatine.glb": {
-    "hash": "cf7c5efa8493",
+    "hash": "50d3d693df79",
     "bytes": 591680,
     "from": "models/galaxy/bf2017/clips-palpatine.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-vader.glb": {
-    "hash": "5edb878f0885",
+    "hash": "ab441e7ad0e9",
     "bytes": 1391588,
     "from": "models/galaxy/bf2017/clips-vader.glb",
     "tier": "pack"
