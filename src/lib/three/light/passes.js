@@ -15,6 +15,9 @@
 // - ssr: blended over (non-metals left out, SSRNode's default);
 // - volumes: the level's volumetric cones and glows (volumetrics.js), their
 //   quarter-resolution pass brought up over the depth and added;
+// - fog: the record's forward light scattering added, its participating
+//   media (when on) marched at FOG_SCALE and brought up over the depth
+//   (fog.js's fogVolume);
 // - bloom: added, the house's numbers unless the pass says;
 // - godrays: the lit haze added faintly in the sun's colour;
 // - lensflare: the bloom's ghosts, blurred, added;
@@ -26,6 +29,7 @@
 // buildChain(renderer, passes) → Promise<{ pipeline, nodes, dispose }>
 
 import { BLOOM } from '../bloom.js';
+import { fogVolume } from './fog.js';
 import { loadThree } from './three.js';
 
 const ADDONS = {
@@ -144,6 +148,12 @@ export async function buildChain(renderer, passes) {
       case 'volumes':
         node = p.volumetrics.pass(node, { depth: g.depth, camera: p.camera ?? g.camera });
         break;
+      case 'fog': {
+        const f = fogVolume(node, { depth: g.depth, camera: p.camera ?? g.camera, p, tsl, THREE });
+        for (const n of f.nodes) keep(n);
+        node = f.node;
+        break;
+      }
       case 'bloom': {
         const b = keep(mods.bloom.bloom(node, p.strength ?? BLOOM.strength, p.radius ?? BLOOM.radius, p.threshold ?? BLOOM.threshold));
         g.bloom = b;

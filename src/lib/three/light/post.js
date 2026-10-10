@@ -3,7 +3,7 @@
 // the runtime builds it (src/runtime/webgpu.js, through passes.js here).
 //
 // The order (the design, "The light", post.js): render → ssgi (and its
-// denoise) → ao → ssr → volumes → bloom → godrays → lensflare → lut →
+// denoise) → ao → ssr → volumes → fog → bloom → godrays → lensflare → lut →
 // traa | smaa → output. A chain given out of order is put in it. The
 // volumes (volumetrics.js) come before the bloom so they are tone-mapped
 // and bloomed with the scene (the fidelity design, lane V).
@@ -18,6 +18,9 @@
 //   no light given, no `godrays` (sun.js's `rays`).
 // - `lut` needs the record's grading LUT as a Data3DTexture; none, none.
 // - `volumes` needs a level's volumetrics (createVolumetrics); none, none.
+// - `fog` (mode 'volume': fog.js's fogVolume) draws the record's forward
+//   light scattering and its participating media; a record with neither
+//   (Hoth's day: Presence 0) has none.
 // - SSGI already darkens its creases; with `ao` beside it, its own AO is
 //   left out of the composite (passes.js) so the two do not double.
 //
@@ -33,10 +36,11 @@
 
 import { BLOOM } from '../bloom.js';
 import { readEntry } from './entry.js';
+import { FOG_STEPS, fogMedia } from './fog.js';
 
-export const ORDER = ['render', 'ssgi', 'denoise', 'ao', 'ssr', 'volumes', 'bloom', 'godrays', 'lensflare', 'lut', 'traa', 'smaa', 'output'];
+export const ORDER = ['render', 'ssgi', 'denoise', 'ao', 'ssr', 'volumes', 'fog', 'bloom', 'godrays', 'lensflare', 'lut', 'traa', 'smaa', 'output'];
 // the kinds only the node renderer builds
-export const NODE_PASSES = new Set(['ssgi', 'denoise', 'ao', 'ssr', 'volumes', 'godrays', 'lensflare', 'lut', 'traa', 'smaa']);
+export const NODE_PASSES = new Set(['ssgi', 'denoise', 'ao', 'ssr', 'volumes', 'fog', 'godrays', 'lensflare', 'lut', 'traa', 'smaa']);
 // What each backend cannot build. On 'nodes-webgl' the lit fixture
 // (scripts/light-fixture.mjs, pass by pass) drew SSR as white smears below
 // every pillar and TRAA as a flat grey frame, so both are left out there
@@ -58,8 +62,8 @@ export const SSGI_RADIUS = 4;
 const SHED = [['ssgi', 'denoise'], ['ssr'], ['godrays', 'lensflare'], ['ao']];
 
 const TIERS = {
-  ultra: ['render', ['ssgi', 'high'], 'ao', 'ssr', 'volumes', 'bloom', 'godrays', 'lensflare', 'lut', 'traa', 'output'],
-  high: ['render', ['ssgi', 'medium'], 'ao', 'ssr', 'volumes', 'bloom', 'lut', 'smaa', 'output'],
+  ultra: ['render', ['ssgi', 'high'], 'ao', 'ssr', 'volumes', 'fog', 'bloom', 'godrays', 'lensflare', 'lut', 'traa', 'output'],
+  high: ['render', ['ssgi', 'medium'], 'ao', 'ssr', 'volumes', 'fog', 'bloom', 'lut', 'smaa', 'output'],
   mid: ['render', 'ao', 'bloom', 'smaa', 'output'],
   low: ['render', 'bloom', 'output'],
 };
@@ -81,6 +85,7 @@ export function arrange(passes) {
   out = out.filter((p) => p.kind !== 'godrays' || p.light);
   out = out.filter((p) => p.kind !== 'lut' || p.texture);
   out = out.filter((p) => p.kind !== 'volumes' || p.volumetrics);
+  out = out.filter((p) => p.kind !== 'fog' || p.media?.active);
   const ssgi = out.find((p) => p.kind === 'ssgi');
   if (ssgi) {
     const temporal = has(out, 'traa');
@@ -102,6 +107,7 @@ export function passesFor(tier, entry, backend = 'webgpu', refs = {}) {
     ao: () => ({ kind: 'ao', radius: p.ao.radius, bias: p.ao.bias, power: p.ao.power, camera: refs.camera }),
     ssr: () => ({ kind: 'ssr', maxDistance: 40, thickness: 0.1, camera: refs.camera }),
     volumes: () => ({ kind: 'volumes', volumetrics: refs.volumetrics ?? null, camera: refs.camera }),
+    fog: () => ({ kind: 'fog', mode: 'volume', media: fogMedia(entry?.record), fog: p.fog, sun: { dir: p.sun.dir.slice(), color: p.sun.color.slice(), intensity: p.sun.intensity }, steps: FOG_STEPS[tier] ?? FOG_STEPS.high, camera: refs.camera }),
     bloom: () => ({ kind: 'bloom', strength: BLOOM.strength * p.bloom.scale, radius: BLOOM.radius, threshold: BLOOM.threshold }),
     godrays: () => ({ kind: 'godrays', light: refs.light ?? null, color: p.sun.color.slice(), density: 0.7, maxDensity: 0.5, camera: refs.camera }),
     lensflare: () => ({ kind: 'lensflare', threshold: 0.5, ghostSamples: 4, ghostSpacing: 0.25 }),
@@ -120,3 +126,4 @@ export function shed(passes, level = 0) {
   const drop = new Set(SHED.slice(0, Math.max(0, level)).flat());
   return arrange(passes.filter((p) => !drop.has(p.kind)));
 }
+

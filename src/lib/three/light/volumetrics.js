@@ -31,6 +31,7 @@
 // conesFor(json, cells, camera, { max }) → [{ cell, i, area, weight }]   (pure)
 // coneLight(cone, lights) → the nearest spot within CONE_REACH of the apex, or null   (pure)
 // apexOf(volume) → [x, y, z]   (pure)
+// upsample(tsl, low, depth, projInv, scale) → node   (the joint bilateral upsampling, shared with fog.js)
 // createVolumetrics(scene, renderer, { tier, source, lights, scale })
 //   → Promise<{ set(list), update(camera), pass(colorNode, { depth, camera }), setScale(k), lit, slots, dispose }>
 
@@ -118,6 +119,32 @@ export function conesFor(json, cells, camera, { max = CONES_LIT.ultra } = {}) {
   return picked;
 }
 
+// Joint bilateral upsampling (Kopf et al. 2007; three's fog example's 5 × 5):
+// a low-resolution texture brought up to the screen, each tap weighted by
+// its distance and by how near its depth is to the pixel's, so nothing
+// bleeds across a depth edge. `projInv` a uniform of the camera's inverse
+// projection; `scale` the low texture's share of the resolution.
+export function upsample(tsl, low, depthNode, projInv, scale) {
+  const { Fn, vec2, vec4, float, exp, fwidth, getViewPosition, screenUV } = tsl;
+  const viewDepth = (uv) => getViewPosition(uv, depthNode.sample(uv).r, projInv).z.negate().max(0.001);
+  return Fn(() => {
+    const centre = viewDepth(screenUV);
+    const texel = fwidth(screenUV).div(scale);
+    const sum = vec4(0).toVar();
+    const wsum = float(0).toVar();
+    for (let y = -2; y <= 2; y++) {
+      for (let x = -2; x <= 2; x++) {
+        const uv = screenUV.add(vec2(x, y).mul(texel));
+        const dd = viewDepth(uv).sub(centre).div(centre.max(0.1));
+        const w = exp(float((-(x * x + y * y) * 0.5) / (UPSAMPLE.sigma * UPSAMPLE.sigma))).mul(exp(dd.mul(dd).mul(-0.5 * UPSAMPLE.depth * UPSAMPLE.depth)));
+        sum.addAssign(low.sample(uv).mul(w));
+        wsum.addAssign(w);
+      }
+    }
+    return sum.div(wsum.max(1e-4));
+  })();
+}
+
 const flatSpots = (json) => Object.values(json?.cells ?? {}).flat().filter((l) => l.kind === 'spot');
 
 export async function createVolumetrics(scene, renderer, { tier = 'high', source = null, lights = null, scale = 1, cell = CELL } = {}) {
@@ -125,7 +152,7 @@ export async function createVolumetrics(scene, renderer, { tier = 'high', source
   const inert = { set: () => 0, update: () => 0, pass: (colorNode) => colorNode, setScale() {}, lit: 0, slots: [], dispose() {} };
   if (!n) return inert;
   const [{ THREE, tsl }, { bayer16 }, { gaussianBlur }] = await Promise.all([loadThree(), import('three/addons/tsl/math/Bayer.js'), import('three/addons/tsl/display/GaussianBlurNode.js')]);
-  const { Fn, uniform, vec3, vec4, float, vec2, screenCoordinate, screenUV, clamp, pow, length, max, select, exp, fwidth, getViewPosition, cameraViewMatrix, cameraNear, cameraFar, linearDepth, viewZToPerspectiveDepth, pass } = tsl;
+  const { Fn, uniform, vec3, vec4, float, screenCoordinate, screenUV, clamp, pow, length, max, select, cameraViewMatrix, cameraNear, cameraFar, linearDepth, viewZToPerspectiveDepth, pass } = tsl;
 
   const group = new THREE.Group();
   group.name = 'volumetrics';
@@ -283,26 +310,9 @@ export async function createVolumetrics(scene, renderer, { tier = 'high', source
       const blurred = gaussianBlur(vp, BLUR);
       const low = blurred.getTextureNode();
       projInv.copy(camera.projectionMatrixInverse);
-      const viewDepth = (uv) => getViewPosition(uv, depthNode.sample(uv).r, projInvU).z.negate().max(0.001);
-      // Joint bilateral upsampling (Kopf et al. 2007), the fog example's 5 × 5
-      const up = Fn(() => {
-        const centre = viewDepth(screenUV);
-        const texel = fwidth(screenUV).div(VOLUME_SCALE);
-        const sum = vec3(0).toVar();
-        const wsum = float(0).toVar();
-        for (let y = -2; y <= 2; y++) {
-          for (let x = -2; x <= 2; x++) {
-            const uv = screenUV.add(vec2(x, y).mul(texel));
-            const dd = viewDepth(uv).sub(centre).div(centre.max(0.1));
-            const wgt = exp(float(-(x * x + y * y) * 0.5 / (UPSAMPLE.sigma * UPSAMPLE.sigma))).mul(exp(dd.mul(dd).mul(-0.5 * UPSAMPLE.depth * UPSAMPLE.depth)));
-            sum.addAssign(low.sample(uv).rgb.mul(wgt));
-            wsum.addAssign(wgt);
-          }
-        }
-        return sum.div(wsum.max(1e-4));
-      })();
+      const up = upsample(tsl, low, depthNode, projInvU, VOLUME_SCALE);
       made = [vp, blurred];
-      return colorNode.add(vec4(up, 0));
+      return colorNode.add(vec4(up.rgb, 0));
     },
     setScale(k) {
       if (k === scale) return;

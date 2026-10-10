@@ -5,7 +5,7 @@
 //
 //   node scripts/light-fixture.mjs [--tier ultra] [--post on|off] [--sky on|off]
 //     [--grid] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
-//     [--volume [on|off]]
+//     [--volume [on|off]] [--weather interior|sunny|felucia] [--view wide|edge|sun]
 //
 // For each leg (?gpu=webgpu, and ?gpu=webgl: the node renderer on a WebGL 2
 // context) it opens scripts/light-fixture/index.html on a Vite dev server
@@ -27,7 +27,8 @@
 //   instead, its shots and numbers into galaxy-engine/V/, a second shot at
 //   the figure's edge inside a lit cone (<label>-<leg>-edge.png) and the
 //   volumes drawn; `--volume off` is the same hangar without them, the
-//   before to compare with.
+//   before to compare with; --weather and --view pick the hangar's weather
+//   (lane V's fog with media) and its first view.
 // The numbers go to <label>.json beside the shots and to stdout as a table.
 //
 // On Linux without a display both legs draw on SwiftShader (CPU): the
@@ -60,7 +61,7 @@ const legs = arg('legs', 'webgpu,webgl').split(',');
 const sky = arg('sky', 'on') === 'on';
 const grid = argv.includes('--grid');
 const only = arg('only', null)?.split(',');
-const fixture = { tier, post, sky, env: true, only, ...(volume != null ? { volume } : {}) };
+const fixture = { tier, post, sky, env: true, only, ...(volume != null ? { volume, weather: arg('weather', 'interior'), view: arg('view', 'wide') } : {}) };
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
@@ -121,7 +122,7 @@ for (const leg of legs) {
       row.volumesLit = await page.evaluate(() => window.__lit.probe.lit());
       await page.evaluate(() => (window.__lit.probe.view('edge'), window.__lit.draw(8)));
       writeFileSync(join(OUT, `${label}-${leg}-edge.png`), await shot());
-      await page.evaluate(() => (window.__lit.probe.view('wide'), window.__lit.draw(4)));
+      await page.evaluate((v) => (window.__lit.probe.view(v), window.__lit.draw(4)), fixture.view);
     }
     // A2: with and without the environment
     await page.evaluate(() => (window.__lit.probe.setEnv(false), window.__lit.draw(8)));

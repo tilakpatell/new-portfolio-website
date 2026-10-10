@@ -12,10 +12,24 @@
 // their emission. One of Hoth's SimpleVolumetrics glows (7.2 m,
 // EmissionScale 0.2) hangs by the door.
 //
-// views: 'wide' (from the door), 'edge' (the figure's edge inside a lit cone)
+// weathers (`weather`): 'interior' (Hoth's, the default), 'sunny' (Hoth's
+// day: no forward scattering, Presence 0) and 'felucia' (Hoth's day with
+// Felucia's day's fog record in place of its own: the forward scattering at
+// Presence 0.956, the strongest of the game's MP records. Hoth's Blizzard
+// has no VisualEnvironment record in the export, only a LUT).
+//
+// views: 'wide' (from the door), 'edge' (the figure's edge inside a lit
+// cone), 'sun' (outside the mouth, toward the sun over the hangar)
 
 import * as THREE from 'three';
 import hoth from '../../src/lib/three/light/fixtures/hoth.ve.json';
+import media from '../../src/lib/three/light/fixtures/fog.media.json';
+
+const WEATHERS = {
+  interior: hoth.interior,
+  sunny: hoth.sunny,
+  felucia: { ...hoth.sunny, record: { ...hoth.sunny.record, FogComponentData: [media.felucia.FogComponentData[0]] } },
+};
 
 const CONE_04 = { kind: 'cone', quat: [0, 0, 0, 1], scale: [2, 5, 2], color: [0.2438, 0.2462, 0.2237], exponent: 2.113, emission: 1, fade: [17, 20] };
 const CONE_02 = { kind: 'cone', quat: [0, 0, 0, 1], scale: [1.5, 1.5, 1.5], color: [0.5873, 1.0699, 1.8233], exponent: 2.113, emission: 1, fade: [17, 20] };
@@ -80,11 +94,18 @@ export default {
         camera.position.set(2, 3.2, 16);
         camera.lookAt(0, 2.2, -3);
       },
+      sun: () => {
+        camera.position.set(0, 2, 30);
+        const d = sunAt();
+        camera.lookAt(camera.position.x + d[0] * 100, 2 + Math.max(0.2, d[1]) * 100, camera.position.z + d[2] * 100);
+      },
       edge: () => {
         camera.position.set(-1.2, 1.6, 2.2);
         camera.lookAt(figure.position.x, 1.6, figure.position.z);
       },
     };
+    const entry = WEATHERS[opts.weather ?? 'interior'];
+    let sunAt = () => [0, 0.5, -1];
     views[opts.view ?? 'wide']();
 
     let post = null;
@@ -120,13 +141,17 @@ export default {
 
     const ready = (async () => {
       const [{ applyGameLight }, { PMREMGenerator }, { RoomEnvironment }] = await Promise.all([import('../../src/lib/three/light/apply.js'), import('three/webgpu'), import('three/addons/environments/RoomEnvironment.js')]);
-      light = await applyGameLight(scene, renderer, hoth.interior, { tier: opts.tier, camera, lights, volumetrics: opts.volume === false ? null : source, sky: false, post: opts.post });
+      light = await applyGameLight(scene, renderer, entry, { tier: opts.tier, camera, lights, volumetrics: opts.volume === false ? null : source, sky: entry !== hoth.interior, post: opts.post });
+      sunAt = () => light.params.sun.dir;
+      views[opts.view ?? 'wide']();
       probe.light = { clustered: light.parts.placed?.clustered ?? null };
       const pmrem = new PMREMGenerator(renderer);
-      env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      if (entry === hoth.interior) {
+        env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        scene.environment = env;
+        scene.environmentIntensity = 0.15;
+      } else env = scene.environment;
       pmrem.dispose();
-      scene.environment = env;
-      scene.environmentIntensity = 0.15;
       camera.updateMatrixWorld();
       light.update(0, camera);
       if (light.passes.length) {
@@ -158,7 +183,7 @@ export default {
       dispose() {
         post?.dispose();
         light?.dispose();
-        env?.dispose();
+        if (entry === hoth.interior) env?.dispose();
         for (const m of made) m.dispose();
       },
     };

@@ -40,6 +40,18 @@ describe('buildChain', () => {
     chain.dispose();
     volumetrics.dispose();
   });
+  it('builds the fog pass: the forward glow, and the media marched where a record turns them on', async () => {
+    const interior = passesFor('ultra', hoth.interior, 'webgpu', { scene, camera, light, lut });
+    const fog = interior.find((p) => p.kind === 'fog');
+    expect(fog).toBeTruthy();
+    const chain = await buildChain(renderer, interior);
+    expect(chain.pipeline.outputNode).toBeTruthy();
+    chain.dispose();
+    const withMedia = { ...fog, media: { ...fog.media, media: true, depth: { ...fog.media.depth, extinction: 0.01, scattering: [0.005, 0.006, 0.008] } } };
+    const marched = await buildChain(renderer, [{ kind: 'render', scene, camera }, withMedia, { kind: 'output' }]);
+    expect(marched.nodes.length).toBeGreaterThan(1);
+    marched.dispose();
+  });
   it('a shader pass still needs the webgl backend; an unknown kind is refused', async () => {
     await expect(buildChain(renderer, [{ kind: 'render', scene, camera }, { kind: 'shader' }])).rejects.toThrow('needs the webgl backend');
     await expect(buildChain(renderer, [{ kind: 'render', scene, camera }, { kind: 'vignette' }])).rejects.toThrow('unknown pass vignette');

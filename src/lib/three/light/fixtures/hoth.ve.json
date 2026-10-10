@@ -1,5 +1,5 @@
 {
- "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed",
+ "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed; the fog's ForwardLightScattering fields from src/data/bf2017/maps/hoth.lighting.json (lane V)",
  "sunny": {
   "name": "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
   "record": {
@@ -33,9 +33,9 @@
       1
      ],
      "RayleighScatteringCoefficient": [
-      0.00001,
-      0.00001,
-      0.00003
+      1e-05,
+      1e-05,
+      3e-05
      ],
      "LuminanceScale": 35000,
      "SunSize": 0.004,
@@ -65,7 +65,18 @@
      "HeightFogDepth": 50,
      "HeightFogVisibilityRange": 3000,
      "Enable": true,
-     "HeightFogEnable": true
+     "HeightFogEnable": true,
+     "ForwardLightScatteringColor": [
+      0.423267663,
+      0.5967023,
+      1
+     ],
+     "ForwardLightScatteringPhaseG": 0.883,
+     "ForwardLightScatteringStrength": 3.741,
+     "ForwardLightScatteringPresence": 0,
+     "ForwardLightScatteringExtinction": 2.239,
+     "ForwardLightScatteringRotationX": 0,
+     "ForwardLightScatteringRotationY": 60
     }
    ],
    "TonemapComponentData": [
@@ -123,9 +134,9 @@
       1
      ],
      "RayleighScatteringCoefficient": [
-      0.00001,
-      0.00001,
-      0.00003
+      1e-05,
+      1e-05,
+      3e-05
      ],
      "LuminanceScale": 3000,
      "SunSize": 0.004,
@@ -155,7 +166,18 @@
      "HeightFogDepth": 65,
      "HeightFogVisibilityRange": 500,
      "Enable": true,
-     "HeightFogEnable": true
+     "HeightFogEnable": true,
+     "ForwardLightScatteringColor": [
+      0.9818974,
+      0.283554882,
+      0.114725284
+     ],
+     "ForwardLightScatteringPhaseG": 0.984,
+     "ForwardLightScatteringStrength": 3.676,
+     "ForwardLightScatteringPresence": 0.765,
+     "ForwardLightScatteringExtinction": 1.471,
+     "ForwardLightScatteringRotationX": 0,
+     "ForwardLightScatteringRotationY": 60
     }
    ],
    "TonemapComponentData": [
@@ -224,7 +246,18 @@
      "HeightFogDepth": 50,
      "HeightFogVisibilityRange": 3000,
      "Enable": true,
-     "HeightFogEnable": true
+     "HeightFogEnable": true,
+     "ForwardLightScatteringColor": [
+      0.423267663,
+      0.5967023,
+      1
+     ],
+     "ForwardLightScatteringPhaseG": 0.883,
+     "ForwardLightScatteringStrength": 3.741,
+     "ForwardLightScatteringPresence": 0.714,
+     "ForwardLightScatteringExtinction": 2.239,
+     "ForwardLightScatteringRotationX": 0,
+     "ForwardLightScatteringRotationY": 60
     }
    ],
    "TonemapComponentData": [

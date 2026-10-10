@@ -71,6 +71,19 @@ describe('volumes', () => {
   });
 });
 
+describe('fog with media', () => {
+  it('Hoth’s interior and sunset (forward scattering on) take the fog pass on ultra and high after the volumes; its day does not', () => {
+    expect(kinds(passesFor('ultra', hoth.interior, 'webgpu', refs))).toEqual(['render', 'ssgi', 'ao', 'ssr', 'fog', 'bloom', 'godrays', 'lensflare', 'lut', 'traa', 'output']);
+    expect(kinds(passesFor('high', hoth.sunset, 'nodes-webgl', refs))).toContain('fog');
+    expect(kinds(passesFor('mid', hoth.interior, 'webgpu', refs))).not.toContain('fog');
+    expect(kinds(passesFor('ultra', hoth.sunny, 'webgpu', refs))).not.toContain('fog');
+    const fog = passesFor('high', hoth.interior, 'webgpu', refs).find((p) => p.kind === 'fog');
+    expect(fog).toMatchObject({ mode: 'volume', steps: 16 });
+    expect(fog.media.forward.presence).toBe(0.714);
+    expect(fog.fog.curve).toHaveLength(4);
+  });
+});
+
 describe('shed', () => {
   it('drops SSGI, then SSR, then god rays and flare, then AO', () => {
     const ultra = passesFor('ultra', hoth.sunny, 'webgpu', refs);
