@@ -55,4 +55,5 @@ Built by `scripts/bf2017-materials.mjs` from a level’s `MaterialGridData` (`da
   - `LEAD` 0.2 s: how much of the death clip plays before the ragdoll takes the body, moving as the clip had it moving.
   - `RAGDOLLS` { high 6, mid 4, low 2 } bodies falling at once by the device’s tier, and `RANGE` 60 m from the camera; past either a body keeps its death clip. Settled bodies do not count.
   - `CORPSES` 24 bodies lying at once (the oldest is hidden first); `SINK` 1.5 s and `DEEP` 0.4 m: after the trooper’s `TimeForCorpse` (above) a body sinks that far that fast, then is hidden.
+  - `PART_BONES` (`figures/fall.js`): the sim’s capsule parts (`soldier.js`) to the ragdoll’s bones, by hand (the game hits its own fifteen bodies, the sim has seven parts); a kill with no part strikes the `Spine`.
   - The hit impulse is the game’s 50 N·s, unscaled: on the trooper’s 94 kg the body takes about 0.53 m/s, a crumple rather than a throw.

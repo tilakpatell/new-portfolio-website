@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IN_COMBAT, OFFSETS, SAFE, SPAWN_PROTECTION, WAVE, blocked, isProtected, pickSpawn, protect, squadSpawn, waves } from './spawn.js';
+import { IN_COMBAT, OFFSETS, SPAWN_PROTECTION, SQUAD_SAFE, WAVE, blocked, isProtected, pickSpawn, protect, squadSpawn, waves } from './spawn.js';
 import { loadRulebook, squadsOf } from './rulebook.js';
 
 const area = (id, x0, z0, x1, z1) => ({ id, mode: 'galacticAssault', team: 1, points: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], y: 0 });
@@ -34,7 +34,7 @@ describe('spawning', () => {
 
   it('spawns behind a squadmate out of contact, and not on one in contact', () => {
     const mate = { id: 'm', kind: 'soldier', alive: true, at: [0, 0, 0], yaw: 0, suppressed: 0 };
-    const s = squadSpawn({ squad: [mate], me: 'me', enemies: [[0, SAFE + 5]] });
+    const s = squadSpawn({ squad: [mate], me: 'me', enemies: [[0, SQUAD_SAFE + 5]] });
     // (the friendly position table's first spot: 3 m behind the mate)
     expect(s.at[2]).toBeCloseTo(-3, 6);
     expect(s.mate).toBe('m');
@@ -67,13 +67,22 @@ describe('spawning', () => {
     expect(blocked(mate, { now: 10 })).toBe(null);
     expect(blocked({ ...mate, combatAt: 10 - IN_COMBAT + 0.5 }, { now: 10 })).toBe('combat');
     expect(blocked({ ...mate, combatAt: 10 - IN_COMBAT }, { now: 10 })).toBe(null);
-    expect(blocked(mate, { enemies: [[0, SAFE - 1]], now: 10 })).toBe('combat');
+    expect(blocked(mate, { enemies: [[0, SQUAD_SAFE - 1]], now: 10 })).toBe('combat');
     expect(blocked({ ...mate, oobSince: 3 }, { now: 10 })).toBe('oob');
     expect(blocked({ ...mate, alive: false }, { now: 10 })).toBe('dead');
     expect(blocked(null, { now: 10 })).toBe('none');
     expect(blocked({ ...mate, cls: { cls: 'aerial' } }, { now: 10 })).toBe('airborne');
     const squad = [{ ...mate, combatAt: 9.5 }, { ...mate, id: 'n', oobSince: 1 }];
     expect(squadSpawn({ squad, me: 'me', now: 10 })).toBe(null);
+  });
+
+  it('keeps a squad spawn the record’s safe enemy distance from every enemy, not the points’ hand 30 m', () => {
+    expect(SQUAD_SAFE).toBe(squadsOf(loadRulebook()).safeEnemyDistance);
+    const mate = { id: 'm', kind: 'soldier', alive: true, at: [0, 0, 0], yaw: 0, suppressed: 0, cls: { cls: 'assault' } };
+    // (an enemy 40 m off: clear of the hand 30, inside the record's 50)
+    expect(blocked(mate, { enemies: [[0, 40]], now: 10 })).toBe('combat');
+    expect(squadSpawn({ squad: [mate], me: 'me', enemies: [[0, 40]], now: 10 })).toBe(null);
+    expect(blocked(mate, { enemies: [[0, SQUAD_SAFE]], now: 10 })).toBe(null);
   });
 
   it('protects a fresh soldier for a while', () => {

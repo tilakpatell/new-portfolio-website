@@ -111,7 +111,8 @@ export function createBattle({ rulebook, level = 'hoth', mode = 'galacticAssault
 export function addPlayer(b, { team = 2 } = {}) {
   b.player = { team, id: PLAYER_ID, state: 'deploying', downAt: 0, earned: 0, hits: [] };
   b.names.set(PLAYER_ID, 'You');
-  joinSquad(b.sim.brains.squads, b.sim, PLAYER_ID, team);
+  const { created } = joinSquad(b.sim.brains.squads, b.sim, PLAYER_ID, team);
+  if (created) b.sim.commanders?.[team]?.squads.push(created);
   return 'player';
 }
 

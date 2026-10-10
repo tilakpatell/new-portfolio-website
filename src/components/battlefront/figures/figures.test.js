@@ -167,6 +167,34 @@ describe('the figures and the ragdolls', () => {
     expect(figs.figure('a').model.position.x).toBeCloseTo(5, 9);
   });
 
+  it('asks the ragdolls once per death: a refused body keeps its death clip and is not offered again', async () => {
+    const ragdolls = fakeRagdolls();
+    ragdolls.fall.mockImplementation(() => false);
+    const figs = createFigures({ scene: new THREE.Scene(), loadBody: gameBody, ragdolls });
+    figs.update([trooper()], 0.05);
+    await tick();
+    for (let i = 0; i < 20; i++) figs.update([trooper({ state: i < 2 ? 'dying' : 'down', at: [3, 0, 3], t: 1 + i })], 0.05);
+    expect(ragdolls.fall).toHaveBeenCalledTimes(1);
+    expect(ragdolls.drop).not.toHaveBeenCalled();
+    expect(figs.figure('a').model.position.x).toBeCloseTo(3, 9);
+    // (up again, then a new death: asked again)
+    figs.update([trooper({ state: 'alive', t: 30 })], 0.05);
+    expect(ragdolls.drop).not.toHaveBeenCalled();
+    figs.update([trooper({ state: 'dying', t: 31 })], 0.05);
+    expect(ragdolls.fall).toHaveBeenCalledTimes(2);
+  });
+
+  it('draws a soldier up again under the same id at its new place, not sliding from the corpse', async () => {
+    const ragdolls = fakeRagdolls();
+    const figs = createFigures({ scene: new THREE.Scene(), loadBody: gameBody, ragdolls });
+    figs.update([trooper()], 0.05);
+    await tick();
+    figs.update([trooper({ state: 'dying', at: [3, 0, 3], t: 1 })], 0.05);
+    // (deployed between steps: the same step time, a new place)
+    figs.update([trooper({ state: 'alive', at: [40, 0, 40], t: 1 })], 0.05, 0);
+    expect(figs.figure('a').model.position.x).toBeCloseTo(40, 9);
+  });
+
   it('draws as before with no ragdolls', async () => {
     const figs = createFigures({ scene: new THREE.Scene(), loadBody: gameBody });
     figs.update([trooper()], 0.05);

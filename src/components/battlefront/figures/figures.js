@@ -148,15 +148,18 @@ export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, {
         }
         if (!f.model) continue;
         if (ragdolls) {
-          if (DEAD.has(e.state) && !f.fell) f.fell = ragdolls.fall(e.id, f, { fall: e.fall ?? null, vel: e.vel ?? null, eye });
+          // (asked once per death: a refused body is 'refused', plays its death
+          // clip and is not offered again, so a long-dead corpse never jumps)
+          if (DEAD.has(e.state) && !f.fell) f.fell = ragdolls.fall(e.id, f, { fall: e.fall ?? null, vel: e.vel ?? null, eye }) ? true : 'refused';
           else if (!DEAD.has(e.state) && f.fell) {
-            // (up again under the same id: the clips have it back)
-            ragdolls.drop(e.id);
+            // (up again under the same id: the clips have it back, at its new place)
+            if (f.fell === true) ragdolls.drop(e.id);
             f.fell = false;
             f.clip = null;
             f.model.visible = true;
+            f.last = f.cur = { at: e.at.slice(), yaw: e.yaw ?? 0, t: e.t };
           }
-          if (f.fell && ragdolls.handed(e.id)) {
+          if (f.fell === true && ragdolls.handed(e.id)) {
             // (the ragdoll has the body: the gun leaves the hand)
             arm(f, null);
             continue;
@@ -172,7 +175,7 @@ export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, {
       for (const [id, f] of figs) {
         if (seen.has(id)) continue;
         held.disarm(f);
-        if (f.fell) ragdolls?.drop(id);
+        if (f.fell === true) ragdolls?.drop(id);
         f.model?.removeFromParent();
         f.mixer?.stopAllAction();
         figs.delete(id);
@@ -189,7 +192,7 @@ export function createFigures({ scene, loadBody = (url) => loadWalrusBody(url, {
       gone = true;
       held.dispose();
       for (const [id, f] of figs) {
-        if (f.fell) ragdolls?.drop(id);
+        if (f.fell === true) ragdolls?.drop(id);
         f.mixer?.stopAllAction();
         f.model?.removeFromParent();
       }

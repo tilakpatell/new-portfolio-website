@@ -95,6 +95,8 @@ The game's navmesh (`PathfindingBlobAsset`) is opaque, so the navgrid's mask is 
 `squads.json` is read from the game (`scripts/lib/bf2017-rulebook-squads.mjs`); what the code around it adds by hand:
 
 - `IN_COMBAT` 5 s (`spawn.js`): how long a soldier hit, or hitting, cannot be spawned on. The game names what puts a soldier in combat (the killswitches `Online/Killswitches/SquadSpawn_InCombat_When*`, kept as `inCombat`) but keeps no time for it.
+- `SQUAD_SAFE` (`spawn.js`) is the record’s `safeEnemyDistance` 50 m (`SpawnLocationFinderEntityData.SpawnSafeEnemyDistance`); that an enemy that near makes a mate “in combat” (`ID_SQUAD_SPAWN_BLOCK_REASON_IN_COMBAT`) is by hand. `pickSpawn`’s `SAFE` 30 m for spawn points stays by hand, as before.
+- The block reasons by hand (`blocked`, `spawn.js`): a mate in the air (`'airborne'`) and a rolling mate show `ID_SQUAD_SPAWN_BLOCK_REASON_OTHER` (“UNAVAILABLE”), as the game has no airborne or rolling string.
 - The leader (`ai/squad.js`): the first bot alive, else the first alive, so the bots keep to the commander’s order and not the player’s. The game’s squad leading is native code.
 - `joinSquad` (`ai/squad.js`): a player takes the team’s first squad with room; with every squad full, the last bot of the first squad moves to a new one. The game’s parties and auto-partners (`AutoPartnerEntityData`, `TacticalGroupManagerEntityData`) are native code.
 - The squad-spawn Battle Points stay `points.json`’s `earn.squadSpawn` 25: `UI/MetaData/ScoreUIMetaData` has the award “SQUAD SPAWN ON YOU” (identifier 2793359391) but `Persistence/Scoring/MPScoring` holds no score for it.

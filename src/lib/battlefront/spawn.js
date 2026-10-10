@@ -18,6 +18,10 @@ import { centroid, insidePolygon } from './modes/objectives.js';
 
 // The game's rule, by hand: a spot this far from every enemy is safe to deploy on.
 export const SAFE = 30;
+// How far every enemy must be from a squadmate to spawn on them: the record's
+// SpawnSafeEnemyDistance (squads.json's `safeEnemyDistance`). Its being a
+// reason the mate is "in combat" is by hand (NOTES.md).
+export const SQUAD_SAFE = SQUADS.rows.safeEnemyDistance;
 // Where round a squadmate a squad spawn lands, in turn: [right, ahead] in
 // metres (squads.json, the spawn manager's friendly position table).
 export const OFFSETS = SQUADS.rows.offsets;
@@ -85,7 +89,7 @@ export function blocked(mate, { enemies = [], now = 0 } = {}) {
   if (mate.vehicle) return 'vehicle';
   if (mate.cls?.cls === 'aerial') return 'airborne';
   if (now - (mate.combatAt ?? -Infinity) < IN_COMBAT - 1e-9 || (mate.suppressed ?? 0) > 0) return 'combat';
-  if (nearest([mate.at[0], mate.at[2]], enemies) < SAFE) return 'combat';
+  if (nearest([mate.at[0], mate.at[2]], enemies) < SQUAD_SAFE) return 'combat';
   if (mate.state === 'roll') return 'other';
   return null;
 }

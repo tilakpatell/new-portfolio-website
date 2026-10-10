@@ -366,7 +366,9 @@
   animation: bf-squad-icon 2s linear infinite;
 }
 .bf-squad-row[data-order] .bf-squad-letter {
-  animation: bf-squad-icon 2s linear infinite reverse;
+  /* (the icon's curve half a round on: in as the icon goes out, out as it comes back) */
+  animation: bf-squad-icon 2s linear infinite;
+  animation-delay: -1s;
 }
 @keyframes bf-squad-icon {
   0% {
@@ -399,7 +401,7 @@
   left: calc(var(--bf-squad-box) / 2);
   padding: 0.1rem var(--bf-squad-bar-tail) 0.1rem calc(var(--bf-squad-name-x) - var(--bf-squad-box) / 2);
   background: linear-gradient(to right, var(--bf-glass) calc(100% - var(--bf-squad-bar-fade)), transparent);
-  font-size: 0.85rem;
+  font-size: 1.125rem; /* the widget's Univers520MediumCondensed18px, 16 px at least */
   line-height: 1.2;
   white-space: nowrap;
 }
