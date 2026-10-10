@@ -3593,8 +3593,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       warmParty(kind);
     },
-    // the ship's about to fly into `id`'s air (`entry`: entry.js's
-    // entryAhead, what entering() will say as it does): the part of it
+    // the ship's about to fly into `id`'s air, or is in it and not yet
+    // taken (`entry`: entry.js's entryGuess, what entering() will say as
+    // it's taken, at the speed it must be down to by then): the part of it
     // it'll come down on, foreseen as begin will find it (from `light`, or
     // beside a friend already down, `near`), and that biome's models
     // fetched (landings/furnish.js), and the physics engine where it has
