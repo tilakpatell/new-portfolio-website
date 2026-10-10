@@ -15,9 +15,9 @@ export const filesOf = (c) => [c, ...(c.faces ?? [])].map(fileOf);
 // (`party`), or a copy of its file's one figure (`shared`)
 export const figureLoaderFor = (row, dressed = false) => (row?.rig === 'walrus' ? 'walrus' : row?.rig === 'own' ? 'own' : dressed ? 'party' : 'shared');
 // a full-fidelity 2017 kind's cuts (scripts/bf2017-import.mjs --full: `full`,
-// with `lod`, `far` and the full cut's GPU textures, `fullMB`), for the
+// with `lod`, `far`, the full cut's GPU textures `fullMB` and its download `fullDL`), for the
 // walrus loader to draw by distance; null for any other row
-export const cutsOf = (row) => (row?.full ? { full: true, lod: Boolean(row.lod), far: Boolean(row.far), fullMB: row.fullMB ?? 0 } : null);
+export const cutsOf = (row) => (row?.full ? { full: true, lod: Boolean(row.lod), far: Boolean(row.far), fullMB: row.fullMB ?? 0, fullDL: row.fullDL ?? 0 } : null);
 // kind → { model's name or file, how tall, still (not rigged) }
 export const CREW = {
   han: { url: '/models/galaxy/bf2017/crew/han.glb', tall: 1.85, rig: 'walrus', pack: 'han' },

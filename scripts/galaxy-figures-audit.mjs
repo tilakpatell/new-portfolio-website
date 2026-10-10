@@ -6,7 +6,8 @@
 // stands at its bind pose (rigged, no clips named), or sways (a statue).
 //
 //   drawnAs(kind, { CREW, SURFACE_MODELS, FIGURES, WALKERS }) → 'walker' |
-//     'crew' | 'crew-still' | 'own-clips' | 'legs' | 'rig-noanim' | 'still' |
+//     'walrus' (a 2017 figure on the game's skeleton) | 'own-rig' (a 2017
+//     droid or beast on its own, ownRig.js) | 'crew' | 'crew-still' | 'own-clips' | 'legs' | 'rig-noanim' | 'still' |
 //     'built' | 'none'                                             (pure)
 //   audit(SITES, tables) → [{ kind, how, worlds: [id…] }] by kind  (pure)
 //   table(rows) → Markdown: the counts by how, then every kind     (pure)
@@ -25,12 +26,12 @@ export const EXPECTED = {
   ...Object.fromEntries(['ithorian', 'rebelpilot', 'rebeltech'].map((k) => [k, 'own-clips'])),
 };
 
-const HOWS = ['walker', 'crew', 'crew-still', 'own-clips', 'legs', 'rig-noanim', 'still', 'built', 'none'];
+const HOWS = ['walker', 'walrus', 'own-rig', 'crew', 'crew-still', 'own-clips', 'legs', 'rig-noanim', 'still', 'built', 'none'];
 
 export function drawnAs(kind, { CREW = {}, SURFACE_MODELS = {}, FIGURES = [], WALKERS = {} } = {}) {
   if (WALKERS[kind]) return 'walker';
   const c = CREW[kind];
-  if (c) return c.still ? 'crew-still' : 'crew';
+  if (c) return c.rig === 'walrus' ? 'walrus' : c.rig === 'own' ? 'own-rig' : c.still ? 'crew-still' : 'crew';
   const m = SURFACE_MODELS[kind];
   if (m) {
     if (m.anim) return 'own-clips';

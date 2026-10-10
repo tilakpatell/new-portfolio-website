@@ -33,18 +33,19 @@ describe('which cut a 2017 figure draws, by how far it is', () => {
   });
 });
 
-describe('the full cuts’ share of the GPU’s texture memory', () => {
-  it('admits a kind while its textures fit, each kind counted once', () => {
-    const ledger = createLedger(250);
-    expect(ledger.admit('trooper', 200)).toBe(true);
-    expect(ledger.admit('trooper', 200)).toBe(true);
-    expect(ledger.admit('rebel', 80)).toBe(false);
-    expect(ledger.admit('droid', 40)).toBe(true);
-    expect(ledger.used()).toBe(240);
+describe('the full cuts’ share of the download and the GPU', () => {
+  it('admits a kind while its download and its textures fit, each kind counted once', () => {
+    const ledger = createLedger({ gpu: 128, download: 30 });
+    expect(ledger.admit('trooper', { gpu: 48, download: 25 })).toBe(true);
+    expect(ledger.admit('trooper', { gpu: 48, download: 25 })).toBe(true);
+    expect(ledger.admit('rebel', { gpu: 40, download: 20 })).toBe(false);
+    expect(ledger.admit('droid', { gpu: 8, download: 3 })).toBe(true);
+    expect(ledger.admit('wookiee', { gpu: 80, download: 1 })).toBe(false);
+    expect(ledger.used()).toEqual({ gpu: 56, download: 28 });
   });
 
   it('admits nothing with no share (a phone’s levels)', () => {
-    expect(createLedger(0).admit('trooper', 1)).toBe(false);
+    expect(createLedger(null).admit('trooper', { gpu: 1, download: 1 })).toBe(false);
   });
 });
 
@@ -54,9 +55,9 @@ describe('a figure kept to the cut its distance wants', () => {
     const swapped = [];
     const cutter = createCutter({
       url: '/x/trooper.glb',
-      cuts: { lod: true, far: true, fullMB: 100 },
+      cuts: { lod: true, far: true, fullMB: 100, fullDL: 20 },
       level: 'high',
-      ledger: createLedger(150),
+      ledger: createLedger({ gpu: 150, download: 30 }),
       load: async (u) => (asked.push(u), { scene: u }),
       swap: (s) => swapped.push(s),
       ...over,
@@ -86,8 +87,8 @@ describe('a figure kept to the cut its distance wants', () => {
   });
 
   it('keeps the light cut when the full one is refused by the ledger, or will not load', async () => {
-    const ledger = createLedger(150);
-    ledger.admit('other', 100);
+    const ledger = createLedger({ gpu: 150, download: 30 });
+    ledger.admit('other', { gpu: 100, download: 1 });
     const { cutter, asked } = make({ ledger });
     expect(cutter.at(10)).toBe(null);
     expect(asked).toEqual([]);

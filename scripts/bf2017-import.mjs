@@ -421,8 +421,10 @@ export async function importModel(name, opts) {
   const file = `/models/galaxy/${sub}/${kind}.glb`;
   // (the full cut's textures on the GPU, for the page's ledger: lib/three/walrusCuts.js)
   const fullMB = full ? Math.ceil(glbTextures(await readFile(plain.out)).gpuBytes / MB) : 0;
-  if (full) console.log(`  the full cut's maps on the GPU: ${fullMB} MB`);
-  const more = `${lod ? ', lod: true' : ''}${farLod ? ', far: true' : ''}${full ? `, full: true, fullMB: ${fullMB}` : ''}`;
+  // (and its download, for the same ledger)
+  const fullDL = full ? Math.ceil(plain.bytes / MB) : 0;
+  if (full) console.log(`  the full cut: ${fullDL} MB to download, its maps ${fullMB} MB on the GPU`);
+  const more = `${lod ? ', lod: true' : ''}${farLod ? ', far: true' : ''}${full ? `, full: true, fullMB: ${fullMB}, fullDL: ${fullDL}` : ''}`;
   if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus'${opts.hero ? `, pack: '${kind}'` : ''}` : ''}${more} },`);
   else {
     const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: cuts.plain.triangles, tex };
@@ -432,7 +434,7 @@ export async function importModel(name, opts) {
     if (spec.native) row.native = true;
     if (lod) row.lod = true;
     if (farLod) row.far = true;
-    if (full) Object.assign(row, { full: true, fullMB });
+    if (full) Object.assign(row, { full: true, fullMB, fullDL });
     if (ultra) row.ultra = ultra;
     row.from = name;
     await writeCatalogueLine(resolve(opts.catalog ?? path(ROOT, 'src', 'components', 'galaxy', 'surface', 'catalog', 'bf2017.js')), kind, row);
