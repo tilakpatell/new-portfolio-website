@@ -53,3 +53,22 @@ describe('a check’s own manifest', () => {
     }
   });
 });
+
+describe('the game-derived files the bucket alone holds', () => {
+  it('are bundled beside the mirrored ones: absent here taken on their word, edited here dropped', () => {
+    const { root, manifest } = project();
+    mkdirSync(join(root, 'public/models/galaxy/crew'), { recursive: true });
+    writeFileSync(join(root, 'public/models/galaxy/crew/edited.glb'), 'made again');
+    writeFileSync(
+      join(root, 'src/data/galaxyAssets.json'),
+      JSON.stringify({
+        'models/galaxy/crew/luke.glb': { hash: 'aaaaaaaaaaaa', bytes: 9, from: 'characters/hero/luke', tier: 'crew' },
+        'models/galaxy/crew/edited.glb': { hash: 'bbbbbbbbbbbb', bytes: 3, from: 'x', tier: 'crew' },
+      }),
+    );
+    const out = JSON.parse(made(root, 'https://bucket.test').load(join(root, 'src/data/assets-manifest.json')));
+    expect(out).toEqual({ 'kit/a.glb': manifest['kit/a.glb'], 'models/galaxy/crew/luke.glb': { hash: 'aaaaaaaaaaaa', bytes: 9 } });
+    // (and without a base, still nothing)
+    expect(made(root, '').load(join(root, 'src/data/assets-manifest.json'))).toBe('{}');
+  });
+});

@@ -22,10 +22,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const BUCKET = 'assets';
-export const REMOTE = ['hq/models', 'hq/tex', 'cc0/galaxy', 'models/gen3d', 'kit'];
+// (the site's one public bucket: the game-derived files are published there
+// too, by scripts/assets-publish.mjs, so one ASSET_BASE serves both)
+export const BUCKET = 'site-assets';
+// (textures/galaxy/bf2017/<role>/ and textures/galaxy/sky/: lane W's, the
+// game's ground and trim maps and the levels' skies, mirrored once they land)
+export const REMOTE = ['hq/models', 'hq/tex', 'cc0/galaxy', 'models/gen3d', 'kit', 'textures/galaxy/bf2017', 'textures/galaxy/sky'];
 // (each one whole in itself: a .gltf's sidecars would not sit beside it under one hash)
-export const KINDS = { '.glb': 'model/gltf-binary', '.ktx2': 'image/ktx2', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
+export const KINDS = { '.glb': 'model/gltf-binary', '.ktx2': 'image/ktx2', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.hdr': 'image/vnd.radiance', '.exr': 'image/x-exr' };
 export const MIN_BYTES = 64 * 1024;
 export const MANIFEST = 'src/data/assets-manifest.json';
 const YEAR = '31536000';
@@ -104,7 +108,10 @@ export async function run({ root, argv, bucket, deployed = null, log = console.l
   const publicDir = join(root, 'public');
   const files = remoteFiles(publicDir);
   const all = walk(publicDir);
-  const plan = planUpload(files, await storedKeys(bucket), deployed);
+  // (the game-derived files share the bucket, src/data/galaxyAssets.json's:
+  // never pruned from here, whatever the mirror names)
+  const published = readManifest(join(root, 'src/data/galaxyAssets.json'));
+  const plan = planUpload(files, await storedKeys(bucket), { ...(deployed ?? {}), ...published });
   log(`remote: ${files.length} files, ${mb(sum(files))} (${plan.upload.length} to upload, ${mb(sum(plan.upload))}; ${plan.keep.length} there already)`);
   log(`local: ${all.length - files.length} files, ${mb(all.reduce((s, f) => s + statSync(f).size, 0) - sum(files))}`);
   if (dry) {

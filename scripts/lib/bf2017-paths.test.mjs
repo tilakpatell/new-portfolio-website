@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { dataPath, globDir, globRegExp, imageUris, inBucket, localPath, mapPath, objectUrl, textureSources } from './bf2017-paths.mjs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { dataPath, globDir, globMatch, globRegExp, imageUris, inBucket, isCurrent, jobsFor, localPath, mapPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './bf2017-paths.mjs';
 
 // a GLB of just a JSON chunk, the way gltfpack's start
 function glbOf(json) {
@@ -43,6 +46,65 @@ describe('the 2017 drop’s paths', () => {
 
   it('keeps the bucket’s layout on disk', () => {
     expect(localPath('/r', 'web/models/x.glb')).toBe('/r/web/models/x.glb');
+  });
+
+  it('keeps an index of what is on disk, and reads it back', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bf2017-index-'));
+    try {
+      const file = join(dir, '.index.json');
+      expect(await readIndex(file)).toEqual({});
+      await writeIndex(file, { 'web/b.glb': { bytes: 2, at: 't' }, 'web/a.glb': { bytes: 1, at: 't' } });
+      expect(await readIndex(file)).toEqual({ 'web/a.glb': { bytes: 1, at: 't' }, 'web/b.glb': { bytes: 2, at: 't' } });
+      expect(Object.keys(await readIndex(file))).toEqual(['web/a.glb', 'web/b.glb']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('calls a file current only when the index, the disk and the manifest agree on its bytes', () => {
+    const index = { 'web/a.glb': { bytes: 5, at: 't' } };
+    expect(isCurrent(index, 'web/a.glb', 5, 5)).toBe(true);
+    expect(isCurrent(index, 'web/a.glb', null, 5)).toBe(true);
+    expect(isCurrent(index, 'web/a.glb', 6, 5)).toBe(false);
+    expect(isCurrent(index, 'web/a.glb', 5, 4)).toBe(false);
+    expect(isCurrent(index, 'web/a.glb', 5, null)).toBe(false);
+    expect(isCurrent(index, 'web/b.glb', 5, 5)).toBe(false);
+  });
+
+  it('matches a glob over the manifest’s names, a star across folders', () => {
+    expect(globMatch('characters/hero/luke/*')('characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh')).toBe(true);
+    expect(globMatch('characters/hero/luke/*')('characters/hero/leia/x')).toBe(false);
+    expect(globMatch('a.b')('aXb')).toBe(false);
+  });
+
+  it('turns a glob into every file of the models it names: LODs and collision (each with the manifest’s size, a guess), then textures PNG first', () => {
+    const manifest = new Map([
+      ['a/one_mesh', { name: 'a/one_mesh', lods: [{ lod: 0, file: 'models/a/one_mesh.glb', bytes: 10 }, { lod: 2, file: 'models/a/one_mesh_lod2.glb', bytes: 4 }], collision: { file: 'collision/a/one_mesh.glb', bytes: 3 }, textures: ['A/T_One_CS', 'Shared/T_Grime_NAM'] }],
+      ['a/two_mesh', { name: 'a/two_mesh', lods: [{ lod: 0, file: 'models/a/two_mesh.glb', bytes: 7 }], textures: ['Shared/T_Grime_NAM'] }],
+      ['b/three_mesh', { name: 'b/three_mesh', lods: [{ lod: 0, file: 'models/b/three_mesh.glb', bytes: 1 }] }],
+    ]);
+    const jobs = jobsFor(manifest, 'a/*');
+    expect(jobs.filter((j) => j.kind !== 'texture')).toEqual([
+      { kind: 'model', path: 'web/models/a/one_mesh.glb', size: 10 },
+      { kind: 'model', path: 'web/models/a/one_mesh_lod2.glb', size: 4 },
+      { kind: 'collision', path: 'web/collision/a/one_mesh.glb', size: 3 },
+      { kind: 'model', path: 'web/models/a/two_mesh.glb', size: 7 },
+    ]);
+    // (each map once, though two models name it)
+    expect(jobs.filter((j) => j.kind === 'texture')).toEqual([
+      { kind: 'texture', path: 'web/textures/a/t_one_cs.ktx2', sources: ['web/textures/a/t_one_cs.png', 'web/textures/a/t_one_cs.ktx2'] },
+      { kind: 'texture', path: 'web/textures/shared/t_grime_nam.ktx2', sources: ['web/textures/shared/t_grime_nam.png', 'web/textures/shared/t_grime_nam.ktx2'] },
+    ]);
+    expect(jobsFor(manifest, 'a/*', { textures: false, collision: false }).map((j) => j.path)).toEqual(['web/models/a/one_mesh.glb', 'web/models/a/one_mesh_lod2.glb', 'web/models/a/two_mesh.glb']);
+  });
+
+  it('never takes a sequel-era model, whatever the glob', () => {
+    const manifest = new Map([['characters/kyloren/k_mesh', { name: 'characters/kyloren/k_mesh', lods: [{ lod: 0, file: 'models/k.glb', bytes: 1 }] }]]);
+    expect(jobsFor(manifest, 'characters/*')).toEqual([]);
+  });
+
+  it('sums a run up in one line', () => {
+    expect(summaryLine({ fetched: 3, kept: 10, missing: 1, failed: 0, bytes: 5.25e6, seconds: 4.04 })).toBe('fetched 3 · kept 10 · missing 1 · failed 0 · 5.3 MB · 4.0 s');
   });
 
   it('reads a data glob: one star stays in its folder, two cross them', () => {

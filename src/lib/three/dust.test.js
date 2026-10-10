@@ -16,6 +16,16 @@ describe('dustShader', () => {
     expect(out.fragmentShader).toContain('vDustFade');
   });
 
+  it('leaves mvPosition where three’s fog chunk after it can read it', () => {
+    const { vertexShader } = dustShader({ vertexShader: THREE.ShaderLib.basic.vertexShader.replace('#include <fog_vertex>', THREE.ShaderChunk.fog_vertex), fragmentShader: THREE.ShaderLib.basic.fragmentShader });
+    const at = vertexShader.indexOf('vec4 mvPosition;');
+    expect(at).toBeGreaterThan(0);
+    // (declared at the shader's own depth, before the block that sets it)
+    expect(vertexShader.slice(at).indexOf('{')).toBeGreaterThan(0);
+    expect(vertexShader.indexOf('vFogDepth = - mvPosition.z')).toBeGreaterThan(at);
+    expect(vertexShader.match(/vec4 mvPosition\b/g)).toHaveLength(1);
+  });
+
   it('leaves a shader it doesn’t know alone', () => {
     const stub = { vertexShader: 'void main() {}', fragmentShader: 'void main() {}' };
     expect(dustShader(stub)).toEqual({ ...stub, swapped: false });
