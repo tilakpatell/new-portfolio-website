@@ -62,3 +62,7 @@ scripts/ai-e2e/results/
 scripts/gpu-parity/out/
 # (and the front door's payload, before and after: scripts/payload-check.mjs)
 !lab/payload/
+
+# keys stay out (supabase/README.md)
+.env.local
+.env.*.local
