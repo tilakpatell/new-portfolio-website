@@ -28,6 +28,7 @@ Coverage (from lane Z's ledger, `docs/superpowers/evidence/bf2017-coverage/`, re
 | --- | --: | --: | --: | --: | --: | --: |
 | 2026-10-10, lane Z (the bucket: 113,463 objects listed, 83,983 records) | 80,837 | 2,428 | 59,904 | 13,837 | 4,668 | 0 |
 | 2026-10-10, lane M (films 83 used, 31 excluded; fonts 7 used, 16 excluded (licence-pending); icons 626 used; strings used) | 80,837 | 3,525 | 58,602 | 14,066 | 4,644 | 0 |
+| 2026-10-10, lane M's fonts (all 23 used, the owner holding the licence) | 80,837 | 4,667 | 57,498 | 14,044 | 4,628 | 0 |
 | 2026-10-10, the space lane (on main after lane M; the space lane's own owned rows: 894 models and 564 maps before, 450 and 157 now) | 80,837 | 4,651 | 57,498 | 14,060 | 4,628 | 0 |
 
 **The first finding: what no lane named.** When the ledger was first written, 18,377 of its rows were `unowned`: no plan of this design or the running ones named them, and none of the merged lanes (K, L, G, V, F, P0, P1, P2, P4, R, 0, the sabers' X, the game's 1 and 2) had consumed them. None is hidden: each is given in `scripts/lib/bf2017-owners.mjs` to the lane that takes it, marked `finding: true`, and counted apart in `ledger.md`. By lane and part:

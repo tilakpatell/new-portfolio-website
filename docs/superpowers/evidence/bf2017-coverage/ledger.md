@@ -1,8 +1,8 @@
 # The Battlefront II (2017) drop: the coverage ledger
 
-Written 2026-10-10 18:21 UTC from the bucket (113,478 objects listed) by `scripts/bf2017-coverage.mjs`. One row per object (a model with all its LOD files; a map and each of its five extras kinds; `data/` by top folder and record type), each in one state: used, owned, excluded, not-uploaded, unowned. `npm run coverage:bf2017` fails while any row is unowned, or owned by a lane that has merged.
+Written 2026-10-10 19:15 UTC from the bucket (113,478 objects listed) by `scripts/bf2017-coverage.mjs`. One row per object (a model with all its LOD files; a map and each of its five extras kinds; `data/` by top folder and record type), each in one state: used, owned, excluded, not-uploaded, unowned. `npm run coverage:bf2017` fails while any row is unowned, or owned by a lane that has merged.
 
-**Rows:** 80,837 · used 4,651 · owned 57,498 · excluded 14,060 · not-uploaded 4,628 · unowned 0
+**Rows:** 80,837 · used 4,667 · owned 57,498 · excluded 14,044 · not-uploaded 4,628 · unowned 0
 
 ## By part
 
@@ -23,7 +23,7 @@ Written 2026-10-10 18:21 UTC from the bucket (113,478 objects listed) by `script
 | scatter | 40 | 40 | 10 | 0 | 30 | 10 | 0 | 0 |
 | animtracks | 61 | 61 | 0 | 3 | 49 | 9 | 0 | 0 |
 | movies | 116 | 116 | 5,725 | 83 | 2 | 31 | 0 | 0 |
-| fonts | 23 | 23 | 36 | 7 | 0 | 16 | 0 | 0 |
+| fonts | 23 | 23 | 36 | 23 | 0 | 0 | 0 | 0 |
 | svg | 702 | 702 | 4 | 626 | 17 | 59 | 0 | 0 |
 | strings | 2 | 2 | 1 | 2 | 0 | 0 | 0 | 0 |
 | data | 1,307 | 83,983 | 2,078 | 92 | 1,184 | 31 | 0 | 0 |
@@ -63,4 +63,3 @@ Of each lane’s rows, those its plan did not name are the fifth design’s firs
 | --- | --: |
 | era | 11,719 |
 | scaffolding | 2,325 |
-| licence-pending | 16 |
