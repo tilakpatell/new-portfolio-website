@@ -20,8 +20,7 @@
 //     opts?, at: [x, z], y, yaw, pitch?, roll?, scale, abs: true, solid:
 //     false }], dropped }
 
-import { siteOf } from '../../galaxy/surface/sites';
-import { makeHeight } from '../../galaxy/surface/terrain';
+import { makeHeight, siteOf } from '../../galaxy/shared/ground';
 import { DROP_Y, LANDMARKS, LANDMARK_MAX, SITE_PLACES } from '../../../lib/land/flight/landmarkTables';
 
 // the site's air, not its places': drawn by the walkable site round you, never from a ship
@@ -31,12 +30,18 @@ const AIR = new Set(['lightshafts', 'ds2sky', 'ds1sky']);
 const GROWS = new Set(['lavarock', 'karst', 'glassshard', 'floatrocks', 'smoke', 'wrecksmoke', 'grove', 'redwood', 'jungletree', 'yavintree', 'palm', 'dagocypress', 'dagoroots', 'gnarltree', 'wroshyr', 'wroshyrgreat', 'ewoktree', 'sorganbirch', 'sorganfir', 'sorganfern', 'fern', 'log', 'qpine', 'qdeadtree', 'qfern']);
 const grows = (t) => GROWS.has(t.kind) || String(t.model ?? '').startsWith('kit:naturemega/');
 
+// A site's ground as the flight reads it: a site on the game's level keeps
+// its own land for the flight (ground.flight), the heightmap being the
+// surface's alone
+export const flightGround = (g) => (g?.flight ? { ...g, layers: g.flight } : g);
+export const siteGround = (id) => flightGround(siteOf(id)?.ground);
+
 const sites = new Map(); // id → { site, height }: made once a page
 function siteData(id) {
   if (!sites.has(id)) {
     const site = siteOf(id);
     // (a site with no ground, Bespin's, stands everything at its own heights)
-    sites.set(id, site ? { site, height: site.noGround ? () => 0 : makeHeight(site.ground) } : null);
+    sites.set(id, site ? { site, height: site.noGround ? () => 0 : makeHeight(siteGround(id)) } : null);
   }
   return sites.get(id);
 }
@@ -136,7 +141,7 @@ function fromTable(rows, poi, heightAt) {
 
 export function placementsFor(spec, poi, { heightAt, site = null } = {}) {
   const m = mapOf(spec, poi);
-  const data = site ? { site, height: site.noGround ? () => 0 : makeHeight(site.ground) } : m ? siteData(m.site) : null;
+  const data = site ? { site, height: site.noGround ? () => 0 : makeHeight(flightGround(site.ground)) } : m ? siteData(m.site) : null;
   if (m && data) return fromSite(data, m, poi, heightAt);
   const rows = LANDMARKS[spec?.id]?.[poi?.id];
   return rows ? fromTable(rows, poi, heightAt) : { list: [], dropped: 0 };

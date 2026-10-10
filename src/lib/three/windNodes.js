@@ -7,12 +7,46 @@
 //   createWind({ strength, angle }) → { uniforms, windOffset(xz), update(dt),
 //     set({ strength, angle }), sway(material, { strength, height }) → the node material, dispose() }
 //   windFns(uniforms) → { windOffset }
-//   windNoise(size)
+//   windNoise(size), WIND_SCALE, sampleNoise(image, u, v), windOffsetAt(uniforms, x, z)   (wind.js's, the CPU's)
 
 import * as THREE from 'three';
 import { fbm, makeNoise } from '../paint';
 import { clamp, modelWorldMatrix, positionGeometry, texture, uniform, vec3, vec4 } from 'three/tsl';
 import { asNode, instanceMatrixOf, onPosition } from './hookNodes';
+
+// the scales WIND_GLSL reads at (wind.js's WIND_GLSL; windFns reads at the same)
+export const WIND_SCALE = { quick: 0.1, slow: 0.05, slowTime: 0.2 };
+
+// The noise picture as texture2D reads it at its full size: bilinear,
+// repeating, texel centres at (i + 0.5) / N; 0…1
+export function sampleNoise(image, u, v) {
+  const { data, width: W, height: H } = image;
+  const x = u * W - 0.5;
+  const y = v * H - 0.5;
+  const i0 = Math.floor(x);
+  const j0 = Math.floor(y);
+  const fx = x - i0;
+  const fy = y - j0;
+  const m = (a, n) => ((a % n) + n) % n;
+  const at = (i, j) => data[m(j, H) * W + m(i, W)] / 255;
+  const a = at(i0, j0) + (at(i0 + 1, j0) - at(i0, j0)) * fx;
+  const b = at(i0, j0 + 1) + (at(i0 + 1, j0 + 1) - at(i0, j0 + 1)) * fx;
+  return a + (b - a) * fy;
+}
+
+// windOffset on the CPU, from a wind's live uniforms: { x, z, k } (k: how
+// far along the wind's way)
+export function windOffsetAt(u, x, z, out = { x: 0, z: 0, k: 0 }) {
+  const img = u.uWindNoise.value.image;
+  const d = u.uWindDir.value;
+  const t = u.uWindTime.value;
+  const a = sampleNoise(img, x * WIND_SCALE.quick + d.x * t, z * WIND_SCALE.quick + d.y * t);
+  const b = sampleNoise(img, x * WIND_SCALE.slow + d.x * t * WIND_SCALE.slowTime, z * WIND_SCALE.slow + d.y * t * WIND_SCALE.slowTime);
+  out.k = (a + b - 1) * u.uWindStrength.value;
+  out.x = d.x * out.k;
+  out.z = d.y * out.k;
+  return out;
+}
 
 // A tiling picture of soft noise, stretched to its full range.
 export function windNoise(size = 128, seed = 11) {
@@ -43,8 +77,8 @@ export function windNoise(size = 128, seed = 11) {
 export function windFns(u) {
   return {
     windOffset: (xz) => {
-      const a = u.uWindNoise.sample(xz.mul(0.1).add(u.uWindDir.mul(u.uWindTime))).level(0).r;
-      const b = u.uWindNoise.sample(xz.mul(0.05).add(u.uWindDir.mul(u.uWindTime).mul(0.2))).level(0).r;
+      const a = u.uWindNoise.sample(xz.mul(WIND_SCALE.quick).add(u.uWindDir.mul(u.uWindTime))).level(0).r;
+      const b = u.uWindNoise.sample(xz.mul(WIND_SCALE.slow).add(u.uWindDir.mul(u.uWindTime).mul(WIND_SCALE.slowTime))).level(0).r;
       return u.uWindDir.mul(a.add(b).sub(1)).mul(u.uWindStrength);
     },
   };

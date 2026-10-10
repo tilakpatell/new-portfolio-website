@@ -151,10 +151,44 @@ function sized(gltf, row) {
   root.userData.sized = true;
 }
 
+// A kind's model, or its plain file when the cut asked for can't be had: a
+// game-derived .ultra cut can live in the public bucket only (the pipeline
+// design's section 6), so a site without the bucket, or a bucket without
+// that file, still draws the kind, at high.
+export const fallbackFor = (kind, url, models = SURFACE_MODELS) => {
+  const plain = modelUrlFor(kind, 'high', models);
+  return url !== plain && url === modelUrlFor(kind, 'ultra', models) ? plain : null;
+};
+// Which cut is drawn first and which swapped in after: a kind whose row is
+// `native` (the game's own files, its plain and ultra cuts in the public
+// bucket: the pipeline design's section 6) draws its light cut first, the
+// level's own taking its place when it lands (lib/net/progressive.js's
+// rule, a model's whole file the unit); otherwise the level's own cut,
+// nothing after it.
+export function cutsToLoad(kind, level, models = SURFACE_MODELS) {
+  const url = modelUrlFor(kind, level, models);
+  const row = models[kind];
+  // (at low and mid a native kind's cut is the light one itself: nothing to swap in)
+  if (row?.native && row.lod && url !== lodUrlFor(kind, models)) return { first: lodUrlFor(kind, models), then: url };
+  return { first: url, then: null };
+}
+
+// the full cut's insides in place of the first's, under the same object (so
+// whoever holds the first, a ride or a chase's bike, holds the full one)
+export function swapIn(o, full) {
+  for (const c of [...o.children]) o.remove(c);
+  for (const c of [...full.children]) o.add(c);
+  return o;
+}
+
+export function loadGlbOr(url, fallback = null) {
+  return loadGlb(url).then((g) => g ?? (fallback ? loadGlb(fallback) : null));
+}
+
 export function loadModel(kind, { models = SURFACE_MODELS, low = false, url = low ? lodUrlFor(kind, models) : modelUrlFor(kind, detailLevel(), models) } = {}) {
   const role = models[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
-  return Promise.all([loadGlb(url).then((g) => (low ? g : squared(g, kind, models))), scan]).then(([gltf, got]) => {
+  return Promise.all([loadGlbOr(url, low ? null : fallbackFor(kind, url, models)).then((g) => (low ? g : squared(g, kind, models))), scan]).then(([gltf, got]) => {
     // (a model whose own finish reads wrong in the world: `look`, its
     // materials' metalness, roughness, ambient occlusion and reflections set)
     const look = models[kind]?.look;
@@ -439,11 +473,21 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         return p;
       }
       if (usesModel(spec, models)) {
-        const p = loadModel(spec.kind, { models })
+        const cuts = cutsToLoad(spec.kind, detailLevel(), models);
+        const p = loadModel(spec.kind, { models, url: cuts.first })
           .then((gltf) => {
             if (dead) return null;
             if (!gltf) return build(spec, at);
             const o = cloneModel(gltf);
+            // (the full cut after, swapped in when it lands; the plain stays if it can't be had)
+            if (cuts.then)
+              loadGlb(cuts.then)
+                .then((full) => {
+                  if (dead || !full) return;
+                  swapIn(o, cloneModel(squared(full, spec.kind, models)));
+                  warm(o);
+                })
+                .catch(() => {});
             o.position.set(...at);
             o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
             o.scale.setScalar(spec.scale ?? 1);

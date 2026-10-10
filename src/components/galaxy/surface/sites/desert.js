@@ -33,6 +33,8 @@ const booth = (a) => ({ at: [r1(sin(a) * 9.9), r1(cos(a) * 9.9)], face: r1(Math.
 
 export const SITES = {
   tatooine: {
+    // lit as the game lights its level (src/data/bf2017/light/tatooine.json, gameLit.js)
+    gameLight: 'tatooine',
     place: 'The Jundland Wastes',
     line: 'Two suns, and sand to the edge of the world.',
     sky: {

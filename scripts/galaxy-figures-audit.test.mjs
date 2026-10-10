@@ -3,7 +3,7 @@ import { EXPECTED, audit, drawnAs, slipped, table } from './galaxy-figures-audit
 
 const tables = {
   WALKERS: { atrt: {} },
-  CREW: { atrt: { name: 'atrt' }, luke: { url: '/l.glb' }, hutt: { name: 'jabba', still: true } },
+  CREW: { atrt: { name: 'atrt' }, luke: { url: '/l.glb' }, hutt: { name: 'jabba', still: true }, vader: { url: '/v.glb', rig: 'walrus' }, battledroid: { url: '/b.glb', rig: 'own', ownRig: 'b1' } },
   SURFACE_MODELS: {
     atat: { anim: { walk: 'Walk' } },
     ewok: { legs: { crotch: 0.33 } },
@@ -26,6 +26,9 @@ describe('drawnAs', () => {
     expect(drawnAs('yoda', tables)).toBe('still');
     expect(drawnAs('villager', tables)).toBe('own-clips');
     expect(drawnAs('farmer', tables)).toBe('built');
+    // (a 2017 figure: on the game's humanoid skeleton, or on one of its own)
+    expect(drawnAs('vader', tables)).toBe('walrus');
+    expect(drawnAs('battledroid', tables)).toBe('own-rig');
     expect(drawnAs('shaak', tables)).toBe('none');
   });
 });

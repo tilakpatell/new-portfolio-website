@@ -1,5 +1,7 @@
 # The galaxy's engine, lane P: the physics. Implementation plan
 
+> **Withdrawn on 2026-10-10, forty minutes after it was written. Do not run.** The galaxy's physics is designed and running under `docs/superpowers/specs/2026-10-10-bf2017-physics-design.md` (lanes P0–P4, `HANDOFF-bf2017-physics.md`), which this plan would duplicate with other file names. Kept for the record; its review focus (cells in and out, the floating origin, stairs and ice, hulls against meshes, a bolt through a doorway) is worth a read by whoever reviews those lanes.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task, yourself, in order. Steps use checkbox (`- [ ]`) syntax for tracking. Build directly; one judge pass at most before the PR.
 
 **Goal:** On a world built from the game's level, the ground, every placed thing and every bolt are Rapier's: the terrain a heightfield per cell, the instances the game's own Havok hulls and trimeshes, the walker a kinematic character that climbs the game's stairs and slides on its ice, the bolts ray casts that hit what you see; all of it added and removed with lane L's cells, under the floating origin, and the walker's feel unchanged.

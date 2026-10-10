@@ -1,6 +1,8 @@
-import { existsSync } from 'node:fs';
+import { onSite } from '../../../../../scripts/lib/asset-manifest.mjs';
+import PUBLISHED from '../../../../data/galaxyAssets.json';
 import { describe, expect, it } from 'vitest';
 import { siteOf } from '.';
+import { SITES } from './ice';
 import { CREW, filesOf } from '../crewList';
 import { SURFACE_MODELS, modelUrlFor } from '../catalog';
 import { WALKERS } from '../walkers';
@@ -9,7 +11,8 @@ import { ASSAULTS } from '../missions/assaults';
 import { STAND_INS } from '../cast';
 import { dressOf } from '../ground/troops';
 
-const onDisk = (url) => existsSync(new URL(`../../../../../public${url}`, import.meta.url));
+// (in public/, or published to the bucket)
+const onDisk = (url) => onSite(url, { publicDir: new URL('../../../../../public', import.meta.url).pathname, manifest: PUBLISHED });
 const filesFor = (kind) => (CREW[kind] ? filesOf(CREW[kind]) : SURFACE_MODELS[kind] ? [modelUrlFor(kind, 'high')] : []);
 const hoth = siteOf('hoth');
 
@@ -51,5 +54,23 @@ describe('Hoth, every one of them a model', () => {
   });
   it('everyone walks inside the world’s edge (past it an actor can’t take a step)', () => {
     for (const a of hoth.life.filter((a) => a.path && !a.zone)) for (const [x, z] of a.path) expect(Math.hypot(x, z), `${a.kind} at ${x}, ${z}`).toBeLessThan(hoth.reach - 5);
+  });
+});
+
+const near = (a, b, r) => Math.hypot(a[0] - b[0], a[1] - b[1]) < r;
+
+describe('Hoth on the game’s level', () => {
+  const hoth = SITES.hoth;
+  const door = hoth.zones.find((z) => z.id === 'echo').door.at;
+
+  it('goes into Echo Base through the game’s west mouth', () => {
+    expect(hoth.level).toBe('hoth');
+    expect(near(door, [-20, -35], 10)).toBe(true);
+  });
+
+  it('has the base’s people about that mouth, not where the built base stood', () => {
+    const officer = hoth.life.find((a) => a.id === 'officer');
+    expect(near(officer.at, door, 60)).toBe(true);
+    for (const a of hoth.life.filter((x) => /Echo Base crew|Astromech/.test(x.name ?? ''))) expect(near(a.at, door, 60), a.name).toBe(true);
   });
 });

@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createOccurrenceDraw, withOccurrences } from './occurrenceScene';
 import { makePlay } from './eventPlays';
-import { EVENTS, eventsFor } from '../../../lib/land/flight/eventTables';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { EVENTS } from '../../../lib/land/flight/eventTables';
+import { eventsOf as eventsFor, planetSpecOf } from './planets';
 import { eventNow } from './eventNews';
 
 const flat = { heightAt: () => 10, biomeAt: () => 0 };

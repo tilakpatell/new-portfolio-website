@@ -141,6 +141,7 @@ import { preload } from '../../../lib/three/clipLibrary';
 import { createGunplay } from '../../universe/gunplay';
 import { SHOW_KILLS } from './weaponRules';
 import { bladeInHand } from './heldBlade';
+import { blastClass } from './walkers';
 import { asTarget, clashes, duelFor, fence, landed, reeling, stun, turnOf } from './duellists';
 import { onHit } from '../../../lib/combat/duel';
 import { sharpen } from '../../../lib/three/textures';
@@ -292,7 +293,7 @@ export function markMaterials() {
   };
 }
 
-export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null }) {
+export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null, blast = null }) {
   const group = new THREE.Group();
   group.name = 'activity';
   parent.add(group);
@@ -397,7 +398,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       if (t.blade) t.duel = duelFor(s, Math.round(t.home[0] * 13) * 31 + Math.round(t.home[1] * 17) + targets.indexOf(t) * 7919 + 1);
       return;
     }
-    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones }, kind, { unit: 1, who: s.kind });
+    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets }, kind, { unit: 1, who: s.kind });
   };
 
   // the step's own things, put out
@@ -509,7 +510,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   // A figure's body for its step, once the step's placed its holder: its
   // feet on the ground the step covers, its crouch, its head, its start on
   // seeing you, then (after its own bones are laid) its gun or its blade
-  const body = (t, pose, move, dt, time, you) => {
+  const body = (t, pose, move, dt, time, you, eye) => {
     const fig = t.fig;
     const b = t.b;
     // crouched in cover (a base state: only ever while its feet are still)
@@ -548,8 +549,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     if (t.gp && !(time < (t.startUntil ?? 0))) t.gp.set(dt, { aim: pose.aim, look: dir ? 1 : 0, dir, forward: _fwd, up: UP });
     if (t.blade) {
       // (its stroke's root travel and its turn to its lock write into its own walk: b)
-      t.blade.block(t.blocking);
-      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: b, dir, targets: t.duelMark ? [t.duelMark] : [], hit: (x, damage, at, o) => struckBy(t, x, damage, at, o) });
+      t.blade.block(t.blocking, t.blockSide);
+      t.blade.pose(dt, time, { forward: _fwd, up: UP, me: b, dir, eye, targets: t.duelMark ? [t.duelMark] : [], hit: (x, damage, at, o) => struckBy(t, x, damage, at, o) });
     }
     // the pistol's aim, held on its upper half since its last shot (a rigged
     // one with no gun of its own to raise), let down a while after
@@ -564,7 +565,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   // about its feet that way; carried on along a shove that took it; lying a
   // while, then into the ground and gone
   const STOOD = { speed: 0, side: 0, turn: 0 };
-  const dying = (t, dt, time) => {
+  const dying = (t, dt, time, eye) => {
     const d = (t.death ??= { dir: fallOf({ from: lastYou, at: t.b, yaw: t.b.yaw }), force: 0.3, clip: null, started: false, y: null });
     const fig = t.fig;
     const hover = fig?.hover ?? t.spec.y ?? 0;
@@ -580,6 +581,9 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       fig?.stop?.(0.15, 'upper');
       fig?.look?.(null);
       d.clip = fig?.react?.('down', { dir: d.dir, yaw: t.b.yaw, force: d.force })?.clip ?? null;
+      // (a walker or droideka goes up in lane F's blast for its class as it falls: walkers.js's blastClass)
+      const cls = blastClass(t.spec.kind);
+      if (cls && blast) blast(new THREE.Vector3(t.b.x, groundAt(world, t.b.x, t.b.z, t.spec.level ?? Infinity) + (fig?.tall ?? 2) * 0.5, t.b.z), cls);
       d.y = groundAt(world, t.b.x, t.b.z, t.spec.level ?? Infinity) + hover;
     }
     const k = t.knock;
@@ -609,7 +613,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       fallTurn(f.k, _dir.set(d.dir.x, 0, d.dir.z), UP, _q);
       t.holder.quaternion.copy(_q.multiply(_yq.setFromAxisAngle(UP, t.b.yaw)));
     }
-    t.blade?.out(dt, time, { forward: _fwd, up: UP });
+    t.blade?.out(dt, time, { forward: _fwd, up: UP, eye });
     t.holder.position.set(t.b.x, d.y + (t.knock?.y ?? 0) - f.sink, t.b.z);
     if (f.gone) t.holder.visible = false;
   };
@@ -702,8 +706,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     kill(tag) {
       for (const t of targets) if (t.tag === tag && !t.down) fell(t);
     },
-    // swinging: your stroke (duellists.js's swingingOf), for the duellists to read
-    update(dt, you, time, { actors, door, swinging = null } = {}) {
+    // swinging: your stroke (duellists.js's swingingOf), for the duellists to read; eye: the camera's position (their blades' light: saberLight.js)
+    update(dt, you, time, { actors, door, swinging = null, eye = null } = {}) {
       const events = [];
       const { quest, progress } = shown;
       const step = quest?.steps[progress?.step];
@@ -751,7 +755,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             const up = new THREE.Vector3(0, 1, 0);
             const push = t.push ?? new THREE.Vector3(Math.sin(b.yaw), 0, Math.cos(b.yaw)).negate();
             const on = (ev) => onShow?.(t.how, ev);
-            if (t.blade) t.blade.gun.visible = false;
+            if (t.blade) { t.blade.gun.visible = false; t.blade.dark?.(); } // (no update reaches it now: its light goes)
             if (t.bubble) t.bubble.visible = false;
             if (t.bar) t.bar.sprite.visible = false;
             if (t.mark) t.mark.visible = false;
@@ -769,7 +773,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         }
         if (t.down) {
           t.down += dt;
-          dying(t, dt, time);
+          dying(t, dt, time, eye);
           if (t.down > 0.3 && !t.counted) {
             t.counted = true;
             events.push({ type: 'kill', tag: t.tag });
@@ -882,7 +886,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.flinch -= dt;
           t.holder.rotation.z = t.reacted ? 0 : Math.sin(t.flinch * 60) * t.flinch * 0.3;
         } else t.holder.rotation.z = 0;
-        if (t.fig) body(t, pose, moving || (b.to && !near) ? 0.6 : 0, dt, time, you);
+        if (t.fig) body(t, pose, moving || (b.to && !near) ? 0.6 : 0, dt, time, you, eye);
         if (t.bubble?.visible) {
           const f = t.bubble.userData;
           f.flash = Math.max(0, f.flash - dt);

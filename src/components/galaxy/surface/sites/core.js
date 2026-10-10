@@ -350,6 +350,8 @@ export const SITES = {
   },
 
   kamino: {
+    // lit as the game lights its level (src/data/bf2017/light/kamino.json, gameLit.js)
+    gameLight: 'kamino',
     place: 'Tipoca City',
     line: 'Rain, and the sea, and white domes on stilts in the storm.',
     sky: {
@@ -568,6 +570,8 @@ export const SITES = {
     skyships: [{ kind: 'acclamator', metres: 752, at: [1300, 320, -1500], yaw: 0.8 }],
   },
   geonosis: {
+    // lit as the game lights its level (src/data/bf2017/light/geonosis.json, gameLit.js)
+    gameLight: 'geonosis',
     place: 'The Plains of Geonosis',
     line: 'Red rock, hive spires and a ringed, rust-coloured sky.',
     sky: {

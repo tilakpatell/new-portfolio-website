@@ -40,10 +40,17 @@ const { METRE } = await import('../../universe/foot');
 
 describe('a crew figure out on a world', () => {
   it("is a copy of its file's one figure, so a battle's troopers share theirs", async () => {
-    await crewFigure('stormtrooper', 0);
+    await crewFigure('battledroid', 0);
     expect(made.at(-1).how).toBe('shared');
     await crewFigure('tusken', 0);
     expect(made.at(-1).how).toBe('shared');
+  });
+
+  it('takes a 2017 soldier through the game-skeleton loader, its cuts told, and passes its cutAt on', async () => {
+    made.length = 0;
+    const fig = await crewFigure('stormtrooper', 0);
+    expect(made.at(-1).how).toBe('own');
+    expect(fig.cutAt).toBe(null);
   });
 
   it('reads its motion in metres, as the figure under it wants it, and lays its bones on facing where it’s turned', async () => {

@@ -19,16 +19,15 @@
 // the planet's places. `kind` on a row is the ground it needs: a row of kind
 // 'hostile' is only made where a biome, or a place, is hostile.
 //
-// Pure: plain data and a lookup, no three.js. The Expanse's rule reads its
-// sector (expanse/gen/sector.js), as planetSpec.js does.
+// Pure: plain data and a lookup, no three.js. The Expanse's rule reads a
+// planet's system from the rows it is given, as planetSpec.js is given them.
 //
 //   KINDS; DENSITY[tier]; LIFE[planetId] → { kinds, air: [row], ground: [row] }
-//   lifeFor(spec, system = null) → life (a named world's row, or the Expanse's rule
+//   lifeFor(spec, { expanse }) → life (a named world's row, or the Expanse's rule
 //     from its system's faction, traffic and hazard; nothing for an unknown id)
 //   kindAt(life, biomeId) → the kind of that biome
 
-import { makeSector } from '../../../components/expanse/gen/sector.js';
-import { UNIVERSE } from '../../../components/expanse/gen/seed.js';
+import { expanseLookup } from './expanse.js';
 
 export const KINDS = ['wild', 'settled', 'city', 'hostile', 'dead'];
 export const DENSITY = { low: 0.5, mid: 1, high: 1, ultra: 1.2 };
@@ -396,18 +395,15 @@ export function expanseLife(type, biomes, system) {
 
 const EXPANSE_ID = /^e:(-?\d+),(-?\d+):(\d+):(\d+)$/i;
 
-// the system an Expanse planet id names (its faction, traffic and hazard), or null
-export function systemOf(planetId) {
-  const m = String(planetId).match(EXPANSE_ID);
-  if (!m) return null;
-  const [sx, sz, i] = m.slice(1).map(Number);
-  return makeSector(UNIVERSE, sx, sz).systems[i] ?? null;
-}
+// the system an Expanse planet id names (its faction, traffic and hazard), or
+// null: on its row, given as planetSpecOf is given it
+export const systemOf = (planetId, { expanse = null } = {}) =>
+  EXPANSE_ID.test(String(planetId)) ? (expanseLookup(expanse)(String(planetId).toLowerCase())?.system ?? null) : null;
 
-export function lifeFor(spec, system = null) {
+export function lifeFor(spec, { expanse = null } = {}) {
   if (!spec?.id) return NONE;
   const named = LIFE[spec.id];
-  const life = named ?? (EXPANSE_ID.test(spec.id) ? expanseLife(spec.type, spec.biomes ?? [], system ?? systemOf(spec.id)) : NONE);
+  const life = named ?? (EXPANSE_ID.test(spec.id) ? expanseLife(spec.type, spec.biomes ?? [], systemOf(spec.id, { expanse })) : NONE);
   return { kinds: life.kinds, air: life.air, ground: life.ground };
 }
 

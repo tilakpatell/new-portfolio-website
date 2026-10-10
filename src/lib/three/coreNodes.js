@@ -5,7 +5,7 @@
 // files, its loading, meanColour, dress and rolesFor are core.js's, copied:
 // importing them would bring its GLSL into a 'nodes' world's closure.
 //
-//   CORE, coreOf(role), coreFiles(role, { xl }), loadCore(role, { xl })
+//   CORE, coreOf(role), coreFiles(role, { xl, base, index }), loadCore(role, { xl, base, index })
 //   wear(material, scan, { metres, strength, normal, mean }) → the node material
 //   dress(materials, roles, opts) → how many it dressed (a classic material in
 //     `materials` is replaced there by its node twin)
@@ -34,10 +34,10 @@ const BASE = '/cc0/galaxy';
 // there) its 8192 colour and normal maps where scripts/galaxy-textures.mjs
 // --ultra has made them (the index's `xl`: 'ktx2' or 'webp'); the 1K set
 // where it hasn't. The ARM map stays the small one.
-export function coreFiles(role, { xl = false, index = SCANS } = {}) {
+export function coreFiles(role, { xl = false, index = SCANS, base = BASE } = {}) {
   const big = xl ? index[role]?.xl : null;
-  const file = (name) => (big ? `${BASE}/${role}/${name}-xl.${big}` : `${BASE}/${role}/${name}.webp`);
-  return { color: file('color'), normal: file('normal'), arm: index[role]?.arm ? `${BASE}/${role}/arm.webp` : null };
+  const file = (name) => (big ? `${base}/${role}/${name}-xl.${big}` : `${base}/${role}/${name}.webp`);
+  return { color: file('color'), normal: file('normal'), arm: index[role]?.arm ? `${base}/${role}/arm.webp` : null };
 }
 
 // The scans, each loaded once for the page (every world shares them; a new
@@ -45,8 +45,8 @@ export function coreFiles(role, { xl = false, index = SCANS } = {}) {
 // normalMap, arm }, or of null where they can't be had. With `xl` (ultra),
 // the 8192 set where there is one, the 1K set if it won't load.
 const loaded = new Map();
-export function loadCore(role, { xl = false } = {}) {
-  const files = coreFiles(role, { xl });
+export function loadCore(role, { xl = false, base = BASE, index = SCANS } = {}) {
+  const files = coreFiles(role, { xl, base, index });
   const key = files.color;
   if (!loaded.has(key)) {
     const loader = new THREE.TextureLoader();
@@ -57,7 +57,7 @@ export function loadCore(role, { xl = false } = {}) {
         if (srgb) t.colorSpace = THREE.SRGBColorSpace;
         return t;
       });
-    const small = xl && key !== coreFiles(role).color ? () => loadCore(role) : () => null;
+    const small = xl && key !== coreFiles(role, { base, index }).color ? () => loadCore(role, { base, index }) : () => null;
     loaded.set(
       key,
       Promise.all([get(files.color, true), get(files.normal, false), files.arm ? get(files.arm, false) : null])

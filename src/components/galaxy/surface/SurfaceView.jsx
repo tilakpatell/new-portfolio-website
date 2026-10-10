@@ -4,11 +4,18 @@ import { WorldHost, useWorld } from '../../../runtime';
 import { TouchButton } from '../../../runtime/hud';
 import surfaceModule from './module';
 import { heroById, heroSpec } from '../heroes';
-import { ABILITIES, abilitiesOf } from './abilityRules';
+import { ABILITIES, abilitiesOf, kindOf } from './abilityRules';
 import LoadingVeil from '../../worlds/LoadingVeil';
+import { Film } from '../../../runtime/hud';
+import { filmFor } from '../../../lib/bf2017/films';
+import { loadingTips } from '../../../lib/bf2017/strings';
+import '../../../lib/bf2017/fonts.css';
+import { usePrepareWait } from '../../worlds/usePrepareWait';
 
 // (shorter names for the thumbs)
-const TOUCH = { detonator: 'Bomb', overcharge: 'Charge', fulminate: 'Bomb', rocket: 'Rocket', jetpack: 'Jet', medpack: 'Heal', hop: 'Hop' };
+// (a touch button's word: by the card, else by the kind it plays as)
+const TOUCH = { detonator: 'Bomb', overcharge: 'Charge', fulminate: 'Bomb', rocket: 'Rocket', jetpack: 'Jet', medpack: 'Heal', hop: 'Hop', push: 'Push', pull: 'Pull', repulse: 'Repulse', choke: 'Choke', rage: 'Rage', rush: 'Rush', electrocute: 'Stun', weaken: 'Weaken', lightning: 'Lightning', chainLightning: 'Chain' };
+const touchWord = (id) => TOUCH[id] ?? TOUCH[kindOf(id)] ?? ABILITIES[id].name;
 
 // A world's 3D (scene.js, a world module on the world runtime:
 // ./module.js) and the controls over it on a
@@ -26,6 +33,13 @@ export default function SurfaceView({ system = null, site = null, mission = null
   const powers = abilitiesOf(hero ? heroSpec(hero) : null);
   const events = useRef(onEvent);
   events.current = onEvent;
+  // (the veil plays the planet's loading film from the game, with one of
+  // its loading hints, while the world streams in)
+  const [tip] = useState(() => {
+    const tips = loadingTips();
+    return tips.length ? tips[Math.floor(Math.random() * tips.length)] : '';
+  });
+  const film = system ? filmFor({ system }) : null;
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const reduced = useReducedMotion();
   // the lock-on (./surfaceLockOn.js): whether it's on, for the Lock button
@@ -40,6 +54,8 @@ export default function SurfaceView({ system = null, site = null, mission = null
       events.current?.(e);
     },
   });
+  // (a step that holds: the veil says why, then offers the way in)
+  const patience = usePrepareWait(surfaceModule, progress, meant && !on);
   // the scene itself, while it's the world on the runtime
   const view = { get current() { return rt?.current?.module === surfaceModule ? rt.current.world.scene : null; } };
   useEffect(() => {
@@ -130,7 +146,7 @@ export default function SurfaceView({ system = null, site = null, mission = null
     <WorldHost world={{ host }} className="surface-map">
       {meant ? (
         // (until it's drawing: on a flown landing it's up before the page is, so this is a direct visit's)
-        <LoadingVeil shown={!on} progress={progress.value} step={progress.step} title="Coming down through the atmosphere" />
+        <LoadingVeil shown={!on} progress={progress.value} step={progress.step} title="Coming down through the atmosphere" waiting={patience.waiting} onSkip={patience.onSkip} line={film ? tip : ''} backdrop={film ? <Film film={film} className="surface-veil-film" /> : null} />
       ) : (
         <p className="surface-loading" role="status">
           Landing needs 3D, and this browser has it turned off.
@@ -162,10 +178,10 @@ export default function SurfaceView({ system = null, site = null, mission = null
               </button>
             )}
             <button type="button" className="surface-btn surface-btn-power" onPointerDown={press('power')} onPointerUp={release('power')} onPointerCancel={release('power')} onPointerLeave={release('power')} onContextMenu={(e) => e.preventDefault()}>
-              {TOUCH[powers.power] ?? ABILITIES[powers.power].name}
+              {touchWord(powers.power)}
             </button>
             <button type="button" className="surface-btn surface-btn-power" onPointerDown={press('second')} onContextMenu={(e) => e.preventDefault()}>
-              {TOUCH[powers.second] ?? ABILITIES[powers.second].name}
+              {touchWord(powers.second)}
             </button>
             <button type="button" className="surface-btn surface-btn-dodge" onPointerDown={press('dodge')} onContextMenu={(e) => e.preventDefault()}>
               Dodge

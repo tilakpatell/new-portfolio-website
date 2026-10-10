@@ -6,22 +6,29 @@
 // sweeps, inside the clip's contact window. Wiring beside activity.js,
 // kept apart so that file doesn't grow.
 //
-//   duelFor(spec, seed) → its mind (createDuellist), from the spawn's
+//   duelFor(spec, seed, hero?) → its mind (createDuellist), from the spawn's
 //     hostile: reach, parry (the share of your strokes it blocks, as ever),
-//     riposte (the share of those it parries), the blade's stance
+//     riposte (the share of those it parries), the blade's stance; hero (its
+//     crew row, by the spawn's kind): on the 2017 game's rig, the game's
+//     strikes at the game's cadence (gameStance.js's stanceFor)
 //   asTarget() → you as their blades see you ({ holder, fig, you: true },
 //     what blaster.js's capsuleOf and saber.js's lock read); .at(st) moves it
 //   engaged(t, dist) → whether it fences its mark now (within ENGAGE once it
 //     has it, until LEAVE)
 //   stepDuel(t, mark, dt, time, world) → whether its feet are going: its
-//     mind's step, its stroke begun (or dropped: its mark gone), its block,
-//     its feet. mark: { x, z, target (what its blade may hit), swinging
-//     (yours, swingingOf's, when the mark is you), dead }
+//     mind's step, its stroke begun (or dropped: its mark gone), its block
+//     (t.blocking, and t.blockSide: the side of it your stroke comes in on,
+//     blockSide.js's), its feet. mark: { x, z, target (what its blade may
+//     hit), swinging (yours, swingingOf's, when the mark is you), dead }
 //   fence(t, aim, { you, swinging }, dt, time, world) → whether its feet are
 //     going, while it fences its mark (aim: activity.js's hostileAim; you:
 //     asTarget's); null when it doesn't, its mind stood down (it hunts then)
-//   swingingOf(saber, now) → your stroke as its mind reads it ({ contact, t,
-//     speed }, `t` seconds into the clip) or null
+//   swingingOf(saber, now, yaw?) → your stroke as its mind reads it ({ contact,
+//     t, speed, cut (the way it cuts: blockSide.js's cutOf), yaw (where you
+//     face) }, `t` seconds into the clip) or null
+//   incomingAt(targets, you) → the side of you ('left' | 'right' | null) the
+//     nearest duellist's stroke at you comes in on (your block's: scene.js);
+//     you: { x, z, yaw }
 //   landed(t, target, damage, at, { heavy }) → the contact's record for the
 //     scene, when the target is you ({ melee, blade, damage, point, from,
 //     contactAt (when its blade's contact began), who }); null for anyone else
@@ -38,7 +45,10 @@
 //     duellist's while either strokes, a pair at most every CLASH_EVERY
 
 import { createDuellist, duelStep, guarding, onStagger, swung } from '../../../lib/combat/duel';
-import { blockOutcome, guardHit, stanceOf } from './combatRules';
+import { cutOf, incomingSide } from './blockSide';
+import { blockOutcome, guardHit } from './combatRules';
+import { CREW } from './crewList';
+import { stanceFor } from './gameStance';
 import { shoreStep, turnToward } from './walker';
 
 export const ENGAGE = 10; // m: within this of the mark it has, it fences
@@ -46,10 +56,12 @@ export const LEAVE = 14; // m: past this it hunts you as the others do (hostiles
 const CLASH_EVERY = 0.3; // s
 const TURN = 6; // rad/s it squares up to you between strokes
 
-export function duelFor(spec, seed = 1) {
+export function duelFor(spec, seed = 1, hero = CREW[spec.kind] ?? null) {
   const h = spec.hostile;
   const stance = h.blade?.stance ?? 'single';
-  return createDuellist({ reach: h.reach ?? 2.4, guard: h.parry ?? 0.6, parry: h.riposte ?? 0.35, stance, strokes: stanceOf(stance).strokes.map((k) => k.clip), seed });
+  // (a hero on the 2017 game's rig fences with the game's strikes, at their cadence: stanceFromTable.js)
+  const st = stanceFor(stance, hero);
+  return createDuellist({ reach: h.reach ?? 2.4, guard: h.parry ?? 0.6, parry: h.riposte ?? 0.35, stance, strokes: st.strokes.map((k) => k.clip), cadence: st.cadence ?? null, seed });
 }
 
 export function asTarget() {
@@ -86,6 +98,8 @@ export function stepDuel(t, mark, dt, time, world) {
     if (sw) swung(d, sw.dur / sw.speed);
   } else if (!o.stroke && saber.swinging) saber.cancel(); // (its mark gone mid-stroke: not at air for the rest of the clip)
   t.blocking = o.block;
+  // (on the side of it your stroke comes in on: a 2017 hero lays the game's block for it, saber.js)
+  t.blockSide = o.block ? incomingSide(mark?.swinging?.cut, { from: mark?.swinging?.yaw, to: b.yaw }) : null;
   // (no mark: its feet and its facing are the hunt's, hostiles.js's)
   if (!mark) return false;
   const pace = t.hostile.chase ?? 2;
@@ -124,9 +138,22 @@ export function fence(t, aim, { you, swinging = null }, dt, time, world) {
   return null;
 }
 
-export function swingingOf(saber, now) {
+export function swingingOf(saber, now, yaw = null) {
   const sw = saber?.swinging;
-  return sw ? { contact: sw.contact, t: (now - sw.t0) * sw.speed, speed: sw.speed } : null;
+  return sw ? { contact: sw.contact, t: (now - sw.t0) * sw.speed, speed: sw.speed, cut: cutOf(saber.stance, sw.name), yaw } : null;
+}
+
+export function incomingAt(targets, you) {
+  let near = null;
+  let best = Infinity;
+  for (const t of targets) {
+    if (t.down || !t.duelMark?.you || !t.blade?.saber.swinging) continue;
+    const d = Math.hypot(t.b.x - you.x, t.b.z - you.z);
+    if (d < best) [near, best] = [t, d];
+  }
+  if (!near) return null;
+  const s = near.blade.saber;
+  return incomingSide(cutOf(s.stance, s.swinging.name), { from: near.b.yaw, to: you.yaw });
 }
 
 export function landed(t, target, damage, at, { heavy = false } = {}) {

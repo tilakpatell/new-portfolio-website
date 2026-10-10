@@ -6,12 +6,12 @@
 // makes them uniform nodes under the same names.
 //
 //   waterNodes(values) → { name: uniform or texture node } (a texture value a texture node)
-//   planeMaterial(values, { fine }) → { material, uniforms }
+//   planeMaterial(values, { fine }) → { material, uniforms }   (values with uFlow: the lava film over it, VIDEO's)
 //   seaMaterial(values, waves, { fine }) → { material, uniforms }   (waves: ocean.js's wavesFor)
 //   gerstner(p, dist, amp, uTime, waves) → { d, n, pinch }   (WAVES_GLSL's)
 
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import { Fn, If, abs, cameraPosition, clamp, cos, dot, exp, float, length, max, mix, modelWorldMatrix, normalize, positionGeometry, pow, reflect, select, sin, smoothstep, step, texture, uniform, varyingProperty, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, If, abs, fract, cameraPosition, clamp, cos, dot, exp, float, length, max, mix, modelWorldMatrix, normalize, positionGeometry, pow, reflect, select, sin, smoothstep, step, texture, uniform, varyingProperty, vec2, vec3, vec4 } from 'three/tsl';
 import { rev } from './common';
 
 export function waterNodes(values) {
@@ -42,6 +42,14 @@ export function planeMaterial(values, { fine = false } = {}) {
       const crust = smoothstep(0.42, 0.62, wFbm(xz.mul(0.11).sub(vec2(u.uTime.mul(0.03), 0))));
       const hot = mix(u.uColor, vec3(1, 0.85, 0.4), smoothstep(0.55, 0.8, flow));
       c.assign(mix(hot.mul(u.uGlow).mul(flow.mul(0.4).add(0.8)), u.uDeep, crust.mul(0.85)));
+      if (u.uFlow) {
+        // the game's lava film (MT_Volcano2), a tile every 48 m, drifting
+        // with the flow; the crust keeps its dark plates over it (VIDEO)
+        const f0 = fract(xz.div(48).add(vec2(u.uTime.mul(0.004), u.uTime.mul(0.0027))));
+        const fuv = vec2(f0.x, select(u.uFlowFlip.greaterThan(0.5), f0.y.oneMinus(), f0.y));
+        const molten = u.uFlow.sample(fuv).rgb;
+        c.assign(mix(c, molten.mul(u.uGlow.mul(0.25).add(0.55)), crust.mul(0.55).oneMinus().mul(0.65)));
+      }
       if (fine) {
         const near = fall(30, 260, dist);
         const plates = wFbm(xz.mul(0.42).add(vec2(u.uTime.mul(0.01), 0)));

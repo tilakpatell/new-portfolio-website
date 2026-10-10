@@ -46,7 +46,7 @@ function sitesIn(entry, root) {
 }
 
 describe('a nodes module keeps its promise', () => {
-  const files = [...modules(), join(ROOT, 'runtime/fixtures/nodesWorld.js')];
+  const files = [...modules(), join(ROOT, 'runtime/fixtures/nodesWorld.js'), join(ROOT, 'runtime/fixtures/litWorld.js')];
 
   it('reads the fixture, so the check is live', () => {
     expect(files.some((f) => f.endsWith('nodesWorld.js'))).toBe(true);

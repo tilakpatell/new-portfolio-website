@@ -23,6 +23,10 @@
 //   node scripts/ktx2.mjs convert <file …> [--out dir] [--etc1s] [--slots normal,arm]
 //                                                  [--level 2] [--rdo 1] [--quality 200] [--flip]
 //                                                  (--flip: an image turned for three's UVs, as a sphere's map wants)
+//   node scripts/ktx2.mjs convert <file.ktx2 …> --drop-mips <n> [--out dir]
+//                                                  a KTX2 without its first n mip levels:
+//                                                  half the size n times, nothing encoded again
+//                                                  (scripts/lib/ktx2-mips.mjs; lane L's level packs)
 //
 // A file is a .glb (its textures are rewritten in place as KTX2, the rest of
 // the file untouched: meshopt, quantization, materials), or an image
@@ -47,6 +51,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { dropMips, ktx2Info } from './lib/ktx2-mips.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -193,6 +198,7 @@ function parseArgs(argv) {
     else if (a === '--rdo') opts.rdo = Number(argv[++i]);
     else if (a === '--quality') opts.quality = Number(argv[++i]);
     else if (a === '--flip') opts.flipY = true;
+    else if (a === '--drop-mips') opts.dropMips = Number(argv[++i]);
     else opts.files.push(a);
   }
   return opts;
@@ -254,6 +260,14 @@ export function verdict({ role, mime = '', before, after, gpuBefore, gpuAfter, p
 async function convert(opts) {
   for (const file of opts.files) {
     const outDir = opts.out ? resolve(opts.out) : dirname(file);
+    if (opts.dropMips != null && extname(file) === '.ktx2') {
+      const out = dropMips(await readFile(file), opts.dropMips);
+      const to = join(outDir, basename(file));
+      await writeFile(to, out);
+      const i = ktx2Info(out);
+      console.log(`${to}: ${i.width}×${i.height}, ${i.levels} levels, ${kb(out.length)}`);
+      continue;
+    }
     if (extname(file) === '.glb' || extname(file) === '.gltf') {
       const nodeio = await io();
       const doc = await nodeio.read(file);

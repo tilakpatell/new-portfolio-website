@@ -2,12 +2,17 @@
 // shape that goes with it, tested in Node (./physics.js puts them in
 // Rapier; furnish.js says which things and scatter are them).
 //
-// A body is { shape: 'box' | 'cylinder' | 'ball', mass (kg), fixed? }:
-// its size comes from the thing itself (its own box, in metres, at the
-// size the landing stands it), so a kind's entry needn't know it, and a
+// A body is { shape: 'box' | 'cylinder' | 'ball', mass (kg), fixed?, r?,
+// at? }: its size comes from the thing itself (its own box, in metres, at
+// the size the landing stands it), so a kind's entry needn't know it, and a
 // model gets one by naming it on its spec (landings.js's models: { url,
 // tall, body }). The masses are the inventory's (docs/research of the
-// landings): light things a shot sends flying, heavy ones a shove moves.
+// landings), and a bolt's knock goes by them (knockOf, below): a pebble
+// goes a few metres, a crate slides, a shove moves the heavy ones. A
+// cylinder that's a post under something wider (a sign's pole under its
+// plate, a lamp's under its head) says how thick it is (r, metres) and
+// where it stands (at, [x, z] in its own frame; else the box's middle), so
+// a bolt meets the pole you see, not a column as wide as the sign.
 //
 // A model that was made with its physics (physical nodes: lib/three/
 // colliders.js reads them, docs/assets/colliders.md says how) is its own
@@ -19,6 +24,8 @@
 //     model's own nodes first, then its spec's, then the kind's)
 //   shapeFor(body, box ({ min, max }, metres, the thing's own frame), s = 1)
 //     → { type, colliders, mass } | null, for lib/physics's add()
+//   KNOCK, knockOf(mass) → a bolt's push, N·s (0 for a fixed thing)
+//   shotImpulse(j, dir, up) → { side, lift }, N·s each, as arrays
 
 export const BODIES = {
   // things
@@ -72,12 +79,37 @@ export function shapeFor(body, box, s = 1) {
   const half = size.map((d) => Math.max(THIN, d / 2));
   let collider;
   if (body.shape === 'box') collider = { shape: 'cuboid', args: half, position: mid };
-  else if (body.shape === 'cylinder') collider = { shape: 'cylinder', args: [half[1], Math.max(half[0], half[2])], position: mid };
-  else {
+  else if (body.shape === 'cylinder') {
+    // (a post: as thick as it says, where it stands, the thing's whole height)
+    const r = body.r > 0 ? Math.max(THIN, body.r * s) : Math.max(half[0], half[2]);
+    const at = body.at ? [body.at[0] * s, mid[1], body.at[1] * s] : mid;
+    collider = { shape: 'cylinder', args: [half[1], r], position: at };
+  } else {
     // (as big as its biggest way, but its foot on the thing's: a wide one
     // doesn't reach down into the ground under it)
     const r = Math.max(...half);
     collider = { shape: 'ball', args: [r], position: [mid[0], min[1] * s + r, mid[2]] };
   }
   return body.fixed ? { type: 'fixed', colliders: [collider] } : { type: 'dynamic', colliders: [collider], mass: body.mass * s * s * s };
+}
+
+// A bolt's knock (./physics.js shot): the speed it gives falls off slowly
+// with mass, Δv = 4.5·m^-0.2 m/s (at most 7), the push at most 60 N·s: a
+// crate slides, a pebble doesn't vanish. 0 for anything fixed (mass 0).
+// (lift: the hop up, a share of the push; spin: the push lands that far
+// from the middle of its mass toward where it was hit, so a high hit tips
+// a thing over rather than flipping it)
+export const KNOCK = { v1: 4.5, k: 0.2, vMax: 7, jMax: 60, lift: 0.35, spin: 0.5 };
+export function knockOf(mass) {
+  if (!(mass > 0) || !Number.isFinite(mass)) return 0;
+  return Math.min(KNOCK.jMax, mass * Math.min(KNOCK.vMax, KNOCK.v1 * mass ** -KNOCK.k));
+}
+// the push along the ground (the bolt's way less any part of it into the
+// ground, weaker the steeper it came down) and the hop up, N·s, as arrays
+export function shotImpulse(j, dir, up) {
+  const into = Math.min(0, dir[0] * up[0] + dir[1] * up[1] + dir[2] * up[2]);
+  const flat = [dir[0] - up[0] * into, dir[1] - up[1] * into, dir[2] - up[2] * into];
+  const l = Math.hypot(...flat);
+  const side = l > 1e-6 ? flat.map((a) => (a / l) * j * Math.min(1, 2 * l)) : [0, 0, 0];
+  return { side, lift: up.map((a) => a * j * KNOCK.lift) };
 }

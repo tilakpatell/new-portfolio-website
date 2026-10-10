@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { BELIEVE, DAY, EVENT_FIRST, EVENT_MIN_GAP, SUNDOWN, createFlightDirector } from './director';
-import { EVENTS, EVENT_KINDS, WEATHER, WORLD_EVENTS, eventsFor } from './eventTables';
+import { EVENTS, EVENT_KINDS, WEATHER, WORLD_EVENTS } from './eventTables';
 import { OCC } from './occurrences';
-import { PLANETS, planetSpecOf } from './planetSpec';
-import { isDead, lifeFor } from './lifeTables';
+import { PLANETS, eventsFor, lifeFor, planetSpecOf } from './fixtures/expanse.js';
+import { isDead } from './lifeTables';
 
 const T0 = 1_790_000_000_000; // ms: a wall clock, fixed
 const hoth = planetSpecOf('hoth');

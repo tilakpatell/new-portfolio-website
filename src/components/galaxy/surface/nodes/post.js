@@ -8,7 +8,7 @@
 // is already encoded, so the post's own colour transform is off. The same
 // face as createPost's, for what the surface calls: on, target, ratio,
 // sharpness, render(w, h), exposure(k), lite(), grain, aberration, rush,
-// hit, contrast, defocus, setToe, setLevel, flareOn, flare, bloom, off,
+// hit, contrast, defocus, grading, setToe, setLevel, flareOn, flare, bloom, off,
 // dispose. (The black hole's lens is the universe map's, lane M's.)
 //
 //   createPost(renderer, scene, camera, { small, bloom }) → the post
@@ -18,12 +18,21 @@
 
 import * as THREE from 'three';
 import { PostProcessing } from 'three/webgpu';
-import { Fn, If, clamp, dot, float, length, max, mix, pass, pow, screenCoordinate, select, smoothstep, step, texture, uniform, uv, vec2, vec3, vec4 } from 'three/tsl';
+import { Fn, If, clamp, texture3D, dot, float, length, max, mix, pass, pow, screenCoordinate, select, smoothstep, step, texture, uniform, uv, vec2, vec3, vec4 } from 'three/tsl';
 import { bloom as bloomNode } from 'three/addons/tsl/display/BloomNode.js';
 import { blueNoiseTexture } from '../../../../lib/three/noise';
 import { LOOK } from '../../../universe/look';
 
 const SOFTEST = 0.6;
+// (a texture node needs a picture: a 2³ identity cube until a game hands one)
+const BLANK_LUT = (() => {
+  const d = new Uint8Array(2 * 2 * 2 * 4);
+  for (let i = 0; i < 8; i++) d.set([(i & 1) * 255, ((i >> 1) & 1) * 255, ((i >> 2) & 1) * 255, 255], i * 4);
+  const t = new THREE.Data3DTexture(d, 2, 2, 2);
+  t.minFilter = t.magFilter = THREE.LinearFilter;
+  t.needsUpdate = true;
+  return t;
+})();
 // UnrealBloomPass's composite multiplies its sum by 3 × the strength
 // (three's UnrealBloomPass.js, `3.0 * bloomStrength`); the TSL bloom by
 // the strength alone. So the same numbers glow a third as much: the
@@ -87,6 +96,11 @@ export function createPost(renderer, scene, camera, { small = false, bloom: look
     uDefocus: uniform(0),
     uTexel: uniform(new THREE.Vector2(1, 1)),
     uGlow: uniform(1), // (lite() takes the bloom off: 0)
+    // a game's grading LUT (lib/three/gameLut.js), over the finished colour
+    // as the game grades its own: off (mix 0) unless a world has one
+    tLut: texture3D(BLANK_LUT),
+    uLutSize: uniform(2),
+    uLutMix: uniform(0),
   };
   const noise = (shift) => texture(tNoise, screenCoordinate.xy.add(shift).div(u.uNoiseSize)).r;
   // the scene and its glow, as the composer's buffer held them after the bloom pass
@@ -123,6 +137,11 @@ export function createPost(renderer, scene, camera, { small = false, bloom: look
     const l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c.assign(max(mix(vec3(l), c, u.uSat), 0));
     c.assign(mix(c, c.mul(c).mul(c.mul(-2).add(3)), u.uContrast));
+    If(u.uLutMix.greaterThan(0), () => {
+      // (read at the texels' middles, so 0 and 1 land on the cube's ends)
+      const uvw = c.mul(u.uLutSize.sub(1)).add(0.5).div(u.uLutSize);
+      c.assign(mix(c, u.tLut.sample(uvw).rgb, u.uLutMix));
+    });
     const q = vUv.sub(0.5).mul(vec2(u.uAspect, 1));
     c.mulAssign(u.uVignette.add(u.uRush.mul(0.22)).mul(smoothstep(u.uRush.mul(-0.1).add(0.35), 1.1, length(q).mul(1.25))).oneMinus());
     // a hit: the edges flash red
@@ -139,6 +158,7 @@ export function createPost(renderer, scene, camera, { small = false, bloom: look
   let level = 0;
   let aberrationWant = 0;
   let defocusWant = 0;
+  let houseGrade = null; // (the house's contrast and saturation, while a game's LUT stands in)
   let on = true;
   let glow = true;
   let sharp = 1;
@@ -226,6 +246,27 @@ export function createPost(renderer, scene, camera, { small = false, bloom: look
     },
     exposure(k) {
       u.uExposure.value = k;
+    },
+    // a game's grade: its LUT (a Data3DTexture of size³, sRGB in and out)
+    // over the finished colour, the house's contrast and saturation set
+    // aside while it's on; null: off, and the house's back
+    grading(g) {
+      if (g?.lut) {
+        houseGrade ??= { contrast: u.uContrast.value, sat: u.uSat.value };
+        u.tLut.value = g.lut;
+        u.uLutSize.value = g.size;
+        u.uLutMix.value = g.mix ?? 1;
+        u.uContrast.value = 0;
+        u.uSat.value = 1;
+      } else {
+        u.tLut.value = BLANK_LUT;
+        u.uLutMix.value = 0;
+        if (houseGrade) {
+          u.uContrast.value = houseGrade.contrast;
+          u.uSat.value = houseGrade.sat;
+          houseGrade = null;
+        }
+      }
     },
     setToe(lo, hi) {
       u.uToe.value.set(lo, hi);

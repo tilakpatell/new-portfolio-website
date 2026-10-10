@@ -16,7 +16,7 @@
 import { clear, createContext, flee, interest, resolve, seek, separate } from '../../../lib/ai/steer';
 import { consider, pick } from '../../../lib/ai/utility';
 import { belief, sense } from '../../../lib/ai/perception';
-import { sensesFor, startBurst, stepBurst, strafeStep } from '../../galaxy/surface/hostiles';
+import { sensesFor, startBurst, stepBurst, strafeStep } from '../../galaxy/shared/fight';
 
 export const FLEE = { alt: 60, reach: 220 }; // a ship this low and this near puts a herd to flight
 export const PACE = { graze: 0.7, walk: 1.4, run: 9, stalk: 2.2, lunge: 13, fly: 9, walker: 3 };

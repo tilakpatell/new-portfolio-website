@@ -15,8 +15,8 @@
 //   airBrain(actor) → { step(ctx, dt) → intent }: the route, or a scramble
 //     (it sets actor.fly(actor, dt, t, ship, field) while off its route)
 
-import { turnToward } from '../../universe/hunterRules';
-import { startBurst, stepBurst } from '../../galaxy/surface/hostiles';
+import { turnToward } from '../../universe/shared/flying';
+import { startBurst, stepBurst } from '../../galaxy/shared/fight';
 
 const BANK = 0.9; // radians of roll at the tightest turn a route has
 

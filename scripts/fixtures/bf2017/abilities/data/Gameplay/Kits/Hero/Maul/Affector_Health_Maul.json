@@ -1,0 +1,3 @@
+{"name":"Gameplay/Kits/Hero/Maul/Affector_Health_Maul","type":"MaxHealthAffectorAsset","root":0,"objects":[
+{"$type":"MaxHealthAffectorAsset","MaxHealth":700.0,"Name":"Gameplay/Kits/Hero/Maul/Affector_Health_Maul"}
+]}

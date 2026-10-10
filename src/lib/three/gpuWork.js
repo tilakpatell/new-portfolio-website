@@ -29,7 +29,21 @@
 // while it prepares stops at the next slice). Nothing here throws, and
 // every promise resolves, a lost context included.
 
-export const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 16)));
+// (or a tenth of a second, whichever comes first: a tab in the background
+// gets no frames at all, and a landing prepared there held at its pictures,
+// 33%, until it was looked at: the flow design's bug 2)
+export const FRAME_WAIT = 100;
+export const nextFrame = () =>
+  new Promise((resolve) => {
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(go);
+    setTimeout(go, typeof requestAnimationFrame === 'function' ? FRAME_WAIT : 16);
+  });
 const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const yes = () => true;
 
@@ -142,9 +156,10 @@ const send = (renderer, t) => {
 
 // The pictures a material draws with: its own, its uniforms', and those a
 // patch hands three as the shader's made, kept on it out of sight (a scan,
-// lib/three/core's wear; the look's ground, lib/three/house), which three
-// would otherwise send in the middle of the first draw.
-const PATCHES = ['core', 'house'];
+// lib/three/core's wear; the look's ground, lib/three/house; the wind's
+// noise, universe/landings/canopy), which three would otherwise send in the
+// middle of the first draw.
+const PATCHES = ['core', 'house', 'canopy'];
 export function picturesIn(m, into = []) {
   if (!m) return into;
   for (const v of Object.values(m)) if (v?.isTexture) into.push(v);

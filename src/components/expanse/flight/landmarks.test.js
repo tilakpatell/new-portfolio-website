@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { SURFACE_MODELS } from '../../galaxy/surface/catalog';
-import { PROPS } from '../../galaxy/surface/props';
+import { PROPS, SURFACE_MODELS } from '../../galaxy/shared/models';
 import { planetField } from '../../../lib/land/flight/field';
-import { PLANETS, planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { PLANETS, planetSpecOf } from './planets';
 import { LANDMARK_MAX, LANDMARK_MIN } from '../../../lib/land/flight/landmarkTables';
-import { placementsFor, siteFor } from './landmarks';
+import { placementsFor, siteFor, siteGround } from './landmarks';
 
 const NAMED = PLANETS.map((p) => p.id).filter((id) => planetSpecOf(id).pois.length);
 // (the POIs planetTables.js builds itself are the flight module's)
@@ -29,6 +28,14 @@ describe('placementsFor', () => {
         }
       }
     }
+  });
+
+  it('reads a site on the game’s level by its own land, the flight’s, not its image', () => {
+    // (Hoth's surface ground is the game's heightmap, which the flight has not got)
+    const g = siteGround('hoth');
+    expect(g.layers.map((l) => l.type)).not.toContain('image');
+    expect(g.layers[0].type).toBe('swell');
+    expect(siteGround('tatooine').layers[0].type).toBe('swell');
   });
 
   it('takes Echo Base from the walkable Hoth, its doors and generator and all', () => {

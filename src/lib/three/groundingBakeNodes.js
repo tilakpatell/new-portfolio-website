@@ -17,6 +17,7 @@
 //   unpackHeight, heightFromPixels, bakeable, holdForBake, castersTop, bytesToDataUrl
 
 import * as THREE from 'three';
+import { nextFrame as gpuFrame } from './gpuWork';
 import { MeshBasicNodeMaterial, QuadMesh } from 'three/webgpu';
 import { Fn, If, float, ivec2, positionWorld, screenCoordinate, select, step, textureLoad, uniform, vec4 } from 'three/tsl';
 
@@ -84,7 +85,8 @@ export function skyDirections(n) {
 
 const nextFrame = () => new Promise((r) => setTimeout(r, 0));
 // (between a bake's chunks, the world's own frame: the world goes on drawing)
-const nextPaint = () => new Promise((r) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => r()) : setTimeout(r, 16)));
+// (a frame, or gpuWork's FRAME_WAIT in a background tab, which gets none)
+const nextPaint = gpuFrame;
 
 // ── what a bake on arrival costs, by the device's tier ──
 
