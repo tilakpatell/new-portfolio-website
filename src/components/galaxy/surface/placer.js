@@ -405,7 +405,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       if (isGame(spec.model)) {
         const game = gameModel(spec.model, models, gameWarned);
         if (!game) return Promise.resolve(null);
-        spec = { ...spec, kind: game, model: undefined };
+        // (and walked through where the game's own is, unless the site says)
+        spec = { ...spec, kind: game, model: undefined, ...(models[game].solid === false && spec.solid == null ? { solid: false } : {}) };
       }
       // (a cluster: its members put each in its place, turned with it)
       const ref = kitRef(spec.model);

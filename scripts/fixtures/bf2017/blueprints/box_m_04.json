@@ -1,0 +1,34 @@
+{
+ "name": "Objects/Props/ObjectSets/_GalacticEmpire/Box_M_04/Box_M_04",
+ "type": "ObjectBlueprint",
+ "objects": [
+  {
+   "$type": "ObjectBlueprint",
+   "Name": "Objects/Props/ObjectSets/_GalacticEmpire/Box_M_04/Box_M_04"
+  },
+  {
+   "$type": "RigidBodyData",
+   "RigidBodyType": "RBTypeCollision",
+   "MotionType": "RigidBodyMotionType_Fixed",
+   "CollisionLayer": "RigidBodyCollisionLayer_StaticLayer",
+   "Mass": 0.0
+  },
+  {
+   "$type": "StaticModelEntityData",
+   "Mesh": {
+    "$asset": "objects/props/objectsets/_galacticempire/box_m_04/box_m_04_mesh",
+    "$assetType": "RigidMeshAsset",
+    "$class": "37603a19-9695-e436-57f9-a5626f20144c"
+   },
+   "Visible": true,
+   "Enabled": true
+  },
+  {
+   "$type": "RigidBodyData",
+   "RigidBodyType": "RBTypeProxy",
+   "MotionType": "RigidBodyMotionType_Fixed",
+   "CollisionLayer": "RigidBodyCollisionLayer_StaticLayer",
+   "Mass": 0.0
+  }
+ ]
+}

@@ -13,6 +13,11 @@
 //   node scripts/bf2017-library-import.mjs --set <set> [--kind prop] [--size small,medium] [--publish]
 //   node scripts/bf2017-library-import.mjs --from <file>[,<file>…] [--publish]   (every `game:<name>` the files name)
 //     [--as '<what it is>'] [--tex 4096] [--light 512] [--far-tex 128] [--dry]
+//   node scripts/bf2017-library-import.mjs --blueprints   (the used objects' blueprints, read again)
+//
+// Each object's blueprint, its data/ record (scripts/lib/bf2017-blueprint.mjs),
+// says whether the game's object collides: kept in library-used.json with
+// where it came from, and a thing the game walks through is drawn so here.
 //
 // A material the drop's GLB leaves bare (its shader preset binds the maps)
 // is dressed by its shader's name (scripts/lib/bf2017-dress.mjs): the
@@ -36,6 +41,8 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { inEra } from './lib/bf2017-library.mjs';
 import { dressingOf, indexTextures } from './lib/bf2017-dress.mjs';
+import { blueprintFor, readBlueprint } from './lib/bf2017-blueprint.mjs';
+import { gunzipSync } from 'node:zlib';
 import { readLibrary } from './bf2017-library.mjs';
 import { importModel } from './bf2017-import.mjs';
 import { gameUrl, slugOf } from '../src/components/galaxy/surface/catalog/bf2017-slug.js';
@@ -97,6 +104,27 @@ export function dressFor(name) {
   return Object.keys(dressing).length ? dressing : null;
 }
 
+// An object's blueprint (scripts/lib/bf2017-blueprint.mjs): its data/
+// record fetched (scripts/bf2017-fetch.mjs data, with data.tsv, the index of
+// the records) and read for whether the game's object collides; null where
+// the drop has none by the mesh's name.
+const DATA = join(ROOT, 'lab', 'assets', 'bf2017');
+const fetchData = (glob) => spawnSync(process.execPath, [join(ROOT, 'scripts', 'bf2017-fetch.mjs'), 'data', glob], { stdio: ['ignore', 'ignore', 'inherit'] });
+let dataIndex = null;
+export function blueprintOf(name) {
+  if (dataIndex == null) {
+    if (!existsSync(join(DATA, 'data.tsv'))) fetchData('Objects/none');
+    dataIndex = existsSync(join(DATA, 'data.tsv')) ? readFileSync(join(DATA, 'data.tsv'), 'utf8') : '';
+  }
+  const record = blueprintFor(name, dataIndex);
+  if (!record) return null;
+  const file = join(DATA, 'data', `${record}.json.gz`);
+  if (!existsSync(file)) fetchData(record);
+  if (!existsSync(file)) return null;
+  const read = readBlueprint(JSON.parse(gunzipSync(readFileSync(file)).toString('utf8')));
+  return read && { solid: read.solid, fixed: read.fixed, _source: read._source };
+}
+
 export function readUsed(file = USED) {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
 }
@@ -110,12 +138,23 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const rows = readLibrary();
   const byName = new Map(rows.map((r) => [r.name, r]));
   const names = namesFrom(args, rows);
-  if (!names.length) {
+  if (!names.length && !args.blueprints) {
     console.error('usage: node scripts/bf2017-library-import.mjs <name>[,<name>…] | --set <set> [--kind k] [--size s] | --from <file> [--publish]');
     process.exit(1);
   }
   const used = readUsed();
   const failed = [];
+  // (--blueprints: the used objects' blueprints read again, nothing imported)
+  if (args.blueprints) {
+    for (const name of Object.keys(used)) {
+      const blueprint = blueprintOf(name);
+      if (blueprint) used[name].blueprint = blueprint;
+      else delete used[name].blueprint;
+      console.log(`${blueprint ? (blueprint.solid ? 'solid ' : 'walk-through') : 'none  '}  ${name}`);
+    }
+    writeUsed(used);
+    process.exit(0);
+  }
   for (const name of names) {
     const row = byName.get(name);
     // (the index has no sequel row, and nothing that isn't placeable)
@@ -143,7 +182,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       if (textures) console.log(`  dressed: ${Object.values(textures).flat().map((m) => m.name.split('/').pop()).join(', ')}`);
       const made = await importModel(name, { kind: slugOf(name), as, native: true, far: true, sub: 'surface/game', catalog: false, tex, maps: tex, lod1Tex: light, lod1Maps: light / 2, farTex: Number(args.farTex ?? 128), textures });
       const plain = made.find(([cut]) => cut === 'plain')[2];
-      used[name] = { set: row.set, kind: row.kind, size: row.size, tris: row.tris, as, metres: Number(plain.size[1].toFixed(3)), ...(row.rig ? { rig: true } : {}) };
+      const blueprint = blueprintOf(name);
+      used[name] = { set: row.set, kind: row.kind, size: row.size, tris: row.tris, as, metres: Number(plain.size[1].toFixed(3)), ...(row.rig ? { rig: true } : {}), ...(blueprint ? { blueprint } : {}) };
     } catch (e) {
       console.error(`${name}: ${e.message}`);
       failed.push(name);

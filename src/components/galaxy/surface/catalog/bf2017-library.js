@@ -17,7 +17,8 @@
 //   gameUrl(name, cut?) → /models/galaxy/surface/game/<slug>[.<cut>].glb
 //   rowFor(name, index, published) → a row in SURFACE_MODELS' shape ({ url,
 //     lodUrl?, farUrl?, as, metres, size, tris, rig, native, made, from,
-//     credit }) when the plain cut is published, else null
+//     credit, solid? }) when the plain cut is published, else null; `solid:
+//     false` where the object's blueprint has no collision body
 //   MODELS: the rows of every used object that is published, by gameKind
 //   gameModel(model, models, said, warn?) → the kind a placer loads a
 //     `game:` spec or row as, or null (not published yet, or rigged: a
@@ -50,6 +51,8 @@ export function rowFor(name, index, manifest = PUBLISHED) {
     size: at.size,
     tris: at.tris,
     ...(at.rig ? { rig: true } : {}),
+    // (the game's blueprint says it never collides: walked through, as there)
+    ...(at.blueprint?.solid === false ? { solid: false } : {}),
     from: name,
     credit: `surface-game-${slugOf(name)}`,
   };

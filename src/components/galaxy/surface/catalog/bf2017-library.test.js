@@ -30,6 +30,9 @@ describe('the drop’s object library, placeable by name', () => {
     const row = rowFor(NAME, INDEX, published(null, 'lod1'));
     expect(row).toMatchObject({ url: gameUrl(NAME), lodUrl: gameUrl(NAME, 'lod1'), native: true, made: 'bf2017', as: 'an Imperial crate', from: NAME, credit: `surface-game-${slugOf(NAME)}` });
     expect(row.farUrl).toBeUndefined();
+    // (the game's blueprint: a thing it never collides with is walked through)
+    expect(row.solid).toBeUndefined();
+    expect(rowFor(NAME, { [NAME]: { ...INDEX[NAME], blueprint: { solid: false } } }, published(null)).solid).toBe(false);
     // (a phone draws a native one's light cut alone; high its plain one)
     const models = { [gameKind(NAME)]: row };
     expect(modelUrlFor(gameKind(NAME), 'low', models)).toBe(gameUrl(NAME, 'lod1'));

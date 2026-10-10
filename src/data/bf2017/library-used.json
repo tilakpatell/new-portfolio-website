@@ -5,7 +5,12 @@
   "size": "small",
   "tris": 470,
   "as": "cavesketto sitting (Livingworld life)",
-  "metres": 0.129
+  "metres": 0.129,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/LivingWorld/CaveSketto_01/CaveSketto_01_Sitting#RigidBodyData"
+  }
  },
  "objects/livingworld/convor_01/convor_01_sitting_mesh": {
   "set": "livingworld",
@@ -13,7 +18,12 @@
   "size": "medium",
   "tris": 696,
   "as": "convor sitting (Livingworld life)",
-  "metres": 0.547
+  "metres": 0.547,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/LivingWorld/Convor_01/Convor_01_Sitting#RigidBodyData"
+  }
  },
  "objects/livingworld/geejaw_01/geejaw_01_sitting_mesh": {
   "set": "livingworld",
@@ -21,7 +31,12 @@
   "size": "medium",
   "tris": 184,
   "as": "geejaw sitting (Livingworld life)",
-  "metres": 0.693
+  "metres": 0.693,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/LivingWorld/Geejaw_01/Geejaw_01_Sitting#RigidBodyData"
+  }
  },
  "objects/livingworld/geejaw_01/geejaw_01_sitting_sp_endor_mesh": {
   "set": "livingworld",
@@ -29,7 +44,12 @@
   "size": "medium",
   "tris": 184,
   "as": "geejaw sitting sp endor (Livingworld life)",
-  "metres": 0.693
+  "metres": 0.693,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/LivingWorld/Geejaw_01/Geejaw_01_Sitting_SP_Endor#RigidBodyData"
+  }
  },
  "objects/livingworld/lanternbird_01/lanternbird_01_sitting_mesh": {
   "set": "livingworld",
@@ -37,7 +57,12 @@
   "size": "medium",
   "tris": 210,
   "as": "lanternbird sitting (Livingworld life)",
-  "metres": 1.001
+  "metres": 1.001,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/LivingWorld/LanternBird_01/LanternBird_01_Sitting#RigidBodyData"
+  }
  },
  "objects/livingworld/lanternbird_01/lanternbird_01_sitting_sp_endor_mesh": {
   "set": "livingworld",
@@ -45,7 +70,12 @@
   "size": "medium",
   "tris": 210,
   "as": "lanternbird sitting sp endor (Livingworld life)",
-  "metres": 1.001
+  "metres": 1.001,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/LivingWorld/LanternBird_01/LanternBird_01_Sitting_SP_Endor#RigidBodyData"
+  }
  },
  "objects/livingworld/rockmite_01/rockmite_01_mesh": {
   "set": "livingworld",
@@ -53,7 +83,12 @@
   "size": "small",
   "tris": 98,
   "as": "rockmite (Livingworld life)",
-  "metres": 0.07
+  "metres": 0.07,
+  "blueprint": {
+   "solid": false,
+   "fixed": false,
+   "_source": "Objects/LivingWorld/RockMite_01/RockMite_01#RigidBodyData"
+  }
  },
  "objects/livingworld/sand_skitter_01/sand_skitter_01_mesh": {
   "set": "livingworld",
@@ -69,7 +104,12 @@
   "size": "medium",
   "tris": 496,
   "as": "desertbase rockmudrockmedium (Desert nature)",
-  "metres": 0.745
+  "metres": 0.745,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Nature/Desert/_DesertBase/DesertBase_RockMudrockMedium_01/DesertBase_RockMudrockMedium_01#RigidBodyData"
+  }
  },
  "objects/nature/desert/desertcanyon/_meshscattering/ms_desertcanyon_rock_03/ms_desertcanyon_rock_03_mesh": {
   "set": "desert",
@@ -85,7 +125,12 @@
   "size": "medium",
   "tris": 1610,
   "as": "rancorpit rocks cave rockmedium (Desert nature)",
-  "metres": 0.843
+  "metres": 0.843,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Nature/Desert/JabbasPalace/RancorPit_Rocks_01/RancorPit_Cave_RockMedium_04#RigidBodyData"
+  }
  },
  "objects/nature/forest/_forestbase/forestbase_backdropcloud_01/forestbase_backdropcloud_01_a_mesh": {
   "set": "forest",
@@ -93,7 +138,12 @@
   "size": "huge",
   "tris": 45,
   "as": "forestbase backdropcloud (Forest cloud)",
-  "metres": 58.298
+  "metres": 58.298,
+  "blueprint": {
+   "solid": false,
+   "fixed": false,
+   "_source": "Objects/Nature/Forest/_ForestBase/ForestBase_BackdropCloud_01/ForestBase_BackdropCloud_01_A#RigidBodyData"
+  }
  },
  "objects/nature/forest/_forestbase/forestbase_backdropcloud_01/forestbase_backdropcloud_01_d_mesh": {
   "set": "forest",
@@ -101,7 +151,12 @@
   "size": "huge",
   "tris": 65,
   "as": "forestbase backdropcloud (Forest cloud)",
-  "metres": 50.95
+  "metres": 50.95,
+  "blueprint": {
+   "solid": false,
+   "fixed": false,
+   "_source": "Objects/Nature/Forest/_ForestBase/ForestBase_BackdropCloud_01/ForestBase_BackdropCloud_01_D#RigidBodyData"
+  }
  },
  "objects/nature/forest/_forestbase/forestbase_logsmall_01/forestbase_logsmall_01_mesh": {
   "set": "forest",
@@ -109,7 +164,12 @@
   "size": "large",
   "tris": 688,
   "as": "forestbase logsmall (Forest nature)",
-  "metres": 0.558
+  "metres": 0.558,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Nature/Forest/_ForestBase/ForestBase_LogSmall_01/ForestBase_LogSmall_01#RigidBodyData"
+  }
  },
  "objects/nature/forest/_forestbase/forestbase_rockmedium_02/forestbase_rockmedium_02_mesh": {
   "set": "forest",
@@ -117,7 +177,12 @@
   "size": "medium",
   "tris": 196,
   "as": "forestbase rockmedium (Forest nature)",
-  "metres": 1.102
+  "metres": 1.102,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Nature/Forest/_ForestBase/ForestBase_RockMedium_02/ForestBase_RockMedium_02#RigidBodyData"
+  }
  },
  "objects/nature/forest/_forestbase/forestbase_rocksmall_01/forestbase_rocksmall_01_mesh": {
   "set": "forest",
@@ -125,7 +190,12 @@
   "size": "medium",
   "tris": 180,
   "as": "forestbase rocksmall (Forest nature)",
-  "metres": 0.743
+  "metres": 0.743,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Nature/Forest/_ForestBase/ForestBase_RockSmall_01/ForestBase_RockSmall_01#RigidBodyData"
+  }
  },
  "objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_s_01_mesh": {
   "set": "kashyyyk",
@@ -157,7 +227,12 @@
   "size": "medium",
   "tris": 2124,
   "as": "volcaniccrater rockmedium (Volcanic nature)",
-  "metres": 0.918
+  "metres": 0.918,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Nature/Volcanic/Sullustan/VolcanicCrater_RockMedium_01/VolcanicCrater_RockMedium_01#RigidBodyData"
+  }
  },
  "objects/nature/yavin/_yavinbase/_meshscattering/ms_yavinbase_grass_large_01/ms_yavinbase_grass_large_02_mesh": {
   "set": "yavin",
@@ -189,7 +264,12 @@
   "size": "huge",
   "tris": 59,
   "as": "yavinbase backdropcloud forestbase (Yavin cloud)",
-  "metres": 61.528
+  "metres": 61.528,
+  "blueprint": {
+   "solid": false,
+   "fixed": false,
+   "_source": "Objects/Nature/Yavin/_YavinBase/YavinBase_BackdropCloud_01/ForestBase_BackdropCloud_01_B#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_galacticempire/box_m_04/box_m_04_mesh": {
   "set": "_galacticempire",
@@ -197,7 +277,12 @@
   "size": "medium",
   "tris": 448,
   "as": "box (the Empire’s prop)",
-  "metres": 0.526
+  "metres": 0.526,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_GalacticEmpire/Box_M_04/Box_M_04#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_galacticempire/box_m_05/box_m_05_mesh": {
   "set": "_galacticempire",
@@ -205,7 +290,12 @@
   "size": "medium",
   "tris": 352,
   "as": "box (the Empire’s prop)",
-  "metres": 0.367
+  "metres": 0.367,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_GalacticEmpire/Box_M_05/Box_M_05#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_galacticempire/box_m_06/box_m_06_mesh": {
   "set": "_galacticempire",
@@ -213,7 +303,12 @@
   "size": "medium",
   "tris": 3944,
   "as": "box (the Empire’s prop)",
-  "metres": 0.642
+  "metres": 0.642,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_GalacticEmpire/Box_M_06/Box_M_06#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_galacticempire/container_xl_02/container_xl_02_a_mesh": {
   "set": "_galacticempire",
@@ -221,7 +316,12 @@
   "size": "large",
   "tris": 7105,
   "as": "container (the Empire’s prop)",
-  "metres": 2.38
+  "metres": 2.38,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_GalacticEmpire/Container_XL_02/Container_XL_02_A#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_galacticrepublic/container_01/container_01_l_mesh": {
   "set": "_galacticrepublic",
@@ -229,7 +329,12 @@
   "size": "large",
   "tris": 726,
   "as": "container (the Republic’s prop)",
-  "metres": 2.839
+  "metres": 2.839,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_GalacticRepublic/Container_01/Container_01_L#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_galacticrepublic/crate_02_s/crate_02_s_mesh": {
   "set": "_galacticrepublic",
@@ -237,7 +342,12 @@
   "size": "medium",
   "tris": 848,
   "as": "crate (the Republic’s prop)",
-  "metres": 0.56
+  "metres": 0.56,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_GalacticRepublic/Crate_02_S/Crate_02_S#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_rebelalliance/box_m_02/box_m_02_mesh": {
   "set": "_rebelalliance",
@@ -245,7 +355,12 @@
   "size": "medium",
   "tris": 2234,
   "as": "box (the Rebellion’s prop)",
-  "metres": 0.64
+  "metres": 0.64,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_RebelAlliance/Box_M_02/Box_M_02#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_rebelalliance/box_s_04/box_s_04_mesh": {
   "set": "_rebelalliance",
@@ -253,7 +368,12 @@
   "size": "small",
   "tris": 970,
   "as": "box (the Rebellion’s prop)",
-  "metres": 0.508
+  "metres": 0.508,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_RebelAlliance/Box_S_04/Box_S_04#RigidBodyData"
+  }
  },
  "objects/props/objectsets/_rebelalliance/gasflask_01/gasflask_01_mesh": {
   "set": "_rebelalliance",
@@ -261,7 +381,12 @@
   "size": "medium",
   "tris": 2186,
   "as": "gasflask (the Rebellion’s prop)",
-  "metres": 1.255
+  "metres": 1.255,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/_RebelAlliance/GasFlask_01/GasFlask_01#RigidBodyData"
+  }
  },
  "objects/props/objectsets/sullust/bucketsmelting_xl_01/bucketsmelting_xl_bucket_01_mesh": {
   "set": "sullust",
@@ -269,7 +394,12 @@
   "size": "large",
   "tris": 2144,
   "as": "bucketsmelting bucket (Sullust prop)",
-  "metres": 4.232
+  "metres": 4.232,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/Sullust/BucketSmelting_XL_01/BucketSmelting_XL_Bucket_01#RigidBodyData"
+  }
  },
  "objects/props/objectsets/sullust/containersullustan_xl_01/containersullustan_xl_01_mesh": {
   "set": "sullust",
@@ -277,7 +407,12 @@
   "size": "large",
   "tris": 2012,
   "as": "containersullustan (Sullust prop)",
-  "metres": 4.071
+  "metres": 4.071,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/Sullust/ContainerSullustan_XL_01/ContainerSullustan_XL_01#RigidBodyData"
+  }
  },
  "objects/props/objectsets/sullust/machine_l_05/machine_l_05_mesh": {
   "set": "sullust",
@@ -285,7 +420,12 @@
   "size": "medium",
   "tris": 1990,
   "as": "machine (Sullust prop)",
-  "metres": 3
+  "metres": 3,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/Sullust/Machine_L_05/Machine_L_05#RigidBodyData"
+  }
  },
  "objects/props/objectsets/tatooine/barrelplastic_01/barrelplastic_01_mesh": {
   "set": "tatooine",
@@ -293,7 +433,12 @@
   "size": "small",
   "tris": 922,
   "as": "barrelplastic (Tatooine prop)",
-  "metres": 0.64
+  "metres": 0.64,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/Tatooine/BarrelPlastic_01/BarrelPlastic_01#RigidBodyData"
+  }
  },
  "objects/props/objectsets/tatooine/crate_m_01/crate_m_01_mesh": {
   "set": "tatooine",
@@ -301,7 +446,12 @@
   "size": "medium",
   "tris": 1736,
   "as": "crate (Tatooine prop)",
-  "metres": 0.639
+  "metres": 0.639,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/Tatooine/Crate_M_01/Crate_M_01#RigidBodyData"
+  }
  },
  "objects/props/objectsets/tatooine/cratemetal_01/cratemetal_01_mesh": {
   "set": "tatooine",
@@ -309,7 +459,12 @@
   "size": "medium",
   "tris": 1312,
   "as": "cratemetal (Tatooine prop)",
-  "metres": 0.653
+  "metres": 0.653,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/Tatooine/CrateMetal_01/CrateMetal_01#RigidBodyData"
+  }
  },
  "objects/props/objectsets/tatooine/moisturevaporator_02/moisturevaporator_02_mesh": {
   "set": "tatooine",
@@ -317,6 +472,11 @@
   "size": "medium",
   "tris": 2252,
   "as": "moisturevaporator (Tatooine prop)",
-  "metres": 3.73
+  "metres": 3.73,
+  "blueprint": {
+   "solid": true,
+   "fixed": true,
+   "_source": "Objects/Props/ObjectSets/Tatooine/MoistureVaporator_02/MoistureVaporator_02#RigidBodyData"
+  }
  }
 }
