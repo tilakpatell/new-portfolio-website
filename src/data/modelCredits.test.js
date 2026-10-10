@@ -2,6 +2,8 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import PUBLISHED from './galaxyAssets.json';
 import { describe, expect, it } from 'vitest';
 import CREDITS from './modelCredits.json';
+import USED from './bf2017/library-used.json';
+import { gameUrl } from '../components/galaxy/surface/catalog/bf2017-library';
 
 const at = (path) => new URL(`../../${path}`, import.meta.url);
 // every .js and .jsx under src, as text
@@ -53,7 +55,9 @@ describe('the 3D models that are other people’s', () => {
       // (or a world's surface model, by the kind its catalogue names it by)
       const kind = name.replace(/^surface-/, '');
       const surface = name.startsWith('surface-') && code.includes('/models/galaxy/surface/${kind}.glb') && code.includes(`  ${kind}: {`);
-      expect(code.includes(file) || surface || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
+      // (or one of the drop's library objects a world asks for by name, `game:<name>`: catalog/bf2017-library.js)
+      const game = Object.keys(USED).some((n) => gameUrl(n) === file);
+      expect(code.includes(file) || surface || game || (code.includes('/models/sketchfab/${name}.glb') && code.includes(`'${name}'`)), `${name} is used`).toBe(true);
       expect(shown[m.where], `${name}: ${m.where}`).toBeTruthy();
       expect(readFileSync(at(`src/${shown[m.where]}`), 'utf8'), m.where).toContain(`<ModelCredits where="${m.where}"`);
       // and every other page that shows it, its credit too

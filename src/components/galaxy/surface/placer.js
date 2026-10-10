@@ -23,7 +23,10 @@
 //   its LOD1 far off; put, its parts stand under one group. A tree is solid
 //   at its trunk (the manifest's `trunk`), anything else by its box. A
 //   rigged one (the manifest's `rig`) is refused as one that won't load is,
-//   said once a model: its skin is for its own mixer.
+//   said once a model: its skin is for its own mixer. One whose `model` is
+//   'game:<name>' is that object of the drop's library (catalog/
+//   bf2017-library.js), drawn as a kind's model is; one not imported yet,
+//   or rigged, draws nothing, said once.
 //   setKitLoader(fn) → the kits' loader (fn(pack, { house, wind }) → a kit,
 //   as loadKit's) for the tests; null puts loadKit back.
 //   With `seated` (ultra: amounts.js), whatever stands on the ground is
@@ -54,6 +57,7 @@ import { sharpenMaterial } from '../../../lib/three/textures';
 import { budget } from '../../../lib/budgets';
 import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from './catalog';
+import { gameModel, isGame } from './catalog/bf2017-library';
 import { withDetail } from './detail';
 import { LOOKS, loadScan, scanOf } from './kit';
 import { wear as wearCore } from '../../../lib/three/core';
@@ -266,6 +270,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const kits = new Map();
   const lodWarned = new Set(); // (the kit models whose LOD1 wouldn't load, said once)
   const rigWarned = new Set(); // (the rigged kit models refused, said once)
+  const gameWarned = new Set(); // (the library's `game:` objects not drawn, said once)
   const kitFor = (pack) => {
     if (!kits.has(pack)) {
       // (a copy of the way the foliage leans: wind() clones its dir, so the two agree only while nothing turns the wind at run time, and nothing does)
@@ -388,6 +393,12 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     group,
     // one thing; resolves to its object (or null)
     put(spec) {
+      // (the drop's library, `model: 'game:<name>'`: drawn as that object's kind, or nothing)
+      if (isGame(spec.model)) {
+        const game = gameModel(spec.model, models, gameWarned);
+        if (!game) return Promise.resolve(null);
+        spec = { ...spec, kind: game, model: undefined };
+      }
       // (a cluster: its members put each in its place, turned with it)
       const ref = kitRef(spec.model);
       const cluster = !spec.zone && spec.model !== false && !ref && models[spec.kind]?.cluster;
@@ -519,6 +530,11 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     // one worth its draws)
     scatter(kind, items, { opts = {}, solid = true, model = true, shadow = true } = {}) {
       if (!items.length) return Promise.resolve(null);
+      if (isGame(model)) {
+        kind = gameModel(model, models, gameWarned);
+        if (!kind) return Promise.resolve(null);
+        model = true;
+      }
       const mats = items.map((it) => {
         const at = spot({ ...it });
         const s = it.scale ?? 1;
