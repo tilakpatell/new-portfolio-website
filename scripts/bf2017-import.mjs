@@ -104,7 +104,7 @@ async function liftSclera(png) {
 // taken off the material after), and the textures' KHR_texture_basisu
 // source becomes their plain source, so glTF-Transform never goes looking
 // for a KTX2 itself.
-async function readLod(io, file, { root, derived, unpackDir, said, eyes = null }) {
+export async function readLod(io, file, { root, derived, unpackDir, said, eyes = null }) {
   const glb = await readFile(localPath(root, inBucket(file)));
   // (the GLB read by hand: glTF-Transform's own reader will not open one whose
   // images are outside it; chunk 0 is the JSON, chunk 1 the binary buffer)

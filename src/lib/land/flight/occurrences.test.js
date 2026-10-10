@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { OCC, OCCURRENCES, OCC_CAP, applyRule, occurrencesFor, placeOccurrences } from './occurrences';
-import { PLANETS, planetSpecOf } from './planetSpec';
+import { OCC, OCCURRENCES, OCC_CAP, applyRule, placeOccurrences } from './occurrences';
+import { PLANETS, lifeFor, occurrencesFor, planetSpecOf } from './fixtures/expanse.js';
 import { slopeAt } from './roster';
-import { isDead, lifeFor } from './lifeTables';
+import { isDead } from './lifeTables';
 
 const spec = { id: 'hoth', seed: 7, biomes: [{ id: 'plains' }, { id: 'range' }, { id: 'glacier' }], pois: [{ id: 'base', at: [1024, 1024], r: 220, edge: 160 }] };
 const flat = { heightAt: () => 10, biomeAt: (x) => (x < 1024 ? 0 : x < 1600 ? 1 : 2) };

@@ -26,9 +26,7 @@
 //     model cache (prefetchModels), so a landmark wanted is a landmark drawn
 
 import * as THREE from 'three';
-import { clusterSpecs, createPlacer, loadModel, usesModel } from '../../galaxy/surface/placer';
-import { SURFACE_MODELS } from '../../galaxy/surface/catalog';
-import { createKit } from '../../galaxy/surface/kit';
+import { SURFACE_MODELS, clusterSpecs, createKit, createPlacer, loadModel, usesModel } from '../../galaxy/shared/models';
 import { planetField } from '../../../lib/land/flight/field';
 import { placementsFor } from './landmarks';
 import { landmarkPlan } from './landmarkStream';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createOccurrences } from './events';
 import { createFlightDirector, EVENT_FIRST } from '../../../lib/land/flight/director';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { planetSpecOf } from './planets';
 import { eventNow } from './eventNews';
 
 const T0 = 1_790_000_000_000;
