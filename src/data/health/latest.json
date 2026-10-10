@@ -1,6 +1,6 @@
 {
   "date": "2026-10-10",
-  "sha": "fbe9f476",
+  "sha": "3025a17d",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 6068
+          "n": 6081
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -25,7 +25,7 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 3654
+          "n": 3657
         },
         {
           "file": "src/components/middleearth/towns/doom/props.js",
@@ -65,7 +65,7 @@
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2801
+          "n": 2813
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
