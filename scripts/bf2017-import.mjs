@@ -84,6 +84,7 @@ import { glbJson, imagePath, inBucket, localPath } from './lib/bf2017-paths.mjs'
 import { resolveImage, stripOpaqueAlpha } from './lib/bf2017-textures.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
 import { joinSkinned, shareSkins } from './lib/rig-parts.mjs';
+import { glbTextures } from '../src/lib/glbTextures.js';
 import { bareWhereUntextured, dims, grounded, relit, simplified, triangles, unskinned } from './lib/surface-model.mjs';
 
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
@@ -365,7 +366,10 @@ export async function importModel(name, opts) {
     console.log(`${relative(ROOT, r.out).padEnd(48)} ${cut.padEnd(5)} LOD${l.lod}  ${r.tris} triangles, ${r.draws} draws, ${r.maps} maps, ${(r.bytes / 1024).toFixed(1)} KB; ${w.toFixed(2)} wide × ${h.toFixed(2)} tall × ${d.toFixed(2)} long (m)`);
   }
   const file = `/models/galaxy/${sub}/${kind}.glb`;
-  const more = `${lod ? ', lod: true' : ''}${farLod ? ', far: true' : ''}${full ? ', full: true' : ''}`;
+  // (the full cut's textures on the GPU, for the page's ledger: lib/three/walrusCuts.js)
+  const fullMB = full ? Math.ceil(glbTextures(await readFile(plain.out)).gpuBytes / MB) : 0;
+  if (full) console.log(`  the full cut's maps on the GPU: ${fullMB} MB`);
+  const more = `${lod ? ', lod: true' : ''}${farLod ? ', far: true' : ''}${full ? `, full: true, fullMB: ${fullMB}` : ''}`;
   if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus'${opts.hero ? `, pack: '${kind}'` : ''}` : ''}${more} },`);
   else {
     const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: cuts.plain.triangles, tex };
@@ -373,7 +377,7 @@ export async function importModel(name, opts) {
     if (opts.hero) row.hero = true;
     if (lod) row.lod = true;
     if (farLod) row.far = true;
-    if (full) row.full = true;
+    if (full) Object.assign(row, { full: true, fullMB });
     if (ultra) row.ultra = ultra;
     row.from = name;
     await writeCatalogueLine(resolve(opts.catalog ?? path(ROOT, 'src', 'components', 'galaxy', 'surface', 'catalog', 'bf2017.js')), kind, row);
