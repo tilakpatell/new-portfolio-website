@@ -1,6 +1,6 @@
 # Hand-off: Battlefront on the web (the game, from the 2017 game's data)
 
-The design is `docs/superpowers/specs/2026-10-10-battlefront-game-design.md`. The plans: `docs/superpowers/plans/2026-10-10-battlefront-lane0-data.md`, `-lane1-soldier-ai.md`, `-lane2-galactic-assault.md`. The asset side (models, textures, clips through the bucket) is `HANDOFF-bf2017.md` and its spec; the streaming of those assets to the page is another account's lane (`plans/2026-10-09-asset-hosting.md` and whatever follows it). This page is the game: rules, modes, mechanics, bots, the world that plays them.
+The design is `docs/superpowers/specs/2026-10-10-battlefront-game-design.md`. The plans: `docs/superpowers/plans/2026-10-10-battlefront-lane0-data.md`, `-lane1-soldier-ai.md`, `-lane2-galactic-assault.md`, `-lane5-world.md`. The asset side (models, textures, clips through the bucket) is `HANDOFF-bf2017.md` and its spec; the streaming of those assets to the page is another account's lane (`plans/2026-10-09-asset-hosting.md` and whatever follows it). This page is the game: rules, modes, mechanics, bots, the world that plays them.
 
 ## Where the data is
 
@@ -17,7 +17,7 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-game-design.md`. Th
 | 2 Galactic Assault: stages, objectives, spawning, Battle Points, the commander, balance | not started (needs 1) | `claude/bf-assault` | `plans/2026-10-10-battlefront-lane2-galactic-assault.md` |
 | 3 heroes: abilities, saber combat, hero bots | not started (needs 1); plan when 1 merges | `claude/bf-heroes` | |
 | 4 vehicles: AT-AT escort, walkers, speeders, turrets, mounts, vehicle bots | not started (needs 2) | `claude/bf-vehicles` | |
-| 5 the world: assets adapter (dev backend), map, terrain, physics, figures on the game's clips, camera, input, HUD, the route | not started (needs 0; the streaming lane for the bucket backend) | `claude/bf-world` | |
+| 5 the world: assets adapter (dev backend), the whole-map pack through lane L's loader, the look from the lighting records and the placed lights, the cameras, figures on the game's clips, input, the game's HUD, the route | not started (needs 0 and #810's lane L; the streaming lane for the bucket backend) | `claude/bf-world` | `plans/2026-10-10-battlefront-lane5-world.md` |
 | 6 Blast, Heroes vs Villains, Strike, then the rest; the other maps' rulebooks | not started (needs 2, 5) | `claude/bf-modes` | |
 | 7 online | later | `claude/bf-online` | |
 
@@ -25,7 +25,7 @@ Lanes 1, 3 and 5 run in parallel once 0 merges. Each lane adds its row's numbers
 
 ## Beside the asset lanes (PR #802 and PR #810)
 
-`HANDOFF-bf2017.md` is the assets' hand-off and its status table is theirs. What this game takes from them, so nobody builds it twice: lane 1's `walrus.js` (figures on the game's skeleton), lane L's level pack and loader (run on the whole map with `--frame map --no-fit`, spec decision 12), lane G's light from the level's sky records, lane X's stroke tables for the heroes, lane V's vehicle models, lane S's fetch pool. What this game adds that they do not: the rules, the modes, the bots, the Battle Points, the HUD, the route.
+`HANDOFF-bf2017.md` is the assets' hand-off and its status table is theirs. What this game takes from them, so nobody builds it twice: lane 1's `walrus.js` (figures on the game's skeleton), lane L's level pack and loader (run on the whole map with `--frame map --no-fit`, spec decision 15), lane G's light from the level's sky records, lane X's stroke tables for the heroes, lane V's vehicle models, lane S's fetch pool. What this game adds that they do not: the rules, the modes, the bots, the Battle Points, the HUD, the route.
 
 ## For the streaming session (the other account)
 
