@@ -27,6 +27,8 @@
 // quantisation.
 //
 //   node scripts/bf2017-clips.mjs <pack> [--fps 24] [--only <site name>,…]
+//   node scripts/bf2017-clips.mjs --scene <id> [--cast <role>=<game clip>,…]   (scenes/<id>.glb)
+//   node scripts/bf2017-clips.mjs --census   (docs/superpowers/evidence/bf2017-coverage/clips.md)
 //     [--out public/models/galaxy/bf2017] [--root lab/assets/bf2017] [--skeleton public/models/galaxy/bf2017/walrus.glb]
 //
 //   pack      a key of walrusClips.js's PACKS (humanoid, luke, vader, obiwan…,
@@ -342,8 +344,10 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
   }
   doc.getRoot().listScenes()[0].setExtras({ pack, aliases });
   await doc.transform(prune({ keepLeaves: true, keepAttributes: true }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
-  const file = join(out, `clips-${pack}.glb`);
-  await mkdir(out, { recursive: true });
+  // (a scene's to scenes/<id>.glb: lib/three/scenePlayer.js's scenePath)
+  const scene = PACK_OPTS[pack]?.scene;
+  const file = scene ? join(out, 'scenes', `${scene}.glb`) : join(out, `clips-${pack}.glb`);
+  await mkdir(dirname(file), { recursive: true });
   await rw.write(file, doc);
   const bytes = (await stat(file)).size;
   for (const m of made) log(`${m.site.padEnd(22)} ${m.game.padEnd(50)} ${String(m.frames).padStart(4)} frames`);
@@ -367,7 +371,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`${relative(ROOT, file)}: ${Object.entries(rows.totals).map(([k, v]) => `${v} ${k}`).join(', ')}`);
     process.exit(0);
   }
-  if (!pack) {
+  // --scene <id> [--cast role=clip,…]: a scene's pack (walrusSets/scenes.js's, or one cast here)
+  if (typeof args.scene === 'string') {
+    if (typeof args.cast === 'string') {
+      PACKS[`scene-${args.scene}`] = Object.fromEntries(args.cast.split(',').map((rc) => rc.split('=')));
+      PACK_OPTS[`scene-${args.scene}`] = { scene: args.scene };
+    }
+    args._[0] = `scene-${args.scene}`;
+  }
+  if (!args._[0]) {
     console.error(`usage: node scripts/bf2017-clips.mjs <pack> [--fps 24] [--only a,b] (packs: ${Object.keys(PACKS).join(', ')})`);
     process.exit(1);
   }
@@ -378,7 +390,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const manifest = readManifest(await readFile(join(root, 'web', 'anims.jsonl'), 'utf8'));
     await anims.fetch(null, root, manifest, name);
   };
-  await makePack(pack, {
+  await makePack(args._[0], {
     fps: Number(args.fps ?? 24),
     only: typeof args.only === 'string' ? args.only.split(',') : null,
     out: resolve(args.out ?? join(ROOT, 'public', 'models', 'galaxy', 'bf2017')),

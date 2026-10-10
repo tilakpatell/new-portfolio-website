@@ -8,7 +8,8 @@
 //
 //   SET_PACKS { pack: { set, opts? } }: stance-p, stance-t, stance-l (stance.js),
 //     additive (additive.js), npc (npc.js, and the soldiers' victories),
-//     emotes-<hero> (emotes.js)
+//     emotes-<hero> (emotes.js), scene-<id> (scenes.js)
+//     opts.scene      the pack is a scene's, written to scenes/<id>.glb
 //     opts.additive   the pack is of the game's additive clips (deltas on
 //                     a pose: anims_additive/), laid over the figure's pose
 //     opts.skeletons  the skeletons' pattern (a RegExp's source), else the
@@ -17,6 +18,7 @@
 import { ADD_SET } from './additive.js';
 import { EMOTE_HEROES, EMOTE_SET, SOLDIER_VICTORY } from './emotes.js';
 import { NPC_SET } from './npc.js';
+import { SCENES } from './scenes.js';
 import { STANCE_SET } from './stance.js';
 
 export const SET_PACKS = {
@@ -26,4 +28,6 @@ export const SET_PACKS = {
   additive: { set: ADD_SET, opts: { additive: true } },
   npc: { set: { ...NPC_SET, ...SOLDIER_VICTORY } },
   ...Object.fromEntries(EMOTE_HEROES.map((h) => [`emotes-${h}`, { set: EMOTE_SET(h) }])),
+  // (a scene's roles, packed into scenes/<id>.glb: scenePlayer.js)
+  ...Object.fromEntries(Object.entries(SCENES).map(([id, roles]) => [`scene-${id}`, { set: roles, opts: { scene: id } }])),
 };

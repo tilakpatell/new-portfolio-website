@@ -40,7 +40,9 @@ import { anyFigure } from '../actors';
 import { groundAt, pushOut, tooDeep } from '../walker';
 import { BATTLE_BODY, RULES, SOLDIERS, battleView, chooseSide as pickSide, deploy as deployAt, endBattle, hitSoldier, newBattle, objectiveFor, soldierBody, stepBattle, youDown as putYouDown } from './assault';
 import { sharpen } from '../../../../lib/three/textures';
+import { loadScene, playScene } from '../../../../lib/three/scenePlayer';
 import { victoryFor } from '../../../../lib/three/walrusSets/emotes';
+import { OUTROS } from '../../../../lib/three/walrusSets/scenes';
 
 const EYE = 1.4; // metres: where a soldier's bolt leaves from
 const CHEST = 1.0; // metres: where one lands
@@ -363,6 +365,28 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
     }
   };
 
+  // the battle won by the side the game has a scene for: four of the winners
+  // in it (lib/three/scenePlayer.js), in place of their cheer, at high and ultra
+  const outro = (side) => {
+    const o = OUTROS[mission.system];
+    if (!o || o.side !== side || !(tier === 'high' || tier === 'ultra')) return;
+    const four = battle.soldiers
+      .filter((s) => s.up && s.side === side)
+      .map((s) => bodyOf(s.id))
+      .filter((b) => b?.rigged && !b.down)
+      .slice(0, 4);
+    if (!four.length) return;
+    loadScene(o.scene).then((sc) => {
+      if (!sc) return;
+      const cast = {};
+      four.forEach((b, i) => {
+        b.cheer = null;
+        cast[`e${i + 1}`] = b.fig;
+      });
+      playScene(sc, cast, { hold: true });
+    });
+  };
+
   // ── one soldier's body, where the rules have it, this frame ──
   function draw(b, s, dt, you) {
     // (still running in from where it came back, gaining on its place)
@@ -535,7 +559,9 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
           say(mission.lines?.[e.won ? 'won' : 'lost']);
           tell({ type: e.won ? 'won' : 'lost' });
           const mine = battle.you.side;
-          if (mine) glad(e.won ? mine : mine === 'attack' ? 'defend' : 'attack', 2);
+          const winners = mine ? (e.won ? mine : mine === 'attack' ? 'defend' : 'attack') : null;
+          if (winners) glad(winners, 2);
+          if (winners) outro(winners);
         }
       }
       // a shout from your side, now and then
