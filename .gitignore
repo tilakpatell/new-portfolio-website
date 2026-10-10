@@ -68,4 +68,30 @@ scripts/gpu-parity/out/
 .env.*.local
 
 # galaxy assets (published; scripts/assets-publish.mjs)
+/public/models/galaxy/bf2017/crew/astromech.glb
+/public/models/galaxy/bf2017/crew/c3po.glb
+/public/models/galaxy/bf2017/crew/civcity1.glb
+/public/models/galaxy/bf2017/crew/civcity2.glb
+/public/models/galaxy/bf2017/crew/civcity3.glb
+/public/models/galaxy/bf2017/crew/clone.glb
+/public/models/galaxy/bf2017/crew/clonephase1.glb
+/public/models/galaxy/bf2017/crew/deathtrooper.glb
+/public/models/galaxy/bf2017/crew/droid.glb
+/public/models/galaxy/bf2017/crew/droideka.glb
+/public/models/galaxy/bf2017/crew/ewok.glb
+/public/models/galaxy/bf2017/crew/hothtrooper.glb
+/public/models/galaxy/bf2017/crew/officer.glb
+/public/models/galaxy/bf2017/crew/probe.glb
+/public/models/galaxy/bf2017/crew/r5.glb
+/public/models/galaxy/bf2017/crew/rebel.glb
+/public/models/galaxy/bf2017/crew/rebelpilot.glb
+/public/models/galaxy/bf2017/crew/rebeltech.glb
+/public/models/galaxy/bf2017/crew/sandtrooper.glb
+/public/models/galaxy/bf2017/crew/scouttrooper.glb
+/public/models/galaxy/bf2017/crew/shoretrooper.glb
+/public/models/galaxy/bf2017/crew/snowtrooper.glb
+/public/models/galaxy/bf2017/crew/stormtrooper.glb
+/public/models/galaxy/bf2017/crew/superdroid.glb
+/public/models/galaxy/bf2017/crew/tauntaun.glb
+/public/models/galaxy/bf2017/crew/wookiee.glb
 # end galaxy assets

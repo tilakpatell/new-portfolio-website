@@ -24,12 +24,17 @@ describe('the surfaces’ crew', () => {
     }
   });
 
-  it('walks the Battlefront’s soldiers on their rigged files, as tall as the catalogue has them, its statues left to stand in', () => {
-    const troops = { clone: 1.83, battledroid: 1.91, superdroid: 1.93, stormtrooper: 1.83, snowtrooper: 1.83, hothtrooper: 1.78, sandtrooper: 1.83, scouttrooper: 1.83, shoretrooper: 1.83, deathtrooper: 1.83 };
+  it('walks the Battlefront’s soldiers as the 2017 game’s, at full fidelity, their old statues left to stand in', () => {
+    const troops = { clone: 1.83, superdroid: 1.93, stormtrooper: 1.83, snowtrooper: 1.83, hothtrooper: 1.78, sandtrooper: 1.83, scouttrooper: 1.83, shoretrooper: 1.83, deathtrooper: 1.88 };
     for (const [kind, tall] of Object.entries(troops)) {
-      expect(CREW[kind], kind).toEqual({ url: `/models/galaxy/troops/${kind}.glb`, tall });
-      expect(SURFACE_MODELS[kind]?.metres, kind).toBe(tall);
+      expect(CREW[kind].url, kind).toBe(`/models/galaxy/bf2017/crew/${kind}.glb`);
+      expect(CREW[kind].tall, kind).toBe(tall);
+      expect(['walrus', 'own'], kind).toContain(CREW[kind].rig);
+      expect(CREW[kind].full && CREW[kind].lod && CREW[kind].far, kind).toBe(true);
+      expect(SURFACE_MODELS[kind], `${kind}'s catalogue row`).toBeTruthy();
       expect(existsSync(at(`/models/galaxy/surface/${kind}.glb`)), `${kind}'s statue`).toBe(true);
     }
+    // (the B1 waits for its markings map: the remaster's, rigged with Meshy)
+    expect(CREW.battledroid).toEqual({ url: '/models/galaxy/troops/battledroid.glb', tall: 1.91 });
   });
 });

@@ -19,7 +19,7 @@
 //     [--root lab/assets/bf2017] [--metres <m> | --asis] [--along y|x|z|max] [--yaw <rad>] [--up y|z|-z|x|-x|-y]
 //     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512] [--quality 82] [--maps-quality 80]
 //     [--parts '<glob>,…'] [--grip <node>] [--out public/models/galaxy]
-//     [--full] [--far] [--join]
+//     [--full] [--far] [--join] (--cuts also far=<n>)
 //
 //   name       the model's `name` in the manifest (bf2017-fetch.mjs --list finds it)
 //   kind       the catalogue kind: one already in another group is taken over
@@ -303,12 +303,15 @@ async function makeCut(io, entry, parts, lod, spec, out) {
 
 // ── the arguments ──
 
+// (--full's cuts, or the triangle budgets'; either way --cuts names a LOD
+// for any of them: a kind whose light LODs wear maps the bucket hasn't yet,
+// the Wookiee's `lodcaps` from LOD3, takes the last LOD whose maps are there)
 function cutsOf(entry, opts, rig) {
-  const cuts = cutsFor(entry, { plainMax: rig ? 8000 : 12000, ultra: Boolean(opts.ultra) });
+  const cuts = opts.full ? fullCuts(entry) : cutsFor(entry, { plainMax: rig ? 8000 : 12000, ultra: Boolean(opts.ultra) });
   if (typeof opts.cuts === 'string')
     for (const part of opts.cuts.split(',')) {
       const [name, n] = part.split('=');
-      if (!['lod1', 'plain', 'ultra'].includes(name)) throw new Error(`--cuts: ${name}? (lod1, plain, ultra)`);
+      if (!['lod1', 'plain', 'ultra', 'far'].includes(name)) throw new Error(`--cuts: ${name}? (lod1, plain, ultra, far)`);
       const lod = entry.lods.find((l) => l.lod === Number(n));
       if (!lod) throw new Error(`--cuts: ${entry.name} has no LOD ${n} (it has ${entry.lods.map((l) => l.lod).join(', ')})`);
       cuts[name] = lod;
@@ -355,7 +358,7 @@ export async function importModel(name, opts) {
   };
   // (--full: the game's LOD0 at its own maps, the light cut at LOD4 or so)
   const full = Boolean(opts.full);
-  const cuts = full ? fullCuts(entry) : cutsOf(entry, opts, rig);
+  const cuts = cutsOf(entry, { ...opts, full }, rig);
   const lastLod = [...entry.lods].sort((a, b) => a.lod - b.lod).pop();
   const farLod = opts.far ? (cuts.far ?? lastLod) : null;
   await MeshoptEncoder.ready;

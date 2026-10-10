@@ -21,9 +21,15 @@
 export const EXPECTED = {
   // phase 1: statues whose legs part, walked by legRig.js (Chirrut's robe
   // is to his ankles, as the Jawa's and Yoda's are: he sways)
-  ...Object.fromEntries(['anakin', 'armorer', 'baze', 'cassian', 'clonephase1', 'dindjarin', 'jyn', 'k2so', 'krennic', 'mace', 'sullustan'].map((k) => [k, 'legs'])),
+  ...Object.fromEntries(['armorer', 'baze', 'cassian', 'dindjarin', 'jyn', 'k2so', 'krennic', 'mace', 'sullustan'].map((k) => [k, 'legs'])),
   // phase 2: Mixamo rigs given UAL's core set, baked into their files (ual-bake.mjs --rig)
-  ...Object.fromEntries(['ithorian', 'rebelpilot', 'rebeltech'].map((k) => [k, 'own-clips'])),
+  ...Object.fromEntries(['ithorian'].map((k) => [k, 'own-clips'])),
+  // Battlefront II (2017), phase 1: the heroes on the game's skeleton
+  ...Object.fromEntries(['anakin', 'bobafett', 'dooku', 'lando', 'luke', 'obiwan', 'vader'].map((k) => [k, 'walrus'])),
+  // Battlefront II (2017), phase 2: the cast on the game's skeleton, and the
+  // droids and beasts on their own (docs/superpowers/evidence/bf2017-phase2/cast.md)
+  ...Object.fromEntries(['c3po', 'clone', 'clonephase1', 'deathtrooper', 'hothtrooper', 'rebel', 'rebelpilot', 'rebeltech', 'sandtrooper', 'scouttrooper', 'shoretrooper', 'snowtrooper', 'stormtrooper', 'wookiee'].map((k) => [k, 'walrus'])),
+  ...Object.fromEntries(['astromech', 'droid', 'ewok', 'probe', 'r5', 'superdroid', 'tauntaun'].map((k) => [k, 'own-rig'])),
 };
 
 const HOWS = ['walker', 'walrus', 'own-rig', 'crew', 'crew-still', 'own-clips', 'legs', 'rig-noanim', 'still', 'built', 'none'];
