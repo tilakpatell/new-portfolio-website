@@ -85,6 +85,7 @@ export const OWNERS = [
   { part: 'maps.decals', lane: 'surfaces-Q4' },
   { match: /(^|\/)(fx\/decals|objects\/props\/_decals)\//, part: 'textures', lane: 'surfaces-Q4' },
   { match: /(^|\/)t_cc_[^/]*$/, part: 'textures', lane: 'surfaces-Q6' },
+  { match: /(^|\/)lighting\/lut\//, part: 'textures', lane: 'surfaces-Q6' },
   { match: /(^|\/)(lighting\/textures\/space\/|levels\/space\/[^/]+\/planet\/t_space_)/, part: 'textures', lane: 'surfaces-Q6' },
   // the space lane (the fifth design's Q): the space levels, their set pieces and the asteroids' tracks
   { match: 'levels/space/', lane: 'space' },
