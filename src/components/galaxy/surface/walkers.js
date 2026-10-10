@@ -26,6 +26,7 @@
 // walkerFigure(kind, i) → a figure (actors.js's shape), or null
 
 import * as THREE from 'three';
+import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, modelUrlFor } from './catalog';
 import { cloneModel, loadGlb } from './placer';
 import { crewFigure } from './crew';
@@ -220,7 +221,10 @@ export function splitParts(root, spec) {
 export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
   const spec = WALKERS[kind];
   if (!spec || !models[kind]) return null;
-  const gltf = await loadGlb(modelUrlFor(kind, 'high', models));
+  // (the level's own cut: at ultra the .ultra file, the same rig and nodes
+  // as the plain, which the placer loads for the same kind; asking 'high'
+  // fetched the plain as well, and drew the walker below its best)
+  const gltf = await loadGlb(modelUrlFor(kind, detailLevel(), models));
   if (!gltf) return null;
   const scene = cloneModel(gltf);
   const { body, legs, pieces } = splitParts(scene, spec);
