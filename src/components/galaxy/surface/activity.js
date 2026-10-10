@@ -397,7 +397,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       if (t.blade) t.duel = duelFor(s, Math.round(t.home[0] * 13) * 31 + Math.round(t.home[1] * 17) + targets.indexOf(t) * 7919 + 1);
       return;
     }
-    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones }, kind, { unit: 1, who: s.kind });
+    if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones, sockets: fig.sockets }, kind, { unit: 1, who: s.kind });
   };
 
   // the step's own things, put out

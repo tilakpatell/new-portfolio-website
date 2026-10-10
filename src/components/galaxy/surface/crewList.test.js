@@ -1,9 +1,11 @@
-import { existsSync } from 'node:fs';
+import { onSite } from '../../../../scripts/lib/asset-manifest.mjs';
+import PUBLISHED from '../../../data/galaxyAssets.json';
 import { describe, expect, it } from 'vitest';
 import { CREW, filesOf } from './crewList';
 import { SURFACE_MODELS, modelUrlFor } from './catalog';
 
-const onDisk = (url) => existsSync(new URL(`../../../../public${url}`, import.meta.url));
+// (in public/, or published to the bucket)
+const onDisk = (url) => onSite(url, { publicDir: new URL('../../../../public', import.meta.url).pathname, manifest: PUBLISHED });
 
 describe('the kinds the worlds built in code, as models', () => {
   it('the astromechs are R2’s model, gliding', () => {

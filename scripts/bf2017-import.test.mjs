@@ -147,3 +147,18 @@ describe('the 2017 import of a rig', () => {
     expect(grip.getParentNode().getName()).toBe('IK_Joint_RightHand');
   });
 });
+
+describe('a cut over its cap', () => {
+  it('is named, against the cap a hero, a light cut and an ultra one each have', async () => {
+    const { overCaps } = await import('./bf2017-import.mjs');
+    const MB = 1048576;
+    expect(overCaps([['plain', 3 * MB], ['lod1', 2 * MB]], { hero: false })).toEqual(['plain: 3.0 MB over 2.5 MB']);
+    expect(overCaps([['plain', 3.9 * MB], ['lod1', 2 * MB], ['ultra', 20 * MB]], { hero: true })).toEqual([]);
+    expect(overCaps([['plain', 14 * MB]], { hero: true })).toEqual(['plain: 14.0 MB over 4.0 MB']);
+    expect(overCaps([['ultra', 25 * MB]], { hero: true })).toEqual(['ultra: 25.0 MB over 24.0 MB']);
+    // (a native hero's, the game's own maps: fetched light first, from the bucket)
+    expect(overCaps([['plain', 14 * MB], ['lod1', 3.4 * MB], ['ultra', 44 * MB]], { hero: true, native: true })).toEqual([]);
+    expect(overCaps([['ultra', 66 * MB]], { hero: true, native: true })).toEqual(['ultra: 66.0 MB over 64.0 MB']);
+    expect(overCaps([['plain', 12.8 * MB]], { native: true })).toEqual([]);
+  });
+});
