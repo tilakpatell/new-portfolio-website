@@ -6,10 +6,10 @@ import hoth from '../../data/bf2017/light/hoth.json';
 // conversion (or a re-run of the script that reads something else) fails here
 const HOTH_SUNNY = {
   sky: { zenith: '#85b1ff', horizon: '#b1caff', hazeColor: '#b1caff', suns: [{ az: 4.636, el: 0.575, color: '#fffaf6' }] },
-  light: { sun: 0.81, sky: '#90c0ff', ground: '#edf6ff', ambient: 0.62 },
+  light: { sun: 0.79, sky: '#90c0ff', ground: '#edf6ff', ambient: 0.61 },
   fog: { color: '#b1caff', density: 0.000294 },
-  exposure: 0.00008865,
-  probeScale: 0.003483823,
+  exposure: 0.000086317,
+  probeScale: 0.003392122,
   bloom: 1,
   grading: { brightness: 1, contrast: 1, saturation: 1, lut: 'textures/galaxy/bf2017/light/hoth/sunny.lut.png', lutSize: 17 },
   wind: { dir: 0, strength: 5 },
@@ -125,21 +125,29 @@ describe('the records to the site’s light', () => {
     const { luminance, ...sky } = hoth.weathers.sunny.sky;
     expect(luminance).toBe(35000);
     const own = siteLightFrom({ ...hoth.weathers.sunny, sky });
-    expect(own.probeScale).toBeCloseTo(exposureOf(hoth.weathers.sunny) * PROBE_TO_SITE, 9);
+    expect(own.probeScale).toBeCloseTo(exposureOf({ ...hoth.weathers.sunny, sky }) * PROBE_TO_SITE, 9);
   });
 
   it('meters as the game’s camera does: the lit ground, clamped to the record’s range', () => {
-    // Hoth sunny: the grey card under 128,000 lux at 33° meters EV 14.96,
-    // inside the record's 11…15, opened 1.5
-    expect(Math.log2(exposureOf(hoth.weathers.sunny))).toBeCloseTo(1.5 - 14.962, 3);
-    // the sunset: 22,500 lux, 10° up, meters EV 12.2, held at 10.4, opened 1
+    // Hoth sunny: the grey card under 128,000 lux at 33° and a sky of 35,000
+    // meters EV 16.3, held at the record's 15, opened 1.5
+    expect(Math.log2(exposureOf(hoth.weathers.sunny))).toBeCloseTo(1.5 - 15, 6);
+    // the sunset: 22,500 lux, 10° up, a sky of 3,000: EV 12.5, held at 10.4, opened 1
     expect(Math.log2(exposureOf(hoth.weathers.sunset))).toBeCloseTo(1 - 10.4, 6);
+    // a storm: a weak sun (1,250 lux) and a sky of 3,000 meter EV 12.2, held
+    // at 11, not opened up to the sun alone's 8.3
+    expect(Math.log2(exposureOf({ sun: { lux: 1250, el: 33.158 }, sky: { luminance: 3000 }, tonemap: { compensation: 0.5, minEV: 7, maxEV: 11 } }))).toBeCloseTo(0.5 - 11, 6);
     // no auto exposure: the record's EV
     expect(Math.log2(exposureOf({ tonemap: { ev: 12, compensation: 0, auto: false } }))).toBeCloseTo(-12, 6);
   });
 
   it('gives Hoth’s sunny weather the calibrated numbers', () => {
     expect(siteLightFrom(hoth.weathers.sunny)).toEqual(HOTH_SUNNY);
+  });
+
+  it('leaves a black sun’s colour to the site rather than failing', () => {
+    const d = siteLightFrom({ sun: { color: [0, 0, 0], lux: 1000, az: 10, el: 20 }, tonemap: { ev: 10 } });
+    expect(d.sky.suns[0]).toEqual({ az: 0.175, el: 0.349 });
   });
 
   it('keeps a hue whole when it is brighter than white', () => {

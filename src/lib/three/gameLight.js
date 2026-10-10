@@ -41,6 +41,8 @@ export function hexOf(c) {
   return `#${enc(c[0])}${enc(c[1])}${enc(c[2])}`;
 }
 
+const defined = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+
 // A colour as a tint: its brightest channel at 1.
 const tint = (c) => {
   const m = Math.max(c[0], c[1], c[2]);
@@ -48,16 +50,17 @@ const tint = (c) => {
 };
 
 // The exposure the game's camera settles at. With its auto exposure on, it
-// meters the lit snow (or sand, or grass) under the sun, a grey card of
-// 0.18 for the scene's mean, and clamps the EV to the record's range; off,
-// the record's EV. Compensation opens it up.
+// meters a grey card of 0.18 for the scene's mean, lit by the sun and by the
+// sky (as bright as the record's LuminanceScale, so a storm's weak sun does
+// not open it up to the sun alone), and clamps the EV to the record's range;
+// off, the record's EV. Compensation opens it up.
 export function exposureOf(entry) {
   const t = entry?.tonemap ?? {};
   const comp = t.compensation ?? 0;
   let ev = t.ev ?? 12;
   if (t.auto !== false && (t.minEV !== undefined || t.maxEV !== undefined)) {
     const sun = entry?.sun ?? {};
-    const lit = Math.max(1, ((sun.lux ?? 0) * Math.max(0.05, Math.sin((sun.el ?? 45) * DEG)) * 0.18) / Math.PI);
+    const lit = Math.max(1, 0.18 * (((sun.lux ?? 0) * Math.max(0.05, Math.sin((sun.el ?? 45) * DEG))) / Math.PI + (entry?.sky?.luminance ?? 0)));
     ev = Math.min(t.maxEV ?? Infinity, Math.max(t.minEV ?? -Infinity, Math.log2((lit * 100) / 12.5)));
   }
   return 2 ** (comp - ev);
@@ -99,13 +102,14 @@ export function siteLightFrom(entry, { factor = GAME_TO_SITE, skyFactor = SKY_TO
   const skyTint = tint(en.sky ?? probe?.zenith ?? [0, 0, 0]);
   const groundTint = tint(en.terrain ?? en.ground ?? probe?.ground ?? [0, 0, 0]);
   const density = fogDensity(entry.fog);
+  const sunTint = tint(sun.color ?? [1, 1, 1]);
   const g = entry.grading ?? {};
   return {
     sky: {
       zenith,
       horizon,
       hazeColor: horizon,
-      suns: sun.az !== undefined && sun.el !== undefined ? [{ az: round(sun.az * DEG), el: round(sun.el * DEG), color: hexOf(tint(sun.color ?? [1, 1, 1])) }] : [],
+      suns: sun.az !== undefined && sun.el !== undefined ? [defined({ az: round(sun.az * DEG), el: round(sun.el * DEG), color: sunTint ? hexOf(sunTint) : undefined })] : [],
     },
     light: {
       sun: sun.lux !== undefined ? round(sun.lux * m * factor, 100) : undefined,
@@ -124,7 +128,6 @@ export function siteLightFrom(entry, { factor = GAME_TO_SITE, skyFactor = SKY_TO
   };
 }
 
-const defined = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
 
 // The site under the game's light: its sky, light and fog laid over with
 // what the record derives, everything the record does not say kept (the
