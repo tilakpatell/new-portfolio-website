@@ -133,6 +133,9 @@ export function createMap({ spec, workers, makeCanvas = defaultCanvas }) {
   // (and turned, heading up): each at its offset in px
   function ground(ctx, centre, scale, radiusPx) {
     const px = SQUARE / scale;
+    // (a 64 m cell is 4 to 8 px here: smoothed, the biomes blend as the ground does)
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     for (const key of visibleLeaves(centre, radiusPx, scale)) {
       const k = kept.get(key);
       if (!k) continue;
@@ -228,6 +231,15 @@ export function createMap({ spec, workers, makeCanvas = defaultCanvas }) {
       if (headingUp) ctx.rotate(ship.yaw);
       ground(ctx, centre, scale, r * 1.42);
       ctx.restore();
+      // north, on the rim (under the markers: a waypoint due north shows over it)
+      const [nx, ny] = project([ship.x, ship.z - (r - 13) * scale], view);
+      ctx.font = FONT;
+      ctx.fillStyle = GLASS;
+      ctx.beginPath();
+      ctx.arc(r + nx, r + ny, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = INK;
+      ctx.fillText('N', r + nx - 4.5, r + ny + 4.5);
       const labels = [];
       for (const m of markers) {
         let [x, y] = project(m.at, view);
@@ -240,15 +252,6 @@ export function createMap({ spec, workers, makeCanvas = defaultCanvas }) {
       }
       for (const [t, x, y] of labels) label(ctx, t, x, y);
       shipAt(ctx, r, r, headingUp ? 0 : ship.yaw);
-      // north, on the rim
-      const [nx, ny] = project([ship.x, ship.z - (r - 13) * scale], view);
-      ctx.font = FONT;
-      ctx.fillStyle = GLASS;
-      ctx.beginPath();
-      ctx.arc(r + nx, r + ny, 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = INK;
-      ctx.fillText('N', r + nx - 4.5, r + ny + 4.5);
       ctx.restore();
       return `Cell ${cellAddress(ship.x, ship.z)}`;
     },

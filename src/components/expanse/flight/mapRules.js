@@ -66,9 +66,11 @@ const toHex = (c) => `#${c.map((v) => Math.round(Math.min(255, Math.max(0, v))).
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 
 // a biome's own colour, from the planet's palette: the first biome is the
-// low ground; a sunken one is water (the low colour toward the sky's); the
+// low ground; one sunk deeper than WATER is water (a few metres down is a
+// flat: Tatooine's salt) (the low colour toward the sky's); the
 // others, by how high they sit, toward the high colour, then the rock, then
 // the accent, so neighbours read apart
+const WATER = -6; // m
 const tints = new WeakMap();
 function tintsOf(spec) {
   let t = tints.get(spec);
@@ -76,10 +78,10 @@ function tintsOf(spec) {
   const p = spec.palette;
   const low = rgb(p.low);
   const toward = [p.high, p.rock, p.accent].map(rgb);
-  const land = spec.biomes.map((b, i) => [b.base ?? 0, i]).filter(([base, i]) => i > 0 && base >= 0).sort((a, b) => a[0] - b[0]);
+  const land = spec.biomes.map((b, i) => [b.base ?? 0, i]).filter(([base, i]) => i > 0 && base >= WATER).sort((a, b) => a[0] - b[0]);
   t = spec.biomes.map((b, i) => {
     if (i === 0) return low;
-    if ((b.base ?? 0) < 0) return mix(mix(low, rgb(p.skyHigh ?? p.accent), 0.55), [24, 48, 96], 0.2);
+    if ((b.base ?? 0) < WATER) return mix(mix(low, rgb(p.skyHigh ?? p.accent), 0.55), [24, 48, 96], 0.2);
     const k = land.findIndex(([, j]) => j === i);
     return mix(low, toward[k % 3], 0.6);
   });
@@ -135,3 +137,11 @@ export function markersOf({ spec, waypoint = null, pilots = [], built = [], occu
   if (waypoint) out.push({ kind: 'waypoint', id: waypoint.id, at: waypoint.at, label: waypoint.name });
   return out;
 }
+
+// the full map's hands: a zoom a step at a time (the wheel, the buttons, a
+// pinch), a pinch read as a step once it spreads or closes by a third, a tap
+// a press that moved under 6 px, and a drag that moves the ground with the finger
+export const zoomStep = (i, dir) => Math.max(0, Math.min(FULL_SCALES.length - 1, i + Math.sign(dir)));
+export const pinchStep = (from, to) => (to > from * 4 / 3 ? 1 : to < from * 3 / 4 ? -1 : 0);
+export const isTap = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]) < 6;
+export const panBy = (centre, [dx, dy], scale) => [centre[0] - dx * scale, centre[1] - dy * scale];

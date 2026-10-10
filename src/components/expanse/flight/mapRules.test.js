@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FULL_SCALES, MAP_KEEP, MINI, MAP_CELL, bearingOf, biomeColour, cellAddress, compassPoint, markersOf, miniScale, poiRows, project, unproject, visibleLeaves } from './mapRules';
+import { FULL_SCALES, FULL_START, MAP_KEEP, isTap, panBy, pinchStep, zoomStep, MINI, MAP_CELL, bearingOf, biomeColour, cellAddress, compassPoint, markersOf, miniScale, poiRows, project, unproject, visibleLeaves } from './mapRules';
 import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
 import { forwardOf } from './flightRules';
 
@@ -90,6 +90,12 @@ describe('biomeColour', () => {
     const c = biomeColour(spec, sea, spec.biomes[sea].base);
     expect(parseInt(c.slice(5, 7), 16)).toBeGreaterThan(parseInt(c.slice(1, 3), 16));
   });
+  it('keeps a flat a few metres down land: Tatooine’s salt is not a sea', () => {
+    const t = planetSpecOf('tatooine');
+    const salt = t.biomes.findIndex((b) => b.id === 'salt');
+    const c = biomeColour(t, salt, t.biomes[salt].base);
+    expect(parseInt(c.slice(5, 7), 16)).toBeLessThan(parseInt(c.slice(1, 3), 16));
+  });
 });
 
 describe('bearings and the POI list', () => {
@@ -133,5 +139,26 @@ describe('markersOf', () => {
     expect(m.filter((k) => k.kind === 'pilot')).toEqual([{ kind: 'pilot', id: 'p1', at: [10, 20], label: 'Rogue 2' }]);
     expect(m.filter((k) => k.kind === 'built').map((k) => [k.at, k.label])).toEqual([[[30, 40], 'turret'], [[1, 2], 'beacon']]);
     expect(m.find((k) => k.kind === 'occurrence')).toMatchObject({ at: [5, 6], label: 'A wreck', icon: 'wreck' });
+  });
+});
+
+describe('the full map’s hands', () => {
+  it('zooms a step at a time: one in and one out of the start, the plan’s two steps', () => {
+    expect(FULL_SCALES[FULL_START]).toBe(16);
+    expect(zoomStep(FULL_START, 1)).toBe(FULL_START + 1);
+    expect(zoomStep(FULL_SCALES.length - 1, 1)).toBe(FULL_SCALES.length - 1);
+    expect(zoomStep(0, -1)).toBe(0);
+  });
+  it('reads a pinch as a step once the fingers spread or close by a third', () => {
+    expect(pinchStep(100, 120)).toBe(0);
+    expect(pinchStep(100, 140)).toBe(1);
+    expect(pinchStep(100, 70)).toBe(-1);
+  });
+  it('tells a tap from a drag by 6 px', () => {
+    expect(isTap([10, 10], [14, 13])).toBe(true);
+    expect(isTap([10, 10], [20, 10])).toBe(false);
+  });
+  it('pans by the drag, the ground following the finger', () => {
+    expect(panBy([1000, -500], [10, -4], 16)).toEqual([840, -436]);
   });
 });
