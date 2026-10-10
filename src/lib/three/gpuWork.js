@@ -142,9 +142,10 @@ const send = (renderer, t) => {
 
 // The pictures a material draws with: its own, its uniforms', and those a
 // patch hands three as the shader's made, kept on it out of sight (a scan,
-// lib/three/core's wear; the look's ground, lib/three/house), which three
-// would otherwise send in the middle of the first draw.
-const PATCHES = ['core', 'house'];
+// lib/three/core's wear; the look's ground, lib/three/house; the wind's
+// noise, universe/landings/canopy), which three would otherwise send in the
+// middle of the first draw.
+const PATCHES = ['core', 'house', 'canopy'];
 export function picturesIn(m, into = []) {
   if (!m) return into;
   for (const v of Object.values(m)) if (v?.isTexture) into.push(v);

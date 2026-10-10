@@ -134,7 +134,7 @@ P0, P1, P2 and P4 start at once (their library tasks share no file); each one’
 
 ## Departures and open assumptions
 
-1. **The jump**: `JumpStateData`’s fields were not read in the survey (the classifier stopped it); P1 reads them and keeps the walker’s 5.4 m/s as `hand` if no speed is there.
+1. **The jump**: `JumpStateData`’s fields were not read in the survey (the classifier stopped it); P1 reads them and keeps the walker’s 5.4 m/s as `hand` if no speed is there. **Lane P1 found (PR #822)**: `JumpHeight` 1.1 m exists and is used; the on-ground stand walk is **3.8 m/s** (the survey’s 5.0 and 7.5 were the animation-controlled state’s pose, not the ground state’s), so §2’s 5.0/7.5 read as 3.8 and its sprint multiple; and Rapier’s autostep never climbs higher than the capsule’s radius, so `playerBody.js` steps the 0.4 m itself.
 2. **Vehicle handling** is not in the `_Handling` layers (2 KB: input scaling and a prefab reference); where the blueprint’s abilities do not give a top speed, `rides.js`’s numbers stand as `hand` and the rulebook says so.
 3. **Material names** are not in the data; the hand column is from the pairs’ effect names and is checked against what a bolt looks like on Hoth’s snow and the hangar’s floor.
 4. **Cloth** is an EA binary and is not reproduced; capes stay the site’s own.

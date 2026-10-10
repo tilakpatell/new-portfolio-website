@@ -21,7 +21,7 @@ import { join } from 'node:path';
 export const tracked = (root, dir = 'public') => String(execFileSync('git', ['-C', root, 'ls-files', dir], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 })).split('\n').filter(Boolean);
 
 // a file as its credit names it: no cut suffix, no extension
-export const stem = (f) => f.replace(/\.(hq|lo|lod1|ultra)\.glb$/, '.glb').replace(/\.[^./]+$/, '');
+export const stem = (f) => f.replace(/\.(hq|lo|lod1|far|ultra)\.glb$/, '.glb').replace(/\.[^./]+$/, '');
 // a smaller copy in lod/ or sm/ is credited as the original one folder up
 const original = (f) => f.replace(/\/(lod|sm)\/([^/]+)$/, '/$2');
 
@@ -49,10 +49,15 @@ export function covers(credit, file) {
 }
 
 // The credits that point at nothing, and the models under public/models/ no credit is for.
+// A file published to the bucket (src/data/galaxyAssets.json) and so out of
+// git is the site's as much as one in public/.
 export function audit(root) {
   const files = tracked(root);
   const all = credits(root);
-  const dead = all.filter((c) => (c.file ? !existsSync(join(root, c.file)) : !files.some((f) => covers(c, f))));
+  const manifest = join(root, 'src/data/galaxyAssets.json');
+  const published = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
+  const there = (file) => existsSync(join(root, file)) || Boolean(published[file.replace(/^public\//, '')]);
+  const dead = all.filter((c) => (c.file ? !there(c.file) : !files.some((f) => covers(c, f))));
   const uncredited = files.filter((f) => f.startsWith('public/models/') && f.endsWith('.glb') && !all.some((c) => covers(c, f)));
   return { dead, uncredited };
 }
