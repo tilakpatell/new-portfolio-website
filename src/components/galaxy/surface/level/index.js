@@ -23,10 +23,8 @@ import { packUrl, wanted } from './levelPack.js';
 import { createLevelScene } from './levelScene.js';
 import { createLevelStream } from './levelStream.js';
 import { createColliders } from './colliders.js';
-import { DECAL_POOL, createDecals } from '../../../../lib/three/decals.js';
 import { createLevelLights, lightScale } from './levelLights.js';
 import { createLevelProbes } from './levelProbes.js';
-import { wantsDetail } from './levelDetail.js';
 
 // A pack file's bytes, from the bucket where it has it, else the site.
 // (No abort signal on the request: assetBase reads any failure as the bucket
@@ -137,18 +135,13 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null, c
   let loader = null;
   let gone = false;
   let last = null;
-  let decals = null;
   let lights = null;
   let probes = null;
-  let decalsAt = null; // (where the pool was last filled: again after 8 m)
   const colliders = walk ? createColliders(walk, tier, { loadBin: fetchBytes }) : null;
   packOf(world)
-    .then(async (pack) => {
-      // (the materials' detail normals, on the tiers that draw them, before the first mesh)
-      const detail = wantsDetail(tier, renderer) ? await partOf(world, 'detail.json', { meshes: {} }) : null;
+    .then((pack) => {
       if (gone) return;
-      const meshOf = new Map(pack.meshes.flatMap((m, i) => (m.glb ?? []).filter(Boolean).map((g) => [g, i])));
-      loader = createLevelLoader({ world, tier, renderer, fetchBytes, sizes: pack.tex, detail, meshOf });
+      loader = createLevelLoader({ world, tier, renderer, fetchBytes, sizes: pack.tex });
       level = createLevelScene({ scene, pack, loadGltf: loader.load, tier });
       // the far list is the whole arena's table; the cells round you bring
       // its collision (the walk world's solids and floors, switched off when
@@ -172,14 +165,6 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null, c
           if (gone || !j.probes?.length) return;
           probes = createLevelProbes({ world, list: j.probes, onProbe });
         });
-      // the map's placed decals, the nearest of them in the tier's pool
-      if (DECAL_POOL[tier] > 0)
-        partOf(world, 'decals.json', { decals: [] }).then((d) => {
-          if (gone || !d.decals?.length) return;
-          decals = createDecals(scene, { tier, loadTexture: (path) => loader.texture(path, d.tex ?? {}) });
-          decals.set(d.decals);
-          if (last) decals.update(last);
-        });
     })
     .catch((e) => {
       if (import.meta.env?.DEV) console.warn('level pack failed', world, e);
@@ -192,18 +177,13 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null, c
       level?.update(position);
       if (camera) lights?.update(camera);
       probes?.update([position[0], camera?.position.y ?? 1.6, position[1]]);
-      if (decals && (!decalsAt || Math.hypot(position[0] - decalsAt[0], position[1] - decalsAt[1]) > 8)) {
-        decalsAt = position;
-        decals.update(position);
-      }
     },
     ready: () => stream?.ready() ?? false,
     progress: () => stream?.progress() ?? 0,
-    stats: () => ({ ...(level?.stats() ?? { tris: 0, calls: 0, instances: 0 }), decals: decals?.count() ?? 0, lights: lights?.lit() ?? 0, probe: probes?.current()?.id ?? null }),
+    stats: () => ({ ...(level?.stats() ?? { tris: 0, calls: 0, instances: 0 }), lights: lights?.lit() ?? 0, probe: probes?.current()?.id ?? null }),
     dispose() {
       gone = true;
       colliders?.dispose();
-      decals?.dispose();
       lights?.dispose();
       stream?.dispose();
       level?.dispose();

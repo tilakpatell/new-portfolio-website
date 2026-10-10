@@ -1224,15 +1224,9 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/decals.json": {
-    "hash": "05828729371d",
-    "bytes": 102,
+    "hash": "879c102ddc8d",
+    "bytes": 146,
     "from": "models/galaxy/bf2017/levels/endor/decals.json",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/detail.json": {
-    "hash": "b176d0f30419",
-    "bytes": 8820,
-    "from": "models/galaxy/bf2017/levels/endor/detail.json",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/effects.json": {
@@ -13283,150 +13277,6 @@
     "from": "models/galaxy/bf2017/levels/endor/terrain/near.png",
     "tier": "pack"
   },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_atatdetail_01_ns.256.ktx2": {
-    "hash": "2a27d75e6533",
-    "bytes": 72254,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_atatdetail_01_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_atatdetail_01_ns.512.ktx2": {
-    "hash": "5c2998c950a9",
-    "bytes": 299692,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_atatdetail_01_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_defaultnormal_nw.16.ktx2": {
-    "hash": "1d0e82121d06",
-    "bytes": 407,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_defaultnormal_nw.16.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_hangar_walldetail_02_ns.1024.ktx2": {
-    "hash": "9ec11cf00d61",
-    "bytes": 817059,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_hangar_walldetail_02_ns.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_hangar_walldetail_02_ns.256.ktx2": {
-    "hash": "632d41d24095",
-    "bytes": 31990,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_hangar_walldetail_02_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_hangar_walldetail_02_ns.512.ktx2": {
-    "hash": "ebc99e0ffede",
-    "bytes": 177952,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_hangar_walldetail_02_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_01_ns.1024.ktx2": {
-    "hash": "773fffb190d5",
-    "bytes": 1043319,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_01_ns.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_01_ns.256.ktx2": {
-    "hash": "f141bb63174a",
-    "bytes": 57595,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_01_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_01_ns.512.ktx2": {
-    "hash": "635d7ff2757a",
-    "bytes": 251173,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_01_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_02_ns.1024.ktx2": {
-    "hash": "f5d585d1cef4",
-    "bytes": 587235,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_02_ns.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_02_ns.256.ktx2": {
-    "hash": "949e55a38798",
-    "bytes": 34002,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_02_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_02_ns.512.ktx2": {
-    "hash": "979126cddd21",
-    "bytes": 136055,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_02_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_03_ns.1024.ktx2": {
-    "hash": "a4c4d24da0f7",
-    "bytes": 773316,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_03_ns.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_03_ns.256.ktx2": {
-    "hash": "5c92427811aa",
-    "bytes": 48261,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_03_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_03_ns.512.ktx2": {
-    "hash": "f87923bf11d5",
-    "bytes": 190267,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_03_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_06_ns.1024.ktx2": {
-    "hash": "96fa13d2dd48",
-    "bytes": 785644,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_06_ns.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_06_ns.256.ktx2": {
-    "hash": "84af6275bf0d",
-    "bytes": 24048,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_06_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_06_ns.512.ktx2": {
-    "hash": "93e1e66594e4",
-    "bytes": 156555,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_metaldetail_06_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_objs_jakku_metal_01_nm.1024.ktx2": {
-    "hash": "89b71600c27f",
-    "bytes": 1310328,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_objs_jakku_metal_01_nm.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_objs_jakku_metal_01_nm.256.ktx2": {
-    "hash": "1f6f56f2ce96",
-    "bytes": 82299,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_objs_jakku_metal_01_nm.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_objs_jakku_metal_01_nm.512.ktx2": {
-    "hash": "108e0cd6eb2f",
-    "bytes": 326452,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_objs_jakku_metal_01_nm.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_trainstation_01_door_01_ns.1024.ktx2": {
-    "hash": "ba61e45597d9",
-    "bytes": 990119,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_trainstation_01_door_01_ns.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_trainstation_01_door_01_ns.256.ktx2": {
-    "hash": "1e5f86ed8e59",
-    "bytes": 33910,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_trainstation_01_door_01_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/endor/tex/detail/t_trainstation_01_door_01_ns.512.ktx2": {
-    "hash": "6c20d477bfb3",
-    "bytes": 190755,
-    "from": "models/galaxy/bf2017/levels/endor/tex/detail/t_trainstation_01_door_01_ns.512.ktx2",
-    "tier": "pack"
-  },
   "models/galaxy/bf2017/levels/endor/tex/rsdceiling_01_c.256.ktx2": {
     "hash": "4cc39c04eacd",
     "bytes": 75127,
@@ -18918,15 +18768,9 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/hoth/base/decals.json": {
-    "hash": "ad4888c996f1",
-    "bytes": 63,
+    "hash": "879c102ddc8d",
+    "bytes": 146,
     "from": "models/galaxy/bf2017/levels/hoth/base/decals.json",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/detail.json": {
-    "hash": "f07db60cfd30",
-    "bytes": 4342,
-    "from": "models/galaxy/bf2017/levels/hoth/base/detail.json",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/hoth/base/effects.json": {
@@ -32489,72 +32333,6 @@
     "from": "models/galaxy/bf2017/levels/hoth/base/shadow/far.png",
     "tier": "pack"
   },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_atatdetail_01_ns.256.ktx2": {
-    "hash": "2a27d75e6533",
-    "bytes": 72254,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_atatdetail_01_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_atatdetail_01_ns.512.ktx2": {
-    "hash": "5c2998c950a9",
-    "bytes": 299692,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_atatdetail_01_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_01_ns.1024.ktx2": {
-    "hash": "1883b17ec56e",
-    "bytes": 1052648,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_01_ns.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_01_ns.256.ktx2": {
-    "hash": "52f52e25f4f9",
-    "bytes": 57368,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_01_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_01_ns.512.ktx2": {
-    "hash": "cc6f3cad7677",
-    "bytes": 252156,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_01_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_06_ns.1024.ktx2": {
-    "hash": "96fa13d2dd48",
-    "bytes": 785644,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_06_ns.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_06_ns.256.ktx2": {
-    "hash": "84af6275bf0d",
-    "bytes": 24048,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_06_ns.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_06_ns.512.ktx2": {
-    "hash": "93e1e66594e4",
-    "bytes": 156555,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_metaldetail_06_ns.512.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_objs_jakku_metal_01_nm.1024.ktx2": {
-    "hash": "89b71600c27f",
-    "bytes": 1310328,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_objs_jakku_metal_01_nm.1024.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_objs_jakku_metal_01_nm.256.ktx2": {
-    "hash": "1f6f56f2ce96",
-    "bytes": 82299,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_objs_jakku_metal_01_nm.256.ktx2",
-    "tier": "pack"
-  },
-  "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_objs_jakku_metal_01_nm.512.ktx2": {
-    "hash": "108e0cd6eb2f",
-    "bytes": 326452,
-    "from": "models/galaxy/bf2017/levels/hoth/base/tex/detail/t_objs_jakku_metal_01_nm.512.ktx2",
-    "tier": "pack"
-  },
   "models/galaxy/bf2017/levels/hoth/base/tex/icechunks01_n__normal.128.ktx2": {
     "hash": "7834f7022845",
     "bytes": 20047,
@@ -36888,8 +36666,8 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/hoth/decals.json": {
-    "hash": "ad4888c996f1",
-    "bytes": 63,
+    "hash": "879c102ddc8d",
+    "bytes": 146,
     "from": "models/galaxy/bf2017/levels/hoth/decals.json",
     "tier": "pack"
   },

@@ -23,7 +23,7 @@ Written beside level.json by `scripts/bf2017-level-parts.mjs` (lane E0); a part 
 | lights.json | 691 | 88.8 KB | lane R's placed.js |
 | actors.json | 10 | 1.0 KB | the scene's life rows |
 | vehicles.json | 27 | 1.7 KB | the scene's rides and things |
-| decals.json and tex/decals/ | 0 | 0.1 KB | src/lib/three/decals.js |
+| decals.json | 0 (lane Q4 fills it) | 0.1 KB | lane Q4's src/lib/three/decals/ |
 | effects.json | 396 | 56.3 KB | fidelity X (nothing until it merges) |
 | tracks.json | 0 | 1.2 KB | src/lib/three/animTracks.js |
 | probes.json and probes/ | 6 | 579.2 KB | levelProbes.js, lane R's grid |
