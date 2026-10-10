@@ -8,6 +8,7 @@
 //   levelGround(ground) → Promise<ground>: its `image` layers' heightmaps
 //     fetched and decoded (before the ground's grid is made)
 //   createLevel({ scene, site, tier, renderer, walk }) → null | { update(position), ready(), stats(), dispose() }
+//   packOf(world) → Promise<level.json> (fetched once)
 //     (walk: the walk world, { solids, floors }, the pack's collision goes into)
 //
 // On the node renderer (WebGPU, or the node renderer on WebGL 2) a pack with
@@ -39,7 +40,7 @@ const bytesOf = (world) => (path) =>
   )(packUrl(world, path));
 
 const packs = new Map(); // world → Promise<level.json>
-const packOf = (world) => {
+export const packOf = (world) => {
   if (!packs.has(world)) {
     packs.set(
       world,

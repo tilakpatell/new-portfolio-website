@@ -6,13 +6,18 @@
 // surface/missions/starfighter.js's METRES) and set so the level's origin
 // is the battle's middle, as the battle's ships and objectives are.
 //
-//   drawSpaceLevel(scene, { pack, origin, packOrigin, tier, renderer }) →
-//     (laid) → { update(cameraPosition), group, dispose() }
+//   drawSpaceLevel(scene, { pack, origin, packOrigin, tier, renderer, area, ships }) →
+//     (laid, { unhide }) → { update(cameraPosition), group, area, dispose() }
+//   (`ships`: the level's, levelOf's; one the pack should draw whose hull
+//   its tier leaves out is told `unhide(id)`, for the battle to draw it)
 //   (`origin`: the level's point at the battle's middle, the stages file's;
-//   `packOrigin`: the pack's own, its builder's --spot, with no ground its y 0)
+//   `packOrigin`: the pack's own, its builder's --spot, with no ground its y 0;
+//   `area`: a level fought in an area of its own, levelArea.js's, the stages
+//   file's { radius, sea } in metres with its sky and fog)
 
 import * as THREE from 'three';
-import { createLevel } from './surface/level';
+import { createLevel, packOf } from './surface/level';
+import { createLevelArea } from './levelArea';
 import { METRES } from './surface/missions/starfighter';
 
 const _v = new THREE.Vector3();
@@ -31,8 +36,8 @@ const greyed = (root) =>
     }
   });
 
-export function drawSpaceLevel(scene, { pack, origin, packOrigin, tier, renderer = null }) {
-  return (laid) => {
+export function drawSpaceLevel(scene, { pack, origin, packOrigin, tier, renderer = null, area = null, ships = [] }) {
+  return (laid, { unhide = () => {} } = {}) => {
     const group = new THREE.Group();
     group.name = `level-${pack}`;
     group.scale.setScalar(1 / METRES);
@@ -40,11 +45,23 @@ export function drawSpaceLevel(scene, { pack, origin, packOrigin, tier, renderer
     scene.add(group);
     group.updateMatrixWorld(true);
     const level = createLevel({ scene: group, site: { level: pack }, tier, renderer });
+    let gone = false;
+    packOf(pack)
+      .then((p) => {
+        if (gone) return;
+        const out = new Set((p.cull?.[tier] ?? p.cull?.high)?.dropped ?? []);
+        const left = new Set(p.meshes.filter((m, i) => out.has(i) || !m.glb.some(Boolean)).map((m) => m.name.split('/').pop()));
+        for (const s of ships) if (s.pack && left.has(`${s.mesh}_mesh.glb`)) unhide(s.id);
+      })
+      .catch(() => {});
+    // (its own sky, sea and storm round it, where it has an area of its own)
+    const room = area ? createLevelArea(scene, { at: laid.at, radius: area.radius / METRES, sea: laid.frame([0, area.sea, 0])[1], sky: area.sky, fog: { ...area.fog, density: area.fog.density * METRES } }) : null;
     let looked = -Infinity;
     return {
       group,
       // (where the camera is in the pack's own metres: its LODs and cells by that)
       update(at) {
+        room?.update({ position: at }, performance.now() / 1000);
         if (!at || !level) return;
         _v.set(at.x, at.y, at.z);
         group.worldToLocal(_v);
@@ -56,8 +73,11 @@ export function drawSpaceLevel(scene, { pack, origin, packOrigin, tier, renderer
           greyed(group);
         }
       },
+      area: room,
       stats: () => level?.stats() ?? null,
       dispose() {
+        gone = true;
+        room?.dispose();
         level?.dispose();
         scene.remove(group);
       },
