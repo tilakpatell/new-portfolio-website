@@ -12,9 +12,19 @@
 // environment under ClusteredLighting (A2), the programs before and after a
 // light moves (no recompile), the frame time.
 //
-// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only }
+// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only, hoth }
+//
+// `hoth` (lane S's calibration shot): the same ground and ring under Hoth
+// Sunny's record (src/lib/three/light/fixtures/hoth.ve.json), the ground
+// snow, the ring's coloured lamps off, so its mean luminance stands beside
+// lane G's calibrated classic Hoth (docs/superpowers/evidence/bf2017-light/).
 
 import * as THREE from 'three';
+import hothVe from '../../lib/three/light/fixtures/hoth.ve.json';
+
+// the snow's albedo under --hoth (fresh snow reflects 0.8 to 0.9; Hoth's
+// ice field, worn, a little under)
+const SNOW = 0xe4eaf0;
 
 const RING = 200; // point lights round the ring
 const SPOTS = 8;
@@ -75,6 +85,8 @@ export default {
   mb: 0,
   create(rt) {
     const opts = { tier: 'ultra', env: true, post: true, sky: true, placed: true, ...(rt.fixture ?? {}) };
+    if (opts.hoth) opts.placed = false;
+    const entry = opts.hoth ? hothVe.sunny : ENTRY;
     const renderer = rt.gfx.renderer;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0b0d12);
@@ -92,7 +104,7 @@ export default {
       made.push(g);
       return g;
     };
-    const ground = new THREE.Mesh(geo(new THREE.PlaneGeometry(200, 200)), mat({ color: 0x9aa0a8, roughness: 0.55, metalness: 0.05 }));
+    const ground = new THREE.Mesh(geo(new THREE.PlaneGeometry(200, 200)), mat({ color: opts.hoth ? SNOW : 0x9aa0a8, roughness: opts.hoth ? 0.8 : 0.55, metalness: 0.05 }));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
@@ -151,7 +163,7 @@ export default {
 
     const ready = (async () => {
       const { applyGameLight } = await import('../../lib/three/light/apply.js');
-      light = await applyGameLight(scene, renderer, ENTRY, { tier: opts.tier, camera, lights: opts.placed ? source : null, clustered: opts.clustered, sky: opts.sky, post: opts.post, lut: gradeLut() });
+      light = await applyGameLight(scene, renderer, entry, { tier: opts.tier, camera, lights: opts.placed ? source : null, clustered: opts.clustered, sky: opts.sky, post: opts.post, lut: gradeLut() });
       probe.light = { clustered: light.parts.placed?.clustered ?? null };
       if (!opts.sky) {
         const [{ PMREMGenerator }, { RoomEnvironment }] = await Promise.all([import('three/webgpu'), import('three/addons/environments/RoomEnvironment.js')]);

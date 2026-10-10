@@ -23,6 +23,8 @@ describe('applyGameLight', () => {
     expect(renderer.lighting.maxLights).toBe(1024);
     expect(light.passes.map((p) => p.kind)).toEqual(['render', 'ssgi', 'ao', 'ssr', 'bloom', 'godrays', 'lensflare', 'traa', 'output']);
     expect(light.passes.find((p) => p.kind === 'godrays').light).toBe(light.parts.sun.rays);
+    // the bloom's threshold from the record's ColorGradingMaxHdrValue (calibrate.js)
+    expect(light.passes.find((p) => p.kind === 'bloom').threshold).toBe(1);
     light.update(1 / 60, camera);
     // the placed lights in the game's candela times the weather's factor
     expect(light.parts.placed.pools.points[0].intensity).toBeCloseTo(5000 * readEntry(hoth.sunny).gameToSite);

@@ -5,6 +5,13 @@
 //
 //   node scripts/light-fixture.mjs [--tier ultra] [--post on|off] [--sky on|off]
 //     [--grid] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
+//     [--hoth]
+//
+// Lane S (docs/superpowers/plans/2026-10-10-bf-fidelity-laneS-shadows.md):
+// --hoth draws the fixture under Hoth Sunny's record on snow at the house's
+// exposure (1.4, the classic stack's), its lamps off, and writes the frame's
+// mean linear luminance (`meanLum`, as lane G's README measures it) beside
+// the shot; lane S's runs write to evidence/galaxy-engine/S/.
 //
 // For each leg (?gpu=webgpu, and ?gpu=webgl: the node renderer on a WebGL 2
 // context) it opens scripts/light-fixture/index.html on a Vite dev server
@@ -37,7 +44,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'docs/superpowers/evidence/galaxy-engine/R');
+const argvEarly = process.argv.slice(2);
+const laneS = ['--hoth', '--shadows', '--clouds'].some((f) => argvEarly.includes(f));
+const OUT = join(ROOT, `docs/superpowers/evidence/galaxy-engine/${laneS ? 'S' : 'R'}`);
 const argv = process.argv.slice(2);
 const arg = (k, d) => {
   const i = argv.indexOf(`--${k}`);
@@ -45,14 +54,17 @@ const arg = (k, d) => {
 };
 const tier = arg('tier', 'ultra');
 const post = arg('post', 'off') === 'on';
-const label = arg('label', post ? `post-${tier}` : `lit-${tier}`);
+const label = arg('label', `${argv.includes('--hoth') ? 'hoth-' : ''}${post ? `post-${tier}` : `lit-${tier}`}`);
 const [W, H] = arg('size', '1600x900').split('x').map(Number);
 const ms = Number(arg('ms', 5000));
 const legs = arg('legs', 'webgpu,webgl').split(',');
 const sky = arg('sky', 'on') === 'on';
 const grid = argv.includes('--grid');
 const only = arg('only', null)?.split(',');
-const fixture = { tier, post, sky, env: true, only };
+const hoth = argv.includes('--hoth');
+// the house tone mapper's exposure (src/lib/three/house.js LOOK.exposure): the classic stack's
+const HOUSE_EXPOSURE = 1.4;
+const fixture = { tier, post, sky, env: true, only, ...(hoth ? { hoth: true, exposure: HOUSE_EXPOSURE } : {}) };
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
@@ -79,6 +91,15 @@ const base = `http://127.0.0.1:${server.httpServer.address().port}`;
 const browser = await chromium.launch({ executablePath: exe, args });
 
 const raw = async (png) => sharp(png).raw().toBuffer();
+// the mean linear luminance of a shot (sRGB decoded, Rec. 709 weights)
+const lin = (v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+const meanLum = async (png) => {
+  const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const LUT = Array.from({ length: 256 }, (_, i) => lin(i / 255));
+  let s = 0;
+  for (let i = 0; i < data.length; i += info.channels) s += 0.2126 * LUT[data[i]] + 0.7152 * LUT[data[i + 1]] + 0.0722 * LUT[data[i + 2]];
+  return s / (data.length / info.channels);
+};
 const meanDiff = (a, b) => {
   let s = 0;
   for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
@@ -109,6 +130,7 @@ for (const leg of legs) {
     const png = await shot();
     writeFileSync(join(OUT, `${label}-${leg}.png`), png);
     row.shot = `${label}-${leg}.png`;
+    row.meanLum = Number((await meanLum(png)).toFixed(4));
     // A2: with and without the environment
     await page.evaluate(() => (window.__lit.probe.setEnv(false), window.__lit.draw(8)));
     const without = await raw(await shot());
@@ -149,11 +171,11 @@ await browser.close();
 await server.close();
 
 writeFileSync(join(OUT, `${label}.json`), `${JSON.stringify({ size: `${W}x${H}`, adapter: swift ? 'swiftshader' : 'system', rows }, null, 2)}\n`);
-console.log(`| leg | backend | passes | clustered | env diff | programs before → after | mean ms | median ms | p95 ms | grid bake ms | mean with grid |`);
-console.log(`|---|---|---|---|---|---|---|---|---|---|---|`);
+console.log(`| leg | backend | passes | clustered | mean lum | env diff | programs before → after | mean ms | median ms | p95 ms | grid bake ms | mean with grid |`);
+console.log(`|---|---|---|---|---|---|---|---|---|---|---|---|`);
 for (const r of rows) {
   if (r.error) console.log(`| ${r.leg} | failed: ${r.error} |`);
-  else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.mean} | ${r.median} | ${r.p95} | ${r.gridBakeMs ?? '–'} | ${r.gridMean ?? '–'} |`);
+  else console.log(`| ${r.leg} | ${r.backend} | ${(r.passes ?? []).join(' ') || 'none'} | ${r.clustered} | ${r.meanLum} | ${r.envDiff} | ${r.programsBefore} → ${r.programsAfter} | ${r.mean} | ${r.median} | ${r.p95} | ${r.gridBakeMs ?? '–'} | ${r.gridMean ?? '–'} |`);
   if (r.errors) console.log(`  errors: ${r.errors.join(' / ')}`);
 }
 process.exit(rows.some((r) => r.error && r.leg !== 'webgpu') ? 1 : 0);

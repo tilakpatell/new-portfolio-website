@@ -63,6 +63,8 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
   }
 
   const passes = post ? passesFor(tier, entry, backend, { scene, camera, light: sun.rays, lut }) : [];
+  // (the bloom's threshold from the record's grade: calibrate.js)
+  for (const p of passes) if (p.kind === 'bloom') p.threshold = params.grade.bloomThreshold;
 
   const show = (p) => {
     sun.set(p);
