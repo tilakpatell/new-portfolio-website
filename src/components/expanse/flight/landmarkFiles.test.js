@@ -31,7 +31,7 @@ describe('landmarkFiles', () => {
 
   it('leaves the kit clutter out on low', () => {
     const low = landmarkFiles(planetSpecOf('endor'), { kits, level: 'low' });
-    expect(low.some((u) => u.endsWith('tallthick.glb'))).toBe(false);
-    expect(landmarkFiles(planetSpecOf('endor'), { kits }).some((u) => u.endsWith('tallthick.glb'))).toBe(true);
+    expect(low.some((u) => u.endsWith('giantpine.glb'))).toBe(false);
+    expect(landmarkFiles(planetSpecOf('endor'), { kits }).some((u) => u.endsWith('giantpine.glb'))).toBe(true);
   });
 });

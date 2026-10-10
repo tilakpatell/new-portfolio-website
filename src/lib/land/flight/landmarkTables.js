@@ -156,7 +156,7 @@ export const LANDMARKS = {
     hobbiton: [...ring('tathouse', 7, 70, 1, 0.2), ...ring(TREE, 8, 120, 1.6), ...ring(k('Flower_3_Group', 'naturemega'), 6, 45, 2), one(k('CommonTree_5', 'naturemega'), [0, 0], 0, 2.4)],
     bree: town('nevarrohouse', 8, 55, PINE, 1),
     weathertop: [one('ruins'), one('stonehead', [14, -8], 1), one('fire', [-6, 4])],
-    rivendell: [one('theed', [0, 0], 0, 1), ...ring('theed', 4, 70, 1, 0.5), ...ring(k('Birch_3', 'naturemega'), 8, 110, 1.6), one('waterfall', [0, -100])],
+    rivendell: [one('theed', [0, 0], 0, 1), ...ring('theed', 4, 70, 1, 0.5), ...ring(k('Pine_4', 'naturemega'), 8, 110, 1.6), one('waterfall', [0, -100])],
     moria: [one('ruins'), one('statue', [-24, -10], 0, 2), one('statue', [24, -10], 0, 2), one('stonehead', [0, 20], Math.PI)],
     'amon-hen': [one('ruins'), one('statue', [-14, 0], 0, 2), one('statue', [14, 0], 0, 2)],
     'barad-dur': [one('fortress', [0, 0], 0, 2), ...ring('lavarock', 6, 70, 2), ...ring('smoke', 3, 40)],
@@ -206,16 +206,17 @@ export const CLUTTER_KIT = {
   lava: { rock: { ...k('Rock_Large_3'), size: 1.5 } },
   desert: { rock: { ...k('Rock_Big_1', 'naturemega'), size: 1 } },
   ocean: { rock: { ...k('Rock_Big_2', 'naturemega'), size: 1 } },
-  forest: { rock: { ...k('Rock_Big_2', 'naturemega'), size: 1 }, trunk: { ...k('TallThick_5', 'naturemega'), size: 4.2 } },
+  forest: { rock: { ...k('Rock_Big_2', 'naturemega'), size: 1 }, trunk: { ...k('GiantPine_2', 'naturemega'), size: 4.6 } },
   temperate: { rock: { ...k('Rock_Big_1', 'naturemega'), size: 1 }, trunk: { ...k('CommonTree_3', 'naturemega'), size: 5 } },
 };
 
-// a world's own trees where its fiction has them
+// a world's own trees where its fiction has them (green ones only: the kit's
+// tall thick trees are blue, its birches autumn, its twisted trees red; the
+// test holds every tree here to green leaves)
 export const CLUTTER_KIT_OF = {
-  yavin: { trunk: { ...k('TallThick_2', 'naturemega'), size: 5.3 } },
-  kashyyyk: { trunk: { ...k('TallThick_4', 'naturemega'), size: 5.3 } },
-  dagobah: { spire: { ...k('TwistedTree_1', 'naturemega'), size: 1.6 }, debris: { ...k('DeadTree_2', 'naturemega'), size: 0.8 } },
-  'middle-earth': { trunk: { ...k('Birch_1', 'naturemega'), size: 4 } },
+  yavin: { trunk: { ...k('GiantPine_4', 'naturemega'), size: 4.8 } },
+  kashyyyk: { trunk: { ...k('GiantPine_5', 'naturemega'), size: 5 } },
+  dagobah: { spire: { ...k('DeadTree_5', 'naturemega'), size: 1.6 } },
 };
 
 export function clutterKitOf(spec) {

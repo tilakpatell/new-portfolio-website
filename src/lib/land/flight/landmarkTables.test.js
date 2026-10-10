@@ -45,6 +45,15 @@ describe('the landmark tables', () => {
     for (const k of named) expect(kitHas(k), `${k.kit}/${k.name}`).toBe(true);
   });
 
+  it('dresses the ground only in trees with green leaves', () => {
+    for (const table of [...Object.values(CLUTTER_KIT), ...Object.values(CLUTTER_KIT_OF)])
+      for (const { kit, name } of Object.values(table)) {
+        const tones = manifest(kit).models[name].tones;
+        // (a leafless tree, a rock: no tones, nothing to be green)
+        for (const [r, g, b] of tones ?? []) expect(g > r && g > b, `${name}: ${tones}`).toBe(true);
+      }
+  });
+
   it('maps only the ground’s clutter kinds, each to a size', () => {
     for (const table of [...Object.values(CLUTTER_KIT), ...Object.values(CLUTTER_KIT_OF)])
       for (const [kind, k] of Object.entries(table)) {
@@ -54,8 +63,8 @@ describe('the landmark tables', () => {
   });
 
   it('gives a planet its own trees over its type’s', () => {
-    expect(clutterKitOf({ id: 'yavin', type: 'forest' }).trunk.name).toBe('TallThick_2');
-    expect(clutterKitOf({ id: 'e:1,0:0:0', type: 'forest' }).trunk.name).toBe('TallThick_5');
+    expect(clutterKitOf({ id: 'yavin', type: 'forest' }).trunk.name).toBe('GiantPine_4');
+    expect(clutterKitOf({ id: 'e:1,0:0:0', type: 'forest' }).trunk.name).toBe('GiantPine_2');
     expect(clutterKitOf({ id: 'x', type: 'gas' })).toEqual({});
     expect(clutterKitOf(null)).toEqual({});
   });
