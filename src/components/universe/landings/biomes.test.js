@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { LANDINGS } from './landings';
 import { STYLES } from './ground';
 import { vec } from '../foot';
-import { biomeAt, classify, fromLatLon, latLonOf, readableMap, towardLand, uvOf } from './biomes';
+import { biomeAt, classify, fromLatLon, landOn, latLonOf, readableMap, towardLand, uvOf, viewOf } from './biomes';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -127,6 +127,42 @@ describe('a landing’s biome, from the colour of the map under it', () => {
   });
 });
 
+describe('the leaves and the wind where you come down', () => {
+  const me = LANDINGS.middleearth;
+  const at = (id, hex, where = null) => biomeAt(LANDINGS[id], rgb(hex), where);
+  const forest = me.biomes.find((b) => b.id === 'forest' && !b.near);
+  const lorien = me.biomes.find((b) => b.id === 'forest' && b.near);
+
+  it('are the Shire’s in the Shire and out of the sea, the wood’s own under the eaves, and Lothlórien’s gold there', () => {
+    expect(me.leaves).toBeTruthy();
+    expect(at('middleearth', '#5a8a3a').leaves).toBe(me.leaves);
+    expect(at('middleearth', '#2a4a8a').leaves).toBe(me.leaves);
+    expect(at('middleearth', '#23331c').leaves).toBe(forest.leaves);
+    const gold = at('middleearth', '#5a8a3a', [36.9, 3.4]);
+    expect(gold.id).toBe('forest');
+    expect(gold.leaves).toBe(lorien.leaves);
+    expect(lorien.leaves).not.toBe(forest.leaves);
+  });
+
+  it('are none where the place has a scatter of its own and names none: Mordor, Harad, the mountains, the ice', () => {
+    expect(at('middleearth', '#3a3030').leaves).toBeNull();
+    expect(at('middleearth', '#c8a86a').leaves).toBeNull();
+    const peaks = at('middleearth', '#9a9a9a');
+    expect(peaks.leaves).toBeNull();
+    expect(peaks.wind.strength).toBe(0.6);
+    // (the rest's wind the Shire's)
+    expect(at('middleearth', '#3a3030').wind).toBe(me.wind);
+    expect(at('travel', '#eef2f6').leaves).toBeNull();
+    expect(at('travel', '#5a7a3a').leaves).toBe(LANDINGS.travel.leaves);
+  });
+
+  it('are a landing’s own where it has no biomes', () => {
+    expect(at('marvel', '#ffffff').leaves).toBe(LANDINGS.marvel.leaves);
+    expect(at('marvel', '#ffffff').wind).toBe(LANDINGS.marvel.wind);
+    expect(at('office', '#ffffff').leaves).toBeNull();
+  });
+});
+
 describe('a spot over the sea moves on to land', () => {
   // a world that's sea west of u 0.5 and land east of it; [u, 0, 0] the sampler hands back
   const half = ([u]) => [u, 0, 0];
@@ -178,6 +214,75 @@ describe('a spot over the sea moves on to land', () => {
     const own = LANDINGS.caribbean;
     const off = fromLatLon(19.99, 8.63);
     expect(towardLand(off, () => rgb('#0a5089'), (c, p) => biomeAt(own, c, latLonOf(p)).sea)).toEqual(off);
+  });
+});
+
+describe('the landing as it is on its biome', () => {
+  it('is the landing with the biome’s fields, as begin merged them, and which biome it is', () => {
+    const me = LANDINGS.middleearth;
+    const mordor = biomeAt(me, rgb('#3a3030'));
+    const v = viewOf(me, mordor);
+    // (the old inline merge, footScene.js's begin)
+    const old = { ...me, ...(({ title, sub, ground, sky, things, scatter, models }) => ({ title, sub, ground, sky, things, scatter, models }))(mordor) };
+    for (const k of ['title', 'sub', 'ground', 'sky', 'things', 'scatter', 'models']) expect(v[k], k).toBe(old[k]);
+    expect(v.biome).toBe('mordor');
+    expect(v.biomes).toBe(me.biomes);
+    expect(v.title).toBe('Mordor');
+    // (the Shire, the fallback: the landing's own fields)
+    const shire = viewOf(me, biomeAt(me, rgb('#5a8a3a')));
+    expect(shire.biome).toBe('shire');
+    for (const k of ['title', 'ground', 'sky', 'things', 'scatter', 'models']) expect(shire[k], k).toBe(me[k]);
+  });
+
+  it('carries the biome’s leaves and wind on with the rest', () => {
+    const me = LANDINGS.middleearth;
+    const leaves = { n: 40 };
+    const wind = { strength: 0.5 };
+    const v = viewOf(me, { ...biomeAt(me, rgb('#3a3030')), leaves, wind });
+    expect(v.leaves).toBe(leaves);
+    expect(v.wind).toBe(wind);
+    expect(v.biome).toBe('mordor');
+  });
+
+  it('is the landing itself with no biome', () => {
+    const me = LANDINGS.middleearth;
+    expect(viewOf(me, null)).toBe(me);
+    expect(viewOf(null, biomeAt(me, rgb('#3a3030')))).toBe(null);
+  });
+});
+
+describe('where a landing comes down, and on what', () => {
+  // Middle-earth, sea west of u 0.5 and the Shire's green east of it
+  const me = LANDINGS.middleearth;
+  const look = ([u]) => rgb(u < 0.5 ? '#2a4a8a' : '#5a8a3a');
+  const onEquator = (u) => fromLatLon(0, u * 360 - 180);
+
+  it('walks from the sea on to land, and reads the biome there', () => {
+    const n = onEquator(0.49);
+    const down = landOn(me, n, look);
+    expect(uvOf(down.n)[0]).toBeGreaterThanOrEqual(0.5);
+    expect(down.biome).toMatchObject({ id: 'shire', sea: false, title: me.title });
+    expect(down.biome.at).toEqual(latLonOf(down.n));
+  });
+
+  it("stays over the sea where it mayn't walk (beside a friend, or put there)", () => {
+    const n = onEquator(0.49);
+    const down = landOn(me, n, look, { walk: false });
+    expect(down.n).toBe(n);
+    expect(down.biome.id).toBe('sea');
+  });
+
+  it('stays where it is on land, and on a landing with no sea', () => {
+    const n = onEquator(0.7);
+    expect(landOn(me, n, look)).toMatchObject({ n, biome: { id: 'shire' } });
+    const office = LANDINGS.office;
+    expect(landOn(office, onEquator(0.2), look)).toMatchObject({ biome: { id: 'default' } });
+  });
+
+  it('reads no biome where the map can’t be read', () => {
+    const n = onEquator(0.7);
+    expect(landOn(me, n, () => null)).toEqual({ n, biome: null });
+    expect(landOn(me, n, null)).toEqual({ n, biome: null });
   });
 });
 

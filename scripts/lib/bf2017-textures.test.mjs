@@ -61,3 +61,4 @@ describe('the 2017 drop’s textures', () => {
     },
   );
 });
+

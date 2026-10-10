@@ -6,9 +6,11 @@
 // sweeps, inside the clip's contact window. Wiring beside activity.js,
 // kept apart so that file doesn't grow.
 //
-//   duelFor(spec, seed) → its mind (createDuellist), from the spawn's
+//   duelFor(spec, seed, hero?) → its mind (createDuellist), from the spawn's
 //     hostile: reach, parry (the share of your strokes it blocks, as ever),
-//     riposte (the share of those it parries), the blade's stance
+//     riposte (the share of those it parries), the blade's stance; hero (its
+//     crew row, by the spawn's kind): on the 2017 game's rig, the game's
+//     strikes at the game's cadence (gameStance.js's stanceFor)
 //   asTarget() → you as their blades see you ({ holder, fig, you: true },
 //     what blaster.js's capsuleOf and saber.js's lock read); .at(st) moves it
 //   engaged(t, dist) → whether it fences its mark now (within ENGAGE once it
@@ -38,7 +40,9 @@
 //     duellist's while either strokes, a pair at most every CLASH_EVERY
 
 import { createDuellist, duelStep, guarding, onStagger, swung } from '../../../lib/combat/duel';
-import { blockOutcome, guardHit, stanceOf } from './combatRules';
+import { blockOutcome, guardHit } from './combatRules';
+import { CREW } from './crewList';
+import { stanceFor } from './gameStance';
 import { shoreStep, turnToward } from './walker';
 
 export const ENGAGE = 10; // m: within this of the mark it has, it fences
@@ -46,10 +50,12 @@ export const LEAVE = 14; // m: past this it hunts you as the others do (hostiles
 const CLASH_EVERY = 0.3; // s
 const TURN = 6; // rad/s it squares up to you between strokes
 
-export function duelFor(spec, seed = 1) {
+export function duelFor(spec, seed = 1, hero = CREW[spec.kind] ?? null) {
   const h = spec.hostile;
   const stance = h.blade?.stance ?? 'single';
-  return createDuellist({ reach: h.reach ?? 2.4, guard: h.parry ?? 0.6, parry: h.riposte ?? 0.35, stance, strokes: stanceOf(stance).strokes.map((k) => k.clip), seed });
+  // (a hero on the 2017 game's rig fences with the game's strikes, at their cadence: stanceFromTable.js)
+  const st = stanceFor(stance, hero);
+  return createDuellist({ reach: h.reach ?? 2.4, guard: h.parry ?? 0.6, parry: h.riposte ?? 0.35, stance, strokes: st.strokes.map((k) => k.clip), cadence: st.cadence ?? null, seed });
 }
 
 export function asTarget() {

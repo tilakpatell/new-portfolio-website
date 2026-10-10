@@ -51,7 +51,8 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('glass on the surface', () => {
   it('knows the models that come with transmission', () => {
-    for (const kind of ['yavinspeeder', 'yavinramp', 'rebelpilot', 'snowspeeder']) expect(glassy).toContain(`/models/galaxy/surface/${kind}.glb`);
+    // (the snowspeeder is the game's now, its glass plain blended glass: catalog/bf2017-vehicles.js)
+    for (const kind of ['yavinspeeder', 'yavinramp', 'rebelpilot']) expect(glassy).toContain(`/models/galaxy/surface/${kind}.glb`);
   });
 
   it('loads every one of them without it, still see-through', async () => {

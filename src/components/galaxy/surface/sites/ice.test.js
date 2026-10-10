@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs';
+import { onSite } from '../../../../../scripts/lib/asset-manifest.mjs';
+import PUBLISHED from '../../../../data/galaxyAssets.json';
 import { describe, expect, it } from 'vitest';
 import { siteOf } from '.';
 import { SITES } from './ice';
@@ -10,7 +11,8 @@ import { ASSAULTS } from '../missions/assaults';
 import { STAND_INS } from '../cast';
 import { dressOf } from '../ground/troops';
 
-const onDisk = (url) => existsSync(new URL(`../../../../../public${url}`, import.meta.url));
+// (in public/, or published to the bucket)
+const onDisk = (url) => onSite(url, { publicDir: new URL('../../../../../public', import.meta.url).pathname, manifest: PUBLISHED });
 const filesFor = (kind) => (CREW[kind] ? filesOf(CREW[kind]) : SURFACE_MODELS[kind] ? [modelUrlFor(kind, 'high')] : []);
 const hoth = siteOf('hoth');
 

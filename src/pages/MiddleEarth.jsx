@@ -208,6 +208,10 @@ export default function MiddleEarth() {
       : 'Somewhere on this cliff are the Doors of Durin. They show only by moonlight, and open to a single word. Move your light over the rock, or call the moon.';
 
   const spotAt = flying ? placeOf(flying).at : here?.at ?? null;
+  // a chapter's town is drawn on an opaque stage across the page
+  // (shire/shire.css): the map behind it is drawn less often, until a flight
+  // fades the town out
+  const covers = here && !flying ? '.shire-stage' : null;
   const { prev, next } = neighbours(here?.id);
 
   return (
@@ -221,6 +225,7 @@ export default function MiddleEarth() {
         mordor={here ? active === 'mordor' : hover === 'mordor' || flying === 'mordor'}
         dark={mode === 'dark'}
         hub={!here}
+        covers={covers}
         opening={opening}
         onOpened={() => setOpening(false)}
       />
