@@ -437,3 +437,12 @@ describe('the sphere, finer near', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('the planets’ models, loaded per planet', () => {
+  it('names its models by planets that are on the map', async () => {
+    const { MODEL_PLANETS } = await import('./planets');
+    const { ORDER } = await import('./layout');
+    expect(MODEL_PLANETS.length).toBeGreaterThan(0);
+    for (const id of MODEL_PLANETS) expect(ORDER).toContain(id);
+  });
+});

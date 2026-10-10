@@ -2,17 +2,20 @@
 // point is in, the cells round one (nearest first, so the ship's own cell is
 // asked for before its corners), a cell's envelope for the database's query,
 // and an entity as the client holds it against a row as the table does.
-// CELL equals the network's NET_CELL (the spec's decision 9): a Nostr cell
-// and a database cell are the same square.
+// CELL is the network's NET_CELL (the spec's decision 9), taken from
+// src/lib/net/cells.js rather than said twice: a Nostr cell and a database
+// cell are the same square.
 // Design: docs/superpowers/specs/2026-10-09-planet-flight-and-shared-world-design.md (Pillar 2).
 //
-// CELL = 2048
+// CELL = NET_CELL (2048)
 // cellOf(x, z) → [cx, cz]; cellsAround(cx, cz, r = 1) → 'cx,cz'[] nearest first
 // bboxOf(cx, cz) → { minX, maxX, minZ, maxZ }; diffCells(prev, next) → { gone, came }
 // rowToEntity(row) → { id, planetId, type, owner, x, y, z, rot: [rx, ry, rz], scale, hp, metadata, version, updatedAt }
 // entityToRow(entity) → the columns the client may set (never id, owner, version or the times)
 
-export const CELL = 2048;
+import { NET_CELL } from '../net/cells.js';
+
+export const CELL = NET_CELL;
 
 export const cellOf = (x, z) => [Math.floor(x / CELL), Math.floor(z / CELL)];
 
