@@ -13991,10 +13991,22 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_cs.1024.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_cs.256.ktx2": {
+    "hash": "378993227199",
+    "bytes": 58695,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_cs.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_cs.512.ktx2": {
     "hash": "ab003c8872a7",
     "bytes": 121181,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_cs.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_nam__normal.128.ktx2": {
+    "hash": "a49da9fc156a",
+    "bytes": 1106,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_nam__normal.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_nam__normal.256.ktx2": {
@@ -14007,6 +14019,12 @@
     "hash": "dd008140ab22",
     "bytes": 3585,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_nam__normal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_nam__orm_3fa16f04.128.ktx2": {
+    "hash": "d85068bbfc1a",
+    "bytes": 16623,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_nam__orm_3fa16f04.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_entrance_b_nam__orm_3fa16f04.256.ktx2": {
@@ -14135,10 +14153,22 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_cs.1024.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_cs.256.ktx2": {
+    "hash": "b7ae415d6994",
+    "bytes": 80360,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_cs.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_cs.512.ktx2": {
     "hash": "68f6d7590678",
     "bytes": 309911,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_cs.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_nam__normal.128.ktx2": {
+    "hash": "766b1cc06389",
+    "bytes": 14563,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_nam__normal.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_nam__normal.256.ktx2": {
@@ -14151,6 +14181,12 @@
     "hash": "9364a14dd17e",
     "bytes": 176866,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_nam__normal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_nam__orm_5f41aa06.128.ktx2": {
+    "hash": "ec25a1a3768d",
+    "bytes": 20628,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_nam__orm_5f41aa06.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_grating_a_nam__orm_5f41aa06.256.ktx2": {
@@ -14213,10 +14249,22 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_cs.1024.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_cs.256.ktx2": {
+    "hash": "a084e4a113a8",
+    "bytes": 37684,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_cs.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_cs.512.ktx2": {
     "hash": "49d358485569",
     "bytes": 145583,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_cs.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_nam__normal.128.ktx2": {
+    "hash": "08efde519ba0",
+    "bytes": 7286,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_nam__normal.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_nam__normal.256.ktx2": {
@@ -14229,6 +14277,12 @@
     "hash": "9f25fa52756a",
     "bytes": 69243,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_nam__normal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_nam__orm_e1f0e79e.128.ktx2": {
+    "hash": "cf319141ffef",
+    "bytes": 10779,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_nam__orm_e1f0e79e.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_pipes_s_angle45_a_nam__orm_e1f0e79e.256.ktx2": {
@@ -14255,10 +14309,22 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_cs.1024.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_cs.256.ktx2": {
+    "hash": "9a363d04b459",
+    "bytes": 62263,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_cs.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_cs.512.ktx2": {
     "hash": "00a959c2af1a",
     "bytes": 123105,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_cs.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_nam__normal.128.ktx2": {
+    "hash": "0bb458c472c4",
+    "bytes": 15286,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_nam__normal.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_nam__normal.256.ktx2": {
@@ -14271,6 +14337,12 @@
     "hash": "877e8adf41c5",
     "bytes": 150825,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_nam__normal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_nam__orm_24d511fe.128.ktx2": {
+    "hash": "c79f4fdf6017",
+    "bytes": 20711,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_nam__orm_24d511fe.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_bs_01_s_angle45_a_nam__orm_24d511fe.256.ktx2": {
@@ -14385,6 +14457,18 @@
     "hash": "ef4cd95da3ed",
     "bytes": 1079197,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_catwalksystem_imperial_02_cs.1024.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_catwalksystem_imperial_02_cs.128.ktx2": {
+    "hash": "e6eb38abe7ff",
+    "bytes": 17950,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_catwalksystem_imperial_02_cs.128.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_catwalksystem_imperial_02_cs.256.ktx2": {
+    "hash": "ae3f186b9888",
+    "bytes": 67265,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_catwalksystem_imperial_02_cs.256.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_catwalksystem_imperial_02_cs.512.ktx2": {
@@ -14999,10 +15083,22 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_cs.1024.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_cs.256.ktx2": {
+    "hash": "8a62e48f7608",
+    "bytes": 56476,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_cs.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_cs.512.ktx2": {
     "hash": "14730afba079",
     "bytes": 117216,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_cs.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_nw__normal.128.ktx2": {
+    "hash": "ac17b589e50f",
+    "bytes": 14510,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_nw__normal.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_nw__normal.256.ktx2": {
@@ -15015,6 +15111,12 @@
     "hash": "11e1cd929f08",
     "bytes": 142444,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_nw__normal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_nw__orm_85ad185b.128.ktx2": {
+    "hash": "510acc75a672",
+    "bytes": 16059,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_nw__orm_85ad185b.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_controlroom_01_floorgrill03a_384x8x384_nw__orm_85ad185b.256.ktx2": {
@@ -15095,10 +15197,28 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_cs.1024.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_cs.128.ktx2": {
+    "hash": "a9b4e3e0e983",
+    "bytes": 45348,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_cs.128.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_cs.256.ktx2": {
+    "hash": "12c4bbea56f6",
+    "bytes": 62728,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_cs.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_cs.512.ktx2": {
     "hash": "7317aaaae314",
     "bytes": 132718,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_cs.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_nam__normal.128.ktx2": {
+    "hash": "178f249e7a04",
+    "bytes": 6566,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_nam__normal.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_nam__normal.256.ktx2": {
@@ -15111,6 +15231,12 @@
     "hash": "611342d52f5f",
     "bytes": 105040,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_nam__normal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_nam__orm_bfdca0b4.128.ktx2": {
+    "hash": "b72b7c1ada71",
+    "bytes": 18840,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_nam__orm_bfdca0b4.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_controlroomroof_01_nam__orm_bfdca0b4.256.ktx2": {
@@ -15195,6 +15321,12 @@
     "hash": "32c8ea3ae011",
     "bytes": 61079,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_cratelarge_03_n__orm_1f109251.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_deathstar_2_3pipes_01_cs.128.ktx2": {
+    "hash": "7cc09a280b77",
+    "bytes": 18613,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_deathstar_2_3pipes_01_cs.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_deathstar_2_3pipes_01_cs.256.ktx2": {
@@ -17051,6 +17183,12 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_hcvwa9_turbotank_pipe_01_nma__orm_561bc8e1.256.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_hosefolding_01_c.128.ktx2": {
+    "hash": "3f02b3963884",
+    "bytes": 77964,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_hosefolding_01_c.128.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_hosefolding_01_c.256.ktx2": {
     "hash": "90f6c5c34a1f",
     "bytes": 294931,
@@ -17231,10 +17369,28 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_cs.1024.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_cs.128.ktx2": {
+    "hash": "13db5c08fe5d",
+    "bytes": 21576,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_cs.128.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_cs.256.ktx2": {
+    "hash": "ec1a4122156f",
+    "bytes": 79799,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_cs.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_cs.512.ktx2": {
     "hash": "068dde199f93",
     "bytes": 298851,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_cs.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_nam__normal.128.ktx2": {
+    "hash": "829094f97e1f",
+    "bytes": 21184,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_nam__normal.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_nam__normal.256.ktx2": {
@@ -17247,6 +17403,12 @@
     "hash": "9aa0e5515e01",
     "bytes": 276872,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_nam__normal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_nam__orm_fde8d163.128.ktx2": {
+    "hash": "e4135f87a047",
+    "bytes": 19161,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_nam__orm_fde8d163.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_landinggear_engine_nam__orm_fde8d163.256.ktx2": {
@@ -17681,6 +17843,12 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_nam__orm_445def60.256.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__normal.128.ktx2": {
+    "hash": "2c6597d84445",
+    "bytes": 10043,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__normal.128.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__normal.256.ktx2": {
     "hash": "27dab5bf1c77",
     "bytes": 40162,
@@ -17693,6 +17861,12 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__normal.512.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__orm_37cd9aa3.128.ktx2": {
+    "hash": "12df00521b31",
+    "bytes": 16860,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__orm_37cd9aa3.128.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__orm_37cd9aa3.256.ktx2": {
     "hash": "325645374f5d",
     "bytes": 63896,
@@ -17703,6 +17877,12 @@
     "hash": "b5e52df37053",
     "bytes": 249403,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__orm_37cd9aa3.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__orm_808bbbc5.128.ktx2": {
+    "hash": "9789565b458b",
+    "bytes": 15458,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__orm_808bbbc5.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_metaldetail_02_ns__orm_808bbbc5.256.ktx2": {
@@ -17735,10 +17915,22 @@
     "from": "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_cs.1024.ktx2",
     "tier": "pack"
   },
+  "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_cs.256.ktx2": {
+    "hash": "7550566bb124",
+    "bytes": 71592,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_cs.256.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_cs.512.ktx2": {
     "hash": "671c09e5cc80",
     "bytes": 273947,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_cs.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_nam__normal.128.ktx2": {
+    "hash": "5ca458915bb8",
+    "bytes": 4180,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_nam__normal.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_nam__normal.256.ktx2": {
@@ -17751,6 +17943,12 @@
     "hash": "a330a793852b",
     "bytes": 34482,
     "from": "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_nam__normal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_nam__orm_6d43b1f4.128.ktx2": {
+    "hash": "5fe31405bc14",
+    "bytes": 18235,
+    "from": "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_nam__orm_6d43b1f4.128.ktx2",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/tex/t_metalgratefloor_01_nam__orm_6d43b1f4.256.ktx2": {
