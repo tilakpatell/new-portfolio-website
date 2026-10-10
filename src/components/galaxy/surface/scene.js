@@ -699,7 +699,7 @@ export async function create(canvas, ctx) {
     if (!own) inner.scale.setScalar(1 / METRE);
     inner.add(fig.model);
     fig.model.traverse((o) => {
-      if (o.isMesh) o.castShadow = true;
+      if (o.isMesh) o.castShadow = !o.userData.noShadow; // (a 2017 figure's small parts: none)
     });
     inner.updateMatrixWorld(true);
     // (a model of their own reads its motion in metres a second, as the
