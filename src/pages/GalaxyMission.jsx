@@ -5,8 +5,10 @@ import { useDocumentTitle } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { FILMS, SYSTEMS, eraById, eraOf, filmLabel, parseSystem, systemById, yearLabel } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
+import { modesFor } from '../components/galaxy/surface/modes';
 import { starfighterAt } from '../components/galaxy/surface/missions/starfighterMaps';
 import { CRAWLS } from '../components/galaxy/crawls';
+import Briefing from '../components/galaxy/Briefing';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/mission.css';
 
@@ -16,9 +18,10 @@ const OpeningCrawl = lazy(() => import('../components/experience/OpeningCrawl'))
 // galaxy is going to be, as a holotable briefing: its opening crawl (a
 // button plays it, with the main title), who you play, what you're up
 // against, the three things to do and how it'll fly; then where it is and
-// what's there now. Most are still being built ('soon'); the ones that are
-// already here (the Death Star's trench run, and boarding it) go straight
-// in. From here: back to the system (out of hyperspace there), on to the
+// what's there now; and, for a world the 2017 game's campaign went to, its
+// cinematics as the briefing (Briefing.jsx). Most are still being built
+// ('soon'); the ones that are already here (the Death Star's trench run,
+// and boarding it) go straight in. From here: back to the system (out of hyperspace there), on to the
 // next briefing, or the whole galaxy map.
 export default function GalaxyMission() {
   const navigate = useNavigate();
@@ -77,7 +80,7 @@ export default function GalaxyMission() {
                   {a.go ?? 'Play it now'}: {a.title} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
                 </Link>
               ))}
-              {/* the game's Starfighter Assault over this world, from its space level (until the landing's mode menu has its card) */}
+              {/* the game's Starfighter Assault over this world, from its space level (the landing's mode menu has the same card: surface/modes.js) */}
               {starfighterAt(sys.id) && (
                 <Link to={`/galaxy/${sys.id}?battle=starfighter`} className="btn btn-primary">
                   Fly it now: Starfighter Assault <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
@@ -115,6 +118,8 @@ export default function GalaxyMission() {
           </div>
         </header>
 
+        <Briefing system={sys.id} name={sys.name} />
+
         <div className="mission-grid">
           <section className="mission-card" aria-labelledby="mission-objectives">
             <h2 id="mission-objectives" className="mission-h">
@@ -150,6 +155,24 @@ export default function GalaxyMission() {
             </p>
           </section>
         </div>
+
+        {/* what's played down there, as the landing's menu has it (modes.js) */}
+        {canLand(sys.id) && (
+          <section className="mission-card" aria-labelledby="mission-modes">
+            <h2 id="mission-modes" className="mission-h">
+              Down on {sys.name}
+            </h2>
+            <ul className="mission-objectives">
+              {modesFor(sys.id).map((c) => (
+                <li key={c.id}>
+                  {c.state === 'live' ? <Link to={c.to}>{c.name}</Link> : <span className="text-muted">{c.name}</span>}
+                  {': '}
+                  {c.state === 'live' ? c.about : c.why}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="mission-card mission-moment" aria-label="There now">
           <p className="mission-h">There now: {sys.moment.title}</p>
