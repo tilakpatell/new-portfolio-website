@@ -85,9 +85,15 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
 | 1 | | | |
 | L | | | |
-| G | | | |
+| G | lane G session | `claude/bf2017-g-light` | not yet: the pure parts only, waiting on the keys |
 | K | | | |
 | X | | | |
 | S | | | |
+
+### Lane G, so far
+
+Done on `claude/bf2017-g-light`, all data-independent and tested: `scripts/lib/bf2017-light.mjs` (`pickEntries`, `weatherKey`), `src/lib/three/gameLight.js` (`sunFromProbe`, `weatherEntry`, `lutShape`), `src/lib/three/shadowMask.js` (`maskUv`, `shadowAt`), `src/lib/three/probeEnv.js` (one probe alive at a time, an overtaken load thrown away). Nothing on the site changed.
+
+Left: everything that reads the bucket. The session had neither `SUPABASE_URL` nor a bucket key in its environment, and no record is on disk, so `readVE`, `siteLightFrom`, the light JSON, the Hoth calibration (`GAME_TO_SITE`), the probes, the shadow cache's bounds, the LUT and the scene wiring wait for a session with the keys. `pickEntries` is tested on the plan's three Hoth names and two stand-ins: re-pin it on the map's real `sky[]`. `weather.js` has particle kinds, not clear/dusk/overcast/storm states, so `weatherEntry` takes the spec's four names and whoever adds the states passes them.
 
 Findings for the next lane go here: which sub-levels each map needed, what `fitTo` dropped per tier, the calibration factor and which path each world’s sun direction took, which skins were still missing, which clips’ windows were pinned by hand.
