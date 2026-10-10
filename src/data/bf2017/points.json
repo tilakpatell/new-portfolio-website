@@ -1,0 +1,14 @@
+{
+  "source": "hand",
+  "earn": { "kill": 100, "assist": 50, "objectiveTick": 10, "objectiveDamage": 1, "vehicleKill": 150, "heroKill": 250, "squadSpawn": 25 },
+  "cost": {
+    "aerial": 1000,
+    "enforcer": 2000,
+    "infiltrator": 2000,
+    "vehicles": { "default": 500, "Kit_Vehicle_ATST": 1500, "Vehicle_Ground_AT-AT_MP": 0 },
+    "heroes": { "default": 4000 }
+  },
+  "limits": { "heroesPerTeam": 1, "reinforcementsPerTeam": 4 },
+  "bpRate": 1,
+  "notes": "PF_Gameplay_BattlePoints_Local holds IntEntityData 1000 and an EventToInt 1..4; reconcile when read. NOTES.md lists each value."
+}

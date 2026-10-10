@@ -1,0 +1,169 @@
+{
+  "source": "hand",
+  "mode": "galacticAssault",
+  "level": "Levels/MP/Hoth_01/Hoth_01",
+  "attackers": "dark",
+  "notes": "NOTES.md says how each id was chosen; three stages, as the stage strings name them",
+  "stages": [
+    {
+      "id": "walkers",
+      "name": "ID_FANTASYBATTLES_HOTH_STAGE1_TEAM2",
+      "nameDefend": "ID_FANTASYBATTLES_HOTH_STAGE1_TEAM1",
+      "objectives": [
+        {
+          "type": "escort",
+          "waypoints": "FantasyBattle_Logic:123",
+          "spawner": "FantasyBattle_Logic:59",
+          "vehicle": "Vehicle_Ground_AT-AT_MP"
+        },
+        {
+          "type": "escort",
+          "waypoints": "FantasyBattle_Logic:303",
+          "spawner": "FantasyBattle_Logic:208",
+          "vehicle": "Vehicle_Ground_AT-AT_MP"
+        },
+        {
+          "type": "uplink",
+          "volume": "FantasyBattle_Logic:274"
+        },
+        {
+          "type": "uplink",
+          "volume": "FantasyBattle_Logic:105"
+        },
+        {
+          "type": "uplink",
+          "volume": "FantasyBattle_Logic:69"
+        },
+        {
+          "type": "uplink",
+          "volume": "FantasyBattle_Logic:61"
+        },
+        {
+          "type": "uplink",
+          "volume": "FantasyBattle_Logic:30"
+        },
+        {
+          "type": "uplink",
+          "volume": "FantasyBattle_Logic:166"
+        }
+      ],
+      "spawns": {
+        "attack": [
+          "FantasyBattle_Shapes:9",
+          "FantasyBattle_Shapes:18",
+          "FantasyBattle_Shapes:22",
+          "FantasyBattle_Shapes:40",
+          "FantasyBattle_Shapes:48",
+          "FantasyBattle_Shapes:49",
+          "FantasyBattle_Shapes:55",
+          "FantasyBattle_Shapes:70"
+        ],
+        "defend": [
+          "FantasyBattle_Shapes:4",
+          "FantasyBattle_Shapes:11",
+          "FantasyBattle_Shapes:27",
+          "FantasyBattle_Shapes:37",
+          "FantasyBattle_Shapes:56",
+          "FantasyBattle_Shapes:63",
+          "FantasyBattle_Shapes:64"
+        ]
+      },
+      "vehicles": [
+        "Vehicle_Ground_AT-AT_MP"
+      ]
+    },
+    {
+      "id": "hangars",
+      "name": "ID_FANTASYBATTLES_HOTH_STAGE2_TEAM2",
+      "nameDefend": "ID_FANTASYBATTLES_HOTH_STAGE2_TEAM1",
+      "objectives": [
+        {
+          "type": "capture",
+          "volume": "FantasyBattle_Shapes:33",
+          "prefab": "FantasyBattle_Logic:209",
+          "sphere": "FantasyBattle_Shapes:73",
+          "name": "ID_FANTASYBATTLES_HOTH_EAST_HANGAR"
+        },
+        {
+          "type": "capture",
+          "volume": "FantasyBattle_Shapes:68",
+          "prefab": "FantasyBattle_Logic:134",
+          "sphere": "FantasyBattle_Shapes:23",
+          "name": "ID_FANTASYBATTLES_HOTH_WEST_HANGAR"
+        }
+      ],
+      "spawns": {
+        "attack": [
+          "FantasyBattle_Shapes:1",
+          "FantasyBattle_Shapes:2",
+          "FantasyBattle_Shapes:5",
+          "FantasyBattle_Shapes:16",
+          "FantasyBattle_Shapes:19",
+          "FantasyBattle_Shapes:31",
+          "FantasyBattle_Shapes:32",
+          "FantasyBattle_Shapes:34",
+          "FantasyBattle_Shapes:36",
+          "FantasyBattle_Shapes:38",
+          "FantasyBattle_Shapes:42",
+          "FantasyBattle_Shapes:47",
+          "FantasyBattle_Shapes:59",
+          "FantasyBattle_Shapes:65",
+          "FantasyBattle_Shapes:69"
+        ],
+        "defend": [
+          "FantasyBattle_Shapes:14",
+          "FantasyBattle_Shapes:15",
+          "FantasyBattle_Shapes:43",
+          "FantasyBattle_Shapes:57",
+          "FantasyBattle_Shapes:58",
+          "FantasyBattle_Shapes:72"
+        ]
+      },
+      "vehicles": []
+    },
+    {
+      "id": "escape",
+      "name": "ID_FANTASYBATTLES_HOTH_STAGE3_TEAM2",
+      "nameDefend": "ID_FANTASYBATTLES_HOTH_STAGE3_TEAM1",
+      "objectives": [
+        {
+          "type": "arm",
+          "prefab": "FantasyBattle_Logic:4",
+          "name": "ID_FANTASYBATTLES_HOTH_FUEL_DEPOT"
+        },
+        {
+          "type": "arm",
+          "prefab": "FantasyBattle_Logic:131",
+          "name": "ID_FANTASYBATTLES_HOTH_FUEL_SILO"
+        },
+        {
+          "type": "arm",
+          "prefab": "FantasyBattle_Logic:63",
+          "name": "ID_FANTASYBATTLES_HOTH_FUEL_STATION"
+        }
+      ],
+      "spawns": {
+        "attack": [
+          "FantasyBattle_Shapes:10",
+          "FantasyBattle_Shapes:20",
+          "FantasyBattle_Shapes:21",
+          "FantasyBattle_Shapes:24",
+          "FantasyBattle_Shapes:28",
+          "FantasyBattle_Shapes:44",
+          "FantasyBattle_Shapes:52",
+          "FantasyBattle_Shapes:60",
+          "FantasyBattle_Shapes:66",
+          "FantasyBattle_Shapes:71"
+        ],
+        "defend": [
+          "FantasyBattle_Shapes:30",
+          "FantasyBattle_Shapes:46",
+          "FantasyBattle_Shapes:53",
+          "FantasyBattle_Shapes:61",
+          "FantasyBattle_Shapes:74"
+        ]
+      },
+      "vehicles": []
+    }
+  ]
+}
