@@ -7,7 +7,7 @@
 import { fromScene } from '../../../runtime/module';
 
 export default fromScene('galaxy-surface', (canvas, ctx) => import('./scene').then((m) => m.create(canvas, ctx)), {
-  mb: 10, // (WORLD_MB['/galaxy'], which counts its worlds' surfaces)
+  mb: 18, // (WORLD_MB['/galaxy'], which counts its worlds' surfaces)
   ratio: 1.5,
   sharpness: 'own', // (the pace's steps are the post's: lowerQuality)
 });
