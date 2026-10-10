@@ -760,6 +760,11 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       start({ id: `sf.${sys.id}.${Math.floor(ms / 1000)}`, war: warOfSide(sides[0]) ?? DEFAULT_WAR, sys: sys.id, step: campaignAt(ms).step, seed: Math.floor(ms / 1000), attacker: sides[lv.attacker], defender: sides[lv.defender], sides, attackerTeam: lv.attacker, start: ms, fightEnd: ms + 600000, end: ms + 660000, fighting: true, starfighter: { level: { ...lv, name: name ?? lv.name }, side: pick, draw } }, ms);
       return true;
     },
+    // whether a point's inside a level's area of its own (Kamino's storm):
+    // the scene hides the galaxy's sky and names while the camera is
+    enclosed(p) {
+      return Boolean(level?.area?.inside(p));
+    },
     get pieces() {
       return pieces;
     },

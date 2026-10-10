@@ -86,6 +86,8 @@ export function levelOf(map, stages) {
     sides: [stages.sides['1'], stages.sides['2']],
     // (the galaxy's stations the level stands in place of: Endor's is the second Death Star's wreckage)
     hides: stages.hides ?? [],
+    // (an area of its own, for a level not fought in space: Kamino's, over Tipoca City's sea; levelArea.js)
+    area: stages.area ?? null,
     ships,
     stages: stages.stages.map((st) => ({
       ...st,
