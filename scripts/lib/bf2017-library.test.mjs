@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { biomeOf, countRows, indexRows, setOf, tagsOf } from './bf2017-library.mjs';
+import { biomeOf, countRows, indexRows, isPlaceable, kindOf, setOf, tagsOf } from './bf2017-library.mjs';
 import { readManifest } from './bf2017-manifest.mjs';
 
 // thirty-eight rows of the drop's manifest across the sets (cut to the fields the index reads)
@@ -57,6 +57,21 @@ describe('the object library’s index', () => {
     expect(setOf('objects/props/objectsets/sullust/atat_parts/atat_body/sul_prop_atat_body_01_mesh')).toBe('sullust');
     expect(setOf('s8/felucia/objects/felucia/props/lamp_01/lamp_01_mesh')).toBe('felucia');
     expect(setOf('s6_2/geonosis_02/objects/_separatists/architecture/wall_01/wall_01_mesh')).toBe('_separatists');
+  });
+
+  it('files a level’s own meshes by their level, and the later seasons’, cinematics’ and add-ons’ objects as the main folders would', () => {
+    expect(setOf('levels/mp/tatooine_01/objects/clusters/market_fruit_04_mesh')).toBe('tatooine_01');
+    expect(kindOf('levels/mp/tatooine_01/objects/clusters/market_fruit_04_mesh')).toBe('level');
+    expect(biomeOf('levels/mp/tatooine_01/objects/clusters/market_fruit_04_mesh')).toBe('desert');
+    expect(setOf('s2/levels/cloudcity_01/objects/backdrop_tile_01_cluster_03_mesh')).toBe('cloudcity_01');
+    expect(setOf('s2/levels/clouds/clouds_01/objects/plaza_building_huge_trim_01/x_mesh')).toBe('cloudcity');
+    expect(setOf('s7_1/kamino_03/objects/kamino/architecture/landingpadtowerdamaged_01/x_mesh')).toBe('kamino');
+    expect(kindOf('s7_1/kamino_03/objects/kamino/architecture/landingpadtowerdamaged_01/x_mesh')).toBe('architecture');
+    expect(setOf('s5_1/temp/objects/geonosis/architecture/factorytunnelset_01/x_mesh')).toBe('geonosis');
+    expect(kindOf('cinematics/objects/atst/atst_cinematic_01_mesh')).toBe('prop');
+    expect(isPlaceable('gameplay/objects/datatape_01/datatape_01_mesh')).toBe(true);
+    expect(isPlaceable('objects/planets/naboo/planet_naboo_mesh')).toBe(false);
+    expect(isPlaceable('s1/objects/nature/o_cra_crystalcave_01/o_cra_crystalcave_01_a_mesh')).toBe(false);
   });
 
   it('leaves out what is not placeable: the heroes, the front end’s cards are its own kind', () => {
