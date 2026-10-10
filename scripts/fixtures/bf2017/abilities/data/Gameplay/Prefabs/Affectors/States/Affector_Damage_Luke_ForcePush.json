@@ -1,0 +1,3 @@
+{"name":"Gameplay/Prefabs/Affectors/States/Affector_Damage_Luke_ForcePush","type":"DamageAffectorAsset","root":0,"objects":[
+{"$type":"DamageAffectorAsset","RankData":[{"InitialDamage":90,"DamageToDealPerSecond":0,"DamageInterval":0.5},{"InitialDamage":150,"DamageToDealPerSecond":0,"DamageInterval":0.5}],"Name":"Gameplay/Prefabs/Affectors/States/Affector_Damage_Luke_ForcePush"}
+]}

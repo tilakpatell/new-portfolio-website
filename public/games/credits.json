@@ -4651,5 +4651,15 @@
     ],
     "license": "CC0 1.0",
     "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "bf2017/walrus": {
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "id": "Characters/Rigs/Humanoids/Walrus_HumanMale; web/anims/walrus_humanmale",
+    "name": "Star Wars Battlefront II (2017): the humanoid skeleton and its clips",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.",
+    "use": "The game’s Walrus_HumanMale skeleton (walrus.glb) and the game’s own clips packed onto it (clips-humanoid.glb and one clips-<hero>.glb a hero), in public/models/galaxy/bf2017/, by scripts/bf2017-skeleton.mjs and scripts/bf2017-clips.mjs"
   }
 }

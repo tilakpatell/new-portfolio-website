@@ -1,6 +1,6 @@
 import { Document } from '@gltf-transform/core';
 import { describe, expect, it } from 'vitest';
-import { detach, shareSkins } from './rig-parts.mjs';
+import { detach, rebindJoints, shareSkins } from './rig-parts.mjs';
 
 // Hips → Spine → LeftArm → LeftHand, Hips → Wep_Root, Spine → PROC_Bone0
 // (→ a prop that is no joint)
@@ -46,8 +46,10 @@ describe('parts on one skeleton', () => {
     hips.addChild(hand);
     const scene = doc.getRoot().listScenes()[0];
     scene.addChild(hips);
-    const cape = doc.createSkin().addJoint(hips).addJoint(hand);
     const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+    // (bound in the body's own pose: its inverse binds the body's for those two bones)
+    const ibm = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 3, 0, 0, 1]);
+    const cape = doc.createSkin().addJoint(hips).addJoint(hand).setInverseBindMatrices(acc('MAT4', ibm));
     const prim = doc
       .createPrimitive()
       .setAttribute('POSITION', acc('VEC3', new Float32Array(9)))
@@ -80,5 +82,79 @@ describe('a bone taken out of the tree', () => {
     const after = prop.getWorldTranslation();
     for (let i = 0; i < 3; i++) expect(after[i]).toBeCloseTo(before[i], 6);
     expect(prop.getParentNode().getName()).toBe('Spine');
+  });
+});
+
+describe('a part’s joints re-bound to the body’s', () => {
+  it('re-indexes by name', () => {
+    const r = rebindJoints(['Hips', 'Head'], ['Hips', 'Spine', 'Head'], new Uint16Array([1, 0, 0, 0]));
+    expect([...r.joints]).toEqual([2, 0, 0, 0]);
+    expect(r.unmatched).toBe(0);
+  });
+
+  it('binds a joint the body lacks to its Hips, and counts it', () => {
+    const r = rebindJoints(['Cape_Phys_01', 'Head'], ['Spine', 'Hips', 'Head'], new Uint16Array([0, 1, 0, 0]));
+    expect([...r.joints]).toEqual([1, 2, 1, 1]);
+    expect(r.unmatched).toBe(1);
+  });
+
+  it('leaves a slot of no weight at 0', () => {
+    const r = rebindJoints(['Hips', 'Head'], ['Spine', 'Hips', 'Head'], new Uint16Array([1, 0, 0, 0]), new Float32Array([1, 0, 0, 0]));
+    expect([...r.joints]).toEqual([2, 0, 0, 0]);
+  });
+});
+
+describe('a part made in another bind pose', () => {
+  // a part's copy of Hips and LeftHand (the body's joints 0 and 3), its
+  // inverse binds the body's under a further turn `d` of its own
+  function partWith(doc, ibms) {
+    const buffer = doc.getRoot().listBuffers()[0];
+    const hips = doc.createNode('Hips');
+    const hand = doc.createNode('LeftHand');
+    hips.addChild(hand);
+    doc.getRoot().listScenes()[0].addChild(hips);
+    const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+    const part = doc.createSkin().addJoint(hips).addJoint(hand).setInverseBindMatrices(acc('MAT4', new Float32Array(ibms.flat())));
+    const prim = doc
+      .createPrimitive()
+      .setAttribute('POSITION', acc('VEC3', new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0])))
+      .setAttribute('JOINTS_0', acc('VEC4', new Uint16Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])))
+      .setAttribute('WEIGHTS_0', acc('VEC4', new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])));
+    doc.getRoot().listScenes()[0].addChild(doc.createNode('Head').setMesh(doc.createMesh().addPrimitive(prim)).setSkin(part));
+    return prim;
+  }
+  const T = (x, y, z) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1];
+
+  it('is moved into the body’s bind pose before it shares the body’s skeleton', () => {
+    const { doc } = rigged();
+    // (the body's inverse binds translate by the joint's index along x; the part's by that and 0.5 up)
+    const prim = partWith(doc, [T(0, 0.5, 0), T(3, 0.5, 0)]);
+    expect(shareSkins(doc)).toBe(1);
+    const p = prim.getAttribute('POSITION').getArray();
+    expect([p[0], p[1], p[2]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 0.5, 0]);
+    expect([p[3], p[4], p[5]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([1, 0.5, 0]);
+  });
+
+  it('puts each vertex where its own joints put it, where they disagree a little (a head made for another face)', () => {
+    const { doc } = rigged();
+    // (the part's LeftHand bound a centimetre higher than its Hips says)
+    const prim = partWith(doc, [T(0, 0.5, 0), T(3, 0.51, 0)]);
+    expect(shareSkins(doc)).toBe(1);
+    const p = prim.getAttribute('POSITION').getArray();
+    expect([p[0], p[1], p[2]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 0.51, 0]);
+    expect([p[6], p[7], p[8]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 1.51, 0]);
+    expect([...prim.getAttribute('JOINTS_0').getArray()].filter((_, i) => i % 4 === 0)).toEqual([3, 3, 3]);
+  });
+
+  it('binds a bone of the body’s name but bound somewhere else entirely (a helmet’s own PROC bones) to its nearest shared parent', () => {
+    const { doc } = rigged();
+    const said = [];
+    const prim = partWith(doc, [T(0, 0.5, 0), T(3, 50, 0)]);
+    expect(shareSkins(doc, (s) => said.push(s))).toBe(1);
+    // (on the Hips, the body's joint 0, moved as the Hips move)
+    expect([...prim.getAttribute('JOINTS_0').getArray()].filter((_, i) => i % 4 === 0)).toEqual([0, 0, 0]);
+    const p = prim.getAttribute('POSITION').getArray();
+    expect([p[0], p[1], p[2]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 0.5, 0]);
+    expect(said.join(' ')).toMatch(/LeftHand.*Hips/);
   });
 });

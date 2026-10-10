@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import CREDITS from '../../../../data/modelCredits.json';
 import PUBLISHED from '../../../../data/galaxyAssets.json';
 import { bytesOf as sizeOf } from '../../../../../scripts/lib/asset-manifest.mjs';
+import { NATIVE_CAPS } from '../../../../../scripts/lib/bf2017-caps.mjs';
 import { ULTRA } from '../../../../../scripts/gen3d/budget.mjs';
 import { ULTRA as CUT } from './ultra';
 import { GROUPS, SURFACE_MODELS, lodUrlFor, madeKinds, modelUrlFor, surfaceLodUrl, surfaceUltraUrl, surfaceUrl, wantsLod } from './index';
@@ -39,7 +40,8 @@ describe('the surface models', () => {
       expect(m.metres, kind).toBeGreaterThan(0);
       expect(['x', 'y', 'z', 'max', undefined], kind).toContain(m.along);
       expect(has(surfaceUrl(kind)), `${kind}.glb`).toBe(true);
-      expect(bytesOf(surfaceUrl(kind)), `${kind}.glb`).toBeLessThan((m.hero ? 4 : 2.5) * MB);
+      // (a native one, the game's own maps, to the native cap: it is served from the bucket)
+      expect(bytesOf(surfaceUrl(kind)), `${kind}.glb`).toBeLessThan(m.native ? NATIVE_CAPS.plain : (m.hero ? 4 : 2.5) * MB);
     }
   });
 

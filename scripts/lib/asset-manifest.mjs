@@ -19,6 +19,8 @@
 // freshGalaxy(manifest, publicDir) → the entries a build may use
 // ignoreBlock(gitignore, paths) → the text with its marked block rewritten
 // bytesOf(path, { publicDir, manifest }) → a file's size, on disk or published
+// onSite(path, { publicDir, manifest }) → whether the site has it, on disk or published
+// KEPT: the published files git keeps as well
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -107,13 +109,22 @@ export function freshGalaxy(manifest, publicDir) {
 
 export const IGNORE_START = '# galaxy assets (published; scripts/assets-publish.mjs)';
 export const IGNORE_END = '# end galaxy assets';
+// The published files that stay in git too: the skeleton and the clip
+// packs the tests read whole (walrusSocket, socket and bf2017-skeleton's:
+// under 3 MB together), which a checkout without the bucket must still have
+export const KEPT = new Set(['models/galaxy/bf2017/walrus.glb', 'models/galaxy/bf2017/clips-humanoid.glb', 'models/galaxy/bf2017/clips-luke.glb']);
+
 export function ignoreBlock(text, paths) {
-  const block = [IGNORE_START, ...[...paths].sort().map((p) => `/public/${bare(p)}`), IGNORE_END].join('\n');
+  const block = [IGNORE_START, ...[...paths].filter((p) => !KEPT.has(bare(p))).sort().map((p) => `/public/${bare(p)}`), IGNORE_END].join('\n');
   const a = text.indexOf(IGNORE_START);
   const b = text.indexOf(IGNORE_END);
   if (a >= 0 && b > a) return text.slice(0, a) + block + text.slice(b + IGNORE_END.length);
   return `${text.replace(/\n*$/, '\n')}\n${block}\n`;
 }
+
+// Whether the site has a file: in public/, or published (a checkout
+// without the bucket's files, as CI's is, takes the manifest's word)
+export const onSite = (path, { publicDir, manifest }) => existsSync(join(publicDir, bare(path))) || Boolean(manifest[bare(path)]);
 
 // A file's size for a test that caps it: on disk where it is, else as
 // published, else an error naming it (a test that can't measure a file says

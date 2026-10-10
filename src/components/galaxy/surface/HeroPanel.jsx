@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { HEROES, HILTS, SABER_COLORS, heroById, leanText, loadoutLine } from '../heroes';
+import { HEROES, HILTS, SABER_COLORS, heroById, leanText, loadoutLine, skinsOf } from '../heroes';
 import { STANCES, STANCE_IDS } from './combatRules';
 import { MAX_MODS, MODS, MOD_IDS, PICKABLE, WEAPONS, withMods } from './weaponRules';
 import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
@@ -7,7 +7,8 @@ import { ABILITIES, abilitiesOf } from './abilityRules';
 
 // Who you play as down here, and what's in your hand: the roster
 // (heroes.js) as cards; for a Jedi the blade's colour, the hilt and the
-// stance (combatRules.js); for the others the gun (weaponRules.js, the
+// stance (combatRules.js); a 2017 hero's outfit, the game's own (heroes.js's
+// SKINS); for the others the gun (weaponRules.js, the
 // galaxy's and the ones from elsewhere, with their numbers) and up to two
 // mods on it. Equip keeps the choice (pages/GalaxySurface.jsx writes it) and
 // the world puts it on there and then (scene.js's setHero): no reload, you
@@ -28,7 +29,7 @@ export default function HeroPanel({ hero, onChange, onClose }) {
   const saber = h?.weapon === 'saber';
   const choose = (id) => {
     const next = heroById(id);
-    setPick({ ...pick, id, color: next?.saber?.color ?? pick.color, hilt: next?.saber?.hilt ?? pick.hilt, stance: next?.saber?.stance ?? pick.stance ?? 'single', gun: next?.weapon === 'saber' ? 'saber' : next?.weapon, mods: [] });
+    setPick({ ...pick, id, skin: skinsOf(id)[0]?.id ?? null, color: next?.saber?.color ?? pick.color, hilt: next?.saber?.hilt ?? pick.hilt, stance: next?.saber?.stance ?? pick.stance ?? 'single', gun: next?.weapon === 'saber' ? 'saber' : next?.weapon, mods: [] });
   };
   const toggleMod = (id) => {
     const has = pick.mods?.includes(id);
@@ -43,9 +44,12 @@ export default function HeroPanel({ hero, onChange, onClose }) {
   const changed = JSON.stringify(pick) !== JSON.stringify(hero);
   const guns = [h?.weapon, ...PICKABLE].filter((g, i, a) => g && g !== 'saber' && a.indexOf(g) === i);
   const stats = !saber && pick.gun ? withMods(pick.gun, pick.mods) : null;
-  // (the middle tab is the blade or the gun, whichever the pick carries)
+  const looks = skinsOf(pick.id);
+  // (the middle tab is the blade or the gun, whichever the pick carries; a
+  // hero with outfits has a tab for them after their card)
   const tabs = [
     ['hero', 'Hero'],
+    ...(looks.length > 1 ? [['look', 'Outfit']] : []),
     ['arms', saber ? 'Lightsaber' : 'Weapon'],
     ['perks', 'Perks'],
   ];
@@ -122,6 +126,21 @@ export default function HeroPanel({ hero, onChange, onClose }) {
             ))}
           </>
         )}
+        {tab === 'look' && looks.length > 1 && (
+          <div className="surface-saber">
+            <p className="surface-list-title">Outfit</p>
+            <ul className="surface-hilts">
+              {looks.map((l) => (
+                <li key={l.id}>
+                  <button type="button" className={l.id === pick.skin ? 'surface-hilt is-picked' : 'surface-hilt'} onClick={() => setPick({ ...pick, skin: l.id })} aria-pressed={l.id === pick.skin}>
+                    <span className="surface-hero-name">{l.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="surface-hero-keys">The game’s own outfits for {h?.name}, on the same skeleton and moving the same way.</p>
+          </div>
+        )}
         {tab === 'arms' && saber && (
           <div className="surface-saber">
             <p className="surface-list-title">Blade</p>
@@ -157,7 +176,7 @@ export default function HeroPanel({ hero, onChange, onClose }) {
                 </li>
               ))}
             </ul>
-            <p className="surface-hero-keys">F a stroke (strokes chain; hold F for the heavy one, which breaks shields), hold C to block (a block as a swipe lands is a parry), X to dodge, R to throw, G the Force push, V the pull.</p>
+            <p className="surface-hero-keys">F a stroke (strokes chain; hold F for the heavy one, which breaks shields), hold C to block (a block as a swipe lands is a parry), X to dodge, R to throw, G {ABILITIES[abilitiesOf(h).power].name.toLowerCase()}: {ABILITIES[abilitiesOf(h).power].about} V {ABILITIES[abilitiesOf(h).second].name.toLowerCase()}: {ABILITIES[abilitiesOf(h).second].about}</p>
           </div>
         )}
         {tab === 'arms' && !saber && (
