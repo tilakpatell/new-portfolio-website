@@ -58,7 +58,7 @@ The design: `docs/superpowers/specs/2026-10-10-battlefront-fidelity-design.md` (
 
 | Lane | Plan | What | Starts from | Blocked by |
 |---|---|---|---|---|
-| **S** (PR open: `claude/fidelity-s-shadows`) | `2026-10-10-bf-fidelity-laneS-shadows.md` | calibration to the game's Hoth; four soft cascades (`CSMShadowNode`, PCSS from the sun's angular radius); the record's shadow sun; cloud and contact shadows; the shadow term shared with the particles | `main` | nothing |
+| **S** (#846, open) | `2026-10-10-bf-fidelity-laneS-shadows.md` | calibration to the game's Hoth; four soft cascades (`CSMShadowNode`, PCSS from the sun's angular radius); the record's shadow sun; cloud and contact shadows; the shadow term shared with the particles | `main` | nothing |
 | **V** | `2026-10-10-bf-fidelity-laneV-volumetrics.md` | the placed volumetric cones and the light-cone effects ray-marched; fog with the record's participating media; god rays off the real sun; the sun's and the explosions' flares from the records; motion blur and depth of field as data | `main` | S's cascade light for the god rays (reads its branch; `rays` until then) |
 | **X** | `2026-10-10-bf-fidelity-laneX-particles.md` | the emitter reader (`ScalableEmitterDocument` → `src/data/bf2017/fx/`); particles on the GPU (compute) or the CPU (instanced) from the tables; a level's `effects.json` with its cells; exhaust and contrails on ships | `main` | nothing (the export on the desktop or the bucket by key) |
 | **C** | `2026-10-10-bf-fidelity-laneC-cameras.md` | the soldier, aim, vehicle, overview and cinematic cameras from `cameras.json`, one rig with recoil and shake; Hoth's walker on it behind `site.level` | `main` | P0's ray for the arm's cast (reads its branch; a height cast until then) |
@@ -69,7 +69,7 @@ S, V, X and C run at once on disjoint files (`light/{calibrate,shadows,clouds,co
 
 ### Lane S: done and left
 
-Done (branch `claude/fidelity-s-shadows`, evidence in `docs/superpowers/evidence/galaxy-engine/S/`, WebGL 2 leg on SwiftShader):
+Done (#846, branch `claude/fidelity-s-shadows`, evidence in `docs/superpowers/evidence/galaxy-engine/S/`, WebGL 2 leg on SwiftShader):
 
 - **Calibration** (`light/calibrate.js`): the record's tone map goes through lane G's meter and `GAME_TO_SITE` / `SKY_TO_SITE` (`gameLight.js`, #833), so the node stack's Hoth Sunny sun is the classic stack's 0.79 and its sky and fill 0.61 (sunset: 2.37 on both). The fixture under Hoth's record (`--hoth`, snow, the house's exposure 1.4) has a mean luminance of 0.3686 against lane G's calibrated classic Hoth field's 0.3531 (+4.4 %; 0.3852 before PCSS and the clouds). The bloom threshold is the record's `ColorGradingMaxHdrValue` × the house's.
 - **SSGI is off on `'nodes-webgl'`** (`post.js` `CANNOT`): on the fixture the chain render → ssgi → output washed the frame to 0.787 whatever its GI intensity (0, 0.1, 0.25 and 1 alike). This was most of the washed picture; on WebGPU it stays.
