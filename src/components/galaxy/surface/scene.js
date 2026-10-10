@@ -157,6 +157,7 @@ import { assetPool, worldScope } from '../../../lib/assetLoad';
 import { victoryFor } from '../../../lib/three/walrusSets/emotes';
 import { createFirstView } from './firstView';
 import { rideClip } from '../../../lib/three/walrusSets/vehicles';
+import { richClips } from '../../../lib/three/walrus';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -1202,7 +1203,10 @@ export async function create(canvas, ctx) {
     const f = me().fig;
     if (state.fallen > 0 || !f?.clips) return;
     const clip = won ? victoryFor(f.clips, Math.floor(state.t)) : f.clips.defeat ? 'defeat' : null;
-    if (clip) f.play?.(clip, { hold: 8 });
+    if (!clip) return;
+    f.play?.(clip, { hold: 8 });
+    // (cut by what you do, as any reaction on the whole body is)
+    state.reacting = { who: me(), clip, layer: 'full', until: state.t + 8 };
   }
   function cheer() {
     if (!(state.fallen > 0)) reactYou('win');
@@ -2678,7 +2682,7 @@ export async function create(canvas, ctx) {
     // (a 2017 figure on the game's own ride: the game's driver or rider, the
     // `vehicles` pack taken as it gets on: lib/three/walrusSets/vehicles.js)
     const game = rideClip(ride.kind);
-    if (game && pp.fig.takePack)
+    if (game && pp.fig.takePack && richClips(detailLevel()))
       pp.fig.takePack('vehicles').then(() => {
         if (pp.seat === seat && pp.fig.clips?.[game]) pp.fig.anim?.base(game);
       });
@@ -2905,7 +2909,7 @@ export async function create(canvas, ctx) {
     // (out of your own eyes on foot, its arms in the game's first-person poses: firstView.js)
     if (firstView.on) {
       if (state.phase !== 'walk') firstView.leave(me().fig);
-      else if (firstView.place(me().fig, c.yaw, c.pitch)) firstView.pose(me().fig, { gun: me().gp ? weapon().kind : null, ads: state.ads, sprint: Boolean(state.keys.run) });
+      else if (firstView.place(me().fig, c.yaw, c.pitch)) firstView.pose(me().fig, { gun: me().gp?.kind ?? null, ads: state.ads, sprint: Boolean(state.keys.run) });
     }
     if (Math.abs(state.kick.x) > 1e-4) camera.rotateX(state.kick.x * 0.04); // your own shot's kick
     // every knock this frame, as trauma (the k each had is its trauma)

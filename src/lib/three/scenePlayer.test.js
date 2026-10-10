@@ -16,7 +16,7 @@ const figure = () => {
     play: (name, opts) => (played.push([name, opts.layer]), new Promise((r) => (finish = r))),
     stop: () => played.push(['stop']),
   };
-  return { fig: { model, anim }, got, played, done: () => finish?.('done') };
+  return { fig: { model, anim, rig: 'walrus' }, got, played, done: () => finish?.('done') };
 };
 const clip = (name) => new THREE.AnimationClip(name, 2, [new THREE.QuaternionKeyframeTrack('Hips.quaternion', [0, 2], [0, 0, 0, 1, 0, 0.7071, 0, 0.7071])]);
 
@@ -55,6 +55,13 @@ describe('the scene player', () => {
     await s.done;
     expect(ended).toBe(1);
     expect(droid.played).toEqual([]);
+  });
+  it('skips a figure on Meshy’s rig, which shares the hips and limbs’ names but is another skeleton', async () => {
+    const meshy = figure();
+    meshy.fig.rig = null;
+    const s = playScene({ id: 'm', tracks: { e1: clip('e1') } }, { e1: meshy.fig });
+    expect(s.roles).toEqual([]);
+    expect(meshy.played).toEqual([]);
   });
   it('lets everyone go when stopped', () => {
     const a = figure();

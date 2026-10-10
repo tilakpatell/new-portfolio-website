@@ -298,6 +298,9 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
   }
 
   function reset() {
+    film?.stop();
+    film = null;
+    battleNo++;
     for (const b of bodies) {
       standUp(b);
       fresh(b);
@@ -376,16 +379,23 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
       .filter((b) => b?.rigged && !b.down)
       .slice(0, 4);
     if (!four.length) return;
+    const no = battleNo;
     loadScene(o.scene).then((sc) => {
-      if (!sc) return;
+      // (a battle begun again while it came: not on the new one's soldiers)
+      if (!sc || no !== battleNo) return;
       const cast = {};
       four.forEach((b, i) => {
         b.cheer = null;
+        // (a victory's hold let go first, or it would cut the scene)
+        b.fig.stop?.(0, 'full');
         cast[`e${i + 1}`] = b.fig;
       });
-      playScene(sc, cast, { hold: true });
+      film = playScene(sc, cast, { hold: true });
     });
   };
+  // the outro playing, and which battle it is (a restart lets it go)
+  let film = null;
+  let battleNo = 0;
 
   // ── one soldier's body, where the rules have it, this frame ──
   function draw(b, s, dt, you) {

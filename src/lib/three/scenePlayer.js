@@ -12,7 +12,8 @@
 //   loadScene(id, { loader }) → Promise<{ id, tracks: { role: AnimationClip } } | null>
 //   playScene(scene, cast: { role: fig }, { onEnd, hold }) → { roles (the
 //     ones playing), done (Promise, once each has played through), stop() }
-//     fig: a figure with `model` and `anim` (animator.js's add, play, stop)
+//     fig: a figure on the game's rig (`rig: 'walrus'`) with `model` and
+//     `anim` (animator.js's add, play, stop)
 
 import { loadGLTF } from './gltfCache';
 import { PACK_DIR, clipsFor } from './walrus';
@@ -31,7 +32,8 @@ export function playScene(scene, cast = {}, { onEnd = null, hold = false } = {})
   const on = [];
   for (const [role, clip] of Object.entries(scene?.tracks ?? {})) {
     const fig = cast[role];
-    if (!fig?.model || !fig.anim?.play) continue;
+    // (only a figure on the game's humanoid rig: Meshy's shares the hips' and the limbs' names, not the skeleton)
+    if (!fig?.model || !fig.anim?.play || fig.rig !== 'walrus') continue;
     const name = `scene.${scene.id}.${role}`;
     const own = clipsFor(fig.model, new Map([[name, clip]]))[name];
     // (another skeleton's figure: none of the track's bones)
