@@ -126,6 +126,24 @@ The owner says the upload goes on for some time and animation, audio and more me
 - **The classic edition** (`bf2-extract`): empty.
 - **Not in the 2017 game's set at all** (so never coming from it): the wampa, the rancor, Jabba himself, the sarlacc.
 
+## Update, 2026-10-10 00:20 (the desktop's clock): the export's other parts, and two faults fixed
+
+Counted on the desktop export itself (`C:\Users\tilak\Downloads\BF2_Extract\web_opt`, what the uploader sends), not the bucket; the uploader's third pass was at 3,100 of 4,446 files when this was written and re-reads its queues each pass.
+
+| part | files | bytes | what |
+| --- | --- | --- | --- |
+| `maps/` | 150 (74 maps) | 7 MB json, 29 MB bin | every level's placed instances (873,000 in all; Hoth 24,532 over 602 meshes), grouped by mesh and sub-level, with the terrain record, the VisualEnvironment names, vehicle spawns; `index.json`, `README.md` (the format and a three.js reader) |
+| `terrain/` | 111 (39 levels) | 297 MB | 16-bit PNG heightmaps: `world` 4097 squared at 2 m a pixel (8,192 m), `detail` at 0.5 m over the arena; `terrain.jsonl` with scale, offset, bounds |
+| `physics/` | 10,530 | 123 MB | Havok shape sets per model (`hknpConvexPolytopeShape` and friends); `physics.jsonl` |
+| `textures/levels/` | per level | Hoth 200 files, 15 MB | reflection-volume probes (128 squared, six HDR faces, 61 kinds) and distant shadow caches (2048 squared, 16-bit PNG, 33); **no lightmaps exist** (Enlighten runs at run time; kit meshes carry `TEXCOORD_1` for it) |
+| `data/Levels/Lighting/` | 192 records | | VisualEnvironment blueprints per world and weather: outdoor light (sun colour, illuminance, sky and ground colours, cloud shadow), sky (Rayleigh, Mie, cloud layers), fog curves, tonemap (EV, bloom), colour correction (brightness, contrast, saturation, the `T_CC_*` LUT), wind, Enlighten bounce, AO |
+| planet skins | 102 | 405 MB PNG, 240 MB KTX2 | colour, normal, clouds, atmosphere, moons, rings, a debris field, and the front end's 1024 squared globes; never encoded by the optimiser (no model binds them), encoded today at up to 4096, linked raw, both queued |
+| `movies/`, `fonts/`, `svg/`, `strings/` | 161, 23, 702, 2 | 628 MB, 36 MB, 4 MB, 1 MB | the cinematics (WebM), the UI's fonts, icons and strings |
+
+Not exported, and not coming without an exporter change: **audio** (17,509 sound assets), **placed lights** (Hoth: 1,234 counted), **effect spawns** (648), decals.
+
+Two faults: 164 clips named `<clip>~<8 hex>.glb` were refused by Supabase (`InvalidKey`: `~` is not allowed in an object key); renamed `-<8 hex>` on disk, in `web/anims.jsonl` (re-uploaded, 15.2 MB) and in the queues. 119 physics files the physics pass had not queued were queued.
+
 ## Update, 02:45 UTC: the upload a day on
 
 | part | objects | bytes | against its manifest |
@@ -133,7 +151,7 @@ The owner says the upload goes on for some time and animation, audio and more me
 | `web/models/` | 48,248 | 2.5 GB | complete: every LOD file of the 13,871 models |
 | `web/collision/` | 12,941 | 151 MB | complete |
 | `web/anims/` + `web/anims_additive/` | 7,947 + 2,159 | 955 + 144 MB | 10,106 of the 10,270 clips in `web/anims.jsonl` |
-| `web/textures/` | 16,617 | 6.7 GB | 2,441 KTX2 (4.9 GB, the derived maps the GLBs point at), 4,528 PNG, 9,648 HDR (lightmaps and probes under `levels/`); `web/textures.jsonl` lists 17,511 PNG sources (43.6 GB), 1,851 of them up |
+| `web/textures/` | 16,617 | 6.7 GB | 2,441 KTX2 (4.9 GB, the derived maps the GLBs point at), 4,528 PNG, 9,648 HDR (sky, probe and far-shadow caches under `levels/`; PR #810's desktop count: there are no lightmaps, Enlighten runs at run time); `web/textures.jsonl` lists 17,511 PNG sources (43.6 GB), 1,851 of them up |
 | `web/physics/` | 10,530 | 123 MB | complete: Havok shapes (`hknpConvexPolytopeShape` and friends) per model, `web/physics.jsonl` |
 | `web/movies/` | 61 | 628 MB | WebM |
 | `web/fonts/`, `web/svg/`, `web/strings/` | 23, 702, 2 | 36 MB, 4 MB, 1 MB | the UI's fonts, icons and strings (`web/misc.jsonl`) |

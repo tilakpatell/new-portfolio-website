@@ -1,0 +1,11 @@
+{"name":"Gameplay/Kits/Hero/Maul/PF_ForceChoke_Maul","type":"LogicPrefabBlueprint","root":0,"objects":[
+{"$type":"LogicPrefabBlueprint","Name":"Gameplay/Kits/Hero/Maul/PF_ForceChoke_Maul","PropertyConnections":[
+ {"Source":{"$ref":1},"Target":{"$ref":2},"SourceFieldId":1697178449,"TargetFieldId":-1975641046},
+ {"Source":{"$ref":1},"Target":{"$ref":3},"SourceFieldId":-503329400,"TargetFieldId":-503329400}
+]},
+{"$type":"PlayerAbilityPropertyOutputEntityData","PlayerAbilityIdentifier":42},
+{"$type":"DynamicQueryFilterEntityData"},
+{"$type":"MathEntityData"},
+{"$type":"AffectorApplyEntityData","Duration":1.5,"Affector":{"$asset":"Gameplay/Prefabs/Affectors/States/Affector_Damage_Maul_ForceChoke","$assetType":"DamageAffectorAsset"}},
+{"$type":"AffectorApplyEntityData","Duration":1.5,"Affector":{"$asset":"Gameplay/Prefabs/Affectors/States/Affector_Damage_Maul_ForceChoke_StarCard","$assetType":"DamageAffectorAsset"}}
+]}

@@ -171,7 +171,8 @@ export const PROPS = {
   },
   partyTree(k) {
     const made = k.shire.partyTree();
-    return { object: made.group, solids: [{ circle: [0, 0, made.trunkRadius ?? 1] }] };
+    // (its crown, for leaves to fall from: the clumps round 9.5 m up, 6.5 m out)
+    return { object: made.group, solids: [{ circle: [0, 0, made.trunkRadius ?? 1] }], crowns: [{ at: [0, 0], r: 6, lo: 5, hi: 14 }] };
   },
   greenDragon(k) {
     const made = k.shire.greenDragon();

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GAME, bytesOf, diff, freshGalaxy, gameFiles, hashOf, ignoreBlock, publishedPath, readManifest, writeManifest } from './asset-manifest.mjs';
+import { GAME, KEPT, bytesOf, diff, freshGalaxy, gameFiles, hashOf, ignoreBlock, onSite, publishedPath, readManifest, writeManifest } from './asset-manifest.mjs';
 
 const dirs = [];
 const scratch = () => {
@@ -109,5 +109,22 @@ describe('the published assets’ manifest', () => {
     expect(bytesOf('/models/a.glb', { publicDir: pub, manifest })).toBe(3);
     expect(bytesOf('/models/b.glb', { publicDir: pub, manifest })).toBe(70);
     expect(() => bytesOf('/models/c.glb', { publicDir: pub, manifest })).toThrow(/models\/c\.glb/);
+  });
+
+  it('knows a file is the site’s when it is on disk or published, and nowhere else', () => {
+    const pub = scratch();
+    put(pub, 'models/a.glb', 'abc');
+    const manifest = { 'models/b.glb': { hash: 'x', bytes: 70 } };
+    expect(onSite('/models/a.glb', { publicDir: pub, manifest })).toBe(true);
+    expect(onSite('models/b.glb', { publicDir: pub, manifest })).toBe(true);
+    expect(onSite('/models/c.glb', { publicDir: pub, manifest })).toBe(false);
+  });
+
+  it('keeps the skeleton and the packs the tests read whole in git, published or not', () => {
+    const [kept] = KEPT;
+    const text = ignoreBlock('', [kept, 'models/galaxy/bf2017/crew/luke.glb']);
+    expect(text).toContain('/public/models/galaxy/bf2017/crew/luke.glb');
+    expect(text).not.toContain(`/public/${kept}`);
+    expect([...KEPT]).toContain('models/galaxy/bf2017/walrus.glb');
   });
 });

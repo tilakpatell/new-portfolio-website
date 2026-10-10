@@ -1,0 +1,6 @@
+{"name":"Gameplay/Kits/Hero/Maul/GP_Hero_Maul","type":"WSSoldierCustomizationGameplayAsset","root":0,"objects":[
+{"$type":"WSSoldierCustomizationGameplayAsset","Abilities":{"$ref":1},"AffectorsAppliedOnSpawn":[{"$asset":"Gameplay/Kits/Hero/Maul/Affector_Health_Maul","$assetType":"MaxHealthAffectorAsset"}],"Name":"Gameplay/Kits/Hero/Maul/GP_Hero_Maul"},
+{"$type":"PlayerAbilityCollection","Abilities":[
+ {"$asset":"Gameplay/Kits/Hero/Maul/Ability_Maul_ForceChoke","$assetType":"CharacterStatePlayerAbilityAsset"},
+ {"$asset":"Gameplay/Kits/Hero/Maul/StarCards/StarCard_Maul_1","$assetType":"PassivePlayerAbilityAsset"}
+]}]}

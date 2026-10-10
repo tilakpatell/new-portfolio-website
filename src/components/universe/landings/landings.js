@@ -34,11 +34,20 @@
 //   scatter     [{ kind, n, from, to, scale: [a, b], opts?, solid? }]: many
 //               of a kind, drawn instanced, `from` to `to` metres out, clear
 //               of the things and the ship (solid: false to walk through)
+//   leaves      { colours: [a, b, accent], density (a m²), size (of a 1 m
+//               quad: Bruno's 0.25), shed (a second, from the trees round
+//               you), crown?: { lit, shade, depth } }: the fallen leaves on
+//               the ground (./litter.js), and the crowns' two tones over
+//               the leaves' own colours (./canopy.js); none left out
+//   wind        { strength (0…1), angle? }: what moves the crowns and the
+//               leaves, rising and falling round its strength
 //   biomes      the parts of the planet you can come down on, read off the
 //               colour of its map under the spot (./biomes.js): each its
 //               own name, ground, sky (haze: the air along its horizon),
-//               things and scatter, the planet's own where it leaves one
-//               out; the last is the fallback, the landing as above
+//               things, scatter, leaves and wind, the planet's own where it
+//               leaves one out (but its leaves: a biome with a scatter of
+//               its own has none of the planet's); the last is the
+//               fallback, the landing as above
 //
 // A kind is one of `models`, or a builder in the planet's file (its PROPS
 // for things, SCATTER or PROPS for scatter).
@@ -127,6 +136,21 @@ const onTortuga = (at) => {
   const t = (-11 * Math.PI) / 180;
   return ((x * Math.cos(t) + y * Math.sin(t)) / 0.78) ** 2 + ((y * Math.cos(t) - x * Math.sin(t)) / 0.3) ** 2 <= 1;
 };
+// The leaves on the ground (./litter.js), each place's: two colours a leaf
+// is between and an accent (a share of them), how many a square metre,
+// how big, how many a second its trees shed, and its crowns' two tones.
+// Bilbo's party is on 22 September: the Shire's are greens turning gold
+// with a few gone russet; the old forest's Bruno's rust and orange, muted
+// under the eaves; Lothlórien's gold
+const LEAVES = {
+  shire: { colours: ['#a39c34', '#d8a83c', '#b4622c'], density: 0.55, size: 0.28, shed: 0.7 },
+  forest: { colours: ['#8a4a2e', '#d8762e', '#c9a23a'], density: 0.9, size: 0.28, shed: 2, crown: { lit: [1.06, 1.02, 0.88], shade: [0.86, 0.92, 0.98], depth: 0.28 } },
+  lorien: { colours: ['#b8862a', '#f2cf55', '#e8b04a'], density: 0.9, size: 0.28, shed: 2.5, crown: { lit: [1.12, 1.05, 0.8], shade: [0.9, 0.92, 0.9], depth: 0.22 } },
+  lawn: { colours: ['#a3a23a', '#c9b544', '#c08a2e'], density: 0.2, size: 0.24, shed: 0.4 },
+  earth: { colours: ['#a6a83c', '#cdb84a', '#c47a2c'], density: 0.25, size: 0.24, shed: 0.5 },
+  dusk: { colours: ['#c2582a', '#f0a04c', '#f2c25a'], density: 0.2, size: 0.22, shed: 0.5, crown: { lit: [1.12, 0.98, 0.84], shade: [0.86, 0.86, 0.98], depth: 0.22 } },
+};
+
 // Middle-earth's woods: its forest biome, found by colour and (Lothlórien,
 // whose gold canopy reads as grass from orbit) by place
 const ME_FOREST = {
@@ -134,6 +158,8 @@ const ME_FOREST = {
   sub: 'Middle-earth · under the eaves, where the trees are older than the Shire',
   ground: { style: 'grass', colors: ['#26381c', '#34481f', '#4a3a26'] },
   sky: { zenith: '#557a8a', horizon: '#a8b49a', sun: '#f0e6c0' },
+  leaves: LEAVES.forest,
+  wind: { strength: 0.35 },
   // (pines and the Shire's oaks, darker under the eaves; ferns and the
   // Shire's mushrooms and grass beneath)
   models: {
@@ -161,6 +187,8 @@ export const LANDINGS = {
     sub: 'Middle-earth · Hobbiton, the day of the party',
     ground: { style: 'grass', colors: ['#4d7a2a', '#7aa544', '#a08c58'] },
     sky: { zenith: '#4f86d4', horizon: '#e4ecd6', sun: '#fff0c4' },
+    leaves: LEAVES.shire,
+    wind: { strength: 0.45 },
     // the Shire's oaks, hedges, flowers, mushrooms and grass (Bag End, the
     // holes, the Party Tree, the Green Dragon and the rest are its own kit's)
     models: {
@@ -241,8 +269,9 @@ export const LANDINGS = {
           { kind: 'embers', n: 60, from: 6, to: 90, scale: range(1), solid: false },
         ],
       },
-      // (Lothlórien's gold canopy reads as grass from orbit: by place)
-      { id: 'forest', near: [36.9, 3.4, 1.6], ...ME_FOREST },
+      // (Lothlórien's gold canopy reads as grass from orbit: by place; its
+      // leaves on the ground gold)
+      { id: 'forest', near: [36.9, 3.4, 1.6], ...ME_FOREST, leaves: LEAVES.lorien },
       {
         id: 'forest',
         // (only where the map has woods: not the far side, nor the conifer
@@ -258,6 +287,7 @@ export const LANDINGS = {
         sub: 'Middle-earth · high on a pass, the snow above',
         ground: { style: 'sand', colors: ['#7c7872', '#8e8a84', '#eef0f2'] },
         sky: { zenith: '#3f72c0', horizon: '#dfe6ee', sun: '#fff8ea' },
+        wind: { strength: 0.6 },
         // (grey crags and scree, a few pines below the pass; the snow-capped
         // boulders are the generic rock, white)
         models: {
@@ -436,6 +466,7 @@ export const LANDINGS = {
         sub: 'Breaking Bad · up among the juniper and the granite, the valley far below',
         ground: { style: 'sand', colors: ['#8a7a68', '#74675a', '#b8a890'] },
         sky: { zenith: '#2a6ccc', horizon: '#e6dccb', sun: '#fff6dc' },
+        wind: { strength: 0.6 },
         // (granite, and the junipers: short pines, blue-green)
         models: {
           crag: rocks('Rock_Medium_4', { long: 1.3, tint: '#d8c8b4' }),
@@ -525,6 +556,8 @@ export const LANDINGS = {
     sub: 'Indian classical music · dusk, and the lamps lit',
     ground: { style: 'tiles', colors: ['#d9b48a', '#c99d70', '#7a5a3c'] },
     sky: { zenith: '#1f2350', horizon: '#f2894a', sun: '#ffc27a' },
+    leaves: LEAVES.dusk,
+    wind: { strength: 0.3 },
     models: {
       pavilion: { url: '/models/music/pavilion.glb', wide: 8 },
       gaddi: { url: '/models/music/gaddi.glb', wide: 2.6 },
@@ -590,6 +623,8 @@ export const LANDINGS = {
     sub: 'Marvel · upstate, on the compound’s lawn',
     ground: { style: 'grass', colors: ['#5f8f3a', '#8fb85a', '#9a9a96'] },
     sky: { zenith: '#3f82cf', horizon: '#dfe9ef', sun: '#fff4dc' },
+    leaves: LEAVES.lawn,
+    wind: { strength: 0.45 },
     models: {
       gauntlet: { url: '/models/universe/marvel.glb', tall: 5 },
       // the lawn's trees, and the compound's furniture
@@ -687,6 +722,8 @@ export const LANDINGS = {
     sub: 'Travel · an airfield somewhere I’ve been',
     ground: { style: 'grass', colors: ['#4c7a34', '#76a04a', '#a39a7a'] },
     sky: { zenith: '#3c7fd6', horizon: '#d6e6f2', sun: '#fff6e2' },
+    leaves: LEAVES.earth,
+    wind: { strength: 0.5 },
     models: {
       plane: { url: '/models/sketchfab/earth-plane.glb', long: 36 },
       // (broadleaves and pines round the field, wildflowers in its grass)

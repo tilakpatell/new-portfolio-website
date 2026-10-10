@@ -45,6 +45,7 @@
 // site.wants: [{ id, kind, at: [x, z], pause?, slots?, spots?, clip?, base?,
 //   face? }] (where the people go, and what they do there: needs.js)
 //
+// place: the world's id, for its everyday people's pool (pools.js)
 // createActors(…) → { group, actors, places, update(dt, you, at), hear({ at,
 //   loudness, t }), setZone, debug, find, hide, hideKinds, talker, say,
 //   shove, dispose }
@@ -56,6 +57,7 @@ import { SURFACE_MODELS, lodUrlFor, modelUrlFor } from './catalog';
 import { markBuilt, resolveFigure } from './cast';
 import { buildFigure } from './figures';
 import { crewFigure } from './crew';
+import { poolFor } from './pools';
 import { PROPS } from './props';
 import { cloneModel, loadGlb, squared } from './placer';
 import { rng } from './noise';
@@ -515,7 +517,7 @@ const LEAP = 4; // metres moved between two steps that's no step: put somewhere 
 const EYES = 1.6; // metres: your eyes over your feet, for a head turned to you
 const FLOOR = 4; // metres up or down: someone on another floor isn't greeting you
 
-export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS, only = false }) {
+export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS, only = false, place = null }) {
   const group = new THREE.Group();
   group.name = 'life';
   parent.add(group);
@@ -537,7 +539,13 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
 
   // (a page's own maker first, the Rick and Morty cast; what it has nothing
   // for, or fails to make, is made as any other kind)
-  const anyOf = (kind, spec, i) => anyFigure(kind, spec, kit, i, models, { only });
+  // (a world's everyday people are the game's civilians of that place,
+  // pools.js; one that won't load gives way to the kind the world named)
+  const anyOf = (kind, spec, i) => {
+    const pooled = poolFor(kind, place, i);
+    const named = () => anyFigure(kind, spec, kit, i, models, { only });
+    return pooled === kind ? named() : anyFigure(pooled, spec, kit, i, models, { only }).catch(() => null).then((f) => f ?? named());
+  };
   const figureOf = figure
     ? (kind, spec, i) =>
         Promise.resolve(figure(kind, spec, i))
@@ -750,6 +758,8 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   // near, every fourth far, not at all far off on a small device), moving
   // as its brain moved it since it was last stepped
   function stepFigure(a, dt, d, you, e) {
+    // (the cut its distance wants: a full-fidelity 2017 kind's, crew.js)
+    a.fig.cutAt?.(d);
     const by = a.tick(d < FAR ? 1 : small ? 0 : 0.25, dt);
     if (!(by > 0)) return;
     const { b } = a;

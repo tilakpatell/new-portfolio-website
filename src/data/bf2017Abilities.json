@@ -1,0 +1,886 @@
+{
+ "about": "Star Wars Battlefront II (2017): each hero’s own abilities as the game’s gameplay data has them (scripts/bf2017-abilities.mjs). Seconds, metres, degrees (cone: from straight ahead to the edge), the game’s hit points (a trooper has 150; `health` the hero’s own, from the MaxHealthAffectorAsset it spawns with); `from` says where each number was read.",
+ "heroes": {
+  "luke": {
+   "kit": "GP_Hero_Luke",
+   "health": 750,
+   "abilities": [
+    {
+     "asset": "Ability_Luke_Dash",
+     "kind": "rush",
+     "slot": "right",
+     "recharge": 10,
+     "activation": 0.8,
+     "active": 1,
+     "damage": 100,
+     "reach": 1.5,
+     "taken": 0.92,
+     "from": {
+      "times": "Ability_Luke_Dash (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Luke_DashAttack",
+      "reach": "the prefab’s SphereQuery Radius",
+      "taken": "Affector_Luke_Rush_DMGRed DamageMultiplier"
+     }
+    },
+    {
+     "asset": "Ability_Luke_ForcePush",
+     "kind": "push",
+     "slot": "left",
+     "recharge": 20,
+     "activation": 0.5,
+     "active": 0,
+     "cone": 30,
+     "range": 12,
+     "damage": {
+      "hero": 90,
+      "trooper": 150
+     },
+     "knock": 10,
+     "from": {
+      "times": "Ability_Luke_ForcePush (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "Ability_Luke_ForcePush modifier 1697178449 → LogicPrefabReferenceObjectData (PF_AOE_PieSlice).Angle",
+      "range": "Ability_Luke_ForcePush modifier 3791637896 → ConditionalFloat → SphereQuery.Radius",
+      "damage": "Affector_Damage_Luke_ForcePush rank 0 (to a hero); Affector_Damage_Luke_ForcePush rank 1 (to a trooper)",
+      "knock": "ForcePushed_10m (the least of the prefab’s; the rest are a star card’s)"
+     }
+    },
+    {
+     "asset": "Ability_Luke_ForceRepulse",
+     "kind": "repulse",
+     "slot": "middle",
+     "recharge": 18,
+     "activation": 0.5,
+     "active": 0,
+     "range": 12,
+     "damage": {
+      "trooper": 130,
+      "hero": 75
+     },
+     "knock": 3,
+     "from": {
+      "times": "Ability_Luke_ForceRepulse (RechargeTime, ActivationTime, ActiveTime)",
+      "range": "Ability_Luke_ForceRepulse modifier 3791637896 → Math.Radius",
+      "damage": "Affector_Damage_Luke_ForceRepulse rank 1 (to a trooper); Affector_Damage_Luke_ForceRepulse rank 0 (to a hero)",
+      "knock": "ForcePushed_3m"
+     }
+    }
+   ]
+  },
+  "vader": {
+   "kit": "GP_Hero_DarthVader",
+   "health": 800,
+   "abilities": [
+    {
+     "asset": "Ability_DarthVader_ForceChoke_02",
+     "kind": "choke",
+     "slot": "right",
+     "recharge": 25,
+     "activation": 0.1,
+     "active": 1.5,
+     "cone": 35,
+     "range": 12,
+     "damage": {
+      "perSecond": 86,
+      "for": 1.5
+     },
+     "taken": 0.8,
+     "from": {
+      "times": "Ability_DarthVader_ForceChoke_02 (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "Ability_DarthVader_ForceChoke_02 modifier 1697178449 → DynamicQueryFilter.FilterOutAngle",
+      "range": "Ability_DarthVader_ForceChoke_02 modifier 3791637896 → SphereQuery.Radius",
+      "damage": "Affector_Damage_DarthVader_ForceChoke rank 0",
+      "taken": "Affector_DarthVader_ForceChoke_ArmorReduction DamageMultiplier"
+     }
+    },
+    {
+     "asset": "Ability_DarthVader_SaberThrowCharacterState",
+     "kind": "saberThrow",
+     "slot": "left",
+     "recharge": 8,
+     "activation": 0.7,
+     "active": 2,
+     "damage": 130,
+     "reach": 0.5,
+     "speed": 35,
+     "from": {
+      "times": "Ability_DarthVader_SaberThrowCharacterState (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Vader_SaberThrow",
+      "reach": "the prefab’s SphereQuery Radius",
+      "speed": "the projectile’s MaxSpeed"
+     }
+    },
+    {
+     "asset": "Ability_Vader_FocusRage",
+     "kind": "rage",
+     "slot": "middle",
+     "recharge": 15,
+     "activation": 0,
+     "active": 10,
+     "range": 15,
+     "taken": 0.92,
+     "shield": 200,
+     "from": {
+      "times": "Ability_Vader_FocusRage (RechargeTime, ActivationTime, ActiveTime)",
+      "range": "Ability_Vader_FocusRage modifier 3791637896 → the output Ability_Luke_ForcePush feeds to ConditionalFloat → SphereQuery.Radius",
+      "taken": "Affector_Vader_FocusedRage_DamgeReduction DamageMultiplier",
+      "shield": "Affector_Vader_FuelRageHealth StartValue"
+     }
+    }
+   ]
+  },
+  "obiwan": {
+   "kit": "GP_Hero_ObiWan",
+   "health": 750,
+   "abilities": [
+    {
+     "asset": "DefaultAbility_ObiWan_AllOutPush",
+     "kind": "push",
+     "slot": "left",
+     "recharge": 14,
+     "activation": 1.5,
+     "active": 1.2,
+     "cone": 20,
+     "range": 5,
+     "damage": {
+      "hero": 150,
+      "trooper": 170
+     },
+     "knock": 10,
+     "taken": 0.2,
+     "from": {
+      "times": "DefaultAbility_ObiWan_AllOutPush (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "DefaultAbility_ObiWan_AllOutPush modifier 1697178449 → CLApplyInfluence.ConeAngle",
+      "range": "DefaultAbility_ObiWan_AllOutPush modifier 3791637896 → the output Ability_Luke_ForcePush feeds to ConditionalFloat → SphereQuery.Radius",
+      "damage": "Affector_Damage_ObiWan_AllOutPush rank 0 (to a hero); Affector_Damage_ObiWan_AllOutPush_Troopers rank 0 (to a trooper)",
+      "knock": "ForcePushed_10m (the least of the prefab’s; the rest are a star card’s)",
+      "taken": "Affector_ObiWan_AllOutPush_ArmorReduction DamageMultiplier"
+     }
+    },
+    {
+     "asset": "DefaultAbility_ObiWan_DefensiveRush",
+     "kind": "rush",
+     "slot": "right",
+     "recharge": 10,
+     "activation": 0.5,
+     "active": 0,
+     "damage": 130,
+     "reach": 1.5,
+     "from": {
+      "times": "DefaultAbility_ObiWan_DefensiveRush (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_ObiWan_Lightsaber rank 0",
+      "reach": "the prefab’s SphereQuery Radius (the least of 1.5, 2)"
+     }
+    },
+    {
+     "asset": "Ability_ObiWan_RestrictiveMindTrick",
+     "kind": "mindTrick",
+     "slot": "middle",
+     "recharge": 21,
+     "activation": 0.5,
+     "active": 0,
+     "cone": 40,
+     "range": 18,
+     "from": {
+      "times": "Ability_ObiWan_RestrictiveMindTrick (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "Ability_ObiWan_RestrictiveMindTrick modifier 1697178449 → DynamicQueryFilter.FilterOutAngle",
+      "range": "Ability_ObiWan_RestrictiveMindTrick modifier 3791637896 → the output Ability_Luke_ForcePush feeds to ConditionalFloat → SphereQuery.Radius"
+     }
+    }
+   ]
+  },
+  "anakin": {
+   "kit": "GP_Hero_Anakin",
+   "health": 800,
+   "abilities": [
+    {
+     "asset": "DefaultAbility_Anakin_ImpassionateStrike",
+     "kind": "strike",
+     "slot": "right",
+     "recharge": 13,
+     "activation": 2,
+     "active": 1,
+     "damage": {
+      "any": 130,
+      "trooper": 70
+     },
+     "reach": 2.5,
+     "from": {
+      "times": "DefaultAbility_Anakin_ImpassionateStrike (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Anakin_ImpassionateStrike rank 0; Affector_Damage_Anakin_ImpassionateStrike_Strike1_Trooper (to a trooper)",
+      "reach": "the prefab’s SphereQuery Radius (the least of 2.5, 4, 6)"
+     }
+    },
+    {
+     "asset": "DefaultAbility_Anakin_HeroicImpact",
+     "kind": "slam",
+     "slot": "middle",
+     "recharge": 18,
+     "activation": 2,
+     "active": 3.5,
+     "cone": 360,
+     "range": 10,
+     "damage": {
+      "hero": 90,
+      "trooper": 100
+     },
+     "taken": 0.1,
+     "from": {
+      "times": "DefaultAbility_Anakin_HeroicImpact (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "DefaultAbility_Anakin_HeroicImpact modifier 1697178449 → the output Ability_Luke_ForcePush feeds to LogicPrefabReferenceObjectData (PF_AOE_PieSlice).Angle",
+      "range": "DefaultAbility_Anakin_HeroicImpact modifier 3791637896 → ConditionalFloat → SphereQuery.Radius",
+      "damage": "Affector_Damage_Anakin_HeroicImpact rank 0 (to a hero); Affector_Damage_Anakin_HeroicImpact_Trooper rank 0 (to a trooper)",
+      "taken": "Affector_Anakin_HeroicImpact_ArmorReduction DamageMultiplier"
+     }
+    },
+    {
+     "asset": "DefaultAbility_Anakin_PullDominance",
+     "kind": "pull",
+     "slot": "left",
+     "recharge": 15,
+     "activation": 2,
+     "active": 0,
+     "cone": 35,
+     "range": 18,
+     "damage": {
+      "hero": 80,
+      "trooper": 120
+     },
+     "from": {
+      "times": "DefaultAbility_Anakin_PullDominance (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "DefaultAbility_Anakin_PullDominance modifier 1697178449 → LogicPrefabReferenceObjectData (PF_AOE_PieSlice).Angle",
+      "range": "DefaultAbility_Anakin_PullDominance modifier 3791637896 → ConditionalFloat → LogicPrefabReferenceObjectData (PF_AOE_PieSlice).Radius",
+      "damage": "Affector_Damage_Anakin_PullDominance rank 0 (to a hero); Affector_Damage_Anakin_PullDominance_Troopers rank 0 (to a trooper)"
+     }
+    },
+    {
+     "asset": "DefaultAbility_Anakin_Retribution",
+     "kind": "choke",
+     "slot": "bottom",
+     "recharge": 5,
+     "activation": 0.1,
+     "active": 2,
+     "range": 15,
+     "damage": {
+      "trooper": {
+       "perSecond": 100,
+       "for": 1.5
+      },
+      "hero": 75
+     },
+     "taken": 0.1,
+     "from": {
+      "times": "DefaultAbility_Anakin_Retribution (RechargeTime, ActivationTime, ActiveTime)",
+      "range": "DefaultAbility_Anakin_Retribution modifier 3791637896 → SphereQuery.Radius",
+      "damage": "Affector_Damage_Anakin_Retribution_Trooper (to a trooper); Affector_Damage_Anakin_Retribution_Push (to a hero)",
+      "taken": "Affector_Anakin_Retribution_ArmorReduction DamageMultiplier"
+     }
+    }
+   ]
+  },
+  "maul": {
+   "kit": "GP_Hero_Maul",
+   "health": 700,
+   "abilities": [
+    {
+     "asset": "Ability_DarthMaul_SpinAttackCharacterState",
+     "kind": "rush",
+     "slot": "right",
+     "recharge": 10,
+     "activation": 0.8,
+     "active": 1,
+     "damage": 100,
+     "reach": 1.3,
+     "taken": 0.75,
+     "from": {
+      "times": "Ability_DarthMaul_SpinAttackCharacterState (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Maul_SpinDash",
+      "reach": "the prefab’s SphereQuery Radius",
+      "taken": "Affector_Maul_DashDMGRed DamageMultiplier"
+     }
+    },
+    {
+     "asset": "Ability_Maul_ForceChoke",
+     "kind": "choke",
+     "slot": "middle",
+     "recharge": 18,
+     "activation": 1,
+     "active": 0.1,
+     "cone": 40,
+     "range": 15,
+     "damage": {
+      "perSecond": 80,
+      "for": 1
+     },
+     "from": {
+      "times": "Ability_Maul_ForceChoke (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "Ability_Maul_ForceChoke modifier 1697178449 → DynamicQueryFilter.FilterOutAngle",
+      "range": "Ability_Maul_ForceChoke modifier 3791637896 → ConditionalFloat → SphereQuery.Radius",
+      "damage": "Affector_Damage_Maul_ForceChoke rank 0"
+     }
+    },
+    {
+     "asset": "Ability_DarthMaul_SaberThrowCharacterState",
+     "kind": "saberThrow",
+     "slot": "left",
+     "recharge": 8,
+     "activation": 2,
+     "active": 2,
+     "damage": 85,
+     "reach": 1.55,
+     "speed": 50,
+     "from": {
+      "times": "Ability_DarthMaul_SaberThrowCharacterState (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Maul_SaberThrow rank 0",
+      "reach": "the prefab’s SphereQuery Radius",
+      "speed": "the projectile’s MaxSpeed"
+     }
+    }
+   ]
+  },
+  "dooku": {
+   "kit": "GP_Hero_Dooku",
+   "health": 750,
+   "abilities": [
+    {
+     "asset": "DefaultAbility_Dooku_LightningStun",
+     "kind": "electrocute",
+     "slot": "left",
+     "recharge": 14,
+     "activation": 2,
+     "active": 1,
+     "cone": 40,
+     "range": 8,
+     "damage": {
+      "trooper": 160,
+      "hero": 120
+     },
+     "from": {
+      "times": "DefaultAbility_Dooku_LightningStun (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "DefaultAbility_Dooku_LightningStun modifier 1697178449 → Math.Angle",
+      "range": "DefaultAbility_Dooku_LightningStun modifier 3791637896 → Math.Radius",
+      "damage": "Affector_Damage_Dooku_LightningStun_Troopers rank 0 (to a trooper); Affector_Damage_Dooku_LightningStun rank 0 (to a hero)"
+     }
+    },
+    {
+     "asset": "DefaultAbility_Dooku_Duelist",
+     "kind": "rage",
+     "slot": "middle",
+     "recharge": 13,
+     "activation": 2,
+     "active": 10,
+     "from": {
+      "times": "DefaultAbility_Dooku_Duelist (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "DefaultAbility_Dooku_ExposeWeakness",
+     "kind": "weaken",
+     "slot": "right",
+     "recharge": 16,
+     "activation": 2,
+     "active": 5.5,
+     "reach": 10.75,
+     "taken": 1.2,
+     "from": {
+      "times": "DefaultAbility_Dooku_ExposeWeakness (RechargeTime, ActivationTime, ActiveTime)",
+      "reach": "the prefab’s SphereQuery Radius",
+      "taken": "Affector_Dooku_ExposeWeakness_ArmorReduction DamageMultiplier"
+     }
+    }
+   ]
+  },
+  "palpatine": {
+   "kit": "GP_Hero_Emperor",
+   "health": 700,
+   "abilities": [
+    {
+     "asset": "Ability_Emperor_ForceLightning",
+     "kind": "lightning",
+     "slot": null,
+     "recharge": null,
+     "activation": null,
+     "active": null,
+     "cone": 14,
+     "range": 15,
+     "damage": 14,
+     "from": {
+      "times": "Ability_Emperor_ForceLightning (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "Ability_Emperor_ForceLightning modifier 3650610006 → ConditionalFloat → DynamicQueryFilter.FilterOutAngle",
+      "range": "Ability_Emperor_ForceLightning modifier 3716922119 → ConditionalFloat → SphereQuery.Radius",
+      "damage": "Affector_Damage_Emperor_Lightning_Regular"
+     }
+    },
+    {
+     "asset": "Ability_Emperor_ChainLightningCS",
+     "kind": "chainLightning",
+     "slot": "left",
+     "recharge": 15,
+     "activation": 0.5,
+     "active": 2,
+     "cone": 22,
+     "range": 18,
+     "damage": 120,
+     "from": {
+      "times": "Ability_Emperor_ChainLightningCS (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "Ability_Emperor_ChainLightningCS modifier 1697178449 → LogicPrefabReferenceObjectData (PF_ChainLightning_Emperor_Targetloop).FilterOutAngle",
+      "range": "Ability_Emperor_ChainLightningCS modifier 3791637896 → SphereQuery.Radius",
+      "damage": "Affector_Damage_Emperor_ChainLightning"
+     }
+    },
+    {
+     "asset": "Ability_Emperor_ElectrocuteCS",
+     "kind": "electrocute",
+     "slot": "right",
+     "recharge": 20,
+     "activation": 2,
+     "active": 0,
+     "cone": 40,
+     "range": 15,
+     "from": {
+      "times": "Ability_Emperor_ElectrocuteCS (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "Ability_Emperor_ElectrocuteCS modifier 1697178449 → LogicPrefabReferenceObjectData (PF_AOE_PieSlice).Angle",
+      "range": "Ability_Emperor_ElectrocuteCS modifier 3791637896 → ConditionalFloat → SphereQuery.Radius"
+     }
+    },
+    {
+     "asset": "Ability_Emperor_DarkAura",
+     "kind": "aura",
+     "slot": "middle",
+     "recharge": 25,
+     "activation": 0,
+     "active": 8,
+     "range": 10,
+     "damage": 15,
+     "from": {
+      "times": "Ability_Emperor_DarkAura (RechargeTime, ActivationTime, ActiveTime)",
+      "range": "Ability_Emperor_DarkAura modifier 3791637896 → the output Ability_Luke_ForcePush feeds to ConditionalFloat → SphereQuery.Radius",
+      "damage": "Affector_Damage_Emperor_DarkAuraBase"
+     }
+    }
+   ]
+  },
+  "han": {
+   "kit": "GP_Hero_Hansolo",
+   "health": 650,
+   "abilities": [
+    {
+     "asset": "Ability_HanSolo_ShoulderCharges",
+     "kind": "charge",
+     "slot": "right",
+     "recharge": 10,
+     "activation": 0.5,
+     "active": 0,
+     "damage": {
+      "trooper": 200,
+      "hero": 150
+     },
+     "knock": 3,
+     "reach": 1,
+     "taken": 0.75,
+     "from": {
+      "times": "Ability_HanSolo_ShoulderCharges (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_HanSolo_ShoulderCharge_Troopers rank 0 (to a trooper); Affector_Damage_HanSolo_ShoulderCharge rank 0 (to a hero)",
+      "knock": "ForcePushed_3m",
+      "reach": "the prefab’s SphereQuery Radius",
+      "taken": "Affector_HanSolo_SharpshooterDMGReduction1 DamageMultiplier"
+     }
+    },
+    {
+     "asset": "Ability_HanSolo_DemolitionGrenade",
+     "kind": "detonator",
+     "slot": "left",
+     "recharge": 18,
+     "activation": 0.4,
+     "active": 0,
+     "from": {
+      "times": "Ability_HanSolo_DemolitionGrenade (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_HanSolo_Sharpshooterz",
+     "kind": "overcharge",
+     "slot": "middle",
+     "recharge": 15,
+     "activation": 0,
+     "active": 0,
+     "from": {
+      "times": "Ability_HanSolo_Sharpshooterz (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    }
+   ]
+  },
+  "leia": {
+   "kit": "GP_Hero_Leia",
+   "health": 650,
+   "abilities": [
+    {
+     "asset": "Ability_Leia_BubbleShield",
+     "kind": "barrier",
+     "slot": "right",
+     "recharge": 20,
+     "activation": 0.5,
+     "active": 0.3,
+     "from": {
+      "times": "Ability_Leia_BubbleShield (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_BlasterRifle_E11_Leia",
+     "kind": "rifle",
+     "slot": "middle",
+     "recharge": 15,
+     "activation": 0,
+     "active": 0,
+     "taken": 0.9,
+     "from": {
+      "times": "Ability_BlasterRifle_E11_Leia (RechargeTime, ActivationTime, ActiveTime)",
+      "taken": "Affector_Leia_DmgReduction1 DamageMultiplier"
+     }
+    },
+    {
+     "asset": "Ability_Leia_ThermalDetonator_Fake",
+     "kind": "detonator",
+     "slot": "left",
+     "recharge": 13,
+     "activation": 0,
+     "active": 10000,
+     "from": {
+      "times": "Ability_Leia_ThermalDetonator_Fake (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    }
+   ]
+  },
+  "lando": {
+   "kit": "GP_Hero_Lando",
+   "health": 650,
+   "abilities": [
+    {
+     "asset": "Ability_Lando_SharpShot",
+     "kind": "sharpShot",
+     "slot": "middle",
+     "recharge": 12,
+     "activation": 0,
+     "active": 7,
+     "reach": 40,
+     "from": {
+      "times": "Ability_Lando_SharpShot (RechargeTime, ActivationTime, ActiveTime)",
+      "reach": "the prefab’s SphereQuery Radius"
+     }
+    },
+    {
+     "asset": "Ability_GrenadeSmoke_Lando",
+     "kind": "smoke",
+     "slot": "left",
+     "recharge": 14,
+     "activation": 0.4,
+     "active": 0,
+     "from": {
+      "times": "Ability_GrenadeSmoke_Lando (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_Lando_Disruptor",
+     "kind": "pulse",
+     "slot": "right",
+     "recharge": 19,
+     "activation": 0.4,
+     "active": 25,
+     "range": 18,
+     "from": {
+      "times": "Ability_Lando_Disruptor (RechargeTime, ActivationTime, ActiveTime)",
+      "range": "Ability_Lando_Disruptor modifier 3791637896 → the output Ability_Luke_ForcePush feeds to ConditionalFloat → SphereQuery.Radius"
+     }
+    }
+   ]
+  },
+  "chewie": {
+   "kit": "GP_Hero_Chewbacca",
+   "health": 700,
+   "abilities": [
+    {
+     "asset": "Ability_Chewbacca_GrenadeStun",
+     "kind": "detonator",
+     "slot": "left",
+     "recharge": 15,
+     "activation": 0.4,
+     "active": 1,
+     "from": {
+      "times": "Ability_Chewbacca_GrenadeStun (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_Weapon_FuriousBowcaster",
+     "kind": "overcharge",
+     "slot": "middle",
+     "recharge": 20,
+     "activation": 0,
+     "active": 0,
+     "from": {
+      "times": "Ability_Weapon_FuriousBowcaster (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_Chewbacca_Leap",
+     "kind": "slam",
+     "slot": "right",
+     "recharge": 15,
+     "activation": 1,
+     "active": 0,
+     "range": 8,
+     "damage": {
+      "hero": 150,
+      "trooper": 200
+     },
+     "knock": 3,
+     "taken": 0.7,
+     "from": {
+      "times": "Ability_Chewbacca_Leap (RechargeTime, ActivationTime, ActiveTime)",
+      "range": "Ability_Chewbacca_Leap modifier 3791637896 → SphereQuery.Radius",
+      "damage": "Affector_Damage_Chewbacca_LeapSlam (to a hero); Affector_Damage_Chewbacca_LeapSlam_Trooper (to a trooper)",
+      "knock": "ForcePushed_3m (the least of the prefab’s; the rest are a star card’s)",
+      "taken": "Affector_Chewbacca_DMGReduction DamageMultiplier"
+     }
+    }
+   ]
+  },
+  "bobafett": {
+   "kit": "GP_Hero_BobaFett",
+   "health": 600,
+   "abilities": [
+    {
+     "asset": "Ability_BobaFett_Ping",
+     "kind": "scan",
+     "slot": "middle",
+     "recharge": 10,
+     "activation": 0.5,
+     "active": 8,
+     "range": 30,
+     "from": {
+      "times": "Ability_BobaFett_Ping (RechargeTime, ActivationTime, ActiveTime)",
+      "range": "Ability_BobaFett_Ping modifier 3791637896 → LogicPrefabReferenceObjectData (PF_Scan_360_Gameplay).Radius"
+     }
+    },
+    {
+     "asset": "Ability_BobaFett_Concussion_Rocket",
+     "kind": "rocket",
+     "slot": "left",
+     "recharge": 15,
+     "activation": 0.7,
+     "active": 0,
+     "from": {
+      "times": "Ability_BobaFett_Concussion_Rocket (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_BobaFett_RocketBarrage",
+     "kind": "barrage",
+     "slot": "right",
+     "recharge": 20,
+     "activation": 0.5,
+     "active": 1.3,
+     "from": {
+      "times": "Ability_BobaFett_RocketBarrage (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    }
+   ]
+  },
+  "bossk": {
+   "kit": "GP_Hero_Bossk",
+   "health": 600,
+   "abilities": [
+    {
+     "asset": "Ability_Bossk_GrenadeDioxis",
+     "kind": "detonator",
+     "slot": "left",
+     "recharge": 20,
+     "activation": 0.4,
+     "active": 0,
+     "from": {
+      "times": "Ability_Bossk_GrenadeDioxis (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_Bossk_ExplosiveTraps_New",
+     "kind": "mine",
+     "slot": "right",
+     "recharge": 20,
+     "activation": 0.6,
+     "active": 0.1,
+     "reach": 0.2,
+     "from": {
+      "times": "Ability_Bossk_ExplosiveTraps_New (RechargeTime, ActivationTime, ActiveTime)",
+      "reach": "the prefab’s SphereQuery Radius"
+     }
+    },
+    {
+     "asset": "Ability_Bossk_PredatorInstincts",
+     "kind": "scan",
+     "slot": "middle",
+     "recharge": 25,
+     "activation": 1.1,
+     "active": 0,
+     "reach": 1000,
+     "taken": 0.9,
+     "from": {
+      "times": "Ability_Bossk_PredatorInstincts (RechargeTime, ActivationTime, ActiveTime)",
+      "reach": "the prefab’s SphereQuery Radius",
+      "taken": "Affector_Bossk_PredatorDMGReduction1 DamageMultiplier"
+     }
+    }
+   ]
+  },
+  "yoda": {
+   "kit": "GP_Hero_Yoda",
+   "health": 700,
+   "abilities": [
+    {
+     "asset": "Ability_Yoda_ForceAbsorb",
+     "kind": "absorb",
+     "slot": "left",
+     "recharge": 12,
+     "activation": 0.5,
+     "active": 0,
+     "cone": 45,
+     "damage": 110,
+     "knock": 10,
+     "reach": 2,
+     "from": {
+      "times": "Ability_Yoda_ForceAbsorb (RechargeTime, ActivationTime, ActiveTime)",
+      "cone": "Ability_Yoda_ForceAbsorb modifier 1697178449 → DynamicQueryFilter.FilterOutAngle",
+      "damage": "Affector_Damage_Yoda_UnleashAbsorb rank 0",
+      "knock": "ForcePushed_10m",
+      "reach": "the prefab’s SphereQuery Radius"
+     }
+    },
+    {
+     "asset": "Ability_Yoda_DashAttack_CharacterState",
+     "kind": "rush",
+     "slot": "right",
+     "recharge": 10,
+     "activation": 0.8,
+     "active": 1,
+     "damage": 85,
+     "reach": 1.3,
+     "from": {
+      "times": "Ability_Yoda_DashAttack_CharacterState (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Yoda_DashAttack",
+      "reach": "the prefab’s SphereQuery Radius"
+     }
+    },
+    {
+     "asset": "Ability_Yoda_ForceBarrier",
+     "kind": "barrier",
+     "slot": "middle",
+     "recharge": 20,
+     "activation": 0,
+     "active": 8,
+     "range": 20,
+     "shield": 150,
+     "from": {
+      "times": "Ability_Yoda_ForceBarrier (RechargeTime, ActivationTime, ActiveTime)",
+      "range": "Ability_Yoda_ForceBarrier modifier 3791637896 → SphereQuery.Radius",
+      "shield": "Affector_ForceBarrierHealth_Yoda StartValue"
+     }
+    }
+   ]
+  },
+  "grievous": {
+   "kit": "GP_Hero_Grievous",
+   "health": 800,
+   "abilities": [
+    {
+     "asset": "DefaultAbility_Grievous_ClawRush",
+     "kind": "rush",
+     "slot": "right",
+     "recharge": 13,
+     "activation": 0.5,
+     "active": 3.2,
+     "damage": 130,
+     "reach": 1.6,
+     "taken": 0.6,
+     "from": {
+      "times": "DefaultAbility_Grievous_ClawRush (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Grievous_ClawRush rank 0",
+      "reach": "the prefab’s SphereQuery Radius",
+      "taken": "Affector_Grievous_ClawRush_DamageReduction DamageMultiplier"
+     }
+    },
+    {
+     "asset": "DefaultAbility_Grievous_UnrelentingAdvance",
+     "kind": "rage",
+     "slot": "middle",
+     "recharge": 11,
+     "activation": 0.1,
+     "active": 5,
+     "damage": 110,
+     "reach": 2,
+     "taken": 0.9,
+     "from": {
+      "times": "DefaultAbility_Grievous_UnrelentingAdvance (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Grievous_UnrelentingAdvance rank 0",
+      "reach": "the prefab’s SphereQuery Radius",
+      "taken": "Affector_Grievous_UnrelentingAdvance_DamageReduction DamageMultiplier"
+     }
+    },
+    {
+     "asset": "DefaultAbility_Grievous_ThrustSurge",
+     "kind": "rush",
+     "slot": "left",
+     "recharge": 13,
+     "activation": 0,
+     "active": 0.8,
+     "damage": 160,
+     "reach": 1.5,
+     "from": {
+      "times": "DefaultAbility_Grievous_ThrustSurge (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Grievous_ThrustSurge rank 0",
+      "reach": "the prefab’s SphereQuery Radius (the least of 1.5, 2, 3, 10)"
+     }
+    }
+   ]
+  },
+  "iden": {
+   "kit": "GP_Hero_Iden",
+   "health": 650,
+   "abilities": [
+    {
+     "asset": "Ability_Iden_Droid_Shield",
+     "kind": "barrier",
+     "slot": "right",
+     "recharge": 10,
+     "activation": 0,
+     "active": 12,
+     "from": {
+      "times": "Ability_Iden_Droid_Shield (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_Iden_Pulse_Cannon",
+     "kind": "rifle",
+     "slot": "middle",
+     "recharge": 1,
+     "activation": 0,
+     "active": 0,
+     "from": {
+      "times": "Ability_Iden_Pulse_Cannon (RechargeTime, ActivationTime, ActiveTime)"
+     }
+    },
+    {
+     "asset": "Ability_Iden_Droid_Stun",
+     "kind": "pulse",
+     "slot": "left",
+     "recharge": 20,
+     "activation": 10,
+     "active": 1.8,
+     "damage": 40,
+     "reach": 5,
+     "from": {
+      "times": "Ability_Iden_Droid_Stun (RechargeTime, ActivationTime, ActiveTime)",
+      "damage": "Affector_Damage_Iden_Droid_Electrocute",
+      "reach": "the prefab’s SphereQuery Radius"
+     }
+    }
+   ]
+  }
+ }
+}
