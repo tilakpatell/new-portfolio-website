@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { BODY, SOCKETS } from '../../lib/three/walrusRig.js';
+import { isGameSkeleton } from '../../lib/physics/boneCapsules';
 
 // The files a 2017 figure asks for: its body (no `.lod1` cut of it here) and
 // the humanoid pack, an idle in it; and the library watched, which a 2017
@@ -66,6 +67,12 @@ describe('a 2017 hero out on foot', () => {
     expect(fig?.rig).toBe('walrus');
     expect(loader.urls).toContain('/models/galaxy/bf2017/crew/luke.lod1.glb');
     expect(loader.urls).toContain('/models/galaxy/bf2017/crew/luke.glb');
+    fig.dispose();
+  });
+
+  it('is hit where the game’s capsules say: its bones are the game’s skeleton’s', async () => {
+    const fig = await loadPartyFigure(spec, null);
+    expect(isGameSkeleton(fig.bones)).toBe(true);
     fig.dispose();
   });
 
