@@ -83,9 +83,11 @@ export function createFlightScene({ spec, palette }) {
   scene.add(sky);
   // (a planet may have its own haze: Coruscant's dusk closes in sooner)
   scene.fog = new THREE.Fog(new THREE.Color(p.skyLow ?? p.low), spec.fog?.near ?? FOG.near, spec.fog?.far ?? FOG.far);
-  const hemi = new THREE.HemisphereLight(new THREE.Color(p.skyHigh ?? palette[3]).lerp(new THREE.Color('#ffffff'), 0.4), new THREE.Color(p.rock), 1.1);
+  const hemi = new THREE.HemisphereLight(new THREE.Color(p.skyHigh ?? palette[3]).lerp(new THREE.Color('#ffffff'), 0.4), new THREE.Color(p.rock), 1.7);
+  // (the sky's light strong enough that a mountain's face turned from the sun
+  // still shows its rock: at 1.1 the Misty Mountains' shade was near black)
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(new THREE.Color(palette[5]).lerp(new THREE.Color('#ffffff'), 0.6), 2.4);
+  const sun = new THREE.DirectionalLight(new THREE.Color(palette[5]).lerp(new THREE.Color('#ffffff'), 0.6), 2.2);
   // low and to one side: long light across the ridges
   const sunDir = new THREE.Vector3(0.55, 0.45, -0.7).normalize();
   sun.position.copy(sunDir).multiplyScalar(1000);
