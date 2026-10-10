@@ -12,7 +12,7 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-game-design.md`. Th
 
 | lane | state | branch | plan |
 | --- | --- | --- | --- |
-| 0 data: extractor, parsers, rulebooks for Hoth's Galactic Assault | **done** (PR to `main`): 16 rulebooks, 1.9 MB; teams 1 (6 sequel kits refused), classes 8, heroes 16, reinforcements 6, vehicles 16, weapons 30, abilities 76, cards 68; AI 16 tactics, 10 templates, 202 firing patterns; Hoth 474 spawns, 102 spawn areas, 52 volumes, 2 walker paths, 3 stages (hand); 104 lights and 413 lighting prefabs; 84 HUD widgets; 69 strings; 0 missing links | `claude/bf-data` | `plans/2026-10-10-battlefront-lane0-data.md` |
+| 0 data: extractor, parsers, rulebooks for Hoth's Galactic Assault | **done** (PR to `main`): 16 rulebooks, 1.9 MB; teams 1 (6 sequel kits refused), classes 8, heroes 16, reinforcements 6, vehicles 16, weapons 34, abilities 76, cards 68; AI 16 tactics, 10 templates, 202 firing patterns; Hoth 474 spawns, 102 spawn areas, 52 volumes, 2 walker paths, 3 stages (hand); 104 lights and 413 lighting prefabs; 84 HUD widgets; 69 strings; 0 missing links | `claude/bf-data` | `plans/2026-10-10-battlefront-lane0-data.md` |
 | 1 sim, soldiers, weapons, bolts, nav, cover, the soldier bots, the skirmish arena | not started (needs 0) | `claude/bf-ai` | `plans/2026-10-10-battlefront-lane1-soldier-ai.md` |
 | 2 Galactic Assault: stages, objectives, spawning, Battle Points, the commander, balance | not started (needs 1) | `claude/bf-assault` | `plans/2026-10-10-battlefront-lane2-galactic-assault.md` |
 | 3 heroes: abilities, saber combat, hero bots | not started (needs 1); plan when 1 merges | `claude/bf-heroes` | |
