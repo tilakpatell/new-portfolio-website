@@ -69,7 +69,8 @@ describe('the battle on lane 1’s sim, with the deploy screen lane 2 will own',
     const mine = v.bolts.filter((x) => x.owner === b.player.id);
     expect(mine.length).toBeGreaterThan(0);
     for (const x of mine) {
-      const sim = b.sim.bolts.list.find((s) => s.id === x.id);
+      // (a bolt still flying, or one let go of lately: battle.js's SPENT)
+      const sim = b.sim.bolts.list.find((s) => s.id === x.id) ?? b.spent.find((s) => s.bolt.id === x.id).bolt;
       expect(x.from).toEqual(sim.from);
       expect(x.travelled).toBe(sim.travelled);
       expect(x.speed).toBe(rb.weapons.dlt19.firing.speed);
@@ -145,5 +146,40 @@ describe('the battle on lane 1’s sim, with the deploy screen lane 2 will own',
     const living = v.entities.find((e) => e.id === b.player.id);
     expect(living.fall).toBe(null);
     expect(living.hitDir).toBe(null);
+  });
+});
+
+describe('the pieces together: the squad list, the figures and the fallen', () => {
+  it('lists the squad from the very soldiers the figures draw, each with its gun, and a mate shot down as fallen in both', async () => {
+    const THREE = await import('three');
+    const { createFigures } = await import('./figures/figures.js');
+    const { createHeld } = await import('./figures/held.js');
+    const b = make({ 1: 0, 2: 3 });
+    addPlayer(b, { team: 2 });
+    expect(deploy(b, 'player', { classId: 'd-orig-heavy' }).ok).toBe(true);
+    const held = createHeld({ load: async () => ({ scene: new THREE.Group(), animations: [] }) });
+    const figs = createFigures({ scene: new THREE.Scene(), loadBody: async () => ({ model: new THREE.Group(), clips: {}, sockets: {} }), held, loadStance: async () => new Map() });
+    for (let i = 0; i < 4; i++) step(b, [{ id: 'player', move: [0, 0], yaw: 0 }]);
+    let v = view(b);
+    figs.update(v.entities, 0.05);
+    const drawn = new Map(v.entities.map((e) => [e.id, e]));
+    expect(v.squad.members).toHaveLength(4);
+    for (const m of v.squad.members) {
+      const e = drawn.get(m.id);
+      expect(e, m.id).toBeTruthy();
+      expect(figs.figure(m.id), m.id).not.toBe(null);
+      // (the figures hand a dying or down soldier to the ragdolls: figures.js's DEAD)
+      expect(m.alive).toBe(!['dying', 'down'].includes(e.state));
+      expect(e.weapon, m.id).toBe(b.sim.entities.get(m.id).gun?.row?.id ?? null);
+    }
+    expect(v.squad.members[0].id).toBe(v.player.id);
+    // a mate down: the list greys them, the view hands the figure how it fell
+    const mate = v.squad.members[1].id;
+    b.sim.entities.get(mate).alive = false;
+    b.sim.entities.get(mate).state = 'down';
+    v = view(b);
+    expect(v.squad.members[1]).toMatchObject({ id: mate, alive: false });
+    expect(['dying', 'down']).toContain(v.entities.find((e) => e.id === mate).state);
+    expect(v.deploy.spawns.find((s) => s.id === mate)?.blocked ?? 'dead').toBe('dead');
   });
 });

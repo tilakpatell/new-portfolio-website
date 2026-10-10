@@ -12,6 +12,13 @@ const len = 700 * STREAK;
 const close = (a, b, eps = 1e-9) => a.every((v, i) => Math.abs(v - b[i]) < eps);
 
 describe('a bolt drawn from the gun', () => {
+  it('ends where the sim’s stopped, a wall nearer than the converge distance, from the muzzle', () => {
+    const b = { ...bolt(8), ended: true };
+    expect(close(drawnBolt(b, { muzzle, age: 0, first: 8 }).head, muzzle)).toBe(true);
+    const { head } = drawnBolt(b, { muzzle, age: CATCH_UP, first: 8 });
+    expect(close(head, b.at)).toBe(true);
+  });
+
   it('leaves the muzzle the frame it is first seen, though the sim has it a step out', () => {
     const { head, tail } = drawnBolt(bolt(35), { muzzle, age: 0, first: 35 });
     expect(close(head, muzzle)).toBe(true);

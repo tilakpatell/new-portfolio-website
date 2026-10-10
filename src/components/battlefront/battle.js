@@ -28,6 +28,11 @@ export const NAV_CELL = 2; // m: the design's navgrid (decision 7)
 export const BACK_TO_DEPLOY = 3; // s after the player goes down before the deploy screen comes back
 export const KILL_LOG = 6; // lines kept
 export const HIT_SHOWN = 1.2; // s a hit's arc is kept for the damage indicator
+// s a bolt the sim has let go of (a wall, a body, its range) stays in the
+// view, `ended` where it stopped, so the page draws it from the gun to there:
+// most stop in the step they're fired (700 m/s is 35 m a step). Hand: three
+// steps, past fx/bolts.js's CATCH_UP (src/data/bf2017/NOTES.md)
+export const SPENT = 0.15;
 const AIM_AHEAD = 100; // m ahead the player's aim point is put
 export const PLAYER_ID = 'p0'; // the player's soldier in the sim, every life (the sim numbers its own from 1)
 const SIDES = { 1: 'light', 2: 'dark' };
@@ -93,6 +98,7 @@ export function createBattle({ rulebook, level = 'hoth', mode = 'galacticAssault
     result: null,
     killLog: [],
     names: new Map(),
+    spent: [], // { bolt, until }: the bolts the sim let go of lately, for the drawing (SPENT)
     falls: new Map(), // the fallen's id → how it fell (the kill's part, the shot's way, where it struck, the weapon), for the figures' ragdolls
     awards: new Map(), // Battle Points the bots earn here, until the page runs lane 2's mode (squad spawns on them)
     force(what, team) {
@@ -158,6 +164,9 @@ export function step(b, inputs = []) {
   }
   const events = stepSim(b.sim, mapped);
   const t = b.sim.time;
+  // (the bolts this step let go of, and the ones shown long enough forgotten)
+  b.spent = b.spent.filter((x) => x.until > t + 1e-9);
+  for (const bolt of b.sim.bolts.left ?? []) b.spent.push({ bolt, until: t + SPENT });
   for (const e of events) {
     if (e.type === 'kill') {
       b.falls.set(e.target, { t, part: e.part ?? null, dir: e.dir ?? null, at: e.at ?? null, weapon: e.weapon ?? null });
@@ -235,6 +244,13 @@ export function view(b) {
     o.from = sb?.from ?? o.at;
     o.travelled = sb?.travelled ?? 0;
     o.speed = sb?.speed ?? null;
+    o.ended = false;
+  }
+  // (then the ones the sim let go of lately, where they stopped: SPENT)
+  for (const { bolt, until } of b.spent) {
+    if (until <= t + 1e-9) continue;
+    const o = (v.bolts[v.bolts.length] ??= {});
+    Object.assign(o, { at: bolt.at, dir: bolt.dir, colour: bolt.colour, id: bolt.id, owner: bolt.owner, from: bolt.from, travelled: bolt.travelled, speed: bolt.speed, ended: true });
   }
   const p = b.player;
   const me = p?.id ? b.sim.entities.get(p.id) : null;

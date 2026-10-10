@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadRulebook, mapOf } from '../../lib/battlefront/rulebook.js';
 import { buildMask } from '../../lib/battlefront/navMask.js';
 import { addPlayer, createBattle, deploy, step, view } from './battle.js';
+import { drawnBolt } from './fx/bolts.js';
 
 const rb = loadRulebook();
 const map = mapOf(rb, 'hoth');
@@ -42,5 +43,34 @@ describe('the battle on the nav mask', () => {
     const b = createBattle({ rulebook: rb, bots: { 1: 0, 2: 0 }, mask: other });
     expect(b.nav.mask).toBeNull();
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/nav mask/));
+  });
+
+  it('stops the player’s bolts at that wall, the drawn bolt from the gun’s muzzle with them', () => {
+    const at = spawnAt();
+    const b = createBattle({ rulebook: rb, bots: { 1: 0, 2: 0 }, mask: wallAhead(at, 8) });
+    addPlayer(b, { team: 2 });
+    deploy(b, 'player', { classId: 'd-orig-assault' });
+    const muzzle = [at[0] + 0.3, at[1] + 1.4, at[2] + 0.5];
+    let seen = 0;
+    let ended = 0;
+    for (let i = 0; i < 40; i++) {
+      step(b, [{ id: 'player', move: [0, 0], yaw: 0, fire: true }]);
+      for (const x of view(b).bolts) {
+        seen++;
+        expect(x.owner).toBe(b.player.id);
+        // (the wall's 8 to 10 m on, grown by the capsule's 0.3 and the 2 m cells)
+        expect(x.at[2] - at[2]).toBeLessThan(10.3);
+        // (the drawn bolt from the muzzle to where the sim's ended, not past it)
+        const { head } = drawnBolt(x, { muzzle, age: 1, first: x.travelled });
+        expect(head[2]).toBeCloseTo(x.at[2], 6);
+        if (x.ended) ended++;
+      }
+    }
+    // (each stops in its first step: the page still sees it, for the drawing)
+    expect(seen).toBeGreaterThan(0);
+    expect(ended).toBe(seen);
+    // (and let go of once shown: SPENT)
+    for (let i = 0; i < 4; i++) step(b, [{ id: 'player', move: [0, 0], yaw: 0 }]);
+    expect(view(b).bolts).toEqual([]);
   });
 });

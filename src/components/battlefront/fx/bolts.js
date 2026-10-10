@@ -11,7 +11,9 @@
 // it catches up with the sim's bolt (first seen a step out: the sim fires
 // and moves a bolt in one step) over CATCH_UP, and its sideways gap from
 // the sim's line closes within CONVERGE metres of the start. Without a
-// figure it starts at the sim's own start.
+// figure it starts at the sim's own start. A bolt the sim has stopped (a
+// wall, a body: the view's `ended`, kept a moment by battle.js) is drawn on
+// to where it stopped, its gap closed by there.
 //
 //   createBolts(scene, { max }) → { mesh, update(bolts, { muzzleOf, now }), count(), dispose() }
 //   drawnBolt(bolt, { muzzle, age, first, converge, catchUp }) → { head, tail }   (pure)
@@ -29,7 +31,7 @@ export const CONVERGE = 15;
 export const CATCH_UP = 0.1;
 const COLOURS = { red: [6, 0.35, 0.25], blue: [0.35, 0.8, 6], green: [0.4, 6, 0.5], yellow: [5, 4, 0.5] };
 
-// bolt: the view's (from, dir, travelled, speed); first: how far the sim had
+// bolt: the view's (from, dir, travelled, speed, ended); first: how far the sim had
 // it when it was first seen; age: s since then
 export function drawnBolt(b, { muzzle = null, age = 0, first = 0, converge = CONVERGE, catchUp = CATCH_UP } = {}) {
   const from = b.from ?? b.at;
@@ -38,8 +40,10 @@ export function drawnBolt(b, { muzzle = null, age = 0, first = 0, converge = CON
   const s = Math.max(0, travelled - first * Math.max(0, 1 - age / catchUp));
   const off = muzzle ? [muzzle[0] - from[0], muzzle[1] - from[1], muzzle[2] - from[2]] : [0, 0, 0];
   const n = Math.hypot(b.dir[0], b.dir[1], b.dir[2]) || 1;
+  // (a bolt the sim stopped nearer than `converge`: on its line by where it stopped)
+  const reach = b.ended ? Math.max(1e-6, Math.min(converge, travelled)) : converge;
   const at = (d) => {
-    const w = Math.max(0, 1 - d / converge);
+    const w = Math.max(0, 1 - d / reach);
     return [0, 1, 2].map((i) => from[i] + (b.dir[i] / n) * d + off[i] * w);
   };
   return { head: at(s), tail: at(Math.max(0, s - len)) };
