@@ -44,7 +44,8 @@ const scatter = (count, height, r = [150, 500], more = {}) => ({ count, height, 
 // a place's buildings, the galaxy's film-made models (public/models/galaxy/surface/, at the
 // sizes galaxy/surface/catalog gives them unless a part says): `count` of a part scattered
 // round the place, or one in its middle (`centre`); `hq` its high-detail file, for a strong machine;
-// `tint` the colour the walkable site gives it (catalog's), which the air sees in place of its scan
+// `tint` the colour the walkable site gives it (catalog's), which the air sees in place of its scan;
+// `lift` metres it floats over the place's ground (Cloud City over Bespin's deck)
 const M = '/models/galaxy/surface/';
 const part = (file, metres, count = 1, more = {}) => ({ url: `${M}${file}.glb`, metres, along: 'x', count, ...more });
 const landmark = (id, at, parts) => ({ id, at, parts });
@@ -205,10 +206,11 @@ const GALAXY = [
       biome('towers', [0.7, 0.7], 20, [mesas(1200, 160, 0.3, 0.2)]),
       biome('trough', [0.3, 0.3], -120, [channels(2400, 80, 0.2)]),
     ],
-    pois: [poi('cloud-city', 'Cloud City', [0, 0], 420, 200, 200), poi('gas-platform', 'A gas platform', [2200, 900], 60, 40, 140)],
+    // (the places at the deck's own level, the city and the platform lifted over them: they float, as in the films)
+    pois: [poi('cloud-city', 'Cloud City', [0, 0], 420, 200, 0), poi('gas-platform', 'A gas platform', [2200, 900], 60, 40, 0)],
     palette: { low: '#e8d8c8', high: '#f0e2d2', rock: '#c8b8a8', accent: '#f0a888', skyLow: '#fbe3cf', skyHigh: '#e09a78' },
     clutter: clutter(['spire', 4, fine], ['debris', 3]),
-    landmarks: [landmark('cloud-city', 'cloud-city', [part('cloudplaza', 300, 1, { centre: true }), part('cloudcity', 160, 1, { centre: true, along: 'y' }), part('cloudtower', 110, 10, { along: 'y' })])],
+    landmarks: [landmark('cloud-city', 'cloud-city', [part('cloudplaza', 300, 1, { centre: true, lift: 200 }), part('cloudcity', 160, 1, { centre: true, along: 'y', lift: 200 }), part('cloudtower', 110, 10, { along: 'y', lift: 200, outer: 0.4 })])],
     ground: SITE_GROUND.bespin,
   },
   {

@@ -166,7 +166,7 @@ export default {
             const obj = placeLandmark(model.clone(true), { ...part, yaw: at.yaw });
             obj.name = `flight-${l.id}`;
             // (inside the place's r its ground is flat at its h: the field says so exactly)
-            obj.position.set(at.x, field.heightAt(at.x, at.z), at.z);
+            obj.position.set(at.x, field.heightAt(at.x, at.z) + (part.lift ?? 0), at.z);
             ground.root.add(obj);
             house?.adopt(obj);
           }
