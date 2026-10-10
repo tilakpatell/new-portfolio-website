@@ -5,6 +5,7 @@ import { useDocumentTitle } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
 import { FILMS, SYSTEMS, eraById, eraOf, filmLabel, parseSystem, systemById, yearLabel } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
+import { modesFor } from '../components/galaxy/surface/modes';
 import { CRAWLS } from '../components/galaxy/crawls';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/mission.css';
@@ -143,6 +144,24 @@ export default function GalaxyMission() {
             </p>
           </section>
         </div>
+
+        {/* what's played down there, as the landing's menu has it (modes.js) */}
+        {canLand(sys.id) && (
+          <section className="mission-card" aria-labelledby="mission-modes">
+            <h2 id="mission-modes" className="mission-h">
+              Down on {sys.name}
+            </h2>
+            <ul className="mission-objectives">
+              {modesFor(sys.id).map((c) => (
+                <li key={c.id}>
+                  {c.state === 'live' ? <Link to={c.to}>{c.name}</Link> : <span className="text-muted">{c.name}</span>}
+                  {': '}
+                  {c.state === 'live' ? c.about : c.why}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="mission-card mission-moment" aria-label="There now">
           <p className="mission-h">There now: {sys.moment.title}</p>
