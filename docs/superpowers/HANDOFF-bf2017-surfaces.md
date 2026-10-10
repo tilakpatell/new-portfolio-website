@@ -8,6 +8,8 @@ The design: `docs/superpowers/specs/2026-10-10-bf2017-surfaces-design.md`. It an
 - **The lightmaps exist.** `StaticEnlightenData` per level names an HDR irradiance atlas, three direction maps and a sky-visibility map (Hoth: `EN_Hoth_01_Static_Sunset_*`, 3,128 × 3,680 BC6U); 200 atlases across the levels. The per-instance charts are in an Enlighten database resource the exporter never read; lane Q3's Task 3 probes it.
 - **1,788 maps the materials name were never encoded** (detail normals, overlays, height maps, masks, emissive maps; 173 terrain layer maps): `web_opt/_surfaces_list.tsv`, encoding since 2026-10-10 14:00 UTC on the desktop (`logs/surfaces_textures.log`, pid 7604; terrain first, then detail, height, overlay, emissive, mask). **They still need uploading**: when the log says `ktx2: ok=…`, queue the KTX2 paths and run `tool/upload_supabase.py --root web_opt --list <list> --project jzabcqboyemokwifmjmp --bucket bf2017-assets --prefix web/` with `SUPABASE_SERVICE_KEY` from `.secrets/supabase_service_key.txt`, and read its "to upload now" line. The lanes print `missing:` for a map not there yet and re-import when it lands.
 
+**The atlases are not in the bucket (checked 2026-10-10 15:10 UTC by the fifth design's session, on the desktop export and lane Z's ledger).** `textures.jsonl` lists the 200 `*_staticIrradianceTexture` PNG sources (2,000 to 3,000 pixels a side) beside the 201 `StaticEnlightenData` records, but `upload_state.tsv` has 0 rows for them: they were never queued (the same cause as #839's §1.1), and the bucket's 118 `enlighten` objects are proxy meshes, shapes and records. Lane Q3's spike therefore needs a desktop pass first: `tool/ktx2_encode.py --list` on those 200 (UASTC: irradiance, not colour) plus the direction and sky-visibility maps the records name, queued and uploaded as the planet skins were; until then Q3 reads the export on the desktop, not the bucket.
+
 ## The lanes
 
 | Lane | Plan | What | Starts from | Blocked by |
@@ -32,10 +34,10 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 
 | Lane | Session | Branch | PR |
 |---|---|---|---|
-| design | the architecting session | `claude/bf2017-render-beauty` | this PR |
-| Q1 | | `claude/surfaces-q1-materials` | |
-| Q2 | | `claude/surfaces-q2-ground` | |
-| Q4 | https://claude.ai/code/session_01UZN9iy457biyvcFRr7X39w | `claude/surfaces-q4-weathering` | #852 (WebGL 2 leg shot; the WebGPU leg and the z-fighting proof on the owner's laptop) |
+| design | the architecting session | `claude/bf2017-render-beauty` | #844 |
+| Q1 | `session_01Ej9xiBYcqg7uoRPqsbKTtN` (Opus 5.5, env Website, started 2026-10-10 14:13 UTC) | `claude/surfaces-q1-materials` | |
+| Q2 | `session_01RyTcJLkhXuFkEEnUifdzLL` (the same) | `claude/surfaces-q2-ground` | #851 |
+| Q4 | `session_01UZN9iy457biyvcFRr7X39w` (the same) | `claude/surfaces-q4-weathering` | #852 (WebGL 2 leg shot; the WebGPU leg and the z-fighting proof on the owner's laptop) |
 | Q3 | | | after S |
 | Q5 | | | the desktop |
 | Q6 | | | after S and V |
@@ -51,6 +53,18 @@ One lane per session. Q1 owns `src/lib/three/surface/` and `levelGltf.js`'s opti
 - **Z-fighting** (Review Focus 5) is not proved on the cloud: the fixture's grazing pair (camera 3 mm apart) measures what the decals add between the frames, 0.08, but a control with no push and no polygon offset measures 0.045: SwiftShader shows no fighting either way. The owner's laptop run of `--decals` is the proof.
 - The fixture: `node scripts/light-fixture.mjs --decals --legs webgl` (11 decals in 5 draws).
 - **Lane E0** (PR #848, `claude/bf2017-e0-factory`) packs every map and calls `decalsOf(extras, pack, { subworlds })` from `scripts/bf2017-level-parts.mjs` once this lane is on `main` (until then it writes an empty format-1 `decals.json` with `waiting: 'lane Q4'`). Nothing draws a level's decals yet: whichever of E0 and Q4 merges second adds `createDecals({ scene, pack: decalsJson, loader, tier, backend })` to `src/components/galaxy/surface/level/index.js` and its `cell(cx, cz, targets)` / `drop(cx, cz)` to that file's `onCell` / `onDrop`, the targets being the cell's static instances as `{ geometry, matrix }`.
+
+### Lane Q2: the ground's layers
+
+**Done** (the WebGL 2 leg; the WebGPU leg waits for the owner's laptop). `node scripts/bf2017-ground.mjs hoth --fetch` writes `levels/hoth/ground.json` and `ground/masks.png` and brings the layer maps into the pack's `tex/` (256 / 512 / 1,024 px; 1,024 is 4 mm a texel at the tile, so ultra takes 1,024 too). `src/lib/three/ground/layeredGround.js` is the TSL material; `levelScene.js` takes it on a node renderer when `createLevelScene` is handed `ground: { mesh, renderer, fetchBytes, urlOf, entry }` (lane T passes the ground's mesh when it flips the surface; nothing on the classic renderer changes). Shots, frame table and budgets: `docs/superpowers/evidence/bf2017-surfaces/Q2/`.
+
+- **The layers.** Hoth's terrain names 105 layer combinations over 11 normal maps; four carry the ground (by how many combinations name them: packed 71, rough 70, rocky 47, chunky 42): `T_ArcticBase_SnowPacked_04_N`, `SnowRoughPacked_03_N`, `SnowRockyPacked_04_N`, `SnowChunkyWind_01_N`, over `SnowSparkle_03_RGBM`. All five landed in the bucket during the lane (the desktop's encode, terrain first).
+- **The maps' channels**, decoded: R and G the normal, **B a height** (the combinations' `displacement2d`: blurred relief, spread 0.03 to 0.16), A a smoothness in the rocky, rough and packed maps (rock rougher) and a constant 255 in the chunky. So the blend is by height (`(mask × height)^4`, normalised), and the alpha moves each layer's named roughness by `SMOOTH_GAIN`.
+- **The masks' rules** (derived; `mask: 'derived'`): rocky where the slope is over 30°; chunky where the slope is under 15° and the ground 2 m or more under the field (the mean within 64 m); rough where the level places its meshes thickly (the hangar's apron); packed the rest. In order, the first that holds claims the pixel with a soft edge; the shares over the near map are rocky 8.5%, chunky 11.1%, rough 0.4%, packed 80%. The PNG is RGB at 2 m a texel: rocky, chunky, rough in the channels, packed what they leave (alpha is not used: a browser's decoder premultiplies it into the colour and lost the rock where packed was 0).
+- **The tile**, judged on the shot: 4 m for a 2,048 px map (`TILE_M.hoth`), the wind ripples of the packed snow at a believable scale at 2 m. The layer shader's own tiling would replace it.
+- **What a real mask would change**: `ground.json` says `mask: 'game'`, the PNG comes from the export's section 1, the rules stay as documentation; the material and lane N's import do not change.
+- **Lane N** imports `maskOf(layer, { heights, slope, field, density, frame, rules })` (or `masksOf(rules, ctx)` for all at once) from `src/lib/three/ground/masks.js`, with `rules` from `ground.json`; or reads `ground/masks.png`'s channels as above. Its rocks then grow on the same ridges the ground draws rocky.
+- **Left**: the WebGPU leg and the real frame cost on the laptop; the colour map (the far ground is `TerrainColor` × a tint per layer until then); the layer shader's tiling and smoothness; the other nine terrains (`RULES` per world).
 
 Findings for the next lane go here: families by count on Hoth and which fell to `glb`, the detail maps still missing at PR time, the ground's tile size as judged, what the Enlighten probe found, the PSNR table.
 
