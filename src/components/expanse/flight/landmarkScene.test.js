@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { createLandmark } from './landmarkScene';
+import { createLandmark, createLandmarks } from './landmarkScene';
 
 const list = [
   { kind: 'echobase', at: [1200, -800], y: 12, yaw: 0, scale: 1, abs: true, solid: false },
@@ -97,5 +97,51 @@ describe('createLandmark', () => {
     const lm = createLandmark(scene, { list, placer: make, origin: [0, 0, 0] });
     lm.reanchor([2048, 10, -4096]);
     expect(lm.group.position.toArray()).toEqual([-2048, -10, 4096]);
+  });
+});
+
+describe('createLandmarks', () => {
+  const spec = { id: 'mustafar', pois: [{ id: 'collection-arm', at: [1600, -600], r: 40, edge: 30 }, { id: 'far-off', at: [90000, 0], r: 40, edge: 30 }] };
+  const flat = () => 4;
+
+  it('draws a POI as the ship comes near and frees it as it goes', async () => {
+    const scene = new THREE.Scene();
+    const { make, placer } = fakePlacer();
+    const lms = createLandmarks(scene, { spec, heightAt: flat, placer: make, prefetch: () => {} });
+    lms.update({ x: 1600, y: 300, z: 10000 }, [0, 0, 0], 0.016);
+    expect(lms.live()).toEqual([]);
+    lms.update({ x: 1600, y: 300, z: 2000 }, [0, 0, 0], 0.016);
+    expect(lms.live()).toEqual(['collection-arm']);
+    await lms.ready();
+    expect(placer.put).toHaveBeenCalledTimes(6);
+    lms.update({ x: 1600, y: 300, z: 1000 }, [0, 0, 0], 0.016);
+    expect(placer.put).toHaveBeenCalledTimes(6);
+    lms.update({ x: 1600, y: 300, z: 60000 }, [0, 0, 0], 0.016);
+    expect(lms.live()).toEqual([]);
+    expect(placer.dispose).toHaveBeenCalledTimes(1);
+    lms.dispose();
+  });
+
+  it('fetches ahead what the ship will want', () => {
+    const scene = new THREE.Scene();
+    const { make } = fakePlacer();
+    const prefetch = vi.fn();
+    const lms = createLandmarks(scene, { spec, heightAt: flat, placer: make, prefetch });
+    lms.update({ x: 1600, y: 300, z: 9000 }, [0, 0, 0], 0.016);
+    expect(prefetch).toHaveBeenCalledTimes(1);
+    expect(prefetch.mock.calls[0][0].map((p) => p.kind)).toContain('lavacollector');
+    lms.update({ x: 1600, y: 300, z: 9000 }, [0, 0, 0], 0.016);
+    expect(prefetch).toHaveBeenCalledTimes(1);
+    lms.dispose();
+  });
+
+  it('keeps every landmark under the origin', () => {
+    const scene = new THREE.Scene();
+    const { make } = fakePlacer();
+    const lms = createLandmarks(scene, { spec, heightAt: flat, placer: make, prefetch: () => {} });
+    lms.update({ x: 1600, y: 300, z: 0 }, [2048, 0, 0], 0.016);
+    expect(scene.getObjectByName('landmark:collection-arm').position.x).toBe(-2048);
+    lms.dispose();
+    expect(scene.getObjectByName('landmark:collection-arm')).toBeUndefined();
   });
 });

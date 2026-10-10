@@ -17,9 +17,20 @@
 //         reanchor(at), dispose() }
 //   galaxyPlacer({ kit, house }) → (group) → a galaxy placer over it, its
 //     things stood at their own heights (`abs`), nothing solid
+//   createLandmarks(scene, { spec, heightAt, placer, prefetch, house }) → {
+//     update(ship, at (the origin), dt), live() → ids, ready(), dispose() }:
+//     the POIs' landmarks streamed round the ship (./landmarkStream.js's
+//     plan), each one's placements worked out once a flight; the galaxy's
+//     prop kit made at the first one wanted (painted, no scans: the flight's
+//     look), and the files of the ones ahead fetched into the placer's own
+//     model cache (prefetchModels), so a landmark wanted is a landmark drawn
 
 import * as THREE from 'three';
-import { createPlacer } from '../../galaxy/surface/placer';
+import { createPlacer, loadModel, usesModel } from '../../galaxy/surface/placer';
+import { createKit } from '../../galaxy/surface/kit';
+import { planetField } from '../../../lib/land/flight/field';
+import { placementsFor } from './landmarks';
+import { landmarkPlan } from './landmarkStream';
 
 const users = new Map(); // geometry → how many live landmarks draw it
 
@@ -115,3 +126,68 @@ export const galaxyPlacer =
   ({ kit, house = null }) =>
   (group) =>
     createPlacer({ parent: group, kit, world: { ...WORLD, floors: [] }, house });
+
+// a placement list's catalog models fetched and parsed into the placer's
+// cache ahead of their landmark (a kit model's file is small, and fetched
+// with its landmark)
+const fetchedKinds = new Set();
+export function prefetchModels(list) {
+  for (const p of list) {
+    if (p.model || fetchedKinds.has(p.kind) || !usesModel(p)) continue;
+    fetchedKinds.add(p.kind);
+    Promise.resolve(loadModel(p.kind)).catch(() => {});
+  }
+}
+
+export function createLandmarks(scene, { spec, heightAt = null, placer = null, prefetch = prefetchModels, house = null }) {
+  const pois = spec?.pois ?? [];
+  const height = heightAt ?? planetField(spec).heightAt;
+  const lists = new Map(); // POI id → its placements, worked out once
+  const listOf = (poi) => {
+    if (!lists.has(poi.id)) lists.set(poi.id, placementsFor(spec, poi, { heightAt: height }).list);
+    return lists.get(poi.id);
+  };
+  const byId = new Map(pois.map((p) => [p.id, p]));
+  const live = new Map(); // POI id → its landmark
+  const fetched = new Set();
+  let kit = null;
+  let makePlacer = placer;
+  // (the prop kit paints its maps on a canvas: with no page, in Node, nothing is drawn)
+  const drawable = Boolean(placer) || typeof document !== 'undefined';
+  const placerOf = () => (makePlacer ??= galaxyPlacer({ kit: (kit = createKit({ seed: 31, scans: false })), house }));
+  let t = 0;
+
+  return {
+    live: () => [...live.keys()],
+    ready: () => Promise.all([...live.values()].map((l) => l.ready)),
+    update(ship, at, dt = 0) {
+      t += dt;
+      const { want, prefetch: ahead } = landmarkPlan(pois, ship, new Set(live.keys()));
+      for (const [id, lm] of live)
+        if (!want.includes(id)) {
+          lm.dispose();
+          live.delete(id);
+        }
+      for (const id of want) {
+        if (live.has(id) || !drawable) continue;
+        fetched.add(id);
+        live.set(id, createLandmark(scene, { list: listOf(byId.get(id)), placer: placerOf(), origin: at, name: `landmark:${id}` }));
+      }
+      for (const id of ahead) {
+        if (fetched.has(id)) continue;
+        fetched.add(id);
+        prefetch(listOf(byId.get(id)));
+      }
+      for (const lm of live.values()) {
+        lm.reanchor(at);
+        lm.update(t, dt);
+      }
+      kit?.tick?.(dt);
+    },
+    dispose() {
+      for (const lm of live.values()) lm.dispose();
+      live.clear();
+      kit?.dispose();
+    },
+  };
+}
