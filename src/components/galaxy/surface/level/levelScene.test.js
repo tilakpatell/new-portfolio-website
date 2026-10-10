@@ -92,10 +92,35 @@ describe('createLevelScene', () => {
     await settle();
     const by = Object.fromEntries(drawn(scene).map((m) => [m.userData.glb, m.count]));
     expect(by['r0.glb']).toBe(1);
+    const sorts = level.rebuilds();
     level.update([29.5, 0]); // (half a metre: nothing to do)
-    expect(level.rebuilds()).toBe(2);
+    expect(level.rebuilds()).toBe(sorts);
     level.dispose();
     expect(drawn(scene).length).toBe(0);
+  });
+
+  it('a thing changing LOD stays drawn at the old one until the new one has loaded', async () => {
+    const scene = new THREE.Scene();
+    let release = null;
+    const gate = new Promise((r) => (release = r));
+    // (the rock's last LOD is slow to come)
+    const slow = (glb) => (glb === 'r2.glb' ? gate.then(loadGltf) : loadGltf());
+    const level = createLevelScene({ scene, pack, loadGltf: slow, tier: 'high' });
+    level.setTable(table);
+    level.update([0, 0]); // the first rock at LOD0 (loaded); the second wants r2, slow
+    await settle();
+    expect(drawn(scene).find((m) => m.userData.glb === 'r0.glb').count).toBe(1);
+    level.update([29, 0]); // beside the second: the first now wants r2, still not loaded
+    await settle();
+    // (both drawn at LOD0: the first kept at its old one, the second at its new)
+    expect(drawn(scene).find((m) => m.userData.glb === 'r0.glb').count).toBe(2);
+    release();
+    await settle();
+    await settle();
+    const by = Object.fromEntries(drawn(scene).map((m) => [m.userData.glb, m.count]));
+    expect(by['r0.glb']).toBe(1);
+    expect(by['r2.glb']).toBe(1);
+    level.dispose();
   });
 
   it('a mesh that fails to load draws nothing and breaks nothing', async () => {

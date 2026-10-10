@@ -73,10 +73,23 @@ export function createLevelScene({ scene, pack, loadGltf, tier }) {
     return null;
   };
 
+  function poolFor(key, mirrored) {
+    if (!pools.has(key)) pools.set(key, { glb: key.slice(0, key.lastIndexOf('|')), mirrored, rows: [], parts: null, loading: false });
+    return pools.get(key);
+  }
+
   function build(p) {
     if (disposed) return;
     if (!p.parts) {
-      if (!p.rows.length || p.loading) return;
+      if (p.rows.length) load(p);
+      return;
+    }
+    place(p);
+  }
+
+  function load(p) {
+    if (p.loading || p.parts || disposed) return;
+    {
       p.loading = true;
       Promise.resolve(loadGltf(p.glb)).then((gltf) => {
         if (disposed || !gltf) return;
@@ -85,10 +98,14 @@ export function createLevelScene({ scene, pack, loadGltf, tier }) {
         gltf.scene.traverse((o) => {
           if (o.isMesh) p.parts.push({ geometry: p.mirrored ? flipped(o.geometry) : o.geometry, material: o.material, local: o.matrixWorld.clone(), mesh: null, owned: p.mirrored });
         });
-        build(p);
+        // (the rows held at their old LOD for this one move over now)
+        if (last) sort(last);
+        else build(p);
       });
-      return;
     }
+  }
+
+  function place(p) {
     for (const part of p.parts) {
       if (!part.mesh || part.mesh.instanceMatrix.count < p.rows.length) {
         if (part.mesh) {
@@ -119,14 +136,21 @@ export function createLevelScene({ scene, pack, loadGltf, tier }) {
       const mesh = pack.meshes[row.mesh];
       const glb = fileOf(mesh, lodAt(mesh.lods, d, row.r, tier));
       if (!glb) continue;
-      const key = `${glb}|${row.mirrored ? 1 : 0}`;
+      let key = `${glb}|${row.mirrored ? 1 : 0}`;
+      const want = poolFor(key, row.mirrored);
+      // (a thing whose new LOD has not loaded stays at the one it is drawn
+      // at, so nothing blinks out while a file comes; the new one is asked for)
+      if (!want.parts) {
+        load(want);
+        if (row.at && pools.get(row.at)?.parts) key = row.at;
+      }
+      row.at = key;
       if (!next.has(key)) next.set(key, []);
       next.get(key).push(row);
     }
     for (const [key, p] of pools) if (!next.has(key) && p.rows.length) (p.rows = []), build(p);
     for (const [key, list] of next) {
-      let p = pools.get(key);
-      if (!p) pools.set(key, (p = { glb: key.slice(0, key.lastIndexOf('|')), mirrored: list[0].mirrored, rows: [], parts: null, loading: false }));
+      const p = pools.get(key);
       p.rows = list;
       build(p);
     }

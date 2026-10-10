@@ -114,3 +114,29 @@ describe('createLevelStream', () => {
     s.dispose();
   });
 });
+
+describe('a cell that will not come', () => {
+  it('is asked again only after a wait that grows, and holds nothing else back', async () => {
+    const asked = [];
+    let now = 0;
+    const fetch = (path) => {
+      asked.push(path);
+      return path === 'cells/0_0.bin' ? Promise.reject(new Error('404')) : Promise.resolve(new ArrayBuffer(32));
+    };
+    const got = { horizon: 0 };
+    const s = createLevelStream({ pack, fetch, wanted, tier: 'high', now: () => now, onFar: () => {}, onHorizon: () => got.horizon++, onCell: () => {} });
+    for (let i = 0; i < 30; i++) {
+      s.update([10, 10], 'high');
+      await tick();
+    }
+    expect(asked.filter((p) => p === 'cells/0_0.bin').length).toBe(1);
+    expect(got.horizon).toBe(1);
+    now = 11000; // (past the first wait: once more)
+    for (let i = 0; i < 5; i++) {
+      s.update([10, 10], 'high');
+      await tick();
+    }
+    expect(asked.filter((p) => p === 'cells/0_0.bin').length).toBe(2);
+    s.dispose();
+  });
+});

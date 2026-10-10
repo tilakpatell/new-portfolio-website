@@ -4,7 +4,7 @@ From `levels/mp/hoth_01` (Star Wars Battlefront II, 2017, EA DICE; used with per
 
 - 5815 instances in the arena (±1024 m), 236 beyond it (the horizon), 14535 left out under the ground (the base inside the glacier: the site's interior zone stands for it), 155 cells of 128 m
 - 602 meshes (4 left out), 476 LOD files, 8.80 MB
-- the far list 0.18 MB; terrain near 2.50 MB, far 5.75 MB; the spot's ground 362.30 m in the game
+- the far list 0.18 MB; terrain near 2.50 MB, far 2.20 MB; the spot's ground 362.30 m in the game
 - textures missing from the bucket: 4
 
 | | low | mid | high |

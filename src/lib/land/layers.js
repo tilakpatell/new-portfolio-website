@@ -97,8 +97,9 @@ export const LAYERS = {
     return Math.min(l.hMin + hash2(ix, iz, seed) * (l.hMax - l.hMin), inside * BLOCK_WALL);
   },
   // a game's heightmap (lane L's level packs): `near` at 1 m a pixel over
-  // the arena where it covers, `far` at 2 m a pixel beyond it, each
-  // { data (metres, NaN a hole), w, h, minX, minZ, metresPerPixel }. Bilinear;
+  // the arena where it covers, `far` beyond it, each { data, w, h, minX,
+  // minZ, metresPerPixel }: data in metres (NaN a hole), or 16-bit values
+  // with the map's { scale, offset, hole } (v × scale / 65536 + offset). Bilinear;
   // a hole or the edge falls through to the next map, so a hole never reads
   // as sea level. 0 before the pack's maps have arrived (only the layer's
   // `pack` name is in the site): the site's flats still level the pad.
@@ -122,12 +123,14 @@ function sampleImage(m, x, z) {
   const fz = gz - j;
   const d = m.data;
   const k = j * m.w + i;
-  // (a texel with no weight is left out, so a hole only counts where it pulls)
+  // (a texel with no weight is left out, so a hole only counts where it pulls;
+  // a 16-bit map is decoded texel by texel: half the memory of metres)
+  const at = m.scale === undefined ? (i) => d[i] : (i) => (d[i] === m.hole ? NaN : (m.offset ?? 0) + (d[i] * m.scale) / 65536);
   const w00 = (1 - fx) * (1 - fz);
   const w10 = fx * (1 - fz);
   const w01 = (1 - fx) * fz;
   const w11 = fx * fz;
-  return (w00 ? d[k] * w00 : 0) + (w10 ? d[k + 1] * w10 : 0) + (w01 ? d[k + m.w] * w01 : 0) + (w11 ? d[k + m.w + 1] * w11 : 0);
+  return (w00 ? at(k) * w00 : 0) + (w10 ? at(k + 1) * w10 : 0) + (w01 ? at(k + m.w) * w01 : 0) + (w11 ? at(k + m.w + 1) * w11 : 0);
 }
 
 // A 16-bit heightmap's values as metres: offset + v × scale / 65536 (the
@@ -148,7 +151,8 @@ export function imageLayerFrom(record, nearPixels, farPixels) {
   const scale = record.heightScale ?? record.scale ?? 1024;
   const offset = record.heightOffset ?? record.offset ?? 0;
   const hole = record.holePixels > 0 ? 0 : null;
-  const map = (p) => p && { ...p, data: decodeHeights(p.data, scale, offset, { hole }) };
+  // (the 16-bit values kept as they are, with how to read them)
+  const map = (p) => p && { ...p, scale, offset, hole };
   return { type: 'image', near: map(nearPixels), far: map(farPixels) };
 }
 

@@ -121,6 +121,15 @@ describe('the image layer: the game’s heightmaps', () => {
     expect(d[1]).toBeCloseTo((100 / 65536) * 1024, 6);
   });
 
+  it('reads 16-bit maps as they are, each texel decoded as it is sampled (half the memory)', () => {
+    const k = 1024 / 65536;
+    const near16 = { data: Uint16Array.from([640, 768, 896, 640, 768, 896, 640, 768, 0]), w: 3, h: 3, minX: 0, minZ: 0, metresPerPixel: 1, scale: 1024, offset: 0, hole: 0 };
+    const l = { type: 'image', near: near16, far };
+    expect(LAYERS.image(1, 1, l)).toBeCloseTo(768 * k, 10);
+    expect(LAYERS.image(0.5, 0, l)).toBeCloseTo(704 * k, 10);
+    expect(LAYERS.image(2, 2, l)).toBe(5); // (the hole: the far map's)
+  });
+
   it('builds the layer from a record and its two maps, the seam within half a metre', () => {
     const record = { heightScale: 1024, heightOffset: 0, holePixels: 0 };
     // one gentle slope, sampled at 1 m and at 2 m
@@ -129,6 +138,7 @@ describe('the image layer: the game’s heightmaps', () => {
     const farPixels = { data: new Uint16Array(9 * 9).map((_, i) => raw((i % 9) * 2 - 4)), w: 9, h: 9, minX: -4, minZ: -4, metresPerPixel: 2 };
     const l = imageLayerFrom(record, nearPixels, farPixels);
     expect(l.type).toBe('image');
+    expect(l.near.data).toBeInstanceOf(Uint16Array);
     const inBoth = LAYERS.image(3.3, 2.1, l);
     const farOnly = LAYERS.image(3.3, 2.1, { far: l.far });
     expect(Math.abs(inBoth - farOnly)).toBeLessThan(0.5);

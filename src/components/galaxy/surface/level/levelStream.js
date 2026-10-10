@@ -6,14 +6,19 @@
 // so walking back is free. Every fetch shares one AbortController, aborted at
 // dispose; nothing arriving after that is handed on.
 //
-//   createLevelStream({ pack, fetch, wanted, tier, onFar, onHorizon, onCell, onDrop, signal, parallel })
+// A cell that cannot be had is asked again after 10 s, then 20, 40 … (a
+// missing file is not asked for every frame), and holds back nothing else.
+//
+//   createLevelStream({ pack, fetch, wanted, tier, onFar, onHorizon, onCell, onDrop, signal, parallel, now })
 //     → { update(position, tier), ready(), progress(), dispose() }
 //
 // fetch(path, { signal }) → Promise<ArrayBuffer> (index.js: the asset base's)
 
 import { bandOf } from './levelPack.js';
 
-export function createLevelStream({ pack, fetch, wanted, tier: tier0 = 'high', onFar, onHorizon = () => {}, onCell, onDrop = () => {}, signal = null, parallel = 4 }) {
+const RETRY_MS = 10000;
+
+export function createLevelStream({ pack, fetch, wanted, tier: tier0 = 'high', onFar, onHorizon = () => {}, onCell, onDrop = () => {}, signal = null, parallel = 4, now = () => performance.now() }) {
   const ctl = new AbortController();
   signal?.addEventListener('abort', () => ctl.abort());
   let tier = tier0;
@@ -22,6 +27,7 @@ export function createLevelStream({ pack, fetch, wanted, tier: tier0 = 'high', o
   let horizonAsked = false;
   const bins = new Map(); // key → ArrayBuffer (kept while the page is up: a few KB a cell)
   const inFlight = new Set();
+  const failed = new Map(); // key → { tries, until }
   const shown = new Map(); // key → band handed on
   let want = { near: [], mid: [] };
   let at = null;
@@ -47,7 +53,8 @@ export function createLevelStream({ pack, fetch, wanted, tier: tier0 = 'high', o
 
   function pump() {
     if (!alive() || !farDone) return;
-    const queue = [...want.near, ...want.mid].filter((k) => !bins.has(k) && !inFlight.has(k));
+    const t = now();
+    const queue = [...want.near, ...want.mid].filter((k) => !bins.has(k) && !inFlight.has(k) && !(failed.get(k)?.until > t));
     while (inFlight.size < parallel && queue.length) {
       const key = queue.shift();
       inFlight.add(key);
@@ -62,6 +69,9 @@ export function createLevelStream({ pack, fetch, wanted, tier: tier0 = 'high', o
         .catch(() => {
           // (a cell that cannot be had: the far list keeps standing in for it)
           inFlight.delete(key);
+          const tries = (failed.get(key)?.tries ?? 0) + 1;
+          failed.set(key, { tries, until: now() + RETRY_MS * 2 ** (tries - 1) });
+          pump();
         });
     }
     if (!inFlight.size && !queue.length && !horizonAsked && pack.horizon?.bin && pack.horizon.draws?.length !== 0) {

@@ -73,7 +73,7 @@ async function pool(items, n, fn) {
 
 // The pack's two heightmaps in the site's frame: near at 1 m a pixel over the
 // arena and 256 m round it (the detail map where it has ground, the world
-// map under its holes and beyond it), far at 2 m over the whole world map;
+// map under its holes and beyond it), far at 4 m over the whole world map;
 // heights rebased so the spot's ground is 0
 async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
   const f = terrainFrame(record);
@@ -100,12 +100,10 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
     holeMask = Uint8Array.from(holes, (v) => (v === 0 ? 1 : 0));
     near.data = fillHoles(holes, near.w, near.h);
   }
-  const far = cropHeights(src, f, {
-    minX: f.minX,
-    minZ: f.minZ,
-    size: (f.w - 1) * f.metresPerPixel,
-    metresPerPixel: 2,
-  });
+  // (the far map at 4 m a pixel: the ground's grid out there is coarser still,
+  // and a 2 m map of the whole 8 km is 16 million samples for every visitor)
+  const FAR_MPP = 4;
+  const far = cropHeights(src, f, { minX: f.minX, minZ: f.minZ, size: (f.w - 1) * f.metresPerPixel, metresPerPixel: FAR_MPP });
   const nearPng = encodePng16(near.data, near.w, near.h);
   const farPng = encodePng16(far.data, far.w, far.h);
   if (!dry) {
@@ -122,7 +120,7 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
     },
     far: {
       png: 'terrain/far.png',
-      metresPerPixel: 2,
+      metresPerPixel: FAR_MPP,
       min: [f.minX - spot[0], f.minZ - spot[1]],
       size: [far.w, far.h],
     },
@@ -139,7 +137,7 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
       minZ: json.near.min[1],
       metresPerPixel: 1,
     },
-    { ...far, minX: json.far.min[0], minZ: json.far.min[1], metresPerPixel: 2 },
+    { ...far, minX: json.far.min[0], minZ: json.far.min[1], metresPerPixel: FAR_MPP },
   );
   const holeAt = (x, z) => {
     const i = Math.round(z - json.near.min[1]) * near.w + Math.round(x - json.near.min[0]);

@@ -9,15 +9,16 @@ const loop = ([cx, cz], [rx, rz], n = 10) =>
     return [Math.round(cx + Math.cos(a) * rx), Math.round(cz + Math.sin(a) * rz)];
   });
 
-// Echo Base, and a spot in its own frame (x across its mouth, z out of
-// it) put in the world's, for who's about in it (and for the flight's
-// planet, which builds it here)
+// Echo Base as the site built it (the flight's planet still builds it here;
+// on the surface the game's hangar is the base)
 const ECHO = { at: [-150, 200], yaw: 2.5 };
 
 // the way in on the surface: the game's own hangar, its west mouth 30 m
-// south of the landing, opening north (lane L's level pack)
-const MOUTH = { door: [-20, -32], back: [-20, -26] };
-const echo = ([x, z]) => [Math.round((ECHO.at[0] + x * Math.cos(ECHO.yaw) + z * Math.sin(ECHO.yaw)) * 10) / 10, Math.round((ECHO.at[1] - x * Math.sin(ECHO.yaw) + z * Math.cos(ECHO.yaw)) * 10) / 10];
+// south of the landing, opening north (lane L's level pack); and a spot in
+// its frame (x across the mouth, z out of it), for the base's
+// people, who stand about the way in
+const MOUTH = { at: [-20, -30], yaw: 0, door: [-20, -32], back: [-20, -26] };
+const mouth = ([x, z]) => [Math.round((MOUTH.at[0] + x * Math.cos(MOUTH.yaw) + z * Math.sin(MOUTH.yaw)) * 10) / 10, Math.round((MOUTH.at[1] - x * Math.sin(MOUTH.yaw) + z * Math.cos(MOUTH.yaw)) * 10) / 10];
 
 // the trench line, the same
 const TRENCH = [100, 370];
@@ -378,12 +379,12 @@ export const SITES = {
       { kind: 'hothtrooper', n: 1, at: [TRENCH[0] + 22, TRENCH[1] - 1.2], still: true, face: 0, name: 'Rebel trooper', says: ['Where are those snowspeeders?', 'Rogue Group’s coming in!'] },
       { kind: 'hothtrooper', n: 1, at: [TRENCH[0] + 48, TRENCH[1] + 0.8], still: true, face: -0.2, name: 'Rebel trooper', says: ['Fall back to the base when the shield goes. Not before.'] },
       // Echo Base, getting ready to go
-      { kind: 'hothtrooper', id: 'officer', quest: 'luke', at: echo([5, 24]), still: true, face: ECHO.yaw + 0.4, name: 'Deck officer', says: ['Sir, all the patrols are in. Except one.', 'The shield doors close at nightfall. I’m sorry.'] },
+      { kind: 'hothtrooper', id: 'officer', quest: 'luke', at: mouth([5, 24]), still: true, face: MOUTH.yaw + 0.4, name: 'Deck officer', says: ['Sir, all the patrols are in. Except one.', 'The shield doors close at nightfall. I’m sorry.'] },
       { kind: 'hothtrooper', id: 'loadmaster', quest: 'transport', at: [-258, 44], still: true, face: 2.4, name: 'Loadmaster', says: ['First transport’s loaded and away. The rest go when the cannon’s ready.', 'Everything else stays. Leave it for the Empire.'] },
-      { kind: 'hothtrooper', n: 4, at: echo([0, 6]), spread: 8, roam: 9, speed: 1.2, name: 'Echo Base crew', says: ['The first transport is away!', 'Your tauntaun will freeze before you reach the first marker.', 'We’ve got to get the speeders adapted to the cold.', 'Sir, all patrols are in. Except one.', 'All troops to the north slope!'] },
-      { kind: 'rebelpilot', n: 2, at: echo([0, 38]), spread: 8, roam: 8, speed: 1.1, name: 'Rogue Group pilot', says: ['Rogue Group, use your harpoons and tow cables!', 'That armour’s too strong for blasters. Go for the legs.', 'Echo Base, this is Rogue Two. Ready for takeoff.'] },
-      { kind: 'droid', n: 2, at: echo([2, 0]), spread: 6, roam: 8, speed: 0.6, name: 'Astromech', says: ['(A worried beep: the shield’s on its last legs.)', '(A busy whistle. It has a speeder to fix.)'] },
-      { kind: 'tauntaun', n: 3, at: echo([-44, 55]), spread: 3, roam: 4, speed: 0.9, r: 0.8 },
+      { kind: 'hothtrooper', n: 4, at: mouth([0, 6]), spread: 8, roam: 9, speed: 1.2, name: 'Echo Base crew', says: ['The first transport is away!', 'Your tauntaun will freeze before you reach the first marker.', 'We’ve got to get the speeders adapted to the cold.', 'Sir, all patrols are in. Except one.', 'All troops to the north slope!'] },
+      { kind: 'rebelpilot', n: 2, at: mouth([0, 38]), spread: 8, roam: 8, speed: 1.1, name: 'Rogue Group pilot', says: ['Rogue Group, use your harpoons and tow cables!', 'That armour’s too strong for blasters. Go for the legs.', 'Echo Base, this is Rogue Two. Ready for takeoff.'] },
+      { kind: 'droid', n: 2, at: mouth([2, 0]), spread: 6, roam: 8, speed: 0.6, name: 'Astromech', says: ['(A worried beep: the shield’s on its last legs.)', '(A busy whistle. It has a speeder to fix.)'] },
+      { kind: 'tauntaun', n: 3, at: mouth([-44, 55]), spread: 3, roam: 4, speed: 0.9, r: 0.8 },
       // the wampa, at home
       { kind: 'wampa', n: 1, at: [-390.6, -288.4], still: true, face: 0.9, r: 1, name: 'Wampa', says: ['(A roar that shakes the snow off the roof of the cave.)', '(It looks at you the way it looked at the tauntaun.)'] },
       // Luke, hung by his ankles from the roof of the cave, his feet at the
@@ -469,7 +470,7 @@ export const SITES = {
     ],
     rides: [
       { kind: 'tauntaun', at: [14, 12], yaw: -0.8 },
-      { kind: 'tauntaun', at: echo([-30, 64]), yaw: 2.2 },
+      { kind: 'tauntaun', at: mouth([-30, 64]), yaw: 2.2 },
     ],
     flyovers: [
       { kind: 'transport', n: 1, metres: 90, alt: 170, speed: 55, every: 70 },
