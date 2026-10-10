@@ -48,6 +48,7 @@ import { buildBody } from './bodies';
 import { createRocks } from './rocks';
 import { createPlaces } from './placesDraw';
 import { placesOf } from './places';
+import { createSpacePieces } from './spacePieces';
 import { createTrench } from '../universe/trench';
 import { trenchBand } from '../universe/deep';
 import { DEATHSTAR_REACH, STATION_NAMES, TRACTOR_REACH, reachOf } from './systems';
@@ -835,6 +836,14 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       drawn.update(t % 3600);
       return false;
     });
+  }
+  // ── The game's space level, where the system has one (spacePieces.js): scenery, not the war's ships ──
+  {
+    const level = createSpacePieces(sys.id);
+    group.add(level.group);
+    for (const g of level.goals) addSolid({ ...g, at: [...g.at] });
+    disposers.push(() => level.dispose());
+    ticks.push((t) => (level.update(t % 3600), false));
   }
   // what's shown: nothing of it while the war's battle is on here (quiet),
   // and of the rest only what its holder has here (setEffects)
