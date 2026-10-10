@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { lutShape, sunFromProbe, weatherEntry } from './gameLight';
+import { GAME_TO_SITE, PROBE_TO_SITE, SKY_TO_SITE, exposureOf, gameSite, hexOf, lutShape, siteLightFrom, sunFromProbe, weatherEntry } from './gameLight';
+import hoth from '../../data/bf2017/light/hoth.json';
+
+// Hoth's sunny weather through the two constants: pinned, so a drift in the
+// conversion (or a re-run of the script that reads something else) fails here
+const HOTH_SUNNY = {
+  sky: { zenith: '#85b1ff', horizon: '#b1caff', hazeColor: '#b1caff', suns: [{ az: 4.636, el: 0.575, color: '#fffaf6' }] },
+  light: { sun: 0.81, sky: '#90c0ff', ground: '#edf6ff', ambient: 0.62 },
+  fog: { color: '#b1caff', density: 0.000294 },
+  exposure: 0.00008865,
+  probeScale: 0.003483823,
+  bloom: 1,
+  grading: { brightness: 1, contrast: 1, saturation: 1, lut: 'textures/galaxy/bf2017/light/hoth/sunny.lut.png', lutSize: 17 },
+  wind: { dir: 0, strength: 5 },
+};
 
 const SIZE = 16;
 function cube() {
@@ -60,6 +74,11 @@ describe('the weather a world is under', () => {
     expect(weatherEntry(hoth, undefined).n).toBe('s');
     expect(weatherEntry(hoth, 'fog').n).toBe('s');
     expect(weatherEntry({ weathers: { night: { n: 'x' } } }, 'storm').n).toBe('x');
+    // (a level's own words: Naboo's dusk, Kamino's storm; its main by name; never a room by default)
+    expect(weatherEntry({ weathers: { dusk: { n: 'd' } } }, 'dusk').n).toBe('d');
+    expect(weatherEntry({ weathers: { stormy: { n: 'k' }, interior: { n: 'i' } } }, 'storm').n).toBe('k');
+    expect(weatherEntry({ main: 'overcast', weathers: { interior: { n: 'i' }, overcast: { n: 'o' } } }, 'clear').n).toBe('o');
+    expect(weatherEntry({ weathers: { interior: { n: 'i' }, night: { n: 'x' } } }, 'clear').n).toBe('x');
   });
 
   it('gives null for a world without a record', () => {
@@ -80,5 +99,82 @@ describe('the grading LUT’s shape', () => {
     expect(lutShape(256, 1)).toBeNull();
     expect(lutShape(512, 512)).toBeNull();
     expect(lutShape(1024, 16)).toBeNull();
+  });
+});
+
+describe('the records to the site’s light', () => {
+  it('is nothing without a record', () => {
+    expect(siteLightFrom(undefined)).toBeNull();
+    expect(siteLightFrom(null)).toBeNull();
+  });
+
+  it('holds the constants set on Hoth', () => {
+    // (the before and after shots of Hoth's ice field: mean luminance 0.3529
+    // under the site's light, 0.3595 under the game's, +1.9 %)
+    expect(GAME_TO_SITE).toBe(0.0713);
+    expect(SKY_TO_SITE).toBe(0.2006);
+    expect(PROBE_TO_SITE).toBe(52.4);
+  });
+
+  it('takes the sky’s level from the record, the probe only for its colours', () => {
+    const sunset = siteLightFrom(hoth.weathers.sunset);
+    // (3,000 against noon's 35,000, opened 4.6 stops more: a little brighter than noon's fill)
+    expect(sunset.light.ambient).toBeCloseTo(3000 * exposureOf(hoth.weathers.sunset) * SKY_TO_SITE, 2);
+    expect(sunset.sky.suns[0].color).toBe('#ff9260');
+    // (no sky level: the probe's own radiance, through the fallback)
+    const { luminance, ...sky } = hoth.weathers.sunny.sky;
+    expect(luminance).toBe(35000);
+    const own = siteLightFrom({ ...hoth.weathers.sunny, sky });
+    expect(own.probeScale).toBeCloseTo(exposureOf(hoth.weathers.sunny) * PROBE_TO_SITE, 9);
+  });
+
+  it('meters as the game’s camera does: the lit ground, clamped to the record’s range', () => {
+    // Hoth sunny: the grey card under 128,000 lux at 33° meters EV 14.96,
+    // inside the record's 11…15, opened 1.5
+    expect(Math.log2(exposureOf(hoth.weathers.sunny))).toBeCloseTo(1.5 - 14.962, 3);
+    // the sunset: 22,500 lux, 10° up, meters EV 12.2, held at 10.4, opened 1
+    expect(Math.log2(exposureOf(hoth.weathers.sunset))).toBeCloseTo(1 - 10.4, 6);
+    // no auto exposure: the record's EV
+    expect(Math.log2(exposureOf({ tonemap: { ev: 12, compensation: 0, auto: false } }))).toBeCloseTo(-12, 6);
+  });
+
+  it('gives Hoth’s sunny weather the calibrated numbers', () => {
+    expect(siteLightFrom(hoth.weathers.sunny)).toEqual(HOTH_SUNNY);
+  });
+
+  it('keeps a hue whole when it is brighter than white', () => {
+    expect(hexOf([2, 1, 0])).toBe('#ffbc00');
+    expect(hexOf([0.5, 0.5, 0.5])).toBe('#bcbcbc');
+  });
+});
+
+describe('a site under the game’s light', () => {
+  const site = {
+    id: 'hoth',
+    gameLight: 'hoth',
+    sky: { zenith: '#6f98c8', horizon: '#e4ecf4', haze: 0.95, suns: [{ az: 2.4, el: 0.2, color: '#fff4e6', size: 0.014, glow: 1 }], bodies: [{ az: 1, el: 0.2 }] },
+    fog: { color: '#e2eaf3', density: 0.0011 },
+    light: { sun: 2.6, sky: '#9fbce6', ground: '#e6edf6', ambient: 0.9 },
+  };
+
+  it('is the site itself for a world without a record', () => {
+    expect(gameSite(site, null, 'clear')).toBe(site);
+    expect(gameSite(site, undefined)).toBe(site);
+  });
+
+  it('lays the derived sky, light and fog over the site’s, keeping what the record does not say', () => {
+    const s = gameSite(site, hoth, 'clear');
+    expect(s).not.toBe(site);
+    expect(s.sky.zenith).toBe(HOTH_SUNNY.sky.zenith);
+    expect(s.sky.suns[0]).toEqual({ ...site.sky.suns[0], ...HOTH_SUNNY.sky.suns[0] });
+    expect(s.sky.bodies).toBe(site.sky.bodies);
+    expect(s.sky.haze).toBe(0.95);
+    expect(s.light.sun).toBe(HOTH_SUNNY.light.sun);
+    // (the game's fog is thinner than the site's: the site's density holds)
+    expect(s.fog.density).toBe(0.0011);
+    expect(s.fog.color).toBe(HOTH_SUNNY.fog.color);
+    expect(s.gameLit).toEqual(HOTH_SUNNY);
+    // (the site handed in is not changed)
+    expect(site.sky.zenith).toBe('#6f98c8');
   });
 });

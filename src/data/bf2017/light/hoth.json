@@ -1,0 +1,303 @@
+{
+ "world": "hoth",
+ "map": "levels/mp/hoth_01/hoth_01",
+ "main": "sunny",
+ "sky": {
+  "main": "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
+  "overrides": [
+   "Levels/Lighting/Hoth/Sunset_01/VE_PV_Hoth_Sunset_01",
+   "Levels/Lighting/Hoth/Interior_01/VE_PV_Hoth_Interior_01"
+  ]
+ },
+ "weathers": {
+  "sunny": {
+   "sun": {
+    "color": [
+     1,
+     0.9559066,
+     0.917619944
+    ],
+    "lux": 128000,
+    "az": 265.61,
+    "el": 32.943,
+    "sky": [
+     0,
+     0,
+     0
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ]
+   },
+   "sky": {
+    "luminance": 35000,
+    "sunSize": 0.004,
+    "panorama": "Levels/Lighting/Hoth/Sunny_01/T_Hoth_Sunny_02_C",
+    "gradient": "Levels/Lighting/Hoth/Sunny_01/T_Hoth_Sunny_02_Fog_C"
+   },
+   "fog": {
+    "start": 50,
+    "end": 10000,
+    "curve": [
+     2.23109341,
+     -4.5654707,
+     2.92437458,
+     -0.008789433
+    ],
+    "height": 320,
+    "heightDepth": 50,
+    "heightRange": 3000,
+    "scatter": [
+     0.423267663,
+     0.5967023,
+     1
+    ]
+   },
+   "tonemap": {
+    "compensation": 1.5,
+    "minEV": 11,
+    "maxEV": 15,
+    "bloom": 0.1
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/hoth/sunny.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 0,
+    "strength": 5
+   },
+   "enlighten": {
+    "sky": [
+     0.840373158,
+     1.57825577,
+     3
+    ],
+    "ground": [
+     0.0494334623,
+     0.0494334623,
+     0.0494334623
+    ],
+    "terrain": [
+     0.546830952,
+     0.594003737,
+     0.644479752
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01"
+   ],
+   "probe": {
+    "id": "661f4d0f",
+    "variant": "Cloudy_VFX",
+    "zenith": [
+     1453.403,
+     2732.907,
+     6231.313
+    ],
+    "horizon": [
+     133.256,
+     179.571,
+     303.305
+    ],
+    "ground": [
+     113.678,
+     158.67,
+     272.709
+    ],
+    "open": 15.19,
+    "url": "textures/galaxy/bf2017/light/hoth/sunny"
+   }
+  },
+  "sunset": {
+   "sun": {
+    "color": [
+     0.9818974,
+     0.283554882,
+     0.114725284
+    ],
+    "lux": 22500,
+    "az": 110,
+    "el": 10.25,
+    "sky": [
+     0,
+     0,
+     0
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ]
+   },
+   "sky": {
+    "luminance": 3000,
+    "sunSize": 0.004,
+    "panorama": "Levels/Lighting/Hoth/Sunset_01/T_Hoth_Sunset_01_Panoramic_C",
+    "gradient": "Levels/Lighting/Hoth/Sunset_01/T_Hoth_Sunset_01_Fog_C"
+   },
+   "fog": {
+    "start": 125,
+    "end": 2500,
+    "curve": [
+     -0.7613596,
+     0.955300331,
+     0.6373045,
+     -0.0176421143
+    ],
+    "height": 285,
+    "heightDepth": 65,
+    "heightRange": 500,
+    "scatter": [
+     0.9818974,
+     0.283554882,
+     0.114725284
+    ]
+   },
+   "tonemap": {
+    "compensation": 1,
+    "minEV": 9.5,
+    "maxEV": 10.4,
+    "bloom": 0.1
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/hoth/sunset.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 0,
+    "strength": 5
+   },
+   "enlighten": {
+    "sky": [
+     0.840373158,
+     1.57825577,
+     3
+    ],
+    "ground": [
+     0.0494334623,
+     0.0494334623,
+     0.0494334623
+    ],
+    "terrain": [
+     0.546830952,
+     0.594003737,
+     0.644479752
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
+    "Levels/Lighting/Hoth/Sunset_01/VE_PV_Hoth_Sunset_01"
+   ],
+   "probe": {
+    "id": "36a2b5e2",
+    "variant": "Sunset_VFX",
+    "zenith": [
+     107.593,
+     139.298,
+     219.123
+    ],
+    "horizon": [
+     47.417,
+     51.732,
+     66.796
+    ],
+    "ground": [
+     78.195,
+     105.929,
+     174.926
+    ],
+    "open": 2.67,
+    "url": "textures/galaxy/bf2017/light/hoth/sunset"
+   }
+  },
+  "interior": {
+   "sun": {
+    "color": [
+     1,
+     0.9559066,
+     0.917619944
+    ],
+    "lux": 128000,
+    "az": 265.61,
+    "el": 32.943,
+    "sky": [
+     0,
+     0,
+     0
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ]
+   },
+   "sky": {
+    "luminance": 35000,
+    "sunSize": 0.004,
+    "panorama": "Levels/Lighting/Hoth/Sunny_01/T_Hoth_Sunny_02_C",
+    "gradient": "Levels/Lighting/Hoth/Sunny_01/T_Hoth_Sunny_02_Fog_C"
+   },
+   "fog": {
+    "start": 250,
+    "end": 2500,
+    "curve": [
+     1.31351638,
+     -2.39810538,
+     1.72319734,
+     -0.04448349
+    ],
+    "height": 0,
+    "heightDepth": 50,
+    "heightRange": 3000,
+    "scatter": [
+     0.423267663,
+     0.5967023,
+     1
+    ]
+   },
+   "tonemap": {
+    "compensation": 1.5,
+    "minEV": 8.5,
+    "maxEV": 10.5,
+    "bloom": 0.1
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/hoth/interior.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 0,
+    "strength": 5
+   },
+   "enlighten": {
+    "sky": [
+     0.840373158,
+     1.57825577,
+     3
+    ],
+    "ground": [
+     0.0494334623,
+     0.0494334623,
+     0.0494334623
+    ],
+    "terrain": [
+     0.546830952,
+     0.594003737,
+     0.644479752
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
+    "Levels/Lighting/Hoth/Interior_01/VE_PV_Hoth_Interior_01"
+   ]
+  }
+ },
+ "indoor": {
+  "id": "9c323d00",
+  "variant": "Cloudy_VFX",
+  "url": "textures/galaxy/bf2017/light/hoth/indoor"
+ }
+}

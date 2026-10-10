@@ -142,6 +142,9 @@ import { garrisonLife, garrisonProbe } from './garrison';
 import { createGround, landingFor } from './ground/index';
 import { standable } from './sites/validity';
 import { floraTint } from './flora';
+import { gameSite } from '../../../lib/three/gameLight';
+import { gameLightOf } from '../../../data/bf2017/light/index';
+import { createGameLit } from './gameLit';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -195,8 +198,15 @@ export async function create(canvas, ctx) {
   // and Morty planets), or the galaxy's for the system; and a mission played
   // down here (missions/: handed in, or the system's by id), you starting in
   // it, not landing, its own sky laid over the site's while it runs
-  const { site, mission } = worldOf(ctx);
-  if (!site) throw new Error(`no surface for ${ctx.system}`);
+  const { site: own, mission } = worldOf(ctx);
+  if (!own) throw new Error(`no surface for ${ctx.system}`);
+  // under the game's light where the world has a record (gameLit.js): its
+  // sky, sun, bounce and fog derived from the level's, the rest the site's;
+  // a mission's own sky wins; (dev: ?gamelight=off, the site's own light, for
+  // the before shots)
+  const gameOff = import.meta.env.DEV && /[?&]gamelight=off\b/.test(window.location.search);
+  const gameLight = gameOff || mission?.site?.sky || mission?.site?.light ? null : gameLightOf(own);
+  const site = gameSite(own, gameLight, 'clear');
   // the models kinds are looked up in: the galaxy's, with a page's own book
   // laid over it (the Rick and Morty planets'), never written into it
   const models = ctx.models ? { ...SURFACE_MODELS, ...ctx.models } : SURFACE_MODELS;
@@ -264,6 +274,13 @@ export async function create(canvas, ctx) {
   const shadowFrame = new THREE.Matrix4().lookAt(sunDir, new V(), new V(0, 1, 0));
   const shadowRight = new V().setFromMatrixColumn(shadowFrame, 0);
   const shadowUp = new V().setFromMatrixColumn(shadowFrame, 1);
+  // (the sun moved, by a weather's fade: the shadow camera's frame after it)
+  const reframe = () => {
+    shadowFrame.lookAt(sunDir, new V(), new V(0, 1, 0));
+    shadowRight.setFromMatrixColumn(shadowFrame, 0);
+    shadowUp.setFromMatrixColumn(shadowFrame, 1);
+    house.sky({ sunDir });
+  };
   const second = sky.sunDirs[1] ? new THREE.DirectionalLight(site.sky.suns[1].color, site.light.second ?? 1) : null;
   if (second) {
     second.position.copy(sky.sunDirs[1]).multiplyScalar(300);
@@ -283,6 +300,9 @@ export async function create(canvas, ctx) {
   pmrem.dispose();
   scene.environment = env.texture;
   scene.environmentIntensity = 0.4;
+  // the level's probe for it once it lands, its grade (high and ultra) and
+  // its weathers, where the game lights this world
+  const gameLit = createGameLit({ light: gameLight, scene, sun, hemi, sky, house, post: post.on ? post : null, renderer, grade: !small && (level === 'high' || level === 'ultra'), fogFloor: own.fog?.density ?? 0, reframe });
 
   // (a frame's breath between the build's big steps: it's made behind the
   // dive, which goes on drawing meanwhile, and one long task stopped it)
@@ -1534,6 +1554,7 @@ export async function create(canvas, ctx) {
     if (water?.glow) water.glow.visible = !z;
     placer.setZone(Boolean(z));
     life.setZone(Boolean(z));
+    gameLit?.zone(z);
     // (indoors, the room's lamps and no sun to cast a shadow; outdoors, the sun's
     // shadow unless the frame rate has had it off, lowerQuality)
     sun.castShadow = !z && shadows;
@@ -2868,6 +2889,7 @@ export async function create(canvas, ctx) {
       dt *= 0.12;
     }
     state.t += dt;
+    gameLit?.step(dt);
     // the jump's clock: whether you stood (or your ride did) as this step began
     state.jumpPress.ground(state.phase === 'ride' ? Boolean(state.riding?.state.grounded) : state.phase === 'walk' && me().st.grounded, dt);
     const t = state.t;
@@ -3569,6 +3591,14 @@ export async function create(canvas, ctx) {
       if (z) enterZone(z);
       else leaveZone();
     },
+    // (dev: the sky's state, clear, dusk, overcast or storm, faded over
+    // `fade` seconds (0: at once), where the game lights this world)
+    weather(next, fade = 0) {
+      if (!import.meta.env.DEV) return null;
+      gameLit?.weather(next, { fade });
+      ctx.invalidate();
+      return gameLit?.debug() ?? null;
+    },
     teleport(x, z, yaw = null, y = null, pitch = null) {
       if (!import.meta.env.DEV) return;
       const p = me().st;
@@ -3591,6 +3621,7 @@ export async function create(canvas, ctx) {
     dispose() {
       disposed = true;
       lit?.dispose();
+      gameLit?.dispose();
       knocks?.dispose();
       knockHits.dispose();
       scene.remove(knockDust.mesh);
