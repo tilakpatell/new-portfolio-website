@@ -164,7 +164,11 @@ export function recipeOf(row, i) {
       set('params.emissive.color', [x / peak, y / peak, z / peak], at(ei[0]));
     } else set('params.emissive.intensity', x, at(ei[0]));
   }
-  scalar('emissive.blink');
+  // (BlinkLength01 on, BlinkLength02 off, in seconds)
+  const b1 = m.vectors?.BlinkLength01;
+  const b2 = m.vectors?.BlinkLength02;
+  if (b1) set('params.emissive.blink', b1[0], at('BlinkLength01'));
+  if (b2) set(b1 ? 'params.emissive.blinkOff' : 'params.emissive.blink', b2[0], at('BlinkLength02'));
   if (ei || ec || emissiveKind) {
     const mode = flagOf(m, FLAGS.emissiveMode);
     const from = flagOf(m, FLAGS.emissiveFrom);

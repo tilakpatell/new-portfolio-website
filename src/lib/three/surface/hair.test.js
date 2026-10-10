@@ -45,6 +45,7 @@ describe('hairMaterial and headMaterial', () => {
   it('head: the scattering mask as a wrapped diffuse, the reflectance from red', () => {
     const m = headMaterial(HEAD, { glb: glb(), sss: new three.THREE.Texture() }, { tier: 'high', three });
     expect([...m.userData.game.features].sort()).toEqual(['reflectance', 'scatter']);
+    expect(m.isMeshPhysicalNodeMaterial).toBe(true);
     expect(headMaterial(HEAD, { glb: glb(), sss: null }, { tier: 'high', three }).userData.game.features).toEqual([]);
   });
 });

@@ -178,3 +178,12 @@ describe('emissive maps by what the slot holds', () => {
     expect([n.maps.emissive, n.params.emissive.mode]).toEqual([undefined, 'baseColor']);
   });
 });
+
+describe('blink', () => {
+  it('reads BlinkLength01 as on and BlinkLength02 as off', () => {
+    const x = recipeOf({ mesh: 'm', materials: [{ shader: 'X/SS_PropsPreset', textures: { _BaseColor: 'X/T_A_C', _Normal: 'X/T_A_N' }, vectors: { EmissiveIntensity: [20, 0, 0, 1], BlinkLength01: [2, 0, 0, 1], BlinkLength02: [1.6, 0, 0, 1] }, conditionals: {} }] }, 0);
+    expect(x.params.emissive.blink).toBe(2);
+    expect(x.params.emissive.blinkOff).toBeCloseTo(1.6, 6);
+    expect(x._source['params.emissive.blinkOff']).toBe('materials.jsonl:m#0.BlinkLength02');
+  });
+});

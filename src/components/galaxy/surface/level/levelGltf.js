@@ -31,16 +31,23 @@ const inPack = (glbPath, uri) => {
 };
 
 // GLB materials to recipes: each takes the first unused recipe of its shader
-// (the dump lists LOD variants the GLB lacks, so the orders differ), else
-// the recipe at its own index when the GLB names no shader; else none
+// (the dump lists LOD variants the GLB lacks, so the orders differ); then a
+// material that names no shader takes the recipe at its own index if no
+// other has it; else none. No recipe goes to two materials.
 export function matchRecipes(shaders, recipes) {
   const used = new Set();
-  return shaders.map((shader, i) => {
-    if (!shader) return recipes[i] ?? null;
+  const out = shaders.map((shader) => {
+    if (!shader) return undefined;
     const k = recipes.findIndex((r, j) => !used.has(j) && r?.shader === shader);
     if (k < 0) return null;
     used.add(k);
     return recipes[k];
+  });
+  return out.map((r, i) => {
+    if (r !== undefined) return r;
+    if (used.has(i) || !recipes[i]) return null;
+    used.add(i);
+    return recipes[i];
   });
 }
 
@@ -67,6 +74,8 @@ const MAP_KEYS = [
   ['weathering', (m) => m.weathering],
   ['emissive', (m) => m.emissive],
   ['mask', (m) => m.mask],
+  ['hairStrand', (m) => m.hairStrand],
+  ['sss', (m) => m.sss],
 ];
 
 export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {}, recipes = null, materialFor = null, mapKeys = null }) {
@@ -78,6 +87,8 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
   let gone = false;
 
   function texture(path) {
+    // (after dispose nothing new is fetched, so nothing is left undisposed)
+    if (gone) return Promise.resolve(null);
     if (!textures.has(path)) {
       const local = packUrl(world, tierTexture(path, tier, sizes));
       textures.set(
@@ -132,7 +143,13 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
             maps[key] = path ? await texture(path) : null;
           }),
         );
-        if (!gone) swap.set(glb, materialFor(recipe, maps));
+        if (gone) return;
+        // (a recipe the material cannot be made of keeps the GLB's material)
+        try {
+          swap.set(glb, materialFor(recipe, maps));
+        } catch (e) {
+          if (import.meta.env?.DEV) console.warn('game material failed', glbPath, recipe.shader, e);
+        }
       }),
     );
     if (!swap.size) return;
@@ -143,6 +160,7 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
   }
 
   function load(glbPath) {
+    if (gone) return Promise.resolve(null);
     if (!meshes.has(glbPath)) {
       meshes.set(
         glbPath,

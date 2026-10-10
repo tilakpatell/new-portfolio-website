@@ -16,7 +16,7 @@
 // gameMaterial.js takes it. Low draws the GLB as it is.)
 
 import { loadThree } from '../light/three.js';
-import { createGameMaterial, fromGlb, REFLECTANCE_TO_SPECULAR } from './gameMaterial.js';
+import { createGameMaterial, createSunUniforms, fromGlb, REFLECTANCE_TO_SPECULAR } from './gameMaterial.js';
 
 // Melanin's absorption per unit concentration (Chiang, Bitterli, Tappan and
 // Burley 2016, "A Practical and Controllable Hair and Fur Model for
@@ -61,11 +61,12 @@ export function hairMaterial(recipe, maps = {}, { tier = 'high', three, sun = nu
     m.userData.game = game;
     return m;
   }
-  const { texture, uv, vec3, vec4, float, mix, max, dot, normalize, pow, sqrt, saturate, normalView, positionView, positionViewDirection, cameraViewMatrix, dFdx, dFdy, uniform } = tsl;
+  const { texture, uv, vec3, vec4, float, mix, max, dot, normalize, pow, sqrt, saturate, normalView, positionView, positionViewDirection, cameraViewMatrix, dFdx, dFdy } = tsl;
   const p = recipe.params ?? {};
   const h = p.hair ?? {};
   const glb = maps.glb;
-  const m = fromGlb(THREE, glb, true);
+  // (no physical feature: the lobes go to the emissive)
+  const m = fromGlb(THREE, glb, false);
   m.userData.game = game;
   const f = game.features;
   const uv0 = uv(0);
@@ -97,9 +98,8 @@ export function hairMaterial(recipe, maps = {}, { tier = 'high', three, sun = nu
     const flow = texture(maps.hairStrand, uv0).xy.mul(2).sub(1);
     strand = normalize(alongU.mul(flow.x).add(alongV.mul(flow.y)));
   }
-  const sunDir = uniform(new THREE.Vector3(...(sun?.direction ?? [0, 1, 0])).normalize());
-  const sunColor = uniform(new THREE.Color(...(sun?.color ?? [1, 1, 1])));
-  game.sun = { direction: sunDir, color: sunColor };
+  game.sun = sun?.isSunUniforms ? sun : createSunUniforms(three, sun ?? {});
+  const { direction: sunDir, color: sunColor } = game.sun;
   const L = normalize(cameraViewMatrix.mul(vec4(sunDir, 0)).xyz);
   const H = normalize(L.add(positionViewDirection));
   const lobe = (shift, exponent) => {
@@ -126,7 +126,8 @@ export function hairMaterial(recipe, maps = {}, { tier = 'high', three, sun = nu
 
 export function headMaterial(recipe, maps = {}, { tier = 'high', three, sun = null } = {}) {
   const { tsl } = three;
-  const m = createGameMaterial(recipe, maps, { tier, three, sun });
+  // (physical: the RSSSAO map's red is its specularIntensity)
+  const m = createGameMaterial(recipe, maps, { tier, three, sun, physical: true });
   if (tier === 'low' || tier === 'mid' || !maps.sss) return m;
   const { texture, uv, vec3, float, max, dot, saturate, normalWorld, mix } = tsl;
   const glb = maps.glb;

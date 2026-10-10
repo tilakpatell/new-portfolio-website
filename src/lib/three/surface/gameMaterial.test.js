@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadThree } from '../light/three.js';
-import { createGameMaterial } from './gameMaterial.js';
+import { createGameMaterial, createSunUniforms } from './gameMaterial.js';
 
 // recipes as scripts/lib/bf2017-recipes.mjs writes them for the five
 // fixture rows (scripts/fixtures/bf2017/materials/), trimmed to what the
@@ -106,6 +106,42 @@ describe('createGameMaterial', () => {
     const m = make(PROPS);
     expect(m.opacityNode).toBeNull();
     expect(m.userData.game.alphaFromMap).toBe(true);
+  });
+
+  it('is a physical material only where a physical feature asks (reflectance)', () => {
+    const plain = make(PROPS);
+    expect(plain.isMeshStandardNodeMaterial).toBe(true);
+    expect(plain.isMeshPhysicalNodeMaterial).toBeFalsy();
+    expect(make(VEGETATION).isMeshPhysicalNodeMaterial).toBe(true);
+  });
+
+  it('scales the GLB normal by its normalScale before the detail, not the blend after', () => {
+    const { THREE } = three;
+    const g = glb();
+    g.normalScale = new THREE.Vector2(2, 2);
+    const m = createGameMaterial(PROPS, { glb: g, detail: tex() }, { tier: 'ultra', three });
+    expect(m.normalNode.scaleNode).toBeNull();
+    expect(m.userData.game.normalScaled).toEqual([2, 2]);
+  });
+
+  it('shares one sun between materials when given its uniforms', () => {
+    const sun = createSunUniforms(three, { direction: [0, 0, 1], color: [1, 0.5, 0] });
+    const a = make(VEGETATION, {}, { sun });
+    const b = make(PROPS, {}, { sun });
+    expect(a.userData.game.sun).toBe(sun);
+    expect(b.userData.game.sun).toBe(sun);
+    sun.set([1, 0, 0], [1, 1, 1]);
+    expect(sun.direction.value.toArray()).toEqual([1, 0, 0]);
+    // (a plain { direction, color } still makes its own)
+    expect(make(VEGETATION, {}, { sun: { direction: [0, 1, 0] } }).userData.game.sun).not.toBe(sun);
+  });
+
+  it('blinks on for BlinkLength01 and off for BlinkLength02 seconds; a period past a minute is a steady light', () => {
+    const lamp = (blink, blinkOff) => make({ ...EMISSIVE, params: { ...EMISSIVE.params, emissive: { ...EMISSIVE.params.emissive, blink, blinkOff } } });
+    expect(lamp(2, 1.6).userData.game.blink).toEqual({ on: 2, off: 1.6 });
+    expect(lamp(2).userData.game.blink).toEqual({ on: 2, off: 2 });
+    expect(lamp(1000).userData.game.blink).toBeNull();
+    expect(lamp(0).userData.game.blink).toBeNull();
   });
 
   it('a tiled map repeats', () => {

@@ -31,6 +31,12 @@ describe('matchRecipes', () => {
     const a = { shader: 'S/A' };
     expect(matchRecipes([null, 'S/X'], [a, { shader: 'S/B' }])).toEqual([a, null]);
   });
+
+  it('never gives one recipe to two materials', () => {
+    const a = { shader: 'S/A' };
+    const b = { shader: 'S/B' };
+    expect(matchRecipes(['S/B', null], [a, b])).toEqual([b, null]);
+  });
 });
 
 describe('recipesIndex', () => {
@@ -80,6 +86,38 @@ describe('createLevelLoader', () => {
     // (a map the pack has not got comes as null)
     expect(materialFor.mock.calls.find(([r]) => r.shader === 'Shaders/SS_A')[1].detail).toBeNull();
     for (const m of made) expect(m.userData.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the GLB material where materialFor throws, and the rest swapped', async () => {
+    const materialFor = vi.fn((recipe) => {
+      if (recipe.shader === 'Shaders/SS_A') throw new Error('bad recipe');
+      return new THREE.MeshBasicMaterial({ name: 'game' });
+    });
+    const recipes = { forGlb: () => [{ shader: 'Shaders/SS_A', maps: {} }, { shader: 'Shaders/SS_B', maps: {} }], maps: {}, tex: {} };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const loader = createLevelLoader({ world: 'hoth', tier: 'high', renderer: null, fetchBytes, sizes, recipes, materialFor });
+    const gltf = await loader.load('meshes/t.lod0.glb');
+    warn.mockRestore();
+    const mats = [];
+    gltf.scene.traverse((o) => o.isMesh && mats.push(o.material));
+    expect(mats.map((m) => m.name)).toEqual(['Shaders/SS_A', 'game']);
+  });
+
+  it('hands hair and heads their strand and scattering maps', async () => {
+    const materialFor = vi.fn(() => new THREE.MeshBasicMaterial());
+    const recipes = { forGlb: () => [{ shader: 'Shaders/SS_A', maps: { hairStrand: 'T_H', sss: 'T_S' } }], maps: { T_H: null, T_S: null }, tex: {} };
+    const loader = createLevelLoader({ world: 'hoth', tier: 'high', renderer: null, fetchBytes, sizes, recipes, materialFor });
+    await loader.load('meshes/h.lod0.glb');
+    const maps = materialFor.mock.calls[0][1];
+    expect('hairStrand' in maps && 'sss' in maps).toBe(true);
+  });
+
+  it('after dispose a load asks for nothing and gives null', async () => {
+    const fetch = vi.fn(fetchBytes);
+    const loader = createLevelLoader({ world: 'hoth', tier: 'high', renderer: null, fetchBytes: fetch, sizes });
+    await loader.dispose();
+    expect(await loader.load('meshes/late.lod0.glb')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('fetches only the maps the tier draws (mapKeys)', async () => {

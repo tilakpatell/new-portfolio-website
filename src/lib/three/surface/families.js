@@ -161,7 +161,6 @@ export const PARAMS = {
   'detail.strength': ['DetailArrayStrength', 'GlobalDetailStrength', 'DetailStrength', 'Detail_Strength'],
   'emissive.color': ['EmissiveColor'],
   'emissive.intensity': ['EmissiveIntensity', 'EmissiveIntensety', 'EmissiveStrength', 'EmissivePower'],
-  'emissive.blink': ['BlinkLength01', 'BlinkLength02'],
   paint: ['PaintColour', 'MetalPaintColor'],
   metal: ['MetalColour', 'MetalColor'],
   tint: ['ColorTint'],

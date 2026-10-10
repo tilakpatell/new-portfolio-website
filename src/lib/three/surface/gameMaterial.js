@@ -16,9 +16,10 @@
 //       emissive, mask } as textures or null
 //     three: loadThree()'s { THREE, tsl } (../light/three.js), so nothing
 //       here imports three at module scope
-//     sun: { direction: [x, y, z] toward the sun, color: [r, g, b] }, for the
-//       translucency (else straight up and white; material.userData.game.sun
-//       holds the uniforms to update)
+//     sun: createSunUniforms(three, …) to share one a level moves, or a plain
+//       { direction: [x, y, z] toward the sun, color: [r, g, b] } (else
+//       straight up and white); material.userData.game.sun holds it
+//     physical: a MeshPhysicalNodeMaterial whatever the features (a head's)
 //   loadGameMaterial() → Promise<(recipe, maps, opts) => material> with three loaded
 //
 // material.userData.game = { family, features: [...], parallaxSteps } says what
@@ -110,12 +111,34 @@ export function fromGlb(THREE, glb, physical) {
   return m;
 }
 
-export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays = [], three, sun = null } = {}) {
+// A blink period past this many seconds is a steady light: BlinkLength runs
+// 0.1–16 s across the dump, and the few at 1,000 to 1,000,000 are the
+// artists' "never" (Hoth's catwalk box has 1,000)
+export const BLINK_MAX = 60;
+
+// The sun a material's translucency and lobes are lit by, as uniforms one
+// level can share and move: set(direction, color) with the direction toward
+// the sun. A plain { direction, color } given to a material makes its own.
+export function createSunUniforms(three, { direction = [0, 1, 0], color = [1, 1, 1] } = {}) {
+  const { THREE, tsl } = three;
+  const sun = {
+    isSunUniforms: true,
+    direction: tsl.uniform(new THREE.Vector3(...direction).normalize()),
+    color: tsl.uniform(new THREE.Color(...color)),
+    set(dir, col) {
+      if (dir) sun.direction.value.set(...dir).normalize();
+      if (col) sun.color.value.setRGB(...col);
+    },
+  };
+  return sun;
+}
+
+export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays = [], three, sun = null, physical = false } = {}) {
   const { THREE, tsl } = three;
   const p = recipe?.params ?? {};
   const glb = maps.glb ?? null;
   const features = [];
-  const game = { family: recipe?.family ?? 'glb', features, parallaxSteps: 0 };
+  const game = { family: recipe?.family ?? 'glb', features, parallaxSteps: 0, blink: null };
   if (tier === 'low' || !recipe || recipe.family === 'glb') {
     const m = fromGlb(THREE, glb, false);
     m.userData.game = game;
@@ -123,7 +146,7 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
   }
   const allow = (f) => tier !== 'mid' || ON_MID.has(f);
   const want = (f, ok) => ok && allow(f) && (features.push(f), true);
-  const { texture, uv, vec2, vec3, vec4, float, mix, max, dot, normalize, normalMap, normalWorld, positionWorld, positionViewDirection, saturate, step, fract, time, uniform, pow, Fn, Loop, If, parallaxDirection } = tsl;
+  const { texture, uv, vec2, vec3, vec4, float, mix, max, dot, normalize, normalMap, normalWorld, positionWorld, positionViewDirection, saturate, step, fract, time, pow, Fn, Loop, If, parallaxDirection } = tsl;
 
   // (a tiling map repeats: the pack's KTX2 loads clamped, and the detail
   // tiles 20 times over a vehicle's panel)
@@ -134,7 +157,9 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
       t.needsUpdate = true;
     }
   }
-  const m = fromGlb(THREE, glb, true);
+  // (physical only where a physical feature asks: the reflectance's
+  // specularIntensity, or a caller's own, as a head's)
+  const m = fromGlb(THREE, glb, physical || (!!p.reflectance && allow('reflectance')));
   m.userData.game = game;
   const uvSet = p.uvSet === 1 ? 1 : 0;
   let uv0 = uv(glb?.map?.channel ?? 0);
@@ -181,7 +206,14 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
   let emissive = vec3(m.emissive.r, m.emissive.g, m.emissive.b).mul(float(m.emissiveIntensity ?? 1));
   if (glb?.emissiveMap) emissive = emissive.mul(texture(glb.emissiveMap, uv0).rgb);
   // the tangent-space normal, before normalMap's transform
-  let tn = glb?.normalMap ? texture(glb.normalMap, uv0).xyz.mul(2).sub(1) : vec3(0, 0, 1);
+  // (scaled by the GLB's normalScale here, as three scales only the base,
+  // so the detail and the overlays keep their own weights)
+  let tn = vec3(0, 0, 1);
+  if (glb?.normalMap) {
+    const n = texture(glb.normalMap, uv0).xyz.mul(2).sub(1);
+    tn = vec3(n.xy.mul(vec2(m.normalScale.x, m.normalScale.y)), n.z);
+    game.normalScaled = [m.normalScale.x, m.normalScale.y];
+  }
   let tangentDirty = false;
   // UDN: the detail's xy added to the base's at its weight, z kept
   const udn = (n, d, s) => normalize(vec3(n.xy.add(d.xy.mul(s)), n.z));
@@ -262,8 +294,14 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
       const k = Math.min((e.intensity ?? 1) * EMISSIVE_EXPOSURE, EMISSIVE_MAX);
       const src = emissiveSrc === 'base' ? color : e.mode === 'mask' ? vec3(texture(maps.emissive, uv0).r) : texture(maps.emissive, uv0).rgb;
       let glow = src.mul(vec3(...(e.color ?? [1, 1, 1]))).mul(k);
-      // BlinkLength: on for the first half of each period of that many seconds
-      if (e.blink > 0) glow = glow.mul(step(fract(time.div(e.blink)), float(0.5)));
+      // BlinkLength01 seconds on, BlinkLength02 off (01 again without it)
+      const on = e.blink ?? 0;
+      const off = e.blinkOff ?? on;
+      if (on > 0 && on <= BLINK_MAX && off <= BLINK_MAX) {
+        game.blink = { on, off };
+        const period = on + off;
+        glow = glow.mul(step(fract(time.div(period)).mul(period), float(on)));
+      }
       emissive = emissive.add(glow);
     }
   }
@@ -276,9 +314,8 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
   }
 
   // ---- vegetation: the sun through the leaf (a wrapped back-lit term)
-  const sunDir = uniform(new THREE.Vector3(...(sun?.direction ?? [0, 1, 0])).normalize());
-  const sunColor = uniform(new THREE.Color(...(sun?.color ?? [1, 1, 1])));
-  game.sun = { direction: sunDir, color: sunColor };
+  game.sun = sun?.isSunUniforms ? sun : createSunUniforms(three, sun ?? {});
+  const { direction: sunDir, color: sunColor } = game.sun;
   if (want('translucency', !!p.backface?.subsurface)) {
     const back = saturate(dot(normalWorld.negate(), sunDir).mul(0.5).add(0.5));
     emissive = emissive.add(color.mul(sunColor).mul(back.mul(p.backface.subsurface * TRANSLUCENCY_WEIGHT)));
@@ -289,7 +326,7 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
 
   // ---- the hook
   const scaleN = vec2(m.normalScale.x, m.normalScale.y);
-  const baseNormal = tangentDirty ? normalMap(tn.mul(0.5).add(0.5), scaleN) : glb?.normalMap ? normalMap(texture(glb.normalMap, uv0), scaleN) : tsl.normalView;
+  const baseNormal = tangentDirty ? normalMap(tn.mul(0.5).add(0.5)) : glb?.normalMap ? normalMap(texture(glb.normalMap, uv0), scaleN) : tsl.normalView;
   let normal = baseNormal;
   if (overlays.length) {
     const ctx = {
@@ -309,7 +346,7 @@ export function createGameMaterial(recipe, maps = {}, { tier = 'high', overlays 
   }
 
   if (!features.length) {
-    // (nothing the tier draws: the GLB's look, as a physical node material)
+    // (nothing the tier draws: the GLB's look, as a node material)
     return m;
   }
   m.colorNode = vec4(color, alpha);
