@@ -6,7 +6,7 @@
 // those two; .gitignore's block hides the rest). The work is in scripts/lib/bf2017-level.mjs (pure,
 // tested); this fetches, reads and writes.
 //
-//   node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--parts] [--dry]
+//   node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--drop m,sub:m] [--share low=0.5 | 0.5] [--arena 1024] [--yaw 0] [--ultra] [--parts] [--dry]
 //
 //   map     the map's folder under web/maps/ (levels/mp/hoth_01)
 //   world   the site's world (hoth): the pack's folder and its credit
@@ -26,9 +26,18 @@
 //   inside  an interior: no terrain, its bounds the pieces' extent, and where
 //           the map has ground, only what is buried under it (Hoth's base)
 //   subs    the sub-levels that are the arena (default: the level's own and Content)
+//   drop    meshes left out, `<mesh>` or `<sub>:<mesh>` (`*` for any run): what the
+//           site draws itself (a space level's corvettes, the battle's), the end
+//           of round's room
+//   share   the part of each tier's budget row the pack is fitted to (1): a
+//           space level is drawn on the galaxy's flight page, beside the system
+//           and the battle, so it takes a share
 //   arena   the pack's half-size in metres; instances beyond it are the horizon
 //   ultra   the LOD0 cut and 2048 textures as well
 //   dry     the table only: fetches the map, terrain and manifest, writes nothing
+//
+// A level with no terrain record (the space levels) builds no ground layer:
+// its pack is the instances alone, and its README says so.
 //
 // The keys as the fetch takes them (SUPABASE_URL, BF2017_KEY or SUPA_KEY),
 // never printed. A map the bucket has not got yet is said so and exits 3:
@@ -55,7 +64,7 @@ import { encodePng16 } from './lib/png16.mjs';
 import { writeParts } from './bf2017-level-parts.mjs';
 import { main as writePhysics } from './bf2017-physics.mjs';
 
-const USAGE = 'node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--share low=0.5] [--parts] [--mode FantasyBattle] [--weather sunny] [--dry]';
+const USAGE = 'node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--drop m,sub:m] [--share low=0.5 | 0.5] [--arena 1024] [--yaw 0] [--ultra] [--parts] [--dry]';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(ROOT, 'lab', 'assets', 'bf2017');
 const PERMISSION = 'From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.';
@@ -246,18 +255,23 @@ async function main(args) {
   const arena = Number(args.arena ?? 1024);
   const yaw = Number(args.yaw ?? 0);
   const ultra = Boolean(args.ultra);
-  const share = Object.fromEntries(
+  // (--share: the part of each tier's row the level may take, where the
+  // site's own things spend the rest: per tier, `low=0.5`, or one number for
+  // every tier, `0.5`)
+  const share = /^[\d.]+$/.test(String(args.share ?? '')) ? Object.fromEntries(['low', 'mid', 'high', 'ultra'].map((t) => [t, Number(args.share)])) : Object.fromEntries(
     String(args.share ?? '')
       .split(',')
       .filter(Boolean)
       .map((kv) => kv.split('='))
       .map(([t, k]) => [t, Number(k)]),
   );
+  for (const [t, k] of Object.entries(share)) if (!(k > 0 && k <= 1)) throw new Error(`--share: ${t}'s part of the row must be over 0 and up to 1`);
   const dry = Boolean(args.dry);
   const subs = typeof args.subs === 'string' ? args.subs.split(',') : null;
   // (a district's pack sits in its world's folder: levels/<world>/<district>/)
   const packId = district === 'main' ? world : `${world}/${district}`;
   const out = join(ROOT, 'public', 'models', 'galaxy', 'bf2017', 'levels', ...packId.split('/'));
+  const drop = typeof args.drop === 'string' ? args.drop.split(',') : [];
   if (yaw) throw new Error('--yaw: the heightmaps are not turned yet; keep the level square to the site');
 
   // (the map's file by the bucket's index: a campaign map's is ds02_streamed, not its folder's name)
@@ -388,6 +402,7 @@ async function main(args) {
     // own things already spend the rest: Endor's low=0.5)
     rows: Object.fromEntries(Object.entries(ultra ? BUDGET_ROWS : { low: BUDGET_ROWS.low, mid: BUDGET_ROWS.mid, high: BUDGET_ROWS.high }).map(([t, r]) => [t, share[t] ? { ...r, tris: r.tris * share[t], calls: Math.round(r.calls * share[t]) } : r])),
     subs,
+    drop,
     terrain: terrain?.json ?? null,
     groundAt: terrain ? (x, z) => LAYERS.image(x, z, terrain.layer) : null,
     holeAt: terrain?.holeAt ?? null,
@@ -464,7 +479,9 @@ async function main(args) {
     '',
     `From \`${mapName}\` (Star Wars Battlefront II, 2017, EA DICE; ${PERMISSION.split(';')[0].replace('From EA DICE’s Star Wars Battlefront II (2017), ', '')}). Written by \`node scripts/bf2017-level.mjs ${process.argv.slice(2).join(' ')}\`; do not edit by hand.`,
     '',
-    `- ${pack.counts.arena} instances in the arena (±${arena} m), ${pack.counts.horizon} beyond it (the horizon), ${pack.counts.buried} ${inside ? 'left out above the ground (the world outside: its own pack)' : 'left out under the ground (an interior: its own pack, `--inside`)'}, ${pack.counts.cells} cells of ${pack.json.cell} m`,
+    `- ${pack.counts.arena} instances in the arena (±${arena} m), ${pack.counts.horizon} beyond it (the horizon), ${record ? `${pack.counts.buried} ${inside ? 'left out above the ground (the world outside: its own pack)' : 'left out under the ground (an interior: its own pack, `--inside`)'}` : 'no terrain: no ground layer, the instances alone'}, ${pack.counts.cells} cells of ${pack.json.cell} m`,
+    ...(drop.length ? [`- left out: ${drop.join(', ')}`] : []),
+    ...(Object.keys(share).length ? [`- fitted to ${Object.entries(share).map(([t, k]) => `${t}=${k}`).join(', ')} of the tiers' triangles and calls (the site's own things spend the rest)`] : []),
     `- ${meshes.length} meshes (${absent.length} left out), ${glbs.length} LOD files, ${mb(glbBytes)}`,
     `- the far list ${mb(farBytes)}; terrain ${terrain ? `near ${mb(terrain.bytes.near)}, far ${mb(terrain.bytes.far)}` : 'none'}; the spot's ground ${groundY.toFixed(2)} m in the game`,
     `- textures missing from the bucket: ${tex.missing.length}`,
@@ -490,10 +507,11 @@ async function main(args) {
     license: 'permission',
     licenseUrl: GAME,
     source: GAME,
-    where: 'galaxy-surface',
+    // (a space level's is drawn in the galaxy's flight, not on a surface)
+    where: record ? 'galaxy-surface' : 'galaxy',
     as: `${packId}: the game's level`,
     file: `/models/galaxy/bf2017/levels/${packId}/level.json`,
-    also: ['galaxy'],
+    also: record ? ['galaxy'] : [],
     permission: PERMISSION,
   });
   await writePhysics([out]);
