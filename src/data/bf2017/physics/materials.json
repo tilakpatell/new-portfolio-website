@@ -1,0 +1,2335 @@
+{
+ "hoth_01": {
+  "level": "hoth_01",
+  "from": "levels/mp/hoth_01/hoth_01/materialgrid_win32",
+  "default": 0,
+  "default_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.DefaultMaterialIndex",
+  "by": {
+   "source": "hand",
+   "blaster": 5,
+   "heavy": 37,
+   "strong": 119,
+   "ion": 146,
+   "fast": 197,
+   "bowcaster": 202,
+   "thermal": 145,
+   "impactGrenade": 149,
+   "saberThrow": 126,
+   "foot": 3,
+   "walkerFoot": 82
+  },
+  "materials": {
+   "0": {
+    "row": 0,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[0]",
+    "name": "generic",
+    "nameFrom": "FX_Impact_Blaster_Generic + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "14": {
+    "row": 12,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[14]",
+    "name": "metal",
+    "nameFrom": "FX_Impact_Blaster_Metal + Decal_Metal_Blaster",
+    "nameSource": "hand"
+   },
+   "15": {
+    "row": 13,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[15]",
+    "name": "metal strong",
+    "nameFrom": "FX_Impact_Blaster_Metal_Strong + Decal_Metal_Blaster",
+    "nameSource": "hand"
+   },
+   "16": {
+    "row": 14,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[16]",
+    "name": "metal weak spot",
+    "nameFrom": "FX_Impact_Blaster_Metal_WeakSpot + Decal_Metal_Blaster",
+    "nameSource": "hand"
+   },
+   "17": {
+    "row": 15,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[17]",
+    "name": "generic",
+    "nameFrom": "FX_Impact_Blaster_Generic + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "18": {
+    "row": 16,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[18]",
+    "name": "generic",
+    "nameFrom": "FX_Impact_Blaster_Generic + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "19": {
+    "row": 17,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[19]",
+    "name": "generic",
+    "nameFrom": "FX_Impact_Blaster_Generic + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "21": {
+    "row": 18,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[21]",
+    "name": "generic",
+    "nameFrom": "FX_Impact_Blaster_Generic + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "28": {
+    "row": 20,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[28]",
+    "name": "snow",
+    "nameFrom": "FX_Impact_Blaster_Snow + Decal_Snow_Blaster",
+    "nameSource": "hand"
+   },
+   "29": {
+    "row": 21,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[29]",
+    "name": "snow",
+    "nameFrom": "FX_Impact_Blaster_Snow + Decal_Snow_Blaster",
+    "nameSource": "hand"
+   },
+   "45": {
+    "row": 34,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[45]",
+    "name": "concrete",
+    "nameFrom": "FX_Impact_Blaster_Concrete + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "66": {
+    "row": 49,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[66]",
+    "name": "pine floor",
+    "nameFrom": "FX_Impact_Blaster_FFloor_PineDry + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "91": {
+    "row": 66,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[91]",
+    "name": "rock snow",
+    "nameFrom": "FX_Impact_Blaster_RockSnow + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "107": {
+    "row": 72,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[107]",
+    "name": "generic",
+    "nameFrom": "FX_Impact_Blaster_Generic + Decal_Concrete_Blaster",
+    "nameSource": "hand"
+   },
+   "141": {
+    "row": 92,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[141]",
+    "name": "generic metal",
+    "nameFrom": "FX_Impact_Blaster_Generic + Decal_Metal_Blaster",
+    "nameSource": "hand",
+    "physics": {
+     "dynamicFriction": 0,
+     "dynamicFriction_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialProperties[92].MaterialPropertyPhysicsData.DynamicFriction",
+     "staticFriction": 0,
+     "staticFriction_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialProperties[92].MaterialPropertyPhysicsData.StaticFriction",
+     "restitution": 1,
+     "restitution_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialProperties[92].MaterialPropertyPhysicsData.Restitution",
+     "dynamicFrictionModifier": 1,
+     "dynamicFrictionModifier_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialProperties[92].MaterialPropertyPhysicsData.DynamicFrictionModifier",
+     "staticFrictionModifier": 1,
+     "staticFrictionModifier_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialProperties[92].MaterialPropertyPhysicsData.StaticFrictionModifier",
+     "resistance": 0,
+     "resistance_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialProperties[92].MaterialPropertyPhysicsData.Resistance"
+    }
+   },
+   "144": {
+    "row": 95,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[144]",
+    "name": "pipe",
+    "nameFrom": "FX_Impact_Blaster_Pipe + Decal_Metal_Blaster",
+    "nameSource": "hand"
+   },
+   "208": {
+    "row": 134,
+    "row_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.MaterialIndexMap[208]",
+    "name": "invulnerable",
+    "nameFrom": "FX_Impact_Blaster_Invulnerable",
+    "nameSource": "hand"
+   }
+  },
+  "pairs": {
+   "0,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "0,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC"
+   },
+   "0,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "0,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "0,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "0,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "0,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "0,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "0,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[0].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[0].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "14,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Metal",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "14,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC"
+   },
+   "14,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "14,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "14,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Metal",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "14,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Metal",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "14,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Metal_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "14,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "14,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[12].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[12].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "15,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Metal_Strong",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "15,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC"
+   },
+   "15,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "15,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "15,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "15,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Metal",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "15,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Metal_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "15,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "15,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[13].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[13].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "16,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Metal_WeakSpot",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "16,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC"
+   },
+   "16,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "16,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "16,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "16,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Metal",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "16,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Metal_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "16,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "16,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[14].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[14].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "17,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "17,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Ice_SPC"
+   },
+   "17,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "17,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "17,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "17,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Ice_SPC",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "17,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "17,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "17,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[15].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[15].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "18,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "18,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC"
+   },
+   "18,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "18,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "18,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "18,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "18,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "18,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "18,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[16].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[16].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "19,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "19,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC"
+   },
+   "19,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "19,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "19,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "19,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "19,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "19,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "19,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[17].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[17].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "21,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "21,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC"
+   },
+   "21,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "21,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "21,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "21,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "21,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "21,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "21,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[18].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[18].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "28,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Snow_SPC_01",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "28,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Snow_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Snow_SPC"
+   },
+   "28,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Snow_SPC_01",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "28,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Snow_SPC_01",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "28,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Snow_SPC_01",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "28,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Snow_SPC",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "28,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "28,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Snow_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "28,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "28,3": {
+    "by": "foot",
+    "effects": [
+     {
+      "effect": "FX_FootStep_Soldier_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[20].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[20].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "footprint": "FX_FootStep_Soldier_Snow_Decal_01"
+   },
+   "28,82": {
+    "by": "walkerFoot",
+    "footprint": "FX_FootStep_ATST_Snow_Decal_01"
+   },
+   "29,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Ice_SPC_01",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "29,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Snow_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Ice_SPC"
+   },
+   "29,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Ice_SPC_01",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "29,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Ice_SPC_01",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "29,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Ice_SPC_01",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "29,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Ice_SPC",
+    "decal": "Decal_Snow_Blaster",
+    "exitDecal": "Decal_Snow_Blaster"
+   },
+   "29,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "29,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Snow_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "29,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "29,3": {
+    "by": "foot",
+    "effects": [
+     {
+      "effect": "FX_FootStep_Soldier_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[21].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[21].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "45,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Concrete",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "45,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Sand_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Rock_SPC"
+   },
+   "45,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "45,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "45,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Concrete",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "45,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Rock",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Rock_SPC",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "45,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Concrete_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "45,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Concrete_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "45,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "45,3": {
+    "by": "foot",
+    "effects": [
+     {
+      "effect": "FX_FootStep_Soldier_Concrete",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[34].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[34].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "66,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_FFloor_PineDry",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "66,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_FFloor_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC"
+   },
+   "66,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "66,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "66,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_FFloor_PineDry",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Dirt_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "66,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_FFloor",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Dirt_SPC",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "66,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Dirt_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "66,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Dirt_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "66,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "66,3": {
+    "by": "foot",
+    "effects": [
+     {
+      "effect": "FX_FootStep_Soldier_FFloor_PineDry",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[49].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[49].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "66,82": {
+    "by": "walkerFoot",
+    "footprint": "FX_FootStep_ATST_Sand_Decal_01"
+   },
+   "91,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_RockSnow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "91,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Snow_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Rock_SPC"
+   },
+   "91,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "91,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "91,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_RockSnow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Rock_SPC_01",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "91,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Rock",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Rock_SPC",
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "91,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "91,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Concrete_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "91,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "91,3": {
+    "by": "foot",
+    "effects": [
+     {
+      "effect": "FX_FootStep_Soldier_Snow",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[66].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[3].Items[66].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "107,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[72].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[72].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "107,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[72].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[72].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "107,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[72].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[72].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "107,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[72].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[72].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "107,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[72].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[72].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "107,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[72].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[72].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "decal": "Decal_Concrete_Blaster",
+    "exitDecal": "Decal_Concrete_Blaster"
+   },
+   "107,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[72].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[72].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "107,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[72].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[72].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "141,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "141,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Generic_M",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "141,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "141,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "141,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Metal",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "141,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "141,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "141,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "141,126": {
+    "by": "saberThrow",
+    "effects": [
+     {
+      "effect": "FX_Lightsaber_Saberthrow_Impact",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[92].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[83].Items[92].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "144,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Pipe",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[95].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[95].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "144,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Pipe",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[95].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[95].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC"
+   },
+   "144,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Strong_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[95].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[95].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "144,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_IoN",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[95].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[95].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "144,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_M_Fast_Pipe",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[95].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[95].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Blasters_Metal_SPC_01",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "144,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Bowcaster_Generic",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[95].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[95].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ],
+    "sound": "SW02_Destruction_Impacts_Cannons_Metal_SPC",
+    "decal": "Decal_Metal_Blaster",
+    "exitDecal": "Decal_Metal_Blaster"
+   },
+   "144,145": {
+    "by": "thermal",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ThermalDetonator_Default_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[95].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[96].Items[95].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "144,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[95].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[95].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "208,5": {
+    "by": "blaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Invulnerable",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[134].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[4].Items[134].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "208,37": {
+    "by": "heavy",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Invulnerable_Medium",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[134].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[27].Items[134].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "208,119": {
+    "by": "strong",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Invulnerable_Strong",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[134].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[78].Items[134].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "208,146": {
+    "by": "ion",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Invulnerable_Ion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[134].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[97].Items[134].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "208,197": {
+    "by": "fast",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Invulnerable",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[134].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[128].Items[134].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "208,202": {
+    "by": "bowcaster",
+    "effects": [
+     {
+      "effect": "FX_Impact_Blaster_Invulnerable_Strong",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[134].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[130].Items[134].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   },
+   "208,149": {
+    "by": "impactGrenade",
+    "effects": [
+     {
+      "effect": "FX_Grenade_ImpactGrenade_Explosion",
+      "min": 0,
+      "min_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[134].MaterialRelationEffectData.ImpactEffects[0].MinSpeed",
+      "max": 10000,
+      "max_source": "levels/mp/hoth_01/hoth_01/materialgrid_win32#MaterialGridData.InteractionGrid[99].Items[134].MaterialRelationEffectData.ImpactEffects[0].MaxSpeed"
+     }
+    ]
+   }
+  },
+  "used": {
+   "0": {
+    "records": 432,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "14": {
+    "records": 202,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "15": {
+    "records": 35,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "16": {
+    "records": 10,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "17": {
+    "records": 7,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "18": {
+    "records": 11,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "19": {
+    "records": 2,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "21": {
+    "records": 78,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "28": {
+    "records": 118,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "29": {
+    "records": 13,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "45": {
+    "records": 3,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "66": {
+    "records": 1,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "91": {
+    "records": 26,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "107": {
+    "records": 1,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "141": {
+    "records": 1,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "144": {
+    "records": 82,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   },
+   "208": {
+    "records": 1,
+    "records_source": "web/physics.jsonl#materials[].index (records named by Levels/MP/Hoth_01/Hoth_01)"
+   }
+  }
+ }
+}
