@@ -104,6 +104,35 @@ describe('a world dressed in the core kit', () => {
     expect(road.userData.core).toBeTruthy();
   });
 
+  it('with `keep`, puts the scan’s shader on at once and its pictures in once they’ve loaded: the shader the first frame is drawn with stays', async () => {
+    const road = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    let arrive;
+    const done = dress({ road }, { road: 'gravel' }, { keep: true, load: () => new Promise((resolve) => (arrive = resolve)) });
+    const core = road.userData.core;
+    expect(core).toBeTruthy(); // before the scan is in
+    const key = road.customProgramCacheKey();
+    const patch = road.onBeforeCompile;
+    const version = road.version;
+    // (meanwhile a stand-in at the scan's centred brightness and a flat relief: the material looks as it did)
+    expect(core.uCoreMap.value).not.toBe(scan.map);
+    expect(core.uCoreMap.value.image.data[0] / 255).toBeCloseTo(core.uCoreMean.value, 2);
+    arrive(scan);
+    expect(await done).toBe(1);
+    expect(core.uCoreMap.value).toBe(scan.map);
+    expect(core.uCoreNormal.value).toBe(scan.normalMap);
+    expect(road.customProgramCacheKey()).toBe(key);
+    expect(road.onBeforeCompile).toBe(patch);
+    expect(road.version).toBe(version);
+  });
+
+  it('with `keep`, where a scan can’t be had, leaves its stand-in on and doing nothing', async () => {
+    const m = new THREE.MeshStandardMaterial({ color: 0x808080 });
+    const done = await dress({ m }, { m: 'stone' }, { keep: true, load: () => Promise.resolve(null) });
+    expect(done).toBe(0);
+    expect(m.userData.core.uCoreStrength.value).toBe(0);
+    expect(m.userData.core.uCoreNormalStrength.value).toBe(0);
+  });
+
   it('keeps the material as it was where a scan can’t be had', async () => {
     const m = new THREE.MeshStandardMaterial({ map: flat(10, 20, 30) });
     const done = await dress({ m }, { m: 'stone' }, { load: () => Promise.resolve(null) });

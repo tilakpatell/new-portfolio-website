@@ -6,17 +6,22 @@
 // three.js), tested in Node. The design:
 // docs/superpowers/specs/2026-10-08-shipyard-overhaul-design.md, Part 2.
 //
+// A draft is { build, loadout, tune }: the hull (a garage build, or null for
+// the crew's own ship), the parts, and the tune (shipyard/build.js: modules
+// on the crew's own ship, kept per crew whichever hull is flown, but only
+// flown, checked and bought while the hull is the stock one).
+//
 // openDraft(live) → draft; setPart, setModule, setHull, rollDraft → draft;
 // pasteDraft(draft, code, { unlocked, economy }) → { draft } | { error };
 // check(draft, { kind, unlocked, economy }) → { ok, issues, toBuy, total,
 //   short, power, capacity, mass }; diff(draft, live) → [{ slot, from, to,
-//   module }]; sellable({ loadouts, hulls, garage, keep }, economy) →
+//   module, tune? }]; sellable({ loadouts, hulls, garage, tune, keep }, economy) →
 //   [{ item, refund }]; itemOfPart, itemOfModule → catalog.js's item.
 
 import { CATALOG, itemFor, needText } from './catalog';
 import { migrateOwned, refundOf } from './economy';
 import { SLOTS, STOCK, equip, isOpen, parsePart, partById, statsOf } from './outfit';
-import { STOCK_BUILD, buildCode, parseBuildCode, rollBuild } from './shipyard/build';
+import { STOCK_BUILD, TUNE_SLOTS, buildCode, parseBuildCode, readTune, rollBuild } from './shipyard/build';
 import { BUILD_SLOTS, isModuleOpen, moduleById } from './shipyard/parts';
 
 // The catalogue's item for a part or paint, and for a module (so the view
@@ -27,7 +32,7 @@ export const itemOfModule = (slot, id) => itemFor('module', slot, id);
 const copyBuild = (b) => (b ? { ...b } : null);
 
 // A copy of what's flown, to stage changes on.
-export const openDraft = (live) => ({ build: copyBuild(live?.build), loadout: { ...(live?.loadout ?? {}) } });
+export const openDraft = (live) => ({ build: copyBuild(live?.build), loadout: { ...(live?.loadout ?? {}) }, tune: { ...(live?.tune ?? {}) } });
 
 // A part or paint staged (an id the slot doesn't have changes nothing).
 export function setPart(draft, slot, id) {
@@ -36,11 +41,14 @@ export function setPart(draft, slot, id) {
   return { ...draft, loadout: { ...draft.loadout, [slot]: clean } };
 }
 
-// A module staged: on the garage build, opened from the stock build if the
-// draft flies the stock ship.
+// A module staged: on the garage build, if the draft flies one. On the
+// crew's own ship it's tuning (its model stays, the module's numbers apply),
+// and the slot's stock module or a None clears the slot's tune; only the
+// hull isn't tunable, so picking one opens a garage build from the stock one.
 export function setModule(draft, slot, id) {
   if (!BUILD_SLOTS.includes(slot) || !moduleById(slot, id)) return draft;
-  return { ...draft, build: { ...(draft.build ?? STOCK_BUILD), [slot]: id } };
+  if (draft.build || slot === 'hull') return { ...draft, build: { ...(draft.build ?? STOCK_BUILD), [slot]: id } };
+  return { ...draft, tune: readTune({ ...draft.tune, [slot]: id }) };
 }
 
 // The stock ship (off) or a garage build (on: the last one kept, or stock's).
@@ -72,6 +80,7 @@ export function pasteDraft(draft, code, { unlocked = [], economy = null } = {}) 
 // don't cover is short (an issue of its own). ok: no issues.
 export function check(draft, { kind, unlocked = [], economy = null } = {}) {
   const { loadout, build } = draft;
+  const tune = draft.tune ?? {};
   const issues = [];
   const toBuy = [];
   const lockText = (thing, item) => `Locked. ${thing.hint ?? needText(item?.needs)}.`;
@@ -83,18 +92,18 @@ export function check(draft, { kind, unlocked = [], economy = null } = {}) {
     if (why?.startsWith('locked:')) return issues.push({ slot, id, why: 'locked', text: `Locked. ${needText(item.needs)}.` });
     toBuy.push(item);
   };
-  if (build)
-    for (const slot of BUILD_SLOTS) {
-      const m = moduleById(slot, build[slot]);
-      if (m) consider(slot, m.id, m, isModuleOpen(m, unlocked), itemOfModule(slot, m.id));
-    }
+  // (the modules flown: a build's, or on the stock ship the tune's)
+  for (const slot of build ? BUILD_SLOTS : TUNE_SLOTS) {
+    const m = moduleById(slot, (build ?? tune)[slot]);
+    if (m) consider(slot, m.id, m, isModuleOpen(m, unlocked), itemOfModule(slot, m.id));
+  }
   for (const slot of SLOTS) {
     const id = loadout[slot] ?? STOCK;
     if (id === STOCK) continue;
     const p = partById(slot, id);
     consider(slot, id, p, isOpen(p, unlocked), itemOfPart(slot, id));
   }
-  const s = statsOf(kind, loadout, build);
+  const s = statsOf(kind, loadout, build, tune);
   if (s.power > s.capacity) issues.push({ slot: null, id: null, why: 'power', text: `Not enough power: ${Math.round((s.power - s.capacity) * 10) / 10} MW short.` });
   const total = toBuy.reduce((n, item) => n + item.price, 0);
   const short = economy ? Math.max(0, total - economy.credits) : 0;
@@ -105,10 +114,12 @@ export function check(draft, { kind, unlocked = [], economy = null } = {}) {
 }
 
 // What Apply will do, in the order it's done: the build first (the hull
-// decides the plant), then the parts, those that draw less first, so every
-// fit along the way is one the plant can run if the whole draft is. What
-// hasn't changed is left out. A switch between the stock ship and a
-// garage build is { slot: 'build', from, to: 'stock' | 'garage' }.
+// decides the plant), then the tune (the stock ship's, so only while it's
+// the hull), then the parts, those that draw less first, so every fit along
+// the way is one the plant can run if the whole draft is. What hasn't
+// changed is left out. A switch between the stock ship and a garage build is
+// { slot: 'build', from, to: 'stock' | 'garage' }; a tune change is
+// { slot, from, to, module: true, tune: true } with null for the ship as it came.
 export function diff(draft, live) {
   const out = [];
   const was = live?.build ?? null;
@@ -118,6 +129,12 @@ export function diff(draft, live) {
     for (const slot of BUILD_SLOTS) {
       const from = (was ?? STOCK_BUILD)[slot];
       if (now[slot] !== from) out.push({ slot, from, to: now[slot], module: true });
+    }
+  else
+    for (const slot of TUNE_SLOTS) {
+      const from = live?.tune?.[slot] ?? null;
+      const to = draft.tune?.[slot] ?? null;
+      if (from !== to) out.push({ slot, from, to, module: true, tune: true });
     }
   const draw = (slot, id) => partById(slot, id)?.power ?? 0;
   const parts = [];
@@ -131,11 +148,12 @@ export function diff(draft, live) {
 }
 
 // What can be sold: each owned item, not stock, fitted on no crew (in no
-// saved loadout, hull or garage build) and not one the yard keeps (`keep`:
-// keys, the draft's own), with what it pays back.
-export function sellable({ loadouts = {}, hulls = {}, garage = {}, keep = [] } = {}, economy = null) {
+// saved loadout, hull, garage build or tune) and not one the yard keeps
+// (`keep`: keys, the draft's own), with what it pays back.
+export function sellable({ loadouts = {}, hulls = {}, garage = {}, tune = {}, keep = [] } = {}, economy = null) {
   if (!economy) return [];
-  const fitted = new Set([...migrateOwned({ loadouts, hulls, garage }), ...keep]);
+  const tuned = Object.values(tune ?? {}).flatMap((t) => Object.entries(readTune(t)).map(([slot, id]) => itemOfModule(slot, id)?.key).filter(Boolean));
+  const fitted = new Set([...migrateOwned({ loadouts, hulls, garage }), ...tuned, ...keep]);
   const out = [];
   for (const key of economy.owned) {
     const item = Object.hasOwn(CATALOG, key) ? CATALOG[key] : null;
@@ -147,7 +165,7 @@ export function sellable({ loadouts = {}, hulls = {}, garage = {}, keep = [] } =
 
 // Fitting a checked-out draft: each part change in diff's order on the
 // loadout flown, through outfit.js's equip (which refuses a part that's
-// locked or that the plant can't run), on the draft's build. → { ok: true,
+// locked or that the plant can't run), on the draft's build or tune. → { ok: true,
 // loadout (flown), saved (what to keep: `saved` with each change in, so a
 // part a smaller plant took off still comes back on a bigger one) } or
 // { ok: false, why, slot }: the first refusal, and nothing's to be kept.
@@ -160,7 +178,7 @@ export function fitDraft(kind, draft, changes, { saved = {}, unlocked = [] } = {
   const order = [...SLOTS.filter((slot) => !parts.some((c) => c.slot === slot)).map((slot) => ({ slot, to: draft.loadout[slot] ?? STOCK })), ...parts];
   for (const { slot, to } of order) {
     if (to === STOCK) continue;
-    const r = equip(kind, loadout, slot, to, unlocked, draft.build);
+    const r = equip(kind, loadout, slot, to, unlocked, draft.build, draft.tune);
     if (!r.ok) return { ok: false, why: r.reason, slot };
     loadout = r.loadout;
   }
@@ -177,13 +195,16 @@ export function draftKeys(draft) {
     const item = (draft.loadout[slot] ?? STOCK) !== STOCK ? itemOfPart(slot, draft.loadout[slot]) : null;
     if (item && !item.stock) out.push(item.key);
   }
-  if (draft.build)
-    for (const slot of BUILD_SLOTS) {
-      const item = itemOfModule(slot, draft.build[slot]);
-      if (item && !item.stock) out.push(item.key);
-    }
+  for (const slot of draft.build ? BUILD_SLOTS : TUNE_SLOTS) {
+    const item = itemOfModule(slot, (draft.build ?? draft.tune ?? {})[slot]);
+    if (item && !item.stock) out.push(item.key);
+  }
   return out;
 }
+
+// What the yard calls the hull a draft flies: the garage build and its code,
+// or the crew's own ship, said to be tuned once any module is on it.
+export const hullName = (draft) => (draft.build ? `Garage build ${buildCode(draft.build)}` : Object.keys(draft.tune ?? {}).length ? 'Stock hull · tuned' : 'Stock hull');
 
 // What the panel says when a garage build flies in place of the crew's own
 // ship (`craft`: crews.js's ship, 'An X-wing'), so the iconic ship is never
