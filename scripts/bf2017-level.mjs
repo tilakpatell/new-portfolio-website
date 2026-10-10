@@ -1,8 +1,9 @@
 // A level pack from the Battlefront II (2017) drop (lane L: docs/superpowers/
 // plans/2026-10-10-bf2017-phaseL-levels.md, task 2): the game's map, its
 // terrain and its meshes, cut for the site and written under
-// public/models/galaxy/bf2017/levels/<world>/, which scripts/assets-upload.mjs
-// mirrors to the bucket. The work is in scripts/lib/bf2017-level.mjs (pure,
+// public/models/galaxy/bf2017/levels/<world>/; scripts/assets-publish.mjs
+// publishes every file but level.json and README.md to site-assets (git keeps
+// those two; .gitignore's block hides the rest). The work is in scripts/lib/bf2017-level.mjs (pure,
 // tested); this fetches, reads and writes.
 //
 //   node scripts/bf2017-level.mjs <map> --world <id> --spot <x> <z> [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--dry]
