@@ -75,6 +75,7 @@ import { isSequel, cutsFor, partsOf, readManifest } from './lib/bf2017-manifest.
 import { glbJson, imagePath, inBucket, localPath } from './lib/bf2017-paths.mjs';
 import { resolveImage } from './lib/bf2017-textures.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
+import { dressed } from './lib/bf2017-dressing.mjs';
 import { bindVertices, bonesOf, HELPERS } from './lib/rig-bind.mjs';
 import { shareSkins } from './lib/rig-parts.mjs';
 import { bareWhereUntextured, bounds, dims, grounded, invert4, relit, simplified, triangles, unskinned } from './lib/surface-model.mjs';
@@ -106,6 +107,8 @@ async function readLod(io, file, { root, derived, unpackDir, said }) {
     if (!at) continue;
     const found = await resolveImage(at, { root, derived, unpackDir });
     const uri = `image${i}.png`;
+    // (named for what it is, so a packed map can be told: lib/bf2017-dressing.mjs)
+    img.name ??= at.split('/').pop();
     if (found) {
       resources[uri] = new Uint8Array(found.png);
       said.found.add(`${at.split('/').pop()} ← ${found.from}`);
@@ -239,6 +242,8 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const root = doc.getRoot();
   const budget = lod.triangles + parts.reduce((n, p) => n + (p.lods.find((l) => l.lod === lod.lod) ?? p.lods[p.lods.length - 1]).triangles, 0);
   for (const mesh of root.listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
+  // (the game's glass made glass, its weak points' covers dropped)
+  await doc.transform(dressed({ sharp }));
   // where it is held, in the model's own frame, before anything moves
   const socket = spec.grip.map((g) => root.listNodes().find((n) => n.getName() === g)).find(Boolean);
   const hold = socket ? socket.getWorldTranslation() : [0, 0, 0];
