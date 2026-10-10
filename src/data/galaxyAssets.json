@@ -1044,8 +1044,8 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/cells/1_-1.bin": {
-    "hash": "08ec285fa8f6",
-    "bytes": 25920,
+    "hash": "582c8757fe6d",
+    "bytes": 25568,
     "from": "models/galaxy/bf2017/levels/endor/cells/1_-1.bin",
     "tier": "pack"
   },
@@ -1056,8 +1056,8 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/cells/1_0.bin": {
-    "hash": "7efbd85d5b0c",
-    "bytes": 25344,
+    "hash": "2ac8c0dca23f",
+    "bytes": 25184,
     "from": "models/galaxy/bf2017/levels/endor/cells/1_0.bin",
     "tier": "pack"
   },
@@ -1098,8 +1098,8 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/cells/2_-1.bin": {
-    "hash": "2294cbacbe01",
-    "bytes": 13408,
+    "hash": "7626650db0fe",
+    "bytes": 13152,
     "from": "models/galaxy/bf2017/levels/endor/cells/2_-1.bin",
     "tier": "pack"
   },
@@ -1122,14 +1122,14 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/cells/2_1.bin": {
-    "hash": "c747b457740f",
-    "bytes": 35296,
+    "hash": "63081c3ab1e2",
+    "bytes": 34848,
     "from": "models/galaxy/bf2017/levels/endor/cells/2_1.bin",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/cells/2_2.bin": {
-    "hash": "27f7f64d842a",
-    "bytes": 22912,
+    "hash": "b8622844dd27",
+    "bytes": 22784,
     "from": "models/galaxy/bf2017/levels/endor/cells/2_2.bin",
     "tier": "pack"
   },
@@ -1236,8 +1236,8 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/far.bin": {
-    "hash": "ed435ff028af",
-    "bytes": 416032,
+    "hash": "52cc0e208908",
+    "bytes": 414688,
     "from": "models/galaxy/bf2017/levels/endor/far.bin",
     "tier": "pack"
   },
@@ -13266,14 +13266,14 @@
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/terrain/far.png": {
-    "hash": "9b75133cf360",
-    "bytes": 130287,
+    "hash": "da720da2d24d",
+    "bytes": 130247,
     "from": "models/galaxy/bf2017/levels/endor/terrain/far.png",
     "tier": "pack"
   },
   "models/galaxy/bf2017/levels/endor/terrain/near.png": {
-    "hash": "725c1f6a8268",
-    "bytes": 948672,
+    "hash": "fd1fe4ab38f1",
+    "bytes": 948430,
     "from": "models/galaxy/bf2017/levels/endor/terrain/near.png",
     "tier": "pack"
   },
