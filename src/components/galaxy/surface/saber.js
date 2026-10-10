@@ -136,12 +136,13 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   // built one stands in, dressed.
   let gone = false;
   const worn = [];
-  if (hilt?.model)
+  // (a 2017 figure's alone: a Meshy hand is made for the built hilt's grip)
+  if (walrus && hilt?.model)
     loadGlb(modelUrlFor(hilt.model, 'high')).then((gltf) => {
       if (!gltf || gone) return;
       const m = gltf.scene.clone(true);
       const box = new THREE.Box3().setFromObject(m);
-      const fit = hiltFit({ min: box.min.toArray(), max: box.max.toArray() }, hilt.length ?? 0.28);
+      const fit = hiltFit({ min: box.min.toArray(), max: box.max.toArray() }, hilt.modelLength ?? hilt.length ?? 0.28);
       m.scale.setScalar(fit.scale);
       m.name = 'hilt-model';
       for (const o of [...gun.children]) if (o.isMesh && (o.name === 'grip' || o.name === 'metal' || o.name === 'trim' || o.name.startsWith('emitter'))) o.visible = false;

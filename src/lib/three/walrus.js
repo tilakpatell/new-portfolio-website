@@ -110,8 +110,11 @@ export async function loadWalrusBody(url, { packs = packUrls(), loader } = {}) {
   const model = cloneScene(gltf);
   const names = [];
   model.traverse((o) => o.name && names.push(o.name));
-  if (!isWalrus(names)) {
-    const { missing } = checkWalrus(names);
+  // (and its sockets: a 2017 figure without Wep_Root would hold its saber
+  // as a Meshy hand does while the game's clips move it, half of each)
+  const check = checkWalrus(names);
+  if (!isWalrus(names) || !check.ok) {
+    const { missing } = check;
     throw new Error(`${url} is not on the game's skeleton (Spine1, never Meshy's Spine02); it lacks ${missing.slice(0, 6).join(', ')}`);
   }
   return { model, clips: clipsFor(model, clips), sockets: socketsOf(model) };

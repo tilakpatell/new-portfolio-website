@@ -89,6 +89,12 @@ describe('a figure on the game’s skeleton', () => {
     await expect(loadWalrusBody('/meshy.glb', { packs: [], loader })).rejects.toThrow(/Spine1/);
   });
 
+  it('refuses a body on the game’s skeleton without its weapon socket, which the saber and gun sit in', async () => {
+    const noSocket = body([...BODY, 'IK_Joint_LeftHand', 'IK_Joint_RightHand', 'Wep_Muzzle', 'Wep_Aim']);
+    const loader = { loadAsync: async (url) => (url === '/x.glb' ? { scene: noSocket, animations: [] } : null) };
+    await expect(loadWalrusBody('/x.glb', { packs: [], loader })).rejects.toThrow(/Wep_Root/);
+  });
+
   it('loads the humanoid pack first and a hero’s over it', () => {
     expect(packUrls('luke')).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb', '/models/galaxy/bf2017/clips-luke.glb']);
     expect(packUrls()).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb']);

@@ -37,19 +37,21 @@ export const SABER_COLORS = [
 ];
 
 // a hilt: its length (metres), the emitter's shape, the grip's look, and
-// `model`: the 2017 game's own hilt (catalog/bf2017.js), which the saber
-// wears in place of the built one (its length the model's); the built one,
-// dressed by the rest, stands in where there's none or until it comes
+// `model`: the 2017 game's own hilt (catalog/bf2017.js) at `modelLength`,
+// which the saber of a figure on the game's skeleton wears in place of the
+// built one; a Meshy hand holds the built one at `length`, as it always
+// has, and the built one, dressed by the rest, stands in where there's no
+// model or until it comes
 export const HILTS = [
-  { id: 'skywalker', name: 'Skywalker', about: 'Anakin’s, then Luke’s: a plain steel hilt with a black ribbed grip.', model: 'hiltanakin', length: 0.274, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
-  { id: 'luke', name: 'Luke’s own', about: 'The one he built on Tatooine: slimmer, a black sleeve and a thin emitter.', model: 'hiltluke', length: 0.286, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#141518' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
+  { id: 'skywalker', name: 'Skywalker', about: 'Anakin’s, then Luke’s: a plain steel hilt with a black ribbed grip.', model: 'hiltanakin', modelLength: 0.274, length: 0.28, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
+  { id: 'luke', name: 'Luke’s own', about: 'The one he built on Tatooine: slimmer, a black sleeve and a thin emitter.', model: 'hiltluke', modelLength: 0.286, length: 0.26, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#141518' , lean: 'light', lines: { ours: 'We hold this line. Nobody gets past while I’m standing.', theirs: 'I’m on the wrong side of this one. I’ll do what I have to.' } },
   { id: 'ahsoka', name: 'Ahsoka’s', about: 'A curved white hilt, the way she carries two.', length: 0.24, emitter: 'shroud', grip: 'curved', metal: '#e8e6e0', trim: '#5a5c60' , lean: 'light', lines: { ours: 'Stay close and trust each other. That’s how we win.', theirs: 'I’ve fought for the wrong people before. Never again. Except today.' } },
-  { id: 'dooku', name: 'Curved', about: 'A fencer’s hilt, bent for the wrist.', model: 'hiltdooku', length: 0.324, emitter: 'cup', grip: 'curved', metal: '#8a7a5a', trim: '#2a2420' },
-  { id: 'temple', name: 'Kenobi’s', about: 'Obi-Wan’s: ribbed steel, a deep emitter shroud.', model: 'hiltobiwan', length: 0.27, emitter: 'shroud', grip: 'ribbed', metal: '#c8a860', trim: '#4a3a20' },
-  { id: 'lukehoth', name: 'Luke’s first', about: 'His father’s, the one he carried on Hoth and to Bespin.', model: 'hiltlukehoth', length: 0.284, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
-  { id: 'vader', name: 'Vader’s', about: 'Black and steel, a ribbed grip and a shrouded emitter.', model: 'hiltvader', length: 0.268, emitter: 'shroud', grip: 'ribbed', metal: '#9a9ea6', trim: '#141518' },
-  { id: 'maul', name: 'Maul’s staff', about: 'Two hilts joined at the pommel: a blade at each end.', model: 'hiltmaul', length: 0.567, emitter: 'cup', grip: 'ribbed', metal: '#5a5c60', trim: '#141518' },
-  { id: 'yoda', name: 'Yoda’s', about: 'A short hilt for a small hand.', model: 'hiltyoda', length: 0.158, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#2a2c30' },
+  { id: 'dooku', name: 'Curved', about: 'A fencer’s hilt, bent for the wrist.', model: 'hiltdooku', modelLength: 0.324, length: 0.27, emitter: 'cup', grip: 'curved', metal: '#8a7a5a', trim: '#2a2420' },
+  { id: 'temple', name: 'Temple guard', about: 'A long hilt in Jedi gold and bronze.', model: 'hiltobiwan', modelLength: 0.27, length: 0.3, emitter: 'shroud', grip: 'ribbed', metal: '#c8a860', trim: '#4a3a20' },
+  { id: 'lukehoth', name: 'Luke’s first', about: 'His father’s, the one he carried on Hoth and to Bespin.', model: 'hiltlukehoth', modelLength: 0.284, length: 0.284, emitter: 'cup', grip: 'ribbed', metal: '#b8bcc4', trim: '#2a2c30' },
+  { id: 'vader', name: 'Vader’s', about: 'Black and steel, a ribbed grip and a shrouded emitter.', model: 'hiltvader', modelLength: 0.268, length: 0.268, emitter: 'shroud', grip: 'ribbed', metal: '#9a9ea6', trim: '#141518' },
+  { id: 'maul', name: 'Maul’s staff', about: 'Two hilts joined at the pommel: a blade at each end.', model: 'hiltmaul', modelLength: 0.567, length: 0.567, emitter: 'cup', grip: 'ribbed', metal: '#5a5c60', trim: '#141518' },
+  { id: 'yoda', name: 'Yoda’s', about: 'A short hilt for a small hand.', model: 'hiltyoda', modelLength: 0.158, length: 0.158, emitter: 'thin', grip: 'sleeve', metal: '#9a9ea6', trim: '#2a2c30' },
 ];
 
 // (each hero's own two abilities, G then V: what the films give them)
