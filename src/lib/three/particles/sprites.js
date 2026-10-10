@@ -31,10 +31,24 @@
 // The positions are world space: the mesh stays at the origin and is never
 // frustum-culled (effects.js culls by the blueprint's CullDistance).
 //
+// The second path, for what is not a quad:
+// - EmittableType_Mesh: the same pool drawn as instances of a mesh (the
+//   record's mesh once phase 0 cuts the effect meshes; a low icosahedron
+//   until then), sized by the particle's size, turned about +Y by the
+//   rotation curve, lit by the scene's lights as a standard node material.
+// - EmittableType_Ribbon (contrails, engine trails): emitter.js's trails,
+//   each a camera-facing strip through its points, built on the CPU every
+//   frame into one mesh for all of a kind's trails (one draw), its width the
+//   spawn size times the size curve and its colour and alpha the curves at
+//   each point's age; the sheet runs along the age.
+//
 // curveNode(tsl, curve, t, r) → a float node, curves.js's evalCurve in TSL
 // createShared() → Promise<shared uniforms>: { sunDir, sunColor, ambient, camVel, shadow }
-// createSpriteMesh(em, sim, { shared, map }) → Promise<THREE.Mesh>
+// createSpriteMesh(em, sim, { shared, map, geometry }) → Promise<THREE.Mesh>
+// createRibbonMesh(em, trails, { shared, map }) → Promise<{ mesh, update(camera) }>
 
+import { evalCurve } from './curves.js';
+import { trailPoint } from './emitter.js';
 import { loadThree } from '../light/three.js';
 
 export function curveNode(tsl, c, t, r) {
@@ -85,7 +99,7 @@ function frameUv(tsl, uvNode, frame, [cols, rows]) {
   return vec2(uvNode.x.add(col).div(cols), uvNode.y.add(float(rows - 1).sub(row)).div(rows));
 }
 
-export async function createSpriteMesh(em, sim, { shared, map = null } = {}) {
+export async function createSpriteMesh(em, sim, { shared, map = null, geometry = null } = {}) {
   const { THREE, tsl } = await loadThree();
   const { float, vec3, vec4, clamp, max, min, cos, sin, floor, pow, select, length, normalize, cross, dot, positionGeometry, cameraWorldMatrix, texture, uv, radians } = tsl;
   const { posAge, velLife, extra } = sim.nodes;
@@ -102,7 +116,11 @@ export async function createSpriteMesh(em, sim, { shared, map = null } = {}) {
   const c = positionGeometry.xy;
 
   let corner;
-  if (em.alignment === 'motionStretchScreen' || em.alignment === 'velocity') {
+  if (em.kind === 'mesh') {
+    const a = radians(curveNode(tsl, em.rotation ?? 0, t, r)).add(r.mul(Math.PI * 2));
+    const g = tsl.positionGeometry;
+    corner = center.add(vec3(g.x.mul(cos(a)).add(g.z.mul(sin(a))), g.y, g.z.mul(cos(a)).sub(g.x.mul(sin(a)))).mul(size));
+  } else if (em.alignment === 'motionStretchScreen' || em.alignment === 'velocity') {
     const rel = em.alignment === 'velocity' ? velLife.xyz : velLife.xyz.sub(shared.camVel);
     const across = rel.sub(back.mul(dot(rel, back)));
     const speed = length(across);
@@ -135,7 +153,7 @@ export async function createSpriteMesh(em, sim, { shared, map = null } = {}) {
 
   const col = (em.color ?? [1, 1, 1]).map((ch) => curveNode(tsl, ch, t, r));
   let rgb = texel.rgb.mul(vec3(col[0], col[1], col[2]));
-  if (!em.additive) {
+  if (!em.additive && em.kind !== 'mesh') {
     const w = em.lightWrap ?? 0;
     const sun = max(dot(back, shared.sunDir).add(w).div(1 + w), 0);
     const shade = shared.shadow ? shared.shadow(corner) : float(1);
@@ -147,7 +165,8 @@ export async function createSpriteMesh(em, sim, { shared, map = null } = {}) {
     .mul(alive);
   if (em.soft > 0) alpha = softFade(tsl, alpha, em.soft);
 
-  const material = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  const isMesh = em.kind === 'mesh';
+  const material = isMesh ? new THREE.MeshStandardNodeMaterial({ transparent: true, roughness: 0.8 }) : new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
   material.positionNode = corner;
   material.colorNode = rgb;
   material.opacityNode = alpha;
@@ -155,7 +174,7 @@ export async function createSpriteMesh(em, sim, { shared, map = null } = {}) {
   // (fog would add its colour to a glow: the additive ones go without)
   material.fog = !em.additive;
   material.toneMapped = true;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+  const mesh = new THREE.Mesh(geometry ?? (isMesh ? new THREE.IcosahedronGeometry(0.5, 0) : new THREE.PlaneGeometry(1, 1)), material);
   mesh.count = sim.n;
   mesh.frustumCulled = false;
   mesh.renderOrder = em.additive ? 2 : 1;
@@ -188,4 +207,113 @@ export async function placeholderSheet([cols, rows] = [1, 1], px = 32) {
   tex.needsUpdate = true;
   sheets.set(key, tex);
   return tex;
+}
+
+export async function createRibbonMesh(em, trails, { shared, map = null } = {}) {
+  const { THREE, tsl } = await loadThree();
+  const { attribute, float, vec3, vec4, clamp, max, pow, dot, texture, uv } = tsl;
+  const { slots, m } = trails;
+  const verts = slots * m * 2;
+  const position = new THREE.BufferAttribute(new Float32Array(verts * 3), 3).setUsage(THREE.DynamicDrawUsage);
+  const life = new THREE.BufferAttribute(new Float32Array(verts * 2), 2).setUsage(THREE.DynamicDrawUsage);
+  const uvs = new THREE.BufferAttribute(new Float32Array(verts * 2), 2).setUsage(THREE.DynamicDrawUsage);
+  const index = [];
+  for (let s = 0; s < slots; s++) {
+    for (let k = 0; k < m - 1; k++) {
+      const a = (s * m + k) * 2;
+      const b = a + 2;
+      index.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', position);
+  geometry.setAttribute('uv', uvs);
+  geometry.setAttribute('ribbonLife', life);
+  geometry.setIndex(index);
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), Infinity);
+
+  const lf = attribute('ribbonLife', 'vec2');
+  const t = clamp(lf.x, 0, 1);
+  const r = float(0.5);
+  const texel = map ? texture(map, uv()) : vec4(1);
+  const col = (em.color ?? [1, 1, 1]).map((ch) => curveNode(tsl, ch, t, r));
+  let rgb = texel.rgb.mul(vec3(col[0], col[1], col[2]));
+  if (!em.additive) {
+    const w = em.lightWrap ?? 0;
+    const back = tsl.cameraWorldMatrix.element(2).xyz;
+    rgb = rgb.mul(shared.ambient.add(shared.sunColor.mul(max(dot(back, shared.sunDir).add(w).div(1 + w), 0))));
+  }
+  const alpha = pow(max(texel.a, 0), em.alpha?.exponent ?? 1)
+    .mul(clamp(curveNode(tsl, em.alpha?.curve ?? 1, t, r), 0, 1))
+    .mul(lf.y);
+  const material = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  material.colorNode = rgb;
+  material.opacityNode = alpha;
+  material.blending = em.additive ? THREE.AdditiveBlending : THREE.NormalBlending;
+  material.fog = !em.additive;
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 2;
+  mesh.name = `fx-ribbon:${String(em.name).split('/').pop()}`;
+
+  const size = evalCurve(em.spawn?.size ?? 1, 0, 0.5);
+  const p = trails.pos;
+  return {
+    mesh,
+    // the strips rebuilt round the camera, newest point first
+    update(camera) {
+      const cx = camera.position.x;
+      const cy = camera.position.y;
+      const cz = camera.position.z;
+      const P = position.array;
+      const L = life.array;
+      const U = uvs.array;
+      for (let s = 0; s < slots; s++) {
+        for (let k = 0; k < m; k++) {
+          const i = trailPoint(trails, s, k);
+          const age = trails.age[i];
+          const tt = age / trails.life;
+          const alive = tt < 1 ? 1 : 0;
+          // the tangent: from the next older point that is not on this one
+          // (a point is frozen on the head, so the two may coincide) to the newer
+          const i0 = trailPoint(trails, s, Math.max(0, k - 1)) * 3;
+          let i1 = trailPoint(trails, s, Math.min(m - 1, k + 1)) * 3;
+          if (p[i1] === p[i0] && p[i1 + 1] === p[i0 + 1] && p[i1 + 2] === p[i0 + 2]) i1 = trailPoint(trails, s, Math.min(m - 1, k + 2)) * 3;
+          const tx = p[i0] - p[i1];
+          const ty = p[i0 + 1] - p[i1 + 1];
+          const tz = p[i0 + 2] - p[i1 + 2];
+          const x = p[i * 3];
+          const y = p[i * 3 + 1];
+          const z = p[i * 3 + 2];
+          // the side: across the trail and the line to the camera
+          const vx = cx - x;
+          const vy = cy - y;
+          const vz = cz - z;
+          let sx = ty * vz - tz * vy;
+          let sy = tz * vx - tx * vz;
+          let sz = tx * vy - ty * vx;
+          const sl = Math.hypot(sx, sy, sz);
+          const half = alive && sl > 1e-9 ? (size * evalCurve(em.size ?? 1, Math.min(1, tt), 0.5)) / 2 / sl : 0;
+          sx *= half;
+          sy *= half;
+          sz *= half;
+          const v = (s * m + k) * 2;
+          P[v * 3] = x - sx;
+          P[v * 3 + 1] = y - sy;
+          P[v * 3 + 2] = z - sz;
+          P[v * 3 + 3] = x + sx;
+          P[v * 3 + 4] = y + sy;
+          P[v * 3 + 5] = z + sz;
+          L[v * 2] = L[v * 2 + 2] = Math.min(1, tt);
+          L[v * 2 + 1] = L[v * 2 + 3] = half > 0 ? 1 : 0;
+          U[v * 2] = U[v * 2 + 2] = Math.min(1, tt);
+          U[v * 2 + 1] = 0;
+          U[v * 2 + 3] = 1;
+        }
+      }
+      position.needsUpdate = true;
+      life.needsUpdate = true;
+      uvs.needsUpdate = true;
+    },
+  };
 }

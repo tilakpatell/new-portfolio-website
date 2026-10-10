@@ -237,3 +237,83 @@ export function stretchLength(size, speed, stretch) {
 // LightWrapAroundFactor: the sun's n·l wrapped, (n·l + w) / (1 + w), so a
 // sprite edge-on or a little behind is still lit
 export const wrapLight = (nDotL, w = 0) => Math.max(0, (nDotL + w) / (1 + w));
+
+// ── ribbons: a trail of points behind each owner (EmittableType_Ribbon) ──
+//
+// A ribbon emitter keeps, per owner slot, a ring of MaxCount points
+// (position, age). The newest point rides the owner; a new one is frozen
+// behind it at SpawnRate a second, or sooner once the owner has moved
+// RibbonSegmentLength metres, so a fast ship's contrail stays smooth. Every
+// point ages; past the lifetime it is gone (sprites.js draws it at width 0).
+//
+// createTrails(em, slots) → trails ; stepTrails(trails, dt, owners, active, count)
+//   active: the owner slots running this frame (`count` of them)
+// trailPoint(trails, slot, k) → the ring index of the k-th newest point
+
+export function createTrails(em, slots) {
+  const m = Math.max(2, em.maxCount ?? 2);
+  return {
+    em,
+    slots,
+    m,
+    pos: new Float32Array(slots * m * 3),
+    age: new Float32Array(slots * m).fill(Infinity),
+    head: new Int32Array(slots),
+    acc: new Float32Array(slots),
+    last: new Float32Array(slots * 3),
+    on: new Uint8Array(slots),
+    life: lifeMax(em),
+  };
+}
+
+export const trailPoint = (tr, slot, k) => slot * tr.m + ((tr.head[slot] - k + tr.m * 2) % tr.m);
+
+const put3 = (arr, i, x, y, z) => {
+  arr[i] = x;
+  arr[i + 1] = y;
+  arr[i + 2] = z;
+};
+
+export function stepTrails(tr, dt, owners, active = [], count = active.length) {
+  const { m } = tr;
+  for (let i = 0; i < tr.age.length; i++) tr.age[i] += dt;
+  const rate = Math.max(0, evalCurve(tr.em.spawn?.rate ?? 0, 0));
+  const seg = tr.em.ribbon?.segment ?? Infinity;
+  for (let s = 0; s < tr.slots; s++) {
+    let a = 0;
+    while (a < count && active[a] !== s) a++;
+    if (a === count) {
+      // (not running this frame: it stops following, its points age out)
+      tr.on[s] = 0;
+      continue;
+    }
+    const b = s * OWNER;
+    const x = owners[b];
+    const y = owners[b + 1];
+    const z = owners[b + 2];
+    if (!tr.on[s]) {
+      // a fresh trail: every point dead, a frozen point and the head on the owner
+      for (let k = 0; k < m; k++) tr.age[s * m + k] = Infinity;
+      tr.on[s] = 1;
+      tr.acc[s] = 0;
+      put3(tr.last, s * 3, x, y, z);
+      put3(tr.pos, (s * m + tr.head[s]) * 3, x, y, z);
+      tr.age[s * m + tr.head[s]] = 0;
+      tr.head[s] = (tr.head[s] + 1) % m;
+    } else {
+      tr.acc[s] += rate * dt;
+      const moved = Math.hypot(x - tr.last[s * 3], y - tr.last[s * 3 + 1], z - tr.last[s * 3 + 2]);
+      if (tr.acc[s] >= 1 || moved >= seg) {
+        // the head frozen on the owner where it is now, a new head beside it
+        tr.acc[s] = Math.max(0, Math.min(1, tr.acc[s] - 1));
+        put3(tr.pos, (s * m + tr.head[s]) * 3, x, y, z);
+        tr.age[s * m + tr.head[s]] = 0;
+        tr.head[s] = (tr.head[s] + 1) % m;
+        put3(tr.last, s * 3, x, y, z);
+      }
+    }
+    const h = s * m + tr.head[s];
+    put3(tr.pos, h * 3, x, y, z);
+    tr.age[h] = 0;
+  }
+}

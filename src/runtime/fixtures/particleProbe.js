@@ -1,7 +1,8 @@
 // Lane X's checks on the lit fixture (litWorld.js with `particles`):
 // the game's effects from their emitter tables through createEffects (the
 // hangar's ceiling snow over the ring, one box past its cull distance, a
-// blaster bolt into the snow every 1.5 s), and the GPU twin held to the CPU
+// blaster bolt into the snow every 1.5 s, a ship circling with its engine's
+// glow and contrail), and the GPU twin held to the CPU
 // step (scripts/light-fixture.mjs --particles
 // reads `probe.particles`).
 //
@@ -34,6 +35,13 @@ export async function createParticleProbe({ scene, renderer, camera, light, tier
     [0, 6, -400],
   ])
     effects.spawn(SNOW.name, at);
+  // a ship circling the ring 4 m up at 12 m/s, its engine's glow and contrail riding it
+  const { Object3D } = await import('three/webgpu');
+  const ship = new Object3D();
+  ship.name = 'fixture-ship';
+  scene.add(ship);
+  effects.spawn(EXHAUST.name, [0, 0, -1], [0, 0, 0, 1], 0.25, { parent: ship });
+  let lap = 0;
   await Promise.all(Object.keys(defs).map((n) => effects.ready(n)));
   let since = 0;
   const out = {
@@ -45,6 +53,11 @@ export async function createParticleProbe({ scene, renderer, camera, light, tier
       for (let t = 0; t < seconds; t += 1 / 30) out.step(1 / 30);
     },
     step(dt) {
+      lap += (dt * 12) / 7;
+      ship.position.set(Math.cos(lap) * 7, 4, Math.sin(lap) * 7 - 2);
+      // (facing along its path: +z of the ship is forward, the engine at -z)
+      ship.rotation.set(0, -lap, 0);
+      ship.updateMatrixWorld(true);
       // a bolt into the snow by the cube every 1.5 s
       since += dt;
       if (since > 1.5) {
@@ -55,6 +68,7 @@ export async function createParticleProbe({ scene, renderer, camera, light, tier
     },
     camera,
     dispose() {
+      ship.removeFromParent();
       effects.dispose();
     },
     async parity(frames = 120) {

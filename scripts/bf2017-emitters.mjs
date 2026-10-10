@@ -16,9 +16,10 @@
 // it spawns.
 //
 // Where it reads: --root, the export on the desktop (`web/data.tsv` and the
-// files it lists under `web/`); else --bucket, the private bf2017-assets
-// bucket (`data/<Name>.json.gz`, the records by name; `web/data.tsv` there,
-// when it is, for the EmitterGraphs' replacements), with SUPABASE_URL and
+// files it lists under `web/`, or the bucket's layout fetched into
+// lab/assets/bf2017: `data.tsv` and `data/<Name>.json.gz`); else --bucket,
+// the private bf2017-assets bucket itself (`data/<Name>.json.gz`, the
+// records by name; `data.tsv`, for the EmitterGraphs' replacements), with SUPABASE_URL and
 // BF2017_KEY (or SUPA_KEY) from .env.local or the environment, never
 // printed. The fixtures: --root scripts/fixtures/bf2017/fx.
 //
@@ -78,16 +79,26 @@ function keys() {
 function source() {
   const root = arg('root');
   if (root) {
-    if (!existsSync(join(root, 'web/data.tsv'))) stop(`no web/data.tsv under ${root}`);
-    const index = readIndex(readFileSync(join(root, 'web/data.tsv'), 'utf8'));
-    const file = (p) => join(root, 'web', p);
+    // (the export's index at web/data.tsv, or data.tsv at the root as the
+    // bucket's layout has it; a record as .json or .json.gz)
+    const tsvFile = [join(root, 'web/data.tsv'), join(root, 'data.tsv')].find(existsSync);
+    if (!tsvFile) stop(`no web/data.tsv or data.tsv under ${root}`);
+    const base = dirname(tsvFile);
+    const index = readIndex(readFileSync(tsvFile, 'utf8'));
+    const open = (p) => {
+      for (const f of [join(base, p), join(base, `${p}.gz`), join(base, 'data', `${p}.json`), join(base, 'data', `${p}.json.gz`)]) {
+        if (!existsSync(f)) continue;
+        const buf = readFileSync(f);
+        return JSON.parse((f.endsWith('.gz') ? gunzipSync(buf) : buf).toString('utf8'));
+      }
+      return null;
+    };
     return {
       index,
       from: root,
       async record(name) {
         const row = index.get(name.toLowerCase()) ?? [...index.values()].find((r) => r.name.toLowerCase().endsWith(`/${name.toLowerCase()}`));
-        if (!row || !existsSync(file(row.path))) return null;
-        return JSON.parse(readFileSync(file(row.path), 'utf8'));
+        return row ? open(row.path) : open(name);
       },
       async extras(map) {
         const p = join(root, 'web/maps', map, `${map.split('/').pop()}.extras.json`);
@@ -102,9 +113,9 @@ function source() {
     return res.ok ? Buffer.from(await res.arrayBuffer()) : null;
   };
   return (async () => {
-    const tsv = await get('web/data.tsv');
+    const tsv = (await get('data.tsv')) ?? (await get('web/data.tsv'));
     const index = tsv ? readIndex(tsv.toString('utf8')) : new Map();
-    if (!tsv) console.log('no web/data.tsv in the bucket: EmitterGraphs will be listed as missing');
+    if (!tsv) console.log('no data.tsv in the bucket: EmitterGraphs will be listed as missing');
     return {
       index,
       from: `the bucket ${BUCKET}`,

@@ -52,7 +52,7 @@ export async function createSim(em, n, { renderer = null, seed = 1, mode = modeF
 }
 
 function gpuSim(THREE, tsl, pool, renderer) {
-  const { Fn, If, Loop, instancedArray, instanceIndex, uniform, uniformArray, uint, float, vec3, vec4, sin, cos, sqrt, max, pow, abs, select, PI } = tsl;
+  const { Fn, If, Loop, instancedArray, instanceIndex, uniform, uniformArray, uint, float, vec3, vec4, sin, cos, sqrt, max, pow, PI } = tsl;
   const { em, n } = pool;
   const posAge = instancedArray(n, 'vec4');
   const velLife = instancedArray(n, 'vec4');
@@ -163,8 +163,6 @@ function gpuSim(THREE, tsl, pool, renderer) {
       pa.assign(vec4(pa.xyz.add(move), pa.w.add(u.dt)));
     });
   })().compute(n);
-  void abs;
-  void select;
 
   return {
     mode: 'gpu',

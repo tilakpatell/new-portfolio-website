@@ -39,10 +39,10 @@
 // Nothing is allocated per frame: the ranks, batches and owners are kept.
 
 import { curveRange, rnd } from './curves.js';
-import { lifeMax, MAX_OWNERS, OWNER, spawnCount, spawnFactor } from './emitter.js';
+import { createTrails, lifeMax, MAX_OWNERS, OWNER, spawnCount, spawnFactor, stepTrails } from './emitter.js';
 import { createSim } from './gpu.js';
 import { SHEET_DIR, sheetFile, sizeFor } from './sheets.js';
-import { createShared, createSpriteMesh, placeholderSheet } from './sprites.js';
+import { createRibbonMesh, createShared, createSpriteMesh, placeholderSheet } from './sprites.js';
 
 const TIER_KEY = { ultra: 'ultra', high: 'high', mid: 'mid', low: 'low' };
 
@@ -127,9 +127,19 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     await sharedReady;
     const variant = variantFor(def, tier);
     const emitters = [];
+    const maxActive = Math.min(def.maxActive ?? 1, MAX_OWNERS);
     for (const idx of variant.emitters) {
       const em = def.emitters[idx];
-      if (!em || em.kind === 'ribbon') continue;
+      if (!em) continue;
+      if (em.kind === 'ribbon') {
+        // a trail per owner slot, all of the kind's in one strip mesh
+        const trails = createTrails(em, maxActive);
+        const rib = await createRibbonMesh(em, trails, { shared, map: await sheetFor(em) });
+        rib.mesh.visible = false;
+        scene.add(rib.mesh);
+        emitters.push({ em, trails, rib, mesh: rib.mesh, n: trails.m * maxActive });
+        continue;
+      }
       const n = poolSize(em, def, variant);
       const sim = await createSim(em, n, { renderer, seed: (serial++ * 2654435761) >>> 0 });
       const mesh = await createSpriteMesh(em, sim, { shared, map: await sheetFor(em) });
@@ -137,7 +147,6 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       scene.add(mesh);
       emitters.push({ em, sim, mesh, n });
     }
-    const maxActive = Math.min(def.maxActive ?? 1, MAX_OWNERS);
     return {
       name,
       def,
@@ -152,6 +161,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       owners: new Float32Array(MAX_OWNERS * OWNER),
       slots: new Array(MAX_OWNERS).fill(null),
       batches: Array.from({ length: maxActive }, () => ({ owner: 0, count: 0 })),
+      active: new Int32Array(maxActive),
     };
   }
 
@@ -253,7 +263,8 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     return pq;
   }
 
-  function updateKind(kind, dt, cx, cy, cz, wind) {
+  function updateKind(kind, dt, camera, wind) {
+    const { x: cx, y: cy, z: cz } = camera.position;
     const list = kind.instances;
     // the dead and the finished one-shots out (in place)
     let w = 0;
@@ -329,10 +340,18 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
     }
     stats.running += m;
     const visible = m > 0;
+    for (let c = 0; c < m; c++) kind.active[c] = kind.chosen[c].slot;
     for (let e = 0; e < kind.emitters.length; e++) {
-      const { em, sim, mesh } = kind.emitters[e];
+      const { em, sim, mesh, trails, rib } = kind.emitters[e];
       if (!visible) {
         mesh.visible = false;
+        continue;
+      }
+      if (trails) {
+        stepTrails(trails, dt, kind.owners, kind.active, m);
+        rib.update(camera);
+        mesh.visible = true;
+        stats.drawn++;
         continue;
       }
       for (let c = 0; c < m; c++) {
@@ -400,7 +419,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
       camPrev.set = true;
       for (const k of kinds.values()) {
         if (!k.kind) continue;
-        updateKind(k.kind, dt, cp.x, cp.y, cp.z, wind);
+        updateKind(k.kind, dt, camera, wind);
         stats.instances += k.kind.instances.length;
       }
     },
@@ -410,7 +429,7 @@ export function createEffects(scene, renderer, { tier = 'high', defs = {}, load 
           e.mesh.removeFromParent();
           e.mesh.geometry.dispose();
           e.mesh.material.dispose();
-          e.sim.dispose();
+          e.sim?.dispose();
         }
       }
       kinds.clear();
