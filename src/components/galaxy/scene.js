@@ -138,6 +138,9 @@ import { createFinds } from './places';
 import { asking } from './asking';
 import { jumpTime, routeBetween } from './routes';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
+import { starfighterAt } from './surface/missions/starfighterMaps';
+import { levelOf } from './surface/missions/starfighter';
+import { drawSpaceLevel } from './spaceLevel';
 
 const BOLTS = 16;
 const CADENCE = { xwing: 0.12, falcon: 0.16, cruiser: 0.19, rv: 0.2 };
@@ -2790,6 +2793,26 @@ export async function create(canvas, ctx) {
     // fly itself to something in this system, or to another pilot in it
     goTo,
     flyTo,
+    // a space level's Starfighter Assault at this system (the page's
+    // ?battle=starfighter: surface/missions/starfighterMaps.js has which), in
+    // place of the war's battle, on `side`; you're put behind your side's
+    // line. False if there's none here, or you're not here yet
+    starfighter(id, { side = null } = {}) {
+      const sf = starfighterAt(id);
+      if (!war || !sf || state.sys?.id !== id || !state.ship) return false;
+      sf.load().then(({ map, stages }) => {
+        if (disposed || state.sys?.id !== id) return;
+        const draw = drawSpaceLevel(scene, { pack: sf.pack, origin: stages.origin, packOrigin: sf.packOrigin, tier, renderer });
+        if (!war.starfighter({ level: levelOf(map, stages), side, draw, name: sf.name })) return;
+        const team = war.info.team;
+        if (team === null || !state.ship) return;
+        const { pos, fwd } = war.battle.homeFor(team);
+        state.ship = { ...spawn(null, { x: pos.x, y: pos.y, z: pos.z, heading: Math.atan2(-fwd.x, -fwd.z) }), speed: 0 };
+        state.auto = null;
+        retarget(900);
+      });
+      return true;
+    },
     dispose() {
       disposed = true;
       engine?.stop();

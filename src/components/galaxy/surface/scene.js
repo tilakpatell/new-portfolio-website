@@ -67,6 +67,7 @@ import { paintById } from '../../universe/paint';
 import { readLoadout, STOCK_LOADOUT } from '../../universe/outfit';
 import { flybySound, gadgetSound, gunSound, impactSound, popSound, portalSound, shipEngine } from '../../universe/sounds';
 import { PARTY, loadPartyFigure } from '../../universe/footScene';
+import { bodiesFor, firstBody } from './standIn';
 import { GUNS, createGunplay } from '../../universe/gunplay';
 import { createGameFx } from '../../../lib/three/fx/gameFx';
 import { createGunFx } from '../../universe/gunfx';
@@ -123,7 +124,7 @@ import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
 import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, pushVelocity } from './combatRules';
 import { DUEL } from '../../../lib/combat/duel';
-import { met, swingingOf } from './duellists';
+import { incomingAt, met, swingingOf } from './duellists';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
 import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
@@ -754,7 +755,10 @@ export async function create(canvas, ctx) {
     }
     // (one of the crew with a model of their own here: that, in metres)
     const own = CREW_MODELS[spec.id] ? await modelFigure(CREW_MODELS[spec.id]).catch(() => null) : null;
-    const fig = own ?? (await loadPartyFigure(spec, cast).catch(() => null));
+    // (a 2017 body that can't be fetched: the site's own figure of them, else
+    // a trooper of their side; the pick stands either way, standIn.js)
+    const got = own ? { fig: own, stoodIn: null } : await firstBody(bodiesFor(spec, heroById(spec.id)), (s) => loadPartyFigure(s, cast)).catch(() => null);
+    const fig = got?.fig;
     if (!fig) return null;
     const inner = new THREE.Group();
     if (!own) inner.scale.setScalar(1 / METRE);
@@ -765,7 +769,7 @@ export async function create(canvas, ctx) {
     inner.updateMatrixWorld(true);
     // (a model of their own reads its motion in metres a second, as the
     // world's people do; a party figure in the map's units)
-    const body = { spec, fig, inner, own: Boolean(own), ...armsFor(spec, fig, own) };
+    const body = { spec, fig, inner, own: Boolean(own), stoodIn: got.stoodIn, ...armsFor(spec, fig, own) };
     if (!disposed) await warm(inner).catch(() => {});
     return body;
   }
@@ -782,7 +786,7 @@ export async function create(canvas, ctx) {
     shed(p);
     p.holder.add(body.inner);
     // (a seat, a fall and a turn are the old body's: the new one takes them up afresh)
-    Object.assign(p, { spec: body.spec, fig: body.fig, inner: body.inner, own: body.own, gp: body.gp, saber: body.saber, weapon: body.weapon, seat: null, downed: null, prevYaw: null });
+    Object.assign(p, { spec: body.spec, fig: body.fig, inner: body.inner, own: body.own, stoodIn: body.stoodIn, gp: body.gp, saber: body.saber, weapon: body.weapon, seat: null, downed: null, prevYaw: null });
   }
   const dropBody = (body) => {
     if (!body) return;
@@ -820,11 +824,13 @@ export async function create(canvas, ctx) {
   }
   (async () => {
     await Promise.all(people.map((p) => fit(p, p.spec)));
+    // (the lead stood in by another body: the page says so once)
+    if (!disposed && people[0].stoodIn && people[0].spec.hero) emit({ type: 'hero', who: people[0].spec.id, ok: true, stoodIn: people[0].stoodIn });
     // (the clips the two of you react with, fetched now, so a roll or a
     // flinch starts on the frame it's asked for, not a fetch later)
     if (!disposed && people.some((p) => p.fig?.anim)) preload(['roll', 'hit.chest', 'hit.head', ...(mission?.kind === 'assault' ? ['die.fwd', 'die.back', 'die.blown'] : [])]).catch(() => {});
   })();
-  // another hero picked (the page's HeroPanel): who you are now walks where
+  // another hero picked (the page's DeployPanel): who you are now walks where
   // you were, and your mate is whoever of the crew isn't them; the guard as
   // full as it was, of the new perks' most (a swap mid-fight refills
   // nothing); a mission, your health and where you are kept
@@ -838,10 +844,11 @@ export async function create(canvas, ctx) {
     guardMax = GUARD.max * perks.guard;
     state.guard = { ...state.guard, value: share * guardMax };
     const [lead1, mate1] = partyFor(hero, crewOf).map(withAbilities);
-    // (the page hears once they're on: `ok` false when the body wouldn't load)
+    // (the page hears once they're on: `ok` false only when no body at all
+    // would load; `stoodIn` when another stands in for theirs, standIn.js)
     const was = picked;
     fit(me(), lead1).then((ok) => {
-      if (!disposed && picked === was) emit({ type: 'hero', who: lead1.id, ok });
+      if (!disposed && picked === was) emit({ type: 'hero', who: lead1.id, ok, stoodIn: ok ? (me().stoodIn ?? null) : null });
     });
     fit(other(), mate1);
     ctx.invalidate();
@@ -2231,7 +2238,7 @@ export async function create(canvas, ctx) {
     // (a press that went down and up inside one frame, a quick click, still raises it: saber.js holds it up for the parry window)
     const tapped = state.blockAt != null && state.t - state.blockAt <= dt;
     const blocking = Boolean(state.keys.block || state.buttons.block || tapped) && state.phase === 'walk' && !broken && !state.dodge && state.t >= state.reelUntil;
-    sab.block(blocking);
+    sab.block(blocking, blocking ? incomingAt(activity.targets, p.st) : null); // (on the side the nearest duellist's cut comes in on)
     if (blocking) state.saberAt = state.t;
     // F held: the heavy stroke winding up; let go: the stroke
     if (state.pressAt != null && !sab.busy) sab.setCharge(Math.min(1, (state.t - state.pressAt) / HEAVY.hold));
@@ -2810,7 +2817,7 @@ export async function create(canvas, ctx) {
           if (!lying && !(mine && emoteShown)) pp.gp.set(dt, { aim: aimK, look: mine ? state.aim : mateFight.aim, dir, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
           pp.saber?.update(dt, state.t, { forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP, me: st, targets: mine ? activity.targets : [], hit: saberHit, eye: camera.position });
           if (!mine && mateFight.shoot && !lying) mateShot(pp);
-        }
+        } else pp.saber?.dark(); // (put away to ride: no update reaches it, so its light goes)
       }
     });
   }
@@ -3106,7 +3113,7 @@ export async function create(canvas, ctx) {
       questEvent({ type: 'tick', dt });
       questEvent({ type: 'at', x: p.x, z: p.z, riding: state.riding?.kind ?? null });
     }
-    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor, swinging: swingingOf(me().saber, state.t) })) questEvent(ev);
+    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor, swinging: swingingOf(me().saber, state.t, me().st.yaw), eye: camera.position })) questEvent(ev);
     // your blade crossing a duellist's as either strokes: sparks and the clash
     if (state.phase === 'walk')
       for (const c of activity.clashes(me().saber, state.t)) {
@@ -3274,7 +3281,7 @@ export async function create(canvas, ctx) {
     const out = state.phase === 'walk' || state.phase === 'ride' || state.phase === 'out';
     const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging), stroke: p.saber?.swinging?.name ?? null } : null, emote: p === me() ? emotePacket(state.emote, state.t) : null, motion: p.motion ?? null });
     net.walk?.(out ? { world: site.id, kind: shipKind, lead: w(me()), mate: w(other()), ride: state.riding?.kind ?? null } : null);
-    peers.update(net, site.id, dt);
+    peers.update(net, site.id, dt, camera.position);
   }
 
   // lightning (Kamino's storms): a flash across the sky now and
@@ -3464,21 +3471,41 @@ export async function create(canvas, ctx) {
   // draw of it all, a slice at a time (lib/three/gpuWork). Drawn as it
   // was, the bake held a frame for seconds on landing and the passes'
   // shaders were compiled mid-frame.
+  // (it says what it's waiting for, once a second, the fetch running
+  // longest, for the veil to name; and the veil's "Go in anyway" stops it
+  // where it is: the world shown as far as it got, the rest sent up as it's
+  // first drawn, the figures stood in, standIn.js)
   const prepare = async (onProgress, { alive = () => true } = {}) => {
-    const on = () => alive() && !disposed;
-    onProgress?.(0, 'load');
-    await settleWithin(ready, 20000);
-    if (!on()) return;
-    if (lit && !lit.stats.started) {
-      onProgress?.(0, 'bake');
-      sun.target.position.set(landAt[0], world.heightAt(landAt[0], landAt[1]) ?? 0, landAt[1]);
-      sun.position.copy(sun.target.position).addScaledVector(sunDir, 300);
-      await settleWithin(lit.bake(), 20000);
+    const events = ctx.rt?.events;
+    let skip = false;
+    let skipped = null;
+    const skipping = new Promise((r) => (skipped = r));
+    const offSkip = events?.on?.('prepare-skip', (e) => {
+      if (e?.module !== 'galaxy-surface') return;
+      skip = true;
+      skipped();
+    });
+    const telling = setInterval(() => events?.emit?.('prepare-wait', { module: 'galaxy-surface', file: assetPool().progress().waiting?.url ?? null }), 1000);
+    const on = () => alive() && !disposed && !skip;
+    const within = (p, ms) => Promise.race([settleWithin(p, ms), skipping]);
+    try {
+      onProgress?.(0, 'load');
+      await within(ready, 20000);
       if (!on()) return;
+      if (lit && !lit.stats.started) {
+        onProgress?.(0, 'bake');
+        sun.target.position.set(landAt[0], world.heightAt(landAt[0], landAt[1]) ?? 0, landAt[1]);
+        sun.position.copy(sun.target.position).addScaledVector(sunDir, 300);
+        await within(lit.bake(), 20000);
+        if (!on()) return;
+      }
+      if (post.composer) await within(precompilePasses(renderer, post.composer, camera), 20000);
+      if (!on()) return;
+      await within(prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: on }), 600000);
+    } finally {
+      clearInterval(telling);
+      offSkip?.();
     }
-    if (post.composer) await precompilePasses(renderer, post.composer, camera);
-    if (!on()) return;
-    await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: on });
   };
 
   return {
