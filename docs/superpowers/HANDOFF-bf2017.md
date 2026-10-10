@@ -147,8 +147,9 @@ In order:
 
 - **Each kind's extra flags**: every one is `--rig --crew --full --join`, with `--far` where cast.json says `far`. Its body, parts and height are in `cast.json`.
   - `--cuts lod1=2`: wookiee, ewok, tauntaun.
+- **`WORLD_MB['/galaxy']`**: 17 → 19, by Hoth's models at low, 18.1 → 19.3 MB (with `galaxy/module.js` and `galaxy/surface/module.js`).
   - `--cuts lod1=2` and `--lod1-tex 512 --lod1-maps 256`: civcity1, civcity3.
-  - `--lod1-tex 512 --lod1-maps 256`: hothtrooper, rebel, rebelpilot, officer, sandtrooper, snowtrooper, and the Wookiee as well.
+  - `--lod1-tex 512 --lod1-maps 256`: hothtrooper, rebel, rebelpilot, officer, sandtrooper, snowtrooper, c3po, and the Wookiee and the tauntaun as well (Hoth at a phone's level came to 20.5 MB against its 20 without them).
 - **The checks**: `galaxy-check.mjs surface <world>` with `BUDGET=1` at `QUALITY=high` and `low` (the before and after tables are in `costs.md` and the PR), and `anim-check.mjs --route '#/galaxy/hoth/surface' --limit 0.15 --strict --quality high` (34 figures, none at bind pose).
 - **Gotchas**:
   - A checkout has no full cuts, so the tests read them through the manifest (`crew.budget.test.js`, `crewList.test.js`, `sites/ice.test.js`).
