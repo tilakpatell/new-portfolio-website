@@ -274,3 +274,65 @@ export function checkGreen(check) {
 
 // the pieces a pack draws: its cells' instances and the horizon's
 export const packPieces = (pack) => Object.values(pack.cells ?? {}).reduce((n, c) => n + (c.count ?? 0), 0) + (pack.horizon?.draws ?? []).reduce((n, d) => n + (d.count ?? 0), 0);
+
+// ---- the compare page (scripts/bf2017-compare.mjs) ----
+
+// A level's cameras for the modes asked, by layer: the deploy screen's
+// CameraEntityData rows, and with `locators` the EOR and outro locators
+// (no pitch in the row: level). `file` is the id safe as a file name.
+export function camerasFor(map, modes, { locators = false } = {}) {
+  const want = new Set(modes);
+  const rows = [...(map.cameras ?? []).map((r) => ({ r, kind: 'camera' })), ...(locators ? (map.locators ?? []).map((r) => ({ r, kind: 'locator' })) : [])];
+  return rows
+    .filter(({ r }) => want.has(modeOfLayer(r.layer, r.mode)))
+    .map(({ r, kind }) => ({ id: r.id, file: r.id.replace(/[^A-Za-z0-9_-]/g, '-'), mode: modeOfLayer(r.layer, r.mode), kind, at: r.at, yaw: r.yaw ?? 0, pitch: r.pitch ?? 0, fov: r.fov ?? 0 }));
+}
+
+// the mean absolute difference over every channel, 0 (the same) to 1;
+// both pictures raw, the same size (the script scales both to 256 wide)
+export function meanError(a, b) {
+  if (a.data.length !== b.data.length || a.channels !== b.channels) throw new Error('the two pictures differ in sizes');
+  let sum = 0;
+  for (let i = 0; i < a.data.length; i++) sum += Math.abs(a.data[i] - b.data[i]);
+  return sum / a.data.length / 255;
+}
+
+// notes.md: `- <camera file>: the note` a line
+export function notesOf(md = '') {
+  const out = {};
+  for (const m of md.matchAll(/^- ([A-Za-z0-9_-]+): (.+)$/gm)) out[m[1]] = m[2].trim();
+  return out;
+}
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+// levels: [{ level, shots: [{ id, file, mode, site, game, error, note }] }]
+// (paths relative to the page). Static: no script, opened from the folder.
+export function comparePage(levels) {
+  const rows = levels.flatMap(({ level, shots }) => [
+    `<h2>${esc(level)}</h2>`,
+    ...shots.map((s) => {
+      const game = s.game ? `<img src="${esc(s.game)}" alt="the game, ${esc(s.id)}">` : `<div class="empty">Capture game/${esc(level)}/${esc(s.file)}.jpg: the game's deploy screen (${esc(s.mode)}) from camera ${esc(s.id)}</div>`;
+      const diff = s.error == null ? '—' : `${(s.error * 100).toFixed(1)}%`;
+      return `<section><header><b>${esc(s.id)}</b> <span>${esc(s.mode)}</span> <span>difference ${diff}</span></header><div class="pair"><figure><img src="${esc(s.site)}" alt="the site, ${esc(s.id)}"><figcaption>the site</figcaption></figure><figure>${game}<figcaption>the game</figcaption></figure></div>${s.note ? `<p>${esc(s.note)}</p>` : ''}</section>`;
+    }),
+  ]);
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Parity shots</title>
+<style>
+:root { color-scheme: light dark; --bg: #f6f6f4; --fg: #1d1d1b; --line: #d4d4cf; --muted: #6b6b66; }
+@media (prefers-color-scheme: dark) { :root { --bg: #141413; --fg: #ecece8; --line: #3a3a37; --muted: #a0a09a; } }
+body { margin: 0 auto; max-width: 1200px; padding: 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+section { border-top: 1px solid var(--line); padding: 12px 0; }
+header { display: flex; gap: 16px; flex-wrap: wrap; } header span { color: var(--muted); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+figure { margin: 0; } img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: cover; background: var(--line); }
+figcaption { color: var(--muted); font-size: 13px; }
+.empty { aspect-ratio: 16 / 9; display: grid; place-items: center; padding: 12px; border: 1px dashed var(--line); color: var(--muted); text-align: center; }
+</style></head><body>
+<h1>Parity shots: the site beside the game</h1>
+<p>Written by <code>node scripts/bf2017-compare.mjs</code>. Each row is one of the level's own cameras: the site's shot from it, and the owner's screenshot of the real game from the same camera (the README says how to take it). The difference is the mean absolute difference of the two at 256 pixels wide.</p>
+${rows.join('\n')}
+</body></html>
+`;
+}

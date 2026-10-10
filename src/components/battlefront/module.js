@@ -11,7 +11,9 @@
 // through world.do. `window.__battlefront` is the same door for
 // scripts/battlefront-check.mjs: { view(), do(action, arg) } with 'deploy'
 // { classId }, 'pick' id, 'advance' seconds, 'win', 'lose', 'weather' name,
-// 'gpu'.
+// 'gpu', 'camera' (a rulebook camera row { at, yaw, pitch, fov } or a pose
+// { at, lookAt, fov } held until 'camera' null: scripts/bf2017-compare.mjs),
+// 'gizmos' on (the layer overlay, gizmos.js; ?gizmos=1 at the start).
 
 import * as THREE from 'three';
 import { camerasOf, lightingOf, loadRulebook, mapOf } from '../../lib/battlefront/rulebook.js';
@@ -19,6 +21,7 @@ import { createLook } from '../../runtime/look.js';
 import { overviewPose, soldierPose } from './camera.js';
 import { createCameraRig } from './cameraRig.js';
 import { createFigures } from './figures/figures.js';
+import { createGizmos } from './gizmos.js';
 import { createBolts } from './fx/bolts.js';
 import { markerProjection } from './hud/widgets.js';
 import { createInput } from './input.js';
@@ -70,6 +73,7 @@ export default {
     let sinceHud = Infinity;
     let scoreboard = false;
     let weather = lighting.default;
+    let held = null; // a camera held by do('camera'), over the battle's
 
     const look = createLook({
       host: rt.gfx.canvas,
@@ -111,6 +115,8 @@ export default {
     // (?post=off in the address: the scene drawn with no chain, for a check)
     const asked = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.split('?')[1] ?? window.location.search).get('post') : null;
     const post = light.passes.length && asked !== 'off' ? rt.gfx.post(light.passes) : null;
+    // (?gizmos=1: the layer's rows drawn over the level, lane G6's overlay)
+    const gizmos = createGizmos(scene, map, mode, { on: typeof window !== 'undefined' && new URLSearchParams(window.location.hash.split('?')[1] ?? window.location.search).get('gizmos') === '1', heightAt: (x, z) => level.heightAt(x, z) });
 
     const snapshot = () => {
       const v = view(sim);
@@ -129,6 +135,7 @@ export default {
         level: { loaded: level.loaded(), progress: level.progress(), ...level.stats() },
         backend: rt.gfx.backend,
         weather,
+        gizmos: gizmos.group.visible ? { legend: gizmos.legend(), labels: gizmos.labels(camera, size) } : null,
       };
     };
 
@@ -169,6 +176,7 @@ export default {
           pose = overviewPose(map, towards) ?? pose;
           if (pose) level.update(pose.at);
         }
+        if (held) level.update((pose = held).at);
         if (pose) rig.set(pose);
         rig.update(dt);
         figures.update(v.entities, dt, Math.min(1, acc / STEP));
@@ -207,6 +215,13 @@ export default {
             weather = arg;
             light.setWeather(entryFor(lighting, arg), 0);
             return { ok: true };
+          case 'camera':
+            held = arg ? (arg.lookAt ? arg : overviewPose({ cameras: [arg] }, arg.at, { mode: null })) : null;
+            return { ok: true, pose: held };
+          case 'gizmos':
+            gizmos.set(arg ?? true);
+            rt.events.emit('hud', snapshot());
+            return { ok: true, counts: gizmos.counts };
           case 'gpu':
             return rt.gfx.backend;
           default:
@@ -219,6 +234,7 @@ export default {
         input.detach();
         post?.dispose?.();
         light.dispose();
+        gizmos.dispose();
         bolts.dispose();
         figures.dispose();
         level.dispose();

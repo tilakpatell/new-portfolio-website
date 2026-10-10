@@ -1230,3 +1230,10 @@ scripts/twin-parity/out/
 /public/textures/galaxy/sky/space/rim.1024.ktx2
 /public/textures/galaxy/sky/space/rim.2048.ktx2
 # end galaxy assets
+
+# the parity compare (lane G6): the owner's game screenshots and the site's
+# full shots stay local; thumbnails (under 60 KB each) are committed
+docs/superpowers/evidence/bf2017-parity/game/**/*.*
+!docs/superpowers/evidence/bf2017-parity/game/**/*.thumb.jpg
+docs/superpowers/evidence/bf2017-parity/site/**/*.jpg
+!docs/superpowers/evidence/bf2017-parity/site/**/*.thumb.jpg

@@ -160,3 +160,62 @@ describe('the readers the script uses', () => {
     expect(packPieces({ cells: { a: { count: 3 }, b: { count: 4 } }, horizon: { draws: [{ count: 2 }, { count: 1 }] } })).toBe(10);
   });
 });
+
+describe('the compare page’s parts', () => {
+  const map = {
+    cameras: [
+      { id: 'FantasyBattle_Logic:328', layer: 'FantasyBattle_Logic', mode: 'galacticAssault', at: [1, 2, 3], yaw: 0.4, pitch: 0.2, fov: 0 },
+      { id: 'Mode9_Logic:26', layer: 'Mode9_Logic', mode: 'strike', at: [4, 5, 6], yaw: 0, pitch: 0, fov: 0 },
+    ],
+    locators: [{ id: 'FantasyBattle_Logic:37', layer: 'FantasyBattle_Logic', mode: 'galacticAssault', at: [7, 8, 9], yaw: -0.7 }],
+  };
+
+  it('lists a mode’s cameras by its layer, locators only when asked, with a file name safe on Windows', async () => {
+    const { camerasFor } = await import('./bf2017-parity.mjs');
+    expect(camerasFor(map, ['galacticAssault'])).toEqual([{ id: 'FantasyBattle_Logic:328', file: 'FantasyBattle_Logic-328', mode: 'galacticAssault', kind: 'camera', at: [1, 2, 3], yaw: 0.4, pitch: 0.2, fov: 0 }]);
+    expect(camerasFor(map, ['coop']).map((c) => c.id)).toEqual(['Mode9_Logic:26']);
+    expect(camerasFor(map, ['galacticAssault'], { locators: true }).map((c) => [c.file, c.kind, c.pitch])).toEqual([
+      ['FantasyBattle_Logic-328', 'camera', 0.2],
+      ['FantasyBattle_Logic-37', 'locator', 0],
+    ]);
+  });
+
+  it('measures the mean absolute difference of two same-sized pictures, 0 to 1', async () => {
+    const { meanError } = await import('./bf2017-parity.mjs');
+    const a = { data: new Uint8Array([0, 0, 0, 255, 255, 255]), channels: 3 };
+    expect(meanError(a, a)).toBe(0);
+    expect(meanError(a, { data: new Uint8Array([255, 255, 255, 255, 255, 255]), channels: 3 })).toBe(0.5);
+    expect(() => meanError(a, { data: new Uint8Array(3), channels: 3 })).toThrow(/sizes/);
+  });
+
+  it('reads notes as a line a camera and writes a row a camera, an empty frame where the game’s shot is missing', async () => {
+    const { notesOf, comparePage } = await import('./bf2017-parity.mjs');
+    const notes = notesOf('# notes\n\n- FantasyBattle_Logic-328: the snowbank is the game’s\n- other: x\n');
+    expect(notes['FantasyBattle_Logic-328']).toBe('the snowbank is the game’s');
+    const html = comparePage([{ level: 'hoth_01', shots: [
+      { id: 'FantasyBattle_Logic:328', file: 'FantasyBattle_Logic-328', mode: 'galacticAssault', site: 'site/hoth_01/FantasyBattle_Logic-328.thumb.jpg', game: 'game/hoth_01/FantasyBattle_Logic-328.jpg', error: 0.1234, note: notes['FantasyBattle_Logic-328'] },
+      { id: 'Mode9_Logic:26', file: 'Mode9_Logic-26', mode: 'coop', site: 'site/hoth_01/Mode9_Logic-26.thumb.jpg', game: null, error: null, note: '' },
+    ] }]);
+    expect(html).toMatch(/<title>Parity shots<\/title>/);
+    expect(html).toMatch(/src="game\/hoth_01\/FantasyBattle_Logic-328\.jpg"/);
+    expect(html).toMatch(/12\.3%/);
+    expect(html).toMatch(/Capture game\/hoth_01\/Mode9_Logic-26\.jpg/);
+    expect(html).toMatch(/the snowbank is the game’s/);
+    expect(html).not.toMatch(/<script/);
+  });
+});
+
+describe('the overlay and the ledger read layers the same way', () => {
+  it('agrees on every layer of every map rulebook', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const { modeOfLayer: overlay } = await import('../../src/components/battlefront/gizmos.js');
+    const dir = new URL('../../src/data/bf2017/maps/', import.meta.url);
+    const layers = new Set();
+    for (const f of readdirSync(dir).filter((n) => /^[a-z0-9_]+\.json$/.test(n))) {
+      const rows = JSON.parse(readFileSync(new URL(f, dir), 'utf8')).rows ?? {};
+      for (const v of Object.values(rows)) if (Array.isArray(v)) for (const r of v) if (r?.layer) layers.add(r.layer);
+    }
+    expect(layers.size).toBeGreaterThan(20);
+    for (const l of layers) expect([l, overlay(l)]).toEqual([l, modeOfLayer(l)]);
+  });
+});

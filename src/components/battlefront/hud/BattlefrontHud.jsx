@@ -4,6 +4,7 @@ import DamageIndicator from './DamageIndicator.jsx';
 import DeathPoints from './DeathPoints.jsx';
 import DeployScreen from './DeployScreen.jsx';
 import EndOfRound from './EndOfRound.jsx';
+import GizmoLegend from './GizmoLegend.jsx';
 import Health from './Health.jsx';
 import Heat from './Heat.jsx';
 import KillLog from './KillLog.jsx';
@@ -41,6 +42,7 @@ export default function BattlefrontHud({ view, mine = 2, words, markers = [], sc
         </>
       )}
       <KillLog entries={view?.killLog ?? []} mine={mine} />
+      {view?.gizmos && <GizmoLegend gizmos={view.gizmos} />}
       {p && p.state !== 'alive' && !deploying && <DeathPoints earned={p.earned ?? 0} total={view?.points ?? 0} label={words.earned} totalLabel={words.total} />}
       {deploying && <DeployScreen deploy={view.deploy} points={view.points ?? 0} name={words.offer} title={words.deploy} onDeploy={onDeploy} onPick={onPick} />}
       {scoreboard && !mode?.result && <Scoreboard teams={view?.scoreboard ?? {}} />}

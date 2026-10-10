@@ -305,3 +305,9 @@
   transform: translateX(-50%);
   text-align: center;
 }
+
+/* the gizmo overlay's legend and labels (GizmoLegend.jsx, ?gizmos=1) */
+.bf-gizmo-legend { position: absolute; left: 16px; bottom: 120px; margin: 0; padding: 8px 12px; list-style: none; font-size: 12px; pointer-events: none; }
+.bf-gizmo-legend li { display: flex; align-items: center; gap: 6px; }
+.bf-gizmo-legend i { width: 10px; height: 10px; border-radius: 2px; }
+.bf-gizmo-label { position: absolute; transform: translate(-50%, -100%); font: 10px/1.2 ui-monospace, monospace; color: #fff; text-shadow: 0 0 3px #000; white-space: nowrap; pointer-events: none; }
