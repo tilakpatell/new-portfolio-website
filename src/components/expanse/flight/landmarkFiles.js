@@ -10,7 +10,7 @@
 //   landmarkFiles(spec, { level, kits }) → url[] (sorted, each once)
 //     kits: { [pack]: manifest } (public/kit/<pack>/index.json's)
 
-import { SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from '../../galaxy/surface/catalog';
+import { SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from '../../galaxy/shared/models';
 import { planetField } from '../../../lib/land/flight/field';
 import { clutterKitOf } from '../../../lib/land/flight/landmarkTables';
 import { placementsFor } from './landmarks';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { bake, createLifeLayer, modelGeometry, withLife } from './lifeScene';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { planetSpecOf } from './planets';
 
 const flat = { heightAt: () => 0, biomeAt: () => 0 };
 

@@ -23,7 +23,7 @@
 //   by flightProtocol's readEvent: lib/land/flight/director.js weighs it),
 //   { type: 'joined', id } (a pilot new to you said hello: tell them what's on)
 
-import { STALE_MS } from '../../universe/online/protocol';
+import { STALE_MS } from '../../universe/shared/online';
 import { cellTag, netCellOf, netCellsAround, parseTag } from '../../../lib/net/cells';
 import { EVENT_KINDS } from '../../../lib/land/flight/eventTables';
 import { APP_ID, ROOM, flightLimiter, readBuilt, readEvent, readGone, readHi, readPose, readShot, writeEvent, writeHi, writePose, writeShot } from './flightProtocol';
@@ -35,7 +35,7 @@ export const MAX_PEERS = 32; // ships kept at most: a 3 × 3 of cells rarely hol
 const LATEST = new Set(['pose']); // only the newest pose of a bundle matters
 const CHEAP = new Set(['pose', 'shot']); // trusted to the relays' own check of the signature
 const KNOWN = new Set(EVENT_KINDS);
-const loadRoom = () => import('../../universe/online/nostr').then((m) => m.joinAsVisitor);
+const loadRoom = () => import('../../universe/shared/room').then((m) => m.joinAsVisitor);
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const lerpAngle = (a, b, k) => a + wrap(b - a) * k;

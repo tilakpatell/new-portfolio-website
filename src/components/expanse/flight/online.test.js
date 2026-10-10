@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createFlightOnline, POSE_MS } from './online';
-import { STALE_MS } from '../../universe/online/protocol';
+import { STALE_MS } from '../../universe/shared/online';
 
 // a room as nostr.js's joinRoom gives it, with what was said kept to look at
 function fakeJoin() {

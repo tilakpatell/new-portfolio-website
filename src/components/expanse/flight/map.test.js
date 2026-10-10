@@ -3,7 +3,7 @@ import { createMap, MAP_PRIORITY, MAP_FLYING } from './map';
 import { MAP_KEEP } from './mapRules';
 import { MAP_N, rasterKey } from '../../../lib/land/flight/mapRaster';
 import { WORKER } from './groundCore';
-import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
+import { planetSpecOf } from './planets';
 
 const spec = planetSpecOf('hoth');
 const raster = (b = 0, h = 0) => ({ biome: new Uint8Array(MAP_N * MAP_N).fill(b), height: new Float32Array(MAP_N * MAP_N).fill(h) });
