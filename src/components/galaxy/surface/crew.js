@@ -15,6 +15,8 @@
 //   turned to a sidestep, leaning into its turns. Without, its clips go at
 //   `move`'s old pace. Either way the clips played over its walk (a wave, a
 //   drink, a scared step back) and its head's look are laid on.
+//   cutAt(distance): a full-fidelity 2017 kind's cut kept to its distance
+//   (null on the others)
 //   play, stop, base, look, react: the animator's (meshyCast.js's
 //   animatorCalls: the clip library's clips, on the Meshy skeleton these
 //   all stand on); on Jabba they do nothing.
@@ -25,7 +27,7 @@ import { METRE } from '../../universe/foot';
 import { breathe } from '../../../lib/three/gait';
 import { NO_CALLS, seedOf } from '../../../lib/three/figureCalls';
 import { EVERYONE } from '../../rickmorty/wardrobe/looks';
-import { CREW, faceOf, figureLoaderFor, fileOf } from './crewList';
+import { CREW, cutsOf, faceOf, figureLoaderFor, fileOf } from './crewList';
 import { cloneModel, loadGlb } from './placer';
 
 // (the list itself is crewList.js, plain data a page can read)
@@ -67,7 +69,7 @@ export async function crewFigure(kind, i = 0) {
   const fig =
     how === 'shared'
       ? await loadSharedFigure(fileOf(c), c.tall, { seed }).catch(() => null)
-      : await loadPartyFigure({ id: kind, name: kind, tall: c.tall, src: { url: fileOf(c) }, rig: c.rig, pack: c.pack }, null).catch(() => null);
+      : await loadPartyFigure({ id: kind, name: kind, tall: c.tall, src: { url: fileOf(c) }, rig: c.rig, pack: c.pack, cuts: cutsOf(c) }, null).catch(() => null);
   if (!fig) return null;
   const model = new THREE.Group();
   model.scale.setScalar(1 / METRE);
@@ -108,6 +110,9 @@ export async function crewFigure(kind, i = 0) {
     base: fig.base ?? NO_CALLS.base,
     look: fig.look ?? NO_CALLS.look,
     react: fig.react ?? NO_CALLS.react,
+    // (a kind at full fidelity: told how far it is from the eye, it draws
+    // the cut that distance wants, lib/three/walrusCuts.js; nothing on others)
+    cutAt: fig.cutAt ?? null,
     dispose: () => fig.dispose(),
   };
 }

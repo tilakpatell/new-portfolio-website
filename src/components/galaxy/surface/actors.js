@@ -750,6 +750,8 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   // near, every fourth far, not at all far off on a small device), moving
   // as its brain moved it since it was last stepped
   function stepFigure(a, dt, d, you, e) {
+    // (the cut its distance wants: a full-fidelity 2017 kind's, crew.js)
+    a.fig.cutAt?.(d);
     const by = a.tick(d < FAR ? 1 : small ? 0 : 0.25, dt);
     if (!(by > 0)) return;
     const { b } = a;

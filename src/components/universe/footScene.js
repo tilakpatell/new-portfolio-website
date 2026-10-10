@@ -65,6 +65,8 @@ import { NO_CALLS, animatorCalls, seedOf } from '../../lib/three/figureCalls';
 import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
 import { cutFor, loadWalrusBody, packUrls } from '../../lib/three/walrus';
+import { createCutter, cutUrl, swapSkins } from '../../lib/three/walrusCuts';
+import { loadGLTF } from '../../lib/three/gltfCache';
 import { detailLevel } from '../../lib/detail';
 import { breathe, createGait, sway } from '../../lib/three/gait';
 import { seeded } from '../../lib/seeded';
@@ -324,7 +326,11 @@ async function walrusFigure(spec) {
   // (the full figure on a high or ultra device, the light one below: lib/detail's level)
   // (and the full one when the light one isn't there: a figure is never lost for want of a cut)
   const packs = spec.packs ?? packUrls(spec.pack);
-  const cut = cutFor(spec.src.url, detailLevel());
+  // (a kind at full fidelity, `cuts.full`: its `.lod1` first, the rest by
+  // distance through cutAt below; lib/three/walrusCuts.js)
+  const cuts = spec.cuts?.full ? spec.cuts : null;
+  const level = detailLevel();
+  const cut = cuts ? cutUrl(spec.src.url, cuts.lod ? 'lod1' : 'plain') : cutFor(spec.src.url, level);
   const { model, clips, sockets } = await loadWalrusBody(cut, { packs }).catch((e) => (cut === spec.src.url ? Promise.reject(e) : loadWalrusBody(spec.src.url, { packs })));
   const owned = [];
   model.traverse((o) => {
@@ -339,7 +345,29 @@ async function walrusFigure(spec) {
   });
   const hips = model.getObjectByName('Hips');
   const fig = rigged(model, clips, spec.tall, owned, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url, library: false });
-  return Object.assign(fig, { rig: 'walrus', sockets, clips, hipsY: hips?.position.y ?? null });
+  // the cut its distance wants, swapped onto the moving figure: the meshes
+  // only, on its own bones, the old ones' materials freed
+  const cutter = cuts
+    ? createCutter({
+        url: spec.src.url,
+        cuts,
+        level,
+        lowData: Boolean(device().saveData),
+        load: (u) => loadGLTF(u),
+        swap: (scene) => {
+          for (const m of swapSkins(model, scene)) for (const x of [].concat(m.material)) x.dispose();
+          owned.length = 0;
+          model.traverse((o) => {
+            if (!o.isMesh) return;
+            owned.push(...[].concat(o.material));
+            const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+            o.userData.noShadow = tris < 1500 || o.material?.alphaTest > 0;
+            o.castShadow = !o.userData.noShadow;
+          });
+        },
+      })
+    : null;
+  return Object.assign(fig, { rig: 'walrus', sockets, clips, hipsY: hips?.position.y ?? null, cutAt: cutter ? (d) => cutter.at(d) : null, cut: cutter ? () => cutter.current() : () => 'plain' });
 }
 
 // A loaded Meshy figure (its scene, or a copy of one: `shared`, whose
