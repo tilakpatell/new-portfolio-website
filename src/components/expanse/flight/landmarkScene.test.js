@@ -158,3 +158,20 @@ describe('createLandmarks and the planet’s own buildings', () => {
     lms.dispose();
   });
 });
+
+describe('galaxyPlacer', () => {
+  it('counts a cluster of models as drawn when its members come', async () => {
+    const { galaxyPlacer } = await import('./landmarkScene');
+    const { SURFACE_MODELS } = await import('../../galaxy/surface/catalog');
+    const members = SURFACE_MODELS.crates.cluster;
+    expect(members.length).toBeGreaterThan(1);
+    // (the galaxy placer's answer: null for a cluster, a mesh for each kind of its own)
+    const put = vi.fn((spec) => Promise.resolve(SURFACE_MODELS[spec.kind]?.cluster ? null : new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial())));
+    const create = () => ({ put, update() {}, dispose() {} });
+    const scene = new THREE.Scene();
+    const lm = createLandmark(scene, { list: [{ kind: 'crates', at: [0, 0], y: 0, yaw: 0, scale: 1, abs: true, solid: false }], placer: galaxyPlacer({ kit: null, create }), origin: [0, 0, 0] });
+    await lm.ready;
+    expect(put).toHaveBeenCalledTimes(members.length);
+    expect(lm.stats()).toEqual({ placed: 1, standIns: 0 });
+  });
+});

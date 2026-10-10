@@ -15,7 +15,7 @@
 //   createLandmark(scene, { list, placer: (group) → placer, origin })
 //     → { group, ready, stats() → { placed, standIns }, update(t, dt),
 //         reanchor(at), dispose() }
-//   galaxyPlacer({ kit, house }) → (group) → a galaxy placer over it, its
+//   galaxyPlacer({ kit, house, create }) → (group) → a galaxy placer over it, its
 //     things stood at their own heights (`abs`), nothing solid
 //   createLandmarks(scene, { spec, heightAt, placer, prefetch, house }) → {
 //     update(ship, at (the origin), dt), live() → ids, ready(), dispose() }:
@@ -26,7 +26,8 @@
 //     model cache (prefetchModels), so a landmark wanted is a landmark drawn
 
 import * as THREE from 'three';
-import { createPlacer, loadModel, usesModel } from '../../galaxy/surface/placer';
+import { clusterSpecs, createPlacer, loadModel, usesModel } from '../../galaxy/surface/placer';
+import { SURFACE_MODELS } from '../../galaxy/surface/catalog';
 import { createKit } from '../../galaxy/surface/kit';
 import { planetField } from '../../../lib/land/flight/field';
 import { placementsFor } from './landmarks';
@@ -124,10 +125,24 @@ export function createLandmark(scene, { list, placer: makePlacer, origin = [0, 0
 // (a placer's world: the heights are the placements' own, nothing is walked on)
 const WORLD = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids: { circle() {}, box() {} }, floors: [] };
 
+// (a cluster of models, a pile of crates, the placer puts member by member
+// and answers null for; put here one by one, it answers with what came, so
+// it's counted as drawn and its geometry freed with the landmark)
 export const galaxyPlacer =
-  ({ kit, house = null }) =>
-  (group) =>
-    createPlacer({ parent: group, kit, world: { ...WORLD, floors: [] }, house });
+  ({ kit, house = null, create = createPlacer }) =>
+  (group) => {
+    const placer = create({ parent: group, kit, world: { ...WORLD, floors: [] }, house });
+    const put = placer.put.bind(placer);
+    placer.put = (spec) => {
+      const members = !spec.model && SURFACE_MODELS[spec.kind]?.cluster;
+      if (!members) return put(spec);
+      return Promise.all(clusterSpecs(spec, members).map(put)).then((got) => {
+        const came = got.filter(Boolean);
+        return came.length ? { traverse: (fn) => came.forEach((o) => o.traverse(fn)) } : null;
+      });
+    };
+    return placer;
+  };
 
 // a placement list's catalog models fetched and parsed into the placer's
 // cache ahead of their landmark (a kit model's file is small, and fetched
