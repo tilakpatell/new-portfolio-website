@@ -18,7 +18,7 @@ const ACTOR = [
   [/creatures\/ewok\/.*ewok_\d+_mesh\.glb$/, 'ewok'],
   [/creatures\/ewok\//, null],
   [/tauntaun_\d+_mesh\.glb$/, 'tauntaun'],
-  [/droids\/r5d4\//, 'r5'],
+  [/r5d4_\d+_mesh\.glb$/, 'r5'],
   [/droids\/(r2d2|astromech)/, 'astromech'],
   [/droids\/viper|probedroid/, 'probe'],
 ];

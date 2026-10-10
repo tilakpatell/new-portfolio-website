@@ -9,7 +9,9 @@
 //     fetched and decoded (before the ground's grid is made)
 //   partOf(world, file, empty) → Promise<the part's JSON, or empty>
 //   levelPlaced(site) → Promise<{ life, rides, things }> (the map's actors and vehicles)
-//   createLevel({ scene, site, tier, renderer, walk }) → null | { update(position), ready(), stats(), dispose() }
+//   createLevel({ scene, site, tier, renderer, walk, camera, light, onProbe }) → null | { update(position), ready(), stats(), dispose() }
+//     (camera: the placed lights rank by it; light: the world's record, for their scale;
+//     onProbe: the reflection volume you stand in, for gameLit.js)
 //     (walk: the walk world, { solids, floors }, the pack's collision goes into)
 
 import { withFallback } from '../../../../lib/assetBase.js';
@@ -21,6 +23,8 @@ import { createLevelScene } from './levelScene.js';
 import { createLevelStream } from './levelStream.js';
 import { createColliders } from './colliders.js';
 import { DECAL_POOL, createDecals } from '../../../../lib/three/decals.js';
+import { createLevelLights, lightScale } from './levelLights.js';
+import { createLevelProbes } from './levelProbes.js';
 
 // A pack file's bytes, from the bucket where it has it, else the site.
 // (No abort signal on the request: assetBase reads any failure as the bucket
@@ -112,7 +116,7 @@ export async function levelGround(ground) {
   return { ...ground, layers: filled, flats };
 }
 
-export function createLevel({ scene, site, tier, renderer = null, walk = null }) {
+export function createLevel({ scene, site, tier, renderer = null, walk = null, camera = null, light = null, onProbe = null }) {
   if (!site?.level) return null;
   const world = site.level;
   const fetchBytes = bytesOf(world);
@@ -122,6 +126,8 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null })
   let gone = false;
   let last = null;
   let decals = null;
+  let lights = null;
+  let probes = null;
   let decalsAt = null; // (where the pool was last filled: again after 8 m)
   const colliders = walk ? createColliders(walk, tier) : null;
   packOf(world)
@@ -137,6 +143,20 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null })
         stream.update(last, tier);
         level.update(last);
       }
+      // the map's placed lights, the best of them by screen area in a fixed pool
+      partOf(world, 'lights.json', { cells: {} })
+        .then((json) => (gone || !Object.keys(json.cells ?? {}).length ? null : createLevelLights({ scene, renderer, json, tier, scale: lightScale(light) })))
+        .then((l) => {
+          if (gone) l?.dispose();
+          else lights = l;
+        })
+        .catch(() => {});
+      // the map's reflection volumes: the one you stand in is the probe
+      if (onProbe)
+        partOf(world, 'probes.json', { probes: [] }).then((j) => {
+          if (gone || !j.probes?.length) return;
+          probes = createLevelProbes({ world, list: j.probes, onProbe });
+        });
       // the map's placed decals, the nearest of them in the tier's pool
       if (DECAL_POOL[tier] > 0)
         partOf(world, 'decals.json', { decals: [] }).then((d) => {
@@ -155,6 +175,8 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null })
       last = position;
       stream?.update(position, tier);
       level?.update(position);
+      if (camera) lights?.update(camera);
+      probes?.update([position[0], camera?.position.y ?? 1.6, position[1]]);
       if (decals && (!decalsAt || Math.hypot(position[0] - decalsAt[0], position[1] - decalsAt[1]) > 8)) {
         decalsAt = position;
         decals.update(position);
@@ -162,11 +184,12 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null })
     },
     ready: () => stream?.ready() ?? false,
     progress: () => stream?.progress() ?? 0,
-    stats: () => ({ ...(level?.stats() ?? { tris: 0, calls: 0, instances: 0 }), decals: decals?.count() ?? 0 }),
+    stats: () => ({ ...(level?.stats() ?? { tris: 0, calls: 0, instances: 0 }), decals: decals?.count() ?? 0, lights: lights?.lit() ?? 0, probe: probes?.current()?.id ?? null }),
     dispose() {
       gone = true;
       colliders?.dispose();
       decals?.dispose();
+      lights?.dispose();
       stream?.dispose();
       level?.dispose();
       loader?.dispose();

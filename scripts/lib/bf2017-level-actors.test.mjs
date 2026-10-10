@@ -45,7 +45,7 @@ describe('the map’s placed actors', () => {
   it('names a blueprint by the site’s kind, an Ewok once for its three parts', () => {
     expect(kindOfActor('models/characters/npc/creatures/ewok/ewok_01/ewok_01_mesh.glb')).toBe('ewok');
     expect(kindOfActor('models/characters/npc/creatures/ewok/ewok_01/ewok_01_hood_mesh.glb')).toBe(null);
-    expect(kindOfActor('models/characters/npc/droids/r5d4/r5d4_01_mesh.glb')).toBe('r5');
+    expect(kindOfActor('models/characters/npc/droids/astromech/r5d4_01/r5d4_01_mesh.glb')).toBe('r5');
   });
 
   it('stands a tauntaun where the game put it, in the pack’s frame, turned as it was', () => {

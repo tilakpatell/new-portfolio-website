@@ -422,7 +422,7 @@ export async function create(canvas, ctx) {
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
   const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, house, kitTint: floraTint(site), models, props: PROPS, scatter: SCATTER });
   // the game's own level, cell by cell round you (lane L; null for a world without one)
-  const gameLevel = createLevel({ scene, site, tier: level, renderer, walk: world });
+  const gameLevel = createLevel({ scene, site, tier: level, renderer, walk: world, camera, light: gameLight, onProbe: gameLit ? (p) => gameLit.outdoorProbe(p) : null });
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
   for (const t of [...site.things_all, ...placed.things]) {

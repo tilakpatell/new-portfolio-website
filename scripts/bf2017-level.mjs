@@ -6,7 +6,7 @@
 // those two; .gitignore's block hides the rest). The work is in scripts/lib/bf2017-level.mjs (pure,
 // tested); this fetches, reads and writes.
 //
-//   node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--dry]
+//   node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--parts] [--dry]
 //
 //   map     the map's folder under web/maps/ (levels/mp/hoth_01)
 //   world   the site's world (hoth): the pack's folder and its credit
@@ -15,6 +15,11 @@
 //           records (fetched from data/), scripts/lib/bf2017-level-spots.mjs
 //   district  the pack is levels/<world>/<district>/ (a second map of one
 //           world, or an interior); the default `main` is levels/<world>/
+//   parts   only the map's other parts beside a pack already built (lights,
+//           actors, vehicles, decals, effects, tracks, probes, the far shadow,
+//           the scatter table: scripts/bf2017-level-parts.mjs)
+//   mode    the mode layer whose creatures and vehicles stand (FantasyBattle,
+//           Galactic Assault); weather: the probes' and shadow's (sunny)
 //   inside  an interior: no terrain, its bounds the pieces' extent, and where
 //           the map has ground, only what is buried under it (Hoth's base)
 //   subs    the sub-levels that are the arena (default: the level's own and Content)
@@ -44,8 +49,9 @@ import { buildPack, cropHeights, fillHoles, glbTriangles, heightsLayer, lodFile,
 import { LOD, capIndex, texSizeFor } from '../src/lib/level/lod.js';
 import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
 import { encodePng16 } from './lib/png16.mjs';
+import { writeParts } from './bf2017-level-parts.mjs';
 
-const USAGE = 'node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--dry]';
+const USAGE = 'node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--parts] [--mode FantasyBattle] [--weather sunny] [--dry]';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(ROOT, 'lab', 'assets', 'bf2017');
 const PERMISSION = 'From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.';
@@ -239,6 +245,20 @@ async function main(args) {
     console.log(`spot from ${found.from}: ${spot.join(' ')} (heading ${found.yaw.toFixed(2)})`);
   }
 
+  // (--parts: the map's other parts beside a pack already built, its frame from its level.json)
+  if (args.parts) {
+    const json = JSON.parse(await readFile(join(out, 'level.json'), 'utf8'));
+    const parts = await writeParts({ env, cache: CACHE, mapName, map, json, out, subs, mode: args.mode ?? 'FantasyBattle', weather: args.weather ?? 'sunny', dry });
+    if (dry) return;
+    json.shadowCache = parts.shadowCache;
+    await writeFile(join(out, 'level.json'), `${JSON.stringify(json)}\n`);
+    const readme = await readFile(join(out, 'README.md'), 'utf8').catch(() => '');
+    const head = readme.split("## The map's other parts")[0].replace(/\n*$/, '\n\n');
+    await writeFile(join(out, 'README.md'), `${head}${parts.lines.join('\n')}`);
+    console.log(`wrote the parts beside ${relative(ROOT, out)}`);
+    return;
+  }
+
   const record = map.terrain;
   if (!record) console.log('no terrain: the ground stays the site’s');
   const ground = record ? await heightsLayer(record, await need(env, inBucket(record.world.file), 'the world heightmap')) : null;
@@ -417,6 +437,9 @@ async function main(args) {
   console.log(lines.join('\n'));
   if (dry) return;
 
+  const parts = await writeParts({ env, cache: CACHE, mapName, map, json: pack.json, out, subs, mode: args.mode ?? 'FantasyBattle', weather: args.weather ?? 'sunny' });
+  pack.json.shadowCache = parts.shadowCache;
+  lines.push(...parts.lines);
   await mkdir(join(out, 'cells'), { recursive: true });
   for (const [path, bin] of pack.files) await writeFile(join(out, path), Buffer.from(bin));
   await writeFile(join(out, 'level.json'), `${JSON.stringify(pack.json)}\n`);
