@@ -470,7 +470,14 @@ async function materialList() {
     const flat = { ...recipe.maps, breakupColor: recipe.maps.breakup?.color, breakupNormal: recipe.maps.breakup?.normal };
     for (const [key, name] of Object.entries(flat)) {
       if (typeof name !== 'string' || !MAP_KINDS[key]) continue;
-      const into = key === 'detailArray' ? 'detail' : key;
+      // (a detail array: every slice, encoded from the export's PNGs into
+      // the lab cache where the bucket has no KTX2)
+      if (key === 'detailArray') {
+        maps.detailSlices = await arraySlices(env, cache, name, getObject);
+        if (!maps.detailSlices) console.log(`missing: ${label} ${key} ${name}`);
+        continue;
+      }
+      const into = key;
       maps[into] = null;
       for (const c of candidatesOf(name, MAP_KINDS[key])) {
         const got = await getObject(env, cache, `web/${c}`);
@@ -486,6 +493,31 @@ async function materialList() {
     list.push({ label, recipe: lean, glb: existsSync(glbFile) ? `/lab/assets/bf2017/web/models/${row.mesh}.glb` : null, maps });
   }
   return list;
+}
+
+async function arraySlices(env, cache, name, getObject) {
+  const { readFileSync, writeFileSync: write, mkdirSync: mkdir } = await import('node:fs');
+  const { encodeImage } = await import('./ktx2.mjs');
+  const index = await getObject(env, cache, 'web/textures.jsonl');
+  const t = readFileSync(index.file, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l))
+    .find((r) => r.name.toLowerCase() === name.toLowerCase());
+  if (!t) return null;
+  const out = [];
+  for (const png of t.files ?? [t.file]) {
+    const rel = `encoded/${png.replace(/\.png$/, '.ktx2')}`;
+    const file = join(cache, rel);
+    if (!existsSync(file)) {
+      const got = await getObject(env, cache, `web/${png}`);
+      if (got.state !== 'fetched' && got.state !== 'kept') return null;
+      mkdir(dirname(file), { recursive: true });
+      write(file, (await encodeImage(readFileSync(got.file), { role: 'normal' })).ktx2);
+    }
+    out.push(`/lab/assets/bf2017/${rel}`);
+  }
+  return out;
 }
 
 async function materialsRun() {
