@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLANETS, TYPE_BIOMES, planetSpecOf } from './planetSpec';
+import { PLANETS, TERRAIN_VERSION, TYPE_BIOMES, planetSpecOf } from './planetSpec';
 import { SITE_GROUND, SITE_LAYERS, WORLDS } from './planetTables';
 import { makeSector } from '../../../components/expanse/gen/sector.js';
 import { UNIVERSE } from '../../../components/expanse/gen/seed.js';
@@ -138,5 +138,26 @@ describe('planetSpecOf', () => {
   it('gives the cartoon worlds rounder hills or warped, ping-pong plateaus', () => {
     for (const id of ['squanch', 'gearworld']) expect(planetSpecOf(id).biomes.some((x) => x.relief.some((l) => l.type === 'fnl' && l.noise.fractal === 'pingpong' && l.noise.warp === 600)), id).toBe(true);
     expect(planetSpecOf('birdworld').biomes[0].relief[0]).toMatchObject({ type: 'hills', gain: 0.4, octaves: 3 });
+  });
+});
+
+// Each planet's ground, as the field is given it, hashed (FNV-1a over the
+// specs' JSON): what a built thing stands on. A change to the tables, a
+// seed, a biome or a POI moves the hash, and this fails until
+// TERRAIN_VERSION is bumped and the new hash written beside it, so a turret
+// built on the old ground is put back on the new (the shared world's
+// buildRules.js) rather than left floating. (GROUND gains a line a version.)
+const GROUND = { 1: '3ae3a7e7' };
+function groundHash() {
+  let h = 0x811c9dc5;
+  const text = JSON.stringify(PLANETS.map(({ id }) => planetSpecOf(id)).map(({ id, seed, type, climate, biomes, pois, pits, step, soft }) => ({ id, seed, type, climate, biomes, pois, pits, step, soft })));
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+describe('TERRAIN_VERSION', () => {
+  it('is bumped whenever a planet’s ground changes', () => {
+    expect(Number.isInteger(TERRAIN_VERSION) && TERRAIN_VERSION >= 1).toBe(true);
+    expect(groundHash(), `the ground changed: bump TERRAIN_VERSION and add GROUND[${TERRAIN_VERSION + 1}]`).toBe(GROUND[TERRAIN_VERSION]);
   });
 });
