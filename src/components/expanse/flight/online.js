@@ -21,7 +21,7 @@
 // events: { type: 'shot', id, p, v }, { type: 'built', id, cell, key },
 //   { type: 'gone', id }
 
-import { STALE_MS } from '../../universe/online/protocol';
+import { STALE_MS } from '../../universe/shared/online';
 import { cellTag, netCellOf, netCellsAround, parseTag } from '../../../lib/net/cells';
 import { APP_ID, ROOM, flightLimiter, readBuilt, readGone, readHi, readPose, readShot, writeHi, writePose, writeShot } from './flightProtocol';
 
@@ -31,7 +31,7 @@ const DELAY = 140; // ms a peer is drawn behind its newest pose
 export const MAX_PEERS = 32; // ships kept at most: a 3 × 3 of cells rarely holds more
 const LATEST = new Set(['pose']); // only the newest pose of a bundle matters
 const CHEAP = new Set(['pose', 'shot']); // trusted to the relays' own check of the signature
-const loadRoom = () => import('../../universe/online/nostr').then((m) => m.joinAsVisitor);
+const loadRoom = () => import('../../universe/shared/room').then((m) => m.joinAsVisitor);
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const lerpAngle = (a, b, k) => a + wrap(b - a) * k;

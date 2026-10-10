@@ -20,9 +20,8 @@ import { lodBand } from '../../../lib/three/lod';
 import { LEVELS, quality } from '../../../lib/device';
 import { planetField } from '../../../lib/land/flight/field';
 import { isDead, lifeFor } from '../../../lib/land/flight/lifeTables';
-import { FIGURES, buildFigure } from '../../galaxy/surface/figures';
-import { GALAXY_KINDS, buildGalaxyShip } from '../../galaxy/fleet';
-import { BUILT_KINDS } from '../../universe/trafficModels';
+import { FIGURES, GALAXY_KINDS, buildFigure, buildGalaxyShip } from '../../galaxy/shared/models';
+import { BUILT_KINDS } from '../../universe/shared/flying';
 import { createLife } from './life';
 import { say } from './lifeNews';
 

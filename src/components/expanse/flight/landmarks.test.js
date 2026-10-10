@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SURFACE_MODELS } from '../../galaxy/surface/catalog';
-import { PROPS } from '../../galaxy/surface/props';
+import { PROPS, SURFACE_MODELS } from '../../galaxy/shared/models';
 import { planetField } from '../../../lib/land/flight/field';
 import { PLANETS, planetSpecOf } from '../../../lib/land/flight/planetSpec';
 import { LANDMARK_MAX, LANDMARK_MIN } from '../../../lib/land/flight/landmarkTables';
