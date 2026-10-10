@@ -19,7 +19,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { lodBand } from '../../../lib/three/lod';
 import { LEVELS, quality } from '../../../lib/device';
 import { planetField } from '../../../lib/land/flight/field';
-import { isDead, lifeFor } from '../../../lib/land/flight/lifeTables';
+import { isDead } from '../../../lib/land/flight/lifeTables';
+import { lifeOf } from './planets';
 import { FIGURES, GALAXY_KINDS, buildFigure, buildGalaxyShip } from '../../galaxy/shared/models';
 import { BUILT_KINDS } from '../../universe/shared/flying';
 import { createLife } from './life';
@@ -278,7 +279,7 @@ function createBolts(root) {
 }
 
 export function createLifeLayer(scene, { spec, tier = 'mid', field = planetField(spec), onHit = null } = {}) {
-  const life = lifeFor(spec);
+  const life = lifeOf(spec);
   // a dead world: no pool, no brain, nothing to step
   if (isDead(life)) return { step() {}, stats: () => ({ dead: true, draws: 0 }), dispose() {} };
   const streamer = createLife({ spec, life, tier, field, onHit });
