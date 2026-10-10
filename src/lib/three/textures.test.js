@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { anisotropyFor, fitSize, fitTexture, imageBitmapOk, mipsOver, variant } from './textures';
+import { anisotropyFor, fitSize, fitTexture, imageBitmapOk, loadTexture, mipsOver, variant } from './textures';
+
+// (one file the bucket holds, for the asset base's case)
+vi.mock('../../data/assets-manifest.json', () => ({ default: { 'hq/tex/rock.jpg': { hash: 'bbbbbbbbbbbb', bytes: 90000 } } }));
 
 describe('fitting a map under a ceiling', () => {
   it('halves until the longer side fits, keeping the shape', () => {
@@ -80,5 +83,24 @@ describe('decoding off the main thread', () => {
     expect(imageBitmapOk(SAFARI16, true)).toBe(false);
     expect(imageBitmapOk(FF90, true)).toBe(false);
     expect(imageBitmapOk(CHROME, false)).toBe(false);
+  });
+});
+
+describe('a texture the bucket holds', () => {
+  it('is asked of the asset base when the build has one, and nowhere else', async () => {
+    vi.stubEnv('VITE_ASSET_BASE', 'https://bucket.test/assets');
+    const asked = [];
+    const spy = vi.spyOn(THREE.TextureLoader.prototype, 'loadAsync').mockImplementation((url) => {
+      asked.push(url);
+      return Promise.resolve(new THREE.Texture());
+    });
+    try {
+      await loadTexture('/hq/tex/rock.jpg');
+      await loadTexture('/textures/plain.jpg');
+      expect(asked).toEqual(['https://bucket.test/assets/bbbbbbbbbbbb/hq/tex/rock.jpg', '/textures/plain.jpg']);
+    } finally {
+      spy.mockRestore();
+      vi.unstubAllEnvs();
+    }
   });
 });

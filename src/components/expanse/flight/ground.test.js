@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { TRIES, createGroundCore, wholeAnswer } from './groundCore';
-import { createGround } from './ground';
+import { createGround, heroOf } from './ground';
 import flight from './module';
 import { answerFor, fakeSink, fakeWorkers, flush, settle, spec } from './fixtures/ground';
 import { MAX_DEPTH, keyOf, sizeAt } from '../../../lib/land/flight/quadtree';
 import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
 import { createOrigin } from '../../../runtime/origin';
 import { createEvents } from '../../../runtime/runtime';
-import { LOOK } from './look';
+import { STRIP } from './look';
 
 // the leaf under (x, z) at the finest depth, and its parent
 const under = (x, z, d = MAX_DEPTH) => keyOf(d, Math.floor(x / sizeAt(d)), Math.floor(z / sizeAt(d)));
@@ -97,7 +97,7 @@ describe('the ground in three.js', () => {
   it('frees a dropped leaf’s geometry and its clutter slots', async () => {
     const rt = fakeRt();
     const scene = new THREE.Scene();
-    const ground = createGround(scene, { rt, spec: { ...planetSpecOf('hoth'), id: 'g' }, tier: 'ultra', palette: LOOK.palette });
+    const ground = createGround(scene, { rt, spec: { ...planetSpecOf('hoth'), id: 'g' }, tier: 'ultra', palette: STRIP });
     const fly = async (x, z) => {
       for (let i = 0; i < 300; i++) {
         ground.update({ x, z });
@@ -168,5 +168,71 @@ describe('the ship after a crash', () => {
     }
     expect(world.ship.y).toBe(world.groundUnder() + 200);
     world.dispose();
+  });
+
+  it('never crashes on a soft world: Bespin’s deck is cloud', async () => {
+    const rt = fakeRt();
+    const world = await flight.create(rt, { spec: planetSpecOf('bespin') });
+    for (let i = 0; i < 400 && !Number.isFinite(world.groundUnder()); i++) {
+      world.step(1 / 60, { axis: () => 0, stick: { x: 0, y: 0 } });
+      world.ship = { x: 10, z: 10, y: 400 };
+      await flush();
+    }
+    const h = world.groundUnder();
+    world.ship = { y: h - 30 };
+    world.step(1 / 60, { axis: () => 0, stick: { x: 0, y: 0 } });
+    expect(world.ship.y).toBeLessThan(h);
+    world.dispose();
+  });
+});
+
+describe('the clutter’s kinds', () => {
+  it('has a pool only for the kinds the planet names, a shape for each', () => {
+    const rt = fakeRt();
+    for (const [id, kinds] of [['kashyyyk', ['trunk', 'rock', 'debris']], ['geonosis', ['hive', 'rock', 'debris']], ['cybertron', ['crystal', 'debris', 'spire']], ['dot-matrix', ['block', 'spire']], ['kamino', []]]) {
+      const scene = new THREE.Scene();
+      const ground = createGround(scene, { rt, spec: planetSpecOf(id), tier: 'mid', palette: STRIP });
+      const pools = [];
+      scene.traverse((o) => o.isInstancedMesh && pools.push(o.name.replace('flight-', '')));
+      expect(pools.sort(), id).toEqual([...kinds].sort());
+      scene.traverse((o) => o.isInstancedMesh && expect(o.geometry.attributes.position.count).toBeGreaterThan(0));
+      ground.dispose();
+    }
+  });
+
+  it('makes the film-made tower one geometry, 100 m tall, standing on its middle', () => {
+    const root = new THREE.Group();
+    const a = new THREE.Mesh(new THREE.BoxGeometry(10, 40, 10), new THREE.MeshStandardMaterial());
+    a.position.set(50, 20, -30);
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 10), a.material);
+    b.position.set(50, 45, -30);
+    root.add(a, b);
+    root.scale.setScalar(3);
+    const made = heroOf(root);
+    made.geometry.computeBoundingBox();
+    const box = made.geometry.boundingBox;
+    expect(box.max.y - box.min.y).toBeCloseTo(100, 4);
+    expect(box.min.y).toBeCloseTo(0, 4);
+    expect((box.min.x + box.max.x) / 2).toBeCloseTo(0, 4);
+    expect(made.material).toBe(a.material);
+    expect(heroOf(new THREE.Group())).toBeNull();
+  });
+
+  it('draws a pool only as far as its highest slot in use', async () => {
+    const rt = fakeRt();
+    const scene = new THREE.Scene();
+    const ground = createGround(scene, { rt, spec: { ...planetSpecOf('hoth'), id: 'h' }, tier: 'ultra', palette: STRIP });
+    const rock = () => scene.getObjectByName('flight-rock');
+    expect(rock().count).toBe(0);
+    for (let i = 0; i < 300; i++) {
+      ground.update({ x: 10, z: 10 });
+      await flush();
+      if (ground.stats().clutter && !ground.stats().flying && !ground.stats().pending) break;
+    }
+    const placed = ground.stats().clutter;
+    expect(placed).toBeGreaterThan(0);
+    expect(rock().count).toBeGreaterThan(0);
+    expect(rock().count).toBeLessThan(rock().instanceMatrix.count);
+    ground.dispose();
   });
 });

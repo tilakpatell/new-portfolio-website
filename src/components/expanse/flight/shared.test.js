@@ -70,13 +70,13 @@ const hoth = { id: 'hoth', pois: [{ id: 'echo-base', name: 'Echo Base', at: [120
 const low = (extra = {}) => ({ x: 0, y: 20, z: 0, pitch: 0, yaw: 0, roll: 0, speed: 60, ...extra });
 const snap = (pressed = [], held = []) => ({ pressed: new Set(pressed), action: (name) => held.includes(name) });
 
-function world({ durable = true, loader = fakeLoader(), online = fakeOnline(), groundAt = () => 0 } = {}) {
+function world({ durable = true, loader = fakeLoader(), online = fakeOnline(), groundAt = () => 0, spec = hoth } = {}) {
   const draw = fakeDraw();
   const told = [];
   let respawned = 0;
   const shared = createSharedWorld({
     parent: null,
-    spec: hoth,
+    spec,
     palette: [],
     groundAt,
     tell: (type, data) => told.push([type, data]),
@@ -118,6 +118,15 @@ describe('building', () => {
     await flush();
     expect(w.loader.placed).toHaveLength(0);
     expect(w.toasts()[0]).toMatch(/under 60 m/);
+  });
+
+  it('builds nothing on a cloud deck, whose ground is fog', async () => {
+    const w = world({ spec: { id: 'bespin', pois: [], soft: true } });
+    await flush();
+    w.shared.step(0.016, low(), snap(['KeyB']));
+    await flush();
+    expect(w.loader.placed).toHaveLength(0);
+    expect(w.toasts()).toEqual(['Nothing stands on a cloud deck.']);
   });
 
   it('with no durable layer, says so once and builds a turret of this visit’s own', async () => {

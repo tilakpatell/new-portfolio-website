@@ -11,7 +11,7 @@
 //   artMix({ root, folders }) → { value, items: [{ folder, scan, ramp }] }
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { closure, importsOf, resolveImport } from '../../src/runtime/shadingClosure.js';
+import { importsOf, resolveImport } from '../../src/runtime/shadingClosure.js';
 import { LOOK_FOLDERS } from '../../src/components/worlds/looks.js';
 import { metric } from './context.mjs';
 import { uncomment } from './graph.mjs';
@@ -57,14 +57,35 @@ export function artMix({ root, folders = LOOK_FOLDERS }) {
     if (!cache.has(p)) cache.set(p, readFileSync(p, 'utf8'));
     return cache.get(p);
   };
-  const fs = { read, exists: existsSync };
+  const found = new Map();
+  const exists = (p) => {
+    if (!found.has(p)) found.set(p, existsSync(p));
+    return found.get(p);
+  };
+  const fs = { read, exists };
+  // what each file imports, resolved once for the whole site: the worlds
+  // share most of lib, and walking it again for every entry of every
+  // folder made this the slowest metric in the table
+  const edges = new Map();
+  const next = (file) => {
+    if (!edges.has(file)) edges.set(file, importsOf(read(file)).map((spec) => resolveImport(file, spec, fs)).filter(Boolean));
+    return edges.get(file);
+  };
   const rel = (p) => relative(root, p).split('\\').join('/');
   const items = [];
   for (const { folder } of folders) {
     const dir = join(components, folder);
     if (!existsSync(dir)) continue;
+    // one walk from all of the folder's entries: the union of each entry's
+    // closure (src/runtime/shadingClosure.js), reached once
     const reached = new Set();
-    for (const entry of sources(dir, own)) for (const f of closure(entry, fs)) reached.add(f);
+    const todo = sources(dir, own);
+    while (todo.length) {
+      const file = todo.pop();
+      if (reached.has(file) || TEST.test(file)) continue;
+      reached.add(file);
+      for (const to of next(file)) if (!reached.has(to)) todo.push(to);
+    }
     let ramp = null;
     let scan = null;
     for (const file of [...reached].sort()) {

@@ -131,6 +131,8 @@ export function createSharedWorld({
   async function build(ship) {
     if (busy) return;
     const ground = groundAt(ship.x, ship.z);
+    // (a soft world's ground is cloud: the flight flies through it, nothing stands on it)
+    if (spec.soft) return toast('Nothing stands on a cloud deck.');
     const can = canBuild(ship, ground, spec.pois);
     if (!can.ok) return toast(can.why);
     const at = placementFor(ship, ground);
@@ -216,7 +218,7 @@ export function createSharedWorld({
   // what the HUD shows: the prompt (B, or X by one of yours), the shield, who's near
   function prompt(ship) {
     const can = canBuild(ship, groundAt(ship.x, ship.z), spec.pois);
-    return { build: can.ok, unbuild: Boolean(nearestOwn(all(), ship, owner)), shield: Math.round(shield), others: online?.peers().length ?? 0, kept: Boolean(db) };
+    return { build: can.ok && !spec.soft, unbuild: Boolean(nearestOwn(all(), ship, owner)), shield: Math.round(shield), others: online?.peers().length ?? 0, kept: Boolean(db) };
   }
 
   return {
