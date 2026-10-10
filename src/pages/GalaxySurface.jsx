@@ -4,7 +4,7 @@ import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { CONTROLS_KEY, readControls } from '../components/universe/controls';
 import { LOADOUT_KEY, loadoutOf, readLoadouts } from '../components/universe/outfit';
-import { HULL_KEY, readHulls } from '../components/universe/shipyard/build';
+import { HULL_KEY, TUNE_KEY, readHulls, readTunes } from '../components/universe/shipyard/build';
 import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
@@ -151,7 +151,8 @@ export default function GalaxySurface() {
   // took while you were up, and the battle if you won it
   const posted = useRef(false);
   const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
-  const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
+  const tune = useMemo(() => (ship && readTunes(local.get(TUNE_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]); // (the crew's own ship, tuned: its parts must still be ones its plant runs)
+  const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build, tune), [ship, unlocked, build, tune]);
   // online: the other pilots down here with you
   const online = useOnline();
   const { setKind, setLoadout, setBuild: tellBuild } = online;

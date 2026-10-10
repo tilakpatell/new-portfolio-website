@@ -17,10 +17,19 @@ const echo = ([x, z]) => [Math.round((ECHO.at[0] + x * Math.cos(ECHO.yaw) + z * 
 // the trench line, the same
 const TRENCH = [100, 370];
 
+// the wampa's cave, and a spot in its own frame put in the world's (as
+// siteFrom turns a place's things)
+const CAVE = { at: [-380, -280], yaw: 0.9 };
+const cave = ([x, z]) => [Math.round((CAVE.at[0] + x * Math.cos(CAVE.yaw) + z * Math.sin(CAVE.yaw)) * 10) / 10, Math.round((CAVE.at[1] - x * Math.sin(CAVE.yaw) + z * Math.cos(CAVE.yaw)) * 10) / 10];
+
 export const SITES = {
   hoth: {
     place: 'The ice fields outside Echo Base',
     line: 'Ice to the horizon, wind off the glaciers, and colder every night.',
+    // (every one of them a model, never one built in code: surface/cast.js;
+    // whoever holds Hoth, their soldiers in snow kit)
+    cast: 'models',
+    uniforms: { stormtrooper: 'snowtrooper', rebel: 'hothtrooper' },
     sky: {
       zenith: '#6f98c8',
       horizon: '#e4ecf4',
@@ -263,8 +272,8 @@ export const SITES = {
       {
         id: 'wampa',
         name: 'The wampa’s cave',
-        at: [-380, -280],
-        yaw: 0.9,
+        at: CAVE.at,
+        yaw: CAVE.yaw,
         r: 34,
         flat: { r: 22, edge: 18 },
         about: 'Where a wampa dragged Luke Skywalker after it brought down his tauntaun: hung upside down from the ice, he called his lightsaber out of the snow and into his hand.',
@@ -317,12 +326,8 @@ export const SITES = {
       { kind: 'crates', at: [-252, 52], opts: { color: '#8a929a' } },
       { kind: 'crates', at: [-256, 92], opts: { color: '#6a6458' } },
       // Rogue Group, flying round over the battlefield
-      { kind: 'speederflight', at: [100, 440], solid: false, opts: { r: 170, h: 36, squash: 0.55 } },
-      { kind: 'speederflight', at: [-40, 120], solid: false, opts: { r: 120, h: 48, n: 2, speed: 0.08, squash: 0.8 } },
-      // more walkers, far out on the plain, coming in
-      { kind: 'atatfar', at: [-260, 780], yaw: Math.PI + 0.3, model: false, solid: false },
-      { kind: 'atatfar', at: [140, 880], yaw: Math.PI, model: false, solid: false },
-      { kind: 'atatfar', at: [470, 760], yaw: Math.PI - 0.4, model: false, solid: false },
+      { kind: 'speederflight', at: [100, 440], solid: false, opts: { r: 170, h: 36, squash: 0.55, built: false } },
+      { kind: 'speederflight', at: [-40, 120], solid: false, opts: { r: 120, h: 48, n: 2, speed: 0.08, squash: 0.8, built: false } },
       // the patrol markers: out from the base to the wampas' hills, and on
       // round to where Han found Luke
       { kind: 'lamp', at: [-170, 50], opts: { h: 3, light: '#ff8a5a' } },
@@ -362,6 +367,14 @@ export const SITES = {
       { kind: 'tauntaun', n: 3, at: echo([-44, 55]), spread: 3, roam: 4, speed: 0.9, r: 0.8 },
       // the wampa, at home
       { kind: 'wampa', n: 1, at: [-390.6, -288.4], still: true, face: 0.9, r: 1, name: 'Wampa', says: ['(A roar that shakes the snow off the roof of the cave.)', '(It looks at you the way it looked at the tauntaun.)'] },
+      // Luke, hung by his ankles from the roof of the cave, his feet at the
+      // ice block 4.6 m up (the saber step takes him down)
+      { kind: 'luke', id: 'hungluke', at: cave([0, -10]), still: true, hang: 4.6, face: CAVE.yaw, name: 'Luke Skywalker', named: true, says: ['(Upside down, eyes shut, reaching for the saber in the snow.)'] },
+      // more walkers, out at the edge of the plain, coming in (their own
+      // model, walking; inside the world's edge, as an actor can't step past it)
+      { kind: 'atat', n: 1, path: [[20, 580], [20, 470]], speed: 2.2, r: 2.2, name: 'AT-AT' },
+      { kind: 'atat', n: 1, path: [[260, 520], [260, 420]], speed: 2.2, r: 2.2, name: 'AT-AT' },
+      { kind: 'atat', n: 1, path: [[430, 380], [430, 260]], speed: 2.2, r: 2.2, name: 'AT-AT' },
       // another probe droid, still looking
       { kind: 'probe', id: 'probe', n: 1, at: [350, -110], y: 2.2, roam: 40, speed: 1.6, r: 0.6, name: 'Probe droid', says: ['(A burst of Imperial code, crackling and urgent.)', '(It stops, turns its lenses on you, and transmits.)'] },
     ],
@@ -382,7 +395,7 @@ export const SITES = {
           { type: 'ride', kind: 'tauntaun', text: 'Saddle up a tauntaun', lines: { all: [['Deck officer', 'Your tauntaun will freeze before you reach the first marker!']], falcon: [['han', 'Then I’ll see you in hell!']] } },
           { type: 'reach', at: [-170, 50], r: 12, text: 'Ride out past the first marker' },
           { type: 'reach', at: [-377, -277], r: 10, text: 'Follow the tracks to the ice cave', lines: { all: [['Echo Base', 'Echo Base to patrol: no word. Keep looking.']], xwing: [['r2', '(A frantic beeping: that way! That way!)']] } },
-          { type: 'use', id: 'saber', at: [-383, -285], r: 2.8, prompt: 'Pick up the lightsaber', text: 'Find what he left behind', lines: [['Wampa', '(A roar, from somewhere at the back of the cave.)']], end: [{ signal: 'saber', on: false }, { shake: 0.4 }] },
+          { type: 'use', id: 'saber', at: [-383, -285], r: 2.8, prompt: 'Pick up the lightsaber', text: 'Find what he left behind', lines: [['Wampa', '(A roar, from somewhere at the back of the cave.)']], end: [{ signal: 'saber', on: false }, { hide: 'hungluke' }, { shake: 0.4 }] },
           { type: 'reach', at: [160, -400], r: 12, time: 240, text: 'Get him to shelter before the storm', lines: { all: [['Luke', 'Ben… Ben Kenobi… the Dagobah system…']], falcon: [['han', 'Hang on, kid. Hang on.']] } },
         ],
         done: {

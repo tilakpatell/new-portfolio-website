@@ -78,4 +78,11 @@ describe('one table of troops', () => {
     const troops = await import('./ground/troops');
     expect(FAMILIES).toBe(troops.FAMILIES);
   });
+  it('a swapped trooper wears the world’s uniform (Hoth’s snow kit)', () => {
+    const hoth = { stormtrooper: 'snowtrooper', rebel: 'hothtrooper' };
+    const life = [{ kind: 'hothtrooper', n: 3, name: 'Rebel trooper', says: ['Hold the line.'] }];
+    expect(garrisonLife(life, 'stormtrooper', hoth)[0]).toEqual({ kind: 'snowtrooper', n: 3, name: 'Snowtrooper' });
+    expect(garrisonLife(life, 'rebel', hoth)).toBe(life);
+    expect(garrisonLife(life, 'mercenary', hoth)[0]).toMatchObject({ kind: 'mercenary', name: 'Hutt enforcer' });
+  });
 });
