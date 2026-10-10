@@ -70,3 +70,4 @@ It runs beside lanes F, A, H, 1, 5 (the flow design) and owns `saber*.js`, `comb
 ## Departures
 
 One line each, added by the lane when it merges.
+- **Heroes vs Villains** (lane H, merged first): its saber bots were wired to the engine here (decision 7’s “whichever lands second”): each its own sim, its strike’s lunge by its clip’s root, its block raised for a strike that would reach it and while it’s shot at (the hand 70 % turn gone); your saber reaches its fighters, its strikes on you decided by the engine.
