@@ -46,6 +46,50 @@ describe('post.lite', () => {
   });
 });
 
+describe('a scene’s own bloom', () => {
+  it('is the map’s when a scene names none', () => {
+    const bloom = bloomOf(createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera()));
+    expect([bloom.threshold, bloom.strength, bloom.radius]).toEqual([1.7, 0.8, 0.55]);
+    expect(bloom.compositeMaterial.uniforms.bloomFactors.value).toEqual([1, 0.8, 0.6, 0.4, 0.2]);
+    expect(bloom.materialHighPassFilter.fragmentShader).not.toContain('uKnee');
+  });
+
+  it('takes the scene’s numbers, its knee and how fast the wide glow falls off', () => {
+    const look = { threshold: 1.4, knee: 0.5, strength: 0.5, radius: 0, falloff: [1, 0.6, 0.3, 0.12, 0.04] };
+    const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera(), { bloom: look });
+    const bloom = bloomOf(post);
+    expect([bloom.threshold, bloom.strength, bloom.radius]).toEqual([1.4, 0.5, 0]);
+    expect(bloom.compositeMaterial.uniforms.bloomFactors.value).toEqual([1, 0.6, 0.3, 0.12, 0.04]);
+    const bright = bloom.materialHighPassFilter;
+    expect(bright.fragmentShader).toContain('uKnee');
+    expect(bright.fragmentShader).toContain('finite(');
+    expect(bright.uniforms.uKnee.value).toBe(0.5);
+    expect(post.bloom.knee).toBe(0.5);
+    post.bloom.knee = 0.3;
+    expect(bright.uniforms.uKnee.value).toBe(0.3);
+  });
+
+  it('flares from the scene’s strength, never past its most', () => {
+    const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera(), { bloom: { threshold: 1.4, strength: 0.5, radius: 0, flareMax: 1.25 } });
+    const bloom = bloomOf(post);
+    post.flare(2);
+    expect(bloom.strength).toBeCloseTo(0.625);
+    post.flare(1);
+    expect(bloom.strength).toBeCloseTo(0.5);
+    post.bloom.strength = 0.4; // (the ?debug panel)
+    post.flare(1.2);
+    expect(bloom.strength).toBeCloseTo(0.48);
+  });
+
+  it('keeps one scene’s panel from moving another’s', () => {
+    const a = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera());
+    const b = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera());
+    a.bloom.strength = 0.3;
+    b.flare(1);
+    expect(bloomOf(b).strength).toBeCloseTo(0.8);
+  });
+});
+
 describe('the finished render', () => {
   it('dithers in the final pass, and grains only when asked (the galaxy keeps its picture)', () => {
     const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera());

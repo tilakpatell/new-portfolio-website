@@ -29,7 +29,7 @@
 
 import * as THREE from 'three';
 import { createFlashes } from '../galaxy/fx';
-import { createBoltDraw, createFires, createGlows, createMarkers, createShield } from './battleFx';
+import { GLOW, createBoltDraw, createFires, createGlows, createMarkers, createShield, glowAt } from './battleFx';
 import { createProps } from './battleProps';
 import { titleOf } from './battleObjectives';
 
@@ -96,9 +96,26 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
     return s;
   };
 
+  // a side's shots and engines at the battle's brightness (battleFx's GLOW,
+  // the same on every side), worked out once a side
+  const hot = new WeakMap();
+  const hotOf = (side) => {
+    let h = hot.get(side);
+    if (!h) {
+      const [r, g, b] = side.laser;
+      h = {
+        laser: glowAt(side.laser, GLOW.laser),
+        turbo: glowAt(side.turbo, GLOW.turbo),
+        flak: glowAt([r * 0.8 + 1.2, g * 0.6 + 0.8, b * 0.4 + 0.2], GLOW.flak),
+        engine: glowAt([r * 0.35 + 0.5, g * 0.35 + 0.35, b * 0.35 + 0.25], GLOW.engine),
+      };
+      hot.set(side, h);
+    }
+    return h;
+  };
   const colourOf = (b) => {
-    const side = war.sides[b.team];
-    return b.kind === 'turbo' ? side.turbo : b.kind === 'flak' ? [side.laser[0] * 0.8 + 1.2, side.laser[1] * 0.6 + 0.8, side.laser[2] * 0.4 + 0.2] : side.laser;
+    const h = hotOf(war.sides[b.team]);
+    return b.kind === 'turbo' ? h.turbo : b.kind === 'flak' ? h.flak : h.laser;
   };
 
   // a random point on a capital's hull (one of its spheres' surfaces)
@@ -134,7 +151,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
     slot.holder.visible = false;
     // fire along the break
     for (let i = 0; i < 5; i++) fires.add({ x: cap.pos.x + (Math.random() - 0.5) * cap.size * 0.2, y: cap.pos.y + (Math.random() - 0.5) * cap.size * 0.05, z: cap.pos.z + (Math.random() - 0.5) * cap.size * 0.2 }, cap.size * 0.05);
-    flashes.at(pt.set(cap.pos.x, cap.pos.y, cap.pos.z), { size: cap.size * 0.6, life: 2.6, color: [2.8, 1.4, 0.5], bright: 1.4 });
+    flashes.at(pt.set(cap.pos.x, cap.pos.y, cap.pos.z), { size: Math.min(cap.size * 0.4, 20), life: 2.6, color: [2.8, 1.4, 0.5] });
   };
   const moveHalves = (dt) => {
     for (const h of halves) {
@@ -178,7 +195,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       const slot = cap && slots.get(cap);
       if (slot) slot.holder.visible = false;
       if (!e.late) {
-        flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: e.size * 0.5, life: 0.6, color: [1.6, 2.2, 3.6], bright: 1.4 });
+        flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: Math.min(e.size * 0.5, 20), life: 0.6, color: [1.6, 2.2, 3.6] });
         if (cap) flashes.at(pt.set(e.at.x + cap.fwd.x * e.size * 0.6, e.at.y + cap.fwd.y * e.size * 0.6, e.at.z + cap.fwd.z * e.size * 0.6), { size: e.size * 0.25, life: 0.8, color: [1.2, 1.8, 3.4] });
       }
     } else if (e.type === 'capital') {
@@ -187,7 +204,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       if (!cap || !slot) return;
       if (cap.role === 'flagship' && cap.team === battle.defender) breakUp(cap, slot);
       else {
-        flashes.at(pt.set(cap.pos.x, cap.pos.y, cap.pos.z), { size: cap.size * 0.7, life: 2, bright: 1.3 });
+        flashes.at(pt.set(cap.pos.x, cap.pos.y, cap.pos.z), { size: Math.min(cap.size * 0.45, 24), life: 2 });
         slot.holder.visible = false;
       }
     }
@@ -285,8 +302,7 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
         const p = f.seen ?? f.pos;
         s.holder.position.set(p.x, p.y, p.z);
         orient(s.holder, f.fwd, { x: 0, y: 1, z: 0 }, f.bank);
-        const c = war.sides[f.team].laser;
-        glows.add({ x: p.x - f.fwd.x * f.size * 0.55, y: p.y - f.fwd.y * f.size * 0.55, z: p.z - f.fwd.z * f.size * 0.55 }, [c[0] * 0.35 + 0.5, c[1] * 0.35 + 0.35, c[2] * 0.35 + 0.25], f.size * 0.4);
+        glows.add({ x: p.x - f.fwd.x * f.size * 0.55, y: p.y - f.fwd.y * f.size * 0.55, z: p.z - f.fwd.z * f.size * 0.55 }, hotOf(war.sides[f.team]).engine, f.size * 0.4);
       }
       for (const r of battle.runners) {
         const s = slots.get(r);
