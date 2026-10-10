@@ -20,7 +20,7 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 | N | the scatter from the terrain tables (its own plan) | L, T (merged) | | `claude/fidelity-n-scatter` | |
 | U | FSR1/TAAU, `BatchedMesh`, bundles, occlusion (its own plan) | L (merged) | | `claude/fidelity-u-headroom` | |
 
-Seams (the spec's §5): E0 keeps the `variations` slot; lane 5 and the screens and picture lanes share `src/components/battlefront/` (merge `origin/main` before the PR, keep both sides); lane M's fonts PR may land under the screens lane; lane S's saber engine is not touched by the bots lane. The desktop's part (§4): the per-instance variation hashes into the maps' `.bin`; the UI bitmaps and the sound stay lane D's.
+All nine sessions started 2026-10-10 20:15 UTC from `claude/bf2017-accuracy`; lane U's prompt leaves its PR for the owner (the classifier refused the self-merge wording once). Seams (the spec's §5): E0 keeps the `variations` slot; lane 5 and the screens and picture lanes share `src/components/battlefront/` (merge `origin/main` before the PR, keep both sides); lane M's fonts PR may land under the screens lane; lane S's saber engine is not touched by the bots lane. The desktop's part (§4): the per-instance variation hashes into the maps' `.bin`; the UI bitmaps and the sound stay lane D's.
 
 ## The fifth design: every object in the drop, used (2026-10-10, night)
 
