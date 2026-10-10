@@ -8,7 +8,7 @@ What the columns are:
 - **models**: every `.glb` the world fetched.
 - **the row**: `src/lib/budgets.js`'s ceiling for the level: 700 calls, 3M triangles and 60 MB at high; 350, 0.8M and 20 at low.
 
-The script's own `pass` and `FAIL` lines also compare each world with `lab/baseline/surface-high.json` + 10%. That baseline is older than both runs: eight worlds already failed it before this lane. Those lines are in the PR, not here.
+The script's own `pass` and `FAIL` lines also compare each world with `lab/baseline/surface-high.json` + 10%. That baseline is older than both runs: seven worlds already failed it before this lane, and ten fail it after (the new ones are Yavin, Kashyyyk and Coruscant, on calls). Those lines are in the PR, not here.
 
 The texture contract's 60 textures a world was already broken everywhere before (Hoth 769). The counts rose with the cast's maps, mostly the light cuts' (a figure is three to twenty maps).
 
