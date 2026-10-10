@@ -84,6 +84,7 @@ import { createSky } from './sky';
 import { wearScanSet } from '../../../lib/three/scans';
 import { createSkyFog } from './skyfog';
 import { createWater } from './water';
+import { lavaFilm } from './lavaFilm';
 import { floatPose } from './floats';
 import { createWeather } from './weather';
 import { createKit } from './kit';
@@ -396,7 +397,9 @@ export async function create(canvas, ctx) {
     .catch(() => {});
   const ground = groundMesh(grid, gmat.material);
   if (!site.noGround) scene.add(ground);
-  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: site.id, rings: amounts.rings, depthN: amounts.depthN, foam: amounts.splat }) : null;
+  // (Mustafar's rivers flow with the game's lava film on high and ultra: lavaFilm.js)
+  const lava = lavaFilm(site, { level, reduced });
+  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: site.id, rings: amounts.rings, depthN: amounts.depthN, foam: amounts.splat, flow: lava?.texture, flipped: lava?.flipped }) : null;
   if (water) {
     scene.add(water.mesh);
     if (water.glow) scene.add(water.glow);
@@ -3937,6 +3940,7 @@ export async function create(canvas, ctx) {
       for (const f of flights) f.m.dispose?.();
       weather?.dispose();
       water?.dispose();
+      lava?.dispose();
       sky.dispose();
       wearScanSet('cc0');
       marks.dispose();
