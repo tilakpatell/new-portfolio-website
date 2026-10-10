@@ -43,7 +43,7 @@ function dataOf(root, level) {
     index: { ...counts, terrain: (row.terrain ?? []).map(() => ({})) },
     manifest: man
       ? {
-          subworlds: man.subworlds.map((s) =>
+          subworlds: (man.subworlds ?? []).map((s) =>
             String(s?.name ?? s)
               .split('/')
               .pop(),
@@ -51,7 +51,7 @@ function dataOf(root, level) {
           groups: [
             {
               kind: 'actor',
-              count: man.groups.filter((g) => g.kind === 'actor').reduce((n, g) => n + g.count, 0),
+              count: (man.groups ?? []).filter((g) => g.kind === 'actor').reduce((n, g) => n + g.count, 0),
             },
           ],
           vehicleSpawns: { length: man.vehicleSpawns?.length ?? 0 },

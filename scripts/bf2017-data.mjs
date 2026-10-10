@@ -52,9 +52,8 @@ const NEEDS = {
 export const levelPath = (level) => USABLE.find((l) => levelKey(l) === String(level).toLowerCase()) ?? level;
 
 export function fileOf(step, level) {
-  const map = level.toLowerCase().replace(/_\d+$/, '');
   if (step === 'map') return `maps/${rulebookFile(levelKey(levelPath(level)))}`;
-  if (step === 'lighting') return `maps/${map}.lighting.json`;
+  if (step === 'lighting') return `maps/${rulebookFile(levelKey(levelPath(level))).replace(/\.json$/, '')}.lighting.json`;
   return `${step}.json`;
 }
 
