@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SEQUEL } from '../../../scripts/lib/bf2017-manifest.mjs';
-import { HERO_SET, HUMANOID_SET, PACKS, candidates, resolveGame } from './walrusClips';
+import { HERO_SET, HUMANOID_SET, OWN_RIGS, PACKS, RIG_SET, candidates, resolveGame } from './walrusClips';
 
 const shaped = (map) => {
   for (const [k, v] of Object.entries(map)) {
@@ -48,5 +48,23 @@ describe('the site’s clip names on the game’s', () => {
     for (const k of Object.keys(PACKS)) for (const s of SEQUEL) expect(k.includes(s), k).toBe(false);
     expect(Object.keys(PACKS)).toContain('humanoid');
     expect(Object.keys(PACKS)).toContain('luke');
+  });
+});
+
+describe('the own rigs’ sets', () => {
+  it('give the B1 what a soldier plays: its idle, walk, run, falls, flinch and aim', () => {
+    for (const k of ['idle', 'walk', 'run', 'die.fwd', 'die.back', 'hit.chest', 'aim.rifle']) expect(RIG_SET('b1')[k], k).toBeTruthy();
+    expect(RIG_SET('b1').idle).toContain('L_B1_3p1pLoco_StandIdleLoop_01');
+  });
+
+  it('give every rig an idle, a walk and a skeleton of its own, and a pack by its name', () => {
+    for (const [rig, r] of Object.entries(OWN_RIGS)) {
+      shaped(r.set);
+      expect(r.set.idle, rig).toBeTruthy();
+      expect(r.set.walk, rig).toBeTruthy();
+      expect(r.skeleton, rig).toMatch(/_Ske$/);
+      expect(PACKS[rig], rig).toBe(r.set);
+    }
+    expect(RIG_SET('nobody')).toBe(null);
   });
 });

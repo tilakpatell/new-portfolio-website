@@ -8,6 +8,28 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 - **Phase 0, the tools** (PR #805): the decision entry and the assets page; `scripts/bf2017-fetch.mjs` and `scripts/bf2017-import.mjs` over five tested modules under `scripts/lib/` (`bf2017-manifest`, `bf2017-paths`, `bf2017-textures`, `rig-parts`, `catalog-write`); the committed fixture (`scripts/fixtures/bf2017/`, 39.6 KB); the empty `catalog/bf2017.js`, last in `GROUPS`. Nothing on the site changed. Tried on two real models and nothing kept: Luke’s hilt (920 triangles, 212 KB, the shot in `docs/superpowers/evidence/bf2017-phase0/`) and Luke’s rotj body with `--rig` (the whole rig kept, 254 joints with fingers, face and physics; LOD2 706 KB, LOD4 236 KB; drawn in its bind pose).
 - **The second design and four more plans** (this PR): lanes L, G, K and X below, and the corrections to the first design (its section "The review of #802").
 - **On the desktop, 2026-10-10 00:20**: the 102 planet skins encoded (KTX2 at up to 4096, hybrid) and linked raw, both queued; 164 clips with `~` in their names (refused by Supabase as `InvalidKey`) renamed `-`, `web/anims.jsonl` rewritten and re-uploaded; 119 physics files queued. The pipeline’s upload passes pick them up (`logs\pipeline_status.txt`).
+
+## The lanes
+
+| Lane | Plan | What | Starts from | Blocked by |
+|---|---|---|---|---|
+| 1 | `2026-10-10-bf2017-phase1-heroes.md` | the heroes on the game’s skeleton, the game’s clip packs, the hilts in `Wep_Root` | `main` | nothing |
+| 2 | `2026-10-10-bf2017-phase2-everyone.md` (on #802’s branch) | everyone else the game has | `main` after 1 | 1 |
+| S | `2026-10-10-bf2017-phaseS-streaming.md` (on #802’s branch), **amended below** | the fetch pool, aborts, the small cut first, the stream check | `main` | nothing |
+| **L** | `2026-10-10-bf2017-phaseL-levels.md` | the worlds on the game’s levels: the map’s layout, the heightmap, the shapes, cell-streamed; Hoth first | `main` | nothing (lane S’s pool when merged; `fetch` until then) |
+| **G** | `2026-10-10-bf2017-phaseG-lighting.md` | the worlds under the game’s light: VisualEnvironment records, probes, the baked far shadow, grading, weather | `main` | nothing (its far-shadow hook into lane L’s far draws when L is merged) |
+| **K** | `2026-10-10-bf2017-phaseK-planet-skins.md` | the planets wearing the game’s skins from orbit | `main` | the skins landing in the bucket (queued; check) |
+| **X** | `2026-10-10-bf2017-phaseX-sabers.md` | the sabers from the game’s clips: stroke tables, the stance, the hold, the blade’s light | `main`; tasks 3–4 after 1 | 1 for tasks 3–4 |
+| V | `2026-10-10-bf2017-phaseV-vehicles.md` (on #802’s branch) | vehicles | `main` after 2 | 2 |
+| F | `2026-10-10-bf2017-phaseF-effects-lighting-lines.md` (on #802’s branch) | effects; its task 3 (lighting) is lane G’s now; its task 4 (sound) waits on an exporter, see below | `main` after L, G | L, G |
+| W | `2026-10-10-bf2017-phaseW-worlds.md` (on #802’s branch) | **superseded by lane L**; do not run | | |
+
+One lane per session; L, G, K and lane 1 may run at once (they own different files; `sites/ice.js` is touched by L and G, each on its own keys; merge `origin/main` before the PR and keep both sides). X after 1.
+
+### Lane S, amended
+
+`main` already has the asset host (planet flight lane I): `src/lib/assetBase.js`, `src/lib/assetPath.js`, `scripts/assets-upload.mjs` (bucket `assets`, `<hash12>/<path>`, a year’s cache, `--prune`), `src/data/assets-manifest.json`, the packs and the service worker carrying bucket URLs, `VITE_ASSET_BASE`. Lane S therefore does **not** create `assetUrl.js`, `galaxyAssets.json`, `assets-publish.mjs`, `assets-ignore.mjs` or a `site-assets` bucket. It keeps: task 1 (`scripts/lib/pool.mjs`), task 2 (the fetch made robust), task 4’s `assetFetch.js` and `progressive.js` with `assetBase.js`’s `withFallback` calling the pool (one in-flight per URL, priority, the short-body check, abort per world, progress), task 6’s `stream-check.mjs`. Task 3 becomes: `REMOTE` in `assets-upload.mjs` gains `models/galaxy/bf2017` and `textures/galaxy/bf2017`; `catalog.test.js`’s size checks read `assets-manifest.json`’s `bytes` when a file is absent. Task 5 (the service worker) is already done by lane I; check `sw-check.mjs --bucket` and drop the task if green.
+
 - **Phase 1, the heroes on the game's skeleton, with their hilts** (this PR, `claude/bf2017-phase1`):
   - `public/models/galaxy/bf2017/walrus.glb`: `Walrus_HumanMale` whole, 254 nodes (`scripts/bf2017-skeleton.mjs`); `src/lib/three/walrusRig.js` names its body, fingers and sockets, `WEAPON_FRAME` (the identity: the game models weapons in the `Wep_Root` frame).
   - The game's clips as packs (`scripts/bf2017-clips.mjs`, names mapped by `src/lib/three/walrusClips.js`): `clips-humanoid.glb` 843 KB (27 clips), and one a hero: Luke 1,323 KB (45), Vader 1,269 (42), Obi-Wan 1,069 (39), Anakin 1,187 (38), Maul 1,179 (41), Dooku 1,153 (38), Palpatine 459 (15), Han, Leia, Lando, Chewbacca, Boba Fett, Bossk 92-141 KB (their defeat and abilities). 24 fps, root motion off `AITrajectory` into `extras.root`, `contact` timed on a blade a metre up `Wep_Root`, rest-holding channels left out and put back by the loader. Luke's blocks come from the cinematic skeleton (`Walrus_NIS_S0800_Skeleton`, the same rig at the same rest).
@@ -36,27 +58,6 @@ The designs: `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline-
 
 - **The heroes' abilities from the game's gameplay data** (after phase 1): `scripts/bf2017-abilities.mjs` (pure part `scripts/lib/bf2017-abilities.mjs`, fixture `scripts/fixtures/bf2017/abilities/`) reads each hero's kit (`GP_Hero_<Hero>`), its abilities' times and modifiers, the prefabs' graphs (field hashes decoded: djb2 with xor), the affectors they apply (damage by rank, to a hero or a trooper by the heroes' descriptor filter) and the hero's own hit points, into `src/data/bf2017Abilities.json` (16 heroes, 50 abilities, 26 KB, each number with where it came from). `surface/abilityRules.js` makes cards of them at the game's numbers (a trooper's 150 is a stormtrooper's hp 2 here: `GAME_HP` 75); `surface/powers.js` plays the ones that last or draw (choke, held lightning, chain lightning, lightning stun, repulse and slam, rush, rage, exposed weakness); Obi-Wan, Anakin, Vader, the Emperor, Maul and Dooku joined the roster (`heroes.js`). Seven packs re-made with the kits' clips (`walrusClips.js`'s `force.*` and `saber.throw`; every older clip the same in channels, frames and extras): Vader +3, Maul +3, Palpatine +3, Dooku +2, Anakin +2, Luke +1, Chewie +1.
 
-## The lanes
-
-| Lane | Plan | What | Starts from | Blocked by |
-|---|---|---|---|---|
-| 1 | `2026-10-10-bf2017-phase1-heroes.md` | the heroes on the game’s skeleton, the game’s clip packs, the hilts in `Wep_Root` | `main` | nothing |
-| 2 | `2026-10-10-bf2017-phase2-everyone.md` (on #802’s branch) | everyone else the game has | `main` after 1 | 1 |
-| S | `2026-10-10-bf2017-phaseS-streaming.md` (on #802’s branch), **amended below** | the fetch pool, aborts, the small cut first, the stream check | `main` | nothing |
-| **L** | `2026-10-10-bf2017-phaseL-levels.md` | the worlds on the game’s levels: the map’s layout, the heightmap, the shapes, cell-streamed; Hoth first | `main` | nothing (lane S’s pool when merged; `fetch` until then) |
-| **G** | `2026-10-10-bf2017-phaseG-lighting.md` | the worlds under the game’s light: VisualEnvironment records, probes, the baked far shadow, grading, weather | `main` | nothing (its far-shadow hook into lane L’s far draws when L is merged) |
-| **K** | `2026-10-10-bf2017-phaseK-planet-skins.md` | the planets wearing the game’s skins from orbit | `main` | the skins landing in the bucket (queued; check) |
-| **X** | `2026-10-10-bf2017-phaseX-sabers.md` | the sabers from the game’s clips: stroke tables, the stance, the hold, the blade’s light | `main`; tasks 3–4 after 1 | 1 for tasks 3–4 |
-| V | `2026-10-10-bf2017-phaseV-vehicles.md` (on #802’s branch) | vehicles | `main` after 2 | 2 |
-| F | `2026-10-10-bf2017-phaseF-effects-lighting-lines.md` (on #802’s branch) | effects; its task 3 (lighting) is lane G’s now; its task 4 (sound) waits on an exporter, see below | `main` after L, G | L, G |
-| W | `2026-10-10-bf2017-phaseW-worlds.md` (on #802’s branch) | **superseded by lane L**; do not run | | |
-
-One lane per session; L, G, K and lane 1 may run at once (they own different files; `sites/ice.js` is touched by L and G, each on its own keys; merge `origin/main` before the PR and keep both sides). X after 1.
-
-### Lane S, amended
-
-`main` already has the asset host (planet flight lane I): `src/lib/assetBase.js`, `src/lib/assetPath.js`, `scripts/assets-upload.mjs` (bucket `assets`, `<hash12>/<path>`, a year’s cache, `--prune`), `src/data/assets-manifest.json`, the packs and the service worker carrying bucket URLs, `VITE_ASSET_BASE`. Lane S therefore does **not** create `assetUrl.js`, `galaxyAssets.json`, `assets-publish.mjs`, `assets-ignore.mjs` or a `site-assets` bucket. It keeps: task 1 (`scripts/lib/pool.mjs`), task 2 (the fetch made robust), task 4’s `assetFetch.js` and `progressive.js` with `assetBase.js`’s `withFallback` calling the pool (one in-flight per URL, priority, the short-body check, abort per world, progress), task 6’s `stream-check.mjs`. Task 3 becomes: `REMOTE` in `assets-upload.mjs` gains `models/galaxy/bf2017` and `textures/galaxy/bf2017`; `catalog.test.js`’s size checks read `assets-manifest.json`’s `bytes` when a file is absent. Task 5 (the service worker) is already done by lane I; check `sw-check.mjs --bucket` and drop the task if green.
-
 ## Left
 
 - **Abilities the data doesn't give a number for**, so the site's stand in (`abilityRules.js` names each): a rush's distance (the game moves the hero by its clip's root motion), a choke's lift, the held lightning's meter and tick, chain lightning's leaps, a lightning stun's length, Vader's throw range (output 975835047, unnamed), the Emperor's electrocute damage (its affector's ranks are 0; the damage comes from a DamageUnlock not in the drop). Output hashes no prefab names plainly (824196892, 2540124558, 1209176742, 318822392, 1736361408, 1839311751, 3649387485, 4153564376, 3860256841, 1085079986, 1845711460, 1724747203, 900427946, 838726700) are left out of the file.
@@ -68,14 +69,20 @@ In order:
 2. **Lanes L, G, K, X** as the table says.
 3. **Textures**: every map the hilt and Luke’s body name was in the bucket as KTX2 on 2026-10-10, none as PNG. A map not there yet prints `missing:` in the import and the material goes without it; re-fetch and re-import when the upload has it.
 4. **Normals as KTX2** (UASTC) where `scripts/ktx2.mjs report` says it pays: phase 9’s, with the ultra cuts. Level packs (lane L) take the bucket’s KTX2 as it is, for GPU memory.
-5. **Phase 2, everyone the game has**: `docs/superpowers/plans/2026-10-10-bf2017-phase2-everyone.md` (troopers, droids, blasters on the same loader; the humanoid pack plus the `AI_Rifleman`, `AI_Officer`, `Cover` and `Awareness` sets).
-6. **Yoda and Grievous**: their own rigs (`Yoda_01_Ske`, `GeneralGrievous_01_Ske`) and clips (101 and 161); not imported this phase, they stay as they were until their own-rig packs (phase 10's).
-7. **Site clip names the game has nothing for**, which fall back (`CLIP_FALLBACK`, else the humanoid pack's): Vader `sword.dash`, `sword.pound`, `force.push`; Anakin's staggers (the humanoid flinches stand in); Dooku `sword.aerial.a`, `sword.uppercut`; Palpatine every stroke (he fights with lightning in the game); the blaster heroes' dodges.
-8. **Textures not in the bucket yet**: Leia's braids (`t_lodcaps_braids_01_brown_cm`, `…_n`), and the game's generic eye map (`T_Eye_MP_DA`): the human heroes wear Luke's eye map, its white lifted. Re-import when the upload has them.
-9. **A dual stance on a 2017 figure** holds one hilt: the game's heroes don't dual-wield; `Wep2_Root` is there for it if the site wants one.
-10. **Repository weight**: the native heroes, outfits and blasters are published to the `site-assets` bucket (`scripts/assets-publish.mjs`, `src/data/galaxyAssets.json`) and out of git.
-11. Phases 3 to 10 as the spec's table orders them.
-12. `WEAPON_FRAME` re-measured if a weapon sits wrong; the hilt sheet and the duel shots say it doesn't.
+
+## Lane X, the sabers
+
+**Done (tasks 1–2, #816).** `scripts/bf2017-strokes.mjs <hero>` measures a hero’s clips into `src/data/bf2017/strokes/<hero>.json` over `scripts/lib/bf2017-strokes.mjs` (tested against a 10 KB fixture, Luke’s first strike on the socket’s chain only, `scripts/fixtures/bf2017/web/anims/`). Each strike: duration, contact window, the way it cuts (`DIRS`), sweep plane, root rows, its return and the return’s length; blocks by side, blocked reactions, staggers, dodges, dash, jump attack, defeat, the generic humanoid (`A_HM_*`) where a set lacks one. `stanceFromTable.js` makes the table a stance; `gameStance.js`’s `stanceFor(id, hero)` gives it for `{ rig: 'walrus', pack }` with a table (kept out of `combatRules.js`, which the universe’s online protocol imports for `STANCE_IDS`: with the tables behind it the flight pages carried them and fly-check’s turret took 3.2 s against main’s 2.7); `strokeFor` reads a stance’s own `heavies` and `dirs`; `duel.js` takes `cadence` (held a strike’s length, open its return’s length after); `duelFor` finds the hero by the spawn’s kind in `CREW`. Nothing changes for a figure without `rig: 'walrus'`, and no figure on `main` has it until lane 1 merges.
+
+**How the tables were made.** From the bucket (`node scripts/bf2017-strokes.mjs <hero>`, keys in the shell’s environment and the Supabase host allowed in the environment’s network settings; Node’s fetch needs `NODE_USE_ENV_PROXY=1` behind the session’s proxy): every `A_<Hero>_*` clip on the humanoid skeleton, the cinematics skeleton (Luke’s seven swing blocks a side and his six blocked reactions are there) and a hero’s own (Yoda’s, Grievous’s), nine tables in all. `--pack` measures one of lane 1’s packs instead, for a session without the bucket; its windows agree with the bucket’s to a frame. Grievous spells a strike with a take (`Strike3_01`) and a blocked reaction with a side (`Blocked_Right_02`); Yoda has no `_BackToIdle`, so his duel recovers on the site’s own timing; Palpatine’s set has no saber strikes, so his table makes no stance.
+
+**Findings for lane 1.** The socket frame holds: `Wep_Root` (under `Spine2`) carries the blade along +y. But `bf2017-clips.mjs`’s windows, timed with ual-bake’s 0.15 m before the hips along +z, land on the snap out of the guard: a strike’s first key is the guard and its second already the wind-up, as fast as the cut (Luke’s Strike1 `[0.05, 0.10]`, the cut is 0.1–0.23 s). The tables skip the first key, count a frame only when it and the one before have the tip before the hips along +z (the root’s way; the hips’ own facing is worse, the game’s guard holds them 50° to 170° round), and add the root’s travel to the tip (Luke’s Strike4 and Obi-Wan’s are lunges). Two fixtures are pinned by hand: Luke’s Strike1 `[0.107, 0.293]`, Obi-Wan’s Strike4 `[0.274, 0.426]`. A pack’s turns are meshopt-normalised shorts: read them with `valuesOf`. The blade rests 0.33–0.9 s into a strike (`settle`) though the clips run 1.3–4.8 s (the game holds the pose for the chain); the duel holds a strike till `settle`, then its return’s length.
+
+**Done (task 3, after lane 1).** A 2017 hero’s saber (`saber.js`, additive) fences with the game’s strokes: its stance is `gameStance.js`’s `stanceFor`, the hero read from its strike clip’s game name (`saberGame.js`’s `heroOfClips`); its clips are found by the game’s names as well as the pack’s (`gameClips`); a stroke’s own measured window wins over the pack’s `extras.contact` (lane 1’s, timed by ual-bake’s rule: Luke’s first strike `[0.05, 0.101]`, the guard snap; the table’s `[0.14, 0.293]`), a stroke named outright (a duellist’s, a peer’s) by that stroke’s own; the blade comes out of the hilt’s emitter (`BLADE_OF`, a staff’s second out of the other end); a lit blade lights the scene (`saberLight.js`: high and ultra, four at once at most, out past 12 m of the player’s camera, `scene.js` passing `eye`). Seen in the browser: `docs/superpowers/evidence/bf2017-sabers/`.
+
+**Left.** The frame time with four lit blades on a GPU (SwiftShader drew 4.8 s a frame, which says nothing), and the light’s brightness looked at against the bloom there; the duellists’ and peers’ sabers pass no `eye` (their lights rely on the cap); blocks by the incoming stroke’s side (the table has `blocks.left`/`right`; `saber.block(on)` knows no side yet); the forms lane reads the tables (saber-forms B); the clash sheet (lane F); the sounds (an exporter); lane 1’s packs re-made with this lane’s measure, so the packs’ own windows agree.
+
+**Checking it.** `npx vitest run scripts/lib/bf2017-strokes.test.mjs src/components/galaxy/surface/stanceFromTable.test.js src/components/galaxy/surface/gameStance.test.js src/components/galaxy/surface/saberGame.test.js src/components/galaxy/surface/saber.game.test.js src/components/galaxy/surface/saberLight.test.js src/lib/combat/duel.test.js`; in the browser, Luke on Hoth and `__surfaceDo('duel', 'vader', { ahead: 5 })`; `node scripts/bf2017-strokes.mjs luke --pack <pack> --skeleton <walrus.glb>` prints the table’s strikes.
 
 ## Asked of the desktop exporter (not the site’s work)
 
@@ -85,6 +92,15 @@ The export in `C:\Users\tilak\Downloads\BF2_Extract` (`tool\bf2export.csproj`, F
 - **Effects**: counted (Hoth: 648), not written. The spawn points with the effect’s name would tell lane F which effect plays where.
 - **Audio**: `GUIDE.md` says 17,509 sound assets, not exported. Frosty can write a `SoundWaveAsset` as `.wav`; without a `bf2export sound` pass, lane F’s sound map stays `null` for good.
 - **Decals**: painted into the terrain resource, no transform; not needed.
+
+1. **Phase 2, everyone the game has**: done in part; its own section below says what is left.
+2. **Yoda and Grievous**: their own rigs (`Yoda_01_Ske`, `GeneralGrievous_01_Ske`) and clips (101 and 161); not imported this phase, they stay as they were until their own-rig packs (phase 10's).
+3. **Site clip names the game has nothing for**, which fall back (`CLIP_FALLBACK`, else the humanoid pack's): Vader `sword.dash`, `sword.pound`, `force.push`; Anakin's staggers (the humanoid flinches stand in); Dooku `sword.aerial.a`, `sword.uppercut`; Palpatine every stroke (he fights with lightning in the game); the blaster heroes' dodges.
+4. **Textures not in the bucket yet**: Leia's braids (`t_lodcaps_braids_01_brown_cm`, `…_n`), and the game's generic eye map (`T_Eye_MP_DA`): the human heroes wear Luke's eye map, its white lifted. Re-import when the upload has them.
+5. **A dual stance on a 2017 figure** holds one hilt: the game's heroes don't dual-wield; `Wep2_Root` is there for it if the site wants one.
+6. **Repository weight**: the native heroes, outfits and blasters are published to the `site-assets` bucket (`scripts/assets-publish.mjs`, `src/data/galaxyAssets.json`) and out of git.
+7. Phases 3 to 10 as the spec's table orders them.
+8. `WEAPON_FRAME` re-measured if a weapon sits wrong; the hilt sheet and the duel shots say it doesn't.
 
 ## Checking it
 
@@ -114,48 +130,6 @@ The bucket’s other parts, by path under `web/` (fetch one with the fetch’s `
 
 The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scripts/lib/rig-parts.test.mjs scripts/lib/catalog-write.test.mjs scripts/bf2017-import.test.mjs src/components/galaxy/surface/catalog`.
 
-## Status
-
-| Lane | Session | Branch | Merged |
-|---|---|---|---|
-| design | the architecting session | `claude/nice-mayer-jqow5k` | #802 (open), carried by #805 |
-| 0 | | | #805 |
-| second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
-| 1 | | | |
-| L | | | |
-| G | lane G session | `claude/bf2017-g-light` | #833 |
-| K | | | |
-| X | | | |
-| S | | | |
-
-### Lane G, the worlds under the game's light
-
-**Done** (`claude/bf2017-g-light`):
-
-- `scripts/bf2017-light.mjs <world> --map <level> [--indoor <probe id>] [--main <VE>] [--also <VE>,…]` reads the map's `sky[]`, the raw VisualEnvironment records under `data/` (a superset of the map's `extras.json` copy: it has the wind and Enlighten's bounce), the level's reflection probes and its grading LUTs, and writes `src/data/bf2017/light/<world>.json` plus a pack under `public/textures/galaxy/bf2017/light/<world>/` (64² probe faces with the sun clipped out, 17³ LUT strips; every world under 400 KB, 2.1 MB for the ten). The pure reading is `scripts/lib/bf2017-light.mjs`, tested on a trimmed real record (`scripts/fixtures/bf2017/data/ve_sky_fixture.json`).
-- `src/lib/three/gameLight.js`: `siteLightFrom(entry)` and `gameSite(site, light, state)`, the record to the site's `sky`, `light` and `fog`. Three constants set once on Hoth's sunny weather and held for every world: `GAME_TO_SITE` 0.0713 (the sun's lux, exposed by the game's own metering), `SKY_TO_SITE` 0.2006 (the record's `LuminanceScale`, exposed, to the dome's horizon and the fill), `PROBE_TO_SITE` 52.4 (the fallback for a record with no sky level). The ice field's mean luminance: 0.3529 under the site's own light, 0.3531 under the game's. The camera's exposure is the game's: a grey card lit by the sun and the record's sky, clamped to the record's EV range. Every world's before and after, with its change, is in `docs/superpowers/evidence/bf2017-light/README.md`.
-- `src/components/galaxy/surface/gameLit.js`: the probe as `scene.environment` (the room's indoors; one alive at a time, `probeEnv.js`), the LUT in `universe/post.js`'s final pass on high and ultra (`grading()`, the house's contrast and saturation stepping aside), the weathers faded over 20 s (`__surfaceDo('weather', 'dusk', seconds)` in dev). `?gamelight=off` (dev) shows a world under the site's own light for a before shot; `surface-shot.mjs` takes `QUERY=` and `WEATHER=`.
-- Wired (`gameLight` on the site): hoth, tatooine, yavin, kashyyyk, kamino, geonosis, scarif, bespin, endor. Worlds without a record (nevarro, mandalore, sorgan, lothal, coruscant, dagobah, mustafar) are unchanged, tested.
-
-**Findings**:
-
-- The sun's direction is in the record (`SunRotationX` the azimuth, `SunRotationY` the elevation, degrees): every world took that path; `sunFromProbe` is the fallback no world needed (the probes' brightest texels are lamps and glints).
-- Hoth's weathers are sunny, sunset and interior (the only VE records the bucket has: Blizzard has a LUT only, Cloudy nothing). The probes of a level's weathers are not baked to one scale (Hoth's Sunset_VFX probe is a day's, and not orange), so a probe gives colours, never a level.
-- Under the one calibration: Geonosis, Scarif, Bespin and Yavin within 8 % of the site's own; Kamino +14 % (a teal storm); Tatooine +25 % and Kashyyyk +39 % (higher suns and skies); Hoth's hangar mouth −36 % (in shade only the fill lights, and the game's is the lower).
-- Probes per world: hoth 661f4d0f (Cloudy_VFX) and 36a2b5e2 (Sunset_VFX), indoor 9c323d00 (the hangar); yavin, kashyyyk, naboo, kamino, geonosis, scarif, bespin one or two each (in the JSON); tatooine none out of doors (only its buildings'), endor none by day (Foggy_Lighting and Night_Lighting2 only): those keep the dome as their environment.
-- The LUTs are 33³ volumes as 33 png16 slices (blue the slice, green the row from the top, red the column), display-space S-curves.
-- The interior's exposure is not applied in a room (the game's opens 4.5 stops over the day; the site's rooms are lit by its own lamps at exposure 1).
-- Endor's surface does not finish loading under the software renderer, before or after (the shots are left); a `mvPosition` shader error on a MeshBasicMaterial predates the lane.
-
-**Left**:
-
-- **The far shadow** (task 3), with lane L: the distant shadow cache is a 16-bit depth map seen from the sun, not a top-down mask, and it is the game's terrain's. Fit the sun's orthographic frame (the record's direction, the heightmap's 8,192 m square) to the cache, then sample it beyond `SHADOW.extent` in `groundLook.js` and the far draws.
-- **The placed lights**: exported now (`maps/<level>.extras.json`, `lights[]`, 1,234 on Hoth) and not yet used; the site's lamps stay.
-- **Naboo**: its JSON is written and not wired. Its level is Theed at dusk (350 lux, 5° up); under the one calibration the field is 62 % darker, its people in silhouette, the game's dusk being carried by Enlighten's bounce and its lamps. Wire it with the placed lights, or with a bounce term.
-- **Hoth's sunset** (dev only): its probe is a day's, so the dome reads pale rather than orange, and its fill is twice noon's.
-- The Death Star (no surface site; its map names no sky). Nothing drives the weather states yet (the dev hook only); a weather fade moves the sun but not the ground's baked shadows.
-
-Findings for the next lane go here: which sub-levels each map needed, what `fitTo` dropped per tier, the calibration factor and which path each world’s sun direction took, which skins were still missing, which clips’ windows were pinned by hand.
 Phase 1's, with the dev server up:
 
 ```
@@ -168,6 +142,126 @@ node scripts/bf2017-skeleton.mjs public/models/galaxy/bf2017/crew/luke.glb
 The duel: open `#/galaxy/hoth/surface` as Luke, then `__surfaceDo('duel', 'maul', { stance: 'double' })` in the console; F strikes, C blocks.
 
 The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scripts/lib/rig-parts.test.mjs scripts/lib/catalog-write.test.mjs scripts/bf2017-import.test.mjs scripts/bf2017-clips.test.mjs scripts/bf2017-skeleton.test.mjs src/lib/three/walrus src/lib/combat/hiltFit.test.js src/components/galaxy/surface/catalog`.
+
+## Status
+
+| Lane | Session | Branch | Merged |
+|---|---|---|---|
+| design | the architecting session | `claude/nice-mayer-jqow5k` | #802 (open), carried by #805 |
+| 0 | | | #805 |
+| second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
+| 1 | | | |
+| L | | | |
+| G | | | |
+| K | | | |
+| X | lane X’s session | `claude/bf2017-x-sabers` | #816 (tasks 1–3; the GPU frame time left) |
+| S | | | |
+
+Findings for the next lane go here: which sub-levels each map needed, what `fitTo` dropped per tier, the calibration factor and which path each world’s sun direction took, which skins were still missing, which clips’ windows were pinned by hand.
+
+## Phase 2: everyone the game has
+
+The plan is `docs/superpowers/plans/2026-10-10-bf2017-phase2-everyone.md`. The cast, kind by kind, is `docs/superpowers/evidence/bf2017-phase2/cast.md` (and `cast.json`). The sheets are in `docs/superpowers/evidence/bf2017-phase2/sheets/`: the figure it replaces, then the full cut, the light cut and the far cut. The costs are in `costs.md` beside them.
+
+### Done (PR #832, `claude/bf2017-phase2`)
+
+- **24 kinds from the game, on the figure paths the worlds already use** (a 2017 row takes over a kind by name; no `sites/*.js` changed):
+  - **On the game's humanoid skeleton (`rig: 'walrus'`)**: stormtrooper, sandtrooper, snowtrooper, scouttrooper, shoretrooper, deathtrooper, hothtrooper, rebel, clone (Phase II), clonephase1, wookiee, c3po, rebelpilot, rebeltech, officer, and the city's civilians civcity1 and civcity3.
+  - **On rigs of their own (`rig: 'own'`)**, through `src/lib/three/ownRig.js`:
+    - superdroid (B2)
+    - ewok
+    - astromech (R2-D2), r5 (R5-D4) and droid (R4-I9)
+    - probe (the viper)
+    - tauntaun
+- **Three cuts for each kind**, all from the game's own LOD chain:
+  - **Full cut**: the game's LOD0, never simplified, its maps the game's own KTX2, untouched, at up to 2048 (phase 1's native settings); 2 to 45 MB.
+  - **Light cut (`.lod1`)**: LOD4, or LOD2 where the game's light LODs wear `lodcaps` maps the bucket hasn't yet (the Wookiee, the Ewok, the tauntaun, the city civilians); WebP at colour 1024 and the rest 512, or 512 and 256 for the ten kinds of five or more materials. 0.2 to 1.0 MB, committed.
+  - **Far cut (`.far`)**: the chain's last LOD at 256 and 128, under 150 KB, for the kinds the assaults field; committed.
+  - **Where the full cuts are**: published to `site-assets` (`node scripts/assets-publish.mjs --only <the 24 full cuts>`, now taking a comma-separated list) and not in git. `src/data/galaxyAssets.json` names them and `.gitignore`'s block keeps them out.
+- **Drawn by distance** (`src/lib/three/walrusCuts.js`, footScene's `gameFigure`):
+  - **The cut**: the light cut is drawn first; within the level's `near` the full cut is swapped onto the same bones (phase 1's `swapBody`), and past its `mid` the far one. The bands are `lib/net/progressive.js`'s.
+  - **Who calls it**: `cutAt(d)` is called by `actors.js`, `assaultScene.js` and `groundFigures.js`.
+  - **The ledger**: a page admits full cuts kind by kind into a share of the download and of the GPU (`FULL_SHARE`: high 30 MB and 128 MB, ultra 160 and 448, none on a phone's levels), told by each row's `fullDL` and `fullMB`. With a stormtrooper at 25 MB, high takes about one kind's full cut a world.
+- **Rows and loaders**:
+  - `crewList.js`'s rows carry `lod`, `far`, `full`, `fullMB` and `fullDL`.
+  - The cast casts its body's shadow alone.
+  - `figureLoaderFor` sends `rig: 'own'` to the own-rig loader.
+  - The walrus loader still refuses a body without the game's sockets.
+- **One own-rig module, two loaders** (`src/lib/three/ownRig.js`, shared with lane V, whose #828 wrote the file first):
+  - **Lane V's walkers**: `loadOwnRigFigure(url, { rig, packs, bones })` is a whole self-driving figure, its sets in `rigSets.js`, its packs by `bf2017-rigclips.mjs` under the game's names.
+  - **The crew's droids and beasts**: `loadOwnRigBody(url, { rig, packs?, bones?, loader? }) → { model, clips, bones, rig }` and `ownPackUrl(rig)` hand a body and its clips to footScene's figure animator, as a person's are.
+    - Clips bind by bone name, with the walrus loader's filtering.
+    - A row's `bones` ({ role: boneName }) are checked, and the loader refuses naming what is missing.
+    - A rig's set goes in `walrusClips.js`'s `OWN_RIGS` (`skeleton`, `body`, `set`).
+    - Its pack is `node scripts/bf2017-clips.mjs <rig>`, which reads the skeleton from the body's light cut and takes clips from that skeleton alone, stored under the site's names.
+  - **One rig, one side**: a rig is in one or the other, never both, since both packs are `clips-<rig>.glb`. The droideka is lane V's (a walker in `walkers.js`, resolved before a crew row), so this phase ships none of its own.
+- **Packs**:
+  - `clips-humanoid.glb`: 31 clips, 1.0 MB. Added: the troopers' patrol twitches, look-around, look at the ground, and the game's greeting as `wave`.
+  - b2: 22 clips, 432 KB.
+  - ewok: 24, 617 KB.
+  - astromech: 6, 22 KB.
+  - probe: 5, 30 KB.
+  - tauntaun: 10, 226 KB.
+  - Every pack clip keeps `userData.source` (the game's clip) for lane X.
+  - Packs load with the figure, through the page's cache, once each: a world with no 2017 person fetches none.
+- **The import**:
+  - Its flags: `--full`, `--far`, `--join` (a figure's parts joined per material on its skin), `--cuts far=<n>`, `--lod1-tex` and `--lod1-maps`.
+  - Each row's full-cut GPU textures and download are written in.
+  - **Parts bound in a pose of their own** (the clone's gloves, from another body) keep their own inverse binds on the body's bones. Before, one move put a vertex 38,877 m off and the clone was refused.
+  - **Procedural bones**: a part's `PROC_Bone*` stays its own. The clone's helmet is weighted wholly to its own `PROC_Bone0`, which the game places per mesh.
+  - The sequel's `d_assault_newera` troopers are refused.
+- **The villager pool** (`surface/pools.js`): Coruscant's and Bespin's villagers (and farmers, caretakers, Jocasta, Zam) are the city's civilians, one of two by the figure's number. A pooled kind that won't load gives way to the built one.
+- **The audit**: `galaxy-figures-audit.mjs` names `walrus` and `own-rig`, and `EXPECTED` holds every moved kind (phase 1's heroes too). Phase 1 had left `anakin` expected as `legs`.
+
+### Left
+
+In order:
+
+1. **Kinds waiting on textures the bucket hasn't yet** (re-import each with its line below once the upload has them):
+   - **The B1** (`d_assault_preq_01`, `SS_CharactersPreset_RobotMarkings`): its colour is a markings map, so its own maps draw it grey. Its pack set is in `OWN_RIGS.b1`, but no pack is built.
+   - **Mos Eisley's and Theed's crowds** (`civ_moseisley_0{1,2,3}`, `civ_theed_0{1,2}`, on `Civilian_Ske` with no sockets): palette-coloured. When they come, they take the own-rig loader with `packs: ['/models/galaxy/bf2017/clips-humanoid.glb']` (the bones are the humanoid's by name), and Tatooine's and Naboo's pools in `pools.js`.
+   - **The `lodcaps` maps**: once the Wookiee's, the Ewok's and the tauntaun's are there, their light cuts can go back to LOD4 (`--cuts lod1=4`). City civilian 2 (`civ_vardos_female_robe2` with Linnea's bob) waits for `t_lodcap_bob_02`.
+   - **The outfit variations** (cast.md lists them from `MeshVariationDatabase` and `ObjectVariation`): the Yavin, Endor, Scarif and Mos Eisley Rebels, the clone legions' markings, the sandtrooper's dirt. Their textures are not in the bucket.
+   - **The Ewok's hood**: it draws grey where the game tints it.
+2. **Draw calls**: the modular Rebels, the Hoth trooper, the Wookiee and the officer are five to nine draws a figure (one per material), against the Meshy figures' one. Under four needs an atlas per kind (or a texture array), which the import doesn't make; `costs.md` has where each world stands.
+3. **The kinds no world places yet**, for the Death Star interior's own lane (`inside/pack.js`): shadowtrooper, navy crewman, admiral, personnel, gonk, interrogation droid. cast.md has their manifest names; none were shipped.
+4. **The own rigs left**: dewback, bantha, eopie, ronto, jawa, aiwha, dwarf spider, mouse droid (phase 3's beasts); Yoda and Grievous (phase 10). The tauntaun's rider (`A_TauntaunRider_*` on the humanoid) is phase 3's.
+5. **Hurtboxes**: #820's capsules (`lib/physics/boneCapsules.js` over `src/data/bf2017/physics/bones.json`) hit a walrus-rig kind where the game says. An own-rig figure takes its rig's own set by its skeleton's name (`boltPlay.js`, the figure's `skeleton`): the B2's is in the game's data, and so is the B1's for when it ships. The droideka is lane V's walker (`rigSets.js`, `loadOwnRigFigure`), which names no skeleton and keeps its one capsule; the game has a set for it too. The Ewok, the astromechs, the probe and the tauntaun have no set in the game's data, so they keep the one generic capsule; a set made for them would go in that same file's `sets`.
+6. **The phase 1 heroes' full cuts** are still committed (phase 1's lane); the same `assets-publish --only` takes them out.
+
+### Checking it
+
+- **The import of one kind** (the stormtrooper here), then publish and check:
+
+  ```
+  node scripts/bf2017-fetch.mjs characters/imperial/imperial_stormtrooper/imperial_stormtrooper_male_01/imperial_stormtrooper_male_01_mesh --lod all --parts '*_helmet_mesh'
+  node scripts/bf2017-import.mjs characters/imperial/imperial_stormtrooper/imperial_stormtrooper_male_01/imperial_stormtrooper_male_01_mesh --kind stormtrooper --as 'A stormtrooper' --rig --crew --metres 1.83 --parts 'characters/imperial/imperial_stormtrooper/imperial_stormtrooper_male_01/imperial_stormtrooper_male_01_helmet_mesh' --full --join --far
+  node scripts/bf2017-clips.mjs humanoid
+  node scripts/bf2017-clips.mjs b2
+  node scripts/assets-publish.mjs --only 'models/galaxy/bf2017/crew/stormtrooper.glb'
+  node scripts/assets-check.mjs
+  node scripts/galaxy-figures-audit.mjs
+  ```
+
+- **The import flags, cut by cut**:
+
+  | cut | how it is made |
+  | --- | --- |
+  | `--full`'s plain | LOD0, `native: true` at 2048 (the game's KTX2 with no levels dropped; a map the bucket has only as PNG goes to AVIF q90), positions 16 bits, normals 12, UVs 16, no simplification |
+  | `--full`'s `.lod1` | the first LOD under 1,500 triangles, or `--cuts lod1=<n>`; WebP colour `--lod1-tex` (1024) at 82, the rest `--lod1-maps` (512) at 80; an opaque colour map's alpha taken off |
+  | `--far` | the chain's last LOD, or `--cuts far=<n>`; WebP colour 256 and the rest 128, halved until under 150 KB |
+  | `--join` | the skinned parts on one skin joined per material |
+
+- **Each kind's extra flags**: every one is `--rig --crew --full --join`, with `--far` where cast.json says `far`. Its body, parts and height are in `cast.json`.
+  - `--cuts lod1=2`: wookiee, ewok, tauntaun.
+- **`WORLD_MB['/galaxy']`**: 17 → 19, by Hoth's models at low, 18.1 → 19.3 MB (with `galaxy/module.js` and `galaxy/surface/module.js`).
+  - `--cuts lod1=2` and `--lod1-tex 512 --lod1-maps 256`: civcity1, civcity3.
+  - `--lod1-tex 512 --lod1-maps 256`: hothtrooper, rebel, rebelpilot, officer, sandtrooper, snowtrooper, c3po, and the Wookiee and the tauntaun as well (Hoth at a phone's level came to 20.5 MB against its 20 without them).
+- **The checks**: `galaxy-check.mjs surface <world>` with `BUDGET=1` at `QUALITY=high` and `low` (the before and after tables are in `costs.md` and the PR), and `anim-check.mjs --route '#/galaxy/hoth/surface' --limit 0.15 --strict --quality high` (34 figures, none at bind pose).
+- **Gotchas**:
+  - A checkout has no full cuts, so the tests read them through the manifest (`crew.budget.test.js`, `crewList.test.js`, `sites/ice.test.js`).
+  - `git stash -u` takes the untracked imports with it.
+  - Prettier is not the repo's formatter: don't run it on a file.
 
 ## Lane S: streaming, both ways
 
@@ -283,3 +377,71 @@ OUT=/tmp/fx node scripts/bf2017-fx-shots.mjs hoth impact.snow,blast.grenade,push
 ```
 
 In the console on a surface: `__surface.fx('impact.snow')`, `__surface.fx('blast.walker')`, `__surface.fx('push')`, each with `{ look: 'site' }` for the site's own look alone. The tests need no keys: `npx vitest run src/lib/three/fx src/lib/sound scripts/lib/bf2017-fx.test.mjs src/lib/three/combat/bolts.test.js src/components/galaxy/fx.test.js`. Shots and numbers: `docs/superpowers/evidence/bf2017-effects/`.
+
+## Lane V: the vehicles, in depth
+
+The plan is `docs/superpowers/plans/2026-10-10-bf2017-phaseV-vehicles.md`; the cast, kind by kind, `docs/superpowers/evidence/bf2017-vehicles/cast.md`; the sheets and the measures, the same folder.
+
+### Done
+
+- **PR #828** (`claude/bf2017-vehicles`).
+- **The walkers on the game’s rigs.** `src/lib/three/ownRig.js` loads a figure on a skeleton of its own, in `crew.js`’s shape, and plays the game’s clips on its bones as they are. Nothing is retargeted, no bone is pruned or renamed, the walk is paced to the ground covered, and `react('down')` and `react('fire')` play the game’s death and shot. `src/lib/three/rigSets.js` names each rig’s clips under the site’s names: the AT-AT 8 (its tow-cable fall `die.cable`), the AT-ST 12, the AT-TE 10, the AT-RT 9, the droideka 17. `CLIP_FALLBACK` stays inside the rig, and `deathFor` picks the cable’s fall when the cable did it. `scripts/bf2017-rigclips.mjs` packs them at 24 fps, in place (the trajectory’s quarter turn folded into its children: `scripts/lib/rig-clips.mjs`), as `public/models/galaxy/bf2017/clips-<rig>.glb`: 259, 111, 323, 95 and 279 KB. `walkers.js` sends every kind whose model is the game’s through it. Nothing of the site’s rides a game rig (the owner, 2026-10-10): the AT-RT walks with its saddle empty until the game’s own clone trooper can sit it.
+- **The AT-ST bound to its skeleton.** The drop has it only as one rigid composite, and its 69 clips are on the cinematics’ `ATST_Ske01`. `bf2017-import.mjs --bind` skins it there, each piece of the mesh to one bone (`scripts/lib/rig-bind.mjs`). The AT-AT is the game’s own skinned `old/atat_mesh`; the gameplay composite bound the same way came to 4.0 MB with a plate that tore.
+- **Every vehicle the site places, the game’s.** Five walkers, eight ground vehicles and droids, six turrets, twenty fighters and fourteen cockpits are in `catalog/bf2017-vehicles.js`, a group of the lane’s own after `bf2017`. Each has a `.lod1` and a `.far` cut, and `scripts/bf2017-vehicles.mjs` lists the import of each. Each cockpit is stood in its hull’s frame (`--hull-frame`): 11 of 14 lie inside their hull’s bounds; the snowspeeder’s, A-wing’s and Slave I’s reach past by up to a metre where the canopy is.
+- **Native, as the game has them** (the owner, 2026-10-10: trust the game’s textures; fix the caps for the native files). Every kind is imported with phase 1’s `--native` (merged in from `claude/bf2017-phase1`, so this PR lands after #815): the game’s own KTX2, untouched, its top mip levels dropped for the lighter cuts (plain 1024, light 512, far 256 and its colour maps alone, ultra the game’s own size). The plain cut is the game’s first LOD under 60,000 triangles (`NATIVE_VEHICLE`; the AT-AT takes its LOD1, 61,900), the ultra its LOD0. The full cuts are in `site-assets` (194 files, 849 MB; `assets-check`: 338 of 338), out of git; a native kind draws its light cut alone at low and mid, the phone’s levels (`catalog/index.js`’s `modelUrlFor`).
+- **Why the game’s files had looked poor on the site, and the fix.** The pipeline did it, not the game:
+  - **The wrong UV set.** The drop’s GLBs bind every map to `TEXCOORD_0`, but the game’s vehicle shader reads its colour, normal and smoothness atlas through the set that unwraps the hull once; on the X-wing that is `TEXCOORD_1`, and through the other the atlas smeared into the grey and brown patchwork of the first sheets. `scripts/lib/bf2017-uv.mjs` tells the set by its area in UV space (about the square’s once, against a tiling set’s many: the X-wing’s fuselage 0.66 against 2.22; the TIE Advanced is the other way round). `xwing-uv-sets.webp` shows both.
+  - **Decals painted opaque.** A decal sheet blends in through the mask in its `_nam` map’s alpha; drawn opaque it painted patches over the hull. It now blends by that mask (lossless), and a normal-only decal, which glTF can’t express, is dropped (`scripts/lib/bf2017-dressing.mjs`).
+  - **Our restyling.** The metal cap (`relit`) is gone, nothing is re-encoded or resized but by dropping the game’s own mips, and the only maps made from the game’s pixels are the two glTF needs: a decal’s colour with its mask, and a packed `_ncs` map’s colour from its blue, both lossless.
+  - **What no file carries.** The game’s lighting, reflections and its tiling detail maps (`DetailNS`) are its renderer’s; lighting is the owner’s lane.
+- **The import learns lane V’s flags:** `--vehicle`; `--far`; `--bind`; `--hull-frame` (named apart from phase 1’s `--keep-origin`: grounded by the hull’s manifest box so a cockpit sits in its hull); `--light-maps` (the AT-TE’s fifteen maps put its light cut at 5.1 MB, over the 5 MB cap, at 512). The game’s glass is made glass and the MTT’s weak-point covers are dropped.
+- **The placer, for the bucket’s cuts.** A row that is `native` draws its `.lod1` first and swaps its level’s cut in under the same object when it lands (`cutsToLoad`, `swapIn`). An `.ultra` that can’t be had falls to the plain one (`fallbackFor`), as a walker’s does.
+- **The rides on the game’s 74-Z and X-34.** Their seats are measured off the models and tested against them (`rides.seat.test.js`); the chase’s scouts sit the same saddle.
+- **The fleets on the game’s fighters.** `scripts/bf2017-fleet.mjs` writes twelve ships over the space layer’s Sketchfab files, at the paths `galaxy/models.js` names: the TIE fighter, bomber and Advanced, the A-, Y- and U-wings, the N-1, ARC-170, vulture, tri-fighter, cloud car and the Nebulon-B, natively. They stay committed as well as published, as `galaxy/models.test.js` measures them. Their far-off copies are remade by `galaxy-lod.mjs`, which reads a native map’s colours from the game’s unpacked PNG.
+- **Rigs.** Every kind the drop has a skeleton for is on it: the five walkers with their clips, and the homing and dwarf spider droids on `GEO_HomingSpiderDroid_Skeleton` and `DwarfSpiderDroid_Ske`, kept whole, standing (the drop has no clips for them). The fighters, speeders and turrets have no skeleton in the drop.
+- **The deaths in lane F’s blasts.** A walker or droideka shot down (`activity.js`’s `dying`) plays its game death and goes up in `gameFx.explode` for its class (`walkers.js`’s `blastClass`: a walker’s, the droideka a speeder’s), through the scene’s own `gameFx`.
+- **anim-check knows the walkers’ feet** (`LeftFrontFoot`). On Hoth every AT-AT in view, and on Endor the AT-ST, reads 0 m/s of planted drift and none is at bind pose.
+
+### Where the code and the plan differed
+
+- `universe/shipModels.js` has no galaxy rows, and there is no instanced far-fighter path. The space layer’s rows are `galaxy/models.js`, which open PR #793 is changing, so the fleet is written at the files those rows name rather than by editing them. The far copies are `galaxy-lod.mjs`’s one-piece vertex-coloured ones, which the space layer’s LOD asks for, not the import’s `.far`.
+- `warpieces/hoth.js` is the space ion cannon, and nothing on the surface brings a walker down. The figure’s `react('down', { cable })` is ready, and a hostile walker or droideka shot down (`activity.js`) already plays its game death.
+- The plan’s “imperial cruiser” is the Arquitens light cruiser, and the gameplay capitals are kits placed by level data. The fleet’s capitals were compared with the space battles’ whole backdrop ships: the close-up Star Destroyer and Nebulon-B (Daniel Andersson’s, about 100,000 triangles) and the MC80 stay, being the better on the sheet (`fleet.webp`). The Nebulon-B’s plain cut is the game’s.
+- `bf2017-clips.mjs` was on phase 1’s branch, not main, so the `--skeleton` form is `scripts/bf2017-rigclips.mjs`, over its own pure module: **phase 1, fold it in** (or keep it beside yours).
+- The AT-M6 is The Last Jedi’s: left out by the standing rule.
+- The Falcon is the landmark mesh: the gameplay one names no maps in the drop.
+
+### Left
+
+- **The hooks the owner’s other lanes need**, in the files:
+  - **The walkers’ feet:** `RIGS[rig].feet` by the game’s bone names; a walker figure’s `bones` and `feet`.
+  - **A ride’s seat:** `rides.js`’s `seat` and `riders.js`’s `SEATS`, measured off the game’s models.
+  - **The muzzles:** the game’s own gun bones (the AT-AT’s `GunRotation`, `LeftSecGun`, `RightSecGun`; the AT-TE’s `Turret_Barrel`; the droideka’s `LeftGunMuzzle1/2`, `RightGunMuzzle1/2`; the AT-RT’s `Gun`), kept whole on the rigs.
+  - **Collision:** none was imported. The physics lanes (PR #817’s P0 to P4) take the vehicles from here; P3 does their physics.
+  - **Lighting, camera, HUD:** none was added, by the owner’s rule of 04:40.
+- **The cockpits on boarding**: the GLBs are in, each in its hull’s frame. Two places can wear them. The space layer’s cockpit view (`galaxy/scene.js`’s `buildCab`, the intro’s built cockpits) is PR #793’s file. A surface ride on a fighter does not exist yet: the snowspeeder on Hoth is the galactic-assault hand-off’s open row, and `sites/ice.js` is PR #795’s.
+- **A rule that brings a walker down**, and the tow cable to trip it (`quests.js`’s `trip` step exists; nothing emits it). The rope is `gameplay/vehicles/air/airspeeder/old/towcablerope_skinned_mesh`, on its own skeleton, with no clips.
+- **The AT-AT’s destruction skeletons** (`ATAT_Destruction_01_*`, one or three clips each): not wired, as nothing brings one down.
+- **The chase rider on the game’s clips** (`A_HM_SpeederBike_*`, the humanoid’s): phase 1’s walrus loader, once it is on main. The chase still sits figures.js’s built scout on the game’s 74-Z.
+- **The fallen AT-AT on Hoth** (`sites/ice.js`’s `walker` zone) is the game’s model rolled on its side in its bind pose. Its tow-cable death’s last frame would be the true pose, but the placer places statues.
+- **Engines on lane F’s effects**: the engine and thruster glow through `gameLook` for the rides and the fleets. A walker’s or droideka’s death already goes up in `gameFx.explode` (below).
+- **The AT-ST’s rig**: the drop has no skinned AT-ST, so its rigid mesh is skinned at import to the cinematics’ `ATST_Ske01` (one bone a piece). If the owner counts that binding as ours, it stands as a statue instead (drop `--bind`).
+- **Sounds**: the vehicles’ engines and footfalls when the game’s audio lands.
+- **The far fleet instanced**: the space layer draws each ship through its own `THREE.LOD`, a draw each. The game’s far copies keep that cost, and instancing is the fleet war’s own open item.
+- **Textures**: no map these vehicles name was `missing` on 2026-10-10.
+
+### Checking it
+
+```
+node scripts/bf2017-fetch.mjs manifest                 # and web/anims.jsonl, which bf2017-rigclips.mjs fetches itself
+node scripts/bf2017-rigclips.mjs --pack atat           # atst, atte, atrt, droideka
+node scripts/bf2017-vehicles.mjs --fetch               # every kind; or a kind, or --group walker|ground|turret|air|cockpit
+node scripts/bf2017-fleet.mjs && node scripts/galaxy-lod.mjs tie tiebomber tieadvanced awing ywing uwing n1 arc170 vulture trifighter cloudcar nebulon
+node scripts/assets-publish.mjs && node scripts/assets-check.mjs   # the native cuts to site-assets; commit the manifest and .gitignore
+node scripts/ride-points.mjs                                            # after re-importing the 74-Z or the X-34
+npx vite --port 5188 --strictPort --host 127.0.0.1 &
+node scripts/rig-shot.mjs public/models/galaxy/surface/atst.glb atst /tmp/atst.png idle,walk,die
+node scripts/anim-check.mjs --route '#/galaxy/hoth/surface' --do "__surfaceScene.put(261, 431)" --do "__surfaceScene.view([261, 14, 431], [283, 9, 510])" --range 150 --port 5188
+```
+
+The tests need no keys and no network: `npx vitest run src/lib/three/ownRig.test.js src/lib/three/rigSets.test.js scripts/lib/rig-clips.test.mjs scripts/lib/rig-bind.test.mjs scripts/lib/bf2017-dressing.test.mjs scripts/lib/bf2017-uv.test.mjs scripts/bf2017-import.vehicles.test.mjs scripts/bf2017-fleet.test.mjs src/components/galaxy/surface/walkers.test.js src/components/galaxy/surface/rides.seat.test.js src/components/galaxy/surface/catalog`.

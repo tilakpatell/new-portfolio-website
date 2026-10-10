@@ -3815,15 +3815,6 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
-  "meshy/mtt": {
-    "source": "https://www.meshy.ai",
-    "id": "01a114e3-ae77-73e2-913c-51fcebb0174a",
-    "name": "the MTT, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
-    "authors": [
-      "Tilak Patel, with Meshy AI"
-    ],
-    "license": "Meshy paid-plan output, owned by the site owner"
-  },
   "meshy/nexu": {
     "source": "https://www.meshy.ai",
     "id": "01a114d2-ec16-70c4-b693-99758cd8a4d6",
@@ -3855,15 +3846,6 @@
     "source": "https://www.meshy.ai",
     "id": "01a114e3-b5a1-772c-9ba2-496e7949e957",
     "name": "the desert skiff, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
-    "authors": [
-      "Tilak Patel, with Meshy AI"
-    ],
-    "license": "Meshy paid-plan output, owned by the site owner"
-  },
-  "meshy/stap": {
-    "source": "https://www.meshy.ai",
-    "id": "01a114e3-b955-7059-93e0-2d5f5d5e0512",
-    "name": "the STAP, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
