@@ -9,6 +9,7 @@
 //
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs manifest
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs <name> [--lod all|<n>[,<n>…]] [--parts '<glob>,…'] [--no-textures] [--collision]
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs --all '<glob over name>' [--verify] [--pool 6] [--no-textures] [--no-collision]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --list '<glob over name>'
 //
 //   manifest     web/models.jsonl (about 25 MB), which every other command reads
@@ -17,7 +18,17 @@
 //   parts        globs over the model's folder for the parts that go with it ('*_cape_mesh,*_hands_mesh')
 //   no-textures  the GLBs only
 //   collision    its collision GLB as well
+//   all          every model under a glob, whole (LODs, collision, maps), one
+//                summary line: fetched · kept · missing · failed · MB · s;
+//                exit 1 only on a failure, never on a missing
+//   verify       trust no index: measure every file again, fetch what's wrong
+//   pool         how many requests at once (6)
 //   list         the names under a glob, with their LOD triangles
+//
+// Every request goes through scripts/lib/pool.mjs (retries, backoff, a
+// timeout by size, a .part renamed when whole), so a cut-off run leaves no
+// half file and the next one resumes; lab/assets/bf2017/.index.json writes
+// down what is on disk, so a second pass over a set asks for nothing it has.
 //
 // The keys: SUPABASE_URL and BF2017_KEY (or SUPA_KEY, the same key under the
 // name the cloud sessions hold it by) from the environment, never printed.
@@ -25,19 +36,18 @@
 // error: the upload is still running, and the import says what it lacks.
 
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { partsOf, readManifest } from './lib/bf2017-manifest.mjs';
-import { imageUris, inBucket, localPath, objectUrl, textureSources } from './lib/bf2017-paths.mjs';
+import { globMatch, imageUris, inBucket, isCurrent, jobsFor, localPath, objectUrl, readIndex, summaryLine, textureSources, writeIndex } from './lib/bf2017-paths.mjs';
+import { createPool } from './lib/pool.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BUCKET = 'bf2017-assets';
 const MANIFEST = 'web/models.jsonl';
-const WAITS = [1000, 2000, 4000];
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const INDEX = '.index.json';
 
 function keys() {
   const base = process.env.SUPABASE_URL;
@@ -49,41 +59,51 @@ function keys() {
   return { base, headers: { apikey: key, Authorization: `Bearer ${key}` } };
 }
 
-// One request, retried on a network fault or a server error; a 4xx is an
-// answer (Supabase says 400 for an object it hasn't got), not a fault.
-async function ask(url, init) {
-  for (let i = 0; ; i++) {
-    try {
-      const res = await fetch(url, init);
-      if (res.status < 500) return res;
-      if (i >= WAITS.length) return res;
-    } catch (e) {
-      if (i >= WAITS.length) throw e;
-    }
-    await sleep(WAITS[i]);
-  }
-}
+// Every request goes through one pool (scripts/lib/pool.mjs): six at once,
+// each retried on a fault, a 429 or a 5xx, written to a .part and renamed
+// when whole. Supabase answers 400 (and sometimes 404) for an object it
+// hasn't got: that is `missing`, the upload not there yet, not a failure.
+let shared = null;
+const poolOf = (size = 6) => (shared ??= createPool({ size, missing: [400, 404] }));
 
-// One object to disk: `kept` when the file there is the size the bucket says,
-// `missing` when the bucket hasn't it.
-async function getObject(env, root, bucketPath) {
+// What this run did, for the summary line and the index.
+const run = { fetched: 0, kept: 0, missing: 0, failed: 0, bytes: 0, index: null, verify: false, root: null };
+const sizeOf = async (file) => (existsSync(file) ? (await stat(file)).size : null);
+const note = (r) => {
+  run[r.state]++;
+  if (r.state === 'fetched') run.bytes += r.bytes;
+  return r;
+};
+
+// One object to disk. `kept`: the index wrote it down at the size it is (no
+// request at all), or the bucket's content-length is its size. `missing`:
+// the bucket hasn't it. `failed`: the pool gave up (the line says why).
+// `size`: the manifest's bytes, a guess for the timeout only (the uploader
+// re-encoded the GLBs after writing them down, so the bucket's are smaller;
+// the body is held to the response's own content-length). With --verify the
+// index is not trusted: every file is asked about again and one that is
+// wrong is fetched again.
+async function getObject(env, root, bucketPath, { size = null } = {}) {
   const url = objectUrl(env.base, BUCKET, bucketPath);
   const file = localPath(root, bucketPath);
-  if (existsSync(file)) {
-    const head = await ask(url, { method: 'HEAD', headers: env.headers });
-    const size = (await stat(file)).size;
-    if (head.ok && Number(head.headers.get('content-length')) === size) return { file, bytes: size, state: 'kept' };
-    if (!head.ok) return { file, bytes: 0, state: 'missing' };
+  const index = run.index ?? {};
+  const onDisk = await sizeOf(file);
+  if (onDisk != null) {
+    if (!run.verify && isCurrent(index, bucketPath, null, onDisk)) return note({ file, bytes: onDisk, state: 'kept' });
+    const head = await poolOf().run({ url, method: 'HEAD', headers: env.headers });
+    if (head.status === 'missing') return note({ file, bytes: 0, state: 'missing' });
+    if (head.status === 'fetched' && Number(head.headers.get('content-length')) === onDisk) {
+      index[bucketPath] = { bytes: onDisk, at: new Date().toISOString() };
+      return note({ file, bytes: onDisk, state: 'kept' });
+    }
   }
-  const res = await ask(url, { headers: env.headers });
-  if (!res.ok) return { file, bytes: 0, state: 'missing' };
-  const body = Buffer.from(await res.arrayBuffer());
-  await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, body);
-  return { file, bytes: body.length, state: 'fetched' };
+  const got = await poolOf().run({ url, headers: env.headers, size, to: file });
+  if (got.status === 'fetched') index[bucketPath] = { bytes: got.bytes, at: new Date().toISOString() };
+  else if (got.status === 'missing') delete index[bucketPath];
+  return note({ file, bytes: got.bytes, state: got.status, error: got.error });
 }
 
-const say = (r) => console.log(`${relative(ROOT, r.file).padEnd(110)} ${String(r.bytes).padStart(10)}  ${r.state}`);
+const say = (r) => console.log(`${relative(ROOT, r.file).padEnd(110)} ${String(r.bytes).padStart(10)}  ${r.state}${r.error ? `  (${r.error})` : ''}`);
 
 async function loadManifest(root) {
   const file = localPath(root, MANIFEST);
@@ -95,13 +115,53 @@ async function loadManifest(root) {
 }
 
 // A texture by its sources, best first: the first the bucket holds.
-async function getTexture(env, root, bucketPath) {
+async function getTexture(env, root, bucketPath, sources = textureSources(bucketPath)) {
   let last = null;
-  for (const src of textureSources(bucketPath)) {
+  for (const src of sources) {
     last = await getObject(env, root, src);
     if (last.state !== 'missing') return last;
+    // (each source asked and not there counted once, as the texture's miss below)
+    run.missing--;
   }
-  return { file: localPath(root, bucketPath), bytes: 0, state: 'missing' };
+  return note({ file: localPath(root, bucketPath), bytes: 0, state: 'missing', error: last?.error });
+}
+
+// The textures a fetched GLB names that the manifest didn't (the uploader's
+// derived maps), each once a run.
+async function texturesOf(env, root, r, glbBucketPath, seen) {
+  if (r.state === 'missing' || r.state === 'failed') return [];
+  let uris = [];
+  try {
+    uris = imageUris(await readFile(r.file), glbBucketPath);
+  } catch {
+    return [];
+  }
+  const fresh = uris.filter((u) => !seen.has(u));
+  for (const u of fresh) seen.add(u);
+  return Promise.all(
+    fresh.map(async (u) => {
+      const t = await getTexture(env, root, u);
+      say(t);
+      return t;
+    }),
+  );
+}
+
+// A whole set at once (`--all '<glob>'`): every LOD, collision mesh and map
+// of every model whose name matches, through the pool, then the maps the
+// GLBs name besides. One line a file, one summary line.
+export async function fetchAll(env, root, manifest, glob, { textures = true, collision = true } = {}) {
+  const jobs = jobsFor(manifest, glob, { textures, collision });
+  const seen = new Set(jobs.filter((j) => j.kind === 'texture').flatMap((j) => [j.path, ...j.sources]));
+  const results = await Promise.all(
+    jobs.map(async (j) => {
+      const r = j.kind === 'texture' ? await getTexture(env, root, j.path, j.sources) : await getObject(env, root, j.path, { size: j.size });
+      say(r);
+      const more = textures && j.kind === 'model' ? await texturesOf(env, root, r, j.path, seen) : [];
+      return [r, ...more];
+    }),
+  );
+  return results.flat();
 }
 
 export async function fetchModel(env, root, manifest, name, { lod = 'all', parts = null, textures = true, collision = false } = {}) {
@@ -109,52 +169,77 @@ export async function fetchModel(env, root, manifest, name, { lod = 'all', parts
   if (!entry) throw new Error(`${name}: not in the manifest (try --list)`);
   const want = lod === 'all' ? null : new Set(String(lod).split(',').map(Number));
   const entries = [entry, ...(parts ? partsOf(manifest, name, parts.split(',')) : [])];
-  const results = [];
   const seen = new Set();
-  for (const e of entries) {
-    for (const l of e.lods) {
-      if (want && !want.has(l.lod)) continue;
-      const r = await getObject(env, root, inBucket(l.file));
-      say(r);
-      results.push(r);
-      if (!textures || r.state === 'missing') continue;
-      for (const uri of imageUris(await readFile(r.file), inBucket(l.file))) {
-        if (seen.has(uri)) continue;
-        seen.add(uri);
-        const t = await getTexture(env, root, uri);
-        say(t);
-        results.push(t);
-      }
-    }
-    if (collision && e.collision?.file) {
-      const r = await getObject(env, root, inBucket(e.collision.file));
-      say(r);
-      results.push(r);
-    }
+  const results = await Promise.all(
+    entries.flatMap((e) => [
+      ...e.lods
+        .filter((l) => !want || want.has(l.lod))
+        .map(async (l) => {
+          const r = await getObject(env, root, inBucket(l.file), { size: l.bytes ?? null });
+          say(r);
+          return [r, ...(textures ? await texturesOf(env, root, r, inBucket(l.file), seen) : [])];
+        }),
+      ...(collision && e.collision?.file
+        ? [
+            (async () => {
+              const r = await getObject(env, root, inBucket(e.collision.file), { size: e.collision.bytes ?? null });
+              say(r);
+              return [r];
+            })(),
+          ]
+        : []),
+    ]),
+  );
+  return results.flat();
+}
+
+// The index read before a run and written after it, and the summary line.
+async function withIndex(root, verify, work) {
+  const file = join(root, INDEX);
+  run.index = await readIndex(file);
+  run.verify = verify;
+  const t0 = Date.now();
+  try {
+    return await work();
+  } finally {
+    await writeIndex(file, run.index).catch((e) => console.error(`couldn't write the index: ${e.message}`));
+    console.log(summaryLine({ ...run, seconds: (Date.now() - t0) / 1000 }));
   }
-  return results;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
   const root = join(ROOT, 'lab', 'assets', 'bf2017');
   const [what] = args._;
+  if (args.pool) poolOf(Math.max(1, Number(args.pool) || 6));
   if (args.list) {
     const manifest = await loadManifest(root);
-    const re = new RegExp(`^${String(args.list).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
-    for (const [name, e] of manifest) if (re.test(name)) console.log(`${name}  ${e.lods.map((l) => l.triangles).join(' · ')}`);
+    const match = globMatch(args.list);
+    for (const [name, e] of manifest) if (match(name)) console.log(`${name}  ${e.lods.map((l) => l.triangles).join(' · ')}`);
+  } else if (typeof args.all === 'string') {
+    const env = keys();
+    const manifest = await loadManifest(root);
+    // (exit 1 on a failure only: a `missing` is the upload not there yet)
+    await withIndex(root, Boolean(args.verify), () => fetchAll(env, root, manifest, args.all, { textures: !args.noTextures, collision: !args.noCollision }));
+    process.exit(run.failed > 0 ? 1 : 0);
   } else if (what === 'manifest') {
-    say(await getObject(keys(), root, MANIFEST));
+    const env = keys();
+    // (always asked again: the upload keeps adding to it)
+    await withIndex(root, true, async () => say(await getObject(env, root, MANIFEST)));
+    process.exit(run.failed > 0 ? 1 : 0);
   } else if (what) {
     const env = keys();
     const manifest = await loadManifest(root);
     // (`--no-textures` reads as noTextures)
-    await fetchModel(env, root, manifest, what, { lod: args.lod ?? 'all', parts: typeof args.parts === 'string' ? args.parts : null, textures: !args.noTextures, collision: Boolean(args.collision) }).catch((e) => {
+    await withIndex(root, Boolean(args.verify), () =>
+      fetchModel(env, root, manifest, what, { lod: args.lod ?? 'all', parts: typeof args.parts === 'string' ? args.parts : null, textures: !args.noTextures, collision: Boolean(args.collision) }),
+    ).catch((e) => {
       console.error(e.message);
       process.exit(1);
     });
+    process.exit(run.failed > 0 ? 1 : 0);
   } else {
-    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] | --list '<glob>'");
+    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] [--verify] | --all '<glob>' [--verify] [--pool 6] [--no-textures] [--no-collision] | --list '<glob>'");
     process.exit(1);
   }
 }
