@@ -1,6 +1,7 @@
 import { budget } from '../../../../lib/budgets';
 import { MODELS as audit } from './audit';
 import { MODELS as battlefront } from './battlefront';
+import { MODELS as bf2017 } from './bf2017';
 import { MODELS as common } from './common';
 import { MODELS as clonewars } from './clonewars';
 import { MODELS as core } from './core';
@@ -21,8 +22,9 @@ import { MODELS as three } from './three';
 // (each group's catalogue is brought in by scripts/sketchfab-surface.mjs on
 // its own). A world asks for a kind; one that isn't here (yet) it builds in
 // code, or goes without.
-// (battlefront last: a kind there takes over from the same kind's Sketchfab model)
-export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, people, outer, rebels, three, quaternius, made, fill, library, audit, battlefront };
+// (battlefront near the end: a kind there takes over from the same kind's
+// Sketchfab model; bf2017 last, so a 2017 kind takes over from both)
+export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, people, outer, rebels, three, quaternius, made, fill, library, audit, battlefront, bf2017 };
 export const SURFACE_MODELS = Object.fromEntries(Object.entries(GROUPS).flatMap(([group, models]) => Object.entries(models).map(([kind, m]) => [kind, { ...m, group }])));
 export const surfaceUrl = (kind) => `/models/galaxy/surface/${kind}.glb`;
 export const surfaceLodUrl = (kind) => `/models/galaxy/surface/${kind}.lod1.glb`;
