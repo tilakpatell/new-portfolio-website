@@ -259,7 +259,7 @@ create extension if not exists btree_gist;
 
 -- the planets a thing may be built on (50 at launch: supabase/seed.sql)
 create table if not exists public.planets (
-  id   text primary key check (id ~ '^[a-z0-9:_,-]{1,64}$'),
+  id   text primary key check (id ~ '^[A-Za-z0-9:_,-]{1,64}$'),
   name text not null,
   type text not null,
   seed text not null
@@ -309,7 +309,7 @@ create trigger world_entities_touch before update on public.world_entities for e
 create or replace function public.check_placement() returns trigger language plpgsql as $$
 declare cap constant integer := 200;
 begin
-  if exists (select 1 from public.pois p where p.planet_id = new.planet_id and ST_DWithin(p.geom, new.geom, p.r)) then
+  if exists (select 1 from public.pois p where p.planet_id = new.planet_id and ST_DWithin(p.geom, ST_MakePoint(new.x, new.z), p.r)) then
     raise exception 'inside a point of interest' using errcode = 'check_violation';
   end if;
   if (select count(*) from public.world_entities e where e.owner = new.owner and e.planet_id = new.planet_id) >= cap then
@@ -379,7 +379,7 @@ grant execute on function public.damage_entity(uuid, integer) to authenticated;
 alter publication supabase_realtime add table public.world_entities;
 ```
 
-Notes the implementer keeps: `ST_MakePoint` is immutable, so the generated column is allowed; `ST_DWithin` on SRID 0 is in the table's own units (metres); the composite GiST needs `btree_gist`; anonymous users sign in through `supabase.auth.signInAnonymously()` and are role `authenticated` (enable anonymous sign-ins in the project's Auth settings); `security invoker` on the RPC means the read policy applies; the rate limit in `damage_entity` is per caller, not per socket, which is the right side of the trust line for a public anon key.
+Notes the implementer keeps: a stored generated column is still NULL in a `BEFORE` trigger, so `check_placement` makes the point from `new.x, new.z` (repaired by `20261009000100_placement_reads_x_z.sql`); `ST_MakePoint` is immutable, so the generated column is allowed; `ST_DWithin` on SRID 0 is in the table's own units (metres); the composite GiST needs `btree_gist`; anonymous users sign in through `supabase.auth.signInAnonymously()` and are role `authenticated` (enable anonymous sign-ins in the project's Auth settings); `security invoker` on the RPC means the read policy applies; the rate limit in `damage_entity` is per caller, not per socket, which is the right side of the trust line for a public anon key.
 
 ### The loader (`entityLoader.js`)
 
