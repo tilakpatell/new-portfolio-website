@@ -112,6 +112,8 @@ The audit (`node scripts/galaxy-figures-audit.mjs`) lists 102 kinds. Write `cast
 
 ### Task 5: The own-rig cast: B1, B2, droideka, ewok, astromech, probe, tauntaun
 
+*Lane V (`-phaseV-vehicles.md`, task 2) writes `src/lib/three/ownRig.js` and the `--skeleton` form of `bf2017-clips.mjs` for the walkers; if it has merged by the time this task runs, reuse them and add the rigs below to `rigSets.js`; if not, write them here and lane V reuses yours. Merge main first and look.*
+
 **Files:**
 - Create: `src/lib/three/ownRig.js`, `ownRig.test.js`, `public/models/galaxy/bf2017/clips-<rig>.glb` per rig (`b1`, `b2`, `droideka`, `ewok`, `astromech`, `tauntaun`), the bodies under `crew/`
 - Modify: `scripts/bf2017-clips.mjs` (a pack for a named skeleton other than the walrus: `--skeleton <manifest skeleton path>`, the map for it in `walrusClips.js`'s `PACKS` as `RIG_SET(rig)`), `crew.js` (`rig: 'own'` rows with `skeleton` and `packs` go through `ownRig.js`)
