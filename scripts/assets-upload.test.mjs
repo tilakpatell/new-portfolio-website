@@ -119,6 +119,17 @@ describe('the asset upload', () => {
     expect(bucket.calls.remove).toEqual(['000000000000/kit/old.glb']);
   });
 
+  it('never prunes a game-derived file the publish put in the same bucket', async () => {
+    const root = tree();
+    const big = hashOf(bytes(70_000, 1));
+    const rock = hashOf(bytes(90_000, 2));
+    mkdirSync(join(root, 'src/data'), { recursive: true });
+    writeFileSync(join(root, 'src/data/galaxyAssets.json'), JSON.stringify({ 'models/galaxy/crew/luke.glb': { hash: 'dddddddddddd', bytes: 5, from: 'x', tier: 'crew' } }));
+    const bucket = fakeBucket([`${big}/kit/big.glb`, `${rock}/hq/tex/rock.jpg`, 'dddddddddddd/models/galaxy/crew/luke.glb', '000000000000/kit/old.glb']);
+    await run({ root, argv: ['--prune'], env: {}, bucket, deployed: {}, log: () => {} });
+    expect(bucket.calls.remove).toEqual(['000000000000/kit/old.glb']);
+  });
+
   it('never prunes what the deployed manifest still names', () => {
     const files = [{ path: 'kit/a.glb', hash: 'aaaaaaaaaaaa', bytes: 1 }];
     const deployed = { 'kit/a.glb': { hash: '000000000000', bytes: 1 } };

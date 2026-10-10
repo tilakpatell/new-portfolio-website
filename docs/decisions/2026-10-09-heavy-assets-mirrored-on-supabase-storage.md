@@ -17,6 +17,8 @@ The files a pack names under the listed folders, of a heavy kind and 64 KB or mo
 - A world installed for offline play holds the bucket's copies under their remote URLs; the service worker serves them, and serves them too for the site's path after a fallback.
 - The free tier (1 GB stored, about 5 GB out a month) holds the set but not the site's traffic: Pro before `ASSET_BASE` is set for everyone.
 
+- 2026-10-10 (lane S, `docs/decisions/2026-10-10-battlefront-2017-assets.md`): the bucket is `site-assets` (`assets` was never made), shared with the game-derived files; `src/data/galaxyAssets.json` holds those remote-only entries (manifest committed, files not), the build merges it with this manifest into the one the loaders read, and `--prune` spares what it names.
+
 ## Revisit when
 
 - Egress costs more than the gain in load time: unset `ASSET_BASE` and the site is as it was.
