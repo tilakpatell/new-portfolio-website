@@ -69,3 +69,14 @@ Kamino’s space level (`Levels/Space/SB_Kamino_01`), read the same way: the Sep
 - **HvV, the game as played**: a target a side, drawn at the start and again when one falls; only a target's death scores; **10 points** win; 4 a side; 10 s to come back; 10 s out of the arena and you're down.
 - **HvV, the bots' tuning** (measured, not the game's): a saber stroke takes 150 of a hero's health, lands 0.35 s into it; a blaster bot fires a burst at its gun's rate but no more often than every 1.2 s (the guns' trigger rates are a player's: Lando's 400 a minute out-shot everyone), hits 75 % point blank to 30 % at 60 m, a saber hero turns 70 % of what it sees; one of yours takes 100; the enemy's target counts 40 m nearer when a bot picks its mark. The heroes' health, healing and guns are the rulebooks' (`bf2017Abilities.json`, `heroes.json`'s regen, `weapons.json`).
 - **Blast, the game as played**: **100 kills**, 10 a side (the tier's soldiers cap it). Tuning: a soldier's hit takes 14 more than the assault's (three hits down, not four), they roam within 0.3 of the ground's size round the point halfway between the two sides' spawns, and come back at the level's spawn nearest that point with no enemy within 30 m.
+
+## Squads (`squads.json`, read by `lib/battlefront/ai/squad.js` and `spawn.js`)
+
+`squads.json` is read from the game (`scripts/lib/bf2017-rulebook-squads.mjs`); what the code around it adds by hand:
+
+- `IN_COMBAT` 5 s (`spawn.js`): how long a soldier hit, or hitting, cannot be spawned on. The game names what puts a soldier in combat (the killswitches `Online/Killswitches/SquadSpawn_InCombat_When*`, kept as `inCombat`) but keeps no time for it.
+- The leader (`ai/squad.js`): the first bot alive, else the first alive, so the bots keep to the commander’s order and not the player’s. The game’s squad leading is native code.
+- `joinSquad` (`ai/squad.js`): a player takes the team’s first squad with room; with every squad full, the last bot of the first squad moves to a new one. The game’s parties and auto-partners (`AutoPartnerEntityData`, `TacticalGroupManagerEntityData`) are native code.
+- The squad-spawn Battle Points stay `points.json`’s `earn.squadSpawn` 25: `UI/MetaData/ScoreUIMetaData` has the award “SQUAD SPAWN ON YOU” (identifier 2793359391) but `Persistence/Scoring/MPScoring` holds no score for it.
+- The palette picks’ roles (`hud.palette`): the picks are the records’, in order; which feeds the name and which the icon is read by hand from the cell’s hashed graph (`docs/superpowers/evidence/battlefront-lane5b/research-squad.md`).
+- An order’s letter is the objective’s place (A for the first), as the page names its objectives.
