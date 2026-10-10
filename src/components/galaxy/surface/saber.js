@@ -29,7 +29,7 @@
 // (`guard`, for lib/combat/bolt.js's step), one beside it isn't.
 //
 //   createSaber(gp, { color, hilt, stance, parent, sound, fig, clips }) →
-//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), cancel(), block(on), throw(now, dir),
+//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), cancel(), block(on), throw(now, dir, how?),
 //       stand(dt, now, move), update(dt, now, { forward, up, me, targets, hit }),
 //       guard(id, side) (the raised blade for the bolts' step, and what
 //       meets a duellist's contact: { id, base, tip, r, side } | null), lit, busy, swinging (the stroke: { name (the
@@ -340,7 +340,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
 
   const fly = (dt, now, pose_, targets, hit) => {
     const th = st.thrown;
-    const k = (now - th.t0) / SABER.throw.dur;
+    const k = (now - th.t0) / th.how.dur;
     if (k >= 1) {
       // caught
       holder.add(gun);
@@ -362,9 +362,9 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     for (const t of targets) {
       if (th.hits.has(t)) continue;
       const p = t.holder.position;
-      if (Math.hypot(p.x - gun.position.x, p.z - gun.position.z) < SABER.throw.radius + radiusOf(t) && Math.abs(p.y + 1 - gun.position.y) < 2.5) {
+      if (Math.hypot(p.x - gun.position.x, p.z - gun.position.z) < th.how.radius + radiusOf(t) && Math.abs(p.y + 1 - gun.position.y) < 2.5) {
         th.hits.add(t);
-        hit?.(t, SABER.throw.damage, gun.position, { thrown: true });
+        hit?.(t, th.how.damage, gun.position, { thrown: true });
       }
     }
     // the arm out after it, the hand open to take it back
@@ -556,7 +556,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       const f = segs[0]?.history().at(-1);
       return f ? { id, base: f.base, tip: f.tip, r: DEFLECT_R, side } : null;
     },
-    throw(now, dir) {
+    // (how: the throw's numbers, saberRules.js's SABER.throw unless a hero has its own: abilityRules.js's throwOf)
+    throw(now, dir, how = SABER.throw) {
       if (st.thrown || st.swing || !holder || gun.parent !== holder) return false;
       this.light(true);
       gun.updateWorldMatrix(true, false);
@@ -564,7 +565,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       const flat = new V(dir.x, 0, dir.z);
       if (flat.lengthSq() < 1e-6) flat.set(0, 0, 1);
       (parent ?? gun.parent.parent).attach(gun);
-      st.thrown = { t0: now, from, dir: flat.normalize(), hits: new Set() };
+      st.thrown = { t0: now, from, dir: flat.normalize(), hits: new Set(), how };
       st.swing = null;
       sound?.('throw');
       return true;

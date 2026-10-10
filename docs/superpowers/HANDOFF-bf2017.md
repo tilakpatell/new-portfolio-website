@@ -32,7 +32,12 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline
   - The clip packs carry each clip's game name exactly in `extras.source`, which lane X asked for.
   - Ten hilts and three hero blasters, `--keep-origin`, at the game's own maps; `HILTS` wear them; the saber and gunplay put the weapon in `Wep_Root` on a 2017 figure, the clip's arms and fingers holding it, the aim on the chest.
 
+- **The heroes' abilities from the game's gameplay data** (after phase 1): `scripts/bf2017-abilities.mjs` (pure part `scripts/lib/bf2017-abilities.mjs`, fixture `scripts/fixtures/bf2017/abilities/`) reads each hero's kit (`GP_Hero_<Hero>`), its abilities' times and modifiers, the prefabs' graphs (field hashes decoded: djb2 with xor), the affectors they apply (damage by rank, to a hero or a trooper by the heroes' descriptor filter) and the hero's own hit points, into `src/data/bf2017Abilities.json` (16 heroes, 50 abilities, 26 KB, each number with where it came from). `surface/abilityRules.js` makes cards of them at the game's numbers (a trooper's 150 is a stormtrooper's hp 2 here: `GAME_HP` 75); `surface/powers.js` plays the ones that last or draw (choke, held lightning, chain lightning, lightning stun, repulse and slam, rush, rage, exposed weakness); Obi-Wan, Anakin, Vader, the Emperor, Maul and Dooku joined the roster (`heroes.js`). Seven packs re-made with the kits' clips (`walrusClips.js`'s `force.*` and `saber.throw`; every older clip the same in channels, frames and extras): Vader +3, Maul +3, Palpatine +3, Dooku +2, Anakin +2, Luke +1, Chewie +1.
+
 ## Left
+
+- **Abilities the data doesn't give a number for**, so the site's stand in (`abilityRules.js` names each): a rush's distance (the game moves the hero by its clip's root motion), a choke's lift, the held lightning's meter and tick, chain lightning's leaps, a lightning stun's length, Vader's throw range (output 975835047, unnamed), the Emperor's electrocute damage (its affector's ranks are 0; the damage comes from a DamageUnlock not in the drop). Output hashes no prefab names plainly (824196892, 2540124558, 1209176742, 318822392, 1736361408, 1839311751, 3649387485, 4153564376, 3860256841, 1085079986, 1845711460, 1724747203, 900427946, 838726700) are left out of the file.
+- **The kits' third abilities** the two keys leave out (heroes.js's comment lists them); Yoda's and Grievous's kits are in the file, waiting on their own rigs; Lando's and Bossk's too, waiting on a place in the roster.
 
 In order:
 

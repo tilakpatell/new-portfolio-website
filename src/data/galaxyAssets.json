@@ -1,85 +1,85 @@
 {
   "models/galaxy/bf2017/clips-anakin.glb": {
-    "hash": "e310bcc8cb8d",
-    "bytes": 1219288,
+    "hash": "eb588371ba92",
+    "bytes": 1291596,
     "from": "models/galaxy/bf2017/clips-anakin.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-bobafett.glb": {
-    "hash": "77a07a9825a1",
-    "bytes": 144928,
+    "hash": "4e0c74629169",
+    "bytes": 144828,
     "from": "models/galaxy/bf2017/clips-bobafett.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-bossk.glb": {
-    "hash": "120f096d2587",
-    "bytes": 118452,
+    "hash": "69b29cbf2be8",
+    "bytes": 118388,
     "from": "models/galaxy/bf2017/clips-bossk.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-chewie.glb": {
-    "hash": "a19c9ca02ac4",
-    "bytes": 143116,
+    "hash": "a3f3e2b4e1c9",
+    "bytes": 168824,
     "from": "models/galaxy/bf2017/clips-chewie.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-dooku.glb": {
-    "hash": "0b0eb6da129c",
-    "bytes": 1182508,
+    "hash": "9e26065a79c9",
+    "bytes": 1240924,
     "from": "models/galaxy/bf2017/clips-dooku.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-han.glb": {
-    "hash": "1b09f7c6ed58",
-    "bytes": 94184,
+    "hash": "31f66dcc2e78",
+    "bytes": 94152,
     "from": "models/galaxy/bf2017/clips-han.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-humanoid.glb": {
-    "hash": "cb18d1366708",
-    "bytes": 864868,
+    "hash": "6d9ff1254a22",
+    "bytes": 863976,
     "from": "models/galaxy/bf2017/clips-humanoid.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-lando.glb": {
-    "hash": "30198e241b69",
-    "bytes": 95492,
+    "hash": "20e6a9f3ef07",
+    "bytes": 95460,
     "from": "models/galaxy/bf2017/clips-lando.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-leia.glb": {
-    "hash": "401296620ebb",
-    "bytes": 95000,
+    "hash": "9dc506933577",
+    "bytes": 94968,
     "from": "models/galaxy/bf2017/clips-leia.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-luke.glb": {
-    "hash": "53a3d48b8a44",
-    "bytes": 1355920,
+    "hash": "ae3272e90473",
+    "bytes": 1384564,
     "from": "models/galaxy/bf2017/clips-luke.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-maul.glb": {
-    "hash": "fdda678c48ca",
-    "bytes": 1208620,
+    "hash": "5a2ae539c234",
+    "bytes": 1302748,
     "from": "models/galaxy/bf2017/clips-maul.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-obiwan.glb": {
-    "hash": "89aa906e5676",
-    "bytes": 1096484,
+    "hash": "237361d10153",
+    "bytes": 1095224,
     "from": "models/galaxy/bf2017/clips-obiwan.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-palpatine.glb": {
-    "hash": "9e73f58e15ba",
-    "bytes": 470448,
+    "hash": "cf7c5efa8493",
+    "bytes": 591680,
     "from": "models/galaxy/bf2017/clips-palpatine.glb",
     "tier": "pack"
   },
   "models/galaxy/bf2017/clips-vader.glb": {
-    "hash": "6067273fdbeb",
-    "bytes": 1301520,
+    "hash": "5edb878f0885",
+    "bytes": 1391588,
     "from": "models/galaxy/bf2017/clips-vader.glb",
     "tier": "pack"
   },
