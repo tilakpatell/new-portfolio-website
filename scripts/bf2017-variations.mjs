@@ -156,7 +156,9 @@ async function main() {
   const tex = {};
   for (const r of rows.filter((x) => x.use)) {
     r.variations[r.use].materials.forEach((m, i) => {
-      for (const [slot, path] of Object.entries(m.textures)) if (path && path !== r.default?.[i]?.textures?.[slot]) maps[path] = null;
+      // (the default's textures whatever slot names them: the GLB wears those)
+      const def = new Set(Object.values(r.default?.[i]?.textures ?? {}));
+      for (const path of Object.values(m.textures)) if (path && !def.has(path)) maps[path] = null;
     });
   }
   for (const path of Object.keys(maps)) {

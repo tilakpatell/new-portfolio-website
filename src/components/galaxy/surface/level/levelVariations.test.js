@@ -109,3 +109,13 @@ describe('variationsIndex', () => {
     expect(variationsIndex(pack, null)).toBe(null);
   });
 });
+
+describe('applyVariation: the default by texture, not by slot name', () => {
+  it('does not re-bind a texture the default already binds under another slot name', () => {
+    const v = { name: 'Container_L_01_DynamicColor', defaults: [{ textures: { _CS: CS, _NAM_texcoord0: NAM } }], materials: [{ textures: { _BaseColor: CS, _Normal: NAM }, vectors: { PaintColour: [1, 0, 0, 1] } }] };
+    const r = applyVariation(props, v, 0);
+    expect(r.maps.color).toBeUndefined();
+    expect(r.maps.normal).toBeUndefined();
+    expect(r.variation.vectors.PaintColour).toEqual([1, 0, 0, 1]);
+  });
+});

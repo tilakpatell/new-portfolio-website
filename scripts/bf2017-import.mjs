@@ -169,11 +169,26 @@ export function parseTextures(text) {
 // variationTextures(records, mesh) → { '#<i>': [{ slot, name }] }
 export function variationTextures(records, mesh) {
   const out = {};
-  (meshBindings(records, mesh) ?? []).forEach((list, i) => {
+  const bound = meshBindings(records, mesh);
+  if (!bound) return out;
+  // (the mesh and its material count, so a part's GLB or one that dropped a
+  // material takes none of them: indexBindings)
+  out['#mesh'] = String(mesh).toLowerCase();
+  out['#count'] = bound.length;
+  bound.forEach((list, i) => {
     const keep = list.filter((b) => ['color', 'normal', 'emissive'].includes(b.slot)).map(({ slot, name }) => ({ slot, name }));
     if (keep.length) out[`#${i}`] = keep;
   });
   return out;
+}
+
+// the index bindings a GLB file takes: only the database's own mesh's files,
+// and only when the GLB has as many materials as the entry (else the
+// indices may not line up)
+export function indexBindings(textures, file, count) {
+  if (!textures?.['#mesh'] || textures['#count'] !== count) return {};
+  if (!String(file).toLowerCase().includes(`${textures['#mesh']}.`)) return {};
+  return Object.fromEntries(Object.entries(textures).filter(([k]) => /^#\d+$/.test(k)));
 }
 
 // --textures and --variations together: the hand table by material name,
@@ -228,6 +243,7 @@ export async function readLod(io, file, { root, derived, unpackDir, said, eyes =
   for (const key of ['extensionsUsed', 'extensionsRequired']) if (json[key]) json[key] = json[key].filter((e) => e !== 'KHR_texture_basisu');
   const doc = await io.readJSON({ json, resources });
   // a map not there yet: the material goes without it rather than wear grey
+  const byIndexOf = indexBindings(textures, file, doc.getRoot().listMaterials().length);
   for (const [index, m] of doc.getRoot().listMaterials().entries()) {
     for (const slot of SLOTS) if (m[`get${slot}Texture`]()?.getName() === MISSING) m[`set${slot}Texture`](null);
     const shader = String(m.getExtras()?.shader ?? '');
@@ -255,7 +271,7 @@ export async function readLod(io, file, { root, derived, unpackDir, said, eyes =
     // any other (the PNG, else unpacked), named for the native pass
     // (and --variations' by the material's index, where the GLB has none in that slot)
     const lacks = { color: !m.getBaseColorTexture(), normal: !m.getNormalTexture(), emissive: !m.getEmissiveTexture() };
-    const byIndex = (textures?.[`#${index}`] ?? []).filter((b) => lacks[b.slot]);
+    const byIndex = (byIndexOf[`#${index}`] ?? []).filter((b) => lacks[b.slot]);
     for (const { slot, name } of [...(textures?.[m.getName()] ?? []), ...byIndex]) {
       const at = overridePath(name, slot);
       const found = await resolveImage(at, { root, derived, unpackDir });

@@ -276,3 +276,19 @@ describe('--variations: the maps a mesh variation database binds', () => {
     expect(variationTextures([record], 'no/such_mesh')).toEqual({});
   });
 });
+
+describe('--variations: index bindings reach only the model they were read for', () => {
+  it("binds by index only on the mesh's own files, and only when the GLB has the entry's material count", async () => {
+    const { variationTextures, indexBindings } = await import('./bf2017-import.mjs');
+    const record = JSON.parse(readFileSync(new URL('./fixtures/bf2017/variations/atat.mvdb.json', import.meta.url), 'utf8'));
+    const t = variationTextures([record], 'gameplay/vehicles/ground/at-at/old/atat_mesh');
+    expect(t['#count']).toBe(16);
+    const own = 'models/gameplay/vehicles/ground/at-at/old/atat_mesh.lod0.glb';
+    expect(indexBindings(t, own, 16)['#0']).toHaveLength(2);
+    // (a part's GLB: another mesh)
+    expect(indexBindings(t, 'models/gameplay/vehicles/ground/at-at/old/atat_cape_mesh.lod0.glb', 16)).toEqual({});
+    // (a GLB that dropped a material: the indices no longer line up)
+    expect(indexBindings(t, own, 15)).toEqual({});
+    expect(indexBindings(null, own, 16)).toEqual({});
+  });
+});

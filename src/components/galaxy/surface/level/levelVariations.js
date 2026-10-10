@@ -43,11 +43,13 @@ export function variationFor(json, meshName, { groupIndex = null } = {}) {
 export function applyVariation(recipe, variation, i) {
   const m = variation?.materials?.[i];
   if (!recipe || !m) return recipe;
-  const def = variation.defaults?.[i]?.textures ?? {};
+  // (the default's textures, whatever slot names them: a variation's shader
+  // may call the same map _BaseColor where the default's calls it _CS)
+  const def = new Set(Object.values(variation.defaults?.[i]?.textures ?? {}).filter(Boolean));
   const maps = {};
   for (const [slot, path] of Object.entries(m.textures ?? {})) {
     // (a map the bucket lacks is skipped; one the default binds the GLB wears)
-    if (!path || path === def[slot]) continue;
+    if (!path || def.has(path)) continue;
     if (COLOUR.has(slot)) maps.color ??= path;
     else if (NORMAL_SLOT.test(slot)) maps.normal ??= path;
   }

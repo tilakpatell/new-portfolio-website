@@ -41,8 +41,11 @@ function stateOf(row, i, dumpMaterial, maps) {
   const applied = row.use ? row.variations[row.use] : null;
   const m = applied ? applied.materials?.[i] : row.default?.[i];
   if (!m) return { state: 'no-entry' };
-  const def = row.default?.[i]?.textures ?? {};
+  // (the default's textures and the dump's, whatever slot names them: a
+  // variation's shader may call the default's map _BaseColor, not _CS)
+  const def = new Set(Object.values(row.default?.[i]?.textures ?? {}).filter(Boolean));
   const drawn = dumpMaterial?.textures ?? {};
+  const drawnKeys = new Set(Object.values(drawn).map(keyOf));
   // (a texture the bucket has no KTX2 of is still drawn where the dump binds
   // it: the export baked it into the GLB, an _MSW into its ORM)
   const lost = Object.entries(m.missing ?? {}).filter(([slot, name]) => keyOf(drawn[slot]) !== keyOf(name));
@@ -51,8 +54,8 @@ function stateOf(row, i, dumpMaterial, maps) {
   for (const [slot, path] of Object.entries(m.textures ?? {})) {
     if (!path) continue;
     // (the variation's own map, in the pack; else the GLB's, the dump's binding)
-    const own = applied && path !== def[slot];
-    const ok = own ? !!maps[path] : keyOf(drawn[slot]) === keyOf(path);
+    const own = applied && !def.has(path);
+    const ok = own ? !!maps[path] : keyOf(drawn[slot]) === keyOf(path) || (!!applied && drawnKeys.has(keyOf(path)));
     if (!ok) slots.push(slot);
   }
   const out = slots.length ? { state: 'unbound', slots } : { state: 'bound' };

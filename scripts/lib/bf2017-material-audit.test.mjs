@@ -100,3 +100,13 @@ describe('summarise', () => {
     expect(s).toEqual({ materials: 4, bound: 1, 'default-only': 1, 'missing-texture': 0, unbound: 0, 'no-entry': 2, share: 0.25 });
   });
 });
+
+describe('auditPack: the default by texture, not by slot name', () => {
+  it("an applied variation binding the default's texture under another slot name is bound by the GLB", () => {
+    const v = structuredClone(variations);
+    const box = v.meshes['objects/box/box_mesh'];
+    box.variations.Box_Dyn = { materials: [{ textures: { _BaseColor: ktx(CS), _Normal: ktx(NAM, true) } }] };
+    box.use = 'Box_Dyn';
+    expect(auditPack({ meshes: meshes.slice(0, 1), dump, variations: v })[0]).toMatchObject({ state: 'bound', variation: 'Box_Dyn' });
+  });
+});
