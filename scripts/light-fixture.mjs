@@ -5,7 +5,7 @@
 //
 //   node scripts/light-fixture.mjs [--tier ultra] [--post on|off] [--sky on|off]
 //     [--grid] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
-//     [--volume [on|off]] [--weather interior|sunny|felucia] [--view wide|edge|sun]
+//     [--volume [on|off]] [--weather interior|sunny|felucia] [--view wide|edge|sun] [--pan]
 //
 // For each leg (?gpu=webgpu, and ?gpu=webgl: the node renderer on a WebGL 2
 // context) it opens scripts/light-fixture/index.html on a Vite dev server
@@ -28,7 +28,9 @@
 //   the figure's edge inside a lit cone (<label>-<leg>-edge.png) and the
 //   volumes drawn; `--volume off` is the same hangar without them, the
 //   before to compare with; --weather and --view pick the hangar's weather
-//   (lane V's fog with media) and its first view.
+//   (lane V's fog with media) and its first view; --pan shoots the walk
+//   toward the wall that covers the sun (<label>-<leg>-pan<t>.png at t 0,
+//   0.5, 0.75, 1: the sun flare's occluder curve).
 // The numbers go to <label>.json beside the shots and to stdout as a table.
 //
 // On Linux without a display both legs draw on SwiftShader (CPU): the
@@ -122,6 +124,12 @@ for (const leg of legs) {
       row.volumesLit = await page.evaluate(() => window.__lit.probe.lit());
       await page.evaluate(() => (window.__lit.probe.view('edge'), window.__lit.draw(8)));
       writeFileSync(join(OUT, `${label}-${leg}-edge.png`), await shot());
+      if (argv.includes('--pan')) {
+        for (const t of [0, 0.5, 0.75, 1]) {
+          await page.evaluate((x) => (window.__lit.probe.pan(x), window.__lit.draw(6)), t);
+          writeFileSync(join(OUT, `${label}-${leg}-pan${t}.png`), await shot());
+        }
+      }
       await page.evaluate((v) => (window.__lit.probe.view(v), window.__lit.draw(4)), fixture.view);
     }
     // A2: with and without the environment

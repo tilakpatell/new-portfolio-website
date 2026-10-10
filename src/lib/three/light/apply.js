@@ -20,7 +20,7 @@
 import { lerpEntry, readEntry } from './entry.js';
 import { createFog } from './fog.js';
 import { createPlacedLights } from './placed.js';
-import { passesFor } from './post.js';
+import { passesFor, raysLight } from './post.js';
 import { createProbeGrid, createProbes } from './probes.js';
 import { createSky } from './sky.js';
 import { createSun } from './sun.js';
@@ -66,7 +66,7 @@ export async function applyGameLight(scene, renderer, entry, { tier = 'high', ca
 
   // (the volumes draw only through the post chain)
   const vols = post && volumetrics && CONES_LIT[tier] && backend !== 'webgl' ? await createVolumetrics(scene, renderer, { tier, source: volumetrics, lights, scale: params.gameToSite }) : null;
-  const passes = post ? passesFor(tier, entry, backend, { scene, camera, light: sun.rays, lut, volumetrics: vols }) : [];
+  const passes = post ? passesFor(tier, entry, backend, { scene, camera, light: raysLight(sun), lut, volumetrics: vols }) : [];
 
   const show = (p) => {
     sun.set(p);

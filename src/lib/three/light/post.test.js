@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BLOOM } from '../bloom';
-import { NODE_PASSES, ORDER, SSGI, arrange, passesFor, shed } from './post';
+import { NODE_PASSES, ORDER, SSGI, arrange, passesFor, raysLight, shed } from './post';
 import hoth from './fixtures/hoth.ve.json';
 
 const kinds = (ps) => ps.map((p) => p.kind);
@@ -81,6 +81,25 @@ describe('fog with media', () => {
     expect(fog).toMatchObject({ mode: 'volume', steps: 16 });
     expect(fog.media.forward.presence).toBe(0.714);
     expect(fog.fog.curve).toHaveLength(4);
+  });
+});
+
+describe('the record’s sun flare and the rays’ light', () => {
+  it('Hoth’s day’s lensflare takes its ghosts from the record’s five elements and carries them for the alpha', () => {
+    const lf = passesFor('ultra', hoth.sunny, 'webgpu', refs).find((p) => p.kind === 'lensflare');
+    expect(lf).toMatchObject({ ghostSamples: 2, ghostSpacing: 0.45 });
+    expect(lf.flare.elements).toHaveLength(5);
+    expect(lf.sunDir).toHaveLength(3);
+    // a weather without the record keeps lane R's ghosts
+    expect(passesFor('ultra', hoth.interior, 'webgpu', refs).find((p) => p.kind === 'lensflare')).toEqual({ kind: 'lensflare', threshold: 0.5, ghostSamples: 4, ghostSpacing: 0.25 });
+  });
+  it('B2: the rays helper when there is one; a plain DirectionalLight sun with its own shadow; never a CSMShadowNode sun', () => {
+    const rays = { isDirectionalLight: true };
+    expect(raysLight({ rays, light: {} })).toBe(rays);
+    const plain = { isDirectionalLight: true, castShadow: true, shadow: {} };
+    expect(raysLight({ rays: null, light: plain })).toBe(plain);
+    expect(raysLight({ rays: null, light: { ...plain, shadow: { shadowNode: { isCSMShadowNode: true } } } })).toBe(null);
+    expect(raysLight({ rays: null, light: { isSunLight: true, castShadow: true } })).toBe(null);
   });
 });
 

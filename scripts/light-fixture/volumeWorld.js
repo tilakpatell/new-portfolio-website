@@ -19,7 +19,10 @@
 // has no VisualEnvironment record in the export, only a LUT).
 //
 // views: 'wide' (from the door), 'edge' (the figure's edge inside a lit
-// cone), 'sun' (outside the mouth, toward the sun over the hangar)
+// cone), 'sun' (outside the mouth, toward the sun over the hangar);
+// pan(t): from 36 m off the hangar's +X wall to 27 m, looking at the sun
+// (Hoth's day: 33° up, toward −X), so the wall's top rises over it (the
+// sun flare's occluder curve)
 
 import * as THREE from 'three';
 import hoth from '../../src/lib/three/light/fixtures/hoth.ve.json';
@@ -137,6 +140,13 @@ export default {
         light?.update(0, camera);
       },
       lit: () => light?.parts.volumetrics?.lit ?? 0,
+      pan(t) {
+        const d = sunAt();
+        camera.position.set(36 - 9 * t, 1.5, 0);
+        camera.lookAt(camera.position.x + d[0] * 100, 1.5 + d[1] * 100, d[2] * 100);
+        camera.updateMatrixWorld();
+        light?.update(0, camera);
+      },
     };
 
     const ready = (async () => {

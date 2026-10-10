@@ -20,7 +20,8 @@
 //   (fog.js's fogVolume);
 // - bloom: added, the house's numbers unless the pass says;
 // - godrays: the lit haze added faintly in the sun's colour;
-// - lensflare: the bloom's ghosts, blurred, added;
+// - lensflare: the bloom's ghosts, blurred, added; with the record's sun
+//   flare, scaled by its alpha curves at the sun's disc (flare.js);
 // - lut: the grading LUT (a Data3DTexture) applied to the tone-mapped,
 //   encoded picture;
 // - traa or smaa: the anti-aliasing; SMAA on the picture as shown, TRAA
@@ -29,6 +30,7 @@
 // buildChain(renderer, passes) → Promise<{ pipeline, nodes, dispose }>
 
 import { BLOOM } from '../bloom.js';
+import { OCCLUDER_DISC, OCCLUDER_TAPS } from './flare.js';
 import { fogVolume } from './fog.js';
 import { loadThree } from './three.js';
 
@@ -44,6 +46,42 @@ const ADDONS = {
   traa: () => import('three/addons/tsl/display/TRAANode.js'),
   smaa: () => import('three/addons/tsl/display/SMAANode.js'),
 };
+
+// The record's sun flare's alpha at the sun's screen disc: OCCLUDER_TAPS
+// depths within OCCLUDER_DISC of the sun's screen position, the share not at
+// the far plane (the sky's) the coverage; each element's alpha curves at
+// that coverage and at the sun's distance from the centre, the brightest
+// taken (flare.js's flareAt, in the shader); 0 when the sun is behind.
+function flareAlpha(tsl, THREE, p, depth, camera) {
+  const { uniform, float, vec2, clamp, max, select, Fn } = tsl;
+  const at = new THREE.Vector4();
+  const dir = new THREE.Vector3(...p.sunDir).normalize();
+  const sun = uniform(at).onRenderUpdate(() => {
+    const v = new THREE.Vector4(dir.x, dir.y, dir.z, 0).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+    const w = Math.max(1e-6, v.w);
+    at.set((v.x / w) * 0.5 + 0.5, (v.y / w) * 0.5 + 0.5, v.w, camera.aspect ?? 1);
+    return at;
+  });
+  return Fn(() => {
+    const uv = vec2(sun.x, sun.y.oneMinus());
+    const covered = float(0).toVar();
+    for (let i = 0; i < OCCLUDER_TAPS; i++) {
+      const a = (i / OCCLUDER_TAPS) * Math.PI * 2;
+      const r = OCCLUDER_DISC * Math.sqrt((i + 0.5) / OCCLUDER_TAPS);
+      const tap = uv.add(vec2(Math.cos(a) * r, Math.sin(a) * r).div(vec2(sun.w, 1)));
+      covered.addAssign(select(depth.sample(tap).r.lessThan(0.99999), float(1), float(0)));
+    }
+    const o = covered.div(OCCLUDER_TAPS);
+    const s = clamp(uv.sub(0.5).length().mul(2), 0, 1);
+    const c = (k, t) => {
+      const [x, y, z, w] = k;
+      return t.mul(x).add(y).mul(t).add(z).mul(t).add(w);
+    };
+    let alpha = float(0);
+    for (const e of p.flare.elements) alpha = max(alpha, clamp(c(e.alphaOccluder, o), 0, 1).mul(clamp(c(e.alphaScreen, s), 0, 1)));
+    return select(sun.z.greaterThan(0), alpha.mul(p.flare.dimmer), float(0));
+  })();
+}
 
 export async function buildChain(renderer, passes) {
   const kinds = new Set(passes.map((p) => p.kind));
@@ -173,7 +211,9 @@ export async function buildChain(renderer, passes) {
       case 'lensflare': {
         if (!g.bloom) break;
         const flare = keep(mods.lensflare.lensflare(g.bloom, { threshold: p.threshold, ghostSamples: p.ghostSamples, ghostSpacing: p.ghostSpacing }));
-        node = node.add(keep(mods.lensflare.gaussianBlur(flare, null, 8)));
+        let ghosts = keep(mods.lensflare.gaussianBlur(flare, null, 8));
+        if (p.flare) ghosts = ghosts.mul(flareAlpha(tsl, THREE, p, g.depth, p.camera ?? g.camera));
+        node = node.add(ghosts);
         break;
       }
       case 'lut': {

@@ -12,6 +12,11 @@
 //     [--pack public/models/galaxy/bf2017/levels/<world>/level.json]
 //     [--lighting src/data/bf2017/maps/<world>.lighting.json]
 //     [--origin x,y,z --yaw radians --arena metres] [--no-extras] [--dry]
+//   node scripts/bf2017-volumes.mjs --flares [--dry]
+//
+// --flares reads the game's LensFlareBlueprints (every one data.tsv lists:
+// twelve) and writes src/data/bf2017/flares.json, each as
+// src/lib/three/light/flare.js's flareElements reads it, for eventFlare.
 //
 // Without the bucket's keys (SUPABASE_URL and BF2017_KEY or SUPA_KEY, from
 // .env.local or the environment) the cones are left out and the script says
@@ -23,12 +28,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { objectUrl } from './lib/bf2017-paths.mjs';
 import { gunzipSync } from 'node:zlib';
+import { flareElements } from '../src/lib/three/light/flare.js';
 import { CONE_RE, coneShape, volumesJson } from './lib/bf2017-volumes.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BUCKET = 'bf2017-assets';
 const argv = process.argv.slice(2);
 const world = argv[0] && !argv[0].startsWith('--') ? argv[0] : null;
+const flares = argv.includes('--flares');
 const arg = (k) => {
   const i = argv.indexOf(`--${k}`);
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : null;
@@ -37,12 +44,12 @@ const stop = (why, code = 2) => {
   console.error(why);
   process.exit(code);
 };
-if (!world) stop('usage: node scripts/bf2017-volumes.mjs <world> [--level levels/mp/<map>] [--pack level.json] [--lighting file] [--origin x,y,z --yaw r --arena m] [--no-extras] [--dry]');
+if (!world && !flares) stop('usage: node scripts/bf2017-volumes.mjs <world> [--level levels/mp/<map>] [--pack level.json] [--lighting file] [--origin x,y,z --yaw r --arena m] [--no-extras] [--dry]');
 
-const level = arg('level') ?? `levels/mp/${world}_01`;
+const level = arg('level') ?? `levels/mp/${world ?? 'hoth'}_01`;
 const name = level.split('/').pop();
 const dry = argv.includes('--dry');
-const outDir = join(ROOT, 'public/models/galaxy/bf2017/levels', world);
+const outDir = join(ROOT, 'public/models/galaxy/bf2017/levels', world ?? '');
 
 function keys() {
   const file = join(ROOT, '.env.local');
@@ -115,6 +122,35 @@ async function get(env, path) {
   const res = await fetch(objectUrl(env.base, BUCKET, path), { headers: env.headers });
   if (!res.ok) stop(`${path}: ${res.status} from the bucket`, 1);
   return res.json();
+}
+
+if (flares) {
+  const { from, env } = keys();
+  if (!env) stop(`no bucket key (read: ${from}): the flares are in the bucket's data/`);
+  const res = await fetch(objectUrl(env.base, BUCKET, 'data.tsv'), { headers: env.headers });
+  if (!res.ok) stop(`data.tsv: ${res.status} from the bucket`, 1);
+  const names = (await res.text())
+    .split('\n')
+    .map((l) => l.split('\t'))
+    .filter((c) => c[1] === 'LensFlareBlueprint')
+    .map((c) => c[0]);
+  const out = { _from: `the bucket's data/: every LensFlareBlueprint data.tsv lists (${names.length}), read by flare.js's flareElements`, flares: {} };
+  for (const n of names) {
+    const asset = await record(env, n);
+    if (!asset) {
+      console.log(`${n}: missing`);
+      continue;
+    }
+    const f = flareElements(asset);
+    out.flares[n.split('/').pop()] = { ...f, _source: `${n}#LensFlareEntityData` };
+    console.log(`${n}: ${f.elements.length} elements, occluder ${f.occluderSize} m`);
+  }
+  if (!dry) {
+    const file = join(ROOT, 'src/data/bf2017/flares.json');
+    writeFileSync(file, `${JSON.stringify(out, null, 1)}\n`);
+    console.log(`wrote ${file}`);
+  }
+  process.exit(0);
 }
 
 const pack = frame();

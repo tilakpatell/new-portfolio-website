@@ -15,7 +15,17 @@
 //   `smaa` together keep `traa`.
 // - LensflareNode reads the bloom's texture: no `bloom`, no `lensflare`.
 // - GodraysNode marches a DirectionalLight's shadow map (not SunLight's):
-//   no light given, no `godrays` (sun.js's `rays`).
+//   no light given, no `godrays`. raysLight(sun) picks it: sun.js's `rays`
+//   helper, or the sun itself when it is a plain DirectionalLight with its
+//   own shadow map. A CSMShadowNode sun (lane S's four cascades) is not
+//   one: read from r186's source, the godrays node takes `isDirectionalLight`
+//   or `isPointLight` and samples `light.shadow.map`, while
+//   CSMShadowNode's cascades are its own `LwLight`s (an Object3D, neither
+//   kind) and the light's own shadow map is not drawn, so the rays keep
+//   the helper (the fidelity design's B2).
+// - `lensflare` with the record's SunFlareComponentData (flare.js) takes
+//   its ghosts from the record's elements and is scaled by the record's
+//   occluder and screen-position curves at the sun's screen disc.
 // - `lut` needs the record's grading LUT as a Data3DTexture; none, none.
 // - `volumes` needs a level's volumetrics (createVolumetrics); none, none.
 // - `fog` (mode 'volume': fog.js's fogVolume) draws the record's forward
@@ -31,11 +41,13 @@
 //
 // ORDER, NODE_PASSES, CANNOT, SSGI
 // passesFor(tier, entry, backend = 'webgpu', refs = { scene, camera, light, lut, volumetrics }) → passes
+// raysLight(sun) → the light GodraysNode can march, or null
 // shed(passes, level) → passes   (level 1 drops ssgi, 2 ssr, 3 god rays and flare, 4 ao)
 // arrange(passes) → passes       (the order and the rules above)
 
 import { BLOOM } from '../bloom.js';
 import { readEntry } from './entry.js';
+import { flareElements, lensflareParams } from './flare.js';
 import { FOG_STEPS, fogMedia } from './fog.js';
 
 export const ORDER = ['render', 'ssgi', 'denoise', 'ao', 'ssr', 'volumes', 'fog', 'bloom', 'godrays', 'lensflare', 'lut', 'traa', 'smaa', 'output'];
@@ -110,7 +122,11 @@ export function passesFor(tier, entry, backend = 'webgpu', refs = {}) {
     fog: () => ({ kind: 'fog', mode: 'volume', media: fogMedia(entry?.record), fog: p.fog, sun: { dir: p.sun.dir.slice(), color: p.sun.color.slice(), intensity: p.sun.intensity }, steps: FOG_STEPS[tier] ?? FOG_STEPS.high, camera: refs.camera }),
     bloom: () => ({ kind: 'bloom', strength: BLOOM.strength * p.bloom.scale, radius: BLOOM.radius, threshold: BLOOM.threshold }),
     godrays: () => ({ kind: 'godrays', light: refs.light ?? null, color: p.sun.color.slice(), density: 0.7, maxDensity: 0.5, camera: refs.camera }),
-    lensflare: () => ({ kind: 'lensflare', threshold: 0.5, ghostSamples: 4, ghostSpacing: 0.25 }),
+    lensflare: () => {
+      const rec = entry?.record?.SunFlareComponentData?.[0] ?? entry?.flare ?? null;
+      const flare = rec ? flareElements(rec) : null;
+      return { kind: 'lensflare', threshold: 0.5, ghostSamples: 4, ghostSpacing: 0.25, ...(flare?.elements.length ? { ...lensflareParams(flare), flare, sunDir: p.sun.dir.slice(), camera: refs.camera } : {}) };
+    },
     lut: () => ({ kind: 'lut', texture: refs.lut ?? p.grade.lut ?? null, intensity: 1 }),
     traa: () => ({ kind: 'traa', camera: refs.camera }),
     smaa: () => ({ kind: 'smaa' }),
@@ -127,3 +143,9 @@ export function shed(passes, level = 0) {
   return arrange(passes.filter((p) => !drop.has(p.kind)));
 }
 
+export function raysLight(sun) {
+  if (sun?.rays) return sun.rays;
+  const l = sun?.light;
+  if (l?.isDirectionalLight && l.castShadow && !l.shadow?.shadowNode?.isCSMShadowNode) return l;
+  return null;
+}
