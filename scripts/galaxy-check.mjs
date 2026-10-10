@@ -11,6 +11,7 @@
 //   OATH='{"since":1,"war":"gcw","oaths":{"gcw":{"side":"rebel","sworn":1}}}' … (sworn, at the held clock's campaign)
 //   ANGLE=d3d11 … (draw on the graphics chip, not in software)
 //   PHASE_WAIT=900000 … (ms for the world to come up: a level pack in software GL takes minutes)
+//   DIAG=1 … (each of the scene's top groups' share of the calls, hidden in turn)
 //   BUDGET=1 … (or BUDGET=path/to/baseline.json): each world held to its
 //     quality level's row of the budget table (src/lib/budgets.js, the
 //     quality modes design: docs/superpowers/specs/2026-10-07-quality-modes-
@@ -190,6 +191,33 @@ for (const id of list.split(',')) {
       }),
     mode === 'surface',
   );
+  // (DIAG=1: what each of the scene's top groups costs, by drawing a frame
+  // with it hidden: the calls and triangles it takes, largest first)
+  if (process.env.DIAG && mode === 'surface') {
+    const parts = await page.evaluate(async () => {
+      const { scene, renderer } = window.__surfaceScene;
+      const info = renderer.info;
+      const frame = () =>
+        new Promise((r) => {
+          window.__RUNTIME__?.invalidate();
+          info.autoReset = false;
+          info.reset();
+          requestAnimationFrame(() => requestAnimationFrame(() => r({ calls: info.render.calls, tris: info.render.triangles })));
+        });
+      const all = await frame();
+      const out = [];
+      for (const [i, c] of scene.children.entries()) {
+        if (!c.visible) continue;
+        c.visible = false;
+        const f = await frame();
+        c.visible = true;
+        out.push({ name: `${c.name || c.type}#${i}`, calls: all.calls - f.calls, tris: all.tris - f.tris });
+      }
+      info.autoReset = true;
+      return { all, out: out.filter((o) => o.calls > 0).sort((a, b) => b.calls - a.calls) };
+    });
+    console.log(`${''.padEnd(10)} diag all ${parts.all.calls} calls: ${parts.out.map((o) => `${o.name} ${o.calls}`).join(', ')}`);
+  }
   const name = `${mode}-${id}-${quality}`;
   await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });
   results.push({ id, loaded: +loaded.toFixed(1), ...stats, glbMB: +(glbBytes / 1e6).toFixed(1), errors: errors.slice(0, 5) });
