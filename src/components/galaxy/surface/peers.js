@@ -217,7 +217,7 @@ export function createPeers({ parent, placer, getCast, rides: RIDES = GALAXY_RID
                 wk.stroke = s.arms?.stroke ?? null;
                 wk.saber.update(dt, now / 1000, { forward: fwd, up: UP, me: { x: wk.st.x, z: wk.st.z, yaw: wk.st.yaw }, targets: [], eye });
               }
-            }
+            } else wk.saber?.dark(); // (put away to ride: its light goes)
           }
         });
         for (let i = want.length; i < e.walkers.length; i++) {

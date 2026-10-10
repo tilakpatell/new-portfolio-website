@@ -233,8 +233,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   const skeleton = resolve(String(args.skeleton ?? join(ROOT, 'public', 'models', 'galaxy', 'bf2017', 'walrus.glb')));
   const clips = args.pack ? await fromPack(resolve(String(args.pack)), skeleton) : await fromBucket(hero, { list: Boolean(args.list) });
-  // (nothing measured writes nothing: an empty table over a hero's would take its stance away)
-  if (clips && !clips.length) {
+  // (none of the hero's own measured writes nothing: an empty table over a
+  // hero's would take its stance away; another hero's pack measures plenty)
+  if (clips && !clips.some((k) => classify(k.name).hero === PREFIX[hero].toLowerCase())) {
     console.error(`no ${hero} clip measured: ${relative(ROOT, join(OUT, `${hero}.json`))} left as it was`);
     process.exit(1);
   }

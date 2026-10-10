@@ -2774,7 +2774,7 @@ export async function create(canvas, ctx) {
           if (!lying && !(mine && emoteShown)) pp.gp.set(dt, { aim: aimK, look: mine ? state.aim : mateFight.aim, dir, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
           pp.saber?.update(dt, state.t, { forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP, me: st, targets: mine ? activity.targets : [], hit: saberHit, eye: camera.position });
           if (!mine && mateFight.shoot && !lying) mateShot(pp);
-        }
+        } else pp.saber?.dark(); // (put away to ride: no update reaches it, so its light goes)
       }
     });
   }

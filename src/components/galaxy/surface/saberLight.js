@@ -13,7 +13,7 @@
 // keeps the one it holds till another is SABER_LIGHT.hold nearer, so two
 // at the edge don't trade it frame by frame).
 //
-//   createSaberLight({ scene, color, tier }) → { update(base, tip, lit, eye), dispose() }
+//   createSaberLight({ scene, color, tier }) → { update(base, tip, lit, eye), dark(), dispose() }
 //     base, tip: the blade's ends (world); lit: 0…1, how far out it is; eye: the camera's position
 //   SABER_LIGHT      { intensity: { high, ultra }, distance (metres it reaches), decay, within, most (lights at once: a light
 //                    costs every lit pixel whatever its reach; past it a blade lights nothing), hold (metres) }
@@ -27,7 +27,7 @@ const blades = [];
 const slots = [];
 let made = 0;
 
-const NONE = { update() {}, dispose() {} };
+const NONE = { update() {}, dark() {}, dispose() {} };
 
 // how near a blade is for a light: its distance from the eye (Infinity dark,
 // or out past `within`), a holder's less `hold`; a tie to the first made
@@ -82,6 +82,11 @@ export function createSaberLight({ scene, color = '#4aa8ff', tier = 'high' } = {
       if (!b.slot) take(b);
       b.slot.light.position.copy(b.at);
       b.slot.light.intensity = peak * Math.min(1, lit);
+    },
+    // (a blade no update reaches lets its light go, for the next nearest)
+    dark() {
+      b.d = Infinity;
+      release(b);
     },
     dispose() {
       const i = blades.indexOf(b);

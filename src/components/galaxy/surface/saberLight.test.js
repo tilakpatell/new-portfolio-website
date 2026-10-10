@@ -158,4 +158,19 @@ describe('the nearest blades light, not the first made', () => {
     expect(on()).toEqual([0, 2, 9, 10]);
     for (const l of five) l.dispose();
   });
+
+  // (put away to ride, taken by a show: its saber lets its light go)
+  it('one gone dark lets its light go, to the next nearest', () => {
+    const scene = new THREE.Scene();
+    const xs = [0, 2, 4, 6, 8];
+    const five = xs.map(() => createSaberLight({ scene, tier: 'high' }));
+    const on = () => lit(scene).map((p) => p.position.x).sort((a, b) => a - b);
+    five.forEach((l, i) => at(l, xs[i]));
+    expect(on()).toEqual([0, 2, 4, 6]);
+    five[0].dark();
+    expect(on()).toEqual([2, 4, 6]);
+    [1, 2, 3, 4].forEach((i) => at(five[i], xs[i]));
+    expect(on()).toEqual([2, 4, 6, 8]);
+    for (const l of five) l.dispose();
+  });
 });

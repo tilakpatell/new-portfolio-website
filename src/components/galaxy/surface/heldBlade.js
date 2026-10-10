@@ -83,6 +83,7 @@ export function bladeInHand(fig, { color = '#ff3b3b', hilt = null } = {}, { pare
     swing: (now, opts) => saber.swing(now, opts),
     block: (on, side) => saber.block(on, side),
     light: (on) => saber.light(on),
+    dark: () => saber.dark(),
     dispose() {
       saber.dispose();
       gp.dispose();

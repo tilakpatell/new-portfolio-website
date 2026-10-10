@@ -83,6 +83,20 @@ describe('a 2017 hero’s block, by the side a cut comes in on', () => {
     for (const n of got) expect(luke.held[n].tip[0]).toBeGreaterThan(0);
   });
 
+  // (held before the cut: up with no side, then the cut's side as it comes)
+  it('takes its turn once a raise, held before the cut or raised to it', async () => {
+    const want = luke.blocks.left.filter(packHas);
+    const { saber } = await hero();
+    const got = [];
+    for (let i = 0; i < 4; i++) {
+      saber.block(true, null);
+      saber.block(true, 'left');
+      got.push(saber.blockClip);
+      saber.block(false);
+    }
+    expect(got).toEqual([0, 1, 2, 3].map((i) => want[i % want.length]));
+  });
+
   it('from a side with nothing measured on it, or none, the site’s one block', async () => {
     expect(luke.blocks.right).toEqual([]);
     const { saber } = await hero();

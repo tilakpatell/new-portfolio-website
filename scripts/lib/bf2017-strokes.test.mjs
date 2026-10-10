@@ -120,6 +120,12 @@ describe('the side a cut comes in from', () => {
     expect(strokeSide(rows([0.3, 1.9, 0.5], [0.1, 1.2, 1], [-0.2, 0.4, 0.8]), [0, 0.2])).toBe(null);
     expect(strokeSide(rows([0, 0.2, 0.8], [0.3, 1.6, 0.6]), [0, 0.1])).toBe(null);
   });
+
+  // (Vader's second as measured: the window opens over his shoulder, behind,
+  // and ends low in front; between, the tip comes round his left and down across)
+  it('reads a cut wound up from behind where its tip is before the hips', () => {
+    expect(strokeSide(rows([0.58, 1.03, -0.62], [1.53, 0.47, 0.02], [1.21, -0.38, 0.99], [0.05, -0.82, 1.18]), [0, 0.3])).toBe('left');
+  });
 });
 
 describe('a block, measured on the game’s rig', () => {

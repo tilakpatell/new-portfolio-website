@@ -755,7 +755,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             const up = new THREE.Vector3(0, 1, 0);
             const push = t.push ?? new THREE.Vector3(Math.sin(b.yaw), 0, Math.cos(b.yaw)).negate();
             const on = (ev) => onShow?.(t.how, ev);
-            if (t.blade) t.blade.gun.visible = false;
+            if (t.blade) { t.blade.gun.visible = false; t.blade.dark?.(); } // (no update reaches it now: its light goes)
             if (t.bubble) t.bubble.visible = false;
             if (t.bar) t.bar.sprite.visible = false;
             if (t.mark) t.mark.visible = false;

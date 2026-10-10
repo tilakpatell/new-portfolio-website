@@ -285,13 +285,18 @@ export function strokeDir(rows, [t0, t1]) {
 // on them too), +x its left; none when it goes more up or down than across.
 // Not `dir`'s frame: a strike turns the hips as it cuts (Luke's second, 56°
 // to 96° round in its window, reads 'right' there, though it comes round
-// the front from his left)
-export function strokeSide(rows, [t0, t1]) {
+// the front from his left). A cut wound up from behind the shoulder opens its
+// window there and ends it low in front, so its ends read as a drop: then
+// it's read where the tip is before the hips (Vader's first, second and fourth)
+export function strokeSide(rows, [t0, t1], ahead = AHEAD) {
   const inside = rows.filter((r) => r.t >= t0 && r.t <= t1);
-  const span = inside.length > 1 ? inside : rows;
-  const [dx, dy] = sub(span.at(-1).rel, span[0].rel);
-  if (Math.abs(dy) > Math.abs(dx)) return null;
-  return dx > 0 ? 'right' : 'left';
+  const across = (span) => {
+    const [dx, dy] = sub(span.at(-1).rel, span[0].rel);
+    if (Math.abs(dy) > Math.abs(dx)) return null;
+    return dx > 0 ? 'right' : 'left';
+  };
+  const before = inside.filter((r) => r.rel[2] > ahead);
+  return across(inside.length > 1 ? inside : rows) ?? (before.length > 1 ? across(before) : null);
 }
 
 // the plane the blade sweeps in its window: the normal of the turn from

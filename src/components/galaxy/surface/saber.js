@@ -35,7 +35,8 @@
 //       meets a duellist's contact: { id, base, tip, r, side } | null), lit, busy, swinging (the stroke: { name (the
 //       clip's), clip, t0, speed, contact, damage, heavy, … } or null), thrown, charge (0…1 while F is
 //       held), setCharge(k), blades (lib/combat/blade.js's, the main first),
-//       blockClip (the block it lays: a 2017 hero's by the game's name, else BLOCK_CLIP), dispose() }
+//       blockClip (the block it lays: a 2017 hero's by the game's name, else BLOCK_CLIP), dark() (its light
+//       let go, for a frame no update reaches it: put away to ride, taken by a show), dispose() }
 //   side: the side of it a cut comes in on ('left' | 'right' | null: blockSide.js's incomingSide); a 2017
 //   hero lays the game's block measured holding the blade there (its stance's `blocks`), anyone else its one.
 //   fig: the figure that holds it ({ bones, hipsY?, play? }); without
@@ -252,7 +253,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     blocking: false,
     side: null, // the side the block was chosen for (a 2017 hero's), and the game's block it lays (null: BLOCK_CLIP)
     blockClip: null,
-    raises: 0, // (the variant's turn)
+    raises: 0, // (the variant's turn, and this raise's)
+    raise: 0,
     blockWas: null, // (the block before, eased out from blockSwitch)
     blockSwitch: 0,
     thrown: null, // { t0, from, dir, hits }
@@ -407,11 +409,14 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
   // a 2017 hero's lit blade lights what's round it (on high and ultra: saberLight.js)
   const light = walrus && parent ? createSaberLight({ scene: parent, color, tier: tier ?? device().tier }) : null;
   let eye = null;
+  const ends = (b) => {
+    b.updateWorldMatrix(true, false);
+    _base.set(0, 0.1, 0).applyMatrix4(b.matrixWorld);
+    _tip.set(0, 1, 0).applyMatrix4(b.matrixWorld);
+  };
   const pushBlades = (now) => {
     blades.forEach((b, i) => {
-      b.updateWorldMatrix(true, false);
-      _base.set(0, 0.1, 0).applyMatrix4(b.matrixWorld);
-      _tip.set(0, 1, 0).applyMatrix4(b.matrixWorld);
+      ends(b);
       segs[i].push(_base.toArray(), _tip.toArray(), now);
       if (i === 0) light?.update(_base, _tip, st.lit, eye);
     });
@@ -578,8 +583,10 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       }
       if (walrus && on && (!st.blocking || (side && side !== st.side))) {
         const was = st.blockClip ?? BLOCK_CLIP;
+        // (a raise takes its turn once: a block held before the cut keeps it when the cut's side comes)
+        if (!st.blocking) st.raise = st.raises++;
         st.side = side;
-        st.blockClip = blockClipFor(st_.blocks, side, (n) => Boolean(clips[n]), st.raises++);
+        st.blockClip = blockClipFor(st_.blocks, side, (n) => Boolean(clips[n]), st.raise);
         if (clips[st.blockClip ?? BLOCK_CLIP] !== clips[was] && st.blockW > 0) {
           st.blockWas = was;
           st.blockSwitch = st.now;
@@ -635,6 +642,11 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       if (st.lit > 0.05) poseLeft(p, Math.min(1, st.lit * 2));
       if (st.thrown) {
         fly(dt, now, p, p.targets ?? [], p.hit);
+        // (its light goes with it)
+        if (light && st.thrown) {
+          ends(blades[0]);
+          light.update(_base, _tip, st.lit, eye);
+        }
         drawTrails(false);
         return;
       }
@@ -661,6 +673,9 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       if (block) lay(block, block.duration * BLOCK_AT, bw * (was ? (now - st.blockSwitch) / SWITCH : 1));
       pushBlades(now);
       drawTrails(false);
+    },
+    dark() {
+      light?.dark();
     },
     dispose() {
       gone = true;
