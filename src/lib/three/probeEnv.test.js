@@ -46,3 +46,20 @@ describe('the probe as the environment', () => {
     expect(f.load).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('a probe asked for again while another is on its way', () => {
+  it('keeps the one asked for last, throwing the late one away', async () => {
+    const f = fakes();
+    const probes = createProbeEnv({ load: f.load, pmrem: f.pmrem });
+    const a = probes.load(['out']);
+    f.go();
+    await a;
+    // in (still loading), then straight back out (the one it has)
+    const inside = probes.load(['in']);
+    expect(await probes.load(['out'])).toBe(f.made[0]);
+    f.go();
+    expect(await inside).toBeNull();
+    expect(probes.current()).toBe(f.made[0]);
+    expect(f.made[1].dispose).toHaveBeenCalledTimes(1);
+  });
+});

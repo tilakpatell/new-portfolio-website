@@ -17,8 +17,9 @@ export function createProbeEnv({ renderer, load, pmrem } = {}) {
 
   async function loadProbe(urls) {
     const want = urls.join('|');
-    if (env && key === want) return env;
+    // (asked for what it has: that, and anything still on its way is late)
     const mine = ++ticket;
+    if (env && key === want) return env;
     const cube = await loader(urls);
     const next = gen.fromCubemap(cube).texture;
     cube.dispose();

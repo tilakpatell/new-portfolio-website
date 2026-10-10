@@ -95,13 +95,18 @@ export function createGameLit({
   // the share of the scene the site gives its environment
   const envIntensity = (share) => share * (d.probeScale ?? 0);
 
+  // (each show and regrade asks again; one that lands after a newer ask is late)
+  let shown = 0;
+  let graded = 0;
+
   async function show() {
     const probe = inZone ? light.indoor : entry?.probe;
     if (!probe?.url) return;
     const share = inZone ? envShare.in : envShare.out;
+    const mine = ++shown;
     try {
       const env = await holder.load(faces(probe.url));
-      if (!env || disposed) return;
+      if (!env || disposed || mine !== shown) return;
       scene.environment = env;
       scene.environmentIntensity = envIntensity(share);
       probeOn = true;
@@ -113,13 +118,14 @@ export function createGameLit({
   async function regrade() {
     if (!grade || !post?.grading) return;
     const g = inZone ? (light.weathers.interior ?? entry)?.grading : entry?.grading;
+    const mine = ++graded;
     if (!g?.lut || !g.lutSize) {
       post.grading(null);
       return;
     }
     if (!luts.has(g.lut)) luts.set(g.lut, lutLoad(url(`/${g.lut}`), g.lutSize).catch(() => null));
     const tex = await luts.get(g.lut);
-    if (disposed) return;
+    if (disposed || mine !== graded) return;
     post.grading(tex ? { lut: tex, size: g.lutSize } : null);
   }
 

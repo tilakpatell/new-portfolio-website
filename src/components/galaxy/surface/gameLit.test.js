@@ -114,3 +114,31 @@ describe('the worlds the game has no record for', () => {
     }
   });
 });
+
+describe('a zone left before its probe and grade arrive', () => {
+  it('ends outdoors with the outdoor probe and grade, whatever lands late', async () => {
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2('#ffffff', 0.001);
+    const sun = new THREE.DirectionalLight('#ffffff', 1);
+    const hemi = new THREE.HemisphereLight();
+    const sky = { uniforms: { uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() }, uHaze: { value: new THREE.Color() }, uSunColor: { value: [new THREE.Color()] }, uSunDir: { value: [new THREE.Vector3()] } } };
+    const pending = [];
+    const later = (v) => new Promise((r) => pending.push(() => r(v)));
+    const flush = async () => {
+      while (pending.length) pending.shift()();
+      await new Promise((r) => setTimeout(r, 0));
+    };
+    // (a holder that answers at once for what it has, late for anything new)
+    let have = null;
+    const probes = { load: vi.fn((urls) => (have === urls[0] ? Promise.resolve({ name: urls[0] }) : later({ name: urls[0] }).then((e) => ((have = urls[0]), e)))), dispose: vi.fn() };
+    const post = { grading: vi.fn() };
+    const lutLoad = vi.fn((u) => later({ u }));
+    const lit = createGameLit({ light: hoth, scene, sun, hemi, sky, post, probes, lutLoad, url: (u) => u });
+    await flush();
+    lit.zone({ id: 'echo' });
+    lit.zone(null);
+    await flush();
+    expect(scene.environment.name).toBe('/textures/galaxy/bf2017/light/hoth/sunny.px.hdr');
+    expect(post.grading.mock.lastCall[0].lut.u).toBe('/textures/galaxy/bf2017/light/hoth/sunny.lut.png');
+  });
+});
