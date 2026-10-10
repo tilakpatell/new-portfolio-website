@@ -25,7 +25,7 @@ const PLAYER_TACTICS = 'AIRebelSoldierTactics';
 const toV = (a) => ({ x: a[0], y: a[1], z: a[2] });
 
 function brainFor(sim, ai, s) {
-  const brain = createBrain(s, { ai, rand: sim.rand });
+  const brain = createBrain(s, { ai, rand: sim.rand, aimScale: sim.aimScale ?? 1 });
   brain.nextSense = sim.time + sim.rand() * SENSE;
   brain.nextThink = sim.time + sim.rand() * THINK;
   s.brain = brain;

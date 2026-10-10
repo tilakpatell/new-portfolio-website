@@ -5,7 +5,7 @@
 //
 //   capture.create({ volume, name, meter }) → o      capture.tick(o, dt, { inside: { attack, defend } })
 //   arm.create({ at, name }) → o                     arm.tick(o, dt, { interactions: [{ side, id, held }] })
-//   uplink.create({ at, name }) → o                  uplink.tick(o, dt, { interactions })
+//   uplink.create({ at, name }) → o                  uplink.tick(o, dt, { interactions, open })
 //   escort.create({ path, health, name }) → o        escort.tick(o, dt, { near })   (o.walker is the walker's body)
 //   hold.create({ volume, seconds, name }) → o       hold.tick(o, dt, { inside })
 //   each kind's view(o) → the HUD's row
@@ -14,7 +14,7 @@
 // `PF_CapturePoint`'s cast: 60 s for one attacker alone to take a point from neutral to held.
 export const CAPTURE_SECONDS = 60;
 // The most a crowd counts for on a point, by hand (the game's meter speeds up to four soldiers' worth).
-export const ADVANTAGE_MAX = 4;
+export const ADVANTAGE_MAX = 6;
 // The HUD's thirds of the meter (`PF_CapturePoint`'s 0.33 and 0.66).
 export const THIRDS = [0.33, 0.66];
 // `SW02_VO_BombInteract`'s shape, by hand: hold 6 s to arm, 30 s of fuse, 6 s to defuse.
@@ -29,6 +29,12 @@ export const ESCORT_REACH = 60;
 export const INTERACT_REACH = 3;
 // An uplink called: the bombing run leaves the walkers open to fire this long; then the console rests. By hand.
 export const VULNERABLE_SECONDS = 30;
+// The share of each walker's health the bombing run itself takes, by hand
+// (the Y-wings' bombs; the rest is the defenders' fire while it is open).
+export const BOMBING_RUN = 0.2;
+// An uplink can call a run only with a walker this near it, and only when no
+// run is in the air (one at a time), by hand.
+export const UPLINK_RANGE = 250;
 export const UPLINK_REST = 30;
 
 export function insidePolygon(points, x, z) {
@@ -46,9 +52,11 @@ export const centroid = (points) => [points.reduce((n, p) => n + p[0], 0) / poin
 const clamp = (v) => Math.max(-1, Math.min(1, v));
 
 // -- capture: −1 the defenders' to +1 the attackers'; the side with more inside moves it --
+// A point opens at 0, the defenders' (`PF_CapturePoint`'s 0 to 1 is the
+// attackers' take); the defenders can push it on to −1, a margin to win back.
 
 export const capture = {
-  create({ volume, name = null, meter = -1 }) {
+  create({ volume, name = null, meter = 0 }) {
     return { type: 'capture', name, volume, at: centroid(volume.points), meter, owner: meter >= 1 ? 'attack' : 'defend', contested: false, overtime: false, moving: null, done: meter >= 1 };
   },
   tick(o, dt, { inside }) {
@@ -107,12 +115,14 @@ export const arm = {
 
 export const uplink = {
   create({ at, name = null }) {
-    return { type: 'uplink', name, at, progress: 0, rest: 0, runs: 0, fired: false, done: false };
+    return { type: 'uplink', name, at, progress: 0, rest: 0, runs: 0, fired: false, open: true, done: false };
   },
-  tick(o, dt, { interactions }) {
+  tick(o, dt, { interactions, open = true }) {
     o.fired = false;
-    if (o.rest > 0) {
-      o.rest = Math.max(0, o.rest - dt);
+    o.open = open && o.rest <= 0;
+    if (o.rest > 0) o.rest = Math.max(0, o.rest - dt);
+    if (!o.open) {
+      o.progress = 0;
       return;
     }
     o.progress = holding(interactions, 'defend') ? o.progress + dt / ARM_SECONDS : 0;
@@ -120,10 +130,10 @@ export const uplink = {
       o.progress = 0;
       o.fired = true;
       o.runs++;
-      o.rest = VULNERABLE_SECONDS + UPLINK_REST;
+      o.rest = UPLINK_REST;
     }
   },
-  view: (o) => ({ type: o.type, name: o.name, meter: o.progress, owner: 'defend', contested: false, armed: o.rest > 0, fuse: o.rest, progress: o.progress }),
+  view: (o) => ({ type: o.type, name: o.name, meter: o.progress, owner: 'defend', contested: false, armed: !o.open, fuse: o.rest, progress: o.progress }),
 };
 
 // -- escort: the walker walks its path while an attacker is near; done at the end, failed at 0 hp --

@@ -12,7 +12,7 @@
 // turns following into going to the objective and staying on it, firing
 // on the way, and holding the interaction there when no enemy is close.
 //
-//   createBrain(s, { ai, role, rand }) → brain
+//   createBrain(s, { ai, role, rand, aimScale }) → brain   (aimScale widens the aim box: a mode's lethality lever)
 //   think(brain, world, now) → intent { mode, target, goal, stance, fire, aim }
 //   act(brain, intent, s, dt, world, now)        patternStep(brain) → fire this frame?
 //   world: { nav, lineClear(a, b), squad: { centre, leader, posture } | null, objective, task, enemies, others, shoot(s, aim) }
@@ -55,8 +55,11 @@ export const FAR = 80;
 export const LEG = 40;
 // The cells one of those searches may open before it gives up, by hand.
 export const SEARCH_CELLS = 6000;
+// A waypoint cell a bot has failed to step into (open on the grid, too
+// narrow for its body) is left out of its paths this long, by hand.
+export const AVOID = 10;
 
-export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', rand = Math.random }) {
+export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', rand = Math.random, aimScale = 1 }) {
   const template = ai.templates[role] ?? ai.templates.rifleman;
   const tactics = ai.tactics[template.tactics] ?? ai.tactics.Rifleman_Tactics;
   const family = s.weapon?.family ?? 'rifle';
@@ -65,6 +68,7 @@ export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', ran
   return {
     s,
     role,
+    aimScale,
     template,
     tactics,
     aiWeapon,
@@ -147,7 +151,9 @@ export function aimAt(brain, from, belief, now) {
   const vel = [belief.vel?.x ?? 0, 0, belief.vel?.z ?? 0];
   const p = lead(tgt, vel, from, speed) ?? tgt;
   const dist = Math.hypot(p[0] - from[0], p[2] - from[2]);
-  const [w, h] = aimBox(brain.aiWeapon.accuracyHitBox, dist, Math.min(1, (now - brain.aimSince) / AIM_SETTLE));
+  const [bw, bh] = aimBox(brain.aiWeapon.accuracyHitBox, dist, Math.min(1, (now - brain.aimSince) / AIM_SETTLE));
+  const w = bw * brain.aimScale;
+  const h = bh * brain.aimScale;
   const fx = (p[0] - from[0]) / (dist || 1);
   const fz = (p[2] - from[2]) / (dist || 1);
   const u = (brain.rand() * 2 - 1) * (w / 2);
@@ -308,8 +314,8 @@ export function think(brain, world, now) {
 }
 
 // still bots' cells, which a path routes round (never the goal's own)
-function blockedCells(world, s, goal) {
-  const out = new Set();
+function blockedCells(world, s, goal, avoid = null) {
+  const out = new Set(avoid ?? []);
   const gc = cellAt(world.nav, goal[0], goal[1]);
   const gi = gc ? gc[1] * world.nav.cols + gc[0] : -1;
   for (const o of world.others ?? []) {
@@ -326,7 +332,7 @@ function blockedCells(world, s, goal) {
 function plan(brain, world, s, goal, now) {
   const t0 = clock();
   const from = flat(s.at);
-  const blocked = blockedCells(world, s, goal);
+  const blocked = blockedCells(world, s, goal, now < (brain.avoidUntil ?? -Infinity) ? brain.avoid : null);
   const d = d2(from, goal);
   let path = d <= FAR ? findPath(world.nav, from, goal, { blocked, max: SEARCH_CELLS }) : null;
   // too far for one search, or walled off for now: a leg toward it
@@ -354,10 +360,16 @@ function navigate(brain, world, s, goal, dt, now) {
   const moved = move(s, [wp[0] - s.at[0], wp[1] - s.at[2]], dt, world.nav);
   brain.stuck = moved < 0.01 ? brain.stuck + dt : 0;
   if (brain.stuck > 3) {
-    // nothing works: somewhere else near, and a fresh path there
+    // nothing works: the cell it could not enter is left out a while, and a fresh path somewhere else near
+    const wc = cellAt(world.nav, wp[0], wp[1]);
+    if (wc) {
+      if (now >= (brain.avoidUntil ?? -Infinity)) brain.avoid = new Set();
+      brain.avoid.add(wc[1] * world.nav.cols + wc[0]);
+      brain.avoidUntil = now + AVOID;
+    }
     const a = brain.rand() * Math.PI * 2;
     const spot = nearestWalkable(world.nav, s.at[0] + Math.cos(a) * 6, s.at[2] + Math.sin(a) * 6, 6);
-    if (spot && walkable(world.nav, spot[0], spot[1])) brain.path = findPath(world.nav, flat(s.at), spot) ?? [flat(s.at), spot];
+    if (spot && walkable(world.nav, spot[0], spot[1])) brain.path = findPath(world.nav, flat(s.at), spot, { blocked: brain.avoid }) ?? [flat(s.at), spot];
     brain.wp = 1;
     brain.pathGoal = goal;
     brain.pathAt = now;

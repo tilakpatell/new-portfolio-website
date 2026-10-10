@@ -14,7 +14,7 @@
 import { aiOf, pointsOf } from '../rulebook.js';
 import { nearestWalkable } from '../nav.js';
 import { balance, offers } from '../battlePoints.js';
-import { INTERACT_REACH, insidePolygon } from '../modes/objectives.js';
+import { INTERACT_REACH, UPLINK_RANGE, insidePolygon } from '../modes/objectives.js';
 import { WAVE } from '../spawn.js';
 
 // Seconds between the commander's orders, by hand.
@@ -162,8 +162,8 @@ function defendPlan(c, live, enemies) {
   // the walkers' stage: the uplinks nearest the walkers, while they rest not
   const walkers = live.filter((o) => o.type === 'escort' && o.walker.alive).map((o) => xz(o.walker));
   if (walkers.length) {
-    const ups = live.filter((o) => o.type === 'uplink' && o.rest <= 0);
     const by = (o) => Math.min(...walkers.map((w) => d2(w, o.at)));
+    const ups = live.filter((o) => o.type === 'uplink' && o.rest <= 0 && by(o) <= UPLINK_RANGE);
     ups.sort((a, b) => by(a) - by(b));
     for (const o of ups.slice(0, UPLINK_SQUADS)) give(o, 'take');
   }

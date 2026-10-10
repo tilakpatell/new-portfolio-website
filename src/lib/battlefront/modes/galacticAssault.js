@@ -15,7 +15,7 @@
 //   view(ga) → the HUD's objective bar        force(ga) (tests: every live objective done)
 
 import { mapOf, stagesOf, vehicleOf, volumeOf } from '../rulebook.js';
-import { ESCORT_REACH, INTERACT_REACH, KINDS, VULNERABLE_SECONDS, insidePolygon } from './objectives.js';
+import { BOMBING_RUN, ESCORT_REACH, UPLINK_RANGE, INTERACT_REACH, KINDS, VULNERABLE_SECONDS, insidePolygon } from './objectives.js';
 
 // `PF_GameMode_Conquest_Staged`'s delays: 12 s before the first stage, 6 s between stages.
 export const STAGE_SETUP = 12;
@@ -23,8 +23,14 @@ export const STAGE_PAUSE = 6;
 // The attackers' tickets at the start and the top-up at each later stage:
 // the stage file holds none (the graph's counters are not read), so by hand,
 // as the game plays them.
-export const TICKETS_START = 300;
-export const TICKETS_TOP_UP = 60;
+export const TICKETS_START = 90;
+export const TICKETS_TOP_UP = 40;
+
+// Both sides' bots aim this much wider in Galactic Assault than in a
+// skirmish: the battle's lethality, and so how fast the attackers' tickets
+// go against how fast a point is taken. The balance's first lever
+// (docs/superpowers/evidence/battlefront-lane2/balance.md), by hand.
+export const AIM_SCALE = 3;
 
 const SIDE_TEAM = { dark: 2, light: 1 };
 
@@ -156,11 +162,15 @@ export function tick(ga, dt, world = { soldiers: [], alive: { attack: 0, defend:
     return ga.out;
   }
   senseObjectives(ga, world.soldiers);
+  const flying = ga.time < ga.vulnerableUntil;
+  const walkers = walkersOf(ga).filter((w) => w.alive);
   for (const o of ga.objectives) {
     const was = { done: o.done, armed: o.armed };
-    KINDS[o.type].tick(o, dt, { inside: { attack: o.inside.attack.length, defend: o.inside.defend.length }, interactions: o.interactions, near: o.near });
+    const open = o.type === 'uplink' && !flying && walkers.some((w) => near([w.at[0], w.at[2]], o.at, UPLINK_RANGE));
+    KINDS[o.type].tick(o, dt, { inside: { attack: o.inside.attack.length, defend: o.inside.defend.length }, interactions: o.interactions, near: o.near, open });
     if (o.type === 'uplink' && o.fired) {
       ga.vulnerableUntil = ga.time + VULNERABLE_SECONDS;
+      for (const w of walkersOf(ga)) if (w.alive) w.hp = Math.max(0, w.hp - BOMBING_RUN * w.hpMax);
       ga.out.push({ type: 'uplink', name: o.name, by: o.interactions.filter((i) => i.side === 'defend').map((i) => i.id) });
     }
     if (o.type === 'arm' && o.armed !== was.armed) ga.out.push({ type: o.armed ? 'armed' : 'defused', name: o.name });

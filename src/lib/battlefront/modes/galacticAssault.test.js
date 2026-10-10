@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadRulebook, mapOf, stagesOf, volumeOf } from '../rulebook.js';
 import { STAGE_PAUSE, STAGE_SETUP, TICKETS_START, TICKETS_TOP_UP, canRespawn, createAssault, force, onEvent, spawnSets, tick, view } from './galacticAssault.js';
-import { centroid } from './objectives.js';
+import { BOMBING_RUN, UPLINK_RANGE, centroid } from './objectives.js';
 
 const rb = loadRulebook();
 const file = stagesOf(rb, 'hoth', 'galacticAssault');
@@ -77,8 +77,19 @@ describe('Galactic Assault', () => {
     live(ga);
     const up = ga.objectives.find((o) => o.type === 'uplink');
     const me = { id: 'r1', side: 'defend', at: [up.at[0], 0, up.at[1]], alive: true, interact: true };
+    // out of the walkers' reach the console is shut
+    run(ga, 6.05, { soldiers: [me], alive: { attack: 5, defend: 5 } });
+    expect(up.runs).toBe(0);
+    const w = ga.objectives.find((o) => o.type === 'escort').walker;
+    w.at[0] = up.at[0];
+    w.at[2] = up.at[1] - UPLINK_RANGE + 10;
     run(ga, 6.05, { soldiers: [me], alive: { attack: 5, defend: 5 } });
     expect(ga.objectives.filter((o) => o.type === 'escort').every((o) => o.walker.vulnerable)).toBe(true);
+    expect(w.hp).toBeCloseTo(w.hpMax * (1 - BOMBING_RUN), 6);
+    // one run at a time: a second console can't call another while it flies
+    const other = ga.objectives.filter((o) => o.type === 'uplink')[1];
+    run(ga, 6.05, { soldiers: [{ ...me, id: 'r2', at: [other.at[0], 0, other.at[1]] }], alive: { attack: 5, defend: 5 } });
+    expect(other.runs).toBe(0);
   });
 
   it('runs the whole Hoth stage file through, the tickets topped up at each stage', () => {

@@ -97,3 +97,16 @@ describe('out of bounds and protection', () => {
     expect(isProtected(s, sim.time)).toBe(false);
   });
 });
+
+describe('the deploy screen in the view', () => {
+  it('opens for a waiting player with the offers and their points', () => {
+    const sim = createSim({ rulebook: rb, nav: hoth, seed: 4, bots: { 1: 2, 2: 2 }, mode: 'galacticAssault' });
+    sim.deploying.set('p9', { id: 'p9', team: 2, bot: false, since: 0 });
+    earn(sim.bp, 'p9', 'kill', 10);
+    const d = view(sim, { player: 'p9' }).deploy;
+    expect(d).toMatchObject({ open: true, team: 2, points: 1000 });
+    expect(d.offers.find((o) => o.kind === 'hero')).toMatchObject({ affordable: false });
+    expect(d.offers.find((o) => o.id === 'JumpTrooper')).toMatchObject({ affordable: true, cost: 1000 });
+    expect(view(sim).deploy.open).toBe(false);
+  });
+});
