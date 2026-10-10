@@ -287,18 +287,19 @@ export const SITES = {
       // the mist, the light ones, as many again)
       { kind: 'redwood', n: 320, within: [60, 280], scale: [0.75, 1.35], opts: { seed: 1, leaf: '#3a4626' } },
       { kind: 'redwood', n: 150, within: [60, 280], scale: [0.6, 1.2], opts: { seed: 2, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
-      { kind: 'redwood', n: 100, within: [60, 200], scale: [0.7, 1.25], opts: { seed: 13, leaf: '#3c4828' } },
+      { kind: 'redwood', n: 100, within: [60, 200], scale: [0.7, 1.25], opts: { seed: 13, leaf: '#3c4828' }, game: true },
       { kind: 'redwood', n: 300, within: [280, 640], scale: [0.75, 1.35], opts: { seed: 14, lo: true, leaf: '#3a4626' } },
       { kind: 'redwood', n: 140, within: [280, 640], scale: [0.6, 1.2], opts: { seed: 15, lo: true, h: 58, r: 2.0, bark: '#7a4a32', leaf: '#3e4a28' } },
       { kind: 'redwood', n: 200, within: [600, 1300], scale: [1.0, 1.5], solid: false, opts: { seed: 3, lo: true, leaf: '#3a4626' } },
-      { kind: 'spruce', n: 160, within: [20, 420], scale: [0.7, 1.3], opts: { seed: 4, leaf: '#2f3e26' } },
+      // (the game's level places its own forest: these three rows are the flight's)
+      { kind: 'spruce', n: 160, within: [20, 420], scale: [0.7, 1.3], opts: { seed: 4, leaf: '#2f3e26' }, game: true },
       { kind: 'fern', n: 1100, within: [6, 240], scale: [0.9, 2.1], solid: false, clear: -12, opts: { seed: 5, n: 11, color: '#56592c' } },
       // (the floor near you carpeted, as the film's is: low ferns, close set)
       { kind: 'fern', n: 1500, within: [4, 90], scale: [0.7, 1.5], solid: false, clear: -14, opts: { seed: 12, n: 7, color: '#5a5e2e' } },
       { kind: 'fern', n: 160, within: [17, 60], scale: [0.9, 1.8], solid: false, clear: -30, opts: { seed: 9, n: 10, color: '#5e6230' } },
       { kind: 'fern', n: 500, within: [6, 240], scale: [0.6, 1.3], solid: false, clear: -14, opts: { seed: 6, color: '#626436', n: 7, len: 1.0 } },
       { kind: 'fern', n: 700, within: [240, 600], scale: [1.0, 2.2], solid: false, clear: -10, opts: { seed: 8, n: 9, color: '#52562c' } },
-      { kind: 'log', n: 70, within: [20, 560], scale: [0.8, 1.4], solid: false, opts: { seed: 7 } },
+      { kind: 'log', n: 70, within: [20, 560], scale: [0.8, 1.4], solid: false, opts: { seed: 7 }, game: true },
       // (the floor's boulders mossy, as the film's are; scrub and toadstools under the ferns)
       { kind: 'rock', n: 110, within: [14, 560], scale: [0.6, 2.4], opts: { color: '#6e7460', sharp: 0.4, to: 'mossrock' } },
       { kind: 'stones', n: 320, within: [6, 300], scale: [0.25, 0.7], solid: false, opts: { color: '#6a6e5a', to: 'mossrock' } },
