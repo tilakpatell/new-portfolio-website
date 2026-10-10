@@ -11,6 +11,8 @@
 // whole part; `match` is a string (the lowercase name or a file starts with
 // it) or a RegExp (tested on the lowercase name and files), limited to
 // `part` when both are given.
+// An entry with `finding: true` is the fifth design's first finding: rows no
+// lane's plan named, given to the lane that takes them (the ledger counts them apart).
 // LANES: [{ lane, design, merged? }]: the design PR that planned the lane
 // and, once it lands, the PR that merged it.
 
@@ -93,8 +95,50 @@ export const OWNERS = [
   { part: 'physics', lane: 'E' },
   { part: 'collision', lane: 'E' },
   { part: 'animtracks', lane: 'E' },
+  { match: 'materials.jsonl', part: 'index', lane: 'E' },
   // lane O: every placeable object
   { match: 'objects/', lane: 'O' },
+
+  // The fifth design's first finding (HANDOFF-bf2017.md, "The fifth
+  // design"): what no lane's plan named when the ledger was first written,
+  // given to the lane that takes it.
+  // the clouds and the seasons' object sets are the library's (lane O)
+  { match: 'levels/clouds', lane: 'O', finding: true },
+  { match: /(^|\/)objects\//, lane: 'O', finding: true },
+  // the front end's stages and the UI's art are lane M's
+  { match: /^(levels\/frontend|levels\/initialexperience)\//, lane: 'M', finding: true },
+  { match: /(^|\/)ui\//, lane: 'M', finding: true },
+  // the capital ships are the space lane's; the other vehicles the game's lane 4
+  { match: /^gameplay\/vehicles\/.*(capital|cruiser|venator|mc80|cr90|lucrehulk|providence|stardestroyer|dreadnought|frigate|corvette)/, lane: 'Q', finding: true },
+  { match: /(^|\/)gameplay\/ntcapitalships\//, lane: 'Q', finding: true },
+  { match: /(^|\/)gameplay\/vehicles\//, lane: '4', finding: true },
+  // the prefabs (pickups, spawners, vehicle pads) are placed by the levels (lane E)
+  { match: /(^|\/)gameplay\/prefabs\//, lane: 'E', finding: true },
+  // the weapons and gadgets in the cast's hands, the cast's outfits, heads and
+  // parts, and the cinematics' sets go with the clips (lane A)
+  { match: /(^|\/)(gameplay\/equipment|gameplay\/kits|weapons)\//, lane: 'A', finding: true },
+  { match: /(^|\/)(characters|cinematics)\//, lane: 'A', finding: true },
+  // the effects' meshes and sheets are fidelity X's, with the emitters
+  { match: /(^|\/)fx\//, lane: 'X', finding: true },
+  // the light and the look: probes, far shadows, the lighting meshes, the
+  // VE records, the sky and post-process tables, the shaders' detail and
+  // weathering maps (lane E's packs)
+  { match: /(^|\/)(levels\/)?lighting\//, lane: 'E', finding: true },
+  { match: /^(shaders|systems)\//, lane: 'E', finding: true },
+  // every level's own meshes, maps and records: the level factory's packs (lane E)
+  { match: /^(levels|a3|s\d[_\d]*|addons|battlebeyond)\//, lane: 'E', finding: true },
+  // data by top folder: the rulebooks' records the game's lanes take
+  { match: /^(online|persistence|telemetry|automation|win32|dataversion|defaultobjectpatch|globals)\//, part: 'data', lane: '7', finding: true },
+  { match: /^(gameplay|ai)\//, part: 'data', lane: '6', finding: true },
+  { match: /^(ui|media)\//, part: 'data', lane: 'M', finding: true },
+  { match: /^(characters|animations|cinematics)\//, part: 'data', lane: 'A', finding: true },
+  { match: /^(fx|effects)\//, part: 'data', lane: 'X', finding: true },
+  { match: /^(shaders|systems|lodgroups|[0-9a-f-]{36}_shaderparametervariation)\//, part: 'data', lane: 'E', finding: true },
+  { match: /^(localization|media2|ui_[^/]*)\//, part: 'data', lane: 'M', finding: true },
+  { match: /^gameplay_characters[^/]*\//, part: 'data', lane: 'A', finding: true },
+  // the rest of data/ (prefab and logic blueprints, the reports, the
+  // settings): the game's lane 6, the other maps' and modes' rulebooks
+  { part: 'data', lane: '6', finding: true },
   // lane A: every clip the lanes above do not name
   { part: 'anims', lane: 'A' },
 ];
