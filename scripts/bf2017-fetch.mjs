@@ -40,7 +40,7 @@ const WAITS = [1000, 2000, 4000];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function keys() {
+export function keys() {
   const base = process.env.SUPABASE_URL;
   const key = process.env.BF2017_KEY || process.env.SUPA_KEY;
   if (!base || !key) {
@@ -67,7 +67,7 @@ async function ask(url, init) {
 
 // One object to disk: `kept` when the file there is the size the bucket says,
 // `missing` when the bucket hasn't it.
-async function getObject(env, root, bucketPath) {
+export async function getObject(env, root, bucketPath) {
   const url = objectUrl(env.base, BUCKET, bucketPath);
   const file = localPath(root, bucketPath);
   if (existsSync(file)) {
