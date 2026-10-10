@@ -100,3 +100,5 @@ F, A, H, 1 and 5 run at once; they own different files (F: `pages/GalaxySurface.
 ## Departures
 
 Where a lane goes another way than this page, one line each, added by the lane when it merges.
+
+- **A.** The levels' intro and outro cameras are Cinematics tracks, not `CameraEntityData`: each stages file has a hand camera. Endor's space level is the second Death Star's wreckage, not its surface: the galaxy's Death Star and its shield are hidden while it's fought. The MC80's phase is the game's three sub-stages (five stages in all; Kamino's last phase two, four in all). The plan's `--frame map --no-fit --no-terrain` were not needed: the builder builds no ground for a level with no terrain record, and gained `--drop` (the corvettes the sim draws, the level's planet and moon, the end of round's room) and `--share 0.5` (the flight page draws the galaxy too). The fighters are the galaxy's models, not imported from the game. Kamino has its rulebook, stages and a tested mission but no pack or entry (fought over Tipoca City's ocean, not in orbit). A pack mesh the export gives no colour map (the Death Star’s wreckage) is drawn hull grey, not white (`spaceLevel.js`).
