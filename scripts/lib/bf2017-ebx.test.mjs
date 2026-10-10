@@ -21,6 +21,10 @@ describe('the 2017 data dump’s parsers', () => {
     expect(objectsOf(a, 'FiringFunctionData')).toHaveLength(1);
   });
 
+  it('finds a record whose name and folders differ in case', () => {
+    expect(rootOf(loadAsset(ROOT, 'gameplay/kits/mp/assault/affector_assaulthealth')).MaxHealth).toBe(150);
+  });
+
   it('reads a gzipped asset', () => {
     const a = loadAsset(ROOT, 'Gameplay/Equipment/Rifles/A280C/W_BlasterRifle_A280C');
     expect(a.guid).toBeTruthy();

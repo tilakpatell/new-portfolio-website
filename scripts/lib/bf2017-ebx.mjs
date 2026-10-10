@@ -20,7 +20,7 @@
 // Transforms are 3×4 (`right`, `up`, `forward`, `trans`); the export's frame is
 // glTF's: metres, +Y up, +Z forward, so a yaw is atan2(forward.x, forward.z).
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 
@@ -45,11 +45,27 @@ export function readIndex(root) {
 // An asset's text as the export wrote it (a 64-bit integer, like a firing
 // pattern's mask, survives only here: JSON.parse rounds it to a double).
 export function loadText(root, name) {
-  const plain = join(root, 'data', `${name}.json`);
-  if (existsSync(plain)) return readFileSync(plain, 'utf8');
-  const gz = `${plain}.gz`;
-  if (existsSync(gz)) return gunzipSync(readFileSync(gz)).toString('utf8');
+  for (const file of [`${name}.json`, `${name}.json.gz`]) {
+    const p = existsSync(join(root, 'data', file)) ? join(root, 'data', file) : caseless(join(root, 'data'), file);
+    if (!p) continue;
+    return p.endsWith('.gz') ? gunzipSync(readFileSync(p)).toString('utf8') : readFileSync(p, 'utf8');
+  }
   return null;
+}
+
+// A path found segment by segment ignoring case: the export ran on Windows, so
+// a record's name and the folders it sits in can differ in case
+// (`levels/lighting/hoth/prefabs/pf_…` lives under `Levels/Lighting/Hoth/Prefabs/`).
+const listings = new Map();
+function caseless(dir, rel) {
+  let at = dir;
+  for (const seg of rel.split('/')) {
+    if (!listings.has(at)) listings.set(at, existsSync(at) && statSync(at).isDirectory() ? readdirSync(at) : []);
+    const hit = listings.get(at).find((e) => e.toLowerCase() === seg.toLowerCase());
+    if (!hit) return null;
+    at = join(at, hit);
+  }
+  return at;
 }
 
 export function loadAsset(root, name) {
