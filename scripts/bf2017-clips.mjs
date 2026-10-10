@@ -272,7 +272,10 @@ export async function makePack(pack, { fps = 24, only = null, out, root, skeleto
       const sampler = doc.createAnimationSampler().setInput(input).setOutput(output).setInterpolation('LINEAR');
       anim.addSampler(sampler).addChannel(doc.createAnimationChannel().setTargetNode(node).setTargetPath(c.path).setSampler(sampler));
     }
-    const extras = { source: `Star Wars Battlefront II (2017): ${game}`, fps, loop: Boolean(clip.extras?.loop) };
+    // (`source` the game's own name for the clip, exactly, for the combat
+    // that reads the game's logic by it; the credit is the pack's, in
+    // public/games/credits.json)
+    const extras = { source: game, fps, loop: Boolean(clip.extras?.loop) };
     if (clip.traj) {
       const rows = clip.traj.times.map((t, i) => ({ t, at: clip.traj.values.slice(i * 3, i * 3 + 3) }));
       // (at the pack's rate: a row every 1/fps)

@@ -64,7 +64,8 @@ import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { NO_CALLS, animatorCalls, seedOf } from '../../lib/three/figureCalls';
 import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
-import { cutFor, loadWalrusBody, packUrls } from '../../lib/three/walrus';
+import { cutsToLoad, loadWalrusBody, packUrls, swapBody } from '../../lib/three/walrus';
+import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { detailLevel } from '../../lib/detail';
 import { breathe, createGait, sway } from '../../lib/three/gait';
 import { seeded } from '../../lib/seeded';
@@ -321,24 +322,56 @@ async function loadModel(spec, cast, looks = null, { templates = null } = {}) {
 // with its sockets (Wep_Root, where its saber or blaster sits) and its clips
 // (the saber's strokes come from these). Its materials are the copy's own.
 async function walrusFigure(spec) {
-  // (the full figure on a high or ultra device, the light one below: lib/detail's level)
-  // (and the full one when the light one isn't there: a figure is never lost for want of a cut)
+  // (its light cut first, then the one lib/detail's level wants, put on the
+  // figure as it lands: a hero's full cut is 10 to 45 MB of the game's own
+  // maps, and nobody waits that long to see Luke; on a saver connection the
+  // light one only; and the full one when the light one isn't there: a
+  // figure is never lost for want of a cut)
   const packs = spec.packs ?? packUrls(spec.pack);
-  const cut = cutFor(spec.src.url, detailLevel());
-  const { model, clips, sockets } = await loadWalrusBody(cut, { packs }).catch((e) => (cut === spec.src.url ? Promise.reject(e) : loadWalrusBody(spec.src.url, { packs })));
-  const owned = [];
-  model.traverse((o) => {
-    if (!o.isMesh) return;
-    o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
-    owned.push(...[].concat(o.material));
-    // (its small parts, the eyes, the teeth and the hair's cut-out cards,
-    // cast no shadow: each part is a draw of its own, twice with one, and a
-    // 2017 hero has up to thirteen; the body, the clothes and the cape do)
-    const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
-    if (tris < 1500 || o.material?.alphaTest > 0) o.userData.noShadow = true;
-  });
+  const [first, next] = cutsToLoad(spec.src.url, detailLevel(), { lowData: Boolean(device().saveData) });
+  const { model, clips, sockets } = await loadWalrusBody(first, { packs }).catch((e) => (first === spec.src.url ? Promise.reject(e) : loadWalrusBody(spec.src.url, { packs })));
+  // (each mesh's materials, the copy's own, returned for the figure to free)
+  const dress = (root) => {
+    const mats = [];
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      o.frustumCulled = false; // a skinned mesh's bounds don't follow its pose
+      mats.push(...[].concat(o.material));
+      // (its small parts, the eyes, the teeth and the hair's cut-out cards,
+      // cast no shadow: each part is a draw of its own, twice with one, and a
+      // 2017 hero has up to thirteen; the body, the clothes and the cape do)
+      const tris = (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+      if (tris < 1500 || o.material?.alphaTest > 0) o.userData.noShadow = true;
+    });
+    return mats;
+  };
+  const owned = dress(model);
   const hips = model.getObjectByName('Hips');
   const fig = rigged(model, clips, spec.tall, owned, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url, library: false });
+  let gone = false;
+  const own = fig.dispose;
+  fig.dispose = () => {
+    gone = true;
+    own();
+  };
+  if (next)
+    loadGLTF(next)
+      .then((gltf) => {
+        if (gone || !gltf) return;
+        const full = cloneScene(gltf);
+        const mats = dress(full);
+        const old = swapBody(model, full);
+        if (!old.length) return mats.forEach((m) => m.dispose());
+        // (the light cut's materials freed and forgotten, the full one's kept to free)
+        for (const o of old)
+          for (const m of [].concat(o.material)) {
+            m.dispose();
+            const i = owned.indexOf(m);
+            if (i >= 0) owned.splice(i, 1);
+          }
+        owned.push(...mats);
+      })
+      .catch(() => {}); // (the light cut stays: it was already a whole figure)
   return Object.assign(fig, { rig: 'walrus', sockets, clips, hipsY: hips?.position.y ?? null });
 }
 

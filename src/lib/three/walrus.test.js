@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 import { clearGLTFCache } from './gltfCache';
-import { clipsFor, cutFor, loadWalrusBody, loadWalrusPacks, packUrls, socketsOf } from './walrus';
+import { clipsFor, cutFor, cutsToLoad, loadWalrusBody, loadWalrusPacks, packUrls, socketsOf, swapBody } from './walrus';
 import { BODY, SOCKETS } from './walrusRig.js';
 
 // a body by name: the game's (BODY and the sockets) or Meshy's
@@ -105,5 +105,45 @@ describe('a figure on the game’s skeleton', () => {
     expect(cutFor('/models/galaxy/crew/luke.glb', 'ultra')).toBe('/models/galaxy/crew/luke.ultra.glb');
     expect(cutFor('/models/galaxy/crew/luke.glb', 'mid')).toBe('/models/galaxy/crew/luke.lod1.glb');
     expect(cutFor('/models/galaxy/crew/luke.glb', 'low')).toBe('/models/galaxy/crew/luke.lod1.glb');
+  });
+});
+
+describe('a 2017 figure, light first and its full cut swapped in', () => {
+  it('fetches the light cut first where the level wants a bigger one, and only it on a saver connection', () => {
+    expect(cutsToLoad('/c/luke.glb', 'high')).toEqual(['/c/luke.lod1.glb', '/c/luke.glb']);
+    expect(cutsToLoad('/c/luke.glb', 'ultra')).toEqual(['/c/luke.lod1.glb', '/c/luke.ultra.glb']);
+    expect(cutsToLoad('/c/luke.glb', 'mid')).toEqual(['/c/luke.lod1.glb']);
+    expect(cutsToLoad('/c/luke.glb', 'ultra', { lowData: true })).toEqual(['/c/luke.lod1.glb']);
+  });
+
+  it('puts the full cut’s skinned meshes on the bones already playing, and takes the light ones off', () => {
+    const rig = (meshName) => {
+      const root = new THREE.Group();
+      const hips = new THREE.Bone();
+      hips.name = 'Hips';
+      const head = new THREE.Bone();
+      head.name = 'Head';
+      hips.add(head);
+      root.add(hips);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+      geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute([0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+      geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+      const mesh = new THREE.SkinnedMesh(geo, new THREE.MeshStandardMaterial());
+      mesh.name = meshName;
+      root.add(mesh);
+      root.updateMatrixWorld(true);
+      mesh.bind(new THREE.Skeleton([hips, head]));
+      return { root, hips, head, mesh };
+    };
+    const light = rig('light');
+    const full = rig('full');
+    const gone = swapBody(light.root, full.root);
+    expect(gone).toEqual([light.mesh]);
+    const meshes = [];
+    light.root.traverse((o) => o.isSkinnedMesh && meshes.push(o));
+    expect(meshes.map((m) => m.name)).toEqual(['full']);
+    expect(meshes[0].skeleton.bones).toEqual([light.hips, light.head]);
+    expect(meshes[0].frustumCulled).toBe(false);
   });
 });

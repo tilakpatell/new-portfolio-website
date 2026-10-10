@@ -1,16 +1,19 @@
 // What a GLB's textures cost on the GPU, read from the file alone: each
 // embedded image's width and height from its own header (PNG, JPEG, WebP),
 // as RGBA8 with a full mip chain (four thirds of the top level), which is
-// how three.js uploads a decoded image. Pure, no three, no canvas: a test
+// how three.js uploads a decoded image; a KTX2 (UASTC, the game's own maps)
+// stays block-compressed on the GPU, a byte a texel (BC7 or ASTC 4×4). Pure, no three, no canvas: a test
 // holds a model to the texture contract (docs/superpowers/specs/
 // 2026-10-10-battlefront-2017-asset-pipeline-design.md, section 6: 256 MB a
 // world on desktop, 128 MB on a phone) without a browser.
 //
-//   imageSize(bytes) → { width, height } | null
+//   imageSize(bytes) → { width, height, compressed? } | null
 //   glbTextures(buffer) → { images: [{ width, height }], gpuBytes }
 
 export function imageSize(b) {
   if (b.length < 30) return null;
+  // KTX2: «KTX 20», then the header's width and height
+  if (b[0] === 0xab && b[1] === 0x4b && b[2] === 0x54 && b[3] === 0x58) return { width: b.readUInt32LE(20), height: b.readUInt32LE(24), compressed: true };
   // PNG: IHDR right after the signature
   if (b[0] === 0x89 && b[1] === 0x50) return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
   // WebP: RIFF....WEBP then VP8 (lossy), VP8L (lossless) or VP8X (extended)
@@ -47,6 +50,6 @@ export function glbTextures(buf) {
     const start = bv.byteOffset ?? 0;
     return imageSize(bin.subarray(start, start + bv.byteLength));
   });
-  const gpuBytes = images.reduce((n, s) => n + (s ? (s.width * s.height * 4 * 4) / 3 : 0), 0);
+  const gpuBytes = images.reduce((n, s) => n + (s ? (s.width * s.height * (s.compressed ? 1 : 4) * 4) / 3 : 0), 0);
   return { images, gpuBytes };
 }
