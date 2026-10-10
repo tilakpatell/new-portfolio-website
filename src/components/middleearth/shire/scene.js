@@ -8,8 +8,10 @@
 // It draws what the component hands it every frame (the hobbit, the
 // activity in hand, the camera) and decides nothing; ./rules.js has the rules.
 //
-// createShireWorld(canvas) returns { render(state, ms), fx(type, data),
-// aim(kind, ndcX, ndcY), screenOf(kind, id), resize, dispose, lost, info }.
+// createShireWorld(canvas, { onLost, reduced }) returns { render(state, ms),
+// fx(type, data), aim(kind, ndcX, ndcY), screenOf(kind, id), resize,
+// dispose, lost, info }. With `reduced` (motion turned down) the leaves on
+// the ground lie as they fell.
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
@@ -22,9 +24,10 @@ import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
 import { loadDoorLeaf } from './models';
-import { instances, makeFlowers, makeTerrain, makeWater, shireGroundMap } from './ground';
+import { drawnHeight, instances, makeFlowers, makeTerrain, makeWater, shireGroundMap } from './ground';
 import { createGrass } from '../../../lib/three/grass';
 import { createWind } from '../../../lib/three/wind';
+import { createFlatLitter } from '../../../lib/three/flatLitter';
 import { floorShadow } from '../../../lib/three/grounding';
 import { FIGURE, groundTown } from '../towns/grounded';
 import { MOODS, makeAtmosphere, makeSky } from './sky';
@@ -49,6 +52,7 @@ import {
   HOLLOW,
   HUNT,
   INN,
+  LEAVES,
   MILL,
   MUSHROOMS,
   PARTY_TREE,
@@ -84,7 +88,7 @@ const faceTo = (obj, face) => {
   obj.rotation.y = face;
 };
 
-export async function createShireWorld(canvas, { onLost } = {}) {
+export async function createShireWorld(canvas, { onLost, reduced = false } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
@@ -140,6 +144,16 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   const wind = createWind({ strength: 0.45, angle: 0.6 * Math.PI });
   const grass = createGrass({ ground: groundMap, wind, side: tier === 'high' ? 280 : tier === 'mid' ? 200 : 120, size: 44 });
   outdoors.add(grass.mesh);
+  // and Bruno's fallen leaves (lib/three/flatLitter): a few hundred round
+  // Frodo, lying where the ground is (groundY: the bridge's deck, the
+  // pond's top, and the terrain as it's drawn, ./ground.js's drawnHeight),
+  // kicked along as he walks through them, let go by the same gusts, and
+  // shed by the oaks, the Party Tree and the old tree by the road (their
+  // crowns, `leafCrowns`, filled in as each is put up)
+  const leafCrowns = [];
+  const drawn = drawnHeight(terrain);
+  const leaves = createFlatLitter({ max: tier === 'high' ? 512 : tier === 'mid' ? 256 : 128, half: 14, spec: LEAVES, wind, floorAt: (x, z) => groundY(x, z, drawn), crowns: leafCrowns, reduced, seed: 22 });
+  outdoors.add(leaves.mesh);
 
   const kit = createShireKit(renderer);
   const mats = kit.mats ?? {};
@@ -187,6 +201,8 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   bridge.group.position.set(BRIDGE.x, bridgeY(BRIDGE.z0) - 0.02, (BRIDGE.z0 + BRIDGE.z1) / 2);
   statics.add(bridge.group);
   placed(kit.partyTree(), PARTY_TREE.x, PARTY_TREE.z, { y: height(PARTY_TREE.x, PARTY_TREE.z), sink: 0.1 });
+  // (its crown: the clumps round 9.5 m up, 6.5 m out, from the lantern boughs to the top)
+  leafCrowns.push({ x: PARTY_TREE.x, z: PARTY_TREE.z, r: 6, lo: 5, hi: 14 });
   placed(kit.pavilion(), PAVILION.x, PAVILION.z, { y: height(PAVILION.x, PAVILION.z), sink: 0.02 });
   placed(kit.cart(), CART.x, CART.z, { y: height(CART.x, CART.z), turn: 0, sink: 0 });
   if (kit.barn) placed(kit.barn(), BARN.x, BARN.z, { y: height(BARN.x, BARN.z), turn: Math.PI / 2, sink: 0.05 });
@@ -198,6 +214,8 @@ export async function createShireWorld(canvas, { onLost } = {}) {
     rootTree.group.rotation.y = Math.PI;
     rootTree.group.position.set(HOLLOW.x + h.x, height(ROOT_TREE.x, ROOT_TREE.z) - 0.1, HOLLOW.z + h.z);
     statics.add(rootTree.group);
+    // (its crown: the clumps round 9 m up over its bank, 5 m out)
+    leafCrowns.push({ x: rootTree.group.position.x, z: rootTree.group.position.z, r: 5, lo: 7, hi: 13 });
   }
   // the party's light at night (the kit's lanterns glow; these light the grass)
   const lampA = new THREE.PointLight(0xffb060, 0, 22, 1.6);
@@ -251,6 +269,10 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   oaks.forEach((oak, k) => {
     const list = TREES.filter((t) => t.kind % oaks.length === k).map((t) => ({ x: t.x, z: t.z, y: height(t.x, t.z) - 0.1, s: t.s, turn: t.turn }));
     if (!list.length) return;
+    // (each one's crown, for the leaves: its clumps' box, at the tree's size)
+    if (!oak.crown.boundingBox) oak.crown.computeBoundingBox();
+    const b = oak.crown.boundingBox;
+    for (const t of list) leafCrowns.push({ x: t.x, z: t.z, r: (Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2) * t.s, lo: b.min.y * t.s - 0.1, hi: b.max.y * t.s - 0.1 });
     // (only the sharpest tier has the trees cast shadows)
     outdoors.add(instances(oak.trunk, mats.trunk ?? fallback(0x5a4028), list, { shadow: tier === 'high' }));
     outdoors.add(instances(oak.crown, mats.crown ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }), list, { shadow: tier === 'high' }));
@@ -491,6 +513,13 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   const tmp2 = new THREE.Vector3();
   const WRAITH_FOG = new THREE.Color(0.32, 0.35, 0.42);
   const look = new THREE.Vector3();
+  // who kicks the leaves: Frodo, Maggot's dogs, the Rider's horse (each its
+  // own, kept: nothing made a frame)
+  const leafFocus = { x: 0, z: 0 };
+  const leafWalkers = [];
+  const frodoWalks = { key: 'frodo', x: 0, z: 0, y: 0 };
+  const dogWalks = dogs.map((_, i) => ({ key: `dog${i}`, x: 0, z: 0, y: 0 }));
+  const riderWalks = { key: 'rider', x: 0, z: 0, y: 0 };
 
   const render = (s, ms, fast = 1) => {
     const dt = Math.min(0.05 * fast, ms / 1000);
@@ -679,6 +708,30 @@ export async function createShireWorld(canvas, { onLost } = {}) {
       }
       if (r.phase === 'sniff') A.shake = Math.max(A.shake, 0.03);
       riderLight.intensity = 6 + Math.sin(t * 2.3) * 1.5;
+    }
+
+    // ── the leaves on the ground ──
+    // (round Frodo and 4 m ahead the way he faces, where the camera looks;
+    // kicked by him, the dogs and the horse where they are this frame; not
+    // while he's in Bag End and the Shire's put away)
+    if (s.mode !== 'inside') {
+      leafFocus.x = h.x + Math.cos(h.face) * 4;
+      leafFocus.z = h.z - Math.sin(h.face) * 4;
+      leafWalkers.length = 0;
+      frodoWalks.x = h.x;
+      frodoWalks.z = h.z;
+      leafWalkers.push(frodoWalks);
+      for (let i = 0; i < dogs.length; i++) {
+        dogWalks[i].x = dogs[i].group.position.x;
+        dogWalks[i].z = dogs[i].group.position.z;
+        leafWalkers.push(dogWalks[i]);
+      }
+      if (rider.group.visible) {
+        riderWalks.x = rider.group.position.x;
+        riderWalks.z = rider.group.position.z;
+        leafWalkers.push(riderWalks);
+      }
+      leaves.update(dt, { focus: leafFocus, walkers: leafWalkers });
     }
 
     // ── markers, and the ring at your feet ──
@@ -876,8 +929,10 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   // (its bounce off: the house look's, from the ground map, is the bounce)
   // (the grass out of the bake: drawn from above it would wrap round the
   // bake's own camera; it reads the baked shade instead, as the floor does)
-  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group, grass.mesh], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
+  // (and the leaves out of it, lying on the floor: they read its shade as the grass does)
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group, grass.mesh, leaves.mesh], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
   floorShadow(grass.material, ground.mask);
+  floorShadow(leaves.material, ground.mask);
   // (last, over the floor light's own tints: one shadow colour everywhere)
   house.adopt(scene);
 
@@ -890,6 +945,7 @@ export async function createShireWorld(canvas, { onLost } = {}) {
     house: import.meta.env.DEV ? house : null, // for the QA scripts
     grass: import.meta.env.DEV ? grass : null, // for the QA scripts
     wind: import.meta.env.DEV ? wind : null, // for the QA scripts
+    leaves: import.meta.env.DEV ? leaves : null, // for the QA scripts
     render,
     prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     fx: fxEvent,
@@ -910,6 +966,7 @@ export async function createShireWorld(canvas, { onLost } = {}) {
       panel?.dispose();
       ground.dispose();
       grass.dispose();
+      leaves.dispose();
       wind.dispose();
       groundMap.dispose();
       ghosts.dispose();
