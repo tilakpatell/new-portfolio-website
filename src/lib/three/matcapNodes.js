@@ -7,7 +7,8 @@
 //   matcapFor(material, renderer, lights), disposeMatcaps(renderer)
 
 import * as THREE from 'three';
-import { MeshMatcapNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu';
+import { MeshBasicNodeMaterial, MeshMatcapNodeMaterial, MeshStandardNodeMaterial, QuadMesh } from 'three/webgpu';
+import { texture, uv, vec2 } from 'three/tsl';
 
 const DEG = Math.PI / 180;
 const hex = (c) => (c?.isColor ? c.getHexString() : '-');
@@ -61,9 +62,22 @@ export function bakeMatcap(renderer, { roughness = 1, metalness = 0, size = 128 
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
   camera.position.set(0, 0, 5);
   const kept = renderer.getRenderTarget?.() ?? null;
-  renderer.setRenderTarget(target);
+  // (drawn into a picture of its own, then copied into the one kept turned
+  // over: the node renderer samples a render target with v = 0 at its top
+  // row, on WebGPU and on WebGL 2 alike (TextureNode's flipY for a render
+  // target there), where a matcap is read with v = 0 at the bottom, as the
+  // classic renderer's targets and every image are)
+  const raw = new THREE.RenderTarget(size, size, { type: THREE.HalfFloatType, depthBuffer: true });
+  renderer.setRenderTarget(raw);
   renderer.render(scene, camera);
+  const copy = new MeshBasicNodeMaterial({ fog: false });
+  copy.colorNode = texture(raw.texture, vec2(uv().x, uv().y.oneMinus()));
+  const quad = new QuadMesh(copy);
+  renderer.setRenderTarget(target);
+  quad.render(renderer);
   renderer.setRenderTarget(kept);
+  copy.dispose();
+  raw.dispose();
   geometry.dispose();
   material.dispose();
   cache.set(key, target);

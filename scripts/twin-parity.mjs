@@ -10,7 +10,7 @@
 //   node scripts/twin-parity.mjs                    every case, the node side on WebGL 2
 //   node scripts/twin-parity.mjs house sky          the cases whose names hold these
 //   GPU=webgpu node scripts/twin-parity.mjs         the node side on WebGPU, where Chromium has an adapter
-//   CHROMIUM=/path/to/chrome, OUT=dir (default scripts/twin-parity/out: the pictures)
+//   CHROMIUM=/path/to/chrome, PORT=5198, OUT=dir (default scripts/twin-parity/out: the pictures)
 //
 // Exit 1 when a case errors or throws; the numbers are for the reader (a
 // twin passes at the parity check's line: 32 dB and under 2 % off).
@@ -27,6 +27,7 @@ const HERE = join(ROOT, 'scripts/twin-parity');
 const OUT = process.env.OUT ?? join(HERE, 'out');
 const webgpu = process.env.GPU === 'webgpu';
 const want = process.argv.slice(2);
+const PORT = Number(process.env.PORT ?? 5198); // (PORT=…: two runs at once)
 
 const psnr = (a, b) => {
   let se = 0;
@@ -47,7 +48,7 @@ const psnr = (a, b) => {
 const server = await createServer({
   root: HERE,
   publicDir: join(ROOT, 'public'),
-  server: { port: 5198, fs: { allow: [ROOT] } },
+  server: { port: PORT, strictPort: true, fs: { allow: [ROOT] } },
   resolve: { alias: { '@src': join(ROOT, 'src') }, dedupe: ['three'] },
   logLevel: 'error',
 });
@@ -62,7 +63,7 @@ try {
     failed = true;
     console.log('page error:', String(e).slice(0, 2000));
   });
-  await page.goto(`http://localhost:5198/${webgpu ? '?gpu=webgpu' : ''}`);
+  await page.goto(`http://localhost:${PORT}/${webgpu ? '?gpu=webgpu' : ''}`);
   await page.waitForFunction(() => window.__out?.ready, null, { timeout: 60000 });
   const names = (await page.evaluate(() => window.names)).filter((n) => !want.length || want.some((w) => n.includes(w)));
   mkdirSync(OUT, { recursive: true });

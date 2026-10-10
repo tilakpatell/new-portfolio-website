@@ -320,6 +320,8 @@ const cases = {
   'surface:windows': pair(towers, [windowsO, HO], [windowsN, HN]),
   'surface:post': pair(post, POSTO, POSTN),
 };
+// (each twin's own cases, in ./cases/<topic>.js: a default export of { name: case })
+for (const mod of Object.values(import.meta.glob('./cases/*.js', { eager: true }))) Object.assign(cases, mod.default);
 for (const kind of ['sea', 'swamp', 'lava', 'clouds']) {
   const [id, site] = pick(waters, kind);
   cases[`surface:water:${kind}`] = waterCase(id, site, true);

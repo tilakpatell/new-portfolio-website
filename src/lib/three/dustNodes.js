@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import { Fn, attribute, cameraProjectionMatrix, cameraViewMatrix, clamp, cos, length, vec2, materialColor, materialOpacity, modelWorldMatrix, positionGeometry, sin, smoothstep, step, texture, uniform, uv, varyingProperty, vec4 } from 'three/tsl';
+import { Fn, attribute, cameraProjectionMatrix, cameraViewMatrix, clamp, cos, length, vec2, materialReference, materialOpacity, modelWorldMatrix, positionGeometry, sin, smoothstep, step, texture, uniform, uv, varyingProperty, vec4 } from 'three/tsl';
 import { blob } from './puffsNodes';
 import { instanceMatrixOf } from './hookNodes';
 
@@ -50,7 +50,9 @@ export function createDust({ count = 256, colour = 0xd9c8a8, size = 0.5, life = 
   })();
   // its fragment: the colour alone (the map is the cut-out, its red the
   // alpha), faded by its age, gone under 0.01
-  material.colorNode = materialColor;
+  // (the material's colour alone: three's materialColor is its colour
+  // times its map, and the map here is the cut-out, not a colour)
+  material.colorNode = materialReference('color', 'color');
   const alpha = materialOpacity.mul(texture(dustMap, uv()).r).mul(fade);
   material.opacityNode = alpha;
   material.maskNode = alpha.greaterThanEqual(0.01);
