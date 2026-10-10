@@ -73,7 +73,7 @@ import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
 import { NO_CALLS, animatorCalls, seedOf } from '../../lib/three/figureCalls';
 import { preload } from '../../lib/three/clipLibrary';
 import { createAnimator } from '../../lib/three/animator';
-import { cutsToLoad, loadWalrusBody, packUrls, swapBody } from '../../lib/three/walrus';
+import { cutsToLoad, loadWalrusBody, packUrls, richClips, swapBody } from '../../lib/three/walrus';
 import { createCutter, cutUrl } from '../../lib/three/walrusCuts';
 import { withStance } from '../../lib/three/walrusStance';
 import { createAdditiveLayer } from '../../lib/three/additiveLayer';
@@ -358,9 +358,12 @@ async function walrusFigure(spec) {
   // maps, and nobody waits that long to see Luke; on a saver connection the
   // light one only; and the full one when the light one isn't there: a
   // figure is never lost for want of a cut)
-  const packs = spec.packs ?? packUrls(spec.pack);
+  // (past its own, the soldiers', the additive layer's and the stances'
+  // packs only where the device's level can spend them: walrus.js's richClips)
+  const rich = richClips(detailLevel());
+  const packs = spec.packs ?? packUrls(spec.pack, { extras: rich });
   // (and the stance of the weapon it takes up: lib/three/walrusStance.js)
-  return withStance(await gameFigure(spec, (url) => loadWalrusBody(url, { packs })));
+  return withStance(await gameFigure(spec, (url) => loadWalrusBody(url, { packs })), { enabled: rich });
 }
 
 // A 2017 droid or beast on a skeleton of its own (lib/three/ownRig.js: the

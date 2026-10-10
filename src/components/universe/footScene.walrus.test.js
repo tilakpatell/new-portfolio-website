@@ -116,6 +116,7 @@ describe('a 2017 hero out on foot', () => {
   });
 
   it('takes the stance of the weapon it holds up, its idle and walk the pistol’s', async () => {
+    level.now = 'high';
     const fig = await loadPartyFigure(spec, null);
     expect(await fig.stance('p')).toBe('p');
     expect(loader.urls).toContain('/models/galaxy/bf2017/clips-stance-p.glb');
@@ -125,9 +126,11 @@ describe('a 2017 hero out on foot', () => {
     expect(await fig.stance('humanoid')).toBe('humanoid');
     expect(fig.anim.actions.idle.getClip().tracks[0].values[1]).toBeCloseTo(0);
     fig.dispose();
+    level.now = 'low';
   });
 
   it('keeps the humanoid set when its stance’s pack isn’t there, never a missing clip', async () => {
+    level.now = 'high';
     const fig = await loadPartyFigure(spec, null);
     const before = fig.anim.actions.idle;
     expect(await fig.stance('l')).toBe('humanoid');
@@ -135,9 +138,20 @@ describe('a 2017 hero out on foot', () => {
     fig.update(0.1, 0);
     fig.after(0.1);
     fig.dispose();
+    level.now = 'low';
+  });
+
+  it('fetches nothing past its own packs at a phone’s levels, and keeps the humanoid stance', async () => {
+    loader.urls.length = 0;
+    const fig = await loadPartyFigure(spec, null);
+    expect(loader.urls.some((u) => /clips-(additive|npc|stance)/.test(u))).toBe(false);
+    expect(await fig.stance('p')).toBe('humanoid');
+    expect(loader.urls.some((u) => /clips-stance/.test(u))).toBe(false);
+    fig.dispose();
   });
 
   it('flinches on top of what it’s doing by the side the bolt came in from', async () => {
+    level.now = 'high';
     const fig = await loadPartyFigure(spec, null);
     // (the additive clips are laid, never played: not the animator's)
     expect(fig.anim.actions['add.hit.left']).toBeUndefined();
@@ -149,9 +163,11 @@ describe('a 2017 hero out on foot', () => {
     expect(Math.abs(hips.quaternion.x)).toBeGreaterThan(0.3);
     expect(fig.aimAt(0.4, 0)).toBe(true);
     fig.dispose();
+    level.now = 'low';
   });
 
   it('aims and flinches with nothing, and leaves its pose be, when the additive pack isn’t there', async () => {
+    level.now = 'high';
     const fig = await loadPartyFigure({ ...spec, packs: ['/models/galaxy/bf2017/clips-humanoid.glb'] }, null);
     expect(fig.aimAt(0.5, 0.5)).toBe(false);
     fig.update(0.1, 0);
@@ -160,5 +176,6 @@ describe('a 2017 hero out on foot', () => {
     // (and a hit by its side is the full-body reaction, as before: none in this pack)
     expect(fig.react('hit', { side: 'left' })).toBeNull();
     fig.dispose();
+    level.now = 'low';
   });
 });

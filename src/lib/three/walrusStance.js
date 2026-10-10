@@ -6,7 +6,8 @@
 // there leaves the figure as it was (the humanoid set: never a missing
 // clip); 'humanoid' puts back what the figure came with.
 //
-//   withStance(fig, { model, clips, loader }) → fig, with
+//   withStance(fig, { model, clips, loader, enabled }) → fig, with (not
+//   enabled, a phone's levels: always the humanoid's, nothing fetched)
 //     stance(key) → Promise<key it now stands in>
 
 import { PACK_DIR, clipsFor, loadWalrusPacks } from './walrus';
@@ -14,7 +15,7 @@ import { STANCE_KEYS, stanceClips } from './walrusSets/stance';
 
 export const stancePackUrl = (key) => `${PACK_DIR}/clips-stance-${key}.glb`;
 
-export function withStance(fig, { model = fig.model, clips = fig.clips ?? {}, loader } = {}) {
+export function withStance(fig, { model = fig.model, clips = fig.clips ?? {}, loader, enabled = true } = {}) {
   let now = 'humanoid';
   let laid = []; // the names the stance took over
   let ask = 0;
@@ -22,7 +23,7 @@ export function withStance(fig, { model = fig.model, clips = fig.clips ?? {}, lo
   fig.stance = async (key) => {
     const token = ++ask;
     if (key === now) return now;
-    if (!STANCE_KEYS.includes(key)) {
+    if (!STANCE_KEYS.includes(key) || !enabled) {
       fig.anim?.restance(own(laid));
       laid = [];
       now = 'humanoid';

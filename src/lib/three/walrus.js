@@ -24,6 +24,10 @@
 //     a copy of the body (its own bones), its clips; refuses a tree that is
 //     not the game's rig, naming what it lacks
 //   PACK_DIR, packUrls(hero): the packs a figure loads, the humanoid first,
+//     then the hero's own, or for a soldier (no hero) the soldiers' (npc:
+//     walrusSets/npc.js's cover, awareness and arrivals), and the
+//     additive layer's; with { extras: false } (richClips: a phone's
+//     levels) the humanoid's and the hero's alone
 //     the additive layer's last (its clips marked `additive`: laid over the
 //     pose by lib/three/additiveLayer.js, never played as one)
 //   cutFor(url, level): which of a 2017 figure's three files a device loads
@@ -39,7 +43,15 @@ import { cloneScene, loadGLTF } from './gltfCache';
 import { CLIP_FALLBACK, SOCKETS, checkWalrus, isWalrus } from './walrusRig.js';
 
 export const PACK_DIR = '/models/galaxy/bf2017';
-export const packUrls = (hero = null) => [`${PACK_DIR}/clips-humanoid.glb`, ...(hero ? [`${PACK_DIR}/clips-${hero}.glb`] : []), `${PACK_DIR}/clips-additive.glb`];
+export const packUrls = (hero = null, { extras = true } = {}) => [
+  `${PACK_DIR}/clips-humanoid.glb`,
+  ...(hero ? [`${PACK_DIR}/clips-${hero}.glb`] : extras ? [`${PACK_DIR}/clips-npc.glb`] : []),
+  ...(extras ? [`${PACK_DIR}/clips-additive.glb`] : []),
+];
+// whether a device's level loads the packs past a figure's own (the soldiers',
+// the additive layer's, the stances'): not at a phone's levels, whose
+// download the world's budget counts (worlds.js's WORLD_MB)
+export const richClips = (level) => level === 'high' || level === 'ultra';
 
 export const cutFor = (url, level) => (level === 'low' || level === 'mid' ? url.replace(/\.glb$/, '.lod1.glb') : level === 'ultra' ? url.replace(/\.glb$/, '.ultra.glb') : url);
 

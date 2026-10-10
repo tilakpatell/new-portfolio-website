@@ -7,13 +7,14 @@
 // takes them from:
 //
 //   SET_PACKS { pack: { set, opts? } }: stance-p, stance-t, stance-l (stance.js),
-//     additive (additive.js)
+//     additive (additive.js), npc (npc.js)
 //     opts.additive   the pack is of the game's additive clips (deltas on
 //                     a pose: anims_additive/), laid over the figure's pose
 //     opts.skeletons  the skeletons' pattern (a RegExp's source), else the
 //                     humanoid's and the cinematics' (the same rig)
 
 import { ADD_SET } from './additive.js';
+import { NPC_SET } from './npc.js';
 import { STANCE_SET } from './stance.js';
 
 export const SET_PACKS = {
@@ -21,4 +22,5 @@ export const SET_PACKS = {
   'stance-t': { set: STANCE_SET('t') },
   'stance-l': { set: STANCE_SET('l') },
   additive: { set: ADD_SET, opts: { additive: true } },
+  npc: { set: NPC_SET },
 };

@@ -129,7 +129,7 @@ export function fallen(down, len = null) {
   const lain = (len ?? DEATH.fall) + DEATH.lie;
   return { k: Math.min(1, down / DEATH.fall), sink: down > lain ? Math.min(1, (down - lain) / DEATH.sink) * DEATH.deep : 0, gone: down > lain + DEATH.sink };
 }
-import { absorb, createPosture, fallOf, hostileBody, hostileStep, startBurst, stepBurst, whereHit } from './hostiles';
+import { absorb, ALERT_CLIP, bodyClip, createPosture, fallOf, hostileBody, hostileStep, startBurst, stepBurst, whereHit } from './hostiles';
 import { lineClear } from './walker';
 import { createTokens } from '../../../lib/ai/squad';
 import { createSearch } from '../../../lib/ai/search';
@@ -519,7 +519,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     // crouched in cover (a base state: only ever while its feet are still)
     if (pose.base !== t.based) {
       t.based = pose.base;
-      fig.base?.(pose.base);
+      fig.base?.(bodyClip(fig, pose.clip, pose.base));
     }
     // where its head goes: its mark at the height it stands (you, or a
     // friend of yours), else a spot at its own eyes' height
@@ -537,7 +537,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       if (start && fig.play) {
         t.startUntil = time + start.for;
         fig.play(start.clip, { layer: 'upper' }).then((ok) => !ok && (t.startUntil = 0));
-      } else fig.react?.('alert', { target: want });
+      } else if (fig.clips?.[ALERT_CLIP] && fig.play) fig.play(ALERT_CLIP, { layer: 'upper' });
+      else fig.react?.('alert', { target: want });
     }
     // its feet on the ground the step covers (and, on a figure that lays
     // them in its update, the bones over its clips: crew.js's)

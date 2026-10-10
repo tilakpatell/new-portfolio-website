@@ -142,6 +142,8 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
         who: t.soldier.kind,
       });
     }
+    // (arriving: the gun brought up as the game's soldiers do, where it has the soldiers' set)
+    if (fig.clips?.['spawn.deploy']) fig.play?.('spawn.deploy', { layer: 'upper' });
     warm(t.holder).then(() => {
       if (records.get(t.id) === t) t.holder.visible = true;
     });
