@@ -36,9 +36,9 @@ export function createScatterScene({ scene, json, mask, load, tier = 'high', gro
   const group = new THREE.Group();
   group.name = 'scatter';
   scene.add(group);
-  const flat = []; // the layers' types in order (grid.js's type index)
-  for (const l of json.layers ?? []) for (const t of l.types ?? []) flat.push({ ...t, layer: l.index, placed: l.placed });
+  // the placed layers, and their types in order (grid.js's type index)
   const layers = (json.layers ?? []).filter((l) => l.placed);
+  const flat = layers.flatMap((l) => (l.types ?? []).map((t) => ({ ...t, layer: l.index })));
   // per type: its draw (mesh key) and reach, once its mesh has loaded
   const draws = new Map(); // glb mesh name → { lod0, lod1, reach, sway }
   const tiles = new Map(); // 'tx,tz' → instances
@@ -76,7 +76,7 @@ export function createScatterScene({ scene, json, mask, load, tier = 'high', gro
   }
 
   const ready = Promise.all(
-    [...new Set(flat.filter((t) => t.placed && t.glb && t.glb.look !== 'waits' && t.glb.lods?.length).map((t) => t.mesh))].map(async (name) => {
+    [...new Set(flat.filter((t) => t.glb && t.glb.look !== 'waits' && t.glb.lods?.length).map((t) => t.mesh))].map(async (name) => {
       const t = flat.find((x) => x.mesh === name);
       const height = Math.max(...t.scale.max) * (t.glb.radius || 1);
       const sway = swayOf(t.wind, height);
@@ -92,6 +92,8 @@ export function createScatterScene({ scene, json, mask, load, tier = 'high', gro
     let list = tiles.get(key);
     if (!list) {
       list = tileInstances({ tx, tz, mask, layers, tier });
+      // (the ground under each, once a visit: a refill only turns and sizes them)
+      for (const it of list) it.y = groundAt(it.x, it.z);
       tiles.set(key, list);
       if (tiles.size > KEEP_TILES) tiles.delete(tiles.keys().next().value);
     }
@@ -164,7 +166,7 @@ export function createScatterScene({ scene, json, mask, load, tier = 'high', gro
       const slot = picks[i];
       const it = picks[i + 1];
       const f = picks[i + 2];
-      const y = groundAt(it.x, it.z) - it.h * SINK * f;
+      const y = it.y - it.h * SINK * f;
       q.setFromAxisAngle(Y, it.yaw);
       p.set(it.x, y, it.z);
       s.set(it.w * f, it.h * f, it.d * f);

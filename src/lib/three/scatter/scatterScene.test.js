@@ -18,11 +18,12 @@ const type = (mesh, density, look = { look: 'colour', rgb: [0.2, 0.2, 0.2] }) =>
   dissolve: { range: 0.4, lod0Out: 0 },
   glb: { ...look, radius: 0.5, lods: look.look === 'waits' ? [] : [{ glb: `scatter/${mesh}.lod0.glb` }, { glb: `scatter/${mesh}.lod1.glb` }] },
 });
+// (an unplaced layer first: the type indices are the placed layers' own)
 const json = {
   format: 1,
   layers: [
-    { index: 4, placed: true, types: [type('stone', 0.5), type('fern', 2, { look: 'waits' })] },
     { index: 7, placed: false, types: [type('tree', 1)] },
+    { index: 4, placed: true, types: [type('stone', 0.5), type('fern', 2, { look: 'waits' })] },
   ],
 };
 const load = async () => {
