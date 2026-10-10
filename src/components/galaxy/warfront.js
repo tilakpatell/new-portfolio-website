@@ -767,6 +767,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     enclosed(p) {
       return Boolean(level?.area?.inside(p));
     },
+    // (and the area itself: its light, its flash, for the scene's look, areaLook.js)
+    get area() {
+      return level?.area ?? null;
+    },
     get pieces() {
       return pieces;
     },

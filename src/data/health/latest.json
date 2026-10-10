@@ -1,6 +1,6 @@
 {
   "date": "2026-10-10",
-  "sha": "a2e8b723",
+  "sha": "2e8a1878",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -17,11 +17,11 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 3958
+          "n": 4028
         },
         {
           "file": "src/components/universe/footScene.js",
-          "n": 3956
+          "n": 3975
         },
         {
           "file": "src/components/middleearth/towns/rivendell/props.js",
@@ -65,7 +65,7 @@
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2869
+          "n": 2878
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 468,
+      "value": 469,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
@@ -506,7 +506,7 @@
       "detail": []
     },
     "glsl-sites": {
-      "value": 616,
+      "value": 620,
       "unit": "sites",
       "label": "GLSL sites a WebGPU port removes",
       "detail": [
