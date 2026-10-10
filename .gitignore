@@ -60,6 +60,8 @@ scripts/ai-e2e/results/
 
 # the parity check's pictures (scripts/gpu-parity.mjs): the pull request carries the numbers
 scripts/gpu-parity/out/
+# the twins' pictures (scripts/twin-parity.mjs): the pull request carries the numbers
+scripts/twin-parity/out/
 # (and the front door's payload, before and after: scripts/payload-check.mjs)
 !lab/payload/
 
