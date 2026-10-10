@@ -33,3 +33,12 @@ bloom):
 Pixels over 0.9 luma: 0.13%, 0.02% and 0.13% after (under 0.5% before
 too: the trouble was never clipping, it was the veil). The dogfight’s 0.022
 is the halos of the bolts nearest the camera, which fill much of that view.
+
+## `respawn/` (part 2, back in the fight)
+
+- `back.jpg`: from `scripts/galaxy-respawn-check.mjs` at Endor as the
+  Rebellion, at mid quality: shot down in the battle (the page’s dev hook)
+  and back under the hangar of the Rebel carrier nearest the line, facing
+  the Empire (12 units from your own fleet, 187 from theirs), with the
+  “Shielded” chip over the cluster. The check also saw a shot of your own
+  end the shield.
