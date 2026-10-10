@@ -45,7 +45,9 @@ describe('the 2017 drop’s textures', () => {
 
   it.skipIf(!hasBasisu)(
     'unpacks a KTX2 to one PNG at full size',
-    { timeout: 5000 },
+    // (basisu is spawned twice, to pack and unpack: a tenth of a second alone,
+    // seconds when the whole suite shares the machine)
+    { timeout: 20000 },
     async () => {
       const dir = await mkdtemp(join(tmpdir(), 'bf2017-tex-'));
       const { ktx2 } = await encodeImage(await png(16, [200, 100, 50, 255]), { role: 'color' });

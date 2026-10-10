@@ -1,9 +1,9 @@
 import { Document } from '@gltf-transform/core';
 import { describe, expect, it } from 'vitest';
-import { pruneRig, shareSkins } from './rig-prune.mjs';
+import { detach, shareSkins } from './rig-parts.mjs';
 
 // Hips → Spine → LeftArm → LeftHand, Hips → Wep_Root, Spine → PROC_Bone0
-// (→ a prop that is no joint); only LeftHand carries weight
+// (→ a prop that is no joint)
 function rigged() {
   const doc = new Document();
   const buffer = doc.createBuffer();
@@ -35,39 +35,6 @@ function rigged() {
   scene.addChild(doc.createNode('Body').setMesh(doc.createMesh().addPrimitive(prim)).setSkin(skin));
   return { doc, skin, prim, prop };
 }
-
-describe('the rig prune', () => {
-  it('keeps the weighted bones and the chain above them', () => {
-    const { doc, skin, prim, prop } = rigged();
-    const before = prop.getWorldTranslation();
-    const r = pruneRig(doc);
-    expect(r.before).toBe(6);
-    expect(r.after).toBe(4);
-    expect([...r.removed].sort()).toEqual(['PROC_Bone0', 'Wep_Root']);
-    const names = skin.listJoints().map((j) => j.getName());
-    expect(names).toEqual(['Hips', 'Spine', 'LeftArm', 'LeftHand']);
-    expect(prim.getAttribute('JOINTS_0').getArray()[0]).toBe(names.indexOf('LeftHand'));
-    expect(skin.getInverseBindMatrices().getCount()).toBe(4);
-    expect(skin.getInverseBindMatrices().getArray()[16 * 3 + 12]).toBe(3);
-    // the prop under a removed bone keeps its place in the world
-    const after = prop.getWorldTranslation();
-    for (let i = 0; i < 3; i++) expect(after[i]).toBeCloseTo(before[i], 6);
-    expect(prop.getParentNode().getName()).toBe('Spine');
-  });
-
-  it('keeps a bone it is told to by name', () => {
-    const { doc } = rigged();
-    const r = pruneRig(doc, { keep: ['Wep_Root'] });
-    expect(r.after).toBe(5);
-    expect(r.removed).toEqual(['PROC_Bone0']);
-  });
-
-  it('does nothing to a model with no skin', () => {
-    const doc = new Document();
-    doc.createScene().addChild(doc.createNode('a'));
-    expect(pruneRig(doc)).toEqual({ before: 0, after: 0, removed: [] });
-  });
-});
 
 describe('parts on one skeleton', () => {
   it('joins a part’s skin to the body’s by bone name, and drops its copy of the bones', () => {
@@ -102,5 +69,16 @@ describe('parts on one skeleton', () => {
     doc.createNode('T').setSkin(doc.createSkin().addJoint(tail));
     expect(shareSkins(doc)).toBe(0);
     expect(doc.getRoot().listSkins().length).toBe(2);
+  });
+});
+
+describe('a bone taken out of the tree', () => {
+  it('leaves what hung from it where it was in the world', () => {
+    const { doc, prop } = rigged();
+    const before = prop.getWorldTranslation();
+    detach(doc.getRoot().listNodes().find((n) => n.getName() === 'PROC_Bone0'));
+    const after = prop.getWorldTranslation();
+    for (let i = 0; i < 3; i++) expect(after[i]).toBeCloseTo(before[i], 6);
+    expect(prop.getParentNode().getName()).toBe('Spine');
   });
 });

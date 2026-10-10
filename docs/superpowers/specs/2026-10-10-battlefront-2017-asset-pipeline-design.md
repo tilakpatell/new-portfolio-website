@@ -186,4 +186,5 @@ Where phase 0’s code went another way than this page or its plan, one line eac
 - Normals are WebP like the other maps, not KTX2 UASTC: the import test pins WebP; the KTX2 call is phase 9’s (ultra), where `scripts/ktx2.mjs report` can judge it per map.
 - `--metres` defaults to the manifest’s own height (`--asis`); `--cuts` takes LOD numbers (`plain=2`); `--catalog`, `--credits` and `--unpacked` exist for the test’s sake.
 - A short sequel-era name (`rey`, `finn`, `ep7`, `ep9`) is matched only between separators, so `grey` and `osprey` pass; the longer ones anywhere in a segment.
-- The import does not yet rename the 2017 spine to Meshy’s names, nor take parts by full manifest name: phase 1’s task 2 adds both.
+- The rig is kept in full with `--rig`: no prune, no rename (the owner, 2026-10-10: keep the physics and the rest so the game is accurate). The prune of section 3 was written and tried: Luke’s body lost its fingers and all 79 face bones, which its LOD2 mesh does not weight, and it was taken out. A part’s duplicate skeleton is still joined to the body’s (`scripts/lib/rig-parts.mjs`). The `grip` node goes under `Wep_Root`, else `IK_Joint_RightHand`, else at the origin, so every DICE name stays.
+- The import does not take parts by full manifest name yet: phase 1 adds it.

@@ -44,7 +44,7 @@ The uploader’s derived maps, `<map>__normal.ktx2` and `<map>__orm_<hash>.ktx2`
 
 ## The rig
 
-The people are on `Walrus_HumanMale`, about 250 joints named as Maya HumanIK names them, which is Mixamo’s naming without the `mixamorig:` prefix (`Hips`, `Spine`, `Spine1`, `LeftArm`, `LeftHandIndex1` …). The import’s `--rig` keeps it, pruned to the bones that carry weight and the chain above them, plus the sockets `Wep_Root`, `Wep_Muzzle`, `Wep_Aim` and `IK_Joint_*Hand`.
+The people are on `Walrus_HumanMale`, about 250 joints named as Maya HumanIK names them, which is Mixamo’s naming without the `mixamorig:` prefix (`Hips`, `Spine`, `Spine1`, `LeftArm`, `LeftHandIndex1` …). The import’s `--rig` keeps it whole, as DICE made it (fingers, the 79 face bones, cloth physics, the `Wep_*` and `IK_Joint_*` sockets), and renames nothing, so the game’s clips can drive it as they were made to. A `grip` node is put under `Wep_Root` (the weapon socket in the right hand), or `IK_Joint_RightHand` where there is none.
 
 ## Credit
 

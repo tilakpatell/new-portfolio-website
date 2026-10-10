@@ -25,9 +25,11 @@
 //   as         for the credit ('Luke’s lightsaber hilt')
 //   metres     how big along `along` (y: tall); --asis (the default) keeps
 //              the manifest's own height, which is right for everything sampled
-//   rig        keep the skin, pruned to the bones that carry weight
-//              (scripts/lib/rig-prune.mjs), for a person or a beast to be posed;
-//              without it the model is a statue
+//   rig        keep the skin and the whole 2017 rig as DICE made it (fingers,
+//              face, cloth physics, weapon sockets, about 250 joints a
+//              person), for a person or a beast to be posed and to take the
+//              game's own clips; without it the model is a statue. Nothing
+//              is pruned or renamed: the site learns the game's skeleton
 //   crew       a person for crewList.js's CREW (galaxy/crew/<kind>.glb)
 //   hero       the 4 MB file cap instead of 2.5 MB
 //   ultra      an .ultra.glb from LOD0, at 2048 colour and 1024 maps
@@ -36,9 +38,11 @@
 //   tex, maps  the colour and other maps' size (the light cut takes half)
 //   parts      globs over the model's folder for the parts that go with it
 //              ('*_cape_mesh,*_hands_mesh'), each at the same LOD, one file
-//   grip       the node the site holds it by, renamed `grip` (Wep_Root for a
-//              thing held, IK_Joint_RightHand for a rig); without one a `grip`
-//              node is made at the model's own origin, which is DICE's hold
+//   grip       the node the site holds it by (by default Wep_Root, the
+//              game's weapon socket, on a rig in the right hand; a rig
+//              without one falls back to IK_Joint_RightHand): a `grip` node
+//              is put there, under it on a rig so DICE's own names all stay;
+//              without either, at the model's own origin, which is DICE's hold
 //
 // It refuses the sequel era (the site shows none of it). Look at what came
 // out with node scripts/glb-shot.mjs <file> out.png three, through the dev
@@ -58,7 +62,7 @@ import { isSequel, cutsFor, partsOf, readManifest } from './lib/bf2017-manifest.
 import { glbJson, imagePath, inBucket, localPath } from './lib/bf2017-paths.mjs';
 import { resolveImage } from './lib/bf2017-textures.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
-import { pruneRig, shareSkins } from './lib/rig-prune.mjs';
+import { shareSkins } from './lib/rig-parts.mjs';
 import { bareWhereUntextured, dims, grounded, relit, simplified, triangles, unskinned } from './lib/surface-model.mjs';
 
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
@@ -66,9 +70,6 @@ const sharp = createRequire(createRequire(import.meta.url).resolve('ndarray-pixe
 const ROOT = path(dirname(fileURLToPath(import.meta.url)), '..');
 export const PERMISSION = 'From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.';
 const GAME = 'https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2';
-// the sockets a rig keeps whether or not they carry weight: where a hand
-// holds a weapon and where the weapon fires from
-export const SOCKETS = ['Wep_Root', 'Wep_Muzzle', 'Wep_Aim', 'IK_Joint_LeftHand', 'IK_Joint_RightHand'];
 const MISSING = '__missing';
 const SLOTS = ['BaseColor', 'Normal', 'Occlusion', 'MetallicRoughness', 'Emissive'];
 
@@ -152,7 +153,7 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const budget = lod.triangles + parts.reduce((n, p) => n + (p.lods.find((l) => l.lod === lod.lod) ?? p.lods[p.lods.length - 1]).triangles, 0);
   for (const mesh of root.listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
   // where it is held, in the model's own frame, before anything moves
-  const socket = root.listNodes().find((n) => n.getName() === spec.grip);
+  const socket = spec.grip.map((g) => root.listNodes().find((n) => n.getName() === g)).find(Boolean);
   const hold = socket ? socket.getWorldTranslation() : [0, 0, 0];
   if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit({}), prune(), bareWhereUntextured(), weld());
   else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), relit({}), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
@@ -164,11 +165,12 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   await doc.transform(grounded(spec));
   const ground = root.listNodes().find((n) => n.getName() === 'ground');
   const gripAt = apply(ground.getMatrix(), hold);
-  const pruned = spec.rig ? pruneRig(doc, { keep: SOCKETS }) : null;
   if (!spec.rig) await doc.transform(flatten());
   await doc.transform(dedup(), prune());
-  const kept = spec.rig && root.listNodes().find((n) => n.getName() === spec.grip);
-  if (kept) kept.setName('grip');
+  // (on a rig, a child of the socket, so it moves with the hand and the
+  // socket keeps its name for the game's clips)
+  const held = spec.rig && socket && root.listNodes().includes(socket) ? socket : null;
+  if (held) held.addChild(doc.createNode('grip'));
   else root.getDefaultScene().addChild(doc.createNode('grip').setTranslation(gripAt));
   await doc.transform(
     textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: 82 }),
@@ -179,7 +181,7 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   await io.write(out, doc);
   const bytes = (await stat(out)).size;
   const [w, h, l] = dims(doc);
-  return { out, bytes, tris: Math.round(triangles(doc)), draws: root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0), maps: root.listTextures().length, size: [w, h, l], socket: Boolean(socket), pruned };
+  return { out, bytes, tris: Math.round(triangles(doc)), draws: root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0), maps: root.listTextures().length, size: [w, h, l], socket: socket?.getName() ?? null, joints: root.listSkins().reduce((n, s) => n + s.listJoints().length, 0) };
 }
 
 // ── the arguments ──
@@ -220,7 +222,7 @@ export async function importModel(name, opts) {
     yaw: Number(opts.yaw ?? 0),
     up: opts.up ?? 'y',
     rig,
-    grip: typeof opts.grip === 'string' ? opts.grip : rig ? 'IK_Joint_RightHand' : 'Wep_Root',
+    grip: typeof opts.grip === 'string' ? [opts.grip] : rig ? ['Wep_Root', 'IK_Joint_RightHand'] : ['Wep_Root'],
     said: { found: new Set(), missing: new Set() },
   };
   const cuts = cutsOf(entry, opts, rig);
@@ -252,8 +254,9 @@ export async function importModel(name, opts) {
   }
   for (const f of spec.said.found) console.log(`  map ${f}`);
   for (const f of spec.said.missing) console.log(`  missing: ${f}`);
-  if (!plain.socket) console.log(`  (no ${spec.grip} in the file: grip made at the model's own origin)`);
-  if (plain.pruned) console.log(`  rig: ${plain.pruned.before} → ${plain.pruned.after} joints`);
+  if (!plain.socket) console.log(`  (no ${spec.grip.join(' or ')} in the file: grip made at the model's own origin)`);
+  else console.log(`  grip at ${plain.socket}`);
+  if (rig) console.log(`  rig kept whole: ${plain.joints} joints`);
   for (const [cut, l, r] of made) {
     const [w, h, d] = r.size;
     console.log(`${relative(ROOT, r.out).padEnd(48)} ${cut.padEnd(5)} LOD${l.lod}  ${r.tris} triangles, ${r.draws} draws, ${r.maps} maps, ${(r.bytes / 1024).toFixed(1)} KB; ${w.toFixed(2)} wide × ${h.toFixed(2)} tall × ${d.toFixed(2)} long (m)`);
