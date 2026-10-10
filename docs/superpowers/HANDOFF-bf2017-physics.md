@@ -62,7 +62,7 @@ Each lane adds its Done and Left here when it merges: the pack’s physics bytes
 
 **Left.**
 
-- **The call site** (lane L’s, in `scene.js` where `createLevel` is made): after `createLevelCollision` gives an engine, `api.usePhysics(physics, { drive })`: `drive: true` (the default) lets the body step the world once a frame; pass `false` if the level steps it. Then `physics-check.mjs` waits for the body (`source: level`) and the course should become Hoth’s own spots (the hangar mouth, its ramp, a crate, a beam: add `--spot`), with P0’s `havok.test.js` fixture world for a test of the real shapes.
+- **The call site** (lane L’s seam, PR #831: `src/components/galaxy/surface/level/colliders.js`, wired from `level/index.js`; P0 builds `createLevelCollision` against it): once that gives an engine, `api.usePhysics(physics, { drive })`: `drive: true` (the default) lets the body step the world once a frame; pass `false` if the level steps it. Then `physics-check.mjs` waits for the body (`source: level`) and the course should become Hoth’s own spots (the hangar mouth, its ramp, a crate, a beam: add `--spot`), with P0’s `havok.test.js` fixture world for a test of the real shapes.
 - **The figures on the body** (`bodyFor` for lane 1’s walrus figures and #812’s lane 5); the crewmate still walks on the walker and sinks into what only the engine knows (seen in the step shot).
 - **The crouch’s clip** (the legs read `state.pose`; nothing plays a crouch yet) and its HUD button (the kit’s `crouch` press is wired, no button drawn).
 - **The sprint ability** (abilityRules’ multiplier) is not applied on the body; the jump penalty (`JumpPenaltyTime` 0.1 × 0.2), the uphill/downhill speed modifiers and the slide state’s gravity scale are in the row and not yet used.
