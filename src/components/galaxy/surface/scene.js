@@ -104,7 +104,7 @@ import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { createPlacer } from './placer';
-import { createActors, modelFigure } from './actors';
+import { anyFigure, createActors, modelFigure } from './actors';
 import { RIDES as GALAXY_RIDES } from './rides';
 import { SEATS, poseRider } from './riders';
 import { createPeers } from './peers';
@@ -394,7 +394,7 @@ export async function create(canvas, ctx) {
   // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
   // otherwise made when it's first wanted, as it always was
   let cast = ctx.figures ? createMeshyCast(withWardrobe()) : null;
-  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null });
+  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops, site.uniforms ?? null), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null, only: site.cast === 'models' });
 
   await breathe();
   // ── The places you go into (zones): built high over the world, out of
@@ -445,6 +445,8 @@ export async function create(canvas, ctx) {
   });
   const fwdV = new V();
   const rightV = new V();
+  // (a world that takes models only: its quests' spawns too, cast.js)
+  if (site.cast === 'models') activity.modelsOnly();
   // (scratch for the bodies: a fall's turn, the mate's aim, a sitter's hips)
   const _fall = new THREE.Quaternion();
   const _mateDir = new V();
@@ -484,14 +486,15 @@ export async function create(canvas, ctx) {
       scene.add(holder);
       const ridee = { spec, kind: x.kind, state, holder, fig: null, body: null, solid: null };
       if (spec.figure) {
-        const fig = buildFigure(spec.figure);
+        // (a world that takes models only waits for the model: surface/cast.js)
+        const fig = site.cast === 'models' ? null : buildFigure(spec.figure);
         if (fig) {
           holder.add(fig.model);
           ridee.fig = fig;
         }
         // its catalogue model in place of the build once it's here (the
         // herd grazing round it is that model: the ridden one should match)
-        modelFigure(spec.figure, models)
+        (site.cast === 'models' ? anyFigure(spec.figure, {}, kit, 0, models, { only: true }) : modelFigure(spec.figure, models))
           .then((model) => {
             if (!model || !holder.parent) return;
             if (ridee.fig) holder.remove(ridee.fig.model);
@@ -804,7 +807,7 @@ export async function create(canvas, ctx) {
   let strode = 0;
 
   // ── The other pilots down here (online) ──
-  const peers = createPeers({ parent: scene, placer, rides: RIDES, models, getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
+  const peers = createPeers({ parent: scene, placer, rides: RIDES, models, only: site.cast === 'models', getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
 
   await breathe();
   // ── State ──
@@ -1601,7 +1604,7 @@ export async function create(canvas, ctx) {
     const ev = e?.type === 'mission' ? e.event : null;
     if ((ev?.type === 'capture' && ev.you) || ev?.type === 'won') cheer();
   };
-  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
+  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced, only: site.cast === 'models' }) : null;
   const assaultOn = () => Boolean(assault?.running());
   // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
   const shootable = () => [...groundWar.targets, ...(assaultOn() ? assault.targets : activity.targets)];

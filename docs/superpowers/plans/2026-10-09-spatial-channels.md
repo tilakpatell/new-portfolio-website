@@ -69,7 +69,7 @@
 
 **Interfaces:**
 - Consumes: `createLimiter` from `src/components/universe/online/protocol.js`; `parseTag`, `NET_CELL` from Task 1.
-- Produces: `ROOM(planetId) → 'fly-v1:' + planetId`; `APP_ID = 'tilakpatel-portfolio-flight'`; `RATES`; `writePose(ship) → [x, y, z, pitch, yaw, roll, speed, flags]` (rounded to 2 dp; angles wrapped); `readPose(arr, tag) → pose | null` (finite, `speed` clamped to `[0, 400]`, `null` when `hypot(x − cx × NET_CELL, z − cz × NET_CELL) > NET_CELL × 2` against the tag); `writeHi({ name, kind })`, `readHi`; `writeShot`, `readShot`; `readHit` (`d` clamped to 30); `readBuilt({ id, cell })` (a uuid and a tag, else `null`); `readGone`.
+- Produces: `ROOM(planetId) → 'fly-v1:' + planetId`; `APP_ID = 'tilakpatel-portfolio-flight'`; `RATES`; `writePose(ship) → [x, y, z, pitch, yaw, roll, speed, flags]` (rounded to 2 dp; angles wrapped); `readPose(arr, tag) → pose | null` (finite, `speed` clamped to `[0, 400]`, `null` when `hypot(x − (cx + ½) × NET_CELL, z − (cz + ½) × NET_CELL) > NET_CELL × 2` against the tag: from the cell's middle, as the spec's “from the sender's tag” means, so a pilot is judged the same in every corner of their cell); `writeHi({ name, kind })`, `readHi`; `writeShot`, `readShot`; `readHit` (`d` clamped to 30); `readBuilt({ id, cell })` (a uuid and a tag, else `null`); `readGone`.
 
 - [ ] **Step 1: Failing tests** for each reader: a good packet round-trips; a non-finite number gives `null`; a pose 5 km from its tag's cell gives `null`; `readBuilt` refuses a non-uuid; `RATES` has the spec's six rows.
 - [ ] **Step 2:** FAIL. **Step 3:** Write. **Step 4:** PASS. **Step 5: Commit** `The flight's wire: poses, shots, hits and a hint that something was built`.
