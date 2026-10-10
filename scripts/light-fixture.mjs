@@ -5,13 +5,17 @@
 //
 //   node scripts/light-fixture.mjs [--tier ultra] [--post on|off] [--sky on|off]
 //     [--grid] [--only render,ao,…] [--label name] [--size 1600x900] [--ms 5000] [--legs webgpu,webgl]
-//     [--hoth]
+//     [--hoth] [--shadows [--light-sun]]
 //
 // Lane S (docs/superpowers/plans/2026-10-10-bf-fidelity-laneS-shadows.md):
 // --hoth draws the fixture under Hoth Sunny's record on snow at the house's
 // exposure (1.4, the classic stack's), its lamps off, and writes the frame's
 // mean linear luminance (`meanLum`, as lane G's README measures it) beside
 // the shot; lane S's runs write to evidence/galaxy-engine/S/.
+// --shadows draws lane S's shadow scene under Hoth's record (figures at 2,
+// 20 and 60 m, a wall, a post row to 200 m) and shoots it twice: the near
+// view (<label>-<leg>.png) and the cascades' far edge (<label>-<leg>-seam.png);
+// --light-sun casts along the light instead of the record's shadow sun.
 //
 // For each leg (?gpu=webgpu, and ?gpu=webgl: the node renderer on a WebGL 2
 // context) it opens scripts/light-fixture/index.html on a Vite dev server
@@ -54,17 +58,18 @@ const arg = (k, d) => {
 };
 const tier = arg('tier', 'ultra');
 const post = arg('post', 'off') === 'on';
-const label = arg('label', `${argv.includes('--hoth') ? 'hoth-' : ''}${post ? `post-${tier}` : `lit-${tier}`}`);
+const label = arg('label', `${argv.includes('--shadows') ? `shadows${argv.includes('--light-sun') ? '-lightsun' : ''}-` : argv.includes('--hoth') ? 'hoth-' : ''}${post ? `post-${tier}` : `lit-${tier}`}`);
 const [W, H] = arg('size', '1600x900').split('x').map(Number);
 const ms = Number(arg('ms', 5000));
 const legs = arg('legs', 'webgpu,webgl').split(',');
 const sky = arg('sky', 'on') === 'on';
 const grid = argv.includes('--grid');
 const only = arg('only', null)?.split(',');
-const hoth = argv.includes('--hoth');
+const shadows = argv.includes('--shadows');
+const hoth = argv.includes('--hoth') || shadows;
 // the house tone mapper's exposure (src/lib/three/house.js LOOK.exposure): the classic stack's
 const HOUSE_EXPOSURE = 1.4;
-const fixture = { tier, post, sky, env: true, only, ...(hoth ? { hoth: true, exposure: HOUSE_EXPOSURE } : {}) };
+const fixture = { tier, post, sky, env: true, only, ...(hoth ? { hoth: true, exposure: HOUSE_EXPOSURE } : {}), ...(shadows ? { shadows: true, lightSun: argv.includes('--light-sun') } : {}) };
 
 const { chromium } = await import('playwright-core');
 const sharp = (await import('sharp')).default;
@@ -131,6 +136,11 @@ for (const leg of legs) {
     writeFileSync(join(OUT, `${label}-${leg}.png`), png);
     row.shot = `${label}-${leg}.png`;
     row.meanLum = Number((await meanLum(png)).toFixed(4));
+    if (shadows) {
+      await page.evaluate(() => (window.__lit.probe.view('seam'), window.__lit.draw(8)));
+      writeFileSync(join(OUT, `${label}-${leg}-seam.png`), await shot());
+      await page.evaluate(() => (window.__lit.probe.view('near'), window.__lit.draw(8)));
+    }
     // A2: with and without the environment
     await page.evaluate(() => (window.__lit.probe.setEnv(false), window.__lit.draw(8)));
     const without = await raw(await shot());

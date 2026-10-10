@@ -12,12 +12,18 @@
 // environment under ClusteredLighting (A2), the programs before and after a
 // light moves (no recompile), the frame time.
 //
-// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only, hoth }
+// rt.fixture: { tier = 'ultra', env = true, post = true, sky = true, placed = true, clustered, only, hoth, shadows, lightSun }
 //
 // `hoth` (lane S's calibration shot): the same ground and ring under Hoth
 // Sunny's record (src/lib/three/light/fixtures/hoth.ve.json), the ground
 // snow, the ring's coloured lamps off, so its mean luminance stands beside
 // lane G's calibrated classic Hoth (docs/superpowers/evidence/bf2017-light/).
+// `shadows` (lane S's cascades): under Hoth's record, a 400 m strip of snow
+// with a figure (a 1.8 m capsule) at 2, 20 and 60 m from the camera, a wall,
+// and a post every 10 m out to 200 m for the cascades' far edge;
+// `probe.view('near' | 'seam')` frames the figures or the far edge.
+// `lightSun` drops the record's shadow sun, so the cascades cast along the
+// light (the before of the shadow sun's shot).
 
 import * as THREE from 'three';
 import hothVe from '../../lib/three/light/fixtures/hoth.ve.json';
@@ -85,8 +91,14 @@ export default {
   mb: 0,
   create(rt) {
     const opts = { tier: 'ultra', env: true, post: true, sky: true, placed: true, ...(rt.fixture ?? {}) };
+    if (opts.shadows) opts.hoth = true;
     if (opts.hoth) opts.placed = false;
-    const entry = opts.hoth ? hothVe.sunny : ENTRY;
+    let entry = opts.hoth ? hothVe.sunny : ENTRY;
+    if (opts.lightSun) {
+      const [outdoor] = entry.record.OutdoorLightComponentData;
+      const { ShadowSunRotationX, ShadowSunRotationY, ...rest } = outdoor;
+      entry = { ...entry, record: { ...entry.record, OutdoorLightComponentData: [rest] } };
+    }
     const renderer = rt.gfx.renderer;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0b0d12);
@@ -104,15 +116,45 @@ export default {
       made.push(g);
       return g;
     };
-    const ground = new THREE.Mesh(geo(new THREE.PlaneGeometry(200, 200)), mat({ color: opts.hoth ? SNOW : 0x9aa0a8, roughness: opts.hoth ? 0.8 : 0.55, metalness: 0.05 }));
+    const ground = new THREE.Mesh(geo(opts.shadows ? new THREE.PlaneGeometry(60, 400) : new THREE.PlaneGeometry(200, 200)), mat({ color: opts.hoth ? SNOW : 0x9aa0a8, roughness: opts.hoth ? 0.8 : 0.55, metalness: 0.05 }));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
+    const views = {};
+    if (opts.shadows) {
+      ground.position.z = -190;
+      const cloth = mat({ color: 0x8a7a66, roughness: 0.8 });
+      const figure = geo(new THREE.CapsuleGeometry(0.3, 1.2, 4, 12));
+      for (const d of [2, 20, 60]) {
+        const f = new THREE.Mesh(figure, cloth);
+        f.position.set(0.6, 0.9, -d);
+        f.castShadow = f.receiveShadow = true;
+        scene.add(f);
+      }
+      const wall = new THREE.Mesh(geo(new THREE.BoxGeometry(7, 3, 0.4)), mat({ color: 0xc8ccd2, roughness: 0.8 }));
+      wall.position.set(-4.5, 1.5, -26);
+      wall.castShadow = wall.receiveShadow = true;
+      scene.add(wall);
+      const post = geo(new THREE.BoxGeometry(0.5, 4, 0.5));
+      const dark = mat({ color: 0x55585e, roughness: 0.8 });
+      for (let z = 10; z <= 200; z += 10) {
+        const p = new THREE.Mesh(post, dark);
+        p.position.set(-9, 2, -z);
+        p.castShadow = p.receiveShadow = true;
+        scene.add(p);
+      }
+      // the feet at 2 m in the frame's foot, the 60 m figure under the horizon
+      views.near = { pos: [0, 1.6, 0], at: [0, 0, -6] };
+      // from above and behind: the post row's shadows out past the cascades' far edge
+      views.seam = { pos: [6, 26, 10], at: [-6, 0, -110] };
+      camera.position.set(...views.near.pos);
+      camera.lookAt(...views.near.at);
+    }
     const pillar = geo(new THREE.BoxGeometry(1, 5, 1));
     const ball = geo(new THREE.SphereGeometry(0.9, 32, 16));
     const stone = mat({ color: 0xd8d2c8, roughness: 0.7 });
     const chrome = mat({ color: 0xffffff, roughness: 0.08, metalness: 1 });
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < (opts.shadows ? 0 : 12); i++) {
       const a = (i / 12) * Math.PI * 2;
       const p = new THREE.Mesh(pillar, stone);
       p.position.set(Math.cos(a) * 10, 2.5, Math.sin(a) * 10);
@@ -125,7 +167,7 @@ export default {
     const cube = new THREE.Mesh(geo(new THREE.BoxGeometry(2, 2, 2)), mat({ color: 0x4488ff, roughness: 0.3 }));
     cube.position.y = 1.6;
     cube.castShadow = cube.receiveShadow = true;
-    scene.add(cube);
+    if (!opts.shadows) scene.add(cube);
 
     let post = null;
     let envTex = null;
@@ -142,6 +184,17 @@ export default {
       light: null,
       passes: [],
       programs: () => countPrograms(renderer),
+      csm: () => light?.parts.sun.csm ?? null,
+      // a named framing (`shadows`): the camera moved, the light told
+      view(name) {
+        const v = views[name];
+        if (!v) return false;
+        camera.position.set(...v.pos);
+        camera.lookAt(...v.at);
+        camera.updateMatrixWorld();
+        light?.update(0, camera);
+        return true;
+      },
       // the environment on or off, for A2's two shots
       setEnv(on) {
         scene.environment = on ? envTex : null;
