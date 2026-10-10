@@ -27,10 +27,10 @@ export const CAP = { rock: 4000, spire: 600, debris: 2000, trunk: 3000, hive: 30
 const CITY = new Set(['tower', 'needle']);
 
 // the scans close to the ground: the walking view fades them out by 90 m;
-// the ship keeps them to 260 m, so they're there as it comes down to land,
+// the ship keeps them to 120 m, so they come in as it comes down to land,
 // and past that the palette's own colour and noise carry the ground (a 6 m
-// tile seen from further knits into a moiré across the land)
-export const SCAN_FADE = { near: 40, far: 260 };
+// tile seen from a cruising ship repeats as a grid across the land)
+export const SCAN_FADE = { near: 20, far: 120 };
 
 // the planet as the ground material reads a site: its ground look, its water
 export function siteOf(spec) {
