@@ -9,7 +9,7 @@
 //   SET_PACKS { pack: { set, opts? } }: stance-p, stance-t, stance-l (stance.js),
 //     additive (additive.js), npc (npc.js, and the soldiers' victories),
 //     emotes-<hero> (emotes.js), scene-<id> (scenes.js), 1p (firstPerson.js),
-//     vehicles (vehicles.js)
+//     vehicles (vehicles.js), band (band.js)
 //     opts.scene      the pack is a scene's, written to scenes/<id>.glb
 //     opts.additive   the pack is of the game's additive clips (deltas on
 //                     a pose: anims_additive/), laid over the figure's pose
@@ -17,6 +17,7 @@
 //                     humanoid's and the cinematics' (the same rig)
 
 import { ADD_SET } from './additive.js';
+import { BAND_SET } from './band.js';
 import { EMOTE_HEROES, EMOTE_SET, SOLDIER_VICTORY } from './emotes.js';
 import { FP_SET } from './firstPerson.js';
 import { NPC_SET } from './npc.js';
@@ -31,6 +32,7 @@ export const SET_PACKS = {
   additive: { set: ADD_SET, opts: { additive: true } },
   npc: { set: { ...NPC_SET, ...SOLDIER_VICTORY } },
   vehicles: { set: VEHICLE_SET },
+  band: { set: BAND_SET },
   // (the first person's: its own skeleton, the humanoid's bones by the same names)
   '1p': { set: FP_SET, opts: { skeletons: '/Walrus_HumanMale_1p$' } },
   ...Object.fromEntries(EMOTE_HEROES.map((h) => [`emotes-${h}`, { set: EMOTE_SET(h) }])),
