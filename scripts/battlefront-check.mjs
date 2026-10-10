@@ -70,13 +70,20 @@ const frames = (page, n) => page.evaluate((k) => new Promise((done) => {
 }), n);
 
 async function leg(kind) {
-  const page = await browser.newPage({ viewport: { width: W, height: H } });
+  const ctx = await browser.newContext({ viewport: { width: W, height: H } });
+  // (past the front door's first-visit asks, as galaxy-check does)
+  await ctx.addInitScript(() => {
+    window.localStorage.setItem('tp-intro', '1');
+    window.localStorage.setItem('tp-start', '"universe"');
+    window.localStorage.setItem('tp-worlds', JSON.stringify('load'));
+  });
+  const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(String(e)));
   const out = { leg: kind, errors, shots: {} };
   const t0 = Date.now();
-  await page.goto(`${base}${ROUTE}?gpu=${kind}`, { waitUntil: 'domcontentloaded', timeout: WAIT });
+  await page.goto(`${base}/#${ROUTE}?gpu=${kind}`, { waitUntil: 'domcontentloaded', timeout: WAIT });
   await page.waitForFunction(() => Boolean(window.__battlefront?.view), null, { timeout: WAIT });
   out.backend = await page.evaluate(() => window.__battlefront.do('gpu'));
   await page.waitForFunction(() => window.__battlefront.view().level.loaded, null, { timeout: WAIT, polling: 1000 });
@@ -119,7 +126,7 @@ async function leg(kind) {
   await frames(page, 10);
   await page.waitForTimeout(500);
   await shoot('end');
-  await page.close();
+  await ctx.close();
   return { ...out, field };
 }
 
