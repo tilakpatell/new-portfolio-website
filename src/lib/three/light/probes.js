@@ -81,6 +81,9 @@ export async function createProbes(scene, volumes, loadCube, { fallback = scene.
       showing = i;
       return;
     }
+    // (a crossing mid-fade keeps whichever cube shows more, rather than
+    // jumping back to where the fade began)
+    if (fading && t.value >= 0.5) a.value = b.value;
     b.value = tex;
     t.value = 0;
     fading = true;
@@ -125,6 +128,8 @@ export async function createProbes(scene, volumes, loadCube, { fallback = scene.
     async dispose() {
       disposed = true;
       scene.environmentNode = before;
+      a?.dispose();
+      b?.dispose();
       for (const p of cubes.values()) (await p)?.dispose?.();
       cubes.clear();
     },

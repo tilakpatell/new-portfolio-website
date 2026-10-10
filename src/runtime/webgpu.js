@@ -67,10 +67,13 @@ export function buildPostProcessing(renderer, passes) {
 // imported; the same face as buildPostProcessing's.
 export function buildLitPost(renderer, passes) {
   let chain = null;
+  let disposed = false;
   const ready = import('../lib/three/light/passes.js')
     .then(({ buildChain }) => buildChain(renderer, passes))
     .then((c) => {
-      chain = c;
+      // (disposed before it was built: nothing of it is kept)
+      if (disposed) c.dispose();
+      else chain = c;
       return c.pipeline;
     });
   return {
@@ -81,7 +84,10 @@ export function buildLitPost(renderer, passes) {
     render: () => chain?.pipeline.render(),
     setSize: () => {},
     compile: () => settle(ready, 4000),
-    dispose: () => chain?.dispose(),
+    dispose: () => {
+      disposed = true;
+      chain?.dispose();
+    },
   };
 }
 

@@ -93,7 +93,8 @@ export async function createPlacedLights(scene, renderer, { points, spots = SPOT
   const canCluster = clustered === 'force' || ((clustered ?? CLUSTERED) && backendOf(renderer) === 'webgpu');
   const nPoints = points ?? (canCluster ? POINT_POOL : POINT_FALLBACK);
   const before = renderer?.lighting;
-  if (canCluster && renderer) renderer.lighting = new ClusteredLighting(nPoints, CLUSTER.tileSize, CLUSTER.zSlices, CLUSTER.perCluster);
+  const lighting = canCluster && renderer ? new ClusteredLighting(nPoints, CLUSTER.tileSize, CLUSTER.zSlices, CLUSTER.perCluster) : null;
+  if (lighting) renderer.lighting = lighting;
   const group = new THREE.Group();
   group.name = 'placed-lights';
   const pointPool = [];
@@ -173,7 +174,12 @@ export async function createPlacedLights(scene, renderer, { points, spots = SPOT
     dispose() {
       group.removeFromParent();
       for (const l of [...pointPool, ...spotPool]) l.dispose();
-      if (canCluster && renderer) renderer.lighting = before;
+      if (lighting) {
+        // (the scene's lights node holds the clusters' storage and compute;
+        // the Lighting itself has no dispose)
+        renderer.lighting = before;
+        if (scene.isScene) lighting.getNode(scene)?.dispose?.();
+      }
     },
   };
 }
