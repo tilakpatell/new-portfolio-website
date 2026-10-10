@@ -140,6 +140,37 @@ describe('the war’s battle in the system you’re in', () => {
   });
 });
 
+describe('coming back after a death', () => {
+  it('is behind your side’s line once you’ve been in the battle, and the system’s own arrival before', () => {
+    const k = kit();
+    k.front.enter(systemById(FRONT_ID), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(k.front.respawn()).toBeNull(); // (not in it yet)
+    const at = k.front.info.laid.at;
+    k.front.update(1 / 30, 0, camera, { x: at[0], y: at[1], z: at[2] });
+    const r = k.front.respawn();
+    const home = k.front.battle.homeFor(k.front.battle.you.team);
+    expect(r).toMatchObject({ x: home.pos.x, y: home.pos.y, z: home.pos.z });
+    // facing the way it says (scene.js's heading for a look along (x, z) is atan2(-x, -z))
+    expect(r.heading).toBeCloseTo(Math.atan2(-home.fwd.x, -home.fwd.z), 6);
+  });
+
+  it('is the system’s own arrival unsworn, and once the battle’s over', () => {
+    const k = kit(null);
+    k.front.enter(systemById(FRONT_ID), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    const at = k.front.info.laid.at;
+    k.front.update(1 / 30, 0, camera, { x: at[0], y: at[1], z: at[2] });
+    expect(k.front.respawn()).toBeNull();
+    const s = kit();
+    s.front.enter(systemById(FRONT_ID), s.world);
+    s.front.update(1 / 30, 0, camera, { x: at[0], y: at[1], z: at[2] });
+    expect(s.front.respawn()).not.toBeNull();
+    s.front.battle.end(0, 'test');
+    expect(s.front.respawn()).toBeNull();
+  });
+});
+
 describe('a pilot who reloads', () => {
   // a browser's storage in memory, for the battle's save
   const memory = () => {
