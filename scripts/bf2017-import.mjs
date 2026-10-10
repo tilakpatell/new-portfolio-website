@@ -19,6 +19,7 @@
 //     [--root lab/assets/bf2017] [--metres <m> | --asis] [--along y|x|z|max] [--yaw <rad>] [--up y|z|-z|x|-x|-y]
 //     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512] [--quality 82] [--maps-quality 80]
 //     [--parts '<glob>,…'] [--grip <node>] [--out public/models/galaxy]
+//     [--vehicle] [--far] [--bind <skeleton>] [--hull-frame [<hull name>]] [--light-maps <px>]
 //
 //   name       the model's `name` in the manifest (bf2017-fetch.mjs --list finds it)
 //   kind       the catalogue kind: one already in another group is taken over
@@ -47,6 +48,20 @@
 //              without one falls back to IK_Joint_RightHand): a `grip` node
 //              is put there, under it on a rig so DICE's own names all stay;
 //              without either, at the model's own origin, which is DICE's hold
+//   vehicle    a vehicle's budgets (lane V): plain ≤ 25,000, light ≤ 7,000
+//   far        a .far.glb as well: the chain's first cut under 1,000
+//              triangles (else its last), its colour maps alone at 256, no
+//              skin, for the fleets and the horizon
+//   bind       skin a rigid model to the game's own skeleton for it (the
+//              AT-ST's, whose clips are on Cinematics/Objects/ATST/ATST_Ske01):
+//              the skeleton is read at rest from one of its clips on disk
+//              (bf2017-rigclips.mjs fetches them), every bone kept, each
+//              vertex to one bone (scripts/lib/rig-bind.mjs)
+//   light-maps  the light cut's maps other than colour at this size (a model
+//              with many maps whose light cut is over its cap: the AT-TE's)
+//   hull-frame  stand it where the manifest's bounds of the model (or of
+//              <hull name>) put it, not by its own cut's: a cockpit and its
+//              hull share their frame, so the seat sits in the hull
 //   keep-origin  not grounded: the model keeps the game's own origin, axes
 //              and metres (a hilt or a blaster, modelled for the Wep_Root
 //              socket with its grip at the origin and its barrel up +y)
@@ -71,8 +86,11 @@ import { glbJson, imagePath, inBucket, localPath } from './lib/bf2017-paths.mjs'
 import { resolveImage } from './lib/bf2017-textures.mjs';
 import { BASIS_LZ, dropLevels, ktx2Info } from './lib/ktx2-levels.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
+import { KEPT, decalOf, dressed } from './lib/bf2017-dressing.mjs';
+import { atlasUVs } from './lib/bf2017-uv.mjs';
+import { bindVertices, bonesOf, HELPERS } from './lib/rig-bind.mjs';
 import { shareSkins } from './lib/rig-parts.mjs';
-import { bareWhereUntextured, dims, grounded, relit, simplified, triangles, unskinned } from './lib/surface-model.mjs';
+import { bareWhereUntextured, bounds, dims, grounded, invert4, simplified, triangles, unskinned } from './lib/surface-model.mjs';
 
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
 const sharp = createRequire(createRequire(import.meta.url).resolve('ndarray-pixels'))('sharp');
@@ -158,8 +176,9 @@ export async function readLod(io, file, { root, derived, unpackDir, said, eyes =
       } else m.setBaseColorFactor([0.16, 0.12, 0.1, 1]);
       m.setRoughnessFactor(0.15).setMetallicFactor(0);
     }
-    // (Frostbite's shader preset and source maps: nothing the site reads)
-    m.setExtras({});
+    // (Frostbite's shader preset and source maps: nothing the site reads but
+    // a decal's, which lib/bf2017-dressing.mjs draws as the game does)
+    m.setExtras(decalOf(shader) ? { decal: decalOf(shader) } : {});
   }
   for (const t of doc.getRoot().listTextures()) if (t.getName() === MISSING) t.dispose();
   return doc;
@@ -188,6 +207,79 @@ async function readCut(io, entry, parts, lod, opts) {
 }
 
 const apply = (m, p) => [0, 1, 2].map((r) => m[r] * p[0] + m[4 + r] * p[1] + m[8 + r] * p[2] + m[12 + r]);
+
+// ── a rigid model bound to the game's skeleton for it (--bind) ──
+
+// the skeleton at rest, read from one of its clips (a glTF of its nodes and
+// one animation): its nodes as the glTF has them, and which are the roots
+async function skeletonOf(root, skeleton) {
+  const file = localPath(root, 'web/anims.jsonl');
+  if (!existsSync(file)) throw new Error(`--bind: no ${file} (node scripts/bf2017-rigclips.mjs fetches it)`);
+  const clip = [...readManifest(await readFile(file, 'utf8')).values()].find((e) => e.skeleton === skeleton && existsSync(localPath(root, `web/${e.file}`)));
+  if (!clip) throw new Error(`--bind: no clip of ${skeleton} on disk (node scripts/bf2017-rigclips.mjs --pack <rig> fetches them)`);
+  const json = glbJson(await readFile(localPath(root, `web/${clip.file}`)));
+  return { nodes: json.nodes, roots: json.scenes[json.scene ?? 0].nodes };
+}
+
+// the joined statue's mesh skinned to that skeleton: the skeleton made as
+// nodes beside it (all of them, the helpers too, by their game names), the
+// vertices put in the model's frame and each given its bone
+function bindTo(doc, { nodes, roots }) {
+  const root = doc.getRoot();
+  const scene = root.getDefaultScene();
+  const made = nodes.map((n) => doc.createNode(n.name).setTranslation(n.translation ?? [0, 0, 0]).setRotation(n.rotation ?? [0, 0, 0, 1]).setScale(n.scale ?? [1, 1, 1]));
+  nodes.forEach((n, i) => (n.children ?? []).forEach((c) => made[i].addChild(made[c])));
+  for (const r of roots) scene.addChild(made[r]);
+  const rows = nodes.map((n, i) => ({ name: n.name, at: made[i].getWorldTranslation(), children: (n.children ?? []).map((c) => nodes[c].name) }));
+  const bones = bonesOf(rows);
+  const joints = bones.map((b) => made[nodes.findIndex((n) => n.name === b.name)]);
+  const buffer = root.listBuffers()[0];
+  const ibm = new Float32Array(joints.length * 16);
+  joints.forEach((j, i) => ibm.set(invert4(j.getWorldMatrix()), i * 16));
+  const skin = doc.createSkin('rig').setSkeleton(made[roots[0]]).setInverseBindMatrices(doc.createAccessor().setType('MAT4').setArray(ibm).setBuffer(buffer));
+  for (const j of joints) skin.addJoint(j);
+  let n = 0;
+  for (const node of root.listNodes()) {
+    const mesh = node.getMesh();
+    if (!mesh) continue;
+    const world = node.getWorldMatrix();
+    for (const prim of mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION');
+      const P = new Float32Array(pos.getCount() * 3);
+      const p = [];
+      for (let v = 0; v < pos.getCount(); v++) P.set(apply(world, pos.getElement(v, p)), v * 3);
+      prim.setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(P).setBuffer(buffer));
+      const nor = prim.getAttribute('NORMAL');
+      if (nor) {
+        const N = new Float32Array(nor.getCount() * 3);
+        const turn = [...world.slice(0, 12), 0, 0, 0, 1];
+        for (let v = 0; v < nor.getCount(); v++) {
+          const q = apply(turn, nor.getElement(v, p));
+          const l = Math.hypot(...q) || 1;
+          N.set(
+            q.map((x) => x / l),
+            v * 3,
+          );
+        }
+        prim.setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(N).setBuffer(buffer));
+      }
+      const index = prim.getIndices()?.getArray() ?? Uint32Array.from({ length: pos.getCount() }, (_, i) => i);
+      const bound = bindVertices(P, index, bones);
+      const J = new Uint16Array(pos.getCount() * 4);
+      const W = new Float32Array(pos.getCount() * 4);
+      bound.forEach((b, v) => {
+        J[v * 4] = b;
+        W[v * 4] = 1;
+      });
+      prim.setAttribute('JOINTS_0', doc.createAccessor().setType('VEC4').setArray(J).setBuffer(buffer));
+      prim.setAttribute('WEIGHTS_0', doc.createAccessor().setType('VEC4').setArray(W).setBuffer(buffer));
+      n += pos.getCount();
+    }
+    node.setMatrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+    node.setSkin(skin);
+  }
+  return { joints: joints.length, nodes: nodes.length, vertices: n, helpers: nodes.filter((x) => HELPERS.test(x.name)).length };
+}
 
 // A colour map whose alpha is the game's smoothness (`_cs`), on a material
 // that draws opaque: the alpha taken off before WebP, which otherwise drops
@@ -230,6 +322,10 @@ async function nativeMaps(doc, spec) {
   return n;
 }
 
+// (textureCompress skips a texture only when both its name and its URI fail
+// the pattern: a made map has no URI, and the one character asks for one)
+const NOT_KEPT = new RegExp(`^(?!${KEPT}).`);
+
 // ── one cut, through the pipeline, to a file ──
 
 async function makeCut(io, entry, parts, lod, spec, out) {
@@ -238,35 +334,55 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const root = doc.getRoot();
   const budget = lod.triangles + parts.reduce((n, p) => n + (p.lods.find((l) => l.lod === lod.lod) ?? p.lods[p.lods.length - 1]).triangles, 0);
   for (const mesh of root.listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
+  // (each map read through the UV set the game reads it through: lib/bf2017-uv.mjs;
+  // the game's glass made glass, its decals blended by their own masks, its
+  // weak points' covers dropped: lib/bf2017-dressing.mjs)
+  await doc.transform(atlasUVs(), dressed({ sharp }));
   // where it is held, in the model's own frame, before anything moves
   const socket = spec.grip.map((g) => root.listNodes().find((n) => n.getName() === g)).find(Boolean);
   const hold = socket ? socket.getWorldTranslation() : [0, 0, 0];
-  if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit({}), prune(), bareWhereUntextured(), weld());
-  else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), relit({}), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
+  if (spec.rig && !spec.statue) await doc.transform(dequantize(), dedup(), metalRough(), prune(), bareWhereUntextured(), weld());
+  else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
   // (the cut is the file, so this is only for parts that overshoot it)
   if (triangles(doc) > budget * 1.1) {
     console.log(`  ${Math.round(triangles(doc))} triangles against the cut's ${budget}: simplified`);
     await doc.transform(simplified(budget));
   }
+  const bound = spec.skeleton && !spec.statue ? bindTo(doc, spec.skeleton) : null;
+  if (bound) console.log(`  bound to its skeleton: ${bound.vertices} vertices to ${bound.joints} bones (${bound.nodes} nodes, ${bound.helpers} of them the game's helpers)`);
   // (--keep-origin: a weapon stays in the frame the game modelled it in, its
   // origin the grip the game's Wep_Root socket holds it by: never moved)
   if (!spec.keepOrigin) await doc.transform(grounded(spec));
   const ground = root.listNodes().find((n) => n.getName() === 'ground');
+  // (in the frame the manifest's bounds give: a cockpit where its hull's put it)
+  if (spec.frame && ground) {
+    const [a, b] = [spec.frame.min, spec.frame.max];
+    ground.setScale([1, 1, 1]).setTranslation([-(a[0] + b[0]) / 2, -a[1], -(a[2] + b[2]) / 2]);
+  }
   const gripAt = ground ? apply(ground.getMatrix(), hold) : hold;
-  if (!spec.rig) await doc.transform(flatten());
+  const rigged = (spec.rig || bound) && !spec.statue;
+  if (!rigged) await doc.transform(flatten());
   await doc.transform(dedup(), prune());
   // (on a rig, a child of the socket, so it moves with the hand and the
   // socket keeps its name for the game's clips)
-  const held = spec.rig && socket && root.listNodes().includes(socket) ? socket : null;
+  const held = rigged && socket && root.listNodes().includes(socket) ? socket : null;
   if (held) held.addChild(doc.createNode('grip'));
   else root.getDefaultScene().addChild(doc.createNode('grip').setTranslation(gripAt));
+  // (a far cut wears the game's colour maps alone: its normals and smoothness
+  // are under a pixel at the distance it's drawn)
+  if (spec.colourOnly) {
+    for (const m of root.listMaterials()) m.setNormalTexture(null).setMetallicRoughnessTexture(null).setOcclusionTexture(null);
+    // (the maps alone: an empty node such as the grip stays)
+    await doc.transform(prune({ propertyTypes: ['Texture'] }));
+  }
   // the game's own maps, as the bucket holds them (zstd UASTC, full mips),
   // their top levels dropped to the cut's size: nothing re-encoded (--native)
   const native = spec.native ? await nativeMaps(doc, spec) : 0;
   await doc.transform(
     opaqueColour(),
-    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
-    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
+    // (a map lib/bf2017-dressing.mjs made from the game's pixels is lossless already: left as it is)
+    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, pattern: NOT_KEPT, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
+    textureCompress({ encoder: sharp, targetFormat: 'webp', formats: /png|jpeg|webp/, pattern: NOT_KEPT, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
     // (the game's own precision: half-float positions are 16 bits; a UV at
     // meshopt's default 12 bits is half a texel off on a 2048 map)
     meshopt({ encoder: MeshoptEncoder, level: 'high', quantizePosition: 16, quantizeNormal: 12, quantizeTexcoord: 16 }),
@@ -275,17 +391,38 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   await io.write(out, doc);
   const bytes = (await stat(out)).size;
   const [w, h, l] = dims(doc);
-  return { out, bytes, native, tris: Math.round(triangles(doc)), draws: root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0), maps: root.listTextures().length, size: [w, h, l], socket: socket?.getName() ?? null, joints: new Set(root.listSkins().flatMap((s) => s.listJoints())).size };
+  const box = bounds(doc, root.getDefaultScene());
+  return { out, bytes, box, native, tris: Math.round(triangles(doc)), draws: root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0), maps: root.listTextures().length, size: [w, h, l], socket: socket?.getName() ?? null, joints: new Set(root.listSkins().flatMap((s) => s.listJoints())).size };
 }
 
 // ── the arguments ──
 
+// a vehicle's cuts (lane V's budgets): the plain under 25,000 triangles, the
+// light under 7,000, the far under 1,000 (else the chain's last)
+export const VEHICLE = { plainMax: 25000, lod1Max: 7000, farMax: 1000 };
+// a native vehicle's (the game's own maps, from the bucket: the native caps
+// of lib/bf2017-caps.mjs): the plain the game's first LOD under 60,000
+// triangles, which is its LOD0 for all but the biggest, and the ultra its
+// LOD0 whatever it is, with every map at the game's own size
+export const NATIVE_VEHICLE = { plainMax: 60000, lod1Max: 7000, farMax: 1000 };
+export function vehicleCuts(entry, { native = false, ultra = false } = {}) {
+  const caps = native ? NATIVE_VEHICLE : VEHICLE;
+  const cuts = cutsFor(entry, { plainMax: caps.plainMax, lod1Max: caps.lod1Max, ultra });
+  if (native && ultra) cuts.ultra = [...entry.lods].sort((a, b) => a.lod - b.lod)[0];
+  return cuts;
+}
+export const farCut = (entry, max = VEHICLE.farMax) => {
+  const lods = [...entry.lods].sort((a, b) => a.lod - b.lod);
+  return lods.find((l) => l.triangles <= max) ?? lods[lods.length - 1];
+};
+
 function cutsOf(entry, opts, rig) {
-  const cuts = cutsFor(entry, { plainMax: rig ? 8000 : 12000, ultra: Boolean(opts.ultra) });
+  const cuts = opts.vehicle ? vehicleCuts(entry, { native: Boolean(opts.native), ultra: Boolean(opts.ultra) }) : cutsFor(entry, { plainMax: rig ? 8000 : 12000, ultra: Boolean(opts.ultra) });
+  if (opts.far) cuts.far = farCut(entry);
   if (typeof opts.cuts === 'string')
     for (const part of opts.cuts.split(',')) {
       const [name, n] = part.split('=');
-      if (!['lod1', 'plain', 'ultra'].includes(name)) throw new Error(`--cuts: ${name}? (lod1, plain, ultra)`);
+      if (!['lod1', 'plain', 'ultra', 'far'].includes(name)) throw new Error(`--cuts: ${name}? (lod1, plain, ultra, far)`);
       const lod = entry.lods.find((l) => l.lod === Number(n));
       if (!lod) throw new Error(`--cuts: ${entry.name} has no LOD ${n} (it has ${entry.lods.map((l) => l.lod).join(', ')})`);
       cuts[name] = lod;
@@ -328,7 +465,14 @@ export async function importModel(name, opts) {
     quality: Number(opts.quality ?? 82),
     mapsQuality: Number(opts.mapsQuality ?? opts.quality ?? 80),
     said: { found: new Set(), missing: new Set() },
+    skeleton: typeof opts.bind === 'string' ? await skeletonOf(root, opts.bind) : null,
+    frame: null,
   };
+  if (opts.hullFrame) {
+    const hull = typeof opts.hullFrame === 'string' ? manifest.get(opts.hullFrame) : entry;
+    if (!hull) throw new Error(`--hull-frame: ${opts.hullFrame} is not in the manifest`);
+    spec.frame = { min: hull.min, max: hull.max, name: hull.name };
+  }
   const cuts = cutsOf(entry, opts, rig);
   await MeshoptEncoder.ready;
   await MeshoptDecoder.ready;
@@ -344,7 +488,7 @@ export async function importModel(name, opts) {
   let lod = false;
   if (cuts.lod1) {
     // (the light cut: half the colour, a quarter of the full maps at most 512, at the usual quality)
-    const light = await makeCut(io, entry, parts, cuts.lod1, { ...spec, tex: tex / 2, maps: spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 }, path(dir, `${kind}.lod1.glb`));
+    const light = await makeCut(io, entry, parts, cuts.lod1, { ...spec, tex: tex / 2, maps: opts.lightMaps ? Number(opts.lightMaps) : spec.native ? maps / 2 : Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 }, path(dir, `${kind}.lod1.glb`));
     if (light.bytes < 0.7 * plain.bytes) {
       made.push(['lod1', cuts.lod1, light]);
       lod = true;
@@ -353,12 +497,26 @@ export async function importModel(name, opts) {
       console.log(`  no .lod1: LOD${cuts.lod1.lod} came to ${light.bytes} bytes, not under 0.7 × the plain file's ${plain.bytes}`);
     }
   } else console.log('  no .lod1: the chain has no cut light enough below the plain one');
+  let far = false;
+  if (cuts.far) {
+    const f = await makeCut(io, entry, parts, cuts.far, { ...spec, statue: true, colourOnly: true, tex: 256, maps: 256 }, path(dir, `${kind}.far.glb`));
+    made.push(['far', cuts.far, f]);
+    far = true;
+    if (cuts.far.triangles > VEHICLE.farMax) console.log(`  the far cut is the chain's last, LOD${cuts.far.lod}: ${cuts.far.triangles} triangles, over the ${VEHICLE.farMax} it aims at`);
+  }
   let ultra = null;
   if (cuts.ultra) {
     const ut = Number(opts.ultraTex ?? 2048);
     const u = await makeCut(io, entry, parts, cuts.ultra, { ...spec, tex: ut, maps: Number(opts.ultraMaps ?? 1024) }, path(dir, `${kind}.ultra.glb`));
-    made.push(['ultra', cuts.ultra, u]);
-    ultra = { tris: u.tris, tex: ut };
+    // (a native one the same mesh with the same maps, where the game's are
+    // no bigger than the plain cut's, is no gain: not kept)
+    if (spec.native && cuts.ultra.lod === cuts.plain.lod && u.bytes < 1.1 * plain.bytes) {
+      await unlink(u.out);
+      console.log(`  no .ultra: LOD${cuts.ultra.lod} at the game's own maps came to ${u.bytes} bytes, the plain file's ${plain.bytes}`);
+    } else {
+      made.push(['ultra', cuts.ultra, u]);
+      ultra = { tris: u.tris, tex: ut };
+    }
   }
   // (a file over its cap is not shipped: the import stops and says which)
   const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero), native: Boolean(opts.native) });
@@ -367,7 +525,14 @@ export async function importModel(name, opts) {
   for (const f of spec.said.missing) console.log(`  missing: ${f}`);
   if (!plain.socket) console.log(`  (no ${spec.grip.join(' or ')} in the file: grip made at the model's own origin)`);
   else console.log(`  grip at ${plain.socket}`);
-  if (rig) console.log(`  rig kept whole: ${plain.joints} joints`);
+  if (rig || spec.skeleton) console.log(`  rig kept whole: ${plain.joints} joints`);
+  // (a cockpit's one check: it lies inside its hull, both stood as the hull's manifest bounds put it)
+  if (spec.frame && spec.frame.name !== name) {
+    const h = spec.frame;
+    const hull = { min: [-(h.max[0] - h.min[0]) / 2, 0, -(h.max[2] - h.min[2]) / 2], max: [(h.max[0] - h.min[0]) / 2, h.max[1] - h.min[1], (h.max[2] - h.min[2]) / 2] };
+    const inside = [0, 1, 2].every((i) => plain.box.min[i] >= hull.min[i] - 0.05 && plain.box.max[i] <= hull.max[i] + 0.05);
+    console.log(`  inside ${h.name.split('/').pop()}: ${inside ? 'yes' : 'NO'} (${plain.box.min.map((v) => v.toFixed(2))} to ${plain.box.max.map((v) => v.toFixed(2))} in ${hull.min.map((v) => v.toFixed(2))} to ${hull.max.map((v) => v.toFixed(2))})`);
+  }
   for (const [cut, l, r] of made) {
     const [w, h, d] = r.size;
     console.log(`${relative(ROOT, r.out).padEnd(48)} ${cut.padEnd(5)} LOD${l.lod}  ${r.tris} triangles, ${r.draws} draws, ${r.maps} maps, ${(r.bytes / 1024).toFixed(1)} KB; ${w.toFixed(2)} wide × ${h.toFixed(2)} tall × ${d.toFixed(2)} long (m)`);
@@ -375,8 +540,11 @@ export async function importModel(name, opts) {
   const file = `/models/galaxy/${sub}/${kind}.glb`;
   if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus', pack: '${kind}'` : ''} },`);
   else {
-    const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: cuts.plain.triangles, tex };
-    if (rig) row.rig = true;
+    // (a vehicle's the file's own count, after its markers and normal-only decals are gone)
+    const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: opts.vehicle ? plain.tris : cuts.plain.triangles, tex };
+    if (rig || spec.skeleton) row.rig = true;
+    if (far) row.far = true;
+    if (spec.frame && spec.frame.name !== name) row.hull = spec.frame.name;
     if (opts.hero) row.hero = true;
     // (the game's own maps, held to the native caps: scripts/lib/bf2017-caps.mjs)
     if (spec.native) row.native = true;

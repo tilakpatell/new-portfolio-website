@@ -21,14 +21,15 @@
 import * as THREE from 'three';
 import { aimBone, reach, rotateWorld } from '../../../lib/three/ik';
 
-// (the 74-Z's grips are 13 cm over its saddle and its pedals behind the
-// knee, so its rider sits as a racer does, low over the bars; the
-// landspeeder's driver sits down in the left of its cockpit, the wheel
-// before him and his feet under the dash; on a beast, astride it, the
+// (the game's 74-Z (catalog/bf2017-vehicles.js): its grips 30 cm over its
+// saddle and a little ahead, its pegs low behind the knee, so its rider
+// sits as a racer does, low over the bars; the game's X-34: its driver sits
+// down in the left of its cockpit, leant to the low dash where its yoke is,
+// the feet in the well under it; on a beast, astride it, the
 // reins in both hands and the feet down its flanks)
 export const SEATS = {
-  speederbike: { hips: [0, 0.8, -0.66], lean: 0.85, hands: [[0.2, 0.93, -0.12]], feet: [[0.33, 0.15, -0.84]], elbow: [0.7, -0.5, -0.4], knee: [0.45, 0.1, 1], toes: [0.15, -0.35, 1] },
-  landspeeder: { hips: [-0.24, 0.4, -0.2], lean: 0.08, hands: [[-0.12, 0.46, 0.03], [-0.34, 0.46, 0.03]], feet: [[-0.15, 0.09, 0.45], [-0.33, 0.09, 0.45]], elbow: [0.5, -0.8, -0.2], knee: [0.15, 0.6, 1], toes: [0, 0.3, 1] },
+  speederbike: { hips: [0, 0.84, -0.6], lean: 0.85, hands: [[0.22, 1.06, 0.02]], feet: [[0.33, 0.14, -0.9]], elbow: [0.7, -0.5, -0.4], knee: [0.45, 0.1, 1], toes: [0.15, -0.35, 1] },
+  landspeeder: { hips: [-0.3, 0.6, -0.85], lean: 0.25, hands: [[-0.2, 0.5, 0.3], [-0.42, 0.5, 0.25]], feet: [[-0.2, 0.08, -0.25], [-0.4, 0.08, -0.25]], elbow: [0.5, -0.8, -0.2], knee: [0.15, 0.6, 1], toes: [0, 0.3, 1] },
   tauntaun: { hips: [0, 1.88, 0.18], lean: 0.18, hands: [[0.12, 2.0, 0.52]], feet: [[0.45, 1.3, 0.26]], elbow: [0.5, -0.8, -0.3], knee: [0.8, 0, 0.6], toes: [0.2, -0.2, 1] },
   bantha: { hips: [0, 2.6, 0.65], lean: 0.12, hands: [[0.15, 2.75, 1.05]], feet: [[0.75, 1.9, 0.8]], elbow: [0.5, -0.8, -0.3], knee: [0.9, -0.1, 0.5], toes: [0.2, -0.2, 1] },
   kaadu: { hips: [0, 2.05, -0.1], lean: 0.15, hands: [[0.12, 2.15, 0.3]], feet: [[0.3, 1.35, -0.05]], elbow: [0.5, -0.8, -0.3], knee: [0.8, 0, 0.6], toes: [0.2, -0.2, 1] },
