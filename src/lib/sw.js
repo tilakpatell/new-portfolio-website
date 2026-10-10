@@ -3,19 +3,24 @@
 // installing one (src/runtime/install.js), and goes again with the last
 // pack, so everyone else's visits are as they were. Never in development.
 //
-// createWorkerSwitch({ nav, caches, prod }) → { start(), need(), tidy() };
+// createWorkerSwitch({ nav, caches, prod, base }) → { start(), need(), tidy() };
+// (base: the asset bucket's URL, VITE_ASSET_BASE, told to the worker in its
+// script's URL, so it may serve that bucket's files of an installed pack)
 // registerWorker() is start() on the browser's.
 
 const URL_ = '/sw.js';
 const PREFIX = 'tp-pack-';
+// (with or without a base in its query)
+const isOurs = (url) => Boolean(url) && new URL(url, 'http://x').pathname === URL_;
 
-export function createWorkerSwitch({ nav, caches, prod }) {
+export function createWorkerSwitch({ nav, caches, prod, base = '' }) {
+  const script = base ? `${URL_}?base=${encodeURIComponent(base)}` : URL_;
   let registering = null;
   const ok = () => prod && Boolean(nav?.serviceWorker);
   const any = async () => ((await caches?.keys().catch(() => [])) ?? []).some((n) => n.startsWith(PREFIX));
   const need = () => {
     if (!ok()) return Promise.resolve(null);
-    registering ??= nav.serviceWorker.register(URL_, { scope: '/' }).catch(() => {
+    registering ??= nav.serviceWorker.register(script, { scope: '/' }).catch(() => {
       registering = null;
       return null;
     });
@@ -30,7 +35,7 @@ export function createWorkerSwitch({ nav, caches, prod }) {
       if (!ok() || (await any())) return;
       registering = null;
       const regs = await nav.serviceWorker.getRegistrations?.().catch(() => []);
-      for (const r of regs ?? []) if ((r.active ?? r.waiting ?? r.installing)?.scriptURL?.endsWith(URL_)) await r.unregister().catch(() => {});
+      for (const r of regs ?? []) if (isOurs((r.active ?? r.waiting ?? r.installing)?.scriptURL)) await r.unregister().catch(() => {});
     },
   };
 }
@@ -45,7 +50,7 @@ export function workerSwitch() {
   } catch {
     /* (storage blocked) */
   }
-  one = createWorkerSwitch({ nav: window.navigator, caches, prod: import.meta.env.PROD });
+  one = createWorkerSwitch({ nav: window.navigator, caches, prod: import.meta.env.PROD, base: import.meta.env.VITE_ASSET_BASE ?? '' });
   return one;
 }
 
