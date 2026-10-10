@@ -17,7 +17,7 @@ export default function NotFound() {
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link to="/" className="btn btn-primary">
-            Go to home
+            Home
           </Link>
           <Egg id="lost" className="order-last self-center" />
           <Link to="/experience" className="btn btn-ghost">

@@ -6,7 +6,17 @@
 //
 //   node scripts/gen3d/web.mjs BAKED.glb NAME --what "an X-wing starfighter" [--match OLD.glb] [--across-seams]
 //   three cuts (budget.mjs TIERS): NAME.hq.glb, NAME.glb, NAME.lo.glb; --tris N --tex N makes one custom cut instead
+//   --ultra: NAME.ultra.glb as well (budget.mjs ULTRA: up to 300k faces, 8192 maps, 24 MB)
 //   webReady(doc, { tris, tex }) → { before, after }   (the transform, on a gltf-transform Document)
+//   node scripts/gen3d/web.mjs --check-colliders NAME.glb: the bodies a written model's physical nodes make
+//   collidersIn(doc) → Promise<[{ name, desc }]>   (lib/physics/fromModel.js's, from a Document's node tree;
+//     loaded only when asked, so the cut runs where only scripts/gen3d is, as the runner's sandbox has it)
+//
+// A prop's physics is modelled (docs/assets/colliders.md): nodes named
+// `physical` with collider children. The cut keeps them, names and all: a
+// collider sized by its scale loses its mesh first (it's never drawn, and
+// meshopt's quantising would fold a scale into that mesh's node), and the
+// prune keeps the empty nodes left, which it would otherwise drop.
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -30,8 +40,56 @@ export async function io() {
   return new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 }
 
+const PHYSICAL = /physical/i;
+const SCALED = /^(cuboid|ball|cylinder|capsule)/i; // (a collider whose size is its scale)
+const physicalNodes = (doc) => doc.getRoot().listNodes().filter((n) => PHYSICAL.test(n.getName()));
+
+// a collider sized by its scale needs no mesh, and must keep its scale
+function keepColliders(doc) {
+  const bodies = physicalNodes(doc);
+  for (const body of bodies) for (const child of body.listChildren()) if (SCALED.test(child.getName())) child.setMesh(null);
+  return bodies.length > 0;
+}
+
+// an accessor's elements as one flat array, quantised ones undone
+function flat(accessor) {
+  const n = accessor.getCount();
+  const size = accessor.getElementSize();
+  const out = new Float32Array(n * size);
+  const el = [];
+  for (let i = 0; i < n; i++) out.set(accessor.getElement(i, el), i * size);
+  return out;
+}
+
+function nodeOf(node, inBody) {
+  const name = node.getName();
+  const out = { name, position: node.getTranslation(), quaternion: node.getRotation(), scale: node.getScale(), userData: node.getExtras(), children: node.listChildren().map((c) => nodeOf(c, inBody || PHYSICAL.test(name))) };
+  const prims = node.getMesh()?.listPrimitives() ?? [];
+  const pos = prims[0]?.getAttribute('POSITION');
+  if (pos && PHYSICAL.test(name)) {
+    const points = flat(pos);
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < points.length; i++) {
+      min[i % 3] = Math.min(min[i % 3], points[i]);
+      max[i % 3] = Math.max(max[i % 3], points[i]);
+    }
+    out.box = { min, max };
+  }
+  if (pos && inBody && /^(hull|trimesh)/i.test(name)) {
+    out.points = flat(pos);
+    const idx = prims[0].getIndices();
+    if (idx) out.indices = Uint32Array.from(idx.getArray());
+  }
+  return out;
+}
+
+export const collidersIn = async (doc) =>
+  (await import('../../src/lib/physics/fromModel.js')).bodiesFromNodes((doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0])?.listChildren().map((n) => nodeOf(n, false)) ?? []).map(({ name, desc }) => ({ name, desc }));
+
 export async function webReady(doc, { tris, tex, acrossSeams = false }) {
   const { default: sharp } = await import('sharp'); // only when a model is made: the budget check needs no native module
+  const physical = keepColliders(doc);
   const before = triangles(doc);
   await doc.transform(dequantize(), weld());
   // a generated mesh carries far more detail than a Meshy one: the simplifier
@@ -50,7 +108,7 @@ export async function webReady(doc, { tris, tex, acrossSeams = false }) {
   const half = Math.round(tex / 2);
   await doc.transform(
     dedup(),
-    prune(),
+    prune({ keepLeaves: physical }),
     textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [tex, tex], quality: 85, slots: /baseColor|emissive/ }),
     textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [half, half], quality: 75, slots: /normal|metallicRoughness|occlusion/ }),
     meshopt({ encoder: MeshoptEncoder, level: 'high' }),
@@ -81,10 +139,12 @@ export const permissive = (tris) => async (doc) => {
 // `match` names one (colour.mjs); credited once. Returns the first cut's
 // numbers, and every cut's under `cuts`.
 // `top` ({ faces, tex }) scales the three cuts down for a model asked to be smaller (budget.mjs cutsFor).
-export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSeams = false, match, tiers = Object.keys(TIERS), tris, tex, top }) {
+// `ultra` adds the ultra cut (budget.mjs ULTRA), first, at the size the bake was made at.
+export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSeams = false, match, ultra = false, tiers, tris, tex, top }) {
   const nio = await io();
   await mkdir(out(), { recursive: true });
-  const scaled = cutsFor(top?.faces, top?.tex);
+  const scaled = cutsFor(top?.faces, top?.tex, { ultra });
+  tiers ??= Object.keys(scaled);
   const cuts = tris ? { custom: { suffix: '', faces: tris, tex: tex ?? 2048, bytes: TIERS.mid.bytes } } : Object.fromEntries(tiers.map((t) => [t, scaled[t]]));
   const results = {};
   let said = false;
@@ -113,12 +173,18 @@ export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSea
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  if (args[0] === '--check-colliders') {
+    const bodies = await collidersIn(await (await io()).read(resolve(args[1])));
+    for (const { name, desc } of bodies) console.log(`${name}: ${desc.type}, ${desc.colliders.map((c) => c.shape).join(' + ')}${desc.mass !== undefined ? `, ${desc.mass} kg` : ''}`);
+    if (!bodies.length) console.log('no physical nodes');
+    process.exit(0);
+  }
   const flag = (n, d) => {
     const i = args.indexOf(`--${n}`);
     return i >= 0 ? args.splice(i, 2)[1] : d;
   };
   const [tris, tex, match] = [flag('tris'), flag('tex'), flag('match')];
-  const opts = { tris: tris && Number(tris), tex: tex && Number(tex), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2'), match: match && resolve(match), acrossSeams: args.includes('--across-seams') };
+  const opts = { tris: tris && Number(tris), tex: tex && Number(tex), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2'), match: match && resolve(match), acrossSeams: args.includes('--across-seams'), ultra: args.includes('--ultra') };
   const [raw, name] = args;
   if (!raw || !name) throw new Error('usage: node scripts/gen3d/web.mjs BAKED.glb NAME [--what "…"] [--match OLD.glb] [--tris N --tex N for one custom cut]');
   const r = await publish(resolve(raw), name, opts);

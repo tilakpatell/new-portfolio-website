@@ -9,6 +9,7 @@
 
 import { fbm, makeNoise, smooth } from '../../../lib/paint';
 import { newWatchers, stepWatchers } from '../towns/watchers';
+import { byFrame } from '../ease';
 
 // The disc you can walk in, and how far the hills go on past it.
 export const WORLD = { radius: 64, edge: 104 };
@@ -131,8 +132,9 @@ export function bridgeY(z) {
   const k = Math.max(0, Math.min(1, (z - BRIDGE.z0) / (BRIDGE.z1 - BRIDGE.z0)));
   return 0.35 + Math.sin(k * Math.PI) * BRIDGE.rise;
 }
-// where a foot lands
-export const groundY = (x, z) => (onBridge(x, z) ? bridgeY(z) : Math.max(height(x, z), WATER_Y));
+// where a foot lands (or anything else: `at` the ground's height, the
+// terrain's as drawn for a leaf, ./ground.js's drawnHeight)
+export const groundY = (x, z, at = height) => (onBridge(x, z) ? bridgeY(z) : Math.max(at(x, z), WATER_Y));
 
 // ── what's in the way ──
 
@@ -188,6 +190,13 @@ export const TREES = (() => {
   }
   return out;
 })();
+
+// The leaves under them, the day of Bilbo's party, 22 September (the
+// Shire's landing has the same: universe/landings/landings.js's
+// LEAVES.shire): olive going gold, one in seven russet; how many a square
+// metre, how big (a share of a metre's quad), and how many a second the
+// trees round you let go (lib/three/flatLitter.js)
+export const LEAVES = { colours: ['#a39c34', '#d8a83c', '#b4622c'], density: 0.55, size: 0.28, shed: 0.7 };
 
 // Farmer Maggot's fence, with the gate on the north side and a stile on
 // the south: [x0, z0, x1, z1] runs of rail.
@@ -290,9 +299,10 @@ export function stepHobbit(h, { x: mx = 0, z: mz = 0, run = false } = {}, dt) {
   const top = run ? HOBBIT.run : HOBBIT.walk;
   const tx = mx * k * top;
   const tz = mz * k * top;
-  const ease = Math.min(1, HOBBIT.accel * dt / Math.max(1, top));
-  let vx = h.vx + (tx - h.vx) * Math.min(1, ease * 2.2);
-  let vz = h.vz + (tz - h.vz) * Math.min(1, ease * 2.2);
+  // by dt, as the old `min(1, accel·dt/top·2.2)` was at 60 Hz (../ease.js)
+  const ease = byFrame((HOBBIT.accel * 2.2) / Math.max(1, top), dt);
+  let vx = h.vx + (tx - h.vx) * ease;
+  let vz = h.vz + (tz - h.vz) * ease;
   if (len < 0.05 && Math.hypot(vx, vz) < 0.05) {
     vx = 0;
     vz = 0;
@@ -325,9 +335,30 @@ export function stepHobbit(h, { x: mx = 0, z: mz = 0, run = false } = {}, dt) {
     const want = Math.atan2(-mz, mx);
     let d = want - face;
     d = Math.atan2(Math.sin(d), Math.cos(d));
-    face += d * Math.min(1, HOBBIT.turn * dt);
+    face += d * byFrame(HOBBIT.turn, dt);
   }
   return { x, z, face, vx: (x - h.x) / Math.max(dt, 1e-6), vz: (z - h.z) / Math.max(dt, 1e-6), speed: moved, running: run && moved > HOBBIT.walk + 0.3 };
+}
+
+// Footsteps on the grass: one a stride of ground covered (a longer stride
+// running), so they keep pace with his feet at any frame rate. `acc` is how
+// far through a stride he is; standing still puts him partway, so the first
+// step comes soon after he sets off. Returns [acc, a foot fell].
+export const STRIDE = { walk: 0.75, run: 1.15, first: 0.5, still: 0.3 };
+export function stepStride(acc, h, dt) {
+  if (!(h.speed > STRIDE.still)) return [STRIDE.first, false];
+  const next = acc + (h.speed * dt) / (h.running ? STRIDE.run : STRIDE.walk);
+  return next >= 1 ? [next - 1, true] : [next, false];
+}
+
+// Caught or found, he's put back under a fade to black and out again rather
+// than a cut (C-137's 260 ms): `left` is the seconds until the screen is dark
+// and he's moved. Returns [left, move him now]; null is no fade.
+export const FADE = 0.26;
+export function stepFade(left, dt) {
+  if (left == null) return [null, false];
+  const next = left - dt;
+  return next > 0 ? [next, false] : [null, true];
 }
 
 export const newHobbit = (at = START) => ({ x: at.x, z: at.z, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false });

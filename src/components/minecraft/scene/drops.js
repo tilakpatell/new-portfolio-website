@@ -9,30 +9,7 @@
 import * as THREE from 'three';
 import { BLOCKS, TINTS } from '../rules/blocks.js';
 import { ITEMS } from '../rules/items.js';
-
-const vertex = /* glsl */ `
-in float layer;
-in vec3 tint;
-out vec3 vUv;
-out vec3 vTint;
-void main() {
-  vUv = vec3(uv.x, 1.0 - uv.y, layer);
-  vTint = tint;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-const fragment = /* glsl */ `
-layout(location = 0) out highp vec4 outColour;
-precision highp sampler2DArray;
-uniform sampler2DArray atlas;
-in vec3 vUv;
-in vec3 vTint;
-void main() {
-  vec4 t = texture(atlas, vUv);
-  if (t.a < 0.5) discard;
-  outColour = vec4(t.rgb * vTint, 1.0);
-}
-`;
+import { dropMaterial } from './nodes.js';
 
 // a box's faces go +x, −x, +y, −y, +z, −z
 const BOX = [
@@ -48,9 +25,8 @@ export function createDrops(scene, { blocks, items, blockLayers, itemLayers, col
   const group = new THREE.Group();
   group.name = 'drops';
   scene.add(group);
-  const material = (atlas) => new THREE.ShaderMaterial({ glslVersion: THREE.GLSL3, vertexShader: vertex, fragmentShader: fragment, uniforms: { atlas: { value: atlas } }, side: THREE.DoubleSide });
-  const blockMat = material(blocks);
-  const itemMat = items ? material(items) : null;
+  const blockMat = dropMaterial(blocks);
+  const itemMat = items ? dropMaterial(items) : null;
   const geometries = new Map();
   const tintOf = (b, face) => {
     const name = TINTS[Math.max(0, TINTS.indexOf(b.tint))];

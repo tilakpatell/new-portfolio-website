@@ -3,20 +3,21 @@
 // fills a total under 1 with the bind pose): locomotion's idle, walk and
 // run (locomotion.js, paced to the ground), or a base state in their place
 // (sitting, crouching, swimming), and over both a full-body one-shot. An
-// upper or lower layer (a wave while walking, a stance under a stroke) is
-// laid over the mixer's result by hand, as saberBody.js lays the saber's
-// body: the layer's clip sampled through its own interpolants at its own
+// upper or lower layer (a wave while walking, a stance under a stroke), or
+// an arm's (a held staff's arm kept from the walk's swing), is
+// laid over the mixer's result by hand: the layer's clip sampled through its own interpolants at its own
 // time, each masked bone slerped `w` of the way from where the mixer put it
 // toward where the layer has it. Then the head turns to look.
 // (docs/superpowers/specs/2026-10-07-living-characters-design.md, animator.js)
 //
 // createAnimator(model, { clips, hipsY, bones, unit = 1, seed = 0, up, key,
-//   clipSpeed }) → animator
+//   clipSpeed, library = true }) → animator
 //   clips: { name: AnimationClip } the figure's own (idle, walk and run at
 //   least, made for it); any other clip it's asked to play comes from the
 //   library (clipLibrary.js forFigure: hipsY, up and key are for that, the
 //   hips' height in its rig's units, the hips' parent's up, the figure's
-//   template). bones: { name: Bone }, else found by name. unit, clipSpeed:
+//   template; `library: false` for a figure that plays only its own, as a
+//   2017 one plays only the game's: walrus.js). bones: { name: Bone }, else found by name. unit, clipSpeed:
 //   locomotion.js's. seed: every clock it starts (its idle's start, its
 //   base loops', its fidgets'), so a crowd never breathes in unison.
 //
@@ -31,16 +32,25 @@
 //     ('sit.idle', 'sit.talk') through its `.enter` clip when it has one,
 //     out through its `.exit`; resolves once it's there (its clips come and
 //     it faded all the way in), cut by another ask
-//   play(name, { layer = 'full' | 'upper' | 'lower', loop, hold, fade, speed,
-//     at }) → Promise<'done' | 'cut'>: a clip on a layer, each layer one
-//     slot. The clip already in its slot restarts in place (its weight
+//   play(name, { layer = 'full' | 'upper' | 'lower' | 'arm.r' | 'arm.l', loop,
+//     hold, fade, speed, at }) → Promise<'done' | 'cut'>: a clip on a layer,
+//     each layer one slot (the arms' laid over the upper's; a full-body play
+//     cuts them). The clip already in its slot restarts in place (its weight
 //     kept, its promise still to come); another fades the last out (cut),
 //     and one still fading from before is stopped first, so nothing's left
 //     at a part weight. loop: whether it repeats (CLIPS's say, else no);
 //     hold: kept on its last frame until stopped; at: seconds in to start
 //     from. Done when it's played through; a clip it can't have is cut.
+//   post(fn | null): fn(step) laid after the layers and before the look,
+//     on each step (the game's additive clips: additiveLayer.js)
+//   restance({ name: clip }) → [name…]: clips in place of its own by those
+//     names (a weapon's stance, walrusSets/stance.js): idle, walk and run
+//     taken over where they are, at their weight, their strides measured
+//     afresh; any other the next time it's played (one playing now plays out)
 //   stop(layer = 'full', fade): the layer's clip faded out (cut)
 //   playing(layer = 'full') → the name of the clip in the layer's slot, or null
+//   weight(layer, w?) → w: how much of a layer over the mixer is laid on
+//     (1 unless set; 0 lays nothing), read when w is left out
 //   look(target | null, { weight = 1, yaw = 1.1, pitch = 0.6, rate = 6 }):
 //     the neck and head turned toward a point in the world (a copy is
 //     kept), clamped to `yaw` and `pitch` either way, eased at `rate`, the
@@ -59,8 +69,9 @@
 //     the world, else its model's +z and +y): locomotion's bones, the
 //     layers, the look. Call it every frame, frame or no, after update
 //   dispose()
-// MESHY_MASKS: { upper, lower } the bones each layer may move on Meshy's
-//   skeleton (the lower turns the hips, never moves them)
+// MESHY_MASKS: { upper, lower, 'arm.r', 'arm.l' } the bones each layer may
+//   move on Meshy's skeleton (the lower turns the hips, never moves them;
+//   an arm's, the shoulder to the hand)
 
 import * as THREE from 'three';
 import { seeded } from '../seeded';
@@ -69,18 +80,25 @@ import { rotateWorld } from './ik';
 import { createLocomotion } from './locomotion';
 
 export const MESHY_MASKS = {
-  upper: ['Spine02', 'Spine01', 'Spine', 'neck', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
+  // (and the 2017 game's chest and neck, Spine1, Spine2, Neck, Neck1: a body
+  // on its skeleton has none of Meshy's names, nor a Meshy body these)
+  upper: ['Spine02', 'Spine01', 'Spine', 'neck', 'Spine1', 'Spine2', 'Neck', 'Neck1', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
   lower: ['Hips', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase'],
+  'arm.r': ['RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'],
+  'arm.l': ['LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand'],
 };
-const MASK = { upper: new Set(MESHY_MASKS.upper), lower: new Set(MESHY_MASKS.lower) };
+const MASK = Object.fromEntries(Object.entries(MESHY_MASKS).map(([k, v]) => [k, new Set(v)]));
 
 const LONGEST = 0.1; // the most a frame counts for (s): a tab come back to doesn't leap
 const FADE = 0.2; // a one-shot's fade in and out (s)
 const BASE_FADE = 0.3; // between base states (s)
 const CHEST = 0.3; // how far the chest turns after a look beyond its clamp (rad)
 const LOCO = ['idle', 'walk', 'run'];
-const LAYERS = ['upper', 'lower'];
+const LAYERS = ['upper', 'lower', 'arm.r', 'arm.l'];
+const ARMS = ['arm.r', 'arm.l'];
+const LAID = ['lower', 'upper', ...ARMS]; // (the order they're laid on, the arms last)
 const SLOTS = new Set(['full', ...LAYERS]);
+const each = (v) => Object.fromEntries([...SLOTS].map((k) => [k, v]));
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const group = (n) => (n == null ? null : n.split('.')[0]);
@@ -132,7 +150,7 @@ const lay = (parts, t, w) => {
   }
 };
 
-export function createAnimator(model, { clips = {}, hipsY = null, bones = null, unit = 1, seed = 0, up = null, key = null, clipSpeed = null } = {}) {
+export function createAnimator(model, { clips = {}, hipsY = null, bones = null, unit = 1, seed = 0, up = null, key = null, clipSpeed = null, library = true } = {}) {
   const byName = {};
   model.traverse((o) => {
     if (o.isBone && !(o.name in byName)) byName[o.name] = o;
@@ -153,7 +171,7 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
   const loading = new Map();
   const fetchClip = (name) => {
     if (got.has(name)) return Promise.resolve(got.get(name));
-    if (!CLIPS[name]) return Promise.resolve(null);
+    if (!library || !CLIPS[name]) return Promise.resolve(null);
     if (!loading.has(name))
       loading.set(
         name,
@@ -211,9 +229,10 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
     at: null, // the base state it's in or going to
     want: null,
     baseWait: null,
-    slots: { full: null, upper: null, lower: null },
-    fading: { full: null, upper: null, lower: null },
-    tokens: { full: 0, upper: 0, lower: 0 },
+    slots: each(null),
+    fading: each(null),
+    tokens: each(0),
+    scale: each(1), // (weight(): each layer's share laid on)
     idles: null,
     queue: null,
   };
@@ -360,9 +379,19 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
     }
     return s;
   }
+  // the layer's clip faded out, and anything still coming for it dropped
+  function cut(layer, fade) {
+    st.tokens[layer]++;
+    const s = st.slots[layer];
+    if (!s) return;
+    settle(s, 'cut');
+    st.slots[layer] = null;
+    toFading(layer, s, fade);
+  }
   // a play, as something to wait on: now when the clip's here, else once fetched
   function start(name, opts = {}, layer = opts.layer ?? 'full') {
     if (st.disposed || !SLOTS.has(layer)) return settled('cut');
+    if (layer === 'full') for (const arm of ARMS) cut(arm, opts.fade ?? FADE);
     const token = ++st.tokens[layer];
     const clip = got.get(name);
     if (clip) return begin(layer, name, clip, opts);
@@ -542,6 +571,9 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
     rotateWorld(head, _r, lk.p * rest);
   }
 
+  // whether a clip of that name is in a slot, or fading from one
+  const inSlot = (name) => [...SLOTS].some((l) => st.slots[l]?.name === name || st.fading[l]?.name === name);
+
   const api = {
     mixer,
     actions,
@@ -565,16 +597,42 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
     },
     stop(layer = 'full', fade = FADE) {
       if (st.queue?.layers.has(layer)) cutQueue();
-      if (!SLOTS.has(layer)) return;
-      st.tokens[layer]++;
-      const s = st.slots[layer];
-      if (!s) return;
-      settle(s, 'cut');
-      st.slots[layer] = null;
-      toFading(layer, s, fade);
+      if (SLOTS.has(layer)) cut(layer, fade);
+    },
+    post(fn) {
+      st.post = typeof fn === 'function' ? fn : null;
+    },
+    restance(set = {}) {
+      if (st.disposed) return [];
+      const done = [];
+      for (const [name, clip] of Object.entries(set)) {
+        if (!clip || got.get(name) === clip) continue;
+        got.set(name, clip);
+        const old = actions[name] ?? null;
+        if (LOCO.includes(name)) {
+          const a = mixer.clipAction(clip);
+          a.play();
+          a.setEffectiveWeight(old ? old.getEffectiveWeight() : 0);
+          if (old) {
+            a.timeScale = old.timeScale;
+            a.time = (old.time / Math.max(old.getClip().duration, 1e-6)) * clip.duration;
+            old.stop();
+          }
+          actions[name] = a;
+          act[name] = a;
+          loco.restride(name);
+        } else if (old && !inSlot(name)) delete actions[name];
+        done.push(name);
+      }
+      return done;
     },
     playing(layer = 'full') {
       return st.slots[layer]?.name ?? null;
+    },
+    weight(layer, w) {
+      if (!SLOTS.has(layer) || layer === 'full') return 1;
+      if (w != null) st.scale[layer] = clamp(Number(w) || 0, 0, 1);
+      return st.scale[layer];
     },
     look(target, { weight = 1, yaw = 1.1, pitch = 0.6, rate = 6 } = {}) {
       lk.on = Boolean(target);
@@ -630,12 +688,14 @@ export function createAnimator(model, { clips = {}, hipsY = null, bones = null, 
       st.stepped = false; // (once a step)
       const step = st.step;
       loco.after(step, motion ?? st.motion, frame);
-      for (const layer of ['lower', 'upper']) {
+      for (const layer of LAID) {
+        const k = st.scale[layer];
         const f = st.fading[layer];
-        if (f) lay(f.parts, f.t, f.w);
+        if (f) lay(f.parts, f.t, f.w * k);
         const s = st.slots[layer];
-        if (s) lay(s.parts, s.t, s.w);
+        if (s) lay(s.parts, s.t, s.w * k);
       }
+      st.post?.(step);
       stepLook(step, frame);
     },
     dispose() {

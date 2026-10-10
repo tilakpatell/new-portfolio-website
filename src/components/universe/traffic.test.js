@@ -388,4 +388,96 @@ describe('your standing', () => {
       for (const e of clean.traffic.update(DT, t, ship, { wanted: false })) expect(e.type).not.toBe('spotted');
     }
   });
+
+  it('says who is near enough to witness something, the law among them, the same ship frame to frame', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    let seen = null;
+    let law = false;
+    let civil = false;
+    for (let t = 0; t < 120 && !(law && civil); t += DT) {
+      if (t % 10 < DT / 2) traffic.soon(t % 20 < 10 ? 'tie' : 'freighter');
+      traffic.update(DT, t, ship, {});
+      const near = traffic.near(ship, 40);
+      for (const n of near) {
+        if (n.law) law = true;
+        if (n.civil) civil = true;
+        if (n.law) expect(SIDES.starwars.factions.empire.kinds.map(([k]) => k)).toContain(n.kind);
+      }
+      if (near.length && !seen) seen = near[0].ref;
+      if (seen && near.length && near.some((n) => n.ref === seen)) expect(near.find((n) => n.ref === seen).kind).toBe(seen.kind);
+    }
+    expect(law).toBe(true);
+    expect(civil).toBe(true);
+    expect(traffic.near(ship, 0)).toEqual([]);
+  });
+});
+
+describe('as bodies for ship contact', () => {
+  // flies traffic past you until one of `pick` is near, and answers the bodies then
+  const until = (traffic, ship, pick) => {
+    for (let t = 0; t < 120; t += DT) {
+      if (t % 10 < DT / 2) traffic.soon(t % 20 < 10 ? 'tie' : 'freighter');
+      traffic.update(DT, t, ship, {});
+      const bodies = traffic.bodies(ship, 40);
+      if (bodies.some(pick)) return bodies;
+    }
+    return [];
+  };
+
+  it('answers the small ships near you, the law among them, as near tells them', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    const law = until(traffic, ship, (b) => b.side === 'law').find((b) => b.side === 'law');
+    expect(law).toBeTruthy();
+    expect(law.key).toMatch(/^t:\d+:\d+$/);
+    expect(SIDES.starwars.factions.empire.kinds.map(([k]) => k)).toContain(law.kind);
+    expect(law.size).toBeLessThanOrEqual(2);
+    for (const k of 'xyz') expect(law.at[k]).toEqual(expect.any(Number));
+    const civil = until(traffic, ship, (b) => b.side === 'civil').find((b) => b.side === 'civil');
+    expect(civil).toBeTruthy();
+    expect(traffic.bodies(ship, 0)).toEqual([]);
+  });
+
+  it('never answers a ship too big to bring down: that is a solid', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    for (let t = 0; t < 120; t += DT) {
+      traffic.update(DT, t, ship, {});
+      for (const b of traffic.bodies(ship, 1e5)) expect(b.size).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('takes a ram as a shot: the ship goes down, and is gone from the bodies', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    const b = until(traffic, ship, (o) => o.side === 'civil').find((o) => o.side === 'civil');
+    const r = b.hit(1);
+    expect(r).toMatchObject({ down: true, kind: b.kind, size: b.size, civil: true });
+    expect(r.at).toBeInstanceOf(THREE.Vector3);
+    expect(traffic.bodies(ship, 40).some((o) => o.key === b.key)).toBe(false);
+  });
+});
+
+describe('its big ships as solids', () => {
+  it('answers a ship too big to bring down near you as a solid, and never a small one', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    let found = null;
+    for (let t = 0; t < 600 && !found; t += DT) {
+      if (t % 30 < DT / 2) traffic.soon('destroyer');
+      traffic.update(DT, t, ship, {});
+      const solids = traffic.solids(ship, 1e5);
+      const small = new Set(traffic.bodies(ship, 1e5).map((b) => b.key));
+      for (const o of solids) expect(small.has(o.id)).toBe(false);
+      found = solids[0] ?? null;
+    }
+    expect(found).toBeTruthy();
+    expect(found.id).toMatch(/^t:\d+:\d+$/);
+    expect(found.ship).toBe(true);
+    expect(found.at).toHaveLength(3);
+    expect(found.r).toBeGreaterThan(2 * 0.3);
+    expect(found.reach).toBe(found.r);
+    expect(traffic.solids(ship, 0)).toEqual([]);
+  });
 });

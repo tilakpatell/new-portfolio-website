@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MISSIONS, endRun, missionOf, newRun, outcomeOf, tickRun } from './index';
+import { MISSIONS, endRun, missionOf, missionSite, newRun, outcomeOf, tickRun, worldOf } from './index';
 import { ASSAULTS } from './assaults';
 import { chooseSide, newBattle, stepBattle } from './assault';
 import { STEP_TYPES } from '../quests';
@@ -10,7 +10,8 @@ import { PROPS } from '../props';
 import { siteOf } from '../sites';
 import { REACH, makeHeight } from '../terrain';
 import { createSolids } from '../walker';
-import { SYSTEMS } from '../../systems';
+import { MODE_WORLDS, SYSTEMS } from '../../systems';
+import { GROUNDS } from './arenas';
 import { ACHIEVEMENTS } from '../../../Achievements';
 
 describe('missions played as quests', () => {
@@ -25,7 +26,7 @@ describe('missions played as quests', () => {
     for (const list of Object.values(MISSIONS))
       for (const m of Object.values(list)) {
         if (m.ride) expect(RIDES[m.ride], `${m.id} ride`).toBeTruthy();
-        else expect(['quest', 'assault'], `${m.id} on foot`).toContain(m.kind);
+        else expect(['quest', 'assault', 'hvv', 'blast'], `${m.id} on foot`).toContain(m.kind);
         if (m.kind !== 'quest') continue;
         expect(m.quest.steps.length).toBeGreaterThan(0);
         for (const s of m.quest.steps) {
@@ -42,7 +43,7 @@ describe('missions played as quests', () => {
     expect(m?.kind).toBe('quest');
     const site = siteOf('lothal');
     const tower = site.places.find((p) => p.id === 'tower');
-    expect(tower?.things.some((t) => t.kind === 'lookout')).toBe(true);
+    expect(tower?.things.some((t) => t.kind === 'lothtower')).toBe(true);
     const race = m.quest.steps.find((s) => s.type === 'race');
     expect(race.ride).toBe('speederbike');
     expect(race.gates.length).toBeGreaterThanOrEqual(5);
@@ -73,7 +74,7 @@ describe('missions played as quests', () => {
       for (const m of Object.values(list)) {
         expect(typeof m.ends.won, `${m.id} won`).toBe('string');
         expect(typeof m.ends.lost, `${m.id} lost`).toBe('string');
-        for (const why of m.kind === 'quest' ? ['time', 'down'] : m.kind === 'assault' ? ['posts', 'tickets'] : ['lost']) expect(typeof m.ends.why[why], `${m.id} ${why}`).toBe('string');
+        for (const why of m.kind === 'quest' ? ['time', 'down'] : m.kind === 'assault' ? ['posts', 'tickets'] : m.kind === 'hvv' ? ['points'] : m.kind === 'blast' ? ['kills'] : ['lost']) expect(typeof m.ends.why[why], `${m.id} ${why}`).toBe('string');
       }
   });
 
@@ -195,7 +196,9 @@ describe('the galactic assaults', () => {
       it('stands its posts on dry, level ground within reach', () => {
         for (const p of m.posts) {
           expect(Math.hypot(...p.at) + p.r, p.id).toBeLessThan(REACH);
-          expect(h(...p.at), p.id).toBeGreaterThan((site.water?.level ?? -Infinity) + 0.2);
+          // (a post that says `wade` is in the shallows: knee-deep at most)
+          if (p.wade) expect(h(...p.at), p.id).toBeGreaterThan((site.water?.level ?? -Infinity) - 0.8);
+          else expect(h(...p.at), p.id).toBeGreaterThan((site.water?.level ?? -Infinity) + 0.2);
           // (level enough to walk: the slope across its middle and at its edge)
           for (const [x, z] of [p.at, [p.at[0] + p.r * 0.7, p.at[1]], [p.at[0], p.at[1] + p.r * 0.7]]) {
             const slope = Math.hypot(h(x + 2, z) - h(x - 2, z), h(x, z + 2) - h(x, z - 2)) / 4;
@@ -252,4 +255,66 @@ describe('the galactic assaults', () => {
       });
     });
   }
+});
+
+describe('Heroes vs Villains and Blast', () => {
+  it('runs on every world whose level has their grounds, each briefing listing them', () => {
+    expect([...GROUNDS].sort()).toEqual([...MODE_WORLDS].sort());
+    for (const w of GROUNDS) for (const id of ['hvv', 'blast']) expect(missionOf(w, id)?.kind, `${w} ${id}`).toBe(id);
+  });
+  for (const w of GROUNDS) {
+    const site = siteOf(w);
+    const h = makeHeight(site.ground);
+    it(`plays ${w}’s two grounds on dry land within reach, fielding soldiers there are figures for`, () => {
+      for (const id of ['hvv', 'blast']) {
+        const m = missionOf(w, id);
+        expect(Math.hypot(...m.start), id).toBeLessThan(REACH);
+        expect(h(...m.start), id).toBeGreaterThan((site.water?.level ?? -Infinity) + 0.2);
+        for (const when of ['start', 'won', 'lost']) for (const crew of ['xwing', 'falcon', 'cruiser', 'rv']) expect(m.lines[when][crew]?.length, `${id} ${when} ${crew}`).toBeGreaterThan(0);
+      }
+      const blast = missionOf(w, 'blast');
+      for (const side of ['attack', 'defend']) for (const [kind] of blast.sides[side].kinds) expect(Boolean(buildFigure(kind) || SURFACE_MODELS[kind] || PROPS[kind]), kind).toBe(true);
+      for (const p of blast.posts) expect(Math.hypot(...p.at) + p.r, p.id).toBeLessThan(REACH);
+    });
+  }
+});
+
+// A mission may lay its own sky over the site's (the Purge Planet's night):
+// only while it runs, so the next landing has the site's own again.
+describe('a mission’s own sky, light, fog and weather', () => {
+  const NIGHT = { top: '#02030a', horizon: '#0a0d1c', suns: [] };
+  const base = siteOf('tatooine');
+
+  it('lays the mission’s over the site’s, and leaves the rest as the site has it', () => {
+    const site = missionSite(base, { id: 'night', site: { sky: NIGHT, weather: [{ kind: 'ash' }], ground: 'not this' } });
+    expect(site.sky).toBe(NIGHT);
+    expect(site.weather).toEqual([{ kind: 'ash' }]);
+    expect(site.light).toBe(base.light);
+    expect(site.fog).toBe(base.fog);
+    expect(site.ground).toBe(base.ground);
+  });
+
+  it('gives the site itself back for a mission with nothing to lay over it, or none', () => {
+    expect(missionSite(base, MISSIONS.endor.chase)).toBe(base);
+    expect(missionSite(base, null)).toBe(base);
+  });
+
+  it('builds the world again with the site’s own sky once the mission is left', () => {
+    const spec = { id: 'night', kind: 'quest', site: { sky: NIGHT } };
+    const first = worldOf({ site: base, missionSpec: spec });
+    expect(first.mission).toBe(spec);
+    expect(first.site.sky).toBe(NIGHT);
+    const second = worldOf({ site: base });
+    expect(second.mission).toBeNull();
+    expect(second.site.sky).toBe(base.sky);
+    expect(base.sky).not.toBe(NIGHT);
+  });
+
+  it('looks the site and the mission up by system when neither is handed in', () => {
+    const w = worldOf({ system: 'endor', mission: 'chase' });
+    expect(w.site).toEqual(siteOf('endor'));
+    expect(w.mission).toBe(MISSIONS.endor.chase);
+    expect(worldOf({ system: 'endor' }).mission).toBeNull();
+    expect(worldOf({ system: 'nowhere' }).site).toBeNull();
+  });
 });

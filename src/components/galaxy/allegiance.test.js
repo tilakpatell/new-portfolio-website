@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GCW } from './gcw';
-import { SIDE_KEY, current, readAllegiance, setTheatre, suggestSide, swear, teamFor, writeAllegiance } from './allegiance';
+import { SIDE_KEY, current, oathIn, readAllegiance, setTheatre, suggestSide, swear, teamFor, writeAllegiance } from './allegiance';
 
 const NOW = GCW.start + 3600e3; // campaign 0
 const LATER = GCW.start + GCW.campaign + 3600e3; // campaign 1
@@ -88,5 +88,14 @@ describe('teamFor', () => {
     expect(teamFor(null, lib)).toBeNull();
     expect(teamFor('empire', hutts)).toBeNull();
     expect(teamFor('rebel', null)).toBeNull();
+  });
+});
+
+describe('oathIn', () => {
+  it('gives the oath in another war, unsworn when none', () => {
+    const a = swear(readAllegiance(null, { now: NOW }), 'rebel', NOW);
+    expect(oathIn(a, 'clone')).toEqual({ war: 'clone', side: null, sworn: 0, turncoat: false });
+    expect(oathIn(a, 'gcw').side).toBe('rebel');
+    expect(oathIn(a, 'gcw')).toEqual(current(a));
   });
 });

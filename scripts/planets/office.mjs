@@ -14,10 +14,10 @@
 // office-normal at 2048, 1024 and 512; office-rough at 1024.
 
 import sharp from 'sharp';
-import { clamp, eachTexel, fbm, hex, perlin, rand, sampler, save, smooth } from './sphere.mjs';
+import { clamp, eachTexel, fbm, hex, perlin, rand, sampler, save, smooth, bakeSize } from './sphere.mjs';
 
-const W = 4096;
-const H = 2048;
+// (8192 × 4096 with --ultra: sphere.mjs's bakeSize)
+const [W, H] = bakeSize();
 const PAGE = { w: 1000, h: 1150 }; // the page, in its own units (its foot short of the pole)
 const SCALE = 3; // the page's raster, px a unit
 // page units a radian: the page wraps the front, the title across the face

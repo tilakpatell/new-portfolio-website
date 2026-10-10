@@ -81,6 +81,57 @@ describe('the robot', () => {
     expect(p.grounded).toBe(true);
   });
 
+  it('jumps when the feet touch, if pressed a moment before (the buffer)', () => {
+    const world = buildWorld(AREA);
+    const drop = (early) => {
+      // from 2 m up: down in √(2·2/32) ≈ 0.354 s
+      const p = newPlayer(AREA, { x: 0, y: 2, z: 0 });
+      run(p, {}, 0.354 - early - 1 / 120, world);
+      expect(p.grounded).toBe(false);
+      const events = [...stepPlayer(p, { ...still, jump: true }, 1 / 60, world), ...run(p, {}, 0.3, world)];
+      return events.map((e) => e.type);
+    };
+    const soon = drop(0.08);
+    expect(soon).toContain('land');
+    expect(soon.indexOf('jump')).toBeGreaterThan(soon.indexOf('land'));
+    expect(drop(0.25)).not.toContain('jump');
+  });
+
+  it('jumps a moment after walking off an edge (coyote time), and not later', () => {
+    const world = buildWorld(AREA);
+    const off = (late) => {
+      const p = newPlayer(AREA, { x: -10, y: 1, z: 0 });
+      settle(p, world);
+      for (let i = 0; i < 300 && p.grounded; i++) stepPlayer(p, { ...still, moveX: -1 }, 1 / 60, world);
+      expect(p.grounded).toBe(false);
+      run(p, { moveX: -1 }, late - 1 / 120, world);
+      return stepPlayer(p, { ...still, moveX: -1, jump: true }, 1 / 60, world).some((e) => e.type === 'jump');
+    };
+    expect(off(0.05)).toBe(true);
+    expect(off(0.15)).toBe(false);
+  });
+
+  it('jumps once a press, however long the feet stay down', () => {
+    const world = buildWorld(AREA);
+    const p = newPlayer(AREA);
+    settle(p, world);
+    stepPlayer(p, { ...still, jump: true }, 1 / 60, world);
+    const after = run(p, {}, 2, world);
+    expect(after.filter((e) => e.type === 'jump')).toHaveLength(0);
+  });
+
+  it('lands with a force, harder from higher', () => {
+    const world = buildWorld(AREA);
+    const land = (y) => {
+      const p = newPlayer(AREA, { x: 0, y, z: 0 });
+      return run(p, {}, 2, world).find((e) => e.type === 'land');
+    };
+    const low = land(1);
+    const high = land(8);
+    expect(high.force).toBeCloseTo(high.speed * ROBOT.mass, 6);
+    expect(high.force).toBeGreaterThan(low.force);
+  });
+
   it("doesn't pass through a wall on a huge frame", () => {
     const world = buildWorld(AREA);
     const p = newPlayer(AREA, { x: 7, z: 0, yaw: 0 });
@@ -173,6 +224,21 @@ describe('the truck', () => {
     expect(events.some((e) => e.type === 'bump')).toBe(true);
     expect(p.x).toBeLessThanOrEqual(10 - 1 - VEHICLE.radius + 1e-6);
     expect(Math.abs(p.speed)).toBeLessThan(VEHICLE.top * 0.5);
+  });
+
+  it('says how hard it bumped, as a force, and where', () => {
+    const hit = (speed) => {
+      const { p, world } = truck({ x: 10 - 1 - VEHICLE.radius - 0.3, z: 0, yaw: Math.PI / 2 });
+      p.speed = speed;
+      p.vx = speed;
+      return run(p, {}, 0.2, world).find((e) => e.type === 'bump');
+    };
+    const soft = hit(8);
+    const hard = hit(30);
+    expect(hard.force).toBeCloseTo(hard.speed * VEHICLE.mass, 6);
+    expect(hard.force).toBeGreaterThan(soft.force);
+    expect(hard.x).toBeCloseTo(10 - 1, 0);
+    expect(Number.isFinite(hard.y) && Number.isFinite(hard.z)).toBe(true);
   });
 
   it('steers', () => {

@@ -17,14 +17,31 @@ export default function QuestList({ title = 'Things to do', label = title, sub =
   useLayoutEffect(() => {
     const el = ref.current;
     const stage = el?.offsetParent;
-    const above = under ? stage?.querySelector(under) : null;
-    if (!above) return undefined;
-    const fit = () => el.style.setProperty('--hud-under', `${Math.round(above.getBoundingClientRect().bottom - stage.getBoundingClientRect().top + GAP)}px`);
-    fit();
+    if (!under || !stage) return undefined;
+    let above = null;
+    // (found again each time: a world may take its top row away and bring it
+    // back while the list is open; with nothing shown to hang under, the
+    // world's own CSS places it, so its Close never leaves the stage)
+    const fit = () => {
+      const now = stage.querySelector(under);
+      if (now !== above) {
+        if (above) ro?.unobserve(above);
+        above = now;
+        if (above) ro?.observe(above);
+      }
+      const b = above?.getBoundingClientRect();
+      if (!b?.height) return el.style.removeProperty('--hud-under');
+      el.style.setProperty('--hud-under', `${Math.round(b.bottom - stage.getBoundingClientRect().top + GAP)}px`);
+    };
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
-    ro?.observe(above);
+    const mo = typeof MutationObserver === 'function' ? new MutationObserver(fit) : null;
     ro?.observe(stage);
-    return () => ro?.disconnect();
+    mo?.observe(stage, { childList: true }); // (its rows come and go as children of the stage; not the subtree, where a frame loop writes numbers)
+    fit();
+    return () => {
+      ro?.disconnect();
+      mo?.disconnect();
+    };
   }, [under]);
   return (
     <div ref={ref} className={`hud-list ${className}`.trim()} role="dialog" aria-label={label}>

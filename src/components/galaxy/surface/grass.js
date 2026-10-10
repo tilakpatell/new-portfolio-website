@@ -21,6 +21,24 @@ const COVER = 256;
 // ground, under the water, on the places' built ground or round the landing
 // pad; in drifts by a noise (the cover map reads this per texel, the ground
 // map's painter per point)
+// the landing pads a site lays on the ground, as [x, z, r] (r a little
+// past their edge), its own and its places' (found once a site)
+const PADS = new WeakMap();
+function padsOf(site) {
+  let list = PADS.get(site);
+  if (list) return list;
+  list = [];
+  const add = (t, ox = 0, oz = 0) => {
+    if (t.kind !== 'pad' || !t.at) return;
+    const r = t.opts?.r ?? 14;
+    list.push([ox + t.at[0], oz + t.at[1], (t.opts?.shape === 'square' ? r * 1.42 : r) + 3]);
+  };
+  for (const t of site.things ?? []) add(t);
+  for (const p of site.places ?? []) for (const t of p.things ?? []) add(t, p.at[0], p.at[1]);
+  PADS.set(site, list);
+  return list;
+}
+
 export function coverAt(grid, site, x, z, { e = 2.5 } = {}) {
   const g = site.grass;
   if (!g) return 0;
@@ -40,6 +58,11 @@ export function coverAt(grid, site, x, z, { e = 2.5 } = {}) {
     }
     const land = site.land?.at ?? [0, 0];
     k *= smoothstep(26, 32, Math.hypot(x - land[0], z - land[1]));
+    // (and none through the landing pads laid on it)
+    for (const [px, pz, r] of padsOf(site)) {
+      if (k <= 0) break;
+      k *= smoothstep(r, r + 4, Math.hypot(x - px, z - pz));
+    }
   }
   if (k <= 0) return 0;
   // (in drifts, not everywhere alike)

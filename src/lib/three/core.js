@@ -11,47 +11,67 @@
 // colour (a stain stays a stain), and its normal map adds relief.
 //
 //   CORE, coreOf(role)       the kit: { metres, mean, … } per role
-//   loadCore(role)           its textures, loaded once for the page
+//   coreFiles(role, { xl, base, index })  its files: the 1K set, or the 8192
+//                            set at ultra where it's made; from another set's
+//                            folder and index where asked (the Star Wars
+//                            worlds' game maps: ./scans.js)
+//   loadCore(role, { xl, base, index })   its textures, loaded once for the page
 //   wear(material, scan, { metres, strength, normal, mean })
 //   dress(materials, roles, { strength, normal, keep, load }) → how many it dressed
 //     a world's named materials ({ stone: mat, … }) onto roles
 //     ({ stone: 'stone', timber: 'wood', … }): each one's own painted picture
 //     is folded into its colour, and the role's scan goes on instead (with
-//     `keep`, the picture stays and the scan's grain goes over it)
+//     `keep`, the picture stays and the scan's grain goes over it, its
+//     shader on at once and its pictures in when they've loaded)
 //   meanColour(texture)      a picture's mean colour (linear)
 //   wearShader(shader, { normal }) → { vertexShader, fragmentShader, swapped } (pure)
 
 import * as THREE from 'three';
 import SCANS from '../../../public/cc0/galaxy/index.json';
 import { budget } from '../device';
-import { sharpen } from './textures';
+import { loadTexture, sharpen } from './textures';
 
 export const CORE = SCANS;
 export const coreOf = (role) => SCANS[role] ?? null;
 
+const BASE = '/cc0/galaxy';
+
+// A scan's files: its 1K WebPs, or with `xl` (ultra's, asked for only
+// there) its 8192 colour and normal maps where scripts/galaxy-textures.mjs
+// --ultra has made them (the index's `xl`: 'ktx2' or 'webp'); the 1K set
+// where it hasn't. The ARM map stays the small one.
+export function coreFiles(role, { xl = false, index = SCANS, base = BASE } = {}) {
+  const big = xl ? index[role]?.xl : null;
+  const file = (name) => (big ? `${base}/${role}/${name}-xl.${big}` : `${base}/${role}/${name}.webp`);
+  return { color: file('color'), normal: file('normal'), arm: index[role]?.arm ? `${base}/${role}/arm.webp` : null };
+}
+
 // The scans, each loaded once for the page (every world shares them; a new
 // renderer uploads them again by itself): role → a promise of { map,
-// normalMap, arm }, or of null where they can't be had.
+// normalMap, arm }, or of null where they can't be had. With `xl` (ultra),
+// the 8192 set where there is one, the 1K set if it won't load.
 const loaded = new Map();
-const BASE = '/cc0/galaxy';
-export function loadCore(role) {
-  if (!loaded.has(role)) {
+export function loadCore(role, { xl = false, base = BASE, index = SCANS } = {}) {
+  const files = coreFiles(role, { xl, base, index });
+  const key = files.color;
+  if (!loaded.has(key)) {
     const loader = new THREE.TextureLoader();
-    const get = (file, srgb) =>
-      loader.loadAsync(`${BASE}/${role}/${file}.webp`).then((t) => {
+    const get = (url, srgb) =>
+      (/\.ktx2$/.test(url) ? loadTexture(url, { color: srgb }) : loader.loadAsync(url)).then((t) => {
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         sharpen(t);
         if (srgb) t.colorSpace = THREE.SRGBColorSpace;
         return t;
       });
+    const small = xl && key !== coreFiles(role, { base, index }).color ? () => loadCore(role, { base, index }) : () => null;
     loaded.set(
-      role,
-      Promise.all([get('color', true), get('normal', false), SCANS[role]?.arm ? get('arm', false) : null])
+      key,
+      Promise.all([get(files.color, true), get(files.normal, false), files.arm ? get(files.arm, false) : null])
         .then(([map, normalMap, arm]) => ({ map, normalMap, arm }))
-        .catch(() => null),
+        .catch(small),
     );
   }
-  return loaded.get(role);
+  return loaded.get(key);
 }
 
 const VERT_HEAD = /* glsl */ `
@@ -190,6 +210,31 @@ export function meanColour(texture) {
   return new THREE.Color().setRGB(sum[0] / n, sum[1] / n, sum[2] / n, THREE.LinearSRGBColorSpace);
 }
 
+// Stand-ins for a role's scan until it has loaded (dress with `keep`): a
+// picture at the scan's centred brightness and a flat relief, so the
+// material looks as it did, but it's drawn from the first frame with the
+// shader the scan will be, and the scan's pictures go in later with no
+// shader made again. Made again just after a world's first frame, that
+// shader was left out of the frame by lib/three/frameGuard for a few frames
+// while it readied it: walls on screen dropped out and came back.
+const standIns = new Map(); // centred brightness → { map, normalMap }
+function standIn(mean) {
+  let s = standIns.get(mean);
+  if (!s) {
+    const px = (r, g, b) => {
+      const t = new THREE.DataTexture(Uint8Array.from([r, g, b, 255]), 1, 1);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.needsUpdate = true;
+      return t;
+    };
+    // (linear, at what the scan's sRGB mean decodes to: the detail's divided by it, so 1)
+    const v = Math.round(255 * mean ** 2.2);
+    s = { map: px(v, v, v), normalMap: px(128, 128, 255) };
+    standIns.set(mean, s);
+  }
+  return s;
+}
+
 // A world's named materials onto the kit's roles: each one's own painted
 // picture folded into its colour (and its own relief dropped), and the
 // role's scan put on, at its real size. `keep` leaves the picture and the
@@ -201,15 +246,28 @@ export async function dress(materials, roles, { strength = 0.55, normal = 0.9, k
   const jobs = Object.entries(roles).map(async ([name, role]) => {
     const m = materials[name];
     if (!LIT(m) || m.userData.core) return 0;
-    const scan = await load(role);
-    if (!scan) return 0;
-    if (!keep) {
-      const mean = meanColour(m.map);
-      if (mean) m.color.multiply(mean);
-      if (m.map) m.map = null;
-      if (m.normalMap) m.normalMap = null;
-    }
     const { metres = 2, mean: centre = 0.8 } = coreOf(role) ?? {};
+    // (with `keep` nothing of the material changes when the scan comes but
+    // its pictures, so it's worn at once, on stand-ins)
+    if (keep) wear(m, standIn(centre), { metres, mean: centre, strength, normal });
+    const scan = await load(role);
+    if (keep) {
+      const u = m.userData.core;
+      if (!scan?.map) {
+        u.uCoreStrength.value = 0;
+        u.uCoreNormalStrength.value = 0;
+        return 0;
+      }
+      u.uCoreMap.value = scan.map;
+      u.uCoreNormal.value = scan.normalMap ?? u.uCoreNormal.value;
+      u.uCoreNormalStrength.value = scan.normalMap ? normal : 0;
+      return 1;
+    }
+    if (!scan) return 0;
+    const mean = meanColour(m.map);
+    if (mean) m.color.multiply(mean);
+    if (m.map) m.map = null;
+    if (m.normalMap) m.normalMap = null;
     wear(m, scan, { metres, mean: centre, strength, normal });
     return 1;
   });

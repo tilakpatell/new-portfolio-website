@@ -13,8 +13,8 @@
 //   one-shot added once it's played; library: whether the clip library's
 //   clips fit it (the Meshy skeleton's), else it plays only its own; loader:
 //   the one the library's files are fetched through (a cast's, a test's)
-//   play(name, { layer = 'full', loop = false, hold = 0, fade, speed, at,
-//     lasts }) → Promise<boolean>: true once it's playing (or a later play
+//   play(name, { layer = 'full' (or 'upper', 'lower', 'arm.r', 'arm.l'),
+//     loop = false, hold = 0, fade, speed, at, lasts }) → Promise<boolean>: true once it's playing (or a later play
 //     has taken its place), false when the figure can't have it. loop
 //     stays off unless asked, whatever the library says, and hold is the
 //     seconds it's kept on its last frame before it goes, as the cast's
@@ -45,7 +45,7 @@ import { REACTIONS, createReactions } from '../ai/react';
 import { seeded } from '../seeded';
 
 export const SEAT = 'seat'; // a figure's own sat clip, to the animator (no `seat.enter`, so no way in or out)
-const LAYERS = ['full', 'upper', 'lower'];
+const LAYERS = ['full', 'upper', 'lower', 'arm.r', 'arm.l'];
 const FADE = 0.2;
 const LOOK_AFTER = 1; // seconds a reaction's look stays on after its clip
 const BEGIN = 16; // turns of the microtask queue a fetched clip takes to begin (a handful)
@@ -79,8 +79,8 @@ export function animatorCalls(anim, { model = null, seed = 0, loader = null, own
   const warm = (name) => {
     if (fromLibrary(name)) loadClip(name, { loader });
   };
-  const tokens = { full: 0, upper: 0, lower: 0 };
-  const holds = { full: null, upper: null, lower: null }; // a clip to stop: { left (s), fade }
+  const tokens = Object.fromEntries(LAYERS.map((l) => [l, 0]));
+  const holds = Object.fromEntries(LAYERS.map((l) => [l, null])); // a clip to stop: { left (s), fade }
   const st = { clock: 0, moving: false, at: null };
   const reactions = createReactions(REACTIONS, { rand: seeded(seed ^ 0x5bd1e995), has: can });
   const head = model?.getObjectByName('Head') ?? null;

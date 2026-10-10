@@ -74,6 +74,10 @@
 .g3-meter { position: relative; height: 8px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
 .g3-meter > i { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: inherit; background: var(--meter, #4fd8ff); transform-origin: left; transition: transform 0.12s linear; }
 .g3-callout { position: absolute; left: 50%; top: 28%; translate: -50% 0; font: 800 clamp(1.1rem, 0.8rem + 2vw, 2.2rem)/1 var(--font-sans); letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), 0 0 24px var(--callout, rgba(255, 210, 140, 0.8)); animation: g3-callout 1.3s var(--ease-smooth) forwards; }
+/* a phone: a long callout wraps, balanced, inside the screen; a short one
+   stays as tight as it was (max-content, not a set width), so it keeps its
+   punch */
+@media (max-width: 699px) { .g3-callout { width: max-content; max-width: min(90vw, 90%); white-space: normal; text-align: center; text-wrap: balance; } }
 @keyframes g3-callout { 0% { opacity: 0; transform: scale(1.8); } 14% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
 .g3-flash { position: absolute; z-index: 1; inset: 0; pointer-events: none; background: var(--flash, rgba(255, 60, 40, 0.35)); opacity: 0; }
 .g3-flash[data-on] { animation: g3-flash 0.35s ease-out; }

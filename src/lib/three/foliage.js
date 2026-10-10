@@ -6,15 +6,16 @@
 // transferred onto the cards; here it's a loop at build time). Light that
 // wraps a little past a leaf's edge, and comes through from behind, keeps
 // the shaded side of a crown from going flat. Wind is a few lines in the
-// vertex shader, bending a tree from its foot by one clock.
+// vertex shader, bending a tree from its foot by one clock, scaled where
+// the model carries one by its own weight per vertex.
 // (docs/research/2026-10-06-ground-grass-foliage-techniques.md, 2 and 7)
 //
 //   spherifyNormals(geometry, { centre, radii, keep })  normals out from an ellipsoid (pure)
 //   liftNormals(geometry, { keep })                     normals turned up, as a lawn's (pure)
 //   wrapLighting(material, { wrap, backScatter })       light past the terminator, and through
-//   wind(material, { kind, time, ... })                 a sway from the foot, a flutter in the leaves
+//   wind(material, { kind, time, dir, weight, ... })    a sway from the foot, a flutter in the leaves
 //   faceless(material)                                  a two-sided card lit by its normal on both faces
-//   wrapShader(shaders, opts, chunks), windShader(shaders, opts)   the rewrites, as pure strings
+//   wrapShader(shaders, opts, chunks), windShader(shaders, { weight })   the rewrites, as pure strings
 //
 // Call the material hooks before ones that look for three's lights chunks
 // expanded (they expand the one they change).
@@ -164,14 +165,29 @@ export const WIND = {
   shrub: { height: 1.3, strength: 0.05, trunkHz: 0.8, leafHz: 3.4, leaf: 0.012 },
 };
 
+// A weight is an attribute's name, written into the shader as it stands: a
+// GLSL name or nothing.
+const GLSL_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+function checkWeight(weight) {
+  if (weight != null && (typeof weight !== 'string' || !GLSL_NAME.test(weight))) throw new TypeError(`wind: weight must be an attribute's GLSL name, not ${JSON.stringify(weight)}`);
+}
+
 // The rewrite, as pure strings: after three's begin_vertex, the vertex moved
 // along the wind by the square of its height (Crysis's main bending, short
 // of keeping its length: at these sizes the stretch is a millimetre), in a
 // phase from where the instance stands, plus a flutter by where the vertex is.
-export function windShader({ vertexShader, fragmentShader }) {
+// `weight` names a float attribute the bend and the flutter are both scaled
+// by (a kit tree's own, 0 at the foot of its trunk, 1 in its crown); without
+// one, the shader is the one it always was.
+export function windShader({ vertexShader, fragmentShader }, { weight = null } = {}) {
+  checkWeight(weight);
   if (!vertexShader.includes('#include <begin_vertex>')) return { vertexShader, fragmentShader, swapped: { wind: false } };
   const decl = ['uWindTime', 'uWindStrength', 'uWindHeight', 'uWindTrunk', 'uWindLeaf', 'uWindLeafAmp'].map((u) => `uniform float ${u};`);
-  const vs = vertexShader.replace('#include <common>', `#include <common>\n${decl.join('\n')}\nuniform vec2 uWindDir;`).replace(
+  decl.push('uniform vec2 uWindDir;');
+  // (declared once: the shader may have the attribute already)
+  if (weight && !vertexShader.includes(`attribute float ${weight};`)) decl.push(`attribute float ${weight};`);
+  const w = weight ? ` * ${weight}` : '';
+  const vs = vertexShader.replace('#include <common>', `#include <common>\n${decl.join('\n')}`).replace(
     '#include <begin_vertex>',
     `#include <begin_vertex>
     {
@@ -185,10 +201,10 @@ export function windShader({ vertexShader, fragmentShader }) {
       wBase = (modelMatrix * vec4(wBase, 1.0)).xyz;
       float wPhase = dot(wBase.xz, vec2(0.071, 0.113));
       float wH = clamp(transformed.y / uWindHeight, 0.0, 1.0);
-      float wBend = wH * wH;
+      float wBend = wH * wH${w};
       float wT = uWindTime * uWindTrunk * 6.2832 + wPhase;
       float wSway = 0.6 + 0.4 * sin(wT) + 0.25 * sin(wT * 2.3 + 1.7);
-      float wFlutter = sin(uWindTime * uWindLeaf * 6.2832 + dot(transformed, vec3(3.1, 1.7, 2.3)) + wPhase) * uWindLeafAmp * wH;
+      float wFlutter = sin(uWindTime * uWindLeaf * 6.2832 + dot(transformed, vec3(3.1, 1.7, 2.3)) + wPhase) * uWindLeafAmp * wH${w};
       transformed.xz += wDir * (wSway * uWindStrength * wBend) + vec2(wFlutter, -wFlutter * 0.7);
     }`,
   );
@@ -197,8 +213,11 @@ export function windShader({ vertexShader, fragmentShader }) {
 
 // A material that sways: `kind` 'tree' or 'shrub' (WIND's numbers, any of
 // them overridden here), `time` a { value } shared by everything in the wind
-// (seconds; hold it still for reduced motion), `dir` where it blows to.
-export function wind(material, { kind = 'tree', time = { value: 0 }, dir = new THREE.Vector2(0.8, 0.6), ...over } = {}) {
+// (seconds; hold it still for reduced motion), `dir` where it blows to,
+// `weight` the name of a per-vertex attribute that scales it (as the
+// geometry has it: three's loader lower-cases a GLB's _WIND to _wind).
+export function wind(material, { kind = 'tree', time = { value: 0 }, dir = new THREE.Vector2(0.8, 0.6), weight = null, ...over } = {}) {
+  checkWeight(weight);
   if (!material || material.userData.wind) return material;
   const k = { ...(WIND[kind] ?? WIND.tree), ...over };
   const uniforms = {
@@ -214,10 +233,10 @@ export function wind(material, { kind = 'tree', time = { value: 0 }, dir = new T
   material.onBeforeCompile = (sh, r) => {
     before?.call(material, sh, r);
     Object.assign(sh.uniforms, uniforms);
-    sh.vertexShader = windShader(sh).vertexShader;
+    sh.vertexShader = windShader(sh, { weight }).vertexShader;
   };
   const key = material.customProgramCacheKey;
-  material.customProgramCacheKey = () => `${key ? key.call(material) : ''}|wind`;
+  material.customProgramCacheKey = () => `${key ? key.call(material) : ''}|wind${weight ? `|w:${weight}` : ''}`;
   material.userData.wind = uniforms;
   material.needsUpdate = true;
   return material;

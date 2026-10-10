@@ -4,7 +4,8 @@
 // paler on the crests, rock on the cliffs, snow on the tops), broken up by
 // noise at three sizes so no stretch of it repeats, with ripples in the
 // light across it (wind-blown sand, wind-scoured snow) and grain close up.
-// It takes the scene's light, shadows and fog like anything else (it's a
+// The material is lib/three/groundLook.js's (moved down so the flight's
+// ground wears it too), with the walkable square's HALF. It takes the scene's light, shadows and fog like anything else (it's a
 // MeshStandardMaterial underneath). `marks` is a texture over the walkable
 // square that tints where something's been (the dark under a footprint,
 // footprints in the snow): the scene paints into it.
@@ -22,174 +23,21 @@
 // colour map laid over the palette's colour and its normal map tilting the
 // light, at the scan's real size, fading out between `near` and `far`
 // metres so the far ground stays the shader's own. Not on the low tier.
+//
+// At ultra (`splat`, amounts.js's), the ground is layered (splat.js's
+// scans): the site's scan at two sizes turned against each other (so no
+// tile repeats), a second scan in broad patches, rock wrapped round the
+// slopes from the three axes, small blotches of a fourth, all reaching
+// further out (never stretched down a cliff: the flat-laid scans give way
+// to the wrapped rock there); and it's wet by the water and in the hollows (darker,
+// smoother, catching the light). Its own program (SPLAT): high's is as it was.
 
 import * as THREE from 'three';
 import { HALF } from './terrain';
-import { noiseTexture } from './noiseTex';
-import { loadScan, scanOf } from './kit';
-import { detailLevel } from '../../../lib/detail';
 import { sharpen } from '../../../lib/three/textures';
-import { GROUND_GLSL } from '../../../lib/three/groundmap';
+import { groundMaterial as shade } from '../../../lib/three/groundLook';
 
-// (noise read from noiseTex.js's tile, at a few scales, rather than worked out)
-const NOISE = `
-uniform sampler2D uNoise;
-float gHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
-vec4 gTex(vec2 p) { return texture2D(uNoise, p); }
-`;
-
-export function groundMaterial(site, { small = false, map = null } = {}) {
-  const g = site.ground;
-  const p = g.palette;
-  const col = (c, fallback) => new THREE.Color(c ?? fallback);
-  const uniforms = {
-    uLow: { value: col(p.low) },
-    uHigh: { value: col(p.high, p.low) },
-    uRock: { value: col(p.rock, p.low) },
-    uAccent: { value: col(p.accent, p.high ?? p.low) },
-    uDeep: { value: col(p.deep, p.low) },
-    uHeights: { value: new THREE.Vector4(p.hLow ?? 0, p.hHigh ?? 30, p.rockAt ?? 0.42, p.accentCover ?? 0) },
-    uRipple: { value: new THREE.Vector4(p.ripple?.strength ?? 0, p.ripple?.scale ?? 2.4, Math.cos(p.ripple?.wind ?? g.wind ?? 0), Math.sin(p.ripple?.wind ?? g.wind ?? 0)) },
-    uGrain: { value: new THREE.Vector3(p.grain ?? 0.5, small ? 0 : (p.sparkle ?? 0), p.patch ?? 0.5) },
-    uWet: { value: new THREE.Vector4(p.wet?.level ?? -1e4, p.wet?.band ?? 1.5, 0, 0) },
-    uWetColor: { value: col(p.wet?.color, '#000000') },
-    uMarks: { value: null },
-    uMarkColor: { value: col(p.mark, '#000000') },
-    uHalf: { value: HALF },
-    uNoise: { value: noiseTexture() },
-    // the scan underfoot: its maps, repeats a metre, how strongly its colour
-    // and its normal show, where it fades (near, far), and the linear
-    // brightness its detail map is centred on (set when it's loaded)
-    uScan: { value: null },
-    uScanN: { value: null },
-    uScanK: { value: new THREE.Vector4(0.5, 0, 0, 0.5) },
-    uScanFade: { value: new THREE.Vector2(28, 90) },
-  };
-  const look = g.detailLook ?? {};
-  const scan = g.detail && !small && detailLevel() !== 'low' ? scanOf(g.detail) : null;
-  if (scan) {
-    uniforms.uScanFade.value.set(look.near ?? 28, look.far ?? 90);
-    loadScan(g.detail).then((got) => {
-      if (!got) return;
-      uniforms.uScan.value = got.map;
-      uniforms.uScanN.value = got.normalMap;
-      const metres = look.metres ?? scan.metres ?? 2;
-      uniforms.uScanK.value.set(1 / metres, look.color ?? 0.75, got.normalMap ? (look.normal ?? 0.7) : 0, Math.pow(scan.mean ?? 0.8, 2.2));
-    });
-  }
-  const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: p.roughness ?? 0.94, metalness: 0 });
-  // (the ground map, lib/three/groundmap: inside the walkable square the
-  // floor takes its colour, the same rule painted once with the trees'
-  // shade in it, so the floor, the grass and the bounce agree; fading to the
-  // shader's own toward the square's edge and beyond)
-  const fromMap = map
-    ? `
-  vec2 mq = abs(xz) / uHalf;
-  c = mix(c, groundColour(xz), 1.0 - smoothstep(0.88, 1.0, max(mq.x, mq.y)));`
-    : '';
-  mat.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms, map?.uniforms ?? {});
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vGround;\nvarying vec3 vGroundN;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvGround = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvGroundN = normalize(mat3(modelMatrix) * objectNormal);');
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-varying vec3 vGround;
-varying vec3 vGroundN;
-uniform vec3 uLow, uHigh, uRock, uAccent, uDeep, uGrain, uWetColor, uMarkColor;
-uniform vec4 uHeights, uRipple, uWet, uScanK;
-uniform vec2 uScanFade;
-uniform sampler2D uMarks, uScan, uScanN;
-uniform float uHalf;
-${map ? GROUND_GLSL : ''}
-${NOISE}`,
-      )
-      .replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-{
-  vec2 xz = vGround.xz;
-  float dist = length(vGround - cameraPosition);
-  float nBig = gTex(xz / 560.0).r * 0.65 + gTex(xz / 140.0).g * 0.35;
-  float nMid = gTex(xz / 70.0).g * 0.6 + gTex(xz / 22.0).b * 0.4;
-  float nFine = gTex(xz / 9.0).a;
-  float slope = 1.0 - clamp(vGroundN.y, 0.0, 1.0);
-  float h = vGround.y + (nBig - 0.5) * (uHeights.y - uHeights.x) * 0.35;
-  vec3 c = mix(uLow, uHigh, smoothstep(uHeights.x, uHeights.y, h));
-  // patches of the accent, and the deep colour in the hollows
-  c = mix(c, uAccent, smoothstep(1.0 - uHeights.w, 1.0 - uHeights.w + 0.12, nBig * 0.7 + nMid * 0.45) * step(0.001, uHeights.w));
-  c = mix(c, uDeep, smoothstep(0.62, 0.8, nMid) * 0.35 * uGrain.z);
-  // rock where it's steep
-  float rock = smoothstep(uHeights.z, uHeights.z + 0.14, slope + (nMid - 0.5) * 0.16);
-  vec3 rockC = uRock * (0.78 + 0.4 * gTex(vec2(xz.x * 0.004 + xz.y * 0.003, vGround.y * 0.035)).b); // strata
-  c = mix(c, rockC, rock);
-  // darker toward the water's edge
-  c = mix(c, uWetColor, (1.0 - smoothstep(uWet.x, uWet.x + uWet.y, vGround.y)) * 0.75 * step(-9999.0, uWet.x));${fromMap}
-  // grain close up, fading out before it shimmers
-  float near = 1.0 - smoothstep(30.0, 160.0, dist);
-  c *= 1.0 + ((nFine - 0.5) * 0.12 + (nMid - 0.5) * 0.16) * uGrain.x * mix(0.5, 1.0, near);
-  // the scan underfoot, close up: its grain over the colour, centred on
-  // its own brightness so the palette's colour still says what the ground is
-  if (uScanK.y > 0.0) {
-    float scanNear = 1.0 - smoothstep(uScanFade.x, uScanFade.y, dist);
-    vec3 sc = texture2D(uScan, xz * uScanK.x).rgb / max(uScanK.w, 0.05);
-    c *= mix(vec3(1.0), sc, uScanK.y * scanNear);
-  }
-  // where things have been
-  vec2 muv = xz / (2.0 * uHalf) + 0.5;
-  if (muv.x > 0.0 && muv.x < 1.0 && muv.y > 0.0 && muv.y < 1.0) c = mix(c, uMarkColor, texture2D(uMarks, muv).r);
-  diffuseColor.rgb *= c;
-}`,
-      )
-      .replace(
-        '#include <normal_fragment_maps>',
-        `#include <normal_fragment_maps>
-{
-  // ripples across the wind, and a little roughness everywhere, in the light
-  float dist = length(vGround - cameraPosition);
-  float fadeR = 1.0 - smoothstep(40.0, 220.0, dist);
-  vec2 xz = vGround.xz;
-  vec2 across = vec2(uRipple.z, uRipple.w);
-  float phase = dot(xz, across) * uRipple.y + gTex(xz / 40.0).b * 9.0;
-  float flatK = smoothstep(0.65, 0.95, vGroundN.y);
-  vec3 tilt = vec3(across.x, 0.0, across.y) * cos(phase) * uRipple.x * fadeR * flatK;
-  vec2 g = xz / 7.0;
-  float e = 1.0 / 256.0;
-  float n0 = gTex(g).a;
-  tilt += vec3(gTex(g + vec2(e, 0.0)).a - n0, 0.0, gTex(g + vec2(0.0, e)).a - n0) * 2.2 * uGrain.x * fadeR;
-  // the scan's own relief, close up (its normal map laid flat on the ground)
-  if (uScanK.z > 0.0) {
-    float scanNear = 1.0 - smoothstep(uScanFade.x, uScanFade.y, dist);
-    vec3 tn = texture2D(uScanN, xz * uScanK.x).xyz * 2.0 - 1.0;
-    tilt -= vec3(tn.x, 0.0, tn.y) * uScanK.z * scanNear * flatK;
-  }
-  normal = normalize(normal - (viewMatrix * vec4(tilt, 0.0)).xyz);
-}`,
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-{
-  // glints off snow and salt, close up
-  float dist = length(vGround - cameraPosition);
-  // (a pin-prick at a random spot in one cell in seventy: a crystal catching
-  // the sun, not a square of the cell; which ones shift as you move, as
-  // real glitter does)
-  vec2 gq = vGround.xz * 9.0;
-  vec2 cellP = floor(gq);
-  float seed = gHash(cellP + floor(cameraPosition.xz * 0.6));
-  vec2 spot = vec2(gHash(cellP + 17.3), gHash(cellP + 41.9)) * 0.7 + 0.15;
-  float pin = smoothstep(0.16, 0.0, length(fract(gq) - spot));
-  float glint = step(0.986, seed) * pin;
-  totalEmissiveRadiance += vec3(glint * uGrain.y * (1.0 - smoothstep(3.0, 16.0, dist)) * 1.2);
-}`,
-      );
-  };
-  mat.customProgramCacheKey = () => `galaxy-ground${map ? ':map' : ''}`;
-  return { material: mat, uniforms };
-}
+export const groundMaterial = (site, opts = {}) => shade(site, { half: HALF, ...opts });
 
 // The mesh, from the height grid: lines × lines vertices, each cell two
 // triangles split from (i, j + 1) to (i + 1, j) (as heightGrid reads them)

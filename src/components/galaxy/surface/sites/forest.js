@@ -7,6 +7,10 @@ import { grove } from './stand';
 // Endor's sun, for its sky and the light slanting through its trees
 const ENDOR_SUN = { az: 0.9, el: 1.02 };
 
+// what Kashyyyk's beach defenders say, clones and Wookiees along the line
+const CLONE_SAYS = ['Droids coming across the lagoon, sir!', 'Hold the line!', 'The Wookiees fight like nothing I’ve ever seen.', 'Execute Order… (He stops, and listens to his helmet.) Nothing, sir. Never mind.'];
+const WOOKIEE_SAYS = ['(A battle roar that rattles your teeth.)', '(It hefts a bowcaster and points across the lagoon.)', 'Rrraaaaaaaaghhh!', '(It thumps its chest, then yours. Friendly. You think.)'];
+
 // the Ewok village: five trees round a clearing, a deck up each, rope
 // bridges between, huts on the decks (all relative to the village)
 const VILLAGE = (() => {
@@ -49,6 +53,8 @@ const V = [-210, 150]; // the village
 
 export const SITES = {
   endor: {
+    // lit as the game lights its level (src/data/bf2017/light/endor.json, gameLit.js)
+    gameLight: 'endor',
     place: 'The forest moon',
     line: 'Redwoods older than the Empire, and something small watching you from the ferns.',
     sky: {
@@ -149,6 +155,7 @@ export const SITES = {
         },
         things: [
           { kind: 'bunker', at: [0, -6], yaw: 0 },
+          { kind: 'bunkerbank', at: [0, -8.5], yaw: 0 },
           { kind: 'redwood', at: [-7, -24], model: false, opts: { seed: 21, h: 60, r: 2.2 } },
           { kind: 'redwood', at: [9, -27], model: false, opts: { seed: 22, h: 56, r: 2.0 } },
           { kind: 'crates', at: [-10, 4] },
@@ -171,13 +178,13 @@ export const SITES = {
           rv: [['jesse', 'Yo, that’s the biggest satellite dish I ever saw.'], ['walt', 'And they guarded it with a dozen men and some walkers. Sloppy.']],
         },
         things: [
-          { kind: 'shieldgen', at: [0, -10], yaw: 0.2 },
-          { kind: 'pad', at: [-10, 42], opts: { r: 14, color: '#6a6c68', light: '#ffd070' } },
+          { kind: 'shieldgen', at: [0, -10], yaw: 0.2, solid: { r: 22 } },
+          { kind: 'pad', at: [-10, 42], opts: { r: 14, color: '#5e6064', light: '#ffd070', shape: 'square', marks: 'rings' } },
           { kind: 'lambda', at: [-10, 41], yaw: -0.4 },
           { kind: 'crates', at: [-30, 26] },
           { kind: 'crates', at: [24, 30] },
-          { kind: 'lamp', at: [4, 30], opts: { h: 5, light: '#ffe0a0' } },
-          { kind: 'lamp', at: [-24, 32], opts: { h: 5, light: '#ffe0a0' } },
+          { kind: 'lamp', at: [4, 30], opts: { h: 8, light: '#ffe0a0' } },
+          { kind: 'lamp', at: [-24, 32], opts: { h: 8, light: '#ffe0a0' } },
         ],
       },
       {
@@ -265,6 +272,9 @@ export const SITES = {
       { kind: 'lightshafts', at: [-90, 60], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 9 } },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 120, within: [5, 60], scale: [0.7, 1.4], solid: false },
+      { kind: 'qmushroom', n: 30, within: [6, 60], scale: [0.6, 1.3], solid: false },
       // (the stand close set, as a redwood grove is: trunks in every
       // direction, the nearest ring thickest so the clearing you land in
       // reads as one, and the far ones carrying the forest to the hills)
@@ -297,6 +307,8 @@ export const SITES = {
       { kind: 'fungus', n: 240, within: [6, 200], scale: [0.8, 1.6], solid: false, clear: -12, opts: { seed: 8 } },
     ],
     life: [
+      // (the game's own: profoggs ambling in the undergrowth by the log trap)
+      { kind: 'profogg', n: 3, at: [140, 112], spread: 26, roam: 20, speed: 0.4, r: 0.2, solid: false },
       { kind: 'ewok', n: 7, at: V, spread: 6, roam: 6, speed: 0.9, name: 'Ewok', says: ['Yub nub!', 'Ee chee wa maa!', '(It dances round the fire, banging a stick on a helmet.)', '(It looks at you, then at the fire, then back at you. Thoughtfully.)', 'Gunda!'] },
       ...VILLAGE.walks.map((path, i) => ({ kind: 'ewok', n: 1, path, speed: 0.7, pause: 2.5 + i, name: 'Ewok', says: ['(It waves its spear at you from the deck.)', 'Yub yub!', '(A long, suspicious sniff.)'] })),
       { kind: 'c3po', n: 1, at: at(V, [4, -5]), still: true, face: -0.7, name: 'C-3PO', says: ['Oh my! I seem to have become something of a deity here.', '(He tells the Ewoks the whole story of the Rebellion: the Death Star, Cloud City, Han frozen in carbonite. With sound effects.)', 'It’s against my programming to impersonate a deity.', 'Oh dear. I’m afraid you’re to be the guest of honour at the banquet.'] },
@@ -329,6 +341,8 @@ export const SITES = {
   },
 
   kashyyyk: {
+    // lit as the game lights its level (src/data/bf2017/light/kashyyyk.json, gameLit.js)
+    gameLight: 'kashyyyk',
     place: 'The shore at Kachirho',
     line: 'Wroshyr trees as tall as mountains, and a lagoon full of trouble.',
     sky: {
@@ -343,7 +357,8 @@ export const SITES = {
     fog: { color: '#c4cebe', density: 0.0017 },
     light: { sun: 3.0, sky: '#c8dcea', ground: '#6a7a48', ambient: 0.8 },
     // (Kachirho's lagoon as filmed: milky olive-grey, not a tropical blue)
-    water: { level: 0, color: '#7b8575', deep: '#3a4a40', kind: 'sea', foam: 0.2 },
+    // (wadeMax: how deep you can wade before the lagoon turns you back)
+    water: { level: 0, color: '#7b8575', deep: '#3a4a40', kind: 'sea', foam: 0.2, wadeMax: 1.2 },
     dust: '#bca880',
     edge: 'Beyond here the forest drops away into the Shadowlands. Even Wookiees don’t go down there.',
     ground: { detail: 'leaves', detailLook: { color: 0.7, normal: 0.7 },
@@ -355,6 +370,19 @@ export const SITES = {
         { type: 'swell', scale: 300, height: 3 },
         { type: 'hills', scale: 110, height: 6 },
         { type: 'mountains', from: 1100, to: 3400, height: 420, scale: 900 },
+      ],
+      // The beach in front of Kachirho, as the film has it: a shore of sand a
+      // metre over the lagoon, and in front of it the shallows the droids
+      // wade out of, knee-deep, before the lagoon falls away. Later flats win
+      // where they overlap, so the shallows go down first and the beach is
+      // laid over their near side: the shore eases from sand into wading
+      // water along z ≈ 78. Each is a row of round flats, as a single round
+      // one big enough to reach both ends of the beach would flood the beach's
+      // middle or bury the shallows' (one circle can't make a straight shore).
+      flats: [
+        { at: [25, 96], r: 38, edge: 14, h: -0.45 },
+        { at: [95, 96], r: 38, edge: 14, h: -0.45 },
+        ...[-10, 30, 70, 110].map((x) => ({ at: [x, 38], r: 34, edge: 14, h: 1.0 })),
       ],
       palette: {
         // (the beach grey-white sand, the forest floor a cool dark green)
@@ -404,9 +432,9 @@ export const SITES = {
       {
         id: 'beach',
         name: 'The beachhead',
-        at: [40, 40],
-        r: 46,
-        flat: { r: 34, h: 1.2 },
+        // (its ground is the beach's own flats, above: no flat of its own)
+        at: [50, 40],
+        r: 60,
         about: 'Where clones and Wookiees dug in against the Separatist landing: sharpened-log barricades on the sand, AT-RTs on patrol, the droid army coming across the lagoon.',
         lines: {
           xwing: [['luke', 'Clones and Wookiees, side by side. Before the clones turned.']],
@@ -415,12 +443,26 @@ export const SITES = {
           rv: [['jesse', 'This is like Saving Private Ryan but with Chewbacca.'], ['walt', 'Keep your head down, Jesse.']],
         },
         things: [
-          { kind: 'barricade', at: [-16, 14], yaw: 0.3, opts: { len: 11 } },
-          { kind: 'barricade', at: [2, 18], yaw: 0.1, opts: { len: 10 } },
-          { kind: 'barricade', at: [20, 14], yaw: -0.3, opts: { len: 11 } },
-          { kind: 'crates', at: [-12, -8] },
-          { kind: 'crates', at: [12, -12] },
-          { kind: 'lamp', at: [0, -14], opts: { h: 4, light: '#ffd9a0' } },
+          // the line, across the beach and facing the lagoon (south), as the
+          // film has it: the droids come straight up out of the shallows at it
+          { kind: 'barricade', at: [-50, 18], yaw: 0.05, opts: { len: 12 } },
+          { kind: 'barricade', at: [-25, 20], yaw: 0, opts: { len: 12 } },
+          { kind: 'barricade', at: [0, 19], yaw: -0.05, opts: { len: 12 } },
+          { kind: 'barricade', at: [25, 20], yaw: 0.03, opts: { len: 12 } },
+          { kind: 'barricade', at: [50, 18], yaw: 0.05, opts: { len: 12 } },
+          // cover on the sand in front of it, between the barricades and the
+          // water: what a droid wading ashore gets behind
+          { kind: 'crates', at: [-40, 26] },
+          { kind: 'crates', at: [36, 30] },
+          // (boulders: the shore's own mossy limestone, a karst cut down to a
+          // rock's size, 2 m tall: `rock` is a scatter kind only, not placeable)
+          { kind: 'karst', at: [-10, 30], opts: { w: 3.4, h: 0.3, seed: 9 } },
+          { kind: 'karst', at: [-60, 32], opts: { w: 3.4, h: 0.3, seed: 10 } },
+          { kind: 'log', at: [14, 26], yaw: 0.2, opts: { bark: '#6a5a46' } },
+          // the stores, back behind the line
+          { kind: 'crates', at: [-24, -6] },
+          { kind: 'crates', at: [2, -12] },
+          { kind: 'lamp', at: [-10, -14], opts: { h: 4, light: '#ffd9a0' } },
         ],
       },
       {
@@ -445,10 +487,12 @@ export const SITES = {
       {
         id: 'command',
         name: 'The command post',
-        at: [180, -150],
+        // (at the beach's rear, by Kachirho's foot, looking down the line:
+        // a little over the sand, as the land here is at the water's level)
+        at: [-60, 10],
         r: 26,
-        flat: { r: 18 },
-        about: 'On the ridge above the beach, where Yoda watched the battle with Commander Gree, until the order came through and Gree turned his blaster on him. Yoda felt it coming.',
+        flat: { r: 14, h: 1.6 },
+        about: 'At the back of the beach, by Kachirho’s foot, where Yoda watched the battle with Commander Gree, until the order came through and Gree turned his blaster on him. Yoda felt it coming.',
         lines: {
           xwing: [['luke', 'Master Yoda was here when the clones turned on the Jedi. He felt every one of them die.'], ['r2', '(A sad, low tone.)']],
           falcon: [['han', 'Order 66. They didn’t teach that in the Imperial Academy. Funny, that.']],
@@ -487,11 +531,11 @@ export const SITES = {
           cruiser: [['rick', 'Big hairy guys, small cosy houses. That’s the whole species, Morty.'], ['morty', 'I feel like we should take our shoes off.']],
         },
         things: [
-          { kind: 'wookieehouse', at: [0, 16], yaw: 3.1 },
-          { kind: 'wookieehouse', at: [17, 2], yaw: 4.6 },
-          { kind: 'wookieehouse', at: [-16, 4], yaw: 1.7 },
-          { kind: 'wookieehouse', at: [8, -16], yaw: 5.8 },
-          { kind: 'wookieehouse', at: [-10, -15], yaw: 0.6 },
+          { kind: 'wookieehouse', at: [0, 16], yaw: 3.1, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [17, 2], yaw: 4.6, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [-16, 4], yaw: 1.7, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [8, -16], yaw: 5.8, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [-10, -15], yaw: 0.6, solid: { r: 4 } },
           { kind: 'fire', at: [0, 0], scale: 1.3 },
         ],
       },
@@ -504,19 +548,23 @@ export const SITES = {
       { kind: 'barrel', at: [-13, -46], yaw: 0.2 },
       { kind: 'barrel', at: [-11.8, -45.2], yaw: 1.6 },
       { kind: 'empirecrate', at: [10, -52], yaw: 2.4 },
-      // the droids' landing, up the beach: a spider droid left burning
-      { kind: 'homingspider', at: [128, 92], yaw: 3.6, roll: 0.5, sink: 0.6, solid: { r: 3 } },
-      { kind: 'wrecksmoke', at: [128, 92], solid: false, opts: { h: 14, r: 1.0 } },
+      // a spider droid left burning on the sand at the beach's east end,
+      // between the water and the barricades, where the first droids got
+      // ashore (cover for the next ones)
+      { kind: 'homingspider', at: [96, 68], yaw: 3.6, roll: 0.5, sink: 0.6, solid: { r: 3 } },
+      { kind: 'wrecksmoke', at: [96, 68], solid: false, opts: { h: 14, r: 1.0 } },
       { kind: 'karst', at: [-80, 260], opts: { w: 26, h: 18, seed: 5 } },
       { kind: 'karst', at: [120, 330], opts: { w: 20, h: 14, seed: 6 } },
       { kind: 'karst', at: [320, 250], opts: { w: 28, h: 20, seed: 7 } },
       { kind: 'karst', at: [-260, 330], opts: { w: 22, h: 15, seed: 8 } },
       // the great wroshyrs, as tall as the city's tree
-      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 14 } },
-      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 15 } },
-      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 13 } },
+      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 28 } },
+      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 31 } },
+      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 25 } },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 100, within: [8, 120], scale: [0.8, 1.5], solid: false },
       { kind: 'wroshyr', n: 110, within: [50, 640], scale: [0.7, 1.4], opts: { seed: 1, leaf: '#354832', bark: '#50554e' } },
       { kind: 'wroshyr', n: 70, within: [640, 1400], scale: [1.0, 1.8], solid: false, opts: { seed: 2, lo: true, leaf: '#354832', bark: '#50554e' } },
       { kind: 'karst', n: 30, within: [200, 900], scale: [7, 16], stretch: [1.0, 1.8], dry: false, opts: { seed: 3 } },
@@ -528,20 +576,22 @@ export const SITES = {
       { kind: 'log', n: 20, within: [40, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a5a46' } },
     ],
     life: [
-      { kind: 'wookiee', n: 6, at: [40, 32], spread: 14, roam: 10, speed: 1.1, name: 'Wookiee warrior', says: ['(A battle roar that rattles your teeth.)', '(It hefts a bowcaster and points across the lagoon.)', 'Rrraaaaaaaaghhh!', '(It thumps its chest, then yours. Friendly. You think.)'] },
-      { kind: 'clone', n: 5, at: [40, 30], spread: 12, roam: 8, speed: 1.2, name: 'Clone trooper', says: ['Droids coming across the lagoon, sir!', 'Hold the line!', 'The Wookiees fight like nothing I’ve ever seen.', 'Execute Order… (He stops, and listens to his helmet.) Nothing, sir. Never mind.'] },
-      { kind: 'battledroid', n: 5, path: [[82, 70], [104, 62], [124, 66], [104, 72]], speed: 1.0, name: 'Battle droid', says: ['Roger, roger.', 'Uh oh.', 'Wookiees! Retreat! Uh… advance! Uh…', 'Halt! Er… we surrender?'] },
-      { kind: 'dwarfspider', n: 2, path: [[100, 80], [120, 70], [136, 80], [120, 90]], speed: 0.9, r: 1.0, name: 'Dwarf spider droid', says: ['(It clicks, and its cannon swings toward the barricades.)'] },
+      // (the game's own: tachs about Kachirho's roots)
+      { kind: 'tach', n: 4, at: [-120, -12], spread: 20, roam: 14, speed: 0.7, r: 0.5, solid: false },
+      // the line's defenders, standing behind the barricades and facing the
+      // water, a few behind each (a group stands in a disc round its `at`, so
+      // one group spread along 100 m of line would put some of it in the
+      // lagoon: so a group to each barricade)
+      ...[[0, 2], [50, 2], [100, 1]].map(([x, n]) => ({ kind: 'clone', n, at: [x, 52], spread: 4, still: true, face: 0, name: 'Clone trooper', says: CLONE_SAYS })),
+      ...[25, 75].map((x) => ({ kind: 'wookiee', n: 2, at: [x, 52], spread: 4, still: true, face: 0, name: 'Wookiee warrior', says: WOOKIEE_SAYS })),
       { kind: 'wookiee', n: 2, at: [6, -34], spread: 5, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It beats its chest once, and points you up the beach.)', '(A warm growl: a welcome.)'] },
-      { kind: 'clone', n: 2, at: [16, -40], spread: 4, roam: 4, speed: 1.0, name: 'Clone trooper', says: ['BARC’s fuelled, sir. The beach is that way.', 'Droids landed at the far end of the lagoon. We hold here.'] },
-      { kind: 'superdroid', n: 2, path: [[90, 60], [116, 56]], speed: 0.8, name: 'Super battle droid', says: ['(It raises its wrist blasters, slowly.)', 'Surrender, Jedi scum.'] },
-      { kind: 'atrt', n: 2, path: [[14, 22], [40, 16], [66, 22], [40, 16]], speed: 1.6, r: 0.8, name: 'AT-RT', says: ['(The clone rider nods down at you.) Good hunting, sir.', '(The walker clanks past, its rider scanning the lagoon.)'] },
-      { kind: 'atap', n: 1, path: [[22, 44], [58, 44], [58, 36], [22, 36]], speed: 1.0, r: 2.2, name: 'AT-AP', says: ['(Its heavy cannon swings out toward the water.)'] },
-      { kind: 'yoda', n: 1, at: [182, -146], still: true, face: 0.6, name: 'Yoda', says: ['Go, I will. Good relations with the Wookiees, I have.', 'A great disturbance in the Force, I feel.', 'Into exile I must go. Failed, I have.'] },
-      { kind: 'clone', n: 1, at: [176, -150], still: true, face: 1.2, name: 'Commander Gree', says: ['The droid army is moving into position, General.', 'Yes, my lord. (He turns, slowly, toward Master Yoda.)'] },
-      { kind: 'clone', n: 2, at: [186, -156], spread: 4, roam: 4, speed: 0.8, name: 'Clone trooper', says: ['Sir.', 'Communications are clear, Commander.'] },
+      { kind: 'clone', n: 2, at: [16, -40], spread: 4, roam: 4, speed: 1.0, name: 'Clone trooper', says: ['BARC’s fuelled, sir. The beach is that way.', 'Droids are wading in from the lagoon. We hold the barricades.'] },
+      { kind: 'atrt', n: 2, path: [[0, 40], [60, 36], [110, 40], [60, 36]], speed: 1.6, r: 0.8, name: 'AT-RT', says: ['(The clone rider nods down at you.) Good hunting, sir.', '(The walker clanks past, its rider scanning the lagoon.)'] },
+      // (the AT-AP's beat behind the stores, clear of them and of Gree)
+      { kind: 'atap', n: 1, path: [[20, 18], [90, 18]], speed: 1.0, r: 2.2, name: 'AT-AP', says: ['(Its heavy cannon swings out toward the water.)'] },
+      { kind: 'yoda', n: 1, at: [-58, 8], still: true, face: 1.1, name: 'Yoda', says: ['Go, I will. Good relations with the Wookiees, I have.', 'A great disturbance in the Force, I feel.', 'Into exile I must go. Failed, I have.'] },
+      { kind: 'clone', n: 2, at: [-64, 14], spread: 4, roam: 4, speed: 0.8, name: 'Clone trooper', says: ['Sir.', 'Communications are clear, Commander.'] },
       { kind: 'wookiee', n: 1, at: [-116, -376], still: true, face: 3.5, name: 'Chewbacca', says: ['(Chewbacca throws back his head and roars.)', '(He points at the pod, then at the sky: away.)'] },
-      { kind: 'wookiee', n: 1, at: [-125, -374], still: true, face: 3.0, scale: 1.08, name: 'Tarfful', says: ['(Tarfful rumbles a greeting, deep as a drum.)', '(He looks back the way you came, listening for clones.)'] },
       { kind: 'wookiee', n: 5, at: [-370, -170], spread: 12, roam: 10, speed: 0.9, name: 'Wookiee', says: ['(A friendly, gargling growl.)', '(It offers you a bowl of something. It is moving.)', '(It ruffles your hair. Hard.)'] },
       { kind: 'wookiee', n: 4, at: [-136, 14], spread: 6, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It waves you up the steps to the city.)', '(A long, musical howl, answered from far up the tree.)'] },
     ],
@@ -712,6 +762,11 @@ export const SITES = {
     // them, kept off the places (Yoda's hut, the X-wing, the cave, the camp)
     things: grove(31, 46, 30, 190, ['dagocypress', 'dagocypress', 'dagoroots'], [0.7, 1.25]).filter(({ at: [x, z] }) => [[-90, 60, 30], [40, 74, 34], [-70, -120, 30], [100, -60, 32], [-26, -46, 24], [130, 110, 30], [0, 0, 26]].every(([px, pz, r]) => Math.hypot(x - px, z - pz) > r)),
     scatter: [
+      // (the game's living world: skettos on the roots and the mud)
+      { kind: 'game', model: 'game:objects/livingworld/cavesketto_01/cavesketto_01_sitting_mesh', n: 14, within: [12, 260], scale: [0.8, 1.2], solid: false, shadow: false },
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 100, within: [5, 80], scale: [0.7, 1.4], solid: false },
+      { kind: 'qmushroom', n: 30, within: [6, 80], scale: [0.6, 1.4], solid: false },
       // great cypresses on their roots, mangrove roots standing in the bog
       // (the great trees few and far, shapes in the mist; the gnarled ones
       // close in all round, crowded, as the film's are)
@@ -722,12 +777,14 @@ export const SITES = {
       { kind: 'gnarltree', n: 40, within: [420, 900], scale: [1.0, 1.6], dry: false, solid: false, opts: { seed: 3, lo: true } },
       { kind: 'reeds', n: 700, within: [5, 420], scale: [0.7, 1.6], solid: false, dry: false, clear: -10, opts: { seed: 4, color: '#5a5c44' } },
       { kind: 'fungus', n: 220, within: [5, 420], scale: [0.8, 2], solid: false, clear: -8, opts: { seed: 5 } },
-      { kind: 'fern', n: 200, within: [5, 420], scale: [0.7, 1.4], solid: false, clear: -8, opts: { seed: 6, color: '#474931' } },
-      { kind: 'log', n: 36, within: [20, 460], scale: [0.7, 1.3], solid: false, dry: false, opts: { seed: 7, bark: '#4c463a', moss: '#5a6a34' } },
-      { kind: 'rock', n: 40, within: [10, 460], scale: [0.6, 2], opts: { color: '#5a5a48', sharp: 0.3 } },
+      // (the drop's own where the swamp has the same, on mid and up: Kashyyyk's
+      // scheffleras for the ferns, the forest's logs and stones; the built
+      // ones on low, as before)
+      { kind: 'fern', model: 'game:objects/nature/kashyyyk/_kashyyykbase/_meshscattering/ms_kashyyykbase_schefflerabush_01/ms_kashyyykbase_schefflerabush_xs_01_mesh', n: 200, within: [5, 420], scale: [0.7, 1.4], solid: false, clear: -8, opts: { seed: 6, color: '#474931' } },
+      { kind: 'log', model: 'game:objects/nature/forest/_forestbase/forestbase_logsmall_01/forestbase_logsmall_01_mesh', n: 36, within: [20, 460], scale: [0.7, 1.3], solid: false, dry: false, opts: { seed: 7, bark: '#4c463a', moss: '#5a6a34' } },
+      { kind: 'rock', model: 'game:objects/nature/forest/_forestbase/forestbase_rocksmall_01/forestbase_rocksmall_01_mesh', n: 40, within: [10, 460], scale: [0.6, 2], opts: { color: '#5a5a48', sharp: 0.3 } },
     ],
     life: [
-      { kind: 'yoda', n: 1, at: [-86, 68], roam: 6, speed: 0.4, name: 'Yoda', says: ['Do. Or do not. There is no try.', 'Size matters not. Judge me by my size, do you?', 'Mudhole? Slimy? My home this is!', 'Away put your weapon. I mean you no harm.', 'Wars not make one great.', 'Luminous beings are we, not this crude matter.'] },
       { kind: 'droid', n: 1, at: [-22, -42], roam: 4, speed: 0.5, name: 'R2-D2', says: ['(An indignant whistle: he was nearly eaten, you know.)', '(He beeps, and shakes off a strand of swamp weed.)', '(A worried warble at the mist.)'] },
       { kind: 'ghostben', n: 1, at: [96, -52], still: true, face: 2.6, name: 'Obi-Wan Kenobi', voice: 'ben', says: ['You will go to the Dagobah system. There you will learn from Yoda, the Jedi Master who instructed me.', 'If you choose the quick and easy path, as Vader did, you will become an agent of evil.', 'That boy is our last hope.', 'Use the Force.'] },
       { kind: 'bogwing', n: 8, at: [0, 0], spread: 160, roam: 40, speed: 3, y: 3.5, solid: false },

@@ -1,12 +1,12 @@
 // Down on Breaking Bad's planet: the desert out past Albuquerque, where
 // Walt and Jesse park the RV to cook. The RV, the Aztek, the water tower,
 // the cacti, tumbleweed and the barrels are the site's models (landings.js
-// names them); here are the rest: the cook's camp table, the mesas on the
-// skyline, the rocks, the stones and the creosote scrub.
+// names them), and so are the rocks, the stones, the dry grass and the
+// junipers (Quaternius's); here are the rest: the cook's camp table, the
+// mesas on the skyline and White Sands' dunes.
 
 import * as THREE from 'three';
 import { ball, box, cyl, part, rockGeometry } from '../../galaxy/surface/kit';
-import { SCATTER as GENERIC } from '../../galaxy/surface/props/generic';
 import { rng } from '../../galaxy/surface/noise';
 
 const { PI, cos, sin } = Math;
@@ -84,19 +84,6 @@ export const PROPS = {
 };
 
 export const SCATTER = {
-  rock: GENERIC.rock,
-  stones: GENERIC.stones,
-  // creosote: a low bush of dark olive leaves on grey twigs
-  scrub(k, { seed = 3 } = {}) {
-    const rand = rng(seed);
-    const parts = [];
-    for (let i = 0; i < 6; i++) {
-      const a = rand() * PI * 2;
-      const d = rand() * 0.35;
-      parts.push(ball(0.22 + rand() * 0.12, [cos(a) * d, 0.25 + rand() * 0.3, sin(a) * d], [1, 0.8, 1], { color: rand() < 0.5 ? '#5d6a38' : '#717a44', to: 'leaf' }, 7));
-    }
-    return { parts: [{ geometry: k.geometry(parts), material: k.mats.leaf }], radius: null };
-  },
   // White Sands: a gypsum dune, long and low, its steep face downwind
   dune(k, { seed = 5 } = {}) {
     const g = new THREE.SphereGeometry(1, 20, 10, 0, PI * 2, 0, PI / 2);
@@ -112,22 +99,5 @@ export const SCATTER = {
     }
     g.computeVertexNormals();
     return { parts: [{ geometry: k.geometry([part(g, { color: '#f2eee4', to: 'stone' })]), material: k.mats.stone }], radius: null };
-  },
-  // a one-seed juniper of the foothills: a short twisted trunk, a dark
-  // blue-green crown in clumps
-  juniper(k, { seed = 7 } = {}) {
-    const rand = rng(seed);
-    const crown = [];
-    for (let i = 0; i < 6; i++) {
-      const a = rand() * PI * 2;
-      crown.push(ball(0.7 + rand() * 0.4, [cos(a) * 0.6, 1.6 + rand() * 1.0, sin(a) * 0.6], [1, 0.85, 1], { color: rand() < 0.5 ? '#3e5a44' : '#4a6a4e', to: 'leaf' }, 8));
-    }
-    return {
-      parts: [
-        { geometry: k.geometry([part(cyl(0.22, 0.14, 1.8, 7), { rot: [0.12, 0, 0.1], color: '#6a5444', to: 'bark' })]), material: k.mats.bark },
-        { geometry: k.geometry(crown), material: k.mats.leaf },
-      ],
-      radius: 0.5,
-    };
   },
 };

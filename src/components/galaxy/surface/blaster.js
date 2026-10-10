@@ -1,205 +1,118 @@
-// Blaster fire on the ground: your bolts (from your hand, along where the
-// camera's looking, onto whatever's in the way first: a target, the
-// ground, a wall) and theirs (at you, a little off), each a streak of light
-// that flies and a flash where it lands.
+// Blaster fire on the ground, every bolt of it on lib/combat/bolt.js's one
+// step: yours (from the muzzle to where your eyes' line first meets
+// something: a target, a wall, the ground), theirs at you, theirs at each
+// other and your mate's. Each flies at the one speed and stops at the first
+// thing in its way, tested every frame against the world's solids
+// (solids.js), the bodies' capsules and a raised blade; what it hit comes
+// back as an event when it gets there, never decided when it's fired.
 //
-// createBlaster({ parent, world, pool }) → { fire(from, dir, targets, color,
-// reach, muzzle) → what it'll hit ({ target, at } or null; `reach`: where
-// something solid stops it first, if not its range; `muzzle`: where the bolt
-// leaves from, if not `from`), enemy(from, to, spread), tracer(from, to,
-// color) (a bolt between others that harms nobody: a battle's), update(dt)
-// → hits on you (damage), dispose() }; `pool`: bolts in the air at once
-// (32 unless a battle asks for more)
+// createBlaster({ parent, world, pool, ballistic }) → { bolts (the pool),
+// solids (the world's raycast: a physics world's `physicsRay` when it has
+// one, a segment ray in bolt.js's solids form such as lib/physics/blast.js's
+// segmentRay, else solids.js over the walker's world), aim(from, dir, targets, reach) → { target, at },
+// fire(from, dir, targets, color, reach, muzzle, tag) → { target, at, bolt }
+// (`target`: what the eyes' line meets first, for the flash's way; the hit
+// itself is the bolt's event), enemy(from, to, spread, color, damage, opts)
+// → bolt (at `to`, scattered by `spread`; turned by a raised blade),
+// shoot(spec) → bolt (lib/combat/bolt's fire), tracer(from, to, color) (a
+// battle's bolt that only walls stop), update(dt, { bodies, blades }) →
+// the step's events, flash(at), dispose() }; `pool`: bolts in the air at
+// once (48 unless a battle asks for more); `ballistic`: a projectiles.json
+// row your bolts fly by (lib/combat/ballistics.js, at the one speed), none
+// and they fly straight as ever.
+// capsuleOf(t) → { a, b, r }: a figure's body as the bolts see it.
 
 import * as THREE from 'three';
-import { groundAt } from './walker';
+import { scatter } from '../../../lib/combat/accuracy';
+import { BOLT_SPEED, createBolts, segCapsule } from '../../../lib/combat/bolt';
+import { createBoltMeshes } from '../../../lib/three/combat/bolts';
+import { boltSolids } from './solids';
 
-const SPEED = 140; // m/s
 const RANGE = 90;
-const POOL = 32;
+const POOL = 48;
 
-const scratch = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+const arr = (v) => (Array.isArray(v) ? v : [v.x, v.y, v.z]);
 
-// Whether the way from a to b passes within r of c across the ground, at a
-// height within h of c's (a person: c their middle, r their girth, h half
-// their height). Pure.
-export function sweptHit(a, b, c, r, h = 1) {
-  const dx = b[0] - a[0];
-  const dz = b[2] - a[2];
-  const len = dx * dx + dz * dz;
-  const t = len > 0 ? Math.max(0, Math.min(1, ((c[0] - a[0]) * dx + (c[2] - a[2]) * dz) / len)) : 0;
-  const x = a[0] + dx * t - c[0];
-  const z = a[2] + dz * t - c[2];
-  const y = a[1] + (b[1] - a[1]) * t - c[1];
-  return x * x + z * z < r * r && Math.abs(y) < h;
+// a figure's body: feet to crown, as wide as a person of its height
+export function capsuleOf(t) {
+  const p = t.holder.position;
+  const tall = (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1);
+  const r = Math.max(0.4, tall * 0.25);
+  return { a: [p.x, p.y + r, p.z], b: [p.x, p.y + Math.max(r, tall - r), p.z], r };
 }
 
-export function createBlaster({ parent, world, pool = POOL }) {
-  const group = new THREE.Group();
-  group.name = 'bolts';
-  parent.add(group);
-  const geo = new THREE.CylinderGeometry(0.035, 0.035, 1.6, 6).rotateX(Math.PI / 2);
-  const mats = new Map();
-  const mat = (color) => {
-    if (!mats.has(color)) mats.set(color, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(4), toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-    return mats.get(color);
-  };
-  const bolts = Array.from({ length: pool }, () => {
-    const m = new THREE.Mesh(geo, mat('#ff3b30'));
-    m.visible = false;
-    group.add(m);
-    return { m, v: new THREE.Vector3(), life: 0, theirs: false, end: null };
-  });
-  // flashes where they land
-  const flashGeo = new THREE.SphereGeometry(0.35, 10, 8);
-  const flashes = Array.from({ length: 12 }, () => {
-    const m = new THREE.Mesh(flashGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd0a0').multiplyScalar(3), toneMapped: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-    m.visible = false;
-    group.add(m);
-    return { m, age: 9 };
-  });
-  let nb = 0;
-  let nf = 0;
-  const flash = (at) => {
-    const f = flashes[nf++ % flashes.length];
-    f.m.position.copy(at);
-    f.age = 0;
-    f.m.visible = true;
-  };
-  const shoot = (from, dir, color, theirs, end) => {
-    const b = bolts[nb++ % pool];
-    b.m.material = mat(color);
-    b.m.position.copy(from);
-    b.v.copy(dir).normalize().multiplyScalar(SPEED);
-    b.m.lookAt(from.clone().add(dir));
-    b.m.visible = true;
-    b.life = Math.min(RANGE, end ? from.distanceTo(end) : RANGE) / SPEED;
-    b.theirs = theirs;
-    b.end = end;
-    return b;
-  };
+export function createBlaster({ parent, world, pool = POOL, ballistic = null }) {
+  const bolts = createBolts({ pool });
+  const draw = createBoltMeshes(parent, { pool });
+  const solids = world.physicsRay ?? boltSolids(world);
+  const flat = { solids, bodies: [], blades: [] };
 
-  // the first thing along a ray: a target (a sphere round its middle) or the ground
-  const along = (from, dir, targets, reach = RANGE) => {
-    const d = dir.clone().normalize();
-    let best = null;
-    let bestT = Math.min(RANGE, reach);
-    const c = new THREE.Vector3();
-    for (const t of targets) {
-      const tall = (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1);
-      c.copy(t.holder.position).add(new THREE.Vector3(0, tall * 0.55, 0));
-      const rad = Math.max(0.45, tall * 0.35);
-      const oc = c.clone().sub(from);
-      const tc = oc.dot(d);
-      if (tc < 0 || tc > bestT) continue;
-      const miss = oc.lengthSq() - tc * tc;
-      if (miss > rad * rad) continue;
-      best = t;
-      bestT = tc;
-    }
-    // the ground, in steps
-    for (let s = 1; s < bestT; s += 1.5) {
-      const p = from.clone().addScaledVector(d, s);
-      if (p.y < groundAt(world, p.x, p.z, p.y)) {
-        return { target: null, at: p };
+  // the first thing along a ray: a target's body or a solid (the aim point)
+  const aim = (from, dir, targets, reach = RANGE) => {
+    const a = arr(from);
+    const d = arr(dir);
+    const l = Math.hypot(d[0], d[1], d[2]) || 1;
+    const far = Math.min(RANGE, reach);
+    const b = [a[0] + (d[0] / l) * far, a[1] + (d[1] / l) * far, a[2] + (d[2] / l) * far];
+    let t = 1;
+    let target = null;
+    const wall = solids(a, b);
+    if (wall) t = Math.hypot(wall.at[0] - a[0], wall.at[1] - a[1], wall.at[2] - a[2]) / far;
+    for (const o of targets) {
+      if (!o?.holder) continue;
+      const c = capsuleOf(o);
+      const k = segCapsule(a, b, c.a, c.b, c.r);
+      if (k && k.t < t) {
+        t = k.t;
+        target = o;
       }
     }
-    return best ? { target: best, at: from.clone().addScaledVector(d, bestT) } : { target: null, at: from.clone().addScaledVector(d, Math.min(RANGE, reach)) };
+    return { target, at: new THREE.Vector3(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t) };
   };
 
   return {
-    // yours: what it hits is decided now (along `dir` from `from`, your
-    // eyes' line), and it flies there, from the gun's `muzzle` if it's given
-    fire(from, dir, targets, color = '#ff3b30', reach = RANGE, muzzle = null) {
-      const hit = along(from, dir, targets, reach);
+    bolts,
+    solids,
+    aim,
+    // yours: the eyes' line finds the aim point; the bolt leaves the gun's
+    // `muzzle` (or `from`) for it, and what it hits is its event
+    fire(from, dir, targets, color = '#ff3b30', reach = RANGE, muzzle = null, tag = null) {
+      const hit = aim(from, dir, targets, reach);
       const start = muzzle ?? from;
-      shoot(start, muzzle ? hit.at.clone().sub(start).normalize() : dir, color, false, hit.at);
-      return hit;
+      const go = hit.at.clone().sub(start);
+      // (the aim point behind the muzzle, a wall at your nose: along the look)
+      const way = go.lengthSq() > 1e-4 && go.dot(dir) > 0 ? go : dir;
+      const bolt = bolts.fire({ from: arr(start), dir: arr(way), range: Math.min(RANGE, reach), owner: 'you', side: 'you', colour: color, tag, ballistic });
+      return { ...hit, bolt };
     },
-    // one soldier's at another (neither of them you): it flies from `from`
-    // to `to` (arrays) and lands there, and nothing it passes is hurt
+    // theirs at `to` (a point on you, or on what they believe is you), off by `spread`
+    enemy(from, to, spread = 0.06, color = '#ff3b30', damage = 8, { side = 'them', owner = null, tag = null, rng = Math.random, min = 0 } = {}) {
+      const f = arr(from);
+      const t = arr(to);
+      const dir = scatter([t[0] - f[0], t[1] - f[1], t[2] - f[2]], spread, rng, min);
+      return bolts.fire({ from: f, dir, range: RANGE, owner, side, damage, colour: color, deflect: true, tag });
+    },
+    shoot: (spec) => bolts.fire(spec),
+    // a battle's (assault.js counts its own hits): it flies, and only a wall stops it
     tracer(from, to, color = '#ff3b30') {
-      const f = new THREE.Vector3(...from);
-      const end = new THREE.Vector3(...to);
-      shoot(f, end.clone().sub(f), color, false, end);
+      const f = arr(from);
+      const t = arr(to);
+      const d = [t[0] - f[0], t[1] - f[1], t[2] - f[2]];
+      return bolts.fire({ from: f, dir: d, range: Math.min(RANGE, Math.hypot(d[0], d[1], d[2])), colour: color, ghost: true });
     },
-    // theirs, at `to` (a point on you), off by `spread`
-    enemy(from, to, spread = 0.06, color = '#ff3b30', damage = 8) {
-      const f = new THREE.Vector3(...from);
-      const dir = to.clone().sub(f).normalize();
-      dir.x += (Math.random() - 0.5) * spread * 2;
-      dir.y += (Math.random() - 0.5) * spread;
-      dir.z += (Math.random() - 0.5) * spread * 2;
-      const b = shoot(f, dir.normalize(), color, true, null);
-      b.damage = damage;
-      b.deflect = false;
-      b.target = to.clone();
-      return b;
+    update(dt, { bodies = [], blades = [] } = {}) {
+      flat.bodies = bodies;
+      flat.blades = blades;
+      const events = bolts.step(dt, flat);
+      for (const e of events) if (e.type !== 'gone') draw.flash(e.at);
+      draw.sync(bolts.live());
+      draw.update(dt);
+      return events;
     },
-    // on with them; returns how hard you were hit this frame
-    // (`deflect(at)`: a bolt marked `deflect` that reaches you is turned
-    // back off the blade instead, up and away, and this hears of it)
-    update(dt, you, deflect = null) {
-      const last = scratch[0];
-      const now = scratch[1];
-      const body = scratch[2];
-      let hurt = 0;
-      for (const b of bolts) {
-        if (!b.m.visible) continue;
-        const p = b.m.position;
-        last[0] = p.x;
-        last[1] = p.y;
-        last[2] = p.z;
-        p.addScaledVector(b.v, dt);
-        b.life -= dt;
-        // theirs: through you on its way this frame (the whole of the way:
-        // a bolt goes further in a frame than you are wide), it's a hit
-        if (b.theirs && you) {
-          body[0] = you.x;
-          body[1] = you.y + 1;
-          body[2] = you.z;
-          now[0] = p.x;
-          now[1] = p.y;
-          now[2] = p.z;
-          if (sweptHit(last, now, body, 0.55)) {
-            if (b.deflect) {
-              b.deflect = false;
-              b.theirs = false;
-              b.v.negate();
-              b.v.x += (Math.random() - 0.5) * SPEED * 0.5;
-              b.v.y += (0.2 + Math.random() * 0.5) * SPEED;
-              b.v.z += (Math.random() - 0.5) * SPEED * 0.5;
-              b.v.setLength(SPEED);
-              b.m.lookAt(p.clone().add(b.v));
-              b.life = 0.5;
-              flash(p);
-              deflect?.(p);
-            } else {
-              hurt += b.damage ?? 8;
-              b.life = 0;
-            }
-          }
-        }
-        if (b.life <= 0) {
-          b.m.visible = false;
-          if (!b.theirs || hurt) flash(b.m.position);
-        }
-      }
-      for (const f of flashes) {
-        if (!f.m.visible) continue;
-        f.age += dt;
-        f.m.scale.setScalar(0.6 + f.age * 3);
-        f.m.material.opacity = Math.max(0, 0.6 - f.age * 3);
-        if (f.age > 0.2) f.m.visible = false;
-      }
-      return hurt;
-    },
+    flash: (at) => draw.flash(at),
+    speed: BOLT_SPEED,
     dispose() {
-      geo.dispose();
-      flashGeo.dispose();
-      for (const m of mats.values()) m.dispose();
-      for (const f of flashes) f.m.material.dispose();
-      group.removeFromParent();
+      draw.dispose();
     },
   };
 }

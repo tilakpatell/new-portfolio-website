@@ -8,16 +8,23 @@
 // nothing leads to, rooms that overlap. Pure.
 //
 //   ROOM_KINDS                     every kind a room may be (the scene has one builder a kind)
-//   buildLayout(station) → { station, rooms, doors, walls, lifts, roomAt, floorAt }
-//     rooms: Map<id, room & { box: { x0, x1, z0, z1 }, doors: [doorId], floors: [{ x0, x1, z0, z1, y }] }>
+//   buildLayout(station) → { station, rooms, doors, walls, lifts, jumps, roomAt, floorAt }
+//     rooms: Map<id, room & { box: { x0, x1, z0, z1 }, doors: [doorId], floors: [{ x0, x1, z0, z1, y, tag? }] }>
 //     doors: Map<id, door & { y }>   y: the floor the doorway stands on
 //     walls: [{ x0, z0, x1, z1, y0, y1, room, door? }]   a doorway is its own segment, with `door`;
 //       the wall over it (and under it, when it is raised) is a segment without. Walking a
 //       segment from (x0, z0) to (x1, z1), its room is on the right, seen from above with north up.
 //     lifts: Map<id, lift>
+//     jumps: [{ id, from: roomId, x, z, r, to: spotName, prompt, lock? }]   use-points that move whoever
+//       uses them within r of (x, z) to a spot: a drop down a chute, a swing across a chasm
 //     roomAt(x, y, z) → roomId | null   the room whose footprint holds x, z with y within
 //       [its lowest floor − 0.5, its ceiling]; a room nested inside another wins over it
-//     floorAt(room, x, z) → y | null   the highest floor there; null is a void (a shaft, a chasm, space)
+//     floorAt(room, x, z, off?) → y | null   the highest floor there; null is a void (a shaft, a chasm,
+//       space). A floor may carry a `tag`; one whose tag is in the Set `off` isn’t there (a bridge
+//       drawn back).
+//   offTags(layout, flags) → Set<tag>   the `off` to give floorAt: every tag on the layout’s floors that
+//       no flag of that name has switched on. Everyone who asks floorAt (or reads a room’s floors)
+//       while a story runs passes this, so a bridge exists only while its flag is set, the same for all.
 //   validateStation(station) → [message]   empty when the station is sound
 //
 // A room may be nested in another (`inside: parentId`), like the Falcon’s
@@ -25,6 +32,9 @@
 // room, and the door between them is on the nested room’s wall, inside
 // the parent. Round rooms (`round: true`, w the diameter) are walled with
 // 24 segments, and take doors only where their wall runs along the door.
+// A jump is a way in that only goes one way, so a room reached only by
+// dropping into it still counts as reached, and the room dropped from
+// doesn’t count as reached from it.
 
 export const ROOM_KINDS = [
   'hangar',
@@ -69,21 +79,29 @@ const SEGMENTS = 24; // a round room’s wall
 const SLACK = 0.01; // rooms that touch don’t overlap
 const TINY = 1e-6;
 
-const boxOf = (r) => ({ x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: r.z - r.d / 2, z1: r.z + r.d / 2 });
+// (a round room gives only its diameter, w: its box is the square round its circle)
+const boxOf = (r) => {
+  const d = r.round ? r.w : r.d;
+  return { x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: r.z - d / 2, z1: r.z + d / 2 };
+};
 
 function floorsOf(r) {
   if (!r.floors) return [{ ...boxOf(r), y: r.y, ...(r.round ? { circle: { x: r.x, z: r.z, r: r.w / 2 } } : {}) }];
-  return r.floors.map((f) => ({ x0: r.x + f.x - f.w / 2, x1: r.x + f.x + f.w / 2, z0: r.z + f.z - f.d / 2, z1: r.z + f.z + f.d / 2, y: r.y + f.y }));
+  return r.floors.map((f) => ({ x0: r.x + f.x - f.w / 2, x1: r.x + f.x + f.w / 2, z0: r.z + f.z - f.d / 2, z1: r.z + f.z + f.d / 2, y: r.y + f.y, ...(f.tag ? { tag: f.tag } : {}) }));
 }
+
+// Tags that say what a floor is rather than whether it is there: no flag
+// takes these away.
+const STANDING = new Set(['water']);
 
 function inFloor(f, x, z) {
   if (x < f.x0 || x > f.x1 || z < f.z0 || z > f.z1) return false;
   return !f.circle || (x - f.circle.x) ** 2 + (z - f.circle.z) ** 2 <= f.circle.r ** 2;
 }
 
-function floorIn(room, x, z) {
+function floorIn(room, x, z, off) {
   let y = null;
-  for (const f of room.floors) if (inFloor(f, x, z) && (y === null || f.y > y)) y = f.y;
+  for (const f of room.floors) if (inFloor(f, x, z) && (y === null || f.y > y) && !(f.tag && off?.has(f.tag))) y = f.y;
   return y;
 }
 
@@ -153,9 +171,10 @@ function doorY(rooms, door) {
 
 // One stretch of wall from p to q, cut into the doorway and whatever
 // wall stands over and under it when the door is lower than the room.
-function pushPiece(walls, room, p, q, y0, y1, door) {
+// (the wall over a doorway says whose it is, `over`, so one taller than a man can stoop under it)
+function pushPiece(walls, room, p, q, y0, y1, door, over) {
   if (Math.hypot(q.x - p.x, q.z - p.z) < TINY || y1 - y0 < TINY) return;
-  walls.push({ x0: p.x, z0: p.z, x1: q.x, z1: q.z, y0, y1, room: room.id, ...(door ? { door: door.id } : {}) });
+  walls.push({ x0: p.x, z0: p.z, x1: q.x, z1: q.z, y0, y1, room: room.id, ...(door ? { door: door.id } : {}), ...(over ? { over: over.id } : {}) });
 }
 
 function pushDoorway(walls, room, p, q, door, lo, hi) {
@@ -163,7 +182,7 @@ function pushDoorway(walls, room, p, q, door, lo, hi) {
   const foot = Math.max(lo, door.y);
   pushPiece(walls, room, p, q, lo, foot);
   pushPiece(walls, room, p, q, foot, top, door);
-  pushPiece(walls, room, p, q, top, hi);
+  pushPiece(walls, room, p, q, top, hi, null, door);
 }
 
 function boxWalls(walls, room, doors) {
@@ -238,6 +257,7 @@ export function buildLayout(station) {
     else boxWalls(walls, room, own);
   }
   const lifts = new Map((station.lifts ?? []).map((l) => [l.id, l]));
+  const jumps = (station.jumps ?? []).map((j) => ({ ...j }));
   // asked of every body every step, so each room’s heights and nesting are worked out once
   const depth = (room) => {
     let n = 0;
@@ -261,12 +281,25 @@ export function buildLayout(station) {
     return best;
   }
 
-  function floorAt(id, x, z) {
+  function floorAt(id, x, z, off) {
     const room = rooms.get(id);
-    return room ? floorIn(room, x, z) : null;
+    return room ? floorIn(room, x, z, off) : null;
   }
 
-  return { station, rooms, doors, walls, lifts, roomAt, floorAt };
+  return { station, rooms, doors, walls, lifts, jumps, roomAt, floorAt };
+}
+
+// asked every step, so each layout’s switched tags are gathered once
+const switched = new WeakMap();
+
+export function offTags(layout, flags) {
+  if (!switched.has(layout)) {
+    const tags = new Set();
+    for (const room of layout.rooms.values()) for (const f of room.floors) if (f.tag && !STANDING.has(f.tag)) tags.add(f.tag);
+    switched.set(layout, [...tags]);
+  }
+  const on = flags instanceof Set ? flags : new Set(flags ?? []);
+  return new Set(switched.get(layout).filter((tag) => !on.has(tag)));
 }
 
 function overlaps(a, b) {
@@ -363,19 +396,36 @@ function checkLifts(station, layout, say) {
   }
 }
 
+function checkJumps(station, layout, say) {
+  const seen = new Set();
+  for (const jump of station.jumps ?? []) {
+    if (seen.has(jump.id)) say(`jump ${jump.id} is used twice`);
+    seen.add(jump.id);
+    const room = layout.rooms.get(jump.from);
+    if (!room) say(`jump ${jump.id}: there is no room ${jump.from} to jump from`);
+    else if (!holds(room, jump.x, jump.z)) say(`jump ${jump.id} stands outside ${room.id}`);
+    if (!(jump.r > 0)) say(`jump ${jump.id}: its reach must be more than nothing`);
+    if (!station.spots?.[jump.to]) say(`jump ${jump.id}: there is no spot ${jump.to} to land on`);
+    if (jump.lock !== undefined && !LOCK.test(jump.lock)) say(`jump ${jump.id}: no such lock as “${jump.lock}”`);
+  }
+}
+
 // Every room must be reachable from where the Rebel starts, through doors
-// and lifts (a lift joins all its stops).
+// and lifts (a lift joins all its stops), and jumps, which go one way.
 function checkReach(station, layout, say) {
   const from = station.starts?.rebel?.room;
   if (!layout.rooms.has(from)) return;
   const next = new Map([...layout.rooms.keys()].map((id) => [id, new Set()]));
+  const link = (a, b) => {
+    if (next.has(a) && next.has(b)) next.get(a).add(b);
+  };
   const join = (a, b) => {
-    if (!next.has(a) || !next.has(b)) return;
-    next.get(a).add(b);
-    next.get(b).add(a);
+    link(a, b);
+    link(b, a);
   };
   for (const d of station.doors ?? []) join(d.a, d.b);
   for (const l of station.lifts ?? []) for (const a of l.stops ?? []) for (const b of l.stops ?? []) if (a !== b) join(a, b);
+  for (const j of station.jumps ?? []) link(j.from, station.spots?.[j.to]?.room);
   const reached = new Set([from]);
   const queue = [from];
   while (queue.length) {
@@ -409,6 +459,7 @@ export function validateStation(station) {
   checkRooms(station, layout, say);
   checkDoors(station, layout, say);
   checkLifts(station, layout, say);
+  checkJumps(station, layout, say);
   checkReach(station, layout, say);
   checkPlaces(station, layout, say);
   return errors;

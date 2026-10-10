@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CAM, DIVE, FIRST_DIVE, SUN } from './module';
 import earth from './module';
 import { WORLD_MB } from '../worlds/worlds';
+import { ALT, HOME_V, bearingOf, newFlight } from './rules';
 
 // the drawing, stood in for (its API as scene.js's createEarth returns it)
-const api = { ready: Promise.resolve(), warm: vi.fn(() => Promise.resolve()), render: vi.fn(), resize: vi.fn(), screenOf: vi.fn(() => ({ x: 0, y: 0, on: false })), pick: vi.fn(() => null), dispose: vi.fn() };
+const api = { ready: Promise.resolve(), warm: vi.fn(() => Promise.resolve()), render: vi.fn(), resize: vi.fn(), screenOf: vi.fn(() => ({ x: 0, y: 0, on: false })), pick: vi.fn(() => null), snap: vi.fn(), dispose: vi.fn() };
 vi.mock('./scene', () => ({ createEarth: vi.fn(() => api) }));
 vi.mock('./sounds', () => ({ setBus: vi.fn(), rush: vi.fn(), roll: vi.fn(), chime: vi.fn(), stamp: vi.fn(), engine: vi.fn(() => ({ set: vi.fn(), stop: vi.fn() })) }));
 vi.mock('../travel/globe3d/data', () => ({ globeData: () => ({ xyz: new Float32Array(3), owner: [0], count: 1 }), countryName: () => 'Nowhere' }));
@@ -43,8 +44,8 @@ describe('earth module', () => {
     api.dispose.mockClear();
   });
 
-  it('is a glsl module that makes a whole world', async () => {
-    expect(earth).toMatchObject({ id: 'earth', shading: 'glsl', mb: WORLD_MB['/earth'] });
+  it('is a nodes module that makes a whole world', async () => {
+    expect(earth).toMatchObject({ id: 'earth', shading: 'nodes', mb: WORLD_MB['/earth'] });
     const rt = fakeRt();
     const world = await earth.create(rt, {});
     await world.ready;
@@ -55,6 +56,41 @@ describe('earth module', () => {
     expect(api.resize).toHaveBeenCalledWith(640, 360);
     world.dispose();
     expect(api.dispose).toHaveBeenCalled();
+  });
+
+  it('tunes behind ?debug: the exposure, the sun and the camera, read and written live', async () => {
+    const rt = fakeRt();
+    rt.gfx.renderer.toneMappingExposure = 1.05;
+    const world = await earth.create(rt, {});
+    const groups = world.tune();
+    expect(groups.map((g) => g.name)).toEqual(['earth', 'flight', 'look']);
+    const item = (k) => groups[0].items.find((i) => i.key === k);
+    expect(item('exposure').get()).toBe(1.05);
+    item('exposure').set(1.4);
+    expect(rt.gfx.renderer.toneMappingExposure).toBe(1.4);
+    expect(item('sun')).toMatchObject({ type: 'select', options: ['day', 'real'] });
+    expect(item('sun').get()).toBe('day');
+    item('sun').set('real');
+    expect(rt.saves.get(SUN)).toBe('real');
+    item('sun').set('real'); // (the same choice again changes nothing)
+    expect(item('sun').get()).toBe('real');
+    expect(item('cockpit')).toMatchObject({ type: 'bool' });
+    expect(item('cockpit').get()).toBe(false);
+    item('cockpit').set(true);
+    expect(rt.saves.get(CAM)).toBe('cockpit');
+    expect(item('cockpit').get()).toBe(true);
+    world.dispose();
+  });
+
+  it('puts the flight’s own numbers on the panel, read and written live', async () => {
+    const world = await earth.create(fakeRt(), {});
+    const cruise = world.tune()[1].items.find((i) => i.key === 'cruise');
+    const was = cruise.get();
+    expect(was).toBeGreaterThan(0);
+    cruise.set(was * 2);
+    expect(cruise.get()).toBe(was * 2);
+    cruise.set(was);
+    world.dispose();
   });
 
   it('dives on its own after a moment over the globe, unless touched', async () => {
@@ -146,5 +182,31 @@ describe('earth module', () => {
     run(world, 2, snapshot({ keys: ['KeyW'] }));
     expect(world.sim.f.km).toBe(km0);
     expect(world.sim.engine).toBe(null);
+  });
+
+  it('in development, a named view puts the world somewhere fixed and holds it still (the parity check’s)', async () => {
+    const rt = fakeRt();
+    const world = await earth.create(rt, {});
+    run(world, 1);
+    world.view('orbit');
+    expect(world.sim).toMatchObject({ mode: 'orbit', view: 0, paused: true, touched: true });
+    expect(world.sim.f.p).toEqual(newFlight().p);
+    run(world, 0.5);
+    expect(world.sim.mode).toBe('orbit'); // (no dive of its own)
+    const at = api.render.mock.calls.at(-1)[0];
+    run(world, 0.2);
+    expect(api.render.mock.calls.at(-1)[0].t).toBe(at.t); // (the clouds' drift held too)
+    expect(at.t).toBeTypeOf('number');
+
+    world.view('low');
+    expect(world.sim).toMatchObject({ mode: 'fly', view: 1, paused: true });
+    expect(world.sim.f.alt).toBe(ALT.min);
+    expect(world.sim.f.p).toEqual(HOME_V);
+    expect(Math.round(bearingOf(world.sim.f.p, world.sim.f.h))).toBe(90);
+    expect(api.snap).toHaveBeenCalled(); // (the chase camera straight to its place, not eased there)
+    const p = [...world.sim.f.p];
+    run(world, 0.5);
+    expect(world.sim.f.p).toEqual(p);
+    expect(() => world.view('nowhere')).toThrow(/view/);
   });
 });

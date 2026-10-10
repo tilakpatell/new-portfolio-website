@@ -3,7 +3,8 @@ name: CI
 # Every pull request to main: install, lint, test, build. The autopilot
 # (.claude/skills/autopilot) waits for this check before it merges, and a
 # red check stops any merge from deploying something broken (deploy.yml runs
-# the same steps again on main before it publishes).
+# the same steps again on main before it publishes). Beside it, the AI's
+# tests, and the multiplayer's two-browser check (evidence, not a gate).
 on:
   pull_request:
     branches: [main]
@@ -31,6 +32,13 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      - run: npm run coverage:bf2017
+      # the build as the deploy makes it with the asset bucket set (a stand-in
+      # URL: nothing is fetched), then as it is without, which the checks read
+      - run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_ASSET_BASE: https://assets.invalid/storage/v1/object/public/assets
       - run: npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -90,3 +98,76 @@ jobs:
           name: renders
           path: scripts/ai-e2e/render/out/
           if-no-files-found: ignore
+
+  # Multiplayer in two browsers (scripts/online-check.mjs --universe: Alpha
+  # and Bravo meet on the universe map, see each other's tags and become
+  # allies; then scripts/flyto-check.mjs: Alpha flies to Bravo, and Bravo
+  # goes offline mid-trip) on the fake relay (scripts/lib/fake-relays.mjs,
+  # RELAY=fake), so no network is needed; from the squads' second pull
+  # request on, scripts/squad-check.mjs runs the same way. Evidence, not a
+  # gate: a red run is read, then fixed or explained in the pull request.
+  # (Each check runs in `shell: bash`, which has pipefail, so a check that
+  # fails fails its step through the tee that keeps its lines.)
+  online:
+    name: Multiplayer
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium
+
+      # the dev server in the background, and a wait till it answers
+      - run: |
+          npx vite --port 5173 > vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:5173/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat vite.log
+          exit 1
+
+      - shell: bash
+        run: |
+          RELAY=fake CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" node scripts/online-check.mjs --universe 2>&1 | tee online-check.log
+
+      # the fly-to check, whatever the first came to. Reported, but it doesn't
+      # turn the job red: two pages drawing in software on a runner send their
+      # poses seconds apart, past STALE_MS (2.5 s, online/protocol.js), and the
+      # trip then rightly ends "has gone" (with two browsers it had never been
+      # run till this job: docs/superpowers/HANDOFF-multiplayer-economy.md)
+      - if: ${{ !cancelled() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          RELAY=fake CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" node scripts/flyto-check.mjs 2>&1 | tee flyto-check.log
+
+      # planet flight: begin (scripts/flight-island.mjs removes this block)
+      # the shared world over a planet (online-check.mjs --fly): two pilots
+      # heard by cell, a turret built, kept over a reload and shot to nothing,
+      # the durable world faked in the check (scripts/lib/fake-durable.mjs)
+      # (the turret's time is taken in the two pages, so a long software frame
+      # holding the harness's calls doesn't count against its 3 s)
+      - if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          RELAY=fake CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" node scripts/online-check.mjs --fly 2>&1 | tee fly-check.log
+      # planet flight: end
+
+      # what each said, as a note on the check (readable where the log isn't)
+      - if: always()
+        shell: bash
+        run: |
+          for log in *-check.log; do
+            [ -f "$log" ] || continue
+            check="${log%.log}"
+            lines=$(grep -E '^(ok|FAIL|note|fly:|errors:|ALL OK|[0-9]+ FAILED|     )' "$log" | cut -c1-300 | sed -e 's/%/%25/g' | awk 'NR <= 40 { printf "%s%%0A", $0 }' || true)
+            echo "::notice title=${check}::${lines}"
+          done

@@ -154,6 +154,7 @@ if (runs('smoke')) {
     problems.push('no Chromium (set CHROMIUM=/path/to/chrome)');
     finish();
   }
+  const GATE = /Walk the tribute/;
   const browser = await chromium.launch({ executablePath: exe, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--js-flags=--max-old-space-size=4096'] });
   const viewport = phone ? { width: 390, height: 844 } : { width: 1440, height: 900 };
   if (shots) await mkdir(join(ROOT, 'public/changes'), { recursive: true });
@@ -180,6 +181,8 @@ if (runs('smoke')) {
       await page.goto(`${base}/#${route}`, { waitUntil: 'load', timeout: 120000 });
       await page.evaluate(() => document.fonts?.ready).catch(() => {});
       let canvas = true;
+      // (a world behind a gate with a way through for everyone: Minecraft's password, past to the tribute)
+      if (threeD) await page.getByRole('button', { name: GATE }).click({ timeout: 3000 }).catch(() => {});
       if (threeD) canvas = await page.waitForSelector('canvas', { timeout: 90000, state: 'attached' }).then(() => true, () => false);
       if (!canvas) errors.push('no canvas: the 3D never started');
       await page.waitForTimeout(threeD ? settle : 1500);

@@ -1,0 +1,242 @@
+{
+  "pack": "farm",
+  "licence": "CC0-1.0",
+  "source": "Quaternius, Farm Animals (https://quaternius.com)",
+  "models": {
+    "Cow": {
+      "family": "cow",
+      "file": "cow.glb",
+      "parts": [
+        "main",
+        "main",
+        "main"
+      ],
+      "tris": 796,
+      "tris1": null,
+      "radius": 4.722,
+      "height": 5.08,
+      "trunk": 2.688,
+      "kind": "character",
+      "rig": {
+        "bones": 28,
+        "clips": {
+          "WalkSlow": 2.083,
+          "Death": 1.25,
+          "Jump": 1.708,
+          "Idle": 6.25,
+          "Walk": 3.333,
+          "Run": 1.417
+        }
+      }
+    },
+    "Horse": {
+      "family": "horse",
+      "file": "horse.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 690,
+      "tris1": null,
+      "radius": 4.793,
+      "height": 6.924,
+      "trunk": 2.839,
+      "kind": "character",
+      "rig": {
+        "bones": 28,
+        "clips": {
+          "WalkSlow": 2,
+          "Death": 1.083,
+          "Jump": 1.5,
+          "Idle": 6.25,
+          "Walk": 2.667,
+          "Run": 0.833
+        }
+      }
+    },
+    "Llama": {
+      "family": "llama",
+      "file": "llama.glb",
+      "parts": [
+        "main",
+        "main",
+        "main"
+      ],
+      "tris": 662,
+      "tris1": null,
+      "radius": 2.579,
+      "height": 5.84,
+      "trunk": 1.57,
+      "kind": "character",
+      "rig": {
+        "bones": 24,
+        "clips": {
+          "Jump": 1.125,
+          "Idle": 6.25
+        }
+      }
+    },
+    "Pig": {
+      "family": "pig",
+      "file": "pig.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 562,
+      "tris1": null,
+      "radius": 5.164,
+      "height": 4.588,
+      "trunk": 3.03,
+      "kind": "character",
+      "rig": {
+        "bones": 24,
+        "clips": {
+          "Jump": 1.5,
+          "Idle": 6.25
+        }
+      }
+    },
+    "Pug": {
+      "family": "pug",
+      "file": "pug.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 644,
+      "tris1": null,
+      "radius": 1.899,
+      "height": 2.642,
+      "trunk": 1.274,
+      "kind": "character",
+      "rig": {
+        "bones": 24,
+        "clips": {
+          "Jump": 1.5,
+          "Idle": 6.25
+        }
+      }
+    },
+    "Sheep": {
+      "family": "sheep",
+      "file": "sheep.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 612,
+      "tris1": null,
+      "radius": 3.161,
+      "height": 4.35,
+      "trunk": 1.889,
+      "kind": "character",
+      "rig": {
+        "bones": 24,
+        "clips": {
+          "Jump": 1.125,
+          "Idle": 6.25
+        }
+      }
+    },
+    "Zebra": {
+      "family": "zebra",
+      "file": "zebra.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 1354,
+      "tris1": null,
+      "radius": 4.793,
+      "height": 7.028,
+      "trunk": 2.95,
+      "kind": "character",
+      "rig": {
+        "bones": 28,
+        "clips": {
+          "WalkSlow": 2,
+          "Death": 1.083,
+          "Jump": 1.5,
+          "Idle": 6.25,
+          "Walk": 2.667,
+          "Run": 0.833
+        }
+      }
+    }
+  },
+  "materials": {
+    "Beige": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Black": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Black_2": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Brown": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Brown_2": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Grey": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Material": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Material.003": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Material.003_2": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Material.006": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "Pink": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    },
+    "White": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {}
+    }
+  }
+}

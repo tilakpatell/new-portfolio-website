@@ -33,6 +33,8 @@ const booth = (a) => ({ at: [r1(sin(a) * 9.9), r1(cos(a) * 9.9)], face: r1(Math.
 
 export const SITES = {
   tatooine: {
+    // lit as the game lights its level (src/data/bf2017/light/tatooine.json, gameLit.js)
+    gameLight: 'tatooine',
     place: 'The Jundland Wastes',
     line: 'Two suns, and sand to the edge of the world.',
     sky: {
@@ -122,8 +124,8 @@ export const SITES = {
           rv: [['walt', 'A cantina full of smugglers and bounty hunters.'], ['jesse', 'So… basically Albuquerque.']],
         },
         things: [
-          { kind: 'cantina', at: [0, 0], yaw: 0.3 },
-          { kind: 'dockingbay', at: [-34, 22], yaw: 2.2 },
+          { kind: 'moscantina', at: [0, 0], yaw: 0.3 },
+          { kind: 'dockingbay', at: [-34, 22], yaw: 2.2, model: false },
           { kind: 'adobe', at: [26, 16], opts: { r: 4.5 } },
           { kind: 'adobe', at: [34, -10], opts: { r: 3.6 } },
           { kind: 'adobe', at: [18, -28], opts: { r: 5 } },
@@ -204,10 +206,10 @@ export const SITES = {
           falcon: [['han', 'Tuskens. Let’s not stay for dinner.']],
         },
         things: [
-          { kind: 'tent', at: [0, 0], yaw: 0.2 },
-          { kind: 'tent', at: [8, -5], yaw: 1.4 },
-          { kind: 'tent', at: [-7, -7], yaw: 2.5 },
-          { kind: 'tent', at: [4, 9], yaw: 3.6 },
+          { kind: 'tent', at: [0, 0], yaw: 0.2, opts: { style: 'tusken' } },
+          { kind: 'tent', at: [8, -5], yaw: 1.4, opts: { style: 'tusken' } },
+          { kind: 'tent', at: [-7, -7], yaw: 2.5, opts: { style: 'tusken' } },
+          { kind: 'tent', at: [4, 9], yaw: 3.6, opts: { style: 'tusken' } },
           { kind: 'fire', at: [1, -3] },
         ],
       },
@@ -252,7 +254,8 @@ export const SITES = {
           cruiser: [['rick', 'A slug with a palace, Morty. That’s the dream.'], ['morty', 'Th-there’s a monster in the basement, Rick! Everybody knows that!']],
         },
         things: [
-          { kind: 'palace', at: [0, 0] },
+          // (the keep's drum front just behind the gate)
+          { kind: 'palace', at: [3.5, -9] },
           // (the gate in front of the keep)
           { kind: 'palacegate', at: [0, 22] },
         ],
@@ -271,7 +274,7 @@ export const SITES = {
         things: [
           { kind: 'adobe', at: [-10, 4] },
           { kind: 'adobe', at: [12, -6] },
-          { kind: 'dockingbay', at: [2, 18], yaw: PI, opts: { r: 8, h: 4 } },
+          { kind: 'dockingbay', at: [2, 18], yaw: PI, scale: 0.55, wear: 'adobe' },
           { kind: 'vaporator', at: [-18, -10] },
           { kind: 'crates', at: [6, 6] },
           { kind: 'crates', at: [-4, -12] },
@@ -347,11 +350,14 @@ export const SITES = {
       { kind: 'dewback', n: 2, at: [-80, -300], spread: 10, roam: 14, speed: 0.7, r: 1.2 },
       { kind: 'sullustan', n: 1, at: [284, -244], roam: 8, speed: 1.0, name: 'A Sullustan pilot', says: ['(A string of chattering Sullustese, and a grin.)', 'Freighter’s in Bay 86. Cargo? Don’t ask.'] },
       { kind: 'ronto', n: 1, at: [330, -250], roam: 10, speed: 0.4, r: 1.3 },
+      // (the game's own: Mos Eisley's chickens and scurriers under the stalls)
+      { kind: 'chicken', n: 5, at: [298, -224], spread: 12, roam: 8, speed: 0.5, r: 0.2, solid: false },
+      { kind: 'scurrier', n: 4, at: [278, -252], spread: 18, roam: 12, speed: 0.9, r: 0.2, solid: false },
       { kind: 'villager', n: 5, at: [300, -230], spread: 40, roam: 25, speed: 1.1, needs: ['food'], name: 'Mos Eisley local', says: ['Watch yourself. This place can be a little rough.', 'Chalmun’s got a band in tonight. No droids, though.', 'If you’re looking for a pilot, try the cantina.', 'Hutt business. Don’t ask.'] },
       { kind: 'droid', n: 1, at: [-160, 140], roam: 10, speed: 0.6, name: 'An R5 unit', says: ['(A cheerful whistle. Its motivator sounds fine… for now.)'] },
       // who has something for you to do
       { kind: 'farmer', id: 'owen', at: [-158, 160], roam: 6, speed: 0.7, needs: ['work'], name: 'Owen Lars', named: true, quest: 'converters', says: ['Those vaporators won’t fix themselves.', 'You can waste time with your friends when your chores are done.'] },
-      { kind: 'pilot', id: 'biggs', at: [-14, 336], still: true, face: 2.6, name: 'Biggs Darklighter', named: true, quest: 'womprats', says: ['I’m going to the Academy. Then I’m jumping ship and joining the Rebellion. Don’t tell anyone.', 'Still the best bush pilot in the Outer Rim.'] },
+      { kind: 'rebelpilot', id: 'biggs', at: [-14, 336], still: true, face: 2.6, name: 'Biggs Darklighter', named: true, quest: 'womprats', says: ['I’m going to the Academy. Then I’m jumping ship and joining the Rebellion. Don’t tell anyone.', 'Still the best bush pilot in the Outer Rim.'] },
       { kind: 'villager', id: 'camie', at: [-26, 324], still: true, face: 1.2, name: 'Camie', named: true, quest: 'canyonrun', says: ['Biggs did the canyon in under thirty seconds. Bet you can’t.', 'Wormie’s always talking about Beggar’s Canyon.'] },
       { kind: 'villager', n: 2, at: TOSCHE, spread: 10, roam: 8, speed: 0.9, name: 'Anchorhead local', says: ['Did you hear? There was a big battle up there. Rebels, they say.', 'Power converters? Fixer’s got a crate of them somewhere.'] },
       { kind: 'farmer', id: 'hand', at: [-330, 196], roam: 4, speed: 0.6, name: 'A farmhand', quest: 'kraytcall', says: ['Those Sand People. They took my droid right off the crawler track.', 'Old Ben says they’re scared of krayt dragons. Who isn’t?'] },
@@ -372,8 +378,8 @@ export const SITES = {
         id: 'cantina',
         name: 'the cantina',
         music: 'cantina',
-        door: { at: from(CANTINA, [0, 9.9]), r: 2.6, prompt: 'Go into the cantina' },
-        back: from(CANTINA, [0, 12.5]),
+        door: { at: from(CANTINA, [2.5, 9.9]), r: 2.6, prompt: 'Go into the cantina' },
+        back: from(CANTINA, [2.5, 12.5]),
         inside: {
           build: 'cantinainside',
           spawn: [0, 14.6],
@@ -429,6 +435,8 @@ export const SITES = {
           { kind: 'gamorrean', at: [1.6, 25], still: true, face: -PI / 2, name: 'Gamorrean guard', says: ['(Snort.)'] },
           { kind: 'gamorrean', at: [-4.6, -5.4], still: true, face: 0, name: 'Gamorrean guard', says: ['(It watches the trapdoor, and grins.)'] },
           { kind: 'gamorrean', at: [4.6, -5.4], still: true, face: 0, name: 'Gamorrean guard', says: ['(Grunt.)'] },
+          // (off duty, sat on the floor by the wall: the game's own guard, on its own rig, lib/three/walrusSets/fauna.js)
+          { kind: 'gamorreanguard', at: [-8.6, 14], roam: 0, speed: 0, face: PI / 2, name: 'Gamorrean guard', says: ['(It grunts, and doesn’t get up.)'] },
           { kind: 'bith', at: [8, 3.1], still: true, face: 0, name: 'The organist', says: ['(A slow, greasy riff. Jabba likes it slow.)'] },
           { kind: 'twilek', n: 2, at: [6, 8.5], spread: 1.5, roam: 2, speed: 0.6, name: 'Twi’lek dancer', says: ['(She glances at the trapdoor, and keeps well clear of it.)'] },
           { kind: 'jawa', n: 2, at: [-5, 10], spread: 2, roam: 3, speed: 0.8, name: 'Jawa', says: ['Utinni!'] },

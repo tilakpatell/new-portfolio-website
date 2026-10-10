@@ -1,29 +1,24 @@
 // The Shire's values for the ?debug panel (lib/debugPanel): its look (the
-// moods' shadow colours, which ./sky.js's atmosphere writes each frame, the
-// edge between shade and light, the exposure), its grass, its wind and its
-// walking lens, each read and written live.
+// house's group, with the moods' shadow colours, which ./sky.js's
+// atmosphere writes each frame), its grass, its wind and its walking lens,
+// each read and written live.
+
+import { houseGroups } from '../../../lib/three/houseTuning';
 
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 const num = (s) => parseInt(s.replace('#', ''), 16);
 
 export function shireTuning({ house, grass, wind, lens, moods }) {
-  const u = house.uniforms;
   const g = grass.uniforms;
   const shadow = (mood) => ({ key: `${mood}Shadow`, label: `${mood} shadow`, type: 'colour', get: () => hex(moods[mood].shadow), set: (v) => (moods[mood].shadow = num(v)) });
   return [
-    {
-      name: 'look',
-      items: [
-        shadow('day'),
-        shadow('dawn'),
-        shadow('night'),
-        { key: 'edgeFrom', label: 'shade until', type: 'range', min: 0, max: 1, get: () => u.uLookEdge.value.x, set: (v) => (u.uLookEdge.value.x = v) },
-        { key: 'edgeTo', label: 'light from', type: 'range', min: 0, max: 1.5, get: () => u.uLookEdge.value.y, set: (v) => (u.uLookEdge.value.y = v) },
-        { key: 'mix', label: 'look', type: 'range', min: 0, max: 1, get: () => u.uLookMix.value, set: (v) => (u.uLookMix.value = v) },
-        { key: 'exposure', type: 'range', min: 0.6, max: 2.4, get: () => house.exposure, set: (v) => (house.exposure = v) },
-        { key: 'bounce', type: 'range', min: 0, max: 1, get: () => u.uLookBounce.value.y, set: (v) => (u.uLookBounce.value.y = v) },
-      ],
-    },
+    // the house's look group (lib/three/houseTuning), with the moods' three
+    // shadows in place of its one shade and without the sky in the fog:
+    // ./sky.js and the Ring write those every frame
+    ...houseGroups(house, { exposure: { get: () => house.exposure, set: (v) => (house.exposure = v) } }).map((look) => ({
+      ...look,
+      items: [shadow('day'), shadow('dawn'), shadow('night'), ...look.items.filter((i) => i.key !== 'shadow' && i.key !== 'fogMix')],
+    })),
     {
       name: 'grass',
       items: [

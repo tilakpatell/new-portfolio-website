@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { BUDGETS, budget, classifyDevice, pixelRatio, worldCheck } from './device';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { BUDGETS, budget, classifyDevice, pixelRatio, quality, resetDevice, setQuality, sharpness, worldCheck } from './device';
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const PIXEL = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36';
@@ -63,13 +63,23 @@ describe('the detail level: the tier, graded by the graphics chip', () => {
     expect(classifyDevice({ ua: WINDOWS, memory: 16, cores: 16, renderer: RTX5090 })).toMatchObject({ tier: 'high', grade: 'ultra', detail: 'ultra' });
   });
 
-  it('keeps an ordinary card, and a chip whose name says nothing, where a desktop always was', () => {
-    expect(classifyDevice({ ua: WINDOWS, memory: 16, renderer: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11)' })).toMatchObject({ tier: 'high', detail: 'high' });
-    expect(classifyDevice({ ua: IPAD_DESKTOP, touchPoints: 0, screen: 1440, renderer: 'Apple GPU' })).toMatchObject({ tier: 'high', grade: null, detail: 'high' });
+  it('gives Auto’s ultra to any laptop or desktop with a graphics chip, an ordinary card and a chip whose name says nothing included', () => {
+    expect(classifyDevice({ ua: WINDOWS, memory: 16, renderer: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11)' })).toMatchObject({ tier: 'high', detail: 'ultra', auto: 'ultra' });
+    expect(classifyDevice({ ua: IPAD_DESKTOP, touchPoints: 0, screen: 1440, renderer: 'Apple GPU' })).toMatchObject({ tier: 'high', grade: null, detail: 'ultra' });
+    expect(classifyDevice({ ua: WINDOWS, memory: 16 })).toMatchObject({ tier: 'high', detail: 'ultra' });
   });
 
-  it('lowers a weak built-in chip to mid, leaving the tier alone', () => {
-    expect(classifyDevice({ ua: WINDOWS, memory: 8, cores: 4, renderer: UHD620 })).toMatchObject({ tier: 'high', grade: 'mid', detail: 'mid' });
+  it('holds a weak built-in chip at high, leaving the tier alone', () => {
+    expect(classifyDevice({ ua: WINDOWS, memory: 8, cores: 4, renderer: UHD620 })).toMatchObject({ tier: 'high', grade: 'mid', detail: 'high', auto: 'high' });
+  });
+
+  it('starts a phone at mid and software WebGL at low', () => {
+    expect(classifyDevice({ ua: IPHONE, coarse: true, screen: 390, renderer: 'Apple GPU' })).toMatchObject({ detail: 'mid', auto: 'mid' });
+    expect(classifyDevice({ ua: WINDOWS, memory: 16, renderer: 'SwiftShader', software: true })).toMatchObject({ detail: 'low', auto: 'low' });
+  });
+
+  it('says what Auto would pick even when a level is pinned', () => {
+    expect(classifyDevice({ ua: WINDOWS, memory: 16, override: 'low' })).toMatchObject({ detail: 'low', auto: 'ultra' });
   });
 
   it('never lifts a phone, a small computer or a weak device past its tier', () => {
@@ -89,6 +99,12 @@ describe('the detail level: the tier, graded by the graphics chip', () => {
     expect(classifyDevice({ ua: WINDOWS, memory: 16, renderer: RTX5090, cap: { renderer: 'another chip', level: 'high' } }).detail).toBe('ultra');
     // a pinned level beats the cap: it's how to try ultra again
     expect(classifyDevice({ ua: WINDOWS, memory: 16, renderer: RTX5090, cap: { renderer: RTX5090, level: 'high' }, override: 'ultra' }).detail).toBe('ultra');
+  });
+
+  it('never caps a level the visitor picked by hand, and holds Auto to the cap', () => {
+    const cap = { renderer: RTX5090, level: 'high' };
+    expect(classifyDevice({ ua: WINDOWS, memory: 16, renderer: RTX5090, cap, override: 'ultra' })).toMatchObject({ detail: 'ultra', auto: 'high' });
+    expect(classifyDevice({ ua: WINDOWS, memory: 16, renderer: RTX5090, cap })).toMatchObject({ detail: 'high', auto: 'high' });
   });
 });
 
@@ -152,5 +168,79 @@ describe('whether a world asks before it loads', () => {
   it('asks when there is too little room left', () => {
     expect(worldCheck(6, desktop, 10)).toEqual({ ask: true, why: 'storage' });
     expect(worldCheck(6, desktop, 5000).ask).toBe(false);
+  });
+});
+
+describe('the quality mode the visitor chose', () => {
+  const store = new Map();
+  const events = [];
+  beforeEach(() => {
+    store.clear();
+    events.length = 0;
+    vi.stubGlobal('window', {
+      location: { search: '', hash: '' },
+      localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) },
+      navigator: { userAgent: WINDOWS, deviceMemory: 16, hardwareConcurrency: 8 },
+      screen: { width: 1920, height: 1080 },
+      innerWidth: 1920,
+      dispatchEvent: (e) => events.push(e),
+    });
+    resetDevice();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetDevice();
+  });
+
+  it('is Auto with nothing kept, at what Auto picks here', () => {
+    expect(quality()).toEqual({ mode: 'auto', level: 'ultra', auto: 'ultra', pinned: false });
+  });
+
+  it('keeps a picked level, says so, and tells the page', () => {
+    setQuality('mid');
+    expect(store.get('tp-quality')).toBe('mid');
+    expect(quality()).toEqual({ mode: 'mid', level: 'mid', auto: 'ultra', pinned: false });
+    expect(events.at(-1).type).toBe('tp:quality');
+    expect(events.at(-1).detail).toBe('mid');
+  });
+
+  it('goes back to Auto by forgetting the pick', () => {
+    setQuality('low');
+    setQuality('auto');
+    expect(store.has('tp-quality')).toBe(false);
+    expect(quality().mode).toBe('auto');
+    expect(events.at(-1).detail).toBe('ultra');
+  });
+
+  it('ignores a mode it doesn’t know', () => {
+    setQuality('max');
+    expect(store.has('tp-quality')).toBe(false);
+    expect(events).toHaveLength(0);
+  });
+
+  it('lets the address win over what is kept', () => {
+    store.set('tp-quality', 'low');
+    window.location.search = '?quality=high';
+    resetDevice();
+    expect(quality()).toMatchObject({ mode: 'high', level: 'high', pinned: true });
+  });
+
+  it('reads the sharpness, held between half and twice', () => {
+    expect(sharpness()).toBe(1);
+    store.set('tp-sharpness', '1.5');
+    expect(sharpness()).toBe(1.5);
+    store.set('tp-sharpness', '9');
+    expect(sharpness()).toBe(2);
+    store.set('tp-sharpness', 'soft');
+    expect(sharpness()).toBe(1);
+  });
+
+  it('asks before a big download only while the visitor wants it asked', () => {
+    const phone = classifyDevice({ ua: IPHONE, coarse: true, screen: 390 });
+    expect(worldCheck(10, phone).ask).toBe(true);
+    store.set('tp-ask-download', 'off');
+    expect(worldCheck(10, phone).ask).toBe(false);
+    // (too little room still asks: the download wouldn't fit)
+    expect(worldCheck(10, phone, 5).ask).toBe(true);
   });
 });

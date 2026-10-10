@@ -15,6 +15,7 @@ const SUB = 1 / 120; // the slice everything is worked out in, whatever the fram
 const MAX_DT = 0.05; // a frame longer than this (a tab come back) counts as this
 
 import { belief, createSenses, sense } from '../../../lib/ai/perception';
+import { createPress } from '../../../lib/press';
 
 export const ROBOT = { radius: 1.2, height: 9.5, walk: 7, run: 15, accel: 40, jump: 13, gravity: 32, step: 1.4, turn: 10, air: 0.35 };
 export const VEHICLE = { radius: 2.6, height: 4, length: 9, top: 40, boost: 62, accel: 16, brake: 34, reverse: 12, drag: 6, grip: 9, turn: 1.7, steerRate: 3.2, boostDrain: 0.35, boostFill: 0.12, step: 1.0 };
@@ -44,6 +45,28 @@ export const ENEMY_KINDS = {
 export const MEGATRON = { alt: 'tank', robot: 12, shift: 2.1, tank: 6.5, back: 1.6, speed: 17, turn: 1.5, range: 95, cooldown: 1.5, damage: 16, shell: 0.5, r: 3, h: 5.5 };
 export const BARRICADE = { alt: 'car', robot: 9, shift: 1.65, car: 5.5, back: 1.8, speed: 26, turn: 2.4, ram: 14, r: 2.3, h: 3.6 };
 export const FORMS = { megatron: MEGATRON, barricade: BARRICADE };
+// What a bump and a landing weigh, for the hit law (lib/impact.js): a
+// `bump` and a `land` say their speed and their force, that times this. The
+// truck’s knock at 3 m/s (the least that counts as a bump) is at the law’s
+// threshold, and full at 24; a robot’s jump lands at about half.
+ROBOT.mass = 4;
+VEHICLE.mass = 5;
+// The jump forgives (lib/press, Roll out’s numbers): pressed a moment before
+// the feet touch, it jumps as they do; a moment after walking off an edge,
+// it still jumps. One press a player, kept beside it, not in it (a player is
+// plain data, copied and sent).
+export const JUMP = { buffer: 0.14, coyote: 0.1 };
+const presses = new WeakMap();
+const jumpOf = (p) => {
+  let j = presses.get(p);
+  if (!j) presses.set(p, (j = createPress(JUMP)));
+  return j;
+};
+// (for the ?debug panel: the numbers, here and on the player's own press)
+export function setJump(p, next) {
+  for (const k of Object.keys(JUMP)) if (Number.isFinite(next[k])) JUMP[k] = next[k];
+  jumpOf(p).set(JUMP);
+}
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const wrap = (a) => a - TAU * Math.floor((a + Math.PI) / TAU);
@@ -156,7 +179,9 @@ export function buildWorld(area) {
 // direction if there was one.
 function resolve(world, body, r, h, step) {
   let hit = null;
-  for (let pass = 0; pass < 3; pass++) {
+  // (six passes: in the crack between two of Kaon’s seat blocks, three
+  // left it pushed from one into the other)
+  for (let pass = 0; pass < 6; pass++) {
     let moved = false;
     for (const s of world.near(body.x, body.z, r)) {
       if (s.base >= body.y + h || s.top <= body.y + step) continue;
@@ -303,7 +328,7 @@ function slice(p, input, h, world, events) {
       // the speed into the wall goes; along it, it stays
       const vn = p.vx * hit.nx + p.vz * hit.nz;
       if (vn < 0) {
-        if (vn < -3) events.push({ type: 'bump', speed: -vn });
+        if (vn < -3) events.push({ type: 'bump', speed: -vn, force: -vn * VEHICLE.mass, x: p.x - hit.nx * VEHICLE.radius, y: p.y + 1.5, z: p.z - hit.nz * VEHICLE.radius });
         p.vx -= hit.nx * vn;
         p.vz -= hit.nz * vn;
         const fx = Math.sin(p.yaw);
@@ -326,7 +351,7 @@ function slice(p, input, h, world, events) {
   }
   const floor = world.floorAt(p.x, p.z, Math.max(p.y, p.y - p.vy * h), step);
   if (p.y <= floor) {
-    if (!p.grounded && p.fell > 0.15) events.push({ type: 'land', speed: -p.vy });
+    if (!p.grounded && p.fell > 0.15) events.push({ type: 'land', speed: -p.vy, force: -p.vy * (p.mode === 'vehicle' ? VEHICLE.mass : ROBOT.mass), mode: p.mode });
     p.y = floor;
     p.vy = 0;
     p.grounded = true;
@@ -369,7 +394,9 @@ export function stepPlayer(p, input, dt, world) {
   p.hurt = Math.max(0, p.hurt - dt);
   p.calm = (p.calm ?? MEND.after) + dt;
   if (!p.dead && p.calm >= MEND.after && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + MEND.rate * dt);
-  if (input.jump && p.mode === 'robot' && p.grounded && !p.shifting && !p.dead) {
+  const jump = jumpOf(p);
+  if (input.jump) jump.press();
+  if (p.mode === 'robot' && !p.shifting && !p.dead && jump.take()) {
     p.vy = ROBOT.jump;
     p.grounded = false;
     events.push({ type: 'jump' });
@@ -382,6 +409,7 @@ export function stepPlayer(p, input, dt, world) {
   const n = Math.ceil(dt / SUB - 1e-9);
   const h = dt / n;
   for (let i = 0; i < n; i++) slice(p, input, h, world, events);
+  jump.ground(p.grounded, dt);
   return events;
 }
 

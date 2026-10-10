@@ -44,9 +44,9 @@ function Feature({ project, wide, flip, className = '', dim = false, waypoint = 
           <div className={`flex flex-col p-6 ${wide ? 'sm:p-10' : 'sm:p-8'}`}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-muted">{project.kind}</span>
-              {project.award && <span className="chip chip-accent !min-h-0 !py-0.5">{project.award}</span>}
+              {project.award && <span className="chip chip-accent chip-sm">{project.award}</span>}
             </div>
-            <h2 ref={fitTitle} id={`${project.id}-row`} data-tour="projects-featured" className={`display mt-3 ${wide ? 'text-[clamp(2.1rem,1.3rem+2.6vw,3.6rem)]' : 'text-[clamp(1.8rem,1.3rem+1.6vw,2.6rem)]'}`}>
+            <h2 ref={fitTitle} id={`${project.id}-row`} data-tour="projects-featured" className={`display mt-3 ${wide ? 'text-[clamp(2.1rem,1.3rem+2.6vw,3.6rem)]' : 'display-3'}`}>
               <Breakable text={project.title} />
             </h2>
             <p className="mt-4 max-w-[52ch] text-[1.05rem] leading-relaxed text-body">{project.summary}</p>
@@ -103,11 +103,13 @@ export default function Projects() {
   return (
     <div ref={page} className="relative">
       <RouteLine containerRef={page} />
-      <header data-theme-section="aws" className="shell relative z-10 pb-6 pt-[calc(var(--nav-h)+40px)] md:pb-10 md:pt-[calc(var(--nav-h)+72px)]">
+      <header data-theme-section="aws" className="shell relative z-10 pb-6 pt-[var(--page-top)] md:pb-10">
         <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <div className="relative">
             <Waypoint top="0.6rem" />
             <p className="eyebrow">Projects</p>
+            {/* its own size: the title shares the head with the cartridges, and at the
+                shared page size it breaks into three lines */}
             <PageTitle className="display mt-6 text-[clamp(3rem,1.4rem+4.6vw,5.4rem)]">
               Built to be
               <br />
@@ -135,7 +137,7 @@ export default function Projects() {
         <SitarDivider />
       </div>
 
-      <section data-theme-section="aws" className="shell relative z-10 pb-24 pt-16 md:pt-24" aria-labelledby="more-title">
+      <section data-theme-section="aws" className="shell section-last relative z-10 pt-16 md:pt-24" aria-labelledby="more-title">
         <SectionHeading title="Coursework, earlier builds and research" id="more-title" />
         <ul className="mt-8">
           {otherProjects.map((p) => (

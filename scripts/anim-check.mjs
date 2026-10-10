@@ -16,6 +16,7 @@
 //     [--unit 1] [--clock mixer|wall] [--quality high|mid|low] [--phone]
 //     [--do 'click:Defend'] [--do "__surfaceDo('missionDo','side','defend')"]
 //     [--json out.json] [--strict] [--gpu] [--headed] [--chrome edge|/path]
+//     [--held] [--talk] [--allow-empty]
 //
 //   --route: a hash route, written '#/c-137' or 'c-137' (Git Bash turns a
 //     bare '/c-137' into a path of its own). --seconds of the world sampled,
@@ -27,6 +28,15 @@
 //     a button by its name, anything else is run in the page (a world's dev
 //     hook: choosing a side in a Battlefront mission). --gpu draws on the
 //     graphics chip (on Windows, ANGLE's D3D11) instead of in software.
+//   --held: every held thing (lib/three/held.js's holdItem) sampled too:
+//     its grip in the palm, its axis on its line, a still carry's arm and
+//     an upright one's top (scripts/lib/anim-held.mjs has the measures);
+//     --talk: once sampled, each of the route's talkers (its dev hooks
+//     window.__talkers and window.__teleport) visited, the prompt naming
+//     them read and the key it names pressed, and the body's answer
+//     watched. Either failing is exit 1, and so is either asked for that
+//     sampled nothing (no held thing, no talker: "not run"), unless
+//     --allow-empty.
 //   CHROME (or --chrome) is the browser: a path, or 'edge' or 'chrome' for
 //     the usual places on Windows; else Playwright's Chromium in
 //     /opt/pw-browsers, else a local Edge or Chrome. PORT sets the port.
@@ -57,6 +67,9 @@ import { existsSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { emptyFails, HELD_LIMITS, heldPageScript, heldVerdict, talkCheck } from './lib/anim-held.mjs';
+
+export { emptyFails, HELD_LIMITS, heldPageScript, heldVerdict, keyOf, promptFor, sampleHeld, swingOf, TALK_WITHIN, talkCheck, talkVerdict } from './lib/anim-held.mjs';
 
 export const LIMIT = 0.15; // the most a planted toe may drift (m/s)
 export const PLANT = 0.03; // within this of its lowest, a toe is down (m)
@@ -190,6 +203,8 @@ export function toesOf(names) {
   const roles = [
     ['toe', ['lefttoebase', 'ball_l', 'l_toebase', 'l_leg04_toes_xl2', 'lefttoe', 'toe_l', 'toe.l'], ['righttoebase', 'ball_r', 'r_toebase', 'r_leg04_toes_xl2', 'righttoe', 'toe_r', 'toe.r']],
     ['foot', ['leftfoot', 'foot_l', 'l_foot', 'l_leg03_ankle_xb', 'foot.l'], ['rightfoot', 'foot_r', 'r_foot', 'r_leg03_ankle_xb', 'foot.r']],
+    // (the game's walkers on their own rigs, lib/three/rigSets.js: the AT-AT's and AT-TE's front feet)
+    ['foot', ['leftfrontfoot'], ['rightfrontfoot']],
   ];
   const plain = names.map((n) => plainBone(n));
   for (const [by, left, right] of roles) {
@@ -272,8 +287,8 @@ export function analyse(res, { limit = LIMIT, unit = 1, clock = 'mixer', plant =
 export const routeOf = (r) => `#/${String(r).replace(/^#?\/?/, '')}`;
 
 export function parseArgs(argv, env = {}) {
-  const a = { route: 'c-137', seconds: 6, frames: 20, port: Number(env.PORT) || 5391, host: '127.0.0.1', settle: 4, wait: 300, range: 40, unit: 1, limit: LIMIT, clock: 'mixer', quality: null, chrome: null, json: null, do: [], strict: false, gpu: false, headed: false, phone: false };
-  const flags = new Set(['strict', 'gpu', 'headed', 'phone']);
+  const a = { route: 'c-137', seconds: 6, frames: 20, port: Number(env.PORT) || 5391, host: '127.0.0.1', settle: 4, wait: 300, range: 40, unit: 1, limit: LIMIT, clock: 'mixer', quality: null, chrome: null, json: null, do: [], strict: false, gpu: false, headed: false, phone: false, held: false, talk: false, allowEmpty: false };
+  const flags = new Set(['strict', 'gpu', 'headed', 'phone', 'held', 'talk', 'allow-empty']);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {
@@ -282,7 +297,7 @@ export function parseArgs(argv, env = {}) {
     }
     const key = arg.slice(2);
     if (flags.has(key)) {
-      a[key] = true;
+      a[key === 'allow-empty' ? 'allowEmpty' : key] = true;
       continue;
     }
     if (!(key in a) || flags.has(key)) throw new Error(`unknown option ${arg}`);
@@ -566,6 +581,24 @@ export function report(v, { route, limit = LIMIT, scenes = 1, frames = 0, wall =
   return lines;
 }
 
+// --held's and --talk's lines for the report
+export function heldTalkLines(held, talk) {
+  const lines = [];
+  const deg = (r) => (r == null ? '-' : `${((r * 180) / Math.PI).toFixed(0)}°`);
+  if (held && !held.items.length) lines.push('held: not run (nothing held was sampled)');
+  else if (held) {
+    lines.push(`held: ${held.items.length} thing${held.items.length === 1 ? '' : 's'} (grip under ${HELD_LIMITS.grip * 100} cm, axis ${deg(HELD_LIMITS.axis)}, still arm ${HELD_LIMITS.swing} rad, upright ${deg(HELD_LIMITS.up)})`);
+    for (const it of held.items) lines.push(`  ${it.ok ? 'ok  ' : 'OVER'} ${it.kind.padEnd(11)} grip ${fmt(it.grip * 100, 1)} cm  axis ${deg(it.axis)}  swing ${fmt(it.swing, 2)}  up ${deg(it.up)}${it.why.length ? `  (${it.why.join('; ')})` : ''}`);
+  }
+  if (talk?.skipped || (talk && !talk.talkers?.length)) lines.push(`talk: not run (${talk.skipped ?? 'no talkers'})`);
+  else if (talk) {
+    lines.push(`talk: ${talk.talkers.length} talker${talk.talkers.length === 1 ? '' : 's'}`);
+    const read = (t) => (t.prompt ? ` (read “${t.prompt}”${t.theirs === false ? `, the first of ${t.prompts}: none named them` : ''})` : '');
+    for (const t of talk.talkers) lines.push(`  ${t.ok ? 'ok  ' : 'FAIL'} ${t.name}: ${t.ok ? `answered in ${t.at.toFixed(2)} s` : t.why}${read(t)}`);
+  }
+  return lines;
+}
+
 // Is there a server on the port? Its address, or null.
 async function serverAt(port, host) {
   for (const h of [...new Set([host, 'localhost'])]) {
@@ -629,6 +662,7 @@ async function check() {
       keep(window.sessionStorage, 'tp-galaxy-intro', '1');
     });
     await ctx.addInitScript(pageScript({ range: a.range }));
+    if (a.held) await ctx.addInitScript(heldPageScript());
     const page = await ctx.newPage();
     page.on('pageerror', (e) => errors.push(`page error: ${e.message}`));
     page.on('console', (m) => m.type() === 'error' && !noisy(m.text()) && errors.push(`console: ${m.text().slice(0, 300)}`));
@@ -696,6 +730,7 @@ async function check() {
     await skipBasics();
 
     const found = await page.evaluate(() => window.__animCheck.start());
+    if (a.held) await page.evaluate(() => window.__animHeld?.start());
     const began = Date.now();
     const most = began + (a.seconds + 60) * 1000;
     let frames = 0;
@@ -705,6 +740,8 @@ async function check() {
       if (Date.now() - began >= a.seconds * 1000 && frames >= a.frames) break;
     }
     const res = await page.evaluate(() => window.__animCheck.stop());
+    const held = a.held ? heldVerdict(await page.evaluate(() => window.__animHeld?.stop() ?? []), { scale: a.unit }) : null;
+    const talk = a.talk ? await talkCheck(page) : null;
     const wall = (Date.now() - began) / 1000;
     const inner = await page.evaluate(() => window.__animCheckError ?? null);
     if (inner) errors.push(`the sampler: ${inner.split('\n')[0]}`);
@@ -712,8 +749,9 @@ async function check() {
     const v = analyse(res, { limit: a.limit, unit: a.unit, clock: a.clock });
     for (const line of report(v, { route: a.route, limit: a.limit, scenes: state.scenes, frames: res.wall.length, wall })) console.log(line);
     if (found !== res.figs.length) console.log(`  (${found} figures at the start, ${res.figs.length} by the end)`);
+    for (const line of heldTalkLines(held, talk)) console.log(line);
     if (a.json) {
-      await writeFile(a.json, JSON.stringify({ route: a.route, ...v }, null, 1));
+      await writeFile(a.json, JSON.stringify({ route: a.route, ...v, held, talk }, null, 1));
       console.log(`  → ${a.json}`);
     }
     if (errors.length) console.log(`${errors.length} errors:\n  ${[...new Set(errors)].slice(0, 8).join('\n  ')}`);
@@ -723,6 +761,11 @@ async function check() {
     if (v.over.length) fails.push(`${v.over.length} figure${v.over.length === 1 ? '' : 's'} in view over ${a.limit} m/s planted-toe drift`);
     if (a.strict && bindSeen) fails.push(`${bindSeen} in view at the bind pose`);
     if (a.strict && lockedSeen) fails.push(`${lockedSeen} in view in step with another`);
+    const heldBad = held?.items.filter((it) => !it.ok).length ?? 0;
+    const talkBad = talk?.talkers?.filter((t) => !t.ok).length ?? 0;
+    if (heldBad) fails.push(`${heldBad} held thing${heldBad === 1 ? '' : 's'} out of hand`);
+    if (talkBad) fails.push(`${talkBad} talker${talkBad === 1 ? '' : 's'} not answering the key`);
+    fails.push(...emptyFails(a, held, talk));
     console.log(fails.length ? `FAIL ${fails.join('; ')}` : `ok   every figure in view under ${a.limit} m/s`);
     code = fails.length ? 1 : 0;
   } finally {

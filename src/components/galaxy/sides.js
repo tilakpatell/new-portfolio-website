@@ -12,7 +12,11 @@
 // short, colour, stance ('light' the side that liberates, 'dark' the side
 // that raids, 'hutt': the crews' lines are by stance, lines.js) }.
 // A war: { id, era, name, short, liberator, raider, opening: { side: [war
-// systems] } } (whatever the opening doesn't name is the raider's).
+// systems] } (whatever the opening doesn't name is the raider's), capitals:
+// { side: war system } (where each power's supply lines run from, with its
+// strongholds: gcwAI.js) }.
+// DOCTRINE: { side: { worth, weak, cut, area, jitter, every? } }, what each
+// side looks for in a target (gcwAI.js weighs a target by them).
 // sideOfCode(code) → side id | null; warOfSide(side) → war id | null (the
 // Hutts are in every war, so none).
 
@@ -23,7 +27,7 @@ export const SIDES = {
   empire: { id: 'empire', code: 'imp', name: 'Galactic Empire', short: 'Empire', colour: '#62e08a', stance: 'dark' },
   newrepublic: { id: 'newrepublic', code: 'nr', name: 'New Republic', short: 'New Republic', colour: '#7fe8c8', stance: 'light' },
   remnant: { id: 'remnant', code: 'rem', name: 'Imperial Remnant', short: 'Remnant', colour: '#b0b8c4', stance: 'dark' },
-  hutt: { id: 'hutt', code: 'hut', name: 'Hutt Cartel', short: 'Hutts', colour: '#9bbf5a', stance: 'hutt' },
+  hutt: { id: 'hutt', code: 'hut', name: 'Hutt Cartel', short: 'Hutts', colour: '#b98ae6', stance: 'hutt' }, // (violet: green was the Empire's)
 };
 
 export const WARS = {
@@ -35,6 +39,7 @@ export const WARS = {
     liberator: 'republic',
     raider: 'separatists',
     opening: { republic: ['coruscant', 'kamino', 'naboo', 'kashyyyk', 'lothal', 'sorgan'], hutt: ['tatooine', 'nevarro'] },
+    capitals: { republic: 'coruscant', separatists: 'geonosis', hutt: 'tatooine' },
   },
   gcw: {
     id: 'gcw',
@@ -44,6 +49,7 @@ export const WARS = {
     liberator: 'rebel',
     raider: 'empire',
     opening: { rebel: ['yavin', 'hoth', 'lothal', 'kashyyyk', 'sorgan'], hutt: ['tatooine', 'nevarro'] },
+    capitals: { rebel: 'yavin', empire: 'coruscant', hutt: 'tatooine' },
   },
   remnant: {
     id: 'remnant',
@@ -53,9 +59,28 @@ export const WARS = {
     liberator: 'newrepublic',
     raider: 'remnant',
     opening: { newrepublic: ['coruscant', 'yavin', 'hoth', 'endor', 'naboo', 'kashyyyk', 'kamino', 'lothal', 'sorgan', 'bespin'], hutt: ['tatooine', 'nevarro'] },
+    capitals: { newrepublic: 'coruscant', remnant: 'mandalore', hutt: 'tatooine' },
   },
 };
 export const WAR_IDS = Object.keys(WARS);
+
+// What each side looks for in a target, as weights on what it's worth
+// (worth), how far its hold's gone already (weak), how many of its holder's
+// systems taking it would cut off from their capital (cut), and whether it
+// makes an area whole (area); jitter is how much it leaves to chance, and
+// every how soon it goes again (a share of the war's own pace: the droid
+// armies never tire). The Republic and the Empire go for what's worth most,
+// the Rebellion and the Hutts for what's falling already, the New Republic
+// for whole areas, the Remnant for what's worth most and hit often.
+export const DOCTRINE = {
+  republic: { worth: 3, weak: 1, cut: 1, area: 1, jitter: 1 },
+  separatists: { worth: 1, weak: 2, cut: 1, area: 0.5, jitter: 1.5, every: 0.8 },
+  rebel: { worth: 1, weak: 3, cut: 0.5, area: 1, jitter: 1.5 },
+  empire: { worth: 3, weak: 1, cut: 2, area: 1, jitter: 0.5 },
+  newrepublic: { worth: 2, weak: 1, cut: 1, area: 2, jitter: 1 },
+  remnant: { worth: 3, weak: 2, cut: 1, area: 0, jitter: 1, every: 0.9 },
+  hutt: { worth: 0.5, weak: 4, cut: 0, area: 0, jitter: 1 },
+};
 export const DEFAULT_WAR = 'gcw';
 
 const BY_CODE = Object.fromEntries(Object.values(SIDES).map((s) => [s.code, s.id]));
@@ -69,7 +94,7 @@ export const otherSide = (side) => {
 
 // The areas the wars are fought over, a few systems each (systems.js's
 // `war.area`): held whole by one side, an area is its, and its fronts and
-// attacks next to it go faster (gcw.js's regionBonus). The atlas's rings
+// attacks next to it go faster (gcwRules.js's areaBonusOf). The atlas's rings
 // would put nearly every world in the war in the Outer Rim, so these are
 // the films' own neighbourhoods instead.
 export const AREAS = [

@@ -1,0 +1,6 @@
+/* a world's own caps, two rules, and one that isn't a cap */
+.world-hint kbd { padding: 0 2px; }
+@media (pointer: coarse) {
+  .world-keys .world-kbd, .world-x { display: none; }
+}
+.keyboard-shortcut { color: red; } /* (not a cap: the word "kbd" isn't in it) */

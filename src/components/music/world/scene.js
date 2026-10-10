@@ -19,6 +19,7 @@ import { antiTile } from '../../../lib/three/surface';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { houseOn } from '../../../lib/three/house';
+import { LOOK } from './look';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
 import { sharpen } from '../../../lib/three/textures';
 
@@ -75,7 +76,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
   const tier = device().tier;
   const fit = budget(tier);
   const small = tier !== 'high';
-  const stage = createStage(el, { shadows: true, fov: 64, near: 0.05, far: 9000, onLost, exposure: 1.08, bloom: { strength: 0.6, radius: 0.55, threshold: 0.86 } });
+  const stage = createStage(el, { shadows: true, fov: 64, near: 0.05, far: 9000, onLost, exposure: 1.08, bloom: LOOK.bloom });
   const { scene, camera, renderer } = stage;
   stage.grade({ contrast: 0.1, saturation: 1.08, vignette: 0.24, grain: 0.018, shadow: [0.0, 0.006, 0.03], high: [0.035, 0.014, 0] });
   const aniso = Math.min(fit.aniso, renderer.capabilities.getMaxAnisotropy());
@@ -729,7 +730,10 @@ export async function createMusicWorld(el, { onLost } = {}) {
       return import.meta.env.DEV ? ground : null;
     },
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     resize: fitTo,
+    // behind ?debug: the stage's bloom and what the page adds (the walk's numbers)
+    tune: (groups = []) => stage.tune(groups),
     dispose: () => {
       ground?.dispose();
       ghosts.dispose();

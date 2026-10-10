@@ -9,6 +9,8 @@ export const openGuide = (opts) => {
   const detail = guideDetail(opts);
   window.dispatchEvent(new CustomEvent('tp:guide', detail ? { detail } : undefined));
 };
+// …or shuts it if it's open: a world's own key for it (Invincible's H), as ? does.
+export const toggleGuide = () => window.dispatchEvent(new CustomEvent('tp:guide', { detail: { toggle: true } }));
 
 // ⌘K on a Mac, Ctrl K elsewhere (either works anywhere): the palette's key,
 // for its host (App.jsx) and the tour, which lets it through where a stop
@@ -17,3 +19,7 @@ export const isPaletteKey = (e) => Boolean(e && (e.metaKey || e.ctrlKey) && !e.a
 
 export const shortcutLabel = () =>
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl K';
+
+// Opens the settings panel (components/settings) from anywhere: the gear in
+// the nav, ⌘K's "Settings", a world's own panel.
+export const openSettings = () => window.dispatchEvent(new Event('tp:settings'));

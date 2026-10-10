@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import '@fontsource/press-start-2p/400.css';
 import { useMediaQuery } from '../../lib/hooks';
-import { capturePointer } from '../../lib/pointer';
 import { WorldHost, useWorld } from '../../runtime';
+import { Exit, Stick, TouchButton } from '../../runtime/hud';
+import GuideCue from '../guide/GuideCue';
 import module from './module';
 import { ITEMS } from './rules/items';
 import { hashSeed } from './rules/noise';
@@ -255,37 +256,14 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
   };
 
   // ── touch: the stick, looking by dragging, the buttons ──
-  const stickRef = useRef(null);
-  const stickId = useRef(null);
   const lookId = useRef(null);
   const lookAt = useRef({ x: 0, y: 0 });
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
-  const moveStick = (e) => {
-    const el = stickRef.current;
-    if (!el || e.pointerId !== stickId.current) return;
-    const r = el.getBoundingClientRect();
-    let x = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-    let y = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-    const m = Math.hypot(x, y);
-    if (m > 1) {
-      x /= m;
-      y /= m;
-    }
-    setKnob({ x, y });
-    api()?.stick(x, -y);
-  };
-  const stickDown = (e) => {
+  // the kit's stick reads y down; the world's forward is up
+  const onStick = useCallback((x, y) => api()?.stick(x, -y), [api]);
+  // a thumb on the stick or a key isn't a look, a dig or a tap on the world under it
+  const own = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    stickId.current = e.pointerId;
-    capturePointer(e);
-    moveStick(e);
-  };
-  const stickUp = (e) => {
-    if (e.pointerId !== stickId.current) return;
-    stickId.current = null;
-    setKnob({ x: 0, y: 0 });
-    api()?.stick(0, 0);
   };
   // Pocket Edition's touch: drag to look; hold still to dig (or, food in hand, to eat); a quick tap places or uses
   const gesture = useRef(null);
@@ -324,17 +302,13 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
       setTimeout(() => api()?.press('use', false), 60);
     }
   };
-  const button = (name) => ({
-    onPointerDown: (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      capturePointer(e);
+  // a key held down for as long as the thumb is on it
+  const hold = (name) => ({
+    onPress: (e) => {
+      own(e);
       api()?.press(name, true);
     },
-    onPointerUp: () => api()?.press(name, false),
-    onPointerCancel: () => api()?.press(name, false),
-    onLostPointerCapture: () => api()?.press(name, false),
-    onContextMenu: (e) => e.preventDefault(),
+    onRelease: () => api()?.press(name, false),
   });
 
   const onWheel = (e) => {
@@ -443,11 +417,8 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
                   New world
                 </button>
               </form>
-              {onExit && (
-                <button type="button" className="mc-btn" onClick={onExit}>
-                  Back to the island
-                </button>
-              )}
+              {/* (Esc on the title leaves too: the key handler above) */}
+              {onExit && <Exit label="Back to the island" onLeave={onExit} touch={touch} className="mc-btn" />}
             </div>
             <p className="mc-disclaimer">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Textures © Mojang Studios, used with permission.</p>
           </div>
@@ -469,29 +440,31 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
                 </button>
               )}
             </div>
-            <p className="mc-text mc-small">Seed: {ui.seed}</p>
+            {/* the guide's cue, here rather than on the title (left as the game's); on a phone over the island the "?" is under the game, so no cue there */}
+            <p className="mc-text mc-small mc-seed-line">
+              <span>Seed: {ui.seed}</span>
+              {(!touch || mode === 'page') && <GuideCue touch={touch} />}
+            </p>
           </div>
         )}
 
         {touch && playing && (
           <div className="mc-pad">
-            <div ref={stickRef} className="mc-stick" onPointerDown={stickDown} onPointerMove={moveStick} onPointerUp={stickUp} onPointerCancel={stickUp}>
-              <span style={{ transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` }} />
-            </div>
+            <Stick className="mc-stick" onMove={onStick} onStart={own} />
             <div className="mc-keys">
-              <button type="button" className="mc-key" aria-label="Sneak" {...button('sneak')}>
+              <TouchButton className="mc-key" aria-label="Sneak" {...hold('sneak')}>
                 ⇩
-              </button>
-              <button type="button" className="mc-key" aria-label="Jump" {...button('jump')}>
+              </TouchButton>
+              <TouchButton className="mc-key" aria-label="Jump" {...hold('jump')}>
                 ⇧
-              </button>
+              </TouchButton>
             </div>
-            <button type="button" className="mc-key mc-inv-key" aria-label="Inventory" {...button('inventory')}>
+            <TouchButton className="mc-key mc-inv-key" aria-label="Inventory" {...hold('inventory')}>
               ⋯
-            </button>
-            <button type="button" className="mc-key mc-pause-key" aria-label="Pause" onPointerDown={(e) => e.stopPropagation()} onClick={() => api()?.pause(true)}>
+            </TouchButton>
+            <TouchButton className="mc-key mc-pause-key" aria-label="Pause" onPress={(e) => e.stopPropagation()} onClick={() => api()?.pause(true)}>
               ❚❚
-            </button>
+            </TouchButton>
           </div>
         )}
       </WorldHost>

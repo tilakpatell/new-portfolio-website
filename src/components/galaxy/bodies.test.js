@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from './systems';
-import { FAMILIES, LOOKS, buildBody, nearOctaves, pxTall } from './bodies';
+import { FAMILIES, LOOKS, buildBody, nearOctaves, pxTall, segmentsFor } from './bodies';
 import { createRocks } from './rocks';
 
 // every look the systems name, each body and rock field they'd build: what
@@ -42,7 +42,9 @@ describe('buildBody', () => {
         expect(b.group, id).toBeInstanceOf(THREE.Group);
         expect(b.radius, id).toBe(30);
         expect(b.reach, id).toBeGreaterThanOrEqual(30);
-        expect(b.reach, id).toBeLessThan(30 * 1.2);
+        // (a skin's rings show further: not on a small body, which wears no skin)
+        const rings = !small && LOOKS[id].skin?.ringsAt;
+        expect(b.reach, id).toBeLessThan(rings ? 30 * rings[1] + 1e-6 : 30 * 1.2);
         b.setSuns([{ dir: new THREE.Vector3(1, 0, 0), color: new THREE.Color(1.2, 1.1, 1) }, { dir: new THREE.Vector3(0, 0, 1), color: new THREE.Color(0.6, 0.5, 0.4) }]);
         b.update(12.5, camera);
         b.set('shield', 1);
@@ -106,7 +108,7 @@ describe('buildBody', () => {
     }
   });
 
-  it('works its ground two octaves finer from orbit on high and ultra, eased in, and not small', () => {
+  it('works its ground two octaves finer from orbit on high (four on ultra), eased in, and not small', () => {
     const near = (b) => b.surface.material.uniforms.uNearOct.value;
     const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.05, 9000);
     const renderer = { getDrawingBufferSize: (v) => v.set(1280, 720) };
@@ -116,7 +118,7 @@ describe('buildBody', () => {
         b.update(from + i / 30, camera);
       }
     };
-    for (const [tier, small, want] of [['high', false, 2], ['ultra', false, 2], ['mid', false, 0], ['low', false, 0], ['high', true, 0]]) {
+    for (const [tier, small, want] of [['high', false, 2], ['ultra', false, 4], ['mid', false, 0], ['low', false, 0], ['high', true, 0]]) {
       const b = buildBody('tatooine', { r: 30, small, tier });
       expect(near(b), tier).toBe(0);
       camera.position.set(0, 0, 30 * 2.4); // (parked: the world most of the screen tall)
@@ -133,11 +135,10 @@ describe('buildBody', () => {
 });
 
 describe('nearOctaves', () => {
-  it('is two on high and ultra for a world over 300 pixels tall, and none otherwise', () => {
-    for (const tier of ['high', 'ultra']) {
-      expect(nearOctaves({ tier, pxTall: 600 })).toBe(2);
-      expect(nearOctaves({ tier, pxTall: 200 })).toBe(0);
-    }
+  it('is two on high and four on ultra for a world over 300 pixels tall, and none otherwise', () => {
+    expect(nearOctaves({ tier: 'high', pxTall: 600 })).toBe(2);
+    expect(nearOctaves({ tier: 'ultra', pxTall: 600 })).toBe(4);
+    for (const tier of ['high', 'ultra']) expect(nearOctaves({ tier, pxTall: 200 })).toBe(0);
     for (const tier of ['mid', 'low']) {
       expect(nearOctaves({ tier, pxTall: 600 })).toBe(0);
       expect(nearOctaves({ tier, pxTall: 200 })).toBe(0);
@@ -298,5 +299,25 @@ describe('createRocks', () => {
         .flatMap(({ mesh }) => Array.from({ length: mesh.count }, (_, i) => new THREE.Matrix4().fromArray(mesh.instanceMatrix.array, i * 16).elements.slice(12, 15).map((x) => +x.toFixed(4)).join()))
         .sort();
     expect(at(createRocks(kinds[0]))).toEqual(at(createRocks(kinds[0])));
+  });
+});
+
+describe("a world's sphere at ultra", () => {
+  it('is twice as fine each way, and as it was below', () => {
+    expect(segmentsFor('big', 'ultra')).toEqual([256, 192]);
+    expect(segmentsFor('big', 'high')).toEqual([128, 96]);
+    expect(segmentsFor('small', 'mid')).toEqual([64, 48]);
+  });
+
+  it('works its ground to more octaves only at ultra', () => {
+    const at = (tier) => buildBody('tatooine', { tier });
+    const hi = at('high');
+    const ul = at('ultra');
+    const mat = (b) => b.group.children[0].material;
+    expect(mat(hi).defines.FBM_OCT).toBeUndefined();
+    expect(mat(ul).defines.FBM_OCT).toBeGreaterThan(10);
+    expect(mat(ul).uniforms.uMaxOct.value).toBeGreaterThan(mat(hi).uniforms.uMaxOct.value);
+    hi.dispose();
+    ul.dispose();
   });
 });

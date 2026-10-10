@@ -8,7 +8,7 @@
 // city again. The distances are a game's, not the solar system's: the
 // Moon is a couple of minutes' cruise away, Mars a long flat-out flight.
 
-import { turn } from './flight';
+import { pressOf, turn } from './flight';
 import { WORLD } from './map';
 
 export const SPACE = {
@@ -57,9 +57,9 @@ export function outOfSpace(h) {
   return { ...h, zone: 'city', mode: 'air', p: [x, WORLD.ceiling - 300, z], v, spd: s, dir: v.map((c) => c / s), perch: null, boomed: s > 120, exited: true, stun: 0, crouch: 0, ev: [] };
 }
 
-function stepOnce(h, input, dt) {
+function stepOnce(h, input, dt, press) {
   if (h.mode === 'perch') {
-    if (input.jump || (input.up ?? 0) > 0.5) {
+    if (press.take() || (input.up ?? 0) > 0.5) {
       const n = h.perch.n;
       h.mode = 'air';
       h.p = h.p.map((v, i) => v + n[i] * 0.5);
@@ -114,7 +114,12 @@ function stepOnce(h, input, dt) {
 export function stepSpace(hero, input, dt) {
   const h = { ...hero, p: [...hero.p], v: [...hero.v], ev: [] };
   const n = Math.max(1, Math.ceil(dt / STEP - 1e-9));
-  for (let i = 0; i < n; i++) stepOnce(h, i === 0 ? input : { ...input, jump: false }, dt / n);
+  // (the jump as on the ground: ./flight.js's press, pressed a moment early still goes)
+  const press = pressOf(input);
+  for (let i = 0; i < n; i++) {
+    press.ground(h.mode === 'perch', dt / n);
+    stepOnce(h, input, dt / n, press);
+  }
   const s = len(h.v);
   h.spd = s;
   if (s > 1e-6) h.dir = h.v.map((c) => c / s);

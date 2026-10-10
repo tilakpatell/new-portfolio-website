@@ -22,7 +22,7 @@ const LATEST = join(ROOT, 'src/data/health/latest.json');
 const HISTORY = join(ROOT, 'src/data/health/history.jsonl');
 
 // one module per metric; the order is the order of the table
-export const METRICS = ['big-files', 'boundary-breaks', 'cycles', 'lint-disables', 'todo-notes'];
+export const METRICS = ['big-files', 'boundary-breaks', 'cycles', 'lint-disables', 'todo-notes', 'kbd-styles', 'hud-kit', 'stack-pages', 'glsl-sites', 'art-mix'];
 
 const args = new Set(process.argv.slice(2).filter((a) => a.startsWith('--')));
 const valueOf = (flag) => {
@@ -89,12 +89,17 @@ async function main() {
   }
 
   if (args.has('--check')) {
+    // the pass/fail checks run after the budgets, each exiting non-zero on a failure
+    const gates = [];
     const over = check(metrics, budgets);
     if (over.length) {
       console.error(`\nover budget:\n${describe(over)}\n\nA repair brings the number back; a reason in the commit message raises the budget (docs/health/README.md).`);
       process.exit(1);
     }
     console.log('\nwithin budget');
+    // a gate, not a metric: every row outside the flight that names it is marked
+    gates.push([process.execPath, [fileURLToPath(new URL('./flight-island.mjs', import.meta.url)), '--check']]); // planet flight
+    for (const [cmd, argv] of gates) execFileSync(cmd, argv, { stdio: 'inherit' });
   }
 }
 

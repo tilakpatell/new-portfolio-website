@@ -62,3 +62,59 @@ export function holdJump(most = 60000) {
   return letGo;
 }
 export const holdStart = (now, start) => (holds > 0 && now - start > HOLD_AT ? now - HOLD_AT : start);
+
+// How far the tunnel's streaks have wound, dt s on at t ms in: on through
+// the tunnel, but not while the jump is held there. Each turn wraps the
+// streaks further round and covers more of the screen, so a tunnel held
+// for the galaxy for seconds kept brightening (its mean light 81 to 140 out
+// of 255 from two to seven seconds held), and its exit then dropped it at once.
+export const swirlOn = (swirl, t, dt) => (t >= T.flash && t < T.tunnel && holds === 0 ? swirl + dt * 0.9 : swirl);
+
+// A hold one page takes and the next lets go: the universe map's jump into
+// the galaxy holds the tunnel until the galaxy has drawn its first frame,
+// so the jump clears onto the galaxy and not onto its loading line. It's
+// taken as the page changes (jumps/jumpOut.js), and galaxy/GalaxyView.jsx
+// lets it go then, or as soon as the galaxy won't draw, or when its page
+// goes; it lets go on its own after `most` ms if nothing does. handJump(most) holds it (a second takes the
+// place of the first); letHandedGo() lets it go, harmless with none held.
+let handed = null;
+export function handJump(most = 8000) {
+  handed?.();
+  handed = holdJump(most);
+}
+export function letHandedGo() {
+  const go = handed;
+  handed = null;
+  go?.();
+}
+
+// A jump's first frame, drawn: each version calls jumpStarted() as it
+// draws it, and onJumpStart(fn) → undo hears it. A page waiting on a
+// jump's dark times its fallback from there (jumps/jumpOut.js): timed from
+// the click, a jump slow to start (its first frame five seconds late in a
+// slow browser) had the page change before it was dark.
+const starts = new Set();
+export function onJumpStart(fn) {
+  starts.add(fn);
+  return () => starts.delete(fn);
+}
+export function jumpStarted() {
+  for (const fn of [...starts]) fn();
+}
+
+// A running jump's start, so a stall (a frame more than STALL ms after the
+// last, where lib/three/pace stops judging frames too) moves its clock on
+// by `most` ms only: starved of frames (the page busy building what comes
+// next), a jump on the wall's clock skipped its tunnel and cleared out at
+// once; this way it waits where it was. Slower frames than that keep the
+// wall's time: clamped at 50 ms, every jump below 20 frames a second
+// played in slow motion, and its sound, on the wall's clock, landed its
+// boom well before the flash. (A long stall can still put it a little off.)
+export const STALL = 250;
+export const clampStart = (start, lastNow, now, most = 50) => (now - lastNow > STALL ? start + (now - lastNow - most) : start);
+
+// Whether a jump is at its peak, t ms in: under its flash, or anywhere in
+// its tunnel after that (where a held jump waits), so a clock moving on
+// whole frames up to a stall can't step over it. Not at the tunnel's end,
+// where the intro skips to.
+export const atPeak = (t) => t >= T.jump + 20 && t < T.tunnel;

@@ -1,9 +1,9 @@
 // Every station the inside can be walked through, by id: what the start
-// screen offers and `?station=` picks. The second Death Star joins in
-// Phase 4.
+// screen opens, `?station=` picks and a new game builds.
 //
-//   STATIONS → { ds1 }
+//   STATIONS → { ds1, ds2 }
 
 import { DS1 } from './ds1';
+import { DS2 } from './ds2';
 
-export const STATIONS = { ds1: DS1 };
+export const STATIONS = { ds1: DS1, ds2: DS2 };

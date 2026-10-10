@@ -1,9 +1,10 @@
 // The Minecraft tribute as a world module on the runtime. It runs the sim
 // (rules/game.js) at the game's 20 ticks a second from the runtime's input
 // snapshot, the pointer-lock look, the mouse buttons and the touch pad the
-// page sends; has the worker (./worker.js) make and mesh the chunks the sim
-// wants, nearest first, with the player's edits in them, re-meshes what an
-// edit touches, and lets go of the chunks left behind; draws through
+// page sends; streams the chunks the sim wants through the runtime's chunk
+// grid and worker pool (./stream.js: ./worker.js makes and meshes them,
+// nearest first, with the player's edits in them, re-meshes what an edit
+// touches, and lets go of the chunks left behind); draws through
 // ./scene.js on the runtime's renderer, between the last two ticks; keeps
 // the save (rules/save.js) in the store every five seconds and on leaving,
 // one per seed (worlds.js: ?world=, the registry, tp-mc copied in once); and
@@ -17,23 +18,24 @@
 // The world adds: look(dx, dy), press(name, down) (forward…, jump, sneak,
 // attack, use), stick(x, y), scroll(dir), select(slot), click(where) on a
 // screen, closeScreen(), icon(item) → a picture's URL, start(), pause(on),
-// newWorld(seed), toTitle(), and `game`, `scene`, `debug` for the checks.
+// newWorld(seed), toTitle(), tune() (the ?debug panel's groups), and `game`,
+// `scene`, `debug` for the checks; in development, view(name) and settled()
+// for the parity check (VIEWS). The sim's events are heard (./sounds.js).
 
 import * as THREE from 'three';
 import { BLOCKS, byName } from './rules/blocks.js';
-import { makeChunk, packEdits } from './rules/chunk.js';
 import { COOK_TICKS } from './rules/furnace.js';
-import { addChunk, drain, dropFar, dropHeld, newGame, respawn, setBlock, spawnDrop, tick, wantedChunks } from './rules/game.js';
+import { drain, dropHeld, newGame, respawn, setBlock, spawnDrop, tick } from './rules/game.js';
 import { click, close, makeChest, makeFurnaceScreen, makeScreen, result } from './rules/gui.js';
 import { ITEMS } from './rules/items.js';
-import { chunkKey } from './rules/jobs.js';
 import { SAVE, SAVE_VERSION, pack } from './rules/save.js';
 import { createScene } from './scene.js';
 import { MC } from './scene/atlasTexture.js';
-import { workerClient } from './scene/chunks.js';
+import { WORKER, createStream } from './stream.js';
 import { createStore } from '../../runtime/store.js';
 import { createRegistry } from '../worlds/registry.js';
-import { keepWorld, openWorld, randomSeed } from './worlds.js';
+import { holdWorld, keepWorld, openWorld, randomSeed } from './worlds.js';
+import { createSounds } from './sounds.js';
 
 export { SAVE, SAVE_VERSION };
 
@@ -55,7 +57,6 @@ export const KEYS = {
 
 export const TICK = 1 / 20;
 const MAX_TICKS = 4;
-const IN_FLIGHT = 8;
 const SENSITIVITY = 0.0022; // radians a pixel, about the game's default
 const DOUBLE_TAP = 7; // ticks between two presses of forward that sprint
 const USE_REPEAT = 4; // ticks between uses while the button's held, as the game repeats
@@ -75,12 +76,27 @@ const BY_TIER = { high: 10, mid: 6, low: 4 };
 const BY_LEVEL = [10, 8, 6, 4, 4];
 export const distanceFor = (tier, level = 0) => Math.min(BY_TIER[tier] ?? 6, BY_LEVEL[Math.min(level, BY_LEVEL.length - 1)]);
 
+// Development: the parity check's named views (scripts/gpu-parity.mjs), each
+// a world, a time and a way of looking, held still once it's there: 'title'
+// as the game opens on it, 'day' stood at the spawn at noon, looking a
+// little down, at the land, the water and the sky over the horizon;
+// 'night' there at midnight, looking up at the stars, the moon and the
+// clouds.
+export const VIEWS = {
+  title: { seed: 1, play: false, time: 6000, ticks: 2400, yaw: 0.6, pitch: -0.22 },
+  day: { seed: 1, play: true, time: 6000, ticks: 2400, yaw: 2.2, pitch: -0.3 },
+  night: { seed: 1, play: true, time: 18000, ticks: 2400, yaw: 2.2, pitch: 0.9 },
+};
+
+// every chunk the place wants is in, and nothing is in flight or being meshed again
+export const settledOf = ({ wanted, has, flying, remeshing }) => flying === 0 && remeshing === 0 && wanted.every(has);
+
 // the modes with a screen open over the world
 const SCREENS = new Set(['inventory', 'table', 'chest', 'furnace']);
 
 export default {
   id: 'minecraft',
-  shading: 'glsl',
+  shading: 'nodes',
   mb: 2,
   label: 'Minecraft, a fan tribute: an endless blocky world to dig and build in',
   async create(rt, props = {}) {
@@ -92,14 +108,16 @@ export default {
     const take = (r) => {
       if (r === renderer) return;
       if (renderer && was) {
-        Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure });
+        Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure, outputColorSpace: was.colourSpace });
         renderer.shadowMap.enabled = was.shadows;
       }
       renderer = r;
-      was = { toneMapping: r.toneMapping, exposure: r.toneMappingExposure, shadows: r.shadowMap.enabled };
-      // the game's flat light: no tone mapping, no shadows
+      was = { toneMapping: r.toneMapping, exposure: r.toneMappingExposure, colourSpace: r.outputColorSpace, shadows: r.shadowMap.enabled };
+      // the game's flat light: no tone mapping, no shadows, and the colour
+      // its materials make written as it is (scene/nodes.js says why)
       r.toneMapping = THREE.NoToneMapping;
       r.toneMappingExposure = 1;
+      r.outputColorSpace = THREE.LinearSRGBColorSpace;
       r.shadowMap.enabled = false;
     };
     take(rt.gfx.renderer);
@@ -116,13 +134,13 @@ export default {
     const tier = rt.quality?.tier ?? 'high';
     let distance = distanceFor(tier, 0);
     let g = null;
+    const sounds = createSounds(); // what the sim's events sound like (./sounds.js)
     let mode = 'title';
+    let held = false; // a development view, held still (VIEWS)
     let screen = null;
     let gone = false;
-    const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
-    const client = workerClient(worker);
-    const flying = new Map(); // chunk key → seed asked for
-    const remeshing = new Map(); // chunk key → sections asked to be meshed again
+    rt.workers.define(WORKER, () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }));
+    const stream = createStream({ workers: rt.workers, chunks: scene.chunks });
 
     const touch = { x: 0, y: 0, held: new Set(), pressed: new Set() };
     const look = { dx: 0, dy: 0 };
@@ -131,120 +149,45 @@ export default {
     let sprintTap = false;
     let useHeld = 0;
     let saveAt = 0;
-    let wantedCache = { at: '', keys: [], set: new Set() };
 
     let id = null; // the world's id in the store and the registry
     let opened = 0; // the latest newWorld: an older one arriving late is dropped
-    const persist = () => g && id && keepWorld({ store, registry, id, data: pack(g) }).catch(() => {});
+    // (a world deleted on /worlds meanwhile stops being saved: it is not written back)
+    const persist = () => {
+      if (!g || !id) return;
+      const was = id;
+      keepWorld({ store, registry, id, data: pack(g) })
+        .then((kept) => {
+          if (!kept && id === was) id = null;
+        })
+        .catch(() => {});
+    };
 
     function begin(save, seed, worldId) {
-      for (const k of flying.keys()) client.cancel(k);
-      for (const ask of remeshing.values()) client.cancel(ask);
-      flying.clear();
-      remeshing.clear();
-      if (g) for (const c of g.world.chunks.values()) scene.chunks.drop(c.cx, c.cz);
-      g = newGame({ save, seed });
+      const next = newGame({ save, seed });
+      next.renderDistance = distance;
+      next.prev = { x: next.player.x, y: next.player.y, z: next.player.z };
+      stream.begin(next);
+      g = next;
       id = worldId;
-      g.renderDistance = distance;
-      g.prev = { x: g.player.x, y: g.player.y, z: g.player.z };
-      wantedCache = { at: '', keys: [], set: new Set() };
       screen = null;
       persist();
     }
     const first = await opening;
     begin(first.save, first.seed, first.id);
-    // a reload or a closed tab: the write starts as the page goes (asynchronous,
-    // so best-effort; the five-second save is the floor)
-    const onHide = () => persist();
+    // a reload, a closed tab or a phone's app switch: the save held in localStorage
+    // at once (the store's write may not land before the page is gone), and the
+    // store's write started; the next open takes back whichever is newer
+    const onHide = () => {
+      if (g && id) holdWorld({ saves: rt.saves, id, data: pack(g) });
+      persist();
+    };
+    const onVisibility = () => document.visibilityState === 'hidden' && onHide();
     globalThis.addEventListener?.('pagehide', onHide);
+    globalThis.document?.addEventListener('visibilitychange', onVisibility);
     scene.setRenderDistance(distance);
 
-    // ── the chunks: asked for nearest first, a few at a time, let go behind ──
-    function wanted() {
-      const at = `${Math.floor(g.player.x / 16)},${Math.floor(g.player.z / 16)},${g.renderDistance}`;
-      if (wantedCache.at !== at) {
-        const keys = wantedChunks(g);
-        wantedCache = { at, keys, set: new Set(keys) };
-      }
-      return wantedCache;
-    }
-    // the player's edits to a chunk and its eight neighbours, for the worker to put in
-    function editsAround(cx, cz) {
-      const out = {};
-      for (let dz = -1; dz <= 1; dz++)
-        for (let dx = -1; dx <= 1; dx++) {
-          const k = chunkKey(cx + dx, cz + dz);
-          const c = g.world.chunks.get(k);
-          if (c?.edits.size) out[k] = packEdits(c);
-          else if (g.edits[k]) out[k] = g.edits[k];
-        }
-      return out;
-    }
-    function load() {
-      const { keys, set } = wanted();
-      for (const k of flying.keys())
-        if (!set.has(k)) {
-          client.cancel(k);
-          flying.delete(k);
-        }
-      const seed = g.seed;
-      for (let i = 0; i < keys.length && flying.size < IN_FLIGHT; i++) {
-        const k = keys[i];
-        if (flying.has(k) || g.world.chunks.has(k)) continue;
-        const [cx, cz] = k.split(',').map(Number);
-        flying.set(k, seed);
-        client.request({ type: 'chunk', key: chunkKey(cx, cz), seed, cx, cz, priority: i, edits: editsAround(cx, cz) }).then((msg) => {
-          if (gone || flying.get(k) !== seed) return;
-          flying.delete(k);
-          if (!msg) return;
-          if (!wanted().set.has(k) || g.seed !== seed) return;
-          const c = makeChunk(cx, cz);
-          c.ids = msg.ids;
-          c.state = msg.state;
-          c.light = msg.light;
-          c.lit = true;
-          c.generated = true;
-          addChunk(g, c);
-          for (let s = 0; s < 16; s++) scene.chunks.setMesh(cx, cz, s, msg.meshes[s]);
-          // the next one at once, not at the next frame (a slow or hidden page still fills in)
-          load();
-        });
-      }
-      for (const k of dropFar(g)) {
-        const [cx, cz] = k.split(',').map(Number);
-        scene.chunks.drop(cx, cz);
-        if (remeshing.has(k)) {
-          client.cancel(remeshing.get(k));
-          remeshing.delete(k);
-        }
-      }
-    }
-
-    // What an edit changed, lit and meshed again first in the worker's queue: its
-    // chunk and the eight round it, since light reaches 14 blocks. Each ask has its
-    // own number, so an older answer still on its way can't land as the newer one.
-    let asked = 0;
-    function remesh() {
-      const want = new Set();
-      for (const c of g.world.chunks.values()) {
-        if (!c.dirty.size) continue;
-        c.dirty.clear();
-        for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (g.world.chunks.has(chunkKey(c.cx + dx, c.cz + dz))) want.add(chunkKey(c.cx + dx, c.cz + dz));
-      }
-      const seed = g.seed;
-      for (const k of want) {
-        const c = g.world.chunks.get(k);
-        if (remeshing.has(k)) client.cancel(remeshing.get(k));
-        const ask = `${k}:m${++asked}`;
-        remeshing.set(k, ask);
-        client.request({ type: 'chunk', key: ask, seed, cx: c.cx, cz: c.cz, priority: -1, edits: editsAround(c.cx, c.cz) }).then((msg) => {
-          if (gone || !msg || g.seed !== seed || g.world.chunks.get(k) !== c || remeshing.get(k) !== ask) return;
-          remeshing.delete(k);
-          c.light = msg.light;
-          for (let s = 0; s < 16; s++) scene.chunks.setMesh(c.cx, c.cz, s, msg.meshes[s]);
-        });
-      }
-    }
+    const { load, remesh, wanted } = stream;
 
     // ── input ──
     const pressed = (snap, name) => (KEYS[name] ?? []).some((code) => snap.pressed.has(code)) || touch.pressed.has(name);
@@ -340,7 +283,7 @@ export default {
         mode,
         seed: g.seed,
         loaded: g.world.chunks.size,
-        wanted: wanted().keys.length,
+        wanted: wanted().length,
         ready,
         screen: screen ? screenView(screen) : null,
         death: mode === 'dead' ? death : null,
@@ -376,13 +319,15 @@ export default {
       get game() {
         return g;
       },
+      // behind ?debug: the sounds' levels (the game's own numbers stay the game's)
+      tune: () => sounds.groups(),
       scene,
       debug: {
         teleport(x, y, z) {
           Object.assign(g.player, { x, y, z, vx: 0, vy: 0, vz: 0, fallFrom: y });
           g.prev = { x, y, z };
         },
-        stats: () => ({ chunks: g.world.chunks.size, flying: flying.size, remeshing: remeshing.size, ...scene.chunks.stats(), calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }),
+        stats: () => ({ chunks: g.world.chunks.size, ...stream.stats(), ...scene.chunks.stats(), calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }),
         save: () => persist(),
         renderer: () => renderer,
         // the nearest cell holding a block whose name matches, within r of the player
@@ -447,6 +392,13 @@ export default {
       },
       step(dt, snap) {
         load();
+        // (a development view held: the chunks still come in, and the page is
+        // told how many, so its 'Building terrain' screen goes; nothing moves)
+        if (held) {
+          remesh();
+          report(dt);
+          return;
+        }
         const p = g.player;
         const playing = mode === 'play';
         const screenOpen = SCREENS.has(mode);
@@ -478,7 +430,10 @@ export default {
               touch.pressed.clear();
             }
           }
-          for (const e of drain(g)) {
+          const happened = drain(g);
+          // (heard: the steps, the blocks, a hurt, a splash; ./sounds.js)
+          sounds.hear(happened, g.player);
+          for (const e of happened) {
             if (e.type === 'open' && mode === 'play') {
               if (e.what === 'table') openScreen(3);
               else openContainer(e.what, e);
@@ -586,12 +541,14 @@ export default {
       dispose() {
         persist();
         globalThis.removeEventListener?.('pagehide', onHide);
+        globalThis.document?.removeEventListener('visibilitychange', onVisibility);
         gone = true;
-        worker.terminate();
+        stream.dispose();
         rt.input.unbind();
         scene.dispose();
         renderer.toneMapping = was.toneMapping;
         renderer.toneMappingExposure = was.exposure;
+        renderer.outputColorSpace = was.colourSpace;
         renderer.shadowMap.enabled = was.shadows;
       },
     };
@@ -599,6 +556,21 @@ export default {
     const p0 = () => {
       g.player.pitch = 0;
     };
+    if (import.meta.env.DEV) {
+      world.view = async (name) => {
+        const v = VIEWS[name];
+        if (!v) throw new Error(`no view ${name}`);
+        held = false;
+        await world.newWorld(v.seed, { play: v.play });
+        Object.assign(g, { time: v.time, ticks: v.ticks });
+        Object.assign(g.player, { yaw: v.yaw, pitch: v.pitch });
+        g.prev = { x: g.player.x, y: g.player.y, z: g.player.z };
+        acc = 0;
+        held = true;
+        report(0, true); // (the page told the mode: the step that would is held)
+      };
+      world.settled = () => Boolean(g) && settledOf({ wanted: wanted(), has: (k) => g.world.chunks.has(k), ...stream.stats() });
+    }
     rt.input.bind(KEYS);
     return world;
   },

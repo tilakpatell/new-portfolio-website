@@ -14,7 +14,12 @@
 // Boosting (`stretch` above 1), it draws out longer, a little wider and
 // hotter, as an afterburner's flame does.
 //
-// createTrail({ width, life, length, wobble, sparks }) → { mesh, setColors(color, core),
+// With `cap` ({ length, peak }: engines.js's capPlume, for the ship you
+// fly), the plume is never longer than cap.length at any stretch, and its
+// middle never brighter than cap.peak (linear luminance): the boost draws it
+// out, but doesn't brighten it. Without (the galaxy's), as it always was.
+//
+// createTrail({ width, life, length, wobble, sparks, cap }) → { mesh, setColors(color, core),
 //   update(dt, t, nozzle, amount, camera, stretch), clear(), dispose() }
 // (mesh carries the sparks too, as a child)
 // `nozzle` and `camera` are in the mesh's parent's space.
@@ -150,7 +155,7 @@ function sparkCloud(count) {
   };
 }
 
-export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble = 0, sparks = 0 } = {}) {
+export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble = 0, sparks = 0, cap = null } = {}) {
   const pos = new Float32Array(POINTS * 2 * 3);
   const fade = new Float32Array(POINTS * 2);
   const along = new Float32Array(POINTS * 2);
@@ -221,7 +226,7 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
     // amount: 0 (engines idle) … 1 (flat out); stretch: 1, up to 2 or so boosting
     update(dt, t, nozzle, amount, camera, stretch = 1) {
       level += (amount - level) * Math.min(1, dt * 5);
-      const reachOut = length * stretch;
+      const reachOut = cap ? Math.min(cap.length, length * stretch) : length * stretch;
       for (const p of path) p.age += dt;
       while (path.length && path[path.length - 1].age > life) spare.push(path.pop());
       since += dt;
@@ -246,8 +251,21 @@ export function createTrail({ width = 0.026, life = 0.5, length = 0.35, wobble =
       mesh.visible = path.length > 1 && level > 0.01;
       if (!mesh.visible) return;
       const u = mat.uniforms;
-      u.uColor.value.copy(colour).multiplyScalar(level * (0.75 + 0.25 * stretch));
-      u.uCore.value.copy(hot).multiplyScalar(level * (0.6 + 0.4 * stretch));
+      if (cap) {
+        // (as bright as cruising whatever the stretch, and under the cap)
+        u.uColor.value.copy(colour).multiplyScalar(level);
+        u.uCore.value.copy(hot).multiplyScalar(level);
+        const c = u.uColor.value;
+        const k = u.uCore.value;
+        const peak = 0.2126 * (c.r + k.r) + 0.7152 * (c.g + k.g) + 0.0722 * (c.b + k.b);
+        if (peak > cap.peak) {
+          c.multiplyScalar(cap.peak / peak);
+          k.multiplyScalar(cap.peak / peak);
+        }
+      } else {
+        u.uColor.value.copy(colour).multiplyScalar(level * (0.75 + 0.25 * stretch));
+        u.uCore.value.copy(hot).multiplyScalar(level * (0.6 + 0.4 * stretch));
+      }
       u.uCam.value.copy(camera);
       u.uTime.value = t;
       const reach = dist(camera.x, camera.y, camera.z, nozzle.x, nozzle.y, nozzle.z); // engine to lens

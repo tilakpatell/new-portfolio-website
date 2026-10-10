@@ -66,6 +66,9 @@ import {
 } from './layout';
 import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 import { turn as easeYaw } from '../../../../lib/three/gait';
+import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // where each place is drawn
@@ -197,7 +200,7 @@ function makeLand(renderer, seg) {
 export function createMinasWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 6000, bloom: { strength: 0.7, radius: 0.5, threshold: 0.85 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 6000, bloom: BLOOMS.minastirith, onLost });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; it follows the moods below
@@ -413,6 +416,9 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   for (const k of NUMBERS) cur[k] = MOODS.ride[k];
   const sunDir = V(...MOODS.ride.sun).normalize();
   const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 30, 0) }, mode: '', first: true, fov: 50, mood: '', shake: 0, knock: 0, loosed: 0, lit: 0, fires: 0, flames: 0, chain: -1, dread: 0, bloom: 0, fireT: 1, hornT: 0 };
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
+  const HITSTOP = { knock: 60 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -1085,7 +1091,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== key;
     A.mode = key;
     const follow = s.mode === 'walk' || s.mode === 'ride' || s.mode === 'sneak' || s.mode === 'chain';
-    const ke = jump && s.mode !== 'chain' && !(s.talking === 'crown' || s.talking === 'held') ? 1 : Math.min(1, dt * (follow ? 6 : 1.6));
+    const ke = jump && s.mode !== 'chain' && !(s.talking === 'crown' || s.talking === 'held') ? 1 : byFrame(follow ? 6 : 1.6, dt);
     A.cam.at.lerp(camAt, ke);
     A.cam.look.lerp(camLook, ke);
     A.fov += (fov - A.fov) * (jump ? 1 : Math.min(1, dt * 3));
@@ -1094,11 +1100,8 @@ export function createMinasWorld(canvas, { onLost } = {}) {
       camera.updateProjectionMatrix();
     }
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 120);
@@ -1120,6 +1123,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'knock') {
       A.knock = 1;
       A.shake = Math.max(A.shake, 0.12);
@@ -1151,6 +1155,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     resize: stage.resize,
     get info() {
       const i = renderer.info;
@@ -1160,6 +1165,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
       return stage.lost;
     },
     dispose() {
+      shake.dispose();
       ground.dispose();
       clearThings();
       ghosts.dispose();

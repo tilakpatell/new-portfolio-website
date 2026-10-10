@@ -16,8 +16,10 @@
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { budget } from '../../../lib/device';
+import { budget, device } from '../../../lib/device';
+import { createLoose } from './loose';
 import { createPace } from '../../../lib/three/pace';
+import { guard } from '../../../lib/three/frameGuard';
 import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
 import { createPost } from '../../universe/post';
 import { makeFigure, makeThing } from './bots';
@@ -27,6 +29,12 @@ import { ENEMY_KINDS, FORMS, ROBOT, TRANSFORM } from './rules';
 import { createFoeBody, createPersonBody, hashSeed, localMotion } from './bodies';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { houseOn } from '../../../lib/three/house';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createDust } from '../../../lib/three/dust';
+import { createImpacts, impactGroups } from '../../../lib/impact';
+import { createVehicleFeel, feelGroups as rideFeelGroups } from '../../../lib/vehicleFeel';
+import { createSpring, springGroups } from '../../../lib/spring';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
@@ -44,6 +52,8 @@ const CAM = {
 export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   const B = budget(tier);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   quiet(renderer);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, B.ratio));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -90,7 +100,40 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   let people = new Map(); // id → figure (and its mind: bodies.js's createPersonBody)
   const foes = new Map(); // id → { figure, boomed }
   const matrixModel = { object: null, loading: null }; // (the Matrix, once a mission puts it down)
-  let shake = 0;
+  // the shake (lib/three/feel: still under reduced motion, and the hitstop
+  // GameWorld steps by). The old jolts were metres: a boss going up, 2.4, was
+  // ±1.2 m; `jolt(k)` gives each its old size at its peak, and the feel's
+  // square makes the small ones smaller on the way down
+  const JOLT = 2.4;
+  const feel = createFeel({ offset: JOLT / 2, baseFov: CAM.robot.fov });
+  feel.set({ decay: 2.5 });
+  const jolt = (k) => feel.trauma(Math.sqrt(Math.min(1, k / JOLT)));
+  // the truck's weight (lib/vehicleFeel), eased rather than set: its old
+  // lean (a slide's 0.01 a m/s, the wheel's 0.05 at speed, to ±0.08) and
+  // squat (the throttle's 0.02, to ±0.04), and a squash for a bump or a
+  // landing; the robot's landing squash a spring kicked by how hard he
+  // came down. Both scale a form about its feet from its own size.
+  const rideFeel = createVehicleFeel({ rollPer: 0.01, rollMax: 0.08, pitchPer: 0.02, pitchMax: 0.04, squashPerLanding: 0.006, squashPerHit: 0.1 });
+  const landing = createSpring({ k: 120, c: 8, max: 0.3 });
+  const sized = new WeakMap(); // a form → its own scale
+  const squashed = (o, s) => {
+    if (!sized.has(o)) sized.set(o, o.scale.clone());
+    const k = sized.get(o);
+    o.scale.set(k.x * (1 + s / 2), k.y * (1 - s), k.z * (1 + s / 2));
+  };
+  const jolts = { landed: 0, hit: 0 };
+  let loose = null; // the area's loose crates (./loose.js)
+  // a bump or a landing: a thud by how hard, from where, and a puff there
+  const knockDust = createDust({ count: 64, colour: 0x9aa3ad, size: 1.4 });
+  scene.add(knockDust.mesh);
+  const knockRules = createImpacts();
+  const ear = new THREE.Vector3();
+  const knocks = wireImpacts({
+    rules: knockRules,
+    dust: knockDust,
+    shake: (k) => jolt(k * 4),
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
+  });
   // the hero's light: a soft key from over the camera's shoulder, so the
   // one you play reads against a city at night, as a third-person game lights him
   const heroLight = tier === 'low' ? null : new THREE.PointLight('#e6eeff', 0, 46, 1.4);
@@ -187,6 +230,11 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       scene.environmentIntensity = look.env ?? 0.45;
       scene.background = new THREE.Color(fog[0]);
       effects.energon(look.energon);
+      loose?.dispose();
+      loose = null;
+      createLoose({ area, parent: scene, dev: device(), impacts: knocks })
+        .then((l) => (my === generation ? (loose = l) : l.dispose()))
+        .catch(() => {});
       const make = (STAGES[area.id] ?? plainStage)();
       const [mod] = await Promise.all([make, loadPlayer(area.player.robot, area.player.vehicle)]);
       if (my !== generation) return;
@@ -373,11 +421,9 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       heroLight.intensity = sim.area.look?.hero ?? 260;
     }
     // (a jolt: hits taken, rams, Decepticons going up close by)
-    if (shake > 0.001) {
-      camera.position.x += (Math.random() - 0.5) * shake;
-      camera.position.y += (Math.random() - 0.5) * shake;
-      shake *= Math.exp(-dt * 9);
-    }
+    knocks.update(dt);
+    feel.setBaseFov(cam.fov);
+    feel.update(dt, camera);
     if (Math.abs(camera.fov - cam.fov) > 0.01) {
       camera.fov = cam.fov;
       camera.updateProjectionMatrix();
@@ -397,6 +443,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     if (lost) return;
     clock += dt;
     const p = sim.player;
+    loose?.step(dt, p);
     // Optimus
     player.root.position.set(p.x, p.y, p.z);
     player.root.rotation.y = p.yaw;
@@ -455,9 +502,15 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     const ride = clips ? player.robot?.group : player.vehicle;
     if (ride && p.mode === 'vehicle' && !player.change) {
       // the truck (or the tank) leans into a slide and squats as it pulls away
-      ride.rotation.z = Math.max(-0.08, Math.min(0.08, -p.slide * 0.01 - p.steer * Math.min(1, Math.abs(p.speed) / 30) * 0.05));
-      ride.rotation.x = Math.max(-0.04, Math.min(0.04, -(view.throttle ?? 0) * 0.02));
+      const lean = rideFeel.step({ lateralAccel: p.slide + p.steer * Math.min(1, Math.abs(p.speed) / 30) * 5, forwardAccel: view.throttle ?? 0, landed: jolts.landed, hit: jolts.hit }, dt);
+      ride.rotation.z = lean.roll;
+      ride.rotation.x = lean.pitch;
+      squashed(ride, lean.squash);
     } else if (clips && player.robot) player.robot.group.rotation.set(0, 0, 0);
+    jolts.landed = jolts.hit = 0;
+    // his landing, on its spring (the truck has its own, above)
+    const down = landing.step(dt);
+    if (player.robot && p.mode === 'robot' && !player.change) squashed(player.robot.group, down);
     // the people of the place: looking round at him as he comes, turning
     // on their feet once he's well round, greeting him, talking with their
     // hands while their lines play, a fist up when a mission's done
@@ -630,14 +683,23 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
           if (foe) foe.hit = { x: e.x, z: e.z };
         } else if (e.type === 'hitMe') {
           effects.hit(e.x, e.y, e.z, false);
-          shake = Math.max(shake, 0.6);
+          jolt(0.6);
           happened.hitMe = { x: e.x, z: e.z };
         } else if (e.type === 'enemyFire') {
           const foe = foes.get(e.id);
           if (foe) foe.fired = true;
         } else if (e.type === 'complete') happened.won = true;
-        else if (e.type === 'ram') shake = Math.max(shake, 1.6);
-        else if (e.type === 'kill') shake = Math.max(shake, e.boss ? 2.4 : 0.5);
+        else if (e.type === 'ram') {
+          jolt(1.6);
+          feel.hitstop(90);
+        } else if (e.type === 'land') {
+          if (e.mode !== 'vehicle') landing.kick(e.speed * 0.05);
+          else jolts.landed = Math.max(jolts.landed, e.speed);
+        } else if (e.type === 'bump') jolts.hit = Math.max(jolts.hit, Math.min(1, e.speed / 24));
+        else if (e.type === 'kill') {
+          jolt(e.boss ? 2.4 : 0.5);
+          feel.hitstop(e.boss ? 90 : 60);
+        }
         else if (e.type === 'fire' && e.mode === 'robot') {
           for (const sh of e.shots) effects.spark(sh.x, sh.y, sh.z); // the muzzle's flash
           happened.fired = true;
@@ -656,6 +718,13 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       house.adopt(scene);
       return precompile(renderer, scene, camera);
     },
+    // the hitstop's clock (GameWorld steps the game by feel.step) and the knocks
+    feel,
+    knock(force, at) {
+      knocks.onHit(force, at);
+    },
+    // the feel's numbers, for the ?debug panel
+    tune: () => [...feelGroups(feel), ...impactGroups(knockRules), ...rideFeelGroups(rideFeel), ...springGroups(landing, 'landing')],
     // the gun's muzzle as the robot holds it now (for where his shots start)
     muzzle: () => (player.robot?.group.visible && player.robot.muzzle?.(muzzleAt) ? [muzzleAt.x, muzzleAt.y, muzzleAt.z] : null),
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, area: areaId }),
@@ -669,6 +738,8 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       }
       player.robot?.dispose();
       effects.dispose();
+      loose?.dispose();
+      knocks.dispose();
       beaconGeo.dispose();
       beaconMat.dispose();
       gateGeo.dispose();

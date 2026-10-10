@@ -11,10 +11,12 @@
   --rm-red: #ff6a5a;
   --rm-glass: rgba(27, 20, 36, 0.86);
   --rm-paper: #fdfbf5;
-  --rm-pad: clamp(0.75rem, 2vw, 1.25rem);
-  --rm-pad-l: max(var(--rm-pad), env(safe-area-inset-left));
-  --rm-pad-r: max(var(--rm-pad), env(safe-area-inset-right));
-  --rm-pad-b: max(var(--rm-pad), env(safe-area-inset-bottom));
+  /* the HUD kit's spacing (src/runtime/hud/hud.css): its edge pad, and the
+     notch and home-bar insets */
+  --rm-pad: var(--hud-pad);
+  --rm-pad-l: var(--hud-pad-l);
+  --rm-pad-r: var(--hud-pad-r);
+  --rm-pad-b: var(--hud-pad-b);
 }
 .rm-world {
   position: relative;
@@ -34,7 +36,8 @@
 .rm-world-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.8s ease; touch-action: pan-y; cursor: grab; }
 .rm-world-canvas:active { cursor: grabbing; }
 .rm-world-canvas[data-on] { opacity: 1; }
-.rm-world kbd, .rm-place kbd { display: inline-grid; place-items: center; min-width: 1.45em; margin-left: 0.4rem; padding: 0.1rem 0.32rem; border: 1.5px solid currentColor; border-radius: 5px; font: 700 0.68rem/1.2 var(--font-mono); opacity: 0.8; }
+.rm-world kbd, .rm-place kbd { display: inline-grid; place-items: center; min-width: 1.45em; margin-left: 0.4rem; padding: 0.1rem 0.32rem; border: 1.5px solid currentColor; border-radius: 5px; font: 700 0.7rem/1.2 var(--font-mono); opacity: 0.8; }
+.rm-world .key-first { margin: 0 0.4rem 0 0; } /* (the key first in a prompt, as the guide writes it; by its class alone, so the house cap stays the one cap rule) */
 
 /* through a door: a fade to black; through the portal, to green */
 .rm-fade { position: absolute; inset: 0; z-index: 6; background: #07040c; opacity: 0; pointer-events: none; transition: opacity 0.26s ease; }
@@ -58,7 +61,7 @@
 /* ── the HUD: it sits over the street, and only its controls take the pointer ── */
 .rm-hud { position: absolute; left: 0; right: 0; z-index: 3; display: flex; justify-content: space-between; gap: 1rem; padding: var(--rm-pad) var(--rm-pad-r) var(--rm-pad) var(--rm-pad-l); pointer-events: none; }
 .rm-hud-top { top: 0; align-items: flex-start; }
-.rm-hud-bottom { bottom: 0; align-items: flex-end; padding-bottom: var(--rm-pad-b); padding-right: calc(16px + 42px + 1rem + env(safe-area-inset-right)); } /* clear of the site's guide button */
+.rm-hud-bottom { bottom: 0; align-items: flex-end; padding-bottom: var(--rm-pad-b); padding-right: var(--guide-reserve); } /* clear of the site's guide button */
 .rm-brand { display: grid; justify-items: start; gap: 0.55rem; max-width: min(33rem, 60%); }
 .rm-title {
   margin: 0;
@@ -105,8 +108,12 @@
 .rm-shipline-eyes i { display: block; width: 0.85rem; height: 0.85rem; border: 2px solid var(--rm-ink); border-radius: 50%; background: radial-gradient(circle at 55% 55%, var(--rm-ink) 0 28%, #fff6c8 31%); box-shadow: 0 0 8px rgba(255, 236, 160, 0.8); animation: rm-blink 4.2s infinite; }
 @keyframes rm-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.12); } }
 @keyframes rm-rise-l { from { opacity: 0; transform: translateY(6px); } }
-/* a phone: up under the objective, over the sky, rather than over the cruiser */
-@media (max-width: 640px) { .rm-shipline { bottom: auto; top: clamp(11.5rem, 30%, 14rem); right: var(--rm-pad-r); max-width: none; font-size: 0.85rem; } }
+/* a phone: up under the HUD's top row (measured: RmHud's --rm-under), over the
+   sky, rather than over the cruiser; a toast has that place while it shows */
+@media (max-width: 640px) {
+  .rm-shipline { bottom: auto; top: calc(var(--rm-under, 11.5rem) + 0.5rem); right: var(--rm-pad-r); max-width: none; font-size: 0.85rem; }
+  .rm-toast ~ .rm-shipline { display: none; }
+}
 
 /* a memory from the Mind Blowers chair, in its vial's colour */
 .rm-memory { position: absolute; bottom: clamp(11rem, 30%, 15rem); left: 50%; z-index: 4; display: grid; gap: 0.35rem; width: min(30rem, calc(100% - 2rem)); padding: 0.75rem 1rem 0.8rem; border: 2px solid var(--rm-ink); border-radius: 14px; background: var(--rm-glass); color: #fff; box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), 0 0 28px color-mix(in srgb, var(--vial) 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--vial) 60%, transparent); transform: translateX(-50%); animation: rm-rise 0.25s ease-out both; }
@@ -151,13 +158,10 @@
 .rm-lift button { display: grid; place-items: center; width: 54px; height: 54px; border: 2px solid var(--rm-ink); border-radius: 50%; background: var(--rm-glass); color: #fff; font-size: 1.5rem; box-shadow: 0 3px 0 var(--rm-ink); touch-action: none; -webkit-tap-highlight-color: transparent; }
 .rm-lift button:active { background: var(--rm-green); color: var(--rm-ink); }
 
-/* Total Rickall: the crosshair in the middle, lime when someone's in it; a
+/* Total Rickall: the crosshair in the middle (the kit's Reticle, .rm-reticle
+   at the foot), ringed lime when someone's in it; a
    memory card over whoever it's about (moved there each frame); the clock;
    Remember and Shoot; and how it ended */
-.rm-crosshair { position: absolute; left: 50%; top: 50%; z-index: 3; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50%; box-shadow: 0 0 0 2px var(--rm-ink), inset 0 0 0 2px var(--rm-ink); pointer-events: none; transition: transform 0.12s ease, border-color 0.12s ease; }
-.rm-crosshair::before { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px var(--rm-ink); }
-.rm-crosshair[data-on] { border-color: var(--rm-lime); transform: scale(0.8); }
-.rm-crosshair[data-on]::before { background: var(--rm-lime); }
 .rm-recall { position: absolute; left: 0; top: 0; z-index: 4; width: max-content; max-width: min(18rem, calc(100% - 2rem)); padding: 0.6rem 0.85rem 0.7rem; border: 2px solid var(--rm-ink); border-radius: 16px; background: var(--rm-paper); color: var(--rm-ink); box-shadow: 0 4px 0 rgba(27, 20, 36, 0.6), 0 0 26px rgba(255, 220, 140, 0.55); visibility: hidden; pointer-events: none; will-change: transform; animation: rm-recall-in 0.2s ease-out both; }
 .rm-recall::after { content: ''; position: absolute; left: calc(50% - 9px); bottom: -11px; width: 16px; height: 16px; border-right: 2px solid var(--rm-ink); border-bottom: 2px solid var(--rm-ink); background: var(--rm-paper); transform: rotate(45deg); }
 .rm-recall p { margin: 0; }
@@ -286,13 +290,15 @@
   .rm-title { font-size: 1.6rem; }
   .rm-objective { padding: 0.45rem 0.6rem; font-size: 0.78rem; }
   .rm-map canvas { width: 124px; height: 84px; }
-  .rm-map figcaption { max-width: 124px; font-size: 0.68rem; }
+  .rm-map figcaption { max-width: 124px; font-size: 0.7rem; }
   .rm-chip { min-height: 36px; padding: 0 0.6rem; font-size: 0.76rem; }
   .rm-chip span { display: none; }
-  .rm-hud-bottom { padding-right: calc(16px + 42px + 0.6rem + env(safe-area-inset-right)); }
+  .rm-hud-bottom { padding-right: calc(var(--guide-reserve) - 0.3rem); } /* (a narrower gap by the guide's button: a phone's row is full) */
   .rm-prompt { bottom: calc(132px + var(--rm-pad-b)); }
   .rm-hint { bottom: calc(138px + var(--rm-pad-b)); font-size: 0.76rem; }
-  .rm-toast { top: 18.5rem; } /* (under the chip column: the map, things to do, the wardrobe, the portal gun, others online) */
+  /* under the top row, measured (RmHud: the map and its chips, or the title
+     and what to do, whichever is taller), however tall they run */
+  .rm-toast { top: calc(var(--rm-under, 18.5rem) + 0.5rem); }
   .rm-place-head .rm-btn kbd { display: none; }
   .rm-quiz-options { grid-template-columns: 1fr; }
   .rm-cards { grid-template-columns: 1fr; }
@@ -307,7 +313,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .rm-swirl, .rm-toast, .rm-prompt, .rm-list, .rm-place, .rm-shipline, .rm-shipline-eyes i, .rm-memory, .rm-recall, .rm-ending { animation: none; }
-  .rm-crosshair { transition: none; }
   .rm-fade, .rm-fade[data-kind] { transition-duration: 0.1s; }
 }
 
@@ -424,7 +429,7 @@
   color: rgba(255, 255, 255, 0.22);
 }
 .rm-fight-hint {
-  font-size: 11px;
+  font-size: 0.7rem; /* (the HUD's floor) */
   opacity: 0.75;
 }
 .rm-clock {
@@ -452,6 +457,10 @@
   font-size: 22px;
 }
 
+/* the lock-on under it (Tab on a keyboard): a word, not a glyph; lime while it's on */
+.rm-lift .rm-lock { font: 700 0.72rem/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.rm-lift .rm-lock[data-on] { background: var(--rm-lime); color: var(--rm-ink); }
+
 /* the emote wheel (B held, or its button on a touch screen): five round the middle of the view */
 .rm-wheel { position: absolute; left: 50%; top: 50%; z-index: 5; width: 0; height: 0; }
 .rm-wheel-mid { position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 92px; height: 92px; padding: 0.4rem; border: 2px solid var(--rm-ink); border-radius: 50%; background: var(--rm-glass); color: rgba(255, 255, 255, 0.78); font: 600 0.7rem/1.25 var(--font-sans); text-align: center; box-shadow: 0 3px 0 rgba(27, 20, 36, 0.6); transform: translate(-50%, -50%); cursor: pointer; animation: rm-wheel-in 0.14s ease-out both; }
@@ -461,3 +470,10 @@
 .rm-wheel-item:focus-visible, .rm-wheel-mid:focus-visible { outline: 3px solid var(--rm-gold); outline-offset: 2px; }
 @keyframes rm-wheel-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .rm-wheel-item, .rm-wheel-mid { animation: none; transition: none; } }
+
+/* the reticle and the look's prompt (the world kit's, runtime/hud): white
+   ticks with the ink's edge, lime round whoever's in Total Rickall's sights;
+   the prompt in the prompt's own glass, over the first hint's place */
+.rm-reticle, .rm-look { --hud-ink: #fff; --hud-accent: var(--rm-lime); --hud-glass-hi: var(--rm-glass); --hud-border: 2px solid var(--rm-ink); --hud-shadow: 0 4px 0 rgba(27, 20, 36, 0.6); }
+.rm-reticle { z-index: 3; }
+.rm-look { position: absolute; left: 50%; bottom: calc(clamp(5rem, 13%, 7rem) + 4.5rem); z-index: 3; transform: translateX(-50%); font-size: 0.9rem; }

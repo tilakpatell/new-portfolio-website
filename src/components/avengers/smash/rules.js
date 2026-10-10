@@ -13,12 +13,14 @@
 // Metres: `d` is how far he's run; an obstacle sits at `at` (its near edge)
 // and is `len` long; lanes are -1, 0 and 1, LANE metres apart.
 
+import { createCooldownPress } from '../../../lib/press';
 import { rng } from '../hq/rng';
 
 export const LANE = 3.2;
 export const STONE_AT = 2000;
 export const RUN = {
   hearts: 3,
+  buffer: 0.12, // s: a leap or a smash pressed this soon before he can still goes
   speed: [14, 30], // m/s at the start and as it levels off
   ramp: 1500, // metres for most of the rise
   laneSpeed: 15, // m/s sideways
@@ -90,6 +92,7 @@ function reset(g) {
   g.healed = 0;
   g.bestStreak = 0;
   g.streak = 0;
+  g.held = { leap: createCooldownPress({ buffer: RUN.buffer }), smash: createCooldownPress({ buffer: RUN.buffer }) };
 }
 
 export function startRun(g) {
@@ -110,19 +113,36 @@ export function moveLane(g, dir) {
   g.queue.push({ type: 'lane', lane });
   return true;
 }
-export function leap(g) {
-  const H = g.hulk;
-  if (!live(g) || H.air > 0 || H.smash >= 0) return false;
-  H.air = RUN.leapTime;
+// A leap or a smash he can't do yet (in the air, mid-swing, winded) is
+// held a moment (lib/press.js's buffer) and goes as soon as he can: pressed
+// a hair before he lands, it isn't lost. stepRun fires a held one.
+const canLeap = (H) => H.air <= 0 && H.smash < 0;
+const canSmash = (H) => H.air <= 0 && H.smash < 0 && H.winded <= 0;
+function doLeap(g) {
+  g.hulk.air = RUN.leapTime;
   g.queue.push({ type: 'leap' });
+}
+function doSmash(g) {
+  g.hulk.smash = 0;
+  g.hulk.smashHit = false;
+  g.queue.push({ type: 'swing' });
+}
+export function leap(g) {
+  if (!live(g)) return false;
+  if (!canLeap(g.hulk)) {
+    g.held.leap.press();
+    return false;
+  }
+  doLeap(g);
   return true;
 }
 export function smash(g) {
-  const H = g.hulk;
-  if (!live(g) || H.air > 0 || H.smash >= 0 || H.winded > 0) return false;
-  H.smash = 0;
-  H.smashHit = false;
-  g.queue.push({ type: 'swing' });
+  if (!live(g)) return false;
+  if (!canSmash(g.hulk)) {
+    g.held.smash.press();
+    return false;
+  }
+  doSmash(g);
   return true;
 }
 
@@ -304,6 +324,12 @@ export function stepRun(g, dt) {
   if (!live(g)) return ev;
   const H = g.hulk;
   g.t += dt;
+  // a press held from a moment ago, now he can
+  g.held.leap.ready(canLeap(H), dt);
+  g.held.smash.ready(canSmash(H), dt);
+  if (g.held.smash.take()) doSmash(g);
+  else if (g.held.leap.take()) doLeap(g);
+  ev.push(...g.queue.splice(0));
 
   // speed: the course's, less a stumble after a hit, more in a rage
   H.stagger = Math.max(0, H.stagger - dt / 1.4);

@@ -125,7 +125,7 @@ function fit(root, spec) {
   return holder;
 }
 
-function makeKit(sets, models, env) {
+export function makeKit(sets, models, env) {
   const disposables = [];
   const keep = (x) => {
     disposables.push(x);
@@ -442,12 +442,16 @@ function makeKit(sets, models, env) {
     }
     return g;
   };
-  // Jim's prank: Dwight's stapler, set in a block of lime Jell-O
+  // Jim's prank: Dwight's stapler, set in a block of lime Jell-O. It's
+  // see-through without transmission, which has three draw every opaque thing
+  // in the office a second time, every frame the block's in view: wet-looking
+  // lime, three-quarters opaque, the stapler showing through, a little lit
+  // from inside and a soft sheen at its edges
   const jello = () => {
     const g = new THREE.Group();
     const block = new THREE.Mesh(
       keep(new RoundedBoxGeometry(0.26, 0.11, 0.13, 3, 0.02)),
-      keep(new THREE.MeshPhysicalMaterial({ color: 0x8fe36a, roughness: 0.08, transmission: 0.85, thickness: 0.12, ior: 1.36, attenuationColor: 0x58b83a, attenuationDistance: 0.12, transparent: true, opacity: 0.92 })),
+      keep(new THREE.MeshPhysicalMaterial({ color: 0x8fe36a, roughness: 0.08, sheen: 0.6, sheenColor: 0xd6ffb0, sheenRoughness: 0.3, emissive: 0x3a8a22, emissiveIntensity: 0.25, transparent: true, opacity: 0.75, depthWrite: false })),
     );
     block.position.y = 0.055;
     const st = stapler();

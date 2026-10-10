@@ -1,7 +1,7 @@
 /* Rivendell: the Shire's HUD (../../shire/shire.css) in golden autumn
    light, with the panels for the shards, the Council and Bilbo's hand. */
 
-.riv-world { --shire-glass: rgba(24, 20, 14, 0.74); --shire-glass-hi: rgba(28, 22, 16, 0.9); }
+.riv-world { --shire-glass: rgba(24, 20, 14, 0.78); --shire-glass-hi: rgba(28, 22, 16, 0.9); }
 .riv-stage { background: linear-gradient(180deg, #4a7ac0 0%, #f2d6a0 58%, #6a6a3a 60%, #3a3220 100%); }
 .riv-stage[data-sky='dusk'] { background: linear-gradient(180deg, #1a2448 0%, #d88a6a 58%, #3a2e2a 60%, #1a1612 100%); }
 .riv-stage[data-sky='dawn'] { background: linear-gradient(180deg, #6a9ad8 0%, #e8eef4 58%, #5a5a4a 60%, #2a2a22 100%); }

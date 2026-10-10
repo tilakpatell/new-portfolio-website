@@ -23,9 +23,20 @@
 //
 // Or kind 'assault': a battle for a world's command posts (./assault.js
 // runs it; the maps are ./assaults.js's, merged in below).
+//
+// Or kind 'hvv' (Heroes vs Villains, ./hvv.js) or 'blast' (./blast.js): the
+// 2017 game's two modes on the level's own grounds (./arenas.js), a row each
+// on every world whose level has them (GROUNDS), merged in below.
+//
+// Any kind may carry `site: { sky?, light?, fog?, weather? }`: laid over the
+// site's while it runs (missionSite), the world being built again for it.
 
 import { starsFor } from './chase';
 import { ASSAULTS } from './assaults';
+import { GROUNDS } from './arenas';
+import { hvvMission } from './hvv';
+import { blastMission } from './blast';
+import { siteOf } from '../sites';
 
 export const MISSIONS = {
   endor: {
@@ -392,8 +403,36 @@ MISSIONS.sorgan = {
 
 // (the galactic assaults, a map a world, in with the rest)
 for (const [system, m] of Object.entries(ASSAULTS)) (MISSIONS[system] ??= {})[m.id] = m;
+// (Heroes vs Villains and Blast, on each world whose level has their grounds)
+for (const system of GROUNDS) {
+  const list = (MISSIONS[system] ??= {});
+  list.hvv = hvvMission(system);
+  list.blast = blastMission(system);
+}
 
 export const missionOf = (system, id) => MISSIONS[system]?.[id] ?? null;
+
+// What of a site a mission may lay its own over while it runs (the Purge
+// Planet's night, the snakes' shelling): the look of it, never its land.
+const OVER = ['sky', 'light', 'fog', 'weather'];
+// The site as a mission plays it: its `site` laid over the site's. A new
+// object, so the site itself (and the next landing, with no mission) keeps
+// its own; the site itself where the mission brings nothing.
+export function missionSite(site, mission) {
+  const over = mission?.site;
+  if (!over) return site;
+  return { ...site, ...Object.fromEntries(OVER.filter((k) => over[k] !== undefined).map((k) => [k, over[k]])) };
+}
+
+// The world a scene builds, from what it was handed: a site already made
+// whole (a page's own book: the Rick and Morty planets) or the galaxy's
+// site for `system`, and a mission handed in or the system's by id.
+export function worldOf({ site = null, system = null, missionSpec = null, mission = null } = {}) {
+  const base = site ?? siteOf(system);
+  if (!base) return { site: null, mission: null };
+  const m = missionSpec ?? (mission ? missionOf(system, mission) : null);
+  return { site: missionSite(base, m), mission: m };
+}
 
 // How a quest mission went, from what the quest engine said: done is won,
 // a fail is lost, anything else is still going.

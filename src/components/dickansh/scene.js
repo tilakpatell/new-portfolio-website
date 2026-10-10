@@ -37,7 +37,7 @@ const VIEWS = {
 const angleTo = (from, to) => from + Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
 export async function create(canvas, ctx) {
-  const gl = createRenderer(canvas, { alpha: false, ratio: 2, toneMapping: THREE.ACESFilmicToneMapping, exposure: 0.88, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  const gl = createRenderer(canvas, { alpha: false, ratio: 2, toneMapping: THREE.ACESFilmicToneMapping, exposure: 0.88, onLost: ctx.onLost, onSlow: ctx.onSlow, guard: { invalidate: ctx.invalidate } });
   const { renderer } = gl;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;

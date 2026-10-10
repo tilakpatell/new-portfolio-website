@@ -15,7 +15,8 @@
     "lift": [
       "01a10fdc-bc99-7315-bf5b-b20f33e1d929"
     ],
-    "model": "01a10fe2-e842-739a-a252-6015bd388de4"
+    "model": "01a10fe2-e842-739a-a252-6015bd388de4",
+    "ultra": "01a118a4-96de-7073-af6f-fd966afe4d21"
   },
   "lothdome": {
     "lift": [
@@ -27,12 +28,14 @@
     "lift": [
       "01a10fe0-2ed9-7758-a505-11def1f0ad7d"
     ],
-    "model": "01a10fe2-ef5f-756a-a5a2-30543ad97472"
+    "model": "01a10fe2-ef5f-756a-a5a2-30543ad97472",
+    "ultra": "01a118a4-9a81-75ec-9af0-f0d01decfabd"
   },
   "geohive": {
     "lift": [
       "01a1100f-2aa3-7107-879b-c4634a5282c5"
     ],
-    "model": "01a11010-37a0-7164-a054-ffe41b1fefd8"
+    "model": "01a11010-37a0-7164-a054-ffe41b1fefd8",
+    "ultra": "01a118a4-927f-746e-be81-f9d4d3c6030e"
   }
 }

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
@@ -184,8 +183,112 @@ describe('Quaternius’s clips, baked', () => {
     Swim_Idle_Loop: 'swim.idle',
     Driving_Loop: 'drive',
     Idle_Loop: 'idle.calm',
+    // (the paid packs': `--set pro`, `--set ual2`)
+    Jog_Fwd_Loop: 'jog',
+    Jog_Bwd_Loop: 'jog.back',
+    Jog_Left_Loop: 'jog.left',
+    Jog_Right_Loop: 'jog.right',
+    Jog_Fwd_L_Loop: 'jog.fwd.left',
+    Jog_Fwd_R_Loop: 'jog.fwd.right',
+    Jog_Bwd_L_Loop: 'jog.back.left',
+    Jog_Bwd_R_Loop: 'jog.back.right',
+    Crouch_Fwd_L_Loop: 'crouch.fwd.left',
+    Crouch_Fwd_R_Loop: 'crouch.fwd.right',
+    Hit_Shoulder_L: 'hit.shoulder.l',
+    Hit_Shoulder_R: 'hit.shoulder.r',
+    Hit_Stomach: 'hit.stomach',
+    Death02: 'die.2',
+    Idle_Tired_Loop: 'tired',
+    Sitting_Idle02_Loop: 'sit.idle2',
+    Sitting_Idle03_Loop: 'sit.idle3',
+    Sitting_Nodding_Loop: 'sit.nod',
+    GroundSit_Enter: 'sit.ground.enter',
+    GroundSit_Idle_Loop: 'sit.ground',
+    GroundSit_Exit: 'sit.ground.exit',
+    Crawl_Fwd_Loop: 'crawl',
+    Crawl_Idle_Loop: 'crawl.idle',
+    Counter_Idle_Loop: 'counter.idle',
+    Counter_Give: 'counter.give',
+    Counter_Show: 'counter.show',
+    Counter_Angry: 'counter.angry',
+    Celebration: 'celebrate',
+    Crying: 'cry',
+    PickUp_Kneeling: 'pickup.kneel',
+    BackFlip: 'backflip',
+    Spell_Double_Enter: 'cast.double.enter',
+    Spell_Double_Shoot_Loop: 'cast.double',
+    Walk_L_Loop: 'walk.left',
+    Walk_R_Loop: 'walk.right',
+    Walk_Fwd_L_Loop: 'walk.fwd.left',
+    Walk_Fwd_R_Loop: 'walk.fwd.right',
+    Walk_Bwd_L_Loop: 'walk.back.left',
+    Walk_Bwd_R_Loop: 'walk.back.right',
+    Idle_FoldArms_Loop: 'arms.folded',
+    Yes: 'nod',
+    Idle_No_Loop: 'shake',
+    Surprise: 'surprise',
+    Consume: 'eat',
+    Bandage_Loop: 'bandage',
+    Hit_Knockback: 'hit.knock',
+    KipUp: 'kipup',
+    IdleToLay: 'lie.down',
+    LayToIdle: 'lie.up',
+    Melee_Combo: 'melee.combo',
+    Melee_Hook: 'melee.hook',
+    Melee_Knee: 'melee.knee',
+    OverhandThrow: 'throw',
+    Mining_Loop: 'mine',
+    TreeChopping_Loop: 'chop',
+    Idle_Lantern_Loop: 'lantern',
+    Idle_Rail_Loop: 'lean.rail',
+    Chest_Open: 'open.chest',
+    LiftAir_Idle_Loop: 'lifted',
+    LiftAir_Fall: 'lifted.fall',
+    LiftAir_Fall_Impact: 'lifted.land',
+    Zombie_Idle_Loop: 'zombie.idle',
+    Zombie_Walk_Fwd_Loop: 'zombie.walk',
+    Zombie_Bite: 'zombie.bite',
+    Zombie_Scratch: 'zombie.scratch',
+    Farm_Harvest: 'farm.harvest',
+    Farm_Watering: 'farm.water',
+    Farm_PlantSeed: 'farm.plant',
+    Fish_Cast: 'fish.cast',
+    Fish_Cast_Idle_Loop: 'fish.idle',
+    Fish_Reel: 'fish.reel',
+    Turn180_L: 'turn.around',
+    Sword_Regular_A: 'sword.a',
+    Sword_Regular_A_Rec: 'sword.a.rec',
+    Sword_Regular_B: 'sword.b',
+    Sword_Regular_B_Rec: 'sword.b.rec',
+    Sword_Regular_C: 'sword.c',
+    Sword_Regular_Combo: 'sword.combo',
+    Sword_Light_A: 'sword.light.a',
+    Sword_Light_A_Rec: 'sword.light.a.rec',
+    Sword_Light_B: 'sword.light.b',
+    Sword_Light_B_Rec: 'sword.light.b.rec',
+    Sword_Light_C: 'sword.light.c',
+    Sword_Light_C_Rec: 'sword.light.c.rec',
+    Sword_Light_D: 'sword.light.d',
+    Sword_Light_Combo: 'sword.light.combo',
+    Sword_Heavy_A: 'sword.heavy.a',
+    Sword_Heavy_A_Rec: 'sword.heavy.a.rec',
+    Sword_Heavy_B: 'sword.heavy.b',
+    Sword_Heavy_B_Rec: 'sword.heavy.b.rec',
+    Sword_Heavy_C: 'sword.heavy.c',
+    Sword_Heavy_C_Rec: 'sword.heavy.c.rec',
+    Sword_Heavy_D: 'sword.heavy.d',
+    Sword_Heavy_Combo: 'sword.heavy.combo',
+    Sword_Aerial_A: 'sword.aerial.a',
+    Sword_Aerial_A_Rec: 'sword.aerial.a.rec',
+    Sword_Aerial_B: 'sword.aerial.b',
+    Sword_Aerial_Combo_Loop: 'sword.aerial.combo',
+    Sword_Aerial_Idle_Loop: 'sword.aerial.idle',
+    Sword_Block: 'sword.block',
+    Sword_Dash: 'sword.dash',
+    Sword_GroundPound: 'sword.pound',
+    Sword_UpperCut: 'sword.uppercut',
   };
-  const ual = Object.entries(CLIPS).filter(([, c]) => c.url.startsWith('/games/meshy/ual-'));
+  const ual = Object.entries(CLIPS).filter(([, c]) => c.url.startsWith('/games/meshy/ual-') && !c.alias);
   // a GLB's JSON chunk
   const glbJson = (buf) => JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
 
@@ -210,8 +313,25 @@ describe('Quaternius’s clips, baked', () => {
     }
   });
 
-  it('leaves the saber’s bake as it was', () => {
-    const hash = createHash('sha256').update(readFileSync('public/games/meshy/ual-saber.glb')).digest('hex');
-    expect(hash).toBe('0022d4c5d17db0250eb66c3aeb2ae4a2ec4d57a3c9f9400bfc6cb114b2022891');
+  it('gives every stroke a contact window inside its clip and the root’s travel from where it starts', () => {
+    const strokes = ual.filter(([n]) => n.startsWith('sword.'));
+    expect(strokes).toHaveLength(31);
+    for (const [n, c] of strokes) {
+      const [anim] = glbJson(readFileSync(`public${c.url}`)).animations;
+      const { contact, root, rootHips } = anim.extras;
+      const d = root.at(-1)[0];
+      expect(contact[0], n).toBeGreaterThanOrEqual(0.05);
+      expect(contact[1], n).toBeLessThanOrEqual(d - 0.05 + 1e-6);
+      expect(contact[1], n).toBeGreaterThan(contact[0]);
+      expect(root[0], n).toEqual([0, 0, 0]);
+      expect(rootHips, n).toBeGreaterThan(0.5);
+    }
+    // (the dash goes a long way ahead, +z on the figure)
+    const dash = glbJson(readFileSync('public/games/meshy/ual-sword.dash.glb')).animations[0].extras.root.at(-1);
+    expect(dash[2]).toBeGreaterThan(3);
+  });
+
+  it('plays Heavy_A under its old name too, from the one file', () => {
+    expect(CLIPS['sword.heavy'].url).toBe(CLIPS['sword.heavy.a'].url);
   });
 });

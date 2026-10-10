@@ -98,6 +98,12 @@ export function makePerson(id, { guest = null } = {}) {
 function umbrella(arm) {
   const g = new THREE.Group();
   g.position.set(0.05, -0.32, 0);
+  // (an umbrella in a hand, gripped under its crook: lib/three/held.js's kinds)
+  g.userData.held = { kind: 'umbrella' };
+  const grip = new THREE.Object3D();
+  grip.name = 'grip';
+  grip.position.y = 0.1;
+  g.add(grip);
   const wood = new THREE.MeshStandardMaterial({ color: 0x8a5a2e, roughness: 0.6 });
   const silk = new THREE.MeshStandardMaterial({ color: 0x3e1838, roughness: 0.75 });
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.66, 6), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.5 }));

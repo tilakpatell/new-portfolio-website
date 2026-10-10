@@ -118,9 +118,7 @@
 :where(.hud-touch-btn[data-size='primary']):not(hud-none) { width: var(--touch-primary); height: var(--touch-primary); }
 :where(.hud-touch-btn:active):not(hud-none) { background: var(--hud-accent); color: var(--hud-accent-ink); }
 
-/* the one key cap in a HUD (the guide's look). Goes when the site's global
-   .kbd lands (stream C): see docs/superpowers/HANDOFF-world-runtime.md */
-:where(.hud kbd):not(hud-none) { display: inline-block; min-width: 1.4em; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.7rem/1.4 var(--font-mono); text-align: center; }
+/* (a HUD's key cap is the house one's, in src/index.css beside .kbd) */
 
 @media (max-width: 639px) {
   :where(.hud-bubble > div):not(hud-none) { max-width: 13rem; font-size: 0.8rem; }
@@ -129,6 +127,17 @@
 @media (prefers-reduced-motion: reduce) {
   :where(.hud-toast) { animation: none; }
 }
+
+/* a minimap (./MiniMap.jsx): a disc on glass under the top row on the right,
+   its caption on glass under it; the disc is a button (it opens the map) */
+:where(.hud-minimap):not(hud-none) { position: absolute; right: var(--hud-pad-r); top: var(--hud-under); z-index: 2; display: grid; justify-items: center; gap: 0.35rem; width: var(--hud-minimap, 240px); pointer-events: none; }
+:where(.hud-minimap > :not(.hud-minimap-disc, .hud-minimap-caption)):not(hud-none) { pointer-events: auto; }
+:where(.hud-minimap-disc):not(hud-none) { display: block; width: var(--hud-minimap, 240px); height: var(--hud-minimap, 240px); margin: 0; padding: 0; border: 3px solid var(--hud-glass); border-radius: 50%; background: var(--hud-glass); box-shadow: var(--hud-shadow); overflow: hidden; cursor: pointer; pointer-events: auto; }
+:where(.hud-minimap-disc:focus-visible):not(hud-none) { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+:where(.hud-minimap-disc canvas):not(hud-none) { display: block; width: 100%; height: 100%; }
+:where(.hud-minimap-caption):not(hud-none) { margin: 0; padding: 0.2rem 0.55rem; border-radius: var(--hud-radius); background: var(--hud-glass); color: var(--hud-ink); font: 600 0.75rem/1.3 var(--hud-num-face); font-variant-numeric: tabular-nums; pointer-events: none; }
+:where(.hud-minimap-caption:empty):not(hud-none) { display: none; }
+:where(.hud-minimap[data-empty='true']):not(hud-none) { visibility: hidden; }
 
 /* the spacing, on the root: a world's HUD that isn't in the frame yet
    (its own rows, as the towns' still are) is spaced by the same numbers */
@@ -156,3 +165,24 @@
 /* a world's inner place (a shop, a game over the page): one height for all,
    over the nav (40) and the guide's "?" (46), as most already were */
 :root { --z-place: 70; }
+
+/* the reticle (./Reticle.jsx): four ticks round the middle that close in
+   with the sights (--tight), the hit colour for a moment, a ring on a lock.
+   A shadow under each tick, not glass: a crosshair over the scene has to
+   read on sand and snow alike without hiding what it's on. */
+:where(.hud-reticle):not(hud-none) { --gap: calc(11px - 6px * var(--tight, 0)); position: absolute; left: 50%; top: 50%; z-index: 1; width: 0; height: 0; pointer-events: none; }
+:where(.hud-reticle i):not(hud-none) { position: absolute; display: block; background: var(--hud-ink, #f6f3ea); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 0 6px rgba(0, 0, 0, 0.5); border-radius: 1px; transition: transform var(--t-fast, 120ms) ease, background 60ms linear; }
+:where(.hud-reticle i[data-at='t']):not(hud-none), :where(.hud-reticle i[data-at='b']):not(hud-none) { left: -1px; width: 2px; height: 7px; }
+:where(.hud-reticle i[data-at='l']):not(hud-none), :where(.hud-reticle i[data-at='r']):not(hud-none) { top: -1px; width: 7px; height: 2px; }
+:where(.hud-reticle i[data-at='t']):not(hud-none) { top: calc(-7px - var(--gap)); }
+:where(.hud-reticle i[data-at='b']):not(hud-none) { top: var(--gap); }
+:where(.hud-reticle i[data-at='l']):not(hud-none) { left: calc(-7px - var(--gap)); }
+:where(.hud-reticle i[data-at='r']):not(hud-none) { left: var(--gap); }
+:where(.hud-reticle[data-hit] i):not(hud-none) { background: var(--hud-bad, #ff7a5a); }
+:where(.hud-reticle[data-hit] i[data-at='t']):not(hud-none), :where(.hud-reticle[data-hit] i[data-at='b']):not(hud-none) { transform: scaleY(1.3); }
+:where(.hud-reticle[data-hit] i[data-at='l']):not(hud-none), :where(.hud-reticle[data-hit] i[data-at='r']):not(hud-none) { transform: scaleX(1.3); }
+:where(.hud-reticle b):not(hud-none) { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border: 1.5px solid var(--hud-accent, #f0c040); border-radius: 50%; box-shadow: 0 0 6px rgba(0, 0, 0, 0.5); opacity: 0; transform: scale(1.35); transition: opacity var(--t-fast, 120ms) ease, transform var(--t-fast, 120ms) ease; }
+:where(.hud-reticle[data-locked] b):not(hud-none) { opacity: 1; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) {
+  :where(.hud-reticle i, .hud-reticle b):not(hud-none) { transition: none; }
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AREAS, HOTSPOTS, LINKS, PEOPLE, ROOM_IDS, TASKS } from '../rules';
-import { DEST_COL, DESTINATIONS, DIAL, GARAGE_BACK, PLANETS, destArea, destinationById, isPlanet, isWayHome, linkTarget, planetStart, portalTarget, validArrive } from './destinations';
+import { DEST_COL, DESTINATIONS, DIAL, GARAGE_BACK, PLANETS, destArea, destinationById, isBigPlanet, isPlanet, isWayHome, linkTarget, planetStart, portalTarget, validArrive } from './destinations';
 
 const inside = (a, x, z, pad = 0) => x >= a.x0 + pad && x <= a.x1 - pad && z >= a.z0 + pad && z <= a.z1 - pad;
 const overlap = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.z0 < b.z1 && b.z0 < a.z1;
@@ -38,7 +38,8 @@ describe('the destinations', () => {
       const home = LINKS.find((l) => l.id === `${d.id}-portal`);
       expect(home).toMatchObject({ area: d.id, kind: 'portal', to: 'garage', arrive: GARAGE_BACK });
       expect(AREAS[d.id]).toEqual(d.area);
-      for (const t of d.tasks) expect(TASKS.some((x) => x.id === t.id)).toBe(true);
+      // (a big planet's box tasks are retired: it's a surface world now)
+      for (const t of d.tasks) expect(TASKS.some((x) => x.id === t.id), t.id).toBe(!isBigPlanet(d.id));
       // what a talk finishes is one of the place's own things to do
       for (const id of Object.values(d.done)) expect(d.tasks.map((t) => t.id)).toContain(id);
       for (const id of Object.keys(d.done)) expect(d.hotspots.map((h) => h.id)).toContain(id);

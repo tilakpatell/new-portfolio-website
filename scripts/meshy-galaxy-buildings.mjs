@@ -13,9 +13,16 @@
 //   from    one of the owner's own models (lab/uploads/glb/<from>.glb),
 //           retextured from a `style` prompt
 // Each is stood on y = 0 in the middle, set to its size in metres, its maps
-// WebPs at `tex`, meshopt-compressed, into
-// public/models/galaxy/surface/<kind>.glb, with a light copy beside it when
-// it's big enough (scripts/galaxy-surface-lod.mjs).
+// WebPs at `tex` (with `split`, only the colour and glow maps: the normal,
+// occlusion and metal-rough ones at half that, as scripts/meshy-war.mjs
+// does, since they carry less a viewer sees and were most of a file),
+// meshopt-compressed, into public/models/galaxy/surface/<kind>.glb (or
+// public/<out>), with a light copy beside it when it's big enough
+// (scripts/galaxy-surface-lod.mjs). Two more fields choose what is paid for:
+// `lifter`, the image model that lifts a picture (nano-banana unless said,
+// 3 credits; nano-banana-pro, 9, keeps fine detail and paint better), and
+// `texture`, the maps Meshy makes ('2k' unless said; '4k' costs the same 30
+// credits and squeezes down sharper).
 //
 //   node scripts/meshy-galaxy-buildings.mjs <step> [kind …]
 //
@@ -28,6 +35,15 @@
 // twice (delete a kind's entry to make it again). MESHY_API_KEY comes from
 // the environment and is never printed. Prompts never name the films (Meshy
 // turns the names down; a refused task costs nothing).
+//
+// --ultra (models and fetch, scripts/ultra/cut.mjs): the ultra level's cut.
+// `models --ultra` asks Meshy again from the same input at the cut's
+// polygons, up to its most (300k), and its finest texture
+// (MESHY_ULTRA_TEXTURE, 8k unless set: Meshy's top is 8k), kept as the
+// kind's `ultra` task so the plain one is untouched; `fetch --ultra`
+// makes <kind>.ultra.glb from it, up to four times the kind's tris with
+// 8192 maps, under 24 MB, no light copy (ultra draws the whole model at
+// every distance), and prints the catalogue's `ultra` line for it.
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -41,12 +57,15 @@ import { fileURLToPath } from 'node:url';
 import { REFS, fetchRef } from './galaxy-refs.mjs';
 import { makeLod } from './galaxy-surface-lod.mjs';
 import { recolorDoc } from './recolor.mjs';
+import { MESHY_MAX_POLYCOUNT, checkUltra, mapsOf, takeUltra, ultraName, ultraSpec } from './ultra/cut.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
 import { BUILDINGS as THREE_LANE } from './meshy-galaxy-three.mjs';
 import { BUILDINGS as LIBRARY_LANE } from './meshy-galaxy-library.mjs';
+import { BUILDINGS as NEVARRO_LANE } from './meshy-galaxy-buildings-nevarro.mjs';
 import { BUILDINGS as AUDIT_LANE } from './meshy-galaxy-audit.mjs';
+import { BUILDINGS as ULTRA_LANE } from './meshy-galaxy-ultra.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -114,9 +133,13 @@ Object.assign(BUILDINGS, BASES_LANE);
 // the three worlds' lane (scripts/meshy-galaxy-three.mjs)
 Object.assign(BUILDINGS, THREE_LANE);
 Object.assign(BUILDINGS, LIBRARY_LANE);
+// and Nevarro's (scripts/meshy-galaxy-buildings-nevarro.mjs)
+Object.assign(BUILDINGS, NEVARRO_LANE);
 // and the audit's remakes (scripts/meshy-galaxy-audit.mjs): last, so a kind
 // remade there takes over from its earlier lane's entry
 Object.assign(BUILDINGS, AUDIT_LANE);
+// and the ultra level's remakes (scripts/meshy-galaxy-ultra.mjs), last of all
+Object.assign(BUILDINGS, ULTRA_LANE);
 
 async function api(method, path, body) {
   const r = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
@@ -182,30 +205,58 @@ async function squeeze(from, to, a) {
   // a node scaled through zero)
   const kx = a.mirror ? -k : k;
   const centre = doc.createNode(`${a.kind}-centred`).setScale([kx, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * kx, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
+  // (`turn`, a quaternion, in place of `yaw` for one that flies other than
+  // as it was made: Slave I comes lying as it lands and flies stood on its tail)
   const yaw = a.yaw ?? 0;
-  const holder = doc.createNode(a.kind).setRotation([0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)]).addChild(centre);
+  const holder = doc.createNode(a.kind).setRotation(a.turn ?? [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)]).addChild(centre);
   for (const child of scene.listChildren()) {
     scene.removeChild(child);
     centre.addChild(child);
   }
   scene.addChild(holder);
-  let count = 0;
-  for (const m of root.listMeshes()) for (const p of m.listPrimitives()) count += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
-  if (count > a.tris) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: a.tris / count, error: 0.001 }));
+  const triangles = () => {
+    let count = 0;
+    for (const m of root.listMeshes()) for (const p of m.listPrimitives()) count += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
+    return count;
+  };
+  // (the simplifier stops where its error bound is reached, short of the
+  // ratio on a model full of thin parts: then it is asked again with a
+  // looser bound, until the cut is under its budget. `error` is the first
+  // bound, as a share of the model's size: at the 0.001 a building wants, a
+  // ship's seam-split mesh stops a third short of its triangles)
+  const first = a.error ?? 0.001;
+  for (const error of [first, ...[0.005, 0.02, 0.1].filter((e) => e > first)]) {
+    const count = triangles();
+    if (count <= a.tris) break;
+    await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: a.tris / count, error }));
+  }
   await doc.transform(dedup(), prune());
   // (its colours to the films': a catalogue-style `recolor`, scripts/recolor.mjs)
   if (a.recolor) {
     await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'png', slots: /baseColor/, resize: [a.tex, a.tex] }));
     for (const r of await recolorDoc(doc, a.recolor)) console.log(`  recolor ${r.material}: ${r.from} → ${r.to}`);
   }
-  await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
-  let tris = 0;
-  for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
+  // (`quality`: the colour map's WebP quality, for a ship whose budget a
+  // sharp 2K map would break; and a `split` one's mesh is packed at
+  // meshopt's high level, whose filters squeeze the normals and UVs of
+  // Meshy's seam-split vertices, about a tenth of a file, where the
+  // medium level leaves them as plain 16-bit numbers)
+  const maps = a.split
+    ? [
+        textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [a.tex, a.tex], quality: a.quality ?? 84 }),
+        textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness/, resize: [a.tex / 2, a.tex / 2], quality: 80 }),
+      ]
+    : [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] })];
+  await doc.transform(...maps, meshopt({ encoder: MeshoptEncoder, level: a.split ? 'high' : 'medium' }));
+  const tris = triangles();
   await mkdir(dirname(to), { recursive: true });
   await io.write(to, doc);
-  return { tris, size: size.map((v) => +(v * k).toFixed(1)) };
+  return { tris, tex: await mapsOf(doc), size: size.map((v) => +(v * k).toFixed(1)) };
 }
 
+// where a kind's model goes on the site: `out` (under public/) if it says,
+// else beside the galaxy's ships or its worlds' buildings
+const fileOf = (n) => (BUILDINGS[n].out ? join(ROOT, 'public', BUILDINGS[n].out) : join(BUILDINGS[n].galaxy ? GALAXY : OUT, `${n}.glb`));
 const prompted = (names) => names.filter((n) => BUILDINGS[n].prompt);
 const owned = (names) => names.filter((n) => BUILDINGS[n].from);
 const pictured = (names) => names.filter((n) => BUILDINGS[n].ref);
@@ -232,6 +283,15 @@ async function pictures(n) {
   }
   return out;
 }
+// what goes into image to 3D for a prompted kind: its concept picture
+// (<kind>.png in the review folder, from the images step) as a data URI,
+// so the model can be asked on another account than the one that drew it
+// (a task is read back only with the key that made it); the task itself
+// only where the picture isn't downloaded
+async function concept(n, s) {
+  const file = join(REVIEW, `${n}.png`);
+  return existsSync(file) ? { image_url: dataUri(await readFile(file), 'image/png') } : { input_task_id: s[n].image };
+}
 // what goes into image to 3D for a pictured kind: each lifted picture (or
 // the picture itself where it wasn't lifted)
 async function inputs(n) {
@@ -251,7 +311,7 @@ const steps = {
       for (const [i, buf] of raw.entries()) {
         if (!s[n].lift[i]) {
           const what = BUILDINGS[n].lift ?? 'the main building';
-          const { result } = await api('POST', '/v1/image-to-image', { ai_model: 'nano-banana', prompt: `Lift ${what} out of this picture. ${LIFT} ${BUILDINGS[n].shot ?? SHOT}`, reference_image_urls: [dataUri(buf)] });
+          const { result } = await api('POST', '/v1/image-to-image', { ai_model: BUILDINGS[n].lifter ?? 'nano-banana', prompt: `Lift ${what} out of this picture. ${LIFT} ${BUILDINGS[n].shot ?? SHOT}`, reference_image_urls: [dataUri(buf)] });
           s[n].lift[i] = result;
           await save(s);
         }
@@ -274,38 +334,49 @@ const steps = {
       console.log(`image    ${n.padEnd(13)} ${t.consumed_credits} credits`);
     }
   },
-  async models(names, s) {
+  async models(names, s, { ultra = false } = {}) {
     names = [...prompted(names), ...pictured(names)];
+    // (the ultra task is kept apart from the plain one: `ultra`, `ultraMulti`)
+    const [task, multiKey] = ultra ? ['ultra', 'ultraMulti'] : ['model', 'multi'];
     const { balance } = await api('GET', '/v1/balance');
-    const todo = names.filter((n) => !s[n]?.model);
+    const todo = names.filter((n) => !s[n]?.[task]);
     console.log(`models: ${todo.length} to make (${todo.length * 30} credits), balance ${balance}`);
     if (todo.length * 30 > balance) throw new Error('not enough credits');
     for (const n of names) {
       if (BUILDINGS[n].prompt && !s[n]?.image) throw new Error(`${n}: no image yet`);
-      if (!s[n].model) {
+      // (a pictured kind that wasn't lifted has no entry yet)
+      s[n] ??= {};
+      if (!s[n][task]) {
         const from = BUILDINGS[n].prompt ? null : await inputs(n);
         const multi = from && from.length > 1;
         const { result } = await api('POST', multi ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', {
-          ...(from ? (multi ? { image_urls: from } : { image_url: from[0] }) : { input_task_id: s[n].image }),
-          ai_model: 'latest',
+          ...(from ? (multi ? { image_urls: from } : { image_url: from[0] }) : await concept(n, s)),
+          ai_model: BUILDINGS[n].ai ?? 'latest', // (or an older model, `ai`, for one the latest turns down)
           should_texture: true,
           enable_pbr: true,
-          should_remesh: true,
+          // (`remesh: false` for one whose fine open framework is too dense
+          // for Meshy's remesher, which turned the half-built station down
+          // twice: its raw mesh comes back, and the squeeze simplifies it)
+          should_remesh: BUILDINGS[n].remesh ?? true,
           topology: 'triangle',
-          target_polycount: BUILDINGS[n].tris,
-          texture_resolution: '2k',
+          // (an ultra model at its cut's polygons, up to Meshy's most: a
+          // 300k remesh can't be cut below about 90k without smearing,
+          // its atlas being thousands of charts whose seams the simplifier
+          // keeps, so a small kind's is remeshed at its budget by Meshy)
+          target_polycount: ultra ? Math.min(MESHY_MAX_POLYCOUNT, ultraSpec(BUILDINGS[n]).tris) : BUILDINGS[n].tris,
+          texture_resolution: ultra ? (process.env.MESHY_ULTRA_TEXTURE ?? '8k') : (BUILDINGS[n].texture ?? '2k'),
           target_formats: ['glb'],
           enable_thumbnail: true,
         });
-        s[n].model = result;
-        s[n].multi = multi || undefined;
+        s[n][task] = result;
+        s[n][multiKey] = multi || undefined;
         await save(s);
       }
     }
     for (const n of names) {
       try {
-        const t = await wait(s[n].multi ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', s[n].model, `${n} model`);
-        if (t.thumbnail_url) await download(t.thumbnail_url, join(REVIEW, `${n}-model.png`));
+        const t = await wait(s[n][multiKey] ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', s[n][task], `${n} model`);
+        if (t.thumbnail_url) await download(t.thumbnail_url, join(REVIEW, `${n}-model${ultra ? '-ultra' : ''}.png`));
         console.log(`model    ${n.padEnd(13)} ${t.consumed_credits} credits`);
       } catch (e) {
         console.log(`model    ${n.padEnd(13)} ${e.message}`);
@@ -325,7 +396,8 @@ const steps = {
       console.log(`retexture ${n.padEnd(12)} ${t.consumed_credits} credits`);
     }
   },
-  async fetch(names, s) {
+  async fetch(names, s, { ultra = false } = {}) {
+    if (ultra) return fetchUltra(names, s);
     for (const n of names) {
       const a = { ...BUILDINGS[n], kind: n };
       const [path, id] = a.from ? ['/v1/retexture', s[n]?.retexture] : [s[n]?.multi ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', s[n]?.model];
@@ -335,7 +407,7 @@ const steps = {
       if (!existsSync(raw)) await download(t.model_urls.glb, raw);
       // (a ship of the galaxy's goes beside its others, its far-off copy made
       // by scripts/galaxy-lod.mjs)
-      const to = a.galaxy ? join(GALAXY, `${n}.glb`) : join(OUT, `${n}.glb`);
+      const to = fileOf(n);
       const { tris, size } = await squeeze(raw, to, a);
       console.log(`fetch    ${n.padEnd(13)} ${tris} triangles, ${size.join(' × ')} m, ${Math.round((await stat(to)).size / 1024)} KB`);
       const lod = a.galaxy ? null : await makeLod(to, join(OUT, `${n}.lod1.glb`));
@@ -343,16 +415,18 @@ const steps = {
     }
   },
   // the picture, the lift and the model, side by side, for judging
-  async sheet(names) {
+  async sheet(names, s, { ultra = false } = {}) {
     const { shoot } = await import('./glb-shot.mjs');
     for (const n of names) {
       const tiles = [];
       const tile = (buf) => sharp(buf).resize(640, 480, { fit: 'contain', background: '#202020' }).jpeg().toBuffer();
       if (BUILDINGS[n].ref) for (const buf of await pictures(n)) tiles.push(await tile(buf));
       for (const f of [`${n}-lift.png`, `${n}.png`]) if (existsSync(join(REVIEW, f))) tiles.push(await tile(await readFile(join(REVIEW, f))));
-      for (const view of await shoot(join(BUILDINGS[n].galaxy ? GALAXY : OUT, `${n}.glb`), ['three', 'close'])) tiles.push(await tile(view));
+      // (with --ultra, the ultra cut's views beside the plain one's, where fetchUltra puts it)
+      const files = ultra ? [fileOf(n), join(BUILDINGS[n].galaxy ? GALAXY : OUT, ultraName(n))] : [fileOf(n)];
+      for (const file of files) for (const view of await shoot(file, ['three', 'close'])) tiles.push(await tile(view));
       const cols = Math.min(3, tiles.length);
-      const out = join(REVIEW, `${n}-gate.jpg`);
+      const out = join(REVIEW, `${n}-gate${ultra ? '-ultra' : ''}.jpg`);
       await sharp({ create: { width: 640 * cols, height: 480 * Math.ceil(tiles.length / cols), channels: 3, background: '#111' } })
         .composite(tiles.map((input, i) => ({ input, left: (i % cols) * 640, top: Math.floor(i / cols) * 480 })))
         .jpeg({ quality: 85 })
@@ -362,13 +436,37 @@ const steps = {
   },
 };
 
+// the ultra cut of each kind, from its `ultra` task (models --ultra): beside
+// the plain file, no light copy, and the catalogue line to add for it
+async function fetchUltra(names, s) {
+  for (const n of names) {
+    const a = ultraSpec({ ...BUILDINGS[n], kind: n });
+    if (a.from) throw new Error(`${n}: a retextured model of the owner's has no ultra task (its mesh is the owner's own)`);
+    const id = s[n]?.ultra;
+    if (!id) throw new Error(`${n}: no ultra model yet (models --ultra ${n})`);
+    const t = await wait(s[n].ultraMulti ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', id, `${n} ultra`);
+    const raw = join(REVIEW, 'raw', ultraName(n));
+    if (!existsSync(raw)) await download(t.model_urls.glb, raw);
+    const to = join(a.galaxy ? GALAXY : OUT, ultraName(n));
+    const { tris, tex, size } = await squeeze(raw, to, a);
+    const bytes = (await stat(to)).size;
+    const problems = checkUltra({ tris: a.tris, after: tris, bytes });
+    if (problems.length) throw new Error(`${n} (ultra): ${problems.join('; ')}`);
+    console.log(`fetch    ${n.padEnd(13)} ultra ${tris} triangles, ${tex} maps, ${size.join(' × ')} m, ${(bytes / 1024 / 1024).toFixed(1)} MB`);
+    // (the maps as they are in the file: Meshy's 8k where it gave them)
+    console.log(`         ${''.padEnd(13)} catalogue: ultra: { tris: ${Math.round(tris)}, tex: ${tex} }`);
+  }
+}
+
 async function main() {
-  const [step, ...only] = process.argv.slice(2);
+  const { ultra, args } = takeUltra(process.argv.slice(2));
+  const [step, ...only] = args;
   if (!steps[step]) throw new Error(`steps: ${Object.keys(steps).join(', ')}`);
   if (!key && step !== 'fetch' && step !== 'sheet') throw new Error('MESHY_API_KEY is not set');
   const names = only.length ? only : Object.keys(BUILDINGS);
   for (const n of names) if (!BUILDINGS[n]) throw new Error(`no building ${n}`);
-  await steps[step](names, await load());
+  if (ultra && !['models', 'fetch', 'sheet'].includes(step)) throw new Error('--ultra goes with models, fetch or sheet');
+  await steps[step](names, await load(), { ultra });
 }
 
 main().catch((e) => {

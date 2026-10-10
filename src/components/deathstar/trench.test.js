@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TRENCH, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
+import { HURT, TRENCH, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
 
 const fly = (g, secs, keys = {}, dt = 1 / 60) => {
   for (let t = 0; t < secs && g.status === 'running'; t += dt) {
@@ -267,5 +267,37 @@ describe('the trench run can be won', () => {
       if (g.status === 'won') wins += 1;
     }
     expect(wins).toBeGreaterThanOrEqual(6);
+  });
+
+  // a rule change (the game-feel design's one, with Lawn's): a hit leaves
+  // the ship a second clear, so a catwalk straight after the bolt that
+  // rocked you, or a TIE's pair of shots, costs one shield, not two
+  it('costs one shield for hits inside a second of each other, and another after it', () => {
+    const g = newRun({ seed: 9, level: 'red5' });
+    quiet(g);
+    const at = (dz) => g.bolts.push({ x: g.px, y: g.py, z: g.z + dz, vx: 0, vy: 0, vz: 0, from: 'tie', done: false });
+    const full = g.shields;
+    at(0.05);
+    fly(g, 0.1);
+    expect(g.shields).toBe(full - 1);
+    at(0.05);
+    fly(g, 0.1);
+    expect(g.shields).toBe(full - 1); // (0.1 s after: clear)
+    fly(g, TRENCH.iframes);
+    at(0.05);
+    fly(g, 0.1);
+    expect(g.shields).toBe(full - 2);
+    expect(TRENCH.iframes).toBe(1);
+  });
+
+  it('says how hard each hit was: flying into the trench hardest, a bolt least', () => {
+    const g = newRun({ seed: 10 });
+    quiet(g);
+    g.bolts.push({ x: g.px, y: g.py, z: g.z + 0.05, vx: 0, vy: 0, vz: 0, from: 'turret', done: false });
+    fly(g, 0.1);
+    const hit = g.events.find((e) => e.type === 'hit');
+    expect(hit.force).toBe(HURT.bolt);
+    expect(HURT.crash).toBeGreaterThan(HURT.ram);
+    expect(HURT.ram).toBeGreaterThan(HURT.bolt);
   });
 });

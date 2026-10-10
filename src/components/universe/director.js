@@ -49,13 +49,10 @@
 // it has fallen back there's a breather (INTENSITY.relax seconds) before
 // the next thing, so a fight is followed by a lull and not another fight.
 //
-// Where you are matters too (zoneOf: a place, a lane or the void; each event
-// says where it can happen, its `zones`): at a place the hunts, the
-// distress calls, the escorts; on a lane the interdiction, the lane jam, a
-// convoy you overtake and the ambush at your off-ramp; in the void the
-// sights and the bounty hunter. A fight is where you come off a lane or
-// where you've stopped, never in the lane itself. playAs(id, zone) is what
-// the scene plays for it (a capital ship on a lane is an interdiction).
+// Where you are matters too (zoneOf: a place or the void; each event says
+// where it can happen, its `zones`): at a place the hunts, the distress
+// calls, the escorts; in the void the sights, the bounty hunter and a
+// convoy going by; the capital ships either.
 //
 // createDirector({ rand, events }) → { update(dt, { side, heat, busy, travelling, calm, wanted, hurt, zone }) → event id or null, soon(id),
 //   foretell(side) → { id, in } | null (what's next, and in how long: then that's what comes), intensity }
@@ -64,18 +61,17 @@
 // `events` is the table it picks from: EVENTS, unless a map brings only some
 // of them (the galaxy's roam.js opts in to what its scene can play)
 
-export const ZONES = ['place', 'lane', 'void'];
+export const ZONES = ['place', 'void'];
 const PLACE = ['place'];
-const LANE = ['lane'];
 const VOID = ['void'];
-const CAPITAL = ['place', 'lane'];
+const CAPITAL = ['place', 'void'];
 export const EVENTS = {
   hunt: { needs: 'hunt', weight: 3, heat: 1, zones: PLACE },
   destroyer: { needs: 'destroyer', weight: 1.3, heat: 0.6, zones: CAPITAL },
   council: { needs: 'council', weight: 1.5, heat: 0.6, zones: CAPITAL },
   roadblock: { needs: 'roadblock', weight: 1.4, heat: 0.6, zones: CAPITAL },
   distress: { needs: 'pirates', weight: 1.2, heat: 0, zones: PLACE },
-  convoy: { needs: null, weight: 1.3, heat: 0, zones: ['place', 'lane'] },
+  convoy: { needs: null, weight: 1.3, heat: 0, zones: ['place', 'void'] },
   comet: { needs: null, weight: 0.9, heat: 0, zones: VOID },
   supernova: { needs: null, weight: 0.8, heat: 0, zones: VOID },
   flare: { needs: null, weight: 0.9, heat: 0, zones: VOID },
@@ -84,28 +80,16 @@ export const EVENTS = {
   meteors: { needs: null, weight: 1.2, heat: 0, zones: PLACE },
   bounty: { needs: 'bounty', weight: 1.0, heat: 0.8, zones: VOID },
   remover: { needs: 'remover', weight: 1.1, heat: 0.5, zones: PLACE },
-  minefield: { needs: null, weight: 1.0, heat: 0.3, zones: ['place', 'void'] }, // (on a lane it's the lane jam)
+  minefield: { needs: null, weight: 1.0, heat: 0.3, zones: ['place', 'void'] },
   escort: { needs: 'pirates', weight: 1.1, heat: 0.4, zones: PLACE },
   eclipse: { needs: 'sun', weight: 0.8, heat: 0, zones: PLACE },
-  // the lane's own: the side's capital ship across the lane ahead, a wreck
-  // and mines across it, and a pack waiting at your off-ramp
-  interdiction: { needs: 'destroyer', weight: 1.2, heat: 0.6, zones: LANE },
-  lanejam: { needs: null, weight: 1.1, heat: 0.3, zones: LANE },
-  ambush: { needs: 'hunt', weight: 1.4, heat: 1, zones: LANE },
 };
 // whether an event can happen where you are (an event with no `zones`, as
-// the galaxy's own, can happen anywhere; not told where you are, anything
-// but what only happens on a lane)
-export const canBe = (e, zone) => !e.zones || (zone ? e.zones.includes(zone) : e.zones.some((z) => z !== 'lane'));
-// what the scene plays for an event, where you are: on a lane the capital
-// ships drop across it ahead of you (an interdiction), and a hunt waits at
-// your off-ramp (an ambush)
-const ON_LANE = { destroyer: 'interdiction', council: 'interdiction', roadblock: 'interdiction', hunt: 'ambush' };
-export const playAs = (id, zone) => (zone === 'lane' && ON_LANE[id]) || id;
-// where the ship is: in a carriageway ('lane': hyperlanes.js's laneAt), in a
-// region ('place': regions.js's regionAt, the home system's among them), or
-// out between them ('void')
-export const zoneOf = (s, { regionAt, laneAt }) => (laneAt(s.x, s.y ?? 0, s.z) ? 'lane' : regionAt(s.x, s.y ?? 0, s.z) ? 'place' : 'void');
+// the galaxy's own, can happen anywhere; not told where you are, anything)
+export const canBe = (e, zone) => !e.zones || !zone || e.zones.includes(zone);
+// where the ship is: in a region ('place': regions.js's regionAt, the home
+// system's among them), or out between them ('void')
+export const zoneOf = (s, { regionAt }) => (regionAt(s.x, s.y ?? 0, s.z) ? 'place' : 'void');
 // whether a side can have an event
 export const canHave = (side, e) => Boolean(side) && (e.needs === null || side.has(e.needs));
 // the side, and where you are: what an event needs of the place rather than
@@ -150,8 +134,9 @@ export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
     // speed, between places, where things come sooner and more of them are
     // hunters (an ambush on the way); calm: your shields are low, so
     // nothing that comes after you (the hunts wait till they're back);
-    // zone: where you are (zoneOf), and only what can happen there comes
-    update(dt, { side, heat = 0, busy = false, travelling = false, calm = false, wanted = false, hurt = 0, zone = null }) {
+    // zone: where you are (zoneOf), and only what can happen there comes;
+    // pace: how much sooner things come (difficulty.js: harder, sooner)
+    update(dt, { side, heat = 0, busy = false, travelling = false, calm = false, wanted = false, hurt = 0, zone = null, pace = 1 }) {
       if (!side) return null;
       clock += dt;
       // the drama's intensity: up with what you take and what you shoot down, fading with time
@@ -177,13 +162,12 @@ export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
       // travelling, the wait runs down faster
       if (travelling) nextAt -= dt * 1.2;
       if (clock < nextAt) return null;
-      // (one foretold comes as it was told, if it still can, wherever you are
-      // now: the scene plays it as where you are has it, playAs)
+      // (one foretold comes as it was told, if it still can, wherever you are now)
       const id = told && events[told] && canHave(side, events[told]) && !(calm && events[told].heat > 0) ? told : choose(side, { heat, travelling, calm, wanted, zone });
       told = null;
       if (!id) return null;
       last = id;
-      nextAt = clock + (between(PACE.gap) / (1 + Math.min(heat, 6) * 0.25)) * (travelling ? 0.45 : 1);
+      nextAt = clock + (between(PACE.gap) / (1 + Math.min(heat, 6) * 0.25)) * (travelling ? 0.45 : 1) / Math.max(0.25, pace);
       return id;
     },
     // bring an event on next (for checking from a browser)

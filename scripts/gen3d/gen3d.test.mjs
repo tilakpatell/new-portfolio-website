@@ -70,6 +70,26 @@ describe('preparing a picture of your own', () => {
     expect(frame(840, 400, 0.08)).toEqual([1000, 80, 300]);
     expect(frame(100, 100, 0)).toEqual([100, 0, 0]);
   });
+  it('fits a subject bigger than the size it makes, scaled down into the square', async () => {
+    const { prepare } = await import('./prepare.mjs');
+    const { default: sharp } = await import('sharp');
+    const { mkdtempSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const dir = mkdtempSync(join(tmpdir(), 'gen3d-'));
+    // a dark figure 60×110 on white, taller than the 64 asked for (a portrait's figure, 1154 tall, at 1024)
+    const figure = await sharp({ create: { width: 60, height: 110, channels: 3, background: '#203040' } }).png().toBuffer();
+    const given = join(dir, 'given.png');
+    await sharp({ create: { width: 100, height: 140, channels: 3, background: '#ffffff' } }).composite([{ input: figure, left: 20, top: 15 }]).png().toFile(given);
+    const out = join(dir, 'out.png');
+    await prepare(given, out, { size: 64, room: 0.1 });
+    const { data, info } = await sharp(out).raw().toBuffer({ resolveWithObject: true });
+    expect([info.width, info.height]).toEqual([64, 64]);
+    const at = (x, y) => data[(y * info.width + x) * info.channels];
+    expect(at(32, 32)).toBeLessThan(80); // the figure, in the middle
+    expect(at(32, 2)).toBeGreaterThan(240); // room above it
+    expect(at(32, 61)).toBeGreaterThan(240); // and below
+  });
 });
 
 describe('the picture models', () => {
@@ -172,6 +192,17 @@ describe('the three cuts of a smaller model', () => {
   });
 });
 
+describe('the ultra cut, made only for the models asked for it', () => {
+  it('is the raw mesh at 300k faces, with 8192 maps, under 24 MB, and kept out of the three standard cuts', async () => {
+    const { TIERS, ULTRA, fileFor } = await import('./budget.mjs');
+    expect(ULTRA).toEqual({ suffix: '.ultra', faces: 300000, tex: 8192, bytes: 24 * 1024 * 1024, detail: ['ultra'] });
+    expect(Object.keys(TIERS)).toEqual(['hq', 'mid', 'lo']);
+    expect(fileFor('x-wing', 'ultra')).toBe('x-wing.hq.glb');
+    expect(fileFor('x-wing', 'ultra', { ultra: true })).toBe('x-wing.ultra.glb');
+    expect(fileFor('x-wing', 'high', { ultra: true })).toBe('x-wing.hq.glb');
+  });
+});
+
 describe('a step made again only when its inputs change', () => {
   it('reuses the last output for the same key', async () => {
     const { once, digest } = await import('./steps.mjs');
@@ -260,6 +291,7 @@ describe('every field an issue can give, read back', () => {
       faithful: ['no', { faithful: false }],
       bake: ['no', { noBake: true }],
       fresh: ['yes', { fresh: true }],
+      ultra: ['yes', { ultra: true }],
     };
     // `more` is the issue form's catch-all section, whose lines are the other fields
     expect(KEYS.filter((k) => k !== 'more').sort()).toEqual(Object.keys(cases).sort());
@@ -328,5 +360,76 @@ describe('the budget a shipped model was cut to', () => {
     expect(inferFaces({ hq: rock.hq.faces, mid: rock.mid.faces, lo: rock.lo.faces })).toBeLessThanOrEqual(4000);
     // never more than the top cut's own budget
     expect(inferFaces({ hq: 500000, mid: 1, lo: 1 })).toBe(120000);
+  });
+});
+
+describe('the ultra cut', () => {
+  it('is a fourth cut made only when asked: 300k faces, 8192 maps, 24 MB, scaled like the others', async () => {
+    const { ULTRA, TIERS, cutsFor } = await import('./budget.mjs');
+    expect(ULTRA).toMatchObject({ suffix: '.ultra', faces: 300000, tex: 8192, bytes: 24 * 1024 * 1024, detail: ['ultra'] });
+    expect(Object.keys(TIERS)).toEqual(['hq', 'mid', 'lo']);
+    expect(cutsFor(300000, 8192).ultra).toBeUndefined();
+    const big = cutsFor(300000, 8192, { ultra: true });
+    expect([big.ultra.faces, big.hq.faces, big.mid.faces, big.lo.faces]).toEqual([300000, 120000, 60000, 20000]);
+    expect([big.ultra.tex, big.hq.tex, big.mid.tex, big.lo.tex]).toEqual([8192, 4096, 2048, 1024]);
+    // (--faces is the top cut, the ultra one when it's asked for: 30000 faces scales all four by a tenth)
+    const small = cutsFor(30000, 8192, { ultra: true });
+    expect([small.ultra.faces, small.hq.faces, small.mid.faces, small.lo.faces]).toEqual([30000, 12000, 6000, 2000]);
+  });
+
+  it('is the file ultra loads where one was made, and the hq one where not', async () => {
+    const { fileFor } = await import('./budget.mjs');
+    expect(fileFor('x-wing', 'ultra')).toBe('x-wing.hq.glb');
+    expect(fileFor('x-wing', 'ultra', { ultra: true })).toBe('x-wing.ultra.glb');
+    expect(fileFor('x-wing', 'high', { ultra: true })).toBe('x-wing.hq.glb');
+    expect(fileFor('x-wing', 'mid')).toBe('x-wing.glb');
+    expect(fileFor('x-wing', 'low')).toBe('x-wing.lo.glb');
+  });
+
+  it('is asked for with ultra: yes, and passed to make.mjs as --ultra', async () => {
+    const { parseIssue, makeArgs, request } = await import('./runner.mjs');
+    const job = parseIssue({ number: 9, title: 'theed', body: 'what: Theed\nimage: https://x.test/a.png\nfaces: 300000  tex: 8192  ultra: yes' });
+    expect(job).toMatchObject({ faces: 300000, tex: 8192, ultra: true });
+    expect(makeArgs(job, 'C:/a.png')).toContain('--ultra');
+    expect(parseIssue({ number: 10, title: 'theed', body: 'what: Theed' }).ultra).toBe(false);
+    expect(makeArgs(parseIssue({ number: 10, title: 'theed', body: 'what: Theed' }))).not.toContain('--ultra');
+    expect(request({ name: 'theed', what: 'Theed', image: 'https://x.test/a.png', faces: 300000, options: 'tex: 8192  ultra: yes' }).body).toMatch(/ultra: yes/);
+  });
+});
+
+describe('a prop’s physics, kept through the web cut', () => {
+  it('a GLB with a crate_physical_dynamic node reads back one body after the cut', async () => {
+    const { Document } = await import('@gltf-transform/core');
+    const { collidersIn, io, webReady } = await import('./web.mjs');
+    const doc = new Document();
+    const buffer = doc.createBuffer();
+    // a unit cube's corners, as twelve triangles
+    const p = [-1, -1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1, -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1].map((v) => v / 2);
+    const idx = [0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 3, 6, 2, 3, 7, 6, 0, 4, 7, 0, 7, 3, 1, 2, 6, 1, 6, 5];
+    const cube = () =>
+      doc.createMesh().addPrimitive(
+        doc
+          .createPrimitive()
+          .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(p)).setBuffer(buffer))
+          .setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(idx)).setBuffer(buffer)),
+      );
+    const look = doc.createNode('crate').setMesh(cube());
+    // (the collider a unit cube scaled to fit, as a modeller makes it; and an empty one)
+    const cuboid = doc.createNode('cuboid').setMesh(cube()).setScale([1.2, 0.8, 1.2]).setTranslation([0, 0.4, 0]);
+    const lid = doc.createNode('lid_physical_dynamic').setTranslation([0, 1, 0]).addChild(doc.createNode('cuboid.001').setScale([1.2, 0.2, 1.2]));
+    const crate = doc.createNode('crate_physical_dynamic').setExtras({ mass: 3 }).addChild(cuboid).addChild(lid);
+    doc.createScene('scene').addChild(look).addChild(crate);
+    await webReady(doc, { tris: 1000, tex: 256 });
+    const back = await (await io()).readBinary(await (await io()).writeBinary(doc));
+    const bodies = await collidersIn(back);
+    expect(bodies.map((b) => b.name)).toEqual(['crate_physical_dynamic', 'lid_physical_dynamic']);
+    const [c] = bodies[0].desc.colliders;
+    expect(c.shape).toBe('cuboid');
+    c.args.forEach((v, i) => expect(v).toBeCloseTo([0.6, 0.4, 0.6][i], 3));
+    c.position.forEach((v, i) => expect(v).toBeCloseTo([0, 0.4, 0][i], 3));
+    expect(bodies[0].desc.mass).toBe(3);
+    expect(bodies[1].desc.colliders[0].args[1]).toBeCloseTo(0.1, 3);
+    // (the look is still drawn: the cut took nothing but the colliders’ meshes)
+    expect(back.getRoot().listNodes().find((n) => n.getName() === 'crate').getMesh()).toBeTruthy();
   });
 });

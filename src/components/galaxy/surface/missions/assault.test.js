@@ -696,6 +696,38 @@ describe('the three worlds’ battles', () => {
     expect(ASSAULTS.coruscant.sides.attack.id).toBe('separatists');
     expect(ASSAULTS.bespin.sides.attack.id).toBe('rebels');
   });
+  it('every attackers’ fixed post is clear of the first objectives, with a staging line between', () => {
+    for (const [id, m] of Object.entries(ASSAULTS)) {
+      const fixed = m.posts.find((p) => p.fixed === 'attack');
+      for (const obj of m.posts.filter((p) => m.phases[0].posts.includes(p.id))) {
+        const d = Math.hypot(fixed.at[0] - obj.at[0], fixed.at[1] - obj.at[1]);
+        expect(d, `${id} ${obj.id}`).toBeGreaterThan(fixed.r + obj.r);
+        if (m.forward != null) expect(d, `${id} ${obj.id} forward`).toBeGreaterThan(m.forward + fixed.r);
+      }
+    }
+  });
+  it('soldiers don’t walk into water too deep to wade, when the world has some', () => {
+    const b = newBattle(ASSAULTS.kashyyyk, { n: 6, seed: 3 });
+    chooseSide(b, 'defend');
+    // (the droids start in the shallows at z 105 and march for z 52: a deep band across z < 70 holds them back)
+    const env2 = { solids: createSolids(), reach: 600, deep: (x, z) => z < 70 };
+    for (let t = 0; t < 60; t += 0.1) stepBattle(b, 0.1, null, env2);
+    const past = b.soldiers.filter((s) => s.up && s.side === 'attack' && s.z < 69);
+    expect(past.length).toBe(0);
+    // (and without the band they do go through)
+    const c = newBattle(ASSAULTS.kashyyyk, { n: 6, seed: 3 });
+    chooseSide(c, 'defend');
+    for (let t = 0; t < 60; t += 0.1) stepBattle(c, 0.1, null, env);
+    expect(c.soldiers.some((s) => s.up && s.side === 'attack' && s.z < 69)).toBe(true);
+  });
+  it('Kashyyyk: the droids come for the beach, the gun line and Kachirho', () => {
+    const m = ASSAULTS.kashyyyk;
+    expect(m.sides.attack.id).toBe('separatists');
+    expect(m.sides.defend.kinds.map(([k]) => k)).toEqual(expect.arrayContaining(['clone', 'wookiee']));
+    expect(m.phases.map((p) => p.posts.length).every((n) => n > 0)).toBe(true);
+    const b = newBattle(m, { n: 6, seed: 3 });
+    expect(b.posts.find((p) => p.fixed === 'attack')).toBeTruthy();
+  });
 });
 
 describe('the soldiers’ bodies: what the drawing reads (soldierBody, BATTLE_BODY)', () => {

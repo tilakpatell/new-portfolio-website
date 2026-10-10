@@ -213,9 +213,13 @@ export function bakeDepth(height, level, { half = 640, n = 256, max = 24, reach 
 }
 
 // The disc's rings: even and fine round the camera, then each a little
-// wider out to the horizon (fewer, coarser, on a small screen)
-export function discRings({ small = false } = {}) {
-  const [around, step, near, grow, far] = small ? [96, 2.5, 40, 1.09, 9000] : [160, 1.25, 48, 1.05, 9000];
+// wider out to the horizon (fewer, coarser, on a small screen). `scale`
+// (amounts.js's, the budget's water row) is how many vertices against
+// these: 2 at ultra, each way √2 finer, the horizon where it was.
+export function discRings({ small = false, scale = 1 } = {}) {
+  const k = Math.sqrt(scale);
+  const [a0, s0, near, g0, far] = small ? [96, 2.5, 40, 1.09, 9000] : [160, 1.25, 48, 1.05, 9000];
+  const [around, step, grow] = k === 1 ? [a0, s0, g0] : [Math.round(a0 * k), s0 / k, 1 + (g0 - 1) / k];
   const radii = [0];
   for (let r = step; r < near; r += step) radii.push(r);
   for (let r = near; r < far; r *= grow) radii.push(r);

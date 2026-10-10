@@ -3,10 +3,10 @@
 // for the ask its cuts imply, each within its size cap, WebP textures no
 // bigger than its tier's, meshopt, one scene, and its credit. A model
 // edited or imported by hand is held to the same bar.
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { TIERS, cutsFor, inferFaces } from '../../gen3d/budget.mjs';
+import { TIERS, ULTRA, cutsFor, inferFaces } from '../../gen3d/budget.mjs';
 import { REPO } from '../contract/repo.mjs';
 import { inspect } from './glb.mjs';
 
@@ -49,6 +49,17 @@ describe('the gen3d models as shipped', () => {
         expect(m.meshopt, `${at}: not meshopt-compressed`).toBe(true);
         expect(m.scenes, at).toBe(1);
       }
+    });
+
+    // (made only for a model asked for at ultra: budget.mjs ULTRA)
+    it.runIf(existsSync(join(DIR, `${name}${ULTRA.suffix}.glb`)))('has an ultra cut within its budget, no lighter than its hq one', async () => {
+      const at = `${name}${ULTRA.suffix}.glb`;
+      const [ultra, hq] = await Promise.all([inspect(join(DIR, at)), inspect(file('hq'))]);
+      expect(ultra.tris, at).toBeLessThanOrEqual(ULTRA.faces * 1.05);
+      expect(ultra.tris, at).toBeGreaterThanOrEqual(hq.tris);
+      expect(ultra.bytes, at).toBeLessThanOrEqual(ULTRA.bytes);
+      for (const tex of ultra.textures) expect(Math.max(tex.w, tex.h), at).toBeLessThanOrEqual(ULTRA.tex);
+      expect(ultra.meshopt, at).toBe(true);
     });
 
     it('is credited as gen3d/<name>', () => {

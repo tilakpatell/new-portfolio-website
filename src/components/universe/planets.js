@@ -32,7 +32,7 @@ import { STATIONS } from './stations';
 import { RM_WORLDS } from './rmWorlds';
 import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
-import { createAtmosphere } from '../../lib/three/atmosphere';
+import { createAtmosphere, stepsFor } from '../../lib/three/atmosphere';
 import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
@@ -1209,7 +1209,7 @@ const BUILDERS = {
 // parked 2.4 radii out the limb is about 1,900 pixels round, and at 64 a
 // chord is 30 of them, a polygon against the air; at 160, 12. Mid gets
 // fewer; low none.
-export const NEAR_SEG = { high: [160, 100], ultra: [160, 100], mid: [96, 60] };
+export const NEAR_SEG = { high: [160, 100], ultra: [320, 200], mid: [96, 60] };
 export const nearSegments = (level) => NEAR_SEG[level] ?? null;
 
 export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null } = {}) {
@@ -1227,13 +1227,13 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   // a planet has air round it in its colour; a station's sign does that job
   // a planet has air round it in its colour: the old halo, and where it says
   // what its air is (universes.js), a real one on high and mid, marched
-  // through (lib/three/atmosphere.js: 8 steps on high, 5 on mid, its sun the
+  // through (lib/three/atmosphere.js: 16 steps on ultra, 8 on high, 5 on mid, its sun the
   // planet's own vector); the halo kept for low and for the pace's last
   // steps (setAir), only one of them shown
   const haloMesh = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
   const shell =
     haloMesh && u.air && tier !== 'low'
-      ? createAtmosphere({ radius: u.size, top: u.air.top, colour: u.air.colour, density: u.air.density, sunset: u.air.sunset, segments: T.small ? [64, 40] : [96, 64], steps: tier === 'high' || tier === 'ultra' ? 8 : 5, inner: Math.cos(Math.PI / seg[1]), flat: Boolean(u.air.flat), uniforms: { uSunDir: { value: [sunW, new THREE.Vector3(0, 1, 0)] } } })
+      ? createAtmosphere({ radius: u.size, top: u.air.top, colour: u.air.colour, density: u.air.density, sunset: u.air.sunset, segments: T.small ? [64, 40] : [96, 64], steps: stepsFor(tier, 8), inner: Math.cos(Math.PI / seg[1]), flat: Boolean(u.air.flat), uniforms: { uSunDir: { value: [sunW, new THREE.Vector3(0, 1, 0)] } } })
       : null;
   if (shell) shell.mesh.renderOrder = 2;
   let air = shell ? shell.mesh : haloMesh;
@@ -1253,7 +1253,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   let cloudMesh = null;
   if (style.clouds) group.traverse((o) => (cloudMesh ??= o.isMesh && (o.material?.map === style.clouds || o.material?.alphaMap === style.clouds) ? o : null));
   // its sphere, and its cloud layer's, finer near: the limb a curve, not
-  // chords (a builder that made its own shape keeps it; each finer one
+  // chords (at ultra, 320 × 200: a limb as smooth as the 8192 maps on it; a builder that made its own shape keeps it; each finer one
   // made once, the first time it's near)
   const fine = new Map();
   const finer = (mesh, far, on, level) => {
@@ -1435,12 +1435,16 @@ const MODELS = [
   ['starwars', '/models/universe/star-destroyer.glb', 'escort2'],
 ];
 
-// Load the models one by one, handing each over as it arrives; a model that
-// fails is skipped.
-export function loadModels(onModel) {
+// the planets that have models of their own
+export const MODEL_PLANETS = [...new Set(MODELS.map(([id]) => id))];
+
+// Load a planet's models (`ids`: the planets'; every one's without),
+// handing each over as it arrives; a model that fails is skipped. The
+// scene asks for a planet's as it comes near (nearby.js)
+export function loadModels(onModel, ids = null) {
   const loader = gltfLoader();
   return Promise.all(
-    MODELS.map(([id, url, spot]) =>
+    MODELS.filter(([id]) => !ids || ids.includes(id)).map(([id, url, spot]) =>
       loader
         .loadAsync(url)
         .then((g) => onModel(id, g.scene, spot))

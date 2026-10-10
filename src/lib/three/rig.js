@@ -159,7 +159,7 @@ export const SEGMENTS = [
 
 // (`named`: a figure's own bone for a role, by name, ahead of the guesses:
 // a Rigify rig's head is a spine bone, and its 'spine' is the hips)
-function findBones(root, named = {}) {
+export function findBones(root, named = {}) {
   const all = [];
   root.traverse((o) => o.isBone && all.push(o));
   const byName = new Map();

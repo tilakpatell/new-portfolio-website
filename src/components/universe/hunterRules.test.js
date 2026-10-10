@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { BOMB, FACTIONS, FIGHT, HOLDOFF, HUNTER_KINDS, HUNTER_SENSES, LOSE, NAMES, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
+import { BOMB, FACTIONS, FIGHT, HOLDOFF, HUNTER_KINDS, HUNTER_SENSES, LOSE, NAMES, SHIP_R, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
 import { PACE, SHIP } from './ship';
+import { nose, sweptHit } from './targeting';
+import { POWERS } from './shipPowers';
 
 // a seeded random, so a fight is the same every time
 const seeded = (seed = 7) => () => {
@@ -961,5 +963,163 @@ describe('a pack on the toolkit', () => {
     let by = null;
     for (let t = 0; t < 30 && by === null; t += DT) for (const e of hunt.update(DT, s)) if (e.type === 'laser') by = e.by;
     expect(typeof by).toBe('number');
+  });
+});
+
+// (the crews' ship powers: shipPowers.js says what each does, these are its hooks in the hunters)
+describe('what the crews’ ship powers do to them', () => {
+  // a pack of four on you, flown in a gentle turn: `power(hunt, ship, t)` once
+  // each frame from `at`, the ship handed to them as `ship(s, t)` makes it.
+  // Returns the hunt, and the lasers each hunter fired from `at` on, by when
+  function flown({ seed, at = 15, seconds = 20, power = null, ship = (s) => s, each = null }) {
+    const hunt = createHunt({ rand: seeded(seed) });
+    let s = start({ speed: 6 });
+    hunt.pack('empire', s, { size: 4, ace: false });
+    const fired = []; // [{ by, t }]
+    for (let t = 0; t < seconds; t += DT) {
+      s = move({ ...s, heading: s.heading + 0.3 * DT });
+      if (t >= at) power?.(hunt, s, t);
+      const was = hunt.lasers.map((m) => m.on);
+      const events = hunt.update(DT, ship(s, t));
+      if (t >= at) hunt.lasers.forEach((m, i) => m.on && !was[i] && m.life > LASER_NEW && fired.push({ by: m.by, t }));
+      each?.(hunt, s, t, events);
+    }
+    return { hunt, fired };
+  }
+  const LASER_NEW = 0.9; // (a laser this fresh was fired this frame: LASER.life is 1.1)
+  const ahead = (s, d) => {
+    const [nx, ny, nz] = nose(s);
+    return { x: s.x + nx * d, y: s.y + ny * d, z: s.z + nz * d };
+  };
+
+  // (as the galaxy steps them while Force Focus is on: their clock at its
+  // `slow`, the ship as it is; it reads your speed, not how far you moved,
+  // so their leads on you stay true)
+  it('lands at most half the hits on you while Force Focus slows their clock, over twenty fights', () => {
+    const hits = (slow) => {
+      let n = 0;
+      for (let seed = 1; seed <= 20; seed++) {
+        const hunt = createHunt({ rand: seeded(seed) });
+        let s = start({ speed: 6 });
+        hunt.pack('empire', s, { size: 4, ace: false });
+        for (let t = 0; t < 20; t += DT) {
+          s = move({ ...s, heading: s.heading + 0.3 * DT });
+          for (const e of hunt.update(DT * (t >= 15 ? slow : 1), s)) if (t >= 15 && e.type === 'laser') n++;
+        }
+      }
+      return n;
+    };
+    const normal = hits(1);
+    expect(normal).toBeGreaterThan(5);
+    expect(hits(POWERS.focus.slow)).toBeLessThanOrEqual(normal / 2);
+  });
+
+  it('lets a ghost’s lasers fly on past: no hits while it jinks, and a laser that crossed it is still going', () => {
+    let normal = 0;
+    let ghosted = 0;
+    let crossed = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      flown({ seed, each: (h, s, t, events) => t > 15 && (normal += events.filter((e) => e.type === 'laser').length) });
+      let was = null;
+      let lasers = [];
+      flown({
+        seed,
+        ship: (s, t) => (t > 15 ? { ...s, ghost: true } : s),
+        each: (h, s, t, events) => {
+          if (t > 15) {
+            ghosted += events.filter((e) => e.type === 'laser').length;
+            h.lasers.forEach((m, i) => lasers[i] && m.on && sweptHit(lasers[i], m, was, s, SHIP_R) !== null && crossed++);
+          }
+          was = { ...s };
+          lasers = h.lasers.map((m) => m.on && { x: m.x, y: m.y, z: m.z });
+        },
+      });
+    }
+    expect(normal).toBeGreaterThan(0);
+    expect(ghosted).toBe(0);
+    expect(crossed).toBeGreaterThan(0);
+  });
+
+  it('breaks off the ones on a run or on your tail to swing round again, and frees their places', () => {
+    let broke = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const { hunt } = flown({ seed, seconds: 12 });
+      const on = hunt.live.filter((h) => h.mode !== 'set');
+      expect(hunt.breakOff()).toBe(on.length);
+      broke += on.length;
+      expect(hunt.live.every((h) => h.mode === 'set')).toBe(true);
+      expect(hunt.packs[0].attacking).toBe(0);
+      // (and none of them fires in the moment it takes to swing away)
+      for (const h of on) expect(h.cool).toBeGreaterThanOrEqual(0.6);
+    }
+    expect(broke).toBeGreaterThan(0);
+  });
+
+  it('holds them in a magnet: they are dragged to it, off the guns’ threats, and hold their fire', () => {
+    for (let seed = 1; seed <= 8; seed++) {
+      let held = [];
+      let magnet = null;
+      const { fired } = flown({
+        seed,
+        seconds: 19,
+        power: (hunt, s) => {
+          magnet = ahead(s, 6);
+          if (held.length) return;
+          expect(hunt.pull(magnet, 22, 16, 4, 1)).toBe(hunt.live.filter((h) => apart(h.pos, magnet) < 22).length);
+          held = hunt.live.filter((h) => h.held > 0);
+        },
+        ship: (s, t) => (t >= 15 ? { ...s, magnet } : s),
+        each: (hunt, s, t) => {
+          if (t < 15.5) return;
+          for (const tg of hunt.targets) if (held.some((h) => h.id === tg.id)) expect(tg.threat, `seed ${seed}`).toBe(0);
+          // two seconds on, every one of them is in a ball round it
+          if (t >= 17) for (const h of held) expect(apart(h.pos, magnet), `seed ${seed} at ${t.toFixed(2)}`).toBeLessThan(3);
+        },
+      });
+      expect(held.length, `seed ${seed}`).toBeGreaterThan(0);
+      expect(fired.filter((f) => held.some((h) => h.id === f.by))).toEqual([]);
+    }
+  });
+
+  it('lets them go after the hold: a second dazed with their guns quiet, then they come round and shoot again', () => {
+    let after = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      let held = [];
+      const { fired, hunt } = flown({
+        seed,
+        seconds: 40,
+        power: (h, s) => {
+          if (held.length) return;
+          h.pull(ahead(s, 6), 22, 16, 4, 1);
+          held = h.live.filter((o) => o.held > 0).map((o) => o.id);
+        },
+        ship: (s, t) => (t >= 15 && t < 19 ? { ...s, magnet: ahead(s, 6) } : s),
+      });
+      const theirs = fired.filter((f) => held.includes(f.by));
+      expect(theirs.filter((f) => f.t < 20), `seed ${seed}`).toEqual([]);
+      after += theirs.length;
+      expect(hunt.live.every((h) => !(h.held > 0))).toBe(true);
+    }
+    expect(after).toBeGreaterThan(0);
+  });
+
+  it('lets them all go when you stop flying', () => {
+    const hunt = createHunt({ rand: seeded(3) });
+    const s = start({ speed: 6 });
+    hunt.pack('empire', s, { size: 3, ace: false });
+    hunt.update(DT, s);
+    expect(hunt.pull(ahead(s, 6), 40, 16, 4, 1)).toBe(3);
+    hunt.update(DT, null);
+    expect(hunt.live.every((h) => !(h.held > 0))).toBe(true);
+  });
+
+  it('swallows the lasers near a portal’s mouth, and no others', () => {
+    const hunt = createHunt({ rand: seeded(3), lasers: 4 });
+    const fly = (m, x, z) => Object.assign(m, { on: true, x, y: 0, z, vx: 0, vy: 0, vz: 34, life: 1 });
+    fly(hunt.lasers[0], 1, 0);
+    fly(hunt.lasers[1], 0, 5.5);
+    fly(hunt.lasers[2], 0, 7);
+    expect(hunt.swallow({ x: 0, y: 0, z: 0 }, 6)).toBe(2);
+    expect(hunt.lasers.map((m) => m.on)).toEqual([false, false, true, false]);
   });
 });

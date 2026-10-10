@@ -19,7 +19,11 @@ describe('the crews’ battle lines', () => {
     expect(Object.keys(BATTLE_LINES).sort()).toEqual(CREWS.map((c) => c.id).sort());
   });
   it('have every battle key for both sides in every crew, the ask for either, and the Hutts’ for a front, a win and a loss', () => {
-    expect(BATTLE_KEYS).toHaveLength(17);
+    // (seventeen, and since the battle plans five more, one for each kind of
+    // stage or side objective that has its own: a group of targets, a zone,
+    // a boarding, a bomber wave, an ace joining: battleCrews/stages.js)
+    expect(BATTLE_KEYS).toHaveLength(22);
+    for (const key of ['group', 'zone', 'board', 'wave', 'hunt']) expect(BATTLE_KEYS).toContain(key);
     for (const crew of Object.keys(BATTLE_LINES)) {
       const b = BATTLE_LINES[crew].battle;
       expect(Object.keys(b).sort(), crew).toEqual([...BATTLE_KEYS].sort());

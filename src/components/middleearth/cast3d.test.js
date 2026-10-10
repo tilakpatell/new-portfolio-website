@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { meshyRig, swingClip } from '../../lib/three/meshyRig.fixture';
+import { meshyRig, swingClip, withHands } from '../../lib/three/meshyRig.fixture';
+import { gripFrame } from '../../lib/three/held';
 import { attend, castDo, drawWatcher, fight, followDrawn, releaseCast, setCastSource, tickCast, upgrade } from './cast3d';
 import { makeToyFigure, pose } from './mapFigures';
 import { makePerson, sit } from './shire/people';
@@ -8,11 +9,11 @@ import { makePerson, sit } from './shire/people';
 // The cast's files, as the fixture's figure on Meshy's skeleton (its own
 // idle, walk and run): a box at its feet so it has a size, its head where
 // Meshy's are.
-function source({ fail = false } = {}) {
+function source({ fail = false, hands = false } = {}) {
   const rigs = new Map();
   const rigOf = (name) => {
     if (!rigs.has(name)) {
-      const r = meshyRig();
+      const r = hands ? withHands(meshyRig()) : meshyRig();
       const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.3), new THREE.MeshStandardMaterial());
       box.position.y = 0.025;
       r.model.add(box);
@@ -235,6 +236,109 @@ describe('the cast on the toys', () => {
     await ready(f);
     expect(staff.parent?.name).toBe('RightHand');
     expect(staff.visible).toBe(true);
+    expect(f.cast.holds.map((h) => h.kind)).toEqual(['staff']);
+  });
+
+  describe('in the cast’s hands (a figure whose hands have skin)', () => {
+    beforeEach(() => setCastSource({ load: source({ hands: true }), on: true }));
+    const V = THREE.Vector3;
+    const staffOf = (f) => f.arms[1].children.find((o) => o.userData.held?.kind === 'staff');
+    // the right palm's middle in the world, from the cast's own hand
+    const palm = (f, side = 'RightHand') => {
+      const { model } = f.cast.body;
+      const hand = model.getObjectByName(side);
+      model.updateMatrixWorld(true);
+      return gripFrame(model, hand, { left: side === 'LeftHand' }).mean.clone().applyMatrix4(hand.matrixWorld);
+    };
+    const gripAt = (o) => o.getObjectByName('grip').getWorldPosition(new V());
+    // the shaft's length in the world: its mesh's own y, as far as the world sees it
+    const lengthOf = (o) => {
+      const shaft = o.children.find((m) => m.isMesh);
+      return new V(0, shaft.geometry.parameters.height, 0).applyMatrix4(shaft.matrixWorld).distanceTo(new V().applyMatrix4(shaft.matrixWorld));
+    };
+
+    it('Gandalf’s staff: its grip in the cast’s right palm, standing and walking', async () => {
+      const scene = new THREE.Scene();
+      const f = makePerson('gandalf');
+      scene.add(f.group);
+      const staff = staffOf(f);
+      await ready(f);
+      tickCast(scene, null, DT);
+      expect(gripAt(staff).distanceTo(palm(f))).toBeLessThan(0.01 + 0.012);
+      const v = f.cast.body.walkV;
+      for (let i = 0; i < 30; i++) {
+        f.group.position.x += v * DT;
+        tickCast(scene, null, DT);
+      }
+      expect(gripAt(staff).distanceTo(palm(f))).toBeLessThan(0.01 + 0.012);
+    });
+
+    it('the staff stays near upright while walking (a still, upright carry)', async () => {
+      const scene = new THREE.Scene();
+      const f = makePerson('gandalf');
+      scene.add(f.group);
+      const staff = staffOf(f);
+      await ready(f);
+      const v = f.cast.body.walkV;
+      let worst = 0;
+      for (let i = 0; i < 60; i++) {
+        f.group.position.x += v * DT;
+        tickCast(scene, null, DT);
+        if (i > 20) worst = Math.max(worst, new V(0, 1, 0).transformDirection(staff.matrixWorld).angleTo(new V(0, 1, 0)));
+      }
+      expect(worst).toBeLessThan(0.25);
+    });
+
+    it('as long in the cast’s hand as in the toy’s', async () => {
+      const f = makePerson('gandalf');
+      const staff = staffOf(f);
+      f.group.updateMatrixWorld(true);
+      const toy = lengthOf(staff);
+      await ready(f);
+      f.cast.body.model.updateMatrixWorld(true);
+      expect(lengthOf(staff)).toBeCloseTo(toy, 2);
+    });
+
+    it('Legolas’s bow goes to his left hand', async () => {
+      const f = upgrade(makeToyFigure({ item: 'bow' }), 'legolas');
+      const bow = f.arms[1].children.find((o) => o.userData.held?.kind === 'bow');
+      expect(bow).toBeTruthy();
+      await ready(f);
+      expect(bow.parent?.name).toBe('LeftHand');
+    });
+
+    it('let go, the staff goes back to the toy’s arm', async () => {
+      const f = makePerson('gandalf');
+      const staff = staffOf(f);
+      const arm = staff.parent;
+      const at = staff.position.clone();
+      await ready(f);
+      expect(staff.parent?.name).toBe('RightHand');
+      f.cast.dispose();
+      expect(staff.parent).toBe(arm);
+      expect(staff.position.distanceTo(at)).toBeLessThan(1e-9);
+      expect(staff.userData.held.kind).toBe('staff');
+    });
+  });
+
+  it('a toy whose model doesn’t come keeps its staff in its own hand', async () => {
+    setCastSource({ load: source({ fail: true }), on: true });
+    const f = makePerson('gandalf');
+    const staff = f.arms[1].children.find((o) => o.userData.held?.kind === 'staff');
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(f.cast.ready).toBe(false);
+    expect(staff.parent).toBe(f.arms[1]);
+    expect(f.cast.holds).toEqual([]);
+  });
+
+  it('every toy’s item says what kind it is and where it’s held', () => {
+    for (const item of ['staff', 'white-staff', 'bow', 'axe', 'sword', 'horn']) {
+      const f = makeToyFigure({ item });
+      const it = f.arms[1].children.find((o) => o.userData.held);
+      expect(it?.userData.held.kind).toBe(item);
+      expect(it.getObjectByName('grip')).toBeTruthy();
+    }
   });
 
   it('a greeting once as the walker comes near, again only after they’ve gone', async () => {

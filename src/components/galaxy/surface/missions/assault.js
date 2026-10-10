@@ -662,6 +662,15 @@ function step(b, h, you, env, out) {
         nx *= env.reach / rr;
         nz *= env.reach / rr;
       }
+      // not out into water too deep to wade (env.deep, where the world has some): along the shore instead, or stood still
+      if (env.deep?.(nx, nz) && !env.deep(s.x, s.z)) {
+        if (!env.deep(nx, s.z)) nz = s.z;
+        else if (!env.deep(s.x, nz)) nx = s.x;
+        else {
+          nx = s.x;
+          nz = s.z;
+        }
+      }
       s.x = nx;
       s.z = nz;
     }

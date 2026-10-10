@@ -22,6 +22,11 @@
 // moment from the films plays. The scene hands overdriveAt's number to
 // step() as input.overdrive while the pilot boosts, and to the autopilot.
 //
+// A planet counts from just over its surface (AIR, of its radius), not from
+// its reach: the worlds are grown (fit.js), so Hoth's reach is 150 units of
+// air over its ground, and with the drive shut all through it, climbing out
+// took twelve seconds at the boost, like glue.
+//
 // EDGE, CEILING, PULSE, WIDE; FAR (the camera's far plane, for all of it in view)
 // makeSpace(solids) → { edge, ceilingAt, openness, driveAt, driveAlong, wideAlong, overdriveAt, homeAt, boostAt, brakeAt, coastAt, solids, goals }
 // solids: [{ id, at: [x, y, z], r, reach, band?, swallow? }]: what the ship
@@ -43,6 +48,7 @@ export const FAR = 12000;
 const NEAR = 26; // past a thing's reach: closer than this, the drive's down
 const RAMP = 90; // and over this much further it opens all the way
 const PARK = 6; // how far past a goal's reach the autopilot stops
+export const AIR = 0.15; // a planet's, of its radius over its surface: where its drive's down (not its reach)
 export const WIDE = { near: 500, ramp: 500 }; // past anything big's reach: no super speed within `near`, all of it `ramp` further out
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -55,9 +61,11 @@ export function makeSpace(solids, { edge = EDGE, ceiling = CEILING } = {}) {
   const big = solids.filter((o) => o.r >= 1.5 || o.goal);
   // how open it is at (x, y, z) going the way `f` points (a unit vector;
   // none: as it would be going straight at the nearest thing)
+  // (a planet closes it from just over its surface, the rest from their reach)
+  const edgeOf = (o) => (o.planet ? o.r * (1 + AIR) : (o.reach ?? o.r));
   const driveAlong = (x, y, z, f = null) => {
     let gap = Infinity;
-    for (const o of big) gap = Math.min(gap, gapAlong(x, y, z, f, o.at, o.reach ?? o.r));
+    for (const o of big) gap = Math.min(gap, gapAlong(x, y, z, f, o.at, edgeOf(o)));
     return smooth(clamp((gap - NEAR) / RAMP, 0, 1));
   };
   const openness = (x, y, z) => driveAlong(x, y, z);

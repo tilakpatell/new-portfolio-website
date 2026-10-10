@@ -13,7 +13,9 @@
 // createModels({ prepare(object) → Promise }) → { slot(kind, size, { tint }) → slot,
 //   want(kinds), prebuild(kinds), builtCount, update(t), dispose() }
 // slot: { holder (place it, turn it), kind, size, ready }; every model sits in
-// its holder centred, nose along +z, +y up, its biggest side `size` long.
+// its holder centred, nose along +z, +y up, `size` long nose to tail (a
+// station, or a ship that flies upright, `size` at its biggest side:
+// universe/shipFit.js).
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -21,6 +23,7 @@ import { device } from '../../lib/device';
 import { gen3dUrl } from '../../lib/three/gen3d';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { GLB } from '../universe/glbFleet';
+import { fitScale } from '../universe/shipFit';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS, buildGalaxyShip } from './fleet';
 
@@ -60,8 +63,10 @@ export const MODELS = {
   razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
   // the ones that were built in code till somebody's model was found
   // (scripts/sketchfab-galaxy.mjs): the YT-2400, the Xg-1, the GR-75,
-  // Bespin's cloud cars, the IG-2000, the Interdictor and the second Death
-  // Star (Cloud City stays built: world.js's solids and landing fit its disc)
+  // Bespin's cloud cars, the IG-2000 and the second Death Star (Cloud City
+  // stays built: world.js's solids and landing fit its disc); and the
+  // Interdictor, which came that way as a flat white wedge and was made
+  // again with Meshy (scripts/meshy-galaxy-library.mjs, turned nose to +z)
   freighter: { url: '/models/galaxy/freighter.glb', nose: 0 },
   gunboat: { url: '/models/galaxy/gunboat.glb', nose: 0 },
   transport: { url: '/models/galaxy/transport.glb', nose: 0 },
@@ -90,6 +95,14 @@ export const MODELS = {
   zeta: { url: '/models/galaxy/zeta.glb', nose: Math.PI / 2 },
   fang: { url: '/models/galaxy/fang.glb', nose: Math.PI / 2 },
   naboocruiser: { url: '/models/galaxy/naboocruiser.glb', nose: Math.PI / 2 },
+  // the universe map's corvette made again for the galaxy, where one flies
+  // close by in every Rebel line (its own file: the universe map keeps the
+  // lighter cr90.glb for its traffic), turned nose to +z in the making
+  corvette: { url: '/models/galaxy/corvette.glb', nose: 0 },
+  // and its TIE interceptor, out of a picture of the real ship (the made one
+  // below, from the universe map's own model's render, came out lumpy and
+  // grey, and at 746 KB weighed more than this one does)
+  interceptor: { url: '/models/galaxy/interceptor.glb', nose: 0 },
   // the universe map's wars' flagships (scripts/meshy-war.mjs: Rick and
   // Morty's from the show's own pictures, Breaking Bad's from words)
   councildread: { url: '/models/universe/war/councildread.glb', nose: Math.PI / 2 },
@@ -97,10 +110,16 @@ export const MODELS = {
   superlab: { url: '/models/universe/war/superlab.glb', nose: Math.PI / 2 },
   hacienda: { url: '/models/universe/war/hacienda.glb', nose: 0 }, // (its thrusters either side)
 };
-// the ones made again here at full quality (scripts/gen3d, remade from these
-// models' own renders): kind → the made model's name, loaded in this device's cut
-export const MADE = { xwing: 'x-wing', interceptor: 'tie-interceptor' };
-for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name) };
+// the ones made again here (scripts/gen3d, remade from these models' own
+// renders): kind → the made model's name, loaded in the light cut (20k
+// triangles, 1024 maps) whatever the device. These are the galaxy's own
+// fighters, not yours (your X-wing is its own model, universe/shipModels.js),
+// and a fighter shows its whole model only inside LOD_NEAR times its size, a
+// dozen units or so; the desktop's 120k-triangle cut of the X-wing and the
+// interceptor came to 6.6 MB of every arrival, against 1.4 MB for these
+// (the interceptor's now the Meshy one above).
+export const MADE = { xwing: 'x-wing' };
+for (const [kind, name] of Object.entries(MADE)) if (MODELS[kind]) MODELS[kind] = { ...MODELS[kind], url: gen3dUrl(name, 'low') };
 
 // The capitals' close-up cut: Daniel Andersson's Imperial II and Nebulon-B
 // (scripts/sketchfab-galaxy.mjs, `hq`), about 100k triangles with
@@ -115,9 +134,11 @@ export const HQ = {
   destroyer: { url: '/models/galaxy/hq/destroyer.glb', nose: 0 },
   nebulon: { url: '/models/galaxy/hq/nebulon.glb', nose: 0 },
 };
-// And the Death Stars' 4096-pixel maps (scripts/deathstar-hd.mjs), loaded on
-// the same desktops: the same hulls as the 2048 cuts, so each keeps its own
-// far-off copy (and the first Death Star none: the world draws its sphere).
+// And the Death Stars' 4096-pixel maps (scripts/deathstar-hd.mjs), loaded
+// only on the strongest graphics (ultra), as the planets' biggest maps are:
+// the two take about a quarter of a gigabyte of graphics memory between
+// them. The same hulls as the 2048 cuts, so each keeps its own far-off copy
+// (and the first Death Star none: the world draws its sphere).
 export const HD_MAPS = {
   deathstar: '/models/universe/death-star.hq.glb',
   deathstar2: '/models/galaxy/deathstar2.hq.glb',
@@ -128,10 +149,18 @@ export const withHq = (models, detail) =>
     ? {
         ...models,
         ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])),
-        ...Object.fromEntries(Object.entries(HD_MAPS).filter(([k]) => models[k]).map(([k, url]) => [k, { ...models[k], url }])),
+        ...(detail === 'ultra' ? Object.fromEntries(Object.entries(HD_MAPS).filter(([k]) => models[k]).map(([k, url]) => [k, { ...models[k], url }])) : {}),
       }
     : models;
-Object.assign(MODELS, withHq(MODELS, device().detail));
+// the models as a device of this detail loads them (MODELS is this device's)
+const LIGHT = { ...MODELS };
+export const modelsAt = (detail) => withHq(LIGHT, detail);
+Object.assign(MODELS, modelsAt(device().detail));
+
+// what every system's arrival loads, whatever's there (galaxy/scene.js): the
+// Star Destroyer and the corvette the set pieces and the battles fly, and the
+// X-wing and the interceptor that fight over nearly every world
+export const ARRIVAL = ['destroyer', 'corvette', 'xwing', 'interceptor'];
 
 const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 
@@ -183,16 +212,25 @@ export const lodLevels = (size) => [
   [LOD_FAR * size, 'none'],
 ];
 
-// the models the hunters fly (universe/glbFleet.js flies them, the
-// universe's TIE interceptors, and the galaxy's droids and Imperial TIEs, each
-// built until it's here)
+// the models the hunters fly (universe/glbFleet.js flies them: the galaxy's
+// droids and Imperial TIEs, and its X-wings and interceptors in the cut the
+// battles load, each built until it's here). The Y-wing, the A-wing and the
+// TIE bomber are the whole models, not GLB's far-off copies: those are for
+// the universe map, where a fighter is a few pixels long, and they have no
+// normals, so a wingman flying beside you came out in facets. The bounty
+// hunters' ships and the navy's gunboats are their models too, where they
+// were only ever the built ones. And the Star Destroyer and the corvette
+// that jump in on you (universe/setpieces.js) are the battles' ones, which
+// every arrival has loaded already: on a desktop the destroyer's is the
+// close-up cut, where the universe map's would have been another 470 KB of a
+// lesser ship, and the corvette is the galaxy's own.
 export const HUNTER_GLB = {
   ...GLB,
-  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced'].map((k) => [k, { ...MODELS[k], built: true }])),
+  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced', 'xwing', 'interceptor', 'ywing', 'awing', 'tiebomber', 'gunboat', 'ig2000', 'houndstooth', 'punishingone', 'destroyer', 'corvette'].map((k) => [k, { ...MODELS[k], built: true }])),
   // (the war's other hunters and what their capital ships drop in: the
   // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
   ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),
-  redleader: { ...GLB.xwing, built: false },
+  redleader: { ...MODELS.xwing, built: false },
 };
 
 // a model's materials tuned to the scene's light: engines and lights hot
@@ -210,15 +248,16 @@ function tune(root) {
   });
 }
 
-// centred, nose to +z (a turn of `nose` about y), its biggest side 1 long
-function normalise(root, nose = 0) {
+// centred, nose to +z (a turn of `nose` about y), 1 long nose to tail (or 1
+// at its biggest side: shipFit.js)
+function normalise(root, nose = 0, kind = null) {
   const turn = new THREE.Group();
   turn.rotation.y = nose;
   turn.add(root);
   turn.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(turn, true);
   const size = box.getSize(new THREE.Vector3());
-  const k = 1 / Math.max(size.x, size.y, size.z, 1e-6);
+  const k = fitScale(kind, size);
   const holder = new THREE.Group();
   holder.add(turn);
   turn.position.copy(box.getCenter(new THREE.Vector3())).multiplyScalar(-1);
@@ -287,7 +326,7 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
       .then(async (root) => {
         if (!root) return;
         tune(root);
-        const n = normalise(root, def.nose);
+        const n = normalise(root, def.nose, kind);
         // (a skinned one's copies need bones of their own: SkeletonUtils)
         root.traverse((o) => o.isSkinnedMesh && (n.skinned = true));
         if (prepare) await prepare(n.holder);
@@ -337,9 +376,10 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
     if (built.has(kind)) return built.get(kind);
     if (!BUILT.has(kind)) return null;
     const model = buildGalaxyShip(kind);
-    // (buildGalaxyShip makes it 1 long in z; here everything's 1 at its biggest)
+    // (buildGalaxyShip makes it 1 long in z; fitted as the loaded ones are, so
+    // a ship keeps its length when its model takes over)
     const s = model.size;
-    const k = 1 / Math.max(s.x, s.y, s.z, 1e-6);
+    const k = fitScale(kind, s);
     const holder = new THREE.Group();
     holder.add(model.group);
     holder.scale.setScalar(k);
@@ -395,7 +435,7 @@ export function createModels({ prepare = null, load: fetchModel = loadGLTF } = {
   }
 
   return {
-    // a ship of `kind`, its biggest side `size` long, in a holder to place
+    // a ship of `kind`, `size` long (a station `size` at its biggest side), in a holder to place
     slot(kind, size, { tint = null } = {}) {
       const holder = new THREE.Group();
       const inner = new THREE.Group();

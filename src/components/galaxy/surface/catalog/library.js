@@ -16,16 +16,17 @@ export const MODELS = {
   // an X-wing parked in Echo Base's hangar
   parkedxwing: { uid: 'e6b85951f85940c1b26505eda7d73ef9', as: 'the parked X-wings', metres: 12.5, along: 'max', yaw: 0, tris: 20000, tex: 1024 },
   // Naboo's N-1s in Theed's hangar (the same model the galaxy flies)
-  n1fighter: { uid: '3cf69f6c85234aac8844e845e74ac75b', as: 'the parked N-1 starfighters', metres: 11, along: 'max', yaw: 0, tris: 12000, tex: 1024 },
+  // (ultra: the whole download, 32,101 triangles; its maps are 1024s)
+  n1fighter: { uid: '3cf69f6c85234aac8844e845e74ac75b', as: 'the parked N-1 starfighters', metres: 11, along: 'max', yaw: 0, tris: 12000, tex: 1024, ultra: { tris: 32101, tex: 1024 } },
   // the Queen's ship on its pad
   royalship: { uid: 'f631077977754b5591298ecfa201380b', as: 'the Naboo royal starship', metres: 76, along: 'max', yaw: 0, tris: 20000, tex: 1024 },
   // the films' faces who stand where the worlds put them (their arms-down
   // poses didn't take Meshy's rig: scripts/meshy-galaxy.mjs)
-  anakin: { uid: 'afde81fe035b4e0aa8d1b3b96c9fd7ff', as: 'Anakin Skywalker', metres: 1.85, yaw: 0, tris: 20000, tex: 1024 },
-  krennic: { uid: '59c66eb5d470436f9d29d5720c9b402a', as: 'Director Krennic', metres: 1.79, yaw: Math.PI / 2, tris: 8000, tex: 1024 },
-  cassian: { uid: '1ef27f2978d442e39eac1e62cf28e226', as: 'Cassian Andor', metres: 1.78, yaw: 0, tris: 8000, tex: 1024 },
+  anakin: { uid: 'afde81fe035b4e0aa8d1b3b96c9fd7ff', legs: { crotch: 0.32 }, as: 'Anakin Skywalker', metres: 1.85, yaw: 0, tris: 20000, tex: 1024 },
+  krennic: { uid: '59c66eb5d470436f9d29d5720c9b402a', legs: { crotch: 0.47 }, as: 'Director Krennic', metres: 1.79, yaw: Math.PI / 2, tris: 8000, tex: 1024 },
+  cassian: { uid: '1ef27f2978d442e39eac1e62cf28e226', legs: { crotch: 0.46 }, as: 'Cassian Andor', metres: 1.78, yaw: 0, tris: 8000, tex: 1024 },
   chirrut: { uid: '9340db8a8aab4091886d25a187b956fa', as: 'Chirrut Îmwe', metres: 1.75, yaw: 0.35, tris: 6000, tex: 1024 },
-  mace: { uid: 'ba2eaba7ff6b45c89c1b2c4919e46880', as: 'Mace Windu', metres: 1.88, yaw: 0.6, tris: 8000, tex: 1024 },
+  mace: { uid: 'ba2eaba7ff6b45c89c1b2c4919e46880', legs: { crotch: 0.3 }, as: 'Mace Windu', metres: 1.88, yaw: 0.6, tris: 8000, tex: 1024 },
   // ── for the worlds to come ──
   juggernaut: { uid: '4e331a37fe614fc783f0dcbcb77310cb', as: 'the clone turbo tanks', metres: 49, along: 'max', yaw: 0, tris: 16000, tex: 1024 },
   padme: { uid: '35e48eeb21f54d7e8a20e72f86753311', as: 'Padmé Amidala', metres: 1.65, yaw: 0, tris: 12000, tex: 1024 },
@@ -49,17 +50,19 @@ export const MODELS = {
   reek: { made: 'meshy', as: 'the reek', metres: 5, along: 'max' },
   varactyl: { made: 'meshy', as: 'the varactyls', metres: 10, along: 'max' },
   lothcat: { made: 'meshy', as: 'the loth-cats', metres: 0.6, along: 'y' },
-  lothwolf: { made: 'meshy', as: 'the loth-wolves', metres: 2.4, along: 'y' },
+  lothwolf: { made: 'meshy', turn: -0.181, as: 'the loth-wolves', metres: 2.4, along: 'y' },
   // the worlds' landmarks still built in code, made with Meshy over the built
   // one's walls and decks (solids: 'built'), so its doors and floors still
   // work: the Mos Eisley cantina (and Nevarro's), Varykino, Endor's shield
-  // generator, the Gungans' stone heads; and Mustafar's collector rig for
-  // later (its deck stands higher than the duel's built one)
+  // generator; and Mustafar's collector rig for later (its deck stands
+  // higher than the duel's built one). (The Gungans' stone heads are the
+  // audit lane's now, catalog/audit.js.)
   cantina: { made: 'meshy', as: 'the cantina', metres: 18.5, along: 'max', solids: 'built', detail: 'adobe' },
-  varykino: { made: 'meshy', as: 'the lake retreat at Varykino', metres: 28, along: 'y', solids: 'built', hero: true, lod: true, detail: 'stone' },
-  shieldgen: { made: 'meshy', as: 'the shield generator', metres: 70, along: 'y', solids: 'built' },
-  stonehead: { made: 'meshy', as: 'the Gungans’ stone heads', metres: 7.5, along: 'y', detail: 'stone' },
-  lavacollector: { made: 'meshy', as: 'the lava collector', metres: 16, along: 'max' },
+  // (Nevarro's: a copy of it in the grey of the city's concrete, Greef Karga's)
+  nevcantina: { made: 'meshy', as: 'Greef Karga’s cantina', metres: 18.5, along: 'max', solids: 'built', detail: 'concrete', tint: '#9c9a94' },
+  varykino: { made: 'meshy', as: 'the lake retreat at Varykino', metres: 28, along: 'y', solids: 'built', hero: true, lod: true, detail: 'adobe', tint: '#f2d3a0' },
+  shieldgen: { made: 'meshy', as: 'the shield generator', metres: 70, along: 'y' },
+  lavacollector: { made: 'meshy', as: 'the lava collector', metres: 16, along: 'max', solids: 'built' },
   // the vehicles the worlds built in code: Naboo's MTT and Gungan bongo
   // (the AAT is Sketchfab's, above); and for the worlds to come: Jabba's
   // skiff, a swoop, a STAP, the AT-DP, Naboo's flash speeder, the Imperial
@@ -72,7 +75,7 @@ export const MODELS = {
   atdp: { made: 'meshy', as: 'the AT-DP walkers', metres: 8.5, along: 'y' },
   flash: { made: 'meshy', as: 'the flash speeders', metres: 6, along: 'max' },
   itt: { made: 'meshy', as: 'the Imperial troop transports', metres: 13, along: 'max' },
-  blurrg: { made: 'meshy', as: 'the blurrgs', metres: 2.6, along: 'y' },
+  blurrg: { made: 'meshy', turn: -0.14, as: 'the blurrgs', metres: 2.6, along: 'y' },
   happabore: { made: 'meshy', as: 'the happabores', metres: 5, along: 'max' },
   fambaa: { made: 'meshy', as: 'the fambaas', metres: 11, along: 'max' },
 };

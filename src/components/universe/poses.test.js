@@ -3,7 +3,6 @@ import { BELT, POSITIONS, REACH, SUN } from './layout';
 import { MAW } from './maw';
 import { SHIP } from './ship';
 import { POSE_NAMES, poseFor } from './poses';
-import { laneAt } from './hyperlanes';
 import { HOME_RADIUS } from './layout';
 
 const sub = (a, b) => a.map((v, i) => v - b[i]);
@@ -13,7 +12,7 @@ const dot = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
 
 describe('the fixed poses', () => {
   it('knows every pose the spec names', () => {
-    expect(POSE_NAMES).toEqual(['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'middleearth', 'breakingbad', 'office', 'belt', 'maw', 'landing-middleearth', 'station', 'far-rim', 'lane-ride']);
+    expect(POSE_NAMES).toEqual(['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'middleearth', 'breakingbad', 'office', 'belt', 'maw', 'landing-middleearth', 'station', 'far-rim']);
     for (const name of POSE_NAMES) expect(poseFor(name)).toBeTruthy();
     expect(poseFor('nowhere')).toBeNull();
   });
@@ -89,16 +88,11 @@ describe('the fixed poses', () => {
     expect(poseFor('landing-middleearth').foot).toBe('middleearth');
   });
 
-  it('looks out from the home system’s edge at the furthest world, and holds a ship half way along a trunk', () => {
+  it('looks out from the home system’s edge at the furthest world', () => {
     const rim = poseFor('far-rim');
     expect(Math.hypot(rim.at[0], rim.at[2])).toBeCloseTo(HOME_RADIUS + 60, 6);
     const to = norm(sub(POSITIONS[rim.toward], rim.at));
     expect(Math.hypot(...POSITIONS[rim.toward])).toBeGreaterThan(20000);
     expect(-Math.sin(rim.heading) * to[0] - Math.cos(rim.heading) * to[2]).toBeGreaterThan(0.99);
-    const ride = poseFor('lane-ride');
-    const at = laneAt(...ride.at);
-    expect(at.lane.id).toBe(ride.lane);
-    expect(at.lane.tier).toBe('trunk');
-    expect(at.s).toBeCloseTo(0.5, 2);
   });
 });

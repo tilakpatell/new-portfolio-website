@@ -46,6 +46,24 @@ describe('make.mjs with every engine faked (subprocesses, up to 10 s)', () => {
     for (const step of [/raw model with fake/, /baked to 8000 faces/, /hq: \d+ triangles/, /mid: \d+ triangles/, /lo: \d+ triangles/, /judge: .*sheet\.png/, /verdict: 9\/10/]) expect(log).toMatch(step);
   });
 
+  it('makes a fourth cut, .ultra, when asked, the bake at its size and the others as before', async () => {
+    const box = sandbox();
+    const r = await box.make(['xu', '--image', REF, '--what', 'an X-wing starfighter', '--faces', '20000', '--ultra', '--no-judge'], { GEN3D_FAKE_TRIS: '30000' });
+    expect(r.status, r.err).toBe(0);
+    const want = cutsFor(20000, undefined, { ultra: true });
+    expect(Object.keys(want)).toEqual(['ultra', 'hq', 'mid', 'lo']);
+    for (const [tier, c] of Object.entries(want)) {
+      const tris = triangles(await io.read(cut(box, 'xu', c.suffix)));
+      expect(tris, tier).toBeLessThanOrEqual(c.faces * 1.05);
+      expect(tris, tier).toBeGreaterThan(c.faces * 0.5);
+    }
+    expect(readFileSync(join(box.cache, 'xu', 'make.log'), 'utf8')).toMatch(/baked to 20000 faces/);
+    // and without it, no fourth cut
+    const plain = sandbox();
+    expect((await plain.make(['xp2', '--image', REF, '--what', 'x', '--faces', '8000', '--no-judge'])).status).toBe(0);
+    expect(existsSync(cut(plain, 'xp2', '.ultra'))).toBe(false);
+  });
+
   it('caps every cut’s texture at the size asked for', async () => {
     const box = sandbox();
     const r = await box.make(['tex', '--image', REF, '--what', 'a box', '--faces', '8000', '--tex', '512', '--no-judge'], { GEN3D_FAKE_TEX: '1024' });

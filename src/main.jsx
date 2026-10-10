@@ -8,6 +8,7 @@ import './styles/extras.css';
 import './styles/caribbean-themes.css';
 import App from './App.jsx';
 import { cleanHref } from './lib/stale';
+import { registerWorker } from './lib/sw';
 
 // (back from a reload for the new build: the address as it was)
 const clean = cleanHref(window.location.href);
@@ -18,3 +19,6 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 );
+
+// back on for a visitor with a world installed (public/sw.js serves its pack)
+registerWorker();

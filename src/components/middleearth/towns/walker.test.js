@@ -18,6 +18,20 @@ describe('the walker', () => {
     expect(h.speed).toBeGreaterThan(HOBBIT.walk - 0.2);
   });
 
+  it('gets up to speed and turns as fast at 30, 60 or 120 frames a second', () => {
+    const w = makeWalker({ radius: 50 });
+    const after = (hz) => {
+      let h = newWalker({ x: 0, z: 0, face: 0 });
+      for (let i = 0; i < hz * 0.2; i++) h = w.step(h, { x: 0, z: -1 }, 1 / hz);
+      return h;
+    };
+    const [a, b, c] = [after(30), after(60), after(120)];
+    expect(Math.abs(a.vz - b.vz) / Math.abs(b.vz)).toBeLessThan(0.01);
+    expect(Math.abs(c.vz - b.vz) / Math.abs(b.vz)).toBeLessThan(0.01);
+    expect(Math.abs(a.face - b.face)).toBeLessThan(0.01);
+    expect(Math.abs(c.face - b.face)).toBeLessThan(0.01);
+  });
+
   it('runs faster than it walks', () => {
     const w = makeWalker({ radius: 46 });
     const a = walk(w, newWalker({ x: 0, z: 0 }), { x: 1, z: 0 }, 1);

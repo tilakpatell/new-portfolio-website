@@ -19,13 +19,15 @@
 
 import { MOONS, UNIVERSES, byId } from './universes';
 import { HOME_SPREAD, SPREAD } from './scale';
+import { sectorAt, sectorCentre, sectorId } from '../expanse/gen/grid';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-// (all three by scale.js's SPREAD; the height by half of it, so the disc
-// stays a disc and the highest world stays under deep space's ceiling)
+// (the first two by scale.js's SPREAD; the height stays as it was at the
+// spread to four, 1,120, so the highest world stays under deep space's
+// ceiling, deep.js's 1,400, and the disc only gets flatter as it widens)
 const FIRST = 2000 * SPREAD; // how far out the nearest fandom is
 const STEP = 330 * SPREAD; // and how much further each one after it
-const HEIGHT = (560 * SPREAD) / 2; // how far above or below the disc they go
+const HEIGHT = 1120; // how far above or below the disc they go
 // (and the Rick and Morty sector's worlds round its middle, the same way)
 const SECTOR_FIRST = 900;
 const SECTOR_STEP = 450;
@@ -41,16 +43,37 @@ export const ORDER = UNIVERSES.map((u) => u.id);
 
 // The sectors: where each one's middle is, and how far out from it the ship
 // is turned back. Anything further than SECTOR_SPLIT down -z is the Rick and
-// Morty sector's (the main map's edge is 36,000 out, the sector's 6,000 round
-// its origin, 48,000 down: the line runs halfway between the two edges). The
+// Morty sector's (the main map's edge is 54,000 out, the sector's 6,000 round
+// its origin, 66,000 down: the line runs halfway between the two edges). The
 // sector keeps its own layout (it's a pocket universe reached by portal);
-// only its origin moved out with the main map's spread.
+// only its origin moved out with the main map's spread, keeping the 6,000
+// between the two edges.
 export const SECTORS = {
   main: { id: 'main', origin: [0, 0, 0], edge: 9000 * SPREAD, name: 'Deep space' },
-  rickmorty: { id: 'rickmorty', origin: [0, 0, -48000], edge: 6000, name: 'The Central Finite Curve' },
+  rickmorty: { id: 'rickmorty', origin: [0, 0, -66000], edge: 6000, name: 'The Central Finite Curve' },
 };
 const SECTOR_SPLIT = (-SECTORS.main.edge + SECTORS.rickmorty.origin[2] + SECTORS.rickmorty.edge) / 2;
-export const sectorOf = (x, y, z) => (z < SECTOR_SPLIT ? 'rickmorty' : 'main');
+// Past both edges is the Expanse (expanse/gen): a grid of generated sectors,
+// each 'E:sx,sz' (grid.js). Inside an edge it's that edge's sector, as it
+// always was; the Rick and Morty sector is its own pocket, walled from the
+// Expanse round it (ship.js), so only what's inside its edge is its own.
+const RM = SECTORS.rickmorty;
+export const sectorOf = (x, y, z) => {
+  if (z < SECTOR_SPLIT && Math.hypot(x - RM.origin[0], z - RM.origin[2]) <= RM.edge + 1) return 'rickmorty';
+  if (Math.hypot(x, z) <= SECTORS.main.edge + 1) return 'main';
+  return sectorId(...sectorAt(x, z));
+};
+export const inExpanse = (id) => typeof id === 'string' && id.startsWith('E:');
+// the map's own sector for a point: the Rick and Morty pocket, or the main
+// map's everywhere else (the Expanse is charted, sided and crewed as the
+// main map is: what goes by sector inside the edges reads this)
+export const mapSectorOf = (x, y, z) => (sectorOf(x, y, z) === 'rickmorty' ? 'rickmorty' : 'main');
+// a sector by id: one of SECTORS, or an Expanse sector (no edge: it goes on)
+export const sectorById = (id) => SECTORS[id] ?? (inExpanse(id) ? expanseSector(id) : null);
+function expanseSector(id) {
+  const [sx, sz] = id.slice(2).split(',').map(Number);
+  return { id, origin: sectorCentre(sx, sz), edge: Infinity, name: id, expanse: true };
+}
 // a point given in a sector's own frame, in the map's
 export const inSector = (sector, [x, y, z]) => {
   const o = SECTORS[sector].origin;
@@ -58,7 +81,7 @@ export const inSector = (sector, [x, y, z]) => {
 };
 // how far (x, z) is out from its sector's middle, level, and that sector
 export function sectorOut(x, z) {
-  const sec = SECTORS[sectorOf(x, 0, z)];
+  const sec = sectorById(sectorOf(x, 0, z));
   return { sec, out: Math.hypot(x - sec.origin[0], z - sec.origin[2]) };
 }
 

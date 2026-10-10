@@ -13,7 +13,7 @@
 // fitted in the hangar (outfit.js), bolted on by modules.js.
 //
 // buildShip(kind, textures, { build }) → { group, setThrottle(0…1),
-//   paint(paint), rim({ colour, dir }), outfit(loadout) → modules, modules, engines, drive(dt,
+//   paint(paint), rim({ colour, dir, key }), outfit(loadout) → modules, modules, engines, drive(dt,
 //   motion), dress(model, { clone }), mount(model, extra), update(t),
 //   dispose() }
 // With a build (shipyard/build.js), the ship is that garage build, put
@@ -37,6 +37,10 @@ import { LENGTH } from './scale';
 // (small against the planets, and much smaller than the stations: scale.js)
 export { LENGTH };
 export const BUILT = 0.36; // the length the ships below are built at
+// the line round Rick and Morty in the cruiser (rickmorty/cruiser3d.js's
+// crewInk, in the saucer's units): drawn as big as the map draws them, the
+// C-137 page's would be wider than their fingers and Rick's spikes of hair
+export const CREW_INK = 0.012;
 
 // Geometries placed by [position, rotation, scale], merged into one.
 function parts(list) {

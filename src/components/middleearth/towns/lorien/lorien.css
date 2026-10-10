@@ -2,7 +2,7 @@
    wood by day and the blue of its lanterns by night, with the panels for
    the stair, the Mirror, the gifts and the river. */
 
-.lorien-world { --shire-glass: rgba(26, 24, 14, 0.72); --shire-glass-hi: rgba(30, 28, 16, 0.9); }
+.lorien-world { --shire-glass: rgba(26, 24, 14, 0.78); --shire-glass-hi: rgba(30, 28, 16, 0.9); }
 .lorien-stage { background: linear-gradient(180deg, #c8b870 0%, #f2e2a8 55%, #6a6a2a 60%, #2a2a14 100%); }
 .lorien-stage[data-sky='night'] { background: linear-gradient(180deg, #050a1a 0%, #142446 58%, #0e1a22 60%, #060a0c 100%); }
 .lorien-stage[data-sky='night'] .shire-loading { color: #c8daf0; }

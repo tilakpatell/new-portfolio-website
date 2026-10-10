@@ -6,15 +6,18 @@
 //
 // createSkirmishes(parent, { fleet, solids }) → { start(opts) → bool,
 //   update(dt, t) → events, hit(from, to, damage), targets, active, over,
-//   info, clear(), dispose() }
+//   info, clear(), dispose(), bodies (shipHits.js's: its hunters, foes, a
+//   ram on one a shot's hit; its escort, friends; its freighter, civil, and
+//   no shot of yours hurts it, so neither does a ram) }
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
+import { knock } from '../../lib/combat/contact';
 import { createFleet } from './glbFleet';
-import { FACTIONS, LASER } from './hunterRules';
+import { FACTIONS, LASER, hasTrait } from './hunterRules';
 import { createSkirmish } from './skirmish';
 
-// the freighters' sizes (their biggest dimension, as the traffic draws them)
+// the freighters' sizes (their length, as the traffic draws them)
 const CIVIL_SIZE = { transport: 1.8, freighter: 0.7, saucer: 0.45, hauler: 0.9 };
 const BOLT = { xwing: [5.5, 0.6, 0.5], birdperson: [0.7, 5.5, 1.2] };
 
@@ -144,6 +147,21 @@ export function createSkirmishes(parent, { fleet = createFleet(), solids = [] } 
     },
     get active() {
       return sk.active;
+    },
+    get bodies() {
+      if (!sk.active) return NONE;
+      const out = [];
+      for (const h of sk.hunt.live) {
+        if (!h.alive || h.pack.gone || h.hidden > 0 || hasTrait(h.type, 'rammer')) continue;
+        out.push({ key: `sk:h:${h.id}`, id: h.id, kind: h.kind, at: h.pos, prev: h.prev, vel: h.vel, size: h.type.size, side: 'foe', hit: (punch) => sk.hunt.damage(h.id, punch), push: (dv) => knock(h, dv) });
+      }
+      for (const w of sk.wing.live) if (w.alive) out.push({ key: `sk:w:${w.id}`, id: w.id, kind: w.kind, at: w.pos, prev: w.prev, vel: w.vel, size: w.type.size, side: 'friend', hit: () => null, push: (dv) => knock(w, dv) });
+      const f = sk.freighter;
+      if (f.on && f.alive) {
+        const v = { x: -Math.sin(f.heading) * Math.cos(f.pitch) * f.speed, y: f.vy, z: -Math.cos(f.heading) * Math.cos(f.pitch) * f.speed };
+        out.push({ key: 'sk:f', id: 'freighter', kind: f.kind, at: { x: f.x, y: f.y, z: f.z }, vel: v, size: CIVIL_SIZE[f.kind] ?? 0.7, side: 'civil', hit: () => null });
+      }
+      return out;
     },
     get over() {
       return sk.over;

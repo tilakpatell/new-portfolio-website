@@ -24,9 +24,14 @@ HALF = torch.float16 if DEVICE == "cuda" else torch.float32
 
 @lru_cache(None)
 def _whisper():
+    import os
+
     from transformers import pipeline
 
-    return pipeline("automatic-speech-recognition", model="openai/whisper-large-v3", dtype=HALF, device=DEVICE)
+    # $VOICES_WHISPER: another Whisper; generate.py hears its takes with large-v3-turbo, several times
+    # quicker and as sure of short English lines, and grab.py keeps large-v3 for the references
+    model = os.environ.get("VOICES_WHISPER", "openai/whisper-large-v3")
+    return pipeline("automatic-speech-recognition", model=model, dtype=HALF, device=DEVICE)
 
 
 def hear(wav, words=False):

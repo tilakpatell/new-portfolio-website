@@ -3,7 +3,8 @@
 // place, reading the battlefield, and acting as a squad; the seam to the
 // body: what a step looks like on a figure, and what it plays when
 // something happens to it; and ambient life: what people want and the
-// places that give it, and what people do with each other. Every module
+// places that give it, and what people do with each other; and whom E
+// talks to, and what the body does when it's pressed. Every module
 // is pure (plain numbers, a seeded rand the caller gives), tested in Node,
 // and usable alone; the design is
 // docs/superpowers/specs/2026-10-07-npc-intelligence-design.md (the body's
@@ -22,3 +23,5 @@ export * as body from './body';
 export * as react from './react';
 export * as needs from './needs';
 export * as social from './social';
+export * as talk from './talk';
+export { createGreeter, onTalk, talkTarget } from './talk';

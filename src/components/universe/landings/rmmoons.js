@@ -9,11 +9,9 @@
 // gear monument, the houses) and the people are models (landings.js).
 
 import * as THREE from 'three';
-import { ball, box, cyl, part, rockGeometry } from '../../galaxy/surface/kit';
-import { rng } from '../../galaxy/surface/noise';
+import { part, rockGeometry } from '../../galaxy/surface/kit';
 import { PROPS as RM } from './rickmorty';
-
-const { PI } = Math;
+import { SCATTER as PLANET_SCATTER } from '../../rickmorty/planets/props/scatter';
 
 export const PROPS = {
   portal: RM.portal,
@@ -29,26 +27,11 @@ export const SCATTER = {
   rock(k, { seed = 2, color = '#8a3a2a' } = {}) {
     return { parts: [{ geometry: k.geometry([part(rockGeometry(seed, { sharp: 0.4 }).scale(0.8, 0.6, 0.8), { color, to: 'stone' })]), material: k.mats.stone }], radius: 0.8 };
   },
-  bone(k) {
-    const parts = [part(cyl(0.05, 0.05, 0.7, 6), { rot: [0, 0, PI / 2], at: [0, 0.06, 0], color: '#e8e0c8', to: 'paint' }), ball(0.09, [0.35, 0.08, 0], 1, { color: '#e8e0c8', to: 'paint' }, 6), ball(0.09, [-0.35, 0.08, 0], 1, { color: '#e8e0c8', to: 'paint' }, 6)];
-    return { parts: [{ geometry: k.geometry(parts), material: k.mats.paint }], radius: null };
-  },
-  // a cat tree: a carpeted post with platforms, Squanch's kind of tree
-  cattree(k, { seed = 4 } = {}) {
-    const rand = rng(seed);
-    const parts = [part(cyl(0.35, 0.3, 5 + rand() * 2, 8), { color: '#d8c8a8', to: 'cloth' })];
-    for (let i = 1; i <= 3; i++) parts.push(part(box(1.8 - i * 0.2, 0.2, 1.8 - i * 0.2), { at: [0, 1.6 * i, 0], color: i % 2 ? '#c8a888' : '#e8d8b8', to: 'cloth' }));
-    parts.push(ball(0.3, [0.9, 5.4, 0], 1, { color: '#ff6a8a', to: 'paint' }, 8));
-    return { parts: [{ geometry: k.geometry(parts), material: k.mats.cloth }], radius: 0.6 };
-  },
-  feather(k) {
-    const parts = [part(box(0.06, 0.02, 0.5), { at: [0, 0.01, 0], rot: [0, 0.6, 0], color: '#e8f0e0', to: 'paint' }), part(box(0.22, 0.01, 0.3), { at: [0, 0.015, 0.05], rot: [0, 0.6, 0], color: '#d8e8d0', to: 'paint' })];
-    return { parts: [{ geometry: k.geometry(parts), material: k.mats.paint }], radius: null };
-  },
-  bolt(k) {
-    const parts = [part(cyl(0.12, 0.12, 0.1, 6), { color: '#8a7a5a', to: 'metal' }), part(cyl(0.05, 0.05, 0.3, 6), { at: [0, 0.1, 0], color: '#6a5a3a', to: 'metal' })];
-    return { parts: [{ geometry: k.geometry(parts), material: k.mats.metal }], radius: null };
-  },
+  // (the moons share the planets’ ground cover: one build of each)
+  bone: PLANET_SCATTER.bone,
+  cattree: PLANET_SCATTER.cattree,
+  feather: PLANET_SCATTER.feather,
+  bolt: PLANET_SCATTER.bolt,
 };
 
 // (THREE is in scope for the kit's geometry helpers' types; nothing here makes its own meshes)

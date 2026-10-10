@@ -9,15 +9,16 @@
 // when it came in and played once: lib/emote.js); an older pilot's, without
 // them, walks as it always did.
 //
-// createPeers({ parent, placer, getCast }) → { update(net, siteId, dt),
-// dispose() }
+// createPeers({ parent, placer, getCast, rides?, models? }) → { update(net, siteId, dt, eye),
+// dispose() } (eye: the camera's position, their lit blades' light out past
+// 12 m of it: saberLight.js)
 
 import * as THREE from 'three';
 import { PARTY, loadPartyFigure } from '../../universe/footScene';
 import { HEROES, heroSpec } from '../heroes';
 import { readLooks } from '../../rickmorty/wardrobe/looks';
 import { METRE } from '../../universe/foot';
-import { RIDES } from './rides';
+import { RIDES as GALAXY_RIDES } from './rides';
 import { SEATS, poseRider } from './riders';
 import { buildFigure } from './figures';
 import { modelFigure } from './actors';
@@ -57,7 +58,7 @@ function nameTag(text) {
   return s;
 }
 
-export function createPeers({ parent, placer, getCast }) {
+export function createPeers({ parent, placer, getCast, rides: RIDES = GALAXY_RIDES, models = undefined, only = false }) {
   const group = new THREE.Group();
   group.name = 'peers';
   parent.add(group);
@@ -114,10 +115,11 @@ export function createPeers({ parent, placer, getCast }) {
     const r = { kind, holder, fig: null };
     const spec = RIDES[kind];
     if (spec?.figure) {
-      r.fig = buildFigure(spec.figure);
+      // (a world that takes models only waits for the model: cast.js)
+      r.fig = only ? null : buildFigure(spec.figure);
       if (r.fig) holder.add(r.fig.model);
       // (its catalogue model once it's here, as yours is: the seat's measured on it)
-      modelFigure(spec.figure)
+      modelFigure(spec.figure, models)
         .then((m) => {
           if (!m || dead || !holder.parent) return;
           if (r.fig) holder.remove(r.fig.model);
@@ -151,7 +153,7 @@ export function createPeers({ parent, placer, getCast }) {
 
   return {
     group,
-    update(net, siteId, dt) {
+    update(net, siteId, dt, eye = null) {
       const now = performance.now();
       const live = new Set();
       for (const p of net?.peers?.values?.() ?? []) {
@@ -189,7 +191,7 @@ export function createPeers({ parent, placer, getCast }) {
           const m = s.motion && !(i === 0 && w.ride) && !wk.own ? { speed: s.motion.speed * METRE, side: s.motion.side * METRE, turn: s.motion.turn, air: 0 } : null;
           if (m) wk.fig?.update(dt, going, m);
           else wk.fig?.update(dt, going);
-          if (!(i === 0 && w.ride)) wk.saber?.stand(dt, now / 1000, going); // (the body under their blade)
+          if (!(i === 0 && w.ride)) wk.saber?.stand(dt, now / 1000, going); // (how much they go: walking, a stroke leaves their legs to the walk)
           if (m && wk.fig?.after) {
             wk.holder.updateMatrixWorld(true);
             wk.fig.after(dt, m, { forward: fwd.set(Math.sin(wk.st.yaw), 0, Math.cos(wk.st.yaw)), up: UP });
@@ -209,11 +211,13 @@ export function createPeers({ parent, placer, getCast }) {
               if (wk.saber) {
                 // their blade as they say it is: lit or not, and a stroke each time the packet says one's on
                 wk.saber.light(lit);
-                if (s.arms?.swing && !wk.swung) wk.saber.swing(now / 1000);
+                // (a new stroke when they start swinging, or chain on to another clip: the one they're playing)
+                if (s.arms?.swing && (!wk.swung || (s.arms.stroke && s.arms.stroke !== wk.stroke))) wk.saber.swing(now / 1000, { clip: s.arms.stroke ?? null });
                 wk.swung = Boolean(s.arms?.swing);
-                wk.saber.update(dt, now / 1000, { forward: fwd, up: UP, me: { x: wk.st.x, z: wk.st.z, yaw: wk.st.yaw }, targets: [] });
+                wk.stroke = s.arms?.stroke ?? null;
+                wk.saber.update(dt, now / 1000, { forward: fwd, up: UP, me: { x: wk.st.x, z: wk.st.z, yaw: wk.st.yaw }, targets: [], eye });
               }
-            }
+            } else wk.saber?.dark(); // (put away to ride: its light goes)
           }
         });
         for (let i = want.length; i < e.walkers.length; i++) {

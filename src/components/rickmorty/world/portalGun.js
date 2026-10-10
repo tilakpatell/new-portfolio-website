@@ -23,5 +23,5 @@ export const isGunKey = (e) => (e.code === 'KeyP' || (!e.code && (e.key === 'p' 
 // the hint before Morty's first step: the keys (or the touch controls), and in C-137, the gun
 export function firstHint({ touch = false, planet = false } = {}) {
   if (touch) return `Drag the stick to walk; push it all the way to run; the arrow jumps, the star fires in a fight. Swipe sideways to look round.${planet ? '' : ' The Portal gun button, up top, picks where Rick’s garage portal goes.'}`;
-  return `W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, F fires in a fight, M lists what to do, hold B to emote.${planet ? '' : ' P is Rick’s portal gun.'}`;
+  return `W A S D or the arrows to walk, Shift to run, Space to jump. Click to look round, Esc to let go. E uses things, F fires in a fight, M lists what to do, hold B to emote.${planet ? '' : ' P is Rick’s portal gun.'}`;
 }

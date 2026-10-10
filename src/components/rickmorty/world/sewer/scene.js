@@ -13,6 +13,8 @@ import { createStage, disposeTree } from '../../../../lib/stage3d';
 import { InkPass, toon } from '../../portal/toon';
 import { createMeshyCast } from '../../portal/meshyCast';
 import { TUNING, laneX } from './rules';
+import { createFeel, feelGroups } from '../../../../lib/three/feel';
+import { BLOOMS } from '../look';
 
 const SEG = 12; // metres of drain per segment
 const SEGS = 7; // segments ahead of him
@@ -21,7 +23,7 @@ const LAMP = 0xffd080;
 const RAT_RUN = Object.freeze({ speed: TUNING.rat, side: 0, turn: 0 }); // (a rat's own run along the drain, m/s)
 
 export async function createSewerScene(canvas, { onLost } = {}) {
-  const stage = createStage(canvas, { shadows: false, fov: 55, near: 0.1, far: 160, exposure: 1.05, bloom: { strength: 0.55, radius: 0.4, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 55, near: 0.1, far: 160, exposure: 1.05, bloom: BLOOMS.sewer, onLost });
   const { scene, camera } = stage;
   scene.background = new THREE.Color(0x0a1410);
   scene.fog = new THREE.Fog(0x0a1410, 30, 90);
@@ -144,7 +146,11 @@ export async function createSewerScene(canvas, { onLost } = {}) {
   };
 
   let lastEvents = null;
-  let shake = 0;
+  // a bite or a splash shakes the camera (lib/three/feel: trauma², still
+  // under reduced motion), at its old 0.5, its decay of 1.5 a second, and
+  // the 0.15 off the old sines had at full
+  const feel = createFeel({ baseFov: 55, offset: 0.15 });
+  feel.set({ decay: 1.5 });
   const render = (run, ms) => {
     if (stage.lost || stage.disposed || !run) return;
     const dt = Math.min(0.1, ms / 1000);
@@ -186,7 +192,7 @@ export async function createSewerScene(canvas, { onLost } = {}) {
     if (run.events !== lastEvents) {
       lastEvents = run.events;
       for (const e of run.events) {
-        if (e.type === 'bite' || e.type === 'splash') shake = 0.5;
+        if (e.type === 'bite' || e.type === 'splash') feel.trauma(0.5);
         if (e.type === 'zap' || e.type === 'miss') {
           const bolt = new THREE.Mesh(BOX, laserMat);
           bolt.scale.set(0.08, 0.08, TUNING.range);
@@ -197,17 +203,18 @@ export async function createSewerScene(canvas, { onLost } = {}) {
       }
     }
     for (const b of [...shots.children]) if (t > b.userData.until) shots.remove(b);
-    shake = Math.max(0, shake - dt * 1.5);
     // the camera, behind and above, a little to the side of his lane
-    const cx = hero.position.x * 0.4 + Math.sin(t * 31) * shake * 0.15;
-    camera.position.set(cx, 2.6 + Math.sin(t * 27) * shake * 0.1, 6.5);
+    camera.position.set(hero.position.x * 0.4, 2.6, 6.5);
     camera.lookAt(hero.position.x * 0.6, 1.0, -8);
+    feel.update(dt, camera);
     stage.render(ms);
   };
 
   return {
     render,
     resize: (w, h) => stage.resize(w, h),
+    // behind ?debug: the stage's bloom, the shake's numbers, and what the game adds
+    tune: (groups = []) => stage.tune([...feelGroups(feel), ...groups]),
     dispose() {
       for (const g of things.values()) disposeTree(g);
       disposeTree(hero);

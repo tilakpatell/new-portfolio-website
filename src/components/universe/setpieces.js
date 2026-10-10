@@ -29,7 +29,7 @@
 //   into it and the scene takes you out of it somewhere else on the map.
 //
 // createSetPieces(parent, { small, fleet, solids }) → { destroyer(ship, kind) → { hangar } | null, leave(), cleared(),
-//   destroyerHere, targets, hit(from, to, punch) → hit | null, drain() → events (capitalRules.js's),
+//   destroyerHere, targets, solids (its hull: capitalRules.js's), hit(from, to, punch) → hit | null, drain() → events (capitalRules.js's),
 //   roadblock(ship, lead) → boolean, chopperHere,
 //   portals(points), comet(ship), flare(star, ship) → { arrives } | null,
 //   rift(ship) → boolean, riftAt, riftInside(ship), closeRift(),
@@ -360,6 +360,9 @@ export function createSetPieces(parent, { small = false, fleet = createFleet(), 
     },
     get destroyerHere() {
       return cap.here;
+    },
+    get solids() {
+      return cap.solids;
     },
     get capital() {
       return cap;

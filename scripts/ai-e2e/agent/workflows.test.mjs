@@ -21,7 +21,7 @@ describe('the workflows that use the desktop’s GPU', () => {
   const jobs = Object.entries(FLOWS).flatMap(([f, w]) => Object.entries(w.jobs).filter(([, j]) => gpu(j)).map(([name, j]) => [`${f} ${name}`, j, w]));
 
   it('are the ones expected', () => {
-    expect(jobs.map(([n]) => n).sort()).toEqual(['ai-health.yml gpu', 'desktop-doctor.yml doctor', 'gen3d.yml make', 'voices.yml make']);
+    expect(jobs.map(([n]) => n).sort()).toEqual(['ai-health.yml gpu', 'desktop-doctor.yml doctor', 'gen3d.yml make', 'motion.yml make', 'voices.yml make']);
   });
 
   it.each(jobs)('%s runs only on the self-hosted gpu runner, with a time limit', (name, job) => {
@@ -49,7 +49,7 @@ describe('the workflows that use the desktop’s GPU', () => {
 
 describe('the rest', () => {
   it('queue and check on GitHub’s own runners', () => {
-    for (const f of ['gen3d.yml', 'voices.yml']) for (const name of ['queue', 'check']) expect(FLOWS[f].jobs[name]?.['runs-on'], `${f} ${name}`).toBe('ubuntu-latest');
+    for (const f of ['gen3d.yml', 'voices.yml', 'motion.yml']) for (const name of ['queue', 'check']) expect(FLOWS[f].jobs[name]?.['runs-on'], `${f} ${name}`).toBe('ubuntu-latest');
   });
   it('and every job of CI, which runs on pull requests', () => {
     for (const [name, job] of Object.entries(FLOWS['ci.yml'].jobs)) expect(job['runs-on'], name).toBe('ubuntu-latest');

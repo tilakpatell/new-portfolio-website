@@ -17,6 +17,7 @@ import { pixelRatio } from '../../lib/device';
 import { houseOn } from '../../lib/three/house';
 import { precompile, precompilePasses, quiet, releaseContext } from '../../lib/three/renderer';
 import { sharpen } from '../../lib/three/textures';
+import { BLOOMS } from './look';
 
 const DS = { x: 505, y: 292, r: 145 };
 const DISH = { x: 446, y: 232, r: 38 };
@@ -77,7 +78,8 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   // opaque, in the page's own black: the canvas is the hero's whole backdrop
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // (the tone is the house’s: houseOn, below, maps it Neutral and lifts this
+  // exposure by its 1.4, as bright as ACES had it; ./look.js)
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true; // for the dish rim's shadow in the bowl
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -586,7 +588,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   // ── post: bloom on what glows (the beam, the lights, the fire) ──
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.55, 0.85);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOMS.station.strength, BLOOMS.station.radius, BLOOMS.station.threshold);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   let useBloom = true;

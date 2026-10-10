@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Motion beside the library</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #1a2029;
+        color: #d8e0ea;
+        font: 13px/1.4 system-ui, sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      #say {
+        position: fixed;
+        left: 12px;
+        top: 10px;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="say"></div>
+    <!-- A clip the desktop made from words (scripts/motion: HY-Motion 1.0,
+         baked onto Luke as public/games/meshy/ual-gen.NAME.glb) played on
+         Luke beside one of the library's, to judge whether it reads as what
+         it was asked for. Through the dev server:
+
+           /scripts/preview/motion.html?clip=overhead-strike                the made clip (left) beside sword.heavy.a (right), looping
+           …&with=sword.a                                                   beside another of the library's (public/games/meshy/ual-NAME.glb)
+           …&slow=4                                                         a quarter speed
+           …&sheet=1&w=240&h=320                                            four moments of each, a row a clip, for scripts/motion/sheet.mjs
+                                                                            (the strike's moment, extras.strike, one of them) -->
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+      import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+      import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
+
+      const q = new URLSearchParams(location.search);
+      const NAME = q.get('clip') ?? 'overhead-strike';
+      const WITH = q.get('with') ?? 'sword.heavy.a';
+      const SHEET = q.has('sheet');
+      const say = (t) => (document.getElementById('say').textContent = t);
+      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+      const clipOf = async (file) => {
+        const g = await loader.loadAsync(file);
+        const c = g.animations[0];
+        // (GLTFLoader keeps an animation's extras on the clip's userData only for some versions: read them off the file too)
+        c.userData = { ...(g.parser.json.animations?.[0]?.extras ?? {}), ...c.userData };
+        return c;
+      };
+      const [luke, made, theirs] = await Promise.all([
+        loader.loadAsync('/models/galaxy/crew/luke.glb'),
+        clipOf(`/games/meshy/ual-gen.${NAME}.glb`).catch(() => null),
+        clipOf(`/games/meshy/ual-${WITH}.glb`),
+      ]);
+      if (!made && SHEET) throw new Error(`no /games/meshy/ual-gen.${NAME}.glb`);
+      const rows = [made && [`made: ${NAME}`, made], [`library: ${WITH}`, theirs]].filter(Boolean);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#1a2029');
+      const sun = new THREE.DirectionalLight('#fff4e6', 2.4);
+      sun.position.set(2, 4, 3);
+      scene.add(sun, new THREE.HemisphereLight('#ccd8e6', '#3a3028', 1.2));
+      const figures = rows.map(([label, clip], i) => {
+        const fig = clone(luke.scene);
+        // side by side, a metre and a half apart, the made one on the left as the camera sees it
+        fig.position.x = SHEET ? 0 : (i - (rows.length - 1) / 2) * 1.5;
+        scene.add(fig);
+        const mixer = new THREE.AnimationMixer(fig);
+        const action = mixer.clipAction(clip);
+        action.play();
+        const floor = new THREE.Mesh(new THREE.CircleGeometry(0.9, 32), new THREE.MeshBasicMaterial({ color: '#2c3644' }));
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.x = fig.position.x;
+        scene.add(floor);
+        return { label, clip, fig, mixer };
+      });
+      const box = new THREE.Box3().setFromObject(luke.scene);
+      const h = box.max.y - box.min.y;
+
+      if (SHEET) {
+        // four moments a row: the start, the strike (the hands at their fastest), halfway on from it, the end
+        const W = Number(q.get('w') ?? 240);
+        const H = Number(q.get('h') ?? 320);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(W * 4, H * figures.length);
+        renderer.setScissorTest(true);
+        document.body.appendChild(renderer.domElement);
+        const cam = new THREE.PerspectiveCamera(30, W / H, 0.01, 100);
+        const info = [];
+        figures.forEach((f, row) => {
+          for (const g of figures) g.fig.visible = g === f;
+          const d = f.clip.duration;
+          const strike = f.clip.userData.strike ?? d * 0.5;
+          const moments = [0, strike, (strike + d) / 2, d - 1e-3];
+          info.push(`${f.label} ${d.toFixed(2)}s strike ${strike.toFixed(2)}s`);
+          moments.forEach((t, col) => {
+            f.mixer.setTime(t);
+            // from the figure's right and a little in front, where a stroke's arc reads
+            const r = h * 2.6;
+            cam.position.set(-r * 0.75, h * 0.75, r * 0.65);
+            cam.lookAt(0, h * 0.5, 0);
+            const y = (figures.length - 1 - row) * H;
+            renderer.setViewport(col * W, y, W, H);
+            renderer.setScissor(col * W, y, W, H);
+            renderer.render(scene, cam);
+          });
+        });
+        document.title = JSON.stringify(info);
+        window.__done = true;
+      } else {
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(devicePixelRatio);
+        renderer.setSize(innerWidth, innerHeight);
+        document.body.appendChild(renderer.domElement);
+        const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.01, 100);
+        cam.position.set(-1.2, h * 0.8, h * 2.6);
+        cam.lookAt(0, h * 0.5, 0);
+        addEventListener('resize', () => {
+          renderer.setSize(innerWidth, innerHeight);
+          cam.aspect = innerWidth / innerHeight;
+          cam.updateProjectionMatrix();
+        });
+        const slow = Number(q.get('slow') ?? 1);
+        say(`${figures.map((f) => `${f.label} (${f.clip.duration.toFixed(2)} s)`).join('  ·  ')}${made ? '' : `  ·  no ual-gen.${NAME}.glb yet: the desktop makes it`}${slow > 1 ? `  ·  1/${slow} speed` : ''}`);
+        const clock = new THREE.Clock();
+        renderer.setAnimationLoop(() => {
+          const dt = clock.getDelta() / slow;
+          for (const f of figures) f.mixer.update(dt);
+          renderer.render(scene, cam);
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -2,11 +2,11 @@
 // Earth page (sketchfab/earth-plane.glb, CC BY: landings.js names it) waits
 // on the runway; by the grass a signpost points to every place on my travel
 // map (data/places.js), each arm turned the way that place really lies from
-// home and marked with how far it is; a windsock, and trees.
+// home and marked with how far it is; and a windsock. The trees and the
+// wildflowers round the field are Quaternius's (landings.js names them).
 
 import * as THREE from 'three';
 import { box, cyl, part } from '../../galaxy/surface/kit';
-import { canopyGeometry } from '../../avengers/compound/models';
 import { HOME, PLACES, distanceKm } from '../../../data/places';
 import { sharpen } from '../../../lib/three/textures';
 
@@ -109,23 +109,5 @@ export const PROPS = {
     });
     // (its arms, one mesh each, as one)
     return { object: k.merge(object), solids: [{ circle: [0, 0, 0.2] }] };
-  },
-};
-
-export const SCATTER = {
-  tree(k, { seed = 5, color = '#5f8f3e' } = {}) {
-    const crown = canopyGeometry(seed, 1).scale(6.5, 5.5, 6.5).translate(0, 2.8, 0);
-    return {
-      parts: [
-        { geometry: k.geometry([part(new THREE.CylinderGeometry(0.24, 0.34, 3.6, 8).translate(0, 1.8, 0), { color: '#5a4632', to: 'bark' })]), material: k.mats.bark },
-        { geometry: k.own(crown), material: k.own(new THREE.MeshStandardMaterial({ vertexColors: true, color, roughness: 0.9 })) },
-      ],
-      radius: 0.5,
-    };
-  },
-  // wildflowers in the grass
-  flowers(k) {
-    const g = new THREE.SphereGeometry(0.07, 6, 4).scale(1, 0.6, 1).translate(0, 0.1, 0);
-    return { parts: [{ geometry: k.geometry([part(g, { color: '#ffffff', to: 'leaf' })]), material: k.mats.leaf }], radius: null, tints: ['#f2d24a', '#ffffff', '#c87ad8', '#f29ac2', '#7ab0f0'] };
   },
 };

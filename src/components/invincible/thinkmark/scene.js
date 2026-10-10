@@ -19,6 +19,7 @@ import { reach } from './city';
 import { CHAPTERS, PORTAL, QUAKE, RINGS, bossTell, city, lockTarget } from './rules';
 import { buildTown } from './town';
 import { CAST, asset } from '../cast';
+import { LOOK as ART } from './look';
 const FOV = 62;
 const YELLOW = 0xffd23a;
 const FLAX = 0xd04dff;
@@ -38,7 +39,7 @@ const LOOK = {
 
 export async function create(canvas, { onLost, onSlow } = {}) {
   const calm = prefersReducedMotion();
-  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.1, far: 2800, bloom: { strength: 0.55, radius: 0.45, threshold: 0.9 }, onLost, onSlow });
+  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.1, far: 2800, bloom: ART.bloom, onLost, onSlow });
   const { scene, camera } = engine;
   const small = engine.small;
   const C = city();

@@ -274,30 +274,52 @@ const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(
 // PLANETS_XL=only in the environment just the -xl files are written (the
 // rest left as they are); with PLANETS_XL=skip, all but them (a quick look).
 const XL_MAX = 6 * 1024 * 1024; // (an -xl past this is too much download for one map)
+const K8_MAX = 24 * 1024 * 1024; // (and an -8k past this)
+
+// --ultra (scripts/build-fandom-planets.mjs sets PLANETS_8K=1): every map
+// baked at 8192 × 4096, and only the colour maps that have an -xl written,
+// as `-8k.ktx2` (worn near at ultra, over the -xl: universe/planetMaps.js),
+// each listed in k8.json, which is how the site knows it's there.
+export const ULTRA = process.env.PLANETS_8K === '1';
+export const bakeSize = () => (ULTRA ? [8192, 4096] : [4096, 2048]);
+
+// a colour map as KTX2 at `width`, under `max` (harder rate-distortion
+// first, the small lossy kind last)
+async function writeKtx2(buf, w, h, channels, width, file, max) {
+  const png = await sharp(buf, { raw: { width: w, height: h, channels }, limitInputPixels: false })
+    .resize(width, Math.round((width * h) / w), { kernel: 'lanczos3' })
+    .png()
+    .toBuffer();
+  const { encodeImage } = await import('../ktx2.mjs');
+  let ktx2 = null;
+  let how = '';
+  for (const [opts, label] of [[{ rdo: 1 }, 'UASTC'], [{ rdo: 3 }, 'UASTC rdo 3'], [{ rdo: 6 }, 'UASTC rdo 6'], [{ etc1s: true }, 'ETC1S']]) {
+    // (at 8192, UASTC level 1: level 2 takes over 20 minutes a map)
+    ({ ktx2 } = await encodeImage(png, { role: 'color', flipY: true, ...(width > 4096 ? { level: 1 } : {}), ...opts }));
+    how = label;
+    if (ktx2.byteLength <= max) break;
+  }
+  fs.writeFileSync(file, ktx2);
+  console.log(`  ${path.basename(file)}  ${(ktx2.byteLength / 1024).toFixed(0)} KB (${how})`);
+}
+
 export async function save(data, w, h, channels, name, sizes, { quality = 86, alphaQuality = 90 } = {}) {
   fs.mkdirSync(OUT, { recursive: true });
+  if (ULTRA && !sizes.some(([, suffix]) => suffix === '-xl')) return;
   const buf = Buffer.alloc(w * h * channels);
   for (let i = 0; i < buf.length; i++) buf[i] = Math.round(clamp(data[i]) * 255);
+  if (ULTRA) {
+    await writeKtx2(buf, w, h, channels, 8192, path.join(OUT, `${name}-8k.ktx2`), K8_MAX);
+    const list = path.join(OUT, 'k8.json');
+    const had = fs.existsSync(list) ? JSON.parse(fs.readFileSync(list, 'utf8')) : [];
+    fs.writeFileSync(list, `${JSON.stringify([...new Set([...had, name])].sort())}\n`);
+    return;
+  }
   for (const [width, suffix] of sizes) {
     if (process.env.PLANETS_XL === 'only' && suffix !== '-xl') continue;
     if (process.env.PLANETS_XL === 'skip' && suffix === '-xl') continue;
     if (suffix === '-xl') {
-      const png = await sharp(buf, { raw: { width: w, height: h, channels } })
-        .resize(width, Math.round((width * h) / w), { kernel: 'lanczos3' })
-        .png()
-        .toBuffer();
-      // (under XL_MAX: harder rate-distortion first, the small lossy kind last)
-      const { encodeImage } = await import('../ktx2.mjs');
-      let ktx2 = null;
-      let how = '';
-      for (const [opts, label] of [[{ rdo: 1 }, 'UASTC'], [{ rdo: 3 }, 'UASTC rdo 3'], [{ rdo: 6 }, 'UASTC rdo 6'], [{ etc1s: true }, 'ETC1S']]) {
-        ({ ktx2 } = await encodeImage(png, { role: 'color', flipY: true, ...opts }));
-        how = label;
-        if (ktx2.byteLength <= XL_MAX) break;
-      }
-      const file = path.join(OUT, `${name}${suffix}.ktx2`);
-      fs.writeFileSync(file, ktx2);
-      console.log(`  ${path.basename(file)}  ${(ktx2.byteLength / 1024).toFixed(0)} KB (${how})`);
+      await writeKtx2(buf, w, h, channels, width, path.join(OUT, `${name}${suffix}.ktx2`), XL_MAX);
       continue;
     }
     const file = path.join(OUT, `${name}${suffix}.webp`);

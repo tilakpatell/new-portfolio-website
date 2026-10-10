@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CHAPTERS } from './chapters';
+import { CHAPTERS, stopOf } from './chapters';
 import { ACHIEVEMENTS } from '../Achievements';
 import { LEVELS, levelOf } from './rush/levels';
-import { HIDDEN_SEALS, SIDE_SEALS, chapterRecord, kitchenStars, offRoad, roadRecord } from './record';
+import { HIDDEN_SEALS, SIDE_SEALS, chapterRecord, hiddenHints, kitchenStars, offRoad, roadInked, roadRecord } from './record';
 import { HIDDEN } from './hidden';
 
 describe('the road so far', () => {
@@ -73,5 +73,31 @@ describe('the places off the road', () => {
   });
   it('totals them with the rest', () => {
     expect(roadRecord({ unlocked: ['orthanc'] }).totals.hidden).toEqual({ found: 1, total: HIDDEN.length });
+  });
+});
+
+describe('how far the road is inked', () => {
+  it('starts at Hobbiton with nothing won', () => {
+    expect(roadInked([])).toBe(0);
+    expect(roadInked()).toBe(0);
+  });
+  it('reaches the furthest chapter with a seal, whatever lies between', () => {
+    expect(roadInked(['breegate'])).toBe(stopOf('bree'));
+    expect(roadInked(['breegate', 'eagles'])).toBe(stopOf('mordor'));
+  });
+});
+
+describe('when the hidden places hint', () => {
+  const oneOfEach = CHAPTERS.map((c) => c.seals[0]);
+  it('keeps quiet until every chapter has a seal', () => {
+    expect(hiddenHints(['breegate'])).toEqual([]);
+    expect(hiddenHints(oneOfEach.slice(1))).toEqual([]);
+  });
+  it('hints at every place not yet found, in order, once the road is walked', () => {
+    expect(oneOfEach.some((s) => Object.values(HIDDEN_SEALS).some((h) => h.found === s))).toBe(false);
+    expect(hiddenHints(oneOfEach)).toEqual(HIDDEN.map((h) => h.id));
+  });
+  it('stops hinting at a place once it’s found', () => {
+    expect(hiddenHints([...oneOfEach, 'orthanc'])).toEqual(HIDDEN.map((h) => h.id).filter((id) => id !== 'orthanc'));
   });
 });

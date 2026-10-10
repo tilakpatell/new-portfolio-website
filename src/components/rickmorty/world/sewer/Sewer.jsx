@@ -3,6 +3,7 @@ import { RiCloseLine } from 'react-icons/ri';
 import '@fontsource/luckiest-guy/400.css';
 import { useFrameLoop, useMediaQuery } from '../../../../lib/hooks';
 import { readPad } from '../../../games/pad';
+import { createCooldownPress, pressGroups } from '../../../../lib/press';
 import { TUNING, newRun, progress, stepRun } from './rules';
 import './sewer.css';
 
@@ -33,6 +34,9 @@ export default function Sewer({ onLeave }) {
   const run = useRef(null);
   const view = useRef(null);
   const presses = useRef({});
+  // the hop's buffer: pressed a moment before the wheels come down, it hops as they do
+  const hopPress = useRef(null);
+  hopPress.current ??= createCooldownPress();
   const acc = useRef(0);
   const [phase, setPhase] = useState('loading'); // loading | intro | play | paused | won | lost | failed
   const phaseRef = useRef(phase);
@@ -58,6 +62,7 @@ export default function Sewer({ onLeave }) {
           return;
         }
         api.current = r;
+        r.tune?.(pressGroups(hopPress.current)); // (behind ?debug: the shake's numbers and the hop's buffer)
         r.resize(el.clientWidth, el.clientHeight);
         run.current = newRun(1 + Math.floor(Math.random() * 1e6));
         view.current = run.current;
@@ -134,7 +139,7 @@ export default function Sewer({ onLeave }) {
         let steps = 0;
         let events = [];
         while (acc.current >= STEP && steps < MAX_STEPS) {
-          run.current = stepRun(run.current, presses.current, STEP);
+          run.current = stepRun(run.current, presses.current, STEP, { press: hopPress.current });
           presses.current = {};
           events = events.concat(run.current.events);
           acc.current -= STEP;
@@ -166,6 +171,7 @@ export default function Sewer({ onLeave }) {
     run.current = newRun(1 + Math.floor(Math.random() * 1e6));
     view.current = run.current;
     presses.current = {};
+    hopPress.current.reset();
     setHud({ hp: TUNING.hp, screws: 0, laser: false, kills: 0, pct: 0 });
     setPhase('play');
   };

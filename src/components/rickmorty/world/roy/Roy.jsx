@@ -205,6 +205,7 @@ export default function Roy({ onLeave }) {
           return;
         }
         api.current = r;
+        r.tune?.(); // (behind ?debug: the shake's numbers)
         r.resize(el.clientWidth, el.clientHeight);
         const l = newLife({ seed: 1 });
         life.current = l;

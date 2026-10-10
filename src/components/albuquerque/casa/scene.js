@@ -380,7 +380,8 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
   for (const p of [hector, nurse, gus]) p.group.traverse((o) => o.isMesh && (o.castShadow = true));
   // the house look (lib/three/house): the room's shade one colour, from the
   // afternoon's light, as in every world
-  houseOn({ renderer, scene, sun, hemi, look: { fog: false } });
+  // (the stage starts at the house's exposure already: lifting it again would wash the room out)
+  houseOn({ renderer, scene, sun, hemi, keepExposure: true, look: { fog: false } });
   const wallBase = wallMat.color.clone();
   const floorBase = floorMat.color.clone();
   const scorched = new THREE.Color(0x4a3f36);

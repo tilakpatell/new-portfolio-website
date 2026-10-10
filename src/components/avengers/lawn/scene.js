@@ -10,7 +10,7 @@ import { buildCompound, buildGround, fbm, logoTexture, scatter, trees } from '..
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { instanced } from '../hq/kit/instanced';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { LAWN, LINE } from './rules';
 import { buildCape, buildChariot, buildMjolnir, buildPortal, buildRain, craterTexture, lightningPool } from './models';
@@ -303,6 +303,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   const vfx = createVfx(scene, { calm, ground: 0.02, maxSparks: 1200, debrisMaterial: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.4 }) });
   const zap = lightningPool(scene, 14);
   const feel = createFeel({ seed: 3, calm, baseFov: FOV, offset: 0.09 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'lawn');
   const ray = new THREE.Raycaster();
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 

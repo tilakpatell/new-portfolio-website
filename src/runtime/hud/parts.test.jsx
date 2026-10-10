@@ -6,6 +6,8 @@ import Objective from './Objective';
 import PlayersChip from './PlayersChip';
 import QuestList from './QuestList';
 import Toast from './Toast';
+import MiniMap from './MiniMap';
+import { VoicesItem } from './Menu';
 
 const text = (el) => renderToStaticMarkup(el).replace(/<[^>]+>/g, '');
 
@@ -15,6 +17,11 @@ describe('the prompt', () => {
   });
   it('shows no key on touch, where it’s the button', () => {
     expect(text(<Prompt k="E" verb="Go in" thing="Burger Mart" touch />)).toBe('Go in · Burger Mart');
+  });
+  it('says what it promises in data-prompt, key first, on touch too', () => {
+    expect(renderToStaticMarkup(<Prompt k="E" verb="Talk" thing="Gandalf" />)).toMatch(/<button[^>]*data-prompt="E Talk · Gandalf"/);
+    expect(renderToStaticMarkup(<Prompt k="E" verb="Talk" thing="Gandalf" touch />)).toContain('data-prompt="E Talk · Gandalf"');
+    expect(renderToStaticMarkup(<Prompt k="X" verb="Read" />)).toContain('data-prompt="X Read"');
   });
   it('is a real button, and can’t be pressed while closed', () => {
     const html = renderToStaticMarkup(<Prompt verb="Go in" thing="Los Pollos" sub="Opens at noon" closed />);
@@ -69,5 +76,31 @@ describe('a toast', () => {
   it('is a status, red when bad, and nothing without words', () => {
     expect(renderToStaticMarkup(<Toast toast={{ key: 1, text: 'Saved', bad: true }} />)).toBe('<p class="hud-toast" role="status" data-bad="true">Saved</p>');
     expect(renderToStaticMarkup(<Toast toast={null} />)).toBe('');
+  });
+});
+
+describe('the voices switch in the Menu', () => {
+  it('says whether anyone speaks, and stays open when pressed', () => {
+    const html = renderToStaticMarkup(<VoicesItem />);
+    expect(text(<VoicesItem />)).toBe('Voices on');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('data-keep');
+  });
+});
+
+describe('the minimap', () => {
+  it('is a disc that opens the map, its size in --hud-minimap, no key of its own (the guide says it)', () => {
+    const html = renderToStaticMarkup(
+      <MiniMap size={160} draw={() => 'Cell 0,0'} onOpen={() => {}} label="Open the map">
+        <p>under</p>
+      </MiniMap>,
+    );
+    expect(html).toContain('--hud-minimap:160px');
+    // (hidden until its first draw says there's something to show)
+    expect(html).toContain('data-empty="true"');
+    expect(html).toMatch(/<button[^>]*aria-label="Open the map"/);
+    expect(html).toContain('<canvas aria-hidden="true"></canvas>');
+    expect(html).not.toContain('<kbd');
+    expect(html).toMatch(/hud-minimap-caption"><\/p><p>under<\/p>/);
   });
 });

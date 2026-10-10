@@ -30,7 +30,7 @@ import * as THREE from 'three';
 import { avoid, createContext, resolve, seek, separate } from '../../../lib/ai/steer';
 import { createSocial } from '../../../lib/ai/social';
 import { seeded } from '../../../lib/seeded';
-import { STRIKE, fire as fireAt, newDuel, strike as strikeAt } from './dimensions/duel';
+import { STRIKE, aimFor, land, newDuel, strike as strikeAt } from './dimensions/duel';
 import { EYES, heard, lineHold, scanAt, stepMotion } from './living';
 
 const SEARCH = 5; // seconds a hunter who's lost Morty looks about for him
@@ -41,6 +41,9 @@ const hash = (s) => {
   for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return h | 0;
 };
+
+// a duel's hunter to a bolt: a person's height and a body's width round him
+const BODY = { tall: 1.8, r: 0.4 };
 
 export function createNpcs({ id, area: A, solids = [], words = {}, others = null }) {
   // ── NPC behaviour ──
@@ -57,7 +60,9 @@ export function createNpcs({ id, area: A, solids = [], words = {}, others = null
   //         task that, done, ends it
   //         duel: { hp, task, won? }: a fight instead of a catch (./duel.js): within reach he
   //         strikes (the 'punch' clip; RmWorld's 'strike' takes a point off Morty), and
-  //         Morty's shots (the area's 'fire' action, F in RmWorld) take his; at nought he
+  //         Morty's shots take his: the area's 'fire' action (F in RmWorld) says where
+  //         to aim, the bolt flies (../rmShots.js) against 'bodies', and 'hit' is
+  //         told when one lands; at nought he
   //         falls (the 'fall' clip), stays down, and `task` is done ('done'), with `won`
   //         said. The duel is told to RmWorld as 'duel' { hp, max } as it goes.
   //   clip: a shared clip looped while standing (Evil Morty's crossed arms)
@@ -335,25 +340,41 @@ export function createNpcs({ id, area: A, solids = [], words = {}, others = null
     hunting = on;
     if (!on) for (const n of npcs) n.hunting = false;
   };
-  // Morty's shot, from where he stands facing `face`: at the duel's hunter, if he's in the cone
+  // the duel's hunter, while he's after Morty and up
+  const duellist = () => npcs.find((n) => n.ai.hunt?.duel && n.hunting && !n.dead && n.c.group.visible) ?? null;
+  // Morty's shot, from where he stands facing `face`: where to aim (the
+  // duel's hunter's middle, if he's in the cone; null, along his facing)
   const fire = ({ x, z, face }) => {
-    for (const n of npcs) {
-      if (!n.ai.hunt?.duel || !n.hunting || n.dead || !n.c.group.visible) continue;
-      n.duel ??= newDuel({ hp: n.ai.hunt.duel.hp ?? 6, mortyHp: n.ai.hunt.duel.mortyHp ?? 3 });
-      n.duel = fireAt(n.duel, { x, z }, face, { x: n.c.group.position.x, z: n.c.group.position.z });
-      if (n.duel.hit) n.c.play?.(n.duel.down ? 'fall' : 'hit', n.duel.down ? { hold: 1e9 } : { hold: 0 });
-      if (n.duel.down) {
-        n.dead = true;
-        n.hunting = false;
-        hunting = false;
-        if (n.looking) {
-          n.c.look?.(null);
-          n.looking = false;
-        }
+    const n = duellist();
+    if (!n) return null;
+    const p = n.c.group.position;
+    const to = aimFor({ x, z }, face, { x: p.x, z: p.z });
+    return { who: n.id, at: to && { x: p.x, y: p.y + BODY.tall * 0.55, z: p.z } };
+  };
+  // what a bolt can hit here: the duel's hunter as a capsule (lib/combat/bolt.js's body)
+  const bodies = () => {
+    const n = duellist();
+    if (!n) return [];
+    const p = n.c.group.position;
+    return [{ id: n.id, a: [p.x, p.y + BODY.r, p.z], b: [p.x, p.y + BODY.tall - BODY.r, p.z], r: BODY.r, side: 'them', ref: 'duel' }];
+  };
+  // a bolt of Morty's has landed on `id`: a point off him, and at nought he falls
+  const hit = (id) => {
+    const n = npcs.find((o) => o.id === id && o.ai.hunt?.duel && !o.dead);
+    if (!n) return null;
+    n.duel ??= newDuel({ hp: n.ai.hunt.duel.hp ?? 6, mortyHp: n.ai.hunt.duel.mortyHp ?? 3 });
+    n.duel = land(n.duel);
+    if (n.duel.hit) n.c.play?.(n.duel.down ? 'fall' : 'hit', n.duel.down ? { hold: 1e9 } : { hold: 0 });
+    if (n.duel.down) {
+      n.dead = true;
+      n.hunting = false;
+      hunting = false;
+      if (n.looking) {
+        n.c.look?.(null);
+        n.looking = false;
       }
-      return { hit: n.duel.hit, down: n.duel.down, hp: n.duel.hp, max: n.duel.max, who: n.id, task: n.ai.hunt.duel.task ?? null, won: n.ai.hunt.duel.won ?? null };
     }
-    return null;
+    return { hit: n.duel.hit, down: n.duel.down, hp: n.duel.hp, max: n.duel.max, who: n.id, task: n.ai.hunt.duel.task ?? null, won: n.ai.hunt.duel.won ?? null };
   };
   return {
     add,
@@ -361,6 +382,8 @@ export function createNpcs({ id, area: A, solids = [], words = {}, others = null
     calm: calmNpcs,
     hunt,
     fire,
+    bodies,
+    hit,
     list,
     npcs,
     get hunting() {

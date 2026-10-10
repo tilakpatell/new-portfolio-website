@@ -1,0 +1,848 @@
+/* Aboard the Death Star: the stage, the HUD over it and the pause menu
+   (the start screen, the maps and the touch controls have theirs beside
+   them in ui/). The Empire's own manner: black glass panels with thin grey
+   rules and hard corners, small capitals in a clean wide sans (Archivo, the
+   site's own), numbers that don't shift, red only for what is wrong, and
+   Aurebesh as decoration. */
+
+.ds {
+  --ds-ink: #dde2e8;
+  --ds-dim: #8b939e;
+  --ds-faint: rgba(205, 212, 222, 0.38);
+  --ds-rule: rgba(205, 212, 222, 0.2);
+  --ds-rule-strong: rgba(221, 226, 232, 0.55);
+  --ds-glass: rgba(5, 7, 9, 0.74);
+  --ds-glass-top: rgba(18, 21, 25, 0.8);
+  --ds-bg: #050607;
+  --ds-red: #e2382d;
+  --ds-red-soft: rgba(226, 56, 45, 0.18);
+  --ds-font: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --ds-pad: 14px;
+  --ds-left: max(var(--ds-pad), env(safe-area-inset-left));
+  --ds-right: max(var(--ds-pad), env(safe-area-inset-right));
+  --ds-bottom: max(16px, env(safe-area-inset-bottom));
+  position: relative;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  font-stretch: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ds[data-mode='page'] {
+  height: calc(100svh - var(--nav-h, 64px));
+  /* (a phone on its side has under 320 to give) */
+  min-height: 280px;
+}
+.ds[data-mode='overlay'] {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+.ds-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ds-bg);
+  touch-action: none;
+}
+.ds-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ds p {
+  margin: 0;
+}
+
+/* ── the parts every panel shares ── */
+
+.ds-panel {
+  border: 1px solid var(--ds-rule);
+  border-top-color: rgba(221, 226, 232, 0.3);
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--ds-glass-top), var(--ds-glass));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 28px -18px #000;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.ds-kicker {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  color: var(--ds-dim);
+  font-size: 0.66rem;
+  font-weight: 650;
+  font-stretch: 115%;
+  letter-spacing: 0.2em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.ds-aurebesh {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--ds-faint);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  white-space: nowrap;
+}
+.ds-tag {
+  display: inline-block;
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--ds-rule);
+  color: var(--ds-ink);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  vertical-align: 0.1em;
+}
+.ds-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1.15rem;
+  border: 1px solid var(--ds-ink);
+  border-radius: 2px;
+  background: var(--ds-ink);
+  color: var(--ds-bg);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 750;
+  font-stretch: 115%;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.ds-btn:hover {
+  background: #fff;
+}
+.ds-btn-ghost {
+  border-color: var(--ds-rule-strong);
+  background: transparent;
+  color: var(--ds-ink);
+}
+.ds-btn-ghost:hover {
+  border-color: var(--ds-ink);
+  background: rgba(221, 226, 232, 0.08);
+}
+.ds :is(button, [role='button']):focus-visible {
+  outline: 2px solid var(--ds-red);
+  outline-offset: 2px;
+}
+.ds-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 40px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--ds-rule);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ds-dim);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ds-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border: 1px solid currentColor;
+}
+.ds-chip:hover {
+  border-color: var(--ds-rule-strong);
+  color: var(--ds-ink);
+}
+.ds-chip[aria-pressed='true'] {
+  border-color: var(--ds-rule-strong);
+  background: rgba(221, 226, 232, 0.08);
+  color: var(--ds-ink);
+}
+.ds-chip[aria-pressed='true']::before {
+  border-color: var(--ds-red);
+  background: var(--ds-red);
+}
+
+/* ── covers: loading and failure ── */
+
+/* (under the HUD, whose objective and map marks stay up while it docks) */
+.ds-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: var(--ds-bg);
+  text-align: center;
+}
+.ds-cover > p:not(.ds-kicker) {
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+/* ── the HUD ── */
+
+.ds-hud {
+  /* the site’s key cap (.kbd), drawn in the station’s ink on its glass */
+  --border-strong: var(--ds-rule-strong);
+  --surface-2: transparent;
+  --text: var(--ds-ink);
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.ds-hud :is(button, .ds-talk) {
+  pointer-events: auto;
+}
+.ds-hud[data-start] .ds-top {
+  opacity: 0.6;
+}
+.ds-top {
+  position: absolute;
+  top: var(--ds-pad);
+  left: var(--ds-left);
+  right: var(--ds-right);
+  display: grid;
+  grid-template-columns: minmax(0, 340px) 1fr auto auto;
+  align-items: start;
+  gap: 10px;
+}
+.ds-top-left {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.ds-where {
+  grid-column: 3;
+  display: grid;
+  gap: 8px;
+  width: 188px;
+}
+.ds-objective {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0.8rem 0.7rem;
+}
+.ds-objective-text {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.ds-section {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.5rem 0.7rem;
+}
+/* the disguise meter under the security line: label and reading above, the track the panel’s width */
+.ds-section .ds-meter {
+  grid-template-columns: 1fr auto;
+  row-gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+.ds-section .ds-meter-track {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  height: 4px;
+}
+.ds-section-name {
+  overflow: hidden;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: 0.12em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ds-security {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  color: var(--ds-dim);
+  font-size: 0.64rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ds-security-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7f8893;
+}
+.ds-section[data-red] {
+  border-color: rgba(226, 56, 45, 0.55);
+  background: linear-gradient(180deg, rgba(60, 12, 10, 0.78), var(--ds-glass));
+}
+.ds-section[data-red] .ds-security {
+  color: #ff8a80;
+}
+.ds-section[data-red] .ds-security-dot {
+  background: var(--ds-red);
+  box-shadow: 0 0 8px var(--ds-red);
+  animation: ds-pulse 1s ease-in-out infinite;
+}
+.ds-pause-btn {
+  grid-column: 4;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ds-rule);
+  border-radius: 2px;
+  background: var(--ds-glass);
+  color: var(--ds-ink);
+  font-size: 0.8rem;
+  letter-spacing: -0.1em;
+  cursor: pointer;
+}
+.ds-pause-btn:hover {
+  border-color: var(--ds-rule-strong);
+}
+
+/* health and heat */
+.ds-vitals {
+  position: absolute;
+  left: var(--ds-left);
+  bottom: var(--ds-bottom);
+  display: grid;
+  gap: 0.45rem;
+  width: 280px;
+  padding: 0.6rem 0.75rem;
+}
+.ds-hud[data-touch] .ds-vitals {
+  position: static;
+  width: auto;
+  max-width: 260px;
+  padding: 0.45rem 0.6rem;
+}
+/* (narrow: each bar under its label and readout, so the bar keeps its length) */
+.ds-hud[data-touch] .ds-meter {
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem 0.5rem;
+}
+.ds-hud[data-touch] .ds-meter-track {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.ds-meter {
+  display: grid;
+  grid-template-columns: 4.6rem 1fr 3.9rem;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--ds-dim);
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.ds-meter-label {
+  overflow: hidden;
+  color: var(--ds-ink);
+  white-space: nowrap;
+}
+.ds-meter-track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  background: rgba(221, 226, 232, 0.1);
+}
+.ds-meter-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ds-ink);
+  transform: scaleX(var(--k));
+  transform-origin: left;
+  transition: transform 0.18s ease-out;
+}
+/* a health bar reads in tenths: dark gaps cut over the fill */
+.ds-meter-track[data-segments]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--n) - 2px), var(--ds-bg) calc(100% / var(--n) - 2px) calc(100% / var(--n)));
+}
+.ds-meter-read {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ds-meter[data-red] :is(.ds-meter-label, .ds-meter-read) {
+  color: #ff8a80;
+}
+.ds-meter[data-red] .ds-meter-fill {
+  background: var(--ds-red);
+  animation: ds-pulse 0.8s ease-in-out infinite;
+}
+
+/* where the gun points */
+.ds-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 1px solid rgba(221, 226, 232, 0.55);
+  border-radius: 50%;
+  transition: transform 0.12s ease-out;
+}
+.ds-reticle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 2px;
+  margin: -1px 0 0 -1px;
+  background: var(--ds-ink);
+}
+.ds-reticle[data-aim] {
+  transform: scale(0.6);
+  border-color: var(--ds-red);
+}
+/* a hit you landed: the reticle’s ticks flash out and fade */
+.ds-hitmark {
+  position: absolute;
+  inset: -7px;
+  background:
+    linear-gradient(45deg, transparent 46%, var(--ds-ink) 46% 54%, transparent 54%) top left / 9px 9px no-repeat,
+    linear-gradient(-45deg, transparent 46%, var(--ds-ink) 46% 54%, transparent 54%) top right / 9px 9px no-repeat,
+    linear-gradient(-45deg, transparent 46%, var(--ds-ink) 46% 54%, transparent 54%) bottom left / 9px 9px no-repeat,
+    linear-gradient(45deg, transparent 46%, var(--ds-ink) 46% 54%, transparent 54%) bottom right / 9px 9px no-repeat;
+  animation: ds-fade 0.3s ease-out forwards;
+}
+/* a hit on you: a red arc on the side it came from, turned by --a (0 ahead, clockwise) */
+.ds-hurt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(46vh, 340px);
+  height: min(46vh, 340px);
+  border-radius: 50%;
+  border-top: 5px solid var(--ds-red);
+  transform: translate(-50%, -50%) rotate(var(--a));
+  filter: drop-shadow(0 0 8px var(--ds-red));
+  pointer-events: none;
+  animation: ds-fade 1.2s ease-out forwards;
+}
+.ds-hurt[data-all] {
+  inset: 0;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  transform: none;
+  filter: none;
+  box-shadow: inset 0 0 90px var(--ds-red-soft);
+}
+@keyframes ds-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+/* a lightsaber in hand, in place of a gun’s heat */
+.ds-blade {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.ds-blade-glow {
+  width: 64px;
+  height: 3px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 6px 2px var(--blade, #6cff8a);
+}
+.ds-blade[data-colour='blue'] {
+  --blade: #4f9bff;
+}
+.ds-blade[data-colour='red'] {
+  --blade: #ff3b30;
+}
+
+/* what is said, and what E does */
+.ds-lines {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--ds-bottom) + 8px);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(620px, calc(100% - 2 * var(--ds-pad) - 600px));
+  min-width: min(360px, calc(100% - 2 * var(--ds-pad)));
+  transform: translateX(-50%);
+  text-align: center;
+}
+.ds-subtitle {
+  padding: 0.3em 0.75em;
+  background: rgba(0, 0, 0, 0.62);
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+.ds-subtitle-who {
+  margin-right: 0.5em;
+  color: var(--ds-dim);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.ds-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15em;
+  padding: 0.35rem 0.75rem 0.35rem 0.4rem;
+  border: 1px solid var(--ds-rule);
+  border-radius: 2px;
+  background: var(--ds-glass);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.ds-dash {
+  color: var(--ds-dim);
+}
+.ds-prompt[data-note] {
+  padding-left: 0.75rem;
+  border-color: rgba(226, 56, 45, 0.5);
+  color: #ffb4ad;
+}
+
+/* a conversation */
+.ds-talk {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--ds-bottom) + 64px);
+  display: grid;
+  gap: 0.55rem;
+  width: min(600px, calc(100% - 2 * var(--ds-pad)));
+  max-height: 72%;
+  padding: 0.8rem 0.9rem;
+  overflow-y: auto;
+  transform: translateX(-50%);
+}
+.ds-talk-line {
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+.ds-talk-choices {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ds-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 40px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-choice:hover {
+  border-color: var(--ds-rule);
+  background: rgba(221, 226, 232, 0.06);
+}
+
+/* down */
+.ds-down {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(120, 10, 6, 0.55) 100%);
+}
+
+/* ── menus over the station: pause, the start, the map ── */
+
+.ds-overlay,
+.ds-map,
+.ds-start {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 1rem var(--ds-right) var(--ds-bottom) var(--ds-left);
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.55);
+}
+.ds-menu {
+  display: grid;
+  gap: 0.8rem;
+  width: min(540px, 100%);
+  padding: 1.1rem 1.2rem 1.2rem;
+}
+.ds-menu > .ds-btn {
+  width: 100%;
+}
+.ds-row-end {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--ds-rule);
+}
+.ds-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.35rem 1rem;
+  margin: 0;
+  font-size: 0.78rem;
+}
+.ds-controls > div {
+  display: grid;
+  grid-template-columns: 5.6rem 1fr;
+  gap: 0.5rem;
+}
+.ds-controls dt {
+  color: var(--ds-ink);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.ds-controls dd {
+  margin: 0;
+  color: var(--ds-dim);
+}
+
+/* ── narrow and short screens ── */
+
+@media (max-width: 640px) {
+  .ds-top {
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 0 auto auto;
+  }
+  .ds-where {
+    width: 118px;
+  }
+  .ds-objective-text {
+    font-size: 0.82rem;
+  }
+  .ds-aurebesh {
+    display: none;
+  }
+  .ds-lines {
+    width: calc(100% - 2 * var(--ds-pad));
+  }
+}
+@media (max-height: 520px) {
+  .ds-hud[data-start] .ds-top {
+    visibility: hidden;
+  }
+  .ds-objective-text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+@keyframes ds-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-section[data-red] .ds-security-dot,
+  .ds-meter[data-red] .ds-meter-fill {
+    animation: none;
+  }
+  .ds-meter-fill,
+  .ds-reticle {
+    transition: none;
+  }
+}
+
+/* The way shown (ui/Marker.jsx): a thin diamond over the next door, lift or
+   the story's target, its distance under it in the HUD's small capitals;
+   on the screen's edge, an arrow round to it. Placed from the world each
+   frame, so no transition on where it is. */
+.ds-marker {
+  position: absolute;
+  z-index: 4;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.ds-marker[hidden] {
+  display: none;
+}
+.ds-marker-dot {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--ds-ink);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px rgba(221, 226, 232, 0.45);
+}
+.ds-marker[data-kind='goal'] .ds-marker-dot {
+  border-color: #f2d36b;
+  box-shadow: 0 0 10px rgba(242, 211, 107, 0.55);
+}
+.ds-marker-text {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.ds-marker-arrow {
+  display: none;
+  position: absolute;
+  left: -6px;
+  top: -24px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 9px solid var(--ds-ink);
+  transform-origin: 6px 24px;
+  transform: rotate(var(--turn, 0rad));
+}
+.ds-marker[data-off='true'] .ds-marker-arrow {
+  display: block;
+}
+.ds-marker[data-off='true'] .ds-marker-text {
+  top: 14px;
+}
+
+/* The first game's tips (Hud.jsx): the few keys that matter, bottom left
+   over the health panel (clear of the marker on the screen's edges), until
+   you have them. */
+.ds-tips {
+  position: absolute;
+  left: var(--ds-left);
+  bottom: calc(var(--ds-bottom) + 84px);
+  max-width: 280px;
+  padding: 12px 14px;
+  pointer-events: auto;
+}
+.ds-tips ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ds-dim);
+}
+.ds-tips li .kbd,
+.ds-tip-key {
+  margin-right: 4px;
+  color: var(--ds-ink);
+}
+.ds-tips-way {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--ds-ink);
+}
+.ds-tips-diamond {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid #f2d36b;
+  transform: rotate(45deg);
+}
+
+/* A story's scene (scene/cinematics.js): black bars top and bottom, and the
+   HUD's panels out of the way; the objective and the subtitles stay. */
+.ds-letterbox::before,
+.ds-letterbox::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 11%;
+  background: #000;
+  z-index: 3;
+  animation: ds-bars 0.5s ease-out both;
+}
+.ds-letterbox::before {
+  top: 0;
+}
+.ds-letterbox::after {
+  bottom: 0;
+}
+@keyframes ds-bars {
+  from {
+    transform: scaleY(0);
+  }
+}
+.ds-hud[data-scene] .ds-vitals,
+.ds-hud[data-scene] .ds-where,
+.ds-hud[data-scene] .ds-reticle,
+.ds-hud[data-scene] .ds-tips {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-letterbox::before,
+  .ds-letterbox::after {
+    animation: none;
+  }
+}
+
+/* a story's end (ui/End.jsx) */
+.ds-end-title {
+  color: var(--ds-ink);
+  margin: 4px 0 6px;
+  font-size: clamp(22px, 3.2vw, 34px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ds-end-line {
+  margin: 0 0 14px;
+  color: var(--ds-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}

@@ -3,9 +3,12 @@ import '@fontsource/luckiest-guy/400.css';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { useMediaQuery } from '../../lib/hooks';
-import { capturePointer } from '../../lib/pointer';
 import { useVoiced } from '../../lib/useVoiced';
 import { WorldHost, useWorld } from '../../runtime';
+import { Exit, Stick, TouchButton } from '../../runtime/hud';
+import GuideCue from '../guide/GuideCue';
+import { KeyTable } from '../guide/KeyTable';
+import { TRIBUTE_KEYS, TRIBUTE_PAD, TRIBUTE_TOUCH } from '../guide/mario64';
 import module from './module';
 import { VOICE } from './voicelines';
 import './mario64.css';
@@ -23,14 +26,12 @@ const LOOKS = [
   ['ultra', 'Ultra'],
   ['n64', 'N64'],
 ];
-const CONTROLS = [
-  ['Move', 'WASD / arrows · left stick'],
-  ['Jump (A)', 'Space · A'],
-  ['Punch, grab, dive (B)', 'J or F · B'],
-  ['Crouch, pound (Z)', 'Shift · trigger'],
-  ['Camera', 'Q / E · drag · right stick · R or wheel to zoom'],
-  ['Pause', 'Esc · Start'],
-];
+// The pause screen's Controls are the guide's own rows for the tribute
+// (guide/mario64.js, read by the guide's /dot-matrix/64 page too), so the
+// keys are written once: the keyboard's, or the touch pad's on a phone, and
+// the controller's line.
+const tributeRows = (touch) => (touch ? TRIBUTE_TOUCH : TRIBUTE_KEYS);
+const PAD_LINE = TRIBUTE_PAD;
 
 function Meter({ health, air }) {
   const value = air != null ? air : health;
@@ -110,48 +111,16 @@ export default function Mario64({ mode = 'page', onExit = null }) {
     api()?.zoom();
   };
 
-  // ── the touch pad ──
-  const stickRef = useRef(null);
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
-  const stickId = useRef(null);
-  const moveStick = (e) => {
-    const el = stickRef.current;
-    if (!el || e.pointerId !== stickId.current) return;
-    const r = el.getBoundingClientRect();
-    let x = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-    let y = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-    const m = Math.hypot(x, y);
-    if (m > 1) {
-      x /= m;
-      y /= m;
-    }
-    setKnob({ x, y });
-    api()?.stick(x, -y);
-  };
-  const stickDown = (e) => {
-    e.preventDefault();
-    wake();
-    stickId.current = e.pointerId;
-    capturePointer(e);
-    moveStick(e);
-  };
-  const stickUp = (e) => {
-    if (e.pointerId !== stickId.current) return;
-    stickId.current = null;
-    setKnob({ x: 0, y: 0 });
-    api()?.stick(0, 0);
-  };
+  // ── the touch pad: the HUD kit's stick and buttons in Mario's own sizes ──
+  // (full tilt 64 px out, the ring's radius, as Mario's own stick had it)
+  const onStick = (x, y) => api()?.stick(x, -y);
   const button = (name) => ({
-    onPointerDown: (e) => {
-      e.preventDefault();
+    onPress: (e) => {
+      e.preventDefault(); // (no focus, no mouse events after the touch)
       wake();
-      capturePointer(e);
       api()?.press(name, true);
     },
-    onPointerUp: () => api()?.press(name, false),
-    onPointerCancel: () => api()?.press(name, false),
-    onLostPointerCapture: () => api()?.press(name, false),
-    onContextMenu: (e) => e.preventDefault(),
+    onRelease: () => api()?.press(name, false),
   });
 
   const playing = ui.mode === 'play';
@@ -239,11 +208,8 @@ export default function Mario64({ mode = 'page', onExit = null }) {
               <button type="button" className="m64-chip" aria-pressed={ui.sound} onClick={() => api()?.setSound(!ui.sound)}>
                 Sound {ui.sound ? 'on' : 'off'}
               </button>
-              {onExit && (
-                <button type="button" className="m64-chip" onClick={onExit}>
-                  Back to the island
-                </button>
-              )}
+              {/* (Esc leaves from the title, so it says so) */}
+              {onExit && <Exit label="Back to the island" onLeave={onExit} touch={touch} className="m64-chip" />}
             </div>
           </div>
         )}
@@ -339,14 +305,14 @@ export default function Mario64({ mode = 'page', onExit = null }) {
               )}
             </div>
             {help && (
-              <dl className="m64-controls">
-                {CONTROLS.map(([k, v]) => (
-                  <div key={k}>
-                    <dt>{k}</dt>
-                    <dd>{v}</dd>
-                  </div>
-                ))}
-              </dl>
+              <>
+                <KeyTable rows={tributeRows(touch)} className="m64-controls" />
+                <p className="m64-controls-pad">
+                  {PAD_LINE}
+                  {/* (over the island the overlay hides the "?", and its guide is the island's) */}
+                  {mode === 'page' && <GuideCue touch={touch} />}
+                </p>
+              </>
             )}
           </div>
         )}
@@ -355,27 +321,25 @@ export default function Mario64({ mode = 'page', onExit = null }) {
 
         {touch && (playing || ui.mode === 'dialog' || ui.mode === 'card') && (
           <div className="m64-pad">
-            <div ref={stickRef} className="m64-stick" onPointerDown={stickDown} onPointerMove={moveStick} onPointerUp={stickUp} onPointerCancel={stickUp}>
-              <span style={{ transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` }} />
-            </div>
+            <Stick className="m64-stick" label="Run" reach={64} onStart={wake} onMove={onStick} />
             <div className="m64-cam">
-              <button type="button" className="m64-key" aria-label="Turn the camera left" {...button('camL')}>
+              <TouchButton className="m64-key" aria-label="Turn the camera left" {...button('camL')}>
                 ⟲
-              </button>
-              <button type="button" className="m64-key" aria-label="Turn the camera right" {...button('camR')}>
+              </TouchButton>
+              <TouchButton className="m64-key" aria-label="Turn the camera right" {...button('camR')}>
                 ⟳
-              </button>
+              </TouchButton>
             </div>
             <div className="m64-abz">
-              <button type="button" className="m64-key m64-key-z" {...button('z')}>
+              <TouchButton className="m64-key m64-key-z" {...button('z')}>
                 Z
-              </button>
-              <button type="button" className="m64-key m64-key-b" {...button('b')}>
+              </TouchButton>
+              <TouchButton className="m64-key m64-key-b" {...button('b')}>
                 B
-              </button>
-              <button type="button" className="m64-key m64-key-a" {...button('a')}>
+              </TouchButton>
+              <TouchButton className="m64-key m64-key-a" {...button('a')}>
                 A
-              </button>
+              </TouchButton>
             </div>
           </div>
         )}

@@ -20,6 +20,8 @@
 // reach (how far from the middle you can go), water? (a level you wade
 // in and can't go under) }
 
+import { springStep } from '../../../lib/spring';
+
 export const WALK = { walk: 3.3, run: 7.4, accel: 26, air: 5, turn: 11, jump: 5.4, gravity: 15.5, step: 0.55, steep: 0.6, radius: 0.38, wade: 0.85 };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -169,12 +171,22 @@ export function groundAt(world, x, z, y = Infinity, step = WALK.step) {
 
 // ── On foot ──
 
+// a jump asked for: `true` (pressed this step, on the ground), or a press
+// (lib/press.js's createPress, aged by the scene each step with whether you
+// stood): a jump pressed a moment before the feet touch lands, and one a
+// moment after running off an edge still goes (the coyote time); a press is
+// taken once
+function jumpNow(s, jump) {
+  if (jump && typeof jump.take === 'function') return jump.take();
+  return s.grounded && Boolean(jump);
+}
+
 export function walker(x = 0, z = 0, y = 0, yaw = 0) {
   return { x, y, z, vx: 0, vy: 0, vz: 0, yaw, grounded: true, speed: 0, air: 0, wading: 0 };
 }
 
 // input: { x (strafe, -1 left … 1 right), y (-1 back … 1 forward), run,
-// jump (pressed this frame), heading (the camera's yaw: forward is
+// jump (pressed this frame, or a press: jumpNow), heading (the camera's yaw: forward is
 // (sin, cos) of it) }; returns what happened: { landed (the speed you hit
 // the ground at), jumped, bumped }
 export function walk(s, input, dt, world, rules = WALK) {
@@ -246,6 +258,13 @@ export function walk(s, input, dt, world, rules = WALK) {
     nz *= world.reach / r;
     out.bumped = true;
   }
+  // and not out into water too deep to wade (worlds that say so: wadeMax)
+  const held = shoreStep(world, s, nx, nz);
+  if (held) {
+    nx = held[0];
+    nz = held[1];
+    out.bumped = true;
+  }
   s.x = nx;
   s.z = nz;
   // (what it actually moved, for the legs)
@@ -257,7 +276,7 @@ export function walk(s, input, dt, world, rules = WALK) {
 
   // up and down
   const g = Math.max(groundAt(world, s.x, s.z, s.y, rules.step), solidTop(world, s.x, s.z, s.y, rules));
-  if (s.grounded && input.jump) {
+  if (jumpNow(s, input.jump)) {
     s.vy = rules.jump;
     s.grounded = false;
     out.jumped = true;
@@ -293,6 +312,26 @@ export function walk(s, input, dt, world, rules = WALK) {
   return out;
 }
 
+// Is the water at (x, z) deeper than a world lets anyone wade (its
+// `wadeMax`, from the site's water)? A world with no `wadeMax` has no deep
+// water to stop at, so this is never true there and nothing about it
+// changes. (Pure.)
+export function tooDeep(world, x, z) {
+  return world.wadeMax != null && world.water != null && world.water - world.heightAt(x, z) > world.wadeMax;
+}
+
+// Where a step ends up when it would take someone from the shallows into
+// deep water: null if it's fine as it is, otherwise the nearest step that
+// is (along the shore, one axis at a time, so you slide rather than stick),
+// or where you stand. Someone already in the deep (dropped there by a
+// teleport, say) is left to move freely, so they can never be trapped.
+export function shoreStep(world, s, nx, nz) {
+  if (world.wadeMax == null || !tooDeep(world, nx, nz) || tooDeep(world, s.x, s.z)) return null;
+  if (!tooDeep(world, nx, s.z)) return [nx, s.z];
+  if (!tooDeep(world, s.x, nz)) return [s.x, nz];
+  return [s.x, s.z];
+}
+
 // the top of anything low enough to stand on, under you
 function solidTop(world, x, z, y, rules) {
   if (!world.solids) return -Infinity;
@@ -310,8 +349,12 @@ function solidTop(world, x, z, y, rules) {
 // (m over the ground; 0 runs on it), fly? ({ alt, climb, floor }: it flies,
 // jump climbing it at climb m/s to alt over the ground, never under floor),
 // bank, radius, grip (0…1: how much it keeps going the way it's pointed) }
+// the rides' bank spring: about the old ease's pace (it settled in a fifth
+// of a second), damped to ring once (ζ ≈ 0.7, a few per cent over)
+export const BANK = { k: 60, c: 11 };
+
 export function rider(x, z, y, yaw = 0) {
-  return { x, y, z, yaw, speed: 0, vx: 0, vz: 0, vy: 0, bank: 0, pitch: 0, grounded: true };
+  return { x, y, z, yaw, speed: 0, vx: 0, vz: 0, vy: 0, bank: 0, bankV: 0, pitch: 0, grounded: true };
 }
 
 export function ride(s, input, dt, world, spec) {
@@ -323,7 +366,9 @@ export function ride(s, input, dt, world, spec) {
   // turning: sharper slow, steadier fast
   const turn = spec.turn * (0.35 + 0.65 * Math.min(1, Math.abs(s.speed) / 6)) * (s.speed < 0 ? -1 : 1);
   s.yaw -= input.x * turn * dt;
-  s.bank += (input.x * Math.min(1, Math.abs(s.speed) / spec.top) * spec.bank - s.bank) * Math.min(1, dt * 5);
+  // the bank into the turn, on a spring: it leans a touch past and rings
+  // back, which reads as weight (a first-order ease only ever follows)
+  [s.bank, s.bankV] = springStep(s.bank, s.bankV ?? 0, input.x * Math.min(1, Math.abs(s.speed) / spec.top) * spec.bank, BANK.k, BANK.c, dt);
   // its velocity swings round to where it's pointed (a hover vehicle drifts)
   const fx = Math.sin(s.yaw) * s.speed;
   const fz = Math.cos(s.yaw) * s.speed;
@@ -384,7 +429,7 @@ export function ride(s, input, dt, world, spec) {
     s.grounded = s.y <= low + 0.01;
   } else {
     // on its feet: on the ground, jumping when asked
-    if (s.grounded && input.jump) {
+    if (jumpNow(s, input.jump)) {
       s.vy = 5.2;
       s.grounded = false;
     }

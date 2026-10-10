@@ -23,6 +23,9 @@
 //   things         placed things (placer.js's specs), at world positions
 //   scatter        [{ kind, n, within: [r0, r1], scale: [a, b], solid?,
 //                  opts?, flat? (on level ground only) }]
+//   flora          { biome, tint?, density?, trees? }: the nature kit's
+//                  cover, middle layer and trees by a recipe (flora.js),
+//                  its rows added after the scatter's own
 //   life           actors.js's
 //   rides          [{ kind (rides.js's), at, yaw }]
 //   flyovers       [{ kind (a galaxy ship), n, metres, alt, speed, every }]
@@ -58,6 +61,7 @@
 
 import { SYSTEMS } from '../../systems';
 import { REACH } from '../terrain';
+import { floraRows } from '../flora';
 import { SITES as desert } from './desert';
 import { SITES as ice } from './ice';
 import { SITES as forest } from './forest';
@@ -78,9 +82,7 @@ export const canLand = (id) => Boolean(SITES[id]);
 const turn = ([x, z], yaw = 0) => [x * Math.cos(yaw) + z * Math.sin(yaw), -x * Math.sin(yaw) + z * Math.cos(yaw)];
 const plus = (a, b) => [a[0] + b[0], a[1] + b[1]];
 
-// A site made whole: its places' things and pits moved to where the places
-// are, its flats gathered (the landing spot's, each place's, each pit), and
-// what's left out filled in.
+// A galaxy site made whole, named for its system.
 export function siteOf(id) {
   const base = SITES[id];
   if (!base) return null;
@@ -88,6 +90,15 @@ export function siteOf(id) {
   const more = EXTRA[id];
   const raw = more ? { ...base, life: [...(base.life ?? []), ...more.life], quests: [...(base.quests ?? []), ...more.quests] } : base;
   const sys = SYSTEMS.find((s) => s.id === id);
+  return siteFrom(raw, id, { name: sys?.name, accent: sys?.accent });
+}
+
+// A raw site made whole: its places' things and pits moved to where the
+// places are, its flats gathered (the landing spot's, each place's, each
+// pit), and what's left out filled in. On its own (not inside siteOf) so a
+// book of sites outside the galaxy (the Rick and Morty planets) is made
+// whole by the same rules the scene was built for.
+export function siteFrom(raw, id, { name, accent } = {}) {
   const places = (raw.places ?? []).map((p) => ({
     ...p,
     things: (p.things ?? []).map((t) => ({ ...t, at: plus(p.at, turn(t.at, p.yaw)), yaw: (t.yaw ?? 0) + (p.yaw ?? 0), place: p.id })),
@@ -97,7 +108,8 @@ export function siteOf(id) {
   const flats = [
     ...(raw.ground.flats ?? []),
     { at: land.at, r: raw.land?.r ?? 26, edge: 22, h: raw.land?.h },
-    ...places.filter((p) => p.flat).map((p) => ({ at: p.at, r: p.flat.r, edge: p.flat.edge, h: p.flat.h })),
+    // (`game`: a world drawn from the game's level leaves this flat out: the game's ground is the ground)
+    ...places.filter((p) => p.flat).map((p) => ({ at: p.at, r: p.flat.r, edge: p.flat.edge, h: p.flat.h, ...(p.flat.game ? { game: true } : {}) })),
   ];
   // (the ground's own pits, Beggar's Canyon's run of them, and the places')
   const pits = [...(raw.ground.pits ?? []), ...places.flatMap((p) => p.pits)];
@@ -128,17 +140,18 @@ export function siteOf(id) {
   }));
   return {
     id,
-    name: sys?.name ?? id,
-    accent: sys?.accent ?? '#ffffff',
+    name: name ?? id,
+    accent: accent ?? '#ffffff',
     reach: REACH,
     weather: [],
     things: [],
-    scatter: [],
     rides: [],
     flyovers: [],
     skyships: [],
     floors: [],
     ...raw,
+    // (the site's own rows, then its flora's: the recipe adds, never replaces)
+    scatter: [...(raw.scatter ?? []), ...floraRows(raw)],
     land,
     places,
     zones,

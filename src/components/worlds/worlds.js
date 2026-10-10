@@ -1,4 +1,5 @@
 import { UNIVERSES } from '../universe/universes';
+import { classicPathFor, readStart, universePathFor, viewOf } from '../../lib/view';
 
 // The hidden worlds, one per fandom, each a page of its own (the universes
 // on the map that have one, and the pages inside them: Star Wars has the
@@ -14,13 +15,20 @@ export const WORLD_MB = {
   '/universe': 6, // not a world (nothing gates it), but the map's own download, for the tour's "Open the universe map · N MB" on a phone: the planets' textures, the stations and ships, from /home at a phone's size (5.8 measured)
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
   '/invincible': 4, // the three HD figures and the city's three skies
-  '/cybertron': 36, // Iacon at war's robots, Metroplex and the city's kit (the world at the top), and below it Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
-  '/avengers': 11, // the walkable compound's sky, scanned ground and trees, Spider-Man and the people from Sketchfab (each building's game more as you go in)
+  '/cybertron': 38, // Iacon at war's robots, Metroplex and the city's kit (the world at the top), and below it Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation; and Rapier (1.7 MB) for Iacon's loose crates, on a computer that loads it (never a phone)
+  '/avengers': 13, // the walkable compound's sky, scanned ground and trees, Spider-Man and the people from Sketchfab (each building's game more as you go in); and Rapier (1.7 MB) for the lawn's props, on a computer that loads it (never a phone)
   '/c-137': 16, // about: the Smiths' street, the house, the school and Blips and Chitz, the Smiths and the cruiser; Portal panic's cast; the Citadel inside, its cast, the Council and the crowd's light copies (partly added up from the files). Mortytown is about 11 more, fetched when the lift goes down
-  '/albuquerque': 20, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab
+  '/albuquerque': 22, // the town's buildings, cars, the RV and the cast, and Metherria's cast and lab; and Rapier (1.7 MB) for the street's props, on a computer that loads it (never a phone)
   '/scranton': 5, // the office cast and set (the walkable office and the one from above share them)
-  '/galaxy': 8, // drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon; and down on a world, its models (its people, walkers, landmarks: a few MB a world)
+  '/galaxy': 19, // (17 until the 2017 cast, phase 2: Hoth's models at a phone's level went from 18.1 to 19.3 MB with its troopers', pilots', droids' and tauntauns' light cuts and their packs, galaxy-check's measure; 10 until the 2017 heroes: a world with Luke and Vader adds their light cuts and the game's clip packs, 7 MB at mid, measured on Hoth when the light cuts carried 1024 maps; at 512 they are 0.6 and 0.7 MB, so the true figure is lower and 17 holds; at high their plain files, 1.9 and 2.4 MB) drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon; and down on a world, its models (its people, walkers, landmarks: a few MB a world); and Rapier (1.7 MB) for the loose crates by a site's stacks, on a computer that loads it (never a phone)
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
+  // planet flight: begin (scripts/flight-island.mjs removes this block)
+  // the ground is made in a worker from the planet's seed and wears the galaxy's scans (a few at a planet, under 2 MB); Coruscant adds its film-made Senate, Temple and tower (2.2 MB);
+  // the POIs' buildings and the kit clutter round where it starts add the heaviest planet's 16.8 MB at mid (Naboo, its AAT, MTT, N-1 and droidekas
+  // the game's own, natively, at their light cut since lane V; Middle-earth 11.2, Geonosis 10.8, Mustafar 7.8, Yavin 7.5, Lothal 7.4, Tatooine 5.9,
+  // the rest 5.2 or less, an Expanse planet 1.5 at most: expanse/flight/landmarkFiles.test.js)
+  '/fly': 22,
+  // planet flight: end
   '/deathstar/inside': 6, // aboard the station: the first room's kit and textures at phone size, and the cast it starts with (people, guns, the borrowed clips)
   '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
   '/music': 7, // the music planet's courtyard: its instruments, chhatri, lamps and gaddi (Meshy models), sandstone, a dusk sky
@@ -36,3 +44,10 @@ export const WORLD_MB = {
 // and its own phone gate, not its parent's.
 export const worldAt = (pathname) =>
   WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
+
+// The way out of a world, for the view the visitor is in (the glossary's
+// last row): "Universe map", back to this world's place on the map, or
+// "Classic site", to the pages, for one who reads the site as pages. For a
+// world's HUD Menu (runtime/hud's Menu takes it as it is).
+export const wayOut = (pathname, start = readStart()) =>
+  viewOf(pathname, start) === 'classic' ? { label: 'Classic site', to: classicPathFor(pathname) } : { label: 'Universe map', to: universePathFor(pathname) };

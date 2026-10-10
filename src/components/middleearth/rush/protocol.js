@@ -1,6 +1,6 @@
 // The rush's wire: what the host and the guests say to each other, written
 // small and read with suspicion (anyone with a room's code can join, with a
-// client of their own). Pure, so it's tested; ./net.js carries it.
+// client of their own). Pure, so it's tested; ./online.js carries it.
 //
 // Host → everyone: 'lob' (who's in which slot, and the phase), 'st' (the
 // round, ten times a second: the clock, coins, orders, every station and

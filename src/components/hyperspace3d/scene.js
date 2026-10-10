@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { createRenderer, precompile } from '../../lib/three/renderer';
-import { T, clamp, darkAt, ease, exposureAt, flashAt, holdStart, speedAt } from './timeline';
+import { T, atPeak, clamp, clampStart, darkAt, ease, exposureAt, flashAt, holdStart, jumpStarted, speedAt, swirlOn } from './timeline';
 
 const SEG = 10; // segments along a streak, so the swirl can bend it
 const DEPTH = 80; // how deep the field is (world units)
@@ -305,8 +305,14 @@ export function run(canvas, { entry = false, onPeak, onDone, onFail, uncover }) 
   const frame = (now) => {
     raf = 0;
     if (failed || gl.lost) return;
-    // timed from the first frame actually drawn, so a slow start skips nothing
-    if (!start) start = now - (entry ? T.drift : 0);
+    // timed from the first frame actually drawn, so a slow start skips
+    // nothing (and a page waiting on its dark times its fallback from there)
+    if (!start) {
+      start = now - (entry ? T.drift : 0);
+      jumpStarted();
+    }
+    // (and a stall moves it on 50 ms only: starved, it waits where it was, timeline.js)
+    else start = clampStart(start, last, now);
     start = holdStart(now, start); // (held in the tunnel while the galaxy builds its next system: timeline.js)
     const t = now - start;
     const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016;
@@ -314,7 +320,7 @@ export function run(canvas, { entry = false, onPeak, onDone, onFail, uncover }) 
 
     const v = speedAt(t) * PACE;
     travel += v * dt;
-    if (t >= T.flash && t < T.tunnel) swirl += dt * 0.9;
+    swirl = swirlOn(swirl, t, dt); // (not while held: timeline.js)
     const dark = darkAt(t);
     starU.uTravel.value = travel % DEPTH;
     starU.uLen.value = Math.min(MAX_LEN, v * exposureAt(t));
@@ -330,7 +336,7 @@ export function run(canvas, { entry = false, onPeak, onDone, onFail, uncover }) 
       covered = false;
       uncover?.();
     }
-    if (t >= T.jump + 20 && t < T.flash + 60) peak();
+    if (atPeak(t)) peak();
 
     if (t < T.end) raf = requestAnimationFrame(frame);
     else {

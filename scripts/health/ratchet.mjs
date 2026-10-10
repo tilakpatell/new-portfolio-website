@@ -28,6 +28,6 @@ export function ratchet(metrics, budgets) {
 
 export function describe(over) {
   return over
-    .map((o) => `${o.id}: ${o.value} ${o.unit} over budget ${o.budget}` + o.worst.map((w) => `\n    ${w.file}  ${w.n}`).join(''))
+    .map((o) => `${o.id}: ${o.value} ${o.unit} over budget ${o.budget}` + o.worst.map((w) => `\n    ${w.file}  ${w.n}${w.note ? `  ${w.note}` : ''}`).join(''))
     .join('\n');
 }

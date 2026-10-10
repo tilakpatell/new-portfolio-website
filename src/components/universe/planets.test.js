@@ -14,7 +14,7 @@ describe('the planet maps by detail level', () => {
   it('gives a strong card the standard file for a map that has no -hq', () => {
     expect(mapFile('transformers', 'ultra')).toBe('transformers.webp');
     expect(mapFile('invincible-night', 'ultra')).toBe('invincible-night.webp');
-    // (the sky's glow has nothing finer to give: skyShader.js draws the detail)
+    // (the sky's glow has nothing finer to give: it only lights the map)
     expect(mapFile('sky-glow', 'ultra')).toBe('sky-glow.webp');
     expect(mapFile('sky-glow', 'mid')).toBe('sky-glow-sm.webp');
     expect(mapFile('transformers', 'mid')).toBe('transformers-sm.webp');
@@ -317,6 +317,17 @@ describe('the -xl maps, 4096 on ultra', () => {
     // high near: the -hq copies, never the -xl
     expect(nearSet('middleearth', 'high').map((m) => m.file)).not.toContain('middleearth-xl.ktx2');
   });
+  it('at ultra, an 8192 map where one has been baked, the -xl to fall back on', async () => {
+    const { nearSet } = await import('./planets');
+    const k8 = new Set(['middleearth']);
+    expect(nearSet('middleearth', 'ultra', { k8 })).toEqual([{ name: 'middleearth', file: 'middleearth-8k.ktx2', fallback: 'middleearth-xl.ktx2', colour: true }]);
+    // (none baked: as before; and never below ultra)
+    expect(nearSet('middleearth', 'ultra', { k8: new Set() })).toEqual([{ name: 'middleearth', file: 'middleearth-xl.ktx2', colour: true }]);
+    expect(nearSet('middleearth', 'high', { k8 }).map((m) => m.file)).not.toContain('middleearth-8k.ktx2');
+    // (Earth has no -xl: its -8k is all ultra adds near)
+    expect(nearSet('travel', 'ultra', { k8: new Set(['earth']) })).toContainEqual({ name: 'earth', file: 'earth-8k.ktx2', colour: true });
+    expect(mapFile('middleearth', 'high')).toBe('middleearth.webp');
+  });
 });
 
 describe('a planet’s near maps', () => {
@@ -382,7 +393,7 @@ describe('the sphere, finer near', () => {
     const { NEAR_SEG, nearSegments } = await import('./planets');
     expect(NEAR_SEG.low).toBeUndefined();
     expect(nearSegments('high')).toEqual([160, 100]);
-    expect(nearSegments('ultra')).toEqual([160, 100]);
+    expect(nearSegments('ultra')).toEqual([320, 200]);
     expect(nearSegments('mid')).toEqual([96, 60]);
     expect(nearSegments('low')).toBeNull();
   });
@@ -424,5 +435,14 @@ describe('the sphere, finer near', () => {
     expect(buildPlanet(byId('office'), {}).nearGeometry).toBeUndefined();
     expect(buildPlanet(byId('home'), {}).nearGeometry).toBeUndefined();
     vi.unstubAllGlobals();
+  });
+});
+
+describe('the planets’ models, loaded per planet', () => {
+  it('names its models by planets that are on the map', async () => {
+    const { MODEL_PLANETS } = await import('./planets');
+    const { ORDER } = await import('./layout');
+    expect(MODEL_PLANETS.length).toBeGreaterThan(0);
+    for (const id of MODEL_PLANETS) expect(ORDER).toContain(id);
   });
 });

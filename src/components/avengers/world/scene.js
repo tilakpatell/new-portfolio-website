@@ -24,6 +24,12 @@ import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { instanced } from '../hq/kit/instanced';
 import { logoTexture, scatter, trees } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
+import { createFeel, feelGroups } from '../hq/feel';
+import { createSpring, springGroups } from '../../../lib/spring';
+import { device } from '../../../lib/device';
+import { createDust } from '../../../lib/three/dust';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createLawnProps } from './lawnProps';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
 import { buildShield } from '../ricochet/models';
 import { buildCape, buildMjolnir, buildPortal, craterTexture } from '../lawn/models';
@@ -44,6 +50,7 @@ import { LIFE, createCastLife } from './castLife';
 import { createCastBody, createLook, poseKit } from './castBody';
 import { centredClips } from './borrow';
 import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, GAIT, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, gaitFor, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
+import { LOOK } from './look';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -395,7 +402,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // (the glow only for what's past lit paint: a white wall full in the sun
   // comes to about 1.3, and at the old 1.2 the training center's front was a
   // slab of light; the glows, the lintels and the beams are well over)
-  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.36, radius: 0.5, threshold: 1.55, knee: 0.9 }, onLost });
+  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: LOOK.bloom, onLost });
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
   const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
@@ -1471,6 +1478,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // ── the camera ──
   const A = { at: new THREE.Vector3(), look: new THREE.Vector3(), hx: 0, hz: 0, intro: calm ? 0 : 1, gait: 0, landed: 1, flash: 0, started: false, aim: null, aimN: 0, aimed: false, perch: null, hand: new THREE.Vector3(), dist: 0, fov: 52, punch: 0, floor: 0, ly: 0, arc: 0, lx: 0, lz: 0, bank: 0 };
   const swing = createSwing(scene, { calm });
+  // the fov's punch through the house's feel (lib/three/feel.js): eased out
+  // by its τ, and none under reduced motion; its numbers on ?debug
+  const feel = createFeel({ calm, baseFov: 52 });
+  // his landing's squash (the game-feel design's Tier 2): a spring kicked by
+  // how hard he came down, rung out about his feet, never more than 0.3
+  const squash = createSpring({ k: 120, c: 8, max: 0.3 });
+  engine.tune([...feelGroups(feel), ...springGroups(squash, 'squash')], 'compound');
   const flags = createFlags(scene);
   const rings = createRings(scene);
   const packs = createPacks(scene);
@@ -1664,6 +1678,11 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       // in close to the wall
       hero.position.set(h.x - h.wall.nx * 0.16, h.y + spidey.hipHeight, h.z - h.wall.nz * 0.16);
     } else hero.position.set(h.x, h.y + spidey.hipHeight * (h.land > 0 || h.mode === 'perch' ? 0.62 : 1), h.z);
+    // (the squash on his feet only: off them it's let go)
+    const sq = h.mode === 'ground' ? squash.step(dt) : 0;
+    if (h.mode !== 'ground') squash.reset();
+    hero.scale.set(1 + sq / 2, 1 - sq, 1 + sq / 2);
+    if (sq) hero.position.y -= spidey.hipHeight * sq;
     bankFor(h, dt);
     const q = holderAt(h);
     if (!R.placed || R.w < 0.01) hero.quaternion.copy(q);
@@ -1785,6 +1804,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     waterN.offset.set(clock * 0.006, clock * 0.009);
     placeJet(clock + 6, dt);
     placeHero(s.hero, dt, s.say);
+    // the lawn's props, moved by the engine where it's loaded, and their knocks heard
+    lawnProps?.step(dt, s.hero);
+    knocks.update(dt);
     placePeople(s, dt);
     ghosts.update(s.travellers ?? [], clock, dt);
     placeMarkers(s);
@@ -1855,6 +1877,12 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     // further back the faster he goes, and wider
     A.dist += ((flying ? Math.min(4.5, speed * 0.11) : h.mode === 'wall' ? 2.2 : 0) - A.dist) * damp(2.5);
     const dist = (s.camDist ?? 7.5) + A.dist;
+    // (a punch the events asked for goes to the feel, at the settings' shake:
+    // up to it, as the max it was, not added on)
+    if (A.punch > 0) {
+      feel.punch(Math.max(0, A.punch * (s.shake ?? 1) - feel.state().fov));
+      A.punch = 0;
+    }
     const fov = 52 + (flying ? Math.min(13, Math.max(0, speed - 11) * 0.45) : 0) + A.punch * (s.shake ?? 1);
     A.fov += (fov - A.fov) * damp(4);
     A.punch = Math.max(0, A.punch - dt * 9);
@@ -1862,6 +1890,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       camera.fov = A.fov;
       camera.updateProjectionMatrix();
     }
+    feel.setBaseFov(A.fov);
+    feel.update(dt, camera);
     // a little over his head, so the buildings and the sky get the screen, not
     // the grass: his own height, but only some of a hop's (it would bob the view)
     if (h.mode === 'ground') A.floor = h.y;
@@ -1976,6 +2006,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     } else if (type === 'land') {
       // a hard one beside them gets a look and a reaction (./castLife.js)
       for (const p of Object.values(people)) p.life.event('land', { x: d.x, z: d.z, impact: d.impact ?? 0 });
+      squash.kick((d.impact ?? 0) * 0.05);
       const hard = Math.max(0, Math.min(1, ((d.impact ?? 0) - 9) / 14));
       if (!calm) vfx.smoke(v3.set(d.x, (d.y ?? 0) + 0.1, d.z), { size: 1.2 + hard * 2.2, count: 5 + Math.round(hard * 10), life: 0.7 + hard * 0.6, rise: 0.4 + hard * 0.5, opacity: 0.25 + hard * 0.15, color: 0xb8b4a4, to: 0xd8d4c4, spread: 0.8 + hard * 2.4 });
       if (hard > 0.3) {
@@ -2067,11 +2098,26 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     auto: true,
   });
 
+
+  // ── things to knock over (the game-feel design's Tier 3): slaloms of
+  // cones, crates and a barrel on the lawn (./lawnProps.js), each knock a
+  // thud by how hard, from where it was (lib/three/impacts), a puff of the
+  // lawn's dust there and a nudge of the feel ──
+  const knockDust = createDust({ count: 48, colour: 0xb8b4a4, size: 0.9 });
+  scene.add(knockDust.mesh);
+  const ear = new THREE.Vector3();
+  const knocks = wireImpacts({
+    dust: knockDust,
+    shake: feel.trauma,
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
+  });
+  const lawnProps = await createLawnProps({ parent: scene, dev: device(), impacts: knocks }).catch(() => null);
   return {
     engine,
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
+    prepare: engine.prepare, // (everything sent to the graphics chip before it's seen: hq/engine)
     fx,
     screenOf,
     resize: (w, h) => engine.resize(w, h),
@@ -2097,6 +2143,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       moves?.dispose();
       spidey?.dispose();
       swing.dispose();
+      lawnProps?.dispose();
+      knocks.dispose();
       flags.dispose();
       grass?.dispose();
       rings.dispose();

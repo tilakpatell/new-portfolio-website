@@ -4,9 +4,24 @@
 // `await`: on iOS a context resumed later than that stays silent.
 
 const KEY = 'tp-sound';
+const VOLUME_KEY = 'tp-volume';
 let ctx = null;
 let master = null;
+let music = null;
 const listeners = new Set();
+
+// The volumes, 0 to 1 (the settings panel's Sound): everything, the music
+// room's instruments, and speech. Kept as 'tp-volume' { master, music, voices }.
+const unit = (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 1);
+export function volumes() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(VOLUME_KEY) ?? 'null') ?? {};
+    return { master: unit(v.master), music: unit(v.music), voices: unit(v.voices) };
+  } catch {
+    return { master: 1, music: 1, voices: 1 };
+  }
+}
+const masterLevel = (on = soundOn()) => (on ? volumes().master : 0);
 
 export function soundOn() {
   try {
@@ -22,13 +37,59 @@ export function setSound(on) {
   } catch {
     /* storage unavailable */
   }
-  if (master) master.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.05);
+  if (master) master.gain.setTargetAtTime(masterLevel(on), ctx.currentTime, 0.05);
   listeners.forEach((fn) => fn(on));
+}
+
+// Set some of the volumes ({ master, music, voices }), kept and heard at once.
+export function setVolumes(patch) {
+  const next = { ...volumes(), ...patch };
+  try {
+    window.localStorage.setItem(VOLUME_KEY, JSON.stringify({ master: unit(next.master), music: unit(next.music), voices: unit(next.voices) }));
+  } catch {
+    /* storage unavailable */
+  }
+  if (!ctx) return;
+  const v = volumes();
+  master?.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.05);
+  music?.gain.setTargetAtTime(v.music, ctx.currentTime, 0.05);
+  voiceBus?.gain.setTargetAtTime(voicesLevel(), ctx.currentTime, 0.05);
 }
 
 export function onSoundChange(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
+}
+
+// The voices on their own (the worlds' Menu, the settings panel, ⌘K): off,
+// nobody speaks (lib/speech.js says no line, the blips stay quiet) and the
+// subtitles carry on. Kept as 'tp-voices' 'off'; the Voices volume is left
+// as it was, for when they're back on.
+const VOICES_KEY = 'tp-voices';
+const voiceListeners = new Set();
+export function voicesOn() {
+  try {
+    return window.localStorage.getItem(VOICES_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+const voicesLevel = () => (voicesOn() ? volumes().voices : 0);
+
+export function setVoicesOn(on) {
+  try {
+    if (on) window.localStorage.removeItem(VOICES_KEY);
+    else window.localStorage.setItem(VOICES_KEY, 'off');
+  } catch {
+    /* storage unavailable */
+  }
+  if (voiceBus) voiceBus.gain.setTargetAtTime(voicesLevel(), ctx.currentTime, 0.05);
+  voiceListeners.forEach((fn) => fn(!!on));
+}
+
+export function onVoicesChange(fn) {
+  voiceListeners.add(fn);
+  return () => voiceListeners.delete(fn);
 }
 
 // On an iPhone, Web Audio follows the ring/silent switch, so with the switch on
@@ -92,7 +153,7 @@ export function audioContext() {
     if (!AC) return null;
     ctx = new AC({ latencyHint: 'interactive' });
     master = ctx.createGain();
-    master.gain.value = soundOn() ? 1 : 0;
+    master.gain.value = masterLevel();
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -6;
     limiter.knee.value = 6;
@@ -105,6 +166,24 @@ export function audioContext() {
   if (ctx.state !== 'running') ctx.resume().catch(() => {});
   unmuteIOS();
   return ctx;
+}
+
+// Resolves true once a context is running (at once if it is), or false if it
+// isn't within `ms`: a line played into a context still asleep would wait
+// there, and come out on top of everything else the moment it wakes.
+export function whenRunning(ac, ms) {
+  if (!ac) return Promise.resolve(false);
+  if (ac.state === 'running') return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const done = (ok) => {
+      clearTimeout(timer);
+      ac.removeEventListener('statechange', change);
+      resolve(ok);
+    };
+    const change = () => ac.state === 'running' && done(true);
+    const timer = setTimeout(() => done(false), ms);
+    ac.addEventListener('statechange', change);
+  });
 }
 
 // A press that starts a hold (pointerdown) isn't a gesture iOS will start audio
@@ -121,6 +200,19 @@ if (typeof window !== 'undefined') {
 // Where every sound should connect: the master volume, which mutes with the setting.
 export const output = () => (audioContext() ? master : null);
 
+// Where the music room's instruments connect: the master volume, by way of
+// the music volume.
+export function musicOutput() {
+  const ac = audioContext();
+  if (!ac) return null;
+  if (!music) {
+    music = ac.createGain();
+    music.gain.value = volumes().music;
+    music.connect(master);
+  }
+  return music;
+}
+
 // Where speech should connect instead: the master volume by way of a tap that
 // measures how loud the voice is, so a face on screen can move its mouth with
 // it. The tap sits before the master volume, so mouths still move with the
@@ -133,6 +225,7 @@ export function voiceOutput() {
   if (!ac) return null;
   if (!voiceBus) {
     voiceBus = ac.createGain();
+    voiceBus.gain.value = voicesLevel();
     voiceTap = ac.createAnalyser();
     voiceTap.fftSize = 512;
     voiceTap.smoothingTimeConstant = 0;

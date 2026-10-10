@@ -9,6 +9,7 @@
 
 import { MAP_SLOTS, loadTexture } from '../../lib/three/textures';
 import { detailLevel } from '../../lib/detail';
+import K8_BAKED from '../../../public/textures/universe/k8.json';
 
 const BASE = '/textures/universe/';
 // Each map: whether it's a colour (sRGB) or data (normals, roughness, a
@@ -22,9 +23,9 @@ const BASE = '/textures/universe/';
 // scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
 // Invincible's by their own scripts (Invincible's relief with an -hq;
 // Cybertron's is 2048 on high and up, 1024 below).
-// The universe map's own sky is 'sky-glow', the Milky Way's light only,
-// baked from the 8K sky by scripts/bake-universe-sky.mjs (skyShader.js
-// draws its stars); 'sky' itself, with its stars, is the Earth's.
+// 'sky-glow' is the Milky Way's light only, baked from the 8K sky by
+// scripts/bake-universe-sky.mjs; the map lights with it and draws
+// galaxy/sky.js's sky. 'sky' itself, with its stars, is the Earth's.
 const map = (names, opts) => names.map((n) => [n, opts]);
 const MAPS = Object.fromEntries([
   ...map(['music', 'middleearth', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty'], { sm: true, hq: true, xl: true, colour: true }),
@@ -53,6 +54,13 @@ export function mapFile(name, level = 'high', { xl: big = true } = {}) {
   return `${name}${suffix}.webp`;
 }
 
+// The colour maps baked at 8192 too (scripts/build-fandom-planets.mjs
+// --ultra writes `<name>-8k.ktx2` and lists it in k8.json): worn near at
+// ultra only, over the -xl. Too big to keep in the repository (about 20 MB
+// each): the list is empty until they're baked on the owner's machine and
+// published with the site, and nothing asks for one that isn't listed.
+export const K8 = new Set(K8_BAKED);
+
 // A planet's own maps: those named for it ('middleearth', 'middleearth-normal'…;
 // Earth's world is 'travel', its maps 'earth').
 const MAP_PREFIX = { travel: 'earth' };
@@ -66,8 +74,17 @@ export function mapsOf(id) {
 // loader's cache would hand back that very texture). A strong card's near
 // set is the -xl colour maps (the -hq it wears already the fallback); a
 // desktop's, the -hq copies; a weak card's desktop, the standard ones over
-// its -sm. Nothing on low.
-export function nearSet(id, level) {
+// its -sm. Nothing on low. At ultra a map baked at 8192 (`k8`) is asked
+// for first, its -xl the fallback.
+export function nearSet(id, level, { k8 = K8 } = {}) {
+  const set = finerSet(id, level);
+  if (level !== 'ultra') return set;
+  const big = (name) => `${name}-8k.ktx2`;
+  // (a map with no -xl, Earth's, has nothing finer at ultra but its -8k)
+  const more = mapsOf(id).filter((name) => k8.has(name) && !set.some((m) => m.name === name)).map((name) => ({ name, file: big(name), colour: MAPS[name].colour }));
+  return [...set.map((m) => (k8.has(m.name) ? { name: m.name, file: big(m.name), fallback: m.file, colour: m.colour } : m)), ...more];
+}
+function finerSet(id, level) {
   if (level === 'low') return [];
   const far = (name) => mapFile(name, level, { xl: false });
   const files = (name) => (level === 'ultra' ? [mapFile(name, 'ultra'), mapFile(name, 'ultra', { xl: false })] : [mapFile(name, level === 'mid' ? 'high' : 'ultra', { xl: false })]);

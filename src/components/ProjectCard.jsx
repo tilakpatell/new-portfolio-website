@@ -15,7 +15,7 @@ export default function ProjectCard({ project, compact = false, large = false, h
       <div className={`flex flex-col ${horizontal ? '' : 'mt-5'} ${large ? 'md:flex-none' : 'flex-1'}`}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-muted">{project.kind}</span>
-          {project.award && <span className="chip chip-accent !min-h-0 !py-0.5">{project.award}</span>}
+          {project.award && <span className="chip chip-accent chip-sm">{project.award}</span>}
         </div>
         <h3 className={`stretch-semi mt-2 flex items-start justify-between gap-3 font-semibold text-ink ${large ? 'text-[clamp(1.6rem,1.2rem+1.2vw,2.2rem)] leading-tight' : 'text-xl'}`}>
           {project.title}

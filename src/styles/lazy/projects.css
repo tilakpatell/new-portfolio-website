@@ -1,7 +1,12 @@
 /* Split out of styles/extras.css so it loads with the components that use it
    (each imports it), not with every page. */
-.project-item { transition: opacity 0.3s ease, filter 0.3s ease; }
-.project-item[data-dim] { opacity: 0.32; filter: grayscale(0.6); }
+.project-item :is(img, video, canvas, picture) { transition: opacity 0.3s ease, filter 0.3s ease; }
+/* filtered out: dimmed by colour, so its words stay readable; only its
+   picture fades and goes grey */
+.project-item[data-dim] { --text: var(--muted); --text-body: var(--muted); color: var(--muted); }
+.project-item[data-dim] :is(img, svg, video, canvas, picture) { opacity: 0.55; filter: grayscale(0.6); }
+/* the award, the way in: quiet too, or the tile left out is the loudest */
+.project-item[data-dim] :is(.chip-accent, .btn) { filter: grayscale(1); opacity: 0.7; }
 .ptile {
   position: relative;
   display: flex;

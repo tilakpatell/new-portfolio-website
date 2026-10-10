@@ -56,6 +56,9 @@ import {
 } from './rules';
 import { LEG, WALKER_STRIDE, boxEmote, createNotice, createStride, legAngle, stepAt, walkerStride } from './life';
 import { sway } from '../../lib/three/gait';
+import { createFeel, feelGroups } from '../../lib/three/feel';
+import { createSpring, springGroups } from '../../lib/spring';
+import { debugOn, debugPanel } from '../../lib/debugPanel';
 
 // a grey as it should look (0 black, 1 white), in the linear working space
 const grey = (v) => new THREE.Color().setRGB(v, v, v, THREE.SRGBColorSpace);
@@ -110,6 +113,17 @@ const blockFace = (face, mark) =>
     g.fillRect(s - 1, 0, 1, s);
     mark?.(g, s);
   });
+// the camera's knock (lib/three/feel's trauma): a hurt throws him back, a
+// stomp is a small thump under him; the island is seen from 12.5 m away, so
+// the shake reaches further than the feel's default to read at all
+const HURT_SHAKE = 0.5;
+const STOMP_SHAKE = 0.25;
+const SHAKE_OFFSET = 0.3;
+// his landing's squash, on a spring: kicked by how fast he came down, it
+// squashes and rings back through a little stretch; at a full jump's 8.9 m/s
+// it reaches the 16% the old sine had
+const SQUASH = { k: 120, c: 8, max: 0.3 };
+const SQUASH_KICK = 0.36;
 const QUESTION = ['0111100', '1100110', '0000110', '0001100', '0011000', '0000000', '0011000'];
 const glyph = (rows, x0, y0, colour) => (g) => {
   g.fillStyle = colour;
@@ -1080,7 +1094,7 @@ function buildSkyClouds(rand) {
 
 export function createDotMatrix(canvas, { onLost } = {}) {
   const tier = device().tier;
-  const gl = createRenderer(canvas, { alpha: false, antialias: false, ratio: 1, onLost });
+  const gl = createRenderer(canvas, { alpha: false, antialias: false, ratio: 1, onLost, guard: true });
   const { renderer } = gl;
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = tier !== 'low';
@@ -1089,6 +1103,10 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0xffffff, 30, 74);
   const camera = new THREE.PerspectiveCamera(36, 16 / 9, 0.5, 200);
+  // a knock of the camera on a hurt and a stomp (lib/three/feel: trauma²,
+  // none under reduced motion)
+  const feel = createFeel({ baseFov: 36, offset: SHAKE_OFFSET });
+  let panel = null; // behind ?debug: the feel's numbers, and what the page adds
   const rand = rng(1989);
 
   // the light: a high sun over the south-west, and a sky's worth of fill
@@ -1322,7 +1340,8 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const cam = { x: 0, y: 0, z: 0, ready: false };
   let idleT = 0;
   let air = 0; // 0 on the ground, 1 in a jump, eased
-  let landT = 9; // seconds since he last came down
+  const squash = createSpring(SQUASH); // + squashed, − stretched
+  let fall = 0; // how fast he's coming down, while he's in the air
   let wasGround = true;
   let knock = 0; // thrown back by a hurt, eased
   let disposed = false;
@@ -1345,9 +1364,12 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     const sp = Math.min(1, h.moving / HERO.speed);
     poseStride(hero, heroStride.step(dt, h.moving), now); // (on in the air, under the jump's pose, so he lands mid-stride)
     air += ((h.ground ? 0 : 1) - air) * (1 - Math.exp(-16 * dt));
-    if (h.ground && !wasGround) landT = 0;
+    if (!h.ground) fall = Math.max(fall, -(h.vy ?? 0));
+    else if (!wasGround) {
+      squash.kick(fall * SQUASH_KICK);
+      fall = 0;
+    }
     wasGround = h.ground;
-    landT += dt;
     const mix = (o, key, to) => (o.rotation[key] += (to - o.rotation[key]) * air);
     mix(hero.legL, 'x', 0.6);
     mix(hero.legR, 'x', -0.35);
@@ -1378,8 +1400,8 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     }
     // squeezing into a pipe, or out of one; and the squash of a landing
     const squeeze = fx.warp > 0 ? (fx.warpDir < 0 ? fx.warp : 1 - fx.warp) : 1;
-    const land = landT < 0.16 ? Math.sin((landT / 0.16) * Math.PI) : 0;
-    hero.group.scale.set(1.15 * (1 + land * 0.08), 1.15 * Math.max(0.02, squeeze) * (1 - land * 0.16), 1.15 * (1 + land * 0.08));
+    const land = squash.step(dt);
+    hero.group.scale.set(1.15 * (1 + land / 2), 1.15 * Math.max(0.02, squeeze) * (1 - land), 1.15 * (1 + land / 2));
     if (fx.warp > 0) fx.warp = Math.max(0, fx.warp - dt / 0.45);
     hero.group.visible = (game.hurt <= 0 || Math.floor(now * 14) % 2 === 0) && game.over <= 0 && squeeze > 0.03;
     const floor = floorAt(h.x, h.z, h.y + 0.05);
@@ -1400,6 +1422,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     camera.position.set(cam.x + Math.sin(yaw) * Math.cos(pitch) * far, cam.y + Math.sin(pitch) * far, cam.z + Math.cos(yaw) * Math.cos(pitch) * far);
     look.set(cam.x, cam.y, cam.z);
     camera.lookAt(look);
+    feel.update(dt, camera);
     sun.position.set(cam.x + SUN.x * 30, cam.y + SUN.y * 30, cam.z + SUN.z * 30);
     sun.target.position.set(cam.x, cam.y, cam.z);
     sea.mat.uniforms.uTime.value = now;
@@ -1590,10 +1613,16 @@ export function createDotMatrix(canvas, { onLost } = {}) {
         spray(b.ix + 0.5, BLOCK_LO + 1.2, b.iz + 0.5, 14, { speed: 2.2, up: 4, life: 0.8, shade: 0.98 });
       } else if (type === 'coin' && at) spray(at.x, at.y, at.z, 6, { speed: 1.4, up: 2.5, g: 6, life: 0.4, shade: 1, size: 0.7 });
       else if (type === 'cart' && at) spray(at.x, at.y + 0.6, at.z, 26, { speed: 3, up: 5, g: 7, life: 1.1, shade: 1 });
-      else if (type === 'stomp' && at) spray(at.x, 0.15, at.z, 10, { speed: 2.6, up: 1.5, g: 8, life: 0.45, shade: 0.55 });
+      else if (type === 'stomp' && at) {
+        spray(at.x, 0.15, at.z, 10, { speed: 2.6, up: 1.5, g: 8, life: 0.45, shade: 0.55 });
+        feel.trauma(STOMP_SHAKE);
+      }
       else if (type === 'land' && at) spray(at.x, at.y + 0.05, at.z, 6, { speed: 1.6, up: 0.8, g: 6, life: 0.3, shade: 0.6, size: 0.8 });
       else if (type === 'splash' && at) spray(at.x, WATER + 0.1, at.z, 18, { speed: 1.8, up: 5, g: 14, life: 0.7, shade: 1 });
-      else if (type === 'hurt' && at) spray(at.x, at.y + 0.6, at.z, 8, { speed: 2.4, up: 3, life: 0.5, shade: 0.1 });
+      else if (type === 'hurt' && at) {
+        spray(at.x, at.y + 0.6, at.z, 8, { speed: 2.4, up: 3, life: 0.5, shade: 0.1 });
+        feel.trauma(HURT_SHAKE);
+      }
       else if (type === 'coinheart' && at) spray(at.x, at.y + 0.9, at.z, 14, { speed: 1.6, up: 3.5, g: 5, life: 0.9, shade: 0.98 });
       else if (type === 'allcoins' && at) spray(at.x, at.y + 0.7, at.z, 40, { speed: 3.4, up: 6, g: 7, life: 1.3, shade: 1 });
       else if (type === 'warp') {
@@ -1613,8 +1642,14 @@ export function createDotMatrix(canvas, { onLost } = {}) {
       render(state, 16);
       return precompile(renderer, scene, camera);
     },
+    tune(groups = []) {
+      if (!debugOn()) return;
+      panel ??= debugPanel({ title: 'Dot Matrix' });
+      panel.open([...feelGroups(feel), ...springGroups(squash, 'landing squash'), ...groups], { title: 'Dot Matrix', id: 'dot-matrix' });
+    },
     dispose() {
       disposed = true;
+      panel?.dispose();
       ghosts.dispose();
       disposeTree(scene);
       dither.dispose();

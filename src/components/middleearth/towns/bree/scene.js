@@ -59,6 +59,9 @@ import {
 } from './layout';
 import { attend, castDo, releaseCast, tickCast } from '../../cast3d';
 import { turn } from '../../../../lib/three/gait';
+import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const faceTo = (obj, face) => {
@@ -121,7 +124,7 @@ const growable = (x, z) => {
 export function createBreeWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 420, bloom: { strength: 0.62, radius: 0.5, threshold: 0.86 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 420, bloom: BLOOMS.bree, onLost });
   stage.grade({ contrast: 0.12, saturation: 0.86, vignette: 0.3, grain: 0.016, shadow: [0.0, 0.012, 0.035], high: [0.03, 0.018, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -442,6 +445,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, peep: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', smashed: false, smoke: 0, flame: 0, near: [] };
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const look = new THREE.Vector3();
@@ -730,15 +735,12 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     const jump = A.mode !== s.mode || A.beat !== s.beat;
     A.mode = s.mode;
     A.beat = s.beat;
-    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' ? 8 : 2.5));
+    const ease = jump ? 1 : byFrame(s.mode === 'walk' ? 8 : 2.5, dt);
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     rain.update(camera, t, inside ? 0 : wet, frodo.group.position);
@@ -801,6 +803,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      shake.dispose();
       ground.dispose();
       ghosts.dispose();
       disposeTree(inn.group);

@@ -3,6 +3,7 @@ import { use3D } from '../../lib/gpu';
 import { prefersReducedMotion } from '../../lib/hooks';
 import PortalSwirl from './PortalSwirl';
 import { TALL, along, breakage, cruiserAt, flight, riftAt } from './flight';
+import { approach } from '../../lib/ease';
 
 // Rick and Morty in the Space Cruiser, flying down the page with you, as the
 // paper plane does on the Office's page: it keeps to the middle of the screen
@@ -22,6 +23,7 @@ import { TALL, along, breakage, cruiserAt, flight, riftAt } from './flight';
 
 const NEAR = 1000; // how near (px) a portal is to the cruiser to run its swirl
 const AHEAD = 40; // how far on (px) to look to see which way it's turning
+const FOLLOW = 7.67; // the cruiser's follow (1/s): −60·ln(1 − 0.12), the 0.12 a frame it had at 60 Hz
 
 // which way it's flying at y: across (-1 left … 1 right) and down (0 … 1)
 const heading = (geo, y) => {
@@ -186,12 +188,19 @@ export default function CruiserFlight() {
       const top = el.getBoundingClientRect().top + window.scrollY;
       return window.scrollY + window.innerHeight * 0.5 - top;
     };
-    const tick = () => {
+    // (by the frame's time, so a 120 Hz screen eases at the 60 Hz pace it was
+    // tuned at: 0.12 of the way a sixtieth of a second; a first frame after
+    // a rest counts as one sixtieth)
+    let last = 0;
+    const tick = (now) => {
+      const dt = last && now ? Math.min(0.1, (now - last) / 1000) : 1 / 60;
+      last = now ?? 0;
       const goal = target();
       // it starts in the hero's portal and comes out to where it should be
-      shown = shown == null ? (still ? goal : Math.min(goal, geo.start.y)) : still ? goal : shown + (goal - shown) * 0.12;
+      shown = shown == null ? (still ? goal : Math.min(goal, geo.start.y)) : still ? goal : approach(shown, goal, FOLLOW, dt);
       place(shown);
       raf = Math.abs(goal - shown) > 0.5 ? requestAnimationFrame(tick) : 0;
+      if (!raf) last = 0;
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(tick);

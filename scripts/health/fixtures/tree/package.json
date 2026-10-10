@@ -1,0 +1,5 @@
+{
+  "name": "fixture",
+  "dependencies": { "three": "1.0.0", "@gltf-transform/core": "2.0.0", "lonely": "3.0.0" },
+  "devDependencies": { "vitest": "4.0.0" }
+}

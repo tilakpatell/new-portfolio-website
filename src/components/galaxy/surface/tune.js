@@ -2,42 +2,41 @@
 // Shire's tune.js for the surfaces: its look (the house's shade colour and
 // the edge between shade and light, the bounce off the ground; the fog's
 // halo and the haze below the horizon, skyfog.js; the exposure through the
-// post), its grass and its wind, each read and written live. The copy button
-// prints them as the site's own blocks (`look`, `exposure`, `grass`), to
+// post: the house's part from lib/three/houseTuning), its grass and its
+// wind, each read and written live. The copy button prints them as the site's own blocks (`look`, `exposure`, `grass`), to
 // paste into its file in sites/.
 //
 //   surfaceTuning({ house, skyFog, post, exposure, grass, wind }) → groups
 //   siteCode(values) → the site's blocks, as code (pure)
 
+import { houseGroups } from '../../../lib/three/houseTuning';
+
 const hex = (c) => `#${c.getHexString()}`;
 const round = (v) => Number(Number(v).toFixed(3));
 
 export function surfaceTuning({ house, skyFog, post, exposure = 1, grass = null, wind }) {
-  const u = house.uniforms;
   const f = skyFog.uniforms;
   let k = exposure;
+  // the house's own look (lib/three/houseTuning), less its fog: a surface's
+  // fog is its sky's (skyfog.js), so the halo and the haze below are that's
+  const [look] = houseGroups(house, {
+    exposure: {
+      get: () => k,
+      set: (v) => {
+        k = v;
+        post.exposure(v);
+      },
+    },
+  });
+  const own = (key) => look.items.find((it) => it.key === key);
   const groups = [
     {
       name: 'look',
       items: [
-        { key: 'shadow', type: 'colour', get: () => hex(u.uLookShadow.value), set: (v) => house.set({ shadow: v }) },
-        { key: 'edgeFrom', label: 'shade until', type: 'range', min: 0, max: 1, get: () => u.uLookEdge.value.x, set: (v) => (u.uLookEdge.value.x = v) },
-        { key: 'edgeTo', label: 'light from', type: 'range', min: 0, max: 1.5, get: () => u.uLookEdge.value.y, set: (v) => (u.uLookEdge.value.y = v) },
-        { key: 'mix', label: 'look', type: 'range', min: 0, max: 1, get: () => u.uLookMix.value, set: (v) => (u.uLookMix.value = v) },
-        { key: 'bounce', type: 'range', min: 0, max: 1, get: () => u.uLookBounce.value.y, set: (v) => (u.uLookBounce.value.y = v) },
+        ...['shadow', 'edgeFrom', 'edgeTo', 'mix', 'bounce'].map(own),
         { key: 'halo', type: 'colour', get: () => hex(f.uSfHalo.value), set: (v) => skyFog.look({ halo: v }) },
         { key: 'fogBelow', label: 'haze below', type: 'range', min: 0, max: 1.5, get: () => f.uSfBelowK.value, set: (v) => skyFog.look({ below: v }) },
-        {
-          key: 'exposure',
-          type: 'range',
-          min: 0.4,
-          max: 2,
-          get: () => k,
-          set: (v) => {
-            k = v;
-            post.exposure(v);
-          },
-        },
+        own('exposure'),
       ],
     },
   ];

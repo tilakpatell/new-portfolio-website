@@ -17,6 +17,21 @@
 // can't be asked for again straight away, and anyone who goes quiet is
 // dropped. A heartbeat keeps you on everyone's list while you sit still.
 //
+// Allies and blocks last (`allies`, allies.js's store, kept by the other
+// pilot's key): a saved ally's first hello is answered with an ask that says
+// you know them ({ t: 'ask', k: 1 }), and such an ask from a pilot you've
+// saved is a yes without a word to you, so two allies are allies again a
+// moment after both are online (and nobody's paid for it again: 'allied' is
+// for an alliance newly made). Only an alliance made with the key you fly
+// now is asked for like that (a guest tab's key, or a new identity, is one
+// they don't know: those are asked for by hand). An alliance made is saved
+// with the key you flew; a no or an end,
+// theirs or yours, forgets it. A saved block holds from a pilot's first
+// word (their row is listed, blocked, to be unblocked); a block or an
+// unblock of yours is saved (and a block ends an alliance), while a flood's
+// mute is for the visit: nothing's saved, no alliance ends, they're told
+// nothing.
+//
 // The hunters after you are yours to fly (hunters.js), and the others see
 // them: while someone's in the same place, where they are goes out a few
 // times a second (pack), each pilot's come in as peer.hunters ({ at, list })
@@ -24,7 +39,7 @@
 // told to you (hunterHit → a 'hunterHit' event, once it's checked: they'd
 // just fired, and were close to it), so a friend can shoot one off your tail.
 //
-// createClient({ name, kind, loadout, build, looks, where, level, marks }) → { selfId, factions, on(fn) → off, snapshot(),
+// createClient({ name, kind, loadout, build, looks, where, level, marks, allies }) → { selfId, factions, on(fn) → off, snapshot() (with `away`: the saved allies who aren't here, { id, name, seen }),
 //   setProfile({ name, kind, loadout, build, looks, where, level, marks }) (level: the
 //   wallet's; marks: its marks(), your standing and oath, read into factions
 //   for the side of the ship you fly: relations.js's factionsFrom), pose(ship, { hidden, boost, safe,
@@ -32,16 +47,19 @@
 //   on foot, for the roster), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
 //   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
 //   same down on a world in the galaxy: peer.walk), shot(at, v, weapon),
-//   hit(peerId, damage), siege(msg) (the Citadel's siege, siege.js),
+//   hit(peerId, damage), ram(peerId, into) (you flew into them, at that
+//   closing speed), siege(msg) (the Citadel's siege, siege.js),
 //   war(msg) (the galaxy's war: what the players have done, a tally.js
 //   message), fight(msg) (the battle on where you are: its objectives' damage),
-//   down(byId), cursor(x, y, touch), pack(get) (get() → hunters.js's wire(),
+//   down(byId, rammed), cursor(x, y, touch), pack(get) (get() → hunters.js's wire(),
 //   asked for only when it's time to send), hunterHit(peerId, hunterId,
 //   damage), helped(peerId, what) (their shot took one of yours down),
 //   ally(peerId, 'ask' | 'accept' | 'decline' | 'end'), block(peerId, on),
 //   peers, takeShots(), leave() }
 // Events, to on(fn): { type: 'status' }, { type: 'roster' }, { type: 'feed',
-// text, tone }, { type: 'hit', from, damage }, { type: 'downed', id, by }
+// text, tone }, { type: 'hit', from, damage }, { type: 'rammed', from, into,
+// at } (they flew into you: the closing speed believed, and where they
+// were), { type: 'downed', id, by }
 // (someone was shot down: where they were, for the scene's pop; `by` is
 // whoever this browser believes did it), { type: 'hunterHit', from, id,
 // damage } (another pilot's bolt hit one of the hunters after you), { type:
@@ -53,7 +71,7 @@
 
 import { readBuildWire, writeBuild } from '../shipyard/build';
 import { EVERYONE, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
-import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk, STALE_MS } from './protocol';
+import { allyStep, APP_ID, cleanName, createLimiter, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, hitCounts, hunterHitCounts, PACK_MS, POSE_MS, PUNCH_MAX, ramCounts, readAlly, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readRam, readShot, readWalk, ROOM, STALE_MS, WALK_MS, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot, writeWalk } from './protocol';
 import { UNIVERSE, isFlight, placeName } from './where';
 import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 import { readSiege } from '../siege';
@@ -73,7 +91,7 @@ const ALLY_AGAIN_MS = 60000; // after you turn someone down, how long before the
 const levelOf = (lv) => (Number.isInteger(lv) && lv >= 1 ? lv : 1);
 const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinAsVisitor }));
 
-export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build = null, looks = null, where = UNIVERSE, level = 1, marks = null, load = loadRoom, now = () => performance.now() }) {
+export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build = null, looks = null, where = UNIVERSE, level = 1, marks = null, allies = null, load = loadRoom, now = () => performance.now() }) {
   const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), build: build ? readBuildWire(writeBuild(build)) : null, looks: looks ? readLooks(looks) : null, kills: 0, where, level: levelOf(level), marks, factions: factionsFrom(sideOf(kind), marks) };
   const peers = new Map();
   const listeners = new Set();
@@ -99,6 +117,15 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
   };
   const roster = () => emit({ type: 'roster' });
   const feed = (text, tone = 'info') => emit({ type: 'feed', text, tone });
+  // (the saved allies changed, here or in another tab: the roster's away list with them)
+  const offAllies = allies?.on(roster) ?? null;
+  const savedName = (id) => allies?.allies().find((a) => a.id === id)?.name ?? null;
+  // (a saved alliance made with the key you fly now: one made with another, a
+  // guest tab's or yours before a new identity, they can't know you by)
+  const madeWithMe = (id) => {
+    const as = allies?.madeAs?.(id) ?? null;
+    return !as || as === (self.id ?? '').slice(0, 16);
+  };
   const hello = () => {
     const f = writeFactions(self.factions);
     return { n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), ...(self.build ? { b: writeBuild(self.build) } : {}), ...writeLooksWire(self.looks), c: self.kills, w: self.where, lv: self.level, ...(f ? { f } : {}) };
@@ -111,9 +138,10 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
   const peerOf = (id) => {
     let p = peers.get(id);
     if (!p && peers.size < PILOTS) {
+      const blocked = Boolean(allies?.isBlocked(id)); // (a saved block holds from their first word)
       p = {
         id,
-        name: null,
+        name: blocked ? '' : null, // (a blocked pilot's hello isn't read: listed nameless, to be unblocked)
         kind: null,
         loadout: STOCK_LOADOUT,
         build: null, // the garage build they fly, or null: their stock ship
@@ -123,7 +151,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
         level: 1, // (theirs, as they say: it only labels them)
         factions: NO_FACTIONS,
         ally: 'none',
-        blocked: false,
+        blocked,
         snaps: [],
         pose: null,
         foot: null, // their crew on foot, while they're down on a planet
@@ -134,6 +162,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
         shotAt: -Infinity,
         hitAt: -Infinity, // their last hit on you that counted
         hitByMeAt: -Infinity, // your last hit on them
+        ramAt: -Infinity, // their last ram on you that counted
+        rammedByMeAt: -Infinity, // your last ram on them
         declinedAt: -Infinity,
         seen: now(),
         limit: createLimiter(),
@@ -146,12 +176,19 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
   const setAlly = (p, event) => {
     const was = p.ally;
     const { state, send: say } = allyStep(was, event);
+    const known = Boolean(allies?.isAlly(p.id)); // (saved before now: an alliance made long ago)
     p.ally = state;
-    if (say) send?.ally({ t: say }, p.id);
+    // (an ask to a saved ally says you know them)
+    if (say) send?.ally(say === 'ask' && known ? { t: say, k: 1 } : { t: say }, p.id);
     if (event === 'decline') p.declinedAt = now();
+    // kept: an alliance made is saved; a no or an end, theirs or yours, forgets it
+    const said = typeof event === 'object' ? event.in : event;
+    if (state === 'ally' && was !== 'ally') allies?.saveAlly(p.id, p.name, self.id);
+    else if (state === 'none' && (said === 'no' || said === 'end')) allies?.dropAlly(p.id);
     if (state === was) return;
-    const who = p.name ?? 'Someone';
+    const who = p.name ?? savedName(p.id) ?? 'Someone';
     if (state === 'got') feed(`${who} wants to be allies`, 'ally');
+    else if (state === 'ally' && known) feed(`You and ${who} are allies again`, 'ally');
     else if (state === 'ally') {
       feed(`You and ${who} are allies`, 'ally');
       emit({ type: 'allied', id: p.id }); // (the page pays for it: economy.js's allyMade)
@@ -161,8 +198,9 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     roster();
   };
 
-  const block = (p, on) => {
-    if (on && p.ally !== 'none') setAlly(p, p.ally === 'got' ? 'decline' : 'end');
+  // (a block ends an alliance; a flood's mute, `muted`, is for the visit: the alliance stands, and they're told nothing)
+  const block = (p, on, muted = false) => {
+    if (on && !muted && p.ally !== 'none') setAlly(p, p.ally === 'got' ? 'decline' : 'end');
     p.blocked = on;
     p.snaps.length = 0;
     p.pose = null;
@@ -184,21 +222,23 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     if (p.blocked) return null;
     if (p.limit.allow(kind, t)) return p;
     if (p.limit.flooding(t)) {
-      block(p, true);
+      block(p, true, true);
       feed(`Muted ${p.name ?? 'a pilot'}: too many messages`, 'info');
     }
     return null;
   };
 
+  // a pilot gone: a saved ally's last seen is now
+  const gone = (p) => {
+    peers.delete(p.id);
+    if (allies?.isAlly(p.id)) allies.seenAlly(p.id, p.name);
+    if (p.name && !p.blocked) feed(`${p.name} went offline`, 'info');
+    roster();
+  };
   // anyone gone quiet is gone (a missed goodbye, or a tab that froze)
   const sweep = () => {
     const t = now();
-    for (const p of [...peers.values()]) {
-      if (t - p.seen <= QUIET_MS) continue;
-      peers.delete(p.id);
-      if (p.name && !p.blocked) feed(`${p.name} went offline`, 'info');
-      roster();
-    }
+    for (const p of [...peers.values()]) if (t - p.seen > QUIET_MS) gone(p);
   };
 
   const near = (a, b) => Boolean(a && b) && Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) <= GUARD.range * 1.5;
@@ -212,6 +252,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     const walk = action('walk');
     const shot = action('shot');
     const hit = action('hit');
+    const ram = action('ram');
     const down = action('down');
     const ally = action('ally');
     const cur = action('cur');
@@ -229,6 +270,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       walk: (data) => walk.send(data).catch(() => {}),
       shot: (data) => shot.send(data).catch(() => {}),
       hit: (data, to) => hit.send(data, { target: to }).catch(() => {}),
+      ram: (data, to) => ram.send(data, { target: to }).catch(() => {}),
       down: (data) => down.send(data).catch(() => {}),
       ally: (data, to) => ally.send(data, { target: to }).catch(() => {}),
       cur: (data) => cur.send(data).catch(() => {}),
@@ -243,10 +285,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     };
     r.onPeerLeave = (id) => {
       const p = peers.get(id);
-      if (!p) return;
-      peers.delete(id);
-      if (p.name && !p.blocked) feed(`${p.name} went offline`, 'info');
-      roster();
+      if (p) gone(p);
     };
 
     hi.onMessage = (data, { peerId }) => {
@@ -271,6 +310,12 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
         // coming to your page, or leaving it
         if (p.where === self.where) feed(`${p.name} is here`, 'join');
         else if (was === self.where) feed(`${p.name} went to ${placeName(p.where)}`, 'info');
+      }
+      // a saved ally back: seen now, and asked again (an ask that says you
+      // know them), if it's from the key they know you by
+      if (first && allies?.isAlly(peerId)) {
+        allies.seenAlly(peerId, p.name);
+        if (p.ally === 'none' && madeWithMe(peerId)) setAlly(p, 'ask');
       }
       if (changed) roster();
     };
@@ -336,6 +381,17 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       p.hitAt = t;
       emit({ type: 'hit', from: peerId, damage: d });
     };
+    ram.onMessage = (data, { peerId }) => {
+      const v = readRam(data);
+      const p = v !== null && admit('ram', peerId);
+      const t = now();
+      if (!p || p.where !== self.where) return;
+      const into = ramCounts(p, me, v, t);
+      if (into === null) return;
+      p.ramAt = t;
+      p.hitAt = t; // (shot down by it, it's theirs: down's `by`)
+      emit({ type: 'rammed', from: peerId, into, at: p.pose });
+    };
     pack.onMessage = (data, { peerId }) => {
       const list = readPack(data);
       const p = list && admit('pack', peerId);
@@ -360,10 +416,10 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       let by = null;
       if (said && said === self.id) {
         // yours, if you'd just hit them
-        if (t - p.hitByMeAt <= GUARD.killWindow) {
+        if (t - Math.max(p.hitByMeAt, p.rammedByMeAt) <= GUARD.killWindow) {
           by = said;
           self.kills += 1;
-          feed(`You shot down ${p.name ?? 'someone'}`, 'kill');
+          feed(p.rammedByMeAt >= p.hitByMeAt ? `You rammed ${p.name ?? 'someone'} out of the sky` : `You shot down ${p.name ?? 'someone'}`, 'kill');
         }
       } else if (said) {
         // someone else's, if they'd just fired and were close by
@@ -386,15 +442,21 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       p.cur = c;
     };
     ally.onMessage = (data, { peerId }) => {
-      const t = data && typeof data === 'object' && ['ask', 'yes', 'no', 'end'].includes(data.t) ? data.t : null;
-      const p = t && admit('ally', peerId);
+      const a = readAlly(data);
+      const p = a && admit('ally', peerId);
       if (!p) return;
       // turned down a moment ago: not again yet
-      if (t === 'ask' && p.ally === 'none' && now() - p.declinedAt < ALLY_AGAIN_MS) {
+      if (a.t === 'ask' && p.ally === 'none' && now() - p.declinedAt < ALLY_AGAIN_MS) {
         send.ally({ t: 'no' }, p.id);
         return;
       }
-      setAlly(p, { in: t });
+      // a saved ally asking again, who has you saved too: yes, without asking you
+      if (a.t === 'ask' && a.k && allies?.isAlly(p.id) && (p.ally === 'none' || p.ally === 'got')) {
+        p.ally = 'got';
+        setAlly(p, 'accept');
+        return;
+      }
+      setAlly(p, { in: a.t });
     };
 
     heartbeat = setInterval(() => {
@@ -445,7 +507,9 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       const list = [];
       for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, loadout: p.loadout, build: p.build, looks: p.looks, kills: p.kills, where: p.where, level: p.level, factions: p.factions, ally: p.ally, blocked: p.blocked });
       list.sort((a, b) => a.name.localeCompare(b.name));
-      return { status, self: { name: self.name, kind: self.kind, loadout: self.loadout, kills: self.kills, where: self.where, level: self.level, factions: self.factions }, peers: list };
+      // (saved allies who aren't here, newest seen first)
+      const away = (allies?.allies() ?? []).filter((a) => !peers.get(a.id)?.name).map(({ id, name, seen }) => ({ id, name, seen }));
+      return { status, self: { name: self.name, kind: self.kind, loadout: self.loadout, kills: self.kills, where: self.where, level: self.level, factions: self.factions }, peers: list, away };
     },
     setProfile({ name: n = self.name, kind: k = self.kind, loadout: l = self.loadout, build: b = self.build, looks: lk = self.looks, where: w = self.where, level: lv = self.level, marks: m = self.marks } = {}) {
       const clean = cleanName(n) ?? self.name;
@@ -470,8 +534,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     },
     // where your ship is, each frame (sent ten times a second). Hidden
     // (crashed, shot down, diving into a page) or safe (just back), hits
-    // on you don't count; riding a hyperlane (lane), the others far off see
-    // you as a streak along it
+    // on you don't count (`lane` is kept for the protocol: the hyperlanes
+    // went, and nothing sets it now)
     pose(s, { hidden = false, boost = false, safe = false, shield = 100, lane = false } = {}) {
       me = hidden || safe || !s ? null : s;
       const t = now();
@@ -483,7 +547,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     // (not seen there yet, or gone)
     poseOf(id) {
       const p = peers.get(id)?.pose;
-      return p ? { x: p.x, y: p.y, z: p.z } : null;
+      return p ? { x: p.x, y: p.y, z: p.z, ...(p.sec ? { sec: p.sec } : {}) } : null;
     },
     // whether a pilot's crew are out on foot (down on a planet, or on a
     // world in the galaxy) as of their last word, so the roster doesn't
@@ -588,22 +652,34 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       p.hitByMeAt = now();
       send.hit({ d: Math.min(DAMAGE_MAX, Math.max(1, Math.round(damage))) }, id);
     },
+    // you flew into them: tell them (they take it off their own shields, as
+    // hard as they believe it: protocol.js's ramCounts)
+    ram(id, into) {
+      const p = peers.get(id);
+      if (!send || !p || p.blocked || p.ally === 'ally') return;
+      p.rammedByMeAt = now();
+      send.ram({ v: Math.round(Math.max(0, into) * 100) / 100 }, id);
+    },
     // your shields are gone: everyone hears who did it (a pilot whose hit
-    // on you counted, so it's theirs on your list too)
-    down(by) {
+    // on you counted, so it's theirs on your list too); `rammed`: it was
+    // their ram, not a shot
+    down(by, rammed = false) {
       send?.down({ b: by ?? null });
       const p = by ? peers.get(by) : null;
       if (!p) return;
       p.kills += 1;
-      feed(`${p.name ?? 'Someone'} shot you down`, 'kill');
+      feed(rammed ? `${p.name ?? 'Someone'} rammed you out of the sky` : `${p.name ?? 'Someone'} shot you down`, 'kill');
       roster();
     },
     ally(id, what) {
       const p = peers.get(id);
       if (p && !p.blocked && send) setAlly(p, what);
     },
+    // a block of yours, saved (and an unblock): a flood's mute isn't
     block(id, on = true) {
       const p = peers.get(id);
+      if (on) allies?.block(id, p?.name || null);
+      else allies?.unblock(id);
       if (p) block(p, on);
     },
     // the shots that came in since last asked
@@ -617,6 +693,9 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       status = 'left';
       clearTimeout(cursorLater);
       clearInterval(heartbeat);
+      offAllies?.();
+      // (the saved allies here were last seen now)
+      for (const p of peers.values()) if (allies?.isAlly(p.id)) allies.seenAlly(p.id, p.name);
       listeners.clear();
       peers.clear();
       shots = [];

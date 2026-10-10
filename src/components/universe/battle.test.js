@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { BATTLE, WIDTH, createBattle, inSights, perSide, turnToward } from './battle';
 import { FIGHTERS, WARS } from './wars';
@@ -140,6 +141,80 @@ describe('runners', () => {
     }
     expect(b.runners.length).toBe(2);
     expect(b.over).toMatchObject({ winner: 0, why: 'runners' });
+  });
+});
+
+describe('the fixed step', () => {
+  // The battle moves on BATTLE.step at a time whatever the frame rate (a
+  // frame's time owed carried to the next), so the same seed fights the same
+  // battle on a 144 Hz screen, a 60 Hz one, a phone at 30 and a browser
+  // check at 10: the same events in the same order, every fighter in the
+  // same place.
+  const transports = { team: 1, kind: 'transport', size: 2.2, hp: 34, count: 4, need: 4, speed: 6, every: 25, from: [60, 0, 0], to: [60, 0, -300] };
+  const stateOf = (b) =>
+    JSON.stringify({
+      clock: b.clock,
+      phase: b.phase,
+      over: b.over,
+      tickets: b.teams.map((t) => t.tickets),
+      fighters: b.fighters.map((f) => [f.alive, f.hp, ...[f.pos.x, f.pos.y, f.pos.z].map((x) => Math.round(x * 1e6))]),
+      subs: b.capitals.flatMap((c) => c.subs.map((s) => s.hp)),
+      hulls: b.capitals.map((c) => c.hull),
+      runners: b.runners.map((r) => [r.alive, r.hp, ...[r.pos.x, r.pos.y, r.pos.z].map((x) => Math.round(x * 1e6))]),
+    });
+  const fight = (dt) => {
+    const b = make({ perSide: 8, rand: seeded(21), runners: transports });
+    const log = [];
+    for (let i = 0, n = Math.round(120 / dt); i < n; i++) for (const e of b.update(dt, null)) log.push(e);
+    return { log: JSON.stringify(log), state: stateOf(b), events: log.length };
+  };
+  it('fights the same battle at any frame rate: same seed, same events and state after 120 s at 1/144, 1/60, 1/30 and 0.1 s a frame', () => {
+    const base = fight(1 / 30);
+    expect(base.events).toBeGreaterThan(50); // (a battle, not a quiet sky)
+    for (const dt of [1 / 144, 1 / 60, 0.1]) {
+      const other = fight(dt);
+      expect(other.state, `state at dt ${dt}`).toBe(base.state);
+      expect(other.log, `events at dt ${dt}`).toBe(base.log);
+    }
+  });
+  it('carries a frame shorter than a step over to the next, and says how far ahead the drawing is', () => {
+    const b = make();
+    b.update(0.02, null);
+    expect(b.clock).toBe(0);
+    expect(b.ahead).toBeCloseTo(0.02, 9);
+    b.update(0.02, null);
+    expect(b.clock).toBeCloseTo(BATTLE.step, 9);
+    expect(b.ahead).toBeCloseTo(0.04 - BATTLE.step, 9);
+  });
+  it('takes at most BATTLE.steps a frame: a long frame’s rest is dropped, so the battle slows rather than leaping', () => {
+    const b = make();
+    b.update(2, null);
+    expect(b.clock).toBeCloseTo(BATTLE.steps * BATTLE.step, 9);
+    expect(b.ahead).toBeLessThan(BATTLE.step);
+  });
+  it('locks on to a fighter where it’s drawn: on along its way by the time still owed', () => {
+    const b = make();
+    b.setYou(0);
+    b.update(0.05, null);
+    const f = b.fighters.find((o) => o.team === 1 && o.alive);
+    const t = b.targets.find((o) => o.id === f.id);
+    expect(t.at.x).toBeCloseTo(f.pos.x + f.vel.x * b.ahead, 9);
+    expect(t.at.z).toBeCloseTo(f.pos.z + f.vel.z * b.ahead, 9);
+    // and a shot through where it's drawn hits it
+    expect(shotAt(b, t.at)?.id).toBe(f.id);
+  });
+});
+
+describe('the battle’s modules', () => {
+  // (battle.js was one file over a thousand lines: it's split by what each
+  // part does, the fighters' flying, the capital ships, the runners, so each
+  // stays under the health check's warning line, scripts/health/big-files.mjs)
+  it('each stay under 800 lines', () => {
+    // (and the galaxy's shared battle beside them: its director, its plan, its stages in the sim)
+    for (const file of ['battle.js', 'battleKit.js', 'battleAi.js', 'battleCapitals.js', 'battleRunners.js', 'battleDirector.js', 'battlePlan.js', 'battleStages.js', 'battleObjectives.js', 'battleProps.js', 'battleScene.js', 'battleFx.js']) {
+      const lines = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8').split('\n').length;
+      expect(lines, file).toBeLessThan(800);
+    }
   });
 });
 
@@ -428,6 +503,20 @@ describe('a battle', () => {
     expect(b.over?.why).toBe('tickets');
   });
 
+  it('without tickets (the galaxy’s), brings a fighter back even once its side’s are spent', () => {
+    // (tickets: false is a battle fought to its clock: the fighters keep
+    // coming, and the count's only a count)
+    const b = make({ tickets: false });
+    b.setYou(1);
+    b.teams[0].tickets = 0;
+    const f = b.fighters.find((o) => o.team === 0);
+    while (f.alive) shotAt(b, f.pos, 5);
+    const events = run(b, BATTLE.respawn[1] + 0.5);
+    expect(f.alive).toBe(true);
+    expect(events.some((e) => e.type === 'arrive' && e.team === 0)).toBe(true);
+    expect(b.teams[0].tickets).toBe(0);
+  });
+
   it('lets the defender hold out: no tickets end when told so', () => {
     const b = make({ tickets: false, perSide: 2 });
     b.teams[0].tickets = 0;
@@ -505,5 +594,32 @@ describe('a battle', () => {
     expect(done).toBeTruthy();
     // (the other side went after it)
     expect(r.hitBy).toBeGreaterThan(0);
+  });
+});
+
+describe('a ram on one of the other side’s fighters', () => {
+  it('is a shot’s hit on that one: down at its hp, told as yours', () => {
+    const b = make();
+    b.setYou(0);
+    run(b, 1);
+    const f = b.fighters.find((o) => o.alive && o.team === 1 && !o.ace);
+    const hp = f.hp;
+    const r = b.strike(f.id, hp);
+    expect(r).toMatchObject({ id: f.id, kind: f.kind, size: f.size, down: true });
+    expect(f.alive).toBe(false);
+    const events = b.update(1 / 30, null);
+    expect(events.some((e) => e.type === 'down' && e.mine && e.kind === f.kind)).toBe(true);
+  });
+
+  it('is nothing on your own side’s, one already down, or before you have joined', () => {
+    const b = make();
+    run(b, 1);
+    const enemy = b.fighters.find((o) => o.alive && o.team === 1);
+    expect(b.strike(enemy.id, 1)).toBeNull(); // (not joined)
+    b.setYou(0);
+    const mine = b.fighters.find((o) => o.alive && o.team === 0);
+    expect(b.strike(mine.id, 1)).toBeNull();
+    enemy.alive = false;
+    expect(b.strike(enemy.id, 1)).toBeNull();
   });
 });

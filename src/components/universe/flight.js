@@ -26,6 +26,26 @@ const PAD = 18; // px kept clear around the overview
 const LABEL = 30; // px under each planet for its label
 const TAN = Math.tan((FOV * Math.PI) / 360);
 
+// The chase camera, flying: it looks at a point `ahead` of the ship and
+// `up` above it, from `dist` back, and `speed` further back at the boost
+// (the speed's share capped at one and a half boosts' worth) and `streak`
+// further in the lightspeed streak. Near enough that the ship is a fifth to
+// a quarter of the frame's width at cruise and not under a seventh at the
+// boost (the hero, the biggest thing on screen); `tilt` is the radians the
+// camera looks down at it (scene.js's TILT).
+export const CHASE = { ahead: 0.15, up: 0.1, dist: 1.1, speed: 0.6, streak: 0.5, tilt: 0.21 };
+
+export const chaseDist = ({ speed = 0, boost = 1, streak = 0 } = {}) => CHASE.dist + Math.min(Math.abs(speed) / boost, 1.5) * CHASE.speed + streak * CHASE.streak;
+
+// How far in front of the camera, along its view, the ship sits at a chase
+// distance: the target is ahead of the ship and above it, and the camera
+// looks down at it by the tilt, so the ship is nearer than `dist`
+export const chaseDepth = (dist) => dist - CHASE.ahead * Math.cos(CHASE.tilt) + CHASE.up * Math.sin(CHASE.tilt);
+
+// The share of the frame's width a ship `length` across takes at `dist` in
+// front of a camera with a vertical `fov` (degrees) on a frame `aspect` wide
+export const shipWidthOf = ({ length, fov = FOV, dist, aspect }) => length / (2 * dist * Math.tan((fov * Math.PI) / 360) * aspect);
+
 // The part of a w×h canvas the panel, sheet and nav leave open, and the
 // shift that centres the view in it.
 export function cover({ w, h, panel = 0, sheet = 0, top = 0 }) {

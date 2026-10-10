@@ -10,6 +10,7 @@
 // (data-tour), and a card in the middle where it isn't showing.
 
 import { ABOUT } from '../guide/abouts';
+import { CYBERTRON_TOUCH, cybertronRows } from '../guide/cybertron';
 
 const help = (where) => ({
   id: 'help',
@@ -215,6 +216,31 @@ export const BRIEFS = {
     },
     help('the Death Star'),
   ],
+  // planet flight: begin (scripts/flight-island.mjs removes this block)
+  '/fly': [
+    {
+      id: 'hello',
+      title: 'Planet flight',
+      text: ABOUT['/fly'],
+    },
+    {
+      id: 'fly',
+      title: 'Flying',
+      text: 'Lean the ship and it turns the way it leans; let go and the wings come level. Keep off the ground: touch it and you’re put back up.',
+      keys: [
+        ['W S', 'Nose down and up'],
+        ['A D', 'Bank'],
+        ['Q E', 'Turn'],
+        ['Shift / F', 'Faster and slower'],
+      ],
+      touch: [
+        ['Stick', 'Fly'],
+        ['+ −', 'Faster and slower'],
+      ],
+    },
+    help('the flight'),
+  ],
+  // planet flight: end
   '/deathstar/inside': [
     {
       id: 'hello',
@@ -362,7 +388,7 @@ export const BRIEFS = {
     {
       id: 'ring',
       title: 'The Ring',
-      text: 'Hold it to the fire to read it, put it on (Escape takes it off), or cast it in.',
+      text: 'Hold it to the fire to read it, put it on (Esc takes it off), or cast it in.',
     },
     help('Middle-earth'),
   ],
@@ -438,7 +464,7 @@ export const BRIEFS = {
       text: 'Go in at a building and win its game: its stone hangs over the door. The Space Stone opens a portal over the helipad.',
       keys: [
         ['E / Enter', 'Go in at a door'],
-        ['M', 'The buildings, with Go there'],
+        ['M', 'Things to do: the buildings, with Go there'],
       ],
     },
     help('the compound'),
@@ -479,29 +505,16 @@ export const BRIEFS = {
       id: 'move',
       title: 'Walking and driving',
       text: 'Click the world to play; Esc lets go of the mouse.',
-      keys: [
-        ['W A S D', 'Walk or drive'],
-        ['Shift', 'Run, or boost'],
-        ['Space', 'Jump'],
-        ['Q', 'Transform'],
-      ],
-      touch: [
-        ['Stick', 'Walk or drive'],
-        ['Drag', 'Look round (right of the screen)'],
-        ['Transform', 'Transform'],
-      ],
+      // (the world's one list of keys, the start card's and the guide's: guide/cybertron.js)
+      keys: cybertronRows(['W A S D', 'Shift', 'Space', 'Q']),
+      touch: cybertronRows(['Stick', 'Drag', 'Transform'], CYBERTRON_TOUCH),
     },
     {
       id: 'act',
       title: 'Fighting and missions',
       text: 'When someone has a job for you, it says so at the top: walk up and talk. E by a ground bridge goes through it.',
-      keys: [
-        ['Mouse', 'Look and aim'],
-        ['Click / F', 'Fire'],
-        ['E', 'Talk, use bridges'],
-        ['M', 'Missions'],
-      ],
-      touch: [['Fire', 'Hold to fire']],
+      keys: cybertronRows(['Mouse', 'Click / F', 'E', 'M']),
+      touch: cybertronRows(['Fire'], CYBERTRON_TOUCH),
     },
     help('Cybertron'),
   ],
@@ -531,7 +544,7 @@ export const BRIEFS = {
       text: 'Pull up at a place and go in. Hank’s SUV is the flashing dot: don’t race past him, or carry near him.',
       keys: [
         ['E / Enter', 'Go in'],
-        ['M', 'Places'],
+        ['M', 'Things to do'],
         ['R', 'Run a delivery'],
       ],
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROOM_KINDS, buildLayout, validateStation } from './layout';
+import { ROOM_KINDS, buildLayout, offTags, validateStation } from './layout';
 import { DS1 } from './stations/ds1';
 import { STATIONS } from './stations/index';
 
@@ -45,6 +45,14 @@ function walkable(layout, roomId, from, to) {
   return false;
 }
 
+describe('a round room', () => {
+  it('has the square round its circle for its box, its diameter both ways', () => {
+    const layout = buildLayout(DS1);
+    const room = layout.rooms.get('meditation');
+    expect(room.box).toEqual({ x0: room.x - room.w / 2, x1: room.x + room.w / 2, z0: room.z - room.w / 2, z1: room.z + room.w / 2 });
+  });
+});
+
 describe('the room kinds', () => {
   it('include the Falcon’s hold as a ship and the open side of a bay as a field', () => {
     expect(ROOM_KINDS).toEqual(expect.arrayContaining(['hangar', 'control', 'corridor', 'lift', 'lobby', 'ship', 'field']));
@@ -82,8 +90,8 @@ describe('validating a station', () => {
 
   it('counts a lift as a way in: without it the far landings can’t be reached', () => {
     const s = copy(DS1);
-    const stops = s.lifts.flatMap((l) => l.stops);
-    const onlyByLift = stops.filter((id) => !s.doors.some((d) => d.a === id || d.b === id));
+    // every landing off the bay’s level, and the rooms its doors lead to, are a ride away
+    const onlyByLift = s.lifts.flatMap((l) => l.stops).filter((id) => s.rooms.find((r) => r.id === id).y !== 0);
     expect(onlyByLift.length).toBeGreaterThan(0);
     s.lifts = [];
     const errors = validateStation(s);
@@ -207,6 +215,39 @@ describe('validating a station', () => {
     });
   }
 
+  it('counts a jump as a way in, one way only', () => {
+    const s = station([room('top', 0, 0, 10, 4), room('pit', 0, 20, 10, 4, { y: -6 })], [], { spots: { landing: { room: 'pit', x: 0, z: 20, yaw: 0 } } });
+    s.jumps = [{ id: 'drop', from: 'top', x: 2, z: 0, r: 1, to: 'landing', prompt: 'Drop' }];
+    expect(validateStation(s)).toEqual([]);
+    const back = copy(s);
+    back.starts.rebel = { room: 'pit', x: 0, z: 20, yaw: 0 };
+    expect(validateStation(back)).toEqual([expect.stringContaining('top')]);
+    expect(validateStation({ ...s, jumps: [] })).toEqual([expect.stringContaining('pit')]);
+  });
+
+  // each: what goes wrong with a jump, and the words one message must hold
+  const jumps = [
+    ['a jump from a room that isn’t there', { from: 'nowhere' }, ['drop', 'nowhere']],
+    ['a jump whose use-point stands outside its room', { x: 40 }, ['drop', 'outside']],
+    ['a jump to a spot that isn’t there', { to: 'moon' }, ['drop', 'moon']],
+    ['a jump with a lock it can’t read', { lock: 'ask nicely' }, ['drop', 'lock']],
+    ['a jump with no reach', { r: 0 }, ['drop', 'reach']],
+  ];
+  for (const [what, change, words] of jumps) {
+    it(`names ${what}`, () => {
+      const s = station([room('top', 0, 0, 10, 4), room('pit', 0, 20, 10, 4, { y: -6 })], [], { spots: { landing: { room: 'pit', x: 0, z: 20, yaw: 0 } } });
+      s.jumps = [{ id: 'drop', from: 'top', x: 2, z: 0, r: 1, to: 'landing', prompt: 'Drop', lock: 'flag:rope', ...change }];
+      expect(validateStation(s).some((e) => words.every((w) => e.includes(w)))).toBe(true);
+    });
+  }
+
+  it('names a jump id used twice', () => {
+    const s = station([room('top', 0, 0, 10, 4), room('pit', 0, 20, 10, 4, { y: -6 })], [], { spots: { landing: { room: 'pit', x: 0, z: 20, yaw: 0 } } });
+    const drop = { id: 'drop', from: 'top', x: 2, z: 0, r: 1, to: 'landing', prompt: 'Drop' };
+    s.jumps = [drop, { ...drop, x: -2 }];
+    expect(validateStation(s)).toEqual([expect.stringMatching(/drop.*twice/)]);
+  });
+
   it('wants a door on a round room where its wall runs along the door', () => {
     const drum = room('drum', 0, 0, 20, 20, { round: true, kind: 'reactor', h: 6 });
     const way = room('way', 0, -14, 3, 8, { h: 6 });
@@ -289,6 +330,45 @@ describe('the layout', () => {
     expect(l.floorAt('far', 101, 50)).toBeCloseTo(10.5);
     expect(l.floorAt('far', 98, 50)).toBeNull();
     expect(l.rooms.get('far').floors).toEqual([{ x0: 100, x1: 102, z0: 49, z1: 51, y: 10.5 }]);
+  });
+
+  it('keeps a floor’s tag, and reads past floors whose tag is in the set it is given', () => {
+    const gap = room('gap', 0, 0, 12, 4, { floors: [{ x: -5, z: 0, w: 2, d: 4, y: 0 }, { x: 0, z: 0, w: 8, d: 1.6, y: 0, tag: 'bridge' }, { x: 5, z: 0, w: 2, d: 4, y: 0 }] });
+    const l = buildLayout(station([gap]));
+    expect(l.rooms.get('gap').floors.map((f) => f.tag ?? null)).toEqual([null, 'bridge', null]);
+    expect(l.floorAt('gap', 0, 0)).toBe(0);
+    expect(l.floorAt('gap', 0, 0, new Set(['bridge']))).toBeNull();
+    expect(l.floorAt('gap', 0, 0, new Set(['ramp']))).toBe(0);
+    expect(l.floorAt('gap', -5, 0, new Set(['bridge']))).toBe(0);
+  });
+
+  it('takes a tagged floor away until a flag of its name is set, but never the water', () => {
+    const gap = room('gap', 0, 0, 12, 4, { floors: [{ x: -5, z: 0, w: 2, d: 4, y: 0 }, { x: 0, z: 0, w: 8, d: 1.6, y: 0, tag: 'bridge' }, { x: 5, z: 0, w: 2, d: 4, y: -0.9, tag: 'water' }] });
+    const l = buildLayout(station([gap]));
+    expect([...offTags(l, new Set())]).toEqual(['bridge']);
+    expect([...offTags(l)]).toEqual(['bridge']);
+    expect(l.floorAt('gap', 0, 0, offTags(l, new Set(['ramp'])))).toBeNull();
+    expect(l.floorAt('gap', 0, 0, offTags(l, new Set(['bridge'])))).toBe(0);
+    expect(l.floorAt('gap', 0, 0, offTags(l, ['bridge']))).toBe(0);
+    expect(l.floorAt('gap', 5, 0, offTags(l, new Set()))).toBe(-0.9);
+  });
+
+  it('draws the first station’s chasm bridge back until the flag bridge is set', () => {
+    const l = buildLayout(DS1);
+    const bridge = l.rooms.get('chasm').floors.find((f) => f.tag === 'bridge');
+    const [x, z] = [(bridge.x0 + bridge.x1) / 2, (bridge.z0 + bridge.z1) / 2];
+    expect(offTags(l, new Set()).has('bridge')).toBe(true);
+    expect(offTags(l, new Set()).has('water')).toBe(false);
+    expect(l.floorAt('chasm', x, z, offTags(l, new Set()))).toBeNull();
+    expect(l.floorAt('chasm', x, z, offTags(l, new Set(['bridge'])))).toBe(bridge.y);
+  });
+
+  it('copies the station’s jumps, and has none when it gives none', () => {
+    const s = station([room('top', 0, 0, 10, 4), room('pit', 0, 20, 10, 4, { y: -6 })], [], { spots: { landing: { room: 'pit', x: 0, z: 20, yaw: 0 } } });
+    const drop = { id: 'drop', from: 'top', x: 2, z: 0, r: 1, to: 'landing', prompt: 'Drop', lock: 'flag:rope' };
+    expect(buildLayout({ ...s, jumps: [drop] }).jumps).toEqual([drop]);
+    expect(buildLayout({ ...s, jumps: [drop] }).jumps[0]).not.toBe(drop);
+    expect(buildLayout(s).jumps).toEqual([]);
   });
 
   it('stands on the highest of the floors stacked at a point', () => {

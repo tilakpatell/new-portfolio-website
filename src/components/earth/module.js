@@ -11,11 +11,14 @@
 // arrow (the HUD's arrow element), travellers (a ref to the other pilots'
 // link, middleearth/towns/useTravellers) }. The world adds: dive(), rise(),
 // goTo(id), clearTarget(), toggleSun(), toggleCam(), roll(), setBoost(on),
-// setPaused(on), touched(), and `sim` for the QA scripts.
+// setPaused(on), touched(), and `sim` for the QA scripts; tune() gives the
+// ?debug panel its values (runtime/debug.js): the exposure the globe's
+// shaders are seen at, the sun (kept over your shoulder, or where it is
+// now) and the camera, the last two as the N and V keys set them.
 
 import { HOME_CITY } from '../../data/places';
 import { countryName, globeData } from '../travel/globe3d/data';
-import { AROUND_KM, HOME_V, KM, STAMPS, add, angle, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, packPose, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
+import { ALT, AROUND_KM, HOME_V, LOOK, ROLL, SPEED, KM, STAMPS, add, angle, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, packPose, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
 import { addFlown, addStamp, readFlown, readStamps } from './stamps';
 
 const sounds = () => import('./sounds');
@@ -75,14 +78,14 @@ const onButton = () => typeof document !== 'undefined' && (document.activeElemen
 
 export default {
   id: 'earth',
-  shading: 'glsl',
+  shading: 'nodes',
   mb: 2,
   label: 'The Earth in 3D, with a plane flying over it to the places in the passport. Arrow keys or W A S D to fly, Shift to go faster, R for a barrel roll, V for the cockpit, M for orbit, P for the passport.',
   async create(rt, { small = false, labels = {}, arrow = null, travellers = null } = {}) {
     const { createEarth } = await import('./scene');
     const { saves, events } = rt;
     sounds().then((x) => x.setBus(rt.audio.bus()));
-    const api = createEarth(rt.gfx.renderer, { small, lost: () => rt.gfx?.lost ?? true });
+    const api = createEarth(rt.gfx.renderer, { small, lost: () => rt.gfx?.lost ?? true, compile: (scene, camera) => rt.gfx.compile(scene, camera) });
     const f = newFlight();
     const sun = sunVec();
     const s = {
@@ -352,7 +355,7 @@ export default {
 
     const draw = ({ dt }) => {
       if (disposed) return;
-      api.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV, look: s.look, cockpit: s.cockpit, travellers: s.others }, dt * 1000);
+      api.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV, look: s.look, cockpit: s.cockpit, travellers: s.others, t: s.held }, dt * 1000);
       // the labels over the places on screen
       const close = flying();
       for (const st of [...STAMPS, { id: 'home', v: HOME_V }]) {
@@ -372,6 +375,15 @@ export default {
         else delete el.dataset.got;
       }
     };
+
+    // behind ?debug, after the look: the flight's own numbers (rules.js reads them live)
+    const num = (o, key, label, min, max, step) => ({ key, label, type: 'range', min, max, step, get: () => o[key], set: (v) => {
+      o[key] = v;
+    } });
+    const groups = [
+      { name: 'flight', items: [num(SPEED, 'cruise', 'cruise (rad/s)', 0.01, 0.6, 0.005), num(SPEED, 'slow', 'slow', 0.01, 0.3, 0.005), num(SPEED, 'fast', 'fast', 0.05, 1, 0.01), num(SPEED, 'ease', 'speed ease /s', 0.2, 6, 0.1), num(ALT, 'climb', 'climb', 0.005, 0.1, 0.001)] },
+      { name: 'look', items: [num(LOOK, 'settle', 'look settles /s', 0.5, 10, 0.1), num(ROLL, 'time', 'barrel roll (s)', 0.4, 3, 0.05)] },
+    ];
 
     const world = {
       sim: s,
@@ -405,6 +417,18 @@ export default {
         s.touched = true;
       },
       handoff: () => ({ flight: { ...f }, sun: [...s.sun], mode: s.mode, cockpit: s.cockpit }),
+      tune: () => [
+        {
+          name: 'earth',
+          items: [
+            // (read off the renderer each time: scene.js sets it, and the renderer reads it each frame)
+            { key: 'exposure', type: 'range', min: 0.4, max: 3, get: () => rt.gfx?.renderer?.toneMappingExposure ?? 1, set: (v) => rt.gfx?.renderer && (rt.gfx.renderer.toneMappingExposure = v) },
+            { key: 'sun', type: 'select', options: ['day', 'real'], get: () => s.sunMode, set: (v) => v !== s.sunMode && toggleSun() },
+            { key: 'cockpit', type: 'bool', get: () => s.cockpit, set: (v) => Boolean(v) !== s.cockpit && toggleCam() },
+          ],
+        },
+        ...groups,
+      ],
       dispose() {
         disposed = true;
         if (s.engine && s.engine !== 'coming') s.engine.stop();
@@ -414,6 +438,23 @@ export default {
         if (import.meta.env.DEV && typeof window !== 'undefined' && window.__EARTH__?.sim === s) delete window.__EARTH__;
       },
     };
+    // (development: a named view for scripts/gpu-parity.mjs, the world put
+    // somewhere fixed and held still, the clouds' drift and the beacons'
+    // pulse too, so two renders of it can be compared: 'orbit', the globe
+    // as it opens over home; 'low', at the lowest the plane flies, over
+    // Syracuse heading east)
+    if (import.meta.env.DEV) {
+      world.view = (name) => {
+        if (name !== 'orbit' && name !== 'low') throw new Error(`no view ${name}`);
+        Object.assign(f, newFlight({ bearing: name === 'low' ? 90 : 75 }));
+        if (name === 'low') f.alt = ALT.min;
+        Object.assign(s, { touched: true, dived: true, paused: true, target: null, look: newLook(), cockpit: false, view: name === 'low' ? 1 : 0, trail: [], trailV: s.trailV + 1, held: 1000 });
+        s.sun = s.sunMode === 'day' && name === 'low' ? daySun(f) : sunVec();
+        s.orbit = orbitOver(f.p, s.sun);
+        setMode(name === 'low' ? 'fly' : 'orbit');
+        api.snap?.();
+      };
+    }
     if (import.meta.env.DEV && typeof window !== 'undefined') window.__EARTH__ = { api, sim: s, world }; // for the QA scripts
     return world;
   },

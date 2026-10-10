@@ -9,6 +9,7 @@ export const ABOUT = {
   '/galaxy': 'Eighteen star systems from the films and shows: fly between them, land on their planets, and pick a side in the wars.',
   '/galaxy/surface': 'A world from the films, on foot: its places to find, its people to talk to, things to ride.',
   '/deathstar': 'That’s no moon. Open any part of the station on the technical readout, fire the superlaser, or fly the trench run.',
+  '/fly': 'A ship low over a planet that never ends: Hoth’s snowfields and ridges, Echo Base flat among them, and forty-nine more worlds.', // planet flight (scripts/flight-island.mjs removes this row)
   '/deathstar/inside': 'Still being built: both Death Stars, to walk room by room. For now the page says what’s coming.',
   '/caribbean': 'You’re Jack Sparrow at the Black Pearl’s helm in Dead Man’s Tide: sink the patrol, take the chests, then face the kraken.',
   '/invincible': 'The Graysons’ city, to fly about as Mark: race Dad’s rings, punch the Flaxans out of the sky, and climb to space.',

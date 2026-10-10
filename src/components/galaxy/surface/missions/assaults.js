@@ -5,7 +5,8 @@
 //   sides      { attack, defend }: { id, name, short, colour, kinds
 //              ([[kind, weight]…]: what their soldiers are) }
 //   posts      [{ id, name, at: [x, z], r, fixed? ('attack' | 'defend': a
-//              side's own, never taken, where it falls back to) }]
+//              side's own, never taken, where it falls back to), wade? (in
+//              wadeable shallows, not on dry ground) }]
 //   phases     [{ name, posts: [ids], tickets }]: the attackers take every
 //              post of one and the next begins, their tickets topped up to it
 //   tickets    { attack, defend } at the start
@@ -67,7 +68,7 @@ export const ASSAULTS = {
       { id: 'trenches', name: 'The trenches', at: [100, 370], r: 24 },
       { id: 'shieldgen', name: 'The shield generator', at: [90, 240], r: 20 },
       { id: 'ioncannon', name: 'The ion cannon', at: [-30, 340], r: 20 },
-      { id: 'echobase', name: 'Echo Base’s door', at: [-128, 171], r: 22 },
+      { id: 'echobase', name: 'Echo Base’s door', at: [-20, -22], r: 22 }, // (the game's west mouth: sites/ice.js's MOUTH)
       { id: 'transports', name: 'The transports', at: [-248, 70], r: 14, fixed: 'defend' },
     ],
     phases: [
@@ -283,6 +284,65 @@ export const ASSAULTS = {
     },
   },
 
+  kashyyyk: {
+    id: 'assault',
+    system: 'kashyyyk',
+    kind: 'assault',
+    name: 'The Battle of Kashyyyk',
+    line: 'The droid army is wading out of the lagoon. The clones and the Wookiees hold the beach at Kachirho, or the city falls.',
+    ride: null,
+    start: [10, 0],
+    yaw: 3.0,
+    stars: [360, 540],
+    achievement: 'galacticassault',
+    sides: { attack: SEPARATISTS, defend: { ...REPUBLIC, name: 'The Republic and the Wookiees', short: 'Republic', kinds: [['clone', 2], ['wookiee', 1]] } },
+    posts: [
+      // (out in the shallows, as the droids come in the film: knee-deep, `wade`, and 50 m of beach between them and the barricades)
+      { id: 'shallows', name: 'The droids’ landing', at: [60, 105], r: 14, fixed: 'attack', wade: true },
+      { id: 'barricades', name: 'The barricades', at: [50, 52], r: 18 },
+      { id: 'gunline', name: 'The gun line', at: [40, 12], r: 20 },
+      { id: 'command', name: 'The command post', at: [-60, 10], r: 16 },
+      { id: 'lift', name: 'Kachirho’s lift', at: [-112, -14], r: 14, fixed: 'defend' },
+    ],
+    phases: [
+      { name: 'The beach', posts: ['barricades'], tickets: 90 },
+      { name: 'The gun line', posts: ['gunline'], tickets: 70 },
+      { name: 'The command post', posts: ['command'], tickets: 60 },
+    ],
+    tickets: { attack: 100, defend: 150 },
+    // (the beach is only 80 m deep, so a short staging line: the droids' first wave forms up well out of the barricades' post)
+    forward: 28,
+    hideLife: ['clone', 'wookiee', 'atrt', 'atap'],
+    ends: {
+      won: 'Kachirho holds',
+      lost: 'Kachirho falls',
+      why: { posts: 'The last post fell, and the lift with it.', tickets: 'Your side ran out of reinforcements.' },
+    },
+    lines: {
+      start: {
+        xwing: [['luke', 'The droids come out of the water and the Wookiees stand on the sand. I know which side I’d rather be on.'], ['r2', '(A wary, rising whistle.)']],
+        falcon: [['han', 'Chewie, it’s your planet. Tell me which side to shoot at.'], ['chewie', '(A long, proud roar at the barricades.)']],
+        cruiser: [['rick', 'Clones and Wookiees on a beach, Morty, and a tin army coming out of the sea. Pick one, they’re both about to have a bad day.'], ['morty', 'W-which one’s the good one, Rick?']],
+        rv: [['walt', 'Hold the beach, or take it. A line in the sand is a line in the sand.'], ['jesse', 'Yo, the Wookiees are huge, Mr. White.']],
+      },
+      won: {
+        xwing: [['luke', 'Kachirho holds. Remember this, R2, while it lasts.'], ['r2', '(A relieved, tumbling trill.)']],
+        falcon: [['han', 'We held the beach. Chewie’s got that look. Don’t say anything.'], ['chewie', '(A booming, victorious howl.)']],
+        cruiser: [['rick', 'We won, Morty. Don’t get attached to the clones. Trust me on the clones.']],
+        rv: [['walt', 'The beach is ours.'], ['jesse', 'Wookiee high-five! …Is that a thing?']],
+      },
+      lost: {
+        xwing: [['luke', 'Fall back to the lift. Get the families out.']],
+        falcon: [['han', 'That’s it. Up the tree, everybody, up the tree!']],
+        cruiser: [['morty', 'We lost the beach, Rick!'], ['rick', 'Droids on a beach, Morty. Somebody always loses it.']],
+        rv: [['walt', 'We’re done on the sand. Fall back.']],
+      },
+    },
+    barks: {
+      attack: [['Battle droid', 'Roger, roger.'], ['Super battle droid', 'Move, move, move.'], ['Battle droid', 'Wookiees! Uh…']],
+      defend: [['Clone trooper', 'Hold the line!'], ['Clone trooper', 'Here they come!'], ['Wookiee', '(A roar along the barricades.)']],
+    },
+  },
   coruscant: {
     id: 'assault',
     system: 'coruscant',
@@ -353,14 +413,14 @@ export const ASSAULTS = {
       { id: 'field', name: 'The landing field', at: [0, -112], r: 26, fixed: 'attack' },
       { id: 'hangar', name: 'The hangar mouth', at: [0, -196], r: 20 },
       { id: 'summit', name: 'The temple steps', at: [0, -240], r: 24 },
-      { id: 'throne', name: 'The throne room', at: [0, -256], r: 10, fixed: 'defend' },
+      { id: 'throne', name: 'The throne room', at: [0, -251], r: 10, fixed: 'defend' },
     ],
     phases: [
       { name: 'The hangar', posts: ['hangar'], tickets: 80 },
       { name: 'The temple steps', posts: ['summit'], tickets: 70 },
     ],
     tickets: { attack: 90, defend: 120 },
-    hideLife: ['rebel', 'rebeltech', 'rebelpilot', 'pilot'],
+    hideLife: ['rebel', 'rebeltech', 'rebelpilot'],
     ends: {
       won: 'The temple holds',
       lost: 'The temple is lost',

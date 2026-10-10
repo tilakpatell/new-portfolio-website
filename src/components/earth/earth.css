@@ -3,13 +3,28 @@
 
 .earth-world {
   --earth-ink: #eef6ff;
-  --earth-glass: rgba(6, 14, 28, 0.62);
+  --earth-glass: rgba(6, 14, 28, 0.78); /* (the HUD's floor for glass over the 3D; never blurred) */
   --earth-glass-hi: rgba(8, 18, 36, 0.86);
   --earth-line: rgba(140, 200, 255, 0.28);
   --earth-blue: #5cb8ff;
   --earth-gold: #ffd27a;
   --earth-paper: #f6efe0;
   --earth-stamp: #1f5f99;
+  /* the title's face: Archivo, on purpose (the site's own; Earth is the
+     Travel page's planet), named so it's a choice, not a missing token */
+  --earth-display: var(--font-sans);
+  /* the HUD kit's parts (its Menu) in Earth's glass and gold */
+  --hud-ink: var(--earth-ink);
+  --hud-muted: rgba(238, 246, 255, 0.7);
+  --hud-glass: var(--earth-glass);
+  --hud-glass-hi: var(--earth-glass-hi);
+  --hud-line: var(--earth-line);
+  --hud-accent: var(--earth-gold);
+  --hud-accent-ink: #1d160a;
+  --hud-border: 1px solid var(--earth-line);
+  --hud-radius: 14px;
+  --hud-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  --hud-face: var(--font-sans);
   position: relative;
   z-index: 10;
 }
@@ -30,56 +45,66 @@
 
 /* the places' names, over their beacons */
 .earth-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.earth-label { position: absolute; left: 0; top: 0; opacity: 0; padding: 0.2rem 0.5rem; border: 1px solid var(--earth-line); border-radius: 99px; background: var(--earth-glass); color: var(--earth-ink); font: 600 0.72rem/1.2 var(--font-sans); white-space: nowrap; cursor: pointer; transition: opacity 0.25s ease; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); will-change: transform; }
+.earth-label { position: absolute; left: 0; top: 0; opacity: 0; padding: 0.2rem 0.5rem; border: 1px solid var(--earth-line); border-radius: 99px; background: var(--earth-glass); color: var(--earth-ink); font: 600 0.72rem/1.2 var(--font-sans); white-space: nowrap; cursor: pointer; transition: opacity 0.25s ease; will-change: transform; }
 .earth-label::before { content: ''; display: inline-block; width: 0.45rem; height: 0.45rem; margin-right: 0.35rem; border-radius: 50%; background: var(--earth-blue); box-shadow: 0 0 8px var(--earth-blue); vertical-align: 0.05rem; }
 .earth-label[data-got]::before { background: var(--earth-gold); box-shadow: 0 0 8px var(--earth-gold); }
 .earth-label[data-home]::before { background: #ffe6a8; }
 .earth-label:hover { border-color: var(--earth-blue); }
 
 /* the HUD */
-.earth-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: clamp(0.8rem, 2vw, 1.4rem); pointer-events: none; }
+.earth-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: var(--hud-pad) var(--hud-pad-r) var(--hud-pad) var(--hud-pad-l); pointer-events: none; }
 .earth-hud > * { pointer-events: auto; }
 .earth-hud-top { top: calc(var(--nav-h, 64px) + 4px); align-items: flex-start; }
 .earth-brand { pointer-events: none; }
-.earth-title { margin: 0; color: var(--earth-ink); font: 700 clamp(2rem, 1.2rem + 3vw, 3.6rem)/0.95 var(--font-display, var(--font-sans)); letter-spacing: -0.02em; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6); }
-.earth-sub { margin: 0.45rem 0 0; color: rgba(238, 246, 255, 0.85); font: 500 0.95rem/1.3 var(--font-sans); text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7); }
+.earth-title { margin: 0; color: var(--earth-ink); font: 700 clamp(2rem, 1.2rem + 3vw, 3.6rem)/0.95 var(--earth-display); letter-spacing: -0.02em; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6); }
+/* (on the chips' glass: over a white cloud a shadow alone loses it) */
+.earth-sub { display: inline-block; margin: 0.45rem 0 0; padding: 0.25rem 0.65rem; border: 1px solid var(--earth-line); border-radius: 99px; background: var(--earth-glass); color: rgba(238, 246, 255, 0.85); font: 500 0.95rem/1.3 var(--font-sans); }
 .earth-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.45rem; max-width: 60%; }
-.earth-chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.75rem; border: 1px solid var(--earth-line); border-radius: 99px; background: var(--earth-glass); color: var(--earth-ink); font: 600 0.8rem/1.2 var(--font-sans); white-space: nowrap; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: border-color 0.15s ease, background 0.15s ease; }
+.earth-chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.75rem; border: 1px solid var(--earth-line); border-radius: 99px; background: var(--earth-glass); color: var(--earth-ink); font: 600 0.8rem/1.2 var(--font-sans); white-space: nowrap; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease; }
 .earth-chip:hover, .earth-chip:focus-visible { border-color: var(--earth-blue); background: var(--earth-glass-hi); }
+/* the Menu's button, one of the chips */
+.earth-menu .hud-btn { padding: 0.45rem 0.75rem; border-radius: 99px; font: 600 0.8rem/1.2 var(--font-sans); }
+.earth-menu .hud-btn:hover, .earth-menu .hud-btn:focus-visible { border-color: var(--earth-blue); }
 .earth-chip b { color: var(--earth-gold); font-variant-numeric: tabular-nums; }
 .earth-chip-online { border-style: dashed; }
 .earth-chip-online b { color: #c9dcff; }
 .earth-chip[aria-pressed='true'] { border-color: var(--earth-gold); }
-.earth-chip kbd, .earth-hint kbd { padding: 0 0.3rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.65rem/1.4 var(--font-mono); opacity: 0.6; }
+.earth-chip kbd, .earth-hint kbd { padding: 0 0.3rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.7rem/1.4 var(--font-mono); opacity: 0.6; }
 .earth-chip-sm { padding: 0.3rem 0.6rem; font-size: 0.74rem; }
 
-.earth-orbit-card { position: absolute; left: 50%; bottom: clamp(1.4rem, 7%, 3rem); display: grid; justify-items: center; gap: 0.75rem; width: min(26rem, calc(100% - 2rem)); padding: 1rem 1.2rem 1.1rem; border: 1px solid var(--earth-line); border-radius: 16px; background: var(--earth-glass); color: var(--earth-ink); text-align: center; transform: translateX(-50%); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.earth-orbit-card { position: absolute; left: 50%; bottom: clamp(1.4rem, 7%, 3rem); display: grid; justify-items: center; gap: 0.75rem; width: min(26rem, calc(100% - 2rem)); padding: 1rem 1.2rem 1.1rem; border: 1px solid var(--earth-line); border-radius: 16px; background: var(--earth-glass); color: var(--earth-ink); text-align: center; transform: translateX(-50%); }
 .earth-orbit-card p { margin: 0; font: 500 0.92rem/1.45 var(--font-sans); }
 
-.earth-instruments { position: absolute; left: 50%; bottom: clamp(1rem, 5%, 2.2rem); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.5rem 1rem; max-width: calc(100% - 2rem); padding: 0.55rem 1rem; border: 1px solid var(--earth-line); border-radius: 14px; background: var(--earth-glass); color: var(--earth-ink); font: 500 0.88rem/1.3 var(--font-sans); transform: translateX(-50%); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.earth-instruments { position: absolute; left: 50%; bottom: clamp(1rem, 5%, 2.2rem); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.5rem 1rem; max-width: calc(100% - 2rem); padding: 0.55rem 1rem; border: 1px solid var(--earth-line); border-radius: 14px; background: var(--earth-glass); color: var(--earth-ink); font: 500 0.88rem/1.3 var(--font-sans); transform: translateX(-50%); }
 .earth-heading { font: 600 0.82rem/1 var(--font-mono); letter-spacing: 0.06em; color: rgba(238, 246, 255, 0.8); }
 .earth-heading b { color: var(--earth-ink); }
 .earth-next { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
 .earth-next b { color: var(--earth-gold); }
 .earth-flown { color: rgba(238, 246, 255, 0.7); font: 500 0.78rem/1 var(--font-mono); white-space: nowrap; }
 .earth-arrow { width: 1.2rem; height: 1.2rem; fill: var(--earth-gold); filter: drop-shadow(0 0 6px rgba(255, 210, 122, 0.6)); }
-.earth-hint { position: absolute; left: 50%; bottom: clamp(4.6rem, 13%, 6.4rem); margin: 0; padding: 0.3rem 0.7rem; border-radius: 8px; background: rgba(0, 0, 0, 0.35); color: rgba(238, 246, 255, 0.8); font: 500 0.78rem/1.3 var(--font-sans); white-space: nowrap; transform: translateX(-50%); pointer-events: none; }
+/* (wraps in a narrow window rather than running off both sides) */
+.earth-hint { position: absolute; left: 50%; bottom: clamp(4.6rem, 13%, 6.4rem); width: max-content; max-width: calc(100% - 2rem); margin: 0; padding: 0.3rem 0.7rem; border-radius: 8px; background: var(--earth-glass); color: rgba(238, 246, 255, 0.8); font: 500 0.78rem/1.3 var(--font-sans); text-align: center; transform: translateX(-50%); pointer-events: none; }
 
-/* touch: a stick on the left, a throttle on the right */
-.earth-touch { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 1rem calc(5.6rem + env(safe-area-inset-bottom)); pointer-events: none; }
-.earth-stick { --sx: 0; --sy: 0; position: relative; width: 124px; height: 124px; border: 1px solid var(--earth-line); border-radius: 50%; background: rgba(6, 14, 28, 0.4); pointer-events: auto; touch-action: none; }
-.earth-stick span { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%; background: rgba(140, 200, 255, 0.55); transform: translate(calc(-50% + var(--sx) * 36px), calc(-50% + var(--sy) * 36px)); }
-.earth-boost { margin-right: 3.6rem; width: 84px; height: 84px; border: 1px solid var(--earth-line); border-radius: 50%; background: rgba(31, 95, 153, 0.75); color: var(--earth-ink); font: 700 0.8rem/1 var(--font-sans); pointer-events: auto; touch-action: none; }
-.earth-boost:active { background: rgba(92, 184, 255, 0.85); }
-.earth-roll { position: absolute; right: 1rem; bottom: calc(11.6rem + env(safe-area-inset-bottom)); width: 56px; height: 56px; border: 1px solid var(--earth-line); border-radius: 50%; background: rgba(6, 14, 28, 0.7); color: var(--earth-ink); font: 700 0.72rem/1 var(--font-sans); pointer-events: auto; touch-action: none; }
-.earth-roll:active { background: rgba(92, 184, 255, 0.85); }
+/* touch: the kit's stick on the left; on the right one column, Roll over
+   Faster on the same axis, the whole set on one bottom (Earth's own sizes,
+   kept: Faster 84, Roll 56) */
+.earth-touch { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 var(--hud-pad-r) calc(5.6rem + env(safe-area-inset-bottom)) var(--hud-pad-l); pointer-events: none; }
+.earth-stick { border: 1px solid var(--earth-line); background: rgba(6, 14, 28, 0.4); pointer-events: auto; }
+.earth-stick span { background: rgba(140, 200, 255, 0.55); box-shadow: none; }
+.earth-buttons { display: grid; justify-items: center; gap: 0.6rem; margin-right: 3.6rem; pointer-events: none; }
+.earth-boost, .earth-roll { border: 1px solid var(--earth-line); color: var(--earth-ink); letter-spacing: normal; text-transform: none; pointer-events: auto; }
+.earth-boost { width: 84px; height: 84px; background: rgba(31, 95, 153, 0.75); font: 700 0.8rem/1 var(--font-sans); }
+.earth-roll { width: 56px; height: 56px; background: rgba(6, 14, 28, 0.7); font: 700 0.72rem/1 var(--font-sans); }
+.earth-boost:active, .earth-roll:active { background: rgba(92, 184, 255, 0.85); color: var(--earth-ink); }
 
-/* the passport */
-.earth-passport { position: absolute; right: clamp(0.8rem, 2vw, 1.4rem); top: calc(var(--nav-h, 64px) + 3.8rem); z-index: 3; width: min(22rem, calc(100% - 1.6rem)); max-height: calc(100% - var(--nav-h, 64px) - 5rem); overflow: auto; padding: 0.9rem 1rem; border-radius: 12px; background: var(--earth-paper); color: #2a2418; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+/* the passport: under the chips however they wrap (--earth-under, measured
+   by EarthWorld), clear of the guide's "?" at the foot */
+.earth-passport { position: absolute; right: var(--hud-pad-r); top: var(--earth-under, calc(var(--nav-h, 64px) + 3.8rem)); z-index: 3; width: min(22rem, calc(100% - 1.6rem)); max-height: calc(100% - var(--earth-under, calc(var(--nav-h, 64px) + 3.8rem)) - var(--guide-clear)); overflow: auto; overscroll-behavior: contain; padding: 0.9rem 1rem; border-radius: 12px; background: var(--earth-paper); color: #2a2418; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
 .earth-passport-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
 .earth-passport-head p { margin: 0; font: 700 0.8rem/1 var(--font-sans); letter-spacing: 0.18em; text-transform: uppercase; color: var(--earth-stamp); }
 .earth-passport-head b { color: #2a2418; letter-spacing: 0; }
-.earth-x { border: 0; background: none; color: #2a2418; font: 400 1.4rem/1 var(--font-sans); cursor: pointer; }
+/* (a 44 px hit area round the small ×) */
+.earth-x { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 44px; min-height: 44px; margin: -0.6rem -0.5rem -0.6rem 0; padding: 0 0.5rem; border: 0; background: none; color: #2a2418; font: 400 1.4rem/1 var(--font-sans); cursor: pointer; }
 .earth-log { display: grid; gap: 0.35rem; margin: 0 0 0.75rem; padding: 0.5rem 0.6rem; border-radius: 8px; background: rgba(31, 95, 153, 0.08); color: rgba(42, 36, 24, 0.75); font: 500 0.74rem/1.3 var(--font-sans); }
 .earth-log b { color: var(--earth-stamp); font: 700 0.9rem/1 var(--font-mono); }
 .earth-log-bar { display: block; height: 6px; border-radius: 99px; background: rgba(42, 36, 24, 0.12); overflow: hidden; }
@@ -103,7 +128,7 @@
 @keyframes earth-stamp { from { opacity: 0; transform: rotate(-14deg) scale(1.8); } }
 .earth-postcard-text { display: grid; align-content: center; gap: 0.5rem; padding: 1.3rem 1.4rem; }
 .earth-postcard-kicker { margin: 0; color: var(--earth-stamp); font: 700 0.7rem/1 var(--font-sans); letter-spacing: 0.16em; text-transform: uppercase; }
-.earth-postcard-text h2 { margin: 0; font: 700 clamp(1.4rem, 1.1rem + 1vw, 2rem)/1.05 var(--font-display, var(--font-sans)); }
+.earth-postcard-text h2 { margin: 0; font: 700 clamp(1.4rem, 1.1rem + 1vw, 2rem)/1.05 var(--earth-display); }
 .earth-postcard-text p { margin: 0; font: 400 0.95rem/1.45 var(--font-sans); }
 .earth-postcard-km { color: rgba(42, 36, 24, 0.65); font: 500 0.82rem/1.3 var(--font-mono) !important; }
 .earth-postcard-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem; }
@@ -121,7 +146,7 @@
 
 @media (max-width: 640px) {
   .earth-chips { max-width: 55%; }
-  .earth-chip { font-size: 0.72rem; padding: 0.38rem 0.6rem; }
+  .earth-chip, .earth-menu .hud-btn { font-size: 0.72rem; padding: 0.38rem 0.6rem; }
   .earth-chip kbd { display: none; }
   .earth-postcard { grid-template-columns: 1fr; max-height: calc(100% - 2rem); overflow: auto; }
   .earth-postcard-photo { min-height: 11rem; border-right: 0; border-bottom: 1px dashed rgba(42, 36, 24, 0.25); }

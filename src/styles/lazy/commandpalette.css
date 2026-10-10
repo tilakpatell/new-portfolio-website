@@ -23,3 +23,6 @@
    touch screen, where there is no key to press */
 .palette-close { flex: none; cursor: pointer; }
 .palette-close:hover { border-color: var(--text); }
+/* the cap stays a cap; a thumb gets 44px round it */
+.palette-close { position: relative; }
+@media (pointer: coarse) { .palette-close::after { content: ''; position: absolute; inset: -10px -8px; } }

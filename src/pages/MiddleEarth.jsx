@@ -208,6 +208,10 @@ export default function MiddleEarth() {
       : 'Somewhere on this cliff are the Doors of Durin. They show only by moonlight, and open to a single word. Move your light over the rock, or call the moon.';
 
   const spotAt = flying ? placeOf(flying).at : here?.at ?? null;
+  // a chapter's town is drawn on an opaque stage across the page
+  // (shire/shire.css): the map behind it is drawn less often, until a flight
+  // fades the town out
+  const covers = here && !flying ? '.shire-stage' : null;
   const { prev, next } = neighbours(here?.id);
 
   return (
@@ -221,6 +225,7 @@ export default function MiddleEarth() {
         mordor={here ? active === 'mordor' : hover === 'mordor' || flying === 'mordor'}
         dark={mode === 'dark'}
         hub={!here}
+        covers={covers}
         opening={opening}
         onOpened={() => setOpening(false)}
       />
@@ -350,7 +355,7 @@ export default function MiddleEarth() {
           </h2>
           <p className="lead mt-4 max-w-[56ch]">The road the Ring took, from a party in Hobbiton to the fire it was made in. Step along it.</p>
           <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)] lg:gap-12">
-            <figure className="me-map-frame m-0">
+            <figure className="me-map-frame m-0" data-tour="me-map">
               <MiddleEarthMap step={step} />
             </figure>
             <div className="me-road card">

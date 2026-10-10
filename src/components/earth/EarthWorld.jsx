@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import Photo from '../Photo';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { use3D } from '../../lib/gpu';
 import { device } from '../../lib/device';
 import { useMediaQuery } from '../../lib/hooks';
-import { capturePointer } from '../../lib/pointer';
 import { typing } from '../games/pad';
 import { useTravellers } from '../middleearth/towns/useTravellers';
 import { HOME_CITY } from '../../data/places';
 import { WorldHost, useWorld } from '../../runtime';
+import { GAP, Menu, Stick, TouchButton } from '../../runtime/hud';
+import { wayOut } from '../worlds/worlds';
 import { CLOUD_ALT, HOME_V, KM, STAMPS, aroundWorld, kmBetween } from './rules';
 import { stampDate, useFlown, useStamps } from './stamps';
 import earthModule, { KEYS } from './module';
@@ -38,6 +39,11 @@ const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const compass = (deg) => COMPASS[Math.round(deg / 45) % 8];
 const CLOUD_KM = Math.round(CLOUD_ALT * KM); // the cloud deck, in km up
 const BOUND = new Set(Object.values(KEYS).flat());
+// the other pilots, in Earth's own words (the Menu's players entry)
+const LORE = {
+  off: 'Go online, and see everyone else flying the Earth as a pale plane from another world',
+  on: 'Everyone else online flying the Earth shows as a pale plane from another world: nothing passes between you but where each of you is',
+};
 
 export default function EarthWorld() {
   const three = use3D();
@@ -64,6 +70,7 @@ export default function EarthWorld() {
 
 function World({ attempt, onStatus }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const { pathname } = useLocation();
   const { unlock } = useAchievements();
   const labels = useRef({});
   const arrow = useRef(null);
@@ -160,25 +167,28 @@ function World({ attempt, onStatus }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postcard, passport, closePostcard]);
 
-  // the touch stick: turn and climb
-  const stickRef = useRef(null);
-  const onStick = (e) => {
-    const el = stickRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-    const y = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-    const m = Math.hypot(x, y);
-    const k = m > 1 ? 1 / m : 1;
-    rt?.input.setStick(x * k, y * k);
-    el.style.setProperty('--sx', (x * k).toFixed(2));
-    el.style.setProperty('--sy', (y * k).toFixed(2));
+  // the touch stick (the HUD kit's): turn and climb
+  const onStick = (x, y) => rt?.input.setStick(x, y);
+  // (a press on the thumbs is theirs, not a drag of the view)
+  const own = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
-  const stickUp = () => {
-    rt?.input.setStick(0, 0);
-    stickRef.current?.style.setProperty('--sx', 0);
-    stickRef.current?.style.setProperty('--sy', 0);
-  };
+
+  // the passport hangs under the chips, however many rows they wrap to on a
+  // phone (measured, not a sum: a hand sum left it over the second row)
+  const topRef = useRef(null);
+  const chipsRef = useRef(null);
+  useLayoutEffect(() => {
+    const chips = chipsRef.current;
+    const stage = topRef.current?.closest('.earth-stage');
+    if (!chips || !stage) return undefined;
+    const fit = () => stage.style.setProperty('--earth-under', `${Math.round(chips.getBoundingClientRect().bottom - stage.getBoundingClientRect().top + GAP)}px`);
+    fit();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    for (const n of [stage, chips]) ro?.observe(n);
+    return () => ro?.disconnect();
+  }, []);
 
   const count = Object.keys(stamps).length;
   const card = postcard && postcard.id !== 'home' ? STAMPS.find((x) => x.id === postcard.id) : null;
@@ -200,7 +210,7 @@ function World({ attempt, onStatus }) {
           ))}
         </div>
 
-        <div className="earth-hud earth-hud-top">
+        <div className="earth-hud earth-hud-top" ref={topRef}>
           <div className="earth-brand">
             <h1 id="earth-title" className="earth-title">
               Earth
@@ -216,8 +226,9 @@ function World({ attempt, onStatus }) {
               )}
             </p>
           </div>
-          <div className="earth-chips">
-            <button type="button" className="earth-chip" onClick={() => setPassport((v) => !v)} aria-expanded={passport}>
+          <div className="earth-chips" ref={chipsRef}>
+            {/* (the passport is the world's things to do, under its own name) */}
+            <button type="button" className="earth-chip" onClick={() => setPassport((v) => !v)} aria-expanded={passport} aria-keyshortcuts="P">
               Passport <b>{count}/{STAMPS.length}</b> <kbd>P</kbd>
             </button>
             <button type="button" className="earth-chip" onClick={flyingNow ? rise : dive}>
@@ -231,16 +242,14 @@ function World({ attempt, onStatus }) {
                 {cockpit ? 'Cockpit' : 'Chase'} <kbd>V</kbd>
               </button>
             )}
-            {trav.available &&
-              (trav.on ? (
-                <span className="earth-chip earth-chip-online" data-on="" title="Everyone else online flying the Earth shows as a pale plane from another world: nothing passes between you but where each of you is">
-                  <b>{trav.count}</b> {trav.count === 1 ? 'player' : 'players'} here
-                </span>
-              ) : (
-                <button type="button" className="earth-chip earth-chip-online" onClick={trav.join} title="Go online, and see everyone else flying the Earth as a pale plane from another world">
-                  See other players
-                </button>
-              ))}
+            {/* the one Menu, top right: the passport, the guide's keys, the other pilots, the way out */}
+            <Menu
+              className="earth-menu"
+              todo={{ label: 'Passport', done: count, total: STAMPS.length, onOpen: () => setPassport(true) }}
+              players={{ available: trav.available, on: trav.on, count: trav.count, onJoin: trav.join }}
+              lore={LORE}
+              way={wayOut(pathname)}
+            />
           </div>
         </div>
 
@@ -281,59 +290,43 @@ function World({ attempt, onStatus }) {
 
         {touch && flyingNow && on && (
           <div className="earth-touch">
-            <div
-              ref={stickRef}
-              className="earth-stick"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                capturePointer(e);
-                onStick(e);
-              }}
-              onPointerMove={onStick}
-              onPointerUp={stickUp}
-              onPointerCancel={stickUp}
-              onLostPointerCapture={stickUp}
-              aria-hidden="true"
-            >
-              <span />
+            <Stick className="earth-stick" onMove={onStick} onStart={(e) => e.stopPropagation()} label="Fly" />
+            {/* the right thumb's column: Roll over Faster, on one axis */}
+            <div className="earth-buttons">
+              <TouchButton
+                size={56}
+                className="earth-roll"
+                onPress={(e) => {
+                  own(e);
+                  api()?.roll();
+                }}
+              >
+                Roll
+              </TouchButton>
+              <TouchButton
+                size={84}
+                className="earth-boost"
+                onPress={(e) => {
+                  own(e);
+                  api()?.setBoost(true);
+                }}
+                onRelease={() => api()?.setBoost(false)}
+              >
+                Faster
+              </TouchButton>
             </div>
-            <button
-              type="button"
-              className="earth-boost"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                capturePointer(e);
-                api()?.setBoost(true);
-              }}
-              onPointerUp={() => api()?.setBoost(false)}
-              onPointerCancel={() => api()?.setBoost(false)}
-              onLostPointerCapture={() => api()?.setBoost(false)}
-            >
-              Faster
-            </button>
-            <button
-              type="button"
-              className="earth-roll"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                api()?.roll();
-              }}
-            >
-              Roll
-            </button>
           </div>
         )}
 
         {passport && (
-          <div className="earth-passport" role="dialog" aria-label="Passport">
+          <div className="earth-passport" role="dialog" aria-label="Passport: the things to do here">
             <div className="earth-passport-head">
               <p>
                 Passport <b>{count}/{STAMPS.length}</b>
               </p>
-              <button type="button" className="earth-x" onClick={() => setPassport(false)} aria-label="Close the passport">
-                ×
+              {/* (P shuts it as it opened it, and Esc) */}
+              <button type="button" className="earth-x" onClick={() => setPassport(false)} aria-label="Close the passport" aria-keyshortcuts="P Escape">
+                <span aria-hidden="true">×</span>
               </button>
             </div>
             <p className="earth-log">

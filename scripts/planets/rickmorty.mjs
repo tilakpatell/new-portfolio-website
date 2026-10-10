@@ -11,10 +11,10 @@
 // (-sm), rickmorty-glow (the ooze) and rickmorty-rough (sea 0.25, land 0.9)
 // at 1024. ONLY=rough makes the roughness map alone.
 
-import { clamp, eachTexel, fbm, hex, perlin, ridged, save } from './sphere.mjs';
+import { clamp, eachTexel, fbm, hex, perlin, ridged, save, bakeSize } from './sphere.mjs';
 
-const W = 4096;
-const H = 2048;
+// (8192 × 4096 with --ultra: sphere.mjs's bakeSize)
+const [W, H] = bakeSize();
 const deg = Math.PI / 180;
 
 // region ids, and their colours: [base, shade]

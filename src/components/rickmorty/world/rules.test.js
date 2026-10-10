@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { pushOut } from '../../middleearth/towns/walker';
 import { DESTINATIONS } from './dimensions/destinations';
+import { createPress } from '../../../lib/press';
 import {
   AREAS,
   ARCADE,
@@ -1923,7 +1924,7 @@ describe('C-137: the cruiser', () => {
   };
 
   it('starts parked on its spot, at hover height, at rest', () => {
-    expect(newCruiser()).toEqual({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
+    expect(newCruiser()).toEqual({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0, bankV: 0 });
   });
 
   it('reaches its top speed under full throttle, and never leaves where it flies (well past the street)', () => {
@@ -1982,7 +1983,7 @@ describe('C-137: the cruiser', () => {
     const right = fly(newCruiser(), { steer: -1 }, 1);
     expect(left.yaw).toBeCloseTo(CRUISER.turn, 6);
     expect(right.yaw).toBeCloseTo(-CRUISER.turn, 6);
-    expect(fly(newCruiser(), {}, 1)).toEqual({ ...newCruiser() });
+    expect(fly(newCruiser(), {}, 1)).toEqual({ ...newCruiser(), bump: 0 });
   });
 
   it('leans into a turn at speed, and not when it is still', () => {
@@ -1992,6 +1993,22 @@ describe('C-137: the cruiser', () => {
     expect(fast.bank).toBeGreaterThan(0.2);
     const other = fly({ ...newCruiser(), x: -40, z: -30, yaw: Math.PI / 2, speed: CRUISER.top }, { throttle: 1, steer: -1 }, 0.5);
     expect(other.bank).toBeLessThan(-0.2);
+  });
+
+  it('leans on a spring: let go of the turn and it swings a little past level, then settles', () => {
+    let c = fly({ ...newCruiser(), x: -40, z: -30, yaw: Math.PI / 2, speed: CRUISER.top }, { throttle: 1, steer: 1 }, 1);
+    let least = Infinity;
+    for (let t = 0; t < 2; t += DT) {
+      c = stepCruiser(c, { throttle: 1 }, DT);
+      least = Math.min(least, c.bank);
+    }
+    expect(least).toBeLessThan(-0.005);
+    expect(least).toBeGreaterThan(-0.1);
+    expect(Math.abs(c.bank)).toBeLessThan(0.01);
+    // as steady at a 30th of a second
+    let slow = { ...newCruiser(), x: -40, z: -30, yaw: Math.PI / 2, speed: CRUISER.top };
+    for (let t = 0; t < 3; t += 1 / 30) slow = stepCruiser(slow, { throttle: 1, steer: t < 1 ? 1 : 0 }, 1 / 30);
+    expect(Math.abs(slow.bank)).toBeLessThan(0.02);
   });
 
   it('climbs under lift and stops at the ceiling', () => {
@@ -2367,3 +2384,79 @@ describe('C-137: jumping', () => {
   });
 });
 
+
+describe('C-137: a jump that lands (lib/press.js)', () => {
+  const off = () => {
+    // walked off the stoop’s side, the step he leaves it on
+    const [stoop] = STOOP;
+    let m = newMorty({ x: stoop.x + 1, z: stoop.z, face: 0 });
+    m = { ...m, y: stoop.top };
+    for (let t = 0; t < 2 && !m.air; t += DT) m = stepMorty(m, { x: 1, z: 0 }, DT, 'street');
+    expect(m.air).toBe(true);
+    return m;
+  };
+  const late = (seconds) => {
+    const press = createPress();
+    press.ground(true, 0);
+    let m = off();
+    for (let t = 0; t < seconds - 1e-9; t += DT) m = stepMorty(m, {}, DT, 'street', { press });
+    press.press();
+    return stepMorty(m, {}, DT, 'street', { press });
+  };
+
+  it('jumps when the press came a moment before his feet touched (the buffer)', () => {
+    const press = createPress();
+    let m = stepMorty(newMorty(), { jump: true }, DT, 'street');
+    // down until he’s a moment from the ground
+    while (m.vy > 0 || m.y > 0.3) m = stepMorty(m, {}, DT, 'street', { press });
+    press.press();
+    let jumped = false;
+    for (let t = 0; t < 0.12 && !jumped; t += DT) {
+      m = stepMorty(m, {}, DT, 'street', { press });
+      jumped = m.vy > 0;
+    }
+    expect(jumped).toBe(true);
+  });
+
+  it('jumps a moment after he walked off an edge (coyote time), and not long after', () => {
+    expect(late(0.06).vy).toBeCloseTo(MORTY.jump - MORTY.gravity * DT, 6);
+    expect(late(0.15).vy).toBeLessThan(0);
+  });
+
+  it('jumps once a press, and not again from the air', () => {
+    const press = createPress();
+    press.press();
+    let m = stepMorty(newMorty(), {}, DT, 'street', { press });
+    expect(m.vy).toBeGreaterThan(0);
+    press.press();
+    m = stepMorty(m, {}, DT, 'street', { press });
+    expect(m.vy).toBeLessThan(MORTY.jump - MORTY.gravity * DT);
+  });
+
+  it('says how hard he landed, on the step he lands', () => {
+    let m = stepMorty(newMorty(), { jump: true }, DT, 'street');
+    let land = 0;
+    for (let t = 0; t < 1.5; t += DT) {
+      m = stepMorty(m, {}, DT, 'street');
+      if (m.land) land = m.land;
+    }
+    expect(land).toBeGreaterThan(MORTY.jump * 0.9);
+    expect(land).toBeLessThan(MORTY.jump * 1.1);
+    expect(m.land).toBe(0);
+  });
+});
+
+describe('C-137: the cruiser’s bump', () => {
+  it('says how much speed the edge of where it flies took, and nothing in open air', () => {
+    let c = { ...newCruiser(), x: FLY.x1 - 2.2, z: 0, y: 40, yaw: Math.PI / 2, speed: CRUISER.top };
+    c = stepCruiser(c, { throttle: 1 }, DT);
+    c = stepCruiser(c, { throttle: 1 }, DT);
+    expect(c.bump).toBeGreaterThan(CRUISER.top * 0.5);
+    expect(stepCruiser({ ...newCruiser(), x: 0, z: 0, y: 40, speed: 10 }, { throttle: 1 }, DT).bump).toBe(0);
+  });
+
+  it('says how fast it came down onto a roof or the ground', () => {
+    const c = stepCruiser({ ...newCruiser(), x: 0, z: 0, y: CRUISER.hover + 0.05, vy: -8 }, { lift: -1 }, DT);
+    expect(c.bump).toBeGreaterThan(5);
+  });
+});

@@ -1,12 +1,13 @@
 ---
 name: desktop-jobs
-description: Use when a change needs a new 3D model (GLB) or voice lines (recorded dialogue) that only the owner's GPU desktop can make, when asked to request, check on or retry a gen3d or voices job, or when a gen3d/voices issue, workflow run or self-hosted runner is queued, failed or stuck.
+description: Use when a change needs a new 3D model (GLB), voice lines (recorded dialogue) or an animation clip from a text prompt that only the owner's GPU desktop can make, when asked to request, check on or retry a gen3d, voices or motion job, or when a gen3d/voices/motion issue, workflow run or self-hosted runner is queued, failed or stuck.
 ---
 
 # Desktop jobs: 3D models and voice lines
 
-The owner's desktop GPU makes 3D models (gen3d) and cloned-voice lines
-(voices). A cloud session can't run them. It asks with a labelled GitHub
+The owner's desktop GPU makes 3D models (gen3d), cloned-voice lines
+(voices) and clips on Meshy's skeleton from a sentence (motion,
+`scripts/motion/README.md`). A cloud session can't run them. It asks with a labelled GitHub
 issue, and the desktop's self-hosted Actions runner answers with a pull
 request when the desktop is awake. Full guide: `scripts/desktop/README.md`.
 
@@ -16,6 +17,7 @@ request when the desktop is awake. Full guide: `scripts/desktop/README.md`.
 node scripts/desktop/ask.mjs gen3d NAME --what "what it is" --image URL [--faces 30000] [--options "tex: 2048"] [--note "why, where it goes"]
 node scripts/desktop/ask.mjs gen3d NAME --what "…" --prompt "…, plain white background" --faces 4000     # only for designs an image model knows
 node scripts/desktop/ask.mjs voices NAME [--only rick,morty] [--line "rick: text"]…                       # no lines: every unrecorded line on main
+node scripts/desktop/ask.mjs motion NAME --prompt "what the body does" [--seconds 3] [--options "seed: 7  with: sword.a"]
 ```
 
 Add `--dry-run` first to see the issue. The same works as
@@ -24,6 +26,7 @@ Add `--dry-run` first to see the issue. The same works as
 - A **picture** beats a prompt: three-quarter view, whole subject, plain background. Fandom/wiki image URLs work.
 - **faces** sets the top cut: rock 4000, prop 10000, character 30000 (default 120000).
 - The model lands as `public/models/gen3d/NAME{.hq,,.lo}.glb`. Wiring it into a scene is your own follow-up PR after theirs merges.
+- A clip lands as `public/games/meshy/ual-gen.NAME.glb` with a sheet beside a library clip; HY-Motion's licence excludes the EU, the UK and South Korea, so shipping one is the owner's call (`docs/research/2026-10-08-motion-spike.md`).
 - Voice lines for code not on main yet: list them as `who: text`. The id is `lineId(who, text)` (src/lib/voiced.js).
 
 ## Follow
@@ -36,7 +39,7 @@ tail and hint).
 |---|---|---|
 | queued, runner offline | desktop asleep | wait; nothing is lost |
 | waiting for the GPU | another job holds VRAM | wait for the hourly sweep |
-| failed | see the comment | fix the issue body, remove the `gen3d:failed`/`voices:failed` label |
+| failed | see the comment | fix the issue body, remove the `gen3d:failed`/`voices:failed`/`motion:failed` label |
 
 Desktop healthy? `gh workflow run desktop-doctor.yml`, then read that run's summary.
 

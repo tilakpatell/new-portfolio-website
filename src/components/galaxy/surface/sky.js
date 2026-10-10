@@ -11,6 +11,8 @@
 //   color, size, glow? }], clouds: { cover, color, shade, scale, speed,
 //   sharp? } | null, stars: 0…1, bodies: [{ az, el, size, color, color2,
 //   bands, lit? }] }
+// createSky(site, { clouds }): clouds 1 (ultra, amounts.js) for finer clouds
+// with their own shade toward the sun and a high veil over them
 // (az: radians round from +z toward +x; el: radians up from the horizon;
 // size: the angular radius, radians)
 
@@ -114,6 +116,10 @@ void main() {
   if (uWithClouds > 0.5 && uCloud.x > 0.0 && el > 0.0) {
     vec2 p = dir.xz / (el + 0.06) * uCloud.y + vec2(uTime * uCloud.z, uTime * uCloud.z * 0.4);
     float n = sFbm(p);
+#ifdef CLOUDS_HQ
+    // (ultra: two finer octaves on the edges, the cloud's billows)
+    n += (texture2D(uNoise, p * 0.31 + 0.71).g - 0.5) * 0.16 + (texture2D(uNoise, p * 0.83 + 0.23).r - 0.5) * 0.07;
+#endif
     float cover = smoothstep(1.0 - uCloud.x, 1.0 - uCloud.x + 0.35 / uCloud.w, n);
     float thick = smoothstep(0.4, 1.0, n);
     float toSun = pow(max(dot(dir, uSunDir[0]), 0.0), 6.0);
@@ -121,13 +127,28 @@ void main() {
     cc += uSunColor[0] * toSun * 0.6 * (1.0 - thick);
     cc += vec3(uFlash) * thick;
     float fade = smoothstep(0.0, 0.18, el);
+#ifdef CLOUDS_HQ
+    // its own shade: darker where more cloud lies between it and the sun
+    // (three steps toward it), the thin edges silvered near the sun
+    vec2 sunStep = normalize(uSunDir[0].xz + vec2(1e-4)) * 0.22;
+    float ahead = 0.0;
+    for (int k = 1; k <= 3; k++) ahead += smoothstep(0.45, 0.95, sFbm(p + sunStep * float(k)));
+    cc = mix(cc, uCloudShade * 0.85, ahead / 3.0 * 0.45 * (1.0 - toSun));
+    cc += uSunColor[0] * pow(max(dot(dir, uSunDir[0]), 0.0), 24.0) * (1.0 - thick) * 0.9;
+#endif
     c = mix(c, cc, cover * fade);
+#ifdef CLOUDS_HQ
+    // a high veil of thin cloud, streaked along the wind, over the rest
+    vec2 p2 = dir.xz / (el + 0.14) * uCloud.y * 0.4 + vec2(uTime * uCloud.z * 1.7, 0.0);
+    float veil = smoothstep(0.52, 0.85, texture2D(uNoise, p2 * vec2(0.03, 0.12)).b * 0.7 + texture2D(uNoise, p2 * 0.35).a * 0.3);
+    c = mix(c, uCloudColor + uSunColor[0] * toSun * 0.3, veil * 0.22 * fade * min(1.0, uCloud.x * 2.0));
+#endif
   }
   c += uHaze * uFlash * 0.4;
   gl_FragColor = vec4(c, 1.0);
 }`;
 
-export function createSky(site) {
+export function createSky(site, { clouds = 0 } = {}) {
   const s = site.sky;
   const col = (c, f = '#000000') => new THREE.Color(c ?? f);
   const suns = (s.suns ?? []).slice(0, MAX_SUNS);
@@ -155,7 +176,8 @@ export function createSky(site) {
     uWithClouds: { value: 1 },
     uNoise: { value: noiseTexture() },
   };
-  const material = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms, side: THREE.BackSide, depthWrite: false, fog: false });
+  // (ultra: finer clouds, their own shade and a high veil: CLOUDS_HQ)
+  const material = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms, side: THREE.BackSide, depthWrite: false, fog: false, defines: clouds ? { CLOUDS_HQ: '' } : {} });
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(1000, 48, 24), material);
   mesh.frustumCulled = false;
   mesh.renderOrder = -10;

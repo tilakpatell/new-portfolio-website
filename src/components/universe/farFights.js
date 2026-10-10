@@ -1,17 +1,17 @@
-// Far fights. Since the spread (scale.js’s SPREAD) a fight is somewhere on
-// the lanes, not something that comes to you: a skirmish (skirmish.js) at a
-// node of the web, the crew’s war at its beacon (front.js’s frontAt). Close
+// Far fights. Since the spread (scale.js’s SPREAD) a fight is somewhere out
+// in deep space, not something that comes to you: a skirmish (skirmish.js) at
+// a waypoint (waypoints.js), the crew’s war at its beacon (front.js’s frontAt). Close
 // to, it’s drawn as itself; further than FAR from the camera the real thing
 // isn’t drawn, and this draws it instead: a cluster of flickering points of
 // fire where it is, and the odd brighter flash of a bolt, so you see a fight
-// from across a region and take a lane to it. The chart names where it is
+// from across a region and go to it. The chart names where it is
 // (“Fighting near Middle-earth”). The design:
 // docs/superpowers/specs/2026-10-07-universe-scale-hyperlanes-design.md,
 // decision 9.
 //
 // The rules are pure and tested: FAR, isFar, impostorFor (how many points a
 // fight is and how fast it flickers), fightLabel (the chart’s name for it)
-// and pickFightNode (which node of the lanes the next skirmish is at).
+// and pickFightNode (which waypoint the next skirmish is at).
 // createFarFights draws them: a small pool of Points, one a fight, made once
 // and sharing one material, so a frame allocates nothing and costs a draw
 // call a far fight.
@@ -23,7 +23,7 @@
 // HOT_BOLTS that are flying).
 
 import * as THREE from 'three';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { regionAt } from './regions';
 
 export const FAR = 2000; // past this from the camera, a fight is its impostor
@@ -36,7 +36,7 @@ const SPREAD = [30, 260]; // how far its points are spread (map units), least an
 const FLASHES = 10; // the bolt flashes a fight has going, each on for a moment
 const POOL = 4; // far fights drawn at once, at most (the front and a skirmish or two)
 const PX = 2.2; // a point’s size on screen (CSS px)
-export const SKY = 24000; // past this a fight is drawn on the sky, this far out along its line (the camera sees to 30,000)
+export const SKY = 24000; // past this a fight is drawn on the sky, this far out along its line (the camera sees to 45,000)
 export const MIN_ANGLE = 0.008; // and never spread over less than this much of the view (radians, about 10 px), or from across the map it’s a speck
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));

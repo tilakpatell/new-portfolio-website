@@ -498,6 +498,11 @@ export default function DeathStar() {
                 Fly the trench run
               </a>
             )}
+            {!destroyed && (
+              <Link to="/deathstar/inside" className="btn btn-ghost">
+                Go aboard
+              </Link>
+            )}
             <ScriptToggle id="aurebesh" />
             <Link to="/galaxy/yavin" className="btn btn-ghost">
               Out into the galaxy

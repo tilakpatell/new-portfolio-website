@@ -6,9 +6,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO } from '../contract/repo.mjs';
-import { audit, covers } from './credits.mjs';
+import { audit, covers, stem } from './credits.mjs';
 
 const ALLOWED = JSON.parse(readFileSync(new URL('./allow-uncredited.json', import.meta.url), 'utf8'));
+// (a listed model's cuts are listed with it, as a credited model's are credited with it: its .ultra.glb beside it)
+const listed = (f) => ALLOWED.files.some((a) => stem(a) === stem(f));
 
 describe('the credits as shipped', () => {
   const { dead, uncredited } = audit(REPO);
@@ -18,7 +20,7 @@ describe('the credits as shipped', () => {
   });
 
   it('cover every model under public/models/, but the few on the allow-list', () => {
-    expect(uncredited.filter((f) => !ALLOWED.files.includes(f))).toEqual([]);
+    expect(uncredited.filter((f) => !listed(f))).toEqual([]);
   });
 
   it('keep the allow-list to models that are still there and still uncredited', () => {
@@ -34,6 +36,7 @@ describe('reading a credit', () => {
     expect(covers(credit, 'public/models/c137/rm/fart.lo.glb')).toBe(true);
     expect(covers(credit, 'public/models/c137/rm/lod/fart.glb')).toBe(true);
     expect(covers(credit, 'public/models/c137/rm/fart.lod1.glb')).toBe(true);
+    expect(covers(credit, 'public/models/c137/rm/fart.far.glb')).toBe(true);
     expect(covers(credit, 'public/models/c137/rm/farter.glb')).toBe(false);
     expect(covers({ key: 'tex/armour', name: 'armour' }, 'public/games/tex/armour/arm.webp')).toBe(true);
     expect(covers({ key: 'x', file: 'public/models/sketchfab/x.glb' }, 'public/models/sketchfab/x.glb')).toBe(true);

@@ -26,7 +26,13 @@ worked from Solar System Scope's own 8K originals (their site serves them;
 Commons rate-limits originals from some networks and caps thumbnails at
 3840 px). It writes only the `-hq` files: the standard set stays as it is.
 
-Run: python3 scripts/build-universe-textures.py [--hq]   (needs Pillow and numpy)
+`--ultra` builds Earth's 8192x4096 day map from Solar System Scope's 8K
+original as `earth-8k.ktx2` (UASTC through scripts/ktx2.mjs, flipped for
+three's UVs), worn near at ultra (planetMaps.js's nearSet), and lists it in
+k8.json; nothing else. Too big to keep in the repository: made on the
+owner's machine and published with the site.
+
+Run: python3 scripts/build-universe-textures.py [--hq | --ultra]   (needs Pillow and numpy)
 """
 import io
 import json
@@ -46,6 +52,7 @@ OUT = ROOT / 'public/textures/universe'
 UA = {'User-Agent': 'tilakpatell.com universe build (https://tilakpatell.com)'}
 
 HQ = '--hq' in sys.argv  # the sharper set for strong graphics cards (see above)
+ULTRA = '--ultra' in sys.argv  # Earth's 8192 day map, for ultra (see above)
 SKY = 'https://upload.wikimedia.org/wikipedia/commons/8/85/Solarsystemscope_texture_8k_stars_milky_way.jpg'
 # Solar System Scope's own downloads (CC BY 4.0), the 8K originals the -hq set is worked from
 SSS_HQ = 'https://www.solarsystemscope.com/textures/download/{size}_{name}.jpg'
@@ -232,7 +239,24 @@ def save(a, name, full=(1024, 512), small=True, quality=84, hq=True):
     print(f'  {name}.webp')
 
 
+def ultra():
+    """Earth's day map at 8192x4096, as KTX2, listed in k8.json."""
+    import subprocess
+    OUT.mkdir(parents=True, exist_ok=True)
+    day = Image.open(io.BytesIO(fetch(SSS_HQ.format(size='8k', name='earth_daymap'), '8k_earth_daymap.jpg'))).convert('RGB').resize((8192, 4096), Image.LANCZOS)
+    png = CACHE / 'earth-8k.png'
+    day.save(png)
+    subprocess.run(['node', str(ROOT / 'scripts/ktx2.mjs'), 'convert', str(png), '--out', str(CACHE), '--flip'], check=True)
+    (CACHE / 'earth-8k.ktx2').replace(OUT / 'earth-8k.ktx2')
+    listed = OUT / 'k8.json'
+    names = set(json.loads(listed.read_text())) if listed.exists() else set()
+    listed.write_text(json.dumps(sorted(names | {'earth'})) + '\n')
+    print('  earth-8k.ktx2')
+
+
 def main():
+    if ULTRA:
+        return ultra()
     urls = None if HQ else commons_urls()
     # the maps are worked at twice the standard planet size (the -hq set at twice that again)
     W, H = (4096, 2048) if HQ else (2048, 1024)

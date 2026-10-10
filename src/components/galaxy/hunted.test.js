@@ -19,7 +19,8 @@ describe('the galaxy’s hunters', () => {
       for (const [kind] of [...f.kinds, ...(f.ace ? [[f.ace]] : [])]) {
         expect(KINDS[kind], `${id} ${kind}`).toBeTruthy();
         expect(NAMES[kind], `${id} ${kind}`).toBeTruthy();
-        expect(Boolean(HUNTER_GLB[kind]) || BUILT.has(kind), `${id} ${kind}`).toBe(true);
+        const model = KINDS[kind].model ?? kind;
+        expect(Boolean(HUNTER_GLB[model]) || BUILT.has(model), `${id} ${kind}`).toBe(true);
       }
     }
   });

@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { CONTROLS, DEFAULTS, STICK, dragSteers, keyAxes, keyFlies, readControls, stickInput } from './controls';
+import { CONTROLS, DEAD, DEFAULTS, STICK, dragSteers, keyAxes, keyFlies, readControls, stickInput } from './controls';
 
 describe('the flying settings', () => {
   it('start as they come, and come back that way from anything unreadable', () => {
     expect(readControls(null)).toEqual(DEFAULTS);
     expect(readControls('nonsense')).toEqual(DEFAULTS);
     expect(readControls({ turn: 'fast', invert: 'yes', dragUp: 'sideways', ad: 'strafe' })).toEqual(DEFAULTS);
+  });
+
+  it('keep a difficulty, normal as it comes and for anything unknown', () => {
+    expect(DEFAULTS.difficulty).toBe('normal');
+    expect(readControls({ difficulty: 'outlaw' }).difficulty).toBe('outlaw');
+    expect(readControls({ difficulty: 'impossible' }).difficulty).toBe('normal');
   });
 
   it('keep what was set, inside each slider’s range', () => {
@@ -33,9 +39,23 @@ describe('the flying settings', () => {
 describe('dragging to fly', () => {
   it('reaches a full turn at the stick’s length, sooner the higher the sensitivity', () => {
     expect(stickInput(STICK, 0, DEFAULTS, 'mouse').turn).toBe(1);
-    expect(stickInput(STICK / 2, 0, DEFAULTS, 'mouse').turn).toBeCloseTo(0.5, 6);
+    // (past the dead zone, rescaled so the stick still reaches 1 at its length)
+    expect(stickInput(STICK / 2, 0, DEFAULTS, 'mouse').turn).toBeCloseTo((0.5 - DEAD) / (1 - DEAD), 6);
     expect(stickInput(STICK / 2, 0, { ...DEFAULTS, drag: 2 }, 'mouse').turn).toBe(1);
     expect(stickInput(-STICK * 3, 0, DEFAULTS, 'mouse').turn).toBe(-1);
+  });
+
+  it('reads a drag inside the dead zone as nothing, each way on its own', () => {
+    expect(DEAD).toBeGreaterThan(0);
+    const small = STICK * DEAD * 0.9;
+    expect(stickInput(small, -small, DEFAULTS, 'mouse')).toEqual({ turn: 0, throttle: 0, climb: 0, roll: 0 });
+    expect(stickInput(-small, small, DEFAULTS, 'touch')).toEqual({ turn: 0, throttle: 0, climb: 0, roll: 0 });
+    // a turn with a little up in it is a turn and only a turn
+    const d = stickInput(STICK, -small, DEFAULTS, 'mouse');
+    expect(d.turn).toBe(1);
+    expect(d.climb).toBe(0);
+    // the dead zone is of the stick’s own length, so the sensitivity shrinks it too
+    expect(stickInput(STICK * DEAD * 0.9, 0, { ...DEFAULTS, drag: 2 }, 'mouse').turn).toBeGreaterThan(0);
   });
 
   it('tips the nose with a mouse, and works the throttle on a touch screen', () => {

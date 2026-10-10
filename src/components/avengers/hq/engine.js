@@ -11,6 +11,11 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { loadSky } from './assets';
 import { houseOn } from '../../../lib/three/house';
+import { guard } from '../../../lib/three/frameGuard';
+import { prepareScene } from '../../../lib/three/gpuWork';
+import { stageTune } from '../../../lib/stage3d';
+import { LOOK } from './look';
+import { houseGroups } from '../../../lib/three/houseTuning';
 import { device } from '../../../lib/device';
 import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
@@ -37,7 +42,7 @@ export function createEngine(canvas, opts = {}) {
   const {
     exposure = 1,
     toneMapping = THREE.NeutralToneMapping,
-    bloom = { strength: 0.55, radius: 0.5, threshold: 0.92 },
+    bloom = LOOK.bloom,
     fov = 60,
     near = 0.05,
     far = 600,
@@ -48,6 +53,8 @@ export function createEngine(canvas, opts = {}) {
   let tier = TIERS[tierName];
 
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, failIfMajorPerformanceCaveat: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
@@ -287,7 +294,20 @@ export function createEngine(canvas, opts = {}) {
     });
   };
 
+  // ?debug: the one panel (lib/stage3d's stageTune), the bloom first and the
+  // game's numbers after, titled and kept by the game's name (a page of HQ
+  // games has one document title for all of them); without ?debug, nothing
+  let tuneName = null;
+  const tuning = stageTune({ bloomPass, title: () => tuneName || canvas.closest?.('[data-route]')?.dataset.route || (typeof document !== 'undefined' ? document.title : null) });
+  const tune = (groups = [], name = null) => {
+    tuneName = name ?? tuneName;
+    // (the house look and its exposure first, then the game's own)
+    const exposure = { get: () => renderer.toneMappingExposure, set: (v) => (renderer.toneMappingExposure = v) };
+    tuning.tune([...houseGroups(house, { exposure }), ...groups]);
+  };
+
   const dispose = () => {
+    tuning.close();
     canvas.removeEventListener('webglcontextlost', onContextLost);
     disposeObject(scene);
     skyAssets?.env?.dispose();
@@ -315,10 +335,26 @@ export function createEngine(canvas, opts = {}) {
     return Promise.all(jobs);
   };
 
+  // Everything sent to the graphics chip before the world is first seen
+  // (lib/three/gpuWork): the look on, the passes' shaders, then every
+  // picture, shader and one draw, a slice at a time, with progress for the
+  // page's loading screen (components/worlds/LoadingVeil)
+  const prepare = async (onProgress, { alive = () => true } = {}) => {
+    const on = () => alive() && !lost;
+    house.follow({ adopt: true });
+    if (!passesDone) {
+      passesDone = true;
+      await precompilePasses(renderer, composer, view);
+    }
+    if (!on()) return;
+    await prepareScene({ renderer, roots: [scene], scene, camera: view, target: composer.readBuffer, render: () => composer.render(), onProgress, alive: on });
+  };
+
   return {
     THREE,
     renderer,
     scene,
+    prepare,
     camera,
     sun,
     hemi,
@@ -333,6 +369,7 @@ export function createEngine(canvas, opts = {}) {
     info,
     dispose,
     precompile,
+    tune,
     get size() {
       return size;
     },

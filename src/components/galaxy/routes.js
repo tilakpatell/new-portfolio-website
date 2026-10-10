@@ -10,6 +10,7 @@
 //   point on both; lanes sharing a point (within JOIN) share the node; a
 //   system within SNAP of a lane point is snapped to the nearest one
 // routeBetween(fromId, toId) → { pts: [[x, z], …], squares, onLane, lanes: [lane ids, in order] } or null
+// routeMid(route) → [x, z], the point half the way along the course (where its tag goes)
 // jumpTime(route) → seconds in hyperspace
 // viaLanes(route) → the holomap's words for it: 'via the Corellian Run', or that it's off the lanes
 
@@ -131,6 +132,20 @@ export function routeBetween(fromId, toId) {
   const lanes = [];
   for (const { lane } of path) if (lane && lanes[lanes.length - 1] !== lane) lanes.push(lane);
   return { pts, squares: length(pts), onLane: true, lanes };
+}
+
+// the point half the way along a course
+export function routeMid({ pts }) {
+  let left = length(pts) / 2;
+  for (let i = 1; i < pts.length; i++) {
+    const d = dist(pts[i - 1], pts[i]);
+    if (d >= left && d > 0) {
+      const t = left / d;
+      return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t];
+    }
+    left -= d;
+  }
+  return pts[pts.length - 1];
 }
 
 export const jumpTime = (route) => Math.min(JUMP.max, (JUMP.base + JUMP.perSquare * route.squares) * (route.onLane ? 1 : JUMP.offLane));

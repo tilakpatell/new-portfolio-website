@@ -30,6 +30,9 @@ export const WEAPONS = {
   dlt19: { ...base, name: 'DLT-19', about: 'The heavy repeater: a stream of light bolts, slow to heat.', side: 'galaxy', damage: 1, every: 0.09, spread: 0.028, heat: 0.03, cool: 0.4, range: 100, zoom: 1.5, kick: 0.6 },
   ee3: { ...base, name: 'EE-3', about: 'Boba Fett’s carbine: a quick two-shot burst, a good scope.', side: 'galaxy', damage: 1, every: 0.36, burst: 2, spread: 0.008, heat: 0.13, cool: 0.35, range: 140, zoom: 2.6 },
   westar: { ...base, name: 'WESTAR-34', about: 'Jango’s pistol: light and very fast.', side: 'galaxy', damage: 1, every: 0.12, spread: 0.02, heat: 0.055, cool: 0.4, range: 70, zoom: 1.3, kick: 0.7 },
+  // (the soldiers' own: ground/troops.js; not in PICKABLE, so never offered to you)
+  dc15: { ...base, name: 'DC-15A', about: 'The clone trooper’s rifle: three-shot bursts.', side: 'galaxy', damage: 1, every: 0.4, burst: 3, spread: 0.012, range: 120 },
+  e5: { ...base, name: 'E-5', about: 'The battle droid’s carbine: slow and wide.', side: 'galaxy', damage: 1, every: 0.5, spread: 0.03, range: 70 },
   bowcaster: { ...base, name: 'Bowcaster', about: 'Chewie’s: a slow, heavy quarrel.', side: 'galaxy', damage: 3, every: 0.7, spread: 0.006, heat: 0.25, cool: 0.3, range: 120, zoom: 1.6, kick: 1.6 },
   // ── Elsewhere ──
   shotgun: { ...base, name: 'Scattergun', about: 'Seven pellets at once. Close in, nothing survives it.', side: 'elsewhere', damage: 1, every: 0.8, pellets: 7, spread: 0.07, heat: 0.26, cool: 0.3, range: 30, zoom: 1.1, kick: 2 },

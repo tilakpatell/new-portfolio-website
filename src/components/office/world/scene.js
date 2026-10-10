@@ -11,6 +11,9 @@
 import * as THREE from 'three';
 import { createStage } from '../../../lib/stage3d';
 import { houseOn } from '../../../lib/three/house';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { damp } from '../../../lib/ease';
+import { LOOK } from './look';
 import { device } from '../../../lib/device';
 import { createFx } from '../../middleearth/shire/fx';
 import { createGhosts } from '../../middleearth/towns/ghosts';
@@ -97,7 +100,7 @@ function clearance(from, to) {
 export async function createOfficeWorld(canvas, { onLost } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
-  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 170, exposure: 0.94, bloom: { strength: 0.22, radius: 0.5, threshold: 1.6 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 170, exposure: 0.94, bloom: LOOK.bloom, onLost });
   // the show's look: fluorescent, a touch green and flat, with a little grain
   stage.grade({ contrast: 0.02, saturation: 0.92, vignette: 0.22, grain: 0.022, shadow: [0.0, 0.01, 0.006], high: [0.012, 0.012, 0.0] });
   const { scene, camera, renderer } = stage;
@@ -357,7 +360,15 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     return { g, gem, ring };
   });
 
-  const A = { t: 0, cam: { at: V(0, 2, 6), look: V(0, 1.4, 0) }, mode: null, shake: 0, suggest: null, nearAt: -1, near: [], fire: 0, smokeAt: 0, castAt: -1, focus: V(0, 0, 0), view: new THREE.Frustum() };
+  // the shake (lib/three/feel: still under reduced motion). The old ones
+  // were metres, ±k/2, a catch's 0.18 the biggest: `jolt(k)` gives each its
+  // old size at its peak, and it's gone in about as long
+  const JOLT = 0.18;
+  const feel = createFeel({ offset: JOLT / 2, baseFov: 58 });
+  feel.set({ decay: 4 });
+  const jolt = (k) => feel.trauma(Math.sqrt(Math.min(1, k / JOLT)));
+  stage.tune(feelGroups(feel));
+  const A = { t: 0, cam: { at: V(0, 2, 6), look: V(0, 1.4, 0) }, mode: null, suggest: null, nearAt: -1, near: [], fire: 0, smokeAt: 0, castAt: -1, focus: V(0, 0, 0), view: new THREE.Frustum() };
   const viewMat = new THREE.Matrix4();
   const tmp = V(0, 0, 0);
   const tmp2 = V(0, 0, 0);
@@ -693,16 +704,14 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     }
     const jump = A.mode !== s.mode || s.snapCam;
     A.mode = s.mode;
-    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' ? 9 : 3));
+    // (by dt, as fast as the old 9 and 3 a second were at 60 Hz, at any rate)
+    const ease = jump ? 1 : damp(s.mode === 'walk' ? 9.75 : 3.08, dt);
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
     camera.lookAt(A.cam.look);
+    feel.setBaseFov(camera.fov);
+    feel.update(dt, camera);
     // what the camera sees, for the next frame's people; the shadows' box
     // ahead of it (upstairs: downstairs the light has no shadows to give)
     camera.updateMatrixWorld();
@@ -740,15 +749,15 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     } else if (type === 'spill' && p) {
       set.spill(p);
       fx.puff(V(p.x, 0.3, p.z), V(0, 0.6, 0), 10);
-      A.shake = Math.max(A.shake, 0.06);
+      jolt(0.06);
       jim?.play('headache', { layer: 'upper' }); // (Kevin's chili, on the carpet)
     } else if (type === 'clearSpills') set.clearSpills();
     else if (type === 'caught') {
-      A.shake = 0.18;
+      jolt(0.18);
       jim?.glance(camera.position, 1.8); // (caught: his look to the camera)
     } else if (type === 'fire') {
       fx.pop(V(FIRE_BIN.x, 1, FIRE_BIN.z), 'red', 26, 2);
-      A.shake = 0.12;
+      jolt(0.12);
     } else if (type === 'award') {
       const m = seatOf('michael');
       fx.pop(V(m.x, 1.8, m.z + 0.6), 'gold', 40, 2.4);
@@ -789,6 +798,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null,
     renderer: import.meta.env.DEV ? renderer : null,
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     fx: fxEvent,
     screenOf,
     resize: stage.resize,

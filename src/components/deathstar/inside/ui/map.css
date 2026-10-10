@@ -1,0 +1,160 @@
+/* Aboard the Death Star's maps (ui/Map.jsx): the small one under the
+   security readout and the whole sheet, thin grey rules on black glass, the
+   room you're in and your arrow in red. (The whole map's box starts .ds so
+   it wins over the menus' shared rule in inside.css, whichever loads first.) */
+
+/* the small map, and the sheet both maps draw */
+.ds-mini {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 116px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ds-rule);
+  border-radius: 2px;
+  background:
+    linear-gradient(rgba(205, 212, 222, 0.05) 1px, transparent 1px) 0 0 / 14px 14px,
+    linear-gradient(90deg, rgba(205, 212, 222, 0.05) 1px, transparent 1px) 0 0 / 14px 14px,
+    var(--ds-glass);
+  cursor: pointer;
+}
+.ds-mini:hover {
+  border-color: var(--ds-rule-strong);
+}
+.ds-mini-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ds-dim);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.ds-mini-key {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  padding: 0 0.35em;
+  border: 1px solid var(--ds-rule);
+  color: var(--ds-dim);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.ds-sheet {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ds-room {
+  fill: rgba(190, 200, 212, 0.06);
+  stroke: #a1a9b3;
+  stroke-width: 1.1;
+}
+.ds-room[data-kind='field'] {
+  fill: none;
+  stroke: var(--ds-dim);
+  stroke-dasharray: 3 3;
+}
+.ds-room[data-here] {
+  fill: rgba(226, 56, 45, 0.16);
+  stroke: var(--ds-red);
+}
+.ds-door {
+  stroke: var(--ds-bg);
+  stroke-width: 3.5;
+}
+.ds-door[data-kind='blast'] {
+  stroke: #6b1a14;
+}
+.ds-you {
+  fill: var(--ds-red);
+  stroke: #000;
+  stroke-width: 0.12;
+}
+.ds-room-name {
+  fill: #aab2bc;
+  font-family: var(--ds-font);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* the whole map */
+.ds .ds-map {
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ds-map-frame {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  width: min(940px, 100%);
+  height: 660px;
+  max-height: 100%;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--ds-rule);
+  border-radius: 2px;
+  background: rgba(4, 6, 8, 0.92);
+}
+.ds-map-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.ds-map-title {
+  margin: 0.3rem 0 0;
+  color: var(--ds-ink);
+  font-size: 1.15rem;
+  font-weight: 750;
+  font-stretch: 118%;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ds .ds-map-here {
+  margin-top: 0.2rem;
+  color: var(--ds-dim);
+  font-size: 0.82rem;
+}
+.ds-map-sheet {
+  min-height: 0;
+  border: 1px solid var(--ds-rule);
+  background:
+    linear-gradient(rgba(205, 212, 222, 0.045) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(205, 212, 222, 0.045) 1px, transparent 1px) 0 0 / 24px 24px,
+    #030405;
+}
+.ds-map-foot {
+  color: var(--ds-dim);
+  font-size: 0.74rem;
+}
+
+@media (max-width: 640px) {
+  .ds-mini {
+    height: 84px;
+  }
+}
+@media (max-height: 520px) {
+  .ds-mini {
+    height: 72px;
+  }
+}
+
+/* the way to the story's target: dashed in the guide's gold, to a diamond at its end */
+.ds-route {
+  fill: none;
+  stroke: #f2d36b;
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 3;
+  opacity: 0.9;
+}
+.ds-route-end {
+  fill: none;
+  stroke: #f2d36b;
+  stroke-width: 0.25;
+}

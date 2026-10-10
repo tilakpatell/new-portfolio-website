@@ -37,7 +37,9 @@
 // beam(id), setTime(tod), setBlue(ids), took(id), resize, info, dispose, lost }.
 // `state` is the component's: the car, Hank, the heat, the place you're at
 // (rules.js does the moving) and the other drivers (`travellers`, the
-// towns' travellers.js list()).
+// towns' travellers.js list()). loadModel(loader, name) resolves to one of the
+// town's models as loaded (its scene, or null); SKETCHFAB names the ones that
+// come from Sketchfab, and their files.
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -54,6 +56,14 @@ import { createStage } from '../../office/stage3d';
 import { budget, device } from '../../../lib/device';
 import { loadTexture } from '../../../lib/hdri';
 import { prefersReducedMotion } from '../../../lib/hooks';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { createVehicleFeel, feelGroups as carFeelGroups } from '../../../lib/vehicleFeel';
+import { attachVehicleBody } from '../../../lib/three/vehicleBody';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createDust } from '../../../lib/three/dust';
+import { createStreetProps } from './roadside';
+import { LOOK } from './look';
+import { createImpacts, impactGroups } from '../../../lib/impact';
 import { GRADE } from '../../../lib/stage3d';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { splitWord } from '../elements';
@@ -70,6 +80,7 @@ import { createSky, lightAt, sunAt } from './sky';
 import { createMountains, groundMaterial } from './terrain';
 import { createFleet, footprint, paintFor } from './vehicles';
 import { gltfLoader } from '../../../lib/three/gltf';
+import { dropTransmission } from '../../../lib/three/glass';
 import { bounce, createBlobShadows, floorShadow, loadFloorShadow, setFloorTime } from '../../../lib/three/grounding';
 import { createHouse, shadowFor } from '../../../lib/three/house';
 import { coreOf, loadCore, wear } from '../../../lib/three/core';
@@ -78,8 +89,20 @@ import { sharpen } from '../../../lib/three/textures';
 // Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
 // brings them to web size): the RV, Saul's car, the water tank, the train's tank cars, cacti, a
 // tumbleweed and the Pollos bucket. Everything else is the site's own, made with Meshy.
-const SKETCHFAB = { rv: 'rv', esteem: 'esteem', watertank: 'watertower', tank: 'tank', cactus: 'cactus', tumbleweed: 'tumbleweed', bucket: 'bucket' };
+export const SKETCHFAB = { rv: 'rv', esteem: 'esteem', watertank: 'watertower', tank: 'tank', cactus: 'cactus', tumbleweed: 'tumbleweed', bucket: 'bucket' };
 const MODEL = (name) => (SKETCHFAB[name] ? `/models/sketchfab/${SKETCHFAB[name]}.glb` : `/models/albuquerque/world/${name}.glb`);
+// One of the town's models by name: its scene, or null if it didn't load. A
+// Sketchfab one keeps the materials it came with, all but transmission (Saul's
+// Esteem has it on its windows), which has three draw the whole town a second
+// time, every frame the car's in view: its glass is plain see-through glass.
+export const loadModel = (loader, name) =>
+  loader.loadAsync(MODEL(name)).then(
+    (g) => {
+      if (SKETCHFAB[name]) dropTransmission(g.scene);
+      return g.scene;
+    },
+    () => null,
+  );
 // which way each model's front faces as it was made, turned to face +z
 export const FACING = { aztek: Math.PI / 2, rv: 0, suv: Math.PI / 2, house: -Math.PI / 2, pollos: -Math.PI / 2, laundry: 0, casa: 0, office: 0, carwash: 0 };
 const DAY = 480; // seconds for the sun to go all the way round
@@ -207,7 +230,7 @@ const GLYPH = { home: 'W', rv: 'Me', saul: 'Sa', pollos: 'Po', superlab: 'Bl', c
 // device's fit), how much of it goes after dark, its radius, the threshold
 // and how soft the edge over it is, the weight of each blur level (the
 // widest last, and least), and the brightest a pixel counts for.
-const BLOOM = { strength: 0.32, night: 0.4, radius: 0.3, threshold: 1.05, soft: 0.35, levels: [1, 0.65, 0.35, 0.12, 0.04], clamp: 4 };
+const BLOOM = { ...LOOK.bloom, night: 0.4, soft: 0.35, levels: [1, 0.65, 0.35, 0.12, 0.04], clamp: 4 };
 
 // ── shapes standing in for a model that didn't load ──
 function standIn(name) {
@@ -314,6 +337,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       grade.uniforms.uTime.value += ms / 1000;
       composer.render();
     };
+    stage.target = target; // (where the scene's drawn, for its shaders made ahead: office/stage3d's prepare)
     stage.onResize = (w, h, ratio) => {
       composer.setPixelRatio(ratio);
       composer.setSize(w, h);
@@ -636,7 +660,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   // tier goes without them, and its floor without their shadows)
   const lean = device().saveData && device().tier === 'low';
   const [loaded, cloudTex, floorBake] = await Promise.all([
-    Promise.all(names.map((n) => loader.loadAsync(MODEL(n)).then((g) => [n, g.scene], () => [n, null]))).then(Object.fromEntries),
+    Promise.all(names.map((n) => loadModel(loader, n).then((o) => [n, o]))).then(Object.fromEntries),
     loadTexture('cloud.webp').catch(() => null),
     lean ? null : loadFloorShadow(SHADOW_DIR, { renderer, shade: SHADE }),
   ]);
@@ -998,10 +1022,30 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   let clock = 0;
   let intro = 0; // seconds into the swoop down from over the town
   let snap = false; // straight to behind the car on the next frame
-  let roll = 0;
-  let pitch = 0;
+  // the Aztek's weight (lib/vehicleFeel): thrown out of a turn and back on
+  // the throttle as it was (its old numbers: 0.07 of roll at 19 m/s² round a
+  // corner, 0.004 of pitch a m/s², eased about as quickly), and a squash on
+  // a spring for a bump, a kerb and the ruts off the road
+  const carFeel = createVehicleFeel({ rollPer: 0.07 / 19, rollMax: 0.11, pitchPer: 0.004, pitchMax: 0.05, ease: 6, squashPerHit: 0.12 });
+  let carBody = null; // (attached once the body's there)
+  let rut = 0; // seconds to the next rut off the road
   let lastSpeed = 0;
-  let shake = 0;
+  // the shake (lib/three/feel: still under reduced motion), as big as the
+  // old one's ±0.2 m and gone as quickly
+  const feel = createFeel({ offset: 0.2, baseFov: 58 });
+  feel.set({ decay: 2.5 });
+  // a bump into a wall, a car or the fence: a thud by how hard, from where
+  // it was, and a puff there (the shake is the bump's own, below)
+  const knockDust = createDust({ count: 48, colour: 0xd9bf98, size: 1.1 });
+  const ear = new THREE.Vector3();
+  scene.add(knockDust.mesh);
+  const knockRules = createImpacts();
+  const knocks = wireImpacts({
+    rules: knockRules,
+    dust: knockDust,
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
+    toWorld: (at) => (Array.isArray(at) ? at : [at.x, surfaceHeight(at.x, at.z) + 0.6, at.z]),
+  });
   let fov = 58;
   let idle = 0; // seconds parked, before the camera wanders off round the car
   let orbit = 0;
@@ -1128,10 +1172,18 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     const slide = c.slide ?? 0;
     const going = Math.hypot(c.speed, slide);
     const cornering = THREE.MathUtils.clamp((c.speed * (c.yawRate ?? 0)) / 19, -1.2, 1.2);
-    roll += (cornering * 0.07 - THREE.MathUtils.clamp(slide * 0.008, -0.05, 0.05) - roll) * Math.min(1, dt * 6);
-    pitch += ((-accel * 0.004) - pitch) * Math.min(1, dt * 5);
-    body.rotation.set(THREE.MathUtils.clamp(pitch, -0.05, 0.05), 0, THREE.MathUtils.clamp(roll, -0.11, 0.11));
-    body.position.y = Math.abs(c.speed) > 1 && !state.onRoad ? Math.sin(clock * 22) * 0.025 : 0;
+    // (the lean's lateral acceleration, + right: a left turn's pull is to
+    // the left, and the slide's lean is folded in as the old one had it)
+    const lateral = -cornering * 19 + THREE.MathUtils.clamp(slide * 0.008, -0.05, 0.05) / (0.07 / 19);
+    // off the road, a rut every couple of metres jolts it
+    rut -= dt;
+    let jolt = state.bump > 1 ? Math.min(1, state.bump / 20) : 0;
+    if (Math.abs(c.speed) > 1 && !state.onRoad && rut <= 0) {
+      rut = 2.2 / Math.abs(c.speed) * (0.7 + Math.random() * 0.6);
+      jolt = Math.max(jolt, 0.12 + 0.12 * Math.min(1, Math.abs(c.speed) / 18));
+    }
+    carBody ??= attachVehicleBody({ body, forward: 'z' });
+    carBody.apply(carFeel.step({ forwardAccel: accel, lateralAccel: lateral, hit: jolt }, dt));
     // Hank, and his lights when he's on you
     hank.position.set(state.hank.x, groundHeight(state.hank.x, state.hank.z), state.hank.z);
     hank.rotation.y = state.hank.yaw;
@@ -1139,7 +1191,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     siren.forEach((s, i) => (s.material.opacity = flash * (Math.sin(clock * 14 + i * Math.PI) > 0 ? 1 : 0.15)));
     // dust off the sand, the dirt, and a bump; smoke off the tyres when
     // they slide on the road, and the rubber they leave on it
-    if (state.bump > 4) shake = Math.max(shake, Math.min(1, state.bump / 20));
+    if (state.bump > 4) feel.trauma(Math.min(1, state.bump / 20));
     const slip = going > 2.5 ? (state.slip ?? 0) : 0;
     const smoking = slip > 0.3;
     layMarks(c, gy, smoking && state.onRoad && gy < 0.01);
@@ -1194,7 +1246,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         f.m.position.copy(f.m.userData.rest);
         f.m.quaternion.copy(roof.q);
         flying.splice(i, 1);
-        shake = Math.max(shake, 0.12);
+        feel.trauma(0.12);
       }
     }
     // the car wash: water coming down in the bay, and suds all over the Aztek
@@ -1276,11 +1328,6 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       camera.position.z += (c.z - pz) * 0.22;
       camera.position.y += 0.9;
     }
-    if (shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * shake * 0.4;
-      camera.position.y += (Math.random() - 0.5) * shake * 0.3;
-      shake = Math.max(0, shake - dt * 2.5);
-    }
     camera.lookAt(camLook);
     // (the QA scripts' own view, if they've asked for one)
     if (peek) {
@@ -1293,6 +1340,11 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
+    // the shake, after the camera's placed (the fov is ours: the feel only keeps it)
+    knocks.update(dt);
+    roadside?.step(dt, c);
+    feel.setBaseFov(camera.fov);
+    if (!peek) feel.update(dt, camera);
     // the sun (or the moon) shines from where it is
     sun.target.position.set(c.x, gy, c.z);
     sun.position.copy(sun.target.position).addScaledVector(L.key, 160);
@@ -1315,6 +1367,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   // delivery's drop, the unlock beam, the car wash's water) built now, while
   // the page is still loading, not as a stall the first time dark falls
   // (everything built so far in the house look, before the shaders are)
+  // cones, bins and crates along Central, for the Aztek to send flying (./roadside.js)
+  const roadside = await createStreetProps({ parent: scene, dev, impacts: knocks }).catch(() => null);
   house.adopt(scene);
   {
     const later = [night.object, drop, beamMesh, water];
@@ -1326,6 +1380,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
 
   return {
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: office/stage3d)
     setPlaces,
     // a beam of light over a place that's just opened
     beam(id) {
@@ -1378,6 +1433,12 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     wash() {
       washing = 1;
     },
+    // a bump, as the rules tell it: { force, at: { x, z } }
+    hit(force, at) {
+      knocks.onHit(force, at, 'bump');
+    },
+    // the feel's numbers, for the ?debug panel
+    tune: () => [...feelGroups(feel), ...impactGroups(knockRules), ...carFeelGroups(carFeel)],
     footprints,
     townFits: town.fits,
     // (for the QA scripts: what's drawn, to count, and a camera of their own)
@@ -1411,6 +1472,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       gone = true;
       for (const off of undress) off();
       people?.dispose();
+      roadside?.dispose();
+      knocks.dispose();
       ghosts.dispose();
       for (const o of owned) o.dispose?.();
       if (cloud) cloud.dispose();

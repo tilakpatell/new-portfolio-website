@@ -1437,7 +1437,8 @@ mat3 tumble(float id) {
     group,
     debris: debrisField, // (the streams' rocks, for the ship to hit: rockHits.js)
     // (`names` false: the wonders' names fade, the way in through a planet's
-    // air being under a sky of its own)
+    // air being under a sky of its own; or a test, by wonder id, of whose
+    // name may show: the scene's, a name only where you look)
     update(t, camera, cam, { names = true } = {}) {
       const dt = lastT === null ? 1 : Math.min(0.1, Math.max(0, t - lastT));
       lastT = t;
@@ -1452,7 +1453,8 @@ mat3 tumble(float id) {
         // names: out of the home system, and well clear of the wonder
         const out = hypot(cam.x, cam.z) > DEEP.system;
         named.forEach(({ w }, i) => {
-          const want = names && out && tmp.set(...w.at).distanceTo(cam) > reachOf(w) * 1.5 ? 1 : 0;
+          const may = typeof names === 'function' ? names(w.id) : names;
+          const want = may && out && tmp.set(...w.at).distanceTo(cam) > reachOf(w) * 1.5 ? 1 : 0;
           shown[i] += (want - shown[i]) * Math.min(1, dt * 2.5);
           if (Math.abs(shown[i] - want) < 0.002) shown[i] = want;
           alphaAttr.array[i] = shown[i];

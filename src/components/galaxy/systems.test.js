@@ -42,7 +42,7 @@ describe('the systems', () => {
     for (const s of SYSTEMS) {
       if (!s.war) continue;
       expect([1, 2, 3], s.id).toContain(s.war.worth);
-      expect([1, 2, 4], s.id).toContain(s.war.weight);
+      expect([1, 2, 3, 4], s.id).toContain(s.war.weight);
       expect(typeof s.war.kind, s.id).toBe('string');
       expect(typeof s.war.area, s.id).toBe('string');
     }

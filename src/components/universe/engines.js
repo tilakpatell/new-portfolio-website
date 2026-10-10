@@ -1,9 +1,14 @@
 // Every ship's engines alight with its throttle: the hero ship's, the
 // traffic's and the hunters', as one draw. Each engine is a small glow
-// facing the camera where its exhaust is, its colour the ship's own, a hot
-// core past what the bloom picks out (so a boost flares), flickering a
-// little, and never smaller on the screen than three pixels (so a fighter
-// far off still glints as it turns away).
+// facing the camera where its exhaust is, its colour the ship's own, a
+// paler core, flickering a little, and never smaller on the screen than
+// three pixels (so a fighter far off still glints as it turns away).
+//
+// The engines sit under the ship (ENGINE_CAP): no glow brighter at its
+// hottest than 0.8, below a lit hull's 1 and the bloom's threshold, so the
+// ship is the brightest thing in its own picture and not its exhaust; and
+// the hero's plumes (trail.js, capped by capPlume) never longer than 0.6 of
+// the ship. The boost adds size and length, never brightness.
 //
 // HERO_ENGINES: { [kind]: [{ at: [x, y, z], r, colour }] }: the ships you
 //   fly, in BUILT units inside their pivot (from where their plumes leave)
@@ -16,6 +21,13 @@
 //   `size` ({ x, y, z }) whose nose is +z
 // glowSize(throttle, boost, min, r) → an engine's half-size, pure:
 //   max(min, r × (0.6 + 0.9 × throttle + 1.2 × boost))
+// ENGINE_CAP: { length, luminance }: a plume's longest, as a share of the
+//   ship's length, and an engine's brightest (linear luminance)
+// plumeLength(throttle, boost, length) → how long the hero's plume is, in
+//   the units of `length` (the ship's): a share of the cap, all of it boosting
+// capPlume(look) → a trail.js look whose length at the boost's full stretch
+//   (MAX_STRETCH) is the cap, with { cap: { length, peak } } for the trail
+// enginePeak([r, g, b]) → an engine's luminance at its centre, glow and core
 // createEngines({ parent, max }) → { add(kind, object, { size, list }) →
 //   handle, set(handle, { throttle, boost }), remove(handle), update(t,
 //   camera, viewport), count, dispose }: `object` is what the engines ride
@@ -24,6 +36,27 @@
 import * as THREE from 'three';
 import { FALCON_ENGINES, XWING_ENGINES } from './hulls';
 import { ENGINES as PLUMES } from './shipModels';
+import { LENGTH } from './scale';
+
+export const ENGINE_CAP = { length: 0.6, luminance: 0.8 };
+// how far the scene stretches a plume at the boost's full (scene.js's
+// updatePlumes: 1 + 1.3 × the streak)
+export const MAX_STRETCH = 2.3;
+
+export function plumeLength(throttle, boost, length = LENGTH) {
+  if (throttle <= 0) return 0;
+  const b = Math.max(0, Math.min(1, boost));
+  return (ENGINE_CAP.length * length * (1 + (MAX_STRETCH - 1) * b)) / MAX_STRETCH;
+}
+
+export function capPlume(look, length = LENGTH) {
+  const cap = ENGINE_CAP.length * length;
+  return { ...look, length: Math.min(look.length, cap / MAX_STRETCH), cap: { length: cap, peak: ENGINE_CAP.luminance } };
+}
+
+// the glow's core, as a share of its colour's brightest channel (FRAG below)
+const CORE = 0.6;
+export const enginePeak = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b + CORE * Math.max(r, g, b);
 
 const at = (list, r, colour, box = false) => list.map((p) => ({ at: [...p], r, colour, box }));
 
@@ -110,11 +143,11 @@ varying float vFlick;
 void main() {
   float d = dot(vUv, vUv);
   if (d > 1.0) discard;
-  // a soft glow in its colour, and a white-hot core past 1.7 (the bloom's)
-  // at full throttle (its colour carries how hard it's burning: dim at idle)
+  // a soft glow in its colour and a paler core, held under the bloom's
+  // threshold (its colour carries how hard it's burning, capped: dim at idle)
   float level = max(vColour.r, max(vColour.g, vColour.b));
   float glow = pow(1.0 - d, 2.2);
-  float core = exp(-d * 18.0) * 2.2 * level;
+  float core = exp(-d * 18.0) * ${CORE.toFixed(2)} * level;
   gl_FragColor = vec4((vColour * glow + vec3(core)) * vFlick, 1.0);
 }`;
 
@@ -184,7 +217,10 @@ export function createEngines({ parent, max = 256 } = {}) {
           m4.compose(p, one, sc.set(half, half, half));
           mesh.setMatrixAt(n, m4);
           // (how hard it burns: a third at idle, all of it at full throttle, more boosting)
-          mesh.setColorAt(n, col.set(e.colour).multiplyScalar(burn(h.throttle, h.boost)));
+          col.set(e.colour).multiplyScalar(burn(h.throttle, h.boost));
+          // (no brighter than the cap, however hard it burns)
+          col.multiplyScalar(Math.min(1, ENGINE_CAP.luminance / Math.max(1e-6, enginePeak([col.r, col.g, col.b]))));
+          mesh.setColorAt(n, col);
           n++;
         }
       }

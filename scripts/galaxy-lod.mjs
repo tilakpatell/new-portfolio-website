@@ -7,6 +7,10 @@
 //   node scripts/galaxy-lod.mjs xwing n1   just these
 //   node scripts/galaxy-lod.mjs hq/moncal  a capital's close-up cut
 //                                          (public/models/galaxy/hq/, to lod/hq/)
+//   node scripts/galaxy-lod.mjs space/endor-isd
+//                                          a space level's capital or dock (lane Q:
+//                                          public/models/galaxy/space/, to its own
+//                                          .far.glb beside it, published with it)
 //
 // For each kind it reads the GLB (meshopt-compressed, as they all are), puts
 // every primitive where its node puts it, and bakes its look into vertex
@@ -21,31 +25,47 @@
 // The kinds and their files are read from galaxy/models.js and
 // universe/glbFleet.js as written, so a ship added there is picked up here.
 
-import { readFileSync, mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { Document, Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTMeshoptCompression, KHRMeshQuantization } from '@gltf-transform/extensions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
 const FIGHTERS = new Set(['tiedefender', 'tiestriker', 'vwing', 'eta2', 'hyena', 'fang', 'xwing', 'interceptor', 'awing', 'ywing', 'bwing', 'uwing', 'vulture', 'trifighter', 'delta7', 'arc170', 'n1', 'slave1', 'tie', 'tiebomber', 'tieadvanced']);
-const TARGET = { fighter: 1500, other: 4000 };
+const TARGET = { fighter: 1500, other: 4000, space: 6000 };
 const OUT = 'public/models/galaxy/lod';
 const SAMPLE = 256; // textures are read at this size: a far ship's colour is the average of a patch, not one texel
 
-// kind → url, from the two files that list them (MODELS spreads GLB's in first)
+// kind → url, from the two files that list them: MODELS spreads GLB's in
+// first and its own entries win over them, as they do here, so a kind
+// models.js gives a file of its own (the galaxy's corvette, over the
+// universe map's) has its far-off copy made from the file the galaxy loads
 function kinds() {
   const list = new Map();
-  for (const file of ['src/components/universe/glbFleet.js', 'src/components/galaxy/models.js']) {
-    const text = readFileSync(file, 'utf8');
-    for (const m of text.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) if (!list.has(m[1])) list.set(m[1], m[2]);
+  const models = readFileSync('src/components/galaxy/models.js', 'utf8');
+  const at = models.indexOf('export const HQ = {');
+  for (const text of [readFileSync('src/components/universe/glbFleet.js', 'utf8'), at < 0 ? models : models.slice(0, at)]) {
+    for (const m of text.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) list.set(m[1], m[2]);
   }
   list.delete('deathstar'); // (a sphere far off is a sphere: the world draws its own)
   // (and the capitals' close-up cuts, galaxy/models.js's HQ: their own far-off copies)
-  const models = readFileSync('src/components/galaxy/models.js', 'utf8');
-  const at = models.indexOf('export const HQ = {');
   const hq = at < 0 ? '' : models.slice(at, models.indexOf('\n};', at));
   for (const m of hq.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) list.set(`hq/${m[1]}`, m[2]);
   return list;
+}
+
+// The 2017 drop's maps as scripts/bf2017-import.mjs unpacked them (PNG beside
+// each KTX2, by its file name), for a native file's colours
+const UNPACKED = 'lab/assets/bf2017/unpacked';
+let unpacked = null;
+function unpackedPng(name) {
+  if (!unpacked) {
+    unpacked = new Map();
+    if (existsSync(UNPACKED)) for (const f of readdirSync(UNPACKED, { recursive: true })) if (String(f).endsWith('.png')) unpacked.set(basename(String(f), '.png'), join(UNPACKED, String(f)));
+  }
+  const at = unpacked.get(basename(name ?? '', '.ktx2'));
+  return at ? readFileSync(at) : null;
 }
 
 const toLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -57,10 +77,14 @@ async function readTexture(tex) {
   if (pixels.has(tex)) return pixels.get(tex);
   let got = null;
   const mime = tex.getMimeType();
-  if (/png|jpe?g|webp/.test(mime)) {
+  // (the game's own KTX2, which sharp can't read: its pixels from the game's
+  // map as the 2017 import unpacked it, found by its name)
+  const image = /ktx2/.test(mime) ? unpackedPng(tex.getName()) : tex.getImage();
+  if (/png|jpe?g|webp/.test(mime) || image !== tex.getImage()) {
     try {
+      if (!image) throw new Error(`no unpacked copy of ${tex.getName()} under ${UNPACKED}`);
       // (to sRGB first: some come as grey, or grey and alpha, which sharp can't resize to raw as they are)
-      const { data, info } = await sharp(Buffer.from(tex.getImage())).toColourspace('srgb').removeAlpha().resize(SAMPLE, SAMPLE, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
+      const { data, info } = await sharp(Buffer.from(image)).toColourspace('srgb').removeAlpha().resize(SAMPLE, SAMPLE, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
       const f = new Float32Array(info.width * info.height * 3);
       for (let i = 0, j = 0; i < f.length; i += 3, j += info.channels) for (let k = 0; k < 3; k++) f[i + k] = toLinear(data[j + Math.min(k, info.channels - 1)] / 255);
       got = { f, w: info.width, h: info.height };
@@ -245,7 +269,7 @@ function simplify({ pos, col, idx }, tris) {
 // them back), colours as bytes, meshopt-compressed. Quantized here rather than
 // with gltf-transform's functions, which load a second sharp (and with it a
 // second libvips, which breaks the first's decoding in the same process)
-async function write(kind, { pos, col, idx }, io) {
+async function write(kind, { pos, col, idx }, io, file = `${OUT}/${kind}.glb`) {
   const doc = new Document();
   doc.createExtension(KHRMeshQuantization).setRequired(true);
   doc.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.QUANTIZE });
@@ -279,7 +303,6 @@ async function write(kind, { pos, col, idx }, io) {
     .setTranslation(mid)
     .setScale([half, half, half]);
   doc.createScene(kind).addChild(node);
-  const file = `${OUT}/${kind}.glb`;
   await io.write(file, doc);
   return { file, vertices, bytes: statSync(file).size };
 }
@@ -291,17 +314,18 @@ const all = kinds();
 const asked = process.argv.slice(2);
 const made = [];
 for (const kind of asked.length ? asked : [...all.keys()]) {
-  const url = all.get(kind);
-  if (!url) {
+  // (a space level's model, by its slug: scripts/bf2017-space.mjs)
+  const url = kind.startsWith('space/') ? `/models/galaxy/${kind}.glb` : all.get(kind);
+  if (!url || (kind.startsWith('space/') && !existsSync(`public${url}`))) {
     console.log(`${kind}: not a kind the galaxy loads`);
     process.exitCode = 1;
     continue;
   }
   const baked = await bake(await io.read(`public${url}`));
-  const target = FIGHTERS.has(kind) ? TARGET.fighter : TARGET.other; // (an hq/ cut is a capital: 'other')
+  const target = FIGHTERS.has(kind) ? TARGET.fighter : kind.startsWith('space/') ? TARGET.space : TARGET.other; // (an hq/ cut is a capital: 'other')
   made.push({ kind, from: baked.idx.length / 3, lod: simplify(weld(baked), target) });
 }
 for (const { kind, from, lod } of made) {
-  const { vertices, bytes } = await write(kind, lod, io);
+  const { vertices, bytes } = await write(kind, lod, io, kind.startsWith('space/') ? `public/models/galaxy/${kind}.far.glb` : undefined);
   console.log(`${kind.padEnd(12)} ${String(from).padStart(7)} → ${String(lod.idx.length / 3).padStart(5)} triangles (${lod.how}), ${String(vertices).padStart(5)} vertices, ${(bytes / 1024).toFixed(1).padStart(6)} KB`);
 }

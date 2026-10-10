@@ -35,6 +35,16 @@ import { useEconomy } from '../EconomyProvider';
 // page acts on followId and clears it when the trip ends; left alone, it's
 // forgotten after FOLLOW_MS (and on going offline), so a page opened much
 // later doesn't set off after someone.
+//
+// Who you are (identity.js, through nostr.js, loaded once you're online):
+// remember and setRemember(yes) are the roster's “Remember me on this
+// browser”, newIdentity() its “New identity” (a fresh key, and in again on
+// it), and guestTab says this tab flies as a guest, another being online
+// on the kept key. Your allies and blocks are kept in this browser too
+// (allies.js, made once you're online, handed to the link, which lists the
+// saved allies who aren't here as room.away); removeAlly(id) is the roster's
+// Remove on one of those, and isBlocked(id) says whether a block is kept
+// for a pilot (a world's travellers ask it too).
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
@@ -44,7 +54,7 @@ const AWAY_MS = 120000; // a tab hidden this long leaves the room till you're ba
 const FEED_MS = 6000;
 const FEED_MAX = 4;
 const FOLLOW_MS = 60000; // a pilot to fly to, once the ship's in (follow): forgotten after this
-const OFF = { status: 'off', self: null, peers: [] };
+const OFF = { status: 'off', self: null, peers: [], away: [] };
 
 export const OnlineContext = createContext(null);
 export const useOnline = () => useContext(OnlineContext);
@@ -77,6 +87,7 @@ export function useOnlineState(where) {
     };
   }, []);
   const [client, setClient] = useState(null);
+  const allies = useRef(null); // (allies.js's store: one for the page, made the first time you're online)
   const [room, setRoom] = useState(OFF);
   const [feed, setFeed] = useState([]);
   const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
@@ -105,6 +116,19 @@ export function useOnlineState(where) {
   }, [on]);
   const latest = useRef({ name, kind, loadout, build, looks, where });
   latest.current = { name, kind, loadout, build, looks, where };
+  // who you are, once you've gone online (the module that has it comes with the link)
+  const [me, setMe] = useState(null);
+  const [, setMeChanged] = useState(0); // (bumped when it changes, for a render)
+  useEffect(() => {
+    if (!on || me) return undefined;
+    let gone = false;
+    import('./nostr')
+      .then((m) => !gone && setMe(m.identity()))
+      .catch(() => {});
+    return () => {
+      gone = true;
+    };
+  }, [on, me]);
 
   // gone from the tab a while: out of the room; back: in again
   useEffect(() => {
@@ -132,10 +156,11 @@ export function useOnlineState(where) {
     const timers = new Set();
     let n = 0;
     setRoom({ ...OFF, status: 'connecting' });
-    import('./client')
-      .then(({ createClient }) => {
+    Promise.all([import('./client'), import('./allies'), import('../../../runtime/local')])
+      .then(([{ createClient }, { createAllies }, { localSaves }]) => {
         if (gone) return;
-        c = createClient(latest.current);
+        allies.current ??= createAllies({ saves: localSaves() });
+        c = createClient({ ...latest.current, allies: allies.current });
         setClient(c);
         setRoom(c.snapshot());
         off = c.on((e) => {
@@ -212,10 +237,25 @@ export function useOnlineState(where) {
       setPointers(yes);
     },
     rename: keepName,
+    remember: me ? me.remember : true, // your key kept in this browser (identity.js)
+    setRemember(yes) {
+      if (!me) return;
+      me.setRemember(yes);
+      setMeChanged((n) => n + 1);
+    },
+    // a fresh key, and in again on it (your allies won't know you)
+    newIdentity() {
+      if (!me) return;
+      me.renew();
+      setAttempt((a) => a + 1);
+    },
+    guestTab: Boolean(me?.guest), // another tab's online on the kept key: this one's a guest
     follow, // follow(id): fly to them once the ship's in; follow(null) to forget it
     following, // { id, at }: a fresh object each press, so the pages try the travel again on every press
     followId: following?.id ?? null,
     ally: (id, what) => client?.ally(id, what),
     block: (id, yes) => client?.block(id, yes),
+    removeAlly: (id) => allies.current?.dropAlly(id), // (a saved ally who isn't here: forgotten)
+    isBlocked: (id) => Boolean(allies.current?.isBlocked(id)), // (a block of yours kept in this browser: for the worlds' travellers)
   };
 }

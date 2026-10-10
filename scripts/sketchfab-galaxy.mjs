@@ -46,6 +46,12 @@ const API = 'https://api.sketchfab.com/v3/models';
 // that script's now, as deathstar2; the Munificent, 966265e37e61433b919ba640a12a33f5, whose
 // paint is tiled maps that don't survive, leaving it near black; Naboo's royal
 // starship, f72431e7a97e4bf994dd8b1f3f288d7c, whose maps are black.)
+// (And brought in, then made again with Meshy, scripts/meshy-galaxy-library.mjs,
+// so left out here, or a run would put them back over the new ones: the
+// Interdictor, 452cab004f024c01969b2111fbdd55b8, a flat white wedge with one
+// small map; the Munificent, 44d5db77bb1342e5a6e58c24a0dcb256, a blotchy
+// scan; the Invisible Hand, 8d27764a7d254fd7948557daf6d7ccdc, a muddy paint
+// job.)
 export const MODELS = {
   // the Rebellion's
   moncal: { uid: '9b5e5e5192f64a7faad93a3bfd2efaf2', tris: 40000, tex: 1024, as: 'the Mon Calamari cruisers' },
@@ -68,8 +74,6 @@ export const MODELS = {
   coreship: { uid: '0d829115bb4d472da5d05cdf529b6694', tris: 20000, tex: 1024, as: 'the Separatist core ships' },
   vulture: { uid: '5542f951834e4032b229ebdee12d3310', tris: 10000, tex: 512, as: 'the vulture droids' },
   trifighter: { uid: '9c06ba9b24144221aa80f56192f485b6', tris: 10000, tex: 512, as: 'the droid tri-fighters' },
-  munificent: { uid: '44d5db77bb1342e5a6e58c24a0dcb256', tris: 25000, tex: 1024, as: 'the Munificent frigates' },
-  providence: { uid: '8d27764a7d254fd7948557daf6d7ccdc', tris: 10000, tex: 1024, as: 'the Invisible Hand' },
   // the Republic's
   acclamator: { uid: 'e6a2171be5c34bb68a05aba657fd8fa8', tris: 30000, tex: 1024, as: 'the Acclamators' },
   delta7: { uid: 'b4a8ad8a1e8b4e5b961cf4726d8a8646', tris: 12000, tex: 512, as: 'the Jedi starfighters' },
@@ -87,8 +91,7 @@ export const MODELS = {
   // the ones still built in code (fleetRebels.js, fleetExtras.js and the
   // universe's fleetStarwars.js) that somebody had already made: the
   // Outrider's YT-2400, the Xg-1 gunboat and the GR-75 by Daniel Andersson
-  // again, Bespin's cloud cars and city, IG-88's ship and the Interdictor
-  // (Cloud City,
+  // again, Bespin's cloud cars and city and IG-88's ship (Cloud City,
   // 8e708a2749484750ae9aeab27f579d37, was tried and left: an untextured
   // low-poly saucer on a stalk, plainer than the built one)
   freighter: { uid: 'ccd2749df33641fba7a5326500abdbfb', tris: 20000, tex: 1024, as: 'the YT-2400 freighters' },
@@ -96,7 +99,6 @@ export const MODELS = {
   transport: { uid: '071b158d02c044ee9b431aeb28b85b6a', tris: 20000, tex: 1024, as: 'the GR-75 transports' },
   cloudcar: { uid: '9bc20239f9c34ed1baacb9a49ba9377d', tris: 10000, tex: 512, as: 'Bespin’s cloud cars' },
   ig2000: { uid: '527958c20fdb4d4d9f3e858db62e6139', tris: 14000, tex: 1024, as: 'IG-88’s IG-2000' },
-  interdictor: { uid: '452cab004f024c01969b2111fbdd55b8', tris: 40000, tex: 1024, as: 'the Interdictor cruisers' },
 };
 
 const token = process.env.SKETCHFAB_API_TOKEN;

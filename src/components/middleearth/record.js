@@ -3,7 +3,7 @@
 // own, never one of the seals), and its kitchen's best (coins, and the
 // stars they come to, alone). Pure, so the map hub can show it and the
 // tests can check it.
-import { CHAPTERS } from './chapters';
+import { CHAPTERS, stopOf } from './chapters';
 import { HIDDEN } from './hidden';
 import { levelOf } from './rush/levels';
 
@@ -37,6 +37,23 @@ export function offRoad(unlocked = []) {
     const found = have.has(s.found);
     return { id: h.id, name: found ? h.name : null, found, done: found && have.has(s.end) };
   });
+}
+
+// How far the road is inked on the map: the stop (its index in ./road.js)
+// of the furthest chapter with any seal won, so a visitor who jumped ahead
+// sees the ink reach where they have been. Hobbiton (0) with none.
+export function roadInked(unlocked = []) {
+  const have = new Set(unlocked);
+  return CHAPTERS.filter((c) => c.seals.some((s) => have.has(s))).reduce((far, c) => Math.max(far, stopOf(c.id)), 0);
+}
+
+// The places off the road that may hint where they are: only once every
+// chapter has a seal (the road walked end to end), and only those not yet
+// found. Before that, none, so the map keeps its secrets for the curious.
+export function hiddenHints(unlocked = []) {
+  const have = new Set(unlocked);
+  if (!CHAPTERS.every((c) => c.seals.some((s) => have.has(s)))) return [];
+  return HIDDEN.filter((h) => !have.has(HIDDEN_SEALS[h.id]?.found)).map((h) => h.id);
 }
 
 // how many stars `coins` come to in a kitchen played alone (its own marks)

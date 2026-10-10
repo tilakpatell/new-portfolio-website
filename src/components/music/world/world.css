@@ -11,7 +11,7 @@
 .mw-hud { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: clamp(0.75rem, 2vw, 1.4rem); pointer-events: none; }
 .mw-hud > * { pointer-events: auto; }
 .mw-hud-top { top: 0; }
-.mw-hud-bottom { bottom: 0; justify-content: center; padding-bottom: clamp(1rem, 4vh, 2.2rem); }
+.mw-hud-bottom { bottom: 0; justify-content: center; padding-bottom: max(clamp(1rem, 4vh, 2.2rem), env(safe-area-inset-bottom, 0px)); } /* clear of a phone's home bar */
 .mw-eyebrow { margin: 0; color: #ffd9a4; font: 600 0.78rem/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6); }
 .mw-title { margin: 0.45rem 0 0; color: #fff4e2; font: 400 clamp(1.7rem, 1.1rem + 2.4vw, 3rem)/1.05 'Yatra One', Georgia, serif; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.55); }
 .mw-help { max-width: 34rem; margin: 0.7rem 0 0; padding: 0.5rem 0.75rem; border-radius: 8px; background: rgba(20, 14, 30, 0.55); color: #fbead2; font-size: 0.88rem; line-height: 1.4; backdrop-filter: blur(6px); }
@@ -27,8 +27,10 @@ span.mw-chip:hover { background: rgba(20, 14, 30, 0.5); }
 .mw-prompt:focus-visible, .mw-chip:focus-visible { outline: 2px solid #ffd27a; outline-offset: 3px; }
 @keyframes mw-in { from { opacity: 0; transform: translateY(8px); } }
 
-.mw-stick { position: absolute; left: 1.2rem; bottom: 1.4rem; width: 112px; height: 112px; border-radius: 999px; background: rgba(20, 14, 30, 0.35); border: 1px solid rgba(255, 228, 190, 0.35); touch-action: none; }
-.mw-stick > span { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 999px; background: rgba(255, 228, 190, 0.75); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+/* the thumb stick: clear of a phone's home bar too */
+.mw-stick { position: absolute; left: 1.2rem; bottom: max(1.4rem, env(safe-area-inset-bottom, 0px)); width: 112px; height: 112px; border-radius: 999px; background: rgba(20, 14, 30, 0.35); border: 1px solid rgba(255, 228, 190, 0.35); touch-action: none; }
+/* (the kit moves the knob 26 px by --sx/--sy at full tilt; this one went 34, to the ring's edge, as before the kit) */
+.mw-stick > span { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 999px; background: rgba(255, 228, 190, 0.75); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); transform: translate(calc(var(--sx, 0px) * 34 / 26), calc(var(--sy, 0px) * 34 / 26)); }
 
 /* an instrument, open: beside the courtyard on a wide screen, over its lower part on a phone */
 .mw-panel { position: absolute; top: 0.75rem; right: 0.75rem; bottom: 0.75rem; width: min(46rem, calc(100% - 1.5rem)); display: flex; flex-direction: column; border-radius: 16px; background: color-mix(in srgb, var(--bg, #fdf8f0) 94%, transparent); color: var(--text); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45); backdrop-filter: blur(10px); animation: mw-panel-in 0.3s var(--ease-smooth) both; }

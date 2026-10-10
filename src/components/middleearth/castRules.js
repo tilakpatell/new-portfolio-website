@@ -23,7 +23,7 @@
 //   `teleport` a second (a figure put somewhere new) is standing still.
 // createGreeter({ near, far }) → (distance) → true the moment someone comes
 //   within `near`, armed again once they're further than `far` (the map's
-//   greeting, for every town).
+//   greeting, for every town; lib/ai/talk.js's, re-exported).
 // manner(name) → { greet: { clip, loop }, talk: [clips…], fidgets: [clips…] }:
 //   how each kind of person greets, gestures as they talk and fidgets.
 // pick(list, seed) → one of a list, the figure's own.
@@ -147,18 +147,8 @@ export function motionFrom(prev, next, dt, { teleport = Infinity } = {}) {
   return out;
 }
 
-export function createGreeter({ near = 2.8, far = 4.5 } = {}) {
-  let armed = true;
-  return (d) => {
-    if (!Number.isFinite(d)) return false;
-    if (d > far) armed = true;
-    if (armed && d < near) {
-      armed = false;
-      return true;
-    }
-    return false;
-  };
-}
+// (the greeter is lib/ai/talk.js's now, re-exported as it was this file's)
+export { createGreeter } from '../../lib/ai/talk';
 
 const HOBBITS = new Set(['frodo', 'sam', 'merry', 'pippin', 'bilbo', 'rosie', 'hobbit']);
 const WIZARDS = new Set(['gandalf', 'gandalfwhite', 'saruman']);

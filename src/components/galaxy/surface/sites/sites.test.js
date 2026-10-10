@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from '../../systems';
 import { GALAXY_KINDS } from '../../fleet';
@@ -7,13 +8,23 @@ import { FIGURES } from '../figures';
 import { PROPS, SCATTER } from '../props';
 import { RIDES } from '../rides';
 import { LAYER_TYPES, REACH, heightGrid, makeHeight } from '../terrain';
-import { LANDABLE, SITES, siteOf } from '.';
+import { LANDABLE, SITES, siteFrom, siteOf } from '.';
+import { EXTRA } from './quests';
 import { CREW } from '../crew';
 import { talkTree } from '../talk';
 import { CLIPS } from '../../../../lib/three/clipLibrary';
+import { floraNames } from '../flora';
+import { RECIPES, recipeNames } from '../gameFlora';
+import { isGame } from '../catalog/bf2017-library';
+import LIBRARY from '../../../../data/bf2017/library.json';
+import USED from '../../../../data/bf2017/library-used.json';
 
 const SHIPS = new Set([...GALAXY_KINDS, ...BUILT_KINDS]);
 const placeable = (kind) => Boolean(PROPS[kind] || SURFACE_MODELS[kind]);
+// (the nature kit's models: a scatter row that names one is drawn from the
+// kit, so a typo in its name fails here and not in a browser)
+const KIT = JSON.parse(readFileSync(new URL('../../../../../public/kit/naturemega/index.json', import.meta.url), 'utf8')).models;
+const kitName = (model) => (typeof model === 'string' && model.startsWith('kit:naturemega/') ? model.slice('kit:naturemega/'.length) : null);
 const WEATHER = ['sand', 'snow', 'rain', 'ash', 'embers', 'motes', 'spray'];
 
 describe('the worlds you can land on', () => {
@@ -54,14 +65,24 @@ describe('the worlds you can land on', () => {
       });
 
       it('has everything it places built or brought in', () => {
-        for (const t of site.things_all) expect(placeable(t.kind), `${t.kind}`).toBe(true);
-        for (const s of site.scatter) expect(Boolean(SCATTER[s.kind] || placeable(s.kind)), `scatter ${s.kind}`).toBe(true);
+        // (one of the drop's library objects, `game:<name>`: imported and published)
+        for (const t of site.things_all) expect(isGame(t.model) ? Boolean(SURFACE_MODELS[t.model]) : placeable(t.kind), `${t.kind} ${t.model ?? ''}`).toBe(true);
+        for (const s of site.scatter) {
+          const kit = kitName(s.model);
+          if (isGame(s.model)) expect(Boolean(SURFACE_MODELS[s.model]), `scatter ${s.model}`).toBe(true);
+          else if (kit) expect(Boolean(KIT[kit]), `scatter ${s.model}`).toBe(true);
+          else expect(Boolean(SCATTER[s.kind] || placeable(s.kind)), `scatter ${s.kind}`).toBe(true);
+        }
         // (a person may be a crew figure, which actors.js tries first)
         for (const a of site.life) expect(Boolean(CREW[a.kind] || FIGURES.includes(a.kind) || placeable(a.kind)), `life ${a.kind}`).toBe(true);
         for (const r of site.rides) expect(RIDES[r.kind], `ride ${r.kind}`).toBeTruthy();
         for (const r of site.rides) if (!RIDES[r.kind].figure) expect(placeable(r.kind), `ride ${r.kind}`).toBe(true);
         for (const f of site.flyovers) expect(SHIPS.has(f.kind), `flyover ${f.kind}`).toBe(true);
         for (const f of site.skyships) expect(SHIPS.has(f.kind), `skyship ${f.kind}`).toBe(true);
+      });
+
+      it('names only kit models the manifest has', () => {
+        for (const name of floraNames(site.scatter)) expect(KIT[name], name).toBeTruthy();
       });
 
       it('sends its people to wants that exist, of kinds someone needs, within reach', () => {
@@ -177,5 +198,64 @@ describe('Bespin, inside', () => {
     const race = q.steps.at(-1);
     expect(race.type).toBe('race');
     expect(Math.hypot(race.gates.at(-1)[0], race.gates.at(-1)[1] + 255)).toBeLessThan(28);
+  });
+});
+
+// siteOf's "made whole" step stands on its own, so another book of sites
+// (the Rick and Morty planets) is made whole exactly as the galaxy's are
+describe('siteFrom', () => {
+  const named = (id) => {
+    const sys = SYSTEMS.find((s) => s.id === id);
+    return { name: sys.name, accent: sys.accent };
+  };
+
+  it('makes a raw site whole exactly as siteOf does', () => {
+    expect(EXTRA.bespin).toBeUndefined();
+    expect(siteFrom(SITES.bespin, 'bespin', named('bespin'))).toEqual(siteOf('bespin'));
+  });
+
+  it('gives siteOf’s result once the extra quests are folded in', () => {
+    const more = EXTRA.endor;
+    const raw = { ...SITES.endor, life: [...(SITES.endor.life ?? []), ...more.life], quests: [...(SITES.endor.quests ?? []), ...more.quests] };
+    expect(siteFrom(raw, 'endor', named('endor'))).toEqual(siteOf('endor'));
+  });
+
+  it('names a site by its id, in white, when nothing names it', () => {
+    const site = siteFrom(SITES.bespin, 'elsewhere');
+    expect(site.id).toBe('elsewhere');
+    expect(site.name).toBe('elsewhere');
+    expect(site.accent).toBe('#ffffff');
+  });
+});
+
+// The seven worlds with no game map, dressed from the drop's library (the
+// fifth design, lane O: gameFlora.js's recipes and the sites' `game:` things)
+describe('the worlds without a map, dressed from the drop', () => {
+  const INDEX = new Set(LIBRARY.map((r) => r.name));
+  const MAPLESS = ['dagobah', 'mustafar', 'nevarro', 'mandalore', 'sorgan', 'lothal', 'coruscant'];
+
+  it('gives each of the seven a recipe or the game’s things', () => {
+    for (const id of MAPLESS) {
+      const site = siteOf(id);
+      const game = [...site.scatter, ...site.things_all].filter((t) => isGame(t.model));
+      expect(game.length, id).toBeGreaterThan(0);
+    }
+  });
+
+  it('scatters none of the drop’s rigged objects until lane A’s clips are there (Review Focus 5)', () => {
+    for (const id of LANDABLE)
+      for (const r of siteOf(id).scatter.filter((q) => isGame(q.model))) {
+        const name = r.model.slice('game:'.length);
+        expect(USED[name]?.rig ?? false, `${id}: ${name}`).toBe(false);
+        expect(LIBRARY.find((q) => q.name === name)?.rig, `${id}: ${name}`).toBe(false);
+      }
+  });
+
+  it('names in each recipe only objects the library has and the bucket holds (Review Focus 3)', () => {
+    for (const recipe of Object.keys(RECIPES))
+      for (const name of recipeNames(recipe)) {
+        expect(INDEX.has(name.slice('game:'.length)), `${recipe}: ${name}`).toBe(true);
+        expect(Boolean(SURFACE_MODELS[name]), `${recipe}: ${name} is not published`).toBe(true);
+      }
   });
 });

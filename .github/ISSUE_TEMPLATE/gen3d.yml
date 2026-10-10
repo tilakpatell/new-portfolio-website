@@ -37,4 +37,4 @@ body:
     id: more
     attributes:
       label: More options
-      description: "One a line: tex: 2048 · seed: 7 · engine: trelliscpp | trellis2 | hunyuan · faithful: no · bake: no · fresh: yes"
+      description: "One a line: tex: 2048 · seed: 7 · engine: trelliscpp | trellis2 | hunyuan · faithful: no · bake: no · fresh: yes · ultra: yes"

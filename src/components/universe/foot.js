@@ -17,9 +17,16 @@
 // The planets are huge against a person (a few hundred of them tall at the
 // smallest), so a squad of the Galactic Federation (who are after every crew
 // that lands anywhere) comes over the horizon now and then: they walk at
-// you, stop at a distance, and shoot, not very well. Your bolts and theirs
-// fly straight (the ground hardly curves over a shot's length) and hit
-// whoever they pass close enough to.
+// you, stop at a distance, and shoot, not very well (wide the first time,
+// leading you as you run, never through a rock). Your bolts and theirs fly
+// straight (the ground hardly curves over a shot's length) on the one bolt
+// step every blaster on the site flies by (lib/combat/bolt.js): the people
+// as capsules (footBodies), the planet and what stands on it as its solids
+// (footSolids).
+
+import { FIRST, lead, scatter } from '../../lib/combat/accuracy';
+import { segCapsule } from '../../lib/combat/bolt';
+import { createPress } from '../../lib/press';
 
 export const METRE = 0.027; // map units (the ship's 0.26 long is about an RV's ten metres)
 
@@ -61,6 +68,10 @@ export const TROOPS = {
   // Evil Morty's guard: Mortys, quick and wild
   mortyguard: { name: 'Morty guard', tall: 1.6 * METRE, hp: 1, speed: 3.0 * METRE, fire: [0.7, 1.3], range: [7, 11], spread: 0.14, damage: 8 },
 };
+
+// a bolt on foot, for the one step: how fast, how far
+export const BOLT = { speed: FOOT.bolt, range: FOOT.bolt * FOOT.boltLife };
+export const STANDS = 2.2 * METRE; // the least a solid stands (a rock you can't see over); `top` if it says
 
 // how big each ship is parked, against the people who fly it (in flight
 // they're all drawn the same size): a scale on the flying model
@@ -251,7 +262,13 @@ export function walk(w, input, dt, R, obstacles = []) {
   // up and down: a jump, and back to the ground
   let h = w.h ?? 0;
   let vh = w.vh ?? 0;
-  if (input.jump && h <= 1e-6) vh = FOOT.jump;
+  // (a press, createJump's: one a key-down, held a buffer's while in the air
+  // and spent on landing, with the coyote time lib/press.js gives; or, for
+  // the walkers the scene moves itself, a plain yes)
+  const grounded = h <= 1e-6;
+  const jump = input.jump;
+  if (typeof jump?.take === 'function') jump.ground(grounded, dt);
+  if (grounded && (typeof jump?.take === 'function' ? jump.take() : jump)) vh = FOOT.jump;
   vh -= FOOT.gravity * dt;
   h += vh * dt;
   if (h <= 0) {
@@ -259,6 +276,26 @@ export function walk(w, input, dt, R, obstacles = []) {
     vh = 0;
   }
   return { ...w, n, f, h, vh, speed, side };
+}
+
+// Your jump key as a press (lib/press.js): `hold(down)` every frame with
+// whether the key's down, and walk() given `press` as its jump. A key held
+// down jumps once, not again on every landing; a press a hair before
+// landing jumps as the feet touch.
+export function createJump(opts) {
+  const press = createPress(opts);
+  let held = false;
+  return {
+    press,
+    hold(down) {
+      if (down && !held) press.press();
+      held = Boolean(down);
+    },
+    reset() {
+      held = false;
+      press.reset();
+    },
+  };
 }
 
 // Turning someone to face somewhere: the turn input (−1…1) that brings them round
@@ -305,6 +342,7 @@ function troopsFrom(rand, w, R, count, dist, kinds) {
 // 'troop', kind, damage, by (the trooper), range (to what it's aimed at) }),
 // hits are blows landed ({ target, damage }).
 export function march(troops, targets, dt, R, rand, obstacles = []) {
+  const solids = footSolids(obstacles, R);
   const shots = [];
   const hits = [];
   const calls = [];
@@ -342,11 +380,21 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
     let cool = t.cool - dt;
     if (cool <= 0 && aimed) {
       if (spec.fire && bd <= hold * 1.4) {
-        cool = spec.fire[0] + rand() * (spec.fire[1] - spec.fire[0]);
         const from = add(at(next, R), next.n, spec.tall * 0.62);
-        const to = add(at(best, R), best.n, METRE * 1.1);
-        const dir = unit(add(add(to, from, -1), [rand() - 0.5, rand() - 0.5, rand() - 0.5], spec.spread * apart(t, best, R)));
-        shots.push({ from, dir, owner: 'troop', kind: t.kind, damage: spec.damage, by: t.id, range: len(add(to, from, -1)) });
+        const chest = add(at(best, R), best.n, METRE * 1.1);
+        // (a mover led: where they'll be when the bolt gets there)
+        const to = best.f ? lead(chest, velOf(best), from, FOOT.bolt) : chest;
+        const way = len(add(to, from, -1));
+        const wall = solids(from, to);
+        if (wall && len(add(wall.at, from, -1)) < way * 0.9) cool = 0.3; // (no line: it looks again in a moment)
+        else {
+          cool = spec.fire[0] + rand() * (spec.fire[1] - spec.fire[0]);
+          // (the first at you goes wide on purpose: you hear it, and have a moment)
+          const spread = spec.spread * 0.6 * (t.fired ? 1 : FIRST);
+          const dir = scatter(add(to, from, -1), spread, rand);
+          shots.push({ from, dir, owner: 'troop', kind: t.kind, damage: spec.damage, by: t.id, range: way, spread, lead: len(add(to, chest, -1)) });
+          return { ...next, cool, swing: t.swing, aim, fired: true };
+        }
       } else if (!spec.fire && bd <= spec.range[1] * METRE + FOOT.radius) {
         cool = 1.1;
         hits.push({ target: best.id, damage: spec.damage, from: t.id });
@@ -359,33 +407,68 @@ export function march(troops, targets, dt, R, rand, obstacles = []) {
 
 // ── Bolts ──
 
-// a bolt fired from `from` along `dir` (unit): { p, v, life, owner, damage }
-export const bolt = (from, dir, owner, damage = 1, speed = FOOT.bolt) => ({ p: [...from], v: scale(dir, speed), life: FOOT.boltLife, owner, damage });
+// how someone's moving, in the planet's space, map units a second
+export const velOf = (w) => add(scale(w.f, w.speed || 0), cross(w.f, w.n), w.side || 0);
 
-// how close the segment a→b passes point p
-export function pass(a, b, p) {
-  const ab = add(b, a, -1);
-  const l2 = dot(ab, ab);
-  const t = l2 > 0 ? clamp(dot(add(p, a, -1), ab) / l2, 0, 1) : 0;
-  return len(add(add(a, ab, t), p, -1));
+// The people as the bolt step sees them: you and your mate (side 'you'),
+// the troops alive (side 'troop', by their ids), each a capsule from the
+// shins to the crown along where they stand.
+export function footBodies({ me = null, mate = null, troops = [], R }) {
+  const out = [];
+  const stand = (id, w, tall, r, side) => {
+    const g = at(w, R);
+    out.push({ id, a: add(g, w.n, r), b: add(g, w.n, Math.max(r, tall - r)), r, side });
+  };
+  if (me) stand('me', me, 1.8 * METRE, FOOT.hit * 0.75, 'you');
+  if (mate) stand('mate', mate, 1.8 * METRE, FOOT.hit * 0.75, 'you');
+  for (const t of troops) if (t.alive) stand(t.id, t, TROOPS[t.kind].tall, TROOPS[t.kind].tall * 0.24, 'troop');
+  return out;
 }
 
-// One step for a bolt: where it goes, and who it hits on the way (the
-// first of `people`: [{ id, p (their middle), r }]), or the ground (R:
-// it's gone into it). Returns { bolt, hit: id | 'ground' | null }.
-export function fly(b, dt, R, people) {
-  const p = add(b.p, b.v, dt);
-  let hit = null;
-  let hd = Infinity;
-  for (const o of people) {
-    const d = pass(b.p, p, o.p);
-    if (d < (o.r ?? FOOT.hit) && d < hd) {
-      hd = d;
-      hit = o.id;
+// What stops a bolt on a planet of radius R: the ground (the sphere) and
+// each obstacle ({ n, r }, as walk() goes round), standing `top` (or as
+// tall as it's wide, and never less than STANDS) from the ground; a trench
+// is a hole, not a wall. One marked `pass` is walked round but not shot
+// at (a fixed thing a landing's physics holds: its own body there, the
+// pole you see, stops a bolt, landings/physics.js). → (a, b) → { at,
+// normal } | null.
+export function footSolids(obstacles, R) {
+  return (a, b) => {
+    const d = add(b, a, -1);
+    const l = len(d);
+    let best = 1;
+    let hit = null;
+    // the ground: where |a + t·d| comes down to R
+    const A = dot(d, d);
+    const B = 2 * dot(a, d);
+    const C = dot(a, a) - R * R;
+    if (C <= 0) return { at: [...a], normal: unit(a) };
+    const disc = B * B - 4 * A * C;
+    if (A > 0 && disc >= 0) {
+      const t = (-B - Math.sqrt(disc)) / (2 * A);
+      if (t >= 0 && t <= 1) {
+        best = t;
+        hit = { at: add(a, d, t), normal: null };
+        hit.normal = unit(hit.at);
+      }
     }
-  }
-  if (!hit && len(p) < R) hit = 'ground';
-  return { bolt: { ...b, p, life: b.life - dt }, hit };
+    const mid = add(a, d, 0.5);
+    for (const o of obstacles) {
+      if (!o.n || o.pass) continue;
+      const top = o.top ?? Math.max(o.r * 2, STANDS);
+      const foot = scale(o.n, R);
+      // (too far off this segment to matter)
+      if (len(add(foot, mid, -1)) > l / 2 + o.r + top) continue;
+      const k = segCapsule(a, b, scale(o.n, R - o.r), scale(o.n, R + Math.max(0, top - o.r)), o.r);
+      if (k && k.t < best) {
+        best = k.t;
+        const up = clamp(dot(add(k.at, foot, -1), o.n), 0, top);
+        const out = add(k.at, add(foot, o.n, up), -1);
+        hit = { at: k.t === 0 ? [...a] : k.at, normal: len(out) > 1e-9 ? unit(out) : scale(unit(d), -1) };
+      }
+    }
+    return hit;
+  };
 }
 
 // The nearest of `troops` round w's facing (within `cone` radians either

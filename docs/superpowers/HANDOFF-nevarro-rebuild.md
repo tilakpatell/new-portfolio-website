@@ -82,12 +82,43 @@ Budget: about 300–340 credits, including two retries.
 ## Credits
 The third Meshy account (`MESHY_API_KEY_ACC_3`) had 2,786 credits after #558. Pass it inline: `MESHY_API_KEY=$MESHY_API_KEY_ACC_3 node scripts/...`.
 
-## Status
+## Status (branch `claude/nevarro-build`)
 - [x] Research, three designs and the judging (above, and in `docs/superpowers/nevarro/`).
-- [ ] The synthesis (one implementable plan): was still running when this was written.
-- [ ] Making the Meshy buildings.
-- [ ] Rewriting `nevarro` in `sites/outer.js`, plus `terrain-fast` if needed.
-- [ ] Checks: `scripts/surface-shot.mjs nevarro …` for each district and the volcano from the landing, `scripts/galaxy-check.mjs surface nevarro` for the budget, the quests still reachable, `npx eslint .`, `npx vitest run`, `npm run test:ai`, `npx vite build`.
+- [ ] The synthesis agent hit a session limit; the plan above (what the judges converged on) was built from directly.
+- [x] **Nine Meshy buildings** (297 credits, `scripts/meshy-galaxy-buildings-nevarro.mjs`, task ids in `-tasks.json`):
+  - lifted from stills: `nevarrohouse`, `nevarrodomehouse`, `nevarrogate`, `nevarrotower`, `nevarrobase`;
+  - from words: `nevarrocantina`, `nevarrorow`, `charonportal`, `keelboat`.
+  All rendered and judged before use; catalogued in `catalog/outer.js` and credited (`meshy/<kind>` in `public/games/credits.json`, `public/cc0/README.md`).
+  (A lesson: never run two `meshy-galaxy-buildings.mjs` steps at once on the same tasks file. Each saves its own copy and the second overwrote the first's model ids; they were recovered from Meshy's task list, `GET /openapi/v1/image-to-3d`.)
+- [x] **The world** is in `src/components/galaxy/surface/sites/nevarro.js` (outer.js imports it; their shared helpers are in `sites/outerKit.js`). It's built from `draft-landmarks.mjs`, with the judges' fixes:
+  - a walkable stepped passage down to the covert;
+  - lava beds 0.6 m under the lava, with `fall` 0.3 m under it;
+  - the volcano at [660,-380], fog 0.0007;
+  - built TIEs; Gideon's wreck on the lava flats;
+  - the Theed deck dropped from the square;
+  - no rim domes over the river's tunnel.
+- [x] **Probe** (`lab/nevarro/build/probe.mjs`, git-ignored):
+  - the grid builds in 475–510 ms (Tatooine 360–410);
+  - the disc spans -3.7 to 229 m;
+  - every quest spot is on level ground, and the cantina is at [140,-90] yaw 0.3, so its zone door holds;
+  - the routes from the landing to the town, the Crest, the base and the hill (by the North Lane) are walkable;
+  - no footprints overlap.
+- [x] **Browser:** checked the gate from the landing, the square, the cantina's door, the town from the rim, the covert, the river (the keelboat on the lava below the tunnel mouth), the wreck, the base from its plateau, and the hill.
+- [x] **Budget** (`galaxy-check surface nevarro`, high): 218 calls, 1.20M triangles, 20.8 MB of models, 4.8 s load, no errors.
+- [x] **Tests and build:** eslint, vitest (5,641), `test:ai` (187), `vite build`. PR #580.
+- [x] **An adversarial review** (four lenses, each finding put to two skeptics) found these, all fixed:
+  - the first tunnel mouth and the keelboat were turned 40° off the river (the boat was buried in the bank): both now follow the river's own first leg;
+  - the base patrol walked inside the base model: it now walks at s 20;
+  - roof vaporators floated over the dome houses: each kind has its own roof height;
+  - rim domes overhung their slope: sunk 2 m;
+  - villagers spawned in and walked through houses (actors only avoid round solids): they're kept to the square and the ring lane, and the happabore to the lane;
+  - on the coarse 8 m grid (phones) the river was mostly dry and `fall` rarely caught you: the beds are now 5 m under the lava;
+  - a hover bike could be left stranded over lava (rides skip `fall`): the speeder bike is gone;
+  - performance: `terrain.js` rejects far flats, pits and islands before the square root and the noise (every world's heights identical, checked across all 17; Nevarro's ground 94 → 35 ms on the sample); light copies for the four repeated house kinds; the base's maps 2048 → 1024 (2.4 → 1.1 MB); one fire light, not two; the wreck's smoke as one instanced column.
+- [ ] **Follow-ups found but not done here** (engine-wide):
+  - the cantina's shader warm-up runs with the outdoor fires and the lava glow still lit, so the first trip through Greef's door compiles shaders (fix in `scene.js`: warm the zone with `lighting(zone)`);
+  - the lamps (23, 2 draws each) could be instanced through a fixed-items scatter path in `scene.js`;
+  - the actors' avoider only tests round solids (`actors.js:534`), so NPCs walk through box-solid buildings on every world.
 
 ## Checking it
 - **Dev server:** `npx vite --port 5188 --strictPort --host 127.0.0.1`.

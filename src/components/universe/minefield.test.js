@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MINE, bandAcross, chainFrom, layMines, mineBlast, mineHit, minefieldLane } from './minefield';
-import { SHIP, SOLIDS, spawn } from './ship';
-import { LANES, R, carriageway, laneAt } from './hyperlanes';
+import { MINE, chainFrom, layMines, mineBlast, mineHit, minefieldLane } from './minefield';
+import { SHIP, spawn } from './ship';
 import { DEEP } from './deep';
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -89,27 +88,3 @@ describe('a mine going off', () => {
   });
 });
 
-describe('bandAcross: a lane jam', () => {
-  it('lays a band across a carriageway at s, every mine inside the tube, none inside anything solid', () => {
-    for (const lane of LANES.filter((_, i) => i % 4 === 0)) {
-      for (const way of ['out', 'in']) {
-        const pts = carriageway(lane, way);
-        const mines = bandAcross(pts, 0.45, R, { seed: lane.length | 0, solids: SOLIDS });
-        expect(mines.length, lane.id).toBeGreaterThan(MINE.n / 2);
-        for (const m of mines) {
-          const at = laneAt(...m.at);
-          expect(at, `${lane.id} ${way}`).not.toBeNull();
-          expect(at.off, lane.id).toBeLessThanOrEqual(R * 1.3);
-          expect(Math.abs(at.s - 0.45), lane.id).toBeLessThan(0.05);
-          for (const o of SOLIDS) expect(dist(m.at, o.at) - o.r, o.id).toBeGreaterThan(m.r);
-        }
-        for (let i = 0; i < mines.length; i++) for (let j = i + 1; j < mines.length; j++) expect(dist(mines[i].at, mines[j].at)).toBeGreaterThan(MINE.apart);
-      }
-    }
-  });
-
-  it('is the same band for the same seed', () => {
-    const pts = carriageway(LANES[3], 'out');
-    expect(bandAcross(pts, 0.3, R, { seed: 4 })).toEqual(bandAcross(pts, 0.3, R, { seed: 4 }));
-  });
-});

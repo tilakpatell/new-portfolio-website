@@ -44,7 +44,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 - Test: `src/components/worlds/packs.test.js`
 
 **Interfaces:**
-- Produces: `export const PACK = { id: '/earth', urls: ['/models/earth/...glb'], globs: ['/textures/earth/*'] }` per world; `packs.js`: `export const PACKS = { [to]: PACK }`, `export const packFor = (pathname) => PACK | null` (longest prefix, as `worldAt`).
+- Produces: `export const PACK = { id: '/earth', pages: ['src/pages/Earth.jsx'], src: ['src/components/earth', 'src/pages/Earth.jsx'], urls: ['/models/earth/...glb'], globs: ['/textures/earth/*'] }` per world (`pages`: the page modules whose chunks the build adds; `src`: what the pack check scans; `computed`, optional: folders the source only builds paths in, `${DIR}/${name}.glb`, whose used files the pack lists rather than the whole folder; the file imports nothing, so Node reads it); `packs.js`: `export const PACKS = { [to]: PACK }`, `export const packFor = (pathname) => PACK | null` (longest prefix, as `worldAt`).
 
 - [ ] **Step 1: Failing test** `packs.test.js`: `every WORLD_MB route has a pack with the same id`; `packFor('/dot-matrix/minecraft').id === '/dot-matrix/minecraft'`; `packFor('/about') === null`.
 - [ ] **Step 2: Run** `npx vitest run src/components/worlds/packs.test.js`. Expected: FAIL, module missing.
@@ -57,7 +57,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 **Files:**
 - Create: `scripts/pack-check.mjs`, `scripts/pack-check.test.mjs`
 - Create: `scripts/packs.mjs`, `scripts/packs.test.mjs`
-- Modify: `package.json` scripts: `"build": "vite build && node scripts/packs.mjs"`, `"test"` unchanged (the `.test.mjs` run by the existing vitest config as `scripts/*.test.mjs` are today).
+- Modify: `vite.config.js`: `packs()` from `scripts/packs.mjs` as a build plugin beside `prerender()`, so `vite build` alone writes the packs (the repo's checks run `npx vite build`, not `npm run build`); `package.json` unchanged.
 
 **Interfaces:**
 - `pack-check.mjs`: `export function undeclared(srcDir, pack) → string[]` (asset URLs in source not covered by `urls` or `globs`); CLI exits 1 listing them.
@@ -65,7 +65,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 - [ ] **Step 1: Failing tests**: `undeclared` finds `/models/x.glb` in a fixture source and not one covered by a glob; `buildManifest` on a fixture dist yields `bytes` as the sum and a stable `v` across two runs, a different `v` when one file's bytes change.
 - [ ] **Step 2: Run**, expect FAIL.
-- [ ] **Step 3: Implement** both; glob matching with `path.matchesGlob` (Node 22).
+- [ ] **Step 3: Implement** both; glob matching with a small matcher of its own (`path.matchesGlob` is experimental in Node 22).
 - [ ] **Step 4: Run** tests, then `npx vite build && ls dist/packs`. Expected: one JSON per world plus `index.json`; `node scripts/pack-check.mjs` exits 0 (fix any pack it names).
 - [ ] **Step 5: Commit** `build: pack manifests and the pack check`.
 
@@ -73,12 +73,12 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `public/sw.js`
-- Create: `src/lib/sw.js` (`registerWorker()`: registers `/sw.js` once, `type: 'module'`, no-op in tests and when `navigator.serviceWorker` is absent)
+- Create: `src/lib/sw.js` (`registerWorker()`: registers `/sw.js` once, as a classic worker (module service workers are not in every browser), only for a visitor with a pack installed or installing, unregistered with the last pack; no-op in development and when `navigator.serviceWorker` is absent)
 - Modify: `src/main.jsx`: call `registerWorker()` after render.
 - Test: `src/lib/sw.test.js` (registration is called once with `/sw.js`), `scripts/sw-check.mjs` (Playwright: after install of `/earth`, a reload serves one of its GLBs with `response.fromServiceWorker === true`).
 
 **Interfaces:**
-- Cache names `tp-pack-<slug>-<v>`. The worker reads `caches.keys()` on `fetch`: a request whose URL is in any `tp-pack-*` cache is answered from cache, else `fetch(event.request)`. On `activate`, for each slug keep only the newest `v` listed in `/packs/index.json` (fetched there) and delete the rest. Never handles `wss:`, never handles navigation requests.
+- Cache names `tp-pack-<slug>-<v>`. The worker reads `caches.keys()` on `fetch`: a request whose URL is in any `tp-pack-*` cache is answered from cache, else `fetch(event.request)`. It serves no cache whose `v` is not the one `/packs/index.json` lists (read on wake, at most every five minutes) and deletes nothing (the installer drops an old version once the new one is whole, carrying over the files whose hash held). Never handles `wss:`, never handles navigation requests.
 
 - [ ] **Step 1:** write `sw.test.js`, run, FAIL.
 - [ ] **Step 2:** implement `public/sw.js` and `src/lib/sw.js`.
@@ -89,7 +89,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/runtime/install.js`, `src/runtime/install.test.js`
-- Modify: `src/runtime/index.js` (expose `install` on `rt`), `src/runtime/browser.js` (the fetch and caches bindings)
+- Modify: `src/runtime/index.js` (expose `install` on `rt`); the fetch and caches bindings are `install.js`'s `installer()` (not `browser.js`, which brings three.js, and the gate needs the installer before any world mounts)
 
 **Interfaces:**
 - `createInstaller({ fetch, caches, storage, concurrency = 4, now }) → { installed(to) → Promise<{ v, bytes } | null>, install(to, { onProgress }) → Promise<{ v, bytes }>, uninstall(to) → Promise<void>, estimate() → Promise<{ used, quota }> }`.
@@ -106,10 +106,11 @@ One phase is one pull request from one session. Order and parallelism are in the
 - Modify: `src/components/worlds/WorldGate.jsx`, `worldgate.css`
 - Create: `src/pages/Worlds.jsx`, `src/components/worlds/InstalledList.jsx`, `installed.css`
 - Modify: `src/App.jsx` (route `/worlds`, lazy), `src/components/Nav.jsx` or `GuidePanel.jsx` (one link, where `WorldSwitcher` lists worlds)
-- Test: `src/components/worlds/WorldGate.test.jsx` (existing tests kept; new: card shows `Install · 184 MB · about 2 min` from a fake `rt.install` and `index.json`; after `install` resolves it shows `Open`; a pack under 8 MB on a desktop shows `Open` at once), `src/pages/Worlds.test.jsx` (lists installed slugs with sizes, Remove calls `uninstall`).
+- Test: `src/components/worlds/WorldGate.test.jsx` (new: card shows `Install · 184 MB · about 2 min` from a fake `rt.install` and `index.json`; after `install` resolves it shows `Open`; a pack under 8 MB on a desktop shows `Open` at once), `src/pages/Worlds.test.jsx` (lists installed slugs with sizes, Remove calls `uninstall`).
 
 **Interfaces:**
-- The time estimate: `minutes = ceil(bytes / (1.5 MB/s))` shown as `about N min`, under 1 as `under a minute`.
+- The time estimate: `minutes = round(bytes / (1.5 MB/s) / 60)` shown as `about N min`, under 1 as `under a minute` (rounded: 184 MB is about 2 min, as the test says).
+- A desktop (the old gate's `ask` false) is not held: a heavy world not installed offers Install in a pill beside the guide button, so the QA scripts and every visitor's way in stay as they were; a light one opens at once.
 - `WorldGate` keeps `WHY` warnings and `Hold3D`; the hold lifts on Open. Keyboard: Install and Open are buttons; progress is `role="progressbar"` with `aria-valuenow`.
 
 - [ ] **Step 1:** failing tests. **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS; `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /worlds,/earth`.
@@ -178,7 +179,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Interfaces:**
 - `createChunkGrid({ size, radius, inFlight = 8, hysteresis = 1 }) → grid`.
-- `grid.update({ x, z, heading = null, radius? }) → { ask: Key[], drop: Key[] }`: `ask` is cells within `radius` (Chebyshev, in cells) not loaded and not in flight, sorted by distance then by alignment with `heading` (a cell ahead before one behind at the same distance), capped so loaded-plus-flying never exceeds the cap on in-flight asks; `drop` is loaded cells beyond `radius + hysteresis`.
+- `grid.update({ x, z, heading = null, radius? }) → { ask: Key[], drop: Key[], cancel: Key[] }`: `ask` is cells within `radius` (Chebyshev, in cells) not loaded and not in flight, sorted by distance then by alignment with `heading` (a cell ahead before one behind at the same distance), capped so flying plus asked never exceeds `inFlight`; `drop` is loaded cells beyond `radius + hysteresis`; `cancel` is flying cells now beyond `radius`. `grid.cells(x, z, { radius, heading })` is the ordered window (with no heading, Minecraft's `wantedChunks` order); `grid.unload(key)`.
 - `grid.began(key, gen)`, `grid.done(key, gen) → boolean` (false, and ignored, when `gen !== grid.gen` or the key was dropped meanwhile), `grid.failed(key)`, `grid.reset(gen)` (new seed: everything dropped, `gen` bumped), `grid.loaded: Set<Key>`, `grid.flying: Map<Key, gen>`, `grid.gen: number`. `Key = '<cx>,<cz>'`; `grid.cellOf(x, z) → [cx, cz]`.
 
 - [ ] **Step 1: Failing tests**: at origin, radius 2, `ask` has 25 keys nearest first; with heading `+x`, `'1,0'` precedes `'-1,0'`; after `began` of 8, the ninth is not asked; `done` with an old gen returns false and loads nothing; a cell at distance `radius + 1` loaded is not dropped, at `radius + 2` it is; a `reset` empties `loaded` and makes every earlier `done` false.
@@ -188,10 +189,10 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/runtime/workers.js`, `workers.test.js`
-- Modify: `src/runtime/index.js`, `browser.js`: `rt.workers = createWorkerPool({ make })`, `size = min(4, max(1, hardwareConcurrency - 1))`.
+- Modify: `src/runtime/index.js` (no three.js, so not `browser.js`): `rt.workers = createWorkerPool({ size: poolSize(hardwareConcurrency) })`, `size = min(4, max(1, hardwareConcurrency - 1))`; a world says how to make its workers with `rt.workers.define(name, make)` (the `new Worker(new URL(...))` must sit in the world's own module for the bundler).
 
 **Interfaces:**
-- `createWorkerPool({ make: (name) => Worker-like, size }) → { request(name, msg, transfer?) → Promise<reply>, cancel(name, key), stats(), dispose() }`; `msg` has `key` and `priority` (lower first); a request is sent to the least-busy worker; `cancel` removes a queued request (resolves its promise with `null`) or posts `{ type: 'cancel', key }` to the worker that holds it. Workers are made by `name` lazily, one pool per name.
+- `createWorkerPool({ make: (name) => Worker-like, size }) → { define(name, make, { size }), request(name, msg, transfer?) → Promise<reply>, cancel(name, key), close(name), stats(), dispose() }`; `msg` has `key` and `priority` (lower first); a request is sent to the least-busy worker; `cancel` removes a queued request (resolves its promise with `null`) or posts `{ type: 'cancel', key }` to the worker that holds it. Workers are made by `name` lazily, one pool per name.
 - Worker contract (what `make(name)` returns must speak): receives `msg`, answers `{ key, ...reply }` with transferables, honours `{ type: 'cancel', key }`. Minecraft's `worker.js` already does.
 
 - [ ] **Steps 1-4:** tests with a fake worker (priority order, cancel before send resolves null, two workers share work, dispose terminates), FAIL, implement, PASS. **Step 5: Commit** `feat(runtime): a worker pool`.
@@ -199,8 +200,10 @@ One phase is one pull request from one session. Order and parallelism are in the
 ### Task 3.3: Minecraft onto `rt.chunks` and `rt.workers`
 
 **Files:**
-- Modify: `src/components/minecraft/module.js:115-205` (replace `wantedCache`, `flying`, `IN_FLIGHT`, `load`, `dropFar` use with a grid: `size: 16`, `radius: distance`; keep `editsAround`, `remesh`, `scene.chunks.*`), `src/components/minecraft/scene/chunks.js` (`workerClient` becomes a thin call into `rt.workers.request('minecraft', …)`)
-- Test: `src/components/minecraft/module.test.js` (new: the set of chunk keys requested for a player at `(40, 0, -20)` with distance 4 equals `wantedChunks(g)` from `rules/game.js`; a chunk reply after a seed change is not added)
+- Create: `src/components/minecraft/stream.js` (the chunk loop out of `module.js`, pure: a grid `size: 16`, `radius: distance`, `hysteresis: 2` as `dropFar`'s; `editsAround`, `remesh`; requests through `rt.workers.request('minecraft', …)`)
+- Modify: `src/components/minecraft/module.js` (`wantedCache`, `flying`, `IN_FLIGHT`, `load`, `dropFar` replaced by the stream), `scene/chunks.js` and `rules/jobs.js` (`workerClient` and `makeClient` removed: the pool is their protocol)
+- Test: `src/components/minecraft/module.test.js` (the set of chunk keys requested for a player at `(40, 0, -20)` with distance 4 equals `wantedChunks(g)` from `rules/game.js`; the dropped set is `dropFar`'s; a chunk reply after a seed change, or for a chunk let go of, is not added)
+- The GPU queue hook (meshes through `gpuWork` under its budget) comes when Phase 0 lands; until then Minecraft's meshes are uploaded as before.
 
 - [ ] **Steps 1-4:** tests, FAIL, implement, PASS. Browser: walk 200 blocks in each direction; `perf-probe` shows no frame over 50 ms from chunk arrival.
 - [ ] **Step 5: Commit** `refactor(minecraft): chunks through the runtime's grid and pool`.
@@ -209,7 +212,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/runtime/origin.js`, `origin.test.js`
-- Modify: `src/runtime/index.js` (`rt.origin`), `runtime.js` (before `step`, `origin.check(anchor)`; emit `rt.events.emit('origin', { shift })`)
+- Modify: `runtime.js` (`rt.origin`, made there; before `step`, `origin.check(world.anchor())` for a world with an `anchor()`; emit `rt.events.emit('origin', { shift })`; reset to zero when a world begins)
 
 **Interfaces:**
 - `createOrigin({ cell = 50000 }) → { at: [x, y, z], check(worldPos) → shift | null, toLocal(worldPos, out?), toWorld(localPos, out?), on(fn) → undo }`; `check` moves `at` by whole cells when `|worldPos - at|` exceeds `cell` on x or z and returns the shift applied; the world (the universe module, Phase 4) subtracts the shift from every object's position in that frame and the camera's.
@@ -237,7 +240,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Interfaces:**
 - `SECTOR = 80000`; `makeSector(universe, sx, sz) → Sector`; `Sector = { id: 'E:sx,sz', seed, origin: [x, 0, z] (sector centre in universe units: sx * SECTOR, sz * SECTOR), systems: System[], wonders: Wonder[], beacons: { n, e, s, w: [x,y,z] } }`; `System = { id: 'E:sx,sz:<i>', name, at, star: { class, color, size }, planets: Planet[], faction, traffic: 0..1, hazard: null | 'storm' | 'pirates' | 'minefield' }`; `Planet = { id, name, type, radius, color, at (orbit position at t = 0), moons: number, rings: boolean, seed }`.
-- Systems placed by Poisson disc (minimum gap `6000`) inside the sector's inscribed disc, count in `8..24` by `rng`; none within `MAP_RADIUS + 4000` of the authored map's centre when `(sx, sz)` is one of the eight neighbours of `0,0` (so nothing overlaps the map). Sector `0,0` itself returns the authored map's places: `systems: []`, `wonders: []`, with `beacons` at the map's four hyperlane home beacons (`hyperlanes.js`'s `BEACONS` for `home`).
+- Systems placed by Poisson disc (minimum gap `6000`) inside the sector's inscribed disc, count in `8..24` by `rng`; none within `MAP_RADIUS + 4000` of the authored map's centre when `(sx, sz)` is one of the eight neighbours of `0,0` (so nothing overlaps the map), and none within `SECTOR_RADIUS.rickmorty + 4000` of the Rick and Morty pocket, which lies inside sector `0,-1`. Sector `0,0` itself returns the authored map's places: `systems: []`, `wonders: []`, with `beacons` at the map's four hyperlane home beacons (`hyperlanes.js`'s `BEACONS` for `home`).
 
 - [ ] **Steps 1-4:** tests (same input, deep-equal output twice; count in range over 200 sectors; min gap holds; neighbours of `0,0` clear the map; `0,0` empty), FAIL, implement, PASS. **Step 5: Commit** `feat(expanse): sectors from seeds`.
 
@@ -257,7 +260,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/components/expanse/scene/sectors.js` (one loaded sector: far-place impostors via `farPlaces.js`, stars as `bodies.js` spheres, lanes via the map's lane drawer, a `dispose`), `starfield.js` (the beyond: one `Points` of distant sectors' systems at impostor size, rebuilt on a sector change)
-- Modify: `src/components/universe/scene.js` (a `rt.chunks` grid `size: SECTOR, radius: 1` keyed on the ship's position; `rt.origin` adopted: every placed object and the camera shift on `origin` events; `sectorOf`/`inSector` in `layout.js` gain the Expanse: `sectorOf` returns `'E:sx,sz'` beyond the two authored sectors), `src/components/universe/online/where.js` (`whereOf` for `/universe` with a sector query: `Universe · E:3,-2 · <system name>`), `online/protocol.js` (a pose carries `sec: 'E:sx,sz'` and local coordinates; a reader without the field assumes the authored sector)
+- Modify: `src/components/universe/scene.js` (the universe map is a `useScene` scene, not a runtime module, so it has no `rt`: `expanse/scene/expanse.js` holds a `createChunkGrid({ size: SECTOR, radius: 1 })` keyed on the ship's position and adopts `runtime().origin`: the Expanse's root sits at the origin and each sector's group at its centre less it, re-anchored in the frame the origin moves, while the authored map keeps its coordinates (its draw already re-centres on the camera, `drawn`) and the origin stays at the middle inside the rim; `sectorOf` in `layout.js` returns `'E:sx,sz'` beyond the two authored sectors, `mapSectorOf` keeps the map's own logic on `main`/`rickmorty`; `ship.js`'s `OPEN_SPACE` lets the ship past the main edge, `SPACE` still turns it back), `src/components/universe/online/rosterWhere.js` (a pose with `sec` reads `Universe · E:3,-2 · <system name>`; `whereOf` keeps `/universe`, which older clients match exactly), `online/protocol.js` (a pose carries `sec: 'E:sx,sz'` and local coordinates; a reader without the field assumes the authored sector)
 - Test: `src/components/universe/layout.test.js` (sectorOf beyond the map), `online/protocol.test.js` (pose round-trips `sec`), `expanse/scene/sectors.test.js` (a loaded sector adds N impostors and disposes to zero objects, three.js in Node as the repo's scene tests do)
 
 - [ ] **Steps 1-4:** tests, FAIL, implement, PASS. Browser: fly past the rim; sectors appear ahead; `window.__RUNTIME__.origin.at` changes once past 50,000 and nothing jumps; roster shows `E:1,0`.
@@ -267,11 +270,13 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Modify: `src/components/universe/Front.jsx` (or the page that owns `/universe`): `?seed=` → the Expanse's universe seed; a seed other than the default registers a `pocket` world (Phase 2's registry) and the HUD names it.
-- Test: the page test for `/universe?seed=marble` passes `universe: hash64('marble')` to the module and registers `pocket:marble`.
+- Test: `src/components/expanse/pocket.test.js`: `pocketOf('?seed=marble')` gives `universe: hash64('marble')`, and `registerPocket` registers `pocket:marble` (`pages/Universe.jsx` passes it to `UniverseMap` as `universe`, keyed on the word).
 
 - [ ] **Steps 1-5:** tests, FAIL, implement, PASS, commit `feat(universe): pocket universes by seed`. **Step 6:** PR `claude/infinite-worlds-p4`.
 
 ## Phase 5: Landing on the Expanse
+
+> Tasks 5.2 and 5.3 are superseded by the natural-worlds plan's Phase 3 (`docs/superpowers/plans/2026-10-08-natural-worlds.md`: `src/components/expanse/surface/`, built on `src/lib/land` and `src/lib/physics`); Task 5.1 maps the Expanse's planet types onto `landSpec`'s types (`temperate`, `desert`, `ice`, `ocean`, `volcanic`).
 
 ### Task 5.1: `planetSpec`
 

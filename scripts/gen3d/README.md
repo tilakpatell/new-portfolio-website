@@ -77,7 +77,7 @@ what: a TIE fighter                 (for the credit and the judge; the prompt if
 prompt: a TIE fighter, grey, …      (FLUX draws the concept picture)
 image: (attach a picture, or a URL) (the picture to follow; Pixal3D unless faithful: no)
 faces: 30000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2|hunyuan
-faithful: no  bake: no  fresh: yes
+faithful: no  bake: no  fresh: yes  ultra: yes   (ultra: a fourth cut, NAME.ultra.glb, for the ultra level: budget.mjs ULTRA)
 ```
 
 The self-hosted runner on the desktop runs `runner.mjs --issue N` in the

@@ -16,6 +16,7 @@ import { sharpen } from '../../lib/three/textures';
 import { fbm, makeCanvas, makeNoise } from '../../lib/paint';
 import { EMBER, FIRE, createParticles, lavaMaterial, skyDome } from './kit';
 import { ringGeometry } from './ringShape';
+import { BLOOMS } from './look';
 
 const INSCRIPTION = 'Ash nazg durbatulûk · ash nazg gimbatul · ash nazg thrakatulûk · agh burzum-ishi krimpatul ·';
 const LAVA_Y = -3.4;
@@ -140,7 +141,8 @@ function environment(renderer) {
 }
 
 export function createRing3D(canvas, { soft = false, reduced = false, onLost } = {}) {
-  const stage = createStage(canvas, { soft, fov: 30, near: 0.1, far: 120, exposure: 1.05, bloom: { strength: 0.55, radius: 0.5, threshold: 0.92 }, onLost });
+  const stage = createStage(canvas, { soft, fov: 30, near: 0.1, far: 120, exposure: 1.05, bloom: BLOOMS.ring, onLost });
+  stage.tune(); // ?debug: its bloom on the panel
   const { scene, camera, renderer } = stage;
   scene.fog = new THREE.FogExp2(0x0c0503, 0.085);
   scene.add(skyDome(60, { top: 0x010000, horizon: 0x0c0503, bottom: 0x3a1004 }));

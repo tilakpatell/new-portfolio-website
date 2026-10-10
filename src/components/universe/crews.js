@@ -236,6 +236,11 @@ export const CREWS = [
     },
     // hunters after you (hunters.js), by who they are
     hunted: {
+      // the police, sent when you're wanted (wanted.js)
+      fedpolice: [
+        ['morty', 'Rick, Federation police! Like, actual space cops!'],
+        ['rick', 'They’ve got stun guns and missiles, Morty. Don’t let them pin the drive.'],
+      ],
       phoenix: [
         ['rick', 'Phoenixperson. Great. The Federation turned my best friend into a drone with a grudge.'],
         ['morty', 'Can we talk to him, Rick?'],
@@ -428,6 +433,38 @@ export const CREWS = [
       ['rick', 'That’s what you get for messing with the smartest man in the universe!'],
       ['morty', 'I did most of the shooting, Rick.'],
     ],
+    // a ship downed by flying into it (shipHits.js), and the last of them
+    // so: their own lines, not a gun's
+    ram: {
+      kill: [
+        ['morty', 'Rick! We— we flew right into him!'],
+        ['rick', 'Ramming speed, Morty. The ship’s armoured. Mostly.'],
+      ],
+      cleared: [
+        ['morty', 'W-we rammed the last one, Rick. With the ship.'],
+        ['rick', 'Who needs guns, Morty? The ship’s the gun.'],
+      ],
+    },
+    // the ship's powers (shipPowers.js): using each, the big one charged
+    // and a big haul from it, and why a portal won't go
+    powers: {
+      portal: {
+        use: [['rick', 'Portal, Morty! Get on his six!']],
+        refuse: {
+          shield: [['rick', 'Portals don’t go through planetary shields, Morty. It’s physics. Ugh.']],
+          held: [['rick', 'Something’s got hold of the ship, Morty. You can’t portal out of a headlock.']],
+          solid: [['rick', 'Open a portal into that? You want to come out inside a rock, Morty? Point us somewhere with space in it.']],
+        },
+      },
+      wubba: {
+        use: [
+          ['rick', 'Wubba lubba dub dub!', 'wubba'],
+          ['morty', 'Rick, that’s way too much laser!'],
+        ],
+        ready: [['rick', 'Big gun’s charged, Morty. Don’t touch it. Okay, touch it.']],
+        big: [['rick', 'Riggity riggity wrecked, son!', 'riggity']],
+      },
+    },
     // the director's set pieces (director.js), and going out into deep space
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again: by who came
@@ -475,6 +512,14 @@ export const CREWS = [
       },
       // a patrol going past has reported you (traffic.js's spotted)
       spotted: [['morty', 'Rick, that patrol just saw us! They’re calling it in!'], ['rick', 'Snitches, Morty. The galaxy’s full of snitches. Get ready.']],
+      // the law on us (wanted.js): by stars, searching, and lost
+      wanted: {
+        any: [['morty', 'Rick, we’re wanted! There’s a price on us!'], ['rick', 'Welcome to my whole life, Morty.']],
+        3: [['morty', 'Three stars, Rick! They’re sending wardens!'], ['rick', 'And they’ll pin the drive. Shoot the medic first, Morty. Always the medic.']],
+        5: [['morty', 'Five stars! The whole Federation’s coming!'], ['rick', 'Good. Saves me looking for them.']],
+        search: [['rick', 'They lost us. Stay out of sight, Morty. Behind something big. Don’t breathe.']],
+        lost: [['morty', 'They’re gone! We lost them!'], ['rick', 'The bounty didn’t go anywhere, Morty. Somebody’s gonna come collect.']],
+      },
       // an ace hurt into its next stage (hunterRules.js's stages), by who
       stage: {
         evilmortyship: [['comms', 'You’re good, Rick. Fine. Let’s see how you do against a hundred of me.'], ['morty', 'Rick, he’s falling back! And… those are MORE Mortys!']],
@@ -996,6 +1041,11 @@ export const CREWS = [
       ],
     },
     hunted: {
+      // the ISB, sent when you're wanted (wanted.js)
+      isb: [
+        ['r2', '[ISB patrol, closing: an enforcer with ion cannons among them]'],
+        ['luke', 'Imperial Security. Don’t let the ion fire touch us, Artoo.'],
+      ],
       fett: [
         ['r2', '[A Firespray on an attack run. Boba Fett.]'],
         ['luke', 'A bounty hunter. Stay with me, Artoo. He only has to miss once.'],
@@ -1170,6 +1220,34 @@ export const CREWS = [
       ['luke', 'That’s all of them!'],
       ['comms', 'Great shot, kid. That was one in a million.'],
     ],
+    // (Han on the radio, as for the cleared)
+    ram: {
+      kill: [
+        ['luke', 'I hit him! I mean, I really hit him!'],
+        ['r2', '[an indignant squeal about the paintwork]'],
+      ],
+      cleared: [
+        ['luke', 'That’s the last of them!'],
+        ['comms', 'You flew right through him, kid. Don’t make a habit of it.'],
+      ],
+    },
+    // the ship's powers (shipPowers.js)
+    powers: {
+      focus: {
+        use: [
+          ['comms', 'Use the Force, Luke.', 'useTheForce', { name: 'Ben Kenobi', color: '#cfe0ff' }],
+          ['r2', '[a low, steady whistle: he’s with you]'],
+        ],
+      },
+      salvo: {
+        use: [
+          ['luke', 'Artoo, lock them up. Torpedoes away!'],
+          ['r2', '[four quick locking beeps, then a whoop]'],
+        ],
+        ready: [['r2', '[an excited whistle: the torpedoes are armed]']],
+        big: [['comms', 'The Force is strong with this one.', 'forceIsStrong', { name: 'Darth Vader', color: '#ff6a5a' }]],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again: by who came
       wingmen: {
@@ -1215,6 +1293,13 @@ export const CREWS = [
       },
       // a patrol going past has reported you (traffic.js's spotted)
       spotted: [['r2', '[an alarmed shriek: that patrol’s seen us]'], ['luke', 'They’re calling it in. Here they come, Artoo.']],
+      wanted: {
+        any: [['r2', '[a warbling alarm: we’re flagged]'], ['luke', 'The Empire’s marked us. ISB patrols, Artoo. Keep your eyes open.']],
+        3: [['luke', 'Interceptors with ion cannons. If they hit us we lose the drive.'], ['r2', '[a worried whistle]']],
+        5: [['r2', '[a long, falling shriek]'], ['luke', 'Everything they’ve got. Stay with me, Artoo.']],
+        search: [['luke', 'They’ve lost sight of us. Stay low, put the moon between us.']],
+        lost: [['luke', 'We lost them.'], ['r2', '[a relieved burble, then a warning beep: the bounty’s still on us]']],
+      },
       // an ace hurt into its next stage (hunterRules.js's stages), by who
       stage: {
         tieadvanced: [['comms', 'Impressive. Now you will see what a Sith can do.'], ['luke', 'He’s faster! Artoo, he’s so much faster!']],
@@ -1686,6 +1771,11 @@ export const CREWS = [
       ],
     },
     hunted: {
+      // the ISB, sent when you're wanted (wanted.js)
+      isb: [
+        ['han', 'ISB. Wonderful. Chewie, watch the ones with the ion cannons.'],
+        ['chewie', '[a snarl]'],
+      ],
       fett: [
         ['han', 'Fett. Of course it’s Fett. Chewie, punch it!'],
         ['chewie', '[A furious roar.]'],
@@ -1859,6 +1949,28 @@ export const CREWS = [
       ['chewie', '[a triumphant roar]'],
       ['han', 'I know.'],
     ],
+    ram: {
+      kill: [
+        ['chewie', '[an alarmed roar]'],
+        ['han', 'Relax, she’s been through worse. I think.'],
+      ],
+      cleared: [
+        ['han', 'That’s the last of them. Rammed it. Don’t tell Lando.'],
+        ['chewie', '[a doubtful growl]'],
+      ],
+    },
+    // the ship's powers (shipPowers.js)
+    powers: {
+      odds: { use: [['han', 'Never tell me the odds.', 'neverTellOdds']] },
+      quad: {
+        use: [
+          ['han', 'Chewie, take the guns!'],
+          ['chewie', '[a roar: he’s on the quad lasers]', 'chewieRoar'],
+        ],
+        ready: [['chewie', '[an eager growl: the turrets are his whenever you say]']],
+        big: [['chewie', '[a big, pleased laugh]', 'chewieLaugh']],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again
       wingmen: {
@@ -1905,6 +2017,13 @@ export const CREWS = [
       },
       // a patrol going past has reported you (traffic.js's spotted)
       spotted: [['han', 'That patrol made us. They’re calling it in.'], ['chewie', '[a growl]'], ['han', 'I know, I know. Guns.']],
+      wanted: {
+        any: [['han', 'Great. Now there’s a price on us. Again.'], ['chewie', '[an unhappy rumble]']],
+        3: [['han', 'Gunboats with missiles. Chewie, when I say break, break.'], ['chewie', '[a roar]']],
+        5: [['han', 'That’s the whole Imperial Security Bureau.'], ['chewie', '[a howl]'], ['han', 'Yeah. I’ve always wanted to be popular.']],
+        search: [['han', 'They’ve lost us. Kill the running lights and sit tight.']],
+        lost: [['han', 'Told you. Nobody catches the Falcon.'], ['chewie', '[a growl]'], ['han', 'The bounty? Sure, that’s still there. We’ll pay it. Eventually.']],
+      },
       // an ace hurt into its next stage (hunterRules.js's stages), by who
       stage: {
         tieadvanced: [['comms', 'Impressive. Now you will see what a Sith can do.'], ['han', 'He just got faster. How does he just get faster?!']],
@@ -2387,6 +2506,11 @@ export const CREWS = [
     // hunted by Albuquerque (sides.js): the DEA, the cartel, Gus's trucks,
     // the Cousins; and by whoever else is out here, met online
     hunted: {
+      // APD and the DEA's tactical team, sent when you're wanted (wanted.js)
+      apd: [
+        ['jesse', 'Cops, Mr. White! Like, all the cops!'],
+        ['walt', 'The ones with tasers will kill the engine. Keep them off us.'],
+      ],
       dea: [
         ['jesse', 'Mr. White! DEA! Those are DEA trucks, yo!'],
         ['walt', 'I can see that, Jesse. Lose them. Calmly.'],
@@ -2565,6 +2689,31 @@ export const CREWS = [
       ['jesse', 'We got ’em all, Mr. White!'],
       ['walt', 'Say my name.', 'sayMyName'],
     ],
+    ram: {
+      kill: [
+        ['jesse', 'Yo, we just rammed him, Mr. White!'],
+        ['walt', 'That’s not chemistry, Jesse. That’s physics. Mass times velocity.'],
+      ],
+      cleared: [
+        ['jesse', 'We rammed the last one, yo! With the RV!'],
+        ['walt', 'Mind the paint, Jesse. We still have to cook in this thing.'],
+      ],
+    },
+    // the ship's powers (shipPowers.js)
+    powers: {
+      magnets: {
+        use: [
+          ['jesse', 'Yeah, Mr. White! Yeah, science!', 'yeahScience'],
+          ['walt', 'Magnets, Jesse. Basic physics.'],
+        ],
+        refuse: { empty: [['jesse', 'Mr. White, there’s nothing out there to grab. Let ’em get closer, yo.']] },
+      },
+      heisenberg: {
+        use: [['walt', 'Say my name.', 'sayMyName']],
+        ready: [['jesse', 'Mr. White, the crystal’s ready. The… the boom one.']],
+        big: [['walt', 'You’re goddamn right.', 'goddamnRight']],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again:
       // Saul, Mike, and whoever else is out here
@@ -2640,6 +2789,13 @@ export const CREWS = [
       },
       // a patrol going past has reported you (traffic.js's spotted)
       spotted: [['jesse', 'Yo, that DEA car just saw us! They’re calling it in!'], ['walt', 'Then we have about a minute. Use it.']],
+      wanted: {
+        any: [['jesse', 'Mr. White, we’re wanted, yo! Like, actually wanted!'], ['walt', 'Then we act like professionals, Jesse.']],
+        3: [['jesse', 'SWAT, Mr. White! They got rockets!'], ['walt', 'Take out the support van. Without it they fall apart.']],
+        5: [['jesse', 'It’s everybody! APD, DEA, everybody!'], ['walt', 'Then they know who we are. Good.']],
+        search: [['walt', 'They’ve lost us. Stay out of sight and say nothing.']],
+        lost: [['jesse', 'We lost ’em! Yeah, science!'], ['walt', 'The bounty stays, Jesse. Somebody will come for it. Pay it off when we land.']],
+      },
       // an ace hurt into its next stage (hunterRules.js's stages), by who
       stage: {
         suvace: [['comms', 'All units, all units, I need backup NOW! It’s the RV!'], ['walt', 'Hank’s pulling back and calling it in. Jesse, this just got worse.']],
@@ -2971,9 +3127,12 @@ export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id :
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
 // 'edge', 'crash', 'pulled' and 'swallowed' (by the black hole), 'idle', 'hit',
-// 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those),
+// 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those), a
+// 'power' (by the ship power's id: its use, the big one charged, a big haul,
+// a refusal),
 // 'arrive' at a place, 'traffic' going
-// past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
+// past (by kind), a 'kill' (by kind, or any), a 'ram' (by when: 'kill' or
+// 'cleared', a ship downed by flying into it), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
 // its id; an event's lines may be keyed by `sub`, what came: a leviathan's
 // kind), 'interdicted' (hunters cut the pulse drive), 'crashInto' (by
@@ -2986,6 +3145,7 @@ export function linesFor(crew, event, id, sub, more) {
   if (event === 'arrive') return crew.arrive[id] ?? null;
   if (event === 'traffic') return crew.traffic?.[id] ?? null;
   if (event === 'kill') return crew.kill?.[id] ?? crew.kill?.any ?? null;
+  if (event === 'ram') return crew.ram?.[id] ?? null;
   if (event === 'hunted') return crew.hunted?.[id] ?? null;
   if (event === 'crashInto') return crew.crashInto?.[id] ?? crew.crash ?? null;
   if (event === 'event') {
@@ -3003,6 +3163,13 @@ export function linesFor(crew, event, id, sub, more) {
     return Array.isArray(f) ? f : (f[more] ?? f.any ?? null);
   }
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
+  if (event === 'power') {
+    // the ship's powers (shipPowers.js): `sub` is when ('use', 'ready',
+    // 'big', 'refuse'), and a refusal is keyed again by why (`more`)
+    const f = crew.powers?.[id]?.[sub];
+    if (!f) return null;
+    return Array.isArray(f) ? f : (f[more] ?? f.any ?? null);
+  }
   if (event === 'foot') {
     const f = crew.foot?.[id];
     if (!f) return null;

@@ -1,26 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { gait, playerKind } from './figures';
+import { ALIAS, PRELOAD, motionOf, playerKind } from './figures';
+import { CLIPS } from '../../../../lib/three/clipLibrary';
 
-const sum = (w) => w.idle + w.walk + w.run;
+// locomotion's weights for a `move` (lib/three/locomotion.js): idle below 0.04, run from 0.55
+const smooth = (a, b, x) => {
+  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+};
+const weights = (move) => {
+  const run = smooth(0.55, 0.9, move);
+  const idle = 1 - smooth(0.04, 0.3, move);
+  return { idle, walk: Math.max(0, 1 - run - idle), run };
+};
 
-describe('a figure’s gait, from how fast it goes', () => {
+describe('a figure’s motion, from how fast it goes', () => {
   it('stands idle when still, walks at walking pace and runs at running pace', () => {
-    expect(gait(0)).toMatchObject({ idle: 1, walk: 0, run: 0 });
-    expect(gait(1.6)).toMatchObject({ idle: 0, walk: 1, run: 0 });
-    expect(gait(4.2)).toMatchObject({ idle: 0, walk: 0, run: 1 });
+    expect(weights(motionOf(0).move)).toMatchObject({ idle: 1, walk: 0, run: 0 });
+    expect(weights(motionOf(1.6).move)).toMatchObject({ idle: 0, walk: 1, run: 0 });
+    expect(weights(motionOf(4.2).move)).toMatchObject({ idle: 0, walk: 0, run: 1 });
   });
 
-  it('blends walking into running between the two paces, the weights always summing to one', () => {
-    const w = gait(2.9);
+  it('blends walking into running between the two paces, and counts going sideways as going', () => {
+    const w = weights(motionOf(2.9).move);
     expect(w.walk).toBeGreaterThan(0);
     expect(w.run).toBeGreaterThan(0);
-    expect(w.idle).toBe(0);
-    for (const s of [0, 0.3, 0.9, 1.6, 2.2, 3.5, 4.2, 9]) expect(sum(gait(s))).toBeCloseTo(1);
+    expect(motionOf(0, 1.6).move).toBeCloseTo(motionOf(1.6).move);
+    expect(motionOf(1, -0.5, 0.3)).toMatchObject({ speed: 1, side: -0.5, turn: 0.3 });
   });
+});
 
-  it('paces the walk to the ground: slower steps creeping, quicker ones hurrying', () => {
-    expect(gait(1.0).pace).toBeLessThan(gait(1.6).pace);
-    expect(gait(1.6).pace).toBeCloseTo(1);
+describe('the rules’ clip names', () => {
+  it('each name a clip the library has', () => {
+    for (const [name, clip] of Object.entries(ALIAS)) expect(CLIPS[clip], name).toBeDefined();
+    for (const name of PRELOAD) expect(CLIPS[name], name).toBeDefined();
   });
 });
 

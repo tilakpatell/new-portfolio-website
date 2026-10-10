@@ -6,6 +6,7 @@
 //   node scripts/gen3d/make.mjs x-wing --prompt "an X-wing starfighter" --what "an X-wing starfighter"
 //   node scripts/gen3d/make.mjs x-wing --image front.png --left left.png --back back.png --what "…"   (several sides: Hunyuan3D multi-view)
 //   options: --candidates 4 (concept pictures to choose from) --no-judge --faces 120000 --tex 4096 (the bake, the top cut; the other two cuts are scaled from it) --match OLD.glb --seed 42 --res 1024 --fov 49 --engine trelliscpp|trellis2 --no-bake --no-faithful --fresh
+//            --ultra (a fourth cut, NAME.ultra.glb, for the ultra level: the bake made at its size, up to 300k faces and 8192 maps; budget.mjs ULTRA)
 //
 // Everything on the way lands in scripts/gen3d/cache/<name>/ ($GEN3D_CACHE
 // for elsewhere); the result in public/models/gen3d/<name>.glb, credited in
@@ -24,7 +25,7 @@ import { sheet } from './judge.mjs';
 import { picture } from './picture.mjs';
 import { prepare } from './prepare.mjs';
 import { ready as vlmReady } from './vlm.mjs';
-import { TIERS } from './budget.mjs';
+import { TIERS, cutsFor } from './budget.mjs';
 import { publish } from './web.mjs';
 import { digest, once } from './steps.mjs';
 
@@ -33,7 +34,7 @@ export const CACHE = process.env.GEN3D_CACHE ? resolve(process.env.GEN3D_CACHE) 
 
 // `image` is one picture (the front), or several sides { front, left, back, right }:
 // with more than one, Hunyuan3D's multi-view engine is used
-export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, tex = TIERS.hq.tex, seed = 42, res = 1024, fov, engine, faithful = typeof image === 'string', noBake = false, match, candidates = 4, judge = true, retries = 1, fresh = false, first = true }) {
+export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, tex = TIERS.hq.tex, seed = 42, res = 1024, fov, engine, faithful = typeof image === 'string', noBake = false, match, candidates = 4, judge = true, retries = 1, fresh = false, first = true, ultra = false }) {
   const dir = join(CACHE, name);
   mkdirSync(dir, { recursive: true });
   if (first) writeFileSync(join(dir, 'make.log'), '');
@@ -94,11 +95,13 @@ export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, 
   let low = raw;
   if (!noBake && blender()) {
     low = join(dir, 'baked.glb');
-    const b = await once(low, digest(rawKey, faces, tex), () => bake(raw, low, { faces, tex }), { fresh }); // at the top cut's size: the other cuts are simplified and downsampled from it
-    log(b.reused ? `baked model from the last run (${faces} faces)` : `baked to ${faces} faces in ${b.seconds.toFixed(0)}s`);
+    // (at the top cut's size, the ultra cut's where one is asked for: the other cuts are simplified and downsampled from it)
+    const top = ultra ? cutsFor(faces, tex, { ultra }).ultra : { faces, tex };
+    const b = await once(low, digest(rawKey, top.faces, top.tex), () => bake(raw, low, { faces: top.faces, tex: top.tex }), { fresh });
+    log(b.reused ? `baked model from the last run (${top.faces} faces)` : `baked to ${top.faces} faces in ${b.seconds.toFixed(0)}s`);
   } else log(noBake ? 'no bake: the web cut simplifies the raw mesh' : 'no Blender here: the web cut simplifies the raw mesh');
   const made = g.engine === 'hunyuan' ? 'Hunyuan3D-2 multi-view' : g.engine === 'trellis2' ? 'TRELLIS.2' : faithful ? 'Pixal3D (trellis.cpp)' : 'TRELLIS.2 (trellis.cpp)';
-  const w = await publish(low, name, { what: what ?? name, match, engine: low === raw ? made : `${made}, baked in Blender`, top: { faces, tex } });
+  const w = await publish(low, name, { what: what ?? name, match, engine: low === raw ? made : `${made}, baked in Blender`, top: { faces, tex }, ultra });
   for (const [t, c] of Object.entries(w.cuts)) log(`${t}: ${Math.round(c.after)} triangles, ${(c.bytes / 1024).toFixed(0)} KB → ${c.out}`);
   const result = { name, what: what ?? name, engine: made, seed, cuts: Object.fromEntries(Object.entries(w.cuts).map(([t, c]) => [t, { triangles: Math.round(c.after), bytes: c.bytes, file: c.out }])) };
   writeFileSync(join(dir, 'result.json'), JSON.stringify(result, null, 2));
@@ -108,15 +111,23 @@ export async function make(name, { image, prompt, what, faces = TIERS.hq.faces, 
     log(`judge: ${out}`);
     // the model's eyes on the sheet: a miss is made again, once, with the next seed (and the next-best concept)
     if (judge && vlmReady()) {
-      const { judge: look } = await import('./vlm.mjs');
-      const v = await look(what ?? prompt ?? name, out);
+      const { judge: look, which } = await import('./vlm.mjs');
+      let v;
+      try {
+        v = await look(what ?? prompt ?? name, out);
+      } catch (e) {
+        // Qwen's say is only a note (below), so a Qwen that fails or hangs leaves the made model unjudged, not failed
+        if (which() !== 'qwen') throw e;
+        log(`no verdict: Qwen3-VL failed (${e.message.slice(0, 160)})`);
+        writeFileSync(join(dir, 'result.json'), JSON.stringify({ ...result, sheet: out }, null, 2));
+        return { source, raw, low, out: w.out };
+      }
       log(`verdict: ${v.score}/10${v.problems.length ? ` — ${v.problems.join('; ')}` : ''}${v.ok ? '' : ` — ${v.fix}`}`);
       // only Claude's verdict gates: Qwen3-VL-8B misjudges a right model often enough that its say is a note, not a veto
       // (the contract tests' fake judge stands in for Claude, so the loop is tested)
-      const { which } = await import('./vlm.mjs');
       if (!v.ok && retries > 0 && ['claude', 'fake'].includes(which())) {
         log(`not good enough: once more with seed ${seed + 1}`);
-        return make(name, { image, prompt, what, faces, tex, seed: seed + 1, res, fov, engine, faithful, noBake, match, candidates, judge, retries: retries - 1, fresh, first: false });
+        return make(name, { image, prompt, what, faces, tex, seed: seed + 1, res, fov, engine, faithful, noBake, match, candidates, judge, retries: retries - 1, fresh, first: false, ultra });
       }
       writeFileSync(join(dir, 'result.json'), JSON.stringify({ ...result, sheet: out, verdict: v }, null, 2));
       return { source, raw, low, out: w.out, verdict: v };
@@ -140,10 +151,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const unfaithful = on('no-faithful'); // a picture is followed with Pixal3D unless this says not to
   const noBake = on('no-bake');
   const fresh = on('fresh');
+  const ultra = on('ultra');
   const judge = !on('no-judge');
   const [image, match, fov, left, back, right] = [flag('image'), flag('match'), flag('fov'), flag('left'), flag('back'), flag('right')];
   const sides = Object.fromEntries(Object.entries({ left, back, right }).filter(([, p]) => p).map(([k, p]) => [k, resolve(p)]));
-  const opts = { image: image && (Object.keys(sides).length ? { front: resolve(image), ...sides } : resolve(image)), prompt: flag('prompt'), what: flag('what'), faces: Number(flag('faces', TIERS.hq.faces)), tex: Number(flag('tex', TIERS.hq.tex)), match: match && resolve(match), seed: Number(flag('seed', 42)), res: Number(flag('res', 1024)), fov: fov && Number(fov), engine: flag('engine'), noBake, fresh, judge, candidates: Number(flag('candidates', 4)) };
+  const opts = { image: image && (Object.keys(sides).length ? { front: resolve(image), ...sides } : resolve(image)), prompt: flag('prompt'), what: flag('what'), faces: Number(flag('faces', TIERS.hq.faces)), tex: Number(flag('tex', TIERS.hq.tex)), match: match && resolve(match), seed: Number(flag('seed', 42)), res: Number(flag('res', 1024)), fov: fov && Number(fov), engine: flag('engine'), noBake, fresh, ultra, judge, candidates: Number(flag('candidates', 4)) };
   const [name] = args;
   const usage = 'usage: node scripts/gen3d/make.mjs NAME (--image FRONT [--left L --back B --right R] | --prompt "…") [--faithful | --no-faithful] [--what "…"] [--faces N] [--tex N]';
   if (!name || !(opts.image || opts.prompt)) throw new Error(usage);

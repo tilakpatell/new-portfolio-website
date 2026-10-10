@@ -5,8 +5,11 @@ import { playClip, playFile } from '../../lib/clips';
 import { useMouth } from '../../lib/mouth';
 import { preloadVoiced, voiceOf, voicedSrc } from '../../lib/voiced';
 import { retold } from './callers';
-import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gadgetSound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
+import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gadgetSound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, powerSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
 import Face from './Faces';
+import { WEAPONS } from './weaponTable';
+import { thud } from '../../lib/sfx';
+import { createImpacts } from '../../lib/impact';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
 // the speaker's face and voice (their own recording where the line has one,
@@ -22,11 +25,16 @@ import Face from './Faces';
 // traffic going past and a ship shot down. Hunters coming after you, their
 // hits, your shields running low, being shot down, getting away or shooting
 // the lot down, the director's set pieces and the first sight of each of
-// deep space's wonders all get theirs too. Shots are just sound.
+// deep space's wonders all get theirs too, and so do the ship's powers
+// (shipPowers.js: the big one always, the other now and then). Shots are
+// just sound.
 // The page hands events over through `control.current.handle(event)`, or an
 // exchange of its own making as `{ type: 'lines', lines, urgent }`.
 
-const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, pulled: 20000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000, shielded: 15000, deflect: 10000, dry: 8000, closed: 6000 }; // ms before the same kind of line again
+// a bump's thud by how hard it was (the event's force, ship.js), on the hit law (lib/impact.js)
+const BUMPS = createImpacts();
+
+const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, pulled: 20000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000, shielded: 15000, deflect: 10000, dry: 8000, closed: 6000, power: 15000, refuse: 8000 }; // ms before the same kind of line again
 
 export default function Comms({ crew, reduced, control }) {
   const [line, setLine] = useState(null); // { who, text, n }
@@ -78,12 +86,14 @@ export default function Comms({ crew, reduced, control }) {
       const least = clip ? 1200 + text.length * 32 : 1500 + text.length * 42; // time to read it
       const started = performance.now();
       // their own voice: the recording, or the line made in their voice (a
-      // caller on the radio's: speakers.js)
-      let h = clip ? await playClip(clip, { voice: true }) : null;
+      // caller on the radio's: speakers.js), when nobody else is talking
+      // (lib/speech.js: it waits its turn, and isn't said if it waits too long)
+      const aloud = { voice: true, mode: 'queue', tag: 'comms' };
+      let h = clip ? await playClip(clip, aloud) : null;
       const voice = voiceOf(speaker.voiced ?? who);
       if (!h && voice) {
         const src = await voicedSrc(voice, text);
-        if (src && alive.current) h = await playFile(src, { voice: true });
+        if (src && alive.current) h = await playFile(src, aloud);
       }
       if (h) {
         // the line stays up while it plays
@@ -147,6 +157,8 @@ export default function Comms({ crew, reduced, control }) {
           if (e.first || often('boost', now)) say(linesFor(crew, 'boost'));
         } else if (e.type === 'bump') {
           if (soundOnce('bump', 500, now)) bumpSound();
+          const r = e.force > 0 ? BUMPS.hit(e.force, e.id ?? 'bump') : null;
+          if (r) thud({ gain: r.gain, pitch: r.pitch });
           if (e.hard && often('bump', now)) say(linesFor(crew, 'bump'), { urgent: true });
         } else if (e.type === 'pulled') {
           // the black hole has hold of you (and you can still get out)
@@ -157,7 +169,7 @@ export default function Comms({ crew, reduced, control }) {
           fallSound();
           say(linesFor(crew, 'swallowed'), { urgent: true });
         } else if (e.type === 'crash') {
-          crashSound();
+          crashSound(e.loud ?? 1); // (louder the faster it went in: ship.js's crashLoud)
           if (e.id === 'sun' && !said.current.has('sun')) {
             // straight into the sun: once a visit
             said.current.add('sun');
@@ -176,7 +188,8 @@ export default function Comms({ crew, reduced, control }) {
           }
         } else if (e.type === 'kill') {
           popSound();
-          if (often('kill', now)) say(linesFor(crew, 'kill', e.kind), { urgent: true });
+          // (rammed down: the crew's ram line, not a gun's)
+          if (often('kill', now)) say((e.ram && linesFor(crew, 'ram', 'kill')) || linesFor(crew, 'kill', e.kind), { urgent: true });
         } else if (e.type === 'edge') {
           if (often('edge', now)) say(linesFor(crew, 'edge'));
         } else if (e.type === 'idle') {
@@ -187,7 +200,7 @@ export default function Comms({ crew, reduced, control }) {
           // on foot, the gun in hand (yours, or your crewmate's further off); in the ship, its guns
           if (e.gun) {
             if (soundOnce(e.soft ? 'mateFire' : 'fire', 90, now)) gunSound(e.gun, { soft: e.soft });
-          } else if (e.weapon === 'heavy') launchSound(crew?.id);
+          } else if (WEAPONS[e.weapon]?.heavy) launchSound(crew?.id); // (any ordnance rack's round)
           else if (soundOnce('fire', 150, now)) fireSound(crew?.id);
         } else if (e.type === 'impact') {
           if (soundOnce('impact', 70, now)) impactSound(e.near);
@@ -239,7 +252,7 @@ export default function Comms({ crew, reduced, control }) {
           crashSound();
           say(linesFor(crew, 'destroyed'), { urgent: true });
         } else if (e.type === 'escaped' || e.type === 'cleared') {
-          say(linesFor(crew, e.type), { urgent: true });
+          say((e.ram && linesFor(crew, 'ram', 'cleared')) || linesFor(crew, e.type), { urgent: true });
         } else if (e.type === 'event') {
           if (e.id === 'destroyer') jumpSound();
           else if (e.id === 'flare') flareSound();
@@ -277,6 +290,16 @@ export default function Comms({ crew, reduced, control }) {
           if (lines) say(e.part ? lines.map((l) => retold(crew, l, l[1].replace('{part}', e.part))) : lines, { urgent: e.key === 'hello', after: news });
         } else if (e.type === 'sector') {
           portalSound(); // (through a portal into another sector of the map: portals.js)
+        } else if (e.type === 'power') {
+          // the ship's powers: each one's sound, and the crew's word on it
+          // (on, the big one charged, a big haul from it, or why it won't go)
+          // (a chime for the big one charged, not for the other's every cooldown; Chewie's shots not on top of each other)
+          if ((e.what !== 'ready' || e.slot === 'ultimate') && (e.what !== 'shot' || soundOnce('power', 90, now))) powerSound(e.id, e.what);
+          if (e.what === 'use') {
+            if (e.slot === 'ultimate' || often('power', now)) say(linesFor(crew, 'power', e.id, 'use'), { urgent: true });
+          } else if (e.what === 'ready' && e.slot === 'ultimate') say(linesFor(crew, 'power', e.id, 'ready'));
+          else if (e.what === 'big') say(linesFor(crew, 'power', e.id, 'big'), { urgent: true });
+          else if (e.what === 'denied' && e.why && often('refuse', now)) say(linesFor(crew, 'power', e.id, 'refuse', e.why), { urgent: true });
         } else if (e.type === 'wonder') {
           const key = `wonder:${e.id}`;
           if (said.current.has(key)) return;
@@ -291,6 +314,20 @@ export default function Comms({ crew, reduced, control }) {
 
   const speaker = line?.speaker ?? null;
   useMouth(box, Boolean(speaker) && line.who !== 'comms', reduced);
+  // the line's height, for what sits under it at the top of the map (the
+  // fly-past pill, the siege banner: universe.css), so a two-line message
+  // pushes them down instead of covering them
+  useEffect(() => {
+    const el = box.current;
+    const page = el?.parentElement;
+    if (!el || !page || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => page.style.setProperty('--comms-h', `${Math.round(el.offsetHeight)}px`));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      page.style.removeProperty('--comms-h');
+    };
+  }, []);
   return (
     <div ref={box} className="universe-comms" aria-live="polite" data-motion={reduced ? undefined : ''}>
       {speaker && (

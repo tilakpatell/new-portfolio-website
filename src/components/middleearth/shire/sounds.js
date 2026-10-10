@@ -2,7 +2,7 @@
 // and crickets by night, a mushroom picked, Maggot's dogs barking, a puff of
 // pipe smoke and a ring going through, rockets and their bangs, hoofbeats on
 // the East Road and the Rider's sniffing and its scream, and on the side a
-// silver spoon found or pocketed by Lobelia. All through the
+// silver spoon found or pocketed by Lobelia, and his footsteps. All through the
 // site's master volume, so the sound setting mutes them.
 
 import { audioContext, output } from '../../../lib/audio';
@@ -89,6 +89,18 @@ export function bark() {
     tone(ac, out, t + at, { type: 'sawtooth', f: 520, to: 260, gain: 0.16, attack: 0.01, length: 0.14 });
     hiss(ac, out, t + at, { f: 900, q: 2, gain: 0.25, attack: 0.008, length: 0.13, sweep: 500 });
   }
+}
+
+// a footstep: a soft brush of grass, or a crunch on the road's gravel;
+// a running foot lands harder, and is louder
+export function step({ run = false, road = false } = {}) {
+  const [ac, out] = ready();
+  if (!ac) return;
+  const t = ac.currentTime + 0.005;
+  const gain = run ? 0.1 : 0.065;
+  if (road) hiss(ac, out, t, { type: 'bandpass', f: 1500 + Math.random() * 500, q: 1.2, gain, attack: 0.003, length: 0.08 });
+  else hiss(ac, out, t, { type: 'lowpass', f: 700 + Math.random() * 300, q: 0.7, gain: gain * 1.2, attack: 0.01, length: 0.12, sweep: 350 });
+  tone(ac, out, t, { f: 85 + Math.random() * 15, to: 55, gain: gain * 0.6, attack: 0.004, length: 0.07 });
 }
 
 export function puff() {

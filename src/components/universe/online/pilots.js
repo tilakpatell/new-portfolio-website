@@ -14,8 +14,7 @@
 // the lock and the arrows at the edge of the screen.
 //
 // Out on the universe map, spread wide, only those within DRAW of you are
-// ships (pilotsRules.js): further off, one riding a hyperlane is a streak of
-// light along it in their own colour, and anyone else is left to the chart
+// ships (pilotsRules.js): further off they're left to the chart
 // (NavMap.jsx's blips, from `chart`).
 //
 // The hunters after each of them are here too (given a `fleet` to make them
@@ -29,7 +28,8 @@
 //   hit(from, to, damage) → { id, at, size } (a pilot) or { id, hunter, kind,
 //   at, size, down } (one of the hunters after pilot `id`), targets, mates
 //   (your allies in view: { id, name, at }, for the HUD's markers at the
-//   edge), count, chart, at(id), pose(id), dispose() }
+//   edge), count, chart, at(id), pose(id), dispose(), bodies (shipHits.js's:
+//   the pilots flying, and the hunters after them) }
 // view: { project(x, y, z, out) (to the canvas: out.x, out.y in px and
 // out.z, the depth), tags (the element the tags go in), locked (the pilot
 // the guns are locked on, whose name the lock shows instead; footOn, the
@@ -56,21 +56,19 @@ import { SHIP } from '../ship';
 import { sweptHit } from '../targeting';
 import { hitRadius } from '../hunterRules';
 import { PARKED } from '../foot';
-import { WEAPONS, arsenalOf, fan } from '../weapons';
+import { WEAPONS, arsenalOf, byCode, fan } from '../weapons';
 import { POSITIONS } from '../layout';
 import { byId } from '../universes';
 import { STALE_MS, sample } from './protocol';
 import { UNIVERSE } from './where';
 import { howToDraw } from './pilotsRules';
-import { carriageway, laneAt } from '../hyperlanes';
-import { bezier, tangent } from '../lanes';
 import { distText, fontPx, keepIn, tagMode } from './tagRules';
 import { relation } from './relations';
 import { RANKS } from '../../galaxy/ranks';
 import { gltfLoader } from '../../../lib/three/gltf';
 
 const MODELS = { ...SHIP_MODELS, cruiser: '/games/meshy/saucer.glb' }; // (the cruiser the C-137 planet flies; your own is the page's, crew aboard)
-const SIZE = 0.3; // across, for the guns and for hits
+export const SIZE = 0.3; // across, for the guns, for hits and for a ram (contact.js's size)
 const HIT_R = 0.22; // how close a bolt must pass to hit
 const BOLTS = 24;
 const BOLT_LIFE = 1.1;
@@ -78,8 +76,6 @@ const THREAT_MS = 8000; // a pilot whose shot hit you this lately is a threat
 const PACK_STALE = 1500; // ms: hunters not heard of for this long are gone
 const PACK_AHEAD = 0.4; // seconds, at most, a hunter's flown on from where it was last said to be
 const GONE_MS = 2500; // a hunter your shot should have finished stays off the sky this long, unless its pilot says it's down
-const STREAK = 400; // map units: how long a far pilot's streak along their lane is
-const STREAK_AHEAD = 1; // seconds, at most, a streak runs on along its lane from where its pilot last said
 
 const loader = gltfLoader();
 
@@ -130,9 +126,10 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
   let clock = 0; // `now`, as of the last update
   const aim = new THREE.Vector3();
   const takeModel = (kind) => {
+    const drawn = kinds[kind]?.model ?? kind; // (drawn as another kind, as hunters.js's are)
     // a built stand-in waiting here gives way once the model is in (as hunters.js's do)
-    if (fleet.loaded(kind) && spare[kind]?.length && !spare[kind][spare[kind].length - 1].model) for (const m of spare[kind].splice(0)) m.dispose();
-    const model = spare[kind]?.pop() ?? fleet.make(kind);
+    if (fleet.loaded(drawn) && spare[kind]?.length && !spare[kind][spare[kind].length - 1].model) for (const m of spare[kind].splice(0)) m.dispose();
+    const model = spare[kind]?.pop() ?? fleet.make(drawn);
     model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1);
     parent.add(model.group);
     return model;
@@ -159,11 +156,6 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
     for (const o of shared) o.removeFromParent();
     disposeTree(sh.model.group);
     sh.tag?.remove();
-    if (sh.streak) {
-      sh.streak.removeFromParent();
-      sh.streak.geometry.dispose();
-      sh.streak.material.dispose();
-    }
   };
 
   // (hull: their garage build, or null for their stock ship)
@@ -201,48 +193,7 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
     }
     // (what the tag last showed, so it's written only on a change; its size
     // measured at the start of the next update, before anything's written)
-    return { kind, hull: hullKey(hull), loadout: STOCK_LOADOUT, model, tag, bits, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, pose: null, mode: null, seen: { x: 0, z: 0 }, streak: null, parked: false, under: null, ally: false, safe: false, threat: 0, tagOn: null, tagName: null, tagShown: {}, tagW: 90, tagH: 22, measure: true };
-  };
-
-  // a far pilot riding a lane: a short line along it, bright at their end and
-  // fading out behind (additive, so the dark end is nothing), in their bolts'
-  // colour; one per pilot, made the first time it's wanted
-  const head = [0, 0, 0];
-  const dir = [0, 0, 0];
-  const streakOf = (sh, color) => {
-    if (!sh.streak) {
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 1, 1, 0, 0, 0]), 3));
-      const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-      sh.streak = new THREE.Line(geo, mat);
-      sh.streak.frustumCulled = false; // (its bounds move every frame)
-      sh.streak.userData.color = null;
-      parent.add(sh.streak);
-    }
-    if (sh.streak.userData.color !== color) {
-      sh.streak.userData.color = color;
-      sh.streak.material.color.set(color).multiplyScalar(3);
-    }
-    return sh.streak;
-  };
-  // where along its carriageway (`on`, laneAt's) a pilot last said they
-  // were (`pose`), run on at their speed since, so it moves between poses
-  const drawStreak = (sh, on, pose, now, color) => {
-    const line = streakOf(sh, color);
-    const pts = carriageway(on.lane, on.way);
-    const ahead = Math.min(STREAK_AHEAD, Math.max(0, (now - (pose.at ?? now)) / 1000));
-    const s = Math.min(1, on.s + (ahead * Math.abs(pose.speed)) / on.lane.length);
-    bezier(pts, s, head);
-    tangent(pts, s, dir);
-    const l = Math.hypot(...dir) || 1;
-    const pos = line.geometry.attributes.position;
-    pos.setXYZ(0, ...head);
-    pos.setXYZ(1, head[0] - (dir[0] / l) * STREAK, head[1] - (dir[1] / l) * STREAK, head[2] - (dir[2] / l) * STREAK);
-    pos.needsUpdate = true;
-    line.visible = true;
-    sh.seen.x = head[0];
-    sh.seen.z = head[2];
+    return { kind, hull: hullKey(hull), loadout: STOCK_LOADOUT, model, tag, bits, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, pose: null, mode: null, seen: { x: 0, z: 0 }, parked: false, under: null, ally: false, safe: false, threat: 0, tagOn: null, tagName: null, tagShown: {}, tagW: 90, tagH: 22, measure: true };
   };
 
   // bolts from the others' guns: only drawn (a hit is the shooter's to call)
@@ -277,13 +228,16 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
   const fireBolt = (s) => {
     const k = partById('guns', s.guns)?.bolt ?? 1; // (a fusion cannon's are bigger)
     const color = boltColor(s.kind, s.paint);
-    if (s.w === WEAPONS.heavy.code) {
-      one(s, s.v, 4, BOLT_LIFE * WEAPONS.heavy.life, arsenalOf(s.kind).heavy);
+    // (drawn by what the weapon is, not which: a code this build has never
+    // heard of is the blaster)
+    const w = WEAPONS[byCode(s.w)];
+    if (w.heavy) {
+      one(s, s.v, 4, BOLT_LIFE * w.life, arsenalOf(s.kind).heavy);
       return;
     }
-    if (s.w === WEAPONS.spread.code) {
+    if (w.count > 1) {
       const speed = Math.hypot(...s.v) || 1;
-      for (const d of fan(s.v.map((x) => x / speed), WEAPONS.spread.count, WEAPONS.spread.cone)) one(s, [d[0] * speed, d[1] * speed, d[2] * speed], k * WEAPONS.spread.scale, BOLT_LIFE * WEAPONS.spread.life, color);
+      for (const d of fan(s.v.map((x) => x / speed), w.count, w.cone)) one(s, [d[0] * speed, d[1] * speed, d[2] * speed], k * w.scale, BOLT_LIFE * w.life, color);
       return;
     }
     one(s, s.v, k, BOLT_LIFE, color);
@@ -291,6 +245,18 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
 
   const spot = { x: 0, y: 0, z: 0 };
   let live = 0;
+  // one of the hunters after another pilot hit, worth `damage`: the hit, for
+  // the scene to tell its pilot (one that should be down is off the sky)
+  const hurtGhost = (ghost, damage) => {
+    ghost.hurt += damage;
+    ghost.hitAt = clock;
+    const down = ghost.told - ghost.hurt <= 0;
+    if (down) {
+      ghost.goneUntil = clock + GONE_MS;
+      ghost.model.group.visible = false;
+    }
+    return { id: ghost.owner, hunter: ghost.hunter, kind: ghost.kind, at: ghost.at.clone(), size: ghost.type.size, down };
+  };
 
   return {
     // where everyone is now; their tags; their shots on their way
@@ -342,10 +308,10 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
         // down on a planet, their crew out: parked where they came down
         const down = p.foot && now - p.foot.at < STALE_MS && POSITIONS[p.foot.planet] ? p.foot : null;
         const flying = Boolean(s && !s.hidden) && !down;
-        // a ship near you; far off, a streak or a blip (by where they last
-        // said they were, not the guess ahead: the lane's checked on that)
+        // a ship near you; far off, a blip on the chart (by where they last
+        // said they were, not the guess ahead)
         const last = p.pose ?? s;
-        sh.mode = !flying ? null : spread ? howToDraw(last, view.from, { laneAt }) : 'ship';
+        sh.mode = !flying ? null : spread ? howToDraw(last, view.from) : 'ship';
         const on = sh.mode === 'ship';
         const was = sh.shown;
         sh.shown = on;
@@ -355,11 +321,6 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
           sh.seen.x = s.x;
           sh.seen.z = s.z;
         }
-        const riding = sh.mode === 'streak' ? laneAt(last.x, last.y, last.z) : null;
-        if (riding) {
-          busy = true;
-          drawStreak(sh, riding, last, now, boltColor(p.kind, p.loadout?.paint));
-        } else if (sh.streak) sh.streak.visible = false;
         sh.name = p.name; // (for the lock's bracket, whether or not their tag's showing)
         sh.ally = p.ally === 'ally';
         sh.safe = on && Boolean(s.safe);
@@ -553,14 +514,24 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
         }
       }
       if (!ghost) return hit;
-      ghost.hurt += damage;
-      ghost.hitAt = clock;
-      const down = ghost.told - ghost.hurt <= 0;
-      if (down) {
-        ghost.goneUntil = clock + GONE_MS;
-        ghost.model.group.visible = false;
+      return hurtGhost(ghost, damage);
+    },
+
+    // everyone here as shipHits.js's bodies: the pilots flying (not parked,
+    // their crew out; a ram on one is told to them, client.js's ram, and
+    // they take it off their own shields) and the hunters after them (a ram
+    // on one is a shot's hit)
+    get bodies() {
+      const out = [];
+      for (const [id, sh] of ships) {
+        if (!sh.shown || sh.parked) continue;
+        out.push({ key: `p:${id}`, id, kind: sh.kind, at: sh.at, prev: sh.prev, vel: sh.vel, size: SIZE, side: sh.ally ? 'friend' : 'pilot', hit: () => null });
       }
-      return { id: ghost.owner, hunter: ghost.hunter, kind: ghost.kind, at: ghost.at.clone(), size: ghost.type.size, down };
+      for (const g of ghosts.values()) {
+        if (clock < g.goneUntil) continue;
+        out.push({ key: `g:${g.owner}:${g.hunter}`, id: g.hunter, kind: g.kind, at: g.at, prev: g.prev, vel: g.vel, size: g.type.size, side: 'foe', hit: (punch) => hurtGhost(g, punch) });
+      }
+      return out;
     },
 
     // what the guns can lock on to: everyone in view who isn't an ally (or
@@ -584,7 +555,7 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       return live + ghosts.size;
     },
     // everyone flying here, near or far, for the chart: [{ id, name, x, z,
-    // mode ('ship' | 'streak' | 'blip'), ally }], allies too
+    // mode ('ship' | 'blip'), ally }], allies too
     get chart() {
       const out = [];
       for (const [id, sh] of ships) if (sh.mode) out.push({ id, name: sh.name, x: sh.seen.x, z: sh.seen.z, mode: sh.mode, ally: sh.ally });

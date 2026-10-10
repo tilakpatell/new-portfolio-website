@@ -24,6 +24,20 @@ describe('the crews', () => {
     for (const c of CREWS) if (c.jump) expect(JUMP_STYLES).toContain(c.jump);
   });
 
+  it('each say a ram’s kill, and the last of them rammed, as a ram (never a shot)', () => {
+    for (const crew of CREWS) {
+      for (const when of ['kill', 'cleared']) {
+        const exchange = linesFor(crew, 'ram', when);
+        expect(exchange?.length, `${crew.id} ${when}`).toBeGreaterThan(0);
+        for (const [who, text] of exchange) {
+          expect(who === 'comms' || crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
+          expect(text, `${crew.id} ${when}`).not.toMatch(/\bsho(t|ot)/i);
+        }
+      }
+    }
+    expect(linesFor(crewById('xwing'), 'ram', 'nope')).toBeNull();
+  });
+
   it('have something to say everywhere, and only their own crew says it', () => {
     for (const crew of CREWS) {
       const all = [...['launch', 'boost', 'bump', 'edge', 'crash', 'pulled', 'swallowed'].map((e) => linesFor(crew, e)), ...ORDER.map((id) => linesFor(crew, 'arrive', id)), linesFor(crew, 'kill', 'any')];
@@ -39,10 +53,41 @@ describe('the crews', () => {
 
   it('only play clips the site has', async () => {
     const { CLIPS } = await import('../../lib/clips');
+    // (the ship powers' lines are a level deeper: by power, then by when, then by why)
+    const lines = (o) => (Array.isArray(o) ? (typeof o[0] === 'string' ? [o] : o.flatMap(lines)) : o && typeof o === 'object' ? Object.values(o).flatMap(lines) : []);
     for (const crew of CREWS) {
-      const lines = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill, crew.hunted, crew.events, crew.wonders, crew.crashInto].map((o) => Object.values(o ?? {}).flat()));
-      for (const line of lines) if (line[2]) expect(CLIPS[line[2]], `${crew.id}: ${line[2]}`).toBeTruthy();
+      const all = Object.values(crew).filter(Array.isArray).flat().concat(...[crew.arrive, crew.traffic, crew.kill, crew.hunted, crew.events, crew.wonders, crew.crashInto].map((o) => Object.values(o ?? {}).flat()), lines(crew.powers));
+      for (const line of all) if (line[2]) expect(CLIPS[line[2]], `${crew.id}: ${line[2]}`).toBeTruthy();
     }
+  });
+
+  it('have a word for each of their ship’s powers: using it, and for the big one, charged and a big haul', async () => {
+    const { POWERS, powersOf } = await import('./shipPowers');
+    for (const crew of CREWS) {
+      const own = powersOf(crew.id);
+      const said = [linesFor(crew, 'power', own.primary, 'use'), ...['use', 'ready', 'big'].map((sub) => linesFor(crew, 'power', own.ultimate, sub))];
+      for (const exchange of said) {
+        expect(exchange?.length, crew.id).toBeGreaterThan(0);
+        for (const [who, text] of exchange) {
+          expect(who === 'comms' || crew.speakers[who], `${crew.id}: ${who}`).toBeTruthy();
+          expect(text.length).toBeGreaterThan(2);
+        }
+      }
+      // (only its own powers' lines)
+      for (const id of Object.keys(crew.powers)) expect(POWERS[id]?.crew, `${crew.id}: ${id}`).toBe(crew.id);
+    }
+    // the clip-backed lines: each crew's own recording on its use or its big haul
+    expect(linesFor(crewById('xwing'), 'power', 'focus', 'use')[0][2]).toBe('useTheForce');
+    expect(linesFor(crewById('falcon'), 'power', 'odds', 'use')[0][2]).toBe('neverTellOdds');
+    expect(linesFor(crewById('cruiser'), 'power', 'wubba', 'use')[0][2]).toBe('wubba');
+    expect(linesFor(crewById('rv'), 'power', 'heisenberg', 'use')[0][2]).toBe('sayMyName');
+    // Rick says why a portal won't go: Scarif's shield, a hold on the ship,
+    // and nowhere to come out but into something solid
+    for (const why of ['shield', 'held', 'solid']) expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', why)?.length, why).toBeGreaterThan(0);
+    expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', 'shield')).not.toBe(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', 'held'));
+    // and Jesse, when the magnet's got nothing near enough to hold
+    expect(linesFor(crewById('rv'), 'power', 'magnets', 'refuse', 'empty')?.length).toBeGreaterThan(0);
+    expect(linesFor(crewById('xwing'), 'power', 'nope', 'use')).toBeNull();
   });
 
   it('have a word for every kind of traffic that comes past them, and for shooting one down', () => {
@@ -79,9 +124,8 @@ describe('the crews', () => {
       if (Object.values(side.factions).some((f) => f.ace)) said(linesFor(crew, 'hunted', 'ace'), crew, 'hunted ace');
       for (const event of ['hit', 'shields', 'destroyed', 'escaped', 'cleared', 'interdicted']) said(linesFor(crew, event), crew, event);
       for (const into of ['star', 'giant', 'citadel']) said(linesFor(crew, 'crashInto', into), crew, `crashInto ${into}`);
-      // the director's events the side can have (the Council's and the bounty hunters' arrivals are their hunted lines; the lane's own are
-      // played as others, laneEvents.js: an interdiction is the capital ship's and 'interdicted', a lane jam the minefield's, an ambush a hunt's), rescuing someone, going out into deep space
-      const playedAsOthers = new Set(['hunt', 'council', 'bounty', 'interdiction', 'lanejam', 'ambush']);
+      // the director's events the side can have (the Council's and the bounty hunters' arrivals are their hunted lines), rescuing someone, going out into deep space
+      const playedAsOthers = new Set(['hunt', 'council', 'bounty']);
       for (const [id, e] of Object.entries(EVENTS)) if (canHave(side, e) && !playedAsOthers.has(id)) said(linesFor(crew, 'event', id), crew, `event ${id}`);
       said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
       // (and what comes where you are rather than with your side: an eclipse, wherever there's a sun)

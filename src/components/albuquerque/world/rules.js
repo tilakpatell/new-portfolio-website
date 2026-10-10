@@ -338,6 +338,11 @@ export const CAR = {
   align: 2.2,
   power: 0.4,
   pivot: 0.9,
+  // what a bump weighs, for the hit law (lib/impact.js): m/s into a wall
+  // times this is the force it hears, so a knock at 4 m/s (where the dust and
+  // the shake began) is just over its threshold and 20 m/s (a full shake) is
+  // full
+  mass: 6,
 };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -375,7 +380,8 @@ export const slipOf = (car) => clamp(Math.abs(car.slide ?? 0) / SLIDING, 0, 1);
 // like a wall). input: { throttle −1…1, steer −1…1, handbrake,
 // assist 0…2 (how much it straightens itself out of a slide; 1 as it comes) }.
 // Returns the car, how hard it bumped into something (m/s into it, 0 if it
-// didn't), how hard its tyres are sliding (0…1) and what it's on. However
+// didn't; `force`, that times CAR.mass, and `at`, where it touched, or
+// null), how hard its tyres are sliding (0…1) and what it's on. However
 // long the step, it's worked out in slices no longer than STEP, so the car
 // drives the same at any frame rate.
 const STEP = 1 / 120;
@@ -383,7 +389,7 @@ const LONGEST = 0.25;
 const BOUNCE = 0.15;
 export function stepCar(car, input = {}, dt, movers = NONE) {
   const c = { x: car.x, z: car.z, yaw: car.yaw, speed: car.speed ?? 0, slide: car.slide ?? 0, yawRate: car.yawRate ?? 0 };
-  const out = { car: c, bump: 0, slip: 0, surface: surfaceAt(c.x, c.z) };
+  const out = { car: c, bump: 0, force: 0, at: null, slip: 0, surface: surfaceAt(c.x, c.z) };
   if (!(dt > 0)) return out;
   // (a frame that long is a stall, not driving; and nothing that isn't a
   // number gets as far as the car)
@@ -393,6 +399,7 @@ export function stepCar(car, input = {}, dt, movers = NONE) {
   const n = Math.max(1, Math.ceil(span / STEP - 1e-9));
   const h = span / n;
   for (let i = 0; i < n; i++) slice(c, ask, h, out, movers);
+  out.force = out.bump * CAR.mass;
   return out;
 }
 
@@ -494,6 +501,14 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out, movers) {
   let x = c.x + vx * h;
   let z = c.z + vz * h;
   let hit = 0;
+  let ax = 0; // where it hit hardest
+  let az = 0;
+  const touch = (v, px, pz) => {
+    if (v <= hit) return;
+    hit = v;
+    ax = px;
+    az = pz;
+  };
   // the buildings: the car is a circle, pushed out of any footprint it's in
   for (const b of collidersNear(x, z)) {
     const px = Math.max(b.x - b.w / 2, Math.min(x, b.x + b.w / 2));
@@ -505,14 +520,14 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out, movers) {
     if (d > 1e-6) {
       x = px + (dx / d) * CAR.radius;
       z = pz + (dz / d) * CAR.radius;
-      hit = Math.max(hit, strike(vx, vz, dx / d, dz / d));
+      touch(strike(vx, vz, dx / d, dz / d), px, pz);
       vx = hitV.x;
       vz = hitV.z;
     } else {
       // inside it: out the way it came
       x = c.x;
       z = c.z;
-      hit = Math.max(hit, Math.hypot(vx, vz));
+      touch(Math.hypot(vx, vz), x, z);
       vx *= -0.2;
       vz *= -0.2;
     }
@@ -526,7 +541,7 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out, movers) {
     if (d >= reach || d < 1e-6) continue;
     x = m.x + (dx / d) * reach;
     z = m.z + (dz / d) * reach;
-    hit = Math.max(hit, strike(vx, vz, dx / d, dz / d));
+    touch(strike(vx, vz, dx / d, dz / d), m.x + (dx / d) * (m.r ?? 1.5), m.z + (dz / d) * (m.r ?? 1.5));
     vx = hitV.x;
     vz = hitV.z;
   }
@@ -535,7 +550,7 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out, movers) {
   if (r > WORLD_RADIUS) {
     x *= WORLD_RADIUS / r;
     z *= WORLD_RADIUS / r;
-    hit = Math.max(hit, strike(vx, vz, -x / WORLD_RADIUS, -z / WORLD_RADIUS));
+    touch(strike(vx, vz, -x / WORLD_RADIUS, -z / WORLD_RADIUS), x, z);
     vx = hitV.x;
     vz = hitV.z;
   }
@@ -543,6 +558,7 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out, movers) {
     f = vx * hx + vz * hz;
     s = vx * hz - vz * hx;
     w *= 0.6;
+    if (hit > out.bump) out.at = { x: ax, z: az };
     out.bump = Math.max(out.bump, hit);
   }
   c.x = x;
@@ -553,6 +569,58 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out, movers) {
   c.yawRate = w;
   out.slip = Math.max(slipOf(c), handbrake && Math.hypot(f, s) > 3 ? 0.55 : 0);
   out.surface = surface;
+}
+
+// ── things to knock over ──
+
+// Along Central, in the gutter by the kerb (clear of the lanes the traffic
+// drives, so only you hit them): a row of cones at each block's middle on
+// the north side, a bin and a pair of crates on the south. Data only: the
+// scene puts them through lib/three/knockables, bodies where the computer
+// can afford the engine and standing still where it can't.
+const GUTTER = 7.2;
+export const STREET_PROPS = GRID.xs.slice(0, -1).flatMap((x0, i) => {
+  const x = (x0 + GRID.xs[i + 1]) / 2;
+  return [
+    { kind: 'cone', x: x - 5, y: 0, z: GUTTER, yaw: 0 },
+    { kind: 'cone', x, y: 0, z: GUTTER, yaw: 0.6 },
+    { kind: 'cone', x: x + 5, y: 0, z: GUTTER, yaw: 1.2 },
+    { kind: 'bin', x: x + 14, y: 0, z: -GUTTER, yaw: 0 },
+    { kind: 'crate', x: x - 14, y: 0, z: -GUTTER, yaw: 0.2 },
+    { kind: 'crate', x: x - 12.9, y: 0, z: -GUTTER - 0.2, yaw: -0.3 },
+  ];
+});
+
+// ── a way out ──
+
+// The last safe spot (Dot Matrix keeps one; the reset key puts you back on
+// it, so a car wedged between a wall and a parked truck is never stuck):
+// where the car was the last time it had driven SAFE.every seconds without
+// touching anything. Standing still doesn't count: a car wedged and not
+// pushing is as still as one parked.
+export const SAFE = { every: 0.5, moving: 1 };
+export function createSafeSpot(start) {
+  const pick = (c) => ({ x: c.x, z: c.z, yaw: c.yaw });
+  let spot = pick(start);
+  let clean = 0;
+  return {
+    step(car, bump, dt) {
+      if (!(dt > 0)) return;
+      if (bump > 0 || !(Math.abs(car.speed ?? 0) >= SAFE.moving)) {
+        clean = 0;
+        return;
+      }
+      clean += dt;
+      if (clean < SAFE.every - 1e-9) return;
+      clean = 0;
+      if ([car.x, car.z, car.yaw].every(Number.isFinite)) spot = pick(car);
+    },
+    get spot() {
+      return { ...spot };
+    },
+    // the car there, stopped
+    back: () => ({ ...spot, speed: 0, slide: 0, yawRate: 0 }),
+  };
 }
 
 // ── the wheel in your hands ──

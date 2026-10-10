@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, validateStation } from './layout';
 import { DS1 } from './stations/ds1';
-import { createBody, lineClear, pushOut, stepBody } from './walker';
+import { BODY, createBody, lineClear, pushOut, stepBody } from './walker';
 
 const TICK = 1 / 30;
 const R = 0.35;
@@ -168,6 +168,18 @@ describe('doors', () => {
     }
   });
 
+  // (Chewbacca is 2.28 m and Vader 2.03 m; the control room's door is 2 m)
+  it('one taller than a man stoops through an open doorway lower than his head, but no lower than a man stands', () => {
+    const low = station([room('south', 0, 3, 6, 6), room('north', 0, -3, 6, 6)], [{ id: 'low', a: 'south', b: 'north', x: 0, z: 0, axis: 'x', w: 1.4, h: 2, kind: 'slide' }]);
+    const wookiee = createBody({ x: 0, y: 0, z: 2, room: 'south', h: 2.28 });
+    walk(wookiee, { dir: { x: 0, z: -1 } }, 3, world(low, { open: ajar }));
+    expect(wookiee.room).toBe('north');
+    // (shut, it stops him as it stops anyone)
+    const shutOut = createBody({ x: 0, y: 0, z: 2, room: 'south', h: 2.28 });
+    walk(shutOut, { dir: { x: 0, z: -1 } }, 3, world(low, { open: shut }));
+    expect(shutOut.room).toBe('south');
+  });
+
   it('a door lower than your head stops you standing and lets you through crouched', () => {
     const w = world(DUCT, { open: ajar });
     const standing = createBody({ x: 0, y: 0, z: 0, room: 'hall' });
@@ -276,6 +288,61 @@ describe('jumping', () => {
     walk(body, {}, 1.5, w, (b) => (top = Math.max(top, b.y)));
     expect(top).toBeCloseTo(2.2 - 1.8, 6);
     expect(body.y).toBe(0);
+  });
+
+  // a press that lands: a moment off a ledge still jumps (coyote time), a
+  // moment before the feet touch is kept till they do (the buffer)
+  it('still jumps a moment after walking off a ledge, and no longer after', () => {
+    const w = world(cliff(3));
+    const off = (steps) => {
+      const body = createBody({ x: 0, y: 3, z: -0.2, room: 'cliff' });
+      let n = 0;
+      while (body.ground && n++ < 60) stepBody(body, { dir: { x: 0, z: 1 } }, TICK, w);
+      for (let i = 0; i < steps; i++) stepBody(body, { dir: { x: 0, z: 1 } }, TICK, w);
+      stepBody(body, { dir: { x: 0, z: 1 }, jump: true }, TICK, w);
+      return body;
+    };
+    expect(off(1).vy).toBeGreaterThan(0); // 2 steps, 0.067 s off
+    expect(off(4).vy).toBeLessThan(0); // 0.17 s off: falling
+    expect(BODY.coyote).toBe(0.1);
+  });
+
+  it('lands a jump pressed a moment before the feet touch, once', () => {
+    const w = world(HALL);
+    const body = createBody({ x: 0, y: 0, z: 0, room: 'hall' });
+    stepBody(body, { jump: true }, TICK, w);
+    // down again: pressed 2 steps (0.067 s) before it lands
+    let n = 0;
+    while (n++ < 60) {
+      const landsIn = body.vy < 0 && body.y + body.vy * 3 * TICK <= 0;
+      stepBody(body, { jump: landsIn && !body.pressed }, TICK, w);
+      if (landsIn) body.pressed = true;
+      if (body.ground) break;
+    }
+    expect(body.ground).toBe(true);
+    stepBody(body, {}, TICK, w);
+    expect(body.vy).toBeGreaterThan(0); // up again, on the buffered press
+    let again = 0;
+    for (let i = 0; i < 60; i++) {
+      stepBody(body, {}, TICK, w);
+      if (body.vy > 0 && body.y < 0.2 && i > 5) again++;
+    }
+    expect(again).toBe(0);
+  });
+
+  it('drops a press made too long before landing', () => {
+    const w = world(HALL);
+    const body = createBody({ x: 0, y: 0, z: 0, room: 'hall' });
+    stepBody(body, { jump: true }, TICK, w);
+    stepBody(body, {}, TICK, w);
+    stepBody(body, { jump: true }, TICK, w); // in the air, 0.4 s before landing
+    let rose = 0;
+    for (let i = 0; i < 60; i++) {
+      const was = body.ground;
+      stepBody(body, {}, TICK, w);
+      if (was && body.vy > 0) rose++;
+    }
+    expect(rose).toBe(0);
   });
 
   it('can’t jump crouched', () => {
@@ -394,5 +461,42 @@ describe('aboard the first Death Star', () => {
     expect(types(events)).toEqual(['room']);
     expect(body).toMatchObject({ room: 'ctl327', ground: true, falls: 0 });
     expect(body.y).toBeCloseTo(6, 6);
+  });
+});
+
+// a 10 m shaft with a ledge at each end and a 2 m bridge across the middle, tagged so it can be drawn back
+const BRIDGED = station([
+  room('span', 0, 0, 10, 10, {
+    kind: 'chasm',
+    floors: [
+      { x: 0, z: -4, w: 10, d: 2, y: 0 },
+      { x: 0, z: 4, w: 10, d: 2, y: 0 },
+      { x: 0, z: 0, w: 2, d: 6, y: 0, tag: 'bridge' },
+    ],
+  }),
+]);
+
+describe('a floor that can be drawn back', () => {
+  it('holds you while it is out, and drops you into the shaft once it is drawn back', () => {
+    const out = world(BRIDGED);
+    const body = createBody({ x: 0, y: 0, z: 0, room: 'span' });
+    walk(body, { dir: { x: 0, z: 0 } }, 0.5, out);
+    expect(body.falls).toBe(0);
+    expect(body.y).toBeCloseTo(0, 5);
+
+    // the game says the bridge is off by answering its floor's name as open
+    const back = world(BRIDGED, { open: (id) => id === 'floor:bridge' });
+    const over = createBody({ x: 0, y: 0, z: 0, room: 'span' });
+    over.safe = { x: 0, y: 0, z: -4, room: 'span' };
+    walk(over, { dir: { x: 0, z: 0 } }, 3, back);
+    expect(over.falls).toBe(1);
+    expect(over.z).toBeCloseTo(-4, 5);
+  });
+
+  it('is walked across from one ledge to the other only while it is out', () => {
+    const body = createBody({ x: 0, y: 0, z: -4, room: 'span' });
+    walk(body, { dir: { x: 0, z: 1 } }, 6, world(BRIDGED));
+    expect(body.falls).toBe(0);
+    expect(body.z).toBeGreaterThan(3);
   });
 });

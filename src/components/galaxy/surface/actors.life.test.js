@@ -310,3 +310,31 @@ describe('a creature’s legs', () => {
     expect(a.time).toBeCloseTo(t, 6);
   });
 });
+
+// A page's own figure maker (the Rick and Morty planets' cast) is asked
+// first; a kind it has nothing for is made as the galaxy's always were.
+describe('a figure maker handed in', () => {
+  it('is asked first, and a kind it gives nothing for still stands', async () => {
+    const asked = [];
+    const mine = noting();
+    const actors = createActors({
+      parent: new THREE.Group(),
+      world: flat,
+      life: [
+        { kind: 'gazorpian', at: [0, 0] },
+        { kind: 'jawa', at: [4, 0], model: false },
+      ],
+      figure: (kind) => {
+        asked.push(kind);
+        return kind === 'gazorpian' ? Promise.resolve(mine) : Promise.resolve(null);
+      },
+    });
+    await settle();
+    await settle();
+    expect(asked).toEqual(['gazorpian', 'jawa']);
+    expect(actors.actors[0].fig).toBe(mine);
+    expect(actors.actors[1].fig).toBeTruthy();
+    expect(actors.actors[1].fig).not.toBe(mine);
+    actors.dispose();
+  });
+});

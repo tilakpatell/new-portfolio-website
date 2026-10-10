@@ -28,6 +28,7 @@ import { sharpenMaterial } from '../../../lib/three/textures';
 import { METRE } from '../foot';
 import { greetStep } from '../footLife';
 import { faceStep } from './face';
+import { budgetClock, createAnimBudget } from '../../../lib/three/animBudget';
 
 // a soft dark spot on the ground under someone (as footScene's crews have),
 // one texture for the landing's people, freed with the kit
@@ -52,6 +53,23 @@ function spotUnder(k, tall) {
   mesh.scale.setScalar(tall * 0.5);
   mesh.renderOrder = 1;
   return mesh;
+}
+
+// how often a landing's people are stepped (lib/three/animBudget): every
+// frame within a dozen metres of you, every second out to forty, every
+// fourth past that (or with no one about: on the way down). One budget a
+// landing, its round begun again each frame (by the frame's clock, which
+// every one of them is handed); it's asked how far off each is as you at
+// the middle and it along x, as far as faceStep finds it.
+const ME = { position: { x: 0, y: 0, z: 0 } };
+let stood = 0; // (each one's place in the budget's round)
+function budgetOf(k, t) {
+  const b = (k.anim ??= { budget: createAnimBudget({ near: 12, far: 40 }), t: null });
+  if (b.t !== t) {
+    b.t = t;
+    b.budget.frame();
+  }
+  return b.budget;
 }
 
 // one of the site's figures, stood as the town stands it
@@ -145,6 +163,9 @@ export async function figure(k, { url = null, meshy = null, tall = 1.8, reach = 
   const face = {};
   let greet = {};
   let saying = null;
+  // (its own place in the budget's round, so they aren't all stepped on the same frame)
+  const clock = budgetClock((stood += 1));
+  const at = { x: 0, y: 0, z: 0 };
   return {
     object,
     solids: [{ circle: [0, 0, 0.35] }],
@@ -155,7 +176,9 @@ export async function figure(k, { url = null, meshy = null, tall = 1.8, reach = 
       const next = made.life?.(ctx, { wave: g.wave, talk: g.talk, look: seen, t });
       if (next) saying = next;
       if (saying) made.said?.(saying, t);
-      made.update(t, dt);
+      at.x = d;
+      const step = clock(budgetOf(k, t).rate(at, ME), dt);
+      if (step > 0) made.update(t, step);
     },
   };
 }

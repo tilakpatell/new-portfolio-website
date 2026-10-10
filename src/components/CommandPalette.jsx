@@ -20,6 +20,7 @@ import {
   RiRestartLine,
   RiRocket2Line,
   RiSearchLine,
+  RiSettings3Line,
   RiSaveLine,
   RiSparkling2Line,
   RiTerminalBoxLine,
@@ -33,10 +34,10 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useAchievements } from './Achievements';
 import { useFun } from '../fun/FunProvider';
 import { BACK, SCRIPTS } from '../fun/scripts';
-import { audioContext, setSound, soundOn } from '../lib/audio';
+import { audioContext, setSound, setVoicesOn, soundOn, voicesOn } from '../lib/audio';
 import { useView } from './ViewSwitch';
 import { restartSite } from '../lib/restart';
-import { openGuide } from '../lib/palette';
+import { openGuide, openSettings } from '../lib/palette';
 import { TOUR_TIMES, openTour } from '../lib/tour';
 import { DESTINATIONS } from './universe/nav';
 import { byId as universeById } from './universe/universes';
@@ -91,6 +92,7 @@ export default function CommandPalette({ onClose }) {
         ? { id: 's-uni', group: 'Actions', label: 'Switch to the universe', hint: 'and open there next time', keywords: 'view mode 3d map front door start page landing universe fly', icon: RiRocket2Line, run: () => switchTo('universe') }
         : { id: 's-home', group: 'Actions', label: 'Switch to the classic site', hint: 'and open there next time', keywords: 'view mode plain pages front door start page landing home classic simple 2d', icon: RiLayoutGridLine, run: () => switchTo('classic') },
       { id: 'a-guide', group: 'Actions', label: 'Guide: the controls and tips for this page', hint: '?', keywords: 'help controls keys keyboard shortcuts how to play tips instructions question', icon: RiQuestionLine, run: openGuide },
+      { id: 'a-settings', group: 'Actions', label: 'Settings', hint: 'Quality, sound, this device', keywords: 'settings preferences options quality graphics ultra high medium low performance fps sharpness resolution pixel ratio 3d sound volume music voices motion data download gpu device', icon: RiSettings3Line, run: openSettings },
       // the three tours, the same words kept so "tour" still finds them
       { id: 'a-tour-r', group: 'Actions', label: 'Take the hiring tour', hint: TOUR_TIMES.recruiter, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start recruiter hire hiring work engineering', icon: RiCompass3Line, run: () => openTour({ audience: 'recruiter' }) },
       { id: 'a-tour-p', group: 'Actions', label: 'Take the player’s tour', hint: TOUR_TIMES.player, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start player play games worlds', icon: RiCompass3Line, run: () => openTour({ audience: 'player' }) },
@@ -106,7 +108,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'p-music', group: 'Go to', label: 'Music room', keywords: 'sitar tanpura harmonium tabla raga indian classical', icon: RiMusic2Line, run: go('/music') },
       { id: 'p-term', group: 'Go to', label: 'Imperial terminal', keywords: 'terminal shell command line', icon: RiTerminalBoxLine, run: go('/terminal') },
       { id: 'p-changes', group: 'Go to', label: 'What’s changed', hint: 'The ship’s log', keywords: 'changes changelog log autopilot new updates revert history', icon: RiHistoryLine, run: go('/changes') },
-      { id: 'p-worlds', group: 'Go to', label: 'My worlds', hint: 'Saved on this device', keywords: 'worlds saves saved games minecraft seed new world import export continue', icon: RiSaveLine, run: go('/worlds') },
+      { id: 'p-worlds', group: 'Go to', label: 'My worlds', hint: 'Saved on this device', keywords: 'worlds saves saved games minecraft seed new world import export continue install offline download packs storage remove', icon: RiSaveLine, run: go('/worlds') },
       ...projects.map((p) => ({ id: `pr-${p.id}`, group: 'Projects', label: p.title, hint: p.kind, keywords: p.stack.join(' '), icon: RiCodeBoxLine, run: go(`/projects/${p.id}`) })),
       ...roles.map((r) => ({ id: `ro-${r.id}`, group: 'Experience', label: r.company, hint: r.shortTitle, keywords: `${r.short} ${r.title} ${r.stack.join(' ')}`, icon: RiBriefcaseLine, run: go(`/experience/${r.id}`) })),
       ...PLACES.map((p) => ({ id: `pl-${p.id}`, group: 'Places', label: p.name, hint: p.photo, keywords: `travel ${p.region}`, icon: RiGlobalLine, run: go(`/travel?place=${p.id}`) })),
@@ -159,6 +161,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'e-schwifty', group: 'Easter eggs', label: 'Get schwifty', keywords: 'rick and morty wubba lubba dub dub wubbalubbadubdub portal green', icon: RiSparkling2Line, run: () => fun.getSchwifty('portal') },
       { id: 'e-savvy', group: 'Easter eggs', label: 'Savvy? Hoist the colours', keywords: 'pirates of the caribbean jack sparrow black pearl flying dutchman davy jones tortuga pirate theme', icon: RiSparkling2Line, run: () => fun.savvy('pearl') },
       { id: 'a-sound', group: 'Actions', label: soundOn() ? 'Turn sound off' : 'Turn sound on', keywords: 'mute audio volume', icon: IconSound, run: () => setSound(!soundOn()) },
+      { id: 'a-voices', group: 'Actions', label: voicesOn() ? 'Mute voices' : 'Unmute voices', hint: 'What’s said still shows', keywords: 'mute voices speech talking lines dialogue quiet subtitles', icon: IconSound, run: () => setVoicesOn(!voicesOn()) },
       { id: 't-auto', group: 'Colours', label: 'Auto colours', hint: 'Follows the page you’re on', keywords: 'theme colors colours', icon: RiPaletteLine, run: () => pin(null) },
       ...THEME_ORDER.map((id) => ({ id: `t-${id}`, group: 'Colours', label: `${THEMES[id].company} colours`, keywords: 'theme colors', icon: RiPaletteLine, run: () => pin(id) })),
       ...FAN_THEMES.filter((f) => unlocked.includes(f.achievement)).map((f) => ({ id: `t-${f.id}`, group: 'Colours', label: `${THEMES[f.id].company} colours`, hint: 'Unlocked', keywords: 'theme colors fan', icon: RiPaletteLine, run: () => pin(f.id) })),
@@ -228,7 +231,7 @@ export default function CommandPalette({ onClose }) {
             spellCheck={false}
           />
           {/* the key that closes it, and on a touch screen the way to */}
-          <button type="button" className="kbd palette-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="kbd palette-close" onClick={onClose} aria-label="Close (Esc)">
             Esc
           </button>
         </div>

@@ -16,6 +16,14 @@ const fake = () => {
 };
 
 describe('tuning the Shire by eye', () => {
+  it('takes the house’s look group, with the moods’ shadows in place of the one shade', () => {
+    const look = shireTuning(fake())[0].items.map((i) => i.key);
+    expect(look).toEqual(expect.arrayContaining(['dayShadow', 'dawnShadow', 'nightShadow', 'edgeFrom', 'edgeTo', 'mix', 'bounce', 'fogLow', 'fogHigh', 'fogBelow', 'exposure']));
+    // (what the scene writes every frame isn’t a slider: the one shade, the sky in the fog)
+    expect(look).not.toContain('shadow');
+    expect(look).not.toContain('fogMix');
+  });
+
   it('binds the look, the grass, the wind and the lens', () => {
     const groups = shireTuning(fake());
     expect(groups.map((g) => g.name)).toEqual(['look', 'grass', 'wind', 'lens']);

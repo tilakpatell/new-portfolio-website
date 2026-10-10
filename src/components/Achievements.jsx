@@ -7,6 +7,7 @@ import { partsUnlockedBy } from './universe/outfit';
 import { paintsFor } from './universe/paint';
 import { useTouring } from './tour/useTouring';
 import Gif from './Gif';
+import { worldAt } from './worlds/worlds';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const ACHIEVEMENTS = {
@@ -19,6 +20,32 @@ export const ACHIEVEMENTS = {
   tourPlayer: { name: 'Shown the ropes', desc: 'Took the player’s tour' },
   deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
   'ds-aboard': { name: 'Boarding party', desc: 'Came aboard the Death Star' },
+  // Aboard the Death Star (deathstar/inside): its twenty Easter eggs, worded as its rules/eggs.js words them so the toast says what the egg says
+  // (its rules/achievements.test.js keeps the two in step), then its four stories, one for each station and side
+  'ds-bonk': { name: 'Mind your head', desc: 'Watched a stormtrooper bang his head on a door frame in Docking Control 327' },
+  'ds-tk421': { name: 'Not at his post', desc: 'Took TK-421’s armour' },
+  'ds-g7': { name: 'Fastest in the fleet', desc: 'Kept up with G7 for a whole lap of the Level 5 corridors' },
+  'ds-roar': { name: 'Scaredy droid', desc: 'Sent a mouse droid fleeing with a roar' },
+  'ds-1138': { name: 'Prisoner transfer', desc: 'Brought a prisoner across from cell block 1138' },
+  'ds-3263827': { name: 'Mashers off', desc: 'Dialled 3263827 on the compactor’s hatch' },
+  'ds-boring': { name: 'Boring conversation anyway', desc: 'Saw Han’s chat on the intercom through to the end' },
+  'ds-short': { name: 'A little short', desc: 'Opened cell 2187 with your helmet on' },
+  'ds-krennic': { name: 'Seat’s free', desc: 'Sat in Krennic’s empty chair at the conference table' },
+  'ds-faith': { name: 'Lack of faith', desc: 'Talked back to Vader in the conference room and got off with a choke' },
+  'ds-eyestalk': { name: 'Something’s alive in here', desc: 'Stared down the dianoga’s eyestalk' },
+  'ds-librarian': { name: 'Overdue', desc: 'Caught the librarian on the archive’s security feed' },
+  'ds-robe': { name: 'Nothing but the robe', desc: 'Found the robe on the floor of Bay 327' },
+  'ds-armrest': { name: 'Within arm’s reach', desc: 'Pulled Luke’s lightsaber from the throne’s armrest' },
+  'ds-trap': { name: 'Admiral’s hunch', desc: 'Heard “It’s a trap!” in the command centre’s chatter' },
+  'ds-moff': { name: 'Moff by rank', desc: 'Read Jerjerrod’s nameplate, which calls him Moff' },
+  'ds-charge': { name: 'Han’s charge', desc: 'Chased a squad down a corridor and met the rest of the platoon coming back' },
+  'ds-port': { name: 'Two metres wide', desc: 'Read the maintenance note on the thermal exhaust port' },
+  'ds-plans': { name: 'Technical readout', desc: 'Opened the Death Star plans at a terminal' },
+  'ds-droids': { name: 'Not the droids', desc: 'Talked two guards into saying these aren’t the droids you’re looking for' },
+  'ds-ds1-rebel': { name: 'That’s no moon', desc: 'Got Leia out of the first Death Star and away on the Falcon' },
+  'ds-ds1-imperial': { name: 'Intruder alert', desc: 'Let the Falcon go, as Vader ordered, with a homing beacon on its hull' },
+  'ds-ds2-rebel': { name: 'The Emperor’s Tower', desc: 'Faced the Emperor in his tower, and carried Vader to a shuttle before the reactor went' },
+  'ds-ds2-imperial': { name: 'Fully armed and operational', desc: 'Stood in the ranks for the Emperor, fired at will, and got off the second Death Star before it went' },
   trench: { name: 'Use the Force', desc: 'Hit the exhaust port in the trench run' },
   rebels: { name: 'Medal of Yavin', desc: 'Saved Yavin 4 in the Battle of Yavin' },
   empire: { name: 'Fear will keep them in line', desc: 'Let the Empire win at Yavin' },
@@ -244,6 +271,8 @@ export const ACHIEVEMENTS = {
   starmapride: { name: 'The way to Ezra', desc: 'Raced the spires to the old tower on Lothal and kept the star map' },
   dagobahraise: { name: 'Size matters not', desc: 'Ran Dagobah’s swamp with Yoda on your back, faced the cave and raised the X-wing' },
   galacticassault: { name: 'Galactic assault', desc: 'Won a battle for the command posts on Hoth, Geonosis, Scarif or Endor' },
+  heroesvsvillains: { name: 'Heroes vs Villains', desc: 'Brought down ten of the other side’s targets in a hero arena on Hoth, Endor, Tatooine, Geonosis or Kashyyyk' },
+  blast: { name: 'Blast', desc: 'Got your side to a hundred kills first on a level’s own team-deathmatch ground' },
   canyonmission: { name: 'Faster than Biggs', desc: 'Ran Beggar’s Canyon both ways against the clock on Tatooine' },
   firsttransport: { name: 'The first transport is away', desc: 'Loaded the first transport off Hoth and cleared its way with the ion cannon' },
   sanctuary: { name: 'Sanctuary', desc: 'Held the krill farmers’ village on Sorgan against the raiders and their AT-ST' },
@@ -269,14 +298,14 @@ const newThemes = (themeId) => {
   if (names.length < 2) return `New colours: ${names[0] ?? THEMES[themeId].company}.`;
   return `New colours: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
 };
-// "New in the hangar: …": the paint jobs and ship parts an achievement opens
+// "New in your shipyard: …": the paint jobs and ship parts an achievement opens
 // on the universe map (universe/outfit.js), or null.
 const list = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 const newInHangar = (id) => {
   const paints = paintsFor(id).map((p) => p.name);
   const parts = partsUnlockedBy(id).map((p) => p.name);
   const said = [paints.length ? `${list(paints)} ${paints.length === 1 ? 'paint' : 'paints'}` : null, parts.length ? list(parts) : null].filter(Boolean);
-  return said.length ? `New in your ship’s hangar: ${said.join('; ')}.` : null;
+  return said.length ? `New in your shipyard: ${said.join('; ')}.` : null;
 };
 const KEY = 'tp-achievements';
 
@@ -338,6 +367,10 @@ export function AchievementProvider({ children }) {
   }, [toast]);
 
   const value = useMemo(() => ({ unlock, notify, unlocked }), [unlock, notify, unlocked]);
+  // In a world the HUD's foot is the prompt, the thumbs and the instruments:
+  // the toast goes top centre, under the nav, instead (the worlds' own
+  // toasts sit lower, under their top row).
+  const inWorld = Boolean(worldAt(pathname));
   const themeId = toast?.kind.startsWith('theme:') ? toast.kind.slice(6) : null;
 
   return (
@@ -345,7 +378,7 @@ export function AchievementProvider({ children }) {
       {children}
       {/* taps pass through the toast to whatever is under it, except on its own controls */}
       {/* in language mode the toast reads plainly, and sits above the Back to English pill */}
-      <div className="toast-host pointer-events-none fixed inset-x-0 bottom-5 z-[var(--z-sheet)] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto" aria-live="polite">
+      <div className={`toast-host pointer-events-none fixed inset-x-0 ${inWorld ? 'top-[calc(var(--nav-h)+0.75rem)]' : 'bottom-5'} z-[var(--z-sheet)] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto`} aria-live="polite" data-in-world={inWorld || undefined}>
         {toast && (
           <div
             key={toast.key}

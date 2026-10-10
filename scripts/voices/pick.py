@@ -158,6 +158,26 @@ def centre(prints):
     return m / np.linalg.norm(m)
 
 
+def dominant(prints, known, alike=0.65, least=8.0, apart=0.6):
+    """Seeds for a voice no clip or quote can start from: the voice heard most, by seconds, in
+    their own scenes ([(voiceprint, seconds), ...] from their own searches: "Andy Bernard talking
+    heads" are mostly Andy), that isn't one of the `known` voices ({who: centroid}). Its
+    utterances, or [] when no one speaks there for `least` seconds."""
+    vps = [np.asarray(v, dtype=np.float32) for v, _ in prints]
+    secs = np.array([t for _, t in prints], dtype=np.float32)
+    if not vps:
+        return []
+    sims = np.stack(vps) @ np.stack(vps).T
+    for i in np.argsort(-((sims >= alike) * secs).sum(1)):
+        near = [j for j in range(len(vps)) if sims[i, j] >= alike]
+        if secs[near].sum() < least:
+            return []
+        c = centre([vps[j] for j in near])
+        if all(float(c @ k) < apart for k in known.values()):
+            return [vps[j] for j in near]
+    return []
+
+
 def identify(vp, who, centroids):
     """(similarity, margin): how like `who` a voiceprint is, and by how much more
     than like the nearest other voice."""

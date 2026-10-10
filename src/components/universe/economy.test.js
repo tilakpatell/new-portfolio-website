@@ -3,7 +3,9 @@ import { createSaves } from '../../runtime/saves';
 import {
   EARN,
   LEVELS,
+  LOG_MAX,
   PILOT_KEY,
+  SELL_BACK,
   SIDE_RATES,
   TITLES,
   createEconomy,
@@ -12,6 +14,7 @@ import {
   goodStanding,
   levelOf,
   migrateOwned,
+  refundOf,
 } from './economy';
 import { CATALOG } from './catalog';
 import { LOADOUT_KEY } from './outfit';
@@ -273,6 +276,20 @@ describe('buying', () => {
     expect(econ.owns('fusion')).toBe(false);
   });
 
+  it('spends credits on something that isn’t kept (a bounty paid off), only what you have', () => {
+    const { econ } = fresh();
+    expect(econ.spend(50)).toBe(false);
+    econ.earn('killCapital');
+    const { spend } = econ;
+    expect(spend(-5)).toBe(false);
+    expect(spend(1.5)).toBe(false);
+    expect(spend(EARN.killCapital.credits + 1)).toBe(false);
+    expect(spend(100)).toBe(true);
+    expect(econ.credits).toBe(EARN.killCapital.credits - 100);
+    expect(econ.spent).toBe(100);
+    expect(econ.owned.size).toBe(0);
+  });
+
   it('buy works taken off the wallet, as a callback', () => {
     const { econ } = fresh();
     const { buy } = econ;
@@ -407,7 +424,7 @@ describe('the save', () => {
     econ.buy({ id: 'twin', price: 50, needs: {} });
     expect(local.m.has(PILOT_KEY)).toBe(false); // (not yet: debounced)
     timer.run();
-    expect(stored(local).v).toBe(1);
+    expect(stored(local).v).toBe(2);
     const again = createEconomy({
       saves,
       later: timer.later,
@@ -484,5 +501,108 @@ describe('what the HUD says of it', () => {
   it('goodStanding is a level on the good side of nought', () => {
     for (const level of ['trusted', 'hero', 'friend']) expect(goodStanding(level)).toBe(true);
     for (const level of ['wanted', 'suspect', 'feared', null, undefined, 'constructor']) expect(goodStanding(level)).toBe(false);
+  });
+});
+
+describe('selling, checking out and the log (save v2)', () => {
+  const item = (id, price, extra = {}) => ({ key: `part:booster:${id}`, id, price, needs: {}, ...extra });
+
+  it('a version 1 save migrates with an empty log and nothing else changed', () => {
+    const data = { credits: 120, xp: 60, spent: 30, earned: 150, owned: ['part:booster:srb'], tally: { found: 2 }, bySide: {} };
+    const { local, econ, timer } = fresh({ [PILOT_KEY]: { v: 1, data } });
+    expect(econ.credits).toBe(120);
+    expect(econ.xp).toBe(60);
+    expect(econ.owns('part:booster:srb')).toBe(true);
+    expect(econ.log).toEqual([]);
+    expect(stored(local)).toEqual({ v: 2, data: { ...data, log: [] } });
+    timer.run();
+  });
+
+  it('selling pays back three fifths, floored', () => {
+    const { econ } = fresh({ [PILOT_KEY]: { v: 2, data: { credits: 0, owned: ['part:booster:srb'] } } });
+    const srb = item('srb', 450);
+    expect(SELL_BACK).toBe(0.6);
+    expect(refundOf(srb)).toBe(270);
+    expect(refundOf(item('x', 199))).toBe(119);
+    expect(econ.canSell(srb)).toEqual({ ok: true, why: null });
+    expect(econ.sell(srb)).toBe(270);
+    expect(econ.credits).toBe(270);
+    expect(econ.owns(srb.key)).toBe(false);
+    expect(econ.earned).toBe(0);
+    expect(econ.spent).toBe(0);
+    expect(econ.log.at(-1)).toMatchObject({ kind: 'sell', what: srb.key, n: 270 });
+    expect(econ.sell(srb)).toBe(false); // (sold already)
+  });
+
+  it('stock and unowned items can’t be sold', () => {
+    const { econ } = fresh();
+    expect(econ.canSell(item('stock', 0, { stock: true }))).toEqual({ ok: false, why: 'stock' });
+    expect(econ.canSell(item('srb', 450))).toEqual({ ok: false, why: 'notOwned' });
+    expect(econ.canSell(null)).toEqual({ ok: false, why: 'invalid' });
+    expect(econ.sell(item('srb', 450))).toBe(false);
+    expect(econ.credits).toBe(0);
+  });
+
+  it('checkout buys nothing when any item fails', () => {
+    const { econ } = fresh({ [PILOT_KEY]: { v: 2, data: { credits: 500 } } });
+    const calls = [];
+    econ.on((r) => calls.push(r));
+    const a = item('srb', 300);
+    const b = item('rcs', 300);
+    // (each alone is affordable; together they're not)
+    expect(econ.checkout([a, b])).toEqual({ ok: false, why: 'credits', item: b, total: 600 });
+    expect(econ.credits).toBe(500);
+    expect(econ.owned.size).toBe(0);
+    expect(calls).toHaveLength(0);
+    const locked = item('afterburner', 10, { needs: { level: 9 } });
+    expect(econ.checkout([a, locked])).toMatchObject({ ok: false, why: 'locked:level', item: locked });
+    expect(econ.checkout([a, a])).toMatchObject({ ok: false, why: 'owned', item: a });
+    expect(econ.owned.size).toBe(0);
+  });
+
+  it('checkout buys all in one change', () => {
+    const { econ } = fresh({ [PILOT_KEY]: { v: 2, data: { credits: 1000 } } });
+    const calls = [];
+    econ.on((r) => calls.push(r));
+    const list = [item('srb', 300), item('rcs', 200)];
+    expect(econ.checkout(list)).toEqual({ ok: true, why: null, item: null, total: 500 });
+    expect(calls).toHaveLength(1);
+    expect(econ.credits).toBe(500);
+    expect(econ.spent).toBe(500);
+    for (const it of list) expect(econ.owns(it.key)).toBe(true);
+    expect(econ.log.filter((e) => e.kind === 'buy')).toHaveLength(2);
+    expect(econ.checkout([])).toEqual({ ok: true, why: null, item: null, total: 0 });
+    expect(calls).toHaveLength(1);
+    expect(econ.checkout('junk')).toMatchObject({ ok: false, why: 'invalid' });
+  });
+
+  it('buy is a checkout of one', () => {
+    const { econ } = fresh({ [PILOT_KEY]: { v: 2, data: { credits: 100 } } });
+    expect(econ.buy(item('srb', 150))).toBe(false);
+    expect(econ.buy(item('rcs', 100))).toBe(true);
+    expect(econ.credits).toBe(0);
+  });
+
+  it('the log keeps the last 30 newest last', () => {
+    const { econ, local, timer } = fresh();
+    for (let i = 0; i < 31; i++) econ.earn('found', i + 1);
+    const log = econ.log;
+    expect(LOG_MAX).toBe(30);
+    expect(log).toHaveLength(30);
+    expect(log[0]).toMatchObject({ kind: 'earn', what: 'found', n: 2 * EARN.found.credits });
+    expect(log.at(-1)).toMatchObject({ n: 31 * EARN.found.credits });
+    expect(typeof log[0].t).toBe('number');
+    log.length = 0; // (a copy)
+    expect(econ.log).toHaveLength(30);
+    expect(econ.record().log).toHaveLength(30);
+    econ.spend(10);
+    expect(econ.log.at(-1)).toMatchObject({ kind: 'spend', n: 10 });
+    timer.run();
+    expect(stored(local).data.log).toHaveLength(30);
+  });
+
+  it('reads a log back, dropping junk entries', () => {
+    const { econ } = fresh({ [PILOT_KEY]: { v: 2, data: { log: [{ t: 1, kind: 'buy', what: 'part:booster:srb', n: 400 }, { kind: 'steal', n: 9 }, 'x', null] } } });
+    expect(econ.log).toEqual([{ t: 1, kind: 'buy', what: 'part:booster:srb', n: 400 }]);
   });
 });

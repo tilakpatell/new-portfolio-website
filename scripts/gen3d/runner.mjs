@@ -10,6 +10,7 @@
 //   front: / left: / back: / right: (a picture each, or attach them in that order: Hunyuan3D multi-view)
 //   faces: 24000  tex: 2048  seed: 42  res: 1024  fov: 49  engine: trelliscpp|trellis2|hunyuan
 //   faithful: no  bake: no  fresh: yes
+//   ultra: yes                           (a fourth cut for the ultra level too: up to 300k faces, 8192 maps; budget.mjs ULTRA)
 //
 //   node scripts/gen3d/runner.mjs --issue N | --sweep | --watch [60] | --pending | --enqueue
 //
@@ -23,14 +24,14 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cli } from '../desktop/jobs.mjs';
 import { deps, fetchImage, fields, fresh, git, imageUrls, push, pullRequest, repoName, slug, tee, urlIn, workspace } from '../desktop/lib.mjs';
-import { TIERS } from './budget.mjs';
+import { TIERS, ULTRA } from './budget.mjs';
 
 export { slug } from '../desktop/lib.mjs';
 export const LABEL = 'gen3d';
 export const RUNNING = 'gen3d:running';
 export const FAILED = 'gen3d:failed';
 const SIDES = ['front', 'left', 'back', 'right'];
-export const KEYS = ['what', 'prompt', 'image', ...SIDES, 'faces', 'tex', 'seed', 'res', 'fov', 'engine', 'faithful', 'bake', 'fresh', 'more'];
+export const KEYS = ['what', 'prompt', 'image', ...SIDES, 'faces', 'tex', 'seed', 'res', 'fov', 'engine', 'faithful', 'bake', 'fresh', 'ultra', 'more'];
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const PORT = 5298;
 // (a prefix written as one, as lib.mjs's slug has it: not "model-627"'s own first word)
@@ -78,6 +79,7 @@ export function parseIssue({ number, title, body = '' }) {
     faithful: image ? !no(f.faithful) : false,
     noBake: no(f.bake),
     fresh: yes(f.fresh),
+    ultra: yes(f.ultra),
   };
   if (errors.length) job.error = errors.join('; ');
   return job;
@@ -97,6 +99,7 @@ export function makeArgs(job, image, sides = {}) {
   if (image && !job.faithful) a.push('--no-faithful');
   if (job.noBake) a.push('--no-bake');
   if (job.fresh) a.push('--fresh');
+  if (job.ultra) a.push('--ultra');
   return a;
 }
 
@@ -185,8 +188,8 @@ export async function make(job, root, { log = console.log } = {}) {
   const result = existsSync(join(cache, 'result.json')) ? JSON.parse(readFileSync(join(cache, 'result.json'), 'utf8')) : {};
   const stats = stat(result) || readFileSync(join(cache, 'make.log'), 'utf8').trim();
   const sheet = join(cache, 'sheet.png');
-  // every cut of the model (budget.mjs's TIERS: .hq, plain, .lo), and the credit
-  const files = [...Object.values(TIERS).map((t) => `public/models/gen3d/${job.name}${t.suffix}.glb`).filter((f) => existsSync(join(root, f))), 'public/games/credits.json'];
+  // every cut of the model (budget.mjs's TIERS: .hq, plain, .lo, and .ultra where one was asked for), and the credit
+  const files = [...[ULTRA, ...Object.values(TIERS)].map((t) => `public/models/gen3d/${job.name}${t.suffix}.glb`).filter((f) => existsSync(join(root, f))), 'public/games/credits.json'];
   if (!files.some((f) => f.endsWith('.glb'))) throw new Error(`make.mjs finished but wrote no public/models/gen3d/${job.name}*.glb`);
   if (existsSync(sheet)) {
     mkdirSync(join(root, 'docs', 'gen3d'), { recursive: true });

@@ -10,7 +10,8 @@ import { createWebGPU } from './webgpu';
 export function makeBackend(kind, opts) {
   const canvas = document.createElement('canvas');
   canvas.className = 'world-canvas';
-  return kind === 'webgpu' ? createWebGPU(canvas, opts) : createWebGL(canvas, opts);
+  // ('nodes-webgl' is the node renderer on WebGL 2: never the classic one)
+  return kind === 'webgl' ? createWebGL(canvas, opts) : createWebGPU(canvas, { ...opts, forceWebGL: kind === 'nodes-webgl' });
 }
 
 export const loaders = {

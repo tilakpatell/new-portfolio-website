@@ -37,7 +37,7 @@ on:
         required: false
         type: string
       options:
-        description: 'More, as key: value two spaces apart (tex: 2048  seed: 7  engine: hunyuan  faithful: no  bake: no  fresh: yes)'
+        description: 'More, as key: value two spaces apart (tex: 2048  seed: 7  engine: hunyuan  faithful: no  bake: no  fresh: yes  ultra: yes)'
         required: false
         type: string
   issues:
@@ -89,14 +89,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   # the model, on the desktop (a stranger's issue never gets here: only the
-  # owner's and collaborators', and runner.mjs checks again)
+  # owner's and collaborators', and the ones this workflow's own form opened
+  # as github-actions; runner.mjs checks again, with the same rule)
   make:
     needs: [queue, check]
     if: >-
       always() && !cancelled() && (
         (github.event_name == 'workflow_dispatch' && needs.queue.result == 'success') ||
         (github.event_name == 'schedule' && needs.check.outputs.pending != '0' && needs.check.outputs.pending != '') ||
-        (github.event_name == 'issues' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) && (
+        (github.event_name == 'issues' && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) || github.event.issue.user.login == 'github-actions[bot]') && (
           ((github.event.action == 'opened' || github.event.action == 'reopened') && contains(github.event.issue.labels.*.name, 'gen3d')) ||
           (github.event.action == 'labeled' && github.event.label.name == 'gen3d') ||
           (github.event.action == 'unlabeled' && github.event.label.name == 'gen3d:failed' && contains(github.event.issue.labels.*.name, 'gen3d'))

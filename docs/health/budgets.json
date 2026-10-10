@@ -1,5 +1,9 @@
 {
   "big-files": 30,
   "lint-disables": 54,
-  "todo-notes": 0
+  "todo-notes": 0,
+  "hud-kit": 1,
+  "kbd-styles": 70,
+  "stack-pages": 0,
+  "art-mix": 7
 }

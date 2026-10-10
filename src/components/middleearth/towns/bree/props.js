@@ -813,6 +813,12 @@ export function makeFolk(id, { n = 0, look: over = null } = {}) {
     const c = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0xe0782a, roughness: 0.6 }));
     c.position.set(0.06, -0.4, 0);
     c.rotation.z = Math.PI;
+    // (held by its green end, the point out past the fingers: lib/three/held.js)
+    c.userData.held = { kind: 'carrot' };
+    const grip = new THREE.Object3D();
+    grip.name = 'grip';
+    grip.position.y = -0.07;
+    c.add(grip);
     hand.add(c);
     f.carrot = c;
   }

@@ -9,7 +9,7 @@ import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { canvasTexture, rbox } from '../hq/kit/shapes';
 import { logoTexture, scatter } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { botAt, simulateThrow } from './rules';
 import { buildShield, courtTexture, hazardTexture } from './models';
@@ -171,6 +171,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
 
   const vfx = createVfx(scene, { calm, debrisMaterial: glassShards, ground: 0 });
   const feel = createFeel({ seed: 3, calm, baseFov: 40, offset: 0.08 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'ricochet');
 
   // ── a room's pieces, rebuilt when the room changes ──
   let built = null;

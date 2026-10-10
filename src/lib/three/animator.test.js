@@ -553,3 +553,89 @@ describe('the layers, the look, the idles and the queue', () => {
     expect(await q).toBe('cut');
   });
 });
+
+describe('the arm layers', () => {
+  const ARM_R = ['RightShoulder', 'RightArm', 'RightForeArm', 'RightHand'];
+  const ARM_L = ['LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand'];
+
+  it('names each arm’s bones', () => {
+    expect(MESHY_MASKS['arm.r']).toEqual(ARM_R);
+    expect(MESHY_MASKS['arm.l']).toEqual(ARM_L);
+  });
+
+  it('an arm layer over a standing idle moves only that arm’s four bones', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.3);
+    const A = make();
+    const B = make();
+    vi.restoreAllMocks();
+    A.anim.play('flex', { layer: 'arm.r', loop: true, fade: 0.1 });
+    for (let i = 0; i < 30; i++) for (const { anim } of [A, B]) run(anim, DT);
+    for (const n of Object.keys(A.rig.bones)) {
+      if (ARM_R.includes(n)) expectQuat(A.rig.bones[n].quaternion, valueOf(A.clips.flex, n));
+      else expectQuat(A.rig.bones[n].quaternion, B.rig.bones[n].quaternion);
+    }
+    expect(A.anim.playing('arm.r')).toBe('flex');
+    expect(A.anim.playing('upper')).toBe(null);
+  });
+
+  it('a walk on the right arm’s layer over standing swings that arm and nothing else', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.3);
+    const A = make();
+    const B = make();
+    vi.restoreAllMocks();
+    A.anim.play('walk', { layer: 'arm.r', loop: true, fade: 0.05 });
+    let swung = 0;
+    for (let i = 0; i < 40; i++) {
+      for (const { anim } of [A, B]) run(anim, DT);
+      for (const n of Object.keys(A.rig.bones)) if (!ARM_R.includes(n)) expectQuat(A.rig.bones[n].quaternion, B.rig.bones[n].quaternion);
+      swung = Math.max(swung, A.rig.bones.RightArm.quaternion.angleTo(B.rig.bones.RightArm.quaternion));
+    }
+    expect(swung).toBeGreaterThan(0.1);
+  });
+
+  it('the two arms hold different clips at once, each its own slot', () => {
+    const { anim, rig, clips } = make();
+    anim.play('flex', { layer: 'arm.r', loop: true, fade: 0.05 });
+    anim.play('cheer', { layer: 'arm.l', hold: true, fade: 0.05 });
+    run(anim, 1.2);
+    expect(anim.playing('arm.r')).toBe('flex');
+    expect(anim.playing('arm.l')).toBe('cheer');
+    expectQuat(rig.bones.RightArm.quaternion, valueOf(clips.flex, 'RightArm'));
+    const last = clips.cheer.tracks.find((t) => t.name === 'LeftArm.quaternion').values.slice(-4);
+    expectQuat(rig.bones.LeftArm.quaternion, last, 4);
+  });
+
+  it('a full-body play cuts both arm layers', async () => {
+    const { anim } = make();
+    const r = anim.play('flex', { layer: 'arm.r', loop: true });
+    const l = anim.play('flex', { layer: 'arm.l', loop: true });
+    run(anim, 0.2);
+    anim.play('cheer');
+    expect(await r).toBe('cut');
+    expect(await l).toBe('cut');
+    expect(anim.playing('arm.r')).toBe(null);
+    expect(anim.playing('arm.l')).toBe(null);
+    expect(anim.playing('full')).toBe('cheer');
+  });
+
+  it('weight(layer, w) scales how far a layer is laid on, 0 not at all', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.3);
+    const A = make();
+    const B = make();
+    const C = make();
+    vi.restoreAllMocks();
+    A.anim.play('flex', { layer: 'arm.r', loop: true, fade: 0.05 });
+    C.anim.play('flex', { layer: 'arm.r', loop: true, fade: 0.05 });
+    A.anim.weight('arm.r', 0);
+    C.anim.weight('arm.r', 0.5);
+    expect(C.anim.weight('arm.r')).toBe(0.5);
+    run(A.anim, 0.5);
+    run(B.anim, 0.5);
+    run(C.anim, 0.5);
+    for (const n of ARM_R) expectQuat(A.rig.bones[n].quaternion, B.rig.bones[n].quaternion);
+    const full = new THREE.Quaternion(...valueOf(C.clips.flex, 'RightArm'));
+    const half = B.rig.bones.RightArm.quaternion.angleTo(full) / 2;
+    expect(C.rig.bones.RightArm.quaternion.angleTo(full)).toBeGreaterThan(half * 0.5);
+    expect(C.rig.bones.RightArm.quaternion.angleTo(B.rig.bones.RightArm.quaternion)).toBeGreaterThan(half * 0.5);
+  });
+});

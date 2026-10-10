@@ -2,19 +2,23 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
-import { settle } from '../../../lib/settle';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
-import { STONES } from '../../interests/stones';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
-import { ARMOUR, BUILDINGS, HERO_R, LAWN_W, PACKS, PLACES, PORTAL, RIVER_W, ROADS_W, ROAD_HALF, SETTINGS, SETTINGS_DEFAULTS, START, SUIT, TOUR, behindYaw, cameraMove, floorAt, lapAt, linesFor, nearCast, newPhoto, readPhoto, PHOTO, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readLap, readSettings, recordLap, stepHero, stepTour, underPortal, walkable } from './rules';
+import { createImpacts } from '../../../lib/impact';
+import { ARMOUR, HERO_R, PACKS, PLACES, START, SUIT, TOUR, behindYaw, cameraMove, floorAt, lapAt, linesFor, nearCast, newPhoto, readPhoto, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readLap, readSettings, recordLap, jumpPress, stepHero, stepTour, underPortal, walkable } from './rules';
 import { useAchievements } from '../../Achievements';
 import './world.css';
 import '../../../styles/lazy/avengers.css';
-import GuideCue from '../../guide/GuideCue';
+import CompoundHud from './CompoundHud';
+import { drawMap } from './map';
+import { fitCanvas } from '../../../runtime/hud';
+import { clock, stoneFor, stoneLine } from './labels';
 import { useVoiced } from '../../../lib/useVoiced';
 import { sayVoiced } from '../../../lib/voiced';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // The Avengers compound, the world: walk about the compound as Spider-Man,
 // and go into the buildings to play their games. Anyone else online here
@@ -26,8 +30,16 @@ import { sayVoiced } from '../../../lib/voiced';
 
 const Place = lazy(() => import('./Place'));
 const CompoundMap = lazy(() => import('../Compound'));
-const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
+const clip = (id, o) => import('../../../lib/clips').then((c) => c.playClip(id, o)).catch(() => null);
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
+// a landing's thunk by how hard (lib/impact.js's law, from where it used to
+// start to a fall off the main building's roof), over a floor so every one
+// it played is still heard
+const LANDING = createImpacts({ threshold: 14, full: 34, gap: 0.08 });
+const thunkBy = (impact) => {
+  const r = LANDING.hit(impact, 'land');
+  if (r) import('../../../lib/sfx').then((s) => s.play('thunk', { gain: 0.35 + 0.65 * r.gain, pitch: r.pitch })).catch(() => null);
+};
 const AT = 'tp-hq-world-at';
 const TOUR_BEST = 'tp-hq-swing-tour';
 const TOUR_LAP = 'tp-hq-swing-lap'; // the best lap's recording, raced as a ghost
@@ -42,18 +54,8 @@ const readFound = () => {
   const v = local.get(FOUND, []);
   return Array.isArray(v) ? v.filter((id) => PACKS.some((p) => p.id === id)) : [];
 };
-// seconds as 0:41.3
-const clock = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 // the lines the site has the films' own recordings of (lib/clips)
 const SPOKEN = { 'Hulk smash!': 'hulkSmash', 'Puny god.': 'punyGod' };
-const STONE_OF = { 'soul-clint': 'soul', 'soul-natasha': 'soul' };
-const stoneFor = (p) => (p.stone ? STONES.find((s) => s.id === (STONE_OF[p.stone] ?? p.stone)) : null);
-// what a door's card and the lists say about its stone
-const stoneLine = (p) => {
-  const st = stoneFor(p);
-  if (!st) return 'No stone here: just Peter, and school';
-  return p.done ? `${st.name}: won back` : `Win it for the ${p.stone.startsWith('soul-') ? 'half of the ' : ''}${st.name}`;
-};
 // every stone won back, and either half of the Soul Stone
 const readHeist = () => [...earnedStones(), ...SOUL_HALVES.filter(hasEarned)];
 // where he is, to come back to (on the lawn or a roof, never mid-air)
@@ -112,12 +114,30 @@ export default function CompoundWorld({ onPortal }) {
 const ROOM = { bound: 260, motion: true };
 
 function World({ api, prog, inside, enter, portal, gl, setGl }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   // other players online here, as holograms (middleearth/towns/useTravellers)
   const trav = useTravellers('avengers', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.25 });
   const canvas = useRef(null);
   const map = useRef(null);
+  // the map's canvas, as many pixels as the screen has under it (sharp on a
+  // 2× screen, and at a phone's 96 px): fitted when its box changes, not
+  // every frame; drawn in 150ths of its width, whatever its size
+  const mapBox = useRef(null);
+  useEffect(() => {
+    const c = map.current;
+    if (!c) return undefined;
+    const fit = () => {
+      // (hidden, as in photo mode, it keeps the last fit)
+      const b = fitCanvas(c, 150);
+      if (b) mapBox.current = b;
+    };
+    fit();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    ro?.observe(c);
+    return () => ro?.disconnect();
+  }, []);
   const sim = useRef(null);
   if (!sim.current) {
     const kept = local.get(AT, null);
@@ -125,7 +145,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, say: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, suit: false, photo: null, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, say: null, frame: 0, moved: false, t: 0, jump: false, press: jumpPress(), zip: false, perch: false, trick: false, suit: false, photo: null, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -217,8 +237,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         }
         api.current = a;
         fit();
-        // its shaders linked in the background before the first frame
-        await settle(a.engine.precompile(), 4000);
+        // everything on the graphics chip before it's shown (its shaders, its
+        // pictures, one draw), behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
         if (dead || a.lost) return;
         if (import.meta.env.DEV) window.__HQWORLD__ = { api: a, sim: sim.current, enter }; // for the QA scripts
         setGl('on');
@@ -387,7 +408,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     // button, or a pad's A or right trigger)
     const web = k.has('space') || s.mouseWeb || s.touchWeb || Boolean(pad?.rt || (pad?.a && !s.near && !s.portal) || pad?.b);
     const p0 = [s.h.x, s.h.y + 1, s.h.z];
-    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip, perch: s.perch, trick: s.trick, suit: s.suit, assist: set.assist }, dt);
+    // the jump through its press (./rules.js): a moment early or late still goes
+    if (s.jump) s.press.press();
+    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, press: s.press, web, zip: s.zip, perch: s.perch, trick: s.trick, suit: s.suit, assist: set.assist }, dt);
     // the swing tour: the rings, in order, against the clock
     const [tour, tev] = stepTour(s.tour, p0, [s.h.x, s.h.y + 1, s.h.z], dt);
     s.tour = tour;
@@ -463,7 +486,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         showTrick('Bailed', 0, 'cw-bail');
       } else if (e.type === 'suitup') sfx('repulsor');
       else if (e.type === 'suitoff') sfx('repulse');
-      else if (e.type === 'land' && e.impact > 14) sfx('thunk');
+      else if (e.type === 'land' && e.impact > 14) thunkBy(e.impact);
       if (e.type !== 'jump' && e.type !== 'release') a.fx(e.type, { ...e, vx: s.h.vx, vy: s.h.vy, vz: s.h.vz });
     }
     if (Math.hypot(mv.x, mv.z) > 0.1 || s.h.mode !== 'ground') s.moved = true;
@@ -500,7 +523,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         setBubble({ id: talk, name: person.name, line });
         // (and the line to the drawing, for the gesture they say it with)
         s.say = { id: talk, line };
-        if (SPOKEN[line]) clip(SPOKEN[line]);
+        if (SPOKEN[line]) clip(SPOKEN[line], { voice: true }); // (a voice, on the floor: lib/speech.js)
       } else {
         setBubble(null);
         s.say = null;
@@ -537,7 +560,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         bubbleRef.current.style.opacity = '1';
       } else bubbleRef.current.style.opacity = '0';
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.h, p, others, s.found, s.tour);
+    if (++s.frame % 4 === 0) drawMap(map.current, mapBox.current, s.h, p, others, s.found, s.tour);
     if (s.frame % 120 === 0 && s.h.mode === 'ground') local.set(AT, keep(s.h));
   }, live);
 
@@ -581,29 +604,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     drag.current = null;
   };
 
-  // the touch stick: drag from where you put your thumb
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  // the touch stick (the HUD kit's: one thumb at a time, from where it went down)
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   // to the swing tour's start: on the drive behind the first ring, facing it
   const toTour = () => {
@@ -628,326 +630,13 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     setList(false);
   };
 
-  const here = hud.near ? prog.places.find((p) => p.id === hud.near) : null;
-  const herePortal = hud.portal && !here;
   return (
     <div ref={box} className="cw-stage" data-touch={touch || undefined} data-photo={photo ? '' : undefined}>
       <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Spider-Man on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} onWheel={(e) => sim.current.photo && changePhoto({ dist: sim.current.photo.dist * (e.deltaY > 0 ? 1.1 : 1 / 1.1) })} />
       <div ref={speedRef} className="cw-speed" aria-hidden="true" />
-      {gl === 'loading' && <p className="cw-loading">Flying in to the compound…</p>}
-      {tourMsg && (
-        <p className="cw-tour-msg" aria-live="polite">
-          {tourMsg}
-        </p>
-      )}
-      {pack && (
-        <div key={pack.n} className="cw-pack" role="status">
-          <p className="cw-pack-n">
-            Backpack {pack.n} of {PACKS.length} · {pack.where}
-          </p>
-          <p className="cw-pack-what">{pack.memento}</p>
-          <p className="cw-pack-line">“{pack.line}”</p>
-        </div>
-      )}
-      {trick && (
-        <p key={trick.n} className={`cw-trick ${trick.cls}`} aria-live="polite">
-          {trick.text}
-          {trick.combo > 1 ? <b> ×{trick.combo}</b> : null}
-        </p>
-      )}
-      <p ref={styleRef} className="cw-style" aria-live="off" />
-
-      <div className="cw-hud cw-hud-top">
-        <div className="cw-brand">
-          <p className="cw-eyebrow">The Avengers compound · Upstate New York</p>
-          <h1 id="cw-title" className="cw-title">
-            Avengers HQ
-          </h1>
-          <p className="cw-objective" aria-live="polite">
-            <span aria-hidden="true">▲</span> {prog.objective}
-          </p>
-        </div>
-        <div className="cw-side">
-          <canvas ref={map} className="cw-map" width="150" height="150" aria-hidden="true" />
-          <p className="cw-chip cw-stones" aria-label={`${prog.stones} of 6 Infinity Stones won back`}>
-            {STONES.map((st) => (
-              <i key={st.id} className="stone-dot" data-on={prog.have.includes(st.id) || undefined} style={{ '--glow': st.color }} />
-            ))}
-            <b>{prog.stones}</b> of 6
-          </p>
-          <button
-            type="button"
-            className="cw-chip"
-            onClick={() => {
-              setList((v) => !v);
-              setTuning(false);
-            }}
-            aria-expanded={list}
-          >
-            The buildings {!touch && <kbd>M</kbd>}
-          </button>
-          <button
-            type="button"
-            className="cw-chip"
-            onClick={() => {
-              setTuning((v) => !v);
-              setList(false);
-            }}
-            aria-expanded={tuning}
-            aria-controls="cw-settings"
-          >
-            Settings {!touch && <kbd>O</kbd>}
-          </button>
-          <button type="button" className="cw-chip" onClick={() => photoMode(true)} title="Stop time, put the camera anywhere round him, and save a picture">
-            Photo {!touch && <kbd>P</kbd>}
-          </button>
-          <button type="button" className="cw-chip cw-tour" onClick={toTour} title="Rings round the compound, against the clock: through the first red ring to start">
-            Swing tour {tourBest != null && <b>{clock(tourBest)}</b>}
-          </button>
-          {styleBest > 0 && (
-            <p className="cw-chip cw-style-best" title="The most style banked in one flight: flips, twists and perfect releases, one after another, and a landing">
-              Best style <b>{styleBest.toLocaleString()}</b>
-            </p>
-          )}
-          <p ref={tourRef} className="cw-chip cw-tour-on" aria-live="off" />
-          <p className="cw-chip cw-packs" title="Peter’s backpacks, webbed up round the compound: on the roofs, up the masts, under the bridge. Walk up to one." aria-label={`${found} of ${PACKS.length} backpacks found`}>
-            <span aria-hidden="true">🎒</span> <b>{found}</b> of {PACKS.length}
-          </p>
-          <Players trav={trav} />
-        </div>
-      </div>
-
-      {bubble && (
-        <div ref={bubbleRef} className="cw-bubble" aria-live="polite">
-          <div>
-            <b>{bubble.name}</b>
-            <span>{bubble.line}</span>
-          </div>
-        </div>
-      )}
-
-      {here && (
-        <div className="cw-door" style={{ '--cw-accent': here.accent }}>
-          <p className="cw-door-sub">{here.where}</p>
-          <p className="cw-door-name">{here.name}</p>
-          <p className="cw-door-stone" style={{ '--glow': stoneFor(here)?.color ?? here.accent }}>
-            {stoneFor(here) && <i className="stone-dot" data-on={here.done || undefined} aria-hidden="true" />}
-            {stoneLine(here)}
-          </p>
-          <button type="button" className="btn btn-primary" onClick={() => enter(here.id)}>
-            {here.act} {!touch && <kbd>E</kbd>}
-          </button>
-        </div>
-      )}
-      {hud.armour && !here && (
-        <div className="cw-door" style={{ '--cw-accent': '#ffb347' }}>
-          <p className="cw-door-sub">By the workshop’s door</p>
-          <p className="cw-door-name">An Iron Man armour</p>
-          <p className="cw-door-stone">Tony left one out. It flies: {touch ? 'Up and Down to climb and come down, the stick to fly, Step out to get out' : 'Space up, Shift down, W A S D to fly, E to step out'}.</p>
-          <button type="button" className="btn btn-primary" onClick={() => (sim.current.suit = true)}>
-            Suit up {!touch && <kbd>E</kbd>}
-          </button>
-        </div>
-      )}
-      {herePortal && (
-        <div className="cw-door cw-door-portal" style={{ '--cw-accent': '#6cc8ff' }}>
-          <p className="cw-door-sub">Over the helipad</p>
-          <p className="cw-door-name">The portal</p>
-          <p className="cw-door-stone">Titan is on the other side, and Thanos with it.</p>
-          <button type="button" className="btn btn-primary" onClick={portal}>
-            Go through {!touch && <kbd>E</kbd>}
-          </button>
-        </div>
-      )}
-
-      {gl === 'on' && hud.suit && <p className="cw-hint">{touch ? 'Hold Up to climb, Down to come down, the stick to fly. Step out gets out of the armour.' : 'Space to climb, Shift to come down, W A S D to fly; it leans into its speed. E steps out of the armour, wherever you are.'}<GuideCue touch={touch} /></p>}
-      {gl === 'on' && !hud.moved && !here && !herePortal && !hud.suit && (
-        <p className="cw-hint">{touch ? 'Stick to walk. Hold Jump in the air to swing, let go to fly. Zip, Perch, Trick, and jump at walls.' : 'W A S D to walk, Shift to run, Space to jump. Hold Space in the air (or the right mouse button) to swing, let go on the upswing to fly; hold on with nothing to catch for web wings. Shift in the air zips, Q launches to a perch, T throws a flip (or a twist, with a direction held). Jump at a wall to run up it. E at a door, O for the settings.'}<GuideCue touch={touch} /></p>
-      )}
-
-      {touch && (
-        <div className="cw-hud cw-hud-bottom">
-          <div className="cw-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-            <span />
-          </div>
-          <button
-            type="button"
-            className="cw-jump"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.currentTarget.setPointerCapture?.(e.pointerId);
-              audioContext();
-              sim.current.jump = true;
-              sim.current.touchWeb = true;
-            }}
-            onPointerUp={() => (sim.current.touchWeb = false)}
-            onPointerCancel={() => (sim.current.touchWeb = false)}
-            onLostPointerCapture={() => (sim.current.touchWeb = false)}
-          >
-            {hud.suit ? 'Up' : 'Jump'}
-            {!hud.suit && <small>hold: swing</small>}
-          </button>
-          <div className="cw-acts">
-            <button
-              type="button"
-              className="cw-jump cw-zip"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.currentTarget.setPointerCapture?.(e.pointerId);
-                audioContext();
-                if (sim.current.h.mode === 'suit') sim.current.touchDown = true;
-                else sim.current.zip = true;
-              }}
-              onPointerUp={() => (sim.current.touchDown = false)}
-              onPointerCancel={() => (sim.current.touchDown = false)}
-              onLostPointerCapture={() => (sim.current.touchDown = false)}
-            >
-              {hud.suit ? 'Down' : 'Zip'}
-            </button>
-            <button
-              type="button"
-              className="cw-jump cw-zip"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                audioContext();
-                sim.current.perch = true;
-              }}
-            >
-              Perch
-            </button>
-            <button
-              type="button"
-              className="cw-jump cw-zip"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                audioContext();
-                if (sim.current.h.mode === 'suit') sim.current.suit = true;
-                else sim.current.trick = true;
-              }}
-            >
-              {hud.suit ? 'Step out' : 'Trick'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {photo && <PhotoBar photo={photo} onChange={changePhoto} onSave={() => savePhoto(api.current, canvas.current, sim.current, progRef.current)} onClose={() => photoMode(false)} touch={touch} />}
-      {tuning && <Settings id="cw-settings" settings={settings} onChange={changeSettings} onClose={() => setTuning(false)} />}
-      {list && (
-        <div className="cw-list" role="dialog" aria-label="The buildings on the compound">
-          <div className="cw-list-head">
-            <p>The compound</p>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setList(false)}>
-              Close
-            </button>
-          </div>
-          <ol>
-            {prog.places.map((p, i) => (
-              <li key={p.id} data-done={p.done || undefined} data-next={p.id === prog.next || undefined} style={{ '--glow': stoneFor(p)?.color ?? p.accent, '--cw-accent': p.accent }}>
-                <span className="cw-list-n" aria-hidden="true">
-                  {p.done ? '✓' : i + 1}
-                </span>
-                <div>
-                  <p className="cw-list-name">{p.name}</p>
-                  <p className="cw-list-sub">
-                    {p.where} · {stoneLine(p)}
-                  </p>
-                </div>
-                <div className="cw-list-acts">
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(p.id)}>
-                    Go there
-                  </button>
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => enter(p.id)}>
-                    {p.act}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Flying in to the compound" />
+      <CompoundHud touch={touch} gl={gl} prog={prog} hud={hud} sim={sim} enter={enter} portal={portal} trav={trav} list={list} setList={setList} tuning={tuning} setTuning={setTuning} photo={photo} photoMode={photoMode} changePhoto={changePhoto} onSavePhoto={() => savePhoto(api.current, canvas.current, sim.current, progRef.current)} settings={settings} changeSettings={changeSettings} tourMsg={tourMsg} pack={pack} trick={trick} styleRef={styleRef} tourRef={tourRef} map={map} bubble={bubble} bubbleRef={bubbleRef} tourBest={tourBest} styleBest={styleBest} found={found} toTour={toTour} travel={travel} onStick={onStick} />
     </div>
-  );
-}
-
-// The settings (rules.js's SETTINGS), from the Settings chip (or O): how the
-// view turns, how far back the camera sits, how much a swing helps you
-// round, how the camera follows, how much it kicks. Every change is live and
-// kept between visits. Not modal: the compound stays playable behind it.
-const shown = (r, v) => (r.toggle ? (v ? 'On' : 'Off') : v === 0 ? 'Off' : `${Math.round(v * 100)}%`);
-function Settings({ id, settings, onChange, onClose }) {
-  return (
-    <section id={id} className="cw-list cw-set" role="dialog" aria-label="Settings">
-      <div className="cw-list-head">
-        <p>Settings</p>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-          Close
-        </button>
-      </div>
-      <div className="cw-set-rows">
-        {Object.entries(SETTINGS).map(([k, r]) => {
-          const v = settings[k];
-          return (
-            <label key={k} className="cw-set-row">
-              <span className="cw-set-top">
-                <span className="cw-list-name">{r.label}</span>
-                <output>{shown(r, v)}</output>
-              </span>
-              {r.toggle ? (
-                <input type="checkbox" checked={Boolean(v)} onChange={(e) => onChange({ ...settings, [k]: e.target.checked ? 1 : 0 })} aria-describedby={`${id}-${k}`} />
-              ) : (
-                <input
-                  type="range"
-                  min={r.min}
-                  max={r.max}
-                  step={r.step}
-                  value={v}
-                  style={{ '--fill': `${((v - r.min) / (r.max - r.min)) * 100}%` }}
-                  onChange={(e) => onChange({ ...settings, [k]: Number(e.target.value) })}
-                  // (dragged with a mouse or a thumb, it lets go of the arrow keys again)
-                  onPointerUp={(e) => e.currentTarget.blur()}
-                  aria-describedby={`${id}-${k}`}
-                />
-              )}
-              <span id={`${id}-${k}`} className="cw-list-sub">
-                {r.hint}
-              </span>
-            </label>
-          );
-        })}
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange({ ...SETTINGS_DEFAULTS })}>
-          Back to how it came
-        </button>
-      </div>
-    </section>
-  );
-}
-
-// Photo mode's bar: the lens and the distance (the drag turns the camera,
-// the wheel brings it in), a picture saved, and the way back.
-function PhotoBar({ photo, onChange, onSave, onClose, touch }) {
-  const row = (label, k, [min, max], step, shown) => (
-    <label className="cw-photo-row">
-      <span>{label}</span>
-      <input type="range" min={min} max={max} step={step} value={photo[k]} style={{ '--fill': `${((photo[k] - min) / (max - min)) * 100}%` }} onChange={(e) => onChange({ [k]: Number(e.target.value) })} onPointerUp={(e) => e.currentTarget.blur()} />
-      <output>{shown}</output>
-    </label>
-  );
-  return (
-    <section className="cw-photo cw-set" role="dialog" aria-label="Photo mode">
-      <p className="cw-photo-title">Photo mode</p>
-      <p className="cw-photo-hint">{touch ? 'Drag to move the camera round him.' : 'Drag to move the camera round him, scroll to bring it in, [ and ] for the lens.'}</p>
-      {row('Lens', 'fov', PHOTO.fov, 1, `${Math.round(photo.fov)}°`)}
-      {row('Distance', 'dist', PHOTO.dist, 0.1, `${photo.dist.toFixed(1)} m`)}
-      <div className="cw-photo-acts">
-        <button type="button" className="btn btn-primary btn-sm" onClick={onSave}>
-          Save the picture
-        </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-          Back {!touch && <kbd>P</kbd>}
-        </button>
-      </div>
-    </section>
   );
 }
 
@@ -968,160 +657,6 @@ function savePhoto(a, c, s, p) {
   } catch (err) {
     if (import.meta.env.DEV) console.error(err);
   }
-}
-
-// Other players online here: how many, or a way to see them (going online
-// is the site's own switch, with your callsign, as the universe's map has it).
-function Players({ trav }) {
-  if (!trav.available) return null;
-  if (!trav.on)
-    return (
-      <button type="button" className="cw-chip" onClick={trav.join} title="Go online, and see everyone else walking the compound as a hologram">
-        See other players
-      </button>
-    );
-  return (
-    <span className="cw-chip cw-players" data-on="" title="Everyone else online here shows as a hologram: they can’t touch your games, nor you theirs">
-      <b>{trav.count}</b> {trav.count === 1 ? 'player' : 'players'} here
-    </span>
-  );
-}
-
-// The map in the corner: the river, the lawn and its drives, the buildings,
-// the doors (a stone over each one won back), the portal once it's open, the
-// backpacks still to find near you, the swing tour's next ring, and you.
-const MAP = { x0: -60, z0: -20, size: 300 };
-const PACK_SHOWN = 42; // a backpack shows on the map this near (m)
-function drawMap(c, h, prog, others, found = [], tour = null) {
-  const g = c?.getContext('2d');
-  if (!g) return;
-  const k = 150 / MAP.size;
-  const at = (x, z) => [(x - MAP.x0) * k, (z - MAP.z0) * k];
-  const poly = (pts) => {
-    g.beginPath();
-    pts.forEach(([x, z], i) => (i ? g.lineTo(...at(x, z)) : g.moveTo(...at(x, z))));
-    g.closePath();
-  };
-  g.clearRect(0, 0, 150, 150);
-  g.save();
-  g.beginPath();
-  g.arc(75, 75, 73, 0, Math.PI * 2);
-  g.clip();
-  g.fillStyle = '#2f4a2c'; // the woods
-  g.fillRect(0, 0, 150, 150);
-  g.fillStyle = '#3d6f7a';
-  poly(RIVER_W);
-  g.fill();
-  g.fillStyle = '#7da35a';
-  poly(LAWN_W);
-  g.fill();
-  g.strokeStyle = '#d9dbd2';
-  g.lineCap = 'round';
-  g.lineJoin = 'round';
-  g.lineWidth = Math.max(1.2, ROAD_HALF * 2 * k);
-  for (const r of ROADS_W) {
-    g.beginPath();
-    r.forEach(([x, z], i) => (i ? g.lineTo(...at(x, z)) : g.moveTo(...at(x, z))));
-    g.stroke();
-  }
-  g.fillStyle = '#f2f4f6';
-  g.strokeStyle = 'rgba(20, 28, 36, 0.55)';
-  g.lineWidth = 0.8;
-  for (const b of BUILDINGS) {
-    poly(b.foot);
-    g.fill();
-    g.stroke();
-  }
-  // the doors: a pulsing ring for the next, a dot for the rest, the stone's colour once won
-  const pulse = 3.2 + Math.sin(performance.now() / 260) * 1.2;
-  for (const p of prog.places) {
-    const [x, y] = at(p.x, p.z);
-    g.fillStyle = p.done ? stoneFor(p)?.color ?? p.accent : p.accent;
-    g.beginPath();
-    g.arc(x, y, p.done ? 3.4 : 2.8, 0, Math.PI * 2);
-    g.fill();
-    if (p.id === prog.next) {
-      g.strokeStyle = p.accent;
-      g.lineWidth = 1.4;
-      g.beginPath();
-      g.arc(x, y, pulse + 2, 0, Math.PI * 2);
-      g.stroke();
-    }
-  }
-  if (prog.portal) {
-    const [x, y] = at(PORTAL.x, PORTAL.z);
-    g.strokeStyle = '#9fdcff';
-    g.lineWidth = 2;
-    g.beginPath();
-    g.arc(x, y, 4 + pulse * 0.4, 0, Math.PI * 2);
-    g.stroke();
-  }
-  // the swing tour: the next ring red (the first, faintly, before a tour), the rest of the course faint
-  if (tour) {
-    const next = tour.on ? tour.next : 0;
-    g.strokeStyle = 'rgba(255, 90, 79, 0.45)';
-    g.lineWidth = 1;
-    g.beginPath();
-    TOUR.forEach((r, i) => (i ? g.lineTo(...at(r.x, r.z)) : g.moveTo(...at(r.x, r.z))));
-    if (tour.on) g.stroke();
-    const r = TOUR[next];
-    const [x, y] = at(r.x, r.z);
-    g.fillStyle = tour.on ? '#ff5a4f' : 'rgba(255, 90, 79, 0.7)';
-    g.beginPath();
-    g.arc(x, y, tour.on ? 3 : 2.4, 0, Math.PI * 2);
-    g.fill();
-    if (tour.on) {
-      g.strokeStyle = '#ff5a4f';
-      g.lineWidth = 1.2;
-      g.beginPath();
-      g.arc(x, y, pulse + 1.5, 0, Math.PI * 2);
-      g.stroke();
-    }
-  }
-  // the backpacks still to find, once you're near one: a white dot, blinking
-  if (Math.sin(performance.now() / 180) > -0.3) {
-    g.fillStyle = '#ffffff';
-    for (const p of PACKS) {
-      if (found.includes(p.id) || Math.hypot(p.x - h.x, p.z - h.z) > PACK_SHOWN) continue;
-      const [x, y] = at(p.x, p.z);
-      g.beginPath();
-      g.arc(x, y, 2, 0, Math.PI * 2);
-      g.fill();
-    }
-  }
-  // the others online, pale
-  if (others?.length) {
-    g.fillStyle = 'rgba(190, 215, 255, 0.95)';
-    for (const o of others) {
-      if (o.inside) continue;
-      const [x, y] = at(o.x, o.z);
-      g.beginPath();
-      g.arc(x, y, 2.4, 0, Math.PI * 2);
-      g.fill();
-    }
-  }
-  g.restore();
-  // you
-  const [cx, cy] = at(h.x, h.z);
-  g.save();
-  g.translate(cx, cy);
-  g.rotate(-h.face + Math.PI / 2);
-  g.fillStyle = '#ffffff';
-  g.strokeStyle = '#1d2f5c';
-  g.lineWidth = 1.5;
-  g.beginPath();
-  g.moveTo(0, -6);
-  g.lineTo(4.5, 5);
-  g.lineTo(-4.5, 5);
-  g.closePath();
-  g.fill();
-  g.stroke();
-  g.restore();
-  g.strokeStyle = 'rgba(200, 220, 240, 0.55)';
-  g.lineWidth = 2;
-  g.beginPath();
-  g.arc(75, 75, 73, 0, Math.PI * 2);
-  g.stroke();
 }
 
 // Without 3D: the compound from the air, its pins opening the games, and the

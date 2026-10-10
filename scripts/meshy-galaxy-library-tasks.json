@@ -254,5 +254,66 @@
   "lavacollector": {
     "image": "01a114ea-1b31-744f-ab61-cb70dd6b0c15",
     "model": "01a114ea-9690-7613-bcda-5692df715d02"
+  },
+  "deathstar2": {
+    "lift": [
+      "01a119e7-bafa-775a-ad3e-e462288d2e82"
+    ],
+    "failed": [
+      "01a11b86-8d40-7129-a859-53012dc02b20",
+      "01a11b93-c72e-74ef-8850-fa28abe35e74",
+      "01a11b9c-19af-766d-b6e1-46cef39df0ee"
+    ],
+    "model": "01a11b9e-32df-7251-8a4a-6025c1d98489"
+  },
+  "interdictor": {
+    "lift": [
+      "01a119e8-ae82-77c6-bdc8-48cd516a2008"
+    ],
+    "model": "01a11b86-91bd-771d-b2c8-4c3078271d9b"
+  },
+  "corvette": {
+    "lift": [
+      "01a119e9-34e7-73bf-b296-cde065725761",
+      "01a119e9-bc07-7440-8489-a080e5c28377"
+    ],
+    "model": "01a11b86-9697-75f7-9012-e308f6ed4607",
+    "multi": true
+  },
+  "interceptor": {
+    "lift": [
+      "01a119ea-2d24-7547-b002-80c5d8d436fd"
+    ],
+    "model": "01a11b86-9c13-775c-a2c4-dc7364838732"
+  },
+  "munificent": {
+    "lift": [
+      "01a119ec-3e60-75de-9af4-3d70a8aa8de6",
+      "01a119ec-b016-721c-9365-fd011054532f"
+    ],
+    "model": "01a11b86-a10e-76f5-a1fc-0efbd38cd7eb",
+    "multi": true
+  },
+  "providence": {
+    "lift": [
+      "01a119ed-22bc-71e7-9d3f-983aa9a20859",
+      "01a119ed-eae2-7230-9f6a-387407ece9b8"
+    ],
+    "model": "01a11b86-a7ce-72c7-9567-3e3fc5de8aad",
+    "multi": true
+  },
+  "slave1": {
+    "lift": [
+      "01a119ee-5aef-75fc-a4e9-52b30e7cc313",
+      "01a119ee-f8fa-774a-8a36-c7b52ef0c4e5"
+    ],
+    "model": "01a11b86-adb6-7282-a4f8-45e35850fd18",
+    "multi": true
+  },
+  "pirateskiff": {
+    "lift": [
+      "01a119ef-3e98-7461-9068-6c80e6cb786c"
+    ],
+    "model": "01a11b86-b372-7393-8ddb-800bd73968c8"
   }
 }

@@ -10,12 +10,13 @@ import { capturePointer } from '../../lib/pointer';
 import { useVoiced } from '../../lib/useVoiced';
 import { readPad, typing } from '../games/pad';
 import { useTravellers } from '../middleearth/towns/useTravellers';
-import { PALETTES, PALETTE_ORDER } from './dither';
+import { PALETTES } from './dither';
 import { cartInfo, readFound, saveFound, useFound } from './found';
-import { CARTRIDGES, COINS, SIGNS, ZOOM, cameraMove, islanderStep, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
+import { CARTRIDGES, COINS, HERO, SIGNS, ZOOM, cameraMove, islanderStep, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
 import { VOICE } from './voicelines';
 import './dotmatrix.css';
-import GuideCue from '../guide/GuideCue';
+import { Exit } from '../../runtime/hud';
+import DotMatrixHud from './DotMatrixHud';
 
 // Dot Matrix, the world: walk and jump about a Game Boy island in its four
 // greens, find the eight cartridges (each one a project of mine), and play
@@ -64,13 +65,14 @@ const CODES = {
   NumpadSubtract: 'zoomOut',
 };
 
-function Heart({ full }) {
-  return (
-    <svg viewBox="0 0 7 6" className="dm-heart" data-full={full || undefined} aria-hidden="true">
-      <path d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z" />
-    </svg>
-  );
-}
+// the jump's numbers on the ?debug panel (rules.js's HERO, read as it plays)
+const heroItem = (key, label, min, max, step) => ({ key, label, type: 'range', min, max, step, get: () => HERO[key], set: (v) => (HERO[key] = v) });
+const HERO_GROUPS = [
+  {
+    name: 'jump',
+    items: [heroItem('speed', 'walk (m/s)', 1, 10, 0.1), heroItem('jump', 'jump (m/s)', 4, 14, 0.1), heroItem('gravity', 'gravity', 10, 50, 0.5), heroItem('coyote', 'coyote (s)', 0, 0.3, 0.005), heroItem('buffer', 'buffer (s)', 0, 0.3, 0.005)],
+  },
+];
 
 export default function DotMatrixWorld() {
   const three = use3D();
@@ -162,6 +164,7 @@ function World({ gl, setGl }) {
         if (!a) return;
         if (dead) return a.dispose();
         api.current = a;
+        a.tune?.(HERO_GROUPS); // (behind ?debug: the feel's numbers and the jump's)
         a.setPalette(palette);
         fit();
         await a.warm(view());
@@ -273,9 +276,11 @@ function World({ gl, setGl }) {
     };
   }, [live, closeDialog, startMusic]);
 
-  // Escape puts the Game Boy down
+  // Escape puts the Game Boy down (and the way back has the focus, as the
+  // console's dialog opens)
   useEffect(() => {
     if (!playing) return undefined;
+    stage.current?.querySelector('.dm-play-x')?.focus();
     const down = (e) => e.key === 'Escape' && setPlaying(false);
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
@@ -572,12 +577,11 @@ function World({ gl, setGl }) {
     a.render(view(), ms);
   }, live);
 
-  const p = progress(sim.current.g);
   const prompt = hud.near && !dialog ? { sign: 'Read', talk: 'Talk', gameboy: 'Play the Game Boy', n64: 'Play the N64', craft: 'Play Minecraft', pipe: 'Go down the pipe' }[hud.near.kind] : null;
 
   return (
     <div ref={box}>
-      <div ref={stage} className="dm-stage" data-palette={palette} data-on={gl === 'on' || undefined}>
+      <div ref={stage} className="dm-stage" data-tour="cartridges" data-palette={palette} data-on={gl === 'on' || undefined}>
         <canvas ref={canvas} className="dm-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Dot Matrix island, in 3D. Walk with the arrow keys or WASD, jump with Space, talk, read and play with X, turn the camera with Q and E, zoom with the wheel or + and -." role="img" />
         <div className="dm-lcd" aria-hidden="true" />
         <div className="dm-names" aria-hidden="true">
@@ -589,151 +593,12 @@ function World({ gl, setGl }) {
         </div>
         {gl !== 'on' && <p className="dm-loading">Loading the island…</p>}
 
-        <div className="dm-hud dm-hud-top">
-          <div className="dm-stats">
-            <h1 id="dm-title" className="dm-title">
-              Dot Matrix
-            </h1>
-            <p className="dm-row" aria-label={`${hud.hearts} hearts`}>
-              {[0, 1, 2].map((i) => (
-                <Heart key={i} full={i < hud.hearts} />
-              ))}
-            </p>
-            <p className="dm-row">
-              <span className="dm-coin" aria-hidden="true" /> × {String(hud.coins).padStart(2, '0')}
-            </p>
-            <p className="dm-row">
-              <span className="dm-cart" aria-hidden="true" /> {hud.found}/{CARTRIDGES.length}
-            </p>
-          </div>
-          <div className="dm-chips">
-            <button type="button" className="dm-chip" onClick={() => setList((v) => !v)} aria-expanded={list}>
-              Cartridges <kbd>M</kbd>
-            </button>
-            <button type="button" className="dm-chip" onClick={() => setPalette((v) => PALETTE_ORDER[(PALETTE_ORDER.indexOf(v) + 1) % PALETTE_ORDER.length])} aria-label={`Screen: ${PALETTES[palette].name}. Change it`}>
-              {PALETTES[palette].name}
-            </button>
-            <button type="button" className="dm-chip" onClick={() => setMusicOn((v) => !v)} aria-pressed={musicOn}>
-              Music {musicOn ? 'on' : 'off'}
-            </button>
-            {trav.available &&
-              (trav.on ? (
-                <span className="dm-chip dm-chip-online" data-on="" title="Everyone else online on the island walks about as a pale ghost from another world: nothing passes between you but where each of you is">
-                  <b>{trav.count}</b> {trav.count === 1 ? 'player' : 'players'} here
-                </span>
-              ) : (
-                <button type="button" className="dm-chip dm-chip-online" onClick={trav.join} title="Go online, and see everyone else on the island as a ghost from another world">
-                  See other players
-                </button>
-              ))}
-            <span className="dm-turn">
-              <button type="button" className="dm-chip" aria-label="Turn the camera left" onClick={() => (sim.current.yawTo -= Math.PI / 4)}>
-                ⟲
-              </button>
-              <button type="button" className="dm-chip" aria-label="Turn the camera right" onClick={() => (sim.current.yawTo += Math.PI / 4)}>
-                ⟳
-              </button>
-              <button type="button" className="dm-chip" aria-label="Zoom in" onClick={() => (sim.current.distTo = zoomTo(sim.current.distTo, 0.8))}>
-                +
-              </button>
-              <button type="button" className="dm-chip" aria-label="Zoom out" onClick={() => (sim.current.distTo = zoomTo(sim.current.distTo, 1.25))}>
-                −
-              </button>
-            </span>
-          </div>
-        </div>
-
-        {banner && <p className="dm-banner">{banner}</p>}
-
-        {list && (
-          <div className="dm-list" role="dialog" aria-label="Cartridges">
-            <p className="dm-list-head">
-              Cartridges {p.found}/{p.of}
-              <button type="button" className="dm-x" onClick={() => setList(false)} aria-label="Close">
-                ×
-              </button>
-            </p>
-            <ol>
-              {CARTRIDGES.map((c) => {
-                const got = sim.current.g.found.has(c.id);
-                const info = cartInfo(c.id);
-                return (
-                  <li key={c.id} data-got={got || undefined}>
-                    {got ? (
-                      <Link to={info.link}>{info.title}</Link>
-                    ) : (
-                      <span>
-                        <b>???</b> {c.where}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        )}
-
-        {!moved && !dialog && !prompt && gl === 'on' && (
-          <p className="dm-hint">{touch ? 'Pad to walk · A jumps · B talks, reads and plays · drag to turn' : 'Arrows or WASD walk · Space jumps · X talks, reads and plays · Q E turn'}<GuideCue touch={touch} /></p>
-        )}
-        {prompt && !list && (
-          <p className="dm-prompt">
-            <b>B</b> {prompt}
-          </p>
-        )}
-
-        {dialog && (
-          <div className="dm-dialog" role="dialog" aria-live="polite" aria-label={dialog.title}>
-            {dialog.kicker && <p className="dm-dialog-kicker">{dialog.kicker}</p>}
-            <p className="dm-dialog-title">{dialog.title}</p>
-            <p className="dm-dialog-text">
-              {dialog.text.slice(0, shown)}
-              <span className="dm-ghost">{dialog.text.slice(shown)}</span>
-            </p>
-            <div className="dm-dialog-foot">
-              {dialog.link && shown >= dialog.text.length && (
-                <Link className="dm-dialog-link" to={dialog.link}>
-                  Open the project ▸
-                </Link>
-              )}
-              <button type="button" className="dm-dialog-next" onClick={() => (shown < dialog.text.length ? setShown(dialog.text.length) : closeDialog())}>
-                {shown < dialog.text.length ? '…' : '▼'}
-                <span className="sr-only">{shown < dialog.text.length ? 'Show it all' : 'Next'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {touch && gl === 'on' && (
-          <div className="dm-touch">
-            <div
-              ref={padRef}
-              className="dm-pad"
-              onPointerDown={(e) => {
-                capturePointer(e);
-                onPad(e);
-              }}
-              onPointerMove={onPad} onPointerUp={padUp} onPointerCancel={padUp} onLostPointerCapture={padUp} aria-hidden="true">
-              <span />
-              <span />
-            </div>
-            <div className="dm-ab">
-              <button type="button" className="dm-btn" {...button('b')}>
-                B
-              </button>
-              <button type="button" className="dm-btn dm-btn-a" {...button('a')}>
-                A
-              </button>
-            </div>
-          </div>
-        )}
+        <DotMatrixHud touch={touch} gl={gl} hud={hud} sim={sim} palette={palette} setPalette={setPalette} musicOn={musicOn} setMusicOn={setMusicOn} trav={trav} list={list} setList={setList} banner={banner} moved={moved} prompt={prompt} act={act} dialog={dialog} shown={shown} setShown={setShown} closeDialog={closeDialog} padRef={padRef} onPad={onPad} padUp={padUp} button={button} />
 
         {playing && (
           <div className="dm-play" role="dialog" aria-modal="true" aria-label="The Game Boy">
             <div className="dm-play-inner">
-              <button type="button" className="dm-chip dm-play-x" onClick={() => setPlaying(false)} autoFocus>
-                Back to the island
-              </button>
+              <Exit className="dm-chip dm-play-x" label="Back to the island" onLeave={() => setPlaying(false)} touch={touch} />
               <Suspense fallback={<p className="dm-loading">Switching on…</p>}>
                 <GameBoyStage />
               </Suspense>

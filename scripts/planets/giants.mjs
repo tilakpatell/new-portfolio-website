@@ -11,7 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
-import { clamp, ramp, save } from './sphere.mjs';
+import { clamp, ramp, save, bakeSize } from './sphere.mjs';
 
 const CACHE = path.resolve('node_modules/.cache/universe');
 const UA = { 'User-Agent': 'tilakpatell.com universe build (https://tilakpatell.com)' };
@@ -63,8 +63,7 @@ function stretch(l, lo = 2, hi = 98) {
 }
 
 export async function bake() {
-  const W = 4096;
-  const H = 2048;
+  const [W, H] = bakeSize(); // (8192 × 4096 with --ultra, from Solar System Scope's 8K)
   // the music room: Jupiter in saffron
   {
     const { rgb, lum } = await read(await fetchOnce('jupiter'), W, H);

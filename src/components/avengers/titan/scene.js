@@ -11,6 +11,7 @@ import { buildGround, fbm } from '../hq/kit/world';
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { createVfx } from '../hq/vfx';
 import { createFeel } from '../hq/feel';
+import { feelGroups } from '../hq/feel';
 import { lightningPool } from '../lawn/models';
 import { loadMeshy, meshyFigure } from '../smash/meshy';
 import { STONES } from '../../interests/stones';
@@ -217,6 +218,8 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
   const vfx = createVfx(scene, { calm, maxSparks: 900, maxPuffs: 320, maxDebris: 40 });
   const zap = lightningPool(scene, 8);
   const feel = createFeel({ seed: 9, calm, baseFov: FOV, offset: 0.05 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'titan');
 
   // dust in the air, drifting
   const MOTES = small ? 300 : 700;
@@ -384,6 +387,8 @@ export async function create(canvas, { onLost, onSlow, calm = false, meshy } = {
     }
     feel.trauma(0.5);
     feel.punch(3);
+    // the snap holds a beat before the flash goes on (render's snapT runs by feel.scale)
+    feel.hitstop(90);
   }
 
   function dustFx(dt) {

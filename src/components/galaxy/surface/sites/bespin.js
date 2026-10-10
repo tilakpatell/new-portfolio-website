@@ -4,6 +4,8 @@
 // has Mustafar and Scarif.)
 
 export const SITE = {
+  // lit as the game lights its level (src/data/bf2017/light/bespin.json, gameLit.js)
+  gameLight: 'bespin',
   // the look (look.js): rose shade, gold hour; the haze below the horizon
   // nearly the sky's own, so the cloud sea and the sky meet without a seam
   look: { shadow: '#c07a8a', edge: [0.1, 0.78], halo: '#ffb070', fogBelow: 0.95 },
@@ -350,7 +352,7 @@ export const SITE = {
     { kind: 'bespinbridge', at: [-174.5, 0], yaw: Math.PI / 2, abs: true, y: 0, opts: { len: 13, w: 6 } },
     { kind: 'bespinplatform', at: [141, -141], abs: true, y: 0, opts: { r: 12, gap: -Math.PI / 4 } },
     { kind: 'bespinbridge', at: [126.6, -126.6], yaw: 2.356, abs: true, y: 0, opts: { len: 26, w: 5 } },
-    { kind: 'weathervane', at: [0, 0], abs: true, y: -250, solid: false },
+    { kind: 'weathervane', at: [0, 0], abs: true, y: -262, solid: false },
     // the platform where you land: a cloud car down for a refit, its
     // crew's cargo, and the lamps round the rim
     { kind: 'cloudcar', at: [-16, -268], yaw: 2.4, abs: true, y: 1.2 },
@@ -372,9 +374,10 @@ export const SITE = {
   ],
   scatter: [
     // the skyline: towers stood on the deck (lifted from the fall to it)
-    // Cloud City's towers and domed halls round the deck (the Meshy models;
-    // scripts/meshy-galaxy-three.mjs), sunk into it as the built city's were
-    { kind: 'cloudtower', n: 14, within: [52, 158], scale: [0.35, 0.8], sink: -30, clear: 24 },
+    // Cloud City's towers and domed halls round the deck (the Meshy models:
+    // the towers the audit lane's, the halls scripts/meshy-galaxy-three.mjs's),
+    // sunk into it as the built city's were
+    { kind: 'cloudcity', n: 14, within: [52, 158], scale: [0.35, 0.8], sink: -30, clear: 24 },
     { kind: 'cloudtower2', n: 10, within: [60, 158], scale: [0.4, 0.8], sink: -30, clear: 24 },
     { kind: 'cloudblock', n: 40, within: [36, 150], scale: [0.6, 1.3], sink: -40, clear: 12 },
     { kind: 'lamp', n: 50, within: [24, 160], scale: [1, 1], sink: -40, clear: 6, opts: { h: 4.5, light: '#ffe0b0', color: '#d8d0c4', radius: 0.2 } },

@@ -568,7 +568,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a blow holds the game a moment: the scene's hitstop, ../../feel.js)
+    const real = Math.min(0.05, ms / 1000);
+    const dt = real * a.timeScale(real) * fast;
     s.t += dt;
     s.stepT += dt;
     const k = s.keys;
@@ -914,28 +916,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   };
 
   // the touch stick
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   // held buttons, for touch: steer and spur
   const hold = (name, v) => ({
     onPointerDown: (e) => {
@@ -1068,7 +1049,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -1122,7 +1103,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           {hud.plant && (
             <div className="shire-panel-row">
               <button type="button" className="btn btn-primary btn-sm" onClick={doPick}>
-                Pick it {!touch && <kbd>E</kbd>}
+                {!touch && <kbd className="key-first">E</kbd>} Pick it
               </button>
             </div>
           )}
@@ -1255,7 +1236,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {walking && touch && <Stick onStick={onStick} />}
+      {walking && touch && <Stick onMove={onStick} />}
 
       {list && (
         <QuestList

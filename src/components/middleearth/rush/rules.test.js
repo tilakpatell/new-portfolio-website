@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createCooldownPress } from '../../../lib/press';
 import { PONY } from './levels/pony';
 import { dishOf, facingTile, grab, movePlayer, newRush, parseLevel, starsOf, stepRush, work } from './rules';
 
@@ -73,6 +74,66 @@ describe('walking', () => {
     expect(facingTile(s, p)).toEqual([1, 0]); // the carrot crate
     stand(p, 2, 2, 'E');
     expect(facingTile(s, p)).toBe(null);
+  });
+});
+
+describe('a dash that lands', () => {
+  // dash once, then press again `early` seconds before the cooldown is over
+  const again = (early) => {
+    const s = newRush(PONY);
+    const p = s.players[0];
+    const press = createCooldownPress();
+    const dt = 1 / 60;
+    press.press();
+    movePlayer(s, p, { x: 1, z: 0, press }, dt);
+    const first = p.cool;
+    let t = dt;
+    let pressed = false;
+    let dashes = 0;
+    while (t < first + 0.5) {
+      if (!pressed && t >= first - early) {
+        press.press();
+        pressed = true;
+      }
+      const cool = p.cool;
+      movePlayer(s, p, { x: 1, z: 0, press }, dt);
+      if (p.cool > cool) dashes++;
+      t += dt;
+    }
+    return dashes;
+  };
+
+  it('goes as the cooldown ends when pressed a moment before', () => {
+    expect(again(0.05)).toBe(1);
+  });
+
+  it('is let go when pressed too long before', () => {
+    expect(again(0.3)).toBe(0);
+  });
+
+  it('dashes at once when it’s ready, and once a press', () => {
+    const s = newRush(PONY);
+    const p = s.players[0];
+    const press = createCooldownPress();
+    press.press();
+    movePlayer(s, p, { x: 1, z: 0, press }, 1 / 60);
+    expect(p.dash).toBeGreaterThan(0);
+    const cool = p.cool;
+    movePlayer(s, p, { x: 1, z: 0, press }, 1 / 60);
+    expect(p.cool).toBeLessThan(cool);
+  });
+});
+
+describe('the walk’s ease', () => {
+  it('gets up to speed as fast at 30 or 120 frames a second as at 60', () => {
+    const after = (hz) => {
+      const s = newRush(PONY);
+      const p = s.players[0];
+      for (let i = 0; i < hz * 0.1; i++) movePlayer(s, p, { x: 1, z: 0 }, 1 / hz);
+      return p.vx;
+    };
+    expect(Math.abs(after(30) - after(60)) / after(60)).toBeLessThan(0.01);
+    expect(Math.abs(after(120) - after(60)) / after(60)).toBeLessThan(0.01);
   });
 });
 

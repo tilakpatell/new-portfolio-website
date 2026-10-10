@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { inPoly } from '../compound/plan';
 import {
+  jumpPress,
   ANCHORS,
   ARMOUR,
   BENCHES,
@@ -183,6 +184,49 @@ describe('The compound, the world: walking', () => {
     expect(top).toBeGreaterThan(1.3);
     expect(top).toBeLessThan(2);
     expect(h.y).toBe(0);
+  });
+
+  it('jumps on a press made just before he lands (lib/press.js), not one made long before', () => {
+    const go = (early) => {
+      const press = jumpPress();
+      let h = stepHero(newHero(START), { press: (press.press(), press) }, DT);
+      expect(h.air).toBe(true);
+      const ev = [];
+      let pressed = false;
+      for (let t = 0; t < 3; t += DT) {
+        // pressed `early` seconds before he comes down (his fall is v·t + g·t²/2)
+        const left = (h.vy + Math.sqrt(h.vy * h.vy + 2 * HERO.gravity * h.y)) / HERO.gravity;
+        if (!pressed && h.air && h.vy < 0 && left <= early) {
+          press.press();
+          pressed = true;
+        }
+        h = stepHero(h, { press }, DT);
+        ev.push(...h.ev);
+        if (pressed && ev.some((e) => e.type === 'land')) break;
+      }
+      for (let t = 0; t < 0.2; t += DT) {
+        h = stepHero(h, { press }, DT);
+        ev.push(...h.ev);
+      }
+      return ev.filter((e) => e.type === 'jump').length;
+    };
+    expect(go(0.08)).toBe(1);
+    expect(go(0.3)).toBe(0);
+  });
+
+  it('jumps on a press just after he walked off an edge (coyote time), not a moment later', () => {
+    const go = (after) => {
+      const press = jumpPress();
+      stepHero(newHero(START), { press }, DT);
+      // off the edge: falling, no web, no jump
+      let h = { ...newHero({ ...START, y: 6 }), mode: 'air', air: true, vy: 0, fly: false };
+      for (let t = 0; t < after - 1e-9; t += DT) h = stepHero(h, { press }, DT);
+      press.press();
+      h = stepHero(h, { press }, DT);
+      return h.ev.filter((e) => e.type === 'jump').length;
+    };
+    expect(go(1 / 30)).toBe(1);
+    expect(go(0.25)).toBe(0);
   });
 
   it('can’t walk into a building', () => {

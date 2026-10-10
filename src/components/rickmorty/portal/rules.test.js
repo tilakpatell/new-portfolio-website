@@ -142,6 +142,48 @@ describe('Portal panic: the portal dash', () => {
   });
 });
 
+describe('Portal panic: a dash pressed a moment early', () => {
+  it('fires as the dash before it ends, when pressed during it', () => {
+    const g = quiet({ hero: 'rick' });
+    g.input.mx = 1;
+    expect(dash(g)).toBe(true);
+    run(g, PANIC.dash.time - 0.05);
+    const n = g.p.dashes;
+    expect(dash(g)).toBe(false);
+    run(g, 0.08);
+    expect(g.p.dashes).toBe(n - 1);
+    expect(g.p.dashT).toBeGreaterThan(0);
+  });
+
+  it('fires as a charge comes back, when pressed a moment before it does', () => {
+    const g = quiet({ hero: 'rick' });
+    g.input.mx = 1;
+    while (g.p.dashes > 0) {
+      dash(g);
+      run(g, PANIC.dash.time + 0.02);
+    }
+    // till a charge is 0.05 s from coming back
+    run(g, 5, () => g.p.recharge < PANIC.heroes.rick.recharge - 0.05);
+    expect(g.p.dashes).toBe(0);
+    expect(dash(g)).toBe(false);
+    run(g, 0.1);
+    expect(g.p.dashT).toBeGreaterThan(0);
+  });
+
+  it('forgets a press made long before', () => {
+    const g = quiet({ hero: 'rick' });
+    g.input.mx = 1;
+    while (g.p.dashes > 0) {
+      dash(g);
+      run(g, PANIC.dash.time + 0.02);
+    }
+    expect(dash(g)).toBe(false);
+    run(g, PANIC.heroes.rick.recharge + 0.1);
+    expect(g.p.dashes).toBeGreaterThanOrEqual(1);
+    expect(g.p.dashT).toBeLessThanOrEqual(0);
+  });
+});
+
 describe('Portal panic: getting hurt', () => {
   it('a bolt costs a heart, then you blink and can’t be hit for a moment', () => {
     const g = quiet();

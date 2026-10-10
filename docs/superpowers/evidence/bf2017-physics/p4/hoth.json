@@ -1,0 +1,56 @@
+{
+  "world": "hoth",
+  "level": "hoth_01",
+  "print": {
+    "r": 0.62,
+    "k": 0.3
+  },
+  "spot": {
+    "land": [
+      0,
+      0
+    ],
+    "you": [
+      14,
+      0
+    ]
+  },
+  "shots": {
+    "snow": {
+      "family": "snow",
+      "effect": "FX_Impact_Blaster_Snow",
+      "decal": "Decal_Snow_Blaster",
+      "ground": true,
+      "at": [
+        19,
+        15,
+        4
+      ]
+    },
+    "wall": {
+      "family": "metal",
+      "effect": "FX_Impact_Blaster_Metal",
+      "decal": "Decal_Metal_Blaster",
+      "ground": false,
+      "at": [
+        24.1,
+        16.1,
+        -11.2
+      ]
+    },
+    "wallSolid": {
+      "type": "box",
+      "x": 22,
+      "z": -12,
+      "hw": 2.116105941290453,
+      "hd": 2.2525000898098564,
+      "c": 0.3623577544766736,
+      "s": 0.9320390859672263,
+      "top": null,
+      "base": null,
+      "tag": null
+    }
+  },
+  "errors": [],
+  "ok": true
+}

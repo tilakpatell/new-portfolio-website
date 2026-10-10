@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CAST, castFor, createGreeter, manner, motionFrom, moveFor, pick, stepFollower, tintFor } from './castRules';
+import * as talk from '../../lib/ai/talk';
 import { LOOKS } from './shire/people';
 
 describe('who plays whom', () => {
@@ -103,6 +104,7 @@ describe('motion from two placings', () => {
 
 describe('the greeting, as the map has it', () => {
   it('once as you come near, again only after you’ve gone', () => {
+    expect(createGreeter).toBe(talk.createGreeter); // (lib/ai/talk.js's, re-exported)
     const g = createGreeter({ near: 2.8, far: 4.5 });
     expect(g(10)).toBe(false);
     expect(g(2.5)).toBe(true);

@@ -24,6 +24,9 @@ import { createAnimBudget } from '../../../lib/three/animBudget';
 import { applyEmote } from '../../../lib/emote';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { houseOn } from '../../../lib/three/house';
+import { LOOK } from './look';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { damp } from '../../../lib/ease';
 import { createMeshyCast } from '../portal/meshyCast';
 import { InkPass } from '../portal/toon';
 import { EDGE_BUILDINGS, buildConcourse } from './concourse';
@@ -95,7 +98,11 @@ function clearance(from, to, inside = insideAt) {
 export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
-  const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.42, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: LOOK.bloom, onLost });
+  // the shake (lib/three/feel: trauma², none under reduced motion) at the
+  // Citadel's own numbers: a decay of 0.8 a second, 0.5 off at full, no roll
+  const feel = createFeel({ baseFov: 52, offset: 0.5 });
+  feel.set({ decay: 0.8, roll: 0 });
   stage.grade({ contrast: 0.08, saturation: 1.08, vignette: 0.2, grain: 0.008, shadow: [0.0, 0.012, 0.02], high: [0.02, 0.012, 0.0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false;
@@ -195,7 +202,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
   };
   const figures = { camera, budget, view };
 
-  const A = { t: 0, mode: null, beat: null, room: null, where: null, cam: { at: V(0, 6, 40), look: V(0, 2, 30) }, shake: 0, suggest: null, mood: 'day', red: 0, near: [], nearAt: -1 };
+  const A = { t: 0, mode: null, beat: null, room: null, where: null, cam: { at: V(0, 6, 40), look: V(0, 2, 30) }, suggest: null, mood: 'day', red: 0, near: [], nearAt: -1 };
   const FOG = { concourse: [0xe0b57a, 80, 360], mortytown: [0x9a7448, 22, 240] };
 
   // ── Mortytown, built the first time the lift goes down (./district.js,
@@ -400,16 +407,13 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     A.mode = s.mode;
     A.beat = s.beat;
     A.room = s.room;
-    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' ? 8 : 2.5));
+    // (by dt: 8.58 and 2.55 a second are the 8 and 2.5 it had a frame at 60 Hz)
+    const ease = jump ? 1 : damp(s.mode === 'walk' ? 8.58 : 2.55, dt);
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
     camera.lookAt(A.cam.look);
+    feel.update(dt, camera);
 
     fx.step(dt, t, { night: 0, day: 1 });
     ground?.update();
@@ -426,26 +430,26 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     else if (type === 'penned') fx.pop(p ?? V(PEN.gate.x - 1, 1, 0), 'gold', 18, 1.8);
     else if (type === 'scatter') {
       fx.puff(V(PEN.gate.x + 0.5, 0.6, 0), V(1, 0.3, 0), 12);
-      A.shake = Math.max(A.shake, 0.05);
+      feel.trauma(0.05);
     } else if (type === 'layer') fx.pop(LINE_AT(at?.x ?? 0, at?.y ?? 1.4), 'white', 8, 1.2);
     else if (type === 'cut') rooms.drop(at ?? { x: 0, w: 0.1 });
     else if (type === 'spoilt') {
       rooms.drop({ ...(at ?? { x: 0, w: 1 }), y: 2.2, side: Math.sign(at?.x ?? 1) || 1 });
       fx.pop(LINE_AT(at?.x ?? 0, 1.6), 'red', 14, 1.5);
-      A.shake = Math.max(A.shake, 0.06);
+      feel.trauma(0.06);
     } else if (type === 'good') fx.pop(LINE_AT(0, 1.9), 'gold', 30, 2.2);
     else if (type === 'contempt') {
       fx.pop(V(ROOMS.council.x, ROOMS.council.y + 3.4, ROOMS.council.z - 6.6), 'red', 18, 2);
-      A.shake = Math.max(A.shake, 0.06);
+      feel.trauma(0.06);
     } else if (type === 'vote') {
       const b = spot('ballot');
       fx.pop(V(b.x - 1.3, 2.2, b.z - 1.3), 'gold', 26, 2.2);
       fx.pop(V(b.x - 1.3, 2.2, b.z - 1.3), 'blue', 18, 2);
     } else if (type === 'red') {
       for (let i = 0; i < 6; i++) fx.pop(V(Math.cos(i) * 7, 9, Math.sin(i) * 7), 'red', 16, 2.4);
-      A.shake = Math.max(A.shake, 0.25);
-    } else if (type === 'seen') A.shake = Math.max(A.shake, 0.08);
-    else if (type === 'caught') A.shake = 0.3;
+      feel.trauma(0.25);
+    } else if (type === 'seen') feel.trauma(0.08);
+    else if (type === 'caught') feel.trauma(0.3);
     else if (type === 'found' && at) fx.pop(V(at.x + TOWN.x, 1.9 + TOWN.y, at.z + TOWN.z), 'gold', 18, 1.6);
     else if (type === 'delivered') fx.pop(V(COP.x + TOWN.x, 1.8 + TOWN.y, COP.z + TOWN.z), 'blue', 22, 1.8);
     else if (type === 'locos') {
@@ -455,7 +459,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     else if (type === 'liftup') fx.puff(V(DOORS.mortytown.x * 0.95, 1, DOORS.mortytown.z * 0.95), V(0.6, 0.3, -0.6), 14);
     else if (type === 'liftoff') {
       fx.pop(V(DOORS.hangar.x, 1.5, DOORS.hangar.z), 'white', 30, 3);
-      A.shake = Math.max(A.shake, 0.15);
+      feel.trauma(0.15);
     }
   };
 
@@ -507,7 +511,8 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
   };
 
   // the house look: one shadow colour from the dome's light; the city keeps its own haze
-  house = houseOn({ renderer, scene, sun: key, hemi, look: { fog: false } });
+  // (the stage starts at the house's exposure already: lifting it again would wash the city out)
+  house = houseOn({ renderer, scene, sun: key, hemi, keepExposure: true, look: { fog: false } });
   await stage.precompile();
 
   return {
@@ -515,6 +520,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     people: import.meta.env.DEV ? people : null, // (and their figures: people.cast.get(id).react('greet'), …)
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     fx: fxEvent,
     // Mortytown: built (once) before the lift takes Rick down; resolves true
     // when it's ready, false if it couldn't be
@@ -526,6 +532,8 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     townAt: (id) => town?.folk?.at(id) ?? null,
     screenOf,
     resize: stage.resize,
+    // behind ?debug: the stage's bloom, the shake's numbers, and what the page adds
+    tune: (groups = []) => stage.tune([...feelGroups(feel), ...groups]),
     // a new look from the wardrobe
     setLooks: (next) => setRick(next?.rick),
     info() {

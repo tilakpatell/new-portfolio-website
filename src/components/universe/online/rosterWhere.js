@@ -4,10 +4,14 @@
 // “Universe · Near Middle-earth”, “Universe · the void”. A module of its
 // own, not where.js, which the site's shell loads on every page: this one
 // pulls in the map's layout, and only the roster (loaded once you're
-// online) needs it.
+// online) needs it. Out in the Expanse (a pose with a sector), the sector
+// and the nearest system in it: “Universe · E:3,-2 · Kepler”.
 
 import { regionAt } from '../regions';
-import { SECTORS, sectorOf } from '../layout';
+import { SECTORS, inExpanse, mapSectorOf } from '../layout';
+import { makeSector } from '../../expanse/gen/sector';
+import { UNIVERSE as SHARED } from '../../expanse/gen/seed';
+import { parseSector } from '../../expanse/gen/grid';
 import { UNIVERSE, placeName } from './where';
 
 // (mid-sentence, a leading “The” goes small: “the home system”)
@@ -18,8 +22,29 @@ const small = (name) => name.replace(/^The /, 'the ');
 export function rosterWhere(where, pose) {
   if (where !== UNIVERSE || !pose) return placeName(where);
   const { x, y, z } = pose;
-  // (the Rick and Morty sector is through its portal: none of the regions reach it)
-  const sector = sectorOf(x, y, z);
+  if (inExpanse(pose.sec)) return `Universe · ${pose.sec}${nearest(pose.sec, x, z)}`;
+  // (the Rick and Morty sector is through its portal: none of the regions reach it;
+  // a pose without a sector is the authored map's, wherever it says)
+  const sector = mapSectorOf(x, y, z);
   const area = sector !== 'main' ? SECTORS[sector].name : (regionAt(x, y, z)?.name ?? 'the void');
   return `Universe · ${small(area)}`;
+}
+
+// ' · <name>' of the system in the sector nearest (x, z), within NEAR of it
+const NEAR = 12000;
+const SEEN = new Map(); // sector id → its systems (the last few)
+function nearest(id, x, z) {
+  let systems = SEEN.get(id);
+  if (!systems) {
+    systems = makeSector(SHARED, ...parseSector(id)).systems;
+    if (SEEN.size > 16) SEEN.clear();
+    SEEN.set(id, systems);
+  }
+  let best = null;
+  let d = NEAR;
+  for (const s of systems) {
+    const k = Math.hypot(s.at[0] - x, s.at[2] - z);
+    if (k < d) [best, d] = [s, k];
+  }
+  return best ? ` · ${best.name}` : '';
 }

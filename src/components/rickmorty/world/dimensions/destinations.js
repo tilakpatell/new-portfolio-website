@@ -36,6 +36,13 @@ export function planetStart(id) {
   const d = isPlanet(id) ? destinationById(id) : null;
   return d ? { area: d.id, x: d.arrive.x, z: d.arrive.z, face: d.arrive.face } : null;
 }
+// The big planets: whole worlds on the galaxy's surface engine
+// (rickmorty/planets/, its PLANET_SITES, which its test holds this to), not
+// boxes here. Their rows stay for the map's moons, but RmWorld never opens
+// them and their old box tasks are retired (rules.js). Each planet joins as
+// its site is made.
+export const BIG = new Set(['gazorpazorp']);
+export const isBigPlanet = (id) => BIG.has(id);
 // is this the planet's own portal, the way back out to the map?
 export const isWayHome = (link, id) => link?.id === `${id}-portal`;
 

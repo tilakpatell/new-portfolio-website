@@ -32,7 +32,8 @@
 .mc[data-mode='overlay'] {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  /* the one height every world's place over the page takes (the HUD kit's) */
+  z-index: var(--z-place, 70);
   background: #000;
 }
 .mc-stage {
@@ -81,6 +82,11 @@
 .mc-small {
   font-size: 10px;
   color: #e0e0e0;
+}
+/* the seed and the guide's cue after it: on a phone the cue goes to the next
+   line whole, never breaking the seed or "Tap ?" from its words */
+.mc-seed-line > span {
+  white-space: nowrap;
 }
 
 /* ── the title ── */
@@ -161,6 +167,10 @@
     inset -2px -4px 0 #59609a;
   outline: none;
 }
+/* Esc beside a way out: the house HUD cap (src/index.css) in the game's
+   own face, square, with a 2 px edge, through its variables */
+.mc { --hud-key-face: var(--mc-font); --hud-key-weight: 400; --hud-key-border: 2px; --hud-key-radius: 0; }
+.mc .hud-exit .hud-cap { margin-left: 0.4em; text-shadow: none; }
 .mc-btn-half {
   flex: 0 0 auto;
 }
@@ -239,10 +249,12 @@
   height: calc(23px * var(--gui));
 }
 
-/* ── the touch pad, Pocket Edition's ── */
+/* ── the touch pad, Pocket Edition's (the kit's stick and buttons, in the game's look) ── */
 .mc-pad {
   position: absolute;
-  inset: auto 0 calc(env(safe-area-inset-bottom, 0px) + 60px) 0;
+  /* raised over the site's "?" (its height from the foot, home bar and all),
+     so the jump key at the right never sits on it */
+  inset: auto 0 var(--guide-clear) 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -260,6 +272,7 @@
   border: 2px solid rgba(255, 255, 255, 0.35);
   touch-action: none;
 }
+/* (the kit moves the knob by --sx/--sy) */
 .mc-stick span {
   position: absolute;
   left: 50%;
@@ -269,6 +282,10 @@
   margin: -26px 0 0 -26px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.45);
+  box-shadow: none;
+  /* (the kit moves a knob 26 px at full tilt; this one went 34, to the
+     ring's edge, as it did before the kit) */
+  transform: translate(calc(var(--sx, 0px) * 34 / 26), calc(var(--sy, 0px) * 34 / 26));
 }
 .mc-keys {
   display: flex;
@@ -276,21 +293,26 @@
 }
 .mc-key {
   pointer-events: auto;
-  width: 60px;
-  height: 60px;
+  /* the kit's size for a touch action; square, as Pocket Edition's are */
+  width: var(--touch-action, 64px);
+  height: var(--touch-action, 64px);
+  border-radius: 0;
   font: inherit;
   font-size: 18px;
+  letter-spacing: normal;
+  text-transform: none;
   color: #fff;
   background: rgba(60, 60, 60, 0.55);
   border: 2px solid rgba(255, 255, 255, 0.5);
   touch-action: none;
 }
+/* the corner keys: 48 px, the least a thumb presses while playing */
 .mc-pause-key {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 10px);
   right: 10px;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   font-size: 12px;
 }
 
@@ -447,10 +469,10 @@
 .mc-inv-key {
   position: fixed;
   right: 10px;
-  /* under the pause button, clear of the jump key and the site's guide button */
-  top: calc(env(safe-area-inset-top, 0px) + 62px);
-  width: 44px;
-  height: 44px;
+  /* under the pause button (10 + 48 + 8), clear of the jump key and the site's guide button */
+  top: calc(env(safe-area-inset-top, 0px) + 66px);
+  width: 48px;
+  height: 48px;
 }
 .mc-close-key {
   position: absolute;

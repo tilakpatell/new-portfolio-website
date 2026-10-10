@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QUIET_MS, createTravellers, readStep, writeStep } from './travellers';
+import { MAX, QUIET_MS, createTravellers, readStep, writeStep } from './travellers';
 
 // a room in memory: what one sends, the rest get
 function fakeRelay() {
@@ -124,6 +124,24 @@ describe('travellers', () => {
     expect(b.list()).toHaveLength(1);
     a.leave();
     b.leave();
+  });
+
+  it('a hidden traveller takes no place', async () => {
+    const load = fakeRelay();
+    const now = () => 1000;
+    // (the room names them t1, t2, … as they join: Rosie first, then the crowd, then Fatty)
+    const hidden = new Set(Array.from({ length: MAX }, (_, i) => `t${i + 2}`));
+    const rosie = createTravellers({ town: 'bree', name: 'Rosie', load, now, hidden: (id) => hidden.has(id) });
+    const crowd = Array.from({ length: MAX }, (_, i) => createTravellers({ town: 'bree', name: `Orc ${i}`, load, now }));
+    await settle();
+    await settle();
+    for (const t of crowd) t.pose({ x: 1, z: 1, face: 0, speed: 3 });
+    const fatty = createTravellers({ town: 'bree', name: 'Fatty', load, now });
+    await settle();
+    await settle();
+    fatty.pose({ x: 2, z: 2, face: 0, speed: 3 });
+    expect(rosie.list().map((p) => p.name)).toEqual(['Fatty']);
+    for (const t of [rosie, fatty, ...crowd]) t.leave();
   });
 
   it('see only those in the same area of a world, each area its own ground', async () => {

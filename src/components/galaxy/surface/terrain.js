@@ -13,7 +13,9 @@
 // to the horizon, and heightAt reads the grid back, triangle by triangle,
 // exactly as it's drawn.
 
-import { fbm, noise2, ridged, smoothstep } from './noise';
+import { LAYERS } from '../../../lib/land/layers.js';
+import { flatten } from '../../../lib/land/flats.js';
+import { fbm, noise2, smoothstep } from './noise';
 
 // the walkable square: HALF metres each way from the middle; you're turned
 // back at REACH
@@ -22,89 +24,40 @@ export const REACH = 590;
 // how far the grid stretches beyond it, to the horizon
 export const FAR = 9000;
 
-// ── The layers ──
+// ── The layers (src/lib/land/layers.js, shared with the planets' land) ──
 
-const LAYERS = {
-  // broad rises and falls, ±height
-  swell: (x, z, l, seed) => fbm(x / l.scale, z / l.scale, { octaves: 4, seed }) * l.height,
-  // rolling hills, 0…height
-  hills: (x, z, l, seed) => (fbm(x / l.scale, z / l.scale, { octaves: l.octaves ?? 5, seed }) * 0.5 + 0.5) * l.height,
-  // dunes: crests across the wind, sharp on top, strung out along it; 0…height
-  dunes: (x, z, l, seed) => {
-    const a = l.wind ?? 0;
-    const c = Math.cos(a);
-    const s = Math.sin(a);
-    const u = x * c - z * s; // along the wind
-    const v = x * s + z * c; // across it
-    const crest = ridged(u / (l.scale * 2.6), v / l.scale, { octaves: 3, seed, gain: 0.45 });
-    const where = smoothstep(-0.35, 0.35, fbm(x / (l.scale * 6), z / (l.scale * 6), { octaves: 2, seed: seed + 5 }));
-    return crest ** 1.6 * l.height * (0.35 + 0.65 * where);
-  },
-  // flat-topped mesas with steep sides: 0…height where the noise is over `cover`
-  mesas: (x, z, l, seed) => {
-    const m = fbm(x / l.scale, z / l.scale, { octaves: 4, seed });
-    const up = smoothstep(l.cover, l.cover + (l.cliff ?? 0.05), m);
-    const ledge = smoothstep(l.cover - 0.12, l.cover - 0.06, m) * 0.18; // a step at the foot
-    return (up * (1 + fbm(x / 40, z / 40, { octaves: 2, seed: seed + 3 }) * 0.04) + ledge * (1 - up)) * l.height;
-  },
-  // sharp ridges: 0…height
-  ridges: (x, z, l, seed) => ridged(x / l.scale, z / l.scale, { octaves: l.octaves ?? 5, seed }) * l.height,
-  // mountains round the horizon, rising from `from` metres out to their full height by `to`
-  mountains: (x, z, l, seed) => {
-    const r = Math.hypot(x, z);
-    if (r < l.from) return 0;
-    const k = smoothstep(l.from, l.to, r);
-    return k * (0.3 + 0.7 * ridged(x / l.scale, z / l.scale, { octaves: 6, seed })) * l.height;
-  },
-  // rivers (of water, lava, salt): channels `depth` deep where the noise crosses zero
-  channels: (x, z, l, seed) => {
-    const n = fbm(x / l.scale, z / l.scale, { octaves: 3, seed });
-    const wobble = noise2(x / 23, z / 23, seed + 9) * 0.012;
-    return -(1 - smoothstep(0, l.width ?? 0.06, Math.abs(n + wobble))) * l.depth;
-  },
-  // an island (or a hill, or a crater with a negative height): `height` at
-  // `at`, falling away to nothing by `r`, its edge broken up
-  island: (x, z, l, seed) => {
-    const [cx, cz] = l.at ?? [0, 0];
-    const d = Math.hypot(x - cx, z - cz) * (1 + fbm(x / (l.r * 0.5), z / (l.r * 0.5), { octaves: 3, seed }) * (l.ragged ?? 0.35));
-    return smoothstep(l.r, l.r * (l.core ?? 0.25), d) * l.height;
-  },
-  // a constant
-  level: (x, z, l) => l.height,
-};
 export const LAYER_TYPES = Object.keys(LAYERS);
 
-// The land's height, layers only (no flats)
-export function makeRaw(ground) {
+// The fine relief ultra lays over the land (amounts.js's `relief`, 0…1):
+// two more octaves than any layer goes to, small hollows and rises 6 to 12
+// metres across and a hand's height (the grid at ultra is fine enough to
+// draw them, a vertex every 2.5 m). A site may scale it (`ground.relief`:
+// 0.5 for packed snow, 1.4 for broken lava). Under the flats it's levelled
+// away with the rest, so pads and built ground stay flat.
+const RELIEF = { metres: [12, 6], height: [0.26, 0.1] }; // (every wavelength ≥ 5 m: two cells or more of ultra's 2.5 m grid, so none shimmers)
+const fineRelief = (x, z, seed) =>
+  fbm(x / RELIEF.metres[0], z / RELIEF.metres[0], { octaves: 2, seed: seed + 977 }) * RELIEF.height[0] + noise2(x / RELIEF.metres[1], z / RELIEF.metres[1], seed + 991) * RELIEF.height[1];
+
+// The land's height, layers only (no flats); with `relief`, the fine relief over it
+export function makeRaw(ground, { relief = 0 } = {}) {
   const seed = ground.seed ?? 1;
   const layers = ground.layers ?? [];
   const base = ground.base ?? 0;
+  const fine = relief * (ground.relief ?? 1);
   return (x, z) => {
     let h = base;
     for (let i = 0; i < layers.length; i++) {
       const l = layers[i];
       h += LAYERS[l.type](x, z, l, seed + i * 101);
     }
-    return h;
+    return fine ? h + fineRelief(x, z, seed) * fine : h;
   };
 }
 
 // A world's flats: each { at: [x, z], r, edge, h } (h: the height it's
-// levelled to; left out, the land's own height at its middle)
-export function levelled(raw, flats = []) {
-  const pads = flats.map((f) => ({ x: f.at[0], z: f.at[1], r: f.r, edge: f.edge ?? Math.max(8, f.r * 0.6), h: f.h ?? raw(f.at[0], f.at[1]) }));
-  if (!pads.length) return raw;
-  return (x, z) => {
-    let h = raw(x, z);
-    for (const p of pads) {
-      const d = Math.hypot(x - p.x, z - p.z);
-      if (d >= p.r + p.edge) continue;
-      const w = 1 - smoothstep(p.r, p.r + p.edge, d);
-      h += (p.h - h) * w;
-    }
-    return h;
-  };
-}
+// levelled to; left out, the land's own height at its middle). The body is
+// lib/land/flats.js's, so the flight's planets level their POIs the same way
+export const levelled = flatten;
 
 // Pits dug into it: each { at: [x, z], r, depth, cone } (cone: sloping all
 // the way to the middle, as the Sarlacc's; otherwise steep-sided with a
@@ -116,6 +69,7 @@ export function dug(height, pits = []) {
   return (x, z) => {
     let h = height(x, z);
     for (const p of holes) {
+      if (Math.abs(x - p.x) >= p.r || Math.abs(z - p.z) >= p.r) continue;
       const d = Math.hypot(x - p.x, z - p.z);
       if (d >= p.r) continue;
       const w = p.cone ? (1 - d / p.r) ** 0.85 : 1 - smoothstep(p.r * 0.7, p.r, d);
@@ -125,7 +79,7 @@ export function dug(height, pits = []) {
   };
 }
 
-export const makeHeight = (ground) => dug(levelled(makeRaw(ground), ground.flats), ground.pits);
+export const makeHeight = (ground, { relief = 0 } = {}) => dug(levelled(makeRaw(ground, { relief }), ground.flats), ground.pits);
 
 // ── The grid ──
 

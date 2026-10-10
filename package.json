@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "coverage:bf2017": "node scripts/bf2017-coverage.mjs --check",
     "test:ai": "vitest run --config vitest.ai.config.js",
     "test:ai:render": "vitest run --config vitest.render.config.js",
     "test:ai:gpu": "node scripts/ai-e2e/real/health.mjs && node scripts/ai-e2e/evals/run.mjs",
@@ -23,6 +24,7 @@
     "mc:atlas": "node scripts/mc-atlas.mjs",
     "cc0": "node scripts/cc0.mjs",
     "kenney": "node scripts/kenney.mjs",
+    "quaternius": "node scripts/quaternius.mjs",
     "hq-assets": "NODE_USE_ENV_PROXY=1 node --max-old-space-size=8192 scripts/hq-assets.mjs",
     "bake:abq": "node scripts/bake-floor-shadows.mjs",
     "voices:lines": "node scripts/voices/export-lines.mjs",
@@ -32,6 +34,7 @@
     "voices:tidy": "node scripts/voices/tidy.mjs"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "0.21.0",
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource/bebas-neue": "^5.3.0",
     "@fontsource/cinzel": "^5.3.0",
@@ -44,6 +47,8 @@
     "@fontsource/press-start-2p": "^5.3.0",
     "@fontsource/yatra-one": "^5.3.0",
     "@noble/secp256k1": "^3.2.0",
+    "fastnoise-lite": "1.1.1",
+    "@supabase/supabase-js": "^2.117.3",
     "fflate": "^0.8.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

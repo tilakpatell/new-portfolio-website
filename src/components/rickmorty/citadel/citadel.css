@@ -4,7 +4,7 @@
 
 .citadel-world {
   --shire-ink: #f4f8ff;
-  --shire-glass: rgba(18, 26, 44, 0.74);
+  --shire-glass: rgba(18, 26, 44, 0.78);
   --shire-glass-hi: rgba(20, 30, 52, 0.92);
   --shire-gold: #6ff3ff;
   --shire-green: #2e6fb8;
@@ -19,7 +19,7 @@
 .citadel-stage .shire-bubble b { font-family: 'Orbitron', var(--font-sans); letter-spacing: 0.02em; }
 .citadel-stage .shire-title { font-weight: 800; font-size: clamp(1.35rem, 0.9rem + 1.8vw, 2.4rem); text-shadow: 0 2px 18px rgba(8, 14, 30, 0.7), 0 0 2px rgba(8, 14, 30, 0.6); }
 .citadel-stage .shire-meter-bar span { background: linear-gradient(90deg, #f3d84b, #6ff3ff); }
-.citadel-stage[data-mood='red'] { --shire-gold: #ff5a68; --shire-line: rgba(255, 90, 104, 0.45); --shire-glass: rgba(40, 14, 22, 0.76); --shire-glass-hi: rgba(48, 16, 26, 0.92); }
+.citadel-stage[data-mood='red'] { --shire-gold: #ff5a68; --shire-line: rgba(255, 90, 104, 0.45); --shire-glass: rgba(40, 14, 22, 0.78); --shire-glass-hi: rgba(48, 16, 26, 0.92); }
 .citadel-stage[data-mode='inside'] .shire-canvas, .citadel-stage[data-mode='talk'] .shire-canvas, .citadel-stage[data-mode='escape'] .shire-canvas { cursor: default; touch-action: none; }
 
 .citadel-voters { cursor: default; }
@@ -41,7 +41,7 @@
 }
 
 /* no chapter bar over the top here, as Middle-earth has */
-.citadel-stage .shire-hud-top { padding-top: clamp(0.7rem, 2vw, 1.2rem); }
+.citadel-stage { --shire-bar-clear: var(--hud-pad); } /* (no chapter bar over the concourse) */
 
 /* Rick’s emote wheel (lib/emote.js): five slices round the middle of the view, the one pointed at lit */
 .citadel-emote-chip { touch-action: none; user-select: none; -webkit-user-select: none; }

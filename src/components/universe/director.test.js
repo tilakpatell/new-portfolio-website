@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { EVENTS, INTENSITY, PACE, ZONES, canHave, createDirector, playAs, withWhere, zoneOf } from './director';
+import { EVENTS, INTENSITY, PACE, ZONES, canHave, createDirector, withWhere, zoneOf } from './director';
 import { SIDES } from './sides';
 import { regionAt, REGIONS } from './regions';
-import { LANES, carriageway, laneAt } from './hyperlanes';
-import { bezier } from './lanes';
 import { PLACES } from './deep';
 
 // a seeded random, so a run is the same every time
@@ -34,6 +32,12 @@ describe('the director', () => {
       expect(gap).toBeGreaterThanOrEqual(PACE.gap[0] - 0.5);
       expect(gap).toBeLessThanOrEqual(PACE.gap[1] + 0.5);
     }
+  });
+
+  it('comes sooner on a harder setting (pace)', () => {
+    const normal = run(createDirector({ rand: seeded() }), 1200, { side: SIDES.starwars });
+    const hard = run(createDirector({ rand: seeded() }), 1200, { side: SIDES.starwars, pace: 1.5 });
+    expect(hard.length).toBeGreaterThan(normal.length * 1.3);
   });
 
   it('only brings what belongs in your universe, and never the same twice running', () => {
@@ -201,26 +205,17 @@ describe('where you are: a place, a lane or the void', () => {
     return run(d, 24000, { side, zone, travelling: zone !== 'place' }).map((g) => g.e);
   };
 
-  it('says where every event can happen, and only ever there', () => {
-    expect(ZONES).toEqual(['place', 'lane', 'void']);
+  it('says where every event can happen, and only ever there: a place or the void', () => {
+    expect(ZONES).toEqual(['place', 'void']);
     for (const [id, e] of Object.entries(EVENTS)) {
       expect(e.zones?.length, id).toBeGreaterThan(0);
       for (const z of e.zones) expect(ZONES, id).toContain(z);
     }
     for (const id of ['hunt', 'distress', 'remover', 'eclipse', 'escort', 'meteors', 'convoy']) expect(EVENTS[id].zones, id).toContain('place');
-    for (const id of ['interdiction', 'lanejam', 'convoy', 'ambush']) expect(EVENTS[id].zones, id).toContain('lane');
-    for (const id of ['leviathan', 'comet', 'rift', 'flare', 'supernova', 'bounty']) expect(EVENTS[id].zones, id).toContain('void');
-    for (const id of ['destroyer', 'council', 'roadblock']) expect(EVENTS[id].zones, id).toEqual(['place', 'lane']);
-    // (a hunt never comes into a lane: on one, it is the ambush at your off-ramp)
-    expect(EVENTS.hunt.zones).not.toContain('lane');
-  });
-
-  it('on a lane brings only what can happen on a lane', () => {
-    const got = picks('lane');
-    expect(got.length).toBeGreaterThan(150);
-    for (const e of got) expect(EVENTS[e].zones, e).toContain('lane');
-    const kinds = new Set(got);
-    for (const id of ['interdiction', 'lanejam', 'convoy', 'ambush']) expect(kinds.has(id), id).toBe(true);
+    for (const id of ['leviathan', 'comet', 'rift', 'flare', 'supernova', 'bounty', 'convoy']) expect(EVENTS[id].zones, id).toContain('void');
+    for (const id of ['destroyer', 'council', 'roadblock']) expect(EVENTS[id].zones, id).toEqual(['place', 'void']);
+    // (the hyperlanes' own events went with them)
+    for (const id of ['interdiction', 'lanejam', 'ambush']) expect(EVENTS[id], id).toBeUndefined();
   });
 
   it('in the void brings only what can happen in the void, and at a place only what can there', () => {
@@ -231,45 +226,25 @@ describe('where you are: a place, a lane or the void', () => {
     }
   });
 
-  it('leaves the lane’s own events out where it isn’t told where you are (the galaxy’s map)', () => {
-    const got = run(createDirector({ rand: seeded(11) }), 6000, { side: SIDES.starwars });
-    for (const { e } of got) expect(['interdiction', 'lanejam', 'ambush']).not.toContain(e);
-    expect(got.length).toBeGreaterThan(40);
-  });
-
   it('brings what it foretold wherever you are when it comes (the scene plays it as there has it)', () => {
     for (let seed = 1; seed < 12; seed++) {
       const d = createDirector({ rand: seeded(seed) });
       const told = d.foretell(SIDES.starwars, { zone: 'place' });
-      const got = run(d, 200, { side: SIDES.starwars, zone: 'lane' });
+      const got = run(d, 200, { side: SIDES.starwars, zone: 'void' });
       expect(got[0].e, `${seed}`).toBe(told.id);
     }
   });
 
-  it('plays the capital ships as an interdiction on a lane, and a hunt as the ambush', () => {
-    for (const id of ['destroyer', 'council', 'roadblock']) {
-      expect(playAs(id, 'lane'), id).toBe('interdiction');
-      expect(playAs(id, 'place'), id).toBe(id);
-    }
-    expect(playAs('hunt', 'lane')).toBe('ambush');
-    expect(playAs('hunt', 'place')).toBe('hunt');
-    expect(playAs('comet', 'lane')).toBe('comet');
-  });
-
-  it('knows a place, a lane and the void when it sees one', () => {
-    const rules = { regionAt, laneAt };
+  it('knows a place and the void when it sees one', () => {
+    const rules = { regionAt };
     for (const p of PLACES.slice(0, 12)) expect(zoneOf({ x: p.at[0], y: p.at[1], z: p.at[2] }, rules), p.id).toBe('place');
-    for (const lane of LANES.filter((l) => l.tier !== 'local' || l.name !== 'The home ring').slice(0, 10)) {
-      const [x, y, z] = bezier(carriageway(lane, 'out'), 0.5);
-      expect(zoneOf({ x, y, z }, rules), lane.id).toBe('lane');
-    }
-    // (out between the regions, off every lane)
+    // (out between the regions)
     let found = 0;
     for (let a = 0; a < 64 && found < 3; a++) {
       const r = 20000 + (a % 8) * 2500;
       const x = Math.cos(a * 0.7) * r;
       const z = Math.sin(a * 0.7) * r;
-      if (regionAt(x, 400, z) || laneAt(x, 400, z)) continue;
+      if (regionAt(x, 400, z)) continue;
       expect(zoneOf({ x, y: 400, z }, rules)).toBe('void');
       found += 1;
     }

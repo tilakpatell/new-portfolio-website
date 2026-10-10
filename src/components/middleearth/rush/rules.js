@@ -31,6 +31,8 @@
 // potatoes in a bowl, dough baked to a loaf, a mug filled with ale. An oven
 // can have more than one recipe (a list), each by what goes in.
 
+import { byFrame } from '../ease';
+
 // every kind of thing, and what it can be (added to, never reordered: the
 // wire counts on the order)
 export const KINDS = {
@@ -211,13 +213,19 @@ export function pushOut(s, x, z, r = RADIUS) {
 }
 
 // One hobbit's step: move = { x, z } (−1..1, already turned to the room),
-// dash (pressed this step). Run by whoever owns the hobbit; `others` are
+// dash (pressed this step), or `press` (lib/press.js's createCooldownPress:
+// a dash pressed a moment before the cooldown ends goes as it ends, where
+// the flag alone was dropped). Run by whoever owns the hobbit; `others` are
 // the rest, to be shouldered past.
-export function movePlayer(s, p, { x: mx = 0, z: mz = 0, dash = false } = {}, dt, others = []) {
+export function movePlayer(s, p, { x: mx = 0, z: mz = 0, dash = false, press = null } = {}, dt, others = []) {
   const L = s.level.move;
   const len = Math.hypot(mx, mz);
   const k = len > 1 ? 1 / len : 1;
   p.cool = Math.max(0, p.cool - dt);
+  if (press) {
+    press.ready(p.cool <= 0, dt);
+    dash = dash || press.take();
+  }
   if (dash && p.cool <= 0) {
     p.dash = L.dashTime;
     p.cool = L.dashCool;
@@ -235,7 +243,8 @@ export function movePlayer(s, p, { x: mx = 0, z: mz = 0, dash = false } = {}, dt
       tz = -Math.sin(p.face);
     }
   }
-  const ease = Math.min(1, dt * (p.dash > 0 ? 30 : 16));
+  // by dt, as `min(1, dt × k)` was at 60 Hz (../ease.js)
+  const ease = byFrame(p.dash > 0 ? 30 : 16, dt);
   p.vx += (tx * speed - p.vx) * ease;
   p.vz += (tz * speed - p.vz) * ease;
   if (len < 0.05 && p.dash <= 0 && Math.hypot(p.vx, p.vz) < 0.05) {

@@ -6,13 +6,13 @@
 // other bone's length, since a turn doesn't care how long the bone is).
 // This was rickmorty/portal/clips.js, Rick's clips lent to the figures
 // without their own; it re-exports from here, so its callers (meshyCast.js,
-// universe/footScene.js, the cockpits, saberBody.js) are as they were.
+// universe/footScene.js, the cockpits) are as they were.
 //
-//   CLIPS: { name: { url, take?, hips?, loop?, mask? } }   the registry: the
+//   CLIPS: { name: { url, take?, hips?, loop?, mask?, alias? } }   the registry: the
 //     GLB, the clip's name in it (else its first), the hips' height it was
 //     made for (else read from the file), whether it repeats, and the bones
 //     it may move when played as a layer ('upper', 'lower', 'full'; full
-//     when it doesn't say)
+//     when it doesn't say); `alias`: another name for the same file's clip
 //   loadClip(name, { loader }) → Promise<clip | null>   fetched once, for
 //     everyone, with clip.userData.hips; a file that won't load is null
 //   forFigure(name, { hipsY, up, key, ahead }) → Promise<clip | null>   a
@@ -107,6 +107,120 @@ export const CLIPS = {
   'swim.idle': { url: `${BASE}/ual-swim.idle.glb`, loop: true }, // Swim_Idle_Loop
   drive: { url: `${BASE}/ual-drive.glb`, loop: true }, // Driving_Loop
   'idle.calm': { url: `${BASE}/ual-idle.calm.glb`, loop: true }, // Idle_Loop
+  // the paid packs' (UAL1's source and UAL2's: `--set pro`, `--set ual2`):
+  // jogs and walks every way, crouch diagonals, more hits and a second
+  // death, sitting and ground-sitting, crawling, a shop counter, lying down
+  // and up, folded arms, nods and shakes, eating, bandaging, throwing, melee
+  // and sword combos, being lifted (the Force), work, farming, fishing and
+  // zombie shambles
+  jog: { url: `${BASE}/ual-jog.glb`, loop: true }, // Jog_Fwd_Loop
+  'jog.back': { url: `${BASE}/ual-jog.back.glb`, loop: true }, // Jog_Bwd_Loop
+  'jog.left': { url: `${BASE}/ual-jog.left.glb`, loop: true }, // Jog_Left_Loop
+  'jog.right': { url: `${BASE}/ual-jog.right.glb`, loop: true }, // Jog_Right_Loop
+  'jog.fwd.left': { url: `${BASE}/ual-jog.fwd.left.glb`, loop: true }, // Jog_Fwd_L_Loop
+  'jog.fwd.right': { url: `${BASE}/ual-jog.fwd.right.glb`, loop: true }, // Jog_Fwd_R_Loop
+  'jog.back.left': { url: `${BASE}/ual-jog.back.left.glb`, loop: true }, // Jog_Bwd_L_Loop
+  'jog.back.right': { url: `${BASE}/ual-jog.back.right.glb`, loop: true }, // Jog_Bwd_R_Loop
+  'crouch.fwd.left': { url: `${BASE}/ual-crouch.fwd.left.glb`, loop: true }, // Crouch_Fwd_L_Loop
+  'crouch.fwd.right': { url: `${BASE}/ual-crouch.fwd.right.glb`, loop: true }, // Crouch_Fwd_R_Loop
+  'hit.shoulder.l': { url: `${BASE}/ual-hit.shoulder.l.glb` }, // Hit_Shoulder_L
+  'hit.shoulder.r': { url: `${BASE}/ual-hit.shoulder.r.glb` }, // Hit_Shoulder_R
+  'hit.stomach': { url: `${BASE}/ual-hit.stomach.glb` }, // Hit_Stomach
+  'die.2': { url: `${BASE}/ual-die.2.glb` }, // Death02
+  tired: { url: `${BASE}/ual-tired.glb`, loop: true }, // Idle_Tired_Loop
+  'sit.idle2': { url: `${BASE}/ual-sit.idle2.glb`, loop: true }, // Sitting_Idle02_Loop
+  'sit.idle3': { url: `${BASE}/ual-sit.idle3.glb`, loop: true }, // Sitting_Idle03_Loop
+  'sit.nod': { url: `${BASE}/ual-sit.nod.glb`, loop: true }, // Sitting_Nodding_Loop
+  'sit.ground.enter': { url: `${BASE}/ual-sit.ground.enter.glb` }, // GroundSit_Enter
+  'sit.ground': { url: `${BASE}/ual-sit.ground.glb`, loop: true }, // GroundSit_Idle_Loop
+  'sit.ground.exit': { url: `${BASE}/ual-sit.ground.exit.glb` }, // GroundSit_Exit
+  crawl: { url: `${BASE}/ual-crawl.glb`, loop: true }, // Crawl_Fwd_Loop
+  'crawl.idle': { url: `${BASE}/ual-crawl.idle.glb`, loop: true }, // Crawl_Idle_Loop
+  'counter.idle': { url: `${BASE}/ual-counter.idle.glb`, loop: true }, // Counter_Idle_Loop
+  'counter.give': { url: `${BASE}/ual-counter.give.glb` }, // Counter_Give
+  'counter.show': { url: `${BASE}/ual-counter.show.glb` }, // Counter_Show
+  'counter.angry': { url: `${BASE}/ual-counter.angry.glb` }, // Counter_Angry
+  celebrate: { url: `${BASE}/ual-celebrate.glb` }, // Celebration
+  cry: { url: `${BASE}/ual-cry.glb` }, // Crying
+  'pickup.kneel': { url: `${BASE}/ual-pickup.kneel.glb` }, // PickUp_Kneeling
+  backflip: { url: `${BASE}/ual-backflip.glb` }, // BackFlip
+  'cast.double.enter': { url: `${BASE}/ual-cast.double.enter.glb` }, // Spell_Double_Enter
+  'cast.double': { url: `${BASE}/ual-cast.double.glb`, loop: true }, // Spell_Double_Shoot_Loop
+  'walk.left': { url: `${BASE}/ual-walk.left.glb`, loop: true }, // Walk_L_Loop
+  'walk.right': { url: `${BASE}/ual-walk.right.glb`, loop: true }, // Walk_R_Loop
+  'walk.fwd.left': { url: `${BASE}/ual-walk.fwd.left.glb`, loop: true }, // Walk_Fwd_L_Loop
+  'walk.fwd.right': { url: `${BASE}/ual-walk.fwd.right.glb`, loop: true }, // Walk_Fwd_R_Loop
+  'walk.back.left': { url: `${BASE}/ual-walk.back.left.glb`, loop: true }, // Walk_Bwd_L_Loop
+  'walk.back.right': { url: `${BASE}/ual-walk.back.right.glb`, loop: true }, // Walk_Bwd_R_Loop
+  'arms.folded': { url: `${BASE}/ual-arms.folded.glb`, loop: true }, // Idle_FoldArms_Loop
+  nod: { url: `${BASE}/ual-nod.glb` }, // Yes
+  shake: { url: `${BASE}/ual-shake.glb`, loop: true }, // Idle_No_Loop
+  surprise: { url: `${BASE}/ual-surprise.glb` }, // Surprise
+  eat: { url: `${BASE}/ual-eat.glb` }, // Consume
+  bandage: { url: `${BASE}/ual-bandage.glb`, loop: true }, // Bandage_Loop
+  'hit.knock': { url: `${BASE}/ual-hit.knock.glb` }, // Hit_Knockback
+  kipup: { url: `${BASE}/ual-kipup.glb` }, // KipUp
+  'lie.down': { url: `${BASE}/ual-lie.down.glb` }, // IdleToLay
+  'lie.up': { url: `${BASE}/ual-lie.up.glb` }, // LayToIdle
+  'melee.combo': { url: `${BASE}/ual-melee.combo.glb` }, // Melee_Combo
+  'melee.hook': { url: `${BASE}/ual-melee.hook.glb` }, // Melee_Hook
+  'melee.knee': { url: `${BASE}/ual-melee.knee.glb` }, // Melee_Knee
+  throw: { url: `${BASE}/ual-throw.glb` }, // OverhandThrow
+  mine: { url: `${BASE}/ual-mine.glb`, loop: true }, // Mining_Loop
+  chop: { url: `${BASE}/ual-chop.glb`, loop: true }, // TreeChopping_Loop
+  lantern: { url: `${BASE}/ual-lantern.glb`, loop: true }, // Idle_Lantern_Loop
+  'lean.rail': { url: `${BASE}/ual-lean.rail.glb`, loop: true }, // Idle_Rail_Loop
+  'open.chest': { url: `${BASE}/ual-open.chest.glb` }, // Chest_Open
+  // the strokes (`--set sword`: every UAL2 sword clip, the whole body, each
+  // with its contact window and its root's travel in its extras, read as
+  // clip.userData.contact, .root and .rootHips; galaxy/surface/saber.js)
+  'sword.a': { url: `${BASE}/ual-sword.a.glb` }, // Sword_Regular_A
+  'sword.a.rec': { url: `${BASE}/ual-sword.a.rec.glb` }, // Sword_Regular_A_Rec
+  'sword.b': { url: `${BASE}/ual-sword.b.glb` }, // Sword_Regular_B
+  'sword.b.rec': { url: `${BASE}/ual-sword.b.rec.glb` }, // Sword_Regular_B_Rec
+  'sword.c': { url: `${BASE}/ual-sword.c.glb` }, // Sword_Regular_C
+  'sword.combo': { url: `${BASE}/ual-sword.combo.glb` }, // Sword_Regular_Combo
+  'sword.light.a': { url: `${BASE}/ual-sword.light.a.glb` }, // Sword_Light_A
+  'sword.light.a.rec': { url: `${BASE}/ual-sword.light.a.rec.glb` }, // Sword_Light_A_Rec
+  'sword.light.b': { url: `${BASE}/ual-sword.light.b.glb` }, // Sword_Light_B
+  'sword.light.b.rec': { url: `${BASE}/ual-sword.light.b.rec.glb` }, // Sword_Light_B_Rec
+  'sword.light.c': { url: `${BASE}/ual-sword.light.c.glb` }, // Sword_Light_C
+  'sword.light.c.rec': { url: `${BASE}/ual-sword.light.c.rec.glb` }, // Sword_Light_C_Rec
+  'sword.light.d': { url: `${BASE}/ual-sword.light.d.glb` }, // Sword_Light_D
+  'sword.light.combo': { url: `${BASE}/ual-sword.light.combo.glb` }, // Sword_Light_Combo
+  'sword.heavy.a': { url: `${BASE}/ual-sword.heavy.a.glb` }, // Sword_Heavy_A
+  'sword.heavy.a.rec': { url: `${BASE}/ual-sword.heavy.a.rec.glb` }, // Sword_Heavy_A_Rec
+  'sword.heavy.b': { url: `${BASE}/ual-sword.heavy.b.glb` }, // Sword_Heavy_B
+  'sword.heavy.b.rec': { url: `${BASE}/ual-sword.heavy.b.rec.glb` }, // Sword_Heavy_B_Rec
+  'sword.heavy.c': { url: `${BASE}/ual-sword.heavy.c.glb` }, // Sword_Heavy_C
+  'sword.heavy.c.rec': { url: `${BASE}/ual-sword.heavy.c.rec.glb` }, // Sword_Heavy_C_Rec
+  'sword.heavy.d': { url: `${BASE}/ual-sword.heavy.d.glb` }, // Sword_Heavy_D
+  'sword.heavy.combo': { url: `${BASE}/ual-sword.heavy.combo.glb` }, // Sword_Heavy_Combo
+  'sword.aerial.a': { url: `${BASE}/ual-sword.aerial.a.glb` }, // Sword_Aerial_A
+  'sword.aerial.a.rec': { url: `${BASE}/ual-sword.aerial.a.rec.glb` }, // Sword_Aerial_A_Rec
+  'sword.aerial.b': { url: `${BASE}/ual-sword.aerial.b.glb` }, // Sword_Aerial_B
+  'sword.aerial.combo': { url: `${BASE}/ual-sword.aerial.combo.glb`, loop: true }, // Sword_Aerial_Combo_Loop
+  'sword.aerial.idle': { url: `${BASE}/ual-sword.aerial.idle.glb`, loop: true }, // Sword_Aerial_Idle_Loop
+  'sword.block': { url: `${BASE}/ual-sword.block.glb` }, // Sword_Block
+  'sword.dash': { url: `${BASE}/ual-sword.dash.glb` }, // Sword_Dash
+  'sword.pound': { url: `${BASE}/ual-sword.pound.glb` }, // Sword_GroundPound
+  'sword.uppercut': { url: `${BASE}/ual-sword.uppercut.glb` }, // Sword_UpperCut
+  // (Heavy_A by the name the Death Star's duel has always played it under)
+  'sword.heavy': { url: `${BASE}/ual-sword.heavy.a.glb`, alias: 'sword.heavy.a' },
+  lifted: { url: `${BASE}/ual-lifted.glb`, loop: true }, // LiftAir_Idle_Loop
+  'lifted.fall': { url: `${BASE}/ual-lifted.fall.glb` }, // LiftAir_Fall
+  'lifted.land': { url: `${BASE}/ual-lifted.land.glb` }, // LiftAir_Fall_Impact
+  'zombie.idle': { url: `${BASE}/ual-zombie.idle.glb`, loop: true }, // Zombie_Idle_Loop
+  'zombie.walk': { url: `${BASE}/ual-zombie.walk.glb`, loop: true }, // Zombie_Walk_Fwd_Loop
+  'zombie.bite': { url: `${BASE}/ual-zombie.bite.glb` }, // Zombie_Bite
+  'zombie.scratch': { url: `${BASE}/ual-zombie.scratch.glb` }, // Zombie_Scratch
+  'farm.harvest': { url: `${BASE}/ual-farm.harvest.glb` }, // Farm_Harvest
+  'farm.water': { url: `${BASE}/ual-farm.water.glb` }, // Farm_Watering
+  'farm.plant': { url: `${BASE}/ual-farm.plant.glb` }, // Farm_PlantSeed
+  'fish.cast': { url: `${BASE}/ual-fish.cast.glb` }, // Fish_Cast
+  'fish.idle': { url: `${BASE}/ual-fish.idle.glb`, loop: true }, // Fish_Cast_Idle_Loop
+  'fish.reel': { url: `${BASE}/ual-fish.reel.glb` }, // Fish_Reel
+  'turn.around': { url: `${BASE}/ual-turn.around.glb` }, // Turn180_L
   // ── end of the UAL's ──
   // ── Meshy's animation library, the rest of it (scripts/meshy-actions.mjs):
   // walking backward and sideways, talking, phoning, looking round, sitting

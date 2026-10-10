@@ -167,6 +167,12 @@ export const SITE = {
       things: [
         { kind: 'cplatform', at: [0, 0], abs: true, y: 0, opts: { r: 36, light: '#ff8a4a', color: '#7a6a5c' } },
         { kind: 'works', at: [0, 0], yaw: 0.4, abs: true, y: 0.3 },
+        // (the Republic's cargo left on the platform, the game's)
+        { kind: 'repcontainer', model: 'game:objects/props/objectsets/_galacticrepublic/container_01/container_01_l_mesh', at: [-22, 18], yaw: 1.1, abs: true, y: 0.3 },
+        { kind: 'repcrate', model: 'game:objects/props/objectsets/_galacticrepublic/crate_02_s/crate_02_s_mesh', at: [-16, 24], yaw: 0.5, abs: true, y: 0.3 },
+        // (smoke off its two stacks)
+        { kind: 'smoke', at: [18.6, 3.0], abs: true, y: 34.6, solid: false, opts: { h: 80, n: 9, color: '#2e2624' } },
+        { kind: 'smoke', at: [19.2, -6.0], abs: true, y: 26.6, solid: false, opts: { h: 70, n: 8, color: '#2e2624' } },
       ],
     },
   ],
@@ -180,10 +186,14 @@ export const SITE = {
     span([0, 0], [-150, -270], 30, 24, 6),
     span([0, 0], [200, -290], 30, 24, 6),
     span([-150, -270], [-430, -250], 24, 36, 6),
-    // the statues along the Processional Way
+    // the statues along the Processional Way (the Jedi of old, the audit
+    // lane's model, its pedestal's top a little over the deck; a column
+    // under each down to the city, which the model hasn't)
     ...[60, 100, 140, 180, 220].flatMap((z) => [
-      { kind: 'statue', at: [-14, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
-      { kind: 'statue', at: [14, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
+      { kind: 'statue', at: [-17, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200, style: 'jedi' } },
+      { kind: 'statue', at: [17, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200, style: 'jedi' } },
+      { kind: 'plinth', at: [-17, z], abs: true, y: -6, solid: false, opts: { w: 11, round: true, depth: 200 } },
+      { kind: 'plinth', at: [17, z], abs: true, y: -6, solid: false, opts: { w: 11, round: true, depth: 200 } },
     ]),
     // Anakin's airspeeder, by your ship, and the platform's clutter: cargo
     // waiting for a lift, a lamp over it
@@ -284,8 +294,8 @@ export const SITE = {
       id: 'club',
       name: 'the Outlander Club',
       music: 'cantina',
-      door: { at: [200, -283], r: 2.8, prompt: 'Go into the Outlander Club' },
-      back: [200, -279],
+      door: { at: [196.5, -290.7], r: 2.8, prompt: 'Go into the Outlander Club' },
+      back: [194.6, -293.4],
       inside: {
         build: 'clubinside',
         spawn: [0, 5.2],
@@ -368,8 +378,8 @@ export const SITE = {
           text: 'Hold the steps against the 501st',
           lines: [['Clone commander', 'Execute Order Sixty-Six.']],
           spawn: [
-            { kind: 'clone', n: 8, at: [0, 150], spread: 10, roam: 4, hp: 2, tag: 'clones66', hostile: { range: 40, every: 2, damage: 8, chase: 1.6, burst: { n: 3, gap: 0.1 } } },
-            { kind: 'clone', at: [0, 140], hp: 5, roam: 3, tag: 'clones66', hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.5, guard: 3, blade: { color: '#4aa8ff' } } },
+            { kind: 'clone', n: 8, at: [0, 150], spread: 10, roam: 4, leash: 96, hp: 2, tag: 'clones66', hostile: { range: 40, every: 2, damage: 8, chase: 1.6, burst: { n: 3, gap: 0.1 } } },
+            { kind: 'clone', at: [0, 140], hp: 5, roam: 3, leash: 106, tag: 'clones66', hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.5, guard: 3, blade: { color: '#4aa8ff' } } },
           ],
         },
       ],

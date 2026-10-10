@@ -11,10 +11,13 @@ export const BUILDINGS = {
   v150: {
     ref: 'File:Planet_Defender.png',
     crop: [0.17, 0.33, 0.5, 0.56],
-    lift: 'the huge weathered armoured metal sphere (a round ball of curved grey plates, their seams and scuffs and scorch marks, a split across its top with an angular emitter assembly of struts sticking up out of it), shown whole as a complete sphere',
+    lift: 'the huge weathered armoured metal sphere (a round ball of curved pale off-white plates, their seams and scuffs and scorch marks, a split across its top with an angular emitter assembly of struts sticking up out of it), shown whole as a complete sphere',
     metres: 26,
     along: 'w',
     tris: 16000,
     tex: 1024,
+    // (the first model came out mid grey: its plates pulled to the film's pale
+    // cream, applied to the shipped file by hand as the raw one is gone)
+    recolor: [{ material: '*', to: '#aea99e', amount: 1 }],
   },
 };

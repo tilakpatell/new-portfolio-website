@@ -355,7 +355,6 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
 .theme-chip-dot { width: 12px; height: 12px; flex: none; border-radius: 999px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent); }
 
 /* ─── Résumé ─────────────────────────────────────────────────────────────── */
-.chip-accent { cursor: pointer; }
 
 @media print {
   @page { margin: 0.45in; }
@@ -451,7 +450,7 @@ html[data-menu] .aurebesh-pill { visibility: hidden; }
 .socket:not([aria-pressed='true']):hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--glow) 70%, transparent); }
 .socket:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .gauntlet[data-all], .ig-stone[data-on] { animation: none; } }
-.memo-head { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.memo-head { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .bb-smoke { position: absolute; width: 70%; height: 80%; border-radius: 50%; background: radial-gradient(closest-side, rgba(170, 220, 160, 0.2), rgba(170, 220, 160, 0.08) 55%, transparent); animation: bb-smoke 14s ease-in-out infinite alternate; }
 .bb-smoke-a { left: -20%; top: 10%; }
 .bb-smoke-b { right: -25%; bottom: -20%; animation-duration: 18s; animation-direction: alternate-reverse; }
@@ -549,7 +548,7 @@ html[data-mode='dark'] { --danger: #ff8a8a; }
 .gif-play:focus-visible,
 .gif-sound:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 .gif-fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem; text-align: center; color: #ffffff; font-size: 0.875rem; text-decoration: underline; }
-.gif-credit { margin-top: 0.35rem; font-size: 0.7rem; color: var(--muted); }
+.gif-credit { margin-top: 0.35rem; font-size: 0.75rem; color: var(--muted); }
 .gif-credit a { text-decoration: underline; text-underline-offset: 2px; }
 .toast .gif { width: 220px; margin-top: 0.6rem; }
 
@@ -673,7 +672,7 @@ html[data-mode='dark'] { --danger: #ff8a8a; }
 :is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) :is(.btn, .seg > button, .place-chip, .theme-chip) {
   border-radius: 0; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
-:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) .card {
+:is([data-theme='optimus'], [data-theme='megatron'], [data-theme='bumblebee'], [data-theme='shockwave'], [data-theme='soundwave']) :is(.card, .notice) {
   clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
 }
 
@@ -852,6 +851,8 @@ html[data-mode='dark'][data-theme='shire'] .display { color: #e9dfb8; }
   --text: #f3f5f8; --text-body: #c9d1dc; --muted: #8b97a8;
   --accent: #e0322f; --accent-text: #ff6f61; --btn-bg: #c8161d; --btn-ink: #ffffff; --saber: #7fdcff; --nav-bg: #05070c;
   --route-plan: #2b3644; --shadow-card: 0 30px 60px -40px rgba(0, 0, 0, 0.9);
+  /* (dark ground: shadows are darkness, as in dark mode) */
+  --shadow-float: 0 18px 40px -20px rgb(0 0 0 / 0.7); --shadow-dialog: 0 24px 50px -24px rgb(0 0 0 / 0.75);
   --hud: #7fdcff;
   color-scheme: dark;
 }
@@ -929,6 +930,10 @@ html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px;
 }
 .guide-btn[aria-expanded='true'] { background: var(--btn-bg); color: var(--btn-ink); border-color: transparent; }
 html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
+/* a game in the page being played (the game sets html[data-playing] to its
+   name while it runs, and clears it when paused, over or gone): its touch
+   buttons sit in the ?'s corner, so the ? steps aside until the game stops */
+:root[data-playing] .guide-btn { visibility: hidden; pointer-events: none; }
 .guide-panel { position: fixed; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: var(--z-dialog); display: flex; flex-direction: column; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 140px); padding: 0; background: var(--surface); box-shadow: var(--shadow-dialog); outline: none; overflow: hidden; }
 .guide-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 0.9rem 0.75rem 1.1rem; border-bottom: 1px solid var(--border); }
 .guide-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.1rem 1.25rem 1.25rem; }
@@ -961,6 +966,18 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .guide-btn[data-nudge] { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent), 0 10px 24px -14px color-mix(in srgb, var(--text) 60%, transparent); }
 html[data-menu] .guide-nudge { visibility: hidden; }
 /* on a phone the guide is a sheet up from the bottom */
+/* On a phone the head is the three tabs and the X: the panel's name stays
+   for screen readers, the tabs take a size down, and at the narrowest the
+   tab row scrolls rather than run under the X. */
+@media (max-width: 639px) {
+  .guide-head { gap: 0.5rem; padding-left: 0.75rem; }
+  .guide-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* (room inside the scroller for the focus ring and a thumb's 44px, so it
+     never scrolls up and down) */
+  .guide-head-tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; margin-block: -6px; padding: 6px 3px; }
+  .guide-head-tabs .switch > [role='tab']::after { inset: -6px 0; }
+  .guide-tabs.switch > [role='tab'] { height: 32px; padding: 0 0.6rem; font-size: 0.8rem; }
+}
 @media (max-width: 639px) {
   .guide-panel { right: 8px; left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); width: auto; max-height: min(78dvh, calc(100dvh - 90px)); }
   .guide-keys th { width: 46%; }
@@ -1001,7 +1018,8 @@ html[data-menu] .guide-nudge { visibility: hidden; }
 @keyframes wm-pay { from { opacity: 0; transform: translateY(8px) scale(1.4); } }
 
 /* ─── The map behind Middle-earth, and the opening on it ─── */
-@keyframes me-opening { 0% { opacity: 0; transform: scale(0.97); } 22% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes me-title-in { from { opacity: 0; transform: scale(0.97); } }
+@keyframes me-title-out { to { opacity: 0; } }
 
 /* ─── Rick and Morty themes: Portal (Rick), Morty, Summer, Beth ────────────── */
 [data-theme='portal'] {
@@ -1031,7 +1049,7 @@ html[data-menu] .guide-nudge { visibility: hidden; }
 /* rounded, like the show; cards and buttons inked */
 :is([data-theme='portal'], [data-theme='morty'], [data-theme='summer'], [data-theme='beth']) { --r-card: 22px; --r-panel: 16px; --r-chip: 999px; --r-btn: 999px; --r-photo: 22px; }
 :is([data-theme='portal'], [data-theme='morty'], [data-theme='summer'], [data-theme='beth']) :is(.display, .title) { font-family: 'Luckiest Guy', var(--font-sans); font-stretch: normal; font-weight: 400; letter-spacing: 0.02em; line-height: 1.04; }
-html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [data-theme='summer'], [data-theme='beth']) .card { border: 2px solid #1b1424; box-shadow: 4px 4px 0 #1b1424; }
+html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [data-theme='summer'], [data-theme='beth']) :is(.card, .notice) { border: 2px solid #1b1424; box-shadow: 4px 4px 0 #1b1424; }
 html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [data-theme='summer'], [data-theme='beth']) .btn-primary { border: 2px solid #1b1424; box-shadow: 0 3px 0 #1b1424; }
 [data-theme='portal'] :is(h1, [data-page-title]).display { color: #45c5e8; text-shadow: 2px 2px 0 #c3e053, -2px 2px 0 #c3e053, 2px -2px 0 #c3e053, -2px -2px 0 #c3e053, 0 3px 0 #c3e053, 5px 6px 0 #1b1424; }
 [data-theme='morty'] :is(h1, [data-page-title]).display { color: #f3d84b; text-shadow: 2px 2px 0 #1b1424, -2px 2px 0 #1b1424, 2px -2px 0 #1b1424, -2px -2px 0 #1b1424, 5px 6px 0 #3b65b8; }
@@ -1057,3 +1075,9 @@ html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [da
 html.meeseeks-shake main { animation: meeseeks-shake 0.8s cubic-bezier(0.3, 0.7, 0.3, 1); }
 @keyframes meeseeks-shake { 0%, 100% { transform: none; } 15% { transform: translateX(-8px) rotate(-0.6deg); } 30% { transform: translateX(7px) rotate(0.5deg); } 45% { transform: translateX(-5px); } 60% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
 @media (prefers-reduced-motion: reduce) { html.meeseeks-shake main { animation: none; } }
+
+/* Type on a photograph is white in every theme: a theme's own colour for its
+   display type (the Shire's green, Rick and Morty's inks) is for its pages'
+   ground, and on a dark photograph it disappears. (Unlayered and !important,
+   as the !text-white it replaces was, so the theme rules above can't win.) */
+.on-photo .display { color: #ffffff !important; }

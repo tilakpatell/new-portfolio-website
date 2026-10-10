@@ -110,3 +110,17 @@ describe('a patch of grass', () => {
     map.dispose();
   });
 });
+
+describe('grass over the tracks', () => {
+  it('lies flat where the wheels went (G × (1 − r))', () => {
+    const SHADER = {
+      vertexShader: '#include <common>\nvoid main() {\n#include <beginnormal_vertex>\n#include <begin_vertex>\n#include <project_vertex>\n}',
+      fragmentShader: '#include <common>\nvoid main() {\n#include <color_fragment>\n#include <opaque_fragment>\n}',
+    };
+    const tracks = { glsl: 'vec4 tracksAt(vec2 xz) { return vec4(0.0); }', uniforms: {} };
+    const out = grassShader(SHADER, { tracks });
+    expect(out.vertexShader).toContain('vec4 tracksAt(vec2 xz)');
+    expect(out.vertexShader).toContain('gGrass *= 1.0 - tracksAt(gXz).r;');
+    expect(grassShader(SHADER).vertexShader).not.toContain('tracksAt(');
+  });
+});

@@ -1,20 +1,23 @@
-/* global window */
+/* global window, document */
 // A browser check of the Galactic Civil War's set pieces (galaxy/
 // warpieces/). With the dev server up (npx vite --port 5188):
 //   OUT=/tmp/shots node scripts/galaxy-setpieces-check.mjs endor|hoth|scarif|hangar [quality]
-// endor: the shield generator on the moon knocked out, the run in through
-//   the second Death Star's superstructure to its reactor, the reactor shot,
-//   out, and the station going up.
+// endor: the second Death Star turned off its spin with its dish on the
+//   Rebel fleet, the shield generator on the moon knocked out, the run in
+//   through its superstructure to its reactor, the reactor shot, out, and
+//   the station going up.
 // hoth: the Empire attacking: the ion cannon disabling a Star Destroyer, the
 //   transports running.
-// scarif: the Persecutor's shield taken down, the Hammerhead's ram, the
-//   two Star Destroyers onto the gate, the shield down.
+// scarif: the Death Star away while the battle's on; the Persecutor's
+//   shield taken down, the Hammerhead's ram, the two Star Destroyers onto
+//   the gate, the shield down; and the Death Star out of hyperspace over
+//   the planet, firing on it from its dish.
 // hangar: into a Star Destroyer's belly hangar, its reactor shot, out, and
 //   the ship breaking up.
 // Each forces a battle at the system (the warfront's dev hook), so it runs
 // whatever the war's doing, and runs the battle on with skip() where it's
 // waiting on the battle's clock (software GL draws a frame a second or so,
-// and the battle steps a frame's worth at most). Screenshots:
+// and the battle steps about a quarter of a second a frame at most). Screenshots:
 // piece-<what>-<n>-<moment>.png.
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
@@ -46,7 +49,8 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && !/GPU stall|swiftshader|WebGL/i.test(m.text()) && errors.push(m.text()));
 let shot = 0;
-const snap = (moment) => page.screenshot({ path: `${out}/piece-${what}-${shot++}-${moment}.png` });
+// (software GL can take a long while over a frame with a station filling it)
+const snap = (moment) => page.screenshot({ path: `${out}/piece-${what}-${shot++}-${moment}.png`, timeout: 120000 });
 const ev = (fn, arg) => page.evaluate(fn, arg);
 // the ship put somewhere, looking at a point (the debug pin), shields held up
 const look = (from, at) =>
@@ -64,12 +68,45 @@ const keepAlive = () => ev(() => ((window.__galaxyDebug.state.shield = 100), (wi
 await page.goto(`${base}/?quality=${quality}#/galaxy/${SYS}`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction((id) => typeof window.__galaxy === 'function' && window.__galaxy().system === id, SYS, { timeout: 180000 });
 await page.waitForFunction(() => !window.__galaxy().jump, null, { timeout: 120000 }).catch(() => {});
+// (and done getting ready: the system's there before its veil's gone, and nothing's drawn under it)
+await page.waitForFunction(() => !document.querySelector('.universe-loading.loading-veil:not(.is-done)'), null, { timeout: 420000 });
 await page.addStyleTag({ content: '.galaxy-panel, .universe-hint { display: none !important; }' });
+// sworn to the Rebellion: the set pieces' targets are a side's to take (the
+// moon's generator, an enemy Star Destroyer's reactor), and the unsworn
+// pilot's shots count for nobody
+await page.waitForFunction(() => Boolean(window.__galaxyOath), null, { timeout: 30000 });
+await ev(() => window.__galaxyOath.swear('rebel'));
+await page.waitForTimeout(500);
 await ev((a) => window.__galaxyDebug.war.force(a), what === 'hoth' ? 'empire' : 'rebel');
 await page.waitForTimeout(1500);
 check(await ev(() => Boolean(window.__galaxyDebug.war.battle)), `a battle at ${SYS}`);
 
 if (what === 'endor') {
+  // the station turned, its dish on the Rebel fleet (world.js's face: eased round over a few seconds)
+  const facing = () =>
+    ev(() => {
+      const d = window.__galaxyDebug;
+      const dish = d.state.world.war.dish('deathstar2');
+      const D = d.state.sys.pieces.find((p) => p.kind === 'deathstar2').at;
+      const fleet = d.war.battle.capitals.filter((c) => c.team === 0);
+      const c = [0, 1, 2].map((i) => fleet.reduce((a, f) => a + [f.pos.x, f.pos.y, f.pos.z][i], 0) / fleet.length);
+      const u = [dish.x - D[0], dish.y - D[1], dish.z - D[2]];
+      const w = [c[0] - D[0], c[1] - D[1], c[2] - D[2]];
+      return (u[0] * w[0] + u[1] * w[1] + u[2] * w[2]) / Math.hypot(...u) / Math.hypot(...w);
+    });
+  for (let i = 0; i < 120 && (await facing()) < 0.98; i++) await page.waitForTimeout(1000);
+  check((await facing()) > 0.98, 'the second Death Star’s dish turned onto the Rebel fleet');
+  const dishView = await ev(() => {
+    const d = window.__galaxyDebug;
+    const dish = d.state.world.war.dish('deathstar2');
+    const D = d.state.sys.pieces.find((p) => p.kind === 'deathstar2').at;
+    const u = [dish.x - D[0], dish.y - D[1], dish.z - D[2]];
+    const l = Math.hypot(...u);
+    return { from: [D[0] + (u[0] / l) * 260, D[1] + (u[1] / l) * 260 + 30, D[2] + (u[2] / l) * 260], at: D };
+  });
+  await look(dishView.from, dishView.at);
+  await page.waitForTimeout(6000);
+  await snap('the-dish');
   const gen = await ev(() => window.__galaxyDebug.war.pieces[0].targets.find((t) => t.kind === 'shieldgen').at);
   await look([gen.x * 1.06 + 8, gen.y * 1.06 + 4, gen.z * 1.06 + 8], [gen.x, gen.y, gen.z]);
   await page.waitForTimeout(6000);
@@ -77,14 +114,25 @@ if (what === 'endor') {
   await ev(() => {
     const w = window.__galaxyDebug.war;
     const e = w.pieces[0];
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 400; i++) {
       const g = e.targets.find((t) => t.kind === 'shieldgen');
       if (!g) break;
-      w.hit({ x: g.at.x, y: g.at.y + 3, z: g.at.z }, { x: g.at.x, y: g.at.y - 0.01, z: g.at.z }, 1);
+      w.hit({ x: g.at.x, y: g.at.y + 3, z: g.at.z }, { x: g.at.x, y: g.at.y - 0.01, z: g.at.z }, 3);
     }
   });
   await page.waitForTimeout(1500);
   check(await ev(() => !window.__galaxyDebug.war.pieces[0].targets.some((t) => t.kind === 'shieldgen')), 'the shield generator’s knocked out');
+  // (the battle's plan, pinned: the run opens once the Executor's bridge is
+  // down too and the last stage's gate, 5:00, is passed; the other pilots
+  // take the bridge here, their word on the tally, and the dev hook moves
+  // the shared clock on)
+  await ev(() => {
+    const w = window.__galaxyDebug.war;
+    w.onNet({ type: 'fight', from: 'check', msg: { e: w.on.id, m: { bridge: 1e4 }, t: {} } });
+    w.jump(Math.max(0, 301 - w.info.shared.t));
+  });
+  // (the run opens on the next frame the battle's run on: software GL's a frame or two a second)
+  await page.waitForFunction(() => window.__galaxyDebug.war.pieces[0].run.state !== 'shut', null, { timeout: 30000 }).catch(() => {});
   // to the run's mouth, and in
   const way = await ev(() => {
     const s = window.__galaxyDebug.state.ship;
@@ -122,7 +170,7 @@ if (what === 'endor') {
   await snap('the-reactor');
   await ev(() => {
     const w = window.__galaxyDebug.war;
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 120; i++) {
       const c = w.pieces[0].targets.find((t) => t.kind === 'reactor');
       if (!c) break;
       w.hit({ x: c.at.x, y: c.at.y + 2, z: c.at.z }, { x: c.at.x, y: c.at.y - 0.01, z: c.at.z }, 1);
@@ -162,6 +210,14 @@ if (what === 'endor') {
     await snap('transport');
   }
 } else if (what === 'scarif') {
+  // (the Death Star's solid: there only while it's shown, world.js)
+  const dsThere = () => ev(() => (window.__galaxyDebug.state.world.solids.find((o) => o.id === 'deathstar')?.r ?? 0) > 0);
+  let away = true;
+  for (let i = 0; i < 5; i++) {
+    if (await dsThere()) away = false;
+    await page.waitForTimeout(1000);
+  }
+  check(away, 'the Death Star’s away while the battle’s on');
   await ev(() => {
     const w = window.__galaxyDebug.war;
     const b = w.battle;
@@ -175,17 +231,50 @@ if (what === 'endor') {
     return [f.pos.x, f.pos.y, f.pos.z];
   });
   await look([pers[0] + 70, pers[1] + 30, pers[2] + 60], pers);
+  // (the battle's plan, pinned: the gate's stage, after the Persecutor's
+  // bridge and from 5:00; the other pilots take the bridge, their word on
+  // the tally, and the dev hook moves the shared clock on to the gate)
+  await ev(() => {
+    const w = window.__galaxyDebug.war;
+    w.onNet({ type: 'fight', from: 'check', msg: { e: w.on.id, m: { bridge: 1e4 }, t: {} } });
+    w.jump(Math.max(0, 301 - w.info.shared.t));
+  });
   await ev(() => window.__galaxyDebug.war.skip(12));
   await page.waitForTimeout(3000);
   check(await ev(() => window.__galaxyDebug.war.battle.capitals.some((c) => c.kind === 'hammerhead' && c.moved)), 'the Hammerhead’s coming round to ram');
   await snap('ram');
   const G = await ev(() => window.__galaxyDebug.state.sys.pieces.find((p) => p.kind === 'gate').at);
   await look([G[0] + 120, G[1] + 90, G[2] + 140], G);
+  check(await ev(() => window.__galaxyDebug.war.pieces[0].targets.some((t) => t.kind === 'gate')), 'the Shield Gate’s there to shoot');
+  // (the gate brought down, by your guns and the pilots' word on it)
+  await ev(() => {
+    const w = window.__galaxyDebug.war;
+    const g = w.pieces[0].targets.find((t) => t.kind === 'gate');
+    for (let i = 0; i < 20 && g; i++) w.hit({ x: g.at.x, y: g.at.y + 2, z: g.at.z }, { x: g.at.x, y: g.at.y - 0.01, z: g.at.z }, 3);
+    w.onNet({ type: 'fight', from: 'check', msg: { e: w.on.id, m: { gate: 1e4 }, t: {} } });
+  });
   for (let i = 0; i < 60 && !(await ev(() => window.__galaxyDebug.war.battle?.over)); i++) await ev(() => window.__galaxyDebug.war.skip(1));
   await page.waitForTimeout(2500);
   await snap('gate');
   check((await ev(() => window.__galaxyDebug.war.battle?.over?.why)) === 'gate', 'the gate’s gone and the Rebellion’s won');
   check(await ev(() => window.__galaxyDebug.state.world.shield === null), 'Scarif’s shield is down');
+  // the Death Star in, a few seconds on (on the wall clock), its dish on the planet
+  for (let i = 0; i < 60 && !(await dsThere()); i++) await page.waitForTimeout(1000);
+  check(await dsThere(), 'the Death Star’s dropped out of hyperspace over Scarif');
+  // (from the planet's side of it, a little off its line of fire: the Death Star, then its beam coming past)
+  const view = await ev(() => {
+    const p = window.__galaxyDebug.state.sys.pieces.find((x) => x.type === 'superlaser');
+    const d = [p.at[0] - p.from[0], p.at[1] - p.from[1], p.at[2] - p.from[2]];
+    const l = Math.hypot(...d);
+    const side = [d[2] / l, 0, -d[0] / l];
+    return { from: [0, 1, 2].map((i) => p.from[i] + (d[i] / l) * 170 + side[i] * 60 + (i === 1 ? 30 : 0)), at: p.from };
+  });
+  await look(view.from, view.at);
+  await page.waitForTimeout(4000);
+  await snap('death-star-in');
+  // (it fires about 18 s after it's in)
+  await page.waitForTimeout(14000);
+  await snap('death-star-fires');
 } else if (what === 'hangar') {
   const isd = await ev(() => {
     const b = window.__galaxyDebug.war.battle;

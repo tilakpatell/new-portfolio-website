@@ -33,6 +33,7 @@ export const LAWN = {
   strike: 4.5, // lightning's reach where it lands
   chain: 9, // how far it jumps
   chains: 6,
+  iframes: 0.8, // seconds a bolt that hurts him leaves him safe from the next
 };
 const KINDS = {
   soldier: { hp: 1, r: 0.55, speed: [1.7, 2.5], score: 100, charge: 10, breach: 1 },
@@ -68,7 +69,7 @@ export function newLawn({ seed = 1 } = {}) {
 function reset(g) {
   g.rand = rng(g.seed);
   g.t = 0;
-  g.thor = { x: 0, move: 0, hp: LAWN.hearts, hurt: 0 };
+  g.thor = { x: 0, move: 0, hp: LAWN.hearts, hurt: 0, safe: 0 };
   g.hammer = { state: 'held', x: 0, y: LAWN.hand.y, z: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, hit: [], kills: 0 };
   g.enemies = [];
   g.bolts = [];
@@ -369,6 +370,7 @@ export function stepLawn(g, dt) {
   g.t += dt;
   const T = g.thor;
   T.hurt = Math.max(0, T.hurt - dt);
+  T.safe = Math.max(0, T.safe - dt);
   T.x = Math.max(-LAWN.thorX, Math.min(LAWN.thorX, T.x + T.move * LAWN.thorSpeed * dt));
 
   // between waves
@@ -512,7 +514,11 @@ export function stepLawn(g, dt) {
     b.t += dt;
     if (Math.hypot(b.x - p.x, b.y - p.y, b.z - p.z) < LAWN.boltHit) {
       if (h.state === 'held') ev.push({ type: 'swat', x: b.x, y: b.y, z: b.z });
-      else hurt(g, 1, 'bolt', ev);
+      // (a volley a hair apart is one hit, not a heart each: his i-frames)
+      else if (T.safe <= 0) {
+        T.safe = LAWN.iframes;
+        hurt(g, 1, 'bolt', ev);
+      }
       return false;
     }
     return b.z < 3 && b.t < 6 && b.y > -0.5;

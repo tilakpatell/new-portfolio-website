@@ -53,11 +53,22 @@
 // (bloomSize). setLevel(level) follows lib/three/pace: the sun's flare
 // (flareOn, drawn by the scene) goes at step 2, the aberration at 3, and
 // both come back as the frames do.
+//
+// And a lens, the universe map's alone (off by default, so the galaxy's
+// picture is as it was): a toe (setToe(lo, hi)) that takes what's darker
+// than `lo` to black and leaves what's brighter than `hi` exactly as drawn,
+// smooth between, so the sky between the stars has a floor while the faint
+// things above it (the Milky Way's band, a night side's city lights, a
+// sign's colour, all over 0.08) keep theirs; more contrast (contrast(k)); and
+// a soft edge (defocus(k)): the fine detail toward the corners blurred over
+// five reads, nothing in the middle third where the ship is, so the eye
+// stays on it. The soft edge goes at pace step 3 with the aberration.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { LOOK } from './look';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { blueNoiseTexture } from '../../lib/three/noise';
 
@@ -65,8 +76,9 @@ export const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the key
 export const FILL = new THREE.Vector3(0.7, -0.4, -0.3).normalize();
 
 // bloom: only what's well past lit paint glows (lit surfaces top out near
-// 2 under the key light; the sun, windows and engines are drawn hotter)
-const BLOOM = { strength: 0.8, radius: 0.55, threshold: 1.7 };
+// 2 under the key light; the sun, windows and engines are drawn hotter):
+// the map's look's (./look.js) unless a scene brings its own (createPost's
+// `bloom`, from its look.js), each post's a copy its ?debug panel can set
 const SOFTEST = 0.6; // device pixels to a CSS one, at the least, however busy
 
 // the bloom's first level: half the frame (a quarter on a small one), its
@@ -87,6 +99,27 @@ export function bloomSize(w, h, { small = false, cap = 640 } = {}) {
 // how far red and blue read apart at the frame's edge: none on a low tier,
 // a hair at rest (more and the sky's stars out toward the edges had
 // coloured fringes, softening them), more in the boost's rush and a hit
+const smooth = (a, b, x) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+// The universe map's lens (scene.js sets it). The toe is on linear light
+// after exposure, where 0.08 is already 30 % grey on screen: wide, it took
+// rocks and ships in shadow and planets' night sides down to black with the
+// sky. So it takes only what's under about 3 % grey on screen (the black
+// between the stars) and leaves anything lit, however dimly; the contrast
+// stays gentle, since it darkens what's under mid-grey too.
+export const MAP_LENS = { toe: [0.002, 0.012], contrast: 0.1 };
+
+// The toe, as the last pass works it out on a luminance (`hi` 0: off)
+export const toe = (l, lo, hi) => (hi > 0 ? l * smooth(lo, hi, l) : l);
+
+// How much of the soft edge a pixel at uv (0…1) gets on a frame `aspect`
+// wide: by its distance from the centre over the corner's, so a corner is
+// whole and the middle untouched at any shape of screen
+export const edgeWeight = ([u, v], aspect) => smooth(0.55, 1, Math.hypot((u - 0.5) * aspect, v - 0.5) / (0.5 * Math.hypot(aspect, 1)));
+
 export const aberrationFor = ({ rush = 0, hit = 0, tier = 'high' } = {}) => (tier === 'low' ? 0 : 0.0006 + 0.0054 * rush + 0.0034 * hit);
 
 // NaN and infinity both have every exponent bit set; tested on the bits,
@@ -96,6 +129,31 @@ const FINITE = `
 vec3 finite(vec3 c) {
   bvec3 bad = equal(floatBitsToUint(c) & 0x7f800000u, uvec3(0x7f800000u));
   return clamp(mix(c, vec3(0.0), bad), 0.0, 64.0);
+}`;
+
+// The bright pass with a soft knee, for a scene whose bloom names a `knee`
+// (the galaxy's): of what's over the threshold only the excess glows (three's
+// pass glows a texel's whole light once it's over, so a bolt just past the
+// line fed all of itself into the haze), eased in over the knee either side
+// of the line, so a thin, far bolt doesn't blink in and out of it. Four
+// taps a quarter of a bloom texel out (uStep), so a thin bolt moving across
+// the frame doesn't shimmer as one tap hits it and the next misses.
+const KNEE = `
+uniform sampler2D tDiffuse;
+uniform float luminosityThreshold;
+uniform float uKnee;
+uniform vec2 uStep;
+varying vec2 vUv;
+${FINITE}
+vec3 at(vec2 o) {
+  return finite(texture2D(tDiffuse, vUv + o).rgb);
+}
+void main() {
+  vec3 c = 0.25 * (at(-uStep) + at(vec2(uStep.x, -uStep.y)) + at(vec2(-uStep.x, uStep.y)) + at(uStep));
+  float l = luminance(c);
+  float soft = clamp(l - luminosityThreshold + uKnee, 0.0, 2.0 * uKnee);
+  soft = soft * soft / (4.0 * uKnee + 1e-4);
+  gl_FragColor = vec4(c * (max(soft, l - luminosityThreshold) / max(l, 1e-4)), 1.0);
 }`;
 
 const FINAL = {
@@ -122,6 +180,15 @@ const FINAL = {
     uGrain: { value: 0 },
     uAberration: { value: 0 },
     uExposure: { value: 1 },
+    // the lens (the universe map's: off by default)
+    uToe: { value: new THREE.Vector2(0, 0) },
+    uDefocus: { value: 0 },
+    uTexel: { value: new THREE.Vector2(1, 1) }, // (a pixel of what's read, as uv)
+    // a game's grading LUT (lib/three/gameLut.js), over the finished colour
+    // as the game grades its own: off (mix 0) unless a world has one
+    tLut: { value: null },
+    uLutSize: { value: 2 },
+    uLutMix: { value: 0 },
   },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `
@@ -135,6 +202,10 @@ const FINAL = {
     uniform sampler2D tNoise;
     uniform vec2 uFrame;
     uniform float uNoiseSize, uGrain, uAberration, uExposure;
+    uniform vec2 uToe, uTexel;
+    uniform float uDefocus;
+    uniform highp sampler3D tLut;
+    uniform float uLutSize, uLutMix;
     varying vec2 vUv;
     // the blue noise at this pixel, moved by shift texels (0…1)
     float noise(vec2 shift) { return texture2D(tNoise, (gl_FragCoord.xy + shift) / uNoiseSize).r; }
@@ -182,6 +253,17 @@ const FINAL = {
         lin.r = scene(uv + off).r * shadow;
         lin.b = scene(uv - off).b * shadow;
       }
+      if (uDefocus > 0.0) {
+        // the soft edge: four more reads 1.5 px round, only where it shows
+        // (out past the middle), mixed in toward the corners
+        vec2 qd = (vUv - 0.5) * vec2(uAspect, 1.0);
+        float w = uDefocus * smoothstep(0.55, 1.0, length(qd) / (0.5 * length(vec2(uAspect, 1.0))));
+        if (w > 0.0) {
+          vec2 o = uTexel * 1.5;
+          vec3 soft = lin + (scene(uv + vec2(o.x, 0.0)) + scene(uv - vec2(o.x, 0.0)) + scene(uv + vec2(0.0, o.y)) + scene(uv - vec2(0.0, o.y))) * shadow;
+          lin = mix(lin, soft / 5.0, w);
+        }
+      }
       if (uRush > 0.001) {
         // a few taps back toward the ship, more smeared the further out
         vec2 d = uv - uCenter;
@@ -193,10 +275,17 @@ const FINAL = {
       lin *= uExposure;
       // grain: on the light, before the tone map, moving each frame
       if (uGrain > 0.0) lin *= 1.0 + (noise(uFrame) - 0.5) * 2.0 * uGrain;
+      // the toe: the colour scaled by its luminance's share, so its hue holds
+      if (uToe.y > 0.0) lin *= smoothstep(uToe.x, uToe.y, dot(lin, vec3(0.2126, 0.7152, 0.0722)));
       vec3 c = srgb(clamp(shoulder(lin), 0.0, 1.0));
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = max(mix(vec3(l), c, uSat), 0.0);
       c = mix(c, c * c * (3.0 - 2.0 * c), uContrast);
+      if (uLutMix > 0.0) {
+        // (read at the texels' middles, so 0 and 1 land on the cube's ends)
+        vec3 uvw = (c * (uLutSize - 1.0) + 0.5) / uLutSize;
+        c = mix(c, texture(tLut, uvw).rgb, uLutMix);
+      }
       vec2 q = vUv - 0.5;
       q.x *= uAspect;
       c *= 1.0 - (uVignette + uRush * 0.22) * smoothstep(0.35 - uRush * 0.1, 1.1, length(q) * 1.25);
@@ -209,7 +298,12 @@ const FINAL = {
     }`,
 };
 
-export function createPost(renderer, scene, camera, { small = false } = {}) {
+// bloom: a scene's own (its look.js's): { threshold, strength, radius } and,
+// each optional, knee (a soft-knee bright pass, KNEE), falloff (the five
+// mips' weights, sharpest first: three's [1, 0.8, 0.6, 0.4, 0.2], which a
+// radius over 0 flattens toward the widest), flareMax (the most a flare
+// scales it by) and cap (the bloom's first level's long side, at most)
+export function createPost(renderer, scene, camera, { small = false, bloom: look = null } = {}) {
   // multisampled below a pixel ratio of about 2; at 2 the pixels are too
   // small for jagged edges to show, and on a half-float target four samples
   // a pixel cost more than the rest of the frame put together. (With its
@@ -224,11 +318,20 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   over.clearDepth = true;
   over.enabled = false;
   composer.addPass(over);
+  const BLOOM = { ...LOOK.bloom, ...look };
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOM.strength, BLOOM.radius, BLOOM.threshold);
-  // its first step (picking out what's bright enough to glow) reads through finite()
+  if (BLOOM.falloff) bloom.compositeMaterial.uniforms.bloomFactors.value = [...BLOOM.falloff];
+  // its first step (picking out what's bright enough to glow) reads through
+  // finite(): three's pass patched, or the soft knee
   const bright = bloom.materialHighPassFilter;
+  const knee = typeof BLOOM.knee === 'number';
   const read = 'vec4 texel = texture2D( tDiffuse, vUv );';
-  if (bright.fragmentShader.includes(read)) {
+  if (knee) {
+    bright.uniforms.uKnee = { value: BLOOM.knee };
+    bright.uniforms.uStep = { value: new THREE.Vector2(0.001, 0.001) };
+    bright.fragmentShader = KNEE;
+    bright.needsUpdate = true;
+  } else if (bright.fragmentShader.includes(read)) {
     bright.fragmentShader = bright.fragmentShader.replace('void main() {', `${FINITE}\nvoid main() {`).replace(read, 'vec4 texel = vec4( finite( texture2D( tDiffuse, vUv ).rgb ), 1.0 );');
     bright.needsUpdate = true;
   }
@@ -242,6 +345,8 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
   let frame = 0;
   let level = 0; // lib/three/pace's step
   let aberrationWant = 0;
+  let defocusWant = 0;
+  let houseGrade = null; // (the house's contrast and saturation, while a game's LUT stands in)
 
   let on = true;
   let glow = true; // bloom, until lite() takes it off
@@ -293,9 +398,11 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
         // the glow is a blur: worked out at the page's own pixels, not the
         // screen's, it looks the same on every screen and costs a quarter
         // as much on a sharp one
-        const [bw, bh] = bloomSize(w * ratio, h * ratio, { small });
+        const [bw, bh] = bloomSize(w * ratio, h * ratio, { small, cap: BLOOM.cap });
         bloom.setSize(bw * 2, bh * 2);
+        if (knee) bright.uniforms.uStep.value.set(0.25 / bw, 0.25 / bh);
         grade.uniforms.uAspect.value = w / h;
+        grade.uniforms.uTexel.value.set(1 / Math.max(1, w * ratio), 1 / Math.max(1, h * ratio));
       }
       // the scene draws into the composer's read buffer, and the last pass reads it there
       grade.uniforms.tDepth.value = composer.readBuffer.depthTexture;
@@ -312,9 +419,40 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
       over.scene = s ?? scene;
       over.camera = cam ?? camera;
     },
-    // bloom's strength, for a moment's flare (a boost, an arrival)
+    // the bloom's numbers, for the ?debug panel (lib/three/bloom's
+    // bloomGroups): the strength is the flare's base, so a flare scales
+    // what's set; a knee only for a soft-knee pass (undefined otherwise)
+    bloom: {
+      get threshold() {
+        return bloom.threshold;
+      },
+      set threshold(v) {
+        bloom.threshold = v;
+      },
+      get knee() {
+        return knee ? bright.uniforms.uKnee.value : undefined;
+      },
+      set knee(v) {
+        if (knee) bright.uniforms.uKnee.value = v;
+      },
+      get strength() {
+        return BLOOM.strength;
+      },
+      set strength(v) {
+        BLOOM.strength = v;
+        if (glow) bloom.strength = v;
+      },
+      get radius() {
+        return bloom.radius;
+      },
+      set radius(v) {
+        bloom.radius = v;
+      },
+    },
+    // bloom's strength, for a moment's flare (a boost, an arrival): k times
+    // the base, k no more than the bloom's flareMax
     flare(k) {
-      if (glow) bloom.strength = BLOOM.strength * k;
+      if (glow) bloom.strength = BLOOM.strength * Math.min(k, BLOOM.flareMax ?? Infinity);
     },
     // the boost's rush, 0…1, out from (x, y) on the canvas (0…1, y up)
     rush(k, x = 0.5, y = 0.5) {
@@ -339,10 +477,47 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
     exposure(k) {
       grade.uniforms.uExposure.value = k;
     },
+    // a game's grade: its LUT (a Data3DTexture of size³, sRGB in and out)
+    // over the finished colour; the house's own contrast and saturation
+    // step aside while it's on, the LUT carrying the game's. null: off, and
+    // the house's back.
+    grading(g) {
+      const u = grade.uniforms;
+      if (g?.lut) {
+        houseGrade ??= { contrast: u.uContrast.value, sat: u.uSat.value };
+        u.tLut.value = g.lut;
+        u.uLutSize.value = g.size;
+        u.uLutMix.value = g.mix ?? 1;
+        u.uContrast.value = 0;
+        u.uSat.value = 1;
+      } else {
+        u.tLut.value = null;
+        u.uLutMix.value = 0;
+        if (houseGrade) {
+          u.uContrast.value = houseGrade.contrast;
+          u.uSat.value = houseGrade.sat;
+          houseGrade = null;
+        }
+      }
+    },
+    // the toe: under lo to black, over hi as drawn (hi 0: off, the default)
+    setToe(lo, hi) {
+      grade.uniforms.uToe.value.set(lo, hi);
+    },
+    // the grade's contrast (0.07 by default)
+    contrast(k) {
+      grade.uniforms.uContrast.value = k;
+    },
+    // the soft edge, 0…1 (0 by default), held at none from pace step 3
+    defocus(k) {
+      defocusWant = k;
+      grade.uniforms.uDefocus.value = level >= 3 ? 0 : k;
+    },
     // lib/three/pace's step: what's dropped as frames run long, and back
     setLevel(l) {
       level = l;
       grade.uniforms.uAberration.value = level >= 3 ? 0 : aberrationWant;
+      grade.uniforms.uDefocus.value = level >= 3 ? 0 : defocusWant;
     },
     // whether the scene's sun flare is wanted at this pace
     get flareOn() {

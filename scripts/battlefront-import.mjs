@@ -45,7 +45,7 @@ import { Document, Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, dequantize, flatten, join, meshopt, metalRough, prune, textureCompress, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join as path, resolve } from 'node:path';
@@ -54,6 +54,8 @@ import { fileURLToPath } from 'node:url';
 import { bareWhereUntextured, dims, grounded, relit, simplified, triangles, unskinned } from './lib/surface-model.mjs';
 import { mshLook, readMsh } from './lib/msh.mjs';
 import { decodeTga } from './lib/tga.mjs';
+import { parseArgs } from './lib/args.mjs';
+import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
 
 // The sharp that glTF-Transform's ndarray-pixels loads (it brings its own
 // version). Loading the project's as well puts two libvips in one process,
@@ -73,23 +75,6 @@ const REMASTER = {
 };
 // parts of a .msh a world never shows: shadow volumes, collision, low-detail copies
 const SKIP = /^(sv_|shadowvolume|collision|c_|p_)|lowre[sz]/i;
-
-// ── the arguments ──
-function parseArgs(argv) {
-  const args = { _: [] };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (!a.startsWith('--')) {
-      args._.push(a);
-      continue;
-    }
-    const key = a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-    const next = argv[i + 1];
-    if (next === undefined || next.startsWith('--')) args[key] = true;
-    else args[key] = argv[++i];
-  }
-  return args;
-}
 
 // ── a .msh as a glTF document ──
 async function textureImage(name, dirs) {
@@ -174,22 +159,6 @@ export async function mshToDocument(file, { textures = null, flipV = true, mirro
   return doc;
 }
 
-// ── the catalogue line and the credit ──
-async function writeCatalogue(kind, entry) {
-  let s = await readFile(CATALOG, 'utf8');
-  const line = `  ${kind}: ${JSON.stringify(entry).replace(/"([a-z]+)":/g, '$1: ').replace(/"/g, "'").replace(/,/g, ', ').replace(/\{/, '{ ').replace(/\}$/, ' }')},\n`;
-  const had = new RegExp(`^  ${kind}: \\{.*\\n`, 'm');
-  if (had.test(s)) s = s.replace(had, line);
-  else s = s.replace(/\n\};\s*$/, `\n${line}};\n`);
-  await writeFile(CATALOG, s);
-}
-async function writeCredit(kind, c) {
-  const credits = JSON.parse(await readFile(CREDITS, 'utf8'));
-  credits[`surface-${kind}`] = c;
-  const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
-  await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);
-}
-
 export async function importModel(file, opts) {
   const kind = opts.kind;
   if (!kind || !/^[a-z0-9]+$/.test(kind)) throw new Error('--kind: letters and digits, the catalogue’s way (snowtrooper, hothtrooper, clone…)');
@@ -234,9 +203,9 @@ export async function importModel(file, opts) {
   // (the model stands grounded in the file: the catalogue line asks for no more turning)
   const entry = { made: 'battlefront', as: opts.as, metres: spec.metres, along: spec.along, yaw: 0, tris: spec.tris, tex: spec.tex };
   if (spec.rig) entry.rig = true;
-  await writeCatalogue(kind, entry);
+  await writeCatalogueLine(CATALOG, kind, entry);
   const title = opts.title ?? `${REMASTER.title}: ${basename(file, ext)}`;
-  await writeCredit(kind, { title, author: opts.author ?? REMASTER.author, authorUrl: opts.authorUrl ?? REMASTER.authorUrl, license: 'permission', licenseUrl: opts.source ?? REMASTER.source, source: opts.source ?? REMASTER.source, where: 'galaxy-surface', as: opts.as, file: `/models/galaxy/surface/${kind}.glb`, also: ['galaxy'], permission: opts.permission ?? REMASTER.permission });
+  await writeCredit(CREDITS, `surface-${kind}`, { title, author: opts.author ?? REMASTER.author, authorUrl: opts.authorUrl ?? REMASTER.authorUrl, license: 'permission', licenseUrl: opts.source ?? REMASTER.source, source: opts.source ?? REMASTER.source, where: 'galaxy-surface', as: opts.as, file: `/models/galaxy/surface/${kind}.glb`, also: ['galaxy'], permission: opts.permission ?? REMASTER.permission });
   return { out, bytes, tris: Math.round(triangles(doc)) };
 }
 

@@ -26,6 +26,13 @@ function clearAt(world, x, z, r) {
 describe.each(Object.values(AREAS))('$name', (area) => {
   const world = buildWorld(area);
 
+  it('stands its loose crates on the floor, clear of the walls', () => {
+    for (const c of area.loose ?? []) {
+      expect(world.floorAt(c.x, c.z, 50, 60), `${c.x}, ${c.z}`).toBe(0);
+      expect(clearAt(world, c.x, c.z, 1.2), `${c.x}, ${c.z}`).toBe(true);
+    }
+  });
+
   it('starts everyone clear of the walls, robot or truck', () => {
     for (const at of [area.spawn, ...Object.values(area.spawns)]) {
       expect(clearAt(world, at.x, at.z, ROBOT.radius), `${area.id} at ${at.x},${at.z}`).toBe(true);

@@ -27,7 +27,7 @@
 // does (a walker: an AT-AT, an AT-ST, its legs going as it goes). `model:
 // false` builds it even where there's a model (a walker that should walk).
 //
-// site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still,
+// site.life: [{ kind, n, at: [x, z], spread, roam, speed, path, still, hang (metres: hung upside down, the feet that high),
 //   face, y (hovering: a probe droid), name, says: [line…] (a line: text,
 //   or [who, text]), voice (the voice their own lines are said in, where it
 //   isn't their name's: voicelines.js; `says` can be talk.js's tree, by
@@ -45,6 +45,7 @@
 // site.wants: [{ id, kind, at: [x, z], pause?, slots?, spots?, clip?, base?,
 //   face? }] (where the people go, and what they do there: needs.js)
 //
+// place: the world's id, for its everyday people's pool (pools.js)
 // createActors(…) → { group, actors, places, update(dt, you, at), hear({ at,
 //   loudness, t }), setZone, debug, find, hide, hideKinds, talker, say,
 //   shove, dispose }
@@ -52,18 +53,22 @@
 //   blaster, 2 a detonator), heard by whoever's in earshot on the next update
 
 import * as THREE from 'three';
-import { SURFACE_MODELS, surfaceUrl } from './catalog';
+import { SURFACE_MODELS, lodUrlFor, modelUrlFor } from './catalog';
+import { markBuilt, resolveFigure } from './cast';
 import { buildFigure } from './figures';
 import { crewFigure } from './crew';
+import { poolFor } from './pools';
 import { PROPS } from './props';
-import { cloneModel, loadGlb } from './placer';
+import { cloneModel, loadGlb, squared } from './placer';
 import { rng } from './noise';
-import { groundAt, lineClear, turnToward } from './walker';
+import { groundAt, lineClear, tooDeep, turnToward } from './walker';
 import { hear, mannerOf, pickWant, placesOf, relate } from './needs';
 import { talkFor } from './talk';
 import { zoneVisibility } from './near';
 import { diveAt } from './floats';
 import { heldBlade } from './heldBlade';
+import { WALKERS, walkerFigure } from './walkers';
+import { leggedFigure } from './legRig';
 import { createAnimator } from '../../../lib/three/animator';
 import { budgetClock } from '../../../lib/three/animBudget';
 import { breathe, createGait, sway } from '../../../lib/three/gait';
@@ -71,6 +76,10 @@ import { bodyFrom } from '../../../lib/ai/body';
 import { release, reserve, spotOf } from '../../../lib/ai/needs';
 import { createSocial } from '../../../lib/ai/social';
 import { NO_CALLS, animatorCalls, seedOf } from '../../../lib/three/figureCalls';
+import { atPriority } from '../../../lib/assetLoad';
+import { device } from '../../../lib/device';
+import { detailLevel } from '../../../lib/detail';
+import { firstCut, wantsUpgrade } from '../../../lib/net/progressive';
 
 const TALK = 4.5; // metres: close enough to turn to you
 const THERE = 0.6; // metres from where it's going: there
@@ -255,16 +264,44 @@ export function approach(b, to, dt, { pace = 1.2, face = null, sidestep = false,
 // A kind's model (catalog/*.js) as a figure that walks: with its own clips
 // where it came rigged (an idle and a walk, or only one of them), or a sway
 // in its step where it didn't; null without a model. Each made is a seed of
-// its own (its kind, and which of them it is).
+// its own (its kind, and which of them it is). `models`: the book the kind
+// is looked up in (the galaxy's, or a page's own).
 const made = new Map(); // kind → how many
-export async function modelFigure(kind) {
-  if (!SURFACE_MODELS[kind]) return null;
+export async function modelFigure(kind, models = SURFACE_MODELS) {
+  if (!models[kind]) return null;
   const n = made.get(kind) ?? 0;
   made.set(kind, n + 1);
-  const gltf = await loadGlb(surfaceUrl(kind));
+  const row = models[kind];
+  const gltf = await figureGlb(kind, models);
   if (!gltf) return null;
-  const row = SURFACE_MODELS[kind];
-  return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null });
+  // (a person who came as a statue: legs found in it, skinned and walked; legRig.js)
+  if (row.legs && !row.anim) {
+    const legged = leggedFigure(gltf.scene, { seed: seedOf(kind, n), legs: row.legs === true ? {} : row.legs });
+    if (legged) return legged;
+  }
+  return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null, machine: Boolean(row.machine) });
+}
+
+// A figure's file, through the site's pool (lib/assetLoad) ahead of the
+// world's props (people are what the visitor looks at first). On a saver
+// connection or 2G only its light cut is fetched (lib/net/progressive: the
+// plain is never worth its bytes there); and where the plain cut won't come
+// (a 404 on the bucket and the site, a dropped connection), the light cut
+// stands in before the kind falls to its next maker (cast.js). The light cut
+// came in square (placer.js's loadModel) and is drawn as it is.
+const FIGURE_PRIORITY = 5;
+async function figureGlb(kind, models) {
+  const row = models[kind];
+  const hasLod = Boolean(row.url ? row.lodUrl : row.lod);
+  const level = detailLevel();
+  const lowData = Boolean(device().saveData);
+  const small = firstCut(0, level, { hasLod, lowData }) === 'lod1' && !wantsUpgrade(0, level, { lowData });
+  const ask = (url) => atPriority(FIGURE_PRIORITY, () => loadGlb(url));
+  if (small) return ask(lodUrlFor(kind, models));
+  // (the level's own cut: at ultra the .ultra file where the kind has one)
+  const plain = await ask(modelUrlFor(kind, level, models));
+  if (plain) return squared(plain, kind, models);
+  return hasLod ? ask(lodUrlFor(kind, models)) : null;
 }
 
 // what a move of 1 is, in metres a second (the people's update gives
@@ -314,7 +351,7 @@ export function feetOf(root) {
 //   it covers, never on the clock), and with no clips at all it breathes as
 //   it stands, each in its own time: none frozen, none gliding at one
 //   height. Its calls do nothing.
-export function modelFigureOf(scene, { animations = [], anim: names = null, seed = 0, clipSpeed = null } = {}) {
+export function modelFigureOf(scene, { animations = [], anim: names = null, seed = 0, clipSpeed = null, machine = false } = {}) {
   const model = new THREE.Group();
   model.add(scene);
   const box = new THREE.Box3().setFromObject(scene);
@@ -390,6 +427,12 @@ export function modelFigureOf(scene, { animations = [], anim: names = null, seed
         anim.after(dt, m, { forward, up: UP });
         if (walks) return;
       }
+      // (a droid on wheels, repulsors or legs it came without: no person's
+      // sway or breath, only a machine's hum, steady as it goes)
+      if (machine) {
+        scene.position.y = rest.y + Math.sin(clock * 9 + seed) * 0.004 * tall;
+        return;
+      }
       gait ??= createGait({ stride: 0.75 * tall * (model.scale.y || 1), cadence: [1.2, 2.2], seed });
       const g = gait.step(dt, speed);
       // (a shuffle sways less than a stride)
@@ -423,7 +466,7 @@ function propFigure(kind, spec, kit, i = 0) {
   kit.moving?.(made.object);
   let t = rng(seedOf(kind, i))() * 10; // (each of them somewhere of its own in its stride)
   const box = new THREE.Box3().setFromObject(made.object);
-  return {
+  return markBuilt({
     model: made.object,
     tall: box.max.y - box.min.y,
     update(dt, move) {
@@ -431,16 +474,35 @@ function propFigure(kind, spec, kit, i = 0) {
       made.update?.(t, dt, move);
     },
     dispose() {},
-  };
+  });
 }
 // A figure for any kind there is one of, by name: a crew model (crew.js), a
 // catalogue model walking with its clips or a bob (modelFigure), a built
 // figure (figures.js) or a humanoid prop (props/*.js, given the kit); null
 // for a kind that's none of those. `spec.model: false` builds it even where
 // there's a model; i is which of the entry's figures (a crew kind's face).
-export async function anyFigure(kind, spec = {}, kit = null, i = 0) {
-  if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
-  return (await crewFigure(kind, i)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+// `only`: a world that takes models only (a site's `cast: 'models'`): never
+// built, its files tried twice, then a stand-in, then nothing (cast.js).
+const warned = new Set();
+const warnOnce = (kind) => {
+  if (!import.meta.env?.DEV || warned.has(kind)) return;
+  warned.add(kind);
+  console.warn('[surface] no model for', kind);
+};
+export async function anyFigure(kind, spec = {}, kit = null, i = 0, models = SURFACE_MODELS, { only = false } = {}) {
+  if (spec.model === false && !only) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+  return resolveFigure(
+    kind,
+    {
+      // (a machine on legs its model came without: cut at its joints and walked, its rider up top; walkers.js)
+      walker: (k) => (WALKERS[k] ? walkerFigure(k, i, models) : null),
+      crew: (k) => crewFigure(k, i),
+      model: (k) => modelFigure(k, models),
+      built: (k) => buildFigure(k),
+      prop: (k) => propFigure(k, spec, kit, i),
+    },
+    { only, warn: warnOnce },
+  );
 }
 
 // How far off the fog has someone all but gone (97% fog, FogExp2's
@@ -455,7 +517,7 @@ const LEAP = 4; // metres moved between two steps that's no step: put somewhere 
 const EYES = 1.6; // metres: your eyes over your feet, for a head turned to you
 const FLOOR = 4; // metres up or down: someone on another floor isn't greeting you
 
-export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null }) {
+export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS, only = false, place = null }) {
   const group = new THREE.Group();
   group.name = 'life';
   parent.add(group);
@@ -475,7 +537,21 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   let lastYou = null;
   let dead = false;
 
-  const figureOf = figure ?? ((kind, spec, i) => anyFigure(kind, spec, kit, i));
+  // (a page's own maker first, the Rick and Morty cast; what it has nothing
+  // for, or fails to make, is made as any other kind)
+  // (a world's everyday people are the game's civilians of that place,
+  // pools.js; one that won't load gives way to the kind the world named)
+  const anyOf = (kind, spec, i) => {
+    const pooled = poolFor(kind, place, i);
+    const named = () => anyFigure(kind, spec, kit, i, models, { only });
+    return pooled === kind ? named() : anyFigure(pooled, spec, kit, i, models, { only }).catch(() => null).then((f) => f ?? named());
+  };
+  const figureOf = figure
+    ? (kind, spec, i) =>
+        Promise.resolve(figure(kind, spec, i))
+          .catch(() => null)
+          .then((fig) => fig ?? anyOf(kind, spec, i))
+    : anyOf;
   // (has something to say: a list with lines, or a tree)
   const talks = (spec) => (Array.isArray(spec.says) ? spec.says.length > 0 : Boolean(spec.says));
 
@@ -536,6 +612,8 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   const avoider = (self) => (x, z) => {
     if (world.solids) for (const s of world.solids.near(x, z, 0.6)) if (!s.off && s.type === 'circle' ? Math.hypot(x - s.x, z - s.z) < s.r + 0.4 : false) return true;
     for (const o of actors) if (o !== self && Math.hypot(x - o.b.x, z - o.b.z) < 0.9 * (o.spec.scale ?? 1) && Math.hypot(self.b.x - o.b.x, self.b.z - o.b.z) > Math.hypot(x - o.b.x, z - o.b.z)) return true;
+    // (and not out of the shallows into deep water, unless it's a swimmer)
+    if (!self.spec.dive && tooDeep(world, x, z) && !tooDeep(world, self.b.x, self.b.z)) return true;
     // (inside somewhere, the floor's flat and the world's edge is far off)
     if (self.spec.zone) return false;
     return world.normalAt?.(x, z)[1] < 0.75 || Math.hypot(x, z) > (world.reach ?? 600);
@@ -680,6 +758,8 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   // near, every fourth far, not at all far off on a small device), moving
   // as its brain moved it since it was last stepped
   function stepFigure(a, dt, d, you, e) {
+    // (the cut its distance wants: a full-fidelity 2017 kind's, crew.js)
+    a.fig.cutAt?.(d);
     const by = a.tick(d < FAR ? 1 : small ? 0 : 0.25, dt);
     if (!(by > 0)) return;
     const { b } = a;
@@ -756,8 +836,9 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
           if (a.under != null && a.under !== dv.y < 0 && d < 500) water.splash(b.x, b.z, 1.4);
           a.under = dv.y < 0;
         }
-        a.holder.position.set(b.x, y, b.z);
-        a.holder.rotation.set(pitch, b.yaw, 0, 'YXZ');
+        // (one hung by the ankles, `hang` metres up: upside down, the feet at that height)
+        a.holder.position.set(b.x, spec.hang != null ? g + spec.hang : y, b.z);
+        a.holder.rotation.set(pitch, b.yaw, spec.hang != null ? Math.PI : 0, 'YXZ');
         if (a.fig) stepFigure(a, dt, d, you, e);
       }
     },
@@ -765,7 +846,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
     debug: () =>
       actors
         .filter((a) => !a.hidden)
-        .map((a) => ({ kind: a.spec.kind, id: a.spec.id ?? null, at: [+a.b.x.toFixed(1), +a.b.z.toFixed(1)], want: a.b.want?.id ?? null, last: a.b.last, flee: Boolean(a.b.flee), chase: Boolean(a.b.chase), culled: a.culled, use: a.b.use?.want.id ?? null, with: a.mode })),
+        .map((a) => ({ kind: a.spec.kind, id: a.spec.id ?? null, at: [+a.b.x.toFixed(1), +a.b.z.toFixed(1)], want: a.b.want?.id ?? null, last: a.b.last, flee: Boolean(a.b.flee), chase: Boolean(a.b.chase), culled: a.culled, use: a.b.use?.want.id ?? null, with: a.mode, fig: Boolean(a.fig), rigged: Boolean(a.fig?.anim) })),
     // one by its id (a quest's), where it is now
     find(id) {
       return actors.find((a) => a.spec.id === id && !a.hidden) ?? null;

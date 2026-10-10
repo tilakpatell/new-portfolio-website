@@ -1,5 +1,5 @@
 // Minecraft, the scene: the terrain's sections (scene/chunks.js) in the one
-// block material's three passes (scene/shaders.js) over the pack's texture
+// block material's three passes (scene/nodes.js) over the pack's texture
 // array (scene/atlasTexture.js), under the sky (scene/sky.js), seen from
 // the player's eyes at 70° as the game's default. sync(g, alpha) puts the
 // camera between the last two ticks, so it's smooth at any frame rate;
@@ -18,7 +18,7 @@ import { createChunks } from './scene/chunks.js';
 import { createCursor } from './scene/cursor.js';
 import { createDrops } from './scene/drops.js';
 import { createIcons } from './scene/icons.js';
-import { TINT_COLOURS, blockMaterial, setFrames } from './scene/shaders.js';
+import { TINT_COLOURS, blockMaterial, setFrames } from './scene/nodes.js';
 import { createSky } from './scene/sky.js';
 
 const WATER = byName.get('water').id;
@@ -72,9 +72,9 @@ export function createScene(rt, { manifest }) {
     if (!materials) return;
     sky.setFog(n);
     for (const m of Object.values(materials)) {
-      m.uniforms.fogNear.value = n * 16 * 0.8;
-      m.uniforms.fogFar.value = n * 16;
-      m.uniforms.fogColour.value.copy(sky.fog);
+      m.u.fogNear.value = n * 16 * 0.8;
+      m.u.fogFar.value = n * 16;
+      m.u.fogColour.value.copy(sky.fog);
     }
   }
 
@@ -89,7 +89,7 @@ export function createScene(rt, { manifest }) {
     sky.update(g.time + alpha, camera, distance * 16, g.ticks + alpha);
     const sun = sunBrightness(g.time + alpha);
     for (const m of Object.values(materials)) {
-      m.uniforms.sun.value = sun;
+      m.u.sun.value = sun;
       setFrames(m, anims, g.ticks);
     }
     // the block under the crosshair, and its crack while it's being broken
@@ -99,9 +99,9 @@ export function createScene(rt, { manifest }) {
     // the eye under water: a close blue fog
     const wet = g.world.get(camera.position.x, camera.position.y, camera.position.z) === WATER;
     for (const m of Object.values(materials)) {
-      m.uniforms.fogColour.value.copy(wet ? UNDERWATER : sky.fog);
-      m.uniforms.fogNear.value = wet ? 0 : distance * 16 * 0.8;
-      m.uniforms.fogFar.value = wet ? 14 : distance * 16;
+      m.u.fogColour.value.copy(wet ? UNDERWATER : sky.fog);
+      m.u.fogNear.value = wet ? 0 : distance * 16 * 0.8;
+      m.u.fogFar.value = wet ? 14 : distance * 16;
     }
   }
 
@@ -130,7 +130,7 @@ export function createScene(rt, { manifest }) {
       cursor?.dispose();
       drops?.dispose();
       for (const m of Object.values(materials ?? {})) {
-        m.uniforms.atlas.value?.dispose();
+        m.u.atlas.value?.dispose();
         m.dispose();
       }
     },

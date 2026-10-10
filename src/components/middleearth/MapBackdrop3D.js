@@ -1,19 +1,23 @@
 // The map behind the page, in WebGL: the painted sheet (./mapPaint.js) lying
-// on a table, seen from a camera that glides over it the way the films open.
+// on a desk with its props (./mapRoom.js), seen from a camera that glides
+// over it the way the films open.
 // On the hub it shows the whole sheet and leans a little towards the pointer
 // and towards the place under it; choosing a place flies the camera down to
 // it, and a chapter keeps it there, close. By day the sheet lies in window
 // light; at night (dark mode) a candle lights it, and it flickers. In Mordor
 // the light turns to fire. It draws only while something is moving, or the
-// candle is lit.
+// candle is lit; under a chapter's town, less often (./mapCover.js).
 
 import * as THREE from 'three';
 import { normalCanvas } from '../../lib/texture';
 import { SHEET } from './mapData';
 import { mapFont, paintMap, paintRelief } from './mapPaint';
 import { buildDiorama } from './mapDiorama';
+import { buildRoom } from './mapRoom.js';
+import { flightAt } from './mapFlight.js';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { budget, device, pixelRatio } from '../../lib/device';
+import { guard } from '../../lib/three/frameGuard';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 
 const SCALE = 10; // sheet units to one of the scene's
@@ -23,6 +27,8 @@ export { mapFont };
 
 export function createMapBackdrop(canvas, { onLost } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'low-power', stencil: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -41,18 +47,30 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   relief.anisotropy = map.anisotropy;
   const W = SHEET.w / SCALE;
   const H = SHEET.h / SCALE;
-  const sheet = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map, normalMap: relief, normalScale: new THREE.Vector2(1.5, 1.5), roughness: 0.94 }));
+  // the desk, its props and the candle; the sheet takes its torn edge from it
+  const room = buildRoom(scene, { W, H, tier: budget().tier });
+  const plane = new THREE.PlaneGeometry(W, H, 1, 1).rotateX(-Math.PI / 2);
+  // The corners lift a little off the desk, as paper does. With one segment
+  // the four corners are all the plane’s vertices; the terrain builder that
+  // comes next subdivides the sheet and keeps this lift at its corners.
+  const lift = plane.attributes.position;
+  for (let i = 0; i < lift.count; i++) lift.setY(i, lift.getY(i) + 0.15);
+  const sheet = new THREE.Mesh(plane, new THREE.MeshStandardMaterial({ map, normalMap: relief, normalScale: new THREE.Vector2(1.5, 1.5), roughness: 0.94, ...room.sheetOptions }));
   sheet.receiveShadow = true;
   scene.add(sheet);
-  const table = new THREE.Mesh(new THREE.PlaneGeometry(600, 600).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.8 }));
-  table.position.y = -0.3;
-  scene.add(table);
-  const shade = new THREE.Mesh(new THREE.PlaneGeometry(W + 1.6, H + 1.6).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0a0604, transparent: true, opacity: 0.55 }));
-  shade.position.set(0.5, -0.12, 0.6);
-  scene.add(shade);
 
   const ambient = new THREE.AmbientLight(0xffe8c8, 0.8);
-  const candle = new THREE.PointLight(0xffb870, 900, 0, 2);
+  // The candle light stands at the flame, on the sheet’s north-west corner,
+  // so the pool it throws is where the candle is, and stays there as the
+  // camera moves. Its intensity is (60 + 140 × night) × the flicker, at a
+  // decay of 1.6: measured with `node lab/me/measure.mjs --dark` (the mean
+  // luminance of a 300 × 200 px patch round the corner, 0.18 or over
+  // wanted), 900 + 1400 gave a pool of 0.746 and 200 + 600 one of 0.575,
+  // both a glare that washed the names out; 60 + 140 gives about 0.31, a pool
+  // with the names legible in it (0.35 with the night fill below raised).
+  // Low by day too, where the candle is unlit.
+  const candle = new THREE.PointLight(0xffb870, 60, 0, 1.6);
+  candle.position.copy(room.candle.position);
   const low = new THREE.DirectionalLight(0xffdcb0, 1.1);
   low.position.set(-30, 42, 22);
   low.castShadow = true;
@@ -91,11 +109,18 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   let candleLit = false;
   let alive = false;
   let t = 0;
+  // under a town: the time since the last frame drawn, and whether the
+  // camera has moved on from it
+  let since = 0;
+  let behind = false;
   // the visitor's own look about on the map: a pan and a zoom on top of the
   // page's view, and whether a hurried walk (to open a place) is on
   const user = { x: 0, z: 0, zoom: 1 };
   let hurry = false;
   let hub = false;
+  // the opening’s flight down the road, where it has the camera now, or null
+  // when the page has it
+  let flying = null;
 
   // { at: [x, y] on the sheet or null for the whole map, zoom, mordor, dark,
   //   alive: the candle flickers (it keeps drawing), lean: [-1..1, -1..1] the
@@ -156,8 +181,10 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   };
 
   // Draws one frame, and says whether to keep drawing: the camera is on its
-  // way, or the candle is lit.
-  const render = (ms = 16, slow = 1) => {
+  // way, or the candle is lit. `wait`, when the page has a town over the map,
+  // says how long it may wait between frames (./mapCover.js): asked only
+  // while the camera moves, since it reads the page's layout.
+  const render = (ms = 16, slow = 1, wait = null) => {
     if (lost) return false;
     const dt = Math.min(0.05, ms / 1000);
     t += dt;
@@ -181,14 +208,21 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
       goal.z = want.z + user.z;
       goal.zoom = want.zoom * user.zoom;
     }
-    const k = 1 - Math.exp(-(hurry ? 3.5 : dragging ? 14 : 2.4) * slow * dt);
+    if (flying) {
+      // the opening leads the camera wherever the page has asked it to be
+      [goal.x, goal.z] = at(...flying.at);
+      goal.zoom = flying.zoom;
+    }
+    const k = 1 - Math.exp(-(hurry || flying ? 3.5 : dragging ? 14 : 2.4) * slow * dt);
     const kl = 1 - Math.exp(-4 * dt);
     let far = 0;
     for (const key of ['x', 'z', 'zoom', 'm', 'n', 'lx', 'lz']) far += Math.abs(goal[key] - cur[key]) * (key === 'x' || key === 'z' ? 1 : 4);
-    const moving = first || far > 0.004 || world.walking || hurry;
+    const moving = first || far > 0.004 || world.walking || hurry || flying !== null;
     // on the map itself the world is alive (smoke, the Eye, the hobbits):
     // keep drawing; behind a chapter, only while the camera moves
-    if (!moving && !alive && !candleLit) return false;
+    if (!moving && !alive && !candleLit && !behind) return false;
+    // (a canvas just sized is blank: drawn at once)
+    const fresh = first;
     first = false;
     for (const key of ['x', 'z', 'zoom', 'm', 'n']) cur[key] += (goal[key] - cur[key]) * k;
     cur.lx += (goal.lx - cur.lx) * kl;
@@ -204,13 +238,29 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     const q = reduced ? 0 : world.shake * world.shake * 0.12 * z;
     if (q) camera.position.add(v.set(Math.sin(t * 61) * q, Math.sin(t * 47) * q, Math.cos(t * 53) * q));
     const flick = candleLit ? 1 + 0.06 * Math.sin(t * 11.3) * Math.sin(t * 7.1 + 1.3) + 0.04 * Math.sin(t * 23.7) : 1;
+    room.update(dt, t, { night: cur.n, m: cur.m, flick });
     ambient.color.copy(tint.copy(day.ambient).lerp(night.ambient, cur.n)).lerp(fire.ambient, cur.m);
-    ambient.intensity = (0.85 - 0.5 * cur.n) * (1 - 0.45 * cur.m);
+    // The night fill: the candle lights only its corner, so the room and the
+    // moon at the window must let the rest of the sheet read. At full night
+    // the ambient is 0.70 and the window 0.75 (from 0.5 and 0.35, which left
+    // the names away from the candle unreadable): measured with
+    // `node lab/me/measure.mjs --dark [--phone]`, the sheet’s middle (a 300 ×
+    // 200 px patch round its centre, 0.12 or over wanted) is 0.195 on a phone
+    // and 0.182 on a desktop, from 0.145 and 0.144, and the candle’s pool 0.348.
+    ambient.intensity = (0.85 - 0.15 * cur.n) * (1 - 0.45 * cur.m);
     candle.color.copy(tint.copy(day.candle).lerp(night.candle, cur.n)).lerp(fire.candle, cur.m);
-    candle.position.set(cur.x - 9 * z, 15 * z, cur.z + 5 * z);
-    candle.intensity = (700 + 500 * cur.n) * z * z * flick;
+    candle.intensity = (60 + 140 * cur.n) * flick;
     low.color.copy(tint.copy(day.low).lerp(night.low, cur.n)).lerp(fire.low, cur.m);
-    low.intensity = (1.2 - 0.85 * cur.n) * (1 - 0.5 * cur.m);
+    low.intensity = (1.2 - 0.45 * cur.n) * (1 - 0.5 * cur.m);
+    // behind most of a town the camera moves on between frames drawn, and is
+    // drawn once more where it comes to rest
+    since += ms;
+    if (moving && !fresh && wait && since < wait()) {
+      behind = true;
+      return true;
+    }
+    since = 0;
+    behind = false;
     renderer.render(scene, camera);
     return true;
   };
@@ -218,6 +268,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   const dispose = () => {
     canvas.removeEventListener('webglcontextlost', onContextLost);
     world.dispose();
+    room.dispose();
     map.dispose();
     relief.dispose();
     scene.traverse((o) => {
@@ -237,6 +288,19 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
       hurry = ms > 0;
       first = true;
       return ms;
+    },
+    // the opening’s flight (./mapFlight.js): `ms` into it, or null to hand
+    // the camera back to the page, which it eases to
+    flight(ms) {
+      const was = flying;
+      flying = ms == null ? null : flightAt(ms);
+      // a flight from the very first frame starts where it starts, low over
+      // the Shire, rather than swooping down to it from the whole map
+      if (flying && !was && t === 0) {
+        [cur.x, cur.z] = at(...flying.at);
+        cur.zoom = flying.zoom;
+      }
+      first = true;
     },
     // ── the visitor's hands on the map ──
     // drag: move the map with the pointer, by a screen delta in px
@@ -317,8 +381,17 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     resize,
     dispose,
     renderer,
-    // its shaders, linked in the background: the page waits for this before the first frame
-    ready: precompile(renderer, scene, camera),
+    info: () => ({ ...renderer.info.render }), // the lab’s counts
+    // its shaders, linked in the background, and the sheet’s own pictures
+    // sent: the page waits for this before the first frame, so that frame
+    // has the sheet in it (lib/three/frameGuard leaves out a material whose
+    // pictures aren’t on the chip yet) and fades in over the flat one whole
+    ready: precompile(renderer, scene, camera).then(() => {
+      if (lost) return;
+      renderer.initTexture(map);
+      renderer.initTexture(relief);
+      for (const picture of room.textures) renderer.initTexture(picture);
+    }),
     get lost() {
       return lost;
     },

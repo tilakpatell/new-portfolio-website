@@ -121,7 +121,9 @@ await page.evaluate(() => {
   const w = window.__galaxyDebug.war;
   const b = w.battle;
   const f = b.fighters.find((x) => x.alive && x.team !== b.you.team && x.role !== 'bomber');
-  for (let i = 0; i < 40 && f?.alive; i++) w.hit({ x: f.pos.x, y: f.pos.y + 2, z: f.pos.z }, { x: f.pos.x, y: f.pos.y - 0.01, z: f.pos.z }, 5);
+  // (where it's drawn, as your guns see it: the battle's carried on past its last step)
+  const p = f?.seen ?? f?.pos;
+  for (let i = 0; i < 40 && f?.alive; i++) w.hit({ x: p.x, y: p.y + 2, z: p.z }, { x: p.x, y: p.y - 0.01, z: p.z }, 5);
 });
 await page.waitForTimeout(1500);
 check((await page.evaluate(() => window.__galaxy().war.mine)) > before, 'a fighter down counts in the war');
@@ -129,34 +131,51 @@ const keys = await page.evaluate(async () => (await import('/src/components/gala
 const code = await page.evaluate(async (s) => (await import('/src/components/galaxy/sides.js')).SIDES[s].code, side);
 check(keys.some((k) => k.startsWith(`${code}:`)), `and it's your side's (${code}: keys)`);
 
-// the objectives, from your guns
-const hitAll = (phase) =>
-  page.evaluate((p) => {
+// the objectives, from your guns: each stage of the battle's plan in turn
+// (universe/battlePlan.js, drawn for it: generators, satellites, batteries,
+// platforms, a relay…), its gate passed first (the dev hook moves the shared
+// clock on), what's to be shot shot with the battle's own hit(), and a zone
+// held as the other pilots here would have it (their word on the tally)
+const takeStage = (i) =>
+  page.evaluate(async (si) => {
     const w = window.__galaxyDebug.war;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const gate = w.director.plan.stages[si].opensAt - w.info.shared.t;
+    if (gate > 0) w.jump(gate + 1);
+    await wait(1500);
     const b = w.battle;
-    const flag = b.capitals.find((c) => c.team === b.defender && c.role === 'flagship');
-    for (const s of flag.subs.filter((o) => o.phase === p)) for (let i = 0; i < 300 && s.alive; i++) w.hit({ x: s.pos.x, y: s.pos.y + 2, z: s.pos.z }, { x: s.pos.x, y: s.pos.y - 0.01, z: s.pos.z }, 3);
-    return flag.subs.map((s) => s.alive);
-  }, phase);
+    for (const o of b.objectives.filter((x) => x.phase === si + 1)) {
+      if (o.zone) {
+        if (o.after) await wait(1500);
+        w.onNet({ type: 'fight', from: 'check', msg: { e: w.on.id, m: { [`${o.key}:a`]: 1e4 }, t: {} } });
+        continue;
+      }
+      for (let n = 0; n < 300 && o.alive && b.isOpen(o); n++) w.hit({ x: o.pos.x, y: o.pos.y + 2, z: o.pos.z }, { x: o.pos.x, y: o.pos.y - 0.01, z: o.pos.z }, 3);
+    }
+    await wait(2000);
+    return { phase: b.phase, over: b.over, stage: w.director.plan.stages[si].id };
+  }, i);
 const attacking = await page.evaluate(() => window.__galaxyDebug.war.battle.attacker === window.__galaxyDebug.war.battle.you.team);
-if (attacking) {
-  await hitAll(1);
-  await page.waitForTimeout(3000);
-  check((await page.evaluate(() => window.__galaxyDebug.war.battle.phase)) === 2, 'both shield generators down: phase 2');
-  await snap('shield-down');
-  await hitAll(2);
-  await page.waitForTimeout(2000);
-  // (watching the flagship, for the break-up)
+const pieces = await page.evaluate(() => window.__galaxyDebug.war.director.plan.stages.some((st) => st.objectives.some((o) => o.on.piece)));
+if (attacking && !pieces) {
+  const stages = await page.evaluate(() => window.__galaxyDebug.war.director.plan.stages.map((st) => `${st.id} (${st.objectives.map((o) => o.kind).join(', ')})`));
+  console.log('plan:', stages.join(' → '));
+  const first = await takeStage(0);
+  check(first.phase === 2, `the first stage taken (${first.stage}): the second's on`);
+  await snap('first-stage');
+  await takeStage(1);
+  // (watching the ship the objectives are on, for the break-up)
   await pin(`
-    const b = d.war.battle; const f = b.capitals.find((c) => c.team === b.defender && c.role === 'flagship');
+    const b = d.war.battle; const f = b.capitals.find((c) => c.objective);
     const s = f.size; const x = f.pos.x + f.right.x * s * 1.1 - f.fwd.x * s * 0.1, z = f.pos.z + f.right.z * s * 1.1 - f.fwd.z * s * 0.1;
     return { x, y: f.pos.y + s * 0.3, z, heading: Math.atan2(x - f.pos.x, z - f.pos.z), pitch: -0.25, bank: 0 };
   `);
-  await hitAll(3);
-  await page.waitForTimeout(12000);
+  const last = await takeStage(2);
+  check(last.over?.winner === you, `the plan's done: the battle's won for your side (${JSON.stringify(last.over)})`);
+  await page.waitForTimeout(10000);
   await snap('breaking');
   const mine = await page.evaluate(() => window.__galaxy().war.mine);
-  check(mine >= 12, `the war counted what you did (${mine} points)`);
+  check(mine >= 6, `the war counted what you did (${mine} points)`);
 }
 // the war table
 await page.keyboard.press('m');

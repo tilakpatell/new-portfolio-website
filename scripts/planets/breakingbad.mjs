@@ -20,10 +20,10 @@
 // 512; -rough at 1024: summer's thunderheads over the mountains.
 
 import { ABQ, BIG_I, CALDERA, CITY, DESERT, GILA, KM_PER_RAD, LAKES, LLANO, MALPAIS, PEAKS, PLAINS, PLATEAU, PLAYAS, RANGES, REDROCK, RIVERS, ROADS, SANDS, TOWNS, VOLCANOES, sheet } from './breakingbad-geo.mjs';
-import { clamp, curve, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, ramp, raster, ridged, sampler, save, smooth } from './sphere.mjs';
+import { clamp, curve, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, ramp, raster, ridged, sampler, save, smooth, bakeSize } from './sphere.mjs';
 
-const W = 4096;
-const H = 2048;
+// (8192 × 4096 with --ultra: sphere.mjs's bakeSize)
+const [W, H] = bakeSize();
 const LAT0 = (ABQ[0] * Math.PI) / 180; // Albuquerque, the middle of the face shown first
 // the sheet's raster: what's drawn from the map, in sheet km (a margin round the 1000-km sheet)
 const BOX = { x0: -60, y0: -60, x1: 1060, y1: 1060 };

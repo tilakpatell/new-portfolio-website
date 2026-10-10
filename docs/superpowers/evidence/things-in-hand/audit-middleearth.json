@@ -1,0 +1,901 @@
+[
+ {
+  "name": "frodo",
+  "file": "/models/middleearth/cast/frodo.glb",
+  "bytes": 416104,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 555,
+   "l": 511
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "sam",
+  "file": "/models/middleearth/cast/sam.glb",
+  "bytes": 410224,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 503,
+   "l": 572
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "merry",
+  "file": "/models/middleearth/cast/merry.glb",
+  "bytes": 351996,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 365,
+   "l": 325
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "pippin",
+  "file": "/models/middleearth/cast/pippin.glb",
+  "bytes": 347144,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 782,
+   "l": 765
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "bilbo",
+  "file": "/models/middleearth/cast/bilbo.glb",
+  "bytes": 433656,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 729,
+   "l": 657
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "rosie",
+  "file": "/models/middleearth/cast/rosie.glb",
+  "bytes": 344448,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 480,
+   "l": 511
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "hobbit",
+  "file": "/models/middleearth/cast/hobbit.glb",
+  "bytes": 357732,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 548,
+   "l": 514
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "gandalf",
+  "file": "/models/middleearth/cast/gandalf.glb",
+  "bytes": 396704,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 487,
+   "l": 459
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": "staff",
+  "warn": []
+ },
+ {
+  "name": "gandalfwhite",
+  "file": "/models/middleearth/cast/gandalfwhite.glb",
+  "bytes": 311180,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 492,
+   "l": 448
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": "white-staff",
+  "warn": []
+ },
+ {
+  "name": "aragorn",
+  "file": "/models/middleearth/cast/aragorn.glb",
+  "bytes": 396296,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 337,
+   "l": 325
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": "sword",
+  "warn": []
+ },
+ {
+  "name": "legolas",
+  "file": "/models/middleearth/cast/legolas.glb",
+  "bytes": 370096,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 408,
+   "l": 379
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": "bow",
+  "warn": []
+ },
+ {
+  "name": "gimli",
+  "file": "/models/middleearth/cast/gimli.glb",
+  "bytes": 606464,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 386,
+   "l": 437
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": "axe",
+  "warn": []
+ },
+ {
+  "name": "boromir",
+  "file": "/models/middleearth/cast/boromir.glb",
+  "bytes": 384196,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 442,
+   "l": 466
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": "horn",
+  "warn": []
+ },
+ {
+  "name": "faramir",
+  "file": "/models/middleearth/cast/faramir.glb",
+  "bytes": 347204,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 584,
+   "l": 519
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "galadriel",
+  "file": "/models/middleearth/cast/galadriel.glb",
+  "bytes": 379728,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 289,
+   "l": 275
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "elrond",
+  "file": "/models/middleearth/cast/elrond.glb",
+  "bytes": 350580,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 608,
+   "l": 552
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "arwen",
+  "file": "/models/middleearth/cast/arwen.glb",
+  "bytes": 295896,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 552,
+   "l": 515
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "elf",
+  "file": "/models/middleearth/cast/elf.glb",
+  "bytes": 362448,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 342,
+   "l": 318
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": "bow",
+  "warn": []
+ },
+ {
+  "name": "theoden",
+  "file": "/models/middleearth/cast/theoden.glb",
+  "bytes": 398648,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 426,
+   "l": 439
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "eowyn",
+  "file": "/models/middleearth/cast/eowyn.glb",
+  "bytes": 343608,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 256,
+   "l": 312
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "rohirrim",
+  "file": "/models/middleearth/cast/rohirrim.glb",
+  "bytes": 575312,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 207,
+   "l": 187
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "gondorguard",
+  "file": "/models/middleearth/cast/gondorguard.glb",
+  "bytes": 393520,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 766,
+   "l": 770
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "saruman",
+  "file": "/models/middleearth/cast/saruman.glb",
+  "bytes": 274552,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 621,
+   "l": 593
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": "white-staff",
+  "warn": []
+ },
+ {
+  "name": "butterbur",
+  "file": "/models/middleearth/cast/butterbur.glb",
+  "bytes": 325852,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 485,
+   "l": 482
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "breeman",
+  "file": "/models/middleearth/cast/breeman.glb",
+  "bytes": 351752,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 310,
+   "l": 311
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "orc",
+  "file": "/models/middleearth/cast/orc.glb",
+  "bytes": 424068,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 682,
+   "l": 700
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "uruk",
+  "file": "/models/middleearth/cast/uruk.glb",
+  "bytes": 336696,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 614,
+   "l": 635
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "easterling",
+  "file": "/models/middleearth/cast/easterling.glb",
+  "bytes": 555212,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 311,
+   "l": 267
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ },
+ {
+  "name": "goblin",
+  "file": "/models/middleearth/cast/goblin.glb",
+  "bytes": 337472,
+  "bones": {
+   "hips": true,
+   "handR": true,
+   "handL": true,
+   "toes": true,
+   "head": true
+  },
+  "handSkin": {
+   "r": 921,
+   "l": 879
+  },
+  "forearm": {
+   "r": true,
+   "l": true
+  },
+  "clips": {
+   "own": [
+    "idle",
+    "walk",
+    "run"
+   ],
+   "borrowed": false
+  },
+  "stride": true,
+  "holds": null,
+  "warn": []
+ }
+]

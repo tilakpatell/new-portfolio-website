@@ -21,7 +21,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { turned } from './hulls';
-import { partById } from './outfit';
+import { STOCK, partById } from './outfit';
 
 // Each ship's hardpoints (one side's, +x; the other is its mirror): pod
 // (a booster's middle, its length and radius), corner (the thruster blocks,
@@ -338,50 +338,56 @@ export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mou
     }
   }
 
-  // Guns
+  // Guns, and the secondary and ordnance lines drawn as guns are (their
+  // parts borrow a gun's look: a pair of barrels, or a slung cannon), each
+  // set a little out from the primary's so a ship with all three shows all three
+  const twinAt = ([x, y, z], muzzle) => {
+  // a barrel either side under the nose: a rounded breech, the barrel, a slotted muzzle
+  const barrel = turned(
+    [
+      [0.0, -0.105],
+      [0.0042, -0.104],
+      [0.0042, -0.09],
+      [0.0034, -0.088],
+      [0.0034, -0.02],
+      [0.0046, -0.016],
+      [0.0046, 0.0],
+      [0.0, 0.001],
+    ],
+    20,
+  );
+  add(merge(both([[barrel, [x, y, z]]])), dark);
+  add(merge(both([[rounded(0.013, 0.011, 0.032, 0.003), [x, y + 0.002, z + 0.012]], [tube(0.0049, 0.004, 20), [x, y, z - 0.096], LAY]])), metal);
+  if (muzzle) muzzles.push([x, y, z - 0.108], [-x, y, z - 0.108]);
+  };
+  const fusionAt = ([x, y, z], muzzle) => {
+  // Megatron's: a fat barrel slung under the belly, tapering to its muzzle, its coils lit purple
+  const body = turned(
+    [
+      [0.0, -0.082],
+      [0.0105, -0.081],
+      [0.0125, -0.074],
+      [0.0145, -0.05],
+      [0.017, 0.02],
+      [0.0165, 0.06],
+      [0.012, 0.072],
+      [0.0, 0.074],
+    ],
+    36,
+  );
+  add(merge([[body, [x, y, z]], [rounded(0.022, 0.016, 0.06, 0.004), [x, y + 0.012, z + 0.02]]]), metal);
+  add(merge([[tube(0.0098, 0.006, 32), [x, y, z - 0.081], LAY]]), dark);
+  glow(merge([-0.045, -0.025, -0.005].map((dz, i) => [new THREE.TorusGeometry(0.0152 + i * 0.0006, 0.0024, 12, 48), [x, y, z + dz]])), '#b07cff', { idle: 1.2, hot: 1.2, by: 'fire' });
+  glow(new THREE.CircleGeometry(0.0085, 28).rotateX(Math.PI).translate(x, y, z - 0.0845), '#c9a6ff', { idle: 1.5, hot: 1.5, by: 'fire' });
+  if (muzzle) muzzles.push([x, y, z - 0.088]);
+  };
+  const gunAt = (look, pos, muzzle = false) => (look === 'twin' ? twinAt(pos, muzzle) : look === 'fusion' ? fusionAt(pos, muzzle) : null);
   begin('guns');
-  const guns = looks('guns');
-  if (guns === 'twin') {
-    // a barrel either side under the nose: a rounded breech, the barrel, a slotted muzzle
-    const [x, y, z] = at.gun;
-    const barrel = turned(
-      [
-        [0.0, -0.105],
-        [0.0042, -0.104],
-        [0.0042, -0.09],
-        [0.0034, -0.088],
-        [0.0034, -0.02],
-        [0.0046, -0.016],
-        [0.0046, 0.0],
-        [0.0, 0.001],
-      ],
-      20,
-    );
-    add(merge(both([[barrel, [x, y, z]]])), dark);
-    add(merge(both([[rounded(0.013, 0.011, 0.032, 0.003), [x, y + 0.002, z + 0.012]], [tube(0.0049, 0.004, 20), [x, y, z - 0.096], LAY]])), metal);
-    muzzles.push([x, y, z - 0.108], [-x, y, z - 0.108]);
-  } else if (guns === 'fusion') {
-    // Megatron's: a fat barrel slung under the belly, tapering to its muzzle, its coils lit purple
-    const [x, y, z] = at.belly;
-    const body = turned(
-      [
-        [0.0, -0.082],
-        [0.0105, -0.081],
-        [0.0125, -0.074],
-        [0.0145, -0.05],
-        [0.017, 0.02],
-        [0.0165, 0.06],
-        [0.012, 0.072],
-        [0.0, 0.074],
-      ],
-      36,
-    );
-    add(merge([[body, [x, y, z]], [rounded(0.022, 0.016, 0.06, 0.004), [x, y + 0.012, z + 0.02]]]), metal);
-    add(merge([[tube(0.0098, 0.006, 32), [x, y, z - 0.081], LAY]]), dark);
-    glow(merge([-0.045, -0.025, -0.005].map((dz, i) => [new THREE.TorusGeometry(0.0152 + i * 0.0006, 0.0024, 12, 48), [x, y, z + dz]])), '#b07cff', { idle: 1.2, hot: 1.2, by: 'fire' });
-    glow(new THREE.CircleGeometry(0.0085, 28).rotateX(Math.PI).translate(x, y, z - 0.0845), '#c9a6ff', { idle: 1.5, hot: 1.5, by: 'fire' });
-    muzzles.push([x, y, z - 0.088]);
-  }
+  gunAt(looks('guns'), looks('guns') === 'fusion' ? at.belly : at.gun, true);
+  begin('secondary');
+  if (loadout.secondary && loadout.secondary !== STOCK) gunAt(looks('secondary'), [at.gun[0] * 1.6, at.gun[1] - 0.012, at.gun[2] + 0.03]);
+  begin('ordnance');
+  if (loadout.ordnance && loadout.ordnance !== STOCK) gunAt(looks('ordnance'), [at.belly[0], at.belly[1] - 0.026, at.belly[2] + 0.05]); // (centred, slung below where a fusion primary hangs)
 
   // Shields
   begin('shields');

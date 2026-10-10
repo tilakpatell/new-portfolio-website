@@ -17,6 +17,11 @@
 //       its design units whatever its size
 //   fitTexture(texture, cap), fitTextures(root, cap) → no map bigger than
 //       `cap` texels a side (a phone's or a weak device's ceiling)
+//   coverageMips({ width, height, data }, { cut }) → { mipmaps, coverage }:
+//       a cut-out map's mip levels made by hand, each one's alpha scaled so
+//       as much of it is over the cut as at full size (pure)
+//   coverageTexture(texture, { cut }) → the texture, wearing those levels,
+//       so far-off leaves stay as thick as near ones
 //
 // Only lazily loaded scene modules import this, so a page that never draws
 // in 3D never downloads three.js.
@@ -24,6 +29,10 @@
 import * as THREE from 'three';
 import { budget } from '../device';
 import { modelTexCap, texScale } from '../detail';
+import { loadBytes } from '../assetLoad';
+
+const TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', avif: 'image/avif', gif: 'image/gif', ktx2: 'image/ktx2' };
+const imageType = (url) => TYPES[/\.([a-z0-9]+)(?:[?#]|$)/i.exec(url)?.[1]?.toLowerCase()] ?? '';
 
 // The anisotropy to ask for: the tier's, no more than the graphics chip has
 // (16 on most; 1 where the extension is missing, which three reports as 1).
@@ -141,15 +150,29 @@ export function loadTexture(url, { renderer = null, color = true, ...rest } = {}
     const { bitmap, plain } = loaders();
     // a GPU-compressed texture (KTX2) goes through the shared KTX2 loader,
     // which is only fetched for one; it comes with its own mipmaps
-    const p = /\.ktx2(?:[?#]|$)/i.test(url)
-      ? import('./gltf').then(({ ktx2Loader }) => ktx2Loader({ renderer })).then((k) => k.loadAsync(url))
-      : bitmap
-        ? bitmap.loadAsync(url).then((img) => {
-            const t = new THREE.Texture(img);
-            t.flipY = false; // (the bitmap was flipped as it was decoded)
-            return t;
-          })
-        : plain.loadAsync(url);
+    // (from the bucket where it has the file: the same bytes, so the same texture)
+    // (its bytes through the site's pool, from the bucket where it has the
+    // file: the same bytes, so the same texture; then decoded as it always was)
+    const p = loadBytes(url).then(async (buf) => {
+      if (/\.ktx2(?:[?#]|$)/i.test(url)) {
+        const k = await import('./gltf').then(({ ktx2Loader }) => ktx2Loader({ renderer }));
+        return new Promise((resolve, reject) => k.parse(buf, resolve, reject));
+      }
+      const blob = new Blob([buf], { type: imageType(url) });
+      if (bitmap) {
+        // (ImageBitmapLoader's own decode, from bytes already here)
+        const img = await createImageBitmap(blob, { ...bitmap.options, colorSpaceConversion: 'none' });
+        const t = new THREE.Texture(img);
+        t.flipY = false; // (the bitmap was flipped as it was decoded)
+        return t;
+      }
+      const src = URL.createObjectURL(blob);
+      try {
+        return await plain.loadAsync(src);
+      } finally {
+        URL.revokeObjectURL(src);
+      }
+    });
     cache.set(
       url,
       p.then((t) => sharpen(t, { renderer, color, ...rest })).catch((e) => {
@@ -327,4 +350,147 @@ export function fitTextures(root, cap = modelTexCap()) {
     }
   });
   return n;
+}
+
+// ── Coverage ──
+
+// For each of `n` cells across a side `size` texels long, the texels it
+// covers and how much of each, as pairs (texel, weight), the weights of a
+// cell summing to one: its area average, even where a side doesn't halve
+// evenly (14 rows into 3).
+function spans(size, n) {
+  const s = size / n;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = i * s;
+    const b = a + s;
+    const cell = [];
+    for (let t = Math.floor(a); t < Math.min(size, Math.ceil(b)); t++) {
+      const w = Math.min(b, t + 1) - Math.max(a, t);
+      if (w > 0) cell.push(t, w / s);
+    }
+    out.push(cell);
+  }
+  return out;
+}
+
+// A `w` × `h` level of an image, each texel the average of the image's
+// texels under it, its colour weighted by their alpha (as a canvas
+// resamples): a texel half over a leaf and half over nothing is the leaf's
+// colour half opaque, not a darker one.
+function shrink({ width, height, data }, w, h) {
+  const xs = spans(width, w);
+  const ys = spans(height, h);
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const rows = ys[y];
+    for (let x = 0; x < w; x++) {
+      const cols = xs[x];
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      for (let j = 0; j < rows.length; j += 2) {
+        const line = rows[j] * width;
+        for (let k = 0; k < cols.length; k += 2) {
+          const i = (line + cols[k]) * 4;
+          const wa = data[i + 3] * rows[j + 1] * cols[k + 1];
+          r += data[i] * wa;
+          g += data[i + 1] * wa;
+          b += data[i + 2] * wa;
+          a += wa;
+        }
+      }
+      const o = (y * w + x) * 4;
+      if (a > 0) {
+        out[o] = r / a;
+        out[o + 1] = g / a;
+        out[o + 2] = b / a;
+      }
+      out[o + 3] = a;
+    }
+  }
+  return { width: w, height: h, data: out };
+}
+
+// A cut-out map's mip levels made by hand. Left to the graphics chip, each
+// level is a plain average, and a leaf's edges average under the cut: a
+// crown thins level by level till a far-off tree is bare twigs. Here each
+// level is the full-size image averaged down (each side halved, to one
+// texel), then its alpha scaled up (a few tries, at most four times) till
+// as much of it is over the cut as at full size. Pure, on anything shaped
+// like an ImageData, square or not; the first level is the image itself.
+// `coverage` is the share of the full-size image over the cut.
+export function coverageMips(image, { cut = 0.3 } = {}) {
+  const { width, height, data } = image;
+  const edge = cut * 255;
+  const over = (d, m = 1) => {
+    let on = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] * m > edge) on++;
+    return on;
+  };
+  if (!(width > 0 && height > 0)) return { mipmaps: [image], coverage: 0 };
+  const coverage = over(data) / (width * height);
+  const mipmaps = [image];
+  for (let w = width, h = height; w > 1 || h > 1; ) {
+    w = Math.max(1, Math.floor(w / 2));
+    h = Math.max(1, Math.floor(h / 2));
+    const level = shrink(image, w, h);
+    const a = level.data;
+    let lo = 1;
+    let hi = 4;
+    for (let k = 0; k < 8; k++) {
+      const m = (lo + hi) / 2;
+      if (over(a, m) / (w * h) < coverage) lo = m;
+      else hi = m;
+    }
+    for (let i = 3; i < a.length; i += 4) a[i] = Math.min(255, a[i] * hi);
+    mipmaps.push(level);
+  }
+  return { mipmaps, coverage };
+}
+
+// A cut-out texture (leaves, needles, fronds: alpha-tested) wearing those
+// levels in place of the ones the graphics chip would make: its image (a
+// canvas, a decoded image, a bitmap) read off a canvas, each smaller level
+// painted on a canvas of its own, the image itself kept as the first. One
+// that isn't a picture a canvas can draw (data, compressed, video), or whose
+// pixels a canvas won't give up (a tainted one), is left to make its own.
+// Returns the texture.
+export function coverageTexture(texture, { cut = 0.3 } = {}) {
+  if (!texture?.isTexture || texture.isDataTexture || texture.isCompressedTexture || texture.isVideoTexture || typeof document === 'undefined') return texture;
+  const img = texture.image;
+  if (!(img?.width > 0 && img?.height > 0) || !(drawable(img) || typeof img.getContext === 'function')) return texture;
+  const { width, height } = img;
+  const canvas = (w, h) => {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    return c;
+  };
+  let data;
+  try {
+    const ctx = canvas(width, height).getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    data = ctx.getImageData(0, 0, width, height).data;
+  } catch {
+    return texture;
+  }
+  if (!(data?.length >= width * height * 4)) return texture;
+  const { mipmaps } = coverageMips({ width, height, data }, { cut });
+  const painted = mipmaps.slice(1).map((m) => {
+    const c = canvas(m.width, m.height);
+    const ctx = c.getContext('2d');
+    const out = ctx.createImageData?.(m.width, m.height);
+    if (out?.data?.length === m.data.length) {
+      out.data.set(m.data);
+      ctx.putImageData(out, 0, 0);
+    } else ctx.putImageData(m, 0, 0);
+    return c;
+  });
+  texture.mipmaps = [img, ...painted];
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.needsUpdate = true;
+  return texture;
 }

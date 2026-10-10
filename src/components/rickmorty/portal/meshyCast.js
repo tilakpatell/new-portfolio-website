@@ -461,16 +461,28 @@ export function createMeshyCast({ kinds = MESHY, rigged = RIGGED, cull = false, 
         if (o.isSkinnedMesh) cullWithin(o, group, spec.h);
         else if (o.isMesh) o.frustumCulled = true;
       });
+    const mine = []; // (what's this figure's alone: a clone's shirt)
     if (spec.shirts) {
       const shirt = spec.shirts[variant % spec.shirts.length];
       model.traverse((o) => {
         if (o.isMesh && o.material.map) {
           o.material = shirted(o.material.map, shirt);
           owned.push(o.material);
+          mine.push(o.material);
         }
       });
     }
     const c = { kind, group, body, bodyY: 0, height: spec.h, meshy: true, last: null, legs: null, arms: null, gun: null, anim: null };
+    // done with this figure, the cast kept (one that lasts the page): what
+    // was made for it alone freed now, not when the cast goes
+    c.release = () => {
+      for (const m of mine) {
+        m.dispose();
+        const i = owned.indexOf(m);
+        if (i >= 0) owned.splice(i, 1);
+      }
+      mine.length = 0;
+    };
     const me = { calls: NO_CALLS, gait: null, seed, clock: 0, was: null, top: spec.h * 2, off: 0 };
     if (src.rigged) {
       const own = Object.fromEntries(Object.entries(src.clips).filter(([, clip]) => clip));

@@ -16,8 +16,9 @@
 // x = 400) so a door is a jump.
 
 import { seeded } from '../../../lib/seeded';
+import { springStep } from '../../../lib/spring';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
-import { DESTINATIONS, GARAGE_BACK, isPlanet } from './dimensions/destinations';
+import { DESTINATIONS, GARAGE_BACK, isBigPlanet, isPlanet } from './dimensions/destinations';
 
 export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
 
@@ -877,10 +878,11 @@ function walkerAt(area, y, cruiser, motorcade, pen, crowd) {
 // `jump` (on his feet, he jumps). `cruiser` is where the cruiser is parked, if
 // it is: it stands in the street; `motorcade`, whether the President's limo
 // and his people stand there too; `crowd`, others standing about ({ id, x, z,
-// r }: Total Rickall's). He walks up what's a step high, falls off edges,
+// r }: Total Rickall's); `press`, his jump's (lib/press.js), read in place of
+// `move.jump`. He walks up what's a step high, falls off edges,
 // lands on what's under him, and a ceiling stops his head. His mode keeps him
 // in its pen (brought in to its nearest point, if he's outside it).
-export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd = null } = {}) {
+export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd = null, press = null } = {}) {
   const pen = PENS[m.mode]?.area === area ? PENS[m.mode] : null;
   if (pen && !inPen(pen, m.x, m.z)) m = { ...m, x: clamp(m.x, pen.x0, pen.x1), z: clamp(m.z, pen.z0, pen.z1) };
   const y0 = m.y ?? 0;
@@ -888,15 +890,25 @@ export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd
   let y = y0;
   let vy = m.vy ?? 0;
   const ground = supportAt(area, n.x, n.z, y0);
+  // a press (lib/press.js's createPress) jumps a moment before his feet touch, or a moment
+  // after he's walked off an edge; without one, `move.jump` is this step's alone
+  const feet = y <= ground + 1e-3 && vy <= 0;
+  press?.ground(feet, dt);
+  const jump = press ? press.take() : Boolean(move.jump);
+  // `land`: how fast he came down, on the step he lands (0 on every other)
+  let land = 0;
   // on his feet (or a step below where he's going): up onto it, and off again if he jumps
-  if (y <= ground + 1e-3 && vy <= 0) {
+  if (feet) {
+    // (come down to within a hair of it, the step before: a landing too)
+    if (vy < 0) land = -vy;
     y = ground;
-    vy = move.jump ? MORTY.jump : 0;
-  }
+    vy = jump ? MORTY.jump : 0;
+  } else if (jump && press) vy = MORTY.jump; // off the edge a moment ago: still a jump
   if (vy !== 0 || y > ground) {
     vy -= MORTY.gravity * dt;
     y += vy * dt;
     if (y <= ground) {
+      land = -vy;
       y = ground;
       vy = 0;
     }
@@ -906,7 +918,7 @@ export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd
       vy = Math.min(vy, 0);
     }
   }
-  return { ...n, y, vy, air: y > ground + 1e-3, mode: m.mode ?? null };
+  return { ...n, y, vy, air: y > ground + 1e-3, land, mode: m.mode ?? null };
 }
 
 // Over the open hatch in the garage floor (it's open whenever he's this near), on his feet:
@@ -920,8 +932,12 @@ export const CRUISER = { radius: 1.7, hover: 1.2, top: 22, accel: 9, turn: 1.8, 
 export const FLY = { x0: -400, x1: 400, z0: -260, z1: 260 };
 const EDGE = 2; // it keeps this far in from the edge of where it flies
 const BANK = 0.45; // how far it leans, at most
+// the lean is a spring (lib/spring.js): it comes into a turn about as quickly
+// as the old 6-a-second ease did, and let go, it swings a hair past level and
+// settles, which reads as the weight of the thing
+const BANK_SPRING = { k: 60, c: 10 };
 
-export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
+export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0, bankV: 0 });
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // what it flies over: each building's footprint, the school's as its parts (flat roofs at their own heights)
@@ -945,16 +961,21 @@ export function stepCruiser(c, { throttle = 0, steer = 0, lift = 0 } = {}, dt) {
   const x = clamp(c.x + goX, s.x0 + EDGE, s.x1 - EDGE);
   const z = clamp(c.z + goZ, s.z0 + EDGE, s.z1 - EDGE);
   // the edge of the street stops what it can't move: nosed into it, it slows to nothing; skimming it, it slides on
+  const was = Math.abs(speed);
   if (Math.hypot(goX, goZ) > 1e-9) speed *= Math.hypot(x - c.x, z - c.z) / Math.hypot(goX, goZ);
+  // `bump`: the speed something took off it this step (the edge, a roof, the
+  // ground, the ceiling), so a knock is as hard as it was
+  let bump = was - Math.abs(speed);
   let vy = c.vy + (clamp(lift, -1, 1) * CRUISER.climb - c.vy) * Math.min(1, dt * 5);
   let y = c.y + vy * dt;
   const floor = floorAt(x, z);
   if (y < floor || y > CRUISER.ceiling) {
     y = clamp(y, floor, CRUISER.ceiling);
+    bump += Math.abs(vy);
     vy = 0;
   }
-  const bank = c.bank + (turn * clamp(speed / CRUISER.top, -1, 1) * BANK - c.bank) * Math.min(1, dt * 6);
-  return { x, z, y, yaw, speed, vy, bank };
+  const [bank, bankV] = springStep(c.bank ?? 0, c.bankV ?? 0, turn * clamp(speed / CRUISER.top, -1, 1) * BANK, BANK_SPRING.k, BANK_SPRING.c, dt);
+  return { x, z, y, yaw, speed, vy, bank, bankV, bump };
 }
 
 // Slow, over open ground in the street: not a roof, a fenced back yard, a tree
@@ -1021,7 +1042,9 @@ export const TASKS = [
   { id: 'roy55', name: 'Outlive Morty’s 55', hint: 'Play Roy again and live past Morty’s 55.' },
   { id: 'rickall', name: 'Survive Total Rickall', hint: 'There’s an egg on the Smiths’ living-room bookcase that nobody remembers buying.' },
   { id: 'wong', name: 'Go to family therapy', hint: 'Dr. Wong’s office is in the house next to Shoney’s, up the street. Rick says it’s for Jerry.' },
-  ...DESTINATIONS.flatMap((d) => d.tasks),
+  // (a big planet's box tasks are retired: it's a world of its own now, its
+  // quests kept apart from these, so C-137 neither counts nor points to them)
+  ...DESTINATIONS.filter((d) => !isBigPlanet(d.id)).flatMap((d) => d.tasks),
 ];
 
 // ── Morty's Mind Blowers ──
@@ -1041,8 +1064,9 @@ export const MEMORIES = [
 ];
 export const MEMORY_COLORS = { blue: '#52d6ff', purple: '#b47cff', red: '#ff4d5e', pink: '#ff8fd0' };
 
-// the planets' things to do, done on the planets themselves (landed on from the universe map)
-export const PLANET_TASKS = new Set(DESTINATIONS.filter((d) => isPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id)));
+// the planets' things to do, done on the planets themselves (landed on from
+// the universe map): the small ones'; a big planet's are retired with TASKS'
+export const PLANET_TASKS = new Set(DESTINATIONS.filter((d) => isPlanet(d.id) && !isBigPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id)));
 
 // What's done and what's next. `done` is the ids finished, in any order.
 // `skip` (ids, or a Set) is passed over when picking what's next, but still

@@ -9,7 +9,8 @@ import { buildCompound, buildGround, fbm, scatter, trees } from '../hq/kit/world
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { canvasTexture, rbox } from '../hq/kit/shapes';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { damp } from '../../../lib/ease';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { EYE, LANES, PRIME_SCALE } from './rules';
 import { boltGeometry, buildGauntlet, discGeometries, droneGeometries, instanced, missileGeometries, plateGeometry, repulsorMaterials } from './models';
@@ -385,6 +386,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     timers.add(id);
   };
   const feel = createFeel({ seed: 5, calm, baseFov: 62 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'repulsor');
 
   // ── per frame ──
   const m4 = new THREE.Matrix4();
@@ -435,7 +438,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     // camera: at the eye, drifting a little, banking into a strafe
     const vx = (px - lastX) / Math.max(1e-3, realDt);
     lastX = px;
-    camX += (px - camX) * Math.min(1, realDt * 30);
+    // (half the way a frame at 60 Hz, as min(1, dt × 30) was there, but the same at any rate)
+    camX += (px - camX) * damp(41.6, realDt);
     const sway = calm ? 0 : 1;
     camera.position.set(camX + Math.sin(clock * 0.9) * 0.025 * sway, EYE + Math.sin(clock * 1.3) * 0.035 * sway, 0);
     e3.set(-0.06 + Math.sin(clock * 0.7) * 0.004 * sway, 0, -vx * 0.006 * sway);

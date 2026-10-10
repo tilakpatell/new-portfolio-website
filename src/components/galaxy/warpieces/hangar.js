@@ -1,8 +1,11 @@
 // A Star Destroyer's hangar run, in any battle: fly up into the belly hangar
-// of one of the Empire's Star Destroyers (not the flagship: its reactor's an
-// objective of the battle's own), up its shaft and astern to its reactor,
-// shoot it out, and get out before the ship breaks up round you. A run
-// (run.js) is laid in each as you come near it.
+// of one of the other side's Star Destroyers (not the flagship: its
+// reactor's an objective of the battle's own), up its shaft and astern to
+// its reactor, shoot it out, and get out before the ship breaks up round
+// you. A run (run.js) is laid in each as you come near it, and only in
+// your enemy's: whether you attack or hold the system, your shots on its
+// reactor count for your side (ctx.mineAs), and your own side's ships have
+// no run in them to blow up.
 //
 // createHangars(ctx) → { update(dt, t, live), hit, targets, markers(live), dispose() }
 
@@ -10,7 +13,6 @@ import { tunnelPath } from '../tunnel';
 import { createRun } from './run';
 import { GCW } from '../gcw';
 
-const EMPIRE = 1;
 const NEAR = 110; // within this of a Star Destroyer, its run's laid
 // the shaft, in a ship 30 long (scaled to its size): up through the belly, then astern
 // (the run's frame: +z up into the hull, +y toward the stern)
@@ -25,7 +27,11 @@ const SHAFT = [
 
 export function createHangars(ctx) {
   const runs = new Map(); // capital → run
-  const ships = () => ctx.battle.capitals.filter((c) => c.team === EMPIRE && c.kind === 'destroyer' && c.role !== 'flagship');
+  // (the other side's, yours sworn: nobody's while you're nobody's)
+  const ships = () => {
+    const you = ctx.battle.you.team;
+    return you === null ? [] : ctx.battle.capitals.filter((c) => c.team === 1 - you && c.kind === 'destroyer' && c.role !== 'flagship');
+  };
 
   const lay = (cap) => {
     const k = cap.size / 30;
@@ -36,6 +42,7 @@ export function createHangars(ctx) {
     return createRun(ctx, {
       id: 5.2e6 + i,
       key: `core-${i}`,
+      team: 1 - cap.team, // (the side it's the enemy of: theirs to take)
       name: 'its reactor',
       wayIn: 'Hangar: fly in to its reactor',
       mouth,
@@ -65,7 +72,14 @@ export function createHangars(ctx) {
   return {
     update(dt, t, live) {
       const out = {};
-      for (const cap of ships()) {
+      const list = ships();
+      // (sworn to the other side since: the old side's runs go, unless one's still going off)
+      for (const [cap, run] of runs)
+        if (!list.includes(cap) && !run.inside && run.state !== 'blown') {
+          run.dispose();
+          runs.delete(cap);
+        }
+      for (const cap of list) {
         let run = runs.get(cap);
         const near = live && Math.hypot(live.x - cap.pos.x, live.y - cap.pos.y, live.z - cap.pos.z) < NEAR;
         // laid as you come near (and dropped once you've gone, unless it's still going off)

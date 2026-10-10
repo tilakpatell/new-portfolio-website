@@ -296,6 +296,9 @@ html[data-mode='dark'] {
   --btn-ink: #0b0b0b;
   --route-plan: #35383e;
   --shadow-card: none;
+  /* in the dark a shadow is darkness, never a pale glow of the ink */
+  --shadow-float: 0 18px 40px -20px rgb(0 0 0 / 0.7);
+  --shadow-dialog: 0 24px 50px -24px rgb(0 0 0 / 0.75);
   /* the site's easing, one family: out for anything arriving or settling, smooth
      for a change of state, spring for a bounce, in for anything leaving */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -381,6 +384,9 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   --btn-ink: #0f1111;
   --route-plan: #4a5563;
   --shadow-card: none;
+  /* in the dark a shadow is darkness, never a pale glow of the ink */
+  --shadow-float: 0 18px 40px -20px rgb(0 0 0 / 0.7);
+  --shadow-dialog: 0 24px 50px -24px rgb(0 0 0 / 0.75);
   /* the site's easing, one family: out for anything arriving or settling, smooth
      for a change of state, spring for a bounce, in for anything leaving */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -464,7 +470,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   }
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     font-weight: 500;
     letter-spacing: var(--eyebrow-tracking);
     text-transform: uppercase;
@@ -476,6 +482,22 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     color: var(--text-body);
   }
   .mono { font-family: var(--font-mono); }
+  /* the three display sizes: a page's title, a feature's, a tile's. Home's
+     name and the Travel poster keep their own: they are the pages' faces. */
+  .display-1 { font-size: var(--fs-display-1); }
+  .display-2 { font-size: var(--fs-display-2); }
+  .display-3 { font-size: var(--fs-display-3); }
+  /* a hero's lead, a step up from a section's */
+  .lead-lg { font-size: var(--fs-lead-lg); }
+  /* the last section on a page, clear of the footer */
+  .section-last { padding-bottom: 6rem; }
+  @media (min-width: 768px) { .section-last { padding-bottom: 8rem; } }
+  /* Type on a photograph: the page's ink turns white through its tokens, so
+     the display, the lead, the eyebrow and a ghost button all follow without
+     an !important each. */
+  .on-photo { --text: #ffffff; --text-body: rgb(255 255 255 / 0.9); --muted: rgb(255 255 255 / 0.85); }
+  .on-photo .btn-ghost { border-color: rgb(255 255 255 / 0.6); background: rgb(0 0 0 / 0.2); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .on-photo .btn-ghost:hover { background: rgb(255 255 255 / 0.15); }
 
   .btn {
     display: inline-flex;
@@ -518,6 +540,12 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     line-height: 1.3;
     color: var(--text-body);
   }
+  /* a chip inside a line of text (an award beside a title) */
+  .chip-sm { min-height: 0; padding-block: 0.125rem; }
+  /* a chip that is a button (a filter, a skill to take off) says so */
+  button.chip { position: relative; cursor: pointer; transition: border-color var(--t-fast) var(--ease-smooth); }
+  button.chip:hover { border-color: var(--border-strong); }
+  @media (pointer: coarse) { button.chip::after { content: ''; position: absolute; inset: -8px 0; } }
 
   .card {
     position: relative;
@@ -551,6 +579,10 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     transition: text-decoration-color var(--t-fast) var(--ease-smooth);
   }
   .link:hover { text-decoration-color: var(--accent); }
+  /* a link that is its own line (an address, a route): no underline until
+     the pointer is on it, then the accent's */
+  .link-hover { text-decoration-color: var(--accent); text-underline-offset: 4px; }
+  .link-hover:hover { text-decoration-line: underline; }
   /* a link in a list of links (the footer's), where an underline on every
      one would be noise: the body colour, the ink on hover */
   .link-quiet { color: var(--text-body); transition: color var(--t-fast) var(--ease-smooth); }
@@ -697,6 +729,15 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
 .kbd.is-pointer, .guide-kbd.is-pointer { border-style: dashed; border-bottom-width: 1px; font-family: var(--font-sans); font-weight: 600; }
 /* a quiet one: a hint beside a control (the bar's ⌘K), not a key to learn */
 .kbd[data-size='sm'] { min-width: 1.5rem; height: 1.4rem; padding: 0 0.35rem; border-color: var(--border); border-bottom-width: 1px; border-radius: min(5px, var(--r-chip)); color: var(--muted); font-size: 0.7rem; font-weight: 400; }
+/* in a world's HUD: the same cap drawn in the HUD's own ink, over glass,
+   so it reads on any world's colours (src/runtime/hud). Also the kit's
+   prompt key and a .hud-cap where a world uses the kit's parts without its
+   frame (Cybertron), so a world sets the colour and never draws a cap of its
+   own. Weighs (0,0,1), like the kit's own rules, so a world's class still
+   wins. A world skins it through variables, never a cap rule of its own:
+   --hud-key-face, --hud-key-weight, --hud-key-border, --hud-key-radius (its
+   ink is the colour it sits in). */
+:where(.hud kbd, kbd.hud-prompt-key, kbd.hud-cap):not(hud-none) { display: inline-block; min-width: 1.4em; padding: 0.05rem 0.35rem; border: var(--hud-key-border, 1px) solid currentColor; border-radius: var(--hud-key-radius, 4px); font: var(--hud-key-weight, 600) 0.7rem/1.4 var(--hud-key-face, var(--font-mono)); text-align: center; }
 
 /* A pill of two to four choices in a track: the view switch, the guide's
    tabs and its keyboard/touch toggle. The one you're on is lifted out of the
@@ -767,6 +808,9 @@ html[data-mode='dark'] .nav-bar { box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.
 .nav-link.is-active { color: var(--text); background: var(--surface-2); }
 .nav-icon { color: var(--muted); }
 .nav-icon:hover { color: var(--text); background: var(--surface-2); }
+/* the settings gear beside the colours: a small turn on hover */
+.settings-gear svg { transition: transform 0.4s var(--ease-out, ease-out); }
+.settings-gear:hover svg { transform: rotate(60deg); }
 /* On a touch screen the bar's small buttons reach 44px tall and 40 wide
    without being drawn bigger: the bar is 52px, and its pills are its look. */
 @media (pointer: coarse) {
@@ -944,6 +988,12 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
    for as long as the page is open (here, the whole page). */
 .page-enter { animation: page-in 0.2s ease-out backwards; }
 @keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
+/* A world's page (one with a world on the runtime, or the universe map)
+   comes in at once: faded in from nothing over a light page's body, it
+   washed white for a moment between the jump's dark and the world's own,
+   and longer when the browser was busy as it came in. The jump, or the
+   world's own fade-in, covers the change instead. */
+.page-enter:has(.world-host, .universe-page) { animation: none; }
 
 .toast { animation: toast-in 3.6s var(--ease-smooth) both; }
 @keyframes toast-in {
@@ -1008,6 +1058,17 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
      it just shows, for as long as it's up */
   .toast { animation: none !important; }
 }
+/* the same, chosen in the settings panel (Motion: Reduced) */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-motion='reduced'] .reveal:not([data-in='true']) { opacity: 1; transform: none; }
+html[data-motion='reduced'] .toast { animation: none !important; }
 
 /* A page scene's first frame fades in over whatever it replaces instead of
    popping (lib/three/useScene marks the box data-gl="on" once a frame has

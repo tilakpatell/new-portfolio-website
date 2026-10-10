@@ -57,6 +57,14 @@
 .role-banner-chip:has(.role-banner-play) { cursor: pointer; }
 
 /* Experience: highlighting one track dims the other roles, without moving anything */
-.exp-hero, .exp-chapter, .exp-tl-row { transition: opacity 0.4s ease; }
-:is(.exp-hero, .exp-chapter, .exp-tl-row)[data-dim] { opacity: 0.3; }
+.exp-hero, .exp-chapter, .exp-tl-row { transition: color 0.4s ease; }
+/* The other track's roles step back by colour, not by fading: their words
+   stay readable (the muted ink is 4.5:1 on every theme), their pictures go
+   grey and quiet. */
+:is(.exp-hero, .exp-chapter, .exp-tl-row)[data-dim] { --text: var(--muted); --text-body: var(--muted); color: var(--muted); }
+:is(.exp-hero, .exp-chapter, .exp-tl-row)[data-dim] :is(img, svg, video, canvas) { opacity: 0.55; filter: grayscale(1); transition: opacity 0.4s ease, filter 0.4s ease; }
+/* the colour that isn't text: the timeline's company bar, the banner and
+   chips, the saber, the bullets' dashes */
+.exp-tl-row[data-dim] span[title],
+:is(.exp-hero, .exp-chapter)[data-dim] :is(.chip-accent, .saber, li > span[aria-hidden]) { opacity: 0.55; filter: grayscale(1); }
 @media (prefers-reduced-motion: reduce) { .exp-hero, .exp-chapter, .exp-tl-row { transition: none; } }

@@ -2,14 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { local, prefersReducedMotion } from '../../lib/hooks';
-import { fmtClock } from './battle';
 import { SCRIPTS } from '../../fun/scripts';
-import { TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
+import { HURT, TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleComputer, trenchStart, zoneAt } from './trench';
 import { capturePointer } from '../../lib/pointer';
+import { createImpacts, impactGroups } from '../../lib/impact';
+import { debugOn, debugPanel } from '../../lib/debugPanel';
 import { use3D } from '../../lib/gpu';
 import { settle } from '../../lib/settle';
 import { sayVoiced } from '../../lib/voiced';
 import { speakerOf } from './voicelines';
+import { LEVEL, LEVELS, TrenchCard, TrenchControls, TrenchTouch } from './TrenchHud';
 import '../../styles/lazy/deathstar.css';
 
 const sfx = () => import('../../lib/sfx');
@@ -26,7 +28,9 @@ const hudFamily = () => {
   const script = SCRIPTS[document.documentElement.dataset.script];
   return script ? `${script.font}, monospace` : '"JetBrains Mono", monospace';
 };
-const play = (name) => sfx().then((s) => s[name]?.());
+const play = (name, voice) => sfx().then((s) => (voice ? s[name]?.(voice) : s[name]?.()));
+// a hit as hard as it was (trench.js's HURT, by the hit law: lib/impact.js)
+const hurtLaw = createImpacts();
 const buzz = (ms) => {
   try {
     navigator.vibrate?.(ms);
@@ -35,8 +39,6 @@ const buzz = (ms) => {
   }
 };
 const BEST = 'tp-trench-best';
-const LEVEL = 'tp-trench-level';
-const LEVELS = Object.keys(TRENCH.levels);
 
 // The trench run, on a 2D canvas (no WebGL, so it plays without a GPU). The
 // rules live in ./trench.js; this draws them and handles the controls.
@@ -204,6 +206,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       if (!dead) setGlState(why);
     };
     glDrop.current = drop;
+    let panel = null;
     setGlState('loading');
     const start = () =>
       import('./Trench3D')
@@ -218,6 +221,8 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             settle(t3.ready).then(() => {
               if (dead || t3.lost) return t3.dispose();
               glRef.current = t3;
+              // ?debug: the feel's numbers and the hit law's
+              if (debugOn()) panel = debugPanel({ title: 'the trench', groups: [...t3.tune(), ...impactGroups(hurtLaw)], id: 'trench' });
               resizeRef.current?.();
               setGlState('on');
             });
@@ -246,6 +251,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     return () => {
       dead = true;
       near?.disconnect();
+      panel?.dispose();
       glRef.current?.dispose();
       glRef.current = null;
     };
@@ -289,12 +295,14 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             fx.current.near = g.t;
             changed = true;
             break;
-          case 'hit':
-            play('hit');
+          case 'hit': {
+            const k = hurtLaw.hit(e.force ?? HURT.crash, 'hit');
+            play('hit', k ? { gain: k.gain, pitch: k.pitch } : null);
             buzz(90);
             message = e.shields === 1 ? 'Shields failing. One more hit.' : e.shields > 1 ? 'Hit. Shields holding.' : message;
             changed = true;
             break;
+          }
           case 'torpedo':
             play('torpedo');
             changed = true;
@@ -1074,6 +1082,17 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     };
   }, [running, fire, switchComputer]);
 
+  // While a run is on, the page knows, so the guide's ? steps out from under
+  // the fire buttons (extras.css); it is back on the title and end cards.
+  useEffect(() => {
+    if (!running) return undefined;
+    const root = document.documentElement;
+    root.dataset.playing = 'trench';
+    return () => {
+      if (root.dataset.playing === 'trench') delete root.dataset.playing;
+    };
+  }, [running]);
+
   // Before a run, Space or Enter on the screen starts one.
   const onKeyDown = (e) => {
     if (running || e.target !== e.currentTarget) return;
@@ -1131,8 +1150,6 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     onContextMenu: (e) => e.preventDefault(),
   };
 
-  const ended = ui.phase === 'won' || ui.phase === 'lost';
-  const bestHere = best[level] ?? 0;
   return (
     <div className="trench">
       <div
@@ -1150,86 +1167,10 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
       >
         {three.on && <canvas ref={glCanvas} className="trench-gl" data-on={glState === 'on' || undefined} aria-hidden="true" />}
         <canvas ref={canvas} className="trench-canvas" />
-        {running && (
-          <div className="trench-touch" onPointerDown={(e) => e.stopPropagation()}>
-            <button type="button" data-trench className="trench-touch-btn" onClick={switchComputer} aria-pressed={!ui.computer} aria-label={ui.computer ? 'Switch off targeting computer' : 'Targeting computer off'}>
-              T<span className="trench-key">Computer</span>
-            </button>
-            <button type="button" data-trench className="trench-touch-btn trench-touch-laser" aria-label="Fire lasers (hold)" {...holdLasers}>
-              Laser<span className="trench-key">Space</span>
-            </button>
-            <button type="button" data-trench className="trench-touch-btn trench-touch-fire" onClick={fire} disabled={ui.torpedoes <= 0} aria-label="Fire torpedo">
-              Torp<span className="trench-key">F</span>
-            </button>
-          </div>
-        )}
-        {ui.phase !== 'running' && ui.phase !== 'winning' && (
-          <div className="trench-overlay">
-            <p className="stretch-semi text-2xl font-semibold text-white">{ui.phase === 'won' ? 'Direct hit. The Death Star is gone.' : ui.phase === 'lost' ? 'Pull up.' : 'Trench run'}</p>
-            <p className="mt-2 max-w-md text-sm text-white/80">
-              {ui.phase === 'ready'
-                ? 'Over the surface first: shoot down the TIE fighters and dodge the towers. Then dive into the trench, thread the catwalks and walls, lose Vader, and put a torpedo in the exhaust port. A torpedo spent in the trench blasts a catwalk, a wall or a turret out of your way, but you only have two. Arrows or W A S D steer (drag on a touch screen), Space or a held click fires the lasers, F or Enter fires a torpedo, T switches off the targeting computer.'
-                : ui.message}
-            </p>
-            {ended && (
-              <p className="mono mt-3 text-sm text-white">
-                Score {ui.score}
-                {ui.newBest ? ' · a new best' : bestHere ? ` · best ${bestHere}` : ''}
-              </p>
-            )}
-            <div className="trench-levels mt-4" role="group" aria-label="Difficulty">
-              {LEVELS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={level === id}
-                  onClick={() => {
-                    setLevel(id);
-                    local.set(LEVEL, id);
-                  }}
-                >
-                  {TRENCH.levels[id].label}
-                  {best[id] ? <small>{best[id]}</small> : null}
-                </button>
-              ))}
-            </div>
-            <button type="button" className="btn btn-primary mt-4" onClick={start}>
-              {ui.phase === 'ready' ? 'Start the run' : 'Fly it again'}
-            </button>
-          </div>
-        )}
+        {running && <TrenchTouch computer={ui.computer} torpedoes={ui.torpedoes} onComputer={switchComputer} onFire={fire} holdLasers={holdLasers} />}
+        {ui.phase !== 'running' && ui.phase !== 'winning' && <TrenchCard ui={ui} best={best} level={level} setLevel={setLevel} onStart={start} />}
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button type="button" data-trench className="btn btn-primary btn-sm hold-btn" disabled={!running} {...holdLasers}>
-          Fire lasers
-        </button>
-        <button type="button" data-trench className="btn btn-primary btn-sm" onClick={fire} disabled={!running || ui.torpedoes <= 0}>
-          Fire torpedo
-        </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={switchComputer} disabled={!running} aria-pressed={!ui.computer}>
-          {ui.computer ? 'Switch off targeting computer' : 'Targeting computer off'}
-        </button>
-        <span className="mono text-xs text-muted">
-          Shields {'■'.repeat(Math.max(0, ui.shields))}
-          {'□'.repeat(Math.max(0, ui.maxShields - ui.shields))} · Torpedoes {ui.torpedoes} · Score {ui.score}
-          {clock != null && ` · Yavin 4 in range in ${fmtClock(clock)}`}
-        </span>
-        <span className="mono min-h-[1.2em] w-full text-sm text-accent" role="status">
-          {running ? ui.message : ''}
-        </span>
-        <span className="flex w-full flex-wrap items-center gap-3 text-xs text-muted">
-          {three.can ? (
-            <button type="button" className="btn btn-ghost btn-sm" aria-pressed={three.on} onClick={() => three.set(three.on ? 'off' : 'on')}>
-              3D graphics: {three.on ? 'on' : 'off'}
-            </button>
-          ) : (
-            <span>Playing in 2D: this browser isn’t giving the page WebGL, which usually means hardware acceleration is off. Turn it on for the 3D trench.</span>
-          )}
-          {glState === 'loading' && <span>Loading the 3D station…</span>}
-          {glState === 'lost' && <span>The graphics chip reset, so this is the 2D version now.</span>}
-          {glState === 'failed' && <span>3D couldn’t start here, so this is the 2D version.</span>}
-        </span>
-      </div>
+      <TrenchControls ui={ui} running={running} clock={clock} three={three} glState={glState} holdLasers={holdLasers} onFire={fire} onComputer={switchComputer} />
     </div>
   );
 }

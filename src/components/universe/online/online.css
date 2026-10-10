@@ -72,7 +72,7 @@
 .universe-online {
   position: absolute;
   z-index: 3;
-  left: 16px;
+  left: var(--hud-edge, 16px);
   bottom: 16px;
   display: flex;
   flex-direction: column;
@@ -128,14 +128,21 @@
   font-weight: 700;
 }
 
+.universe-online-link { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; text-decoration: underline; text-underline-offset: 3px; }
+.universe-online-link:hover { color: var(--text); }
 .universe-online-feed { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
+/* on the map, the notes rise from above the corner's buttons (the nav map,
+   settings and hangar, 68 to 112px up), never over them */
+.universe-online:not([data-floating]) .universe-online-feed { position: absolute; left: 0; bottom: 116px; width: max-content; max-width: min(340px, calc(100vw - 32px)); }
 .universe-online-feed:empty { display: none; }
 .universe-online-note {
   margin: 0;
   padding: 0.35rem 0.75rem;
   border-left: 2px solid var(--muted);
-  border-radius: 8px;
-  background: rgb(6 8 16 / 0.82);
+  /* (the glass is hud.css's too; written here as well, because off the map
+     the floating card loads this sheet alone) */
+  border-radius: 14px;
+  background: rgb(3 4 10 / 0.85);
   color: var(--text);
   font-size: 0.8rem;
   animation: universe-online-in 0.25s ease-out;
@@ -181,8 +188,6 @@
 .universe-online-me b { color: var(--text); font-weight: 600; }
 .universe-online-rename { display: flex; align-items: center; gap: 0.5rem; }
 .universe-online-rename .universe-online-input { margin-top: 0; }
-.universe-online-link { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; text-decoration: underline; text-underline-offset: 3px; }
-.universe-online-link:hover { color: var(--text); }
 .universe-online-link:focus-visible,
 .universe-online-act:focus-visible,
 .universe-online-x:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
@@ -191,6 +196,10 @@
 .universe-online-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent-text); cursor: pointer; }
 .universe-online-check:hover { color: var(--text); }
 .universe-online-check input:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+/* your key kept in this browser or not (identity.js), and a new one */
+.universe-online-identity { margin-top: 0.9rem; }
+.universe-online-remember { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; color: var(--muted); font-size: 0.78rem; }
+.universe-online-renew { display: block; margin-top: 0.5rem; }
 
 .universe-online-list { display: grid; gap: 0.4rem; margin: 0.8rem 0 0; padding: 0; list-style: none; }
 .universe-online-pilot {
@@ -206,6 +215,9 @@
 .universe-online-pilot[data-relation='friend'] { border-color: rgb(143 198 255 / 0.45); }
 .universe-online-pilot[data-relation='foe'] { border-color: rgb(255 106 92 / 0.5); }
 .universe-online-pilot[data-blocked] { opacity: 0.6; }
+/* your allies, first: those saved and away dimmed by colour, their words at --muted */
+.universe-online-allies .universe-online-list { margin-top: 0.4rem; }
+.universe-online-pilot[data-away] .universe-online-who b { color: var(--muted); font-weight: 500; }
 .universe-online-pilot[data-focus] { background: rgb(255 255 255 / 0.05); }
 .universe-online-face { flex: none; width: 32px; height: 32px; border-radius: 50%; background: rgb(255 255 255 / 0.06); }
 .universe-online-who { display: grid; flex: 1; min-width: 0; }
@@ -241,10 +253,14 @@
 @media (pointer: coarse) {
   .universe-online-act { min-height: 40px; }
   .universe-online-pill { min-height: 44px; }
+  .universe-online-identity .universe-online-link,
+  .universe-online-pilot[data-away] .universe-online-link { min-height: 44px; }
 }
 
 @media (max-width: 767px) {
-  .universe-online:not([data-floating]) { left: 12px; bottom: calc(var(--sheet-h) + 12px); max-width: calc(100% - 24px); }
+  .universe-online:not([data-floating]) { left: var(--hud-edge, 12px); bottom: calc(var(--sheet-h) + 12px); max-width: calc(100% - 24px); }
+  /* above the thumbs, the hint and the fly-past pill, which reach s+250 */
+  .universe-online:not([data-floating]) .universe-online-feed { bottom: 250px; }
   /* just the count, clear of the View button */
   .universe-online-full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .universe-online-short { display: inline; }

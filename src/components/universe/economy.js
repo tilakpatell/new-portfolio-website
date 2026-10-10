@@ -2,7 +2,7 @@
 // do on the universe map, in its sectors, in the galaxy or down on its
 // worlds pays into the same credits and experience, and the hangar spends
 // them. It's local-first: credits, xp and what you own live in this
-// browser's storage (runtime/saves.js, `tp-pilot`, version 1), and only the
+// browser's storage (runtime/saves.js, `tp-pilot`, version 2), and only the
 // level goes out on the wire, so no other pilot can make you richer or
 // poorer.
 //
@@ -14,7 +14,11 @@
 // not owned, that each need is met, then the price. What's owned is kept by
 // the item's key (kind, slot and id: 'paint:paint:portal'), since an id alone
 // can be two things ('portal' is a booster and a paint both); an item with
-// no key is kept by its id.
+// no key is kept by its id. checkout buys a list at once or none of it (the
+// shipyard's draft, yardRules.js); sell gives back SELL_BACK of the price of
+// something owned (the yard says what's fitted nowhere). The log keeps the
+// last LOG_MAX credits in and out, { t, kind: 'earn' | 'buy' | 'sell' |
+// 'spend', what, n }, for the yard's record of where they went.
 //
 // The first time the wallet appears, everything fitted on every crew (its
 // parts and paint, its hull's modules and its garage's) is granted as
@@ -23,8 +27,8 @@
 //
 // createEconomy({ saves, achievements, standingOf, rankOf, later, cancel })
 //   → { credits, xp, level, owned, spent, earned, earn(what, n, { side }),
-//   canBuy(item), buy(item), owns(id), grant(ids), record(), on(fn) → off,
-//   flush() }
+//   canBuy(item), buy(item), checkout(items), canSell(item), sell(item), log,
+//   spend(n), owns(id), grant(ids), record(), on(fn) → off, flush() }
 // deedToEarn(deed) → an EARN key or null; earnNote(earned) → { text, level }
 // or null; goodStanding(level) → boolean
 
@@ -36,7 +40,15 @@ import { GARAGE_KEY, HULL_KEY, readHulls } from './shipyard/build';
 import { LEVELS as STANDING_LEVELS } from './standing';
 
 export const PILOT_KEY = 'tp-pilot';
-const VERSION = 1;
+const VERSION = 2; // (1 → 2: the log, empty to start)
+export const SELL_BACK = 0.6; // what a part sold back pays, of its price
+export const LOG_MAX = 30;
+const LOG_KINDS = ['earn', 'buy', 'sell', 'spend'];
+// What selling an item pays back: three fifths of its price, in whole credits.
+export const refundOf = (item) => Math.floor((Number.isInteger(item?.price) && item.price > 0 ? item.price : 0) * SELL_BACK);
+// a v1 save is the same shape, with no log yet (v0 or junk isn't migrated:
+// the shape check below makes it a fresh wallet)
+const migrate = (old, v) => (v === 1 && old && typeof old === 'object' && !Array.isArray(old) ? { ...old, log: [] } : old);
 const SAVE_AFTER = 500; // ms: a burst of kills is one write
 
 // what each deed pays: { credits, xp } (warPoints: per point)
@@ -146,6 +158,12 @@ const readTally = (raw) => {
   for (const [what, n] of Object.entries(raw)) if (known(EARN, what) && count(n)) out[what] = count(n);
   return out;
 };
+// A log from storage: whole entries of the kinds there are, the last LOG_MAX.
+const readLog = (raw) =>
+  (Array.isArray(raw) ? raw : [])
+    .filter((e) => isObject(e) && LOG_KINDS.includes(e.kind) && typeof e.what === 'string' && Number.isFinite(e.t) && Number.isInteger(e.n) && e.n >= 0)
+    .map(({ t, kind, what, n }) => ({ t, kind, what, n }))
+    .slice(-LOG_MAX);
 const readBySide = (raw) => {
   const out = {};
   if (!isObject(raw)) return out;
@@ -179,8 +197,9 @@ export function createEconomy({
   rankOf = () => null,
   later = (fn, ms) => setTimeout(fn, ms),
   cancel = (h) => clearTimeout(h),
+  now = () => Date.now(),
 } = {}) {
-  saves?.register({ key: PILOT_KEY, version: VERSION });
+  saves?.register({ key: PILOT_KEY, version: VERSION, migrate });
   const saved = saves?.get(PILOT_KEY, null);
   const good = isObject(saved);
   let credits = good ? count(saved.credits) : 0;
@@ -190,6 +209,11 @@ export function createEconomy({
   const owned = new Set(good && Array.isArray(saved.owned) ? saved.owned.filter(isId) : []);
   const tally = good ? readTally(saved.tally) : {};
   const bySide = good ? readBySide(saved.bySide) : {};
+  const log = good ? readLog(saved.log) : [];
+  const note = (kind, what, n) => {
+    log.push({ t: now(), kind, what, n });
+    if (log.length > LOG_MAX) log.splice(0, log.length - LOG_MAX);
+  };
   const listeners = new Set();
   let pending = null;
 
@@ -203,6 +227,7 @@ export function createEconomy({
       owned: [...owned],
       tally: { ...tally },
       bySide: readBySide(bySide),
+      log: log.map((e) => ({ ...e })),
     });
   };
   const flush = () => {
@@ -230,6 +255,7 @@ export function createEconomy({
       wins: tally.warWin ?? 0,
       quests: tally.questDone ?? 0,
       bySide: readBySide(bySide),
+      log: log.map((e) => ({ ...e })),
     };
   }
   const owns = (id) => id === STOCK || owned.has(id);
@@ -265,6 +291,43 @@ export function createEconomy({
     const locked = lock(item.needs);
     if (locked) return { ok: false, why: `locked:${locked}` };
     if (credits < item.price) return { ok: false, why: 'credits' };
+    return { ok: true, why: null };
+  };
+
+  // A list bought at once, or none of it: every item checked first (the
+  // first that can't be bought names itself and why, and nothing changes),
+  // then all bought, one save and one change. Two of the same in the list
+  // is the second already owned; their prices together must be affordable.
+  const checkout = (items) => {
+    if (!Array.isArray(items)) return { ok: false, why: 'invalid', item: null, total: 0 };
+    const total = items.reduce((n, item) => n + (isItem(item) ? item.price : 0), 0);
+    const seen = new Set();
+    let running = 0;
+    for (const item of items) {
+      const can = canBuy(item);
+      if (!can.ok) return { ok: false, why: can.why, item, total };
+      if (seen.has(idOf(item))) return { ok: false, why: 'owned', item, total };
+      seen.add(idOf(item));
+      running += item.price;
+      if (running > credits) return { ok: false, why: 'credits', item, total };
+    }
+    if (!items.length) return { ok: true, why: null, item: null, total: 0 };
+    for (const item of items) {
+      credits -= item.price;
+      spent += item.price;
+      owned.add(idOf(item));
+      note('buy', idOf(item), item.price);
+    }
+    changed();
+    return { ok: true, why: null, item: null, total };
+  };
+
+  // Selling back: only what's owned and isn't stock (the yard checks it's
+  // fitted nowhere). The refund isn't earned (it was spent once already).
+  const canSell = (item) => {
+    if (!isItem(item)) return { ok: false, why: 'invalid' };
+    if (item.stock === true || idOf(item) === STOCK) return { ok: false, why: 'stock' };
+    if (!owned.has(idOf(item))) return { ok: false, why: 'notOwned' };
     return { ok: true, why: null };
   };
 
@@ -314,6 +377,7 @@ export function createEconomy({
       earned += got.credits;
       xp += got.xp;
       tally[what] = (tally[what] ?? 0) + k;
+      note('earn', what, got.credits);
       if (known(SIDE_RATES, side)) {
         bySide[side] ??= {};
         bySide[side][what] = (bySide[side][what] ?? 0) + k;
@@ -323,11 +387,29 @@ export function createEconomy({
       return { ...got, levelUp: now > was ? now : null };
     },
     canBuy,
-    buy(item) {
-      if (!canBuy(item).ok) return false;
-      credits -= item.price;
-      spent += item.price;
-      owned.add(idOf(item));
+    buy: (item) => checkout([item]).ok,
+    checkout,
+    canSell,
+    sell(item) {
+      if (!canSell(item).ok) return false;
+      const back = refundOf(item);
+      owned.delete(idOf(item));
+      credits += back;
+      note('sell', idOf(item), back);
+      changed();
+      return back;
+    },
+    // (a copy, newest last)
+    get log() {
+      return log.map((e) => ({ ...e }));
+    },
+    // credits spent on something that isn't kept (a bounty paid off,
+    // wanted.js): whole credits, and only what you have
+    spend(n) {
+      if (!Number.isInteger(n) || n <= 0 || n > credits) return false;
+      credits -= n;
+      spent += n;
+      note('spend', 'credits', n);
       changed();
       return true;
     },

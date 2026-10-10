@@ -23,6 +23,7 @@ import { jumpStyle } from './components/jumps/styles';
 import WorldGate from './components/worlds/WorldGate';
 import Ambience from './components/ambience/Ambience';
 import { categoryAt, isFeedMove } from './components/feed/feed';
+import SettingsHost from './components/settings/SettingsHost';
 
 // Feed.jsx, named in full: feed.js sits beside it, and a case-blind disk
 // (Windows, macOS) would pick that
@@ -48,7 +49,9 @@ const RmPlanet = lazy(() => import('./pages/RmPlanet'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
 const Minecraft = lazy(() => import('./pages/Minecraft'));
+const Fly = lazy(() => import('./pages/Fly')); // planet flight (scripts/flight-island.mjs removes this row)
 const Earth = lazy(() => import('./pages/Earth'));
+const Battlefront = lazy(() => import('./pages/Battlefront'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
 const Worlds = lazy(() => import('./pages/Worlds'));
@@ -101,14 +104,29 @@ function ScrollToTop() {
 // the same, or, by the style in its detail (components/jumps/styles.js), a
 // crew's own way across the universe map: Rick's portal, Walt and Jesse's
 // Blue Sky. With reduced motion every one of them is the site's crossfade.
+// A page that changes under the jump says what to do once it's dark (the
+// event's onPeak): it's called at the jump's flash, or at its end, or when
+// another jump takes its place, whichever is first, and the event is marked
+// `taken` so the page knows it will be.
 function Lightspeed() {
   const { unlock } = useAchievements();
   const [on, setOn] = useState(0);
   const [style, setStyle] = useState('hyper');
   const seq = useRef([]);
+  const waiting = useRef(null); // the page's onPeak, till it's called
+  const peak = useCallback(() => {
+    const fn = waiting.current;
+    waiting.current = null;
+    fn?.();
+  }, []);
   useEffect(() => {
     const jump = (e) => {
       audioContext(); // inside the key press, so the sound may play
+      peak(); // (one jump taking another's place: whoever waited on that one goes now)
+      if (typeof e?.detail?.onPeak === 'function') {
+        waiting.current = e.detail.onPeak;
+        e.detail.taken = true;
+      }
       setStyle(prefersReducedMotion() ? 'hyper' : jumpStyle(e?.detail?.style));
       setOn(Date.now());
     };
@@ -128,12 +146,20 @@ function Lightspeed() {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('tp:hyperspace', jump);
     };
-  }, [unlock]);
+  }, [unlock, peak]);
   if (!on) return null;
   const Jump = JUMPS[style] ?? Hyperspace;
   return (
     <Suspense fallback={null}>
-      <Jump key={on} sound onDone={() => setOn(0)} />
+      <Jump
+        key={on}
+        sound
+        onPeak={peak}
+        onDone={() => {
+          peak();
+          setOn(0);
+        }}
+      />
     </Suspense>
   );
 }
@@ -175,7 +201,8 @@ function IntroJump() {
       import('./components/experience/OpeningCrawl');
       import('./pages/Front');
       import('./components/universe/scene');
-      import('./components/cockpit/load').then((m) => m.preloadCockpit());
+      // (the crew, the biggest part, once the crawl's begun: the welcome may yet be skipped)
+      import('./components/cockpit/load').then((m) => m.preloadCockpit('falcon', { crew: stage === 'crawl' }));
     }
   }, [stage]);
   useEffect(() => {
@@ -308,25 +335,59 @@ const pageKey = (pathname) =>
           ? '/feed'
           : pathname;
 
+// the core pages, fetched ahead so a click on one opens at once
+const fetchPages = () => {
+  import('./components/feed/Feed.jsx');
+  import('./pages/Home');
+  import('./pages/Experience');
+  import('./pages/Projects');
+  import('./pages/Resume');
+  import('./pages/Contact');
+  import('./pages/Travel');
+  import('./components/Hyperspace');
+  // so the first ⌘K opens at once, instead of showing nothing while it loads
+  import('./components/CommandPalette');
+};
+// (at the front door, after this long if nothing's asked for them sooner)
+const PAGES_LATER_MS = 20000;
+
 function Shell() {
   const { pathname } = useLocation();
   const page = pageKey(pathname);
+  const firstPage = useRef(page);
 
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
-    const id = idle(() => {
-      import('./components/feed/Feed.jsx');
-      import('./pages/Home');
-      import('./pages/Experience');
-      import('./pages/Projects');
-      import('./pages/Resume');
-      import('./pages/Contact');
-      import('./pages/Travel');
-      import('./components/Hyperspace');
-      // so the first ⌘K opens at once, instead of showing nothing while it loads
-      import('./components/CommandPalette');
-    });
-    return () => (window.cancelIdleCallback || clearTimeout)(id);
+    const cancelIdle = window.cancelIdleCallback || clearTimeout;
+    if (firstPage.current !== '/universe') {
+      const id = idle(fetchPages);
+      return () => cancelIdle(id);
+    }
+    // At the front door the universe map's own code, maps and models come
+    // first (the page is idle in between, so the idle callback came while
+    // they were still loading): the pages are fetched once you reach for
+    // the nav or ⌘K, or a while later
+    let id = null;
+    const go = () => {
+      stop();
+      id = idle(fetchPages);
+    };
+    const key = (e) => (e.metaKey || e.ctrlKey) && go();
+    const reach = (e) => e.target.closest?.('header, nav, a[href]') && go();
+    const timer = setTimeout(go, PAGES_LATER_MS);
+    const stop = () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', key);
+      document.removeEventListener('pointerover', reach);
+      document.removeEventListener('focusin', reach);
+    };
+    window.addEventListener('keydown', key);
+    document.addEventListener('pointerover', reach);
+    document.addEventListener('focusin', reach);
+    return () => {
+      stop();
+      if (id != null) cancelIdle(id);
+    };
   }, []);
 
   return (
@@ -362,6 +423,7 @@ function Shell() {
                 <Route path="/galaxy/:system?" element={<Galaxy />} />
                 <Route path="/galaxy/:system/mission" element={<GalaxyMission />} />
                 <Route path="/galaxy/:system/surface" element={<GalaxySurface />} />
+                <Route path="/fly/:planet?" element={<Fly />} /> {/* planet flight */}
                 <Route path="/music" element={<Music />} />
                 <Route path="/middle-earth/:place?" element={<MiddleEarth />} />
                 <Route path="/scranton" element={<Scranton />} />
@@ -375,6 +437,7 @@ function Shell() {
                 <Route path="/dot-matrix/64" element={<Mario64 />} />
                 <Route path="/dot-matrix/minecraft" element={<Minecraft />} />
                 <Route path="/earth" element={<Earth />} />
+                <Route path="/battlefront/:level?/:mode?" element={<Battlefront />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
                 <Route path="/worlds" element={<Worlds />} />
@@ -386,12 +449,13 @@ function Shell() {
           </Suspense>
         </ErrorBoundary>
       </main>
-      {pathname !== '/terminal' && pathname !== '/deathstar' && pathname !== '/deathstar/inside' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && <Footer />}
+      {pathname !== '/terminal' && pathname !== '/deathstar' && pathname !== '/deathstar/inside' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && !pathname.startsWith('/battlefront') && <Footer />}
       <ScrollSaber />
       <Guide />
       <TourHost />
       <Lightspeed />
       <PaletteHost />
+      <SettingsHost />
       <ErrorBoundary fallback={<IntroGone />}>
         <IntroJump />
       </ErrorBoundary>

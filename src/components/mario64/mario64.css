@@ -23,7 +23,7 @@
 .m64[data-mode='overlay'] {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: var(--z-place); /* (every world's inner place: the HUD kit's one height, over the nav and the "?") */
   background: #000;
 }
 .m64-stage {
@@ -310,7 +310,6 @@
   color: #fff;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(6px);
 }
 .m64-chip[aria-pressed='true'] {
   background: var(--m64-gold);
@@ -348,8 +347,7 @@
   padding: 1.4rem 1.4rem 1.2rem;
   gap: 0.8rem;
   border-radius: 22px;
-  background: var(--m64-panel);
-  backdrop-filter: blur(14px);
+  background: var(--m64-panel); /* (no blur: the castle under it is redrawn every frame) */
   box-shadow:
     0 0 0 2px rgba(255, 210, 58, 0.55),
     0 20px 60px rgba(0, 0, 0, 0.5);
@@ -397,26 +395,44 @@
   flex-wrap: wrap;
   justify-content: center;
 }
+/* the guide's rows (KeyTable), in the pause screen's own type: the keys on
+   the left as the guide draws them, what they do beside them */
 .m64-controls {
-  margin: 0;
-  display: grid;
-  gap: 0.3rem;
+  width: 100%;
+  border-collapse: collapse;
   font-family: system-ui, sans-serif;
   font-size: 0.85rem;
   text-align: left;
-  width: 100%;
 }
-.m64-controls div {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
+.m64-controls th,
+.m64-controls td {
+  padding: 0.2rem 0;
+  vertical-align: top;
 }
-.m64-controls dt {
+.m64-controls th {
+  padding-right: 1rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.m64-controls .guide-keyset {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+.m64-controls .guide-or {
+  color: inherit; /* (the site's muted grey is lost on the dark panel) */
   opacity: 0.75;
 }
-.m64-controls dd {
+/* (the guide's keys, the house cap, tinted to the panel through its tokens) */
+.m64-controls { --border-strong: rgba(255, 255, 255, 0.45); --surface-2: rgba(255, 255, 255, 0.12); --text: #fff; }
+.m64-controls-pad {
   margin: 0;
-  text-align: right;
+  font-family: system-ui, sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-align: left;
+  opacity: 0.85;
 }
 
 .m64-dialog {
@@ -520,8 +536,11 @@
   height: 0;
   z-index: 4;
 }
+/* (the HUD kit's stick: its knob moves by --sx/--sy; Mario's ring, knob and
+   sizes are its own) */
 .m64-stick {
   position: absolute;
+  border: 0;
   left: max(18px, env(safe-area-inset-left));
   bottom: max(22px, env(safe-area-inset-bottom));
   width: 128px;
@@ -541,6 +560,9 @@
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff, #c9c9d6);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  /* (the kit moves a knob 26 px at full tilt; Mario's bigger knob went 34,
+     to the ring's edge, as it did before the kit) */
+  transform: translate(calc(var(--sx, 0px) * 34 / 26), calc(var(--sy, 0px) * 34 / 26));
 }
 .m64-abz {
   position: absolute;
@@ -549,10 +571,15 @@
   width: 170px;
   height: 150px;
 }
+/* (the HUD kit's touch buttons, in Mario's own sizes, colours and glyphs) */
 .m64-key {
   position: absolute;
   display: grid;
   place-content: center;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
   width: 62px;
   height: 62px;
   border-radius: 50%;
@@ -603,6 +630,13 @@
   font-size: 1.2rem;
   background: rgba(255, 210, 58, 0.85);
   color: #2a1a00;
+}
+/* On the page the site's "?" sits in the bottom right corner (right 16,
+   42 wide): the A/B/Z cluster and the camera keys over it keep clear of it,
+   at the same bottom, as every world's thumbs do (the HUD kit's
+   --guide-reserve). Over the island the overlay covers the "?". */
+.m64[data-mode='page'] :is(.m64-abz, .m64-cam) {
+  right: calc(var(--guide-reserve) + env(safe-area-inset-right, 0px));
 }
 .m64-pause-btn {
   position: absolute;

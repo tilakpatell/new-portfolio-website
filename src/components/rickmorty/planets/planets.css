@@ -1,0 +1,77 @@
+/* The Rick and Morty planets' HUD (./RmSurface.jsx): the kit's parts in the
+   show's portal green over dark glass. The galaxy's surface.css draws the
+   stage, the compass and the landing's title; this only skins the kit. */
+
+.rm-hud {
+  --hud-accent: #8dff5a;
+  --hud-accent-ink: #0b1a06;
+  --hud-glass: rgba(6, 12, 8, 0.8);
+  --hud-glass-hi: rgba(6, 14, 8, 0.92);
+  --hud-line: rgba(141, 255, 90, 0.28);
+  --hud-bubble: #f4ffe9;
+  --hud-bubble-ink: #10200a;
+  --hud-bubble-name: #2f7a12;
+  /* (the show's type for the titles, as the Citadel and C-137's world.css set theirs) */
+  --hud-title-face: 'Luckiest Guy', var(--font-sans);
+  --hud-muted: #c6dcb8;
+  --hud-border: 1px solid var(--hud-line);
+}
+
+.rm-hud-world {
+  margin: 0;
+  font: 400 0.95rem/1.1 var(--hud-title-face);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hud-accent);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+.rm-hud-place {
+  margin: 0.15rem 0 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8);
+}
+
+/* (the galaxy's scene doesn't follow a speaker with the bubble: it sits
+   over the foot, in the middle, for as long as the line is up) */
+.rm-hud .rm-talk {
+  left: 50%;
+  top: auto;
+  bottom: calc(var(--hud-foot) + 4.5rem);
+  opacity: 1;
+}
+
+.rm-others {
+  position: absolute;
+  right: var(--hud-pad-r);
+  top: var(--hud-under);
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--hud-radius);
+  background: var(--hud-glass);
+  font-size: 0.75rem;
+}
+
+.rm-hud .rm-exit {
+  pointer-events: auto;
+}
+
+/* (the site's bar stays over the planet, as on the galaxy's surface: the
+   top row starts under it) */
+.rm-hud .hud-top {
+  top: calc(var(--nav-h, 64px) + 4px);
+}
+/* (the landing's title has the screen to itself: the HUD comes in after) */
+.rm-surface[data-phase='landing'] .rm-hud {
+  opacity: 0;
+}
+.rm-surface .rm-hud {
+  transition: opacity 0.8s;
+}
+
+/* (the landing's title in the show's type and green, over the galaxy's) */
+.rm-surface .surface-title-world {
+  font-family: 'Luckiest Guy', var(--font-sans);
+  letter-spacing: 0.04em;
+  color: #8dff5a;
+}

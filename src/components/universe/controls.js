@@ -9,8 +9,13 @@
 // so it's tested in Node; FlightSettings.jsx shows them and scene.js reads
 // them each frame.
 
+import { DEFAULT as DEFAULT_DIFFICULTY, LEVELS } from './difficulty';
+
 export const CONTROLS_KEY = 'tp-universe-controls';
 export const STICK = 70; // px of drag for full stick, as it comes
+// of the stick's length, each way: a hand resting on the screen or a mouse
+// that wobbles as it's pressed flies straight (the touch stick's own dead zone)
+export const DEAD = 0.1;
 
 // the sliders: their range and step, and what they're called
 export const CONTROLS = {
@@ -25,9 +30,13 @@ export const CONTROLS = {
 };
 export const DRAG_UP = ['auto', 'pitch', 'speed'];
 export const AD = ['roll', 'turn'];
-export const DEFAULTS = { turn: 1, pitch: 1, roll: 1, level: 1, drag: 1, assist: 1, track: 1, camera: 1, invert: false, dragUp: 'auto', ad: 'roll' };
+// how hard the fight is (difficulty.js): the hunters' skill, how hard they hit, and the law's search
+export const DIFFICULTIES = LEVELS;
+export const DEFAULTS = { turn: 1, pitch: 1, roll: 1, level: 1, drag: 1, assist: 1, track: 1, camera: 1, invert: false, dragUp: 'auto', ad: 'roll', difficulty: DEFAULT_DIFFICULTY };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+// inside the dead zone nothing; past it rescaled, so the stick's length is still full
+const dead = (v) => (Math.abs(v) <= DEAD ? 0 : (v - Math.sign(v) * DEAD) / (1 - DEAD));
 
 // Whatever was kept (or nothing), as settings that can be used: numbers
 // held inside their sliders, anything unreadable back as it comes.
@@ -38,6 +47,7 @@ export function readControls(raw) {
   if (typeof raw.invert === 'boolean') c.invert = raw.invert;
   if (DRAG_UP.includes(raw.dragUp)) c.dragUp = raw.dragUp;
   if (AD.includes(raw.ad)) c.ad = raw.ad;
+  if (LEVELS.includes(raw.difficulty)) c.difficulty = raw.difficulty;
   return c;
 }
 
@@ -53,8 +63,8 @@ export const dragSteers = ({ fine = globalThis.matchMedia?.('(pointer: fine)').m
 // or works the throttle (a touch screen), unless the settings say which.
 export function stickInput(dx, dy, c, pointer) {
   const full = STICK / (c.drag || 1);
-  const turn = clamp(dx / full, -1, 1);
-  const up = clamp(-dy / full, -1, 1);
+  const turn = dead(clamp(dx / full, -1, 1));
+  const up = dead(clamp(-dy / full, -1, 1));
   const pitch = c.dragUp === 'pitch' || (c.dragUp !== 'speed' && pointer === 'mouse');
   if (pitch) return { turn, throttle: 0, climb: up * (c.invert ? -1 : 1), roll: 0 };
   return { turn, throttle: up, climb: 0, roll: 0 };

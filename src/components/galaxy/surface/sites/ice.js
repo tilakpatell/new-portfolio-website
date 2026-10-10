@@ -9,18 +9,47 @@ const loop = ([cx, cz], [rx, rz], n = 10) =>
     return [Math.round(cx + Math.cos(a) * rx), Math.round(cz + Math.sin(a) * rz)];
   });
 
-// Echo Base, and a spot in its own frame (x across its mouth, z out of
-// it) put in the world's, for who's about in it
+// Echo Base as the site built it (the flight's planet still builds it here;
+// on the surface the game's hangar is the base)
 const ECHO = { at: [-150, 200], yaw: 2.5 };
-const echo = ([x, z]) => [Math.round((ECHO.at[0] + x * Math.cos(ECHO.yaw) + z * Math.sin(ECHO.yaw)) * 10) / 10, Math.round((ECHO.at[1] - x * Math.sin(ECHO.yaw) + z * Math.cos(ECHO.yaw)) * 10) / 10];
+
+// the way in on the surface: the game's own hangar, its west mouth 30 m
+// south of the landing, opening north (lane L's level pack); and a spot in
+// its frame (x across the mouth, z out of it), for the base's
+// people, who stand about the way in
+const MOUTH = { at: [-20, -30], yaw: 0, door: [-20, -32], back: [-20, -26] };
+const mouth = ([x, z]) => [Math.round((MOUTH.at[0] + x * Math.cos(MOUTH.yaw) + z * Math.sin(MOUTH.yaw)) * 10) / 10, Math.round((MOUTH.at[1] - x * Math.sin(MOUTH.yaw) + z * Math.cos(MOUTH.yaw)) * 10) / 10];
 
 // the trench line, the same
 const TRENCH = [100, 370];
 
+// the wampa's cave, and a spot in its own frame put in the world's (as
+// siteFrom turns a place's things)
+const CAVE = { at: [-380, -280], yaw: 0.9 };
+const cave = ([x, z]) => [Math.round((CAVE.at[0] + x * Math.cos(CAVE.yaw) + z * Math.sin(CAVE.yaw)) * 10) / 10, Math.round((CAVE.at[1] - x * Math.sin(CAVE.yaw) + z * Math.cos(CAVE.yaw)) * 10) / 10];
+
 export const SITES = {
   hoth: {
+    // drawn from the game's level (/models/galaxy/bf2017/levels/hoth/level.json,
+    // by scripts/bf2017-level.mjs; surface/level/): Echo Base, the trenches,
+    // the rocks and the ridges as the game placed them. A thing marked `game`
+    // is the game's too: the flight's planet still builds it, the surface
+    // leaves it to the level
+    level: 'hoth',
     place: 'The ice fields outside Echo Base',
     line: 'Ice to the horizon, wind off the glaciers, and colder every night.',
+    // what its surfaces are, as the 2017 game's material grid for Hoth has
+    // them (lib/physics/materials.js): until the level's own collision tags
+    // its shapes, the ground is snow (28), a wall metal (14), a rock rock
+    // under snow (91); by hand, src/data/bf2017/physics/NOTES.md
+    materials: { level: 'hoth_01', ground: 28, box: 14, circle: 91 },
+    // (every one of them a model, never one built in code: surface/cast.js;
+    // whoever holds Hoth, their soldiers in snow kit)
+    cast: 'models',
+    uniforms: { stormtrooper: 'snowtrooper', rebel: 'hothtrooper' },
+    // lit as the game lights Hoth_01 (src/data/bf2017/light/hoth.json,
+    // gameLit.js): its sun, sky, bounce, fog, probe and grade over these
+    gameLight: 'hoth',
     sky: {
       zenith: '#6f98c8',
       horizon: '#e4ecf4',
@@ -42,7 +71,11 @@ export const SITES = {
     ground: { detail: 'snow', detailLook: { color: 0.5, normal: 0.6 },
       seed: 7,
       wind: 0.6,
-      layers: [
+      // the game's own ground: its heightmaps, 0 at the landing by the hangar
+      layers: [{ type: 'image', pack: 'hoth' }],
+      // (the land the flight's planet sums for Hoth, which has no heightmap
+      // yet: the site's own, as it was)
+      flight: [
         { type: 'swell', scale: 520, height: 6 },
         { type: 'hills', scale: 300, height: 14 },
         { type: 'dunes', scale: 36, height: 1.1, wind: 0.6 },
@@ -88,8 +121,8 @@ export const SITES = {
       {
         id: 'echo',
         name: 'Echo Base',
-        door: { at: echo([-12, -28.2]), r: 2.4, prompt: 'Go into the base' },
-        back: echo([-12, -24]),
+        door: { at: MOUTH.door, r: 2.4, prompt: 'Go into the base' },
+        back: MOUTH.back,
         inside: {
           build: 'echoinside',
           spawn: ECHO_BASE.spawn,
@@ -116,6 +149,9 @@ export const SITES = {
           { kind: 'rebel', at: [21.5, -3.6], still: true, face: 1.2, name: 'Medic', says: ['He’s in the bacta tank. Give it a few hours. He’ll be fine.', 'Frostbite, mostly. And a wampa. Mostly the wampa.'] },
           { kind: 'tauntaun', n: 2, at: [-3, -26], spread: 2, roam: 3, speed: 0.6, name: 'Tauntaun', says: ['(It snorts, and steams.)'] },
           { kind: 'hothtrooper', at: [3, -20], roam: 4, speed: 0.8, name: 'Tauntaun handler', says: ['They don’t like the cold any more than we do. Worse at night.'] },
+          // (the game's own droids about the base: a treadwell at the repairs, a gonk at the power)
+          { kind: 'treadwell', at: [24, -6], roam: 3, speed: 0.4, name: 'A treadwell droid', says: ['(Its arms whirr. It is fixing something, or taking it apart.)'] },
+          { kind: 'gonk', at: [-24, 6], roam: 2, speed: 0.2, name: 'A power droid', says: ['Gonk.', 'Gonk. Gonk.'] },
         ],
       },
     ],
@@ -126,7 +162,7 @@ export const SITES = {
         at: ECHO.at,
         yaw: ECHO.yaw,
         r: 60,
-        flat: { r: 64, edge: 30 },
+        flat: { r: 64, edge: 30, game: true },
         about: 'The Rebellion’s hidden base, cut into the glacier: hangars for the X-wings and snowspeeders, pens for the tauntauns, and a shield to keep the Empire’s guns out. Until a probe droid found it.',
         lines: {
           xwing: [['luke', 'Echo Base. We were all crammed in there, waiting for the Empire to find us.'], ['r2', '(A cheerful beep, then a worried one.)']],
@@ -135,23 +171,25 @@ export const SITES = {
           rv: [['jesse', 'They live in an ice cave, yo. On purpose.'], ['walt', 'Remote. Defensible. I respect it.']],
         },
         things: [
-          { kind: 'echobase', at: [0, 30] },
+          // (the game's hangar and what stands in its mouths: the level
+          // draws them on the surface; the flight's planet builds these)
+          { game: true, kind: 'echobase', at: [0, 30] },
           // in the hangar
-          { kind: 'parkedxwing', at: [-9, 8] },
-          { kind: 'parkedxwing', at: [8, -8], yaw: -0.15, opts: { stripe: '#c8602a' } },
-          { kind: 'snowspeeder', at: [-12, -14], yaw: 0.5 },
-          { kind: 'snowspeeder', at: [11, 18], yaw: -0.3 },
-          { kind: 'crates', at: [-6, -24], opts: { color: '#8a929a' } },
-          { kind: 'crates', at: [2, -25], opts: { color: '#6a6458' } },
+          { game: true, kind: 'parkedxwing', at: [-9, 8] },
+          { game: true, kind: 'parkedxwing', at: [8, -8], yaw: -0.15, opts: { stripe: '#c8602a' } },
+          { game: true, kind: 'snowspeeder', at: [-12, -14], yaw: 0.5 },
+          { game: true, kind: 'snowspeeder', at: [11, 18], yaw: -0.3 },
+          { game: true, kind: 'crates', at: [-6, -24], opts: { color: '#8a929a' } },
+          { game: true, kind: 'crates', at: [2, -25], opts: { color: '#6a6458' } },
           // lined up outside, ready to go
-          { kind: 'snowspeeder', at: [-10, 42] },
-          { kind: 'snowspeeder', at: [0, 44] },
-          { kind: 'snowspeeder', at: [10, 42] },
-          { kind: 'lamp', at: [-24, 33], opts: { h: 5, light: '#ffe2b0' } },
-          { kind: 'lamp', at: [24, 33], opts: { h: 5, light: '#ffe2b0' } },
-          { kind: 'turret', at: [-30, 44], yaw: -0.2 },
-          { kind: 'turret', at: [30, 44], yaw: 0.2 },
-          { kind: 'tauntaunpen', at: [-44, 54], yaw: Math.PI - 0.3 },
+          { game: true, kind: 'snowspeeder', at: [-10, 42] },
+          { game: true, kind: 'snowspeeder', at: [0, 44] },
+          { game: true, kind: 'snowspeeder', at: [10, 42] },
+          { game: true, kind: 'lamp', at: [-24, 33], opts: { h: 5, light: '#ffe2b0' } },
+          { game: true, kind: 'lamp', at: [24, 33], opts: { h: 5, light: '#ffe2b0' } },
+          { game: true, kind: 'turret', at: [-30, 44], yaw: -0.2 },
+          { game: true, kind: 'turret', at: [30, 44], yaw: 0.2 },
+          { game: true, kind: 'tauntaunpen', at: [-44, 54], yaw: Math.PI - 0.3 },
         ],
       },
       {
@@ -159,7 +197,7 @@ export const SITES = {
         name: 'The ion cannon',
         at: [-30, 340],
         r: 40,
-        flat: { r: 34 },
+        flat: { r: 34, game: true },
         about: 'The v-150 Planet Defender. One shot knocks out a Star Destroyer’s systems long enough for a transport to slip past the blockade, and it fired until the last of them was away.',
         lines: {
           xwing: [['luke', 'The first transport is away! That thing gave every one of them a chance.'], ['r2', '(An impressed whistle.)']],
@@ -181,7 +219,7 @@ export const SITES = {
         name: 'The shield generator',
         at: [90, 240],
         r: 40,
-        flat: { r: 32 },
+        flat: { r: 32, game: true },
         about: 'The power generator for Echo Base’s energy shield, strong enough to turn any bombardment. So the Empire came on foot, and General Veers’ walkers made it their target.',
         lines: {
           xwing: [['luke', 'If the walkers reach the generator, the shield’s down and the base is open.'], ['r2', '(A worried warble.)']],
@@ -202,7 +240,7 @@ export const SITES = {
         name: 'The trenches',
         at: TRENCH,
         r: 50,
-        flat: { r: 58 },
+        flat: { r: 58, game: true },
         about: 'Where the Rebel troopers dug in across the ice field with their trench guns, to hold the walkers back long enough for the transports to get away.',
         lines: {
           xwing: [['luke', 'Rogue Group, use your harpoons and tow cables. Go for the legs.'], ['r2', '(A determined toot.)']],
@@ -263,8 +301,8 @@ export const SITES = {
       {
         id: 'wampa',
         name: 'The wampa’s cave',
-        at: [-380, -280],
-        yaw: 0.9,
+        at: CAVE.at,
+        yaw: CAVE.yaw,
         r: 34,
         flat: { r: 22, edge: 18 },
         about: 'Where a wampa dragged Luke Skywalker after it brought down his tauntaun: hung upside down from the ice, he called his lightsaber out of the snow and into his hand.',
@@ -291,6 +329,8 @@ export const SITES = {
         },
         things: [
           { kind: 'hanshelter', at: [0, 0], yaw: 2.6 },
+          // (his tauntaun, on its side beside the shelter)
+          { kind: 'tauntaun', at: [-4.5, -1.4], yaw: 3.0, roll: 1.5, y: 0.4, solid: { r: 1.3 } },
           // the snowspeeder that found them at dawn
           { kind: 'snowspeeder', at: [10, -8], yaw: 1.9 },
         ],
@@ -315,12 +355,8 @@ export const SITES = {
       { kind: 'crates', at: [-252, 52], opts: { color: '#8a929a' } },
       { kind: 'crates', at: [-256, 92], opts: { color: '#6a6458' } },
       // Rogue Group, flying round over the battlefield
-      { kind: 'speederflight', at: [100, 440], solid: false, opts: { r: 170, h: 36, squash: 0.55 } },
-      { kind: 'speederflight', at: [-40, 120], solid: false, opts: { r: 120, h: 48, n: 2, speed: 0.08, squash: 0.8 } },
-      // more walkers, far out on the plain, coming in
-      { kind: 'atatfar', at: [-260, 780], yaw: Math.PI + 0.3, model: false, solid: false },
-      { kind: 'atatfar', at: [140, 880], yaw: Math.PI, model: false, solid: false },
-      { kind: 'atatfar', at: [470, 760], yaw: Math.PI - 0.4, model: false, solid: false },
+      { kind: 'speederflight', at: [100, 440], solid: false, opts: { r: 170, h: 36, squash: 0.55, built: false } },
+      { kind: 'speederflight', at: [-40, 120], solid: false, opts: { r: 120, h: 48, n: 2, speed: 0.08, squash: 0.8, built: false } },
       // the patrol markers: out from the base to the wampas' hills, and on
       // round to where Han found Luke
       { kind: 'lamp', at: [-170, 50], opts: { h: 3, light: '#ff8a5a' } },
@@ -329,15 +365,17 @@ export const SITES = {
       { kind: 'lamp', at: [-220, -350], opts: { h: 3, light: '#ff8a5a' } },
       { kind: 'lamp', at: [-40, -390], opts: { h: 3, light: '#ff8a5a' } },
     ],
+    // (the game's rocks, snow piles and ice stand where it put them: the
+    // scatter is the flight's planet's)
     scatter: [
-      { kind: 'iceblock', n: 110, within: [40, 570], scale: [0.6, 3.4] },
-      { kind: 'snowrock', n: 80, within: [60, 580], scale: [0.8, 4.2] },
-      { kind: 'snowdrift', n: 160, within: [20, 580], scale: [1.2, 4.0], sink: 0.3 },
+      { game: true, kind: 'iceblock', n: 110, within: [40, 570], scale: [0.6, 3.4] },
+      { game: true, kind: 'snowrock', n: 80, within: [60, 580], scale: [0.8, 4.2] },
+      { game: true, kind: 'snowdrift', n: 160, within: [20, 580], scale: [1.2, 4.0], sink: 0.3 },
     ],
     life: [
       // the perimeter post at the landing
       { kind: 'hothtrooper', n: 3, at: [6, 4], spread: 8, roam: 8, speed: 1.1, name: 'Rebel trooper', says: ['Perimeter post three. Nothing but wind out here. So far.', 'Keep your eyes on the north ridge.', 'Echo Base is that way. Follow the markers.'] },
-      { kind: 'pilot', n: 1, at: [18, -6], still: true, face: 2.2, name: 'Rogue Group pilot', says: ['Harpoon’s armed. Tow cable’s good. Now we wait.', 'Can’t see a thing in this.'] },
+      { kind: 'rebelpilot', n: 1, at: [18, -6], still: true, face: 2.2, name: 'Rogue Group pilot', says: ['Harpoon’s armed. Tow cable’s good. Now we wait.', 'Can’t see a thing in this.'] },
       { kind: 'tauntaun', n: 2, at: [-22, 14], spread: 4, roam: 5, speed: 0.8, r: 0.8 },
       { kind: 'droid', n: 1, at: [12, 14], roam: 6, speed: 0.6, name: 'Astromech', says: ['(A shivering beep. It would like to go inside now.)'] },
       // the walkers, on their way in
@@ -352,14 +390,22 @@ export const SITES = {
       { kind: 'hothtrooper', n: 1, at: [TRENCH[0] + 22, TRENCH[1] - 1.2], still: true, face: 0, name: 'Rebel trooper', says: ['Where are those snowspeeders?', 'Rogue Group’s coming in!'] },
       { kind: 'hothtrooper', n: 1, at: [TRENCH[0] + 48, TRENCH[1] + 0.8], still: true, face: -0.2, name: 'Rebel trooper', says: ['Fall back to the base when the shield goes. Not before.'] },
       // Echo Base, getting ready to go
-      { kind: 'hothtrooper', id: 'officer', quest: 'luke', at: echo([5, 24]), still: true, face: ECHO.yaw + 0.4, name: 'Deck officer', says: ['Sir, all the patrols are in. Except one.', 'The shield doors close at nightfall. I’m sorry.'] },
+      { kind: 'hothtrooper', id: 'officer', quest: 'luke', at: mouth([5, 24]), still: true, face: MOUTH.yaw + 0.4, name: 'Deck officer', says: ['Sir, all the patrols are in. Except one.', 'The shield doors close at nightfall. I’m sorry.'] },
       { kind: 'hothtrooper', id: 'loadmaster', quest: 'transport', at: [-258, 44], still: true, face: 2.4, name: 'Loadmaster', says: ['First transport’s loaded and away. The rest go when the cannon’s ready.', 'Everything else stays. Leave it for the Empire.'] },
-      { kind: 'hothtrooper', n: 4, at: echo([0, 6]), spread: 8, roam: 9, speed: 1.2, name: 'Echo Base crew', says: ['The first transport is away!', 'Your tauntaun will freeze before you reach the first marker.', 'We’ve got to get the speeders adapted to the cold.', 'Sir, all patrols are in. Except one.', 'All troops to the north slope!'] },
-      { kind: 'pilot', n: 2, at: echo([0, 38]), spread: 8, roam: 8, speed: 1.1, name: 'Rogue Group pilot', says: ['Rogue Group, use your harpoons and tow cables!', 'That armour’s too strong for blasters. Go for the legs.', 'Echo Base, this is Rogue Two. Ready for takeoff.'] },
-      { kind: 'droid', n: 2, at: echo([2, 0]), spread: 6, roam: 8, speed: 0.6, name: 'Astromech', says: ['(A worried beep: the shield’s on its last legs.)', '(A busy whistle. It has a speeder to fix.)'] },
-      { kind: 'tauntaun', n: 3, at: echo([-44, 55]), spread: 3, roam: 4, speed: 0.9, r: 0.8 },
+      { kind: 'hothtrooper', n: 4, at: mouth([0, 6]), spread: 8, roam: 9, speed: 1.2, name: 'Echo Base crew', says: ['The first transport is away!', 'Your tauntaun will freeze before you reach the first marker.', 'We’ve got to get the speeders adapted to the cold.', 'Sir, all patrols are in. Except one.', 'All troops to the north slope!'] },
+      { kind: 'rebelpilot', n: 2, at: mouth([0, 38]), spread: 8, roam: 8, speed: 1.1, name: 'Rogue Group pilot', says: ['Rogue Group, use your harpoons and tow cables!', 'That armour’s too strong for blasters. Go for the legs.', 'Echo Base, this is Rogue Two. Ready for takeoff.'] },
+      { kind: 'droid', n: 2, at: mouth([2, 0]), spread: 6, roam: 8, speed: 0.6, name: 'Astromech', says: ['(A worried beep: the shield’s on its last legs.)', '(A busy whistle. It has a speeder to fix.)'] },
+      { kind: 'tauntaun', n: 3, at: mouth([-44, 55]), spread: 3, roam: 4, speed: 0.9, r: 0.8 },
       // the wampa, at home
       { kind: 'wampa', n: 1, at: [-390.6, -288.4], still: true, face: 0.9, r: 1, name: 'Wampa', says: ['(A roar that shakes the snow off the roof of the cave.)', '(It looks at you the way it looked at the tauntaun.)'] },
+      // Luke, hung by his ankles from the roof of the cave, his feet at the
+      // ice block 4.6 m up (the saber step takes him down)
+      { kind: 'luke', id: 'hungluke', at: cave([0, -10]), still: true, hang: 4.6, face: CAVE.yaw, name: 'Luke Skywalker', named: true, says: ['(Upside down, eyes shut, reaching for the saber in the snow.)'] },
+      // more walkers, out at the edge of the plain, coming in (their own
+      // model, walking; inside the world's edge, as an actor can't step past it)
+      { kind: 'atat', n: 1, path: [[20, 580], [20, 470]], speed: 2.2, r: 2.2, name: 'AT-AT' },
+      { kind: 'atat', n: 1, path: [[260, 520], [260, 420]], speed: 2.2, r: 2.2, name: 'AT-AT' },
+      { kind: 'atat', n: 1, path: [[430, 380], [430, 260]], speed: 2.2, r: 2.2, name: 'AT-AT' },
       // another probe droid, still looking
       { kind: 'probe', id: 'probe', n: 1, at: [350, -110], y: 2.2, roam: 40, speed: 1.6, r: 0.6, name: 'Probe droid', says: ['(A burst of Imperial code, crackling and urgent.)', '(It stops, turns its lenses on you, and transmits.)'] },
     ],
@@ -380,7 +426,7 @@ export const SITES = {
           { type: 'ride', kind: 'tauntaun', text: 'Saddle up a tauntaun', lines: { all: [['Deck officer', 'Your tauntaun will freeze before you reach the first marker!']], falcon: [['han', 'Then I’ll see you in hell!']] } },
           { type: 'reach', at: [-170, 50], r: 12, text: 'Ride out past the first marker' },
           { type: 'reach', at: [-377, -277], r: 10, text: 'Follow the tracks to the ice cave', lines: { all: [['Echo Base', 'Echo Base to patrol: no word. Keep looking.']], xwing: [['r2', '(A frantic beeping: that way! That way!)']] } },
-          { type: 'use', id: 'saber', at: [-383, -285], r: 2.8, prompt: 'Pick up the lightsaber', text: 'Find what he left behind', lines: [['Wampa', '(A roar, from somewhere at the back of the cave.)']], end: [{ signal: 'saber', on: false }, { shake: 0.4 }] },
+          { type: 'use', id: 'saber', at: [-383, -285], r: 2.8, prompt: 'Pick up the lightsaber', text: 'Find what he left behind', lines: [['Wampa', '(A roar, from somewhere at the back of the cave.)']], end: [{ signal: 'saber', on: false }, { hide: 'hungluke' }, { shake: 0.4 }] },
           { type: 'reach', at: [160, -400], r: 12, time: 240, text: 'Get him to shelter before the storm', lines: { all: [['Luke', 'Ben… Ben Kenobi… the Dagobah system…']], falcon: [['han', 'Hang on, kid. Hang on.']] } },
         ],
         done: {
@@ -435,7 +481,7 @@ export const SITES = {
     ],
     rides: [
       { kind: 'tauntaun', at: [14, 12], yaw: -0.8 },
-      { kind: 'tauntaun', at: echo([-30, 64]), yaw: 2.2 },
+      { kind: 'tauntaun', at: mouth([-30, 64]), yaw: 2.2 },
     ],
     flyovers: [
       { kind: 'transport', n: 1, metres: 90, alt: 170, speed: 55, every: 70 },

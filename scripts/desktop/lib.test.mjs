@@ -110,6 +110,7 @@ describe('a job’s name', () => {
     expect(slug('gen3d: TIE Fighter')).toBe('tie-fighter');
     expect(slug('3D - a cactus')).toBe('a-cactus');
     expect(slug('voices: Citadel cops')).toBe('citadel-cops');
+    expect(slug('motion: Overhead strike')).toBe('overhead-strike');
   });
   it('keeps a name that only starts with such a word, and reads its own output back the same', async () => {
     const { slug } = await import('./lib.mjs');

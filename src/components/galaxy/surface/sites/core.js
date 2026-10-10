@@ -73,7 +73,10 @@ export const SITES = {
     },
     water: { level: 0, color: '#3c7f88', deep: '#1f4a58', kind: 'sea', foam: 0.12 },
     // the meadow round you, yellow flowers in it here and there
-    grass: { h: [0.22, 0.5], w: 0.05, root: '#55693a', mid: '#7a903e', tip: '#a9b656', dry: '#aaa45c', cover: 0.8, scale: 120, wind: 0.5, flower: { color: '#f4e27a', share: 0.03 } },
+    grass: { h: [0.22, 0.5], w: 0.05, root: '#55693a', mid: '#7a903e', tip: '#a9b656', dry: '#aaa45c', cover: 0.8, scale: 120, wind: 0.5 },
+    // the kit's meadow over it (flora.js): clumps, clover and flowers, bushes,
+    // and groves of broad trees where the Naboo trees aren't
+    flora: { biome: 'plains', trees: true },
     weather: [{ kind: 'motes', count: 260, color: '#fffbe0' }],
     dust: '#a8b878',
     edge: 'Grass and gentle hills, all the way to the mountains. The Gungans’ swamps are that way; Theed’s behind you.',
@@ -103,9 +106,14 @@ export const SITES = {
         },
         things: [
           { kind: 'theedpalace', at: [0, 0] },
-          { kind: 'plaza', at: [0, 60], opts: { w: 72, d: 48 } },
-          { kind: 'lamp', at: [-14, 40], opts: { h: 5, light: '#ffe2a8' } },
-          { kind: 'lamp', at: [14, 40], opts: { h: 5, light: '#ffe2a8' } },
+          { kind: 'plaza', at: [0, 60], opts: { w: 72, d: 48, fountain: false } },
+          // (robed statues along the plaza, in front of the palace's façade)
+          { kind: 'statue', at: [-30, 52], scale: 0.32 },
+          { kind: 'statue', at: [-18, 52], scale: 0.32 },
+          { kind: 'statue', at: [18, 52], scale: 0.32 },
+          { kind: 'statue', at: [30, 52], scale: 0.32 },
+          { kind: 'lamp', at: [-14, 50], opts: { h: 5, light: '#ffe2a8' } },
+          { kind: 'lamp', at: [14, 50], opts: { h: 5, light: '#ffe2a8' } },
           { kind: 'lamp', at: [-14, 56], opts: { h: 5, light: '#ffe2a8' } },
           { kind: 'lamp', at: [14, 56], opts: { h: 5, light: '#ffe2a8' } },
         ],
@@ -207,8 +215,8 @@ export const SITES = {
           rv: [['jesse', 'This is like, Indiana Jones, yo.'], ['walt', 'Don’t take anything.']],
         },
         things: [
-          { kind: 'stonehead', at: [8, -6], yaw: -0.4, sink: 2.2, roll: 0.12 },
-          { kind: 'stonehead', at: [-14, 10], yaw: 0.7, sink: 3, scale: 1.4, roll: -0.18 },
+          { kind: 'stonehead', at: [8, -6], yaw: -0.4, sink: 1.0, roll: 0.12 },
+          { kind: 'stonehead', at: [-14, 10], yaw: 0.7, sink: 1.4, scale: 1.4, roll: -0.18 },
           { kind: 'stonehead', at: [20, 18], yaw: -1.6, sink: 4, scale: 0.8, pitch: 0.4 },
           { kind: 'ruins', at: [0, 0], opts: { seed: 4 } },
           { kind: 'grove', at: [-36, -30], opts: { n: 14, r: 26, seed: 11 } },
@@ -309,6 +317,10 @@ export const SITES = {
     life: [
       { kind: 'gungan', n: 10, at: [250, -235], spread: 40, roam: 14, speed: 1.1, name: 'Gungan soldier', says: ['Wesa ready to do are-sa part!', 'Da shield up! Da droids no getting in here!', 'Boomas! Get da boomas!', 'Yousa stay behind da shield, okeyday?'] },
       { kind: 'kaadu', n: 5, at: [230, -220], spread: 30, roam: 18, speed: 1.4, r: 0.8 },
+      // (the game's own: Theed's birds about the palace plaza, the pelikki on the falls' rocks, runyips on the plains)
+      { kind: 'birdtheed', n: 6, at: [-232, 318], spread: 16, roam: 10, speed: 0.6, r: 0.2, solid: false },
+      { kind: 'pelikki', n: 3, at: [-128, 286], spread: 8, roam: 0, speed: 0, r: 0.4, solid: false },
+      { kind: 'runyip', n: 3, at: [140, -40], spread: 30, roam: 16, speed: 0.7, r: 1 },
       // (the army's fambaas, which carried the shield generators)
       { kind: 'fambaa', n: 2, at: [262, -262], spread: 30, roam: 10, speed: 0.5, r: 3.5 },
       { kind: 'gungan', n: 1, at: [40, 30], roam: 20, speed: 1.2, name: 'Jar Jar Binks', says: ['Meesa Jar Jar Binks!', 'Exsqueeze me, but de mostest safest place would be Gunga City.', 'How wude!', 'Mesa day startin’ pretty okee-day, with a brisky morning munchy. Den BOOM!', 'Mesa called Jar Jar Binks. Mesa your humble servant.'] },
@@ -324,7 +336,7 @@ export const SITES = {
       { kind: 'villager', n: 6, at: [-250, 260], spread: 40, roam: 24, speed: 1.0, name: 'Theed citizen', says: ['The Queen will speak from the palace steps at noon.', 'Have you seen the falls from the plaza? The whole city hums with them.', 'Our Senator Palpatine is from Theed, you know. Such a kind, patient man.', 'They say the Gungans and the Queen are friends now. Imagine that.'] },
       { kind: 'rebel', n: 3, at: [-245, 255], spread: 12, roam: 10, speed: 1.1, name: 'Palace guard', says: ['The palace is open to visitors today. Stay on the paths.', 'Royal Naboo Security Forces. Keep moving, please.'] },
       { kind: 'rebel', n: 1, at: [-292, 200], roam: 8, speed: 1.1, name: 'Captain Panaka', says: ['Your Highness, we have a problem: the Federation has landed its army.', 'We’ll take the hangar first. Then the throne room.', 'Our people are dying. We must act.'] },
-      { kind: 'pilot', n: 3, at: [-300, 188], spread: 14, roam: 10, speed: 1.2, name: 'Bravo Squadron pilot', says: ['We’re going after the droid control ship. Who’s with us?', 'Bravo Flight, fly with me!', 'There was a kid in one of the fighters. He blew the control ship from the inside!'] },
+      { kind: 'rebelpilot', n: 3, at: [-300, 188], spread: 14, roam: 10, speed: 1.2, name: 'Bravo Squadron pilot', says: ['We’re going after the droid control ship. Who’s with us?', 'Bravo Flight, fly with me!', 'There was a kid in one of the fighters. He blew the control ship from the inside!'] },
       { kind: 'droid', n: 1, at: [-296, 176], roam: 6, speed: 0.7, name: 'R2-D2', says: ['(A proud whistle. It was the only droid to get the Queen’s ship through the blockade.)', '(A cheeky beep, and a look at the N-1’s astromech socket.)'] },
       { kind: 'quigon', n: 1, at: [60, 170], roam: 10, speed: 0.9, name: 'Qui-Gon Jinn', says: ['There’s always a bigger fish.', 'The ability to speak does not make you intelligent.', 'Feel, don’t think. Use your instincts.'] },
       { kind: 'villager', n: 1, at: [366, 336], roam: 5, speed: 0.8, name: 'Padmé', says: ['When I was in the Legislative Youth Program, we came here for school retreat. We’d swim to that island every day.', 'I love the water. We’d lie on the sand and let the sun dry us.', 'It’s so peaceful here.'] },
@@ -342,6 +354,8 @@ export const SITES = {
   },
 
   kamino: {
+    // lit as the game lights its level (src/data/bf2017/light/kamino.json, gameLit.js)
+    gameLight: 'kamino',
     place: 'Tipoca City',
     line: 'Rain, and the sea, and white domes on stilts in the storm.',
     sky: {
@@ -369,7 +383,7 @@ export const SITES = {
       foam: 0.7,
       waves: 1.4,
       // (where the storm breaks on the city, [x, z, r]: the pad's column, the domes' and towers' stilts)
-      legs: [[0, 0, 12], [-130, 270, 12], [130, 330, 15.6], [-320, 240, 12], [-330, -210, 14.4], [340, -120, 12], [-80, -330, 12], [390, 160, 16.8], [-430, 40, 12], [210, -390, 12], [20, 470, 19.2], [520, -320, 12], [-520, 380, 15.6], [640, 60, 12], [-640, -260, 18], [300, 520, 12], [-240, -520, 12], [-180, 420, 8], [420, -40, 8], [-420, -120, 8]],
+      legs: [[0, 0, 12], [-130, 270, 12], [130, 330, 15.6], [-320, 240, 12], [-330, -210, 14.4], [340, -120, 12], [-80, -330, 12], [390, 160, 16.8], [-430, 40, 12], [210, -390, 12], [20, 470, 19.2], [520, -320, 12], [-520, 380, 15.6], [640, 60, 12], [-640, -260, 18], [300, 520, 12], [-240, -520, 12], [-180, 420, 14], [420, -40, 14], [-420, -120, 14]],
     },
     weather: [{ kind: 'rain', count: 4200, speed: 1.3 }, { kind: 'spray', count: 900 }],
     lightning: { every: 9, strength: 3.2 },
@@ -464,7 +478,7 @@ export const SITES = {
         },
         things: [
           { kind: 'kpad', at: [0, 0], abs: true, y: 22, opts: { r: 22 } },
-          { kind: 'kmast', at: [-6, 6], abs: true, y: 22.3 },
+          { kind: 'kdischarge', at: [-6, 6], abs: true, y: 22, opts: { h: 24, seed: 7, every: 10 } },
         ],
       },
       {
@@ -481,7 +495,7 @@ export const SITES = {
         },
         things: [
           { kind: 'kpad', at: [0, 0], abs: true, y: 22, opts: { r: 18 } },
-          { kind: 'tipoca', at: [16, 22], abs: true, y: 0, opts: { style: 'tower' } },
+          { kind: 'tipoca', at: [30, 36], abs: true, y: 0, opts: { style: 'tower' } },
         ],
       },
     ],
@@ -544,7 +558,6 @@ export const SITES = {
       { kind: 'clone', n: 2, at: [6, -12], spread: 8, roam: 10, speed: 1.1, name: 'Clone trooper', says: ['Welcome to Tipoca City, sir.', 'Mind the edge. It’s a long way down in this weather.'] },
       { kind: 'clonephase1', n: 4, at: [-8, -6], spread: 4, still: true, face: 2.6, name: 'Clone trooper', says: ['Sir.', 'Phase One armour, sir. Heavy, but it keeps the rain out.', 'The cadets drill on the far pad. We stand here.'] },
       { kind: 'r5', n: 1, at: [16, 8], roam: 6, speed: 0.6, name: 'An R5 unit', says: ['(A damp, miserable beep.)'] },
-      { kind: 'kaminoan', n: 1, at: [12, 6], roam: 5, speed: 0.7, name: 'Taun We', says: ['Master Jedi. So good to see you. The Prime Minister expects you.', 'I trust you will find everything you need. The clones are most impressive.', 'They are totally obedient, taking any order without question.'] },
       { kind: 'kaminoan', n: 3, at: [0, 112], spread: 10, roam: 7, speed: 0.7, name: 'Kaminoan', says: ['The clones are bred for combat. They show much less independence than the original host.', 'Ten years ago a Jedi Master placed the order. We have been working ever since.', 'Please, this way. The weather is most inclement today.'] },
       { kind: 'kaminoan', n: 1, at: [228, 216], still: true, scale: 1.08, name: 'Lama Su', says: ['I trust you are going to stay for a while?', 'You will be delighted to hear we are on schedule. Two hundred thousand units are ready, with a million more well on the way.', 'Magnificent, aren’t they?'] },
       { kind: 'jango', n: 1, at: [-164, -44], roam: 6, speed: 0.9, name: 'Jango Fett', named: true, says: ['I’m just a simple man, trying to make my way in the universe.', 'Ever make your way as far into the interior as Coruscant?', 'Boba, pack your things. We’re leaving.'] },
@@ -561,6 +574,8 @@ export const SITES = {
     skyships: [{ kind: 'acclamator', metres: 752, at: [1300, 320, -1500], yaw: 0.8 }],
   },
   geonosis: {
+    // lit as the game lights its level (src/data/bf2017/light/geonosis.json, gameLit.js)
+    gameLight: 'geonosis',
     place: 'The Plains of Geonosis',
     line: 'Red rock, hive spires and a ringed, rust-coloured sky.',
     sky: {
@@ -630,7 +645,7 @@ export const SITES = {
           rv: [['jesse', 'Yo, it’s like the Colosseum. With bugs.'], ['walt', 'Bread and circuses, Jesse. Keep them watching the arena, and they never look up.']],
         },
         things: [
-          { kind: 'arena', at: [0, 0], yaw: 2.23 },
+          { kind: 'arena', at: [0, 0], yaw: 2.23, sink: 3.5 },
           { kind: 'pillars', at: [0, 0], yaw: 2.23 },
           { kind: 'droideka', at: [6, -20], yaw: 2.4, opts: { shield: true } },
           { kind: 'droideka', at: [-14, -16], yaw: 2.0 },
@@ -670,7 +685,8 @@ export const SITES = {
           falcon: [['han', 'A tactical map. Nice. I never had one of those. Didn’t need one.']],
           cruiser: [['morty', 'That’s Yoda’s table, Rick!'], ['rick', 'Nine hundred years old and he fights a war off a hologram, Morty. Delegation.']],
         },
-        things: [{ kind: 'commandpost', at: [0, 0], yaw: 3.6 }],
+        // (the holotable 4 m in front of the hull)
+        things: [{ kind: 'commandpost', at: [0, 0], yaw: 3.6 }, { kind: 'holotable', at: [-3.5, -7.2], yaw: 3.6 }],
       },
       {
         id: 'foundry',
@@ -705,6 +721,8 @@ export const SITES = {
         },
         things: [
           { kind: 'geohangar', at: [0, -10], yaw: -0.7 },
+          // (the mesa it's cut into)
+          { kind: 'geohive', at: [19, -33], yaw: -0.7, scale: 0.3, sink: 1.2 },
           { kind: 'solarsailer', at: [-6, 2], yaw: 2.4, y: 0.4 },
         ],
       },
@@ -720,11 +738,8 @@ export const SITES = {
           cruiser: [['rick', 'Eusocial insectoids, Morty. One queen, a billion workers, zero unions.'], ['morty', 'They’re kind of looking at us, Rick.']],
         },
         things: [
-          { kind: 'hive', at: [0, 0], opts: { h: 95, seed: 2 } },
-          { kind: 'hive', at: [34, 20], opts: { h: 70, seed: 3 } },
-          { kind: 'hive', at: [-30, 28], opts: { h: 60, seed: 4 } },
-          { kind: 'hive', at: [-24, -36], opts: { h: 80, seed: 5 } },
-          { kind: 'hive', at: [30, -30], opts: { h: 55, seed: 6 } },
+          { kind: 'geohive', at: [-10, -75], yaw: 0.4, scale: 0.55, sink: 2.2 },
+          { kind: 'geohive', at: [70, 10], yaw: 2.2, scale: 0.28, sink: 1.1 },
         ],
       },
       {
@@ -792,15 +807,15 @@ export const SITES = {
       { kind: 'nexu', n: 1, at: [-250, 186], roam: 20, speed: 2.2, r: 1.2 },
       { kind: 'reek', n: 1, at: [-274, 206], roam: 18, speed: 1.3, r: 1.8 },
       { kind: 'jedi', n: 2, at: [-256, 202], spread: 6, roam: 8, speed: 1.0, name: 'Jedi', says: ['This party’s over.', 'Hold on. This whole operation’s about to get a lot more interesting.', 'I’ve a bad feeling about this.'] },
-      { kind: 'geonosian', n: 6, path: [[-80, -360], [10, -400], [-30, -490], [-110, -440]], y: 18, speed: 5, name: 'Geonosian drone', says: ['(A buzzing dive past your head.)'] },
+      { kind: 'geonosian', n: 6, path: [[-80, -360], [10, -400], [-10, -435], [-100, -430]], y: 18, speed: 5, name: 'Geonosian drone', says: ['(A buzzing dive past your head.)'] },
       { kind: 'geonosian', n: 4, at: [-320, -210], spread: 24, roam: 14, speed: 1.1, name: 'Geonosian worker', says: ['(It clicks irritably and hauls a droid torso past you.)', '(Click. Click-click. Back to work.)'] },
       { kind: 'c3po', n: 1, at: [-312, -206], still: true, name: 'C-3PO', says: ['Oh, this is such a drag.', 'Die, Jedi dogs! …Oh, what did I say?', 'I’m terribly sorry about all this.', 'Machines making machines. How perverse.'] },
       { kind: 'clonephase1', n: 4, at: [-20, 10], spread: 5, still: true, face: -0.6, name: 'Clone trooper', says: ['Forward post, sir. The droids pulled back to the spires.', 'First day of the war, and we’re already winning.', 'Gunships inbound. Keep clear of the pad.'] },
       { kind: 'dwarfspider', n: 2, path: [[40, 50], [70, 40], [84, 60], [60, 76]], speed: 0.9, r: 1.0, name: 'Dwarf spider droid', says: ['(It clicks. Its cannon finds you, then loses interest.)'] },
       { kind: 'battledroid', n: 4, at: [56, -20], spread: 10, roam: 8, speed: 1.2, name: 'Battle droid', says: ['Roger, roger.', 'The spider droid is… down. Uh-oh.', 'Fall back! Fall back!'] },
       { kind: 'clone', n: 10, at: [256, 176], spread: 36, roam: 14, speed: 1.6, name: 'Clone trooper', says: ['Move up! Move up!', 'Gunship coming in, keep your heads down!', 'Sir, the droids are pulling back to the core ships.', 'Watch the spider droids!'] },
-      { kind: 'clone', n: 3, at: [120, 326], spread: 6, roam: 5, speed: 1, name: 'Clone commander', says: ['Master Yoda, all forward positions are advancing.', 'Target the core ships, sir?', 'Concentrate all fire on the nearest starship.'] },
-      { kind: 'yoda', n: 1, id: 'yoda', quest: 'coreships', at: [116, 334], still: true, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
+      { kind: 'clone', n: 3, at: [117.8, 319.9], spread: 4, roam: 3, speed: 1, name: 'Clone commander', says: ['Master Yoda, all forward positions are advancing.', 'Target the core ships, sir?', 'Concentrate all fire on the nearest starship.'] },
+      { kind: 'yoda', n: 1, id: 'yoda', quest: 'coreships', at: [113.6, 322.6], still: true, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
       { kind: 'battledroid', n: 10, path: [[420, -60], [380, -10], [330, 30], [380, -100], [440, -140]], speed: 1.4, name: 'Battle droid', says: ['Roger, roger.', 'Retreat! Retreat! To the core ships!', 'Uh-oh.'] },
       { kind: 'superdroid', n: 4, at: [430, -110], spread: 20, roam: 12, speed: 1.0, name: 'Super battle droid', says: ['(It raises a wrist blaster and stomps past.)', 'Halt. Identify.'] },
       { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, solid: false },

@@ -6,7 +6,7 @@
 // neighbours. The scene plays each blast (and takes what reaches the ship
 // off its shields).
 //
-// createMines(parent, { small, tier }) → { lay(ship, rand) → boolean, across(pts, s, r, rand) → boolean (a lane jam),
+// createMines(parent, { small, tier }) → { lay(ship, rand) → boolean,
 //   update(dt, ship) → events, hit(from, to) → { at, size } | null, targets,
 //   count, clear(), dispose() }
 // Events: { type: 'mine', at, size, damage } (damage: what reached the ship).
@@ -14,13 +14,10 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { MINE, bandAcross, chainFrom, layMines, mineBlast, mineHit, minefieldLane } from './minefield';
-import { SOLIDS } from './ship';
-import { R } from './hyperlanes';
+import { MINE, chainFrom, layMines, mineBlast, mineHit, minefieldLane } from './minefield';
 
 const LIFE = 75; // seconds a field stays, unless you're long past it
 const GONE = 260; // or once you're this far from it
-const JAM_GONE = 1400; // (a lane jam: laid 900 on along a lane, and come at from there however slow the ride)
 const BOLT_R = 0.12;
 const BLINK = { far: 1.1, near: 6, close: 14 }; // blinks a second, out of range and right by it; and from how far it quickens
 
@@ -131,10 +128,6 @@ export function createMines(parent, { small = false } = {}) {
       const lane = minefieldLane(ship, rand);
       if (!lane) return false;
       return place(layMines({ lane, seed: Math.floor(rand() * 1e9) }), rand);
-    },
-    // a lane jam: a band across a hyperlane's carriageway (its points) at s
-    across(pts, s, r = R, rand = Math.random) {
-      return place(bandAcross(pts, s, r, { seed: Math.floor(rand() * 1e9), solids: SOLIDS }), rand, JAM_GONE);
     },
 
     update(dt, ship) {

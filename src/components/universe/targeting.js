@@ -252,20 +252,8 @@ export function aimAngles(dir) {
 // through the frame they met (0 to 1), or null. (Tested against where the
 // target is only at the end of the frame, a quick one crossing the bolt's
 // path is missed.)
-export function sweptHit(b0, b1, t0, t1, r) {
-  const rx = X(b0) - X(t0);
-  const ry = Y(b0) - Y(t0);
-  const rz = Z(b0) - Z(t0);
-  const dx = X(b1) - X(t1) - rx;
-  const dy = Y(b1) - Y(t1) - ry;
-  const dz = Z(b1) - Z(t1) - rz;
-  const dd = dx * dx + dy * dy + dz * dz;
-  const k = dd > 1e-12 ? clamp(-(rx * dx + ry * dy + rz * dz) / dd, 0, 1) : 0;
-  const px = rx + dx * k;
-  const py = ry + dy * k;
-  const pz = rz + dz * k;
-  return px * px + py * py + pz * pz <= r * r ? k : null;
-}
+// (now lib/combat/contact.js's sweptSpheres)
+export { sweptSpheres as sweptHit } from '../../lib/combat/contact';
 
 // Where a marker for something off the screen goes: on the edge of the open
 // part of the canvas (`rect`: { x, y, w, h }), `pad` px in, on the line from

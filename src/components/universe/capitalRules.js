@@ -27,7 +27,8 @@
 //   arrive(kind, at: [x, y, z], heading, { len, top }) → { hangar: [x, y, z], heading },
 //   leave(reason), cleared(), update(dt, you) → busy, hit(from, to, punch) → hit | null,
 //   events (what happened, to be drained), targets, parts, bolts,
-//   state ('in' | 'here' | 'out' | 'dying' | null), here, at, heading, len, roll, pitch, age }
+//   state ('in' | 'here' | 'out' | 'dying' | null), here, at, heading, len, roll, pitch, age,
+//   solids (its hull, ship.js's solids, once it's here) }
 // A hit: { type: 'shielded' | 'hull' | 'part' | 'bridge', part?, at: [x, y, z], down, left }.
 // Events: { type: 'launch', wave, from }, { type: 'volley', from, to },
 // { type: 'hit', damage }, { type: 'part', part, left }, { type: 'open' },
@@ -152,6 +153,8 @@ export function jumpSmear(state, k, len) {
 
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
+const NO_SOLIDS = [];
+
 export function createCapital({ rand = Math.random } = {}) {
   const events = [];
   const bolts = [];
@@ -235,6 +238,7 @@ export function createCapital({ rand = Math.random } = {}) {
   };
   const sFrom = [0, 0, 0];
   const sTo = [0, 0, 0];
+  let solids = NO_SOLIDS; // (its hull's, made as it arrives: their `at` is the hull's own, placed as it moves)
 
   return {
     events,
@@ -244,6 +248,11 @@ export function createCapital({ rand = Math.random } = {}) {
     },
     get here() {
       return c.state === 'here' || c.state === 'in' || c.state === 'dying';
+    },
+    // its hull as ship.js's solids, so flying into it is a planet's bump or
+    // crash: once it's here (or going up), never while it jumps in or out
+    get solids() {
+      return c.state === 'here' || c.state === 'dying' ? solids : NO_SOLIDS;
     },
     get at() {
       return c.at;
@@ -303,6 +312,7 @@ export function createCapital({ rand = Math.random } = {}) {
         { id: def.bridge.id, name: def.bridge.name, kind: 'bridge', local: def.bridge.at, r: def.bridge.r, hp: CAPITAL.bridgeHp, hpMax: CAPITAL.bridgeHp, at: [0, 0, 0], alive: true },
       ];
       c.hull = def.hull.map(([x, y, z, r]) => ({ local: [x, y, z], r, at: [0, 0, 0] }));
+      solids = c.hull.map((h, i) => ({ id: `cap:hull:${i}`, at: h.at, r: h.r * len, reach: h.r * len, ship: true }));
       c.batteries = def.batteries.map((b) => ({ local: b, at: [0, 0, 0] }));
       placeAll();
       return { hangar: this.hangar, heading };

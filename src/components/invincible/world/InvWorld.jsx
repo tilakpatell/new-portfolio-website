@@ -9,7 +9,10 @@ import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { PORTAL, newFoes, portalOpen, spawnFoes, standing, startInvasion, stepFoes } from './foes';
-import { FLY, newHero, stepHero } from './flight';
+import { FLY, jumpPress, newHero, onWater, stepHero } from './flight';
+import { createHits } from './hits';
+import { impactGroups } from '../../../lib/impact';
+import { pressGroups } from '../../../lib/press';
 import { getawayAt, newGetaway, stepGetaway, stopGetaway } from './getaway';
 import { CALLS, RINGS_DONE } from './lines';
 import { RADIO, feedMission, keepStory, loadStory, markerOf, missionOf, newRadio, nextRadioCall, nextStory, placeOf as missionPlace, startMission as beginMission, stepOf } from './missions';
@@ -19,8 +22,11 @@ import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD
 import { VOICE } from './voicelines';
 import InvHud from './InvHud';
 import MissionCard from './MissionCard';
-import { COMPASS, layoutCompass, objectiveText, titleMode } from './hud';
+import { toggleGuide } from '../../../lib/palette';
+import { COMPASS, fitCanvas, layoutCompass, objectiveText, titleMode } from '../../../runtime/hud';
 import './world.css';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // The Graysons' city, the world: fly about it as Invincible. The rules are
 // in ./flight.js and ./map.js, the drawing in ./scene.js; this is the
@@ -29,6 +35,12 @@ import './world.css';
 // the places as cards.
 
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
+// a hit's sound at the hit law's gain and pitch (./hits.js); none within its gap
+const hits = createHits();
+const sfxHit = (name, key, force) => {
+  const voice = hits.voice(key, force);
+  if (voice) import('../../../lib/sfx').then((s) => s.play(name, voice)).catch(() => null);
+};
 const sound = (name, ...args) => import('./sounds').then((m) => m[name]?.(...args)).catch(() => null);
 const AT = 'tp-inv-world-at';
 const TIME = 'tp-inv-world-time';
@@ -140,6 +152,7 @@ export default function InvWorld({ thinkMark = null }) {
 }
 
 function World({ gl, setGl, thinkMark }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   // other players online here, as holograms (middleearth/towns/useTravellers)
   const trav = useTravellers('invincible', gl === 'on', ROOM);
@@ -152,8 +165,7 @@ function World({ gl, setGl, thinkMark }) {
   // The time of day: one clock. The HUD's button reads it, the scene is
   // given it (below), and the dev hook sets it, so they can't disagree.
   const [time, setTimeName] = useState(keptTime);
-  const [help, setHelp] = useState(false);
-  // the title: FLY, MARK. until he's flying, then a chip (./hud.js titleMode)
+  // the title: FLY, MARK. until he's flying, then a chip (the HUD kit's titleMode, runtime/hud)
   const [chip, setChip] = useState(false);
   const [toast, setToast] = useState(null);
   const [near, setNear] = useState(null);
@@ -181,7 +193,7 @@ function World({ gl, setGl, thinkMark }) {
   if (!sim.current) {
     // (he's put on the lawn for now: where he really starts waits on the
     // world, which the scene makes, and nothing moves before it's there)
-    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, mission: null, story: keptStory(), getaway: null, wave: null, swing: null, marker: null, gates: null, photo: null, hangarHp: 100, radio: newRadio(), call: null, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
+    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, mission: null, story: keptStory(), getaway: null, wave: null, swing: null, marker: null, gates: null, photo: null, hangarHp: 100, radio: newRadio(), call: null, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, press: jumpPress(), free: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
   }
 
   // (`who`, for a line someone says: in their own voice where it's been made;
@@ -243,6 +255,8 @@ function World({ gl, setGl, thinkMark }) {
           return;
         }
         api.current = a;
+        // ?debug: the feel's numbers, the hits' law and the jump's press on the one panel
+        a.tune([...impactGroups(hits.rules), ...pressGroups(sim.current.press)]);
         // (once: a scene made again, by a hot reload, takes over where he is)
         if (!sim.current.world) placeHero(sim.current, a.world);
         sim.current.world = a.world;
@@ -269,6 +283,9 @@ function World({ gl, setGl, thinkMark }) {
           hook.story = () => sim.current.story;
           window.__INVWORLD__ = { api: hook, sim: sim.current };
         }
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.engine?.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
       })
       .catch((e) => {
@@ -532,17 +549,13 @@ function World({ gl, setGl, thinkMark }) {
   // Everything held, let go: the keys, the stick, the touch buttons and a
   // drag. A blur or a hidden tab (another app, a call) can swallow the
   // key-up or the lifted finger, and he'd fly on by himself.
-  const stickRef = useRef(null);
-  const stickDrag = useRef(null);
   const drag = useRef(null);
   const release = useCallback(() => {
     const s = sim.current;
     s.keys.clear();
     s.stick = { x: 0, y: 0 };
     s.touchUp = s.touchDown = s.touchBoost = false;
-    stickDrag.current = null;
     drag.current = null;
-    if (stickRef.current) stickRef.current.style.transform = '';
   }, []);
 
   // the keys
@@ -566,15 +579,19 @@ function World({ gl, setGl, thinkMark }) {
       } else if (e.code === 'KeyE' || e.key === 'Enter') {
         if (!(e.target instanceof HTMLButtonElement)) act();
       } else if (e.code === 'KeyT') cycleTime();
-      else if (e.code === 'KeyH' || e.key === '?') setHelp((v) => !v);
-      else if (e.code === 'KeyR' && !e.repeat) take();
+      // (H was the world's own list of keys: it's the site's guide now, which ? opens too)
+      else if (e.code === 'KeyH') toggleGuide();
+      else if (e.code === 'KeyR' && !e.repeat) {
+        // a call to take first; else, hanging at the water, let go of it
+        if (s.call && !s.mission) take();
+        else if (onWater(s.h, s.world)) s.free = true;
+      }
       else if (e.code === 'KeyQ' && !e.repeat) {
         // a mission called off: asked first, on its card
         if (cardRef.current?.kind === 'abandon') abandon();
         else if (s.mission && !cardRef.current) openCard({ kind: 'abandon', id: s.mission.id });
       } else if (e.key === 'Escape') {
         if (cardRef.current) closeCard();
-        else setHelp(false);
       }
     };
     const up = (e) => {
@@ -638,7 +655,9 @@ function World({ gl, setGl, thinkMark }) {
     const s = sim.current;
     if (!a || a.lost || !s.world) return;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a hitstop: the scene's feel slows the game a moment on a punch that lands)
+    const real = Math.min(0.05, ms / 1000) * fast;
+    const dt = real * a.timeScale(real);
     s.t += dt;
     const k = s.keys;
     const pad = readPad();
@@ -675,7 +694,9 @@ function World({ gl, setGl, thinkMark }) {
     if (pressed('y')) act();
     if (pressed('start')) cycleTime();
     const look = [Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), Math.cos(s.yaw) * Math.cos(s.pitch)];
-    let input = { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look };
+    // the jump through its press (./flight.js): a moment early or late still goes
+    if (s.jump) s.press.press();
+    let input = { fwd, side, up: upKey ? 1 : 0, down: downKey ? 1 : 0, boost, run: boost, jump: s.jump, look, press: s.press, free: s.free };
     if (s.intro) {
       // the drop: straight down, flat out, the camera above him, until the ground stops him
       input = { fwd: 0, side: 0, up: 0, down: 1, boost: true, run: false, jump: false, look };
@@ -685,6 +706,7 @@ function World({ gl, setGl, thinkMark }) {
     }
     s.h = s.h.zone === 'space' ? stepSpace(s.h, input, dt) : stepHero(s.h, input, dt, s.world);
     s.jump = false;
+    s.free = false;
     // up through the top of the sky, or back down into it: the other world takes over
     if (s.h.ev.some((e) => e.type === 'exit')) {
       for (const e of s.h.ev) s.events.push(e);
@@ -777,7 +799,7 @@ function World({ gl, setGl, thinkMark }) {
           s.punchT = 0.25;
           sfx('zip');
         } else if (e.type === 'ko') {
-          sfx('blast');
+          sfxHit('blast', 'ko', hits.foeForce(e.kind));
           feed({ type: 'ko', kind: e.kind ?? 'flaxan' });
         } else if (e.type === 'swing' && s.mission && Math.hypot(e.at[0] - HANGAR[0], e.at[2] - HANGAR[2]) < 32) {
           // a Mauler's swing by the hangar: the hangar takes it (the last-but-one episode)
@@ -790,7 +812,7 @@ function World({ gl, setGl, thinkMark }) {
           s.missionFaller = true;
           sfx('warn');
           say('A student, on the roof’s edge. Get under them.', 3200);
-        } else if (e.type === 'hit') sfx('thunk');
+        } else if (e.type === 'hit') sfxHit('thunk', 'foe', hits.foeForce(e.kind));
         else if (e.type === 'bolt' || e.type === 'blast') sfx('laser');
         else if (e.type === 'hurt') sfx('hit');
         else if (e.type === 'spawn') sfx('pop');
@@ -839,9 +861,9 @@ function World({ gl, setGl, thinkMark }) {
           say('The sound barrier. Keep going.');
         }
       } else if (e.type === 'slam') {
-        sfx(e.speed > 80 ? 'crumble' : 'thunk');
+        sfxHit(e.speed > 80 ? 'crumble' : 'thunk', 'slam', e.speed);
         if (e.speed > 80) sfx('boom');
-      } else if (e.type === 'impact') sfx('crumble');
+      } else if (e.type === 'impact') sfxHit('crumble', 'impact', e.speed);
       else if (e.type === 'takeoff') sfx('zip');
       else if (e.type === 'splash') {
         // a slam's sound, lighter (water gives): spray, and a thud under it
@@ -849,10 +871,10 @@ function World({ gl, setGl, thinkMark }) {
         if (s.t - (s.splashAt ?? -1) >= 0.4) {
           s.splashAt = s.t;
           sound('splashSound', e.speed);
-          if (e.speed > 80) sfx('thunk');
+          if (e.speed > 80) sfxHit('thunk', 'splash', e.speed);
         }
       } else if (e.type === 'land') {
-        sfx(e.speed > 300 ? 'crumble' : 'thunk');
+        sfxHit(e.speed > 300 ? 'crumble' : 'thunk', 'land', e.speed);
         // on the Moon, or Mars (./orbit.js names which; a soft landing in the city names none)
         if (e.body) {
           unlock(e.body === 'moon' ? 'moonwalk' : 'redplanet');
@@ -1022,38 +1044,18 @@ function World({ gl, setGl, thinkMark }) {
     wind.current?.set({ speed, alt: inSpace ? Infinity : alt });
   }, live);
 
-  // the stick, on a phone: one finger at a time (a second finger landing on
-  // it, or lifting off it, leaves the first in charge)
-  const stickDown = (e) => {
-    if (stickDrag.current) return;
-    startSound();
-    stickDrag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-  const stickMove = (e) => {
-    const d = stickDrag.current;
-    if (!d || d.id !== e.pointerId) return;
-    const dx = clamp((e.clientX - d.x) / 44, -1, 1);
-    const dy = clamp((e.clientY - d.y) / 44, -1, 1);
-    sim.current.stick = { x: dx, y: dy };
-    if (stickRef.current) stickRef.current.style.transform = `translate(${dx * 26}px, ${dy * 26}px)`;
-  };
-  const stickUp = (e) => {
-    if (stickDrag.current?.id !== e.pointerId) return;
-    stickDrag.current = null;
-    sim.current.stick = { x: 0, y: 0 };
-    if (stickRef.current) stickRef.current.style.transform = '';
-  };
+  // the thumbs, on a phone (the kit's Stick: one finger at a time, read from
+  // where it went down), and the buttons held for as long as they're pressed
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (key) => ({
-    onPointerDown: (e) => {
+    onPress: () => {
       startSound();
       if (key === 'touchUp') sim.current.jump = true;
       sim.current[key] = true;
-      e.currentTarget.setPointerCapture?.(e.pointerId);
     },
-    onPointerUp: () => (sim.current[key] = false),
-    onPointerCancel: () => (sim.current[key] = false),
+    onRelease: () => (sim.current[key] = false),
   });
+  const punch = () => (startSound(), (sim.current.punch = true));
 
   return (
     <div className="iw-stage" ref={box} data-zone={zone} data-shutter={shutter ? '1' : undefined}>
@@ -1073,62 +1075,23 @@ function World({ gl, setGl, thinkMark }) {
           </div>
         </div>
       )}
-      {gl === 'loading' && <p className="iw-loading">Over the city…</p>}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Over the city" />
       <MissionCard card={mcard} story={sim.current.story} onClose={closeCard} onAgain={() => startMission(mcard?.id)} onStart={startMission} onAbandon={abandon} />
 
-      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} radio={radio} take={take} />
+      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} radio={radio} take={take} touch={touch} onStick={onStick} startSound={startSound} hold={hold} punch={punch} />
       {shutter && <div className="iw-shutter" key={shutter} aria-hidden="true" onAnimationEnd={() => setShutter(null)} />}
 
-      {touch && (
-        <div className="iw-touch">
-          <div className="iw-stick" onPointerDown={stickDown} onPointerMove={stickMove} onPointerUp={stickUp} onPointerCancel={stickUp} onLostPointerCapture={stickUp}>
-            <span ref={stickRef} />
-          </div>
-          <div className="iw-buttons">
-            <button type="button" {...hold('touchUp')}>
-              Up
-            </button>
-            <button type="button" {...hold('touchDown')}>
-              Down
-            </button>
-            <button type="button" className="iw-boost" {...hold('touchBoost')}>
-              Boost
-            </button>
-            <button type="button" className="iw-punch" onPointerDown={() => (startSound(), (sim.current.punch = true))}>
-              Punch
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── the HUD's canvases: as many pixels as the screen has under them (sharp
-// on a 2× screen); the compass drawn in CSS pixels, so its type is the size
-// it says on a phone too, and the map in 180ths of its width, its look at
-// any size ──
-function fitCanvas(c, unit) {
-  const w = c?.clientWidth;
-  const hh = c?.clientHeight;
-  if (!w || !hh) return null; // (hidden: in space)
-  const k = Math.min(3, window.devicePixelRatio || 1);
-  const bw = Math.round(w * k);
-  const bh = Math.round(hh * k);
-  if (c.width !== bw || c.height !== bh) {
-    c.width = bw;
-    c.height = bh;
-  }
-  return unit ? { w: unit, h: (hh * unit) / w, s: bw / unit } : { w, h: hh, s: bw / w };
-}
+// ── the HUD's canvases (the kit's fitCanvas: sharp on a 2× screen): the
+// compass drawn in CSS pixels, so its type is the size it says on a phone
+// too, and the map in 180ths of its width, its look at any size ──
 function fitHud(H, map) {
   H.mapBox = fitCanvas(map, 180);
   const box = fitCanvas(H.compass);
   if (box) {
-    // under the buttons, however many rows they wrap to (world.css)
-    const stage = H.compass.parentElement?.getBoundingClientRect();
-    const tools = H.tools?.getBoundingClientRect();
-    if (stage && tools?.height) H.compass.parentElement.style.setProperty('--iw-under', `${Math.round(tools.bottom - stage.top + 6)}px`);
     // where the HUD's other things still sit over the strip (the title, the
     // goal): nothing of the compass is drawn there (by more than a sliver:
     // the title's box runs a little below its letters)

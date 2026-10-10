@@ -30,13 +30,15 @@
 // SPREAD: how much further apart the places are than they were on
 // 2026-10-07, when every one sat within 9,000 of the home sun and the camera
 // saw all of them from anywhere: the map read as one galaxy seen whole. Four
-// times puts the nearest fandom 27 s of free flight from home at the pulse
-// drive and the far ones over a minute, but 6 to 15 s on a trunk lane
-// (hyperlanes.js): a long way without a lane, a short way with one. Eight
-// made free flight a chore; six pushed the far rim past what the far
-// impostors (farPlaces.js) handle well. Only the gaps grow: the places
-// themselves, the home system and the Rick and Morty sector's own layout
-// stay as they are.
+// (2026-10-07) put the nearest fandom 27 s of free flight from home at the
+// pulse drive; six (2026-10-09, the owner's "more distant", 1.5 times that)
+// puts it about 40 s out and the far ones minutes away: the jump (nav.js) is
+// the way across. Eight made free flight a chore. Six once pushed the far rim
+// past what the far impostors handled; the far stars and landmarks
+// (farStars.js, landmarks.js) that replaced them draw on the sky by
+// direction, so distance costs them nothing. Only the gaps grow: the places
+// themselves, the home system and the Rick and Morty sector's own layout stay
+// as they are (the sector itself moves out with the edge: layout.js).
 //
 // (No imports: everything sized by it imports this, never the other way.
 // universes.js writes HOME_SCALE, WORLD_SCALE and SPREAD out as numbers instead, so
@@ -46,7 +48,7 @@ export const LENGTH = 0.26;
 export const HOME_SCALE = 3;
 export const HOME_SPREAD = Math.cbrt(HOME_SCALE);
 export const WORLD_SCALE = 3;
-export const SPREAD = 4;
+export const SPREAD = 6;
 // STAR_SCALE and HOLE_SCALE: deep space's suns (with their planets and
 // orbits) and the Maw (its shadow and disk), so each is bigger than any world
 // (deep.js). The nebulae, the gas and ice giants and the Star Wars gate

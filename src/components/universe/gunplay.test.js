@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { GUNS, buildGun, handFrame, stance } from './gunplay';
+import * as held from '../../lib/three/held';
 
 describe('the guns', () => {
   it('every kind builds at real size, muzzle ahead of the grip, with the points the hands and the shot need', () => {
@@ -82,6 +83,9 @@ describe('a hand’s grip frame', () => {
     for (let i = 0; i < 300; i++) pts.push([Math.random() * 1.6 - 0.8, Math.random() * 12, Math.random() * 7 - 3.5]);
     return pts;
   };
+  it('its hand frame is the held layer’s, re-exported', () => {
+    expect(handFrame).toBe(held.handFrame);
+  });
   it('runs the barrel along the fingers and the sights toward the thumb, whichever way the palm faces', () => {
     // the hand's axes in the world (an A-pose, the arm hanging a little out): x out from the body, y down the arm, z forward
     const axes = { x: new THREE.Vector3(-1, 0, 0), y: new THREE.Vector3(0, -1, 0), z: new THREE.Vector3(0, 0, 1) };

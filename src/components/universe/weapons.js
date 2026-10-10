@@ -1,31 +1,32 @@
 // Each ship's guns, as plain rules (scene.js fires them, tested here).
 //
-// Every ship carries three: its own blaster (the shots it always had), a
-// spread that throws a fan of shorter shots, and heavy ordnance, a slow
-// homing round that hits ten times as hard and is the only thing that
-// hurts the Citadel's core once its shield is down (siege.js). The heavy
-// rounds are few: a rack of them that fills back up one at a time.
+// Every ship carries three lines: its primary (the blaster, the shots it
+// always had; the hangar's Primary part changes its rate and punch, which
+// is scene.js's business through statsOf), a secondary that throws a fan
+// of shorter shots, and ordnance, slow homing rounds that hit hard and are
+// the only thing that hurts the Citadel's core once its shield is down
+// (siege.js). What fires on the secondary and ordnance lines is the part
+// fitted in that slot (outfit.js); stock is the spread and the heavy rack.
+// The ordnance rounds are few: a rack that fills back up one at a time.
 //
 // R (or Shift+R) cycles them, 1 2 3 picks one; the phone has a button.
 //
-// createArmory(kind) → { index, weapon, name, ammo, ammoMax, select(i),
-//   cycle(dir), ready(now, cadence) → bool, fired(now), update(dt), reload() }
+// createArmory(kind, loadout) → { index, id, line, weapon, name, ammo,
+//   ammoMax, filling, select(i), cycle(dir), ready(now, cadence) → bool,
+//   fired(now), update(dt), reload(), refit(loadout) }
 // `cadence` is the ship's own seconds between blaster shots (outfit.js and
 // scene.js's CADENCE); each weapon fires at a multiple of it.
 
-// code: what goes over the wire with a shot (protocol.js), so the others
-// draw it as it is. damage: what one hit takes off another pilot's shields
-// (a blaster bolt is protocol.js's DAMAGE). punch: against hunters and the
-// Citadel (a hunter's hp is in punches). life and speed: of the blaster's.
-export const WEAPONS = {
-  blaster: { code: 0, cadence: 1, count: 1, cone: 0, life: 1, speed: 1, damage: 10, punch: 1, scale: 1 },
-  spread: { code: 1, cadence: 2.4, count: 5, cone: 0.075, life: 0.55, speed: 0.9, damage: 6, punch: 0.6, scale: 0.75 },
-  heavy: { code: 2, cadence: 3.2, count: 1, cone: 0, life: 2.8, speed: 0.5, damage: 30, punch: 8, scale: 1, homing: 2.4, ammo: 4, reload: 6.5, heavy: true },
-};
-export const ORDER = ['blaster', 'spread', 'heavy'];
-export const byCode = (code) => ORDER.find((id) => WEAPONS[id].code === code) ?? 'blaster';
+import { STOCK, STOCK_LOADOUT, partById } from './outfit';
+import { WEAPONS } from './weaponTable';
 
-// what each crew calls them, and the heavy round's glow
+export { WEAPONS, burstOf, byCode, rackOf } from './weaponTable';
+
+export const LINES = ['primary', 'secondary', 'ordnance'];
+export const LINE_SLOT = { primary: 'guns', secondary: 'secondary', ordnance: 'ordnance' };
+export const LINE_STOCK = { primary: 'blaster', secondary: 'spread', ordnance: 'heavy' };
+
+// what each crew calls its stock three, and the heavy round's glow
 export const ARSENAL = {
   xwing: { names: ['Laser cannons', 'Ion scatter', 'Proton torpedoes'], heavy: '#ff7a3a' },
   falcon: { names: ['Quad lasers', 'Flak burst', 'Concussion missiles'], heavy: '#ffb347' },
@@ -35,69 +36,96 @@ export const ARSENAL = {
 const DEFAULT = { names: ['Blaster', 'Scatter', 'Missiles'], heavy: '#ffb347' };
 export const arsenalOf = (kind) => ARSENAL[kind] ?? DEFAULT;
 
-export function createArmory(kind) {
+// The weapon and the name on each line, for this crew with this loadout.
+// The primary is always the blaster; a secondary or ordnance part names
+// its weapon (an unknown one is stock's), and a stock line keeps the
+// crew's own name for it.
+function linesOf(kind, loadout) {
   const names = arsenalOf(kind).names;
+  return LINES.map((line, i) => {
+    if (line === 'primary') return { id: 'blaster', name: names[i] };
+    const p = partById(LINE_SLOT[line], loadout?.[LINE_SLOT[line]]);
+    const id = p && p.id !== STOCK && WEAPONS[p.weapon]?.line === line ? p.weapon : LINE_STOCK[line];
+    return { id, name: id === LINE_STOCK[line] || !p ? names[i] : p.name };
+  });
+}
+
+export function createArmory(kind, loadout = STOCK_LOADOUT) {
+  let lines = linesOf(kind, loadout);
   let index = 0;
   let last = -Infinity;
-  const heavy = WEAPONS.heavy;
-  let ammo = heavy.ammo;
-  let refill = 0; // seconds toward the next heavy round
+  let rack = WEAPONS[lines[2].id]; // the ordnance line's weapon, whose rounds these are
+  let ammo = rack.ammo;
+  let refill = 0; // seconds toward the next round
   return {
     get index() {
       return index;
     },
     get id() {
-      return ORDER[index];
+      return lines[index].id;
+    },
+    get line() {
+      return LINES[index];
     },
     get weapon() {
-      return WEAPONS[ORDER[index]];
+      return WEAPONS[lines[index].id];
     },
     get name() {
-      return names[index];
+      return lines[index].name;
     },
     get ammo() {
       return ammo;
     },
-    ammoMax: heavy.ammo,
-    // how far the next heavy round is along, 0…1 (for the rack's last pip)
+    get ammoMax() {
+      return rack.ammo;
+    },
+    // how far the next round is along, 0…1 (for the rack's last pip)
     get filling() {
-      return ammo >= heavy.ammo ? 0 : refill / heavy.reload;
+      return ammo >= rack.ammo ? 0 : refill / rack.reload;
     },
     select(i) {
-      if (i < 0 || i >= ORDER.length || i === index) return false;
+      if (i < 0 || i >= LINES.length || i === index) return false;
       index = i;
       return true;
     },
     cycle(dir = 1) {
-      index = (index + ORDER.length + (dir < 0 ? -1 : 1)) % ORDER.length;
+      index = (index + LINES.length + (dir < 0 ? -1 : 1)) % LINES.length;
       return index;
     },
     // may it fire now? (the blaster's cadence times the weapon's; heavy ones need a round)
     ready(now, cadence) {
-      const w = WEAPONS[ORDER[index]];
+      const w = WEAPONS[lines[index].id];
       if (w.heavy && ammo < 1) return false;
       return now - last >= cadence * w.cadence * 1000;
     },
     fired(now) {
       last = now;
-      if (WEAPONS[ORDER[index]].heavy) ammo = Math.max(0, ammo - 1);
+      if (WEAPONS[lines[index].id].heavy) ammo = Math.max(0, ammo - 1);
     },
     // the rack fills back up, a round at a time
     update(dt) {
-      if (ammo >= heavy.ammo) {
+      if (ammo >= rack.ammo) {
         refill = 0;
         return;
       }
       refill += dt;
-      while (refill >= heavy.reload && ammo < heavy.ammo) {
-        refill -= heavy.reload;
+      while (refill >= rack.reload && ammo < rack.ammo) {
+        refill -= rack.reload;
         ammo += 1;
       }
     },
     // back from being shot down: a full rack
     reload() {
-      ammo = heavy.ammo;
+      ammo = rack.ammo;
       refill = 0;
+    },
+    // a new loadout fitted: the same line stays picked, and the rounds left
+    // carry over (no more than the new rack holds; a refit is no reload)
+    refit(next) {
+      lines = linesOf(kind, next);
+      rack = WEAPONS[lines[2].id];
+      ammo = Math.min(ammo, rack.ammo);
+      if (ammo >= rack.ammo) refill = 0;
     },
   };
 }

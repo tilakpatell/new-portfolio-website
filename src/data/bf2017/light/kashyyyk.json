@@ -1,0 +1,272 @@
+{
+ "world": "kashyyyk",
+ "map": "levels/mp/kashyyyk_01/kashyyyk_01",
+ "main": "overcast",
+ "sky": {
+  "main": "Levels/Lighting/Kashyyyk/Overcast_01/VE_PV_Kashyyyk_01_Overcast_01",
+  "overrides": [
+   "Levels/Lighting/Kashyyyk/Interior_01/VE_PV_Kashyyyk_01_Interior_01",
+   "Levels/Lighting/Kashyyyk/Overcast_01/VE_PV_Kashyyyk_01_Night_01"
+  ]
+ },
+ "weathers": {
+  "overcast": {
+   "sun": {
+    "color": [
+     0.999974,
+     0.8796224,
+     0.822785735
+    ],
+    "lux": 128000,
+    "az": 271.385,
+    "el": 25.842
+   },
+   "sky": {
+    "luminance": 40000,
+    "sunSize": 0.007,
+    "panorama": "Levels/Lighting/Kashyyyk/Overcast_01/T_Kashyyyk_Overcast_Panoramic_01_C",
+    "gradient": "Levels/Lighting/Kashyyyk/Overcast_01/T_Kashyyyk_Overcast_Fog_01_C"
+   },
+   "fog": {
+    "start": 50,
+    "end": 10000,
+    "curve": [
+     2.65162659,
+     -4.124741,
+     2.18931222,
+     -0.008949986
+    ],
+    "height": 100,
+    "heightDepth": 100,
+    "heightRange": 3500,
+    "scatter": [
+     170.666672,
+     145.0606,
+     124.735435
+    ]
+   },
+   "tonemap": {
+    "compensation": 1.25,
+    "minEV": 12.5,
+    "maxEV": 14,
+    "auto": true,
+    "bloom": 0.08
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/kashyyyk/overcast.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 5
+   },
+   "enlighten": {
+    "sky": [
+     0,
+     0,
+     0
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ],
+    "terrain": [
+     0.214041144,
+     0.214041144,
+     0.214041144
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Kashyyyk/Overcast_01/VE_PV_Kashyyyk_01_Overcast_01"
+   ],
+   "probe": {
+    "id": "02356752",
+    "variant": "Overcast_Lighting",
+    "zenith": [
+     23.821,
+     23.323,
+     22.262
+    ],
+    "horizon": [
+     31.247,
+     39.326,
+     44.509
+    ],
+    "ground": [
+     24.736,
+     24.24,
+     23.134
+    ],
+    "open": 0.61,
+    "url": "textures/galaxy/bf2017/light/kashyyyk/overcast"
+   }
+  },
+  "interior": {
+   "sun": {
+    "color": [
+     0.999974,
+     0.8796224,
+     0.822785735
+    ],
+    "lux": 128000,
+    "az": 271.385,
+    "el": 25.842
+   },
+   "sky": {
+    "luminance": 40000,
+    "sunSize": 0.007,
+    "panorama": "Levels/Lighting/Kashyyyk/Overcast_01/T_Kashyyyk_Overcast_Panoramic_01_C",
+    "gradient": "Levels/Lighting/Kashyyyk/Overcast_01/T_Kashyyyk_Overcast_Fog_01_C"
+   },
+   "fog": {
+    "start": 50,
+    "end": 10000,
+    "curve": [
+     2.65162659,
+     -4.124741,
+     2.18931222,
+     -0.008949986
+    ],
+    "height": 100,
+    "heightDepth": 100,
+    "heightRange": 3500,
+    "scatter": [
+     170.666672,
+     145.0606,
+     124.735435
+    ]
+   },
+   "tonemap": {
+    "compensation": 1,
+    "minEV": 9,
+    "maxEV": 13,
+    "auto": true,
+    "bloom": 0.08
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/kashyyyk/interior.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 5
+   },
+   "enlighten": {
+    "sky": [
+     0,
+     0,
+     0
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ],
+    "terrain": [
+     0.214041144,
+     0.214041144,
+     0.214041144
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Kashyyyk/Overcast_01/VE_PV_Kashyyyk_01_Overcast_01",
+    "Levels/Lighting/Kashyyyk/Interior_01/VE_PV_Kashyyyk_01_Interior_01"
+   ]
+  },
+  "night": {
+   "sun": {
+    "color": [
+     0.18131578,
+     0.2389628,
+     0.3416339
+    ],
+    "lux": 500,
+    "az": 133.884,
+    "el": 26.095
+   },
+   "sky": {
+    "luminance": 500,
+    "sunSize": 0.001,
+    "panorama": "Levels/Lighting/Kashyyyk/Night_01/T_Kashyyyk_Night_01_C",
+    "gradient": "Levels/Lighting/Kashyyyk/Night_01/T_Kashyyyk_Night_01_Fog_C"
+   },
+   "fog": {
+    "start": 25,
+    "end": 2000,
+    "curve": [
+     -0.4884205,
+     0.6981515,
+     0.629452,
+     0.00470575271
+    ],
+    "height": 150,
+    "heightDepth": 150,
+    "heightRange": 3000,
+    "scatter": [
+     0.7453669,
+     0.802410364,
+     1
+    ]
+   },
+   "tonemap": {
+    "compensation": -0.5,
+    "minEV": 4.5,
+    "maxEV": 8,
+    "auto": true,
+    "bloom": 0.08
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/kashyyyk/night.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 146.25,
+    "strength": 5
+   },
+   "enlighten": {
+    "sky": [
+     3.67730069,
+     16.135601,
+     96
+    ],
+    "ground": [
+     0,
+     0,
+     0
+    ],
+    "terrain": [
+     0.214041144,
+     0.214041144,
+     0.214041144
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Kashyyyk/Overcast_01/VE_PV_Kashyyyk_01_Overcast_01",
+    "Levels/Lighting/Kashyyyk/Overcast_01/VE_PV_Kashyyyk_01_Night_01"
+   ],
+   "probe": {
+    "id": "b9770b3b",
+    "variant": "Night_Lighting",
+    "zenith": [
+     18.616,
+     18.214,
+     17.392
+    ],
+    "horizon": [
+     14.3,
+     13.85,
+     13.015
+    ],
+    "ground": [
+     17.695,
+     17.376,
+     16.712
+    ],
+    "open": 1.31,
+    "url": "textures/galaxy/bf2017/light/kashyyyk/night"
+   }
+  }
+ },
+ "indoor": null
+}

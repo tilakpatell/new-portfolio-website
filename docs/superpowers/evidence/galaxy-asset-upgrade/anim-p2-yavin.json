@@ -1,0 +1,686 @@
+{
+ "route": "#/galaxy/yavin/surface",
+ "rows": [
+  {
+   "id": 0,
+   "name": "GLTF_created_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.0182306089285746,
+   "bind": false,
+   "act": {
+    "clip": "idle",
+    "phase": 0.6918748712632805,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 1,
+   "name": "GLTF_created_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.017534409538997,
+   "bind": false,
+   "act": {
+    "clip": "idle",
+    "phase": 0.8051610242109746,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 2,
+   "name": "GLTF_created_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1183476778496604,
+   "bind": false,
+   "act": {
+    "clip": "idle",
+    "phase": 0.6281320655252784,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 3,
+   "name": "GLTF_created_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1163183052021932,
+   "bind": false,
+   "act": {
+    "clip": "idle",
+    "phase": 0.41093373275361955,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 4,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494263,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 5,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 6,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.94627890432983,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 7,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96469760748458,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.22517555742524567,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 8,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.9599735825308,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.3996859909966587,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 9,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99146806122687,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2614409090019762,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 10,
+   "name": "bdfff6fcbd8c45dab5804c69a6798824fbx",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 201.1914025812637,
+   "bind": false,
+   "act": {
+    "clip": "mixamo.com",
+    "phase": 0.5739318116102368,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 11,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 12,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494263,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 13,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 14,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 15,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 16,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 17,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 18,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 19,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494266,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 20,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494263,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 21,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 22,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.9462789043298,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 23,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 24,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 25,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 26,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.94627890432982,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 27,
+   "name": "bdfff6fcbd8c45dab5804c69a6798824fbx",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 201.19140258126376,
+   "bind": false,
+   "act": {
+    "clip": "mixamo.com",
+    "phase": 0.06081658555194731,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 28,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 29,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 30,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 112.9249863931512,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.23415857693180447,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 31,
+   "name": "bdfff6fcbd8c45dab5804c69a6798824fbx",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 201.19140258126376,
+   "bind": false,
+   "act": {
+    "clip": "mixamo.com",
+    "phase": 0.8077468425035477,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 32,
+   "name": "figure",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 84.9989863007908,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9155734234955162,
+    "loop": true,
+    "weight": 1
+   }
+  }
+ ],
+ "over": [],
+ "bind": [],
+ "locked": {
+  "count": 21,
+  "groups": [
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     4,
+     11,
+     12,
+     14,
+     16,
+     18,
+     19,
+     20,
+     23,
+     24,
+     28,
+     29
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     6,
+     22,
+     26
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     5,
+     13,
+     15,
+     17,
+     21,
+     25
+    ]
+   }
+  ]
+ },
+ "spread": [
+  {
+   "clip": "Armature|Idle|baselayer",
+   "n": 26,
+   "r": 0.7562054812978521
+  },
+  {
+   "clip": "idle",
+   "n": 4,
+   "r": 0.6466194080935666
+  },
+  {
+   "clip": "mixamo.com",
+   "n": 3,
+   "r": 0.36074762160471924
+  }
+ ],
+ "time": {
+  "dt": [
+   0,
+   0.1,
+   0.025,
+   0.019799999999813734,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1
+  ],
+  "from": "wall",
+  "total": 1.7447999999998143
+ },
+ "fail": false
+}

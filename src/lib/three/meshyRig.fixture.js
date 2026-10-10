@@ -15,6 +15,11 @@
 //     turn at rest; `hips`: (t) → the hips' height off its rest, a position
 //     track as Meshy's clips have
 //   RIGHT_ANGLE: Math.PI / 2, the swing swingClip's tests turn every bone by
+//   withHands(rig, { verts = 60 }) → rig, its model given a SkinnedMesh
+//     (rig.hands) of `verts` vertices on each hand, bound at rest: a plate
+//     8 cm out the fingers along the bone's +y, 1 cm thin across its x (the
+//     palm faces in, as an A-pose's does), 3 cm wide along its z, and a
+//     thumb nub 2 cm out at its +z (forward, where a thumb is at rest)
 
 import * as THREE from 'three';
 
@@ -135,4 +140,53 @@ export function swingClip(rig, name, dur, swing, { hips = null } = {}) {
     tracks.push(new THREE.VectorKeyframeTrack('Hips.position', times, times.flatMap((t) => [p.x, p.y + hips(t), p.z])));
   }
   return new THREE.AnimationClip(name, dur, tracks);
+}
+
+// the vertices of one hand, in its bone's space (cm): the plate, then the
+// thumb nub (a tenth of them)
+function handCloud(verts) {
+  const nub = Math.max(2, Math.round(verts * 0.1));
+  const plate = verts - nub;
+  const pts = [];
+  const rows = 6;
+  for (let i = 0; i < plate; i++) {
+    const a = i % rows;
+    const b = Math.floor(i / rows);
+    const cols = Math.max(1, Math.ceil(plate / rows));
+    pts.push([b % 2 ? 0.5 : -0.5, 1 + (8 * a) / (rows - 1), cols > 1 ? -1.5 + (3 * (b % cols)) / (cols - 1) : 0]);
+  }
+  for (let i = 0; i < nub; i++) pts.push([0, 1 + (2 * i) / Math.max(1, nub - 1), 2]);
+  return pts;
+}
+
+export function withHands(rig, { verts = 60 } = {}) {
+  const { model, bones } = rig;
+  model.updateMatrixWorld(true);
+  const list = Object.values(bones);
+  const pos = [];
+  const idx = [];
+  const wts = [];
+  const v = new THREE.Vector3();
+  for (const name of ['RightHand', 'LeftHand']) {
+    const b = bones[name];
+    if (!b) continue;
+    const i = list.indexOf(b);
+    for (const p of handCloud(verts)) {
+      v.set(...p).applyMatrix4(b.matrixWorld);
+      pos.push(v.x, v.y, v.z);
+      idx.push(i, 0, 0, 0);
+      wts.push(1, 0, 0, 0);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(idx, 4));
+  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(wts, 4));
+  const mesh = new THREE.SkinnedMesh(geo, new THREE.MeshBasicMaterial());
+  mesh.name = 'hands';
+  model.add(mesh);
+  model.updateMatrixWorld(true);
+  mesh.bind(new THREE.Skeleton(list));
+  rig.hands = mesh;
+  return rig;
 }

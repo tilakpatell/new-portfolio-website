@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOSTILE_BODY, SCAN, STEP, absorb, createPosture, fallOf, hostileBody, hostileStep, parries, startBurst, startBurst as sb, stepBurst, strafeStep, whereHit } from './hostiles';
+import { ALERT_CLIP, HOSTILE_BODY, SCAN, STEP, absorb, bodyClip, createPosture, fallOf, hostileBody, hostileStep, startBurst, startBurst as sb, stepBurst, strafeStep, whereHit } from './hostiles';
 import { MODE_BODY } from '../../../lib/ai/body';
 import { seeded } from '../../../lib/seeded';
 import { createSearch } from '../../../lib/ai/search';
@@ -36,13 +36,6 @@ describe('how the enemies fight', () => {
     expect(absorb({ shield: 1, hp: 2 }, 2)).toEqual({ shield: 0, hp: 1 });
     expect(absorb({ shield: 0, hp: 2 }, 1)).toEqual({ shield: 0, hp: 1 });
     expect(absorb({ hp: 2 }, 2)).toEqual({ shield: 0, hp: 0 });
-  });
-
-  it('parries a share of swings, never without a blade', () => {
-    expect(parries({ parry: 0.5 }, 0.2)).toBe(true);
-    expect(parries({ parry: 0.5 }, 0.7)).toBe(false);
-    expect(parries({}, 0.0)).toBe(false);
-    expect(parries(null, 0.0)).toBe(false);
   });
 });
 
@@ -109,6 +102,16 @@ describe('an enemy’s head', () => {
     expect(out.guessed).toBe(false);
   });
 
+  it('leads you while it sees you moving: aims where you will be when its bolt arrives', () => {
+    const t = trooper();
+    const { out } = run(t, { you: { x: 0, z: 30, vel: { x: 2.3, z: 0 } }, allies: [], seesThrough: () => true }, 2);
+    expect(out.guessed).toBe(false);
+    expect(out.aim.z).toBeCloseTo(30, 0);
+    // (a third of a second at 90 m/s: 0.77 m ahead of you)
+    expect(out.aim.x).toBeGreaterThan(0.6);
+    expect(out.aim.x).toBeLessThan(0.95);
+  });
+
   it('a blaster trooper with no shot takes cover from your line of fire; a duellist stays in your view', () => {
     const tokens = createTokens({ pools: { shot: 0 } });
     // a pillar between: a wall on x = 10 hides anything on its far side from you at x = 0
@@ -126,6 +129,14 @@ describe('an enemy’s head', () => {
     expect(d.modes.has('cover')).toBe(false);
     expect(d.modes.has('close')).toBe(true);
     expect(Math.hypot(d.out.x, d.out.z)).toBeLessThan(3.5);
+  });
+
+  it.each(['close', 'back', 'strafe'])('a %s in progress whose mark has gone between two choices carries on rather than falling over', (mode) => {
+    const c = trooper({ hostile: { range: 40, chase: 2.7, melee: true, reach: 3.4, strafe: { speed: 2.6, every: 2.2, keep: 14 } }, spec: { roam: 3, leash: 40 } });
+    // (a mark that died, or an ally with nothing left to fight, mid-move)
+    c.mind = { mode, goal: null, thinkAt: 99, clock: 0 };
+    expect(() => hostileStep(c, { you: null, allies: [] }, DT, seeded(1))).not.toThrow();
+    expect(c.mind.mode).toBe('wander');
   });
 
   it('the old spawns run as before: a strafer circles, holding its distance; a chaser comes to arm’s reach and stops', () => {
@@ -167,10 +178,20 @@ describe('an enemy’s body', () => {
   it('the table: the site’s rows, with the hostiles’ own modes', () => {
     for (const mode of Object.keys(MODE_BODY)) expect(HOSTILE_BODY[mode]).toBeDefined();
     expect(HOSTILE_BODY.cover.base).toBe('crouch');
+    // (the game's own, for a figure that has the soldiers' set: walrusSets/npc.js)
+    expect(HOSTILE_BODY.cover.clip).toBe('cover.low.idle');
+    expect(ALERT_CLIP).toBe('aware.alert');
     expect(HOSTILE_BODY.cover.rise).toBe(true);
     expect(HOSTILE_BODY.strafe.look).toBe('aim');
     expect(HOSTILE_BODY.search.scan).toBe(true);
     for (const mode of ['hold', 'close', 'flank', 'look', 'wander']) expect(HOSTILE_BODY[mode]).toBeDefined();
+  });
+
+  it('plays the game’s clip where the figure has it, else the site’s', () => {
+    expect(bodyClip({ clips: { 'cover.low.idle': {} } }, 'cover.low.idle', 'crouch')).toBe('cover.low.idle');
+    expect(bodyClip({ clips: { idle: {} } }, 'cover.low.idle', 'crouch')).toBe('crouch');
+    expect(bodyClip({}, 'cover.low.idle', 'crouch')).toBe('crouch');
+    expect(bodyClip({ clips: { 'cover.low.idle': {} } }, null, null)).toBe(null);
   });
 
   it('a strafer’s feet go across while its chest, its head and its gun stay on you', () => {
@@ -203,6 +224,7 @@ describe('an enemy’s body', () => {
     expect(b.base).toBe(null);
     for (let i = 0; i < 15; i++) b = hostileBody(p, there, DT, { t: (t += DT) });
     expect(b.base).toBe('crouch');
+    expect(b.clip).toBe('cover.low.idle');
     expect(b.aim).toBe(0);
     expect(b.look).toEqual({ x: 0, z: 20 });
     // about to fire: up, the gun up

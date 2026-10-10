@@ -45,19 +45,19 @@ const Hero = memo(function Hero() {
       <div className="fog fog-a -z-10" aria-hidden="true" />
       <div className="fog fog-b -z-10" aria-hidden="true" />
       <div className="hero-mist -z-10" aria-hidden="true" />
-      <div className="shell relative flex min-h-[clamp(560px,90svh,940px)] flex-col justify-end pb-[clamp(7rem,20vh,12rem)] pt-[calc(var(--nav-h)+48px)]">
-        <p className="eyebrow hero-in !text-white/85">Travel</p>
-        <PageTitle id="travel-hero-title" className="display hero-in mt-5 max-w-4xl text-[clamp(3.2rem,1.2rem+7vw,7.4rem)] !text-white" style={{ '--d': '80ms' }}>
+      <div className="shell on-photo relative flex min-h-[clamp(560px,90svh,940px)] flex-col justify-end pb-[clamp(7rem,20vh,12rem)] pt-[calc(var(--nav-h)+48px)]">
+        <p className="eyebrow hero-in">Travel</p>
+        <PageTitle id="travel-hero-title" className="display hero-in mt-5 max-w-4xl text-[clamp(3.2rem,1.2rem+7vw,7.4rem)]" style={{ '--d': '80ms' }}>
           Places I’ve been
         </PageTitle>
-        <p className="lead hero-in mt-6 max-w-[34rem] !text-[clamp(1.1rem,1rem+0.45vw,1.3rem)] !text-white/90" style={{ '--d': '160ms' }}>
+        <p className="lead lead-lg hero-in mt-6 max-w-[34rem]" style={{ '--d': '160ms' }}>
           {countWord(COUNTRY_COUNT)} countries and the Caribbean so far, with a soft spot for mountains and lakes.
         </p>
         <div className="hero-in mt-9 flex flex-wrap gap-3" style={{ '--d': '240ms' }}>
           <a href="#globe" className="btn btn-primary btn-lg group" onClick={(e) => jumpTo(e, 'globe')}>
             Spin the globe <RiArrowDownLine className="h-4 w-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
           </a>
-          <Link to="/earth" className="btn btn-ghost btn-lg !border-white/60 !bg-black/20 !text-white backdrop-blur-sm hover:!bg-white/15">
+          <Link to="/earth" className="btn btn-ghost btn-lg">
             Fly it in 3D
           </Link>
         </div>
@@ -108,14 +108,14 @@ const HomeBase = memo(function HomeBase() {
 const Facts = memo(function Facts() {
   return (
     <PhotoBand id="band" className="travel-band">
-      <div className="shell relative py-[clamp(7rem,16vw,12rem)]">
+      <div className="shell on-photo relative py-[clamp(7rem,16vw,12rem)]">
         <h2 className="sr-only">By the numbers</h2>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
           {FACTS.map((f, i) => (
             <Reveal key={f.label} delay={i * 80} className="band-fact">
               <dt className="sr-only">{f.label}</dt>
               <dd className="m-0">
-                <span className="display block text-[clamp(2rem,1.2rem+2.8vw,3.6rem)] !text-white">{f.value}</span>
+                <span className="display block text-[clamp(2rem,1.2rem+2.8vw,3.6rem)]">{f.value}</span>
                 <span className="mt-2 block text-sm leading-snug text-white/85">{f.label}</span>
               </dd>
             </Reveal>

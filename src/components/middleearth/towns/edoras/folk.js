@@ -1213,6 +1213,16 @@ function bannerGeo(at = V3()) {
 
 // ── the feast, and the barrows ──
 
+// what a thing is in a hand, and where the hand closes on it (a child
+// named `grip`), for the cast's hands (lib/three/held.js)
+function held(m, kind, at) {
+  m.userData.held = { kind };
+  const grip = new THREE.Object3D();
+  grip.name = 'grip';
+  grip.position.set(...at);
+  m.add(grip);
+}
+
 // A wooden tankard, foaming over: staves bound with iron, a handle on its
 // -x side; its middle at the origin, upright.
 function tankardGeo() {
@@ -1799,6 +1809,8 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
       const m = new THREE.Mesh((tankardG ??= tankardGeo()), mats.fig);
       m.name = 'tankard';
       m.castShadow = true;
+      // (held by its handle, on its −x side: lib/three/held.js's kinds)
+      held(m, 'tankard', [-0.128, 0, 0]);
       return m;
     },
     plate: () => {
@@ -1810,6 +1822,8 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
     flowerBunch: () => {
       const m = new THREE.Mesh((flowerG ??= flowerGeo()), mats.fig);
       m.name = 'simbelmyne';
+      // (the stems in a fist, the flowers up, kept so: held like a bottle by its neck)
+      held(m, 'bottle', [0, -0.04, 0]);
       return m;
     },
   };

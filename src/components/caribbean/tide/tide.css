@@ -6,6 +6,9 @@
 .dt-screen {
   --dt-gold: #f2c45a; --dt-brass: #c9a25a; --dt-ink: #0b1218; --dt-blood: #c8362b; --dt-sea: #7fd6d0; --dt-paper: #efe2c2;
   --g3-pick: #f2c45a; --flash: rgba(200, 54, 43, 0.26);
+  /* the thumbs' foot: 12 px, or clear of a phone's home bar when the screen's
+     bottom meets it (full screen, or scrolled to the stage's foot) */
+  --dt-foot: max(12px, env(safe-area-inset-bottom));
   background: #0a1820; cursor: crosshair;
 }
 .dt-screen:fullscreen { max-height: none; }
@@ -25,8 +28,8 @@
 .dt-gold { font: 400 clamp(1.5rem, 1.1rem + 1.4vw, 2.2rem)/1 'Pirata One', var(--font-sans); font-variant-numeric: tabular-nums; color: var(--dt-gold); text-shadow: 0 2px 0 #3a2606, 0 3px 8px rgba(0, 0, 0, 0.6); }
 .dt-combo { min-width: 2.6em; font: 700 0.9rem/1 var(--font-mono); color: #fff; }
 .dt-goal { display: grid; justify-items: center; text-align: center; }
-.dt-chapter { display: grid; gap: 0.2rem; padding: 0.4rem 0.9rem 0.5rem; border-radius: 4px; background: linear-gradient(rgba(10, 18, 24, 0.62), rgba(10, 18, 24, 0.4)); box-shadow: inset 0 0 0 1px rgba(201, 162, 90, 0.4); }
-.dt-chapter small { font: 600 0.62rem/1.2 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dt-brass); }
+.dt-chapter { display: grid; gap: 0.2rem; padding: 0.4rem 0.9rem 0.5rem; border-radius: 4px; background: linear-gradient(rgba(10, 18, 24, 0.86), rgba(10, 18, 24, 0.78)); box-shadow: inset 0 0 0 1px rgba(201, 162, 90, 0.4); } /* (glass at 0.78 at least: words over the live sea) */
+.dt-chapter small { font: 600 0.7rem/1.2 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dt-brass); }
 .dt-chapter span { font: 400 clamp(1rem, 0.85rem + 0.6vw, 1.3rem)/1.15 'IM Fell English', Georgia, serif; color: var(--dt-paper); }
 .dt-boss { display: grid; gap: 0.3rem; width: min(100%, 420px); }
 .dt-boss span { font: 400 clamp(1.2rem, 0.9rem + 1vw, 1.7rem)/1 'Pirata One', var(--font-sans); letter-spacing: 0.03em; color: #ffd9c9; text-shadow: 0 2px 0 #3a0c08, 0 0 18px rgba(200, 54, 43, 0.7); }
@@ -43,7 +46,7 @@
 
 /* the deck: port guns, the hull, starboard guns */
 .dt-deck { grid-row: 3; justify-self: center; display: grid; grid-template-columns: auto minmax(0, 22rem) auto; align-items: end; gap: clamp(0.5rem, 1.4vw, 1.1rem); width: min(100%, 46rem); padding-inline: clamp(6.5rem, 15vw, 9.5rem) 0.5rem; }
-.dt-guns { display: grid; gap: 0.3rem; min-width: 5.6rem; font: 600 0.66rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(239, 226, 194, 0.75); }
+.dt-guns { display: grid; gap: 0.3rem; min-width: 5.6rem; font: 600 0.7rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(239, 226, 194, 0.75); }
 .dt-guns-star { text-align: right; }
 .dt-guns kbd { display: inline-block; min-width: 1.5em; padding: 0.12rem 0.3rem; border: 1px solid rgba(239, 226, 194, 0.55); border-bottom-width: 2px; border-radius: 4px; font: 700 0.7rem/1 var(--font-mono); text-align: center; color: #fff; background: rgba(10, 18, 24, 0.5); }
 .dt-load { position: relative; height: 9px; overflow: hidden; border-radius: 2px; background: rgba(10, 18, 24, 0.7); box-shadow: inset 0 0 0 1px rgba(201, 162, 90, 0.55); }
@@ -55,40 +58,48 @@
 .dt-hull-bar { position: relative; height: 15px; overflow: hidden; border-radius: 2px; background: rgba(10, 18, 24, 0.72); box-shadow: inset 0 0 0 2px #1d130a, 0 0 0 1px rgba(201, 162, 90, 0.7); }
 .dt-hull-bar > i { position: absolute; inset: 2px; background: linear-gradient(#7fd6d0, #2f8f95); transform-origin: left; transition: transform 0.15s linear; }
 .dt-screen[data-low] .dt-hull-bar > i { background: linear-gradient(#ef6b55, #a5261c); }
-.dt-hull-row { display: flex; align-items: center; gap: 0.7rem; font: 600 0.66rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(239, 226, 194, 0.75); }
+.dt-hull-row { display: flex; align-items: center; gap: 0.7rem; font: 600 0.7rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(239, 226, 194, 0.75); }
 .dt-hull-row b { font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
 .dt-sail { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: auto; color: #fff; }
 .dt-sail i { width: 9px; height: 11px; clip-path: polygon(0 100%, 100% 100%, 100% 0); background: rgba(239, 226, 194, 0.25); }
 .dt-sail i[data-on] { background: var(--dt-paper); }
 /* the other players online, by the tools: how many, or a way to see them */
-.dt-players { display: inline-flex; align-items: center; gap: 0.35rem; height: 36px; padding: 0 0.8rem; border: 1px solid rgba(201, 162, 90, 0.55); border-radius: 10px; background: rgba(6, 8, 14, 0.55); color: var(--dt-paper); font: 600 0.72rem/1 var(--font-mono); white-space: nowrap; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.dt-players { display: inline-flex; align-items: center; gap: 0.35rem; height: 36px; padding: 0 0.8rem; border: 1px solid rgba(201, 162, 90, 0.55); border-radius: 10px; background: rgba(6, 8, 14, 0.78); color: var(--dt-paper); font: 600 0.72rem/1 var(--font-mono); white-space: nowrap; }
 .dt-players b { color: #c9dcff; font-variant-numeric: tabular-nums; }
 button.dt-players { border-style: dashed; cursor: pointer; }
-button.dt-players:hover { background: rgba(255, 255, 255, 0.12); }
+button.dt-players:hover { background: rgba(34, 38, 48, 0.86); } /* (lighter on hover, never thinner than the glass: its words sit over the live sea) */
 button.dt-players:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (max-width: 699px) {
   /* a phone: gold and the chart top left, the goal under the buttons top right, the hull over the fire buttons */
   .dt-top { grid-template-columns: 1fr; gap: 0.5rem; }
   .dt-goal { justify-items: end; text-align: right; padding-left: 96px; }
   .dt-chapter { padding: 0.3rem 0.6rem 0.4rem; }
-  .dt-chapter small { font-size: 0.56rem; }
   .dt-boss { width: 100%; }
-  .dt-deck { grid-template-columns: 1fr 1fr; width: 100%; padding-inline: 0 60px; margin-bottom: 76px; }
+  .dt-deck { grid-template-columns: 1fr 1fr; width: 100%; padding-inline: 0 60px; margin-bottom: calc(64px + var(--dt-foot)); }
   .dt-hull { grid-column: 1 / -1; grid-row: 1; }
   .dt-guns { min-width: 0; }
+  /* (at 0.7 rem the hull's line only fits a phone a little tighter: each
+     reading whole, never "100 /" over "100"; on the narrowest, the knots
+     take a line of their own rather than run under the sail buttons) */
+  .dt-hull-row { flex-wrap: wrap; gap: 0.25rem 0.4rem; letter-spacing: 0.02em; }
+  .dt-hull-row > * { white-space: nowrap; }
   .dt-guns kbd { display: none; }
   .dt-chart { bottom: auto; top: 3.3rem; width: 80px; }
-  .dt-players { padding: 0 0.55rem; font-size: 0.64rem; }
-  .dt-hud .g3-callout { top: 34%; white-space: normal; width: 90%; text-align: center; }
+  .dt-players { padding: 0 0.55rem; font-size: 0.7rem; }
+  .dt-hud .g3-callout { top: 34%; } /* (lower than the shared rule: the goal stacks under the tools on a phone) */
 }
 
 /* touch */
 .dt-stick { position: absolute; z-index: 3; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
 .dt-stick::before { content: ''; position: absolute; left: -64px; top: -22px; width: 128px; height: 44px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.4); background: rgba(10, 18, 24, 0.35); }
 .dt-stick i { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; background: rgba(242, 196, 90, 0.85); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); }
-.dt-touch-sail { right: 10px; bottom: 84px; flex-direction: column; }
+.dt-touch-sail { right: 10px; bottom: calc(72px + var(--dt-foot)); flex-direction: column; }
 .dt-touch-sail .g3-touch-btn { width: 48px; height: 48px; }
-.dt-touch-fire { right: 10px; bottom: 12px; }
+/* the buttons over the live sea: glass at 0.78, never blurred (a blur over a
+   canvas redrawn every frame costs a frame) */
+.dt-screen .g3-touch-btn, .dt-screen .g3-tool { background: rgba(6, 8, 14, 0.78); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.dt-screen .g3-tool:hover { background: rgba(34, 38, 48, 0.86); }
+.dt-touch-fire { right: 10px; bottom: var(--dt-foot); }
 .dt-touch-fire .dt-fire { width: auto; min-width: 86px; padding: 0 0.9rem; border-radius: 14px; font: 700 0.78rem/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; border-color: var(--dt-gold); color: var(--dt-gold); }
 
 /* the title, the shipwright, the end */

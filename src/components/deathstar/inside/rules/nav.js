@@ -15,11 +15,13 @@
 //
 //   createNav(layout) → nav      the graph of a buildLayout(station), worked out once; a ride’s
 //     levels are counted in the station’s `levelHeight` (12 m, DS1’s, when it gives none)
-//   route(nav, from: { x, z, room }, to: { x, z, room }, { canPass, solidsOf }) → [point] | null
+//   route(nav, from: { x, z, room }, to: { x, z, room }, { canPass, solidsOf, off }) → [point] | null
 //     canPass(doorId, door) → bool   whether this walker may go through a door (absent: every door)
 //     solidsOf(roomId) → [{ box: { x0, x1, z0, z1 } } | { circle: { x, z, r } }]   what stands on its floor
+//     off: Set<tag>   the floors drawn back now (layout.offTags): a way never crosses where they were
 //     point: { x, z, room, door?, lift? }, from first and to last; each point’s room is the one the
-//       leg to it is walked in, so a door’s point names the room before it. `lift` marks the middle
+//       leg to it is walked in, so a door’s point names the room before it. A leg along a door's own
+//       wall meets it square, from a point 0.8 m out (aprons). `lift` marks the middle
 //       of the car where a ride starts, and the next point is the middle of the car it ends in.
 //     null when no way is left; a single point when from and to are the same place in one room
 
@@ -75,7 +77,7 @@ export function createNav(layout) {
 
 const nearest = (stops, p) => stops.reduce((best, s) => Math.min(best, apart(p, s)), Infinity);
 
-export function route(nav, from, to, { canPass = () => true, solidsOf = () => [] } = {}) {
+export function route(nav, from, to, { canPass = () => true, solidsOf = () => [], off = null } = {}) {
   const { layout, byRoom, stops, kids } = nav;
   if (!byRoom.has(from?.room) || !byRoom.has(to?.room)) return null;
   if (from.room === to.room && apart(from, to) < SAME) return [{ x: from.x, z: from.z, room: from.room }];
@@ -109,7 +111,7 @@ export function route(nav, from, to, { canPass = () => true, solidsOf = () => []
     if (room === goal.room) there.push(goal);
     const space = layout.rooms.get(room);
     for (const m of there) {
-      const way = bend(space, solidsIn(room), n, m, groundOf(nav, space));
+      const way = bend(space, solidsIn(room), n, m, groundOf(nav, space, off));
       if (way) yield { m, room, cost: way.length, via: way.via };
     }
     for (const ride of n.rides ?? []) yield { m: ride.to, ride, cost: ride.cost };
@@ -126,7 +128,7 @@ export function route(nav, from, to, { canPass = () => true, solidsOf = () => []
       const fc = g.get(c.key) + guess(c);
       if (!n || fc < f) [n, f] = [c, fc];
     }
-    if (n === goal) return trace(came, goal, from);
+    if (n === goal) return aprons(trace(came, goal, from), layout);
     frontier.delete(n.key);
     done.add(n.key);
     for (const step of next(n)) {
@@ -167,6 +169,49 @@ function trace(came, goal, from) {
   return points;
 }
 
+// A leg into a door or out of one that runs along the door's own wall (to
+// or from another door in that wall, 12 m along the bay's back wall) is
+// walked along the wall's line, where a body meets the doorway's jamb end
+// on and can't slide past it: such a leg is made to meet the door square,
+// from a point APRON out in the room, and to leave it the same way. A point
+// that would be off its room's floor is left out.
+const APRON = 0.8; // metres out from a door a leg along its wall turns in to it, or out of it
+const ALONG = 0.35; // a leg crossing a door's wall by less than this share of its length runs along it
+function aprons(points, layout) {
+  const out = [];
+  // (on whichever side of the door is the room's own: a room nested in another has its parent's
+  // middle inside it, so it is the point itself that is asked which room it is in)
+  const apronOf = (door, room) => {
+    const d = layout.doors.get(door);
+    if (!d) return null;
+    const n = d.axis === 'x' ? { x: 0, z: 1 } : { x: 1, z: 0 };
+    for (const side of [1, -1]) {
+      const a = { x: d.x + n.x * side * APRON, z: d.z + n.z * side * APRON, room };
+      if (layout.roomAt(a.x, (d.y ?? 0) + 1, a.z) === room && layout.floorAt(room, a.x, a.z) !== null) return { a, n };
+    }
+    return null;
+  };
+  const along = (p, q, n) => {
+    const len = apart(p, q);
+    return len > APRON * 1.5 && Math.abs((q.x - p.x) * n.x + (q.z - p.z) * n.z) < ALONG * len;
+  };
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const prev = out.at(-1);
+    if (p.door && prev && !prev.lift) {
+      const ap = apronOf(p.door, p.room);
+      if (ap && along(prev, p, ap.n)) out.push(ap.a);
+    }
+    out.push(p);
+    const q = points[i + 1];
+    if (p.door && q && !p.lift) {
+      const ap = apronOf(p.door, q.room);
+      if (ap && along(p, q, ap.n)) out.push(ap.a);
+    }
+  }
+  return out;
+}
+
 // The shortest way from p to q across a room: straight when nothing is in
 // the way, else from corner to corner (Dijkstra over the corners of the
 // grown solids and, on an uneven floor, the ground’s own turning points,
@@ -183,9 +228,9 @@ function bend(room, solids, p, q, ground) {
   if (ground) forget(ground);
   const kept = solids.filter((s) => (s.box || s.circle) && !holds(s, p) && !holds(s, q));
   const full = kept.map((s) => grown(s, GROW));
-  const near = kept.map((s) => grown(s, Math.max(0, Math.min(GROW, toSolid(s, p) - HAIR, toSolid(s, q) - HAIR))));
-  const ends = ground ? [p, q].map((e) => ({ e, y: ground.at(e.x, e.z) })).filter(({ y }) => y !== null) : [];
-  const clearOf = (r, y) => ends.reduce((g, end) => (Math.abs(y - end.y) <= STEP + TINY ? Math.min(g, Math.max(0, toBox(r, end.e) - HAIR)) : g), GROW);
+  const near = kept.map((s) => grown(s, Math.max(0, Math.min(GROW, outOf(s, p) - HAIR, outOf(s, q) - HAIR))));
+  const ends = ground ? [p, q].map((e) => ({ e, y: endAt(ground, e) })).filter(({ y }) => y !== null) : [];
+  const clearOf = (r, y) => ends.reduce((g, end) => (Math.abs(y - end.y) <= STEP + TINY ? Math.min(g, Math.max(0, outOfBox(r, end.e) - HAIR)) : g), GROW);
   const clear = (a, b) => {
     const end = a === p || a === q || b === p || b === q;
     if ((end ? near : full).some((s) => crosses(s, a, b))) return false;
@@ -227,7 +272,11 @@ function bend(room, solids, p, q, ground) {
 }
 
 const toBox = (b, p) => Math.hypot(Math.max(b.x0 - p.x, 0, p.x - b.x1), Math.max(b.z0 - p.z, 0, p.z - b.z1));
-const toSolid = (s, p) => (s.box ? toBox(s.box, p) : Math.max(0, Math.hypot(p.x - s.circle.x, p.z - s.circle.z) - s.circle.r));
+// How far a box may be grown square and still leave p outside it: how far p stands out beyond it
+// on the side it is furthest out. (Its straight-line distance, toBox, is more off a corner, where a
+// box grown square by that much would take p in, and no leg could leave it.) A circle grows round.
+const outOfBox = (b, p) => Math.max(0, b.x0 - p.x, p.x - b.x1, b.z0 - p.z, p.z - b.z1);
+const outOf = (s, p) => (s.box ? outOfBox(s.box, p) : Math.max(0, Math.hypot(p.x - s.circle.x, p.z - s.circle.z) - s.circle.r));
 const growBox = (b, g) => ({ x0: b.x0 - g, x1: b.x1 + g, z0: b.z0 - g, z1: b.z1 + g });
 const grown = (s, g) => (s.box ? { box: growBox(s.box, g) } : { circle: { x: s.circle.x, z: s.circle.z, r: s.circle.r + g } });
 
@@ -299,13 +348,18 @@ function inRoom(room, p) {
 // A room’s floor, worked out once the first time a leg crosses it; null
 // when it is one level over the whole room, as most are, so its legs need
 // no more than its solids.
-function groundOf(nav, room) {
-  if (!nav.grounds.has(room.id)) {
-    const [f, ...more] = room.floors;
+// A floor drawn back (a tag in `off`) isn't there: a room surveyed apart for each set of its own
+// tags that is off, so the chasm with its bridge out and with it in are two grounds.
+function groundOf(nav, room, off = null) {
+  const gone = off ? room.floors.filter((f) => f.tag && off.has(f.tag)).map((f) => f.tag) : [];
+  const key = gone.length ? `${room.id}|${[...new Set(gone)].sort().join(',')}` : room.id;
+  if (!nav.grounds.has(key)) {
+    const floors = gone.length ? room.floors.filter((f) => !(f.tag && off.has(f.tag))) : room.floors;
+    const [f, ...more] = floors;
     const flat = f && !more.length && (f.circle || (f.x0 <= room.box.x0 + TINY && f.x1 >= room.box.x1 - TINY && f.z0 <= room.box.z0 + TINY && f.z1 >= room.box.z1 - TINY));
-    nav.grounds.set(room.id, flat ? null : survey(nav.layout, room));
+    nav.grounds.set(key, flat ? null : survey(nav.layout, room, gone.length ? off : null, floors));
   }
-  return nav.grounds.get(room.id);
+  return nav.grounds.get(key);
 }
 
 // An uneven floor (more than one floor box, or gaps between them; every
@@ -317,12 +371,12 @@ function groundOf(nav, room) {
 //   from the deck, the inside corner of a walkway seen from the walkway;
 // - halfway along each stretch where two floors a step apart meet: the
 //   foot of a stair or a ramp, the step from one stair tread to the next.
-function survey(layout, room) {
-  const at = (x, z) => layout.floorAt(room.id, x, z);
+function survey(layout, room, drawn = null, floors = room.floors) {
+  const at = (x, z) => layout.floorAt(room.id, x, z, drawn ?? undefined);
   // edges a hair apart (a run of treads adds up with rounding) are one line
   const lines = (lo, hi, ends) => [lo, hi, ...ends].filter((v) => v >= lo && v <= hi).sort((m, n) => m - n).filter((v, k, all) => k === 0 || v - all[k - 1] > TINY);
-  const X = lines(room.box.x0, room.box.x1, room.floors.flatMap((f) => [f.x0, f.x1]));
-  const Z = lines(room.box.z0, room.box.z1, room.floors.flatMap((f) => [f.z0, f.z1]));
+  const X = lines(room.box.x0, room.box.x1, floors.flatMap((f) => [f.x0, f.x1]));
+  const Z = lines(room.box.z0, room.box.z1, floors.flatMap((f) => [f.z0, f.z1]));
   const off = (y, from) => y === null || Math.abs(y - from) > STEP + TINY;
   const ways = [];
   for (const x of X) {
@@ -357,7 +411,7 @@ function survey(layout, room) {
     seen.add(key);
     return true;
   });
-  const ground = { room, at, X, Z, ways: turns, rects: new Map(), legs: new Map(), places: new Map() };
+  const ground = { room, floors, at, X, Z, ways: turns, rects: new Map(), legs: new Map(), places: new Map() };
   turns.forEach((w, k) => ground.places.set(`${w.x},${w.z}`, (w.place = k)));
   return ground;
 }
@@ -368,10 +422,10 @@ function survey(layout, room) {
 // the floors no more than a step below are cut out of it).
 function obstaclesAt(ground, y) {
   if (!ground.rects.has(y)) {
-    const { room } = ground;
-    const tall = room.floors.filter((f) => f.y > y + STEP + TINY);
+    const { room, floors } = ground;
+    const tall = floors.filter((f) => f.y > y + STEP + TINY);
     let low = [room.box];
-    for (const f of room.floors) if (f.y >= y - STEP - TINY) low = low.flatMap((b) => minus(b, f));
+    for (const f of floors) if (f.y >= y - STEP - TINY) low = low.flatMap((b) => minus(b, f));
     // a round room’s box reaches past its wall at the corners, and nobody falls off a wall
     if (room.round) low = low.filter((b) => toBox(b, room) < room.w / 2);
     ground.rects.set(y, [...tall, ...low]);
@@ -430,9 +484,22 @@ function forget(ground) {
 // (the height can change only where the leg crosses one of the floors’
 // lines), and while at each height y never nearer than `clearOf(box, y)`
 // to anything it must keep clear of there.
+// The floor under an end of a leg. A door's point stands on its room's wall,
+// and a floor box's far edges are outside it, so a door in a room's far wall
+// would have no floor under it there (the gantry's door at the top of its
+// stair): an end on the room's edge reads the floor a hair inside.
+function endAt(ground, p) {
+  const y = ground.at(p.x, p.z);
+  if (y !== null) return y;
+  const b = ground.room.box;
+  const x = Math.min(Math.max(p.x, b.x0 + PEEK), b.x1 - PEEK);
+  const z = Math.min(Math.max(p.z, b.z0 + PEEK), b.z1 - PEEK);
+  return Math.hypot(x - p.x, z - p.z) <= 2 * PEEK ? ground.at(x, z) : null;
+}
+
 function onFoot(ground, a, b, clearOf) {
   const { at } = ground;
-  const first = at(a.x, a.z);
+  const first = endAt(ground, a);
   if (first === null) return false;
   const dx = b.x - a.x;
   const dz = b.z - a.z;
@@ -452,7 +519,7 @@ function onFoot(ground, a, b, clearOf) {
     if (was && was.y === y) was.t1 = t1;
     else runs.push({ y, t0, t1 });
   }
-  const end = at(b.x, b.z);
+  const end = endAt(ground, b);
   if (end === null || Math.abs(end - (runs.at(-1)?.y ?? first)) > STEP + TINY) return false;
   return runs.every(({ y, t0, t1 }) => {
     const from = { x: a.x + dx * t0, z: a.z + dz * t0 };

@@ -6,8 +6,11 @@ import { worldStop } from './shared';
 // The player's tour: what there is to play, in about seven minutes. The
 // ship (the map's own basics, briefs.js's '/universe/fly'), the galaxy, the
 // worlds, the games, playing together, the checklist and the colours.
-// Chapter 1 is the shell (shared.js's SHELL_STOPS); these are 2 to 9, all on
-// the map: the worlds are only offered (Go there), never loaded by the tour.
+// Chapter 1 is the shell (shared.js's SHELL_STOPS); these follow, on the
+// map, and then the tour walks into eight of the worlds (WALKED, each a
+// chapter marked `world`): it waits for each, its download gate included,
+// so a phone takes the whole tour too; a world kept light is toured as it
+// is. The rest are offered from their cards (Go there).
 
 // Star Wars' worlds are the galaxy's chapter; every other world is a card in
 // the worlds chapter, in the map's order. Each card is the guide's line on
@@ -39,6 +42,52 @@ const galaxyCards = () => WORLDS.filter(starWars).map((w) => card(w, w.to === '/
 // "Over 240": the count rounded down to the ten below it
 const achievements = Math.floor((Object.keys(ACHIEVEMENTS).length - 1) / 10) * 10;
 
+// The worlds the tour walks into, each one card, lit round the thing named
+// where the world marks one (data-tour)
+const walk = (id, path, title, stop) => ({ id: `walk-${id}`, title, path, world: true, stops: [{ id: `walk-${id}-stop`, ...stop }] });
+export const WALKED = [
+  walk('galaxy', '/galaxy/hoth', 'A galaxy far, far away', {
+    at: 'galaxy-panel',
+    wait: true, // (the world's own panel or HUD mounts after the page)
+    title: 'Eighteen systems, three wars',
+    text: 'Jump from Tatooine to Hoth to Endor (J jumps, M is the holotable). Swear to a side and your battles count for it. Each system has a briefing; land and walk it as Luke, Leia, Han or Boba.',
+  }),
+  walk('avengers', '/avengers', 'Avengers HQ', {
+    title: 'The compound',
+    text: 'You’re Spider-Man: swing, zip, perch. Each building is a game that wins an Infinity Stone, and six Stones open a portal to Titan. Twelve backpacks and a ring course are hidden round the grounds.',
+  }),
+  walk('middleearth', '/middle-earth', 'Middle-earth', {
+    at: 'me-map',
+    wait: true, // (the world's own panel or HUD mounts after the page)
+    title: 'The road to Mount Doom',
+    text: 'A map of chapters from Hobbiton to Doom. Every stop has a walk as Frodo, a co-op kitchen with a room code for a friend, and a side game. Wax seals mark the ones you’ve won.',
+  }),
+  walk('scranton', '/scranton', 'Scranton', {
+    title: 'A week at Dunder Mifflin',
+    text: 'Seven jobs as Jim: reception, the stapler in Jell-O, the chili, paper toss, the fire drill, a Dundie. Find the eggs round the office and the awards board fills up.',
+  }),
+  walk('invincible', '/invincible', 'Invincible', {
+    title: 'Six kilometres of city',
+    text: 'Fly it as Mark: Dad’s ten rings, eight hidden title cards, rescues, the Flaxan portal, the airliner, and up through the air to the Moon and Mars.',
+  }),
+  walk('c137', '/c-137', 'Dimension C-137', {
+    title: 'The portal gun',
+    text: 'The Smiths’ street as Morty, with Rick’s cruiser outside. The dial has thirty-six destinations, each with a micro-quest, and the games are Portal Panic, Total Rickall, the Meeseeks box and Roy.',
+  }),
+  walk('albuquerque', '/albuquerque', 'Albuquerque', {
+    at: 'hud',
+    wait: true, // (the world's own panel or HUD mounts after the page)
+    title: 'Walt’s Aztek',
+    text: 'Drive it (handbrake drifts), make deliveries with Hank’s SUV on your tail, cook to order in Metherria. Places unlock as the career grows. Twelve Blue Sky crystals are out in the desert.',
+  }),
+  walk('dotmatrix', '/dot-matrix', 'Dot Matrix', {
+    at: 'cartridges',
+    wait: true, // (the world's own panel or HUD mounts after the page)
+    title: 'The games',
+    text: 'An island of cartridges, each a real project of mine, and coins to collect. The giant Game Boy, the N64 and the crafting table are doors: Super Mario 64 and Minecraft are through them.',
+  }),
+];
+
 export const PLAYER = [
   {
     id: 'flying',
@@ -60,11 +109,12 @@ export const PLAYER = [
       {
         id: 'worlds-hello',
         title: 'Thirteen more worlds',
-        text: 'Each is its own game. Go there leaves the tour; when you’re back, the guide carries on where you left off.',
+        text: 'Each is its own game. The tour walks into eight of them next; Go there leaves it for any, and when you’re back, the guide carries on where you left off.',
       },
       ...worldCards(),
     ],
   },
+  ...WALKED,
   {
     id: 'games',
     title: 'The games',

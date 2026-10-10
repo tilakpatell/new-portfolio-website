@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ButterRobot from '../components/rickmorty/ButterRobot';
 import Cable from '../components/rickmorty/Cable';
 import CruiserFlight from '../components/rickmorty/CruiserFlight';
+import GalaxyBackdrop from '../components/rickmorty/GalaxyBackdrop';
 import MeeseeksBox from '../components/rickmorty/MeeseeksBox';
 import PlumbusFactory from '../components/rickmorty/PlumbusFactory';
 import PortalHero from '../components/rickmorty/PortalHero';
@@ -104,6 +105,7 @@ export default function RickMorty() {
 
   return (
     <div className="relative rm-page">
+      <GalaxyBackdrop />
       <RmWorld />
       <CruiserFlight />
       <section className="shell relative z-10 grid items-center gap-10 pb-16 pt-[calc(var(--nav-h)+36px)] md:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" aria-labelledby="rm-title">

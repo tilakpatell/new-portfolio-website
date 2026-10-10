@@ -539,7 +539,9 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
     }
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a blow holds the game a moment: the scene's hitstop, ../../feel.js)
+    const real = Math.min(0.05, ms / 1000);
+    const dt = real * a.timeScale(real) * fast;
     s.t += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
@@ -741,28 +743,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (name, v) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -833,7 +814,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -959,7 +940,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
           </div>
         </div>
       )}
-      {walking && touch && <Stick onStick={onStick} />}
+      {walking && touch && <Stick onMove={onStick} />}
       {list && <QuestList title="Things to do in Edoras" quests={prog.quests} next={prog.next} onClose={() => setList(false)} />}
     </div>
   );

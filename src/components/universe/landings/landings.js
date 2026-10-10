@@ -12,7 +12,10 @@
 //               much of space shows through overhead by day, 0…1)
 //   models      GLBs by kind: { url, tall | long | wide (metres: the size it's
 //               brought to, by its height, its longest way along the ground
-//               or its widest), yaw?, y? (a turn, a lift, in metres) }
+//               or its widest), yaw?, y? (a turn, a lift, in metres), node?
+//               (one model of a kit: ./models.js), tint? (a colour its own
+//               are multiplied by), body? (what the landing's physics makes
+//               of it: ./bodies.js) }
 //   things      [{ kind, at: [x, z], yaw?, face?, r, opts? }] in metres round
 //               where the ship comes down, three.js's way round: +z ahead,
 //               the way the ship faces, +x to its left (the door's on its
@@ -31,11 +34,20 @@
 //   scatter     [{ kind, n, from, to, scale: [a, b], opts?, solid? }]: many
 //               of a kind, drawn instanced, `from` to `to` metres out, clear
 //               of the things and the ship (solid: false to walk through)
+//   leaves      { colours: [a, b, accent], density (a m²), size (of a 1 m
+//               quad: Bruno's 0.25), shed (a second, from the trees round
+//               you), crown?: { lit, shade, depth } }: the fallen leaves on
+//               the ground (./litter.js), and the crowns' two tones over
+//               the leaves' own colours (./canopy.js); none left out
+//   wind        { strength (0…1), angle? }: what moves the crowns and the
+//               leaves, rising and falling round its strength
 //   biomes      the parts of the planet you can come down on, read off the
 //               colour of its map under the spot (./biomes.js): each its
 //               own name, ground, sky (haze: the air along its horizon),
-//               things and scatter, the planet's own where it leaves one
-//               out; the last is the fallback, the landing as above
+//               things, scatter, leaves and wind, the planet's own where it
+//               leaves one out (but its leaves: a biome with a scatter of
+//               its own has none of the planet's); the last is the
+//               fallback, the landing as above
 //
 // A kind is one of `models`, or a builder in the planet's file (its PROPS
 // for things, SCATTER or PROPS for scatter).
@@ -48,6 +60,64 @@ export const SCATTER_MAX = 900;
 
 const sz = 0.6; // (a scatter scale range's spread, as a share of its base)
 const range = (k) => [k * (1 - sz / 2), k * (1 + sz / 2)];
+
+// The Quaternius kits' models (scripts/quaternius.mjs: baked to metres,
+// standing on the ground, each a node of its family's GLB; the manifest,
+// public/models/quaternius/manifest.json, has their sizes): a model of a
+// kit at the size asked, and anything more its spec says
+const kit = (file) => (node, size, more = {}) => ({ url: `/models/quaternius/${file}.glb`, node, ...size, ...more });
+const trees = kit('nature/trees');
+// (a tree's solid is its trunk, not its crown: half a metre round, at its
+// scatter's scale)
+const tree = (node, size, more = {}) => trees(node, size, { reach: 0.5, ...more });
+const flowers = kit('nature/flowers');
+const grass = kit('nature/grass');
+const rocks = kit('nature/rocks');
+const mushrooms = kit('nature/mushrooms');
+const furniture = kit('props/furniture');
+const street = kit('props/street');
+const city = kit('props/city');
+const space = kit('props/space');
+// what each small thing is to a landing's physics (./bodies.js: its shape,
+// its mass in kg, sized from its own box): the loose ones light or
+// middling, a shot sends them and a shove moves them; the street's own
+// (lamps, lights, signs, bollards, planters) fixed, for the loose ones to
+// fetch up against and a bolt to stop at. One on a pole says the pole
+// (`post`: r, metres, and at, [x, z] where it stands in the model's own
+// frame), so a bolt that clears the pole goes by: the kit's own, decoded
+// from street.glb (a sign's pole 6.4 cm across, 2 to 3 cm behind the
+// plate's middle; the traffic light's 25 cm, 13 cm behind its lights'; the
+// streetlight's collar at a chest's height, where a shot on foot flies,
+// 40 cm, its pole over that 23 to 12)
+const loose = (shape, mass) => ({ body: { shape, mass } });
+const fixed = (shape, mass, post = null) => ({ body: { shape, mass, fixed: true, ...post } });
+const PROP = {
+  chair: furniture('Chair', { tall: 0.95 }, loose('box', 4)),
+  stool: furniture('Stool', { tall: 0.65 }, loose('cylinder', 2.5)),
+  table: furniture('Table', { tall: 0.76 }, loose('box', 14)),
+  vase: furniture('Vase', { tall: 0.4 }, loose('cylinder', 1.5)),
+  pot: furniture('Plant', { tall: 0.45 }, loose('cylinder', 1.2)),
+  ac: city('Prop_ACUnit', { tall: 0.6 }, loose('box', 25)),
+  crate: space('Pickup_Crate', { tall: 0.8 }, loose('box', 8)),
+  jar: space('Pickup_Jar', { tall: 0.9 }, loose('cylinder', 3)),
+  bollard: city('Prop_Bollard', { tall: 0.89 }, fixed('cylinder', 60)),
+  planter: city('Prop_Planter_Single', { tall: 0.6 }, fixed('box', 300)),
+  streetlight: street('Streetlight_Single', { tall: 5.6 }, fixed('cylinder', 120, { r: 0.2 })),
+  trafficLight: street('TrafficLight', { tall: 4.4 }, fixed('cylinder', 150, { r: 0.13, at: [0.01, -0.13] })),
+  stopSign: street('Sign_Stop', { tall: 2.4 }, fixed('cylinder', 15, { r: 0.032, at: [0, -0.02] })),
+  noParking: street('Sign_NoParking', { tall: 2.4 }, fixed('cylinder', 12, { r: 0.032, at: [0, -0.03] })),
+};
+// a table and its chairs round it, at [x, z] (yaw: the table's turn; each
+// chair faces it, pulled out a little, `out` metres from its middle)
+export const tableSet = ([x, z], { yaw = 0, chairs = 4, out = 1.15 } = {}) => [
+  { kind: 'table', at: [x, z], r: 0.8, face: false, yaw },
+  ...Array.from({ length: chairs }, (_, i) => {
+    const a = yaw + (i * 2 * Math.PI) / chairs;
+    const at = [x + Math.sin(a) * out, z + Math.cos(a) * out];
+    // (its front, +z, turned toward the table)
+    return { kind: 'chair', at, r: 0.3, face: false, yaw: a + Math.PI };
+  }),
+];
 // (a biome's test on its map colour, biomes.js's classify: h degrees, s and l 0…1)
 const hue = (c, a, b) => c.h >= a && c.h <= b;
 // (and on where it is: inside an ellipse round [lat, lon] on the map, its
@@ -72,6 +142,21 @@ const onTortuga = (at) => {
   const t = (-11 * Math.PI) / 180;
   return ((x * Math.cos(t) + y * Math.sin(t)) / 0.78) ** 2 + ((y * Math.cos(t) - x * Math.sin(t)) / 0.3) ** 2 <= 1;
 };
+// The leaves on the ground (./litter.js), each place's: two colours a leaf
+// is between and an accent (a share of them), how many a square metre,
+// how big, how many a second its trees shed, and its crowns' two tones.
+// Bilbo's party is on 22 September: the Shire's are greens turning gold
+// with a few gone russet; the old forest's Bruno's rust and orange, muted
+// under the eaves; Lothlórien's gold
+const LEAVES = {
+  shire: { colours: ['#a39c34', '#d8a83c', '#b4622c'], density: 0.55, size: 0.28, shed: 0.7 },
+  forest: { colours: ['#8a4a2e', '#d8762e', '#c9a23a'], density: 0.9, size: 0.28, shed: 2, crown: { lit: [1.06, 1.02, 0.88], shade: [0.86, 0.92, 0.98], depth: 0.28 } },
+  lorien: { colours: ['#b8862a', '#f2cf55', '#e8b04a'], density: 0.9, size: 0.28, shed: 2.5, crown: { lit: [1.12, 1.05, 0.8], shade: [0.9, 0.92, 0.9], depth: 0.22 } },
+  lawn: { colours: ['#a3a23a', '#c9b544', '#c08a2e'], density: 0.2, size: 0.24, shed: 0.4 },
+  earth: { colours: ['#a6a83c', '#cdb84a', '#c47a2c'], density: 0.25, size: 0.24, shed: 0.5 },
+  dusk: { colours: ['#c2582a', '#f0a04c', '#f2c25a'], density: 0.2, size: 0.22, shed: 0.5, crown: { lit: [1.12, 0.98, 0.84], shade: [0.86, 0.86, 0.98], depth: 0.22 } },
+};
+
 // Middle-earth's woods: its forest biome, found by colour and (Lothlórien,
 // whose gold canopy reads as grass from orbit) by place
 const ME_FOREST = {
@@ -79,12 +164,25 @@ const ME_FOREST = {
   sub: 'Middle-earth · under the eaves, where the trees are older than the Shire',
   ground: { style: 'grass', colors: ['#26381c', '#34481f', '#4a3a26'] },
   sky: { zenith: '#557a8a', horizon: '#a8b49a', sun: '#f0e6c0' },
+  leaves: LEAVES.forest,
+  wind: { strength: 0.35 },
+  // (pines and the Shire's oaks, darker under the eaves; ferns and the
+  // Shire's mushrooms and grass beneath)
+  models: {
+    pine: tree('Pine_5', { tall: 10 }),
+    pineTall: tree('Pine_4', { tall: 12 }),
+    oakOld: tree('CommonTree_3', { tall: 10, tint: '#a8b890' }),
+    fern: flowers('Fern_2', { wide: 1.3 }),
+    bush: trees('Bush_Long_1', { tall: 1.4, tint: '#b0c098' }),
+  },
   things: [],
   scatter: [
-    { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 0 } },
-    { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 1 } },
-    { kind: 'oak', n: 30, from: 26, to: 110, scale: range(1.2), opts: { which: 2 } },
-    { kind: 'mushroom', n: 60, from: 4, to: 70, scale: range(1), solid: false },
+    { kind: 'pine', n: 34, from: 24, to: 110, scale: range(1.1) },
+    { kind: 'pineTall', n: 14, from: 26, to: 110, scale: range(1.1) },
+    { kind: 'oakOld', n: 18, from: 24, to: 110, scale: range(1.1) },
+    { kind: 'bush', n: 24, from: 8, to: 90, scale: range(1) },
+    { kind: 'fern', n: 50, from: 4, to: 80, scale: range(1), solid: false },
+    { kind: 'mushroom', n: 40, from: 4, to: 70, scale: range(1), solid: false },
     { kind: 'tufts', n: 160, from: 3, to: 70, scale: range(0.8), solid: false },
   ],
 };
@@ -95,6 +193,21 @@ export const LANDINGS = {
     sub: 'Middle-earth · Hobbiton, the day of the party',
     ground: { style: 'grass', colors: ['#4d7a2a', '#7aa544', '#a08c58'] },
     sky: { zenith: '#4f86d4', horizon: '#e4ecd6', sun: '#fff0c4' },
+    leaves: LEAVES.shire,
+    wind: { strength: 0.45 },
+    // the Shire's oaks, hedges, flowers, mushrooms and grass (Bag End, the
+    // holes, the Party Tree, the Green Dragon and the rest are its own kit's)
+    models: {
+      oak: tree('CommonTree_4', { tall: 7.5 }),
+      oakTall: tree('CommonTree_3', { tall: 9 }),
+      oakLow: tree('CommonTree_5', { tall: 6 }),
+      hedge: trees('Bush_Common_Flowers', { tall: 1.1 }),
+      flowers: flowers('Flower_3_Single', { tall: 0.42 }),
+      daisies: flowers('Flower_1_Single', { tall: 0.38 }),
+      poppies: flowers('Flower_6', { wide: 0.5 }),
+      mushroom: mushrooms('Mushroom_RedCap', { tall: 0.28 }),
+      tufts: grass('Grass_Common_Short', { tall: 0.65 }),
+    },
     things: [
       { kind: 'bagEnd', at: [-30, 30], r: 10, door: { label: 'Bag End', at: [0, 6.5], reach: 3 } },
       { kind: 'gandalf', at: [-18, 22], r: 0.5, say: { name: 'Gandalf', line: 'A wizard is never late, nor is he early.' } },
@@ -117,10 +230,13 @@ export const LANDINGS = {
       { kind: 'greenDragon', at: [8, -58], r: 10 },
     ],
     scatter: [
-      { kind: 'oak', n: 8, from: 34, to: 110, scale: range(1), opts: { which: 0 } },
-      { kind: 'oak', n: 8, from: 34, to: 110, scale: range(1), opts: { which: 1 } },
-      { kind: 'oak', n: 7, from: 40, to: 110, scale: range(1), opts: { which: 2 } },
-      { kind: 'flowers', n: 260, from: 5, to: 80, scale: range(1), solid: false },
+      { kind: 'oak', n: 8, from: 34, to: 110, scale: range(1) },
+      { kind: 'oakTall', n: 8, from: 34, to: 110, scale: range(1) },
+      { kind: 'oakLow', n: 7, from: 40, to: 110, scale: range(1) },
+      { kind: 'hedge', n: 20, from: 14, to: 90, scale: range(1) },
+      { kind: 'flowers', n: 100, from: 5, to: 80, scale: range(1), solid: false },
+      { kind: 'daisies', n: 90, from: 5, to: 80, scale: range(1), solid: false },
+      { kind: 'poppies', n: 70, from: 5, to: 80, scale: range(1), solid: false },
       { kind: 'mushroom', n: 26, from: 6, to: 60, scale: range(1), solid: false },
       { kind: 'tufts', n: 320, from: 3, to: 70, scale: range(1), solid: false },
     ],
@@ -142,6 +258,11 @@ export const LANDINGS = {
         sub: 'Middle-earth · the plateau of Gorgoroth, under Orodruin',
         ground: { style: 'sand', colors: ['#3a3330', '#4a403a', '#241e1c'] },
         sky: { zenith: '#3a2420', horizon: '#8a3a20', sun: '#ff6a30', haze: '#a8401c' },
+        // (the ash's rock and grit, burnt dark)
+        models: {
+          crag: rocks('Rock_Medium_1', { long: 1.3, tint: '#6a5a54' }),
+          stones: rocks('Pebble_Square_3', { long: 0.7, tint: '#5a4c48' }),
+        },
         things: [
           { kind: 'orodruin', at: [-80, 320], r: 90, face: false, solid: false },
           { kind: 'baradDur', at: [230, 330], r: 26, face: false, yaw: -0.9, solid: false },
@@ -149,13 +270,14 @@ export const LANDINGS = {
           { kind: 'fissure', at: [32, -20], r: 3, face: false, yaw: 2.2, opts: { seed: 5 } },
         ],
         scatter: [
-          { kind: 'rock', n: 60, from: 24, to: 110, scale: range(2.2), opts: { color: '#2c2522', sharp: 0.8, seed: 4 } },
-          { kind: 'stones', n: 200, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#3a302c' } },
+          { kind: 'crag', n: 60, from: 24, to: 110, scale: range(2.2) },
+          { kind: 'stones', n: 200, from: 4, to: 80, scale: range(0.6), solid: false },
           { kind: 'embers', n: 60, from: 6, to: 90, scale: range(1), solid: false },
         ],
       },
-      // (Lothlórien's gold canopy reads as grass from orbit: by place)
-      { id: 'forest', near: [36.9, 3.4, 1.6], ...ME_FOREST },
+      // (Lothlórien's gold canopy reads as grass from orbit: by place; its
+      // leaves on the ground gold)
+      { id: 'forest', near: [36.9, 3.4, 1.6], ...ME_FOREST, leaves: LEAVES.lorien },
       {
         id: 'forest',
         // (only where the map has woods: not the far side, nor the conifer
@@ -171,11 +293,20 @@ export const LANDINGS = {
         sub: 'Middle-earth · high on a pass, the snow above',
         ground: { style: 'sand', colors: ['#7c7872', '#8e8a84', '#eef0f2'] },
         sky: { zenith: '#3f72c0', horizon: '#dfe6ee', sun: '#fff8ea' },
+        wind: { strength: 0.6 },
+        // (grey crags and scree, a few pines below the pass; the snow-capped
+        // boulders are the generic rock, white)
+        models: {
+          crag: rocks('Rock_Medium_4', { long: 1.3 }),
+          stones: rocks('Pebble_Square_3', { long: 0.7 }),
+          pine: tree('Pine_5', { tall: 8 }),
+        },
         things: [],
         scatter: [
-          { kind: 'rock', n: 70, from: 24, to: 110, scale: range(2.4), opts: { color: '#7a766f', sharp: 0.7, seed: 6 } },
+          { kind: 'crag', n: 70, from: 24, to: 110, scale: range(2.4) },
           { kind: 'rock', n: 40, from: 24, to: 110, scale: range(1.4), opts: { color: '#e8ecf0', sharp: 0.3, seed: 8 } },
-          { kind: 'stones', n: 160, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#6e6a64' } },
+          { kind: 'pine', n: 12, from: 30, to: 110, scale: range(1) },
+          { kind: 'stones', n: 160, from: 4, to: 80, scale: range(0.6), solid: false },
         ],
       },
       {
@@ -185,10 +316,16 @@ export const LANDINGS = {
         sub: 'Middle-earth · the sands of the Haradrim, far south of Gondor',
         ground: { style: 'sand', colors: ['#d8b880', '#c8a468', '#9a7848'] },
         sky: { zenith: '#3f78c8', horizon: '#f2dcb0', sun: '#fff2d0' },
+        // (sandstone, its grit, and dry grass)
+        models: {
+          crag: rocks('Rock_Desert_1', { long: 1.3 }),
+          stones: rocks('Pebble_Desert', { long: 0.7 }),
+          scrub: grass('Grass_Wispy_Short', { tall: 0.7 }),
+        },
         things: [],
         scatter: [
-          { kind: 'rock', n: 30, from: 24, to: 110, scale: range(1.6), opts: { color: '#a88a60', seed: 3 } },
-          { kind: 'stones', n: 140, from: 4, to: 80, scale: range(0.5), solid: false, opts: { color: '#8a6e4c' } },
+          { kind: 'crag', n: 30, from: 24, to: 110, scale: range(1.6) },
+          { kind: 'stones', n: 140, from: 4, to: 80, scale: range(0.5), solid: false },
           { kind: 'scrub', n: 60, from: 5, to: 90, scale: range(0.8), solid: false },
         ],
       },
@@ -209,6 +346,11 @@ export const LANDINGS = {
       barrel: { url: '/models/metherria/drum-blue.glb', tall: 0.9 },
       bucket: { url: '/models/sketchfab/bucket.glb', tall: 0.42 },
       car: { url: '/models/albuquerque/world/aztek.glb', long: 4.6 },
+      // (sandstone and its grit, and the desert's dry grass)
+      crag: rocks('Rock_Desert_1', { long: 1.3 }),
+      crag2: rocks('Rock_Desert_2', { long: 1.3 }),
+      stones: rocks('Pebble_Desert', { long: 0.7 }),
+      scrub: grass('Grass_Wispy_Short', { tall: 0.75 }),
     },
     things: [
       { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
@@ -228,8 +370,9 @@ export const LANDINGS = {
     scatter: [
       { kind: 'cactus', n: 12, from: 26, to: 100, scale: range(1) },
       { kind: 'tumbleweed', n: 10, from: 10, to: 60, scale: range(1), solid: false },
-      { kind: 'rock', n: 70, from: 24, to: 110, scale: range(1.6), opts: { color: '#a07a56' } },
-      { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false, opts: { color: '#8a6a4e' } },
+      { kind: 'crag', n: 40, from: 24, to: 110, scale: range(1.6) },
+      { kind: 'crag2', n: 30, from: 24, to: 110, scale: range(1.6) },
+      { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false },
       { kind: 'scrub', n: 120, from: 5, to: 90, scale: range(1), solid: false },
     ],
     // New Mexico (scripts/planets/breakingbad.mjs: the state ~100° tall on
@@ -253,6 +396,9 @@ export const LANDINGS = {
           pollos: { url: '/models/albuquerque/world/pollos.glb', wide: 22 },
           carwash: { url: '/models/albuquerque/world/carwash.glb', wide: 20 },
           suv: { url: '/models/albuquerque/world/suv.glb', long: 5 },
+          // (the street's furniture, and the lot's grit)
+          ...PROP,
+          stones: rocks('Pebble_Square_3', { long: 0.6, tint: '#b8b2a8' }),
         },
         things: [
           { kind: 'pollos', at: [0, 52], r: 14, door: { label: 'Los Pollos Hermanos', reach: 9 } },
@@ -260,8 +406,23 @@ export const LANDINGS = {
           { kind: 'figure', at: [6, 34], r: 0.4, say: { name: 'Gus', line: 'I hide in plain sight, same as you.' }, opts: { url: '/models/albuquerque/gus.glb', tall: 1.85 } },
           { kind: 'car', at: [24, 30], r: 2.6, face: false, yaw: 1.6 },
           { kind: 'suv', at: [30, 22], r: 2.6, face: false, yaw: 1.5 },
+          // the bollards and planters along the restaurant's front, its
+          // tables out on the lot, the corner's light and signs
+          ...[-6, -3, 3].map((x) => ({ kind: 'bollard', at: [x, 37.4], r: 0.2 })),
+          { kind: 'planter', at: [-10.5, 37], r: 1.3 },
+          { kind: 'planter', at: [10.5, 38], r: 1.3 },
+          ...tableSet([-15, 31], { yaw: 0.3 }),
+          ...tableSet([-20, 36], { yaw: -0.2, chairs: 3 }),
+          { kind: 'stool', at: [-11.5, 28], r: 0.3, face: false, yaw: 0.8 },
+          { kind: 'streetlight', at: [18, 38], r: 0.35 },
+          { kind: 'streetlight', at: [-26, 40], r: 0.35 },
+          { kind: 'trafficLight', at: [20, 45], r: 0.35, face: false, yaw: -1.2 },
+          { kind: 'stopSign', at: [16, 22.5], r: 0.3 },
+          { kind: 'noParking', at: [-30, 21], r: 0.3 },
+          { kind: 'ac', at: [-35, 34], r: 0.5, face: false, yaw: 1.9 },
+          { kind: 'ac', at: [-34.4, 35.4], r: 0.5, face: false, yaw: 1.9 },
         ],
-        scatter: [{ kind: 'stones', n: 60, from: 4, to: 60, scale: range(0.4), solid: false, opts: { color: '#8a8478' } }],
+        scatter: [{ kind: 'stones', n: 60, from: 4, to: 60, scale: range(0.4), solid: false }],
       },
       {
         id: 'sands',
@@ -270,6 +431,8 @@ export const LANDINGS = {
         sub: 'Breaking Bad · the gypsum dunes, south toward Alamogordo',
         ground: { style: 'sand', colors: ['#f4f1ea', '#e6e0d2', '#cfc4ae'] },
         sky: { zenith: '#2466cc', horizon: '#e6eef6', sun: '#ffffff' },
+        // (the gypsum's grass, bleached)
+        models: { scrub: grass('Grass_Wispy_Short', { tall: 0.65, tint: '#f2ecd8' }) },
         things: [
           { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
           { kind: 'figure', at: [-34, 24], r: 0.4, say: { name: 'Jesse', line: 'Yeah, science!' }, opts: { url: '/models/albuquerque/jesse.glb', tall: 1.75 } },
@@ -287,13 +450,18 @@ export const LANDINGS = {
         sub: 'Breaking Bad · the black lava flows, El Malpais and the Valley of Fires',
         ground: { style: 'sand', colors: ['#3b3430', '#524640', '#5a2e22'] },
         sky: { zenith: '#2a6ccc', horizon: '#ecdcc4', sun: '#fff4d8' },
+        // (the lava's black rock and cinders)
+        models: {
+          crag: rocks('Rock_Medium_1', { long: 1.3, tint: '#5a524e' }),
+          stones: rocks('Pebble_Square_3', { long: 0.7, tint: '#4a4442' }),
+        },
         things: [
           { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
           { kind: 'cook', at: [-22, 22.5], r: 1.6 },
         ],
         scatter: [
-          { kind: 'rock', n: 90, from: 24, to: 110, scale: range(1.8), opts: { color: '#3b3430', sharp: 0.9, seed: 9 } },
-          { kind: 'stones', n: 200, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#2e2826' } },
+          { kind: 'crag', n: 90, from: 24, to: 110, scale: range(1.8) },
+          { kind: 'stones', n: 200, from: 4, to: 80, scale: range(0.6), solid: false },
           { kind: 'scrub', n: 50, from: 5, to: 90, scale: range(0.8), solid: false },
         ],
       },
@@ -304,15 +472,21 @@ export const LANDINGS = {
         sub: 'Breaking Bad · up among the juniper and the granite, the valley far below',
         ground: { style: 'sand', colors: ['#8a7a68', '#74675a', '#b8a890'] },
         sky: { zenith: '#2a6ccc', horizon: '#e6dccb', sun: '#fff6dc' },
+        wind: { strength: 0.6 },
+        // (granite, and the junipers: short pines, blue-green)
+        models: {
+          crag: rocks('Rock_Medium_4', { long: 1.3, tint: '#d8c8b4' }),
+          juniper: tree('Pine_5', { tall: 5.5, tint: '#9ab4a4' }),
+        },
         things: [
           { kind: 'car', at: [-26, 22], r: 2.6, face: false, yaw: 0.9, door: { label: 'the Aztek, back down to the city', reach: 4 } },
           { kind: 'mesa', at: [-10, 90], r: 22, face: false, opts: { seed: 9, h: 40, r: 22 } },
           { kind: 'mesa', at: [80, 40], r: 20, face: false, yaw: 1.1, opts: { seed: 3, h: 34, r: 20 } },
         ],
         scatter: [
-          { kind: 'rock', n: 80, from: 24, to: 110, scale: range(2), opts: { color: '#7a6a5a', sharp: 0.7, seed: 5 } },
+          { kind: 'crag', n: 80, from: 24, to: 110, scale: range(2) },
           { kind: 'juniper', n: 40, from: 24, to: 110, scale: range(1) },
-          { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false, opts: { color: '#6a5c4e' } },
+          { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false },
           { kind: 'scrub', n: 60, from: 5, to: 90, scale: range(1), solid: false },
         ],
       },
@@ -331,6 +505,7 @@ export const LANDINGS = {
       limo: { url: '/models/c137/limo.glb', long: 9 },
       fedship: { url: '/models/c137/fedship.glb', wide: 14 },
       shoneys: { url: '/models/c137/shoneys.glb', wide: 20 },
+      ...PROP,
     },
     things: [
       { kind: 'road', at: [0, 32], r: 0, face: false, strip: [70, 7] },
@@ -346,6 +521,12 @@ export const LANDINGS = {
       { kind: 'mailbox', at: [-20, 37.5], r: 0.3 },
       { kind: 'fedship', at: [34, -8], r: 8 },
       { kind: 'shoneys', at: [-50, -30], r: 12 },
+      // the street's lamps and its corner's sign, and a table out on the
+      // Smiths' lawn
+      ...[-40, -8, 24].map((x) => ({ kind: 'streetlight', at: [x, 40.6], r: 0.35 })),
+      { kind: 'stopSign', at: [16, 23.6], r: 0.3 },
+      ...tableSet([-10, 47], { yaw: 0.2 }),
+      { kind: 'vase', at: [-12.6, 44.6], r: 0.2 },
     ],
     scatter: [
       { kind: 'tree', n: 18, from: 30, to: 100, scale: range(1) },
@@ -381,6 +562,8 @@ export const LANDINGS = {
     sub: 'Indian classical music · dusk, and the lamps lit',
     ground: { style: 'tiles', colors: ['#d9b48a', '#c99d70', '#7a5a3c'] },
     sky: { zenith: '#1f2350', horizon: '#f2894a', sun: '#ffc27a' },
+    leaves: LEAVES.dusk,
+    wind: { strength: 0.3 },
     models: {
       pavilion: { url: '/models/music/pavilion.glb', wide: 8 },
       gaddi: { url: '/models/music/gaddi.glb', wide: 2.6 },
@@ -389,6 +572,9 @@ export const LANDINGS = {
       sitar: { url: '/models/music/sitar.glb', long: 1.22 },
       tanpura: { url: '/models/music/tanpura.glb', tall: 1.4 },
       lamp: { url: '/models/music/lamp.glb', tall: 1.25 },
+      // (a broad shade tree in each corner; the marigolds and petals keep
+      // their own festival colours, one an instance)
+      tree: tree('CommonTree_4', { tall: 8 }),
     },
     things: [
       { kind: 'pavilion', at: [0, 40], r: 6, door: { label: 'the music room', reach: 8 } },
@@ -443,8 +629,14 @@ export const LANDINGS = {
     sub: 'Marvel · upstate, on the compound’s lawn',
     ground: { style: 'grass', colors: ['#5f8f3a', '#8fb85a', '#9a9a96'] },
     sky: { zenith: '#3f82cf', horizon: '#dfe9ef', sun: '#fff4dc' },
+    leaves: LEAVES.lawn,
+    wind: { strength: 0.45 },
     models: {
       gauntlet: { url: '/models/universe/marvel.glb', tall: 5 },
+      // the lawn's trees, and the compound's furniture
+      tree: tree('CommonTree_3', { tall: 9 }),
+      conifer: tree('Pine_4', { tall: 11 }),
+      ...PROP,
     },
     things: [
       { kind: 'hq', at: [0, 72], r: 31, door: { label: 'the compound', at: [0, 8], reach: 5 } },
@@ -456,6 +648,19 @@ export const LANDINGS = {
       { kind: 'hero', at: [15, 21], r: 1, opts: { who: 'hulk' }, say: { name: 'Hulk', line: 'Hulk… smash?' } },
       { kind: 'flag', at: [-15, 42], r: 0.3 },
       { kind: 'flag', at: [15, 42], r: 0.3 },
+      // bollards and planters across the drive, lamps on the paths, the
+      // Quinjet's cargo by the pad, a table out on the lawn
+      ...[-5, -2.5, 2.5, 5].map((x) => ({ kind: 'bollard', at: [x, 38], r: 0.2 })),
+      { kind: 'planter', at: [-9, 38], r: 1.3 },
+      { kind: 'planter', at: [9, 38], r: 1.3 },
+      { kind: 'streetlight', at: [-22, 36], r: 0.35 },
+      { kind: 'streetlight', at: [22, 38], r: 0.35 },
+      { kind: 'crate', at: [-28, 34], r: 0.6, face: false, yaw: 0.3 },
+      { kind: 'crate', at: [-26.6, 34.4], r: 0.6, face: false, yaw: 0.1 },
+      { kind: 'crate', at: [-27.4, 35.7], r: 0.6, face: false, yaw: 0.7 },
+      { kind: 'jar', at: [-25, 32.6], r: 0.35 },
+      { kind: 'jar', at: [-24.4, 33.5], r: 0.35 },
+      ...tableSet([30, 12], { yaw: -0.4 }),
     ],
     scatter: [
       { kind: 'tree', n: 18, from: 34, to: 110, scale: range(1) },
@@ -467,11 +672,24 @@ export const LANDINGS = {
     sub: 'The Office · the lot out back of Dunder Mifflin',
     ground: { style: 'asphalt', colors: ['#4e4f52', '#5d5e61', '#e8e2c8'] },
     sky: { zenith: '#9aa4ae', horizon: '#dcd8cf', sun: '#f2f0ea' },
+    models: { ...PROP },
     things: [
       { kind: 'lot', at: [0, 42], yaw: -Math.PI / 2, r: 0, strip: [23, 18], door: { label: 'Dunder Mifflin', at: [-16, 3.5], reach: 4 } },
       { kind: 'figure', at: [-7, 25], r: 0.4, say: { name: 'Michael', line: 'Would I rather be feared or loved? Easy. Both.' }, opts: { url: '/models/office/cast/michael.glb', tall: 1.75 } },
       { kind: 'figure', at: [-4, 24], r: 0.4, say: { name: 'Dwight', line: 'Fact: this lot is under my jurisdiction.' }, opts: { url: '/models/office/cast/dwight.glb', tall: 1.88 } },
       { kind: 'figure', at: [6, 25], r: 0.4, say: { name: 'Jim', line: '[looks at the camera]' }, opts: { url: '/models/office/cast/jim.glb', tall: 1.91 } },
+      // (the lot as it stands, the building's back along z = 59: the units
+      // and bollards by its dock, a chair and a pot plant put out by the
+      // dumpster, a table and chairs for lunch on the lot)
+      { kind: 'ac', at: [9, 58.2], r: 0.5, face: false, yaw: Math.PI },
+      { kind: 'ac', at: [10.3, 58.2], r: 0.5, face: false, yaw: Math.PI },
+      { kind: 'bollard', at: [1.2, 57.2], r: 0.2 },
+      { kind: 'bollard', at: [5.8, 57.2], r: 0.2 },
+      { kind: 'noParking', at: [-2, 58.2], r: 0.3, face: false, yaw: Math.PI },
+      { kind: 'chair', at: [-8.2, 56.6], r: 0.3, face: false, yaw: 2.6 },
+      { kind: 'pot', at: [-8.6, 55.6], r: 0.3 },
+      { kind: 'vase', at: [-7.6, 55.4], r: 0.2 },
+      ...tableSet([15, 23], { yaw: 0.5 }),
     ],
     scatter: [
       { kind: 'paper', n: 70, from: 3, to: 70, scale: range(1), solid: false },
@@ -510,16 +728,27 @@ export const LANDINGS = {
     sub: 'Travel · an airfield somewhere I’ve been',
     ground: { style: 'grass', colors: ['#4c7a34', '#76a04a', '#a39a7a'] },
     sky: { zenith: '#3c7fd6', horizon: '#d6e6f2', sun: '#fff6e2' },
+    leaves: LEAVES.earth,
+    wind: { strength: 0.5 },
     models: {
       plane: { url: '/models/sketchfab/earth-plane.glb', long: 36 },
+      // (broadleaves and pines round the field, wildflowers in its grass)
+      tree: tree('CommonTree_4', { tall: 8 }),
+      pine: tree('Pine_5', { tall: 9 }),
+      flowers: flowers('Flower_3_Single', { tall: 0.42 }),
+      daisies: flowers('Flower_1_Single', { tall: 0.38 }),
+      poppies: flowers('Flower_6', { wide: 0.5 }),
     },
     things: [
       { kind: 'airfield', at: [0, 46], r: 0, face: false, strip: [110, 16], door: { label: 'the plane', at: [-24, 0], reach: 18 } },
       { kind: 'signpost', at: [-14, 20], r: 0.6 },
     ],
     scatter: [
-      { kind: 'tree', n: 24, from: 26, to: 110, scale: range(1) },
-      { kind: 'flowers', n: 300, from: 3, to: 80, scale: range(1), solid: false },
+      { kind: 'tree', n: 14, from: 26, to: 110, scale: range(1) },
+      { kind: 'pine', n: 10, from: 30, to: 110, scale: range(1) },
+      { kind: 'flowers', n: 110, from: 3, to: 80, scale: range(1), solid: false },
+      { kind: 'daisies', n: 110, from: 3, to: 80, scale: range(1), solid: false },
+      { kind: 'poppies', n: 80, from: 3, to: 80, scale: range(1), solid: false },
     ],
     // Earth: the sea (on to the nearest land), the ice caps, and land
     biomes: [
@@ -615,6 +844,7 @@ export const LANDINGS = {
     sub: 'Invincible · after Omni-Man came through',
     ground: { style: 'asphalt', colors: ['#5d5e5c', '#6c6b68', '#c9b98a'] },
     sky: { zenith: '#3a5fa0', horizon: '#f0b07a', sun: '#ffd8a8' },
+    models: { ...PROP },
     things: [
       { kind: 'skyline', at: [0, 0], r: 0, face: false, around: true },
       { kind: 'crater', at: [-8, 36], r: 11, door: { label: 'the city', reach: 13 } },
@@ -622,6 +852,21 @@ export const LANDINGS = {
       { kind: 'wreck', at: [20, 24], r: 2.4, face: false, yaw: 0.7 },
       { kind: 'wreck', at: [-26, 18], r: 2.4, face: false, yaw: 2.2, opts: { color: '#2f4f7a', side: true } },
       { kind: 'wreck', at: [10, 48], r: 2.4, face: false, yaw: 1.4, opts: { color: '#c9c3b4' } },
+      // what's left standing of the street (its lights, its signs, a
+      // planter, the bollards), and what the fight threw down it: AC units
+      // off the roofs, a café's tables and chairs
+      { kind: 'trafficLight', at: [24, 36], r: 0.35, face: false, yaw: 0.4 },
+      { kind: 'streetlight', at: [-22, 30], r: 0.35 },
+      { kind: 'streetlight', at: [30, 8], r: 0.35 },
+      { kind: 'stopSign', at: [14, 20], r: 0.3, face: false, yaw: 2.6 },
+      { kind: 'planter', at: [-20, 44], r: 1.3 },
+      ...[12, 13.6, 15.2].map((x) => ({ kind: 'bollard', at: [x, 39.5], r: 0.2 })),
+      { kind: 'ac', at: [16, 31], r: 0.5, face: false, yaw: 0.9 },
+      { kind: 'ac', at: [-4, 24], r: 0.5, face: false, yaw: 2.3 },
+      { kind: 'table', at: [30, 16], r: 0.8, face: false, yaw: 0.7 },
+      { kind: 'chair', at: [27.6, 17.4], r: 0.3, face: false, yaw: 1.9 },
+      { kind: 'chair', at: [31.8, 13.6], r: 0.3, face: false, yaw: -2.2 },
+      { kind: 'stool', at: [28.4, 13.8], r: 0.3, face: false, yaw: 0.2 },
     ],
     scatter: [
       { kind: 'rubble', n: 160, from: 4, to: 60, scale: range(1.2), solid: false },

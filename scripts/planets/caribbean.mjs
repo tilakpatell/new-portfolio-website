@@ -22,10 +22,10 @@
 // -rough and -night at 1024.
 
 import { BANKS, CENTRE, KM, LAKES, LANDS, MARKS, PORTS, RANGES, SMALL, UNITS_PER_RAD, sheet } from './caribbean-geo.mjs';
-import { clamp, curve, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, ramp, raster, ridged, sampler, save, smooth } from './sphere.mjs';
+import { clamp, curve, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, ramp, raster, ridged, sampler, save, smooth, bakeSize } from './sphere.mjs';
 
-const W = 4096;
-const H = 2048;
+// (8192 × 4096 with --ultra: sphere.mjs's bakeSize)
+const [W, H] = bakeSize();
 const deg = Math.PI / 180;
 const BOX = { x0: -330, y0: -330, x1: 1360, y1: 1040 };
 const [CX, CY] = sheet(CENTRE);

@@ -15,17 +15,32 @@
 // even past where a stranger's is gone; close by it's the full tag with its
 // level chip, and with Bravo behind, Alpha's HUD has a green marker at the
 // edge with Bravo's callsign.
-// or, on the universe map (--ride): Bravo rides a hyperlane far out of
-// Alpha's 3,000 (online/pilotsRules.js's DRAW), so Alpha sees a streak along
-// the lane; Alpha's roster names the region Bravo is in; then Bravo comes off
-// the lane beside Alpha, and is a ship again:
+// or, on the universe map (--ride): Bravo goes far out of Alpha's 3,000
+// (online/pilotsRules.js's DRAW), so Alpha has Bravo as a blip on the chart
+// alone; Alpha's roster names the region Bravo is in; then Bravo comes in
+// beside Alpha, and is a ship again:
 //   node scripts/online-check.mjs --ride
+// planet flight: begin (scripts/flight-island.mjs removes this block)
+// or, the shared world over a planet (--fly, ./lib/fly-check.mjs): two pilots
+// on /fly/hoth heard by cell, a turret built in one in the other, kept over
+// a reload and shot to nothing, the durable world faked here, and one
+// blizzard both see (./lib/storm-check.mjs):
+//   node scripts/online-check.mjs --fly
+// planet flight: end
 // (BASE=http://127.0.0.1:5188/?quality=low# for a dev server elsewhere)
 // (behind a proxy: HTTPS_PROXY, and BRIDGE=1 NODE_USE_ENV_PROXY=1 if the
 // browser's WebSockets can't get through it)
-// The relays are public, so anyone else online at the time is counted too:
-// it checks for at least one. Headless Chromium draws in software, slowly.
+// RELAY=fake: no public relays at all, but one faked in here for each
+// (lib/fake-relays.mjs), which every context is attached to, so it runs with
+// no network (CI's Multiplayer job runs it so) and only Alpha and Bravo meet:
+// each must see exactly one other pilot. On the public relays anyone else
+// online at the time is counted too: there it checks for at least one.
+// Headless Chromium draws in software, slowly.
 import { chromium } from 'playwright-core';
+import { fakeRelays } from './lib/fake-relays.mjs';
+import { fakeDurable } from './lib/fake-durable.mjs'; // planet flight
+import { flyCheck } from './lib/fly-check.mjs'; // planet flight
+import { stormCheck } from './lib/storm-check.mjs'; // planet flight
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -36,9 +51,16 @@ const universe = args.includes('--universe');
 if (universe) args.splice(args.indexOf('--universe'), 1);
 const ride = args.includes('--ride');
 if (ride) args.splice(args.indexOf('--ride'), 1);
-const then = universe || ride ? null : flag('--then', '/middle-earth/moria');
+// a check with pages of its own: no --then, no world to start in
+let own = false;
+// planet flight: begin
+const fly = args.includes('--fly');
+if (fly) args.splice(args.indexOf('--fly'), 1);
+own ||= fly;
+// planet flight: end
+const then = universe || ride || own ? null : flag('--then', '/middle-earth/moria');
 const out = process.env.OUT ?? null;
-const worlds = args.length ? args : ride ? [] : ['/middle-earth/bree'];
+const worlds = args.length ? args : ride || own ? [] : ['/middle-earth/bree'];
 const BASE = process.env.BASE ?? `http://localhost:${process.env.PORT ?? 5173}/?quality=low#`;
 // (behind a proxy, the relays go through it and the dev server doesn't)
 // (behind a proxy that re-signs TLS, PROXY_CA_SPKI is its CA's key hash, for
@@ -46,6 +68,7 @@ const BASE = process.env.BASE ?? `http://localhost:${process.env.PORT ?? 5173}/?
 const proxy = process.env.HTTPS_PROXY ? [`--proxy-server=${process.env.HTTPS_PROXY}`, '--proxy-bypass-list=localhost;127.0.0.1'] : [];
 if (process.env.PROXY_CA_SPKI) proxy.push(`--ignore-certificate-errors-spki-list=${process.env.PROXY_CA_SPKI}`, '--disable-http2');
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: [...proxy, '--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+const relays = process.env.RELAY === 'fake' ? fakeRelays() : null;
 
 const errors = [];
 async function visitor(name, ship = null, viewport = { width: 1280, height: 800 }) {
@@ -60,10 +83,12 @@ async function visitor(name, ship = null, viewport = { width: 1280, height: 800 
     window.localStorage.setItem('tp-worlds', JSON.stringify('load'));
     window.sessionStorage.setItem('tp-gl-anyway', 'true');
   }, [name, ship]);
+  // RELAY=fake: the relays faked in here, for every context alike
+  if (relays) await relays.attach(ctx);
   // BRIDGE=1: the relays reached from here (Node, which goes through a proxy
   // with NODE_USE_ENV_PROXY=1) rather than from the browser, for a proxy
   // that won't pass a browser's WebSocket upgrade
-  if (process.env.BRIDGE)
+  else if (process.env.BRIDGE)
     await ctx.routeWebSocket(/^wss:\/\//, (ws) => {
       const up = new WebSocket(ws.url());
       const waiting = [];
@@ -170,6 +195,15 @@ if (universe) {
     for (const p of [a, b]) await p.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 180000 });
     await waitFor(() => a.evaluate(() => [...(window.__universeDebug.net()?.peers.values() ?? [])].some((p) => p.name === 'Bravo' && p.snaps.length)), 120000, 'Alpha hears Bravo on the map');
     console.log('ok   Alpha hears Bravo on the map');
+    // (on the fake relay there's nobody else: each sees exactly one other pilot)
+    if (relays) {
+      const named = (p) => p.evaluate(() => [...(window.__universeDebug.net()?.peers.values() ?? [])].filter((q) => q.name).map((q) => q.name));
+      const seen = await waitFor(async () => {
+        const [x, y] = [await named(a), await named(b)];
+        return x.length && y.length ? [x, y] : null;
+      }, 60000, 'each sees the other');
+      check(seen[0].join() === 'Bravo' && seen[1].join() === 'Alpha', `exactly one other pilot each: Alpha sees ${JSON.stringify(seen[0])}, Bravo ${JSON.stringify(seen[1])}`);
+    }
     await placeBravo(300);
     const far = await waitFor(async () => {
       await placeBravo(300);
@@ -217,11 +251,14 @@ if (universe) {
       }, 150000, `the ally's tag at ${dist}`);
       check(t.opacity === '1' && t.px >= 12 && t.inside, `ally's tag at ${dist} units: ${JSON.stringify(t)}`);
     }
+    // (put 20 off a kilometre away, Bravo comes in over a few frames as his
+    // poses arrive, and his tag passes through the near band that shows a
+    // distance, 40 to 140 units, on its way: it's read once he's in)
     const near = await waitFor(async () => {
       await placeBravo(20);
       const t = await tagOf(a, 'Bravo');
-      return t?.mode === 'near' ? t : null;
-    }, 150000, 'the near tag');
+      return t?.mode === 'near' && t.dist === '' ? t : null;
+    }, 150000, 'the near tag, Bravo in from where he was');
     check(/^Lv \d+$/.test(near.level ?? '') && near.dist === '', `near tag at 20 units: ${JSON.stringify(near)}`);
     if (out) await a.screenshot({ path: `${out}/tags-near.png`, timeout: 120000 });
     const mate = await waitFor(async () => {
@@ -256,6 +293,8 @@ for (const w of universe ? [] : worlds) {
     }, 150000, `${w}: each sees the other`);
     const pointers = await a.locator('.presence-pilot').count();
     console.log(`ok   ${w}: chips ${n.join(' / ')}, page pointers drawn: ${pointers}`);
+    // (on the fake relay there's nobody else: exactly one each)
+    if (relays) check(n[0] === 1 && n[1] === 1, `${w}: exactly one other traveller each (${n.join(' / ')})`);
     if (pointers) {
       failed++;
       console.log(`FAIL ${w}: page pointers over the world`);
@@ -297,6 +336,37 @@ if (ride) {
   try {
     await Promise.all([a.goto(BASE + '/universe'), b.goto(BASE + '/universe')]);
     await Promise.all([a, b].map((p) => p.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 240000 })));
+    // how Alpha draws Bravo: 'ship' or 'blip' (pilots.js's chart)
+    const modeOf = () => a.evaluate(() => window.__universeDebug.pilots.chart.find((p) => p.name === 'Bravo')?.mode ?? null);
+    console.log(`ok   Alpha sees Bravo on the map: ${await waitFor(modeOf, 150000, 'Alpha sees Bravo on the map')}`);
+    // Bravo out at the world furthest from the middle of the map
+    const far = await b.evaluate(async () => {
+      const L = await import('/src/components/universe/layout.js');
+      const id = L.ORDER.reduce((x, y) => (Math.hypot(L.POSITIONS[y][0], L.POSITIONS[y][2]) > Math.hypot(L.POSITIONS[x][0], L.POSITIONS[x][2]) ? y : x));
+      const [x, y, z] = L.POSITIONS[id];
+      const st = window.__universeDebug.state;
+      st.auto = null;
+      Object.assign(st.ship, { x: x + L.REACH[id] * 3, y, z, speed: 0 });
+      return id;
+    });
+    console.log(`ok   Bravo out by ${far}: ${await waitFor(async () => ((await modeOf()) === 'blip' ? 'a blip' : null), 120000, 'Bravo far off is a blip')}`);
+    if (out) await a.screenshot({ path: `${out}/online-far.png` });
+    const line = await waitFor(async () => {
+      const l = await rosterLine(a, 'Bravo').catch(() => '');
+      return l.includes('here') ? null : l || null;
+    }, 90000, `roster names where Bravo went (${then})`);
+    console.log(`ok   roster: ${line}`);
+    const lv = await a.locator('.universe-online-pilot', { hasText: 'Bravo' }).first().locator('.universe-online-lv').textContent();
+    check(/^Lv \d+$/.test(lv), `Bravo's row has a level chip (${lv})`);
+  } catch (e) {
+    failed++;
+    console.log(`FAIL ${e.message}`);
+  }
+}
+if (ride) {
+  try {
+    await Promise.all([a.goto(BASE + '/universe'), b.goto(BASE + '/universe')]);
+    await Promise.all([a, b].map((p) => p.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 240000 })));
     // how Alpha draws Bravo: 'ship', 'streak' or 'blip' (pilots.js's chart)
     const modeOf = () => a.evaluate(() => window.__universeDebug.pilots.chart.find((p) => p.name === 'Bravo')?.mode ?? null);
     console.log(`ok   Alpha sees Bravo on the map: ${await waitFor(modeOf, 150000, 'Alpha sees Bravo on the map')}`);
@@ -320,14 +390,13 @@ if (ride) {
       return /Universe · /.test(l) ? l : null;
     }, 60000, 'the roster names Bravo’s region');
     console.log(`ok   roster: ${line}`);
-    // off the lane, beside Alpha
+    // in beside Alpha
     const near = await a.evaluate(() => {
       const s = window.__universeDebug.state.ship;
       return [s.x + 40, s.y, s.z + 40];
     });
     await b.evaluate(([x, y, z]) => {
       const st = window.__universeDebug.state;
-      st.ride = null;
       Object.assign(st.ship, { x, y, z, speed: 0 });
     }, near);
     console.log(`ok   Bravo beside Alpha: ${await waitFor(async () => ((await modeOf()) === 'ship' ? 'a ship' : null), 120000, 'Bravo near is a ship')}`);
@@ -337,6 +406,19 @@ if (ride) {
     console.log(`FAIL ${e.message}`);
   }
 }
+// planet flight: begin
+if (fly) {
+  try {
+    const n = await flyCheck({ a, b, relays, durable: fakeDurable(), base: BASE, check, waitFor });
+    console.log(`fly: ${JSON.stringify(n)}`);
+    // (and one event, the same in both: ./lib/storm-check.mjs)
+    console.log(`storm: ${JSON.stringify(await stormCheck({ a, b, check, waitFor }))}`);
+  } catch (e) {
+    failed++;
+    console.log(`FAIL ${e.message}`);
+  }
+}
+// planet flight: end
 console.log(`errors: ${JSON.stringify(errors.slice(0, 10))}`);
 console.log(failed ? `${failed} FAILED` : 'ALL OK');
 await browser.close();

@@ -9,7 +9,10 @@
   overflow: hidden;
   background: #03040a;
   color: #f2efe8;
-  --glass: rgba(6, 8, 14, 0.58);
+  /* (text over the 3D sits on this, never blurred: a blur over a canvas
+     redrawn every frame costs a frame, and under 0.78 a bright sky shows
+     through enough to lose the words) */
+  --glass: rgba(6, 8, 14, 0.78);
   --line: rgba(255, 255, 255, 0.14);
 }
 .surface-map { position: absolute; inset: 0; }
@@ -73,9 +76,10 @@
   font-size: clamp(1.15rem, 2.4vw, 1.6rem);
   font-weight: 600;
   line-height: 1.15;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.8); /* (the tight layer holds its edge over snow) */
 }
-.surface-count { margin: 0.2rem 0 0; font-size: 0.78rem; color: rgba(242, 239, 232, 0.72); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6); }
+/* (the count on the page's glass, as a chip: over snow its shadow alone went) */
+.surface-count { display: inline-block; margin: 0.3rem 0 0; padding: 0.15rem 0.5rem; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 4px; background: var(--glass); font-size: 0.78rem; color: rgba(242, 239, 232, 0.86); }
 
 /* the compass: a bar along the top, the places slid along it */
 .surface-compass {
@@ -104,11 +108,11 @@
   will-change: transform, opacity;
 }
 .surface-mark i { width: 2px; height: 9px; background: var(--accent); }
-.surface-mark b { margin-top: 3px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
-.surface-mark em { font-size: 0.6rem; font-style: normal; color: rgba(255, 255, 255, 0.65); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.surface-mark b { margin-top: 3px; font-size: var(--hud-min); font-weight: 600; letter-spacing: 0.06em; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.surface-mark em { font-size: var(--hud-min); font-style: normal; color: rgba(255, 255, 255, 0.65); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
 .surface-mark:not([data-found]) b { color: var(--accent); font-size: 0.8rem; }
 .surface-mark[data-found] i { background: rgba(255, 255, 255, 0.55); }
-.surface-mark-dir { color: rgba(255, 255, 255, 0.55); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; padding-top: 4px; }
+.surface-mark-dir { color: rgba(255, 255, 255, 0.55); font-size: var(--hud-min); font-weight: 700; letter-spacing: 0.1em; padding-top: 4px; }
 .surface-mark-ship i { background: #7fd0ff; }
 .surface-mark-ship b { color: #bfe6ff; }
 
@@ -124,7 +128,6 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--glass);
-  backdrop-filter: blur(8px);
   font-size: 0.86rem;
   white-space: nowrap;
   animation: surface-in 0.25s ease-out;
@@ -154,7 +157,6 @@
   border-left: 3px solid var(--accent);
   border-radius: 6px;
   background: var(--glass);
-  backdrop-filter: blur(8px);
   font-size: 0.95rem;
   line-height: 1.45;
   animation: surface-in 0.3s ease-out;
@@ -173,11 +175,10 @@
   border-top: 2px solid var(--accent);
   border-radius: 8px;
   background: var(--glass);
-  backdrop-filter: blur(10px);
   animation: surface-found 0.5s var(--ease-smooth);
 }
 .surface-toast-title { margin: 0; font-size: 1.02rem; font-weight: 650; }
-.surface-toast-title::before { content: 'Found · '; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); vertical-align: 0.12em; }
+.surface-toast-title::before { content: 'Found · '; font-size: var(--hud-min); letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); vertical-align: 0.12em; }
 .surface-toast-text { margin: 0.35rem 0 0; font-size: 0.85rem; line-height: 1.45; color: rgba(242, 239, 232, 0.86); }
 
 /* coming in: the world's name over the landing */
@@ -210,17 +211,32 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--glass);
-  backdrop-filter: blur(8px);
   color: inherit;
   font-size: 0.78rem;
   cursor: pointer;
 }
 .surface-help-btn:hover { border-color: var(--accent); color: var(--accent); }
 .surface-help-k { margin-right: 0.3em; color: rgba(242, 239, 232, 0.6); }
+/* the world's one Menu, its look prompt and its reticle (runtime/hud's), in the corner's own pills and glass */
+.surface-menu, .surface-look, .surface-reticle {
+  --hud-ink: #f2efe8;
+  --hud-muted: rgba(242, 239, 232, 0.72);
+  --hud-bad: #ff6a5a;
+  --hud-glass-hi: rgba(6, 8, 14, 0.92);
+  --hud-line: var(--line);
+  --hud-border: 1px solid var(--line);
+  --hud-radius: 10px;
+  --hud-accent: var(--accent);
+  --hud-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --hud-face: var(--font-sans);
+}
+.surface-menu .hud-btn { padding: 0.4rem 0.75rem; border: 1px solid var(--line); border-radius: 999px; background: var(--glass); color: inherit; font: inherit; font-size: 0.78rem; cursor: pointer; }
+.surface-menu .hud-btn:hover, .surface-menu .hud-btn[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); background: var(--glass); }
+.surface-menu .hud-menu-list > * { font-size: 0.82rem; }
 /* the models' credits, under the corner's buttons */
 .surface-corner { flex-wrap: wrap; justify-content: flex-end; max-width: min(380px, calc(100vw - 32px)); }
 .surface-credits-corner { flex-basis: 100%; font-size: 0.7rem; line-height: 1.5; color: rgba(242, 239, 232, 0.6); text-align: right; }
-.surface-credits-corner[open] { padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 10px; background: rgba(6, 8, 14, 0.82); backdrop-filter: blur(10px); text-align: left; }
+.surface-credits-corner[open] { padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 10px; background: rgba(6, 8, 14, 0.82); text-align: left; }
 .surface-credits-corner ul { margin: 0.4rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; }
 .surface-credits-corner a { color: inherit; }
 
@@ -325,9 +341,11 @@
 @media (max-width: 640px) {
   .surface-compass { width: calc(100vw - 32px); top: calc(var(--nav-h, 64px) + 82px); }
   .surface-where { top: calc(var(--nav-h, 64px) + 6px); }
+  .surface-count { margin-top: 0.15rem; padding: 0 0.4rem; } /* (compact: the compass runs just under it here) */
   .surface-corner { top: calc(var(--nav-h, 64px) + 6px); }
   .surface-help-btn { padding: 0.35rem 0.6rem; font-size: 0.72rem; }
   .surface-help-k { display: none; }
+  .surface-menu .hud-btn { padding: 0.35rem 0.6rem; font-size: 0.72rem; }
   .surface-toast { top: auto; bottom: calc(170px + env(safe-area-inset-bottom, 0px)); right: 16px; }
   .surface-prompt { bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
   .surface-talk { bottom: calc(210px + env(safe-area-inset-bottom, 0px)); }
@@ -347,7 +365,7 @@
   right: 16px;
   z-index: 2;
 }
-.surface-page .universe-line { background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(8px); }
+.surface-page .universe-line { background: var(--glass); border: 1px solid var(--line); }
 @media (pointer: coarse) {
   .surface-page .universe-comms { bottom: auto; top: calc(var(--nav-h, 64px) + 128px); }
 }
@@ -363,14 +381,13 @@
 }
 .surface-quest-name {
   margin: 0;
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
 }
-.surface-quest-step { margin: 0.2rem 0 0; font-size: 0.95rem; font-weight: 600; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.75); }
+.surface-quest-step { margin: 0.2rem 0 0; font-size: 0.95rem; font-weight: 600; }
 .surface-quest-time { color: #ffd36a; font-variant-numeric: tabular-nums; }
 .surface-quest-link { margin-top: 0.25rem; padding: 0; border: 0; background: none; color: rgba(242, 239, 232, 0.6); font-size: 0.72rem; cursor: pointer; text-decoration: underline; }
 .surface-quest-open {
@@ -378,7 +395,6 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--glass);
-  backdrop-filter: blur(8px);
   color: inherit;
   font-size: 0.8rem;
   cursor: pointer;
@@ -397,11 +413,12 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgba(6, 8, 14, 0.86);
-  backdrop-filter: blur(10px);
 }
-.surface-list-title { margin: 0 0 0.6rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+.surface-list-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 0 0 0.6rem; }
+.surface-list-close { min-height: 44px; margin: -0.4rem -0.45rem -0.4rem 0; } /* (a thumb's size, without making the head taller) */
+.surface-list-title { margin: 0; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
 .surface-list ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; }
-.surface-list button {
+.surface-list li button {
   display: grid;
   gap: 0.15rem;
   width: 100%;
@@ -413,8 +430,8 @@
   text-align: left;
   cursor: pointer;
 }
-.surface-list button:hover:not(:disabled) { border-color: var(--accent); }
-.surface-list button:disabled { opacity: 0.55; cursor: default; }
+.surface-list li button:hover:not(:disabled) { border-color: var(--accent); }
+.surface-list li button:disabled { opacity: 0.55; cursor: default; }
 .surface-list b { font-size: 0.9rem; }
 .surface-list span { font-size: 0.78rem; line-height: 1.4; color: rgba(242, 239, 232, 0.75); }
 .surface-list li[data-done] b::after { content: ' ✓'; color: var(--accent); }
@@ -435,20 +452,8 @@
 .surface-health span { display: block; height: 100%; background: linear-gradient(90deg, #ff4a3d, #ffd36a); transition: width 0.2s; }
 
 /* the crosshair, while you're shooting */
-.surface-crosshair {
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: 50%;
-  width: 18px;
-  height: 18px;
-  margin: -9px 0 0 -9px;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-  pointer-events: none;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-}
-.surface-crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: #fff; }
+/* the look's prompt (the kit's Prompt, runtime/look.js): under the action prompt, a click on it locks too */
+.surface-look { position: absolute; z-index: 2; left: 50%; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font-size: 0.86rem; }
 
 /* through a door: a moment's black */
 .surface-door { position: absolute; z-index: 3; inset: 0; background: #000; pointer-events: none; transition: opacity 0.35s; }
@@ -495,9 +500,8 @@
   border-left: 3px solid var(--accent);
   border-radius: 8px;
   background: var(--glass);
-  backdrop-filter: blur(8px);
 }
-.chase-name { margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+.chase-name { margin: 0; font-size: var(--hud-min); font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
 .chase-row { display: flex; align-items: center; justify-content: space-between; margin-top: 0.45rem; }
 .chase-scouts { display: flex; gap: 6px; }
 .chase-scouts i { width: 14px; height: 14px; border-radius: 3px; background: #e8e8e4; box-shadow: 0 0 8px rgba(255, 255, 255, 0.35); }
@@ -511,6 +515,12 @@
 /* a quest mission: the clock up top, and the banner it opens on */
 .chase-hud-quest { min-width: 240px; top: calc(var(--nav-h, 64px) + 124px); } /* (under where you are, which a mission keeps) */
 .surface-quest-on { top: calc(var(--nav-h, 64px) + 92px); } /* (a tracked quest's lines, clear of the corner's credits) */
+/* (a tracked quest's lines on the page's glass, an accent hairline down
+   its side: over snow or a sunlit sky their shadow alone went) */
+.surface-quest-on { padding: 0.55rem 0.75rem 0.6rem; border: 1px solid var(--line); border-left: 1px solid var(--accent); border-radius: 6px; background: var(--glass); }
+/* (on a phone it keeps the untracked chip's place, under the compass: the
+   rule above came after the phone's, and put the panel over the count) */
+@media (max-width: 640px) { .surface-quest-on { top: calc(var(--nav-h, 64px) + 118px); } }
 .chase-par { font-size: 0.74rem; color: rgba(242, 239, 232, 0.72); }
 .chase-start {
   position: absolute;
@@ -539,12 +549,11 @@
   border-top: 3px solid #ff6a4a;
   border-radius: 10px;
   background: var(--glass);
-  backdrop-filter: blur(14px);
   text-align: center;
   animation: surface-found 0.5s var(--ease-smooth);
 }
 .chase-result[data-won] { border-top-color: var(--accent); }
-.chase-result-kicker { margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+.chase-result-kicker { margin: 0; font-size: var(--hud-min); font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
 .chase-result-title { margin: 0.4rem 0 0; font-size: 1.6rem; font-weight: 650; }
 .chase-stars { margin: 0.5rem 0 0; font-size: 1.8rem; letter-spacing: 0.15em; }
 .chase-stars b { font-weight: 400; color: rgba(255, 255, 255, 0.2); }
@@ -574,7 +583,6 @@
   border-top: 3px solid var(--accent);
   border-radius: 10px;
   background: var(--glass);
-  backdrop-filter: blur(14px);
   text-align: center;
   animation: surface-found 0.5s var(--ease-smooth);
 }
@@ -595,7 +603,7 @@
 .assault-side[data-sworn] { box-shadow: 0 0 0 2px var(--side); }
 .assault-side:hover, .assault-side:focus-visible { background: color-mix(in srgb, var(--side) 22%, rgba(0, 0, 0, 0.35)); transform: translateY(-2px); }
 .assault-side b { font-size: 1rem; font-weight: 650; line-height: 1.25; }
-.assault-side span { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--side); }
+.assault-side span { font-size: var(--hud-min); font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--side); }
 .assault-posts { display: grid; gap: 0.5rem; margin: 1rem 0 0; padding: 0; list-style: none; text-align: left; }
 .assault-post {
   display: grid;
@@ -627,7 +635,7 @@
   gap: 0.35rem;
   pointer-events: none;
 }
-.assault-phase { margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(242, 239, 232, 0.85); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
+.assault-phase { margin: 0; font-size: var(--hud-min); font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(242, 239, 232, 0.85); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
 .assault-chips { display: flex; gap: 8px; }
 .assault-chip {
   position: relative;
@@ -656,7 +664,6 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--glass);
-  backdrop-filter: blur(8px);
   pointer-events: none;
 }
 .assault-tickets p { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; }
@@ -704,7 +711,88 @@
   .assault-ring p, .assault-feed li, .assault-card { animation: none; }
 }
 
+/* Heroes vs Villains and Blast (HvvHud.jsx, BlastHud.jsx): the game's score
+   bar at the top, each side's count filling toward the goal from the middle
+   out; HvV's two targets under the counts on the left, and the arena's
+   out-of-bounds count in the middle. The cards are the assault's. */
+.hvv-score, .blast-score {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: calc(var(--nav-h, 64px) + 12px);
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 0.9rem;
+  width: min(460px, calc(100vw - 32px));
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--glass);
+  pointer-events: none;
+}
+.hvv-score p, .blast-score p { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0.15rem 0.5rem; margin: 0; }
+.hvv-score p[data-side='dark'], .blast-score p[data-side='defend'] { grid-template-columns: 1fr auto; text-align: right; }
+.hvv-score p[data-side='dark'] b, .blast-score p[data-side='defend'] b { order: 2; }
+.hvv-score b, .blast-score b { font: 600 1.3rem/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--side); }
+.hvv-score span, .blast-score span { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(242, 239, 232, 0.8); }
+.hvv-score p[data-mine] span::after, .blast-score p[data-mine] span::after { content: ' · you'; color: var(--side); }
+.hvv-score em, .blast-score em { grid-column: 1 / -1; display: block; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.5); overflow: hidden; }
+.hvv-score em i, .blast-score em i { display: block; height: 100%; background: var(--side); transition: width 0.2s linear; }
+.hvv-score p[data-side='dark'] em i, .blast-score p[data-side='defend'] em i { margin-left: auto; }
+.hvv-score small, .blast-score small { grid-column: 1 / -1; font-size: var(--hud-min); text-align: center; color: rgba(242, 239, 232, 0.7); }
+.hvv-targets {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  top: calc(var(--nav-h, 64px) + 150px);
+  display: grid;
+  gap: 0.4rem;
+  width: min(240px, 46vw);
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--glass);
+  pointer-events: none;
+}
+.hvv-target { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.15rem 0.5rem; margin: 0; }
+.hvv-target > i { grid-row: span 2; width: 1rem; height: 1rem; border-radius: 50%; border: 3px solid var(--side); box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.55), inset 0 0 0 8px var(--side); }
+.hvv-target span { font-size: var(--hud-min); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--side); }
+.hvv-target b { grid-column: 2; font-size: 0.85rem; font-weight: 600; }
+.hvv-target em { grid-column: 1 / -1; display: block; height: 4px; border-radius: 2px; background: rgba(0, 0, 0, 0.5); overflow: hidden; }
+.hvv-target em i { display: block; height: 100%; background: var(--side); transition: width 0.15s linear; }
+.hvv-targets .assault-score { display: flex; align-items: baseline; gap: 0.4rem; margin: 0; }
+.hvv-targets .assault-score b { font: 600 1.05rem/1 ui-monospace, monospace; }
+.hvv-targets .assault-score span { font-size: 0.72rem; color: rgba(242, 239, 232, 0.7); }
+.hvv-you-target { margin: 0; font-size: 0.78rem; font-weight: 600; color: #ffd36a; animation: chase-warn 0.8s ease-in-out infinite alternate; }
+.hvv-out {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 38%;
+  transform: translateX(-50%);
+  padding: 0.6rem 1.1rem;
+  border: 1px solid rgba(255, 120, 90, 0.6);
+  border-radius: 8px;
+  background: var(--glass);
+  text-align: center;
+  pointer-events: none;
+}
+.hvv-out p { margin: 0 0 0.2rem; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #ff9a7a; }
+.hvv-out b { font: 600 2rem/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .hvv-score, .blast-score { top: calc(var(--nav-h, 64px) + 56px); padding: 0.4rem 0.6rem; }
+  .hvv-targets { top: calc(var(--nav-h, 64px) + 140px); padding: 0.45rem 0.6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hvv-targets .assault-score { display: flex; align-items: baseline; gap: 0.4rem; margin: 0; }
+.hvv-targets .assault-score b { font: 600 1.05rem/1 ui-monospace, monospace; }
+.hvv-targets .assault-score span { font-size: 0.72rem; color: rgba(242, 239, 232, 0.7); }
+.hvv-you-target { animation: none; }
+}
+
 /* who you play as, and what's in your hand (HeroPanel.jsx): the tabs at the
+/* who you play as, and what's in your hand (DeployPanel.jsx): the tabs at the
    top and Equip at the bottom stay put, the list between them scrolls. (Each
    rule under .surface-heroes, over .surface-list's own for its spans, lists
    and buttons.) */
@@ -766,6 +854,9 @@
 .surface-heroes .surface-hero-lean { display: flex; align-items: baseline; gap: 0.35rem; font-size: 0.66rem; line-height: 1.3; color: rgba(242, 239, 232, 0.6); }
 .surface-heroes .surface-hero-lean::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #6ab8ff; transform: translateY(-1px); }
 .surface-heroes .surface-hero-lean[data-lean='dark']::before { background: #ff5a4a; }
+/* a hero not on the game's rig yet (heroes.js's soon): dimmed, with why */
+.surface-heroes .surface-hero[data-soon] { opacity: 0.55; }
+.surface-heroes .surface-hero-soon { font-size: 0.66rem; line-height: 1.3; color: #ffd27a; }
 .surface-saber { margin-top: 0.4rem; }
 .surface-heroes-body .surface-list-title { margin: 0.9rem 0 0.45rem; }
 .surface-swatches { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
@@ -820,7 +911,7 @@
   display: grid;
   gap: 6px;
   pointer-events: none;
-  font-size: 0.68rem;
+  font-size: var(--hud-min);
 }
 .surface-lock { margin: 0 0 2px; display: grid; gap: 3px; justify-items: center; }
 .surface-lock-name { font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
@@ -854,8 +945,8 @@
   overflow: hidden;
 }
 .surface-power kbd { font: inherit; font-weight: 700; font-size: 0.72rem; color: var(--accent); }
-.surface-power span { font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
-.surface-power small { position: absolute; right: 4px; top: 2px; font-size: 0.58rem; opacity: 0.8; }
+.surface-power span { font-size: var(--hud-min); letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
+.surface-power small { position: absolute; right: 4px; top: 2px; font-size: var(--hud-min); opacity: 0.8; }
 .surface-power.is-cooling { color: rgba(255, 255, 255, 0.55); }
 .surface-power.is-cooling::after { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); transform-origin: bottom; transform: scaleY(var(--k, 0)); transition: transform 0.1s linear; }
 .surface-hitmark {
@@ -901,6 +992,9 @@
 .surface-btn-dodge { border-color: #b8ffd0; color: #dafff0; }
 .surface-btn-aim.is-on { background: rgba(255, 255, 255, 0.25); }
 .surface-btn-emote { border-color: #ffd36a; color: #fff0c4; }
+/* the lock-on (the kit's TouchButton, skinned as the rest): lit while it's on */
+.surface-btn-lock { border-color: #7fd0ff; color: #d6f0ff; font: inherit; font-size: 0.7rem; font-weight: 600; letter-spacing: normal; text-transform: none; }
+.surface-btn-lock[data-on] { background: rgba(127, 208, 255, 0.3); }
 /* the emote wheel (B held; the Emote button on a phone): the five round the
    middle of the view, as C-137's and the Citadel's are, in this page's dark
    glass, the one pointed at lit in the world's colour */
@@ -925,7 +1019,7 @@
   margin: 0;
   transform: translate(-50%, -50%);
   text-align: center;
-  font-size: 0.62rem;
+  font-size: var(--hud-min);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -953,12 +1047,10 @@
   transform: translate(-50%, -50%) translate(calc(var(--sx) * var(--wheel-r)), calc(var(--sy) * var(--wheel-r)));
   pointer-events: auto;
   cursor: pointer;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   transition: background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
   animation: surface-wheel-in 0.14s ease-out both;
 }
-.surface-wheel-slice kbd { font: inherit; font-weight: 700; font-size: 0.68rem; color: var(--accent); }
+.surface-wheel-slice kbd { font: inherit; font-weight: 700; font-size: var(--hud-min); color: var(--accent); }
 .surface-wheel-slice[data-last] { border-color: rgba(255, 255, 255, 0.34); }
 .surface-wheel-slice[data-on],
 .surface-wheel-slice:hover,
@@ -971,3 +1063,31 @@
 .surface-heroes .surface-stats { display: flex; flex-wrap: wrap; gap: 0.15rem 0.6rem; margin-top: 0.2rem; font-size: 0.66rem; font-variant-numeric: tabular-nums; color: rgba(242, 239, 232, 0.65); }
 .surface-heroes .surface-stats i { font-style: normal; }
 .surface-heroes .surface-mods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; }
+
+/* the 2017 game's icons (GameIcon.jsx, src/lib/bf2017/icons.js) beside the
+   things it has: the guns, the heroes' weapons, their abilities */
+.surface-game-icon {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  margin-right: 0.3em;
+  fill: currentColor;
+  color: inherit;
+}
+.surface-game-icon.is-arm {
+  width: 3em;
+  height: 0.9em;
+  vertical-align: -0.1em;
+}
+.surface-power .surface-game-icon {
+  width: 1.4em;
+  height: 1.4em;
+  margin: 0;
+}
+/* the ability buttons in the game's own HUD faces (src/lib/bf2017/fonts.css):
+   Univers Condensed for their words, RaxusPrime for the cooldown's seconds */
+.surface-power span { font-family: var(--font-bf-hud, inherit); letter-spacing: 0.08em; }
+.surface-power small { font-family: var(--font-bf-numerals, inherit); font-variant-numeric: tabular-nums; }
+/* the hero on the game's hero-select stage, in the Outfit tab (HeroStage.jsx) */
+.surface-hero-stage { display: block; width: 100%; aspect-ratio: 4 / 3; max-height: 42vh; margin: 0 0 0.6rem; border-radius: 8px; background: #05070c; touch-action: pan-y; cursor: grab; }

@@ -12,8 +12,11 @@
 // through the top of the sky, until he's back under it), ev }.
 //
 // Input: { fwd, side (−1…1, from the camera), up, down (0…1), boost, run,
-// jump (this step only), look: the camera's forward, a unit vector }.
+// jump (this step only), look: the camera's forward, a unit vector, press
+// (a jumpPress(): the jump pressed a moment early or late still lands, and
+// `jump` is read through it), free (this step only: R, let go of the water) }.
 
+import { createPress } from '../../../lib/press';
 import { WATER_Y, WORLD, groundAt, near } from './map';
 
 export const FLY = {
@@ -42,6 +45,32 @@ export const FLY = {
   step: 0.6, // what he steps up onto on foot
 };
 const STEP = 1 / 120;
+
+// The jump’s press (lib/press.js): pressed up to `buffer` before he can go
+// (still in the air, or getting up from a slam) it goes when he can; up to
+// `coyote` after he flew off an edge, it still goes as a jump. The handler
+// keeps one, calls press() on the key’s edge and hands it in as input.press.
+export const JUMP = { buffer: 0.12, coyote: 0.1 };
+export const jumpPress = () => createPress(JUMP);
+
+// the jump of a step's input: its press, or the old one-step flag as one
+// (seen in the step’s first slice only, and only on his feet)
+export const pressOf = (input) => input.press ?? flag(Boolean(input.jump));
+function flag(on) {
+  let slices = 0;
+  let feet = false;
+  return {
+    ground(onGround) {
+      feet = onGround;
+      if (slices++ > 0) on = false;
+    },
+    take() {
+      const was = on && feet;
+      on = false;
+      return was;
+    },
+  };
+}
 
 const len = (x, y, z) => Math.hypot(x, y, z);
 export const speedOf = (h) => len(h.v[0], h.v[1], h.v[2]);
@@ -246,21 +275,33 @@ function land(h, type) {
   h.v = [0, 0, 0];
 }
 
-function stepGround(h, input, dt, world) {
+// up off the ground (or the water, or out of a fall off an edge just now)
+function takeoff(h, input) {
+  const [mx, , mz] = wish(input, false);
+  const m = Math.hypot(mx, mz);
+  h.mode = 'air';
+  h.dir = m > 0.05 ? norm([mx / m, 1.6, mz / m]) : [0, 1, 0];
+  h.spd = FLY.takeoff;
+  h.lift = FLY.lift;
+  h.v = [h.dir[0] * h.spd, h.dir[1] * h.spd, h.dir[2] * h.spd];
+  h.ev.push({ type: 'takeoff', at: [...h.p] });
+  h.p[1] += 0.05;
+}
+
+// hanging at the water's surface (a splash stops him there)
+export function onWater(h, world) {
+  if (h.mode !== 'air') return false;
+  const s = surfaceAt(world, h.p[0], h.p[2], h.p[1] + 1e-6);
+  return s.water && h.p[1] - s.y < 0.05;
+}
+
+function stepGround(h, input, dt, world, press) {
   if (h.crouch > 0) {
     h.crouch = Math.max(0, h.crouch - dt);
     return;
   }
-  if (input.jump || (input.up ?? 0) > 0.5) {
-    const [mx, , mz] = wish(input, false);
-    const m = Math.hypot(mx, mz);
-    h.mode = 'air';
-    h.dir = m > 0.05 ? norm([mx / m, 1.6, mz / m]) : [0, 1, 0];
-    h.spd = FLY.takeoff;
-    h.lift = FLY.lift;
-    h.v = [h.dir[0] * h.spd, h.dir[1] * h.spd, h.dir[2] * h.spd];
-    h.ev.push({ type: 'takeoff', at: [...h.p] });
-    h.p[1] += 0.05;
+  if (press.take() || (input.up ?? 0) > 0.5) {
+    takeoff(h, input);
     return;
   }
   const [mx, , mz] = wish(input, false);
@@ -299,10 +340,18 @@ export function stepHero(hero, input, dt, world) {
   const h = { ...hero, p: [...hero.p], v: [...hero.v], dir: [...hero.dir], ev: [] };
   const n = Math.max(1, Math.ceil(dt / STEP - 1e-9));
   const sub = dt / n;
+  const press = pressOf(input);
+  // R: off the water, as if from the ground (else he hangs there until up or forward)
+  if (input.free && onWater(h, world)) takeoff(h, input);
   for (let i = 0; i < n; i++) {
-    const inp = i === 0 ? input : { ...input, jump: false };
-    if (h.mode === 'ground') stepGround(h, inp, sub, world);
-    else stepAir(h, inp, sub, world);
+    // (on his feet and able to go: a slam's crouch is not yet)
+    press.ground(h.mode === 'ground' && h.crouch <= 0, sub);
+    if (h.mode === 'ground') stepGround(h, input, sub, world, press);
+    else {
+      // just off an edge (coyote time): the jump he meant
+      if (press.take()) takeoff(h, input);
+      stepAir(h, input, sub, world);
+    }
     // the edges of the world, and the top of the sky
     const lim = WORLD.half;
     for (const a of [0, 2]) {

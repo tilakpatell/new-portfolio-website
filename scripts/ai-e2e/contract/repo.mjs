@@ -22,7 +22,7 @@ export const FAKES = join(REPO, 'scripts', 'ai-e2e', 'fakes');
 
 // What a run on the Actions runner would see that a test must not act on:
 // its summary, its artifacts folder, the run's link in comments.
-const OUTSIDE = /^(GITHUB_|RUNNER_|GH_|JOB_ISSUE$|CHROME$|BASE$|GEN3D_|VOICES_|DESKTOP_)/;
+const OUTSIDE = /^(GITHUB_|RUNNER_|GH_|JOB_ISSUE$|CHROME$|BASE$|GEN3D_|VOICES_|MOTION_|DESKTOP_)/;
 
 // A child process, its output kept; a promise, so a test can serve a
 // picture from this process while the pipeline fetches it.
@@ -86,7 +86,7 @@ export function sandbox({ judge = 'judge-good.json', env: extra = {} } = {}) {
     fixture: (name, value) => writeFileSync(join(paths.gh, `${name}.json`), JSON.stringify(value)),
     // a repository of the pipelines' own files, with a bare origin, for the runners
     // `extra`: { 'path in the repository': 'a folder to copy there' }, such as a fixture src/ tree
-    repo(files = ['scripts/gen3d', 'scripts/glb-shot.mjs', 'scripts/desktop', 'scripts/voices', 'scripts/ai-e2e/fakes', 'src/lib/voiced.js', 'public/games/credits.json'], extra = {}) {
+    repo(files = ['scripts/gen3d', 'scripts/glb-shot.mjs', 'scripts/desktop', 'scripts/voices', 'scripts/ai-e2e/fakes', 'src/lib/voiced.js', 'src/lib/audio.js', 'src/lib/speech.js', 'public/games/credits.json'], extra = {}) {
       const root = join(dir, 'repo');
       const origin = join(dir, 'origin.git');
       mkdirSync(root, { recursive: true });

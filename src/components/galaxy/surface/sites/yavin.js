@@ -4,6 +4,8 @@
 // worlds.)
 
 export const SITE = {
+  // lit as the game lights its level (src/data/bf2017/light/yavin.json, gameLit.js)
+  gameLight: 'yavin',
   // the look (look.js): green-grey shade under the canopy, a warm halo
   // through it; the grass on the ground map (groundPaint.js), thin under
   // the trees' crowns and thick in the clearings
@@ -80,8 +82,9 @@ export const SITE = {
       },
       things: [
         { kind: 'massassi', at: [0, 0], yaw: 0 },
-        { kind: 'lamp', at: [-24, 44], opts: { h: 5, light: '#ffe0a0' } },
-        { kind: 'lamp', at: [24, 44], opts: { h: 5, light: '#ffe0a0' } },
+        { kind: 'massassiplugs', at: [0, 0], yaw: 0 },
+        { kind: 'lamp', at: [-14, 49], opts: { h: 5, light: '#ffe0a0' } },
+        { kind: 'lamp', at: [14, 49], opts: { h: 5, light: '#ffe0a0' } },
       ],
     },
     {
@@ -96,23 +99,26 @@ export const SITE = {
         cruiser: [['rick', 'One-man fighters versus a planet-killer. Bold strategy, Morty.'], ['morty', 'It worked though, didn’t it?']],
       },
       things: [
+        // (the temple model's tunnel is x ±10.4, from its back wall at -10.5
+        // out to the mouth at 26: the X-wings one behind the other on the
+        // right, the Y-wing down the left)
         { kind: 'hangarfloor', at: [0, 0], y: 0.57, solid: false }, // (just over the temple model's own floor)
-        { kind: 'parked', at: [-9, -2], yaw: 0.15, opts: { kind: 'xwing', metres: 12.5 } },
-        { kind: 'parked', at: [9, -4], yaw: -0.1, opts: { kind: 'xwing', metres: 12.5 } },
-        { kind: 'ywing', at: [0, 12], yaw: 0.05 },
-        { kind: 'yavinramp', at: [-6, -4], yaw: 1.6 },
-        { kind: 'crates', at: [-14, 10] },
-        { kind: 'ammocan', at: [-12.4, 8.6], yaw: 0.3 },
-        { kind: 'ammocan', at: [-12.6, 7.6], yaw: 0.2 },
-        { kind: 'ammocan', at: [14.6, 9.8], yaw: 1.4 },
-        { kind: 'welderrack', at: [13, 13], yaw: -2.4 },
-        { kind: 'yavinspeeder', at: [-15, -8], yaw: 1.4 },
+        { kind: 'parked', at: [4.8, -1], y: 0.55, yaw: 0.05, opts: { kind: 'xwing', metres: 12.5 } },
+        { kind: 'parked', at: [4.8, 13], y: 0.55, yaw: -0.05, opts: { kind: 'xwing', metres: 12.5 } },
+        { kind: 'ywing', at: [-6, 11], y: 0.55, yaw: 0.02 },
+        { kind: 'yavinramp', at: [8.6, -3], y: 0.55, yaw: 0 },
+        { kind: 'crates', at: [-7, 23.5], y: 0.55 },
+        { kind: 'ammocan', at: [-4.4, 23.8], y: 0.55, yaw: 0.3 },
+        { kind: 'ammocan', at: [-4.6, 22.8], y: 0.55, yaw: 0.2 },
+        { kind: 'ammocan', at: [8.6, 4.8], y: 0.55, yaw: 1.4 },
+        { kind: 'welderrack', at: [8.4, 21.5], y: 0.55, yaw: -2.4 },
+        { kind: 'yavinspeeder', at: [-6.4, -7.2], y: 0.55, yaw: 1.4 },
       ],
     },
     {
       id: 'summit',
       name: 'The temple summit',
-      at: [0, -256],
+      at: [0, -251],
       r: 6,
       about: 'The top of the Great Temple, high over the canopy, where Rebel lookouts watched the sky for the Death Star. On a clear day, the jungle goes on forever, and Yavin fills the horizon.',
       lines: {
@@ -169,7 +175,14 @@ export const SITE = {
         cruiser: [['morty', 'Rick, should we go inside?'], ['rick', 'Sith temple, Morty. Ancient evil. Bad vibes. Absolutely not.']],
         rv: [['jesse', 'Indiana Jones, yo.'], ['walt', 'Don’t touch anything, Jesse.']],
       },
-      things: [{ kind: 'ruin', at: [0, 0], yaw: 0.6 }],
+      // (the Great Temple's model drawn small, its crossed tunnels plugged
+      // dark; the built ruin if the model doesn't load)
+      things: [
+        { kind: 'ruin', url: '/models/galaxy/surface/massassi.glb', metres: 34, at: [0, 0], yaw: 0.6, solid: { box: [15, 15] } },
+        { kind: 'ruin', at: [0, 0], yaw: 0.6, opts: { core: true }, solid: false },
+        { kind: 'jungletree', at: [19, -6], scale: 1.1, opts: { seed: 5, leaf: '#3c4a22' } },
+        { kind: 'jungletree', at: [-12, 16], scale: 0.9, opts: { seed: 6, leaf: '#46522a' } },
+      ],
     },
     {
       id: 'river',
@@ -202,6 +215,9 @@ export const SITE = {
     { kind: 'lamp', at: [16, -30], opts: { h: 5, light: '#ffe0a0' } },
   ],
   scatter: [
+    // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+    { kind: 'qfern', n: 80, within: [8, 120], scale: [0.8, 1.5], solid: false },
+    { kind: 'qclover', n: 120, within: [4, 80], scale: [0.8, 1.6], solid: false },
     // the tall trees, vines hanging from them, then the built ones between
     // (the jungle's own trees close in all round, their umbrella crowns a
     // roof overhead, as the film's are: built here, in the world's own
@@ -225,14 +241,14 @@ export const SITE = {
     { id: 'field', kind: 'rest', at: [0, -112], pause: 6 },
   ],
   life: [
-    { kind: 'rebelpilot', id: 'redleader', at: [-13, -206], level: 9, still: true, face: 1.2, name: 'Red Leader', named: true, quest: 'scramble', says: { when: { done: ['scramble'] }, lines: ['Red Leader, standing by. Good run out there.', 'All wings report in.'], else: ['Red Leader, standing by.', 'All wings report in.', 'Lock S-foils in attack position.'] } },
+    { kind: 'rebelpilot', id: 'redleader', at: [7, -195], level: 9, still: true, face: 1.2, name: 'Red Leader', named: true, quest: 'scramble', says: { when: { done: ['scramble'] }, lines: ['Red Leader, standing by. Good run out there.', 'All wings report in.'], else: ['Red Leader, standing by.', 'All wings report in.', 'Lock S-foils in attack position.'] } },
     { kind: 'rebelpilot', n: 1, at: [18, -16], still: true, face: 2.4, name: 'Gold Squadron pilot', says: ['Gold Leader, standing by.', 'Y-wings take the first run at the trench. Keep the fighters off us.'] },
     { kind: 'rebeltech', n: 2, at: [6, -12], spread: 8, roam: 8, speed: 0.9, needs: ['work', 'rest'], name: 'Rebel technician', says: ['Proton torpedoes loaded. Both of them.', 'She’s old, but she flies.', 'Don’t stand under the ramp.'] },
     { kind: 'astromech', n: 1, at: [20, -26], roam: 5, speed: 0.6, name: 'Astromech', says: ['(A low, grumbling whistle: the Y-wing’s deflector is shot again.)'] },
     { kind: 'rebel', n: 6, at: [0, -112], spread: 18, roam: 12, speed: 1.1, name: 'Rebel trooper', says: ['They got the plans out! The princess brought them herself.', 'The Death Star’s coming round the planet. Thirty minutes, they say.', 'Massassi built this place. Who they were, nobody knows.', 'May the Force be with you.'] },
-    { kind: 'pilot', n: 4, at: [0, -222], level: 9, spread: 8, roam: 6, speed: 1.0, name: 'X-wing pilot', says: ['Red Five standing by.', 'Look at the size of that thing!', 'Stay on target… stay on target…', 'I used to bullseye womp rats in my T-16 back home. They’re not much bigger than two metres.'] },
+    { kind: 'rebelpilot', n: 4, at: [0, -222], level: 9, spread: 8, roam: 6, speed: 1.0, name: 'X-wing pilot', says: ['Red Five standing by.', 'Look at the size of that thing!', 'Stay on target… stay on target…', 'I used to bullseye womp rats in my T-16 back home. They’re not much bigger than two metres.'] },
     { kind: 'droid', n: 3, at: [0, -216], level: 9, spread: 8, roam: 6, speed: 0.6, name: 'Astromech', says: ['(A brisk, busy whistle.)', '(It plugs into a fuel line and beeps happily.)'] },
-    { kind: 'c3po', n: 1, at: [5, -208], level: 9, still: true, face: 3.4, name: 'C-3PO', says: { when: { done: ['scramble'] }, lines: ['Oh, I do hope Artoo comes back in one piece.', 'You wouldn’t want my life to get boring, would you?'], else: ['Hang on tight, Artoo. You’ve got to come back.', 'You wouldn’t want my life to get boring, would you?', 'Oh, I do hope they know what they’re doing.'] } },
+    { kind: 'c3po', n: 1, at: [0, -225.5], level: 9, still: true, face: 3.4, name: 'C-3PO', says: { when: { done: ['scramble'] }, lines: ['Oh, I do hope Artoo comes back in one piece.', 'You wouldn’t want my life to get boring, would you?'], else: ['Hang on tight, Artoo. You’ve got to come back.', 'You wouldn’t want my life to get boring, would you?', 'Oh, I do hope they know what they’re doing.'] } },
     { kind: 'rebel', n: 1, at: [-200, -120], still: true, face: 0.3, name: 'Rebel sentry', says: { when: { rank: 2 }, lines: ['(He straightens up.) Sir. All quiet up here. Just the jungle, and Yavin.', '(He lowers his macrobinoculars.) Ship coming in. It’s the Falcon!'], else: ['(He lowers his macrobinoculars.) Ship coming in. It’s the Falcon!', 'All quiet up here. Just the jungle, and Yavin.'] } },
     { kind: 'rebel', n: 2, at: [-284, -270], spread: 6, roam: 6, speed: 0.9, group: true, name: 'Rebel scout', says: ['Fresh water, and plenty of it. Just don’t go in past your knees.', 'Something big came down to drink last night. We didn’t stay to find out what.'] },
     { kind: 'rebel', n: 2, path: [[-30, -190], [30, -190], [30, -186], [-30, -186]], speed: 1.1, name: 'Rebel guard', says: ['Halt. Who goes there? …Oh, it’s you. Go on in.', 'Keep an eye on the sky.'] },
@@ -244,8 +260,8 @@ export const SITE = {
     {
       id: 'warroom',
       name: 'the war room',
-      door: { at: [0, -233], r: 3, prompt: 'Go down to the war room' },
-      back: [0, -229],
+      door: { at: [-4, -227.6], r: 3, prompt: 'Go down to the war room' },
+      back: [-4, -226],
       inside: {
         build: 'warroom',
         spawn: [0, 8.2],
@@ -258,10 +274,10 @@ export const SITE = {
       },
       life: [
         { kind: 'rebel', id: 'dodonna', at: [-4, -6.6], still: true, face: 0, name: 'General Dodonna', named: true, quest: ['briefing', 'remotes'], says: { when: { done: ['briefing'] }, lines: ['The battle station will be in range in thirty minutes.', 'Man your ships. And may the Force be with you.'], else: ['The battle station is heavily shielded and carries a firepower greater than half the star fleet.', 'Its defences are designed around a direct, large-scale assault. A small one-man fighter should be able to penetrate the outer defence.', 'The battle station will be in range in thirty minutes.'] } },
-        { kind: 'pilot', id: 'goldleader', at: [-3, -1], still: true, face: Math.PI, name: 'Gold Leader', named: true, says: ['Pardon me for asking, sir, but what good are snubfighters going to be against that?'] },
-        { kind: 'pilot', id: 'wedge', at: [4, 0.6], still: true, face: Math.PI, name: 'Wedge Antilles', named: true, says: { when: { hero: 'luke' }, lines: ['That’s impossible, even for a computer.', 'Look at the size of that thing.'], else: ['Look at the size of that thing.', 'You’re flying with us? Then stay on my wing.'] } },
-        { kind: 'pilot', id: 'biggs', at: [6.5, 0.6], still: true, face: Math.PI, name: 'Biggs Darklighter', named: true, says: ['It’s not impossible. I used to bullseye womp rats in my T-16 back home, they’re not much bigger than two metres.', 'Luke! I told you I’d make it someday.'] },
-        { kind: 'pilot', n: 8, at: [0, 3.8], spread: 7, still: true, face: Math.PI, name: 'Rebel pilot', says: ['(He listens, and says nothing. Thirty minutes.)', 'Stay on target. That’s all I’m thinking. Stay on target.'] },
+        { kind: 'rebelpilot', id: 'goldleader', at: [-3, -1], still: true, face: Math.PI, name: 'Gold Leader', named: true, says: ['Pardon me for asking, sir, but what good are snubfighters going to be against that?'] },
+        { kind: 'rebelpilot', id: 'wedge', at: [4, 0.6], still: true, face: Math.PI, name: 'Wedge Antilles', named: true, says: { when: { hero: 'luke' }, lines: ['That’s impossible, even for a computer.', 'Look at the size of that thing.'], else: ['Look at the size of that thing.', 'You’re flying with us? Then stay on my wing.'] } },
+        { kind: 'rebelpilot', id: 'biggs', at: [6.5, 0.6], still: true, face: Math.PI, name: 'Biggs Darklighter', named: true, says: ['It’s not impossible. I used to bullseye womp rats in my T-16 back home, they’re not much bigger than two metres.', 'Luke! I told you I’d make it someday.'] },
+        { kind: 'rebelpilot', n: 8, at: [0, 3.8], spread: 7, still: true, face: Math.PI, name: 'Rebel pilot', says: ['(He listens, and says nothing. Thirty minutes.)', 'Stay on target. That’s all I’m thinking. Stay on target.'] },
         { kind: 'rebel', n: 3, at: [-9, -4], spread: 2, roam: 2, speed: 0.6, name: 'Rebel officer', says: ['The plans are being analysed now.', 'An approach down the trench. A two-metre port. Nobody’s laughing.'] },
         { kind: 'c3po', at: [9, -6], still: true, face: -2.2, name: 'C-3PO', says: ['Oh, Artoo. I do hope they know what they’re doing.'] },
       ],
@@ -269,7 +285,7 @@ export const SITE = {
     {
       id: 'stair',
       name: 'the temple stair',
-      door: { at: [12, -233], r: 2.6, prompt: 'Climb the inner stair' },
+      door: { at: [4, -227.6], r: 2.6, prompt: 'Climb the inner stair' },
       back: [0, -250],
       inside: {
         build: 'templestair',
@@ -348,7 +364,7 @@ export const SITE = {
       steps: [{ type: 'reach', zone: 'ceremony', at: [0, -16], r: 3, text: 'Walk the aisle to the dais' }],
       done: [[null, '(The medal goes round your neck. Chewie roars. The whole Rebellion is cheering, and it doesn’t stop.)']],
     },
-    { id: 'remotes', name: 'Blast shield down', giver: 'dodonna', intro: [['General Dodonna', 'Pilots warm up on the remotes by the lookout. Your turn.']], steps: [{ type: 'shoot', tag: 'remote', n: 6, text: 'Hit the training remotes', spawn: { kind: 'remote', n: 6, at: [-200, -120], spread: 8, roam: 6, speed: 2, hp: 1, tag: 'remote' } }, { type: 'reach', at: [0, -256], r: 5, text: 'Climb to the throne room for the ceremony' }], done: [[null, '(The doors open. The whole Rebellion is standing there, and they’re cheering for you.)']] },
+    { id: 'remotes', name: 'Blast shield down', giver: 'dodonna', intro: [['General Dodonna', 'Pilots warm up on the remotes by the lookout. Your turn.']], steps: [{ type: 'shoot', tag: 'remote', n: 6, text: 'Hit the training remotes', spawn: { kind: 'remote', n: 6, at: [-200, -120], spread: 8, roam: 6, speed: 2, hp: 1, tag: 'remote' } }, { type: 'reach', at: [0, -251], r: 5, text: 'Climb to the throne room for the ceremony' }], done: [[null, '(The doors open. The whole Rebellion is standing there, and they’re cheering for you.)']] },
   ],
   flyovers: [
     { kind: 'xwing', n: 3, metres: 12.5, alt: 80, speed: 120, every: 45 },

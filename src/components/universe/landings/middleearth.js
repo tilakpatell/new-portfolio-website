@@ -1,14 +1,15 @@
 // Down on Middle-earth's planet: the Shire, on the day of Bilbo's party.
-// Everything here is the Shire world's own (middleearth/shire/props.js's
+// Its landmarks are the Shire world's own (middleearth/shire/props.js's
 // kit: Bag End and the hobbit holes, the Party Tree, the Green Dragon, the
-// oaks, flowers and sheep), stood about where the ship comes down. Come
+// cart, the hives and the sheep), stood about where the ship comes down;
+// the oaks, hedges, flowers, mushrooms and grass round them, and the
+// rocks and woods elsewhere, are Quaternius's (landings.js names them). Come
 // down elsewhere on Tolkien's map (landings.js's biomes) and it's Mordor's
 // ash, with Orodruin and Barad-dûr on the skyline and the ground split
 // with fire; Harad's sand and thorn; the mountains' rock; or the old forest.
 
 import * as THREE from 'three';
 import { createShireKit } from '../../middleearth/shire/props';
-import { tuftGeometry } from '../../cybertron/rollout/flora';
 import { makeGandalf, makeHobbit } from '../../middleearth/kit';
 import { faceStep } from './face';
 import { cyl, part, rockGeometry, upright } from '../../galaxy/surface/kit';
@@ -17,9 +18,16 @@ import { rng } from '../../galaxy/surface/noise';
 
 const { PI, cos, sin } = Math;
 
-// the Shire's kit, made once a landing (its textures want the renderer)
+// the Shire's kit (its textures want the renderer), made once for the page:
+// its eighteen pictures are painted a pixel at a time, a second or more of
+// the landing, and the same every time. A lift-off frees what the things
+// drew with, the kit's materials and pictures too (furnish's release), and
+// the next landing sends them to the graphics chip again as it readies
+// itself, which is quick beside the painting.
+let shire = null;
 export function prepare(k) {
-  k.shire = createShireKit(k.renderer ?? { capabilities: { getMaxAnisotropy: () => 4 } });
+  shire ??= createShireKit(k.renderer ?? { capabilities: { getMaxAnisotropy: () => 4 } });
+  k.shire = shire;
 }
 
 // a Shire builder's colliders ({ x, z, r }) as a landing's solids
@@ -163,7 +171,8 @@ export const PROPS = {
   },
   partyTree(k) {
     const made = k.shire.partyTree();
-    return { object: made.group, solids: [{ circle: [0, 0, made.trunkRadius ?? 1] }] };
+    // (its crown, for leaves to fall from: the clumps round 9.5 m up, 6.5 m out)
+    return { object: made.group, solids: [{ circle: [0, 0, made.trunkRadius ?? 1] }], crowns: [{ at: [0, 0], r: 6, lo: 5, hi: 14 }] };
   },
   greenDragon(k) {
     const made = k.shire.greenDragon();
@@ -215,61 +224,12 @@ function alive(made, r, pace) {
   };
 }
 
-const FLOWER_COLOURS = [0xf2d24a, 0xe8655a, 0xf3f0e8, 0xb07ad8, 0xf29ac2, 0xf08a3a, 0x7ab0f0];
-
 export const SCATTER = {
+  // (the mountains' snow-capped boulders)
   rock: GENERIC.rock,
-  stones: GENERIC.stones,
   // Mordor's embers, glowing in the ash
   embers(k) {
     const g = new THREE.IcosahedronGeometry(0.07, 0).scale(1, 0.5, 1).translate(0, 0.02, 0);
     return { parts: [{ geometry: k.geometry([part(g, { color: '#ff7a24', to: 'glow' })]), material: k.mats.glow }], radius: null, tints: ['#ff7a24', '#ff5014', '#ffb048'] };
-  },
-  // Harad's thorn: a low dry bush, grey-green and straw
-  scrub(k, { seed = 6 } = {}) {
-    const rand = rng(seed);
-    const parts = [];
-    for (let i = 0; i < 5; i++) {
-      const a = rand() * PI * 2;
-      const d = rand() * 0.3;
-      parts.push(part(new THREE.IcosahedronGeometry(0.22 + rand() * 0.1, 0), { at: [cos(a) * d, 0.2 + rand() * 0.25, sin(a) * d], scale: [1, 0.7, 1], color: rand() < 0.5 ? '#8a7e4e' : '#6e6a44', to: 'leaf' }));
-    }
-    return { parts: [{ geometry: k.geometry(parts), material: k.mats.leaf }], radius: null };
-  },
-  // the Shire's three oaks, one of them (by seed)
-  oak(k, { which = 1 } = {}) {
-    const oaks = (k.oaks ??= k.shire.oaks());
-    const oak = oaks[which % oaks.length];
-    return {
-      parts: [
-        { geometry: oak.trunk, material: k.shire.mats.trunk },
-        { geometry: oak.crown, material: k.shire.mats.crown },
-      ],
-      radius: 0.6,
-    };
-  },
-  flowers(k) {
-    return { parts: [{ geometry: k.shire.flower, material: k.shire.mats.flower }], radius: null, tints: FLOWER_COLOURS };
-  },
-  mushroom(k) {
-    const made = k.shire.mushroom();
-    made.group.updateMatrixWorld(true);
-    const parts = [];
-    made.group.traverse((o) => o.isMesh && parts.push({ geometry: o.geometry, material: o.material, local: o.matrixWorld.clone() }));
-    return { parts, radius: null };
-  },
-  // tufts of long grass, green at the root, gold at the tip
-  tufts(k) {
-    const geometry = k.own(tuftGeometry({ blades: 12, height: 0.5, width: 0.05, seed: 5 }));
-    const h = geometry.attributes.aH;
-    const col = new Float32Array(h.count * 3);
-    const root = new THREE.Color('#3f6a22');
-    const tip = new THREE.Color('#b9c46a');
-    const c = new THREE.Color();
-    for (let i = 0; i < h.count; i++) c.copy(root).lerp(tip, h.getX(i)).toArray(col, i * 3);
-    geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    // (lit as the Shire's own grass is: no shine from space's reflections)
-    const material = k.own(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-    return { parts: [{ geometry, material }], radius: null };
   },
 };

@@ -136,14 +136,14 @@
   padding: 0.45rem 0.8rem;
   border: 1px solid rgb(127 214 255 / 0.45);
   border-radius: 999px;
-  background: rgb(3 8 20 / 0.7);
+  background: rgb(3 8 20 / 0.8);
   color: #bfeaff;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.galaxy-mapbtn:hover { background: rgb(20 50 90 / 0.75); }
+.galaxy-mapbtn:hover { background: rgb(20 50 90 / 0.88); }
 .galaxy-mapbtn:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
 .galaxy-page .universe-comms { top: calc(var(--nav-h) + 56px); }
 .galaxy-flat { padding: 2rem; max-width: 32rem; color: var(--muted); }
@@ -264,7 +264,7 @@
 @keyframes holomap-in { from { opacity: 0; } }
 .holomap-frame {
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 0.6rem;
   width: min(1180px, 100%);
   height: min(860px, 100%);
@@ -276,8 +276,18 @@
   color: #d9f3ff;
   overflow: hidden;
 }
-.holomap-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
-.holomap-kicker { margin: 0; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.85; }
+.holomap-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+/* the find (HoloMap.jsx, mapKeys.js): a field between the title and the close button, its matches under it */
+.holomap-find { position: relative; margin-left: auto; }
+.holomap-find input { width: min(260px, 42vw); padding: 0.4rem 0.75rem; border: 1px solid rgb(127 214 255 / 0.35); border-radius: 999px; background: rgb(2 8 20 / 0.9); color: #fff; font-size: 0.82rem; }
+.holomap-find input:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 1px; }
+.holomap-find-list { position: absolute; z-index: 6; top: calc(100% + 4px); left: 0; right: 0; padding: 0.3rem; border: 1px solid rgb(127 214 255 / 0.3); border-radius: 12px; background: rgb(2 6 16 / 0.97); }
+.holomap-find-list ul { margin: 0; padding: 0; list-style: none; }
+.holomap-find-none { margin: 0; padding: 0.35rem 0.5rem; color: rgb(217 243 255 / 0.75); font-size: 0.78rem; }
+.holomap-find-list button { display: flex; justify-content: space-between; gap: 0.5rem; width: 100%; padding: 0.35rem 0.5rem; border-radius: 8px; color: var(--c); font-size: 0.82rem; text-align: left; }
+.holomap-find-list button span { color: rgb(217 243 255 / 0.6); font-size: 0.72rem; }
+.holomap-find-list button:hover, .holomap-find-list button:focus-visible { background: rgb(127 214 255 / 0.12); }
+.holomap-kicker { margin: 0; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.85; }
 .holomap-title { margin: 0.15rem 0 0; color: #fff; font-size: 1.35rem; font-weight: 650; }
 .holomap-close { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid rgb(127 214 255 / 0.35); border-radius: 50%; color: #bfeaff; }
 .holomap-close:hover { background: rgb(127 214 255 / 0.12); }
@@ -285,6 +295,7 @@
 .holomap button:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
 .holomap-eras,
 .holomap-films { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.holomap-eras { position: relative; }
 .holomap-eras button,
 .holomap-films button {
   padding: 0.25rem 0.65rem;
@@ -293,10 +304,17 @@
   color: #bfeaff;
   font-size: 0.74rem;
 }
-.holomap-eras button span { margin-left: 0.3rem; opacity: 0.6; font-family: var(--font-mono); font-size: 0.64rem; }
+.holomap-eras button span { margin-left: 0.3rem; opacity: 0.6; font-family: var(--font-mono); font-size: 0.7rem; }
 .holomap-eras button[aria-pressed='true'],
 .holomap-films button[aria-pressed='true'] { border-color: var(--era, #7fd6ff); background: color-mix(in srgb, var(--era, #7fd6ff) 18%, transparent); color: #fff; }
-.holomap-films button { min-width: 2.4rem; font-family: var(--font-mono); font-size: 0.68rem; }
+.holomap-films button { min-width: 2.4rem; font-family: var(--font-mono); font-size: 0.7rem; }
+.holomap-films button span { margin-left: 0.3rem; opacity: 0.7; font-family: var(--font-sans); font-size: 0.7rem; }
+/* the films, folded into one chip after the eras: it opens a panel under the row (over the map) to pick one */
+.holomap-filmpick > summary { list-style: none; cursor: pointer; padding: 0.25rem 0.65rem; border: 1px dashed rgb(127 214 255 / 0.35); border-radius: 999px; color: #bfeaff; font-size: 0.74rem; }
+.holomap-filmpick > summary::-webkit-details-marker { display: none; }
+.holomap-filmpick[data-active] > summary { border-style: solid; border-color: var(--era, #7fd6ff); background: color-mix(in srgb, var(--era, #7fd6ff) 18%, transparent); color: #fff; }
+.holomap-filmpick[open] .holomap-films { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; display: grid; grid-template-columns: repeat(3, minmax(0, auto)); width: max-content; max-width: 100%; gap: 0.35rem; padding: 0.6rem; border: 1px solid rgb(127 214 255 / 0.3); border-radius: 12px; background: rgb(2 6 16 / 0.97); }
+.holomap-filmpick .holomap-films button { border-radius: 12px; text-align: left; }
 .holomap-body { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 1rem; min-height: 0; }
 .holomap-map {
   position: relative;
@@ -306,13 +324,83 @@
   aspect-ratio: 1;
   border-radius: 12px;
   overflow: hidden;
+  overflow: clip; /* (not hidden: a hidden box can be scrolled, by focus, and the zoomed stage would carry its overlays off with it) */
+  user-select: none; /* (a drag pans; it doesn't select the names and the grid's letters) */
 }
 @supports not (width: 1cqh) {
   .holomap-map { width: min(100%, 64vh); }
 }
+/* ── Zoom and pan (useMapView.js): the stage holds everything that moves with
+   the map and is drawn at the view's k, x and y (mapView.js), from its top-left;
+   the war's strip and key, and the zoom buttons, sit over it and stay put ── */
+.holomap-map { touch-action: none; }
+.holomap-map[data-zoomed] { cursor: grab; } /* (there's nothing to drag at the whole galaxy: the cursor says so) */
+.holomap-map[data-zoomed]:active { cursor: grabbing; }
+/* The view's three numbers are registered, so a transition can ease them: the stage's transform and the counter-scale
+   of every name, crest and tag read the same eased value on the same frame (easing the transform alone left the
+   counter-scales at their end value from the first frame, so the names shrank and then grew back on every zoom) */
+@property --holomap-k { syntax: '<number>'; inherits: true; initial-value: 1; }
+@property --holomap-vx { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --holomap-vy { syntax: '<number>'; inherits: true; initial-value: 0; }
+.holomap-stage {
+  position: absolute;
+  inset: 0;
+  transform: translate(calc(var(--holomap-vx, 0) * 100%), calc(var(--holomap-vy, 0) * 100%)) scale(var(--holomap-k, 1));
+  transform-origin: 0 0;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .holomap-stage { transition: --holomap-k 0.18s ease-out, --holomap-vx 0.18s ease-out, --holomap-vy 0.18s ease-out; }
+}
+.holomap-map:active .holomap-stage { transition: none; }
+/* names, badges and crests keep their size while the map scales, each about its
+   own point (a system's <li> has no size: its dot and name scale about the dot) */
+.holomap-systems > li,
+.holomap-axis span,
+.holomap-fleets > li { scale: calc(1 / var(--holomap-k, 1)); }
+.holomap-zoom { position: absolute; z-index: 3; right: 10px; bottom: 10px; display: grid; gap: 6px; }
+.holomap-zoom button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgb(127 214 255 / 0.35);
+  border-radius: 10px;
+  background: rgb(2 8 20 / 0.86);
+  color: #d9f3ff;
+  font-size: 1.1rem;
+}
+.holomap-zoom button[aria-disabled='true'] { opacity: 0.4; cursor: default; } /* (not :disabled: a disabled button drops the focus it has when it's pressed) */
+@media (pointer: coarse) {
+  .holomap-zoom button { width: 44px; height: 44px; }
+}
+/* On a phone-wide map (the Layers chip's breakpoint) they're a row in the top right corner, where the map is empty
+   past Scarif, not a column over the lower right's names (Kamino, Geonosis); the strip's title ends near 200 px of a
+   390 px window, so the touch size (44) gives way to 40 where the map is under 338 px wide, and 36 under 328 */
+@container holomap-map (max-width: 560px) {
+  .holomap-zoom { top: 8px; right: 8px; bottom: auto; grid-auto-flow: column; }
+  .holomap-zoom button { width: 36px; height: 36px; }
+  @media (pointer: coarse) {
+    .holomap-zoom button { width: 44px; height: 44px; }
+  }
+}
+@container holomap-map (max-width: 337px) {
+  @media (pointer: coarse) {
+    .holomap-zoom button { width: 40px; height: 40px; }
+  }
+}
+@container holomap-map (max-width: 327px) {
+  @media (pointer: coarse) {
+    .holomap-zoom button { width: 36px; height: 36px; }
+  }
+}
 .holomap-body { container-type: size; }
 .holomap-canvas,
 .holomap-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The SVG's lines keep their weight as the stage zooms: a stroke is in the SVG's units, which the stage scales by k, so each width
+   and dash is its number times --u, one unit over k (the line's own number is its weight at the whole map; at k=4 a course
+   glow would be 44 px wide otherwise). The shapes (the territory, the arrowheads) are meant to grow with the map */
+.holomap-svg { --u: calc(1px / var(--holomap-k, 1)); }
 .holomap-canvas { display: block; }
 .holomap-map::after {
   content: '';
@@ -321,17 +409,30 @@
   pointer-events: none;
   background: repeating-linear-gradient(0deg, rgb(127 214 255 / 0.035) 0 1px, transparent 1px 3px);
 }
-.holomap-grid { stroke: rgb(127 214 255 / 0.07); stroke-width: 0.02; }
-.holomap-region { fill: none; stroke: rgb(127 214 255 / 0.28); stroke-width: 0.035; stroke-dasharray: 0.12 0.1; }
+.holomap-grid { stroke: rgb(127 214 255 / 0.07); stroke-width: calc(0.02 * var(--u)); }
+.holomap-region { fill: none; stroke: rgb(127 214 255 / 0.28); stroke-width: calc(0.035 * var(--u)); stroke-dasharray: calc(0.12 * var(--u)) calc(0.1 * var(--u)); }
 .holomap-region[data-id='deep'] { stroke: rgb(255 214 150 / 0.45); stroke-dasharray: none; }
 .holomap-region[data-id='outer'] { stroke: rgb(127 214 255 / 0.4); stroke-dasharray: none; }
-.holomap-unknown { fill: rgb(0 0 0 / 0.45); stroke: rgb(127 214 255 / 0.15); stroke-width: 0.03; }
-.holomap-region-name { fill: rgb(191 234 255 / 0.5); font-family: var(--font-mono); font-size: 0.26px; letter-spacing: 0.06px; text-anchor: middle; text-transform: uppercase; }
-.holomap-unknown-name { fill: rgb(191 234 255 / 0.35); }
-.holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.35); stroke-width: 0.045; stroke-linejoin: round; }
-.holomap-course { fill: none; stroke: #fff; stroke-linejoin: round; stroke-width: 0.06; stroke-dasharray: 0.18 0.12; animation: holomap-dash 1s linear infinite; }
-@keyframes holomap-dash { to { stroke-dashoffset: -0.6; } }
-.holomap-axis { position: absolute; pointer-events: none; color: rgb(127 214 255 / 0.45); font-family: var(--font-mono); font-size: 9px; }
+.holomap-unknown { fill: rgb(0 0 0 / 0.45); stroke: rgb(127 214 255 / 0.15); stroke-width: calc(0.03 * var(--u)); }
+/* (the size and spacing are set in HoloMap.jsx, from the box's: 11.5 px on screen at any zoom) */
+.holomap-region-name { fill: rgb(191 234 255 / 0.62); font-family: var(--font-mono); text-anchor: middle; text-transform: uppercase; }
+.holomap-unknown-name { fill: rgb(191 234 255 / 0.45); }
+/* (dim: the war's own lanes, warmap.css, go over them) */
+.holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.18); stroke-width: calc(0.045 * var(--u)); stroke-linejoin: round; }
+.holomap-course { fill: none; stroke: #fff; stroke-linejoin: round; stroke-width: calc(0.085 * var(--u)); stroke-dasharray: calc(0.18 * var(--u)) calc(0.12 * var(--u)); animation: holomap-dash 1s linear infinite; }
+@keyframes holomap-dash { to { stroke-dashoffset: calc(-0.6 * var(--u)); } }
+.holomap-course-glow { fill: none; stroke: var(--accent); stroke-width: calc(0.32 * var(--u)); stroke-opacity: 0.28; stroke-linejoin: round; filter: blur(calc(0.06 * var(--u))); }
+/* the course's tag and a system's hover card are in the stage, which is scaled by k: each is scaled by 1/k to keep its size, and its offset is
+   worked out so it stays the same on screen (a translate is in the element's own px, which the stage then scales by k, hence the divisions) */
+.holomap-course-tag { position: absolute; z-index: 2; translate: -50% calc(-50% - 90% / var(--holomap-k, 1)); scale: calc(1 / var(--holomap-k, 1)); padding: 0.15rem 0.45rem; border: 1px solid var(--accent); border-radius: 999px; background: rgb(2 6 16 / 0.9); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; white-space: nowrap; pointer-events: none; }
+.holomap-hover { position: absolute; z-index: 4; translate: calc(14px / var(--holomap-k, 1)) -50%; scale: calc(1 / var(--holomap-k, 1)); transform-origin: 0 50%; display: grid; gap: 0.1rem; padding: 0.4rem 0.6rem; border: 1px solid var(--c); border-radius: 10px; background: rgb(2 6 16 / 0.94); font-size: 0.74rem; white-space: nowrap; pointer-events: none; }
+.holomap-hover[data-flip] { translate: calc(-100% - 14px / var(--holomap-k, 1)) -50%; transform-origin: 100% 50%; } /* (to the dot's left: HoloMap.jsx, where the right runs out of the map) */
+.holomap-hover b { color: var(--c); font-size: 0.82rem; }
+.holomap-hover span { color: rgb(217 243 255 / 0.8); }
+.holomap-hover span:empty { display: none; }
+@media (hover: none) { .holomap-hover { display: none; } }
+.holomap-youtag { padding: 0 0.3rem; border-radius: 4px; background: #fff; color: #03040a; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-shadow: none; }
+.holomap-axis { position: absolute; pointer-events: none; color: rgb(127 214 255 / 0.45); font-family: var(--font-mono); font-size: 0.7rem; }
 .holomap-axis span { position: absolute; translate: -50% -50%; }
 .holomap-axis-x { left: 0; right: 0; top: 7px; }
 .holomap-axis-y { top: 0; bottom: 0; left: 8px; }
@@ -342,47 +443,84 @@
   position: absolute;
   left: 0;
   top: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  translate: -7px -50%;
-  padding: 0.1rem 0.3rem 0.1rem 0;
-  border-radius: 6px;
-  color: #e6f6ff;
-  font-size: 0.7rem;
-  white-space: nowrap;
-}
-.holomap-dot {
-  flex: none;
+  display: block;
   width: 14px;
   height: 14px;
+  translate: -50% -50%;
+  padding: 0;
+  border-radius: 50%;
+  color: #e6f6ff;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.holomap-system::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; } /* (a bigger target than the dot) */
+.holomap-dot {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
   background: radial-gradient(circle, var(--c) 0 3px, color-mix(in srgb, var(--c) 30%, transparent) 4px, transparent 7px);
 }
-.holomap-systems > li[data-side='left'] .holomap-system { flex-direction: row-reverse; translate: calc(-100% + 7px) -50%; padding: 0.1rem 0 0.1rem 0.3rem; }
+/* a world the game's front end drew a globe of (globes.js): that globe for its dot, ringed faintly in its colour */
+.holomap-dot[data-globe] { inset: -2px; background: var(--globe) center / contain no-repeat; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent); }
+/* a name sits in the place round its dot that HoloMap.jsx gave it, to the pixel (labelPlace.js's boxAt: right by default; a
+   corner's box is 5.4 px, CORNER, off the dot's middle each way; above or below it can hang from the dot's left or right
+   edge, data-hang s or e, where the dot has neighbours: data-place is then its b or t). The names are placed by their boxes, so
+   they keep clear of one another and the dots as far as there's room; the war's marks on a dot (warmap.css) go by data-place */
+.holomap-name {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 6px;
+  line-height: 1.25;
+  text-shadow: 0 0 6px #000, 0 0 2px #000;
+}
+.holomap-systems > li .holomap-name { left: calc(100% + 2px); top: 50%; translate: 0 -50%; }
+.holomap-systems > li[data-place='l'] .holomap-name { left: auto; right: calc(100% + 2px); }
+.holomap-systems > li[data-place='t'] .holomap-name { left: 50%; top: auto; bottom: calc(100% + 2px); translate: -50% 0; }
+.holomap-systems > li[data-place='b'] .holomap-name { left: 50%; top: calc(100% + 2px); translate: -50% 0; }
+.holomap-systems > li[data-place='t'][data-hang='s'] .holomap-name,
+.holomap-systems > li[data-place='b'][data-hang='s'] .holomap-name { left: 0; translate: 0 0; }
+.holomap-systems > li[data-place='t'][data-hang='e'] .holomap-name,
+.holomap-systems > li[data-place='b'][data-hang='e'] .holomap-name { left: auto; right: 0; translate: 0 0; }
+.holomap-systems > li[data-place='tr'] .holomap-name { left: calc(50% + 5.4px); top: auto; bottom: calc(50% + 5.4px); translate: 0 0; }
+.holomap-systems > li[data-place='br'] .holomap-name { left: calc(50% + 5.4px); top: calc(50% + 5.4px); translate: 0 0; }
+.holomap-systems > li[data-place='tl'] .holomap-name { left: auto; right: calc(50% + 5.4px); top: auto; bottom: calc(50% + 5.4px); translate: 0 0; }
+.holomap-systems > li[data-place='bl'] .holomap-name { left: auto; right: calc(50% + 5.4px); top: calc(50% + 5.4px); translate: 0 0; }
 .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #fff; animation: holomap-here 1.6s ease-in-out infinite; }
 @keyframes holomap-here { 50% { box-shadow: 0 0 0 5px rgb(255 255 255 / 0.25); } }
-.holomap-system[aria-pressed='true'] { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }
-.holomap-system:hover .holomap-name { color: var(--c); }
-.holomap-name { text-shadow: 0 0 6px #000, 0 0 2px #000; }
+/* (still, for prefers-reduced-motion: the war's marks stop in warmap.css, but this file comes after it, so here) */
+@media (prefers-reduced-motion: reduce) {
+  .holomap-system[aria-current='location'] .holomap-dot,
+  .holomap-course { animation: none; }
+  .holomap-systems > li { transition: none; }
+}
+.holomap-system[aria-pressed='true'] .holomap-name { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }
+/* the picked system: its dot brighter (a white core, a fuller glow) and a ring of its own colour round it, outside the war's (warmap.css) */
+.holomap-system[aria-pressed='true'] .holomap-dot { background: radial-gradient(circle, #fff 0 3px, var(--c) 3.5px 5px, color-mix(in srgb, var(--c) 45%, transparent) 6px, transparent 8px); }
+.holomap-system[aria-pressed='true']::before { content: ''; position: absolute; inset: -6px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 12px 1px color-mix(in srgb, var(--c) 70%, transparent); pointer-events: none; }
+.holomap-system:is(:hover, :focus-visible) .holomap-name { color: var(--c); }
 .holomap-pilots {
   display: grid;
   place-items: center;
-  min-width: 16px;
-  height: 16px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   border-radius: 999px;
   background: #7dff9a;
   color: #04120a;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 700;
+  text-shadow: none; /* (it's in the name, which has the black halo for the light text) */
 }
 .holomap-side {
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain; /* (a wheel at its end isn't the page's) */
   padding: 0.9rem;
   border: 1px solid rgb(127 214 255 / 0.2);
   border-radius: 12px;
@@ -391,17 +529,23 @@
 .holomap-sys { margin: 0.3rem 0 0; font-size: 1.4rem; font-weight: 650; }
 .holomap-meta { margin: 0.2rem 0 0; color: rgb(217 243 255 / 0.7); font-size: 0.78rem; }
 .holomap-stats { display: grid; gap: 0.55rem; margin: 0.9rem 0 1rem; }
-.holomap-stats dt { color: #7fd6ff; font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.holomap-stats dt { color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .holomap-stats dd { margin: 0.1rem 0 0; font-size: 0.84rem; }
-.holomap-jump { width: 100%; justify-content: center; margin-top: auto; }
+.holomap-jump { width: 100%; justify-content: center; margin-top: 0.8rem; }
+.holomap-more > summary { cursor: pointer; margin-top: 0.6rem; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.holomap-key-h { margin: 0.6rem 0 0.3rem; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; }
 @media (max-width: 760px) {
+  .holomap-head { flex-wrap: wrap; }
+  .holomap-head > div:first-child { flex: 1 1 0; min-width: 0; } /* (the title gives way, its small caps wrapping, so the close button stays on its row: at 360 px the one-line title pushed it down alone) */
+  .holomap-find { order: 3; width: 100%; }
+  .holomap-find input { width: 100%; }
   .holomap { padding: 8px; }
-  .holomap-frame { height: 100%; padding: 0.8rem; grid-template-rows: auto auto auto 1fr; }
-  .holomap-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; container-type: normal; }
+  .holomap-frame { height: 100%; padding: 0.8rem; }
+  .holomap-body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); container-type: normal; }
   .holomap-map { width: 100%; max-height: none; }
   .holomap-side { max-height: 40svh; }
-  .holomap-system { font-size: 0.62rem; }
-  .holomap-films { display: none; }
+  .holomap-system { font-size: 0.7rem; }
+  .holomap-filmpick[open] .holomap-films { grid-template-columns: repeat(2, minmax(0, auto)); }
 }
 
 /* "A long time ago…" */
@@ -521,73 +665,109 @@
 }
 @keyframes galaxy-entry-note { to { opacity: 0.8; } }
 
-/* the Galactic Civil War's table (gcw.js): a ring round each system in the
-   colour of who holds it, a front's liberation as an arc round its ring, a
-   system under attack pulsing red, its battle and the major order by its
-   name; the war's own card in the side panel */
-.holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held); }
-.holomap-systems li[data-front] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held); animation: holomap-front 1.6s ease-in-out infinite; }
-@keyframes holomap-front {
-  50% { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held), 0 0 8px 4px rgb(255 179 71 / 0.5); }
-}
-.holomap-lib-track { fill: none; stroke: rgb(98 224 138 / 0.35); stroke-width: 0.09; }
-.holomap-lib-arc { fill: none; stroke: #ff6b4a; stroke-width: 0.12; stroke-linecap: round; }
-.holomap-lib[data-attack] .holomap-lib-track { stroke: rgb(255 70 60 / 0.35); }
-.holomap-systems li[data-attack] .holomap-dot { animation: holomap-attack 0.9s ease-in-out infinite; }
-@keyframes holomap-attack {
-  50% { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held), 0 0 0 9px rgb(255 70 60 / 0.45); }
-}
-.holomap-star { margin-left: 0.25rem; color: #ffd36a; font-weight: 700; text-shadow: 0 0 6px #000; }
-.holomap-fight { margin-left: 0.2rem; color: #ffb347; font-weight: 700; text-shadow: 0 0 6px #000; }
-.holomap-war {
-  position: absolute;
-  left: 12px;
-  bottom: 10px;
-  z-index: 1;
-  margin: 0;
-  color: var(--muted, #9aa6c0);
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-}
-.holomap-war i { display: inline-block; width: 8px; height: 8px; margin: 0 2px 0 8px; border-radius: 50%; border: 2px solid var(--held); }
-.holomap-war b { margin: 0 2px 0 8px; color: #ffb347; }
-.holomap-war b + b { color: #ffd36a; }
-.holomap-warcard { display: grid; gap: 0.6rem; margin: 0.9rem 0 0.4rem; padding: 0.75rem; border: 1px solid rgb(255 179 71 / 0.28); border-radius: 10px; background: rgb(28 16 4 / 0.35); }
-.holomap-warcard .holomap-kicker { color: #ffb347; }
-.holomap-order { display: grid; gap: 0.25rem; padding: 0.6rem 0.7rem; border-radius: 8px; background: rgb(255 211 106 / 0.08); box-shadow: inset 0 0 0 1px rgb(255 211 106 / 0.35); color: #fff; text-align: left; }
-.holomap-order:hover { background: rgb(255 211 106 / 0.14); }
-.holomap-order-k { color: #ffd36a; font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; }
-.holomap-order-t { font-size: 1rem; font-weight: 650; }
-.holomap-order-bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, #62e08a 45%, transparent); overflow: hidden; }
-.holomap-order-bar > span { display: block; height: 100%; width: calc(var(--control) * 100%); background: #ff6b4a; }
-.holomap-order-n { color: rgb(217 243 255 / 0.75); font-size: 0.74rem; }
-.holomap-battles { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
-.holomap-battles button { display: grid; gap: 0.1rem; width: 100%; padding: 0.45rem 0.6rem; border-radius: 8px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(255 179 71 / 0.25); color: #e6f6ff; text-align: left; }
-.holomap-battles button:hover { background: rgb(255 179 71 / 0.12); }
-.holomap-battles li[data-attack] button { box-shadow: inset 0 0 0 1px rgb(255 70 60 / 0.5); }
-.holomap-battles-t { font-size: 0.82rem; font-weight: 600; }
-.holomap-battles-n { color: rgb(217 243 255 / 0.65); font-size: 0.7rem; }
-@media (prefers-reduced-motion: reduce) {
-  .holomap-systems li[data-front] .holomap-dot,
-  .holomap-systems li[data-attack] .holomap-dot { animation: none; }
-}
-
-/* the galaxy's wars: the war you fight in, the oath, the areas (WarCard.jsx), and the battle on in a line (WarHud.jsx) */
+/* the galaxy's wars: the oath, the areas (WarCard.jsx), and the battle on in a line (WarHud.jsx); the holotable's war is warmap.css's */
 .galaxy-oath { display: grid; gap: 0.45rem; }
-.galaxy-oath-wars,
 .galaxy-oath-sides { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.galaxy-oath-wars button,
 .galaxy-oath-sides button { padding: 0.32rem 0.6rem; border-radius: 999px; border: 1px solid rgb(217 243 255 / 0.22); background: rgb(255 255 255 / 0.04); color: #d9f3ff; font-size: 0.74rem; }
-.galaxy-oath-wars button[aria-pressed='true'] { border-color: #ffb347; background: rgb(255 179 71 / 0.16); color: #fff; }
 .galaxy-oath-sides button { border-color: color-mix(in srgb, var(--side, #7fd6ff) 45%, transparent); }
 .galaxy-oath-sides button[data-suggested] { box-shadow: 0 0 0 1px var(--side, #7fd6ff); }
 .galaxy-oath-sides button[aria-pressed='true'] { background: color-mix(in srgb, var(--side, #7fd6ff) 26%, transparent); color: #fff; font-weight: 600; }
-.galaxy-oath-wars button:focus-visible,
 .galaxy-oath-sides button:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
 .galaxy-oath-n { margin: 0; color: rgb(217 243 255 / 0.7); font-size: 0.72rem; }
 .galaxy-areas { display: grid; gap: 0.2rem; margin: 0; padding: 0; list-style: none; font-size: 0.72rem; color: rgb(217 243 255 / 0.7); }
 .galaxy-areas li { display: flex; justify-content: space-between; gap: 0.5rem; }
 .galaxy-areas li[data-yours] { color: #fff; }
 .galaxy-war { display: grid; gap: 0.5rem; margin-top: 0.9rem; }
-.galaxy-warhud { position: absolute; top: 4.6rem; left: 50%; z-index: 3; max-width: calc(100% - 2rem); margin: 0; padding: 0.3rem 0.8rem; transform: translateX(-50%); border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+/* the war's line over the galaxy (WarHud.jsx): the battle here in a pill, and
+   under it while you're in it the stage it's at, with a short bar for each of
+   its objectives; two rows, clear of the crew's line below (.galaxy-page
+   .universe-comms, nav-h + 56px, which slides in from 6px higher); centred in
+   the band between the galaxy map button (136px in) and the side panel (24px
+   off it), so its stage and bars never run under either: on a narrow screen
+   the stage's words are cut short instead */
+.galaxy-warhud { position: absolute; top: 4.6rem; left: calc((136px + 100% - var(--panel-w, 0px) - 24px) / 2); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; width: max-content; max-width: calc(100% - var(--panel-w, 0px) - 160px - 1rem); margin: 0; transform: translateX(-50%); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; pointer-events: none; }
+.galaxy-warhud p { max-width: 100%; margin: 0; white-space: nowrap; }
+.galaxy-warhud-line { overflow: hidden; padding: 0.26rem 0.8rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); text-overflow: ellipsis; }
+.galaxy-warhud-stage { display: flex; align-items: center; gap: 0.6rem; padding: 0.1rem 0.65rem; border-radius: 999px; background: rgb(2 6 16 / 0.62); color: rgb(217 243 255 / 0.88); font-size: 0.66rem; }
+.galaxy-warhud-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.galaxy-warhud-next { color: rgb(255 214 150 / 0.92); }
+.galaxy-warhud-bars { display: flex; flex: none; gap: 0.25rem; }
+.galaxy-warhud-bar { position: relative; width: 2.2rem; height: 0.32rem; overflow: hidden; border-radius: 999px; background: rgb(255 255 255 / 0.18); }
+.galaxy-warhud-bar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--side); transform: scaleX(var(--k, 1)); transform-origin: left; }
+.galaxy-warhud-bar[data-down] { background: rgb(255 255 255 / 0.08); }
+@media (prefers-reduced-motion: no-preference) { .galaxy-warhud-bar::after { transition: transform 0.6s ease-out; } }
+/* (over a bright planet in a light page the glass needs more body to read) */
+@media (prefers-color-scheme: light) { .galaxy-warhud-line, .galaxy-warhud-stage { background: rgb(2 6 16 / 0.84); } }
+/* (on a phone the band between the nav and the crew's line, .galaxy-page
+   .universe-comms at nav-h + 56px, is the map button's, and beside it the
+   stage's words were cut to nothing: the HUD goes under the crew's line,
+   the whole width, as the Citadel siege's does) */
+@media (max-width: 767px) {
+  .galaxy-warhud { top: calc(var(--nav-h, 68px) + 150px); left: 50%; max-width: calc(100% - 2rem); font-size: 0.68rem; }
+  .galaxy-warhud-stage { font-size: 0.62rem; }
+  .galaxy-warhud-bar { width: 1.3rem; }
+}
+
+/* the battle's end (BattleEnd.jsx): Victory or Defeat a few seconds, why, and your part
+   (under the crew's line, which says its own word on it) */
+.galaxy-battleend { --tone: #9fb0d0; position: absolute; top: max(30%, calc(var(--nav-h, 68px) + 150px)); left: 50%; z-index: 4; width: min(22rem, calc(100% - 2rem)); padding: 0.9rem 1.1rem 1rem; transform: translateX(-50%); border-radius: 0.8rem; border: 1px solid color-mix(in srgb, var(--tone) 60%, transparent); background: rgb(2 6 16 / 0.84); box-shadow: 0 0 2.4rem color-mix(in srgb, var(--tone) 22%, transparent); color: #fff; text-align: center; pointer-events: none; }
+.galaxy-battleend[data-tone='won'] { --tone: #ffd36b; }
+.galaxy-battleend[data-tone='lost'] { --tone: #ff7a6b; }
+.galaxy-battleend-title { margin: 0; color: var(--tone); font-family: var(--font-mono); font-size: clamp(1.5rem, 7vw, 2.2rem); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+.galaxy-battleend-why { margin: 0.3rem 0 0; font-size: 0.95rem; }
+.galaxy-battleend-yours { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2rem 0.8rem; margin: 0.6rem 0 0; color: rgb(217 243 255 / 0.82); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; }
+.galaxy-battleend-points { color: var(--tone); }
+/* (after the card's own rule, so they win: on a desktop it's centred in the map
+   left of the side panel, as the HUD is, with a margin so its entrance, which
+   moves it by transform, isn't knocked sideways; on a phone it sits under the
+   crew's line and the HUD) */
+@media (min-width: 768px) { .galaxy-battleend { width: min(22rem, calc(100% - var(--panel-w, 0px) - 2rem)); margin-left: calc(var(--panel-w, 0px) / -2); } }
+@media (max-width: 767px) { .galaxy-battleend { top: max(34%, calc(var(--nav-h, 68px) + 200px)); } }
+@media (prefers-reduced-motion: no-preference) { .galaxy-battleend { animation: galaxy-end-in 0.45s ease-out both; } }
+@keyframes galaxy-end-in { from { opacity: 0; transform: translate(-50%, -0.6rem) scale(0.96); } }
+
+/* the game's loading film of the system, at the top of its card (Film.jsx) */
+.galaxy-film-card {
+  aspect-ratio: 16 / 9;
+  margin: 0.6rem 0 0.4rem;
+  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
+/* a mode the galaxy has here, on the game's own menu tile (GalaxyPanel's ModeTile) */
+.galaxy-mode-tile {
+  position: relative;
+  display: block;
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  color: #fff;
+  text-decoration: none;
+}
+.galaxy-mode-tile-film {
+  aspect-ratio: 504 / 408;
+  max-height: 200px;
+  width: 100%;
+}
+.galaxy-mode-tile-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.8));
+}
+.galaxy-mode-tile-text b {
+  display: block;
+  font-family: var(--font-bf-hud);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent, #7fd4ff);
+}
+.galaxy-mode-tile:focus-visible {
+  outline: 2px solid var(--accent, #7fd4ff);
+  outline-offset: 2px;
+}

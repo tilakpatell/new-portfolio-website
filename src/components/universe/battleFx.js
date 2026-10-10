@@ -3,7 +3,7 @@
 // flagship's shield, the markers over the objectives and the fires where
 // one's gone. Each is one or two draws.
 //
-// createBoltDraw(parent, { count }) → { sync(bolts, colourOf), dispose() }
+// createBoltDraw(parent, { count }) → { sync(bolts, colourOf, eye, ahead), dispose() }
 // createGlows(parent, { count }) → { begin(), add(pos, colour, size), end(), dispose() }
 // createShield(parent) → { show(cap, colour), hit(point), drop(), hide(), update(dt, t), dispose() }
 // createMarkers(parent) → { sync(list), hide(), dispose() }; list: [{ key, pos, title, sub, hp, colour, under }]
@@ -13,6 +13,22 @@
 import * as THREE from 'three';
 
 const Z = new THREE.Vector3(0, 0, 1);
+
+// ── how bright a shot reads ──
+// A side's colours are its hue; how bright one reads is the battle's, the
+// same on every side (the Empire's green was 2.3 times the Rebels' red, so
+// it alone fed the glow): luminance, as the bloom's bright pass weighs it
+// (Rec. 709, linear). Fighters' lasers, batteries' turbolasers, flak and
+// the fighters' engines; a torpedo is its turbo's, at BOLT_LOOK's 1.6.
+export const GLOW = Object.freeze({ laser: 3.0, turbo: 3.6, flak: 2.4, engine: 1.5 });
+export const luminance = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+// rgb's hue at luminance `lum` (black stays black)
+export function glowAt(rgb, lum) {
+  const l = luminance(rgb);
+  if (!(l > 0)) return [0, 0, 0];
+  const k = lum / l;
+  return [rgb[0] * k, rgb[1] * k, rgb[2] * k];
+}
 
 // ── bolts: one instanced draw, each a thin glowing rod along its way ──
 const BOLT_LOOK = {
@@ -39,17 +55,22 @@ export function createBoltDraw(parent, { count = 320 } = {}) {
   return {
     // bolts: battle.js's pool; colourOf(bolt) → [r, g, b]; eye: the camera, in
     // the parent's space (a bolt right by it is dimmed: one passing a few
-    // metres off shouldn't fill the screen with its glow)
-    sync(bolts, colourOf, eye = null) {
+    // metres off shouldn't fill the screen with its glow); ahead: seconds
+    // past the battle's last step (each bolt's carried on that far, so a
+    // bolt doesn't stutter along at the battle's 30 steps a second)
+    sync(bolts, colourOf, eye = null, ahead = 0) {
       let n = 0;
       for (const b of bolts) {
         if (!b.on || n >= count) continue;
         const look = BOLT_LOOK[b.kind] ?? BOLT_LOOK.laser;
-        const near = eye ? Math.min(1, Math.max(0.12, (Math.hypot(b.x - eye.x, b.y - eye.y, b.z - eye.z) - look.length) / (look.length * 4 + 2))) : 1;
+        const x = b.x + b.vx * ahead;
+        const y = b.y + b.vy * ahead;
+        const z = b.z + b.vz * ahead;
+        const near = eye ? Math.min(1, Math.max(0.12, (Math.hypot(x - eye.x, y - eye.y, z - eye.z) - look.length) / (look.length * 4 + 2))) : 1;
         d.set(b.vx, b.vy, b.vz).normalize();
         q.setFromUnitVectors(Z, d);
         // (drawn a little behind its point, so it trails from where it is)
-        p.set(b.x - d.x * look.length * 0.5, b.y - d.y * look.length * 0.5, b.z - d.z * look.length * 0.5);
+        p.set(x - d.x * look.length * 0.5, y - d.y * look.length * 0.5, z - d.z * look.length * 0.5);
         s.set(look.width, look.width, look.length);
         mesh.setMatrixAt(n, m.compose(p, q, s));
         const rgb = colourOf(b);

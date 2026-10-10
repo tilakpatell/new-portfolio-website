@@ -3,18 +3,20 @@
 // planet's landing (landings.js) may list `biomes`, read off the colour of
 // the planet's own map under the spot: the first whose test holds is the
 // place, the last (no test) the fallback, which is the landing as it was.
-// Pure rules, tested in Node; footScene.js samples the map and furnishes
-// the place.
+// Pure rules, tested in Node; footScene.js samples the map (landOn) and
+// furnishes the place (viewOf).
 //
 //   biomes  [{ id, match?(c, at), near?: [lat, lon, deg], sea?, title?,
-//            sub?, ground?, sky?, things?, models?, scatter? }]
+//            sub?, ground?, sky?, things?, models?, scatter?, leaves?, wind? }]
 //            match: on the map's colour there as classify gives it ({ h
 //            0…360, s, l 0…1 }) and where it is ([lat, lon] degrees, or
 //            null); near: within deg of a place, whatever its colour (a
 //            town too small to see from orbit); sea: no landing there, so
 //            the spot moves on toward land (towardLand), reach?: how many
 //            0.02 rad strides out it goes (24 if left out). Anything left
-//            out is the landing's own.
+//            out is the landing's own, but its leaves (./litter.js): those
+//            go with its scatter, so a biome with trees of its own names
+//            its own, and one with none (Mordor's ash, the ice) has none.
 
 import { facingAlong, rotate, vec } from '../foot';
 
@@ -72,7 +74,7 @@ const holds = (b, c, at) => {
 // fields where it leaves them out. A landing with no biomes is its own,
 // 'default'.
 export function biomeAt(landing, rgb, at = null) {
-  const own = { title: landing.title, sub: landing.sub, ground: landing.ground, sky: landing.sky, things: landing.things, scatter: landing.scatter, models: landing.models };
+  const own = { title: landing.title, sub: landing.sub, ground: landing.ground, sky: landing.sky, things: landing.things, scatter: landing.scatter, models: landing.models, leaves: landing.leaves ?? null, wind: landing.wind ?? null };
   const list = landing.biomes ?? [];
   if (!list.length) return { id: 'default', sea: false, ...own };
   const c = classify(rgb);
@@ -88,8 +90,14 @@ export function biomeAt(landing, rgb, at = null) {
     things: pick('things'),
     scatter: pick('scatter'),
     models: b.models ? { ...own.models, ...b.models } : own.models,
+    leaves: b.leaves !== undefined ? b.leaves : b.scatter ? null : own.leaves,
+    wind: pick('wind'),
   };
 }
+
+// the landing as it is on `biome` (biomeAt's): what furnish, the prefetch
+// and the leaves get; with no biome, the landing itself
+export const viewOf = (landing, biome) => (landing && biome ? { ...landing, biome: biome.id, title: biome.title, sub: biome.sub, ground: biome.ground, sky: biome.sky, things: biome.things, scatter: biome.scatter, models: biome.models, leaves: biome.leaves, wind: biome.wind } : landing);
 
 // A spot over the sea, moved to the nearest land: out along the great
 // circle the way it was heading (`track`, any direction along the ground
@@ -113,6 +121,24 @@ export function towardLand(n, sample, isSea, { track = null, steps = 24, stride 
     }
   }
   return n;
+}
+
+// Where a landing coming down at `n` (a unit vector in the body's frame)
+// comes down, and the biome there: over the sea (where it may `walk`), on
+// to the nearest land first, the way it was heading (`track`) at each
+// reach. `look(uv)` is the map's colour there ([r, g, b], or null). { n, the
+// same `n` where it hasn't moved, and biome: biomeAt's with `at` ([lat,
+// lon]), or null where the map can't be read }. footScene.js comes down
+// by it, and guesses by it where a ship's about to (its prefetchAt)
+export function landOn(landing, n, look, { track = null, walk = true } = {}) {
+  if (!look) return { n, biome: null };
+  // (isSea by colour and by place: Tortuga reads sea on the map's copy but
+  // is land; and the walk goes as far out as the planet's sea says, the
+  // Caribbean's being mostly open water)
+  const sea = walk ? landing.biomes?.find((b) => b.sea) : null;
+  const to = sea ? towardLand(n, look, (rgb, p) => !rgb || biomeAt(landing, rgb, latLonOf(p)).sea, { track, steps: sea.reach }) : n;
+  const rgb = look(uvOf(to));
+  return { n: to, biome: rgb ? { ...biomeAt(landing, rgb, latLonOf(to)), at: latLonOf(to) } : null };
 }
 
 // The first of these textures whose picture a canvas can read back: one

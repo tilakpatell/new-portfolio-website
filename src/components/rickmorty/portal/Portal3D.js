@@ -20,6 +20,7 @@
 import * as THREE from 'three';
 import { canvasTexture, createStage } from '../../../lib/stage3d';
 import { houseOn } from '../../../lib/three/house';
+import { LOOK as PANIC_LOOK } from './look';
 import { createModels } from '../../../lib/models';
 import { turn } from '../../../lib/three/gait';
 import { bodyFrom } from '../../../lib/ai/body';
@@ -29,6 +30,7 @@ import { animate, hull, makeCast, portalGun } from './cast';
 import { createMeshyCast } from './meshyCast';
 import { glowDot, paintFloor, paintFloorGlow, puff } from './paint';
 import { SWIRL_GLSL } from '../swirl';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
 
 const R = PANIC.arena;
 
@@ -346,7 +348,7 @@ class Fx {
 }
 
 export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'rick', alive = () => true, onLost, onSlow, onProgress } = {}) {
-  const stage = createStage(canvas, { soft, shadows: true, bloom: { strength: 0.55, radius: 0.4, threshold: 0.92 }, exposure: 1, fov: 40, near: 0.5, far: 400, onLost, onSlow });
+  const stage = createStage(canvas, { soft, shadows: true, bloom: PANIC_LOOK.bloom, exposure: 1, fov: 40, near: 0.5, far: 400, onLost, onSlow });
   const { renderer, scene, camera } = stage;
   const big = !soft && Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
   const progress = (k, label) => alive() && onProgress?.(k, label);
@@ -915,7 +917,11 @@ export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'r
 
   // ── the camera ──
   const look = new THREE.Vector3();
-  let shake = 0;
+  // the shake (lib/three/feel: trauma², none under reduced motion) at the
+  // game's own numbers: its decay of 1.6 a second, 0.3 off at the most, no
+  // roll; and hitstop on a boss down, which the loop takes through step()
+  const feel = createFeel({ baseFov: 40, offset: 0.3 });
+  feel.set({ decay: 1.6, roll: 0 });
   let time = 0;
   const tmp = new THREE.Vector3();
   const q = new THREE.Quaternion();
@@ -977,7 +983,7 @@ export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'r
           break;
         case 'hurt':
           heard.hurt = e;
-          shake = Math.max(shake, 0.35);
+          feel.trauma(0.35);
           burst(e.x, e.y, 12, [2.8, 0.6, 0.4], { speed: 6, life: 0.35 });
           break;
         case 'cleared':
@@ -996,13 +1002,13 @@ export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'r
           heard.bossPhase = true;
           break;
         case 'slam':
-          shake = Math.max(shake, 0.6);
+          feel.trauma(0.6);
           smokeAt(e.x, e.y, 10, [0.85, 0.8, 0.75], { size: 2, y: 0.3 });
           break;
         case 'boom':
           burst(e.x, e.y, 18, [2.8, 1.3, 0.5], { speed: 7, life: 0.45, y: 0.4 });
           smokeAt(e.x, e.y, 5, [0.5, 0.45, 0.45], { size: 1.6, y: 0.3 });
-          shake = Math.max(shake, 0.15);
+          feel.trauma(0.15);
           break;
         case 'seed':
           burst(e.x, e.y, 6, [2.4, 1.8, 0.6], { speed: 3, life: 0.35, size: 0.3, y: 0.6, grav: -2 });
@@ -1015,7 +1021,8 @@ export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'r
           break;
         case 'bossDown':
           heard.bossDown = e;
-          shake = Math.max(shake, 0.9);
+          feel.trauma(0.9);
+          feel.hitstop(90);
           for (let i = 0; i < 4; i++) burst(e.x + (Math.random() - 0.5) * 3, e.y + (Math.random() - 0.5) * 3, 30, [2.8, 2.2, 1.0], { speed: 10, life: 0.8, size: 0.8, y: 1.5 });
           smokeAt(e.x, e.y, 16, [0.9, 0.9, 0.9], { size: 3, y: 1 });
           break;
@@ -1433,10 +1440,9 @@ export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'r
     look.z += (tz - look.z) * k;
     look.y = 0;
     const dist = (portrait ? 1.45 : aspect < 1.4 ? 1.15 : 1) * far;
-    shake = Math.max(0, shake - dt * 1.6);
-    const sh = shake * shake * 0.6;
-    camera.position.set(look.x + (Math.random() - 0.5) * sh, 17.5 * dist + (Math.random() - 0.5) * sh, look.z + 12.5 * dist);
+    camera.position.set(look.x, 17.5 * dist, look.z + 12.5 * dist);
     camera.lookAt(look.x, 0, look.z - 1.5);
+    feel.update(dt, camera);
     sun.target.position.set(look.x, 0, look.z);
     sun.position.set(look.x - 12, 26, look.z + 10);
     sky.position.copy(camera.position);
@@ -1480,6 +1486,10 @@ export async function createPortal3D(canvas, { soft = false, hero: heroKind = 'r
     project,
     dispose,
     setHero,
+    // the frame's dt as the game should take it (a boss down's hitstop): the loop steps by this
+    step: (dt) => feel.step(dt),
+    // behind ?debug: the stage's bloom, the shake's numbers, and what the game adds
+    tune: (groups = []) => stage.tune([...feelGroups(feel), ...groups]),
     get lost() {
       return stage.lost;
     },

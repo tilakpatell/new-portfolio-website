@@ -1,0 +1,1501 @@
+{
+  "pack": "space",
+  "licence": "CC0-1.0",
+  "source": "Quaternius, Ultimate Space Kit (https://quaternius.com)",
+  "models": {
+    "Astronaut_BarbaraTheBee": {
+      "family": "astronaut",
+      "file": "astronaut_barbarathebee.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 8562,
+      "tris1": null,
+      "radius": 2.404,
+      "height": 2.779,
+      "trunk": 1.203,
+      "kind": "character",
+      "rig": {
+        "bones": 43,
+        "clips": {
+          "Death": 0.767,
+          "Duck": 1.667,
+          "HitReact": 0.6,
+          "Idle": 1,
+          "Idle_Gun": 1,
+          "Jump": 0.367,
+          "Jump_Idle": 0.5,
+          "Jump_Land": 0.367,
+          "No": 1.667,
+          "Punch": 0.867,
+          "Run": 0.567,
+          "Run_Gun": 0.567,
+          "Run_Gun_Shoot": 0.567,
+          "Walk": 1,
+          "Walk_Gun": 1,
+          "Wave": 1.667,
+          "Weapon": 0.867,
+          "Yes": 1.667
+        }
+      }
+    },
+    "Astronaut_FernandoTheFlamingo": {
+      "family": "astronaut",
+      "file": "astronaut_fernandotheflamingo.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 7938,
+      "tris1": null,
+      "radius": 2.404,
+      "height": 2.8,
+      "trunk": 1.203,
+      "kind": "character",
+      "rig": {
+        "bones": 43,
+        "clips": {
+          "Death": 0.767,
+          "Duck": 1.667,
+          "HitReact": 0.6,
+          "Idle": 1,
+          "Idle_Gun": 1,
+          "Jump": 0.367,
+          "Jump_Idle": 0.5,
+          "Jump_Land": 0.367,
+          "No": 1.667,
+          "Punch": 0.867,
+          "Run": 0.567,
+          "Run_Gun": 0.567,
+          "Run_Gun_Shoot": 0.567,
+          "Walk": 1,
+          "Walk_Gun": 1,
+          "Wave": 1.667,
+          "Weapon": 0.867,
+          "Yes": 1.667
+        }
+      }
+    },
+    "Astronaut_FinnTheFrog": {
+      "family": "astronaut",
+      "file": "astronaut_finnthefrog.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 8606,
+      "tris1": null,
+      "radius": 2.434,
+      "height": 2.674,
+      "trunk": 1.203,
+      "kind": "character",
+      "rig": {
+        "bones": 43,
+        "clips": {
+          "Death": 0.767,
+          "Duck": 1.667,
+          "HitReact": 0.6,
+          "Idle": 1,
+          "Idle_Gun": 1,
+          "Jump": 0.367,
+          "Jump_Idle": 0.5,
+          "Jump_Land": 0.367,
+          "No": 1.667,
+          "Punch": 0.867,
+          "Run": 0.567,
+          "Run_Gun": 0.567,
+          "Run_Gun_Shoot": 0.567,
+          "Walk": 1,
+          "Walk_Gun": 1,
+          "Wave": 1.667,
+          "Weapon": 0.867,
+          "Yes": 1.667
+        }
+      }
+    },
+    "Astronaut_RaeTheRedPanda": {
+      "family": "astronaut",
+      "file": "astronaut_raetheredpanda.glb",
+      "parts": [
+        "main",
+        "main"
+      ],
+      "tris": 8032,
+      "tris1": null,
+      "radius": 2.404,
+      "height": 2.915,
+      "trunk": 1.203,
+      "kind": "character",
+      "rig": {
+        "bones": 43,
+        "clips": {
+          "Death": 0.767,
+          "Duck": 1.667,
+          "HitReact": 0.6,
+          "Idle": 1,
+          "Idle_Gun": 1,
+          "Jump": 0.367,
+          "Jump_Idle": 0.5,
+          "Jump_Land": 0.367,
+          "No": 1.667,
+          "Punch": 0.867,
+          "Run": 0.567,
+          "Run_Gun": 0.567,
+          "Run_Gun_Shoot": 0.567,
+          "Walk": 1,
+          "Walk_Gun": 1,
+          "Wave": 1.667,
+          "Weapon": 0.867,
+          "Yes": 1.667
+        }
+      }
+    },
+    "Base_Large": {
+      "family": "base",
+      "file": "base.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2790,
+      "tris1": 696,
+      "radius": 6.032,
+      "height": 4.975,
+      "trunk": 4.266,
+      "kind": "prop"
+    },
+    "Building_L": {
+      "family": "building",
+      "file": "building.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2940,
+      "tris1": 733,
+      "radius": 5.513,
+      "height": 4.328,
+      "trunk": 4.453,
+      "kind": "building"
+    },
+    "Bush_1": {
+      "family": "bush",
+      "file": "bush.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 2304,
+      "tris1": 574,
+      "radius": 1.7,
+      "height": 2.088,
+      "trunk": 1.62,
+      "kind": "bush"
+    },
+    "Bush_2": {
+      "family": "bush",
+      "file": "bush.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1504,
+      "tris1": 375,
+      "radius": 0.962,
+      "height": 1.422,
+      "trunk": 0.905,
+      "kind": "bush"
+    },
+    "Bush_3": {
+      "family": "bush",
+      "file": "bush.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 640,
+      "tris1": 160,
+      "radius": 0.982,
+      "height": 1.502,
+      "trunk": 0.765,
+      "kind": "bush"
+    },
+    "Connector": {
+      "family": "connector",
+      "file": "connector.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 508,
+      "tris1": 126,
+      "radius": 2.003,
+      "height": 3.435,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "Enemy_ExtraSmall": {
+      "family": "enemy",
+      "file": "enemy_extrasmall.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1572,
+      "tris1": null,
+      "radius": 0.649,
+      "height": 3.181,
+      "trunk": 0,
+      "kind": "character",
+      "rig": {
+        "bones": 5,
+        "clips": {
+          "Death": 0.667,
+          "Fast_Flying": 0.833,
+          "Flying_Idle": 1.167,
+          "Headbutt": 1.167,
+          "HitReact": 0.467,
+          "No": 1.167,
+          "Punch": 1.167,
+          "Yes": 1.167
+        }
+      }
+    },
+    "Enemy_Flying": {
+      "family": "enemy",
+      "file": "enemy_flying.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 3820,
+      "tris1": null,
+      "radius": 0.882,
+      "height": 4.231,
+      "trunk": 0,
+      "kind": "character",
+      "rig": {
+        "bones": 4,
+        "clips": {
+          "Death": 0.667,
+          "Fast_Flying": 0.833,
+          "Flying_Idle": 1.167,
+          "Headbutt": 1.167,
+          "HitReact": 0.467,
+          "No": 1.167,
+          "Punch": 1.167,
+          "Yes": 1.167
+        }
+      }
+    },
+    "Enemy_Large": {
+      "family": "enemy",
+      "file": "enemy_large.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 4724,
+      "tris1": null,
+      "radius": 2.419,
+      "height": 3.802,
+      "trunk": 0.513,
+      "kind": "character",
+      "rig": {
+        "bones": 43,
+        "clips": {
+          "Death": 0.767,
+          "Duck": 1.667,
+          "HitReact": 0.6,
+          "Idle": 1,
+          "Jump": 0.367,
+          "Jump_Idle": 0.5,
+          "Jump_Land": 0.367,
+          "No": 1.667,
+          "Punch": 0.867,
+          "Run": 0.567,
+          "Walk": 1,
+          "Wave": 1.667,
+          "Weapon": 0.867,
+          "Yes": 1.667
+        }
+      }
+    },
+    "Enemy_Small": {
+      "family": "enemy",
+      "file": "enemy_small.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1856,
+      "tris1": null,
+      "radius": 0.973,
+      "height": 3.728,
+      "trunk": 0,
+      "kind": "character",
+      "rig": {
+        "bones": 5,
+        "clips": {
+          "Death": 0.667,
+          "Fast_Flying": 0.833,
+          "Flying_Idle": 1.167,
+          "Headbutt": 1.167,
+          "HitReact": 0.467,
+          "No": 1.167,
+          "Punch": 1.167,
+          "Yes": 1.167
+        }
+      }
+    },
+    "GeodesicDome": {
+      "family": "geodesicdome",
+      "file": "geodesicdome.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1432,
+      "tris1": 358,
+      "radius": 6.032,
+      "height": 5.285,
+      "trunk": 4.266,
+      "kind": "prop"
+    },
+    "Grass_1": {
+      "family": "grass",
+      "file": "grass.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 246,
+      "tris1": 61,
+      "radius": 0.781,
+      "height": 0.981,
+      "trunk": 0.516,
+      "kind": "grass"
+    },
+    "Grass_2": {
+      "family": "grass",
+      "file": "grass.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 96,
+      "tris1": 76,
+      "radius": 1.033,
+      "height": 1.382,
+      "trunk": 0.9,
+      "kind": "grass"
+    },
+    "Grass_3": {
+      "family": "grass",
+      "file": "grass.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 408,
+      "tris1": 96,
+      "radius": 1.34,
+      "height": 2.38,
+      "trunk": 1.004,
+      "kind": "grass"
+    },
+    "House_Cylinder": {
+      "family": "house",
+      "file": "house.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1166,
+      "tris1": 290,
+      "radius": 3.966,
+      "height": 4.328,
+      "trunk": 2.807,
+      "kind": "prop"
+    },
+    "House_Long": {
+      "family": "house",
+      "file": "house.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2228,
+      "tris1": 557,
+      "radius": 4.378,
+      "height": 4.328,
+      "trunk": 3.242,
+      "kind": "prop"
+    },
+    "House_Open": {
+      "family": "house",
+      "file": "house.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1156,
+      "tris1": 288,
+      "radius": 2.693,
+      "height": 4.328,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "House_OpenBack": {
+      "family": "house",
+      "file": "house.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1180,
+      "tris1": 294,
+      "radius": 2.693,
+      "height": 4.328,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "House_Single": {
+      "family": "house",
+      "file": "house.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1080,
+      "tris1": 270,
+      "radius": 2.758,
+      "height": 4.328,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "House_Single_Support": {
+      "family": "house",
+      "file": "house.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 464,
+      "tris1": 116,
+      "radius": 2.531,
+      "height": 0.876,
+      "trunk": 2.419,
+      "kind": "prop"
+    },
+    "Mech_BarbaraTheBee": {
+      "family": "mech",
+      "file": "mech_barbarathebee.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 6756,
+      "tris1": null,
+      "radius": 1.783,
+      "height": 2.995,
+      "trunk": 1.181,
+      "kind": "character",
+      "rig": {
+        "bones": 13,
+        "clips": {
+          "Dance": 0.8,
+          "Death": 0.567,
+          "Hello": 1.5,
+          "HitRecieve_1": 0.533,
+          "HitRecieve_2": 0.667,
+          "Idle": 3.333,
+          "Jump": 0.867,
+          "Jump_Landing": 0.867,
+          "Jump_NoHeight": 0.6,
+          "Kick": 0.833,
+          "No": 1.4,
+          "Pickup": 1.4,
+          "Run": 0.833,
+          "Shoot_Big": 0.4,
+          "Shoot_Small": 0.233,
+          "Walk": 0.833,
+          "Yes": 1.4
+        }
+      }
+    },
+    "Mech_FernandoTheFlamingo": {
+      "family": "mech",
+      "file": "mech_fernandotheflamingo.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 4086,
+      "tris1": null,
+      "radius": 1.699,
+      "height": 3.55,
+      "trunk": 1.181,
+      "kind": "character",
+      "rig": {
+        "bones": 13,
+        "clips": {
+          "Dance": 0.8,
+          "Death": 0.567,
+          "Hello": 1.5,
+          "HitRecieve_1": 0.533,
+          "HitRecieve_2": 0.667,
+          "Idle": 3.333,
+          "Jump": 0.867,
+          "Jump_Landing": 0.867,
+          "Jump_NoHeight": 0.6,
+          "Kick": 0.833,
+          "No": 1.4,
+          "Pickup": 1.4,
+          "Run": 0.833,
+          "Shoot_Big": 0.4,
+          "Shoot_Small": 0.233,
+          "Walk": 0.833,
+          "Yes": 1.4
+        }
+      }
+    },
+    "Mech_FinnTheFrog": {
+      "family": "mech",
+      "file": "mech_finnthefrog.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 5846,
+      "tris1": null,
+      "radius": 1.961,
+      "height": 3.044,
+      "trunk": 1.74,
+      "kind": "character",
+      "rig": {
+        "bones": 13,
+        "clips": {
+          "Dance": 0.8,
+          "Death": 0.567,
+          "Hello": 1.5,
+          "HitRecieve_1": 0.533,
+          "HitRecieve_2": 0.667,
+          "Idle": 3.333,
+          "Jump": 0.867,
+          "Jump_Landing": 0.867,
+          "Jump_NoHeight": 0.6,
+          "Kick": 0.833,
+          "No": 1.4,
+          "Pickup": 1.4,
+          "Run": 0.833,
+          "Shoot_Big": 0.4,
+          "Shoot_Small": 0.233,
+          "Walk": 0.833,
+          "Yes": 1.4
+        }
+      }
+    },
+    "Mech_RaeTheRedPanda": {
+      "family": "mech",
+      "file": "mech_raetheredpanda.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 4008,
+      "tris1": null,
+      "radius": 1.657,
+      "height": 3.094,
+      "trunk": 1.181,
+      "kind": "character",
+      "rig": {
+        "bones": 13,
+        "clips": {
+          "Dance": 0.8,
+          "Death": 0.567,
+          "Hello": 1.5,
+          "HitRecieve_1": 0.533,
+          "HitRecieve_2": 0.667,
+          "Idle": 3.333,
+          "Jump": 0.867,
+          "Jump_Landing": 0.867,
+          "Jump_NoHeight": 0.6,
+          "Kick": 0.833,
+          "No": 1.4,
+          "Pickup": 1.4,
+          "Run": 0.833,
+          "Shoot_Big": 0.4,
+          "Shoot_Small": 0.233,
+          "Walk": 0.833,
+          "Yes": 1.4
+        }
+      }
+    },
+    "MetalSupport": {
+      "family": "metalsupport",
+      "file": "metalsupport.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 540,
+      "tris1": 130,
+      "radius": 2.978,
+      "height": 1.224,
+      "trunk": 2.74,
+      "kind": "prop"
+    },
+    "Pickup_Bullets": {
+      "family": "pickup",
+      "file": "pickup.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 624,
+      "tris1": 156,
+      "radius": 0.437,
+      "height": 0.463,
+      "trunk": 0.414,
+      "kind": "prop"
+    },
+    "Pickup_Crate": {
+      "family": "pickup",
+      "file": "pickup.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1348,
+      "tris1": 336,
+      "radius": 0.627,
+      "height": 0.429,
+      "trunk": 0.602,
+      "kind": "prop"
+    },
+    "Pickup_Health": {
+      "family": "pickup",
+      "file": "pickup.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 684,
+      "tris1": 170,
+      "radius": 0.532,
+      "height": 0.608,
+      "trunk": 0.512,
+      "kind": "prop"
+    },
+    "Pickup_Jar": {
+      "family": "pickup",
+      "file": "pickup.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 308,
+      "tris1": 76,
+      "radius": 0.489,
+      "height": 0.434,
+      "trunk": 0.346,
+      "kind": "prop"
+    },
+    "Pickup_KeyCard": {
+      "family": "pickup",
+      "file": "pickup.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 256,
+      "tris1": 63,
+      "radius": 0.523,
+      "height": 0.383,
+      "trunk": 0.522,
+      "kind": "prop"
+    },
+    "Pickup_Sphere": {
+      "family": "pickup",
+      "file": "pickup.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1824,
+      "tris1": 456,
+      "radius": 0.626,
+      "height": 0.443,
+      "trunk": 0.6,
+      "kind": "prop"
+    },
+    "Pickup_Thunder": {
+      "family": "pickup",
+      "file": "pickup.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 228,
+      "tris1": 56,
+      "radius": 0.657,
+      "height": 0.414,
+      "trunk": 0.516,
+      "kind": "prop"
+    },
+    "Planet_1": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2672,
+      "tris1": 668,
+      "radius": 2.682,
+      "height": 1.99,
+      "trunk": 2.026,
+      "kind": "planet"
+    },
+    "Planet_10": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2586,
+      "tris1": 646,
+      "radius": 4.055,
+      "height": 2.254,
+      "trunk": 3.333,
+      "kind": "planet"
+    },
+    "Planet_11": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2178,
+      "tris1": 544,
+      "radius": 4.009,
+      "height": 2.836,
+      "trunk": 2.902,
+      "kind": "planet"
+    },
+    "Planet_2": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2720,
+      "tris1": 680,
+      "radius": 2.701,
+      "height": 1.911,
+      "trunk": 1.929,
+      "kind": "planet"
+    },
+    "Planet_3": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2400,
+      "tris1": 600,
+      "radius": 2.477,
+      "height": 1.782,
+      "trunk": 2.015,
+      "kind": "planet"
+    },
+    "Planet_4": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2622,
+      "tris1": 654,
+      "radius": 2.995,
+      "height": 1.754,
+      "trunk": 2.43,
+      "kind": "planet"
+    },
+    "Planet_5": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1320,
+      "tris1": 330,
+      "radius": 2.921,
+      "height": 2.232,
+      "trunk": 2.505,
+      "kind": "planet"
+    },
+    "Planet_6": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1598,
+      "tris1": 398,
+      "radius": 2.658,
+      "height": 1.873,
+      "trunk": 1.88,
+      "kind": "planet"
+    },
+    "Planet_7": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2010,
+      "tris1": 502,
+      "radius": 3.277,
+      "height": 1.434,
+      "trunk": 2.49,
+      "kind": "planet"
+    },
+    "Planet_8": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1070,
+      "tris1": 266,
+      "radius": 2.546,
+      "height": 1.876,
+      "trunk": 1.888,
+      "kind": "planet"
+    },
+    "Planet_9": {
+      "family": "planet",
+      "file": "planet.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1864,
+      "tris1": 466,
+      "radius": 2.698,
+      "height": 1.873,
+      "trunk": 1.939,
+      "kind": "planet"
+    },
+    "Plant_1": {
+      "family": "plant",
+      "file": "plant.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 540,
+      "tris1": 134,
+      "radius": 0.957,
+      "height": 2.142,
+      "trunk": 0.509,
+      "kind": "plant"
+    },
+    "Plant_2": {
+      "family": "plant",
+      "file": "plant.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 196,
+      "tris1": 68,
+      "radius": 0.731,
+      "height": 1.972,
+      "trunk": 0.56,
+      "kind": "plant"
+    },
+    "Plant_3": {
+      "family": "plant",
+      "file": "plant.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1608,
+      "tris1": 400,
+      "radius": 1.282,
+      "height": 2.966,
+      "trunk": 0.906,
+      "kind": "plant"
+    },
+    "Ramp": {
+      "family": "ramp",
+      "file": "ramp.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 192,
+      "tris1": 48,
+      "radius": 1.818,
+      "height": 1.387,
+      "trunk": 1.672,
+      "kind": "prop"
+    },
+    "Rock_1": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 224,
+      "tris1": 70,
+      "radius": 2.097,
+      "height": 3.241,
+      "trunk": 1.55,
+      "kind": "rock"
+    },
+    "Rock_2": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 210,
+      "tris1": 70,
+      "radius": 1.861,
+      "height": 2.238,
+      "trunk": 1.594,
+      "kind": "rock"
+    },
+    "Rock_3": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 224,
+      "tris1": 56,
+      "radius": 2.235,
+      "height": 3.465,
+      "trunk": 1.585,
+      "kind": "rock"
+    },
+    "Rock_4": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 456,
+      "tris1": 114,
+      "radius": 1.373,
+      "height": 3.069,
+      "trunk": 1.133,
+      "kind": "rock"
+    },
+    "Rock_Large_1": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 222,
+      "tris1": 54,
+      "radius": 5.306,
+      "height": 2.973,
+      "trunk": 4.194,
+      "kind": "rock"
+    },
+    "Rock_Large_2": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 432,
+      "tris1": 108,
+      "radius": 5.723,
+      "height": 7.972,
+      "trunk": 4.788,
+      "kind": "rock"
+    },
+    "Rock_Large_3": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 448,
+      "tris1": 112,
+      "radius": 3.715,
+      "height": 7.155,
+      "trunk": 3.176,
+      "kind": "rock"
+    },
+    "Roof_Antenna": {
+      "family": "roof",
+      "file": "roof.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 492,
+      "tris1": 122,
+      "radius": 1.006,
+      "height": 7.611,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "Roof_Opening": {
+      "family": "roof",
+      "file": "roof.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 350,
+      "tris1": 86,
+      "radius": 1.006,
+      "height": 5.266,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "Roof_Radar": {
+      "family": "roof",
+      "file": "roof.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 972,
+      "tris1": 242,
+      "radius": 1.158,
+      "height": 6.781,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "Roof_VentL": {
+      "family": "roof",
+      "file": "roof.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 140,
+      "tris1": 34,
+      "radius": 0.918,
+      "height": 4.21,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "Roof_VentR": {
+      "family": "roof",
+      "file": "roof.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 140,
+      "tris1": 36,
+      "radius": 0.918,
+      "height": 4.21,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "Rover_1": {
+      "family": "rover",
+      "file": "rover.glb",
+      "parts": [
+        "main",
+        "main",
+        "main",
+        "main",
+        "main"
+      ],
+      "tris": 7346,
+      "tris1": 1832,
+      "radius": 3.45,
+      "height": 4.733,
+      "trunk": 3.251,
+      "kind": "vehicle"
+    },
+    "Rover_2": {
+      "family": "rover",
+      "file": "rover.glb",
+      "parts": [
+        "main",
+        "main",
+        "main",
+        "main",
+        "main",
+        "main",
+        "main"
+      ],
+      "tris": 8032,
+      "tris1": 2002,
+      "radius": 4.002,
+      "height": 4.733,
+      "trunk": 3.816,
+      "kind": "vehicle"
+    },
+    "Rover_Round": {
+      "family": "rover",
+      "file": "rover.glb",
+      "parts": [
+        "main",
+        "main",
+        "main",
+        "main",
+        "main"
+      ],
+      "tris": 7052,
+      "tris1": 1756,
+      "radius": 3.432,
+      "height": 5.019,
+      "trunk": 3.238,
+      "kind": "vehicle"
+    },
+    "SolarPanel_Ground": {
+      "family": "solarpanel",
+      "file": "solarpanel.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 372,
+      "tris1": 93,
+      "radius": 1.053,
+      "height": 1.091,
+      "trunk": 1.037,
+      "kind": "prop"
+    },
+    "SolarPanel_Roof": {
+      "family": "solarpanel",
+      "file": "solarpanel.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 812,
+      "tris1": 203,
+      "radius": 1.616,
+      "height": 5.277,
+      "trunk": 0,
+      "kind": "prop"
+    },
+    "SolarPanel_Structure": {
+      "family": "solarpanel",
+      "file": "solarpanel.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1432,
+      "tris1": 358,
+      "radius": 2.828,
+      "height": 3.074,
+      "trunk": 2.763,
+      "kind": "prop"
+    },
+    "Spaceship_BarbaraTheBee": {
+      "family": "spaceship",
+      "file": "spaceship.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 6208,
+      "tris1": 1552,
+      "radius": 4.427,
+      "height": 3.522,
+      "trunk": 3.884,
+      "kind": "vehicle"
+    },
+    "Spaceship_FernandoTheFlamingo": {
+      "family": "spaceship",
+      "file": "spaceship.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 2814,
+      "tris1": 703,
+      "radius": 7.054,
+      "height": 1.321,
+      "trunk": 7.004,
+      "kind": "vehicle"
+    },
+    "Spaceship_FinnTheFrog": {
+      "family": "spaceship",
+      "file": "spaceship.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 3376,
+      "tris1": 843,
+      "radius": 6.163,
+      "height": 1.85,
+      "trunk": 5.961,
+      "kind": "vehicle"
+    },
+    "Spaceship_RaeTheRedPanda": {
+      "family": "spaceship",
+      "file": "spaceship.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1614,
+      "tris1": 403,
+      "radius": 7.478,
+      "height": 1.937,
+      "trunk": 4.73,
+      "kind": "vehicle"
+    },
+    "Stairs": {
+      "family": "stairs",
+      "file": "stairs.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 256,
+      "tris1": 70,
+      "radius": 1.818,
+      "height": 1.387,
+      "trunk": 1.672,
+      "kind": "prop"
+    },
+    "Tree_Blob_1": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 6112,
+      "tris1": 1528,
+      "radius": 2.731,
+      "height": 5.87,
+      "trunk": 1.864,
+      "kind": "tree"
+    },
+    "Tree_Blob_2": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 5776,
+      "tris1": 1444,
+      "radius": 2.67,
+      "height": 4.605,
+      "trunk": 2,
+      "kind": "tree"
+    },
+    "Tree_Blob_3": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1892,
+      "tris1": 473,
+      "radius": 1.971,
+      "height": 3.417,
+      "trunk": 1.404,
+      "kind": "tree"
+    },
+    "Tree_Floating_1": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 2440,
+      "tris1": 609,
+      "radius": 1.123,
+      "height": 4.596,
+      "trunk": 0.227,
+      "kind": "tree"
+    },
+    "Tree_Floating_2": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 4048,
+      "tris1": 1012,
+      "radius": 1.38,
+      "height": 5.865,
+      "trunk": 0.25,
+      "kind": "tree"
+    },
+    "Tree_Floating_3": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 4080,
+      "tris1": 1020,
+      "radius": 1.981,
+      "height": 5.209,
+      "trunk": 0.313,
+      "kind": "tree"
+    },
+    "Tree_Lava_1": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1282,
+      "tris1": 320,
+      "radius": 0.846,
+      "height": 3.241,
+      "trunk": 0.19,
+      "kind": "tree"
+    },
+    "Tree_Lava_2": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1174,
+      "tris1": 292,
+      "radius": 0.841,
+      "height": 3.082,
+      "trunk": 0.21,
+      "kind": "tree"
+    },
+    "Tree_Lava_3": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1088,
+      "tris1": 272,
+      "radius": 0.793,
+      "height": 2.084,
+      "trunk": 0.187,
+      "kind": "tree"
+    },
+    "Tree_Light_1": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 2280,
+      "tris1": 569,
+      "radius": 1.641,
+      "height": 3.757,
+      "trunk": 0.56,
+      "kind": "tree"
+    },
+    "Tree_Light_2": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1080,
+      "tris1": 270,
+      "radius": 1.045,
+      "height": 2.509,
+      "trunk": 0.257,
+      "kind": "tree"
+    },
+    "Tree_Spikes_1": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 2548,
+      "tris1": 636,
+      "radius": 2.864,
+      "height": 5.142,
+      "trunk": 1.144,
+      "kind": "tree"
+    },
+    "Tree_Spikes_2": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1698,
+      "tris1": 424,
+      "radius": 1.607,
+      "height": 4.479,
+      "trunk": 1.093,
+      "kind": "tree"
+    },
+    "Tree_Spiral_1": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 748,
+      "tris1": 186,
+      "radius": 1.624,
+      "height": 4.486,
+      "trunk": 0.635,
+      "kind": "tree"
+    },
+    "Tree_Spiral_2": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1490,
+      "tris1": 372,
+      "radius": 2.197,
+      "height": 6.182,
+      "trunk": 0.364,
+      "kind": "tree"
+    },
+    "Tree_Spiral_3": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1280,
+      "tris1": 319,
+      "radius": 2.464,
+      "height": 4.048,
+      "trunk": 0.358,
+      "kind": "tree"
+    },
+    "Tree_Swirl_1": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 2010,
+      "tris1": 502,
+      "radius": 2.451,
+      "height": 7.349,
+      "trunk": 0.416,
+      "kind": "tree"
+    },
+    "Tree_Swirl_2": {
+      "family": "tree",
+      "file": "tree.glb",
+      "parts": [
+        "bark"
+      ],
+      "tris": 1112,
+      "tris1": 278,
+      "radius": 1.64,
+      "height": 5.149,
+      "trunk": 0.321,
+      "kind": "tree"
+    }
+  },
+  "materials": {
+    "Atlas": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {
+        "colour": "32x32"
+      }
+    },
+    "Atlas_2": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {
+        "colour": "512x512"
+      }
+    },
+    "Atlas_3": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {
+        "colour": "32x32"
+      }
+    },
+    "Atlas_4": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {
+        "colour": "32x32"
+      }
+    },
+    "Atlas_5": {
+      "alpha": "opaque",
+      "leaf": false,
+      "wind": null,
+      "maps": {
+        "colour": "32x32"
+      }
+    }
+  }
+}

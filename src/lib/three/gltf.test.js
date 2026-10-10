@@ -1,11 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { SHIP_PROFILE, tune, tuneTree, usesBasisu } from './gltf';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { SHIP_PROFILE, loadGltf, loadGltfFile, tune, tuneTree, usesBasisu } from './gltf';
+
+// (one file the bucket holds, for the asset base's case)
+vi.mock('../../data/assets-manifest.json', () => ({ default: { 'kit/crate.glb': { hash: 'aaaaaaaaaaaa', bytes: 70000 }, 'hq/models/lamp.glb': { hash: 'cccccccccccc', bytes: 70000 } } }));
 
 // a GLB with the given JSON chunk
-function glb(json) {
+// (`size`: the whole file that long, its JSON padded with spaces, as a
+// manifest's bytes promise)
+function glb(json, size = 0) {
   const text = new TextEncoder().encode(JSON.stringify(json));
-  const pad = (4 - (text.length % 4)) % 4;
+  const pad = Math.max((4 - (text.length % 4)) % 4, size - 20 - text.length);
   const len = text.length + pad;
   const out = new Uint8Array(20 + len);
   const dv = new DataView(out.buffer);
@@ -71,7 +77,7 @@ describe('the hero ships’ finish', () => {
     const root = new THREE.Group();
     root.add(new THREE.Mesh(new THREE.BoxGeometry(), hull), new THREE.Mesh(new THREE.BoxGeometry(), [trim, hull]));
     tuneTree(root, SHIP_PROFILE);
-    expect(hull.roughness).toBe(0.72);
+    expect(hull.roughness).toBe(0.6);
     expect(hull.metalness).toBe(0.1);
     expect(trim.roughness).toBe(0.42);
     expect(trim.metalness).toBe(0.65);
@@ -79,10 +85,92 @@ describe('the hero ships’ finish', () => {
     expect(trim.envMapIntensity).toBe(1.3);
   });
 
+  it('the ship profile’s light: key 1, fill 0.6 (so a ship’s shadow side still reads), rim a half', () => {
+    expect(SHIP_PROFILE.light).toEqual({ key: 1, fill: 0.6, rim: 0.5 });
+  });
+
   it('keeps a single metalness for things not named metal, as before', () => {
     const plastic = tune({ name: 'body', metalness: 1 }, { metalness: 0.2 });
     const chrome = tune({ name: 'chrome', metalness: 1 }, { metalness: 0.2 });
     expect(plastic.metalness).toBe(0.2);
     expect(chrome.metalness).toBe(1);
+  });
+});
+
+describe('a model the bucket holds', () => {
+  it('is asked of the asset base first, and of the site once the base fails', async () => {
+    const { forgetDown, isDown } = await import('../assetBase');
+    const { useAssetPool } = await import('../assetLoad');
+    const { createAssetFetch } = await import('../net/assetFetch');
+    vi.stubEnv('VITE_ASSET_BASE', 'https://bucket.test/assets');
+    const asked = [];
+    useAssetPool(
+      createAssetFetch({
+        fetch: async (url) => {
+          asked.push(url);
+          throw new TypeError('unreachable');
+        },
+        sleep: async () => {},
+      }),
+    );
+    try {
+      expect(await loadGltf('/kit/crate.glb')).toBeNull();
+      // (each tried four times: once and three retries)
+      expect([...new Set(asked)]).toEqual(['https://bucket.test/assets/aaaaaaaaaaaa/kit/crate.glb', '/kit/crate.glb']);
+      expect(asked.length).toBe(8);
+      expect(isDown()).toBe(true);
+    } finally {
+      useAssetPool(null);
+      vi.unstubAllEnvs();
+      forgetDown();
+    }
+  });
+});
+
+describe('a model a world parses itself', () => {
+  it('is asked of the asset base too, through the shared loader’s own load', async () => {
+    const { useAssetPool } = await import('../assetLoad');
+    const { createAssetFetch } = await import('../net/assetFetch');
+    vi.stubEnv('VITE_ASSET_BASE', 'https://bucket.test/assets');
+    const asked = [];
+    useAssetPool(
+      createAssetFetch({
+        fetch: async (url) => {
+          asked.push(url);
+          // (the bucket's file as long as the manifest says, the site's as it comes)
+          return new Response(glb({ asset: { version: '2.0' }, scenes: [{ nodes: [] }], scene: 0 }, url.includes('lamp') ? 70000 : 0));
+        },
+        sleep: async () => {},
+      }),
+    );
+    try {
+      expect((await loadGltfFile('/hq/models/lamp.glb')).scene).toBeTruthy();
+      expect((await loadGltfFile('/models/sketchfab/door.glb')).scene).toBeTruthy();
+      expect(asked).toEqual(['https://bucket.test/assets/cccccccccccc/hq/models/lamp.glb', '/models/sketchfab/door.glb']);
+    } finally {
+      useAssetPool(null);
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('stops with its world: an abort rejects the load and nothing is parsed', async () => {
+    const { useAssetPool, worldScope } = await import('../assetLoad');
+    const { createAssetFetch } = await import('../net/assetFetch');
+    let late = null;
+    useAssetPool(createAssetFetch({ fetch: () => new Promise((r) => (late = r)), sleep: async () => {} }));
+    const parse = vi.spyOn(GLTFLoader.prototype, 'parse');
+    try {
+      const world = worldScope('test');
+      const p = loadGltf('/models/galaxy/crew/left.glb', { prepare: false });
+      await new Promise((r) => setTimeout(r, 0));
+      world.end();
+      expect(await p).toBeNull();
+      late(new Response(glb({ asset: { version: '2.0' } })));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(parse).not.toHaveBeenCalled();
+    } finally {
+      parse.mockRestore();
+      useAssetPool(null);
+    }
   });
 });

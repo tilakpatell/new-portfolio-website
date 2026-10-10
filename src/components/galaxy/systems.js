@@ -122,7 +122,7 @@ export const LANES = [
 // pieces     the set pieces (setpieces.js reads them; sizes in map units, the ship is 0.26 long)
 //            (the planet's grown to be wider than its biggest ship's long: fit.js, as SYSTEMS is made)
 // faction    who hunts you here (galaxy/hunted.js), or null for nobody
-// war        { worth: 1 | 2 | 3, weight: 1 | 2 | 4, kind, area }: what it is to
+// war        { worth: 1 | 2 | 3, weight: 1 | 2 | 3 | 4, kind, area }: what it is to
 //            the galaxy's wars (gcw.js: the order of the fronts, how often a
 //            raider picks it), the battle fought there (battles.js's
 //            BATTLE_KINDS) and the area of the war it's in (sides.js's AREAS)
@@ -256,7 +256,8 @@ const AS_SET = [
     moons: [],
     suns: [{ dir: [0.68, 0.36, 0.64], color: '#fff4e2', size: 0.95 }],
     pieces: [
-      { type: 'station', kind: 'deathstar2', at: [150, 46, -190], size: 140, spin: 0.004, shield: true },
+      // (flown into once its shield is down: aboard, at the dock where Vader’s shuttle sets down)
+      { type: 'station', kind: 'deathstar2', at: [150, 46, -190], size: 140, spin: 0.004, shield: true, board: '/deathstar/inside?station=ds2&side=rebel&at=dock' },
       {
         type: 'battle',
         at: [70, 30, -60],
@@ -638,7 +639,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'vulture', count: 5, at: [80, 30, -60], radius: 30, height: 6, speed: 0.3, size: 0.26 },
     ],
     faction: 'separatists',
-    war: { worth: 1, weight: 1, kind: 'blockade', area: 'core' },
+    war: { worth: 1, weight: 3, kind: 'blockade', area: 'core' },
     traffic: ['arc170', 'freighter'],
     game: {
       id: 'kashyyyk',
@@ -649,6 +650,8 @@ const AS_SET = [
       pitch: 'The droid army is coming across the lagoon. Hold the beach at Kachirho against tanks and spider droids alongside the clones and the Wookiees.',
       how: 'Skim the lagoon, sink the droid boats and tanks before they land, and watch the clones. Something’s not right about them.',
       status: 'soon',
+      // (and the ground battle, on the same world)
+      also: [{ id: 'assault', title: 'The Battle of Kashyyyk', text: 'A galactic assault on the shore at Kachirho: the droid army wades out of the lagoon for the barricades, the gun line and the command post, and the clones and Wookiees hold each as long as they can. Fight for either side.', to: '/galaxy/kashyyyk/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {
@@ -970,6 +973,18 @@ const AS_SET = [
   },
 ];
 export const SYSTEMS = AS_SET.map(fitSystem);
+
+// The 2017 game's Heroes vs Villains and Blast on each world whose level has
+// their grounds (surface/missions/arenas.js's GROUNDS; their rows are
+// missions/index.js's), as two more lines on its briefing.
+export const MODE_WORLDS = ['hoth', 'endor', 'tatooine', 'geonosis', 'kashyyyk'];
+for (const s of SYSTEMS)
+  if (MODE_WORLDS.includes(s.id))
+    s.game.also = [
+      ...(s.game.also ?? []),
+      { id: 'hvv', title: 'Heroes vs Villains', text: 'Four heroes against four villains in the level’s own hero arena. Each side has a target: bring theirs down for a point, keep yours alive. First to ten.', to: `/galaxy/${s.id}/surface?mission=hvv`, go: 'Play it now' },
+      { id: 'blast', title: 'Blast', text: 'Ten a side on the level’s team-deathmatch ground, no posts to take. The first side to a hundred kills wins.', to: `/galaxy/${s.id}/surface?mission=blast`, go: 'Play it now' },
+    ];
 
 const BY_ID = new Map(SYSTEMS.map((s) => [s.id, s]));
 export const systemById = (id) => BY_ID.get(id) ?? null;

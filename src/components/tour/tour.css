@@ -54,6 +54,10 @@
 .tour[data-over] { z-index: calc(var(--z-dialog) - 1); } /* under the guide or the palette while a release stop lets them open */
 /* on the way to a stop's page: the card in the middle, the page under it dimmed */
 .tour[data-waiting] .tour-text { color: var(--muted); }
+/* a world asking before it downloads: the gate takes the clicks, the card waits in a corner */
+.tour[data-asking] { z-index: calc(var(--z-sheet) - 1); }
+.tour[data-asking] .tour-veil { pointer-events: none; background: rgb(2 6 14 / 0.25); }
+.tour-notice { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--muted); }
 @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* while it runs: the nav and the guide's button stay in view (they hide on scroll, and a phone tucks the button away) */

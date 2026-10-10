@@ -323,7 +323,7 @@ export const PROPS = {
     }
     // pipes along its flanks
     for (const s of [-1, 1]) P.push(part(new THREE.CylinderGeometry(0.7, 0.7, 34, 10), { at: [s * 21, 6.5, -2], rot: [PI / 2, 0, 0], color: '#5a5254', to: 'metal' }));
-    return { object: k.build(P, { name: 'mining' }), solids: [{ box: [0, -2, 23, 17, 0] }, { circle: [-9, 6, 4] }] };
+    return { object: k.build(P, { name: 'mining' }), solids: [{ box: [0, -2, 23, 17, 0] }, { circle: [-9, 6, 4] }, { box: [-47, 9, 7, 11, 0] }, { box: [30, 7, 16, 21, 0] }, { box: [-1, -25.5, 25, 6.5, 0] }] };
   },
 
   // a lava fall: a curtain of molten rock pouring over a lip and down into
@@ -439,30 +439,48 @@ export const PROPS = {
   vadermeditation(k) {
     const object = new THREE.Group();
     const R = 2.3;
+    // (faceted, flat-shaded: a low-poly shell)
+    const facet = (g) => {
+      const f = g.toNonIndexed();
+      f.computeVertexNormals();
+      return f;
+    };
+    const teeth = (y, down) => {
+      const out = [];
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * PI * 2;
+        out.push(part(new THREE.ConeGeometry(0.35, 0.9, 3), { at: [sin(a) * (R - 0.25), y, cos(a) * (R - 0.25)], rot: [down ? PI : 0, a, 0], color: '#121214', to: 'dark' }));
+      }
+      return out;
+    };
     const P = [
-      part(cyl(1.6, 1.1, 0.9, 20), { color: '#1e1e22', to: 'metal' }),
-      part(new THREE.SphereGeometry(R, 28, 16, 0, PI * 2, PI / 2, PI / 2), { at: [0, 3.1, 0], color: '#121214', to: 'dark' }),
-      part(new THREE.SphereGeometry(R - 0.08, 24, 12, 0, PI * 2, PI / 2, PI / 2), { at: [0, 3.1, 0], color: '#e8e8ea', to: 'cloth' }),
+      // two stacked eight-sided steps, glossy black
+      part(cyl(2.6, 2.6, 0.35, 8), { color: '#0e0e10', to: 'metal' }),
+      part(cyl(2.2, 2.2, 0.35, 8), { at: [0, 0.35, 0], color: '#0e0e10', to: 'metal' }),
+      part(facet(new THREE.SphereGeometry(R, 10, 5, 0, PI * 2, PI / 2, PI / 2)), { at: [0, 3.1, 0], color: '#121214', to: 'dark' }),
+      part(facet(new THREE.SphereGeometry(R - 0.08, 10, 5, 0, PI * 2, PI / 2, PI / 2)), { at: [0, 3.1, 0], color: '#e8e8ea', to: 'cloth' }),
       part(new THREE.TorusGeometry(R, 0.08, 6, 32).rotateX(PI / 2), { at: [0, 3.1, 0], color: '#2a2a2e', to: 'metal' }),
       part(box(1.0, 0.5, 0.9), { at: [0, 1.5, 0], color: '#2a2a2e', to: 'metal' }),
       part(box(0.9, 1.4, 0.2), { at: [0, 1.5, -0.6], color: '#2a2a2e', to: 'metal' }),
       part(new THREE.CircleGeometry(0.5, 16).rotateX(-PI / 2), { at: [0, 0.92, 0], color: hot('#9ab8ff', 1.4), to: 'glow' }),
+      ...teeth(3.1 + 0.45, false),
     ];
     object.add(k.build(P, { name: 'meditation' }));
-    // the lid, on its hinge at the back
-    const hinge = new THREE.Group();
-    hinge.position.set(0, 3.1, -R);
-    hinge.add(own(k, [
-      part(new THREE.SphereGeometry(R, 28, 14, 0, PI * 2, 0, PI / 2), { at: [0, 0, R], color: '#121214', to: 'dark' }),
-      part(new THREE.SphereGeometry(R - 0.08, 24, 12, 0, PI * 2, 0, PI / 2), { at: [0, 0, R], color: '#e8e8ea', to: 'cloth' }),
-      part(new THREE.CylinderGeometry(0.3, 0.3, 0.6, 12), { at: [0, R + 0.1, R], color: '#2a2a2e', to: 'metal' }),
+    // the lid, lifted straight up off it
+    const lid = new THREE.Group();
+    lid.position.set(0, 3.1 + 0.9, 0);
+    lid.add(own(k, [
+      part(facet(new THREE.SphereGeometry(R, 10, 5, 0, PI * 2, 0, PI / 2)), { color: '#121214', to: 'dark' }),
+      part(facet(new THREE.SphereGeometry(R - 0.08, 10, 5, 0, PI * 2, 0, PI / 2)), { color: '#e8e8ea', to: 'cloth' }),
+      part(new THREE.CylinderGeometry(0.3, 0.3, 0.6, 12), { at: [0, R + 0.1, 0], color: '#2a2a2e', to: 'metal' }),
+      ...teeth(-0.45, true),
     ], 'lid'));
-    object.add(hinge);
+    object.add(lid);
     return {
       object,
-      solids: [{ circle: [0, 0, R] }],
+      solids: [{ circle: [0, 0, 2.6] }],
       update(t) {
-        hinge.rotation.x = -0.7 - 0.25 * sin(t * 0.25);
+        lid.position.y = 3.1 + 0.9 + 0.5 * sin(t * 0.25);
       },
     };
   },
@@ -549,7 +567,9 @@ export const PROPS = {
 
   // the collector, adrift on the lava river: the platform Obi-Wan and
   // Anakin fought on, its tower leaning, a scoop arm hanging off it
-  collector(k) {
+  // (lavacollector: built under its model for the deck you stand on, and
+  // drawn, 2 m up, only if the model doesn't load)
+  lavacollector(k) {
     const object = new THREE.Group();
     const P = [
       part(box(16, 1.6, 11), { at: [0, -0.6, 0], color: '#3a3636', to: 'metal' }),
@@ -577,11 +597,11 @@ export const PROPS = {
     object.add(inner);
     return {
       object,
-      floors: [{ x: 0, z: 0, hw: 7.5, hd: 5, y: 1.05 }],
+      floors: [{ x: 1.2, z: 0, hw: 6.7, hd: 4.3, y: 3.1 }],
       update(t) {
         inner.rotation.z = sin(t * 0.35) * 0.025;
         inner.rotation.x = sin(t * 0.27 + 1) * 0.02;
-        inner.position.y = sin(t * 0.5) * 0.08;
+        inner.position.y = 2.05 + sin(t * 0.5) * 0.08;
       },
     };
   },
@@ -592,9 +612,14 @@ export const PROPS = {
     const P = [part(cyl(r, r * 0.96, 1.2, 36), { color: '#2e2c2e', to: 'metal' }), part(cyl(r * 0.9, r * 0.9, 1.25, 36), { color: '#3a3838', to: 'paint' })];
     for (let i = 0; i < 18; i++) {
       const a = (i / 18) * PI * 2;
-      P.push(part(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 8), { at: [cos(a) * r * 0.95, 1.28, sin(a) * r * 0.95], color: hot('#ff8a3a', 3), to: 'glow' }));
+      P.push(part(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 8), { at: [cos(a) * r * 0.95, 1.28, sin(a) * r * 0.95], color: hot('#a8c8ff', 3), to: 'glow' }));
     }
-    for (const a of [0, PI / 2]) P.push(part(new THREE.BoxGeometry(r * 1.4, 0.03, 0.6), { at: [0, 1.26, 0], rot: [0, a, 0], color: '#8a6a3a', to: 'paint' }));
+    // thin dark seams across its deck
+    for (let i = -1.5; i <= 1.5; i++) {
+      const o = (i * r * 0.9) / 2.2;
+      const len = 2 * Math.sqrt((r * 0.9) ** 2 - o * o);
+      P.push(part(new THREE.BoxGeometry(len, 0.03, 0.08), { at: [0, 1.26, o], color: '#232124', to: 'dark' }), part(new THREE.BoxGeometry(0.08, 0.03, len), { at: [o, 1.26, 0], color: '#232124', to: 'dark' }));
+    }
     return { object: k.build(P, { name: 'mpad' }), floors: [{ x: 0, z: 0, r, y: 1.25 }] };
   },
   // ── Scarif ──

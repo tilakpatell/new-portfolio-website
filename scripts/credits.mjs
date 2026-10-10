@@ -1,12 +1,13 @@
 // CREDITS.md, from the lists the site credits from itself: every Sketchfab
 // model (src/data/modelCredits.json, and the ones public/cc0/README.md lists
 // by hand), every CC0 scan, sky and kit (public/games/credits.json,
-// public/games/caribbean/credits.json, public/hq/CREDITS.md), every photo
+// public/games/caribbean/credits.json, public/hq/CREDITS.md, and the kit
+// packs' manifests, public/kit/*/index.json), every photo
 // (src/data/photos.js), the fonts and the public data, and the README's
 // thank-you to the artists. Run it after any of those change:
 //
 //   npm run credits
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 
@@ -70,14 +71,40 @@ for (const [, kind, name, from, url, by] of (await read('public/hq/CREDITS.md'))
   const where = name.trim().startsWith('m64-') ? 'Super Mario 64' : 'Avengers HQ';
   cc0.push({ name: `${name.trim()} (${kind.toLowerCase()}, ${where})`, source: url, by: by.trim(), from });
 }
+// Quaternius's kits, where the galaxy uses them (public/cc0/README.md's line for the ground cover and far trees)
+if (/models\/galaxy\/surface\/\{qfern/.test(cc0Readme)) cc0.push({ name: "Stylized Nature MegaKit (the galaxy's ground cover and far trees)", source: 'https://quaternius.com', by: 'Quaternius' });
 // textures shared alike, and textures used with their owners' permission (the Minecraft tribute's): by name, owner and use
 const shareAlike = Object.values(await json('public/games/credits.json')).filter((a) => /BY-SA/.test(a.license));
 const permittedTextures = Object.values(await json('public/games/credits.json')).filter((a) => /permission/i.test(a.license));
-const site = (url) => (/polyhaven/.test(url) ? 'Poly Haven' : /ambientcg/.test(url) ? 'ambientCG' : /kenney/.test(url) ? 'Kenney' : new URL(url).hostname);
+const site = (url) => (/polyhaven/.test(url) ? 'Poly Haven' : /ambientcg/.test(url) ? 'ambientCG' : /kenney/.test(url) ? 'Kenney' : /quaternius/.test(url) ? 'Quaternius' : new URL(url).hostname);
 const cc0Unique = [...new Map(cc0.map((a) => [`${a.source}|${a.name}`, a])).values()];
 const kenney = cc0Unique.filter((a) => site(a.source) === 'Kenney');
-const scans = cc0Unique.filter((a) => site(a.source) !== 'Kenney').sort((a, b) => site(a.source).localeCompare(site(b.source)) || a.name.localeCompare(b.name));
+// (Quaternius's kits: the planet landings' trees, rocks and street furniture, scripts/quaternius.mjs)
+const quaternius = cc0Unique.filter((a) => site(a.source) === 'Quaternius');
+const scans = cc0Unique.filter((a) => !['Kenney', 'Quaternius'].includes(site(a.source))).sort((a, b) => site(a.source).localeCompare(site(b.source)) || a.name.localeCompare(b.name));
 const cc0People = [...new Set(scans.flatMap((a) => a.by.split(/,\s*/)))].filter((p) => p !== 'ambientCG').sort();
+
+// the kit's packs (public/kit/<pack>/, scripts/kit/README.md), each from its
+// manifest: who made it and its title from `source` ('Quaternius, Ultimate
+// Space Kit (https://quaternius.com)'), its licence, how many models it has
+async function kits() {
+  const dirs = await readdir(join(ROOT, 'public/kit'), { withFileTypes: true }).catch(() => []);
+  const out = [];
+  for (const pack of dirs.filter((d) => d.isDirectory()).map((d) => d.name).sort()) {
+    const m = await json(`public/kit/${pack}/index.json`);
+    const [, by = m.source, title = pack, url] = m.source.match(/^([^,]+), (.+) \((https?:[^)]+)\)$/) ?? [];
+    out.push({ pack, by, title, url, licence: m.licence, models: Object.keys(m.models).length });
+  }
+  return out;
+}
+const and = (list) => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list.at(-1)}`);
+// one line a maker of the CC0 ones: each pack and its model count
+const kitsBy = new Map();
+for (const k of await kits()) if (k.licence === 'CC0-1.0') kitsBy.set(k.by, [...(kitsBy.get(k.by) ?? []), k]);
+const kitLines = [...kitsBy].map(
+  ([by, list]) =>
+    `**Kits:** ${link(by, list[0].url)}'s ${and(list.map((k) => `*${k.title}* (${k.models} models)`))}, under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/): trees, plants, rocks, space props and farm animals for the worlds, in [\`public/kit\`](public/kit) (brought in by [\`scripts/kit/import.mjs\`](scripts/kit/README.md)).`,
+);
 
 // ── photos ──
 const photos = Object.values(PHOTOS)
@@ -151,8 +178,9 @@ if (shareAlike.length) {
 md.push(
   '## Scans, skies and kits (CC0)',
   '',
-  `Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (${cc0People.join(', ')}), [ambientCG](https://ambientcg.com) and [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (${kenney.length} pieces). The lists by game are in [\`public/games/credits.json\`](public/games/credits.json), [\`public/hq/CREDITS.md\`](public/hq/CREDITS.md) and [\`public/cc0/README.md\`](public/cc0/README.md).`,
+  `Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (${cc0People.join(', ')}), [ambientCG](https://ambientcg.com), [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (${kenney.length} pieces), and [Quaternius](https://quaternius.com), whose trees, rocks, flowers and street furniture stand about the planets you land on (${quaternius.length} pieces). The lists by game are in [\`public/games/credits.json\`](public/games/credits.json), [\`public/hq/CREDITS.md\`](public/hq/CREDITS.md) and [\`public/cc0/README.md\`](public/cc0/README.md).`,
   '',
+  ...kitLines.flatMap((l) => [l, '']),
   '<details>',
   `<summary>All ${scans.length} scans and skies</summary>`,
   '',
@@ -182,7 +210,8 @@ md.push(
   '## Data and imagery',
   '',
   "- **Earth's globe:** NASA Earth Observatory's Blue Marble Next Generation, Black Marble 2016, cloud and GEBCO images (public domain).",
-  "- **The universe map's planets, sun and Milky Way:** [Solar System Scope](https://www.solarsystemscope.com/textures/)'s maps (CC BY 4.0), recoloured for Music's and Marvel's gas giants and laid under the Death Star's plates. The other fandoms' planets (Middle-earth from Tolkien's own map, New Mexico, the Caribbean, C-137, the Office's crumpled letterhead) are made in code by `scripts/build-fandom-planets.mjs`.",
+  "- **The universe map's planets and sun:** [Solar System Scope](https://www.solarsystemscope.com/textures/)'s maps (CC BY 4.0), recoloured for Music's and Marvel's gas giants and laid under the Death Star's plates. The other fandoms' planets (Middle-earth from Tolkien's own map, New Mexico, the Caribbean, C-137, the Office's crumpled letterhead) are made in code by `scripts/build-fandom-planets.mjs`.",
+  "- **The universe map's Milky Way:** [ESO/S. Brunier](https://www.eso.org/public/images/eso0932a/)'s all-sky panorama (CC BY 4.0), its stars taken out for the sky's own (`scripts/bake-universe-sky.mjs`).",
   "- **The Travel page's dotted globe:** Natural Earth's 1:50m country outlines (public domain), via [world-atlas](https://github.com/topojson/world-atlas).",
   '- **The GitHub snapshot on the home page:** GitHub\'s public API, read at build time.',
   '',

@@ -233,6 +233,38 @@ describe('Hold the Lawn: bolts and lightning', () => {
     expect(g.thor.hp).toBe(LAWN.hearts - 1);
   });
 
+  it('a bolt that hurts him leaves him safe from the next for LAWN.iframes', () => {
+    expect(LAWN.iframes).toBe(0.8);
+    const g = ready();
+    throwHammer(g, { x: 10, z: -40 });
+    run(g, 0.4); // (the hammer well away: in flight it knocks bolts out)
+    // two bolts 0.3 s apart: one heart
+    g.bolts.push({ x: 0, y: 1.3, z: -6, vx: 0, vy: 0, vz: LAWN.boltSpeed, t: 0 });
+    g.bolts.push({ x: 0, y: 1.3, z: -6 - LAWN.boltSpeed * 0.3, vx: 0, vy: 0, vz: LAWN.boltSpeed, t: 0 });
+    let ev = run(g, 1.2);
+    expect(ev.filter((e) => e.type === 'hurt')).toHaveLength(1);
+    expect(g.thor.hp).toBe(LAWN.hearts - 1);
+    // one more, well after: it hurts
+    if (g.hammer.state === 'held') throwHammer(g, { x: 10, z: -40 });
+    run(g, 0.4);
+    g.bolts.push({ x: 0, y: 1.3, z: -1, vx: 0, vy: 0, vz: LAWN.boltSpeed, t: 0 });
+    ev = run(g, 0.3);
+    expect(ev.filter((e) => e.type === 'hurt')).toHaveLength(1);
+    expect(g.thor.hp).toBe(LAWN.hearts - 2);
+  });
+
+  it('a breach still counts in his safe time (the lawn is crossed, he isn’t hit)', () => {
+    const g = ready();
+    throwHammer(g, { x: 10, z: -40 });
+    run(g, 0.4);
+    g.bolts.push({ x: 0, y: 1.3, z: -1, vx: 0, vy: 0, vz: LAWN.boltSpeed, t: 0 });
+    run(g, 0.2);
+    expect(g.thor.hp).toBe(LAWN.hearts - 1);
+    soldier(g, 4, LINE - 0.01, { speed: 2 });
+    run(g, 0.1);
+    expect(g.thor.hp).toBe(LAWN.hearts - 2);
+  });
+
   it('knocks bolts out of the air with the hammer in flight', () => {
     const g = ready();
     g.bolts.push({ x: 0.45, y: 1.25, z: -20, vx: 0, vy: 0, vz: LAWN.boltSpeed, t: 0 });

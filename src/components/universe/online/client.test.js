@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
+import { createAllies } from './allies';
 import { STOCK_LOADOUT } from '../outfit';
 import { PUNCH_MAX, STALE_MS } from './protocol';
 
@@ -40,6 +41,10 @@ function createBus() {
     // everyone meets everyone
     meet() {
       for (const a of rooms) for (const b of rooms) if (a !== b) a.onPeerJoin?.(b.id);
+    },
+    // one of them says goodbye
+    gone(id) {
+      for (const o of rooms) if (o.id !== id) o.onPeerLeave?.(id);
     },
   };
 }
@@ -340,6 +345,40 @@ describe('createClient', () => {
     expect(seen.b.filter((e) => e.type === 'hit')).toHaveLength(1);
   });
 
+  it('a ram is told to the pilot rammed, as hard as both your speeds allow, and not between allies', async () => {
+    const { a, b, seen, tick } = await pair();
+    b.pose({ ...ship(0), speed: 4 });
+    a.pose({ ...ship(0.6), speed: 6 });
+    a.ram('B', 400);
+    const got = seen.b.filter((e) => e.type === 'rammed');
+    expect(got).toHaveLength(1);
+    expect(got[0]).toMatchObject({ from: 'A', into: 10 });
+    // not again inside the contact's cool, and never from far off
+    a.ram('B', 8);
+    expect(seen.b.filter((e) => e.type === 'rammed')).toHaveLength(1);
+    tick(400);
+    a.pose({ ...ship(30), speed: 6 });
+    a.ram('B', 8);
+    expect(seen.b.filter((e) => e.type === 'rammed')).toHaveLength(1);
+    // allies can't hurt each other
+    a.pose({ ...ship(0.6), speed: 6 });
+    a.ally('B', 'ask');
+    b.ally('A', 'accept');
+    tick(400);
+    a.ram('B', 8);
+    expect(seen.b.filter((e) => e.type === 'rammed')).toHaveLength(1);
+  });
+
+  it('a pilot rammed out of the sky is the rammer’s, and said as a ram', async () => {
+    const { a, b, seen } = await pair();
+    b.pose({ ...ship(0), speed: 4 });
+    a.pose({ ...ship(0.6), speed: 6 });
+    a.ram('B', 10);
+    b.down('A', true);
+    expect(feeds(seen.a)).toContain('You rammed Rick out of the sky');
+    expect(feeds(seen.b)).toContain('Han rammed you out of the sky');
+  });
+
   it('a heavy round hits harder, and its shot carries the weapon', async () => {
     const { a, b, seen } = await pair();
     b.pose(ship(0));
@@ -543,5 +582,152 @@ describe('createClient', () => {
     const c = createClient({ name: 'X', load: () => Promise.reject(new Error('offline')) });
     await flush();
     expect(c.snapshot().status).toBe('failed');
+  });
+});
+
+// Han and Rick by their keys (a pilot's id online; allies.js keeps only
+// those), each with a store of saved allies and blocks of their own, set up
+// as asked before they meet
+const HAN = 'a'.repeat(64);
+const RICK = 'b'.repeat(64);
+async function friends({ han = () => {}, rick = () => {} } = {}) {
+  const bus = createBus();
+  let t = 1000;
+  const now = () => t;
+  const stores = { han: createAllies({ saves: null, now }), rick: createAllies({ saves: null, now }) };
+  han(stores.han);
+  rick(stores.rick);
+  const a = createClient({ name: 'Han', kind: 'falcon', load: bus.load(HAN), now, allies: stores.han });
+  const b = createClient({ name: 'Rick', kind: 'cruiser', load: bus.load(RICK), now, allies: stores.rick });
+  await flush();
+  const seen = { a: [], b: [] };
+  a.on((e) => seen.a.push(e));
+  b.on((e) => seen.b.push(e));
+  bus.meet();
+  return { a, b, bus, seen, stores, tick: (ms) => (t += ms) };
+}
+
+describe('allies that last (allies.js)', () => {
+  it('two saved allies are allies again after both say hello', async () => {
+    const { a, b, seen } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick'), rick: (s) => s.saveAlly(HAN, 'Han') });
+    expect(a.peers.get(RICK).ally).toBe('ally');
+    expect(b.peers.get(HAN).ally).toBe('ally');
+    // nobody was asked, and an alliance made long ago isn't paid for again
+    expect([...feeds(seen.a), ...feeds(seen.b)].some((t) => /wants to be allies/.test(t))).toBe(false);
+    expect(feeds(seen.a)).toContain('You and Rick are allies again');
+    expect(feeds(seen.b)).toContain('You and Han are allies again');
+    expect([...seen.a, ...seen.b].some((e) => e.type === 'allied')).toBe(false);
+  });
+
+  it('one-sided: the other sees an ordinary request', async () => {
+    const { a, b, seen, stores } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick') });
+    expect(a.peers.get(RICK).ally).toBe('sent');
+    expect(b.peers.get(HAN).ally).toBe('got');
+    expect(feeds(seen.b)).toContain('Han wants to be allies');
+    b.ally(HAN, 'accept');
+    expect(a.peers.get(RICK).ally).toBe('ally');
+    // a new alliance for Rick (saved, and paid for); Han's was kept all along
+    expect(stores.rick.isAlly(HAN)).toBe(true);
+    expect(seen.b.filter((e) => e.type === 'allied')).toEqual([{ type: 'allied', id: HAN }]);
+    expect(seen.a.filter((e) => e.type === 'allied')).toEqual([]);
+  });
+
+  it('a no forgets the ally', async () => {
+    const { a, b, stores } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick') });
+    b.ally(HAN, 'decline');
+    expect(a.peers.get(RICK).ally).toBe('none');
+    expect(stores.han.isAlly(RICK)).toBe(false);
+  });
+
+  it('an alliance made is saved by both, and an end forgets it on both sides', async () => {
+    const { a, b, stores } = await friends();
+    expect(a.peers.get(RICK).ally).toBe('none'); // (strangers: nobody asks)
+    a.ally(RICK, 'ask');
+    b.ally(HAN, 'accept');
+    expect(stores.han.allies()).toMatchObject([{ id: RICK, name: 'Rick' }]);
+    expect(stores.rick.allies()).toMatchObject([{ id: HAN, name: 'Han' }]);
+    b.ally(HAN, 'end');
+    expect(stores.han.isAlly(RICK)).toBe(false);
+    expect(stores.rick.isAlly(HAN)).toBe(false);
+  });
+
+  it('a blocked pilot’s hello starts blocked', async () => {
+    const { a, b, stores, tick } = await friends({ han: (s) => s.block(RICK, 'Rick') });
+    const p = a.peers.get(RICK);
+    expect(p.blocked).toBe(true);
+    expect(a.snapshot().peers).toMatchObject([{ id: RICK, blocked: true }]); // (listed, to be unblocked)
+    b.pose(ship(4));
+    expect(p.pose).toBeNull();
+    a.block(RICK, false);
+    expect(stores.han.isBlocked(RICK)).toBe(false);
+    tick(120);
+    b.pose(ship(5));
+    expect(p.pose.x).toBe(5);
+    // and a block made is saved, and ends a saved alliance
+    a.ally(RICK, 'ask');
+    b.ally(HAN, 'accept');
+    a.block(RICK, true);
+    expect(stores.han.isBlocked(RICK)).toBe(true);
+    expect(stores.han.isAlly(RICK)).toBe(false);
+    expect(stores.rick.isAlly(HAN)).toBe(false); // (they're told it's ended)
+  });
+
+  it('lists the saved allies who aren’t here as away, last seen as they went', async () => {
+    const LEIA = 'c'.repeat(64);
+    const { a, bus, seen, stores, tick } = await friends({
+      han: (s) => {
+        s.saveAlly(RICK, 'Rick');
+        s.saveAlly(LEIA, 'Leia');
+      },
+      rick: (s) => s.saveAlly(HAN, 'Han'),
+    });
+    expect(a.snapshot().away).toEqual([{ id: LEIA, name: 'Leia', seen: 1000 }]);
+    tick(5000);
+    bus.gone(RICK);
+    expect(a.snapshot().away).toEqual([
+      { id: RICK, name: 'Rick', seen: 6000 },
+      { id: LEIA, name: 'Leia', seen: 1000 },
+    ]);
+    // one taken off the list: the roster hears of it
+    const before = seen.a.length;
+    stores.han.dropAlly(LEIA);
+    expect(seen.a.slice(before)).toContainEqual({ type: 'roster' });
+    expect(a.snapshot().away.map((x) => x.id)).toEqual([RICK]);
+  });
+
+  it('a guest tab, or a new identity, doesn’t ask saved allies again: they don’t know the key it flies', async () => {
+    const OLD = 'f'.repeat(64); // (the key Han flew when the alliance was made: the browser's own, or his before a new one)
+    const { a, b, seen, stores } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick', OLD), rick: (s) => s.saveAlly(OLD, 'Han') });
+    expect(a.peers.get(RICK).ally).toBe('none');
+    expect(b.peers.get(HAN).ally).toBe('none');
+    expect(feeds(seen.b).some((t) => /wants to be allies/.test(t))).toBe(false);
+    // asked for by hand: an ordinary request, and once made, kept for the key Han flies now
+    a.ally(RICK, 'ask');
+    expect(feeds(seen.b)).toContain('Han wants to be allies');
+    b.ally(HAN, 'accept');
+    expect(a.peers.get(RICK).ally).toBe('ally');
+    expect(stores.han.madeAs(RICK)).toBe(HAN.slice(0, 16));
+    expect(stores.han.allies()).toHaveLength(1);
+  });
+
+  it('a flood’s mute is for the visit: a saved alliance is kept, and they’re told nothing', async () => {
+    const { a, b, bus, seen, stores } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick'), rick: (s) => s.saveAlly(HAN, 'Han') });
+    expect(a.peers.get(RICK).ally).toBe('ally');
+    // Rick's ship floods Han's room
+    const pose = bus.room(RICK).makeAction('pose');
+    for (let i = 0; i < 200; i++) pose.send([i, 0, 0, 0, 0, 0, 0, 0, 0, 100]);
+    expect(a.peers.get(RICK).blocked).toBe(true);
+    expect(feeds(seen.a)).toContain('Muted Rick: too many messages');
+    expect(stores.han.isAlly(RICK)).toBe(true);
+    expect(stores.han.isBlocked(RICK)).toBe(false);
+    expect(b.peers.get(HAN).ally).toBe('ally');
+    expect(stores.rick.isAlly(HAN)).toBe(true);
+  });
+
+  it('going offline, the saved allies who were here were last seen then', async () => {
+    const { a, stores, tick } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick'), rick: (s) => s.saveAlly(HAN, 'Han') });
+    tick(3000);
+    a.leave();
+    expect(stores.han.allies()).toMatchObject([{ id: RICK, seen: 4000 }]);
   });
 });

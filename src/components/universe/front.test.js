@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { BEACONS, ZONE, createFront, frontAt, zoneOf } from './front';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { SIDES } from './sides';
 import { WARS } from './wars';
 import { contested } from './war';
@@ -163,6 +163,26 @@ describe('createFront at a beacon', () => {
     expect(made).toHaveLength(1);
     expect(made[0].opts.at).toEqual(b.at);
     expect(front.inZone).toBe(true);
+    front.dispose();
+  });
+});
+
+describe('the front, as bodies for ship contact', () => {
+  const fighter = (id, team, alive = true) => ({ id, team, alive, kind: 'tie', size: 0.3, seen: { x: id, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 8 } });
+  it('answers the other side’s fighters once you are in the fight, a ram on one the battle’s strike', () => {
+    const { front, made } = stubbed();
+    front.update(0.1, 0, null, new THREE.Vector3(), at(front, ZONE.near - 10)); // (in sight, not in it)
+    const b = made[0];
+    b.fighters = [fighter(1, 0), fighter(2, 1), fighter(3, 1, false)];
+    b.strike = (id, n) => ({ id, n, down: true });
+    expect(front.bodies).toEqual([]); // (watching, not in it)
+    front.join(0);
+    const bodies = front.bodies;
+    expect(bodies.map((o) => o.key)).toEqual(['f:2']);
+    expect(bodies[0]).toMatchObject({ id: 2, kind: 'tie', size: 0.3, side: 'foe', at: { x: 2, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 8 } });
+    expect(bodies[0].hit(3)).toEqual({ id: 2, n: 3, down: true });
+    b.over = { winner: 0 };
+    expect(front.bodies).toEqual([]);
     front.dispose();
   });
 });

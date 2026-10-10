@@ -25,20 +25,30 @@
 // one (on some drivers its first link takes seconds), so prepare() starts the
 // link at startup, in the background, and the first bake waits for nothing.
 //
-// createSky({ small, renderer }) → { group, setSystem(system), bake(renderer),
+// Under it all, where the system has one (skyPanorama.js), Battlefront II's
+// own star field for its space: Endor's, the Core's, the Outer Rim's, the
+// game's KTX2 at the quality level's width, baked in with the rest, looked
+// up at its sharpest level with the seam's wrap (no line where it joins). It
+// loads after the system's first bake, and the sky is baked again with it.
+//
+// createSky({ small, renderer, beacons }) → { group, setSystem(system), bake(renderer),
 //   prepare(renderer) → Promise, update(camera, t), focus(id), beacons, sunDirs,
 //   setRatio(r), dispose() };
 //   setSystem then bake (with the renderer it was made with, unless given
 //   another); beacons: [{ id, dir }] (unit vectors), the other systems' stars
+//   (drawn unless `beacons: false`, for a sky borrowed where there's no jumping)
 
 import * as THREE from 'three';
 import { precompile } from '../../lib/three/renderer';
+import { tileFbm } from '../../lib/texture';
 import { RIM, SYSTEMS, coreBearing, courseTo, distance } from './systems';
+import { panoramaUrl } from './skyPanorama';
 
 const SKY_R = 5200; // (inside the camera's far plane, outside everything else)
 const SUN_R = 4800;
-const STARS = 4200;
-const STARS_SMALL = 1700;
+const TODAY = 4200; // the stars the sky always had (the ones past them are fainter: STARS_PAST)
+const STARS_PAST = 0.7; // how bright the stars past those are, of what they'd be
+const GRAIN_SIZE = 256;
 
 const NOISE = /* glsl */ `
 float hash3(vec3 p) {
@@ -83,18 +93,58 @@ void main() {
 }`;
 
 // the sky as it's drawn every frame: the cube baked for the system, looked
-// up the way you're looking, with noise of half a step either way of the
-// cube's own steps (8 bits, in sRGB), against banding in the dark
+// up the way you're looking, broken up finer than the cube's texels where
+// it's bright (the band's star clouds, the core, the nebulae: a tiling
+// noise on three sides of the sphere at two fine scales, so under a narrow
+// lens the band doesn't go soft; the dark between untouched), with noise of
+// half a step either way of the cube's own steps (8 bits, in sRGB), against
+// banding in the dark
 const LOOK_FRAG = /* glsl */ `
 uniform samplerCube uSky;
+uniform sampler2D uGrain;
 varying vec3 vDir;
+float grain(vec3 d, float f) {
+  vec3 w = pow(abs(d), vec3(4.0));
+  w /= w.x + w.y + w.z;
+  return texture2D(uGrain, d.yz * f).r * w.x + texture2D(uGrain, d.zx * f).r * w.y + texture2D(uGrain, d.xy * f).r * w.z;
+}
 void main() {
-  vec3 c = textureCube(uSky, normalize(vDir)).rgb;
+  vec3 d = normalize(vDir);
+  vec3 c = textureCube(uSky, d).rgb;
+  float lit = smoothstep(0.004, 0.05, dot(c, vec3(0.2126, 0.7152, 0.0722)));
+  if (lit > 0.0) {
+    float g = grain(d, 40.0) * 0.55 + grain(d, 110.0) * 0.45;
+    c *= 1.0 + clamp((g - 0.5) * 1.6, -1.0, 1.0) * 0.2 * lit;
+  }
   float n = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
   c = sRGBTransferOETF(vec4(c, 1.0)).rgb + n / 255.0;
   gl_FragColor = vec4(sRGBTransferEOTF(vec4(max(c, 0.0), 1.0)).rgb, 1.0);
   #include <colorspace_fragment>
 }`;
+
+// the grain: fbm that tiles, made once (in code: nothing to fetch), with
+// its mipmaps, so where it's finer than the pixels it fades to even
+let grainTexture = null;
+function grainMap() {
+  if (grainTexture) return grainTexture;
+  const fbm = tileFbm(11, { base: 8, octaves: 5 });
+  const data = new Uint8Array(GRAIN_SIZE * GRAIN_SIZE * 4);
+  for (let y = 0; y < GRAIN_SIZE; y++)
+    for (let x = 0; x < GRAIN_SIZE; x++) {
+      const v = Math.round(Math.min(1, Math.max(0, fbm(x / GRAIN_SIZE, y / GRAIN_SIZE))) * 255);
+      const i = (y * GRAIN_SIZE + x) * 4;
+      data[i] = data[i + 1] = data[i + 2] = v;
+      data[i + 3] = 255;
+    }
+  const t = new THREE.DataTexture(data, GRAIN_SIZE, GRAIN_SIZE, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.needsUpdate = true;
+  grainTexture = t;
+  return t;
+}
 
 // the sky as it's baked, once a system: the band, its lanes and star clouds,
 // the core, three nebulae and the dust in front, every one of them drawn
@@ -114,6 +164,8 @@ uniform float uSeed;
 uniform vec3 uNebDir[3];
 uniform vec3 uNebCol[3];
 uniform vec2 uNebShape[3]; // (its size, in radians, and how twisted it is)
+uniform sampler2D uPano;
+uniform float uPanoOn;
 varying vec3 vDir;
 ${NOISE}
 void main() {
@@ -168,6 +220,13 @@ void main() {
   }
   // and the dark between
   col += vec3(0.0035, 0.005, 0.011);
+  // the game's own star field under it all (equirectangular: u round the
+  // horizon, v up it), at its sharpest level so the seam's jump in u can't
+  // pick a blurrier one along the join
+  if (uPanoOn > 0.5) {
+    vec2 uv = vec2(atan(d.z, d.x) * 0.15915494 + 0.5, asin(clamp(d.y, -1.0, 1.0)) * 0.31830989 + 0.5);
+    col += textureLod(uPano, uv, 0.0).rgb;
+  }
   // half a step of the cube's 8 bits either way before they round it, so
   // its long faint gradients come out smooth, not in steps
   float n = hash3(vec3(gl_FragCoord.xy, uSeed + 7.0)) - 0.5;
@@ -299,10 +358,16 @@ export function nebulaeOf(sys) {
   return nebulaeFrom(sys, rand);
 }
 
-// the size of a face of the baked sky, in pixels
-export const bakeSize = ({ small = false } = {}) => (small ? 512 : 1024);
+// the size of a face of the baked sky, in pixels, by lib/device's detail
+// level (none given: 1024): the map's lens is narrow (34°), so the sky's
+// magnified, and the more pixels a face the sharper it stays
+const BAKE = { ultra: 2048, high: 1536, mid: 1024, low: 512 };
+export const bakeSize = ({ small = false, level = null } = {}) => (small ? 512 : (BAKE[level] ?? 1024));
+// and how many stars it has: today's 4,200 first, the rest fainter
+const STAR_COUNT = { ultra: 12000, high: 12000, mid: 7000, low: 3000 };
+export const starCount = ({ small = false, level = null } = {}) => (small ? 3000 : (STAR_COUNT[level] ?? TODAY));
 
-export function createSky({ small = false, renderer = null } = {}) {
+export function createSky({ small = false, level = null, renderer = null, beacons: showBeacons = true } = {}) {
   const group = new THREE.Group();
   group.renderOrder = -20;
   const made = [];
@@ -310,7 +375,7 @@ export function createSky({ small = false, renderer = null } = {}) {
 
   // the sphere you see: it looks the baked cube up (black till there is one)
   const skyGeo = new THREE.SphereGeometry(SKY_R, 64, 32);
-  const lookMat = new THREE.ShaderMaterial({ vertexShader: SKY_VERT, fragmentShader: LOOK_FRAG, uniforms: { uSky: { value: null } }, side: THREE.BackSide, depthWrite: false });
+  const lookMat = new THREE.ShaderMaterial({ vertexShader: SKY_VERT, fragmentShader: LOOK_FRAG, uniforms: { uSky: { value: null }, uGrain: { value: grainMap() } }, side: THREE.BackSide, depthWrite: false });
   const sky = new THREE.Mesh(skyGeo, lookMat);
   sky.renderOrder = -20;
   sky.frustumCulled = false;
@@ -331,6 +396,8 @@ export function createSky({ small = false, renderer = null } = {}) {
       uNebDir: { value: [0, 1, 2].map(() => new THREE.Vector3(0, 0, 1)) },
       uNebCol: { value: [0, 1, 2].map(() => new THREE.Color()) },
       uNebShape: { value: [0, 1, 2].map(() => new THREE.Vector2(0.3, 1)) },
+      uPano: { value: null },
+      uPanoOn: { value: 0 },
     },
     side: THREE.BackSide,
     depthTest: false,
@@ -341,11 +408,12 @@ export function createSky({ small = false, renderer = null } = {}) {
   const bakeSphere = new THREE.Mesh(skyGeo, bakeMat);
   bakeSphere.frustumCulled = false;
   bakeScene.add(bakeSphere);
-  const cube = new THREE.WebGLCubeRenderTarget(bakeSize({ small }), { type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+  // (no mipmaps: the sky's only ever magnified, and at 2048 they'd be another third)
+  const cube = new THREE.WebGLCubeRenderTarget(bakeSize({ small, level }), { type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace, generateMipmaps: false, minFilter: THREE.LinearFilter });
   const cubeCamera = new THREE.CubeCamera(1, 10000, cube);
 
   // the stars: positions made per system (setSystem), drawn in one go
-  const n = small ? STARS_SMALL : STARS;
+  const n = starCount({ small, level });
   const starGeo = new THREE.BufferGeometry();
   starGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   starGeo.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(n), 1));
@@ -383,6 +451,7 @@ export function createSky({ small = false, renderer = null } = {}) {
   const beaconPoints = new THREE.Points(beaconGeo, beaconMat);
   beaconPoints.frustumCulled = false;
   beaconPoints.renderOrder = -17;
+  beaconPoints.visible = showBeacons;
   group.add(beaconPoints);
   made.push(beaconGeo, beaconMat);
   const beacons = [];
@@ -396,12 +465,34 @@ export function createSky({ small = false, renderer = null } = {}) {
     [1, 0.78, 0.62],
   ];
 
-  return {
+  // the game's star field for the system, loaded once a system and baked
+  // in again when it's here (null: none, the sky as it was)
+  let baked = null;
+  let wanted = null;
+  const panoramas = new Map(); // url → Promise<texture | null>
+  const setPanorama = (sys) => {
+    const url = panoramaUrl(sys, level);
+    wanted = url;
+    bakeMat.uniforms.uPanoOn.value = 0;
+    bakeMat.uniforms.uPano.value = null;
+    if (!url) return;
+    if (!panoramas.has(url)) panoramas.set(url, loadPanorama(url, renderer));
+    panoramas.get(url).then((tex) => {
+      if (gone || !tex || wanted !== url) return;
+      bakeMat.uniforms.uPano.value = tex;
+      bakeMat.uniforms.uPanoOn.value = 1;
+      if (baked) out.bake(baked);
+    });
+  };
+  made.push({ dispose: () => panoramas.forEach((p) => p.then((t) => t?.dispose())) });
+
+  const out = {
     group,
     // the directions toward the system's suns, unit vectors (bodies.js lights by them)
     sunDirs,
     beacons,
     setSystem(sys) {
+      setPanorama(sys);
       const rand = seeded(sys.id);
       const { dir, d } = coreBearing(sys);
       const near = Math.max(0, 1 - d / RIM);
@@ -437,7 +528,7 @@ export function createSky({ small = false, renderer = null } = {}) {
         pos[i * 3] = v.x * SKY_R * 0.98;
         pos[i * 3 + 1] = v.y * SKY_R * 0.98;
         pos[i * 3 + 2] = v.z * SKY_R * 0.98;
-        const b = 0.18 + rand() ** 3 * 0.9;
+        const b = (0.18 + rand() ** 3 * 0.9) * (i < TODAY ? 1 : STARS_PAST);
         const t = tints[rand() < 0.66 ? 0 : Math.floor(rand() * tints.length)];
         col[i * 3] = t[0] * b;
         col[i * 3 + 1] = t[1] * b;
@@ -515,6 +606,7 @@ export function createSky({ small = false, renderer = null } = {}) {
     // sphere looking it up from then on; the renderer is left as it was
     bake(r = renderer) {
       if (gone || !r) return;
+      baked = r;
       const was = { target: r.getRenderTarget(), face: r.getActiveCubeFace(), level: r.getActiveMipmapLevel(), autoClear: r.autoClear, toneMapping: r.toneMapping, xr: r.xr?.enabled };
       r.autoClear = true;
       r.toneMapping = THREE.NoToneMapping;
@@ -534,4 +626,20 @@ export function createSky({ small = false, renderer = null } = {}) {
       cube.dispose();
     },
   };
+  return out;
+}
+
+// a panorama's KTX2, through the site's loader (lib/three/gltf.js's, its
+// transcoder fetched the first time) and the asset base; null if it fails
+function loadPanorama(url, renderer) {
+  return Promise.all([import('../../lib/three/gltf'), import('../../lib/assetBase')])
+    .then(([{ ktx2Loader }, { withFallback }]) => ktx2Loader({ renderer }).then((k) => withFallback((u) => k.loadAsync(u))(url)))
+    .then((tex) => {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.needsUpdate = true;
+      return tex;
+    })
+    .catch(() => null);
 }

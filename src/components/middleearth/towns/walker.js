@@ -8,6 +8,8 @@
 // z1, thick, low]: a stockade, a fence, a gate that's shut. `low` things
 // (a well, a fence) are in the way of feet but not of eyes.
 
+import { byFrame } from '../ease';
+
 // The camera's two helpers, the Shire's (../shire/rules.js), copied so a town needn't load the Shire's rules for them.
 // The camera sits at `yaw` round the walker (0 is due south of him, looking
 // north). Forward on the keys is away from the camera.
@@ -109,9 +111,10 @@ export function makeWalker({ radius, centre = [0, 0], colliders = [], walls = []
     const len = Math.hypot(mx, mz);
     const k = len > 1 ? 1 / len : 1;
     const top = run ? body.run : body.walk;
-    const ease = Math.min(1, (body.accel * dt) / Math.max(1, top));
-    let vx = h.vx + (mx * k * top - h.vx) * Math.min(1, ease * 2.2);
-    let vz = h.vz + (mz * k * top - h.vz) * Math.min(1, ease * 2.2);
+    // by dt, as the old `min(1, accel·dt/top·2.2)` was at 60 Hz (../ease.js)
+    const ease = byFrame((body.accel * 2.2) / Math.max(1, top), dt);
+    let vx = h.vx + (mx * k * top - h.vx) * ease;
+    let vz = h.vz + (mz * k * top - h.vz) * ease;
     if (len < 0.05 && Math.hypot(vx, vz) < 0.05) {
       vx = 0;
       vz = 0;
@@ -147,7 +150,7 @@ export function makeWalker({ radius, centre = [0, 0], colliders = [], walls = []
     if (len > 0.05) {
       let d = Math.atan2(-mz, mx) - face;
       d = Math.atan2(Math.sin(d), Math.cos(d));
-      face += d * Math.min(1, body.turn * dt);
+      face += d * byFrame(body.turn, dt);
     }
     return { x, z, face, vx: (x - h.x) / Math.max(dt, 1e-6), vz: (z - h.z) / Math.max(dt, 1e-6), speed: moved, running: run && moved > body.walk + 0.3, edge };
   };

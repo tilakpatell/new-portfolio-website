@@ -21,8 +21,9 @@
 // sight(): the camera goes on it, `back` behind its start, as that file's
 // view() has it) and rickall ({ game, aim, hide }, for the house to draw),
 // talk ({ id, n, hold, x, z }: Morty's word to someone, while it plays; his
-// head turns to them, and theirs to him) and emote (lib/emote.js's readEmote
-// of his: played on him once) }.
+// head turns to them, and theirs to him), emote (lib/emote.js's readEmote
+// of his: played on him once) and bolts, boltHits (his shots in flight,
+// ./rmShots.js's, and where any ended this frame) }.
 //
 // Morty's body: his feet paced to the ground he covers, tucked up in a jump
 // (./living.js's stepMotion, locomotion.js), a glance about now and then
@@ -49,6 +50,7 @@ import { gentleRamp, kitMaterials } from './kit';
 import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
 import { ANNEX_LIGHT, ANNEX_SKY, STREET_SKY, SUN_DIR, makeSky } from './sky';
 import { createFx, portalMaterial } from './fx';
+import { createBoltMeshes } from '../../../lib/three/combat/bolts';
 import { buildArcade } from './arcade';
 import { buildGarage, buildHouse, buildSchoolRoom, buildUpstairs } from './interiors';
 import { buildBasement } from './interiors/basement';
@@ -58,6 +60,11 @@ import { buildDiner } from './interiors/diner';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { applyEmote } from '../../../lib/emote';
 import { EYES as EYE_H, createGlance, stepMotion } from './living';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createImpacts, impactGroups } from '../../../lib/impact';
+import { createSpring, springGroups } from '../../../lib/spring';
+import { BLOOMS } from './look';
 
 export { kitMaterials };
 
@@ -147,18 +154,41 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const CUT_ON_MOVE = new Set(['cheer', 'happy', 'scared', 'hit', 'taunt', 'shoot', 'wave', 'dance', 'drink']);
 const V = new THREE.Vector3();
 const TMP = new THREE.Vector3();
+const EAR_DIR = new THREE.Vector3(); // (the way the camera looks, for where a knock is heard from)
 
 // looks: the wardrobe's ({ rick, morty }): Morty's is the one he wears here
 export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
-  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: BLOOMS.street, onLost });
+  // the shake (lib/three/feel: trauma², still under reduced motion) and the
+  // knocks (a hard landing, the cruiser's bump) by the hit law, a thud where
+  // it was, heard from the camera
+  const feel = createFeel({ baseFov: 55 });
+  // his landing's squash, on a spring kicked by how fast he came down (his
+  // own hop's 5.4 m/s squashes him about 6%), on top of the crouch his
+  // locomotion gives a landing; about his feet
+  const squash = createSpring({ k: 120, c: 8, max: 0.3 });
+  const SQUASH_KICK = 0.25;
+  let landed = null; // the step he last landed on, so a frame drawn twice kicks once
+  const hits = createImpacts();
+  const EAR = { position: [0, 0, 0], forward: [0, 0, -1] };
+  const knocks = wireImpacts({
+    rules: hits,
+    shake: (k) => feel.trauma(k),
+    listener: () => {
+      const cam = stage.camera;
+      cam.getWorldDirection(EAR_DIR);
+      EAR.position = [cam.position.x, cam.position.y, cam.position.z];
+      EAR.forward = [EAR_DIR.x, EAR_DIR.y, EAR_DIR.z];
+      return EAR;
+    },
+  });
   const { renderer, scene, camera } = stage;
-  // a tone map that keeps the show's flat bright colours bright (the house
-  // tone mapper: the exposure was tuned under it, so the house's own
-  // ACES-matching lift isn't taken)
-  renderer.toneMapping = THREE.NeutralToneMapping;
+  // (the house tone mapper, the stage's own, keeps the show's flat bright
+  // colours bright: the exposure was tuned under it, so the house's own
+  // ACES-matching lift isn't taken; ./look.js)
   // the house look (lib/three/house): one shadow colour on everything, from
   // each area's sky light, and fog the colour of the sky where there's fog
   const house = createHouse();
@@ -179,6 +209,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   scene.add(hemi, sun, sun.target);
 
   const fx = createFx();
+  const bolts = createBoltMeshes(scene, { pool: 16, flashes: 6 }); // Morty's shots (./rmShots.js): state.bolts, and state.boltHits where they ended
   scene.add(fx.group);
   const mats = kitMaterials(renderer);
 
@@ -494,6 +525,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
         ));
 
   // ── each frame ──
+  // (up as well as down, as the universe's: a step is the composer's
+  // buffers made again, not the canvas, lib/stage3d)
   const pace = createPace();
   const pending = []; // effects asked for, for the next frame
   let sharp = 1;
@@ -510,7 +543,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     const s = pace.frame(now);
     if (s !== null) {
       sharp = s;
-      resize(stage.size.w, stage.size.h);
+      stage.scale(s); // (made with the next frame the stage draws: lib/stage3d)
     }
     const dt = Math.min(0.1, ms / 1000);
     t += dt;
@@ -529,7 +562,14 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     eyeY = groundY + standY;
     ghosts.update(state.travellers ?? [], t, dt);
     morty.group.visible = !state.flying;
-    const mk = morty.group.scale.x || 1; // (his figure's units to the world's)
+    // (his figure's units to the world's: its own scale, kept before the squash first moves it)
+    const mk = (morty.group.userData.unsquashed ??= morty.group.scale.y) || 1;
+    if (m.land > 0 && m !== landed) {
+      landed = m;
+      squash.kick(m.land * SQUASH_KICK);
+    }
+    const sq = state.flying ? 0 : squash.step(dt);
+    morty.group.scale.set(mk * (1 + sq / 2), mk * (1 - sq), mk * (1 + sq / 2));
     // (lowered for the crouch his landing's put him in: locomotion bends his knees, this keeps his feet down)
     morty.group.position.set(m.x, mortyY - (morty.anim?.loco.drop ?? 0) * mk, m.z);
     morty.group.rotation.y = (m.face ?? 0) + Math.PI / 2;
@@ -668,6 +708,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     cam.flying = !!state.flying;
     camera.position.copy(cam.at);
     camera.lookAt(cam.look);
+    feel.update(dt, camera);
 
     // the sun's shadows follow whoever you are
     const focus = state.flying && c ? V.set(c.x, 0, c.z) : V.set(m.x, 0, m.z);
@@ -681,21 +722,12 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     areas[area].update?.(t, dt, state, camera);
     if (fx.portal.visible) fx.portal.rotation.y = Math.atan2(camera.position.x - fx.portal.position.x, camera.position.z - fx.portal.position.z);
     fx.update(dt, t);
+    bolts.sync(state.bolts ?? []);
+    for (const at of state.boltHits ?? []) bolts.flash(at);
+    bolts.update(dt);
     floorLight?.update();
     renderer.info.reset();
     stage.render(ms);
-  };
-
-  // drawn a step less sharp than the stage's own ratio while pace says so
-  const resize = (w, h) => {
-    stage.resize(w, h);
-    if (sharp < 1) {
-      const pr = renderer.getPixelRatio() * sharp;
-      renderer.setPixelRatio(pr);
-      renderer.setSize(stage.size.w, stage.size.h, false);
-      stage.composer.setPixelRatio(pr);
-      stage.composer.setSize(stage.size.w, stage.size.h);
-    }
   };
 
   const fire = (type, d) => {
@@ -753,8 +785,14 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
     house: import.meta.env.DEV ? house : null, // for the QA scripts
     render,
-    resize,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
+    resize: stage.resize,
     fx: fxEvent,
+    // a knock of `force` at [x, y, z] (the hit law: a thud, and its shake); a shake of its own
+    hit: (force, at) => knocks.onHit(force, at),
+    shake: (k) => feel.trauma(k),
+    // behind ?debug: the stage's bloom, the feel, the hit law, and what the page adds (the jump's press)
+    tune: (groups = []) => stage.tune([...feelGroups(feel), ...impactGroups(hits), ...springGroups(squash, 'landing squash'), ...groups]),
     setLooks,
     ensureArea,
     hasArea: (id) => Boolean(areas[id]),
@@ -790,6 +828,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       // models a builder never put in the scene
       for (const o of models.values()) if (o && !o.parent) disposeTree(o);
       fx.dispose();
+      bolts.dispose();
       ink.dispose(); // (the composer doesn't free its passes)
       glowMat.dispose();
       saucer?.traverse((o) => o.userData.glass?.dispose());

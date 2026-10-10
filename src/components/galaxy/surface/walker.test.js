@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { WALK, createSolids, groundAt, pushOut, ride, rider, walk, walker } from './walker';
+import { createPress } from '../../../lib/press';
+import { WALK, createSolids, groundAt, pushOut, ride, rider, shoreStep, tooDeep, walk, walker } from './walker';
 
 const flat = (h = 0, extra = {}) => ({ heightAt: () => h, normalAt: () => [0, 1, 0], reach: 500, ...extra });
 const run = (s, input, secs, world, fn = walk) => {
@@ -47,6 +48,76 @@ describe('on foot', () => {
     expect(top).toBeGreaterThan(2.7);
     expect(s.y).toBe(2);
     expect(s.grounded).toBe(true);
+  });
+
+  // a press (lib/press.js) as the jump: the scene ages it by each step's
+  // dt and whether you were on the ground, and walk() takes it
+  const pressed = (s, press, world, steps, x = 0) => {
+    const outs = [];
+    for (let i = 0; i < steps; i++) {
+      press.ground(s.grounded, 1 / 60);
+      outs.push(walk(s, { x: 0, y: x, heading: 0, jump: press }, 1 / 60, world));
+    }
+    return outs;
+  };
+
+  it('lands a jump pressed a moment before the feet touch (the buffer)', () => {
+    const s = walker(0, 0, 3);
+    s.grounded = false;
+    const press = createPress();
+    // falling from 3 m: about 0.62 s to the ground
+    let steps = 0;
+    while (!s.grounded && steps < 200) {
+      // pressed 0.08 s (5 steps) before the landing
+      if (s.y + s.vy * (5 / 60) - 0.5 * WALK.gravity * (5 / 60) ** 2 <= 0 && !press.pending && steps > 0 && s.vy < -5) press.press();
+      pressed(s, press, flat(0), 1);
+      steps++;
+    }
+    expect(s.grounded).toBe(true);
+    const outs = pressed(s, press, flat(0), 2);
+    expect(outs.some((o) => o.jumped)).toBe(true);
+    // and once only: the press is spent
+    for (let i = 0; i < 80; i++) pressed(s, press, flat(0), 1);
+    expect(s.grounded).toBe(true);
+    expect(pressed(s, press, flat(0), 30).some((o) => o.jumped)).toBe(false);
+  });
+
+  it('drops a press made too long before the landing', () => {
+    const s = walker(0, 0, 3);
+    s.grounded = false;
+    const press = createPress();
+    press.press();
+    for (let i = 0; i < 12; i++) pressed(s, press, flat(0), 1); // 0.2 s up there
+    const outs = pressed(s, press, flat(0), 60);
+    expect(outs.some((o) => o.jumped)).toBe(false);
+  });
+
+  it('still jumps a moment after running off an edge (the coyote time)', () => {
+    // a ledge 2 m high ending at z = 1
+    const world = { heightAt: (x, z) => (z < 1 ? 2 : 0), normalAt: () => [0, 1, 0], reach: 500 };
+    const s = walker(0, 0, 2);
+    s.y = 2;
+    const press = createPress();
+    let off = 0;
+    for (let i = 0; i < 200 && s.grounded; i++) pressed(s, press, world, 1, 1);
+    expect(s.grounded).toBe(false);
+    // 0.08 s off the edge
+    for (; off < 4; off++) pressed(s, press, world, 1, 1);
+    press.press();
+    const [o] = pressed(s, press, world, 1, 1);
+    expect(o.jumped).toBe(true);
+    expect(s.vy).toBeGreaterThan(0);
+  });
+
+  it('no longer jumps once the coyote time is up', () => {
+    const world = { heightAt: (x, z) => (z < 1 ? 2 : 0), normalAt: () => [0, 1, 0], reach: 500 };
+    const s = walker(0, 0, 2);
+    s.y = 2;
+    const press = createPress();
+    for (let i = 0; i < 200 && s.grounded; i++) pressed(s, press, world, 1, 1);
+    pressed(s, press, world, 9, 1); // 0.15 s
+    press.press();
+    expect(pressed(s, press, world, 1, 1)[0].jumped).toBe(false);
   });
 
   it('follows the ground up and down a gentle slope without leaving it', () => {
@@ -122,6 +193,42 @@ describe('on foot', () => {
     expect(s.y).toBeCloseTo(-WALK.wade, 5);
     expect(s.wading).toBe(1);
     expect(s.z).toBeLessThan(WALK.walk * 2 * 0.6);
+  });
+
+  // shallows (ground 0.5, dry) up to x 10, then a lagoon three metres down
+  const lagoon = (extra = {}) => ({ water: 0, wadeMax: 1.2, heightAt: (x) => (x < 10 ? 0.5 : -3), normalAt: () => [0, 1, 0], reach: 500, ...extra });
+
+  it('stops you at the deep water where a world says so', () => {
+    const world = lagoon();
+    expect(tooDeep(world, 5, 0)).toBe(false);
+    expect(tooDeep(world, 20, 0)).toBe(true);
+    // a world with no wadeMax has no deep water, however far down it goes
+    expect(tooDeep({ ...world, wadeMax: undefined }, 20, 0)).toBe(false);
+    expect(tooDeep({ ...world, water: undefined }, 20, 0)).toBe(false);
+  });
+
+  it('walking into the deep water goes nowhere', () => {
+    const s = walker(9, 0, 0.5);
+    run(s, { x: 0, y: 1, heading: Math.PI / 2, run: true }, 1.5, lagoon());
+    expect(s.x).toBeLessThan(10.2);
+    // and a world with no wadeMax lets you wade out as before
+    const t = walker(9, 0, 0.5);
+    run(t, { x: 0, y: 1, heading: Math.PI / 2, run: true }, 1.5, lagoon({ wadeMax: undefined }));
+    expect(t.x).toBeGreaterThan(12);
+  });
+
+  it('slides along the shore rather than sticking to it', () => {
+    const s = walker(9.9, 0, 0.5);
+    run(s, { x: 0, y: 1, heading: Math.PI / 4, run: true }, 1.5, lagoon());
+    expect(s.x).toBeLessThan(10.2);
+    expect(s.z).toBeGreaterThan(5);
+  });
+
+  it('leaves someone already in the deep free to move', () => {
+    const world = lagoon();
+    expect(shoreStep(world, { x: 20, z: 0 }, 21, 0)).toBeNull();
+    expect(shoreStep(world, { x: 9, z: 0 }, 11, 0)).toEqual([9, 0]);
+    expect(shoreStep(world, { x: 9, z: 0 }, 11, 3)).toEqual([9, 3]);
   });
 });
 

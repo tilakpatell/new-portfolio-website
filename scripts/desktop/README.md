@@ -1,8 +1,9 @@
 # The desktop's jobs: 3D models and voice lines from anywhere
 
-Two pipelines need the owner's desktop and its GPU (an RTX 5090):
-**gen3d** makes 3D models (`scripts/gen3d`) and **voices** makes voice
-lines in the characters' cloned voices (`scripts/voices`). Anyone with write
+Three pipelines need the owner's desktop and its GPU (an RTX 5090):
+**gen3d** makes 3D models (`scripts/gen3d`), **voices** makes voice
+lines in the characters' cloned voices (`scripts/voices`), and **motion**
+makes a clip on Meshy's skeleton from a sentence (`scripts/motion`). Anyone with write
 access asks for them from anywhere: a phone, a laptop, a cloud Claude
 session. The desktop makes them when it's awake and answers with a pull
 request.
@@ -30,12 +31,14 @@ picture straight into the form.
 node scripts/desktop/ask.mjs gen3d tie-fighter --what "a TIE fighter" --image https://…/tie.png --faces 30000
 node scripts/desktop/ask.mjs gen3d stump --what "a redwood stump" --prompt "a huge old redwood stump, …" --faces 6000 --options "tex: 1024"
 node scripts/desktop/ask.mjs voices citadel --only rick,morty --line "rick: Wubba lubba dub dub." --line "morty: Aw geez."
+node scripts/desktop/ask.mjs motion overhead-strike --prompt "a two-handed overhead sword strike, stepping forward"
 ```
 
 `ask.mjs` checks the request before it opens anything; add `--dry-run` to
 see the issue first. `gh workflow run gen3d.yml -f name=… -f what=… -f image=…`
 and a plain `gh issue create --label gen3d` work too. The fields are listed
-in `scripts/gen3d/runner.mjs` and `scripts/voices/runner.mjs`.
+in `scripts/gen3d/runner.mjs`, `scripts/voices/runner.mjs` and
+`scripts/motion/runner.mjs`.
 
 **What makes a good 3D request:** attach a picture. A three-quarter view
 with the whole thing in frame, on a plain background, works best. A prompt
@@ -67,7 +70,7 @@ every pull request with a fake `gh` (`GH_BIN`).
   day, and the hourly sweep finds the issue after that.
 - **Waiting for the GPU**: something else is using the GPU, such as a long
   TTS run or a game. The job waits up to 45 minutes for enough free memory
-  (gen3d 18 GB, voices 10 GB), then leaves it for the next sweep. It never
+  (gen3d 18 GB, voices 10 GB, motion 26 GB), then leaves it for the next sweep. It never
   crashes into the other job.
 - **Failed**: fix what the comment says (the picture link, a field), then
   remove the `…:failed` label to try again. A gen3d retry picks up at the
@@ -144,5 +147,5 @@ run takes it again.
 | `jobs.mjs` | a job from issue to pull request; the runners' shared command line |
 | `ask.mjs` / `status.mjs` / `doctor.mjs` | ask, follow, check the machine |
 | `setup-runner.ps1` | the runner and its watchdog, once |
-| `../../.github/workflows/gen3d.yml`, `voices.yml` | the workflows |
-| `../../.github/ISSUE_TEMPLATE/gen3d.yml`, `voices.yml` | the issue forms |
+| `../../.github/workflows/gen3d.yml`, `voices.yml`, `motion.yml` | the workflows |
+| `../../.github/ISSUE_TEMPLATE/gen3d.yml`, `voices.yml`, `motion.yml` | the issue forms |

@@ -10,6 +10,20 @@
 // into public/cc0/galaxy/index.json, so a wall's bricks come out brick-sized.
 //
 //   NODE_USE_ENV_PROXY=1 node scripts/galaxy-textures.mjs [role …]
+//   NODE_USE_ENV_PROXY=1 node --max-old-space-size=8192 scripts/galaxy-textures.mjs --ultra [role …]
+//
+// --ultra makes the 8192 set worn at ultra only (lib/three/core's
+// coreFiles: `color-xl` and `normal-xl` beside the 1K files, the index's
+// `xl` saying which kind), from Poly Haven's 8K maps (4K where there's no
+// 8K, scaled up). Each map goes out as KTX2 (UASTC, flipped for three's
+// UVs: it stays compressed on the graphics chip, 85 MB where an 8192 WebP
+// decodes to 256 MB) where scripts/ktx2.mjs's verdict says it's worth it,
+// a WebP where it isn't; a normal map is always KTX2 (lossy WebP wrecks
+// normals). A KTX2 over XL_MAX is encoded harder until it fits. The set is
+// too big to keep in the repository (tens of MB a role): it's made on the
+// owner's machine and published with the site (public/ is what's deployed),
+// and until it's made, ultra wears the 1K set. A role that Poly Haven
+// doesn't have (an id that's moved) is skipped with a line saying so.
 //
 // Every source is CC0 (https://polyhaven.com/license); public/cc0/README.md
 // lists them anyway. The output is committed: the site never calls Poly
@@ -57,6 +71,17 @@ export const ROLES = {
   // (the bunker's mound, the forest's rocks and logs)
   redrock: { id: 'rock_boulder_cracked', keep: 0.3, mean: 0.78 },
   mossrock: { id: 'mossy_rock', keep: 0.35, mean: 0.72 },
+  // more grounds for the layered ground at ultra (galaxy/surface/splat.js
+  // takes the first of each layer's list that's been made): a desert's dry
+  // crust and its stony flats, rock seen from above, a snowfield, a forest's
+  // mossy floor, swamp mud, a city's paving
+  dryground: { id: 'dry_ground_01', keep: 0.2, mean: 0.8 },
+  stones: { id: 'rocky_terrain_02', keep: 0.2, mean: 0.78 },
+  aerialrock: { id: 'aerial_rocks_02', keep: 0.2, mean: 0.78 },
+  snowfield: { id: 'snow_field_aerial', keep: 0.05, mean: 0.9 },
+  moss: { id: 'forrest_ground_01', keep: 0.3, mean: 0.74 },
+  swampmud: { id: 'brown_mud_02', keep: 0.25, mean: 0.72 },
+  paving: { id: 'concrete_floor_02', keep: 0.1, mean: 0.82 },
 };
 
 const get = async (url, as = 'json') => {
@@ -67,7 +92,7 @@ const get = async (url, as = 'json') => {
 
 // the colour map as a detail map: mostly grey, its mean brightness `mean`
 async function detail(buffer, size, { keep, mean }) {
-  const { data, info } = await sharp(buffer).resize(size, size, { fit: 'fill' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(buffer, { limitInputPixels: false }).resize(size, size, { fit: 'fill' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const n = info.width * info.height;
   let sum = 0;
   for (let i = 0; i < n; i++) sum += 0.2126 * data[i * 3] + 0.7152 * data[i * 3 + 1] + 0.0722 * data[i * 3 + 2];
@@ -78,7 +103,39 @@ async function detail(buffer, size, { keep, mean }) {
     const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
     for (let c = 0; c < 3; c++) out[i * 3 + c] = Math.max(0, Math.min(255, Math.round((y + ([r, g, b][c] - y) * keep) * scale)));
   }
-  return sharp(out, { raw: { width: info.width, height: info.height, channels: 3 } });
+  return sharp(out, { raw: { width: info.width, height: info.height, channels: 3 }, limitInputPixels: false });
+}
+
+// the 8192 set (--ultra): a map to KTX2 where it's worth it, else WebP;
+// returns the kind written
+const XL = 8192;
+const XL_MAX = 48 * 1024 * 1024;
+export async function xlMap(img, dir, file, role) {
+  const { encodeImage, gpuBytes, verdict } = await import('./ktx2.mjs');
+  const png = await img.png().toBuffer();
+  const webp = await sharp(png, { limitInputPixels: false }).webp({ quality: 84, effort: 4 }).toBuffer();
+  let ktx2 = null;
+  for (const rdo of [1, 3, 6]) {
+    ({ ktx2 } = await encodeImage(png, { role, rdo, level: 1, flipY: true })); // (level 1: level 2 takes over 20 minutes a map at 8192)
+    if (ktx2.byteLength <= XL_MAX) break;
+  }
+  const say = verdict({ role, mime: 'image/webp', before: webp.byteLength, after: ktx2.byteLength, gpuBefore: gpuBytes(XL, XL, 'rgba'), gpuAfter: gpuBytes(XL, XL, 'uastc'), width: XL });
+  const kind = role === 'normal' || say !== 'keep' ? 'ktx2' : 'webp';
+  await writeFile(join(dir, `${file}-xl.${kind}`), kind === 'ktx2' ? ktx2 : webp);
+  console.log(`  ${file}-xl.${kind}  ${(Math.max(1, kind === 'ktx2' ? ktx2.byteLength : webp.byteLength) / 1048576).toFixed(1)} MB (${say})`);
+  return kind;
+}
+
+async function roleXl(name, spec) {
+  const files = await get(`https://api.polyhaven.com/files/${spec.id}`);
+  const url = (k) => (files[k]?.['8k'] ?? files[k]?.['4k'])?.png?.url ?? (files[k]?.['8k'] ?? files[k]?.['4k'])?.jpg?.url;
+  const [color, normal] = await Promise.all(['Diffuse', 'nor_gl'].map((k) => (url(k) ? get(url(k), 'buffer') : null)));
+  if (!color || !normal) throw new Error(`${spec.id}: no 8K or 4K colour or normal map`);
+  const dir = join(OUT, name);
+  await mkdir(dir, { recursive: true });
+  const kind = await xlMap((await detail(color, XL, spec)), dir, 'color', 'color');
+  await xlMap(sharp(normal, { limitInputPixels: false }).resize(XL, XL, { fit: 'fill' }), dir, 'normal', 'normal');
+  return kind;
 }
 
 async function role(name, spec) {
@@ -97,18 +154,30 @@ async function role(name, spec) {
 }
 
 async function main() {
-  const only = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const ultra = args.includes('--ultra');
+  const only = args.filter((a) => !a.startsWith('--'));
   const indexFile = join(OUT, 'index.json');
   const index = existsSync(indexFile) ? JSON.parse(await readFile(indexFile, 'utf8')) : {};
   for (const [name, spec] of Object.entries(ROLES)) {
     if (only.length && !only.includes(name)) continue;
-    index[name] = await role(name, spec);
-    console.log(`${name.padEnd(9)} ${spec.id.padEnd(28)} ${index[name].metres} m${index[name].arm ? '' : ' (no arm map)'}`);
+    try {
+      if (ultra) {
+        // (the 8192 set beside a 1K set: the 1K set first, where there's none)
+        if (!index[name]) index[name] = await role(name, spec);
+        index[name].xl = await roleXl(name, spec);
+      } else index[name] = { ...(await role(name, spec)), ...(index[name]?.xl ? { xl: index[name].xl } : {}) };
+      console.log(`${name.padEnd(10)} ${spec.id.padEnd(28)} ${index[name].metres} m${index[name].arm ? '' : ' (no arm map)'}${index[name].xl ? ` · 8192 ${index[name].xl}` : ''}`);
+    } catch (e) {
+      console.log(`${name.padEnd(10)} ${spec.id.padEnd(28)} skipped: ${e.message}`);
+    }
+    // (written as it goes: an 8192 run is long, and one stopped keeps what it made)
+    await writeFile(indexFile, `${JSON.stringify(index, null, 2)}\n`);
   }
-  await writeFile(indexFile, `${JSON.stringify(index, null, 2)}\n`);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exitCode = 1;
-});
+if (process.argv[1] === fileURLToPath(import.meta.url))
+  main().catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  });

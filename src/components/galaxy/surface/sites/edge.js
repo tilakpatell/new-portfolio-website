@@ -48,7 +48,8 @@ export const SITES = {
         mark: '#120e0d',
       },
     },
-    water: { level: 2.5, color: '#ff3c06', deep: '#240703', kind: 'lava', glow: 2.1 },
+    // (video: the game's lava film flows in the rivers on high and ultra, lavaFilm.js)
+    water: { level: 2.5, color: '#ff3c06', deep: '#240703', kind: 'lava', glow: 2.1, video: 'volcano' },
     weather: [
       { kind: 'ash', count: 2600, color: '#3a3030' },
       { kind: 'embers', count: 900 },
@@ -99,9 +100,13 @@ export const SITES = {
           { kind: 'mining', at: [0, 0], yaw: 0 },
           { kind: 'smoke', at: [10, -12], abs: true, y: 58, solid: false, opts: { h: 70, n: 8, color: '#3a302c' } },
           { kind: 'lamp', at: [-26, 24], opts: { h: 6, light: '#ffb070', color: '#2a2828' } },
-          { kind: 'lamp', at: [26, 24], opts: { h: 6, light: '#ffb070', color: '#2a2828' } },
-          { kind: 'crates', at: [30, 10] },
+          { kind: 'lamp', at: [12, 27], opts: { h: 6, light: '#ffb070', color: '#2a2828' } },
+          { kind: 'crates', at: [-16, 27] },
           { kind: 'crates', at: [-30, 12] },
+          // (Sullust's mining works, the game's: a slag container, a smelting bucket, a pump machine)
+          { kind: 'minecontainer', model: 'game:objects/props/objectsets/sullust/containersullustan_xl_01/containersullustan_xl_01_mesh', at: [-36, 30], yaw: 0.6 },
+          { kind: 'smeltbucket', model: 'game:objects/props/objectsets/sullust/bucketsmelting_xl_01/bucketsmelting_xl_bucket_01_mesh', at: [26, 30], yaw: 2.1 },
+          { kind: 'minemachine', model: 'game:objects/props/objectsets/sullust/machine_l_05/machine_l_05_mesh', at: [-4, 34], yaw: 3.1 },
         ],
         // (the lava it reaches back over)
         pits: [{ at: [0, -62], r: 34, depth: 16 }],
@@ -146,7 +151,7 @@ export const SITES = {
           rv: [['walt', 'He built his home on the site of his greatest humiliation.'], ['jesse', 'That’s messed up, Mr. White. Even for you.']],
         },
         things: [
-          { kind: 'fortress', at: [0, -18], yaw: 0.67, solid: { box: [36, 28] } },
+          { kind: 'fortress', at: [0, -18], yaw: 0.67 },
           { kind: 'vadermeditation', at: [8, 34], yaw: 2.6 },
           { kind: 'lamp', at: [-6, 42], opts: { h: 6, light: '#ff6a4a', color: '#1a1a1c' } },
           { kind: 'lamp', at: [18, 44], opts: { h: 6, light: '#ff6a4a', color: '#1a1a1c' } },
@@ -201,8 +206,8 @@ export const SITES = {
       {
         id: 'council',
         name: 'The council room',
-        door: { at: [-200, 317.5], r: 3.2, prompt: 'Go into the facility' },
-        back: [-200, 323],
+        door: { at: [-200, 321.5], r: 3.2, prompt: 'Go into the facility' },
+        back: [-200, 326],
         inside: {
           build: 'councilroom',
           spawn: [0, 7.6],
@@ -252,17 +257,18 @@ export const SITES = {
       { kind: 'empirecrate', at: [72, -12], yaw: 1.9 },
       { kind: 'lamp', at: [110, 16], opts: { h: 5, light: '#ffb070', color: '#2a2828' } },
       { kind: 'lamp', at: [68, -16], opts: { h: 5, light: '#ffb070', color: '#2a2828' } },
-      { kind: 'collector', at: [182, 34], abs: true, y: 2.3, yaw: 0.7 },
-      { kind: 'droidplatform', at: [158, 6], abs: true, y: 2.2 },
-      { kind: 'droidplatform', at: [200, 52], abs: true, y: 2.2 },
-      { kind: 'droidplatform', at: [290, 322], abs: true, y: 2.2 },
+      { kind: 'lavacollector', at: [182, 34], abs: true, y: 0.25, yaw: 0.7 },
+      { kind: 'droidplatform', at: [158, 6], abs: true, y: 1.3 },
+      { kind: 'droidplatform', at: [200, 52], abs: true, y: 1.3 },
+      { kind: 'droidplatform', at: [290, 322], abs: true, y: 1.3 },
     ],
     scatter: [
       { kind: 'lavacrack', n: 900, within: [10, 585], scale: [1.4, 3.4], solid: false },
       { kind: 'blackspire', n: 90, within: [60, 580], scale: [1.5, 5], opts: { color: '#1c1818' } },
       { kind: 'basalt', n: 90, within: [30, 560], scale: [0.8, 2.2] },
-      { kind: 'rock', n: 120, within: [20, 560], scale: [0.6, 2.8], opts: { color: '#2a2422', sharp: 0.7 } },
-      { kind: 'stones', n: 240, within: [8, 420], scale: [0.25, 0.8], solid: false, opts: { color: '#2e2624' } },
+      // (Sullust's crater rocks and the sulphur flats' stones, the drop's, on mid and up)
+      { kind: 'rock', model: 'game:objects/nature/volcanic/sullustan/volcaniccrater_rockmedium_01/volcaniccrater_rockmedium_01_mesh', n: 120, within: [20, 560], scale: [0.6, 2.8], opts: { color: '#2a2422', sharp: 0.7 } },
+      { kind: 'stones', model: 'game:objects/nature/volcanic/_volcanicsulfur/_meshscatter/ms_volcanicsulfur_rockfrailsmall_01/ms_volcanicsulfur_rockfrailsmall_01_mesh', n: 240, within: [8, 420], scale: [0.25, 0.8], solid: false, opts: { color: '#2e2624' } },
     ],
     life: [
       { kind: 'obiwan', at: [300, 364], face: 3.14, still: true, blade: { color: '#4a8cff' }, name: 'Obi-Wan Kenobi', says: ['It’s over, Anakin. I have the high ground.', 'Don’t try it.', 'You were the Chosen One! It was said that you would destroy the Sith, not join them!', 'You were my brother, Anakin. I loved you.'] },
@@ -291,6 +297,8 @@ export const SITES = {
     ],
   },
   scarif: {
+    // lit as the game lights its level (src/data/bf2017/light/scarif.json, gameLit.js)
+    gameLight: 'scarif',
     place: 'The beaches of Scarif',
     line: 'White sand, palms and turquoise lagoons, under the shield, with the Citadel over all of it.',
     sky: {
@@ -363,7 +371,7 @@ export const SITES = {
           rv: [['jesse', 'They rolled up in a stolen truck and said they were supposed to be here. Classic.'], ['walt', 'Confidence, Jesse. Nobody questions confidence.']],
         },
         things: [
-          { kind: 'pad', at: [0, 0], opts: { r: 18, color: '#a6a49e', light: '#ffd27a', number: 9 } },
+          { kind: 'pad', at: [0, 0], opts: { r: 18, color: '#a6a49e', light: '#ffd27a', number: 9, shape: 'square' } },
           { kind: 'crates', at: [16, 12], opts: { color: '#8a8a84' } },
           { kind: 'crates', at: [-17, -9], opts: { color: '#8a8a84' } },
           { kind: 'lamp', at: [20, -6], opts: { h: 6, light: '#fff0c8', color: '#5a5c60' } },
@@ -385,7 +393,7 @@ export const SITES = {
         },
         things: [
           { kind: 'citadel', at: [0, 0], yaw: 2.554 },
-          { kind: 'pad', at: [0, 66], opts: { r: 12, color: '#a6a49e', light: '#ffd27a' } },
+          { kind: 'pad', at: [0, 66], opts: { r: 12, color: '#a6a49e', light: '#ffd27a', shape: 'square' } },
           { kind: 'lamp', at: [-14, 58], opts: { h: 7, light: '#fff0c8', color: '#5a5c60' } },
           { kind: 'lamp', at: [14, 58], opts: { h: 7, light: '#fff0c8', color: '#5a5c60' } },
         ],
@@ -404,7 +412,7 @@ export const SITES = {
           rv: [['jesse', 'One switch. The whole thing came down to one switch, yo.'], ['walt', 'It usually does.']],
         },
         things: [
-          { kind: 'masterswitch', at: [0, 0], yaw: 0.6 },
+          { kind: 'masterswitch', at: [0, 0], yaw: 0.6, scale: 0.5 },
           { kind: 'crates', at: [9, 6], opts: { color: '#8a8a84' } },
         ],
       },
@@ -509,16 +517,16 @@ export const SITES = {
       { kind: 'cooler', at: [-18, 16], yaw: 0.6 },
       { kind: 'barrel', at: [24, -14], yaw: 0.9 },
       // pads, bunkers and lamps across the base
-      { kind: 'pad', at: [60, 60], opts: { r: 16, color: '#a6a49e', light: '#ffd27a' } },
-      { kind: 'pad', at: [210, 40], opts: { r: 16, color: '#a6a49e', light: '#ffd27a' } },
-      { kind: 'pad', at: [40, 210], opts: { r: 14, color: '#a6a49e', light: '#ffd27a' } },
-      { kind: 'pad', at: [-60, -110], opts: { r: 16, color: '#a6a49e', light: '#ffd27a' } },
-      { kind: 'pad', at: [120, -120], opts: { r: 14, color: '#a6a49e', light: '#ffd27a' } },
+      { kind: 'pad', at: [60, 60], opts: { r: 16, color: '#a6a49e', light: '#ffd27a', shape: 'square' } },
+      { kind: 'pad', at: [210, 40], opts: { r: 16, color: '#a6a49e', light: '#ffd27a', shape: 'square' } },
+      { kind: 'pad', at: [40, 210], opts: { r: 14, color: '#a6a49e', light: '#ffd27a', shape: 'square' } },
+      { kind: 'pad', at: [-60, -110], opts: { r: 16, color: '#a6a49e', light: '#ffd27a', shape: 'square' } },
+      { kind: 'pad', at: [120, -120], opts: { r: 14, color: '#a6a49e', light: '#ffd27a', shape: 'square' } },
       { kind: 'bunker', at: [100, 100], yaw: 2.3 },
-      { kind: 'bunker', at: [-30, 150], yaw: 3.0, opts: { w: 18, d: 12 } },
+      { kind: 'bunker', at: [-30, 150], yaw: 3.0, scale: 1.4, opts: { w: 18, d: 12 } },
       { kind: 'bunker', at: [200, 120], yaw: 1.8 },
       { kind: 'bunker', at: [-150, -40], yaw: -1.4 },
-      { kind: 'bunker', at: [40, -170], yaw: 0.2, opts: { w: 20, d: 12 } },
+      { kind: 'bunker', at: [40, -170], yaw: 0.2, scale: 1.6, opts: { w: 20, d: 12 } },
       { kind: 'bunker', at: [150, 300], yaw: 3.4 },
       { kind: 'lamp', at: [30, 24], opts: { h: 6, light: '#fff0c8', color: '#5a5c60' } },
       { kind: 'lamp', at: [-24, 34], opts: { h: 6, light: '#fff0c8', color: '#5a5c60' } },

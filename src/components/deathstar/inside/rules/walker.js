@@ -20,7 +20,9 @@
 //   lineClear(layout, open, a, b, solids = []) → bool   nothing solid on the straight line from a to b
 //
 // solids: { box: { x0, x1, z0, z1, y0, y1 } } or { circle: { x, z, r, y0, y1 } }; one whose top is
-// within a step above the feet is stood on, a taller one is walked round. Every floor of a room is
+// within a step above the feet is stood on, a taller one is walked round. A floor with a `tag` (the
+// chasm's bridge) is there only while open(`floor:<tag>`) is false: the game answers it from
+// layout.offTags, so a bridge drawn back is a void. Every floor of a room is
 // solid from just under the room’s lowest floor up to its top, so a stair, a ramp or a landing is a
 // block to walk round from below and to stand on from above (the scene draws them so).
 
@@ -38,6 +40,10 @@ export const BODY = Object.freeze({
   step: 0.4,
   // a fall further than this is one nobody walks away from
   drop: 6,
+  // a press that lands: seconds off a ledge a jump still goes (coyote
+  // time), and seconds a jump pressed in the air is kept for the landing
+  coyote: 0.1,
+  buffer: 0.12,
 });
 
 const EPS = 1e-6;
@@ -77,14 +83,15 @@ function indexOf(layout) {
     }
   };
   for (const w of layout.walls) {
-    put({ kind: 'seg', ax: w.x0, az: w.z0, bx: w.x1, bz: w.z1, y0: w.y0, y1: w.y1, door: w.door, mark: 0 }, Math.min(w.x0, w.x1), Math.min(w.z0, w.z1), Math.max(w.x0, w.x1), Math.max(w.z0, w.z1));
+    put({ kind: 'seg', ax: w.x0, az: w.z0, bx: w.x1, bz: w.z1, y0: w.y0, y1: w.y1, door: w.door, over: w.over, mark: 0 }, Math.min(w.x0, w.x1), Math.min(w.z0, w.z1), Math.max(w.x0, w.x1), Math.max(w.z0, w.z1));
   }
   const ceilings = [];
   for (const room of layout.rooms.values()) {
     const lo = Math.min(room.y, ...room.floors.map((f) => f.y));
     for (const f of room.floors) {
       const item = f.circle ? { kind: 'circle', x: f.circle.x, z: f.circle.z, r: f.circle.r } : { kind: 'box', x0: f.x0, x1: f.x1, z0: f.z0, z1: f.z1 };
-      put(Object.assign(item, { y0: lo - SLAB, y1: f.y, mark: 0 }), f.x0, f.z0, f.x1, f.z1);
+      // a tagged floor (the chasm's bridge) is there only while open() doesn't call it off by name
+      put(Object.assign(item, { y0: lo - SLAB, y1: f.y, mark: 0 }, f.tag ? { door: `floor:${f.tag}` } : null), f.x0, f.z0, f.x1, f.z1);
     }
     ceilings.push({ room, lo, hi: room.y + room.h });
   }
@@ -149,8 +156,14 @@ function push(item, x, z, r) {
 const shutTo = (item, open) => item.door === undefined || !open(item.door);
 
 // Whether an item stands in a body’s way: above what it can step over and
-// below its head. A wall in an open doorway is no wall.
-const inWay = (item, feet, h, open) => item.y1 > feet + BODY.step + EPS && item.y0 < feet + h - EPS && shutTo(item, open);
+// below its head. A wall in an open doorway is no wall, and one taller
+// than a man stoops to a man’s height under the wall over it (Chewbacca
+// and Vader through the control room’s 2 m door); lower than that, a
+// doorway is to be crouched through.
+const inWay = (item, feet, h, open) => {
+  const head = item.over !== undefined && open(item.over) ? Math.min(h, BODY.h) : h;
+  return item.y1 > feet + BODY.step + EPS && item.y0 < feet + head - EPS && shutTo(item, open);
+};
 
 function gather(body, index, solids) {
   const reach = body.r + PAD;
@@ -179,10 +192,10 @@ const under = (item, x, z) => (item.kind === 'box' ? x >= item.x0 && x <= item.x
 
 // The highest floor or solid top under the centre that is no higher than
 // `reach`; null when there is nothing (a void).
-function support(index, solids, x, z, reach) {
+function support(index, solids, x, z, reach, open) {
   let best = null;
   for (const item of near(index, x, z, x, z, solids)) {
-    if (item.kind === 'seg' || item.y1 > reach || !under(item, x, z)) continue;
+    if (item.kind === 'seg' || item.y1 > reach || !under(item, x, z) || !shutTo(item, open)) continue;
     if (best === null || item.y1 > best) best = item.y1;
   }
   return best;
@@ -197,6 +210,8 @@ function overhead(body, index, open, solids) {
   for (const c of index.ceilings) if (y >= c.lo - UNDER && y <= c.hi && c.hi < top && holds(c.room, x, z)) top = c.hi;
   for (const item of gather(body, index, solids)) {
     if (item.y0 <= y + BODY.step + EPS || item.y0 >= top || !shutTo(item, open)) continue;
+    // (one taller than a man, on his feet, stoops under the wall over an open doorway a man's height up)
+    if (item.over !== undefined && open(item.over) && body.ground && body.h > BODY.h + EPS && item.y0 >= y + BODY.h - EPS) continue;
     if (push(item, x, z, body.r)) top = item.y0;
   }
   return top;
@@ -258,7 +273,7 @@ function walkAcross(body, input, dt, { layout, index, open, solids }, events) {
     // a squeeze the passes can’t settle is refused rather than pushed through
     if (!resolve(body, index, open, solids)) Object.assign(body, was);
     if (body.ground) {
-      const s = support(index, solids, body.x, body.z, body.y + BODY.step + EPS);
+      const s = support(index, solids, body.x, body.z, body.y + BODY.step + EPS, open);
       if (s !== null && s >= body.y - BODY.step - EPS) body.y = s;
       else {
         body.ground = false;
@@ -281,7 +296,7 @@ function airborne(body, dt, { layout, index, open, solids }, events) {
       body.vy = 0;
     } else body.y = next;
   } else {
-    const s = support(index, solids, body.x, body.z, body.y + BODY.step + EPS);
+    const s = support(index, solids, body.x, body.z, body.y + BODY.step + EPS, open);
     if (s === null || next > s) body.y = next;
     else if (body.safe.y - s > BODY.drop) fall(body, events);
     else {
@@ -301,13 +316,19 @@ export function stepBody(body, input, dt, { layout, open, solids = [] }) {
   const events = [];
   const world = { layout, index: indexOf(layout), open, solids: solids.map(solidOf) };
   crouchOrStand(body, input.crouch, world.index, open, world.solids);
-  if (input.jump && body.ground && !body.crouch) {
+  // (both clocks on the body, as plain numbers: the rules' state stays data)
+  body.wantJump = input.jump ? BODY.buffer : Math.max(0, (body.wantJump ?? 0) - dt);
+  const footing = body.ground || (body.offGround ?? Infinity) <= BODY.coyote;
+  if (body.wantJump > 0 && footing && !body.crouch) {
     body.vy = BODY.jump;
     body.ground = false;
+    body.wantJump = 0;
+    body.offGround = Infinity; // (no second jump from the same footing)
   }
   walkAcross(body, input, dt, world, events);
   if (!body.ground) airborne(body, dt, world, events);
   if (body.ground) Object.assign(body.safe, { x: body.x, y: body.y, z: body.z, room: body.room });
+  body.offGround = body.ground ? 0 : (body.offGround ?? 0) + dt;
   return events;
 }
 

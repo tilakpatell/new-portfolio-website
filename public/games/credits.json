@@ -1048,6 +1048,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "deathstar/obiwan": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11c33-9e0b-713e-8592-b4d9a54d385a",
+    "name": "Obi-Wan as the first film has him, generated for this site with Meshy AI and rigged from jedi3",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
   "cockpit/walt": {
     "source": "https://www.meshy.ai",
     "id": "01a111f8-ed5f-73f6-b299-8c48642a2ee5",
@@ -3608,6 +3617,60 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "meshy/interdictor": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-91bd-771d-b2c8-4c3078271d9b",
+    "name": "the Interdictor cruiser, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/corvette": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-9697-75f7-9012-e308f6ed4607",
+    "name": "the CR90 corvette the galaxy flies (the universe map keeps cr90.glb, credited apart), generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/interceptor": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-9c13-775c-a2c4-dc7364838732",
+    "name": "the TIE interceptor the galaxy flies (the universe map keeps its own), generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/munificent": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-a10e-76f5-a1fc-0efbd38cd7eb",
+    "name": "the Munificent frigate, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/providence": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-a7ce-72c7-9567-3e3fc5de8aad",
+    "name": "the Providence dreadnought (the Invisible Hand), generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/slave1": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-adb6-7282-a4f8-45e35850fd18",
+    "name": "Slave I, Boba Fett's ship, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it, over the universe map’s first Meshy one)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
   "meshy/acklay": {
     "source": "https://www.meshy.ai",
     "id": "01a114d2-d8f7-763b-a485-32e0c6a3daaf",
@@ -3752,15 +3815,6 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
-  "meshy/mtt": {
-    "source": "https://www.meshy.ai",
-    "id": "01a114e3-ae77-73e2-913c-51fcebb0174a",
-    "name": "the MTT, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
-    "authors": [
-      "Tilak Patel, with Meshy AI"
-    ],
-    "license": "Meshy paid-plan output, owned by the site owner"
-  },
   "meshy/nexu": {
     "source": "https://www.meshy.ai",
     "id": "01a114d2-ec16-70c4-b693-99758cd8a4d6",
@@ -3792,15 +3846,6 @@
     "source": "https://www.meshy.ai",
     "id": "01a114e3-b5a1-772c-9ba2-496e7949e957",
     "name": "the desert skiff, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
-    "authors": [
-      "Tilak Patel, with Meshy AI"
-    ],
-    "license": "Meshy paid-plan output, owned by the site owner"
-  },
-  "meshy/stap": {
-    "source": "https://www.meshy.ai",
-    "id": "01a114e3-b955-7059-93e0-2d5f5d5e0512",
-    "name": "the STAP, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -4057,5 +4102,566 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrohouse": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-49ed-7472-a568-0d0a3ec13fab",
+    "name": "a house of Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrodomehouse": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-44b9-77e3-a359-b985f4e5f19b",
+    "name": "a dome house of Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrorow": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188c-8773-757c-97e0-f6f3a83c9b8d",
+    "name": "a street front of Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrogate": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-4d09-77f9-b3b7-4195f12e50ab",
+    "name": "the gate of Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrotower": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-5046-755c-93c5-c464b4528502",
+    "name": "a tower of the new Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrocantina": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188c-848d-73f8-9899-240fd2a35514",
+    "name": "Greef Karga’s cantina on Nevarro, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrobase": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-5592-7032-84e1-bba18b688160",
+    "name": "the Imperial base on Nevarro, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/charonportal": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188c-8bea-71a2-9664-e2ab4665c982",
+    "name": "the Charon River’s tunnel mouth on Nevarro, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/keelboat": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188c-8ebd-70c0-ae5d-ae554d56d299",
+    "name": "the keelboat on the Charon River, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "quaternius/qfern": {
+    "source": "https://quaternius.com",
+    "id": "qfern",
+    "name": "Stylized Nature MegaKit: ferns",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qfern.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qclover": {
+    "source": "https://quaternius.com",
+    "id": "qclover",
+    "name": "Stylized Nature MegaKit: clover",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qclover.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qmushroom": {
+    "source": "https://quaternius.com",
+    "id": "qmushroom",
+    "name": "Stylized Nature MegaKit: mushrooms",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qmushroom.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qpebble": {
+    "source": "https://quaternius.com",
+    "id": "qpebble",
+    "name": "Stylized Nature MegaKit: a pebble",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qpebble.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qgrass": {
+    "source": "https://quaternius.com",
+    "id": "qgrass",
+    "name": "Stylized Nature MegaKit: tall grass",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qgrass.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qpine": {
+    "source": "https://quaternius.com",
+    "id": "qpine",
+    "name": "Stylized Nature MegaKit: a giant pine (and qpine.lod1.glb, its far-off copy)",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qpine.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qdeadtree": {
+    "source": "https://quaternius.com",
+    "id": "qdeadtree",
+    "name": "Stylized Nature MegaKit: a dead tree",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qdeadtree.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/Rock_Medium_1": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_1",
+    "name": "Stylized Nature MegaKit: Rock_Medium_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Rock_Medium_2": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_2",
+    "name": "Stylized Nature MegaKit: Rock_Medium_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Rock_Medium_4": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_4",
+    "name": "Stylized Nature MegaKit: Rock_Medium_4",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Rock_Desert_1": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_1",
+    "name": "Stylized Nature MegaKit: Rock_Medium_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Rock_Desert_2": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_2",
+    "name": "Stylized Nature MegaKit: Rock_Medium_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pebble_Round_2": {
+    "source": "https://quaternius.com",
+    "id": "Pebble_Round_2",
+    "name": "Stylized Nature MegaKit: Pebble_Round_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pebble_Square_3": {
+    "source": "https://quaternius.com",
+    "id": "Pebble_Square_3",
+    "name": "Stylized Nature MegaKit: Pebble_Square_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pebble_Desert": {
+    "source": "https://quaternius.com",
+    "id": "Pebble_Round_2",
+    "name": "Stylized Nature MegaKit: Pebble_Round_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/CommonTree_3": {
+    "source": "https://quaternius.com",
+    "id": "CommonTree_3",
+    "name": "Stylized Nature MegaKit: CommonTree_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/CommonTree_5": {
+    "source": "https://quaternius.com",
+    "id": "CommonTree_5",
+    "name": "Stylized Nature MegaKit: CommonTree_5",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pine_4": {
+    "source": "https://quaternius.com",
+    "id": "Pine_4",
+    "name": "Stylized Nature MegaKit: Pine_4",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pine_5": {
+    "source": "https://quaternius.com",
+    "id": "Pine_5",
+    "name": "Stylized Nature MegaKit: Pine_5",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Bush_Common_Flowers": {
+    "source": "https://quaternius.com",
+    "id": "Bush_Common_Flowers",
+    "name": "Stylized Nature MegaKit: Bush_Common_Flowers",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Bush_Long_1": {
+    "source": "https://quaternius.com",
+    "id": "Bush_Long_1",
+    "name": "Stylized Nature MegaKit: Bush_Long_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Flower_1_Single": {
+    "source": "https://quaternius.com",
+    "id": "Flower_1_Single",
+    "name": "Stylized Nature MegaKit: Flower_1_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Flower_3_Single": {
+    "source": "https://quaternius.com",
+    "id": "Flower_3_Single",
+    "name": "Stylized Nature MegaKit: Flower_3_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Flower_6": {
+    "source": "https://quaternius.com",
+    "id": "Flower_6",
+    "name": "Stylized Nature MegaKit: Flower_6",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Fern_2": {
+    "source": "https://quaternius.com",
+    "id": "Fern_2",
+    "name": "Stylized Nature MegaKit: Fern_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Grass_Common_Short": {
+    "source": "https://quaternius.com",
+    "id": "Grass_Common_Short",
+    "name": "Stylized Nature MegaKit: Grass_Common_Short",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/grass.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Grass_Wispy_Short": {
+    "source": "https://quaternius.com",
+    "id": "Grass_Wispy_Short",
+    "name": "Stylized Nature MegaKit: Grass_Wispy_Short",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/grass.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Mushroom_Common": {
+    "source": "https://quaternius.com",
+    "id": "Mushroom_Common",
+    "name": "Stylized Nature MegaKit: Mushroom_Common",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/mushrooms.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Mushroom_RedCap": {
+    "source": "https://quaternius.com",
+    "id": "Mushroom_RedCap",
+    "name": "Stylized Nature MegaKit: Mushroom_RedCap",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/mushrooms.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Chair": {
+    "source": "https://quaternius.com",
+    "id": "Chair",
+    "name": "Furniture Pack: Chair",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Stool": {
+    "source": "https://quaternius.com",
+    "id": "Stool",
+    "name": "Furniture Pack: Stool",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Table": {
+    "source": "https://quaternius.com",
+    "id": "Table",
+    "name": "Furniture Pack: Table",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Vase": {
+    "source": "https://quaternius.com",
+    "id": "Vase",
+    "name": "Furniture Pack: Vase",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Plant": {
+    "source": "https://quaternius.com",
+    "id": "Plant",
+    "name": "Furniture Pack: Plant",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Streetlight_Single": {
+    "source": "https://quaternius.com",
+    "id": "Streetlight_Single",
+    "name": "Street Pack: Streetlight_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/TrafficLight": {
+    "source": "https://quaternius.com",
+    "id": "TrafficLight",
+    "name": "Street Pack: TrafficLight",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Sign_Stop": {
+    "source": "https://quaternius.com",
+    "id": "Sign_Stop",
+    "name": "Street Pack: Sign_Stop",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Sign_NoParking": {
+    "source": "https://quaternius.com",
+    "id": "Sign_NoParking",
+    "name": "Street Pack: Sign_NoParking",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Prop_ACUnit": {
+    "source": "https://quaternius.com",
+    "id": "Prop_ACUnit",
+    "name": "Downtown City MegaKit: Prop_ACUnit",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Prop_Bollard": {
+    "source": "https://quaternius.com",
+    "id": "Prop_Bollard",
+    "name": "Downtown City MegaKit: Prop_Bollard",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Prop_Planter_Single": {
+    "source": "https://quaternius.com",
+    "id": "Prop_Planter_Single",
+    "name": "Downtown City MegaKit: Prop_Planter_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pickup_Crate": {
+    "source": "https://quaternius.com",
+    "id": "Pickup_Crate",
+    "name": "Ultimate Space Kit: Pickup_Crate",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/space.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pickup_Jar": {
+    "source": "https://quaternius.com",
+    "id": "Pickup_Jar",
+    "name": "Ultimate Space Kit: Pickup_Jar",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/space.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius-space/pickups": {
+    "source": "https://quaternius.com",
+    "id": "pickups",
+    "name": "Ultimate Space Kit: the five pickups (Pickup_Health, Pickup_Thunder, Pickup_Bullets, Pickup_Sphere, Pickup_Crate)",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "pickups.glb, the galaxy's pickups in flight, packed from the kit's glTF files by scripts/galaxy-pickups.mjs"
+  },
+  "quaternius/CommonTree_4": {
+    "source": "https://quaternius.com",
+    "id": "CommonTree_4",
+    "name": "Stylized Nature MegaKit: CommonTree_4",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "bf2017/walrus": {
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "id": "Characters/Rigs/Humanoids/Walrus_HumanMale; web/anims/walrus_humanmale",
+    "name": "Star Wars Battlefront II (2017): the humanoid skeleton and its clips",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.",
+    "use": "The game’s Walrus_HumanMale skeleton (walrus.glb) and the game’s own clips packed onto it (clips-humanoid.glb and one clips-<hero>.glb a hero), in public/models/galaxy/bf2017/, by scripts/bf2017-skeleton.mjs and scripts/bf2017-clips.mjs"
+  },
+  "bf2017-ui": {
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "id": "web/svg, web/fonts (the open-licence faces), web/strings, web/textures/ui/bitmaps",
+    "name": "Star Wars Battlefront II (2017): its icons, strings and UI art",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.",
+    "use": "The game’s icons as sprites (public/ui/bf2017/*.svg), its English strings (src/data/bf2017/strings.json and public/ui/bf2017/strings/), its portraits and tiles (public/ui/bf2017/bitmaps/), by scripts/bf2017-ui.mjs; its open-licence fonts are their makers’ (public/fonts/bf2017/README.md)"
+  },
+  "bf2017-films": {
+    "source": "https://www.ea.com/games/starwars/battlefront/star-wars-battlefront-2",
+    "id": "web/movies (planet loading films, campaign cinematics, menu tiles, tutorials, the logo, MT_Volcano2)",
+    "name": "Star Wars Battlefront II (2017): its films",
+    "authors": [
+      "EA DICE"
+    ],
+    "license": "From EA DICE’s Star Wars Battlefront II (2017), used with permission on this non-commercial fan project; Star Wars and everything in it belong to Lucasfilm.",
+    "use": "The planets’ loading films on the galaxy’s cards and landing veils, the campaign’s cinematics as the briefings of the worlds they are set on, the menu tiles, tutorials and logo for the game’s world, and Mustafar’s lava (MT_Volcano2): the drop’s WebM as it is (MT_Volcano2 cut from VP6 to VP9), published to site-assets by scripts/assets-publish.mjs, the posters and captions in public/films/bf2017/, by scripts/bf2017-ui.mjs"
   }
 }

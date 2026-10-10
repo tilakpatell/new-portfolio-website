@@ -4,6 +4,7 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { sayVoiced, stopVoiced } from '../../../lib/voiced';
+import { createCooldownPress, pressGroups } from '../../../lib/press';
 import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
@@ -91,8 +92,13 @@ function Kitchen({ level, live, invite }) {
   const [, setTick] = useState(0);
   const sim = useRef(null);
   if (!sim.current) sim.current = { s: newRush(level, { players: 1 }), me: 0, phase: 'lobby', keys: new Set(), work: new Set(), stick: { x: 0, y: 0 }, grabs: [], dash: false, padBefore: {}, count: 0, tickAt: 11, lines: 0, t: 0, touchWork: false, sess: null, shown: {}, joinedAt: 0 };
+  // the dash's press (lib/press.js), and with ?debug its numbers on the panel
+  if (!sim.current.press) sim.current.press = createCooldownPress();
+  // (once the kitchen is on screen, onto the scene's panel with its bloom and look)
+  useEffect(() => {
+    if (live && gl === 'on') api.current?.tune?.(pressGroups(sim.current.press));
+  }, [live, gl]);
   const hudKey = useRef('');
-  const stickAt = useRef(null);
   // the loop reads the phase from sim (set at once), the page from state
   const go = useCallback((p) => {
     sim.current.phase = p;
@@ -371,8 +377,11 @@ function Kitchen({ level, live, invite }) {
         if (pressed('b') || pressed('rb') || pressed('lb')) dash = true;
       }
       sm.dash = false;
-      if (dash && me.cool <= 0) sound('dash');
-      movePlayer(s, me, { x: Math.max(-1, Math.min(1, mx)), z: Math.max(-1, Math.min(1, mz)), dash }, dt, s.players.filter((p) => p !== me));
+      // a dash pressed a moment before the cooldown ends goes as it ends (lib/press.js)
+      if (dash) sm.press.press();
+      const cool = me.cool;
+      movePlayer(s, me, { x: Math.max(-1, Math.min(1, mx)), z: Math.max(-1, Math.min(1, mz)), press: sm.press }, dt, s.players.filter((p) => p !== me));
+      if (me.cool > cool) sound('dash');
       me.work = sm.work.size > 0 || sm.touchWork || Boolean(pad?.x);
       const grabs = sm.grabs.splice(0);
       if (role === 'guest') {
@@ -443,29 +452,7 @@ function Kitchen({ level, live, invite }) {
   }, live && gl === 'on');
 
   // the touch controls
-  const onStick = (e) => {
-    const s = sim.current;
-    const st = stickAt.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stickAt.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-      return;
-    }
-    if (!st || st.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stickAt.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - st.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - st.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   const copy = () => {
     const link = inviteLink(level, room.code);
@@ -678,7 +665,7 @@ function Kitchen({ level, live, invite }) {
 
       {playing && touch && (
         <>
-          <Stick onStick={onStick} />
+          <Stick onMove={onStick} />
           <div className="rush-buttons">
             <button
               type="button"
