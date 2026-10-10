@@ -2,7 +2,7 @@
 
 From `levels/mp/hoth_01` (Star Wars Battlefront II, 2017, EA DICE; used with permission on this non-commercial fan project). Written by `node scripts/bf2017-level.mjs levels/mp/hoth_01 --world hoth --spot 205 -1540`; do not edit by hand.
 
-- 5814 instances in the arena (±1024 m), 236 beyond it (the horizon), 14536 left out under the ground (the base inside the glacier: the site's interior zone stands for it), 155 cells of 128 m
+- 5815 instances in the arena (±1024 m), 236 beyond it (the horizon), 14535 left out under the ground (the base inside the glacier: the site's interior zone stands for it), 155 cells of 128 m
 - 602 meshes (4 left out), 476 LOD files, 8.80 MB
 - the far list 0.18 MB; terrain near 2.50 MB, far 5.75 MB; the spot's ground 362.30 m in the game
 - textures missing from the bucket: 4

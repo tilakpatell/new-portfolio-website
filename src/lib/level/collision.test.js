@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { createSolids, groundAt, walk, walker } from '../../components/galaxy/surface/walker';
 import { writeInstances } from './instances';
 import { colliderOf, solidsOf, yawOf } from './collision';
 
@@ -31,19 +30,11 @@ describe('the level’s collision', () => {
     expect(wall.box).toMatchObject({ x: 10, z: 0, hw: 3, hd: 0.25, top: 4, base: 0 });
   });
 
-  it('a point over the floor stands on it; walking into the wall stops you', () => {
+  it('a cell’s instances become its floors and boxes', () => {
     const { floors, boxes } = solidsOf(pack, draws, bin);
-    const solids = createSolids();
-    for (const b of boxes) solids.box(b.x, b.z, b.hw, b.hd, b.yaw, { top: b.top, base: b.base });
-    const world = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids, floors, reach: 1000 };
-    expect(groundAt(world, 1, 1, 2)).toBe(1);
-    expect(groundAt(world, 6, 1, 2)).toBe(0);
-    // walk east from x 7 toward the wall at x 10 (its face at 9.75; the stick's -x is east, looking along +z)
-    const s = walker(7, 0, 0, 0);
-    s.grounded = true;
-    for (let i = 0; i < 120; i++) walk(s, { x: -1, y: 0, heading: 0 }, 1 / 60, world);
-    expect(s.x).toBeLessThan(9.75);
-    expect(s.x).toBeGreaterThan(8);
+    expect(floors).toEqual([{ x: 0, z: 0, hw: 4, hd: 4, yaw: 0, y: 1 }]);
+    expect(boxes.length).toBe(1);
+    expect(boxes[0]).toMatchObject({ x: 10, z: 0, hd: 0.25, top: 4 });
   });
 
   it('leaves a huge piece to its real shape, not a box of air', () => {

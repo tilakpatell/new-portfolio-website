@@ -164,6 +164,11 @@ describe('under the ground', () => {
     const buried = buildPack({ world: 'f', mapName: 'm', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256, groundAt: (x, z) => (Math.hypot(x - 10, z - 10) < 2 ? 10 : 0) });
     expect(buried.counts.buried).toBe(1);
     expect(buried.counts.arena).toBe(1);
+    // (unless it stands in one of the game's holes: a mouth into the glacier)
+    const seen = buildPack({ world: 'f', mapName: 'm', map: readMap(json, bin), spot: [100, 200], groundY: 0, meshes, arena: 256, groundAt: () => 10, holeAt: (x, z) => Math.hypot(x - 10, z - 10) < 2 });
+    // (the hangar and the crate under it everywhere else; the rock, in the hole, kept)
+    expect(seen.counts.buried).toBe(2);
+    expect(seen.counts.arena).toBe(1);
   });
 });
 

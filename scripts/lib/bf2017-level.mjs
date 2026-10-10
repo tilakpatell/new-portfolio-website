@@ -13,7 +13,8 @@
 //   terrainFrame(record), heightsLayer(record, png) → the record's frame; an image layer
 //   cropHeights(src, frame, { minX, minZ, size, metresPerPixel }) → Uint16Array
 //   buildPack({ world, mapName, map, spot, groundY, meshes, groundAt, … }) → { json, files, table, counts }
-//     (groundAt(x, z): the pack's ground in the site's frame; what is under it is left out)
+//     (groundAt(x, z): the pack's ground in the site's frame; what is under it is left out,
+//     but for what stands in the game's holes, holeAt(x, z))
 //   meshCuts(entry, { ultra }) → { far, lod1, plain, ultra } LOD entries
 //   rewriteImageUris(glb, fn) → the GLB with its images' URIs mapped
 //   glbTriangles(glb), lodFile(file, n), mergeHeights(fine, coarse, hole, inside), fillHoles(data, w, h)
@@ -226,7 +227,7 @@ function farList(inst, meshOf, cell) {
   return { bin, draws };
 }
 
-export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes, arena = 1024, cell = CELL, rows = BUDGET_ROWS, subs = null, terrain = null, physics = {}, walk = 640, tex = {}, groundAt = null }) {
+export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes, arena = 1024, cell = CELL, rows = BUDGET_ROWS, subs = null, terrain = null, physics = {}, walk = 640, tex = {}, groundAt = null, holeAt = null }) {
   // (a mesh the bucket has not got, or sequel-era, draws nothing: its instances go)
   const idx = arenaOf(map, { subs }).filter((i) => !meshes[map.meshOf[i]].missing);
   const all = rebase(subset(map.instances, idx), [spot[0], groundY, spot[1]], yaw);
@@ -238,7 +239,10 @@ export function buildPack({ world, mapName, map, spot, groundY, yaw = 0, meshes,
     if (!groundAt) return false;
     const m = meshes[meshOfAll[i]];
     const top = all.position[i * 3 + 1] + Math.max(m.bounds[1] * all.scale[i * 3 + 1], m.bounds[4] * all.scale[i * 3 + 1]);
-    return top < groundAt(all.position[i * 3], all.position[i * 3 + 2]) - 0.5;
+    const [x, z] = [all.position[i * 3], all.position[i * 3 + 2]];
+    // (in the game's own holes, its mouths, is what you see through them)
+    if (holeAt?.(x, z)) return false;
+    return top < groundAt(x, z) - 0.5;
   };
   const inside = [];
   const outside = [];

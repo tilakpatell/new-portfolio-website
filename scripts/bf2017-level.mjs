@@ -83,6 +83,7 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
     metresPerPixel: 1,
   };
   const near = cropHeights(src, f, square);
+  let holeMask = null; // (the game's own holes in the near map, before they are filled)
   if (record.detail?.file) {
     const fd = terrainFrame(record, 'detail');
     const detail = (await decodePng16(await need(env, inBucket(record.detail.file), 'the detail heightmap'))).data;
@@ -93,7 +94,9 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
       const z = square.minZ + Math.floor(i / near.w);
       return x >= fd.minX && z >= fd.minZ && x <= fd.minX + (fd.w - 1) * fd.metresPerPixel && z <= fd.minZ + (fd.h - 1) * fd.metresPerPixel;
     };
-    near.data = fillHoles(mergeHeights(cropHeights(detail, { ...fd, hole: 0 }, square).data, near.data, 0, inside), near.w, near.h);
+    const holes = mergeHeights(cropHeights(detail, { ...fd, hole: 0 }, square).data, near.data, 0, inside);
+    holeMask = Uint8Array.from(holes, (v) => (v === 0 ? 1 : 0));
+    near.data = fillHoles(holes, near.w, near.h);
   }
   const far = cropHeights(src, f, {
     minX: f.minX,
@@ -136,7 +139,11 @@ async function writeTerrain(env, record, { spot, groundY, arena, out, dry }) {
     },
     { ...far, minX: json.far.min[0], minZ: json.far.min[1], metresPerPixel: 2 },
   );
-  return { json, layer, bytes: { near: nearPng.length, far: farPng.length } };
+  const holeAt = (x, z) => {
+    const i = Math.round(z - json.near.min[1]) * near.w + Math.round(x - json.near.min[0]);
+    return Boolean(holeMask?.[i]) && Math.abs(x - json.near.min[0] - near.w / 2) < near.w / 2 && Math.abs(z - json.near.min[1] - near.h / 2) < near.h / 2;
+  };
+  return { json, layer, holeAt, bytes: { near: nearPng.length, far: farPng.length } };
 }
 
 // Each texture once, as the bucket encoded it, its mips dropped to each
@@ -297,6 +304,7 @@ async function main(args) {
     subs,
     terrain: terrain?.json ?? null,
     groundAt: terrain ? (x, z) => LAYERS.image(x, z, terrain.layer) : null,
+    holeAt: terrain?.holeAt ?? null,
   });
   // (only the meshes the pack still holds, on some tier, ship)
   const used = new Set([...pack.json.far.draws, ...pack.json.horizon.draws].map((d) => d.mesh));

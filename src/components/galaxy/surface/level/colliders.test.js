@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { writeInstances } from '../../../../lib/level/instances';
-import { createSolids, groundAt } from '../walker';
+import { createSolids, groundAt, walk, walker } from '../walker';
 import { createColliders } from './colliders';
 
 const pack = {
@@ -23,6 +23,20 @@ describe('the level’s colliders', () => {
     c.add('0,0', pack, bin);
     expect(walk.floors.length).toBe(1);
     expect(groundAt(walk, 1, 1, 2)).toBe(1);
+  });
+
+  it('walking into a wall stops you', () => {
+    const walk_ = { heightAt: () => 0, normalAt: () => [0, 1, 0], solids: createSolids(), floors: [], reach: 1000 };
+    // (the wall turned a quarter: it runs along z, across your way)
+    const S = Math.SQRT1_2;
+    const turned = writeInstances({ count: 2, position: new Float32Array([0, 1, 0, 10, 0, 0]), quaternion: new Float32Array([0, 0, 0, 1, 0, S, 0, S]), scale: new Float32Array([1, 1, 1, 1, 1, 1]) });
+    createColliders(walk_).add('0,0', pack, turned);
+    // east from x 7 toward the wall at x 10 (its face at 9.75; the stick's -x is east, looking along +z)
+    const s = walker(7, 0, 0, 0);
+    s.grounded = true;
+    for (let i = 0; i < 120; i++) walk(s, { x: -1, y: 0, heading: 0 }, 1 / 60, walk_);
+    expect(s.x).toBeLessThan(9.75);
+    expect(s.x).toBeGreaterThan(8);
   });
 
   it('a mesh the tier dropped leaves no wall behind', () => {
