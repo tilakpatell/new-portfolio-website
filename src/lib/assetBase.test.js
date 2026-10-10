@@ -78,5 +78,26 @@ describe('the asset base', () => {
     expect(await load('/hq/tex/rock.jpg')).toBe(`${BASE}/bbbbbbbbbbbb/hq/tex/rock.jpg`);
     expect(isDown()).toBe(false);
   });
-});
 
+  it('sends a file the bucket lacks (a 404) to the site, and keeps the bucket for the rest', async () => {
+    const asked = [];
+    const load = withFallback((url) => {
+      asked.push(url);
+      return url.includes('crate') && url.startsWith('https:') ? Promise.reject(Object.assign(new Error('404'), { status: 404, missing: true })) : Promise.resolve(url);
+    }, opts);
+    expect(await load('/kit/crate.glb')).toBe('/kit/crate.glb');
+    expect(isDown()).toBe(false);
+    expect(await load('/hq/tex/rock.jpg')).toBe(`${BASE}/bbbbbbbbbbbb/hq/tex/rock.jpg`);
+  });
+
+  it('passes an abort on, asking nothing local and marking nothing down', async () => {
+    const asked = [];
+    const load = withFallback((url) => {
+      asked.push(url);
+      return Promise.reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    }, opts);
+    await expect(load('/kit/crate.glb')).rejects.toMatchObject({ name: 'AbortError' });
+    expect(asked).toEqual([`${BASE}/aaaaaaaaaaaa/kit/crate.glb`]);
+    expect(isDown()).toBe(false);
+  });
+});

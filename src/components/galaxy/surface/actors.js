@@ -52,7 +52,7 @@
 //   blaster, 2 a detonator), heard by whoever's in earshot on the next update
 
 import * as THREE from 'three';
-import { SURFACE_MODELS, modelUrlFor } from './catalog';
+import { SURFACE_MODELS, lodUrlFor, modelUrlFor } from './catalog';
 import { markBuilt, resolveFigure } from './cast';
 import { buildFigure } from './figures';
 import { crewFigure } from './crew';
@@ -74,6 +74,10 @@ import { bodyFrom } from '../../../lib/ai/body';
 import { release, reserve, spotOf } from '../../../lib/ai/needs';
 import { createSocial } from '../../../lib/ai/social';
 import { NO_CALLS, animatorCalls, seedOf } from '../../../lib/three/figureCalls';
+import { atPriority } from '../../../lib/assetLoad';
+import { device } from '../../../lib/device';
+import { detailLevel } from '../../../lib/detail';
+import { firstCut, wantsUpgrade } from '../../../lib/net/progressive';
 
 const TALK = 4.5; // metres: close enough to turn to you
 const THERE = 0.6; // metres from where it's going: there
@@ -265,15 +269,36 @@ export async function modelFigure(kind, models = SURFACE_MODELS) {
   if (!models[kind]) return null;
   const n = made.get(kind) ?? 0;
   made.set(kind, n + 1);
-  const gltf = squared(await loadGlb(modelUrlFor(kind, 'high', models)), kind, models);
-  if (!gltf) return null;
   const row = models[kind];
+  const gltf = await figureGlb(kind, models);
+  if (!gltf) return null;
   // (a person who came as a statue: legs found in it, skinned and walked; legRig.js)
   if (row.legs && !row.anim) {
     const legged = leggedFigure(gltf.scene, { seed: seedOf(kind, n), legs: row.legs === true ? {} : row.legs });
     if (legged) return legged;
   }
   return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null, machine: Boolean(row.machine) });
+}
+
+// A figure's file, through the site's pool (lib/assetLoad) ahead of the
+// world's props (people are what the visitor looks at first). On a saver
+// connection or 2G only its light cut is fetched (lib/net/progressive: the
+// plain is never worth its bytes there); and where the plain cut won't come
+// (a 404 on the bucket and the site, a dropped connection), the light cut
+// stands in before the kind falls to its next maker (cast.js). The light cut
+// came in square (placer.js's loadModel) and is drawn as it is.
+const FIGURE_PRIORITY = 5;
+async function figureGlb(kind, models) {
+  const row = models[kind];
+  const hasLod = Boolean(row.url ? row.lodUrl : row.lod);
+  const level = detailLevel();
+  const lowData = Boolean(device().saveData);
+  const small = firstCut(0, level, { hasLod, lowData }) === 'lod1' && !wantsUpgrade(0, level, { lowData });
+  const ask = (url) => atPriority(FIGURE_PRIORITY, () => loadGlb(url));
+  if (small) return ask(lodUrlFor(kind, models));
+  const plain = await ask(modelUrlFor(kind, 'high', models));
+  if (plain) return squared(plain, kind, models);
+  return hasLod ? ask(lodUrlFor(kind, models)) : null;
 }
 
 // what a move of 1 is, in metres a second (the people's update gives
