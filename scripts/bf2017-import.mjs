@@ -17,7 +17,7 @@
 //
 //   node scripts/bf2017-import.mjs <manifest name> --kind <kind> --as '<what it is>'
 //     [--root lab/assets/bf2017] [--metres <m> | --asis] [--along y|x|z|max] [--yaw <rad>] [--up y|z|-z|x|-x|-y]
-//     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512]
+//     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512] [--quality 82] [--maps-quality 80]
 //     [--parts '<glob>,…'] [--grip <node>] [--out public/models/galaxy]
 //
 //   name       the model's `name` in the manifest (bf2017-fetch.mjs --list finds it)
@@ -36,6 +36,8 @@
 //   cuts       which LODs, by number, instead of the triangle budgets
 //              (light ≤ 2,500; plain ≤ 12,000, or 8,000 with --rig)
 //   tex, maps  the colour and other maps' size (the light cut takes half)
+//   quality, maps-quality  their WebP quality (82 and 80 by default)
+//   eyes       the hero's own eye map (characters/heads/_shared/eyes/t_eyes_luke_c.ktx2)
 //   parts      globs over the model's folder for the parts that go with it
 //              ('*_cape_mesh,*_hands_mesh'), each at the same LOD, one file
 //   grip       the node the site holds it by (by default Wep_Root, the
@@ -43,6 +45,9 @@
 //              without one falls back to IK_Joint_RightHand): a `grip` node
 //              is put there, under it on a rig so DICE's own names all stay;
 //              without either, at the model's own origin, which is DICE's hold
+//   keep-origin  not grounded: the model keeps the game's own origin, axes
+//              and metres (a hilt or a blaster, modelled for the Wep_Root
+//              socket with its grip at the origin and its barrel up +y)
 //
 // It refuses the sequel era (the site shows none of it). Look at what came
 // out with node scripts/glb-shot.mjs <file> out.png three, through the dev
@@ -73,6 +78,20 @@ const GAME = 'https://www.ea.com/games/starwars/battlefront/star-wars-battlefron
 const MISSING = '__missing';
 const SLOTS = ['BaseColor', 'Normal', 'Occlusion', 'MetallicRoughness', 'Emissive'];
 
+// an eye map with its white lifted outside the iris (radius 0.18 of the
+// map, eased over 0.04), the iris and pupil as the game drew them
+async function liftSclera(png) {
+  const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h, channels: c } = info;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const r = Math.hypot(x / w - 0.5, y / h - 0.5);
+      const k = 1 + 1.4 * Math.min(1, Math.max(0, (r - 0.18) / 0.04));
+      for (let i = 0; i < 3; i++) data[(y * w + x) * c + i] = Math.min(255, data[(y * w + x) * c + i] * k);
+    }
+  return sharp(data, { raw: { width: w, height: h, channels: c } }).png().toBuffer();
+}
+
 // ── one LOD's GLB as a document, its textures found on disk ──
 
 // The GLB's JSON is rewritten before it is read: each image points at the
@@ -80,7 +99,7 @@ const SLOTS = ['BaseColor', 'Normal', 'Occlusion', 'MetallicRoughness', 'Emissiv
 // taken off the material after), and the textures' KHR_texture_basisu
 // source becomes their plain source, so glTF-Transform never goes looking
 // for a KTX2 itself.
-async function readLod(io, file, { root, derived, unpackDir, said }) {
+async function readLod(io, file, { root, derived, unpackDir, said, eyes = null }) {
   const glb = await readFile(localPath(root, inBucket(file)));
   // (the GLB read by hand: glTF-Transform's own reader will not open one whose
   // images are outside it; chunk 0 is the JSON, chunk 1 the binary buffer)
@@ -114,6 +133,24 @@ async function readLod(io, file, { root, derived, unpackDir, said }) {
   // a map not there yet: the material goes without it rather than wear grey
   for (const m of doc.getRoot().listMaterials()) {
     for (const slot of SLOTS) if (m[`get${slot}Texture`]()?.getName() === MISSING) m[`set${slot}Texture`](null);
+    const shader = String(m.getExtras()?.shader ?? '');
+    // a hair preset's colour map carries its strands' cut-out in alpha
+    // (Chewbacca's cards, a hero's hair planes), whatever glTF was told
+    if (/hair/i.test(shader) && m.getBaseColorTexture()) m.setAlphaMode('MASK').setAlphaCutoff(0.35).setDoubleSided(true);
+    // the game's eye shader reads shared maps the model doesn't name: the
+    // hero's own (`--eyes`) when the bucket has it, else a dark iris, never white
+    if (/eye/i.test(shader) && !m.getBaseColorTexture()) {
+      const png = eyes ? await resolveImage(eyes, { root, derived: [], unpackDir }).catch(() => null) : null;
+      if (png) {
+        // (the game's map is dark: its eye shader lifts the white, which the
+        // map holds at about 0.33 grey round an iris of a fifth of its width;
+        // so the white is lifted toward 0.8 outside that circle, the iris kept)
+        const lifted = await liftSclera(png.png);
+        m.setBaseColorTexture(doc.createTexture('eyes').setImage(new Uint8Array(lifted)).setMimeType('image/png'));
+        said.found.add(`${eyes.split('/').pop()} ← ${png.from} (eyes)`);
+      } else m.setBaseColorFactor([0.16, 0.12, 0.1, 1]);
+      m.setRoughnessFactor(0.15).setMetallicFactor(0);
+    }
     // (Frostbite's shader preset and source maps: nothing the site reads)
     m.setExtras({});
   }
@@ -163,9 +200,11 @@ async function makeCut(io, entry, parts, lod, spec, out) {
     console.log(`  ${Math.round(triangles(doc))} triangles against the cut's ${budget}: simplified`);
     await doc.transform(simplified(budget));
   }
-  await doc.transform(grounded(spec));
+  // (--keep-origin: a weapon stays in the frame the game modelled it in, its
+  // origin the grip the game's Wep_Root socket holds it by: never moved)
+  if (!spec.keepOrigin) await doc.transform(grounded(spec));
   const ground = root.listNodes().find((n) => n.getName() === 'ground');
-  const gripAt = apply(ground.getMatrix(), hold);
+  const gripAt = ground ? apply(ground.getMatrix(), hold) : hold;
   if (!spec.rig) await doc.transform(flatten());
   await doc.transform(dedup(), prune());
   // (on a rig, a child of the socket, so it moves with the hand and the
@@ -174,15 +213,15 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   if (held) held.addChild(doc.createNode('grip'));
   else root.getDefaultScene().addChild(doc.createNode('grip').setTranslation(gripAt));
   await doc.transform(
-    textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: 82 }),
-    textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: 80 }),
+    textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
+    textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
     meshopt({ encoder: MeshoptEncoder, level: 'high' }),
   );
   await mkdir(dirname(out), { recursive: true });
   await io.write(out, doc);
   const bytes = (await stat(out)).size;
   const [w, h, l] = dims(doc);
-  return { out, bytes, tris: Math.round(triangles(doc)), draws: root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0), maps: root.listTextures().length, size: [w, h, l], socket: socket?.getName() ?? null, joints: root.listSkins().reduce((n, s) => n + s.listJoints().length, 0) };
+  return { out, bytes, tris: Math.round(triangles(doc)), draws: root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0), maps: root.listTextures().length, size: [w, h, l], socket: socket?.getName() ?? null, joints: new Set(root.listSkins().flatMap((s) => s.listJoints())).size };
 }
 
 // ── the arguments ──
@@ -224,6 +263,12 @@ export async function importModel(name, opts) {
     up: opts.up ?? 'y',
     rig,
     grip: typeof opts.grip === 'string' ? [opts.grip] : rig ? ['Wep_Root', 'IK_Joint_RightHand'] : ['Wep_Root'],
+    keepOrigin: Boolean(opts.keepOrigin),
+    // (a hero's own eye map, under web/textures/, for the eye shader's material)
+    eyes: typeof opts.eyes === 'string' ? `web/textures/${opts.eyes.replace(/^web\/textures\//, '')}` : null,
+    // (WebP quality: colour, then the rest; a hero at the game's full maps takes more)
+    quality: Number(opts.quality ?? 82),
+    mapsQuality: Number(opts.mapsQuality ?? opts.quality ?? 80),
     said: { found: new Set(), missing: new Set() },
   };
   const cuts = cutsOf(entry, opts, rig);
@@ -238,7 +283,8 @@ export async function importModel(name, opts) {
   made.push(['plain', cuts.plain, plain]);
   let lod = false;
   if (cuts.lod1) {
-    const light = await makeCut(io, entry, parts, cuts.lod1, { ...spec, tex: tex / 2, maps: maps / 2 }, path(dir, `${kind}.lod1.glb`));
+    // (the light cut: half the colour, a quarter of the full maps at most 512, at the usual quality)
+    const light = await makeCut(io, entry, parts, cuts.lod1, { ...spec, tex: tex / 2, maps: Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 }, path(dir, `${kind}.lod1.glb`));
     if (light.bytes < 0.7 * plain.bytes) {
       made.push(['lod1', cuts.lod1, light]);
       lod = true;
@@ -263,7 +309,7 @@ export async function importModel(name, opts) {
     console.log(`${relative(ROOT, r.out).padEnd(48)} ${cut.padEnd(5)} LOD${l.lod}  ${r.tris} triangles, ${r.draws} draws, ${r.maps} maps, ${(r.bytes / 1024).toFixed(1)} KB; ${w.toFixed(2)} wide × ${h.toFixed(2)} tall × ${d.toFixed(2)} long (m)`);
   }
   const file = `/models/galaxy/${opts.crew ? 'crew' : 'surface'}/${kind}.glb`;
-  if (opts.crew) console.log(`the CREW row (src/components/galaxy/crewList.js):\n  ${kind}: { name: '${kind}', tall: ${metres} },`);
+  if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { name: '${kind}', tall: ${metres}${rig ? `, rig: 'walrus', pack: '${kind}'` : ''} },`);
   else {
     const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: cuts.plain.triangles, tex };
     if (rig) row.rig = true;
@@ -273,7 +319,8 @@ export async function importModel(name, opts) {
     row.from = name;
     await writeCatalogueLine(resolve(opts.catalog ?? path(ROOT, 'src', 'components', 'galaxy', 'surface', 'catalog', 'bf2017.js')), kind, row);
   }
-  await writeCredit(resolve(opts.credits ?? path(ROOT, 'src', 'data', 'modelCredits.json')), `surface-${kind}`, {
+  // (a crew figure's credit is keyed as the crew's are, so it takes over the one its file replaces)
+  await writeCredit(resolve(opts.credits ?? path(ROOT, 'src', 'data', 'modelCredits.json')), `${opts.crew ? 'crew' : 'surface'}-${kind}`, {
     title: `Star Wars Battlefront II (2017): ${name}`,
     author: 'EA DICE',
     authorUrl: GAME,
