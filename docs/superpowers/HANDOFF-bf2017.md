@@ -10,7 +10,26 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-2017-asset-pipeline
   - `public/models/galaxy/bf2017/walrus.glb`: `Walrus_HumanMale` whole, 254 nodes (`scripts/bf2017-skeleton.mjs`); `src/lib/three/walrusRig.js` names its body, fingers and sockets, `WEAPON_FRAME` (the identity: the game models weapons in the `Wep_Root` frame).
   - The game's clips as packs (`scripts/bf2017-clips.mjs`, names mapped by `src/lib/three/walrusClips.js`): `clips-humanoid.glb` 843 KB (27 clips), and one a hero: Luke 1,323 KB (45), Vader 1,269 (42), Obi-Wan 1,069 (39), Anakin 1,187 (38), Maul 1,179 (41), Dooku 1,153 (38), Palpatine 459 (15), Han, Leia, Lando, Chewbacca, Boba Fett, Bossk 92-141 KB (their defeat and abilities). 24 fps, root motion off `AITrajectory` into `extras.root`, `contact` timed on a blade a metre up `Wep_Root`, rest-holding channels left out and put back by the loader. Luke's blocks come from the cinematic skeleton (`Walrus_NIS_S0800_Skeleton`, the same rig at the same rest).
   - `src/lib/three/walrus.js` loads a 2017 body with its packs; footScene's `walrusFigure` wraps it in the same `rigged()` every figure gets, the animator told `library: false`. Both figure paths (`crew.js`, `loadPartyFigure`) take `rig: 'walrus'`.
-  - Thirteen heroes, each in three cuts (review fixes, 2026-10-10): `<kind>.ultra.glb` at the game's full fidelity, at the owner's ask ("highest fidelity": LOD0 meshes, 31,807-61,764 triangles, every map at 2048, WebP 90, 4.7-13.6 MB, 111-384 MB of GPU textures a hero), loaded only at ultra; `<kind>.glb`, the same mesh at 1024 colour and 512 maps (1.4-3.0 MB, 23-49 MB of GPU textures), at high; `<kind>.lod1.glb` (the cut under 8,000 body triangles at 512 and 256: 0.5-1.1 MB, 6-13 MB) at low and mid. The full-map files had been the plain cut: Luke alone was 272 MB of GPU textures against the 256 MB a world may have. `crew.budget.test.js` holds each cut to its cap on disk and on the GPU. Sheets in `docs/superpowers/evidence/bf2017-phase1/` (of the full-map files). They are `public/models/galaxy/bf2017/crew/<kind>.glb`, credited `bf2017-<kind>`; the skeleton and the clip packs by one pack credit, `bf2017/walrus` in `public/games/credits.json`. Of the Meshy and Sketchfab files at `galaxy/crew/`, Luke's, Han's, Leia's, Vader's and Palpatine's stay (the universe's foot party, the Death Star's people, `scripts/motion/bake.mjs`, `ual-bake.mjs` and `meshy-actions.mjs` load them as Meshy figures); Boba Fett's, Obi-Wan's, Maul's, Lando's and Dooku's, which only the galaxy used, are gone with their credits.
+  - Thirteen heroes, each in three cuts, at the game's native fidelity (the owner's ask, 2026-10-10: "the native mesh, max quality"). Each map is the game's own KTX2: UASTC, zstd-supercompressed, a full mip chain. It is never decoded and re-encoded; a smaller cut drops the top mip levels from the same file (`scripts/lib/ktx2-levels.mjs`). The mesh keeps the game's 16-bit precision (meshopt positions 16, normals 12, UVs 16).
+    - Why not WebP or AVIF, measured against the unpacked UASTC:
+      - Halving to 1024 gave 20 dB PSNR: the blur the owner saw.
+      - WebP lost colour wherever the smoothness alpha sits in the colour map: 34 dB at any quality.
+      - AVIF reached 45 dB on normals.
+      - The native file loses nothing against the game, and costs a byte a texel on the GPU (BC7 or ASTC), against four for a decoded image.
+    - The three cuts, made with `--native` (`--tex 1024 --maps 1024 --ultra --ultra-tex 2048 --ultra-maps 2048 --cuts plain=0,lod1=<n>,ultra=0`):
+      - `<kind>.ultra.glb`: LOD0, every map at 2048, 18–53 MB, 28–96 MB of GPU textures. Loaded at ultra.
+      - `<kind>.glb`: LOD0 at 1024, 7–16 MB, 10–24 MB of GPU textures. Loaded at high.
+      - `<kind>.lod1.glb`: the light mesh at 512, 2.3–4.2 MB, 3–6 MB of GPU textures. Loaded at low and mid, and always first.
+    - Before, with WebP, Luke's ultra cut was 384 MB of GPU textures; now it is 68.
+    - The caps: `scripts/lib/bf2017-caps.mjs` (`NATIVE_CAPS`: 16, 5 and 64 MB). `crew.budget.test.js` holds each cut to them on disk, reading a published file's bytes from `galaxyAssets.json`, and holds an on-disk cut to the GPU caps too.
+    - Light first, then swapped (`lib/three/walrus.js`'s `cutsToLoad` and `swapBody`; `footScene`'s `walrusFigure`, which both figure paths use): a 2017 figure stands in its `.lod1` the moment it lands. The level's cut follows and its skinned meshes are bound to the same bones, so the animator, the sockets and the saber never notice. On a saver connection it is the light cut only.
+    - The files are `public/models/galaxy/bf2017/crew/<kind>.glb`, credited `bf2017-<kind>`; the skeleton and the clip packs by one pack credit, `bf2017/walrus` in `public/games/credits.json`. Of the Meshy and Sketchfab files at `galaxy/crew/`, Luke's, Han's, Leia's, Vader's and Palpatine's stay: the universe's foot party, the Death Star's people, `scripts/motion/bake.mjs`, `ual-bake.mjs` and `meshy-actions.mjs` load them as Meshy figures. Boba Fett's, Obi-Wan's, Maul's, Lando's and Dooku's, which only the galaxy used, are gone with their credits.
+  - The heroes' outfits (`heroes.js`'s `SKINS`, an Outfit tab in the loadout): 25 of their kits' visual unlocks in the game (`Kit_Hero_*` → `VUR_*`), the sequel trilogy's left out (Chewbacca's EP7 look, Palpatine's EP9). Each is a native file of its own on the same skeleton, a `CREW` row with the hero's `pack`, credited `bf2017-<kind>`; each one's body, parts and head are in `modelCredits.json`'s title and `docs/superpowers/evidence/bf2017-phase1/skins.tsv`. The heads are matched by name and era, since the game's mesh-variation databases are not in the bucket; a render of each checked them. Obi-Wan's Jedi-robe outfit has red lower legs, which is how the game's own map for it is coloured.
+  - Eight more heroes are playable: Obi-Wan, Anakin, Vader, Palpatine, Maul, Dooku, Lando and Bossk, joining Luke, Leia, Han, Chewbacca and Boba Fett.
+  - The files are in the `site-assets` bucket: 143 of them, 1.91 GB, listed in `src/data/galaxyAssets.json`. `walrus.glb`, `clips-humanoid.glb` and `clips-luke.glb` stay committed as well (`asset-manifest.mjs`'s `KEPT`), because tests read them whole. A test that only asks whether the site has a file takes a published one as there (`onSite`).
+  - `rig-parts` puts each vertex of a part where its own joints put it. A helmet's `PROC_*` bones share the body's names but are other bones, so they are bound to the nearest parent the two share.
+  - A 2017 figure passes `boneCapsules.js`'s `isGameSkeleton`, so bolts hit it where the game's capsules say (`footScene.walrus.test.js`). `ragdoll2017.js` (lane P2's, #820) is ready for whoever wires the dead fall. The call is `rigRagdoll` at `src/components/galaxy/surface/ground/groundFigures.js:345`, with ragdoll2017's table for a figure with `rig: 'walrus'`. That wiring is not this phase's: the owner keeps the physics lanes.
+  - The clip packs carry each clip's game name exactly in `extras.source`, which lane X asked for.
   - Ten hilts and three hero blasters, `--keep-origin`, at the game's own maps; `HILTS` wear them; the saber and gunplay put the weapon in `Wep_Root` on a 2017 figure, the clip's arms and fingers holding it, the aim on the chest.
 
 ## Left
@@ -22,7 +41,7 @@ In order:
 3. **Site clip names the game has nothing for**, which fall back (`CLIP_FALLBACK`, else the humanoid pack's): Vader `sword.dash`, `sword.pound`, `force.push`; Anakin's staggers (the humanoid flinches stand in); Dooku `sword.aerial.a`, `sword.uppercut`; Palpatine every stroke (he fights with lightning in the game); the blaster heroes' dodges.
 4. **Textures not in the bucket yet**: Leia's braids (`t_lodcaps_braids_01_brown_cm`, `…_n`), and the game's generic eye map (`T_Eye_MP_DA`): the human heroes wear Luke's eye map, its white lifted. Re-import when the upload has them.
 5. **A dual stance on a 2017 figure** holds one hilt: the game's heroes don't dual-wield; `Wep2_Root` is there for it if the site wants one.
-6. **Repository weight**: the full-fidelity heroes are 111 MB of GLBs (their light cuts 25 MB more). Lane S (`site-assets` bucket, `scripts/assets-publish.mjs`) is where they should move.
+6. **Repository weight**: the native heroes, outfits and blasters are published to the `site-assets` bucket (`scripts/assets-publish.mjs`, `src/data/galaxyAssets.json`) and out of git.
 7. Phases 3 to 10 as the spec's table orders them.
 8. `WEAPON_FRAME` re-measured if a weapon sits wrong; the hilt sheet and the duel shots say it doesn't.
 
@@ -34,7 +53,7 @@ The keys: `SUPABASE_URL` and `BF2017_KEY` (a key that can read the private `bf20
 node --env-file=.env.local scripts/bf2017-fetch.mjs manifest
 node --env-file=.env.local scripts/bf2017-fetch.mjs --list 'gameplay/equipment/heroes/*'
 node --env-file=.env.local scripts/bf2017-fetch.mjs gameplay/equipment/heroes/lightsaberlukeskywalker/lightsaberlukeskywalker_meshp_mesh
-node scripts/bf2017-import.mjs gameplay/equipment/heroes/lightsaberlukeskywalker/lightsaberlukeskywalker_meshp_mesh --kind hiltluke --as 'Luke’s lightsaber hilt' --asis --tex 512 --maps 256
+node scripts/bf2017-import.mjs gameplay/equipment/heroes/lightsaberlukeskywalker/lightsaberlukeskywalker_meshp_mesh --kind hiltluke --as 'Luke’s lightsaber hilt' --asis --keep-origin --native --tex 2048 --maps 2048
 npx vite --port 5188 --strictPort --host 127.0.0.1 &
 node scripts/glb-shot.mjs public/models/galaxy/surface/hiltluke.glb /tmp/hiltluke.png three
 ```
@@ -44,7 +63,7 @@ Phase 1's, with the dev server up:
 ```
 node scripts/bf2017-fetch.mjs anims
 node scripts/bf2017-clips.mjs luke
-node scripts/bf2017-import.mjs characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh --kind luke --as 'Luke Skywalker' --rig --crew --hero --metres 1.72 --parts '<head>,<hair>' --tex 1024 --maps 512 --ultra --ultra-tex 2048 --ultra-maps 2048 --quality 90 --cuts plain=0,lod1=2,ultra=0 --eyes characters/heads/_shared/eyes/t_eyes_luke_c.ktx2
+node scripts/bf2017-import.mjs characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh --kind luke --as 'Luke Skywalker' --rig --crew --hero --metres 1.72 --parts '<head>,<hair>' --native --tex 1024 --maps 1024 --ultra --ultra-tex 2048 --ultra-maps 2048 --quality 90 --cuts plain=0,lod1=2,ultra=0 --eyes characters/heads/_shared/eyes/t_eyes_luke_c.ktx2
 node scripts/bf2017-skeleton.mjs public/models/galaxy/bf2017/crew/luke.glb
 ```
 
@@ -69,7 +88,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 
 - **Lane W's folders**: `textures/galaxy/bf2017/<role>/` and `textures/galaxy/sky/` are in the mirror's `REMOTE` list (`scripts/assets-upload.mjs`, with `.hdr` and `.exr` as kinds), so a committed map or sky there is mirrored once it lands. If lane W keeps them out of git (they are game-derived), add those two folders to `assets-publish.mjs`'s list beside `models/galaxy/bf2017` instead.
 - **Nothing is published yet**: `galaxyAssets.json` is `{}` until phase 1’s heroes are imported. Then: `node scripts/assets-publish.mjs --dry`, without, `node scripts/assets-check.mjs`, commit the manifest and `.gitignore`.
-- **The progressive swap** (a figure drawn from its `.lod1`, the plain swapped in when it lands): `progressive.js` holds the rule, but a figure hands its animator and bones to sabers and combat, so swapping its mesh needs a figure-level facade in `actors.js`, which phase 1 is rewriting for the walrus loader. Until then the small cut first applies on a saver connection only, and at ultra (the laptop’s level) the full cut is always fetched first, as fidelity wants.
+- **The progressive swap** for the galaxy's other figures (props and Meshy people): a 2017 figure has it now (phase 1: `walrus.js`'s `swapBody` rebinds the full cut's meshes to the figure's own bones, so nothing that holds the figure notices); the same move would serve any skinned figure whose cuts share a skeleton.
 - **The HUD’s bytes line** (“Loading Hoth, 12 of 27 MB”): the world’s scope counts bytes (`debug().net`), but the loading veil reads the runtime’s prepare steps; wiring it is a runtime change.
 - **A published hero with clips**: `catalog.test.js`’s clip check reads the file; a row with `anim` whose file is only published will fail it in CI. Phase 1 decides: its clips in a pack, or the check reading the published manifest of clip names.
 - **Egress**: the free tier’s 5 GB a month is a few hundred visits. Pro (250 GB) before `ASSET_BASE` is set for everyone; if egress bills, the same `<hash12>/<path>` files on Cloudflare R2 and `ASSET_BASE` pointed there is the whole change.

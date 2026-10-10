@@ -34,14 +34,30 @@ export function rebindJoints(partJoints, bodyJoints, joints, weights = null) {
 // quantisation into them, so the body's and a part's differ by one matrix
 // `m` (the part's bind against the body's, the same for every joint they
 // share): a vertex bound to the body's joint lands where it did only once
-// it is put through m. Floats only (dequantize first).
-export function toBodyBind(prim, m) {
+// it is put through m. With `moves` (a matrix for each of the part's
+// joints), each vertex goes through its own joints' moves, blended by its
+// weights, where they differ from m. Floats only (dequantize first).
+export function toBodyBind(prim, m, moves = null) {
   const pos = prim.getAttribute('POSITION');
   if (pos) {
     const a = pos.getArray().slice();
-    for (let i = 0; i < a.length; i += 3) {
-      const [x, y, z] = [a[i], a[i + 1], a[i + 2]];
-      for (let r = 0; r < 3; r++) a[i + r] = m[r] * x + m[4 + r] * y + m[8 + r] * z + m[12 + r];
+    const sets = [];
+    for (let k = 0; prim.getAttribute(`JOINTS_${k}`); k++) sets.push([prim.getAttribute(`JOINTS_${k}`).getArray(), prim.getAttribute(`WEIGHTS_${k}`).getArray()]);
+    for (let i = 0, v = 0; i < a.length; i += 3, v++) {
+      const x = [a[i], a[i + 1], a[i + 2]];
+      const out = [0, 0, 0];
+      let sum = 0;
+      if (moves)
+        for (const [J, W] of sets)
+          for (let k = 0; k < 4; k++) {
+            const w = W[v * 4 + k];
+            if (!(w > 0)) continue;
+            const q = apply(moves[J[v * 4 + k]] ?? m, x);
+            for (let r = 0; r < 3; r++) out[r] += w * q[r];
+            sum += w;
+          }
+      const at = sum ? out.map((c) => c / sum) : apply(m, x);
+      for (let r = 0; r < 3; r++) a[i + r] = at[r];
     }
     pos.setArray(a);
   }
@@ -71,40 +87,17 @@ export function bindDelta(partIbm, bodyIbm) {
 }
 
 const apply = (m, p) => [0, 1, 2].map((r) => m[r] * p[0] + m[4 + r] * p[1] + m[8 + r] * p[2] + m[12 + r]);
-// How far the one move `m` puts a part's vertex from where its own joints'
-// moves (`deltas`, by the part's joint index), blended by its weights, put
-// it: the worst, in metres, and the joint most weighted on that vertex.
-export function worstOff(nodes, m, deltas) {
-  let worst = { by: 0, joint: 0 };
-  for (const node of nodes)
-    for (const prim of node.getMesh()?.listPrimitives() ?? []) {
-      const pos = prim.getAttribute('POSITION');
-      const J = prim.getAttribute('JOINTS_0')?.getArray();
-      const W = prim.getAttribute('WEIGHTS_0')?.getArray();
-      if (!pos || !J || !W) continue;
-      for (let v = 0; v < pos.getCount(); v++) {
-        const x = pos.getElement(v, []);
-        const at = apply(m, x);
-        const own = [0, 0, 0];
-        let sum = 0;
-        let top = 0;
-        for (let k = 0; k < 4; k++) {
-          const w = W[v * 4 + k];
-          const d = deltas[J[v * 4 + k]];
-          if (!(w > 0) || !d) continue;
-          const q = apply(d, x);
-          for (let r = 0; r < 3; r++) own[r] += w * q[r];
-          sum += w;
-          if (w > W[v * 4 + top]) top = k;
-        }
-        if (!sum) continue;
-        const by = Math.hypot(at[0] - own[0] / sum, at[1] - own[1] / sum, at[2] - own[2] / sum);
-        if (by > worst.by) worst = { by, joint: J[v * 4 + top] };
-      }
-    }
-  return worst;
-}
 
+// whether a joint's own move puts the joint itself (its bind, from its
+// inverse bind) more than a quarter metre from where the part's move does:
+// another bone that happens to share the name
+const FAR = 0.25;
+function far(d, m, ibm) {
+  const at = invert4(ibm).slice(12, 15);
+  const a = apply(d, at);
+  const b = apply(m, at);
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) > FAR;
+}
 function remap(prim, partJoints, bodyJoints) {
   let unmatched = 0;
   for (let set = 0; ; set++) {
@@ -133,8 +126,10 @@ export function detach(node) {
 // A composite's parts (a hero's cape, hands, head) come as GLBs of their
 // own, each with its own copy of the skeleton. A part on the body's rig
 // (most of its bones in the first skin by name) is moved onto it, so one
-// skeleton drives them all and the copies go; a bone of the part's the body
-// lacks binds to Hips (rebindJoints). A part on another rig keeps its own.
+// skeleton drives them all and the copies go; each vertex lands where its
+// own joints put it, a bone of the body's name bound far from the body's
+// binds to the nearest parent they share, and a bone of the part's the
+// body lacks binds to Hips (rebindJoints). A part on another rig keeps its own.
 // Returns how many skins were joined; `say` hears each part's binding.
 export function shareSkins(doc, say = () => {}) {
   const root = doc.getRoot();
@@ -153,18 +148,31 @@ export function shareSkins(doc, say = () => {}) {
     const at = names.findIndex((n) => index.has(n));
     const ibmOf = (sk, i) => sk.getInverseBindMatrices()?.getElement(i, []) ?? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
     const m = bindDelta(ibmOf(skin, at), ibmOf(body, bodyNames.indexOf(names[at])));
-    // (one move for the whole part: where the joints it shares disagree,
-    // each vertex is checked against the move its own joints would give it,
-    // and the part is refused when any lands more than a centimetre off;
-    // the game's own parts disagree by float noise, 5 mm at most on
-    // Obi-Wan's seven)
+    // (each shared joint's own move; the game's copies agree to float noise,
+    // 5 mm at most on Obi-Wan's seven, but a head made for another face
+    // puts its face bones a centimetre from the body's, and each vertex
+    // goes where its own joints put it)
     const deltas = names.map((n, i) => (index.has(n) ? bindDelta(ibmOf(skin, i), ibmOf(body, bodyNames.indexOf(n))) : null));
-    const off = worstOff(root.listNodes().filter((n) => n.getSkin() === skin), m, deltas);
-    if (off.by > 0.01) throw new Error(`part ${names[at]}…: moved as one onto the body's bind pose, a vertex on ${names[off.joint]} lands ${(off.by * 100).toFixed(1)} cm from where its own joints put it`);
+    // (a joint of the body's name bound somewhere else entirely is another
+    // bone: a helmet's PROC_Bone1, its ear flap, against the body's hip
+    // flap of that name, metres apart; it's bound to its nearest parent
+    // the two share, moving with that)
+    const foreign = joints.map((j, i) => deltas[i] && far(deltas[i], m, ibmOf(skin, i)));
+    const sharedParent = (j) => {
+      for (let p = j.getParentNode(); p; p = p.getParentNode()) {
+        const k = joints.indexOf(p);
+        if (k >= 0 && deltas[k] && !foreign[k]) return k;
+      }
+      return names.indexOf('Hips');
+    };
+    const as = names.map((_, i) => (foreign[i] ? sharedParent(joints[i]) : i));
+    const bindAs = as.map((k) => (k >= 0 ? names[k] : 'Hips'));
+    const moves = as.map((k) => (k >= 0 ? (deltas[k] ?? m) : m));
+    for (let i = 0; i < names.length; i++) if (foreign[i]) say(`part ${names[at]}…: ${names[i]} is bound elsewhere than the body's, so on ${bindAs[i]}`);
     for (const node of root.listNodes().filter((n) => n.getSkin() === skin)) {
-      for (const prim of node.getMesh()?.listPrimitives() ?? []) toBodyBind(prim, m);
+      for (const prim of node.getMesh()?.listPrimitives() ?? []) toBodyBind(prim, m, moves);
       let unmatched = 0;
-      for (const prim of node.getMesh()?.listPrimitives() ?? []) unmatched += remap(prim, names, bodyNames);
+      for (const prim of node.getMesh()?.listPrimitives() ?? []) unmatched += remap(prim, bindAs, bodyNames);
       say(`part ${node.getName() || node.getMesh()?.getName() || '?'}: ${bound} joints bound, ${unmatched} unmatched`);
       node.setSkin(body);
     }

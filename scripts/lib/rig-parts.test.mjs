@@ -135,9 +135,26 @@ describe('a part made in another bind pose', () => {
     expect([p[3], p[4], p[5]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([1, 0.5, 0]);
   });
 
-  it('refuses a part whose joints disagree about where its bind pose is', () => {
+  it('puts each vertex where its own joints put it, where they disagree a little (a head made for another face)', () => {
     const { doc } = rigged();
-    partWith(doc, [T(0, 0.5, 0), T(3, 0.9, 0)]);
-    expect(() => shareSkins(doc)).toThrow(/LeftHand/);
+    // (the part's LeftHand bound a centimetre higher than its Hips says)
+    const prim = partWith(doc, [T(0, 0.5, 0), T(3, 0.51, 0)]);
+    expect(shareSkins(doc)).toBe(1);
+    const p = prim.getAttribute('POSITION').getArray();
+    expect([p[0], p[1], p[2]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 0.51, 0]);
+    expect([p[6], p[7], p[8]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 1.51, 0]);
+    expect([...prim.getAttribute('JOINTS_0').getArray()].filter((_, i) => i % 4 === 0)).toEqual([3, 3, 3]);
+  });
+
+  it('binds a bone of the body’s name but bound somewhere else entirely (a helmet’s own PROC bones) to its nearest shared parent', () => {
+    const { doc } = rigged();
+    const said = [];
+    const prim = partWith(doc, [T(0, 0.5, 0), T(3, 50, 0)]);
+    expect(shareSkins(doc, (s) => said.push(s))).toBe(1);
+    // (on the Hips, the body's joint 0, moved as the Hips move)
+    expect([...prim.getAttribute('JOINTS_0').getArray()].filter((_, i) => i % 4 === 0)).toEqual([0, 0, 0]);
+    const p = prim.getAttribute('POSITION').getArray();
+    expect([p[0], p[1], p[2]].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 0.5, 0]);
+    expect(said.join(' ')).toMatch(/LeftHand.*Hips/);
   });
 });
