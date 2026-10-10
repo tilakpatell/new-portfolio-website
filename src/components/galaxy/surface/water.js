@@ -68,7 +68,8 @@ void main() {
     vec2 fuv = fract(xz / 48.0 + vec2(uTime * 0.004, uTime * 0.0027));
     if (uFlowFlip > 0.5) fuv.y = 1.0 - fuv.y;
     vec3 molten = texture2D(uFlow, fuv).rgb;
-    c = mix(c, molten * uGlow * 1.15, 0.7 * (1.0 - crust * 0.55));
+    // (the film is bright already: lifted a little by the glow, not by all of it)
+    c = mix(c, molten * (0.55 + 0.25 * uGlow), 0.65 * (1.0 - crust * 0.55));
 #endif
 #ifdef FINE
     // close up: the crust broken into plates, glowing at the cracks between

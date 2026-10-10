@@ -18,7 +18,7 @@ import FRONTEND from '../../../data/bf2017/light/frontend.json';
 import { cutFor, loadWalrusBody, packUrls } from '../../../lib/three/walrus';
 import { ktx2Loader, loadGltf } from '../../../lib/three/gltf';
 import { pixelRatio } from '../../../lib/device';
-import { quiet } from '../../../lib/three/renderer';
+import { quiet, releaseContext } from '../../../lib/three/renderer';
 
 // levels/frontend/frontend.bin, sub-level 4 (Backdrop_01): the dome at
 // [0.426, -3.627, -2.799], the pill lights at [-0.25, -3.587, 6.142] turned
@@ -73,6 +73,8 @@ export function createHeroStage(canvas, { level = 'high', reduced = false } = {}
   const stage = new THREE.Group();
   scene.add(stage);
   const turn = new THREE.Group();
+  // (the game's figures face along x; the camera looks down -z at them)
+  turn.rotation.y = -Math.PI / 2;
   scene.add(turn);
 
   let alive = true;
@@ -173,6 +175,7 @@ export function createHeroStage(canvas, { level = 'high', reduced = false } = {}
       window.removeEventListener('pointerup', up);
       clear();
       renderer.dispose();
+      releaseContext(renderer);
     },
   };
 }
