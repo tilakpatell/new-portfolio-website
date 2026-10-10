@@ -29,11 +29,13 @@ export const SOCKETS = { weapon: 'Wep_Root', muzzle: 'Wep_Muzzle', aim: 'Wep_Aim
 // models its weapons in that socket's own frame, so the two are the same:
 // Luke's hilt runs from its pommel at y −0.216 to its emitter at +0.070
 // about the grip at the origin, the DL-44's and the EE-3's barrels along +z
-// (0.33 and 0.79 m); and through Luke's own clips (measured from the bucket's
-// clip glTFs, lab/probe/socket.mjs) the socket's +y is the blade's way:
-// up and across at his guard (L_Luke_Stand_Idle_01: +y at 0.76, 0.64,
-// 0.13), overhead and out at a strike's contact. Kept as a frame, not
-// assumed away, so a weapon that sits wrong is one number to change.
+// (0.33 and 0.79 m); and through Luke's own clips the socket's +y is the
+// blade's way: up and across at his guard, overhead and out at a strike's
+// contact. walrusSocket.test.js is the measurement, on the committed
+// skeleton and packs: the grip within 0.15 m of the right hand, the blade
+// up and away from the forearm at the guard (a frame turned half over
+// fails it). Kept as a frame, not assumed away, so a weapon that sits
+// wrong is one number to change.
 export const WEAPON_FRAME = { quaternion: [0, 0, 0, 1], position: [0, 0, 0] };
 
 export function checkWalrus(names) {
