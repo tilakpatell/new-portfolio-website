@@ -11,7 +11,7 @@
 // scripts/bf2017-level.mjs after the meshes, or alone with --parts.
 //
 //   writeParts({ env, cache, mapName, base (the map's files' stem under web/), map, json, out, subs, mode, weather, dry, log })
-//     → { counts, lines (the README's section) }
+//     → { counts, lines (the README's section), shadowCache, parts (level.json's index) }
 
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
@@ -145,6 +145,10 @@ export async function writeParts({ env, cache, mapName, base = `web/maps/${mapNa
   }
   counts.shadow = shadowCache ? 1 : 0;
 
+  // the colour lane's slot (#877): the variations' texture bindings and
+  // tints, empty until that lane writes it
+  put('variations.json', { format: 1, meshes: {}, instances: null });
+
   // the terrain's scatter table, as the bucket has it
   const scatterPath = map.terrain?.scatter;
   const scatter = scatterPath ? await bytes(env, cache, inBucket(scatterPath)) : null;
@@ -180,5 +184,7 @@ export async function writeParts({ env, cache, mapName, base = `web/maps/${mapNa
     '',
   ];
   for (const l of lines.slice(4, 15)) log(l);
-  return { counts, lines, shadowCache };
+  // (level.json's index of its parts, by name: each loader finds its own file)
+  const parts = Object.fromEntries([...files.keys()].filter((p) => p.endsWith('.json')).map((p) => [p.replace(/\.json$/, ''), p]));
+  return { counts, lines, shadowCache, parts };
 }

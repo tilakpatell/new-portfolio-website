@@ -285,6 +285,7 @@ async function main(args) {
     const parts = await writeParts({ env, cache: CACHE, mapName, base, map, json, out, subs, mode: args.mode ?? 'FantasyBattle', weather: args.weather ?? 'sunny', dry });
     if (dry) return;
     json.shadowCache = parts.shadowCache;
+    json.parts = parts.parts;
     await writeFile(join(out, 'level.json'), `${JSON.stringify(json)}\n`);
     const readme = await readFile(join(out, 'README.md'), 'utf8').catch(() => '');
     const head = readme.split("## The map's other parts")[0].replace(/\n*$/, '\n\n');
@@ -478,6 +479,7 @@ async function main(args) {
 
   const parts = await writeParts({ env, cache: CACHE, mapName, base, map, json: pack.json, out, subs, mode: args.mode ?? 'FantasyBattle', weather: args.weather ?? 'sunny' });
   pack.json.shadowCache = parts.shadowCache;
+  pack.json.parts = parts.parts;
   lines.push(...parts.lines);
   await mkdir(join(out, 'cells'), { recursive: true });
   for (const [path, bin] of pack.files) await writeFile(join(out, path), Buffer.from(bin));
