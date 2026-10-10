@@ -100,9 +100,9 @@ describe('a figure on the game’s skeleton', () => {
     expect(packUrls()).toEqual(['/models/galaxy/bf2017/clips-humanoid.glb']);
   });
 
-  it('loads the full figure at high and ultra, the light one at low and mid', () => {
+  it('loads the game’s full maps at ultra, the plain figure at high, the light one at low and mid', () => {
     expect(cutFor('/models/galaxy/crew/luke.glb', 'high')).toBe('/models/galaxy/crew/luke.glb');
-    expect(cutFor('/models/galaxy/crew/luke.glb', 'ultra')).toBe('/models/galaxy/crew/luke.glb');
+    expect(cutFor('/models/galaxy/crew/luke.glb', 'ultra')).toBe('/models/galaxy/crew/luke.ultra.glb');
     expect(cutFor('/models/galaxy/crew/luke.glb', 'mid')).toBe('/models/galaxy/crew/luke.lod1.glb');
     expect(cutFor('/models/galaxy/crew/luke.glb', 'low')).toBe('/models/galaxy/crew/luke.lod1.glb');
   });

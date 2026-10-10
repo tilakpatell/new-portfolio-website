@@ -24,10 +24,13 @@
 //     a copy of the body (its own bones), its clips; refuses a tree that is
 //     not the game's rig, naming what it lacks
 //   PACK_DIR, packUrls(hero): the packs a figure loads, the humanoid first
-//   cutFor(url, level): which of a 2017 figure's two files a device loads:
-//     the full one (the game's top mesh, every map at the game's 2048) at
-//     high and ultra, its `.lod1` (a lighter mesh, 1024 colour) at low and
-//     mid (lib/detail.js's level, from lib/device's tier)
+//   cutFor(url, level): which of a 2017 figure's three files a device loads
+//     (lib/detail.js's level, from lib/device's tier): at ultra its
+//     `.ultra` (the game's top mesh, every map at the game's 2048, up to
+//     384 MB of GPU textures a hero), at high the plain one (that mesh at
+//     1024 colour and 512 maps, 23 to 49 MB), at low and mid its `.lod1` (a
+//     lighter mesh at 512 and 256, under 13 MB); the caller falls back to
+//     the plain file when a cut isn't there
 
 import * as THREE from 'three';
 import { cloneScene, loadGLTF } from './gltfCache';
@@ -36,7 +39,7 @@ import { CLIP_FALLBACK, SOCKETS, checkWalrus, isWalrus } from './walrusRig.js';
 export const PACK_DIR = '/models/galaxy/bf2017';
 export const packUrls = (hero = null) => [`${PACK_DIR}/clips-humanoid.glb`, ...(hero ? [`${PACK_DIR}/clips-${hero}.glb`] : [])];
 
-export const cutFor = (url, level) => (level === 'low' || level === 'mid' ? url.replace(/\.glb$/, '.lod1.glb') : url);
+export const cutFor = (url, level) => (level === 'low' || level === 'mid' ? url.replace(/\.glb$/, '.lod1.glb') : level === 'ultra' ? url.replace(/\.glb$/, '.ultra.glb') : url);
 
 const boneOf = (track) => track.name.slice(0, track.name.lastIndexOf('.'));
 

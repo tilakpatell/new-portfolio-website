@@ -31,8 +31,10 @@
 //              game's own clips; without it the model is a statue. Nothing
 //              is pruned or renamed: the site learns the game's skeleton
 //   crew       a person for crewList.js's CREW (galaxy/crew/<kind>.glb)
-//   hero       the 4 MB file cap instead of 2.5 MB
+//   hero       the 4 MB file cap instead of 2.5 MB (a cut over its cap
+//              stops the import: overCaps)
 //   ultra      an .ultra.glb from LOD0, at 2048 colour and 1024 maps
+//              (--ultra-tex, --ultra-maps: a hero's full 2048 maps at ultra)
 //   cuts       which LODs, by number, instead of the triangle budgets
 //              (light ≤ 2,500; plain ≤ 12,000, or 8,000 with --rig)
 //   tex, maps  the colour and other maps' size (the light cut takes half)
@@ -239,6 +241,15 @@ function cutsOf(entry, opts, rig) {
   return cuts;
 }
 
+// The caps a cut is held to (the pipeline design's section 6): 2.5 MB, 4 MB
+// for a hero, 2.5 MB for a light cut, 24 MB for an ultra one. Each cut over
+// its cap, said.
+const MB = 1048576;
+export function overCaps(cuts, { hero = false } = {}) {
+  const cap = { plain: hero ? 4 * MB : 2.5 * MB, lod1: 2.5 * MB, ultra: 24 * MB };
+  return cuts.filter(([cut, bytes]) => bytes > cap[cut]).map(([cut, bytes]) => `${cut}: ${(bytes / MB).toFixed(1)} MB over ${(cap[cut] / MB).toFixed(1)} MB`);
+}
+
 export async function importModel(name, opts) {
   const kind = opts.kind;
   if (!kind || !/^[a-z0-9]+$/.test(kind)) throw new Error('--kind: letters and digits, the catalogue’s way (hiltluke, vader…)');
@@ -297,10 +308,14 @@ export async function importModel(name, opts) {
   } else console.log('  no .lod1: the chain has no cut light enough below the plain one');
   let ultra = null;
   if (cuts.ultra) {
-    const u = await makeCut(io, entry, parts, cuts.ultra, { ...spec, tex: 2048, maps: 1024 }, path(dir, `${kind}.ultra.glb`));
+    const ut = Number(opts.ultraTex ?? 2048);
+    const u = await makeCut(io, entry, parts, cuts.ultra, { ...spec, tex: ut, maps: Number(opts.ultraMaps ?? 1024) }, path(dir, `${kind}.ultra.glb`));
     made.push(['ultra', cuts.ultra, u]);
-    ultra = { tris: u.tris, tex: 2048 };
+    ultra = { tris: u.tris, tex: ut };
   }
+  // (a file over its cap is not shipped: the import stops and says which)
+  const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero) });
+  if (over.length) throw new Error(`${kind}: ${over.join('; ')} (smaller --tex and --maps, or another --cuts)`);
   for (const f of spec.said.found) console.log(`  map ${f}`);
   for (const f of spec.said.missing) console.log(`  missing: ${f}`);
   if (!plain.socket) console.log(`  (no ${spec.grip.join(' or ')} in the file: grip made at the model's own origin)`);
