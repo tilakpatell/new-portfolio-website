@@ -81,7 +81,7 @@ export const OWNERS = [
   // Q4 the decals and their sheets; Q6 the colour cubes and the painted skies
   { match: 'materials.jsonl', part: 'index', lane: 'surfaces-Q1' },
   { match: /^(textures\/)?shaders\//, part: 'textures', lane: 'surfaces-Q1' },
-  { match: /enlighten/, lane: 'surfaces-Q3' },
+  { match: /enlighten|staticirradiance/, lane: 'surfaces-Q3' },
   { part: 'maps.decals', lane: 'surfaces-Q4' },
   { match: /(^|\/)(fx\/decals|objects\/props\/_decals)\//, part: 'textures', lane: 'surfaces-Q4' },
   { match: /(^|\/)t_cc_[^/]*$/, part: 'textures', lane: 'surfaces-Q6' },
@@ -126,10 +126,15 @@ export const OWNERS = [
   { match: /(^|\/)gameplay\/vehicles\//, lane: '4', finding: true },
   // the prefabs (pickups, spawners, vehicle pads) are placed by the levels (lane E)
   { match: /(^|\/)gameplay\/prefabs\//, lane: 'E', finding: true },
-  // the weapons and gadgets in the cast's hands, the cast's outfits, heads and
-  // parts, and the cinematics' sets go with the clips (lane A)
-  { match: /(^|\/)(gameplay\/equipment|gameplay\/kits|weapons)\//, lane: 'A', finding: true },
-  { match: /(^|\/)(characters|cinematics)\//, lane: 'A', finding: true },
+  // the weapons and gadgets in the cast's hands: the game's world lane 5
+  // (#812), which draws the figures and their gear; the galaxy's loadout
+  // takes them through the same import (lane 1, the weapons' rules, has merged)
+  { match: /(^|\/)(gameplay\/equipment|gameplay\/kits|weapons)\//, lane: '5', finding: true },
+  // the cast's outfits, heads and parts not yet imported: #839's lane T (the
+  // outfit variations and their atlas); the cinematics' sets: the level
+  // factory's districts (lane E)
+  { match: /(^|\/)characters\//, lane: 'T', finding: true },
+  { match: /(^|\/)cinematics\//, lane: 'E', finding: true },
   // the effects' meshes and sheets are fidelity X's, with the emitters
   { match: /(^|\/)fx\//, lane: 'X', finding: true },
   // the light and the look: probes, far shadows, the lighting meshes, the
@@ -143,7 +148,8 @@ export const OWNERS = [
   { match: /^(online|persistence|telemetry|automation|win32|dataversion|defaultobjectpatch|globals)\//, part: 'data', lane: '7', finding: true },
   { match: /^(gameplay|ai)\//, part: 'data', lane: '6', finding: true },
   { match: /^(ui|media)\//, part: 'data', lane: 'M', finding: true },
-  { match: /^(characters|animations|cinematics)\//, part: 'data', lane: 'A', finding: true },
+  { match: /^characters\//, part: 'data', lane: 'T', finding: true },
+  { match: /^(animations|cinematics)\//, part: 'data', lane: 'A', finding: true },
   { match: /^(fx|effects)\//, part: 'data', lane: 'X', finding: true },
   { match: /^(shaders|systems|lodgroups|[0-9a-f-]{36}_shaderparametervariation)\//, part: 'data', lane: 'E', finding: true },
   { match: /^(localization|media2|ui_[^/]*)\//, part: 'data', lane: 'M', finding: true },

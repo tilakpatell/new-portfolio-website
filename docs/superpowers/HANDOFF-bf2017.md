@@ -32,9 +32,11 @@ Coverage (from lane Z's ledger, `docs/superpowers/evidence/bf2017-coverage/`, re
 
 | lane | what it takes | models | textures | data groups |
 | --- | --- | --: | --: | --: |
-| E | every level's own meshes and maps under `levels/`, `a3/`, `s*/` (the campaign's and the seasons' maps), the light (probes, far shadows, lighting meshes), `systems/` (the sky and post-process tables), the prefabs; the levels' records, the shader variations, the LOD groups | 151 | 9,471 | 681 |
+| E | every level's own meshes and maps under `levels/`, `a3/`, `s*/` (the campaign's and the seasons' maps), the light (probes, far shadows, lighting meshes), `systems/` (the sky and post-process tables), the prefabs, the cinematics' sets (as districts); the levels' records, the shader variations, the LOD groups | 163 | 9,471 | 697 |
 | O | the seasons' object sets (`s2/objects`, `s3/objects`, `s5_1/objects`, `a3/objects` …) and `levels/clouds` | 2,036 | 1,063 | |
-| A | the cast's outfits, heads and body parts not yet imported, the weapons and gadgets in their hands (`gameplay/equipment`, `gameplay/kits`), the cinematics' sets; the characters', animations' and cinematics' records and the heroes' ragdoll blueprints | 911 | 1,588 | 92 |
+| A | the animations' and cinematics' records and the heroes' ragdoll blueprints (A imports no models: its plan's rigs and clips only) | | | 51 |
+| T (#839) | the cast's outfits, heads and body parts not yet imported (the outfit variations), and the characters' records | 578 | 1,230 | 25 |
+| 5 (#812) | the weapons, gadgets and hilts not yet imported (`gameplay/equipment`, `gameplay/kits`); the galaxy's loadout takes them through the same import (lane 1, the weapons' rules, has merged, so it cannot own rows) | 321 | 358 | |
 | space (this design's Q) | the capital ships under `gameplay/vehicles` and `gameplay/ntcapitalships` | 359 | 205 | |
 | X (#836) | the effects' meshes and sheets (`fx/`, `a3/fx`) and their records | 309 | 25 | 26 |
 | M | the UI's art outside `textures/ui` and the front end's stages; the localisation, `media2` and `ui_*` records | | 456 | 85 |
@@ -42,9 +44,9 @@ Coverage (from lane Z's ledger, `docs/superpowers/evidence/bf2017-coverage/`, re
 | 6 (#812) | the other data: prefab and logic blueprints, reports, settings | | | 139 |
 | 7 (#812) | the online, persistence, telemetry and platform records | | | 80 |
 
-The surfaces design (#844), landed beside this one, is in the owners table under its own names (`surfaces-Q1` to `surfaces-Q6`; this design's space lane is `space` there, so the two Qs never meet), ahead of this design's lanes where both consume a row: Q1 `materials.jsonl` and `textures/shaders/**`, Q3 the Enlighten rows, Q4 every map's `maps.decals` row (not E0's) and the `FX/Decals` and `_decals` sheets, Q6 the `T_CC_*` colour cubes, `lighting/lut/` and the painted skies. Q2's ground layer maps are named only inside the scatter tables, so they stay the scatter rows' lane N until Q2 lists them. The bucket holds no Enlighten atlas textures yet (its 118 `enlighten` objects are proxy meshes and records): Q3's spike has nothing to read there. The owner holds the licence for every font, so there is no `licence` rule: the 23 fonts are lane M's.
+The surfaces design (#844), landed beside this one, is in the owners table under its own names (`surfaces-Q1` to `surfaces-Q6`; this design's space lane is `space` there, so the two Qs never meet), ahead of this design's lanes where both consume a row: Q1 `materials.jsonl` and `textures/shaders/**`, Q3 the Enlighten rows, Q4 every map's `maps.decals` row (not E0's) and the `FX/Decals` and `_decals` sheets, Q6 the `T_CC_*` colour cubes, `lighting/lut/` and the painted skies. Q2's ground layer maps are named only inside the scatter tables, so they stay the scatter rows' lane N until Q2 lists them. The bucket holds no Enlighten atlas textures yet (its 118 `enlighten` objects are proxy meshes and records); `textures.jsonl` lists the 200 `*_staticIrradianceTexture` sources, never queued, and the ledger has them `not-uploaded` (lane D's upload pass) until they land, when they become Q3's. The owner holds the licence for every font, so there is no `licence` rule: the 23 fonts are lane M's.
 
-The rule is the owners table's `finding: true` entries, first match wins: a folder of a level (`levels/`, `a3/`, `s*/`, `addons/`), the light and the sky → E; any `objects/` set and `levels/clouds` → O; `ui/` and the front-end stages → M; capital-ship names under `gameplay/vehicles` and `gameplay/ntcapitalships` → space; other `gameplay/vehicles` → 4; `gameplay/equipment`, `gameplay/kits`, `characters/`, `cinematics/` → A; `fx/` → X; `data/` by top folder (online and platform → 7; the rest → 6). The ten largest prefixes, which tell E, O and A how far their scope grew:
+The rule is the owners table's `finding: true` entries, first match wins: a folder of a level (`levels/`, `a3/`, `s*/`, `addons/`), the light and the sky → E; any `objects/` set and `levels/clouds` → O; `ui/` and the front-end stages → M; capital-ship names under `gameplay/vehicles` and `gameplay/ntcapitalships` → space; other `gameplay/vehicles` → 4; `gameplay/equipment` and `gameplay/kits` → 5; `characters/` → T; `cinematics/` → E; the animations' and cinematics' records → A; `fx/` → X; `data/` by top folder (online and platform → 7; the rest → 6). The ten largest prefixes, which tell E, O, T and the game's lane 5 how far their scope grew:
 
 | prefix | lane | rows |
 | --- | --- | --: |
@@ -52,12 +54,12 @@ The rule is the owners table's `finding: true` entries, first match wins: a fold
 | `levels/mp` | E | 2,766 |
 | `s6_2/geonosis_02` (its level meshes and maps) | E | 1,021 |
 | `a3/levels` | E | 847 |
-| `gameplay/equipment` | A | 625 |
+| `gameplay/equipment` | 5 | 625 |
 | `s3/objects` | O | 620 |
 | `gameplay/vehicles` (the capitals) | space | 562 |
 | `s6_2/geonosis_02` (its object sets) | O | 520 |
 | `gameplay/vehicles` (the rest) | 4 | 472 |
-| `characters/heads` | A | 455 |
+| `characters/heads` | T | 455 |
 
 A lane that merges sets its `merged` in `LANES`; from then `npm run coverage:bf2017` fails on every row it still owns and has not used, which is the next design's finding.
 
