@@ -99,7 +99,7 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | L | | | |
 | G | | | |
 | K | | | |
-| X | lane X’s session | `claude/bf2017-x-sabers` | (draft PR: tasks 1–2; 3–4 wait on lane 1) |
+| X | lane X’s session | `claude/bf2017-x-sabers` | #816 (draft: tasks 1–2; 3–4 wait on lane 1) |
 | S | | | |
 
 Findings for the next lane go here: which sub-levels each map needed, what `fitTo` dropped per tier, the calibration factor and which path each world’s sun direction took, which skins were still missing, which clips’ windows were pinned by hand.
