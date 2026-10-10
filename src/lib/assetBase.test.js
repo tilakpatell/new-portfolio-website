@@ -1,0 +1,82 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { assetUrl, forgetDown, isDown, markDown, withFallback } from './assetBase';
+
+const BASE = 'https://x.supabase.co/storage/v1/object/public/assets';
+const manifest = { 'kit/crate.glb': { hash: 'aaaaaaaaaaaa', bytes: 70000 }, 'hq/tex/rock.jpg': { hash: 'bbbbbbbbbbbb', bytes: 90000 } };
+const opts = { base: BASE, manifest };
+
+afterEach(() => forgetDown());
+
+describe('the asset base', () => {
+  it('sends a path the bucket holds to the bucket, by its hash', () => {
+    expect(assetUrl('/kit/crate.glb', opts)).toBe(`${BASE}/aaaaaaaaaaaa/kit/crate.glb`);
+    expect(assetUrl('hq/tex/rock.jpg', { ...opts, base: `${BASE}/` })).toBe(`${BASE}/bbbbbbbbbbbb/hq/tex/rock.jpg`);
+  });
+
+  it('leaves every other path as it was, byte for byte', () => {
+    expect(assetUrl('/kit/other.glb', opts)).toBe('/kit/other.glb');
+    expect(assetUrl('/kit/crate.glb?v=2', opts)).toBe('/kit/crate.glb?v=2');
+    expect(assetUrl('https://elsewhere.test/kit/crate.glb', opts)).toBe('https://elsewhere.test/kit/crate.glb');
+    expect(assetUrl('/kit/crate.glb', { ...opts, base: '' })).toBe('/kit/crate.glb');
+    expect(assetUrl('/kit/crate.glb', { ...opts, base: undefined })).toBe('/kit/crate.glb');
+  });
+
+  it('with no base in the build, asks nothing remote', () => {
+    vi.stubEnv('VITE_ASSET_BASE', '');
+    expect(assetUrl('/kit/crate.glb', { manifest })).toBe('/kit/crate.glb');
+    vi.unstubAllEnvs();
+  });
+
+  it('after one failure, sends every path local for the rest of the visit', () => {
+    expect(isDown()).toBe(false);
+    markDown();
+    expect(isDown()).toBe(true);
+    expect(assetUrl('/kit/crate.glb', opts)).toBe('/kit/crate.glb');
+  });
+
+  it('falls back to the local file once when the bucket fails, and remembers', async () => {
+    const asked = [];
+    const load = withFallback((url) => {
+      asked.push(url);
+      return url.startsWith('https:') ? Promise.reject(new Error('blocked')) : Promise.resolve(`bytes of ${url}`);
+    }, opts);
+    await expect(load('/kit/crate.glb')).resolves.toBe('bytes of /kit/crate.glb');
+    expect(asked).toEqual([`${BASE}/aaaaaaaaaaaa/kit/crate.glb`, '/kit/crate.glb']);
+    expect(isDown()).toBe(true);
+    await load('/hq/tex/rock.jpg');
+    expect(asked.slice(2)).toEqual(['/hq/tex/rock.jpg']);
+  });
+
+  it('asks the local file alone for a path the bucket lacks, and a local failure stays a failure', async () => {
+    const fail = vi.fn(() => Promise.reject(new Error('404')));
+    await expect(withFallback(fail, opts)('/kit/other.glb')).rejects.toThrow('404');
+    expect(fail).toHaveBeenCalledTimes(1);
+    expect(isDown()).toBe(false);
+  });
+
+  it('a bucket that works is used again', async () => {
+    const load = withFallback((url) => Promise.resolve(url), opts);
+    await load('/kit/crate.glb');
+    expect(await load('/hq/tex/rock.jpg')).toBe(`${BASE}/bbbbbbbbbbbb/hq/tex/rock.jpg`);
+    expect(isDown()).toBe(false);
+  });
+
+  it('gives up on a bucket that never answers, before it has answered once, and goes local', async () => {
+    const asked = [];
+    const load = withFallback((url) => {
+      asked.push(url);
+      return url.startsWith('https:') ? new Promise(() => {}) : Promise.resolve(`bytes of ${url}`);
+    }, { ...opts, wait: 20 });
+    await expect(load('/kit/crate.glb')).resolves.toBe('bytes of /kit/crate.glb');
+    expect(isDown()).toBe(true);
+  });
+
+  it('once the bucket has answered, waits for a big file as long as it takes', async () => {
+    const slow = (url) => new Promise((r) => setTimeout(() => r(url), url.includes('rock') ? 60 : 0));
+    const load = withFallback(slow, { ...opts, wait: 20 });
+    await load('/kit/crate.glb');
+    expect(await load('/hq/tex/rock.jpg')).toBe(`${BASE}/bbbbbbbbbbbb/hq/tex/rock.jpg`);
+    expect(isDown()).toBe(false);
+  });
+});
+
