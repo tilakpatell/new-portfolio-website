@@ -6,7 +6,9 @@
 // round when the check forces it. Lane 2's `mode`, `deploy` and `points`
 // replace those pieces; the page reads only `view()`.
 //
-//   createBattle({ rulebook, level, mode, heightAt, bots, seed, cell }) → battle
+//   createBattle({ rulebook, level, mode, heightAt, bots, seed, cell, mask }) → battle
+//   (mask: the pack's nav.bin, navMask.js's; one built for another grid is
+//   left out, with a warning, and the navgrid is the ground's alone)
 //   addPlayer(battle, { team }) → id ; deploy(battle, id, { classId }) → { ok, why? }
 //   step(battle, inputs) → events ; view(battle) → the page's view (each fallen
 //   entity's `fall`: { t, part, dir, at, weapon } from its kill, null on the
@@ -58,11 +60,12 @@ export function worldMove([x, y], yaw) {
   return [y * s - x * c, y * c + x * s];
 }
 
-export function createBattle({ rulebook, level = 'hoth', mode = 'galacticAssault', heightAt = () => 0, bots = { 1: BOTS, 2: BOTS }, seed = 1, cell = NAV_CELL, nav = null } = {}) {
+export function createBattle({ rulebook, level = 'hoth', mode = 'galacticAssault', heightAt = () => 0, bots = { 1: BOTS, 2: BOTS }, seed = 1, cell = NAV_CELL, nav = null, mask = null } = {}) {
   const map = mapOf(rulebook, level);
   const ga = stagesOf(rulebook, level, mode);
   const stage = ga?.stages?.[0] ?? null;
-  const grid = nav ?? buildNav({ heightAt, bounds: { min: map.bounds.min, max: map.bounds.max }, cell, cover: aiOf(rulebook).cover.constants });
+  const grid = nav ?? buildNav({ heightAt, bounds: { min: map.bounds.min, max: map.bounds.max }, cell, cover: aiOf(rulebook).cover.constants, mask });
+  if (mask && !grid.mask) console.warn(`battlefront: the nav mask (${mask.cols} × ${mask.rows} of ${mask.cell} m) is not this map's grid; walking the ground alone`);
   const sim = createSim({ rulebook, level, nav: grid, seed, bots });
   let letter = 0;
   const objectives = (stage?.objectives ?? [])
