@@ -790,8 +790,10 @@ const LOOK = [
 
 export async function createCybertronBackdrop(canvas, { side = 0, dark = true, calm = false, onLost } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, depth: true }));
-  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
-  guard(renderer);
+  // (what arrives late is held back until it's ready, not waited for:
+  // lib/three/frameGuard; the first frame drawn whole, as the city's
+  // pictures aren't sent before it)
+  guard(renderer, { firstWhole: true });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   // (the house tone mapper: houseOn, below, before the first frame)
   renderer.info.autoReset = false;

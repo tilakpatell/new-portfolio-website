@@ -70,6 +70,18 @@ export const CREW = {
   caradune: { url: '/models/galaxy/crew/caradune.glb', tall: 1.78 },
   greef: { url: '/models/galaxy/crew/greef.glb', tall: 1.85 },
   rodian: { url: '/models/galaxy/crew/rodian.glb', tall: 1.7 },
+  // the Hutts' men where the galaxy's war gives a world to the Hutts: Jabba's
+  // court's faces in turn (they were built in code, figures.js's `mercenary`)
+  mercenary: {
+    url: '/models/galaxy/crew/rodian.glb',
+    tall: 1.7,
+    faces: [
+      { url: '/models/galaxy/crew/aqualish.glb', tall: 1.8 },
+      { url: '/models/galaxy/crew/greedo.glb', tall: 1.73 },
+      { url: '/models/galaxy/crew/bith.glb', tall: 1.8 },
+      { url: '/models/galaxy/crew/gamorrean.glb', tall: 1.8 },
+    ],
+  },
   inquisitor: { url: '/models/galaxy/crew/inquisitor.glb', tall: 1.85 },
   tiepilot: { url: '/models/galaxy/crew/tiepilot.glb', tall: 1.8 },
   hondo: { url: '/models/galaxy/crew/hondo.glb', tall: 1.78 },
