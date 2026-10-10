@@ -1,0 +1,85 @@
+{
+  "route": "/battlefront/hoth/galacticAssault",
+  "size": [
+    960,
+    540
+  ],
+  "swiftshader": true,
+  "results": [
+    {
+      "leg": "webgl",
+      "quality": "low",
+      "errors": [],
+      "shots": {
+        "deploy": "docs/superpowers/evidence/battlefront-lane5/deploy-webgl.png",
+        "field": "docs/superpowers/evidence/battlefront-lane5/field-webgl.png",
+        "end": "docs/superpowers/evidence/battlefront-lane5/end-webgl.png"
+      },
+      "backend": "nodes-webgl",
+      "loadedMs": 74275,
+      "deploy": {
+        "ok": true
+      },
+      "advance": {
+        "ok": true,
+        "time": 31.750000000000316
+      },
+      "view": {
+        "player": {
+          "id": 1,
+          "state": "alive",
+          "at": [
+            -32.134,
+            313.5394248375,
+            -957.0956
+          ],
+          "yaw": 2.7471,
+          "team": 2,
+          "hp": 150,
+          "hpMax": 150,
+          "heat": 0,
+          "warning": 0.7,
+          "overheated": false,
+          "coolWindow": [
+            0.65,
+            0.8
+          ],
+          "cls": "d-orig-assault",
+          "weapon": "e11",
+          "abilities": [
+            {
+              "slot": 1,
+              "recharge": 1,
+              "ready": true
+            },
+            {
+              "slot": 2,
+              "recharge": 1,
+              "ready": true
+            },
+            {
+              "slot": 3,
+              "recharge": 1,
+              "ready": true
+            }
+          ]
+        },
+        "stage": "TAKE OUT ANY THREATS TO THE AT-ATS",
+        "level": {
+          "loaded": true,
+          "progress": 1,
+          "tris": 448469,
+          "calls": 94,
+          "instances": 1133
+        },
+        "weather": "sunny"
+      },
+      "frame": {
+        "frames": 3,
+        "mean": 4366.3,
+        "median": 4483.1,
+        "p95": 4483.2
+      }
+    }
+  ]
+}
