@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { HAND_JUMP, checkSources, isSequel, loadAsset, soldierRow, soldierRulebook } from './bf2017-physics-rules.mjs';
+import { HAND_JUMP, checkSources, loadAsset, refused, soldierRow, soldierRulebook } from './bf2017-physics-rules.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'bf2017');
 const SOLDIER = 'Gameplay/Characters/DefaultSoldierPhysics';
@@ -51,7 +51,7 @@ describe('the soldier’s physics row', () => {
     expect(checkSources(row)).toEqual([]);
     const bare = structuredClone(row);
     delete bare.poses.stand.step_source;
-    expect(checkSources(bare)).toEqual(['poses.stand.step']);
+    expect(checkSources(bare)).toEqual(['$.poses.stand.step']);
   });
 
   it('a record with no jump height takes the site’s jump, marked hand', () => {
@@ -69,7 +69,7 @@ describe('the soldier rulebook', () => {
     expect(book.default).toBe('DefaultSoldierPhysics');
     expect(book.missing).toEqual(['Gameplay/Characters/Nope']);
     expect(book.refused).toEqual(['Gameplay/Kits/Hero/KyloRen/KyloPhysics']);
-    expect(isSequel('Gameplay/Characters/Heroes/BBHeroPhysics')).toBe(false);
+    expect(refused('Gameplay/Characters/Heroes/BBHeroPhysics')).toBe(false);
   });
 
   it('reads a gzipped record as it reads a plain one', () => {
