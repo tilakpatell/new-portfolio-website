@@ -61,3 +61,17 @@ describe('the 2017 drop’s textures', () => {
     },
   );
 });
+
+describe('the colour maps whose alpha nothing reads', () => {
+  it('are an opaque material’s colour maps, never a cut-out’s or another slot’s', async () => {
+    const { Document } = await import('@gltf-transform/core');
+    const { opaqueColour } = await import('./bf2017-textures.mjs');
+    const doc = new Document();
+    const [body, hair, shared, normal] = ['body', 'hair', 'shared', 'normal'].map((n) => doc.createTexture(n));
+    doc.createMaterial('armour').setBaseColorTexture(body).setNormalTexture(normal);
+    doc.createMaterial('strands').setAlphaMode('MASK').setBaseColorTexture(hair);
+    doc.createMaterial('a').setBaseColorTexture(shared);
+    doc.createMaterial('b').setAlphaMode('BLEND').setBaseColorTexture(shared);
+    expect(opaqueColour(doc).map((t) => t.getName())).toEqual(['body']);
+  });
+});

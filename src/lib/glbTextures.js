@@ -1,5 +1,5 @@
 // What a GLB's textures cost on the GPU, read from the file alone: each
-// embedded image's width and height from its own header (PNG, JPEG, WebP),
+// embedded image's width and height from its own header (PNG, JPEG, WebP, AVIF),
 // as RGBA8 with a full mip chain (four thirds of the top level), which is
 // how three.js uploads a decoded image. Pure, no three, no canvas: a test
 // holds a model to the texture contract (docs/superpowers/specs/
@@ -23,6 +23,12 @@ export function imageSize(b) {
       return { width: (v & 0x3fff) + 1, height: ((v >> 14) & 0x3fff) + 1 };
     }
     return null;
+  }
+  // AVIF: an ISO box file (ftyp avif), the image's size in its 'ispe' box
+  // (version and flags, then width and height), near the start in the meta
+  if (b.toString('ascii', 4, 8) === 'ftyp') {
+    const at = b.subarray(0, Math.min(b.length, 4096)).indexOf('ispe', 0, 'ascii');
+    return at > 0 && at + 16 <= b.length ? { width: b.readUInt32BE(at + 8), height: b.readUInt32BE(at + 12) } : null;
   }
   // JPEG: the first start-of-frame marker
   if (b[0] === 0xff && b[1] === 0xd8) {

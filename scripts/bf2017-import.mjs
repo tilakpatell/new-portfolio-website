@@ -19,6 +19,7 @@
 //     [--root lab/assets/bf2017] [--metres <m> | --asis] [--along y|x|z|max] [--yaw <rad>] [--up y|z|-z|x|-x|-y]
 //     [--rig] [--crew] [--hero] [--ultra] [--cuts lod1=<n>,plain=<n>,ultra=<n>] [--tex 1024] [--maps 512] [--quality 82] [--maps-quality 80]
 //     [--parts '<glob>,…'] [--grip <node>] [--out public/models/galaxy]
+//     [--full] [--far] [--join]
 //
 //   name       the model's `name` in the manifest (bf2017-fetch.mjs --list finds it)
 //   kind       the catalogue kind: one already in another group is taken over
@@ -47,6 +48,19 @@
 //              without one falls back to IK_Joint_RightHand): a `grip` node
 //              is put there, under it on a rig so DICE's own names all stay;
 //              without either, at the model's own origin, which is DICE's hold
+//   full       phase 2's full fidelity (the design's section 6 as revised
+//              2026-10-10, 05:40): the plain cut is the game's LOD0, never
+//              simplified, every map at the game's own size up to 2048 as
+//              AVIF q90, positions at 16 bits; it goes to the bucket
+//              (assets-publish.mjs), not the repo. The `.lod1` is the first
+//              LOD under 1,500 triangles (a soldier's LOD4) at colour 1024
+//              and the rest 512, WebP. The row says `full: true`
+//   far        a `.far` cut from the chain's last LOD, colour 256 and the
+//              rest 128, under 150 KB: the squads past the level's `mid`
+//   join       a figure's parts (body, helmet, backpack) that share a
+//              material drawn as one (rig-parts.mjs's joinSkinned)
+//   (every cut: an opaque material's colour map loses its alpha, the
+//   game's smoothness, which the ORM map carries)
 //   keep-origin  not grounded: the model keeps the game's own origin, axes
 //              and metres (a hilt or a blaster, modelled for the Wep_Root
 //              socket with its grip at the origin and its barrel up +y)
@@ -65,11 +79,11 @@ import { createRequire } from 'node:module';
 import { dirname, join as path, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
-import { isSequel, cutsFor, partsOf, readManifest } from './lib/bf2017-manifest.mjs';
+import { isSequel, cutsFor, fullCuts, partsOf, readManifest } from './lib/bf2017-manifest.mjs';
 import { glbJson, imagePath, inBucket, localPath } from './lib/bf2017-paths.mjs';
-import { resolveImage } from './lib/bf2017-textures.mjs';
+import { resolveImage, stripOpaqueAlpha } from './lib/bf2017-textures.mjs';
 import { writeCatalogueLine, writeCredit } from './lib/catalog-write.mjs';
-import { shareSkins } from './lib/rig-parts.mjs';
+import { joinSkinned, shareSkins } from './lib/rig-parts.mjs';
 import { bareWhereUntextured, dims, grounded, relit, simplified, triangles, unskinned } from './lib/surface-model.mjs';
 
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
@@ -197,8 +211,13 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const hold = socket ? socket.getWorldTranslation() : [0, 0, 0];
   if (spec.rig) await doc.transform(dequantize(), dedup(), metalRough(), relit({}), prune(), bareWhereUntextured(), weld());
   else await doc.transform(dequantize(), unskinned(), dedup(), metalRough(), relit({}), prune(), bareWhereUntextured(), weld(), flatten(), join({ keepNamed: false }), weld());
+  // (--join: a figure's parts that share a material drawn as one)
+  if (spec.rig && spec.join) {
+    joinSkinned(doc);
+    await doc.transform(prune());
+  }
   // (the cut is the file, so this is only for parts that overshoot it)
-  if (triangles(doc) > budget * 1.1) {
+  if (spec.simplify !== false && triangles(doc) > budget * 1.1) {
     console.log(`  ${Math.round(triangles(doc))} triangles against the cut's ${budget}: simplified`);
     await doc.transform(simplified(budget));
   }
@@ -214,10 +233,16 @@ async function makeCut(io, entry, parts, lod, spec, out) {
   const held = spec.rig && socket && root.listNodes().includes(socket) ? socket : null;
   if (held) held.addChild(doc.createNode('grip'));
   else root.getDefaultScene().addChild(doc.createNode('grip').setTranslation(gripAt));
+  // (an opaque colour map's alpha is the game's smoothness, which the ORM
+  // map carries: kept, it costs the encoder colour)
+  await stripOpaqueAlpha(doc);
+  const format = spec.format ?? 'webp';
   await doc.transform(
-    textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
-    textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
-    meshopt({ encoder: MeshoptEncoder, level: 'high' }),
+    textureCompress({ encoder: sharp, targetFormat: format, slots: /baseColor|emissive/, resize: [spec.tex, spec.tex], quality: spec.quality }),
+    textureCompress({ encoder: sharp, targetFormat: format, slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps, spec.maps], quality: spec.mapsQuality }),
+    // (positions at 16 bits on the full cut, the game's own half-float
+    // precision; meshopt's 14 elsewhere)
+    meshopt({ encoder: MeshoptEncoder, level: 'high', ...(spec.positionBits ? { quantizePosition: spec.positionBits } : {}) }),
   );
   await mkdir(dirname(out), { recursive: true });
   await io.write(out, doc);
@@ -242,11 +267,12 @@ function cutsOf(entry, opts, rig) {
 }
 
 // The caps a cut is held to (the pipeline design's section 6): 2.5 MB, 4 MB
-// for a hero, 2.5 MB for a light cut, 24 MB for an ultra one. Each cut over
-// its cap, said.
+// for a hero, 2.5 MB for a light cut, 150 KB for a far one, 24 MB for an
+// ultra one; a full-fidelity plain cut (--full: it goes to the bucket, not
+// the repo) is held to the ultra's. Each cut over its cap, said.
 const MB = 1048576;
-export function overCaps(cuts, { hero = false } = {}) {
-  const cap = { plain: hero ? 4 * MB : 2.5 * MB, lod1: 2.5 * MB, ultra: 24 * MB };
+export function overCaps(cuts, { hero = false, full = false } = {}) {
+  const cap = { plain: full ? 24 * MB : hero ? 4 * MB : 2.5 * MB, lod1: 2.5 * MB, far: 150 * 1024, ultra: 24 * MB };
   return cuts.filter(([cut, bytes]) => bytes > cap[cut]).map(([cut, bytes]) => `${cut}: ${(bytes / MB).toFixed(1)} MB over ${(cap[cut] / MB).toFixed(1)} MB`);
 }
 
@@ -282,7 +308,11 @@ export async function importModel(name, opts) {
     mapsQuality: Number(opts.mapsQuality ?? opts.quality ?? 80),
     said: { found: new Set(), missing: new Set() },
   };
-  const cuts = cutsOf(entry, opts, rig);
+  // (--full: the game's LOD0 at its own maps, the light cut at LOD4 or so)
+  const full = Boolean(opts.full);
+  const cuts = full ? fullCuts(entry) : cutsOf(entry, opts, rig);
+  const lastLod = [...entry.lods].sort((a, b) => a.lod - b.lod).pop();
+  const farLod = opts.far ? (cuts.far ?? lastLod) : null;
   await MeshoptEncoder.ready;
   await MeshoptDecoder.ready;
   await MeshoptSimplifier.ready;
@@ -292,12 +322,18 @@ export async function importModel(name, opts) {
   const sub = opts.crew ? (rig ? 'bf2017/crew' : 'crew') : 'surface';
   const dir = path(outRoot, sub);
   const made = [];
-  const plain = await makeCut(io, entry, parts, cuts.plain, { ...spec, tex, maps }, path(dir, `${kind}.glb`));
+  spec.join = Boolean(opts.join);
+  // (the full cut: every map at the game's own size, up to 2048, AVIF q90,
+  // the mesh never simplified; positions at 16 bits)
+  const plainSpec = full ? { ...spec, tex: 2048, maps: 2048, format: 'avif', quality: Number(opts.quality ?? 90), mapsQuality: Number(opts.quality ?? 90), positionBits: 16, simplify: false } : { ...spec, tex, maps };
+  const plain = await makeCut(io, entry, parts, cuts.plain, plainSpec, path(dir, `${kind}.glb`));
   made.push(['plain', cuts.plain, plain]);
   let lod = false;
   if (cuts.lod1) {
-    // (the light cut: half the colour, a quarter of the full maps at most 512, at the usual quality)
-    const light = await makeCut(io, entry, parts, cuts.lod1, { ...spec, tex: tex / 2, maps: Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 }, path(dir, `${kind}.lod1.glb`));
+    // (the light cut: half the colour, a quarter of the full maps at most
+    // 512, at the usual quality; under --full, colour 1024 and the rest 512)
+    const lightSpec = full ? { ...spec, tex: 1024, maps: 512, quality: 82, mapsQuality: 80 } : { ...spec, tex: tex / 2, maps: Math.min(maps / 2, Math.max(256, maps / 4)), quality: 82, mapsQuality: 80 };
+    const light = await makeCut(io, entry, parts, cuts.lod1, lightSpec, path(dir, `${kind}.lod1.glb`));
     if (light.bytes < 0.7 * plain.bytes) {
       made.push(['lod1', cuts.lod1, light]);
       lod = true;
@@ -306,6 +342,9 @@ export async function importModel(name, opts) {
       console.log(`  no .lod1: LOD${cuts.lod1.lod} came to ${light.bytes} bytes, not under 0.7 × the plain file's ${plain.bytes}`);
     }
   } else console.log('  no .lod1: the chain has no cut light enough below the plain one');
+  // (--far: the chain's last cut, colour at 256 and the rest at 128, for the
+  // squads past the level's mid, a few dozen pixels tall there)
+  if (farLod) made.push(['far', farLod, await makeCut(io, entry, parts, farLod, { ...spec, tex: 256, maps: 128, quality: 80, mapsQuality: 78 }, path(dir, `${kind}.far.glb`))]);
   let ultra = null;
   if (cuts.ultra) {
     const ut = Number(opts.ultraTex ?? 2048);
@@ -314,7 +353,7 @@ export async function importModel(name, opts) {
     ultra = { tris: u.tris, tex: ut };
   }
   // (a file over its cap is not shipped: the import stops and says which)
-  const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero) });
+  const over = overCaps(made.map(([cut, , r]) => [cut, r.bytes]), { hero: Boolean(opts.hero), full });
   if (over.length) throw new Error(`${kind}: ${over.join('; ')} (smaller --tex and --maps, or another --cuts)`);
   for (const f of spec.said.found) console.log(`  map ${f}`);
   for (const f of spec.said.missing) console.log(`  missing: ${f}`);
@@ -326,12 +365,15 @@ export async function importModel(name, opts) {
     console.log(`${relative(ROOT, r.out).padEnd(48)} ${cut.padEnd(5)} LOD${l.lod}  ${r.tris} triangles, ${r.draws} draws, ${r.maps} maps, ${(r.bytes / 1024).toFixed(1)} KB; ${w.toFixed(2)} wide × ${h.toFixed(2)} tall × ${d.toFixed(2)} long (m)`);
   }
   const file = `/models/galaxy/${sub}/${kind}.glb`;
-  if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus', pack: '${kind}'` : ''} },`);
+  const more = `${lod ? ', lod: true' : ''}${farLod ? ', far: true' : ''}${full ? ', full: true' : ''}`;
+  if (opts.crew) console.log(`the CREW row (src/components/galaxy/surface/crewList.js):\n  ${kind}: { url: '${file}', tall: ${metres}${rig ? `, rig: 'walrus'${opts.hero ? `, pack: '${kind}'` : ''}` : ''}${more} },`);
   else {
     const row = { made: 'bf2017', as: opts.as, metres, along: spec.along, yaw: 0, tris: cuts.plain.triangles, tex };
     if (rig) row.rig = true;
     if (opts.hero) row.hero = true;
     if (lod) row.lod = true;
+    if (farLod) row.far = true;
+    if (full) row.full = true;
     if (ultra) row.ultra = ultra;
     row.from = name;
     await writeCatalogueLine(resolve(opts.catalog ?? path(ROOT, 'src', 'components', 'galaxy', 'surface', 'catalog', 'bf2017.js')), kind, row);

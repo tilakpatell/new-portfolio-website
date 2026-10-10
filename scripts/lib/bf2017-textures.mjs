@@ -18,6 +18,39 @@ import { localPath, mapPath, textureSources } from './bf2017-paths.mjs';
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
 const sharp = createRequire(createRequire(import.meta.url).resolve('ndarray-pixels'))('sharp');
 const run = promisify(execFile);
+export const sharpOf = () => sharp;
+
+// The colour maps whose alpha nothing reads: a `_CS` map carries the game's
+// smoothness in its alpha (the ORM map has it already), and on an opaque
+// material that alpha only costs the encoder colour (WebP at q100 held 33.7
+// dB on Luke's colour with it, 48.6 at q90 without: the design's section
+// 6). A map any cut-out or blended material reads, or any other slot,
+// keeps its alpha.
+export function opaqueColour(doc) {
+  const root = doc.getRoot();
+  const out = [];
+  for (const t of root.listTextures()) {
+    const users = t.listParents().filter((p) => p.propertyType === 'Material');
+    if (!users.length) continue;
+    const onlyColour = users.every((m) => m.getBaseColorTexture() === t && m.getAlphaMode() === 'OPAQUE' && m.getEmissiveTexture() !== t && m.getNormalTexture() !== t && m.getOcclusionTexture() !== t && m.getMetallicRoughnessTexture() !== t);
+    if (onlyColour) out.push(t);
+  }
+  return out;
+}
+
+// Those maps with their alpha taken off (PNG in, PNG out: the encoder comes after).
+export async function stripOpaqueAlpha(doc) {
+  let n = 0;
+  for (const t of opaqueColour(doc)) {
+    const img = t.getImage();
+    if (!img) continue;
+    const meta = await sharp(Buffer.from(img)).metadata();
+    if (!meta.hasAlpha) continue;
+    t.setImage(new Uint8Array(await sharp(Buffer.from(img)).removeAlpha().png().toBuffer())).setMimeType('image/png');
+    n++;
+  }
+  return n;
+}
 
 // basisu writes every level in every GPU format; the closest to the source
 // is the uncompressed one where it writes it, else ASTC, else BC7 (both near
