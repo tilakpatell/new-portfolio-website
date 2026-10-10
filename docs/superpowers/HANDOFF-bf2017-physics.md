@@ -42,7 +42,7 @@ Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, 
 | design | the architecting session | `claude/bf2017-physics` | (this PR) | |
 | P0 | | `claude/bf2017-p0-shapes` | | |
 | P1 | | `claude/bf2017-p1-body` | | |
-| P2 | a desktop session (the export read locally) | `claude/bf2017-p2-bolts` | PR_NUMBER | |
+| P2 | a desktop session (the export read locally) | `claude/bf2017-p2-bolts` | #820 | |
 | P3 | | `claude/bf2017-p3-vehicles` | | |
 | P4 | | `claude/bf2017-p4-surfaces` | | |
 
