@@ -53,6 +53,8 @@ const V = [-210, 150]; // the village
 
 export const SITES = {
   endor: {
+    // lit as the game lights its level (src/data/bf2017/light/endor.json, gameLit.js)
+    gameLight: 'endor',
     place: 'The forest moon',
     line: 'Redwoods older than the Empire, and something small watching you from the ferns.',
     sky: {
@@ -337,6 +339,8 @@ export const SITES = {
   },
 
   kashyyyk: {
+    // lit as the game lights its level (src/data/bf2017/light/kashyyyk.json, gameLit.js)
+    gameLight: 'kashyyyk',
     place: 'The shore at Kachirho',
     line: 'Wroshyr trees as tall as mountains, and a lagoon full of trouble.',
     sky: {

@@ -1,0 +1,104 @@
+{
+ "world": "scarif",
+ "map": "s9_3/scarif/levels/mp/scarif_02/scarif_02",
+ "main": "sunset",
+ "sky": {
+  "main": "S9_3/Scarif/Levels/MP/Scarif_02/Lighting/VE_Sky_Beach_Sunset_01",
+  "overrides": []
+ },
+ "weathers": {
+  "sunset": {
+   "sun": {
+    "color": [
+     0.984329,
+     0.355679065,
+     0.09473883
+    ],
+    "lux": 15000,
+    "az": 301.282,
+    "el": 11.561,
+    "sky": [
+     0.317929,
+     0.340732068,
+     0.399528623
+    ]
+   },
+   "sky": {
+    "luminance": 7000,
+    "sunSize": 0.004,
+    "panorama": "S9_3/Scarif/Levels/MP/Scarif_02/Lighting/Sky/T_Beach_Sky_Sunset_01_C",
+    "gradient": "S9_3/Scarif/Levels/MP/Scarif_02/Lighting/Sky/T_Beach_Sky_Sunset_01_Fog_C"
+   },
+   "fog": {
+    "color": [
+     0,
+     0,
+     0
+    ],
+    "start": 10,
+    "end": 15000,
+    "curve": [
+     0.826832533,
+     -1.39062452,
+     1.14366341,
+     -0.0056837853
+    ],
+    "height": 225,
+    "heightDepth": 20,
+    "heightRange": 1000,
+    "scatter": [
+     19535.0664,
+     7973.84229,
+     1616.72571
+    ]
+   },
+   "tonemap": {
+    "compensation": 0.25,
+    "minEV": 10,
+    "maxEV": 11,
+    "auto": true,
+    "bloom": 0.194617808
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/scarif/sunset.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 0,
+    "strength": 5
+   },
+   "enlighten": {
+    "ground": [
+     0.214041144,
+     0.214041144,
+     0.214041144
+    ]
+   },
+   "source": [
+    "S9_3/Scarif/Levels/MP/Scarif_02/Lighting/VE_Sky_Beach_Sunset_01"
+   ],
+   "probe": {
+    "id": "2c674d03",
+    "variant": "Sunset_Lighting",
+    "zenith": [
+     294.266,
+     228.039,
+     168.641
+    ],
+    "horizon": [
+     241.124,
+     204.223,
+     155.477
+    ],
+    "ground": [
+     47.09,
+     58.155,
+     41.237
+    ],
+    "open": 1.14,
+    "url": "textures/galaxy/bf2017/light/scarif/sunset"
+   }
+  }
+ },
+ "indoor": null
+}
