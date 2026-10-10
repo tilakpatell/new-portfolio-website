@@ -723,3 +723,11 @@
 @media (max-width: 767px) { .galaxy-battleend { top: max(34%, calc(var(--nav-h, 68px) + 200px)); } }
 @media (prefers-reduced-motion: no-preference) { .galaxy-battleend { animation: galaxy-end-in 0.45s ease-out both; } }
 @keyframes galaxy-end-in { from { opacity: 0; transform: translate(-50%, -0.6rem) scale(0.96); } }
+
+/* the game's loading film of the system, at the top of its card (Film.jsx) */
+.galaxy-film-card {
+  aspect-ratio: 16 / 9;
+  margin: 0.6rem 0 0.4rem;
+  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
