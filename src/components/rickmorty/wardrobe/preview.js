@@ -2,7 +2,9 @@
 // of its own, in the cast's toon look under a studio's light (a key, a fill
 // and a green rim from behind, on a disc), turning slowly on its own and by
 // a drag. A new colour is only new numbers in the figure's materials; new
-// gear is put on again; a new body is a new figure, loaded once. Walt and
+// gear is put on again; a new body is a new figure, loaded once. Whatever
+// changes, the figure gives you a wave in it (on its upper half, the
+// library's clip; a figure that can't plays nothing). Walt and
 // Jesse stand in a studio of their own: an RV-brown disc with a Blue Sky
 // ring, a desert sun’s rim of light.
 //
@@ -64,11 +66,19 @@ export function createWardrobePreview(canvas, { reduced = false } = {}) {
   let undoGear = () => {};
   let shown = null; // { body, gear (as text) }
   let wanted = null;
+  let wavedAt = -Infinity; // (one wave at a time: a run of clicks doesn't restart it)
+  const wave = () => {
+    const now = performance.now() / 1000;
+    if (now - wavedAt < 2.5 || !figure?.play) return;
+    wavedAt = now;
+    figure.play('wave', { layer: 'upper' })?.catch?.(() => {});
+  };
   const clear = () => {
     undoGear();
     undoGear = () => {};
     for (const m of mats) m.dispose();
     mats = [];
+    figure?.anim?.dispose();
     figure?.group.removeFromParent();
     figure = null;
   };
@@ -135,6 +145,8 @@ export function createWardrobePreview(canvas, { reduced = false } = {}) {
       await need(KINDS[body].a);
       if (wanted !== look) return; // (another came meanwhile)
       const gear = JSON.stringify(gearWorn(look));
+      const colors = JSON.stringify(look.colors ?? {});
+      const changed = Boolean(shown) && (shown.body !== body || shown.gear !== gear || shown.colors !== colors);
       if (!figure || shown?.body !== body) {
         clear();
         figure = cast.make(body);
@@ -144,6 +156,7 @@ export function createWardrobePreview(canvas, { reduced = false } = {}) {
         figure.group.updateMatrixWorld(true);
         mats = dressColors(figure, look);
         undoGear = wearGear(figure, look);
+        wavedAt = -Infinity;
       } else {
         for (const m of mats) m.userData.regions?.set(look.colors);
         if (shown.gear !== gear) {
@@ -151,7 +164,8 @@ export function createWardrobePreview(canvas, { reduced = false } = {}) {
           undoGear = wearGear(figure, look);
         }
       }
-      shown = { body, gear };
+      shown = { body, gear, colors };
+      if (changed && !reduced) wave();
     },
     dispose() {
       cancelAnimationFrame(raf);

@@ -8,7 +8,9 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useSays } from '../hq/useSays';
 import { EYE, LANES, RANGE, WAVES, aimAt, newRange, rayHit, startRange, stepRange, strafe, unibeam } from './rules';
+import { LINES, SAYS, SPOKEN } from './lines';
 import './repulsor.css';
 import '../../../styles/lazy/avengers.css';
 
@@ -25,18 +27,9 @@ const buzz = (ms) => {
 const BEST = 'tp-hq-repulsor-best';
 const STEP = 1 / 120;
 
-// What F.R.I.D.A.Y. says as each wave comes in.
-const LINES = [
-  'Drones inbound, boss. Light them up.',
-  'Target practice. Discs on both flanks, points for style.',
-  'Sentry incoming. When it glows red, move.',
-  'Missiles. Shoot them down before they close.',
-  'Sentries and drones together. Watch your lanes.',
-  'Three sentries. They’ll try to box you in.',
-  'Heavy wave. Keep the reactor topped up.',
-  'Swarm. This is what the unibeam is for.',
-  'That’s Ultron Prime. Plates first, then the core.',
-];
+// what F.R.I.D.A.Y. says (./lines.js) in her own voice, where it's been made
+// (lib/voiced.js): the lines that are the same every time
+const VOICED = new Set(SPOKEN);
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
@@ -78,6 +71,7 @@ export default function RepulsorRange({ fallback }) {
   const [ui, setUi] = useState({ phase: 'ready', wave: 1, title: WAVES[0].title, armor: RANGE.armor, energy: RANGE.energy, charge: 0, score: 0, combo: 0, message: '', danger: [], paused: false, newBest: false, stone: false, bonus: 0 });
   const [paused, setPaused] = useState(false);
   const playing = ui.phase === 'wave' || ui.phase === 'break';
+  useSays('friday', ui.message, VOICED);
 
   const sync = useCallback((extra = {}) => {
     const s = game.current;
@@ -172,24 +166,24 @@ export default function RepulsorRange({ fallback }) {
             break;
           case 'plate':
             play('clang');
-            important = { message: e.left ? `Plate down. ${e.left} to go.` : 'All plates gone. The core is open: hit it.' };
+            important = { message: e.left ? `Plate down. ${e.left} to go.` : SAYS.core };
             break;
           case 'damage':
             play('hit');
             buzz(80);
             f.hurt = 1;
-            important = { message: e.armor <= 1 ? 'Armour critical, boss. One more and you’re walking home.' : `Hit. Armour at ${e.armor} of ${RANGE.armor}.` };
+            important = { message: e.armor <= 1 ? SAYS.critical : `Hit. Armour at ${e.armor} of ${RANGE.armor}.` };
             if (e.armor === 1) play('alarm');
             break;
           case 'dry':
-            important = { message: 'Reactor’s dry. Ease off and let it charge.' };
+            important = { message: SAYS.dry };
             break;
           case 'charge':
             play('warn');
             break;
           case 'volley':
             play('warn');
-            important = { message: 'Volley incoming! Find the clear lane.' };
+            important = { message: SAYS.volley };
             break;
           case 'spawn':
             if (e.kind === 'missile') play('torpedo');
@@ -217,7 +211,7 @@ export default function RepulsorRange({ fallback }) {
               setBest(e.score);
               local.set(BEST, e.score);
             }
-            important = { message: 'Ultron Prime is scrap. Nice flying, boss.', newBest: isBest, stone: first || hasEarned('power'), bonus: e.bonus };
+            important = { message: SAYS.won, newBest: isBest, stone: first || hasEarned('power'), bonus: e.bonus };
             break;
           }
           case 'lost': {

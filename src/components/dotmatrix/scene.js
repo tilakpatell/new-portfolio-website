@@ -7,6 +7,10 @@
 // small, then ./dither.js turns brightness into the four shades.
 //
 // It draws what the component hands it every frame and decides nothing.
+// The people in it move by ./life.js: their feet keep to the ground they
+// cover, the villagers look round at the hero and wave hello, the walkers
+// come round at the ends of their beats, the hero eases into and out of a
+// jump and lands with a squash, and the islanders online strike emotes.
 //
 // createDotMatrix(canvas, { onLost }) returns { render(state, ms), fx(type,
 // data), screenOf(x, y, z), setPalette(id), resize(w, h), dispose(), lost,
@@ -21,6 +25,7 @@ import { device } from '../../lib/device';
 import { H as SCREEN_H, W as SCREEN_W } from '../../stages/gb/font';
 import { newConsole, renderConsole, stepConsole } from '../../stages/gb/console';
 import { createDither, shadeValue } from './dither';
+import { sharpen } from '../../lib/three/textures';
 import {
   BLOCKS,
   BLOCK_LO,
@@ -30,6 +35,8 @@ import {
   GAMEBOY,
   H,
   MAP,
+  CRAFT,
+  HERO,
   N64,
   N64_CART,
   PIPES,
@@ -47,6 +54,11 @@ import {
   snakeAt,
   walkerAt,
 } from './rules';
+import { LEG, WALKER_STRIDE, boxEmote, createNotice, createStride, legAngle, stepAt, walkerStride } from './life';
+import { sway } from '../../lib/three/gait';
+import { createFeel, feelGroups } from '../../lib/three/feel';
+import { createSpring, springGroups } from '../../lib/spring';
+import { debugOn, debugPanel } from '../../lib/debugPanel';
 
 // a grey as it should look (0 black, 1 white), in the linear working space
 const grey = (v) => new THREE.Color().setRGB(v, v, v, THREE.SRGBColorSpace);
@@ -71,6 +83,7 @@ function pixels(size, draw) {
   const g = c.getContext('2d');
   draw(g, size);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   t.magFilter = THREE.NearestFilter;
   t.minFilter = THREE.NearestFilter;
@@ -100,6 +113,17 @@ const blockFace = (face, mark) =>
     g.fillRect(s - 1, 0, 1, s);
     mark?.(g, s);
   });
+// the camera's knock (lib/three/feel's trauma): a hurt throws him back, a
+// stomp is a small thump under him; the island is seen from 12.5 m away, so
+// the shake reaches further than the feel's default to read at all
+const HURT_SHAKE = 0.5;
+const STOMP_SHAKE = 0.25;
+const SHAKE_OFFSET = 0.3;
+// his landing's squash, on a spring: kicked by how fast he came down, it
+// squashes and rings back through a little stretch; at a full jump's 8.9 m/s
+// it reaches the 16% the old sine had
+const SQUASH = { k: 120, c: 8, max: 0.3 };
+const SQUASH_KICK = 0.36;
 const QUESTION = ['0111100', '1100110', '0000110', '0001100', '0011000', '0000000', '0011000'];
 const glyph = (rows, x0, y0, colour) => (g) => {
   g.fillStyle = colour;
@@ -594,16 +618,30 @@ function buildFigure(look = {}) {
   return { group: g, legL, legR, armL, armR, head, body, scale };
 }
 
-// walking: legs and arms swung by `phase`, as far as `sp` (0 to 1) says;
-// standing: everything hanging, with a little breathing
-function poseWalk(f, phase, sp, now = 0) {
-  const swing = Math.sin(phase) * 0.75 * sp;
-  f.legL.rotation.x = swing;
-  f.legR.rotation.x = -swing;
-  f.armL.rotation.x = -swing * 0.9;
-  f.armR.rotation.x = swing * 0.9;
+// walking: each leg turned so its foot stays where it landed while it's
+// down (`st`, a stride from ./life.js), the arms swinging against them, the
+// body highest over each foot; standing: everything hanging, breathing
+function poseStride(f, st, now = 0) {
+  const a = st.swing * st.amount;
+  f.legL.rotation.x = legAngle(st.phase, a);
+  f.legR.rotation.x = legAngle(st.phase + Math.PI, a);
+  const arm = Math.sin(st.phase) * a * 0.9;
+  f.armL.rotation.x = arm;
+  f.armR.rotation.x = -arm;
+  f.armL.rotation.z = 0;
   f.armR.rotation.z = 0;
-  f.body.position.y = 0.47 + Math.abs(Math.sin(phase)) * 0.03 * sp + (sp < 0.05 ? Math.sin(now * 2.2) * 0.008 : 0);
+  f.body.position.y = 0.47 + sway(st.phase, st.amount).bob * 0.03 + (1 - st.amount) * Math.sin(now * 2.2) * 0.008;
+}
+// an emote (./life.js's boxEmote) over whatever the limbs were doing
+function poseEmote(f, e) {
+  f.armL.rotation.x = e.armL[0];
+  f.armL.rotation.z = e.armL[1];
+  f.armR.rotation.x = e.armR[0];
+  f.armR.rotation.z = e.armR[1];
+  f.legL.rotation.x = e.legL;
+  f.legR.rotation.x = e.legR;
+  f.head.rotation.y = e.head;
+  f.group.position.y += e.lift;
 }
 
 // the hero: the lad in the cap, seen through whatever's in front of him
@@ -815,6 +853,7 @@ function buildGameBoy() {
   canvas.height = SCREEN_H;
   const ctx = canvas.getContext('2d');
   const tex = new THREE.CanvasTexture(canvas);
+  sharpen(tex);
   tex.colorSpace = THREE.NoColorSpace;
   tex.magFilter = tex.minFilter = THREE.NearestFilter;
   tex.generateMipmaps = false;
@@ -973,6 +1012,31 @@ function buildN64() {
   };
 }
 
+// the giant crafting table east of it (Minecraft, ../minecraft/): a block
+// two across, its faces the pack's own tiles cut from the world's strip,
+// the front (the saw and the hammer) to the south and west, where it's
+// played from; grey until they come
+function buildCraft() {
+  const size = CRAFT.x1 - CRAFT.x0;
+  const blank = lambert(0.45);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, CRAFT.top, size), [blank, blank, blank, blank, blank, blank]);
+  mesh.position.set((CRAFT.x0 + CRAFT.x1) / 2, CRAFT.top / 2, (CRAFT.z0 + CRAFT.z1) / 2);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  const base = `${import.meta.env?.BASE_URL ?? '/'}mc/`;
+  (async () => {
+    const manifest = await (await fetch(`${base}manifest.json`)).json();
+    const img = new Image();
+    img.src = `${base}blocks.webp`;
+    await img.decode();
+    const tile = (name) => pixels(16, (g) => g.drawImage(img, 0, manifest.blocks.indexOf(name) * 16, 16, 16, 0, 0, 16, 16));
+    // a box's faces go +x, −x, +y, −y, +z, −z
+    const faces = ['crafting_table_side', 'crafting_table_front', 'crafting_table_top', 'oak_planks', 'crafting_table_front', 'crafting_table_side'];
+    mesh.material = faces.map((f) => new THREE.MeshLambertMaterial({ map: tile(f) }));
+  })().catch(() => {});
+  return mesh;
+}
+
 // the cloud over the sea: flat on top, puffed out round the sides
 function buildCloud(rand) {
   const g = new THREE.Group();
@@ -1030,7 +1094,7 @@ function buildSkyClouds(rand) {
 
 export function createDotMatrix(canvas, { onLost } = {}) {
   const tier = device().tier;
-  const gl = createRenderer(canvas, { alpha: false, antialias: false, ratio: 1, onLost });
+  const gl = createRenderer(canvas, { alpha: false, antialias: false, ratio: 1, onLost, guard: true });
   const { renderer } = gl;
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = tier !== 'low';
@@ -1039,6 +1103,10 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0xffffff, 30, 74);
   const camera = new THREE.PerspectiveCamera(36, 16 / 9, 0.5, 200);
+  // a knock of the camera on a hurt and a stomp (lib/three/feel: trauma²,
+  // none under reduced motion)
+  const feel = createFeel({ baseFov: 36, offset: SHAKE_OFFSET });
+  let panel = null; // behind ?debug: the feel's numbers, and what the page adds
   const rand = rng(1989);
 
   // the light: a high sun over the south-west, and a sky's worth of fill
@@ -1077,6 +1145,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   scene.add(gameboy.group);
   const n64 = buildN64();
   scene.add(n64.group);
+  scene.add(buildCraft());
 
   // "?" blocks: a fresh face, and a spent one
   const qTex = blockFace(0.96, glyph(QUESTION, 5, 4, hex(0.1)));
@@ -1154,22 +1223,37 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   });
 
   const hero = buildHero();
+  hero.group.rotation.order = 'YXZ'; // (a lean is about where he faces)
   scene.add(hero.group);
+  const heroStride = createStride({ leg: LEG * 1.15 });
+  let ghostSeed = 100;
   const folk = new Map();
-  for (const v of VILLAGERS) {
+  VILLAGERS.forEach((v, i) => {
     const f = buildFigure(LOOKS[v.id]);
     scene.add(f.group);
-    folk.set(v.id, { ...f, phase: 0 });
-  }
+    // each on a foot of its own, noticing the hero for itself
+    folk.set(v.id, { ...f, stride: createStride({ leg: LEG * (f.scale ?? 1), seed: i + 1 }), notice: createNotice() });
+  });
   // the other islanders online, as pale ghosts (the towns' ghosts, in this
   // island's figure; their names are the component's, over the canvas)
   const ghosts = createGhosts({
     height: () => 0,
     make: () => {
       const f = buildFigure({ cap: true, body: 0.7, legs: 0.3 });
-      return { group: f.group, top: 1.0, fig: f };
+      return { group: f.group, top: 1.0, fig: f, stride: createStride({ seed: (ghostSeed += 1) }) };
     },
-    animate: (f, t, p) => poseWalk(f.fig, t * 7, p.moving ? 1 : 0, t),
+    // their feet by their pace (what they send, else how far they've come
+    // since the last frame; an older traveller, by whether they're moving),
+    // and an emote they strike, in boxes
+    animate: (f, t, p, dt = 0) => {
+      const at = f.group.parent?.position;
+      let speed = Number.isFinite(p.motion?.speed) ? p.motion.speed : null;
+      if (speed == null && at && f.last && dt > 0) speed = Math.min(8, Math.hypot(at.x - f.last.x, at.z - f.last.z) / dt); // (not a jump to a new place)
+      if (at) f.last = { x: at.x, z: at.z };
+      poseStride(f.fig, f.stride.step(dt, speed ?? (p.moving ? 1.4 : 0)), t);
+      const e = p.emote ? boxEmote(p.emote.id, p.emote.t) : null;
+      if (e) poseEmote(f.fig, e);
+    },
     tag: 0.0001,
     halo: 0.6,
     snap: 6,
@@ -1254,8 +1338,12 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   const one = new THREE.Vector3(1, 1, 1);
   const look = new THREE.Vector3();
   const cam = { x: 0, y: 0, z: 0, ready: false };
-  let walkPhase = 0;
   let idleT = 0;
+  let air = 0; // 0 on the ground, 1 in a jump, eased
+  const squash = createSpring(SQUASH); // + squashed, − stretched
+  let fall = 0; // how fast he's coming down, while he's in the air
+  let wasGround = true;
+  let knock = 0; // thrown back by a hurt, eased
   let disposed = false;
   let lost = false;
   let warmed = false;
@@ -1269,25 +1357,51 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     const h = game.hero;
     const now = performance.now() / 1000;
 
-    // the hero
+    // the hero: his feet on the ground he covers, into a jump and out of it
+    // eased, a squash as he lands, thrown back when he's hurt
     hero.group.position.set(h.x, h.y, h.z);
     hero.group.rotation.y = h.face;
-    const sp = Math.min(1, h.moving / 4.6);
-    walkPhase += dt * (4 + sp * 8) * (h.ground ? sp : 0);
-    // stood still a while, he has a look round
-    idleT = h.ground && sp < 0.05 ? idleT + dt : 0;
-    hero.head.rotation.y += ((idleT > 2.5 ? Math.sin((idleT - 2.5) * 1.1) * 0.55 : 0) - hero.head.rotation.y) * (1 - Math.exp(-5 * dt));
-    if (h.ground) poseWalk(hero, walkPhase, sp, now);
-    else {
-      hero.legL.rotation.x = 0.6;
-      hero.legR.rotation.x = -0.35;
-      hero.armL.rotation.x = 0.3;
-      hero.armR.rotation.x = -2.6; // a fist in the air
-      hero.armR.rotation.z = -0.15;
+    const sp = Math.min(1, h.moving / HERO.speed);
+    poseStride(hero, heroStride.step(dt, h.moving), now); // (on in the air, under the jump's pose, so he lands mid-stride)
+    air += ((h.ground ? 0 : 1) - air) * (1 - Math.exp(-16 * dt));
+    if (!h.ground) fall = Math.max(fall, -(h.vy ?? 0));
+    else if (!wasGround) {
+      squash.kick(fall * SQUASH_KICK);
+      fall = 0;
     }
-    // squeezing into a pipe, or out of one
+    wasGround = h.ground;
+    const mix = (o, key, to) => (o.rotation[key] += (to - o.rotation[key]) * air);
+    mix(hero.legL, 'x', 0.6);
+    mix(hero.legR, 'x', -0.35);
+    mix(hero.armL, 'x', 0.3);
+    mix(hero.armR, 'x', -2.6); // a fist in the air
+    mix(hero.armR, 'z', -0.15);
+    knock += ((game.hurt > HERO.hurt - 0.35 ? 1 : 0) - knock) * (1 - Math.exp(-18 * dt));
+    hero.armL.rotation.z += (-1.1 - hero.armL.rotation.z) * knock;
+    hero.armR.rotation.z += (1.1 - hero.armR.rotation.z) * knock;
+    hero.group.rotation.x = -0.35 * knock;
+    // stood still a while, he has a look round; with a villager stopped to
+    // talk to him, he looks at them, and waves back at one who waves
+    idleT = h.ground && sp < 0.05 ? idleT + dt : 0;
+    let lookAt = idleT > 2.5 ? Math.sin((idleT - 2.5) * 1.1) * 0.55 : 0;
+    let waved = 0;
+    for (const v of VILLAGERS) {
+      const near = game.folk[v.id];
+      if (near?.stopped) {
+        const rel = Math.atan2(near.x - h.x, near.z - h.z) - h.face;
+        lookAt = Math.max(-0.9, Math.min(0.9, Math.atan2(Math.sin(rel), Math.cos(rel))));
+      }
+      waved = Math.max(waved, folk.get(v.id)?.waving ?? 0);
+    }
+    hero.head.rotation.y += (lookAt - hero.head.rotation.y) * (1 - Math.exp(-5 * dt));
+    if (h.ground && sp < 0.05 && waved > 0) {
+      hero.armL.rotation.x += (-2.7 - hero.armL.rotation.x) * waved;
+      hero.armL.rotation.z = (0.25 + Math.sin(now * 11) * 0.35) * waved;
+    }
+    // squeezing into a pipe, or out of one; and the squash of a landing
     const squeeze = fx.warp > 0 ? (fx.warpDir < 0 ? fx.warp : 1 - fx.warp) : 1;
-    hero.group.scale.set(1.15, 1.15 * Math.max(0.02, squeeze), 1.15);
+    const land = squash.step(dt);
+    hero.group.scale.set(1.15 * (1 + land / 2), 1.15 * Math.max(0.02, squeeze) * (1 - land), 1.15 * (1 + land / 2));
     if (fx.warp > 0) fx.warp = Math.max(0, fx.warp - dt / 0.45);
     hero.group.visible = (game.hurt <= 0 || Math.floor(now * 14) % 2 === 0) && game.over <= 0 && squeeze > 0.03;
     const floor = floorAt(h.x, h.z, h.y + 0.05);
@@ -1308,6 +1422,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     camera.position.set(cam.x + Math.sin(yaw) * Math.cos(pitch) * far, cam.y + Math.sin(pitch) * far, cam.z + Math.cos(yaw) * Math.cos(pitch) * far);
     look.set(cam.x, cam.y, cam.z);
     camera.lookAt(look);
+    feel.update(dt, camera);
     sun.position.set(cam.x + SUN.x * 30, cam.y + SUN.y * 30, cam.z + SUN.z * 30);
     sun.target.position.set(cam.x, cam.y, cam.z);
     sea.mat.uniforms.uTime.value = now;
@@ -1333,16 +1448,32 @@ export function createDotMatrix(canvas, { onLost } = {}) {
       o.material.opacity = Math.min(1, o.material.opacity * 2.3);
     });
 
-    // the villagers, on their beats, or stood facing the hero
-    for (const v of VILLAGERS) {
+    // the villagers, on their beats, or stood facing the hero: their heads
+    // turned to him as he comes by, a wave hello the first time he comes
+    // up, and a word with their hands while he stands with them
+    VILLAGERS.forEach((v, i) => {
       const f = folk.get(v.id);
       const st = game.folk[v.id];
       const moving = !st.stopped && st.wait <= 0;
-      f.phase += dt * (4 + 8 * 0.6) * (moving ? 1 : 0);
       f.group.position.set(st.x, 0, st.z);
       f.group.rotation.y = st.face;
-      poseWalk(f, f.phase, moving ? Math.min(1, v.speed / 1.3) : 0, now + v.speed * 10);
-    }
+      poseStride(f, f.stride.step(dt, moving ? v.speed : 0), now + v.speed * 10);
+      const dx = h.x - st.x;
+      const dz = h.z - st.z;
+      const rel = Math.atan2(dx, dz) - st.face;
+      const n = f.notice.step(dt, Math.hypot(dx, dz), Math.atan2(Math.sin(rel), Math.cos(rel)));
+      f.head.rotation.y = n.look;
+      f.head.rotation.x = st.stopped ? Math.sin(now * 4 + i) * 0.06 : 0;
+      f.waving = n.wave;
+      if (st.stopped) {
+        f.armL.rotation.x = -0.55 - Math.sin(now * 3 + i * 1.7) * 0.25;
+        f.armL.rotation.z = -0.15;
+      }
+      if (n.wave > 0) {
+        f.armR.rotation.x += (-2.7 - f.armR.rotation.x) * n.wave;
+        f.armR.rotation.z = (-0.25 + n.waving * 0.35) * n.wave;
+      }
+    });
 
     // coins spin; the ones taken are gone
     COINS.forEach((c, i) => {
@@ -1395,12 +1526,15 @@ export function createDotMatrix(canvas, { onLost } = {}) {
       m.group.visible = true;
       const pop = flat != null ? Math.min(1, (t - flat - WALKER_BACK) / 0.3) : 1;
       m.group.scale.set(1, pop, 1);
-      m.group.position.set(p.x, p.y, p.z);
-      m.group.rotation.y = p.face;
-      const step = Math.sin(t * 9 + w.speed * 3);
-      m.feet[0].position.z = step * 0.08;
-      m.feet[1].position.z = -step * 0.08;
-      m.group.position.y = Math.abs(step) * 0.03;
+      // its feet stepped by the ground it covers, coming round at each end
+      const ws = walkerStride(w, t);
+      m.group.position.set(p.x, p.y + sway(ws.phase, 1).bob * 0.03, p.z);
+      m.group.rotation.y = ws.face;
+      m.feet.forEach((f, i) => {
+        const ph = ws.phase + i * Math.PI;
+        f.position.z = stepAt(ph) * (WALKER_STRIDE / 4);
+        f.position.y = Math.max(0, Math.cos(ph)) * 0.05;
+      });
     }
 
     // plants: up and down their pipes, jaws snapping, leaning at the hero
@@ -1479,10 +1613,16 @@ export function createDotMatrix(canvas, { onLost } = {}) {
         spray(b.ix + 0.5, BLOCK_LO + 1.2, b.iz + 0.5, 14, { speed: 2.2, up: 4, life: 0.8, shade: 0.98 });
       } else if (type === 'coin' && at) spray(at.x, at.y, at.z, 6, { speed: 1.4, up: 2.5, g: 6, life: 0.4, shade: 1, size: 0.7 });
       else if (type === 'cart' && at) spray(at.x, at.y + 0.6, at.z, 26, { speed: 3, up: 5, g: 7, life: 1.1, shade: 1 });
-      else if (type === 'stomp' && at) spray(at.x, 0.15, at.z, 10, { speed: 2.6, up: 1.5, g: 8, life: 0.45, shade: 0.55 });
+      else if (type === 'stomp' && at) {
+        spray(at.x, 0.15, at.z, 10, { speed: 2.6, up: 1.5, g: 8, life: 0.45, shade: 0.55 });
+        feel.trauma(STOMP_SHAKE);
+      }
       else if (type === 'land' && at) spray(at.x, at.y + 0.05, at.z, 6, { speed: 1.6, up: 0.8, g: 6, life: 0.3, shade: 0.6, size: 0.8 });
       else if (type === 'splash' && at) spray(at.x, WATER + 0.1, at.z, 18, { speed: 1.8, up: 5, g: 14, life: 0.7, shade: 1 });
-      else if (type === 'hurt' && at) spray(at.x, at.y + 0.6, at.z, 8, { speed: 2.4, up: 3, life: 0.5, shade: 0.1 });
+      else if (type === 'hurt' && at) {
+        spray(at.x, at.y + 0.6, at.z, 8, { speed: 2.4, up: 3, life: 0.5, shade: 0.1 });
+        feel.trauma(HURT_SHAKE);
+      }
       else if (type === 'coinheart' && at) spray(at.x, at.y + 0.9, at.z, 14, { speed: 1.6, up: 3.5, g: 5, life: 0.9, shade: 0.98 });
       else if (type === 'allcoins' && at) spray(at.x, at.y + 0.7, at.z, 40, { speed: 3.4, up: 6, g: 7, life: 1.3, shade: 1 });
       else if (type === 'warp') {
@@ -1502,8 +1642,14 @@ export function createDotMatrix(canvas, { onLost } = {}) {
       render(state, 16);
       return precompile(renderer, scene, camera);
     },
+    tune(groups = []) {
+      if (!debugOn()) return;
+      panel ??= debugPanel({ title: 'Dot Matrix' });
+      panel.open([...feelGroups(feel), ...springGroups(squash, 'landing squash'), ...groups], { title: 'Dot Matrix', id: 'dot-matrix' });
+    },
     dispose() {
       disposed = true;
+      panel?.dispose();
       ghosts.dispose();
       disposeTree(scene);
       dither.dispose();

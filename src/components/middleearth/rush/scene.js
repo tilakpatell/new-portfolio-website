@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree, hot } from '../../../lib/stage3d';
+import { houseOn } from '../../../lib/three/house';
 import { pose } from '../mapFigures';
 import { makePerson } from '../shire/people';
 import { B, ball, createShireKit, parts } from '../shire/props';
@@ -20,6 +21,10 @@ import { COLOURS, HOBBITS } from './cast';
 import { facingTile, KINDS, ovenFor, recipesOf } from './rules';
 import { STATIONS, TOP, V, crate, innCounter, innPot, shelf, stream } from './themes/common';
 import { themeOf } from './themes';
+import { castDo, castPlay, releaseCast, tickCast } from '../cast3d';
+import { turn as easeYaw } from '../../../lib/three/gait';
+import { RUSH_BLOOM } from './look';
+import { houseGroups } from '../../../lib/three/houseTuning';
 
 const SCALE = 0.92; // the hobbits, to the tiles
 const BIG = 1.7; // things, chunky enough to read from up here
@@ -49,7 +54,7 @@ function ringMaterial() {
 }
 
 export function createRushScene(canvas, level, { onLost } = {}) {
-  const stage = createStage(canvas, { shadows: true, fov: 38, near: 0.1, far: 80, bloom: { strength: 0.5, radius: 0.45, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 38, near: 0.1, far: 80, bloom: RUSH_BLOOM, onLost });
   stage.grade({ contrast: 0.1, saturation: 1.02, vignette: 0.26, grain: 0.012, shadow: [0.02, 0.012, 0.0], high: [0.03, 0.02, 0.0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false; // (counted over the whole frame, for the QA scripts)
@@ -226,8 +231,11 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   const thiefStep = (dt, t) => {
     const g = thief.model;
     if (!g) return;
+    const shown = g.group.visible;
     g.group.visible = Boolean(thief.mode);
     if (!thief.mode) return;
+    // (just come up to a counter: put there, facing it)
+    const arrived = !shown || (thief.mode === 'creep' && thief.t0 == null);
     thief.t0 ??= t;
     const u = t - thief.t0;
     if (thief.mode !== 'creep') {
@@ -237,7 +245,8 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       if (Math.abs(thief.x) > W / 2 + 2) thief.mode = null;
     }
     g.group.position.set(thief.x, 0, thief.z);
-    g.group.rotation.y = thief.face;
+    // he turns to go as a thing on all fours turns, not on the spot (put facing the counter as he appears)
+    g.group.rotation.y = arrived ? thief.face : easeYaw(g.group.rotation.y, thief.face, dt, 9);
     g.animate?.(t, { pose: thief.mode === 'creep' ? 'crouch' : 'crawl', speed: thief.mode === 'creep' ? 0 : 1, look: Math.sin(t * 5) * 0.3, reach: thief.mode === 'creep' ? Math.min(1, u / (level.thief.warn * 0.8)) : 0 });
   };
 
@@ -337,6 +346,12 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   };
 
   let last = 0;
+  // the house look (lib/three/house), as in Middle-earth's towns: the house
+  // tone mapper, the shade one colour from the kitchen's sky light; its own fog kept
+  // (the stage starts at the house's exposure already: lifting it again would wash the kitchen out)
+  const house = houseOn({ renderer, scene, sun: sun, hemi, keepExposure: true, look: { fog: false } });
+  let houseFrames = 0;
+
   const render = (view, ms = 16) => {
     const dt = Math.min(0.05, ms / 1000);
     const { s, players, me, t } = view;
@@ -440,8 +455,11 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       h.g.visible = Boolean(p);
       if (!p) return;
       h.g.position.set(X(p.x), 0, Z(p.z));
-      h.f.group.rotation.y = p.face;
+      // (turned over a moment, not snapped)
+      h.f.group.rotation.y = easeYaw(h.f.group.rotation.y, p.face, dt, 16);
       pose(h.f, t + slot, { moving: p.moving, speed: 1.1 });
+      // on the cast (../cast3d.js): arms out under what he carries, at work at a station
+      castDo(h.f, { upper: p.held ? 'walk.carry' : p.work ? 'interact' : null });
       const arms = h.f.arms;
       if (p.held) {
         arms[0].rotation.z = -1.25;
@@ -505,6 +523,10 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       sp.material.opacity = u.opacity * k;
       sp.scale.setScalar(u.size * (1.6 - k * 0.6));
     }
+    // (what's come in since, taken on now and then)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
+    // the people on the cast (../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms);
   };
@@ -515,6 +537,12 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     if (e.type === 'sneak' || e.type === 'shooed' || e.type === 'stolen') thiefAt(e);
     const x = X(e.at[0] + 0.5);
     const z = Z(e.at[1] + 0.5);
+    // on the cast: the hobbit nearest it cheers a dish served, starts at a spill, wags a finger at a no
+    const react = { served: 'cheer.one', spilt: 'scared', nope: 'nope' }[e.type];
+    if (react) {
+      const near = figures.filter((h) => h.g.visible).sort((a, b) => Math.hypot(a.g.position.x - x, a.g.position.z - z) - Math.hypot(b.g.position.x - x, b.g.position.z - z))[0];
+      if (near) castPlay(near.f, react, { layer: 'upper' });
+    }
     if (e.type === 'served') for (let k = 0; k < 10; k++) puff(x, TOP + 0.4, z, { color: 0xffd060, size: 0.16, life: 0.9, v: [(Math.random() - 0.5) * 1.6, 1.2 + Math.random(), (Math.random() - 0.5) * 1.6], opacity: 1 });
     else if (e.type === 'spilt') for (let k = 0; k < 8; k++) puff(x, TOP + 0.1, z + 0.4, { color: 0xd09030, size: 0.14, life: 0.8, v: [(Math.random() - 0.5) * 1.2, 0.8, 0.6 + Math.random() * 0.6], opacity: 0.9 });
     else if (e.type === 'chopped' || e.type === 'washed') for (let k = 0; k < 5; k++) puff(x, TOP + 0.2, z, { color: e.type === 'washed' ? 0xeaf6ff : 0xffffff, size: 0.12, life: 0.5, v: [(Math.random() - 0.5), 1, (Math.random() - 0.5)], opacity: 0.9 });
@@ -532,7 +560,10 @@ export function createRushScene(canvas, level, { onLost } = {}) {
     return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * h };
   };
 
+  // ?debug: the bloom, the look, and whatever the page adds (the dash’s press), on one panel
+  const tune = (more = []) => stage.tune([...houseGroups(house), ...more]);
   return {
+    tune,
     render,
     fx,
     resize,
@@ -554,6 +585,7 @@ export function createRushScene(canvas, level, { onLost } = {}) {
       ringGeo.dispose();
       for (const sp of puffs) sp.material.dispose();
       disposeTree(room);
+      releaseCast(scene);
       stage.dispose();
     },
   };

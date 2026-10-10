@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { prefersReducedMotion } from '../lib/hooks';
 import { use3D } from '../lib/gpu';
-import { T, holdStart, jumpHeld } from './hyperspace3d/timeline';
+import { T, atPeak, clampStart, holdStart, jumpHeld, jumpStarted, swirlOn } from './hyperspace3d/timeline';
 import { jumpFailed, jumpScene, preloadJump } from './hyperspace3d/load';
 import Hyperspace3D from './hyperspace3d/Hyperspace3D';
 
@@ -117,8 +117,12 @@ function Hyperspace2D({ onPeak, onDone, entry }) {
     if (reduced) {
       delete document.documentElement.dataset.intro;
       let raf = 0;
-      let start = performance.now();
+      let start = 0;
       const frame = (now) => {
+        if (!start) {
+          start = now;
+          jumpStarted(); // (a page waiting on its dark times its fallback from here)
+        }
         // (held at full dark while the galaxy builds its next system: hyperspace3d/timeline.js)
         if (jumpHeld() && now - start > 320) start = now - 320;
         const t = now - start;
@@ -181,7 +185,11 @@ function Hyperspace2D({ onPeak, onDone, entry }) {
     };
 
     const frame = (now) => {
-      if (!start) start = now - (entry ? T.drift : 0);
+      if (start) start = clampStart(start, last, now); // (a stall: the jump waits where it was)
+      else {
+        start = now - (entry ? T.drift : 0);
+        jumpStarted(); // (a page waiting on its dark times its fallback from here)
+      }
       start = holdStart(now, start); // (held in the tunnel while the galaxy builds its next system)
       const t = now - start;
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016;
@@ -189,7 +197,7 @@ function Hyperspace2D({ onPeak, onDone, entry }) {
       const speed = speedAt(t);
       const stretch = stretchAt(t);
       const inTunnel = t >= T.flash && t < T.tunnel;
-      if (inTunnel) swirl += dt * 0.9;
+      swirl = swirlOn(swirl, t, dt); // (not while held: hyperspace3d/timeline.js)
 
       // Background: darken the page, then the deep blue of the tunnel, then clear.
       ctx.clearRect(0, 0, W, H);
@@ -250,8 +258,8 @@ function Hyperspace2D({ onPeak, onDone, entry }) {
         const f = t < T.jump + 40 ? clamp((t - (T.jump - 60)) / 100) : 1 - ease(clamp((t - (T.jump + 40)) / (T.flash + 60 - (T.jump + 40))));
         ctx.fillStyle = `rgba(235,244,255,${0.92 * f})`;
         ctx.fillRect(0, 0, W, H);
-        if (t >= T.jump + 20) peak();
       }
+      if (atPeak(t)) peak();
 
       if (t < T.end) raf = requestAnimationFrame(frame);
       else {

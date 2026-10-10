@@ -1,15 +1,21 @@
 // What flying leaves behind: the vapour cone and the shock rings when he
 // goes through the sound barrier, a contrail at speed, a crater where he
 // comes down hard (cracks in the street, dust thrown out in a ring, chunks
-// of it in the air), the mess when he hits a tower, spray off the water.
+// of it in the air), the mess when he hits a tower, and where he comes down
+// onto the water, a crown of spray and a ring going out over it.
 // The sparks, smoke, debris and rings are the HQ games' pooled effects
-// (avengers/hq/vfx); the cone, the contrail and the craters are drawn here.
+// (avengers/hq/vfx); the cone, the contrail, the craters and the crowns are
+// drawn here.
 
 import * as THREE from 'three';
 import { createVfx } from '../../avengers/hq/vfx';
+import { sharpen } from '../../../lib/three/textures';
 
 const Y = new THREE.Vector3(0, 1, 0);
 const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+// (the pooled sparks stop at y 0, the streets' height, which is over the
+// water: spray thrown up from it starts there, or it lies flat on nothing)
+const STREET_Y = 0;
 
 // cracks radiating from a middle, painted once
 function crackTexture() {
@@ -57,6 +63,7 @@ function crackTexture() {
     }
   }
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -88,6 +95,31 @@ function coneMaterial() {
         float bands = 0.75 + 0.25 * sin(vUv.x * 60.0 + along * 9.0 + uTime * 7.0) * h(floor(vUv * vec2(40.0, 6.0)));
         float a = (0.18 + rim * 0.7) * smoothstep(0.0, 0.35, along) * smoothstep(1.0, 0.8, along) * bands * uFade;
         gl_FragColor = vec4(vec3(0.94, 0.97, 1.0), a);
+      }`,
+  });
+}
+
+// the crown a body throws up out of the water: a wall of spray, in streaks,
+// its top ragged, thinning as it goes up and as it falls back
+function crownMaterial() {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    uniforms: { uFade: { value: 0 }, uSeed: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: /* glsl */ `
+      uniform float uFade, uSeed;
+      varying vec2 vUv;
+      float h(float x) { return fract(sin(x * 91.7 + uSeed) * 43758.5); }
+      void main() {
+        float col = floor(vUv.x * 96.0);
+        float s = h(col);
+        float up = vUv.y; // 0 at the water, 1 at the top
+        float top = 1.0 - smoothstep(0.3 + 0.6 * s, 0.35 + 0.65 * s, up); // each streak its own height
+        float streak = 0.35 + 0.65 * smoothstep(0.2, 0.9, h(col + 17.0));
+        float a = top * streak * (1.0 - up * 0.55) * uFade;
+        gl_FragColor = vec4(vec3(0.9, 0.95, 1.0), a * 0.65);
       }`,
   });
 }
@@ -139,6 +171,17 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
   });
   let next = 0;
 
+  // ── the water's crowns: a few, as he can come down on it more than once in a second ──
+  const crownGeo = new THREE.CylinderGeometry(1, 0.62, 1, 48, 1, true).translate(0, 0.5, 0);
+  const crowns = Array.from({ length: 3 }, () => {
+    const m = new THREE.Mesh(crownGeo, crownMaterial());
+    m.visible = false;
+    m.renderOrder = 6;
+    scene.add(m);
+    return { m, age: 0, life: 0, k: 0 };
+  });
+  let nextCrown = 0;
+
   // ── re-entry: the air in front of him burning, streaming back past him ──
   const sheath = new THREE.Mesh(
     new THREE.SphereGeometry(1, 32, 16),
@@ -148,16 +191,24 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
       blending: THREE.AdditiveBlending,
       uniforms: { uBurn: { value: 0 }, uTime: { value: 0 } },
       vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec3 vP; void main() { vP = position; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+      // (Bright at its edges and its leading cap, and only faint face on: a
+      // fill across the middle is over him, so he'd be lost in it, and over
+      // the bright Earth it tips the bloom's near-hard threshold where over
+      // space it doesn't, which drew it as a pale egg cut off at the horizon.
+      // And thinning all the way back along him, so the stream has no end line.)
       fragmentShader: /* glsl */ `
         uniform float uBurn, uTime;
         varying vec3 vN; varying vec3 vV; varying vec3 vP;
         float h(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
         void main() {
-          float front = smoothstep(-0.6, 1.0, vP.y); // hottest at the leading edge
-          float rim = pow(1.0 - abs(dot(vN, vV)), 1.5) * smoothstep(-0.5, 0.7, vP.y); // and gone at the back
+          float lead = vP.y * 0.5 + 0.5; // 0 at the back, 1 at the leading edge
+          float edge = 1.0 - abs(dot(vN, vV)); // 0 face on, 1 at the outline
+          float body = smoothstep(0.0, 1.0, lead);
+          float cap = smoothstep(0.6, 1.0, lead);
           float flick = 0.75 + 0.25 * h(floor(vP * 8.0 + uTime * 30.0));
-          vec3 col = mix(vec3(1.0, 0.35, 0.08), vec3(1.0, 0.92, 0.75), front);
-          gl_FragColor = vec4(col * (rim * 1.6 + front * 0.5) * flick * uBurn * 2.2, 1.0);
+          vec3 col = mix(vec3(1.0, 0.35, 0.08), vec3(1.0, 0.92, 0.75), cap);
+          float k = pow(edge, 1.5) * 1.8 * body + cap * (0.12 + 0.7 * edge);
+          gl_FragColor = vec4(col * k * flick * uBurn * 2.0, 1.0);
         }`,
     }),
   );
@@ -169,6 +220,17 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
   const side = new THREE.Vector3();
   const toCam = new THREE.Vector3();
   const seg = new THREE.Vector3();
+
+  // what coming down hard throws out round him: a ring going out flat, and
+  // a collar of dust settling (on the water, of mist), `k` 0…1 for how hard
+  function outRing(p, k, water) {
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const q = p.clone().add(new THREE.Vector3(Math.cos(a) * (1.5 + k * 3), 0.6, Math.sin(a) * (1.5 + k * 3)));
+      vfx.smoke(q, { size: 2 + k * 4, count: 2, life: 1.4 + k * 1.6, color: water ? 0xe8f2ff : 0x8a8278, to: water ? 0xffffff : 0xb3aa9c, rise: 1.5 + k * 3, opacity: 0.42 });
+    }
+    vfx.ring(p.clone().addScaledVector(Y, water ? 0.15 : 0.4), { color: water ? 0xffffff : 0xd9cbb4, from: 1, to: 10 + k * 40, life: 0.7, opacity: 0.8 });
+  }
 
   return {
     vfx,
@@ -185,26 +247,19 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
       vfx.sparks(V(at).addScaledVector(Y, 1), { count: 40, speed: 30, color: 0xffffff, to: 0x9fc8ff, life: 0.5, size: 0.18, dir: d.clone().negate(), spread: 0.5, gravity: 0 });
     },
     // a hard landing: a crater, a ring of dust, the street in the air
-    slam(at, speed, onWater = false) {
+    slam(at, speed) {
       const k = Math.min(1, speed / 220);
       const p = V(at);
-      if (!onWater) {
-        const c = craters[next++ % craters.length];
-        const r = 4 + k * 14;
-        c.m.position.set(p.x, p.y + 0.03, p.z);
-        c.m.scale.set(r, 1, r);
-        c.m.rotation.y = Math.random() * Math.PI * 2;
-        c.m.material.opacity = 1;
-        c.m.visible = true;
-        c.life = 25;
-        vfx.debris(p.clone().addScaledVector(Y, 0.5), { count: Math.round(10 + k * 30), speed: 8 + k * 20, size: 0.18 + k * 0.25, dir: Y, spread: 0.9 });
-      }
-      for (let i = 0; i < 10; i++) {
-        const a = (i / 10) * Math.PI * 2;
-        const q = p.clone().add(new THREE.Vector3(Math.cos(a) * (1.5 + k * 3), 0.6, Math.sin(a) * (1.5 + k * 3)));
-        vfx.smoke(q, { size: 2 + k * 4, count: 2, life: 1.4 + k * 1.6, color: onWater ? 0xe8f2ff : 0x8a8278, to: onWater ? 0xffffff : 0xb3aa9c, rise: 1.5 + k * 3, opacity: 0.42 });
-      }
-      vfx.ring(p.clone().addScaledVector(Y, 0.4), { color: onWater ? 0xffffff : 0xd9cbb4, from: 1, to: 10 + k * 40, life: 0.7, opacity: 0.8 });
+      const c = craters[next++ % craters.length];
+      const r = 4 + k * 14;
+      c.m.position.set(p.x, p.y + 0.03, p.z);
+      c.m.scale.set(r, 1, r);
+      c.m.rotation.y = Math.random() * Math.PI * 2;
+      c.m.material.opacity = 1;
+      c.m.visible = true;
+      c.life = 25;
+      vfx.debris(p.clone().addScaledVector(Y, 0.5), { count: Math.round(10 + k * 30), speed: 8 + k * 20, size: 0.18 + k * 0.25, dir: Y, spread: 0.9 });
+      outRing(p, k, false);
     },
     // hitting a wall at speed
     impact(at, n, speed) {
@@ -216,11 +271,25 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
       vfx.smoke(p, { size: 3 + k * 4, count: 6, life: 2.5, color: 0x6e6a64, to: 0x9a958c, rise: 0.8, opacity: 0.6 });
       vfx.flash(p, { color: 0xffd9a8, intensity: 30, distance: 25, life: 0.15 });
     },
-    // skimming or hitting the water
+    // coming down onto the water, where a slam would be on land: no crater
+    // (he stops at its surface); a crown of spray round him, the slam's ring
+    // going out over the water with mist for its dust, a slower swell after
+    // it, and the spray in the air
     splash(at, speed) {
+      const k = Math.min(1, speed / 220);
       const p = V(at);
-      vfx.sparks(p, { count: Math.round(20 + Math.min(60, speed / 3)), speed: 6 + speed / 20, color: 0xffffff, to: 0xbfe0ff, life: 0.9, size: 0.2, dir: Y, spread: 0.5, gravity: 14 });
-      vfx.ring(p.clone().addScaledVector(Y, 0.2), { color: 0xffffff, from: 1, to: 8 + speed / 10, life: 0.8, opacity: 0.7 });
+      const c = crowns[nextCrown++ % crowns.length];
+      c.m.position.copy(p);
+      c.m.rotation.y = Math.random() * Math.PI * 2;
+      c.m.material.uniforms.uSeed.value = Math.random() * 100;
+      c.m.scale.set(0.8, 0.01, 0.8);
+      c.m.visible = true;
+      c.age = 0;
+      c.life = 0.7 + k * 0.6;
+      c.k = k;
+      outRing(p, k, true);
+      vfx.ring(p.clone().addScaledVector(Y, 0.1), { color: 0xdfeeff, from: 0.5, to: 4 + k * 16, life: 1.3, opacity: 0.45 });
+      vfx.sparks(new THREE.Vector3(p.x, Math.max(p.y, STREET_Y) + 0.3, p.z), { count: Math.round(16 + k * 40), speed: 5 + k * 16, color: 0xffffff, to: 0xbfe0ff, life: 0.75, size: 0.1 + k * 0.08, dir: Y, spread: 0.45, gravity: 14 });
     },
     // how hard the air's burning round him (0…1), where he is, which way he's going
     plasma(k, p, dir) {
@@ -289,10 +358,27 @@ export function createFlightFx(scene, { calm = false, small = false } = {}) {
         c.m.material.opacity = Math.min(1, c.life / 6);
         if (c.life <= 0) c.m.visible = false;
       }
+      // the crowns: up fast and opening out, then falling back as they thin
+      for (const c of crowns) {
+        if (!c.m.visible) continue;
+        c.age += dt;
+        const u = c.age / c.life;
+        if (u >= 1) {
+          c.m.visible = false;
+          continue;
+        }
+        const rise = u < 0.3 ? Math.sin((u / 0.3) * (Math.PI / 2)) : 1 - 0.55 * ((u - 0.3) / 0.7);
+        // (no wider than 4.5 m: the camera's 6.5 m back, and from inside it's a wall)
+        const r = 0.7 + c.k + u * (1.2 + c.k * 1.6);
+        c.m.scale.set(r, Math.max(0.01, (0.8 + c.k * 6) * rise), r);
+        c.m.material.uniforms.uFade.value = (1 - u) ** 1.3;
+      }
       vfx.update(dt, camera, viewportHeight);
     },
     dispose() {
       vfx.dispose();
+      crownGeo.dispose();
+      for (const c of crowns) c.m.material.dispose();
     },
   };
 }

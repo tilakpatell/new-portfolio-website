@@ -8,19 +8,23 @@
 //   node scripts/gen3d/generate.mjs IMAGE OUT.glb [--engine trelliscpp|trellis2|hunyuan] [--left L.png --back B.png --right R.png] [--seed 42] [--res 1024] [--faithful [--fov 49]]
 //   generate(image, out, opts) → { engine, seconds, out }
 
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { live, localDir } from '../desktop/lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const LOCAL = process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? '', 'AppData', 'Local');
-export const TRELLISCPP = { exe: join(LOCAL, 'trellis-studio', 'runtime', 'trellis-cli.exe'), models: join(LOCAL, 'trellis-studio', 'models') };
+// (localDir: %LOCALAPPDATA%, or the Claude app's boxed copy of it, scripts/desktop/lib.mjs)
+const STUDIO = localDir('trellis-studio');
+export const TRELLISCPP = { exe: join(STUDIO, 'runtime', 'trellis-cli.exe'), models: join(STUDIO, 'models') };
 export const WSL = { distro: process.env.GEN3D_WSL_DISTRO ?? 'Ubuntu-24.04', conda: '~/miniforge3', env: 'trellis2' };
 export const ENGINES = ['trelliscpp', 'trellis2', 'hunyuan'];
 // the Hunyuan3D-2 multi-view engine's conda env, in the same distro
 export const HY3D = { env: 'hy3d', repo: '~/Hunyuan3D-2', paintEnv: 'hy3d21', paintRepo: '~/Hunyuan3D-2.1' };
 export const VIEWS = ['front', 'left', 'back', 'right'];
+// GEN3D_ENGINE=fake (or --engine fake): a tiny GLB in under a second, for the contract tests; never chosen on its own
+const FAKE = join(HERE, '..', 'ai-e2e', 'fakes', 'engine.mjs');
 
 // Pictures of one thing from several sides, { front, left, back, right } (any one
 // or more), or one picture (the front). TRELLIS.2 takes the front; Hunyuan takes
@@ -50,7 +54,7 @@ export function hy3d21Ready() {
 
 export const pixal3dReady = () => existsSync(join(TRELLISCPP.models, 'pixal3d_shape_flow_1024.gguf'));
 
-export function command(engine, given, out, { seed = 42, res = 1024, faces, tex, faithful = false, fov, steps = 50, paint21 = hy3d21Ready() } = {}) {
+export function command(engine, given, out, { seed = 42, res = 1024, faces, tex, faithful = false, fov, steps = 50, asked, paint21 = engine === 'hunyuan' && hy3d21Ready() } = {}) {
   const v = views(given);
   const image = v.front ?? Object.values(v)[0];
   if (engine === 'trelliscpp') {
@@ -76,6 +80,11 @@ export function command(engine, given, out, { seed = 42, res = 1024, faces, tex,
       : shape;
     return ['wsl.exe', '-d', WSL.distro, '-e', 'bash', '-lc', run];
   }
+  // the contract tests' stand-in (scripts/ai-e2e/fakes/engine.mjs): every picture it was given, so a test can see which went where
+  if (engine === 'fake') {
+    const told = [['--res', res], ['--fov', fov], ['--asked', asked]].filter(([, x]) => x !== undefined).flat().map(String);
+    return [process.execPath, FAKE, image, out, '--seed', String(seed), ...VIEWS.filter((k) => k !== 'front' && v[k]).flatMap((k) => [`--${k}`, v[k]]), ...told, ...(faithful ? ['--faithful'] : [])];
+  }
   throw new Error(`no engine ${engine} (${ENGINES.join(', ')})`);
 }
 
@@ -83,15 +92,13 @@ const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
 
 export async function generate(image, out, opts = {}) {
   // several views and no engine named: Hunyuan, the one that can use them
-  const engine = opts.engine ?? (Object.keys(views(image)).length > 1 ? 'hunyuan' : ENGINES.find((e) => command(e, image, out, opts))) ?? null;
+  // GEN3D_ENGINE=fake wins over the engine an issue asks for: a test of that issue must not run the real one
+  if (process.env.GEN3D_ENGINE === 'fake') opts = { ...opts, engine: 'fake', asked: opts.engine };
+  const engine = opts.engine ?? process.env.GEN3D_ENGINE ?? (Object.keys(views(image)).length > 1 ? 'hunyuan' : ENGINES.find((e) => command(e, image, out, opts))) ?? null;
   const cmd = engine && command(engine, image, out, opts);
   if (!cmd) throw new Error(`${opts.engine ?? 'no engine'} isn't set up here: see scripts/gen3d/README.md`);
   const started = Date.now();
-  await new Promise((done, fail) => {
-    const p = spawn(cmd[0], cmd.slice(1), { stdio: ['ignore', 'inherit', 'inherit'] });
-    p.on('error', fail);
-    p.on('exit', (code) => (code === 0 ? done() : fail(new Error(`${engine} exited ${code}`))));
-  });
+  await live(cmd[0], cmd.slice(1), { name: engine, minutes: Number(process.env.GEN3D_ENGINE_MINUTES ?? 45) });
   if (!existsSync(out)) throw new Error(`${engine} made no ${out}`);
   return { engine, seconds: (Date.now() - started) / 1000, out };
 }

@@ -19,6 +19,9 @@
 //            drawn bigger than their numbers here, by STATION and PLANET)
 //   sign     a station's big sign: its name, and a line under it
 //   palette  the colours it's painted in
+//   air      a fandom planet's atmosphere (lib/three/atmosphere.js's shell):
+//            { colour, density, top (its edge, in radii), sunset }, or null
+//            for none (the Office's paper, the Game Boy's screen)
 
 // how much bigger than its size number each kind is drawn, in map units:
 // the planets huge against the ship (0.26 long: 360 to 450 of it across)
@@ -29,6 +32,9 @@
 // if they differ. The Star Wars gate keeps its own size (GATE): it's a
 // gate, not a world, and the galaxy behind it is sized to it.
 const STATION = 7 * 3;
+// and scale.js's SPREAD, the same way: how much further apart the places are
+// than they were (layout.js and deep.js space them by it)
+export const SPREAD = 4;
 const PLANET = 28 * 3;
 const GATE = 28;
 
@@ -108,12 +114,16 @@ const FANDOMS = [
     // a universe of its own: not a planet but the way into one, the galaxy
     // itself in miniature behind a hyperspace gate (galaxy/gateway.js); fly
     // into the gate, or pick it and go, and you jump to lightspeed into the
-    // whole galaxy (galaxy/), the Death Star a page of its own inside it
+    // whole galaxy (galaxy/), the Death Star a page of its own inside it,
+    // and aboard it (deathstar/inside) another, walked room by room
     world: 'A galaxy far, far away',
     place: 'a galaxy far, far away',
     go: 'Jump to', // (not somewhere to land on)
     to: '/galaxy',
-    pages: [{ to: '/deathstar', world: 'Death Star' }],
+    pages: [
+      { to: '/deathstar', world: 'Death Star' },
+      { to: '/deathstar/inside', world: 'Aboard the Death Star' },
+    ],
     portal: true, // (flown into, it's through, not a crash: universe/scene.js)
     swatch: '#ffe81f',
     accent: '#ffe81f',
@@ -125,6 +135,7 @@ const FANDOMS = [
   },
   {
     id: 'music',
+    air: { colour: '#ffb060', density: 1.2, top: 1.05 },
     label: 'Indian classical music',
     world: 'Music room',
     to: '/music',
@@ -135,6 +146,7 @@ const FANDOMS = [
   },
   {
     id: 'middleearth',
+    air: { colour: '#9fc4ff', density: 1.8, top: 1.05, sunset: '#ffb070' },
     label: 'The Lord of the Rings',
     world: 'Middle-earth',
     to: '/middle-earth',
@@ -145,6 +157,7 @@ const FANDOMS = [
   },
   {
     id: 'transformers',
+    air: { colour: '#a98cff', density: 0.9, top: 1.04 },
     label: 'Transformers',
     world: 'Cybertron',
     to: '/cybertron',
@@ -155,6 +168,7 @@ const FANDOMS = [
   },
   {
     id: 'marvel',
+    air: { colour: '#ffd27a', density: 1.4, top: 1.05 },
     label: 'Marvel',
     world: 'Avengers HQ',
     to: '/avengers',
@@ -165,6 +179,7 @@ const FANDOMS = [
   },
   {
     id: 'breakingbad',
+    air: { colour: '#ffd9a8', density: 1.6, top: 1.045, sunset: '#ff8a50' },
     label: 'Breaking Bad',
     world: 'Albuquerque',
     to: '/albuquerque',
@@ -175,6 +190,7 @@ const FANDOMS = [
   },
   {
     id: 'office',
+    air: null, // (paper has no air: it keeps its soft rim)
     label: 'The Office',
     world: 'Scranton',
     to: '/scranton',
@@ -186,6 +202,7 @@ const FANDOMS = [
   },
   {
     id: 'rickmorty',
+    air: { colour: '#b8ff5a', density: 2.0, top: 1.05, flat: true }, // (drawn as the show draws air: two flat bands)
     label: 'Rick and Morty',
     world: 'Dimension C-137',
     to: '/c-137',
@@ -196,11 +213,15 @@ const FANDOMS = [
   },
   {
     id: 'gaming',
+    air: null, // (a Game Boy's screen has no air: its pixel clouds and rim do)
     label: 'Gaming',
     world: 'Dot Matrix',
     place: 'Dot Matrix island',
     to: '/dot-matrix',
-    pages: [{ to: '/dot-matrix/64', world: 'Super Mario 64' }],
+    pages: [
+      { to: '/dot-matrix/64', world: 'Super Mario 64' },
+      { to: '/dot-matrix/minecraft', world: 'Minecraft' },
+    ],
     swatch: '#9bbc0f',
     accent: '#9bbc0f',
     rim: '#6f9a1c', // the screen's lightest green would glare as air
@@ -209,6 +230,7 @@ const FANDOMS = [
   },
   {
     id: 'travel',
+    air: { colour: '#8fc1ff', density: 2.2, top: 1.05 },
     label: 'Travel',
     world: 'Earth',
     place: 'Earth',
@@ -220,6 +242,7 @@ const FANDOMS = [
   },
   {
     id: 'caribbean',
+    air: { colour: '#bfe4ff', density: 2.4, top: 1.055 },
     label: 'Pirates of the Caribbean',
     world: 'The Caribbean',
     to: '/caribbean',
@@ -230,6 +253,7 @@ const FANDOMS = [
   },
   {
     id: 'invincible',
+    air: { colour: '#ffc9a0', density: 2.8, top: 1.06 },
     label: 'Invincible',
     world: 'Invincible',
     place: 'the Graysons’ city',
@@ -244,12 +268,201 @@ const FANDOMS = [
 
 export const UNIVERSES = [...CORE, ...FANDOMS];
 
-const BY_ID = new Map(UNIVERSES.map((u) => [u.id, u]));
+// The Rick and Morty sector's worlds: small planets out in a sector of
+// space of their own (layout.js's SECTORS.rickmorty, far past the main
+// map's rim), round the Citadel (deep.js's wonder, at the sector's middle),
+// each a place from the show, and each landed on like a fandom's planet
+// (the ship sets down, the crew gets out: landings/landings.js). Going in
+// takes you straight into its world, on foot as Morty (`to`, /c-137/<id>:
+// the C-137 game's place of the same id, whose own portal brings you back
+// out here, not to C-137's garage). They aren't in UNIVERSES (not in the
+// map's order, the mini-map or the pages' links): a kind of their own,
+// 'moon', found by byId, placed by layout.js on the sector's own spiral (in
+// this order), solid and landable through ship.js's PLANETS and the scene's
+// planets. Sizes are a quarter of a fandom planet's.
+const MOON = 7 * 3;
+export const MOONS = [
+  {
+    id: 'gazorpazorp',
+    label: 'Gazorpazorp',
+    kind: 'moon',
+    world: null,
+    place: 'Gazorpazorp',
+    go: 'Land on',
+    to: '/c-137/gazorpazorp',
+    crew: 'rickmorty',
+    swatch: '#e08a5a',
+    accent: '#ffb080',
+    rim: '#ffb080',
+    size: 0.42 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#b84a2a', dark: '#6a2a1a', light: '#e08a5a', glow: '#ff9a6a' },
+    air: { colour: '#ffb080', density: 1.3, top: 1.06 },
+  },
+  {
+    id: 'squanch',
+    label: 'Planet Squanch',
+    kind: 'moon',
+    world: null,
+    place: 'Planet Squanch',
+    go: 'Land on',
+    to: '/c-137/squanch',
+    crew: 'rickmorty',
+    swatch: '#d85a4a',
+    accent: '#ff9a8a',
+    rim: '#7ad2c8',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#b83a3a', dark: '#7a2a2a', light: '#d85a4a', glow: '#7ad2c8' },
+    air: { colour: '#7ad2c8', density: 1.6, top: 1.07 },
+  },
+  {
+    id: 'birdworld',
+    label: 'Bird World',
+    kind: 'moon',
+    world: null,
+    place: 'Bird World',
+    go: 'Land on',
+    to: '/c-137/birdworld',
+    crew: 'rickmorty',
+    swatch: '#6aa84a',
+    accent: '#9ad86a',
+    rim: '#bfe4ff',
+    size: 0.44 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#4a8a3a', dark: '#2a5a2a', light: '#6aa84a', glow: '#bfe4ff' },
+    air: { colour: '#bfe4ff', density: 1.8, top: 1.07 },
+  },
+  {
+    id: 'gearworld',
+    label: 'Gear World',
+    kind: 'moon',
+    world: null,
+    place: 'Gear World',
+    go: 'Land on',
+    to: '/c-137/gearworld',
+    crew: 'rickmorty',
+    swatch: '#d8aa5a',
+    accent: '#ffd080',
+    rim: '#ffe0a0',
+    size: 0.38 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#b88a3a', dark: '#6a4a2a', light: '#d8aa5a', glow: '#ffe0a0' },
+    air: { colour: '#ffe0a0', density: 1.2, top: 1.05 },
+  },
+  // and more from the show, in the sector since: Pluto, the snakes' planet, Nuptia 4, the resort, Cronenberg World and the Purge Planet
+  {
+    id: 'pluto',
+    label: 'Pluto',
+    kind: 'moon',
+    world: null,
+    place: 'Pluto',
+    go: 'Land on',
+    to: '/c-137/pluto',
+    crew: 'rickmorty',
+    swatch: '#a8b8d0',
+    accent: '#d8e4f4',
+    rim: '#e8f0ff',
+    size: 0.36 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#8a9ab0', dark: '#4a5468', light: '#c8d4e4', glow: '#e8f0ff' },
+    air: { colour: '#d8e6ff', density: 1.0, top: 1.04 },
+  },
+  {
+    id: 'snakeplanet',
+    label: 'Snake Planet',
+    kind: 'moon',
+    world: null,
+    place: 'Snake Planet',
+    go: 'Land on',
+    to: '/c-137/snakeplanet',
+    crew: 'rickmorty',
+    swatch: '#7ab84a',
+    accent: '#c8f08a',
+    rim: '#d8f07a',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#5a8a3a', dark: '#2a4a1a', light: '#8ab85a', glow: '#d8f07a' },
+    air: { colour: '#c8f08a', density: 1.4, top: 1.06 },
+  },
+  {
+    id: 'nuptia',
+    label: 'Nuptia 4',
+    kind: 'moon',
+    world: null,
+    place: 'Nuptia 4',
+    go: 'Land on',
+    to: '/c-137/nuptia',
+    crew: 'rickmorty',
+    swatch: '#e08ac0',
+    accent: '#ffc8e8',
+    rim: '#ffc8e8',
+    size: 0.38 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#b85a9a', dark: '#5a2a4a', light: '#e08ac0', glow: '#ffc8e8' },
+    air: { colour: '#ffc8e8', density: 1.3, top: 1.06 },
+  },
+  {
+    id: 'resort',
+    label: 'Immortality Field Resort',
+    kind: 'moon',
+    world: null,
+    place: 'the Immortality Field Resort',
+    go: 'Land at',
+    to: '/c-137/resort',
+    crew: 'rickmorty',
+    swatch: '#4ac8c0',
+    accent: '#a8f0e8',
+    rim: '#fff0b0',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#3a9a9a', dark: '#1a4a5a', light: '#e8d8a0', glow: '#a8f0e8' },
+    air: { colour: '#c8f4ff', density: 1.3, top: 1.06 },
+  },
+  {
+    id: 'cronenberg',
+    label: 'Cronenberg World',
+    kind: 'moon',
+    world: null,
+    place: 'Cronenberg World',
+    go: 'Land on',
+    to: '/c-137/cronenberg',
+    crew: 'rickmorty',
+    swatch: '#c88a6a',
+    accent: '#ffc8a0',
+    rim: '#d8e07a',
+    size: 0.44 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#8a6a4a', dark: '#4a3a2a', light: '#c8a07a', glow: '#d8e07a' },
+    air: { colour: '#e0b898', density: 1.5, top: 1.06 },
+  },
+  {
+    id: 'purge',
+    label: 'The Purge Planet',
+    kind: 'moon',
+    world: null,
+    place: 'the Purge Planet',
+    go: 'Land on',
+    to: '/c-137/purge',
+    crew: 'rickmorty',
+    swatch: '#d8a060',
+    accent: '#ffd2a0',
+    rim: '#f2a070',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#a8804a', dark: '#5a3a2a', light: '#d8b878', glow: '#f2a070' },
+    air: { colour: '#f2b890', density: 1.3, top: 1.06 },
+  },
+];
+export const MOON_IDS = MOONS.map((m) => m.id);
+
+const BY_ID = new Map([...UNIVERSES, ...MOONS].map((u) => [u.id, u]));
 
 export const byId = (id) => BY_ID.get(id);
 
-// The universe a page belongs to: '/galaxy' and '/deathstar' → starwars, '/universe/x' → none.
-export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname || u.pages?.some((p) => p.to === pathname));
+// The universe a page belongs to: '/galaxy', '/deathstar' and '/deathstar/inside' → starwars,
+// '/c-137/squanch' → the squanch moon (its own world, not C-137), '/universe/x' → none.
+export const byPath = (pathname) => UNIVERSES.find((u) => u.to === pathname || u.pages?.some((p) => p.to === pathname)) ?? MOONS.find((m) => m.to === pathname);
 
 // WCAG contrast ratio between two '#rrggbb' colours.
 const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);

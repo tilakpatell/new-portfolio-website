@@ -1,29 +1,49 @@
 import { useEffect, useRef, useState } from 'react';
-import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiCompass3Line, RiLayoutGridLine, RiRestartLine, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
+import { RiArrowGoBackLine, RiArrowLeftLine, RiArrowRightLine, RiCompass3Line, RiLayoutGridLine, RiQuestionLine, RiRestartLine, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
+import { openGuide } from '../../lib/palette';
 import { restartSite } from '../../lib/restart';
 import GuideLink from '../guide/GuideLink';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
 import { CREWS, crewById } from './crews';
+import { hullLine } from './yardRules';
 import { PARTS_SLOTS, STOCK, partById } from './outfit';
 import { paintById } from './paint';
 import { next, prev } from './layout';
 import { byId } from './universes';
 import Face from './Faces';
+import { useTouring } from '../tour/useTouring';
 import ModelCredits from '../ModelCredits';
+import { CopyButton } from '../ui';
+import { ABOUT, PICK_A_SHIP } from './words';
 
 // Beside the map (a bottom sheet on a phone). With nothing selected: the
 // ships to fly (or how to fly the one you're in, and what it's fitted with
-// in the hangar). With a universe selected:
+// in the shipyard). With a universe selected:
 // its card, the way into its world, previous / next in map order, and back
-// out to the whole map. Put away (tucked), it's a small bar naming where you
+// out to the whole universe. Put away (tucked), it's a small bar naming where you
 // are, so the map has the room; the same element either way, so the scene
 // sees it change size and moves the planets into the space it leaves.
 // `onNav` opens the nav map (NavMap.jsx): everywhere, and how to get there.
 
+// A moon of the Rick and Morty sector's own card: a place from the show,
+// and going in takes you into it (not the crew's card, whose portal gun toy
+// and way to C-137 aren't the way into this one).
+function MoonCard({ moon }) {
+  return (
+    <li className="fun-card">
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <h3 className="stretch-semi text-xl font-semibold text-ink">{moon.label}</h3>
+        <p className="mt-1 text-sm text-muted">Rick and Morty</p>
+        <p className="mt-3 text-[0.95rem] leading-relaxed text-body">A planet from the show. Land on it and you’re straight into it, on foot as Morty, with something to do there; its own portal brings you back out to space.</p>
+      </div>
+    </li>
+  );
+}
+
 function Ships({ ship, onShip }) {
   return (
-    <div className="universe-ships" role="group" aria-label="Pick a ship">
+    <div className="universe-ships" data-tour="ships" role="group" aria-label="Pick a ship">
       {CREWS.map((c) => (
         <button key={c.id} type="button" className="universe-ship" aria-pressed={ship === c.id} onClick={() => onShip(c.id)}>
           <span className="universe-ship-faces" aria-hidden="true">
@@ -43,10 +63,26 @@ function Ships({ ship, onShip }) {
   );
 }
 
+// The keys to get going, as a grid; the guide (?) has all of them, and the tips
+const KEYMAP = [
+  [['W', 'S'], 'Throttle'],
+  [['A', 'D'], 'Roll'],
+  [['←', '→', '↑', '↓'], 'Steer'],
+  [['Space'], 'Boost'],
+  [['F'], 'Fire'],
+  [['M'], 'Nav map'],
+  [['V'], 'Cockpit'],
+  [['H'], 'Shipyard'],
+];
+// (and the one way down there's no key for, said under the grid)
+const LANDING = 'Fly down into a planet’s air to go straight into its world.';
+
 const and = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
-// What the ship's fitted with (outfit.js), and the way into the hangar
-function Fitted({ loadout, onHangar }) {
+// What the ship's fitted with (outfit.js), and the way into the shipyard
+// and to another ship
+function Fitted({ loadout, build = null, craft = '', onHangar, onChange }) {
+  const hull = hullLine(build, craft);
   const paint = paintById(loadout.paint);
   const parts = PARTS_SLOTS.filter((slot) => loadout[slot] !== STOCK).map((slot) => partById(slot, loadout[slot]));
   return (
@@ -54,13 +90,21 @@ function Fitted({ loadout, onHangar }) {
       <p className="universe-fitted-line">
         <span className="universe-fitted-swatch" style={{ background: paint.hull ? `linear-gradient(135deg, ${paint.hull} 50%, ${paint.trim} 50%)` : undefined }} aria-hidden="true" />
         <span>
-          {paint.hull ? `${paint.name} paint` : 'Factory paint'}
+          {paint.hull ? `${paint.name} paint` : 'Stock paint'}
           {parts.length ? `, with ${and(parts.map((p) => p.name))}` : ', nothing bolted on'}
         </span>
       </p>
-      <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={onHangar}>
-        Open the hangar
-      </button>
+      {hull && <p className="universe-fitted-hull mt-2 text-sm text-muted">{hull}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {onHangar && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onHangar}>
+            Open the shipyard
+          </button>
+        )}
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onChange}>
+          Change ship
+        </button>
+      </div>
     </div>
   );
 }
@@ -91,13 +135,16 @@ function Exits({ onClassic }) {
         </button>
       )}
       <button type="button" className="universe-back" onClick={restartSite} title="The welcome, the crawl and the cockpit again">
-        <RiRestartLine className="h-3.5 w-3.5" aria-hidden="true" /> Back to the intro
+        <RiRestartLine className="h-3.5 w-3.5" aria-hidden="true" /> Start over
       </button>
     </div>
   );
 }
 
-export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked = false, onTuck, onNav }) {
+export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, build = null, onShip, onHangar, onClassic, tucked: tuckedAsked = false, onTuck, onNav }) {
+  // (out of hiding while a tour runs: its stops are on it)
+  const touring = useTouring();
+  const tucked = tuckedAsked && !touring;
   const [changing, setChanging] = useState(false);
   const crew = crewById(ship);
   // a press on hide or show unmounts the button pressed: the focus goes on
@@ -116,7 +163,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
 
   if (tucked) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label={universe ? universe.label : 'About the map'} data-tucked="">
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={universe ? universe.label : 'About the map'} data-tucked="">
         <button type="button" className="universe-untuck" onClick={() => toggle(false)} aria-expanded="false">
           <span className="eyebrow truncate" style={universe ? { color: universe.accent } : undefined}>
             {universe ? universe.label : 'The universe'}
@@ -133,14 +180,14 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
   // a wonder, from a link out to it (/universe/aurelia): what it is, and the way there
   if (!universe && wonder) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label={wonder.name}>
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={wonder.name}>
         {onTuck && <Tuck onTuck={toggle} />}
         <div className="universe-links flex flex-wrap items-center gap-x-4 gap-y-1">
           <button type="button" className="universe-back" onClick={onWhole}>
-            <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
+            <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole universe
           </button>
           {onNav && (
-            <button type="button" className="universe-back" onClick={onNav}>
+            <button type="button" className="universe-back" data-tour="navmap" onClick={onNav}>
               <RiCompass3Line className="h-3.5 w-3.5" aria-hidden="true" /> Nav map
             </button>
           )}
@@ -155,9 +202,10 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
             Fly here <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
           </button>
         ) : (
-          <p className="mt-4 text-sm text-muted">Pick a ship below the map to fly out to it.</p>
+          <p className="mt-4 text-sm text-muted">{PICK_A_SHIP}</p>
         )}
-        <p className="universe-fitted-line mt-4 text-xs text-muted">This link opens the map right here: share it.</p>
+        {/* this view has its own address: a way to share it */}
+        <CopyButton className="universe-back mt-4" text={window.location.href} label="Copy a link to this view" />
         <Exits onClassic={onClassic} />
       </aside>
     );
@@ -165,21 +213,19 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
 
   if (!universe) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label="About the map">
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label="About the map">
         {onTuck && <Tuck onTuck={toggle} />}
         <p className="eyebrow">The universe</p>
         <h2 className="universe-title">My whole site, as a universe</h2>
         {onNav && (
-          <button type="button" className="btn btn-ghost btn-sm universe-nav-open mt-4" onClick={onNav}>
+          <button type="button" className="btn btn-ghost btn-sm mt-4" data-tour="navmap" onClick={onNav}>
             <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Open the nav map
           </button>
         )}
         {!crew || changing ? (
           <>
-            <p className="mt-3 text-sm leading-relaxed">
-              The stations round the sun are my pages: home, experience, projects, résumé, contact and the terminal. The planets further out are the things I love. Pick a ship and fly to any of them;
-              your crew has a word about each.
-            </p>
+            {/* one sentence: the ships under it say the rest */}
+            <p className="mt-3 text-sm leading-relaxed">{`${ABOUT[0].toUpperCase()}${ABOUT.slice(1)}: pick a ship and fly to any of them.`}</p>
             <Ships
               ship={ship}
               onShip={(id) => {
@@ -197,85 +243,84 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
           </>
         ) : (
           <>
-            <p className="mt-3 text-sm leading-relaxed">
+            <p className="mt-3 text-sm leading-relaxed" data-tour="ships">
               You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a station or a planet to see what’s there, or pick one by name and the ship takes
               you.
             </p>
-            {loadout && onHangar && <Fitted loadout={loadout} onHangar={onHangar} />}
-            <ul className="universe-keys mt-4">
-              <li className="universe-keys-board">
-                It flies like a Battlefront starfighter: <kbd>W</kbd> <kbd>S</kbd> for the throttle, <kbd>A</kbd> <kbd>D</kbd> to roll, <kbd>←</kbd> <kbd>→</kbd> to swing the nose and <kbd>↑</kbd> <kbd>↓</kbd> to pull it up and down. Or drag on the map like a stick
-              </li>
-              <li className="universe-keys-board">
-                Nothing stops the nose: hold <kbd>↑</kbd> to loop right over. To turn hard, roll with <kbd>A</kbd> or <kbd>D</kbd> and pull back. Let go and it rolls itself upright again
-              </li>
-              <li>The worlds are far apart: boost between them for the pulse drive, and fight your way through. Or open the nav map and let the ship take you, at hyperspeed (a jump), super speed or cruising</li>
-              <li className="universe-keys-board">
-                <kbd>Space</kbd> to boost, hold <kbd>F</kbd> to fire, <kbd>M</kbd> for the nav map, <kbd>J</kbd> to jump to the place picked
-              </li>
-              <li className="universe-keys-board">
-                <kbd>V</kbd> for the cockpit, or back behind the ship
-              </li>
-              <li>The guns lock on to whoever comes after you, nearest first: shoot at the pip ahead of them and the shots bend home. Arrows at the edge show the ones you can’t see</li>
-              <li className="universe-keys-board">
-                <kbd>T</kbd> for the next target (<kbd>Q</kbd> the one before), or click one; <kbd>E</kbd> to land or dock where you are
-              </li>
-              <li className="universe-keys-board">
-                <kbd>H</kbd> for the hangar: a paint job (more come with achievements), and boosters, thrusters, guns, shields and fins that change how it flies, as much as its power plant can run
-              </li>
-              <li className="universe-keys-touch">The wrench in the corner is the hangar: paint and parts for the ship</li>
-              <li className="universe-keys-board">
-                <kbd>O</kbd> for the flight settings: steering, pitch and roll, self-levelling (off, it stays upside down), drag sensitivity, aim assist, the camera, up and down the other way round, and <kbd>A</kbd> <kbd>D</kbd> to turn instead
-              </li>
-              <li>Out in deep space, click a wonder and the ship flies you there</li>
-              <li className="universe-keys-touch">Drag anywhere to fly, hold the arrows to pull the nose up and down (all the way over, if you like), hold Boost to go fast and Fire to shoot; View is the cockpit, and the sliders button sets how it feels</li>
-              <li className="universe-keys-touch">Tap a planet, a station or a wonder to fly there, or a hunter to lock on</li>
-            </ul>
-            <button type="button" className="btn btn-ghost btn-sm mt-5" onClick={() => setChanging(true)}>
-              Change ship
+            {loadout ? (
+              <Fitted loadout={loadout} build={build} craft={crewById(ship)?.ship ?? ''} onHangar={onHangar} onChange={() => setChanging(true)} />
+            ) : (
+              <button type="button" className="btn btn-ghost btn-sm mt-4" onClick={() => setChanging(true)}>
+                Change ship
+              </button>
+            )}
+            <dl className="universe-keymap" aria-label="Keys">
+              {KEYMAP.map(([keys, does]) => (
+                <div key={does}>
+                  <dt>
+                    {keys.map((k) => (
+                      <kbd key={k}>{k}</kbd>
+                    ))}
+                  </dt>
+                  <dd>{does}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="universe-keymap-land">{LANDING}</p>
+            <p className="universe-keymap-touch mt-4">Drag anywhere to fly, or tap a place and the ship takes you. Boost, Fire and View are on the screen, and the Shipyard button opens the shipyard.</p>
+            <button type="button" className="universe-back universe-guide-all" onClick={openGuide}>
+              <RiQuestionLine className="h-3.5 w-3.5" aria-hidden="true" /> All the controls and tips
             </button>
           </>
         )}
-        <p className="universe-credit">
-          Planet maps and the Milky Way by{' '}
-          <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
-            Solar System Scope
-          </a>{' '}
-          (CC BY 4.0), recoloured; metal and paper from{' '}
-          <a href="https://ambientcg.com" target="_blank" rel="noopener noreferrer">
-            ambientCG
-          </a>{' '}
-          (CC0).
-        </p>
-        <p className="universe-credit">
-          The worlds stand in their light the way{' '}
-          <a href="https://bruno-simon.com" target="_blank" rel="noopener noreferrer">
-            Bruno Simon
-          </a>
-          ’s folio does (
-          <a href="https://github.com/brunosimon/folio-2019" target="_blank" rel="noopener noreferrer">
-            folio-2019
-          </a>
-          , MIT): soft shadows baked into the ground, a bounce of the ground’s colour on everything, and a soft blob under whatever moves, rendered once in your browser as each world opens.
-        </p>
-        <ModelCredits where="universe" className="universe-credit universe-models" />
+        <details className="universe-credits">
+          <summary>Credits</summary>
+          <p className="universe-credit">
+            Planet maps by{' '}
+            <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
+              Solar System Scope
+            </a>{' '}
+            (CC BY 4.0), recoloured; the Milky Way from{' '}
+            <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">
+              ESO/S. Brunier
+            </a>
+            &rsquo;s photograph (CC BY 4.0); metal and paper from{' '}
+            <a href="https://ambientcg.com" target="_blank" rel="noopener noreferrer">
+              ambientCG
+            </a>{' '}
+            (CC0).
+          </p>
+          <p className="universe-credit">
+            The worlds stand in their light the way{' '}
+            <a href="https://bruno-simon.com" target="_blank" rel="noopener noreferrer">
+              Bruno Simon
+            </a>
+            ’s folio does (
+            <a href="https://github.com/brunosimon/folio-2019" target="_blank" rel="noopener noreferrer">
+              folio-2019
+            </a>
+            , MIT): soft shadows baked into the ground, a bounce of the ground’s colour on everything, and a soft blob under whatever moves, rendered once in your browser as each world opens.
+          </p>
+          <ModelCredits where="universe" className="universe-credit universe-models" />
+        </details>
         <Exits onClassic={onClassic} />
       </aside>
     );
   }
-  const Card = CARDS[universe.id] ?? STATION_CARDS[universe.id];
+  // (a moon of the Rick and Morty sector has a card of its own: MoonCard)
+  const Card = universe.kind === 'moon' ? MoonCard : (CARDS[universe.id] ?? STATION_CARDS[universe.id] ?? null);
   const core = universe.kind === 'core';
   const before = byId(prev(universe.id));
   const after = byId(next(universe.id));
   return (
-    <aside ref={panel} className="universe-panel" aria-label={universe.label}>
+    <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={universe.label}>
       {onTuck && <Tuck onTuck={toggle} />}
       <div className="universe-links flex flex-wrap items-center gap-x-4 gap-y-1">
         <button type="button" className="universe-back" onClick={onWhole}>
-          <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
+          <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole universe
         </button>
         {onNav && (
-          <button type="button" className="universe-back" onClick={onNav}>
+          <button type="button" className="universe-back" data-tour="navmap" onClick={onNav}>
             <RiCompass3Line className="h-3.5 w-3.5" aria-hidden="true" /> Nav map
           </button>
         )}
@@ -294,9 +339,11 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       <button type="button" className="btn btn-primary universe-enter mt-4" onClick={onEnter} disabled={leaving}>
         {crew ? (universe.go ?? (core ? 'Dock at' : 'Land on')) : 'Go to'} {universe.place} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
       </button>
-      <ul className="universe-card mt-4" key={universe.id}>
-        <Card />
-      </ul>
+      {Card && (
+        <ul className="universe-card mt-4" key={universe.id}>
+          <Card moon={universe} />
+        </ul>
+      )}
       <Exits onClassic={onClassic} />
     </aside>
   );

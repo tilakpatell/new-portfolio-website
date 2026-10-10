@@ -7,10 +7,11 @@
 // while its original .fbx is right.
 //
 //   node scripts/fbx-to-glb.mjs <file.fbx> <out.glb> [material=texture.png …]
-//   fbxToGlb(file, out, { maps }) → { parts, shared, clips }
+//   fbxToGlb(file, out, { maps, base }) → { parts, shared, clips }
 // The .fbx and its textures must be under the project (the dev server serves
 // them): its textures are looked for beside it by file name, and `maps` gives
-// a material a texture the file lost.
+// a material a texture the file lost; `base`, a dev server elsewhere than
+// BASE (scripts/kit/fbx.mjs starts one on a free port when 5188 is down).
 
 import { writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
@@ -21,14 +22,14 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = process.env.BASE ?? 'http://127.0.0.1:5188';
 const CHROME = process.env.CHROME ?? '/opt/pw-browsers/chromium';
 
-export async function fbxToGlb(file, out, { maps = {} } = {}) {
+export async function fbxToGlb(file, out, { maps = {}, base = BASE } = {}) {
   const rel = `/${relative(ROOT, file).split('\\').join('/')}`;
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   try {
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${BASE}/scripts/preview/fbx-to-glb.html`);
+    await page.goto(`${base}/scripts/preview/fbx-to-glb.html`);
     await page.waitForFunction(() => window.__ready, null, { timeout: 120000 });
     const r = await page.evaluate(([url, dir, m]) => window.convert(url, dir, m), [rel, rel.split('/').slice(0, -1).join('/'), maps]).catch((e) => {
       throw new Error(`${rel}: ${errors[0] ?? e.message}`);

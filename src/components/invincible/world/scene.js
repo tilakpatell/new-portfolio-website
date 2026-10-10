@@ -5,44 +5,80 @@
 // landing), his father keeping an eye on the city from over downtown, and
 // what flying leaves behind (./fx.js). The rules (./flight.js) say where
 // he is; this draws it, with a camera behind him that pulls back and
-// widens with speed and never ends up inside a building.
+// widens with speed and never ends up inside a building (nor, with a wall
+// right behind him, inside him: it swings off the wall instead), and a light
+// from over its shoulder, so he's never a dark shape on a dark street.
 
 import * as THREE from 'three';
 import { createEngine } from '../../avengers/hq/engine';
-import { createFeel } from '../../avengers/hq/feel';
+import { createFeel, feelGroups } from '../../avengers/hq/feel';
+import { createSpring, springGroups } from '../../../lib/spring';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { CAST, asset } from '../cast';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { createChallenges } from './challenges';
+import { DAD, newDad, stepDad } from './companions';
 import { buildCity } from './city';
-import { createFlaxans } from './flaxans';
+import { anyOf, standing } from './foes';
+import { createVillains } from './villains';
 import { surfaceAt } from './flight';
 import { createFlightFx } from './fx';
 import { buildGround } from './ground';
 import { buildJet } from './jet';
 import { buildLandmarks } from './landmarks';
-import { buildLife } from './life';
-import { LINES, createNpcs } from './npcs';
-import { buildClouds } from './sky';
-import { createTraffic, stepTraffic } from './traffic';
+import { buildLife, carGeometry } from './life';
+import { LINES } from './lines';
+import { createNpcs } from './npcs';
+import { buildClouds, buildHaze, skyBands } from './sky';
+import { carAt, createTraffic, stepTraffic, takeCar } from './traffic';
+import { markerSize } from '../../../runtime/hud/hud';
 import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
 import { BODIES, altitudeOf } from './orbit';
-import { buildPerson, posePerson } from './people';
+import { castMaterial, loadCast, personFor, setCastRim } from './people';
 import { buildSpace } from './space';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { LOOK as ART } from './look';
 
 const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const damp = (v, to, rate, dt) => v + (to - v) * (1 - Math.exp(-rate * dt));
+const luma = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 const Y = new THREE.Vector3(0, 1, 0);
+const Z = new THREE.Vector3(0, 0, 1);
+// what the villains do that's drawn and felt (./villains.js's fx)
+const VILLAIN_EV = new Set(['spawn', 'hit', 'ko', 'down', 'hurt', 'won', 'swing', 'throw', 'carHit', 'carAway', 'carDown', 'quake', 'blast', 'shake']);
 
-// the times of day: the sky, how it sits, the light, the haze, the night
+// the times of day: the sky, how it sits, the light, the haze, the night,
+// the light that follows Mark (`spot`) and the rim round the cast (`rim`).
+// The haze takes the sky photo's colour at the horizon (skyBands); a fog's
+// `tint` or `color` is only for a photo that can't be read.
 export const TIMES = ['noon', 'dusk', 'night'];
 const LOOK = {
-  noon: { sky: 'noon', rotate: 0.6, env: 1, bg: 1, sun: 3, fill: 0.22, fog: { density: 0.00026, tint: 0.95 }, night: 0, exposure: 1, cloud: { lit: [1, 1, 1], shade: [0.62, 0.66, 0.74] } },
-  dusk: { sky: 'dusk', rotate: 2.2, env: 0.62, bg: 1, sun: 2.6, sunColor: [1, 0.66, 0.4], fill: 0.16, fog: { density: 0.0003, tint: 0.7 }, night: 0.5, exposure: 1, cloud: { lit: [1, 0.74, 0.52], shade: [0.42, 0.36, 0.42] } },
-  night: { sky: 'night', rotate: 0, env: 0.22, bg: 0.2, sun: 0.7, sunDir: [-0.3, 0.75, -0.4], sunColor: [0.62, 0.72, 1], fill: 0.4, fog: { density: 0.00024, color: new THREE.Color(0.05, 0.06, 0.08) }, night: 1, exposure: 1, cloud: { lit: [0.14, 0.16, 0.22], shade: [0.06, 0.07, 0.1], opacity: 0.7 } },
+  noon: { sky: 'noon', rotate: 0.6, env: 1.15, bg: 1, sun: 4.2, fill: 0.3, fog: { density: 0.00026, tint: 0.95 }, night: 0, exposure: 1, spot: 0, rim: 0.35, cloud: { lit: [1, 1, 1], shade: [0.62, 0.66, 0.74] } },
+  dusk: { sky: 'dusk', rotate: 2.2, env: 0.62, bg: 1, sun: 2.6, sunColor: [1, 0.66, 0.4], fill: 0.16, fog: { density: 0.0003, tint: 0.7 }, night: 0.5, exposure: 1, spot: 20, rim: 0.7, cloud: { lit: [1, 0.74, 0.52], shade: [0.42, 0.36, 0.42] } },
+  night: { sky: 'night', rotate: 0, env: 0.22, bg: 0.2, sun: 0.7, sunDir: [-0.3, 0.75, -0.4], sunColor: [0.62, 0.72, 1], fill: 0.4, fog: { density: 0.00024, color: new THREE.Color(0.05, 0.06, 0.08) }, night: 1, exposure: 1, spot: 45, rim: 1.2, cloud: { lit: [0.14, 0.16, 0.22], shade: [0.06, 0.07, 0.1], opacity: 0.7 } },
 };
+
+// The camera hovering or standing: `back` metres behind him, `pull` more
+// flat out (the pull-back with speed, as it was), aimed so his feet sit
+// `feet` of the screen's height up from its bottom. Close enough that he's
+// a third of the frame tall, the one thing on it the player has to find
+// (at FOV 64 that's 3.6 m; from further his black and blue were a few
+// pixels wide against the street). Leaning into a flight, it aims `ahead`
+// metres past him instead, as it always has (his feet trail behind him then).
+const CAM = { back: 3.6, pull: 1.5, feet: 0.35, ahead: 4, over: 0.9, overFoot: 0.7 };
+
+// His suit: the atlas's black, raised to `floor` (people.js castMaterial),
+// the show's navy, which keeps his arms and legs on a dark street or at night.
+const SUIT = { floor: 0x2a3754 };
+
+// The light that follows him: from over the camera's shoulder, `back`
+// metres toward the camera and `up` over his chest, at his chest. Warm
+// white, `range` metres, so it lights him, and the street in a disc round
+// his feet when he's down near it, and not the city. Never off, only dark
+// (its intensity is the time's `spot`): a light switched on and off would
+// recompile every lit material in the city at the turn of the time.
+const SPOT = { color: 0xffeedd, range: 12, angle: 0.5, penumbra: 0.6, back: 2, up: 2.2, chest: 1.25 };
 
 // Down on one knee, a fist on the ground: how a hard landing ends.
 const LAND = {
@@ -80,8 +116,185 @@ function rayBox(o, d, b) {
   return t0;
 }
 
+// ── the missions' props: the bank (CAST.bank) on its block east of the plaza,
+// and the getaway truck (CAST.truck) driven along the grid by ./getaway.js;
+// each a code stand-in if its model won't load ──
+async function loadProps(scene, world, { rim }) {
+  const group = new THREE.Group();
+  group.name = 'mission-props';
+  scene.add(group);
+  const casts = [];
+  const geos = [];
+  // a prop's model, stood on the ground at `h` metres tall (its front toward +z)
+  async function prop(name, h) {
+    try {
+      const t = await loadFigure(asset(CAST[name].file));
+      const m = t.scene.clone(true);
+      const box = new THREE.Box3().setFromObject(m);
+      const size = box.getSize(new THREE.Vector3());
+      const k = h / Math.max(1e-3, size.y);
+      m.scale.setScalar(k);
+      m.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
+      const holder = new THREE.Group();
+      holder.add(m);
+      casts.push(castMaterial(m, { rim }));
+      return holder;
+    } catch {
+      return null;
+    }
+  }
+  const bankAt = world.landmarks.find((l) => l.id === 'bank');
+  let bank = bankAt ? await prop('bank', CAST.bank.h) : null;
+  if (bankAt) {
+    if (!bank) {
+      // a stand-in: a stone box with a dark door, the size the map has it
+      bank = new THREE.Group();
+      const g = new THREE.BoxGeometry(bankAt.w, bankAt.h, bankAt.d);
+      const d = new THREE.BoxGeometry(0.4, 5, 6);
+      geos.push(g, d);
+      const wall = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xd9d2c3, roughness: 0.75 }));
+      wall.position.y = bankAt.h / 2;
+      const door = new THREE.Mesh(d, new THREE.MeshStandardMaterial({ color: 0x1b2a36, roughness: 0.3, metalness: 0.6 }));
+      door.position.set(-bankAt.w / 2, 2.5, 0);
+      bank.add(wall, door);
+    }
+    bank.position.set(bankAt.x, groundAt(bankAt.x, bankAt.z), bankAt.z);
+    bank.rotation.y = -Math.PI / 2; // its front to the west: the hall across the street
+    group.add(bank);
+  }
+  let truck = await prop('truck', CAST.truck.h);
+  if (!truck) {
+    truck = new THREE.Group();
+    const g = carGeometry(3);
+    geos.push(g);
+    truck.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3a3f47, roughness: 0.5, metalness: 0.4, vertexColors: true })));
+  }
+  truck.visible = false;
+  group.add(truck);
+  return {
+    group,
+    update(g) {
+      truck.visible = Boolean(g);
+      if (!g) return;
+      truck.position.set(g.p[0], g.p[1], g.p[2]);
+      truck.rotation.y = g.yaw;
+    },
+    dispose() {
+      group.removeFromParent();
+      for (const c of casts) c.dispose();
+      for (const g of geos) g.dispose();
+    },
+  };
+}
+
+// ── the marker over a mission's target: a chevron pointing down at it,
+// bobbing, turning, in the mission's colour, the size the HUD's rules give
+// it (./hud.js markerSize: a 6 m chevron as the camera sees it, never under
+// 24 px); unlit, through anything in front of it ──
+function createMarker(scene) {
+  const holder = new THREE.Group();
+  holder.visible = false;
+  holder.renderOrder = 9;
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: 0.92, depthTest: false, toneMapped: false });
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(1.6, 3.2, 4), mat);
+  cone.rotation.x = Math.PI; // (point down)
+  cone.position.y = 1.6;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.22, 6, 24), mat);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 3.6;
+  holder.add(cone, ring);
+  scene.add(holder);
+  const col = new THREE.Color();
+  return {
+    update(m, t, camera, screenH) {
+      holder.visible = Boolean(m);
+      if (!m) return;
+      const d = Math.max(1, camera.position.distanceTo(new THREE.Vector3(m.p[0], m.p[1], m.p[2])));
+      const px = markerSize(d, screenH, { fov: camera.fov });
+      // the chevron is 6 m tall as drawn; the size on screen is px of screenH
+      const want = (px * 2 * d * Math.tan((camera.fov * Math.PI) / 360)) / screenH;
+      const k = want / 6;
+      holder.scale.setScalar(k);
+      holder.position.set(m.p[0], m.p[1] + 3 * k + Math.sin(t * 2.4) * 0.4 * k, m.p[2]);
+      holder.rotation.y = t * 1.2;
+      if (m.color) mat.color.copy(col.set(m.color));
+    },
+    dispose() {
+      holder.removeFromParent();
+      cone.geometry.dispose();
+      ring.geometry.dispose();
+      mat.dispose();
+    },
+  };
+}
+
+// ── a race's gates (Eve's eight round downtown; the three home from the
+// Moon, in space's frame, which is the scene's) as rings, the next one
+// bright, the ones through gone; and a photo's frame: a rectangle to look
+// through, a few metres ahead of its spot, the way it faces ──
+function createCourse(scene) {
+  const group = new THREE.Group();
+  group.visible = false;
+  scene.add(group);
+  const ringGeo = new THREE.TorusGeometry(1, 0.06, 8, 48);
+  const rings = Array.from({ length: 8 }, () => {
+    const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xf5c518, transparent: true, opacity: 0.3, toneMapped: false }));
+    m.visible = false;
+    group.add(m);
+    return m;
+  });
+  const frame = new THREE.Group();
+  const bar = new THREE.BoxGeometry(1, 1, 1);
+  // (the radio's yellow, through anything: the hall's columns are white too)
+  const frameMat = new THREE.MeshBasicMaterial({ color: 0xf5c518, transparent: true, opacity: 0.9, depthTest: false, toneMapped: false });
+  for (const [x, y, w, h] of [
+    [0, 2, 6.4, 0.22],
+    [0, -2, 6.4, 0.22],
+    [3.1, 0, 0.22, 4.2],
+    [-3.1, 0, 0.22, 4.2],
+  ]) {
+    const m = new THREE.Mesh(bar, frameMat);
+    m.position.set(x, y, 0);
+    m.scale.set(w, h, 0.22);
+    m.renderOrder = 8;
+    frame.add(m);
+  }
+  frame.visible = false;
+  group.add(frame);
+  return {
+    update(gates, photo, t) {
+      group.visible = Boolean(gates || photo);
+      rings.forEach((m, i) => {
+        const g = gates?.list[i];
+        m.visible = Boolean(g) && i >= (gates.next ?? 0);
+        if (!m.visible) return;
+        const next = i === gates.next;
+        m.position.set(g[0], g[1], g[2]);
+        m.scale.setScalar(gates.r * (next ? 1 + Math.sin(t * 4) * 0.04 : 1));
+        m.material.opacity = next ? 0.95 : 0.3;
+        // (facing the one before it, or him: a ring stands across the way)
+        const from = gates.list[i - 1] ?? [g[0], g[1], g[2] + 1];
+        m.lookAt(from[0], from[1], from[2]);
+      });
+      frame.visible = Boolean(photo);
+      if (photo) {
+        const d = [Math.sin(photo.face), 0, Math.cos(photo.face)];
+        frame.position.set(photo.p[0] + d[0] * 9, photo.p[1] + 1.2, photo.p[2] + d[2] * 9);
+        frame.rotation.set(0, photo.face, 0);
+      }
+    },
+    dispose() {
+      group.removeFromParent();
+      ringGeo.dispose();
+      bar.dispose();
+      frameMat.dispose();
+      for (const m of rings) m.material.dispose();
+    },
+  };
+}
+
 export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = {}) {
-  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.3, far: 26000, bloom: { strength: 0.5, radius: 0.5, threshold: 0.92 }, onLost, onSlow });
+  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.3, far: 26000, bloom: ART.bloom, onLost, onSlow });
   const { scene, camera } = engine;
   const small = engine.small;
   const world = buildWorld();
@@ -91,9 +304,14 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const landmarks = await buildLandmarks(world, city.uniforms);
   scene.add(ground.group, city.group, landmarks.group);
   // who's about, the clouds, and the airliner going round
-  const npcs = createNpcs(scene, world);
+  // (the HD figures for those the cast has; the kit's people for the rest)
+  const people = await loadCast(['eve', 'debbie', 'cecil', 'allen', 'civA', 'civB', 'civC', 'mauler', 'seismic']);
+  const npcs = createNpcs(scene, world, people);
   const clouds = buildClouds({ small });
   scene.add(clouds.mesh);
+  // (and high up, the sky in the haze's colours over the photo: ./sky.js)
+  const hazeSky = buildHaze();
+  scene.add(hazeSky.mesh);
   const jet = buildJet();
   scene.add(jet.group);
   // the traffic and the people on the pavements, always round the camera
@@ -135,8 +353,19 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     f.snap(POSES.stand);
     scene.add(f.holder);
   }
-  // Omni-Man, over downtown, hands on his hips
-  const OMNI = { p: [40, 150, -60], yaw: Math.PI * 0.85 };
+  // the cast's one finish (./people.js), its rim set by the time of day
+  const casts = [mark, omni, thragg].map((f) => castMaterial(f.model, { rim: LOOK.noon.rim, floor: f === mark ? SUIT.floor : null }));
+  // the light that follows him (SPOT; with no shadow, one more light's sum on each lit pixel)
+  const spot = new THREE.SpotLight(SPOT.color, 0, SPOT.range, SPOT.angle, SPOT.penumbra, 2);
+  spot.castShadow = false;
+  scene.add(spot, spot.target);
+  // Omni-Man: over downtown, hands on his hips, by day; behind his son at
+  // the rings; on the porch beside Debbie at dusk and night (./companions.js)
+  const home = world.houses.find((q) => q.home);
+  const side = home.yaw === 0 ? 1 : -1;
+  let dad = newDad({ watch: DAD.watch, porch: [home.x + 1.3, 0.3, home.z + side * (home.d / 2 + 1.4)] });
+  const porchYaw = side > 0 ? 0 : Math.PI;
+  let dadYaw = Math.PI * 0.85;
 
   // ── space: the Earth under him, the Moon, Mars, and who's waiting out there ──
   const space = await buildSpace(engine.renderer, { small });
@@ -151,10 +380,9 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const mars = BODIES.find((b) => b.id === 'mars');
   const ALLEN = moon.c.map((v, i) => v + toEarth(moon.c)[i] * (moon.r + 30));
   const THRAGG = mars.c.map((v, i) => v + toEarth(mars.c)[i] * (mars.r + 45));
-  const allen = buildPerson('allen', 9);
+  const allen = personFor('allen', 9, people.allen);
   const allenHolder = new THREE.Group();
-  allen.h.root.position.y = -allen.h.rest.hips.y;
-  allenHolder.add(allen.h.root);
+  allenHolder.add(allen.root);
   allenHolder.position.set(...ALLEN);
   allenHolder.rotation.y = Math.atan2(-ALLEN[0], -ALLEN[2]);
   space.group.add(allenHolder);
@@ -167,8 +395,17 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
 
   const fx = createFlightFx(scene, { calm, small });
   const challenges = createChallenges(scene, world, fx.vfx);
-  const flaxans = createFlaxans(scene, fx.vfx, { calm });
+  const villains = createVillains(scene, fx.vfx, { calm, templates: { mauler: people.mauler, seismic: people.seismic }, rim: LOOK.noon.rim });
+  // the missions' things (./missions.js, run by InvWorld.jsx): the bank on
+  // its block, the getaway truck on the grid, the marker over the step's target
+  const props = await loadProps(scene, world, { rim: LOOK.noon.rim });
+  const marker = createMarker(scene);
+  const course = createCourse(scene);
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.4 });
+  // a slam's squash (the game-feel design's Tier 2): a spring kicked by how
+  // hard he came down, rung out about his feet, never more than 0.3
+  const squash = createSpring({ k: 120, c: 8, max: 0.3 });
+  const SQUASH = { per: 0.05, most: 4 }; // the kick a m/s of landing, and its cap (a slam from flat out is 260)
 
   // ── the time of day ──
   let look = null;
@@ -176,42 +413,103 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   let timeName = 'noon';
   let zone = 'city';
   const fogBase = new THREE.Color();
-  async function setTime(name) {
-    const L = LOOK[name] ?? LOOK.noon;
-    timeName = name;
-    space.setTime(name);
-    if (look === L || zone === 'space') return;
+  // The haze's colours, from the sky photo: along the horizon (`fogBase`,
+  // three's fog and the clouds'), overhead (`fogHigh`), and how the haze
+  // under the horizon compares (`fogBelow`). Every lit material here is in
+  // the engine's house look (lib/three/house), which colours fog by its own
+  // sky, by default a fixed cream: the far hills bleached at noon, and the
+  // city faded into cream at night. The engine keeps the house to itself,
+  // but each material it takes on carries the one set of uniforms it shares
+  // (userData.house), so its sky is set from that.
+  const fogHigh = new THREE.Color();
+  let fogBelow = 1;
+  let houseU = null;
+  const houseOf = () => {
+    if (!houseU)
+      scene.traverse((o) => {
+        for (const m of houseU ? [] : [o.material].flat()) if (m?.userData?.house) houseU = m.userData.house;
+      });
+    return houseU;
+  };
+  // The sky loads before it's put up, so the times are put up one at a time,
+  // in the order asked: two quick changes can't land the wrong way round,
+  // one time's sky over the other's streets. Each resolves once its time is
+  // up (or, if another was asked for meanwhile, once it's been passed over),
+  // and fails if its sky won't load, without stopping the ones after it.
+  let timeQueue = Promise.resolve();
+  function setTime(name) {
+    timeName = LOOK[name] ? name : 'noon';
+    space.setTime(timeName);
+    npcs.setTime(timeName);
+    const turn = timeQueue.then(putUpTime);
+    timeQueue = turn.catch(() => {
+      look = null; // (so the next one puts it up again)
+    });
+    return turn;
+  }
+  async function putUpTime() {
+    const L = LOOK[timeName];
+    // (the cast's rim is the time's, the crowd's too, and out in space)
+    setCastRim(L.rim);
+    if (zone === 'space') {
+      // out there the sun is the only light, and it moves with the time (as
+      // it does on the Earth, the Moon and Mars); the city's sky waits till he's back
+      engine.sun.userData.dir = space.sun.clone();
+      return;
+    }
+    if (look === L) return;
     look = L;
     scene.fog = null;
-    await engine.setSky(L.sky, { rotate: L.rotate, envIntensity: L.env, bgIntensity: L.bg, sunIntensity: L.sun, sunColor: L.sunColor, sunDir: L.sunDir, fill: L.fill, fog: L.fog });
+    const sky = await engine.setSky(L.sky, { rotate: L.rotate, envIntensity: L.env, bgIntensity: L.bg, sunIntensity: L.sun, sunColor: L.sunColor, sunDir: L.sunDir, fill: L.fill, fog: L.fog });
+    if (zone === 'space') {
+      // he went up while it loaded: the sky's light is the city's, not space's
+      look = null;
+      spaceLook();
+      return;
+    }
     engine.renderer.toneMappingExposure = L.exposure;
     ground.setNight(L.night);
     city.setNight(L.night);
     landmarks.setNight(L.night);
     clouds.setLook(L.cloud);
-    haze = 1;
-    if (scene.fog) fogBase.copy(scene.fog.color);
+    spot.intensity = L.spot;
+    // the haze is the sky's colour along the horizon as it's drawn (the
+    // photo at its brightness), so far towers and hills fade into the sky
+    // behind them, not into grey or white; and the sky's overhead above it
+    const b = skyBands(sky?.background);
+    if (scene.fog) {
+      if (b) scene.fog.color.copy(b.horizon).multiplyScalar(L.bg);
+      fogBase.copy(scene.fog.color);
+      if (b) fogHigh.copy(b.high).multiplyScalar(L.bg);
+      else fogHigh.copy(fogBase);
+      fogBelow = b ? clamp(luma(b.below) / Math.max(luma(b.horizon), 1e-4), 0.7, 1) : 0.92;
+    }
+    haze = NaN; // (the next frame puts the haze up, the house's with it)
   }
   await setTime('noon');
 
   // ── the city or space: one or the other is drawn ──
-  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, jet.group, life.group, challenges.group, flaxans.group, omni.holder];
+  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, hazeSky.mesh, jet.group, life.group, challenges.group, villains.group, omni.holder];
+  function spaceLook() {
+    scene.background = new THREE.Color(0, 0, 0.004);
+    scene.fog = null;
+    scene.environmentIntensity = 0.08;
+    engine.sun.color.setRGB(1, 0.97, 0.92);
+    engine.sun.intensity = 3.4;
+    engine.hemi.intensity = 0.04;
+    spot.intensity = 0; // (out there the sun's the only light on him)
+    engine.sun.userData.dir = space.sun.clone();
+    space.stars.visible = true;
+    space.stars.material.color.setScalar(1);
+  }
   async function setZone(z) {
     if (z === zone) return;
     zone = z;
     for (const g of cityOnly) g.visible = z === 'city';
-    for (const n of npcs.all) n.holder.visible = z === 'city';
+    for (const n of npcs.all) n.holder.visible = z === 'city' && n.out !== false;
     space.group.visible = z === 'space';
     if (z === 'space') {
-      scene.background = new THREE.Color(0, 0, 0.004);
-      scene.fog = null;
-      scene.environmentIntensity = 0.08;
-      engine.sun.color.setRGB(1, 0.97, 0.92);
-      engine.sun.intensity = 3.4;
-      engine.hemi.intensity = 0.04;
-      engine.sun.userData.dir = space.sun.clone();
-      space.stars.visible = true;
-      space.stars.material.color.setScalar(1);
+      spaceLook();
       camera.far = 1300000;
     } else {
       camera.far = 26000;
@@ -225,16 +523,18 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const qTmp = new THREE.Quaternion();
   const qYaw = new THREE.Quaternion();
   const vTmp = new THREE.Vector3();
-  function carry(f, p, yaw, v, dt, { lean = 1, roll = 0, lift = 0 } = {}) {
+  // `ahead`: the figure lies along its flight itself (a flying clip, its head
+  // ahead), so its front, not its crown, is turned along the flight
+  function carry(f, p, yaw, v, dt, { lean = 1, roll = 0, lift = 0, ahead = false } = {}) {
     f.holder.position.set(p[0], p[1] + f.hipHeight + lift, p[2]);
     f.holder.rotation.set(0, yaw, 0);
     const speed = Math.hypot(v[0], v[1], v[2]);
     const k = clamp((speed - 8) / 30, 0, 1) * lean;
-    const dir = speed > 0.1 ? vTmp.set(v[0], v[1], v[2]).divideScalar(speed) : vTmp.copy(Y);
-    dir.lerpVectors(Y, dir, k).normalize();
+    const axis = ahead ? Z : Y;
     qYaw.setFromAxisAngle(Y, -yaw);
-    dir.applyQuaternion(qYaw); // into his own frame
-    qTmp.setFromUnitVectors(Y, dir);
+    const dir = speed > 0.1 ? vTmp.set(v[0], v[1], v[2]).divideScalar(speed).applyQuaternion(qYaw) : vTmp.copy(axis); // (in his own frame)
+    dir.lerpVectors(axis, dir, k).normalize();
+    qTmp.setFromUnitVectors(axis, dir);
     if (roll) qTmp.multiply(new THREE.Quaternion().setFromAxisAngle(Y, roll));
     f.lean.slerp(qTmp, dt === 0 ? 1 : 1 - Math.exp(-8 * dt));
     f.body.quaternion.copy(f.lean);
@@ -242,12 +542,81 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   }
 
   // ── the camera: behind him, pulled back and widened with speed ──
-  const cam = { dist: 6, fov: FOV, pos: new THREE.Vector3(), at: new THREE.Vector3(), ready: false, near: 0.3 };
+  const cam = { dist: CAM.back, fov: FOV, pos: new THREE.Vector3(), at: new THREE.Vector3(), ready: false, near: 0.3, swing: 0 };
+  // Where to look from `from` so his feet (`feet`, `up` his up) sit CAM.feet
+  // up the screen, centred across it: the point on the line up through him
+  // that's that much above the line to his feet (in the upright plane
+  // through the camera and him, the screen's height goes as the tangent).
+  const aimFeet = new THREE.Vector3();
+  const aimRun = new THREE.Vector3();
+  function feetAim(from, feet, up, fov) {
+    aimRun.subVectors(feet, from);
+    const rise = aimRun.dot(up);
+    aimRun.addScaledVector(up, -rise); // (along the ground to the line up through him)
+    const run = aimRun.length();
+    const a = clamp(Math.atan2(rise, run) + Math.atan((1 - 2 * CAM.feet) * Math.tan(THREE.MathUtils.degToRad(fov / 2))), -1.45, 1.45);
+    return { at: aimFeet.copy(from).add(aimRun).addScaledVector(up, run * Math.tan(a)), steep: run / Math.hypot(run, rise) };
+  }
   const list = [];
+  // how far (0…1) along `back` from `anchor` the camera can go before a wall
+  // (`list`: the buildings round him, each kept 0.4 m off). One he's hugging
+  // is kept off only as far as leaves 0.15 m round the anchor: he hovers as
+  // near as FLY.R (0.45 m) to a face (./flight.js's collide), and from
+  // there, with a whole 0.4 m kept off, every way out but straight along
+  // the wall would end a few centimetres from him. So the camera can still
+  // go along a wall or away from it, and never nearer its face than 0.3 m.
+  function clear(anchor, back) {
+    let t = 1;
+    for (const b of list) {
+      const out = Math.hypot(Math.max(b.x0 - anchor[0], 0, anchor[0] - b.x1), Math.max(b.y0 - anchor[1], 0, anchor[1] - b.y1), Math.max(b.z0 - anchor[2], 0, anchor[2] - b.z1));
+      const m = clamp(out - 0.15, 0, 0.4);
+      t = Math.min(t, rayBox(anchor, back, { x0: b.x0 - m, x1: b.x1 + m, y0: b.y0 - m, y1: b.y1 + m, z0: b.z0 - m, z1: b.z1 + m }));
+    }
+    return t;
+  }
+  // Where it goes when a wall's right behind him (hovering against a tower,
+  // or by one on a roof): round him to one side or the other, or up over
+  // him, whichever gets furthest from him for the least turn, rather than
+  // closing in until it's inside his head. The last two go square to his
+  // back, along the wall: with his back flat to it, every other way runs
+  // into its face within a few centimetres. [turn about the up axis, rise, cost in metres]
+  const SWINGS = [
+    [0.5, 0, 0.8],
+    [-0.5, 0, 0.8],
+    [1, 0, 1.6],
+    [-1, 0, 1.6],
+    [0, 0.85, 1.4],
+    [1.5, 0, 2.6],
+    [-1.5, 0, 2.6],
+    [0, 1.4, 2.4],
+    [Math.PI / 2, 0, 3],
+    [-Math.PI / 2, 0, 3],
+  ];
+  const TIGHT = 2.6; // (metres: closer than this, the camera swings; it comes back once the line behind him is clear to 3.6)
+  const swung = [0, 0, 0];
+  function swing(back, [turn, rise], up) {
+    // (round the up axis, then lifted toward it, kept the same length)
+    const c = Math.cos(turn);
+    const s = Math.sin(turn);
+    const l = Math.hypot(...back);
+    let x = back[0] * c + back[2] * s;
+    let y = back[1];
+    let z = -back[0] * s + back[2] * c;
+    if (rise) {
+      x = x * (1 - rise * 0.6) + up.x * l * rise;
+      y = y * (1 - rise * 0.6) + up.y * l * rise;
+      z = z * (1 - rise * 0.6) + up.z * l * rise;
+    }
+    const k = l / (Math.hypot(x, y, z) || 1);
+    swung[0] = x * k;
+    swung[1] = y * k;
+    swung[2] = z * k;
+    return swung;
+  }
   function placeCamera(h, yaw, pitch, speed, dt) {
     const fly = h.mode === 'air';
     const k = clamp(speed / 260, 0, 1);
-    const want = h.mode === 'ground' ? 5.2 : 6.5 + k * 1.5;
+    const want = h.mode === 'ground' ? CAM.back : CAM.back + k * CAM.pull;
     cam.dist = dt === 0 ? want : damp(cam.dist, want, 2.4, dt);
     // standing on the Moon or Mars, "up" is away from it: the camera's frame turns with it
     const upV = h.mode === 'perch' ? new THREE.Vector3(...h.perch.n) : Y;
@@ -257,16 +626,30 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     const lift = upV.clone().multiplyScalar(fly ? 1.2 : 1.55);
     const anchor = [h.p[0] + lift.x, h.p[1] + lift.y, h.p[2] + lift.z];
     // (higher over him the faster he goes, so flat out you see his back, not his boots)
-    const over = upV.clone().multiplyScalar(fly ? 0.9 + k * 2.6 : 0.7);
-    const back = [-fwd[0] * cam.dist + over.x, -fwd[1] * cam.dist + over.y, -fwd[2] * cam.dist + over.z];
-    // never inside a building: stop short of the first wall behind him
+    const over = upV.clone().multiplyScalar(fly ? CAM.over + k * 2.6 : CAM.overFoot);
+    let back = [-fwd[0] * cam.dist + over.x, -fwd[1] * cam.dist + over.y, -fwd[2] * cam.dist + over.z];
+    // never inside a building: stop short of the first wall behind him, or,
+    // with one right behind him, swing off it (and stay swung until the line
+    // behind him is clear again, so it doesn't flick between the two)
     let t = 1;
-    const reach = cam.dist + 2;
-    if (zone === 'city')
-      for (const b of near(world, anchor[0], anchor[2], reach, list)) {
-        const g = { x0: b.x0 - 0.4, x1: b.x1 + 0.4, y0: b.y0 - 0.4, y1: b.y1 + 0.4, z0: b.z0 - 0.4, z1: b.z1 + 0.4 };
-        t = Math.min(t, rayBox(anchor, back, g));
-      }
+    if (zone === 'city') {
+      near(world, anchor[0], anchor[2], cam.dist + 3, list);
+      const len = Math.hypot(...back);
+      t = clear(anchor, back);
+      if (t * len < (cam.swing ? TIGHT + 1 : TIGHT)) {
+        let best = { i: -1, t, score: t * len };
+        SWINGS.forEach((s, i) => {
+          const tt = clear(anchor, swing(back, s, upV));
+          const score = tt * len - s[2] + (i === cam.swing - 1 ? 0.8 : 0);
+          if (score > best.score) best = { i, t: tt, score };
+        });
+        cam.swing = best.i + 1;
+        if (best.i >= 0) {
+          back = [...swing(back, SWINGS[best.i], upV)];
+          t = best.t;
+        }
+      } else cam.swing = 0;
+    } else cam.swing = 0;
     t = Math.max(0.08, t);
     const pos = new THREE.Vector3(anchor[0] + back[0] * t, anchor[1] + back[1] * t, anchor[2] + back[2] * t);
     if (zone === 'city') pos.y = Math.max(pos.y, groundAt(pos.x, pos.z) + 0.5, -2);
@@ -276,7 +659,13 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         const d = pos.clone().sub(new THREE.Vector3(...b.c));
         if (d.length() < b.r + 1.5) pos.copy(new THREE.Vector3(...b.c).addScaledVector(d.normalize(), b.r + 1.5));
       }
-    const at = new THREE.Vector3(anchor[0] + fwd[0] * 4, anchor[1] + fwd[1] * 4, anchor[2] + fwd[2] * 4);
+    // hovering or standing, aimed by his feet (CAM.feet); leaning into a
+    // flight, or with the camera nearly over him (where the line up
+    // through him is nearly the way it looks), at a point ahead of him
+    const ahead = new THREE.Vector3(anchor[0] + fwd[0] * CAM.ahead, anchor[1] + fwd[1] * CAM.ahead, anchor[2] + fwd[2] * CAM.ahead);
+    const lean = fly ? clamp((speed - 8) / 30, 0, 1) : 0;
+    const aim = feetAim(pos, vTmp.set(h.p[0], h.p[1], h.p[2]), upV, FOV + Math.pow(k, 1.2) * 16);
+    const at = aim.at.lerp(ahead, Math.max(lean, 1 - THREE.MathUtils.smoothstep(aim.steep, 0.1, 0.25)));
     if (!cam.ready || dt === 0) {
       cam.pos.copy(pos);
       cam.at.copy(at);
@@ -290,9 +679,12 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     camera.position.copy(cam.pos);
     camera.up.lerp(upV, dt === 0 ? 1 : 1 - Math.exp(-4 * dt)).normalize();
     camera.lookAt(cam.at);
-    // the near plane moves out as he climbs (the depth buffer goes further)
+    // the near plane moves out as he climbs (the depth buffer goes further),
+    // but never out to him: his height is over the street, and on a roof or
+    // by a tower the camera can be nearer him than that would allow
     const alt = zone === 'space' ? altitudeOf(h) : h.p[1] - groundAt(h.p[0], h.p[2]);
-    const nearWant = zone === 'space' ? 2 : clamp(alt * 0.004, 0.25, 3);
+    const gap = Math.hypot(cam.pos.x - anchor[0], cam.pos.y - anchor[1], cam.pos.z - anchor[2]);
+    const nearWant = Math.min(zone === 'space' ? 2 : clamp(alt * 0.004, 0.25, 3), Math.max(0.1, gap * 0.3));
     // (and the far plane, so from high up the land runs on to the horizon)
     const farWant = zone === 'space' ? 1300000 : clamp(26000 + alt * 3, 26000, 60000);
     if (Math.abs(nearWant - cam.near) > 0.02 || Math.abs(farWant - camera.far) > 500) {
@@ -303,6 +695,13 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     }
     feel.setBaseFov(FOV + Math.pow(k, 1.2) * 16);
     feel.update(dt, camera);
+    // the light that follows him: over the camera's shoulder, above his chest
+    if (zone === 'city') {
+      const chest = spot.target.position.set(h.p[0], h.p[1] + SPOT.chest, h.p[2]);
+      const toCam = vTmp.set(cam.pos.x - chest.x, 0, cam.pos.z - chest.z);
+      if (toCam.lengthSq() < 1e-4) toCam.set(-fwd[0], 0, -fwd[2]);
+      spot.position.copy(chest).addScaledVector(toCam.normalize(), SPOT.back).add(vTmp.set(0, SPOT.up, 0));
+    }
     // the shadows: round him, wider the higher he is (in space, just his own)
     if (zone === 'space') engine.setShadowBox(new THREE.Vector3(...h.p), 6, 40);
     else engine.setShadowBox(new THREE.Vector3(h.p[0], Math.max(0, h.p[1] - alt), h.p[2]), clamp(60 + alt * 0.4, 60, 360), 600 + Math.min(alt, 1500));
@@ -310,11 +709,24 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     if (zone === 'city' && scene.fog?.isFogExp2 && look) {
       const thin = clamp(1 - alt / 2600, 0.3, 1);
       const dark = THREE.MathUtils.smoothstep(alt, 2500, WORLD.ceiling);
-      if (Math.abs(thin - haze) > 0.005 || dark > 0) {
-        haze = thin;
+      if (Number.isNaN(haze) || Math.abs(thin - haze) > 0.005 || dark > 0) {
+        // (until the house has taken the city on, again next frame)
+        const u = houseOf();
+        haze = u ? thin : NaN;
         scene.fog.density = look.fog.density * thin * (1 - dark * 0.5);
-        scene.fog.color.copy(fogBase).lerp(new THREE.Color(0.01, 0.015, 0.04), dark * 0.85);
-        scene.backgroundIntensity = look.bg * (1 - 0.94 * dark);
+        // the haze dims with the sky behind it, so the land meets the sky
+        // at the sky's own tone all the way up (not a cream plain under a
+        // dark sky, its photo's clouds dark banks along the horizon)
+        const sky = 1 - 0.94 * dark;
+        scene.backgroundIntensity = look.bg * sky;
+        scene.fog.color.copy(fogBase).multiplyScalar(sky);
+        if (u) {
+          u.uLookFogLow.value.copy(scene.fog.color);
+          u.uLookFogHigh.value.copy(fogHigh).multiplyScalar(sky);
+          u.uLookFogBelow.value = fogBelow;
+        }
+        // and over the photo, as it dims, the sky the haze has
+        hazeSky.set(scene.fog.color, u ? u.uLookFogHigh.value : fogHigh, fogBelow, THREE.MathUtils.smoothstep(dark, 0.05, 0.5));
       }
       space.stars.visible = dark > 0.02;
       space.stars.material.color.setScalar(dark);
@@ -363,11 +775,17 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       gAt.lerpVectors(Y, gAt, k).normalize().applyQuaternion(gYaw);
       fig.body.quaternion.slerp(gQ.setFromUnitVectors(Y, gAt), 1 - Math.exp(-8 * gdt));
       fig.holder.quaternion.setFromUnitVectors(Y, gUp).premultiply(gYaw).multiply(gYaw.invert());
-      if (air) fig.pose(k > 0.45 ? POSES.fly() : POSES.hover(gt), gdt, 9);
-      else {
+      // (Mark's clips where they fit; flat out, posed, as the lean above wants)
+      if (air) {
+        if (k > 0.45) fig.pose(POSES.fly(), gdt, 9);
+        else fig.act('hover', { fade: 0.4 }) || fig.pose(POSES.hover(gt), gdt, 9);
+      } else {
         f.gait += speed * gdt * 1.55;
-        fig.pose(speed > 0.3 ? POSES.stride(f.gait, clamp(speed / 2, 0, 1), clamp((speed - 4) / 5, 0, 1)) : POSES.stand, gdt, 14);
+        if (speed > 4.5) fig.act('run', { speed: clamp(speed / 5.5, 0.7, 1.6) }) || fig.pose(POSES.stride(f.gait, 1, clamp((speed - 4) / 5, 0, 1)), gdt, 14);
+        else if (speed > 0.3) fig.act('walk', { speed: clamp(speed / 1.4, 0.6, 2.2) }) || fig.pose(POSES.stride(f.gait, clamp(speed / 2, 0, 1), 0), gdt, 14);
+        else fig.act('idle') || fig.pose(POSES.stand, gdt, 14);
       }
+      fig.tick(gdt);
     },
     tag: 0.5,
     halo: 1.3,
@@ -378,6 +796,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   // ── every frame ──
   let t = 0;
   let stride = 0;
+  const splashed = { t: -1, speed: 0 }; // (the last splash drawn)
   function frame(sim, frameDt) {
     // (the QA scripts' `snap`: the camera and his pose straight to where they're going)
     const snap = Boolean(sim.snap);
@@ -387,8 +806,22 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     const speed = Math.hypot(h.v[0], h.v[1], h.v[2]);
     // what happened this frame (and what sends the people and the traffic running)
     const scare = [];
+    // and what the townspeople make of it (./brains.js)
+    const crowd = { slam: null, hit: null, fight: Boolean(sim.foes?.on), won: false, time: timeName, lesson: sim.quests?.lesson ?? null, mission: sim.mission?.id ?? null };
+    // (Eve goes for the foes still standing)
+    crowd.talk = Boolean(sim.talkEve);
+    sim.talkEve = false;
+    crowd.foes = sim.foes ? standing(sim.foes).map((e) => ({ id: e.id, p: e.p })) : [];
+    // what Eve and Dad say and do this frame, for ./InvWorld.jsx
+    sim.companion ??= [];
     for (const e of sim.events) {
+      if ((e.type === 'slam' || e.type === 'impact' || e.type === 'boom') && !crowd.slam) crowd.slam = [e.at[0], e.at[2]];
+      else if ((e.type === 'ko' || e.type === 'down') && !crowd.hit) crowd.hit = [e.at[0], e.at[2]];
+      else if (e.type === 'won') crowd.won = true;
+      // (a fight near the road: the cars back away from it)
+      if (e.type === 'ko' || e.type === 'down' || e.type === 'hurt') scare.push({ x: e.at[0], z: e.at[2], r: 60, reverse: true });
       if (e.type === 'slam') scare.push({ x: e.at[0], z: e.at[2], r: 25 + e.speed * 0.25 });
+      else if (e.type === 'splash' && e.speed > 40) scare.push({ x: e.at[0], z: e.at[2], r: 15 + e.speed * 0.15 });
       else if (e.type === 'impact') scare.push({ x: e.at[0], z: e.at[2], r: 35 });
       else if (e.type === 'boom' && e.at[1] - groundAt(e.at[0], e.at[2]) < 90) scare.push({ x: e.at[0], z: e.at[2], r: 60 });
       if (e.type === 'boom') {
@@ -397,20 +830,39 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         feel.punch(6);
       } else if (e.type === 'slam') {
         fx.slam(e.at, e.speed);
+        squash.kick(Math.min(SQUASH.most, e.speed * SQUASH.per));
         feel.trauma(clamp(e.speed / 150, 0.3, 1));
       } else if (e.type === 'impact') {
         fx.impact(e.at, e.n, e.speed);
         feel.trauma(clamp(e.speed / 120, 0.4, 1));
-      } else if (e.type === 'splash') fx.splash(e.at, e.speed);
-      else if (e.type === 'takeoff') fx.takeoff(e.at);
-      else if (e.type === 'spawn' || e.type === 'ko' || e.type === 'down' || e.type === 'hurt' || e.type === 'won') {
-        // the Flaxans: coming through, knocked out, hitting him
-        flaxans.fx(e);
+      } else if (e.type === 'splash') {
+        // down onto the water: spray where a slam would crack the street (no
+        // crater), and a lighter knock than the street's. A dip and back down
+        // straight after (bobbing at the surface) doesn't throw up another.
+        if (!(t - splashed.t < 0.3 && e.speed <= splashed.speed)) {
+          fx.splash(e.at, e.speed);
+          feel.trauma(clamp(e.speed / 260, 0.15, 0.7));
+          splashed.t = t;
+          splashed.speed = e.speed;
+        }
+      } else if (e.type === 'takeoff') fx.takeoff(e.at);
+      else if (VILLAIN_EV.has(e.type)) {
+        // the villains (./foes.js): coming through, hit, knocked out, hitting him
+        villains.fx(e);
+        // (the camera's knock goes by their size; a punch that lands stops the
+        // game 70 ms, ./InvWorld.jsx's loop slowed by timeScale: the stop
+        // stays under reduced motion, where the knock is the feel's to hold)
         if (e.type === 'ko') {
-          feel.trauma(0.3);
-          feel.hitstop(60);
+          feel.trauma(e.kind === 'mauler' ? 0.5 : e.kind === 'seismic' ? 0.4 : 0.3);
+          feel.hitstop(70);
           scare.push({ x: e.at[0], z: e.at[2], r: 30 });
-        } else if (e.type === 'hurt') feel.trauma(0.35);
+        } else if (e.type === 'hit') {
+          feel.trauma(e.kind === 'mauler' ? 0.25 : 0.15);
+          feel.hitstop(70);
+        } else if (e.type === 'hurt') feel.trauma(e.by === 'car' || e.by === 'mauler' ? 0.5 : 0.35);
+        else if (e.type === 'shake') feel.trauma(clamp(0.9 - Math.hypot(e.at[0] - h.p[0], e.at[2] - h.p[2]) / 200, 0.2, 0.9));
+        else if (e.type === 'carHit' || e.type === 'carDown') scare.push({ x: e.at[0], z: e.at[2], r: 25 });
+        else if (e.type === 'throw' && e.car != null && traffic.cars[e.car]) traffic = takeCar(traffic, traffic.cars[e.car].id);
       } else if (e.type === 'land' && e.n) {
         // down on the Moon or Mars: a ring of dust thrown out round him
         const at = new THREE.Vector3(...e.at);
@@ -430,53 +882,95 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       mark.holder.quaternion.setFromUnitVectors(Y, n).multiply(new THREE.Quaternion().setFromAxisAngle(Y, h.face));
       mark.lean.identity();
       mark.body.quaternion.identity();
-      mark.pose(POSES.proud(), dt, 6);
+      mark.act('idle') || mark.pose(POSES.proud(), dt, 6);
     } else if (h.mode === 'ground') {
+      // his motion-captured clips where he has them (walking at the pace he
+      // goes: the clip's own pace is about 1.4 m/s, a run's about 5.5);
+      // the landing crouch and a punch are posed, aimed where they go
       const flat = Math.hypot(h.v[0], h.v[2]);
       stride += flat * frameDt * 1.55;
       carry(mark, h.p, h.face, [0, 0, 0], dt, { lean: 0, lift: h.crouch > 0 ? -mark.hipHeight * 0.42 : 0 });
       if (h.crouch > 0) mark.pose(LAND, dt, 18);
-      else if (flat > 0.3) mark.pose(POSES.stride(stride, clamp(flat / 2, 0, 1), clamp((flat - 4) / 5, 0, 1)), dt, 14);
-      else mark.pose(POSES.stand, dt, 8);
+      else if (sim.punchT > 0) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+      else if (flat > 4.5) mark.act('run', { speed: clamp(flat / 5.5, 0.7, 1.6) }) || mark.pose(POSES.stride(stride, 1, clamp((flat - 4) / 5, 0, 1)), dt, 14);
+      else if (flat > 0.3) mark.act('walk', { speed: clamp(flat / 1.4, 0.6, 2.2) }) || mark.pose(POSES.stride(stride, clamp(flat / 2, 0, 1), 0), dt, 14);
+      else mark.act('idle') || mark.pose(POSES.stand, dt, 8);
     } else if (h.stun > 0) {
       carry(mark, h.p, h.face, h.v, dt, { lean: 0.4, roll: t * 9 });
-      mark.pose(POSES.hurt(), dt, 14);
+      mark.act('hit', { once: true, fade: 0.1 }) || mark.pose(POSES.hurt(), dt, 14);
     } else {
-      const k = carry(mark, h.p, h.face, h.v, dt, { lean: 1 });
+      // flat out, the fly clip lies along his flight itself
+      const fast = clamp((Math.hypot(...h.v) - 8) / 30, 0, 1) > 0.45 && mark.clips.includes('fly');
+      const k = carry(mark, h.p, h.face, h.v, dt, { lean: 1, ahead: fast });
       // a punch thrown hanging in the air (flat out, the fly pose's fist is already ahead)
-      mark.pose(k > 0.45 ? POSES.fly() : sim.punchT > 0 ? POSES.punch([0, 0.1, 1]) : POSES.hover(t), dt, sim.punchT > 0 ? 30 : 9);
+      if (sim.punchT > 0 && !fast) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+      else if (k > 0.45) mark.act('fly', { fade: 0.4 }) || mark.pose(POSES.fly(), dt, 9);
+      else mark.act('hover', { fade: 0.4 }) || mark.pose(POSES.hover(t), dt, 9);
     }
-    if (h.mode === 'ground' && sim.punchT > 0 && h.crouch <= 0) mark.pose(POSES.punch([0, 0.1, 1]), dt, 30);
+    mark.tick(dt);
+    // (on his feet only: off them the squash is let go)
+    const sq = h.mode === 'ground' ? squash.step(dt) : 0;
+    if (h.mode !== 'ground') squash.reset();
+    mark.holder.scale.set(1 + sq / 2, 1 - sq, 1 + sq / 2);
+    if (sq) mark.holder.position.y -= mark.hipHeight * sq;
 
     if (zone === 'city') {
       // his father, keeping an eye on things
-      const bob = Math.sin(t * 0.7) * 1.2;
-      carry(omni, [OMNI.p[0], OMNI.p[1] + bob, OMNI.p[2]], OMNI.yaw, [0, 0, 0], dt, { lean: 0 });
-      omni.pose(POSES.proud(), dt, 6);
+      if (!sim.hold) {
+        const r = stepDad(dad, { hero: h.p, heroV: h.v, lesson: crowd.lesson, mission: crowd.mission, spar: sim.mission?.spar ?? null, time: timeName }, snap ? 1 : frameDt);
+        dad = r.dad;
+        sim.companion.push(...r.ev);
+      }
+      const onPorch = dad.state === 'home' && Math.hypot(dad.p[0] - dad.porch[0], dad.p[1] - dad.porch[1], dad.p[2] - dad.porch[2]) < 1;
+      const going = Math.hypot(dad.v[0], dad.v[2]);
+      if (onPorch) dadYaw = porchYaw;
+      else if (going > 2) dadYaw = Math.atan2(dad.v[0], dad.v[2]);
+      else if (dad.state === 'lesson') dadYaw = Math.atan2(h.p[0] - dad.p[0], h.p[2] - dad.p[2]);
+      const bob = onPorch ? 0 : Math.sin(t * 0.7) * 1.2;
+      carry(omni, [dad.p[0], dad.p[1] + bob, dad.p[2]], dadYaw, dad.v, dt, { lean: onPorch ? 0 : 1 });
+      if (onPorch) omni.act('idle') || omni.pose(POSES.stand, dt, 6);
+      else if (Math.hypot(...dad.v) > 20) omni.act('fly', { fade: 0.4 }) || omni.pose(POSES.fly(), dt, 9);
+      else omni.act('hover', { fade: 0.4 }) || omni.pose(POSES.proud(), dt, 6);
+      omni.tick(dt);
       // (the QA scripts can hold everyone still, to frame them)
       if (!sim.hold) {
-        npcs.update(frameDt, t, h);
+        sim.companion.push(...npcs.update(frameDt, t, h, crowd));
         jet.update(frameDt, t);
       }
       if (sim.quests) challenges.update(sim.quests, frameDt, t);
-      if (sim.fight) flaxans.update(sim.fight, frameDt, t, h);
+      if (sim.foes) {
+        villains.update(sim.foes, frameDt, t, h);
+        // (a Mauler about: where the traffic's cars are, for him to take one; a car he's taken is nowhere)
+        sim.cars = anyOf(sim.foes, 'mauler')
+          ? traffic.cars.map((c) => {
+              if (c.gone) return [1e9, 0, 1e9];
+              const [x, z] = carAt(c);
+              return [x, 0, z];
+            })
+          : null;
+      }
+      props.update(sim.getaway, frameDt);
       // (no traffic to speak of from up where the clouds are)
       if (h.p[1] < 2200 || scare.length) {
         traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });
         life.update(traffic, frameDt, camera, look?.night ?? 0);
       }
       clouds.update(t, scene.fog);
+      hazeSky.update(camera);
     } else {
       // Allen, waiting by the Moon; Thragg over Mars
-      posePerson(allen, { mode: 'hover', t });
+      allen.pose({ mode: 'hover', t }, dt);
       carry(thragg, [THRAGG[0], THRAGG[1] + Math.sin(t * 0.6), THRAGG[2]], Math.atan2(-THRAGG[0], -THRAGG[2]), [0, 0, 0], dt, { lean: 0 });
-      thragg.pose(POSES.proud(), dt, 6);
+      thragg.act('hover') || thragg.pose(POSES.proud(), dt, 6);
+      thragg.tick(dt);
     }
     space.update(t, camera);
     // other players online: in the city, or out here with him
     ghosts.update(sim.travellers ?? [], t, frameDt);
 
     placeCamera(h, sim.yaw, sim.pitch, speed, snap ? 0 : dt);
+    marker.update(sim.marker, t, camera, engine.size.h);
+    course.update(sim.gates, sim.photo, t);
     ground.update(t);
     city.update(t, look?.night ?? 0);
     // coming down through the air from space, fast: the air in front of him burns
@@ -499,8 +993,8 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         .sort((a, b) => a.d - b.d);
     }
     const out = npcs.talkers(h);
-    const d = Math.hypot(h.p[0] - OMNI.p[0], h.p[1] - OMNI.p[1], h.p[2] - OMNI.p[2]);
-    if (d < 45) out.push({ id: 'omni', role: 'omni', name: 'Dad', lines: LINES.omni, head: [OMNI.p[0], OMNI.p[1] + 1.2, OMNI.p[2]], d });
+    const d = Math.hypot(h.p[0] - dad.p[0], h.p[1] - dad.p[1], h.p[2] - dad.p[2]);
+    if (d < 45) out.push({ id: 'omni', role: 'omni', name: 'Dad', lines: LINES.omni, head: [dad.p[0], dad.p[1] + 1.2, dad.p[2]], d });
     return out.sort((a, b) => a.d - b.d);
   };
   const tmpV = new THREE.Vector3();
@@ -511,6 +1005,10 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     engine,
     world,
     frame,
+    // how much of a real frame the game goes on by (a hitstop: ./InvWorld.jsx's loop)
+    timeScale: feel.timeScale,
+    // ?debug: the feel's numbers, and ./InvWorld.jsx's (the hits, the jump's press)
+    tune: (more = []) => engine.tune([...feelGroups(feel), ...springGroups(squash, 'squash'), ...more], 'invincible'),
     setTime,
     project,
     talkers,
@@ -519,7 +1017,20 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     get zone() {
       return zone;
     },
-    debug: { npcs, jet, world, bodies: BODIES, allen: ALLEN, thragg: THRAGG },
+    debug: {
+      npcs,
+      jet,
+      villains,
+      world,
+      bodies: BODIES,
+      allen: ALLEN,
+      thragg: THRAGG,
+      // Dad's rules, and (given a place, and the way he's facing) Dad put there
+      dad: (p, dir) => {
+        if (p) dad = { ...dad, p: [...p], dir: dir ?? dad.dir };
+        return dad;
+      },
+    },
     resize: (w, hh) => engine.resize(w, hh),
     get lost() {
       return engine.lost;
@@ -528,7 +1039,12 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     dispose() {
       skyLight?.dispose();
       fx.dispose();
+      villains.dispose();
+      props.dispose();
+      marker.dispose();
+      course.dispose();
       ghosts.dispose();
+      for (const c of casts) c.dispose();
       mark.dispose();
       omni.dispose();
       thragg.dispose();

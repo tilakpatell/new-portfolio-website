@@ -1,16 +1,21 @@
 // Down on Marvel's planet: Avengers HQ, upstate, on the compound's lawn.
-// The Quinjet and the trees are the compound world's own (avengers/compound/
-// models.js); Thor, the Hulk, Natasha and the Iron Man armour are its
+// The Quinjet is the compound world's own (avengers/compound/models.js);
+// Thor, the Hulk, Natasha and the Iron Man armour are its
 // Sketchfab people (CC BY, avengers/world/people.js), playing their idles;
 // the Infinity Gauntlet is the planet's own model (universe/marvel.glb:
-// landings.js names it). Here are the rest: the compound's main building
-// and its tower with the A on it, the pad, and the flags.
+// landings.js names it), and the lawn's trees and the street furniture
+// are Quaternius's. Here are the rest: the compound's main building and its
+// tower with the A on it, the pad, and the flags.
 
 import * as THREE from 'three';
 import { box, part } from '../../galaxy/surface/kit';
-import { buildQuinjet, canopyGeometry, coniferGeometry } from '../../avengers/compound/models';
+import { buildQuinjet } from '../../avengers/compound/models';
 import { loadPerson, person } from '../../avengers/world/people';
+import { centredClips, rigOf } from '../../avengers/world/borrow';
+import { createLook } from '../../avengers/world/castBody';
+import { faceStep } from './face';
 import { AVENGERS_MODELS } from '../../avengers/people/models';
+import { sharpen } from '../../../lib/three/textures';
 
 const hot = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
 
@@ -50,6 +55,7 @@ function logo(ground = null, ink = '#ffffff', size = 256) {
   x.closePath();
   x.fill();
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -142,29 +148,38 @@ export const PROPS = {
     };
   },
 
-  // one of the team, at their real height, idling (Thor, the Hulk, Natasha, the Iron Man armour)
+  // one of the team, at their real height, idling (Thor, the Hulk, Natasha,
+  // the Iron Man armour): each from its own moment of its idle, and turned
+  // to you as you come up (face.js's faceStep), their head on you too
+  // (castBody's createLook; the armour stands as it is). The idles are
+  // borrow.js's centred ones: Thor's and Natasha's stand a metre off their
+  // spot, so turning them swung them round in an arc.
   async hero(k, { who = 'thor' } = {}) {
     const template = await loadPerson(AVENGERS_MODELS[who]);
-    const p = person(template);
-    p.play('idle', { speed: 0.9 });
+    const p = person({ ...template, clips: centredClips(template) });
+    const idle = p.actions.idle?.getClip().duration ?? 0;
+    p.play('idle', { speed: 0.9, from: idle ? Math.random() * idle : 0 });
     p.root.userData.shared = true; // (its geometry and textures are the loader's cache's)
-    return { object: p.root, solids: [{ circle: [0, 0, who === 'hulk' ? 0.7 : 0.4] }], update: (t, dt) => p.update(dt) };
-  },
-};
-
-export const SCATTER = {
-  // a broadleaf: a trunk, its crown in lumps (the compound's own)
-  tree(k, { seed = 3, color = '#6a9a44' } = {}) {
-    const crown = canopyGeometry(seed, 1).scale(6, 5, 6).translate(0, 2.6, 0);
+    const object = new THREE.Group();
+    const turn = new THREE.Group();
+    turn.add(p.root);
+    object.add(turn);
+    const face = {};
+    const alive = who !== 'ironman';
+    const rig = alive ? rigOf(p.model) : null;
+    const look = rig?.bones.head ? createLook(rig.bones.head, rig.bones.neck ?? null) : null;
+    const ahead = new THREE.Vector3();
     return {
-      parts: [
-        { geometry: k.geometry([part(new THREE.CylinderGeometry(0.22, 0.32, 3.4, 8).translate(0, 1.7, 0), { color: '#5a4632', to: 'bark' })]), material: k.mats.bark },
-        { geometry: k.own(crown), material: k.own(new THREE.MeshStandardMaterial({ vertexColors: true, color, roughness: 0.9 })) },
-      ],
-      radius: 0.5,
+      object,
+      solids: [{ circle: [0, 0, who === 'hulk' ? 0.7 : 0.4] }],
+      update(t, dt, ctx) {
+        look?.restore();
+        const { seen } = alive ? faceStep(face, object, turn, ctx, dt, { rate: who === 'hulk' ? 2 : 3 }) : { seen: false };
+        p.update(dt);
+        if (!look) return;
+        turn.getWorldDirection(ahead); // (they face +z: the way they're turned, in the world)
+        look.update(dt, Math.atan2(ahead.x, ahead.z), seen ? ctx.me : null, object);
+      },
     };
-  },
-  conifer(k, { color = '#3f6a3a' } = {}) {
-    return { parts: [{ geometry: k.own(coniferGeometry().scale(4, 9, 4)), material: k.own(new THREE.MeshStandardMaterial({ vertexColors: true, color, roughness: 0.95, side: THREE.DoubleSide })) }], radius: 0.6 };
   },
 };

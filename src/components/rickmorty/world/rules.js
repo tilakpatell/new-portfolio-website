@@ -16,7 +16,9 @@
 // x = 400) so a door is a jump.
 
 import { seeded } from '../../../lib/seeded';
+import { springStep } from '../../../lib/spring';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
+import { DESTINATIONS, GARAGE_BACK, isBigPlanet, isPlanet } from './dimensions/destinations';
 
 export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
 
@@ -43,9 +45,11 @@ export const AREAS = {
   diner: { x0: -307, x1: -293, z0: 794, z1: 804 },
   // Dr. Wong's office, through its door in the house next to Shoney's
   wong: { x0: -305, x1: -295, z0: 894, z1: 904 },
+  // the multiverse's destinations, through the garage portal as it's dialled (./dimensions/destinations.js)
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, d.area])),
 };
 export const ROOM_IDS = ['house', 'upstairs', 'garage', 'school', 'arcade', 'basement', 'mindblowers', 'oval', 'diner', 'wong'];
-export const OUTDOOR = ['street', 'annex'];
+export const OUTDOOR = ['street', 'annex', ...DESTINATIONS.filter((d) => d.kind === 'outdoor').map((d) => d.id)];
 
 // `pad` grows the area (shrinks it, below zero) all round
 export const inArea = (id, x, z, pad = 0) => {
@@ -183,8 +187,9 @@ export const LINKS = [
   { id: 'garage-kitchen', area: 'garage', x: -296.85, z: 100.2, r: 0.9, kind: 'door', to: 'house', label: 'The kitchen', arrive: { x: -309.4, z: 1.1, face: 0 } },
   { id: 'stairs-up', area: 'house', x: -295.1, z: 2.6, r: 0.9, kind: 'stairs', to: 'upstairs', label: 'Upstairs', arrive: { x: -303, z: 402, face: FACE_N } },
   { id: 'stairs-down', area: 'upstairs', x: -303, z: 403.4, r: 0.9, kind: 'stairs', to: 'house', label: 'Downstairs', arrive: { x: -296.9, z: 0.6, face: FACE_N } },
-  // (the portal swirls on the garage's west wall, past the end of the bench)
-  { id: 'garage-portal', area: 'garage', x: -303, z: 101.4, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
+  // (the portal swirls on the garage's west wall, past the end of the bench;
+  // its reach stops short of the portal gun's spot beside it, so the gun can be dialled)
+  { id: 'garage-portal', area: 'garage', x: -303, z: 101.4, r: 1.1, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
   { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -301.2, z: 101.4, face: 0 } },
   // down the hatch to the foot of the ladder, and up it to beside the hatch
   { id: 'garage-hatch', area: 'garage', x: HATCH.x, z: HATCH.z, r: 0.9, kind: 'hatch', to: 'basement', label: 'Down the hatch', arrive: into('basement') },
@@ -201,6 +206,8 @@ export const LINKS = [
   // Dr. Wong's office
   { id: 'wong-door', area: 'street', ...WONG_DOOR, r: 1.6, kind: 'door', to: 'wong', label: 'Dr. Wong’s office', arrive: into('wong') },
   exit('wong', 'street', beside(WONG_DOOR, 0, 2.4)),
+  // every destination's portal, home to the garage (the garage's goes where the dial is set: ./dimensions/destinations.js's linkTarget)
+  ...DESTINATIONS.map((d) => ({ id: `${d.id}-portal`, area: d.id, x: d.back.x, z: d.back.z, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: GARAGE_BACK })),
 ];
 // A link with `needs` stays shut until that thing's done
 export const linkOpen = (l, done = []) => !l.needs || done.includes(l.needs);
@@ -594,6 +601,13 @@ export const PEOPLE = [
   { id: 'agent1', who: 'fedagent', area: 'street', x: -34.5, z: -6.2, face: S },
   { id: 'agent2', who: 'fedagent', area: 'street', x: DINER.x - 2, z: -6.4, face: S },
   { id: 'agent3', who: 'fedagent', area: 'street', x: 38.5, z: 6.2, face: Math.PI / 2 },
+  // the street's walkers (../npc.js, through visitors.js): Jessica and Brad
+  // along the near sidewalk, Mr. Goldenfold on his way to the school, Ethan
+  // outside Shoney's. They roam, so they're not in the way.
+  { id: 'jessica-walk', who: 'jessica', area: 'street', x: -18, z: -5.8, face: 0, roams: true, ai: { wander: [[-18, -5.8], [24, -5.8], [24, -6.6], [-18, -6.6]], speed: 0.9, pause: 2, bark: { r: 4, every: 18, lines: ['Hi, Morty.', 'Oh, hey, Morty. Brad’s around somewhere.', 'Did you do the thing for Goldenfold’s class? Me neither.'] } } },
+  { id: 'brad-walk', who: 'brad', area: 'street', x: -14, z: -6.6, face: 0, roams: true, ai: { wander: [[-14, -6.6], [28, -6.6], [28, -5.8], [-14, -5.8]], speed: 0.9, pause: 2.5, bark: { r: 4, every: 20, lines: ['Sup, Morty.', 'Jessica’s with me, Morty. Just so you know.'] } } },
+  { id: 'goldenfold-walk', who: 'goldenfold', area: 'street', x: 12, z: 6.6, face: 0, roams: true, ai: { wander: [[12, 6.6], [40, 6.6], [40, 5.8], [12, 5.8]], speed: 0.7, pause: 3, bark: { r: 4, every: 18, lines: ['Morty! Pop quiz on Monday. Don’t tell anyone I told you.', 'Have you seen Mrs. Pancakes? No? Good. Neither have I.'] } } },
+  { id: 'ethan-walk', who: 'ethan', area: 'street', x: DINER.x + 6, z: 6.6, face: Math.PI, roams: true, ai: { wander: [[DINER.x + 6, 6.6], [DINER.x - 10, 6.6], [DINER.x - 10, 5.8], [DINER.x + 6, 5.8]], speed: 0.8, pause: 3, bark: { r: 4, every: 22, lines: ['Hey, Morty. Summer around?', 'They do a breakfast here. The agent gets one every day.'] } } },
   // the Oval Office: the President behind the desk, a general either side of it
   { id: 'ovalpresident', who: 'president', area: 'oval', x: -300, z: 695.5, face: S },
   { id: 'general1', who: 'general', area: 'oval', x: -303.2, z: 696.8, face: S },
@@ -618,9 +632,12 @@ export const PEOPLE = [
   { id: 'tricia', area: 'upstairs', x: -304.35, z: 397.85, face: S, sits: true },
   { id: 'diane', area: 'basement', x: -303.6, z: 504.6, face: -Math.PI / 4, holo: true },
   { id: 'drwong', area: 'wong', x: -300, z: 895.9, face: S, sits: true },
+  // the destinations' people (./dimensions/destinations.js)
+  ...DESTINATIONS.flatMap((d) => d.people),
 ];
-// Is it there, with `done` done? (left out: everyone is)
-export const present = (o, done) => !done || !o.until || !done.includes(o.until);
+// Is it there, with `done` done? (gone once its `until` is, there only once
+// its `after` is; left out: everyone is)
+export const present = (o, done) => !done || ((!o.until || !done.includes(o.until)) && (!o.after || done.includes(o.after)));
 export const peopleIn = (area, done) => PEOPLE.filter((p) => p.area === area && present(p, done));
 
 // ── Total Rickall's floor ──
@@ -657,7 +674,8 @@ const slab = (id, x0, x1, z0, z1) => box(id, (x0 + x1) / 2, (z0 + z1) / 2, x1 - 
 const circle = (id, x, z, r) => ({ id, kind: 'circle', x, z, r });
 const furnished = (area) => [
   ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn, f.h)),
-  ...PEOPLE.filter((p) => p.area === area && !p.sits && !p.holo).map((p) => circle(p.id, p.x, p.z, PERSON)),
+  // (someone who roams, stage.js's NPC behaviour, is nowhere in particular: not in the way)
+  ...PEOPLE.filter((p) => p.area === area && !p.sits && !p.holo && !p.roams).map((p) => circle(p.id, p.x, p.z, PERSON)),
 ];
 // the President's motorcade: the limo and the two beside it, in the way till he's met
 export const MOTORCADE = [box('limo', LIMO.x, LIMO.z, LIMO.w, LIMO.d, LIMO.turn), ...PEOPLE.filter((p) => p.until === 'president').map((p) => circle(p.id, p.x, p.z, PERSON))];
@@ -673,7 +691,7 @@ export const COLLIDERS = {
     ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t))),
     ...DECOR.map(decorCollider),
     ...VEHICLES.map((v) => box(v.id, v.x, v.z, v.w, v.d, v.turn)),
-    ...PEOPLE.filter((p) => p.area === 'street' && !p.until).map((p) => circle(p.id, p.x, p.z, PERSON)),
+    ...PEOPLE.filter((p) => p.area === 'street' && !p.until && !p.roams).map((p) => circle(p.id, p.x, p.z, PERSON)),
   ],
   annex: [box('arcade', ARCADE.x, ARCADE.z, ARCADE.w, ARCADE.d)],
   // outside, south-west of the entry
@@ -688,6 +706,8 @@ export const COLLIDERS = {
   oval: furnished('oval'),
   diner: furnished('diner'),
   wong: furnished('wong'),
+  // each destination's buildings and fittings, and its people
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, [...d.solids.map((o) => (o.r ? circle(o.id, o.x, o.z, o.r) : box(o.id, o.x, o.z, o.w, o.d))), ...d.people.filter((o) => !o.roams).map((o) => circle(o.id, o.x, o.z, PERSON)), ...d.extras.map((o, n) => circle(`${d.id}-extra-${n}`, o.x, o.z, PERSON))]])),
 };
 // Walls: the street's fences, the house's inner walls and the low banister up
 // the stairs' open side, and the balcony's low railing on its south edge. A
@@ -705,6 +725,7 @@ export const WALLS = {
   oval: ringWalls(RINGS.oval),
   diner: [],
   wong: [],
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, []])),
 };
 // The parked cruiser is not here: it moves, so whoever walks passes it in.
 // Nor is the motorcade (`motorcade`: with it, as it stands till the President's met).
@@ -729,6 +750,8 @@ export const HOTSPOTS = [
   spot('meeseeks', 'garage', -301.4, 102.4, 'Mr. Meeseeks box', 'Press'),
   spot('plumbus', 'garage', -297.45, 99, 'The plumbus factory', 'Watch'),
   spot('portalpanic', 'garage', -302.45, 103.1, 'Portal panic cabinet', 'Play'),
+  // Rick's portal gun, on the bench's arm by the portal: its dial sets where the portal opens (./dimensions/destinations.js)
+  spot('dial', 'garage', -302.55, 100.15, 'The portal gun: pick a dimension', 'Dial'),
   spot('quiz', 'school', -300, 196.4, 'Mr. Goldenfold’s pop quiz', 'Sit the quiz'),
   // the principal, and the class from the aisle beside their desks
   spot('principal', 'school', -303.4, 196.55, 'Principal Vagina', 'Talk'),
@@ -768,6 +791,8 @@ export const HOTSPOTS = [
   spot('tricia', 'upstairs', -304.35, 397.85, 'Tricia', 'Talk'),
   spot('diane', 'basement', -303.35, 504.35, 'Diane', 'Look'),
   spot('therapy', 'wong', -300, 895.9, 'Dr. Wong', 'Family therapy'),
+  // the destinations' people and things (./dimensions/destinations.js)
+  ...DESTINATIONS.flatMap((d) => d.hotspots),
 ];
 // (`done`: a hotspot whose `until` is done is gone; left out, they all count)
 export const nearHotspot = (area, x, z, done) => nearest(done ? HOTSPOTS.filter((h) => present(h, done)) : HOTSPOTS, area, x, z);
@@ -782,7 +807,7 @@ export const newMorty = (at = START, mode = null) => ({ x: at.x, z: at.z, face: 
 // as high as he gets onto anything: the top of a jump, and a step over it
 export const CLIMB = MORTY.step + MORTY.jump ** 2 / (2 * MORTY.gravity);
 // each area's ceiling (in the rooms, as ./interiors draws them; outside, the sky)
-export const CEILING = { street: Infinity, annex: Infinity, house: 2.6, upstairs: 2.6, garage: 2.9, school: 2.9, arcade: 8, basement: 4.4, mindblowers: 3.6, oval: 3.4, diner: 3, wong: 2.8 };
+export const CEILING = { street: Infinity, annex: Infinity, house: 2.6, upstairs: 2.6, garage: 2.9, school: 2.9, arcade: 8, basement: 4.4, mindblowers: 3.6, oval: 3.4, diner: 3, wong: 2.8, ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, d.kind === 'outdoor' ? Infinity : d.ceiling])) };
 
 // What Morty can stand on in an area: what's low enough to get onto, with
 // room for him under the ceiling once he's up. Everything else is solid,
@@ -853,10 +878,11 @@ function walkerAt(area, y, cruiser, motorcade, pen, crowd) {
 // `jump` (on his feet, he jumps). `cruiser` is where the cruiser is parked, if
 // it is: it stands in the street; `motorcade`, whether the President's limo
 // and his people stand there too; `crowd`, others standing about ({ id, x, z,
-// r }: Total Rickall's). He walks up what's a step high, falls off edges,
+// r }: Total Rickall's); `press`, his jump's (lib/press.js), read in place of
+// `move.jump`. He walks up what's a step high, falls off edges,
 // lands on what's under him, and a ceiling stops his head. His mode keeps him
 // in its pen (brought in to its nearest point, if he's outside it).
-export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd = null } = {}) {
+export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd = null, press = null } = {}) {
   const pen = PENS[m.mode]?.area === area ? PENS[m.mode] : null;
   if (pen && !inPen(pen, m.x, m.z)) m = { ...m, x: clamp(m.x, pen.x0, pen.x1), z: clamp(m.z, pen.z0, pen.z1) };
   const y0 = m.y ?? 0;
@@ -864,15 +890,25 @@ export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd
   let y = y0;
   let vy = m.vy ?? 0;
   const ground = supportAt(area, n.x, n.z, y0);
+  // a press (lib/press.js's createPress) jumps a moment before his feet touch, or a moment
+  // after he's walked off an edge; without one, `move.jump` is this step's alone
+  const feet = y <= ground + 1e-3 && vy <= 0;
+  press?.ground(feet, dt);
+  const jump = press ? press.take() : Boolean(move.jump);
+  // `land`: how fast he came down, on the step he lands (0 on every other)
+  let land = 0;
   // on his feet (or a step below where he's going): up onto it, and off again if he jumps
-  if (y <= ground + 1e-3 && vy <= 0) {
+  if (feet) {
+    // (come down to within a hair of it, the step before: a landing too)
+    if (vy < 0) land = -vy;
     y = ground;
-    vy = move.jump ? MORTY.jump : 0;
-  }
+    vy = jump ? MORTY.jump : 0;
+  } else if (jump && press) vy = MORTY.jump; // off the edge a moment ago: still a jump
   if (vy !== 0 || y > ground) {
     vy -= MORTY.gravity * dt;
     y += vy * dt;
     if (y <= ground) {
+      land = -vy;
       y = ground;
       vy = 0;
     }
@@ -882,7 +918,7 @@ export function stepMorty(m, move, dt, area, { cruiser, motorcade = false, crowd
       vy = Math.min(vy, 0);
     }
   }
-  return { ...n, y, vy, air: y > ground + 1e-3, mode: m.mode ?? null };
+  return { ...n, y, vy, air: y > ground + 1e-3, land, mode: m.mode ?? null };
 }
 
 // Over the open hatch in the garage floor (it's open whenever he's this near), on his feet:
@@ -896,8 +932,12 @@ export const CRUISER = { radius: 1.7, hover: 1.2, top: 22, accel: 9, turn: 1.8, 
 export const FLY = { x0: -400, x1: 400, z0: -260, z1: 260 };
 const EDGE = 2; // it keeps this far in from the edge of where it flies
 const BANK = 0.45; // how far it leans, at most
+// the lean is a spring (lib/spring.js): it comes into a turn about as quickly
+// as the old 6-a-second ease did, and let go, it swings a hair past level and
+// settles, which reads as the weight of the thing
+const BANK_SPRING = { k: 60, c: 10 };
 
-export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0 });
+export const newCruiser = () => ({ x: BOARD.x, z: BOARD.z, y: CRUISER.hover, yaw: BOARD.yaw, speed: 0, vy: 0, bank: 0, bankV: 0 });
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // what it flies over: each building's footprint, the school's as its parts (flat roofs at their own heights)
@@ -921,16 +961,21 @@ export function stepCruiser(c, { throttle = 0, steer = 0, lift = 0 } = {}, dt) {
   const x = clamp(c.x + goX, s.x0 + EDGE, s.x1 - EDGE);
   const z = clamp(c.z + goZ, s.z0 + EDGE, s.z1 - EDGE);
   // the edge of the street stops what it can't move: nosed into it, it slows to nothing; skimming it, it slides on
+  const was = Math.abs(speed);
   if (Math.hypot(goX, goZ) > 1e-9) speed *= Math.hypot(x - c.x, z - c.z) / Math.hypot(goX, goZ);
+  // `bump`: the speed something took off it this step (the edge, a roof, the
+  // ground, the ceiling), so a knock is as hard as it was
+  let bump = was - Math.abs(speed);
   let vy = c.vy + (clamp(lift, -1, 1) * CRUISER.climb - c.vy) * Math.min(1, dt * 5);
   let y = c.y + vy * dt;
   const floor = floorAt(x, z);
   if (y < floor || y > CRUISER.ceiling) {
     y = clamp(y, floor, CRUISER.ceiling);
+    bump += Math.abs(vy);
     vy = 0;
   }
-  const bank = c.bank + (turn * clamp(speed / CRUISER.top, -1, 1) * BANK - c.bank) * Math.min(1, dt * 6);
-  return { x, z, y, yaw, speed, vy, bank };
+  const [bank, bankV] = springStep(c.bank ?? 0, c.bankV ?? 0, turn * clamp(speed / CRUISER.top, -1, 1) * BANK, BANK_SPRING.k, BANK_SPRING.c, dt);
+  return { x, z, y, yaw, speed, vy, bank, bankV, bump };
 }
 
 // Slow, over open ground in the street: not a roof, a fenced back yard, a tree
@@ -944,7 +989,7 @@ const onSomething = (x, z, motorcade) =>
   TREES.some((t) => Math.hypot(x - t.x, z - t.z) < CRUISER.radius + trunk(t)) ||
   DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < CRUISER.radius + (d.w ? Math.hypot(d.w, d.d) / 2 : d.r)) ||
   DOORSTEPS.some((p) => Math.hypot(x - p.x, z - p.z) < DOORSTEP) ||
-  PEOPLE.some((p) => p.area === 'street' && (motorcade || !p.until) && Math.hypot(x - p.x, z - p.z) < CRUISER.radius + PERSON + 0.3) ||
+  PEOPLE.some((p) => p.area === 'street' && !p.roams && (motorcade || !p.until) && Math.hypot(x - p.x, z - p.z) < CRUISER.radius + PERSON + 0.3) ||
   (motorcade && Math.hypot(x - LIMO.x, z - LIMO.z) < CRUISER.radius + Math.hypot(LIMO.w, LIMO.d) / 2);
 // (`motorcade`: the President's limo and people are in the street, and in the way)
 export const canLand = (c, { motorcade = false } = {}) => Math.abs(c.speed) < 3 && inArea('street', c.x, c.z) && under(c.x, c.z).length === 0 && !inYard(c.x, c.z) && !onSomething(c.x, c.z, motorcade);
@@ -990,13 +1035,16 @@ export const TASKS = [
   { id: 'president', name: 'Meet the President', hint: 'The President’s limo is parked outside the Smith house, and he wants Rick.' },
   { id: 'oval', name: 'Visit the Oval Office', hint: 'Take the President’s portal by the garage door in Rick’s garage.' },
   { id: 'diner', name: 'Have breakfast at Shoney’s', hint: 'A Federation agent is waiting in a booth at Shoney’s, up the street from the Smiths’.' },
-  { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal on the west wall of Rick’s garage.' },
+  { id: 'portal', name: 'Go through the portal', hint: 'The portal gun is on Rick’s bench in the garage (or its button up top, from anywhere): dial a dimension, then step through the portal on the west wall.' },
   { id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' },
   { id: 'mindblowers', name: 'Watch Morty’s Mind Blowers', hint: 'Through the door in Rick’s clone lab, sit in the chair.' },
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },
   { id: 'roy55', name: 'Outlive Morty’s 55', hint: 'Play Roy again and live past Morty’s 55.' },
   { id: 'rickall', name: 'Survive Total Rickall', hint: 'There’s an egg on the Smiths’ living-room bookcase that nobody remembers buying.' },
   { id: 'wong', name: 'Go to family therapy', hint: 'Dr. Wong’s office is in the house next to Shoney’s, up the street. Rick says it’s for Jerry.' },
+  // (a big planet's box tasks are retired: it's a world of its own now, its
+  // quests kept apart from these, so C-137 neither counts nor points to them)
+  ...DESTINATIONS.filter((d) => !isBigPlanet(d.id)).flatMap((d) => d.tasks),
 ];
 
 // ── Morty's Mind Blowers ──
@@ -1016,11 +1064,20 @@ export const MEMORIES = [
 ];
 export const MEMORY_COLORS = { blue: '#52d6ff', purple: '#b47cff', red: '#ff4d5e', pink: '#ff8fd0' };
 
+// the planets' things to do, done on the planets themselves (landed on from
+// the universe map): the small ones'; a big planet's are retired with TASKS'
+export const PLANET_TASKS = new Set(DESTINATIONS.filter((d) => isPlanet(d.id) && !isBigPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id)));
+
 // What's done and what's next. `done` is the ids finished, in any order.
-export function progress(done = []) {
+// `skip` (ids, or a Set) is passed over when picking what's next, but still
+// counts: C-137 skips PLANET_TASKS.
+export function progress(done = [], { skip = [] } = {}) {
+  const passed = new Set(skip);
   const finished = TASKS.filter((t) => done.includes(t.id));
-  const next = TASKS.find((t) => !done.includes(t.id)) ?? null;
-  return { done: finished.map((t) => t.id), count: finished.length, total: TASKS.length, next, objective: next ? next.hint : 'Everything’s done. Wubba lubba dub dub.' };
+  const left = TASKS.filter((t) => !done.includes(t.id));
+  const next = left.find((t) => !passed.has(t.id)) ?? null;
+  const rest = left.every((t) => PLANET_TASKS.has(t.id)) ? 'Everything here’s done. The rest are on the planets in the Rick and Morty sector of the universe map.' : 'Everything here’s done.';
+  return { done: finished.map((t) => t.id), count: finished.length, total: TASKS.length, next, objective: next ? next.hint : left.length ? rest : 'Everything’s done. Wubba lubba dub dub.' };
 }
 
 // ── the pop quiz ──

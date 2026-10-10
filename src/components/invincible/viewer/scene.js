@@ -8,12 +8,13 @@ import { createEngine, hot } from '../../avengers/hq/engine';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { CAST, asset } from '../cast';
+import { LOOK } from './look';
 
 const damp = (v, to, rate, dt) => v + (to - v) * (1 - Math.exp(-rate * dt));
 
 export async function create(canvas, { onLost, onSlow } = {}) {
   const calm = prefersReducedMotion();
-  const engine = createEngine(canvas, { exposure: 1.05, fov: 28, near: 0.05, far: 80, bloom: { strength: 0.5, radius: 0.5, threshold: 0.9 }, onLost, onSlow });
+  const engine = createEngine(canvas, { exposure: 1.05, fov: 28, near: 0.05, far: 80, bloom: LOOK.bloom, onLost, onSlow });
   const { scene, camera } = engine;
   await engine.setSky('noon', { background: false, envIntensity: 0.9, sunIntensity: 2.6, sunDir: [0.5, 0.8, 0.7], fill: 0.25 });
   scene.background = new THREE.Color(0x070a12);
@@ -74,10 +75,19 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     f.holder.rotation.y = yaw;
     const lean = pose === 'fly' ? 1.25 : 0;
     f.body.rotation.set(dt === 0 ? lean : damp(f.body.rotation.x, lean, 5, dt), 0, 0);
-    const P = POSES[pose];
+    // footage: one of his own clips, round and round (standing, his idle's breathing)
+    const clip = pose.startsWith('clip:') ? pose.slice(5) : pose === 'stand' ? 'idle' : null;
+    if (clip && f.act(clip, { fade: 0.35 })) {
+      f.tick(dt);
+      return;
+    }
+    // a pose, laid over his hover (or his idle) where he has it
+    const P = POSES[pose] ?? POSES.stand;
     const targets = typeof P === 'function' ? P(time) : P;
+    f.act((lift[pose] ?? 0) > 0 ? 'hover' : 'idle', { fade: 0.35 });
     if (dt === 0) f.snap(targets);
     else f.pose(targets, dt, 6);
+    f.tick(dt);
   }
 
   function render(dt) {

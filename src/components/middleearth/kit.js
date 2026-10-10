@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { canvasTexture, hot } from '../../lib/stage3d';
 import { clamp01, fbm, makeCanvas, makeCells, makeNoise, mix, normalFromField, paintPixels, smooth } from '../../lib/paint';
+import { createStride, createTracker, footAt, legRig } from './creatures';
 
 // ── painted textures ──
 
@@ -474,6 +475,11 @@ export function makeGandalf() {
   body.add(limb([-0.04, 1.4, 0.24], [-0.4, 1.28, 0.36], 0.11, 0.07, cloth));
   const staff = new THREE.Group();
   staff.position.set(-0.42, 1.26, 0.37);
+  // (a staff in a hand, gripped at its origin: lib/three/held.js's kinds)
+  staff.userData.held = { kind: 'staff' };
+  const grip = new THREE.Object3D();
+  grip.name = 'grip';
+  staff.add(grip);
   staff.add(solid(new THREE.CylinderGeometry(0.022, 0.03, 2.3, 7), wood, 0, -0.1, 0));
   const gnarl = solid(new THREE.TorusGeometry(0.07, 0.022, 6, 10), wood, 0, 1.06, 0);
   gnarl.rotation.y = Math.PI / 2;
@@ -518,6 +524,11 @@ export function makeGandalf() {
 // facing +x. Shadow and flame: a charred body with fire in the cracks, great
 // wings behind, a sword of flame in one hand and the whip hand free (the
 // scene draws the whip). `flames` are the places the fire rises from.
+// animate({ t, spread, raise, lash, roar, flare }): its walk is read from
+// where the scene puts it (./creatures.js), each foot held where it comes
+// down while the other comes through, however fast it crosses; `steps`
+// counts its footfalls (for the shake and the embers), `stride` and
+// `moving` are no longer needed.
 export function makeBalrog(renderer) {
   const tex = magmaTextures(renderer);
   const skin = new THREE.MeshStandardMaterial({ map: tex.map, normalMap: tex.normalMap, normalScale: new THREE.Vector2(1.4, 1.4), roughness: 0.82, metalness: 0.05, emissive: new THREE.Color(1, 1, 1), emissiveMap: tex.emissiveMap, emissiveIntensity: 2 });
@@ -700,15 +711,38 @@ export function makeBalrog(renderer) {
   light.position.set(1.4, 2.2, 0);
   torso.add(light);
 
-  const animate = ({ t, stride = 0, moving = 0, spread = 0.4, raise = 0, lash = 0, roar = 0, flare = 1 }) => {
-    const sw = Math.sin(stride) * moving;
+  // its walk: a heavy tread, each foot down a little over half the stride
+  const track = createTracker({ fastest: 30 });
+  const gait = createStride({ stride: 4.2, hz: 0.72, longest: 1.2, stance: 0.52, cadence: [0.8, 1.2], seed: 7 });
+  // each leg on its rig: the knee where the shin hangs from the thigh, the
+  // sole under the shin, standing turned as it was built
+  const RIG = legRig({ knee: [0.35, -1.45], foot: [0.3, -1.52], rest: [0.04, -0.22] });
+  const self = { steps: 0 };
+  let down = [true, true];
+  const animate = ({ t, spread = 0.4, raise = 0, lash = 0, roar = 0, flare = 1 }) => {
+    const m = track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+    const st = gait.step(m.dt, m.fwd < -0.05 ? -m.speed : m.speed);
+    const moving = st.amount;
+    const stride = st.phase;
+    // the near foot's swing (+ forward)
+    const sw = Math.cos(stride) * moving;
+    // each foot held where it comes down (its knee taking up the rest), the
+    // stride under the hips, the hips lower the longer it is and highest
+    // with a foot beneath them
+    const cx = RIG.home[0] * (1 - moving);
+    const lower = RIG.sink(st.travel * moving, cx) * (0.8 + 0.2 * Math.cos(2 * stride - 0.52 * Math.PI * 2)) + (1 - moving) * 0.04;
     legs.forEach(({ leg, shin }, i) => {
-      const ph = stride + (i ? Math.PI : 0);
-      leg.rotation.z = Math.sin(ph) * 0.48 * moving + 0.04;
-      shin.rotation.z = -0.22 - Math.max(0, Math.cos(ph)) * 0.6 * moving;
+      const f = footAt(st.cycle + (i ? 0.5 : 0), 0.52);
+      const [th, sh] = RIG.reach(cx + ((f.x * st.travel) / 2) * moving, RIG.home[1] + lower + f.lift * 0.55 * moving);
+      leg.rotation.z = th;
+      shin.rotation.z = sh;
+      // a footfall: a foot come down
+      const isDown = f.lift === 0;
+      if (isDown && !down[i] && moving > 0.5) self.steps++;
+      down[i] = isDown;
     });
-    hips.position.y = 3.05 + Math.abs(Math.cos(stride)) * 0.14 * moving - (1 - moving) * 0.04;
-    hips.rotation.x = sw * 0.045;
+    hips.position.y = 3.05 - lower;
+    torso.rotation.x = sw * 0.045;
     torso.rotation.y = -sw * 0.1;
     torso.rotation.z = -0.2 + roar * 0.28 + Math.sin(t * 1.2) * 0.015;
     head.rotation.z = 0.15 + roar * 0.3;
@@ -731,7 +765,7 @@ export function makeBalrog(renderer) {
     light.intensity = (70 + Math.sin(t * 9) * 8 + Math.sin(t * 23) * 5 + roar * 120) * flare;
   };
 
-  return { group: g, animate, flames, hand: armR.hand, head, light };
+  return Object.assign(self, { group: g, animate, flames, hand: armR.hand, head, light });
 }
 
 // A hobbit under an elven cloak, 1.05 tall, facing +x. `pack` for Sam.

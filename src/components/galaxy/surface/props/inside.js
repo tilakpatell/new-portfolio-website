@@ -17,7 +17,7 @@ const { PI, cos, sin } = Math;
 
 // a shape turned inside out, to be seen from within (a round wall, a dome
 // overhead): each triangle's corners the other way round, its normals in
-function inward(g) {
+export function inward(g) {
   const n = g.index ? g.toNonIndexed() : g;
   if (n !== g) g.dispose();
   for (const name of ['position', 'normal', 'uv']) {

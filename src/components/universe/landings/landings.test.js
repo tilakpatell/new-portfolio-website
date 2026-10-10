@@ -1,15 +1,16 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { UNIVERSES } from '../universes';
+import { MOONS, UNIVERSES } from '../universes';
 import { STYLES } from './ground';
-import { CLEAR, LANDINGS, SCATTER_MAX, landingOf, scatterSpots, seedOf } from './landings';
+import { CLEAR, LANDINGS, SCATTER_MAX, landingOf, scatterSpots, seedOf, tableSet } from './landings';
+import { biomeAt } from './biomes';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '../../../../public');
 // the planets you can land on: the fandoms (not the gate into the galaxy)
-const LANDABLE = UNIVERSES.filter((u) => u.kind === 'fandom' && !u.portal).map((u) => u.id);
+const LANDABLE = [...UNIVERSES.filter((u) => u.kind === 'fandom' && !u.portal), ...MOONS].map((u) => u.id);
 const seeded = (seed) => () => {
   seed = (seed * 16807) % 2147483647;
   return seed / 2147483647;
@@ -27,11 +28,24 @@ const FILES = {
   travel: () => import('./travel.js'),
   caribbean: () => import('./caribbean.js'),
   invincible: () => import('./invincible.js'),
+  gazorpazorp: () => import('./rmmoons.js'),
+  squanch: () => import('./rmmoons.js'),
+  birdworld: () => import('./rmmoons.js'),
+  gearworld: () => import('./rmmoons.js'),
+  pluto: () => import('./rmmoons.js'),
+  snakeplanet: () => import('./rmmoons.js'),
+  nuptia: () => import('./rmmoons.js'),
+  resort: () => import('./rmmoons.js'),
+  cronenberg: () => import('./rmmoons.js'),
+  purge: () => import('./rmmoons.js'),
 };
+
+// each landing as it is, and as each of its biomes has it (biomes.js), by name
+const PLACES = Object.entries(LANDINGS).flatMap(([id, l]) => [[id, id, l], ...(l.biomes ?? []).map((b) => [id, `${id}/${b.id}`, biomeAt({ ...l, biomes: [b] }, [0, 0, 0])])]);
 
 describe('planet landings', () => {
   it('give every planet you can land on its own place: a name, a ground and a sky', () => {
-    expect(LANDABLE.length).toBe(11);
+    expect(LANDABLE.length).toBe(21);
     const titles = new Set();
     for (const id of LANDABLE) {
       const l = landingOf(id);
@@ -50,7 +64,7 @@ describe('planet landings', () => {
   });
 
   it('only name models that are there to load', () => {
-    for (const [id, l] of Object.entries(LANDINGS)) {
+    for (const [, id, l] of PLACES) {
       for (const [kind, m] of Object.entries(l.models ?? {})) {
         expect(existsSync(join(PUBLIC, m.url)), `${id}'s ${kind}: ${m.url}`).toBe(true);
         expect(Boolean(m.tall || m.long || m.wide), `${id}'s ${kind} has a size`).toBe(true);
@@ -58,11 +72,56 @@ describe('planet landings', () => {
     }
   });
 
+  // (the Quaternius kits, scripts/quaternius.mjs: a GLB a family of models, a node a model)
+  it('name a kit’s model by a node the kit has, and give what can be knocked about a body', () => {
+    const manifest = JSON.parse(readFileSync(join(PUBLIC, 'models/quaternius/manifest.json'), 'utf8'));
+    let named = 0;
+    for (const [, id, l] of PLACES) {
+      for (const [kind, m] of Object.entries(l.models ?? {})) {
+        if (m.node) {
+          named++;
+          expect(manifest[m.node]?.url, `${id}'s ${kind}: ${m.node} in ${m.url}`).toBe(m.url);
+        }
+        if (m.tint) expect(m.tint, `${id}'s ${kind}`).toMatch(HEX);
+        if (!m.body) continue;
+        // (the shapes and masses landings/bodies.js makes bodies of: a loose
+        // one light or middling, so a shot sends it and a shove moves it)
+        expect(['box', 'cylinder', 'ball'], `${id}'s ${kind}`).toContain(m.body.shape);
+        if (m.body.fixed) continue;
+        expect(m.body.mass, `${id}'s ${kind}`).toBeGreaterThanOrEqual(0.5);
+        expect(m.body.mass, `${id}'s ${kind}`).toBeLessThanOrEqual(30);
+      }
+    }
+    expect(named).toBeGreaterThan(20);
+  });
+
+  it('give the lots and streets small things lying about to knock over', () => {
+    const at = Object.fromEntries(PLACES.map(([, id, l]) => [id, l]));
+    for (const id of ['office', 'breakingbad/city', 'invincible/city', 'rickmorty/street', 'marvel']) {
+      const l = at[id];
+      const loose = (l.things ?? []).filter((t) => l.models?.[t.kind]?.body && !l.models[t.kind].body.fixed);
+      expect(loose.length, id).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('set a table’s chairs round it, pulled out, each facing it', () => {
+    const [table, ...chairs] = tableSet([10, 30], { yaw: 0.4, chairs: 3, out: 1.2 });
+    expect(table).toMatchObject({ kind: 'table', at: [10, 30], yaw: 0.4, face: false });
+    expect(chairs).toHaveLength(3);
+    for (const c of chairs) {
+      const [dx, dz] = [table.at[0] - c.at[0], table.at[1] - c.at[1]];
+      expect(Math.hypot(dx, dz)).toBeCloseTo(1.2);
+      // (its front, +z turned by its yaw as three.js turns it, toward the table)
+      expect(Math.sin(c.yaw) * dx + Math.cos(c.yaw) * dz).toBeCloseTo(1.2);
+      expect(Math.hypot(dx, dz)).toBeGreaterThanOrEqual(table.r + c.r);
+    }
+  });
+
   it("build every thing and scatter from a model or the planet's own file", async () => {
-    for (const [id, l] of Object.entries(LANDINGS)) {
+    for (const [planet, id, l] of PLACES) {
       if (!l.things && !l.scatter) continue;
-      expect(FILES[id], `${id} has a file`).toBeTruthy();
-      const P = await FILES[id]();
+      expect(FILES[planet], `${id} has a file`).toBeTruthy();
+      const P = await FILES[planet]();
       const models = l.models ?? {};
       // (a figure is built by furnish itself: landings/people.js)
       for (const t of l.things ?? []) expect(Boolean(models[t.kind] || P.PROPS?.[t.kind] || (t.kind === 'figure' && (t.opts?.url || t.opts?.meshy))), `${id}: ${t.kind}`).toBe(true);
@@ -72,7 +131,7 @@ describe('planet landings', () => {
   });
 
   it('stand things clear of the ship and of each other', () => {
-    for (const [id, l] of Object.entries(LANDINGS)) {
+    for (const [, id, l] of PLACES) {
       const things = (l.things ?? []).filter((t) => !t.strip && !t.around);
       for (const t of things) {
         expect(t.at, `${id}: ${t.kind}`).toHaveLength(2);
@@ -88,14 +147,14 @@ describe('planet landings', () => {
   });
 
   it('scatter within its ring, clear of the things and (if solid) the ship, within budget', () => {
-    for (const [id, l] of Object.entries(LANDINGS)) {
+    for (const [planet, id, l] of PLACES) {
       let total = 0;
       for (const e of l.scatter ?? []) {
         expect(e.n, `${id}: ${e.kind}`).toBeLessThanOrEqual(SCATTER_MAX);
         expect(e.from).toBeLessThan(e.to);
         total += e.n;
         const reach = 0.6;
-        const spots = scatterSpots(e, l.things ?? [], seeded(seedOf(id)), { reach });
+        const spots = scatterSpots(e, l.things ?? [], seeded(seedOf(planet)), { reach });
         expect(spots.length, `${id}: ${e.kind} found room`).toBeGreaterThan(e.n * 0.8);
         for (const p of spots) {
           const d = Math.hypot(p.x, p.z);
@@ -127,5 +186,37 @@ describe('planet landings', () => {
     const b = scatterSpots(e, LANDINGS.breakingbad.things, seeded(seedOf('breakingbad')));
     expect(a).toEqual(b);
     expect(seedOf('breakingbad')).not.toBe(seedOf('rickmorty'));
+  });
+});
+
+describe('the sky on foot', () => {
+  it('every landing’s sky stays near its hand-set colours at noon, and warms toward sunset', async () => {
+    const { skyAt } = await import('./sky');
+    const THREE = await import('three');
+    const lin = (hex) => {
+      const c = new THREE.Color(hex);
+      return [c.r, c.g, c.b];
+    };
+    let checked = 0;
+    // (each biome's own sky too, under its planet's air)
+    for (const [u, landing] of UNIVERSES.flatMap((u) => [[u, landingOf(u.id)], ...(landingOf(u.id)?.biomes ?? []).filter((b) => b.sky).map((b) => [u, b])])) {
+      if (!u.air || !landing?.sky) continue;
+      checked++;
+      const noon = skyAt(landing.sky, u.air, 1);
+      for (const k of ['zenith', 'horizon', 'sun']) {
+        const set = lin(landing.sky[k]);
+        noon[k].forEach((v, i) => expect(Math.abs(v - set[i]), `${u.id} ${k}`).toBeLessThanOrEqual(0.15));
+      }
+      // (low, the sun's light comes through more air, which takes out most
+      // what it scatters most: a bluer air's sun goes redder)
+      const air = lin(u.air.colour);
+      const low = skyAt(landing.sky, u.air, 0.06);
+      const redder = low.sun[0] / Math.max(low.sun[2], 1e-6) >= noon.sun[0] / Math.max(noon.sun[2], 1e-6) - 1e-9;
+      expect(redder, u.id).toBe(air[2] >= air[0]);
+    }
+    expect(checked).toBeGreaterThan(4);
+    // a planet with no air keeps its hand-set sky, whatever the hour
+    const office = landingOf('office');
+    if (office?.sky) expect(skyAt(office.sky, null, 0.1).zenith).toEqual(lin(office.sky.zenith));
   });
 });

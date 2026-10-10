@@ -5,7 +5,9 @@ import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import { partsUnlockedBy } from './universe/outfit';
 import { paintsFor } from './universe/paint';
+import { useTouring } from './tour/useTouring';
 import Gif from './Gif';
+import { worldAt } from './worlds/worlds';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const ACHIEVEMENTS = {
@@ -13,7 +15,37 @@ export const ACHIEVEMENTS = {
   hacker: { name: 'Slicer', desc: 'Opened the Imperial terminal' },
   order66: { name: 'Contingency', desc: 'Executed Order 66' },
   konami: { name: 'Cheat code', desc: 'Entered the Konami code' },
+  tour: { name: 'Shown around', desc: 'Took the tour of the site' },
+  tourRecruiter: { name: 'Shown the work', desc: 'Took the hiring tour' },
+  tourPlayer: { name: 'Shown the ropes', desc: 'Took the player’s tour' },
   deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
+  'ds-aboard': { name: 'Boarding party', desc: 'Came aboard the Death Star' },
+  // Aboard the Death Star (deathstar/inside): its twenty Easter eggs, worded as its rules/eggs.js words them so the toast says what the egg says
+  // (its rules/achievements.test.js keeps the two in step), then its four stories, one for each station and side
+  'ds-bonk': { name: 'Mind your head', desc: 'Watched a stormtrooper bang his head on a door frame in Docking Control 327' },
+  'ds-tk421': { name: 'Not at his post', desc: 'Took TK-421’s armour' },
+  'ds-g7': { name: 'Fastest in the fleet', desc: 'Kept up with G7 for a whole lap of the Level 5 corridors' },
+  'ds-roar': { name: 'Scaredy droid', desc: 'Sent a mouse droid fleeing with a roar' },
+  'ds-1138': { name: 'Prisoner transfer', desc: 'Brought a prisoner across from cell block 1138' },
+  'ds-3263827': { name: 'Mashers off', desc: 'Dialled 3263827 on the compactor’s hatch' },
+  'ds-boring': { name: 'Boring conversation anyway', desc: 'Saw Han’s chat on the intercom through to the end' },
+  'ds-short': { name: 'A little short', desc: 'Opened cell 2187 with your helmet on' },
+  'ds-krennic': { name: 'Seat’s free', desc: 'Sat in Krennic’s empty chair at the conference table' },
+  'ds-faith': { name: 'Lack of faith', desc: 'Talked back to Vader in the conference room and got off with a choke' },
+  'ds-eyestalk': { name: 'Something’s alive in here', desc: 'Stared down the dianoga’s eyestalk' },
+  'ds-librarian': { name: 'Overdue', desc: 'Caught the librarian on the archive’s security feed' },
+  'ds-robe': { name: 'Nothing but the robe', desc: 'Found the robe on the floor of Bay 327' },
+  'ds-armrest': { name: 'Within arm’s reach', desc: 'Pulled Luke’s lightsaber from the throne’s armrest' },
+  'ds-trap': { name: 'Admiral’s hunch', desc: 'Heard “It’s a trap!” in the command centre’s chatter' },
+  'ds-moff': { name: 'Moff by rank', desc: 'Read Jerjerrod’s nameplate, which calls him Moff' },
+  'ds-charge': { name: 'Han’s charge', desc: 'Chased a squad down a corridor and met the rest of the platoon coming back' },
+  'ds-port': { name: 'Two metres wide', desc: 'Read the maintenance note on the thermal exhaust port' },
+  'ds-plans': { name: 'Technical readout', desc: 'Opened the Death Star plans at a terminal' },
+  'ds-droids': { name: 'Not the droids', desc: 'Talked two guards into saying these aren’t the droids you’re looking for' },
+  'ds-ds1-rebel': { name: 'That’s no moon', desc: 'Got Leia out of the first Death Star and away on the Falcon' },
+  'ds-ds1-imperial': { name: 'Intruder alert', desc: 'Let the Falcon go, as Vader ordered, with a homing beacon on its hull' },
+  'ds-ds2-rebel': { name: 'The Emperor’s Tower', desc: 'Faced the Emperor in his tower, and carried Vader to a shuttle before the reactor went' },
+  'ds-ds2-imperial': { name: 'Fully armed and operational', desc: 'Stood in the ranks for the Emperor, fired at will, and got off the second Death Star before it went' },
   trench: { name: 'Use the Force', desc: 'Hit the exhaust port in the trench run' },
   rebels: { name: 'Medal of Yavin', desc: 'Saved Yavin 4 in the Battle of Yavin' },
   empire: { name: 'Fear will keep them in line', desc: 'Let the Empire win at Yavin' },
@@ -62,6 +94,43 @@ export const ACHIEVEMENTS = {
   goldstar: { name: 'Gold star', desc: 'Passed Mr. Goldenfold’s pop quiz' },
   rickall: { name: 'Total Rickall', desc: 'Shot every memory parasite in the Smiths’ living room, and nobody real' },
   wong: { name: 'Family therapy', desc: 'Sat on Dr. Wong’s couch. Rick says it was for Jerry' },
+  // the multiverse's destinations, through the garage portal as it's dialled
+  customs: { name: 'Nothing to declare', desc: 'Got Rick’s Mega Seeds through Interdimensional Customs, more or less' },
+  squanch: { name: 'The wedding squanchers', desc: 'Raised a glass at Birdperson’s wedding and got out when the Federation came' },
+  gazorp: { name: 'An exception for a Morty', desc: 'Knocked at the gate of the women’s city on Gazorpazorp' },
+  birdworld: { name: 'The time of greeting', desc: 'Knocked at Birdperson’s door on Bird World' },
+  fantasy: { name: 'Mind the stairs', desc: 'Got the village’s help in Fantasy World, with a Meeseeks at the well' },
+  microverse: { name: 'Batteries all the way down', desc: 'Met Zeep Xanflorp inside the battery of Rick’s car' },
+  anatomy: { name: 'Pirates of the Pancreas', desc: 'Made it round Anatomy Park to the last ride' },
+  needful: { name: 'Nothing is free', desc: 'Asked Mr. Needful what anything costs' },
+  jerryboree: { name: 'The right Jerry', desc: 'Picked our Jerry up from the Jerryboree' },
+  purge: { name: 'Out before the purge', desc: 'Pulled the purge siren and got back through the portal inside a minute' },
+  pluto: { name: 'Pluto is a planet', desc: 'Said so from the king’s podium' },
+  gearworld: { name: 'Everyone’s best friend', desc: 'Said hello to Gearhead in Gear World' },
+  vindicators: { name: 'The only one worth a damn', desc: 'Got through Rick’s rooms on the Vindicators’ ship' },
+  simulation: { name: 'Two percent CPU', desc: 'Spotted three slips in the Zigerions’ simulation' },
+  storytrain: { name: 'Tickets, please', desc: 'Found a ticket on the Story Train before the conductor came' },
+  fortress: { name: 'The backup', desc: 'Reached Rick Prime’s console. He’d already gone' },
+  froopyland: { name: 'The ABC’s of Beth', desc: 'Found Tommy in Froopyland, past the Froopylanders' },
+  nimbus: { name: 'He controls the police', desc: 'Approached Mr. Nimbus on his beach, past the Atlantean guard' },
+  gromflomites: { name: 'Oh boy, here I go', desc: 'Opened Fart’s cell in the Gromflomite base without a guard seeing' },
+  heistcon: { name: 'The con is the heist', desc: 'Took a badge and recruited a crew for Miles Knightly at Heist-Con' },
+  snakeplanet: { name: 'Hsss', desc: 'Reached the snake rocket on Snake Planet without being bitten' },
+  nuptia: { name: 'Love, scanned', desc: 'Took the test on Nuptia 4, and kept clear of the mythologs' },
+  gloopynoops: { name: 'Visiting hours', desc: 'Visited Shrimply Pibbles at St. Gloopy Noops' },
+  resort: { name: 'Out of the field', desc: 'Rode the Whirly Dirly at the Immortality Field Resort' },
+  schwifty: { name: 'I like what you got', desc: 'Took the mic at the Get Schwifty show' },
+  evilrick: { name: 'Close Rick-counters', desc: 'Freed the dome’s Mortys and beat Evil Rick in his lair' },
+  evilmorty: { name: 'The one behind him', desc: 'Spoke to the Morty with the eyepatch before his yellow portal took him' },
+  cronenberg: { name: 'Rick Potion #9', desc: 'Took the shovel and spoke to the Beth who stayed in Cronenberg World' },
+  blooddome: { name: 'A man now', desc: 'Beat Hemorrhage in the Blood Dome' },
+  prison: { name: 'Nine more seasons', desc: 'Sprang Rick from the Brainalyzer without a guard seeing' },
+  cablestudio: { name: 'Between takes', desc: 'Watched three channels being made at the cable studio' },
+  dream: { name: 'Scary Terry night', desc: 'Found three things in Mr. Goldenfold’s dream with Scary Terry on your heels' },
+  agency: { name: 'Pickle Riiick', desc: 'Sprang Jaguar from his cell at the agency' },
+  meeseeksgolf: { name: 'Caaan do', desc: 'Pressed the Meeseeks box on the golf course and got home before they got you' },
+  vat: { name: 'Bones (fake)', desc: 'Faked your death in Rick’s vat of acid' },
+  dim35c: { name: 'Mega Seeds', desc: 'Picked three Mega Seeds in Dimension 35-C' },
   collector: { name: 'Collector', desc: 'Found every hidden easter egg' },
   mellon: { name: 'Speak, friend', desc: 'Said the word that opens the Doors of Durin' },
   balrog: { name: 'You shall not pass', desc: 'Held the Bridge of Khazad-dûm' },
@@ -84,7 +153,9 @@ export const ACHIEVEMENTS = {
   council: { name: 'Rickest Rick', desc: 'Talked your way out of the Council of Ricks' },
   votemorty: { name: 'Vote Morty', desc: 'Voted in the Citadel’s election (Candidate Morty won anyway)' },
   citadelout: { name: 'Get to the cruiser', desc: 'Got past Evil Morty’s Cop Ricks to the cruiser' },
+  locos: { name: 'The Mortytown Locos', desc: 'Walked all three Locos to Cop Morty, outside Morty Mart' },
   citadelfall: { name: 'Wubba lubba dub dub', desc: 'Helped bring down the Citadel of Ricks from the universe map' },
+  remover: { name: 'It removes planets', desc: 'Shot down the Federation’s NX-5 Planet Remover before it fired' },
   rifted: { name: 'Through the rift', desc: 'Flew into a rift on the universe map and came out somewhere else' },
   grandtour: { name: 'Seen it all', desc: 'Toured every station, world and wonder on the universe map' },
   wanted: { name: 'Wanted', desc: 'Shot down a bounty hunter on the universe map' },
@@ -161,6 +232,10 @@ export const ACHIEVEMENTS = {
   rescue: { name: 'That actually helped', desc: 'Caught someone falling over the city and set them down' },
   mimic: { name: 'A fraction of our power', desc: 'Flew alongside an airliner over the Graysons’ city' },
   flaxans: { name: 'Back through the portal', desc: 'Knocked every Flaxan out of the sky over the river in the Graysons’ city' },
+  maulers: { name: 'The bank job', desc: 'Stopped the Mauler twins’ bank job downtown in the Graysons’ city' },
+  seismic: { name: 'Who you calling ugly?', desc: 'Caught every student Doc Seismic shook off the school roof, and put him down' },
+  gda: { name: 'You look kinda dead', desc: 'Held the GDA’s hangar against the Mauler clones' },
+  season: { name: 'We need to talk', desc: 'Flew the whole first season of the Graysons’ city, and went home to talk' },
   karman: { name: 'Neil Armstrong, eat your heart out', desc: 'Flew up out of the air over the Graysons’ city, into space' },
   moonwalk: { name: 'One small step', desc: 'Landed on the Moon as Invincible' },
   redplanet: { name: 'A long way from home', desc: 'Landed on Mars as Invincible' },
@@ -174,6 +249,11 @@ export const ACHIEVEMENTS = {
   surveyor: { name: 'Surveyor', desc: 'Found every place on a world in a galaxy far, far away' },
   wanderer: { name: 'Wanderer', desc: 'Set foot on every world you can land on in a galaxy far, far away' },
   interdicted: { name: 'Interdicted', desc: 'Pulled out of hyperspace by an Imperial Interdictor, and got clear of its gravity well' },
+  gcwSworn: { name: 'Sworn', desc: 'Swore to a side of one of the galaxy’s wars' },
+  gcwLiberator: { name: 'Liberator', desc: 'Fought for a system that turned your side’s' },
+  gcwMajor: { name: 'Major order', desc: 'Won the battle for a war’s major order' },
+  gcwTurncoat: { name: 'Turncoat', desc: 'Changed sides in the middle of a war' },
+  gcwAdmiral: { name: 'Top brass', desc: 'Reached the highest rank of a side in the galaxy’s wars' },
   shotfirst: { name: 'Shot first', desc: 'Didn’t let Greedo shoot first in the Mos Eisley cantina' },
   docking94: { name: 'Docking Bay 94', desc: 'Held off the stormtroopers at Docking Bay 94' },
   rancor: { name: 'Rancor keeper', desc: 'Brought the gate down on Jabba’s rancor' },
@@ -181,9 +261,16 @@ export const ACHIEVEMENTS = {
   womprats: { name: 'Bullseye', desc: 'Bullseyed womp rats in Beggar’s Canyon' },
   canyon: { name: 'Canyon run', desc: 'Ran Beggar’s Canyon in a landspeeder against the clock' },
   speederchase: { name: 'Fast and low', desc: 'Caught every scout trooper before the bunker on Endor' },
+  yavinbriefing: { name: 'Stay on target', desc: 'Sat through General Dodonna’s briefing in the Great Temple' },
+  yavinscramble: { name: 'Red Five standing by', desc: 'Scrambled from the Great Temple’s hangar to the trench' },
+  yavinceremony: { name: 'Medal ceremony', desc: 'Walked the Great Temple’s throne room to the dais' },
+  coruscantrace: { name: 'I hate flying', desc: 'Chased the assassin’s speeder through Coruscant’s skylanes to the Senate' },
+  bespinfreezing: { name: 'I know', desc: 'Cleared the carbon-freezing chamber and lowered the platform' },
+  bespinduel: { name: 'I am your father', desc: 'Faced Vader on the gantry over Cloud City’s reactor shaft' },
+  bespinlobot: { name: 'Lobot’s codes', desc: 'Opened the corridor with Lobot’s codes and ran for Platform 327 with the Wing Guard' },
   starmapride: { name: 'The way to Ezra', desc: 'Raced the spires to the old tower on Lothal and kept the star map' },
   dagobahraise: { name: 'Size matters not', desc: 'Ran Dagobah’s swamp with Yoda on your back, faced the cave and raised the X-wing' },
-  galacticassault: { name: 'Galactic assault', desc: 'Won a battle for the command posts on Hoth or Geonosis' },
+  galacticassault: { name: 'Galactic assault', desc: 'Won a battle for the command posts on Hoth, Geonosis, Scarif or Endor' },
   canyonmission: { name: 'Faster than Biggs', desc: 'Ran Beggar’s Canyon both ways against the clock on Tatooine' },
   firsttransport: { name: 'The first transport is away', desc: 'Loaded the first transport off Hoth and cleared its way with the ion cannon' },
   sanctuary: { name: 'Sanctuary', desc: 'Held the krill farmers’ village on Sorgan against the raiders and their AT-ST' },
@@ -206,17 +293,17 @@ const PAGES = ['/', '/experience', '/projects', '/travel', '/contact', '/termina
 const newThemes = (themeId) => {
   const egg = FAN_THEMES.find((f) => f.id === themeId)?.achievement;
   const names = FAN_THEMES.filter((f) => f.achievement === egg).map((f) => THEMES[f.id].company);
-  if (names.length < 2) return `New theme: ${names[0] ?? THEMES[themeId].company}.`;
-  return `New themes: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
+  if (names.length < 2) return `New colours: ${names[0] ?? THEMES[themeId].company}.`;
+  return `New colours: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
 };
-// "New in the hangar: …": the paint jobs and ship parts an achievement opens
+// "New in your shipyard: …": the paint jobs and ship parts an achievement opens
 // on the universe map (universe/outfit.js), or null.
 const list = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 const newInHangar = (id) => {
   const paints = paintsFor(id).map((p) => p.name);
   const parts = partsUnlockedBy(id).map((p) => p.name);
   const said = [paints.length ? `${list(paints)} ${paints.length === 1 ? 'paint' : 'paints'}` : null, parts.length ? list(parts) : null].filter(Boolean);
-  return said.length ? `New in your ship’s hangar: ${said.join('; ')}.` : null;
+  return said.length ? `New in your shipyard: ${said.join('; ')}.` : null;
 };
 const KEY = 'tp-achievements';
 
@@ -260,6 +347,7 @@ export function AchievementProvider({ children }) {
     }
     if (pathname === '/terminal') unlock('hacker');
     if (pathname === '/deathstar') unlock('deathstar');
+    if (pathname === '/deathstar/inside') unlock('ds-aboard');
     if (pathname === '/resume') unlock('resume');
   }, [pathname, unlock]);
 
@@ -267,7 +355,9 @@ export function AchievementProvider({ children }) {
     if (THEME_ORDER.every((t) => seen.has(t))) unlock('cartographer');
   }, [seen, unlock]);
 
-  const toast = queue[0];
+  // (a toast waits while a tour runs: it'd sit over the tour's card)
+  const touring = useTouring();
+  const toast = touring ? null : queue[0];
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setQueue((q) => q.slice(1)), toast.gif ? 7000 : 3800);
@@ -275,6 +365,10 @@ export function AchievementProvider({ children }) {
   }, [toast]);
 
   const value = useMemo(() => ({ unlock, notify, unlocked }), [unlock, notify, unlocked]);
+  // In a world the HUD's foot is the prompt, the thumbs and the instruments:
+  // the toast goes top centre, under the nav, instead (the worlds' own
+  // toasts sit lower, under their top row).
+  const inWorld = Boolean(worldAt(pathname));
   const themeId = toast?.kind.startsWith('theme:') ? toast.kind.slice(6) : null;
 
   return (
@@ -282,12 +376,12 @@ export function AchievementProvider({ children }) {
       {children}
       {/* taps pass through the toast to whatever is under it, except on its own controls */}
       {/* in language mode the toast reads plainly, and sits above the Back to English pill */}
-      <div className="toast-host pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto" aria-live="polite">
+      <div className={`toast-host pointer-events-none fixed inset-x-0 ${inWorld ? 'top-[calc(var(--nav-h)+0.75rem)]' : 'bottom-5'} z-[var(--z-sheet)] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto`} aria-live="polite" data-in-world={inWorld || undefined}>
         {toast && (
           <div
             key={toast.key}
-            className="toast ab-keep card flex max-w-md items-center gap-3 px-4 py-3 shadow-2xl shadow-black/40"
-            style={{ background: 'var(--surface-2)', animationDuration: toast.gif ? '7s' : '3.8s' }}
+            className="toast notice ab-keep flex max-w-md items-center gap-3 px-4 py-3"
+            style={{ animationDuration: toast.gif ? '7s' : '3.8s' }}
           >
             {toast.kind !== 'note' && (
               <span className="grid h-9 w-9 flex-none place-items-center rounded-full border border-line-strong">
@@ -298,7 +392,7 @@ export function AchievementProvider({ children }) {
               {toast.kind !== 'note' && <p className="label">Achievement unlocked</p>}
               <p className="font-semibold text-ink">{toast.title}</p>
               {toast.desc && <p className="text-sm text-muted">{toast.desc}</p>}
-              {themeId && <p className="mt-1 text-sm text-body">{newThemes(themeId)} Pick from the site colors.</p>}
+              {themeId && <p className="mt-1 text-sm text-body">{newThemes(themeId)} Pick from the site colours.</p>}
               {toast.hangar && <p className="mt-1 text-sm text-body">{toast.hangar}</p>}
               {toast.gif && <Gif name={toast.gif} eager />}
             </div>

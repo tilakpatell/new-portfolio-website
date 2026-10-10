@@ -19,6 +19,7 @@
 // { obj, place(p) }, its `userData.peak` the intensity at full).
 
 import * as THREE from 'three';
+import { sharpen } from '../../lib/three/textures';
 
 const V = THREE.Vector3;
 const G = 9.8; // m/s²
@@ -49,6 +50,7 @@ const canvasTex = (w, h, draw) => {
   c.height = h;
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 };

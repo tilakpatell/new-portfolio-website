@@ -143,12 +143,23 @@ export const CONVOS = {
 };
 
 // Who says what in a conversation's bubble
+// the toasts someone speaks in (../voice.js); the pints poured, Pippin and
+// then Merry
+const PINT = { who: 'pippin', text: '“This is a pint!”' };
+const PINTS = { who: 'merry', text: '“It comes in pints?! I’m getting one.”' };
+export const SAYS = {
+  pints: { who: 'pippin', text: 'Pippin: “It comes in pints?” Hold the tap, and let go with the head between the two lines.' },
+  poured: { text: `Three good pints. Pippin: ${PINT.text} Merry: ${PINTS.text}`, lines: [PINT, PINTS] },
+  spilt: { who: 'butterbur', text: 'Butterbur takes the jug off you. “Let me show you, little master.” Try again.' },
+  east: { who: 'strider', text: 'Strider: “This way. Quickly, and quietly.” By dawn you’re through, and the rain has stopped.' },
+};
+
 export const SPEAKERS = { harry: 'Harry the gatekeeper', butterbur: 'Barliman Butterbur', strider: 'Strider', pippin: 'Pippin Took', sam: 'Samwise Gamgee', frodo: 'Frodo' };
 
 // ── the Nazgûl ──
 // Four on foot, walking the lanes (../watchers.js): they see in a narrow
 // cone, but smell you close, and the Ring shows you to them from afar.
-export const NAZGUL = { sight: 9, cone: 0.52, smell: 1.8, hear: 3.2, ringSight: 40, alert: 0.8, chase: 4.6, patrol: 1.25, giveUp: 7, leash: 14, catch: 0.9, look: 1.8 };
+export const NAZGUL = { sight: 9, cone: 0.52, smell: 1.8, hear: 3.2, ringSight: 40, alert: 0.8, chase: 4.6, patrol: 1.25, giveUp: 7, leash: 14, catch: 0.9, look: 1.8, far: 2.4, suspicious: 0.45, search: 14 }; // (far, suspicious, search: ../watchers.js, on the AI toolkit: slow to be sure of a hobbit in the dark, quick to come and look, and they search the lanes together)
 
 // The Ring, slipped on in the common room: how fast the Eye comes.
 export const SLIP = { gaze: 0.42 };

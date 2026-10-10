@@ -14,12 +14,15 @@ const noise = (ac) => {
   return noiseBuf;
 };
 
-// windSound() → { set({ speed, alt }), stop() }. Made inside a key press or a
-// touch (a browser starts no sound before one); without Web Audio, silent.
+// windSound() → { set({ speed, alt }), hush(on), stop() }. Made inside a key
+// press or a touch (a browser starts no sound before one); without Web
+// Audio, silent. hush(true) fades it out while nobody's flying (the tab
+// hidden, the world scrolled away), hush(false) brings it back.
 export function windSound() {
   const ac = audioContext();
   const out = output();
-  if (!ac || !out) return { set() {}, stop() {} };
+  if (!ac || !out) return { set() {}, hush() {}, stop() {} };
+  let stopped = false;
   const bus = ac.createGain();
   bus.gain.value = 0;
   bus.gain.setTargetAtTime(1, ac.currentTime, 0.5);
@@ -71,7 +74,11 @@ export function windSound() {
       wh.frequency.setTargetAtTime(1800 + k * 1600, t, 0.2);
       cG.gain.setTargetAtTime(0.02 * Math.max(0, 1 - alt / 120), t, 0.4);
     },
+    hush(on) {
+      if (!stopped) bus.gain.setTargetAtTime(on ? 0 : 1, ac.currentTime, on ? 0.15 : 0.5);
+    },
     stop() {
+      stopped = true;
       const t = ac.currentTime;
       bus.gain.setTargetAtTime(0, t, 0.2);
       setTimeout(() => {
@@ -85,4 +92,31 @@ export function windSound() {
       }, 800);
     },
   };
+}
+
+// A splash: white water thrown up where he hit the river or the sea, a slam
+// made lighter (water gives). The harder he hit it, the louder, lower and
+// longer; the noise is the wind's, from a random point in it.
+export function splashSound(speed = 0) {
+  const ac = audioContext();
+  const out = output();
+  if (!ac || !out) return;
+  const k = Math.min(1, Math.max(0, speed) / 160);
+  const t = ac.currentTime;
+  const len = 0.45 + k * 0.75;
+  const src = ac.createBufferSource();
+  src.buffer = noise(ac);
+  src.loop = true;
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.setValueAtTime(5200 - k * 1800, t);
+  f.frequency.exponentialRampToValueAtTime(380, t + len);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.05 + k * 0.13, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  src.connect(f).connect(g).connect(out);
+  src.start(t, Math.random() * 1.2);
+  src.stop(t + len + 0.05);
+  src.onended = () => g.disconnect();
 }

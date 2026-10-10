@@ -9,7 +9,9 @@
 // it's dropped, and a flood gets them muted), and a hit is believed only
 // from someone who isn't an ally, fired a shot that would have passed near
 // you a moment ago (aimedAt), was close enough, and isn't hitting faster
-// than the guns fire. The hunters after a pilot are theirs to fly: what they
+// than the guns fire; a ram only from someone who isn't an ally and was last
+// seen touching you, as hard as both your speeds allow (ramCounts). The
+// hunters after a pilot are theirs to fly: what they
 // say of them is only drawn, and a hit on one of yours by someone else is
 // believed only from a pilot who's here, has just fired and is close to it
 // (any pilot here can still clear your hunters for you: that's the point).
@@ -19,27 +21,43 @@
 //           (outfit.js), b: its garage build (shipyard/build.js's ids) or
 //           none, l: [Rick's look, Morty's] (wardrobe/looks.js's ids) or
 //           none, lb: [Walt’s look, Jesse’s] or none, c: kills, w: where
-//           on the site }  on joining, and on any change
-//   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
-//         (flags: hidden, boosting, and safe: just back, your hits don't count)
+//           on the site, lv: level (economy.js's, 1 to 11), f: factions
+//           { s: side (sides.js), st: { law, civil, outlaw } standing.js's
+//           level names, w: war, o: the side sworn to in it (galaxy/sides.js),
+//           r: rank on that side (galaxy/ranks.js) } or none; a build older
+//           than these sends neither: level 1, nobody's }  on joining, and on any change
+//   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields, sec?]  ten times a second while flying
+//         (sec: out in the Expanse, its sector, 'E:sx,sz', and x and z then
+//         from that sector's middle; without it, the authored map's, as ever)
+//         (flags: hidden, boosting, safe: just back, your hits don't count, and
+//         lane, from when there were hyperlanes: read by nothing now)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
 //                                                       weapon (weapons.js's code), 0 if left off
 //   hit   { d: damage }                                  to the pilot a bolt of yours hit (up to
 //                                                       DAMAGE_MAX, a heavy round's)
+//   ram   { v: closing speed }                           to the pilot you flew into (they take it off
+//                                                       their own shields by the contact law,
+//                                                       lib/combat/contact.js, at no more than both
+//                                                       your speeds allow: ramCounts)
 //   down  { b: who shot you down }                       to everyone, when your shields go
 //   pack  [[id, kind, x, y, z, vx, vy, vz, hits left], …] five times a second while hunters are
 //                                                       after you and someone's there to see ([]: gone)
 //   hhit  { i: hunter id, d: damage }                    to the pilot a hunter's after, when a bolt of yours hit it
-//   ally  { t: 'ask' | 'yes' | 'no' | 'end' }            to one pilot
+//   ally  { t: 'ask' | 'yes' | 'no' | 'end', k?: 1 }     to one pilot (k: an ask from a pilot who has
+//                                                       you saved as an ally, allies.js: one who has
+//                                                       them saved too says yes without asking)
 //   foot  { p: planet, k: ship kind, s: [n, f] where it's parked, a: walker, b: walker or null }
 //         ten times a second while your crew are down on a planet ({ p: null }: back in);
 //         a walker is [who, n (3), f (3), h, speed, side, aim] (footScene.js, foot.js)
-//   siege { e, m, t, x, l }                              the Citadel's siege (siege.js): its epoch,
+//   siege { e, m, t, x, l, i }                           the Citadel's siege (siege.js): its epoch,
 //                                                       your share of each part's damage, the
-//                                                       totals you know, when it went up, the last hit
-//   war   { e, m, t }                                  the galaxy's war (galaxy/gcw.js, a tally.js
+//                                                       totals you know, when it went up, the last
+//                                                       hit; your siege id, the same through a reload
+//   war   { e, m, t, i }                               the galaxy's war (galaxy/gcw.js, a tally.js
 //                                                       message): the campaign, your points and the
-//                                                       totals you know, now and then from anywhere
+//                                                       totals you know, a page of TALLY.keys at a
+//                                                       time, now and then from anywhere; your
+//                                                       tally id, the same through a reload
 //   fight { e, m, t }                                  the battle where you are (galaxy/warfront.js):
 //                                                       its id, your damage on its objectives, the totals
 //   cur   [x, y, touch]                                  off the universe map: your pointer
@@ -56,7 +74,19 @@ import { byId } from '../universes';
 import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
+import { inExpanse, sectorOf } from '../layout';
+import { SECTOR, parseSector, sectorCentre } from '../../expanse/gen/grid';
 import { cleanName } from './names';
+import { LEVELS as XP_LEVELS } from '../economy';
+import { SIDES } from '../sides';
+import { AXES, LEVELS as STANDING_LEVELS } from '../standing';
+import { SIDES as WAR_SIDES, WARS, warOfSide } from '../../galaxy/sides';
+import { RANKS } from '../../galaxy/ranks';
+import { STANCE_IDS } from '../../galaxy/surface/combatRules';
+import { NO_FACTIONS } from './relations';
+import { motionPacket, readEmoteWire, readMotion } from '../../../lib/emote';
+import { WEAPONS, byCode } from '../weaponTable';
+import { CONTACT } from '../../../lib/combat/contact';
 
 export { NAME_MAX, cleanName, randomCallsign } from './names';
 
@@ -80,11 +110,20 @@ export const GUARD = {
   near: 2, // map units: how close a shot's path must pass you (more, the faster you go)
   killWindow: 3000, // ms: a kill is believed only this soon after the killer's shot or hit
   reach: 95, // map units: further than this from one of your hunters, they couldn't have hit it (a bolt at the boost goes 85)
+  ramNear: 1.5, // map units: how far apart a rammer's last pose and you may be (two ships touching, and a little)
+  ramLag: 0.35, // s: and more for each unit a second of your speeds together (a pose is up to 100 ms old, then the trip)
 };
+export const RAM_MAX = 600; // a closing speed, at most (two ships head on, on the pulse drive)
 // how many of each message one pilot may send: [a second, at most at once]
-export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], siege: [2, 6], war: [0.5, 3], fight: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
+export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], ram: [3, 4], siege: [2, 6], war: [0.5, 3], fight: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
-export const FLAG = { hidden: 1, boost: 2, safe: 4 };
+export const FLAG = { hidden: 1, boost: 2, safe: 4, lane: 8 };
+// how far out a pilot can be, level, and how fast they can go: the universe
+// spread four times wider (scale.js's SPREAD: places reach 36,000 out, the
+// Rick and Morty sector sits at z −48,000) and the fastest ever ran at
+// 4,000 a second, so a little past both
+export const FAR = 60000;
+export const FAST = 5000;
 
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -96,7 +135,31 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // null, the stock ship)
 export function readHello(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w), level: Math.floor(num(data.lv, 1, XP_LEVELS.length) ?? 1), factions: readFactions(data.f) };
+}
+
+// A pilot's factions (relations.js's shape), for a hello's `f`: only what
+// there is to say goes, and nothing at all for nobody's
+export function writeFactions({ side = null, standing = null, war = null, oath = null, rank = null } = {}) {
+  const st = side && standing ? Object.fromEntries(AXES.filter((a) => standing[a]).map((a) => [a, standing[a]])) : null;
+  const out = { ...(side ? { s: side } : {}), ...(st && Object.keys(st).length ? { st } : {}), ...(war ? { w: war } : {}), ...(oath ? { o: oath } : {}), ...(rank ? { r: rank } : {}) };
+  return Object.keys(out).length ? out : null;
+}
+
+// a hello's `f` as it came in: each field an id from the lists we have, or
+// null (a rank only on the side sworn to, an oath only to a side of the war
+// named, a standing only with a side to have it with)
+const named = (v, list) => (typeof v === 'string' && Object.hasOwn(list, v) ? v : null);
+const standingName = (axis, v) => (typeof v === 'string' && STANDING_LEVELS[axis].some(([, name]) => name === v) ? v : null);
+function readFactions(f) {
+  if (!f || typeof f !== 'object' || Array.isArray(f)) return { ...NO_FACTIONS };
+  const side = named(f.s, SIDES);
+  const standing = side && f.st && typeof f.st === 'object' && !Array.isArray(f.st) ? Object.fromEntries(AXES.map((a) => [a, standingName(a, f.st[a])])) : null;
+  const war = named(f.w, WARS);
+  const sworn = named(f.o, WAR_SIDES);
+  const oath = sworn && warOfSide(sworn) && (!war || warOfSide(sworn) === war) ? sworn : null;
+  const rank = oath && typeof f.r === 'string' && RANKS[oath]?.some((r) => r.id === f.r) ? f.r : null;
+  return { side, standing, war, oath, rank };
 }
 
 // Each cast’s pair of looks under a key of its own (Rick and Morty’s under
@@ -142,16 +205,30 @@ export function readCursor(data) {
 // 100); the bank with the lean into a turn on it, so others see that too
 export function writePose(s, flags = 0, shield = 100) {
   const r = (v, k = 1000) => Math.round((v || 0) * k) / k;
-  return [r(s.x, 100), r(s.y, 100), r(s.z, 100), r(s.heading), r(s.pitch), r(wrap((s.bank || 0) + (s.lean || 0))), r(s.speed, 100), r(s.vy, 100), flags | 0, Math.round(shield)];
+  const sec = sectorOf(s.x || 0, s.y || 0, s.z || 0);
+  const o = inExpanse(sec) ? sectorCentre(...parseSector(sec)) : null;
+  const out = [r(s.x - (o?.[0] ?? 0), 100), r(s.y, 100), r(s.z - (o?.[2] ?? 0), 100), r(s.heading), r(s.pitch), r(wrap((s.bank || 0) + (s.lean || 0))), r(s.speed, 100), r(s.vy, 100), flags | 0, Math.round(shield)];
+  if (o) out.push(sec);
+  return out;
 }
+// how far from its sector's middle an Expanse pose may be (its half and a margin)
+const SEC_FAR = SECTOR / 2 + 2000;
 
 // a pose as it came in: { x, y, z, heading, pitch, bank, speed, vy, hidden,
-// boost, safe, shield }, or null if it isn't one (out past deep space's edge, it's clamped)
+// boost, safe, lane, shield, sec? }, or null if it isn't one (out past deep space's
+// edge, it's clamped; an older pilot's never has the lane bit, so reads not riding).
+// x and z are the map's: an Expanse pose's are put back from its sector's
+// middle (and `sec` kept); one without a sector is the authored map's.
 export function readPose(data) {
   if (!Array.isArray(data) || data.length < 9) return null;
-  const x = num(data[0], -7500, 7500);
+  const at = data.length > 10 ? parseSector(data[10]) : null;
+  const sec = at && inExpanse(data[10]) ? data[10] : null;
+  const o = sec ? sectorCentre(...at) : null;
+  const lx = o ? num(data[0], -SEC_FAR, SEC_FAR) : num(data[0], -FAR, FAR);
   const y = num(data[1], -1300, 1300);
-  const z = num(data[2], -7500, 7500);
+  const lz = o ? num(data[2], -SEC_FAR, SEC_FAR) : num(data[2], -FAR, FAR);
+  const x = lx === null ? null : lx + (o?.[0] ?? 0);
+  const z = lz === null ? null : lz + (o?.[2] ?? 0);
   const heading = num(data[3], -100, 100);
   if (x === null || y === null || z === null || heading === null) return null;
   const flags = Math.floor(num(data[8], 0, 255) ?? 0);
@@ -162,12 +239,14 @@ export function readPose(data) {
     heading: wrap(heading),
     pitch: num(data[4], -1.6, 1.6) ?? 0,
     bank: wrap(num(data[5], -4, 4) ?? 0), // (all the way round: upside down is ±π)
-    speed: num(data[6], -600, 600) ?? 0,
+    speed: num(data[6], -FAST, FAST) ?? 0,
     vy: num(data[7], -300, 300) ?? 0,
     hidden: Boolean(flags & FLAG.hidden),
     boost: Boolean(flags & FLAG.boost),
     safe: Boolean(flags & FLAG.safe),
+    lane: Boolean(flags & FLAG.lane),
     shield: num(data[9], 0, 100) ?? 100,
+    ...(sec ? { sec } : {}),
   };
 }
 
@@ -181,18 +260,41 @@ export const writeShot = (p, v, w = 0) => {
 // to start near where the pilot was last seen (`from`, a pose, if known)
 export function readShot(data, from = null) {
   if (!Array.isArray(data) || data.length < 6) return null;
-  const n = data.slice(0, 6).map((v) => num(v, -7500, 7500));
+  // (anywhere in the universe; its speed's checked just below)
+  const n = data.slice(0, 6).map((v, i) => (i < 3 ? num(v, -FAR, FAR) : num(v, -7500, 7500)));
   if (n.some((v) => v === null)) return null;
   if (Math.hypot(n[3], n[4], n[5]) > 800) return null;
   // (as far as it could have gone since that pose, on the pulse drive)
   if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6 + Math.abs(from.speed ?? 0) * 0.3) return null;
-  const w = Number.isInteger(data[6]) && data[6] >= 0 && data[6] <= 2 ? data[6] : 0;
+  // (a code from the weapon table; a newer peer's or junk is the blaster)
+  const w = Number.isInteger(data[6]) ? WEAPONS[byCode(data[6])].code : 0;
   return { p: n.slice(0, 3), v: n.slice(3), w };
 }
 
 export function readHit(data) {
   const d = num(data?.d, 0, DAMAGE_MAX);
   return d === null || d <= 0 ? null : d;
+}
+
+// a ram as it came in: the closing speed it says, or null
+export function readRam(data) {
+  const v = num(data?.v, 0, RAM_MAX);
+  return v === null ? null : v;
+}
+
+// Should a ram from this pilot count, and how hard? They're not blocked or
+// an ally, were last seen close enough to have touched you (more room the
+// faster you both go: their pose is a moment old), and it's not sooner after
+// their last than a contact counts again (the law's `cool`). The closing
+// speed believed is theirs (`into`), but never more than both your speeds
+// together; null when it doesn't count.
+export function ramCounts(peer, me, into, now) {
+  if (!peer || !me || peer.blocked || peer.ally === 'ally') return null;
+  const p = peer.pose;
+  if (!p || now - (peer.ramAt ?? -Infinity) < CONTACT.cool * 1000) return null;
+  const both = Math.abs(p.speed ?? 0) + Math.abs(me.speed ?? 0);
+  if (Math.hypot(p.x - me.x, p.y - me.y, p.z - me.z) > GUARD.ramNear + both * GUARD.ramLag) return null;
+  return Math.min(into, both);
 }
 
 // ── The hunters after a pilot: for the others to see, and to help with ──
@@ -213,9 +315,9 @@ export function readPack(data) {
     if (!Array.isArray(h) || h.length < 9) continue;
     const id = num(h[0], 1, 1e9);
     const kind = typeof h[1] === 'string' && Object.hasOwn(HUNTERS, h[1]) ? h[1] : null;
-    const x = num(h[2], -7500, 7500);
+    const x = num(h[2], -FAR, FAR);
     const y = num(h[3], -1300, 1300);
-    const z = num(h[4], -7500, 7500);
+    const z = num(h[4], -FAR, FAR);
     if (id === null || !Number.isInteger(id) || !kind || x === null || y === null || z === null || out.some((o) => o.id === id)) continue;
     out.push({ id, kind, x, y, z, vx: num(h[5], -80, 80) ?? 0, vy: num(h[6], -80, 80) ?? 0, vz: num(h[7], -80, 80) ?? 0, hp: Math.max(1, Math.floor(num(h[8], 1, 99) ?? 1)) });
   }
@@ -246,9 +348,11 @@ export function hunterHitCounts(peer, at, now) {
 // ground, both in the map's axes, so it's the same spot for everyone
 // whatever turn their planet was held at when they landed)
 export const FOOT_MS = 100; // how often it goes out, while they're down
-export const WALKERS = ['rick', 'morty', 'walt', 'jesse', 'chewie', 'han', 'luke', 'artoo']; // footScene.js's PARTY
+export const WALKERS = ['rick', 'morty', 'walt', 'jesse', 'chewie', 'han', 'luke', 'artoo', 'leia', 'ahsoka', 'bobafett']; // footScene.js's PARTY, and galaxy/heroes.js's heroes
 const r5 = (v) => Math.round((v || 0) * 1e5) / 1e5;
-const writeWalker = (w) => (w ? [w.who, ...w.n.map(r5), ...w.f.map(r5), r5(w.h), r5(w.speed), r5(w.side), Math.round((w.aim || 0) * 100) / 100] : null);
+// (then what the body's doing, which an older reader stops before: the
+// emote [id, seconds on] or 0, the flinch and the fall, 0…1: footLife.js's)
+const writeWalker = (w) => (w ? [w.who, ...w.n.map(r5), ...w.f.map(r5), r5(w.h), r5(w.speed), r5(w.side), Math.round((w.aim || 0) * 100) / 100, Array.isArray(w.e) ? [String(w.e[0]).slice(0, 16), r2(w.e[1])] : 0, r2(w.hurt || 0), r2(w.down || 0)] : null);
 
 // what goes out while down: { planet, kind, ship: { n, f }, lead, mate }
 // (each walker { who, n, f, h, speed, side, aim }), or null once back in
@@ -284,6 +388,10 @@ const readWalker = (data) => {
     speed: num(data[8], -FOOT.run * 1.5, FOOT.run * 1.5) ?? 0,
     side: num(data[9], -FOOT.side * 1.5, FOOT.side * 1.5) ?? 0,
     aim: num(data[10], 0, 1) ?? 0,
+    // (an older client's packet stops at the aim: none of these)
+    e: Array.isArray(data[11]) && typeof data[11][0] === 'string' && num(data[11][1], 0, 600) != null ? [data[11][0], num(data[11][1], 0, 600)] : null,
+    hurt: num(data[12], 0, 1) ?? 0,
+    down: num(data[13], 0, 1) ?? 0,
   };
 };
 
@@ -305,13 +413,44 @@ export function readFoot(data) {
 
 // ── Down on a world in the galaxy (galaxy/surface/scene.js) ──
 // where a pilot's crew are, in that world's own metres: { world, kind,
-// lead, mate, ride }, each walker [who, x, y, z, yaw, speed], ride the
-// kind they're on (or null); or null once they've taken off again
+// lead, mate, ride }, each walker [who, x, y, z, yaw, speed, aim, arms,
+// emote, motion], ride the kind they're on (or null); or null once
+// they've taken off again. `arms` (newer pilots; older readers stop before
+// it) is what's in the hand: [gun kind, lit (a saber: 0 | 1), blade colour
+// (#rrggbb), stance, swinging (0 | 1), and, newer, the stroke's clip
+// ('sword.light.a': the clip library's name, so a peer plays the one
+// they're playing; an older reader stops at the five)]; `emote` and `motion` (newer still,
+// and only when there's one: lib/emote.js's emotePacket and motionPacket)
+// what they're doing ([id, seconds on]) and how they're moving ([speed,
+// side, turn] in metres and radians a second), so their feet keep pace
 export const WALK_MS = 100;
 const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']; // galaxy/surface/rides.js's
 const r2 = (v) => Math.round((v || 0) * 100) / 100;
-// (the gun up, 0…1, last: an older reader stops at the speed)
-const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100] : null);
+// (the gun up, 0…1, then the arms: an older reader stops at the speed)
+export const ARMS_GUNS = ['blaster', 'laser', 'portal', 'revolver', 'pistol', 'bowcaster', 'rifle', 'coppistol', 'saber', 'a280', 'dlt19', 'ee3', 'westar', 'shotgun', 'sniper', 'smg']; // universe/gunplay.js's GUNS
+const STANCES_SEEN = STANCE_IDS;
+const strokeOf = (s) => (typeof s === 'string' && s.length <= 32 && /^sword(\.[a-z]+)+$/.test(s) ? s : null);
+const writeArms = (a) => {
+  if (!a || !ARMS_GUNS.includes(a.gun)) return null;
+  const out = [a.gun, a.lit ? 1 : 0, typeof a.color === 'string' ? a.color.slice(0, 7) : '', STANCES_SEEN.includes(a.stance) ? a.stance : 'single', a.swing ? 1 : 0];
+  if (strokeOf(a.stroke)) out.push(a.stroke);
+  return out;
+};
+const writeStroller = (w) => {
+  if (!w) return null;
+  const out = [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100];
+  // (what goes out checked as what comes in is; the arms' place kept, empty, ahead of them)
+  const e = readEmoteWire(w.emote);
+  const m = motionPacket(w.motion);
+  if (w.arms || e || m) out.push(writeArms(w.arms));
+  if (e || m) out.push(e ? [e.id, e.age] : null, m);
+  return out;
+};
+const readArms = (a) => {
+  if (!Array.isArray(a) || !ARMS_GUNS.includes(a[0])) return null;
+  const stroke = strokeOf(a[5]);
+  return { gun: a[0], lit: a[1] === 1, color: typeof a[2] === 'string' && /^#[0-9a-fA-F]{6}$/.test(a[2]) ? a[2] : '#4aa8ff', stance: STANCES_SEEN.includes(a[3]) ? a[3] : 'single', swing: a[4] === 1, ...(stroke ? { stroke } : {}) };
+};
 export function writeWalk(w) {
   if (!w) return { w: null };
   return { w: w.world, k: w.kind, a: writeStroller(w.lead), b: writeStroller(w.mate), r: w.ride ?? null };
@@ -321,7 +460,9 @@ const readStroller = (data) => {
   const [x, y, z] = [num(data[1], -10000, 10000), num(data[2], -3000, 3000), num(data[3], -10000, 10000)];
   const yaw = num(data[4], -7, 7);
   if (x === null || y === null || z === null || yaw === null) return null;
-  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0 };
+  const e = readEmoteWire(data[8]);
+  const m = readMotion(data[9]);
+  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0, arms: readArms(data[7]), ...(e ? { emote: e } : {}), ...(m ? { motion: m } : {}) };
 };
 // a crew down on a world as it came in: { world, kind, lead, mate, ride },
 // { off: true } (back in their ship), or null if it isn't one
@@ -396,6 +537,14 @@ export function createLimiter(rates = RATES) {
   };
 }
 
+// an alliance's word as it came in: { t: 'ask' | 'yes' | 'no' | 'end', k:
+// 1 (an ask from a pilot who has you saved) or 0 }, or null if it isn't one
+const ALLY_WORDS = ['ask', 'yes', 'no', 'end'];
+export function readAlly(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !ALLY_WORDS.includes(data.t)) return null;
+  return { t: data.t, k: data.k === 1 ? 1 : 0 };
+}
+
 // An alliance between you and one pilot, one step on. States: 'none',
 // 'sent' (you asked), 'got' (they asked), 'ally'. Events: what you do
 // ('ask', 'accept', 'decline', 'end') or what came in ({ in: 'ask' | 'yes' |
@@ -456,6 +605,7 @@ export function sample(snaps, now, delay = 140) {
       hidden: b.hidden,
       boost: b.boost,
       safe: b.safe,
+      lane: b.lane,
       shield: b.shield,
     };
   }

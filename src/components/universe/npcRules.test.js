@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BRAINS, NPC, createBrains } from './npcRules';
+import { BRAINS, NPC, createBrains, dodge } from './npcRules';
+import { SENSES } from './npcs/index';
 
 // a seeded random, so a meeting is the same every time
 const seeded = (seed = 7) => () => {
@@ -285,5 +286,365 @@ describe('being careful', () => {
     const seen = meet(spec('merchant'), { at: { x: 0, y: 0, z: 0 }, ship: you({ speed: 40 }), seconds: NPC.forget + 12 });
     expect(types(seen)).toContain('gone');
     expect(seen.brains.live).toHaveLength(0);
+  });
+});
+
+// the newer brains: the law pulling you over, a nemesis who remembers, a
+// friend who tags along, a pirate with a toll to collect; and the memory
+// every character keeps of you
+describe('an inspector', () => {
+  const law = (over = {}) => spec('inspector', { ship: 'suvace', faction: 'dea', stats: { speed: 20, accel: 16, turn: 2.6, hp: 6, fire: [0.5, 0.9], damage: 6 }, ...over });
+
+  it('comes in off your wing, tells you to stop, scans you when you do, and lets a clean ship go', () => {
+    const seen = meet(law(), { at: { x: 0, y: 0, z: -40 }, seconds: 30, world: () => ({ heat: 0 }) });
+    expect(seen.says).toEqual(expect.arrayContaining(['hello', 'clean', 'leaving']));
+    expect(seen.says.indexOf('hello')).toBeLessThan(seen.says.indexOf('clean'));
+    expect(types(seen)).not.toContain('busted');
+    expect(seen.shots).toHaveLength(0);
+  });
+
+  it('finds a ship with heat on it wanted: it calls its friends in and fights you itself, on the guns', () => {
+    const seen = meet(law(), { at: { x: 0, y: 0, z: -40 }, seconds: 20, world: () => ({ heat: 5 }) });
+    expect(seen.says).toContain('busted');
+    expect(seen.says).not.toContain('clean');
+    const busted = seen.events.find((e) => e.type === 'busted');
+    expect(busted).toMatchObject({ faction: 'dea', why: 'busted' });
+    expect(types(seen).filter((t) => t === 'busted')).toHaveLength(1);
+    expect(seen.shots.length).toBeGreaterThan(0);
+    expect(seen.brains.targets.length + (seen.brains.live.length ? 0 : 1)).toBeGreaterThan(0); // (hostile: on the guns while it's there)
+  });
+
+  it('comes after you if you run from it, or keep it waiting', () => {
+    // run: flat out, away
+    const ran = meet(law(), { at: { x: 0, y: 0, z: -40 }, seconds: 16, ship: you({ speed: 0 }), steer: (s, t) => ({ ...s, speed: t > 4 ? 30 : 0 }), world: () => ({ heat: 0 }) });
+    expect(ran.says).toContain('run');
+    expect(types(ran)).toContain('busted');
+    // dawdle: never under NPC.hold, never far
+    const slow = meet(law(), { at: { x: 0, y: 0, z: -40 }, seconds: NPC.patience + 8, ship: you({ speed: 5 }), world: () => ({ heat: 0 }) });
+    expect(slow.says).toContain('run');
+  });
+
+  it('turns on you when shot, and remembers it: next time you are wanted on sight', () => {
+    const memory = {};
+    const brains = createBrains({ rand: seeded(), memory });
+    const n = brains.add(law(), { x: 0, y: 0, z: -40 });
+    let s = you();
+    const got = [];
+    for (let t = 0; t < 8; t += DT) {
+      if (Math.abs(t - 3) < DT / 2) brains.hit(n, 1);
+      got.push(...brains.update(DT, { you: s, hunters: [], stations: [], heat: 0 }).events);
+    }
+    expect(got.map((e) => e.type)).toContain('busted');
+    expect(got.find((e) => e.type === 'busted').why).toBe('shot');
+    expect(memory[law().id]).toMatchObject({ met: 1, shot: 1, grudge: 1 });
+    brains.remove(n);
+    // next time, clean heat or not
+    brains.add(law(), { x: 0, y: 0, z: -40 });
+    const says = [];
+    for (let t = 0; t < 20; t += DT) for (const e of brains.update(DT, { you: s, hunters: [], stations: [], heat: 0 }).events) if (e.type === 'say') says.push(e.key);
+    expect(memory[law().id].met).toBe(2);
+    expect(says).toContain('busted');
+    expect(says).not.toContain('clean');
+  }, 20000);
+});
+
+describe('a nemesis', () => {
+  const foe = (over = {}) => spec('nemesis', { role: 'enemy', ship: 'tieadvanced', faction: 'empire', stats: { speed: 26, accel: 22, turn: 3, hp: 10, fire: [0.45, 0.8], damage: 8 }, ...over });
+
+  it('comes for you, says so, circles and fires, and is on the guns', () => {
+    const seen = meet(foe(), { at: { x: 0, y: 0, z: -45 }, seconds: 20 });
+    expect(seen.says).toContain('hello');
+    expect(seen.says).not.toContain('again');
+    expect(seen.shots.length).toBeGreaterThan(5);
+    for (const shot of seen.shots) expect(shot.at).toBe('you');
+    expect(seen.brains.targets).toHaveLength(1);
+    // never far, never still
+    const me = seen.brains.live[0];
+    expect(apart(me.pos, seen.ship)).toBeLessThan(NPC.orbit * 3);
+  });
+
+  it('jinks away when it has been in front of your nose too long', () => {
+    // it starts dead ahead and close: in your sights
+    let evaded = false;
+    meet(foe(), {
+      at: { x: 0, y: 0, z: -12 },
+      seconds: 12,
+      each: (brains, s, out) => {
+        for (const e of out.events) if (e.type === 'say' && e.key === 'evade') evaded = true;
+      },
+    });
+    expect(evaded).toBe(true);
+  });
+
+  it('has a word when your shields fail and when it is hurt to half, breaks off nearly dead and remembers', () => {
+    const memory = {};
+    const brains = createBrains({ rand: seeded(), memory });
+    const n = brains.add(foe(), { x: 0, y: 0, z: -30 });
+    const says = [];
+    const events = [];
+    let s = you();
+    for (let t = 0; t < 30; t += DT) {
+      if (Math.abs(t - 6) < DT / 2) brains.hit(n, 5); // half
+      if (Math.abs(t - 12) < DT / 2) brains.hit(n, 4); // under NPC.retreat
+      const out = brains.update(DT, { you: s, hunters: [], stations: [], shield: t > 2 ? 20 : 100 });
+      for (const e of out.events) {
+        events.push(e.type);
+        if (e.type === 'say') says.push(e.key);
+      }
+    }
+    expect(says).toEqual(expect.arrayContaining(['hello', 'weak', 'hit', 'half', 'retreat', 'leaving']));
+    expect(events).toContain('retreat');
+    expect(brains.live).toHaveLength(0); // (gone)
+    expect(memory[foe().id]).toMatchObject({ met: 1, shot: 2, grudge: 1 });
+    // back, tougher, with friends, and it knows you
+    const n2 = brains.add(foe(), { x: 0, y: 0, z: -30 });
+    const me = brains.live.find((m) => m.n === n2);
+    const got = [];
+    for (let t = 0; t < 6; t += DT) got.push(...brains.update(DT, { you: s, hunters: [], stations: [] }).events);
+    expect(me.hpMax).toBe(13);
+    expect(me.hp).toBe(13);
+    expect(got.find((e) => e.type === 'say' && e.key === 'again')).toBeTruthy();
+    expect(got.find((e) => e.type === 'calls')).toMatchObject({ faction: 'empire' });
+    expect(brains.targets[0].hpMax).toBe(13);
+  });
+
+  it('breaks off of its own accord after long enough', () => {
+    const seen = meet(foe(), { at: { x: 0, y: 0, z: -30 }, seconds: NPC.nemesis + 20 });
+    expect(seen.says).toContain('retreat');
+    expect(seen.brains.live).toHaveLength(0);
+  }, 20000);
+});
+
+describe('a tagalong', () => {
+  const pal = () => spec('tagalong', { role: 'ally', ship: 'saucer', stats: { speed: 20, accel: 14, turn: 2.4, hp: 3, fire: [0.8, 1.4], damage: 0 } });
+
+  it('comes up on your wing, says hello, chats now and then, never fires, and goes home in the end', () => {
+    const seen = meet(pal(), { at: { x: 20, y: 0, z: 0 }, seconds: NPC.tag + 20, ship: you({ speed: 4 }) });
+    expect(seen.says).toEqual(expect.arrayContaining(['hello', 'chat1', 'chat2', 'chat3', 'leaving']));
+    expect(seen.shots).toHaveLength(0);
+    expect(seen.brains.live).toHaveLength(0);
+    expect(seen.brains.targets).toHaveLength(0);
+  }, 20000);
+
+  it('panics and runs when hunters come near you, and comes back once they have gone', () => {
+    const hunters = (t) => (t > 12 && t < 20 ? [{ id: 5, at: { x: 0, y: 0, z: -10 }, faction: 'federation' }] : []);
+    let furthest = 0;
+    const seen = meet(pal(), {
+      at: { x: 20, y: 0, z: 0 },
+      seconds: 32,
+      world: (t) => ({ hunters: hunters(t) }),
+      each: (brains, s, out, t) => {
+        if (t > 14 && t < 20 && brains.live[0]) furthest = Math.max(furthest, apart(brains.live[0].pos, s));
+      },
+    });
+    expect(seen.says).toEqual(expect.arrayContaining(['hello', 'panic', 'back']));
+    expect(seen.says.indexOf('panic')).toBeLessThan(seen.says.indexOf('back'));
+    expect(furthest).toBeGreaterThan(NPC.hide * 0.6);
+    // close again at the end
+    expect(apart(seen.brains.live[0].pos, seen.ship)).toBeLessThan(12);
+  });
+});
+
+describe('a trickster', () => {
+  const pirate = () => spec('trickster', { ship: 'skiff', faction: 'weequay', stats: { speed: 19, accel: 15, turn: 2.4, hp: 5, fire: [0.7, 1.2], damage: 6 } });
+
+  it('names its toll, and paid in patience it hands over word of what is coming and goes', () => {
+    const seen = meet(pirate(), { at: { x: 0, y: 0, z: -40 }, seconds: 24, world: () => ({ next: { id: 'hunt', in: 30 } }) });
+    expect(seen.says).toEqual(expect.arrayContaining(['hello', 'paid', 'leaving']));
+    const tip = seen.events.find((e) => e.type === 'tip');
+    expect(tip?.next?.id).toBe('hunt');
+    expect(types(seen)).not.toContain('busted');
+    expect(BRAINS.trickster.tells).toBe(true);
+  });
+
+  it('calls its friends in and fights when you run, keep it waiting or shoot it', () => {
+    const ran = meet(pirate(), { at: { x: 0, y: 0, z: -40 }, seconds: 16, steer: (s, t) => ({ ...s, speed: t > 4 ? 30 : 0 }) });
+    expect(ran.says).toContain('angry');
+    expect(ran.events.find((e) => e.type === 'busted')).toMatchObject({ faction: 'weequay', size: 3 });
+    const shot = meet(pirate(), { at: { x: 0, y: 0, z: -40 }, seconds: 10, each: (brains, s, out, t) => Math.abs(t - 5) < DT / 2 && brains.hit(brains.live[0]?.n, 1) });
+    expect(shot.events.find((e) => e.type === 'busted')?.why).toBe('shot');
+    expect(shot.shots.length).toBeGreaterThan(0);
+  });
+});
+
+describe('what they remember', () => {
+  it('counts meetings, hits and knockdowns by character, and a merchant you shot has nothing for you', () => {
+    const memory = {};
+    const brains = createBrains({ rand: seeded(), memory });
+    const saul = spec('merchant');
+    const n = brains.add(saul, { x: 30, y: 0, z: 0 });
+    brains.update(DT, { you: you(), hunters: [], stations: [] });
+    brains.hit(n, 1);
+    expect(memory[saul.id]).toMatchObject({ met: 1, shot: 1, downed: 0 });
+    brains.hit(n, 10);
+    expect(memory[saul.id].downed).toBe(1);
+    expect(brains.live).toHaveLength(0);
+    // next time: parked, you come by, and it's a grudge, not an offer
+    const n2 = brains.add(saul, { x: 30, y: 0, z: 0 });
+    const says = [];
+    for (let t = 0; t < 20; t += DT) for (const e of brains.update(DT, { you: you({ x: 28 }), hunters: [], stations: [] }).events) if (e.type === 'say') says.push(e.key);
+    expect(memory[saul.id].met).toBe(2);
+    expect(says).toContain('grudge');
+    expect(says).not.toContain('hello');
+    expect(brains.live.find((m) => m.n === n2)).toBeUndefined();
+  });
+
+  it('every brain names the lines a crew must have for it, and the informant and the trickster tell', () => {
+    for (const b of ['merchant', 'inspector', 'nemesis', 'tagalong', 'trickster']) expect(Array.isArray(BRAINS[b].lines), b).toBe(true);
+    expect(BRAINS.informant.tells).toBe(true);
+    expect(BRAINS.rival.tells).toBeUndefined();
+  });
+});
+
+describe('a nemesis’s phases, and dodging', () => {
+  const foe = () => spec('nemesis', { role: 'enemy', ship: 'tieadvanced', faction: 'empire', stats: { speed: 26, accel: 22, turn: 3, hp: 20, fire: [0.45, 0.8], damage: 8 } });
+
+  it('falls back and calls its friends at NPC.summon, comes back in, and goes into a fury at NPC.fury, firing faster', () => {
+    const brains = createBrains({ rand: seeded(5) });
+    const n = brains.add(foe(), { x: 0, y: 0, z: -30 });
+    const me = brains.live[0];
+    const s = you();
+    const says = [];
+    const calls = [];
+    const shots = { duel: 0, fallback: 0, fury: 0 };
+    let furthest = 0;
+    for (let t = 0; t < 60; t += DT) {
+      if (Math.abs(t - 15) < DT / 2) brains.hit(n, 9); // under NPC.summon of 20
+      if (Math.abs(t - 40) < DT / 2) brains.hit(n, 5); // under NPC.fury
+      const out = brains.update(DT, { you: s, hunters: [], stations: [] });
+      for (const e of out.events) {
+        if (e.type === 'say') says.push(e.key);
+        if (e.type === 'calls') calls.push(e);
+        if (e.type === 'shot') shots[t < 15 ? 'duel' : t < 40 ? 'fallback' : 'fury'] += 1;
+      }
+      if (t > 16 && t < 15 + NPC.fallback) furthest = Math.max(furthest, apart(me.pos, s));
+    }
+    expect(says).toEqual(expect.arrayContaining(['hello', 'hit', 'half', 'fury']));
+    expect(says.indexOf('half')).toBeLessThan(says.indexOf('fury'));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ faction: 'empire', size: 2 });
+    expect(furthest).toBeGreaterThan(NPC.orbit * 1.6); // (out of your reach while it waits for them)
+    expect(me.hp).toBe(6);
+    expect(brains.live).toHaveLength(1); // (not yet retreating: 6/20 is over NPC.retreat)
+    // the fury fires faster than the duel, over the same stretch of time
+    expect(shots.fury / 20).toBeGreaterThan((shots.duel / 15) * 1.3);
+  });
+
+  it('loads the dice: a ship turning hard or boosting is hit less often than one flying straight', () => {
+    const land = (ship) => {
+      const brains = createBrains({ rand: seeded(9) });
+      brains.add(foe(), { x: 0, y: 0, z: -12 });
+      let hits = 0;
+      let fired = 0;
+      for (let t = 0; t < 40; t += DT) {
+        for (const e of brains.update(DT, { you: ship, hunters: [], stations: [] }).events) {
+          if (e.type === 'shot') {
+            fired += 1;
+            if (e.hit) hits += 1;
+          }
+        }
+      }
+      return { hits, fired, rate: hits / Math.max(1, fired) };
+    };
+    const still = land(you());
+    const turning = land(you({ rate: 2, tipRate: 1 }));
+    const boosting = land(you({ speed: 20 }));
+    expect(still.fired).toBeGreaterThan(10);
+    expect(turning.rate).toBeLessThan(still.rate * 0.6);
+    expect(boosting.rate).toBeLessThan(still.rate);
+    expect(dodge(you({ rate: 9, tipRate: 9, speed: 99 }))).toBe(NPC.dodge);
+    expect(dodge(null)).toBe(0);
+  });
+});
+
+describe('what your standing does to them', () => {
+  it('an inspector finds a wanted pilot on every scan, a merchant shuns a feared one, and Hondo waves a friend of pirates through', () => {
+    const law = spec('inspector', { ship: 'suvace', faction: 'dea' });
+    const wanted = meet(law, { at: { x: 0, y: 0, z: -40 }, seconds: 20, world: () => ({ heat: 0, wanted: true }) });
+    expect(wanted.says).toContain('busted');
+    const feared = meet(spec('merchant'), { at: { x: 30, y: 0, z: 0 }, ship: you({ x: 28 }), seconds: 10, world: () => ({ feared: true }) });
+    expect(feared.says).toContain('shunned');
+    expect(feared.says).not.toContain('hello');
+    expect(types(feared)).not.toContain('offer');
+    const friend = meet(spec('trickster', { ship: 'skiff', faction: 'weequay' }), { at: { x: 0, y: 0, z: -40 }, seconds: 12, world: () => ({ friend: true, next: { id: 'comet', in: 10 } }) });
+    expect(friend.says).toContain('friend');
+    expect(friend.says).not.toContain('hello');
+    expect(friend.events.find((e) => e.type === 'tip')?.next?.id).toBe('comet');
+  });
+});
+
+describe('what a character knows of you', () => {
+  // a planet between you: it loses sight of you, keeps the truth a moment, then guesses, and fires at the guess
+  const planet = { at: [0, 0, -60], r: 20 };
+  it('knows where you are when it comes, but can’t see you through a planet, and says it has seen you only in sight', () => {
+    let knewAt = null;
+    let sawAt = null;
+    let seenAt = null;
+    meet(spec('rival', { role: 'enemy' }), {
+      at: { x: 0, y: 0, z: -120 },
+      seconds: 12,
+      ship: you({ x: 0, y: 0, z: 0, speed: 0 }),
+      world: () => ({ solids: [planet] }),
+      each: (brains, s, out, t) => {
+        const me = brains.live[0];
+        if (!me) return;
+        if (me.you && knewAt === null) knewAt = t;
+        if (me.sees && sawAt === null) sawAt = t;
+        if (seenAt === null && out.events.some((e) => e.type === 'say' && e.key === 'seen')) seenAt = t;
+      },
+    });
+    // sent to you, it knew where you were at once; the planet was between you, so it saw you only once round it
+    expect(knewAt).toBeLessThan(0.1);
+    expect(sawAt).toBeGreaterThan(1);
+    expect(seenAt).toBeGreaterThanOrEqual(sawAt);
+  });
+
+  it('keeps the truth for a moment after losing you, then guesses, and shots at a guess go to the guess', () => {
+    // a gun that sits where it's put and fires at you: the engine's firing, nothing else
+    const turret = () => ({ fire: 'you' });
+    const brains = createBrains({ rand: seeded(3), brains: { ...BRAINS, turret } });
+    const n = brains.add(spec('turret', { role: 'enemy' }), { x: 0, y: 0, z: 0 });
+    const me = brains.live[0];
+    let guessing = null;
+    const shots = [];
+    for (let t = 0; t < 12; t += DT) {
+      // in sight, 10 off; a moon drops in between at 3 s; you slip 8 to the side at 6 s, still hidden
+      const s = you({ x: t > 6 ? 8 : 0, y: 0, z: 10 });
+      const out = brains.update(DT, { you: s, hunters: [], stations: [], solids: t > 3 ? [{ at: [0, 0, 5], r: 4 }] : [] });
+      if (me.you?.guessed && guessing === null) guessing = t;
+      for (const e of out.events) if (e.type === 'shot') shots.push({ t, to: e.to, you: s, guessed: Boolean(me.you?.guessed), hit: e.hit });
+    }
+    expect(n).not.toBeNull();
+    expect(guessing).toBeGreaterThan(3 + SENSES.intuition - 0.1);
+    expect(guessing).toBeLessThan(3 + SENSES.intuition + 0.3);
+    const atGuess = shots.filter((x) => x.guessed && x.t > 6);
+    expect(atGuess.length).toBeGreaterThan(2);
+    for (const x of atGuess) expect(apart(x.to, x.you)).toBeGreaterThan(3);
+    // (and hardly any land: it's a guess)
+    expect(atGuess.filter((x) => x.hit).length / atGuess.length).toBeLessThan(0.3);
+  });
+
+  it('a brain with no belief of you behaves as with no you, and a shot of yours is heard', () => {
+    // a merchant parked at a station, you 300 off: it has nothing for you
+    const seen = meet(spec('merchant'), { at: { x: 300, y: 0, z: 0 }, seconds: 20, world: () => ({ stations: [{ id: 's', at: { x: 310, y: 0, z: 0 }, r: 4 }] }) });
+    expect(types(seen)).not.toContain('offer');
+    // forgotten behind a planet for long enough, a merchant that hears a shot of yours knows where it came from
+    let known = null;
+    let heard = null;
+    const shot = { x: 170, y: 0, z: 60 };
+    meet(spec('merchant'), {
+      at: { x: 300, y: 0, z: 0 },
+      seconds: 24,
+      ship: you({ x: 170, y: 0, z: 0 }), // (near enough not to be let go of, behind the planet)
+      world: (t) => ({ stations: [{ id: 's', at: { x: 310, y: 0, z: 0 }, r: 4 }], solids: [{ at: [235, 0, 0], r: 20 }], stims: t > 20 && t < 20.1 ? [{ type: 'shot', at: shot, radius: 200, from: 'you', loudness: 1 }] : [] }),
+      each: (brains, s, out, t) => {
+        const me = brains.live[0];
+        if (!me) return;
+        if (t > 19 && t < 20) known = Boolean(me.you);
+        if (t > 20.2 && heard === null) heard = Boolean(me.you) && apart(me.you, shot) < 1;
+      },
+    });
+    expect(known).toBe(false);
+    expect(heard).toBe(true);
   });
 });

@@ -25,6 +25,9 @@ export const SHIP_LINES = {
   idle: ['Diagnostic complete. Everything is fine. Everything is always fine.', 'Summer’s upstairs. She’s safe. I checked.', 'Still here, Morty. I’m always here.'],
 };
 
+// the voice they're made in, where they've been made (./voicelines.js, ./shipVoice.js)
+export const SHIP_VOICE = 'ship';
+
 // seconds before a kind of line may come again, and between any two lines
 export const COOLDOWN = { board: 5, takeoff: 25, fast: 30, ceiling: 40, tail: 30, land: 8, refuse: 6, leave: 10, hello: 45, idle: 60 };
 export const GAP = 3.5;

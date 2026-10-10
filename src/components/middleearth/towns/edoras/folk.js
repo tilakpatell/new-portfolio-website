@@ -19,8 +19,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { clamp01, makeNoise, mix, smooth } from '../../../../lib/paint';
 import { makeToyFigure } from '../../mapFigures';
+import { castFigure } from '../../cast3d';
 import { B, ball, cyl, fillColor, lathe as latheRaw, parts, rng, roundBox, tf, tube } from '../../shire/props';
 import { createWeathertopKit, gallop } from '../weathertop/props';
+import { createStride } from '../../creatures';
 
 const TAU = Math.PI * 2;
 // a lathe, its profile always run upwards so its faces face out
@@ -538,8 +540,14 @@ function figure(look, M, id, dress = null) {
   // the top of the head (and what's on it): for a label over it
   f.group.updateMatrixWorld(true);
   f.top = new THREE.Box3().setFromObject(f.head).max.y;
+  // on the cast once its model's here (../../cast3d.js): Gandalf the White,
+  // Théoden (bent or himself), Gríma in his black, the Riders and
+  // Wormtongue's men as the Rider and the Bree man in their own colours
+  const as = CAST_AS[id] ?? id;
+  castFigure(f, as, look, { town: 'edoras', role: /^(rider|henchman)\d/.test(id) ? 'folk' : 'cast', ...(id === 'grima' ? { tint: 0x5c5866 } : {}) });
   return f;
 }
+const CAST_AS = { 'gimli-bare': 'gimli', gandalf: 'gandalfwhite', 'theoden-bent': 'theoden', grima: 'grima', hama: 'hama' };
 
 // ── who's who ──
 
@@ -958,11 +966,20 @@ function seatedRider(FM, W, o) {
 // place in the stride), y, z the leg's pivot, w what paints it per rider (1
 // the coat, 2 the cloak and saddle-cloth, 3 mane, tail and points, 4 the
 // crest) so the host isn't all one horse. The material gallops the legs and
-// rocks the body by uniforms (uTime, uRide), each rider out of step with
-// the next (hashed from where its instance stands).
+// rocks the body by uniforms (uCyc, uReach: the host's stride, its place
+// and its length, kept by the kit's tick from uRide so a change of pace
+// never jumps a leg and the stride lengthens with the speed), each rider out
+// of step with the next (hashed from where its instance stands).
+// the host's full gallop, m/s (EdorasWorld's RIDE), and how long its stride
+// is then against an easy canter's (what the legs' swing was drawn for)
+const HOST_RIDE = 18;
+const HOST_REACH = Math.sqrt(HOST_RIDE / (3.6 * 1.9));
 const RIG_HEAD = /* glsl */ `
 uniform float uTime;
 uniform float uRide;
+uniform float uCyc;
+uniform float uReach;
+uniform float uFlut;
 uniform vec3 uCoat[6];
 uniform vec3 uMane[6];
 uniform vec3 uCloak[5];
@@ -985,11 +1002,11 @@ vec2 hostTurn(vec2 p, vec2 c, float a) {
 const RIG_MOVE = /* glsl */ `
 {
   float seed = hostSeed();
-  float cyc = uTime * (1.5 + 0.75 * min(uRide, 1.7)) + seed * 7.0;
+  float cyc = uCyc + seed * 7.0;
   float ride = smoothstep(0.0, 0.35, uRide);
   if (aRig.x > 0.5) {
     float off = aRig.x - 1.0;
-    transformed.xy = hostTurn(transformed.xy, aRig.yz, ride * 0.62 * sin((cyc + off) * 6.2831853));
+    transformed.xy = hostTurn(transformed.xy, aRig.yz, ride * 0.62 * uReach * sin((cyc + off) * 6.2831853));
   }
   transformed.xy = hostTurn(transformed.xy, vec2(0.0, 1.3), ride * 0.07 * sin((cyc + 0.2) * 6.2831853));
   transformed.y += ride * (abs(sin((cyc + 0.1) * 3.14159265)) * 0.14 - 0.05);
@@ -1031,7 +1048,7 @@ function bannerMaterial(uniforms, bob) {
   float u = aRig.y;
   float seed = hostSeed();
   float w = 0.35 + 0.65 * smoothstep(0.0, 0.6, uRide);
-  transformed.z += sin(uTime * (3.2 + 2.5 * w) - u * 4.0 + seed * 6.0) * 0.16 * u * w;
+  transformed.z += sin(uFlut - u * 4.0 + seed * 6.0) * 0.16 * u * w;
   transformed.y += sin(uTime * 2.1 - u * 3.0 + seed * 3.0) * 0.05 * u * w;
   transformed.x += (cos(uTime * 3.0 - u * 4.0) * 0.04 - 0.03) * u * w;
 }
@@ -1196,6 +1213,16 @@ function bannerGeo(at = V3()) {
 
 // ── the feast, and the barrows ──
 
+// what a thing is in a hand, and where the hand closes on it (a child
+// named `grip`), for the cast's hands (lib/three/held.js)
+function held(m, kind, at) {
+  m.userData.held = { kind };
+  const grip = new THREE.Object3D();
+  grip.name = 'grip';
+  grip.position.set(...at);
+  m.add(grip);
+}
+
 // A wooden tankard, foaming over: staves bound with iron, a handle on its
 // -x side; its middle at the origin, upright.
 function tankardGeo() {
@@ -1278,11 +1305,18 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
   const uniforms = {
     uTime: { value: 0 },
     uRide: { value: 0 },
+    uCyc: { value: 0 },
+    uReach: { value: 0 },
+    uFlut: { value: 0 },
     uCoat: { value: COATS.map((c) => C(c.coat)) },
     uMane: { value: COATS.map((c) => C(c.mane)) },
     uCloak: { value: ROH_CLOAK.map((c) => C(c).multiplyScalar(1.15)) },
     uPlume: { value: PLUMES.map((c) => C(c)) },
   };
+  // the host galloping: its stride from how fast it rides out (Edoras's
+  // muster, RIDE m/s at a full gallop), as Asfaloth's is (../weathertop/props.js gallop)
+  const hostStride = createStride({ stride: 3.6, hz: 1.9, longest: 2.0, stance: 0.32, cadence: [1.6, 2.6], seed: 29 });
+  const hostClock = { t: null };
   const mats = {
     // the people's four materials (and the riders', and the tack's)
     fig: M({ vertexColors: true, roughness: 0.8 }),
@@ -1468,6 +1502,12 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
   const knock = (f, k = 1) => {
     const e = smooth(0, 1, clamp01(k));
     if (e <= 0) return;
+    // on the cast: a flinch, then down by its clip (../../cast3d.js), never a plank
+    if (f.cast?.ready) {
+      f.cast.set({ down: true, flinch: 'hit.chest', fall: 'knockdown' });
+      knocked.add(f);
+      return;
+    }
     const ang = (Math.PI / 2 - 0.06) * e;
     f.group.rotation.z += ang;
     f.group.position.y += 0.17 * (f.look?.wide ?? 1) * e;
@@ -1492,7 +1532,9 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
     }
     knocked.add(f);
   };
+  const downed = new Set(); // cast figures knocked last frame
   const unknock = (f) => {
+    if (f.cast?.ready) return; // (up again when the scene stops knocking it: see tick)
     for (const leg of f.legs) leg.rotation.x = 0;
     for (const arm of f.arms) arm.rotation.x = 0;
     f.head.rotation.x = 0;
@@ -1706,7 +1748,20 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
     mats,
     tick(t) {
       uniforms.uTime.value = t;
+      // the host's stride and the banners' flutter, carried on from frame to
+      // frame (../../creatures.js) rather than read off the clock
+      const dt = hostClock.t == null ? 0 : Math.max(0, Math.min(0.1, t - hostClock.t));
+      hostClock.t = t;
+      const r = uniforms.uRide.value;
+      const st = hostStride.step(dt, r * HOST_RIDE);
+      uniforms.uCyc.value = st.cycle;
+      uniforms.uReach.value = Math.min(1.3, st.reach / HOST_REACH);
+      uniforms.uFlut.value = (uniforms.uFlut.value + dt * (3.2 + 2.5 * (0.35 + 0.65 * smooth(0, 0.6, r)))) % (Math.PI * 200);
       for (const f of knocked) unknock(f);
+      // a cast figure not knocked last frame gets up
+      for (const f of downed) if (!knocked.has(f)) f.cast?.set({ down: false });
+      downed.clear();
+      for (const f of knocked) if (f.cast?.ready) downed.add(f);
       knocked.clear();
     },
     person,
@@ -1754,6 +1809,8 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
       const m = new THREE.Mesh((tankardG ??= tankardGeo()), mats.fig);
       m.name = 'tankard';
       m.castShadow = true;
+      // (held by its handle, on its −x side: lib/three/held.js's kinds)
+      held(m, 'tankard', [-0.128, 0, 0]);
       return m;
     },
     plate: () => {
@@ -1765,6 +1822,8 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
     flowerBunch: () => {
       const m = new THREE.Mesh((flowerG ??= flowerGeo()), mats.fig);
       m.name = 'simbelmyne';
+      // (the stems in a fist, the flowers up, kept so: held like a bottle by its neck)
+      held(m, 'bottle', [0, -0.04, 0]);
       return m;
     },
   };

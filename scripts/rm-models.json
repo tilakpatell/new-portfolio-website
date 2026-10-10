@@ -106,5 +106,553 @@
   "poopybutthole": {
     "status": "done",
     "by": "local"
+  },
+  "bigmorty": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "slickmorty": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "campaignmorty": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "rickd3": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "simplerick": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "evilrick": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "loco-a": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "loco-b": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "loco-c": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "supremeguard": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "garmentrick": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "mortymart": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "creepymorty": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "citadel-exterior": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "nx5": {
+    "status": "done",
+    "by": "cloud"
+  },
+  "stairgoblin": {
+    "status": "done",
+    "by": "local"
+  },
+  "kingjellybean": {
+    "status": "done",
+    "by": "local"
+  },
+  "thirstystep": {
+    "status": "done",
+    "by": "local"
+  },
+  "giant": {
+    "status": "done",
+    "by": "local"
+  },
+  "zeep": {
+    "status": "done",
+    "by": "local"
+  },
+  "kyle": {
+    "status": "done",
+    "by": "local"
+  },
+  "xenonbloom": {
+    "status": "done",
+    "by": "local"
+  },
+  "poncho": {
+    "status": "done",
+    "by": "local"
+  },
+  "annie": {
+    "status": "done",
+    "by": "local"
+  },
+  "hepatitis": {
+    "status": "done",
+    "by": "local"
+  },
+  "gonorrhoea": {
+    "status": "done",
+    "by": "local"
+  },
+  "tuberculosis": {
+    "status": "done",
+    "by": "local"
+  },
+  "plague": {
+    "status": "done",
+    "by": "local"
+  },
+  "ecoli": {
+    "status": "done",
+    "by": "local"
+  },
+  "needful": {
+    "status": "done",
+    "by": "local"
+  },
+  "needful-shop": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-robe": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-golf": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-tux": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-track": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-gown": {
+    "status": "done",
+    "by": "local"
+  },
+  "jerry-cardigan": {
+    "status": "done",
+    "by": "local"
+  },
+  "arthricia": {
+    "status": "done",
+    "by": "local"
+  },
+  "magdalian-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "magdalian-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "magdalian-c": {
+    "status": "done",
+    "by": "local"
+  },
+  "flippynips": {
+    "status": "done",
+    "by": "local"
+  },
+  "scroopy": {
+    "status": "done",
+    "by": "local"
+  },
+  "plutonian-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "plutonian-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "gearhead": {
+    "status": "done",
+    "by": "local"
+  },
+  "gearperson-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "gearperson-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "squanchy": {
+    "status": "done",
+    "by": "local"
+  },
+  "birdperson": {
+    "status": "done",
+    "by": "local"
+  },
+  "phoenixperson": {
+    "status": "done",
+    "by": "local"
+  },
+  "unity": {
+    "status": "done",
+    "by": "local"
+  },
+  "marsha": {
+    "status": "done",
+    "by": "local"
+  },
+  "mortyjr": {
+    "status": "done",
+    "by": "local"
+  },
+  "krombopulos": {
+    "status": "done",
+    "by": "local"
+  },
+  "zigerion": {
+    "status": "done",
+    "by": "local"
+  },
+  "squanchy-house": {
+    "status": "done",
+    "by": "local"
+  },
+  "birdperson-house": {
+    "status": "done",
+    "by": "local"
+  },
+  "vance": {
+    "status": "done",
+    "by": "local"
+  },
+  "supernova": {
+    "status": "done",
+    "by": "local"
+  },
+  "alanrails": {
+    "status": "done",
+    "by": "local"
+  },
+  "millionants": {
+    "status": "done",
+    "by": "local"
+  },
+  "crocubot": {
+    "status": "done",
+    "by": "local"
+  },
+  "noobnoob": {
+    "status": "done",
+    "by": "local"
+  },
+  "vindicators-ship": {
+    "status": "done",
+    "by": "local"
+  },
+  "nebulon": {
+    "status": "done",
+    "by": "local"
+  },
+  "zigerion-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "zigerion-c": {
+    "status": "done",
+    "by": "local"
+  },
+  "storylord": {
+    "status": "done",
+    "by": "local"
+  },
+  "ticketsguy": {
+    "status": "done",
+    "by": "local"
+  },
+  "simman": {
+    "status": "done",
+    "by": "local"
+  },
+  "poptart": {
+    "status": "done",
+    "by": "local"
+  },
+  "toasterhouse": {
+    "status": "done",
+    "by": "local"
+  },
+  "omegadevice": {
+    "status": "done",
+    "by": "local"
+  },
+  "primedrone": {
+    "status": "done",
+    "by": "local"
+  },
+  "tommy": {
+    "status": "done",
+    "by": "local"
+  },
+  "froopy-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "froopy-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "nimbus": {
+    "status": "done",
+    "by": "local"
+  },
+  "atlantean": {
+    "status": "done",
+    "by": "local"
+  },
+  "miles": {
+    "status": "done",
+    "by": "local"
+  },
+  "heistotron": {
+    "status": "done",
+    "by": "local"
+  },
+  "heister-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "heister-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "fart": {
+    "status": "done",
+    "by": "local"
+  },
+  "snake-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "snake-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "snakeastronaut": {
+    "status": "done",
+    "by": "local"
+  },
+  "snakerocket": {
+    "status": "done",
+    "by": "local"
+  },
+  "glexo": {
+    "status": "done",
+    "by": "local"
+  },
+  "nuptiamachine": {
+    "status": "done",
+    "by": "local"
+  },
+  "mytholog": {
+    "status": "done",
+    "by": "local"
+  },
+  "glipglop": {
+    "status": "done",
+    "by": "local"
+  },
+  "shrimply": {
+    "status": "done",
+    "by": "local"
+  },
+  "gloopnurse": {
+    "status": "done",
+    "by": "local"
+  },
+  "risotto": {
+    "status": "done",
+    "by": "local"
+  },
+  "resortguest-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "resortguest-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "dirlycar": {
+    "status": "done",
+    "by": "local"
+  },
+  "watert": {
+    "status": "done",
+    "by": "local"
+  },
+  "icet": {
+    "status": "done",
+    "by": "local"
+  },
+  "hemorrhage": {
+    "status": "done",
+    "by": "local"
+  },
+  "deathstalker-a": {
+    "status": "done",
+    "by": "local"
+  },
+  "deathstalker-b": {
+    "status": "done",
+    "by": "local"
+  },
+  "armothy": {
+    "status": "done",
+    "by": "local"
+  },
+  "cornvelious": {
+    "status": "done",
+    "by": "local"
+  },
+  "brainalyzer": {
+    "status": "done",
+    "by": "local"
+  },
+  "antsjohnson": {
+    "status": "done",
+    "by": "local"
+  },
+  "babylegs": {
+    "status": "done",
+    "by": "local"
+  },
+  "regularlegs": {
+    "status": "done",
+    "by": "local"
+  },
+  "mrsneezy": {
+    "status": "done",
+    "by": "local"
+  },
+  "gazorpazorpfield": {
+    "status": "done",
+    "by": "local"
+  },
+  "shmlo": {
+    "status": "done",
+    "by": "local"
+  },
+  "trunkperson": {
+    "status": "done",
+    "by": "local"
+  },
+  "lilbits": {
+    "status": "done",
+    "by": "local"
+  },
+  "tophatjones": {
+    "status": "done",
+    "by": "local"
+  },
+  "realfakedoors": {
+    "status": "done",
+    "by": "local"
+  },
+  "scaryterry": {
+    "status": "done",
+    "by": "local"
+  },
+  "mrspancakes": {
+    "status": "done",
+    "by": "local"
+  },
+  "jaguar": {
+    "status": "done",
+    "by": "local"
+  },
+  "agencyguard": {
+    "status": "done",
+    "by": "local"
+  },
+  "sewerrat": {
+    "status": "done",
+    "by": "local"
+  },
+  "frundles": {
+    "status": "done",
+    "by": "local"
+  },
+  "frundlesman": {
+    "status": "done",
+    "by": "local"
+  },
+  "frundlesdog": {
+    "status": "done",
+    "by": "local"
+  },
+  "frundleshouse": {
+    "status": "done",
+    "by": "local"
+  },
+  "cronhouse": {
+    "status": "done",
+    "by": "local"
+  },
+  "croncar": {
+    "status": "done",
+    "by": "local"
+  },
+  "purgecottage": {
+    "status": "done",
+    "by": "local"
+  },
+  "purgebarn": {
+    "status": "done",
+    "by": "local"
+  },
+  "purgesiren": {
+    "status": "done",
+    "by": "local"
+  },
+  "purgewell": {
+    "status": "done",
+    "by": "local"
+  },
+  "gazorpgate": {
+    "status": "done",
+    "by": "local"
+  },
+  "suckulent": {
+    "status": "done",
+    "by": "local"
+  },
+  "birdperch": {
+    "status": "done",
+    "by": "local"
+  },
+  "gearbig": {
+    "status": "done",
+    "by": "local"
+  },
+  "gearcog": {
+    "status": "done",
+    "by": "local"
   }
 }

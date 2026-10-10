@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { contrast } from '../universe/universes';
 import { CLIPS } from '../../lib/clips';
 import { SYSTEM_MARKS, SYSTEM_NAMES, inGalaxyFlight, systemOfPath } from './names';
-import { CORE, ERAS, RIM, FILMS, FILM_ORDER, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmShort, filmsOf, gridAt, inEra, jumpSeconds, kindsIn, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, wantsDeathStar, yearLabel } from './systems';
+import { CORE, ERAS, RIM, FILMS, FILM_ORDER, FIRST, GRID, LANES, REGIONS, SYSTEMS, arrival, goalsOf, bearing, coreBearing, courseTo, liftOf, starAhead, eraOf, erasOf, filmLabel, filmShort, filmsOf, gridAt, inEra, jumpSeconds, kindsIn, lightYears, parseSystem, reachAt, reachOf, regionAt, systemById, wantsDeathStar, yearLabel, hazardsOf, TRACTOR_REACH } from './systems';
 
 const LOOKS = ['tatooine', 'geonosis', 'mandalore', 'hoth', 'endor', 'endor-giant', 'yavin', 'yavin4', 'kashyyyk', 'dagobah', 'naboo', 'lothal', 'sorgan', 'coruscant', 'mustafar', 'nevarro', 'kamino', 'scarif', 'bespin', 'moon-grey', 'moon-ice', 'moon-dust', 'moon-rust'];
 const PIECES = ['chase', 'fleet', 'escape', 'cannon', 'rocks', 'station', 'battle', 'deathstar', 'stream', 'patrol', 'depart', 'lanes', 'liftoff', 'shield', 'superlaser'];
@@ -38,6 +38,15 @@ describe('the films and eras', () => {
 });
 
 describe('the systems', () => {
+  it('a war entry, where there is one, is worth, weight, a kind and an area', () => {
+    for (const s of SYSTEMS) {
+      if (!s.war) continue;
+      expect([1, 2, 3], s.id).toContain(s.war.worth);
+      expect([1, 2, 3, 4], s.id).toContain(s.war.weight);
+      expect(typeof s.war.kind, s.id).toBe('string');
+      expect(typeof s.war.area, s.id).toBe('string');
+    }
+  });
   it('each has what its card and its scene need', () => {
     const ids = new Set();
     for (const s of SYSTEMS) {
@@ -242,6 +251,21 @@ describe('the map', () => {
     expect(near).toBeGreaterThanOrEqual(1.8);
     expect(far).toBeGreaterThan(near);
     expect(far).toBeLessThanOrEqual(4.2);
+  });
+  it('brings you out of a jump clear of the Death Star and its tractor beam, at Alderaan', () => {
+    let seed = 7;
+    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const s = systemById('alderaan');
+    const ds = s.pieces.find((p) => p.type === 'deathstar');
+    expect(ds.tractor).toBe(true);
+    const hazards = hazardsOf(s);
+    expect(hazards).toEqual([{ at: ds.at, r: ds.r * TRACTOR_REACH }]);
+    for (let i = 0; i < 400; i++) {
+      const from = [null, systemById('coruscant'), systemById('tatooine'), systemById('yavin')][i % 4];
+      const a = arrival(s, from, rand);
+      expect(Math.hypot(a.x - ds.at[0], a.y - ds.at[1], a.z - ds.at[2]), `arrival ${i}`).toBeGreaterThan(ds.r * TRACTOR_REACH);
+      expect(Math.hypot(a.x, a.y, a.z)).toBeGreaterThan(reachOf(s));
+    }
   });
   it('brings you out of a jump clear of the planet, facing it', () => {
     let seed = 1;

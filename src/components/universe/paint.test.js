@@ -6,10 +6,11 @@ import { PAINTS, STOCK, isOpen, paintById, paintsFor, parsePaint } from './paint
 const HEX = /^#[0-9a-f]{6}$/;
 
 describe('the paint jobs', () => {
-  it('are the factory’s, then every company’s colors, then every fan scheme’s, each once', () => {
+  it('are the factory’s, then every company’s colours, then every fan scheme’s, then the ones earned in a universe, each once', () => {
     expect(PAINTS[0].id).toBe(STOCK);
     expect(PAINTS.filter((p) => p.group === 'company').map((p) => p.id)).toEqual(THEME_ORDER);
     expect(PAINTS.filter((p) => p.group === 'fan').map((p) => p.id)).toEqual(FAN_THEMES.map((f) => f.id));
+    expect(PAINTS.filter((p) => p.group === 'earned').map((p) => p.id)).toEqual(['rebel', 'imperial', 'redsquadron', 'citadel', 'pollos', 'huttgold']);
     expect(new Set(PAINTS.map((p) => p.id)).size).toBe(PAINTS.length);
   });
 
@@ -21,8 +22,10 @@ describe('the paint jobs', () => {
     }
   });
 
-  it('each but the factory’s is unlocked by an achievement there is, with a hint', () => {
-    for (const p of PAINTS.filter((q) => q.id !== STOCK)) {
+  it('each but the factory’s and the earned ones is unlocked by an achievement there is, with a hint', () => {
+    // (the earned ones are locked by the catalogue instead: a rank, a standing or a level, catalog.js)
+    for (const p of PAINTS.filter((q) => q.group === 'earned')) expect(isOpen(p, []), p.id).toBe(true);
+    for (const p of PAINTS.filter((q) => q.id !== STOCK && q.group !== 'earned')) {
       expect(ACHIEVEMENTS[p.achievement], p.id).toBeTruthy();
       expect(p.hint, p.id).toBeTruthy();
     }

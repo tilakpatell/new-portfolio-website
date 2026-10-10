@@ -350,7 +350,7 @@ export default function MiddleEarth() {
           </h2>
           <p className="lead mt-4 max-w-[56ch]">The road the Ring took, from a party in Hobbiton to the fire it was made in. Step along it.</p>
           <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)] lg:gap-12">
-            <figure className="me-map-frame m-0">
+            <figure className="me-map-frame m-0" data-tour="me-map">
               <MiddleEarthMap step={step} />
             </figure>
             <div className="me-road card">

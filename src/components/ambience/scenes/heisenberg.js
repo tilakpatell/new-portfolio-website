@@ -7,6 +7,7 @@
 
 import { ambience, backdrop, bursts, label, pick, rand, rgb } from '../kit';
 import { mix } from '../../../lib/three/theme';
+import { sharpen } from '../../../lib/three/textures';
 
 const HAZE = /* glsl */ `
 varying vec2 vUv;
@@ -62,6 +63,7 @@ function tile(THREE, [symbol, number, weight]) {
   g.font = '500 14px ui-monospace, monospace';
   g.fillText(weight, s / 2, s - 16);
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   return new THREE.Mesh(new THREE.PlaneGeometry(92, 92), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
 }

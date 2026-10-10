@@ -8,6 +8,8 @@
 // the way the toy figures (../mapFigures.js) are made.
 
 import { fbm, makeNoise, smooth } from '../../../lib/paint';
+import { newWatchers, stepWatchers } from '../towns/watchers';
+import { byFrame } from '../ease';
 
 // The disc you can walk in, and how far the hills go on past it.
 export const WORLD = { radius: 64, edge: 104 };
@@ -289,9 +291,10 @@ export function stepHobbit(h, { x: mx = 0, z: mz = 0, run = false } = {}, dt) {
   const top = run ? HOBBIT.run : HOBBIT.walk;
   const tx = mx * k * top;
   const tz = mz * k * top;
-  const ease = Math.min(1, HOBBIT.accel * dt / Math.max(1, top));
-  let vx = h.vx + (tx - h.vx) * Math.min(1, ease * 2.2);
-  let vz = h.vz + (tz - h.vz) * Math.min(1, ease * 2.2);
+  // by dt, as the old `min(1, accel·dt/top·2.2)` was at 60 Hz (../ease.js)
+  const ease = byFrame((HOBBIT.accel * 2.2) / Math.max(1, top), dt);
+  let vx = h.vx + (tx - h.vx) * ease;
+  let vz = h.vz + (tz - h.vz) * ease;
   if (len < 0.05 && Math.hypot(vx, vz) < 0.05) {
     vx = 0;
     vz = 0;
@@ -324,9 +327,30 @@ export function stepHobbit(h, { x: mx = 0, z: mz = 0, run = false } = {}, dt) {
     const want = Math.atan2(-mz, mx);
     let d = want - face;
     d = Math.atan2(Math.sin(d), Math.cos(d));
-    face += d * Math.min(1, HOBBIT.turn * dt);
+    face += d * byFrame(HOBBIT.turn, dt);
   }
   return { x, z, face, vx: (x - h.x) / Math.max(dt, 1e-6), vz: (z - h.z) / Math.max(dt, 1e-6), speed: moved, running: run && moved > HOBBIT.walk + 0.3 };
+}
+
+// Footsteps on the grass: one a stride of ground covered (a longer stride
+// running), so they keep pace with his feet at any frame rate. `acc` is how
+// far through a stride he is; standing still puts him partway, so the first
+// step comes soon after he sets off. Returns [acc, a foot fell].
+export const STRIDE = { walk: 0.75, run: 1.15, first: 0.5, still: 0.3 };
+export function stepStride(acc, h, dt) {
+  if (!(h.speed > STRIDE.still)) return [STRIDE.first, false];
+  const next = acc + (h.speed * dt) / (h.running ? STRIDE.run : STRIDE.walk);
+  return next >= 1 ? [next - 1, true] : [next, false];
+}
+
+// Caught or found, he's put back under a fade to black and out again rather
+// than a cut (C-137's 260 ms): `left` is the seconds until the screen is dark
+// and he's moved. Returns [left, move him now]; null is no fade.
+export const FADE = 0.26;
+export function stepFade(left, dt) {
+  if (left == null) return [null, false];
+  const next = left - dt;
+  return next > 0 ? [next, false] : [null, true];
 }
 
 export const newHobbit = (at = START) => ({ x: at.x, z: at.z, face: at.face ?? 0, vx: 0, vz: 0, speed: 0, running: false });
@@ -436,11 +460,14 @@ export function nearCast(x, z, sky, r = 2.6) {
 // Gandalf: on the bench by day, at his cart while the fireworks are on, and
 // at dawn at the edge of the Shire seeing you off.
 export const GANDALF_LINES = ['A wizard is never late, Frodo Baggins. Nor is he early. He arrives precisely when he means to.', 'All we have to decide is what to do with the time that is given us.', 'You can learn all there is to know about their ways in a month, and after a hundred years they can still surprise you.'];
+// the lines the site has the films' own recordings of (lib/clips); the rest
+// are said in the speaker's made voice, where it's been made (./voicelines.js)
+export const SPOKEN = { 'A wizard is never late, Frodo Baggins. Nor is he early. He arrives precisely when he means to.': 'wizardLate', 'What about second breakfast?': 'secondBreakfast', 'We’ve had one, yes. What about second breakfast?': 'secondBreakfast' };
 
 // ── 1. Shortcut to mushrooms ──
 
 export const inField = (x, z, pad = 0) => x > FIELD.x0 - pad && x < FIELD.x1 + pad && z > FIELD.z0 - pad && z < FIELD.z1 + pad;
-export const HUNT = { mushrooms: 10, pick: 1.0, sight: 6.2, cone: 0.62, hear: 2.1, alert: 0.6, chase: 5.2, patrol: 1.7, giveUp: 6, catch: 0.85, look: 1.4 };
+export const HUNT = { mushrooms: 10, pick: 1.0, sight: 6.2, cone: 0.62, hear: 2.1, alert: 0.6, chase: 5.2, patrol: 1.7, giveUp: 6, catch: 0.85, look: 1.4, far: 1.2, search: 6 }; // (far, search: the dogs are quick to be sure, and sniff about a while)
 
 export const MUSHROOMS = (() => {
   const rand = seeded(91);
@@ -463,11 +490,20 @@ export const DOG_ROUNDS = [
   [[-38, 24.5], [-38, 36], [-34, 33], [-42, 28]],
 ];
 
+// The dogs are watchers (../towns/watchers.js), as Bree's Nazgûl and
+// Moria's troll are: a round each, a cone they see in, your running heard
+// close by; and, at last, HUNT's `far` (a moment to be sure of you at the
+// edge of their sight) and `search` (losing you, they sniff about where
+// they last had you, together, before going back to their rounds). They
+// keep to the field. `dogs` is the watchers' own list, so a dog's mode,
+// place, heading and look are what the scene draws.
+const DOG_WATCH = { ...HUNT, smell: 0, leash: 14 };
+const inFieldPush = (x, z) => [Math.max(FIELD.x0 + 0.5, Math.min(FIELD.x1 - 0.5, x)), Math.max(FIELD.z0 + 0.5, Math.min(FIELD.z1 - 0.5, z))];
+
 export function newHunt(picked = []) {
-  return {
-    picked: [...picked],
-    dogs: DOG_ROUNDS.map((r, i) => ({ id: i, x: r[0][0], z: r[0][1], face: 0, leg: 1, mode: 'patrol', t: 0, wait: 0.5 + i * 0.4, look: 0 })),
-  };
+  const watch = newWatchers(DOG_ROUNDS);
+  // seeded, so the dogs cast about for you the same way every visit
+  return { picked: [...picked], watch, dogs: watch.list, opts: { ...DOG_WATCH, rand: seeded(61) } };
 }
 
 // can this dog see (or hear) the hobbit?
@@ -483,14 +519,9 @@ export function dogSees(dog, h) {
   return Math.abs(off) < HUNT.cone;
 }
 
-const turnTo = (face, want, k) => {
-  let d = want - face;
-  d = Math.atan2(Math.sin(d), Math.cos(d));
-  return face + d * Math.min(1, k);
-};
-
 // One step of the hunt. h: the hobbit. Returns events: { type: 'pick', i },
-// 'seen' (a dog's barked), 'lost' (it gave up), 'caught', 'all'.
+// 'seen' (a dog's barked), 'lost' (it gave up), 'searching' (it's sniffing
+// about where it lost you), 'caught', 'all'; a dog's own carry its `dog` (index).
 export function stepHunt(hunt, h, dt) {
   const ev = [];
   const inside = inField(h.x, h.z, -0.2);
@@ -503,88 +534,79 @@ export function stepHunt(hunt, h, dt) {
       }
     });
   }
-  for (const dog of hunt.dogs) {
-    const round = DOG_ROUNDS[dog.id];
-    dog.t += dt;
-    if (dog.mode === 'patrol') {
-      if (dog.wait > 0) {
-        dog.wait -= dt;
-        dog.look = Math.sin((HUNT.look - dog.wait) * 2.6) * 0.9; // looking about
-      } else {
-        dog.look *= Math.max(0, 1 - dt * 6);
-        const [tx, tz] = round[dog.leg];
-        const dx = tx - dog.x;
-        const dz = tz - dog.z;
-        const d = Math.hypot(dx, dz);
-        if (d < 0.2) {
-          dog.leg = (dog.leg + 1) % round.length;
-          dog.wait = HUNT.look;
-        } else {
-          const step = Math.min(d, HUNT.patrol * dt);
-          dog.x += (dx / d) * step;
-          dog.z += (dz / d) * step;
-          dog.face = turnTo(dog.face, Math.atan2(-dz, dx), dt * 8);
-        }
-      }
-      if (inside && dogSees(dog, h)) {
-        dog.mode = 'alert';
-        dog.t = 0;
-        dog.look = 0;
-        ev.push({ type: 'seen', dog: dog.id });
-      }
-    } else if (dog.mode === 'alert') {
-      dog.face = turnTo(dog.face, Math.atan2(-(h.z - dog.z), h.x - dog.x), dt * 10);
-      if (dog.t > HUNT.alert) {
-        dog.mode = 'chase';
-        dog.t = 0;
-      }
-    } else if (dog.mode === 'chase') {
-      const dx = h.x - dog.x;
-      const dz = h.z - dog.z;
-      const d = Math.hypot(dx, dz);
-      if (d < HUNT.catch) {
-        ev.push({ type: 'caught', dog: dog.id });
-        continue;
-      }
-      if (!inField(h.x, h.z, 0.5) || dog.t > HUNT.giveUp || d > 14) {
-        dog.mode = 'back';
-        dog.t = 0;
-        ev.push({ type: 'lost', dog: dog.id });
-        continue;
-      }
-      const step = Math.min(d, HUNT.chase * dt);
-      const nx = dog.x + (dx / d) * step;
-      const nz = dog.z + (dz / d) * step;
-      // the dogs stay in the field
-      dog.x = Math.max(FIELD.x0 + 0.5, Math.min(FIELD.x1 - 0.5, nx));
-      dog.z = Math.max(FIELD.z0 + 0.5, Math.min(FIELD.z1 - 0.5, nz));
-      dog.face = turnTo(dog.face, Math.atan2(-dz, dx), dt * 12);
-    } else if (dog.mode === 'back') {
-      // trot back to the round and carry on
-      const [tx, tz] = round[dog.leg];
-      const dx = tx - dog.x;
-      const dz = tz - dog.z;
-      const d = Math.hypot(dx, dz);
-      if (d < 0.3) {
-        dog.mode = 'patrol';
-        dog.wait = HUNT.look;
-      } else {
-        const step = Math.min(d, HUNT.patrol * 1.4 * dt);
-        dog.x += (dx / d) * step;
-        dog.z += (dz / d) * step;
-        dog.face = turnTo(dog.face, Math.atan2(-dz, dx), dt * 8);
-      }
-      if (inside && dt > 0 && dog.t > 1.5 && dogSees(dog, h)) {
-        dog.mode = 'alert';
-        dog.t = 0;
-        ev.push({ type: 'seen', dog: dog.id });
-      }
-    }
-  }
+  // they notice you only in the field, and give up once you're out of it
+  const hunting = hunt.dogs.some((d) => d.mode === 'alert' || d.mode === 'chase');
+  const active = hunting ? inField(h.x, h.z, 0.5) : inside;
+  for (const e of stepWatchers(hunt.watch, h, dt, hunt.opts ?? DOG_WATCH, { active, push: inFieldPush })) ev.push({ type: e.type, dog: e.id });
   return ev;
 }
 // where Maggot puts you when the dogs catch you
 export const MAGGOT_GATE = { x: -38, z: 18.6, face: Math.PI / 2 };
+
+// ── the sheep ──
+// In the pasture by the East Road they graze, now and then wander a few
+// steps, turning as a sheep turns (not on the spot), and trot off from a
+// hobbit who comes right up to them. Seeded, so they go the same way every
+// visit; in the rules, so the scene only draws them. A sheep: { x, z, face
+// (its heading), want (the heading it's turning to), speed (m/s), walk
+// (seconds left of this walk), t (seconds until it thinks again), shy }.
+export const FLOCK = { walk: 0.7, trot: 1.6, turn: 3, pace: 4, shy: 2.6, wander: 0.4 };
+
+export function newFlock(n, seed = 7) {
+  const rand = seeded(seed);
+  const sheep = Array.from({ length: n }, () => {
+    const a = rand() * Math.PI * 2;
+    const r = PASTURE.r * 0.6 * rand();
+    const face = rand() * Math.PI * 2;
+    return { x: PASTURE.x + Math.cos(a) * r, z: PASTURE.z + Math.sin(a) * r, face, want: face, speed: 0, walk: 0, t: rand() * 5, shy: false };
+  });
+  return { sheep, rand };
+}
+
+const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+
+// One step. near: [{ x, z }…], whoever's about (the hobbit) for them to shy from.
+export function stepFlock(f, dt, { near = [] } = {}) {
+  const { rand } = f;
+  for (const s of f.sheep) {
+    // something close: off at a trot, away from it
+    let from = null;
+    for (const p of near) {
+      const d = Math.hypot(s.x - p.x, s.z - p.z);
+      if (d < FLOCK.shy && (!from || d < from.d)) from = { d, p };
+    }
+    s.shy = Boolean(from);
+    if (from) {
+      s.want = Math.atan2(-(s.z - from.p.z), s.x - from.p.x);
+      s.walk = Math.max(s.walk, 0.8);
+    } else {
+      s.t -= dt;
+      if (s.t <= 0) {
+        // a few steps somewhere, or another mouthful
+        s.walk = rand() < FLOCK.wander ? 1.5 + rand() * 2 : 0;
+        s.want = wrapAngle(s.want + (rand() - 0.5) * 2);
+        s.t = 2 + rand() * 4;
+      }
+    }
+    if (s.walk > 0) s.walk = Math.max(0, s.walk - dt);
+    s.face = wrapAngle(s.face + wrapAngle(s.want - s.face) * (1 - Math.exp(-FLOCK.turn * dt)));
+    const goal = s.walk > 0 ? (s.shy ? FLOCK.trot : FLOCK.walk) : 0;
+    s.speed += (goal - s.speed) * (1 - Math.exp(-FLOCK.pace * dt));
+    if (s.speed < 1e-3 && goal === 0) s.speed = 0;
+    let x = s.x + Math.cos(s.face) * s.speed * dt;
+    let z = s.z - Math.sin(s.face) * s.speed * dt;
+    const r = Math.hypot(x - PASTURE.x, z - PASTURE.z);
+    if (r > PASTURE.r) {
+      // the wall: kept in, and turned back in towards the middle
+      x = PASTURE.x + ((x - PASTURE.x) / r) * PASTURE.r;
+      z = PASTURE.z + ((z - PASTURE.z) / r) * PASTURE.r;
+      s.want = Math.atan2(-(PASTURE.z - z), PASTURE.x - x) + (rand() - 0.5) * 0.8;
+    }
+    s.x = x;
+    s.z = z;
+  }
+  return f;
+}
 
 // ── 2. Smoke rings ──
 // On the bench, looking out over the Shire. Gandalf's big ring drifts across
@@ -726,6 +748,13 @@ export function stepShow(show, dt) {
 // fire, the letters, out with the tongs.
 export const RING_STEPS = ['envelope', 'fire', 'letters', 'safe'];
 export const nextRingStep = (step) => RING_STEPS[Math.min(RING_STEPS.length - 1, RING_STEPS.indexOf(step) + 1)];
+// what each step says, the button that does it, and (`who`) whose words are in it
+export const INSIDE_TEXT = {
+  envelope: { say: 'Bilbo has gone. On the mantelpiece is an envelope with your name on it.', act: 'Open it' },
+  fire: { say: 'A plain gold ring. Gandalf says, “Throw it in the fire.”', act: 'Throw it in the fire', who: 'gandalf' },
+  letters: { say: 'Letters in a fiery script come up round the band, and Gandalf goes very still.', act: 'Take it out with the tongs' },
+  safe: { say: 'Gandalf: “Keep it secret. Keep it safe.”', act: null, who: 'gandalf' },
+};
 
 // Wearing the Ring: the longer it's on, the nearer the Eye. At the top it
 // comes off by itself.
@@ -839,6 +868,13 @@ export const SIDE = { id: 'spoons', name: 'Bilbo’s spoons', where: 'Lobelia, a
 export const LOBELIA_LINES = {
   before: ['Bilbo Baggins has hidden the good silver about the place, I know he has. Well, I shall find it.', 'Bag End should have come to us, by rights. Otho says so.', 'Don’t you look at me like that, young Frodo. I’m only taking the air.'],
   after: ['Hmph. Spoons! As if I wanted his old spoons.', 'You’re as bad as your cousin Bilbo, Frodo Baggins. Worse!'],
+};
+// The toasts where someone says something aloud (in “quotes”; the rest of a
+// toast is narration, and isn't said): who says it, and the toast.
+export const SAYS = {
+  spoons: { who: 'lobelia', text: '“Bilbo’s hidden the good silver about Hobbiton, I know he has,” says Lobelia, and off she goes. Beat her to the spoons: two to a pocket, up to Bag End’s gate. Five home wins.' },
+  finders: { who: 'lobelia', text: 'Two spoons in Lobelia’s bag, and that’s that. “Finders keepers,” she says. Ask her again, and she’ll ‘find’ them back.' },
+  through: { who: 'gandalf', text: 'Through again! “Well, Frodo Baggins!”' },
 };
 export const SPOONS = { pocket: 2, need: 5, lose: 2, reach: 1.3, take: 0.9, wait: 2.5, speed: 2.7, home: { x: BAG_END.x, z: BAG_END.z + 8.1, r: 2.5 } };
 export const SPOON_SPOTS = [

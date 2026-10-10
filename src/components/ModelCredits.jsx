@@ -62,7 +62,7 @@ export default memo(function ModelCredits({ where, only = null, line = false, cl
     return (
       <p className={className}>
         {list.map((m, i) => (
-          <span key={`${m.source}-${m.as}`}>
+          <span key={`${m.file}-${m.source}-${m.as}`}>
             {i === 0 ? upper(m.as) : m.as}{' '}
             by{' '}
             <a href={m.source} {...out}>
@@ -102,7 +102,7 @@ export default memo(function ModelCredits({ where, only = null, line = false, cl
       </summary>
       <ul>
         {list.map((m) => (
-          <li key={`${m.source}-${m.as}`}>
+          <li key={`${m.file}-${m.source}-${m.as}`}>
             {upper(m.as)}:{' '}
             <a href={m.source} {...out}>
               {m.title}

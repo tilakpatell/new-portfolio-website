@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD_MB, WORLDS, worldAt } from './worlds';
+import { WORLD_MB, WORLDS, wayOut, worldAt } from './worlds';
 
 describe('the worlds', () => {
   it('each say how much they download, so a phone can be asked first', () => {
@@ -11,9 +11,24 @@ describe('the worlds', () => {
     expect(worldAt('/middle-earth/moria')?.to).toBe('/middle-earth');
     expect(worldAt('/galaxy/hoth')?.to).toBe('/galaxy');
     expect(worldAt('/galaxy/hoth/mission')?.to).toBe('/galaxy');
+    expect(worldAt('/universe/hoth')).toBeNull();
     expect(worldAt('/deathstar')?.to).toBe('/deathstar');
     expect(worldAt('/middle-earthling')).toBeNull();
     expect(worldAt('/home')).toBeNull();
     expect(worldAt('/')).toBeNull();
+  });
+
+  it('are the closest one when a world sits inside another’s address', () => {
+    expect(worldAt('/dot-matrix/64').to).toBe('/dot-matrix/64');
+    expect(worldAt('/dot-matrix/64/castle').to).toBe('/dot-matrix/64');
+    expect(worldAt('/dot-matrix/minecraft').to).toBe('/dot-matrix/minecraft');
+    expect(worldAt('/dot-matrix/tetris').to).toBe('/dot-matrix');
+    expect(worldAt('/deathstar').to).toBe('/deathstar');
+  });
+
+  it('lead out by the view the visitor is in', () => {
+    expect(wayOut('/invincible', 'universe')).toEqual({ label: 'Universe map', to: '/universe/invincible' });
+    expect(wayOut('/invincible', null)).toEqual({ label: 'Universe map', to: '/universe/invincible' });
+    expect(wayOut('/invincible', 'home')).toEqual({ label: 'Classic site', to: '/home' });
   });
 });

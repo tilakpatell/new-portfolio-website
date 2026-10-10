@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { rng } from '../../../lib/texture';
+import { sharpen } from '../../../lib/three/textures';
 
 const canvas = (w, h) => {
   const c = document.createElement('canvas');
@@ -66,6 +67,7 @@ function photosTex() {
     }
   });
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -93,6 +95,7 @@ function panelTex() {
   x.arc(226, 74, 8, 0, Math.PI * 2);
   x.fill();
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -110,6 +113,7 @@ function notesTex() {
   note(0, '#fbf6e4', ['Whoever keeps', 'eating my', 'yogurt: STOP.', '   — Angela']);
   note(128, '#fdf08a', ['CLEAN OUT', 'FRIDAY', 'Everything', 'goes. — Mgmt'], '#7a1d1d');
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

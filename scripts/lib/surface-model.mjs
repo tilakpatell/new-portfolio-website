@@ -9,6 +9,10 @@
 //   simplified(tris)          down to a triangle budget, a step rougher each time it stops short
 //   grounded({ metres, along, yaw, up })  upright, facing +z, scaled to metres, standing on y = 0
 //   dims(doc)                 [wide, tall, long] as it stands
+//   lifted({ how, keep })     foliage's normals made at import, as lib/three/foliage.js makes
+//                             the built ones': 'lift' (turned up, a lawn's) or 'crown' (out
+//                             from the middle of each part's box, a tree's); keep: its own share
+//   liftArray(normals, keep), spherifyArray(positions, normals, keep): the arithmetic (pure)
 //   bounds(doc, scene), mul4, invert4, qmul, about, UP: the maths under those
 
 import { MeshoptSimplifier } from 'meshoptimizer';
@@ -239,3 +243,57 @@ export const dims = (doc) => {
   const { min, max } = bounds(doc, root.getDefaultScene() ?? root.listScenes()[0]);
   return [0, 1, 2].map((i) => max[i] - min[i]);
 };
+
+// ── foliage normals (lib/three/foliage.js's liftNormals and spherifyNormals, on arrays) ──
+
+const unitInto = (out, i, x, y, z, fx = 0, fy = 1, fz = 0) => {
+  let l = Math.hypot(x, y, z);
+  if (l < 1e-6) [x, y, z, l] = [fx, fy, fz, 1];
+  out[i] = x / l;
+  out[i + 1] = y / l;
+  out[i + 2] = z / l;
+};
+export function liftArray(normals, keep = 0.25) {
+  const out = new Float32Array(normals.length);
+  for (let i = 0; i < normals.length; i += 3) {
+    const l = Math.hypot(normals[i], normals[i + 1], normals[i + 2]) || 1;
+    unitInto(out, i, (normals[i] / l) * keep, (normals[i + 1] / l) * keep + (1 - keep), (normals[i + 2] / l) * keep);
+  }
+  return out;
+}
+export function spherifyArray(positions, normals, keep = 0.25) {
+  const lo = [Infinity, Infinity, Infinity];
+  const hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < positions.length; i += 3)
+    for (let k = 0; k < 3; k++) {
+      lo[k] = Math.min(lo[k], positions[i + k]);
+      hi[k] = Math.max(hi[k], positions[i + k]);
+    }
+  const c = lo.map((v, k) => (v + hi[k]) / 2);
+  const r = lo.map((v, k) => Math.max(1e-6, (hi[k] - v) / 2));
+  const out = new Float32Array(normals.length);
+  for (let i = 0; i < positions.length; i += 3) {
+    const d = [0, 1, 2].map((k) => (positions[i + k] - c[k]) / (r[k] * r[k]));
+    const dl = Math.hypot(...d) || 1;
+    const nl = Math.hypot(normals[i], normals[i + 1], normals[i + 2]) || 1;
+    unitInto(out, i, ...[0, 1, 2].map((k) => (d[k] / dl) * (1 - keep) + (normals[i + k] / nl) * keep));
+  }
+  return out;
+}
+export const lifted = ({ how = 'lift', keep = 0.25 } = {}) => (doc) => {
+  for (const mesh of doc.getRoot().listMeshes())
+    for (const prim of mesh.listPrimitives()) {
+      const nrm = prim.getAttribute('NORMAL');
+      if (!nrm) continue;
+      const pos = prim.getAttribute('POSITION');
+      const read = (a) => {
+        const out = new Float32Array(a.getCount() * 3);
+        const el = [];
+        for (let i = 0; i < a.getCount(); i++) out.set(a.getElement(i, el), i * 3);
+        return out;
+      };
+      const n = how === 'crown' ? spherifyArray(read(pos), read(nrm), keep) : liftArray(read(nrm), keep);
+      prim.setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(n).setBuffer(nrm.getBuffer()));
+    }
+};
+

@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
+import { sharpen } from '../../lib/three/textures';
 
 const FPS_GAP = 1000 / 30 - 2;
 
@@ -541,6 +542,7 @@ export function label(text, { font = '700 28px ui-monospace, monospace', color =
   g.fillStyle = color;
   g.fillText(text, w / 2, h / 2);
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
   return mesh;

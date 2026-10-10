@@ -13,9 +13,11 @@
 
 import * as THREE from 'three';
 import { canvasTexture, hot } from '../../../../lib/stage3d';
-import { makeCanvas } from '../../../../lib/paint';
+import { makeCanvas, mix } from '../../../../lib/paint';
+import { STANCE, TROT, WALK, createStride, createTracker, ease, gaitOffsets, legSwing } from '../../creatures';
 import { makeToyFigure } from '../../mapFigures';
 import { LOOKS, compact } from '../../shire/people';
+import { castFigure } from '../../cast3d';
 import { B, ball, barrelParts, beam, benchParts, blob, createShireKit, cyl, cylX, cylZ, fillColor, gableGeo, lanternParts, lathe, parts, plankDoor, rng, roofGeo, roundBox, sector, squareWindow, tf, timberWall, tube, underRidge } from '../../shire/props';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -733,7 +735,32 @@ function billPony(K) {
   const tk = parts();
   tk.add(mats.beast, tube([[0, 0, 0], [-0.16, -0.12, 0], [-0.2, -0.5, 0]], 0.06, 0.02, { seg: 5, radial: 5 }), { color: dark });
   tk.build(tail);
-  return { group: g, legs, neck, head, tail };
+
+  // How he moves (../../creatures.js): his legs from the ground he covers,
+  // read from where the scene puts him, a pony's walk and a trot if he's
+  // hurried; standing, his head drops to pick at the straw now and then, and
+  // his tail swishes. `graze` (0…1) to say how much he's eating.
+  const track = createTracker();
+  const stride = createStride({ stride: 1.0, hz: 1.0, longest: 1.5, cadence: [1.2, 1.8], seed: 23 });
+  const LEG = 0.8;
+  const A = { graze: 0 };
+  const animate = (t, { graze } = {}) => {
+    const m = track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+    const st = stride.step(m.dt, m.fwd < -0.05 ? -m.speed : m.speed);
+    const offs = gaitOffsets(st.run, WALK, TROT);
+    const stance = mix(STANCE.walk, STANCE.trot, st.run);
+    legs.forEach((hip, j) => {
+      const { angle, lift } = legSwing(st.cycle + offs[j], stance, stance * st.stride, LEG);
+      hip.rotation.z = angle * st.amount;
+      hip.scale.y = 1 - 0.14 * lift * st.amount;
+    });
+    const eat = graze ?? (st.amount < 0.05 ? Math.max(0, Math.sin(t * 0.21 + 1)) : 0);
+    A.graze = ease(A.graze, eat, m.dt, 1.5);
+    const nod = Math.sin(st.phase * 2) * 0.05 * st.amount;
+    neck.rotation.z = mix(-0.25 + Math.sin(t * 0.8) * 0.06 * (1 - st.amount) + nod, -0.85 + Math.sin(t * 2.2) * 0.05, A.graze);
+    tail.rotation.y = Math.sin(t * 1.3) * 0.3 * (1 - st.amount * 0.6);
+  };
+  return { group: g, legs, neck, head, tail, animate };
 }
 
 // The people of Bree and the hobbits on the road, as toy figures; a
@@ -786,13 +813,24 @@ export function makeFolk(id, { n = 0, look: over = null } = {}) {
     const c = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0xe0782a, roughness: 0.6 }));
     c.position.set(0.06, -0.4, 0);
     c.rotation.z = Math.PI;
+    // (held by its green end, the point out past the fingers: lib/three/held.js)
+    c.userData.held = { kind: 'carrot' };
+    const grip = new THREE.Object3D();
+    grip.name = 'grip';
+    grip.position.y = -0.07;
+    c.add(grip);
     hand.add(c);
+    f.carrot = c;
   }
   if (look.ring) {
     f.group.traverse((o) => {
       if (o.isMesh && o.geometry.type === 'TorusGeometry') f.ringMesh = o;
     });
   }
+  // on the cast once its model's here (../../cast3d.js): whoever plays them,
+  // a Bree-lander for the folk; the carrot to the cast's hand
+  castFigure(f, id, look, { role: id === 'folk' ? 'folk' : 'cast', town: 'bree' });
+  if (f.carrot) f.cast?.hold(f.carrot);
   return f;
 }
 

@@ -1,19 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
+import { useVoiced } from '../../lib/useVoiced';
+import { CHANNELS } from './toys';
 
 // Interdimensional cable: an old set with rabbit ears, a channel number, and
 // static between channels. Each channel is a little scene in CSS shapes and
-// a line from the show's improvised ads and shows.
-
-const CHANNELS = [
-  { id: 'doors', title: 'Real Fake Doors', line: 'Hey, are you tired of real doors cluttering up your house? Come on down to Real Fake Doors!' },
-  { id: 'balls', title: 'Ball Fondlers', line: 'Tonight, on Ball Fondlers: the Ball Fondlers are back, and they mean business.' },
-  { id: 'van', title: 'Two Brothers', line: 'Two brothers. In a van. On the way to the dinner of their lives.' },
-  { id: 'field', title: 'Gazorpazorpfield', line: 'I hate Mondays, Jon. Bring me my enchiladas.' },
-  { id: 'legs', title: 'Baby Legs', line: 'He’s a regular detective, but he’s got baby legs.' },
-  { id: 'plumbus', title: 'How They Do It: Plumbus', line: 'First they take the dinglebop, and they smooth it out with a bunch of schleem.' },
-];
+// a line from the show's improvised ads and shows (./toys.js), said once the
+// static clears, in its speaker's voice where it's been made.
 
 function Static({ on }) {
   const ref = useRef(null);
@@ -98,6 +92,7 @@ function Scene({ id }) {
 export default function Cable() {
   const [ch, setCh] = useState(0);
   const [fuzz, setFuzz] = useState(false);
+  const [flipped, setFlipped] = useState(false); // (the first channel waits to be tuned in, rather than talking as the page opens)
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
   const flip = (dir) => {
@@ -105,10 +100,12 @@ export default function Cable() {
     import('../games/gameAudio').then((m) => m.portalHop?.());
     clearTimeout(timer.current);
     setFuzz(true);
+    setFlipped(true);
     setCh((c) => (c + dir + CHANNELS.length) % CHANNELS.length);
     timer.current = setTimeout(() => setFuzz(false), prefersReducedMotion() ? 60 : 320);
   };
   const c = CHANNELS[ch];
+  useVoiced(flipped && !fuzz ? c.who : null, c.line);
   return (
     <div className="rm-cable">
       <div className="rm-tv">

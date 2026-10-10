@@ -27,6 +27,7 @@ unless you pass --refresh.
 """
 
 import argparse
+from functools import lru_cache
 import hashlib
 import json
 import logging
@@ -47,6 +48,18 @@ HI = 44100  # what the reference is made at (the separator's own rate)
 PAD = (0.1, 0.15)  # seconds kept before an utterance's first word and after its last
 ANALYSIS = 2  # bump when the per-segment numbers change, to work them out again
 CHECKED = 40  # candidates a voice checks a stretch at a time, best first
+
+
+def configs():
+    """Every voice's sources: sources.json's, and each world's own in sources/<world>.json."""
+    cfgs = json.loads((HERE / "sources.json").read_text(encoding="utf-8"))
+    for f in sorted((HERE / "sources").glob("*.json")):
+        for who, cfg in json.loads(f.read_text(encoding="utf-8")).items():
+            if who in cfgs:
+                print(f"{who}: in sources.json and {f.name}; using sources.json's")
+                continue
+            cfgs[who] = cfg
+    return cfgs
 
 
 def ytdlp(*args):
@@ -82,7 +95,7 @@ def sources(who, cfg, per_query):
     out = [c for c in out if c["file"].exists()]
     found = [{"id": pick.video_id(u), "seconds": None, "title": u} for u in cfg.get("urls", []) if pick.video_id(u)]
     for q in cfg.get("search", []):
-        found += search(q, per_query)
+        found += search(q, cfg.get("per_query", per_query))  # a voice can ask for more of each search's results
     seen = set()
     for v in found:
         if v["id"] in seen or pick.excluded(v["id"], 0, [r for r in cfg.get("exclude", []) if "@" not in r]):
@@ -178,9 +191,16 @@ def analyse(src, vocals):
     return segs
 
 
+@lru_cache(32)
+def heard(path):
+    """A source's vocals at the judge's rate, kept for the next candidate from the same scene
+    (each voice checks dozens, mostly from a few scenes, and decoding a whole scene is slow)."""
+    return read(path, SR)
+
+
 def stretched(c, vocals):
     """A candidate's audio in overlapping stretches of a second and a half (pick.stretches)."""
-    wav = read(vocals[c["source"]], SR)[int(c["start"] * SR) : int(c["end"] * SR)]
+    wav = heard(str(vocals[c["source"]]))[int(c["start"] * SR) : int(c["end"] * SR)]
     return [wav[int(a * SR) : int(b * SR)] for a, b in pick.stretches(len(wav) / SR)]
 
 
@@ -228,10 +248,10 @@ def main():
     ap.add_argument("--fetch-only", action="store_true", help="just search and download the sources (no GPU), to process them later")
     args = ap.parse_args()
 
-    cfgs = json.loads((HERE / "sources.json").read_text(encoding="utf-8"))
+    cfgs = configs()
     only = set(args.only.split(",")) if args.only else None
     picks = {w: v.split(",") for w, _, v in (p.partition("=") for p in args.pick)}
-    wanted = [w for w in cfgs if not only or w in only]
+    wanted = [w for w in cfgs if (not only or w in only) and not cfgs[w].get("design")]  # design.py makes those
     for w in list(wanted):
         own = REFS / f"{w}.wav"
         if own.exists() and not (REFS / f"{w}.json").exists() and not args.refresh:
@@ -240,8 +260,8 @@ def main():
     if not wanted:
         return
     # the other voices of the same shows come too: they're who each voice is told apart from
-    shows = {cfgs[w]["show"] for w in wanted}
-    voices = [w for w in cfgs if cfgs[w]["show"] in shows]
+    shows = {cfgs[w].get("show") for w in wanted}
+    voices = [w for w in cfgs if cfgs[w].get("show") in shows and not cfgs[w].get("design")]
 
     print("Finding sources")
     srcs, every = {}, {}
@@ -273,7 +293,7 @@ def main():
     # everything heard in a show's sources is a candidate for each of its voices
     pool, seeds, seeded = {}, {}, {}
     for w in voices:
-        show_srcs = {s["id"]: s for v in voices if cfgs[v]["show"] == cfgs[w]["show"] for s in srcs[v] if s["id"] in segments}
+        show_srcs = {s["id"]: s for v in voices if cfgs[v].get("show") == cfgs[w].get("show") for s in srcs[v] if s["id"] in segments}
         rules = cfgs[w].get("exclude", [])
         pool[w] = [(s, g) for s in show_srcs.values() for g in segments[s["id"]] if not pick.excluded(s["id"], g["start"], rules)]
         seeded[w] = []
@@ -282,6 +302,21 @@ def main():
             if s.get("of") == w or q:
                 seeded[w].append((s, g, q))
         seeds[w] = [np.array(g["vp"]) for _, g, _ in seeded[w]]
+    # a voice nothing seeds (an ensemble's: their quotes rarely come out word for word) starts from
+    # whoever is heard most in their own scenes, so long as it isn't a voice already known
+    known = {w: pick.centre(s) for w, s in seeds.items() if len(s)}
+    known.update({w: np.asarray(c, dtype=np.float32) for w, c in json.loads((GRAB / "centroids.json").read_text(encoding="utf-8")).items() if w not in known} if (GRAB / "centroids.json").exists() else {})
+    for w in voices:
+        if seeds[w] or w not in wanted:
+            continue
+        mine = {s["id"] for s in srcs[w] if not s.get("of")}
+        own = [(s, g) for s, g in pool[w] if s["id"] in mine and g.get("vp") and g["end"] - g["start"] >= 1.5]
+        found = pick.dominant([(np.array(g["vp"]), g["end"] - g["start"]) for _, g in own], {v: c for v, c in known.items() if v != w})
+        seeds[w] = found
+        seeded[w] = [(s, g, None) for s, g in own if any(np.allclose(np.array(g["vp"]), f) for f in found)]
+        if found:
+            known[w] = pick.centre(found)
+            print(f"  ({w}: no clip or quote to start from; starting from the voice heard most in their own scenes, {len(found)} utterances)")
     import judge
 
     cents = pick.refine(seeds, {w: [(np.array(g["vp"]), g["end"] - g["start"]) for _, g in pool[w]] for w in voices})
@@ -366,7 +401,7 @@ def main():
             "",
         ]
     (GRAB / "report.md").write_text("\n".join(report), encoding="utf-8")
-    print(f"\nReport: {(GRAB / 'report.md').relative_to(ROOT)}")
+    print(f"\nReport: {GRAB / 'report.md'}")
 
 
 if __name__ == "__main__":

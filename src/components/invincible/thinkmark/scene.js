@@ -19,6 +19,7 @@ import { reach } from './city';
 import { CHAPTERS, PORTAL, QUAKE, RINGS, bossTell, city, lockTarget } from './rules';
 import { buildTown } from './town';
 import { CAST, asset } from '../cast';
+import { LOOK as ART } from './look';
 const FOV = 62;
 const YELLOW = 0xffd23a;
 const FLAX = 0xd04dff;
@@ -38,7 +39,7 @@ const LOOK = {
 
 export async function create(canvas, { onLost, onSlow } = {}) {
   const calm = prefersReducedMotion();
-  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.1, far: 2800, bloom: { strength: 0.55, radius: 0.45, threshold: 0.9 }, onLost, onSlow });
+  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.1, far: 2800, bloom: ART.bloom, onLost, onSlow });
   const { scene, camera } = engine;
   const small = engine.small;
   const C = city();
@@ -212,21 +213,24 @@ export async function create(canvas, { onLost, onSlow } = {}) {
   const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
   // ── a flyer's body: upright when still, along his flight when fast ──
+  // (his crown along it; or, `ahead`, his front, when his fly clip lies along it itself)
   const Y = new THREE.Vector3(0, 1, 0);
+  const Z = new THREE.Vector3(0, 0, 1);
   const qTmp = new THREE.Quaternion();
   const qYaw = new THREE.Quaternion();
   const vTmp = new THREE.Vector3();
-  function carry(f, p, yaw, v, dt, { lean = 1, roll = 0, toward = null } = {}) {
+  function carry(f, p, yaw, v, dt, { lean = 1, roll = 0, toward = null, ahead = false } = {}) {
     f.holder.position.set(p[0], p[1], p[2]);
     f.holder.rotation.set(0, yaw, 0);
     const speed = Math.hypot(v[0], v[1], v[2]);
     const k = clamp((speed - 8) / 30, 0, 1) * lean;
     // which way is up for him: blend from the sky to his flight (or to where he's punching)
     const dir = toward ? V(toward).normalize() : speed > 0.1 ? V(v).divideScalar(speed) : Y.clone();
-    vTmp.copy(Y).lerp(dir, toward ? lean : k).normalize();
+    const axis = ahead ? Z : Y;
     qYaw.setFromAxisAngle(Y, -yaw);
-    vTmp.applyQuaternion(qYaw); // into his own frame
-    qTmp.setFromUnitVectors(Y, vTmp);
+    dir.applyQuaternion(qYaw); // into his own frame
+    vTmp.copy(axis).lerp(dir, toward ? lean : k).normalize();
+    qTmp.setFromUnitVectors(axis, vTmp);
     if (roll) qTmp.multiply(new THREE.Quaternion().setFromAxisAngle(Y, roll));
     f.lean.slerp(qTmp, dt === 0 ? 1 : 1 - Math.exp(-9 * dt));
     f.body.quaternion.copy(f.lean);
@@ -239,68 +243,102 @@ export async function create(canvas, { onLost, onSlow } = {}) {
     return [d.x, d.y, d.z];
   };
 
+  // Mark: his own motion-captured hover under everything (the hit clip when
+  // he's knocked flying), and the aimed poses over it, laid on and eased
+  // off (a punch at the one he's locked on, the guard of a dodge, flat out)
   function poseMark(g, dt, t) {
     const m = g.mark;
-    const speed = Math.hypot(...m.v);
-    let pose;
+    let pose = null;
+    let rate = 12;
     if (m.state === 'dash' || m.state === 'jab') {
       const tgt = m.state === 'dash' ? lockTarget(g) : null;
       const dir = tgt ? [tgt.p[0] - m.p[0], tgt.p[1] - m.p[1], tgt.p[2] - m.p[2]] : m.v;
       carry(mark, m.p, m.yaw, m.v, dt, { toward: dir, lean: 0.55 });
       pose = POSES.punch(inFrame(mark, dir));
+      rate = m.state === 'dash' ? 26 : 18;
     } else if (m.state === 'dodge') {
       const k = clamp(m.t / 0.26, 0, 1);
       carry(mark, m.p, m.yaw, m.v, dt, { lean: 0.5, roll: m.side * k * Math.PI * 2 });
       pose = POSES.guard();
     } else if (m.state === 'hurt') {
       carry(mark, m.p, m.yaw, m.v, dt, { lean: 0.4, roll: m.t * 6 });
-      pose = POSES.hurt();
+      if (!mark.act('hit', { once: true, fade: 0.08 })) pose = POSES.hurt();
     } else {
-      const k = carry(mark, m.p, m.yaw, m.v, dt);
-      pose = k > 0.45 ? POSES.fly() : POSES.hover(t);
+      // flat out, his fly clip lies along his flight itself (as the city's does)
+      const fast = clamp((Math.hypot(...m.v) - 8) / 30, 0, 1) > 0.45 && mark.clips.includes('fly');
+      const k = carry(mark, m.p, m.yaw, m.v, dt, { ahead: fast });
+      if (k > 0.45) {
+        if (!mark.act('fly', { fade: 0.35 })) pose = POSES.fly();
+      } else if (!mark.act('hover', { fade: 0.35 })) pose = POSES.hover(t);
     }
-    mark.pose(pose, dt, m.state === 'dash' ? 26 : 12);
-    void speed;
+    if (m.state !== 'hurt' && pose) mark.act('hover', { fade: 0.25 });
+    if (pose) mark.pose(pose, dt, rate);
+    mark.tick(dt);
   }
 
-  // Omni-Man or Thragg, from the boss state (or the guide in the lesson)
-  function poseViltrumite(f, b, dt, t) {
+  // Omni-Man or Thragg, from the boss state (or the guide in the lesson):
+  // his own hover under the poses that tell what's coming (the windup, the
+  // charge flat out, hands on his hips sizing Mark up), his hit clip when
+  // he's staggered, his landing at a dive's end; turned to face where the
+  // rules face him, but eased round, not snapped; his eyes on Mark
+  const yaws = new Map();
+  const markHead = new THREE.Vector3();
+  function faceOf(f, yaw, dt, rate = 10) {
+    const was = yaws.get(f) ?? yaw;
+    const now = dt === 0 ? yaw : was + angle(yaw - was) * (1 - Math.exp(-rate * dt));
+    yaws.set(f, now);
+    return now;
+  }
+  const HIPS = (() => {
+    const p = POSES.proud();
+    return { armL: p.armL, foreL: p.foreL, armR: p.armR, foreR: p.foreR };
+  })();
+  function poseViltrumite(f, b, dt, t, g) {
     const toward = b.dir ?? [0, 0, 1];
-    let pose;
+    const yaw = faceOf(f, b.yaw ?? 0, dt, b.state === 'charge' || b.state === 'dive' ? 16 : 8);
+    let pose = null;
+    let clip = 'hover';
     switch (b.state) {
       case 'windup':
-        carry(f, b.p, b.yaw ?? 0, b.v, dt, { lean: 0.3 });
+        carry(f, b.p, yaw, b.v, dt, { lean: 0.3 });
         pose = POSES.windup();
         break;
       case 'charge':
       case 'dive':
-        carry(f, b.p, b.yaw ?? 0, b.v, dt, { toward, lean: 0.9 });
+        carry(f, b.p, yaw, b.v, dt, { toward, lean: 0.9 });
         pose = POSES.fly();
         break;
       case 'recover':
-        carry(f, b.p, b.yaw ?? 0, b.v, dt, { lean: 0.3 });
-        pose = POSES.hover(t * 1.6);
+        carry(f, b.p, yaw, b.v, dt, { lean: 0.3 });
         break;
       case 'stagger':
-        carry(f, b.p, b.yaw ?? 0, b.v, dt, { lean: 0.3, roll: Math.sin(b.t * 9) * 0.3 });
-        pose = POSES.hurt();
+        carry(f, b.p, yaw, b.v, dt, { lean: 0.3, roll: Math.sin(b.t * 9) * 0.3 });
+        clip = 'hit';
         break;
       case 'rise':
       case 'leave':
-        carry(f, b.p, b.yaw ?? 0, b.v, dt, { lean: 1 });
+        carry(f, b.p, yaw, b.v, dt, { lean: 1 });
         pose = POSES.fly();
         break;
       case 'down':
-        carry(f, b.p, b.yaw ?? 0, [0, 1, 0], dt, { lean: 0 });
+        carry(f, b.p, yaw, [0, 1, 0], dt, { lean: 0 });
         f.body.rotation.x = -0.6 - b.t * 0.4;
         pose = POSES.fall(t);
         break;
       default: {
-        const k = carry(f, b.p, b.yaw ?? 0, b.v, dt);
-        pose = k > 0.45 ? POSES.fly() : b.state === 'intro' || b.state === 'circle' ? POSES.proud() : POSES.hover(t);
+        const k = carry(f, b.p, yaw, b.v, dt);
+        pose = k > 0.45 ? POSES.fly() : b.state === 'circle' ? HIPS : null;
       }
     }
-    f.pose(pose, dt, b.state === 'charge' ? 20 : 10);
+    // coming in: a taunt (his arms; his hover goes on under it)
+    if (b.state === 'intro' && f.was !== 'intro') f.play('taunt', { layer: 'upper' });
+    f.was = b.state;
+    if (!f.act(clip, clip === 'hit' ? { once: true, fade: 0.08 } : { fade: 0.3 })) pose ??= clip === 'hit' ? POSES.hurt() : POSES.hover(t * 1.6);
+    if (pose) f.pose(pose, dt, b.state === 'charge' ? 20 : 10);
+    // sizing him up, his eyes on him (not while he's flat out at him: the pose has his head)
+    const m = g.mark;
+    f.look(b.state === 'charge' || b.state === 'dive' || b.state === 'down' ? null : markHead.set(m.p[0], m.p[1] + 1.6, m.p[2]));
+    f.tick(dt);
     // the fist glows through the windup and the climb
     const tell = bossTell(b);
     const glow = tell?.windup ?? 0;
@@ -327,14 +365,17 @@ export async function create(canvas, { onLost, onSlow } = {}) {
       cam.ready = false;
     }
     poseMark(g, dt, time);
-    // the guide, the boss
+    // the guide (his hover, hands on his hips, his eyes on his son), the boss
     if (id === 'lesson' && g.guide) {
       const gd = g.guide;
-      const k = carry(omni, gd.p, gd.yaw, gd.v, dt);
-      omni.pose(k > 0.45 ? POSES.fly() : POSES.proud(), dt, 8);
+      const k = carry(omni, gd.p, faceOf(omni, gd.yaw, dt, 6), gd.v, dt);
+      if (omni.act('hover', { fade: 0.4 })) omni.pose(k > 0.45 ? POSES.fly() : HIPS, dt, 8);
+      else omni.pose(k > 0.45 ? POSES.fly() : POSES.proud(), dt, 8);
+      omni.look(k > 0.45 ? null : markHead.set(g.mark.p[0], g.mark.p[1] + 1.6, g.mark.p[2]));
+      omni.tick(dt);
       omni.glow.visible = false;
     }
-    if (g.boss) poseViltrumite(g.boss.kind === 'omni' ? omni : thragg, g.boss, dt, time);
+    if (g.boss) poseViltrumite(g.boss.kind === 'omni' ? omni : thragg, g.boss, dt, time, g);
     if (g.boss?.kind === 'omni' && g.boss.state === 'leave' && g.boss.p[1] > 600) omni.holder.visible = false;
 
     // the rings: the next one bright and turning, the two after it dim
@@ -458,7 +499,14 @@ export async function create(canvas, { onLost, onSlow } = {}) {
           feel.trauma(0.6);
           feel.punch(5);
           break;
+        case 'cleared':
+        case 'won':
+          // a chapter done: his cheer (his arms; his hover goes on under it)
+          mark.play('cheer', { layer: 'upper' });
+          break;
         case 'quake':
+          // the dive's end: the boss comes down on it (his own landing)
+          if (g?.boss) (g.boss.kind === 'omni' ? omni : thragg).play('land');
           vfx.ring(V(e.at), { color: 0xfff0dc, from: 1, to: QUAKE.r, life: QUAKE.time, normal: new THREE.Vector3(0, 1, 0), opacity: 0.9 });
           vfx.debris(V(e.at), { count: 18, speed: 14, size: 0.35, life: 2.5, spread: 1.6 });
           vfx.flash(V(e.at), { color: 0xffe8c0, intensity: 70, distance: 40, life: 0.25 });

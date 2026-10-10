@@ -10,10 +10,15 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { canvasTexture, createStage, hot } from '../../lib/stage3d';
 import { createModels } from '../../lib/models';
+import { houseOn } from '../../lib/three/house';
 import { fbm, makeCanvas, makeNoise, ridge, smooth, tiled } from '../../lib/paint';
 import { rng } from '../../lib/texture';
 import { WALK } from './walk';
 import { EMBER, FIRE, SMOKE, createParticles, lavaMaterial, makeHobbit, makeOrc, skyDome, stoneTextures } from './kit';
+import { castDo, releaseCast, tickCast, upgrade } from './cast3d';
+import { createShake } from './feel';
+import { BLOOMS } from './look';
+import { houseGroups } from '../../lib/three/houseTuning';
 
 // the drawing's x (see walk.js) to the scene's: the road runs along x
 const X = (svg) => (svg - 265) / 10;
@@ -132,7 +137,7 @@ function tower() {
 }
 
 export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLost } = {}) {
-  const stage = createStage(canvas, { soft, shadows: true, fov: 48, near: 0.4, far: 900, exposure: 1.05, bloom: { strength: 0.65, radius: 0.5, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: true, fov: 48, near: 0.4, far: 900, exposure: 1.05, bloom: BLOOMS.gorgoroth, onLost });
   const { scene, camera, renderer } = stage;
   scene.fog = new THREE.FogExp2(0x2a0f08, 0.0085);
   scene.background = new THREE.Color(0x120604);
@@ -400,6 +405,12 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
   phialLight.position.set(0.3, 0.7, 0.3);
   frodo.group.add(phialLight);
   scene.add(frodo.group, sam.group);
+  // Frodo and Sam on the cast once their models are here (./cast3d.js): the
+  // cloaked cones hidden (the Ring's glow and the Phial kept), and shown
+  // again as the pair of rocks they make when they hide under the cloaks
+  const cloaked = (h) => h.body.children.filter((o) => o.isMesh && o !== ringGlow && o !== phial);
+  upgrade(frodo, 'frodo', { role: 'lead', hide: cloaked(frodo), top: 1.0, seed: 1 });
+  upgrade(sam, 'sam', { role: 'lead', hide: cloaked(sam), top: 0.98, seed: 2 });
   const green = [new THREE.Color(0x4b5a3a), new THREE.Color(0x5a6a44)];
   const grey = new THREE.Color(0x3b2e29);
 
@@ -437,6 +448,8 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
 
   // ── what is going on ──
   const S = { phase: 'ready', x: WALK.x0, spot: 265, burden: 0, patrols: [], carried: false, walking: false };
+  // one shake, the site's (./feel.js), with Gorgoroth's own numbers: trauma² × 0.5, fading 1.6 a second
+  const shake = createShake({ calm: reduced, offset: 0.5, decay: 1.6 });
   const A = { t: 0, hide: 1, sweep: 265, anger: 0, dim: 1, shake: 0, flash: 0, bolt: 5, door: 0, wide: 1, acc: { plume: 0, ash: 0, ember: 0, torch: 0 } };
   let cam = null;
   const v = new THREE.Vector3();
@@ -456,6 +469,12 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     Object.assign(S, n);
   };
   const fx = () => {};
+
+  // the house look (lib/three/house), as in Middle-earth's towns: the house
+  // tone mapper, the shade one colour from the ash sky's light, under the mountain's glow; its own fog kept
+  const house = houseOn({ renderer, scene, sun: glow, hemi, look: { fog: false } });
+  stage.tune([...houseGroups(house), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
+  let houseFrames = 0;
 
   const render = (ms = 16) => {
     const dt = Math.min(0.05, ms / 1000);
@@ -516,6 +535,21 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     frodo.body.rotation.z = -0.08 * (1 - A.hide) - weight * 0.32;
     frodo.group.scale.set(1, crouch * (S.carried ? 0.9 : 1), 1);
     sam.group.scale.set(1, S.carried ? 1 : crouch, 1);
+    // on the cast: crouching by the knees, not squashed; under the cloaks
+    // the rocks they were; Frodo bowed by the Ring's weight, carried on
+    // Sam's back at the last
+    for (const h of [frodo, sam]) {
+      if (!h.cast?.ready) continue;
+      const rock = A.hide > 0.6 && !S.carried;
+      h.cast.showToy(rock);
+      if (!rock) h.group.scale.set(1, 1, 1);
+    }
+    if (frodo.cast?.ready && S.carried) frodo.group.rotation.z = -0.3;
+    // (the cast's own steps rise and fall: not bobbed again on top)
+    if (frodo.cast?.ready && !S.carried) frodo.group.position.y = 0;
+    if (sam.cast?.ready) sam.group.position.y = 0;
+    castDo(frodo, { crouch: A.hide > 0.05 && !S.carried, base: S.carried ? 'sit' : null, upper: !S.carried && weight > 0.5 ? 'walk.injured' : null });
+    castDo(sam, { crouch: A.hide > 0.05 && !S.carried, upper: S.carried ? 'walk.carry' : null });
     // under the cloaks they are another pair of rocks
     frodo.cloth.color.copy(green[0]).lerp(grey, A.hide * 0.85);
     sam.cloth.color.copy(green[1]).lerp(grey, A.hide * 0.85);
@@ -590,7 +624,6 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
 
     // ── the camera: behind them and to one side, the road running on to the mountain ──
     A.wide = ease(A.wide, S.phase === 'ready' ? 1 : 0, 1.2);
-    A.shake = Math.max(0, A.shake - dt * 1.6);
     const narrow = Math.max(0, 1.5 - camera.aspect) * 9;
     const wantX = hx - 6.5 - A.wide * 7 - narrow * 0.6;
     if (!cam) cam = { x: wantX };
@@ -599,14 +632,19 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     const cy = Math.max(3.8 + A.wide * 3.2 + narrow * 0.35, height(cam.x, cz) + 2);
     camera.position.set(cam.x, cy, cz);
     if (!reduced) {
-      const q = A.shake * A.shake * 0.5;
-      camera.position.x += Math.sin(t * 0.21) * 0.3 + Math.sin(t * 57) * q;
-      camera.position.y += Math.sin(t * 0.29) * 0.15 + Math.sin(t * 43 + 1) * q;
+      camera.position.x += Math.sin(t * 0.21) * 0.3;
+      camera.position.y += Math.sin(t * 0.29) * 0.15;
     }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(cam.x + 13 + A.wide * 6, 2.2 + A.wide * 5.2, -2.2);
     glow.target.position.set(cam.x + 12, 0, 0);
     glow.position.set(cam.x + 12 + 30, 22, -16);
 
+    // (what's come in since, taken on now and then)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
+    // the hobbits on the cast (./cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     stage.render(ms);
   };
 
@@ -616,8 +654,10 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     render,
     resize: stage.resize,
     dispose() {
+      shake.dispose();
       alive = false;
       models.dispose();
+      releaseCast(scene);
       stage.dispose();
     },
     stage,

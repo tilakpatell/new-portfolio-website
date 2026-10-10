@@ -17,224 +17,39 @@
 // a planet whose model never arrives simply goes without. The sun is sun.js's.
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
-// upgradeMaps(T, id) → a planet's own maps at their full size, once it's near
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// buildPlanet(u, T) → { id, radius, group, update(t, camera), setState, mount }
+// mapsOf(id), nearSet(id, level) → a planet's maps, and the finer ones it wears near (nearMaps.js)
+// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level), nearGeometry(on, level) }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { gltfLoader } from '../../lib/three/gltf';
-import { loadTexture } from '../../lib/three/textures';
-import { detailLevel } from '../../lib/detail';
-import { SWIRL_GLSL } from '../rickmorty/swirl';
+import { SWIRL_GLSL } from '../../lib/three/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';
+import { RM_WORLDS } from './rmWorlds';
 import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
+import { createAtmosphere, stepsFor } from '../../lib/three/atmosphere';
 import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
-import { AIR } from './entry';
+import { keyHook } from '../../lib/three/keySun';
+import { mapSwapper, mapsOf, nearSet } from './planetMaps';
+import { LIGHT, RIM, airGlow, celShade, ditherShade, groundHooks, halo, styleFor } from './planetShading';
 
-const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the scene's key light
+// (the planets' shading, moved out to keep this file under the size the
+// health check allows: planetShading.js; its exports are this file's as before)
+export { celShade, ditherShade, styleFor, variants } from './planetShading';
 
-// ── Textures ──
 
-const BASE = '/textures/universe/';
-// Each map: whether it's a colour (sRGB) or data (normals, roughness, a
-// cloud's alpha), and which sizes it comes in: `sm`, a half-size copy for a
-// phone or a weak device; `hq`, a copy at twice the texels for a strong
-// graphics card (lib/detail's 'ultra'), so a planet filling the screen and
-// the Milky Way behind it stay sharp as the camera comes in. The fandoms'
-// own maps are baked by scripts/build-fandom-planets.mjs (Middle-earth,
-// Breaking Bad, the Caribbean, C-137, the Office, Music, Marvel) at all
-// three sizes; Earth's, the sun's and the sky's by
-// scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
-// Invincible's by their own scripts, with no -hq yet.
-const map = (names, opts) => names.map((n) => [n, opts]);
-const MAPS = Object.fromEntries([
-  ...map(['music', 'middleearth', 'middleearth-clouds', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'rickmorty-clouds', 'earth', 'earth-night', 'sun', 'sky'], { sm: true, hq: true, colour: true }),
-  ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
-  ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night'], { sm: true, hq: false, colour: true }),
-  ...map(['breakingbad-clouds', 'invincible-clouds'], { sm: true, hq: false, colour: false }),
-  ...map(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'], { sm: false, hq: false, colour: true }),
-  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-normal-sm', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-normal', 'caribbean-rough', 'invincible-normal', 'earth-rough'], { sm: false, hq: false, colour: false }),
-]);
+// ── Textures ── (planetMaps.js: the maps, their files, and what a planet wears near)
 
-export const MAP_NAMES = Object.keys(MAPS);
-
-// The file for a map at a detail level (lib/detail): the `-hq` copy on a
-// strong card where there is one, the standard file on a desktop, the
-// `-sm` half on a phone or a weak device where there is one.
-export function mapFile(name, level = 'high') {
-  const { sm = true, hq = false } = MAPS[name] ?? {};
-  const suffix = level === 'ultra' ? (hq ? '-hq' : '') : level === 'high' ? '' : sm ? '-sm' : '';
-  return `${name}${suffix}.webp`;
-}
-
-// Which planet a map is on: the fandoms' own maps (Earth's are the travel
-// planet's), or null for the sky, the sun and the stations' metal
-const FANDOM_MAPS = new Set(['music', 'middleearth', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'transformers', 'invincible']);
-export function mapPlanet(name) {
-  const id = name.split('-')[0];
-  return id === 'earth' ? 'travel' : FANDOM_MAPS.has(id) ? id : null;
-}
-
-// The file a planet's own map starts at while the planet's far (its -sm
-// copy), or null where it starts at its own size anyway (a phone, or a map
-// with one size, or no one planet's). From the home system the fandoms'
-// planets are a few pixels across, their maps sampled a mip level or two
-// above the smallest: the -sm copy draws them the same, at a quarter of
-// the bytes; upgradeMaps swaps in the full size as one comes near (nearby.js)
-export function farFile(name, level = 'high') {
-  if (!mapPlanet(name)) return null;
-  const far = mapFile(name, 'mid');
-  return far !== mapFile(name, level) ? far : null;
-}
-
-export async function loadTextures({ small = false, level = small ? 'mid' : detailLevel() } = {}) {
-  const T = { small }; // (and whether this is a phone, for the builders)
-  const later = new Map(); // name → { file, fallback, colour }: the size it's wanted at, once its planet's near
-  const get = async (name, file, colour, fallback = null) => {
-    try {
-      // (decoded off the main thread, as sharp as the device's tier allows,
-      // and shared with any other scene that wants the same map)
-      T[name] = await loadTexture(BASE + file, { color: colour });
-    } catch {
-      // missing: the standard file where a sharper set was asked for, else whoever wanted it does without
-      if (fallback) await get(name, fallback, colour);
-    }
-  };
-  await Promise.all(
-    Object.entries(MAPS).map(async ([name, { colour }]) => {
-      const file = mapFile(name, level);
-      const standard = mapFile(name, 'high');
-      const fallback = file !== standard ? standard : null;
-      const far = farFile(name, level);
-      if (!far) return get(name, file, colour, fallback);
-      await get(name, far, colour, file);
-      // (a copy: the full size goes into it later, and the cached -sm map
-      // stays as it is for whatever else draws it)
-      if (T[name]) T[name] = T[name].clone();
-      later.set(name, { file, fallback, colour });
-    }),
-  );
-  Object.defineProperty(T, 'later', { value: later }); // (not one of the maps)
-  return T;
-}
-
-// A planet come near: its own maps at the size the device wants (the
-// standard file on a desktop, -hq on a strong card), put into the textures
-// its materials already hold, so nothing else changes. Resolves once
-// they're in (and at once for a planet with nothing waiting)
-export function upgradeMaps(T, id) {
-  const names = [...(T.later?.keys() ?? [])].filter((n) => mapPlanet(n) === id);
-  return Promise.all(
-    names.map(async (name) => {
-      const { file, fallback, colour } = T.later.get(name);
-      T.later.delete(name);
-      const fresh = await loadTexture(BASE + file, { color: colour }).catch(() => (fallback ? loadTexture(BASE + fallback, { color: colour }).catch(() => null) : null));
-      const tex = T[name];
-      if (!fresh || !tex) return;
-      tex.source = fresh.source;
-      tex.needsUpdate = true;
-    }),
-  );
-}
+export { MAP_NAMES, loadTextures, mapFile, mapsOf, nearSet } from './planetMaps';
 
 // ── Shared pieces ──
-
-// The air round a planet, in its colour, brightest on its sunlit side: a
-// halo just outside its edge (the back of a slightly bigger sphere, fading
-// out from the limb) and a glow on the surface's own rim (added to the
-// planet's material, below), so it's one extra draw a planet as before.
-// the halo's reach, as a share of the planet's radius: the air's top, which
-// the ship flies down into to land (entry.js), so what glows is what it goes into
-const HALO = AIR;
-const HALO_VERT = `
-uniform vec3 uLight;
-varying vec3 vN;
-varying vec3 vV;
-varying vec3 vL;
-void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vN = normalize(normalMatrix * normal);
-  vV = normalize(-mv.xyz);
-  vL = normalize((viewMatrix * vec4(uLight, 0.0)).xyz);
-  gl_Position = projectionMatrix * mv;
-}`;
-const HALO_FRAG = `
-uniform vec3 uColor;
-uniform float uStrength;
-uniform float uReach;
-varying vec3 vN;
-varying vec3 vV;
-varying vec3 vL;
-void main() {
-  vec3 n = normalize(vN);
-  // how far out from the planet's edge this ray passes, 0 at the edge and 1
-  // at the halo's, so the air thins out evenly rather than ending in a rim
-  float c = -dot(n, normalize(vV));
-  float x = clamp((sqrt(max(1.0 - c * c, 0.0)) * uReach - 1.0) / (uReach - 1.0), 0.0, 1.0);
-  float lit = 0.12 + 0.88 * smoothstep(-0.45, 0.5, dot(n, vL));
-  gl_FragColor = vec4(uColor * pow(1.0 - x, 3.0) * uStrength * lit, 1.0);
-  #include <colorspace_fragment>
-}`;
-
-const RIM = { idle: 0.5, hover: 1.3, selected: 0.95 };
-
-function halo(radius, color, seg) {
-  const mat = new THREE.ShaderMaterial({
-    vertexShader: HALO_VERT,
-    fragmentShader: HALO_FRAG,
-    uniforms: { uColor: { value: new THREE.Color(color) }, uStrength: { value: RIM.idle }, uLight: { value: LIGHT }, uReach: { value: HALO } },
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    side: THREE.BackSide,
-  });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * HALO, seg[0], seg[1]), mat);
-  mesh.renderOrder = 2;
-  return mesh;
-}
-
-// The glow on a planet's own rim, in its material, and (for Earth) its
-// cities' lights on the night side: both follow the sun.
-function airGlow(mat, color, { night = null } = {}) {
-  const u = {
-    uRimColor: { value: new THREE.Color(color) },
-    uRimStrength: { value: RIM.idle * 0.8 },
-    uSunW: { value: LIGHT },
-    uNight: { value: night },
-  };
-  mat.userData.air = u;
-  // (after any hook the planet's builder gave it, such as Cybertron's skin)
-  const prev = mat.onBeforeCompile;
-  const prevKey = mat.customProgramCacheKey;
-  mat.onBeforeCompile = (shader, renderer) => {
-    prev?.call(mat, shader, renderer);
-    Object.assign(shader.uniforms, u);
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStrength;\nuniform vec3 uSunW;\nuniform sampler2D uNight;`)
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-        {
-          // (the sphere's own normal, not the relief's: a steep slope in the
-          // normal map isn't the planet's edge)
-          vec3 sunV = normalize((viewMatrix * vec4(uSunW, 0.0)).xyz);
-          float day = dot(nonPerturbedNormal, sunV);
-          float rim = pow(1.0 - saturate(dot(nonPerturbedNormal, normalize(vViewPosition))), 3.0);
-          totalEmissiveRadiance += uRimColor * rim * uRimStrength * (0.2 + 0.8 * smoothstep(-0.3, 0.6, day));
-          ${night ? 'totalEmissiveRadiance += texture2D(uNight, vMapUv).rgb * 1.5 * smoothstep(0.12, -0.3, day);' : ''}
-        }`,
-      );
-  };
-  mat.customProgramCacheKey = () => `${night ? 'air-night' : 'air'}${prevKey ? `-${prevKey.call(mat)}` : ''}`;
-  return mat;
-}
 
 // A station's big sign: its name in its colour and a line under it, on a
 // dark glass panel with a lit edge, always facing you. A click on it opens
@@ -561,14 +376,16 @@ const BUILDERS = {
     const mat = new THREE.MeshStandardMaterial({
       map: T.transformers ?? null,
       color: T.transformers ? '#ffffff' : u.palette.base,
-      normalMap: T['transformers-normal-sm'] ?? null,
+      normalMap: T['transformers-normal'] ?? null,
       normalScale: new THREE.Vector2(1.1, 1.1),
       roughness: 0.55,
       metalness: 0.45,
     });
     p.body.material = mat;
     if (T.transformers && T['transformers-glow-sm']) {
-      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: LIGHT });
+      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: p.sun });
+      // (its seams glow a little in the colour of the light it's in: the scene's key)
+      p.keyColour = skin.uKeyColour.value;
       // the energon breathes, and turns from the Autobots' blue to the
       // Decepticons' violet and back as the war goes one way and the other
       const blue = SIDES.autobot.energon;
@@ -735,26 +552,31 @@ const BUILDERS = {
     const r = u.size;
     // a sheet of Dunder Mifflin's letterhead crumpled into a ball, the paper
     // that gets thrown at the bin (scripts/planets/office.mjs): flat facets
-    // with sharp creases, the memo's print running on across the folds
-    p.body.material = new THREE.MeshStandardMaterial({
+    // with sharp creases, the memo's print running on across the folds; lit
+    // as paper: a sheen in its own colour, so its fibre shows under a
+    // grazing light (the creases toward the terminator)
+    p.body.material = new THREE.MeshPhysicalMaterial({
       map: T.office ?? null,
-      color: T.office ? '#f2eee4' : u.palette.base, // paper, not snow: a little warm and a little grey
+      color: T.office ? '#ffffff' : u.palette.base, // (the map's own paper, #f1ead8: warm, not snow)
       normalMap: T['office-normal'] ?? tiled(T['paper-normal'], 4, 2),
       normalScale: new THREE.Vector2(1, 1),
       roughnessMap: T['office-rough'] ?? null,
-      roughness: T['office-rough'] ? 1 : 0.95,
+      roughness: 1,
+      sheen: 0.6,
+      sheenColor: '#f3ecd8',
+      sheenRoughness: 0.8,
     });
-    // and its outline a crumpled ball's: the sphere cut by a scatter of flat
-    // planes a little inside it, so it has facets and corners (never out
-    // past the sphere, which the halo and a crash's shockwave are sized to)
+    // and its outline a crumpled ball's: the sphere cut by a few big flat
+    // planes a little inside it, so it has broad facets and corners (never
+    // out past the sphere, which the halo and a crash's shockwave are sized to)
     const [ws, hs] = T.small ? [64, 44] : [112, 72];
     const geo = new THREE.SphereGeometry(r, ws, hs);
     const rand = rng('crumple');
-    const cuts = Array.from({ length: 90 }, () => {
+    const cuts = Array.from({ length: 12 }, () => {
       const z = rand() * 2 - 1;
       const a = rand() * Math.PI * 2;
       const s = Math.sqrt(1 - z * z);
-      return [Math.cos(a) * s, z, Math.sin(a) * s, 0.955 + rand() * 0.04];
+      return [Math.cos(a) * s, z, Math.sin(a) * s, 0.915 + rand() * 0.045];
     });
     const pos = geo.attributes.position;
     const d = new THREE.Vector3();
@@ -800,13 +622,17 @@ const BUILDERS = {
       emissive: '#ffffff',
       emissiveMap: T['rickmorty-glow'] ?? null,
       emissiveIntensity: T['rickmorty-glow'] ? 1.3 : 0,
-      roughness: 0.85,
+      // (the seas glossy, so they catch the sun: scripts/planets/rickmorty.mjs)
+      roughnessMap: T['rickmorty-rough'] ?? null,
+      roughness: T['rickmorty-rough'] ? 1 : 0.85,
       metalness: 0,
     });
+    // lit as the show lights it: in flat bands, its limb inked (celShade)
+    celShade(p.body.material);
     if (T['rickmorty-clouds']) {
       const sky = new THREE.Mesh(
         new THREE.SphereGeometry(r * 1.012, T.small ? 44 : 64, T.small ? 28 : 40),
-        new THREE.MeshStandardMaterial({ map: T['rickmorty-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }),
+        celShade(new THREE.MeshStandardMaterial({ map: T['rickmorty-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }), { ink: 0 }),
       );
       p.group.add(sky);
       p.tick.push((t) => (sky.rotation.y = t * 0.05));
@@ -909,6 +735,10 @@ const BUILDERS = {
     map.minFilter = THREE.NearestMipmapLinearFilter;
     map.anisotropy = 1;
     p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0 });
+    // lit as a Game Boy would light it: the four greens, dithered (ditherShade),
+    // the ground, its clouds and its mountains alike, sized by one ratio
+    p.dpr = { value: 1 };
+    ditherShade(p.body.material, { palette: GREENS, dpr: p.dpr, outline: true });
     // pixel clouds, drifting a little faster than the ground
     const clouds = paint(
       (g) => {
@@ -931,6 +761,7 @@ const BUILDERS = {
     );
     clouds.magFilter = THREE.NearestFilter;
     const cloudShell = new THREE.Mesh(new THREE.SphereGeometry(r * 1.025, 64, 40), new THREE.MeshStandardMaterial({ map: clouds, transparent: true, depthWrite: false, roughness: 1, alphaTest: 0.5 }));
+    ditherShade(cloudShell.material, { palette: GREENS, dpr: p.dpr });
     p.group.add(cloudShell);
     p.tick.push((t) => (cloudShell.rotation.y = t * 0.09));
     // blocky mountains: a few voxels standing up where the land is highest
@@ -943,6 +774,7 @@ const BUILDERS = {
     }
     const c = r * 0.05;
     const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(c, c, c), new THREE.MeshStandardMaterial({ roughness: 0.75 }), peaks.length * 2);
+    ditherShade(blocks.material, { palette: GREENS, dpr: p.dpr });
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
@@ -1075,7 +907,9 @@ const BUILDERS = {
         emissive: '#ffffff',
         emissiveMap: T['invincible-glow'] ?? null,
         emissiveIntensity: T['invincible-glow'] ? 2.4 : 0,
-        roughness: 0.92,
+        // (the old sea beds glossy: scripts/build-invincible-planet.mjs)
+        roughnessMap: T['invincible-rough'] ?? null,
+        roughness: T['invincible-rough'] ? 1 : 0.92,
       });
       p.body.material = mat;
       p.night = T['invincible-night'] ?? null;
@@ -1367,10 +1201,23 @@ const BUILDERS = {
     }
   },
   ...STATIONS,
+  // the Central Finite Curve's worlds, alive (rmWorlds.js)
+  ...RM_WORLDS,
 };
 
-export function buildPlanet(u, T = {}) {
+// The sphere's segments near (nearMaps.js swaps it in with the near maps):
+// parked 2.4 radii out the limb is about 1,900 pixels round, and at 64 a
+// chord is 30 of them, a polygon against the air; at 160, 12. Mid gets
+// fewer; low none.
+export const NEAR_SEG = { high: [160, 100], ultra: [320, 200], mid: [96, 60] };
+export const nearSegments = (level) => NEAR_SEG[level] ?? null;
+
+export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null } = {}) {
   const core = u.kind === 'core';
+  // the way to the star that lights it, in the world's axes (lighting.js's
+  // sunFor, turned with the map by the scene each frame): one vector its
+  // air, its rim and its night side all read; the old fixed key without one
+  const sunW = sun ? (sun.isVector3 ? sun : new THREE.Vector3(...sun)) : LIGHT;
   const seg = T.small ? [44, 28] : [64, 40]; // a phone's screen needs fewer
   const group = new THREE.Group();
   const spinner = new THREE.Group(); // what turns about the planet's axis
@@ -1378,20 +1225,68 @@ export function buildPlanet(u, T = {}) {
   const body = new THREE.Mesh(new THREE.SphereGeometry(u.size, seg[0], seg[1]), new THREE.MeshStandardMaterial({ color: u.palette.base, roughness: 1 }));
   spinner.add(body);
   // a planet has air round it in its colour; a station's sign does that job
-  const air = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg); // (a station has no air round it)
-  if (air) group.add(air);
-  const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null };
+  // a planet has air round it in its colour: the old halo, and where it says
+  // what its air is (universes.js), a real one on high and mid, marched
+  // through (lib/three/atmosphere.js: 16 steps on ultra, 8 on high, 5 on mid, its sun the
+  // planet's own vector); the halo kept for low and for the pace's last
+  // steps (setAir), only one of them shown
+  const haloMesh = core || u.airless ? null : halo(u.size, u.rim ?? u.swatch, seg, sunW); // (a station has no air round it)
+  const shell =
+    haloMesh && u.air && tier !== 'low'
+      ? createAtmosphere({ radius: u.size, top: u.air.top, colour: u.air.colour, density: u.air.density, sunset: u.air.sunset, segments: T.small ? [64, 40] : [96, 64], steps: stepsFor(tier, 8), inner: Math.cos(Math.PI / seg[1]), flat: Boolean(u.air.flat), uniforms: { uSunDir: { value: [sunW, new THREE.Vector3(0, 1, 0)] } } })
+      : null;
+  if (shell) shell.mesh.renderOrder = 2;
+  let air = shell ? shell.mesh : haloMesh;
+  if (haloMesh) group.add(haloMesh);
+  if (shell) {
+    group.add(shell.mesh);
+    haloMesh.visible = false;
+  }
+  const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null, sun: sunW };
+  const sphere = body.geometry;
   BUILDERS[u.id]?.(p, { u, T });
-  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night });
+
+  if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW });
+  // the clouds' shadows, the ground's detail and a sea's glint (groundHooks),
+  // the cloud layer found by its texture, wherever its builder put it
+  const style = styleFor(u, T, { tier });
+  let cloudMesh = null;
+  if (style.clouds) group.traverse((o) => (cloudMesh ??= o.isMesh && (o.material?.map === style.clouds || o.material?.alphaMap === style.clouds) ? o : null));
+  // its sphere, and its cloud layer's, finer near: the limb a curve, not
+  // chords (at ultra, 320 × 200: a limb as smooth as the 8192 maps on it; a builder that made its own shape keeps it; each finer one
+  // made once, the first time it's near)
+  const fine = new Map();
+  const finer = (mesh, far, on, level) => {
+    const s = on && nearSegments(level);
+    if (s && !fine.has(mesh)) fine.set(mesh, new THREE.SphereGeometry(far.parameters.radius, s[0], s[1]));
+    mesh.geometry = s ? fine.get(mesh) : far;
+  };
+  const cloudSphere = cloudMesh?.geometry?.type === 'SphereGeometry' ? cloudMesh.geometry : null;
+  const nearGeometry =
+    core || body.geometry !== sphere
+      ? undefined
+      : (on, level = 'high') => {
+          finer(body, sphere, on, level);
+          if (cloudSphere) finer(cloudMesh, cloudSphere, on, level);
+        };
+  const ground = !core && p.body.material?.isMeshStandardMaterial ? groundHooks(p.body.material, { ...style, clouds: cloudMesh ? style.clouds : null }) : null;
+  if (key && !core && p.body.material?.isMeshStandardMaterial) keyHook(p.body.material, key, sunW);
+  // (with real air round it, the air draws the limb: the rim in its ground goes)
+  const rimGlow = () => p.body.material?.userData?.air;
+  if (shell && rimGlow()) rimGlow().uRimStrength.value = 0;
+  const centre = new THREE.Vector3();
   // a station's big sign, over it
   const sign = u.sign ? bigSign(u) : null;
   if (sign) {
     group.add(sign);
     p.tick.push(facing(sign));
   }
+  // its near maps (nearMaps.js) in place of its own (planetMaps.js)
+  const swapMaps = mapSwapper(group, T, mapsOf(u.id));
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
   let turn0 = body.rotation.y;
   let held = null; // the turn it's held at, while someone stands on it
+  let level = 0; // the pace's step
   let selected = false;
   let t0 = 0;
 
@@ -1403,7 +1298,46 @@ export function buildPlanet(u, T = {}) {
     // what a crash lays its shockwave on (a station's is hidden: none)
     surface: core ? null : body,
     body,
-    air,
+    swapMaps,
+    nearSet: (level) => (core ? [] : nearSet(u.id, level)),
+    nearGeometry,
+    get air() {
+      return air;
+    },
+    // how far off the camera is, in the planet's radii (the scene, for the
+    // nearest two: the ground's detail comes up from three)
+    near(d) {
+      if (ground) ground.uCamDist.value = level >= 2 ? 1e9 : d;
+    },
+    // the pace's step (lib/three/pace), as the spec's effects table has it:
+    // the ground's detail goes at 2, the clouds' shadows and the real air
+    // (for the halo) at 3, all back as it comes down again
+    setLevel(l) {
+      level = l;
+      if (ground) {
+        ground.uCloudOn.value = l >= 3 ? 0 : 1;
+        if (l >= 2) ground.uCamDist.value = 1e9;
+      }
+      this.setAir(l >= 3 ? 'halo' : 'shell');
+    },
+    // each frame, the scene's key light's colour and the ratio the frame is
+    // drawn at: Cybertron's seams glow in the one (normalised: a tint, not a
+    // dimming), Dot Matrix's dither is sized by the other
+    light(colour, ratio) {
+      if (p.dpr) p.dpr.value = ratio;
+      if (p.keyColour) p.keyColour.copy(colour).multiplyScalar(1 / Math.max(colour.r, colour.g, colour.b, 1e-3));
+    },
+    // the real air or the old halo (the pace's last steps): 'shell' | 'halo'
+    setAir(which) {
+      if (!shell) return;
+      const on = which === 'shell';
+      shell.mesh.visible = on;
+      haloMesh.visible = !on;
+      air = on ? shell.mesh : haloMesh;
+      const g = rimGlow();
+      if (g) g.uRimStrength.value = on ? 0 : RIM.idle * 0.8;
+    },
+    sun: sunW,
     // held still (true) while the crew walk about on it, and turning on
     // from there once they're gone
     hold(on) {
@@ -1425,15 +1359,21 @@ export function buildPlanet(u, T = {}) {
     update(t, camera, live = true) {
       t0 = t;
       body.rotation.y = held ?? turn0 + t * spin;
+      // (the air's march is about the planet's middle, in the world: it moves with the map)
+      if (shell?.mesh.visible) shell.update(group.getWorldPosition(centre));
+      // (where the clouds have turned to over the ground: on the ground, or turning on their own)
+      if (ground && cloudMesh) ground.uCloudTurn.value = (cloudMesh.rotation.y - (cloudMesh.parent === body ? 0 : body.rotation.y)) / (Math.PI * 2);
       for (const o of p.orbits) o.set(t);
       if (live) for (const fn of p.tick) fn(t, camera);
     },
     // `dim`: somewhere else is picked, so this station's sign steps back
     setState({ hover, selected: sel, dim = false }) {
       const k = hover ? RIM.hover : sel ? RIM.selected : RIM.idle;
-      if (air) air.material.uniforms.uStrength.value = k;
+      if (haloMesh) haloMesh.material.uniforms.uStrength.value = k;
+      // (the real air brightens a little less: it's the whole limb)
+      shell?.set({ strength: 1 + (k - RIM.idle) * 0.6 });
       const glow = body.material?.userData?.air;
-      if (glow) glow.uRimStrength.value = k * 0.8;
+      if (glow) glow.uRimStrength.value = shell && air === shell.mesh ? 0 : k * 0.8;
       if (sel && !selected) p.onSelect?.(t0);
       if (sel !== selected) for (const fn of p.focus) fn(sel);
       selected = sel;

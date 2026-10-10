@@ -1,11 +1,16 @@
 // The hobbits (and a wizard) of the Shire world, from the map's toy figures
 // (../mapFigures.js), dressed for the party, and packed so each costs a
 // dozen draws rather than fifty: the parts that move together and share a
-// colour are merged into one mesh.
+// colour are merged into one mesh. Each goes on the cast once its model's
+// here (../cast3d.js: Frodo as Frodo, a guest as the Shire's hobbit or
+// Rosie in her colours, what the toy holds in the cast's hands), the toy
+// until then and if it never comes; sit, dance and calm tell the cast as
+// they pose the toy.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeToyFigure } from '../mapFigures';
+import { castFigure, upgrade } from '../cast3d';
 
 export const LOOKS = {
   frodo: { hair: 0x3a2214, coat: 0x7a4a2a, shirt: 0xf2ead8, ring: true, seed: 1 },
@@ -83,6 +88,8 @@ export function makePerson(id, { guest = null } = {}) {
   }
   if (look.umbrella) f.umbrella = umbrella(f.arms[1]);
   f.top = f.baseY + 0.5 * (look.tall ?? 1) + 0.3 + 0.32 + (look.hat === 'wizard' ? 0.9 : 0);
+  if (guest != null) upgrade(f, guest % 3 === 1 ? 'rosie' : 'hobbit', { look, role: 'folk' });
+  else castFigure(f, id, look, { town: 'shire' });
   return f;
 }
 
@@ -91,6 +98,12 @@ export function makePerson(id, { guest = null } = {}) {
 function umbrella(arm) {
   const g = new THREE.Group();
   g.position.set(0.05, -0.32, 0);
+  // (an umbrella in a hand, gripped under its crook: lib/three/held.js's kinds)
+  g.userData.held = { kind: 'umbrella' };
+  const grip = new THREE.Object3D();
+  grip.name = 'grip';
+  grip.position.y = 0.1;
+  g.add(grip);
   const wood = new THREE.MeshStandardMaterial({ color: 0x8a5a2e, roughness: 0.6 });
   const silk = new THREE.MeshStandardMaterial({ color: 0x3e1838, roughness: 0.75 });
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.66, 6), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.5 }));
@@ -105,9 +118,12 @@ function umbrella(arm) {
   return g;
 }
 
-// Sitting on a bench: legs out in front, a little lower.
-export function sit(f, on = true) {
+// Sitting on a bench: legs out in front, a little lower. `how`: 'floor'
+// for sitting on the ground (the cast sits cross-legged there, on a seat
+// otherwise; its hips where the toy's are, as the town put them).
+export function sit(f, on = true, how = null) {
   f.sitting = on;
+  f.cast?.sit(on, how);
   for (const leg of f.legs) {
     leg.rotation.z = on ? 1.45 : 0;
   }
@@ -115,6 +131,7 @@ export function sit(f, on = true) {
 
 // A merrymaker's dance: hop and turn.
 export function dance(f, t, phase) {
+  f.cast?.dance(true);
   const hop = Math.max(0, Math.sin(t * 7 + phase));
   f.body.position.y = f.baseY + hop * 0.12;
   f.legs[0].rotation.z = Math.sin(t * 7 + phase) * 0.5;
@@ -125,6 +142,7 @@ export function dance(f, t, phase) {
 
 // Back to standing, after a dance.
 export function calm(f) {
+  f.cast?.dance(false);
   f.arms[0].rotation.x = 0;
   f.arms[1].rotation.x = 0;
 }

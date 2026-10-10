@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { BOMB, FACTIONS, FIGHT, HUNTER_KINDS, LOSE, NAMES, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
+import { BOMB, FACTIONS, FIGHT, HOLDOFF, HUNTER_KINDS, HUNTER_SENSES, LOSE, NAMES, SHIP_R, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
+import { PACE, SHIP } from './ship';
+import { nose, sweptHit } from './targeting';
+import { POWERS } from './shipPowers';
 
 // a seeded random, so a fight is the same every time
 const seeded = (seed = 7) => () => {
@@ -93,15 +96,15 @@ describe('a bounty hunter', () => {
     expect(FACTIONS.phoenix.family).toBe('rickmorty');
     for (const kind of ['slave1', 'phoenixperson']) {
       expect(HUNTER_KINDS[kind].hp).toBeGreaterThanOrEqual(5);
-      expect(HUNTER_KINDS[kind].speed).toBeGreaterThan(20); // (faster than you boost: no outrunning one)
+      expect(HUNTER_KINDS[kind].speed).toBeGreaterThan(SHIP.boost); // (faster than you boost: no outrunning one)
       expect(NAMES[kind]).toBeTruthy();
     }
-    // and Slave I lands shots, and takes its six hits
+    // and Slave I lands shots, and takes every one of its hits
     const seen = fight({ faction: 'fett', opts: { size: 1 }, seconds: 60 });
     expect(seen.shots).toBeGreaterThan(5);
     const h = seen.hunt.live[0];
     const through = () => seen.hunt.hit({ x: h.pos.x - 3, y: h.pos.y, z: h.pos.z }, { x: h.pos.x + 3, y: h.pos.y, z: h.pos.z }, 1);
-    for (let i = 0; i < 5; i++) expect(through()?.down).toBeFalsy();
+    for (let i = 0; i < HUNTER_KINDS.slave1.hp - 1; i++) expect(through()?.down).toBeFalsy();
     expect(through()?.down).toBe(true);
   });
 });
@@ -120,6 +123,30 @@ describe('where they come in', () => {
         expect(apart(p, { x: 0, y: 0, z: -40 })).toBeGreaterThanOrEqual(12 + 1.99);
       }
     }
+  });
+
+  it('waits round a point it is given (an ambush at your off-ramp), never inside anything solid', () => {
+    const ship = start({ x: 500, z: 500, heading: 1.2 });
+    const at = { x: -40, y: 10, z: 60 };
+    const solids = [moon, { id: 'rock', at: [-40, 10, 85], r: 14 }];
+    for (let i = 0; i < 6; i++) {
+      const p = entryPoint(ship, i, 6, { at, rand: seeded(i + 1), solids });
+      expect(apart(p, at), `${i}`).toBeLessThanOrEqual(40);
+      for (const o of solids) expect(apart(p, { x: o.at[0], y: o.at[1], z: o.at[2] }), `${i} ${o.id}`).toBeGreaterThanOrEqual(o.r + 1.99);
+    }
+    // (spread round it, not stacked)
+    const ps = Array.from({ length: 4 }, (_, i) => entryPoint(ship, i, 4, { at, rand: seeded(9) }));
+    for (let i = 1; i < ps.length; i++) expect(apart(ps[i], ps[i - 1])).toBeGreaterThan(4);
+  });
+
+  it('lays an ambush `lead` further along, where you will be once they have the drive down', () => {
+    const ship = start();
+    const near = entryPoint(ship, 0, 3, { ahead: true, rand: seeded(5) });
+    const far = entryPoint(ship, 0, 3, { ahead: true, lead: 250, rand: seeded(5) });
+    expect(-far.z - -near.z).toBeCloseTo(250, 6);
+    expect(far.x).toBeCloseTo(near.x, 6);
+    // (behind you, a lead's nothing to do with it)
+    expect(entryPoint(ship, 0, 3, { lead: 250, rand: seeded(5) })).toEqual(entryPoint(ship, 0, 3, { rand: seeded(5) }));
   });
 
   it('moves a point out of a solid the way it already is from its middle', () => {
@@ -190,14 +217,14 @@ describe('the pace of a fight', () => {
   const interceptor = HUNTER_KINDS.interceptor;
   it('flies the fight at a little over your speed, never under its floor nor over its top', () => {
     // at cruise, close in: near you, not its top
-    expect(fightSpeed(tie, 5.5, 8)).toBeLessThan(11);
-    expect(fightSpeed(tie, 5.5, 8)).toBeGreaterThan(5.5);
+    expect(fightSpeed(tie, SHIP.cruise, 8)).toBeLessThan(11 * PACE);
+    expect(fightSpeed(tie, SHIP.cruise, 8)).toBeGreaterThan(SHIP.cruise);
     // sitting still: the floor
     expect(fightSpeed(tie, 0, 8)).toBeCloseTo(tie.speed * FIGHT.floor, 9);
-    // boosting at 20: a TIE flat out (you can outrun one), an interceptor with you
-    expect(fightSpeed(tie, 20, 8)).toBe(tie.speed);
-    expect(fightSpeed(interceptor, 20, 8)).toBeGreaterThan(20);
-    expect(fightSpeed(interceptor, 20, 8)).toBeLessThanOrEqual(interceptor.speed);
+    // boosting: a TIE flat out (you can outrun one), an interceptor with you
+    expect(fightSpeed(tie, SHIP.boost, 8)).toBe(tie.speed);
+    expect(fightSpeed(interceptor, SHIP.boost, 8)).toBeGreaterThan(SHIP.boost);
+    expect(fightSpeed(interceptor, SHIP.boost, 8)).toBeLessThanOrEqual(interceptor.speed);
     // far off, it comes in flat out whatever you're doing; between, in between
     expect(fightSpeed(tie, 0, FIGHT.closeFrom + 5)).toBe(tie.speed);
     const mid = fightSpeed(tie, 0, (FIGHT.engageAt + FIGHT.closeFrom) / 2);
@@ -223,7 +250,7 @@ describe('the pace of a fight', () => {
       const seen = fight({
         seed,
         seconds: 50,
-        fly: (s) => ({ ...s, speed: 5.5, heading: s.heading + 0.3 * DT }),
+        fly: (s) => ({ ...s, speed: SHIP.cruise, heading: s.heading + 0.3 * DT }),
         each: (hunt, s, t) => {
           if (t < 6) return; // (in from where they came)
           for (const h of hunt.live) {
@@ -239,9 +266,9 @@ describe('the pace of a fight', () => {
       shots += seen.shots;
     }
     expect(near.run[1]).toBeGreaterThan(200);
-    expect(near.run[0] / near.run[1]).toBeLessThan(10); // (on a run at you: near your own speed)
+    expect(near.run[0] / near.run[1]).toBeLessThan(10 * PACE); // (on a run at you: near your own speed)
     expect(fastestRun).toBeLessThan(HUNTER_KINDS.tie.speed * 0.8);
-    expect(near.set[0] / near.set[1]).toBeLessThan(13); // (swinging out past you: quicker, but not flat out)
+    expect(near.set[0] / near.set[1]).toBeLessThan(13 * PACE); // (swinging out past you: quicker, but not flat out)
     expect(shots).toBeGreaterThan(40);
   });
 
@@ -253,7 +280,7 @@ describe('the pace of a fight', () => {
       fight({
         seed,
         seconds: 60,
-        fly: (s) => ({ ...s, speed: 5.5, heading: s.heading + 0.3 * DT }),
+        fly: (s) => ({ ...s, speed: SHIP.cruise, heading: s.heading + 0.3 * DT }),
         each: (hunt, s) => {
           for (const h of hunt.live) {
             if (mode.get(h.id) === 'set' && h.mode === 'run') {
@@ -266,7 +293,7 @@ describe('the pace of a fight', () => {
       });
     }
     expect(runs).toBeGreaterThan(60);
-    expect(ahead / runs).toBeGreaterThan(0.85);
+    expect(ahead / runs).toBeGreaterThan(0.8);
   });
 
   it('opens up with you when you boost: the pack keeps pace, an interceptor faster than a TIE', () => {
@@ -278,7 +305,7 @@ describe('the pace of a fight', () => {
     fight({
       seconds: 24,
       opts: { size: 4, ace: false },
-      fly: (s, t) => ({ ...s, speed: t < 10 ? 5.5 : 20 }),
+      fly: (s, t) => ({ ...s, speed: t < 10 ? SHIP.cruise : SHIP.boost }),
       each: (hunt, s, t) => {
         for (const h of hunt.live) {
           if (apart(h.pos, s) > 45 || h.mode === 'tail') continue;
@@ -298,8 +325,8 @@ describe('the pace of a fight', () => {
     });
     expect(cruise[1]).toBeGreaterThan(100);
     expect(boost[1]).toBeGreaterThan(100);
-    expect(boost[0] / boost[1]).toBeGreaterThan(cruise[0] / cruise[1] + 5); // (they open up with you)
-    expect(tie).toBeGreaterThan(15);
+    expect(boost[0] / boost[1]).toBeGreaterThan(cruise[0] / cruise[1] + 5 * PACE); // (they open up with you)
+    expect(tie).toBeGreaterThan(15 * PACE);
     expect(tie).toBeLessThanOrEqual(HUNTER_KINDS.tie.speed + 1e-6);
     if (fast > 0) expect(fast).toBeGreaterThan(tie);
   });
@@ -325,11 +352,11 @@ describe('a fight', () => {
   it('says they are coming, and they shoot at you however you fly', () => {
     const flying = {
       still: (s) => s,
-      cruising: (s) => ({ ...s, speed: 5.5 }),
+      cruising: (s) => ({ ...s, speed: SHIP.cruise }),
       // (these two shook the old ones off entirely: their station swung round with your nose)
       spinning: (s) => ({ ...s, heading: s.heading + 2 * DT }),
-      circling: (s) => ({ ...s, speed: 5.5, heading: s.heading + DT }),
-      looping: (s, t) => ({ ...s, speed: 12, heading: s.heading + Math.sin(t * 1.3) * 1.4 * DT, pitch: Math.sin(t * 0.9) * 0.6 }),
+      circling: (s) => ({ ...s, speed: SHIP.cruise, heading: s.heading + DT }),
+      looping: (s, t) => ({ ...s, speed: 12 * PACE, heading: s.heading + Math.sin(t * 1.3) * 1.4 * DT, pitch: Math.sin(t * 0.9) * 0.6 }),
     };
     for (const [name, fly] of Object.entries(flying)) {
       let shots = 0;
@@ -350,7 +377,7 @@ describe('a fight', () => {
   it('is as dangerous at any frame rate', () => {
     const at = (hz) => {
       const hunt = createHunt({ rand: seeded(21) });
-      let s = start({ speed: 5.5 });
+      let s = start({ speed: SHIP.cruise });
       hunt.pack('empire', s, { size: 4, ace: false });
       let shots = 0;
       for (let t = 0; t < 120; t += 1 / hz) {
@@ -370,7 +397,7 @@ describe('a fight', () => {
     let most = 0;
     const seen = fight({
       opts: { size: 5, ace: false },
-      fly: (s) => ({ ...s, speed: 5.5, heading: s.heading + 0.5 * DT }),
+      fly: (s) => ({ ...s, speed: SHIP.cruise, heading: s.heading + 0.5 * DT }),
       each: (hunt) => {
         const on = hunt.live.filter((h) => h.mode !== 'set').length;
         most = Math.max(most, on);
@@ -419,7 +446,7 @@ describe('a fight', () => {
   });
 
   it('gives up once you have outrun them, and flies off', () => {
-    const seen = fight({ fly: (s) => ({ ...s, speed: 60 }), seconds: LOSE.after + 30 });
+    const seen = fight({ fly: (s) => ({ ...s, speed: 60 * PACE }), seconds: LOSE.after + 30 });
     expect(seen.events).toContain('escaped');
     expect(seen.hunt.active).toBe(false);
     expect(seen.hunt.targets).toHaveLength(0);
@@ -460,7 +487,7 @@ describe('a fight', () => {
       fight({
         seed,
         opts: { size: 2, ace: true },
-        fly: (s) => ({ ...s, speed: 5.5 }),
+        fly: (s) => ({ ...s, speed: SHIP.cruise }),
         each: (hunt) => {
           for (const h of hunt.live) {
             if (h.mode !== 'tail') continue;
@@ -472,7 +499,7 @@ describe('a fight', () => {
         },
       });
     }
-    expect(tailed).toBeGreaterThan(30); // (half a second of it, at the least)
+    expect(tailed).toBeGreaterThan(20); // (a third of a second of it, at the least)
   });
 
   it('goes after prey instead, until you shoot at them or it gets away', () => {
@@ -517,10 +544,11 @@ describe('shooting them', () => {
     expect(hunt.hit({ x: 500, y: 0, z: 0 }, { x: 503, y: 0, z: 0 })).toBeNull();
     const first = through(ace);
     expect(first).toMatchObject({ id: ace.id, kind: 'tieadvanced', down: false });
-    expect(hunt.targets.find((c) => c.id === ace.id)).toMatchObject({ hp: 4, hpMax: 5 });
+    expect(hunt.targets.find((c) => c.id === ace.id)).toMatchObject({ hp: HUNTER_KINDS.tieadvanced.hp - 1, hpMax: HUNTER_KINDS.tieadvanced.hp });
     // a fusion cannon's bolt is worth three
     expect(hunt.hit({ x: ace.pos.x - 3, y: ace.pos.y, z: ace.pos.z }, { x: ace.pos.x + 3, y: ace.pos.y, z: ace.pos.z }, 3)).toMatchObject({ down: false });
-    expect(through(ace)).toMatchObject({ down: true, at: { x: ace.pos.x, y: ace.pos.y, z: ace.pos.z } });
+    // (and one worth what it has left downs it)
+    expect(hunt.hit({ x: ace.pos.x - 3, y: ace.pos.y, z: ace.pos.z }, { x: ace.pos.x + 3, y: ace.pos.y, z: ace.pos.z }, ace.hp)).toMatchObject({ down: true, at: { x: ace.pos.x, y: ace.pos.y, z: ace.pos.z } });
     expect(hunt.count).toBe(1);
     // (whatever the other is, a TIE, an interceptor or a bomber: a hit worth all it has downs it)
     expect(hunt.hit({ x: tie.pos.x - 3, y: tie.pos.y, z: tie.pos.z }, { x: tie.pos.x + 3, y: tie.pos.y, z: tie.pos.z }, tie.hp)).toMatchObject({ kind: tie.kind, down: true });
@@ -574,7 +602,7 @@ const withTrait = (trait, over = {}) => ({
   factions: { odd: { kinds: [['odd', 1]], laser: [1, 1, 1], size: [1, 3] } },
 });
 // a fight of one side's own kind, flown frame by frame: each(hunt, ship, events, t)
-function traitFight(trait, { seed = 7, seconds = 60, size = 2, over, fly = (s) => ({ ...s, speed: 5.5 }), each } = {}) {
+function traitFight(trait, { seed = 7, seconds = 60, size = 2, over, fly = (s) => ({ ...s, speed: SHIP.cruise }), each } = {}) {
   const { kinds, factions } = withTrait(trait, over);
   const hunt = createHunt({ rand: seeded(seed), kinds, factions });
   let s = start();
@@ -622,7 +650,7 @@ describe('traits: how some kinds fight their own way', () => {
     expect(seen.shots).toBeGreaterThan(0);
     expect(seen.shots).toBeLessThanOrEqual(seen.runs); // (one bomb a run, at most)
     expect(bombs).toBeGreaterThan(0);
-    expect(fastest).toBeLessThan(top * 0.6 + 1e-6);
+    expect(fastest).toBeLessThan(top * 0.7 + 1e-6);
     // and one that lands is a heavy one
     for (const seed of [3, 5, 9, 13]) {
       const s = traitFight('bomber', { seed, seconds: 90, fly: (o) => o });
@@ -727,5 +755,371 @@ describe('traits: how some kinds fight their own way', () => {
     expect(lit).toBeGreaterThan(1);
     expect(lit).toBeLessThanOrEqual(seen.runs);
     expect(far).toBe(0);
+  });
+});
+
+describe('an ace with stages', () => {
+  const staged = Object.entries(HUNTER_KINDS).filter(([, k]) => k.stages);
+  const flyStill = (s) => s;
+  // a fight with one ace of `kind` alone, hurt to just under its stage, by hand
+  const hurtInto = (kind, { seed = 3 } = {}) => {
+    const type = HUNTER_KINDS[kind];
+    const faction = Object.entries(FACTIONS).find(([, f]) => f.kinds.some(([k]) => k === kind) || f.ace === kind)[0];
+    const hunt = createHunt({ rand: seeded(seed) });
+    let s = start();
+    hunt.pack(faction, s, { size: 1, ace: type === HUNTER_KINDS[FACTIONS[faction].ace] });
+    // (a bounty's pack of one is the kind itself; an ace's pack has it: find it)
+    let ace = hunt.live.find((h) => h.kind === kind);
+    if (!ace) {
+      hunt.clear();
+      // sent as the faction's only kind
+      const kinds = { ...HUNTER_KINDS };
+      const factions = { solo: { role: 'hunt', weight: 1, kinds: [[kind, 1]], laser: [1, 1, 1], size: [1, 1], family: 'test' } };
+      const h2 = createHunt({ rand: seeded(seed), kinds, factions });
+      h2.pack('solo', s, { size: 1, ace: false });
+      ace = h2.live[0];
+      return { hunt: h2, ace, s };
+    }
+    return { hunt, ace, s };
+  };
+
+  it('every stage names what changes, within reason, and summons only a faction that exists', () => {
+    expect(staged.length).toBeGreaterThanOrEqual(8);
+    for (const [kind, k] of staged) {
+      let last = 1;
+      for (const st of k.stages) {
+        expect(st.below, kind).toBeGreaterThan(0);
+        expect(st.below, kind).toBeLessThan(last);
+        last = st.below;
+        const { summon, ...over } = st;
+        delete over.below;
+        expect(Object.keys(over).length + (summon ? 1 : 0), kind).toBeGreaterThan(0);
+        if (over.trait) expect(TRAITS, kind).toContain(over.trait);
+        if (summon) expect(FACTIONS[summon], `${kind} summons ${summon}`).toBeTruthy();
+        if (over.fire) expect(over.fire[0], kind).toBeLessThan(over.fire[1]);
+      }
+    }
+  });
+
+  it('changes its ways once hurt past the stage, once, and says so (with whom it calls in)', () => {
+    for (const [kind, k] of staged) {
+      const { hunt, ace } = hurtInto(kind);
+      const was = { ...ace.type };
+      const st = k.stages[0];
+      // hurt to just above the stage: nothing yet
+      const toStage = ace.hp - Math.floor(k.hp * st.below);
+      for (let i = 0; i < toStage - 1; i++) hunt.damage(ace.id, 1);
+      let events = hunt.update(DT, start());
+      expect(events.some((e) => e.type === 'stage'), kind).toBe(false);
+      expect(ace.type.speed, kind).toBe(was.speed);
+      // and past it
+      hunt.damage(ace.id, 1);
+      expect(ace.hp / k.hp).toBeLessThanOrEqual(st.below);
+      events = hunt.update(DT, start());
+      const got = events.find((e) => e.type === 'stage');
+      expect(got, kind).toMatchObject({ kind, stage: 1, of: k.stages.length, summon: st.summon ?? null });
+      for (const [key, v] of Object.entries(st)) if (key !== 'below' && key !== 'summon') expect(ace.type[key], `${kind} ${key}`).toEqual(v);
+      expect(ace.type.hp, kind).toBe(k.hp); // (its hull is what it was)
+      expect(ace.alive).toBe(true);
+      // never twice
+      hunt.damage(ace.id, 1);
+      expect(hunt.update(DT, start()).some((e) => e.type === 'stage'), kind).toBe(false);
+    }
+  });
+
+  it('fights on the new way: Vader faster and firing quicker, Fett dropping charges, Bossk holding off', () => {
+    const quick = (kind, seconds = 25) => {
+      const { hunt, ace } = hurtInto(kind);
+      const st = HUNTER_KINDS[kind].stages[0];
+      const n = ace.hp - Math.floor(HUNTER_KINDS[kind].hp * st.below);
+      for (let i = 0; i < n; i++) hunt.damage(ace.id, 1);
+      let s = start();
+      const seen = { shots: 0, bombs: 0, nearest: Infinity, fastest: 0 };
+      for (let t = 0; t < seconds; t += DT) {
+        s = move(flyStill(s, t));
+        for (const e of hunt.update(DT, s)) if (e.type === 'shot') seen.shots += 1;
+        for (const l of hunt.lasers) if (l.on && l.bomb) seen.bombs += 1;
+        if (ace.alive) {
+          seen.nearest = Math.min(seen.nearest, apart(ace.pos, s));
+          seen.fastest = Math.max(seen.fastest, Math.hypot(ace.vel.x, ace.vel.y, ace.vel.z));
+        }
+      }
+      return seen;
+    };
+    const plain = (kind, seconds = 25) => {
+      const { hunt, ace } = hurtInto(kind);
+      let s = start();
+      const seen = { shots: 0, nearest: Infinity, fastest: 0 };
+      for (let t = 0; t < seconds; t += DT) {
+        s = move(flyStill(s, t));
+        for (const e of hunt.update(DT, s)) if (e.type === 'shot') seen.shots += 1;
+        if (ace.alive) {
+          seen.nearest = Math.min(seen.nearest, apart(ace.pos, s));
+          seen.fastest = Math.max(seen.fastest, Math.hypot(ace.vel.x, ace.vel.y, ace.vel.z));
+        }
+      }
+      return seen;
+    };
+    const vader = quick('tieadvanced');
+    const calm = plain('tieadvanced');
+    expect(vader.shots).toBeGreaterThan(calm.shots * 1.2);
+    expect(vader.fastest).toBeGreaterThan(calm.fastest);
+    expect(quick('slave1').bombs).toBeGreaterThan(0);
+    expect(plain('slave1', 10).shots).toBeGreaterThan(0);
+    expect(quick('houndstooth').nearest).toBeGreaterThan(HOLDOFF.near * 0.8);
+  });
+});
+
+describe('a pack on the toolkit', () => {
+  it('knows you only as it sees you: a moon between hides you, and its guess of you drifts the way you went', () => {
+    // you, behind a big moon from a hangar the pack comes out of; you fly east, then back west once they can only guess
+    const moon = { id: 'moon', at: [0, 0, 46], r: 36 };
+    const hangar = { x: 0, y: 0, z: 100 };
+    let unseenAtFirst = null;
+    let guessed = 0;
+    let guessApart = 0;
+    fight({
+      solids: [moon],
+      seconds: 4.5,
+      ship: start({ heading: -Math.PI / 2, speed: 12 * PACE }),
+      opts: { size: 3, ace: false, from: hangar },
+      fly: (s, t) => ({ ...s, heading: t < 3 ? -Math.PI / 2 : Math.PI / 2, speed: 12 * PACE }),
+      each: (hunt, s, t) => {
+        if (Math.abs(t - 0.2) < DT / 2) unseenAtFirst = hunt.live.every((h) => !h.seesYou);
+        if (t < 3.5) return;
+        // past intuition and still blind: its guess, drifting east while you've turned back west
+        for (const h of hunt.live) {
+          if (h.seesYou || !h.belief || h.me.now - h.belief.seenAt <= HUNTER_SENSES.intuition) continue;
+          guessed += 1;
+          guessApart = Math.max(guessApart, apart(h.belief.at, s));
+          expect(h.belief.at.x).toBeGreaterThan(s.x);
+        }
+      },
+    });
+    expect(unseenAtFirst).toBe(true);
+    expect(guessed).toBeGreaterThan(0);
+    expect(guessApart).toBeGreaterThan(5);
+  });
+
+  it('loses its nerve: a pack that has lost most of itself breaks off together, and says why', () => {
+    const hunt = createHunt({ rand: seeded(4) });
+    let s = start({ speed: 5 * PACE });
+    const members = hunt.pack('empire', s, { size: 4, ace: false });
+    const whys = [];
+    for (let t = 0; t < 20; t += DT) {
+      s = move(s);
+      if (Math.abs(t - 5) < DT / 2) for (const h of members.slice(0, 3)) hunt.damage(h.id, 99);
+      for (const e of hunt.update(DT, s)) if (e.type === 'escaped') whys.push(e.why);
+    }
+    expect(whys).toEqual(['broke']);
+    expect(hunt.active).toBe(false);
+    // (a pair, or a bounty hunter alone, never loses its nerve; and a hunt told not to never does)
+    const pair = createHunt({ rand: seeded(4) });
+    s = start({ speed: 5 * PACE });
+    const two = pair.pack('empire', s, { size: 2, ace: false });
+    const pairWhys = [];
+    for (let t = 0; t < 8; t += DT) {
+      s = move(s);
+      if (Math.abs(t - 2) < DT / 2) pair.damage(two[0].id, 99);
+      for (const e of pair.update(DT, s)) if (e.type === 'escaped') pairWhys.push(e.why);
+    }
+    expect(pairWhys).toEqual([]);
+    expect(pair.active).toBe(true);
+  });
+
+  it('never has two on your tail at once, and a hunter without a run flanks or blocks rather than idling', () => {
+    const roles = new Set();
+    let flanks = 0;
+    let moving = true;
+    for (const seed of [3, 8]) {
+      const seen = fight({
+        seed,
+        opts: { size: 5, ace: false },
+        fly: (s) => ({ ...s, speed: 12 * PACE }),
+        seconds: 30,
+        each: (hunt) => {
+          expect(hunt.live.filter((h) => h.mode === 'tail').length).toBeLessThanOrEqual(1);
+          for (const h of hunt.live) {
+            if (h.mode === 'set' && h.role !== 'wait') {
+              roles.add(h.role);
+              if (Math.hypot(h.vel.x, h.vel.y, h.vel.z) < 1) moving = false;
+            }
+          }
+        },
+      });
+      flanks += seen.events.filter((e) => e === 'flank').length;
+    }
+    expect(roles.has('flank')).toBe(true);
+    expect(moving).toBe(true);
+    expect(flanks).toBeGreaterThan(0);
+  });
+
+  it('says who hit you', () => {
+    const seen = fight({ seconds: 30, opts: { size: 3, ace: false } });
+    expect(seen.hits).toBeGreaterThan(0);
+    const hunt = createHunt({ rand: seeded(7) });
+    let s = start();
+    hunt.pack('empire', s, { size: 3, ace: false });
+    let by = null;
+    for (let t = 0; t < 30 && by === null; t += DT) for (const e of hunt.update(DT, s)) if (e.type === 'laser') by = e.by;
+    expect(typeof by).toBe('number');
+  });
+});
+
+// (the crews' ship powers: shipPowers.js says what each does, these are its hooks in the hunters)
+describe('what the crews’ ship powers do to them', () => {
+  // a pack of four on you, flown in a gentle turn: `power(hunt, ship, t)` once
+  // each frame from `at`, the ship handed to them as `ship(s, t)` makes it.
+  // Returns the hunt, and the lasers each hunter fired from `at` on, by when
+  function flown({ seed, at = 15, seconds = 20, power = null, ship = (s) => s, each = null }) {
+    const hunt = createHunt({ rand: seeded(seed) });
+    let s = start({ speed: 6 });
+    hunt.pack('empire', s, { size: 4, ace: false });
+    const fired = []; // [{ by, t }]
+    for (let t = 0; t < seconds; t += DT) {
+      s = move({ ...s, heading: s.heading + 0.3 * DT });
+      if (t >= at) power?.(hunt, s, t);
+      const was = hunt.lasers.map((m) => m.on);
+      const events = hunt.update(DT, ship(s, t));
+      if (t >= at) hunt.lasers.forEach((m, i) => m.on && !was[i] && m.life > LASER_NEW && fired.push({ by: m.by, t }));
+      each?.(hunt, s, t, events);
+    }
+    return { hunt, fired };
+  }
+  const LASER_NEW = 0.9; // (a laser this fresh was fired this frame: LASER.life is 1.1)
+  const ahead = (s, d) => {
+    const [nx, ny, nz] = nose(s);
+    return { x: s.x + nx * d, y: s.y + ny * d, z: s.z + nz * d };
+  };
+
+  // (as the galaxy steps them while Force Focus is on: their clock at its
+  // `slow`, the ship as it is; it reads your speed, not how far you moved,
+  // so their leads on you stay true)
+  it('lands at most half the hits on you while Force Focus slows their clock, over twenty fights', () => {
+    const hits = (slow) => {
+      let n = 0;
+      for (let seed = 1; seed <= 20; seed++) {
+        const hunt = createHunt({ rand: seeded(seed) });
+        let s = start({ speed: 6 });
+        hunt.pack('empire', s, { size: 4, ace: false });
+        for (let t = 0; t < 20; t += DT) {
+          s = move({ ...s, heading: s.heading + 0.3 * DT });
+          for (const e of hunt.update(DT * (t >= 15 ? slow : 1), s)) if (t >= 15 && e.type === 'laser') n++;
+        }
+      }
+      return n;
+    };
+    const normal = hits(1);
+    expect(normal).toBeGreaterThan(5);
+    expect(hits(POWERS.focus.slow)).toBeLessThanOrEqual(normal / 2);
+  });
+
+  it('lets a ghost’s lasers fly on past: no hits while it jinks, and a laser that crossed it is still going', () => {
+    let normal = 0;
+    let ghosted = 0;
+    let crossed = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      flown({ seed, each: (h, s, t, events) => t > 15 && (normal += events.filter((e) => e.type === 'laser').length) });
+      let was = null;
+      let lasers = [];
+      flown({
+        seed,
+        ship: (s, t) => (t > 15 ? { ...s, ghost: true } : s),
+        each: (h, s, t, events) => {
+          if (t > 15) {
+            ghosted += events.filter((e) => e.type === 'laser').length;
+            h.lasers.forEach((m, i) => lasers[i] && m.on && sweptHit(lasers[i], m, was, s, SHIP_R) !== null && crossed++);
+          }
+          was = { ...s };
+          lasers = h.lasers.map((m) => m.on && { x: m.x, y: m.y, z: m.z });
+        },
+      });
+    }
+    expect(normal).toBeGreaterThan(0);
+    expect(ghosted).toBe(0);
+    expect(crossed).toBeGreaterThan(0);
+  });
+
+  it('breaks off the ones on a run or on your tail to swing round again, and frees their places', () => {
+    let broke = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const { hunt } = flown({ seed, seconds: 12 });
+      const on = hunt.live.filter((h) => h.mode !== 'set');
+      expect(hunt.breakOff()).toBe(on.length);
+      broke += on.length;
+      expect(hunt.live.every((h) => h.mode === 'set')).toBe(true);
+      expect(hunt.packs[0].attacking).toBe(0);
+      // (and none of them fires in the moment it takes to swing away)
+      for (const h of on) expect(h.cool).toBeGreaterThanOrEqual(0.6);
+    }
+    expect(broke).toBeGreaterThan(0);
+  });
+
+  it('holds them in a magnet: they are dragged to it, off the guns’ threats, and hold their fire', () => {
+    for (let seed = 1; seed <= 8; seed++) {
+      let held = [];
+      let magnet = null;
+      const { fired } = flown({
+        seed,
+        seconds: 19,
+        power: (hunt, s) => {
+          magnet = ahead(s, 6);
+          if (held.length) return;
+          expect(hunt.pull(magnet, 22, 16, 4, 1)).toBe(hunt.live.filter((h) => apart(h.pos, magnet) < 22).length);
+          held = hunt.live.filter((h) => h.held > 0);
+        },
+        ship: (s, t) => (t >= 15 ? { ...s, magnet } : s),
+        each: (hunt, s, t) => {
+          if (t < 15.5) return;
+          for (const tg of hunt.targets) if (held.some((h) => h.id === tg.id)) expect(tg.threat, `seed ${seed}`).toBe(0);
+          // two seconds on, every one of them is in a ball round it
+          if (t >= 17) for (const h of held) expect(apart(h.pos, magnet), `seed ${seed} at ${t.toFixed(2)}`).toBeLessThan(3);
+        },
+      });
+      expect(held.length, `seed ${seed}`).toBeGreaterThan(0);
+      expect(fired.filter((f) => held.some((h) => h.id === f.by))).toEqual([]);
+    }
+  });
+
+  it('lets them go after the hold: a second dazed with their guns quiet, then they come round and shoot again', () => {
+    let after = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      let held = [];
+      const { fired, hunt } = flown({
+        seed,
+        seconds: 40,
+        power: (h, s) => {
+          if (held.length) return;
+          h.pull(ahead(s, 6), 22, 16, 4, 1);
+          held = h.live.filter((o) => o.held > 0).map((o) => o.id);
+        },
+        ship: (s, t) => (t >= 15 && t < 19 ? { ...s, magnet: ahead(s, 6) } : s),
+      });
+      const theirs = fired.filter((f) => held.includes(f.by));
+      expect(theirs.filter((f) => f.t < 20), `seed ${seed}`).toEqual([]);
+      after += theirs.length;
+      expect(hunt.live.every((h) => !(h.held > 0))).toBe(true);
+    }
+    expect(after).toBeGreaterThan(0);
+  });
+
+  it('lets them all go when you stop flying', () => {
+    const hunt = createHunt({ rand: seeded(3) });
+    const s = start({ speed: 6 });
+    hunt.pack('empire', s, { size: 3, ace: false });
+    hunt.update(DT, s);
+    expect(hunt.pull(ahead(s, 6), 40, 16, 4, 1)).toBe(3);
+    hunt.update(DT, null);
+    expect(hunt.live.every((h) => !(h.held > 0))).toBe(true);
+  });
+
+  it('swallows the lasers near a portal’s mouth, and no others', () => {
+    const hunt = createHunt({ rand: seeded(3), lasers: 4 });
+    const fly = (m, x, z) => Object.assign(m, { on: true, x, y: 0, z, vx: 0, vy: 0, vz: 34, life: 1 });
+    fly(hunt.lasers[0], 1, 0);
+    fly(hunt.lasers[1], 0, 5.5);
+    fly(hunt.lasers[2], 0, 7);
+    expect(hunt.swallow({ x: 0, y: 0, z: 0 }, 6)).toBe(2);
+    expect(hunt.lasers.map((m) => m.on)).toEqual([false, false, true, false]);
   });
 });

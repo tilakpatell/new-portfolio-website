@@ -2,55 +2,29 @@
 //
 // The asteroid belt, in the gap between the stations' ring and the planets:
 // rocks of three lumpy shapes (each a ball pushed about by noise, so no two
-// faces match), in a band that's thicker in the middle and thins at its
-// edges, greys and browns with a few darker and a few rustier, turning slowly
-// round the sun. Each shape is one instanced draw.
+// faces match) and, one in forty, a bigger cratered boulder, in a band
+// that's thicker in the middle and thins at its edges, greys and browns
+// with a few darker and a few rustier, pitted stone up close (lib/three/rock),
+// turning slowly round the sun. Each shape is one instanced draw.
 //
 // The dust: specks drifting in a box that rides with the camera, so they
 // stream past while you fly (and you can feel how fast you're going), fading
 // in from the box's edges so it never shows. One draw, moved on the GPU.
 //
-// createBelt({ small, band, seed, tones, scale, spin, count }) → { group, rocks, hide(i), show(i), update(t) }
+// createBelt({ small, band, seed, tones, scale, spin, count, tier }) → { group, rocks, hide(i), show(i), update(t) }
 // beltRocks({ small, band, seed, scale, count }) → where each of its rocks is (pure)
-// rock(seed) → a lumpy rock's geometry, about a unit across (meteors.js uses it too)
+// rock(seed, { craters }) → a lumpy rock's geometry, about a unit across
+//   (lib/three/rock; meteors.js uses it too)
 // createDust({ small }) → { points, update(cameraInParent, amount) }
 
 import * as THREE from 'three';
 import { BELT } from './layout';
+import { rng, rock, rockMaterial } from '../../lib/three/rock';
 
-// a deterministic "random", so the belt is the same every visit
-function rng(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+export { rock };
 
-// a lumpy rock: an icosphere with its points pushed in and out by a few
-// waves, squashed a little
-export function rock(seed) {
-  const rand = rng(seed);
-  const g = new THREE.IcosahedronGeometry(1, 1);
-  const pos = g.attributes.position;
-  const waves = Array.from({ length: 5 }, () => [new THREE.Vector3(rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize(), 1.5 + rand() * 3.5, rand() * 6, 0.06 + rand() * 0.1]);
-  const v = new THREE.Vector3();
-  const squash = new THREE.Vector3(1, 0.65 + rand() * 0.3, 0.8 + rand() * 0.25);
-  // the same point on every face that shares it moves the same way
-  for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i).normalize();
-    let k = 1;
-    for (const [dir, f, ph, amp] of waves) k += Math.sin(v.dot(dir) * f + ph) * amp;
-    k -= Math.max(0, v.dot(waves[0][0]) - 0.6) * 0.5; // a flat, broken side
-    v.multiplyScalar(k).multiply(squash);
-    pos.setXYZ(i, v.x, v.y, v.z);
-  }
-  g.computeVertexNormals();
-  return g;
-}
+// one rock in this many is a boulder: twice the size, cratered
+const BOULDER = 40;
 
 const TONES = ['#8b857c', '#6f6a63', '#9a8f80', '#7a6a58', '#5b5550', '#a08466'];
 
@@ -89,17 +63,29 @@ export function beltRocks({ small = false, band = BELT, seed = 1977, scale = 1, 
       rocks.push({ x: Math.cos(a) * r, y, z: Math.sin(a) * r, sx, sy, sz, rx, ry, rz, shape, tone, tint, r: Math.max(sx, sy, sz) * 0.9 });
     }
   });
+  // one in each forty a boulder, picked by a draw of its own (so every other
+  // rock is where it always was)
+  const pick = rng(seed ^ 0xb01d);
+  for (let b = 0; b + BOULDER <= rocks.length; b += BOULDER) {
+    const o = rocks[b + Math.floor(pick() * BOULDER)];
+    o.shape = 3;
+    o.sx *= 2;
+    o.sy *= 2;
+    o.sz *= 2;
+    o.r = Math.max(o.sx, o.sy, o.sz) * 0.9;
+  }
   return rocks;
 }
 
 // `tones`: its rocks' colours; `spin`: radians a second round the sun.
 // hide(i) and show(i) take one of `rocks` out of the ring and put it back
 // (one the ship has smashed)
-export function createBelt({ small = false, band = BELT, seed = 1977, tones = TONES, scale = 1, spin = 0.006, count = 3200 } = {}) {
+export function createBelt({ small = false, band = BELT, seed = 1977, tones = TONES, scale = 1, spin = 0.006, count = 3200, tier = 'high' } = {}) {
   const rocks = beltRocks({ small, band, seed, scale, count, tones: tones.length });
   const group = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, flatShading: true, envMapIntensity: 0.4 });
-  const shapes = [11, 23, 37].map((k) => rock(k + seed - 1977)); // (the home belt's own shapes as they always were; another seed, other shapes)
+  const mat = rockMaterial({ tier });
+  // (the home belt's own shapes as they always were, and its boulder; another seed, other shapes)
+  const shapes = [...[11, 23, 37].map((k) => rock(k + seed - 1977)), rock(53 + seed - 1977, { craters: true })];
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const e = new THREE.Euler();
@@ -108,7 +94,7 @@ export function createBelt({ small = false, band = BELT, seed = 1977, tones = TO
   const c = new THREE.Color();
   const meshes = shapes.map((geo, s) => new THREE.InstancedMesh(geo, mat, rocks.filter((o) => o.shape === s).length));
   const slot = []; // each rock's [mesh, instance]
-  const filled = [0, 0, 0];
+  const filled = [0, 0, 0, 0];
   const place = (i, gone = false) => {
     const o = rocks[i];
     const [mesh, k] = slot[i];

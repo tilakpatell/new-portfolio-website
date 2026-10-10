@@ -22,8 +22,14 @@ import { PROPS as ice, SCATTER as iceScatter } from './ice';
 import { PROPS as forest, SCATTER as forestScatter } from './forest';
 import { PROPS as core, SCATTER as coreScatter } from './core';
 import { PROPS as edge, SCATTER as edgeScatter } from './edge';
+import { PROPS as bespin, SCATTER as bespinScatter } from './bespin';
 import { PROPS as inside } from './inside';
+import { PROPS as insideCore } from './insideCore';
+import { PROPS as insideForest } from './insideForest';
+import { PROPS as insideBespin } from './insideBespin';
+import { PROPS as echo } from './echo';
 import { PROPS as outer, SCATTER as outerScatter } from './outer';
 
-export const PROPS = { ...generic, ...desert, ...ice, ...forest, ...core, ...edge, ...outer, ...inside };
-export const SCATTER = { ...genericScatter, ...desertScatter, ...iceScatter, ...forestScatter, ...coreScatter, ...edgeScatter, ...outerScatter };
+export const PROPS = { ...generic, ...desert, ...ice, ...forest, ...core, ...edge, ...bespin, ...outer, ...inside, ...insideCore, ...insideForest, ...insideBespin, ...echo, bunkerash: edge.bunker };
+// (bunkerash: the moss-free bunker model; built, Scarif's grey bunker, as bunker is)
+export const SCATTER = { ...genericScatter, ...desertScatter, ...iceScatter, ...forestScatter, ...coreScatter, ...edgeScatter, ...bespinScatter, ...outerScatter };

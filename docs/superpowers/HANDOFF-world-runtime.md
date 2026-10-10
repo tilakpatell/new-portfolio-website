@@ -26,12 +26,14 @@ rt.saves     // get, set, remove, session, watch, register
 rt.assets    // texture, gltf, audio, prefetch, retain, release (owned by the module, dropped with it)
 rt.audio     // context(), bus() (a gain per module, faded at unmount), output
 rt.events    // emit(type, data) to the page; useWorld forwards to onEvent({ type, ...data })
+rt.workers   // define(name, make, { size }), request(name, msg, transfer) → reply | null, cancel(name, key), close(name): a pool per name, lowest priority first
+rt.origin    // the floating origin: at, check(pos), toLocal, toWorld, on(fn); moved after a world's anchor() before each step, event 'origin' { shift }
 rt.invalidate(), rt.host, rt.current, rt.status
 rt.handover(module, props, host, { fade, held, after }) → true once the new world draws (false: failed, or something newer came; the old world stays)
              // the old world draws on, seen, until the new one is ready and `after` (its own last moment) is done; its last frame then fades out over it
 ```
 
-A module: `{ id, shading, mb, label?, create(rt, props) → world }` (`label`: what the canvas shows, for a screen reader; the runtime puts it on the canvas as `role="img"`). A world: `{ ready?, resize, step?, draw, wants?, update?, setVisible?, lowerQuality?, warmUp?, handoff?, dispose }`. `fromScene(id, create, { mb })` wraps a `useScene` scene module unchanged.
+A module: `{ id, shading, mb, label?, create(rt, props) → world }` (`label`: what the canvas shows, for a screen reader; the runtime puts it on the canvas as `role="img"`). A world: `{ ready?, resize, step?, draw, wants?, update?, setVisible?, lowerQuality?, warmUp?, handoff?, tune?, dispose }` (`tune() → groups`, `lib/debugPanel`’s: asked once the world is ready when the address has `?debug`, and shown in the one tuning panel under the module’s id; `runtime/debug.js`). `fromScene(id, create, { mb })` wraps a `useScene` scene module unchanged.
 
 The page: `const { host, status, rt } = useWorld(module, { props, onEvent, attempt })` and `<WorldHost world={{ host }} className="...">{hud}</WorldHost>`. Status is `useScene`'s (`loading | ready | on | failed | lost`); the host carries `data-gl="loading|on"`.
 
@@ -72,6 +74,33 @@ Dev hooks: `window.__RUNTIME__` (the runtime) and whatever the world sets (`wind
 
 Then the TSL ports, world by world, smallest first (Earth's globe shader is one `ShaderMaterial`): rewrite each `ShaderMaterial` as a `NodeMaterial` with `three/tsl`, each `onBeforeCompile` as a node (`positionNode`, `colorNode`), each composer as `rt.gfx.post` data; flip the module to `shading: 'nodes'`; `shading.test.js` must stay green; check it in a WebGPU browser **and** with `?gpu=webgl`. Counts today: 130 files with a `ShaderMaterial`, 60 with `onBeforeCompile`, 30 with a composer.
 
+## The worlds' HUDs: the HUD kit
+
+Every world draws its HUD from one kit, `src/runtime/hud/` (`index.js` lists the parts; the rules are in `docs/health/RULES.md`, "The worlds' HUDs"). A world moved onto the runtime keeps its HUD on the kit; a new world starts there.
+
+- **The rules** (`hud.js`, tested in `hud.test.js`): `layoutRows` (the top row, the foot and the thumbs, measured, never a hand sum), `stackUnder`, `titleMode`, `objectiveText`, `promptText`, `othersText`, `layoutCompass`, `markerSize`, `stickRead` (radial, a 0.1 dead zone, reach 44, the knob's 26 px travel), `GAP`.
+- **The parts**, each taking plain values, never a world's objects (`src/runtime` imports nothing from `src/components`): `Hud` (the frame: `brand`, `tools`, `foot`, `thumbs`, `order`), `Menu`/`MenuItem` (the world's settings, `todo` for Things to do, Controls opening the site's guide, `players`, `way` from `worlds.js`'s `wayOut(pathname)`: "Universe map" or "Classic site"), `Prompt` (key first, the button itself on touch), `Exit` (the world's verb or "Leave", with Esc), `Objective`, `Toast`, `Bubble`, `QuestList`, `PlayersChip` ("N others here"), `Stick`, `TouchButton` (76/64/52), `fitCanvas` (a sharp map on a 2× screen).
+- **The look is the world's.** Every kit rule weighs (0,0,1) (`:where(…):not(hud-none)`), so any world class wins; a world skins the parts through its own classes and the `--hud-*` variables on `.hud`. Its title face, number face and colours stay its own.
+- **Tokens** on `:root` once the kit is imported: `--hud-pad`, `--hud-pad-b`, `--hud-pad-l/-r` (the safe areas), `--guide-reserve` and `--guide-clear` (the site's "?" corner), `--hud-min` (0.7 rem), `--touch-primary/action/secondary`, `--z-place`. A frame sets `--hud-under`, `--hud-foot` and `--hud-thumbs` as it measures.
+- **The key cap** is the house one in `src/index.css`: `:where(.hud kbd, kbd.hud-prompt-key, kbd.hud-cap)`. A world never draws a cap of its own (the measure's `kbd-styles` is budgeted); it sets the cap's ink by colour and its face through `--hud-key-face`, `--hud-key-weight`, `--hud-key-border`, `--hud-key-radius` (Dot Matrix's and Minecraft's pixel caps), and tints the guide's `.kbd` through `--border-strong`, `--surface-2`, `--text`.
+- **The rules a HUD keeps:** numbers written to refs in the frame loop, not state; nothing a player reads under 0.7 rem; text over the 3D on glass at 0.78 or more, never blurred; the keys written once, in `src/components/guide/pages.js` (or a world's own small file beside it, `guide/cybertron.js`, `guide/mario64.js`, so its chunk doesn't carry the whole guide); the site's "?" kept clear, or stepping aside while a game plays (`html[data-playing]`, one rule in `extras.css`).
+- **Traps found on the way:** the frame is `pointer-events: none`, so a world card put inside it needs `pointer-events: auto` (Albuquerque's door card took no tap until it had it); a kit part's hardcoded word never replaces a world's own (keep the world's list where `QuestList` says "Go there"); check a phone layout with every value of a changing label.
+- **The measure:** `hud-kit` counts the worlds whose HUD imports nothing from the kit (a world's folder, or its own page: `WORLD_PAGES`), budgeted at today's 1. That one is the Death Star: the trench run is a game inside a scrolling page, its in-frame screen left alone by the audit (finding 27), and the station's inside has its own HUD.
+
+What the kit doesn't have yet, met in the migrations: a label for `QuestList`'s go button and a locked badge; a key slot on the Menu's `todo` entry; a `ref` on `Exit` (a place's focus-on-open back button keeps its own); a `travel` on `Stick` (a world with a bigger knob scales `--sx`/`--sy` in its CSS: Mario 64, Minecraft, music); `TouchButton` sizes other than 76/64/52 (Earth keeps 84 and 56 by CSS).
+
+| HUD | PR |
+|---|---|
+| The kit, its revision 2 | #581, #596 |
+| The towns (TownHud: Middle-earth, Scranton, the Citadel) | #605 |
+| Invincible | #618 |
+| The achievement toast in a world, `hud-kit`, the RULES section | #632 |
+| The kit's key cap into the house `.kbd` file | #633 |
+| Albuquerque, Avengers HQ, C-137 | #634, #635, #641 |
+| Cybertron, Dot Matrix, Earth, the galaxy surface | #645, #646, #647, #649 |
+| The Caribbean, Mario 64, Minecraft, the music room | #651, #655, #658, #660 |
+| The trench run | #662 |
+
 ## Decisions already made (don't reopen)
 
 - Page scenes (ambience, stages, cartridges, the travel globe, the contact plane) stay on `useScene`.
@@ -85,6 +114,7 @@ Then the TSL ports, world by world, smallest first (Earth's globe shader is one 
 | World | Session | Branch | Merged |
 |---|---|---|---|
 | Runtime + Earth | this one | `claude/blissful-galileo-3sbomr` | yes |
+| Every world's HUD onto the HUD kit (above) | stream D | `claude/ui-world-huds-*` | yes (the trench run: #662) |
 
 ## A dev-mode flight check (the pattern)
 

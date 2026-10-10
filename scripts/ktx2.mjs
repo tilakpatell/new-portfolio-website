@@ -21,7 +21,8 @@
 //   node scripts/ktx2.mjs report <file …>          what each texture would
 //                                                  cost and save (changes nothing)
 //   node scripts/ktx2.mjs convert <file …> [--out dir] [--etc1s] [--slots normal,arm]
-//                                                  [--level 2] [--rdo 1] [--quality 200]
+//                                                  [--level 2] [--rdo 1] [--quality 200] [--flip]
+//                                                  (--flip: an image turned for three's UVs, as a sphere's map wants)
 //
 // A file is a .glb (its textures are rewritten in place as KTX2, the rest of
 // the file untouched: meshopt, quantization, materials), or an image
@@ -103,8 +104,13 @@ export const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
 
 // ── encoding ──
 
+// One image to KTX2 (also the planet bakers', scripts/planets/sphere.mjs).
+// `flipY` stores it bottom row first: a KTX2 can't be flipped as it's
+// uploaded, so a map drawn on three's UVs (v up, as a WebP is flipped to)
+// is flipped here instead. (basisu's output isn't the same bytes run to
+// run, even on one thread: a rebake of the same picture differs a little.)
 let BASISU = null;
-async function encodeImage(buffer, { role, etc1s, level, rdo, quality }) {
+export async function encodeImage(buffer, { role, etc1s, level, rdo, quality, flipY = false }) {
   BASISU ??= basisuPath();
   const tmp = await mkdtemp(join(tmpdir(), 'ktx2-'));
   try {
@@ -113,7 +119,7 @@ async function encodeImage(buffer, { role, etc1s, level, rdo, quality }) {
     const img = sharp(buffer);
     const meta = await img.metadata();
     await img.png().toFile(png);
-    execFileSync(BASISU, [...encodeArgs({ role, etc1s, level, rdo, quality }), '-file', png, '-output_file', out], { stdio: 'ignore' });
+    execFileSync(BASISU, [...encodeArgs({ role, etc1s, level, rdo, quality }), ...(flipY ? ['-y_flip'] : []), '-file', png, '-output_file', out], { stdio: 'ignore' });
     return { ktx2: await readFile(out), width: meta.width, height: meta.height };
   } finally {
     await rm(tmp, { recursive: true, force: true });
@@ -185,6 +191,7 @@ function parseArgs(argv) {
     else if (a === '--level') opts.level = Number(argv[++i]);
     else if (a === '--rdo') opts.rdo = Number(argv[++i]);
     else if (a === '--quality') opts.quality = Number(argv[++i]);
+    else if (a === '--flip') opts.flipY = true;
     else opts.files.push(a);
   }
   return opts;

@@ -103,8 +103,19 @@ export const PROPS = {
   },
   // the low wall round the homestead's courtyard pit (beside the hut: put
   // where the hut is, turned with it)
-  homesteadring(k, { pit = 9 } = {}) {
-    return { object: k.build([part(ring(pit + 0.4, 0.35, 48), { at: [0, -0.1, -pit - 6], color: ADOBE_DARK, to: 'adobe' })], { name: 'homesteadring' }) };
+  // (a low rounded lip, its faces up and into the pit: centred on the dug
+  // pit's middle, 15 m behind the hut, sized to its r 6.5)
+  homesteadring(k) {
+    const lip = new THREE.LatheGeometry(
+      [
+        [9.1, 0],
+        [7.5, 0.45],
+        [6.7, 0.3],
+        [6.2, -0.8],
+      ].map(([r, y]) => new THREE.Vector2(r, y)),
+      48,
+    );
+    return { object: k.build([part(lip, { at: [0, -0.1, -15], color: '#d8c9ae', to: 'adobe' })], { name: 'homesteadring' }) };
   },
 
   // a Jawa sandcrawler, 36 m long, rusted, on its treads
@@ -178,9 +189,12 @@ export const PROPS = {
   },
 
   // a Tusken tent: a cone of hides on poles
-  tent(k, { r = 2.4, h = 3 } = {}) {
-    const hide = new THREE.Color('#a08a6a').offsetHSL(0, 0, (k.rand() - 0.5) * 0.1);
-    const parts = [part(new THREE.ConeGeometry(r, h, 9, 1, true).translate(0, h / 2, 0), { color: hide, to: 'cloth' })];
+  // (color: its canvas, for the other worlds' camps; sides 4 for a big
+  // square-cornered tent)
+  tent(k, { r = 2.4, h = 3, sides = 9, color = null } = {}) {
+    const varied = new THREE.Color('#a08a6a').offsetHSL(0, 0, (k.rand() - 0.5) * 0.1);
+    const hide = color ? new THREE.Color(color) : varied;
+    const parts = [part(new THREE.ConeGeometry(r, h, sides, 1, true).translate(0, h / 2, 0), { color: hide, to: 'cloth' })];
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * PI * 2 + 0.3;
       parts.push(rod([cos(a) * r * 0.2, h * 0.85, sin(a) * r * 0.2], [cos(a) * r * 0.5, h + 0.9, sin(a) * r * 0.5], 0.05, 0.04, { color: '#4a3a28', to: 'bark' }));
@@ -204,17 +218,24 @@ export const PROPS = {
 
   // Docking Bay 94: a round walled pit open to the sky, its gate on one side
   dockingbay(k, { r = 15, h = 7 } = {}) {
-    const wall = new THREE.CylinderGeometry(r, r, h, 48, 1, true, 0.35, PI * 2 - 0.7).translate(0, h / 2, 0);
-    const parts = [
-      part(wall, { color: ADOBE, to: 'adobe' }),
-      part(ring(r, 0.45, 48), { at: [0, h, 0], color: ADOBE_DARK, to: 'adobe' }),
-      part(cyl(r - 0.2, r - 0.2, 0.15, 48), { color: '#9a8a70', to: 'stone' }),
-    ];
-    // ribs round its wall, and pipework
+    // one thick wall, seen from in the pit as well as outside: out at r+0.5,
+    // a rounded lip over the top, in at r-0.4 (the gap at +z, as the solids)
+    const profile = [
+      [r + 0.5, 0],
+      [r + 0.5, h - 0.4],
+      [r + 0.1, h + 0.3],
+      [r - 0.4, h - 0.2],
+      [r - 0.4, 0],
+    ].map(([x, y]) => new THREE.Vector2(x, y));
+    const wall = new THREE.LatheGeometry(profile, 48, 0.35, PI * 2 - 0.7);
+    const parts = [part(wall, { color: '#cdb592', to: 'adobe' }), part(cyl(r - 0.4, r - 0.4, 0.15, 48), { color: '#8f7f66', to: 'stone' })];
+    // ribs round its wall, outside and in
     for (let i = 0; i < 14; i++) {
       const a = 0.6 + (i / 13) * (PI * 2 - 1.2);
-      parts.push(part(box(0.6, h, 0.6), { at: [sin(a) * (r + 0.2), 0, cos(a) * (r + 0.2)], rot: [0, a, 0], color: ADOBE_DARK, to: 'adobe' }));
+      for (const rr of [r + 0.6, r - 0.6]) parts.push(part(box(0.6, h, 0.6), { at: [sin(a) * rr, 0, cos(a) * rr], rot: [0, a, 0], color: ADOBE_DARK, to: 'adobe' }));
     }
+    // a gate block either side of the opening, capping the wall's cut ends
+    for (const a of [-0.4, 0.4]) parts.push(part(box(2.4, h + 0.6, 1.6), { at: [sin(a) * r, 0, cos(a) * r], rot: [0, a, 0], color: ADOBE_DARK, to: 'adobe' }));
     // the wall, as solid boxes round the ring (leaving the gate, at +z)
     const solids = [];
     for (let i = 0; i < 22; i++) {
@@ -238,6 +259,20 @@ export const PROPS = {
       part(cyl(0.5, 0.35, 3, 10), { at: [-2.5, 6.5, -2], color: '#8a8478', to: 'metal' }),
     ];
     return { object: k.build(parts, { name: 'cantina' }), solids: [{ circle: [0, 0, 7] }, { circle: [7.5, -2, 3.8] }, { box: [0, 7.2, 2, 2, 0] }] };
+  },
+
+  // Mos Eisley's cantina, the audit lane's remake (catalog/audit.js): the
+  // built one under the model, with the model's walls (the front wall at
+  // z 8.75 with the arched door 2.5 m right of the middle, the dome behind
+  // it, the low wing to the west; Nevarro's town keeps the old cantina)
+  moscantina(k) {
+    return { ...PROPS.cantina(k), solids: [{ box: [1, 0.5, 9, 8.25, 0] }, { box: [-9, -1, 2, 5.5, 0] }] };
+  },
+
+  // Greef Karga's cantina on Nevarro: the built cantina, under the grey copy
+  // of its model
+  nevcantina(k) {
+    return PROPS.cantina(k);
   },
 
   // a market stall: an awning on poles over a counter
@@ -302,32 +337,42 @@ export const PROPS = {
       part(dome(16, 9, 28), { at: [44, 70, 10], color: '#b47d72', to: 'adobe' }),
       part(cyl(10, 12, 26, 24), { at: [-42, 0, 22], color: stone, to: 'adobe' }),
     ];
-    // (its walls as the model's are: the keep a little back of the middle,
-    // the watchtower and the small dome off to the east, the rock to the
-    // west; the gate is palacegate, in front of the keep)
+    // (its walls as the model's are, the audit lane's remake at 75 m: the
+    // keep's drum a little west of the middle, the watchtower and the small
+    // domed annex behind it to the east, the rocks at its west foot; the gate
+    // is palacegate, in front of the keep)
     return {
       object: k.build(parts, { name: 'palace', shadows: false }),
-      solids: [{ circle: [1.5, -7.4, 27] }, { circle: [53, 13, 8] }, { circle: [30, 22, 8] }, { box: [-38, -2, 14, 26, 0] }],
+      solids: [{ circle: [-3.5, 6.5, 20] }, { circle: [17.5, -19.2, 6] }, { circle: [19, -9, 7] }, { box: [-28, 4, 5, 14, 0] }],
     };
   },
   // Jabba's gate: the great door in its block, the ribs over it and the
   // droid's eye on its stalk; the door's face 5 m in front of where it's put
   palacegate(k) {
     const parts = [
-      part(box(20, 22, 10), { at: [0, 0, 0], color: '#bb8379', to: 'adobe' }),
-      part(box(9, 12, 2), { at: [0, 0, 4.2], color: '#3e1a12', to: 'dark' }),
+      // (battered rough-stone sides, not a box)
+      part(
+        loft([
+          { z: -5, pts: trap8(20, 16, 22, 0.6, 11) },
+          { z: 5, pts: trap8(20, 16, 22, 0.6, 11) },
+        ]),
+        { color: '#9d6b60', to: 'adobe' },
+      ),
+      part(box(9, 12, 2), { at: [0, 0, 4.2], color: '#5a3426', to: 'metal' }),
       part(box(9.6, 0.6, 0.6), { at: [0, 12, 5.4], color: '#4a3a2a', to: 'metal' }),
       rod([2.6, 9, 5.2], [2.2, 7.4, 6.6], 0.08, 0.06, { color: '#3a3a36', to: 'metal' }),
       part(new THREE.SphereGeometry(0.32, 12, 10), { at: [2.2, 7.3, 6.7], color: '#5a5a54', to: 'metal' }),
       part(new THREE.SphereGeometry(0.12, 8, 6), { at: [2.2, 7.3, 7.0], color: '#ff2a1a', to: 'glow' }),
     ];
-    for (let i = 0; i < 5; i++) parts.push(part(box(0.3, 12, 0.4), { at: [-3.6 + i * 1.8, 0, 6], color: '#3e3022', to: 'metal' }));
+    // the door's horizontal ribs, and a row of round ports
+    for (const y of [2, 5, 8, 11]) parts.push(part(box(9.4, 0.5, 0.5), { at: [0, y - 0.25, 5.3], color: '#3e3022', to: 'metal' }));
+    for (let i = 0; i < 5; i++) parts.push(part(cyl(0.28, 0.28, 0.12, 12), { at: [-3.2 + i * 1.6, 3.5, 5.25], rot: [PI / 2, 0, 0], color: '#2a1e16', to: 'metal' }));
     return { object: k.build(parts, { name: 'palacegate' }), solids: [{ box: [0, 0, 10, 5, 0] }] };
   },
 
   // the Stone Needle: a spire of rock standing up out of a canyon floor
-  needle(k) {
-    const parts = [part(rockGeometry(31, { sharp: 0.25, flat: 1 }), { scale: [5, 22, 5], color: '#9a6a44', to: 'rock' }), part(rockGeometry(37, { sharp: 0.4 }), { scale: [9, 4, 8], color: '#8e6240', to: 'rock' })];
+  needle(k, { color = '#9a6a44', foot = '#8e6240' } = {}) {
+    const parts = [part(rockGeometry(31, { sharp: 0.25, flat: 1 }), { scale: [5, 22, 5], color, to: 'rock' }), part(rockGeometry(37, { sharp: 0.4 }), { scale: [9, 4, 8], color: foot, to: 'rock' })];
     return { object: k.build(parts, { name: 'needle' }), solids: [{ circle: [0, 0, 2.6] }] };
   },
 

@@ -7,7 +7,9 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useVoiced } from '../../../lib/useVoiced';
 import { CHAPTERS, DIFFICULTY, MARK, WAVES, bossTell, cycle, dodge, lockTarget, newGame, pilot, punch, setInput, startChapter, step } from './rules';
+import { VOICE } from './voicelines';
 import './thinkmark.css';
 
 const load = () => import('./scene');
@@ -43,7 +45,11 @@ function objective(g) {
   return null;
 }
 
-export default function ThinkMark({ fallback }) {
+// `onResult(won)`: how a game ended, for the world's last episode (./world/InvWorld.jsx)
+export default function ThinkMark({ fallback, onResult = null }) {
+  // (the latest one, read when a game ends, so the page can pass a new function each render)
+  const resultRef = useRef(onResult);
+  resultRef.current = onResult;
   const three = use3D();
   const stage = useStage(load, { enabled: three.on, id: 'thinkmark', forced: three.mode === 'on' });
   const { unlock } = useAchievements();
@@ -63,6 +69,7 @@ export default function ThinkMark({ fallback }) {
   const slow = useRef(0);
   const fxState = useRef({ popups: [], hurt: 0, said: 0, lastUi: 0 });
   const [ui, setUi] = useState({ phase: 'title', chapter: 0, hp: MARK.hp, boss: null, objective: '', line: null, combo: 0, score: 0, result: null, loading: false });
+  useVoiced(VOICE[ui.line?.who], ui.line?.text); // in their own voices, where they've been made (lib/voiced.js)
   const [paused, setPaused] = useState(false);
   const playing = ui.phase === 'play';
 
@@ -127,11 +134,13 @@ export default function ThinkMark({ fallback }) {
               }
             }
             important = { result: { ...g.result, newBest: e.type === 'won' && g.score > best } };
+            if (e.type === 'won') resultRef.current?.(true);
             break;
           }
           case 'lost':
             play('alarm');
             important = { result: { ...g.result } };
+            resultRef.current?.(false);
             break;
           default:
         }

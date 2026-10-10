@@ -90,6 +90,13 @@ describe('fromScene', () => {
     expect(emitted).toHaveLength(2);
   });
 
+  it("says when its scene softens through its own post chain, and that reaches the runtime as the module's", () => {
+    const mod = fromScene('galaxy', () => scene(), { ratio: 1.5, sharpness: 'own' });
+    expect(mod).toMatchObject({ ratio: 1.5, sharpness: 'own' });
+    expect(validateModule(mod).sharpness).toBe('own');
+    expect(fromScene('x', () => scene())).not.toHaveProperty('sharpness');
+  });
+
   it('a scene without the optional methods still makes a whole world', async () => {
     const s = { render: () => false, resize() {}, dispose() {} };
     const w = await fromScene('x', () => s).create(rt(), {});
@@ -98,5 +105,13 @@ describe('fromScene', () => {
     expect(() => w.update({})).not.toThrow();
     expect(() => w.lowerQuality(1)).not.toThrow();
     expect(w.handoff()).toBe(null);
+    expect(w.tune).toBeUndefined();
+  });
+
+  it('passes a scene’s tune() through, for the ?debug panel', async () => {
+    const groups = [{ name: 'look', items: [] }];
+    const s = { render: () => false, resize() {}, dispose() {}, tune: vi.fn(() => groups) };
+    const w = await fromScene('x', () => s).create(rt(), {});
+    expect(w.tune()).toBe(groups);
   });
 });

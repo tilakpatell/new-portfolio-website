@@ -5,10 +5,10 @@
 // (plain rules, tested); who they are is npcs/index.js's. The scene voices
 // their events and puts their hits where they land.
 //
-// createNpcs(parent, { fleet, rand }) → { add(npc, at) → id | null,
+// createNpcs(parent, { fleet, rand, memory }) → { add(npc, at) → id | null,
 //   update(dt, t, world) → events (npcRules.js's), hit(from, to, damage) →
 //   { id, kind, at (a Vector3), size, down } | null, targets, live, count,
-//   clear(), dispose() }
+//   clear(), dispose(), bodies (shipHits.js's) }
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
@@ -18,8 +18,8 @@ import { sweptHit } from './targeting';
 
 const TRACER = { speed: 60, length: 0.4 }; // map units a second; how long one's drawn
 
-export function createNpcs(parent, { fleet = createFleet(), rand = Math.random } = {}) {
-  const brains = createBrains({ rand });
+export function createNpcs(parent, { fleet = createFleet(), rand = Math.random, memory = {} } = {}) {
+  const brains = createBrains({ rand, memory }); // (memory: what each character remembers of you, kept by the scene for the visit)
   const views = new Map(); // id → { model, prev, bank }
   const look = new THREE.Vector3();
   const tracerGeo = new THREE.CylinderGeometry(0.012, 0.012, TRACER.length, 5).rotateX(Math.PI / 2);
@@ -37,6 +37,11 @@ export function createNpcs(parent, { fleet = createFleet(), rand = Math.random }
     parent.add(m);
     return m;
   });
+  // one hit by its number, worth `damage`: brains.hit's answer, `at` a Vector3
+  const hitOne = (n, damage) => {
+    const r = brains.hit(n, damage);
+    return r && { ...r, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z) };
+  };
   const drop = (id) => {
     const v = views.get(id);
     if (!v) return;
@@ -121,22 +126,34 @@ export function createNpcs(parent, { fleet = createFleet(), rand = Math.random }
     },
 
     // a shot of yours from `from` to `to` this frame: the one it hit, if any
-    // (an enemy's only: the guns don't shoot friends on purpose)
+    // (anyone drawn: the guns lock on to enemies alone, but a stray shot
+    // hits a friend too, and they remember it)
     hit(from, to, damage = 1) {
       let best = null;
       let first = Infinity;
-      for (const c of brains.targets) {
-        const v = views.get(c.id);
-        if (!v) continue;
-        const k = sweptHit(from, to, v.prev, c.at, c.size * 0.9 + 0.12);
+      for (const me of brains.live) {
+        const v = views.get(me.n);
+        if (!v || me.delegated) continue;
+        const k = sweptHit(from, to, v.prev, me.pos, (me.npc.size ?? 0.4) * 0.9 + 0.12);
         if (k !== null && k < first) {
           first = k;
-          best = c;
+          best = me;
         }
       }
       if (!best) return null;
-      const r = brains.hit(best.id, damage);
-      return r && { ...r, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z) };
+      return hitOne(best.n, damage);
+    },
+    // the ones drawn here as shipHits.js's bodies: an enemy (or one turned
+    // hostile) a foe, a ram on it a shot's hit; anyone else a friend
+    get bodies() {
+      const out = [];
+      for (const me of brains.live) {
+        const v = views.get(me.n);
+        if (!v || me.delegated) continue;
+        const foe = me.npc.role === 'enemy' || me.hostile;
+        out.push({ key: `n:${me.n}`, id: me.n, kind: me.npc.ship, at: me.pos, prev: v.prev, vel: me.vel, size: me.npc.size ?? 0.4, side: foe ? 'foe' : 'friend', hit: foe ? (punch) => hitOne(me.n, punch) : () => null });
+      }
+      return out;
     },
     remove: (id) => {
       brains.remove(id);

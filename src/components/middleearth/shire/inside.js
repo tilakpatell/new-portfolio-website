@@ -10,6 +10,7 @@ import { canvasTexture, hot } from '../../../lib/stage3d';
 import { fbm, makeCanvas, makeNoise, paintPixels } from '../../../lib/paint';
 import { rng } from '../../../lib/texture';
 import { makePerson } from './people';
+import { castDo } from '../cast3d';
 
 export const INSIDE = new THREE.Vector3(0, -60, 0);
 const R = 4.6; // the room's radius
@@ -269,9 +270,10 @@ export function buildInside(renderer, { fx }) {
     // the fire, flickering
     fireLight.intensity = 12 + Math.sin(t * 13) * 1.5 + Math.sin(t * 29) * 1 + S.heat * 6;
     for (let i = 0; i < 2; i++) fx.flame(FIRE_AT, 0.4);
-    // Gandalf leans on his staff and watches
+    // Gandalf leans on his staff and watches (on the cast: watches the Ring)
     gandalf.body.rotation.z = Math.sin(t * 0.8) * 0.03;
     gandalf.head.rotation.y = Math.sin(t * 0.5) * 0.25 - 0.2;
+    castDo(gandalf, { look: ring.visible ? ring : null });
     // where the camera wants to be for this step
     if (step === 'letters') {
       cam.at.set(0.15, 0.85, -R + 2.05);

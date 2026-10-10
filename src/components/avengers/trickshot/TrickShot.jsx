@@ -8,8 +8,10 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useSays } from '../hq/useSays';
 import { BOW, EYE, ROUNDS, STONE_SCORE, draw, drawCap, letDown, newRange, nockTrick, pathAt, shakeOf, speedFor, startRound, stepRange, targetAt, toggleLob } from './rules';
 import { TRICK_COLORS } from './models';
+import { INTROS, SAYS, SPOKEN } from './lines';
 import './trickshot.css';
 import '../../../styles/lazy/avengers.css';
 
@@ -29,12 +31,8 @@ const PITCH = -0.03;
 const hex = (c) => `#${c.toString(16).padStart(6, '0')}`;
 const TRICK_NAMES = { explosive: 'Explosive', emp: 'EMP', split: 'Split' };
 
-// What Clint says at the start of each round.
-const INTROS = [
-  'Three boards at 18, 30 and 45 metres. Put the sight’s pin for the distance on the gold.',
-  'One slides, one swings, and clays come out of the traps. Lead them.',
-  'A board hides behind the hay: press F for a half draw and arc one over. Drones up top.',
-];
+// what Clint says at the start of each round and as it goes (./lines.js), in his own voice where it's been made (lib/voiced.js)
+const VOICED = new Set(SPOKEN);
 
 const dirOf = (yaw, pitch) => ({ x: Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) });
 
@@ -51,6 +49,7 @@ export default function TrickShot({ fallback }) {
   const [ui, setUi] = useState({ phase: 'ready', round: 1, time: ROUNDS[0].time, arrows: ROUNDS[0].arrows, score: 0, total: 0, streak: 0, tricks: [], nocked: null, lob: false, wind: 0, drawing: false, message: '', roundScores: [], result: null });
   const [paused, setPaused] = useState(false);
   const live = ui.phase === 'live';
+  useSays('clint', ui.message, VOICED);
 
   const sync = useCallback((extra = {}) => {
     const g = game.current;
@@ -155,7 +154,7 @@ export default function TrickShot({ fallback }) {
             break;
           case 'dud':
             play('knock');
-            important = { message: 'Draw it further back: that one fell off the string.' };
+            important = { message: SAYS.dud };
             break;
           case 'ring':
             play('thunk');
@@ -179,7 +178,7 @@ export default function TrickShot({ fallback }) {
             important = { message: e.trick ? `${TRICK_NAMES[e.trick]} arrow on the string.` : 'Plain arrow on the string.' };
             break;
           case 'lob':
-            important = { message: e.on ? 'Half draw: the arrow flies slower and arcs higher. F again for a full draw.' : 'Full draw.' };
+            important = { message: e.on ? SAYS.lob : 'Full draw.' };
             break;
           case 'blast':
             play('boom');
@@ -187,7 +186,7 @@ export default function TrickShot({ fallback }) {
             break;
           case 'emp':
             play('sizzle');
-            important = { message: 'EMP. Everything that moves is stuck for four seconds.' };
+            important = { message: SAYS.emp };
             break;
           case 'clay':
             play('pop');
@@ -196,7 +195,7 @@ export default function TrickShot({ fallback }) {
             play('thunk');
             if (!f.walled) {
               f.walled = true;
-              important = { message: 'Into the hay. Press F for a half draw, aim high, and lob it over.' };
+              important = { message: SAYS.wall };
             }
             break;
           case 'roundEnd': {

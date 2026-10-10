@@ -17,17 +17,20 @@
 // With nobody left to fight it forms up on you a while, then peels away,
 // climbing, and goes.
 //
-// createWing({ rand, solids }) → { join(kind, ship, n), update(dt, ship, targets) →
+// createWing({ rand, solids }) → { join(kind, ship, n), update(dt, ship, targets, { grudge }) →
 //   { hits: [{ id, damage, at }], events }, down(id), live, bolts, active,
 //   leaving, fired, clear() }
 // `ship` is yours ({ x, y, z, heading, pitch, speed, vy }); `targets` the
-// hunters' (hunters.targets: [{ id, at, vel, size, threat }]). Events:
+// hunters' (hunters.targets: [{ id, at, vel, size, threat }]); `grudge` the
+// id of the hunter that hit you last, which a wingman goes for first when
+// it's near enough to be a choice (people read revenge as sense). Events:
 // { type: 'joined', kind }, { type: 'leaving' }, { type: 'gone' }.
 
 import { clearOf, fightSpeed, shipVelocity, turnToward } from './hunterRules';
 import { RIGHT, UP, fromAngles, rotate } from './orient';
 import { intercept, nose, sweptHit } from './targeting';
 import { alliesOf } from './sides';
+import { pacedAll } from './ship';
 
 // how each kind of friend flies (sides.js's allies, every side's): top
 // speed, how quick its nose is, seconds between shots (a range), how true
@@ -35,7 +38,20 @@ import { alliesOf } from './sides';
 // (`damage`: a Y-wing's hit hard), how long they form up on you with nobody
 // to fight (`stay`, WING.stay's otherwise) and how long they help before
 // going whatever's on (`tour`: an A-wing strafes and is off)
-export const WING_KINDS = alliesOf(null);
+export const WING_KINDS = {
+  ...alliesOf(null),
+  // (and the galaxy's wars' wings, for whichever side you swore to there:
+  // galaxy/roamRules.js's escorts; nobody's ally on the universe map; at the
+  // ship's pace, as the sides' are)
+  ...pacedAll({
+  tie: { speed: 25, accel: 21, turn: 2.8, fire: [0.8, 1.4], spread: 0.15, size: 0.3, colour: [0.5, 5.5, 0.9] },
+  interceptor: { speed: 29, accel: 25, turn: 3.1, fire: [0.6, 1.1], spread: 0.18, size: 0.32, stay: 3, tour: 20, colour: [0.5, 5.5, 0.9] },
+  arc170: { speed: 22, accel: 18, turn: 2.2, fire: [1.0, 1.7], spread: 0.12, size: 0.46, damage: 2, colour: [5.8, 0.75, 0.55] },
+  delta7: { speed: 30, accel: 26, turn: 3.3, fire: [0.6, 1.0], spread: 0.15, size: 0.3, colour: [5.8, 0.75, 0.55] },
+  vulture: { speed: 24, accel: 20, turn: 2.7, fire: [0.9, 1.6], spread: 0.25, size: 0.3, colour: [6.0, 2.5, 0.5] },
+  trifighter: { speed: 27, accel: 23, turn: 3.0, fire: [0.7, 1.2], spread: 0.2, size: 0.32, colour: [6.0, 2.5, 0.5] },
+  }),
+};
 export const WING = {
   from: 34, // map units behind you they come in from
   slot: [2.6, 0.35, 1.6], // out off your wing, up, back: where one forms up
@@ -81,8 +97,10 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
   const from = { x: 0, y: 0, z: 0 };
 
   // the hunter each goes for: only one coming at you (on a run, or on your
-  // tail: they're covering you, not clearing the sky), the nearest to it,
-  // and not one another of the wing has while there's a choice
+  // tail: they're covering you, not clearing the sky), the nearest to it
+  // (the one that hit you last counted as half as far), and not one
+  // another of the wing has while there's a choice
+  let grudge = null;
   const choose = (w, targets) => {
     let best = null;
     let score = Infinity;
@@ -92,7 +110,7 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
       const dy = t.at.y - w.pos.y;
       const dz = t.at.z - w.pos.z;
       const taken = live.some((o) => o !== w && o.alive && o.target === t.id);
-      const k = Math.sqrt(dx * dx + dy * dy + dz * dz) + (taken ? 1e6 : 0); // (one nobody has, wherever it is, first)
+      const k = Math.sqrt(dx * dx + dy * dy + dz * dz) * (t.id === grudge ? 0.5 : 1) + (taken ? 1e6 : 0); // (one nobody has, wherever it is, first)
       if (k < score) {
         score = k;
         best = t;
@@ -162,7 +180,8 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
       events.push({ type: 'joined', kind });
     },
 
-    update(dt, ship, targets = []) {
+    update(dt, ship, targets = [], { grudge: hitBy = null } = {}) {
+      grudge = hitBy;
       hits.length = 0;
       const ev = events;
       events = spare;

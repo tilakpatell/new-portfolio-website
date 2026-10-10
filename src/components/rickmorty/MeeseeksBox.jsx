@@ -3,21 +3,17 @@ import { useAchievements } from '../Achievements';
 import { useTheme } from '../../theme/ThemeProvider';
 import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
+import { sayVoiced } from '../../lib/voiced';
 import { MeeseeksFace } from './Faces';
+import { MEESEEKS, aloud } from './toys';
 
 // A Meeseeks box: press the button, a Mr. Meeseeks appears (in his own
 // voice), give him a task and he does it (to this page) and is gone. Give him
 // one he can't do and he summons help, and the help summons help.
 
-const HELLO = 'I’m Mr. Meeseeks! Look at me!';
-const STRESS = [
-  'Ooh, a tough one! Let me get some help.',
-  'I’m Mr. Meeseeks. We’re working on it.',
-  'Two strokes. Just two strokes off his game!',
-  'Existence is pain to a Meeseeks, Jerry!',
-  'We’ve been at this for HOURS.',
-  'Everybody’s a Meeseeks. Nobody can do it!',
-];
+const { hello: HELLO, stress: STRESS, done: DONE, letGo: LET_GO } = MEESEEKS;
+// a Meeseeks' line in his voice, where it's been made (lib/voiced.js)
+const voice = (line) => sayVoiced('meeseeks', aloud(line));
 const cue = (name) => import('../games/gameAudio').then((m) => m[name]?.());
 const effect = (name) => import('../../lib/sfx').then((m) => m[name]?.());
 const clip = (id) => import('../../lib/clips').then((m) => m.playClip(id));
@@ -29,7 +25,16 @@ export default function MeeseeksBox() {
   const [line, setLine] = useState('Press the button. One wish each.');
   const [done, setDone] = useState(0);
   const timers = useRef([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const canDo = useRef(null); // his "Can do!" playing, so he says he's done once it's over
+  const gone = useRef(false);
+  useEffect(() => {
+    const pending = timers.current; // (the one list, added to as it goes)
+    gone.current = false;
+    return () => {
+      gone.current = true;
+      pending.forEach(clearTimeout);
+    };
+  }, []);
   const later = (fn, ms) => timers.current.push(setTimeout(fn, ms));
 
   const summon = () => {
@@ -48,6 +53,18 @@ export default function MeeseeksBox() {
     setCrew([]);
     setDone((n) => n + 1);
   };
+  // a task he can do, done, and said so once his "Can do!" is over
+  const doneSaying = (text) => {
+    poof(text);
+    Promise.resolve(canDo.current)
+      .then((h) => h?.ended)
+      .then(() => !gone.current && voice(text));
+  };
+  // all of them, said by them (the tasks they can do have a clip of their own)
+  const letGo = () => {
+    poof(LET_GO);
+    voice(LET_GO);
+  };
 
   const tasks = [
     {
@@ -56,7 +73,7 @@ export default function MeeseeksBox() {
       run: () => {
         pin('portal');
         unlock('wubba');
-        poof('Ooh, can do! *poof*');
+        poof(DONE.green);
       },
     },
     {
@@ -64,7 +81,7 @@ export default function MeeseeksBox() {
       label: 'Take me back to the top',
       run: () => {
         window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-        later(() => poof('All done! *poof*'), 400);
+        later(() => doneSaying(DONE.top), 400);
       },
     },
     {
@@ -79,7 +96,7 @@ export default function MeeseeksBox() {
           later(() => root.classList.remove('meeseeks-shake'), 900);
         }
         effect('drum');
-        later(() => poof('Shaken! *poof*'), 700);
+        later(() => doneSaying(DONE.shake), 700);
       },
     },
     {
@@ -90,7 +107,9 @@ export default function MeeseeksBox() {
         effect('alarm');
         const n = Math.min(7, crew.length + 1);
         setCrew((c) => (c.length >= 7 ? c : [...c, { id: Date.now() + Math.random() }]));
-        setLine(STRESS[Math.min(STRESS.length - 1, n - 1)]);
+        const said = STRESS[Math.min(STRESS.length - 1, n - 1)];
+        setLine(said);
+        voice(said);
       },
     },
   ];
@@ -98,7 +117,7 @@ export default function MeeseeksBox() {
   // a task he can do: "Ooh, yeah! Can do!", then he does it (turning the
   // site green has the portal theme's own line, so he lets that speak)
   const can = (t) => {
-    if (t.id === 'top' || t.id === 'shake') clip('canDo');
+    if (t.id === 'top' || t.id === 'shake') canDo.current = clip('canDo');
     t.run();
   };
 
@@ -133,7 +152,7 @@ export default function MeeseeksBox() {
               </button>
             ))}
             {many && (
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => poof('Ok, we’re done. Everybody *poof*.')}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={letGo}>
                 Let it go
               </button>
             )}

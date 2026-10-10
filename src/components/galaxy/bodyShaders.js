@@ -14,96 +14,12 @@
 // Everything's in linear light: lit ground tops out ~1.0–1.4, the things
 // that glow (lava, city lights) go well past the bloom's 1.7.
 
-// ── Noise ──
-export const NOISE = /* glsl */ `
-uniform vec3 uSeed; // whole numbers: each world reads its own stretch of the noise
-// hashes of lattice points (Dave Hoskins' "hash without sine": IQ's
-// fract(x * y * z) one goes to nothing along whole planes of points, and
-// those show as streaks)
-float hash13(vec3 p) {
-  p = fract((p + uSeed) * 0.1031);
-  p += dot(p, p.zyx + 31.32);
-  return fract((p.x + p.y) * p.z);
-}
-vec3 hash33(vec3 p) {
-  p = fract((p + uSeed) * vec3(0.1031, 0.1030, 0.0973));
-  p += dot(p, p.yxz + 33.33);
-  return fract((p.xxy + p.yxx) * p.zyx);
-}
-// value noise in -1..1 and its gradient (xyz of .yzw)
-vec4 noised(vec3 x) {
-  vec3 i = floor(x);
-  vec3 w = fract(x);
-  vec3 u = w * w * w * (w * (w * 6.0 - 15.0) + 10.0);
-  vec3 du = 30.0 * w * w * (w * (w - 2.0) + 1.0);
-  float a = hash13(i);
-  float b = hash13(i + vec3(1.0, 0.0, 0.0));
-  float c = hash13(i + vec3(0.0, 1.0, 0.0));
-  float d = hash13(i + vec3(1.0, 1.0, 0.0));
-  float e = hash13(i + vec3(0.0, 0.0, 1.0));
-  float f = hash13(i + vec3(1.0, 0.0, 1.0));
-  float g = hash13(i + vec3(0.0, 1.0, 1.0));
-  float h = hash13(i + vec3(1.0, 1.0, 1.0));
-  float k1 = b - a;
-  float k2 = c - a;
-  float k3 = e - a;
-  float k4 = a - b - c + d;
-  float k5 = a - c - e + g;
-  float k6 = a - b - e + f;
-  float k7 = -a + b + c - d + e - f - g + h;
-  return vec4(-1.0 + 2.0 * (a + k1 * u.x + k2 * u.y + k3 * u.z + k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x + k7 * u.x * u.y * u.z),
-              2.0 * du * vec3(k1 + k4 * u.y + k6 * u.z + k7 * u.y * u.z, k2 + k5 * u.z + k4 * u.x + k7 * u.z * u.x, k3 + k6 * u.x + k5 * u.y + k7 * u.x * u.y));
-}
-// value noise alone (cheaper: clouds, colour variation), -1..1
-float noise(vec3 x) {
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
-  return -1.0 + 2.0 * mix(mix(mix(hash13(i), hash13(i + vec3(1.0, 0.0, 0.0)), f.x), mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
-             mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), f.x), mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z);
-}
-// each octave turned (so the lattice never lines up) and doubled
-const mat3 M3 = mat3(0.00, 0.80, 0.60, -0.80, 0.36, -0.48, -0.60, -0.48, 0.64);
-const mat3 M3T = mat3(0.00, -0.80, -0.60, 0.80, 0.36, -0.48, 0.60, -0.48, 0.64);
-// fbm with its gradient; n octaves, the last one faded in by its fraction
-vec4 fbmd(vec3 p, float n, float gain) {
-  float a = 0.5;
-  float v = 0.0;
-  vec3 g = vec3(0.0);
-  mat3 J = mat3(1.0);
-  for (int i = 0; i < 10; i++) {
-    float fi = float(i);
-    if (fi >= n) break;
-    float w = a * clamp(n - fi, 0.0, 1.0);
-    vec4 k = noised(p);
-    v += w * k.x;
-    g += w * (J * k.yzw);
-    p = M3 * p * 2.03;
-    J = J * M3T * 2.03;
-    a *= gain;
-  }
-  return vec4(v, g);
-}
-// two octaves of value noise turned against each other (one alone shows its
-// lattice, squared off, wherever it's cut into lines or coasts)
-vec4 noised2(vec3 p) {
-  vec4 a = noised(p);
-  vec4 b = noised(M3 * p * 1.7 + 7.3);
-  return vec4(0.8 * a.x + 0.55 * b.x, 0.8 * a.yzw + 0.55 * 1.7 * (M3T * b.yzw));
-}
-float fbm(vec3 p, float n) {
-  float a = 0.5;
-  float v = 0.0;
-  for (int i = 0; i < 10; i++) {
-    float fi = float(i);
-    if (fi >= n) break;
-    v += a * clamp(n - fi, 0.0, 1.0) * noise(p);
-    p = M3 * p * 2.03;
-    a *= 0.5;
-  }
-  return v;
-}
-`;
+// ── Noise, the atmosphere's march and its shell: lib/three (noiseGlsl.js,
+// atmosphere.js), shared with the universe map's planets ──
+import { NOISE } from '../../lib/three/noiseGlsl';
+import { ATMO, SHELL_FRAG, SHELL_VERT } from '../../lib/three/atmosphere';
+
+export { NOISE, ATMO, SHELL_FRAG, SHELL_VERT };
 
 // ── The surface: vertex shader ──
 export const SURFACE_VERT = /* glsl */ `
@@ -121,6 +37,7 @@ export const SURFACE_HEAD = /* glsl */ `
 uniform float uTime;
 uniform float uR;
 uniform float uMaxOct;
+uniform float uNearOct;
 uniform float uBump;
 uniform vec3 uCenter;
 uniform mat3 uRot;
@@ -142,8 +59,11 @@ float gNight; // 0 in sunlight .. 1 on the night side
 vec3 gSunObj; // the main sun's direction in the planet's own frame
 float gCloudThick; // how thick the cloud is, here (thicker: brighter tops)
 
-// octaves of an fbm starting at frequency f this pixel can show
-float octs(float f) { return clamp(log2(0.45 / (gFoot * f)), 1.0, uMaxOct); }
+// octaves of an fbm starting at frequency f this pixel can show (and from
+// orbit on a strong device, uNearOct more: the footprint's rule leaves the
+// finest octave at a quarter of a cycle a pixel, soft from a parking orbit;
+// bodies.js's nearOctaves)
+float octs(float f) { return clamp(log2(0.45 / (gFoot * f)) + uNearOct, 1.0, uMaxOct + uNearOct); }
 // 1 while a pattern of frequency f is resolved here, fading to 0 before it'd alias
 float fade(float f) { return 1.0 - smoothstep(0.1, 0.45, gFoot * f); }
 
@@ -225,44 +145,6 @@ float cloudAt(vec3 P, float n) {
 }
 `;
 
-// the atmosphere between the eye and a point: light scattered toward the eye
-// and how much of what's behind gets through. Planet-centred, in radii.
-// uAtmoP = (shell radius, falloff, density, forward glow)
-export const ATMO = /* glsl */ `
-vec3 inscatter(vec3 ro, vec3 rd, float tMax, out float trans) {
-  trans = 1.0;
-  float Ra = uAtmoP.x;
-  float b = dot(ro, rd);
-  float c = dot(ro, ro) - Ra * Ra;
-  float disc = b * b - c;
-  if (disc <= 0.0) return vec3(0.0);
-  float sq = sqrt(disc);
-  float t0 = max(0.0, -b - sq);
-  float t1 = min(tMax, -b + sq);
-  if (t1 <= t0) return vec3(0.0);
-  float dt = (t1 - t0) / 7.0;
-  vec3 sum = vec3(0.0);
-  float od = 0.0;
-  float glow0 = pow(max(dot(rd, uSunDir[0]), 0.0), 12.0) * uAtmoP.w;
-  float glow1 = pow(max(dot(rd, uSunDir[1]), 0.0), 12.0) * uAtmoP.w;
-  for (int i = 0; i < 7; i++) {
-    vec3 p = ro + rd * (t0 + dt * (float(i) + 0.5));
-    float l = length(p);
-    float h = max(l - 1.0, 0.0) / (Ra - 1.0);
-    float dens = exp(-h * uAtmoP.y) * (1.0 - smoothstep(0.85, 1.0, h));
-    vec3 n = p / l;
-    float m0 = dot(n, uSunDir[0]);
-    float m1 = dot(n, uSunDir[1]);
-    vec3 l0 = uSunCol[0] * smoothstep(-0.14, 0.12, m0) * mix(uSunset, vec3(1.0), smoothstep(-0.06, 0.25, m0)) * (1.0 + glow0);
-    vec3 l1 = uSunCol[1] * smoothstep(-0.14, 0.12, m1) * mix(uSunset, vec3(1.0), smoothstep(-0.06, 0.25, m1)) * (1.0 + glow1);
-    sum += dens * (l0 + l1);
-    od += dens;
-  }
-  float k = dt * uAtmoP.z;
-  trans = exp(-od * k * 0.9);
-  return sum * k * uAtmo;
-}
-`;
 
 // ── The families: each a surface(P, s) filling in albedo, relief, water,
 // light of its own, clouds. P is the point on the unit sphere in the
@@ -709,6 +591,84 @@ void surface(vec3 P, inout Surf s) {
 
 const FAMILIES = { desert: DESERT, ice: ICE, lush: LUSH, city: CITY, lava: LAVA, gas: GAS, moon: MOON };
 
+// Up close, the ground wears photo scans (public/cc0/galaxy/: sand, snow,
+// grass, rock…; bodies.js picks two by the look, one for the flat and one
+// for the steep): triplanar on the unit sphere at two sizes, each fading in
+// only once its tiles are big enough on screen not to read as a pattern, so
+// a world skimmed by the ship shows grain, pebbles and cracks, and from
+// orbit nothing changes. The scans' brightness over their mean darkens and
+// lightens the look's own colour (its palette stays), and their normals
+// tilt the light. Not on water, nor on the low tier (no DETAIL).
+// uDetK = (frequency in tiles a radius, colour strength, normal strength, on 0…1)
+const DETAIL = /* glsl */ `
+#ifdef DETAIL
+uniform sampler2D uDetA;
+uniform sampler2D uDetAN;
+uniform sampler2D uDetB;
+uniform sampler2D uDetBN;
+uniform vec2 uDetMean;
+uniform vec4 uDetK;
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+float triLum(sampler2D t, vec3 q, vec3 w) {
+  return dot(texture2D(t, q.yz).rgb, LUMA) * w.x + dot(texture2D(t, q.zx).rgb, LUMA) * w.y + dot(texture2D(t, q.xy).rgb, LUMA) * w.z;
+}
+// the normal map's tilt, carried onto the sphere's axes (a tangential push)
+vec3 triTilt(sampler2D t, vec3 q, vec3 w) {
+  vec2 a = texture2D(t, q.yz).xy * 2.0 - 1.0;
+  vec2 b = texture2D(t, q.zx).xy * 2.0 - 1.0;
+  vec2 c = texture2D(t, q.xy).xy * 2.0 - 1.0;
+  return vec3(0.0, a.x, a.y) * w.x + vec3(b.y, 0.0, b.x) * w.y + vec3(c.x, c.y, 0.0) * w.z;
+}
+void detail(vec3 P, inout Surf s) {
+  float f = uDetK.x;
+  // (none of it from further off: no fetches; its weight's already 0 at that edge)
+  if (uDetK.w <= 0.0 || gFoot * f >= 0.05) return;
+  float k1 = (1.0 - smoothstep(0.012, 0.05, gFoot * f)) * uDetK.w;
+  float k2 = (1.0 - smoothstep(0.012, 0.05, gFoot * f * 6.5)) * uDetK.w;
+  vec3 w = pow(abs(P), vec3(4.0));
+  w /= w.x + w.y + w.z;
+  vec3 Gt = s.grad - P * dot(s.grad, P);
+  float steep = smoothstep(0.18, 0.55, length(Gt));
+  vec3 q1 = P * f;
+  vec3 q2 = P * f * 6.5 + 0.37;
+  float a1 = triLum(uDetA, q1, w) / uDetMean.x;
+  float a2 = triLum(uDetA, q2, w) / uDetMean.x;
+  float b1 = triLum(uDetB, q1 * 0.6, w) / uDetMean.y;
+  float b2 = triLum(uDetB, q2 * 0.6, w) / uDetMean.y;
+  float d1 = mix(a1, b1, steep);
+  float d2 = mix(a2, b2, steep);
+  float land = 1.0 - clamp(s.wet, 0.0, 1.0);
+  float d = mix(1.0, clamp(d1, 0.2, 2.2), k1 * uDetK.y * land) * mix(1.0, clamp(d2, 0.2, 2.2), k2 * uDetK.y * 0.8 * land);
+  s.alb *= d;
+  vec3 tilt = mix(triTilt(uDetAN, q1, w), triTilt(uDetBN, q1 * 0.6, w), steep) * k1 + mix(triTilt(uDetAN, q2, w), triTilt(uDetBN, q2 * 0.6, w), steep) * k2 * 0.7;
+  s.grad -= tilt * uDetK.z * land;
+}
+// From orbit (uNearOct, eased in by bodies.js once the world's over 300
+// pixels tall), a fine grain in the ground's relief, its slope by finite
+// differences (two taps past the one here), so the land catches the sun the
+// way the universe map's planets' normal maps do, and shaded a little by it.
+// Gone again as the scans
+// come in up close, and never on water.
+void nearRelief(vec3 P, inout Surf s) {
+  const float f = 48.0;
+  float land = 1.0 - clamp(s.wet, 0.0, 1.0);
+  float k = clamp((uNearOct - 0.25) / 1.5, 0.0, 1.0) * fade(f) * land * smoothstep(0.012, 0.05, gFoot * uDetK.x) * clamp(uBump / 0.02, 0.2, 1.5);
+  if (k <= 0.0) return;
+  float o = min(octs(f), 3.0);
+  vec3 t1 = normalize(cross(P, abs(P.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+  vec3 t2 = cross(P, t1);
+  float e = 0.25 / (f * exp2(o - 1.0));
+  vec3 q = P * f + 13.7;
+  float h0 = fbm(q, o);
+  float h1 = fbm(q + t1 * (e * f), o);
+  float h2 = fbm(q + t2 * (e * f), o);
+  s.grad += (t1 * (h1 - h0) + t2 * (h2 - h0)) / e * (0.1 / f) * k;
+  // (and a touch in its colour: a canopy's crowns, the grit in the sand,
+  // which show front-lit too, where a slope doesn't)
+  s.alb *= 1.0 + h0 * 0.22 * k;
+}
+#endif`;
+
 // relief, clouds, sunlight (one or two suns), the sea's glint, a faint
 // light on the night side, the look's own light, then the haze
 const SURFACE_MAIN = /* glsl */ `
@@ -724,6 +684,10 @@ void main() {
   gNight = 1.0 - smoothstep(-0.14, 0.1, max(dot(Ng, uSunDir[0]), dot(Ng, uSunDir[1])));
   Surf s = Surf(vec3(0.5), vec3(0.0), 0.0, vec3(0.0), 0.0, 0.0);
   surface(P, s);
+  #ifdef DETAIL
+  if (uNearOct > 0.01) nearRelief(P, s);
+  detail(P, s);
+  #endif
   float thick = 0.0;
   #ifdef CLOUDS
   // (down under them, skimming the ground, they're overhead: only their shadows show)
@@ -773,46 +737,9 @@ void main() {
 // the surface shader for a family, its colour slots named (#define SAND uPal[0]…)
 export function surfaceFrag(family, slots) {
   const names = slots.map((n, i) => `#define ${n.toUpperCase()} uPal[${i}]`).join('\n');
-  return [NOISE, SURFACE_HEAD, CLOUDS, ATMO, names, FAMILIES[family], SURFACE_MAIN].join('\n');
+  return [NOISE, SURFACE_HEAD, CLOUDS, ATMO, names, FAMILIES[family], DETAIL, SURFACE_MAIN].join('\n');
 }
 
-// ── The atmosphere's shell: drawn from inside (back faces), so it's there
-// whether you're out in space (the glow round the limb) or down in it (the
-// sky); the ground hides the part behind the planet ──
-export const SHELL_VERT = /* glsl */ `
-varying vec3 vWorld;
-void main() {
-  vec4 w = modelMatrix * vec4(position, 1.0);
-  vWorld = w.xyz;
-  gl_Position = projectionMatrix * viewMatrix * w;
-}`;
-export const SHELL_FRAG = /* glsl */ `
-uniform float uR;
-uniform vec3 uCenter;
-uniform vec3 uSunDir[2];
-uniform vec3 uSunCol[2];
-uniform vec3 uAtmo;
-uniform vec4 uAtmoP;
-uniform vec3 uSunset;
-uniform float uInner;
-varying vec3 vWorld;
-${ATMO}
-void main() {
-  vec3 ro = (cameraPosition - uCenter) / uR;
-  vec3 rd = normalize(vWorld - cameraPosition);
-  float b = dot(ro, rd);
-  float c = dot(ro, ro) - uInner * uInner;
-  float disc = b * b - c;
-  float tMax = 1e4;
-  if (disc > 0.0) {
-    float t = -b - sqrt(disc);
-    if (t > 0.0) tMax = t;
-  }
-  float tr;
-  vec3 col = inscatter(ro, rd, tMax, tr);
-  gl_FragColor = vec4(col, 1.0);
-  #include <colorspace_fragment>
-}`;
 
 // ── Scarif's shield: a faint blue shell of hexagons, brighter edge-on ──
 export const SHIELD_VERT = /* glsl */ `
@@ -829,6 +756,8 @@ void main() {
 export const SHIELD_FRAG = /* glsl */ `
 uniform float uShield;
 uniform float uTime;
+uniform float uHit; // a ship's bump into it: 1 as it lands, dying away
+uniform vec3 uHitAt; // where, on the unit sphere (object space)
 varying vec3 vObj;
 varying vec3 vWorld;
 varying vec3 vN;
@@ -859,6 +788,16 @@ void main() {
   float fres = pow(1.0 - abs(dot(normalize(vN), V)), 3.0);
   float shimmer = 0.75 + 0.25 * sin(uTime * 1.7 + dot(P, vec3(9.0, 13.0, 7.0)));
   vec3 col = vec3(0.3, 0.6, 1.0) * (0.003 + edge * (0.07 + glint) * shimmer * (0.4 + fres) + fres * 0.08 + glint * 0.03) * uShield;
+  // the bump: a flash where the ship hit, the cells round it lit up, and a
+  // ring running out from it across the shell as the flash dies
+  if (uHit > 0.001) {
+    float ang = acos(clamp(dot(P, uHitAt), -1.0, 1.0));
+    float age = 1.0 - uHit;
+    float ring = 1.0 - smoothstep(0.0, 0.05 + age * 0.08, abs(ang - age * 0.9));
+    float flash = exp(-ang * 14.0) * uHit;
+    float cells = exp(-ang * 5.0) * edge * 6.0 * uHit;
+    col += vec3(0.55, 0.8, 1.0) * (flash * 1.6 + ring * uHit * 0.9 + cells) * uShield;
+  }
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;

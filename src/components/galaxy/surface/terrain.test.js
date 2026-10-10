@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HALF, heightGrid } from './terrain';
+import { HALF, heightGrid, makeHeight } from './terrain';
 
 describe('the ground outside the walkable square', () => {
   // a land whose height is easy to know: rising 1 m every 10 m east
@@ -21,5 +21,43 @@ describe('the ground outside the walkable square', () => {
   it('holds the edge past the end of the grid', () => {
     const edge = g.lines[g.lines.length - 1];
     expect(g.heightAt(edge + 5000, 0)).toBeCloseTo(edge / 10, 3);
+  });
+});
+
+describe('the fine relief at ultra', () => {
+  const ground = { seed: 4, layers: [{ type: 'swell', scale: 300, height: 8 }], flats: [{ at: [0, 0], r: 30 }, { at: [200, -120], r: 18, h: 3 }] };
+  const plain = makeHeight(ground);
+  const fine = makeHeight(ground, { relief: 1 });
+  const pts = Array.from({ length: 400 }, (_, i) => [((i * 97) % 1200) - 600, ((i * 61) % 1200) - 600]);
+
+  it('changes nothing when it is off', () => {
+    const off = makeHeight(ground, { relief: 0 });
+    for (const [x, z] of pts) expect(off(x, z)).toBe(plain(x, z));
+  });
+
+  it('adds under a metre of small hollows and rises off the flats', () => {
+    let moved = 0;
+    for (const [x, z] of pts) {
+      const d = Math.abs(fine(x, z) - plain(x, z));
+      expect(d).toBeLessThan(0.6);
+      if (d > 0.02) moved++;
+    }
+    expect(moved).toBeGreaterThan(pts.length / 2);
+  });
+
+  it('leaves the flats level', () => {
+    for (const f of ground.flats) {
+      const c = fine(f.at[0], f.at[1]);
+      for (let a = 0; a < 6.28; a += 0.5) expect(fine(f.at[0] + Math.cos(a) * f.r * 0.9, f.at[1] + Math.sin(a) * f.r * 0.9)).toBeCloseTo(c, 6);
+    }
+    expect(fine(200, -120)).toBeCloseTo(3, 6);
+  });
+
+  it('draws one surface across the edge of the walkable square at twice the grid', () => {
+    const g = heightGrid(fine, { n: 512, grow: 1.04 });
+    for (const z of [-300, 0, 410]) {
+      const step = Math.abs(g.heightAt(HALF - 0.01, z) - g.heightAt(HALF + 0.01, z));
+      expect(step).toBeLessThan(0.05);
+    }
   });
 });

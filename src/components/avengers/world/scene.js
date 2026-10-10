@@ -24,6 +24,12 @@ import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { instanced } from '../hq/kit/instanced';
 import { logoTexture, scatter, trees } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
+import { createFeel, feelGroups } from '../hq/feel';
+import { createSpring, springGroups } from '../../../lib/spring';
+import { device } from '../../../lib/device';
+import { createDust } from '../../../lib/three/dust';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createLawnProps } from './lawnProps';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
 import { buildShield } from '../ricochet/models';
 import { buildCape, buildMjolnir, buildPortal, craterTexture } from '../lawn/models';
@@ -39,7 +45,12 @@ import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { groundWorld } from '../../../lib/three/groundwork';
-import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, gaitFor, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
+import { turn as easeTurn } from '../../../lib/three/gait';
+import { LIFE, createCastLife } from './castLife';
+import { createCastBody, createLook, poseKit } from './castBody';
+import { centredClips } from './borrow';
+import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, GAIT, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, gaitFor, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
+import { LOOK } from './look';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -391,7 +402,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // (the glow only for what's past lit paint: a white wall full in the sun
   // comes to about 1.3, and at the old 1.2 the training center's front was a
   // slab of light; the glows, the lintels and the beams are well over)
-  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.36, radius: 0.5, threshold: 1.55, knee: 0.9 }, onLost });
+  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: LOOK.bloom, onLost });
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
   const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
@@ -1200,11 +1211,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       }
     } else if (air) d.play(rising ? 'run' : 'walk', { speed: 0.6 });
     else {
-      // each clip paced to his speed, so his feet keep to the ground
+      // each clip paced to his speed, so his feet keep to the ground (the
+      // walk and the run change over where both paces are in their range)
       const gait = gaitFor(d.playing, speed);
+      const { walk, run } = GAIT.rates;
       if (gait === 'idle') d.play('idle');
-      else if (gait === 'walk') d.play('walk', { speed: Math.max(0.6, Math.min(2.2, speed / MOVES.speeds.walk)) });
-      else d.play('run', { speed: Math.max(0.8, Math.min(2.4, speed / MOVES.speeds.run)) });
+      else if (gait === 'walk') d.play('walk', { speed: Math.max(walk[0], Math.min(walk[1], speed / MOVES.speeds.walk)) });
+      else d.play('run', { speed: Math.max(run[0], Math.min(run[1], speed / MOVES.speeds.run)) });
     }
   };
   const moves = MOVES && spidey ? clipsFor(spidey.model, MOVES.clips) : null;
@@ -1296,12 +1309,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   let gone = false; // disposed: what's still loading isn't wanted
   const SCALE = { thor: 1.05, widow: 1.0, hulk: 1.35, bot: 0.92 };
   const people = {};
-  for (const c of CAST) {
+  for (const [i, c] of CAST.entries()) {
     const h = buildHumanoid({ style: c.style, materials: MATS[c.style], scale: SCALE[c.style] });
     h.root.position.set(c.x, 0, c.z);
     h.root.rotation.y = c.face + Math.PI / 2;
     scene.add(h.root);
-    const person = { h, c, yaw: c.face + Math.PI / 2, phase: c.x * 0.37 };
+    // what each is up to (./castLife.js), shown by the kit figure until the real one's here (./castBody.js)
+    const person = { h, c, yaw: c.face + Math.PI / 2, phase: c.x * 0.37, life: createCastLife(c, { seed: i + 1 }), kit: {}, ended: null, body: null };
     if (c.style === 'thor') {
       const capeMat = await pbr('carbon', { repeat: [2, 3], small, roughness: 0.9, metalness: 0, color: 0x8c1414, side: THREE.DoubleSide });
       person.cape = buildCape(capeMat);
@@ -1317,7 +1331,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   const swapIn = async (p) => {
     const t = await loadPerson(AVENGERS_MODELS[MODEL_OF[p.c.style]]);
     if (gone || engine.lost) return;
-    const m = person(t);
+    // (its own clips stood where it rests: Thor's and Natasha's idles stand a metre aside of their walks)
+    const m = person({ ...t, clips: centredClips(t) });
     m.root.position.copy(p.h.root.position);
     m.root.rotation.y = p.yaw;
     m.root.visible = false;
@@ -1329,6 +1344,11 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     m.root.visible = true;
     p.h.root.visible = false;
     p.model = m;
+    // its body: its own clips and the library's made for it, all it'll want
+    // asked for now (a few tens of kB each), the ones it wants first first
+    p.body = createCastBody(m, t, { yaw: p.yaw });
+    const L = LIFE[p.c.id];
+    if (L) p.body.need([...L.train.map((e) => e.clip), L.greet, L.land, ...L.fidgets, L.talk, ...L.lines, L.won, ...L.after]);
     ground?.track(m.root, p.c.style === 'hulk' ? [1.7, 1.7] : [0.9, 0.9]);
   };
   (async () => {
@@ -1371,15 +1391,32 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // The armour: on him while he's suited up, leaning into its speed and
   // banking into its turns, its boots' repulsors lit; otherwise back to its
   // plinth, flying there if it's away.
+  // (its own bank, from how fast its heading turns, and a hover's bob)
+  const AR = { roll: 0, hx: null, hz: null, t: 0 };
   const placeArmour = (h, dt) => {
     if (!armour) return;
     const r = armour.root;
     if (h.mode === 'suit') {
       const speed = Math.hypot(h.vx, h.vz);
-      r.position.set(h.x, h.y, h.z);
-      armourE.set(Math.min(1.15, (speed / SUIT.top) * 1.3) - Math.max(-0.25, Math.min(0.25, h.vy * 0.015)), h.face + Math.PI / 2, -R.roll * 1.4);
+      // banked into its turns (into a right turn, its right side down), as far as about 35°
+      let bank = 0;
+      if (speed > 2 && AR.hx != null && dt > 0) {
+        const turn = Math.atan2(AR.hx * h.vz - AR.hz * h.vx, AR.hx * h.vx + AR.hz * h.vz);
+        bank = THREE.MathUtils.clamp((turn / dt) * Math.min(1, speed / 10) * 0.35, -0.6, 0.6);
+      }
+      AR.hx = speed > 1 ? h.vx / speed : null;
+      AR.hz = speed > 1 ? h.vz / speed : null;
+      AR.roll += (bank - AR.roll) * (1 - Math.exp(-dt * 4));
+      // held up on its repulsors when it's slow and off the ground: a slow
+      // rise and fall and a sway, out of step with each other
+      AR.t += dt;
+      const hover = (1 - Math.min(1, speed / 4)) * (h.y - floorAt(h.x, h.z, h.y) > 0.3 ? 1 : 0);
+      const bob = Math.sin(AR.t * 2.1) * 0.06 * hover;
+      const sway = Math.sin(AR.t * 1.3 + 0.7) * 0.05 * hover;
+      r.position.set(h.x, h.y + bob, h.z);
+      armourE.set(Math.min(1.15, (speed / SUIT.top) * 1.3) - Math.max(-0.25, Math.min(0.25, h.vy * 0.015)) + sway * 0.4, h.face + Math.PI / 2, AR.roll + sway);
       armourQ.setFromEuler(armourE);
-      r.quaternion.slerp(armourQ, Math.min(1, dt * 8));
+      r.quaternion.slerp(armourQ, 1 - Math.exp(-dt * 8));
       if (!calm) {
         // the boots' repulsors: a flame from each, harder the harder it's pushing
         const push = 0.5 + Math.min(1, speed / 12) + Math.max(0, h.vy) * 0.08;
@@ -1390,8 +1427,10 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       }
     } else if (r.position.distanceToSquared(PLINTH) > 1e-4) {
       // home to the plinth, and stood up straight on it
-      r.position.lerp(PLINTH, Math.min(1, dt * 2.2));
-      r.quaternion.slerp(plinthQ, Math.min(1, dt * 3));
+      AR.hx = AR.hz = null;
+      AR.roll = 0;
+      r.position.lerp(PLINTH, 1 - Math.exp(-dt * 2.2));
+      r.quaternion.slerp(plinthQ, 1 - Math.exp(-dt * 3));
       if (r.position.distanceToSquared(PLINTH) < 1e-4) {
         r.position.copy(PLINTH);
         r.quaternion.copy(plinthQ);
@@ -1439,6 +1478,13 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // ── the camera ──
   const A = { at: new THREE.Vector3(), look: new THREE.Vector3(), hx: 0, hz: 0, intro: calm ? 0 : 1, gait: 0, landed: 1, flash: 0, started: false, aim: null, aimN: 0, aimed: false, perch: null, hand: new THREE.Vector3(), dist: 0, fov: 52, punch: 0, floor: 0, ly: 0, arc: 0, lx: 0, lz: 0, bank: 0 };
   const swing = createSwing(scene, { calm });
+  // the fov's punch through the house's feel (lib/three/feel.js): eased out
+  // by its τ, and none under reduced motion; its numbers on ?debug
+  const feel = createFeel({ calm, baseFov: 52 });
+  // his landing's squash (the game-feel design's Tier 2): a spring kicked by
+  // how hard he came down, rung out about his feet, never more than 0.3
+  const squash = createSpring({ k: 120, c: 8, max: 0.3 });
+  engine.tune([...feelGroups(feel), ...springGroups(squash, 'squash')], 'compound');
   const flags = createFlags(scene);
   const rings = createRings(scene);
   const packs = createPacks(scene);
@@ -1590,9 +1636,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
 
   // Spider-Man's stride: a stride (two steps) every 1.5 m walking, 3.2 m flat
   // out, so his feet keep to the ground; off it, knees up; he dips at each step
-  const placeSpidey = (h, dt) => {
+  // his head to whoever's talking to him, while their bubble's up and he's on his feet
+  const spideyLook = spidey ? createLook(spidey.bones.head, spidey.spine.at(-1) ?? null) : null;
+  const talkerAt = new THREE.Vector3();
+  const spideyAhead = new THREE.Vector3();
+  const placeSpidey = (h, dt, say = null) => {
     const speed = Math.hypot(h.vx, h.vz);
     const off = posedOff(h);
+    spideyLook.restore();
     R.w += ((off ? 1 : 0) - R.w) * Math.min(1, dt * (off ? 16 : 7));
     // the web hand: the one on the anchor's side
     if (h.web?.hand) R.arm = h.web.hand;
@@ -1627,6 +1678,11 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       // in close to the wall
       hero.position.set(h.x - h.wall.nx * 0.16, h.y + spidey.hipHeight, h.z - h.wall.nz * 0.16);
     } else hero.position.set(h.x, h.y + spidey.hipHeight * (h.land > 0 || h.mode === 'perch' ? 0.62 : 1), h.z);
+    // (the squash on his feet only: off them it's let go)
+    const sq = h.mode === 'ground' ? squash.step(dt) : 0;
+    if (h.mode !== 'ground') squash.reset();
+    hero.scale.set(1 + sq / 2, 1 - sq, 1 + sq / 2);
+    if (sq) hero.position.y -= spidey.hipHeight * sq;
     bankFor(h, dt);
     const q = holderAt(h);
     if (!R.placed || R.w < 0.01) hero.quaternion.copy(q);
@@ -1642,14 +1698,19 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       else ry = h.trick.dir * Math.PI * 2 * k;
     }
     spidey.body.rotation.set(rx, ry, 0);
+    const talker = say && h.mode === 'ground' && !h.air && !rx && !ry ? people[say.id] : null;
+    const head = talker && (talker.body ? talker.body.head : talker.h.bones.head);
+    if (head) head.getWorldPosition(talkerAt);
+    spideyAhead.set(0, 0, 1).applyQuaternion(hero.quaternion);
+    spideyLook.update(dt, Math.atan2(spideyAhead.x, spideyAhead.z), head ? talkerAt : null, hero);
   };
 
-  const placeHero = (h, dt) => {
+  const placeHero = (h, dt, say = null) => {
     // in the armour, it's him: Spider-Man is out of sight (and the armour's away from its plinth)
     hero.visible = h.mode !== 'suit' || !armour;
     placeArmour(h, dt);
     if (spidey) {
-      placeSpidey(h, dt);
+      placeSpidey(h, dt, say);
       return;
     }
     hero.position.set(h.x, h.y, h.z);
@@ -1679,52 +1740,36 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     }
   };
 
+  // Thor, Natasha, the Hulk and the bot: each one's life (./castLife.js)
+  // stepped and drawn (./castBody.js). They greet him on foot, on the lawn
+  // (not on a roof), and look at his head, or up at the portal opening.
+  const heroHead = new THREE.Vector3();
+  const portalAt = new THREE.Vector3(PORTAL.x, PORTAL.y, PORTAL.z);
   const placePeople = (s, dt) => {
     const h = s.hero;
+    const low = h.mode === 'ground' && h.y < 1.5;
+    heroHead.set(h.x, h.y + (h.mode === 'suit' ? 1.6 : 1.55), h.z);
+    const done = s.done ?? [];
     for (const id of Object.keys(people)) {
       const p = people[id];
-      const d = Math.hypot(h.x - p.c.x, h.z - p.c.z);
-      // they turn to whoever comes up to them
-      let want = p.c.face + Math.PI / 2;
-      if (d < 9) want = Math.atan2(h.x - p.c.x, h.z - p.c.z);
-      let dy = want - p.yaw;
-      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-      p.yaw += dy * Math.min(1, dt * 2.5);
-      p.h.root.rotation.y = p.yaw;
-      if (p.model) {
-        p.model.root.rotation.y = p.yaw;
-        p.model.update(dt);
+      const body = p.life.step(dt, {
+        t: clock,
+        hero: { x: h.x, z: h.z, low },
+        say: s.say?.id === p.c.id ? s.say.line : null,
+        won: Boolean(p.c.after && done.includes(p.c.after.place)),
+        ended: p.ended,
+      });
+      const look = body.look === 'hero' ? heroHead : body.look === 'portal' ? portalAt : null;
+      if (p.body) {
+        p.ended = p.body.update(dt, body, look);
+        p.yaw = p.body.yaw;
+        p.h.root.rotation.y = p.yaw;
         continue;
       }
-      poseHumanoid(p.h, { t: clock, mode: 'idle', phase: p.phase });
-      const b = p.h.bones;
-      b.chest.rotation.x = Math.sin(clock * 1.4 + p.phase) * 0.025;
-      b.head.rotation.y = Math.sin(clock * 0.5 + p.phase) * 0.2 * (d < 9 ? 0.2 : 1);
-      if (p.c.style === 'hulk') {
-        // fists at his sides, shoulders heaving
-        b.shoulderL.rotation.set(0.1, 0, 0.32 + Math.sin(clock * 1.1) * 0.03);
-        b.shoulderR.rotation.set(0.1, 0, -0.32 - Math.sin(clock * 1.1) * 0.03);
-        b.elbowL.rotation.set(-0.5, 0, 0);
-        b.elbowR.rotation.set(-0.5, 0, 0);
-      } else if (p.c.style === 'thor') {
-        // arms folded, waiting to see who's worthy
-        b.shoulderL.rotation.set(-0.7, 0.3, 0.25);
-        b.shoulderR.rotation.set(-0.7, -0.3, -0.25);
-        b.elbowL.rotation.set(-1.7, 0, 0);
-        b.elbowR.rotation.set(-1.7, 0, 0);
-        p.cape?.update(clock, { wind: 0.5 });
-      } else if (p.c.style === 'widow') {
-        // a hand on her hip
-        b.shoulderL.rotation.set(0.05, 0, 0.55);
-        b.elbowL.rotation.set(-1.4, 0.4, 0);
-        b.shoulderR.rotation.set(0.05, 0, -0.1);
-        b.elbowR.rotation.set(-0.2, 0, 0);
-        b.hips.rotation.z = 0.05;
-      } else {
-        b.shoulderL.rotation.set(0, 0, 0.12);
-        b.shoulderR.rotation.set(0, 0, -0.12);
-        b.head.rotation.y = Math.sin(clock * 0.9 + p.phase) * 0.6;
-      }
+      p.yaw = easeTurn(p.yaw, body.face, dt, 2.5);
+      p.h.root.rotation.y = p.yaw;
+      p.ended = poseKit(p.h, p.c.style, body, { t: clock, dt, phase: p.phase, look, yaw: p.yaw, state: p.kit });
+      if (p.c.style === 'thor') p.cape?.update(clock, { wind: 0.5 });
     }
   };
 
@@ -1758,7 +1803,10 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     cloudU.value.set(clock * 0.01, clock * -0.006);
     waterN.offset.set(clock * 0.006, clock * 0.009);
     placeJet(clock + 6, dt);
-    placeHero(s.hero, dt);
+    placeHero(s.hero, dt, s.say);
+    // the lawn's props, moved by the engine where it's loaded, and their knocks heard
+    lawnProps?.step(dt, s.hero);
+    knocks.update(dt);
     placePeople(s, dt);
     ghosts.update(s.travellers ?? [], clock, dt);
     placeMarkers(s);
@@ -1780,7 +1828,10 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     uru.emissiveIntensity = Math.max(0, 1 - dh / 6) * (0.4 + 0.3 * Math.sin(clock * 6));
 
     // the portal: opens once, then turns to face you
+    const shut = portalOpen === 0;
     portalOpen = Math.min(1, Math.max(0, portalOpen + (s.portal ? dt * 0.6 : -dt)));
+    // (opening while he's about, not as the page comes up with it open: they look up at it)
+    if (shut && portalOpen > 0 && clock > 4) for (const p of Object.values(people)) p.life.event('portal');
     portal.mesh.visible = portalBeam.visible = portalOpen > 0;
     if (portalOpen > 0) {
       portal.mat.uniforms.uTime.value = clock;
@@ -1826,6 +1877,12 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     // further back the faster he goes, and wider
     A.dist += ((flying ? Math.min(4.5, speed * 0.11) : h.mode === 'wall' ? 2.2 : 0) - A.dist) * damp(2.5);
     const dist = (s.camDist ?? 7.5) + A.dist;
+    // (a punch the events asked for goes to the feel, at the settings' shake:
+    // up to it, as the max it was, not added on)
+    if (A.punch > 0) {
+      feel.punch(Math.max(0, A.punch * (s.shake ?? 1) - feel.state().fov));
+      A.punch = 0;
+    }
     const fov = 52 + (flying ? Math.min(13, Math.max(0, speed - 11) * 0.45) : 0) + A.punch * (s.shake ?? 1);
     A.fov += (fov - A.fov) * damp(4);
     A.punch = Math.max(0, A.punch - dt * 9);
@@ -1833,6 +1890,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       camera.fov = A.fov;
       camera.updateProjectionMatrix();
     }
+    feel.setBaseFov(A.fov);
+    feel.update(dt, camera);
     // a little over his head, so the buildings and the sky get the screen, not
     // the grass: his own height, but only some of a hop's (it would bob the view)
     if (h.mode === 'ground') A.floor = h.y;
@@ -1945,6 +2004,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       A.flash = 1.2;
       vfx.ring(v3.set(PORTAL.x, 0.3, PORTAL.z), { color: 0x9fdcff, from: 1, to: 14, life: 0.8 });
     } else if (type === 'land') {
+      // a hard one beside them gets a look and a reaction (./castLife.js)
+      for (const p of Object.values(people)) p.life.event('land', { x: d.x, z: d.z, impact: d.impact ?? 0 });
+      squash.kick((d.impact ?? 0) * 0.05);
       const hard = Math.max(0, Math.min(1, ((d.impact ?? 0) - 9) / 14));
       if (!calm) vfx.smoke(v3.set(d.x, (d.y ?? 0) + 0.1, d.z), { size: 1.2 + hard * 2.2, count: 5 + Math.round(hard * 10), life: 0.7 + hard * 0.6, rise: 0.4 + hard * 0.5, opacity: 0.25 + hard * 0.15, color: 0xb8b4a4, to: 0xd8d4c4, spread: 0.8 + hard * 2.4 });
       if (hard > 0.3) {
@@ -2036,11 +2098,26 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     auto: true,
   });
 
+
+  // ── things to knock over (the game-feel design's Tier 3): slaloms of
+  // cones, crates and a barrel on the lawn (./lawnProps.js), each knock a
+  // thud by how hard, from where it was (lib/three/impacts), a puff of the
+  // lawn's dust there and a nudge of the feel ──
+  const knockDust = createDust({ count: 48, colour: 0xb8b4a4, size: 0.9 });
+  scene.add(knockDust.mesh);
+  const ear = new THREE.Vector3();
+  const knocks = wireImpacts({
+    dust: knockDust,
+    shake: feel.trauma,
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
+  });
+  const lawnProps = await createLawnProps({ parent: scene, dev: device(), impacts: knocks }).catch(() => null);
   return {
     engine,
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
+    prepare: engine.prepare, // (everything sent to the graphics chip before it's seen: hq/engine)
     fx,
     screenOf,
     resize: (w, h) => engine.resize(w, h),
@@ -2058,11 +2135,16 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     dispose() {
       gone = true;
       ground?.dispose();
-      for (const p of Object.values(people)) p.model?.dispose();
+      for (const p of Object.values(people)) {
+        p.body?.dispose();
+        p.model?.dispose();
+      }
       ghosts.dispose();
       moves?.dispose();
       spidey?.dispose();
       swing.dispose();
+      lawnProps?.dispose();
+      knocks.dispose();
       flags.dispose();
       grass?.dispose();
       rings.dispose();

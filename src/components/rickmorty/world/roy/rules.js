@@ -27,6 +27,21 @@ export const STAGE_INFO = {
   finale: { title: 'Back to work', offgrid: 'The woods', from: 46, to: OLD_AGE },
 };
 export const stageTitle = (life) => (life.route === 'offgrid' && STAGE_INFO[life.stage].offgrid) || STAGE_INFO[life.stage].title;
+// each stage's card's line (off the grid, the carpet store's and the
+// finale's are the woods'); the diagnosis's is Roy's own, said in his voice
+// (./voicelines.js)
+export const STAGE_LINES = {
+  kid: 'A boy at the window, dreaming of the NFL.',
+  football: 'Friday night under the lights, and the end zone a long way off.',
+  carpet: 'The dream goes on the shelf: a family to provide for, and a job at the carpet store.',
+  offgrid: 'No job and no store: a cabin in the woods, and whatever the woods give.',
+  cancer: '“I’m not ready to die.”',
+  finale: 'Back at the store, where the rolls are stacked high.',
+  woods: 'Back in the woods, where the logs are stacked high.',
+};
+export const stageLine = (life) => (life.stage === 'carpet' && life.route === 'offgrid' ? STAGE_LINES.offgrid : life.stage === 'finale' && life.route === 'offgrid' ? STAGE_LINES.woods : STAGE_LINES[life.stage]);
+// the lines Roy says himself
+export const ROY_SAYS = [STAGE_LINES.cancer];
 
 // the tire starts at the far end of its swing, so the first throw is no free hit
 const KID = Object.freeze({ swing: 2.4, band: 0.28, throws: 5, start: -Math.PI / 2 });

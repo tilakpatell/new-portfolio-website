@@ -42,7 +42,7 @@ export function cleanWhere(raw) {
   return raw;
 }
 
-const NAMES = { [AWAY]: 'somewhere else', [UNIVERSE]: 'the universe', [GALAXY]: 'a galaxy far, far away', '/deathstar': 'the Death Star', '/projects': 'Projects', '/travel': 'Travel', '/resume': 'the résumé', '/c-137/citadel': 'the Citadel' };
+const NAMES = { [AWAY]: 'somewhere else', [UNIVERSE]: 'the universe', [GALAXY]: 'a galaxy far, far away', '/deathstar': 'the Death Star', '/deathstar/inside': 'the Death Star’s corridors', '/projects': 'Projects', '/travel': 'Travel', '/resume': 'the résumé', '/c-137/citadel': 'the Citadel' };
 
 export function placeName(where) {
   if (!where) return 'somewhere';
@@ -53,6 +53,7 @@ export function placeName(where) {
   }
   const sys = systemOfPath(where);
   if (sys) return inGalaxyFlight(where) ? SYSTEM_NAMES[sys] : where.endsWith('/surface') ? `down on ${SYSTEM_NAMES[sys]}` : `the ${SYSTEM_NAMES[sys]} briefing`;
+  // (a world, or a Rick and Morty planet's: '/c-137/squanch' is Planet Squanch, not C-137)
   const u = byPath(where);
   if (u) return u.world ?? u.place ?? u.label;
   if (where.startsWith('/projects/')) return 'a project';

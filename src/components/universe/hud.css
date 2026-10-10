@@ -1,0 +1,100 @@
+/* ─── The universe map's HUD kit ─────────────────────────────────────────────
+   One drawing per thing on the map's HUD (spec 5.4), imported by
+   universe.css before its own rules, so a part's own colour or size beside
+   it still wins. The site's tokens (src/index.css) are the source of every
+   colour; these name the map's few of its own.
+
+   Accent rule, written down: a ship's --engine colours its controls (the
+   sheets, the gauges), a speaker's colour their line, the selected place's
+   accent the panel and its card, and the nav map's blue means navigation. */
+
+.universe-page,
+.galaxy-page {
+  /* the screen's edge for anything flush to it, inside a notch's safe area */
+  --hud-edge: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
+  /* a sheet over the live map: dark glass, no blur (blurring a live map
+     costs frames every frame) */
+  --hud-sheet-bg: rgb(6 8 16 / 0.93);
+  /* the one amber for a warning: short of power, a dropped part, a note */
+  --hud-warn: #ffb35c;
+  --hud-warn-tint: #ffdca0;
+}
+@media (max-width: 767px) {
+  .universe-page,
+  .galaxy-page { --hud-edge: max(12px, env(safe-area-inset-left), env(safe-area-inset-right)); }
+}
+
+/* A key cap on the HUD: flat, the keymap's and the hint's. (The site's raised
+   .kbd belongs to the light pages; on dark glass a flat cap reads better.) */
+.hud-kbd,
+.universe-hint kbd,
+.universe-keys kbd,
+.universe-keymap kbd,
+.universe-arms-keys kbd,
+.universe-tour kbd,
+.universe-portalgun kbd,
+.universe-wayin-key {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 0.35em;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-style: normal;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* A sheet that opens from a button in the corner: flight settings, the
+   hangar. The ship's engine tints its edge. */
+.universe-settings,
+.universe-hangar {
+  border: 1px solid color-mix(in srgb, var(--engine, #e8eefc) 35%, transparent);
+  border-radius: 14px;
+  background: var(--hud-sheet-bg);
+  color: var(--text);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+}
+
+/* A sentence over the map: the first-flight hint, a multiplayer note. */
+.universe-hint,
+.universe-online-note {
+  border-radius: 14px;
+  background: rgb(3 4 10 / 0.85);
+}
+
+/* A warning in a sheet: the hangar's dropped part. (The nav map keeps its
+   own style, its amber included: it is the reference, not restyled.) */
+.universe-hangar-dropped {
+  border-radius: 8px;
+  background: rgb(255 179 92 / 0.1);
+  color: var(--hud-warn-tint);
+}
+
+/* Two to four choices in a sheet: control feel, the hangar's slots, the
+   shipyard's hull. Columns come from each one's own rule. */
+.universe-seg,
+.universe-hangar-slots,
+.universe-yard-hull { display: grid; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+:is(.universe-seg, .universe-hangar-slots, .universe-yard-hull) button { min-height: 34px; color: var(--muted); font-size: 0.78rem; transition: background-color 0.15s, color 0.15s; }
+:is(.universe-seg, .universe-hangar-slots, .universe-yard-hull) button:hover { color: var(--text); }
+:is(.universe-seg, .universe-hangar-slots, .universe-yard-hull) button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
+:is(.universe-seg, .universe-hangar-slots, .universe-yard-hull) button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+
+/* A quiet link in the HUD: the panel's ways back and out, multiplayer's,
+   the settings' reset. Mono, muted, the ink on hover. */
+.universe-back,
+.universe-online-link,
+.universe-settings-reset {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+:is(.universe-back, .universe-online-link, .universe-settings-reset):hover { color: var(--text); text-decoration: underline; }
+
+/* The X on a sheet: round, as multiplayer's card has it. */
+.universe-settings-close { border-radius: 999px; }

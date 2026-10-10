@@ -12,17 +12,21 @@
 // planets), said the first time you reach it.
 // Artoo and Chewie don't speak Basic: their lines are what they mean, in
 // brackets, and sound like them (sounds.js).
+// `jump` is how the crew crosses the map at hyperspeed (components/jumps/
+// styles.js): the X-wing and the Falcon on the site's jump to lightspeed,
+// Rick's cruiser through a portal, the RV crystallising into Blue Sky.
 
 export const CREWS = [
   {
     id: 'cruiser',
     ship: 'The space cruiser',
     label: 'Rick and Morty',
+    jump: 'portal',
     speakers: {
       rick: { name: 'Rick', color: '#a8dcf0', voice: 'rick' },
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
-      birdperson: { name: 'Birdperson', color: '#c98b52', voice: null },
+      birdperson: { name: 'Birdperson', color: '#c98b52', voice: 'birdperson' }, // (no blips: his own voice, where it's made)
     },
     // the Citadel's siege (siege.js): its shield, a generator going, the
     // core shrugging off the lasers, the whole thing going up, and back
@@ -94,6 +98,20 @@ export const CREWS = [
       swap: {
         rick: [['rick', 'Fine, I’ll drive this one.']],
         morty: [['morty', 'O-okay, I got this. I think I got this.']],
+      },
+      // B: Rick's next gadget (by the gun)
+      gadget: {
+        portal: [['rick', 'Back to the classic. Holes in space, Morty. Holes.']],
+        freeze: [
+          ['rick', 'Freeze ray. Let’s put these guys on ice.'],
+          ['morty', 'Rick, did you just—'],
+          ['rick', 'Yes, Morty. A pun. I’m allowed one.'],
+        ],
+        shrink: [
+          ['rick', 'Shrink ray. Small problems, Morty. Literally.'],
+          ['morty', 'Isn’t that the one from the—'],
+          ['rick', 'Don’t say Anatomy Park.'],
+        ],
       },
       far: [['rick', 'The cruiser’s back that way, Morty. Walk.']],
       nowhere: [['rick', 'Land on what, Morty? Space? Find a planet.']],
@@ -218,6 +236,11 @@ export const CREWS = [
     },
     // hunters after you (hunters.js), by who they are
     hunted: {
+      // the police, sent when you're wanted (wanted.js)
+      fedpolice: [
+        ['morty', 'Rick, Federation police! Like, actual space cops!'],
+        ['rick', 'They’ve got stun guns and missiles, Morty. Don’t let them pin the drive.'],
+      ],
       phoenix: [
         ['rick', 'Phoenixperson. Great. The Federation turned my best friend into a drone with a grudge.'],
         ['morty', 'Can we talk to him, Rick?'],
@@ -261,6 +284,77 @@ export const CREWS = [
     // dropped out of the pulse drive by hunters, and crashes of other kinds
     // the named characters who come by (npcs/index.js), by what they're saying
     npc: {
+      // the Federation's agent, come for Rick in person (a nemesis: she remembers)
+      tammy: {
+        seen: [['morty', 'Rick, that gunship’s coming straight at us. Fast.']],
+        hello: [
+          ['comms', 'Rick Sanchez. Tammy. Remember me? Birdperson’s wife. The Federation sends its regards.'],
+          ['rick', 'Tammy. You shot my best friend at your own wedding. I’m not gonna be nice about this.'],
+        ],
+        again: [
+          ['comms', 'Miss me, Rick? I’ve been thinking about you. Every day.'],
+          ['rick', 'Oh great, she’s back. She’s always back, Morty. Like herpes with a pension.'],
+        ],
+        hit: [['comms', 'Ow! Okay. Okay, Rick. Now it’s personal. More personal.']],
+        half: [
+          ['comms', 'You think you’re winning? I’ve got half a hull and all of the Federation.'],
+          ['morty', 'Rick, she’s smoking! Keep going!'],
+        ],
+        weak: [
+          ['comms', 'Shields failing, Rick? Birdperson’s were too.'],
+          ['rick', 'Don’t you say his name. Morty, divert everything. Everything!'],
+        ],
+        evade: [['comms', 'Nice try. I trained with Birdperson. I know every move you taught him.']],
+        fury: [['comms', 'No more games, Rick. NO MORE GAMES!'], ['rick', 'She’s lost it, Morty! Everything she’s got, all at once! Don’t fly straight!']],
+        retreat: [
+          ['comms', 'This isn’t over, Rick. It’s never over. I’ll see you soon.'],
+          ['rick', 'She’ll be back, Morty. Tougher. They always come back tougher. It’s a whole thing.'],
+        ],
+        bait: [['morty', 'Rick, she’s slowing down, why is she— oh no, oh no, she’s BEHIND us!'], ['rick', 'Yeah, Morty, that’s called a bait. I invented it.']],
+        search: [['comms', 'You can’t hide from the Federation forever, Rick.'], ['morty', 'She lost us! Keep the planet between us, Rick!']],
+        found: [['comms', 'There you are, Rick.'], ['rick', 'Aaand she found us. Great. Morty, hold onto something.']],
+        leaving: [['morty', 'She’s gone, Rick. Are… are you okay?'], ['rick', 'I’m always okay, Morty. Shut up.']],
+      },
+      // Federation customs, pulling you over (an inspector: cut your engines and it scans you)
+      fedcustoms: {
+        seen: [['morty', 'Rick, a patrol ship. It’s flashing its lights at us.']],
+        hello: [
+          ['comms', 'Unidentified cruiser, this is Galactic Federation customs. Cut your engines and hold for inspection.'],
+          ['rick', 'Customs, Morty. Space cops with clipboards. Stop the ship. Or don’t. Your call, really.'],
+        ],
+        clean: [
+          ['comms', 'You’re… clean. Huh. Carry on, citizen. Have a compliant day.'],
+          ['morty', 'See, Rick? Sometimes it’s fine to just do what they say.'],
+          ['rick', 'Don’t ever say that again, Morty.'],
+        ],
+        busted: [
+          ['comms', 'Scan complete. Rick Sanchez, you are wanted in eleven thousand systems. Requesting backup. All of it.'],
+          ['rick', 'Eleven thousand. That’s a new record. Shoot the cop, Morty.'],
+        ],
+        run: [
+          ['comms', 'Cruiser, you are fleeing a lawful stop! All units, all units!'],
+          ['rick', 'Ha! Lawful. Floor it, Morty. Floor it harder.'],
+        ],
+        hit: [['comms', 'Shots fired! The suspect is firing on customs! Backup, now!']],
+        leaving: [['morty', 'Okay, they’re leaving. That wasn’t so bad.']],
+      },
+      // Jerry, tagging along (he panics when anything happens)
+      jerry: {
+        seen: [['morty', 'Rick, is that… is that Dad? In a saucer?'], ['rick', 'Oh no.']],
+        hello: [
+          ['comms', 'Hey, guys! It’s me, Jerry! Beth said I should get out of the house, so I… got a saucer! Room for one more?'],
+          ['rick', 'No, Jerry.'],
+          ['comms', 'Great! I’ll just fly right here. Behind you. Where it’s safe.'],
+        ],
+        chat1: [['comms', 'So, what are we doing? Is this a job? Do you guys have, like, a space job?'], ['rick', 'We’re flying, Jerry. You’re watching.']],
+        chat2: [['comms', 'You know, I think I’m getting pretty good at this. Look, I didn’t hit that rock.'], ['morty', 'There wasn’t a rock, Dad.']],
+        chat3: [['comms', 'Rick, is it normal for the saucer to make a little clicking sound? Like a… ticking?'], ['rick', 'Yes, Jerry. Totally normal. Keep flying.']],
+        panic: [['comms', 'Oh my god, oh my god, those are guns! Rick, they have GUNS! I’m going over here! Don’t follow me! Or do!']],
+        panic2: [['comms', 'AGAIN?! This is why I don’t leave the house!']],
+        back: [['comms', 'Is it over? It’s over, right? Okay. Okay. I was never scared. I was… scouting.'], ['morty', 'Sure, Dad.']],
+        hit: [['comms', 'OW! Rick, you SHOT me! Your own son-in-law!'], ['rick', 'Allegedly.']],
+        leaving: [['comms', 'Okay, Beth’s calling. Bye, guys! Love you! Morty, wear a seatbelt!'], ['morty', 'Bye, Dad.']],
+      },
       squanchy: {
         seen: [['morty', 'Rick, is that… Squanchy’s ship?']],
         hello: [
@@ -295,6 +389,8 @@ export const CREWS = [
           ['comms', 'Let’s call it a draw. For now.'],
           ['rick', 'He’ll be back, Morty. He always plans to be back.'],
         ],
+        search: [['comms', 'Lost me? I don’t get lost, Rick. I get patient.'], ['morty', 'He can’t see us, Rick. Keep it that way!']],
+        found: [['comms', 'There you are.'], ['rick', 'Yeah, yeah, he’s back, Morty. Guns.']],
       },
     },
     interdicted: [
@@ -337,6 +433,38 @@ export const CREWS = [
       ['rick', 'That’s what you get for messing with the smartest man in the universe!'],
       ['morty', 'I did most of the shooting, Rick.'],
     ],
+    // a ship downed by flying into it (shipHits.js), and the last of them
+    // so: their own lines, not a gun's
+    ram: {
+      kill: [
+        ['morty', 'Rick! We— we flew right into him!'],
+        ['rick', 'Ramming speed, Morty. The ship’s armoured. Mostly.'],
+      ],
+      cleared: [
+        ['morty', 'W-we rammed the last one, Rick. With the ship.'],
+        ['rick', 'Who needs guns, Morty? The ship’s the gun.'],
+      ],
+    },
+    // the ship's powers (shipPowers.js): using each, the big one charged
+    // and a big haul from it, and why a portal won't go
+    powers: {
+      portal: {
+        use: [['rick', 'Portal, Morty! Get on his six!']],
+        refuse: {
+          shield: [['rick', 'Portals don’t go through planetary shields, Morty. It’s physics. Ugh.']],
+          held: [['rick', 'Something’s got hold of the ship, Morty. You can’t portal out of a headlock.']],
+          solid: [['rick', 'Open a portal into that? You want to come out inside a rock, Morty? Point us somewhere with space in it.']],
+        },
+      },
+      wubba: {
+        use: [
+          ['rick', 'Wubba lubba dub dub!', 'wubba'],
+          ['morty', 'Rick, that’s way too much laser!'],
+        ],
+        ready: [['rick', 'Big gun’s charged, Morty. Don’t touch it. Okay, touch it.']],
+        big: [['rick', 'Riggity riggity wrecked, son!', 'riggity']],
+      },
+    },
     // the director's set pieces (director.js), and going out into deep space
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again: by who came
@@ -373,9 +501,63 @@ export const CREWS = [
         ['rick', 'That’s the galaxy, Morty. Cold, and full of jerks.'],
       ],
       // a Federation cruiser drops in and launches gunships (the director's capital ship)
+      // your standing (standing.js): the Federation marking you, the ordinary ships fearing or loving you, the pirates taking to you
+      standing: {
+        suspect: [['morty', 'Rick, the Federation ships keep scanning us.'], ['rick', 'We’re on a list, Morty. Congratulations. Lists are where the interesting people are.']],
+        wanted: [['comms', 'Attention all Federation units: Rick Sanchez, C-137, is wanted. Shoot on sight.'], ['rick', 'Wanted! Finally. Took them long enough.'], ['morty', 'That’s… that’s not a good thing, Rick.']],
+        trusted: [['comms', 'Federation customs here. You’re… cleared. Nice work out there, citizen.'], ['rick', 'Did a cop just thank me? Morty, I need to lie down.']],
+        feared: [['morty', 'Rick, that saucer just turned around when it saw us. They’re scared of us.'], ['rick', 'Good. Fear is efficient, Morty. Nobody cuts in front of you.']],
+        hero: [['comms', 'That’s him! That’s the guy who saved the saucer! Thank you!'], ['rick', 'Oh no. Morty, we’re heroes. This is the worst thing that’s ever happened to me.']],
+        friend: [['comms', 'Hey! It’s the Gromflomites’ favourite Earthman! Fly easy, friend!'], ['rick', 'The bugs like us, Morty. We’ve made some choices.']],
+      },
+      // a patrol going past has reported you (traffic.js's spotted)
+      spotted: [['morty', 'Rick, that patrol just saw us! They’re calling it in!'], ['rick', 'Snitches, Morty. The galaxy’s full of snitches. Get ready.']],
+      // the law on us (wanted.js): by stars, searching, and lost
+      wanted: {
+        any: [['morty', 'Rick, we’re wanted! There’s a price on us!'], ['rick', 'Welcome to my whole life, Morty.']],
+        3: [['morty', 'Three stars, Rick! They’re sending wardens!'], ['rick', 'And they’ll pin the drive. Shoot the medic first, Morty. Always the medic.']],
+        5: [['morty', 'Five stars! The whole Federation’s coming!'], ['rick', 'Good. Saves me looking for them.']],
+        search: [['rick', 'They lost us. Stay out of sight, Morty. Behind something big. Don’t breathe.']],
+        lost: [['morty', 'They’re gone! We lost them!'], ['rick', 'The bounty didn’t go anywhere, Morty. Somebody’s gonna come collect.']],
+      },
+      // an ace hurt into its next stage (hunterRules.js's stages), by who
+      stage: {
+        evilmortyship: [['comms', 'You’re good, Rick. Fine. Let’s see how you do against a hundred of me.'], ['morty', 'Rick, he’s falling back! And… those are MORE Mortys!']],
+        phoenixperson: [['comms', 'Engaging secondary systems.'], ['rick', 'He’s got a second gear, Morty. Of course he does. The Federation never skimps on the murder parts.']],
+        krombopulos: [['comms', 'Oh boy, now you’ve made me get serious!'], ['rick', 'He’s gone dark, Morty! Shoot where he isn’t!']],
+        any: [['rick', 'It just changed tactics, Morty! That’s new!'], ['morty', 'Why do they always get MORE dangerous when they’re hurt?!']],
+      },
+      // the fight with the Federation cruiser (capitalRules.js): its turbolasers,
+      // your shots off its shield, its projectors going, its bridge open, it
+      // running or going up
+      capital: {
+        fired: [['morty', 'Rick, the big ship’s shooting at us! Those bolts are huge!'], ['rick', 'Big ship, big guns, Morty. They’re slow. Don’t be where they’re going.']],
+        shielded: [['morty', 'Our shots are just bouncing off it!'], ['rick', 'It’s shielded, Morty. See the two glowing bits? Shield projectors. Hit those.']],
+        dome: [['rick', 'That’s one projector. One more and that cruiser’s naked, Morty.']],
+        open: [['morty', 'The shield’s down! Rick, it’s turning!'], ['rick', 'It’s running, Morty. The bridge! Hit the bridge before it jumps!']],
+        bridge: [['rick', 'That’s the bridge! That’s the whole bridge, Morty! Back off, back off!']],
+        dead: [['morty', 'Rick! It… it blew up! We blew up a Federation cruiser!'], ['rick', 'We sure did, Morty. The Federation is gonna be SO mad. Good.']],
+        fled: [['morty', 'It jumped! It got away, Rick!'], ['rick', 'With no shields and a hole in its side, Morty. That’s a win. Take the win.']],
+        gone: [['rick', 'And it’s gone. Took a projector with it. Nice shooting, Morty. Don’t let it go to your head.']],
+        wave: [['morty', 'Rick, it’s launching MORE gunships!'], ['rick', 'Of course it is, Morty. It’s a cruiser. Cruisers have more.']],
+      },
       destroyer: [
         ['morty', 'Rick, that’s a huge Federation ship! It just came out of nowhere!'],
         ['rick', 'Cruiser, Morty. Gunships coming out the bottom. This is why I hate bureaucracy.'],
+      ],
+      // the NX-5 Planet Remover over the planet you're at (remover.js): it
+      // comes, it fires (or doesn't), it goes
+      remover: [
+        ['morty', 'Rick, what’s that thing? It’s pointing at the planet!'],
+        ['rick', 'That’s a planet remover, Morty. It removes planets. Shoot the big glowy end before it’s done charging.'],
+      ],
+      removerFired: [
+        ['morty', 'Oh geez, Rick, the planet! It’s just… gone!'],
+        ['rick', 'It’ll be back in a minute, Morty. The Federation can’t even remove a planet right.'],
+      ],
+      removerDown: [
+        ['morty', 'We got it, Rick! We stopped a planet remover!'],
+        ['rick', 'Yeah, yeah. Put it on the fridge, Morty.'],
       ],
       distress: [
         ['comms', 'Mayday, mayday! Gromflomites! Anybody!'],
@@ -460,6 +642,35 @@ export const CREWS = [
         ['morty', 'Rick! Rocks! A lot of rocks!'],
         ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
       ],
+      // a minefield across the way (minefield.js), and a ship to see to the
+      // next place with pirates after it (escort.js): asked, the pirates
+      // coming, there, and lost
+      minefield: [
+        ['morty', 'Rick! Those are mines! Space mines, Rick!'],
+        ['rick', 'Gromflomite minefield, Morty. Shoot a hole or thread the needle. Just don’t bump anything.'],
+      ],
+      // a moon across the sun (eclipse.js), the light going and coming back
+      eclipse: [
+        ['morty', 'Rick, it’s getting dark. Something’s in front of the sun!'],
+        ['rick', 'Eclipse, Morty. A moon. Rocks blocking other, bigger, on-fire rocks. Don’t stare at it.'],
+      ],
+      escort: [
+        ['comms', 'Hey, uh, you in the cruiser? Could you see us to the next stop? Gromflomites have been following us.'],
+        ['morty', 'Rick, we should help them.'],
+        ['rick', 'Fine. Escort duty, Morty. The most boring way there is to get shot at.'],
+      ],
+      escortPirates: [
+        ['morty', 'Rick, here they come! They’re going for the saucer!'],
+        ['rick', 'So keep them off it, Morty. If it blows up we did all this flying for nothing.'],
+      ],
+      escorted: [
+        ['comms', 'We made it! Thank you, thank you, squanch you!'],
+        ['rick', 'Yeah, yeah. Tip your escort.'],
+      ],
+      escortLost: [
+        ['morty', 'Oh no. Oh geez, Rick, they got them.'],
+        ['rick', 'Yeah. Sometimes you lose one, Morty. Let’s go.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (the Cromulon), a shot into it
       flare: [
@@ -474,6 +685,22 @@ export const CREWS = [
         ['morty', 'Where are we, Rick? Where did it put us?'],
         ['rick', 'Somewhere else, Morty. That’s what rifts do. Check the map if you care.'],
       ],
+      // Rick's portal gun out of the cruiser (P: gunPortal.js), on his
+      // dimension from home or on home from there, and coming out of it
+      portalgun: {
+        out: [
+          ['morty', 'Rick, wh-why are you pointing the portal gun out the window? We’re driving!'],
+          ['rick', 'Scenic route, Morty. My dimension. Fly into the green thing before it closes.'],
+        ],
+        home: [['rick', 'Seen enough? Portal home, Morty. Fly through it, it doesn’t wait.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['morty', 'Whoa… Rick, where are we? Is that planet moving?'],
+          ['rick', 'Everything here moves, Morty. The Central Finite Curve: every world where I’m the smartest man in it. That’s the Citadel past it. Don’t touch anything.'],
+        ],
+        main: [['morty', 'Oh, thank God. Home. Well, home-home. You know what I mean.']],
+      },
       leviathan: [
         ['comms', 'SHOW ME WHAT YOU GOT!'],
         ['morty', 'Oh no. Oh no, Rick, it’s a Cromulon!'],
@@ -505,6 +732,18 @@ export const CREWS = [
       citadel: [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
+      ],
+      rmportal: [
+        ['morty', 'Rick, there’s a portal just… hanging out here in space!'],
+        ['rick', 'That’s the back door to the Curve, Morty. Fly in, we come out at the Citadel. Try not to make eye contact with anyone who looks like me.'],
+      ],
+      'rmportal-back': [
+        ['morty', 'Is that the way home?'],
+        ['rick', 'Home-ish, Morty. Our dimension’s side of the map. Close enough.'],
+      ],
+      curvesun: [
+        ['morty', 'Rick, wh-why does this sun look kinda green?'],
+        ['rick', 'Everything in the Curve’s a little off, Morty. We built it that way. Well, they did. Me. Other me.'],
       ],
       maw: [
         ['morty', 'Rick, why’s the light all bendy?'],
@@ -802,6 +1041,11 @@ export const CREWS = [
       ],
     },
     hunted: {
+      // the ISB, sent when you're wanted (wanted.js)
+      isb: [
+        ['r2', '[ISB patrol, closing: an enforcer with ion cannons among them]'],
+        ['luke', 'Imperial Security. Don’t let the ion fire touch us, Artoo.'],
+      ],
       fett: [
         ['r2', '[A Firespray on an attack run. Boba Fett.]'],
         ['luke', 'A bounty hunter. Stay with me, Artoo. He only has to miss once.'],
@@ -836,6 +1080,91 @@ export const CREWS = [
     },
     // the named characters who come by (npcs/index.js), by what they're saying
     npc: {
+      // Vader himself, come for you in his TIE Advanced (a nemesis: he remembers)
+      vader: {
+        seen: [
+          ['r2', '[a long, low, frightened whistle]'],
+          ['luke', 'I feel it too, Artoo. Something’s coming.'],
+        ],
+        hello: [
+          ['comms', 'The Force is strong with this one.', 'forceIsStrong'],
+          ['luke', 'That TIE… it’s him. Artoo, stay sharp!'],
+        ],
+        again: [
+          ['comms', 'We meet again, young Skywalker. You have grown stronger. It will not be enough.'],
+          ['luke', 'He’s back. And he brought friends, Artoo.'],
+        ],
+        hit: [['comms', 'Impressive. Most impressive.']],
+        half: [
+          ['comms', 'You have learned much, young one. But you are not a Jedi yet.'],
+          ['r2', '[a defiant beep]'],
+        ],
+        weak: [
+          ['comms', 'Your shields are failing. Give yourself to the dark side. It is the only way.'],
+          ['luke', 'Never!'],
+        ],
+        evade: [['comms', 'I have you now.'], ['luke', 'No, you don’t! Artoo, hard about!']],
+        fury: [['comms', 'You have failed me for the last time.'], ['luke', 'He’s coming in with everything! Artoo, keep us moving!']],
+        retreat: [
+          ['comms', 'Enough. You will come to me, young Skywalker. It is your destiny.'],
+          ['luke', 'He’s breaking off! Artoo, I don’t think he’s done with us.'],
+        ],
+        bait: [['luke', 'He’s slowing down… he’s letting me pass him! Artoo, break—'], ['r2', '[a shriek: he’s behind you]']],
+        search: [['comms', 'You cannot hide forever, Skywalker.'], ['luke', 'He’s lost us behind the moon. Keep it between us, Artoo.']],
+        found: [['comms', 'There you are.'], ['luke', 'He’s found us! Hold on!']],
+        leaving: [['r2', '[a long, relieved whistle]'], ['luke', 'He’ll be back. I know it.']],
+      },
+      // Imperial customs, pulling you over (an inspector: cut your engines and it scans you)
+      customs: {
+        seen: [['r2', '[a wary warble: an Imperial gunboat, closing]']],
+        hello: [
+          ['comms', 'Unidentified fighter, this is Imperial customs. Cut your engines and prepare to be scanned.'],
+          ['luke', 'A customs gunboat. If we run, they’ll call the whole sector. Artoo, what do you think?'],
+          ['r2', '[a nervous, noncommittal beep]'],
+        ],
+        clean: [
+          ['comms', 'Scan complete. Your registry is in order. Move along.'],
+          ['luke', 'That was close. A Rebel X-wing with its registry in order. Thanks, Artoo.'],
+          ['r2', '[a smug little whistle]'],
+        ],
+        busted: [
+          ['comms', 'Scan complete. Rebel insignia detected. You are under arrest. Fighters inbound.'],
+          ['luke', 'So much for that. Artoo, lock S-foils in attack position!'],
+        ],
+        run: [
+          ['comms', 'Fighter, you are fleeing an Imperial inspection! All units, pursue!'],
+          ['luke', 'They’re calling it in. Hang on, Artoo!'],
+        ],
+        hit: [['comms', 'Shots fired on an Imperial vessel! Requesting immediate support!']],
+        leaving: [['luke', 'They’re gone. Let’s not do that again.']],
+      },
+      // Hondo Ohnaka, with a toll to collect (a trickster: hold still and he pays you back with news)
+      hondo: {
+        seen: [['r2', '[a puzzled warble: a pirate skiff, broadcasting a very friendly hail]']],
+        hello: [
+          ['comms', 'Greetings, my friend! Hondo Ohnaka, at your service. You are flying through Hondo’s lane, and Hondo’s lane has a toll. Hold still, let me have a look at your cargo, and nobody gets hurt. Much.'],
+          ['luke', 'A pirate? Artoo, is he serious?'],
+          ['r2', '[a beep: he usually is]'],
+        ],
+        paid: [
+          ['comms', 'Hmm. Hmm! Your hold is empty! My friend, you are poorer than I am! Ha! Hondo cannot rob a pauper. It is bad for business. But Hondo always pays his way, so, a gift: a little word of warning.'],
+          ['luke', 'A pirate with manners. Go on.'],
+        ],
+        tip: {
+          hunt: [['comms', 'The Empire has a patrol on your trail. Several ships. I would be somewhere else, my friend, and soon.']],
+          destroyer: [['comms', 'A Star Destroyer is about to drop in on you. Hondo has seen it done. It is not pretty. Fly well!']],
+          bounty: [['comms', 'There is a price on your head, and someone has come to collect. Not Hondo! Hondo has standards. Mostly.']],
+          distress: [['comms', 'Someone nearby is about to call for help. Pirates, probably. Not mine! Probably.']],
+          any: [['comms', 'Something is coming your way, my friend. Hondo does not know what. But Hondo knows the feeling.']],
+        },
+        angry: [
+          ['comms', 'Ah. So that is how it is. Very well! Boys, this one wishes to pay the hard way!'],
+          ['luke', 'Here they come. Artoo, give me full power to the guns!'],
+        ],
+        hit: [['comms', 'You shot Hondo! Hondo, who was being so reasonable! Boys!']],
+        friend: [['comms', 'Ahh, but it is YOU! The friend of every pirate in the outer lanes! No toll for you, my friend, never! Only a little news, from Hondo, with love.'], ['luke', 'Friend of every pirate. Artoo, we need to talk about our reputation.']],
+        leaving: [['comms', 'Farewell, my friend! Remember Hondo fondly, if at all!'], ['r2', '[an unconvinced beep]']],
+      },
       lando: {
         seen: [['r2', '[a curious beep: a freighter, parked, broadcasting a hail]']],
         hello: [
@@ -847,6 +1176,8 @@ export const CREWS = [
           ['r2', '[a sceptical warble]'],
         ],
         hit: [['comms', 'Hey! That’s my ship you’re shooting at, kid!']],
+        grudge: [['comms', 'You. You shot at my ship last time. No deal, kid. Not now, not ever.'], ['r2', '[a sheepish warble]']],
+        shunned: [['comms', 'I’ve heard about you, kid. Freighters don’t come back from where you’ve been. I don’t deal with pirates. Calrissian out.'], ['luke', 'He’s right, Artoo. What have we been doing?']],
         leaving: [['comms', 'This deal is getting worse all the time. Calrissian out.']],
       },
     },
@@ -889,6 +1220,34 @@ export const CREWS = [
       ['luke', 'That’s all of them!'],
       ['comms', 'Great shot, kid. That was one in a million.'],
     ],
+    // (Han on the radio, as for the cleared)
+    ram: {
+      kill: [
+        ['luke', 'I hit him! I mean, I really hit him!'],
+        ['r2', '[an indignant squeal about the paintwork]'],
+      ],
+      cleared: [
+        ['luke', 'That’s the last of them!'],
+        ['comms', 'You flew right through him, kid. Don’t make a habit of it.'],
+      ],
+    },
+    // the ship's powers (shipPowers.js)
+    powers: {
+      focus: {
+        use: [
+          ['comms', 'Use the Force, Luke.', 'useTheForce', { name: 'Ben Kenobi', color: '#cfe0ff' }],
+          ['r2', '[a low, steady whistle: he’s with you]'],
+        ],
+      },
+      salvo: {
+        use: [
+          ['luke', 'Artoo, lock them up. Torpedoes away!'],
+          ['r2', '[four quick locking beeps, then a whoop]'],
+        ],
+        ready: [['r2', '[an excited whistle: the torpedoes are armed]']],
+        big: [['comms', 'The Force is strong with this one.', 'forceIsStrong', { name: 'Darth Vader', color: '#ff6a5a' }]],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again: by who came
       wingmen: {
@@ -923,6 +1282,47 @@ export const CREWS = [
         ['luke', 'We were too late. Artoo, log it.'],
         ['r2', '[a low, sad warble]'],
       ],
+      // your standing (standing.js): the Empire marking you, the ordinary ships fearing or loving you, the pirates taking to you
+      standing: {
+        suspect: [['r2', '[a worried warble: Imperial patrols keep scanning us]'], ['luke', 'We’re on their list now, Artoo. Keep your eyes open.']],
+        wanted: [['comms', 'All Imperial units: the Rebel fighter is wanted. Engage on sight.'], ['luke', 'Wanted. Well. I guess that makes it official.'], ['r2', '[a proud little beep]']],
+        trusted: [['comms', 'Imperial customs. Your registry is… exemplary. Carry on.'], ['luke', 'Exemplary? Artoo, what did you put in our registry?'], ['r2', '[an innocent whistle]']],
+        feared: [['luke', 'That freighter turned and ran when it saw us. Artoo, they’re afraid of us.'], ['r2', '[a sad, low tone]'], ['luke', 'This isn’t what the Rebellion is for.']],
+        hero: [['comms', 'Red Five! It’s Red Five! Thank you, Red Five!'], ['luke', 'They know us, Artoo. We did some good out here.']],
+        friend: [['comms', 'The pirates of the outer lanes salute you, Jedi! Fly free!'], ['luke', 'Friends with pirates. Han would be proud. I’m not sure I am.']],
+      },
+      // a patrol going past has reported you (traffic.js's spotted)
+      spotted: [['r2', '[an alarmed shriek: that patrol’s seen us]'], ['luke', 'They’re calling it in. Here they come, Artoo.']],
+      wanted: {
+        any: [['r2', '[a warbling alarm: we’re flagged]'], ['luke', 'The Empire’s marked us. ISB patrols, Artoo. Keep your eyes open.']],
+        3: [['luke', 'Interceptors with ion cannons. If they hit us we lose the drive.'], ['r2', '[a worried whistle]']],
+        5: [['r2', '[a long, falling shriek]'], ['luke', 'Everything they’ve got. Stay with me, Artoo.']],
+        search: [['luke', 'They’ve lost sight of us. Stay low, put the moon between us.']],
+        lost: [['luke', 'We lost them.'], ['r2', '[a relieved burble, then a warning beep: the bounty’s still on us]']],
+      },
+      // an ace hurt into its next stage (hunterRules.js's stages), by who
+      stage: {
+        tieadvanced: [['comms', 'Impressive. Now you will see what a Sith can do.'], ['luke', 'He’s faster! Artoo, he’s so much faster!']],
+        slave1: [['r2', '[a frantic warble: seismic charges!]'], ['luke', 'He’s dropping charges! Stay out of the blast, Artoo!']],
+        ig2000: [['comms', 'Combat parameters: adjusted.'], ['luke', 'The droid’s overclocking! It’s a blur!']],
+        houndstooth: [['luke', 'Bossk is backing off and pounding us from range! We have to close the distance!']],
+        punishingone: [['r2', '[a confused run of beeps: the target keeps vanishing]'], ['luke', 'Dengar’s jamming our sensors. Every time we hit him, he’s gone!']],
+        any: [['luke', 'It’s changed tactics! Artoo, watch it!'], ['r2', '[a tense warble]']],
+      },
+      // the fight with the Star Destroyer (capitalRules.js): its turbolasers,
+      // your shots off its shield, its domes going, its bridge open, it
+      // running or going up
+      capital: {
+        fired: [['r2', '[a frightened shriek]'], ['luke', 'Turbolasers! They’re firing on us! They’re slow, Artoo. Keep moving!']],
+        shielded: [['luke', 'Our shots aren’t getting through! It’s shielded!'], ['r2', '[a quick run of beeps: the two domes on the tower]'], ['luke', 'The shield generators. On the bridge tower. Got it!']],
+        dome: [['luke', 'That’s one generator down! One more, Artoo!']],
+        open: [['r2', '[a triumphant whistle]'], ['luke', 'Shields are down! It’s turning away. The bridge, Artoo! Now, before it jumps!']],
+        bridge: [['luke', 'The bridge is gone! It’s going down! Pull up, Artoo, pull up!']],
+        dead: [['r2', '[a long, astonished whistle]'], ['luke', 'We did it. We took down a Star Destroyer. Nobody’s going to believe this.']],
+        fled: [['luke', 'It jumped! It got away!'], ['r2', '[a grudging beep]'], ['luke', 'With no shields. It won’t forget us, Artoo.']],
+        gone: [['luke', 'It’s gone. And it’s a generator short. Not bad for an X-wing.']],
+        wave: [['r2', '[an alarmed warble]'], ['luke', 'More fighters coming out of it! Here we go again!']],
+      },
       destroyer: [
         ['r2', '[a frantic warble]'],
         ['luke', 'Star Destroyer, right on top of us! They’re launching fighters!'],
@@ -1010,6 +1410,30 @@ export const CREWS = [
         ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
         ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
       ],
+      minefield: [
+        ['r2', '[an urgent string of beeps]'],
+        ['luke', 'A minefield. Artoo, mark the gaps. I’ll shoot us a way through.'],
+      ],
+      eclipse: [
+        ['luke', 'Artoo, the light’s going. A moon’s crossing the sun.'],
+        ['r2', '[a low, wondering whistle]'],
+      ],
+      escort: [
+        ['comms', 'Red Five, this is the transport Sundari Dawn. We’re carrying medical supplies for the fleet. Can you see us to the next system?'],
+        ['luke', 'Copy, Sundari Dawn. Stay on my wing.'],
+      ],
+      escortPirates: [
+        ['r2', '[a frantic warble]'],
+        ['luke', 'Pirates, closing on the transport. I’m going in.'],
+      ],
+      escorted: [
+        ['comms', 'We’re clear to make the jump. Thank you, Red Five. May the Force be with you.'],
+        ['luke', 'And with you. Safe journey.'],
+      ],
+      escortLost: [
+        ['luke', 'No! We lost the transport.'],
+        ['r2', '[a long, low whistle]'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
       flare: [
@@ -1024,6 +1448,21 @@ export const CREWS = [
         ['luke', 'Artoo, where are we?'],
         ['r2', '[Recalculating. Somewhere new. Nav computer updated.]'],
       ],
+      // a portal gun of Rick's, left in the cockpit (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['luke', 'Artoo, what is this? It was under the seat. A blaster that shoots… doors?'],
+          ['r2', '[An alarmed warble: a portal is forming ahead. It leads to another dimension.]'],
+        ],
+        home: [['luke', 'That’s enough of this place. The green door home, Artoo.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['luke', 'Artoo… that planet’s moving. The whole thing. And look at that station.'],
+          ['r2', '[A worried trill: sensors say the Central Finite Curve. Many Ricks. Proceed with caution.]'],
+        ],
+        main: [['luke', 'We’re back. Artoo, remind me never to touch that thing again.']],
+      },
       leviathan: [
         ['luke', 'Artoo, look at the size of them. Purrgil. I’ve only heard stories.'],
         ['r2', '[Purrgil pod. Hold your course. Let them pass.]'],
@@ -1047,6 +1486,18 @@ export const CREWS = [
       citadel: [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
+      ],
+      rmportal: [
+        ['luke', 'A green whirlpool, just hanging in space. Artoo, is that a hyperspace lane?'],
+        ['r2', '[a doubtful warble]'],
+      ],
+      'rmportal-back': [
+        ['luke', 'The green swirl again. That should take us back the way we came.'],
+        ['r2', '[a hopeful whistle]'],
+      ],
+      curvesun: [
+        ['luke', 'This star’s light is… greener than Tatooine’s twins.'],
+        ['r2', '[an unimpressed beep]'],
       ],
       maw: [
         ['luke', 'A black hole. Keep us well clear, Artoo.'],
@@ -1320,6 +1771,11 @@ export const CREWS = [
       ],
     },
     hunted: {
+      // the ISB, sent when you're wanted (wanted.js)
+      isb: [
+        ['han', 'ISB. Wonderful. Chewie, watch the ones with the ion cannons.'],
+        ['chewie', '[a snarl]'],
+      ],
       fett: [
         ['han', 'Fett. Of course it’s Fett. Chewie, punch it!'],
         ['chewie', '[A furious roar.]'],
@@ -1351,6 +1807,90 @@ export const CREWS = [
     },
     // the named characters who come by (npcs/index.js), by what they're saying
     npc: {
+      // Vader himself, come for you in his TIE Advanced (a nemesis: he remembers)
+      vader: {
+        seen: [
+          ['chewie', '[a low, uneasy growl]'],
+          ['han', 'Yeah, I see it. One TIE, coming straight at us. Nobody flies like that.'],
+        ],
+        hello: [
+          ['comms', 'The Force is strong with this one.', 'forceIsStrong'],
+          ['han', 'Vader. Of course it’s Vader. Chewie, angle the deflectors!'],
+        ],
+        again: [
+          ['comms', 'Captain Solo. You are as foolish as you are stubborn. I expected nothing less.'],
+          ['han', 'He remembers me. Great. I’m flattered. Shoot him, Chewie.'],
+        ],
+        hit: [['comms', 'Impressive. Most impressive.'], ['han', 'Impressive this.']],
+        half: [
+          ['comms', 'You cannot win, Solo. The Empire is patient. I am not.'],
+          ['chewie', '[a triumphant roar]'],
+        ],
+        weak: [
+          ['comms', 'Your shields are failing. You will make a fine addition to my collection.'],
+          ['han', 'Not today, pal. Chewie, give me everything we’ve got!'],
+        ],
+        evade: [['comms', 'I have you now.'], ['han', 'Like hell you do!']],
+        fury: [['comms', 'You have failed me for the last time.'], ['han', 'He’s throwing everything at us! Chewie, evasive! EVASIVE!']],
+        retreat: [
+          ['comms', 'Another time, Captain. We will meet again. Count on it.'],
+          ['han', 'He’s running. Vader’s running! Chewie, remember this moment.'],
+        ],
+        bait: [['han', 'He’s stalling! Chewie, he WANTS us to overshoot—'], ['chewie', '[a roar, too late]']],
+        search: [['comms', 'Running does not become you, Captain Solo.'], ['han', 'He’s lost us. Keep that moon between us, pal.']],
+        found: [['comms', 'There you are.'], ['han', 'He’s on us again. Of course he is.']],
+        leaving: [['chewie', '[a long, relieved moan]'], ['han', 'Yeah. Me too, pal.']],
+      },
+      // Imperial customs, pulling you over (an inspector: cut your engines and it scans you)
+      customs: {
+        seen: [['han', 'Imperial gunboat. Customs. Look casual, Chewie.'], ['chewie', '[a growl: how does one look casual]']],
+        hello: [
+          ['comms', 'Freighter, this is Imperial customs. Cut your engines and prepare to be boarded for inspection.'],
+          ['han', 'Boarded. On the Falcon. With what’s in the smuggling compartments. Chewie… what do you think?'],
+        ],
+        clean: [
+          ['comms', 'Scan complete. Freighter, your cargo is in order. Move along.'],
+          ['han', 'In order. Did you hear that, Chewie? In order. Those compartments were worth every credit.'],
+          ['chewie', '[a smug laugh]'],
+        ],
+        busted: [
+          ['comms', 'Scan complete. Contraband detected. Han Solo, you are under arrest. Fighters inbound.'],
+          ['han', 'Yeah, I figured. Chewie, punch it!'],
+        ],
+        run: [
+          ['comms', 'Freighter, you are fleeing an Imperial inspection! All units, pursue!'],
+          ['han', 'Fleeing is such a strong word. Hang on!'],
+        ],
+        hit: [['comms', 'Shots fired on an Imperial vessel! Requesting immediate support!']],
+        leaving: [['han', 'And they’re gone. See, Chewie? Charm.'], ['chewie', '[a doubtful grunt]']],
+      },
+      // Hondo Ohnaka, with a toll to collect (a trickster: hold still and he pays you back with news)
+      hondo: {
+        seen: [['han', 'Weequay skiff. Hailing us. Nicely. That’s never good.']],
+        hello: [
+          ['comms', 'Captain Solo! Hondo Ohnaka! It has been too long! You are in Hondo’s lane, and Hondo’s lane has a toll. Hold still, my old friend, let me look in that famous hold of yours.'],
+          ['han', 'Hondo. You still owe me for Florrum.'],
+          ['comms', 'Do I? How time flies!'],
+        ],
+        paid: [
+          ['comms', 'Empty! The Millennium Falcon, and the hold is empty! Solo, what has become of you? Hondo cannot rob a poor man. Hondo has a reputation. So, instead, a little news. On the house.'],
+          ['han', 'Nothing’s ever on the house with you. Go ahead.'],
+        ],
+        tip: {
+          hunt: [['comms', 'The Empire is on your trail, my friend. A patrol. I would be somewhere else, and quickly.']],
+          destroyer: [['comms', 'A Star Destroyer is coming for you. Hondo has seen one up close. Do not.']],
+          bounty: [['comms', 'Someone has come to collect on your head, Solo. Not me! I would never. Today.']],
+          distress: [['comms', 'Someone nearby is about to call for help. Pirates. Not mine. Probably not mine.']],
+          any: [['comms', 'Something is coming your way, Solo. Hondo does not know what. But Hondo knows that feeling well.']],
+        },
+        angry: [
+          ['comms', 'So! The great Han Solo wishes to pay the hard way! Boys! Teach him some manners!'],
+          ['han', 'Here we go. Chewie, guns!'],
+        ],
+        hit: [['comms', 'Solo! You shot at Hondo! After everything! Boys!']],
+        friend: [['comms', 'Solo! My brother in piracy! No toll for you, never, not from Hondo! Only news, and my undying affection.'], ['han', 'Brother in piracy. Chewie, we’ve let ourselves go.']],
+        leaving: [['comms', 'Until next time, Captain! Try to be richer!'], ['han', 'Try to be gone.']],
+      },
       lando: {
         seen: [
           ['han', 'Is that who I think it is?'],
@@ -1365,6 +1905,8 @@ export const CREWS = [
           ['han', 'Almost. Right.'],
         ],
         hit: [['comms', 'Han! Watch it! I just had that freighter cleaned!']],
+        grudge: [['comms', 'You shot at me, Han. After everything. Find your parts somewhere else, old buddy.'], ['han', 'Still sore about that, huh.']],
+        shunned: [['comms', 'Word gets around, Han. Freighters are turning tail at the sight of you. I can’t be seen dealing with that. Not even for you.'], ['han', 'Since when do you have standards, Lando?']],
         leaving: [['comms', 'Some other time, old buddy. Calrissian out.']],
       },
     },
@@ -1407,6 +1949,28 @@ export const CREWS = [
       ['chewie', '[a triumphant roar]'],
       ['han', 'I know.'],
     ],
+    ram: {
+      kill: [
+        ['chewie', '[an alarmed roar]'],
+        ['han', 'Relax, she’s been through worse. I think.'],
+      ],
+      cleared: [
+        ['han', 'That’s the last of them. Rammed it. Don’t tell Lando.'],
+        ['chewie', '[a doubtful growl]'],
+      ],
+    },
+    // the ship's powers (shipPowers.js)
+    powers: {
+      odds: { use: [['han', 'Never tell me the odds.', 'neverTellOdds']] },
+      quad: {
+        use: [
+          ['han', 'Chewie, take the guns!'],
+          ['chewie', '[a roar: he’s on the quad lasers]', 'chewieRoar'],
+        ],
+        ready: [['chewie', '[an eager growl: the turrets are his whenever you say]']],
+        big: [['chewie', '[a big, pleased laugh]', 'chewieLaugh']],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again
       wingmen: {
@@ -1442,6 +2006,47 @@ export const CREWS = [
         ['han', 'Didn’t make it. Shame.'],
         ['chewie', '[a mournful moan]'],
       ],
+      // your standing (standing.js): the Empire marking you, the ordinary ships fearing or loving you, the pirates taking to you
+      standing: {
+        suspect: [['han', 'Every patrol we pass is scanning us, Chewie. We’re on a list.'], ['chewie', '[an unbothered grunt]'], ['han', 'Yeah. Another one.']],
+        wanted: [['comms', 'All Imperial units: the freighter is wanted. Engage on sight.'], ['han', 'Wanted. Again. Chewie, we should frame this one.']],
+        trusted: [['comms', 'Imperial customs. Freighter, your record is… spotless. Move along.'], ['han', 'Spotless. Did you hear that, Chewie? Spotless.'], ['chewie', '[a disbelieving laugh]']],
+        feared: [['han', 'That freighter just ran from us. From us, Chewie.'], ['chewie', '[a low, unhappy moan]'], ['han', 'Yeah. I know. We’re the bad guys now.']],
+        hero: [['comms', 'It’s the Falcon! Thank you, Falcon!'], ['han', 'Heroes, Chewie. Don’t get used to it. It doesn’t pay.']],
+        friend: [['comms', 'The outer lanes salute the Millennium Falcon! Fly free, Solo!'], ['han', 'Pirates like us. That’s either very good or very bad for business.']],
+      },
+      // a patrol going past has reported you (traffic.js's spotted)
+      spotted: [['han', 'That patrol made us. They’re calling it in.'], ['chewie', '[a growl]'], ['han', 'I know, I know. Guns.']],
+      wanted: {
+        any: [['han', 'Great. Now there’s a price on us. Again.'], ['chewie', '[an unhappy rumble]']],
+        3: [['han', 'Gunboats with missiles. Chewie, when I say break, break.'], ['chewie', '[a roar]']],
+        5: [['han', 'That’s the whole Imperial Security Bureau.'], ['chewie', '[a howl]'], ['han', 'Yeah. I’ve always wanted to be popular.']],
+        search: [['han', 'They’ve lost us. Kill the running lights and sit tight.']],
+        lost: [['han', 'Told you. Nobody catches the Falcon.'], ['chewie', '[a growl]'], ['han', 'The bounty? Sure, that’s still there. We’ll pay it. Eventually.']],
+      },
+      // an ace hurt into its next stage (hunterRules.js's stages), by who
+      stage: {
+        tieadvanced: [['comms', 'Impressive. Now you will see what a Sith can do.'], ['han', 'He just got faster. How does he just get faster?!']],
+        slave1: [['han', 'Seismic charges! Chewie, he’s dropping seismic charges! Get us out of the way!'], ['chewie', '[a roar]']],
+        ig2000: [['comms', 'Combat parameters: adjusted.'], ['han', 'The droid’s gone berserk! Chewie, track it!']],
+        houndstooth: [['han', 'Bossk is hanging back and hammering us. Close in, Chewie, close in!']],
+        punishingone: [['han', 'Dengar’s jamming us. Every time we tag him he drops off the scope!'], ['chewie', '[a frustrated roar]']],
+        any: [['han', 'It’s changed up on us! Chewie, watch it!']],
+      },
+      // the fight with the Star Destroyer (capitalRules.js): its turbolasers,
+      // your shots off its shield, its domes going, its bridge open, it
+      // running or going up
+      capital: {
+        fired: [['han', 'Turbolasers! Chewie, don’t fly straight, whatever you do!'], ['chewie', '[a roar]']],
+        shielded: [['han', 'We’re not even scratching it! Shields!'], ['chewie', '[a growl: the two domes on the tower]'], ['han', 'The generators on the tower. Yeah, I see them. Those first.']],
+        dome: [['han', 'One generator down! One more, Chewie!']],
+        open: [['han', 'Shields are down! It’s running! The bridge, Chewie, hit the bridge before it jumps!']],
+        bridge: [['han', 'That’s the bridge! She’s going down! Get us clear!'], ['chewie', '[a roar]']],
+        dead: [['chewie', '[an enormous, triumphant roar]'], ['han', 'A Star Destroyer, Chewie. We took down a Star Destroyer. In a hunk of junk. I love this ship.']],
+        fled: [['han', 'It jumped. Figures. Ran with its shields down.'], ['chewie', '[a disappointed moan]'], ['han', 'Yeah. Me too.']],
+        gone: [['han', 'And it’s gone. A generator lighter. Not bad.']],
+        wave: [['han', 'More TIEs coming out of it! Chewie, how many fighters does one of those things carry?!'], ['chewie', '[a roar: a lot]']],
+      },
       destroyer: [
         ['han', 'Star Destroyer! Why is it always a Star Destroyer?'],
         ['chewie', '[an alarmed roar]'],
@@ -1526,6 +2131,33 @@ export const CREWS = [
         ['chewie', '[A roar: rocks ahead!]'],
         ['han', 'I see them. Never tell me the odds, Chewie.'],
       ],
+      minefield: [
+        ['chewie', '[an alarmed roar]'],
+        ['han', 'Mines. Somebody went to a lot of trouble. Hold on, Chewie, I’m threading it.'],
+      ],
+      eclipse: [
+        ['han', 'Huh. Eclipse. Moon right across the sun.'],
+        ['chewie', '[a quiet, impressed rumble]'],
+        ['han', 'Yeah, it’s pretty. Don’t get sentimental on me.'],
+      ],
+      escort: [
+        ['comms', 'Falcon, this is the freighter Kessa Run. Pirates on our tail. We’ll pay you to see us to the next port.'],
+        ['han', 'Now you’re talking.'],
+        ['chewie', '[a pleased grunt]'],
+      ],
+      escortPirates: [
+        ['han', 'Here they come. Chewie, keep ’em off that freighter, that’s our money!'],
+        ['chewie', '[a battle roar]'],
+      ],
+      escorted: [
+        ['comms', 'We made it. Sending the credits now, Falcon. Thanks.'],
+        ['han', 'Pleasure doing business.'],
+      ],
+      escortLost: [
+        ['han', 'We lost ’em. There goes the fee.'],
+        ['chewie', '[a mournful moan]'],
+        ['han', 'Yeah, I know. Them too.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
       flare: [
@@ -1541,6 +2173,24 @@ export const CREWS = [
         ['han', 'See? Told you. We’re… somewhere.'],
         ['chewie', '[A long, unimpressed groan.]'],
       ],
+      // a portal gun of Rick's, won in a card game (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['han', 'Won this off some old guy in a sabacc game. Says it opens a shortcut. Let’s find out.'],
+          ['chewie', '[A worried howl: that is not a blaster.]'],
+        ],
+        home: [['han', 'All right, sightseeing’s over. Door home. Punch it, Chewie.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['chewie', '[A bewildered growl: where are we?]'],
+          ['han', 'Never seen this sector. Never seen a planet do that, either. I don’t like it.'],
+        ],
+        main: [
+          ['han', 'Home. See? I know exactly what I’m doing.'],
+          ['chewie', '[A sceptical rumble.]'],
+        ],
+      },
       leviathan: [
         ['chewie', '[An awed howl: purrgil!]'],
         ['han', 'Purrgil. Easy, Chewie. They jump to lightspeed on their own. Let’s not give them a reason.'],
@@ -1556,6 +2206,9 @@ export const CREWS = [
         ['han', 'Yeah. I see them. Ships don’t end up like that by accident, Chewie.'],
       ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
+      rmportal: [['han', 'Green swirly thing. I’ve flown through worse. Probably.']],
+      'rmportal-back': [['han', 'There’s our way out. Chewie, punch it.']],
+      curvesun: [['han', 'Green sun. Whatever this place is, it isn’t on any of my charts.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
       glacia: [['han', 'I’ve had enough ice planets for one lifetime.']],
@@ -1647,6 +2300,7 @@ export const CREWS = [
     id: 'rv',
     ship: 'The RV',
     label: 'Walt and Jesse',
+    jump: 'bluesky',
     speakers: {
       walt: { name: 'Walt', color: '#9fd27c', voice: 'walt' },
       jesse: { name: 'Jesse', color: '#ff9d55', voice: 'jesse' },
@@ -1852,6 +2506,11 @@ export const CREWS = [
     // hunted by Albuquerque (sides.js): the DEA, the cartel, Gus's trucks,
     // the Cousins; and by whoever else is out here, met online
     hunted: {
+      // APD and the DEA's tactical team, sent when you're wanted (wanted.js)
+      apd: [
+        ['jesse', 'Cops, Mr. White! Like, all the cops!'],
+        ['walt', 'The ones with tasers will kill the engine. Keep them off us.'],
+      ],
       dea: [
         ['jesse', 'Mr. White! DEA! Those are DEA trucks, yo!'],
         ['walt', 'I can see that, Jesse. Lose them. Calmly.'],
@@ -1897,6 +2556,62 @@ export const CREWS = [
     },
     // the named characters who come by (npcs/index.js), by what they're saying
     npc: {
+      // Tuco, come for you himself (a nemesis: he remembers)
+      tuco: {
+        seen: [['jesse', 'Yo, that lowrider… Mr. White, that’s Tuco. That’s Tuco’s car!']],
+        hello: [
+          ['comms', 'HEISENBERG! Hey! It’s me! Tuco! You thought you could just fly around out here? In MY sky? Tight! Tight tight tight!'],
+          ['walt', 'Tuco. Jesse, stay calm.'],
+          ['jesse', 'I AM calm! This is me calm!'],
+        ],
+        again: [
+          ['comms', 'Heisenberg! You’re back! I been waiting! I been WAITING, man! And I brought my boys!'],
+          ['walt', 'He remembers. Of course he remembers. Jesse, guns.'],
+        ],
+        hit: [['comms', 'You shot my car?! You SHOT MY CAR! Oh, you are DEAD, Heisenberg!']],
+        half: [['comms', 'That all you got? THAT ALL YOU GOT?! I’m just getting WARMED UP!'], ['jesse', 'He’s smoking, Mr. White! Keep hitting him!']],
+        weak: [
+          ['comms', 'Ooh, your shield thing’s almost gone! You scared, Heisenberg? You should be scared!'],
+          ['walt', 'I am not scared of you, Tuco.'],
+          ['jesse', 'I am! I’m a little scared!'],
+        ],
+        evade: [['comms', 'Ha! Too slow! TOO SLOW!']],
+        fury: [['comms', 'YOU WANT IT?! YOU GOT IT! TIGHT! TIGHT TIGHT TIGHT!'], ['jesse', 'He’s lost his mind, Mr. White! He’s coming in from everywhere!']],
+        retreat: [
+          ['comms', 'Okay. Okay! This ain’t over, Heisenberg. Nobody does this to Tuco. NOBODY!'],
+          ['jesse', 'He’s bailing! Yo, he’s bailing!'],
+          ['walt', 'He’ll be back. Angrier. They always are.'],
+        ],
+        bait: [['jesse', 'Yo, he’s slowing down! Mr. White, go past— no, wait, DON’T—'], ['walt', 'He’s behind us. Jesse, hold on.']],
+        search: [['comms', 'HEISENBERG! Where you at, Heisenberg? You can’t hide from Tuco!'], ['jesse', 'He lost us. Stay behind the rock, yo. Stay behind the rock.']],
+        found: [['comms', 'THERE you are!'], ['walt', 'He’s seen us. Jesse. Jesse!']],
+        leaving: [['jesse', 'He’s gone. Oh man. Oh man, Mr. White.'], ['walt', 'Breathe, Jesse.']],
+      },
+      // Hank, pulling you over (an inspector: cut your engines and he scans you)
+      hank: {
+        seen: [['jesse', 'Yo, that SUV’s got lights on it. Mr. White… is that Hank?']],
+        hello: [
+          ['comms', 'This is the DEA. Pull over and cut your engines. Now. Hey, is that… Walt? Walt, is that you in that thing?'],
+          ['walt', 'Hank. Jesse, not a word. Not one word.'],
+          ['jesse', 'I’m not saying anything!'],
+        ],
+        clean: [
+          ['comms', 'Huh. Clean. Hey, buddy, what are you doing flying around in an RV? Marie’s gonna want to hear about this.'],
+          ['walt', 'Just… getting some air, Hank.'],
+          ['comms', 'In space. Sure. Okay. Drive safe, Walt.'],
+        ],
+        busted: [
+          ['comms', 'Walt… Walt, there’s a lot of hits on this plate. A LOT. Jesus. Walt, pull over. Walt, I’m calling it in. I have to.'],
+          ['walt', 'Hank, don’t.'],
+          ['comms', 'All units. All units!'],
+        ],
+        run: [
+          ['comms', 'Walt! WALT! Where do you think you’re going?! All units, suspect fleeing!'],
+          ['jesse', 'Yo, he knows it’s us! He knows!'],
+        ],
+        hit: [['comms', 'Did you just shoot at me? Did you just SHOOT at a federal agent?! Oh, you are done!']],
+        leaving: [['walt', 'That was too close, Jesse.'], ['jesse', 'YOU think?!']],
+      },
       saul: {
         seen: [['jesse', 'Mr. White, is that… Saul’s Caddy? Parked? In space?']],
         hello: [
@@ -1908,6 +2623,8 @@ export const CREWS = [
           ['jesse', 'Yo, that’s actually kind of sick.'],
         ],
         hit: [['comms', 'Hey! I’m on your side! Mostly!']],
+        grudge: [['comms', 'You shot at my Caddy. You SHOT at my Caddy! You know what, find your own parts. We’re done. Professionally.'], ['walt', 'He’ll be back.']],
+        shunned: [['comms', 'Walter, I’m hearing things. Trucks going missing. Everybody out here is terrified of you. I can’t be seen with that. Bad for business. Even my business.'], ['jesse', 'Even Saul won’t talk to us, yo.']],
         leaving: [
           ['comms', 'Okay, that’s my cue. You didn’t see me. I was never here.'],
           ['walt', 'He never is.'],
@@ -1972,6 +2689,31 @@ export const CREWS = [
       ['jesse', 'We got ’em all, Mr. White!'],
       ['walt', 'Say my name.', 'sayMyName'],
     ],
+    ram: {
+      kill: [
+        ['jesse', 'Yo, we just rammed him, Mr. White!'],
+        ['walt', 'That’s not chemistry, Jesse. That’s physics. Mass times velocity.'],
+      ],
+      cleared: [
+        ['jesse', 'We rammed the last one, yo! With the RV!'],
+        ['walt', 'Mind the paint, Jesse. We still have to cook in this thing.'],
+      ],
+    },
+    // the ship's powers (shipPowers.js)
+    powers: {
+      magnets: {
+        use: [
+          ['jesse', 'Yeah, Mr. White! Yeah, science!', 'yeahScience'],
+          ['walt', 'Magnets, Jesse. Basic physics.'],
+        ],
+        refuse: { empty: [['jesse', 'Mr. White, there’s nothing out there to grab. Let ’em get closer, yo.']] },
+      },
+      heisenberg: {
+        use: [['walt', 'Say my name.', 'sayMyName']],
+        ready: [['jesse', 'Mr. White, the crystal’s ready. The… the boom one.']],
+        big: [['walt', 'You’re goddamn right.', 'goddamnRight']],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again:
       // Saul, Mike, and whoever else is out here
@@ -2036,6 +2778,45 @@ export const CREWS = [
         ['walt', 'Tell no one.'],
       ],
       // a Madrigal freighter jumps in, and Gus's trucks come out of it (the director's capital ship)
+      // your standing (standing.js): the DEA marking you, the ordinary ships fearing or loving you, Jack's crew taking to you
+      standing: {
+        suspect: [['jesse', 'Yo, every DEA car we pass is looking at us, Mr. White.'], ['walt', 'We’re a person of interest, Jesse. Interest fades. Keep driving.']],
+        wanted: [['comms', 'All DEA units: the RV is wanted. Engage on sight.'], ['jesse', 'Wanted?! We’re WANTED, Mr. White!'], ['walt', 'We were always wanted, Jesse. Now it’s on paper.']],
+        trusted: [['comms', 'DEA. You’re… clear. Model citizens. Drive safe.'], ['walt', 'Model citizens. Jesse, don’t laugh.'], ['jesse', 'I’m not laughing! I’m… okay, I’m laughing.']],
+        feared: [['jesse', 'That truck just turned around when it saw us. They’re scared of the RV, yo.'], ['walt', 'Good. Respect is just fear with manners.']],
+        hero: [['comms', 'That’s them! The RV that saved us! Thank you!'], ['jesse', 'Yo, Mr. White, we’re like… heroes?'], ['walt', 'Don’t get attached to it.']],
+        friend: [['comms', 'Jack says you’re good people. Fly easy.'], ['walt', 'Jack’s crew likes us. Jesse, that’s not a compliment.']],
+      },
+      // a patrol going past has reported you (traffic.js's spotted)
+      spotted: [['jesse', 'Yo, that DEA car just saw us! They’re calling it in!'], ['walt', 'Then we have about a minute. Use it.']],
+      wanted: {
+        any: [['jesse', 'Mr. White, we’re wanted, yo! Like, actually wanted!'], ['walt', 'Then we act like professionals, Jesse.']],
+        3: [['jesse', 'SWAT, Mr. White! They got rockets!'], ['walt', 'Take out the support van. Without it they fall apart.']],
+        5: [['jesse', 'It’s everybody! APD, DEA, everybody!'], ['walt', 'Then they know who we are. Good.']],
+        search: [['walt', 'They’ve lost us. Stay out of sight and say nothing.']],
+        lost: [['jesse', 'We lost ’em! Yeah, science!'], ['walt', 'The bounty stays, Jesse. Somebody will come for it. Pay it off when we land.']],
+      },
+      // an ace hurt into its next stage (hunterRules.js's stages), by who
+      stage: {
+        suvace: [['comms', 'All units, all units, I need backup NOW! It’s the RV!'], ['walt', 'Hank’s pulling back and calling it in. Jesse, this just got worse.']],
+        gusvolvo: [['walt', 'He’s keeping his distance. And his trucks are coming. That’s Gus. He never does anything alone.'], ['jesse', 'Great. GREAT.']],
+        cousins: [['jesse', 'Yo, they got faster! Why’d they get faster?!'], ['walt', 'Because we hurt them, Jesse. Hurt them more.']],
+        any: [['walt', 'It’s changed tactics. Stay sharp, Jesse.'], ['jesse', 'I AM sharp! I’m the sharpest!']],
+      },
+      // the fight with the Madrigal freighter (capitalRules.js): its guns, your
+      // shots off its shield, its emitters going, its cab open, it running or
+      // going up
+      capital: {
+        fired: [['jesse', 'Yo, the freighter’s shooting at us! Those are like, big ones!'], ['walt', 'Slow ones, Jesse. Watch where they go, and don’t be there.']],
+        shielded: [['jesse', 'Our shots aren’t doing anything, Mr. White!'], ['walt', 'A shield. See the two glowing emitters on it? Those are its weak point. Everything has one.']],
+        dome: [['walt', 'One emitter down. One more, Jesse.']],
+        open: [['jesse', 'The shield’s gone! It’s turning around!'], ['walt', 'It’s running. The cab, Jesse. Hit the cab before it jumps.']],
+        bridge: [['walt', 'That’s the cab. It’s coming apart. Back off, Jesse. Now.']],
+        dead: [['jesse', 'Oh my god. We blew up a whole freighter. Gus’s freighter!'], ['walt', 'Gus will notice. Good. Let him.']],
+        fled: [['jesse', 'It jumped! It got away!'], ['walt', 'With no shield and a hole in it. Gus will have questions. That’s enough for today.']],
+        gone: [['walt', 'And it’s gone. An emitter short. Someone will have to explain that to Gus.']],
+        wave: [['jesse', 'More trucks coming out of it, yo!'], ['walt', 'He ships more than chicken, Jesse.']],
+      },
       destroyer: [
         ['jesse', 'Whoa! That freighter just came out of nowhere! It’s Madrigal’s!'],
         ['walt', 'Gus’s trucks, Jesse. He ships more than chicken.'],
@@ -2072,8 +2853,8 @@ export const CREWS = [
         ['walt', 'Because we can, Jesse.'],
       ],
       hyperspeed: [
-        ['jesse', 'Yo, Mr. White, the RV does lightspeed now?!'],
-        ['walt', 'Apply yourself, Jesse. It’s just physics.'],
+        ['jesse', 'Yo, Mr. White, we just turned into crystal! Blue crystal!'],
+        ['walt', 'Sublimation, Jesse. We go over as vapour and come down as product. Ninety-nine point one percent of us, anyway.'],
       ],
       overdrive: [
         ['jesse', 'This is insane, yo! Everything’s a blur!'],
@@ -2124,6 +2905,31 @@ export const CREWS = [
         ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
         ['walt', 'A meteor stream, Jesse. Shoot what you can’t steer round.'],
       ],
+      minefield: [
+        ['jesse', 'Yo, Mr. White, are those mines? Who puts mines in space?'],
+        ['walt', 'Someone who doesn’t want to be followed. Shoot them, Jesse, or go round.'],
+      ],
+      eclipse: [
+        ['jesse', 'Yo, the sun’s going out. Mr. White, the sun’s going out!'],
+        ['walt', 'It’s an eclipse, Jesse. A moon is passing in front of it. Totality lasts a few seconds. Just watch.'],
+      ],
+      escort: [
+        ['comms', 'This is a Madrigal freighter. Our shipment has to reach the next stop, and Jack’s boys know about it. Can you ride along?'],
+        ['walt', 'We’ll see it there.'],
+        ['jesse', 'Since when do we do security?'],
+      ],
+      escortPirates: [
+        ['jesse', 'Mr. White, they’re on the freighter!'],
+        ['walt', 'Then get them off it.'],
+      ],
+      escorted: [
+        ['comms', 'Shipment’s through. Madrigal appreciates your discretion.'],
+        ['walt', 'Tell no one.'],
+      ],
+      escortLost: [
+        ['jesse', 'They got the freighter, man.'],
+        ['walt', 'Then we were never here.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil or a Cromulon), a shot into it
       flare: [
@@ -2138,6 +2944,21 @@ export const CREWS = [
         ['jesse', 'Where are we, Mr. White?'],
         ['walt', 'Somewhere else, Jesse. Check the map.'],
       ],
+      // a portal gun of Rick's, left in the RV (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['jesse', 'Yo, Mr. White, there’s a green sci-fi gun in the glovebox. Some old dude with spiky hair left it at the car wash.'],
+          ['walt', 'Then point it ahead of us, Jesse. Carefully. Let’s see what it does.'],
+        ],
+        home: [['walt', 'We’ve seen enough. Open it again, Jesse. We’re going home.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['jesse', 'Yo, yo, yo… where are we? That planet is moving, Mr. White!'],
+          ['walt', 'Another dimension, Jesse. Stay in the RV. Touch nothing.'],
+        ],
+        main: [['jesse', 'Okay. Okay, we’re back. I’m never touching that gun again, yo.']],
+      },
       leviathan: {
         bear: [
           ['jesse', 'Mr. White… it’s the bear. The pink bear. The one with the eye.'],
@@ -2177,6 +2998,18 @@ export const CREWS = [
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],
+      ],
+      rmportal: [
+        ['jesse', 'Mr. White, there’s a big green hole in the sky.'],
+        ['walt', 'Then we go through it, Jesse. Carefully.'],
+      ],
+      'rmportal-back': [
+        ['jesse', 'Is that the green hole home?'],
+        ['walt', 'Back to our side of things. Yes.'],
+      ],
+      curvesun: [
+        ['jesse', 'Yo, the sun is green. Like, actually green.'],
+        ['walt', 'A different spectrum entirely. Different chemistry, Jesse.'],
       ],
       maw: [
         ['walt', 'A black hole, Jesse. Not even light gets out.'],
@@ -2294,9 +3127,12 @@ export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id :
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
 // 'edge', 'crash', 'pulled' and 'swallowed' (by the black hole), 'idle', 'hit',
-// 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those),
+// 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those), a
+// 'power' (by the ship power's id: its use, the big one charged, a big haul,
+// a refusal),
 // 'arrive' at a place, 'traffic' going
-// past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
+// past (by kind), a 'kill' (by kind, or any), a 'ram' (by when: 'kill' or
+// 'cleared', a ship downed by flying into it), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
 // its id; an event's lines may be keyed by `sub`, what came: a leviathan's
 // kind), 'interdicted' (hunters cut the pulse drive), 'crashInto' (by
@@ -2309,6 +3145,7 @@ export function linesFor(crew, event, id, sub, more) {
   if (event === 'arrive') return crew.arrive[id] ?? null;
   if (event === 'traffic') return crew.traffic?.[id] ?? null;
   if (event === 'kill') return crew.kill?.[id] ?? crew.kill?.any ?? null;
+  if (event === 'ram') return crew.ram?.[id] ?? null;
   if (event === 'hunted') return crew.hunted?.[id] ?? null;
   if (event === 'crashInto') return crew.crashInto?.[id] ?? crew.crash ?? null;
   if (event === 'event') {
@@ -2326,6 +3163,13 @@ export function linesFor(crew, event, id, sub, more) {
     return Array.isArray(f) ? f : (f[more] ?? f.any ?? null);
   }
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
+  if (event === 'power') {
+    // the ship's powers (shipPowers.js): `sub` is when ('use', 'ready',
+    // 'big', 'refuse'), and a refusal is keyed again by why (`more`)
+    const f = crew.powers?.[id]?.[sub];
+    if (!f) return null;
+    return Array.isArray(f) ? f : (f[more] ?? f.any ?? null);
+  }
   if (event === 'foot') {
     const f = crew.foot?.[id];
     if (!f) return null;

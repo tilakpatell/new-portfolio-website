@@ -18,7 +18,7 @@
 @keyframes ar-throb { to { filter: brightness(1.35); } }
 .ar-blast { transform-box: fill-box; transform-origin: 50% 50%; animation: ar-blast 0.7s ease-out forwards; }
 .mjolnir-stage { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
-.mj-hammer { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.mj-hammer { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 0.9s var(--ease-smooth); }
 .mjolnir-stage[data-state='straining'] .mj-hammer { animation: mj-strain 0.09s linear infinite alternate; }
 @keyframes mj-strain { from { transform: rotate(-0.8deg); } to { transform: rotate(0.8deg) translateY(-1px); } }
 .mjolnir-stage[data-state='lifted'] .mj-hammer { transform: translateY(-150px) rotate(-8deg); }

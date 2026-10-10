@@ -11,9 +11,27 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT / "scripts" / "voices"
-OUT = ROOT / "public" / "audio" / "voiced"
-CACHE = HERE / "cache"
-REFS = HERE / "refs"
+# VOICES_OUT: another folder for the mp3s and the manifest, so the nightly health run
+# (scripts/ai-e2e/real/health.mjs) never writes into the site's own
+OUT = Path(os.environ.get("VOICES_OUT", ROOT / "public" / "audio" / "voiced"))
+
+
+def unboxed(path):
+    """Where a path really is. Processes started from a packaged (MSIX) app, such as the Claude
+    desktop app, have the files they make under %LOCALAPPDATA% put in the package's own
+    Packages/<family>/LocalCache/Local instead, and only they see them in the usual place; WSL (the
+    fish engine) and processes started from anywhere else see the real disk. Resolving the path
+    names the package's copy, so everyone finds the same files."""
+    try:
+        return Path(path).resolve()
+    except OSError:
+        return Path(path)
+
+
+# the references and the cache can live outside the checkout (the voices runner's checkout is
+# made fresh beside the repository, and the references are not committed): VOICES_REFS, VOICES_CACHE
+CACHE = unboxed(os.environ.get("VOICES_CACHE", HERE / "cache"))
+REFS = unboxed(os.environ.get("VOICES_REFS", HERE / "refs"))
 AUDIO = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".opus", ".webm", ".aac"}
 # who has a voice to make (scripts/voices/export-lines.mjs keeps the same list)
 VOICED = ["rick", "morty", "luke", "han", "walt", "jesse", "hank"]
@@ -21,6 +39,21 @@ VOICED = ["rick", "morty", "luke", "han", "walt", "jesse", "hank"]
 WORLD_VOICED = ["gandalf", "aragorn", "sam", "frodo", "galadriel", "boromir", "pippin", "gimli", "saruman", "gollum", "elrond", "merry", "butterbur", "theoden", "legolas", "arwen", "bilbo", "hama", "haldir", "denethor", "grima", "celeborn", "michael", "jim", "erin"]
 
 _ffmpeg = None
+
+
+def ears():
+    """The judge's ears: judge.py's models, or with VOICES_JUDGE=fake the contract tests' stand-in
+    (scripts/ai-e2e/fakes/voices_judge.py: no models, no torch), which hears what the fake worker said."""
+    if os.environ.get("VOICES_JUDGE") == "fake":
+        fakes = str(ROOT / "scripts" / "ai-e2e" / "fakes")
+        if fakes not in sys.path:
+            sys.path.insert(0, fakes)
+        import voices_judge
+
+        return voices_judge
+    import judge
+
+    return judge
 
 
 def ffmpeg(given=None):

@@ -1,25 +1,29 @@
-import { Suspense, lazy, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { readPad, typing } from '../../games/pad';
+import { fitCanvas } from '../../../runtime/hud';
 import Pollos from '../Pollos';
-import { splitWord } from '../elements';
 import { rankFor } from '../metherria/rules';
 import { CAREER, readCareer } from './career';
 import { Home, Saul } from './places';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
-import { CITY, COLLIDERS, CRYSTALS, DRIVING, DRIVING_DEFAULTS, DRIVING_KEY, DROPS, PLACES, ROADS, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, createStreets, crystalAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, stepTraffic, timeName } from './rules';
+import { CRYSTALS, DRIVING, DRIVING_KEY, DROPS, PLACES, SPAWN, TIMES, WASH, WORLD_RADIUS, atWash, createSafeSpot, createStreets, crystalAt, nearPlace, progress, readDriving, startRun, stepCar, stepHeat, stepRun, stepSteer, stepTraffic, timeName } from './rules';
 import { carSound } from './sounds';
+import AbqHud, { Title } from './AbqHud';
+import { drawMap } from './map';
 import './world.css';
 import '../../../styles/lazy/albuquerque.css';
-import GuideCue from '../../guide/GuideCue';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // Albuquerque, the world: drive Walt's Aztek round town, and go into the
 // places as they open. The rules are in ./rules.js, the drawing in
-// ./scene.js; this is the wheel, the HUD and the doors. The car slides if
+// ./scene.js, the HUD in ./AbqHud.jsx; this is the wheel and the doors. The car slides if
 // it's asked to: Space is the handbrake, which swings the tail round (a
 // handbrake turn, a drift, a J-turn out of reverse), and the wheel's speed,
 // how much the car catches its own slides and how tightly the camera follows
@@ -140,26 +144,8 @@ export default function AbqWorld() {
   );
 }
 
-// The title, as the title cards have it: Al, aluminium.
-function Title() {
-  const { before, el, after } = splitWord('Albuquerque');
-  return (
-    <h1 id="abq-title" className="abq-world-title" aria-label="Albuquerque">
-      <span aria-hidden="true">
-        {before}
-        {el && (
-          <span className="abq-world-tile">
-            <small>{el.n}</small>
-            {el.sym}
-          </span>
-        )}
-        {after}
-      </span>
-    </h1>
-  );
-}
-
 function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, setToast, refresh }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
@@ -171,7 +157,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     const car = { ...(ok ? { x: parked.x, z: parked.z, yaw: Number.isFinite(parked.yaw) ? parked.yaw : SPAWN.yaw } : SPAWN), speed: 0, slide: 0, yawRate: 0 };
     // the town's traffic (Hank first, in his SUV), none of it on top of you
     const traffic = createStreets(touch ? 18 : 34, { avoid: [car] });
-    sim.current = { car, traffic, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, hand: false, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id, sound: null };
+    sim.current = { car, safe: createSafeSpot(car), traffic, t: 0, heat: 0, keys: new Set(), stick: { x: 0, y: 0 }, hand: false, steer: 0, frame: 0, moved: false, blue: readBlue(), clock: TIMES[0].id, sound: null };
   }
   const { unlock } = useAchievements();
   // the other drivers online, as ghosts (towns/useTravellers)
@@ -227,6 +213,30 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     setClock(next);
     sim.current.clock = next.id;
   }, [api]);
+  // stuck (wedged between a wall and a truck, or up against the fence): back
+  // to the last place it drove clean from (rules.js createSafeSpot), stopped,
+  // through a quick fade so it isn't a jump cut
+  const recover = useCallback(() => {
+    const s = sim.current;
+    const a = api.current;
+    const c = canvas.current;
+    if (!a || s.recovering) return;
+    s.recovering = true;
+    if (c) {
+      c.style.transition = 'opacity 130ms ease-out';
+      c.style.opacity = '0';
+    }
+    setTimeout(() => {
+      s.car = s.safe.back();
+      s.steer = 0;
+      api.current?.settle();
+      if (c) c.style.opacity = '1';
+      setTimeout(() => {
+        if (c) c.style.transition = '';
+        s.recovering = false;
+      }, 130);
+    }, 130);
+  }, [api]);
   const [list, setList] = useState(false);
   // the driving settings: live (the frame loop reads them) and kept
   const [driving, setDriving] = useState(() => readDriving(local.get(DRIVING_KEY, null)));
@@ -254,7 +264,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     };
     import('./scene')
       .then(({ createAbqWorld }) => createAbqWorld(canvas.current, { onLost: () => !dead && setGl('lost') }))
-      .then((a) => {
+      .then(async (a) => {
         if (dead) return a.dispose();
         api.current = a;
         if (import.meta.env.DEV) window.__ABQ__ = { api: a, sim: sim.current }; // for the QA scripts
@@ -262,6 +272,9 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         a.setBlue(sim.current.blue, sim.current.blue.length === CRYSTALS.length);
         a.setPizzas(Number(local.get(PIZZAS, 0)) || 0);
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
         announce(progRef.current);
       })
@@ -279,6 +292,20 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       api.current = null;
     };
   }, [api, setGl, announce]);
+
+  // the map's canvas: as many pixels as the screen has under it (sharp on a
+  // 2× screen, and at a phone's smaller map), fitted when its box changes,
+  // never a frame; ./map.js draws in its own 150 units at any size
+  const mapBox = useRef(null);
+  useEffect(() => {
+    const c = map.current;
+    if (!c) return undefined;
+    const fit = () => (mapBox.current = fitCanvas(c, 150));
+    fit();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    ro?.observe(c);
+    return () => ro?.disconnect();
+  }, []);
 
   // the signs and markers follow what's open
   useEffect(() => {
@@ -302,7 +329,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   const live = gl === 'on' && inView && !inside;
   const near = hud.near;
   const acts = useRef(null);
-  acts.current = { near, enter, nextTime, runDelivery, throwPizza, washCar };
+  acts.current = { near, enter, nextTime, runDelivery, throwPizza, washCar, recover };
   const liveRef = useRef(live);
   liveRef.current = live;
   // the engine starts with the first key or touch (a browser plays nothing before one)
@@ -340,13 +367,18 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       }
       if (key === 't') a.nextTime();
       if (key === 'r') a.runDelivery();
+      if (key === 'b') a.recover();
       if (key === 'p') a.throwPizza();
       if (key === 'h') honk();
       if (key === 'o') {
         setTuning((v) => !v);
         setList(false);
       }
-      if (key === 'Escape') setTuning(false);
+      // (Esc closes either panel: the Menu, when it's open, takes its own Esc first)
+      if (key === 'Escape') {
+        setTuning(false);
+        setList(false);
+      }
       if (key === 'e' && !a.near) a.washCar();
     };
     const up = (e) => s.keys.delete(keyOf(e));
@@ -395,8 +427,11 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       if (pad.a && !s.padA && s.near) enter(s.near);
       // (a press of the pad's own is the nearest it has to a key: try the engine then, once)
       if ((pad.a && !s.padA) || (pad.rt && !s.padRt)) startSound();
+      // (Y: back on the road, as B is on the keys)
+      if (pad.y && !s.padY) recover();
       s.padA = pad.a;
       s.padRt = pad.rt;
+      s.padY = pad.y;
     }
     throttle = Math.max(-1, Math.min(1, throttle));
     const analog = keyed === 0 && stick !== 0;
@@ -407,8 +442,11 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     const movers = s.near3 ?? (s.near3 = []);
     movers.length = 0;
     for (const t of s.traffic) if (Math.abs(t.x - s.car.x) < 14 && Math.abs(t.z - s.car.z) < 14) movers.push({ x: t.x, z: t.z, r: t.route ? 1.7 : 1.5 });
-    const { car, bump, slip, surface } = stepCar(s.car, { throttle, steer: s.steer, handbrake, assist: set.assist }, dt, movers);
+    const { car, bump, force, at: hitAt, slip, surface } = stepCar(s.car, { throttle, steer: s.steer, handbrake, assist: set.assist }, dt, movers);
     s.car = car;
+    s.safe.step(car, bump, dt);
+    // a bump: a thud by how hard, and a puff where (the law keeps the scrapes quiet)
+    if (force > 0) a.hit(force, hitAt);
     if (s.frame % 2 === 0) s.sound?.set({ speed: Math.hypot(car.speed, car.slide), throttle, slip, road: surface === 'road' });
     if (Math.abs(throttle) > 0.1) s.moved = true;
     // the speedometer, written straight to the page (not through React, a
@@ -505,49 +543,38 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       hudKey.current = key;
       setHud({ near: at?.id ?? null, heat: Math.round(s.heat * 10) / 10, hankNear: Boolean(s.hankNear), moved: s.moved, wash, run: s.run ? { name: s.run.name, left: s.run.left, away } : null });
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current, s.blue, s.run, s.others, s.traffic);
+    if (++s.frame % 4 === 0) drawMap(map.current, mapBox.current, s.car, hank, progRef.current, s.blue, s.run, s.others, s.traffic);
   }, live);
 
-  // the touch stick: drag from where you put your thumb
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+  // ?debug: the feel's numbers (the shake, the hit law) and the driving
+  // settings, on the one tuning panel (lib/debugPanel); nothing without it
+  useEffect(() => {
+    const a = api.current;
+    if (gl !== 'on' || !a?.tune || !debugOn()) return undefined;
+    const item = (key) => ({ key, label: DRIVING[key].label.toLowerCase(), type: 'range', min: DRIVING[key].min, max: DRIVING[key].max, step: DRIVING[key].step, get: () => drivingRef.current[key], set: (v) => changeDriving({ ...drivingRef.current, [key]: v }) });
+    const panel = debugPanel({ title: 'Albuquerque' });
+    panel.open([...a.tune(), { name: 'driving', items: Object.keys(DRIVING).map(item) }], { title: 'Albuquerque', id: 'albuquerque' });
+    return () => panel.dispose();
+  }, [gl, api, changeDriving]);
+
+  // the thumbs, on a phone: the kit's stick (read from where the thumb went
+  // down), which wakes the engine on its first touch, and the handbrake under
+  // the other thumb, on while it's held (lit while it is)
+  const onStick = (x, y) => (sim.current.stick = { x, y });
+  const wake = () => (audioContext(), startSound());
+  const handBtn = useRef(null);
+  const hand = {
+    onPress: (e) => {
       audioContext();
+      sim.current.hand = true;
       startSound();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 50));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 50));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
-  // the handbrake, under the other thumb: on while it's held
-  const onHand = (e) => {
-    const down = e.type === 'pointerdown';
-    if (down) {
-      audioContext();
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId); // (a thumb that slides off it is still holding it)
-      } catch {
-        /* no such pointer any more */
-      }
-    }
-    sim.current.hand = down;
-    if (down) {
-      startSound();
+      handBtn.current = e.currentTarget;
       e.currentTarget.dataset.on = '';
-    } else delete e.currentTarget.dataset.on;
+    },
+    onRelease: () => {
+      sim.current.hand = false;
+      delete handBtn.current?.dataset.on;
+    },
   };
 
   const here = near ? prog.places.find((p) => p.id === near) : null;
@@ -564,359 +591,13 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     setList(false);
   };
   const rank = rankFor(snap.points);
-  const tuneId = useId();
   return (
     <div ref={box} className="abq-world-stage" data-touch={touch || undefined}>
       <canvas ref={canvas} className="abq-world-canvas" data-on={gl === 'on' || undefined} aria-label="Albuquerque from above Walt’s Aztek: the desert, the Sandias, and the roads into town" role="img" />
-      {gl === 'loading' && <p className="abq-world-loading">Driving into Albuquerque…</p>}
-
-      <div className="abq-hud abq-hud-top">
-        <div className="abq-hud-brand">
-          <Title />
-          <p className="abq-hud-objective" aria-live="polite">
-            <span aria-hidden="true">◆</span> {prog.objective}
-          </p>
-        </div>
-        <div className="abq-hud-side">
-          <p className="abq-hud-chip">
-            <b>${snap.money}</b> · {rank.title}
-          </p>
-          <p className="abq-hud-chip abq-hud-speed" aria-hidden="true">
-            <b ref={speedo}>0</b> mph
-          </p>
-          <p className="abq-hud-chip abq-hud-blue" title="Blue Sky crystals found in the desert">
-            <span aria-hidden="true">◆</span> Blue Sky <b>{blue}</b>/{CRYSTALS.length}
-          </p>
-          {trav.available &&
-            (trav.on ? (
-              <p className="abq-hud-chip abq-hud-online" data-on="" title="Everyone else online in Albuquerque drives about as a ghost Aztek from another world: they can’t touch your career, nor you theirs">
-                <b>{trav.count}</b> {trav.count === 1 ? 'other driver' : 'other drivers'} in town
-              </p>
-            ) : (
-              <button type="button" className="abq-hud-chip abq-hud-online" onClick={trav.join} title="Go online, and see everyone else driving Albuquerque as a ghost from another world">
-                See other drivers
-              </button>
-            ))}
-          <canvas ref={map} className="abq-map" width="150" height="150" aria-hidden="true" />
-          {(hud.heat > 0 || hud.hankNear) && (
-            <div className="abq-heat" role="meter" aria-label="Hank’s on you" aria-valuemin={0} aria-valuemax={1} aria-valuenow={hud.heat}>
-              <span className="abq-heat-label">DEA</span>
-              <span className="abq-heat-bar">
-                <span style={{ transform: `scaleX(${hud.heat})` }} />
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {hud.run && (
-        <p className="abq-run" role="timer" aria-label={`Delivery to ${hud.run.name}`}>
-          <span aria-hidden="true">▣</span> {hud.run.name} · <b>{clockText(hud.run.left)}</b> · {hud.run.away} m
-        </p>
-      )}
-
-      {toast && (
-        <p className="abq-toast" data-bad={toast.bad || undefined} role="status" key={toast.at}>
-          {toast.text}
-        </p>
-      )}
-
-      {here && !inside && (
-        <div className="abq-door" data-open={here.open || undefined}>
-          <p className="abq-door-name">{here.name}</p>
-          <p className="abq-door-sub">{here.open ? here.sub : here.hint}</p>
-          {here.open && (
-            <div className="abq-door-acts">
-              <button type="button" className="btn btn-primary" onClick={() => enter(here.id)}>
-                Go in {!touch && <kbd>E</kbd>}
-              </button>
-              {here.id === 'home' && (
-                <button type="button" className="btn btn-ghost abq-door-alt" onClick={throwPizza}>
-                  Throw a pizza {!touch && <kbd>P</kbd>}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {hud.wash && !here && !inside && (
-        <div className="abq-door" data-open>
-          <p className="abq-door-name">A1A Car Wash</p>
-          <p className="abq-door-sub">Have an A1 day</p>
-          <button type="button" className="btn btn-primary" onClick={washCar}>
-            Wash the Aztek {!touch && <kbd>E</kbd>}
-          </button>
-        </div>
-      )}
-
-      {gl === 'on' && !hud.moved && !here && <p className="abq-hint">{touch ? 'Drag the stick to drive. Hold Slide into a turn: it’s the handbrake, and the tail swings round. Hank’s SUV is the flashing dot: don’t race past him, or carry near him.' : 'W A S D or the arrows to drive: S brakes, Space slides you round a turn. E goes in, R runs a delivery, H is the horn. Hank’s SUV is the flashing dot: don’t race past him, or carry near him.'}<GuideCue touch={touch} /></p>}
-
-      <div className="abq-hud abq-hud-bottom">
-        {touch && (
-          <div className="abq-pads">
-            <div className="abq-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} aria-hidden="true">
-              <span />
-            </div>
-            <button type="button" className="abq-hand" onPointerDown={onHand} onPointerUp={onHand} onPointerCancel={onHand} onContextMenu={(e) => e.preventDefault()} aria-label="Handbrake: hold it into a corner to slide">
-              Slide
-            </button>
-          </div>
-        )}
-        <button
-          type="button"
-          className="btn btn-ghost abq-places-btn abq-clock-btn"
-          onClick={() => {
-            setTuning((v) => !v);
-            setList(false);
-          }}
-          aria-expanded={tuning}
-          aria-controls={tuneId}
-        >
-          Driving {!touch && <kbd>O</kbd>}
-        </button>
-        <button type="button" className="btn btn-ghost abq-places-btn" onClick={runDelivery} disabled={!!hud.run}>
-          {hud.run ? 'On a run' : 'Run a delivery'} {!touch && !hud.run && <kbd>R</kbd>}
-        </button>
-        <button type="button" className="btn btn-ghost abq-places-btn" onClick={nextTime} aria-label={`Time of day: ${clock.name}. Change it`}>
-          {clock.name} {!touch && <kbd>T</kbd>}
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost abq-places-btn"
-          onClick={() => {
-            setList((v) => !v);
-            setTuning(false);
-          }}
-          aria-expanded={list}
-        >
-          Places {!touch && <kbd>M</kbd>}
-        </button>
-      </div>
-
-      {tuning && <Driving id={tuneId} driving={driving} onChange={changeDriving} onClose={() => setTuning(false)} touch={touch} />}
-
-      {list && (
-        <div className="abq-list" role="dialog" aria-label="Places in Albuquerque">
-          <div className="abq-list-head">
-            <p>Places</p>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setList(false)}>
-              Close
-            </button>
-          </div>
-          <ul>
-            {prog.places.map((p) => (
-              <li key={p.id} data-open={p.open || undefined} data-next={p.id === prog.next || undefined}>
-                <div>
-                  <p className="abq-list-name">{p.name}</p>
-                  <p className="abq-list-sub">{p.open ? p.sub : p.hint}</p>
-                </div>
-                {p.open ? (
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => travel(p)}>
-                    Drive there
-                  </button>
-                ) : (
-                  <span className="abq-lock">Locked</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Driving into Albuquerque" />
+      <AbqHud touch={touch} gl={gl} prog={prog} snap={snap} rank={rank} blue={blue} speedo={speedo} map={map} trav={trav} hud={hud} toast={toast} here={here} inside={inside} enter={enter} throwPizza={throwPizza} washCar={washCar} runDelivery={runDelivery} nextTime={nextTime} clock={clock} tuning={tuning} setTuning={setTuning} list={list} setList={setList} onStick={onStick} wake={wake} hand={hand} driving={driving} changeDriving={changeDriving} travel={travel} />
     </div>
   );
-}
-
-// The driving settings (rules.js's DRIVING), from the Driving button (or O):
-// how quickly the wheel goes over, how much the car straightens itself out of
-// a slide, how tightly the camera follows. Every change is live and kept
-// between visits. Not modal: the town stays drivable behind it.
-const pct = (k, v) => (k === 'assist' && v === 0 ? 'Off' : `${Math.round(v * 100)}%`);
-function Driving({ id, driving, onChange, onClose, touch }) {
-  return (
-    <section id={id} className="abq-list abq-drive" role="dialog" aria-label="Driving settings">
-      <div className="abq-list-head">
-        <p>Driving</p>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-          Close
-        </button>
-      </div>
-      {Object.entries(DRIVING).map(([k, r]) => {
-        const v = driving[k];
-        return (
-          <label key={k} className="abq-drive-row">
-            <span className="abq-drive-top">
-              <span className="abq-list-name">{r.label}</span>
-              <output>{pct(k, v)}</output>
-            </span>
-            <input
-              type="range"
-              min={r.min}
-              max={r.max}
-              step={r.step}
-              value={v}
-              style={{ '--fill': `${((v - r.min) / (r.max - r.min)) * 100}%` }}
-              onChange={(e) => onChange({ ...driving, [k]: Number(e.target.value) })}
-              // (dragged with a mouse or a thumb, it lets go of the arrow keys again)
-              onPointerUp={(e) => e.currentTarget.blur()}
-              aria-describedby={`${id}-${k}`}
-            />
-            <span id={`${id}-${k}`} className="abq-list-sub">
-              {r.hint}
-            </span>
-          </label>
-        );
-      })}
-      <ul className="abq-drive-moves">
-        <li>
-          <b>Handbrake turn</b> {touch ? 'Hold Slide and steer' : 'Hold Space and steer'}: the tail swings round. Let go and it grips where it points.
-        </li>
-        <li>
-          <b>Drift</b> A dab of handbrake into a corner, then the throttle. Dirt and sand slide on their own.
-        </li>
-        <li>
-          <b>J-turn</b> Reverse flat out, then the handbrake and the wheel hard over.
-        </li>
-      </ul>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange({ ...DRIVING_DEFAULTS })}>
-        Back to how it came
-      </button>
-    </section>
-  );
-}
-
-// The map in the corner, north up and round the car: the city's streets,
-// blocks and buildings (drawn once, below), the places, the crystals, Hank,
-// the traffic, the other drivers online (pale, out of any place) and you.
-// Anything further off than it shows is drawn on its rim.
-const VIEW = 150; // metres from the middle to the rim
-const K = 74 / VIEW;
-let base = null;
-const BASE = { px: 1, half: 430 }; // pixels a metre, and where the middle of town is on it
-function baseMap() {
-  if (base) return base;
-  const c = document.createElement('canvas');
-  c.width = c.height = BASE.half * 2;
-  const g = c.getContext('2d');
-  const at = (x, z) => [BASE.half + x * BASE.px, BASE.half + z * BASE.px];
-  // the blocks, a shade lighter than the desert
-  g.fillStyle = 'rgba(233, 225, 208, 0.16)';
-  for (const b of CITY.blocks) {
-    const [x, y] = at(b.kerb.x0, b.kerb.z0);
-    g.fillRect(x, y, (b.kerb.x1 - b.kerb.x0) * BASE.px, (b.kerb.z1 - b.kerb.z0) * BASE.px);
-  }
-  g.fillStyle = 'rgba(120, 170, 90, 0.45)';
-  for (const l of CITY.lots) {
-    if (l.surface !== 'grass') continue;
-    const [x, y] = at(l.x - l.w / 2, l.z - l.d / 2);
-    g.fillRect(x, y, l.w * BASE.px, l.d * BASE.px);
-  }
-  g.lineCap = 'butt';
-  for (const r of ROADS) {
-    g.strokeStyle = r.dirt ? '#b8946a' : '#e9e1d0';
-    g.lineWidth = Math.max(2, r.w * BASE.px);
-    g.beginPath();
-    g.moveTo(...at(r.a.x, r.a.z));
-    g.lineTo(...at(r.b.x, r.b.z));
-    g.stroke();
-  }
-  g.fillStyle = 'rgba(40, 30, 20, 0.55)';
-  for (const b of COLLIDERS) {
-    if (b.kind === 'car') continue;
-    const [x, y] = at(b.x - b.w / 2, b.z - b.d / 2);
-    g.fillRect(x, y, Math.max(1, b.w * BASE.px), Math.max(1, b.d * BASE.px));
-  }
-  base = c;
-  return c;
-}
-function drawMap(c, car, hank, prog, blue = [], run = null, others = [], traffic = []) {
-  const g = c?.getContext('2d');
-  if (!g) return;
-  const at = (x, z) => [75 + (x - car.x) * K, 75 + (z - car.z) * K];
-  // anything off the map's edge is drawn on its rim
-  const rim = (x, z) => {
-    const dx = x - car.x;
-    const dz = z - car.z;
-    const d = Math.hypot(dx, dz);
-    const k = d > VIEW - 6 ? (VIEW - 6) / d : 1;
-    return at(car.x + dx * k, car.z + dz * k);
-  };
-  g.clearRect(0, 0, 150, 150);
-  g.save();
-  g.beginPath();
-  g.arc(75, 75, 74, 0, Math.PI * 2);
-  g.fillStyle = 'rgba(70, 52, 34, 0.62)';
-  g.fill();
-  g.clip();
-  const b = baseMap();
-  g.drawImage(b, BASE.half + (car.x - VIEW) * BASE.px, BASE.half + (car.z - VIEW) * BASE.px, VIEW * 2 * BASE.px, VIEW * 2 * BASE.px, 1, 1, 148, 148);
-  // the traffic, small and grey
-  g.fillStyle = 'rgba(200, 200, 195, 0.75)';
-  for (const t of traffic) {
-    if (t.route) continue;
-    const [x, y] = at(t.x, t.z);
-    if (x < 0 || y < 0 || x > 150 || y > 150) continue;
-    g.fillRect(x - 1.2, y - 1.2, 2.4, 2.4);
-  }
-  g.restore();
-  for (const p of prog.places) {
-    const [x, y] = rim(p.door.x, p.door.z);
-    g.fillStyle = p.open ? '#f0c330' : '#7c817e';
-    g.beginPath();
-    g.arc(x, y, p.id === prog.next ? 5 : 3.5, 0, Math.PI * 2);
-    g.fill();
-    if (p.id === prog.next) {
-      g.strokeStyle = '#f0c330';
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.arc(x, y, 8, 0, Math.PI * 2);
-      g.stroke();
-    }
-  }
-  g.fillStyle = '#5fd0ff';
-  for (const k of CRYSTALS) {
-    if (blue.includes(k.id)) continue;
-    if (Math.hypot(k.x - car.x, k.z - car.z) > VIEW - 6) continue;
-    const [x, y] = at(k.x, k.z);
-    g.fillRect(x - 1.5, y - 1.5, 3, 3);
-  }
-  const [hx, hy] = rim(hank.x, hank.z);
-  g.fillStyle = Math.floor(performance.now() / 300) % 2 ? '#ff4a4a' : '#4a7bff';
-  g.beginPath();
-  g.arc(hx, hy, 3.5, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = 'rgba(190, 210, 255, 0.85)';
-  for (const o of others ?? []) {
-    if (o.inside) continue;
-    const [ox, oy] = rim(o.x, o.z);
-    g.beginPath();
-    g.arc(ox, oy, 3, 0, Math.PI * 2);
-    g.fill();
-  }
-  if (run) {
-    const [dx, dy] = rim(run.x, run.z);
-    g.fillStyle = '#58ff8a';
-    g.strokeStyle = '#0c2a14';
-    g.lineWidth = 1.5;
-    g.beginPath();
-    g.arc(dx, dy, 4.5, 0, Math.PI * 2);
-    g.fill();
-    g.stroke();
-  }
-  g.save();
-  g.translate(75, 75);
-  g.rotate(-car.yaw + Math.PI);
-  g.fillStyle = '#ffffff';
-  g.strokeStyle = '#1a1a1a';
-  g.lineWidth = 1.5;
-  g.beginPath();
-  g.moveTo(0, -6);
-  g.lineTo(4.5, 5);
-  g.lineTo(-4.5, 5);
-  g.closePath();
-  g.fill();
-  g.stroke();
-  g.restore();
 }
 
 // Without 3D: the places as cards.

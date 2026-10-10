@@ -1,3 +1,5 @@
+import { budget } from '../../../../lib/budgets';
+import { MODELS as audit } from './audit';
 import { MODELS as battlefront } from './battlefront';
 import { MODELS as common } from './common';
 import { MODELS as clonewars } from './clonewars';
@@ -7,20 +9,42 @@ import { MODELS as edge } from './edge';
 import { MODELS as fill } from './fill';
 import { MODELS as forest } from './forest';
 import { MODELS as ice } from './ice';
+import { MODELS as library } from './library';
 import { MODELS as made } from './made';
 import { MODELS as outer } from './outer';
 import { MODELS as people } from './people';
+import { MODELS as quaternius } from './quaternius';
 import { MODELS as rebels } from './rebels';
+import { MODELS as three } from './three';
 
 // Every surface model there is, by kind, with the group it came in with
 // (each group's catalogue is brought in by scripts/sketchfab-surface.mjs on
 // its own). A world asks for a kind; one that isn't here (yet) it builds in
 // code, or goes without.
 // (battlefront last: a kind there takes over from the same kind's Sketchfab model)
-export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, people, outer, rebels, made, fill, battlefront };
+export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, people, outer, rebels, three, quaternius, made, fill, library, audit, battlefront };
 export const SURFACE_MODELS = Object.fromEntries(Object.entries(GROUPS).flatMap(([group, models]) => Object.entries(models).map(([kind, m]) => [kind, { ...m, group }])));
 export const surfaceUrl = (kind) => `/models/galaxy/surface/${kind}.glb`;
 export const surfaceLodUrl = (kind) => `/models/galaxy/surface/${kind}.lod1.glb`;
+// A kind's ultra cut (its entry's optional `ultra: { tris, tex }`; the entry's
+// own `tris` stays the high cut): loaded at ultra, the plain file otherwise.
+export const surfaceUltraUrl = (kind) => `/models/galaxy/surface/${kind}.ultra.glb`;
+// An entry with its own `url` (a book of models kept outside this folder:
+// the Rick and Morty planets') loads that, and its ultra and light cuts only
+// where it names them (`ultraUrl`, `lodUrl`): no file is guessed at.
+export const modelUrlFor = (kind, level, models = SURFACE_MODELS) => {
+  const m = models[kind];
+  if (m?.url) return (level === 'ultra' && m.ultraUrl) || m.url;
+  return level === 'ultra' && m?.ultra ? surfaceUltraUrl(kind) : surfaceUrl(kind);
+};
+export const lodUrlFor = (kind, models = SURFACE_MODELS) => {
+  const m = models[kind];
+  return m?.url ? (m.lodUrl ?? m.url) : surfaceLodUrl(kind);
+};
+// Whether a kind swaps to its light model far off: it has one (`lod`, or
+// its own `lodUrl`), and the level's budget swaps (lib/budgets' lod1; ultra
+// keeps the full model at every distance).
+export const wantsLod = (kind, level, models = SURFACE_MODELS) => Boolean(models[kind]?.url ? models[kind].lodUrl : models[kind]?.lod) && budget(level).lod1;
 // the made kinds public/cc0/README.md lists (its
 // `models/galaxy/surface/{a,b,…}.glb` lines, one a lane): each made model
 // has to be there

@@ -23,6 +23,7 @@ import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js'
 import { canvasTexture, hot } from '../../../../lib/stage3d';
 import { clamp01, fbm, greyFromField, makeCanvas, makeCells, makeNoise, mix, normalFromField, paintPixels, smooth } from '../../../../lib/paint';
 import { B, ball, blob, boxUV, createShireKit, cyl, lathe, parts, rng, roundBox, tf, tube } from '../../shire/props';
+import { createShot, createStride, createTracker, ease, footAt, legRig } from '../../creatures';
 
 const TAU = Math.PI * 2;
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -1465,7 +1466,9 @@ function tentacleCanvas(S = 256) {
 // where two rows of suckers run up it. A chain of bones bends it.
 // update(t, k, strike): k (0..1) how far it has risen, curled and swaying
 // when up; strike (0..1) brings it over and down along +x, to lie flat on
-// the bank beyond the water, about 0.25 m up.
+// the bank beyond the water, about 0.25 m up: rolling out from the root to
+// the tip like a whip, the tip last. Its rising and sinking are eased, so
+// it never jumps from one height to another.
 function tentacle(K, seed = 1) {
   const { mats } = K;
   const r = rng(seed * 13 + 3);
@@ -1583,11 +1586,17 @@ function tentacle(K, seed = 1) {
   const ph = r() * TAU;
   const curl = 3.3 + r() * 0.8;
   const lean = -0.25 - r() * 0.3;
+  const E = { t: null, e: 0 };
   const update = (t, k = 1, strike = 0) => {
     K.U.uTime.value = t;
-    const e = clamp01(k);
+    const dt = E.t == null || t < E.t ? 1 : Math.min(0.1, t - E.t);
+    E.t = t;
+    const want = clamp01(k);
+    E.e = dt >= 1 ? want : ease(E.e, want, dt, want > E.e ? 7 : 4);
+    const e = E.e;
     const up = 1 - Math.pow(1 - e, 3);
-    const st = smooth(0, 1, clamp01(strike));
+    const sk = clamp01(strike);
+    const st = smooth(0, 1, sk);
     g.visible = e > 0.001;
     rise.position.y = mix(mix(-L - DEPTH - 1, -DEPTH, up), strikeRoot, st);
     let prev = 0;
@@ -1599,7 +1608,9 @@ function tentacle(K, seed = 1) {
       const wave = Math.sin(t * 1.3 + ph - s * 5.5) * (0.12 + 0.5 * s) + Math.sin(t * 2.3 + ph * 2 - s * 9) * 0.12 * s;
       const hook = curl * Math.pow(smooth(0.35, 1, s), 1.4) * mix(0.25, 1, smooth(0.4, 1, e));
       const stand = lean * Math.min(1, s * 3) + -hook + wave * 0.35 + (1 - e) * Math.sin(t * 5 + s * 12) * 0.3 * s;
-      const dir = mix(stand, strikeDir(s) + Math.sin(t * 6 + s * 10) * 0.04 * s * (1 - st * 0.5), st);
+      // the slam rolls out along it, root first
+      const ss = smooth(0, 1, clamp01(sk * 1.35 - s * 0.35));
+      const dir = mix(stand, strikeDir(s) + Math.sin(t * 6 + s * 10) * 0.04 * s * (1 - st * 0.5), ss);
       const bone = mesh.skeleton.bones[i];
       bone.rotation.z = i ? dir - prev : dir;
       const side = Math.sin(t * 0.9 + ph + s * 3) * 0.06 * s * (1 - st);
@@ -2982,8 +2993,14 @@ function chainParts(bk, mat, pts, { r = 0.07, wire = 0.022, broken = true } = {}
 // club in its right hand, resting on the ground ahead. Each part in its own
 // group, pivoted at its joint: body (at the hips), head, arms [l, r] at the
 // shoulders (each with .fore and .hand), legs [l, r] at the hips (each with
-// .shin), club. animate(t, { walking, swing, roar }): swing 0..1 lifts the
-// club overhead (to 0.5) and brings it down on the ground ahead along +x.
+// .shin), club. animate(t, { swing, roar, reach }): swing 0..1 lifts the
+// club overhead (to 0.5) and brings it down on the ground ahead along +x;
+// left at 0 with `reach` (metres to whoever it's after) it swings on its
+// own, started so the club comes down as it gets to them, and not again for
+// a moment after. roar (0 or 1: it's hunting) roars once as it takes up the
+// hunt, chest out and arms wide, then snarls while it hunts. Its walk is
+// read from where the scene puts it (../../creatures.js), heavy and
+// lengthening as it lumbers into a run; `walking` is no longer needed.
 function caveTroll(K) {
   const { mats } = K;
   const g = new THREE.Group();
@@ -3184,40 +3201,74 @@ function caveTroll(K) {
   const rest = {
     hips: hips.position.clone(),
   };
-  const animate = (t, { walking = false, swing = 0, roar = 0 } = {}) => {
+  const track = createTracker({ fastest: 25 });
+  const gait = createStride({ stride: 2.8, hz: 0.5, longest: 1.25, stance: 0.58, cadence: [0.6, 1.1], seed: 31 });
+  // each leg on its rig: the knee where the shin hangs from the thigh, the
+  // sole under the shin
+  const RIG = legRig({ knee: [0.3, -0.84], foot: [0.42, -0.95] });
+  const roared = createShot(1.8);
+  const blow = createShot(1.1);
+  const E = { last: null, hunt: 0, was: 0, cool: 0 };
+  const animate = (t, { swing = 0, roar = 0, reach = Infinity } = {}) => {
     K.U.uTime.value = t;
-    const w = walking ? 1 : 0;
-    const ph = t * 3.0;
-    const sw = clamp01(swing);
+    const dt = E.last == null ? 0 : Math.max(0, Math.min(0.1, t - E.last));
+    E.last = t;
+    const m = track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+    const st = gait.step(dt, m.fwd < -0.05 ? -m.speed : m.speed);
+    const w = st.amount;
+    const ph = st.phase;
+    // the near leg's swing (+ forward), for the body's roll and the arms
+    const wave = Math.cos(ph);
+    // the club: as told, or its own blow, started to land as it reaches you
+    E.cool = Math.max(0, E.cool - dt);
+    if (!(swing > 0) && !blow.active && E.cool <= 0 && reach < 1.5 + m.speed * 0.5) {
+      blow.fire();
+      E.cool = 1.8;
+    }
+    const own = blow.step(dt);
+    const sw = swing > 0 ? clamp01(swing) : Math.max(0, own);
     const up = smooth(0, 0.45, sw) * (1 - smooth(0.55, 0.78, sw));
     const down = smooth(0.55, 0.78, sw) * (1 - smooth(0.92, 1, sw) * 0.3);
-    const ro = clamp01(roar);
+    // the roar, once, as it takes up the hunt; a snarl while it hunts
+    const r0 = clamp01(roar);
+    if (r0 > 0.5 && E.was <= 0.5) roared.fire();
+    E.was = r0;
+    E.hunt = ease(E.hunt, r0, dt, 3);
+    const rk = roared.step(dt);
+    const ro = Math.max(rk < 0 ? 0 : smooth(0, 0.15, rk) * (1 - smooth(0.7, 1, rk)), E.hunt * 0.22);
     const breathe = Math.sin(t * 1.6) * 0.02;
-    // the legs: heavy strides, the knees bending as each comes through
+    // the legs: heavy strides, each foot held where it comes down, the knee
+    // bending as it comes through
+    // each foot held where it comes down, its knee taking up the rest; the
+    // stride under the hips, lower the longer it is; its roll with the
+    // stride in its body, above them
+    const cx = RIG.home[0] * (1 - w);
+    const lower = RIG.sink(st.travel * w, cx) * (0.8 + 0.2 * Math.cos(2 * ph - 0.58 * Math.PI * 2));
     legs.forEach((leg, i) => {
-      const p = ph + (i ? Math.PI : 0);
-      leg.rotation.z = Math.sin(p) * 0.42 * w - down * 0.2 * (i ? 1 : -0.4);
+      const f = footAt(st.cycle + (i ? 0.5 : 0), 0.58);
+      const [th, sh] = RIG.reach(cx + ((f.x * st.travel) / 2) * w, RIG.home[1] + lower + down * 0.22 + f.lift * 0.32 * w);
+      leg.rotation.z = th - down * 0.2 * (i ? 1 : -0.4);
       leg.rotation.x = (i ? 1 : -1) * 0.05;
-      leg.shin.rotation.z = -Math.max(0, Math.sin(p + 1.2)) * 0.75 * w - down * 0.25;
+      leg.shin.rotation.z = sh - down * 0.25;
     });
-    hips.position.y = rest.hips.y + (Math.abs(Math.cos(ph)) - 0.6) * 0.12 * w - down * 0.22;
-    hips.rotation.x = Math.sin(ph) * 0.06 * w;
-    hips.rotation.y = Math.sin(ph) * 0.08 * w;
+    hips.position.y = rest.hips.y - lower - down * 0.22;
+    hips.rotation.x = 0;
+    hips.rotation.y = 0;
     // the body: rolling with the stride, rearing up with the club, then
     // throwing its weight down behind the blow; chest out to roar
-    body.rotation.y = -Math.sin(ph) * 0.1 * w + up * 0.15 - down * 0.1;
+    body.rotation.y = -wave * 0.02 * w + up * 0.15 - down * 0.1;
     body.rotation.z = -0.05 * w + up * 0.32 - down * 0.45 + ro * 0.22 + breathe;
-    body.rotation.x = Math.sin(ph) * 0.04 * w;
+    body.rotation.x = wave * 0.1 * w;
     head.rotation.z = -up * 0.2 + down * 0.25 + ro * 0.55 + Math.sin(t * 0.7) * 0.04;
     head.rotation.y = Math.sin(t * 0.45) * 0.15 * (1 - ro);
     jaw.rotation.z = -0.06 - ro * 0.55 - down * 0.15 + Math.sin(t * 9) * 0.03 * ro;
     // the left arm swings and hangs; out wide when he roars
     const [L, R] = arms;
-    L.rotation.z = -Math.sin(ph) * 0.32 * w + ro * 0.5 + up * 0.25;
+    L.rotation.z = -wave * 0.32 * w + ro * 0.5 + up * 0.25;
     L.rotation.x = -0.08 - ro * 0.55;
-    L.fore.rotation.z = 0.2 + ro * 0.5 + Math.max(0, -Math.sin(ph)) * 0.25 * w;
+    L.fore.rotation.z = 0.2 + ro * 0.5 + Math.max(0, -wave) * 0.25 * w;
     // the club arm: up over his head and back, then down along +x
-    const swingAng = mix(mix(Math.sin(ph) * 0.3 * w, 3.35, up), 1.1, down);
+    const swingAng = mix(mix(wave * 0.3 * w, 3.35, up), 1.1, down);
     R.rotation.z = swingAng + ro * 0.3 * (1 - up);
     R.rotation.x = 0.12 + up * 0.35 - down * 0.1 + ro * 0.4;
     R.fore.rotation.z = 0.25 + up * 0.9 * (1 - down) - down * 0.2;
@@ -3747,8 +3798,10 @@ function wingSkin(W, rim, body, { n = 8, m = 6 } = {}) {
 // a long tail; wings of shadow and smoke; a mane of flame on its head and
 // neck and fire rising off its back and shoulders, smoke above; eyes like
 // coals; a sword of flame in its right hand and a whip of fire in its left.
-// update(t, { stride, rage, whip }): stride 0..1 how far it is walking (the
-// gait from t); rage 0..1 the fire up, the wings spread, the head up and
+// update(t, { rage, whip }): its walk is read from where the scene puts it
+// (../../creatures.js), each great foot held where it comes down however
+// the gap to you opens or closes (`stride` is no longer needed); rage 0..1
+// the fire up, the wings spread, the head up and
 // roaring; whip 0..1 cracks the whip (up and back to 0.4, the lash rolling
 // out forward to 0.8, the crack), then reaches it forward and up to wrap
 // round the legs of whoever stands on the deck WHIP_REACH ahead: the deck
@@ -4128,42 +4181,60 @@ function balrog(K) {
     whipFire.material.uniforms.uHeat.value = 0.8 + crack * 0.8 + reach * 0.3;
   };
 
-  const update = (t, { stride = 0, rage = 0, whip = 0 } = {}) => {
+  // its walk: a stride from the ground it covers, a heavy tread
+  const track = createTracker({ fastest: 40 });
+  const gait = createStride({ stride: 6.0, hz: 0.8, longest: 1.3, stance: 0.54, cadence: [0.9, 1.3], seed: 13 });
+  // each leg on its rig, to the ankle (the great foot kept level beneath
+  // it while it's down): the knee where the shin hangs from the thigh
+  const RIG = legRig({ knee: [0.95, -1.75], foot: [-0.65, -1.45], rest: [0.04, 0] });
+  const update = (t, { rage = 0, whip = 0 } = {}) => {
     U.uTime.value = t;
-    const w = clamp01(stride);
+    const m = track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+    const st = gait.step(m.dt, m.fwd < -0.05 ? -m.speed : m.speed);
+    const w = st.amount;
     const ra = clamp01(rage);
     const k = clamp01(whip);
     U.uRage.value = ra;
-    const ph = t * 1.9;
+    const ph = st.phase;
+    // the near leg's swing (+ forward), for the body's roll and the arms
+    const sw = Math.cos(ph);
+    // each great foot held where it comes down, kept level, its knee taking
+    // up the rest; the stride under the hips, lower the longer it is
+    const cx = RIG.home[0] * (1 - w);
+    const lower = RIG.sink(st.travel * w, cx) * (0.8 + 0.2 * Math.cos(2 * ph - 0.54 * Math.PI * 2));
     legs.forEach((leg, i) => {
-      const p = ph + (i ? Math.PI : 0);
-      leg.rotation.z = Math.sin(p) * 0.34 * w + 0.04 - ra * 0.06;
+      const f = footAt(st.cycle + (i ? 0.5 : 0), 0.54);
+      const [th, sh] = RIG.reach(cx + ((f.x * st.travel) / 2) * w, RIG.home[1] + lower + ra * 0.15 + f.lift * 0.8 * w);
+      leg.rotation.z = th;
       leg.rotation.x = (i ? 1 : -1) * 0.04;
-      leg.shin.rotation.z = -Math.max(0, Math.sin(p + 1.3)) * 0.45 * w;
-      leg.shin.foot.rotation.z = Math.max(0, Math.sin(p + 2.2)) * 0.5 * w - Math.max(0, -Math.sin(p)) * 0.15 * w;
+      leg.shin.rotation.z = sh;
+      leg.shin.foot.rotation.z = 0.04 - th - sh + f.lift * 0.5 * w;
     });
-    hips.position.y = rest.hips.y + (Math.abs(Math.cos(ph)) - 0.6) * 0.22 * w - ra * 0.15;
-    hips.rotation.x = Math.sin(ph) * 0.05 * w;
-    hips.rotation.y = Math.sin(ph) * 0.06 * w;
-    tail.rotation.y = Math.sin(t * 0.8) * 0.25 + Math.sin(ph) * 0.12 * w;
+    hips.position.y = rest.hips.y - lower - ra * 0.15;
+    // (its roll with the stride in its body, above the hips, so the
+    // planted foot isn't swung about with it)
+    hips.rotation.x = 0;
+    hips.rotation.y = 0;
+    tail.rotation.y = Math.sin(t * 0.8) * 0.25 + sw * 0.12 * w;
     tail.rotation.z = Math.sin(t * 0.6 + 1) * 0.08 - ra * 0.15;
     const heave = Math.sin(t * 1.1) * 0.02 + ra * Math.sin(t * 3.3) * 0.02;
     const reach = smooth(0.8, 1, k);
-    body.rotation.y = -Math.sin(ph) * 0.07 * w;
+    body.rotation.y = -sw * 0.01 * w;
+    body.rotation.x = sw * 0.05 * w;
     body.rotation.z = -0.12 - 0.05 * w + ra * 0.24 + heave - smooth(0.45, 0.75, k) * 0.12 * (1 - reach);
     head.rotation.z = -0.05 + ra * 0.38 + Math.sin(t * 0.7) * 0.04;
     head.rotation.y = Math.sin(t * 0.33) * 0.18 * (1 - ra);
     jaw.rotation.z = -0.08 - ra * (0.45 + Math.sin(t * 7) * 0.05);
     // the sword arm: low, swinging with the walk, raised in its rage
     const [L, R] = arms;
-    R.rotation.z = -Math.sin(ph) * 0.22 * w + ra * 0.7 + 0.15;
+    R.rotation.z = -sw * 0.22 * w + ra * 0.7 + 0.15;
     R.rotation.x = 0.15 + ra * 0.25;
     R.fore.rotation.z = 0.35 + ra * 0.5;
     // the whip arm: up and back, then down and forward with the lash, then
     // up after it as it reaches
     const wu = smooth(0.02, 0.4, k) * (1 - smooth(0.45, 0.72, k));
     const wd = smooth(0.45, 0.72, k);
-    L.rotation.z = mix(mix(Math.sin(ph) * 0.22 * w + 0.1 + ra * 0.3, 2.9, wu) * (1 - wd) + wd * 1.15, 1.9, reach);
+    L.rotation.z = mix(mix(sw * 0.22 * w + 0.1 + ra * 0.3, 2.9, wu) * (1 - wd) + wd * 1.15, 1.9, reach);
     L.rotation.x = -0.15 - ra * 0.2 - wu * 0.2 + reach * 0.25;
     L.fore.rotation.z = 0.3 + wu * 0.9 - wd * 0.2 + reach * 0.3;
     // the wings: half open, wide in its rage, slowly beating

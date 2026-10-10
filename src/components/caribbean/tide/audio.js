@@ -223,6 +223,7 @@ export function soundscape() {
 
   // drums in six-eight, scheduled a little ahead of the clock
   let fight = 0;
+  let at = ac.currentTime; // when `set` last ran: the fight's fade is by the clock, not the frame
   let next = ac.currentTime + 0.2;
   let beat = 0;
   const BEAT = 0.2;
@@ -272,7 +273,8 @@ export function soundscape() {
     set({ speed = 0, fight: f = 0, on = true }) {
       if (!alive) return;
       const now = ac.currentTime;
-      fight += (f - fight) * 0.03;
+      fight += (f - fight) * (1 - Math.exp(-(now - at) * 1.8));
+      at = now;
       rushG.gain.setTargetAtTime(0.1 * speed, now, 0.3);
       rushF.frequency.setTargetAtTime(900 + 900 * speed, now, 0.3);
       drone.gain.setTargetAtTime(fight * 0.8, now, 0.6);

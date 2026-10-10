@@ -10,7 +10,7 @@ import { buildGround, fbm, scatter, trees } from '../hq/kit/world';
 import { PartBuilder, canvasTexture, rbox } from '../hq/kit/shapes';
 import { instanced } from '../hq/kit/instanced';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { EYE, ROUNDS, drawCap, shakeOf, targetAt } from './rules';
 import { BOSS_EDGE, TRICK_COLORS, arrowGeometries, buildBoss, buildBow, buildFlag, buildStand, clayGeometry, droneGeometries, droneMaterials, faceTexture } from './models';
@@ -438,6 +438,8 @@ export async function create(canvas, { onLost, onSlow } = {}) {
 
   const vfx = createVfx(scene, { calm, ground: 0, debrisMaterial: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.1 }) });
   const feel = createFeel({ seed: 7, calm, baseFov: BASE_FOV, offset: 0.05 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'trickshot');
 
   // a camera that never moves, for turning the pointer into an aim
   const ref = new THREE.PerspectiveCamera(BASE_FOV, 16 / 9, 0.05, 500);

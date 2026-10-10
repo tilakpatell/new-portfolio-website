@@ -7,6 +7,7 @@
 // the galaxy page can make the surface's world before its page is up.
 
 import { local } from '../../lib/hooks';
+import { HERO_KEY, readHero } from './heroes';
 
 export const FOUND_KEY = 'tp-galaxy-found'; // { [system]: [place ids] }: what you've found on each world
 export const QUESTS_KEY = 'tp-galaxy-quests'; // { [system]: [quest ids] }: what you've done on each world
@@ -21,13 +22,14 @@ export const readDone = () => readAll(QUESTS_KEY);
 
 // what the surface module is made with when the galaxy hands over to it
 // (its page's own props replace these once it's up: the compass is its)
-export function surfaceProps(system, { ship, loadout, build = null, net = null, reduced = false }) {
+export function surfaceProps(system, { ship, loadout, build = null, net = null, reduced = false, effects = null }) {
   const found = readFound()[system];
   const done = readDone()[system];
   return {
     system,
     mission: null,
     ship,
+    hero: readHero(local.get(HERO_KEY), ship ?? 'xwing'), // (who you picked to play as: the page reads the same)
     loadout,
     build,
     found: Array.isArray(found) ? found : [],
@@ -35,6 +37,7 @@ export function surfaceProps(system, { ship, loadout, build = null, net = null, 
     compass: { current: null },
     net,
     reduced,
+    effects, // (who holds it in the war: galaxy/warEffects.js's, for its garrison on the ground)
   };
 }
 

@@ -79,6 +79,7 @@ function signTex() {
   panel(40, 318, '#e9e6dc', '#2c2f33', [['SUITE 100', 52], ['LEASING', 36]]);
   panel(532, 318, '#e9e6dc', '#2c2f33', [['1725', 60], ['SLOUGH AVENUE', 40]]);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -121,6 +122,7 @@ function dockTex() {
   x.font = 'bold 40px Arial, Helvetica, sans-serif';
   x.fillText('WILL CALL →', 192, 452);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

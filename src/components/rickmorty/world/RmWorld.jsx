@@ -1,7 +1,5 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link as RouterLink } from 'react-router-dom';
-import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiListCheck2, RiShirtLine } from 'react-icons/ri';
 import '@fontsource/luckiest-guy/400.css';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
@@ -33,9 +31,10 @@ import {
   LIMO,
   LINKS,
   MEMORIES,
-  MEMORY_COLORS,
   NEIGHBOURS,
+  PEOPLE,
   PLAN,
+  PLANET_TASKS,
   RINGS,
   ROAD,
   SCHOOL_PARTS,
@@ -59,12 +58,28 @@ import {
   stepMorty,
 } from './rules';
 import { newFedShip, newShipVoice, onTail, shipSays, stepFedShip } from './ship';
-import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
-import Wardrobe from '../wardrobe/Wardrobe';
+import { DESTINATIONS, destinationById, isPlanet, isWayHome, linkTarget, portalTarget, readDial, writeDial } from './dimensions/destinations';
+import { backLink, boundOf, inLine, planetOf, planetProgress, relabel } from './planetMode';
+import { dialledNote, isGunKey, portalName } from './portalGun';
+import Cards from './WorldCards';
+import RmHud from './RmHud';
+import { ROOMS, newTrial, pick as pickRoom, retry as retryRooms } from './dimensions/vindicatorsRules';
+import { speak, stopSpeaking } from './shipVoice';
+import { ROOMS_SAY, SAY } from './say';
+import { lineSaid } from './voicelines';
+import { preloadVoiced, sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { useLooks } from '../wardrobe/useLooks';
 import './world.css';
-import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
+import { createEmoteWheel, emotePacket, keepEmote, readEmote } from '../../../lib/emote';
+import { createPress, pressGroups } from '../../../lib/press';
+import { lineHold } from './living';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
+import { createLook } from '../../../runtime/look';
+import { FRICTION, coneFor } from '../../../lib/combat/aim';
+import { createLockOn } from '../../../lib/combat/lockOn';
+import { stepRmLockOn } from './rmLockOn';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -76,9 +91,15 @@ import { useTravellers } from '../../middleearth/towns/useTravellers';
 // cards that open the same things. The egg on the living room's bookcase
 // starts Total Rickall there (./interiors/rickall.js, loaded then): Morty
 // kept in the room with the crowd, a crosshair, E for a memory of whoever's
-// in it, F or a click to shoot them, and a card for how it ended.
+// in it, F or a click to shoot them, and a card for how it ended. B (held)
+// is a wheel of emotes for Morty (lib/emote.js: wave, cheer, dance, taunt,
+// sit; tap it for the last again), seen by the others online; anything he
+// does, or walking off, ends one.
+// Started on a planet of the universe map's Rick and Morty sector (`start`),
+// it's that planet alone, its portal the way back to space (./planetMode.js).
 
 const Roy = lazy(() => import('./roy/Roy').catch(() => ({ default: RoyDown })));
+const Sewer = lazy(() => import('./sewer/Sewer').catch(() => ({ default: RoyDown })));
 const sound = (name) =>
   import('../../games/gameAudio')
     .then((g) => g[name]?.())
@@ -119,43 +140,7 @@ const PLACES = {
   portalpanic: { title: 'Portal panic', where: 'The cabinet in Rick’s garage', task: 'portalpanic' },
   quiz: { title: 'Mr. Goldenfold’s pop quiz', where: 'Harry Herpson High' },
   roy: { title: 'Roy: A Life Well Lived', where: 'Blips and Chitz', full: true },
-};
-// what the people say, and the cabinets that aren't Roy
-const SAY = {
-  jerry: { who: 'Jerry', text: 'Hungry for apples?' },
-  beth: { who: 'Beth', text: 'I’m a horse surgeon, Morty. Your grandfather’s in the garage.' },
-  summer: { who: null, text: 'Summer doesn’t look up from her phone. “Get out of my room, Morty.”' },
-  rick: { who: 'Rick', text: 'The portal’s on the wall, Morty. Blips and Chitz is through there. Don’t touch anything else.' },
-  mortyroom: { who: null, text: 'Morty’s room: the bed, the desk, and the window Rick climbs in through at night.' },
-  clone: { who: null, text: 'A Rick, floating in the tube, waiting till he’s needed. He’s breathing. Probably.' },
-  console: { who: null, text: 'Screens of cells and DNA, all of it Rick’s. One of them is Rick, waving at you.' },
-  pickle: { who: null, text: 'Pickle Rick, in a jar on the desk. He’s been through a lot.' },
-  president: { who: 'The President', text: 'Morty. Where’s your grandfather? I need him in the Oval Office. My people put a portal in his garage. Use it.' },
-  secretservice: { who: 'Secret Service', text: 'Step back from the vehicle, son. The President’s schedule is very full.' },
-  agent1: { who: 'Federation agent', text: 'Earth is a valued member of the Galactic Federation. Smile, citizen.' },
-  agent2: { who: 'Federation agent', text: 'Shoney’s is open. I recommend the eggs. I recommend not asking why.' },
-  agent3: { who: 'Federation agent', text: 'Your grandfather’s file is very thick, Morty.' },
-  ovalpresident: { who: 'The President', text: 'Sit down, Morty. Not there, that’s Lincoln’s. Tell Rick the free world called, and it’s disappointed.' },
-  general1: { who: 'A general', text: 'Don’t touch the phone, son. The red one. Or the other one.' },
-  general2: { who: 'A general', text: 'Your grandfather is a national security risk and a national treasure. We haven’t decided which.' },
-  dineragent: { who: 'Federation agent', text: 'Sit, Morty. The coffee’s a hologram. The questions aren’t. Where does your grandfather keep the portal gun formula?' },
-  principal: { who: 'Principal Vagina', text: 'Morty. Hall pass? No? I’m too tired to care. Go learn something, or at least look like it.' },
-  jessica: { who: 'Jessica', text: 'Oh, hey Morty. Did you do the homework? I tried, but my pen ran out halfway through number one.' },
-  brad: { who: 'Brad', text: 'Sup, Smith. You’re in my seat. Kidding. Nobody wants to sit there.' },
-  tammy: { who: 'Tammy', text: 'Morty! Is Summer here? Tell her I’ve got news. Huge news. Nothing to do with birds.' },
-  ethan: { who: 'Ethan', text: 'Is this the maths class? Every class feels like the maths class.' },
-  tinyrick: { who: 'Tiny Rick', text: 'Tiny Rick! Totally a normal teenager, Morty. Let’s go to the prom and rock out. Help me.' },
-  cabinet1: { who: 'Space Mortyball', text: 'Out of order. Everyone’s queueing for Roy anyway.' },
-  cabinet2: { who: 'Plumbus Smash', text: 'Somebody’s high score is all nines, and the stick is sticky.' },
-  cabinet3: { who: 'Cronenberg Crush', text: 'You lose a life before you’ve found the button.' },
-  // Phase 2 of the multiverse: the rest of the family, and family therapy
-  poopybutthole: { who: 'Mr. Poopybutthole', text: 'Ooh wee! Morty, sit down, sit down. Jerry’s telling me about his apples again.' },
-  snuffles: { who: null, text: 'Snuffles, asleep on his bed. Don’t give him the helmet.' },
-  spacebeth: { who: 'Space Beth', text: 'I’m back for a bit. Dad’s showing me the bench. Don’t ask which of us is the clone, Morty. Nobody knows.' },
-  nancy: { who: 'Nancy', text: 'It’s a sleepover, Morty. Summer said you’d knock first. You didn’t knock.' },
-  tricia: { who: 'Tricia', text: 'Hi, Morty. We’re doing face masks. You can stay if you don’t talk.' },
-  diane: { who: null, text: 'Diane, as Rick keeps her: a hologram over the clone lab’s floor, smiling at nobody. He doesn’t say her name.' },
-  therapy: { who: 'Dr. Wong', text: 'Sit down, Morty. Your grandfather told me this was for Jerry. It isn’t. We have fifty minutes.' },
+  sewer: { title: 'Pickle Rick’s sewer run', where: 'The agency', full: true },
 };
 const AREA_NAME = {
   street: 'The Smiths’ street',
@@ -170,13 +155,22 @@ const AREA_NAME = {
   oval: 'The Oval Office',
   diner: 'Shoney’s',
   wong: 'Dr. Wong’s office',
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, d.name])),
 };
-// a place's name inside a sentence ('The alien street' → 'the alien street')
-const inLine = (name) => name.replace(/^The /, 'the ');
 // what talking to someone does, beyond what they say: a thing to do, done
-const TALK_DONE = { president: 'president', dineragent: 'diner', therapy: 'wong' };
+const TALK_DONE = { president: 'president', dineragent: 'diner', therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map((d) => d.done)) };
+// whom a talk is to, where its hotspot isn't named for them (rules.js's PEOPLE)
+const TALK_TO = { therapy: 'drwong' };
 // and the achievements a talk earns
-const TALK_UNLOCK = { therapy: 'wong' };
+const TALK_UNLOCK = { therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map((d) => d.unlock)) };
+// the places left in a hurry (./dimensions/destinations.js's `escape`), by
+// the hotspot that starts the clock: the Purge Planet's siren, Customs'
+// scanner, the wedding's toast
+const ESCAPES = Object.fromEntries(DESTINATIONS.filter((d) => d.escape).map((d) => [d.escape.spot, { ...d.escape, area: d.id }]));
+// and what using a hotspot tells its place's builder
+const ACTS = Object.assign({}, ...DESTINATIONS.map((d) => Object.fromEntries(Object.entries(d.acts).map(([spot, name]) => [spot, [d.id, name]]))));
+// and the things done by using every one of a set of hotspots (the simulation's slips), by each hotspot
+const COLLECT = Object.assign({}, ...DESTINATIONS.filter((d) => d.collect).map((d) => Object.fromEntries(d.collect.spots.map((spot) => [spot, { ...d.collect, area: d.id }]))));
 // a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
 const MEMORY_S = 5.5;
 // Total Rickall: how long a memory of someone stays up over them, and how
@@ -198,21 +192,29 @@ const PROMPT = {
   land: { kind: 'land', id: 'land', name: 'Open ground', verb: 'Land' },
 };
 const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
+// the emote wheel: how far the mouse goes from the view's middle to point at
+// one (px), and what each is called
+const WHEEL_R = 110;
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'] };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? d.escape?.after ?? d.escape?.spot ?? d.goal}`]]))), sewer: ['agency', 'spot:sewer'] };
+// (every destination but the planets is through the garage's portal: they're landed on from the universe map)
+const toDest = (via) => Object.fromEntries(DESTINATIONS.filter((d) => !isPlanet(d.id)).map((d) => [d.id, via]));
 const WAY = {
-  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', wong: 'wong-door', annex: 'garage-door', arcade: 'garage-door' },
-  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', wong: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage' },
-  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', wong: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal' },
+  street: { house: 'house-door', upstairs: 'house-door', garage: 'garage-door', basement: 'garage-door', mindblowers: 'garage-door', oval: 'garage-door', school: 'school-door', diner: 'diner-door', wong: 'wong-door', annex: 'garage-door', arcade: 'garage-door', ...toDest('garage-door') },
+  house: { street: 'front', upstairs: 'stairs-up', garage: 'kitchen-garage', basement: 'kitchen-garage', mindblowers: 'kitchen-garage', oval: 'kitchen-garage', school: 'front', diner: 'front', wong: 'front', annex: 'kitchen-garage', arcade: 'kitchen-garage', ...toDest('kitchen-garage') },
+  garage: { street: 'garage-exit', house: 'garage-kitchen', upstairs: 'garage-kitchen', basement: 'garage-hatch', mindblowers: 'garage-hatch', oval: 'garage-oval', school: 'garage-exit', diner: 'garage-exit', wong: 'garage-exit', annex: 'garage-portal', arcade: 'garage-portal', ...toDest('garage-portal') },
   basement: { mindblowers: 'basement-mind' },
   annex: { arcade: 'arcade-door' },
 };
-const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit', wong: 'wong-exit' };
-function goalOf(next, s) {
-  if (!next || s.flying) return null;
+const OUT = { upstairs: 'stairs-down', school: 'school-exit', annex: 'annex-portal', arcade: 'arcade-exit', basement: 'basement-ladder', mindblowers: 'mind-door', oval: 'oval-portal', diner: 'diner-exit', wong: 'wong-exit', ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, `${d.id}-portal`])) };
+function goalOf(next, s, planet = null) {
+  if (s.flying) return null;
+  // (on a planet with everything there done, or a clock running to get back out: its portal home; from C-137, a planet's not pointed at)
+  if (!next || (planet && s.escape?.area === planet.id)) return planet ? PROMPT[`link:${planet.id}-portal`].link : null;
   const [to, key] = GOAL[next.id];
+  if (isPlanet(to) && to !== s.area) return null;
   if (to === s.area) {
     if (key === 'cruiser') return { x: s.c.x, z: s.c.z };
     const p = PROMPT[key];
@@ -237,25 +239,30 @@ const CLIMB_MS = 480; // down the hatch or up the ladder: a slower fade
 const FLY_KEYS = { KeyR: 'rise', KeyF: 'sink', KeyC: 'sink' };
 const clamp1 = (v) => Math.max(-1, Math.min(1, v));
 const roomAt = (area, x, z) => PLAN.find((r) => r.area === area && x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1)?.name ?? null;
-const newSim = () => ({
-  area: START.area,
-  m: newMorty(START),
+// (at a planet's way in, out of its portal: the camera off to one side, as go() has it)
+const newSim = (at = START, portal = false) => ({
+  area: at.area,
+  m: newMorty(at),
   c: newCruiser(),
   flying: false,
   landing: false,
   landT: 0,
   boardAt: null,
-  yaw: behindYaw(START.face),
+  yaw: behindYaw(at.face) + (portal ? 0.85 : 0),
   pitch: PITCH,
-  dragAt: -1e9,
+  dragAt: portal ? 0 : -1e9,
   t: 0,
   keys: new Set(),
   stick: { x: 0, y: 0 },
   lift: 0,
   jump: false, // asked to jump (Space, or the jump button), till the next step takes it
+  press: createPress(), // the jump's: a moment early on landing, or a moment late off an edge, still jumps
   near: null,
   moved: false,
   fading: false,
+  events: [],
+  emit: null,
+  duel: null, // a fight on (hearts in the HUD; F fires)
   frame: 0,
   padBefore: {},
   view: { link: null, hotspot: null },
@@ -274,9 +281,20 @@ const newSim = () => ({
   // someone), end (how it ended), crowd (who's standing, for Morty to walk
   // round) }
   rickall: null,
+  // Morty's word to someone, while it plays ({ id, n, hold, x, z, at }: n a
+  // new number for each, so they know it's a new one), how many he's said,
+  // the emote he's struck ({ id, at }), and whether he's done something
+  // since the last frame (which ends it)
+  talk: null,
+  talkN: 0,
+  emote: null,
+  acted: false,
 });
 
-export default function RmWorld() {
+// `start`: a planet of the universe map's Rick and Morty sector, played on its
+// own (./planetMode.js), its portal home calling `onLeave`; else C-137
+export default function RmWorld({ start = null, onLeave = null }) {
+  const planet = useMemo(() => planetOf(start), [start]);
   const three = use3D();
   const { unlock } = useAchievements();
   const [done, setDone] = useState(startDone);
@@ -288,7 +306,19 @@ export default function RmWorld() {
   const pending = useRef([]); // tasks done while something's open over the page, told on the way out
   const api = useRef(null);
 
-  const say = useCallback((t) => setToast({ ...t, at: performance.now() }), []);
+  // (what someone says is heard in their own voice where it's been made
+  // (./voicelines.js, lib/voiced.js); the next thing said, voiced or not, stops it)
+  const say = useCallback((t) => {
+    setToast({ ...t, at: performance.now() });
+    if (t.kind === 'say') {
+      const said = lineSaid(t.text);
+      sayVoiced(said?.who, said?.text);
+    }
+  }, []);
+  useEffect(() => {
+    preloadVoiced();
+    return stopVoiced;
+  }, []);
   const tellDone = useCallback((ids) => {
     const names = ids.map((id) => TASKS.find((t) => t.id === id)?.name).filter(Boolean);
     const p = progress(doneRef.current);
@@ -306,6 +336,8 @@ export default function RmWorld() {
       setDone(next);
       api.current?.fx('done', { id });
       sound('gadget');
+      // (and Morty's pleased with himself: on his upper half if he's walking)
+      api.current?.play('cheer', { hold: 0.2, layer: 'auto' });
       if (openRef.current) pending.current.push(id);
       else tellDone([id]);
     },
@@ -349,6 +381,15 @@ export default function RmWorld() {
     [complete, close],
   );
 
+  // up the hole from the sewer: the run counts when the far drain was made
+  const sewerLeft = useCallback(
+    (won) => {
+      close();
+      if (won) complete('sewer');
+    },
+    [complete, close],
+  );
+
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), toast.kind === 'say' ? 5600 : toast.bad ? 3400 : 4400);
@@ -359,62 +400,57 @@ export default function RmWorld() {
   return (
     <section className="rm-world" aria-labelledby="rm-world-title" data-mode={world ? '3d' : 'cards'}>
       {world ? (
-        <World api={api} done={done} open={open} openPlace={openPlace} complete={complete} unlock={unlock} gl={gl} setGl={setGl} toast={toast} say={say} />
+        <World api={api} done={done} open={open} openPlace={openPlace} complete={complete} unlock={unlock} gl={gl} setGl={setGl} toast={toast} say={say} planet={planet} onLeave={onLeave} />
       ) : (
-        <Cards done={done} openPlace={openPlace} three={three} gl={gl} toast={toast} retry={() => setGl('loading')} />
+        <Cards done={done} openPlace={openPlace} three={three} gl={gl} toast={toast} retry={() => setGl('loading')} planet={planet} />
       )}
-      {open && <Place id={open} onClose={close} onQuiz={quizDone} onRoy={royLeft} />}
+      {open && <Place id={open} onClose={close} onQuiz={quizDone} onRoy={royLeft} onSewer={sewerLeft} />}
     </section>
-  );
-}
-
-function Title() {
-  return (
-    <h2 id="rm-world-title" className="rm-title" aria-label="Dimension C-137">
-      <span aria-hidden="true">Dimension</span> <span className="rm-title-num" aria-hidden="true">C-137</span>
-    </h2>
-  );
-}
-
-// a toast: something done, someone talking, or a no
-function Toast({ toast }) {
-  if (!toast) return null;
-  return (
-    <div className="rm-toast" data-kind={toast.kind ?? 'note'} data-bad={toast.bad || undefined} role="status" key={toast.at}>
-      {toast.kind === 'done' && (
-        <span className="rm-toast-tick" aria-hidden="true">
-          <RiCheckLine />
-        </span>
-      )}
-      <p>
-        {toast.who && <b>{toast.who}</b>}
-        <span>{toast.text}</span>
-      </p>
-    </div>
   );
 }
 
 // others online (middleearth/towns/useTravellers), as Mortys from other
 // dimensions, in the street or whichever room you're in (each its own area:
-// the rooms are built out to some 400 m from the street, hence the reach)
-const ROOM = { bound: 820, motion: true };
+// the places past the portal are built out to some 4.4 km from the street,
+// hence the reach)
+const ROOM = { bound: boundOf(AREAS), motion: true };
 
-function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast, say }) {
+function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast, say, planet, onLeave }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const touchRef = useRef(touch);
+  touchRef.current = touch;
   const trav = useTravellers('c137', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
   const map = useRef(null);
   const brand = useRef(null); // (the title and what to do: Total Rickall's memory card keeps off it)
   const sim = useRef(null);
-  if (!sim.current) sim.current = newSim();
-  const prog = progress(done);
+  if (!sim.current) sim.current = newSim(planet ?? START, !!planet);
+  // (C-137's next is never a planet's: they're done on the planets)
+  const prog = planet ? planetProgress(planet, done) : progress(done, { skip: PLANET_TASKS });
   const progRef = useRef(prog);
   progRef.current = prog;
   const doneRef = useRef(done);
   doneRef.current = done;
-  const [hud, setHud] = useState({ area: START.area, room: null, flying: false, landing: false, near: null, moved: false, alt: 0, kmh: 0 });
+  const [hud, setHud] = useState({ area: (planet ?? START).area, room: null, flying: false, landing: false, near: null, moved: false, alt: 0, kmh: 0 });
   const hudKey = useRef('');
+  // the emote wheel (B, held; on a touch screen its button): what it shows
+  const wheel = useRef(null);
+  wheel.current ??= createEmoteWheel();
+  const [wheelUi, setWheelUi] = useState(null); // { hover } while B holds it open
+  const [looking, setLooking] = useState(null); // the look (runtime/look.js): its mode, and whether the pointer's locked
+  const [touchWheel, setTouchWheel] = useState(false);
+  const wheelKey = useRef('');
+  // an emote struck: on Morty from this frame (scene.js plays it), and on the wire
+  const strike = useCallback((id) => {
+    const s = sim.current;
+    setTouchWheel(false);
+    if (!id || s.flying || s.fading || s.rickall) return;
+    audioContext();
+    s.emote = { id, at: s.t };
+    s.acted = false;
+  }, []);
   const [list, setList] = useState(false);
   const listRef = useRef(list);
   listRef.current = list;
@@ -423,9 +459,48 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   const looksRef = useRef(looks);
   looksRef.current = looks;
   const [wardrobe, setWardrobe] = useState(false);
+  // the portal gun's dial, open at its stand in the garage (it holds Morty still, as the wardrobe does)
+  const [dialing, setDialing] = useState(false);
+  const dialRef = useRef(readDial());
+  // Rick's rooms on the Vindicators' ship, asked one at a time (it holds him still too)
+  const [trial, setTrial] = useState(null);
+  const trialRef = useRef(newTrial());
   const wardrobeRef = useRef(wardrobe);
-  wardrobeRef.current = wardrobe;
+  wardrobeRef.current = wardrobe || dialing || !!trial;
   const closeWardrobe = useCallback(() => setWardrobe(false), []);
+  const closeDial = useCallback(() => setDialing(false), []);
+  const pickDial = useCallback(
+    (id) => {
+      writeDial(id);
+      dialRef.current = portalTarget(id);
+      setDialing(false);
+      say({ kind: 'note', text: dialledNote(dialRef.current, sim.current.area) });
+    },
+    [say],
+  );
+  const closeTrial = useCallback(() => setTrial(null), []);
+  const pickTrial = useCallback(
+    (id) => {
+      const t = trialRef.current;
+      const r = pickRoom(t, id);
+      if (r === 'next') {
+        setTrial({ ...t });
+        say({ kind: 'note', text: 'Right. The door slides open on the next room.' });
+      } else if (r === 'lost') {
+        setTrial(null);
+        say({ kind: 'say', ...ROOMS_SAY.lost });
+      } else if (r === 'won') {
+        setTrial(null);
+        say({ kind: 'say', ...ROOMS_SAY.won });
+        complete('vindicators');
+        unlock('vindicators');
+      }
+    },
+    [say, complete, unlock],
+  );
+  // (the same list for as long as he's in one room, so the overlay keeps its place in it)
+  const room = trial?.room ?? null;
+  const trialItems = useMemo(() => (room == null ? [] : ROOMS[room].choices.map((c) => ({ id: c.id, name: c.text }))), [room]);
   useEffect(() => {
     api.current?.setLooks?.(looks);
   }, [api, looks]);
@@ -437,7 +512,19 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     setList(false);
     if (inside) chip.current?.focus({ preventScroll: true });
   }, []);
-  const [fade, setFade] = useState(null); // null, or the kind of link being gone through
+  // the portal gun's dial (the bench, P or the chip), the list shut: not over something else, mid-trip, in a game or a fight, nor flying
+  const openDial = useCallback(() => {
+    const s = sim.current;
+    if (wardrobeRef.current || s.fading || s.rickall || s.duel || s.flying) return;
+    s.keys.clear();
+    dialRef.current = readDial();
+    closeList();
+    setDialing(true);
+  }, [closeList]);
+  const [fade, setFade] = useState(null);
+  const [duel, setDuel] = useState(null); // the fight's hearts, for the HUD
+  const [clock, setClock] = useState(null); // a place left in a hurry: seconds left to the portal
+  const clockRef = useRef(null); // null, or the kind of link being gone through
   const [opening, setOpening] = useState(null); // the place a portal's waiting on while it loads
   const [shipLine, setShipLine] = useState(null); // what the cruiser last said, captioned
   const [memory, setMemory] = useState(null); // the memory playing in the Mind Blowers chair
@@ -453,10 +540,13 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     setShipLine({ text: r.line, at: performance.now() });
     speak(r.line);
   }, []);
-  // the ship goes quiet when the world does
+  // the ship goes quiet when the world does, and it and whoever was talking when something opens over it
   useEffect(() => stopSpeaking, []);
   useEffect(() => {
-    if (open) stopSpeaking();
+    if (open) {
+      stopSpeaking();
+      stopVoiced();
+    }
   }, [open]);
   useEffect(() => {
     if (!shipLine) return undefined;
@@ -504,6 +594,22 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   // E for a memory of whoever's in it, F or a click to shoot them, till it
   // ends (a card) or he stops (Esc, or the button).
   const rkRules = useRef(null);
+  // Morty's shots as bolts (./rmShots.js), loaded with Total Rickall's rules or a duel's start: { mod, shots, area }
+  const shots = useRef(null);
+  // the lock-on (./rmLockOn.js): the Lock button and Tab; shown on the button
+  const lockOn = useRef(null);
+  const [locked, setLocked] = useState(false);
+  const toggleLock = useCallback(() => {
+    lockOn.current?.toggle();
+    audioContext();
+  }, []);
+  const loadShots = useCallback(async () => {
+    if (!shots.current) {
+      const mod = await import('./rmShots');
+      shots.current ??= { mod, shots: mod.createShots(), area: null };
+    }
+    return shots.current;
+  }, []);
   const [game, setGame] = useState(null); // what the HUD shows of it: { phase, left, secs, aim, told, end }
   const gameKey = useRef('');
   const recall = useRef(null); // the memory card, moved over whoever it's about each frame
@@ -529,6 +635,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       sound('splat');
       try {
         rkRules.current ??= await import('./interiors/rickall');
+        await loadShots();
         const { newRickall } = rkRules.current;
         let absent = ['morty'];
         let g = null;
@@ -562,7 +669,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         return false;
       }
     },
-    [api, say, stopRickall],
+    [api, say, stopRickall, loadShots],
   );
   // how it ended: a card, and if it's won, the thing to do done
   const endRickall = useCallback(
@@ -577,24 +684,42 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     },
     [complete, unlock],
   );
-  // F, or a click: a shot at whoever's in the sights (a zap at nobody, if nobody is)
+  // F, or a click: a bolt at whoever's in the sights, or down the line to
+  // whatever it meets (./rmShots.js); what it does is landRickall's, when it gets there
   const shootRickall = useCallback(() => {
-    const run = sim.current.rickall;
-    if (run?.phase !== 'on') return;
+    const s = sim.current;
+    const run = s.rickall;
+    if (run?.phase !== 'on' || !shots.current) return;
     audioContext();
     sound('zap');
-    const p = run.aim && run.game.people.find((o) => o.id === run.aim);
-    const hit = p ? rkRules.current.shoot(run.game, p.id) : null;
-    if (!hit) return;
-    api.current?.fx('shot', { x: p.x, y: p.h * 0.6, z: p.z, parasite: p.parasite });
-    if (run.told?.id === p.id) run.told = null;
-    if (hit === 'parasite') sound('splat');
-    else endRickall(run);
-  }, [api, endRickall]);
+    // (Morty's arm comes up with the shot, his feet left as they are)
+    s.acted = true;
+    api.current?.play('shoot', { layer: 'upper' });
+    const R = rkRules.current;
+    // (a tap on touch snaps onto someone just off the line: aim.js's cone for the input)
+    const cone = coneFor({ coarse: touchRef.current, mode: looker.current?.mode });
+    shots.current.shots.rickall({ m: s.m, sight: R.sight(s.m, s.yaw, s.pitch), aim: run.aim, game: run.game, solids: shots.current.mod.roomSolids('house'), cone, bodies: shots.current.mod.rickallBodies(run.game, run.hide) });
+  }, [api]);
+  // a bolt of his has hit someone in the crowd
+  const landRickall = useCallback(
+    (id) => {
+      const run = sim.current.rickall;
+      if (run?.phase !== 'on') return;
+      const p = run.game.people.find((o) => o.id === id);
+      const hit = p ? rkRules.current.shoot(run.game, p.id) : null;
+      if (!hit) return;
+      api.current?.fx('shot', { x: p.x, y: p.h * 0.6, z: p.z, parasite: p.parasite });
+      if (run.told?.id === p.id) run.told = null;
+      if (hit === 'parasite') sound('splat');
+      else endRickall(run);
+    },
+    [api, endRickall],
+  );
   // E: what Morty remembers of whoever's in the sights, the next memory of them each time
   const tellRickall = useCallback(() => {
     const run = sim.current.rickall;
     if (run?.phase !== 'on' || !run.aim) return;
+    sim.current.acted = true;
     const r = rkRules.current.tell(run.game, run.aim);
     if (!r) return;
     const p = run.game.people.find((o) => o.id === run.aim);
@@ -610,9 +735,28 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   // and the swirl holds till it's there; if the page is left, or the world
   // lost, meanwhile, the trip's off and what loaded is let go.
   const go = useCallback(
-    (l) => {
+    (via) => {
       const s = sim.current;
       if (s.fading) return;
+      // a planet's own portal: out of the game, back to space (a place left in
+      // a hurry counted first, and a moment longer for it to be seen)
+      if (planet && onLeave && isWayHome(via, planet.id)) {
+        s.fading = true;
+        s.keys.clear();
+        const e = s.escape;
+        const made = Boolean(e && e.area === planet.id && s.t - e.at <= e.s);
+        if (made) {
+          complete(e.task);
+          unlock(e.task);
+        }
+        setFade('portal');
+        sound('portalOpen');
+        later(onLeave, FADE_MS + (made ? 900 : 0));
+        return;
+      }
+      // (the garage's portal goes where the dial is set: read fresh, in case another tab's set it)
+      dialRef.current = readDial();
+      const l = linkTarget(via, dialRef.current);
       s.fading = true;
       s.keys.clear();
       const climb = l.kind === 'hatch';
@@ -652,10 +796,20 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         }
         if (l.id === 'garage-hatch') complete('basement');
         if (l.id === 'garage-oval') complete('oval');
+        // home from a place left in a hurry, inside the time it gave him
+        const e = s.escape;
+        if (e && l.id === `${e.area}-portal` && s.t - e.at <= e.s) {
+          complete(e.task);
+          unlock(e.task);
+        }
+        if (e?.area === l.area) s.escape = null;
+        // (what he's used is for this visit, and the place he's left settles)
+        s.used = new Set();
+        api.current?.act(l.area, 'calm');
         setFade(null);
       }, climb ? CLIMB_MS : FADE_MS);
     },
-    [api, complete, later, stopRickall],
+    [api, complete, unlock, later, stopRickall, planet, onLeave],
   );
   const board = useCallback(() => {
     const s = sim.current;
@@ -674,7 +828,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     const s = sim.current;
     s.flying = false;
     s.landing = false;
-    s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
+    s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0, bankV: 0 };
     const out = exitCruiser(s.c, { motorcade: !doneRef.current.includes('president') });
     s.m = newMorty(out);
     s.yaw = behindYaw(out.face);
@@ -691,6 +845,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     const s = sim.current;
     if (!api.current || s.fading || s.landing) return;
     audioContext();
+    s.acted = true; // (an emote's over: he's doing something)
     // (in Total Rickall, E is a memory of whoever's in the sights)
     if (s.rickall) {
       tellRickall();
@@ -714,6 +869,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     if (n.kind === 'link') go(n.link);
     else if (n.kind === 'cruiser') board();
     else if (n.spot?.kind === 'rickall') startRickall();
+    else if (n.spot?.kind === 'trial') {
+      // (from the first room, however the last go ended)
+      s.keys.clear();
+      if (trialRef.current.state !== 'on') retryRooms(trialRef.current);
+      setTrial({ ...trialRef.current });
+    }
     else if (PLACES[n.id]) {
       s.keys.clear();
       openPlace(n.id);
@@ -726,15 +887,159 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         s.mind = { x: s.m.x, z: s.m.z, i: 0, next: 0 };
         playMemory(0);
       }
-    } else if (SAY[n.id]) {
-      say({ kind: 'say', ...SAY[n.id] });
+    } else if (n.id === 'dial') openDial();
+    else if (SAY[n.id]) {
+      // (a place's clock starts only once what comes first is done: the
+      // scanner finds nothing on him till he's taken the seeds)
+      const e = ESCAPES[n.id];
+      const early = e?.after && !s.used?.has(e.after);
+      const line = early ? e.before : SAY[n.id];
+      say({ kind: 'say', ...line });
+      (s.used ??= new Set()).add(n.id);
+      // someone to talk to: their head turns to him and their hands go while
+      // the line plays (state.talk), his head on them; a wave from him first,
+      // unless they're after him
+      const who = PEOPLE.find((p) => p.id === (TALK_TO[n.id] ?? n.id) && p.area === s.area);
+      if (who) {
+        s.talkN += 1;
+        s.talk = { id: who.id, n: s.talkN, hold: lineHold(line?.text), x: who.x, z: who.z, at: s.t, area: s.area };
+        if (!who.ai?.hunt && !n.spot?.anim) api.current?.play('wave', { layer: 'upper' });
+      }
+      if (!early && n.spot?.anim) api.current?.play(n.spot.anim, n.spot.anim === 'dance' ? { loop: false, hold: 0.2 } : {});
+      if (!early && ACTS[n.id]) api.current?.act(...ACTS[n.id]);
+      // the siren, the scanner, the toast: the clock starts for the portal home
+      if (e && !early && !s.escape) {
+        s.escape = { ...e, at: s.t };
+        sound('siren');
+      }
       // (done once they've had their say: the President gets in his car then)
       if (TALK_DONE[n.id]) later(() => complete(TALK_DONE[n.id]), TALK_MS);
+      if (COLLECT[n.id] && COLLECT[n.id].spots.every((id) => s.used.has(id))) {
+        const c = COLLECT[n.id];
+        // (the last one found: the place is told, and either it's done or the clock starts)
+        api.current?.act(c.area, 'collected');
+        if (c.escape) {
+          if (!s.escape) s.escape = { area: c.area, task: c.task, s: c.escape.s, at: s.t };
+          sound('siren');
+        } else if (!c.start) later(() => complete(c.task), TALK_MS);
+      }
       if (TALK_UNLOCK[n.id]) later(() => unlock(TALK_UNLOCK[n.id]), TALK_MS);
     }
-  }, [api, go, board, openPlace, say, complete, unlock, playMemory, shipTalk, later, startRickall, tellRickall]);
+  }, [api, go, board, openPlace, openDial, say, complete, unlock, playMemory, shipTalk, later, startRickall, tellRickall]);
+  // what a place's people do to Morty (stage.js's NPC behaviour, through the
+  // render state's emit): caught, he's put back at the way in with what the
+  // catcher said, and the place settles; a bark is a line said in passing
+  const npc = useCallback(
+    (name, e) => {
+      const s = sim.current;
+      if (!s || s.fading || s.area !== e.area) return;
+      if (name === 'caught') {
+        const d = destinationById(e.area);
+        if (!d) return;
+        say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? d.caught ?? 'Caught.' });
+        sound('grab');
+        api.current?.shake?.(0.3); // (the Citadel's caught, the same grab)
+        api.current?.play('scared', { hold: 0.4, layer: 'auto' });
+        // a blink, and he's back at the way in
+        s.fading = true;
+        s.keys.clear();
+        setFade('door');
+        later(() => {
+          s.m = newMorty(d.arrive);
+          s.yaw = behindYaw(d.arrive.face);
+          s.pitch = PITCH;
+          s.dragAt = -1e9;
+          s.used = new Set();
+          s.escape = null;
+          s.fading = false;
+          api.current?.act(e.area, 'calm');
+          setFade(null);
+        }, FADE_MS);
+      } else if (name === 'bark') {
+        if (s.t - (s.barkAt ?? -1e9) < 6) return;
+        s.barkAt = s.t;
+        say({ kind: 'say', who: e.who, text: e.text });
+      } else if (name === 'done') complete(e.task);
+      else if (name === 'spotted') {
+        // someone's seen him: a word and a sound, not too often
+        if (s.t - (s.spottedAt ?? -1e9) < 8) return;
+        s.spottedAt = s.t;
+        sound('alarm');
+        say({ kind: 'say', who: SAY[e.who]?.who ?? null, text: e.text ?? 'They’ve seen you.' });
+      } else if (name === 'duel') {
+        // the fight's on: the hearts show, and F fires (its bolts loaded now)
+        loadShots();
+        s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
+        setDuel({ ...s.duel });
+        sound('zap');
+      } else if (name === 'strike') {
+        s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
+        setDuel({ ...s.duel });
+        sound('thud');
+        if (e.beaten) {
+          // beaten: he goes down, and comes round at the way in; the fight's off till the next try
+          api.current?.play('fall', { hold: 1.2 });
+          say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? 'Beaten.' });
+          const d = destinationById(e.area);
+          s.fading = true;
+          s.keys.clear();
+          later(() => {
+            setFade('door');
+            later(() => {
+              if (d) {
+                s.m = newMorty(d.arrive);
+                s.yaw = behindYaw(d.arrive.face);
+                s.pitch = PITCH;
+                s.dragAt = -1e9;
+              }
+              s.used = new Set();
+              s.escape = null;
+              s.duel = null;
+              setDuel(null);
+              s.fading = false;
+              api.current?.act(e.area, 'calm');
+              setFade(null);
+            }, FADE_MS);
+          }, 1400);
+        } else api.current?.play('hit', { layer: 'auto' });
+      }
+    },
+    [api, say, complete, later, loadShots],
+  );
+  // Morty's shot in a duel (F): a bolt at the hunter if he's in the cone
+  // (the place says where), else along his facing; the arena's walls stop
+  // it, and landDuel hears what it did if it gets to him
+  const fire = useCallback(() => {
+    const s = sim.current;
+    if (!s?.duel || s.fading || s.t - (s.firedAt ?? -1e9) < 0.5 || !shots.current) return;
+    s.firedAt = s.t;
+    s.acted = true;
+    // (his arm comes up with the shot; his feet keep doing what they were)
+    api.current?.play('shoot', { hold: 0, layer: 'upper' });
+    sound('zap');
+    const r = api.current?.act(s.area, 'fire', { x: s.m.x, z: s.m.z, face: s.m.face });
+    shots.current.shots.duel({ m: s.m, at: r?.at ?? null });
+  }, [api]);
+  const landDuel = useCallback(
+    (r) => {
+      const s = sim.current;
+      if (!r || !s?.duel) return;
+      s.duel = { ...s.duel, hp: r.hp, max: r.max };
+      setDuel({ ...s.duel });
+      if (r.down) {
+        sound('splat');
+        if (r.task) complete(r.task);
+        if (r.won) later(() => say({ kind: 'say', ...r.won }), 900);
+        later(() => {
+          s.duel = null;
+          setDuel(null);
+        }, 2500);
+      }
+    },
+    [complete, say, later],
+  );
   const fns = useRef({});
-  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall };
+  fns.current = { act, go, shoot: shootRickall, landRickall, stop: stopRickall, start: startRickall, end: endRickall, npc, fire, landDuel, gun: openDial };
 
   // ── the world: made once, kept while something's open over it ──
   useEffect(() => {
@@ -750,13 +1055,14 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         if (dead || !canvas.current) return null;
         return createRmWorld(canvas.current, { onLost: () => !dead && setGl('lost'), looks: looksRef.current });
       })
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
           return;
         }
         api.current = a;
+        a.tune?.(pressGroups(sim.current.press)); // (behind ?debug: the feel's numbers and the jump's)
         a.act?.('arcade', 'setBoard', readBest());
         a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         if (import.meta.env.DEV) {
@@ -764,7 +1070,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           // a jump to anywhere, and a trip anywhere the way a door makes it
           const s = sim.current;
           const land = () => {
-            if (s.flying) s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0 };
+            if (s.flying) s.c = { ...s.c, y: CRUISER.hover, vy: 0, speed: 0, bank: 0, bankV: 0 };
             s.flying = false;
             s.landing = false;
           };
@@ -781,6 +1087,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
             act: () => fns.current.act(),
             complete,
             warp,
+            // the portal gun's dial, set as the stand in the garage sets it
+            dial(id) {
+              writeDial(id);
+              dialRef.current = portalTarget(id);
+              return dialRef.current;
+            },
             // Total Rickall, with `seed` (by the egg first, if he isn't in the
             // house): resolves true once it's on. Then lookAt(id) stands Morty
             // in front of someone with them in the sights, as a player would,
@@ -839,7 +1151,17 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
             ready: () => api.current === a && !a.lost && !s.fading && a.hasArea(s.area) && a.loading() === 0,
           });
         }
+        // a planet: built before Morty's put in it, and its portal swirling open behind him
+        if (planet) {
+          if (!a.hasArea(planet.area)) await a.ensureArea(planet.area).catch(() => {});
+          if (dead || api.current !== a || a.lost) return; // (gone, or the context lost meanwhile: it's said so)
+          a.fx('portal', { at: planet.back });
+          sound('portalHop');
+        }
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead && api.current === a });
+        if (dead || api.current !== a) return;
         setGl('on');
       })
       .catch((e) => {
@@ -855,7 +1177,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       api.current = null;
       setGl((g) => (g === 'on' ? 'loading' : g));
     };
-  }, [api, setGl, complete]);
+  }, [api, setGl, complete, planet]);
 
   // keys and the frame loop only while the world's on screen and nothing's
   // open over it (closing the effect lets go of every key held)
@@ -871,6 +1193,44 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         e.preventDefault();
         s.keys.clear();
         setWardrobe(true);
+        return;
+      }
+      // B, held: the emote wheel (let go over one to strike it; a tap, the last again)
+      if (e.code === 'KeyB' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        if (!e.repeat && !s.flying && !s.rickall) wheel.current.down(s.t);
+        return;
+      }
+      // (the wheel open: 1 to 5 strike one, Esc puts it away)
+      if (wheel.current.open && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const i = /^Digit[1-5]$/.test(e.code) ? Number(e.code.slice(5)) - 1 : -1;
+        if (i >= 0) {
+          e.preventDefault();
+          strike(wheel.current.choose(i));
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          wheel.current.cancel();
+          return;
+        }
+      }
+      // P: the portal gun's dial, from anywhere in C-137 (not on a planet; openDial says when else not)
+      if (!planet && isGunKey(e)) {
+        e.preventDefault();
+        fns.current.gun();
+        return;
+      }
+      // Tab, in a fight: the lock-on (./rmLockOn.js), as the Lock button
+      if ((s.duel || s.rickall) && e.key === 'Tab' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        if (!e.repeat) toggleLock();
+        return;
+      }
+      // a duel (Evil Rick's lair): F fires
+      if (s.duel && !s.rickall && e.code === 'KeyF' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        if (!e.repeat) fns.current.fire();
         return;
       }
       // Total Rickall: F shoots; Esc stops it (once the list's shut)
@@ -892,7 +1252,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (m || f) {
         // (Space is the cruiser's climb; walking, Morty's jump)
         if (m !== 'run' && !(m === 'space' && onButton)) e.preventDefault();
-        if (m === 'space' && !onButton && !s.flying && !e.repeat) s.jump = true;
+        if (m === 'space' && !onButton && !s.flying && !e.repeat) {
+          s.jump = true;
+          s.press.press();
+        }
         audioContext();
         return;
       }
@@ -903,14 +1266,24 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       } else if (e.key === 'm' || e.key === 'M') {
         if (listRef.current) closeList();
         else setList(true);
-
       } else if (e.key === 'Escape' && listRef.current) closeList();
     };
     const up = (e) => {
+      if (e.code === 'KeyB') strike(wheel.current.up(s.t));
       keyUp(s.keys, e);
       if (FLY_KEYS[e.code]) s.keys.delete(FLY_KEYS[e.code]);
     };
-    const blur = () => s.keys.clear();
+    const blur = () => {
+      s.keys.clear();
+      wheel.current.cancel();
+    };
+    // the mouse, while the wheel's open: which one it's over (from the middle of the view)
+    const aim = (e) => {
+      if (!wheel.current.open) return;
+      const r = canvas.current?.getBoundingClientRect();
+      if (r) wheel.current.aim((e.clientX - (r.left + r.width / 2)) / WHEEL_R, (e.clientY - (r.top + r.height / 2)) / WHEEL_R);
+    };
+    window.addEventListener('pointermove', aim);
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
@@ -918,9 +1291,11 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
+      window.removeEventListener('pointermove', aim);
+      wheel.current.cancel();
       s.keys.clear();
     };
-  }, [live, closeList]);
+  }, [live, closeList, strike, planet, toggleLock]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -943,6 +1318,17 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       else setList(true);
     }
 
+    // the emote wheel's look, when it changes; Morty's emote, over once its
+    // clip is, once he walks off (but for a wave), or once he does anything
+    const wq = wheel.current.tick(s.t);
+    const wk = wq.open ? `open|${wq.hover}` : '';
+    if (wk !== wheelKey.current) {
+      wheelKey.current = wk;
+      setWheelUi(wq.open ? { hover: wq.hover } : null);
+    }
+    s.emote = keepEmote(s.emote, s.t, { moving: (s.m.speed ?? 0) > 0.4, acted: s.acted || s.jump || s.flying || s.fading });
+    s.acted = false;
+
     if (s.flying) {
       let throttle = (k.has('up') ? 1 : 0) - (k.has('down') ? 1 : 0) - s.stick.y;
       let steer = (k.has('left') ? 1 : 0) - (k.has('right') ? 1 : 0) - s.stick.x;
@@ -954,6 +1340,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       }
       if (s.landing) throttle = steer = lift = 0;
       s.c = stepCruiser(s.c, { throttle: clamp1(throttle), steer: clamp1(steer), lift: clamp1(lift) }, dt);
+      // a bump (the edge, a roof, the ground) knocks as hard as the speed it
+      // took, by the hit law, with its shake; a set-down sinks onto its
+      // hover height on purpose and isn't one
+      if (s.c.bump > 0 && !s.landing) api.current?.hit?.(s.c.bump * 20, [s.c.x, s.c.y, s.c.z]);
       if (Math.abs(throttle) + Math.abs(steer) + Math.abs(lift) > 0.1) s.moved = true;
       // set down: it sinks to its hover height, quicker the higher it is; if
       // the ground under it isn't open after all (or it takes too long), it
@@ -997,8 +1387,15 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (s.fading) fwd = side = 0;
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, clamp1(fwd), clamp1(side));
-      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run, jump: s.jump && !s.fading }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : s.rickall?.game ? { crowd: crowdOf(s.rickall) } : undefined);
+      // (a press made while the screen's fading is let go: he's being put somewhere else)
+      if (s.fading) s.press.reset();
+      const around = s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : s.rickall?.game ? { crowd: crowdOf(s.rickall) } : {};
+      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run }, dt, s.area, { ...around, press: s.press });
       s.jump = false;
+      // a landing harder than his own jump's (off a roof, a counter, the
+      // stoop): a knock by the hit law, and the shake it says. His own jump
+      // lands at 5.4 m/s, under the 6 that starts it, so a hop is quiet.
+      if (s.m.land > 6) api.current?.hit?.((s.m.land - 6) * 20, [s.m.x, s.m.y, s.m.z]);
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
       // in Total Rickall, stood still, he turns to face the way he's aiming
       if (s.rickall?.game && s.m.speed < 0.5) {
@@ -1045,6 +1442,15 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     s.view.hotspot = s.near?.kind === 'spot' ? s.near.id : null;
     // the Federation's patrol ship, round its loop or on the cruiser's tail
     s.fed = stepFedShip(s.fed, s.c, s.flying, dt);
+    // the clock of a place left in a hurry, for the HUD (whole seconds, so it rarely redraws)
+    const left = s.escape && s.area === s.escape.area ? Math.max(0, Math.ceil(s.escape.s - (s.t - s.escape.at))) : null;
+    if (left !== clockRef.current) {
+      // (its last ten seconds tick, and it's heard running out)
+      if (left != null && left <= 10) sound(left === 0 ? 'timeUp' : 'tick');
+      clockRef.current = left;
+      setClock(left);
+    }
+    if (s.escape && left === 0) s.escape = null;
     // what the cruiser was about to say when it'd only just spoken
     if (s.shipNext) {
       if (s.t > s.shipNext.until || s.area !== 'street') s.shipNext = null;
@@ -1054,11 +1460,24 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     // others online: where you are to them (on foot, in the street or a room:
     // only those in the same one see you), and where they are
     const tv = trav.ref.current;
-    tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area });
+    // (and what he's doing: his emote, and how he moves, for their figure of him)
+    const turn = s.lastFace == null ? 0 : Math.atan2(Math.sin(s.m.face - s.lastFace), Math.cos(s.m.face - s.lastFace)) / Math.max(dt, 1e-3);
+    s.lastFace = s.m.face;
+    tv?.pose(s.m, { inside: Boolean(s.flying), area: s.area, emote: s.flying ? null : emotePacket(s.emote, s.t), move: s.flying ? null : { speed: s.m.speed ?? 0, side: 0, turn } });
 
     // Total Rickall: off, if he's somehow out of the house; the clock; the
     // line the camera's put on, how far back along it, and who's too close
     // to it to be seen; and who's in the sights along it
+    // the lock-on: on by itself near a duel's hunter on touch; the camera (or
+    // Morty, in a duel) kept on who it's on
+    lockOn.current ??= createLockOn({ coarse: touchRef.current });
+    const hunter = s.duel ? ((a.act(s.area, 'bodies') || [])[0] ?? null) : null;
+    stepRmLockOn(lockOn.current, s, dt, { R: rkRules.current, hunter });
+    if (lockOn.current.on !== s.lockShown) {
+      s.lockShown = lockOn.current.on;
+      setLocked(s.lockShown);
+    }
+
     let sightLine = null;
     if (s.rickall && (s.area !== 'house' || s.flying)) fns.current.stop();
     const run = s.rickall;
@@ -1073,6 +1492,25 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (run.told && (performance.now() - run.told.at > RECALL_MS || run.game.shot.includes(run.told.id))) run.told = null;
     }
 
+    // Morty's bolts in flight (./rmShots.js): the room's solids, the crowd
+    // and a duel's hunter as bodies; where each ends, and what it did
+    const sh = shots.current;
+    let boltHits = null;
+    if (sh && sh.area !== s.area) {
+      sh.shots.clear();
+      sh.area = s.area;
+    }
+    if (sh?.shots.live().length) {
+      const bodies = [...(run?.game ? sh.mod.rickallBodies(run.game, run.hide) : []), ...((s.duel && a.act(s.area, 'bodies')) || [])];
+      for (const e of sh.shots.step(dt, { solids: sh.mod.roomSolids(s.area), bodies })) {
+        if (e.type === 'hit' || e.type === 'solid') (boltHits ??= []).push(e.at);
+        if (e.type !== 'hit') continue;
+        if (e.bolt.tag === 'rickall') fns.current.landRickall(e.body.ref.id);
+        else if (e.body.ref === 'duel') fns.current.landDuel(a.act(s.area, 'hit', e.body.id));
+      }
+    }
+
+    s.emit ??= (name, e) => s.events.push([name, e]);
     try {
       a.render(
         {
@@ -1088,6 +1526,13 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           travellers: tv ? tv.list() : null,
           sight: sightLine,
           rickall: run?.game ? { game: run.game, aim: run.aim, hide: run.hide } : null,
+          fading: s.fading,
+          emit: s.emit,
+          // (Morty's word to someone, while it plays, in the area he said it in; his emote)
+          talk: s.talk && s.talk.area === s.area && s.t - s.talk.at < s.talk.hold ? s.talk : null,
+          emote: readEmote(s, s.t),
+          bolts: sh ? sh.shots.live() : null,
+          boltHits,
         },
         ms,
       );
@@ -1097,6 +1542,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       api.current = null;
       setGl('failed');
       return;
+    }
+
+    // what the place's people did this frame (stage.js's NPC behaviour)
+    if (s.events.length) {
+      const evs = s.events.splice(0);
+      for (const [name, e] of evs) fns.current.npc?.(name, e);
     }
 
     // its HUD, when what it shows changes, and the memory card over whoever it's about
@@ -1139,27 +1590,64 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       hudKey.current = key;
       setHud({ area: s.area, room, flying: s.flying, landing: s.landing, near, moved: s.moved, alt, kmh });
     }
-    if (++s.frame % 3 === 0) drawMap(map.current, s, goalOf(progRef.current.next, s), s.t);
+    if (++s.frame % 3 === 0) {
+      // the place's people, for the map (stage.js's NPC layer says where they are)
+      s.npcs = api.current?.act(s.area, 'npcs') ?? null;
+      drawMap(map.current, s, goalOf(progRef.current.next, s, planet), s.t);
+    }
   }, live);
 
   // something open over the world: let go of the stick and the up and down buttons
-  const stickEl = useRef(null);
   useEffect(() => {
     if (!open) return;
     const s = sim.current;
     s.stick = { x: 0, y: 0 };
     s.lift = 0;
-    stickEl.current?.style.setProperty('--sx', '0px');
-    stickEl.current?.style.setProperty('--sy', '0px');
+    // (the kit's stick, in RmHud: its knob back to the middle)
+    const knob = canvas.current?.parentElement?.querySelector('.hud-stick');
+    knob?.style.removeProperty('--sx');
+    knob?.style.removeProperty('--sy');
   }, [open]);
 
-  // ── the pointer: drag the view round (and in Total Rickall, up and down
-  // too, and a click that doesn't drag it is a shot) ──
+  // ── the pointer. A mouse or a trackpad looks through runtime/look.js: a
+  // click locks the pointer and its movement turns the view (and in Total
+  // Rickall a click is a shot), Esc lets go; a drag where the lock's refused
+  // or Drag was picked (the galaxy's Menu keeps the pick for every world).
+  // A finger drags the view round, as it always did. ──
+  const looker = useRef(null);
+  useEffect(() => {
+    const host = canvas.current;
+    if (!host) return undefined;
+    const sense = () => setLooking({ mode: l.mode, locked: l.locked });
+    const l = createLook({
+      host,
+      drag: { yaw: 0.0065, pitch: 0.004 },
+      onTurn: (dx, dy) => {
+        const s = sim.current;
+        s.yaw -= dx;
+        s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + dy));
+        s.dragAt = s.t;
+      },
+      onButton: (which, down) => {
+        if (which === 0 && down && sim.current.rickall) fns.current.shoot();
+      },
+      onLock: sense,
+    });
+    l.attach();
+    looker.current = l;
+    sense();
+    return () => {
+      l.detach();
+      looker.current = null;
+    };
+  }, []);
   const drag = useRef(null);
   const onPointer = (e) => {
     const s = sim.current;
+    if (e.type === 'pointerdown') audioContext();
+    // (a mouse's the look's, unless the look is touch's)
+    if (e.pointerType !== 'touch' && looker.current && looker.current.mode !== 'touch') return;
     if (e.type === 'pointerdown') {
-      audioContext();
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, x0: e.clientX, y0: e.clientY, at: performance.now() };
       e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -1172,8 +1660,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         drag.current = null;
         return;
       }
-      s.yaw -= (e.clientX - d.x) * 0.0065;
-      s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' || s.rickall ? 0.004 : 0)));
+      // (slower over someone in Total Rickall's sights: aim.js's friction)
+      const k = s.rickall?.aim ? FRICTION : 1;
+      s.yaw -= (e.clientX - d.x) * 0.0065 * k;
+      s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' || s.rickall ? 0.004 : 0) * k));
       d.x = e.clientX;
       d.y = e.clientY;
       s.dragAt = s.t;
@@ -1183,45 +1673,27 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     if (e.type === 'pointerup' && s.rickall && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < CLICK.px && performance.now() - d.at < CLICK.ms) fns.current.shoot();
   };
 
-  // the touch stick: drag from where the thumb goes down
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = clamp1((e.clientX - stick.current.x) / 46);
-    const dy = clamp1((e.clientY - stick.current.y) / 46);
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
+  // the touch stick (the kit's, in RmHud): drag from where the thumb goes
+  // down; the sound wakes on the touch itself, as iOS wants
+  const onStick = (x, y) => {
+    sim.current.stick = { x, y };
   };
-  // up and down, held, while flying
-  const onJump = (e) => {
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+  const onStickStart = () => audioContext();
+  const onJump = () => {
     sim.current.jump = true;
+    sim.current.press.press();
     audioContext();
   };
-  const onLift = (dir) => (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-      s.lift = dir;
-      audioContext();
-    } else s.lift = 0;
+  // up and down, held, while flying (the kit's button lets go once, on the
+  // lift, a lost touch or the window going)
+  const onLift = (dir) => {
+    sim.current.lift = dir;
+    if (dir) audioContext();
   };
 
-  const here = hud.near ? PROMPT[hud.near] : null;
+  // (the garage portal says where it's dialled; a planet's own portal is the way back to space)
+  const here = relabel(hud.near ? PROMPT[hud.near] : null, { planet, portal: planet ? null : portalName(dialRef.current) });
+  const back = backLink(planet);
   const placeName = hud.flying ? 'Over the Smiths’ street' : (hud.room ?? AREA_NAME[hud.area]);
   return (
     <div ref={box} className="rm-world-stage" data-touch={touch || undefined} data-flying={hud.flying || undefined} data-area={hud.area}>
@@ -1230,7 +1702,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         className="rm-world-canvas"
         data-on={gl === 'on' || undefined}
         role="img"
-        aria-label="The Smiths’ street in 3D: the Smith house with Rick’s garage, Harry Herpson High across the road, Rick’s space cruiser in the driveway, and Morty on the sidewalk"
+        aria-label={planet ? `${planet.name} in 3D: Morty in front of the portal he came through, his way back to space` : 'The Smiths’ street in 3D: the Smith house with Rick’s garage, Harry Herpson High across the road, Rick’s space cruiser in the driveway, and Morty on the sidewalk'}
         onPointerDown={onPointer}
         onPointerMove={onPointer}
         onPointerUp={onPointer}
@@ -1245,300 +1717,71 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           <p>Opening a portal to {inLine(opening)}…</p>
         </div>
       )}
-      {gl === 'loading' && (
-        <div className="rm-loading" role="status">
-          <span className="rm-swirl" aria-hidden="true" />
-          <p>Opening a portal…</p>
-        </div>
-      )}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title={`Opening a portal${planet ? ` to ${planet.name}` : ''}`} />
 
-      <div className="rm-hud rm-hud-top">
-        <div ref={brand} className="rm-brand">
-          <Title />
-          {game ? (
-            <p className="rm-objective rm-rickall-status" aria-live="polite">
-              <span className="rm-swirl rm-swirl-sm" aria-hidden="true" />
-              <span>{game.phase === 'hatching' ? 'The egg’s hatching…' : game.phase === 'over' ? 'Total Rickall' : `Total Rickall: ${game.left} ${game.left === 1 ? 'parasite' : 'parasites'} left`}</span>
-              {game.phase === 'on' && (
-                <b className="rm-rickall-clock" aria-hidden="true">
-                  {Math.floor(game.secs / 60)}:{String(game.secs % 60).padStart(2, '0')}
-                </b>
-              )}
-            </p>
-          ) : (
-            <p className="rm-objective" aria-live="polite">
-              <span className="rm-swirl rm-swirl-sm" aria-hidden="true" />
-              <span>{prog.objective}</span>
-            </p>
-          )}
-          {hud.flying && (
-            <p className="rm-flightstats" aria-live="off">
-              <span>
-                Height <b>{hud.alt}</b> m
-              </span>
-              <span>
-                Speed <b>{hud.kmh}</b> km/h
-              </span>
-            </p>
-          )}
-        </div>
-        <div className="rm-side">
-          <figure className="rm-map">
-            <canvas ref={map} width={MAP_W * MAP_PX} height={MAP_H * MAP_PX} aria-hidden="true" />
-            <figcaption>{placeName}</figcaption>
-          </figure>
-          {game && (
-            <button type="button" className="rm-chip rm-chip-stop" onClick={stopRickall} aria-label="Stop the game">
-              <RiCloseLine aria-hidden="true" />
-              <span>Stop the game</span>
-              {!touch && <kbd>Esc</kbd>}
-            </button>
-          )}
-          <button ref={chip} type="button" className="rm-chip" onClick={() => setList((v) => !v)} aria-expanded={list} aria-controls="rm-list" aria-label={`Things to do, ${prog.count} of ${prog.total} done`}>
-            <RiListCheck2 aria-hidden="true" />
-            <span>Things to do</span>
-            <b>
-              {prog.count}/{prog.total}
-            </b>
-            {!touch && <kbd>M</kbd>}
-          </button>
-          <button type="button" className="rm-chip" onClick={() => setWardrobe(true)} aria-haspopup="dialog" aria-label="Wardrobe: how Morty and Rick look">
-            <RiShirtLine aria-hidden="true" />
-            <span>Wardrobe</span>
-            {!touch && <kbd>C</kbd>}
-          </button>
-          <OtherMortys trav={trav} />
-        </div>
-      </div>
-      <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="morty" />
-
-      <Toast toast={toast} />
-      {shipLine && hud.area === 'street' && (
-        <p className="rm-shipline" role="status" key={shipLine.at}>
-          <span className="rm-shipline-eyes" aria-hidden="true">
-            <i />
-            <i />
-          </span>
-          <span>
-            <b>The ship</b> {shipLine.text}
-          </span>
-        </p>
-      )}
-      {memory && hud.area === 'mindblowers' && (
-        <div className="rm-memory" role="status" key={memory.at} style={{ '--vial': MEMORY_COLORS[memory.color] }}>
-          <p className="rm-memory-head">
-            <span className="rm-memory-vial" aria-hidden="true" />
-            Memory {memory.i + 1} of {MEMORIES.length}
-          </p>
-          <p className="rm-memory-text">{memory.caption}</p>
-          <p className="rm-memory-hint">{touch ? 'Tap for the next one; walk away to stop.' : 'E for the next one; walk away to stop.'}</p>
-        </div>
-      )}
-
-      {gl === 'on' && here && (
-        <div className="rm-prompt" data-kind={here.kind}>
-          <p className="rm-prompt-name">{here.name}</p>
-          {!touch && (
-            <button type="button" className="rm-btn" onClick={act}>
-              {here.verb} <kbd>E</kbd>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Total Rickall: the crosshair, whoever's in it, what's remembered of them, how it ended */}
-      {gl === 'on' && game?.phase === 'on' && <div className="rm-crosshair" data-on={game.aim ? true : undefined} aria-hidden="true" />}
-      {gl === 'on' && game?.told && (
-        <div ref={recall} className="rm-recall" role="status" key={game.told.n}>
-          <p className="rm-recall-head">
-            What you remember of <b>{game.told.name}</b>
-          </p>
-          <p className="rm-recall-text">{game.told.text}</p>
-        </div>
-      )}
-      {gl === 'on' && game?.phase === 'on' && game.aim && (
-        <div className="rm-prompt" data-kind="aim">
-          <p className="rm-prompt-name">{game.aim.name}</p>
-          {!touch && (
-            <div className="rm-prompt-acts">
-              <button type="button" className="rm-btn rm-btn-ghost" onClick={tellRickall}>
-                Remember <kbd>E</kbd>
-              </button>
-              <button type="button" className="rm-btn rm-btn-shoot" onClick={shootRickall}>
-                Shoot <kbd>F</kbd>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-      {gl === 'on' && game?.phase === 'on' && !game.aim && (
-        <p className="rm-hint">
-          {touch
-            ? 'Turn till someone’s in the crosshair, then Remember, or Shoot. A parasite only ever leaves good memories.'
-            : 'Turn till someone’s in the crosshair: E for what you remember of them, F or a click to shoot. A parasite only ever leaves good memories.'}
-        </p>
-      )}
-      {gl === 'on' && game?.end && <Ending end={game.end} onAgain={() => startRickall()} onLeave={stopRickall} />}
-
-      {gl === 'on' && !here && !game && !hud.flying && !hud.moved && (
-        <p className="rm-hint">{touch ? 'Drag the stick to walk; push it all the way to run; the arrow jumps. Swipe sideways to look round.' : 'W A S D or the arrows to walk, Shift to run, Space to jump. Drag to look round. E uses things, M lists what to do.'}<GuideCue touch={touch} /></p>
-      )}
-      {gl === 'on' && hud.flying && !here && (
-        <p className="rm-hint rm-keys">
-          {touch ? (
-            'The stick flies; hold the arrows to climb and drop. Slow down over open ground to land.'
-          ) : hud.landing ? (
-            'Setting down…'
-          ) : (
-            <>
-              <span>
-                <kbd>W</kbd>
-                <kbd>S</kbd> speed
-              </span>
-              <span>
-                <kbd>A</kbd>
-                <kbd>D</kbd> steer
-              </span>
-              <span>
-                <kbd>Space</kbd> up
-              </span>
-              <span>
-                <kbd>Shift</kbd> down
-              </span>
-              <span>Slow down over open ground, then E to land</span>
-            </>
-          )}
-        </p>
-      )}
-
-      <div className="rm-hud rm-hud-bottom">
-        {touch ? (
-          <>
-            <div ref={stickEl} className="rm-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-              <span />
-            </div>
-            <div className="rm-pad">
-              {!hud.flying && (
-                <div className="rm-lift">
-                  <button type="button" aria-label="Jump" onPointerDown={onJump} onContextMenu={(e) => e.preventDefault()}>
-                    <RiArrowUpLine aria-hidden="true" />
-                  </button>
-                </div>
-              )}
-              {hud.flying && (
-                <div className="rm-lift">
-                  <button type="button" aria-label="Climb" onPointerDown={onLift(1)} onPointerUp={onLift(0)} onPointerCancel={onLift(0)} onLostPointerCapture={onLift(0)} onContextMenu={(e) => e.preventDefault()}>
-                    <RiArrowUpLine aria-hidden="true" />
-                  </button>
-                  <button type="button" aria-label="Drop" onPointerDown={onLift(-1)} onPointerUp={onLift(0)} onPointerCancel={onLift(0)} onLostPointerCapture={onLift(0)} onContextMenu={(e) => e.preventDefault()}>
-                    <RiArrowDownLine aria-hidden="true" />
-                  </button>
-                </div>
-              )}
-              {game ? (
-                <>
-                  <button type="button" className="rm-act rm-act-alt" data-idle={!game.aim || undefined} onClick={tellRickall}>
-                    Remember
-                  </button>
-                  <button type="button" className="rm-act rm-act-shoot" data-idle={!game.aim || undefined} onClick={shootRickall}>
-                    Shoot
-                  </button>
-                </>
-              ) : (
-                <button type="button" className="rm-act" data-idle={!here || undefined} onClick={act}>
-                  {here ? here.verb : hud.flying ? 'Land' : 'Use'}
-                </button>
-              )}
-            </div>
-          </>
-        ) : (
-          <RouterLink to="/" className="rm-back">
-            <RiArrowLeftLine aria-hidden="true" /> Back to the site
-          </RouterLink>
-        )}
-      </div>
-
-      {list && <ThingsToDo box={listBox} prog={prog} done={done} onClose={closeList} />}
-    </div>
-  );
-}
-
-// The list (M): every thing to do, ticked when it's done, with where to go
-// for the rest; and the switch for the cruiser's voice.
-function ThingsToDo({ box, prog, done, onClose }) {
-  const [voice, setVoice] = useState(shipVoiceOn);
-  return (
-    <div ref={box} className="rm-list" id="rm-list" role="region" aria-label="Things to do in Dimension C-137">
-      <div className="rm-list-head">
-        <p>
-          Things to do <b>{prog.count}</b>/{prog.total}
-        </p>
-        <button type="button" className="rm-icon-btn" onClick={onClose} aria-label="Close the list">
-          <RiCloseLine aria-hidden="true" />
-        </button>
-      </div>
-      <ol>
-        {TASKS.map((t) => {
-          const ticked = done.includes(t.id);
-          return (
-            <li key={t.id} data-done={ticked || undefined} data-next={prog.next?.id === t.id || undefined}>
-              <span className="rm-tick" aria-hidden="true">
-                {ticked && <RiCheckLine />}
-              </span>
-              <div>
-                <p className="rm-list-name">
-                  {t.name}
-                  {ticked && <span className="sr-only"> (done)</span>}
-                </p>
-                {!ticked && <p className="rm-list-sub">{t.hint}</p>}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-      <label className="rm-list-switch">
-        <input
-          type="checkbox"
-          checked={voice}
-          onChange={(e) => {
-            setShipVoice(e.target.checked);
-            setVoice(e.target.checked);
-            if (!e.target.checked) stopSpeaking();
-          }}
-        />
-        <span>The ship’s voice</span>
-      </label>
-      <RouterLink to="/" className="rm-list-back">
-        <RiArrowLeftLine aria-hidden="true" /> Back to the site
-      </RouterLink>
-    </div>
-  );
-}
-
-// How Total Rickall ended, on a card over the room: again, or leave it there
-// (the focus on again, so Enter plays again)
-function Ending({ end, onAgain, onLeave }) {
-  const again = useRef(null);
-  useEffect(() => {
-    again.current?.focus({ preventScroll: true });
-  }, []);
-  return (
-    <div className="rm-ending" data-kind={end.kind} role="dialog" aria-labelledby="rm-ending-title" aria-describedby="rm-ending-line">
-      <p className="rm-ending-where">Total Rickall</p>
-      <h3 id="rm-ending-title" className="rm-ending-title">
-        {end.title}
-      </h3>
-      <p id="rm-ending-line" className="rm-ending-line">
-        {end.line}
-      </p>
-      <div className="rm-ending-acts">
-        <button ref={again} type="button" className="rm-btn" onClick={onAgain}>
-          Play again
-        </button>
-        <button type="button" className="rm-btn rm-btn-ghost" onClick={onLeave}>
-          Leave it there
-        </button>
-      </div>
+      <RmHud
+        touch={touch}
+        gl={gl}
+        hud={hud}
+        planet={planet}
+        game={game}
+        prog={prog}
+        duel={duel}
+        clock={clock}
+        placeName={placeName}
+        list={list}
+        done={done}
+        trav={trav}
+        wardrobe={wardrobe}
+        looks={looks}
+        dialing={dialing}
+        dialValue={dialRef.current}
+        trial={trial}
+        trialItems={trialItems}
+        toast={toast}
+        shipLine={shipLine}
+        memory={memory}
+        here={here}
+        back={back}
+        wheelUi={wheelUi}
+        touchWheel={touchWheel}
+        mapSize={[MAP_W * MAP_PX, MAP_H * MAP_PX]}
+        brand={brand}
+        map={map}
+        chip={chip}
+        listBox={listBox}
+        recall={recall}
+        onStickStart={onStickStart}
+        stopRickall={stopRickall}
+        onToggleList={() => setList((v) => !v)}
+        onWardrobe={() => setWardrobe(true)}
+        closeWardrobe={closeWardrobe}
+        setLook={setLook}
+        openDial={openDial}
+        pickDial={pickDial}
+        closeDial={closeDial}
+        pickTrial={pickTrial}
+        closeTrial={closeTrial}
+        act={act}
+        tellRickall={tellRickall}
+        shootRickall={shootRickall}
+        locked={locked}
+        onLock={toggleLock}
+        startRickall={startRickall}
+        onPickEmote={(id) => strike(wheel.current.choose(id))}
+        onCloseWheel={() => {
+          wheel.current.cancel();
+          setTouchWheel(false);
+        }}
+        onToggleWheel={() => setTouchWheel((v) => !v)}
+        onStick={onStick}
+        looking={looking}
+        onLookLock={() => looker.current?.request()}
+        onJump={onJump}
+        onLift={onLift}
+        onFire={() => fns.current.fire()}
+        closeList={closeList}
+      />
     </div>
   );
 }
@@ -1684,6 +1927,13 @@ function drawMap(c, s, goal, t) {
   g.lineWidth = 1.4 * u;
   for (const l of LINKS) if (l.area === s.area) disc(l.x, l.z, 3 * u, null, l.kind === 'portal' ? '#9dff5a' : '#ffffff');
   // the next thing to do, pulsing
+  // the place's people: a dot each, red and pulsing for one who's after Morty, grey for one who's down
+  if (Array.isArray(s.npcs))
+    for (const n of s.npcs) {
+      if (!n.visible) continue;
+      if (n.hunting) disc(n.x, n.z, (2.6 + Math.sin(t * 8) * 0.8) * u, '#ff3a3a', '#ffffff');
+      else disc(n.x, n.z, 1.8 * u, n.dead ? '#6a6a6a' : '#ffffff', null);
+    }
   if (goal) {
     g.lineWidth = 2 * u;
     disc(goal.x, goal.z, (6 + Math.sin(t * 4.5) * 1.6) * u, null, '#ffd23a');
@@ -1716,79 +1966,6 @@ function drawMap(c, s, goal, t) {
   if (!s.flying) arrow(s.m.x, s.m.z, Math.PI / 2 - s.m.face, '#f3d84b');
 }
 
-// ── without 3D: the places as cards ──
-const CARDS = [
-  { id: 'house', name: 'The Smith house', blurb: 'Jerry’s on the couch with the TV on, and Rick left something at the breakfast table.', items: ['cable', 'butter'] },
-  { id: 'garage', name: 'Rick’s garage', blurb: 'One car wide: the workbench, the worktable, the plumbus machine, a Portal panic cabinet, a portal on the wall, and a hatch in the floor down to Rick’s secret lab.', items: ['meeseeks', 'plumbus', 'portalpanic'] },
-  { id: 'school', name: 'Harry Herpson High', blurb: 'Mr. Goldenfold has a pop quiz on the board. Seven right is a pass.', items: ['quiz'] },
-  { id: 'arcade', name: 'Blips and Chitz', blurb: 'The arcade on the far side of the portal, and the game everyone queues for.', items: ['roy'] },
-];
-const CARD_LABEL = { cable: 'Watch interdimensional cable', butter: 'Switch on the butter robot', meeseeks: 'Press the Meeseeks box', plumbus: 'Watch a plumbus get made', portalpanic: 'Play Portal panic', quiz: 'Sit the pop quiz', roy: 'Play Roy: A Life Well Lived' };
-const CARD_TASK = { cable: ['cable'], butter: ['butter'], meeseeks: ['meeseeks'], plumbus: ['plumbus'], portalpanic: ['portalpanic'], quiz: ['quiz'], roy: ['roy', 'roy55'] };
-
-function Cards({ done, openPlace, three, gl, toast, retry }) {
-  const prog = progress(done);
-  return (
-    <div className="shell rm-cards-wrap">
-      <div className="rm-cards-head">
-        <div>
-          <Title />
-          <p className="lead mt-4 max-w-[60ch]">Rick and Morty’s neighbourhood: the Smith house, Rick’s garage lab, Harry Herpson High, and through the portal, Blips and Chitz.</p>
-        </div>
-        <p className="rm-cards-count">
-          <b>{prog.count}</b> of {prog.total} things done
-        </p>
-      </div>
-      {three.can && (
-        <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
-          {gl === 'lost'
-            ? 'The graphics chip reset, so here’s the neighbourhood as cards.'
-            : gl === 'failed'
-              ? 'The 3D neighbourhood couldn’t start here, so here it is as cards.'
-              : three.held
-                ? `The 3D neighbourhood isn’t loaded yet${three.hold?.mb ? ` (about ${three.hold.mb} MB)` : ''}, so here it is as cards.`
-                : '3D is switched off, so here’s the neighbourhood as cards.'}
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              if (!three.on) three.set('auto');
-              retry();
-            }}
-          >
-            {three.on ? 'Try 3D again' : three.held ? 'Load the 3D' : 'Turn 3D on'}
-          </button>
-        </p>
-      )}
-      <div className="rm-cards-toast">
-        <Toast toast={toast} />
-      </div>
-      <ul className="rm-cards">
-        {CARDS.map((p) => (
-          <li key={p.id} data-place={p.id}>
-            <h3 className="rm-card-name">{p.name}</h3>
-            <p className="rm-card-blurb">{p.blurb}</p>
-            <div className="rm-card-acts">
-              {p.items.map((id) => {
-                const ticked = CARD_TASK[id].every((t) => done.includes(t));
-                return (
-                  <button key={id} type="button" className="rm-card-btn" data-done={ticked || undefined} onClick={() => openPlace(id)}>
-                    <span className="rm-tick" aria-hidden="true">
-                      {ticked && <RiCheckLine />}
-                    </span>
-                    {CARD_LABEL[id]}
-                    {ticked && <span className="sr-only"> (done)</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 // Roy, if its code won't load (offline, or a deploy since the page opened)
 function RoyDown({ onLeave }) {
   return (
@@ -1804,7 +1981,7 @@ function RoyDown({ onLeave }) {
 // ── what opens over the page ──
 // Its component, and the way back to the room (Esc, the button, or B on a
 // controller). Roy fills the screen and has its own way out.
-function Place({ id, onClose, onQuiz, onRoy }) {
+function Place({ id, onClose, onQuiz, onRoy, onSewer }) {
   const p = PLACES[id];
   const back = useRef(null);
   const shell = useRef(null);
@@ -1859,6 +2036,18 @@ function Place({ id, onClose, onQuiz, onRoy }) {
         {() => <Roy onLeave={onRoy} />}
       </GpuGate>
     ),
+    sewer: (
+      <GpuGate
+        className="rm-roy-gate"
+        extra={
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onSewer(false)}>
+            Back up the hole
+          </button>
+        }
+      >
+        {() => <Sewer onLeave={onSewer} />}
+      </GpuGate>
+    ),
   }[id];
   return createPortal(
     <div ref={shell} className="rm-place" data-full={p.full || undefined} data-place={id} role="dialog" aria-modal="true" aria-label={p.full ? p.title : undefined} aria-labelledby={p.full ? undefined : 'rm-place-title'} tabIndex={-1}>
@@ -1880,23 +2069,5 @@ function Place({ id, onClose, onQuiz, onRoy }) {
       </div>
     </div>,
     document.body,
-  );
-}
-
-// Others online in the street: how many, or a way to see them (going online
-// is the site's own switch, with your callsign, as on the universe map).
-function OtherMortys({ trav }) {
-  if (!trav.available) return null;
-  if (!trav.on)
-    return (
-      <button type="button" className="rm-chip" onClick={trav.join} title="Go online, and see everyone else in the street as a Morty from another dimension">
-        <span>See other Mortys</span>
-      </button>
-    );
-  return (
-    <span className="rm-chip" title="Everyone else online in the street shows as a Morty from another dimension: they can’t touch your things to do, nor you theirs">
-      <b>{trav.count}</b>
-      <span>{trav.count === 1 ? 'other Morty' : 'other Mortys'} here</span>
-    </span>
   );
 }

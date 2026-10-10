@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { B, ball, cyl } from '../../shire/props';
+import { sharpen } from '../../../../lib/three/textures';
 
 export const INN = {
   sky: { background: 0x1a120c, fog: [0x1a120c, 18, 44], hemi: [0xffe2b8, 0x3a2414, 1.25], sun: [0xffe0b0, 2.2] },
@@ -53,6 +54,7 @@ export const INN = {
       g.stroke();
     }
     const rain = new THREE.CanvasTexture(cv);
+    sharpen(rain);
     rain.colorSpace = THREE.SRGBColorSpace;
     rain.wrapT = THREE.RepeatWrapping;
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.8), new THREE.MeshBasicMaterial({ map: rain }));

@@ -69,6 +69,24 @@ class Serve(unittest.TestCase):
         self.assertEqual(len([s for s in said if s.startswith("ok\t")]), 4)
         self.assertTrue((self.dir / "han" / "4.wav").exists())
 
+    def test_a_model_that_mixes_voices_gets_full_batches_with_a_voice_a_take(self):
+        def load(jobs):
+            def say(voice, text, seed):
+                raise AssertionError("should be batched")
+
+            def many(voices, texts, seeds):
+                self.calls.append([(v["wav"], t) for v, t in zip(voices, texts)])
+                return [(np.zeros(100, dtype=np.float32), 24000) for _ in texts]
+
+            say.many, say.batch, say.mixed = many, 3, True
+            return say
+
+        items = [self.item("walt", 1), self.item("han", 2), self.item("walt", 3), self.item("han", 4)]
+        said = self.serve(load, items)
+        self.assertEqual(self.calls, [[("w", "line 1"), ("h", "line 2"), ("w", "line 3")], [("h", "line 4")]])
+        self.assertEqual(len([s for s in said if s.startswith("ok\t")]), 4)
+        self.assertTrue((self.dir / "han" / "4.wav").exists())
+
     def test_a_worker_elsewhere_reads_and_writes_its_own_paths_but_reports_the_jobs(self):
         elsewhere = self.dir / "elsewhere"
 

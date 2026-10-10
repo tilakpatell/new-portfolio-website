@@ -11,7 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
-import { clamp, ramp, save } from './sphere.mjs';
+import { clamp, ramp, save, bakeSize } from './sphere.mjs';
 
 const CACHE = path.resolve('node_modules/.cache/universe');
 const UA = { 'User-Agent': 'tilakpatell.com universe build (https://tilakpatell.com)' };
@@ -63,8 +63,7 @@ function stretch(l, lo = 2, hi = 98) {
 }
 
 export async function bake() {
-  const W = 4096;
-  const H = 2048;
+  const [W, H] = bakeSize(); // (8192 × 4096 with --ultra, from Solar System Scope's 8K)
   // the music room: Jupiter in saffron
   {
     const { rgb, lum } = await read(await fetchOnce('jupiter'), W, H);
@@ -75,7 +74,7 @@ export async function bake() {
       const c = saffron(l[i]);
       for (let k = 0; k < 3; k++) out[i * 3 + k] = c[k] * 0.88 + rgb[i * 3 + k] * 0.12;
     }
-    await save(out, W, H, 3, 'music', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+    await save(out, W, H, 3, 'music', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
   }
   // Marvel: Saturn's bands, sharpened, in gold and red
   {
@@ -86,6 +85,6 @@ export async function bake() {
     const gold = ramp([[0, '#4a0d0d'], [0.28, '#8f2220'], [0.45, '#b8562a'], [0.62, '#d6a03c'], [0.82, '#efcf72'], [1, '#fff3c8']]);
     const out = new Float32Array(W * H * 3);
     for (let i = 0; i < W * H; i++) out.set(gold(l[i]), i * 3);
-    await save(out, W, H, 3, 'marvel', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+    await save(out, W, H, 3, 'marvel', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
   }
 }

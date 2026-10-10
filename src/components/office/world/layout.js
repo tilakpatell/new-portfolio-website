@@ -399,6 +399,15 @@ export const LINES = {
   toby: ['If anyone needs me, I’ll be over here. In the annex. As usual.', 'Michael said good morning to me today. Well. He said “morning”. At me.'],
   kelly: ['Oh my God, Jim. Did you hear about Ryan? Because I didn’t hear about Ryan.', 'I talk a lot, so I’ve learned to tune myself out.'],
 };
+// what they say instead while the job they want you for is waiting
+export const ASKS = {
+  kevin: 'Jim. Jim. My chili’s at the lift. Can you bring it to the kitchen? Careful. It’s my thing.',
+  erin: 'Jim, could you cover the phones for a minute? Please? I really need a break.',
+  michael: 'Jim! Get in here. Step into my office. Not you, Toby.',
+};
+// the lines the show said out loud, played as it said them (lib/clips.js);
+// the rest are said in the speaker's own voice where it's been made (./voicelines.js)
+export const SPOKEN = { 'I’m not superstitious. But I am a little stitious.': 'littleStitious', 'Did I stutter?': 'didIStutter' };
 export const NAMES = { michael: 'Michael Scott', dwight: 'Dwight Schrute', jim: 'Jim Halpert', pam: 'Pam Beesly', erin: 'Erin Hannon', andy: 'Andy Bernard', phyllis: 'Phyllis Vance', stanley: 'Stanley Hudson', angela: 'Angela Martin', kevin: 'Kevin Malone', oscar: 'Oscar Martinez', creed: 'Creed Bratton', meredith: 'Meredith Palmer', darryl: 'Darryl Philbin', ryan: 'Ryan Howard', toby: 'Toby Flenderson', kelly: 'Kelly Kapoor' };
 
 // where someone's head is when they're sitting (for who's near and the bubbles)

@@ -8,8 +8,9 @@
 // functions: the scene drives the engine each frame and the comms box calls
 // the rest.
 
-import { audioContext, loadBuffer, output, voiceOutput } from '../../lib/audio';
+import { audioContext, loadBuffer, output, voiceOutput, voicesOn } from '../../lib/audio';
 import { playClip } from '../../lib/clips';
+import { speech } from '../../lib/speech';
 
 let noiseBuf = null;
 function noise(ac) {
@@ -127,12 +128,13 @@ const VOICES = {
   hank: { type: 'sawtooth', f: 98, spread: 0.2, syl: 0.08, gain: 0.05, filter: 800 },
 };
 
-// Someone says a line. Returns about how long it takes, in ms.
+// Someone says a line. Returns about how long it takes, in ms. Not over
+// someone else's voice (lib/speech.js), and not with the voices off.
 export function speak(voice, text) {
   const ac = audioContext();
   const out = ac ? voiceOutput() : null; // through the voice tap, so the speaker's mouth moves with it
   const words = text.replace(/\[|\]/g, '').split(/\s+/).filter(Boolean).length;
-  if (!ac || !out) return 600 + words * 260;
+  if (!ac || !out || speech.busy() || !voicesOn()) return 600 + words * 260;
   const t = ac.currentTime + 0.02;
   if (voice === 'r2') {
     // Artoo: a run of whistles and chirps
@@ -149,7 +151,7 @@ export function speak(voice, text) {
   if (voice === 'chewie') {
     // Chewie himself: a laugh when it's a laugh, a roar the rest of the time
     const laugh = /laugh/i.test(text);
-    playClip(laugh ? 'chewieLaugh' : 'chewieRoar', { voice: true }).then((h) => h || growl(ac, out, t));
+    playClip(laugh ? 'chewieLaugh' : 'chewieRoar', { voice: true }).then((h) => h || speech.busy() || growl(ac, out, t));
     return laugh ? 2700 : 1700;
   }
   const v = VOICES[voice];
@@ -347,10 +349,12 @@ export function fireSound(kind) {
 }
 
 // Into a planet too fast: a deep boom, the blast and the bits coming down
-export function crashSound() {
+// k: how loud, 0…1 (ship.js's crashLoud, by the speed it went in at); 1 as it always was
+export function crashSound(k = 1) {
   const ac = audioContext();
   const out = ac ? output() : null;
-  if (!ac || !out) return;
+  if (!ac || !out || !(k > 0)) return;
+  const v = Math.min(1, k);
   const t = ac.currentTime + 0.01;
   const o = ac.createOscillator();
   o.type = 'sine';
@@ -358,19 +362,19 @@ export function crashSound() {
   o.frequency.exponentialRampToValueAtTime(32, t + 1.1);
   const g = ac.createGain();
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.5 * v, t + 0.02);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
   o.connect(g).connect(out);
   o.start(t);
   o.stop(t + 1.4);
-  whoosh(1.4, 1600, 90, 0.32);
+  whoosh(1.4, 1600, 90, 0.32 * v);
   tones(
     [
       [180, 0.05, 0.12],
       [120, 0.2, 0.1],
       [210, 0.38, 0.08],
     ],
-    { type: 'square', gain: 0.03 },
+    { type: 'square', gain: 0.03 * v },
   );
 }
 
@@ -637,6 +641,66 @@ export function boomSound(big = false) {
   tones([[big ? 55 : 75, 0, big ? 0.7 : 0.35]], { type: 'sine', gain: big ? 0.3 : 0.2 });
 }
 
+// ── the ships' powers (shipPowers.js) ──
+// Each power's own sound as it goes on, and the moments in it (a torpedo
+// away, a shot from Chewie's turret, the crystal going off); the big one
+// charged is a rising chime, a power that won't go the empty trigger. The
+// words are the crew's (crews.js), on the comms.
+export function powerSound(id, what) {
+  if (what === 'denied') return drySound();
+  if (what === 'ready') {
+    tones(
+      [
+        [660, 0, 0.12],
+        [990, 0.1, 0.12],
+        [1320, 0.2, 0.32],
+      ],
+      { type: 'sine', gain: 0.05 },
+    );
+    return;
+  }
+  if (what === 'launch') return launchSound(id === 'heisenberg' ? 'rv' : 'xwing');
+  if (what === 'blast') return boomSound(true);
+  if (what === 'shot') {
+    // a quad laser: a quick falling zap, a little lower than an X-wing's
+    const ac = audioContext();
+    const out = ac ? output() : null;
+    if (!ac || !out) return;
+    const t = ac.currentTime + 0.01;
+    blip(ac, out, { type: 'sawtooth', f: 1300, at: t, dur: 0.13, gain: 0.045, glide: 0.3, filter: 2600 });
+    return;
+  }
+  if (what !== 'use') return;
+  if (id === 'focus') {
+    // the Force: a low swell, time going thick
+    whoosh(1.6, 180, 900, 0.09);
+    tones(
+      [
+        [98, 0, 1.6],
+        [147, 0.06, 1.5],
+      ],
+      { type: 'sine', gain: 0.08 },
+    );
+  } else if (id === 'odds') boostSound('falcon', false);
+  else if (id === 'portal') portalSound();
+  else if (id === 'wubba') {
+    // the death ray: a crackling hum for as long as it's on
+    tones(
+      Array.from({ length: 14 }, (_, i) => [70 + (i % 2) * 6, i * 0.25, 0.3]),
+      { type: 'sawtooth', gain: 0.05 },
+    );
+    whoosh(3.5, 2400, 900, 0.05);
+  } else if (id === 'magnets') {
+    // the magnet winding up: a rising electric whine
+    const ac = audioContext();
+    const out = ac ? output() : null;
+    if (!ac || !out) return;
+    const t = ac.currentTime + 0.01;
+    blip(ac, out, { type: 'square', f: 180, at: t, dur: 1.1, gain: 0.03, glide: 5, filter: 2200 });
+    blip(ac, out, { type: 'sine', f: 360, at: t + 0.05, dur: 1.1, gain: 0.05, glide: 4 });
+  } else if (id === 'heisenberg') whoosh(0.6, 500, 2200, 0.12); // (the crystal thrown)
+}
+
 // a shot into the Citadel's shield: a fizzing hum
 export function shieldSound() {
   tones(
@@ -715,10 +779,51 @@ export function gunSound(gun, { soft = false } = {}) {
     playClip('portalGun', { gain: 0.8 * k, duration: 1.4 });
     return;
   }
+  if (gun === 'freeze') {
+    // the freeze ray: a cold hiss out of the nozzle, a glassy ring over it
+    burst(ac, out, { at: t, dur: 0.32, gain: 0.12 * k, type: 'highpass', f: 5200 });
+    blip(ac, out, { type: 'sine', f: 3400, at: t, dur: 0.3, gain: 0.05 * k, glide: 0.6 });
+    blip(ac, out, { type: 'triangle', f: 5100, at: t + 0.03, dur: 0.22, gain: 0.03 * k, glide: 0.8 });
+    return;
+  }
+  if (gun === 'shrink') {
+    // the shrink ray: the old ray gun's warble, falling away
+    blip(ac, out, { type: 'sawtooth', f: 1300, at: t, dur: 0.22, gain: 0.05 * k, glide: 0.25, filter: 2600 });
+    blip(ac, out, { type: 'sine', f: 900, at: t, dur: 0.24, gain: 0.08 * k, glide: 2.2 });
+    return;
+  }
   // a laser: a bright zap falling away, a little fizz
   blip(ac, out, { type: 'sawtooth', f: 2400, at: t, dur: 0.13, gain: 0.06 * k, glide: 0.22, filter: 4200 });
   blip(ac, out, { type: 'square', f: 1600, at: t + 0.01, dur: 0.1, gain: 0.03 * k, glide: 0.3, filter: 3000 });
   burst(ac, out, { at: t, dur: 0.08, gain: 0.05 * k, type: 'highpass', f: 4000 });
+}
+
+// What Rick's gadgets do to the one they kill (lib/three/gadgetFx.js), by
+// the kill's moment: the freeze ray's 'hit' (the ice cracking over them) and
+// 'shatter'; the shrink ray's 'hit' (a falling whistle), 'squeak' and 'pop'
+export function gadgetSound(gun, ev) {
+  const ac = audioContext();
+  const out = ac ? output() : null;
+  if (!ac || !out) return;
+  const t = ac.currentTime + 0.005;
+  if (gun === 'freeze' && ev === 'hit') {
+    for (let i = 0; i < 6; i++) burst(ac, out, { at: t + i * 0.05 + Math.random() * 0.03, dur: 0.04, gain: 0.08, type: 'bandpass', f: 2500 + Math.random() * 2500, q: 4 });
+    blip(ac, out, { type: 'sine', f: 220, at: t, dur: 0.5, gain: 0.06, glide: 0.5 });
+  } else if (gun === 'freeze' && ev === 'shatter') {
+    burst(ac, out, { at: t, dur: 0.35, gain: 0.32, type: 'highpass', f: 2800 });
+    burst(ac, out, { at: t, dur: 0.15, gain: 0.2, type: 'lowpass', f: 700 });
+    // the shards landing: tinkles, scattered
+    for (let i = 0; i < 9; i++) blip(ac, out, { type: 'triangle', f: 2600 + Math.random() * 3600, at: t + 0.08 + Math.random() * 0.6, dur: 0.07, gain: 0.025, glide: 0.9 });
+  } else if (gun === 'shrink' && ev === 'hit') {
+    blip(ac, out, { type: 'sine', f: 260, at: t, dur: 0.5, gain: 0.1, glide: 7 });
+    blip(ac, out, { type: 'square', f: 130, at: t, dur: 0.45, gain: 0.02, glide: 7, filter: 2400 });
+  } else if (gun === 'shrink' && ev === 'squeak') {
+    blip(ac, out, { type: 'sine', f: 2400, at: t, dur: 0.08, gain: 0.07, glide: 1.4 });
+    blip(ac, out, { type: 'sine', f: 2900, at: t + 0.1, dur: 0.1, gain: 0.07, glide: 1.25 });
+  } else if (gun === 'shrink' && ev === 'pop') {
+    burst(ac, out, { at: t, dur: 0.05, gain: 0.22, type: 'bandpass', f: 1800, q: 1.4 });
+    blip(ac, out, { type: 'sine', f: 600, at: t, dur: 0.08, gain: 0.12, glide: 0.3 });
+  }
 }
 
 // A shot landing near you on foot: a sharp crack of something hit

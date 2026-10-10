@@ -3,6 +3,9 @@ import { PAGES, SHORTCUTS, SITE, guideFor } from './pages';
 import { GUIDES, guideMeta } from './routes';
 import { keyTokens } from './keys';
 import { WORLDS } from '../worlds/worlds';
+import { ABOUT } from './abouts';
+import { BRIEFED } from '../tour/brief';
+import { BRIEFS } from '../tour/briefs';
 
 describe('which guide a page gets', () => {
   it('finds a page by its own path', () => {
@@ -23,6 +26,13 @@ describe('which guide a page gets', () => {
     expect(guideFor('/galaxy/hoth/mission').key).toBe('/galaxy/mission');
     expect(guideFor('/middle-earth').key).toBe('/middle-earth');
     expect(guideFor('/middle-earth/moria').key).toBe('/middle-earth/place');
+  });
+
+  it('gives a Rick and Morty planet its own, not C-137’s, and leaves the Citadel its', () => {
+    for (const p of ['/c-137/squanch', '/c-137/purge', '/c-137/gazorpazorp']) expect(guideFor(p).key, p).toBe('/c-137/planet');
+    expect(guideFor('/c-137').key).toBe('/c-137');
+    expect(guideFor('/c-137/citadel').key).toBe('/c-137/citadel');
+    expect(guideFor('/c-137/squanch/deeper')).toBe(null);
   });
 
   it('has none for a page it doesn’t know', () => {
@@ -50,8 +60,9 @@ describe('the corner button’s side of it (routes.js)', () => {
 
   it('leaves a note only on pages that have controls to tell', () => {
     for (const [path, g] of Object.entries(GUIDES)) if (g.nudge) expect(Boolean(PAGES[path].keys || PAGES[path].touch), path).toBe(true);
-    for (const path of ['/universe', '/galaxy/surface', '/albuquerque', '/middle-earth/place']) expect(guideMeta(path).nudge, path).toBe(true);
-    for (const path of ['/home', '/terminal', '/projects']) expect(guideMeta(path).nudge, path).toBe(false);
+    for (const path of ['/galaxy/surface', '/albuquerque', '/middle-earth/place']) expect(guideMeta(path).nudge, path).toBe(true);
+    // (the universe and the galaxy: their first hint says where the controls are)
+    for (const path of ['/home', '/terminal', '/projects', '/universe', '/universe/marvel', '/galaxy/hoth']) expect(guideMeta(path).nudge, path).toBe(false);
   });
 });
 
@@ -93,8 +104,32 @@ describe('what the guide says', () => {
     expect(JSON.stringify(PAGES['/universe'])).not.toMatch(/R to climb|C to dive/);
   });
 
+  it('tells the galaxy’s real flying keys: no weapons to switch, and the crew’s powers on G and X', () => {
+    const flying = PAGES['/galaxy'].keys.find((g) => g.label === 'Flying').rows;
+    const does = (k) => flying.find(([keys]) => keys === k)?.[1] ?? '';
+    expect(flying.map(([k]) => k)).not.toContain('R / 1 2 3');
+    expect(JSON.stringify(PAGES['/galaxy'])).not.toMatch(/heavy ordnance/);
+    expect(does('G')).toMatch(/power/i);
+    expect(does('X')).toMatch(/charged/i);
+    const touch = PAGES['/galaxy'].touch.flatMap((g) => g.rows.map(([k]) => k));
+    expect(touch).toEqual(expect.arrayContaining(['Power', 'Big one']));
+  });
+
   it('has the site’s own shortcuts and tips', () => {
     expect(SHORTCUTS.map(([k]) => k)).toContain('?');
     expect(SITE.length).toBeGreaterThan(3);
+  });
+});
+
+describe('the line on what a world is (abouts.js)', () => {
+  it('has one for every world with basics, read from abouts.js', () => {
+    for (const key of BRIEFED) {
+      expect(PAGES[key]?.about, key).toBeTruthy();
+      expect(PAGES[key].about, key).toBe(ABOUT[key]);
+    }
+  });
+
+  it('opens each world’s basics', () => {
+    for (const key of BRIEFED) expect(BRIEFS[key].find((s) => s.id === 'hello').text.startsWith(ABOUT[key]), key).toBe(true);
   });
 });

@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import { loadTexture as loadShared } from './three/textures';
+import { envLevel } from './three/house';
 
 export const cc0 = (file) => `${import.meta.env.BASE_URL}cc0/${file}`;
 
@@ -17,6 +18,8 @@ export function loadEnvironment(renderer, file) {
           hdr.mapping = THREE.EquirectangularReflectionMapping;
           const pmrem = new THREE.PMREMGenerator(renderer);
           const env = pmrem.fromEquirectangular(hdr).texture;
+          // (its mean light, for the house look: the PMREM has no pixels to read)
+          env.userData.level = envLevel(hdr);
           pmrem.dispose();
           hdr.dispose();
           resolve(env);

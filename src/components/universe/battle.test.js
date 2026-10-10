@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { BATTLE, WIDTH, createBattle, inSights, perSide, turnToward } from './battle';
 import { FIGHTERS, WARS } from './wars';
@@ -23,6 +24,199 @@ const run = (b, seconds, you = null, dt = 1 / 30) => {
 const flagOf = (b, team) => b.capitals.find((c) => c.team === team && c.role === 'flagship');
 // a shot from 2 units off straight through a point
 const shotAt = (b, p, damage = 1) => b.hit({ x: p.x, y: p.y + 2, z: p.z }, { x: p.x, y: p.y - 0.01, z: p.z }, damage);
+
+describe('the flagships’ objectives', () => {
+  // A shot stops at the first thing it meets, and a hull's spheres are among
+  // them, so an objective buried in one can't be hit. Bolts at each from all
+  // round its outer side, a frame's flight at a time (a bolt's 60 a second
+  // and the ship's own, at 60 frames a second), through your guns' own hit():
+  // a fair share of those that meet the flagship itself must meet the
+  // objective (Home One's reactor, reached mostly from astern, is the least).
+  it('can each be shot from outside: a fair share of bolts that meet the flagship from round an objective’s outer side meet it', () => {
+    for (const w of Object.values(WARS))
+      for (const attacker of [0, 1]) {
+        const b = createBattle({ war: w, attacker, at: [0, 0, 0], axis: [1, 0], perSide: 4, rand: seeded() });
+        b.setYou(attacker);
+        const flag = flagOf(b, b.defender);
+        const rand = seeded(11);
+        for (const phase of [1, 2, 3]) {
+          for (const s of flag.subs.filter((o) => o.phase === phase)) {
+            const out = { x: s.pos.x - flag.pos.x, y: s.pos.y - flag.pos.y, z: s.pos.z - flag.pos.z };
+            let reached = 0;
+            let stopped = 0;
+            for (let n = 0; n < 80; n++) {
+              let d;
+              do d = { x: rand() * 2 - 1, y: rand() * 2 - 1, z: rand() * 2 - 1 };
+              while (Math.hypot(d.x, d.y, d.z) > 1 || d.x * out.x + d.y * out.y + d.z * out.z <= 0);
+              const l = Math.hypot(d.x, d.y, d.z);
+              let p = { x: s.pos.x + (d.x / l) * 40, y: s.pos.y + (d.y / l) * 40, z: s.pos.z + (d.z / l) * 40 };
+              let hit = null;
+              for (let f = 0; f < 30 && !hit; f++) {
+                const q = { x: p.x - (d.x / l) * 2, y: p.y - (d.y / l) * 2, z: p.z - (d.z / l) * 2 };
+                hit = b.hit(p, q, 0);
+                p = q;
+              }
+              if (hit?.sub === s.id) reached++;
+              else if ((hit?.shield || hit?.capital) && hit.id === flag.id) stopped++; // (its own hull, not an escort in the way)
+            }
+            expect(reached / (reached + stopped), `${w.id}: ${flag.kind} ${s.id}`).toBeGreaterThan(0.25);
+          }
+          // (then on to the next phase: each taken out point-blank, whatever's round it)
+          for (const s of flag.subs.filter((o) => o.phase === phase)) for (let i = 0; i < 400 && s.alive; i++) b.hit(s.pos, { x: s.pos.x, y: s.pos.y - 0.01, z: s.pos.z }, 5);
+          run(b, 0.1);
+          expect(b.phase, `${w.id}: ${flag.kind} past phase ${phase}`).toBe(phase + 1);
+        }
+      }
+  });
+});
+
+describe('the objectives on an Interdictor', () => {
+  // the Empire's line with an Interdictor among its escorts
+  const withInterdictor = { ...war, sides: [war.sides[0], { ...war.sides[1], capitals: [...war.sides[1].capitals, { kind: 'interdictor', role: 'escort', size: 11, hull: 220 }] }] };
+  it('puts the defender’s objectives on the Interdictor, and leaves the flagship its hull', () => {
+    const b = make({ war: withInterdictor, objectivesOn: 'interdictor' });
+    const inter = b.capitals.find((c) => c.kind === 'interdictor');
+    const flag = flagOf(b, 1);
+    expect(inter.subs.map((x) => x.id)).toEqual(['gen-port', 'gen-star', 'bridge', 'reactor']);
+    expect(flag.subs).toEqual([]);
+    expect(flag.tracked).toBe(true);
+    expect(inter.tracked).toBe(false);
+    b.setYou(0);
+    expect(b.targets.filter((t) => t.kind === 'subsystem').length).toBe(2);
+  });
+  it('wins the battle for the attacker when the Interdictor’s down', () => {
+    const b = make({ war: withInterdictor, objectivesOn: 'interdictor', perSide: 0 });
+    b.setYou(0);
+    const inter = b.capitals.find((c) => c.kind === 'interdictor');
+    for (const phase of [1, 2, 3]) {
+      for (const s of inter.subs.filter((o) => o.phase === phase)) for (let i = 0; i < 400 && s.alive; i++) b.hit(s.pos, { x: s.pos.x, y: s.pos.y - 0.01, z: s.pos.z }, 5);
+      run(b, 0.1);
+    }
+    const events = run(b, BATTLE.dying + 1);
+    expect(b.over).toMatchObject({ winner: 0, why: 'interdictor' });
+    expect(events.some((e) => e.type === 'over' && e.why === 'interdictor')).toBe(true);
+    expect(flagOf(b, 1).alive).toBe(true);
+  });
+  it('without an Interdictor, they stay on the flagship', () => {
+    const b = make({ objectivesOn: 'interdictor' });
+    expect(flagOf(b, 1).subs.length).toBe(4);
+  });
+});
+
+describe('an ace', () => {
+  it('is one of its side’s fighters, of its own kind, named, with its own hull', () => {
+    const b = make({ ace: { 1: { kind: 'tieadvanced', name: 'Darth Vader', hp: 14 } } });
+    const aces = b.fighters.filter((f) => f.ace);
+    expect(aces).toHaveLength(1);
+    const [a] = aces;
+    expect(a).toMatchObject({ team: 1, kind: 'tieadvanced' });
+    expect(a.tgt.name).toBe('Darth Vader');
+    expect(a.hp).toBe(14);
+    expect(a.tgt.hpMax).toBe(14);
+  });
+  it('down, says so, and doesn’t come back', () => {
+    const b = make({ ace: { 1: { kind: 'tieadvanced', name: 'Darth Vader', hp: 3 } } });
+    b.setYou(0);
+    const a = b.fighters.find((f) => f.ace);
+    for (let i = 0; i < 10 && a.alive; i++) shotAt(b, a.pos, 1);
+    const events = run(b, 0.1);
+    expect(events.find((e) => e.type === 'down' && e.mine)).toMatchObject({ ace: true, kind: 'tieadvanced' });
+    expect(a.respawn).toBe(Infinity);
+  });
+});
+
+describe('runners', () => {
+  it('escaping, win the battle for their side', () => {
+    const b = make({ perSide: 0, runners: { team: 1, kind: 'transport', size: 2.2, hp: 34, count: 4, need: 3, speed: 20, every: 0.5, from: [0, 0, 0], to: [0, 30, 0] } });
+    const events = run(b, 20);
+    expect(events.filter((e) => e.type === 'escaped' && e.team === 1).length).toBe(3);
+    expect(b.over).toMatchObject({ winner: 1, why: 'runners' });
+  });
+  it('all down, lose it', () => {
+    const b = make({ perSide: 0, runners: { team: 1, kind: 'transport', size: 2.2, hp: 2, count: 2, need: 2, speed: 2, every: 0.5, from: [0, 0, 0], to: [0, 400, 0] } });
+    b.setYou(0);
+    for (let t = 0; t < 4 && !b.over; t += 1 / 30) {
+      for (const r of b.runners) if (r.alive) shotAt(b, r.pos, 5);
+      b.update(1 / 30, null);
+    }
+    expect(b.runners.length).toBe(2);
+    expect(b.over).toMatchObject({ winner: 0, why: 'runners' });
+  });
+});
+
+describe('the fixed step', () => {
+  // The battle moves on BATTLE.step at a time whatever the frame rate (a
+  // frame's time owed carried to the next), so the same seed fights the same
+  // battle on a 144 Hz screen, a 60 Hz one, a phone at 30 and a browser
+  // check at 10: the same events in the same order, every fighter in the
+  // same place.
+  const transports = { team: 1, kind: 'transport', size: 2.2, hp: 34, count: 4, need: 4, speed: 6, every: 25, from: [60, 0, 0], to: [60, 0, -300] };
+  const stateOf = (b) =>
+    JSON.stringify({
+      clock: b.clock,
+      phase: b.phase,
+      over: b.over,
+      tickets: b.teams.map((t) => t.tickets),
+      fighters: b.fighters.map((f) => [f.alive, f.hp, ...[f.pos.x, f.pos.y, f.pos.z].map((x) => Math.round(x * 1e6))]),
+      subs: b.capitals.flatMap((c) => c.subs.map((s) => s.hp)),
+      hulls: b.capitals.map((c) => c.hull),
+      runners: b.runners.map((r) => [r.alive, r.hp, ...[r.pos.x, r.pos.y, r.pos.z].map((x) => Math.round(x * 1e6))]),
+    });
+  const fight = (dt) => {
+    const b = make({ perSide: 8, rand: seeded(21), runners: transports });
+    const log = [];
+    for (let i = 0, n = Math.round(120 / dt); i < n; i++) for (const e of b.update(dt, null)) log.push(e);
+    return { log: JSON.stringify(log), state: stateOf(b), events: log.length };
+  };
+  it('fights the same battle at any frame rate: same seed, same events and state after 120 s at 1/144, 1/60, 1/30 and 0.1 s a frame', () => {
+    const base = fight(1 / 30);
+    expect(base.events).toBeGreaterThan(50); // (a battle, not a quiet sky)
+    for (const dt of [1 / 144, 1 / 60, 0.1]) {
+      const other = fight(dt);
+      expect(other.state, `state at dt ${dt}`).toBe(base.state);
+      expect(other.log, `events at dt ${dt}`).toBe(base.log);
+    }
+  });
+  it('carries a frame shorter than a step over to the next, and says how far ahead the drawing is', () => {
+    const b = make();
+    b.update(0.02, null);
+    expect(b.clock).toBe(0);
+    expect(b.ahead).toBeCloseTo(0.02, 9);
+    b.update(0.02, null);
+    expect(b.clock).toBeCloseTo(BATTLE.step, 9);
+    expect(b.ahead).toBeCloseTo(0.04 - BATTLE.step, 9);
+  });
+  it('takes at most BATTLE.steps a frame: a long frame’s rest is dropped, so the battle slows rather than leaping', () => {
+    const b = make();
+    b.update(2, null);
+    expect(b.clock).toBeCloseTo(BATTLE.steps * BATTLE.step, 9);
+    expect(b.ahead).toBeLessThan(BATTLE.step);
+  });
+  it('locks on to a fighter where it’s drawn: on along its way by the time still owed', () => {
+    const b = make();
+    b.setYou(0);
+    b.update(0.05, null);
+    const f = b.fighters.find((o) => o.team === 1 && o.alive);
+    const t = b.targets.find((o) => o.id === f.id);
+    expect(t.at.x).toBeCloseTo(f.pos.x + f.vel.x * b.ahead, 9);
+    expect(t.at.z).toBeCloseTo(f.pos.z + f.vel.z * b.ahead, 9);
+    // and a shot through where it's drawn hits it
+    expect(shotAt(b, t.at)?.id).toBe(f.id);
+  });
+});
+
+describe('the battle’s modules', () => {
+  // (battle.js was one file over a thousand lines: it's split by what each
+  // part does, the fighters' flying, the capital ships, the runners, so each
+  // stays under the health check's warning line, scripts/health/big-files.mjs)
+  it('each stay under 800 lines', () => {
+    // (and the galaxy's shared battle beside them: its director, its plan, its stages in the sim)
+    for (const file of ['battle.js', 'battleKit.js', 'battleAi.js', 'battleCapitals.js', 'battleRunners.js', 'battleDirector.js', 'battlePlan.js', 'battleStages.js', 'battleObjectives.js', 'battleProps.js', 'battleScene.js', 'battleFx.js']) {
+      const lines = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8').split('\n').length;
+      expect(lines, file).toBeLessThan(800);
+    }
+  });
+});
 
 describe('perSide', () => {
   it('is 32 a side on a strong desktop, 20 on a middling one, 10 on a phone', () => {
@@ -78,6 +272,8 @@ describe('a battle', () => {
     expect(b.teams[1].tickets).toBe(BATTLE.tickets - 1);
     const events = run(b, 0.1);
     expect(events.some((e) => e.type === 'down' && e.team === 1 && e.mine)).toBe(true);
+    // (and says what it was: the galaxy's war counts a bomber down as an intercept)
+    expect(events.find((e) => e.type === 'down' && e.mine).role).toBe(f.role);
   });
 
   it('your shots don’t touch your own side', () => {
@@ -307,6 +503,20 @@ describe('a battle', () => {
     expect(b.over?.why).toBe('tickets');
   });
 
+  it('without tickets (the galaxy’s), brings a fighter back even once its side’s are spent', () => {
+    // (tickets: false is a battle fought to its clock: the fighters keep
+    // coming, and the count's only a count)
+    const b = make({ tickets: false });
+    b.setYou(1);
+    b.teams[0].tickets = 0;
+    const f = b.fighters.find((o) => o.team === 0);
+    while (f.alive) shotAt(b, f.pos, 5);
+    const events = run(b, BATTLE.respawn[1] + 0.5);
+    expect(f.alive).toBe(true);
+    expect(events.some((e) => e.type === 'arrive' && e.team === 0)).toBe(true);
+    expect(b.teams[0].tickets).toBe(0);
+  });
+
   it('lets the defender hold out: no tickets end when told so', () => {
     const b = make({ tickets: false, perSide: 2 });
     b.teams[0].tickets = 0;
@@ -384,5 +594,32 @@ describe('a battle', () => {
     expect(done).toBeTruthy();
     // (the other side went after it)
     expect(r.hitBy).toBeGreaterThan(0);
+  });
+});
+
+describe('a ram on one of the other side’s fighters', () => {
+  it('is a shot’s hit on that one: down at its hp, told as yours', () => {
+    const b = make();
+    b.setYou(0);
+    run(b, 1);
+    const f = b.fighters.find((o) => o.alive && o.team === 1 && !o.ace);
+    const hp = f.hp;
+    const r = b.strike(f.id, hp);
+    expect(r).toMatchObject({ id: f.id, kind: f.kind, size: f.size, down: true });
+    expect(f.alive).toBe(false);
+    const events = b.update(1 / 30, null);
+    expect(events.some((e) => e.type === 'down' && e.mine && e.kind === f.kind)).toBe(true);
+  });
+
+  it('is nothing on your own side’s, one already down, or before you have joined', () => {
+    const b = make();
+    run(b, 1);
+    const enemy = b.fighters.find((o) => o.alive && o.team === 1);
+    expect(b.strike(enemy.id, 1)).toBeNull(); // (not joined)
+    b.setYou(0);
+    const mine = b.fighters.find((o) => o.alive && o.team === 0);
+    expect(b.strike(mine.id, 1)).toBeNull();
+    enemy.alive = false;
+    expect(b.strike(enemy.id, 1)).toBeNull();
   });
 });

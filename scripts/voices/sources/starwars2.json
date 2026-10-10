@@ -1,0 +1,70 @@
+{
+  "jocasta": {
+    "show": "star-wars",
+    "quotes": [
+      "Did you call for assistance?",
+      "He has a powerful face",
+      "it does not exist"
+    ],
+    "search": [
+      "Attack of the Clones Jocasta Nu Obi-Wan Jedi Archives scene",
+      "Attack of the Clones Obi-Wan Jedi Archives Kamino missing planet scene",
+      "Attack of the Clones Jocasta Nu if an item does not appear in our records",
+      "Star Wars Episode II Jedi Archives librarian Jocasta Nu Count Dooku bust scene"
+    ],
+    "avoid": [
+      "clone wars",
+      "lego",
+      "reaction",
+      "interview",
+      "fan dub",
+      "jedi survivor",
+      "explained"
+    ]
+  },
+  "bodhi": {
+    "show": "star-wars",
+    "quotes": [
+      "I'm the pilot",
+      "Rogue One, pulling away"
+    ],
+    "search": [
+      "Rogue One Bodhi Rook I'm the pilot Jedha scene",
+      "Rogue One Bodhi Rook Saw Gerrera Bor Gullet scene",
+      "Rogue One Bodhi Rook Eadu shuttle scene",
+      "Rogue One Bodhi Rook Scarif this is Rogue One transmission scene",
+      "Rogue One Bodhi Rook Rogue One call sign Yavin hangar scene"
+    ],
+    "avoid": [
+      "riz ahmed interview",
+      "interview",
+      "lego",
+      "reaction",
+      "fan dub",
+      "the night of"
+    ]
+  },
+  "zam": {
+    "show": "star-wars",
+    "quotes": [
+      "It was just a job",
+      "It was a bounty hunter",
+      "won't make the same mistake"
+    ],
+    "search": [
+      "Attack of the Clones Zam Wesell Outlander Club death scene",
+      "Attack of the Clones Zam Wesell it was a bounty hunter Jango dart scene",
+      "Attack of the Clones Coruscant speeder chase Zam Wesell scene",
+      "Attack of the Clones Zam Wesell Jango Fett rooftop kouhuns scene"
+    ],
+    "avoid": [
+      "clone wars",
+      "lego",
+      "reaction",
+      "interview",
+      "fan dub",
+      "bounty hunter game",
+      "explained"
+    ]
+  }
+}

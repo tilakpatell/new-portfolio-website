@@ -3,6 +3,7 @@
 // Every model is in metres, its feet at y 0, facing +z.
 
 import * as THREE from 'three';
+import { sharpen } from '../../../lib/three/textures';
 
 const cache = new Map();
 
@@ -79,7 +80,7 @@ export function canvasTexture(key, w, h, paint, { srgb = true, repeat = false } 
   paint(g, w, h);
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  sharpen(t);
   if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
   painted.set(key, t);
   return t;

@@ -40,7 +40,7 @@
 .tanpura-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; align-items: end; padding: 1.25rem 1rem 1rem; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
 .tanpura-string { display: grid; justify-items: center; gap: 0.35rem; text-align: center; }
 .tanpura-wire { display: block; width: 2px; height: 150px; border-radius: 2px; background: linear-gradient(to bottom, color-mix(in srgb, var(--text) 30%, transparent), color-mix(in srgb, var(--text) 55%, transparent)); transform-origin: 50% 50%; }
-.tanpura-string[data-lit] .tanpura-wire { background: var(--accent); box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent); animation: tanpura-shiver 1.1s cubic-bezier(0.2, 0.6, 0.3, 1); }
+.tanpura-string[data-lit] .tanpura-wire { background: var(--accent); box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent); animation: tanpura-shiver 1.1s var(--ease-smooth); }
 @keyframes tanpura-shiver { 0% { transform: scaleX(3.2); } 20% { transform: scaleX(1.6); } 100% { transform: scaleX(1); } }
 
 /* the harmonium keyboard */

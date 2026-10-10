@@ -29,6 +29,12 @@ describe('a control’s keys, as the guide writes them', () => {
     expect(keyTokens('Ctrl+K')).toEqual([{ key: 'Ctrl+K' }]);
   });
 
+  it('keeps a slash that starts or ends the keys as the / key (the galaxy map’s find)', () => {
+    expect(keyTokens('/')).toEqual([{ key: '/' }]);
+    expect(keyTokens('/ then Enter')).toEqual([{ key: '/' }, { word: 'then' }, { key: 'Enter' }]);
+    expect(keyTokens('Shift /')).toEqual([{ key: 'Shift' }, { key: '/' }]);
+  });
+
   it('copes with nothing', () => {
     expect(keyTokens('')).toEqual([]);
     expect(keyTokens(undefined)).toEqual([]);

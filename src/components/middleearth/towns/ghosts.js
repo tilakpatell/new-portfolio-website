@@ -11,14 +11,38 @@
 // geometry is shared with others brings its own `dispose`, and one whose
 // materials are, `shared`, so they're left alone: Albuquerque's copy of
 // Walt's Aztek), `animate(f, t, p, dt)` moves it (a Frodo's walk unless it
-// says), `tag` is the name card's height and `halo` the size of the ring of
-// light, in the scene's units, and `snap` how far behind it can be before
-// it's put straight there (further for a car). A traveller who jumps (`y`,
-// from a world that sends it) leaves the ground.
+// says; `t` is that traveller's own clock, not the scene's), `tag` is the
+// name card's height and `halo` the size of the ring of light, in the
+// scene's units, and `snap` how far behind it can be before it's put
+// straight there (further for a car). A traveller who jumps (`y`, from a
+// world that sends it) leaves the ground. One whose world says what
+// they're doing and how they move (travellers.js's `emote` and `motion`)
+// comes to `animate` with them: `p.emote` as lib/emote.js's readEmote
+// gives it ({ id, at, t }, timed on their own clock from when it was
+// heard, or null once it's over: the world plays it with applyEmote), and
+// `p.motion` ({ speed, side, turn }) as it came. An older traveller's
+// message, without them, comes as it always did.
+//
+// A figure on Middle-earth's cast (../cast3d.js: a makePerson's, a
+// makeFolk's) is the cast's own pale self once its model's here: its feet
+// go by the ground the ghost covers (so an old client's ghost, sending no
+// motion, still walks, and walks in step with where it goes), it strikes
+// the emotes it's sent, and this draws it each frame (it's no town's).
 
 import * as THREE from 'three';
 import { pose } from '../mapFigures';
 import { makePerson } from '../shire/people';
+import { sharpen } from '../../../lib/three/textures';
+import { seeded } from '../../../lib/seeded';
+import { applyEmote, heardEmote, readEmote } from '../../../lib/emote';
+
+// a traveller's id as a number, so each starts their stride somewhere of
+// their own (and the same somewhere every visit)
+function idHash(id) {
+  let h = 0x811c9dc5;
+  for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193);
+  return h;
+}
 
 const TINT = new THREE.Color(0xcfe0ff);
 const GLOW = new THREE.Color(0x6a8cff);
@@ -56,6 +80,7 @@ function nameTag(name, size = 0.42) {
   g.textBaseline = 'middle';
   g.fillText(name, 14, 23);
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
   sp.scale.set((w / 44) * size, size, 1);
@@ -73,14 +98,21 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
     const f = build();
     const mat = ghostMaterial();
     const old = new Set();
-    f.group.traverse((o) => {
-      if (!o.isMesh) return;
-      old.add(o.material);
-      o.material = mat;
-      o.castShadow = false;
-      o.receiveShadow = false;
-    });
+    const pale = () =>
+      f.group.traverse((o) => {
+        if (!o.isMesh || o.material === mat) return;
+        old.add(o.material);
+        o.material = mat;
+        o.castShadow = false;
+        o.receiveShadow = false;
+      });
+    pale();
     if (!f.shared) for (const m of old) m.dispose();
+    // on the cast: drawn here, not by the town, and pale too once it's come
+    if (f.cast) {
+      f.cast.manual = true;
+      f.cast.onReady(pale);
+    }
     if (f.ringMesh) f.ringMesh.visible = false;
     const root = new THREE.Group();
     const halo = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x9ab8ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -90,11 +122,14 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
     tag.position.y = (f.top ?? 1.6) + tagSize * 0.85;
     root.add(f.group, halo, tag);
     group.add(root);
-    return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, y: p.y ?? 0, face: p.face, fade: 0 }; // (first seen up high: there at once, not rising from the ground)
+    // (first seen up high: there at once, not rising from the ground; `clock`
+    // is their own gait's time, so two don't step in time)
+    return { f, mat, root, halo, tag, name: p.name, x: p.x, z: p.z, y: p.y ?? 0, face: p.face, fade: 0, clock: seeded(idHash(p.id))() * 10 };
   };
 
   const drop = (id, g) => {
     group.remove(g.root);
+    g.f.cast?.dispose(); // (its geometry is the cast's, shared: only the toy's is freed below)
     if (g.f.dispose) g.f.dispose();
     else g.f.group.traverse((o) => o.geometry?.dispose());
     g.mat.dispose();
@@ -145,7 +180,22 @@ export function createGhosts({ height = () => 0, make: build = () => makePerson(
         // the name goes up with them (a swinger's, a flyer's), the ring of light stays on the ground
         g.tag.position.y = g.y + (g.f.top ?? 1.6) + tagSize * 0.85;
         g.f.group.rotation.y = g.face;
-        animate(g.f, t + g.x, p, dt);
+        // their own clock, run by the frame (an offset by where they stand ran
+        // it backwards for anyone walking west)
+        g.clock += dt;
+        // an emote they've struck: timed from when its message came in (each
+        // message is a new one), the same one kept as it comes again
+        if (p.emote !== g.heard) {
+          g.heard = p.emote;
+          g.emote = heardEmote(p.emote ?? null, g.clock, g.emote);
+        }
+        const emote = readEmote(g, g.clock);
+        animate(g.f, g.clock, emote || p.emote ? { ...p, emote } : p, dt);
+        const c = g.f.cast;
+        if (c) {
+          if (c.ready) g.shown = applyEmote({ play: c.play, stop: c.stop, anim: c.body?.anim }, emote, g.shown ?? null);
+          c.tick(dt);
+        }
         const shimmer = 0.85 + Math.sin(t * 2.6 + g.x) * 0.08 + Math.sin(t * 7.1 + g.z) * 0.04;
         g.mat.opacity = 0.42 * g.fade * shimmer;
         g.halo.material.opacity = 0.5 * g.fade * (0.7 + Math.sin(t * 3 + g.z) * 0.3);

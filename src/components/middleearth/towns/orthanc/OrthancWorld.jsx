@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { keyDown, keyUp, moveOf, ownButton } from '../keys';
@@ -10,7 +11,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { useTravellers } from '../useTravellers';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { HALL_COLLIDERS, HALL_IN, HALL_WALLS, LEAF, LECTERN, LIB, MOTH_AT, PALANTIR, PIN, PIN_IN, SARUMAN_AT, STAIR_LEN, WINDOWS, WINDOW_SIGHTS, validAt } from './layout';
-import { CONVOS, FOUND, QUESTS, SEAL, SPEAKERS, orthancProgress } from './story';
+import { CONVOS, FOUND, QUESTS, SAYS, SEAL, SPEAKERS, orthancProgress } from './story';
 import { DUEL, MOTH, block, blockable, lapOf, leap, newDuel, newGaze, newLeap, newMoth, newStair, push, stepDuel, stepGaze, stepLeap, stepMoth, stepStair } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -101,7 +102,12 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
   const hudKey = useRef('');
   const [toast, setToast] = useState(null);
   const [list, setList] = useState(false);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -246,7 +252,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
         sounds().then((x) => x.boom());
         api.current?.fx('boom');
         startTalk('greet');
-      } else if (id === 'waiting') say('Saruman, without looking up: “Read first, Gandalf. Then we will talk.”');
+      } else if (id === 'waiting') say(SAYS.waiting.text, false, SAYS.waiting.who);
       else if (id === 'lectern') {
         sounds().then((x) => x.pages());
         startTalk('lore');
@@ -449,7 +455,9 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     }
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a blow holds the game a moment: the scene's hitstop, ../../feel.js)
+    const real = Math.min(0.05, ms / 1000);
+    const dt = real * a.timeScale(real) * fast;
     s.t += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
@@ -689,28 +697,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (name, v) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -784,7 +771,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -912,7 +899,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
           </div>
         </div>
       )}
-      {walking && touch && (hud.zone === 'hall' || hud.zone === 'top') && <Stick onStick={onStick} />}
+      {walking && touch && (hud.zone === 'hall' || hud.zone === 'top') && <Stick onMove={onStick} />}
       {list && <QuestList title="Things to do in Orthanc" quests={prog.quests} next={prog.next} onClose={() => setList(false)} />}
     </div>
   );

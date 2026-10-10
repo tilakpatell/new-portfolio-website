@@ -23,6 +23,15 @@ through `useVoiced` (src/lib/useVoiced.js); `voiceOf` in src/lib/voiced.js
 says who sounds like whom and who has no voice. A voice in
 `export-lines.mjs`'s lists with no reference yet just stays quiet.
 
+A world wires its people in by itself, with no change here: a
+`voicelines.js` beside its data exports `VOICELINES`, a list of
+`{ who, text }` with each line exactly as the world passes it to
+`useVoiced` or `sayVoiced`. `export-lines.mjs` reads every `voicelines.js`
+under `src/`, and `generate.py` makes the lines of every voice with a
+reference. The new voices' searches and quotes go in
+`sources/<world>.json`, in the same shape as `sources.json` (grab.py reads
+them all).
+
 ## How
 
 1. **References** (`grab.py`). For each voice it gathers candidates (the
@@ -61,6 +70,7 @@ With the venv's Python (`~/.venvs/voices/Scripts/python.exe`):
 ```
 npm run voices:lines                          # the lines with no recording (again after editing any)
 python scripts/voices/grab.py                 # each voice's reference; read cache/grab/report.md
+python scripts/voices/design.py               # the references of the voices with only a "design"
 python scripts/voices/generate.py --check     # the references, their transcripts and engines
 python scripts/voices/generate.py --bakeoff 6 # every engine on 6 lines a voice: which is best for whom
 python scripts/voices/generate.py             # make everything that's missing
@@ -71,6 +81,13 @@ python scripts/voices/generate.py             # make everything that's missing
 scripts cache what they've done, so a rerun picks up where one stopped.
 
 ## Getting a voice right
+
+- **A character with no voice to clone** (the site's own villagers, say):
+  give them `"design"` in their sources, a sentence on how they sound
+  (`"an elderly woman from a seaside village, warm and slow, a little
+  hoarse"`). `design.py` has Qwen3-TTS VoiceDesign say a few of their own
+  lines in that voice, keeps the take the judge hears best as their
+  reference, and grab.py leaves them be.
 
 - **The reference.** `cache/grab/report.md` shows what was chosen and the
   runners-up with their scores, and `cache/grab/listen/<who>/` has them to
@@ -89,3 +106,51 @@ scripts cache what they've done, so a rerun picks up where one stopped.
   `--check` shows it misheard, correct `refs/<who>.txt` and run again.
 - **A bad line.** `cache/takes/report.md` lists the lines whose best take
   still didn't pass. Delete a line's mp3 and run again for new takes.
+- **Is the judge still right?** Every night the ears are evaluated on a
+  dozen labelled takes (`scripts/voices/eval_judge.py`: word error rate,
+  the right speaker first, bad takes under good ones), and one real line is
+  made start to end (`scripts/ai-e2e/real/health.mjs`); on every pull
+  request the pipeline runs with a fake worker and fake ears
+  (`VOICES_ENGINE=fake`, `VOICES_JUDGE=fake`). `scripts/ai-e2e/README.md`
+  has the tiers.
+
+## From anywhere: a `voices` issue
+
+The desktop makes the lines; any other session (a cloud one, a phone) asks
+for them. `scripts/desktop/README.md` has the whole picture:
+
+```
+node scripts/desktop/ask.mjs voices citadel --only rick,morty --line "rick: Wubba lubba dub dub." --line "morty: Aw geez, Rick."
+```
+
+or Actions → *voices* → *Run workflow*, or a new issue from the *Voice
+lines* form. Each one is an issue labelled **`voices`**, and its body is
+optional:
+
+```
+only: rick, morty            (just these speakers; else everyone with a voice)
+rick: Wubba lubba dub dub.   (a line to make ahead of the code that will say it: who: text, one a line)
+morty: Aw geez, Rick.
+```
+
+The desktop's self-hosted runner makes every line the site says that has
+no recording yet, opens a pull request with the recordings and the
+manifest, comments on the issue and closes it. It waits for the GPU if a
+long run holds it.
+
+So a session adding lines to a world either merges its code to main and
+asks with no lines, or lists the lines first and wires them once the PR
+lands (the id is the same either way: `lineId(who, text)` in
+src/lib/voiced.js). A speaker with no reference voice is reported back, not
+made: that needs the owner, with `grab.py`, or five to eleven seconds of
+them at `refs/<who>.wav` and the transcript beside it, plus the name in
+`export-lines.mjs`'s lists and `voiceOf`. A failure is commented with the
+log's tail and labelled `voices:failed`: fix the issue, then remove the
+label to try again.
+
+On the desktop, the jobs run in their own checkout beside the repository
+(`<repo>-voices`). The references and the takes cache are in
+`%LOCALAPPDATA%\voices\` (`VOICES_REFS`, `VOICES_CACHE`), or the Claude
+app's boxed copy of it, which the runner finds too. The TTS venv is at
+`~/.venvs/voices` (`VOICES_PYTHON` for another). The gen3d jobs share the
+GPU, one job at a time.

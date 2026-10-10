@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AHEAD_OF, SIDES, allKinds, factionsOf, kindsOf, namesOf, pick, sideFor, sideOf, squadKinds, wingOf } from './sides';
+import { AHEAD_OF, SECTOR_SIDES, SIDES, allKinds, crewAt, factionsOf, kindsOf, namesOf, pick, sideAt, sideFor, sideOf, squadKinds, wingOf } from './sides';
+import { SECTORS } from './layout';
 import { CREWS } from './crews';
 import { TROOPS } from './foot';
 import { BUILT_KINDS } from './trafficModels';
@@ -49,11 +50,11 @@ describe('the sides', () => {
         for (const [k] of f.kinds) {
           expect(kinds[k], `${s.id}.${id}.${k}`).toBeTruthy();
           expect(names[k], `${s.id}.${id}.${k}`).toBeTruthy();
-          expect(drawable(k), `${s.id}.${id}.${k}`).toBe(true);
+          expect(drawable(kinds[k].model ?? k), `${s.id}.${id}.${k}`).toBe(true);
         }
         if (f.ace) {
           expect(kinds[f.ace], `${s.id}.${id}.ace`).toBeTruthy();
-          expect(drawable(f.ace), `${s.id}.${id}.ace`).toBe(true);
+          expect(drawable(kinds[f.ace].model ?? f.ace), `${s.id}.${id}.ace`).toBe(true);
         }
         expect(f.laser, `${s.id}.${id}`).toHaveLength(3);
         expect(f.size, `${s.id}.${id}`).toHaveLength(2);
@@ -109,6 +110,12 @@ describe('the sides', () => {
       expect(side.factions[side.capital]?.role, `${side.id} capital`).toBe('capital');
     }
     expect(SIDES.breakingbad.has('roadblock')).toBe(true);
+    // the police, for wanted.js: a faction of their own, and a kind of theirs for every unit
+    for (const s of Object.values(SIDES)) {
+      const f = s.factions[s.police.faction];
+      expect(f?.role, s.id).toBe('police');
+      for (const u of ['cop', 'enforcer', 'heavy', 'medic']) expect(f.kinds.map(([k]) => k), `${s.id} ${u}`).toContain(s.police.units[u]);
+    }
     for (const s of Object.values(SIDES)) for (const need of ['hunt', 'bounty', 'pirates', 'leviathan']) expect(s.has(need), `${s.id} ${need}`).toBe(true);
   });
 
@@ -125,5 +132,26 @@ describe('the sides', () => {
     for (const s of Object.values(SIDES)) for (const id of Object.keys(s.factions)) expect(factionsOf(null)[id]).toBe(s.factions[id]);
     expect(AHEAD_OF(SIDES.starwars).tie).toBeGreaterThan(0);
     expect(AHEAD_OF(null)).toEqual({});
+  });
+});
+
+describe('whose space it is', () => {
+  it('gives the Rick and Morty sector to the Rick and Morty side, whoever flies there, and the main map to the crew’s own', () => {
+    for (const s of Object.values(SIDES)) {
+      for (const crew of s.crews) {
+        expect(sideAt(crew, 'main'), crew).toBe(s);
+        expect(sideAt(crew), crew).toBe(s);
+        expect(crewAt(crew, 'main')).toBe(crew);
+        expect(sideAt(crew, 'rickmorty'), crew).toBe(SIDES.rickmorty);
+        expect(sideFor(crewAt(crew, 'rickmorty')), crew).toBe(SIDES.rickmorty);
+      }
+    }
+    // (Rick's own crew stays itself there)
+    expect(crewAt('cruiser', 'rickmorty')).toBe('cruiser');
+    for (const [sector, side] of Object.entries(SECTOR_SIDES)) {
+      expect(SECTORS[sector], sector).toBeTruthy();
+      expect(SIDES[side], side).toBeTruthy();
+    }
+    expect(sideAt(null, 'main')).toBeNull();
   });
 });

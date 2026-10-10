@@ -14,7 +14,10 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { paintStation } from './plating';
 import { paintGiant, paintPlanet } from './planetPaint';
 import { pixelRatio } from '../../lib/device';
+import { houseOn } from '../../lib/three/house';
 import { precompile, precompilePasses, quiet, releaseContext } from '../../lib/three/renderer';
+import { sharpen } from '../../lib/three/textures';
+import { BLOOMS } from './look';
 
 const DS = { x: 505, y: 292, r: 145 };
 const DISH = { x: 446, y: 232, r: 38 };
@@ -37,6 +40,7 @@ function glowTexture(stops) {
   x.fillStyle = g;
   x.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -74,7 +78,8 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   // opaque, in the page's own black: the canvas is the hero's whole backdrop
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // (the tone is the house’s: houseOn, below, maps it Neutral and lifts this
+  // exposure by its 1.4, as bright as ACES had it; ./look.js)
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true; // for the dish rim's shadow in the bowl
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -108,7 +113,8 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   const rim = new THREE.DirectionalLight(0x9cc4ff, 0.7);
   rim.position.set(900, -200, -900);
   scene.add(rim);
-  scene.add(new THREE.HemisphereLight(0x9aa6b8, 0x06070a, 0.1));
+  const dsHemi = new THREE.HemisphereLight(0x9aa6b8, 0x06070a, 0.1);
+  scene.add(dsHemi);
 
   // ── the station ──
   const station = new THREE.Group();
@@ -187,6 +193,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
       x.fillRect(0, y, 64, 1);
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     t.wrapS = THREE.RepeatWrapping;
     t.repeat.set(24, 1);
@@ -319,6 +326,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     if (!giants.has(id)) {
       const c = paintGiant(id, big ? { w: 1024, h: 512 } : { w: 768, h: 384 });
       const t = new THREE.CanvasTexture(c);
+      sharpen(t);
       t.colorSpace = THREE.SRGBColorSpace;
       giants.set(id, t);
     }
@@ -348,6 +356,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     x.fillStyle = g;
     x.fillRect(0, 0, 512, 512);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
@@ -568,6 +577,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
       x.fillRect(gx - r, gy - r, r * 2, r * 2);
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 }));
     m.frustumCulled = false;
@@ -578,7 +588,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
   // ── post: bloom on what glows (the beam, the lights, the fire) ──
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.55, 0.85);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOMS.station.strength, BLOOMS.station.radius, BLOOMS.station.threshold);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   let useBloom = true;
@@ -710,6 +720,10 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
 
   // every shader (the scene's, into the composer's buffer, and the passes')
   // linked in the background: the hero waits for this before its first frame
+  // the house look (lib/three/house): the shade one colour from the light
+  // out here, under the house tone mapper (its exposure lifted from ACES;
+  // the fog left as it is), on everything, before the shaders are linked
+  houseOn({ renderer, scene, sun, hemi: dsHemi, look: { fog: false } });
   const ready = Promise.all([precompile(renderer, scene, camera, scene, composer.readBuffer), precompilePasses(renderer, composer, camera)]);
   return { update, render, resize, dispose, ready, get lost() { return lost; } };
 }
