@@ -3471,21 +3471,41 @@ export async function create(canvas, ctx) {
   // draw of it all, a slice at a time (lib/three/gpuWork). Drawn as it
   // was, the bake held a frame for seconds on landing and the passes'
   // shaders were compiled mid-frame.
+  // (it says what it's waiting for, once a second, the fetch running
+  // longest, for the veil to name; and the veil's "Go in anyway" stops it
+  // where it is: the world shown as far as it got, the rest sent up as it's
+  // first drawn, the figures stood in, standIn.js)
   const prepare = async (onProgress, { alive = () => true } = {}) => {
-    const on = () => alive() && !disposed;
-    onProgress?.(0, 'load');
-    await settleWithin(ready, 20000);
-    if (!on()) return;
-    if (lit && !lit.stats.started) {
-      onProgress?.(0, 'bake');
-      sun.target.position.set(landAt[0], world.heightAt(landAt[0], landAt[1]) ?? 0, landAt[1]);
-      sun.position.copy(sun.target.position).addScaledVector(sunDir, 300);
-      await settleWithin(lit.bake(), 20000);
+    const events = ctx.rt?.events;
+    let skip = false;
+    let skipped = null;
+    const skipping = new Promise((r) => (skipped = r));
+    const offSkip = events?.on?.('prepare-skip', (e) => {
+      if (e?.module !== 'galaxy-surface') return;
+      skip = true;
+      skipped();
+    });
+    const telling = setInterval(() => events?.emit?.('prepare-wait', { module: 'galaxy-surface', file: assetPool().progress().waiting?.url ?? null }), 1000);
+    const on = () => alive() && !disposed && !skip;
+    const within = (p, ms) => Promise.race([settleWithin(p, ms), skipping]);
+    try {
+      onProgress?.(0, 'load');
+      await within(ready, 20000);
       if (!on()) return;
+      if (lit && !lit.stats.started) {
+        onProgress?.(0, 'bake');
+        sun.target.position.set(landAt[0], world.heightAt(landAt[0], landAt[1]) ?? 0, landAt[1]);
+        sun.position.copy(sun.target.position).addScaledVector(sunDir, 300);
+        await within(lit.bake(), 20000);
+        if (!on()) return;
+      }
+      if (post.composer) await within(precompilePasses(renderer, post.composer, camera), 20000);
+      if (!on()) return;
+      await within(prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: on }), 600000);
+    } finally {
+      clearInterval(telling);
+      offSkip?.();
     }
-    if (post.composer) await precompilePasses(renderer, post.composer, camera);
-    if (!on()) return;
-    await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: on });
   };
 
   return {

@@ -60,12 +60,16 @@ export async function run(args) {
     page.on('console', (m) => /stood in|didn’t arrive/.test(m.text()) && errors.push(m.text()));
     const t0 = Date.now();
     await page.goto(`${base}/?quality=${quality}&calibrate=off#/galaxy/${id}/surface`, { waitUntil: 'domcontentloaded' });
+    // (HIDDEN=1: another tab over it, as a page left behind in the background)
+    if (process.env.HIDDEN) await (await ctx.newPage()).bringToFront();
     const on = await page
       .waitForFunction(() => window.__RUNTIME__?.status === 'on', null, { timeout: Number(process.env.DRAW_WAIT ?? 900000), polling: 250 })
       .then(() => true)
       .catch(() => false);
     const secs = (Date.now() - t0) / 1000;
     const steps = await page.evaluate(() => window.__steps);
+    const textures = await page.evaluate(() => window.__surfaceScene?.renderer?.info?.memory?.textures ?? null);
+    if (textures != null) console.log(`  textures on the chip: ${textures}`);
     const toast = await page.$eval('.surface-toast, [role="alert"]', (el) => el.textContent).catch(() => null);
     console.log(`${id} at ${quality}, ${process.env.VITE_ASSET_BASE || /5189/.test(base) ? 'with' : 'without'} the base: ${on ? 'on screen' : 'NEVER on screen'} after ${secs.toFixed(1)} s`);
     for (let i = 0; i < steps.length; i++) {
