@@ -1,0 +1,252 @@
+{
+ "_from": "web/maps/levels/mp/hoth_01/hoth_01.extras.json, environments; the fields readEntry reads, trimmed",
+ "sunny": {
+  "name": "Levels/Lighting/Hoth/Sunny_01/VE_Sky_Arctic_Sunny_01",
+  "record": {
+   "OutdoorLightComponentData": [
+    {
+     "SunColor": [
+      1,
+      0.95591,
+      0.91762
+     ],
+     "SkyColor": [
+      0,
+      0,
+      0
+     ],
+     "GroundColor": [
+      0,
+      0,
+      0
+     ],
+     "SunRotationX": 265.61,
+     "SunRotationY": 32.943,
+     "SunIntensity": 128000
+    }
+   ],
+   "SkyComponentData": [
+    {
+     "CloudLayer1Color": [
+      1,
+      1,
+      1
+     ],
+     "RayleighScatteringCoefficient": [
+      0.00001,
+      0.00001,
+      0.00003
+     ],
+     "LuminanceScale": 35000,
+     "SunSize": 0.004,
+     "MieScatteringCoefficient": 0,
+     "MieG": 0.785,
+     "ScaleHeightMie": 1.2,
+     "RayleighScatteringCoefficientScale": 1,
+     "ScaleHeightRayleigh": 8
+    }
+   ],
+   "FogComponentData": [
+    {
+     "Curve": [
+      2.23109,
+      -4.56547,
+      2.92437,
+      -0.00879
+     ],
+     "FogColor": [
+      1,
+      1,
+      1
+     ],
+     "Start": 50,
+     "End": 10000,
+     "HeightFogAltitude": 320,
+     "HeightFogDepth": 50,
+     "HeightFogVisibilityRange": 3000,
+     "Enable": true,
+     "HeightFogEnable": true
+    }
+   ],
+   "TonemapComponentData": [
+    {
+     "BloomScale": [
+      0.1,
+      0.1,
+      0.1
+     ],
+     "EV": 10,
+     "ExposureCompensation": 1.5,
+     "MinEV": 11,
+     "MaxEV": 15,
+     "AutomaticExposure": true
+    }
+   ],
+   "ColorCorrectionComponentData": [
+    {
+     "HdrColorGradingLut": "Levels/Lighting/Hoth/Sunny_01/T_CC_Hoth_Sunny_01",
+     "ColorGradingMaxHdrValue": 1
+    }
+   ]
+  }
+ },
+ "sunset": {
+  "name": "Levels/Lighting/Hoth/Sunset_01/VE_PV_Hoth_Sunset_01",
+  "record": {
+   "OutdoorLightComponentData": [
+    {
+     "SunColor": [
+      0.9819,
+      0.28355,
+      0.11473
+     ],
+     "SkyColor": [
+      0,
+      0,
+      0
+     ],
+     "GroundColor": [
+      0,
+      0,
+      0
+     ],
+     "SunRotationX": 110,
+     "SunRotationY": 10.25,
+     "SunIntensity": 22500
+    }
+   ],
+   "SkyComponentData": [
+    {
+     "CloudLayer1Color": [
+      1,
+      1,
+      1
+     ],
+     "RayleighScatteringCoefficient": [
+      0.00001,
+      0.00001,
+      0.00003
+     ],
+     "LuminanceScale": 3000,
+     "SunSize": 0.004,
+     "MieScatteringCoefficient": 0,
+     "MieG": 0.785,
+     "ScaleHeightMie": 1.2,
+     "RayleighScatteringCoefficientScale": 1,
+     "ScaleHeightRayleigh": 8
+    }
+   ],
+   "FogComponentData": [
+    {
+     "Curve": [
+      -0.76136,
+      0.9553,
+      0.6373,
+      -0.01764
+     ],
+     "FogColor": [
+      1,
+      1,
+      1
+     ],
+     "Start": 125,
+     "End": 2500,
+     "HeightFogAltitude": 285,
+     "HeightFogDepth": 65,
+     "HeightFogVisibilityRange": 500,
+     "Enable": true,
+     "HeightFogEnable": true
+    }
+   ],
+   "TonemapComponentData": [
+    {
+     "BloomScale": [
+      0.1,
+      0.1,
+      0.1
+     ],
+     "EV": 10,
+     "ExposureCompensation": 1,
+     "MinEV": 9.5,
+     "MaxEV": 10.4,
+     "AutomaticExposure": true
+    }
+   ],
+   "ColorCorrectionComponentData": [
+    {
+     "HdrColorGradingLut": "Levels/Lighting/Hoth/Sunset_01/T_CC_Hoth_Sunset_01",
+     "ColorGradingMaxHdrValue": 1
+    }
+   ]
+  }
+ },
+ "interior": {
+  "name": "Levels/Lighting/Hoth/Interior_01/VE_PV_Hoth_Interior_01",
+  "record": {
+   "OutdoorLightComponentData": [
+    {
+     "SunColor": [
+      1,
+      0.971,
+      0.914
+     ],
+     "SkyColor": [
+      0.318,
+      0.341,
+      0.4
+     ],
+     "GroundColor": [
+      0.05,
+      0.05,
+      0.05
+     ],
+     "SunRotationX": 0,
+     "SunRotationY": 60,
+     "SunIntensity": 1
+    }
+   ],
+   "FogComponentData": [
+    {
+     "Curve": [
+      1.31352,
+      -2.39811,
+      1.7232,
+      -0.04448
+     ],
+     "FogColor": [
+      1,
+      1,
+      1
+     ],
+     "Start": 250,
+     "End": 2500,
+     "HeightFogAltitude": 0,
+     "HeightFogDepth": 50,
+     "HeightFogVisibilityRange": 3000,
+     "Enable": true,
+     "HeightFogEnable": true
+    }
+   ],
+   "TonemapComponentData": [
+    {
+     "BloomScale": [
+      0.05,
+      0.05,
+      0.05
+     ],
+     "EV": 10,
+     "ExposureCompensation": 1.5,
+     "MinEV": 8.5,
+     "MaxEV": 10.5,
+     "AutomaticExposure": true
+    }
+   ],
+   "ColorCorrectionComponentData": [
+    {
+     "HdrColorGradingLut": "Levels/Lighting/Hoth/Interior_01/T_CC_Hoth_Interior_01",
+     "ColorGradingMaxHdrValue": 1
+    }
+   ]
+  }
+ }
+}

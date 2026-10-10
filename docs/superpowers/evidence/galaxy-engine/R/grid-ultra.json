@@ -1,0 +1,25 @@
+{
+  "size": "800x450",
+  "adapter": "swiftshader",
+  "rows": [
+    {
+      "leg": "webgl",
+      "tier": "ultra",
+      "post": false,
+      "backend": "nodes-webgl",
+      "clustered": false,
+      "passes": [],
+      "shot": "grid-ultra-webgl.png",
+      "envDiff": 7.14,
+      "programsBefore": 21,
+      "programsAfter": 21,
+      "frames": 5,
+      "mean": 426.3,
+      "median": 412.3,
+      "p95": 469,
+      "gridBakeMs": 3365.5,
+      "gridMedian": 418.6,
+      "gridMean": 426.3
+    }
+  ]
+}
