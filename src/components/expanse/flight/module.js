@@ -23,6 +23,7 @@ import { LEVELS } from '../../../lib/device';
 import { SHIP, crashed, stepShip } from './flightRules';
 import { createFlightScene } from './scene';
 import { createGround, heroOf } from './ground';
+import { createMap } from './map';
 import { createWater } from './water';
 import { STRIP } from './look';
 import { SHARED_KEYS, createSharedWorld } from './shared';
@@ -142,6 +143,8 @@ export default {
     const view = createFlightScene({ spec, palette: STRIP });
     const tier = LEVELS.includes(rt.quality?.tier) ? rt.quality.tier : 'mid';
     const ground = createGround(view.scene, { rt, spec, tier, palette: STRIP });
+    // the planet map's rasters, asked of the ground's worker behind its leaves (./map.js; the HUD draws it)
+    const map = createMap({ spec, workers: rt.workers });
     const water = createWater(view.scene, spec);
     let house = null;
     // the planet's models (Coruscant's: the Senate, the Jedi Temple, its
@@ -211,6 +214,7 @@ export default {
       }) ?? (() => {});
 
     const world = {
+      map,
       get ship() {
         return ship;
       },
@@ -226,6 +230,9 @@ export default {
         touchThrottle = v;
       },
       shared,
+      // (the planet map's markers: ./FlightMap.jsx reads them)
+      pilots: () => shared.pilots(),
+      built: () => shared.built(),
       resize(w, h) {
         view.resize(w, h);
       },
@@ -289,6 +296,7 @@ export default {
         unOrigin();
         rt.input.unbind();
         shared.dispose();
+        map.dispose();
         ground.dispose();
         water?.dispose();
         view.dispose();

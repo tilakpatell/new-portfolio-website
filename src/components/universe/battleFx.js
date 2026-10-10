@@ -14,6 +14,22 @@ import * as THREE from 'three';
 
 const Z = new THREE.Vector3(0, 0, 1);
 
+// ── how bright a shot reads ──
+// A side's colours are its hue; how bright one reads is the battle's, the
+// same on every side (the Empire's green was 2.3 times the Rebels' red, so
+// it alone fed the glow): luminance, as the bloom's bright pass weighs it
+// (Rec. 709, linear). Fighters' lasers, batteries' turbolasers, flak and
+// the fighters' engines; a torpedo is its turbo's, at BOLT_LOOK's 1.6.
+export const GLOW = Object.freeze({ laser: 3.0, turbo: 3.6, flak: 2.4, engine: 1.5 });
+export const luminance = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+// rgb's hue at luminance `lum` (black stays black)
+export function glowAt(rgb, lum) {
+  const l = luminance(rgb);
+  if (!(l > 0)) return [0, 0, 0];
+  const k = lum / l;
+  return [rgb[0] * k, rgb[1] * k, rgb[2] * k];
+}
+
 // ── bolts: one instanced draw, each a thin glowing rod along its way ──
 const BOLT_LOOK = {
   laser: { length: 0.6, width: 0.018, bright: 1 },

@@ -81,6 +81,9 @@ import { gltfStats } from '../../lib/three/gltfCache';
 import { STEPS } from '../../lib/three/pace';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
+import { GLOW, glowAt } from '../universe/battleFx';
+import { bloomGroups } from '../../lib/three/bloom';
+import { LOOK } from './look';
 import { followRatio } from './drawnAt';
 import { houseOn } from '../../lib/three/house';
 import { SHIP, TUNE, autopilot, forward, spawn, step } from '../universe/ship';
@@ -242,7 +245,7 @@ export async function create(canvas, ctx) {
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-  const post = createPost(renderer, scene, camera, { small });
+  const post = createPost(renderer, scene, camera, { small, bloom: LOOK.bloom });
   // (the house look, below, on whatever's warmed: patched before it's compiled)
   let house = null;
   const warm = (root, cam = camera, target = scene) => {
@@ -527,7 +530,7 @@ export async function create(canvas, ctx) {
   const dress = () => {
     if (!state.kind) return;
     state.model?.paint?.(coat());
-    boltMat.color.set(coat().bolt ?? BOLT_COLOR[state.kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
+    boltMat.color.fromArray(glowAt(boltMat.color.set(coat().bolt ?? BOLT_COLOR[state.kind] ?? '#ff4a3d').toArray(), GLOW.laser)); // as bright as the battle's lasers
   };
   const refit = () => {
     state.stats = statsOf(state.kind, state.loadout, state.build, state.tune);
@@ -2188,7 +2191,7 @@ export async function create(canvas, ctx) {
     if (state.flare > 1) {
       state.flare = 1 + (state.flare - 1) * Math.exp(-dt * 2.5);
       if (state.flare < 1.01) state.flare = 1;
-      post.flare(state.flare);
+      post.flare(war?.on ? Math.min(state.flare, 1.25) : state.flare); // (held lower in a battle: its boosts and hits come often)
     }
 
     // the system: its moment playing out, its light
@@ -2650,7 +2653,7 @@ export async function create(canvas, ctx) {
     // the war's battle here as warfront.js has it (WarHud.jsx, BattleEnd.jsx), or null
     warInfo: () => war?.info ?? null,
     // the ?debug panel's groups: the feel's numbers (runtime/module.js)
-    tune: () => feelGroups(feel),
+    tune: () => [...bloomGroups(post.bloom), ...feelGroups(feel)],
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);

@@ -19,7 +19,7 @@
 // createSharedWorld({ parent, spec, palette, groundAt, tell, respawn, durable,
 //   makeLoader, makeOnline, makeStructures, makePeers, makeBolts, signIn })
 //   → { join(name | null, hidden), step(dt, ship, snap), draw(at), build(ship),
-//       unbuild(ship), prompt(ship), stats(), dispose() }
+//       unbuild(ship), prompt(ship), pilots(), built(), stats(), dispose() }
 // SHARED_KEYS: what it adds to the flight's keys.
 
 import { client as durableClient, signIn as durableSignIn } from '../../../lib/durable/supabase';
@@ -295,6 +295,9 @@ export function createSharedWorld({
     build,
     unbuild,
     prompt,
+    // for the planet map's markers (./mapRules.js's markersOf): the pilots heard round you, what's held round you
+    pilots: () => online?.peers() ?? [],
+    built: () => all(),
     stats: () => ({ structures: structures.count(), turrets: turrets.size, peers: peerShips.count(), bolts: bolts.length, shield, online: online?.status ?? 'off', room: online?.stats() ?? null, cell: online?.cell() ?? null, held: all().length }),
     // (the checks read what's held by id)
     get: held,

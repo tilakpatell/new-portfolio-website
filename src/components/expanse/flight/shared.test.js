@@ -230,6 +230,17 @@ describe('the other pilots', () => {
     expect(w.draw.peers.map((p) => p.id)).toEqual(['b']);
   });
 
+  it('give the map the pilots near you and what’s built round you', async () => {
+    const w = world();
+    await flush();
+    w.online.list = [{ id: 'b', name: 'Bravo', pose: { x: 1, y: 2, z: 3, pitch: 0, yaw: 0, roll: 0, speed: 100 } }];
+    w.loader.emit({ type: 'add', entity: { id: 't1', type: 'turret', owner: 'you', x: 5, y: 0, z: 6, rot: [0, 0, 0], hp: 100, terrainVersion: TERRAIN_VERSION } });
+    expect(w.shared.pilots().map((p) => [p.id, p.name, p.pose.x])).toEqual([['b', 'Bravo', 1]]);
+    expect(w.shared.built().map((e) => [e.id, e.type, e.x, e.z])).toEqual([['t1', 'turret', 5, 6]]);
+    w.shared.join(null);
+    expect(w.shared.pilots()).toEqual([]);
+  });
+
   it('go when you leave the room', async () => {
     const w = world();
     await flush();

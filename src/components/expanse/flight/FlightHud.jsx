@@ -1,17 +1,19 @@
 import { Hud, Menu, MenuItem, PlayersChip, Prompt, Stick, Toast, TouchButton } from '../../../runtime/hud';
+import FlightMap from './FlightMap';
 
 // The flight's HUD, from the kit: the planet's name top left, the one Menu
 // top right (the way out, and the planets to fly to next), the toast under
 // the top row, and at the foot the speed and the height over the ground,
 // written by the page into the refs it holds (numbers through refs, not
 // state). On touch, the kit's stick flies it and two buttons work the
-// throttle. The shared world (./shared.js) adds its prompt at the foot, B to
-// build or X by one of your own (the button itself on touch), and the
-// other pilots near you in the Menu.
+// throttle. `map`: { spec, source } for the planet map (./FlightMap). The
+// shared world (./shared.js) adds its prompt at the foot, B to build or X by
+// one of your own (the button itself on touch), and the other pilots near
+// you in the Menu.
 //
-//   <FlightHud name way planets onPlanet toast numbers touch onStick onThrottle shared onShared online />
+//   <FlightHud name way planets onPlanet toast numbers touch onStick onThrottle map shared onShared online />
 //   shared: { build, unbuild, others } | null; onShared('build' | 'unbuild'); online: { on, onJoin }
-export default function FlightHud({ name, way, planets = [], onPlanet, toast, numbers, touch = false, onStick, onThrottle, shared = null, onShared, online = null }) {
+export default function FlightHud({ name, way, planets = [], onPlanet, toast, numbers, touch = false, onStick, onThrottle, map = null, shared = null, onShared, online = null }) {
   const take = shared?.unbuild ? <Prompt k="X" verb="Take down" thing="your turret" touch={touch} onClick={() => onShared('unbuild')} /> : null;
   const prompt = shared?.build ? <Prompt k="B" verb="Build turret" touch={touch} onClick={() => onShared('build')} alt={take} /> : take;
   return (
@@ -60,6 +62,7 @@ export default function FlightHud({ name, way, planets = [], onPlanet, toast, nu
       }
     >
       <Toast toast={toast} className="fly-toast" />
+      {map && <FlightMap {...map} touch={touch} />}
     </Hud>
   );
 }

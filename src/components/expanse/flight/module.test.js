@@ -39,6 +39,8 @@ describe('the flight module', () => {
     const world = await flight.create(rt, { spec: planetSpecOf('hoth') });
     // (the flight's own, and the shared world's: build, take down, fire)
     expect(rt.bound.keys).toEqual({ ...KEYS, ...SHARED_KEYS });
+    // (the planet map's markers: no one heard, nothing built, offline and with no durable layer)
+    expect([world.pilots(), world.built()]).toEqual([[], []]);
     expect(rt.bound.axes).toEqual(AXES);
     const z0 = world.ship.z;
     for (let i = 0; i < 30; i++) world.step(1 / 30, snap({ throttle: 1 }));

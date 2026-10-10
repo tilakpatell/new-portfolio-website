@@ -55,6 +55,7 @@ function Flight({ spec }) {
   useEffect(() => {
     if (status === 'on') api()?.shared?.join(callsign, (id) => blocked.current(id));
   }, [status, callsign, api]);
+  const mapProps = useMemo(() => ({ spec, source: api }), [spec, api]);
 
   return (
     <div className="pt-[var(--nav-h)]">
@@ -76,6 +77,7 @@ function Flight({ spec }) {
             if (w) w.shared[what](w.ship);
           }}
           online={online ? { on: Boolean(callsign), onJoin: () => online.goOnline(online.suggest()) } : null}
+          map={mapProps}
         />
       </WorldHost>
     </div>
