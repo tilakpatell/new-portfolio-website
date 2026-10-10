@@ -53,6 +53,8 @@ Gameplay/Kits/Specials/RebelJumpTrooper/GP_Special_RebelJumpTrooper	WSSoldierCus
 Gameplay/Kits/Specials/RebelJumpTrooper/Kit_Special_RebelJumpTrooper	WSSoldierCustomizationKitAsset	data/Gameplay/Kits/Specials/RebelJumpTrooper/Kit_Special_RebelJumpTrooper.json	4667
 Gameplay/Kits/Vehicle/ATRT/Kit_Vehicle_ATRT_Rebel	WSVehicleCustomizationKitAsset	data/Gameplay/Kits/Vehicle/ATRT/Kit_Vehicle_ATRT_Rebel.json	930
 Gameplay/Settings/GameDifficultySettings	DifficultyDatas	data/Gameplay/Settings/GameDifficultySettings.json	23295
+Gameplay/SquadronAI/AIChannels/FollowPath_AIChannel	AIChannelAsset	data/Gameplay/SquadronAI/AIChannels/FollowPath_AIChannel.json	351
+Gameplay/SquadronAI/Behaviours/PF_DogfightBehaviour	SquadronAIBehaviourBlueprint	data/Gameplay/SquadronAI/Behaviours/PF_DogfightBehaviour.json	9859
 Gameplay/Teams/MP/Heroes_Dark	WSSoldierCustomizationKitList	data/Gameplay/Teams/MP/Heroes_Dark.json	1947
 Gameplay/Teams/MP/Heroes_Light	WSSoldierCustomizationKitList	data/Gameplay/Teams/MP/Heroes_Light.json	1923
 Gameplay/Teams/MP/Orig/Specials_Light_Orig_HO	WSSoldierCustomizationKitList	data/Gameplay/Teams/MP/Orig/Specials_Light_Orig_HO.json	823

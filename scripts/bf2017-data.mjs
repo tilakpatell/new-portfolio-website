@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from './lib/args.mjs';
 import { cutAsset, isSequel, loadAsset, readWebJson, resolveStrings, rootOf, webFile } from './lib/bf2017-ebx.mjs';
 import { abilityRow, cardRow, classRow, heroRow, indexOf, reinforcementRow, teamRow, vehicleRow, weaponRow } from './lib/bf2017-rulebook.mjs';
-import { aiCreatures, aiNames, aiRulebook } from './lib/bf2017-rulebook-ai.mjs';
+import { aiCreatures, aiNames, aiRulebook, aiSquadron } from './lib/bf2017-rulebook-ai.mjs';
 import { camerasRow, copyUiAssets, lightingRow, uiRow } from './lib/bf2017-rulebook-look.mjs';
 import { mapRow } from './lib/bf2017-rulebook-map.mjs';
 import { LEVEL_WORLDS, modesRulebook } from './lib/bf2017-modes.mjs';
@@ -34,7 +34,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORT = 'build 489592';
 
 // In the order they are built: each reads what an earlier one found.
-export const RULEBOOKS = ['teams', 'map', 'classes', 'heroes', 'reinforcements', 'vehicles', 'weapons', 'abilities', 'cards', 'ai', 'aiNames', 'aiCreatures', 'lighting', 'cameras', 'ui', 'strings'];
+export const RULEBOOKS = ['teams', 'map', 'classes', 'heroes', 'reinforcements', 'vehicles', 'weapons', 'abilities', 'cards', 'ai', 'aiNames', 'aiCreatures', 'aiSquadron', 'lighting', 'cameras', 'ui', 'strings'];
 const NEEDS = {
   classes: ['teams'],
   heroes: ['teams'],
@@ -53,6 +53,7 @@ export function fileOf(step, level) {
   if (step === 'lighting') return `maps/${map}.lighting.json`;
   if (step === 'aiNames') return 'ai.names.json';
   if (step === 'aiCreatures') return 'ai.creatures.json';
+  if (step === 'aiSquadron') return 'ai.squadron.json';
   return `${step}.json`;
 }
 
@@ -147,6 +148,7 @@ const BUILD = {
   ai: (p) => aiRulebook(p.root),
   aiNames: (p, ctx) => aiNames(p.root, ctx.$strings),
   aiCreatures: (p) => aiCreatures(p.root),
+  aiSquadron: (p) => aiSquadron(p.root),
   lighting: (p) => lightingRow(p.root, p.level),
   cameras: (p, ctx) => camerasRow(p.root, { weapons: Object.values(ctx.weapons), vehicles: uniq(Object.values(ctx.vehicles).map((v) => v.blueprint)).filter((b) => indexOf(p.root).has(`${b}_Camera`)) }),
   ui: (p) =>
@@ -173,6 +175,7 @@ const COUNT = {
   ai: (a) => ({ rows: Object.keys(a.tactics).length + Object.keys(a.templates).length + a.patterns.length + Object.keys(a.coverQueries).length + Object.keys(a.difficulties).length }),
   aiNames: (n) => ({ rows: Object.values(n).reduce((k, f) => k + Object.keys(f).length, 0) }),
   aiCreatures: (c) => ({ rows: Object.keys(c.settings).length + Object.keys(c.actors).length + Object.keys(c.prefabs).length }),
+  aiSquadron: (q) => ({ rows: Object.keys(q.trees).length }),
   lighting: (l) => ({ rows: l.lights.length + l.prefabs.length }),
   cameras: (c) => ({ rows: Object.keys(c.vehicles).length + Object.keys(c.aim).length + (c.soldier ? 1 : 0) }),
   ui: (u) => ({ rows: Object.keys(u.widgets).length }),

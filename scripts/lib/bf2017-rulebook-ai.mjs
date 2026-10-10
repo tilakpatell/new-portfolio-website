@@ -551,7 +551,52 @@ export function aiRulebook(root) {
   };
 }
 
+// The squadron AI: each `SquadronAIBehaviourBlueprint` (the starfighter bots'
+// minds) as a tree of typed nodes. A node is a behaviour entity, its kind its
+// type without `SquadronAI…BehaviourEntityData` (`Selector`, `Random`,
+// `DogfightingAttack`), its numbers plain; its children are the blueprint's
+// link connections from it, in the order the record lists them; the root is
+// the node the `DogfighterInfo` entity links to (else the one no node links
+// to); the weapon rules (`CannonWeaponRule`, `MissileWeaponRule`) are what
+// `DogfighterInfo` links as rules. The `AIChannelAsset`s are named.
+const kindOf = (t) => t.replace(/^SquadronAI/, '').replace(/(Behaviour)?EntityData$/, '');
+function squadronTree(root, name) {
+  const asset = follow(root, name);
+  const bp = asset && rootOf(asset);
+  if (!bp) return null;
+  const idx = (r) => (typeof r?.$ref === 'number' ? r.$ref : null);
+  const isNode = (i) => /^SquadronAI.*BehaviourEntityData$/.test(asset.objects[i]?.$type ?? '');
+  const nodes = {};
+  for (let i = 0; i < asset.objects.length; i++) if (isNode(i)) nodes[i] = { kind: kindOf(asset.objects[i].$type), ...plain(asset, asset.objects[i], 2), children: [] };
+  const info = asset.objects.findIndex((o) => o?.$type === 'SquadronAIDogfighterInfoEntityData');
+  let top = null;
+  const rules = [];
+  const parented = new Set();
+  for (const c of bp.LinkConnections ?? []) {
+    const from = idx(c.Source);
+    const to = idx(c.Target);
+    if (from === null || to === null) continue;
+    if (from === info && nodes[to]) top ??= to;
+    else if (from === info && /WeaponRule/.test(asset.objects[to]?.$type ?? '')) rules.push({ kind: kindOf(asset.objects[to].$type), ...plain(asset, asset.objects[to], 2) });
+    else if (nodes[from] && nodes[to]) {
+      nodes[from].children.push(to);
+      parented.add(to);
+    }
+  }
+  top ??= Number(Object.keys(nodes).find((k) => !parented.has(Number(k))) ?? -1);
+  return { root: top, nodes, rules, _source: where(asset, bp) };
+}
+
+export function aiSquadron(root) {
+  const all = [...indexOf(root).entries()].filter(([n, e]) => !isSequel(n) && (e.type === 'SquadronAIBehaviourBlueprint' || e.type === 'AIChannelAsset'));
+  const trees = {};
+  for (const [n, e] of all) if (e.type === 'SquadronAIBehaviourBlueprint') trees[shortName(n)] ??= squadronTree(root, n);
+  for (const k of Object.keys(trees)) if (!trees[k]) delete trees[k];
+  return { trees, channels: all.filter(([, e]) => e.type === 'AIChannelAsset').map(([n]) => shortName(n)).sort() };
+}
+
 // The names and the creatures go to files of their own (ai.names.json,
-// ai.creatures.json): the bots' rulebook stays what the soldiers read.
+// ai.creatures.json), as do the squadron trees (ai.squadron.json): the
+// bots' rulebook stays what the soldiers read.
 export const aiNames = (root, strings = readWebJson(root, 'strings/English.json')) => namesOf(root, strings);
 export const aiCreatures = (root) => creaturesOf(root);

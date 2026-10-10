@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { patternBits, aiCreatures, aiNames, aiRulebook } from './bf2017-rulebook-ai.mjs';
+import { patternBits, aiCreatures, aiNames, aiRulebook, aiSquadron } from './bf2017-rulebook-ai.mjs';
 import { checkSources } from './bf2017-rulebook.mjs';
 
 const ROOT = join(import.meta.dirname, '..', 'fixtures', 'bf2017', 'data');
@@ -199,6 +199,23 @@ describe('the AI rulebook', () => {
       class: 'WeaponClass_AssaultRifle',
       WeaponRange: 1500,
     });
+  });
+
+  it('reads a squadron behaviour tree: its typed nodes, their numbers, their children in the record’s order, its weapon rules', () => {
+    const sq = aiSquadron(ROOT);
+    const t = sq.trees.PF_DogfightBehaviour;
+    const root = t.nodes[t.root];
+    expect(root.kind).toBe('Selector');
+    expect(root.children.map((c) => t.nodes[c].kind)).toEqual(['ProximateAreas', 'EscapeAreas', 'DogfightingEvade', 'DogfightingAttack', 'FollowWaypoints', 'DogfightingFlyForward']);
+    const attack = Object.values(t.nodes).find((n) => n.kind === 'DogfightingAttack');
+    expect(attack).toMatchObject({ minDistanceForAttack: 100, maxDistanceForAttack: 500, projectileSpeed: 2000 });
+    const random = Object.values(t.nodes).find((n) => n.kind === 'Random');
+    expect(random.weights).toHaveLength(random.children.length);
+    expect(t.rules.map((r) => r.kind).sort()).toEqual(['CannonWeaponRule', 'MissileWeaponRule']);
+    expect(t.rules.find((r) => r.kind === 'CannonWeaponRule')).toMatchObject({ maxContinuousFireTime: 2, minTimeBetweenContinuousFire: 1.5 });
+    expect(t.rules.find((r) => r.kind === 'MissileWeaponRule').lockOnDelayTime).toBe(3);
+    expect(sq.channels).toContain('FollowPath_AIChannel');
+    expect(checkSources(sq)).toEqual([]);
   });
 
   it('names every number’s source', () => {
