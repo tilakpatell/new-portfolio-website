@@ -10,7 +10,9 @@
 //   gltfLoader({ renderer }) → the shared GLTFLoader, for modules with caches
 //                              of their own
 //   loadGltfFile(url) → Promise<gltf>: that loader's parse of one file, asked
-//                              of the asset base first (src/lib/assetBase.js)
+//                              of the asset base first (src/lib/assetBase.js),
+//                              through the site's pool (src/lib/assetLoad.js),
+//                              as every load of the shared loader is
 //   loadGltf(url, { renderer, fresh }) → Promise<{ scene, animations, gltf }
 //                              | null>: cached by URL for the page's life; with
 //                              `fresh`, `scene` is a copy to move, wrap and
@@ -27,7 +29,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { fitTextures, sharpenTree } from './textures';
-import { withFallback } from '../assetBase';
+import { loadBytes } from '../assetLoad';
 
 let loader = null;
 let ktx2 = null; // the KTX2Loader, once something has needed it
@@ -41,6 +43,41 @@ let detectedWith = null; // the renderer the KTX2 support was read from
 // parsed (lib/detail: none over 1024 on a phone, 512 on a weak device, a
 // desktop's untouched), before anything has uploaded them.
 class SiteGLTFLoader extends GLTFLoader {
+  // Its bytes through the site's pool (lib/assetLoad): the bucket's copy
+  // where it holds the file, the site's after; retried, timed out, held to
+  // its length, one request per URL, and stopped with the world that asked
+  // (an abort rejects with an AbortError, nothing parsed). The URL its
+  // sidecars resolve against stays the site's, as three's own load has it.
+  load(url, onLoad, onProgress, onError) {
+    const resourcePath = this.resourcePath !== '' ? this.resourcePath : this.path !== '' ? THREE.LoaderUtils.resolveURL(THREE.LoaderUtils.extractUrlBase(url), this.path) : THREE.LoaderUtils.extractUrlBase(url);
+    const full = this.path !== '' ? THREE.LoaderUtils.resolveURL(url, this.path) : url;
+    this.manager.itemStart(url);
+    const fail = (e) => {
+      if (onError) onError(e);
+      else if (e?.name !== 'AbortError') console.error(e);
+      this.manager.itemError(url);
+      this.manager.itemEnd(url);
+    };
+    loadBytes(this.manager.resolveURL(full)).then(
+      (data) => {
+        try {
+          this.parse(
+            data,
+            resourcePath,
+            (gltf) => {
+              onLoad(gltf);
+              this.manager.itemEnd(url);
+            },
+            fail,
+          );
+        } catch (e) {
+          fail(e);
+        }
+      },
+      fail,
+    );
+  }
+
   parse(data, path, onLoad, onError) {
     const done = (gltf) => {
       try {
@@ -130,12 +167,10 @@ const parsed = new Map(); // url → Promise<gltf | null>
 
 // Fetch and parse, reading the KTX2 support from the scene's renderer where
 // one is given (the loader's own parse falls back to a probe context).
-function fetchGltf(url, renderer) {
-  const files = new THREE.FileLoader();
-  files.setResponseType('arraybuffer');
-  // (the bucket's copy where it has one: the same bytes, so the same model;
-  // resolved against the site's path, as it always was)
-  return withFallback((u) => files.loadAsync(u))(url).then(async (buffer) => {
+function fetchGltf(url, renderer, opts) {
+  // (the bucket's copy where it has one, through the pool: the same bytes,
+  // so the same model; resolved against the site's path, as it always was)
+  return loadBytes(url, opts).then(async (buffer) => {
     if (renderer && usesBasisu(buffer)) await ktx2Loader({ renderer });
     const path = THREE.LoaderUtils.extractUrlBase(url);
     return gltfLoader().parseAsync(buffer, path);
@@ -144,9 +179,9 @@ function fetchGltf(url, renderer) {
 
 // One file through the shared loader, uncached, for a module that keeps its
 // own: from the asset bucket where it has the file (the same bytes, so the
-// same model), else the site.
+// same model), else the site (the loader's own load asks that way).
 export function loadGltfFile(url) {
-  return withFallback((u) => gltfLoader().loadAsync(u))(url);
+  return gltfLoader().loadAsync(url);
 }
 
 // A model by URL, parsed once for the page's life (two worlds asking for the
@@ -155,24 +190,26 @@ export function loadGltfFile(url) {
 // shared original: move or re-parent it and every user sees that, so pass
 // `fresh: true` for a copy of your own (skinned ones copied with their bones;
 // geometry, materials and textures still shared).
-export function loadGltf(url, { renderer = null, fresh = false, prepare: prep = true } = {}) {
+//
+// `signal` and `priority` go to the pool (lib/assetLoad: by default the
+// world in front's, and 0); a caller whose signal has gone by the time the
+// model is there gets null, so a world left mid-load touches nothing.
+export function loadGltf(url, { renderer = null, fresh = false, prepare: prep = true, signal, priority } = {}) {
   if (!parsed.has(url)) {
-    parsed.set(
-      url,
-      fetchGltf(url, renderer)
-        .then((gltf) => {
-          if (prep) prepare(gltf.scene, { renderer });
-          return gltf;
-        })
-        .catch((e) => {
-          parsed.delete(url);
-          if (import.meta.env?.DEV) console.warn('model failed to load', url, e);
-          return null;
-        }),
-    );
+    const p = fetchGltf(url, renderer, { ...(signal !== undefined && { signal }), ...(priority !== undefined && { priority }) })
+      .then((gltf) => {
+        if (prep) prepare(gltf.scene, { renderer });
+        return gltf;
+      })
+      .catch((e) => {
+        if (parsed.get(url) === p) parsed.delete(url);
+        if (import.meta.env?.DEV && e?.name !== 'AbortError') console.warn('model failed to load', url, e);
+        return null;
+      });
+    parsed.set(url, p);
   }
   return parsed.get(url).then((gltf) => {
-    if (!gltf) return null;
+    if (!gltf || signal?.aborted) return null;
     const scene = fresh ? copy(gltf.scene) : gltf.scene;
     return { scene, animations: gltf.animations, gltf };
   });

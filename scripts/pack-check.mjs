@@ -60,12 +60,15 @@ export function undeclared(src, pack) {
 
 // what a pack lists that public/ does not have: a URL with no file, a glob matching nothing, a
 // computed folder it takes nothing from
-export function missing(pack, publicDir) {
-  const all = filesIn(publicDir).map((f) => `/${relative(publicDir, f).split('\\').join('/')}`);
+// (`published`: site paths the public bucket alone holds, src/data/galaxyAssets.json's,
+// which a checkout never has: present all the same)
+export function missing(pack, publicDir, published = []) {
+  const all = [...new Set([...filesIn(publicDir).map((f) => `/${relative(publicDir, f).split('\\').join('/')}`), ...published])];
   const listed = [...(pack.urls ?? []), ...all.filter((f) => (pack.globs ?? []).some((g) => globRe(g).test(f)))];
   const under = (dir) => (dir.endsWith('/') ? dir : `${dir}/`);
+  const there = new Set(published);
   return [
-    ...(pack.urls ?? []).filter((u) => !existsSync(join(publicDir, u))),
+    ...(pack.urls ?? []).filter((u) => !there.has(u) && !existsSync(join(publicDir, u))),
     ...(pack.globs ?? []).filter((g) => !all.some((f) => globRe(g).test(f))),
     ...(pack.computed ?? []).filter((d) => !listed.some((f) => f.startsWith(under(d)))),
   ];
