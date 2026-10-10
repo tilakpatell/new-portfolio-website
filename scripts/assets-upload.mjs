@@ -22,7 +22,9 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const BUCKET = 'assets';
+// (the site's one public bucket: the game-derived files are published there
+// too, by scripts/assets-publish.mjs, so one ASSET_BASE serves both)
+export const BUCKET = 'site-assets';
 export const REMOTE = ['hq/models', 'hq/tex', 'cc0/galaxy', 'models/gen3d', 'kit'];
 // (each one whole in itself: a .gltf's sidecars would not sit beside it under one hash)
 export const KINDS = { '.glb': 'model/gltf-binary', '.ktx2': 'image/ktx2', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };

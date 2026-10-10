@@ -49,6 +49,16 @@ describe('the pack manifests', () => {
     expect(await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf, remote: { base: '', manifest: remote('a').manifest } })).toEqual(plain);
   });
 
+  it('list a game-derived file the bucket alone holds (not in the checkout) from the manifest, only with a base', async () => {
+    const base = 'https://bucket.test/site-assets';
+    const manifest = { 'models/w/luke.glb': { hash: 'cccccccccccc', bytes: 4321 } };
+    const m = await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf, remote: { base, manifest } });
+    expect(m.files.find((f) => f.local === '/models/w/luke.glb')).toEqual({ url: `${base}/cccccccccccc/models/w/luke.glb`, bytes: 4321, hash: 'cccccccccccc', local: '/models/w/luke.glb' });
+    const plain = await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf });
+    expect(m.bytes).toBe(plain.bytes + 4321);
+    expect((await buildManifest(PACK, { dist: FIX, publicDir: FIX, chunksOf, remote: { base: '', manifest } })).files.some((f) => f.url.includes('luke'))).toBe(false);
+  });
+
   it('take a page’s chunks through static and dynamic imports', () => {
     const manifest = {
       'src/pages/W.jsx': { file: 'assets/W-abc.js', css: ['assets/W-abc.css'], imports: ['_three.js'], dynamicImports: ['src/w/scene.js'] },
