@@ -507,7 +507,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} effects={effects} />
+      <SurfaceView system={id} site={site.district ? site : null} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} effects={effects} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
