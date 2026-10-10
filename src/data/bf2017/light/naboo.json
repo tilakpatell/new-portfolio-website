@@ -1,0 +1,102 @@
+{
+ "world": "naboo",
+ "map": "levels/mp/naboo_01/naboo_01",
+ "main": "dusk",
+ "sky": {
+  "main": "Levels/Lighting/Naboo/Dusk/VE_PV_Naboo_Dusk_01",
+  "overrides": []
+ },
+ "weathers": {
+  "dusk": {
+   "sun": {
+    "color": [
+     0.975538969,
+     0.426158369,
+     0.176450789
+    ],
+    "lux": 350,
+    "az": 189.474,
+    "el": 4.737
+   },
+   "sky": {
+    "luminance": 1000,
+    "panorama": "Levels/Lighting/Naboo/Dusk/T_Naboo_01_Dusk_01_C",
+    "gradient": "Levels/Lighting/Naboo/Dusk/T_Naboo_01_Dusk_01_Fog_C"
+   },
+   "fog": {
+    "start": 250,
+    "end": 5000,
+    "curve": [
+     1.62033844,
+     -2.55760384,
+     1.556256,
+     -0.00771771558
+    ],
+    "height": 0,
+    "heightDepth": 350,
+    "heightRange": 3500,
+    "scatter": [
+     5732.55469,
+     5152.78955,
+     4134.069
+    ]
+   },
+   "tonemap": {
+    "compensation": 1,
+    "minEV": 9,
+    "maxEV": 11,
+    "bloom": 0.06691644
+   },
+   "grading": {
+    "lut": "textures/galaxy/bf2017/light/naboo/dusk.lut.png",
+    "lutSize": 17
+   },
+   "wind": {
+    "dir": 145.946,
+    "strength": 6
+   },
+   "enlighten": {
+    "sky": [
+     0.2738384,
+     0.3903951,
+     0.603827357
+    ],
+    "ground": [
+     0.0163274352,
+     0.0163274352,
+     0.0163274352
+    ],
+    "terrain": [
+     0.318546772,
+     0.208636865,
+     0.191201687
+    ]
+   },
+   "source": [
+    "Levels/Lighting/Naboo/Dusk/VE_PV_Naboo_Dusk_01"
+   ],
+   "probe": {
+    "id": "0821d262",
+    "variant": "Dusk_Lighting",
+    "zenith": [
+     6.021,
+     4.386,
+     5.103
+    ],
+    "horizon": [
+     1.328,
+     0.689,
+     0.511
+    ],
+    "ground": [
+     0.171,
+     0.083,
+     0.064
+    ],
+    "open": 5.89,
+    "url": "textures/galaxy/bf2017/light/naboo/dusk"
+   }
+  }
+ },
+ "indoor": null
+}

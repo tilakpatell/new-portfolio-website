@@ -42,6 +42,9 @@ export const SITES = {
     // whoever holds Hoth, their soldiers in snow kit)
     cast: 'models',
     uniforms: { stormtrooper: 'snowtrooper', rebel: 'hothtrooper' },
+    // lit as the game lights Hoth_01 (src/data/bf2017/light/hoth.json,
+    // gameLit.js): its sun, sky, bounce, fog, probe and grade over these
+    gameLight: 'hoth',
     sky: {
       zenith: '#6f98c8',
       horizon: '#e4ecf4',

@@ -11,6 +11,11 @@
 //                  software rendering takes minutes)
 //   ZONE=<id> …    (inside a zone: its id, the views then in the room's own
 //                  frame, through the dev hook __surfaceDo('zone', id))
+//   LOAD_WAIT=<ms> …  (how long a heavy world may take to load: 180000 by default)
+//   QUERY=<k=v&…> …  (more of the page's query: gamelight=off, the site's
+//                  own light, for a before shot)
+//   WEATHER=<state> …  (clear, dusk, overcast, storm: the level's weather,
+//                  where the game lights the world, at once)
 // The clock is held and the random numbers seeded as galaxy-check does, so
 // two runs see the same.
 
@@ -41,8 +46,8 @@ await ctx.addInitScript(() => {
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(`${base}/?quality=${quality}#/galaxy/${world}/surface`);
-await page.waitForFunction(() => window.__surface?.()?.phase, null, { timeout: Number(process.env.PHASE_WAIT ?? 180000) });
+await page.goto(`${base}/?quality=${quality}${process.env.QUERY ? `&${process.env.QUERY}` : ''}#/galaxy/${world}/surface`);
+await page.waitForFunction(() => window.__surface?.()?.phase, null, { timeout: Number(process.env.PHASE_WAIT ?? process.env.LOAD_WAIT ?? 180000) });
 await page.waitForTimeout(4000);
 // (past the landing: out of the ship and walking)
 await page.evaluate(() => window.__surfaceDo('advance', 40));
@@ -56,6 +61,7 @@ console.log('phase', await page.evaluate(() => window.__surface?.()?.phase));
 // (the floor's light baked, if the world has one: a shot before it lands is
 // the world without its shadows; one with no ground runs out the clock)
 await page.waitForFunction(() => Boolean(window.__surfaceScene?.api?.ground?.stats?.baked), null, { timeout: Number(process.env.BAKE_WAIT ?? 150000), polling: 1000 }).catch(() => {});
+if (process.env.WEATHER) console.log('weather', JSON.stringify(await page.evaluate((w) => window.__surfaceDo('weather', w, 0), process.env.WEATHER)));
 const zone = process.env.ZONE ?? null;
 let origin = [0, 0];
 if (zone) {

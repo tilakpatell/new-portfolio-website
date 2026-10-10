@@ -36,6 +36,19 @@ One lane per session; L, G, K and lane 1 may run at once (they own different fil
 
 `main` already has the asset host (planet flight lane I): `src/lib/assetBase.js`, `src/lib/assetPath.js`, `scripts/assets-upload.mjs` (bucket `assets`, `<hash12>/<path>`, a year’s cache, `--prune`), `src/data/assets-manifest.json`, the packs and the service worker carrying bucket URLs, `VITE_ASSET_BASE`. Lane S therefore does **not** create `assetUrl.js`, `galaxyAssets.json`, `assets-publish.mjs`, `assets-ignore.mjs` or a `site-assets` bucket. It keeps: task 1 (`scripts/lib/pool.mjs`), task 2 (the fetch made robust), task 4’s `assetFetch.js` and `progressive.js` with `assetBase.js`’s `withFallback` calling the pool (one in-flight per URL, priority, the short-body check, abort per world, progress), task 6’s `stream-check.mjs`. Task 3 becomes: `REMOTE` in `assets-upload.mjs` gains `models/galaxy/bf2017` and `textures/galaxy/bf2017`; `catalog.test.js`’s size checks read `assets-manifest.json`’s `bytes` when a file is absent. Task 5 (the service worker) is already done by lane I; check `sw-check.mjs --bucket` and drop the task if green.
 
+### Lane K: the planet skins
+
+**Done** (`claude/bf2017-k-planets`). The bucket listed 103 planet textures on 2026-10-10 (`web/textures.jsonl`); every non-sequel one was fetched (69, all as PNG) and looked at. The space levels' colour (`_CS`, smoothness in alpha), normal (`_N`, `_NI`) and cloud maps (coverage in alpha) are whole-planet maps stored square and seamless round the planet: the game's planet meshes (`levels/space/*/planet/planet_*_mesh`, `objects/planets/_planetmeshes/planet_01_mesh`) bind no texture (a shader asset, `SS_Planet_*`, does) and carry UVs once round and pole to pole once, so the site lays them on the same way. The front end's `_CA` globes, Endor's gas giant and Yavin's are pictures of a lit disc.
+
+- Skinned: **Endor** (colour, relief, clouds, its air's colour), **Naboo** (colour, relief, clouds), **Kamino** (colour, its sea), **Bespin** (colour), **Geonosis** (rings only).
+- Stay procedural, their only maps being pictures (`PICTURES`): Endor's gas giant, Geonosis's globe, Hoth, Kashyyyk, Scarif, Tatooine, Yavin, Yavin 4.
+- In the drop with no body on the site (`UNPLACED`): Ryloth and its moon, Fondor and its moon, Athulla, Sullust, Pillio, Vardos (whole-planet maps like Naboo's), Kessel, Felucia, the Death Star II (globes), Naboo's moon.
+- The code: `scripts/bf2017-planets.mjs` over `scripts/lib/bf2017-planets.mjs` (`SKINS`, `PICTURES`, `planFor`, `convertSkin`; fixture `scripts/fixtures/bf2017/web/textures/levels/space/sb_endor_01/planet/`), `src/data/planetSkins.json`, `public/textures/galaxy/planets/<id>/<kind>-<tier>.webp|ktx2` (mid 1024, high 2048, ultra the colour and normal UASTC; never larger than the game drew it), `bodySkin.js` (the chunk, spliced in only for a skinned body: an unskinned one compiles byte for byte what it did, `bodySkin.test.js` holds each family's hash), `bodies.js` (loads a skin on mid and up, not low or a small body; eases it out between 1.5 × and 1 × the air's top, the air's colour with it; frees every map with the body), `REMOTE` gains `textures/galaxy/planets`. Scarif's shield shaders moved to `bodyShield.js` (re-exported) to keep `bodyShaders.js` under 800 lines.
+- The shots: `docs/superpowers/evidence/bf2017-planets/`.
+
+**Left**: `assets-upload.mjs` for the new files (the owner's key). Asked of the desktop export: the `SS_Planet_*` shader assets (how the game tints and mixes the maps) and whole-planet maps for the worlds that have only a globe picture. Not checked: the relief's sign at a grazing sun (`greenDown`; the shots are lit from the default angle); a skinned planet flown down to in a real browser (the mix is unit-tested; the shots are from orbit). The game shows only a planet's facing half (its planets are backdrop domes, `planet_endor_02_mesh` 81 m wide and 20 m deep, UVs u 0.23–0.73 over 180°): the site wraps the same map once round, the same scale, and the back is the map's own seamless remainder. For the space layer, not this lane: the 2:1 sky panoramas the desktop is encoding (`textures/levels/space/sb_endor_01/planet/t_space_endor01_c`, `textures/lighting/textures/space/t_space_01_c`, `t_space_no_large_stars_01_c`, Athulla's, the sky cube `textures/levels/sp/a1/m1end/lighting/textures/t_sky_space_01_c`) and the generic prop planet (`objects/planets/_planetmeshes/planet_01_mesh`, `t_planet_01_rgba`, `t_planet_01_n`). The front end's globes could tint the galaxy map's discs (the plan's optional task; not done). A world placed later (Ryloth, Fondor…) takes its maps by a line in `SKINS`.
+
+**Checking it**: `NODE_USE_ENV_PROXY=1 node scripts/bf2017-planets.mjs --dry` (keys in the environment), then without `--dry`; `QUALITY=high OUT=/tmp/s node scripts/galaxy-check.mjs space naboo,endor,bespin`.
 - **Phase 1, the heroes on the game's skeleton, with their hilts** (this PR, `claude/bf2017-phase1`):
   - `public/models/galaxy/bf2017/walrus.glb`: `Walrus_HumanMale` whole, 254 nodes (`scripts/bf2017-skeleton.mjs`); `src/lib/three/walrusRig.js` names its body, fingers and sockets, `WEAPON_FRAME` (the identity: the game models weapons in the `Wep_Root` frame).
   - The game's clips as packs (`scripts/bf2017-clips.mjs`, names mapped by `src/lib/three/walrusClips.js`): `clips-humanoid.glb` 843 KB (27 clips), and one a hero: Luke 1,323 KB (45), Vader 1,269 (42), Obi-Wan 1,069 (39), Anakin 1,187 (38), Maul 1,179 (41), Dooku 1,153 (38), Palpatine 459 (15), Han, Leia, Lando, Chewbacca, Boba Fett, Bossk 92-141 KB (their defeat and abilities). 24 fps, root motion off `AITrajectory` into `extras.root`, `contact` timed on a blade a metre up `Wep_Root`, rest-holding channels left out and put back by the loader. Luke's blocks come from the cinematic skeleton (`Walrus_NIS_S0800_Skeleton`, the same rig at the same rest).
@@ -158,9 +171,9 @@ The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scri
 | 0 | | | #805 |
 | second design | this session | `claude/bf2017-levels-lighting-sabers` | (this PR) |
 | 1 | | | |
-| L | the lane L session | `claude/bf2017-l-hoth` | #831 (open) |
-| G | | | |
-| K | | | |
+| L | the lane L session | `claude/bf2017-l-hoth` | #831 |
+| G | lane G session | `claude/bf2017-g-light` | #833 |
+| K | the lane K session | `claude/bf2017-k-planets` | #825 |
 | X | lane X’s session | `claude/bf2017-x-sabers` | #816 (tasks 1–3; the GPU frame time left) |
 | S | | | |
 
@@ -284,6 +297,47 @@ In order:
   - A checkout has no full cuts, so the tests read them through the manifest (`crew.budget.test.js`, `crewList.test.js`, `sites/ice.test.js`).
   - `git stash -u` takes the untracked imports with it.
   - Prettier is not the repo's formatter: don't run it on a file.
+
+### Lane G, the worlds under the game's light
+
+**Done** (`claude/bf2017-g-light`):
+
+- `scripts/bf2017-light.mjs <world> --map <level> [--indoor <probe id>] [--main <VE>] [--also <VE>,…]` reads the map's `sky[]`, the raw VisualEnvironment records under `data/` (a superset of the map's `extras.json` copy: it has the wind and Enlighten's bounce), the level's reflection probes and its grading LUTs, and writes `src/data/bf2017/light/<world>.json` plus a pack under `public/textures/galaxy/bf2017/light/<world>/` (64² probe faces with the sun clipped out, 17³ LUT strips; every world under 400 KB, 2.1 MB for the ten). The pure reading is `scripts/lib/bf2017-light.mjs`, tested on a trimmed real record (`scripts/fixtures/bf2017/data/ve_sky_fixture.json`).
+- `src/lib/three/gameLight.js`: `siteLightFrom(entry)` and `gameSite(site, light, state)`, the record to the site's `sky`, `light` and `fog`. Three constants set once on Hoth's sunny weather and held for every world: `GAME_TO_SITE` 0.0713 (the sun's lux, exposed by the game's own metering), `SKY_TO_SITE` 0.2006 (the record's `LuminanceScale`, exposed, to the dome's horizon and the fill), `PROBE_TO_SITE` 52.4 (the fallback for a record with no sky level). The ice field's mean luminance: 0.3529 under the site's own light, 0.3531 under the game's. The camera's exposure is the game's: a grey card lit by the sun and the record's sky, clamped to the record's EV range. Every world's before and after, with its change, is in `docs/superpowers/evidence/bf2017-light/README.md`.
+- `src/components/galaxy/surface/gameLit.js`: the probe as `scene.environment` (the room's indoors; one alive at a time, `probeEnv.js`), the LUT in `universe/post.js`'s final pass on high and ultra (`grading()`, the house's contrast and saturation stepping aside), the weathers faded over 20 s (`__surfaceDo('weather', 'dusk', seconds)` in dev). `?gamelight=off` (dev) shows a world under the site's own light for a before shot; `surface-shot.mjs` takes `QUERY=` and `WEATHER=`.
+- Wired (`gameLight` on the site): hoth, tatooine, yavin, kashyyyk, kamino, geonosis, scarif, bespin, endor. Worlds without a record (nevarro, mandalore, sorgan, lothal, coruscant, dagobah, mustafar) are unchanged, tested.
+
+**Findings**:
+
+- The sun's direction is in the record (`SunRotationX` the azimuth, `SunRotationY` the elevation, degrees): every world took that path; `sunFromProbe` is the fallback no world needed (the probes' brightest texels are lamps and glints).
+- Hoth's weathers are sunny, sunset and interior (the only VE records the bucket has: Blizzard has a LUT only, Cloudy nothing). The probes of a level's weathers are not baked to one scale (Hoth's Sunset_VFX probe is a day's, and not orange), so a probe gives colours, never a level.
+- Under the one calibration: Geonosis, Scarif, Bespin and Yavin within 8 % of the site's own; Kamino +14 % (a teal storm); Tatooine +25 % and Kashyyyk +39 % (higher suns and skies); Hoth's hangar mouth −36 % (in shade only the fill lights, and the game's is the lower).
+- Probes per world: hoth 661f4d0f (Cloudy_VFX) and 36a2b5e2 (Sunset_VFX), indoor 9c323d00 (the hangar); yavin, kashyyyk, naboo, kamino, geonosis, scarif, bespin one or two each (in the JSON); tatooine none out of doors (only its buildings'), endor none by day (Foggy_Lighting and Night_Lighting2 only): those keep the dome as their environment.
+- The LUTs are 33³ volumes as 33 png16 slices (blue the slice, green the row from the top, red the column), display-space S-curves.
+- The interior's exposure is not applied in a room (the game's opens 4.5 stops over the day; the site's rooms are lit by its own lamps at exposure 1).
+- Endor's surface does not finish loading under the software renderer, before or after (the shots are left); a `mvPosition` shader error on a MeshBasicMaterial predates the lane.
+
+**Left**:
+
+- **The far shadow** (task 3), with lane L: the distant shadow cache is a 16-bit depth map seen from the sun, not a top-down mask, and it is the game's terrain's. Fit the sun's orthographic frame (the record's direction, the heightmap's 8,192 m square) to the cache, then sample it beyond `SHADOW.extent` in `groundLook.js` and the far draws.
+- **The placed lights**: exported now (`maps/<level>.extras.json`, `lights[]`, 1,234 on Hoth) and not yet used; the site's lamps stay.
+- **Naboo**: its JSON is written and not wired. Its level is Theed at dusk (350 lux, 5° up); under the one calibration the field is 62 % darker, its people in silhouette, the game's dusk being carried by Enlighten's bounce and its lamps. Wire it with the placed lights, or with a bounce term.
+- **Hoth's sunset** (dev only): its probe is a day's, so the dome reads pale rather than orange, and its fill is twice noon's.
+- The Death Star (no surface site; its map names no sky). Nothing drives the weather states yet (the dev hook only); a weather fade moves the sun but not the ground's baked shadows.
+
+Findings for the next lane go here: which sub-levels each map needed, what `fitTo` dropped per tier, the calibration factor and which path each world’s sun direction took, which skins were still missing, which clips’ windows were pinned by hand.
+Phase 1's, with the dev server up:
+
+```
+node scripts/bf2017-fetch.mjs anims
+node scripts/bf2017-clips.mjs luke
+node scripts/bf2017-import.mjs characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh --kind luke --as 'Luke Skywalker' --rig --crew --hero --metres 1.72 --parts '<head>,<hair>' --native --tex 1024 --maps 1024 --ultra --ultra-tex 2048 --ultra-maps 2048 --quality 90 --cuts plain=0,lod1=2,ultra=0 --eyes characters/heads/_shared/eyes/t_eyes_luke_c.ktx2
+node scripts/bf2017-skeleton.mjs public/models/galaxy/bf2017/crew/luke.glb
+```
+
+The duel: open `#/galaxy/hoth/surface` as Luke, then `__surfaceDo('duel', 'maul', { stance: 'double' })` in the console; F strikes, C blocks.
+
+The tests need no keys and no network: `npx vitest run scripts/lib/bf2017-* scripts/lib/rig-parts.test.mjs scripts/lib/catalog-write.test.mjs scripts/bf2017-import.test.mjs scripts/bf2017-clips.test.mjs scripts/bf2017-skeleton.test.mjs src/lib/three/walrus src/lib/combat/hiltFit.test.js src/components/galaxy/surface/catalog`.
 
 ## Lane S: streaming, both ways
 
