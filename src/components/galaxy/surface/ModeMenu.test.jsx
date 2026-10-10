@@ -8,8 +8,10 @@ describe('the mode menu', () => {
   it('shows every card, the live ones to play and the rest with why', () => {
     for (const c of modesFor('hoth')) expect(html).toContain(c.name);
     expect(html).toContain('is-live');
-    expect(html).toContain('is-soon');
-    expect(html).toContain('the site’s map of it isn’t made yet');
+    // (a mode the level has and no mission on the site yet: Hoth's hero arena, with no rows for it)
+    const soon = renderToStaticMarkup(<ModeMenu place="Hoth" cards={modesFor('hoth', { missions: { hoth: {} } })} onPick={() => {}} onDeploy={() => {}} onClose={() => {}} onAsk={() => {}} />);
+    expect(soon).toContain('is-soon');
+    expect(soon).toContain('the site’s map of it isn’t made yet');
     expect(html).toContain('aria-disabled="true"');
   });
   it('offers the deploy screen, free roam on Esc and not asking again', () => {

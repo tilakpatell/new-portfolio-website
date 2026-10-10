@@ -26,6 +26,8 @@ export function shoot(sim, s, aim) {
   if (!s.alive || !s.gun || !aim) return false;
   const shots = fireGun(s.gun, sim.time, { stance: s.stance, moving: s.moving });
   if (!shots) return false;
+  // firing ends spawn protection
+  s.safeUntil = -Infinity;
   for (const shot of shots) sim.pending.push({ owner: s.id, at: shot.at, dir: shot.dir, aim: [...aim] });
   return true;
 }

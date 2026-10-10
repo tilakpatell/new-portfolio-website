@@ -18,6 +18,7 @@
 import * as THREE from 'three';
 import { createLevel, packOf } from './surface/level';
 import { createLevelArea } from './levelArea';
+import { LIGHTS } from '../../data/bf2017/light';
 import { METRES } from './surface/missions/starfighter';
 
 const _v = new THREE.Vector3();
@@ -55,13 +56,28 @@ export function drawSpaceLevel(scene, { pack, origin, packOrigin, tier, renderer
       })
       .catch(() => {});
     // (its own sky, sea and storm round it, where it has an area of its own)
-    const room = area ? createLevelArea(scene, { at: laid.at, radius: area.radius / METRES, sea: laid.frame([0, area.sea, 0])[1], sky: area.sky, fog: { ...area.fog, density: area.fog.density * METRES } }) : null;
+    // (lit by the world's own light record, its weather the level's own: levelArea.js)
+    const room = area
+      ? createLevelArea(scene, {
+          at: laid.at,
+          radius: area.radius / METRES,
+          sea: laid.frame([0, area.sea, 0])[1],
+          sky: area.sky,
+          fog: { ...area.fog, density: area.fog.density * METRES },
+          light: area.light ? (LIGHTS[area.light] ?? null) : null,
+          weather: `/models/galaxy/bf2017/levels/${pack}/area.json`,
+          frame: laid.frame,
+        })
+      : null;
+    let last = performance.now();
     let looked = -Infinity;
     return {
       group,
       // (where the camera is in the pack's own metres: its LODs and cells by that)
       update(at) {
-        room?.update({ position: at }, performance.now() / 1000);
+        const now0 = performance.now();
+        room?.update({ position: at }, now0 / 1000, Math.min(0.1, (now0 - last) / 1000));
+        last = now0;
         if (!at || !level) return;
         _v.set(at.x, at.y, at.z);
         group.worldToLocal(_v);

@@ -119,7 +119,7 @@ import { snapToTexel } from './shadow';
 import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
 import { createBoltPlay } from './boltPlay';
-import { applyEmote, createEmoteWheel, emotePacket, keepEmote, readEmote } from '../../../lib/emote';
+import { applyEmote, createEmoteWheel, emoteFor, emotePacket, keepEmote, readEmote } from '../../../lib/emote';
 import { preload } from '../../../lib/three/clipLibrary';
 import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
@@ -143,6 +143,8 @@ import { rng } from './noise';
 import { endRun, newRun, tickRun, worldOf } from './missions';
 import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
+import { createHvvMission } from './missions/hvvScene';
+import { createBlastMission } from './missions/blastScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { garrisonLife, garrisonProbe } from './garrison';
@@ -162,6 +164,10 @@ import { createCameraRig } from '../../../lib/three/camera/rig';
 import { createQueries } from '../../../lib/physics/queries';
 import { filterOf } from '../../../lib/physics/groups';
 import { assetPool, worldScope } from '../../../lib/assetLoad';
+import { victoryFor } from '../../../lib/three/walrusSets/emotes';
+import { createFirstView } from './firstView';
+import { rideClip } from '../../../lib/three/walrusSets/vehicles';
+import { richClips } from '../../../lib/three/walrus';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -178,8 +184,11 @@ const LEAVE = { lift: 3.2, away: 3.4 };
 const CAM = { dist: 4.8, up: 1.55, pitch: [-0.45, 1.15], far: 14, near: 2.2 };
 const REACH = 3.2; // metres: close enough to use something
 const ROLL_PIVOT = 0.55; // metres up from the feet: where a dodge's roll turns about (a tucked body's middle)
-const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', z: 'crouch', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second', b: 'emote' };
+const KEYS = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', shift: 'run', z: 'crouch', ' ': 'jump', e: 'act', enter: 'act', f: 'fire', r: 'throw', c: 'block', x: 'dodge', g: 'power', v: 'second', b: 'emote', p: 'view' };
 const FIRE_EVERY = 0.24; // seconds between shots
+// the mission kinds fought as a battle, on assaultScene.js's interface
+// (missions/assault.js, and Heroes vs Villains and Blast: hvv.js, blast.js)
+const BATTLES = new Set(['assault', 'hvv', 'blast']);
 const SABER_IDLE = 8; // seconds without a stroke before the blade goes out
 const LOCK = { range: 14, cone: 0.9 }; // metres and radians: what a stroke homes on
 const HUD_EVERY = 0.1; // seconds between the combat HUD's updates
@@ -490,7 +499,7 @@ export async function create(canvas, ctx) {
   // (a walker or droideka falling goes up in lane F's blast: gameFx, made just below, by then)
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound, blast: (at, cls) => gameFx.explode(at, cls) });
   // (a battle fills the air with bolts: room for them)
-  const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
+  const blaster = createBlaster({ parent: scene, world, pool: BATTLES.has(mission?.kind) ? 72 : undefined });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
   const groundWar = createGround({ parent: scene, world, site, effects: mission ? null : ctx.effects, tier, kit, warm, blaster, sparks: (at, c) => fx.sparks(new V(...at), UP, c, 8), standable: (p) => standable(site, p), seesThrough: (a, b) => lineClear(world.solids, a, b) });
   const boltPlay = createBoltPlay({ blaster, ground: groundWar });
@@ -837,7 +846,7 @@ export async function create(canvas, ctx) {
     if (!disposed && people[0].stoodIn && people[0].spec.hero) emit({ type: 'hero', who: people[0].spec.id, ok: true, stoodIn: people[0].stoodIn });
     // (the clips the two of you react with, fetched now, so a roll or a
     // flinch starts on the frame it's asked for, not a fetch later)
-    if (!disposed && people.some((p) => p.fig?.anim)) preload(['roll', 'hit.chest', 'hit.head', ...(mission?.kind === 'assault' ? ['die.fwd', 'die.back', 'die.blown'] : [])]).catch(() => {});
+    if (!disposed && people.some((p) => p.fig?.anim)) preload(['roll', 'hit.chest', 'hit.head', ...(BATTLES.has(mission?.kind) ? ['die.fwd', 'die.back', 'die.blown'] : [])]).catch(() => {});
   })();
   // another hero picked (the page's DeployPanel): who you are now walks where
   // you were, and your mate is whoever of the crew isn't them; the guard as
@@ -959,7 +968,7 @@ export async function create(canvas, ctx) {
     outside: null, // where you were before you went in
     // a battle (missions/assault.js): off the field while you choose a side
     // ('choose') or you're down ('down'), and how long you've been down
-    off: mission?.kind === 'assault' ? 'choose' : null,
+    off: BATTLES.has(mission?.kind) ? 'choose' : null,
     fallen: 0,
     // ── your body (lib/three/animator.js through your figure) ──
     emote: null, // { id, at }: what you're doing off the wheel (lib/emote.js)
@@ -1049,6 +1058,7 @@ export async function create(canvas, ctx) {
   // (the emote wheel, B: lib/emote.js's; the pointer's where it is, and
   // where it was when the wheel opened, to point at a slice by)
   const emotes = createEmoteWheel();
+  const firstView = createFirstView({ camera, phone: device().phone });
   const pointer = { x: 0, y: 0, x0: 0, y0: 0, id: null };
   const onKey = (down) => (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1075,6 +1085,8 @@ export async function create(canvas, ctx) {
       if (k === 'block') state.blockAt = state.t;
       if (k === 'fire' && me().saber) state.pressAt = state.t;
       if (k === 'emote') emoteDown();
+      // (out of your own eyes, and back: firstView.js)
+      if (k === 'view') firstView.toggle(me().fig, { seated: state.phase !== 'walk' });
     }
     if (!down && k === 'emote') emoteUp();
     if (!down && k === 'fire' && state.pressAt != null) {
@@ -1176,6 +1188,7 @@ export async function create(canvas, ctx) {
     // (what you were doing stops with you; a mate who's down gets up to be
     // you, and the one you were starts as your mate afresh)
     endEmote();
+    firstView.leave(me().fig);
     mateUp();
     mateFight.foe = null;
     mateFight.aim = 0;
@@ -1207,6 +1220,15 @@ export async function create(canvas, ctx) {
   }
   // both of you, on something won (a quest done, a post taken): yours cut
   // by input as ever; nobody who's down
+  function endPose(won) {
+    const f = me().fig;
+    if (state.fallen > 0 || !f?.clips) return;
+    const clip = won ? victoryFor(f.clips, Math.floor(state.t)) : f.clips.defeat ? 'defeat' : null;
+    if (!clip) return;
+    f.play?.(clip, { hold: 8 });
+    // (cut by what you do, as any reaction on the whole body is)
+    state.reacting = { who: me(), clip, layer: 'full', until: state.t + 8 };
+  }
   function cheer() {
     if (!(state.fallen > 0)) reactYou('win');
     if (mateFight.down <= 0) other().fig?.react?.('win', { yaw: other().st.yaw });
@@ -1226,7 +1248,9 @@ export async function create(canvas, ctx) {
   function startEmote(id) {
     if (state.phase !== 'walk' || state.off || state.dodge || state.fallen > 0) return;
     cutReaction();
-    state.emote = { id, at: state.t };
+    // (a 2017 hero's own emote in the slot's place, as long as it is: lib/emote.js's emoteFor)
+    const got = emoteFor(me().fig, id);
+    state.emote = { id, at: state.t, length: got?.length, walk: got?.walk };
   }
   let emoteShown = null;
   let emoteFig = null; // (whose figure it's on: a swap leaves it with them)
@@ -1695,8 +1719,12 @@ export async function create(canvas, ctx) {
     emit(e);
     const ev = e?.type === 'mission' ? e.event : null;
     if ((ev?.type === 'capture' && ev.you) || ev?.type === 'won') cheer();
+    // (the battle's end: a 2017 hero in the game's own victory pose, or its defeat)
+    if (ev?.type === 'won' || ev?.type === 'lost') endPose(ev.type === 'won');
   };
-  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced, only: site.cast === 'models' }) : null;
+  // (Heroes vs Villains and Blast run the same way: missions/hvvScene.js, blastScene.js)
+  const battleOpts = { parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced, only: site.cast === 'models' };
+  const assault = mission?.kind === 'assault' ? createAssaultMission(battleOpts) : mission?.kind === 'hvv' ? createHvvMission({ ...battleOpts, who: () => me().spec.id }) : mission?.kind === 'blast' ? createBlastMission(battleOpts) : null;
   const assaultOn = () => Boolean(assault?.running());
   // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
   const shootable = () => [...groundWar.targets, ...(assaultOn() ? assault.targets : activity.targets)];
@@ -2674,6 +2702,13 @@ export async function create(canvas, ctx) {
         if (r === 'cut' && pp.seat === seat && name === 'drive' && pp.fig.anim) sat('sit');
       }, () => {});
     sat(seat.base);
+    // (a 2017 figure on the game's own ride: the game's driver or rider, the
+    // `vehicles` pack taken as it gets on: lib/three/walrusSets/vehicles.js)
+    const game = rideClip(ride.kind);
+    if (game && pp.fig.takePack && richClips(detailLevel()))
+      pp.fig.takePack('vehicles').then(() => {
+        if (pp.seat === seat && pp.fig.clips?.[game]) pp.fig.anim?.base(game);
+      });
   }
   // a ride's frame in the world, as its seat's points are measured in: its
   // holder, and a beast's step (its model's sway, actors.js) under you
@@ -2831,6 +2866,13 @@ export async function create(canvas, ctx) {
     });
   }
 
+  // out of your own eyes on foot, its arms in the game's first-person poses
+  // (firstView.js), over whichever camera follow() set, the game's or the site's
+  function firstPerson() {
+    if (!firstView.on) return;
+    if (state.phase !== 'walk') return firstView.leave(me().fig);
+    if (firstView.place(me().fig, state.cam.yaw, state.cam.pitch)) firstView.pose(me().fig, { gun: me().gp?.kind ?? null, ads: state.ads, sprint: Boolean(state.keys.run) });
+  }
   function follow(dt) {
     const c = state.cam;
     const p = me().st;
@@ -3083,6 +3125,7 @@ export async function create(canvas, ctx) {
       if (state.phase === 'ride') stepRide(dt);
       else stepWalk(dt);
       follow(dt);
+      firstPerson();
       if (state.phase === 'walk' || state.phase === 'ride') {
         const tg = target();
         state.tg = tg;
@@ -3132,6 +3175,29 @@ export async function create(canvas, ctx) {
     if (assault && state.phase === 'walk') {
       const { atYou } = assault.update(dt, state.off ? null : me().st);
       for (const s of atYou) {
+        // (a blade's stroke, or the arena's edge: on you, not a bolt)
+        if (s.melee) {
+          if (state.off) continue;
+          const from = s.from ? { x: s.from[0], z: s.from[1] } : null;
+          // (a blade's stroke meets your guard as a duellist's does: a parry staggers it, a block spends the guard)
+          const m = s.oob ? null : met(s, { saber: me().saber, blockAt: state.blockAt, now: state.t, window: PARRY.window * perks.parry, guard: state.guard, cost: me().saber?.stance.cost });
+          if (m && m.how !== 'hit') {
+            const p = me().st;
+            fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', m.how === 'parry' ? 26 : 14);
+            if (m.how === 'parry') {
+              sounds.combat?.('parry');
+              s.parried?.();
+              state.blockAt = null;
+              emit({ type: 'parry' });
+            } else {
+              sounds.saber?.('clash');
+              state.guard = m.guard;
+            }
+            continue;
+          }
+          hurt(s.damage, from);
+          continue;
+        }
         // (and where it came from, for the way you fall; one through your mate on the way hits it)
         boltPlay.enemy({ from: s.from, spread: s.spread, color: s.color, damage: s.damage }, me().st, state.t);
       }
@@ -3379,9 +3445,11 @@ export async function create(canvas, ctx) {
   // (DEV, the effects' before-and-after shots: one fired a few metres before
   // you, in the game's look, or with { look: 'site' } the site's own alone:
   // impact.<metal|stone|snow|sand>, blast.<grenade|speeder|fighter|walker>,
-  // push; `at` [x, z] puts it there instead)
+  // push; `at` [x, z] puts it there instead. Laid on the page's own
+  // window.__surface (SurfaceView.jsx's debug read, which the battle checks
+  // call), not in place of it)
   if (import.meta.env.DEV)
-    window.__surface = {
+    window.__surface = Object.assign(typeof window.__surface === 'function' ? window.__surface : () => null, {
       fx(name, { look = 'game', ahead = 6, colour = me().spec.bolt ?? '#ff3b30', at: spot = null } = {}) {
         const st = me().st;
         const fwd = new V(Math.sin(st.yaw), 0, Math.cos(st.yaw));
@@ -3416,7 +3484,7 @@ export async function create(canvas, ctx) {
         return false;
       },
       gameFx,
-    };
+    });
   if (import.meta.env.DEV)
     window.__surfaceScene = {
       scene,
@@ -3737,10 +3805,12 @@ export async function create(canvas, ctx) {
       if (!import.meta.env.DEV) return null;
       if (how === 'audit') return chase?.audit() ?? null;
       if (assault) {
-        // (a battle: 'side' and 'deploy' as the HUD does them, 'win' or 'lose' to end it)
+        // (a battle: 'side' and 'deploy' as the HUD does them, 'win' or 'lose' to end it; 'score' in Heroes vs Villains)
         if (how === 'side') chooseSide(arg);
         else if (how === 'deploy') deployAt(arg);
         else if (how === 'win' || how === 'lose') assault.force(how);
+        // (Heroes vs Villains: a point to a side, its foe's target down)
+        else if (how === 'score') assault.score?.(arg);
         ctx.invalidate();
         return assault.view();
       }
