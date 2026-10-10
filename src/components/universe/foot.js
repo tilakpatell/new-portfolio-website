@@ -428,7 +428,10 @@ export function footBodies({ me = null, mate = null, troops = [], R }) {
 // What stops a bolt on a planet of radius R: the ground (the sphere) and
 // each obstacle ({ n, r }, as walk() goes round), standing `top` (or as
 // tall as it's wide, and never less than STANDS) from the ground; a trench
-// is a hole, not a wall. → (a, b) → { at, normal } | null.
+// is a hole, not a wall. One marked `pass` is walked round but not shot
+// at (a fixed thing a landing's physics holds: its own body there, the
+// pole you see, stops a bolt, landings/physics.js). → (a, b) → { at,
+// normal } | null.
 export function footSolids(obstacles, R) {
   return (a, b) => {
     const d = add(b, a, -1);
@@ -451,7 +454,7 @@ export function footSolids(obstacles, R) {
     }
     const mid = add(a, d, 0.5);
     for (const o of obstacles) {
-      if (!o.n) continue;
+      if (!o.n || o.pass) continue;
       const top = o.top ?? Math.max(o.r * 2, STANDS);
       const foot = scale(o.n, R);
       // (too far off this segment to matter)

@@ -2791,8 +2791,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     for (let k = 0; fed < list.length && k < 60; fed++, k++) {
       const b = list[fed];
       // (a fixed one walls the walk as well: its post stops what's knocked,
-      // but nothing in the engine stops a walker)
-      if (!lp.add({ position: b.position, quaternion: b.quaternion, scale: b.scale, box: b.box, body: b.body, user: b }) || b.body.fixed) rocks.solids.push(...b.solids);
+      // but nothing in the engine stops a walker; its circle a bolt passes,
+      // as its own body, the pole you see, is what stops one: lp.shot)
+      if (!lp.add({ position: b.position, quaternion: b.quaternion, scale: b.scale, box: b.box, body: b.body, user: b })) rocks.solids.push(...b.solids);
+      else if (b.body.fixed) rocks.solids.push(...b.solids.map((o) => ({ ...o, pass: true })));
     }
     // the fixed things (their walk circles, as they arrive) and the parked
     // ship, as walls: what's knocked stops at them
