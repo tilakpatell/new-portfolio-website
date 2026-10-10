@@ -523,7 +523,7 @@ function sideRow(root, era, level, side, refused) {
     vehicleKits: keep(kitsIn(root, t.Vehicles, missing, 'vehicles')),
     heroVehicles: keep(kitsIn(root, t.HeroVehicles, missing, 'hero vehicles')).map(shortName),
     abilities: drop((t.AllPlayerAbilities ?? []).filter((v) => v?.$asset).map((v) => v.$asset)).map(shortName),
-    emotes: (t.AllPlayerEmotes ?? []).filter((v) => v?.$asset).map((v) => shortName(v.$asset)),
+    emotes: drop((t.AllPlayerEmotes ?? []).filter((v) => v?.$asset).map((v) => v.$asset)).map(shortName),
     voiceLines: drop((t.AllPlayerVoiceLines ?? []).filter((v) => v?.$asset).map((v) => v.$asset)).map(shortName),
     _missing: missing,
   };
