@@ -110,9 +110,20 @@ function patternsOf(root, name) {
 function queryRow(root, name) {
   const asset = follow(root, name);
   if (!asset) return null;
-  return asset.objects
+  // (one source for the query: its terms are its own objects)
+  const terms = asset.objects
     .filter((o, i) => i !== asset.root && o)
-    .map((o) => (Array.isArray(o.X) ? { term: o.XStyle ?? o.$type, from: o.FromPosition ?? null, to: o.ToPosition ?? null, x: o.X, score: o.Score, _source: where(asset, o) } : { term: o.$type, ...group(asset, o) }));
+    .map((o) => {
+      if (Array.isArray(o.X)) return { term: o.XStyle ?? o.$type, from: o.FromPosition ?? null, to: o.ToPosition ?? null, x: o.X, score: o.Score };
+      // (a curve as its points; a spline's tangents kept, a linear one's are the editor's)
+      if (o.$type === 'FloatCurve') {
+        const pts = o.Points ?? [];
+        const spline = pts.some((pt) => pt.CurveType && pt.CurveType !== 'FloatCurveType_Linear');
+        return { term: 'curve', points: pts.map((pt) => [pt.X, pt.Y]), ...(spline ? { spline: true, tangents: pts.map((pt) => [pt.InTangentOffsetX, pt.InTangentOffsetY, pt.OutTangentOffsetX, pt.OutTangentOffsetY]) } : {}) };
+      }
+      return { term: o.$type, ...Object.fromEntries(numbersOf(o)) };
+    });
+  return { terms, _source: `${name}#CoverQueryData` };
 }
 
 // The difficulty settings: per difficulty and game type, its numbers and the
@@ -165,7 +176,7 @@ export function aiRulebook(root) {
       constants: constants ? group(constants, rootOf(constants), 3) : null,
       zones: Object.fromEntries(named(root, /^AI\/BattleAI\/Cover\/CoverZones\/[^/]+$/).map((n) => {
         const a = follow(root, n);
-        return [shortName(n), (rootOf(a).Zones ?? []).map((z, i) => ({ ...Object.fromEntries(numbersOf(z)), _source: `${n}#CoverZoneDefinition.Zones.${i}` }))];
+        return [shortName(n), { zones: (rootOf(a).Zones ?? []).map((z) => Object.fromEntries(numbersOf(z))), _source: `${n}#CoverZoneDefinition.Zones` }];
       })),
       queries: short(/^AI\/BattleAI\/Cover\/Queries\/[^/]+$/, queryRow),
     },

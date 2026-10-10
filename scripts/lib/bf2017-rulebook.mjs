@@ -335,7 +335,7 @@ export function kitRow(root, kitName) {
     const m = reach(root, v, missing, 'default weapon');
     const unlock = m && m.obj.UnlockToCreate && reach(root, m.obj.UnlockToCreate, missing, 'weapon unlock');
     const bp = unlock?.obj.NonStreamedBlueprint?.$asset;
-    if (bp) Object.assign(row, { weapon: weaponId(bp), weapon_source: `${m.asset.name}#${m.obj.$type}.UnlockToCreate` });
+    if (bp) Object.assign(row, { weapon: weaponId(bp), weapon_source: `${m.asset.name}#${m.obj.$type}.UnlockToCreate`, weaponUnlock: unlock.asset.name });
   }
   const custom = gp && deref(gp.asset, gp.obj.Abilities);
   const listed = (key) => (custom?.[key] ?? []).filter((v) => v?.$asset);
@@ -358,7 +358,7 @@ export function kitRow(root, kitName) {
       const pickd = part?.SelectableUnlocks?.[part.DefaultSelectionIndex ?? 0];
       if (!part?.SelectableUnlocks?.some((u) => unlocks.has(u?.$asset)) || !pickd) continue;
       const bp = follow(root, pickd) && rootOf(follow(root, pickd)).NonStreamedBlueprint?.$asset;
-      if (bp) Object.assign(row, { weapon: weaponId(bp), weapon_source: `${kit.name}#CustomizationUnlockParts.SelectableUnlocks.${part.DefaultSelectionIndex ?? 0}` });
+      if (bp) Object.assign(row, { weapon: weaponId(bp), weapon_source: `${kit.name}#CustomizationUnlockParts.SelectableUnlocks.${part.DefaultSelectionIndex ?? 0}`, weaponUnlock: pickd.$asset });
       break;
     }
   }
@@ -404,7 +404,7 @@ export function heroRow(root, kitName, { side = null } = {}) {
     const gp = follow(root, rootOf(kit).Gameplay);
     const custom = gp && deref(gp, rootOf(gp).Abilities);
     const v = (custom?.DefaultAbilities ?? []).find((x) => x?.$asset && slotOf(rootOf(follow(root, x) ?? { objects: [{}], root: 0 })?.Category) === 'primary');
-    return v ? shortName(v.$asset) : null;
+    return v ? v.$asset : null;
   })();
   const id = folder.split('/')[3].toLowerCase();
   return {
@@ -414,7 +414,8 @@ export function heroRow(root, kitName, { side = null } = {}) {
     side: side ?? sideOf(root, kit),
     armour: armour.map((n) => follow(root, n)).filter(Boolean).map((a) => rootOf(a).MaxHealth),
     armour_source: armour.map((n) => `${n}#MaxHealthAffectorAsset.MaxHealth`).join(' '),
-    primary,
+    primary: primary ? shortName(primary) : null,
+    primaryAsset: primary,
     saber: /Lightsaber/.test(blueprint) ? { blueprint: shortName(blueprint), deflect: deflect ? shortName(deflect) : null } : null,
     clipPrefix: shortName(blueprint).replace(/^Hero_(Lightsaber|Weapon)_?/, '') || null,
   };

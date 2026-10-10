@@ -11,6 +11,7 @@
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs <name> [--lod all|<n>[,<n>…]] [--parts '<glob>,…'] [--no-textures] [--collision]
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs --list '<glob over name>'
 //   node --env-file=.env.local scripts/bf2017-fetch.mjs data '<glob over record name>' […]
+//   node --env-file=.env.local scripts/bf2017-fetch.mjs web '<glob under web/>' […]
 //
 //   manifest     web/models.jsonl (about 25 MB), which every other command reads
 //   name         a model's `name` in the manifest (characters/hero/luke/luke_rotj_01/luke_rotj_01_mesh)
@@ -22,6 +23,8 @@
 //   data         gameplay records (data/<Name>.json.gz) whose names match the
 //                globs (`*` within a folder, `**` across), and data.tsv, their
 //                index, into lab/assets/bf2017/: the extractor's --root
+//   web          files of the web build (svg/**, fonts/…, maps/…, strings/…),
+//                and the listing of their folders in web/files.txt
 //
 // The keys: SUPABASE_URL and BF2017_KEY (or SUPA_KEY, the same key under the
 // name the cloud sessions hold it by) from the environment, never printed.
@@ -189,6 +192,36 @@ export async function fetchData(env, root, globs) {
   return results;
 }
 
+// Files of the web build (`web/<glob>`: svg, fonts, maps, strings) and a
+// listing of everything under the globs' folders in `web/files.txt`, so the
+// extractor knows the 23 fonts without fetching 46 MB of them.
+export async function fetchWeb(env, root, globs) {
+  const results = [];
+  const listed = new Set();
+  const listing = join(root, 'web', 'files.txt');
+  if (existsSync(listing)) for (const l of (await readFile(listing, 'utf8')).split('\n')) if (l) listed.add(l);
+  for (const glob of globs) {
+    const re = globRegExp(glob);
+    const dir = globDir(glob);
+    const names = (await listUnder(env, dir ? `web/${dir}` : 'web')).map((p) => p.slice('web/'.length));
+    names.forEach((n) => listed.add(n));
+    const want = names.filter((n) => re.test(n));
+    if (!want.length) console.log(`${glob}: nothing matches`);
+    let next = 0;
+    const worker = async () => {
+      while (next < want.length) {
+        const r = await getObject(env, root, `web/${want[next++]}`);
+        say(r);
+        results.push(r);
+      }
+    };
+    await Promise.all(Array.from({ length: POOL }, worker));
+  }
+  await mkdir(dirname(listing), { recursive: true });
+  await writeFile(listing, [...listed].sort().join('\n') + '\n');
+  return results;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
   const root = join(ROOT, 'lab', 'assets', 'bf2017');
@@ -203,6 +236,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(1);
     }
     await fetchData(keys(), root, args._.slice(1));
+  } else if (what === 'web') {
+    if (args._.length < 2) {
+      console.error("usage: node scripts/bf2017-fetch.mjs web '<glob under web/>' […]");
+      process.exit(1);
+    }
+    await fetchWeb(keys(), root, args._.slice(1));
   } else if (what === 'manifest') {
     say(await getObject(keys(), root, MANIFEST));
   } else if (what) {
@@ -214,7 +253,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(1);
     });
   } else {
-    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | data '<glob>' […] | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] | --list '<glob>'");
+    console.error("usage: node --env-file=.env.local scripts/bf2017-fetch.mjs manifest | data '<glob>' […] | web '<glob>' […] | <name> [--lod all|0,2] [--parts '<glob>,…'] [--no-textures] [--collision] | --list '<glob>'");
     process.exit(1);
   }
 }

@@ -199,11 +199,14 @@ const hex = (n) => (n >>> 0).toString(16).toUpperCase().padStart(8, '0');
 const xy = (p, a = 'X', b = 'Y') => (p ? [p[a], p[b]] : null);
 
 function elementOf(root, asset, o, depth, missing) {
-  const node = { type: typeOf(o.$type), name: o.InstanceName || null, anchor: xy(o.Anchor), size: xy(o.Size, 'x', 'y'), offset: xy(o.Offset), position: xy(o.Position), colour: v3(o.Color), alpha: o.Alpha ?? 1, _source: where(asset, o) };
+  // (a node's numbers are covered by its widget's `_source`; a widget
+  // reference names the record its subtree comes from)
+  const node = { type: typeOf(o.$type), name: o.InstanceName || undefined, anchor: xy(o.Anchor), size: xy(o.Size, 'x', 'y'), offset: xy(o.Offset), position: xy(o.Position), colour: v3(o.Color), alpha: o.Alpha ?? 1 };
   if (typeof o.PaletteIndex === 'number') node.palette = o.PaletteIndex;
   if (o.$type === 'TextElementData') Object.assign(node, { stringHash: o.StaticStringIdHash ? hex(o.StaticStringIdHash) : null, font: o.FontStyle?.$asset ? shortName(o.FontStyle.$asset) : null, minSize: o.MinimumFontSize, align: [o.HorizontalAlignment, o.VerticalAlignment].map((s) => String(s ?? '').replace(/^UIText(Horizontal|Vertical)Alignment_/, '').toLowerCase()) });
   if (o.$type === 'UIElementWidgetReferenceEntityData' && o.Blueprint?.$asset) {
     node.widget = shortName(o.Blueprint.$asset);
+    node._source = `${o.Blueprint.$asset}#UIWidgetBlueprint`;
     if (depth > 0) {
       const sub = widgetOf(root, o.Blueprint.$asset, depth - 1, missing);
       if (sub) node.children = sub.children;
@@ -221,7 +224,7 @@ function widgetOf(root, name, depth, missing) {
   }
   const children = objectsOf(asset, 'UIElementLayerEntityData').flatMap((l) => (l.Elements ?? []).map((r) => deref(asset, r)).filter(Boolean).map((e) => elementOf(root, asset, e, depth, missing)));
   const texts = [...new Set(objectsOf(asset, 'CheckedLocalizedStringEntityData').map((s) => s.Sid).filter(Boolean))];
-  return { asset: name, children, texts };
+  return { asset: name, children, texts, _source: `${name}#UIWidgetBlueprint` };
 }
 
 // The icons the game draws in play (class, hero, weapon, objective, pickup…).
