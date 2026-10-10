@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { checkLedger, readConsumers, walkListing } from './bf2017-coverage.mjs';
+import { checkLedger, readConsumers, resolveLevels, walkListing } from './bf2017-coverage.mjs';
 import { normalise } from './lib/bf2017-coverage.mjs';
 
 describe('walkListing', () => {
@@ -46,7 +46,26 @@ describe('readConsumers', () => {
     const c = await readConsumers(root);
     for (const n of ['vehicle_air_awing_01_static_donotuse_mesh', 'luke_rotj_01_mesh']) expect(c.by.get(n)).toBe('src/data/galaxyAssets.json');
     for (const n of ['rock_01_mesh', 'rock_02_mesh', 'wall_01_mesh']) expect(c.by.get(n)).toBe('public/models/galaxy/bf2017/levels/hoth/level.json');
-    expect(c.names.has(normalise('map:levels/mp/hoth_01/hoth_01'))).toBe(true);
+    expect(c.names.has(normalise('mapref:levels/mp/hoth_01'))).toBe(true);
+  });
+});
+
+describe('resolveLevels', () => {
+  const rows = [
+    { part: 'maps', name: 'Levels/SP/A1/M1END/DS02', keys: ['map:levels/sp/a1/m1end/ds02'] },
+    { part: 'maps', name: 'Levels/MP/Tatooine_01/Tatooine_01', keys: ['map:levels/mp/tatooine_01/tatooine_01'] },
+    { part: 'terrain', name: 'Levels/MP/Tatooine_01/Terrain/Terrain', keys: ['terrain:levels/mp/tatooine_01/terrain/terrain'] },
+    { part: 'terrain', name: 'S9_3/Hoth_02/Hoth_01_Terrain/Hoth_01_Terrain', keys: ['terrain:s9_3/hoth_02/hoth_01_terrain/hoth_01_terrain'] },
+    { part: 'terrain', name: 'Levels/SP/A1/M1END/TerrainEndor/Endor_Terrain', keys: ['terrain:levels/sp/a1/m1end/terrainendor/endor_terrain'] },
+  ];
+  it('finds a pack’s map as written or doubled, and the terrains under its folder', () => {
+    const c = { names: new Set(['mapref:levels/sp/a1/m1end/ds02', 'mapref:levels/mp/tatooine_01']), by: new Map([['mapref:levels/sp/a1/m1end/ds02', 'a/level.json'], ['mapref:levels/mp/tatooine_01', 'b/level.json']]) };
+    resolveLevels(c, rows);
+    expect(c.by.get('map:levels/sp/a1/m1end/ds02')).toBe('a/level.json');
+    expect(c.by.get('map:levels/mp/tatooine_01/tatooine_01')).toBe('b/level.json');
+    expect(c.by.get('terrain:levels/mp/tatooine_01/terrain/terrain')).toBe('b/level.json');
+    expect(c.by.get('terrain:levels/sp/a1/m1end/terrainendor/endor_terrain')).toBe('a/level.json');
+    expect(c.names.has('terrain:s9_3/hoth_02/hoth_01_terrain/hoth_01_terrain')).toBe(false);
   });
 });
 
@@ -60,7 +79,10 @@ describe('checkLedger', () => {
   it('fails an unowned row', () => {
     expect(checkLedger([{ name: 'c', state: 'unowned', by: '' }], owners)).toMatchObject({ ok: false, unowned: ['c'] });
   });
+  it('fails a row owned by a lane the table does not know', () => {
+    expect(checkLedger([{ name: 'd', state: 'owned', by: 'Zz' }], owners)).toMatchObject({ ok: false, unknown: [{ name: 'd', lane: 'Zz' }] });
+  });
   it('passes a ledger that is all used, owned by open lanes, or excluded', () => {
-    expect(checkLedger([{ name: 'a', state: 'used', by: 'x' }, { name: 'b', state: 'owned', by: 'O' }, { name: 'c', state: 'excluded', by: 'era' }], owners)).toEqual({ ok: true, unowned: [], stale: [] });
+    expect(checkLedger([{ name: 'a', state: 'used', by: 'x' }, { name: 'b', state: 'owned', by: 'O' }, { name: 'c', state: 'excluded', by: 'era' }], owners)).toEqual({ ok: true, unowned: [], stale: [], unknown: [] });
   });
 });

@@ -107,8 +107,7 @@ export async function readConsumers(root, { fetchPack = null } = {}) {
     for (const c of Object.values(readJson(at('src/data/modelCredits.json')))) {
       if (!String(c.title ?? '').startsWith(PREFIX)) continue;
       const path = c.title.slice(PREFIX.length).trim();
-      names.push(path);
-      if (/^levels\//.test(path)) names.push(`map:${path}/${path.split('/').pop()}`);
+      names.push(path, `mapref:${path}`);
     }
     add(at('src/data/modelCredits.json'), names);
   }
@@ -117,11 +116,10 @@ export async function readConsumers(root, { fetchPack = null } = {}) {
   for (const file of filesUnder(at('public/models/galaxy/bf2017/levels'), (f) => f.endsWith('level.json'))) {
     const pack = readJson(file);
     const names = [];
+    // (the map and its terrain by the name the pack gives: resolveLevels finds the rows)
     if (pack.map) {
-      const map = pack.map.split('/').pop() === pack.map.split('/').at(-2) ? pack.map : `${pack.map}/${pack.map.split('/').pop()}`;
-      names.push(`map:${map}`);
-      if (pack.terrain) names.push(`terrain:${map.split('/').slice(0, -1).join('/')}/${map.split('/').pop()}_terrain/${map.split('/').pop()}_terrain`);
-      for (const kind of ['lights', 'decals', 'actors', 'vehicles', 'effects']) if (existsSync(join(dirname(file), `${kind}.json`))) names.push(`map:${map}.${kind}`);
+      names.push(`mapref:${pack.map}`);
+      for (const kind of ['lights', 'decals', 'actors', 'vehicles', 'effects']) if (existsSync(join(dirname(file), `${kind}.json`))) names.push(`mapextra:${kind}:${pack.map}`);
     }
     names.push(...(pack.meshes ?? []).map((m) => m.name));
     names.push(...Object.keys(pack.tex ?? {}));
@@ -141,12 +139,47 @@ export async function readConsumers(root, { fetchPack = null } = {}) {
   return consumersOf(byFile);
 }
 
-// The gate: no row unowned, and no row owned by a lane that has merged
+// A level named by a pack or a credit (`mapref:<path>`, `mapextra:<kind>:<path>`)
+// is found among the map rows as written or with its last folder doubled
+// (levels/mp/hoth_01 → levels/mp/hoth_01/hoth_01; levels/sp/a1/m1end/ds02 as
+// it is); the terrains under that map's folder are its terrain (the
+// manifest names them every way: terrain/terrain, hoth_01_terrain/…,
+// terrainkessel_01/…). Adds the rows' own keys to the consumers.
+export function resolveLevels(consumers, rows) {
+  const maps = new Map(rows.filter((r) => r.part === 'maps').map((r) => [r.keys[0], r]));
+  const terrains = rows.filter((r) => r.part === 'terrain');
+  const give = (k, by) => {
+    consumers.names.add(k);
+    if (!consumers.by.has(k)) consumers.by.set(k, by);
+  };
+  for (const key of [...consumers.names]) {
+    const m = key.match(/^(mapref|mapextra):(?:([a-z]+):)?(.*)$/);
+    if (!m) continue;
+    const [, kind, extra, ref] = m;
+    const by = consumers.by.get(key);
+    const last = ref.split('/').pop();
+    const row = maps.get(`map:${ref}`) ?? maps.get(`map:${ref}/${last}`);
+    if (!row) continue;
+    if (kind === 'mapextra') {
+      give(`${row.keys[0]}.${extra}`, by);
+      continue;
+    }
+    give(row.keys[0], by);
+    const folder = row.keys[0].slice('map:'.length, row.keys[0].lastIndexOf('/'));
+    for (const t of terrains) if (t.keys[0].startsWith(`terrain:${folder}/`)) give(t.keys[0], by);
+  }
+  return consumers;
+}
+
+// The gate: no row unowned, no row owned by a lane that has merged, and no
+// row owned by a lane the table does not know
 export function checkLedger(rows, lanes = LANES) {
+  const known = new Set(lanes.map((l) => l.lane));
   const merged = new Map(lanes.filter((l) => l.merged).map((l) => [l.lane, l.merged]));
   const unowned = rows.filter((r) => r.state === 'unowned').map((r) => r.name);
   const stale = rows.filter((r) => r.state === 'owned' && merged.has(r.by)).map((r) => ({ name: r.name, lane: r.by, merged: merged.get(r.by) }));
-  return { ok: !unowned.length && !stale.length, unowned, stale };
+  const unknown = rows.filter((r) => r.state === 'owned' && !known.has(r.by)).map((r) => ({ name: r.name, lane: r.by }));
+  return { ok: !unowned.length && !stale.length && !unknown.length, unowned, stale, unknown };
 }
 
 // --- the fetch and the write -------------------------------------------------
@@ -223,6 +256,7 @@ export async function build({ text, listing }, { root = ROOT, fetchPack = publis
   const consumers = await readConsumers(root, { fetchPack });
   const listed = listingOf(listing);
   const rows = rowsOf(manifests);
+  resolveLevels(consumers, rows);
   // the bucket's own manifests are read by this script and the fetch
   for (const p of MANIFESTS) {
     const k = normalise(`${p.includes('/', 4) ? p.split('/')[1] : 'index'}:${p.replace(/^web\//, '')}`);
@@ -267,8 +301,9 @@ async function main() {
     console.log(`coverage: ${counts(rows)}`);
     for (const n of r.unowned.slice(0, 20)) console.log(`  unowned  ${n}`);
     for (const s of r.stale.slice(0, 20)) console.log(`  stale    ${s.name}  (lane ${s.lane}, merged in #${s.merged}, still not used)`);
+    for (const u of r.unknown.slice(0, 20)) console.log(`  unknown  ${u.name}  (lane ${u.lane} is not in LANES)`);
     if (!r.ok) {
-      console.log(`coverage: ${r.unowned.length} unowned, ${r.stale.length} owned by a merged lane. Use them, or name their lane in scripts/lib/bf2017-owners.mjs.`);
+      console.log(`coverage: ${r.unowned.length} unowned, ${r.stale.length} owned by a merged lane, ${r.unknown.length} by an unknown one. Use them, or name their lane in scripts/lib/bf2017-owners.mjs.`);
       process.exit(1);
     }
     console.log('coverage: every object is used, owned by an open lane, or excluded by a rule.');

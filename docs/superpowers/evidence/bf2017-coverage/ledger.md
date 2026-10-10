@@ -1,6 +1,6 @@
 # The Battlefront II (2017) drop: the coverage ledger
 
-Written 2026-10-10 15:14 UTC from the bucket (113,464 objects listed) by `scripts/bf2017-coverage.mjs`. One row per object (a model with all its LOD files; a map and each of its five extras kinds; `data/` by top folder and record type), each in one state: used, owned, excluded, not-uploaded, unowned. `npm run coverage:bf2017` fails while any row is unowned, or owned by a lane that has merged.
+Written 2026-10-10 15:16 UTC from the bucket (113,464 objects listed) by `scripts/bf2017-coverage.mjs`. One row per object (a model with all its LOD files; a map and each of its five extras kinds; `data/` by top folder and record type), each in one state: used, owned, excluded, not-uploaded, unowned. `npm run coverage:bf2017` fails while any row is unowned, or owned by a lane that has merged.
 
 **Rows:** 80,837 · used 2,428 · owned 59,904 · excluded 13,837 · not-uploaded 4,668 · unowned 0
 

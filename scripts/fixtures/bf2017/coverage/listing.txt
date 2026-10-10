@@ -93,7 +93,7 @@ web/strings/English.json
 web/strings/keys.json
 web/svg/S1/UI/SVG/BossVehicles/Icon_AT-M6.svg
 web/svg/UI/SVG/Icons/Icon_Blaster.svg
-web/terrain/levels/mp/hoth_01/terrain/hoth_01_terrain_height.png
+web/terrain/levels/mp/hoth_01/hoth_01_terrain/hoth_01_terrain_height.png
 web/terrain/levels/mp/jakku_01/terrain/jakku_terrain_height.png
 web/textures/characters/hero/kyloren/t_kylo_cs.ktx2
 web/textures/characters/hero/luke/luke_rotj_01/t_luke_rotj_01_cs.ktx2
