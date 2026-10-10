@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { IN_FLIGHT, UPLOADS_PER_FRAME, createGroundCore, gridFor } from './groundCore';
 import { MAX_DEPTH, leafOf, sizeAt } from '../../../lib/land/flight/quadtree';
-import { fakeSink, fakeWorkers, flush, settle, spec } from './fixtures/ground';
+import { answerFor, fakeSink, fakeWorkers, flush, settle, spec } from './fixtures/ground';
+import { CLUTTER_KINDS, SOLID } from '../../../lib/land/flight/leafMesh';
 
 describe('the ground on the page', () => {
   it('keeps the spec’s numbers', () => {
@@ -135,5 +136,24 @@ describe('the ground on the page', () => {
     expect(sink.clutter.size).toBe(0);
     for (const k of flying) expect(workers.cancelled).toContain(k);
     expect(workers.closed).toBe(true);
+  });
+
+  it('counts a city’s towers as ground: their tops inside their footprints, the street beside', async () => {
+    const tower = CLUTTER_KINDS.indexOf('tower');
+    const workers = fakeWorkers({
+      answer: (m) => {
+        const a = answerFor(m);
+        // a tower 3 × 100 m tall on the leaf at (0, 0)'s middle, as the worker would place it
+        if (m.leaf.d === MAX_DEPTH && m.leaf.ix === 0 && m.leaf.iz === 0) a.clutter = new Float32Array([128, 11, 128, 0, 3, tower]);
+        return a;
+      },
+    });
+    const core = createGroundCore({ workers, sink: fakeSink(), spec, tier: 'ultra' });
+    await settle(core, workers, { x: 10, z: 10 });
+    expect(core.heightUnder(128, 128)).toBe(11 + SOLID.tower.h * 3);
+    expect(core.heightUnder(128 + SOLID.tower.r * 3 - 1, 128)).toBe(11 + 300);
+    expect(core.heightUnder(128 + SOLID.tower.r * 3 + 1, 128)).toBe(11);
+    // from the next leaf over, still
+    expect(core.heightUnder(256 + 5, 128)).toBe(11);
   });
 });

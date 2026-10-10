@@ -1435,12 +1435,16 @@ const MODELS = [
   ['starwars', '/models/universe/star-destroyer.glb', 'escort2'],
 ];
 
-// Load the models one by one, handing each over as it arrives; a model that
-// fails is skipped.
-export function loadModels(onModel) {
+// the planets that have models of their own
+export const MODEL_PLANETS = [...new Set(MODELS.map(([id]) => id))];
+
+// Load a planet's models (`ids`: the planets'; every one's without),
+// handing each over as it arrives; a model that fails is skipped. The
+// scene asks for a planet's as it comes near (nearby.js)
+export function loadModels(onModel, ids = null) {
   const loader = gltfLoader();
   return Promise.all(
-    MODELS.map(([id, url, spot]) =>
+    MODELS.filter(([id]) => !ids || ids.includes(id)).map(([id, url, spot]) =>
       loader
         .loadAsync(url)
         .then((g) => onModel(id, g.scene, spot))
