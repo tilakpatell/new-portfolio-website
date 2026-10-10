@@ -767,6 +767,36 @@
     "from": "characters/hero/darthvader/darthvader_01/darthvader_01_mesh",
     "tier": "ultra"
   },
+  "models/galaxy/bf2017/fx/blast.512.ktx2": {
+    "hash": "b9f488195c95",
+    "bytes": 119762,
+    "from": "models/galaxy/bf2017/fx/blast.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/fx/debris.metal.512.ktx2": {
+    "hash": "b6e8cc69dbac",
+    "bytes": 86180,
+    "from": "models/galaxy/bf2017/fx/debris.metal.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/fx/impact.256.ktx2": {
+    "hash": "d01769a6be3f",
+    "bytes": 73560,
+    "from": "models/galaxy/bf2017/fx/impact.256.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/fx/impact.512.ktx2": {
+    "hash": "366a0c9f8fc7",
+    "bytes": 286838,
+    "from": "models/galaxy/bf2017/fx/impact.512.ktx2",
+    "tier": "pack"
+  },
+  "models/galaxy/bf2017/fx/scorch.metal.512.ktx2": {
+    "hash": "4717164cc22a",
+    "bytes": 146633,
+    "from": "models/galaxy/bf2017/fx/scorch.metal.512.ktx2",
+    "tier": "pack"
+  },
   "models/galaxy/bf2017/walrus.glb": {
     "hash": "da04ad0d6bcd",
     "bytes": 33464,
