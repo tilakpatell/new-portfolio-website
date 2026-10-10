@@ -3,16 +3,52 @@
 // It draws what the pool says and decides nothing, so every world's bolts
 // look the same and fly the same.
 //
-// createBoltMeshes(parent, { pool = 48, flashes = 12 }) → { sync(live),
-// flash(at), update(dt), dispose() }; `live`: the pool's live() (each
-// { pos, dir, flown, colour }); `at`: an [x, y, z] or anything with x, y, z.
+// createBoltMeshes(parent, { pool = 48, flashes = 12, look = 'game' }) →
+// { sync(live), flash(at), update(dt), setLook({ burst, ramp }), dispose() };
+// `live`: the pool's live() (each { pos, dir, flown, colour }); `at`: an
+// [x, y, z] or anything with x, y, z.
+//
+// A flash is the 2017 game's burst where the bucket had it (lib/three/fx/
+// gameLook's `impact`, its green the burst's rays, cooling along the game's
+// black-body ramp), else a soft hot disc as it always was; all of them one
+// instanced draw. `look: null` loads nothing (setLook hands one in).
 
 import * as THREE from 'three';
+import { loadLook } from '../fx/gameLook';
+
+const FLASH_VERT = /* glsl */ `
+attribute vec2 aFlash; // age 0…1, size
+varying vec2 vUv;
+varying float vAge;
+void main() {
+  vUv = uv;
+  vAge = aFlash.x;
+  vec4 mv = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  mv.xy += position.xy * aFlash.y;
+  gl_Position = projectionMatrix * mv;
+}`;
+const FLASH_FRAG = /* glsl */ `
+uniform sampler2D uMap;
+uniform sampler2D uRamp;
+uniform float uHasMap;
+uniform float uHasRamp;
+uniform vec4 uChan;
+varying vec2 vUv;
+varying float vAge;
+void main() {
+  float k = 1.0 - vAge;
+  float r = length(vUv * 2.0 - 1.0);
+  // the game's rays, or a soft disc (the sphere it was, seen from anywhere)
+  float m = uHasMap > 0.5 ? dot(texture2D(uMap, vUv), uChan) * 1.6 : 1.0 - smoothstep(0.75, 1.0, r);
+  vec3 hot = uHasRamp > 0.5 ? texture2D(uRamp, vec2(0.02 + 0.96 * k, 0.5)).rgb * 3.2 : vec3(1.0, 0.816, 0.627) * 3.0;
+  gl_FragColor = vec4(hot * m * 0.6 * k, 1.0);
+}`;
+const CHAN = { r: [1, 0, 0, 0], g: [0, 1, 0, 0], b: [0, 0, 1, 0] };
 
 const LONG = 1.6; // m, a streak's length at full stretch
 const GLOW = 4; // over 1: the bloom catches it
 
-export function createBoltMeshes(parent, { pool = 48, flashes: nFlashes = 12 } = {}) {
+export function createBoltMeshes(parent, { pool = 48, flashes: nFlashes = 12, look = 'game' } = {}) {
   const group = new THREE.Group();
   group.name = 'bolts';
   parent.add(group);
@@ -35,18 +71,44 @@ export function createBoltMeshes(parent, { pool = 48, flashes: nFlashes = 12 } =
   const d = new THREE.Vector3();
   const Z = new THREE.Vector3(0, 0, 1);
 
-  const flashGeo = new THREE.SphereGeometry(0.35, 10, 8);
-  const flashes = Array.from({ length: nFlashes }, () => {
-    const m = new THREE.Mesh(flashGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd0a0').multiplyScalar(3), toneMapped: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-    m.visible = false;
-    group.add(m);
-    return { m, age: 9 };
+  // every flash, one draw: a quad facing the camera, swelling and cooling
+  const flashGeo = new THREE.PlaneGeometry(1, 1);
+  const flashAttr = new THREE.InstancedBufferAttribute(new Float32Array(nFlashes * 2), 2);
+  flashAttr.setUsage(THREE.DynamicDrawUsage);
+  flashGeo.setAttribute('aFlash', flashAttr);
+  const flashMat = new THREE.ShaderMaterial({
+    vertexShader: FLASH_VERT,
+    fragmentShader: FLASH_FRAG,
+    uniforms: { uMap: { value: null }, uRamp: { value: null }, uHasMap: { value: 0 }, uHasRamp: { value: 0 }, uChan: { value: new THREE.Vector4(...CHAN.g) } },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
   });
+  const flashMesh = new THREE.InstancedMesh(flashGeo, flashMat, nFlashes);
+  flashMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  flashMesh.count = 0;
+  flashMesh.frustumCulled = false;
+  flashMesh.renderOrder = 7;
+  group.add(flashMesh);
+  const flashes = Array.from({ length: nFlashes }, () => ({ at: new THREE.Vector3(), age: 9 }));
   let nf = 0;
+  const setLook = ({ burst = null, ramp = null } = {}) => {
+    const u = flashMat.uniforms;
+    u.uMap.value = burst;
+    u.uHasMap.value = burst ? 1 : 0;
+    u.uChan.value.set(...CHAN[burst?.userData.look?.channels?.burst ?? 'g']);
+    u.uRamp.value = ramp;
+    u.uHasRamp.value = ramp ? 1 : 0;
+  };
+  let gone = false;
+  if (look === 'game') Promise.all([loadLook('impact'), loadLook('ramp.blackbody')]).then(([burst, ramp]) => !gone && burst && setLook({ burst, ramp }));
 
   return {
     group,
     mesh,
+    flashes: flashMesh,
+    setLook,
     // each live bolt a streak behind its head, as long as it has flown (so
     // a fresh one doesn't poke back through the gun)
     sync(live) {
@@ -68,26 +130,35 @@ export function createBoltMeshes(parent, { pool = 48, flashes: nFlashes = 12 } =
     },
     flash(at) {
       const f = flashes[nf++ % flashes.length];
-      if (Array.isArray(at)) f.m.position.set(at[0], at[1], at[2]);
-      else f.m.position.set(at.x, at.y, at.z);
+      if (Array.isArray(at)) f.at.set(at[0], at[1], at[2]);
+      else f.at.set(at.x, at.y, at.z);
       f.age = 0;
-      f.m.visible = true;
     },
     update(dt) {
+      let n = 0;
       for (const f of flashes) {
-        if (!f.m.visible) continue;
+        if (f.age > 0.2) continue;
         f.age += dt;
-        f.m.scale.setScalar(0.6 + f.age * 3);
-        f.m.material.opacity = Math.max(0, 0.6 - f.age * 3);
-        if (f.age > 0.2) f.m.visible = false;
+        if (f.age > 0.2) continue;
+        // (0.35 m across at first, swelling: the sphere it was; the game's burst a touch wider for its rays)
+        flashMesh.setMatrixAt(n, m4.makeTranslation(f.at.x, f.at.y, f.at.z));
+        flashAttr.setXY(n, f.age / 0.2, 0.7 * (0.6 + f.age * 3) * (flashMat.uniforms.uHasMap.value ? 1.6 : 1));
+        n++;
+      }
+      flashMesh.count = n;
+      if (n) {
+        flashMesh.instanceMatrix.needsUpdate = true;
+        flashAttr.needsUpdate = true;
       }
     },
     dispose() {
       geo.dispose();
       mat.dispose();
       mesh.dispose();
+      gone = true;
       flashGeo.dispose();
-      for (const f of flashes) f.m.material.dispose();
+      flashMat.dispose();
+      flashMesh.dispose();
       group.removeFromParent();
     },
   };

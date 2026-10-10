@@ -7,9 +7,15 @@
 // orange to nothing).
 //
 // createBolts(parent, { count }) → { mesh, fire(from, to, { color, speed, width, length, onHit }), update(dt), busy, dispose() }
-// createFlashes(parent, { count }) → { at(point, { size, color, life }), update(dt, camera), busy, dispose() }
+// createFlashes(parent, { count, look }) → { at(point, { size, color, life }), update(dt, camera), setLook({ burst, ramp }), busy, dispose() }
+//
+// A flash takes the 2017 game's look where the bucket had it (lib/three/fx/
+// gameLook: the impact sheet's burst rays through its body, and the fire
+// cooling along the game's black-body ramp instead of to a dull red); where
+// not, or with `look: null`, it is drawn as it always was.
 
 import * as THREE from 'three';
+import { loadLook } from '../../lib/three/fx/gameLook';
 
 export const LASER = {
   empire: [0.5, 5.5, 0.9], // green
@@ -123,6 +129,11 @@ void main() {
   gl_Position = projectionMatrix * mv;
 }`;
 const FLASH_FRAG = /* glsl */ `
+uniform sampler2D uMap;
+uniform sampler2D uRamp;
+uniform float uHasMap;
+uniform float uHasRamp;
+uniform vec4 uChan;
 varying vec2 vUv;
 varying float vAge;
 varying float vBright;
@@ -135,18 +146,32 @@ void main() {
   float body = exp(-r * r * 3.0) * k * k;
   // white hot, cooling through the tint to a dull red; out to nothing at
   // the sprite's rim, not cut off there (a hard edge read as a solid disc)
-  vec3 col = vec3(4.0, 3.6, 3.1) * core + mix(vec3(1.4, 0.25, 0.05), vTint, k) * body * 1.8;
+  // (the game's burst: its rays through the body, kept to the same brightness overall)
+  if (uHasMap > 0.5) body *= 0.35 + 1.3 * dot(texture2D(uMap, vUv * 0.5 + 0.5), uChan);
+  vec3 cold = uHasRamp > 0.5 ? texture2D(uRamp, vec2(0.02 + 0.5 * k, 0.5)).rgb * 1.4 : vec3(1.4, 0.25, 0.05);
+  vec3 col = vec3(4.0, 3.6, 3.1) * core + mix(cold, vTint, k) * body * 1.8;
   col *= 1.0 - smoothstep(0.65, 1.0, r);
   gl_FragColor = vec4(col * vBright, 1.0);
 }`;
 
-export function createFlashes(parent, { count = 48 } = {}) {
+export function createFlashes(parent, { count = 48, look = 'game' } = {}) {
   const geo = new THREE.PlaneGeometry(2, 2);
   const flash = new Float32Array(count * 4);
   const tint = new Float32Array(count * 3);
   geo.setAttribute('aFlash', new THREE.InstancedBufferAttribute(flash, 4));
   geo.setAttribute('aTint', new THREE.InstancedBufferAttribute(tint, 3));
-  const mat = new THREE.ShaderMaterial({ vertexShader: FLASH_VERT, fragmentShader: FLASH_FRAG, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const uniforms = { uMap: { value: null }, uRamp: { value: null }, uHasMap: { value: 0 }, uHasRamp: { value: 0 }, uChan: { value: new THREE.Vector4(0, 1, 0, 0) } };
+  const mat = new THREE.ShaderMaterial({ vertexShader: FLASH_VERT, fragmentShader: FLASH_FRAG, uniforms, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const setLook = ({ burst = null, ramp = null } = {}) => {
+    uniforms.uMap.value = burst;
+    uniforms.uHasMap.value = burst ? 1 : 0;
+    const ch = burst?.userData.look?.channels?.burst ?? 'g';
+    uniforms.uChan.value.set(ch === 'r' ? 1 : 0, ch === 'g' ? 1 : 0, ch === 'b' ? 1 : 0, 0);
+    uniforms.uRamp.value = ramp;
+    uniforms.uHasRamp.value = ramp ? 1 : 0;
+  };
+  let gone = false;
+  if (look === 'game') Promise.all([loadLook('impact'), loadLook('ramp.blackbody')]).then(([burst, ramp]) => !gone && setLook({ burst, ramp }));
   const mesh = new THREE.InstancedMesh(geo, mat, count);
   mesh.frustumCulled = false;
   mesh.count = 0;
@@ -155,6 +180,7 @@ export function createFlashes(parent, { count = 48 } = {}) {
   const free = Array.from({ length: count }, () => ({ at: new THREE.Vector3(), age: 0, life: 1, size: 1, bright: 1, tint: new THREE.Color() }));
   const m = new THREE.Matrix4();
   return {
+    setLook,
     at(point, { size = 1, color = [2.6, 1.3, 0.4], life = 0.8, bright = 1 } = {}) {
       const f = free.pop() ?? live.shift();
       if (!f) return;
@@ -199,6 +225,7 @@ export function createFlashes(parent, { count = 48 } = {}) {
       }
     },
     dispose() {
+      gone = true;
       mesh.removeFromParent();
       geo.dispose();
       mat.dispose();
