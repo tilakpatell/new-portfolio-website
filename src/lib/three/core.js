@@ -11,8 +11,11 @@
 // colour (a stain stays a stain), and its normal map adds relief.
 //
 //   CORE, coreOf(role)       the kit: { metres, mean, … } per role
-//   coreFiles(role, { xl })  its files: the 1K set, or the 8192 set at ultra where it's made
-//   loadCore(role, { xl })   its textures, loaded once for the page
+//   coreFiles(role, { xl, base, index })  its files: the 1K set, or the 8192
+//                            set at ultra where it's made; from another set's
+//                            folder and index where asked (the Star Wars
+//                            worlds' game maps: ./scans.js)
+//   loadCore(role, { xl, base, index })   its textures, loaded once for the page
 //   wear(material, scan, { metres, strength, normal, mean })
 //   dress(materials, roles, { strength, normal, keep, load }) → how many it dressed
 //     a world's named materials ({ stone: mat, … }) onto roles
@@ -37,10 +40,10 @@ const BASE = '/cc0/galaxy';
 // there) its 8192 colour and normal maps where scripts/galaxy-textures.mjs
 // --ultra has made them (the index's `xl`: 'ktx2' or 'webp'); the 1K set
 // where it hasn't. The ARM map stays the small one.
-export function coreFiles(role, { xl = false, index = SCANS } = {}) {
+export function coreFiles(role, { xl = false, index = SCANS, base = BASE } = {}) {
   const big = xl ? index[role]?.xl : null;
-  const file = (name) => (big ? `${BASE}/${role}/${name}-xl.${big}` : `${BASE}/${role}/${name}.webp`);
-  return { color: file('color'), normal: file('normal'), arm: index[role]?.arm ? `${BASE}/${role}/arm.webp` : null };
+  const file = (name) => (big ? `${base}/${role}/${name}-xl.${big}` : `${base}/${role}/${name}.webp`);
+  return { color: file('color'), normal: file('normal'), arm: index[role]?.arm ? `${base}/${role}/arm.webp` : null };
 }
 
 // The scans, each loaded once for the page (every world shares them; a new
@@ -48,8 +51,8 @@ export function coreFiles(role, { xl = false, index = SCANS } = {}) {
 // normalMap, arm }, or of null where they can't be had. With `xl` (ultra),
 // the 8192 set where there is one, the 1K set if it won't load.
 const loaded = new Map();
-export function loadCore(role, { xl = false } = {}) {
-  const files = coreFiles(role, { xl });
+export function loadCore(role, { xl = false, base = BASE, index = SCANS } = {}) {
+  const files = coreFiles(role, { xl, base, index });
   const key = files.color;
   if (!loaded.has(key)) {
     const loader = new THREE.TextureLoader();
@@ -60,7 +63,7 @@ export function loadCore(role, { xl = false } = {}) {
         if (srgb) t.colorSpace = THREE.SRGBColorSpace;
         return t;
       });
-    const small = xl && key !== coreFiles(role).color ? () => loadCore(role) : () => null;
+    const small = xl && key !== coreFiles(role, { base, index }).color ? () => loadCore(role, { base, index }) : () => null;
     loaded.set(
       key,
       Promise.all([get(files.color, true), get(files.normal, false), files.arm ? get(files.arm, false) : null])
