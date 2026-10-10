@@ -82,6 +82,7 @@ function worldFor(sim, b, s) {
     taken: sim.brains.taken,
     muzzle: muzzleOf,
     shoot: (who, aim) => shoot(sim, who, aim),
+    who: (id) => sim.entities.get(id) ?? null,
   };
 }
 

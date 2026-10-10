@@ -8,23 +8,28 @@
 // game's bit patterns (`AIFiringPatterns`, a frame a sim step) and only
 // with a clear line to the target's chest; aim errs inside the AI weapon's
 // accuracy box (`AimBox*`), which shrinks the longer a bot holds a target.
+// The target is the AI system's pick (`targeting.js`: the game's distance
+// scores, the seen, the current, the human; held for the keep-firing time),
+// or the squad coordinator's when it assigned one.
 // A commander's task (`world.task`: a point, a radius, whether to interact)
 // turns following into going to the objective and staying on it, firing
 // on the way, and holding the interaction there when no enemy is close.
 //
-//   createBrain(s, { ai, role, rand, aimScale }) → brain   (aimScale widens the aim box: a mode's lethality lever)
+//   createBrain(s, { ai, role, rand, aimScale, system }) → brain   (aimScale widens the aim box: a mode's lethality lever;
+//     system: the AI system row, ai.system by default)
 //   think(brain, world, now) → intent { mode, target, goal, stance, fire, aim }
 //   act(brain, intent, s, dt, world, now)        patternStep(brain) → fire this frame?
-//   world: { nav, lineClear(a, b), squad: { centre, leader, posture } | null, objective, task, enemies, others, shoot(s, aim) }
+//   world: { nav, lineClear(a, b), squad: { centre, leader, posture } | null, objective, task, enemies, others, shoot(s, aim), who(id) }
 //   task: { at: [x, z], spot: [x, z], radius, interact, reach, role }
 
 import { pick } from '../../ai/utility.js';
-import { createSenses, target as believed } from '../../ai/perception.js';
+import { createSenses } from '../../ai/perception.js';
 import { lead } from '../../combat/aim.js';
 import { findPath, walkable, cellAt, nearestWalkable } from '../nav.js';
 import { chestOf, move } from '../soldier.js';
 import { clock, profile } from '../core.js';
 import { pickCover, queryFor } from './cover.js';
+import { pickTarget } from './targeting.js';
 
 // The class a soldier plays → the game's AI template for it.
 export const ROLES = { assault: 'rifleman', heavy: 'heavy', officer: 'officer', specialist: 'sniper' };
@@ -59,7 +64,7 @@ export const SEARCH_CELLS = 6000;
 // narrow for its body) is left out of its paths this long, by hand.
 export const AVOID = 10;
 
-export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', rand = Math.random, aimScale = 1 }) {
+export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', rand = Math.random, aimScale = 1, system = ai.system }) {
   const template = ai.templates[role] ?? ai.templates.rifleman;
   const tactics = ai.tactics[template.tactics] ?? ai.tactics.Rifleman_Tactics;
   const family = s.weapon?.family ?? 'rifle';
@@ -69,6 +74,10 @@ export function createBrain(s, { ai, role = ROLES[s.cls?.cls] ?? 'rifleman', ran
     s,
     role,
     aimScale,
+    system,
+    target: null,
+    targetSince: 0,
+    assigned: null,
     template,
     tactics,
     aiWeapon,
@@ -196,7 +205,9 @@ function fallBack(nav, from, threat, centre, by = 8) {
 export function think(brain, world, now) {
   const s = brain.s;
   const me = flat(s.at);
-  const b = believed(brain.me, { hostile: true });
+  const seen = Object.values(brain.me.beliefs ?? {}).filter((x) => x.hostile);
+  const id = pickTarget(brain, seen, { system: brain.system, who: world.who, now, assigned: brain.assigned });
+  const b = id ? brain.me.beliefs[id] : null;
   const tgt = b ? [b.at.x, b.at.z] : null;
   const dist = tgt ? d2(me, tgt) : Infinity;
   const task = world.task ?? null;
