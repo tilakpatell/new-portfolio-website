@@ -9,24 +9,22 @@
 // which bodies.js reads. The mapping is data reviewed in the PR, never a
 // guess in the code that draws.
 //
-// What the drop holds, looked at on 2026-10-10: no planet map wraps a whole
-// sphere once. The space levels' colour (`_CS`, smoothness in alpha), normal
-// (`_N`, `_NI`) and cloud maps (coverage in alpha) are seamless tiles the
-// game repeats over its sphere; the gas giants' are bands; and the front
-// end's `_CA` globes, Endor's gas giant and Yavin's are pictures of a lit
-// disc, which no sphere can wear (PICTURES). So a skin says how it is laid
-// on: `tile` (bodySkin.js's triplanar repeat, `tiles` to a radius) or `bands`
-// (round the planet `tiles` times, pole to pole once).
+// What the drop holds, looked at on 2026-10-10: the space levels' colour
+// (`_CS`, smoothness in alpha), normal (`_N`, `_NI`) and cloud maps
+// (coverage in alpha) are whole-planet maps stored square, seamless round
+// the planet; the game's planet meshes (levels/space/*/planet/planet_*_mesh,
+// objects/planets/_planetmeshes/planet_01_mesh) bind no texture (a shader
+// does) and carry UVs once round and pole to pole once, so bodySkin.js lays
+// a map on that way. The front end's `_CA` globes, Endor's gas giant and
+// Yavin's are pictures of a lit disc, which no sphere can wear (PICTURES).
 //
-// SKINS: { [site look id]: { color?, normal?, clouds?, atmo?, rings?,
-//   projection?, tiles?, over?, cloudTiles?, cloudCut?, seas?, greenDown?,
-//   atmoScale?, ringsAt? } }; each map
+// SKINS: { [site look id]: { color?, normal?, clouds?, atmo?, rings?, tiles?,
+//   cloudTiles?, cloudCut?, seas?, greenDown?, atmoScale?, ringsAt? } }; each map
 //   a glob over the lowercased game names, or a list of them, best first: the
 //   first that matches exactly one name wins, so one that matches two is
 //   reported, not guessed between. seas: the colour's alpha (smoothness) at
-//   which the ground is water; over: 'land' lays it on the site's land only
-//   (a tile has no continents); cloudCut: the coverage under which there's
-//   no cloud
+//   which the ground is water; tiles, cloudTiles: times round the planet
+//   (the game's 1); cloudCut: the coverage under which there's no cloud
 // sizesFor(kind, tier) → { w, format } | null
 // planFor(skin, available: Set<name>) → { fetch: [{ kind, name }], missing: [{ kind, why }] }
 // convertSkin({ id, skin, images: { kind: Buffer }, outDir, encodeKtx2 }) →
@@ -51,28 +49,22 @@ export const isPlanetTexture = (name) => /planet|gasgiant|moon_|cluster_|debrisr
 
 const SB = 'levels/space';
 export const SKINS = {
-  bespin: { color: 'objects/planets/bespin/t_planetbespin_01_c', projection: 'bands', tiles: 2 },
+  bespin: { color: 'objects/planets/bespin/t_planetbespin_01_c' },
   endor: {
     color: `${SB}/sb_endor_01/planet/t_planet_endor_01_cs`,
     normal: `${SB}/sb_endor_01/planet/t_planet_endor_01_n`,
-    // (_03 is the tile; _01 is a picture of the lit globe)
+    // (_03 is the map; _01 is a picture of the lit globe)
     clouds: `${SB}/sb_endor_01/planet/t_planet_endor_cloudes_03_c`,
     atmo: `${SB}/sb_endor_01/planet/t_planet_endor_atmosphere_01_c`,
-    tiles: 1.5,
-    over: 'land',
-    cloudTiles: 0.9,
     cloudCut: 0.5,
     seas: 0.38,
   },
   geonosis: { rings: 's5_1/objects/planets/geonosis/t_planetfrontendgeonosisrings_01_ca', ringsAt: [1.35, 2.3] },
-  kamino: { color: 'objects/planets/kamino/t_planetkamino_01_c', tiles: 1.5, seas: 0 },
+  kamino: { color: 'objects/planets/kamino/t_planetkamino_01_c', seas: 0 },
   naboo: {
     color: `${SB}/sb_naboo_01/planet/t_planet_naboo_01_cs`,
     normal: `${SB}/sb_naboo_01/planet/t_planet_naboo_01_ni`,
     clouds: `${SB}/sb_naboo_01/planet/t_planet_naboo_01_clouds_rgba`,
-    tiles: 1.5,
-    over: 'land',
-    cloudTiles: 0.9,
     cloudCut: 0.45,
     seas: 0.38,
   },
@@ -235,7 +227,7 @@ export async function convertSkin({ id, skin = {}, images, outDir, encodeKtx2 })
   }
   if (!entry.color && !entry.rings) return { entry: null, files };
   if (images.atmo) entry.atmo = await meanColor(images.atmo);
-  for (const k of ['projection', 'tiles', 'over', 'cloudTiles', 'cloudCut', 'seas', 'greenDown', 'atmoScale']) if (skin[k] !== undefined && entry.color) entry[k] = skin[k];
+  for (const k of ['tiles', 'cloudTiles', 'cloudCut', 'seas', 'greenDown', 'atmoScale']) if (skin[k] !== undefined && entry.color) entry[k] = skin[k];
   if (entry.rings && skin.ringsAt) entry.ringsAt = skin.ringsAt;
   return { entry, files };
 }

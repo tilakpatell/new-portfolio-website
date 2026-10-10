@@ -3,14 +3,11 @@
     "color": "textures/galaxy/planets/bespin/color",
     "from": {
       "color": "objects/planets/bespin/t_planetbespin_01_c"
-    },
-    "projection": "bands",
-    "tiles": 2
+    }
   },
   "endor": {
     "atmo": "#7c94b2",
     "cloudCut": 0.5,
-    "cloudTiles": 0.9,
     "clouds": "textures/galaxy/planets/endor/clouds",
     "color": "textures/galaxy/planets/endor/color",
     "from": {
@@ -20,9 +17,7 @@
       "atmo": "levels/space/sb_endor_01/planet/t_planet_endor_atmosphere_01_c"
     },
     "normal": "textures/galaxy/planets/endor/normal",
-    "over": "land",
-    "seas": 0.38,
-    "tiles": 1.5
+    "seas": 0.38
   },
   "geonosis": {
     "from": {
@@ -39,12 +34,10 @@
     "from": {
       "color": "objects/planets/kamino/t_planetkamino_01_c"
     },
-    "seas": 0,
-    "tiles": 1.5
+    "seas": 0
   },
   "naboo": {
     "cloudCut": 0.45,
-    "cloudTiles": 0.9,
     "clouds": "textures/galaxy/planets/naboo/clouds",
     "color": "textures/galaxy/planets/naboo/color",
     "from": {
@@ -53,8 +46,6 @@
       "clouds": "levels/space/sb_naboo_01/planet/t_planet_naboo_01_clouds_rgba"
     },
     "normal": "textures/galaxy/planets/naboo/normal",
-    "over": "land",
-    "seas": 0.38,
-    "tiles": 1.5
+    "seas": 0.38
   }
 }

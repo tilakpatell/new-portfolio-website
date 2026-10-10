@@ -362,28 +362,23 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
       })
       .catch(() => null); // (a map not there: the procedural look stands)
   };
-  const bands = skin?.projection === 'bands';
   if (painted) {
     const b = blanks();
     defines.SKIN = '';
     if (skin.normal) defines.SKIN_NORMAL = '';
     if (skin.clouds) defines.SKIN_CLOUDS = '';
     if (skin.seas !== undefined) defines.SKIN_SEAS = '';
-    if (bands) defines.SKIN_BANDS = '';
-    if (skin.over === 'land') defines.SKIN_LAND = '';
     Object.assign(uniforms, {
       uSkinColor: { value: b.color },
       uSkinNormal: { value: b.normal },
       uSkinClouds: { value: b.none },
       uSkinMix: { value: 0 },
-      uSkinK: { value: new THREE.Vector4(skin.tiles ?? 1.5, 1, skin.greenDown ? -1 : 1, skin.seas ?? 0) },
-      uSkinC: { value: new THREE.Vector4(skin.cloudTiles ?? skin.tiles ?? 1.5, skin.cloudCut ?? 0, 0, 0) },
+      uSkinK: { value: new THREE.Vector4(skin.tiles ?? 1, 1, skin.greenDown ? -1 : 1, skin.seas ?? 0) },
+      uSkinC: { value: new THREE.Vector4(skin.cloudTiles ?? 1, skin.cloudCut ?? 0, 0, 0) },
     });
     const into = (slot) => (t) => {
       if (!t) return null;
-      // (tiles repeat every way; bands round the planet only, not over the poles)
-      t.wrapS = THREE.RepeatWrapping;
-      if (!bands) t.wrapT = THREE.RepeatWrapping;
+      t.wrapS = THREE.RepeatWrapping; // (round the planet; not over the poles)
       t.needsUpdate = true;
       uniforms[slot].value = t;
       return t;

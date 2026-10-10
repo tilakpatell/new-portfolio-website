@@ -77,9 +77,9 @@ describe('a skinned body', () => {
     ]);
     const mat = b.group.children[0].material;
     expect(Object.keys(mat.defines)).toEqual(expect.arrayContaining(['SKIN', 'SKIN_NORMAL', 'SKIN_CLOUDS', 'SKIN_SEAS']));
-    expect(mat.defines.SKIN_BANDS).toBeUndefined();
     expect(mat.uniforms.uSkinColor.value).toBe(hi.asked[0].t);
-    expect(hi.asked[0].t.wrapT).toBe(THREE.RepeatWrapping);
+    // (round the planet, not over the poles)
+    expect([hi.asked[0].t.wrapS, hi.asked[0].t.wrapT]).toEqual([THREE.RepeatWrapping, THREE.ClampToEdgeWrapping]);
     expect(mat.uniforms.uSkinK.value.toArray()).toEqual([2, 1, 1, 0.4]);
     b.dispose();
     expect(hi.asked.every((a) => a.t.disposed)).toBe(true);
@@ -92,14 +92,11 @@ describe('a skinned body', () => {
     l.dispose();
   });
 
-  it('lays a gas giant’s bands round it, wrapping only that way', async () => {
-    const { asked, load } = fakeLoad();
-    const b = buildBody({ ...LOOKS.bespin, skin: { color: 'b/color', projection: 'bands', tiles: 2 } }, { r: 30, tier: 'ultra', load });
-    await settle();
-    expect(asked.map((a) => a.url)).toEqual(['/b/color-ultra.ktx2']);
-    expect(b.group.children[0].material.defines.SKIN_BANDS).toBe('');
-    expect(asked[0].t.wrapS).toBe(THREE.RepeatWrapping);
-    expect(asked[0].t.wrapT).toBe(THREE.ClampToEdgeWrapping);
+  it('wraps once round by default, as the game does', async () => {
+    const { load } = fakeLoad();
+    const b = buildBody({ ...LOOKS.bespin, skin: { color: 'b/color' } }, { r: 30, tier: 'ultra', load });
+    const u = b.group.children[0].material.uniforms;
+    expect([u.uSkinK.value.x, u.uSkinC.value.x]).toEqual([1, 1]);
     b.dispose();
   });
 

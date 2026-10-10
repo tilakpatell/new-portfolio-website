@@ -20,7 +20,6 @@ describe('the planet skins table', () => {
     for (const [id, skin] of Object.entries(SKINS)) {
       for (const w of SEQUEL_WORLDS) expect(JSON.stringify(skin).includes(w), `${id} ${w}`).toBe(false);
       expect(skin.color || skin.rings, id).toBeTruthy();
-      expect(['tile', 'bands', undefined], id).toContain(skin.projection);
     }
   });
 
