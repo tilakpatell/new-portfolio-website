@@ -34,7 +34,7 @@ function remap(prim, map) {
 
 // A node taken out of the tree, its children moved to its parent with its
 // local transform folded into theirs, so nothing under it moves in the world.
-function detach(node) {
+export function detach(node) {
   const parent = node.getParentNode();
   const m = node.getMatrix();
   for (const child of node.listChildren()) {
@@ -89,4 +89,33 @@ export function pruneRig(doc, { keep = [] } = {}) {
     after += order.length;
   }
   return { before, after, removed };
+}
+
+// A composite's parts (a hero's cape, hands, head) come as GLBs of their
+// own, each with its own copy of the skeleton. A part whose bones are all
+// in the first skin by name is moved onto it, so one skeleton drives them
+// all and the copies go; a part on another rig keeps its own. Returns how
+// many skins were joined.
+export function shareSkins(doc) {
+  const root = doc.getRoot();
+  const [body, ...rest] = root.listSkins();
+  if (!body) return 0;
+  const index = new Map(body.listJoints().map((j, i) => [j.getName(), i]));
+  const bodyJoints = new Set(body.listJoints());
+  let joined = 0;
+  for (const skin of rest) {
+    const joints = skin.listJoints();
+    if (!joints.every((j) => index.has(j.getName()))) continue;
+    const map = new Map(joints.map((j, i) => [i, index.get(j.getName())]));
+    for (const node of root.listNodes().filter((n) => n.getSkin() === skin)) {
+      for (const prim of node.getMesh()?.listPrimitives() ?? []) remap(prim, map);
+      node.setSkin(body);
+    }
+    // (deepest first, so each copy's children have gone up before it goes)
+    const depth = (n) => (n.getParentNode() ? 1 + depth(n.getParentNode()) : 0);
+    for (const j of [...joints].sort((a, b) => depth(b) - depth(a))) if (!bodyJoints.has(j)) detach(j);
+    skin.dispose();
+    joined++;
+  }
+  return joined;
 }

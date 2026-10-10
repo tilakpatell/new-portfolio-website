@@ -7,11 +7,13 @@
 // and smoothness in the colour map's alpha, where glTF wants a normal map
 // and one occlusion-roughness-metal map.
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { basename, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { basisuPath } from '../ktx2.mjs';
+import { localPath, mapPath, textureSources } from './bf2017-paths.mjs';
 
 // (the sharp glTF-Transform's ndarray-pixels loads: see battlefront-import.mjs)
 const sharp = createRequire(createRequire(import.meta.url).resolve('ndarray-pixels'))('sharp');
@@ -112,4 +114,30 @@ export async function normalPng(buffer) {
     data[i + 3] = 255;
   }
   return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
+}
+
+// One image a GLB names (a bucket path to a KTX2), as a PNG from what is on
+// disk under `root`, best first: a PNG of the map itself; for a derived map
+// (`__normal`, `__orm_<hash>`), its source PNG split by the recipe; the KTX2
+// unpacked into `unpackDir`. Null when none is there (the upload is still
+// running): the material then goes without that map.
+export async function resolveImage(bucketPath, { root, derived, unpackDir }) {
+  const own = bucketPath.replace(/\.ktx2$/, '.png');
+  const onDisk = (p) => existsSync(localPath(root, p));
+  const read = (p) => readFile(localPath(root, p));
+  if (onDisk(own)) return { png: await read(own), from: basename(own) };
+  const [source] = textureSources(bucketPath);
+  const kind = /__normal\.ktx2$/.test(bucketPath) ? 'normal' : /__orm_[0-9a-f]+\.ktx2$/.test(bucketPath) ? 'orm' : null;
+  if (kind && source !== own && onDisk(source)) {
+    const recipes = parseDerived(derived);
+    if (kind === 'normal') return { png: await normalPng(await read(source)), from: `${basename(source)} (normal)` };
+    const recipe = recipes.orm.find((r) => mapPath(r.from) === source);
+    const maps = recipe ? [recipe.ao, recipe.rough, recipe.metal].filter(Boolean).map((c) => mapPath(c.map)) : [];
+    if (recipe && maps.every(onDisk)) return { png: await ormPng(recipe, (map) => read(mapPath(map))), from: `${[...new Set(maps)].map((m) => basename(m)).join(' + ')} (orm)` };
+  }
+  if (bucketPath.endsWith('.ktx2') && onDisk(bucketPath)) {
+    const out = await unpackKtx2(localPath(root, bucketPath), join(unpackDir, dirname(bucketPath)));
+    return { png: await readFile(out), from: `${basename(bucketPath)} (unpacked)` };
+  }
+  return null;
 }

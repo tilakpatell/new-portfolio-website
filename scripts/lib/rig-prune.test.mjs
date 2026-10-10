@@ -1,6 +1,6 @@
 import { Document } from '@gltf-transform/core';
 import { describe, expect, it } from 'vitest';
-import { pruneRig } from './rig-prune.mjs';
+import { pruneRig, shareSkins } from './rig-prune.mjs';
 
 // Hips → Spine → LeftArm → LeftHand, Hips → Wep_Root, Spine → PROC_Bone0
 // (→ a prop that is no joint); only LeftHand carries weight
@@ -66,5 +66,41 @@ describe('the rig prune', () => {
     const doc = new Document();
     doc.createScene().addChild(doc.createNode('a'));
     expect(pruneRig(doc)).toEqual({ before: 0, after: 0, removed: [] });
+  });
+});
+
+describe('parts on one skeleton', () => {
+  it('joins a part’s skin to the body’s by bone name, and drops its copy of the bones', () => {
+    const { doc, skin } = rigged();
+    const buffer = doc.getRoot().listBuffers()[0];
+    // a cape's own copy of two of the bones, weighted to its LeftHand (its joint 1)
+    const hips = doc.createNode('Hips').setTranslation([0, 1, 0]);
+    const hand = doc.createNode('LeftHand');
+    hips.addChild(hand);
+    const scene = doc.getRoot().listScenes()[0];
+    scene.addChild(hips);
+    const cape = doc.createSkin().addJoint(hips).addJoint(hand);
+    const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+    const prim = doc
+      .createPrimitive()
+      .setAttribute('POSITION', acc('VEC3', new Float32Array(9)))
+      .setAttribute('JOINTS_0', acc('VEC4', new Uint16Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])))
+      .setAttribute('WEIGHTS_0', acc('VEC4', new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])));
+    const node = doc.createNode('Cape').setMesh(doc.createMesh().addPrimitive(prim)).setSkin(cape);
+    scene.addChild(node);
+    expect(shareSkins(doc)).toBe(1);
+    expect(node.getSkin()).toBe(skin);
+    expect(doc.getRoot().listSkins()).toEqual([skin]);
+    expect(prim.getAttribute('JOINTS_0').getArray()[0]).toBe(3);
+    expect(doc.getRoot().listNodes().filter((n) => n.getName() === 'LeftHand').length).toBe(1);
+  });
+
+  it('leaves a part on a skeleton of its own as it is', () => {
+    const { doc } = rigged();
+    const tail = doc.createNode('Tail1');
+    doc.getRoot().listScenes()[0].addChild(tail);
+    doc.createNode('T').setSkin(doc.createSkin().addJoint(tail));
+    expect(shareSkins(doc)).toBe(0);
+    expect(doc.getRoot().listSkins().length).toBe(2);
   });
 });

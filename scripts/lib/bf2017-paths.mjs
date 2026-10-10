@@ -11,19 +11,18 @@ export function glbJson(glb) {
   return JSON.parse(buf.toString('utf8', 20, 20 + buf.readUInt32LE(12)));
 }
 
-// Each image's bucket path (under web/), resolved against the GLB's own.
-export function imageUris(glb, glbBucketPath) {
-  const out = [];
-  for (const img of glbJson(glb).images ?? []) {
-    const uri = img.uri;
-    if (!uri || uri.startsWith('data:')) continue;
-    const path = decodeURIComponent(uri);
-    if (path.startsWith('web/')) out.push(path);
-    else if (path.startsWith('textures/')) out.push(`web/${path}`);
-    else out.push(posix.normalize(posix.join(posix.dirname(glbBucketPath), path)));
-  }
-  return out;
+// An image URI as a bucket path (under web/), resolved against the GLB's own;
+// null for one in the file (a data URI or a buffer view).
+export function imagePath(uri, glbBucketPath) {
+  if (!uri || uri.startsWith('data:')) return null;
+  const path = decodeURIComponent(uri);
+  if (path.startsWith('web/')) return path;
+  if (path.startsWith('textures/')) return `web/${path}`;
+  return posix.normalize(posix.join(posix.dirname(glbBucketPath), path));
 }
+
+// Each image's bucket path, in order, those in the file left out.
+export const imageUris = (glb, glbBucketPath) => (glbJson(glb).images ?? []).map((img) => imagePath(img.uri, glbBucketPath)).filter(Boolean);
 
 // Where a texture may be, best first: the raw PNG of its source map (the
 // uploader's derived `__normal` and `__orm_<hash>` maps are made from it),
