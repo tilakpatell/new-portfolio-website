@@ -1,6 +1,6 @@
 import { Document } from '@gltf-transform/core';
 import { describe, expect, it } from 'vitest';
-import { detach, shareSkins } from './rig-parts.mjs';
+import { detach, rebindJoints, shareSkins } from './rig-parts.mjs';
 
 // Hips → Spine → LeftArm → LeftHand, Hips → Wep_Root, Spine → PROC_Bone0
 // (→ a prop that is no joint)
@@ -80,5 +80,24 @@ describe('a bone taken out of the tree', () => {
     const after = prop.getWorldTranslation();
     for (let i = 0; i < 3; i++) expect(after[i]).toBeCloseTo(before[i], 6);
     expect(prop.getParentNode().getName()).toBe('Spine');
+  });
+});
+
+describe('a part’s joints re-bound to the body’s', () => {
+  it('re-indexes by name', () => {
+    const r = rebindJoints(['Hips', 'Head'], ['Hips', 'Spine', 'Head'], new Uint16Array([1, 0, 0, 0]));
+    expect([...r.joints]).toEqual([2, 0, 0, 0]);
+    expect(r.unmatched).toBe(0);
+  });
+
+  it('binds a joint the body lacks to its Hips, and counts it', () => {
+    const r = rebindJoints(['Cape_Phys_01', 'Head'], ['Spine', 'Hips', 'Head'], new Uint16Array([0, 1, 0, 0]));
+    expect([...r.joints]).toEqual([1, 2, 1, 1]);
+    expect(r.unmatched).toBe(1);
+  });
+
+  it('leaves a slot of no weight at 0', () => {
+    const r = rebindJoints(['Hips', 'Head'], ['Spine', 'Hips', 'Head'], new Uint16Array([1, 0, 0, 0]), new Float32Array([1, 0, 0, 0]));
+    expect([...r.joints]).toEqual([2, 0, 0, 0]);
   });
 });

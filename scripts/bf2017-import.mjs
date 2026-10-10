@@ -136,8 +136,9 @@ async function readCut(io, entry, parts, lod, opts) {
   }
   doc.getRoot().setDefaultScene(scene);
   if (parts.length) {
-    await doc.transform(unpartition());
-    if (opts.rig) shareSkins(doc);
+    // (floats before the parts' vertices move into the body's bind space)
+    await doc.transform(unpartition(), dequantize());
+    if (opts.rig) shareSkins(doc, (line) => console.log(`  ${line}`));
   }
   return doc;
 }
