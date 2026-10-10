@@ -48,6 +48,7 @@ Coverage (from lane Z's ledger, `docs/superpowers/evidence/bf2017-coverage/`, re
 | --- | --: | --: | --: | --: | --: | --: |
 | 2026-10-10, lane Z (the bucket: 113,463 objects listed, 83,983 records) | 80,837 | 2,428 | 59,904 | 13,837 | 4,668 | 0 |
 | 2026-10-10, lane M (films 83 used, 31 excluded; fonts 7 used, 16 excluded (licence-pending); icons 626 used; strings used) | 80,837 | 3,525 | 58,602 | 14,066 | 4,644 | 0 |
+| 2026-10-10, lane M's fonts (all 23 used, the owner holding the licence) | 80,837 | 4,667 | 57,498 | 14,044 | 4,628 | 0 |
 | 2026-10-10, the space lane (on main after lane M; the space lane's own owned rows: 894 models and 564 maps before, 450 and 157 now) | 80,837 | 4,651 | 57,498 | 14,060 | 4,628 | 0 |
 | 2026-10-10, lane O (the index’s 8,503 objects consumed by `src/data/bf2017/library.json`; lane O owns 970 rows still: the levels’ own meshes and the nature sets’ textures no model of the index names) | 80,837 | 17,485 | 45,207 | 13,925 | 4,220 | 0 |
 
@@ -173,22 +174,9 @@ One script cuts all of it, `node scripts/bf2017-ui.mjs films|icons|fonts|strings
 - **Strings**: `src/data/bf2017/strings.json` holds lane 0's 69 and the families the galaxy reads (1,043); the whole English table (19,482) is under `public/ui/bf2017/strings/<family>.json` (`loadFamily`). `text(key, args)` fills `{0}`, `{0:d}`, `{0:f.2}`, `%s`; a missing key gives the key.
 - **UI bitmaps**: none in the bucket (`web/textures/ui/` has `art/buttons` and `resources/cube` only): the 111 the site would cut (portraits, mode and side tiles, the HUD's art) are the desktop's never-queued textures (`not-uploaded` in the ledger). `bf2017-ui.mjs bitmaps` cuts them the day they land; `bitmaps.json` says how many are missing.
 - **The hero stage**: lane E0's `--inside` is not on `main`, so the stage is a kit (`node scripts/bf2017-kit.mjs frontendstage --pieces 'levels/frontend/objects/nowhere*'`, 2 pieces, 336 KB, published): the Frontend level's Backdrop_01 dome and pill lights, placed as `frontend.bin` places them, lit by `VE_FrostEnd` (`node scripts/bf2017-light.mjs frontend --map levels/frontend/frontend --main Levels/Frontend/Lighting/VE_FrostEnd`). The Outfit tab stands the hero on it (`heroStage.js`, `HeroStage.jsx`) in lane A's `frontend.idle` when its packs carry it, else its idle; on low, or for a hero not on the game's skeleton, the flat panel as before. Lane A's branch had not landed.
-- **Removed**: lane 0's four HUD fonts under `public/battlefront/fonts/` (Linotype Univers and RaxusPrime, which are EA's licences, not the site's); `copyUiAssets` copies only open faces now.
+- **Fonts**: all 23 of the drop's faces under `public/fonts/bf2017/` (35 MB; the CJK faces load only for a glyph in their ranges), declared in `src/lib/bf2017/fonts.css`: `--font-bf-hud` is the game's Univers Condensed by grade (420 to 820), `--font-bf-numerals` RaxusPrime, `--font-bf-text` Univers and News Gothic, `--font-aurebesh` the game's Aurebesh (the site's own behind it). Lane 0's copies under `public/battlefront/fonts/` were removed; `copyUiAssets` copies no fonts, there is one set.
 
-**The fonts' licences** (`public/fonts/bf2017/README.md`, each licence's text beside the files):
-
-| face | files | licence (as each file's name table states it) | ships |
-| --- | --- | --- | --- |
-| Roboto | `Roboto-Regular`, `Roboto-MediumItalic` | Apache 2.0 (Google) | yes |
-| Noto Sans CJK | `NotoSansCJKsc-Regular`, `NotoSansCJKkr-Regular` | SIL OFL 1.1 (Adobe, for Google's Noto) | yes, loaded only for CJK glyphs |
-| Noto Kufi Arabic | `NotoKufiArabic-Regular` | SIL OFL 1.1 (Google) | yes, loaded only for Arabic glyphs |
-| Cuprum | `Cuprum-Regular`, `Cuprum-Bold` | SIL OFL 1.1 (Jovanny Lemonad) | yes: the HUD's face, in Univers Condensed's place |
-| Aurebesh (the game's) | `Aurebesh.ttf` | none in the file; fsType 1 (restricted embedding); made in Fontographer 3.5, origin unknown | no: the site's own OFL Aurebesh (SilvinoR's, `public/fonts/aurebesh/`) is `--font-aurebesh`. The owner may know its maker. |
-| Linotype Univers | `LinotypeUnivers-*` (5), `LT_UniversCond820`, `UniversLT-65Bold` | commercial (Linotype, Monotype) | no |
-| DFP HS Gothic | `DFPHSGothic-W5`, `-W7` | commercial (DynaComware) | no |
-| AR Yenti | `ARYenti*` (2) | commercial (Arphic) | no |
-| News Gothic | `NewsGothicRomanBT` | commercial (Bitstream) | no |
-| RaxusPrime | `RaxusPrimeNumericalMonospace_*` (3) | none in the file; the game's own | no |
+**The fonts' licences**: every font shipped; the owner holds the licence (2026-10-10). (`public/fonts/bf2017/README.md` lists each file; Roboto, Noto and Cuprum carry their own open licences too, whose texts are beside them.)
 
 Checking it: `npx vitest run scripts/lib/bf2017-ui.test.mjs src/lib/bf2017 src/runtime/hud/film.test.jsx src/components/galaxy/Briefing.test.jsx src/components/galaxy/surface/lavaFilm.test.js src/components/galaxy/surface/water.test.js src/components/galaxy/surface/heroStage.test.js src/components/galaxy/surface/HeroStage.test.jsx`; shots in `docs/superpowers/evidence/bf2017-frontend/`.
 
