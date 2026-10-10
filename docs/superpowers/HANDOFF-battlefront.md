@@ -5,14 +5,14 @@ The design is `docs/superpowers/specs/2026-10-10-battlefront-game-design.md`. Th
 ## Where the data is
 
 - **The owner's machine**: `C:\Users\tilak\Downloads\BF2_Extract\` (not the repo). `web\` holds the masters (`data\<Name>.json` for 83,983 gameplay records, `data.tsv` their index); `web_opt\` the web build (`maps\<path>.json` + `.bin` for 74 levels, `terrain\`, `physics\`, `anims\` for 10,270 clips, `strings\English.json`, `models\`, `textures\`). `web_opt\README.md` and `GUIDE.md` describe every format; `qa\map_view\index.html` is a working three.js map viewer. The exporter is `tool\` (Frosty-driven C#); do not run it, it is the other session's.
-- **The bucket**: `bf2017-assets` on the owner's Supabase (private). `data/` as `.json.gz` (45,224 of 83,983 on 2026-10-10, still uploading); `web/models`, `web/collision`, `web/textures` as the asset pipeline reads them; the maps, anims, terrain and physics go up on the same queue. A cloud session fetches data with `node scripts/bf2017-fetch.mjs data '<glob>'` (lane 0 adds the command; `SUPABASE_URL` and `BF2017_KEY` or `SUPA_KEY` in the environment).
+- **The bucket**: `bf2017-assets` on the owner's Supabase (private). `data/` as `.json.gz` with `data.tsv` (83,983 rows) at the root (every record lane 0 asked for was there on 2026-10-10); `web/` the web build (models, collision, textures, maps, terrain, svg, fonts, strings, anims, physics). A cloud session fetches records with `node scripts/bf2017-fetch.mjs data '<glob>'` and web files with `web '<glob>'` (`SUPABASE_URL` and `BF2017_KEY` or `SUPA_KEY` in the environment). An index name and its bucket folders can differ in case (the export ran on Windows); the parsers match ignoring case.
 - **The extractor** (lane 0): `node scripts/bf2017-data.mjs all --root <web dir> --level hoth_01 --era Orig` writes `src/data/bf2017/*.json`. On the owner's machine the root is `C:/Users/tilak/Downloads/BF2_Extract/web`; in the cloud, `lab/assets/bf2017`.
 
 ## Lanes
 
 | lane | state | branch | plan |
 | --- | --- | --- | --- |
-| 0 data: extractor, parsers, rulebooks for Hoth's Galactic Assault | **not started** | `claude/bf-data` | `plans/2026-10-10-battlefront-lane0-data.md` |
+| 0 data: extractor, parsers, rulebooks for Hoth's Galactic Assault | **done** (PR to `main`): 16 rulebooks, 1.9 MB; teams 1 (6 sequel kits refused), classes 8, heroes 16, reinforcements 6, vehicles 16, weapons 30, abilities 76, cards 68; AI 16 tactics, 10 templates, 202 firing patterns; Hoth 474 spawns, 102 spawn areas, 52 volumes, 2 walker paths, 3 stages (hand); 104 lights and 413 lighting prefabs; 84 HUD widgets; 69 strings; 0 missing links | `claude/bf-data` | `plans/2026-10-10-battlefront-lane0-data.md` |
 | 1 sim, soldiers, weapons, bolts, nav, cover, the soldier bots, the skirmish arena | not started (needs 0) | `claude/bf-ai` | `plans/2026-10-10-battlefront-lane1-soldier-ai.md` |
 | 2 Galactic Assault: stages, objectives, spawning, Battle Points, the commander, balance | not started (needs 1) | `claude/bf-assault` | `plans/2026-10-10-battlefront-lane2-galactic-assault.md` |
 | 3 heroes: abilities, saber combat, hero bots | not started (needs 1); plan when 1 merges | `claude/bf-heroes` | |
@@ -33,7 +33,7 @@ The game reads assets through one adapter, `src/components/battlefront/assets.js
 
 ## Checking it
 
-- Lane 0: `npx vitest run scripts/lib/bf2017-ebx.test.mjs scripts/lib/bf2017-rulebook.test.mjs scripts/bf2017-data.test.mjs src/data/bf2017 src/lib/battlefront/rulebook.test.js` (fixtures only, no export needed).
+- Lane 0: `npx vitest run scripts/lib/bf2017-ebx.test.mjs scripts/lib/bf2017-rulebook.test.mjs scripts/lib/bf2017-rulebook-ai.test.mjs scripts/lib/bf2017-rulebook-map.test.mjs scripts/lib/bf2017-rulebook-look.test.mjs scripts/bf2017-data.test.mjs src/data/bf2017 src/lib/battlefront/rulebook.test.js` (fixtures only, no export needed).
 - Lanes 1 and 2: `npx vitest run src/lib/battlefront` and `npm run test:ai -- src/lib/battlefront` (the arena); `node scripts/battlefront-balance.mjs --skirmish` and `--assault` for the tables.
 - Always: `npm run lint`, `npm test`, `npm run build`, `node scripts/health.mjs --check --skip build`.
 
