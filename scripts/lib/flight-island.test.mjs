@@ -50,6 +50,7 @@ describe('check', () => {
     expect(r.crossWorld).toEqual([]);
     expect(r.unlisted).toEqual([]);
     expect(r.missing).toEqual([]);
+    expect(r.broken).toEqual([]);
   });
 
   it('takes a marked row that uses a name a marked import binds as a reference', () => {
@@ -71,8 +72,36 @@ describe('check', () => {
   });
 });
 
+describe('what check catches before a removal goes wrong', () => {
+  const run = (file, text) => check({ files: [...FILES, file].sort(), read: (f) => (f === file ? text : (TEXT[f] ?? null)) }, { ...island, rows: [...island.rows, file] });
+
+  it('reports a begin with no end, and an end with no begin', () => {
+    const open = run('src/x.js', "// planet flight: begin\nexport const R = ['/fly'];\nexport const keep = 1;\n");
+    expect(open.broken).toEqual([{ file: 'src/x.js', line: 1, text: '// planet flight: begin' }]);
+    const stray = run('src/x.js', "export const R = ['/fly']; // planet flight\n// planet flight: end\n");
+    expect(stray.broken).toEqual([{ file: 'src/x.js', line: 2, text: '// planet flight: end' }]);
+    expect(markedSpans(['// planet flight: begin', "'/fly',", '// planet flight: ending soon', 'x', '// planet flight: end'])).toEqual([{ from: 0, to: 4, block: true }]);
+  });
+
+  it('reports an unmarked use of a name a marked row binds', () => {
+    const r = run('src/x.js', "import { PACK as fly } from '../expanse/flight/pack.js'; // planet flight\nexport const ALL = [fly];\n");
+    expect(r.unmarked.filter((u) => u.file === 'src/x.js')).toEqual([{ file: 'src/x.js', line: 2, text: 'export const ALL = [fly];' }]);
+    const b = run('src/y.js', "// planet flight: begin\nconst fly = args.includes('--fly');\n// planet flight: end\nif (fly) go();\n");
+    expect(b.unmarked.filter((u) => u.file === 'src/y.js')).toEqual([{ file: 'src/y.js', line: 4, text: 'if (fly) go();' }]);
+  });
+});
+
 describe('removal', () => {
   const plan = removal({ files: FILES, read: (f) => TEXT[f] ?? null }, { date: '2026-10-10', island });
+
+  // the Battlefront pipeline's files are never the flight's, whatever they name
+  it('never touches the game’s catalogue or models', () => {
+    const tree = apply(plan, fakeTree());
+    expect(plan.dropLines.some((d) => d.file.includes('bf2017'))).toBe(false);
+    expect(tree.read('src/components/galaxy/surface/catalog/bf2017-hoth.js')).toBe(TEXT['src/components/galaxy/surface/catalog/bf2017-hoth.js']);
+    expect(tree.read('public/models/galaxy/bf2017/x.glb')).toBe('glTF');
+    for (const k of ['src/components/galaxy/surface/catalog/bf2017', 'public/models/galaxy/bf2017/', 'src/lib/three/walrus.js', 'src/lib/three/ownRig.js', 'src/lib/three/levelSky.js', 'src/data/assets-manifest.json']) expect(ISLAND.keep.some((p) => k.startsWith(p) || p.startsWith(k)), k).toBe(true);
+  });
 
   it('deletes the island’s files and nothing else', () => {
     expect(plan.delete).toEqual(['src/components/expanse/flight/pack.js', 'src/components/expanse/flight/scene.js', 'src/pages/Fly.jsx']);

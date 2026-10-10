@@ -3,8 +3,9 @@
 // catalogue swaps (a game's own, by kind) reaches the borrower with no change
 // of its own, and the galaxy's insides stay free to move behind this file.
 
-// the catalogue: which kinds exist and where their files are
-export { SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from '../surface/catalog';
+// the catalogue: which kinds exist and where their files are, and its groups
+// (the game's own come last, so a kind they name wins over the same kind before)
+export { GROUPS, SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from '../surface/catalog';
 // the placer: putting a kind on the ground, singly or as a cluster
 export { createPlacer, loadModel, usesModel, clusterSpecs } from '../surface/placer';
 // the code-built props, for a check that a kind is drawable either way

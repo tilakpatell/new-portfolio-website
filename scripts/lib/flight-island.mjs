@@ -8,7 +8,7 @@
 // remove(file). scripts/flight-island.mjs hands it the real one, the test a
 // fake.
 //
-//   check(tree) → { unmarked, stale, outsideImports, crossWorld, unlisted, missing, counts }
+//   check(tree) → { unmarked, stale, outsideImports, crossWorld, unlisted, missing, broken, counts }
 //   removal(tree, { date }) → { delete, dropLines, deps, migration, migrationFile, decision, decisionFile, byHand }
 //   apply(plan, tree) → the tree as the plan leaves it (files deleted, rows dropped, deps out)
 import { dirname, join, normalize } from 'node:path/posix';
@@ -79,8 +79,9 @@ export const ISLAND = {
     'docs/health/RULES.md: the flight as the example of a removable world',
     'docs/superpowers/HANDOFF-planet-flight.md: the status, as retired',
   ],
-  // what stays whatever happens to the flight (the design's “What stays”),
-  // so the remover can never take it
+  // what stays whatever happens to the flight (the design's “What stays”):
+  // never deleted, and never edited but for a file in `rows` (a prefix
+  // matches a path, so a catalogue group's name covers bf2017-<world>.js)
   keep: [
     'src/lib/land/flats.js',
     'src/lib/land/layers.js',
@@ -93,6 +94,16 @@ export const ISLAND = {
     'scripts/supabase-check.mjs',
     'scripts/conflict-markers.mjs',
     'docs/stack/supabase.md',
+    // the Battlefront II (2017) pipeline's: its catalogue groups, models, rigs
+    // and sky, and the asset mirror's manifest (the bucket is not in the tree)
+    'src/components/galaxy/surface/catalog/bf2017',
+    'public/models/galaxy/crew',
+    'public/models/galaxy/surface',
+    'public/models/galaxy/bf2017',
+    'src/lib/three/walrus.js',
+    'src/lib/three/ownRig.js',
+    'src/lib/three/levelSky.js',
+    'src/data/assets-manifest.json',
   ],
 };
 
@@ -123,12 +134,15 @@ const UNSCANNED = [/^docs\/(?!stack\/[^/]+\.md$)/, /^\.claude\//, /^\.agents\//,
 
 const DEP_LISTS = ['package.json', 'docs/stack/README.md'];
 const under = (file, dir) => file === dir || file.startsWith(`${dir}/`);
+const kept = (file, island) => island.keep.some((k) => under(file, k) || (!k.endsWith('/') && file.startsWith(k)));
 export const inIsland = (file, island = ISLAND) => island.files.includes(file) || island.folders.some((d) => under(file, d));
 const scanned = (file) => SCANNED.test(file) && !UNSCANNED.some((re) => re.test(file));
 
 export const referencesIn = (text) =>
   text.split('\n').flatMap((line, i) => (NAMES.some((re) => re.test(line)) ? [{ line: i + 1, text: line }] : []));
 
+// (': end' ends at a word's end, so ': ending' is not one)
+const markers = (marker) => ({ begin: markRe(marker, ': begin\\b'), end: markRe(marker, ': end\\b'), row: markRe(marker, '(?!: (?:begin|end)\\b)\\b') });
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // a marker is a comment: // planet flight, # planet flight, {/* planet flight */},
 // -- planet flight or, in Markdown, <!-- planet flight -->
@@ -138,9 +152,7 @@ const markRe = (marker, tail = '') => new RegExp(`(?:\\/\\/|#|\\/\\*|--)\\s*${es
 // row or a begin…end block. An unclosed begin marks to the file's end, and
 // shows as stale if nothing in it names the flight.
 export function markedSpans(lines, marker = ISLAND.marker) {
-  const begin = markRe(marker, ': begin');
-  const end = markRe(marker, ': end');
-  const row = markRe(marker, '(?!: (?:begin|end))\\b');
+  const { begin, end, row } = markers(marker);
   const spans = [];
   for (let i = 0; i < lines.length; i++) {
     if (begin.test(lines[i])) {
@@ -153,15 +165,36 @@ export function markedSpans(lines, marker = ISLAND.marker) {
   return spans;
 }
 
+// a begin with no end, or an end with no begin: a block that would run to
+// the file's end, or a row the remover would not drop. check() fails on each
+export function brokenMarks(lines, marker = ISLAND.marker) {
+  const { begin, end } = markers(marker);
+  const out = [];
+  let open = -1;
+  lines.forEach((line, i) => {
+    if (begin.test(line)) {
+      if (open >= 0) out.push(open);
+      open = i;
+    } else if (end.test(line)) {
+      if (open < 0) out.push(i);
+      open = -1;
+    }
+  });
+  if (open >= 0) out.push(open);
+  return out.sort((a, b) => a - b);
+}
+
 export const isMarked = (lines, i, marker = ISLAND.marker) => markedSpans(lines, marker).some((s) => i >= s.from && i <= s.to);
 
 // The names a marked row binds (import Fly …, import { PACK as fly } …,
-// const Fly = lazy(…)), so a marked row that uses one is a reference too
+// const Fly = … at the module's top level): a marked row that uses one is a
+// reference, and an unmarked row's code that uses one would be left naming
+// nothing (its comments may say the word)
 function bindings(lines, spans) {
   const out = new Set();
   for (const { from, to } of spans)
     for (const line of lines.slice(from, to + 1)) {
-      const m = line.match(/^\s*import\s+(\w+)?\s*,?\s*(?:\{([^}]*)\})?\s*from\b/) ?? line.match(/^\s*(?:const|let)\s+(\w+)\s*=\s*lazy\(/);
+      const m = line.match(/^\s*import\s+(\w+)?\s*,?\s*(?:\{([^}]*)\})?\s*from\b/) ?? line.match(/^(?:export\s+)?(?:const|let)\s+(\w+)\s*=/);
       if (!m) continue;
       if (m[1]) out.add(m[1]);
       for (const part of (m[2] ?? '').split(',')) {
@@ -192,6 +225,7 @@ export function check(tree, island = ISLAND) {
   const stale = [];
   const outsideImports = [];
   const crossWorld = [];
+  const broken = [];
   const withMarks = new Set();
   let rows = 0;
   let references = 0;
@@ -211,10 +245,13 @@ export function check(tree, island = ISLAND) {
       continue;
     }
     const spans = markedSpans(lines, island.marker);
+    for (const i of brokenMarks(lines, island.marker)) broken.push({ file, line: i + 1, text: lines[i].trim() });
     if (spans.length) withMarks.add(file);
     rows += spans.length;
     const bound = bindings(lines, spans);
-    const names = (line) => NAMES.some((re) => re.test(line)) || [...bound].some((b) => new RegExp(`\\b${esc(b)}\\b`).test(line));
+    const boundIn = (line) => [...bound].some((b) => new RegExp(`(?<![\\w$.])${esc(b)}(?![\\w$])`).test(line));
+    const codeOf = (line) => (/^\s*(?:\/\/|\*|\/\*|#|<!--)/.test(line) ? '' : line.replace(/\s\/\/.*$/, ''));
+    const names = (line) => NAMES.some((re) => re.test(line)) || boundIn(line);
     const covered = new Set();
     for (const s of spans) {
       const body = lines.slice(s.from, s.to + 1);
@@ -222,7 +259,10 @@ export function check(tree, island = ISLAND) {
       for (let i = s.from; i <= s.to; i++) covered.add(i);
     }
     lines.forEach((line, i) => {
-      if (!NAMES.some((re) => re.test(line))) return;
+      if (!NAMES.some((re) => re.test(line))) {
+        if (boundIn(codeOf(line)) && !covered.has(i)) unmarked.push({ file, line: i + 1, text: line.trim() });
+        return;
+      }
       references++;
       // a dependency of the island's is named in package.json and the stack
       // census's table: it goes as a dep, and the census rewrites its row
@@ -234,10 +274,10 @@ export function check(tree, island = ISLAND) {
   }
   const unlisted = [...withMarks].filter((f) => !island.rows.includes(f)).sort();
   const missing = island.rows.filter((f) => !withMarks.has(f));
-  return { unmarked, stale, outsideImports, crossWorld, unlisted, missing, counts: { files: islandFiles.length, rows, references } };
+  return { unmarked, stale, outsideImports, crossWorld, unlisted, missing, broken, counts: { files: islandFiles.length, rows, references } };
 }
 
-export const clean = (r) => ['unmarked', 'stale', 'outsideImports', 'crossWorld', 'unlisted', 'missing'].every((k) => r[k].length === 0);
+export const clean = (r) => ['unmarked', 'stale', 'outsideImports', 'crossWorld', 'unlisted', 'missing', 'broken'].every((k) => r[k].length === 0);
 
 // The migration that takes the flight's tables out of the project: its
 // tables, their functions and triggers, its realtime line. The asset buckets
@@ -284,10 +324,10 @@ Apply the migration to the project. Then the prose the remover does not touch: $
 `;
 
 export function removal(tree, { date = '2026-01-01', island = ISLAND } = {}) {
-  const del = tree.files.filter((f) => inIsland(f, island) && !island.keep.some((k) => under(f, k))).sort();
+  const del = tree.files.filter((f) => inIsland(f, island) && !kept(f, island)).sort();
   const dropLines = [];
   for (const file of tree.files) {
-    if (inIsland(file, island) || !scanned(file)) continue;
+    if (inIsland(file, island) || !scanned(file) || (kept(file, island) && !island.rows.includes(file))) continue;
     const text = tree.read(file);
     if (text == null) continue;
     const lines = text.split('\n');

@@ -38,6 +38,7 @@ const LABELS = {
   stale: 'marked, names nothing of the flight',
   outsideImports: 'imports the flight from outside it',
   crossWorld: 'the flight past a world’s shared/ face',
+  broken: 'a begin with no end, or an end with no begin',
 };
 
 function runCheck() {
@@ -57,7 +58,7 @@ function printPlan(plan) {
   for (const f of plan.delete) console.log(`  ${f}`);
   const rows = plan.dropLines.reduce((n, d) => n + d.lines.length, 0);
   console.log(`drop ${rows} lines from ${plan.dropLines.length} files:`);
-  for (const { file, lines } of plan.dropLines) for (const l of lines) console.log(`  ${file}:${l.line}: ${l.text.trim()}`);
+  for (const { file, lines } of plan.dropLines) for (const l of lines) console.log(`  ${file}:${l.line}: ${l.text}`);
   console.log(`dependencies out of package.json: ${plan.deps.join(', ')} (then npm install rewrites package-lock.json, and node scripts/stack-census.mjs --write)`);
   console.log(`write ${plan.migrationFile} (drops the flight's tables) and ${plan.decisionFile}`);
   console.log('by hand:');
