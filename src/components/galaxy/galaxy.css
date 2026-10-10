@@ -731,3 +731,41 @@
   border-radius: 10px;
   border: 1px solid rgb(255 255 255 / 0.08);
 }
+
+/* a mode the galaxy has here, on the game's own menu tile (GalaxyPanel's ModeTile) */
+.galaxy-mode-tile {
+  position: relative;
+  display: block;
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  color: #fff;
+  text-decoration: none;
+}
+.galaxy-mode-tile-film {
+  aspect-ratio: 504 / 408;
+  max-height: 200px;
+  width: 100%;
+}
+.galaxy-mode-tile-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.8));
+}
+.galaxy-mode-tile-text b {
+  display: block;
+  font-family: var(--font-bf-hud);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent, #7fd4ff);
+}
+.galaxy-mode-tile:focus-visible {
+  outline: 2px solid var(--accent, #7fd4ff);
+  outline-offset: 2px;
+}
