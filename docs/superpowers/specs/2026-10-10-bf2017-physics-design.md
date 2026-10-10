@@ -141,6 +141,8 @@ P0, P1, P2 and P4 start at once (their library tasks share no file); each one’
 5. **Props’ destruction** was not surveyed; P3 covers crashed vehicle parts, and a later lane may read `DestructionVolumeAsset` and the props’ graphs.
 6. **The surface’s hostiles and crowds stay on the walker** in these lanes; moving them is #781’s lane two, revived when a world on the game’s level has them (lane 5 of #812 is the first).
 7. **Sequel-era records** are refused as lane 0 refuses them (`isSequel`); the physics of a First Order TIE is the same asset family and comes through the Original-era name.
+8. **Bolts are not blueprints** (lane P2): the 114 `ProjectileBlueprint`s are missiles, grenades and charges; a blaster bolt is a `GameDataContainerAsset` holding a `WSBulletEntityData`, so `projectiles.json` reads both (333 rows). **Grenades have no body** in their record (no `RigidBodyData`), and their `InitialSpeed` (350) is not the throw: the world gives a grenade its mass and the weapon its speed.
+9. **Ragdoll bodies are named by the component’s index fields**, which two components get wrong (the Ewok hero’s fifteen all say body 1); such a row is `partial` and falls back to the trooper’s bodies. The blueprint’s `BodiesNamesHashes` did not match FNV-1, FNV-1a or djb2 of the bone names.
 
 ## Credit and licence
 

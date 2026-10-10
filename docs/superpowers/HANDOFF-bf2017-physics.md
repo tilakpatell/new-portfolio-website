@@ -42,8 +42,26 @@ Your task 4’s `src/lib/level/collision.js` is split: you keep `solidsOf(pack, 
 | design | the architecting session | `claude/bf2017-physics` | (this PR) | |
 | P0 | | `claude/bf2017-p0-shapes` | | |
 | P1 | | `claude/bf2017-p1-body` | | |
-| P2 | | `claude/bf2017-p2-bolts` | | |
+| P2 | a desktop session (the export read locally) | `claude/bf2017-p2-bolts` | PR_NUMBER | |
 | P3 | | `claude/bf2017-p3-vehicles` | | |
 | P4 | | `claude/bf2017-p4-surfaces` | | |
 
 Each lane adds its Done and Left here when it merges: the pack’s physics bytes per world, what the budget dropped per cell, the jump row’s source, which material indices were named by hand and from which effect, what the handling layer did not hold.
+
+### Lane P2: bolts, blasts, hit zones, ragdolls (2026-10-10)
+
+**Done.**
+- `scripts/lib/bf2017-physics-rules.mjs` (created here, P1 not yet on `main`: P1 merges its soldier builder in beside these and keeps the file’s `loadAsset`/`deref`/`checkSources`, or swaps all of them for lane 0’s `bf2017-ebx.mjs`): `projectileRow`, `projectileRulebook`, `boneSetRow`, `ragdollRow`, `shareBodies`, `physicsRulebooks`, `refused`; its tests are `bf2017-physics-rules.bolts.test.mjs` so P1’s `bf2017-physics-rules.test.mjs` does not collide. `scripts/bf2017-bolts-data.mjs --root <export>/web` writes the three files.
+- `src/data/bf2017/physics/projectiles.json` (333 rows: the 114 blueprints less 14 refused, and 233 bolts, which are `WSBulletEntityData` containers, not blueprints; 397 KB, imported by no page), `bones.json` (10 sets, 112 KB; the surface fetches it as its own 3.9 KB-gzip chunk the first time a figure on the game’s skeleton is in the way), `ragdoll.json` (48 rows, 144 KB: 39 heroes share the human’s bodies through `bodiesOf`); `NOTES.md` says what the records hold and do not (grenades have no `RigidBodyData`; two components give one body to two bones).
+- `src/lib/combat/ballistics.js`: `flight` (the exact solution of `dv/dt = g − k·v`, so a flight lands within millimetres at 1/30 and 1/120; with no gravity and no drag the same positions as `bolt.js` to 1e-9), `launch`, `arc`. `bolt.js` takes an optional `ballistic` row (its own tests untouched and green).
+- `src/lib/physics/blast.js`: `applyBlast` (falloff from `inner` to `radius`, the line of sight on the world’s ray, the shockwave’s kick to ragdolls) and `segmentRay(physics)`, a segment ray in `bolt.js`’s solids form over any `world.js` world.
+- `src/lib/physics/boneCapsules.js` (`capsulesOf`, `regionsOf`, `figureCapsules`, `isGameSkeleton`, `regionOf`) and `hurtbox.js` back from #781’s branch as it was (its engine tests need P1’s `character.js`; the test here uses a stand-in body until then).
+- `src/lib/three/ragdoll2017.js`: `rig2017` over `ragdollPhysics.js` (which gained an optional `table`, Meshy’s by default), the impulse allowance (`maxImpulse` spent and restored over `impulseLifetime`), `ragdollOf`, `floorCollide`.
+- The surface: `blaster.js` flies against `world.physicsRay` when a world has one (P0’s level world sets it; `segmentRay` is one) and takes a `ballistic` row for your bolts; `boltPlay.js` hits a figure on the game’s skeleton by the game’s capsules and names the bone and the reaction on the hit.
+
+**Left.**
+- P0: set `world.physicsRay` (a budgeted `queries.ray` in `bolt.js`’s solids form) on a level world; `blaster.js` picks it up.
+- Lane 1: its figures through `boltPlay.js` (automatic once `fig.bones` carries `Head`, `Spine`, `Spine1`/`Neck`) and `rig2017` where the surface makes a ragdoll today (`ground/groundFigures.js`: `rig2017(bones, ragdollOf(book, 'stormtroopershared'), …)` for a figure on the game’s skeleton, `rigRagdoll` otherwise; a blast’s `kicked` list wants `rag.kick`).
+- No surface page passes a row yet: the rifle’s (`blasterprojectile_blasterrifle_a295`: gravity 0, drag 0, ttl 3) would fly exactly as today, so the first row that shows is a thrown grenade, which wants a throw (the game’s grenade `InitialSpeed` is a placeholder 350; the throw is the weapon’s) and a body (the world’s mass: the record has none).
+- The Battlefront game (#812’s lane 5): `flight` for its sim’s projectiles, `applyBlast` for grenades, `capsulesOf` for hits, `rig2017` for the dead.
+
