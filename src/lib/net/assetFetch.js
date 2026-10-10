@@ -1,6 +1,6 @@
 // The site's own fetch pool for model and texture bytes: so many requests at
 // once for this device and no more, the nearest thing first, one request per
-// URL however many ask, a timeout that grows with the file, a failure
+// URL however many ask, a timeout on a stall that grows with the file, a failure
 // retried on a short schedule, and a body that comes up short of what was
 // promised (a proxy cut it, a CDN served a truncated object) a failure, not
 // a model that won't parse. Each caller can be stopped on its own (its
@@ -18,7 +18,7 @@
 // poolSize(level, lowData) → 2 | 3 | 6 | 8
 
 export const WAITS = [500, 1000, 2000];
-// 20 s, and a second for every megabyte
+// 20 s, and a second for every megabyte, with nothing arriving
 export const TIMEOUT = (bytes = 0) => 20000 + 1000 * ((bytes ?? 0) / 1e6);
 
 // two on a weak device or a saver connection, three on a phone, six on a
@@ -83,7 +83,14 @@ export function createAssetFetch({ fetch = globalThis.fetch?.bind(globalThis), s
     const ctrl = new AbortController();
     const stop = () => ctrl.abort();
     entry.ctrl.signal.addEventListener('abort', stop);
-    const timer = setTimeout(stop, timeout(entry.bytes));
+    // (a stall, not a deadline: the timer starts again with every chunk, so
+    // a big file on a slow line that keeps arriving is never cut off and
+    // fetched again from the start; one that goes quiet that long is)
+    let timer = setTimeout(stop, timeout(entry.bytes));
+    const alive = () => {
+      clearTimeout(timer);
+      timer = setTimeout(stop, timeout(entry.bytes));
+    };
     try {
       const res = await fetch(entry.url, { signal: ctrl.signal, mode: 'cors', credentials: 'same-origin' });
       if (res.status === 404) return { fail: Object.assign(new Error(`${entry.url}: 404`), { status: 404, missing: true }) };
@@ -104,6 +111,7 @@ export function createAssetFetch({ fetch = globalThis.fetch?.bind(globalThis), s
           const { done, value } = await reader.read();
           if (done) break;
           if (entry.cancelled) return { dropped: true };
+          alive();
           parts.push(value);
           got += value.byteLength;
           count.bytes += value.byteLength;

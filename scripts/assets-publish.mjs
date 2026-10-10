@@ -17,7 +17,7 @@
 //   dry       what would go, and nothing sent
 //   only      just the files whose path matches (a star crosses folders)
 //   manifest  another manifest to write (a check's, not the site's)
-//   files     publish these paths under public/ instead of the game's
+//   files     publish these paths under public/ (globs, comma-separated) instead of the game's
 //             (a check that wants something in the bucket before phase 1's
 //             heroes are there; never for the site's manifest)
 //
@@ -146,7 +146,9 @@ async function main() {
 
 // any files under public/ by a glob over their paths, for a check
 function anyFiles(publicDir, glob) {
-  const match = globMatch(glob);
+  // (a comma list of globs or paths)
+  const tests = String(glob).split(',').filter(Boolean).map(globMatch);
+  const match = (path) => tests.some((t) => t(path));
   const walk = (dir) => (existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)])) : []);
   return walk(publicDir)
     .map((abs) => abs.slice(publicDir.length + 1).split('\\').join('/'))

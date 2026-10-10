@@ -119,6 +119,30 @@ describe('the site’s asset pool', () => {
     }
   });
 
+  it('lets a slow body that keeps arriving take as long as it takes', async () => {
+    vi.useFakeTimers();
+    try {
+      // a body in five chunks, 800 ms apart, against a stall of a second
+      const fetch = vi.fn(async () => {
+        let n = 0;
+        const body = new ReadableStream({
+          async pull(c) {
+            await new Promise((r) => setTimeout(r, 800));
+            if (n++ < 5) c.enqueue(new Uint8Array(10));
+            else c.close();
+          },
+        });
+        return new Response(body);
+      });
+      const p = quick(fetch, { timeout: () => 1000 }).fetch('/big');
+      await vi.advanceTimersByTimeAsync(6000);
+      expect((await p).byteLength).toBe(50);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('a request aborted before it starts rejects with AbortError and is never asked', async () => {
     const h = held();
     const pool = quick(h.fetch, { size: 1 });

@@ -31,6 +31,13 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # the public bucket held to its manifests (scripts/assets-check.mjs):
+      # every published file there at its size, a year's cache, before a
+      # build that sends visitors to it
+      - if: ${{ vars.ASSET_BASE != '' }}
+        run: node scripts/assets-check.mjs
+        env:
+          ASSET_BASE: ${{ vars.ASSET_BASE }}
       - run: npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
