@@ -15,6 +15,7 @@
 //   deploy(sim, id, { kind, id, spawn: 'point' | 'squad', mate }) → { ok, why }
 //   step(sim, inputs = []) → events     inputs: [{ id, move: [x, z], look, fire, aim: [x, y, z], crouch, sprint, roll, ability, vent, cool }]
 //   addPlayer(sim, { team, classId, at, yaw, id }) → id (in a squad)      removeEntity(sim, id)
+//   squadSpot(sim, id, team, mate?) → { spot } | { why }    squadBlocks(sim, id, team) → [{ id, blocked }]
 //   view(sim, { player }) → { time, teams, entities, bolts, mode, deploying, deploy, squad }  (one object, refreshed in place)
 //   drain(sim) → the event log so far, cleared
 
@@ -182,6 +183,25 @@ export function addPlayer(sim, { team, classId, at, yaw = 0, id = null }) {
 // where a squad spawn can stand: the navgrid's walkable cells, anywhere without one
 export const standable = (sim) => (x, z) => !sim.nav || walkable(sim.nav, x, z);
 
+// a squad spawn for one of a team: on the mate named (or why not), else on the first mate who can be
+export function squadSpot(sim, id, team, mate = null) {
+  const sq = sim.brains ? squadOf(sim.brains.squads, id) : null;
+  const enemies = enemiesOf(sim, team);
+  const one = mate != null ? sim.entities.get(mate) ?? null : null;
+  const why = mate != null && (!sq?.members.includes(mate) ? 'none' : blocked(one, { enemies, now: sim.time }));
+  if (why) return { why };
+  const squad = one ? [one] : (sq?.members ?? []).map((m) => sim.entities.get(m)).filter(Boolean);
+  const spot = squadSpawn({ squad, me: id, enemies, now: sim.time, walkable: standable(sim) });
+  return spot ? { spot } : { why: 'squad' };
+}
+
+// why each of a soldier's squadmates can or cannot be spawned on now
+export function squadBlocks(sim, id, team) {
+  const sq = sim.brains ? squadOf(sim.brains.squads, id) : null;
+  const enemies = enemiesOf(sim, team);
+  return (sq?.members ?? []).filter((m) => m !== id).map((m) => ({ id: m, blocked: blocked(sim.entities.get(m) ?? null, { enemies, now: sim.time }) }));
+}
+
 // what a team has out: heroes and reinforcements standing, with those chosen this wave
 function outOf(sim, team, extra = { heroes: 0, reinforcements: 0 }) {
   const out = { ...extra };
@@ -208,13 +228,9 @@ export function deploy(sim, id, choice) {
   const enemies = enemiesOf(sim, team);
   let spot = null;
   if (choice.spawn === 'squad') {
-    const sq = squadOf(sim.brains.squads, id);
-    const one = choice.mate != null ? sim.entities.get(choice.mate) ?? null : null;
-    const why = choice.mate != null && (!sq?.members.includes(choice.mate) ? 'none' : blocked(one, { enemies, now: sim.time }));
-    if (why) return { ok: false, why };
-    const squad = one ? [one] : (sq?.members ?? []).map((m) => sim.entities.get(m)).filter(Boolean);
-    spot = squadSpawn({ squad, me: id, enemies, now: sim.time, walkable: standable(sim) });
-    if (!spot) return { ok: false, why: 'squad' };
+    const r = squadSpot(sim, id, team, choice.mate);
+    if (r.why) return { ok: false, why: r.why };
+    spot = r.spot;
   } else spot = pickSpawn({ map: mapOf(sim.rb, sim.level), ids: spawnSets(sim.ga)[sideOf(sim.ga, team)], team, enemies, rand: sim.rand });
   if (!spot) return { ok: false, why: 'nowhere' };
   buy(sim.bp, id, offer);
