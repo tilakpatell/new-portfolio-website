@@ -1,6 +1,6 @@
 {
   "date": "2026-10-10",
-  "sha": "1a685ab8",
+  "sha": "6b793cae",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -65,7 +65,7 @@
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2813
+          "n": 2816
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -110,12 +110,42 @@
       ]
     },
     "boundary-breaks": {
-      "value": 462,
+      "value": 475,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
         {
           "file": "src/lib/land/flats.js → src/components/galaxy/surface/noise.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/land/flight/lifeTables.js → src/components/expanse/gen/sector.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/land/flight/lifeTables.js → src/components/expanse/gen/seed.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/land/flight/lifeTables.test.js → src/components/galaxy/fleet.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/land/flight/lifeTables.test.js → src/components/galaxy/surface/catalog/index.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/land/flight/lifeTables.test.js → src/components/galaxy/surface/figures.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/land/flight/lifeTables.test.js → src/components/universe/trafficModels.js",
           "n": 1,
           "note": "lib knows no page"
         },
@@ -206,36 +236,6 @@
         },
         {
           "file": "src/components/albuquerque/casa/scene.js → src/components/office/stage3d.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/albuquerque/metherria/scene.js → src/components/office/people.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/albuquerque/metherria/scene.js → src/components/rickmorty/wardrobe/dress.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/albuquerque/metherria/scene.js → src/components/rickmorty/wardrobe/looks.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/albuquerque/metherria/scene.js → src/components/rickmorty/wardrobe/wear.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/albuquerque/wardrobe.js → src/components/rickmorty/wardrobe/looks.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/albuquerque/wardrobe.test.js → src/components/office/people.js",
           "n": 1,
           "note": "worlds are islands"
         }
