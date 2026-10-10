@@ -21,6 +21,12 @@ describe('surfaceOf', () => {
     expect(surfaceOf({ sound: { ground: 'metal' } }, true)).toBe('metal');
     expect(surfaceOf({ sound: { ground: 'metal' } }, false)).toBe('metal');
     expect(surfaceOf({ sound: { ground: 'snow' } }, false)).toBe('stone');
+    // most worlds say it by their terrain's detail
+    expect(surfaceOf({ ground: { detail: 'snow' } }, true)).toBe('snow');
+    expect(surfaceOf({ ground: { detail: 'sand' } }, true)).toBe('sand');
+    expect(surfaceOf({ ground: { detail: 'redsoil' } }, true)).toBe('sand');
+    expect(surfaceOf({ ground: { detail: 'leaves' } }, true)).toBe('stone');
+    expect(surfaceOf({ sound: { ground: 'sand' }, ground: { detail: 'snow' } }, true)).toBe('sand');
     expect(surfaceOf({}, true)).toBe('stone');
     expect(surfaceOf(null, true)).toBe('stone');
   });

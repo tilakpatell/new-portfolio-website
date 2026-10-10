@@ -21,13 +21,17 @@ export function countFor(n, level = 'high') {
   return Math.max(1, Math.round(n * k));
 }
 
-// grass and mud scorch as stone does; a wall is metal where the world's
+// the world's ground: what its footsteps say (site.sound.ground), else its
+// terrain's detail (snow; sand, a beach or red soil as sand); grass, mud,
+// leaves and the rest scorch as stone does. A wall is metal where the
 // floor is (a station, a ship), else stone
+const SANDY = new Set(['sand', 'beach', 'redsoil']);
 export function surfaceOf(site, ground) {
-  const g = site?.sound?.ground;
+  const g = site?.sound?.ground ?? site?.ground?.detail;
   if (g === 'metal') return 'metal';
   if (!ground) return 'stone';
-  return g === 'snow' || g === 'sand' ? g : 'stone';
+  if (g === 'snow') return 'snow';
+  return SANDY.has(g) ? 'sand' : 'stone';
 }
 
 // the mark: the game's sheet (`impact`'s red the scorch; the metal scorch's
