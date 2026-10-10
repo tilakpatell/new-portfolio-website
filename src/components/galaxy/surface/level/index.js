@@ -25,6 +25,7 @@ import { createColliders } from './colliders.js';
 import { DECAL_POOL, createDecals } from '../../../../lib/three/decals.js';
 import { createLevelLights, lightScale } from './levelLights.js';
 import { createLevelProbes } from './levelProbes.js';
+import { wantsDetail } from './levelDetail.js';
 
 // A pack file's bytes, from the bucket where it has it, else the site.
 // (No abort signal on the request: assetBase reads any failure as the bucket
@@ -129,11 +130,14 @@ export function createLevel({ scene, site, tier, renderer = null, walk = null, c
   let lights = null;
   let probes = null;
   let decalsAt = null; // (where the pool was last filled: again after 8 m)
-  const colliders = walk ? createColliders(walk, tier) : null;
+  const colliders = walk ? createColliders(walk, tier, { loadBin: fetchBytes }) : null;
   packOf(world)
-    .then((pack) => {
+    .then(async (pack) => {
+      // (the materials' detail normals, on the tiers that draw them, before the first mesh)
+      const detail = wantsDetail(tier, renderer) ? await partOf(world, 'detail.json', { meshes: {} }) : null;
       if (gone) return;
-      loader = createLevelLoader({ world, tier, renderer, fetchBytes, sizes: pack.tex });
+      const meshOf = new Map(pack.meshes.flatMap((m, i) => (m.glb ?? []).filter(Boolean).map((g) => [g, i])));
+      loader = createLevelLoader({ world, tier, renderer, fetchBytes, sizes: pack.tex, detail, meshOf });
       level = createLevelScene({ scene, pack, loadGltf: loader.load, tier });
       // the far list is the whole arena's table; the cells round you bring
       // its collision (the walk world's solids and floors, switched off when

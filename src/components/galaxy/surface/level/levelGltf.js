@@ -6,11 +6,13 @@
 //
 //   createLevelLoader({ world, tier, renderer, fetchBytes, sizes }) → { load(glbPath) → Promise<{ scene } | null>,
 //     texture(packPath, sizes?) → Promise<Texture | null>, dispose() }
-//   (sizes: level.json's `tex`, each map's size per tier)
+//   (sizes: level.json's `tex`, each map's size per tier; detail: the pack's
+//   detail.json on the tiers that draw it, meshOf: a GLB's path → its mesh index)
 
 import { gltfLoader, ktx2Loader } from '../../../../lib/three/gltf.js';
 import { assetUrl, withFallback } from '../../../../lib/assetBase.js';
 import { packUrl, splitTextures, tierTexture } from './levelPack.js';
+import { addDetail } from './levelDetail.js';
 
 // '../tex/a.ktx2' named by meshes/x.glb → 'tex/a.ktx2' in the pack
 const inPack = (glbPath, uri) => {
@@ -22,7 +24,7 @@ const inPack = (glbPath, uri) => {
   return parts.join('/');
 };
 
-export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {} }) {
+export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {}, detail = null, meshOf = null }) {
   const textures = new Map(); // pack path → Promise<Texture | null>
   const meshes = new Map(); // glb path → Promise<{ scene } | null>
   let gone = false;
@@ -64,6 +66,14 @@ export function createLevelLoader({ world, tier, renderer, fetchBytes, sizes = {
             const { buffer, slots } = splitTextures(bytes);
             const gltf = await gltfLoader().parseAsync(buffer, '');
             await bind(gltf, slots, glbPath);
+            // (the game's detail normals over the mesh's own: detail.json, levelDetail.js)
+            const extra = detail?.meshes?.[meshOf?.get(glbPath)] ?? [];
+            await Promise.all(
+              extra.map(async (d) => {
+                const [mat, map] = await Promise.all([gltf.parser.getDependency('material', d.material).catch(() => null), texture(d.tex, detail.tex)]);
+                if (!gone) addDetail(mat, { map, tiling: d.tiling, strength: d.strength });
+              }),
+            );
             return gltf;
           })
           .catch((e) => {

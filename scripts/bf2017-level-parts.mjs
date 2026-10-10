@@ -4,7 +4,8 @@
 // scene's life, rides and things), decals.json and its maps
 // (src/lib/three/decals.js), effects.json (fidelity X), tracks.json
 // (src/lib/three/animTracks.js), probes.json and its 64² faces, the far
-// shadow cache (level.json's `shadowCache`, fidelity S), scatter.json
+// shadow cache (level.json's `shadowCache`, fidelity S), detail.json and
+// its maps (the materials' detail normals, levelDetail.js), scatter.json
 // (the terrain's scatter table, fidelity N). The writers are pure, under
 // scripts/lib/bf2017-level-*.mjs; this fetches, cuts and writes. Called by
 // scripts/bf2017-level.mjs after the meshes, or alone with --parts.
@@ -21,6 +22,7 @@ import { inBucket } from './lib/bf2017-paths.mjs';
 import { mainSubs } from './lib/bf2017-level.mjs';
 import { actorsJson, vehiclesJson } from './lib/bf2017-level-actors.mjs';
 import { decalsJson } from './lib/bf2017-level-decals.mjs';
+import { detailsJson, meshKey } from './lib/bf2017-level-detail.mjs';
 import { effectsJson } from './lib/bf2017-level-effects.mjs';
 import { probesJson } from './lib/bf2017-level-probes.mjs';
 import { tracksJson } from './lib/bf2017-level-tracks.mjs';
@@ -36,6 +38,8 @@ const FACES = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
 const PROBE_SIZE = 64;
 // a decal's map per tier: they are seen near, and the pool is small
 const DECAL_TEX = { low: 256, mid: 512, high: 1024, ultra: 1024 };
+// a detail normal tiles small: drawn on high and ultra only
+const DETAIL_TEX = { low: 256, mid: 256, high: 512, ultra: 1024 };
 const lastOf = (p) => String(p).split('/').pop();
 const kb = (n) => `${(n / 1024).toFixed(1)} KB`;
 
@@ -169,6 +173,35 @@ export async function writeParts({ env, cache, mapName, map, json, out, subs = n
   }
   counts.shadow = shadowCache ? 1 : 0;
 
+  // the materials' detail normals (materials.jsonl), each map once
+  const wantMeshes = new Set(json.meshes.map((m) => meshKey(m.name)));
+  const records = new Map();
+  for (const line of ((await bytes(env, cache, 'web/materials.jsonl')) ?? '').toString('utf8').split('\n')) {
+    if (!line) continue;
+    const key = line.slice(9, line.indexOf('"', 9)).toLowerCase(); // ({"mesh":"…": the key without parsing the rest)
+    if (wantMeshes.has(key)) records.set(key, JSON.parse(line));
+  }
+  const detail = detailsJson(json.meshes, records);
+  const detailSizes = {};
+  for (const [slug, name] of Object.entries(detail.sources)) {
+    const buf = await bytes(env, cache, `web/textures/${name.toLowerCase()}.ktx2`);
+    if (!buf) continue;
+    const info = ktx2Info(buf);
+    detailSizes[slug] = {};
+    for (const [tier, want] of Object.entries(DETAIL_TEX)) {
+      const size = Math.min(want, info.width);
+      detailSizes[slug][tier] = size;
+      if (!files.has(`tex/detail/${slug}.${size}.ktx2`)) files.set(`tex/detail/${slug}.${size}.ktx2`, dropMips(buf, Math.min(mipsToFit(info.width, size), info.levels - 1)));
+    }
+  }
+  // (a map the bucket lacks: its materials go without)
+  for (const [m, list] of Object.entries(detail.meshes)) {
+    detail.meshes[m] = list.filter((d) => detailSizes[lastOf(d.tex).replace(/\.ktx2$/, '')]);
+    if (!detail.meshes[m].length) delete detail.meshes[m];
+  }
+  put('detail.json', { meshes: detail.meshes, tex: detailSizes });
+  counts.detail = Object.keys(detail.meshes).length;
+
   // the terrain's scatter table, as the bucket has it
   const scatterPath = map.terrain?.scatter;
   const scatter = scatterPath ? await bytes(env, cache, inBucket(scatterPath)) : null;
@@ -198,11 +231,12 @@ export async function writeParts({ env, cache, mapName, map, json, out, subs = n
     `| tracks.json | ${counts.tracks} | ${kb(size((p) => p === 'tracks.json'))} | src/lib/three/animTracks.js |`,
     `| probes.json and probes/ | ${counts.probes} | ${kb(size((p) => p === 'probes.json' || p.startsWith('probes/')))} | levelProbes.js, lane R's grid |`,
     `| shadow/far.png | ${counts.shadow} | ${kb(size((p) => p.startsWith('shadow/')))} | fidelity S (level.json's shadowCache) |`,
+    `| detail.json and tex/detail/ | ${counts.detail} meshes | ${kb(size((p) => p === 'detail.json' || p.startsWith('tex/detail/')))} | levelDetail.js (high, ultra) |`,
     `| scatter.json | ${counts.scatter} | ${kb(size((p) => p === 'scatter.json'))} | fidelity N |`,
     '',
     `Not placed (no kind on the site yet, or scenery): ${unplaced.map((u) => `${u.blueprint} ×${u.count}`).join(', ') || 'none'}. Decals skipped: ${Object.entries(decals.skipped).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'}${decals.missing.length ? `; missing: ${decals.missing.join(', ')}` : ''}. Tracks of owners the pack lacks: ${tracks.unplaced.length}.`,
     '',
   ];
-  for (const l of lines.slice(4, 15)) log(l);
+  for (const l of lines.slice(4, 16)) log(l);
   return { counts, lines, shadowCache };
 }

@@ -50,6 +50,7 @@ import { LOD, capIndex, texSizeFor } from '../src/lib/level/lod.js';
 import { ktx2Info, dropMips, mipsToFit } from './lib/ktx2-mips.mjs';
 import { encodePng16 } from './lib/png16.mjs';
 import { writeParts } from './bf2017-level-parts.mjs';
+import { main as writePhysics } from './bf2017-physics.mjs';
 
 const USAGE = 'node scripts/bf2017-level.mjs <map> --world <id> (--spot <x> <z> | --spawn) [--district <id>] [--inside] [--subs a,b] [--arena 1024] [--yaw 0] [--ultra] [--parts] [--mode FantasyBattle] [--weather sunny] [--dry]';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -255,6 +256,8 @@ async function main(args) {
     const readme = await readFile(join(out, 'README.md'), 'utf8').catch(() => '');
     const head = readme.split("## The map's other parts")[0].replace(/\n*$/, '\n\n');
     await writeFile(join(out, 'README.md'), `${head}${parts.lines.join('\n')}`);
+    // (the game's shapes, and the props' collision hulls: lane P0's script)
+    await writePhysics([out]);
     console.log(`wrote the parts beside ${relative(ROOT, out)}`);
     return;
   }
@@ -457,6 +460,7 @@ async function main(args) {
     also: ['galaxy'],
     permission: PERMISSION,
   });
+  await writePhysics([out]);
   console.log(`wrote ${relative(ROOT, out)}`);
 }
 
