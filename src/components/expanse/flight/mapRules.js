@@ -66,11 +66,8 @@ const toHex = (c) => `#${c.map((v) => Math.round(Math.min(255, Math.max(0, v))).
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 
 // a biome's own colour, from the planet's palette: the first biome is the
-// low ground; one sunk deeper than WATER is water (a few metres down is a
-// flat: Tatooine's salt) (the low colour toward the sky's); the
-// others, by how high they sit, toward the high colour, then the rock, then
-// the accent, so neighbours read apart
-const WATER = -6; // m
+// low ground; the others, by how high they sit, toward the high colour, then
+// the rock, then the accent, so neighbours read apart
 const tints = new WeakMap();
 function tintsOf(spec) {
   let t = tints.get(spec);
@@ -78,19 +75,24 @@ function tintsOf(spec) {
   const p = spec.palette;
   const low = rgb(p.low);
   const toward = [p.high, p.rock, p.accent].map(rgb);
-  const land = spec.biomes.map((b, i) => [b.base ?? 0, i]).filter(([base, i]) => i > 0 && base >= WATER).sort((a, b) => a[0] - b[0]);
-  t = spec.biomes.map((b, i) => {
-    if (i === 0) return low;
-    if ((b.base ?? 0) < WATER) return mix(mix(low, rgb(p.skyHigh ?? p.accent), 0.55), [24, 48, 96], 0.2);
-    const k = land.findIndex(([, j]) => j === i);
-    return mix(low, toward[k % 3], 0.6);
-  });
+  const rest = spec.biomes.map((b, i) => [b.base ?? 0, i]).filter(([, i]) => i > 0).sort((a, b) => a[0] - b[0]);
+  t = spec.biomes.map((b, i) => (i === 0 ? low : mix(low, toward[rest.findIndex(([, j]) => j === i) % 3], 0.6)));
   tints.set(spec, t);
   return t;
 }
 
-// the biome's colour at a height: darker under its base, lighter over it
+// The planet's water as the map shows it, by kind (lane A's water.js draws
+// the sheet in 3D; a map reads lighter than a sheet under the sky, so these
+// are its own): a cell under the level is water whatever its biome, as the
+// sheet covers it; a kind the flight doesn't draw (Bespin's clouds) is none
+const WATER = { sea: '#3f7f9a', lake: '#4a7d8a', swamp: '#56603c', lava: '#e0521e' };
+
+// the colour of a cell: its biome's at its height, darker under the biome's
+// base and lighter over it; under the planet's water, the water's, darker
+// the deeper it is
 export function biomeRgb(spec, index, height) {
+  const w = spec.water;
+  if (w && WATER[w.kind] && height < w.level) return mix(mix(rgb(WATER[w.kind]), rgb(spec.palette.accent), 0.15), [0, 0, 0], Math.min(0.45, (w.level - height) / 120));
   const c = tintsOf(spec)[index] ?? tintsOf(spec)[0];
   const k = Math.max(-0.6, Math.min(0.6, (height - (spec.biomes[index]?.base ?? 0)) / 160));
   return k < 0 ? mix(c, [0, 0, 0], -k * 0.5) : mix(c, [255, 255, 255], k * 0.4);
@@ -145,3 +147,26 @@ export const zoomStep = (i, dir) => Math.max(0, Math.min(FULL_SCALES.length - 1,
 export const pinchStep = (from, to) => (to > from * 4 / 3 ? 1 : to < from * 3 / 4 ? -1 : 0);
 export const isTap = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]) < 6;
 export const panBy = (centre, [dx, dy], scale) => [centre[0] - dx * scale, centre[1] - dy * scale];
+
+// Where each label goes beside its marker, so none covers another or runs
+// off the map: tried to the right, the left, below, then above; a label
+// with nowhere to go is left out (the list still names it). `items`:
+// [{ text, x, y, w }] (w the text's width with its padding), nearest the
+// ship first, so the labels that matter most get their place; `inside(rect)`
+// says whether a rect is on the map. → [{ text, x, y, w, h }] top left corners.
+export const LABEL_H = 20;
+export function placeLabels(items, inside = () => true) {
+  const placed = [];
+  const clear = (r) => placed.every((p) => r.x >= p.x + p.w + 2 || p.x >= r.x + r.w + 2 || r.y >= p.y + p.h + 2 || p.y >= r.y + r.h + 2);
+  for (const { text, x, y, w } of items) {
+    const tries = [[x + 10, y - LABEL_H / 2], [x - 10 - w, y - LABEL_H / 2], [x - w / 2, y + 10], [x - w / 2, y - 10 - LABEL_H]];
+    for (const [rx, ry] of tries) {
+      const r = { text, x: rx, y: ry, w, h: LABEL_H };
+      if (inside(r) && clear(r)) {
+        placed.push(r);
+        break;
+      }
+    }
+  }
+  return placed;
+}

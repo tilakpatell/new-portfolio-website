@@ -30,7 +30,7 @@ export default function FlightMap({ spec, source, touch = false }) {
   const draw = useCallback(
     (ctx, size) => {
       const w = source();
-      if (!w?.map) return '';
+      if (!w?.map) return null;
       const ship = w.ship;
       if (way.current && arrow.current && dist.current) {
         const b = bearingOf(ship, way.current.at);

@@ -137,6 +137,7 @@
 :where(.hud-minimap-disc canvas):not(hud-none) { display: block; width: 100%; height: 100%; }
 :where(.hud-minimap-caption):not(hud-none) { margin: 0; padding: 0.2rem 0.55rem; border-radius: var(--hud-radius); background: var(--hud-glass); color: var(--hud-ink); font: 600 0.75rem/1.3 var(--hud-num-face); font-variant-numeric: tabular-nums; pointer-events: none; }
 :where(.hud-minimap-caption:empty):not(hud-none) { display: none; }
+:where(.hud-minimap[data-empty='true']):not(hud-none) { visibility: hidden; }
 
 /* the spacing, on the root: a world's HUD that isn't in the frame yet
    (its own rows, as the towns' still are) is spaced by the same numbers */

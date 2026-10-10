@@ -14,7 +14,7 @@
 import { MAP_DEPTH, MAP_N } from '../../../lib/land/flight/mapRaster';
 import { leafOf, sizeAt } from '../../../lib/land/flight/quadtree';
 import { WORKER } from './groundCore';
-import { MAP_CELL, MAP_KEEP, biomeRgb, cellAddress, miniScale, project, visibleLeaves } from './mapRules';
+import { LABEL_H, MAP_CELL, MAP_KEEP, biomeRgb, cellAddress, miniScale, placeLabels, project, visibleLeaves } from './mapRules';
 
 // behind the ground's leaves (their priority is their depth, 0 to 6), two at
 // a time, so the pool always has a worker for the ground
@@ -192,17 +192,19 @@ export function createMap({ spec, workers, makeCanvas = defaultCanvas }) {
     ctx.stroke();
   }
 
-  // a label on glass, upright, beside its marker
-  function label(ctx, text, x, y) {
-    if (!text) return;
+  // labels on glass, upright, beside their markers, none over another
+  // (mapRules' placeLabels); `marks` [[text, x, y]], the most wanted first
+  function labels(ctx, marks, inside) {
     ctx.font = FONT;
-    const w = ctx.measureText(text).width + 10;
-    ctx.fillStyle = GLASS;
-    ctx.beginPath();
-    ctx.roundRect(x + 10, y - 10, w, 20, 6);
-    ctx.fill();
-    ctx.fillStyle = INK;
-    ctx.fillText(text, x + 15, y + 4);
+    const items = marks.filter(([t]) => t).map(([text, x, y]) => ({ text, x, y, w: ctx.measureText(text).width + 10 }));
+    for (const r of placeLabels(items, inside)) {
+      ctx.fillStyle = GLASS;
+      ctx.beginPath();
+      ctx.roundRect(r.x, r.y, r.w, LABEL_H, 6);
+      ctx.fill();
+      ctx.fillStyle = INK;
+      ctx.fillText(r.text, r.x + 5, r.y + 14);
+    }
   }
 
   return {
@@ -240,17 +242,19 @@ export function createMap({ spec, workers, makeCanvas = defaultCanvas }) {
       ctx.fill();
       ctx.fillStyle = INK;
       ctx.fillText('N', r + nx - 4.5, r + ny + 4.5);
-      const labels = [];
+      const named = [];
       for (const m of markers) {
         let [x, y] = project(m.at, view);
         const d = Math.hypot(x, y);
         if (d > r - 10) {
           if (m.kind !== 'waypoint') continue;
           [x, y] = [(x / d) * (r - 12), (y / d) * (r - 12)];
-        } else if (m.kind === 'poi' || m.kind === 'waypoint') labels.push([m.label, r + x, r + y]);
+        } else if (m.kind === 'poi' || m.kind === 'waypoint') named.push([d, m.label, r + x, r + y]);
         mark(ctx, m, r + x, r + y);
       }
-      for (const [t, x, y] of labels) label(ctx, t, x, y);
+      // (nearest first; a label's corners all inside the disc)
+      const inDisc = (b) => [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x + b.w, b.y + b.h]].every(([x, y]) => Math.hypot(x - r, y - r) < r - 2);
+      labels(ctx, named.sort((a, b) => a[0] - b[0]).map(([, ...rest]) => rest), inDisc);
       shipAt(ctx, r, r, headingUp ? 0 : ship.yaw);
       ctx.restore();
       return `Cell ${cellAddress(ship.x, ship.z)}`;
@@ -309,7 +313,10 @@ export function createMap({ spec, workers, makeCanvas = defaultCanvas }) {
         mark(ctx, m, x, y);
         shown.push([m, x, y]);
       }
-      for (const [m, x, y] of shown) if (m.kind !== 'waypoint' || !markers.some((o) => o.kind === 'poi' && o.id === m.id)) label(ctx, m.label, x, y);
+      // (the ship's surroundings named first; a waypoint on a place is named once)
+      const named = shown.filter(([m]) => m.kind !== 'waypoint' || !markers.some((o) => o.kind === 'poi' && o.id === m.id));
+      named.sort((a, b) => Math.hypot(a[1] - sx, a[2] - sy) - Math.hypot(b[1] - sx, b[2] - sy));
+      labels(ctx, named.map(([m, x, y]) => [m.label, x, y]), (b) => b.x >= 4 && b.y >= 4 && b.x + b.w <= w - 4 && b.y + b.h <= h - 4);
       shipAt(ctx, sx, sy, ship.yaw, 11);
     },
 

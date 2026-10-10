@@ -148,7 +148,7 @@ describe('the full map', () => {
     const ctx = fakeCtx();
     const markers = [
       { kind: 'poi', id: 'echo-base', at: [1200, -800], label: 'Echo Base' },
-      { kind: 'pilot', id: 'p', at: [1300, -800], label: 'Rogue 2' },
+      { kind: 'pilot', id: 'p', at: [1000, -100], label: 'Rogue 2' },
       { kind: 'built', id: 'b', at: [900, -700], label: 'turret' },
     ];
     const view = { w: 800, h: 600, centre: [1000, -500], scale: 16 };

@@ -96,6 +96,8 @@ describe('the minimap', () => {
       </MiniMap>,
     );
     expect(html).toContain('--hud-minimap:160px');
+    // (hidden until its first draw says there's something to show)
+    expect(html).toContain('data-empty="true"');
     expect(html).toMatch(/<button[^>]*aria-label="Open the map"/);
     expect(html).toContain('<canvas aria-hidden="true"></canvas>');
     expect(html).not.toContain('<kbd');

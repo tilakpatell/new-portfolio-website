@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FULL_SCALES, FULL_START, MAP_KEEP, isTap, panBy, pinchStep, zoomStep, MINI, MAP_CELL, bearingOf, biomeColour, cellAddress, compassPoint, markersOf, miniScale, poiRows, project, unproject, visibleLeaves } from './mapRules';
+import { FULL_SCALES, FULL_START, MAP_KEEP, isTap, panBy, pinchStep, placeLabels, zoomStep, MINI, MAP_CELL, bearingOf, biomeColour, cellAddress, compassPoint, markersOf, miniScale, poiRows, project, unproject, visibleLeaves } from './mapRules';
 import { planetSpecOf } from '../../../lib/land/flight/planetSpec';
 import { forwardOf } from './flightRules';
 
@@ -76,7 +76,8 @@ describe('biomeColour', () => {
   it('is a colour from the planet’s palette for every biome, darker under its base and lighter over it', () => {
     const lum = (h) => parseInt(h.slice(1, 3), 16) + parseInt(h.slice(3, 5), 16) + parseInt(h.slice(5, 7), 16);
     for (const id of ['hoth', 'tatooine', 'mustafar', 'kamino']) {
-      const s = planetSpecOf(id);
+      // (the land alone: a planet's water is the next test's)
+      const s = { ...planetSpecOf(id), water: null };
       s.biomes.forEach((b, i) => {
         const at = biomeColour(s, i, b.base);
         expect(at).toMatch(hex);
@@ -85,16 +86,24 @@ describe('biomeColour', () => {
       });
     }
   });
-  it('tells water from land: a sunken biome is bluer than the ground', () => {
-    const sea = spec.biomes.findIndex((b) => b.id === 'sea');
-    const c = biomeColour(spec, sea, spec.biomes[sea].base);
-    expect(parseInt(c.slice(5, 7), 16)).toBeGreaterThan(parseInt(c.slice(1, 3), 16));
+  it('paints a cell under the planet’s water as its water, deeper darker, and leaves the land above it alone', () => {
+    const kamino = planetSpecOf('kamino');
+    const dry = { ...kamino, water: null };
+    const sea = biomeColour(kamino, 0, kamino.water.level - 10);
+    expect(sea).not.toBe(biomeColour(dry, 0, kamino.water.level - 10));
+    expect(parseInt(sea.slice(5, 7), 16)).toBeGreaterThan(parseInt(sea.slice(1, 3), 16));
+    const lum = (h) => parseInt(h.slice(1, 3), 16) + parseInt(h.slice(3, 5), 16) + parseInt(h.slice(5, 7), 16);
+    expect(lum(biomeColour(kamino, 0, kamino.water.level - 60))).toBeLessThan(lum(sea));
+    expect(biomeColour(kamino, 0, kamino.water.level + 5)).toBe(biomeColour(dry, 0, kamino.water.level + 5));
   });
-  it('keeps a flat a few metres down land: Tatooine’s salt is not a sea', () => {
-    const t = planetSpecOf('tatooine');
-    const salt = t.biomes.findIndex((b) => b.id === 'salt');
-    const c = biomeColour(t, salt, t.biomes[salt].base);
-    expect(parseInt(c.slice(5, 7), 16)).toBeLessThan(parseInt(c.slice(1, 3), 16));
+  it('keeps a sunken biome on a dry planet land: Coruscant’s works and Hoth’s valley are no sea', () => {
+    for (const [id, biome] of [['coruscant', 'works'], ['hoth', 'valley']]) {
+      const s = planetSpecOf(id);
+      expect(s.water ?? null).toBeNull();
+      const i = s.biomes.findIndex((b) => b.id === biome);
+      expect(biomeColour(s, i, s.biomes[i].base)).toMatch(hex);
+      expect(biomeColour(s, i, s.biomes[i].base)).toBe(biomeColour({ ...s, water: { kind: 'clouds', level: 1e6 } }, i, s.biomes[i].base));
+    }
   });
 });
 
@@ -125,7 +134,8 @@ describe('markersOf', () => {
   const spec = planetSpecOf('hoth');
   it('draws the POIs and a waypoint, and no one else when nothing online is there', () => {
     const m = markersOf({ spec, waypoint: { id: 'echo-base', name: 'Echo Base', at: [1200, -800] } });
-    expect(m.filter((k) => k.kind === 'poi').map((k) => k.label)).toEqual(['Echo Base']);
+    expect(m.filter((k) => k.kind === 'poi').map((k) => k.label)).toEqual(spec.pois.map((p) => p.name));
+    expect(m.filter((k) => k.kind === 'poi').map((k) => k.label)).toContain('Echo Base');
     expect(m.find((k) => k.kind === 'waypoint')).toMatchObject({ at: [1200, -800], label: 'Echo Base' });
     expect(m.some((k) => ['pilot', 'built', 'occurrence'].includes(k.kind))).toBe(false);
   });
@@ -160,5 +170,19 @@ describe('the full map’s hands', () => {
   });
   it('pans by the drag, the ground following the finger', () => {
     expect(panBy([1000, -500], [10, -4], 16)).toEqual([840, -436]);
+  });
+});
+
+describe('placeLabels', () => {
+  const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  it('keeps three places a few metres apart from covering one another’s names', () => {
+    const out = placeLabels([{ text: 'The ion cannon', x: 200, y: 200, w: 100 }, { text: 'Echo Base', x: 196, y: 196, w: 70 }, { text: 'The trench line', x: 204, y: 188, w: 100 }]);
+    expect(out).toHaveLength(3);
+    for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) expect(overlap(out[i], out[j])).toBe(false);
+  });
+  it('puts a name on the other side when it would run off the map, and leaves it out when there is no room', () => {
+    const inside = (r) => r.x >= 0 && r.x + r.w <= 240 && r.y >= 0 && r.y + r.h <= 240;
+    expect(placeLabels([{ text: 'Far east', x: 220, y: 120, w: 80 }], inside)[0].x).toBe(130);
+    expect(placeLabels([{ text: 'Too long a name for any side', x: 120, y: 120, w: 400 }], inside)).toEqual([]);
   });
 });

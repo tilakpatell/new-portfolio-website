@@ -8,12 +8,14 @@ import { MINIMAP } from './hud';
 // draws; the part keeps the clock: `draw(ctx, size)` is called at most `hz`
 // times a second from requestAnimationFrame, in CSS px on a canvas as sharp
 // as the screen, and what it returns is the caption, written into the
-// element, never into state (numbers through refs). `children` hang under
+// element, never into state (numbers through refs); null keeps the whole
+// part hidden (nothing to draw yet: the world still loading). `children` hang under
 // the caption (a waypoint's line on a narrow screen). The key that opens the
 // map is the guide's to say (src/components/guide/pages.js), not this.
 //
 //   <MiniMap size={minimapSize(width, touch)} draw={(ctx, size) => 'Cell 0,0'} onOpen={…} label="Open the map" />
 export default function MiniMap({ size = MINIMAP.size, draw, onOpen = null, hz = MINIMAP.hz, label = 'Open the map', className = '', children = null }) {
+  const root = useRef(null);
   const canvas = useRef(null);
   const caption = useRef(null);
   const drawRef = useRef(draw);
@@ -33,6 +35,9 @@ export default function MiniMap({ size = MINIMAP.size, draw, onOpen = null, hz =
       ctx.setTransform(box.s, 0, 0, box.s, 0, 0);
       ctx.clearRect(0, 0, box.w, box.h);
       const text = drawRef.current?.(ctx, box.w);
+      // (hidden, not gone: the canvas keeps its size, so the next frame can draw)
+      const empty = text === null ? 'true' : 'false';
+      if (root.current && root.current.dataset.empty !== empty) root.current.dataset.empty = empty;
       if (caption.current && typeof text === 'string' && caption.current.textContent !== text) caption.current.textContent = text;
     };
     raf = requestAnimationFrame(tick);
@@ -40,7 +45,7 @@ export default function MiniMap({ size = MINIMAP.size, draw, onOpen = null, hz =
   }, [hz]);
 
   return (
-    <div className={`hud-minimap ${className}`.trim()} style={{ '--hud-minimap': `${size}px` }}>
+    <div ref={root} className={`hud-minimap ${className}`.trim()} data-empty="true" style={{ '--hud-minimap': `${size}px` }}>
       <button type="button" className="hud-minimap-disc" onClick={onOpen ?? undefined} aria-label={label} title={label}>
         <canvas ref={canvas} aria-hidden="true" />
       </button>
