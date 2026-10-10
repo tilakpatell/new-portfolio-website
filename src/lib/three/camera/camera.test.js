@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import cameras from '../../../data/bf2017/cameras.json';
 import { FOV_DEFAULT, aimFov } from './aim';
 import { WALL_CLEAR, createSoldierMemo, soldierPose } from './soldier';
+import { createVehicleMemo, vehicleLook } from './vehicle';
 
 const rows = cameras.rows;
 const RAD = Math.PI / 180;
@@ -116,5 +117,32 @@ describe('the zoom during a zoom', () => {
     expect(Math.abs(curve[0] - mid)).toBeLessThan(0.5);
     for (let i = 1; i < curve.length; i++) expect(curve[i]).toBeGreaterThanOrEqual(curve[i - 1] - 1e-9);
     expect(curve.at(-1)).toBe(FOV_DEFAULT);
+  });
+});
+
+describe('the seat change mid-inertia', () => {
+  it('AT-AT driver to gunner: the look carries its rate and settles under the new limits within a second', () => {
+    const atat = rows.vehicles['vehicle_ground_at-at_mp'];
+    const memo = createVehicleMemo();
+    // the driver swinging right, the stick let go near the limit
+    for (let i = 0; i < 300 && memo.yaw < 44; i++) vehicleLook(memo, atat.seats[0], { yaw: 0.6 * RAD }, DT);
+    const before = memo.yaw;
+    vehicleLook(memo, atat.seats[0], {}, DT);
+    const lastStep = memo.yaw - before;
+    expect(lastStep).toBeGreaterThan(0);
+    // the gunner's seat: yaw ±37.5, the look outside it
+    const steps = [];
+    let prev = memo.yaw;
+    for (let i = 0; i < 60; i++) {
+      vehicleLook(memo, atat.seats[1], {}, DT);
+      steps.push(memo.yaw - prev);
+      prev = memo.yaw;
+    }
+    // no snap: each frame's move near the last one's, never a jump
+    expect(Math.abs(steps[0] - lastStep)).toBeLessThan(1);
+    for (const s of steps) expect(Math.abs(s)).toBeLessThan(1);
+    // under the new limit within a second
+    expect(memo.yaw).toBeLessThanOrEqual(atat.seats[1].yaw[1] + 0.05);
+    expect(memo.yaw).toBeGreaterThan(atat.seats[1].yaw[1] - 1e-9);
   });
 });
