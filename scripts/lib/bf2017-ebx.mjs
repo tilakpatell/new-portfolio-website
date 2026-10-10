@@ -201,3 +201,15 @@ export function cutAsset(asset, keep = () => true) {
   };
   return { ...asset, root: index.get(asset.root), objects: order.map((i) => remap(asset.objects[i])) };
 }
+
+// A file of the web build: under `<root>/web/` in the bucket's layout (the
+// cloud), else `<root>/../web_opt/` beside the masters (the owner's machine).
+export function webFile(root, rel) {
+  for (const p of [join(root, 'web', rel), join(root, '..', 'web_opt', rel)]) if (existsSync(p)) return p;
+  return null;
+}
+
+export function readWebJson(root, rel) {
+  const p = webFile(root, rel);
+  return p ? JSON.parse(readFileSync(p, 'utf8')) : null;
+}

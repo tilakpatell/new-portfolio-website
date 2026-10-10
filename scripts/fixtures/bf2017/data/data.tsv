@@ -48,6 +48,8 @@ Gameplay/Teams/MP/Orig/Specials_Light_Orig_HO	WSSoldierCustomizationKitList	data
 Gameplay/Teams/MP/Orig/Team_Light_Orig_HO	WSTeamData	data/Gameplay/Teams/MP/Orig/Team_Light_Orig_HO.json	187695
 Gameplay/Teams/MP/Orig/Vehicles_Light_Orig_HO	WSVehicleCustomizationKitList	data/Gameplay/Teams/MP/Orig/Vehicles_Light_Orig_HO.json	1106
 Gameplay/Vehicles/Mount/ATRT/Mount_ATRT_Rebel	VehicleBlueprint	data/Gameplay/Vehicles/Mount/ATRT/Mount_ATRT_Rebel.json	254031
+Levels/MP/Hoth_01/FantasyBattle	SubWorldData	data/Levels/MP/Hoth_01/FantasyBattle.json	1097666
 Levels/MP/Hoth_01/FantasyBattle_Gameplay	LayerData	data/Levels/MP/Hoth_01/FantasyBattle_Gameplay.json	61237
 Levels/MP/Hoth_01/FantasyBattle_Logic	LayerData	data/Levels/MP/Hoth_01/FantasyBattle_Logic.json	234377
 Levels/MP/Hoth_01/FantasyBattle_Shapes	LayerData	data/Levels/MP/Hoth_01/FantasyBattle_Shapes.json	58172
+Levels/MP/Hoth_01/Hoth_01	LevelData	data/Levels/MP/Hoth_01/Hoth_01.json	866841
