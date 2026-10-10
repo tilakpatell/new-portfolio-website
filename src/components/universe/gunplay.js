@@ -1062,7 +1062,10 @@ export function createGunplay(fig, kind, { unit = 1, who = null } = {}) {
   const left = Boolean(bones.LeftArm && bones.LeftForeArm && bones.LeftHand) && twoHanded;
   // (in a socket nothing's closed round the gun by the site: the clip's fingers hold it)
   const fix = socket ? { curl: false } : who ? GRIP_FIX[who] : null;
-  const look = [bones.Spine, bones.Spine01, bones.Spine02].find(Boolean) ?? null; // the chest
+  // the chest; on a 2017 figure in its socket the chest itself (Spine2): its
+  // gun has no arm laid onto the target, so the chest is the aim, and the
+  // game's clips twist the body above the waist, which reading the waist misses
+  const look = (socket ? bones.Spine2 : null) ?? [bones.Spine, bones.Spine01, bones.Spine02].find(Boolean) ?? null;
   const rest = new Map(); // bone → its forward and up in its own frame, from the bind pose
 
   // measured once, in the bind pose: the hands, the arms' reach, where the chest and head face
